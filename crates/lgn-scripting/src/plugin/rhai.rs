@@ -5,7 +5,10 @@ use lgn_data_runtime::AssetRegistry;
 use lgn_ecs::prelude::*;
 use rhai::Scope;
 
-use crate::runtime::{Script, ScriptComponent};
+use crate::{
+    runtime::{Script, ScriptComponent},
+    ScriptType,
+};
 
 pub(crate) fn build(app: &mut App) {
     let mut rhai_eng = rhai::Engine::new();
@@ -26,7 +29,7 @@ fn compile(
 ) {
     let rhai_scripts = scripts
         .iter()
-        .filter(|(_entity, s)| s.script_type == 3 /*ScriptType::Rhai*/);
+        .filter(|(_entity, s)| s.script_type == ScriptType::Rhai);
 
     for (entity, script) in rhai_scripts {
         let script_untyped = registry.get_untyped(script.script_id.as_ref().unwrap().id());

@@ -12,6 +12,9 @@ use crate::{context::Context, Result};
 pub struct Args {
     #[clap(subcommand)]
     command: Option<Commands>,
+    #[clap(long, short, parse(from_occurrences))]
+    /// Use verbose output (-vv very verbose/build.rs output)
+    pub(crate) verbose: usize,
     #[clap(long)]
     /// Run on packages changed since the merge base of this commit
     pub(crate) changed_since: Option<String>,
@@ -63,7 +66,7 @@ enum Commands {
 #[span_fn]
 pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     if let Some(ref command) = args.command {
-        run_command(ctx, &args.changed_since, command)?;
+        run_command(ctx, args.verbose, &args.changed_since, command)?;
     } else {
         let command = Commands::Check {
             fmt: true,
@@ -72,12 +75,12 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
             repo_lints: true,
             cargo_deny: true,
         };
-        run_command(ctx, &args.changed_since, &command)?;
+        run_command(ctx, args.verbose, &args.changed_since, &command)?;
         let command = Commands::Test {
             build: true,
             run: true,
         };
-        run_command(ctx, &args.changed_since, &command)?;
+        run_command(ctx, args.verbose, &args.changed_since, &command)?;
         // do not run benches by default
         //let command = Commands::Bench {
         //    build: true,
@@ -88,7 +91,12 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     Ok(())
 }
 
-fn run_command(ctx: &Context, changed_since: &Option<String>, command: &Commands) -> Result<()> {
+fn run_command(
+    ctx: &Context,
+    verbose: usize,
+    changed_since: &Option<String>,
+    command: &Commands,
+) -> Result<()> {
     match command {
         Commands::Check {
             fmt,
@@ -102,10 +110,10 @@ fn run_command(ctx: &Context, changed_since: &Option<String>, command: &Commands
                 check_fmt(ctx)?;
             }
             if all || *gfx_no_api {
-                check_graphic_crate(ctx, changed_since)?;
+                check_graphic_crate(ctx, verbose, changed_since)?;
             }
             if all || *clippy {
-                check_clippy(ctx, changed_since)?;
+                check_clippy(ctx, verbose, changed_since)?;
             }
             if all || *repo_lints {
                 check_repo_lints(ctx)?;
@@ -118,10 +126,10 @@ fn run_command(ctx: &Context, changed_since: &Option<String>, command: &Commands
         Commands::Test { build, run } => {
             let all = !build && !run;
             if all || *build {
-                test_build(ctx, changed_since)?;
+                test_build(ctx, verbose, changed_since)?;
             }
             if all || *run {
-                test_run(ctx, changed_since)?;
+                test_run(ctx, verbose, changed_since)?;
             }
             Ok(())
         }
@@ -151,7 +159,11 @@ fn check_fmt(ctx: &Context) -> Result<()> {
 }
 
 #[span_fn]
-fn check_graphic_crate(ctx: &Context, changed_since: &Option<String>) -> Result<()> {
+fn check_graphic_crate(
+    ctx: &Context,
+    verbose: usize,
+    changed_since: &Option<String>,
+) -> Result<()> {
     action_step!("-- CI --", "Running check on the graphics crate");
     let args = check::Args {
         package_args: SelectedPackageArgs {
@@ -162,6 +174,7 @@ fn check_graphic_crate(ctx: &Context, changed_since: &Option<String>) -> Result<
         build_args: BuildArgs {
             all_targets: true,
             locked: true,
+            verbose,
             ..BuildArgs::default()
         },
     };
@@ -169,7 +182,7 @@ fn check_graphic_crate(ctx: &Context, changed_since: &Option<String>) -> Result<
 }
 
 #[span_fn]
-fn check_clippy(ctx: &Context, changed_since: &Option<String>) -> Result<()> {
+fn check_clippy(ctx: &Context, verbose: usize, changed_since: &Option<String>) -> Result<()> {
     action_step!("-- CI --", "Running clippy checks");
     let args = clippy::Args {
         package_args: SelectedPackageArgs {
@@ -181,6 +194,7 @@ fn check_clippy(ctx: &Context, changed_since: &Option<String>) -> Result<()> {
             all_targets: true,
             all_features: true,
             locked: true,
+            verbose,
             ..BuildArgs::default()
         },
         args: vec!["-D".into(), "warnings".into()],
@@ -219,7 +233,7 @@ fn check_cargo_deny(ctx: &Context) -> Result<()> {
 }
 
 #[span_fn]
-fn test_build(ctx: &Context, changed_since: &Option<String>) -> Result<()> {
+fn test_build(ctx: &Context, verbose: usize, changed_since: &Option<String>) -> Result<()> {
     action_step!("-- CI --", "Running tests build");
     {
         let args = build::Args {
@@ -227,7 +241,10 @@ fn test_build(ctx: &Context, changed_since: &Option<String>) -> Result<()> {
                 package: vec!["lgn-data-build*".into(), "lgn-compiler-*".into()],
                 ..SelectedPackageArgs::default()
             },
-            build_args: BuildArgs::default(),
+            build_args: BuildArgs {
+                verbose,
+                ..BuildArgs::default()
+            },
             ..build::Args::default()
         };
         build::run(args, ctx)?;
@@ -238,6 +255,7 @@ fn test_build(ctx: &Context, changed_since: &Option<String>) -> Result<()> {
             ..SelectedPackageArgs::default()
         },
         build_args: BuildArgs {
+            verbose,
             //all_features: changed_since.is_some(),
             ..BuildArgs::default()
         },
@@ -248,7 +266,7 @@ fn test_build(ctx: &Context, changed_since: &Option<String>) -> Result<()> {
 }
 
 #[span_fn]
-fn test_run(ctx: &Context, changed_since: &Option<String>) -> Result<()> {
+fn test_run(ctx: &Context, verbose: usize, changed_since: &Option<String>) -> Result<()> {
     action_step!("-- CI --", "Running tests");
     let args = test::Args {
         package_args: SelectedPackageArgs {
@@ -256,6 +274,7 @@ fn test_run(ctx: &Context, changed_since: &Option<String>) -> Result<()> {
             ..SelectedPackageArgs::default()
         },
         build_args: BuildArgs {
+            verbose,
             //all_features: changed_since.is_some(),
             ..BuildArgs::default()
         },
@@ -278,6 +297,7 @@ fn bench_build(ctx: &Context, changed_since: &Option<String>) -> Result<()> {
             changed_since: changed_since.clone(),
             ..SelectedPackageArgs::default()
         },
+        no_run: true,
         ..bench::Args::default()
     };
     bench::run(args, ctx)

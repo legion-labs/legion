@@ -22,7 +22,10 @@ use lgn_data_runtime::{
     ResourceLoadEvent,
 };
 use lgn_ecs::prelude::*;
-use lgn_renderer::resources::{GpuUniformData, GpuUniformDataContext, MeshManager};
+use lgn_renderer::{
+    resources::{GpuUniformData, GpuUniformDataContext, MeshManager},
+    EntityToGpuDataIdMap,
+};
 use lgn_tracing::error;
 use loading_states::{AssetLoadingStates, LoadingState};
 use sample_data::runtime as runtime_data;
@@ -125,12 +128,13 @@ impl AssetRegistryPlugin {
         drop(registry);
     }
 
-    #[allow(clippy::needless_pass_by_value)]
+    #[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)]
     fn update_assets(
         registry: Res<'_, Arc<AssetRegistry>>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         asset_handles: ResMut<'_, AssetHandles>,
         mut asset_to_entity_map: ResMut<'_, AssetToEntityMap>,
+        mut entity_to_id_map: ResMut<'_, EntityToGpuDataIdMap>,
         mut commands: Commands<'_, '_>,
         mesh_manager: Res<'_, MeshManager>,
         uniform_data: Res<'_, GpuUniformData>,
@@ -148,6 +152,7 @@ impl AssetRegistryPlugin {
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
+                            &mut entity_to_id_map,
                             &mesh_manager,
                             &mut data_context,
                         ) && !load_ecs_asset::<runtime_data::Instance>(
@@ -156,6 +161,7 @@ impl AssetRegistryPlugin {
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
+                            &mut entity_to_id_map,
                             &mesh_manager,
                             &mut data_context,
                         ) && !load_ecs_asset::<lgn_graphics_data::runtime::Material>(
@@ -164,6 +170,7 @@ impl AssetRegistryPlugin {
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
+                            &mut entity_to_id_map,
                             &mesh_manager,
                             &mut data_context,
                         ) && !load_ecs_asset::<runtime_data::Mesh>(
@@ -172,6 +179,7 @@ impl AssetRegistryPlugin {
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
+                            &mut entity_to_id_map,
                             &mesh_manager,
                             &mut data_context,
                         ) && !load_ecs_asset::<lgn_graphics_data::runtime_texture::Texture>(
@@ -180,6 +188,7 @@ impl AssetRegistryPlugin {
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
+                            &mut entity_to_id_map,
                             &mesh_manager,
                             &mut data_context,
                         ) && !load_ecs_asset::<generic_data::runtime::DebugCube>(
@@ -188,6 +197,7 @@ impl AssetRegistryPlugin {
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
+                            &mut entity_to_id_map,
                             &mesh_manager,
                             &mut data_context,
                         ) && !load_ecs_asset::<lgn_scripting::runtime::Script>(
@@ -196,6 +206,7 @@ impl AssetRegistryPlugin {
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
+                            &mut entity_to_id_map,
                             &mesh_manager,
                             &mut data_context,
                         ) {

@@ -207,6 +207,8 @@ fn generate_data_definition(
         .collect::<Vec<_>>();
 
     let imports = quote::quote! {
+        #[allow(clippy::wildcard_imports)]
+        use crate::*;
         #(use #imports;)*
     };
     cursor.write_all(imports.to_string().as_bytes())?;

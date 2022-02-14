@@ -1,14 +1,20 @@
-use std::{str::FromStr, sync::Arc};
+use std::{
+    str::{self, FromStr},
+    sync::Arc,
+};
 
 use lgn_app::prelude::*;
 use lgn_data_runtime::AssetRegistry;
 use lgn_ecs::prelude::*;
 use lgn_tracing::prelude::*;
-use rune::ToValue;
+use rune::{
+    termcolor::{ColorChoice, StandardStream},
+    Context, Diagnostics, Hash, Source, Sources, ToValue, Unit, Value, Vm,
+};
 
 use crate::{
     runtime::{Script, ScriptComponent},
-    ScriptingEventCache,
+    ScriptType, ScriptingEventCache,
 };
 
 pub(crate) fn build(app: &mut App) {
@@ -23,24 +29,24 @@ pub(crate) fn build(app: &mut App) {
 fn compile(
     scripts: Query<'_, '_, (Entity, &mut ScriptComponent)>,
     mut rune_vms: NonSendMut<'_, VMCollection>,
-    rune_context: Res<'_, ::rune::Context>,
+    rune_context: Res<'_, Context>,
     registry: Res<'_, Arc<AssetRegistry>>,
     mut commands: Commands<'_, '_>,
 ) {
     let rune_scripts = scripts
         .iter()
-        .filter(|(_entity, s)| s.script_type == 2 /*ScriptType::Rune*/);
+        .filter(|(_entity, s)| s.script_type == ScriptType::Rune);
 
     for (entity, script) in rune_scripts {
         let script_untyped = registry.get_untyped(script.script_id.as_ref().unwrap().id());
         let script_typed = script_untyped.unwrap().get::<Script>(&registry).unwrap();
-        let source_payload = std::str::from_utf8(&script_typed.compiled_script).unwrap();
+        let source_payload = str::from_utf8(&script_typed.compiled_script).unwrap();
         info!("script payload: {}", &source_payload);
 
-        let mut sources = rune::Sources::new();
-        sources.insert(rune::Source::new("entry", &source_payload));
+        let mut sources = Sources::new();
+        sources.insert(Source::new("entry", &source_payload));
 
-        let mut diagnostics = rune::Diagnostics::new();
+        let mut diagnostics = Diagnostics::new();
 
         let result = rune::prepare(&mut sources)
             .with_context(&rune_context)
@@ -48,8 +54,7 @@ fn compile(
             .build();
 
         if !diagnostics.is_empty() {
-            let mut writer =
-                rune::termcolor::StandardStream::stderr(rune::termcolor::ColorChoice::Always);
+            let mut writer = StandardStream::stderr(ColorChoice::Always);
             diagnostics.emit(&mut writer, &sources).unwrap();
         }
 
@@ -60,7 +65,7 @@ fn compile(
         let fn_name = &[script.entry_fn.as_str()];
         let script_exec = ScriptExecutionContext {
             vm_index,
-            entry_fn: rune::Hash::type_hash(fn_name),
+            entry_fn: Hash::type_hash(fn_name),
             input_args: script.input_values.clone(),
         };
 
@@ -78,7 +83,7 @@ fn tick(
 ) {
     for (_entity, script) in query.iter() {
         if let Some(vm) = rune_vms.get_mut(script.vm_index) {
-            let mut args: Vec<rune::Value> = Vec::new();
+            let mut args: Vec<Value> = Vec::new();
             for input in &script.input_args {
                 if input == "mouse_delta_x" {
                     args.push(event_cache.mouse_motion.delta.x.to_value().unwrap());
@@ -105,23 +110,23 @@ fn tick(
 #[derive(Component)]
 struct ScriptExecutionContext {
     vm_index: usize,
-    entry_fn: rune::Hash,
+    entry_fn: Hash,
     input_args: Vec<String>,
 }
 
 #[derive(Default)]
 struct VMCollection {
-    vms: Vec<Option<rune::Vm>>,
+    vms: Vec<Option<Vm>>,
 }
 
 impl VMCollection {
-    fn append(&mut self, context: &rune::Context, unit: rune::Unit) -> usize {
-        let vm = rune::Vm::new(Arc::new(context.runtime()), Arc::new(unit));
+    fn append(&mut self, context: &Context, unit: Unit) -> usize {
+        let vm = Vm::new(Arc::new(context.runtime()), Arc::new(unit));
         self.vms.push(Some(vm));
         self.vms.len() - 1
     }
 
-    fn get_mut(&mut self, index: usize) -> &mut Option<rune::Vm> {
+    fn get_mut(&mut self, index: usize) -> &mut Option<Vm> {
         &mut self.vms[index]
     }
 }

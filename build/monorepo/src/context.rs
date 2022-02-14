@@ -9,7 +9,7 @@ use monorepo_base::config::MONOREPO_DEPTH;
 use monorepo_base::installer::Installer;
 use once_cell::sync::OnceCell;
 
-use crate::cargo::current_target_cfg;
+use crate::cargo::default_target_cfg;
 use crate::config::MonorepoConfig;
 use crate::git::GitCli;
 use crate::Error;
@@ -96,7 +96,7 @@ impl Context {
     pub fn target_config(&self) -> Result<&String> {
         self.target_config.get_or_try_init(|| {
             span_scope!("Context::target_config::init");
-            current_target_cfg()
+            default_target_cfg()
         })
     }
 

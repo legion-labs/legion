@@ -10,5 +10,5 @@ anyhow = "1.0.44"
 directories = "4"
 lgn-online = { path = "../lgn-online", version = "0.1.0" }
 serde_json = "1.0"
-tauri = { version = "1.0.0-beta.8", features = ["api-all"] }
+tauri = { version = "1.0.0-rc.1", features = ["api-all"] }
 url = "2.2.2"

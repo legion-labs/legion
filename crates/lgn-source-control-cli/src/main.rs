@@ -187,8 +187,8 @@ enum Commands {
     /// Updates the workspace with the latest version of the files
     #[clap(name = "sync")]
     Sync {
-        /// version to sync to
-        commit_id: Option<String>,
+        /// Commit to sync to.
+        commit_id: Option<CommitId>,
     },
     /// Lists the files that are scheduled to be merged following a sync with colliding changes
     #[clap(name = "resolves-pending")]
@@ -504,7 +504,7 @@ async fn main() -> anyhow::Result<()> {
             let workspace = Workspace::find_in_current_directory().await?;
             let current_branch = workspace.get_current_branch().await?;
             let commits = workspace
-                .list_commits(&ListCommitsQuery::single(&current_branch.head))
+                .list_commits(&ListCommitsQuery::single(current_branch.head))
                 .await?;
 
             if short {
@@ -534,7 +534,7 @@ async fn main() -> anyhow::Result<()> {
             let workspace = Workspace::find_in_current_directory().await?;
 
             let (current_commit_id, changes) = if let Some(commit_id) = commit_id {
-                let changes = workspace.sync_to(&commit_id).await?;
+                let changes = workspace.sync_to(commit_id).await?;
 
                 (commit_id, changes)
             } else {

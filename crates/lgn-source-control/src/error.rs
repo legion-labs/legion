@@ -2,7 +2,7 @@ use std::{collections::BTreeSet, path::PathBuf};
 
 use thiserror::Error;
 
-use crate::{Branch, CanonicalPath, Change, FileInfo, Lock};
+use crate::{Branch, CanonicalPath, Change, CommitId, FileInfo, Lock};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -17,7 +17,7 @@ pub enum Error {
         source: anyhow::Error,
     },
     #[error("commit `{commit_id}` was not found")]
-    CommitNotFound { commit_id: String },
+    CommitNotFound { commit_id: CommitId },
     #[error("the folder `{path}` is not a workspace")]
     NotAWorkspace { path: PathBuf },
     #[error("the path `{path}` did not match any files")]
@@ -102,10 +102,8 @@ impl Error {
         }
     }
 
-    pub fn commit_not_found(commit_id: impl Into<String>) -> Self {
-        Self::CommitNotFound {
-            commit_id: commit_id.into(),
-        }
+    pub fn commit_not_found(commit_id: CommitId) -> Self {
+        Self::CommitNotFound { commit_id }
     }
 
     pub fn not_a_workspace(path: impl Into<PathBuf>) -> Self {

@@ -1,70 +1,85 @@
 ---
 source: tests/sample-data/tests/build.rs
-assertion_line: 112
+assertion_line: 116
 expression: incremental_manifest
 
 ---
 {
   "compiled_resources": [
     {
-      "path": "(4976b194d8a1e0c2,8ee3dcef-1aa4-4772-ad9b-28066f06909e)|648242a8cf00bfee",
-      "checksum": "c7ae5d802e1fbffc52ea2ac185c2d321",
-      "size": 1000058
+      "path": "(1a377760c95e361c,b11243e1-009c-4b69-8be7-cd5bef0ed3e8)|648242a8cf00bfee",
+      "checksum": "127b42146277b6659bea4b185c76caa1",
+      "size": 16777274
     },
     {
-      "path": "(4976b194d8a1e0c2,8ee3dcef-1aa4-4772-ad9b-28066f06909e)|648242a8cf00bfee_Black Background",
-      "checksum": "5375170a08bcee3708993732071bf97d",
-      "size": 1000058
+      "path": "(1a377760c95e361c,8f3f0937-0965-4292-8d39-f75d4a7de488)|648242a8cf00bfee",
+      "checksum": "29033b1dfe981297e661477bd45fca9f",
+      "size": 4194362
     },
     {
-      "path": "(4976b194d8a1e0c2,8ee3dcef-1aa4-4772-ad9b-28066f06909e)|648242a8cf00bfee_Ferris",
-      "checksum": "e66852b7dac5c9a1718e694268223389",
-      "size": 1000058
+      "path": "(1a377760c95e361c,6e0ca2bd-281a-4185-906c-acaa9897759a)|648242a8cf00bfee",
+      "checksum": "550a047d2e98d8abfec17bdfce06fd77",
+      "size": 4194362
     },
     {
-      "path": "(4976b194d8a1e0c2,8ee3dcef-1aa4-4772-ad9b-28066f06909e)|648242a8cf00bfee_albedo",
-      "checksum": "333dd500d9930e75e3b6c4555957b3c4",
-      "size": 1000058
+      "path": "(1a377760c95e361c,2839ea70-c411-4302-8f67-e899fdf27645)|648242a8cf00bfee",
+      "checksum": "aad98b3fcd9c3bc13ae5a45c3c8926f5",
+      "size": 16777274
     },
     {
-      "path": "(4976b194d8a1e0c2,8ee3dcef-1aa4-4772-ad9b-28066f06909e)|648242a8cf00bfee_metalness",
-      "checksum": "333dd500d9930e75e3b6c4555957b3c4",
-      "size": 1000058
+      "path": "(1a377760c95e361c,b11243e1-009c-4b69-8be7-cd5bef0ed3e8)|648242a8cf00bfee|0659c0b6c23b950d_Albedo",
+      "checksum": "163277a5906d321711a72f3dabf44820",
+      "size": 5592538
     },
     {
-      "path": "(4976b194d8a1e0c2,8ee3dcef-1aa4-4772-ad9b-28066f06909e)|648242a8cf00bfee_normal",
-      "checksum": "333dd500d9930e75e3b6c4555957b3c4",
-      "size": 1000058
+      "path": "(1a377760c95e361c,b11243e1-009c-4b69-8be7-cd5bef0ed3e8)|648242a8cf00bfee|0659c0b6c23b950d_AlbedoBlend",
+      "checksum": "52c0f5cdff67ca2989c11c43e0828426",
+      "size": 5592538
     },
     {
-      "path": "(4976b194d8a1e0c2,8ee3dcef-1aa4-4772-ad9b-28066f06909e)|648242a8cf00bfee_roughness",
-      "checksum": "333dd500d9930e75e3b6c4555957b3c4",
-      "size": 1000058
+      "path": "(1a377760c95e361c,b11243e1-009c-4b69-8be7-cd5bef0ed3e8)|648242a8cf00bfee|0659c0b6c23b950d_Normal",
+      "checksum": "163277a5906d321711a72f3dabf44820",
+      "size": 5592538
     },
     {
-      "path": "(4976b194d8a1e0c2,8ee3dcef-1aa4-4772-ad9b-28066f06909e)|648242a8cf00bfee_roughness|0659c0b6c23b950d",
-      "checksum": "4d74c6b043ec45baabdf4a838d206c2e",
-      "size": 1000038
+      "path": "(1a377760c95e361c,8f3f0937-0965-4292-8d39-f75d4a7de488)|648242a8cf00bfee|0659c0b6c23b950d_Metalness",
+      "checksum": "72b9495b7a0fcbf2ef858abb21479408",
+      "size": 2796338
     },
     {
-      "path": "(4976b194d8a1e0c2,8ee3dcef-1aa4-4772-ad9b-28066f06909e)|648242a8cf00bfee_normal|0659c0b6c23b950d",
-      "checksum": "4d74c6b043ec45baabdf4a838d206c2e",
-      "size": 1000038
+      "path": "(1a377760c95e361c,8f3f0937-0965-4292-8d39-f75d4a7de488)|648242a8cf00bfee|0659c0b6c23b950d_Roughness",
+      "checksum": "72b9495b7a0fcbf2ef858abb21479408",
+      "size": 2796338
     },
     {
-      "path": "(4976b194d8a1e0c2,8ee3dcef-1aa4-4772-ad9b-28066f06909e)|648242a8cf00bfee_metalness|0659c0b6c23b950d",
-      "checksum": "4d74c6b043ec45baabdf4a838d206c2e",
-      "size": 1000038
+      "path": "(1a377760c95e361c,6e0ca2bd-281a-4185-906c-acaa9897759a)|648242a8cf00bfee|0659c0b6c23b950d_Metalness",
+      "checksum": "5c774616651b5c3ff952180df3281e4f",
+      "size": 2796338
     },
     {
-      "path": "(4976b194d8a1e0c2,8ee3dcef-1aa4-4772-ad9b-28066f06909e)|648242a8cf00bfee_albedo|0659c0b6c23b950d",
-      "checksum": "4d74c6b043ec45baabdf4a838d206c2e",
-      "size": 1000038
+      "path": "(1a377760c95e361c,6e0ca2bd-281a-4185-906c-acaa9897759a)|648242a8cf00bfee|0659c0b6c23b950d_Roughness",
+      "checksum": "5c774616651b5c3ff952180df3281e4f",
+      "size": 2796338
+    },
+    {
+      "path": "(1a377760c95e361c,2839ea70-c411-4302-8f67-e899fdf27645)|648242a8cf00bfee|0659c0b6c23b950d_Albedo",
+      "checksum": "af14000ace1a45823c1ec24060f99ea0",
+      "size": 5592538
+    },
+    {
+      "path": "(1a377760c95e361c,2839ea70-c411-4302-8f67-e899fdf27645)|648242a8cf00bfee|0659c0b6c23b950d_AlbedoBlend",
+      "checksum": "6ae5fcc36875e1889811910e867cdef0",
+      "size": 5592538
+    },
+    {
+      "path": "(1a377760c95e361c,2839ea70-c411-4302-8f67-e899fdf27645)|648242a8cf00bfee|0659c0b6c23b950d_Normal",
+      "checksum": "af14000ace1a45823c1ec24060f99ea0",
+      "size": 5592538
     },
     {
       "path": "(07dd9f5d1793ed64,48909c46-ad4f-4d6b-a522-2e16e81ba082)|738a5b850f6f8b3a",
-      "checksum": "95d85c222b9bdd17dc8852fe1cdbec1c",
-      "size": 234
+      "checksum": "880644f45a7151861cfabe79001316c6",
+      "size": 250
     },
     {
       "path": "(1c0ff9e497b0740f,270c28b5-6368-4a21-8ef1-a7d03f85abb3)|1d9ddd99aad89045",

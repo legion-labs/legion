@@ -42,7 +42,7 @@
   <TextInput
     value={hexValue}
     on:input={setColorsFromTextInput}
-    fullWidth
+    fluid
     autoSelect
     {disabled}
   >

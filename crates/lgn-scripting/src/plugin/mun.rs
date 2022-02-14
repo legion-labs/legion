@@ -4,7 +4,10 @@ use lgn_app::prelude::*;
 use lgn_data_runtime::AssetRegistry;
 use lgn_ecs::prelude::*;
 
-use crate::runtime::{Script, ScriptComponent};
+use crate::{
+    runtime::{Script, ScriptComponent},
+    ScriptType,
+};
 
 pub(crate) fn build(app: &mut App) {
     app.init_non_send_resource::<RuntimeCollection>()
@@ -20,7 +23,7 @@ fn compile(
 ) {
     let mun_scripts = scripts
         .iter()
-        .filter(|(_entity, s)| s.script_type == 1 /*ScriptType::Mun*/);
+        .filter(|(_entity, s)| s.script_type == ScriptType::Mun);
 
     for (entity, script) in mun_scripts {
         let script_id = script.script_id.as_ref().unwrap().id();

@@ -677,7 +677,7 @@ async fn test_sync_forward_and_backward() {
     assert_file_read_only!(ws, "pear.txt");
 
     // Try to sync back to the previous commit.
-    let changes = ws.sync_to(&commit_1.id).await.unwrap();
+    let changes = ws.sync_to(commit_1.id).await.unwrap();
 
     assert_eq!(
         changes,
@@ -808,7 +808,7 @@ async fn test_sync_forward_with_non_conflicting_changes() {
 
     // Try to sync back to the previous commit: this should work even though we
     // have local changes as those do not conflict at all.
-    let changes = ws.sync_to(&commit_1.id).await.unwrap();
+    let changes = ws.sync_to(commit_1.id).await.unwrap();
 
     assert_eq!(
         changes,
@@ -953,7 +953,7 @@ async fn test_sync_forward_with_conflicting_changes() {
 
     // Try to sync back to the previous commit: this should fail as we have
     // unstaged changes about a file that would be restored as part of the sync.
-    match ws.sync_to(&commit_id_1).await {
+    match ws.sync_to(commit_id_1).await {
         Err(Error::ConflictingChanges {
             conflicting_changes,
         }) => {
@@ -993,7 +993,7 @@ async fn test_sync_forward_with_conflicting_changes() {
 
     // Try to sync back to the previous commit: this should fail as we have
     // staged changes about a file that would be restored as part of the sync.
-    match ws.sync_to(&commit_id_1).await {
+    match ws.sync_to(commit_id_1).await {
         Err(Error::ConflictingChanges {
             conflicting_changes,
         }) => {

@@ -37,9 +37,7 @@ impl<A: tauri::Assets> Plugin for TauriPlugin<A> {
     fn build(&self, app: &mut App) {
         let context = std::mem::replace(&mut *self.context.lock().unwrap(), None).unwrap();
 
-        app.set_runner(move |app| {
-            let mut app = app;
-
+        app.set_runner(move |mut app| {
             let settings = app
                 .world
                 .remove_non_send::<TauriPluginSettings<tauri::Wry>>()
@@ -50,13 +48,9 @@ impl<A: tauri::Assets> Plugin for TauriPlugin<A> {
                 .build(context)
                 .expect("failed to build Tauri application");
 
-            // FIXME: Once https://github.com/tauri-apps/tauri/pull/2667 is merged, we can
-            // get rid of this and move the value directly instead.
-            let app = std::rc::Rc::new(std::cell::RefCell::new(app));
-
             tauri_app.run(move |_, event| {
-                if let tauri::Event::MainEventsCleared = event {
-                    app.borrow_mut().update();
+                if let tauri::RunEvent::MainEventsCleared = event {
+                    app.update();
                 }
             });
         });

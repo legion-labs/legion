@@ -17,6 +17,8 @@ jobs:
     name: Running code checks
     needs: base_ref_selection
     runs-on: [self-hosted, linux, common, build]
+    env:
+      LEGION_TELEMETRY_URL: ${{ secrets.LEGION_TELEMETRY_URL }}
     steps:
       - uses: actions/checkout@v2
         with:
@@ -154,6 +156,8 @@ jobs:
     outputs:
       linux_runner: ${{ steps.changed-crates.outputs.linux_runner }}
       windows_runner: ${{ steps.changed-crates.outputs.windows_runner }}
+    env:
+      LEGION_TELEMETRY_URL: ${{ secrets.LEGION_TELEMETRY_URL }}
     steps:
       - uses: actions/checkout@v2
         with:

@@ -40,3 +40,18 @@ serde_json = "1.0"
 
 [build-dependencies]
 tonic-build = "0.6"
+
+
+[[package.metadata.monorepo.dist]]
+name = "analytics-srv"
+type = "docker"
+template = """
+FROM ubuntu:20.04
+
+RUN apt-get update && apt-get install -y libssl-dev ca-certificates
+
+{ copy_all }
+
+CMD ["{ binaries.analytics-srv }"]
+"""
+allow-aws-ecr-creation = true

@@ -239,6 +239,14 @@ impl BuildArgs {
     }
 }
 
+pub fn target_config(ctx: &Context, args: &BuildArgs) -> Result<String> {
+    if let Some(target) = &args.target {
+        Ok(target.clone())
+    } else {
+        ctx.target_config().map(Clone::clone)
+    }
+}
+
 pub fn target_dir(ctx: &Context, args: &BuildArgs) -> Result<Utf8PathBuf> {
     let mut path = args.top_level_target_dir();
     if path.is_relative() {
@@ -270,7 +278,7 @@ fn append_ext_for_target_cfg(ctx: &Context, args: &BuildArgs, binary: &str) -> R
     })
 }
 
-pub fn current_target_cfg() -> Result<String> {
+pub fn default_target_cfg() -> Result<String> {
     let output = Command::new("rustc")
         .args(["--print", "cfg"])
         .output()
@@ -341,7 +349,7 @@ mod tests {
 
     #[test]
     fn test_get_current_target_runtime() {
-        assert!(current_target_cfg().is_ok());
+        assert!(default_target_cfg().is_ok());
     }
 
     #[test]

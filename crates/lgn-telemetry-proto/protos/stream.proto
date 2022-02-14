@@ -15,7 +15,9 @@ message UserDefinedType {
   repeated UDTMember members = 3;
 }
 
-message ContainerMetadata { repeated UserDefinedType types = 1; }
+message ContainerMetadata {
+  repeated UserDefinedType types = 1;
+}
 
 message Stream {
   string stream_id = 1;
@@ -23,5 +25,5 @@ message Stream {
   ContainerMetadata dependencies_metadata = 3;
   ContainerMetadata objects_metadata = 4;
   repeated string tags = 5;
-  map<string,string> properties = 6;
+  map<string, string> properties = 6;
 }

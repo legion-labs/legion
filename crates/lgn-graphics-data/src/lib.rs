@@ -17,6 +17,9 @@ include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
 pub mod color;
 pub use color::Color;
 
+pub mod common;
+pub use common::*;
+
 /// Plugin module to register support types
 pub mod plugin;
 pub use plugin::*;
@@ -24,6 +27,10 @@ pub use plugin::*;
 #[cfg(feature = "runtime")]
 #[path = "runtime/texture.rs"]
 pub mod runtime_texture;
+
+#[cfg(feature = "offline")]
+#[path = "offline/png.rs"]
+pub mod offline_png;
 
 #[cfg(feature = "offline")]
 #[path = "offline/psd.rs"]
