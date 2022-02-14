@@ -211,8 +211,10 @@ impl Project {
     /// This method flattens the `remote` and `local` resources into one list.
     pub async fn resource_list(&self) -> Vec<ResourceId> {
         let mut all = self.local_resource_list().await.unwrap();
-        let remote = self.remote_resource_list().await.unwrap();
-        all.extend(remote);
+        match self.remote_resource_list().await {
+            Ok(remote) => all.extend(remote),
+            Err(err) => lgn_tracing::error!("Error fetching remote resources: {}", err),
+        }
         all
     }
 

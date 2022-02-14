@@ -12,6 +12,7 @@ lgn-source-control = { path = "../lgn-source-control", version = "0.1.0" }
 lgn-data-runtime = { path = "../lgn-data-runtime", version = "0.1.0" }
 lgn-utils = { path = "../lgn-utils", version = "0.1.0" }
 lgn-data-model = { path = "../lgn-data-model" }
+lgn-tracing = { path = "../lgn-tracing" }
 
 # others
 anyhow = "1.0"

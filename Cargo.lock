@@ -4440,6 +4440,7 @@ dependencies = [
  "lgn-data-model",
  "lgn-data-runtime",
  "lgn-source-control",
+ "lgn-tracing",
  "lgn-utils",
  "serde",
  "serde_json",
