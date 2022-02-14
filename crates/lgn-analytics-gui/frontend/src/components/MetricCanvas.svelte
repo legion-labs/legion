@@ -1,14 +1,15 @@
 <script lang="ts">
   import { makeGrpcClient } from "@/lib/client";
   import { formatExecutionTime } from "@/lib/format";
-  import { MetricState, MetricStreamer } from "@/lib/MetricStreamer";
-  import { Point } from "@/lib/point";
   import { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
   import * as d3 from "d3";
   import { onDestroy, onMount } from "svelte";
-  import { Unsubscriber, Writable } from "svelte/store";
+  import { get, Unsubscriber, Writable } from "svelte/store";
   import TimeRangeDetails from "./TimeRangeDetails.svelte";
   import log from "@lgn/web-client/src/lib/log";
+  import { Point } from "@/lib/Metric/MetricPoint";
+  import { MetricStreamer } from "@/lib/Metric/MetricStreamer";
+  import { MetricState } from "@/lib/Metric/MetricState";
   export let id: string;
 
   let metricStreamer: MetricStreamer;
@@ -89,20 +90,27 @@
 
   async function fetchMetricsAsync() {
     if (!client) {
-      log.error("no client in fetchDataAsync");
+      log.error("no client in fetchMetricsAsync");
       return;
     }
-    const reply = await client.list_process_metrics({ processId: id });
-    totalMinMs = currentMinMs = reply.minTimeMs;
-    totalMaxMs = currentMaxMs = reply.maxTimeMs;
-    metricStreamer = new MetricStreamer(id, getLod(), totalMinMs, totalMaxMs);
+
+    metricStreamer = new MetricStreamer(id);
     metricStore = metricStreamer.metricStore;
     await metricStreamer.initializeAsync();
+
+    totalMinMs = currentMinMs = metricStreamer.currentMinMs;
+    totalMaxMs = currentMaxMs = metricStreamer.currentMaxMs;
+
+    updateLod();
+
     pointSubscription = metricStore.subscribe((metricState) => {
-      points = metricState.filter((m) => m.enabled).map((m) => m.points);
+      points = metricState
+        .filter((m) => m.enabled)
+        .map((m) =>
+          Array.from(m.getViewportPoints(currentMinMs, currentMaxMs, lod))
+        );
       updateChart();
     });
-    updateLod();
   }
 
   function createChart() {
@@ -320,11 +328,11 @@
               <li>
                 <input
                   type="checkbox"
-                  id={ms.metricDesc.name + "_select"}
+                  id={ms.name + "_select"}
                   checked={ms.enabled}
-                  on:click={(e) => metricStreamer.switchMetric(ms, e)}
+                  on:click={(e) => metricStreamer.switchMetricFlag(ms, e)}
                 />
-                {ms.metricDesc.name} (unit: {ms.metricDesc.unit})
+                {ms.name} (unit: {ms.unit})
               </li>
             {/each}
           </ul>
