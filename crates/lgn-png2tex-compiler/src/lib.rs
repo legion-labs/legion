@@ -30,13 +30,24 @@ fn init(options: AssetRegistryOptions) -> AssetRegistryOptions {
 }
 
 fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
-    let resources = context.registry();
+    let asset_registry = context.registry();
 
-    let resource = resources
+    let resource_handle = asset_registry
         .load_sync::<lgn_graphics_data::offline_png::PngFile>(context.source.resource_id());
-    let resource = resource.get(&resources).unwrap();
 
-    let texture = resource.as_texture();
+    if let Some(err) = asset_registry.retrieve_err(resource_handle.id()) {
+        return Err(CompilerError::CompilationError(err.to_string()));
+    }
+
+    let texture = resource_handle
+        .get(&asset_registry)
+        .ok_or_else(|| {
+            CompilerError::CompilationError(format!(
+                "Failed to retrieve resource '{}'",
+                context.source.resource_id()
+            ))
+        })?
+        .as_texture();
 
     let mut content = vec![];
     let texture_proc = TextureProcessor {};
