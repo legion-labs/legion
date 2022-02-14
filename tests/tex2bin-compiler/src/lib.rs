@@ -11,7 +11,7 @@ use lgn_data_compiler::{
 };
 use lgn_data_offline::Transform;
 use lgn_data_runtime::{AssetRegistryOptions, Resource};
-use lgn_graphics_data::runtime_texture;
+use lgn_graphics_data::{runtime_texture, TextureFormat};
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -36,23 +36,64 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
 
     let resource = resources
         .load_sync::<lgn_graphics_data::offline_texture::Texture>(context.source.resource_id());
-    let resource = resource.get(&resources).unwrap();
+    let image = resource.get(&resources).unwrap();
 
-    let mut compiled_asset = vec![];
-    runtime_texture::Texture::compile_from_offline(
-        resource.width,
-        resource.height,
-        resource.format,
-        resource.quality,
-        resource.color_channels,
-        &resource.rgba,
-        &mut compiled_asset,
-    );
+    let mut compiled_resources = vec![];
 
-    let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;
+    let pixel_size = image.rgba.len() as u32 / image.width / image.height;
+    if pixel_size == 1 {
+        let mut compiled_asset = vec![];
+        runtime_texture::Texture::compile_from_offline(
+            image.width,
+            image.height,
+            TextureFormat::BC4,
+            false,
+            &image.rgba,
+            &mut compiled_asset,
+        );
+
+        compiled_resources.push(context.store(
+            &compiled_asset,
+            context.target_unnamed.new_named("Roughness"),
+        )?);
+        compiled_resources.push(context.store(
+            &compiled_asset,
+            context.target_unnamed.new_named("Metalness"),
+        )?);
+    } else {
+        let mut compiled_asset = vec![];
+        runtime_texture::Texture::compile_from_offline(
+            image.width,
+            image.height,
+            TextureFormat::BC7,
+            false,
+            &image.rgba,
+            &mut compiled_asset,
+        );
+
+        compiled_resources
+            .push(context.store(&compiled_asset, context.target_unnamed.new_named("Albedo"))?);
+        compiled_resources
+            .push(context.store(&compiled_asset, context.target_unnamed.new_named("Normal"))?);
+
+        let mut compiled_asset = vec![];
+        runtime_texture::Texture::compile_from_offline(
+            image.width,
+            image.height,
+            TextureFormat::BC7,
+            true,
+            &image.rgba,
+            &mut compiled_asset,
+        );
+
+        compiled_resources.push(context.store(
+            &compiled_asset,
+            context.target_unnamed.new_named("AlbedoBlend"),
+        )?);
+    }
 
     Ok(CompilationOutput {
-        compiled_resources: vec![asset],
+        compiled_resources,
         resource_references: vec![],
     })
 }

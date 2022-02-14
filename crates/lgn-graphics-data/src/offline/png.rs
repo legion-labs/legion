@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use std::{any::Any, fs::File, io, path::Path};
 
 use crate::{
-    bcn_encoder::{ColorChannels, CompressionQuality, TextureFormat},
     offline_texture::{Texture, TextureType},
+    rgba_from_source, ColorChannels,
 };
 
 /// PNG Document file.
@@ -61,18 +61,12 @@ impl PngFile {
         }
     }
 
-    /// # Errors
-    ///
-    /// Will return `Err` if there is no PNG data loaded or the data uses a palette index.
     pub fn as_texture(&self) -> Texture {
         Texture {
             kind: TextureType::_2D,
-            format: TextureFormat::BC1,
-            quality: CompressionQuality::Fast,
             width: self.width,
             height: self.height,
-            color_channels: self.color_channels,
-            rgba: self.data.clone(),
+            rgba: rgba_from_source(self.width, self.height, self.color_channels, &self.data),
         }
     }
 }

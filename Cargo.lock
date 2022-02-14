@@ -156,6 +156,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "aligned_alloc"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9dcebfb002ccde769c15bc841d0d5548a90e80fcd2ffed5131339e8074746f0a"
+dependencies = [
+ "kernel32-sys",
+ "libc",
+ "winapi 0.2.8",
+]
+
+[[package]]
 name = "analytics-srv"
 version = "0.1.0"
 dependencies = [
@@ -3738,6 +3749,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "intel_tex"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6924b204284457a03f68f1fc1e6175317c004233560b932bda173af6fc06b486"
+dependencies = [
+ "ispc_rt",
+]
+
+[[package]]
 name = "interceptor"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3780,6 +3800,17 @@ name = "ipnet"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68f2d64f2edebec4ce84ad108148e67e1064789bee435edc5b60ad398714a3a9"
+
+[[package]]
+name = "ispc_rt"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "669effef1bdae871052104284cf548066ba2d27e6996e3e70773dad57a5d4150"
+dependencies = [
+ "aligned_alloc",
+ "libc",
+ "num_cpus",
+]
 
 [[package]]
 name = "itertools"
@@ -4598,6 +4629,7 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "erased-serde",
+ "intel_tex",
  "lazy_static",
  "lgn-app",
  "lgn-data-codegen",

@@ -11,6 +11,8 @@
 mod cgen {
     include!(concat!(env!("OUT_DIR"), "/rust/mod.rs"));
 }
+use std::collections::BTreeMap;
+
 #[allow(unused_imports)]
 use cgen::*;
 
@@ -80,6 +82,19 @@ use crate::{
 };
 
 #[derive(Default)]
+pub struct EntityToGpuDataIdMap(BTreeMap<Entity, u32>);
+
+impl EntityToGpuDataIdMap {
+    pub fn get(&self, entity_id: Entity) -> Option<u32> {
+        self.0.get(&entity_id).copied()
+    }
+
+    pub fn insert(&mut self, entity_id: Entity, id: u32) -> Option<u32> {
+        self.0.insert(entity_id, id)
+    }
+}
+
+#[derive(Default)]
 pub struct RendererPlugin {
     // tbd: move in RendererOptions
     _egui_enabled: bool,
@@ -128,6 +143,7 @@ impl Plugin for RendererPlugin {
         app.insert_resource(BindlessTextureManager::new(renderer.device_context(), 256));
         app.insert_resource(DebugDisplay::default());
         app.insert_resource(LightingManager::default());
+        app.insert_resource(EntityToGpuDataIdMap::default());
         app.add_plugin(EguiPlugin::new());
         app.add_plugin(PickingPlugin {});
         app.add_plugin(GpuDataPlugin::new(&static_buffer));
