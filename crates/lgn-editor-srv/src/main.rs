@@ -6,18 +6,20 @@ use std::{net::SocketAddr, path::PathBuf, time::Duration};
 use clap::Parser;
 
 use generic_data::plugin::GenericDataPlugin;
-use lgn_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use lgn_app::{prelude::*, AppExit, EventWriter, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::AsyncPlugin;
 use lgn_config::Config;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
+use lgn_ecs::prelude::Local;
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_input::InputPlugin;
 use lgn_renderer::RendererPlugin;
 use lgn_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
 use lgn_scripting::ScriptingPlugin;
 use lgn_streamer::StreamerPlugin;
+use lgn_tracing::{debug, warn};
 use lgn_transform::TransformPlugin;
 use sample_data::SampleDataPlugin;
 
@@ -61,6 +63,9 @@ struct Args {
     manifest: Option<String>,
     #[clap(long)]
     egui: bool,
+    /// Enable a testing code path
+    #[clap(long)]
+    test: Option<String>,
 }
 
 fn main() {
@@ -102,39 +107,61 @@ fn main() {
     let mut telemetry_config = lgn_telemetry_sink::Config::default();
     telemetry_config.enable_tokio_console_server = true;
 
-    App::new(telemetry_config)
-        .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
-            1.0 / 60.0,
-        )))
-        .add_plugin(ScheduleRunnerPlugin::default())
-        .insert_resource(DefaultTaskPoolOptions::new(1..=4))
-        .add_plugin(CorePlugin::default())
-        .add_plugin(AsyncPlugin::default())
-        .insert_resource(AssetRegistrySettings::new(
-            content_store_path,
-            &game_manifest_path,
-            assets_to_load,
-        ))
-        .add_plugin(AssetRegistryPlugin::default())
-        .insert_resource(ResourceRegistrySettings::new(project_folder))
-        .add_plugin(ResourceRegistryPlugin::default())
-        .insert_resource(GRPCPluginSettings::new(server_addr))
-        .add_plugin(GRPCPlugin::default())
-        .add_plugin(InputPlugin::default())
-        .add_plugin(RendererPlugin::new(args.egui, false))
-        .add_plugin(StreamerPlugin::default())
-        .add_plugin(EditorPlugin::default())
-        .insert_resource(ResourceBrowserSettings::new(default_scene))
-        .add_plugin(ResourceBrowserPlugin::default())
-        .add_plugin(PropertyInspectorPlugin::default())
-        .add_plugin(TransformPlugin::default())
-        .add_plugin(GenericDataPlugin::default())
-        .add_plugin(ScriptingPlugin::default())
-        .add_plugin(SampleDataPlugin::default())
-        .add_plugin(lgn_graphics_data::GraphicsPlugin::default())
-        .add_plugin(WindowPlugin {
-            add_primary_window: false,
-            exit_on_close: false,
-        })
-        .run();
+    let mut app = App::new(telemetry_config);
+    app.insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
+        1.0 / 60.0,
+    )))
+    .add_plugin(ScheduleRunnerPlugin::default())
+    .insert_resource(DefaultTaskPoolOptions::new(1..=4))
+    .add_plugin(CorePlugin::default())
+    .add_plugin(AsyncPlugin::default())
+    .insert_resource(AssetRegistrySettings::new(
+        content_store_path,
+        &game_manifest_path,
+        assets_to_load,
+    ))
+    .add_plugin(AssetRegistryPlugin::default())
+    .insert_resource(ResourceRegistrySettings::new(project_folder))
+    .add_plugin(ResourceRegistryPlugin::default())
+    .insert_resource(GRPCPluginSettings::new(server_addr))
+    .add_plugin(GRPCPlugin::default())
+    .add_plugin(InputPlugin::default())
+    .add_plugin(RendererPlugin::new(args.egui, false))
+    .add_plugin(StreamerPlugin::default())
+    .add_plugin(EditorPlugin::default())
+    .insert_resource(ResourceBrowserSettings::new(default_scene))
+    .add_plugin(ResourceBrowserPlugin::default())
+    .add_plugin(PropertyInspectorPlugin::default())
+    .add_plugin(TransformPlugin::default())
+    .add_plugin(GenericDataPlugin::default())
+    .add_plugin(ScriptingPlugin::default())
+    .add_plugin(SampleDataPlugin::default())
+    .add_plugin(lgn_graphics_data::GraphicsPlugin::default())
+    .add_plugin(WindowPlugin {
+        add_primary_window: false,
+        exit_on_close: false,
+    });
+
+    if let Some(test_name) = args.test {
+        match test_name.as_str() {
+            "lifecycle" => {
+                app.add_system(lifecycle_test);
+            }
+            _ => panic!("Unknown test '{}'", test_name),
+        }
+    }
+
+    app.run();
+}
+
+fn lifecycle_test(
+    mut app_exit_events: EventWriter<'_, '_, AppExit>,
+    mut frame_counter: Local<'_, u32>,
+) {
+    *frame_counter += 1;
+    warn!("Frame {}", *frame_counter);
+    if *frame_counter == 10 {
+        debug!("Exiting");
+        app_exit_events.send(AppExit);
+    }
 }
