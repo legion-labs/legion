@@ -108,6 +108,10 @@ fn generate_hlsl_descriptor_set(ctx: &GeneratorContext<'_>, ds: &DescriptorSet) 
                             "#include \"{}\"",
                             ctx.embedded_fs_path(ty, CGenVariant::Hlsl)
                         )),
+                        crate::db::CGenType::BitField(_) => Some(format!(
+                            "#include \"{}\"",
+                            ctx.embedded_fs_path(ty, CGenVariant::Hlsl)
+                        )),
                     }
                 })
                 .collect::<Vec<_>>();

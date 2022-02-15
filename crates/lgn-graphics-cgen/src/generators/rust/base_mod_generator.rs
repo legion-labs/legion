@@ -58,6 +58,12 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
                         ty_ref.object().name()
                     ));
                 }
+                CGenType::BitField(_) => {
+                    writer.add_line(format!(
+                        "registry.add_type(cgen_type::{}::def());",
+                        ty_ref.object().name()
+                    ));
+                }
             }
         }
         writer.new_line();

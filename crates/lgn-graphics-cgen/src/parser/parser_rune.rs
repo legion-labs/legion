@@ -14,7 +14,8 @@ use serde::{Deserialize, Serialize};
 
 use super::ParsingResult;
 use crate::db::{
-    self, CGenType, DescriptorSetBuilder, PipelineLayoutBuilder, ShaderBuilder, StructBuilder,
+    self, BitFieldBuilder, CGenType, DescriptorSetBuilder, PipelineLayoutBuilder, ShaderBuilder,
+    StructBuilder,
 };
 
 pub(crate) fn from_rune(file_path: &Path) -> Result<ParsingResult> {
@@ -83,6 +84,9 @@ fn from_rune_internal(file_path: &Path) -> Result<ParsingResult> {
                 CGenObj::Struct(data) => {
                     add_struct(&mut model, data)?;
                 }
+                CGenObj::BitField(data) => {
+                    add_bitfield(&mut model, data)?;
+                }
                 CGenObj::DescriptorSet(data) => {
                     add_descriptor_set(&mut model, data)?;
                 }
@@ -115,6 +119,21 @@ fn add_struct_internal(model: &mut db::Model, data: &StructData) -> Result<()> {
     }
     let struct_type = builder.build()?;
     model.add(&data.name, CGenType::Struct(struct_type))?;
+    Ok(())
+}
+
+fn add_bitfield(model: &mut db::Model, data: &BitFieldData) -> Result<()> {
+    add_bitfield_internal(model, data)
+        .with_context(|| anyhow!("When parsing bitfield '{}'", data.name))
+}
+
+fn add_bitfield_internal(model: &mut db::Model, data: &BitFieldData) -> Result<()> {
+    let mut builder = BitFieldBuilder::new(&*model, &data.name);
+    for f in &data.values {
+        builder = builder.add_value(f)?;
+    }
+    let bitfield_type = builder.build()?;
+    model.add(&data.name, CGenType::BitField(bitfield_type))?;
     Ok(())
 }
 
@@ -265,11 +284,20 @@ impl SourceLoader for RuneSourceLoader {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
 enum CGenObj {
-    // Constant(ConstantData),
+    BitField(BitFieldData),
     Struct(StructData),
     DescriptorSet(DescriptorSetData),
     PipelineLayout(PipelineLayoutData),
     Shader(ShaderData),
+}
+
+//
+// BitField
+//
+#[derive(Debug, Serialize, Deserialize)]
+struct BitFieldData {
+    name: String,
+    values: Vec<String>,
 }
 
 //

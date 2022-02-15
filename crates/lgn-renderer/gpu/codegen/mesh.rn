@@ -1,0 +1,16 @@
+pub fn main() {
+    [
+        #{
+            type: "BitField",
+            name: "VertexAttribMask",
+            values: [
+                "POSITION",
+                "NORMAL",
+                "TANGENT",
+                "TEX_COORD",
+                "INDEX",
+                "COLOR",
+            ]
+        }
+    ]
+}

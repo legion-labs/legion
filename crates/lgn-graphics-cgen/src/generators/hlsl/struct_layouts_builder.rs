@@ -138,6 +138,7 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
                     ty_requirements.set_used_as_sb(ty.id());
                 }
             }
+            CGenType::BitField(_) => (),
         }
     }
 
@@ -170,6 +171,7 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
                 }
                 text.push_str("};\n");
             }
+            CGenType::BitField(_) => (),
         }
     }
 
@@ -186,6 +188,7 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
                         struct_ty.name, id
                     ));
                 }
+                CGenType::BitField(_) => (),
             }
         }
     }

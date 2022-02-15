@@ -1,12 +1,16 @@
+mod mesh;
 mod lighting;
 mod egui;
 mod const_color;
 mod picking;
 mod default_shader;
 
+
 pub fn main() {
 
     let products = [];
+
+    products.extend( mesh::main() );
 
     let view_data = #{
         type: "Struct",
@@ -98,7 +102,7 @@ pub fn main() {
         ]
     };
     products.push( material_data );    
-
+    
     products.extend( lighting::main() );
 
     let frame_descriptor_set = #{
