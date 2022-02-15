@@ -3,16 +3,18 @@ use lgn_app::prelude::*;
 use lgn_data_offline::resource::ResourceRegistryOptions;
 use lgn_data_runtime::AssetRegistryOptions;
 use lgn_ecs::prelude::*;
-#[cfg(not(feature = "offline"))]
+//#[cfg(not(feature = "offline"))]
 use lgn_input::mouse::MouseMotion;
-#[cfg(not(feature = "offline"))]
+//#[cfg(not(feature = "offline"))]
 use lgn_math::prelude::*;
 
-#[cfg(not(feature = "offline"))]
+use crate::ScriptingStage;
+
+//#[cfg(not(feature = "offline"))]
 mod mun;
-#[cfg(not(feature = "offline"))]
+//#[cfg(not(feature = "offline"))]
 mod rhai;
-#[cfg(not(feature = "offline"))]
+//#[cfg(not(feature = "offline"))]
 mod rune;
 
 #[derive(Default)]
@@ -22,13 +24,24 @@ impl Plugin for ScriptingPlugin {
     fn build(&self, app: &mut App) {
         #[cfg(feature = "offline")]
         app.add_startup_system(register_resource_types.exclusive_system());
-
         app.add_startup_system(add_loaders);
 
-        #[cfg(not(feature = "offline"))]
+        //#[cfg(not(feature = "offline"))]
         {
+            app.add_stage(ScriptingStage::Compile, SystemStage::parallel());
+            app.add_stage_after(
+                ScriptingStage::Compile,
+                ScriptingStage::Prepare,
+                SystemStage::parallel(),
+            );
+            app.add_stage_after(
+                ScriptingStage::Prepare,
+                ScriptingStage::Execute,
+                SystemStage::parallel(),
+            );
+
             app.init_resource::<ScriptingEventCache>()
-                .add_system(Self::update_events);
+                .add_system_to_stage(ScriptingStage::Prepare, Self::update_events);
 
             mun::build(app);
             rune::build(app).expect("failed to setup Rune context");
@@ -38,7 +51,7 @@ impl Plugin for ScriptingPlugin {
 }
 
 impl ScriptingPlugin {
-    #[cfg(not(feature = "offline"))]
+    //#[cfg(not(feature = "offline"))]
     pub(crate) fn update_events(
         mut mouse_motion_events: EventReader<'_, '_, MouseMotion>,
         mut cache: ResMut<'_, ScriptingEventCache>,
@@ -52,12 +65,13 @@ impl ScriptingPlugin {
     }
 }
 
-#[cfg(not(feature = "offline"))]
+//#[cfg(not(feature = "offline"))]
+#[derive(Clone)]
 pub struct ScriptingEventCache {
     mouse_motion: MouseMotion,
 }
 
-#[cfg(not(feature = "offline"))]
+//#[cfg(not(feature = "offline"))]
 impl Default for ScriptingEventCache {
     fn default() -> Self {
         Self {

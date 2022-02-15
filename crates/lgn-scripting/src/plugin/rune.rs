@@ -17,7 +17,7 @@ use rune::{
 
 use crate::{
     runtime::{Script, ScriptComponent},
-    ScriptType, ScriptingEventCache,
+    ScriptType, ScriptingEventCache, ScriptingStage,
 };
 
 pub(crate) fn build(app: &mut App) -> Result<(), ContextError> {
@@ -27,8 +27,8 @@ pub(crate) fn build(app: &mut App) -> Result<(), ContextError> {
 
     app.init_non_send_resource::<VMCollection>()
         .insert_resource(context)
-        .add_system(compile)
-        .add_system(tick);
+        .add_system_to_stage(ScriptingStage::Compile, compile)
+        .add_system_to_stage(ScriptingStage::Execute, tick.exclusive_system());
 
     Ok(())
 }
@@ -87,14 +87,25 @@ fn compile(
     drop(registry);
 }
 
-fn tick(
-    mut query: Query<'_, '_, (&ScriptExecutionContext, Option<&mut Transform>)>,
-    mut rune_vms: NonSendMut<'_, VMCollection>,
-    event_cache: Res<'_, ScriptingEventCache>,
-) {
-    for (script, transform) in query.iter_mut() {
-        if let Some(vm) = rune_vms.get_mut(script.vm_index) {
-            let mut args: Vec<Value> = Vec::new();
+fn tick(world: &mut World) {
+    // get all entities with a compiled Rune script
+    let scripted_entities = world
+        .query_filtered::<Entity, With<ScriptExecutionContext>>()
+        .iter(world)
+        .collect::<Vec<_>>();
+
+    let event_cache = world
+        .get_resource::<ScriptingEventCache>()
+        .cloned()
+        .unwrap();
+
+    for entity in scripted_entities {
+        let mut args: Vec<Value> = Vec::new();
+
+        let (script_vm_index, script_entry_fn) = {
+            let mut entity = world.entity_mut(entity);
+            let script = entity.get::<ScriptExecutionContext>().unwrap();
+
             for input in &script.input_args {
                 if input == "mouse_motion.delta" {
                     let delta = Vec2 {
@@ -102,7 +113,8 @@ fn tick(
                     };
                     args.push(delta.to_value().unwrap());
                 } else if input == "self.transform.translation" {
-                    if let Some(transform) = &transform {
+                    let transform = entity.get_mut::<Transform>();
+                    if let Some(transform) = transform {
                         let translation = Vec3 {
                             0: transform.translation,
                         };
@@ -115,23 +127,15 @@ fn tick(
                 }
             }
 
-            let _result = vm
-                .execute(script.entry_fn, args)
-                .unwrap()
-                .complete()
-                .unwrap();
+            (script.vm_index, script.entry_fn)
+        };
 
-            // // write back mutable arguments
-            // for (index, arg) in args.iter().enumerate() {
-            //     if script.input_args[index] == "self.transform.translation" {
-
-            //     }
-            // }
+        {
+            let mut rune_vms = world.get_non_send_resource_mut::<VMCollection>().unwrap();
+            let vm = rune_vms.get_mut(script_vm_index).as_mut().unwrap();
+            let _result = vm.execute(script_entry_fn, args).unwrap();
         }
     }
-
-    drop(query);
-    drop(event_cache);
 }
 
 #[derive(Component)]

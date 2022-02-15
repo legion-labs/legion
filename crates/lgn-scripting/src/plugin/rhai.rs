@@ -7,7 +7,7 @@ use rhai::Scope;
 
 use crate::{
     runtime::{Script, ScriptComponent},
-    ScriptType,
+    ScriptType, ScriptingStage,
 };
 
 pub(crate) fn build(app: &mut App) {
@@ -16,8 +16,8 @@ pub(crate) fn build(app: &mut App) {
 
     app.insert_non_send_resource(rhai_eng)
         .init_non_send_resource::<ASTCollection>()
-        .add_system(compile)
-        .add_system(tick);
+        .add_system_to_stage(ScriptingStage::Compile, compile)
+        .add_system_to_stage(ScriptingStage::Execute, tick);
 }
 
 fn compile(
