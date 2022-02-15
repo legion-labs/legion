@@ -135,10 +135,6 @@ impl MetricHandler {
                 let end_tick_offset = block.end_ticks - process.start_ticks;
                 let block_desc = MetricBlockDesc {
                     block_id: block.block_id.clone(),
-                    begin_ticks: block.begin_ticks,
-                    end_ticks: block.end_ticks,
-                    begin_time_ms: block.begin_ticks as f64 * inv_tsc_frequency,
-                    end_time_ms: block.end_ticks as f64 * inv_tsc_frequency,
                     begin_ticks: begin_tick_offset,
                     end_ticks: end_tick_offset,
                     begin_time_ms: begin_tick_offset as f64 * inv_tsc_frequency,
