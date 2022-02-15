@@ -131,12 +131,18 @@ impl MetricHandler {
         let mut blocks = vec![];
         for stream in find_process_metrics_streams(&mut sql, process_id).await? {
             for block in find_stream_blocks(&mut sql, &stream.stream_id).await? {
+                let begin_tick_offset = block.begin_ticks - process.start_ticks;
+                let end_tick_offset = block.end_ticks - process.start_ticks;
                 let block_desc = MetricBlockDesc {
                     block_id: block.block_id.clone(),
                     begin_ticks: block.begin_ticks,
                     end_ticks: block.end_ticks,
                     begin_time_ms: block.begin_ticks as f64 * inv_tsc_frequency,
                     end_time_ms: block.end_ticks as f64 * inv_tsc_frequency,
+                    begin_ticks: begin_tick_offset,
+                    end_ticks: end_tick_offset,
+                    begin_time_ms: begin_tick_offset as f64 * inv_tsc_frequency,
+                    end_time_ms: end_tick_offset as f64 * inv_tsc_frequency,
                     stream_id: stream.stream_id.clone(),
                 };
                 let payload =
