@@ -25,7 +25,7 @@ export class MetricStreamer {
     this.tscFrequency = reply.tscFrequency;
     this.processStartTicks = reply.processStartTicks;
     this.metricStore.set(reply.metrics.map((m) => new MetricState(true, m)));
-    this.currentMinMs = Math.min(0, ...get(this.metricStore).map((s) => s.min));
+    this.currentMinMs = Math.min(...get(this.metricStore).map((s) => s.min));
     this.currentMaxMs = Math.max(...get(this.metricStore).map((s) => s.max));
   }
 
@@ -45,14 +45,33 @@ export class MetricStreamer {
   tick(lod: number, min: number, max: number) {
     this.currentMinMs = min;
     this.currentMaxMs = max;
-    if (lod !== this.lod) {
-      this.lod = lod;
-      this.fetchSelectedMetricsAsync();
-    }
+    this.lod = lod;
+    this.fetchSelectedMetricsAsync(lod);
   }
 
-  async fetchSelectedMetricsAsync() {
+  async fetchSelectedMetricsAsync(lod: number) {
     let metrics = get(this.metricStore).filter((m) => m.enabled);
+
+    const missingBlocks = metrics.map((m) => {
+      return {
+        name: m.name,
+        blocks: Array.from(
+          m.getMissingBlocks(this.currentMinMs, this.currentMaxMs, lod)
+        ),
+      };
+    });
+
+    if (!missingBlocks.flatMap((b) => b.blocks).length) {
+      return;
+    }
+
+    console.log(
+      `Fetching \n${missingBlocks
+        .flatMap((b) => b.blocks)
+        .map((b) => `${b.blockId} (${lod})`)
+        .join("\n")}`
+    );
+
     let result = await Promise.all(
       metrics.map(async (m) => {
         let result = await this.client!.fetch_process_metric({
@@ -60,11 +79,11 @@ export class MetricStreamer {
             m.getViewportBlocks(this.currentMinMs, this.currentMaxMs)
           ),
           params: {
-            lod: this.lod!,
+            lod: lod,
+            metricName: m.name,
             processId: this.processId,
             tscFrequency: this.tscFrequency,
             processStartTicks: this.processStartTicks,
-            metricName: m.name,
           },
         });
         return {
@@ -76,12 +95,12 @@ export class MetricStreamer {
 
     this.metricStore.update((metrics) => {
       result.forEach((reply) => {
-        let m = metrics.filter((m) => m.name === reply.name)[0];
-        if (m) {
-          let index = metrics.indexOf(m);
-          let metric = metrics[index];
-          if (metric.store(reply.result)) {
-            metrics[index] = metric;
+        let metric = metrics.filter((m) => m.name === reply.name)[0];
+        if (metric) {
+          let index = metrics.indexOf(metric);
+          let metricInArray = metrics[index];
+          if (metricInArray.store(reply.result)) {
+            metrics[index] = metricInArray;
           }
         }
       });

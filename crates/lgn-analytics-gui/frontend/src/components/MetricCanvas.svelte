@@ -86,6 +86,7 @@
     pixelSizeNs = getPixelSizeNs();
     lod = getLod();
     metricStreamer!.tick(lod, currentMinMs, currentMaxMs);
+    updatePoints(get(metricStore));
   }
 
   async function fetchMetricsAsync() {
@@ -101,16 +102,18 @@
     totalMinMs = currentMinMs = metricStreamer.currentMinMs;
     totalMaxMs = currentMaxMs = metricStreamer.currentMaxMs;
 
-    updateLod();
-
-    pointSubscription = metricStore.subscribe((metricState) => {
-      points = metricState
-        .filter((m) => m.enabled)
-        .map((m) =>
-          Array.from(m.getViewportPoints(currentMinMs, currentMaxMs, lod))
-        );
+    pointSubscription = metricStore.subscribe((metricStates) => {
+      updatePoints(metricStates);
       updateChart();
     });
+  }
+
+  function updatePoints(states: MetricState[]) {
+    points = states
+      .filter((m) => m.enabled)
+      .map((m) =>
+        Array.from(m.getViewportPoints(currentMinMs, currentMaxMs, lod))
+      );
   }
 
   function createChart() {
@@ -209,21 +212,14 @@
     x.range([0, width]);
 
     const yMax = d3.max(
-      points.flatMap(
-        (newPoints) =>
-          d3.max(
-            newPoints
-              .filter(
-                (newPoints) =>
-                  newPoints.time >= currentMinMs &&
-                  newPoints.time <= currentMaxMs
-              )
-              .map((newPoints) => newPoints.value)
-          ) ?? 0
-      )
+      points.flatMap((p) => d3.max(p.map((point) => point.value)) ?? 0)
     );
 
-    y.range([height, 0]).domain([0, yMax ?? 0]);
+    const yMin = d3.min(
+      points.flatMap((p) => d3.min(p.map((point) => point.value)) ?? 0)
+    );
+
+    y.range([height, 0]).domain([yMin ?? 0, yMax ?? 0]);
 
     draw();
 
@@ -264,7 +260,7 @@
   {#if loading}
     <div>Loading...</div>
   {:else}
-    <div class="grid grid-cols-2">
+    <div class="grid grid-cols-3">
       <div>
         <div><span class="font-bold">Width</span>: {width}</div>
         <div><span class="font-bold"> Main Width</span>: {mainWidth}</div>
@@ -321,7 +317,8 @@
             {brushEnd}
           </li>
         </ul>
-        <br />
+      </div>
+      <div style="font-size:0.8rem">
         {#if metricStreamer}
           <ul>
             {#each $metricStore as ms}
@@ -332,7 +329,20 @@
                   checked={ms.enabled}
                   on:click={(e) => metricStreamer.switchMetricFlag(ms, e)}
                 />
-                {ms.name} (unit: {ms.unit})
+                {ms.name} (unit: {ms.unit})<br />
+                {ms.min} _ {ms.max} ({formatExecutionTime(ms.max - ms.min)})<br
+                />
+                {#each Array.from(ms.getViewportBlocks(currentMinMs, currentMaxMs)) as b}
+                  <div style="font-size:0.7rem">
+                    {b.blockId}
+                    {b.minMs.toFixed(0)}
+                    {b.maxMs.toFixed(0)} ({formatExecutionTime(
+                      b.maxMs - b.minMs
+                    )}) ({Array.from(
+                      b.getPoints(currentMinMs, currentMaxMs, lod)
+                    ).length})
+                  </div>
+                {/each}
               </li>
             {/each}
           </ul>

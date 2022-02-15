@@ -16,8 +16,12 @@ export class MetricBlockState {
     this.data = new Map();
   }
 
+  hasLod(lod: number) {
+    return this.data.get(lod) !== undefined;
+  }
+
   store(lod: number, points: Point[]): boolean {
-    if (this.data.get(lod)) {
+    if (this.hasLod(lod)) {
       return false;
     }
     this.data.set(lod, points);
@@ -25,7 +29,7 @@ export class MetricBlockState {
   }
 
   isInViewport(min: number, max: number) {
-    return this.minMs >= min || this.maxMs <= max;
+    return !(this.minMs > max || this.maxMs < min);
   }
 
   *getPoints(min: number, max: number, lod: number) {

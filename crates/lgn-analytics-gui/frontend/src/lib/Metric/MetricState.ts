@@ -31,13 +31,18 @@ export class MetricState {
     );
   }
 
-  *getViewportBlocks(min: number, max: number) {
+  *getViewportBlocks(minMs: number, maxMs: number) {
     for (const [_, value] of this.blocks) {
-      if (value.isInViewport(min, max)) {
-        yield {
-          blockId: value.blockId,
-          streamId: value.streamId,
-        };
+      if (value.isInViewport(minMs, maxMs)) {
+        yield value;
+      }
+    }
+  }
+
+  *getMissingBlocks(minMs: number, maxMs: number, lod: number) {
+    for (const block of [...this.getViewportBlocks(minMs, maxMs)]) {
+      if (!block.hasLod(lod)) {
+        yield block;
       }
     }
   }
@@ -53,15 +58,6 @@ export class MetricState {
     }
   }
 
-  private mapToPoints(blockData: MetricBlockData): Point[] {
-    return blockData.points.map((p) => {
-      return <Point>{
-        time: p.timeMs,
-        value: p.value,
-      };
-    });
-  }
-
   store(processMetricReply: ProcessMetricReply): boolean {
     let mutated = false;
     for (const blockData of processMetricReply.blocks) {
@@ -73,5 +69,14 @@ export class MetricState {
       }
     }
     return mutated;
+  }
+
+  private mapToPoints(blockData: MetricBlockData): Point[] {
+    return blockData.points.map((p) => {
+      return <Point>{
+        time: p.timeMs + this.min,
+        value: p.value,
+      };
+    });
   }
 }
