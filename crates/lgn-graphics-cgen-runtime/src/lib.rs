@@ -3,6 +3,8 @@
 // crate-specific lint exceptions:
 #![allow(unreachable_code)]
 
+use std::sync::Arc;
+
 use lgn_graphics_api::{
     BufferView, DescriptorDef, DescriptorSetLayout, DescriptorSetLayoutDef, DeviceContext,
     PushConstantDef, RootSignature, RootSignatureDef, Sampler, ShaderResourceType,
@@ -444,19 +446,18 @@ pub struct CGenPipelineLayoutDef {
 // CGenCrateID
 //
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct CGenCrateID(pub u8);
+pub struct CGenCrateID(pub u64);
 
 //
-// CGenShaderFamilyID
+// CGenShaderID
 //
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct CGenShaderFamilyID(pub u16);
+pub struct CGenShaderID(pub u16);
 
-impl CGenShaderFamilyID {
-    pub const fn make(crate_id: CGenCrateID, family_idx: u64) -> Self {
-        let crate_id = crate_id.0 as u16;
+impl CGenShaderID {
+    pub const fn make(family_idx: u64) -> Self {
         let family_idx = family_idx as u16;
-        Self(crate_id << 8 | family_idx)
+        Self(family_idx)
     }
 }
 
@@ -475,34 +476,31 @@ pub struct CGenShaderKey(u64);
 impl CGenShaderKey {
     // u16: family_id
     // u48: options
-    const SHADER_FAMILY_OFFSET: usize = 0;
-    const SHADER_FAMILY_BITCOUNT: usize = std::mem::size_of::<u16>() * 8;
-    const SHADER_FAMILY_MASK: u64 = (1 << Self::SHADER_FAMILY_BITCOUNT) - 1;
+    const SHADER_ID_OFFSET: usize = 0;
+    const SHADER_ID_BITCOUNT: usize = std::mem::size_of::<u16>() * 8;
+    const SHADER_ID_MASK: u64 = (1 << Self::SHADER_ID_BITCOUNT) - 1;
 
     pub const MAX_SHADER_OPTIONS: usize =
         std::mem::size_of::<u64>() * 8 - Self::SHADER_OPTIONS_OFFSET;
 
-    const SHADER_OPTIONS_OFFSET: usize = Self::SHADER_FAMILY_BITCOUNT;
+    const SHADER_OPTIONS_OFFSET: usize = Self::SHADER_ID_BITCOUNT;
     const SHADER_OPTIONS_BITCOUNT: usize = Self::MAX_SHADER_OPTIONS;
     const SHADER_OPTIONS_MASK: u64 = (1 << Self::SHADER_OPTIONS_BITCOUNT) - 1;
 
-    pub const fn make(
-        shader_family_id: CGenShaderFamilyID,
-        shader_option_mask: CGenShaderOptionMask,
-    ) -> Self {
-        let shader_family_id = shader_family_id.0 as u64;
+    pub const fn make(shader_id: CGenShaderID, shader_option_mask: CGenShaderOptionMask) -> Self {
+        let shader_family_id = shader_id.0 as u64;
         // static_assertions::const_assert_eq!(shader_family_id & Self::SHADER_FAMILY_MASK, 0);
         let shader_option_mask = shader_option_mask as u64;
         // static_assertions::const_assert_eq!(shader_option_mask & Self::SHADER_OPTIONS_MASK, 0);
         Self(
-            ((shader_family_id & Self::SHADER_FAMILY_MASK) << Self::SHADER_FAMILY_OFFSET)
+            ((shader_family_id & Self::SHADER_ID_MASK) << Self::SHADER_ID_OFFSET)
                 | ((shader_option_mask & Self::SHADER_OPTIONS_MASK) << Self::SHADER_OPTIONS_OFFSET),
         )
     }
 
-    pub fn shader_family_id(self) -> CGenShaderFamilyID {
-        let family_id = (self.0 >> Self::SHADER_FAMILY_OFFSET) & Self::SHADER_FAMILY_MASK;
-        CGenShaderFamilyID(family_id.try_into().unwrap())
+    pub fn shader_id(self) -> CGenShaderID {
+        let shader_id = (self.0 >> Self::SHADER_ID_OFFSET) & Self::SHADER_ID_MASK;
+        CGenShaderID(shader_id.try_into().unwrap())
     }
 
     pub fn shader_option_mask(self) -> CGenShaderOptionMask {
@@ -511,10 +509,10 @@ impl CGenShaderKey {
 }
 
 //
-// CGenShaderFamily
+// CGenShader
 //
-pub struct CGenShaderFamily {
-    pub id: CGenShaderFamilyID,
+pub struct CGenShaderDef {
+    pub id: CGenShaderID,
     pub name: &'static str,
     pub path: &'static str,
     pub options: &'static [CGenShaderOption],
@@ -525,7 +523,6 @@ pub struct CGenShaderFamily {
 // CGenShaderOption
 //
 pub struct CGenShaderOption {
-    // pub shader_family_id: CGenShaderFamilyID,
     pub index: u8,
     pub name: &'static str,
 }
@@ -542,28 +539,30 @@ pub struct CGenShaderInstance {
 // CGenRegistry
 //
 pub struct CGenRegistry {
-    shutdown_fn: fn(),
+    pub crate_id: CGenCrateID,
+    pub shutdown_fn: fn(),
 
     // static
-    type_defs: Vec<&'static CGenTypeDef>,
-    pub shader_families: Vec<&'static CGenShaderFamily>,
+    pub type_defs: Vec<&'static CGenTypeDef>,
+    pub shader_defs: Vec<&'static CGenShaderDef>,
     // dynamic
-    descriptor_set_layouts: Vec<DescriptorSetLayout>,
-    pipeline_layouts: Vec<RootSignature>,
+    pub descriptor_set_layouts: Vec<DescriptorSetLayout>,
+    pub pipeline_layouts: Vec<RootSignature>,
 }
 
 impl CGenRegistry {
-    pub fn new(shutdown_fn: fn()) -> Self {
+    pub fn new(crate_id: CGenCrateID, shutdown_fn: fn()) -> Self {
         Self {
+            crate_id,
             shutdown_fn,
             type_defs: Vec::new(),
             descriptor_set_layouts: Vec::new(),
             pipeline_layouts: Vec::new(),
-            shader_families: Vec::new(),
+            shader_defs: Vec::new(),
         }
     }
 
-    pub fn shutdown(self) {
+    pub fn shutdown(&self) {
         (self.shutdown_fn)();
     }
 
@@ -636,6 +635,10 @@ impl CGenRegistry {
     pub fn pipeline_layout(&self, id: u32) -> &RootSignature {
         &self.pipeline_layouts[id as usize]
     }
+
+    pub fn add_shader_def(&mut self, def: &'static CGenShaderDef) {
+        self.shader_defs.push(def);
+    }
 }
 
 //
@@ -643,7 +646,7 @@ impl CGenRegistry {
 //
 #[derive(Default)]
 pub struct CGenRegistryList {
-    registry_list: Vec<CGenRegistry>,
+    registry_list: Vec<Arc<CGenRegistry>>,
 }
 
 impl CGenRegistryList {
@@ -651,7 +654,7 @@ impl CGenRegistryList {
         Self::default()
     }
 
-    pub fn push(&mut self, registry: CGenRegistry) {
+    pub fn push(&mut self, registry: Arc<CGenRegistry>) {
         self.registry_list.push(registry);
     }
 }

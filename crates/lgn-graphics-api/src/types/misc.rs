@@ -1,7 +1,10 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    fmt::Display,
+    hash::{Hash, Hasher},
+};
 
 use lgn_utils::decimal::DecimalF32;
-use strum::{EnumCount, EnumIter};
+use strum::{EnumCount, EnumIter, IntoEnumIterator};
 
 use crate::{Buffer, BufferView, PlaneSlice, QueueType, Sampler, Texture, TextureView};
 
@@ -198,7 +201,7 @@ bitflags::bitflags! {
     }
 }
 
-#[derive(Clone, Copy, EnumIter, EnumCount)]
+#[derive(Debug, Clone, Copy, EnumIter, EnumCount, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ShaderStage {
     Vertex,
     Fragment,
@@ -217,9 +220,25 @@ impl From<ShaderStage> for ShaderStageFlags {
 
 bitflags::bitflags! {
     pub struct ShaderStageFlags : u8 {
+        const NONE = 0;
         const VERTEX_FLAG = 1u8 << ShaderStage::Vertex as u32;
         const FRAGMENT_FLAG = 1u8 << ShaderStage::Fragment as u32;
         const COMPUTE_FLAG = 1u8 << ShaderStage::Compute as u32;
+    }
+}
+
+impl Display for ShaderStageFlags {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut list = f.debug_list();
+
+        for stage in ShaderStage::iter() {
+            let stage_flag: Self = stage.into();
+            if (stage_flag & *self) == stage_flag {
+                list.entry(&stage);
+            }
+        }
+
+        list.finish()
     }
 }
 

@@ -13,15 +13,15 @@ use rune::{
 use serde::{Deserialize, Serialize};
 
 use super::ParsingResult;
-use crate::db::{self, CGenType, DescriptorSetBuilder, PipelineLayoutBuilder, StructBuilder};
+use crate::db::{
+    self, CGenType, DescriptorSetBuilder, PipelineLayoutBuilder, ShaderBuilder, StructBuilder,
+};
 
 pub(crate) fn from_rune(file_path: &Path) -> Result<ParsingResult> {
     assert!(file_path.is_absolute());
 
-    from_rune_internal(file_path).context(anyhow!(
-        "When running rune script '{}'",
-        file_path.display()
-    ))
+    from_rune_internal(file_path)
+        .with_context(|| anyhow!("When running rune script '{}'", file_path.display()))
 }
 
 fn from_rune_internal(file_path: &Path) -> Result<ParsingResult> {
@@ -78,7 +78,7 @@ fn from_rune_internal(file_path: &Path) -> Result<ParsingResult> {
     // Create model
     let model = {
         let mut model = db::create();
-        for object in object_list {
+        for object in &object_list {
             match object {
                 CGenObj::Struct(data) => {
                     add_struct(&mut model, data)?;
@@ -88,6 +88,9 @@ fn from_rune_internal(file_path: &Path) -> Result<ParsingResult> {
                 }
                 CGenObj::PipelineLayout(data) => {
                     add_pipeline_layout(&mut model, data)?;
+                }
+                CGenObj::Shader(data) => {
+                    add_shader(&mut model, data)?;
                 }
             }
         }
@@ -101,9 +104,13 @@ fn from_rune_internal(file_path: &Path) -> Result<ParsingResult> {
     })
 }
 
-fn add_struct(model: &mut db::Model, data: StructData) -> Result<(), anyhow::Error> {
+fn add_struct(model: &mut db::Model, data: &StructData) -> Result<()> {
+    add_struct_internal(model, data).with_context(|| anyhow!("When parsing struct '{}'", data.name))
+}
+
+fn add_struct_internal(model: &mut db::Model, data: &StructData) -> Result<()> {
     let mut builder = StructBuilder::new(&*model, &data.name);
-    for f in data.fields {
+    for f in &data.fields {
         builder = builder.add_member(&f.name, &f.ty, f.array_len)?;
     }
     let struct_type = builder.build()?;
@@ -111,9 +118,14 @@ fn add_struct(model: &mut db::Model, data: StructData) -> Result<(), anyhow::Err
     Ok(())
 }
 
-fn add_descriptor_set(model: &mut db::Model, data: DescriptorSetData) -> Result<(), anyhow::Error> {
+fn add_descriptor_set(model: &mut db::Model, data: &DescriptorSetData) -> Result<()> {
+    add_descriptor_set_internal(model, data)
+        .with_context(|| anyhow!("When building descriptor set '{}'", data.name))
+}
+
+fn add_descriptor_set_internal(model: &mut db::Model, data: &DescriptorSetData) -> Result<()> {
     let mut builder = DescriptorSetBuilder::new(&*model, &data.name, data.frequency);
-    for descriptor in data.descriptors {
+    for descriptor in &data.descriptors {
         match &descriptor {
             DescriptorData::ConstantBuffer(def) => {
                 builder = builder.add_constant_buffer(&def.name, &def.content)?;
@@ -183,19 +195,46 @@ fn add_descriptor_set(model: &mut db::Model, data: DescriptorSetData) -> Result<
     Ok(())
 }
 
-fn add_pipeline_layout(
-    model: &mut db::Model,
-    data: PipelineLayoutData,
-) -> Result<(), anyhow::Error> {
+fn add_pipeline_layout(model: &mut db::Model, data: &PipelineLayoutData) -> Result<()> {
+    add_pipeline_layout_internal(model, data)
+        .with_context(|| anyhow!("When building pipeline layout '{}'", data.name))
+}
+
+fn add_pipeline_layout_internal(model: &mut db::Model, data: &PipelineLayoutData) -> Result<()> {
     let mut builder = PipelineLayoutBuilder::new(&*model, &data.name);
-    for descriptor_set in data.descriptor_sets {
-        builder = builder.add_descriptor_set(&descriptor_set)?;
+    for descriptor_set in &data.descriptor_sets {
+        builder = builder.add_descriptor_set(descriptor_set)?;
     }
-    if let Some(push_constant) = data.push_constant {
-        builder = builder.add_push_constant(&push_constant)?;
+    if let Some(push_constant) = &data.push_constant {
+        builder = builder.add_push_constant(push_constant)?;
     }
     let pipeline_layout = builder.build()?;
     model.add(&data.name, pipeline_layout)?;
+    Ok(())
+}
+
+fn add_shader(model: &mut db::Model, data: &ShaderData) -> Result<()> {
+    add_shader_internal(model, data)
+        .with_context(|| anyhow!("When building shader '{}'", data.name))
+}
+
+fn add_shader_internal(model: &mut db::Model, data: &ShaderData) -> Result<()> {
+    let mut builder = ShaderBuilder::new(&*model, &data.name);
+
+    builder = builder.set_path(&data.path);
+    builder = builder.set_pipeline_layout(&data.pipeline_layout)?;
+
+    for option in &data.options {
+        builder = builder.add_option(option);
+    }
+
+    for shader_instance in &data.instances {
+        builder = builder.add_instance(&shader_instance.key, &shader_instance.stages)?;
+    }
+
+    let shader = builder.build();
+    model.add(&data.name, shader)?;
+
     Ok(())
 }
 
@@ -230,7 +269,7 @@ enum CGenObj {
     Struct(StructData),
     DescriptorSet(DescriptorSetData),
     PipelineLayout(PipelineLayoutData),
-    // Shader(ShaderData),
+    Shader(ShaderData),
 }
 
 //
@@ -356,4 +395,24 @@ struct PipelineLayoutData {
     #[serde(default)]
     descriptor_sets: Vec<String>,
     push_constant: Option<String>,
+}
+
+//
+// Shader
+//
+#[derive(Serialize, Deserialize, Debug)]
+struct ShaderData {
+    name: String,
+    path: String,
+    pipeline_layout: String,
+    #[serde(default)]
+    options: Vec<String>,
+    instances: Vec<ShaderInstance>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct ShaderInstance {
+    #[serde(default)]
+    key: Vec<String>,
+    stages: Vec<String>,
 }

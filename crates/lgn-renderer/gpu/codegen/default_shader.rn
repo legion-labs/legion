@@ -4,6 +4,17 @@ pub fn main(frame_descriptor_set, view_descriptor_set ) {
             type: "PipelineLayout",
             name: "ShaderPipelineLayout",
             descriptor_sets: [ frame_descriptor_set.name, view_descriptor_set.name ],            
+        },
+        #{            
+            type: "Shader",
+            name: "DefaultShader",
+            path: "gpu/shaders/shader.hlsl",
+            pipeline_layout: "ShaderPipelineLayout",            
+            instances: [
+                #{                      
+                    stages: [ "VS", "PS" ],
+                },                
+            ]            
         }
     ]
 }

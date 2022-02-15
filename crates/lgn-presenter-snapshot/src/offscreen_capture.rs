@@ -8,7 +8,7 @@ use lgn_renderer::{
 };
 use lgn_tracing::span_fn;
 
-use crate::{cgen, tmp_shader_data::display_mapper_shader_family};
+use crate::cgen;
 
 pub struct OffscreenHelper {
     render_image: Texture,
@@ -27,9 +27,10 @@ impl OffscreenHelper {
         let root_signature = cgen::pipeline_layout::DisplayMapperPipelineLayout::root_signature();
 
         let pipeline_handle = pipeline_manager.register_pipeline(
+            cgen::CRATE_ID,
             CGenShaderKey::make(
-                display_mapper_shader_family::ID,
-                display_mapper_shader_family::NONE,
+                cgen::shader::display_mapper_shader::ID,
+                cgen::shader::display_mapper_shader::NONE,
             ),
             |device_context, shader| {
                 device_context

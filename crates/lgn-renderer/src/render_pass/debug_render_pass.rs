@@ -15,7 +15,6 @@ use crate::{
     hl_gfx_api::HLCommandBuffer,
     picking::ManipulatorManager,
     resources::{DefaultMeshType, MeshManager, PipelineHandle, PipelineManager},
-    tmp_shader_data::const_color_shader_family,
     RenderContext,
 };
 
@@ -72,9 +71,10 @@ impl DebugRenderPass {
         };
 
         let solid_pso_depth_handle = pipeline_manager.register_pipeline(
+            cgen::CRATE_ID,
             CGenShaderKey::make(
-                const_color_shader_family::ID,
-                const_color_shader_family::NONE,
+                cgen::shader::const_color_shader::ID,
+                cgen::shader::const_color_shader::NONE,
             ),
             move |device_context, shader| {
                 device_context
@@ -95,9 +95,10 @@ impl DebugRenderPass {
         );
 
         let wire_pso_depth_handle = pipeline_manager.register_pipeline(
+            cgen::CRATE_ID,
             CGenShaderKey::make(
-                const_color_shader_family::ID,
-                const_color_shader_family::NONE,
+                cgen::shader::const_color_shader::ID,
+                cgen::shader::const_color_shader::NONE,
             ),
             move |device_context, shader| {
                 device_context
@@ -118,9 +119,10 @@ impl DebugRenderPass {
         );
 
         let solid_pso_nodepth_handle = pipeline_manager.register_pipeline(
+            cgen::CRATE_ID,
             CGenShaderKey::make(
-                const_color_shader_family::ID,
-                const_color_shader_family::NONE,
+                cgen::shader::const_color_shader::ID,
+                cgen::shader::const_color_shader::NONE,
             ),
             move |device_context, shader| {
                 device_context
@@ -141,9 +143,10 @@ impl DebugRenderPass {
         );
 
         let wire_pso_nodepth_handle = pipeline_manager.register_pipeline(
+            cgen::CRATE_ID,
             CGenShaderKey::make(
-                const_color_shader_family::ID,
-                const_color_shader_family::NONE,
+                cgen::shader::const_color_shader::ID,
+                cgen::shader::const_color_shader::NONE,
             ),
             move |device_context, shader| {
                 device_context

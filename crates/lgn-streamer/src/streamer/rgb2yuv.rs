@@ -7,7 +7,7 @@ use lgn_renderer::{
 };
 use lgn_tracing::span_fn;
 
-use crate::{cgen, tmp_shader_data::rgb2yuv_shader_family};
+use crate::cgen;
 
 use super::Resolution;
 
@@ -107,7 +107,11 @@ impl RgbToYuvConverter {
         let root_signature = cgen::pipeline_layout::RGB2YUVPipelineLayout::root_signature();
 
         let pipeline_handle = pipeline_manager.register_pipeline(
-            CGenShaderKey::make(rgb2yuv_shader_family::ID, rgb2yuv_shader_family::NONE),
+            cgen::CRATE_ID,
+            CGenShaderKey::make(
+                cgen::shader::rgb2yuv_shader::ID,
+                cgen::shader::rgb2yuv_shader::NONE,
+            ),
             |device_context, shader| {
                 device_context
                     .create_compute_pipeline(&ComputePipelineDef {

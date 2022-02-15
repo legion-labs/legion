@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{fs, path::Path};
 
 use crate::run;
 
@@ -68,20 +68,41 @@ pub fn run_graphics_cgen(
     }
     let result = result.map(|_| ()).map_err(std::convert::Into::into);
 
-    result.and(if std::env::var("LGN_SYMLINK_OUT_DIR").is_ok() {
-        symlink(
-            out_dir.as_ref(),
-            &Path::new(env!("CARGO_MANIFEST_DIR")).join("out_dir"),
-        )
-        .map_err(|err| err.into())
-    } else {
-        Ok(())
+    result.and_then(|_| {
+        if std::env::var("LGN_SYMLINK_OUT_DIR").is_ok() {
+            let symlink_path = manifest_dir.as_ref().join("out_dir");
+            let create_symlink = if symlink_path.exists() {
+                let attr = fs::symlink_metadata(&symlink_path).unwrap();
+                if !attr.is_symlink() {
+                    false
+                } else {
+                    let res = remove_symlink_dir(&symlink_path);
+                    res.is_ok()
+                }
+            } else {
+                true
+            };
+            if create_symlink {
+                create_symlink_dir(out_dir.as_ref(), &symlink_path).map_err(|err| err.into())
+            } else {
+                Ok(())
+            }
+        } else {
+            Ok(())
+        }
     })
 }
 
-fn symlink(src: &Path, dst: &Path) -> std::io::Result<()> {
+fn create_symlink_dir(src: &Path, dst: &Path) -> std::io::Result<()> {
     #[cfg(windows)]
     return std::os::windows::fs::symlink_dir(src, dst);
     #[cfg(not(windows))]
     return std::os::unix::fs::symlink(src, dst);
+}
+
+fn remove_symlink_dir(src: &Path) -> std::io::Result<()> {
+    #[cfg(windows)]
+    return std::fs::remove_dir(src);
+    #[cfg(not(windows))]
+    return std::fs::remove_file(src);
 }

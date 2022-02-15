@@ -10,8 +10,6 @@ use crate::egui::egui_plugin::Egui;
 
 use crate::hl_gfx_api::HLCommandBuffer;
 
-use crate::tmp_shader_data::egui_shader_family;
-
 use crate::RenderContext;
 
 use crate::resources::{PipelineHandle, PipelineManager};
@@ -51,7 +49,11 @@ impl EguiPass {
         });
 
         let pipeline_handle = pipeline_manager.register_pipeline(
-            CGenShaderKey::make(egui_shader_family::ID, egui_shader_family::TOTO),
+            cgen::CRATE_ID,
+            CGenShaderKey::make(
+                cgen::shader::egui_shader::ID,
+                cgen::shader::egui_shader::TOTO,
+            ),
             move |device_context, shader| {
                 device_context
                     .create_graphics_pipeline(&GraphicsPipelineDef {

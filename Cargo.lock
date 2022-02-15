@@ -4602,6 +4602,7 @@ dependencies = [
  "lgn-graphics-api",
  "lgn-telemetry-sink",
  "lgn-tracing",
+ "lgn-utils",
  "petgraph",
  "proc-macro2",
  "relative-path",

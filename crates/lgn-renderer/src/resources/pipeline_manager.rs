@@ -1,9 +1,11 @@
+use std::sync::Arc;
+
 use lgn_graphics_api::{
     DeviceContext, Pipeline, Shader, ShaderPackage, ShaderStage, ShaderStageDef,
 };
 
 use lgn_graphics_cgen_runtime::{
-    CGenRegistry, CGenShaderFamily, CGenShaderInstance, CGenShaderKey,
+    CGenCrateID, CGenRegistry, CGenShaderDef, CGenShaderInstance, CGenShaderKey,
 };
 use lgn_pso_compiler::{
     CompileDefine, CompileParams, EntryPoint, HlslCompiler, ShaderSource, TargetProfile,
@@ -17,6 +19,7 @@ use strum::{EnumCount, IntoEnumIterator};
 pub struct PipelineHandle(usize);
 
 struct PipelineInfo {
+    crate_id: CGenCrateID,
     key: CGenShaderKey,
     create_pipeline: Box<dyn Fn(&DeviceContext, &Shader) -> Pipeline + Send + Sync + 'static>,
 }
@@ -24,7 +27,7 @@ struct PipelineInfo {
 pub struct PipelineManager {
     device_context: DeviceContext,
     shader_compiler: HlslCompiler,
-    shader_families: Vec<&'static CGenShaderFamily>,
+    cgen_registries: Vec<Arc<CGenRegistry>>,
     infos: RwLock<Vec<PipelineInfo>>,
     pipelines: Vec<Option<Pipeline>>,
 }
@@ -34,15 +37,14 @@ impl PipelineManager {
         Self {
             device_context: device_context.clone(),
             shader_compiler: HlslCompiler::new().unwrap(),
-            shader_families: Vec::new(),
+            cgen_registries: Vec::new(),
             infos: RwLock::new(Vec::new()),
             pipelines: Vec::new(),
         }
     }
 
-    pub fn register_shader_families(&mut self, registry: &CGenRegistry) {
-        self.shader_families
-            .extend_from_slice(&registry.shader_families);
+    pub fn register_shader_families(&mut self, registry: &Arc<CGenRegistry>) {
+        self.cgen_registries.push(registry.clone());
     }
 
     pub fn get_pipeline(&self, handle: PipelineHandle) -> Option<&Pipeline> {
@@ -55,13 +57,16 @@ impl PipelineManager {
 
     pub fn register_pipeline<F: Fn(&DeviceContext, &Shader) -> Pipeline + Send + Sync + 'static>(
         &self,
+        crate_id: CGenCrateID,
         key: CGenShaderKey,
         func: F,
     ) -> PipelineHandle {
-        self.shader_instance(key).expect("Invalid shader key");
+        self.shader_instance(crate_id, key)
+            .expect("Invalid shader key");
         {
             let mut infos = self.infos.write();
             infos.push(PipelineInfo {
+                crate_id,
                 key,
                 create_pipeline: Box::new(func),
             });
@@ -78,7 +83,7 @@ impl PipelineManager {
         for i in 0..self.pipelines.len() {
             if self.pipelines[i].is_none() {
                 let info = &infos[i];
-                let shader = self.create_shader(info.key);
+                let shader = self.create_shader(info.crate_id, info.key);
                 if let Some(shader) = shader {
                     let pipeline = (info.create_pipeline)(&self.device_context, &shader);
                     self.pipelines[i] = Some(pipeline);
@@ -88,15 +93,15 @@ impl PipelineManager {
     }
 
     #[span_fn]
-    fn create_shader(&self, key: CGenShaderKey) -> Option<Shader> {
+    fn create_shader(&self, crate_id: CGenCrateID, key: CGenShaderKey) -> Option<Shader> {
         // get the instance
-        let shader_instance = self.shader_instance(key).unwrap();
+        let shader_instance = self.shader_instance(crate_id, key).unwrap();
 
         // build the define list from options
         let mut defines: SmallVec<[CompileDefine<'_>; CGenShaderKey::MAX_SHADER_OPTIONS]> =
             SmallVec::new();
 
-        let shader_family = self.shader_family(key).unwrap();
+        let shader_family = self.shader_family(crate_id, key).unwrap();
         let mut shader_option_mask = key.shader_option_mask();
         while shader_option_mask != 0 {
             let trailing_zeros = shader_option_mask.trailing_zeros();
@@ -188,9 +193,20 @@ impl PipelineManager {
         )
     }
 
-    fn shader_family(&self, key: CGenShaderKey) -> Option<&CGenShaderFamily> {
-        let shader_family_id = key.shader_family_id();
-        for shader_family in &self.shader_families {
+    fn cgen_registry(&self, crate_id: CGenCrateID) -> Option<&CGenRegistry> {
+        for cgen_registry in &self.cgen_registries {
+            if cgen_registry.crate_id == crate_id {
+                return Some(cgen_registry);
+            }
+        }
+        None
+    }
+
+    fn shader_family(&self, crate_id: CGenCrateID, key: CGenShaderKey) -> Option<&CGenShaderDef> {
+        let registry = self.cgen_registry(crate_id)?;
+
+        let shader_family_id = key.shader_id();
+        for shader_family in &registry.shader_defs {
             if shader_family.id == shader_family_id {
                 return Some(shader_family);
             }
@@ -198,8 +214,12 @@ impl PipelineManager {
         None
     }
 
-    fn shader_instance(&self, key: CGenShaderKey) -> Option<&CGenShaderInstance> {
-        let shader_family = self.shader_family(key)?;
+    fn shader_instance(
+        &self,
+        crate_id: CGenCrateID,
+        key: CGenShaderKey,
+    ) -> Option<&CGenShaderInstance> {
+        let shader_family = self.shader_family(crate_id, key)?;
         for shader_instance in shader_family.instances {
             if shader_instance.key == key {
                 return Some(shader_instance);
