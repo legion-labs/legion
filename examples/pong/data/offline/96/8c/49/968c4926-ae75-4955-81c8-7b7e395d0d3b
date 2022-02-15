@@ -1,4 +1,4 @@
 {
-  "script": "const MOUSE_DELTA_SCALE = 200.0;\n\npub fn move_left_paddle(delta, translation) {\ndelta.x /= MOUSE_DELTA_SCALE;\nprintln!(\"[Pad left] delta: {}, pos:{}, {}\", delta.x, translation.x, translation.y);\n}",
+  "script": "const MOUSE_DELTA_SCALE = 200.0;\n\npub fn move_left_paddle(self, events) {\n    events.mouse_motion.x /= MOUSE_DELTA_SCALE;\n    println!(\"[Pad left] delta: {}, pos: {}\",\n        events.mouse_motion.x,\n        self.transform.translation);\n}",
   "script_type": "Rune"
 }

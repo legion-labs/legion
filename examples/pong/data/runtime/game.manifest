@@ -6,13 +6,13 @@
   },
   {
     "resource_id": "(17bed132bc803773,7715944e-e078-58a4-bdaa-ab0bce416eb8)",
-    "checksum": "ab6b339690705988034ff215f3f18f39",
-    "size": 256
+    "checksum": "fcfba2aa0d6ab1a8756d13b7dfd01bda",
+    "size": 288
   },
   {
     "resource_id": "(17bed132bc803773,865c8645-0384-5477-7c48-c44dfa4b0d56)",
-    "checksum": "525f774ba4606c588dee5ceb1073c156",
-    "size": 246
+    "checksum": "f283978922c564a73aabcc21fa7a017c",
+    "size": 287
   },
   {
     "resource_id": "(1d9ddd99aad89045,1940748c-72d9-53bb-8f9b-04da4d99fd7e)",
@@ -26,8 +26,8 @@
   },
   {
     "resource_id": "(1d9ddd99aad89045,468b01a3-8e51-5ac7-09d5-534456811d2d)",
-    "checksum": "840d4024168bf8ec939b3acc92d2bd84",
-    "size": 408
+    "checksum": "79adb111490e5ed7cfb48df4139df9a8",
+    "size": 374
   },
   {
     "resource_id": "(1d9ddd99aad89045,b3440a7c-ba07-5628-e7f8-bb89ed5de900)",
@@ -36,7 +36,7 @@
   },
   {
     "resource_id": "(1d9ddd99aad89045,bb6914df-7c35-51b6-dbd4-5789431d665b)",
-    "checksum": "a8d156ddeaf060bdfe9e1019ecd4bf88",
-    "size": 410
+    "checksum": "a9cef5c5ee45282ac47f5cfb95522dea",
+    "size": 376
   }
 ]
