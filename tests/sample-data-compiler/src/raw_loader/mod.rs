@@ -34,7 +34,41 @@ pub async fn build_offline(root_folder: impl AsRef<Path>) {
             let (mut project, resources) = setup_project(root_folder).await;
             let mut resources = resources.lock().await;
 
-            let file_paths = find_files(&raw_dir, &["ent", "ins", "mat", "mesh", "psd", "png", "gltf"]);
+            let mut file_paths = find_files(
+                &raw_dir,
+                &["ent", "ins", "mat", "mesh", "psd", "png", "gltf"],
+            );
+
+            let gltf_folders = file_paths
+                .iter()
+                .filter_map(|v| {
+                    let mut v = v.clone();
+                    if let Some(extension) = v.extension() {
+                        if extension.eq("gltf") && v.pop() {
+                            Some(v)
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<PathBuf>>();
+
+            // hack to only load .png unassociated with .gltf
+            file_paths = file_paths
+                .iter()
+                .filter(|v| {
+                    let mut f = (*v).clone();
+                    if let Some(extension) = v.extension() {
+                        if f.pop() && !(extension.eq("png") && gltf_folders.contains(&f)) {
+                            return true;
+                        }
+                    }
+                    false
+                })
+                .cloned()
+                .collect();
 
             let file_paths_guids = file_paths
                 .iter()

@@ -5,6 +5,7 @@ use lgn_math::{Mat4, Vec2, Vec3, Vec4};
 use crate::{cgen, resources::UniformGPUDataUpdater, DOWN_VECTOR, UP_VECTOR};
 use crate::resources::UniformGPUDataUpdater;
 
+#[derive(Clone)]
 pub struct StaticMeshRenderData {
     pub positions: Option<Vec<Vec4>>,
     pub normals: Option<Vec<Vec4>>,

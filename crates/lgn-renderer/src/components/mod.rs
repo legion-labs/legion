@@ -21,3 +21,6 @@ pub use visual_component::*;
 
 mod texture_component;
 pub use texture_component::*;
+
+mod mesh_component;
+pub use mesh_component::*;

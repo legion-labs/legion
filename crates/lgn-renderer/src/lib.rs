@@ -310,6 +310,35 @@ fn render_pre_update(
     descriptor_heap_manager.begin_frame();
 }
 
+}
+
+#[span_fn]
+#[allow(clippy::needless_pass_by_value)]
+fn update_meshes(
+    renderer: ResMut<'_, Renderer>,
+    pipeline_manager: Res<'_, PipelineManager>,
+    bump_allocator_pool: ResMut<'_, BumpAllocatorPool>,
+    mut mesh_manager: ResMut<'_, MeshManager>,
+    mut updated_meshes: Query<'_, '_, &mut MeshComponent, Changed<MeshComponent>>,
+) {
+    //let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool, &pipeline_manager);
+    //let cmd_buffer = render_context.alloc_command_buffer();
+
+    for mut updated_mesh in updated_meshes.iter_mut() {
+        let mut meshes = Vec::new();
+        for submesh in &updated_mesh.submeshes {
+            meshes.push((*submesh).clone());
+        }
+        mesh_manager.add_meshes(renderer.as_ref(), meshes);
+    }
+
+    //bindless_tex_manager.update_textures(renderer.device_context(), &cmd_buffer, updated_textures);
+    //
+    //render_context
+    //    .graphics_queue()
+    //    .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
+    //
+    //render_context.release_bump_allocator(&bump_allocator_pool);
 #[allow(
     clippy::needless_pass_by_value,
     clippy::type_complexity,

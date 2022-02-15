@@ -5,6 +5,7 @@ use lgn_core::Name;
 use lgn_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
 use lgn_renderer::components::{MaterialComponent, TextureComponent, VisualComponent};
+
 use lgn_tracing::info;
 use lgn_transform::prelude::*;
 use sample_data::runtime as runtime_data;
@@ -232,8 +233,24 @@ impl AssetToECS for lgn_graphics_data::runtime_mesh::Mesh {
         mesh_manager: &Res<'_, MeshManager>,
         data_context: &mut GpuUniformDataContext<'_>,
     ) -> Option<Entity> {
-        println!("mesh loaded!");
-        None
+        let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
+            commands.entity(entity)
+        } else {
+            commands.spawn()
+        };
+
+        let mut submeshes = vec![StaticMeshRenderData {
+            positions: mesh.positions.clone(),
+            normals: mesh.normals.clone(),
+            tangents: mesh.tangents.clone(),
+            tex_coords: mesh.tex_coords.clone(),
+            indices: mesh.indices.clone(),
+            colors: mesh.colors.clone(),
+        }];
+        let mesh_component = MeshComponent { submeshes };
+        entity.insert(mesh_component);
+
+        Some(entity.id())
     }
 }
 
