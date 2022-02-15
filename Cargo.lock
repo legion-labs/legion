@@ -4917,6 +4917,7 @@ dependencies = [
  "lgn-input",
  "lgn-math",
  "lgn-tracing",
+ "lgn-transform",
  "memoffset 0.6.5",
  "mun_runtime",
  "rhai",

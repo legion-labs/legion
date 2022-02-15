@@ -17,6 +17,7 @@ lgn-ecs = { path = "../lgn-ecs", version = "0.1.0" }
 lgn-input = { path = "../lgn-input", version = "0.1.0" }
 lgn-math = { path = "../lgn-math", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
+lgn-transform = { path = "../lgn-transform", version = "0.1.0" }
 
 # other
 mun_runtime = "0.3.0"
