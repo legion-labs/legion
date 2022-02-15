@@ -1,5 +1,5 @@
 use lgn_ecs::prelude::*;
-use lgn_graphics_data::Color;
+use lgn_graphics_data::{runtime_mesh::MeshReferenceType, Color};
 
 use crate::resources::DefaultMeshType;
 
@@ -7,18 +7,23 @@ use crate::resources::DefaultMeshType;
 pub struct VisualComponent {
     pub color: Color,
     pub mesh_id: usize,
+    pub mesh_reference_type: Option<MeshReferenceType>,
 }
 
 impl VisualComponent {
-    pub fn new(mesh_id: usize, color: Color) -> Self {
-        let mut clamped_mesh_id = mesh_id;
-        if clamped_mesh_id > DefaultMeshType::RotationRing as usize {
-            clamped_mesh_id = 0;
+    pub fn new(mesh_reference_type: Option<MeshReferenceType>, color: Color) -> Self {
+        Self {
+            color: Color::from((0, 255, 0)),
+            mesh_id: 0,
+            mesh_reference_type,
         }
+    }
 
+    pub fn new_default_mesh(mesh_type: DefaultMeshType, color: Color) -> Self {
         Self {
             color,
-            mesh_id: clamped_mesh_id,
+            mesh_id: mesh_type as usize,
+            mesh_reference_type: None,
         }
     }
 }

@@ -187,7 +187,7 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
             -0.5, 0.0, 0.0,
         )))
-        .insert(VisualComponent::new(
+        .insert(VisualComponent::new_default_mesh(
             DefaultMeshType::Sphere,
             (255, 0, 0).into(),
         ));
@@ -199,7 +199,7 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
     commands
         .spawn()
         .insert(Transform::from_xyz(0.0, 0.0, 0.0))
-        .insert(VisualComponent::new(
+        .insert(VisualComponent::new_default_mesh(
             DefaultMeshType::Sphere,
             (0, 255, 0).into(),
         ));
@@ -211,7 +211,7 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
             0.0, 0.0, 0.0,
         )))
         .insert(GlobalTransform::identity())
-        .insert(VisualComponent::new(
+        .insert(VisualComponent::new_default_mesh(
             DefaultMeshType::Sphere,
             (0, 0, 255).into(),
         ));
@@ -281,7 +281,7 @@ fn init_scene(mut commands: Commands<'_, '_>) {
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
             -0.5, -0.1, 0.0,
         )))
-        .insert(VisualComponent::new(
+        .insert(VisualComponent::new_default_mesh(
             DefaultMeshType::Plane,
             (255, 0, 0).into(),
         ));
@@ -291,7 +291,7 @@ fn init_scene(mut commands: Commands<'_, '_>) {
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
             0.0, 0.0, 0.0,
         )))
-        .insert(VisualComponent::new(
+        .insert(VisualComponent::new_default_mesh(
             DefaultMeshType::Cube,
             (0, 255, 0).into(),
         ));
@@ -301,7 +301,7 @@ fn init_scene(mut commands: Commands<'_, '_>) {
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
             0.5, 0.0, 0.0,
         )))
-        .insert(VisualComponent::new(
+        .insert(VisualComponent::new_default_mesh(
             DefaultMeshType::Pyramid,
             (0, 0, 255).into(),
         ));

@@ -1,9 +1,13 @@
+use std::collections::BTreeMap;
+
+use lgn_data_runtime::ResourceId;
 use lgn_ecs::prelude::{Local, Query, Res, ResMut, Without};
 use lgn_graphics_api::PagedBufferAllocation;
+use lgn_graphics_data::runtime_mesh::MeshReferenceType;
 
 use super::{GpuUniformData, GpuUniformDataContext, UnifiedStaticBuffer, UniformGPUDataUpdater};
 use crate::{cgen, static_mesh_render_data::StaticMeshRenderData, Renderer};
-    components::ManipulatorComponent,
+    components::{ManipulatorComponent, VisualComponent},
     egui::egui_plugin::Egui,
 
 pub struct MeshManager {
@@ -11,6 +15,7 @@ pub struct MeshManager {
     static_meshes: Vec<StaticMeshRenderData>,
     mesh_description_offsets: Vec<u32>,
     allocations: Vec<PagedBufferAllocation>,
+    reference_to_id_map: BTreeMap<ResourceId, usize>,
 }
 
 impl Drop for MeshManager {
@@ -44,6 +49,7 @@ impl MeshManager {
             static_meshes: Vec::new(),
             mesh_description_offsets: Vec::new(),
             allocations: Vec::new(),
+            reference_to_id_map: BTreeMap::new(),
         };
 
         // Keep consistent with DefaultMeshType
@@ -105,6 +111,30 @@ impl MeshManager {
         self.allocations.push(static_allocation);
     }
 
+    pub fn add_meshes_by_references(
+        &mut self,
+        renderer: &Renderer,
+        mut ids_meshes: Vec<(ResourceId, StaticMeshRenderData)>,
+    ) {
+        println!("Mesh added");
+        let start_idx = self.mesh_description_offsets.len();
+        let (resource_ids, meshes): (Vec<ResourceId>, Vec<StaticMeshRenderData>) =
+            ids_meshes.iter().cloned().unzip();
+        self.add_meshes(renderer, meshes);
+        for (idx, resource_id) in resource_ids.iter().enumerate() {
+            self.reference_to_id_map
+                .insert(*resource_id, start_idx + idx);
+        }
+    }
+
+    pub fn mesh_description_offset_for_visual(&self, visual_component: &VisualComponent) -> u32 {
+        if let Some(reference) = visual_component.mesh_reference_type.clone() {
+            self.mesh_description_offset_from_mesh_reference(reference)
+        } else {
+            self.mesh_description_offset_from_id(visual_component.mesh_id as u32)
+        }
+    }
+
     pub fn mesh_description_offset_from_id(&self, mesh_id: u32) -> u32 {
         if mesh_id < self.mesh_description_offsets.len() as u32 {
             self.mesh_description_offsets[mesh_id as usize]
@@ -113,12 +143,31 @@ impl MeshManager {
         }
     }
 
-    pub fn mesh_from_id(&self, mesh_id: u32) -> &StaticMeshRenderData {
-        &self.static_meshes[mesh_id as usize]
+    fn mesh_description_offset_from_mesh_reference(
+        &self,
+        mesh_reference: MeshReferenceType,
+    ) -> u32 {
+        self.mesh_description_offsets[self.get_id_from_reference(&mesh_reference)]
     }
 
-    pub fn mesh_indices_from_id(&self, mesh_id: u32) -> &Option<Vec<u32>> {
-        &self.static_meshes[mesh_id as usize].indices
+    fn get_id_from_reference(&self, mesh_reference: &MeshReferenceType) -> usize {
+        if let Some(mesh_id) = self.reference_to_id_map.get(&mesh_reference.id().id) {
+            *mesh_id
+        } else {
+            0
+        }
+    }
+
+    pub fn mesh_for_visual(&self, visual_component: &VisualComponent) -> &StaticMeshRenderData {
+        if let Some(reference) = &visual_component.mesh_reference_type {
+            &self.static_meshes[self.get_id_from_reference(reference)]
+        } else {
+            &self.static_meshes[visual_component.mesh_id as usize]
+        }
+    }
+
+    pub fn mesh_from_id(&self, mesh_id: u32) -> &StaticMeshRenderData {
+        &self.static_meshes[mesh_id as usize]
     }
 
     pub fn max_id(&self) -> usize {

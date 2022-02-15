@@ -54,8 +54,6 @@ pub mod hl_gfx_api;
 pub(crate) mod lighting;
 pub(crate) mod render_pass;
 
-pub(crate) mod tmp_shader_data;
-
 use crate::{
     components::{
         debug_display_lights, ui_lights, update_lights, ManipulatorComponent, PickedComponent,
@@ -183,7 +181,11 @@ impl Plugin for RendererPlugin {
             app.add_system_to_stage(RenderStage::Prepare, ui_lights);
         }
         app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
-        app.add_system_to_stage(RenderStage::Prepare, update_gpu_instances);
+        app.add_system_to_stage(RenderStage::Prepare, update_meshes.before("test_label"));
+        app.add_system_to_stage(
+            RenderStage::Prepare,
+            update_gpu_instances.label("test_label"),
+        );
         app.add_system_to_stage(RenderStage::Prepare, update_lights);
         app.add_system_to_stage(RenderStage::Prepare, camera_control);
         app.add_system_to_stage(RenderStage::Prepare, prepare_shaders);
@@ -315,29 +317,16 @@ fn render_pre_update(
 #[allow(clippy::needless_pass_by_value)]
 fn update_meshes(
     renderer: ResMut<'_, Renderer>,
-    pipeline_manager: Res<'_, PipelineManager>,
-    bump_allocator_pool: ResMut<'_, BumpAllocatorPool>,
     mut mesh_manager: ResMut<'_, MeshManager>,
     mut updated_meshes: Query<'_, '_, &mut MeshComponent, Changed<MeshComponent>>,
 ) {
-    //let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool, &pipeline_manager);
-    //let cmd_buffer = render_context.alloc_command_buffer();
-
     for mut updated_mesh in updated_meshes.iter_mut() {
         let mut meshes = Vec::new();
         for submesh in &updated_mesh.submeshes {
-            meshes.push((*submesh).clone());
+            meshes.push((submesh.0, submesh.1.clone()));
         }
-        mesh_manager.add_meshes(renderer.as_ref(), meshes);
+        mesh_manager.add_meshes_by_references(renderer.as_ref(), meshes);
     }
-
-    //bindless_tex_manager.update_textures(renderer.device_context(), &cmd_buffer, updated_textures);
-    //
-    //render_context
-    //    .graphics_queue()
-    //    .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
-    //
-    //render_context.release_bump_allocator(&bump_allocator_pool);
 #[allow(
     clippy::needless_pass_by_value,
     clippy::type_complexity,
@@ -394,7 +383,7 @@ fn update_gpu_instances(
         picking_data_manager.update_gpu_data(&entity, 0, &[picking_data], &mut updater);
 
         let instance_vas = GpuInstanceVAs {
-            submesh_va: mesh_manager.mesh_description_offset_from_id(mesh.mesh_id as u32),
+            submesh_va: mesh_manager.mesh_description_offset_for_visual(mesh),
             material_va: material_manager.va_for_index(material_key, 0) as u32,
             color_va: color_manager.va_for_index(Some(entity), 0) as u32,
             transform_va: transform_manager.va_for_index(Some(entity), 0) as u32,

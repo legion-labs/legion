@@ -88,7 +88,7 @@ impl AssetToECS for runtime_data::Entity {
                 transform_inserted = true;
             } else if let Some(static_mesh) = component.downcast_ref::<runtime_data::StaticMesh>() {
                 entity.insert(VisualComponent::new(
-                    static_mesh.mesh_id as usize,
+                    static_mesh.mesh.clone(),
                     static_mesh.color,
                 ));
             } else if let Some(script) =
@@ -230,7 +230,6 @@ impl AssetToECS for lgn_graphics_data::runtime_mesh::Mesh {
         _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         entity_to_id_map: &mut ResMut<'_, EntityToGpuDataIdMap>,
-        mesh_manager: &Res<'_, MeshManager>,
         data_context: &mut GpuUniformDataContext<'_>,
     ) -> Option<Entity> {
         let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
@@ -239,14 +238,17 @@ impl AssetToECS for lgn_graphics_data::runtime_mesh::Mesh {
             commands.spawn()
         };
 
-        let mut submeshes = vec![StaticMeshRenderData {
-            positions: mesh.positions.clone(),
-            normals: mesh.normals.clone(),
-            tangents: mesh.tangents.clone(),
-            tex_coords: mesh.tex_coords.clone(),
-            indices: mesh.indices.clone(),
-            colors: mesh.colors.clone(),
-        }];
+        let mut submeshes = vec![(
+            asset_id.id,
+            StaticMeshRenderData {
+                positions: mesh.positions.clone(),
+                normals: mesh.normals.clone(),
+                tangents: mesh.tangents.clone(),
+                tex_coords: mesh.tex_coords.clone(),
+                indices: mesh.indices.clone(),
+                colors: mesh.colors.clone(),
+            },
+        )];
         let mesh_component = MeshComponent { submeshes };
         entity.insert(mesh_component);
 
@@ -272,6 +274,7 @@ impl AssetToECS for lgn_scripting::runtime::Script {
             "Loading script resource {} bytes",
             entity.compiled_script.len()
         );
+
 
         Some(ecs_entity.id())
     }
