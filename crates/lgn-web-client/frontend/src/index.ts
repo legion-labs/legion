@@ -1,30 +1,24 @@
-import { getUserInfo as tauriGetUserInfo } from "./lib/auth/tauri";
-import { userAuth as browserUserAuth } from "./lib/auth/browser";
+import { initAuth, initAuthClient, LoginConfig } from "./lib/auth";
 import log, { Level as LogLevel } from "./lib/log";
 import userInfo from "./stores/userInfo";
 
 export type AuthUserConfig = {
   /** Force authentication on application start */
   forceAuth: boolean;
-  /** The path Cognito redirected the authed user to, typically `"/"` */
-  redirectedTo: string;
-  /** The path to redirect the user to after they got fully authenticated, typically `"/"` */
-  redirectTo: string;
+  /** The issuer url (i.e. the oauth provider url) */
+  issuerUrl: string;
+  /** The url to redirect the user to after they're logged in */
+  redirectUri: string;
+  /** The oauth client id */
+  clientId: string;
+  /** Login related configuration */
+  login: LoginConfig;
   /**
    * Title used by the `history.replaceState` function,
    * [ignored](window.history.replaceState) for now.
    */
   redirectionTitle: string;
 };
-
-export function defaultAuthUserConfig(): AuthUserConfig {
-  return {
-    forceAuth: false,
-    redirectTo: "/",
-    redirectedTo: "/",
-    redirectionTitle: "Home",
-  };
-}
 
 /**
  * Find the root element
@@ -96,15 +90,18 @@ export async function run<SvelteComponent>({
   }
 
   if (authConfig) {
-    if (window.__TAURI__) {
-      await tauriGetUserInfo({
-        forceAuth: authConfig.forceAuth,
-      });
-    } else {
-      await browserUserAuth({
-        forceAuth: authConfig.forceAuth,
-      });
-    }
+    const { forceAuth, clientId, issuerUrl, redirectUri, login } = authConfig;
+
+    await initAuthClient({
+      clientId,
+      issuerUrl,
+      redirectUri,
+      loginConfig: login,
+    });
+
+    await initAuth({
+      forceAuth,
+    });
   }
 
   try {
