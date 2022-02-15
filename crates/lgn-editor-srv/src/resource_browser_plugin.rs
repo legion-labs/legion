@@ -21,6 +21,7 @@ use lgn_editor_proto::resource_browser::{
     ReparentResourceResponse, SearchResourcesRequest,
 };
 
+use lgn_tracing::span_scope;
 use serde_json::json;
 use std::collections::{HashMap, HashSet};
 use std::{str::FromStr, sync::Arc};
@@ -97,7 +98,13 @@ impl Plugin for ResourceBrowserPlugin {
             Self::setup
                 .exclusive_system()
                 .after(lgn_resource_registry::ResourceRegistryPluginScheduling::ResourceRegistryCreated)
-                .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
+                .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer)
+        );
+        app.add_startup_system_to_stage(
+            StartupStage::PostStartup,
+            Self::load_default_scene
+                .exclusive_system()
+                .after(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
         );
     }
 }
@@ -105,28 +112,33 @@ impl Plugin for ResourceBrowserPlugin {
 impl ResourceBrowserPlugin {
     #[allow(clippy::needless_pass_by_value)]
     fn setup(
-        settings: Res<'_, ResourceBrowserSettings>,
-        tokio_runtime: ResMut<'_, TokioAsyncRuntime>,
         data_manager: Res<'_, Arc<Mutex<DataManager>>>,
         mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
     ) {
+        span_scope!("resource_browser::setup");
         let resource_browser_service = ResourceBrowserServer::new(ResourceBrowserRPC {
             data_manager: data_manager.clone(),
         });
         grpc_settings.register_service(resource_browser_service);
+    }
 
+    #[allow(clippy::needless_pass_by_value)]
+    fn load_default_scene(
+        settings: Res<'_, ResourceBrowserSettings>,
+        tokio_runtime: ResMut<'_, TokioAsyncRuntime>,
+        data_manager: Res<'_, Arc<Mutex<DataManager>>>,
+    ) {
+        span_scope!("resource_browser::opening_default_scene");
         if !settings.default_scene.is_empty() {
             lgn_tracing::info!("Opening default scene: {}", settings.default_scene);
             let data_manager = data_manager.clone();
+            let resource_name: ResourcePathName = settings.default_scene.clone().into();
             tokio_runtime.block_on(async move {
                 let data_manager = data_manager.lock().await;
-                if let Err(err) = data_manager
-                    .build_by_name(&settings.default_scene.clone().into())
-                    .await
-                {
+                if let Err(err) = data_manager.build_by_name(&resource_name).await {
                     lgn_tracing::warn!(
                         "Failed to build default_scene '{}': {}",
-                        &settings.default_scene,
+                        &resource_name,
                         err.to_string()
                     );
                 }

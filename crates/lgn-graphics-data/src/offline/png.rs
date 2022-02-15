@@ -118,4 +118,9 @@ impl ResourceProcessor for PngFileProcessor {
     ) -> Result<Box<dyn Any + Send + Sync>, ResourceProcessorError> {
         Ok(self.load(reader)?)
     }
+
+    /// Return the name of the Resource type that the processor can process.
+    fn get_resource_type_name(&self) -> Option<&'static str> {
+        Some("png")
+    }
 }

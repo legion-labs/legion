@@ -14,8 +14,8 @@ use flurry::TryInsertError;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    vfs, AssetLoader, AssetRegistryError, HandleUntyped, ReferenceUntyped,
-    ResourceId, ResourceType, ResourceTypeAndId,
+    vfs, AssetLoader, AssetRegistryError, HandleUntyped, ReferenceUntyped, ResourceId,
+    ResourceType, ResourceTypeAndId,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
