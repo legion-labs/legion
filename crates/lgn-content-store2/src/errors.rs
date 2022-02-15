@@ -5,6 +5,8 @@ use thiserror::Error;
 pub enum Error {
     #[error("invalid identifier: {0}")]
     InvalidIdentifier(#[source] anyhow::Error),
+    #[error("invalid hash algorithm")]
+    InvalidHashAlgorithm,
     #[error("the content was not found")]
     NotFound,
     #[error("the content already exists")]

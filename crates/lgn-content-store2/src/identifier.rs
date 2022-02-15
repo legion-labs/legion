@@ -15,10 +15,28 @@ use crate::{Error, Result};
 ///
 /// Note that if the content is not bigger than a hash would be, it will be
 /// stored on the stack.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Identifier {
-    HashRef(u64, SmallVec<[u8; HASH_SIZE]>),
+    HashRef(u64, HashAlgorithm, SmallVec<[u8; HASH_SIZE]>),
     Data(SmallVec<[u8; HASH_SIZE]>),
+}
+
+/// A hash algorithm used to compute the identifier.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[repr(u8)]
+pub enum HashAlgorithm {
+    Blake3 = 1,
+}
+
+impl TryFrom<u8> for HashAlgorithm {
+    type Error = Error;
+
+    fn try_from(value: u8) -> Result<Self> {
+        match value {
+            1 => Ok(Self::Blake3),
+            _ => Err(Error::InvalidHashAlgorithm),
+        }
+    }
 }
 
 const HASH_SIZE: usize = 32;
@@ -28,7 +46,7 @@ impl std::fmt::Display for Identifier {
         let mut enc = base64::write::EncoderStringWriter::new(base64::URL_SAFE_NO_PAD);
 
         match self {
-            Self::HashRef(size, hash) => {
+            Self::HashRef(size, alg, hash) => {
                 let mut size_buf = [0; 8];
                 byteorder::NetworkEndian::write_u64(&mut size_buf, *size);
 
@@ -41,6 +59,7 @@ impl std::fmt::Display for Identifier {
 
                 enc.write_all(&[size_len]).unwrap();
                 enc.write_all(&size_buf[idx..]).unwrap();
+                enc.write_all(&[*alg as u8]).unwrap();
                 enc.write_all(hash).unwrap();
             }
             Self::Data(data) => {
@@ -86,7 +105,17 @@ impl FromStr for Identifier {
 
             let size = byteorder::NetworkEndian::read_u64(&size_buf);
 
-            Self::HashRef(size, buf[(1 + size_len)..].into())
+            // We require the identifier to contain a hash algorithm and at
+            // least one byte of hash data.
+            if buf.len() < size_len + 3 {
+                return Err(Error::InvalidIdentifier(anyhow::anyhow!(
+                    "invalid identifier length"
+                )));
+            }
+
+            let alg = buf[size_len + 1].try_into()?;
+
+            Self::HashRef(size, alg, buf[(2 + size_len)..].into())
         })
     }
 }
@@ -109,10 +138,10 @@ impl Identifier {
     /// Create an identifier from a hash to a blob and its associated size
     ///
     /// The identifier will contain a reference to the blob.
-    pub fn new_hash_ref(size: usize, hash: &[u8]) -> Self {
+    pub fn new_hash_ref(size: usize, alg: HashAlgorithm, hash: &[u8]) -> Self {
         let size: u64 = size.try_into().expect("size cannot exceed u64");
 
-        Self::HashRef(size, hash.into())
+        Self::HashRef(size, alg, hash.into())
     }
 
     /// Create a new hash ref identifier by hashing the specified data.
@@ -123,14 +152,24 @@ impl Identifier {
         hasher.update(data);
         let hash = hasher.finalize();
 
-        Self::new_hash_ref(data.len(), hash.as_bytes())
+        let alg = HashAlgorithm::Blake3;
+
+        Self::new_hash_ref(data.len(), alg, hash.as_bytes())
     }
 
     /// Returns the size of the data pointed to by this identifier.
     pub fn data_size(&self) -> u64 {
         match self {
-            Self::HashRef(size, _) => (*size),
+            Self::HashRef(size, _, _) => (*size),
             Self::Data(data) => data.len().try_into().expect("size cannot exceed usize"),
+        }
+    }
+
+    /// Returns the hash algorithm used to compute the identifier.
+    pub fn hash_algorithm(&self) -> Option<HashAlgorithm> {
+        match self {
+            Self::HashRef(_, alg, _) => Some(*alg),
+            Self::Data(_) => None,
         }
     }
 
@@ -146,7 +185,7 @@ impl Identifier {
 
     /// Returns whether the data pointed to by this identifier is a reference.
     pub fn is_hash_ref(&self) -> bool {
-        matches!(self, Self::HashRef(_, _))
+        matches!(self, Self::HashRef(_, _, _))
     }
 }
 
@@ -162,13 +201,33 @@ mod tests {
             "AAECAw".parse().unwrap()
         );
         assert_eq!(
-            Identifier::new_hash_ref(2, &[0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]),
-            "AQIKCwwNDg8".parse().unwrap()
+            Identifier::new_hash_ref(
+                2,
+                HashAlgorithm::Blake3,
+                &[0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]
+            ),
+            "AQIBCgsMDQ4P".parse().unwrap()
         );
         assert_eq!(
-            Identifier::new_hash_ref(256, &[0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]),
-            "AgEACgsMDQ4P".parse().unwrap()
+            Identifier::new_hash_ref(
+                256,
+                HashAlgorithm::Blake3,
+                &[0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]
+            ),
+            "AgEAAQoLDA0ODw".parse().unwrap()
         );
+
+        // Empty identifier.
+        assert!("".parse::<Identifier>().is_err());
+
+        // Missing Hash Algorithm identifier and hash.
+        assert!("AQE".parse::<Identifier>().is_err());
+
+        // Invalid Hash Algorithm identifier.
+        assert!("AQEA".parse::<Identifier>().is_err());
+
+        // Missing hash.
+        assert!("AQEB".parse::<Identifier>().is_err());
     }
 
     #[test]
@@ -179,12 +238,22 @@ mod tests {
             "AAECAw"
         );
         assert_eq!(
-            Identifier::new_hash_ref(2, &[0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]).to_string(),
-            "AQIKCwwNDg8"
+            Identifier::new_hash_ref(
+                2,
+                HashAlgorithm::Blake3,
+                &[0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]
+            )
+            .to_string(),
+            "AQIBCgsMDQ4P"
         );
         assert_eq!(
-            Identifier::new_hash_ref(256, &[0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]).to_string(),
-            "AgEACgsMDQ4P"
+            Identifier::new_hash_ref(
+                256,
+                HashAlgorithm::Blake3,
+                &[0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]
+            )
+            .to_string(),
+            "AgEAAQoLDA0ODw"
         );
     }
 }
