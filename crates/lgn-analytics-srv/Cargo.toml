@@ -52,6 +52,6 @@ RUN apt-get update && apt-get install -y libssl-dev ca-certificates
 
 { copy_all }
 
-CMD ["{ binaries.analytics-srv }"]
+ENTRYPOINT ["{ binaries.analytics-srv }"]
 """
 allow-aws-ecr-creation = true
