@@ -8,7 +8,6 @@ export class MetricStreamer {
   currentMaxMs: number = Infinity;
   metricStore: Writable<MetricState[]>;
   private client: PerformanceAnalyticsClientImpl | null = null;
-  private lod: number | null = null;
   private processId: string;
   private tscFrequency: number = 0;
   private processStartTicks: number = 0;
@@ -45,7 +44,6 @@ export class MetricStreamer {
   tick(lod: number, min: number, max: number) {
     this.currentMinMs = min;
     this.currentMaxMs = max;
-    this.lod = lod;
     this.fetchSelectedMetricsAsync(lod);
   }
 
@@ -56,7 +54,7 @@ export class MetricStreamer {
       return {
         name: m.name,
         blocks: Array.from(
-          m.getMissingBlocks(this.currentMinMs, this.currentMaxMs, lod)
+          m.requestMissingBlocks(this.currentMinMs, this.currentMaxMs, lod)
         ),
       };
     });

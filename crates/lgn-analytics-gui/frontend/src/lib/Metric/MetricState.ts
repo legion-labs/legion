@@ -39,9 +39,9 @@ export class MetricState {
     }
   }
 
-  *getMissingBlocks(minMs: number, maxMs: number, lod: number) {
+  *requestMissingBlocks(minMs: number, maxMs: number, lod: number) {
     for (const block of [...this.getViewportBlocks(minMs, maxMs)]) {
-      if (!block.hasLod(lod)) {
+      if (block.requestLod(lod)) {
         yield block;
       }
     }
