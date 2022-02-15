@@ -19,9 +19,9 @@ pub struct SelectedPackageArgs {
     #[clap(long, short, number_of_values = 1)]
     /// Run on the provided packages
     pub(crate) package: Vec<String>,
-    #[clap(long, short, number_of_values = 1)]
+    #[clap(long, alias = "ps", number_of_values = 1)]
     /// Run on the specified members (package subsets)
-    pub(crate) members: Vec<String>,
+    pub(crate) package_set: Vec<String>,
     #[clap(long, number_of_values = 1)]
     /// Exclude packages
     pub(crate) exclude: Vec<String>,
@@ -45,8 +45,8 @@ impl SelectedPackageArgs {
 
             if !self.package.is_empty() {
                 exclusive.push("--package");
-            } else if !self.members.is_empty() {
-                exclusive.push("--members");
+            } else if !self.package_set.is_empty() {
+                exclusive.push("--package-set");
             }
 
             if self.workspace {
@@ -61,11 +61,11 @@ impl SelectedPackageArgs {
 
         let mut includes = if self.workspace {
             SelectedInclude::Workspace
-        } else if !self.package.is_empty() || !self.members.is_empty() {
+        } else if !self.package.is_empty() || !self.package_set.is_empty() {
             SelectedInclude::includes(
                 ctx,
                 self.package.iter().map(String::as_str),
-                self.members.iter().map(String::as_str),
+                self.package_set.iter().map(String::as_str),
             )?
         } else {
             SelectedInclude::default_cwd(ctx)?
@@ -314,44 +314,38 @@ pub(super) enum SelectedInclude<'a> {
 
 impl<'a> SelectedInclude<'a> {
     /// Returns a `SelectedInclude` that selects the specified package and subset names.
-    #[allow(clippy::unnecessary_wraps, clippy::needless_pass_by_value)]
     pub fn includes(
-        _ctx: &'a Context,
+        ctx: &'a Context,
         package_names: impl IntoIterator<Item = &'a str>,
-        _subsets: impl IntoIterator<Item = impl AsRef<str>>,
+        subsets: impl IntoIterator<Item = impl AsRef<str>>,
     ) -> Result<Self> {
-        let names: BTreeSet<_> = package_names.into_iter().collect();
+        let mut names: BTreeSet<_> = package_names.into_iter().collect();
 
         // Don't need to initialize the package graph if no subsets are specified.
         // TODO
-        //for name in subsets {
-        //    let workspace = ctx.package_graph()?.workspace();
-        //    let subsets = ctx.core().subsets()?;
-        //
-        //    let name = name.as_ref();
-        //    // TODO: turn this into a subset in x.toml
-        //    let subset = if name == "production" {
-        //        subsets.default_members()
-        //    } else {
-        //        subsets.get(name).ok_or_else(|| {
-        //            let known_subsets: Vec<_> = subsets.iter().map(|(name, _)| name).collect();
-        //            let help = known_subsets.join(", ");
-        //            Error::new(format!(
-        //                "unknown subset '{}' (known subsets are: {}, production)",
-        //                name, help
-        //            ))
-        //        })?
-        //    };
-        //    let selected = workspace.iter().filter_map(|package| {
-        //        if subset.status_of(package.id()) != WorkspaceStatus::Absent {
-        //            Some(package.name())
-        //        } else {
-        //            None
-        //        }
-        //    });
-        //
-        //    names.extend(selected);
-        //}
+        for name in subsets {
+            let workspace = ctx.package_graph()?.workspace();
+            let subsets = &ctx.config().package_sets;
+
+            let name = name.as_ref();
+            let subset = subsets.get(name).ok_or_else(|| {
+                let known_subsets: Vec<_> = subsets.iter().map(|(name, _)| name.clone()).collect();
+                let help = known_subsets.join(", ");
+                Error::new(format!(
+                    "unknown subset '{}' (known subsets are: {})",
+                    name, help
+                ))
+            })?;
+            let selected = workspace.iter().filter_map(|package| {
+                if subset.iter().any(|pkg| pkg == package.name()) {
+                    Some(package.name())
+                } else {
+                    None
+                }
+            });
+
+            names.extend(selected);
+        }
 
         Ok(SelectedInclude::Includes(names))
     }

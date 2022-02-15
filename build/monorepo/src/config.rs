@@ -18,6 +18,7 @@ pub struct MonorepoConfig {
     pub dist: Dist,
     pub determinator: DeterminatorRules,
     pub npm: Npm,
+    pub package_sets: HashMap<String, Vec<String>>,
 }
 
 #[derive(Clone, Deserialize, Debug, PartialEq, Eq)]
