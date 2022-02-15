@@ -18,11 +18,9 @@ use lgn_presenter_window::component::PresenterWindow;
 use lgn_renderer::{
     components::{
         LightComponent, LightType, MaterialComponent, RenderSurface, RenderSurfaceCreatedForWindow,
-        RenderSurfaceExtents, StaticMesh,
+        RenderSurfaceExtents, VisualComponent,
     },
-    resources::{
-        DefaultMeshType, GpuUniformData, GpuUniformDataContext, MeshManager, PipelineManager,
-    },
+    resources::{DefaultMeshType, GpuUniformData, GpuUniformDataContext, PipelineManager},
     {Renderer, RendererPlugin},
 };
 use lgn_transform::{
@@ -193,36 +191,24 @@ fn presenter_snapshot_system(
     frame_counter.frame_count += 1;
 }
 
-fn init_light_test(
-    mut commands: Commands<'_, '_>,
-    uniform_data: Res<'_, GpuUniformData>,
-    mesh_manager: Res<'_, MeshManager>,
-) {
-    let mut data_context = GpuUniformDataContext::new(&uniform_data);
-
+fn init_light_test(mut commands: Commands<'_, '_>) {
     // sphere 1
     commands
         .spawn()
         .insert(Transform::from_xyz(-0.5, 0.0, 0.0))
         .insert(GlobalTransform::identity())
-        .insert(StaticMesh::from_default_meshes(
-            mesh_manager.as_ref(),
+        .insert(VisualComponent::new(
             DefaultMeshType::Sphere as usize,
             (255, 0, 0).into(),
-            None,
-            &mut data_context,
         ));
 
     // sphere 2
     commands
         .spawn()
         .insert(Transform::from_xyz(0.0, 0.0, 0.0))
-        .insert(StaticMesh::from_default_meshes(
-            mesh_manager.as_ref(),
+        .insert(VisualComponent::new(
             DefaultMeshType::Sphere as usize,
             (0, 255, 0).into(),
-            None,
-            &mut data_context,
         ));
 
     // sphere 3
@@ -230,12 +216,9 @@ fn init_light_test(
         .spawn()
         .insert(Transform::from_xyz(0.5, 0.0, 0.0))
         .insert(GlobalTransform::identity())
-        .insert(StaticMesh::from_default_meshes(
-            mesh_manager.as_ref(),
+        .insert(VisualComponent::new(
             DefaultMeshType::Sphere as usize,
             (0, 0, 255).into(),
-            None,
-            &mut data_context,
         ));
 
     // directional light
@@ -293,47 +276,32 @@ fn init_light_test(
         });
 }
 
-fn init_scene(
-    mut commands: Commands<'_, '_>,
-    uniform_data: Res<'_, GpuUniformData>,
-    mesh_manager: Res<'_, MeshManager>,
-) {
-    let mut data_context = GpuUniformDataContext::new(&uniform_data);
-
+fn init_scene(mut commands: Commands<'_, '_>) {
     commands
         .spawn()
         .insert(Transform::from_xyz(-0.5, -0.1, 0.0))
         .insert(GlobalTransform::identity())
-        .insert(StaticMesh::from_default_meshes(
-            mesh_manager.as_ref(),
+        .insert(VisualComponent::new(
             DefaultMeshType::Plane as usize,
             (255, 0, 0).into(),
-            None,
-            &mut data_context,
         ));
 
     commands
         .spawn()
         .insert(Transform::from_xyz(0.0, 0.0, 0.0))
         .insert(GlobalTransform::identity())
-        .insert(StaticMesh::from_default_meshes(
-            mesh_manager.as_ref(),
+        .insert(VisualComponent::new(
             DefaultMeshType::Cube as usize,
             (0, 255, 0).into(),
-            None,
-            &mut data_context,
         ));
 
     commands
         .spawn()
         .insert(Transform::from_xyz(0.5, 0.0, 0.0))
         .insert(GlobalTransform::identity())
-        .insert(StaticMesh::from_default_meshes(
-            mesh_manager.as_ref(),
+        .insert(VisualComponent::new(
             DefaultMeshType::Pyramid as usize,
             (0, 0, 255).into(),
-            None,
-            &mut data_context,
         ));
 
     // omnidirectional light
@@ -350,11 +318,7 @@ fn init_scene(
         });
 }
 
-fn init_texture_scene(
-    mut commands: Commands<'_, '_>,
-    uniform_data: Res<'_, GpuUniformData>,
-    mesh_manager: Res<'_, MeshManager>,
-) {
+fn init_texture_scene(mut commands: Commands<'_, '_>, uniform_data: Res<'_, GpuUniformData>) {
     let mut data_context = GpuUniformDataContext::new(&uniform_data);
 
     let albedo = load_texture(Path::new("old_brass_albedo"), &mut data_context);
@@ -373,18 +337,14 @@ fn init_texture_scene(
     commands.spawn().insert(metalness);
     commands.spawn().insert(roughness);
 
-    commands.spawn().insert(material);
-
     commands
         .spawn()
         .insert(Transform::from_xyz(0.0, 0.0, 0.0))
         .insert(GlobalTransform::identity())
-        .insert(StaticMesh::from_default_meshes(
-            mesh_manager.as_ref(),
+        .insert(material)
+        .insert(VisualComponent::new(
             DefaultMeshType::Sphere as usize,
             (0, 255, 0).into(),
-            Some(&material),
-            &mut data_context,
         ));
 
     // omnidirectional light

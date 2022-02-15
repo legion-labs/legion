@@ -1,5 +1,7 @@
+use std::collections::BTreeMap;
+
 use lgn_app::{App, Plugin};
-use lgn_ecs::prelude::Commands;
+use lgn_ecs::prelude::{Commands, Entity};
 use lgn_graphics_api::{PagedBufferAllocation, VertexBufferBinding};
 
 use crate::{cgen, components::MaterialComponent};
@@ -20,36 +22,89 @@ impl GpuDataPlugin {
     }
 }
 
-pub(crate) type GpuInstanceTransform = UniformGPUData<cgen::cgen_type::GpuInstanceTransform>;
-pub(crate) type GpuInstanceVATable = UniformGPUData<cgen::cgen_type::GpuInstanceVATable>;
-pub(crate) type GpuInstanceColor = UniformGPUData<cgen::cgen_type::GpuInstanceColor>;
-pub(crate) type GpuInstancePickingData = UniformGPUData<cgen::cgen_type::GpuInstancePickingData>;
+pub(crate) struct GpuDataManager<T> {
+    gpu_data: UniformGPUData<T>,
+    index_allocator: IndexAllocator,
+    entity_data_hash: BTreeMap<Entity, Vec<(u32, u64)>>,
+}
+
+impl<T> GpuDataManager<T> {
+    pub fn new(static_buffer: &UnifiedStaticBuffer, page_size: u64, block_size: u32) -> Self {
+        Self {
+            gpu_data: UniformGPUData::<T>::new(static_buffer, page_size),
+            index_allocator: IndexAllocator::new(block_size),
+            entity_data_hash: BTreeMap::new(),
+        }
+    }
+
+    pub fn alloc_gpu_data(
+        &mut self,
+        entity: Entity,
+        index_block: &mut Option<IndexBlock>,
+    ) -> (u32, u64) {
+        let gpu_data_id = self.index_allocator.acquire_index(index_block);
+        let gpu_data_va = self.gpu_data.ensure_index_allocated(gpu_data_id);
+
+        if let Some(gpu_data) = self.entity_data_hash.get_mut(&entity) {
+            gpu_data.push((gpu_data_id, gpu_data_va));
+        } else {
+            self.entity_data_hash
+                .insert(entity, vec![(gpu_data_id, gpu_data_va)]);
+        }
+        (gpu_data_id, gpu_data_va)
+    }
+
+    pub fn id_va_list(&self, entity: Entity) -> &[(u32, u64)] {
+        self.entity_data_hash.get(&entity).unwrap()
+    }
+
+    pub fn update_gpu_data(
+        &self,
+        entity: Entity,
+        dest_idx: usize,
+        data: &[T],
+        updater: &mut UniformGPUDataUpdater,
+    ) {
+        if let Some(gpu_data) = self.entity_data_hash.get(&entity) {
+            updater.add_update_jobs(data, gpu_data[dest_idx].1);
+        }
+    }
+
+    pub fn remove_gpu_data(&mut self, entity: Entity) {
+        if let Some(gpu_data) = self.entity_data_hash.remove(&entity) {
+            let mut instance_ids = Vec::with_capacity(gpu_data.len());
+            for data in gpu_data {
+                instance_ids.push(data.0);
+            }
+            self.index_allocator.release_index_ids(&instance_ids);
+        }
+    }
+
+    pub fn return_index_block(&self, index_block: Option<IndexBlock>) {
+        if let Some(block) = index_block {
+            self.index_allocator.release_index_block(block);
+        }
+    }
+}
+
+pub(crate) type GpuEntityTransformManager = GpuDataManager<cgen::cgen_type::GpuInstanceTransform>;
+pub(crate) type GpuEntityColorManager = GpuDataManager<cgen::cgen_type::GpuInstanceColor>;
+pub(crate) type GpuPickingDataManager = GpuDataManager<cgen::cgen_type::GpuInstancePickingData>;
+
 pub(crate) type GpuMaterialData = UniformGPUData<cgen::cgen_type::MaterialData>;
 
 pub struct GpuUniformData {
-    pub gpu_instance_id_allocator: IndexAllocator,
     pub gpu_texture_id_allocator: IndexAllocator,
     pub gpu_material_id_allocator: IndexAllocator,
-
-    pub gpu_instance_transform: GpuInstanceTransform,
-    pub gpu_instance_va_table: GpuInstanceVATable,
-    pub gpu_instance_color: GpuInstanceColor,
-    pub gpu_instance_picking_data: GpuInstancePickingData,
     pub gpu_material_data: GpuMaterialData,
-
     pub default_material_gpu_offset: u32,
 }
 
 impl GpuUniformData {
     fn new(static_buffer: &UnifiedStaticBuffer) -> Self {
         Self {
-            gpu_instance_id_allocator: IndexAllocator::new(4096),
             gpu_texture_id_allocator: IndexAllocator::new(256),
             gpu_material_id_allocator: IndexAllocator::new(256),
-            gpu_instance_transform: GpuInstanceTransform::new(static_buffer, 64 * 1024),
-            gpu_instance_va_table: GpuInstanceVATable::new(static_buffer, 64 * 1024),
-            gpu_instance_color: GpuInstanceColor::new(static_buffer, 64 * 1024),
-            gpu_instance_picking_data: GpuInstancePickingData::new(static_buffer, 64 * 1024),
             gpu_material_data: GpuMaterialData::new(static_buffer, 64 * 1024),
             default_material_gpu_offset: u32::MAX,
         }
@@ -68,18 +123,12 @@ impl GpuUniformData {
 pub struct GpuUniformDataContext<'a> {
     pub uniform_data: &'a GpuUniformData,
 
-    pub gpu_instance_id_block: Option<IndexBlock>,
     pub gpu_texture_id_block: Option<IndexBlock>,
     pub gpu_material_id_block: Option<IndexBlock>,
 }
 
 impl<'a> Drop for GpuUniformDataContext<'a> {
     fn drop(&mut self) {
-        if let Some(index_block) = self.gpu_instance_id_block.take() {
-            self.uniform_data
-                .gpu_instance_id_allocator
-                .release_index_block(index_block);
-        }
         if let Some(index_block) = self.gpu_texture_id_block.take() {
             self.uniform_data
                 .gpu_texture_id_allocator
@@ -97,16 +146,9 @@ impl<'a> GpuUniformDataContext<'a> {
     pub fn new(uniform_data: &'a GpuUniformData) -> Self {
         Self {
             uniform_data,
-            gpu_instance_id_block: None,
             gpu_texture_id_block: None,
             gpu_material_id_block: None,
         }
-    }
-
-    pub fn aquire_gpu_instance_id(&mut self) -> u32 {
-        self.uniform_data
-            .gpu_instance_id_allocator
-            .acquire_index(&mut self.gpu_instance_id_block)
     }
 
     pub fn aquire_gpu_texture_id(&mut self) -> u32 {
@@ -125,8 +167,21 @@ impl<'a> GpuUniformDataContext<'a> {
 impl Plugin for GpuDataPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(GpuUniformData::new(&self.static_buffer));
-
-        app.insert_resource(GpuVaTableForGpuInstance::new(&self.static_buffer));
+        app.insert_resource(GpuEntityTransformManager::new(
+            &self.static_buffer,
+            64 * 1024,
+            1024,
+        ));
+        app.insert_resource(GpuEntityColorManager::new(
+            &self.static_buffer,
+            64 * 1024,
+            256,
+        ));
+        app.insert_resource(GpuPickingDataManager::new(
+            &self.static_buffer,
+            64 * 1024,
+            1024,
+        ));
     }
 }
 

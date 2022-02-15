@@ -2,10 +2,7 @@ use lgn_ecs::prelude::Commands;
 use lgn_math::{Mat4, Quat, Vec2, Vec3};
 use lgn_transform::components::Transform;
 
-use crate::{
-    components::CameraComponent,
-    resources::{DefaultMeshType, MeshManager},
-};
+use crate::{components::CameraComponent, resources::DefaultMeshType};
 
 use super::{
     new_world_point_for_cursor, plane_normal_for_camera_pos, AxisComponents, ManipulatorPart,
@@ -25,7 +22,6 @@ impl PositionManipulator {
     pub(super) fn add_manipulator_parts(
         &mut self,
         commands: &mut Commands<'_, '_>,
-        mesh_manager: &MeshManager,
         picking_context: &mut PickingIdContext<'_>,
     ) {
         let rotate_x_pointer =
@@ -59,7 +55,6 @@ impl PositionManipulator {
                 DefaultMeshType::Cone,
                 commands,
                 picking_context,
-                mesh_manager,
             ),
             ManipulatorPart::new(
                 red,
@@ -70,7 +65,6 @@ impl PositionManipulator {
                 DefaultMeshType::Cylinder,
                 commands,
                 picking_context,
-                mesh_manager,
             ),
             ManipulatorPart::new(
                 green,
@@ -81,7 +75,6 @@ impl PositionManipulator {
                 DefaultMeshType::Cone,
                 commands,
                 picking_context,
-                mesh_manager,
             ),
             ManipulatorPart::new(
                 green,
@@ -92,7 +85,6 @@ impl PositionManipulator {
                 DefaultMeshType::Cylinder,
                 commands,
                 picking_context,
-                mesh_manager,
             ),
             ManipulatorPart::new(
                 blue,
@@ -103,7 +95,6 @@ impl PositionManipulator {
                 DefaultMeshType::Cone,
                 commands,
                 picking_context,
-                mesh_manager,
             ),
             ManipulatorPart::new(
                 blue,
@@ -114,7 +105,6 @@ impl PositionManipulator {
                 DefaultMeshType::Cylinder,
                 commands,
                 picking_context,
-                mesh_manager,
             ),
             ManipulatorPart::new(
                 blue,
@@ -125,7 +115,6 @@ impl PositionManipulator {
                 DefaultMeshType::Plane,
                 commands,
                 picking_context,
-                mesh_manager,
             ),
             ManipulatorPart::new(
                 green,
@@ -136,7 +125,6 @@ impl PositionManipulator {
                 DefaultMeshType::Plane,
                 commands,
                 picking_context,
-                mesh_manager,
             ),
             ManipulatorPart::new(
                 red,
@@ -147,7 +135,6 @@ impl PositionManipulator {
                 DefaultMeshType::Plane,
                 commands,
                 picking_context,
-                mesh_manager,
             ),
         ];
     }

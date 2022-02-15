@@ -10,7 +10,7 @@ use lgn_transform::prelude::GlobalTransform;
 
 use crate::{
     cgen,
-    components::{CameraComponent, ManipulatorComponent, RenderSurface, StaticMesh},
+    components::{CameraComponent, ManipulatorComponent, RenderSurface, VisualComponent},
     debug_display::{DebugDisplay, DebugPrimitiveType},
     hl_gfx_api::HLCommandBuffer,
     picking::ManipulatorManager,
@@ -201,7 +201,7 @@ impl DebugRenderPass {
         &self,
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
-        picked_meshes: &[(&StaticMesh, &GlobalTransform)],
+        picked_meshes: &[(&VisualComponent, &GlobalTransform)],
         mesh_manager: &MeshManager,
     ) {
         cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
@@ -271,7 +271,7 @@ impl DebugRenderPass {
 
         cmd_buffer: &mut HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
-        manipulator_meshes: &[(&StaticMesh, &GlobalTransform, &ManipulatorComponent)],
+        manipulator_meshes: &[(&VisualComponent, &GlobalTransform, &ManipulatorComponent)],
         mesh_manager: &MeshManager,
         camera: &CameraComponent,
     ) {
@@ -328,8 +328,8 @@ impl DebugRenderPass {
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
-        picked_meshes: &[(&StaticMesh, &GlobalTransform)],
-        manipulator_meshes: &[(&StaticMesh, &GlobalTransform, &ManipulatorComponent)],
+        picked_meshes: &[(&VisualComponent, &GlobalTransform)],
+        manipulator_meshes: &[(&VisualComponent, &GlobalTransform, &ManipulatorComponent)],
         camera: &CameraComponent,
         mesh_manager: &MeshManager,
         debug_display: &mut DebugDisplay,
