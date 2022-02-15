@@ -6,13 +6,13 @@ use lgn_ecs::prelude::*;
 
 use crate::{
     runtime::{Script, ScriptComponent},
-    ScriptType,
+    ScriptType, ScriptingStage,
 };
 
 pub(crate) fn build(app: &mut App) {
     app.init_non_send_resource::<RuntimeCollection>()
-        .add_system(compile)
-        .add_system(tick);
+        .add_system_to_stage(ScriptingStage::Compile, compile)
+        .add_system_to_stage(ScriptingStage::Execute, tick);
 }
 
 fn compile(

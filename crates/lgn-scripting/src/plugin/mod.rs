@@ -9,6 +9,9 @@ use lgn_input::mouse::MouseMotion;
 use lgn_math::prelude::*;
 
 #[cfg(not(feature = "offline"))]
+use crate::ScriptingStage;
+
+#[cfg(not(feature = "offline"))]
 mod mun;
 #[cfg(not(feature = "offline"))]
 mod rhai;
@@ -22,13 +25,24 @@ impl Plugin for ScriptingPlugin {
     fn build(&self, app: &mut App) {
         #[cfg(feature = "offline")]
         app.add_startup_system(register_resource_types.exclusive_system());
-
         app.add_startup_system(add_loaders);
 
         #[cfg(not(feature = "offline"))]
         {
+            app.add_stage(ScriptingStage::Compile, SystemStage::parallel());
+            app.add_stage_after(
+                ScriptingStage::Compile,
+                ScriptingStage::Prepare,
+                SystemStage::parallel(),
+            );
+            app.add_stage_after(
+                ScriptingStage::Prepare,
+                ScriptingStage::Execute,
+                SystemStage::parallel(),
+            );
+
             app.init_resource::<ScriptingEventCache>()
-                .add_system(Self::update_events);
+                .add_system_to_stage(ScriptingStage::Prepare, Self::update_events);
 
             mun::build(app);
             rune::build(app).expect("failed to setup Rune context");
@@ -53,6 +67,7 @@ impl ScriptingPlugin {
 }
 
 #[cfg(not(feature = "offline"))]
+#[derive(Clone)]
 pub struct ScriptingEventCache {
     mouse_motion: MouseMotion,
 }
