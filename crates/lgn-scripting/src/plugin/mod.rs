@@ -31,7 +31,7 @@ impl Plugin for ScriptingPlugin {
                 .add_system(Self::update_events);
 
             mun::build(app);
-            rune::build(app).unwrap();
+            rune::build(app).expect("failed to setup Rune context");
             rhai::build(app);
         }
     }
