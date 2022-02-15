@@ -1,5 +1,4 @@
 use byteorder::ByteOrder;
-use sha2::{Digest, Sha256};
 use smallvec::SmallVec;
 use std::{fmt::Formatter, io::Write, str::FromStr};
 
@@ -120,11 +119,11 @@ impl Identifier {
     ///
     /// The identifier will contain a reference to the blob.
     pub fn new_hash_ref_from_data(data: &[u8]) -> Self {
-        let mut hasher = Sha256::new();
+        let mut hasher = blake3::Hasher::new();
         hasher.update(data);
         let hash = hasher.finalize();
 
-        Self::new_hash_ref(data.len(), &hash)
+        Self::new_hash_ref(data.len(), hash.as_bytes())
     }
 
     /// Returns the size of the data pointed to by this identifier.

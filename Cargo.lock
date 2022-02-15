@@ -4321,6 +4321,7 @@ dependencies = [
  "aws-config",
  "aws-sdk-s3",
  "base64",
+ "blake3",
  "byteorder",
  "bytes",
  "pin-project",
