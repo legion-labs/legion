@@ -3,6 +3,7 @@ use std::process::Command;
 static EDITOR_SERVER_EXE: &str = env!("CARGO_BIN_EXE_editor-srv");
 
 #[test]
+#[ignore]
 fn lifecycle_test() {
     let args = &["--test", "lifecycle"];
     println!("{} {}", EDITOR_SERVER_EXE, args.join(" "));
