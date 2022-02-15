@@ -133,7 +133,8 @@ fn tick(world: &mut World) {
         {
             let mut rune_vms = world.get_non_send_resource_mut::<VMCollection>().unwrap();
             let vm = rune_vms.get_mut(script_vm_index).as_mut().unwrap();
-            let _result = vm.execute(script_entry_fn, args).unwrap();
+            let mut vm_exec = vm.execute(script_entry_fn, args).unwrap();
+            let _result = vm_exec.complete().unwrap();
         }
     }
 }
