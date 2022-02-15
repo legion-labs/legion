@@ -1,0 +1,35 @@
+syntax = "proto3";
+package content_store;
+
+service ContentStore {
+  rpc ReadContent(ReadContentRequest) returns (ReadContentResponse) {};
+  rpc GetContentWriter(GetContentWriterRequest) returns (GetContentWriterResponse) {};
+  rpc WriteContent(WriteContentRequest) returns (WriteContentResponse) {};
+}
+
+message ReadContentRequest {
+  string id = 1;
+}
+
+message ReadContentResponse {
+  oneof content {
+    string url = 1;
+    bytes data = 2;
+  }
+}
+
+message GetContentWriterRequest {
+  string id = 1;
+}
+
+message GetContentWriterResponse {
+  string url = 1;
+}
+
+message WriteContentRequest {
+  string id = 1;
+  bytes data = 2;
+}
+
+message WriteContentResponse {
+}
