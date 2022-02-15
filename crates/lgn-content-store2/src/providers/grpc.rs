@@ -82,12 +82,20 @@ impl ContentWriter for GrpcProvider {
             .map_err(|err| anyhow::anyhow!("gRPC request failed: {}", err))?
             .into_inner();
 
-        if resp.url.is_empty() {
-            Err(Error::AlreadyExists)
-        } else {
-            let uploader = HttpUploader::new(resp.url)?;
+        match resp.content_writer {
+            Some(lgn_content_store_proto::get_content_writer_response::ContentWriter::Url(url)) => {
+                if url.is_empty() {
+                    // Issue a call for direct upload.
+                    //
+                    // We probably need to write something that implemented AsyncWrite again...
+                    unimplemented!();
+                } else {
+                    let uploader = HttpUploader::new(url)?;
 
-            Ok(Box::pin(uploader))
+                    Ok(Box::pin(uploader))
+                }
+            }
+            None => Err(Error::AlreadyExists),
         }
     }
 }
@@ -121,7 +129,6 @@ impl HttpUploader {
     }
 }
 
-#[allow(unsafe_code)]
 #[async_trait]
 impl AsyncWrite for HttpUploader {
     fn poll_write(
@@ -148,12 +155,10 @@ impl AsyncWrite for HttpUploader {
             });
         }
 
-        unsafe {
-            if let Some(w) = this.w.get_unchecked_mut() {
-                Pin::new_unchecked(w).poll_write(cx, buf)
-            } else {
-                panic!("HttpUploader::poll_write called after completion")
-            }
+        if let Some(w) = this.w.get_mut() {
+            Pin::new(w).poll_write(cx, buf)
+        } else {
+            panic!("HttpUploader::poll_write called after completion")
         }
     }
 
@@ -180,12 +185,10 @@ impl AsyncWrite for HttpUploader {
             });
         }
 
-        unsafe {
-            if let Some(w) = this.w.get_unchecked_mut() {
-                Pin::new_unchecked(w).poll_flush(cx)
-            } else {
-                panic!("HttpUploader::poll_write called after completion")
-            }
+        if let Some(w) = this.w.get_mut() {
+            Pin::new(w).poll_flush(cx)
+        } else {
+            panic!("HttpUploader::poll_write called after completion")
         }
     }
 

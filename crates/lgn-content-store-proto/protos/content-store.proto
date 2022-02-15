@@ -23,7 +23,9 @@ message GetContentWriterRequest {
 }
 
 message GetContentWriterResponse {
-  string url = 1;
+  oneof content_writer {
+    string url = 1;
+  }
 }
 
 message WriteContentRequest {
