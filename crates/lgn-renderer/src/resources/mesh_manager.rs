@@ -3,7 +3,7 @@ use lgn_graphics_api::PagedBufferAllocation;
 
 use super::{GpuUniformData, GpuUniformDataContext, UnifiedStaticBuffer, UniformGPUDataUpdater};
 use crate::{cgen, static_mesh_render_data::StaticMeshRenderData, Renderer};
-    components::{ManipulatorComponent, StaticMesh},
+    components::ManipulatorComponent,
     egui::egui_plugin::Egui,
 
 pub struct MeshManager {
@@ -142,42 +142,42 @@ impl Default for MeshManagerUIState {
     }
 }
 
-#[allow(clippy::needless_pass_by_value)]
-pub fn ui_mesh_manager(
-    egui_ctx: Res<'_, Egui>,
-    _renderer: Res<'_, Renderer>,
-    mut mesh_manager: ResMut<'_, MeshManager>,
-    mut ui_state: Local<'_, MeshManagerUIState>,
-    mut q_static_meshes: Query<'_, '_, &mut StaticMesh, Without<ManipulatorComponent>>,
-    uniform_data: Res<'_, GpuUniformData>,
-) {
-    let data_context = GpuUniformDataContext::new(&uniform_data);
-
-    egui::Window::new("Mesh manager").show(&egui_ctx.ctx, |ui| {
-        ui.add(egui::text_edit::TextEdit::singleline(&mut ui_state.path));
-        //if ui.small_button("Load mesh (gltf)").clicked() {
-        //    mesh_manager.add_meshes(
-        //        renderer.as_ref(),
-        //        StaticMeshRenderData::new_gltf(ui_state.path.clone()),
-        //    );
-        //}
-        for (idx, mut mesh) in q_static_meshes.iter_mut().enumerate() {
-            let selected_text = format!("Mesh ID {}", mesh.mesh_id);
-            let mut selected_idx = mesh.mesh_id;
-            egui::ComboBox::from_label(format!("Mesh {}", idx))
-                .selected_text(selected_text)
-                .show_ui(ui, |ui| {
-                    for mesh_id in 0..mesh_manager.max_id() {
-                        ui.selectable_value(
-                            &mut selected_idx,
-                            mesh_id as usize,
-                            format!("Mesh ID {}", mesh_id),
-                        );
-                    }
-                });
-            if selected_idx != mesh.mesh_id {
-                mesh.set_mesh_id(&mesh_manager, selected_idx);
-            }
-        }
-    });
-}
+//#[allow(clippy::needless_pass_by_value)]
+//pub fn ui_mesh_manager(
+//    egui_ctx: Res<'_, Egui>,
+//    _renderer: Res<'_, Renderer>,
+//    mut mesh_manager: ResMut<'_, MeshManager>,
+//    mut ui_state: Local<'_, MeshManagerUIState>,
+//    mut q_static_meshes: Query<'_, '_, &mut StaticMesh, Without<ManipulatorComponent>>,
+//    uniform_data: Res<'_, GpuUniformData>,
+//) {
+//    let data_context = GpuUniformDataContext::new(&uniform_data);
+//
+//    egui::Window::new("Mesh manager").show(&egui_ctx.ctx, |ui| {
+//        ui.add(egui::text_edit::TextEdit::singleline(&mut ui_state.path));
+//        //if ui.small_button("Load mesh (gltf)").clicked() {
+//        //    mesh_manager.add_meshes(
+//        //        renderer.as_ref(),
+//        //        StaticMeshRenderData::new_gltf(ui_state.path.clone()),
+//        //    );
+//        //}
+//        for (idx, mut mesh) in q_static_meshes.iter_mut().enumerate() {
+//            let selected_text = format!("Mesh ID {}", mesh.mesh_id);
+//            let mut selected_idx = mesh.mesh_id;
+//            egui::ComboBox::from_label(format!("Mesh {}", idx))
+//                .selected_text(selected_text)
+//                .show_ui(ui, |ui| {
+//                    for mesh_id in 0..mesh_manager.max_id() {
+//                        ui.selectable_value(
+//                            &mut selected_idx,
+//                            mesh_id as usize,
+//                            format!("Mesh ID {}", mesh_id),
+//                        );
+//                    }
+//                });
+//            if selected_idx != mesh.mesh_id {
+//                mesh.set_mesh_id(&mesh_manager, selected_idx);
+//            }
+//        }
+//    });
+//}

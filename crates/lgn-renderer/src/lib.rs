@@ -181,7 +181,6 @@ impl Plugin for RendererPlugin {
         //
         if self.runs_dynamic_systems {
             app.add_system_to_stage(RenderStage::Prepare, ui_lights);
-            app.add_system_to_stage(RenderStage::Prepare, ui_mesh_manager);
         }
         app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
         app.add_system_to_stage(RenderStage::Prepare, update_gpu_instances);

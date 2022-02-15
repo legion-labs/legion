@@ -4520,7 +4520,7 @@ dependencies = [
  "aws-config",
  "aws-sdk-dynamodb",
  "aws-sdk-s3",
- "base64",
+ "base64 0.13.0",
  "blake3",
  "byteorder",
  "bytes",
@@ -4871,8 +4871,8 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "erased-serde",
- "ispc-tex",
  "gltf",
+ "ispc-tex",
  "lazy_static",
  "lgn-app",
  "lgn-data-codegen",
