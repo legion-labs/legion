@@ -24,6 +24,26 @@ pub fn main() {
             name: "EguiPipelineLayout",
             descriptor_sets: [ "EguiDescriptorSet" ],
             push_constant: "EguiPushConstantData"
+        },
+        #{            
+            type: "Shader",
+            name: "EguiShader",
+            path: "gpu/shaders/ui.hlsl",
+            pipeline_layout: "EguiPipelineLayout",
+            options: [ "TOTO", "TITI" ],
+            instances: [
+                #{                      
+                    stages: [ "VS", "PS" ],
+                },
+                #{  
+                    key: [ "TOTO" ],
+                    stages: [ "VS", "PS" ],
+                },
+                #{  
+                    key: [ "TITI", "TOTO" ],
+                    stages: [ "VS", "PS" ],
+                },
+            ]            
         }
     ]
 }

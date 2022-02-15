@@ -3749,15 +3749,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "intel_tex"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6924b204284457a03f68f1fc1e6175317c004233560b932bda173af6fc06b486"
-dependencies = [
- "ispc_rt",
-]
-
-[[package]]
 name = "interceptor"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3802,10 +3793,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68f2d64f2edebec4ce84ad108148e67e1064789bee435edc5b60ad398714a3a9"
 
 [[package]]
+name = "ispc-tex"
+version = "0.1.0"
+source = "git+https://github.com/legion-labs/ispc-tex-rs.git?branch=main#ed09786765373733dceef94803c3f532b16f8376"
+dependencies = [
+ "ispc_rt",
+]
+
+[[package]]
 name = "ispc_rt"
-version = "1.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "669effef1bdae871052104284cf548066ba2d27e6996e3e70773dad57a5d4150"
+version = "1.0.5"
+source = "git+https://github.com/legion-labs/ispc-rs.git?branch=cargo-change-detection#08b85311e2959895d14fb0b8fd2433cad61c6299"
 dependencies = [
  "aligned_alloc",
  "libc",
@@ -4313,6 +4311,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-content-store2"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "aws-config",
+ "aws-sdk-s3",
+ "base64",
+ "blake3",
+ "byteorder",
+ "bytes",
+ "pin-project",
+ "sha2 0.10.1",
+ "smallvec",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+]
+
+[[package]]
 name = "lgn-core"
 version = "0.1.0"
 dependencies = [
@@ -4440,6 +4460,7 @@ dependencies = [
  "lgn-data-model",
  "lgn-data-runtime",
  "lgn-source-control",
+ "lgn-tracing",
  "lgn-utils",
  "serde",
  "serde_json",
@@ -4603,6 +4624,7 @@ dependencies = [
  "lgn-graphics-api",
  "lgn-telemetry-sink",
  "lgn-tracing",
+ "lgn-utils",
  "petgraph",
  "proc-macro2",
  "relative-path",
@@ -4629,7 +4651,7 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "erased-serde",
- "intel_tex",
+ "ispc-tex",
  "lazy_static",
  "lgn-app",
  "lgn-data-codegen",
@@ -4917,6 +4939,7 @@ dependencies = [
  "lgn-input",
  "lgn-math",
  "lgn-tracing",
+ "lgn-transform",
  "memoffset 0.6.5",
  "mun_runtime",
  "rhai",

@@ -519,7 +519,10 @@ impl AssetLoaderIO {
             .map_err(|err| AssetRegistryError::ResourceIOError(type_id, err))?;
 
         let asset_type = type_id.kind;
-        let loader = loaders.get_mut(&asset_type).unwrap();
+        let loader = loaders
+            .get_mut(&asset_type)
+            .ok_or(AssetRegistryError::AssetLoaderNotFound(asset_type))?;
+
         let boxed_asset = loader
             .load(&mut &content[..])
             .map_err(|err| AssetRegistryError::AssetLoaderFailed(type_id, err))?;

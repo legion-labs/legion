@@ -2,6 +2,8 @@ mod file_writer;
 pub mod hlsl;
 pub mod product;
 pub mod rust;
+use lgn_utils::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 use heck::ToSnakeCase;
 
@@ -15,14 +17,20 @@ use crate::{
 pub type GeneratorFunc = for<'r, 's> fn(&'r GeneratorContext<'s>) -> Vec<Product>;
 pub struct GeneratorContext<'a> {
     crate_name: String,
+    crate_id: u64,
     model: &'a Model,
     struct_layouts: StructLayouts,
 }
 
 impl<'a> GeneratorContext<'a> {
     pub fn new(crate_name: &str, model: &'a Model) -> Self {
+        let mut hasher = DefaultHasher::new();
+        crate_name.hash(&mut hasher);
+        let crate_id = hasher.finish();
+
         Self {
             crate_name: crate_name.to_owned(),
+            crate_id,
             model,
             struct_layouts: hlsl::struct_layouts_builder::run(model).unwrap(),
         }

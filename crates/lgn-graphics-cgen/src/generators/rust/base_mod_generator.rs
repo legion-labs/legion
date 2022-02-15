@@ -1,7 +1,7 @@
 use heck::{ToShoutySnakeCase, ToSnakeCase};
 
 use crate::{
-    db::{CGenType, DescriptorSet, Model, ModelObject, PipelineLayout},
+    db::{CGenType, DescriptorSet, Model, ModelObject, PipelineLayout, Shader},
     generators::{file_writer::FileWriter, product::Product, CGenVariant, GeneratorContext},
 };
 
@@ -23,15 +23,25 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
     // write dependencies
     let model = ctx.model;
     writer.add_line("use lgn_graphics_api::DeviceContext;");
-    writer.add_line("use lgn_graphics_cgen_runtime::CGenRegistry;");
+    writer.add_line("use lgn_graphics_cgen_runtime::{CGenCrateID,CGenRegistry};");
     writer.new_line();
+
+    // crate id
+    {
+        writer.add_line(format!(
+            "pub const CRATE_ID : CGenCrateID = CGenCrateID({:#X});",
+            ctx.crate_id
+        ));
+        writer.new_line();
+    }
+
     // fn initialize
     {
         let mut writer = writer.add_block(
             &["pub fn initialize(device_context: &DeviceContext) -> CGenRegistry   {"],
             &["}"],
         );
-        writer.add_line("let mut registry = CGenRegistry::new( shutdown  );");
+        writer.add_line("let mut registry = CGenRegistry::new( CRATE_ID, shutdown  );");
         writer.new_line();
 
         for ty_ref in model.object_iter::<CGenType>() {
@@ -64,6 +74,14 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
             writer.add_line(format!(
                 "registry.add_pipeline_layout(device_context, pipeline_layout::{}::def());",
                 pipeline_layout_ref.object().name
+            ));
+        }
+        writer.new_line();
+
+        for shader_ref in model.object_iter::<Shader>() {
+            writer.add_line(format!(
+                "registry.add_shader_def(shader::{}::def());",
+                shader_ref.object().name
             ));
         }
         writer.new_line();
@@ -166,6 +184,7 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
     write_mod::<CGenType>(model, &mut writer);
     write_mod::<DescriptorSet>(model, &mut writer);
     write_mod::<PipelineLayout>(model, &mut writer);
+    write_mod::<Shader>(model, &mut writer);
 
     writer.build()
 }
@@ -183,6 +202,7 @@ impl SkipInclude for CGenType {
 }
 impl SkipInclude for DescriptorSet {}
 impl SkipInclude for PipelineLayout {}
+impl SkipInclude for Shader {}
 
 fn write_mod<T>(model: &Model, writer: &mut FileWriter)
 where
@@ -205,7 +225,7 @@ where
                 continue;
             }
             {
-                let mut writer = writer.add_block(&[format!("mod {} {{", mod_name)], &["}"]);
+                let mut writer = writer.add_block(&[format!("pub mod {} {{", mod_name)], &["}"]);
                 writer.add_line(format!(
                     "include!(concat!(env!(\"OUT_DIR\"), \"/{}/{}\"));",
                     CGenVariant::Rust.dir(),
@@ -214,7 +234,7 @@ where
             }
             writer.add_lines(&[
                 "#[allow(unused_imports)]".to_string(),
-                format!("pub use {}::*;", mod_name),
+                format!("pub use self::{}::*;", mod_name),
             ]);
         }
     }

@@ -17,7 +17,6 @@ use crate::{
     gpu_renderer::GpuInstanceManager,
     hl_gfx_api::HLCommandBuffer,
     resources::{MeshManager, PipelineHandle, PipelineManager},
-    tmp_shader_data::shader_shader_family,
     RenderContext,
 };
 
@@ -46,19 +45,6 @@ impl TmpRenderPass {
             rate: VertexAttributeRate::Instance,
         });
 
-        // let vertex_layout = VertexLayout {
-        //     attributes: vec![VertexLayoutAttribute {
-        //         format: Format::R32_UINT,
-        //         buffer_index: 0,
-        //         location: 0,
-        //         byte_offset: 0,
-        //     }],
-        //     buffers: vec![VertexLayoutBuffer {
-        //         stride: 4,
-        //         rate: VertexAttributeRate::Instance,
-        //     }],
-        // };
-
         let depth_state = DepthState {
             depth_test_enable: true,
             depth_write_enable: true,
@@ -77,7 +63,11 @@ impl TmpRenderPass {
         };
 
         let pipeline_handle = pipeline_manager.register_pipeline(
-            CGenShaderKey::make(shader_shader_family::ID, shader_shader_family::NONE),
+            cgen::CRATE_ID,
+            CGenShaderKey::make(
+                cgen::shader::default_shader::ID,
+                cgen::shader::default_shader::NONE,
+            ),
             move |device_context, shader| {
                 device_context
                     .create_graphics_pipeline(&GraphicsPipelineDef {

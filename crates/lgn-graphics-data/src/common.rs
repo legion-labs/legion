@@ -51,7 +51,7 @@ fn calc_mip_chain(
     let pixel_size = if format == TextureFormat::BC4 { 1 } else { 4 };
     let stride = width * pixel_size;
 
-    let surface = intel_tex::RgbaSurface {
+    let surface = ispc_tex::RgbaSurface {
         data: rgba,
         width,
         height,
@@ -59,8 +59,8 @@ fn calc_mip_chain(
     };
 
     mip_chain.push(match format {
-        TextureFormat::BC1 => intel_tex::bc1::compress_blocks(&surface),
-        TextureFormat::BC3 => intel_tex::bc3::compress_blocks(&surface),
+        TextureFormat::BC1 => ispc_tex::bc1::compress_blocks(&surface),
+        TextureFormat::BC3 => ispc_tex::bc3::compress_blocks(&surface),
         #[allow(unsafe_code)]
         TextureFormat::BC4 => unsafe {
             tbc::encode_image_bc4_r8_conv_u8(
@@ -74,9 +74,9 @@ fn calc_mip_chain(
         },
         TextureFormat::BC7 => {
             if alpha_blended {
-                intel_tex::bc7::compress_blocks(&intel_tex::bc7::opaque_basic_settings(), &surface)
+                ispc_tex::bc7::compress_blocks(&ispc_tex::bc7::opaque_basic_settings(), &surface)
             } else {
-                intel_tex::bc7::compress_blocks(&intel_tex::bc7::alpha_basic_settings(), &surface)
+                ispc_tex::bc7::compress_blocks(&ispc_tex::bc7::alpha_basic_settings(), &surface)
             }
         }
     });
@@ -132,7 +132,7 @@ pub fn rgba_from_source(
     color_channels: ColorChannels,
     data: &Vec<u8>,
 ) -> Vec<u8> {
-    // TODO - Replace when switching BC4 encoder to intel_tex
+    // TODO - Replace when switching BC4 encoder to ispc_tex
     if color_channels == ColorChannels::R {
         data.clone()
     } else {

@@ -114,18 +114,13 @@ export default buildContextMenu<ContextMenuEntryRecord>();
 ```
 -->
 <script lang="ts">
+  import { fade } from "svelte/transition";
   import clickOutside from "../actions/clickOutside";
   import { remToPx } from "../lib/html";
   import { sleep } from "../lib/promises";
   import { Position } from "../lib/types";
   import ContextMenuStore from "../stores/contextMenu";
   import { buildCustomEvent, Entry, ItemEntry } from "../types/contextMenu";
-
-  type State =
-    | { type: "hidden" }
-    | { type: "appearing"; position: Position }
-    | { type: "disappearing"; position: Position }
-    | { type: "shown"; position: Position };
 
   const entryHeightRem = 2.5;
 
@@ -139,15 +134,18 @@ export default buildContextMenu<ContextMenuEntryRecord>();
 
   const widthPx = remToPx(widthRem) as number;
 
+  const fadeDuration = 100;
+
   const defaultEntries: Entry[] = [
     { action: "help", type: "item", label: "Help" },
     { action: "about", type: "item", label: "About" },
   ];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  export let store: ContextMenuStore<any>;
+  export let store: ContextMenuStore<Record<string, Entry[]>>;
 
-  let state: State = { type: "hidden" };
+  // Position is null when the context menu is closed
+  let position: Position | null = null;
 
   let currentEntries: Entry[] = [];
 
@@ -187,19 +185,6 @@ export default buildContextMenu<ContextMenuEntryRecord>();
   }
 
   async function handleDefaultContextMenu(event: MouseEvent) {
-    // Do not do anything when right clicking inside a context menu element
-    if (
-      state.type !== "hidden" &&
-      contextMenu &&
-      event.target instanceof Node &&
-      contextMenu.contains(event.target)
-    ) {
-      event.preventDefault();
-      event.stopPropagation();
-
-      return;
-    }
-
     // In dev mode `Ctrl + Right Click` will open the default
     // context menu for dev purpose.
     if (import.meta.env.DEV && event.ctrlKey) {
@@ -209,28 +194,27 @@ export default buildContextMenu<ContextMenuEntryRecord>();
     event.preventDefault();
     event.stopPropagation();
 
-    let position = computePositionFrom(event, defaultEntries);
+    // Do not do anything when right clicking inside a context menu element
+    if (
+      position &&
+      contextMenu &&
+      event.target instanceof Node &&
+      contextMenu.contains(event.target)
+    ) {
+      return;
+    }
 
-    // First we "close" the current context menu if it's open
-    if ("position" in state) {
-      await close();
+    if (position) {
+      close();
+
+      await sleep(fadeDuration + 16);
     }
 
     currentEntries = defaultEntries;
 
     entrySetName = null;
 
-    state = {
-      type: "appearing",
-      position,
-    };
-
-    await sleep(50);
-
-    state = {
-      type: "shown",
-      position: state.position,
-    };
+    position = computePositionFrom(event, defaultEntries);
   }
 
   async function handleCustomContextMenu(
@@ -248,46 +232,21 @@ export default buildContextMenu<ContextMenuEntryRecord>();
     event.preventDefault();
     event.stopPropagation();
 
-    const newCurrentEntries =
-      ($store && $store[event.detail.name]) || defaultEntries;
+    if (position) {
+      close();
 
-    let position = computePositionFrom(
-      event.detail.originalEvent,
-      newCurrentEntries
-    );
-
-    // First we "close" the current context menu if it's open
-    if ("position" in state) {
-      await close();
+      await sleep(fadeDuration + 16);
     }
 
-    currentEntries = newCurrentEntries;
+    currentEntries = ($store && $store[event.detail.name]) || defaultEntries;
 
     entrySetName = event.detail.name;
 
-    state = {
-      type: "appearing",
-      position,
-    };
-
-    await sleep(50);
-
-    state = {
-      type: "shown",
-      position: state.position,
-    };
+    position = computePositionFrom(event.detail.originalEvent, currentEntries);
   }
 
-  async function close() {
-    if (!("position" in state)) {
-      return;
-    }
-
-    state = { type: "disappearing", position: state.position };
-
-    await sleep(50);
-
-    state = { type: "hidden" };
+  function close() {
+    position = null;
   }
 
   function dispatchContextMenuActionEvent(entry: ItemEntry) {
@@ -304,37 +263,36 @@ export default buildContextMenu<ContextMenuEntryRecord>();
   on:custom-contextmenu={handleCustomContextMenu}
 />
 
-<div
-  class="root"
-  class:opacity-100={state.type === "shown"}
-  class:opacity-0={state.type === "disappearing" || state.type === "appearing"}
-  class:block={state.type === "appearing" ||
-    state.type === "shown" ||
-    state.type === "disappearing"}
-  class:hidden={state.type === "hidden"}
-  style={"position" in state
-    ? `width: ${widthRem}rem; top: ${state.position.y}px; left: ${state.position.x}px;`
-    : `width: ${widthRem}rem;`}
-  on:click-outside={close}
-  use:clickOutside={contextMenu && [contextMenu]}
-  bind:this={contextMenu}
->
-  <div class="entries">
-    {#each currentEntries as entry, index (index)}
-      {#if entry.type === "item"}
-        <div
-          class="item"
-          class:danger={entry.tag === "danger"}
-          on:mouseup={() => dispatchContextMenuActionEvent(entry)}
-        >
-          {entry.label}
-        </div>
-      {:else if entry.type === "separator"}
-        <div class="separator" />
-      {/if}
-    {/each}
+{#if position}
+  <div
+    class="root"
+    style={position
+      ? `width: ${widthRem}rem; top: ${position.y}px; left: ${position.x}px;`
+      : `width: ${widthRem}rem;`}
+    bind:this={contextMenu}
+    on:click-outside={(event) => {
+      event.detail.originalEvent.button !== 2 && close();
+    }}
+    use:clickOutside={contextMenu && [contextMenu]}
+    transition:fade={{ duration: fadeDuration }}
+  >
+    <div class="entries">
+      {#each currentEntries as entry, index (index)}
+        {#if entry.type === "item"}
+          <div
+            class="item"
+            class:danger={entry.tag === "danger"}
+            on:click={() => dispatchContextMenuActionEvent(entry)}
+          >
+            {entry.label}
+          </div>
+        {:else if entry.type === "separator"}
+          <div class="separator" />
+        {/if}
+      {/each}
+    </div>
   </div>
-</div>
+{/if}
 
 <style lang="postcss">
   .root {

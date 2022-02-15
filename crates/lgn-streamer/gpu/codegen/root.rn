@@ -15,6 +15,17 @@ pub fn main() {
             type: "PipelineLayout",
             name: "RGB2YUVPipelineLayout",
             descriptor_sets: [ "RGB2YUVDescriptorSet" ]
+        },
+        #{
+            type: "Shader",
+            name: "RGB2YUVShader",
+            path: "shaders/rgb2yuv.hlsl",
+            pipeline_layout: "RGB2YUVPipelineLayout",
+            instances: [
+                #{
+                    stages: [ "CS" ]
+                }                
+            ]
         }
     ]
 }

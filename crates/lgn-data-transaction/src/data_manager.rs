@@ -130,6 +130,7 @@ impl DataManager {
         let project = self.project.lock().await;
         let mut resource_registry = self.resource_registry.lock().await;
         let mut resource_handles = self.loaded_resource_handles.lock().await;
+        let png_type = ResourceType::new(b"png");
 
         for resource_id in project.resource_list().await {
             let (kind, _, _) = project.resource_info(resource_id).unwrap();
@@ -137,6 +138,13 @@ impl DataManager {
                 kind,
                 id: resource_id,
             };
+
+            // hack, skip png
+            if kind == png_type {
+                continue;
+            }
+
+            let start = std::time::Instant::now();
             project
                 .load_resource(type_id, &mut resource_registry)
                 .map_or_else(
@@ -145,6 +153,15 @@ impl DataManager {
                     },
                     |handle| resource_handles.insert(type_id, handle),
                 );
+
+            info!(
+                "Loaded resource {} {:?} in ({:?})",
+                resource_id,
+                resource_registry
+                    .get_resource_type_name(kind)
+                    .unwrap_or("unknown"),
+                start.elapsed(),
+            );
         }
         info!(
             "Loaded all Project resources: {} resources loaded",

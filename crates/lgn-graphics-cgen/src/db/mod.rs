@@ -1,20 +1,17 @@
 mod model;
-pub use model::{Model, ModelHandle, ModelObject};
+pub(crate) use model::*;
 
 mod types;
-pub use types::{build_type_graph, CGenType, CGenTypeHandle, NativeType, StructMember, StructType};
+pub(crate) use types::*;
 
 mod descriptor_set;
-pub use descriptor_set::{
-    ConstantBufferDef, Descriptor, DescriptorDef, DescriptorSet, DescriptorSetHandle,
-    StructuredBufferDef, TextureDef,
-};
+pub(crate) use descriptor_set::*;
 
 mod pipeline_layout;
-pub use pipeline_layout::{PipelineLayout, PipelineLayoutHandle};
+pub(crate) use pipeline_layout::*;
 
-mod builder;
-pub use builder::*;
+mod shader;
+pub(crate) use shader::*;
 
 pub fn create() -> Model {
     let mut model = Model::new();

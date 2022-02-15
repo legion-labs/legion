@@ -77,7 +77,7 @@
   }
 
   .tab-inactive {
-    @apply relative bg-gray-500 bg-opacity-20 hover:bg-gray-700 hover:border-orange-700 text-white;
+    @apply relative bg-gray-500 bg-opacity-20 hover:bg-gray-700 hover:border-orange-700 text-white transition-colors;
   }
 
   .tab-active {

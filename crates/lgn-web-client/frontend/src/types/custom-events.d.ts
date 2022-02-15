@@ -14,7 +14,7 @@ declare type ContextMenuActionDetail<
 declare namespace svelte.JSX {
   interface DOMAttributes<T> {
     "onclick-outside"?: (
-      event: CustomEvent<undefined> & {
+      event: CustomEvent<{ originalEvent: MouseEvent }> & {
         target: EventTarget & T;
       }
     ) => void;
