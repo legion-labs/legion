@@ -1,5 +1,6 @@
 #![allow(unsafe_code)]
 
+use lgn_ecs::prelude::Entity;
 use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::{
     BlendState, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState,
@@ -12,9 +13,10 @@ use lgn_tracing::span_fn;
 
 use crate::{
     cgen,
-    components::{RenderSurface, StaticMesh},
+    components::{RenderSurface, VisualComponent},
+    gpu_renderer::GpuInstanceManager,
     hl_gfx_api::HLCommandBuffer,
-    resources::{PipelineHandle, PipelineManager},
+    resources::{MeshManager, PipelineHandle, PipelineManager},
     tmp_shader_data::shader_shader_family,
     RenderContext,
 };
@@ -115,13 +117,14 @@ impl TmpRenderPass {
 
     #[span_fn]
     #[allow(clippy::too_many_arguments)]
-    pub fn render(
+    pub(crate) fn render(
         &self,
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
-
+        mesh_manager: &MeshManager,
+        instance_manager: &GpuInstanceManager,
         render_surface: &mut RenderSurface,
-        static_meshes: &[&StaticMesh],
+        static_meshes: &[(Entity, &VisualComponent)],
     ) {
         let pipeline = render_context
             .pipeline_manager()
@@ -154,8 +157,13 @@ impl TmpRenderPass {
         cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
         cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
 
-        for (_index, static_mesh) in static_meshes.iter().enumerate() {
-            cmd_buffer.draw_instanced(static_mesh.num_vertices, 0, 1, static_mesh.gpu_instance_id);
+        for (_index, (entity, static_mesh)) in static_meshes.iter().enumerate() {
+            for (gpu_instance_id, _) in instance_manager.id_va_list(*entity) {
+                let num_vertices = mesh_manager
+                    .mesh_from_id(static_mesh.mesh_id as u32)
+                    .num_vertices() as u32;
+                cmd_buffer.draw_instanced(num_vertices, 0, 1, *gpu_instance_id);
+            }
         }
 
         cmd_buffer.end_render_pass();

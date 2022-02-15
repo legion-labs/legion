@@ -2,10 +2,7 @@ use lgn_ecs::prelude::Commands;
 use lgn_math::{Mat3, Mat4, Quat, Vec2, Vec3};
 use lgn_transform::components::Transform;
 
-use crate::{
-    components::CameraComponent,
-    resources::{DefaultMeshType, MeshManager},
-};
+use crate::{components::CameraComponent, resources::DefaultMeshType};
 
 use super::{new_world_point_for_cursor, ManipulatorPart, ManipulatorType, PickingIdContext};
 
@@ -41,7 +38,6 @@ impl RotationManipulator {
     pub(super) fn add_manipulator_parts(
         &mut self,
         commands: &mut Commands<'_, '_>,
-        mesh_manager: &MeshManager,
         picking_context: &mut PickingIdContext<'_>,
     ) {
         let rotate_x_pointer =
@@ -63,7 +59,6 @@ impl RotationManipulator {
                 DefaultMeshType::RotationRing,
                 commands,
                 picking_context,
-                mesh_manager,
             ),
             ManipulatorPart::new(
                 green,
@@ -74,7 +69,6 @@ impl RotationManipulator {
                 DefaultMeshType::RotationRing,
                 commands,
                 picking_context,
-                mesh_manager,
             ),
             ManipulatorPart::new(
                 blue,
@@ -85,7 +79,6 @@ impl RotationManipulator {
                 DefaultMeshType::RotationRing,
                 commands,
                 picking_context,
-                mesh_manager,
             ),
         ];
     }

@@ -2,14 +2,11 @@ use std::{fs::File, io, path::Path};
 
 use lgn_app::{App, Plugin};
 use lgn_ecs::prelude::{Commands, Res};
-use lgn_renderer::{
-    components::StaticMesh,
-    resources::{GpuUniformData, GpuUniformDataContext},
-};
+use lgn_renderer::components::VisualComponent;
 use lgn_transform::components::{GlobalTransform, Transform};
 use png::OutputInfo;
 
-use super::{DefaultMeshType, MeshManager};
+use super::DefaultMeshType;
 
 #[derive(Default)]
 pub struct MetaCubePlugin {
@@ -33,13 +30,8 @@ impl Plugin for MetaCubePlugin {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn init_stress_test(
-    commands: Commands<'_, '_>,
-    uniform_data: Res<'_, GpuUniformData>,
-    mesh_manager: Res<'_, MeshManager>,
-    meta_cube: Res<'_, MetaCubeResource>,
-) {
-    meta_cube.initialize(commands, uniform_data, &mesh_manager);
+fn init_stress_test(commands: Commands<'_, '_>, meta_cube: Res<'_, MetaCubeResource>) {
+    meta_cube.initialize(commands);
 }
 
 #[derive(Debug, PartialEq)]
@@ -71,14 +63,7 @@ impl MetaCubeResource {
     }
 
     #[allow(clippy::cast_precision_loss)]
-    fn initialize(
-        &self,
-        mut commands: Commands<'_, '_>,
-        uniform_data: Res<'_, GpuUniformData>,
-        mesh_manager: &MeshManager,
-    ) {
-        let mut data_context = GpuUniformDataContext::new(&uniform_data);
-
+    fn initialize(&self, mut commands: Commands<'_, '_>) {
         let ref_path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests")
             .join("refs")
@@ -107,12 +92,9 @@ impl MetaCubeResource {
                             z as f32 * 2.0,
                         ))
                         .insert(GlobalTransform::identity())
-                        .insert(StaticMesh::from_default_meshes(
-                            mesh_manager,
+                        .insert(VisualComponent::new(
                             DefaultMeshType::Cube as usize,
                             (r, g, b).into(),
-                            None,
-                            &mut data_context,
                         ));
                 }
             }

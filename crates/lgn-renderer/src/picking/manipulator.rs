@@ -5,8 +5,8 @@ use lgn_math::{Mat4, Quat, Vec2, Vec3, Vec4, Vec4Swizzles};
 use lgn_transform::prelude::{GlobalTransform, Transform};
 
 use crate::{
-    components::{CameraComponent, ManipulatorComponent, StaticMesh},
-    resources::{DefaultMeshType, MeshManager},
+    components::{CameraComponent, ManipulatorComponent, VisualComponent},
+    resources::DefaultMeshType,
 };
 
 use super::{
@@ -65,17 +65,12 @@ impl ManipulatorPart {
         mesh_id: DefaultMeshType,
         commands: &mut Commands<'_, '_>,
         picking_context: &mut PickingIdContext<'_>,
-        mesh_manager: &MeshManager,
     ) -> Self {
         let mut entity_commands = commands.spawn();
         let entity = entity_commands
             .insert(transform)
             .insert(GlobalTransform::identity())
-            .insert(StaticMesh::new_cpu_only(
-                color,
-                mesh_id as usize,
-                mesh_manager,
-            ))
+            .insert(VisualComponent::new(mesh_id as usize, color))
             .id();
 
         entity_commands.insert(ManipulatorComponent {
@@ -212,7 +207,6 @@ impl ManipulatorManager {
     pub fn initialize(
         &mut self,
         mut commands: Commands<'_, '_>,
-        mesh_manager: Res<'_, MeshManager>,
         picking_manager: Res<'_, PickingManager>,
     ) {
         let mut inner = self.inner.lock().unwrap();
@@ -220,15 +214,15 @@ impl ManipulatorManager {
 
         inner
             .position
-            .add_manipulator_parts(&mut commands, &mesh_manager, &mut picking_context);
+            .add_manipulator_parts(&mut commands, &mut picking_context);
 
         inner
             .rotation
-            .add_manipulator_parts(&mut commands, &mesh_manager, &mut picking_context);
+            .add_manipulator_parts(&mut commands, &mut picking_context);
 
         inner
             .scale
-            .add_manipulator_parts(&mut commands, &mesh_manager, &mut picking_context);
+            .add_manipulator_parts(&mut commands, &mut picking_context);
     }
 
     pub fn current_manipulator_type(&self) -> ManipulatorType {
