@@ -121,6 +121,7 @@ pub async fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathNa
                     | runtime_data::Mesh::TYPE
                     | lgn_graphics_data::runtime_texture::Texture::TYPE
                     | lgn_graphics_data::runtime::Material::TYPE
+                    | lgn_graphics_data::runtime_mesh::Mesh::TYPE
             )
         };
 
