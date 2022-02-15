@@ -4311,6 +4311,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-content-store2"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "aws-config",
+ "aws-sdk-s3",
+ "base64",
+ "blake3",
+ "byteorder",
+ "bytes",
+ "pin-project",
+ "sha2 0.10.1",
+ "smallvec",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+]
+
+[[package]]
 name = "lgn-core"
 version = "0.1.0"
 dependencies = [
