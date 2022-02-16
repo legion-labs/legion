@@ -34,7 +34,6 @@ sample-data = { path = "../../tests/sample-data", version = "0.1.0", features = 
     "runtime",
 ] }
 
-rand = "0.8"
 serde_json = "1.0"
 tokio = { version = "1.13", features = [
     "macros",

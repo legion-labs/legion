@@ -207,9 +207,10 @@ async fn create_offline_data(
         "e93151b6-3635-4a30-9f3e-e6052929d85a",
         ScriptType::Rune,
         "/scene/pad_right_script",
-        r#"const MOUSE_DELTA_SCALE = 200.0;
+        r#"
+const MOUSE_DELTA_SCALE = 200.0;
 
-pub fn move_right_paddle(entity, events) {
+pub fn update(entity, events) {
     let delta_x = events.mouse_motion.x / MOUSE_DELTA_SCALE;
     entity.transform.translation.y += delta_x;
     entity.transform.translation.clamp_y(-2.0, 2.0);
@@ -249,7 +250,7 @@ pub fn move_right_paddle(entity, events) {
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
             script_type: ScriptType::Rune,
             input_values: vec!["{entity}".to_string(), "{events}".to_string()],
-            entry_fn: "move_right_paddle".to_string(),
+            entry_fn: "update".to_string(),
             script_id: Some(pad_right_script),
             temp_script: "".to_string(),
         });
@@ -277,9 +278,10 @@ pub fn move_right_paddle(entity, events) {
         "968c4926-ae75-4955-81c8-7b7e395d0d3b",
         ScriptType::Rune,
         "/scene/pad_left_script",
-        r#"const MOUSE_DELTA_SCALE = 200.0;
+        r#"
+const MOUSE_DELTA_SCALE = 200.0;
 
-pub fn move_left_paddle(entity, events) {
+pub fn update(entity, events) {
     let delta_x = events.mouse_motion.x / MOUSE_DELTA_SCALE;
     entity.transform.translation.y -= delta_x;
     entity.transform.translation.clamp_y(-2.0, 2.0);
@@ -319,7 +321,7 @@ pub fn move_left_paddle(entity, events) {
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
             script_type: ScriptType::Rune,
             input_values: vec!["{entity}".to_string(), "{events}".to_string()],
-            entry_fn: "move_left_paddle".to_string(),
+            entry_fn: "update".to_string(),
             script_id: Some(pad_left_script),
             temp_script: "".to_string(),
         });
@@ -341,6 +343,63 @@ pub fn move_left_paddle(entity, events) {
     };
 
     // ball
+    let ball_script = build_script(
+        project,
+        resource_registry,
+        "6ec6db36-6d09-4bb2-b9a8-b85c25e5b2c0",
+        ScriptType::Rune,
+        "/scene/ball_script",
+        r#"
+use lgn_math::{normalize2, random};
+
+const VELOCITY = 0.7;
+
+struct Vec2 {
+    x,
+    y,
+}
+
+pub fn update(entity, last_result) {
+    let ball_direction = if last_result is unit {
+        let v = Vec2 {
+            x: random() - 0.5,
+            y: random() - 0.5,
+        };
+        if let (vx, vy) = normalize2(v.x, v.y) {
+            v.x = vx * 0.1;
+            v.y = vy * 0.1;
+        }
+        v
+    } else {
+        last_result
+    };
+
+    let position = entity.transform.translation;
+
+    if position.x < -3.0 || position.x > 3.0 {
+        ball_direction.x = -ball_direction.x;
+    }
+    if position.y < -2.0 || position.y > 2.0 {
+        ball_direction.y = -ball_direction.y;
+    }
+
+    position.clamp_x(-3.0, 3.0);
+    position.clamp_y(-2.0, 2.0);
+
+    // check for collision with paddles (dimensions = 0.2 x 1.0 x 0.2)
+    // Note: x-axis is inverted so values decrease towards the right
+    let new_position = Vec2 {
+        x: position.x + VELOCITY * ball_direction.x,
+        y: position.y + VELOCITY * ball_direction.y,
+    };
+
+    position.x += VELOCITY * ball_direction.x;
+    position.y += VELOCITY * ball_direction.y;
+
+    ball_direction
+}"#,
+    )
+    .await;
     let ball_path_id = {
         let mut resources = resource_registry.lock().await;
         let id = ResourceTypeAndId {
@@ -370,6 +429,15 @@ pub fn move_left_paddle(entity, events) {
                 color: (255, 16, 64).into(),
                 mesh: None,
             }));
+
+        let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
+            script_type: ScriptType::Rune,
+            input_values: vec!["{entity}".to_string(), "{result}".to_string()],
+            entry_fn: "update".to_string(),
+            script_id: Some(ball_script),
+            temp_script: "".to_string(),
+        });
+        entity.components.push(script_component);
 
         project
             .add_resource_with_id(
