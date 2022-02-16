@@ -4943,6 +4943,7 @@ dependencies = [
  "lgn-transform",
  "memoffset 0.6.5",
  "mun_runtime",
+ "rand 0.8.4",
  "rhai",
  "rune",
  "rune-modules",
@@ -6917,7 +6918,6 @@ dependencies = [
  "lgn-renderer",
  "lgn-telemetry-sink",
  "lgn-transform",
- "rand 0.8.4",
  "runtime-srv",
 ]
 
@@ -6941,7 +6941,6 @@ dependencies = [
  "lgn-math",
  "lgn-scripting",
  "lgn-telemetry-sink",
- "rand 0.8.4",
  "sample-data",
  "serde_json",
  "tokio",

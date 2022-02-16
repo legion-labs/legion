@@ -1,0 +1,4 @@
+{
+  "script": "\nuse lgn_math::get_random_f32;\n\nconst VELOCITY = 0.7;\n\nstruct Vec2 {\n    x,\n    y,\n}\n\npub fn update(entity, last_result) {\n    let ball_direction = if last_result is unit {\n        Vec2 {\n            x: get_random_f32() - 0.5,\n            y: get_random_f32() - 0.5,\n        }\n    } else {\n        last_result\n    };\n    let ball_pos = entity.transform.translation;\n    ball_direction\n}",
+  "script_type": "Rune"
+}

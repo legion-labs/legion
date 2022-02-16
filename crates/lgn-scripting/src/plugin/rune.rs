@@ -187,7 +187,7 @@ fn make_scripting_module() -> Result<Module, ContextError> {
 
     module.ty::<Events>()?;
     module.field_fn(Protocol::GET, "mouse_motion", |events: &Events| unsafe {
-        Vec2Ref::new(&(*events.0).mouse_motion.delta)
+        Vec2::new(&(*events.0).mouse_motion.delta)
     })?;
 
     Ok(module)
@@ -242,16 +242,16 @@ fn make_transform_module() -> Result<Module, ContextError> {
     module.field_fn(
         Protocol::GET,
         "translation",
-        |transform: &Transform| unsafe { Vec3Mut::new(&mut (*transform.0).translation) },
+        |transform: &Transform| unsafe { Vec3::new(&mut (*transform.0).translation) },
     )?;
 
     Ok(module)
 }
 
 #[derive(Any)]
-struct Vec2Ref(*const lgn_math::Vec2);
+struct Vec2(*const lgn_math::Vec2);
 
-impl Vec2Ref {
+impl Vec2 {
     #[allow(clippy::trivially_copy_pass_by_ref)]
     fn new(vec: &lgn_math::Vec2) -> Self {
         Self(vec as *const lgn_math::Vec2)
@@ -266,48 +266,10 @@ impl Vec2Ref {
     }
 }
 
-// #[derive(Any)]
-// struct Vec2Mut(*mut lgn_math::Vec2);
-
-// impl Vec2Mut {
-//     fn new(vec: &mut lgn_math::Vec2) -> Self {
-//         Self(vec as *mut lgn_math::Vec2)
-//     }
-//
-//     fn get(&self) -> &lgn_math::Vec2 {
-//         unsafe { &*self.0 }
-//     }
-
-//     fn get_mut(&mut self) -> &mut lgn_math::Vec2 {
-//         unsafe { &mut *self.0 }
-//     }
-//
-//     fn display(&self, buf: &mut String) -> fmt::Result {
-//         write!(buf, "{}", self.get())
-//     }
-// }
-
-// #[derive(Any)]
-// struct Vec3Ref(*const lgn_math::Vec3);
-
-// impl Vec3Ref {
-//     fn new(vec: &lgn_math::Vec3) -> Self {
-//         Self(vec as *const lgn_math::Vec3)
-//     }
-//
-//     fn get(&self) -> &lgn_math::Vec3 {
-//         unsafe { &*self.0 }
-//     }
-//
-//     fn display(&self, buf: &mut String) -> fmt::Result {
-//         write!(buf, "{}", self.get())
-//     }
-// }
-
 #[derive(Any)]
-struct Vec3Mut(*mut lgn_math::Vec3);
+struct Vec3(*mut lgn_math::Vec3);
 
-impl Vec3Mut {
+impl Vec3 {
     fn new(vec: &mut lgn_math::Vec3) -> Self {
         Self(vec as *mut lgn_math::Vec3)
     }
@@ -340,138 +302,71 @@ impl Vec3Mut {
     }
 }
 
+fn get_random_f32() -> f32 {
+    rand::random::<f32>()
+}
+
 fn make_math_module() -> Result<Module, ContextError> {
     let mut module = Module::with_crate("lgn_math");
 
-    module.ty::<Vec2Ref>()?;
-    module.inst_fn(Protocol::STRING_DISPLAY, Vec2Ref::display)?;
-    module.field_fn(Protocol::GET, "x", |v: &Vec2Ref| v.get().x)?;
-    module.field_fn(Protocol::GET, "y", |v: &Vec2Ref| v.get().y)?;
+    module.function(&["get_random_f32"], get_random_f32)?;
 
-    // module.ty::<Vec2Mut>()?;
-    // module.inst_fn(Protocol::STRING_DISPLAY, Vec2Mut::display)?;
-    // module.field_fn(Protocol::GET, "x", |v: &Vec2Mut| v.get().x)?;
-    // module.field_fn(Protocol::SET, "x", |v: &mut Vec2Mut, x: f32| {
-    //     v.get_mut().x = x;
-    // })?;
-    // module.field_fn(
-    //     Protocol::ADD_ASSIGN,
-    //     "x",
-    //     |v: &mut Vec2Mut, x: f32| {
-    //         v.get_mut().x += x;
-    //     },
-    // )?;
-    // module.field_fn(
-    //     Protocol::SUB_ASSIGN,
-    //     "x",
-    //     |v: &mut Vec2Mut, x: f32| {
-    //         v.get_mut().x -= x;
-    //     },
-    // )?;
-    // module.field_fn(
-    //     Protocol::MUL_ASSIGN,
-    //     "x",
-    //     |v: &mut Vec2Mut, x: f32| {
-    //         v.get_mut().x *= x;
-    //     },
-    // )?;
-    // module.field_fn(
-    //     Protocol::DIV_ASSIGN,
-    //     "x",
-    //     |v: &mut Vec2Mut, x: f32| {
-    //         v.get_mut().x /= x;
-    //     },
-    // )?;
-    // module.field_fn(Protocol::GET, "y", |v: &Vec2Mut| v.get().y)?;
-    // module.field_fn(Protocol::SET, "y", |v: &mut Vec2Mut, y: f32| {
-    //     v.get_mut().y = y;
-    // })?;
-    // module.field_fn(
-    //     Protocol::ADD_ASSIGN,
-    //     "y",
-    //     |v: &mut Vec2Mut, y: f32| {
-    //         v.get_mut().y += y;
-    //     },
-    // )?;
-    // module.field_fn(
-    //     Protocol::SUB_ASSIGN,
-    //     "y",
-    //     |v: &mut Vec2Mut, y: f32| {
-    //         v.get_mut().y -= y;
-    //     },
-    // )?;
-    // module.field_fn(
-    //     Protocol::MUL_ASSIGN,
-    //     "y",
-    //     |v: &mut Vec2Mut, y: f32| {
-    //         v.get_mut().y *= y;
-    //     },
-    // )?;
-    // module.field_fn(
-    //     Protocol::DIV_ASSIGN,
-    //     "y",
-    //     |v: &mut Vec2Mut, y: f32| {
-    //         v.get_mut().y /= y;
-    //     },
-    // )?;
+    module.ty::<Vec2>()?;
+    module.inst_fn(Protocol::STRING_DISPLAY, Vec2::display)?;
+    module.field_fn(Protocol::GET, "x", |v: &Vec2| v.get().x)?;
+    module.field_fn(Protocol::GET, "y", |v: &Vec2| v.get().y)?;
 
-    // module.ty::<Vec3Ref>()?;
-    // module.inst_fn(Protocol::STRING_DISPLAY, Vec3Ref::display)?;
-    // module.field_fn(Protocol::GET, "x", |v: &Vec3Ref| v.get().x)?;
-    // module.field_fn(Protocol::GET, "y", |v: &Vec3Ref| v.get().y)?;
-    // module.field_fn(Protocol::GET, "z", |v: &Vec3Ref| v.get().z)?;
-
-    module.ty::<Vec3Mut>()?;
-    module.inst_fn(Protocol::STRING_DISPLAY, Vec3Mut::display)?;
-    module.inst_fn("clamp_x", Vec3Mut::clamp_x)?;
-    module.inst_fn("clamp_y", Vec3Mut::clamp_y)?;
-    module.inst_fn("clamp_z", Vec3Mut::clamp_z)?;
-    module.field_fn(Protocol::GET, "x", |v: &Vec3Mut| v.get().x)?;
-    module.field_fn(Protocol::SET, "x", |v: &mut Vec3Mut, x: f32| {
+    module.ty::<Vec3>()?;
+    module.inst_fn(Protocol::STRING_DISPLAY, Vec3::display)?;
+    module.inst_fn("clamp_x", Vec3::clamp_x)?;
+    module.inst_fn("clamp_y", Vec3::clamp_y)?;
+    module.inst_fn("clamp_z", Vec3::clamp_z)?;
+    module.field_fn(Protocol::GET, "x", |v: &Vec3| v.get().x)?;
+    module.field_fn(Protocol::SET, "x", |v: &mut Vec3, x: f32| {
         v.get_mut().x = x;
     })?;
-    module.field_fn(Protocol::ADD_ASSIGN, "x", |v: &mut Vec3Mut, x: f32| {
+    module.field_fn(Protocol::ADD_ASSIGN, "x", |v: &mut Vec3, x: f32| {
         v.get_mut().x += x;
     })?;
-    module.field_fn(Protocol::SUB_ASSIGN, "x", |v: &mut Vec3Mut, x: f32| {
+    module.field_fn(Protocol::SUB_ASSIGN, "x", |v: &mut Vec3, x: f32| {
         v.get_mut().x -= x;
     })?;
-    module.field_fn(Protocol::MUL_ASSIGN, "x", |v: &mut Vec3Mut, x: f32| {
+    module.field_fn(Protocol::MUL_ASSIGN, "x", |v: &mut Vec3, x: f32| {
         v.get_mut().x *= x;
     })?;
-    module.field_fn(Protocol::DIV_ASSIGN, "x", |v: &mut Vec3Mut, x: f32| {
+    module.field_fn(Protocol::DIV_ASSIGN, "x", |v: &mut Vec3, x: f32| {
         v.get_mut().x /= x;
     })?;
-    module.field_fn(Protocol::GET, "y", |v: &Vec3Mut| v.get().y)?;
-    module.field_fn(Protocol::SET, "y", |v: &mut Vec3Mut, y: f32| {
+    module.field_fn(Protocol::GET, "y", |v: &Vec3| v.get().y)?;
+    module.field_fn(Protocol::SET, "y", |v: &mut Vec3, y: f32| {
         v.get_mut().y = y;
     })?;
-    module.field_fn(Protocol::ADD_ASSIGN, "y", |v: &mut Vec3Mut, y: f32| {
+    module.field_fn(Protocol::ADD_ASSIGN, "y", |v: &mut Vec3, y: f32| {
         v.get_mut().y += y;
     })?;
-    module.field_fn(Protocol::SUB_ASSIGN, "y", |v: &mut Vec3Mut, y: f32| {
+    module.field_fn(Protocol::SUB_ASSIGN, "y", |v: &mut Vec3, y: f32| {
         v.get_mut().y -= y;
     })?;
-    module.field_fn(Protocol::MUL_ASSIGN, "y", |v: &mut Vec3Mut, y: f32| {
+    module.field_fn(Protocol::MUL_ASSIGN, "y", |v: &mut Vec3, y: f32| {
         v.get_mut().y *= y;
     })?;
-    module.field_fn(Protocol::DIV_ASSIGN, "y", |v: &mut Vec3Mut, y: f32| {
+    module.field_fn(Protocol::DIV_ASSIGN, "y", |v: &mut Vec3, y: f32| {
         v.get_mut().y /= y;
     })?;
-    module.field_fn(Protocol::GET, "z", |v: &Vec3Mut| v.get().z)?;
-    module.field_fn(Protocol::SET, "z", |v: &mut Vec3Mut, z: f32| {
+    module.field_fn(Protocol::GET, "z", |v: &Vec3| v.get().z)?;
+    module.field_fn(Protocol::SET, "z", |v: &mut Vec3, z: f32| {
         v.get_mut().z = z;
     })?;
-    module.field_fn(Protocol::ADD_ASSIGN, "z", |v: &mut Vec3Mut, z: f32| {
+    module.field_fn(Protocol::ADD_ASSIGN, "z", |v: &mut Vec3, z: f32| {
         v.get_mut().z += z;
     })?;
-    module.field_fn(Protocol::SUB_ASSIGN, "z", |v: &mut Vec3Mut, z: f32| {
+    module.field_fn(Protocol::SUB_ASSIGN, "z", |v: &mut Vec3, z: f32| {
         v.get_mut().z -= z;
     })?;
-    module.field_fn(Protocol::MUL_ASSIGN, "z", |v: &mut Vec3Mut, z: f32| {
+    module.field_fn(Protocol::MUL_ASSIGN, "z", |v: &mut Vec3, z: f32| {
         v.get_mut().z *= z;
     })?;
-    module.field_fn(Protocol::DIV_ASSIGN, "z", |v: &mut Vec3Mut, z: f32| {
+    module.field_fn(Protocol::DIV_ASSIGN, "z", |v: &mut Vec3, z: f32| {
         v.get_mut().z /= z;
     })?;
 

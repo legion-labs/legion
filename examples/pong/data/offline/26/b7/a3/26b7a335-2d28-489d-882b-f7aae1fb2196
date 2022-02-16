@@ -32,6 +32,18 @@
         "mesh": null,
         "mesh_id": "Sphere"
       }
+    },
+    {
+      "ScriptComponent": {
+        "entry_fn": "update",
+        "input_values": [
+          "{entity}",
+          "{result}"
+        ],
+        "script_id": "(45307156cdfef705,6ec6db36-6d09-4bb2-b9a8-b85c25e5b2c0)|17bed132bc803773",
+        "script_type": "Rune",
+        "temp_script": ""
+      }
     }
   ]
 }
