@@ -38,7 +38,7 @@ pub async fn get_process_metrics_time_range(
             max_ticks = std::cmp::max(max_ticks, block_end);
         }
     }
-    let inv_tsc_frequency = 1000.0 / process.tsc_frequency as f64;
+    let inv_tsc_frequency = get_process_tick_length_ms(&process);
     Ok((
         min_ticks as f64 * inv_tsc_frequency,
         max_ticks as f64 * inv_tsc_frequency,
@@ -113,7 +113,7 @@ impl MetricHandler {
     ) -> Result<ProcessMetricManifestReply> {
         let mut sql = self.pool.acquire().await?;
         let process = find_process(&mut sql, process_id).await?;
-        let inv_tsc_frequency = 1000.0 / process.tsc_frequency as f64;
+        let inv_tsc_frequency = get_process_tick_length_ms(&process);
         let mut blocks = vec![];
         for stream in find_process_metrics_streams(&mut sql, process_id).await? {
             for block in find_stream_blocks(&mut sql, &stream.stream_id).await? {
@@ -228,7 +228,7 @@ impl MetricHandler {
         block_item: MetricBlockItem,
         params: MetricRequestParams,
     ) -> Result<MetricBlockData> {
-        let inv_tsc_frequency = 1000.0 / params.tsc_frequency as f64;
+        let inv_tsc_frequency = get_tsc_frequency_inverse_ms(params.tsc_frequency as u64);
         let mut metric_block_data = MetricBlockData {
             block_id: block_item.block_id.clone(),
             lod: 0,
