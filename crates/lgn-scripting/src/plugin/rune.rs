@@ -111,7 +111,7 @@ fn tick(world: &mut World) {
                 .unwrap();
 
             for input in &script.input_args {
-                if input == "{self}" {
+                if input == "{entity}" {
                     let entity = Entity::new(world_ptr, entity);
                     args.push(entity.to_value().unwrap());
                 } else if input == "{events}" {

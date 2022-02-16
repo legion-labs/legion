@@ -23,7 +23,6 @@ lgn-transform = { path = "../lgn-transform", version = "0.1.0" }
 bincode = "1.3"
 erased-serde = "0.3.12"
 lazy_static = "1.4"
-#lifetime = "0.1"
 memoffset = "0.6"
 mun_runtime = "0.3.0"
 rune = "0.10.3"
