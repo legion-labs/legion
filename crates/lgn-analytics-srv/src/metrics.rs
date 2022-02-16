@@ -1,6 +1,3 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
 use anyhow::Ok;
 use anyhow::Result;
 use lgn_analytics::find_stream;
@@ -18,6 +15,8 @@ use lgn_telemetry_proto::analytics::MetricRequestParams;
 use lgn_telemetry_proto::analytics::ProcessMetricManifestReply;
 use lgn_telemetry_proto::analytics::ProcessMetricReply;
 use lgn_tracing_transit::prelude::*;
+use std::collections::HashMap;
+use std::sync::Arc;
 use xxhash_rust::const_xxh32::xxh32 as const_xxh32;
 
 use crate::cache::DiskCache;
@@ -46,39 +45,26 @@ pub async fn get_process_metrics_time_range(
     ))
 }
 
-fn decimate_from_source(source: MetricBlockData, lod: u32) -> MetricBlockData {
-    let time_ticks = source.points.iter().map(|x| x.time_ms).collect::<Vec<_>>();
-    let min_tick = time_ticks
-        .iter()
-        .min_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap();
-    let max_tick = time_ticks
-        .iter()
-        .max_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap();
-    let time_span = max_tick - min_tick;
-
-    let min_ticks = 2000;
-    let max_ticks = source.points.len();
-    let ticks_count = max_ticks as u32 / (lod.pow(2) + 1);
-    let ticks_count = std::cmp::max(min_ticks, ticks_count);
-    let tick_size = time_span / f64::from(ticks_count) as f64;
-
+#[allow(clippy::cast_possible_wrap)]
+fn reduce_lod(source: MetricBlockData, lod: u32) -> MetricBlockData {
+    let merge_threshold = 100.0_f64.powi(lod as i32 - 2) / 10.0;
     let mut points: Vec<MetricDataPoint> = vec![];
-
-    for tick in 0..ticks_count - 1 {
-        let min = f64::from(tick) * tick_size;
-        let max = f64::from(tick + 1) * tick_size;
-        let mut value: f64 = f64::MIN;
-        for point in &source.points {
-            if (point.time_ms >= min && point.time_ms < max) && (value < point.value) {
-                value = point.value;
-            }
+    let mut max = f64::MIN;
+    let mut acc = 0.0;
+    for i in 0..source.points.len() - 1 {
+        let point = &source.points[i];
+        max = f64::max(point.value, max);
+        let next_point = &source.points[i + 1];
+        let delta = next_point.time_ms - point.time_ms;
+        acc += delta;
+        if acc > merge_threshold {
+            points.push(MetricDataPoint {
+                time_ms: point.time_ms,
+                value: max,
+            });
+            max = f64::MIN;
+            acc = 0.0;
         }
-        points.push(MetricDataPoint {
-            value,
-            time_ms: f64::from(tick) * (max - min),
-        });
     }
 
     MetricBlockData {
@@ -227,7 +213,7 @@ impl MetricHandler {
                         )
                         .await?;
                     if lod > 0 {
-                        Ok(decimate_from_source(raw, lod))
+                        Ok(reduce_lod(raw, lod))
                     } else {
                         Ok(raw)
                     }
