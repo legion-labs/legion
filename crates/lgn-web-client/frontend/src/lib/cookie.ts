@@ -1,4 +1,4 @@
-const cookieDomain = "localhost";
+const cookieDomain = window.location.hostname;
 
 /**
  * Fast cookie lookup function
