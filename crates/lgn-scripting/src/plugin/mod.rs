@@ -1,29 +1,29 @@
-//#[cfg(not(feature = "offline"))]
+#[cfg(not(feature = "offline"))]
 use std::sync::Arc;
 
 use lgn_app::prelude::*;
 #[cfg(feature = "offline")]
 use lgn_data_offline::resource::ResourceRegistryOptions;
 use lgn_data_runtime::AssetRegistryOptions;
-//#[cfg(not(feature = "offline"))]
+#[cfg(not(feature = "offline"))]
 use lgn_data_runtime::{AssetRegistry, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
-//#[cfg(not(feature = "offline"))]
+#[cfg(not(feature = "offline"))]
 use lgn_input::mouse::MouseMotion;
-//#[cfg(not(feature = "offline"))]
+#[cfg(not(feature = "offline"))]
 use lgn_math::prelude::*;
 
-//#[cfg(not(feature = "offline"))]
+#[cfg(not(feature = "offline"))]
 use crate::{
     runtime::{Script, ScriptComponent},
     ScriptingStage,
 };
 
-//#[cfg(not(feature = "offline"))]
+#[cfg(not(feature = "offline"))]
 mod mun;
-//#[cfg(not(feature = "offline"))]
+#[cfg(not(feature = "offline"))]
 mod rhai;
-//#[cfg(not(feature = "offline"))]
+#[cfg(not(feature = "offline"))]
 mod rune;
 
 #[derive(Default)]
@@ -35,7 +35,7 @@ impl Plugin for ScriptingPlugin {
         app.add_startup_system(register_resource_types.exclusive_system());
         app.add_startup_system(add_loaders);
 
-        //#[cfg(not(feature = "offline"))]
+        #[cfg(not(feature = "offline"))]
         {
             app.add_stage(ScriptingStage::Compile, SystemStage::parallel());
             app.add_stage_after(
@@ -60,7 +60,7 @@ impl Plugin for ScriptingPlugin {
 }
 
 impl ScriptingPlugin {
-    //#[cfg(not(feature = "offline"))]
+    #[cfg(not(feature = "offline"))]
     pub(crate) fn update_events(
         mut mouse_motion_events: EventReader<'_, '_, MouseMotion>,
         mut cache: ResMut<'_, ScriptingEventCache>,
@@ -74,13 +74,13 @@ impl ScriptingPlugin {
     }
 }
 
-//#[cfg(not(feature = "offline"))]
+#[cfg(not(feature = "offline"))]
 #[derive(Clone)]
 pub struct ScriptingEventCache {
     mouse_motion: MouseMotion,
 }
 
-//#[cfg(not(feature = "offline"))]
+#[cfg(not(feature = "offline"))]
 impl Default for ScriptingEventCache {
     fn default() -> Self {
         Self {
@@ -112,7 +112,7 @@ fn add_loaders(asset_registry: NonSendMut<'_, AssetRegistryOptions>) {
     }
 }
 
-//#[cfg(not(feature = "offline"))]
+#[cfg(not(feature = "offline"))]
 fn get_source_payload<'registry>(
     script: &ScriptComponent,
     registry: &'registry Res<'_, Arc<AssetRegistry>>,
@@ -121,7 +121,7 @@ fn get_source_payload<'registry>(
     get_source_payload_by_id(script_id, registry)
 }
 
-//#[cfg(not(feature = "offline"))]
+#[cfg(not(feature = "offline"))]
 fn get_source_payload_by_id<'registry>(
     script_id: ResourceTypeAndId,
     registry: &'registry Res<'_, Arc<AssetRegistry>>,
