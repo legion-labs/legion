@@ -4,34 +4,13 @@ import log from "./log";
 import getPkce from "oauth-pkce";
 import { invoke } from "@tauri-apps/api";
 
-export type UserInfo = {
-  sub: string;
-  name?: string;
-  given_name?: string;
-  family_name?: string;
-  middle_name?: string;
-  nickname?: string;
-  preferred_username?: string;
-  profile?: string;
-  picture?: string;
-  website?: string;
-  email?: string;
-  email_verified?: "true" | "false";
-  gender?: string;
-  birthdate?: string;
-  zoneinfo?: string;
-  locale?: string;
-  phone_number?: string;
-  phone_number_verified?: "true" | "false";
-  updated_at?: string;
-  // Azure-specific fields.
-  //
-  // This is a merely a convention, but we need one.
-  //
-  // These fields contains the Azure-specific information about the user, which allow us to query
-  // the Azure API for extended user information (like the user's photo).
-  "custom:azure_oid"?: string;
-  "custom:azure_tid"?: string;
+// https://connect2id.com/products/server/docs/api/token#token-response
+export type ClientTokenSet = {
+  [key: string]: unknown;
+  access_token: string;
+  token_type: "Bearer" | "DPoP";
+  expires_in: number;
+  refresh_token?: string;
 };
 
 // https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfig
@@ -93,6 +72,39 @@ class IssuerConfiguration {
   }
 }
 
+export class CookieStorage {
+  accessTokenName: string;
+  refreshTokenName: string;
+
+  constructor({
+    accessTokenName,
+    refreshTokenName,
+  }: { accessTokenName?: string; refreshTokenName?: string } = {}) {
+    this.accessTokenName = accessTokenName || "access_token";
+    this.refreshTokenName = refreshTokenName || "refresh_token";
+  }
+
+  // The refresh token arbitraly last for 1 day by default
+  store(
+    { access_token, expires_in, refresh_token }: ClientTokenSet,
+    refreshTokenExpiresIn = 24 * 60 * 60
+  ) {
+    setCookie(this.accessTokenName, access_token, expires_in);
+
+    if (refresh_token) {
+      setCookie(this.refreshTokenName, refresh_token, refreshTokenExpiresIn);
+    }
+  }
+
+  get accessToken() {
+    return getCookie(this.accessTokenName);
+  }
+
+  get refreshToken() {
+    return getCookie(this.refreshTokenName);
+  }
+}
+
 export type LoginConfig = {
   scopes: [string, ...string[]];
   extraParams?: Record<string, string>;
@@ -104,7 +116,7 @@ export type LoginConfig = {
   };
 };
 
-class Client {
+class Client<UserInfo> {
   protected clientId: string;
   protected issuerConfiguration: IssuerConfiguration;
   protected config: { redirectUri?: string };
@@ -123,7 +135,7 @@ class Client {
     responseType,
     scopes,
     extraParams,
-    redirectUri,
+    redirectUri = this.config.redirectUri,
     pkceChallenge,
   }: {
     responseType: string;
@@ -168,11 +180,8 @@ class Client {
     authorizationUrl.searchParams.set("scope", scopes.join(" "));
 
     // TODO: Check strings length > 0
-    if (redirectUri || this.config.redirectUri) {
-      authorizationUrl.searchParams.set(
-        "redirect_uri",
-        (redirectUri || this.config.redirectUri) as string
-      );
+    if (redirectUri) {
+      authorizationUrl.searchParams.set("redirect_uri", redirectUri);
     }
 
     if (extraParams) {
@@ -185,6 +194,37 @@ class Client {
     }
 
     return authorizationUrl.toString();
+  }
+
+  async exchangeRefreshTokenRequest(
+    refreshToken: string
+  ): Promise<ClientTokenSet> {
+    if (!this.issuerConfiguration.config.token_endpoint) {
+      throw new Error("Token endpoint not specified by provider");
+    }
+
+    const body = new URLSearchParams({
+      grant_type: "refresh_token",
+      client_id: this.clientId,
+      refresh_token: refreshToken,
+    });
+
+    const requestInit: RequestInit = {
+      method: "POST",
+      mode: "cors",
+      body,
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    };
+
+    const response = await fetch(
+      new Request(this.issuerConfiguration.config.token_endpoint, requestInit)
+    );
+
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+
+    return response.json();
   }
 
   async exchangeCode(
@@ -273,8 +313,42 @@ class PkceChallenge {
   }
 }
 
-class LegionClient extends Client {
+// "Userland" - Code related to the Legion applications
+
+export type UserInfo = {
+  sub: string;
+  name?: string;
+  given_name?: string;
+  family_name?: string;
+  middle_name?: string;
+  nickname?: string;
+  preferred_username?: string;
+  profile?: string;
+  picture?: string;
+  website?: string;
+  email?: string;
+  email_verified?: "true" | "false";
+  gender?: string;
+  birthdate?: string;
+  zoneinfo?: string;
+  locale?: string;
+  phone_number?: string;
+  phone_number_verified?: "true" | "false";
+  updated_at?: string;
+  // Azure-specific fields.
+  //
+  // This is a merely a convention, but we need one.
+  //
+  // These fields contains the Azure-specific information about the user, which allow us to query
+  // the Azure API for extended user information (like the user's photo).
+  "custom:azure_oid"?: string;
+  "custom:azure_tid"?: string;
+};
+
+export class LegionClient extends Client<UserInfo> {
   #loginConfig: LoginConfig;
+  #cookieStorage: CookieStorage;
+  #authorizeVerifierStorageKey = "authorize-verifier";
 
   constructor(
     issuerConfiguration: IssuerConfiguration,
@@ -285,36 +359,35 @@ class LegionClient extends Client {
     super(issuerConfiguration, clientId, config);
 
     this.#loginConfig = loginConfig;
+    this.#cookieStorage = new CookieStorage({
+      accessTokenName: this.#loginConfig.cookies?.accessToken,
+      refreshTokenName: this.#loginConfig.cookies?.refreshToken,
+    });
   }
 
   get accessToken() {
-    const cookieName = this.#loginConfig.cookies?.accessToken || "access_token";
-
-    return getCookie(cookieName);
+    return this.#cookieStorage.accessToken;
   }
 
-  async login() {
-    if (window.__TAURI__) {
-      try {
-        await userInfo.run(async () => {
-          const userInfo = (await invoke(
-            "plugin:browser|authenticate"
-          )) as UserInfo;
+  get refreshToken() {
+    return this.#cookieStorage.refreshToken;
+  }
 
-          log.debug("auth", userInfo);
+  get redirectUris() {
+    return {
+      login: this.#loginConfig.redirectUri || this.config.redirectUri,
+    };
+  }
 
-          return userInfo;
-        });
-      } catch {
-        // Nothing we can do about this but warn the user
-        log.error("Couldn't authenticate the user");
-      }
+  async refreshClientTokenSet(): Promise<ClientTokenSet> {
+    if (!this.refreshToken) {
+      throw new Error("Refresh token not found");
     }
 
-    if (this.accessToken) {
-      return;
-    }
+    return this.exchangeRefreshTokenRequest(this.refreshToken);
+  }
 
+  async getAuthorizationUrl() {
     const { challenge, verifier } = await PkceChallenge.newRandomSha256();
 
     const authorizeUrl = authClient.authorizeUrl({
@@ -324,90 +397,53 @@ class LegionClient extends Client {
       pkceChallenge: challenge,
     });
 
-    const popupWindow = window.open(
-      authorizeUrl.toString(),
-      this.#loginConfig.popupTitle,
-      `height=600px, width=600px, status=yes, toolbar=no, menubar=no, location=no, top=${
-        window.innerHeight / 2 - /* config.height */ 600 / 2 + window.screenTop
-      }, left=${
-        window.innerWidth / 2 - /* config.width */ 600 / 2 + window.screenLeft
-      }`
-    );
+    localStorage.setItem(this.#authorizeVerifierStorageKey, verifier);
 
-    if (!popupWindow) {
-      throw new Error("Couldn't open auth popup");
+    return authorizeUrl;
+  }
+
+  async getClientTokenSet(url: URL | string): Promise<ClientTokenSet | null> {
+    if (window.__TAURI__) {
+      return null;
     }
 
-    popupWindow.focus();
+    const parsedUrl = url instanceof URL ? url : new URL(url);
 
-    const code = await new Promise<string>((resolve, reject) => {
-      const intervalId = setInterval(() => {
-        try {
-          const redirectUri =
-            this.#loginConfig.redirectUri || this.config.redirectUri;
+    const searchParams = new URLSearchParams(parsedUrl.search);
 
-          if (!redirectUri) {
-            throw new Error("No redirect uri specified");
-          }
+    const code = searchParams.get("code");
 
-          if (popupWindow.location.origin === new URL(redirectUri).origin) {
-            clearInterval(intervalId);
+    if (!code) {
+      return null;
+    }
 
-            console.log(popupWindow.location);
+    if (!this.redirectUris.login) {
+      throw new Error("No redirect uri specified");
+    }
 
-            const searchParams = new URLSearchParams(
-              popupWindow.location.search
-            );
+    const verifier = localStorage.getItem(this.#authorizeVerifierStorageKey);
 
-            const code = searchParams.get("code");
+    localStorage.removeItem(this.#authorizeVerifierStorageKey);
 
-            if (!code) {
-              throw new Error("Code search param not found in url");
-            }
-
-            popupWindow.close();
-
-            resolve(code);
-          }
-        } catch (error) {
-          clearInterval(intervalId);
-
-          reject(error);
-        }
-      }, 100);
-    });
+    if (!verifier) {
+      throw new Error("Couldn't find verifier in storage");
+    }
 
     const clientTokenSet = await authClient.exchangeCode(code, {
       pkceVerifier: verifier,
     });
 
     if (!clientTokenSet) {
-      return null;
+      throw new Error("No client token set returned by the provider");
     }
 
-    const { access_token, expires_in, refresh_token } = clientTokenSet;
-
-    setCookie(
-      this.#loginConfig.cookies?.accessToken || "access_token",
-      access_token,
-      expires_in
-    );
-
-    if (refresh_token) {
-      setCookie(
-        this.#loginConfig.cookies?.refreshToken || "refresh_token",
-        refresh_token,
-        expires_in
-      );
-    }
-
-    await userInfo.run(() => this.userInfo());
+    return clientTokenSet;
   }
 
   override async userInfo(): Promise<UserInfo> {
     const accessToken = window.__TAURI__
       ? await invoke("plugin:browser|get_access_token")
-      : getCookie(this.#loginConfig.cookies?.accessToken || "access_token");
+      : getCookie(this.#cookieStorage.accessTokenName);
 
     if (!accessToken) {
       throw new Error("Access token not found");
@@ -415,11 +451,21 @@ class LegionClient extends Client {
 
     return super.userInfo(accessToken);
   }
+
+  storeClientTokenSet(clientTokenSet: ClientTokenSet) {
+    this.#cookieStorage.store(clientTokenSet);
+  }
 }
+
+export type InitAuthStatus =
+  // User is authed or could be authed
+  | { type: "success" }
+  // User is
+  | { type: "error"; authorizationUrl: string };
 
 export let authClient: LegionClient;
 
-export async function initAuthClient({
+export async function initAuth({
   issuerUrl,
   clientId,
   redirectUri,
@@ -431,33 +477,108 @@ export async function initAuthClient({
   redirectUri: string;
   loginConfig: LoginConfig;
   force?: boolean;
-}) {
-  if (authClient && !force) {
-    return;
+}): Promise<InitAuthStatus> {
+  // Initialize the auth client
+  if (!authClient || force) {
+    const issuerConfiguration = await IssuerConfiguration.fromString(issuerUrl);
+
+    const client = new LegionClient(
+      issuerConfiguration,
+      clientId,
+      { redirectUri },
+      loginConfig
+    );
+
+    authClient = client;
   }
 
-  const issuerConfiguration = await IssuerConfiguration.fromString(issuerUrl);
+  // Tauri has its own way to deal with auth
+  if (window.__TAURI__) {
+    try {
+      await userInfo.run(async () => {
+        const userInfo = (await invoke(
+          "plugin:browser|authenticate"
+        )) as UserInfo;
 
-  const client = new LegionClient(
-    issuerConfiguration,
-    clientId,
-    { redirectUri },
-    loginConfig
-  );
+        log.debug("auth", userInfo);
 
-  authClient = client;
-}
+        return userInfo;
+      });
+    } catch {
+      // Nothing we can do about this but warn the user
+      log.error("Couldn't authenticate the user");
+    }
 
-/**
- * If the `forceAuth` option is `true` the unauthenticated users
- * will have to log in.
- */
-export async function initAuth({ forceAuth }: { forceAuth: boolean }) {
+    return { type: "success" };
+  }
+
+  // Try to get the code from the url, if present and an error occurs
+  // we assume the user is not logged in properly and must be redirected to the authorize url
   try {
-    await userInfo.run(() => authClient.userInfo());
-  } catch {
-    if (forceAuth) {
-      await authClient.login();
+    const clientTokenSet = await authClient.getClientTokenSet(
+      window.location.href
+    );
+
+    if (clientTokenSet) {
+      window.history.replaceState(
+        null,
+        "Redirection",
+        authClient.redirectUris.login
+      );
+
+      authClient.storeClientTokenSet(clientTokenSet);
+    }
+  } catch (error) {
+    log.warn(
+      log.json`An error occured while trying to get the client token set ${error}`
+    );
+
+    return {
+      type: "error",
+      authorizationUrl: await authClient.getAuthorizationUrl(),
+    };
+  }
+
+  // Normal workflow, no code in the url, we let the application
+  // know that the auth is not done at all
+  if (!authClient.accessToken && !authClient.refreshToken) {
+    return {
+      type: "error",
+      authorizationUrl: await authClient.getAuthorizationUrl(),
+    };
+  }
+
+  // We can silently refresh the client token set if a refresh token is present
+  if (!authClient.accessToken && authClient.refreshToken) {
+    try {
+      authClient.storeClientTokenSet(await authClient.refreshClientTokenSet());
+    } catch (error) {
+      log.warn(
+        log.json`An error occured while trying to refresh the client token set ${error}`
+      );
+
+      return {
+        type: "error",
+        authorizationUrl: await authClient.getAuthorizationUrl(),
+      };
     }
   }
+
+  // Populate the user info store
+  // At that point this request should not fail
+  try {
+    await userInfo.run(() => authClient.userInfo());
+  } catch (error) {
+    log.warn(
+      log.json`An error occured while trying to get the user info ${error}`
+    );
+
+    return {
+      type: "error",
+      authorizationUrl: await authClient.getAuthorizationUrl(),
+    };
+  }
+
+  // All good
+  return { type: "success" };
 }

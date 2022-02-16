@@ -28,7 +28,7 @@ export function getCookie(name: string) {
 export function setCookie(
   name: string,
   value: { toString(): string },
-  maxAge: number
+  maxAge?: number
 ) {
-  document.cookie = `${name}=${value.toString()};domain=${cookieDomain};path=/;max-age=${maxAge};samesite=strict;secure`;
+  document.cookie = `${name}=${value.toString()};domain=${cookieDomain};path=/;max-age=${maxAge};samesite=strict;secure;`;
 }

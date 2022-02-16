@@ -1,22 +1,24 @@
 import { SvelteComponentTyped } from "svelte";
 import { Writable } from "../lib/store";
 
+export type Config<Payload = unknown> = {
+  payload?: Payload;
+  noTransition?: boolean;
+};
+
 export class Content extends SvelteComponentTyped<{
-  close(): void;
-  payload: unknown;
+  close?(): void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  config?: Config<any>;
 }> {}
 
-export type OpenModalEvent<Payload> = CustomEvent<{
-  id: symbol;
-  content: Content;
-  payload?: Payload;
-}>;
-
-export type CloseModalEvent = CustomEvent<{
-  id: symbol;
-}>;
-
-export type Value = Record<symbol, { content: Content; payload?: unknown }>;
+export type Value = Record<
+  symbol,
+  {
+    content: typeof Content;
+    config?: Config;
+  }
+>;
 
 export default class extends Writable<Value> {
   constructor() {
@@ -24,12 +26,15 @@ export default class extends Writable<Value> {
   }
 
   /** Opens a modal with the provided content and payload */
-  open(id: symbol, content: Content, payload?: unknown) {
+  open(id: symbol, content: typeof Content, config?: Config) {
     if (id in this.value) {
       return;
     }
 
-    this.update((modals) => ({ ...modals, [id]: { content, payload } }));
+    this.update((modals) => ({
+      ...modals,
+      [id]: { content, config },
+    }));
   }
 
   /** Closes a modal */

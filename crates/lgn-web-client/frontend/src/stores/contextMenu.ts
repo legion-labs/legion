@@ -1,14 +1,14 @@
 import { Writable } from "../lib/store";
 import { Entry } from "../types/contextMenu";
 
-export default class<
-  EntryRecord extends Record<string, unknown>
-> extends Writable<EntryRecord> {
+export default class<Names extends string> extends Writable<
+  Partial<Record<Names, Entry[]>>
+> {
   constructor() {
-    super({} as EntryRecord);
+    super({});
   }
 
-  register<Name extends keyof EntryRecord>(name: Name, entries: Entry[]): void {
+  register(name: Names, entries: Entry[]): void {
     this.update((entrySets) => ({
       ...entrySets,
       [name]: entries,

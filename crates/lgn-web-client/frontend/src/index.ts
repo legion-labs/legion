@@ -1,10 +1,13 @@
-import { initAuth, initAuthClient, LoginConfig } from "./lib/auth";
+import { initAuth, InitAuthStatus, LoginConfig } from "./lib/auth";
 import log, { Level as LogLevel } from "./lib/log";
 import userInfo from "./stores/userInfo";
+import { SvelteComponentTyped } from "svelte";
+
+export class AppComponent extends SvelteComponentTyped<{
+  initAuthStatus: InitAuthStatus | null;
+}> {}
 
 export type AuthUserConfig = {
-  /** Force authentication on application start */
-  forceAuth: boolean;
   /** The issuer url (i.e. the oauth provider url) */
   issuerUrl: string;
   /** The url to redirect the user to after they're logged in */
@@ -36,11 +39,9 @@ export function getTarget(rootQuerySelector: string) {
   return target;
 }
 
-export type Config<SvelteComponent> = {
+export type Config = {
   /** A Svelte component class */
-  appComponent: new (options: {
-    target: Element | ShadowRoot;
-  }) => SvelteComponent;
+  appComponent: typeof AppComponent;
   /**
    * Enable authentication or not (using `null`).
    *
@@ -61,14 +62,17 @@ export type Config<SvelteComponent> = {
  *
  * If the `forceAuth` option is `true` the unauthenticated users
  * will be redirected to Cognito.
+ *
+ * This function will inject the following props into the provided `appComponent`:
+ * - `initAuthStatus`: can contain an `authorizationUrl` if auth failed. This url must be used to redirect the user.
  */
-export async function run<SvelteComponent>({
-  appComponent: App,
+export async function run({
+  appComponent: AppComponent,
   auth: authConfig,
   rootQuerySelector,
   logLevel,
   onPreInit,
-}: Config<SvelteComponent>): Promise<void> {
+}: Config): Promise<void> {
   onPreInit && (await onPreInit());
 
   const target = getTarget(rootQuerySelector);
@@ -89,23 +93,21 @@ export async function run<SvelteComponent>({
     return;
   }
 
-  if (authConfig) {
-    const { forceAuth, clientId, issuerUrl, redirectUri, login } = authConfig;
+  let initAuthStatus: InitAuthStatus | null = null;
 
-    await initAuthClient({
+  if (authConfig) {
+    const { clientId, issuerUrl, redirectUri, login } = authConfig;
+
+    initAuthStatus = await initAuth({
       clientId,
       issuerUrl,
       redirectUri,
       loginConfig: login,
     });
-
-    await initAuth({
-      forceAuth,
-    });
   }
 
   try {
-    new App({ target });
+    new AppComponent({ target, props: { initAuthStatus } });
   } catch (error) {
     log.error(error);
 

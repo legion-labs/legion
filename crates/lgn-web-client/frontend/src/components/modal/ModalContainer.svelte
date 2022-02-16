@@ -18,19 +18,15 @@ using the `openModal` function provided by the `lib/modal.ts` module) and open u
 </script>
 
 {#each ids as id (id)}
-  {@const { content, payload } = $store[id]}
+  {@const { content, config } = $store[id]}
 
   <div
     class="root"
     class:with-lg-margin={window.__TAURI__}
-    transition:fade={{ duration: 100 }}
+    transition:fade={{ duration: config?.noTransition ? 0 : 100 }}
   >
     <div>
-      <svelte:component
-        this={content}
-        close={() => store.close(id)}
-        {payload}
-      />
+      <svelte:component this={content} close={() => store.close(id)} {config} />
     </div>
   </div>
 {/each}

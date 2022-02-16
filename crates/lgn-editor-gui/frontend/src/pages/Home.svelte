@@ -37,6 +37,9 @@
   import notificationsStore from "@/stores/notifications";
   import { components, join } from "@/lib/path";
   import ResourceFilter from "@/components/resources/ResourceFilter.svelte";
+  import { onMount } from "svelte";
+  import authStatus from "@/stores/authStatus";
+  import AuthModal from "@/components/AuthModal.svelte";
 
   contextMenuStore.register("resource", contextMenuEntries.resourceEntries);
   contextMenuStore.register(
@@ -84,6 +87,15 @@
   }
 
   allResourcesStore.run(getAllResources);
+
+  onMount(() => {
+    if ($authStatus && $authStatus.type === "error") {
+      modalStore.open(Symbol.for("auth-modal"), AuthModal, {
+        payload: $authStatus.authorizationUrl,
+        noTransition: true,
+      });
+    }
+  });
 
   function fetchCurrentResourceDescription() {
     if (!currentResourceDescription) {
@@ -212,11 +224,11 @@
       }
 
       case "new": {
-        modalStore.open(
-          createResourceModalId,
-          CreateResourceModal,
-          entrySetName === "resource" ? currentResourceDescription : null
-        );
+        modalStore.open(createResourceModalId, CreateResourceModal, {
+          payload:
+            entrySetName === "resource" ? currentResourceDescription : null,
+          fullScreen: true,
+        });
       }
 
       default: {
