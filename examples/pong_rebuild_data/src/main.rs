@@ -350,7 +350,7 @@ pub fn update(entity, events) {
         ScriptType::Rune,
         "/scene/ball_script",
         r#"
-use lgn_math::get_random_f32;
+use lgn_math::{normalize2, random};
 
 const VELOCITY = 0.7;
 
@@ -361,14 +361,41 @@ struct Vec2 {
 
 pub fn update(entity, last_result) {
     let ball_direction = if last_result is unit {
-        Vec2 {
-            x: get_random_f32() - 0.5,
-            y: get_random_f32() - 0.5,
+        let v = Vec2 {
+            x: random() - 0.5,
+            y: random() - 0.5,
+        };
+        if let (vx, vy) = normalize2(v.x, v.y) {
+            v.x = vx * 0.1;
+            v.y = vy * 0.1;
         }
+        v
     } else {
         last_result
     };
-    let ball_pos = entity.transform.translation;
+
+    let position = entity.transform.translation;
+
+    if position.x < -3.0 || position.x > 3.0 {
+        ball_direction.x = -ball_direction.x;
+    }
+    if position.y < -2.0 || position.y > 2.0 {
+        ball_direction.y = -ball_direction.y;
+    }
+
+    position.clamp_x(-3.0, 3.0);
+    position.clamp_y(-2.0, 2.0);
+
+    // check for collision with paddles (dimensions = 0.2 x 1.0 x 0.2)
+    // Note: x-axis is inverted so values decrease towards the right
+    let new_position = Vec2 {
+        x: position.x + VELOCITY * ball_direction.x,
+        y: position.y + VELOCITY * ball_direction.y,
+    };
+
+    position.x += VELOCITY * ball_direction.x;
+    position.y += VELOCITY * ball_direction.y;
+
     ball_direction
 }"#,
     )

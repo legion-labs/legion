@@ -52,7 +52,6 @@ fn compile(
     for (entity, script) in rune_scripts {
         let source_payload = get_source_payload(script, &registry);
         let source_payload = str::from_utf8(source_payload).unwrap();
-        info!("script payload: {}", &source_payload);
 
         let mut sources = Sources::new();
         sources.insert(Source::new("entry", &source_payload));
@@ -65,6 +64,7 @@ fn compile(
             .build();
 
         if !diagnostics.is_empty() {
+            info!("script payload: {}", &source_payload);
             let mut writer = StandardStream::stderr(ColorChoice::Always);
             diagnostics.emit(&mut writer, &sources).unwrap();
         }
@@ -266,6 +266,12 @@ impl Vec2 {
     }
 }
 
+fn normalize2(x: f32, y: f32) -> (f32, f32) {
+    let vec = lgn_math::Vec2::new(x, y);
+    let vec = vec.normalize_or_zero();
+    (vec.x, vec.y)
+}
+
 #[derive(Any)]
 struct Vec3(*mut lgn_math::Vec3);
 
@@ -302,14 +308,15 @@ impl Vec3 {
     }
 }
 
-fn get_random_f32() -> f32 {
+fn random() -> f32 {
     rand::random::<f32>()
 }
 
 fn make_math_module() -> Result<Module, ContextError> {
     let mut module = Module::with_crate("lgn_math");
 
-    module.function(&["get_random_f32"], get_random_f32)?;
+    module.function(&["random"], random)?;
+    module.function(&["normalize2"], normalize2)?;
 
     module.ty::<Vec2>()?;
     module.inst_fn(Protocol::STRING_DISPLAY, Vec2::display)?;
