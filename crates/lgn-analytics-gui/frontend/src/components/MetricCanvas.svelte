@@ -1,14 +1,15 @@
 <script lang="ts">
   import { makeGrpcClient } from "@/lib/client";
   import { formatExecutionTime } from "@/lib/format";
-  import { MetricState, MetricStreamer } from "@/lib/MetricStreamer";
-  import { Point } from "@/lib/point";
   import { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
   import * as d3 from "d3";
   import { onDestroy, onMount } from "svelte";
-  import { Unsubscriber, Writable } from "svelte/store";
+  import { get, Unsubscriber, Writable } from "svelte/store";
   import TimeRangeDetails from "./TimeRangeDetails.svelte";
   import log from "@lgn/web-client/src/lib/log";
+  import { Point } from "@/lib/Metric/MetricPoint";
+  import { MetricStreamer } from "@/lib/Metric/MetricStreamer";
+  import { MetricState } from "@/lib/Metric/MetricState";
   export let id: string;
 
   let metricStreamer: MetricStreamer;
@@ -85,24 +86,34 @@
     pixelSizeNs = getPixelSizeNs();
     lod = getLod();
     metricStreamer!.tick(lod, currentMinMs, currentMaxMs);
+    updatePoints(get(metricStore));
   }
 
   async function fetchMetricsAsync() {
     if (!client) {
-      log.error("no client in fetchDataAsync");
+      log.error("no client in fetchMetricsAsync");
       return;
     }
-    const reply = await client.list_process_metrics({ processId: id });
-    totalMinMs = currentMinMs = reply.minTimeMs;
-    totalMaxMs = currentMaxMs = reply.maxTimeMs;
-    metricStreamer = new MetricStreamer(id, getLod(), totalMinMs, totalMaxMs);
+
+    metricStreamer = new MetricStreamer(id);
     metricStore = metricStreamer.metricStore;
     await metricStreamer.initializeAsync();
-    pointSubscription = metricStore.subscribe((metricState) => {
-      points = metricState.filter((m) => m.enabled).map((m) => m.points);
+
+    totalMinMs = currentMinMs = metricStreamer.currentMinMs;
+    totalMaxMs = currentMaxMs = metricStreamer.currentMaxMs;
+
+    pointSubscription = metricStore.subscribe((metricStates) => {
+      updatePoints(metricStates);
       updateChart();
     });
-    updateLod();
+  }
+
+  function updatePoints(states: MetricState[]) {
+    points = states
+      .filter((m) => m.enabled)
+      .map((m) =>
+        Array.from(m.getViewportPoints(currentMinMs, currentMaxMs, lod))
+      );
   }
 
   function createChart() {
@@ -201,21 +212,14 @@
     x.range([0, width]);
 
     const yMax = d3.max(
-      points.flatMap(
-        (newPoints) =>
-          d3.max(
-            newPoints
-              .filter(
-                (newPoints) =>
-                  newPoints.time >= currentMinMs &&
-                  newPoints.time <= currentMaxMs
-              )
-              .map((newPoints) => newPoints.value)
-          ) ?? 0
-      )
+      points.flatMap((p) => d3.max(p.map((point) => point.value)) ?? 0)
     );
 
-    y.range([height, 0]).domain([0, yMax ?? 0]);
+    const yMin = d3.min(
+      points.flatMap((p) => d3.min(p.map((point) => point.value)) ?? 0)
+    );
+
+    y.range([height, 0]).domain([yMin ?? 0, yMax ?? 0]);
 
     draw();
 
@@ -256,7 +260,7 @@
   {#if loading}
     <div>Loading...</div>
   {:else}
-    <div class="grid grid-cols-2">
+    <div class="grid grid-cols-3">
       <div>
         <div><span class="font-bold">Width</span>: {width}</div>
         <div><span class="font-bold"> Main Width</span>: {mainWidth}</div>
@@ -313,18 +317,32 @@
             {brushEnd}
           </li>
         </ul>
-        <br />
+      </div>
+      <div style="font-size:0.8rem">
         {#if metricStreamer}
           <ul>
             {#each $metricStore as ms}
               <li>
                 <input
                   type="checkbox"
-                  id={ms.metricDesc.name + "_select"}
+                  id={ms.name + "_select"}
                   checked={ms.enabled}
-                  on:click={(e) => metricStreamer.switchMetric(ms, e)}
+                  on:click={(e) => metricStreamer.switchMetricFlag(ms, e)}
                 />
-                {ms.metricDesc.name} (unit: {ms.metricDesc.unit})
+                {ms.name} (unit: {ms.unit})<br />
+                {ms.min} _ {ms.max} ({formatExecutionTime(ms.max - ms.min)})<br
+                />
+                {#each Array.from(ms.getViewportBlocks(currentMinMs, currentMaxMs)) as b}
+                  <div style="font-size:0.7rem">
+                    {b.blockId}
+                    {b.minMs.toFixed(0)}
+                    {b.maxMs.toFixed(0)} ({formatExecutionTime(
+                      b.maxMs - b.minMs
+                    )}) ({Array.from(
+                      b.getPoints(currentMinMs, currentMaxMs, lod)
+                    ).length})
+                  </div>
+                {/each}
               </li>
             {/each}
           </ul>

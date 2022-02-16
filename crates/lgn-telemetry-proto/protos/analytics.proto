@@ -19,8 +19,8 @@ service PerformanceAnalytics {
   rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
   rpc search_processes(SearchProcessRequest) returns (ProcessListReply);
   rpc list_stream_blocks(ListStreamBlocksRequest) returns (ListStreamBlocksReply);
-  rpc list_process_metrics(ListProcessMetricsRequest) returns (ProcessMetricsReply);
-  rpc fetch_process_metric(FetchProcessMetricRequest) returns (ProcessMetricReply);
+  rpc list_process_metrics(ListProcessMetricsRequest) returns (ProcessMetricManifestReply);
+  rpc fetch_process_metric(MetricBlockRequest) returns (ProcessMetricReply);
 }
 
 // find_process
