@@ -307,6 +307,21 @@ impl Vec3Mut {
     fn display(&self, buf: &mut String) -> fmt::Result {
         write!(buf, "{}", self.get())
     }
+
+    fn clamp_x(&mut self, min: f32, max: f32) {
+        let v = self.get_mut();
+        v.x = v.x.clamp(min, max);
+    }
+
+    fn clamp_y(&mut self, min: f32, max: f32) {
+        let v = self.get_mut();
+        v.y = v.y.clamp(min, max);
+    }
+
+    fn clamp_z(&mut self, min: f32, max: f32) {
+        let v = self.get_mut();
+        v.z = v.z.clamp(min, max);
+    }
 }
 
 fn make_math_module() -> Result<Module, ContextError> {
@@ -392,6 +407,9 @@ fn make_math_module() -> Result<Module, ContextError> {
 
     module.ty::<Vec3Mut>()?;
     module.inst_fn(Protocol::STRING_DISPLAY, Vec3Mut::display)?;
+    module.inst_fn("clamp_x", Vec3Mut::clamp_x)?;
+    module.inst_fn("clamp_y", Vec3Mut::clamp_y)?;
+    module.inst_fn("clamp_z", Vec3Mut::clamp_z)?;
     module.field_fn(Protocol::GET, "x", |v: &Vec3Mut| v.get().x)?;
     module.field_fn(Protocol::SET, "x", |v: &mut Vec3Mut, x: f32| {
         v.get_mut().x = x;

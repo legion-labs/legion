@@ -210,9 +210,9 @@ async fn create_offline_data(
         r#"const MOUSE_DELTA_SCALE = 200.0;
 
 pub fn move_right_paddle(entity, events) {
-    let delta_x = events.mouse_motion.x;
-    delta_x /= MOUSE_DELTA_SCALE;
-    println!("[Pad right] delta: {}, pos:{}", delta_x, entity.transform.translation);
+    let delta_x = events.mouse_motion.x / MOUSE_DELTA_SCALE;
+    entity.transform.translation.y += delta_x;
+    entity.transform.translation.clamp_y(-2.0, 2.0);
 }"#,
     )
     .await;
@@ -280,9 +280,9 @@ pub fn move_right_paddle(entity, events) {
         r#"const MOUSE_DELTA_SCALE = 200.0;
 
 pub fn move_left_paddle(entity, events) {
-    let delta_x = events.mouse_motion.x;
-    delta_x /= MOUSE_DELTA_SCALE;
-    println!("[Pad left] delta: {}, pos: {}", delta_x, entity.transform.translation);
+    let delta_x = events.mouse_motion.x / MOUSE_DELTA_SCALE;
+    entity.transform.translation.y -= delta_x;
+    entity.transform.translation.clamp_y(-2.0, 2.0);
 }"#,
     )
     .await;
