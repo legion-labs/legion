@@ -7,7 +7,7 @@ use std::{
 
 use lgn_app::prelude::*;
 use lgn_data_runtime::AssetRegistry;
-use lgn_ecs::prelude::*;
+use lgn_ecs::{prelude::*, world::EntityMut};
 use lgn_tracing::prelude::*;
 use rune::{
     runtime::Protocol,
@@ -186,6 +186,11 @@ impl Entity {
     fn new(world: *mut World, entity: lgn_ecs::prelude::Entity) -> Self {
         Self { world, entity }
     }
+
+    fn get_mut(&self) -> EntityMut<'_> {
+        let world = unsafe { &mut *self.world };
+        world.entity_mut(self.entity)
+    }
 }
 
 fn make_ecs_module() -> Result<Module, ContextError> {
@@ -204,10 +209,7 @@ struct Transform(*mut lgn_transform::prelude::Transform);
 
 impl Transform {
     fn new(entity: &Entity) -> Self {
-        let mut entity = unsafe {
-            let world: &mut World = &mut *entity.world;
-            world.entity_mut(entity.entity)
-        };
+        let mut entity = entity.get_mut();
         let transform = entity
             .get_mut::<lgn_transform::prelude::Transform>()
             .unwrap()
