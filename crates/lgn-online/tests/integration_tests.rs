@@ -41,6 +41,13 @@ use tonic::{Request, Response, Status};
 
 struct Service {}
 
+fn get_random_localhost_addr() -> String {
+    match std::net::UdpSocket::bind("127.0.0.1:0") {
+        Ok(stream) => format!("127.0.0.1:{}", stream.local_addr().unwrap().port()),
+        Err(_) => "127.0.0.1:50051".to_string(),
+    }
+}
+
 #[tonic::async_trait]
 impl Echoer for Service {
     async fn echo(&self, request: Request<EchoRequest>) -> Result<Response<EchoResponse>, Status> {
@@ -104,10 +111,11 @@ async fn test_service_multiplexer() -> anyhow::Result<()> {
 
     let server = tonic::transport::Server::builder().add_optional_service(service);
 
-    let addr = "127.0.0.1:50051".parse()?;
+    let addr_str = get_random_localhost_addr();
+    let addr = addr_str.parse()?;
 
-    async fn f() -> anyhow::Result<()> {
-        let client = GrpcClient::new("http://127.0.0.1:50051".parse()?);
+    async fn f(addr_str: &str) -> anyhow::Result<()> {
+        let client = GrpcClient::new(format!("http://{}", addr_str).parse()?);
 
         let authenticator = MockAuthenticator::default();
         let client = AuthenticatedClient::new(client, authenticator);
@@ -163,7 +171,7 @@ async fn test_service_multiplexer() -> anyhow::Result<()> {
 
                 server.serve(addr).await
             } => panic!("server is no longer bound: {}", res.unwrap_err()),
-            res = f() => match res {
+            res = f(&addr_str) => match res {
                 Ok(_) => break,
                 Err(err) => panic!("client execution failed: {}", err),
             },
@@ -180,10 +188,11 @@ async fn test_http2_client_and_server() -> anyhow::Result<()> {
 
     let server = tonic::transport::Server::builder().add_service(echo_service);
 
-    let addr = "127.0.0.1:50051".parse()?;
+    let addr_str = get_random_localhost_addr();
+    let addr = addr_str.parse()?;
 
-    async fn f() -> anyhow::Result<()> {
-        let client = GrpcClient::new("http://127.0.0.1:50051".parse()?);
+    async fn f(addr_str: &str) -> anyhow::Result<()> {
+        let client = GrpcClient::new(format!("http://{}", addr_str).parse()?);
 
         {
             let msg: String = "hello".into();
@@ -216,7 +225,7 @@ async fn test_http2_client_and_server() -> anyhow::Result<()> {
 
                 server.serve(addr).await
             } => panic!("server is no longer bound: {}", res.unwrap_err()),
-            res = f() => match res {
+            res = f(&addr_str) => match res {
                 Ok(_) => break,
                 Err(err) => panic!("client execution failed: {}", err),
             },
@@ -235,10 +244,11 @@ async fn test_http1_client_and_server() -> anyhow::Result<()> {
         .accept_http1(true)
         .add_service(tonic_web::enable(echo_service));
 
-    let addr = "127.0.0.1:50051".parse()?;
+    let addr_str = get_random_localhost_addr();
+    let addr = addr_str.parse()?;
 
-    async fn f() -> anyhow::Result<()> {
-        let client = GrpcWebClient::new("http://127.0.0.1:50051".parse()?);
+    async fn f(addr_str: &str) -> anyhow::Result<()> {
+        let client = GrpcWebClient::new(format!("http://{}", addr_str).parse()?);
 
         {
             let msg: String = "hello".into();
@@ -271,7 +281,7 @@ async fn test_http1_client_and_server() -> anyhow::Result<()> {
 
                 server.serve(addr).await
             } => panic!("server is no longer bound: {}", res.unwrap_err()),
-            res = f() => match res {
+            res = f(&addr_str) => match res {
                 Ok(_) => break,
                 Err(err) => panic!("client execution failed: {}", err),
             },
