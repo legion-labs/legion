@@ -62,18 +62,15 @@ async fn test_small_content_provider() {
 #[ignore]
 #[tokio::test]
 async fn test_aws_s3_provider() {
-    let aws_s3_url = "s3://legionlabs-tests/lgn-content-store/test_aws_s3_provider"
-        .parse()
-        .unwrap();
+    let aws_s3_url = format!(
+        "s3://legionlabs-ci-tests/lgn-content-store/test_aws_s3_provider/{}",
+        uuid::Uuid::new_v4()
+    )
+    .parse()
+    .unwrap();
 
     let provider = AwsS3Provider::new(aws_s3_url).await;
-
     let id = Identifier::new_hash_ref_from_data(b"A");
-
-    provider
-        .delete_content(&id)
-        .await
-        .expect("failed to delete content");
 
     assert_content_not_found!(provider, id);
 
@@ -83,4 +80,9 @@ async fn test_aws_s3_provider() {
     // Another write should yield no error.
     let new_id = assert_write_content!(provider, "A");
     assert_eq!(id, new_id);
+
+    provider
+        .delete_content(&id)
+        .await
+        .expect("failed to delete content");
 }

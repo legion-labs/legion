@@ -26,3 +26,6 @@ tokio-util = { version = "0.6.9", features = ["full"] }
 [features]
 default = ["aws"]
 aws = ["aws-config", "aws-sdk-s3"]
+
+[dev-dependencies]
+uuid = { version = "0.8", features = ["v4"] }
