@@ -359,7 +359,7 @@ fn generate_rust_bitfield(_ctx: &GeneratorContext<'_>, _ty_id: u32, ty: &CGenTyp
 
             let mut hex_value = 1;
             for value in &bf_type.values {
-                writer.add_line(format!("const {:16} = 0x{:08x};", value, hex_value));                
+                writer.add_line(format!("const {:16} = 0x{:08x};", value, hex_value));
                 hex_value <<= 1;
             }
         }
