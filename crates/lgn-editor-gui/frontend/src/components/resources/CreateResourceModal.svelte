@@ -16,8 +16,10 @@
     ResourceDescription,
   } from "@lgn/proto-editor/dist/resource_browser";
   import allResourcesStore from "@/stores/allResources";
-  // import { join } from "@/lib/path";
+  import { join } from "@/lib/path";
   import Field from "../Field.svelte";
+  import log from "@lgn/web-client/src/lib/log";
+  import { Config } from "@lgn/web-client/src/stores/modal";
 
   const createResourceStore = new AsyncStoreOrchestrator();
 
@@ -38,8 +40,7 @@
 
   // We don't get any payload when the user tries to create
   // a resource at the top level
-  // TODO: Switch from const to let to get the payload
-  export const payload: ResourceDescription | null = null;
+  export let config: Config<ResourceDescription | null>;
 
   async function createResource(event: SubmitEvent) {
     event.preventDefault();
@@ -52,9 +53,12 @@
         return;
       }
 
-      // TODO: As soon as the folder-ish resources are supported, uncomment
-      // const path = join([payload.path, $name.value]);
-      const resourcePath = $name.value;
+      const resourcePath = config.payload
+        ? join([config.payload.path, $name.value])
+        : $name.value;
+
+      // TODO: As soon as the folder-ish resources are supported, drop
+      log.info(`New path: ${resourcePath}`);
 
       const resourceType = $type.value.item;
 

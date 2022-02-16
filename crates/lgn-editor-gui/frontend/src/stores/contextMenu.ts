@@ -6,4 +6,4 @@ export type ContextMenuEntryRecord = {
   resourcePanel: { item: null; name: string };
 };
 
-export default new ContextMenuStore<ContextMenuEntryRecord>();
+export default new ContextMenuStore<keyof ContextMenuEntryRecord>();

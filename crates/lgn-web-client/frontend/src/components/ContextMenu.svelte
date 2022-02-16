@@ -142,7 +142,7 @@ export default buildContextMenu<ContextMenuEntryRecord>();
   ];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  export let store: ContextMenuStore<Record<string, Entry[]>>;
+  export let store: ContextMenuStore<string>;
 
   // Position is null when the context menu is closed
   let position: Position | null = null;
