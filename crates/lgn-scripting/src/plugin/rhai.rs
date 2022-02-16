@@ -5,7 +5,7 @@ use lgn_data_runtime::AssetRegistry;
 use lgn_ecs::prelude::*;
 use rhai::Scope;
 
-use crate::{plugin::get_script_payload, runtime::ScriptComponent, ScriptType, ScriptingStage};
+use crate::{plugin::get_source_payload, runtime::ScriptComponent, ScriptType, ScriptingStage};
 
 pub(crate) fn build(app: &mut App) {
     let mut rhai_eng = rhai::Engine::new();
@@ -29,11 +29,11 @@ fn compile(
         .filter(|(_entity, s)| s.script_type == ScriptType::Rhai);
 
     for (entity, script) in rhai_scripts {
-        let script_payload = get_script_payload(script, &registry);
-        let script_payload = std::str::from_utf8(script_payload).unwrap();
-        println!("{}", &script_payload);
+        let source_payload = get_source_payload(script, &registry);
+        let source_payload = std::str::from_utf8(source_payload).unwrap();
+        println!("{}", &source_payload);
 
-        let ast = rhai_eng.compile(script_payload).unwrap();
+        let ast = rhai_eng.compile(source_payload).unwrap();
 
         let script_exec = ScriptExecutionContext {
             ast_index: ast_collection.append(ast),

@@ -18,7 +18,7 @@ use rune::{
 };
 
 use crate::{
-    plugin::get_script_payload, runtime::ScriptComponent, ScriptType, ScriptingEventCache,
+    plugin::get_source_payload, runtime::ScriptComponent, ScriptType, ScriptingEventCache,
     ScriptingStage,
 };
 
@@ -50,12 +50,12 @@ fn compile(
         .filter(|(_entity, s)| s.script_type == ScriptType::Rune);
 
     for (entity, script) in rune_scripts {
-        let script_payload = get_script_payload(script, &registry);
-        let script_payload = str::from_utf8(script_payload).unwrap();
-        info!("script payload: {}", &script_payload);
+        let source_payload = get_source_payload(script, &registry);
+        let source_payload = str::from_utf8(source_payload).unwrap();
+        info!("script payload: {}", &source_payload);
 
         let mut sources = Sources::new();
-        sources.insert(Source::new("entry", &script_payload));
+        sources.insert(Source::new("entry", &source_payload));
 
         let mut diagnostics = Diagnostics::new();
 

@@ -113,20 +113,20 @@ fn add_loaders(asset_registry: NonSendMut<'_, AssetRegistryOptions>) {
 }
 
 #[cfg(not(feature = "offline"))]
-fn get_script_payload<'registry>(
+fn get_source_payload<'registry>(
     script: &ScriptComponent,
     registry: &'registry Res<'_, Arc<AssetRegistry>>,
 ) -> &'registry [u8] {
     let script_id = script.script_id.as_ref().unwrap().id();
-    get_script_payload_by_id(script_id, registry)
+    get_source_payload_by_id(script_id, registry)
 }
 
 #[cfg(not(feature = "offline"))]
-fn get_script_payload_by_id<'registry>(
+fn get_source_payload_by_id<'registry>(
     script_id: ResourceTypeAndId,
     registry: &'registry Res<'_, Arc<AssetRegistry>>,
 ) -> &'registry [u8] {
     let script_untyped = registry.get_untyped(script_id).unwrap();
-    let script_typed = script_untyped.get::<Script>(registry).unwrap();
-    &script_typed.compiled_script
+    let script = script_untyped.get::<Script>(registry).unwrap();
+    &script.compiled_script
 }
