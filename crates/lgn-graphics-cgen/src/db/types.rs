@@ -249,6 +249,11 @@ impl<'mdl> BitFieldBuilder<'mdl> {
         if self.values.contains(value) {
             return Err(anyhow!("Value '{}' already exists", value));
         }
+
+        if self.values.len() >= std::mem::size_of::<u32>() * 8 {
+            return Err(anyhow!("Limit of 32 values has been reached"));
+        }
+
         self.values.insert(value.to_string());
 
         // done
