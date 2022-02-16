@@ -132,13 +132,12 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
     // used by a [RW]ByteAdressBuffer. Mark them as 'sb'.
     for ty in model.object_iter::<CGenType>() {
         match ty.object() {
-            CGenType::Native(_) => (),
+            CGenType::Native(_) | CGenType::BitField(_) => (),
             CGenType::Struct(_) => {
                 if !ty_requirements.used_as_cb_or_sb(ty.id()) {
                     ty_requirements.set_used_as_sb(ty.id());
                 }
             }
-            CGenType::BitField(_) => (),
         }
     }
 
@@ -162,7 +161,7 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
         let id = *id;
         let ty = model.get_from_id::<CGenType>(id).unwrap();
         match ty {
-            CGenType::Native(_) => (),
+            CGenType::Native(_) | CGenType::BitField(_) => (),
             CGenType::Struct(struct_ty) => {
                 text.push_str(&format!("struct {} {{\n", struct_ty.name));
                 for m in &struct_ty.members {
@@ -171,7 +170,6 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
                 }
                 text.push_str("};\n");
             }
-            CGenType::BitField(_) => (),
         }
     }
 
@@ -180,7 +178,7 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
         if ty_requirements.used_as_cb_or_sb(id) {
             let ty = model.get_from_id::<CGenType>(id).unwrap();
             match ty {
-                CGenType::Native(_) => (),
+                CGenType::Native(_) | CGenType::BitField(_) => (),
                 CGenType::Struct(struct_ty) => {
                     text.push_str(&format!("ConstantBuffer<{}> cb_{}; \n", struct_ty.name, id));
                     text.push_str(&format!(
@@ -188,7 +186,6 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
                         struct_ty.name, id
                     ));
                 }
-                CGenType::BitField(_) => (),
             }
         }
     }

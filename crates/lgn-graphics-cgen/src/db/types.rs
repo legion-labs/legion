@@ -100,13 +100,12 @@ impl CGenType {
     pub fn get_type_dependencies(&self) -> HashSet<CGenTypeHandle> {
         let mut set = HashSet::new();
         match self {
-            CGenType::Native(_) => (),
+            CGenType::Native(_) | CGenType::BitField(_) => (),
             CGenType::Struct(struct_ty) => {
                 for mb in &struct_ty.members {
                     set.insert(mb.ty_handle);
                 }
             }
-            CGenType::BitField(_) => (),
         }
         set
     }
@@ -227,7 +226,7 @@ impl<'mdl> StructBuilder<'mdl> {
 }
 
 pub struct BitFieldBuilder<'mdl> {
-    mdl: &'mdl Model,
+    _mdl: &'mdl Model,
     product: BitFieldType,
     values: HashSet<String>,
 }
@@ -235,7 +234,7 @@ pub struct BitFieldBuilder<'mdl> {
 impl<'mdl> BitFieldBuilder<'mdl> {
     pub fn new(mdl: &'mdl Model, name: &str) -> Self {
         BitFieldBuilder {
-            mdl,
+            _mdl: mdl,
             product: BitFieldType::new(name),
             values: HashSet::new(),
         }

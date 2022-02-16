@@ -53,13 +53,7 @@ fn generate_hlsl_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
                 let ty = ty_ref.get(ctx.model);
                 match ty {
                     CGenType::Native(_) => (),
-                    CGenType::Struct(_) => {
-                        writer.add_line(format!(
-                            "#include \"{}\"",
-                            ctx.embedded_fs_path(ty, CGenVariant::Hlsl)
-                        ));
-                    }
-                    CGenType::BitField(_) => {
+                    CGenType::Struct(_) | CGenType::BitField(_) => {
                         writer.add_line(format!(
                             "#include \"{}\"",
                             ctx.embedded_fs_path(ty, CGenVariant::Hlsl)
@@ -85,7 +79,7 @@ fn generate_hlsl_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
     writer.build()
 }
 
-fn generate_hlsl_bitfield<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String {
+fn generate_hlsl_bitfield<'a>(_ctx: &GeneratorContext<'a>, ty: &CGenType) -> String {
     let mut writer = FileWriter::new();
     let bf_type = ty.bitfield_type();
 

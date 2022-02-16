@@ -333,7 +333,7 @@ fn generate_rust_struct(
     writer.build()
 }
 
-fn generate_rust_bitfield(_ctx: &GeneratorContext<'_>, ty_id: u32, ty: &CGenType) -> String {
+fn generate_rust_bitfield(_ctx: &GeneratorContext<'_>, _ty_id: u32, ty: &CGenType) -> String {
     let mut writer = FileWriter::new();
     let bf_type = ty.bitfield_type();
 
