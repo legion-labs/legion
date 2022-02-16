@@ -12,3 +12,10 @@ lgn-online = { path = "../lgn-online", version = "0.1.0" }
 serde_json = "1.0"
 tauri = { version = "1.0.0-rc.3", features = ["api-all"] }
 url = "2.2.2"
+
+[dev-dependencies]
+tokio = { version = "1.13", features = [
+    "macros",
+    "rt-multi-thread",
+    "tracing",
+] }

@@ -346,7 +346,7 @@ export type UserInfo = {
 };
 
 export class LegionClient extends Client<UserInfo> {
-  #loginConfig: LoginConfig;
+  loginConfig: LoginConfig;
   #cookieStorage: CookieStorage;
   #authorizeVerifierStorageKey = "authorize-verifier";
 
@@ -358,10 +358,10 @@ export class LegionClient extends Client<UserInfo> {
   ) {
     super(issuerConfiguration, clientId, config);
 
-    this.#loginConfig = loginConfig;
+    this.loginConfig = loginConfig;
     this.#cookieStorage = new CookieStorage({
-      accessTokenName: this.#loginConfig.cookies?.accessToken,
-      refreshTokenName: this.#loginConfig.cookies?.refreshToken,
+      accessTokenName: this.loginConfig.cookies?.accessToken,
+      refreshTokenName: this.loginConfig.cookies?.refreshToken,
     });
   }
 
@@ -375,7 +375,7 @@ export class LegionClient extends Client<UserInfo> {
 
   get redirectUris() {
     return {
-      login: this.#loginConfig.redirectUri || this.config.redirectUri,
+      login: this.loginConfig.redirectUri || this.config.redirectUri,
     };
   }
 
@@ -392,8 +392,8 @@ export class LegionClient extends Client<UserInfo> {
 
     const authorizeUrl = authClient.authorizeUrl({
       responseType: "code",
-      scopes: this.#loginConfig.scopes,
-      extraParams: this.#loginConfig.extraParams,
+      scopes: this.loginConfig.scopes,
+      extraParams: this.loginConfig.extraParams,
       pkceChallenge: challenge,
     });
 
@@ -403,7 +403,7 @@ export class LegionClient extends Client<UserInfo> {
   }
 
   async getClientTokenSet(url: URL | string): Promise<ClientTokenSet | null> {
-    if (window.__TAURI__) {
+    if (window.__TAURI_METADATA__) {
       return null;
     }
 
@@ -441,7 +441,7 @@ export class LegionClient extends Client<UserInfo> {
   }
 
   override async userInfo(): Promise<UserInfo> {
-    const accessToken = window.__TAURI__
+    const accessToken = window.__TAURI_METADATA__
       ? await invoke("plugin:browser|get_access_token")
       : getCookie(this.#cookieStorage.accessTokenName);
 
@@ -493,12 +493,13 @@ export async function initAuth({
   }
 
   // Tauri has its own way to deal with auth
-  if (window.__TAURI__) {
+  if (window.__TAURI_METADATA__) {
     try {
       await userInfo.run(async () => {
-        const userInfo = (await invoke(
-          "plugin:browser|authenticate"
-        )) as UserInfo;
+        const userInfo = (await invoke("plugin:browser|authenticate", {
+          scopes: authClient.loginConfig.scopes,
+          extraParams: authClient.loginConfig.extraParams,
+        })) as UserInfo;
 
         log.debug("auth", userInfo);
 

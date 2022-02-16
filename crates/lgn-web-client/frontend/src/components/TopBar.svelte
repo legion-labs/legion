@@ -10,7 +10,8 @@
   import BrandLogo from "./BrandLogo.svelte";
   import { onMount } from "svelte";
   import Icon from "@iconify/svelte";
-  import { authClient } from "../lib/auth";
+  import { authClient, UserInfo } from "../lib/auth";
+  import { invoke } from "@tauri-apps/api";
 
   const { data: userInfoData } = userInfo;
 
@@ -25,20 +26,30 @@
   let topBarClose: HTMLDivElement | undefined;
 
   onMount(() => {
-    if (!window.__TAURI__) {
+    if (!window.__TAURI_METADATA__) {
       return;
     }
 
+    function topBarMouseDownListener(event: MouseEvent) {
+      event.detail === 2
+        ? appWindow.toggleMaximize()
+        : appWindow.startDragging();
+    }
+
+    const minimize = appWindow.minimize.bind(appWindow);
+    const toggleMaximize = appWindow.toggleMaximize.bind(appWindow);
+    const close = appWindow.close.bind(appWindow);
+
     topBarHandle?.addEventListener("mousedown", topBarMouseDownListener);
-    topBarMinimize?.addEventListener("click", appWindow.minimize);
-    topBarMaximize?.addEventListener("click", appWindow.toggleMaximize);
-    topBarClose?.addEventListener("click", appWindow.close);
+    topBarMinimize?.addEventListener("click", minimize);
+    topBarMaximize?.addEventListener("click", toggleMaximize);
+    topBarClose?.addEventListener("click", close);
 
     return () => {
       topBarHandle?.removeEventListener("mousedown", topBarMouseDownListener);
-      topBarMinimize?.removeEventListener("click", appWindow.minimize);
-      topBarMaximize?.removeEventListener("click", appWindow.toggleMaximize);
-      topBarClose?.removeEventListener("click", appWindow.close);
+      topBarMinimize?.removeEventListener("click", minimize);
+      topBarMaximize?.removeEventListener("click", toggleMaximize);
+      topBarClose?.removeEventListener("click", close);
     };
   });
 
@@ -60,6 +71,7 @@
 
   function onMenuItemClick(title: string) {
     log.debug("layout:topbar", `Clicked on item ${title}`);
+
     // When a user clicks on a menu dropdown item, we just close the menu for now
     topBarMenu.close();
   }
@@ -71,20 +83,30 @@
   }
 
   async function authenticate() {
+    if (window.__TAURI_METADATA__) {
+      await userInfo.run(async () => {
+        const userInfo = (await invoke("plugin:browser|authenticate", {
+          scopes: authClient.loginConfig.scopes,
+          extraParams: authClient.loginConfig.extraParams,
+        })) as UserInfo;
+
+        log.debug("auth", userInfo);
+
+        return userInfo;
+      });
+
+      return;
+    }
+
     const authorizationUrl = await authClient.getAuthorizationUrl();
 
     if (authorizationUrl) {
       window.location.href = authorizationUrl;
     }
   }
-
-  // Used only in Tauri
-  function topBarMouseDownListener(event: MouseEvent) {
-    event.detail === 2 ? appWindow.toggleMaximize() : appWindow.startDragging();
-  }
 </script>
 
-<div class="root" class:tauri={window.__TAURI__}>
+<div class="root" class:tauri={window.__TAURI_METADATA__}>
   <div use:clickOutside on:click-outside={closeMenu} class="menus">
     <div class="brand" title="Legion Editor">
       <BrandLogo class="brand-logo" />
@@ -103,7 +125,7 @@
         <div
           data-testid="dropdown-{menu.id}"
           class="menu-dropdown"
-          class:tauri={window.__TAURI__}
+          class:tauri={window.__TAURI_METADATA__}
           class:hidden={$topBarMenu !== menu.id}
         >
           <div class="menu-dropdown-items">
@@ -144,7 +166,7 @@
         <Icon icon="ic:baseline-account-circle" />
       {/if}
     </div>
-    {#if window.__TAURI__}
+    {#if window.__TAURI_METADATA__}
       <div class="window-decorations">
         <div class="window-decoration" bind:this={topBarMinimize}>
           <Icon icon="ic:baseline-minimize" />

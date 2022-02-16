@@ -15,4 +15,11 @@ pub enum Error {
     Other(#[from] StdError),
 }
 
+impl Error {
+    #[doc = "Automatically converts an [`std::error::Error`] into an [`Error::Internal`]"]
+    pub fn internal(error: impl std::error::Error) -> Self {
+        Self::Internal(error.to_string())
+    }
+}
+
 pub type Result<T> = std::result::Result<T, Error>;

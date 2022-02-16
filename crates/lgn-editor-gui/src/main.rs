@@ -15,10 +15,17 @@ use lgn_web_client::BrowserPlugin;
 
 mod config;
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     let config = Config::new_from_environment()?;
 
-    let browser_plugin = BrowserPlugin::new(&config.authorization_url, "legion-editor")?;
+    let browser_plugin = BrowserPlugin::new(
+        &config.application_name,
+        &config.issuer_url,
+        &config.client_id,
+        &config.redirect_uri,
+    )
+    .await?;
 
     let builder = tauri::Builder::default()
         .plugin(browser_plugin)

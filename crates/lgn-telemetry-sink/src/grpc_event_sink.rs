@@ -1,4 +1,5 @@
 use lgn_tracing::debug;
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicIsize, Ordering};
 use std::{
     fmt,
@@ -40,20 +41,24 @@ struct StaticApiKey {}
 
 #[async_trait]
 impl Authenticator for StaticApiKey {
-    async fn login(&self) -> lgn_online::authentication::Result<ClientTokenSet> {
+    async fn login(
+        &self,
+        _scopes: &[String],
+        _extra_params: &Option<HashMap<String, String>>,
+    ) -> lgn_online::authentication::Result<ClientTokenSet> {
         Ok(ClientTokenSet {
             access_token: env!("LEGION_TELEMETRY_GRPC_API_KEY").to_owned(),
             refresh_token: None,
-            id_token: String::from(""),
+            id_token: None,
             token_type: String::from("Legion API Key"),
-            expires_in: 0,
+            expires_in: None,
         })
     }
     async fn refresh_login(
         &self,
-        _refresh_token: &str,
+        _refresh_token: String,
     ) -> lgn_online::authentication::Result<ClientTokenSet> {
-        self.login().await
+        self.login(&[], &None).await
     }
     async fn logout(&self) -> lgn_online::authentication::Result<()> {
         Ok(())
@@ -66,7 +71,8 @@ type AuthClientType = TelemetryIngestionClient<
 
 fn connect_grpc_client(uri: Uri) -> AuthClientType {
     let grpc_client = lgn_online::grpc::GrpcClient::new(uri);
-    let auth_client = lgn_online::grpc::AuthenticatedClient::new(grpc_client, StaticApiKey {});
+    let auth_client =
+        lgn_online::grpc::AuthenticatedClient::new(grpc_client, StaticApiKey {}, &Vec::new());
     TelemetryIngestionClient::new(auth_client)
 }
 

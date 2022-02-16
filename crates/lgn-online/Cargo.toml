@@ -36,6 +36,7 @@ lambda_runtime = { git = "https://github.com/legion-labs/aws-lambda-rust-runtime
 lambda_http = { git = "https://github.com/legion-labs/aws-lambda-rust-runtime", branch = "handler-lifefime-fix-v0.4.1" }
 strum = "0.23"
 strum_macros = "0.23"
+openidconnect = "2.2.0"
 
 [build-dependencies]
 tonic-build = "0.6"

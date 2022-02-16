@@ -20,6 +20,8 @@ pub mod sum {
     tonic::include_proto!("sum");
 }
 
+use std::{collections::HashMap, time::Duration};
+
 use async_trait::async_trait;
 use backoff::ExponentialBackoff;
 use echo::{
@@ -77,18 +79,25 @@ struct MockAuthenticator {}
 
 #[async_trait]
 impl Authenticator for MockAuthenticator {
-    async fn login(&self) -> authentication::Result<ClientTokenSet> {
+    async fn login(
+        &self,
+        _scopes: &[String],
+        _extra_params: &Option<HashMap<String, String>>,
+    ) -> authentication::Result<ClientTokenSet> {
         Ok(ClientTokenSet {
-            access_token: "access_token".to_string(),
+            access_token: "access_token".into(),
             refresh_token: None,
-            id_token: "id_token".to_string(),
-            token_type: "token_type".to_string(),
-            expires_in: 123456789,
+            id_token: Some("id_token".into()),
+            token_type: "token_type".into(),
+            expires_in: Some(Duration::new(123456789, 0)),
         })
     }
 
-    async fn refresh_login(&self, _refresh_token: &str) -> authentication::Result<ClientTokenSet> {
-        self.login().await
+    async fn refresh_login(
+        &self,
+        _refresh_token: String,
+    ) -> authentication::Result<ClientTokenSet> {
+        self.login(&[], &None).await
     }
 
     async fn logout(&self) -> authentication::Result<()> {
@@ -118,7 +127,7 @@ async fn test_service_multiplexer() -> anyhow::Result<()> {
         let client = GrpcClient::new(format!("http://{}", addr_str).parse()?);
 
         let authenticator = MockAuthenticator::default();
-        let client = AuthenticatedClient::new(client, authenticator);
+        let client = AuthenticatedClient::new(client, authenticator, &[]);
 
         {
             let msg: String = "hello".into();
