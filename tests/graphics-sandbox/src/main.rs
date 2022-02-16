@@ -2,8 +2,6 @@
 
 #![allow(clippy::needless_pass_by_value)]
 
-use std::path::Path;
-
 use clap::{AppSettings, Parser};
 
 use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin};
@@ -17,10 +15,10 @@ use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlug
 use lgn_presenter_window::component::PresenterWindow;
 use lgn_renderer::{
     components::{
-        LightComponent, LightType, MaterialComponent, RenderSurface, RenderSurfaceCreatedForWindow,
+        LightComponent, LightType, RenderSurface, RenderSurfaceCreatedForWindow,
         RenderSurfaceExtents, VisualComponent,
     },
-    resources::{DefaultMeshType, GpuUniformData, GpuUniformDataContext, PipelineManager},
+    resources::{DefaultMeshType, PipelineManager},
     {Renderer, RendererPlugin},
 };
 use lgn_transform::{
@@ -33,9 +31,6 @@ use sample_data::SampleDataPlugin;
 
 mod meta_cube_test;
 pub(crate) use meta_cube_test::*;
-
-mod texture_loader;
-pub(crate) use texture_loader::*;
 
 struct SnapshotDescriptor {
     setup_name: String,
@@ -118,8 +113,6 @@ fn main() {
             .add_plugin(SampleDataPlugin::default());
     } else if args.setup_name.eq("light_test") {
         app.add_startup_system(init_light_test);
-    } else if args.setup_name.eq("texture_test") {
-        app.add_startup_system(init_texture_scene);
     } else if args.meta_cube_size != 0 {
         app.add_plugin(MetaCubePlugin::new(args.meta_cube_size));
     } else {
@@ -302,49 +295,6 @@ fn init_scene(mut commands: Commands<'_, '_>) {
         .insert(VisualComponent::new(
             DefaultMeshType::Pyramid as usize,
             (0, 0, 255).into(),
-        ));
-
-    // omnidirectional light
-    commands
-        .spawn()
-        .insert(Transform::from_xyz(1.0, 1.0, 0.0))
-        .insert(GlobalTransform::identity())
-        .insert(LightComponent {
-            light_type: LightType::Omnidirectional,
-            radiance: 10.0,
-            color: Vec3::new(0.5, 0.5, 0.5),
-            enabled: true,
-            ..LightComponent::default()
-        });
-}
-
-fn init_texture_scene(mut commands: Commands<'_, '_>, uniform_data: Res<'_, GpuUniformData>) {
-    let mut data_context = GpuUniformDataContext::new(&uniform_data);
-
-    let albedo = load_texture(Path::new("old_brass_albedo"), &mut data_context);
-    let normal = load_texture(Path::new("old_brass_normal"), &mut data_context);
-    let metalness = load_texture(Path::new("old_brass_metalness"), &mut data_context);
-    let roughness = load_texture(Path::new("old_brass_roughness"), &mut data_context);
-
-    let mut material = MaterialComponent::new(&mut data_context);
-    material.albedo_texture = albedo.texture_id();
-    material.normal_texture = normal.texture_id();
-    material.metalness_texture = metalness.texture_id();
-    material.roughness_texture = roughness.texture_id();
-
-    commands.spawn().insert(albedo);
-    commands.spawn().insert(normal);
-    commands.spawn().insert(metalness);
-    commands.spawn().insert(roughness);
-
-    commands
-        .spawn()
-        .insert(Transform::from_xyz(0.0, 0.0, 0.0))
-        .insert(GlobalTransform::identity())
-        .insert(material)
-        .insert(VisualComponent::new(
-            DefaultMeshType::Sphere as usize,
-            (0, 255, 0).into(),
         ));
 
     // omnidirectional light

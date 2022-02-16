@@ -22,10 +22,6 @@ use lgn_data_runtime::{
     ResourceLoadEvent,
 };
 use lgn_ecs::prelude::*;
-use lgn_renderer::{
-    resources::{GpuUniformData, GpuUniformDataContext},
-    EntityToGpuDataIdMap,
-};
 use lgn_tracing::error;
 use loading_states::{AssetLoadingStates, LoadingState};
 use sample_data::runtime as runtime_data;
@@ -134,12 +130,8 @@ impl AssetRegistryPlugin {
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         asset_handles: ResMut<'_, AssetHandles>,
         mut asset_to_entity_map: ResMut<'_, AssetToEntityMap>,
-        mut entity_to_id_map: ResMut<'_, EntityToGpuDataIdMap>,
         mut commands: Commands<'_, '_>,
-        uniform_data: Res<'_, GpuUniformData>,
     ) {
-        let mut data_context = GpuUniformDataContext::new(&uniform_data);
-
         for (asset_id, loading_state) in asset_loading_states.iter_mut() {
             match loading_state {
                 LoadingState::Pending => {
@@ -151,56 +143,42 @@ impl AssetRegistryPlugin {
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
-                            &mut entity_to_id_map,
-                            &mut data_context,
                         ) && !load_ecs_asset::<runtime_data::Instance>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
-                            &mut entity_to_id_map,
-                            &mut data_context,
                         ) && !load_ecs_asset::<lgn_graphics_data::runtime::Material>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
-                            &mut entity_to_id_map,
-                            &mut data_context,
                         ) && !load_ecs_asset::<runtime_data::Mesh>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
-                            &mut entity_to_id_map,
-                            &mut data_context,
                         ) && !load_ecs_asset::<lgn_graphics_data::runtime_texture::Texture>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
-                            &mut entity_to_id_map,
-                            &mut data_context,
                         ) && !load_ecs_asset::<generic_data::runtime::DebugCube>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
-                            &mut entity_to_id_map,
-                            &mut data_context,
                         ) && !load_ecs_asset::<lgn_scripting::runtime::Script>(
                             asset_id,
                             handle,
                             &registry,
                             &mut commands,
                             &mut asset_to_entity_map,
-                            &mut entity_to_id_map,
-                            &mut data_context,
                         ) {
                             error!(
                                 "Unhandled runtime type: {}, asset: {}",
