@@ -1,3 +1,6 @@
+#ifndef BRDF_HSH
+#define BRDF_HSH
+
 #include "crate://lgn-renderer/gpu/cgen_type/material_data.hlsl"
 
 #define PI 3.14159265358979323846
@@ -89,3 +92,5 @@ Lighting DefaultBRDF(float3 N, float3 V, float3 L, float NoL, LightingMaterial m
     
     return lighting;
 }
+
+#endif // BRDF_HSH

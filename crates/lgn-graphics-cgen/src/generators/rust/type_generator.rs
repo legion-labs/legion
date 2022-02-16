@@ -18,6 +18,9 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
                     generate_rust_struct(ctx, ty_ref.id(), ty_ref.object(), ty_layout)
                 })
             }
+            CGenType::BitField(_) => {
+                Some(generate_rust_bitfield(ctx, ty_ref.id(), ty_ref.object()))
+            }
         } {
             products.push(Product::new(
                 CGenVariant::Rust,
@@ -61,6 +64,13 @@ fn generate_rust_struct(
                     has_native_types = true;
                 }
                 CGenType::Struct(e) => {
+                    writer.add_line(format!(
+                        "use super::{}::{};",
+                        e.name.to_snake_case(),
+                        e.name
+                    ));
+                }
+                CGenType::BitField(e) => {
                     writer.add_line(format!(
                         "use super::{}::{};",
                         e.name.to_snake_case(),
@@ -320,5 +330,58 @@ fn generate_rust_struct(
     writer.new_line();
 
     // finalize
+    writer.build()
+}
+
+fn generate_rust_bitfield(_ctx: &GeneratorContext<'_>, _ty_id: u32, ty: &CGenType) -> String {
+    let mut writer = FileWriter::new();
+    let bf_type = ty.bitfield_type();
+
+    {
+        let mut writer = writer.add_block(&["use lgn_graphics_cgen_runtime::{"], &["};"]);
+        writer.add_line("CGenTypeDef,");
+    }
+    writer.new_line();
+    {
+        let mut writer =
+            writer.add_block(&["static TYPE_DEF: CGenTypeDef = CGenTypeDef{"], &["};"]);
+        writer.add_lines(&[
+            format!("name: \"{}\",", bf_type.name),
+            format!("size: std::mem::size_of::<{}>(),", bf_type.name),
+        ]);
+    }
+    writer.new_line();
+    {
+        let mut writer = writer.add_block(&["bitflags::bitflags!{"], &["}"]);
+        {
+            let mut writer =
+                writer.add_block(&[format!("pub struct {} : u32 {{", bf_type.name)], &["}"]);
+
+            writer.add_line(format!("const {:16} = 0x{:08x};", "NONE", 0));
+            let mut hex_value = 1;
+            for value in &bf_type.values {
+                writer.add_line(format!("const {:16} = 0x{:08x};", value, hex_value));
+                hex_value <<= 1;
+            }
+        }
+    }
+    writer.new_line();
+
+    {
+        let mut writer = writer.add_block(&[format!("impl {} {{", bf_type.name)], &["}"]);
+        writer.add_line("pub fn def() -> &'static CGenTypeDef { &TYPE_DEF }");
+    }
+    writer.new_line();
+
+    {
+        let mut writer =
+            writer.add_block(&[format!("impl Default for {} {{", bf_type.name)], &["}"]);
+        {
+            let mut writer = writer.add_block(&["fn default() -> Self {"], &["}"]);
+            writer.add_line("Self::NONE");
+        }
+    }
+    writer.new_line();
+
     writer.build()
 }

@@ -2,6 +2,7 @@ use std::ops::Mul;
 
 use lgn_math::{Mat4, Vec2, Vec3, Vec4};
 
+use crate::cgen;
 use crate::resources::UniformGPUDataUpdater;
 
 pub struct StaticMeshRenderData {
@@ -11,34 +12,6 @@ pub struct StaticMeshRenderData {
     pub tex_coords: Option<Vec<Vec2>>,
     pub indices: Option<Vec<u32>>,
     pub colors: Option<Vec<Vec4>>,
-}
-
-bitflags::bitflags! {
-    pub struct MeshFormat: u32 {
-        const POSITION = 0x0001;
-        const NORMAL = 0x0002;
-        const TANGENT = 0x0004;
-        const TEX_COORD = 0x0008;
-        const INDEX = 0x0010;
-        const COLOR = 0x0020;
-    }
-}
-
-impl Default for MeshFormat {
-    fn default() -> Self {
-        Self::empty()
-    }
-}
-
-#[derive(Default)]
-pub struct MeshInfo {
-    pub format: MeshFormat,
-    pub position_offset: u32,
-    pub normal_offset: u32,
-    pub tangent_offset: u32,
-    pub tex_coord_offset: u32,
-    pub index_offset: u32,
-    pub color_offset: u32,
 }
 
 fn add_vertex_data(vertex_data: &mut Vec<f32>, pos: Vec3, normal_opt: Option<Vec3>) {
@@ -52,25 +25,25 @@ fn add_vertex_data(vertex_data: &mut Vec<f32>, pos: Vec3, normal_opt: Option<Vec
 }
 
 impl StaticMeshRenderData {
-    pub fn get_mesh_format(&self) -> MeshFormat {
-        let mut format = MeshFormat::empty();
+    pub fn get_mesh_attrib_mask(&self) -> cgen::cgen_type::MeshAttribMask {
+        let mut format = cgen::cgen_type::MeshAttribMask::empty();
         if self.positions.is_some() {
-            format |= MeshFormat::POSITION;
+            format |= cgen::cgen_type::MeshAttribMask::POSITION;
         }
         if self.normals.is_some() {
-            format |= MeshFormat::NORMAL;
+            format |= cgen::cgen_type::MeshAttribMask::NORMAL;
         }
         if self.tangents.is_some() {
-            format |= MeshFormat::TANGENT;
+            format |= cgen::cgen_type::MeshAttribMask::TANGENT;
         }
         if self.tex_coords.is_some() {
-            format |= MeshFormat::TEX_COORD;
+            format |= cgen::cgen_type::MeshAttribMask::TEX_COORD;
         }
         if self.indices.is_some() {
-            format |= MeshFormat::INDEX;
+            format |= cgen::cgen_type::MeshAttribMask::INDEX;
         }
         if self.colors.is_some() {
-            format |= MeshFormat::COLOR;
+            format |= cgen::cgen_type::MeshAttribMask::COLOR;
         }
         format
     }
@@ -79,44 +52,42 @@ impl StaticMeshRenderData {
         &self,
         updater: &mut UniformGPUDataUpdater,
         offset: u32,
-    ) -> (u32, MeshInfo) {
-        let mut mesh_info = MeshInfo {
-            format: self.get_mesh_format(),
-            ..MeshInfo::default()
-        };
+    ) -> (u32, cgen::cgen_type::MeshDescription) {
+        let mut mesh_desc = cgen::cgen_type::MeshDescription::default();
+        mesh_desc.set_attrib_mask(self.get_mesh_attrib_mask());
         let mut offset = offset;
 
         if let Some(positions) = &self.positions {
-            mesh_info.position_offset = offset;
+            mesh_desc.set_position_offset(offset.into());
             updater.add_update_jobs(positions, u64::from(offset));
             offset += (std::mem::size_of::<Vec4>() * positions.len()) as u32;
         }
         if let Some(normals) = &self.normals {
-            mesh_info.normal_offset = offset;
+            mesh_desc.set_normal_offset(offset.into());
             updater.add_update_jobs(normals, u64::from(offset));
             offset += (std::mem::size_of::<Vec4>() * normals.len()) as u32;
         }
         if let Some(tangents) = &self.tangents {
-            mesh_info.tangent_offset = offset;
+            mesh_desc.set_tangent_offset(offset.into());
             updater.add_update_jobs(tangents, u64::from(offset));
             offset += (std::mem::size_of::<Vec4>() * tangents.len()) as u32;
         }
         if let Some(tex_coords) = &self.tex_coords {
-            mesh_info.tex_coord_offset = offset;
+            mesh_desc.set_tex_coord_offset(offset.into());
             updater.add_update_jobs(tex_coords, u64::from(offset));
             offset += (std::mem::size_of::<Vec2>() * tex_coords.len()) as u32;
         }
         if let Some(indices) = &self.indices {
-            mesh_info.index_offset = offset;
+            mesh_desc.set_index_offset(offset.into());
             updater.add_update_jobs(indices, u64::from(offset));
             offset += (std::mem::size_of::<u32>() * indices.len()) as u32;
         }
         if let Some(colors) = &self.colors {
-            mesh_info.color_offset = offset;
+            mesh_desc.set_color_offset(offset.into());
             updater.add_update_jobs(colors, u64::from(offset));
             offset += (std::mem::size_of::<Vec4>() * colors.len()) as u32;
         }
-        (offset, mesh_info)
+        (offset, mesh_desc)
     }
 
     pub fn size_in_bytes(&self) -> u32 {

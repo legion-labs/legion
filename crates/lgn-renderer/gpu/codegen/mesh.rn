@@ -1,0 +1,29 @@
+pub fn main() {
+    [
+        #{
+            type: "BitField",
+            name: "MeshAttribMask",
+            values: [
+                "POSITION",
+                "NORMAL",
+                "TANGENT",
+                "TEX_COORD",
+                "INDEX",
+                "COLOR",
+            ]
+        },
+        #{
+            type: "Struct",
+            name: "MeshDescription",
+            fields: [
+                 #{ name:"attrib_mask", ty:"MeshAttribMask" },
+                 #{ name:"position_offset", ty:"Uint1" },
+                 #{ name:"normal_offset", ty:"Uint1" },
+                 #{ name:"tangent_offset", ty:"Uint1" },
+                 #{ name:"tex_coord_offset", ty:"Uint1" },
+                 #{ name:"index_offset", ty:"Uint1" },
+                 #{ name:"color_offset", ty:"Uint1" },                 
+            ]
+        }
+    ]
+}

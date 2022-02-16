@@ -23,6 +23,7 @@ impl CGenType {
                 NativeType::Float4x4 => "float4x4",
             },
             CGenType::Struct(e) => e.name.as_str(),
+            CGenType::BitField(e) => e.name.as_str(),
         };
         type_name
     }

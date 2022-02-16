@@ -104,10 +104,12 @@ fn generate_hlsl_descriptor_set(ctx: &GeneratorContext<'_>, ds: &DescriptorSet) 
                     let ty = ty_ref.get(ctx.model);
                     match ty {
                         crate::db::CGenType::Native(_) => None,
-                        crate::db::CGenType::Struct(_) => Some(format!(
-                            "#include \"{}\"",
-                            ctx.embedded_fs_path(ty, CGenVariant::Hlsl)
-                        )),
+                        crate::db::CGenType::Struct(_) | crate::db::CGenType::BitField(_) => {
+                            Some(format!(
+                                "#include \"{}\"",
+                                ctx.embedded_fs_path(ty, CGenVariant::Hlsl)
+                            ))
+                        }
                     }
                 })
                 .collect::<Vec<_>>();

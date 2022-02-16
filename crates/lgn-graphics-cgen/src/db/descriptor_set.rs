@@ -268,7 +268,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
             .with_context(|| anyhow!("Texture '{}' has an unknown type '{}'", name, fmt))?;
         let fmt_ty = ty_handle.get(self.mdl);
         let valid_type = match fmt_ty {
-            CGenType::Struct(_) => false,
+            CGenType::Struct(_) | CGenType::BitField(_) => false,
             CGenType::Native(e) => matches!(e, NativeType::Float(_)),
         };
         if !valid_type {
