@@ -1,13 +1,15 @@
+#![allow(unsafe_code)]
+
 use std::{
+    fmt::{self, Write},
     str::{self, FromStr},
     sync::Arc,
 };
 
 use lgn_app::prelude::*;
 use lgn_data_runtime::AssetRegistry;
-use lgn_ecs::prelude::*;
+use lgn_ecs::{prelude::*, world::EntityMut};
 use lgn_tracing::prelude::*;
-use lgn_transform::prelude::*;
 use rune::{
     runtime::Protocol,
     termcolor::{ColorChoice, StandardStream},
@@ -16,13 +18,16 @@ use rune::{
 };
 
 use crate::{
-    runtime::{Script, ScriptComponent},
-    ScriptType, ScriptingEventCache, ScriptingStage,
+    plugin::get_source_payload, runtime::ScriptComponent, ScriptType, ScriptingEventCache,
+    ScriptingStage,
 };
 
 pub(crate) fn build(app: &mut App) -> Result<(), ContextError> {
     let mut context = rune_modules::default_context()?;
 
+    context.install(&make_scripting_module()?)?;
+    context.install(&make_ecs_module()?)?;
+    context.install(&make_transform_module()?)?;
     context.install(&make_math_module()?)?;
 
     app.init_non_send_resource::<VMCollection>()
@@ -34,7 +39,7 @@ pub(crate) fn build(app: &mut App) -> Result<(), ContextError> {
 }
 
 fn compile(
-    scripts: Query<'_, '_, (Entity, &ScriptComponent)>,
+    scripts: Query<'_, '_, (lgn_ecs::prelude::Entity, &ScriptComponent)>,
     mut rune_vms: NonSendMut<'_, VMCollection>,
     rune_context: Res<'_, Context>,
     registry: Res<'_, Arc<AssetRegistry>>,
@@ -45,9 +50,8 @@ fn compile(
         .filter(|(_entity, s)| s.script_type == ScriptType::Rune);
 
     for (entity, script) in rune_scripts {
-        let script_untyped = registry.get_untyped(script.script_id.as_ref().unwrap().id());
-        let script_typed = script_untyped.unwrap().get::<Script>(&registry).unwrap();
-        let source_payload = str::from_utf8(&script_typed.compiled_script).unwrap();
+        let source_payload = get_source_payload(script, &registry);
+        let source_payload = str::from_utf8(source_payload).unwrap();
         info!("script payload: {}", &source_payload);
 
         let mut sources = Sources::new();
@@ -90,36 +94,30 @@ fn compile(
 fn tick(world: &mut World) {
     // get all entities with a compiled Rune script
     let scripted_entities = world
-        .query_filtered::<Entity, With<ScriptExecutionContext>>()
+        .query_filtered::<lgn_ecs::prelude::Entity, With<ScriptExecutionContext>>()
         .iter(world)
         .collect::<Vec<_>>();
 
-    let event_cache = world
-        .get_resource::<ScriptingEventCache>()
-        .cloned()
-        .unwrap();
+    let world_ptr = world as *mut World;
+    let event_cache =
+        world.get_resource::<ScriptingEventCache>().unwrap() as *const ScriptingEventCache;
 
     for entity in scripted_entities {
         let mut args: Vec<Value> = Vec::new();
 
         let (script_vm_index, script_entry_fn) = {
-            let mut entity = world.entity_mut(entity);
-            let script = entity.get::<ScriptExecutionContext>().unwrap();
+            let script = world
+                .entity(entity)
+                .get::<ScriptExecutionContext>()
+                .unwrap();
 
             for input in &script.input_args {
-                if input == "mouse_motion.delta" {
-                    let delta = Vec2 {
-                        0: event_cache.mouse_motion.delta,
-                    };
-                    args.push(delta.to_value().unwrap());
-                } else if input == "self.transform.translation" {
-                    let transform = entity.get_mut::<Transform>();
-                    if let Some(transform) = transform {
-                        let translation = Vec3 {
-                            0: transform.translation,
-                        };
-                        args.push(translation.to_value().unwrap());
-                    }
+                if input == "{entity}" {
+                    let entity = Entity::new(world_ptr, entity);
+                    args.push(entity.to_value().unwrap());
+                } else if input == "{events}" {
+                    let events = Events(event_cache);
+                    args.push(events.to_value().unwrap());
                 } else {
                     // default to 64-bit integer
                     let value = i64::from_str(input.as_str()).unwrap();
@@ -166,103 +164,281 @@ impl VMCollection {
 // Rune wrappers for standard types
 
 #[derive(Any)]
-struct Vec2(lgn_math::Vec2);
+struct Events(*const ScriptingEventCache);
+
+fn make_scripting_module() -> Result<Module, ContextError> {
+    let mut module = Module::with_crate("lgn_scripting");
+
+    module.ty::<Events>()?;
+    module.field_fn(Protocol::GET, "mouse_motion", |events: &Events| unsafe {
+        Vec2Ref::new(&(*events.0).mouse_motion.delta)
+    })?;
+
+    Ok(module)
+}
 
 #[derive(Any)]
-struct Vec3(lgn_math::Vec3);
+struct Entity {
+    world: *mut World,
+    entity: lgn_ecs::prelude::Entity,
+}
+
+impl Entity {
+    fn new(world: *mut World, entity: lgn_ecs::prelude::Entity) -> Self {
+        Self { world, entity }
+    }
+
+    fn get_mut(&self) -> EntityMut<'_> {
+        let world = unsafe { &mut *self.world };
+        world.entity_mut(self.entity)
+    }
+}
+
+fn make_ecs_module() -> Result<Module, ContextError> {
+    let mut module = Module::with_crate("lgn_ecs");
+
+    module.ty::<Entity>()?;
+    module.field_fn(Protocol::GET, "transform", |entity: &Entity| {
+        Transform::new(entity)
+    })?;
+
+    Ok(module)
+}
+
+#[derive(Any)]
+struct Transform(*mut lgn_transform::prelude::Transform);
+
+impl Transform {
+    fn new(entity: &Entity) -> Self {
+        let mut entity = entity.get_mut();
+        let transform = entity
+            .get_mut::<lgn_transform::prelude::Transform>()
+            .unwrap()
+            .into_inner();
+        Self(transform as *mut lgn_transform::prelude::Transform)
+    }
+}
+
+fn make_transform_module() -> Result<Module, ContextError> {
+    let mut module = Module::with_crate("lgn_transform");
+
+    module.ty::<Transform>()?;
+    module.field_fn(
+        Protocol::GET,
+        "translation",
+        |transform: &Transform| unsafe { Vec3Mut::new(&mut (*transform.0).translation) },
+    )?;
+
+    Ok(module)
+}
+
+#[derive(Any)]
+struct Vec2Ref(*const lgn_math::Vec2);
+
+impl Vec2Ref {
+    #[allow(clippy::trivially_copy_pass_by_ref)]
+    fn new(vec: &lgn_math::Vec2) -> Self {
+        Self(vec as *const lgn_math::Vec2)
+    }
+
+    fn get(&self) -> &lgn_math::Vec2 {
+        unsafe { &*self.0 }
+    }
+
+    fn display(&self, buf: &mut String) -> fmt::Result {
+        write!(buf, "{}", self.get())
+    }
+}
+
+// #[derive(Any)]
+// struct Vec2Mut(*mut lgn_math::Vec2);
+
+// impl Vec2Mut {
+//     fn new(vec: &mut lgn_math::Vec2) -> Self {
+//         Self(vec as *mut lgn_math::Vec2)
+//     }
+//
+//     fn get(&self) -> &lgn_math::Vec2 {
+//         unsafe { &*self.0 }
+//     }
+
+//     fn get_mut(&mut self) -> &mut lgn_math::Vec2 {
+//         unsafe { &mut *self.0 }
+//     }
+//
+//     fn display(&self, buf: &mut String) -> fmt::Result {
+//         write!(buf, "{}", self.get())
+//     }
+// }
+
+// #[derive(Any)]
+// struct Vec3Ref(*const lgn_math::Vec3);
+
+// impl Vec3Ref {
+//     fn new(vec: &lgn_math::Vec3) -> Self {
+//         Self(vec as *const lgn_math::Vec3)
+//     }
+//
+//     fn get(&self) -> &lgn_math::Vec3 {
+//         unsafe { &*self.0 }
+//     }
+//
+//     fn display(&self, buf: &mut String) -> fmt::Result {
+//         write!(buf, "{}", self.get())
+//     }
+// }
+
+#[derive(Any)]
+struct Vec3Mut(*mut lgn_math::Vec3);
+
+impl Vec3Mut {
+    fn new(vec: &mut lgn_math::Vec3) -> Self {
+        Self(vec as *mut lgn_math::Vec3)
+    }
+
+    fn get(&self) -> &lgn_math::Vec3 {
+        unsafe { &*self.0 }
+    }
+
+    fn get_mut(&mut self) -> &mut lgn_math::Vec3 {
+        unsafe { &mut *self.0 }
+    }
+
+    fn display(&self, buf: &mut String) -> fmt::Result {
+        write!(buf, "{}", self.get())
+    }
+}
 
 fn make_math_module() -> Result<Module, ContextError> {
     let mut module = Module::with_crate("lgn_math");
 
-    // Vec2
-    module.ty::<Vec2>()?;
-    // Vec2.x
-    module.field_fn(Protocol::GET, "x", |v: &Vec2| v.0.x)?;
-    module.field_fn(Protocol::SET, "x", |v: &mut Vec2, x: f32| {
-        v.0.x = x;
-    })?;
-    module.field_fn(Protocol::ADD_ASSIGN, "x", |v: &mut Vec2, x: f32| {
-        v.0.x += x;
-    })?;
-    module.field_fn(Protocol::SUB_ASSIGN, "x", |v: &mut Vec2, x: f32| {
-        v.0.x -= x;
-    })?;
-    module.field_fn(Protocol::MUL_ASSIGN, "x", |v: &mut Vec2, x: f32| {
-        v.0.x *= x;
-    })?;
-    module.field_fn(Protocol::DIV_ASSIGN, "x", |v: &mut Vec2, x: f32| {
-        v.0.x /= x;
-    })?;
-    // Vec2.y
-    module.field_fn(Protocol::GET, "y", |v: &Vec2| v.0.y)?;
-    module.field_fn(Protocol::SET, "y", |v: &mut Vec2, y: f32| {
-        v.0.y = y;
-    })?;
-    module.field_fn(Protocol::ADD_ASSIGN, "y", |v: &mut Vec2, y: f32| {
-        v.0.y += y;
-    })?;
-    module.field_fn(Protocol::SUB_ASSIGN, "y", |v: &mut Vec2, y: f32| {
-        v.0.y -= y;
-    })?;
-    module.field_fn(Protocol::MUL_ASSIGN, "y", |v: &mut Vec2, y: f32| {
-        v.0.y *= y;
-    })?;
-    module.field_fn(Protocol::DIV_ASSIGN, "y", |v: &mut Vec2, y: f32| {
-        v.0.y /= y;
-    })?;
+    module.ty::<Vec2Ref>()?;
+    module.inst_fn(Protocol::STRING_DISPLAY, Vec2Ref::display)?;
+    module.field_fn(Protocol::GET, "x", |v: &Vec2Ref| v.get().x)?;
+    module.field_fn(Protocol::GET, "y", |v: &Vec2Ref| v.get().y)?;
 
-    // Vec3
-    module.ty::<Vec3>()?;
-    // Vec3.x
-    module.field_fn(Protocol::GET, "x", |v: &Vec3| v.0.x)?;
-    module.field_fn(Protocol::SET, "x", |v: &mut Vec3, x: f32| {
-        v.0.x = x;
+    // module.ty::<Vec2Mut>()?;
+    // module.inst_fn(Protocol::STRING_DISPLAY, Vec2Mut::display)?;
+    // module.field_fn(Protocol::GET, "x", |v: &Vec2Mut| v.get().x)?;
+    // module.field_fn(Protocol::SET, "x", |v: &mut Vec2Mut, x: f32| {
+    //     v.get_mut().x = x;
+    // })?;
+    // module.field_fn(
+    //     Protocol::ADD_ASSIGN,
+    //     "x",
+    //     |v: &mut Vec2Mut, x: f32| {
+    //         v.get_mut().x += x;
+    //     },
+    // )?;
+    // module.field_fn(
+    //     Protocol::SUB_ASSIGN,
+    //     "x",
+    //     |v: &mut Vec2Mut, x: f32| {
+    //         v.get_mut().x -= x;
+    //     },
+    // )?;
+    // module.field_fn(
+    //     Protocol::MUL_ASSIGN,
+    //     "x",
+    //     |v: &mut Vec2Mut, x: f32| {
+    //         v.get_mut().x *= x;
+    //     },
+    // )?;
+    // module.field_fn(
+    //     Protocol::DIV_ASSIGN,
+    //     "x",
+    //     |v: &mut Vec2Mut, x: f32| {
+    //         v.get_mut().x /= x;
+    //     },
+    // )?;
+    // module.field_fn(Protocol::GET, "y", |v: &Vec2Mut| v.get().y)?;
+    // module.field_fn(Protocol::SET, "y", |v: &mut Vec2Mut, y: f32| {
+    //     v.get_mut().y = y;
+    // })?;
+    // module.field_fn(
+    //     Protocol::ADD_ASSIGN,
+    //     "y",
+    //     |v: &mut Vec2Mut, y: f32| {
+    //         v.get_mut().y += y;
+    //     },
+    // )?;
+    // module.field_fn(
+    //     Protocol::SUB_ASSIGN,
+    //     "y",
+    //     |v: &mut Vec2Mut, y: f32| {
+    //         v.get_mut().y -= y;
+    //     },
+    // )?;
+    // module.field_fn(
+    //     Protocol::MUL_ASSIGN,
+    //     "y",
+    //     |v: &mut Vec2Mut, y: f32| {
+    //         v.get_mut().y *= y;
+    //     },
+    // )?;
+    // module.field_fn(
+    //     Protocol::DIV_ASSIGN,
+    //     "y",
+    //     |v: &mut Vec2Mut, y: f32| {
+    //         v.get_mut().y /= y;
+    //     },
+    // )?;
+
+    // module.ty::<Vec3Ref>()?;
+    // module.inst_fn(Protocol::STRING_DISPLAY, Vec3Ref::display)?;
+    // module.field_fn(Protocol::GET, "x", |v: &Vec3Ref| v.get().x)?;
+    // module.field_fn(Protocol::GET, "y", |v: &Vec3Ref| v.get().y)?;
+    // module.field_fn(Protocol::GET, "z", |v: &Vec3Ref| v.get().z)?;
+
+    module.ty::<Vec3Mut>()?;
+    module.inst_fn(Protocol::STRING_DISPLAY, Vec3Mut::display)?;
+    module.field_fn(Protocol::GET, "x", |v: &Vec3Mut| v.get().x)?;
+    module.field_fn(Protocol::SET, "x", |v: &mut Vec3Mut, x: f32| {
+        v.get_mut().x = x;
     })?;
-    module.field_fn(Protocol::ADD_ASSIGN, "x", |v: &mut Vec3, x: f32| {
-        v.0.x += x;
+    module.field_fn(Protocol::ADD_ASSIGN, "x", |v: &mut Vec3Mut, x: f32| {
+        v.get_mut().x += x;
     })?;
-    module.field_fn(Protocol::SUB_ASSIGN, "x", |v: &mut Vec3, x: f32| {
-        v.0.x -= x;
+    module.field_fn(Protocol::SUB_ASSIGN, "x", |v: &mut Vec3Mut, x: f32| {
+        v.get_mut().x -= x;
     })?;
-    module.field_fn(Protocol::MUL_ASSIGN, "x", |v: &mut Vec3, x: f32| {
-        v.0.x *= x;
+    module.field_fn(Protocol::MUL_ASSIGN, "x", |v: &mut Vec3Mut, x: f32| {
+        v.get_mut().x *= x;
     })?;
-    module.field_fn(Protocol::DIV_ASSIGN, "x", |v: &mut Vec3, x: f32| {
-        v.0.x /= x;
+    module.field_fn(Protocol::DIV_ASSIGN, "x", |v: &mut Vec3Mut, x: f32| {
+        v.get_mut().x /= x;
     })?;
-    // Vec3.y
-    module.field_fn(Protocol::GET, "y", |v: &Vec3| v.0.y)?;
-    module.field_fn(Protocol::SET, "y", |v: &mut Vec3, y: f32| {
-        v.0.y = y;
+    module.field_fn(Protocol::GET, "y", |v: &Vec3Mut| v.get().y)?;
+    module.field_fn(Protocol::SET, "y", |v: &mut Vec3Mut, y: f32| {
+        v.get_mut().y = y;
     })?;
-    module.field_fn(Protocol::ADD_ASSIGN, "y", |v: &mut Vec3, y: f32| {
-        v.0.y += y;
+    module.field_fn(Protocol::ADD_ASSIGN, "y", |v: &mut Vec3Mut, y: f32| {
+        v.get_mut().y += y;
     })?;
-    module.field_fn(Protocol::SUB_ASSIGN, "y", |v: &mut Vec3, y: f32| {
-        v.0.y -= y;
+    module.field_fn(Protocol::SUB_ASSIGN, "y", |v: &mut Vec3Mut, y: f32| {
+        v.get_mut().y -= y;
     })?;
-    module.field_fn(Protocol::MUL_ASSIGN, "y", |v: &mut Vec3, y: f32| {
-        v.0.y *= y;
+    module.field_fn(Protocol::MUL_ASSIGN, "y", |v: &mut Vec3Mut, y: f32| {
+        v.get_mut().y *= y;
     })?;
-    module.field_fn(Protocol::DIV_ASSIGN, "y", |v: &mut Vec3, y: f32| {
-        v.0.y /= y;
+    module.field_fn(Protocol::DIV_ASSIGN, "y", |v: &mut Vec3Mut, y: f32| {
+        v.get_mut().y /= y;
     })?;
-    // Vec3.z
-    module.field_fn(Protocol::GET, "z", |v: &Vec3| v.0.z)?;
-    module.field_fn(Protocol::SET, "z", |v: &mut Vec3, z: f32| {
-        v.0.z = z;
+    module.field_fn(Protocol::GET, "z", |v: &Vec3Mut| v.get().z)?;
+    module.field_fn(Protocol::SET, "z", |v: &mut Vec3Mut, z: f32| {
+        v.get_mut().z = z;
     })?;
-    module.field_fn(Protocol::ADD_ASSIGN, "z", |v: &mut Vec3, z: f32| {
-        v.0.z += z;
+    module.field_fn(Protocol::ADD_ASSIGN, "z", |v: &mut Vec3Mut, z: f32| {
+        v.get_mut().z += z;
     })?;
-    module.field_fn(Protocol::SUB_ASSIGN, "z", |v: &mut Vec3, z: f32| {
-        v.0.z -= z;
+    module.field_fn(Protocol::SUB_ASSIGN, "z", |v: &mut Vec3Mut, z: f32| {
+        v.get_mut().z -= z;
     })?;
-    module.field_fn(Protocol::MUL_ASSIGN, "z", |v: &mut Vec3, z: f32| {
-        v.0.z *= z;
+    module.field_fn(Protocol::MUL_ASSIGN, "z", |v: &mut Vec3Mut, z: f32| {
+        v.get_mut().z *= z;
     })?;
-    module.field_fn(Protocol::DIV_ASSIGN, "z", |v: &mut Vec3, z: f32| {
-        v.0.z /= z;
+    module.field_fn(Protocol::DIV_ASSIGN, "z", |v: &mut Vec3Mut, z: f32| {
+        v.get_mut().z /= z;
     })?;
 
     Ok(module)

@@ -209,9 +209,10 @@ async fn create_offline_data(
         "/scene/pad_right_script",
         r#"const MOUSE_DELTA_SCALE = 200.0;
 
-pub fn move_right_paddle(delta, translation) {
-    delta.x /= MOUSE_DELTA_SCALE;
-    println!("[Pad right] delta: {}, pos:{}, {}", delta.x, translation.x, translation.y);
+pub fn move_right_paddle(entity, events) {
+    let delta_x = events.mouse_motion.x;
+    delta_x /= MOUSE_DELTA_SCALE;
+    println!("[Pad right] delta: {}, pos:{}", delta_x, entity.transform.translation);
 }"#,
     )
     .await;
@@ -247,10 +248,7 @@ pub fn move_right_paddle(delta, translation) {
 
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
             script_type: ScriptType::Rune,
-            input_values: vec![
-                "mouse_motion.delta".to_string(),
-                "self.transform.translation".to_string(),
-            ],
+            input_values: vec!["{entity}".to_string(), "{events}".to_string()],
             entry_fn: "move_right_paddle".to_string(),
             script_id: Some(pad_right_script),
             temp_script: "".to_string(),
@@ -281,9 +279,10 @@ pub fn move_right_paddle(delta, translation) {
         "/scene/pad_left_script",
         r#"const MOUSE_DELTA_SCALE = 200.0;
 
-pub fn move_left_paddle(delta, translation) {
-delta.x /= MOUSE_DELTA_SCALE;
-println!("[Pad left] delta: {}, pos:{}, {}", delta.x, translation.x, translation.y);
+pub fn move_left_paddle(entity, events) {
+    let delta_x = events.mouse_motion.x;
+    delta_x /= MOUSE_DELTA_SCALE;
+    println!("[Pad left] delta: {}, pos: {}", delta_x, entity.transform.translation);
 }"#,
     )
     .await;
@@ -319,10 +318,7 @@ println!("[Pad left] delta: {}, pos:{}, {}", delta.x, translation.x, translation
 
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
             script_type: ScriptType::Rune,
-            input_values: vec![
-                "mouse_motion.delta".to_string(),
-                "self.transform.translation".to_string(),
-            ],
+            input_values: vec!["{entity}".to_string(), "{events}".to_string()],
             entry_fn: "move_left_paddle".to_string(),
             script_id: Some(pad_left_script),
             temp_script: "".to_string(),

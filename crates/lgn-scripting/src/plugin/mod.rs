@@ -1,7 +1,12 @@
+#[cfg(not(feature = "offline"))]
+use std::sync::Arc;
+
 use lgn_app::prelude::*;
 #[cfg(feature = "offline")]
 use lgn_data_offline::resource::ResourceRegistryOptions;
 use lgn_data_runtime::AssetRegistryOptions;
+#[cfg(not(feature = "offline"))]
+use lgn_data_runtime::{AssetRegistry, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
 #[cfg(not(feature = "offline"))]
 use lgn_input::mouse::MouseMotion;
@@ -9,7 +14,10 @@ use lgn_input::mouse::MouseMotion;
 use lgn_math::prelude::*;
 
 #[cfg(not(feature = "offline"))]
-use crate::ScriptingStage;
+use crate::{
+    runtime::{Script, ScriptComponent},
+    ScriptingStage,
+};
 
 #[cfg(not(feature = "offline"))]
 mod mun;
@@ -102,4 +110,23 @@ fn add_loaders(asset_registry: NonSendMut<'_, AssetRegistryOptions>) {
     {
         crate::runtime::add_loaders(asset_registry);
     }
+}
+
+#[cfg(not(feature = "offline"))]
+fn get_source_payload<'registry>(
+    script: &ScriptComponent,
+    registry: &'registry Res<'_, Arc<AssetRegistry>>,
+) -> &'registry [u8] {
+    let script_id = script.script_id.as_ref().unwrap().id();
+    get_source_payload_by_id(script_id, registry)
+}
+
+#[cfg(not(feature = "offline"))]
+fn get_source_payload_by_id<'registry>(
+    script_id: ResourceTypeAndId,
+    registry: &'registry Res<'_, Arc<AssetRegistry>>,
+) -> &'registry [u8] {
+    let script_untyped = registry.get_untyped(script_id).unwrap();
+    let script = script_untyped.get::<Script>(registry).unwrap();
+    &script.compiled_script
 }

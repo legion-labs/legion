@@ -5,10 +5,7 @@ use lgn_data_runtime::AssetRegistry;
 use lgn_ecs::prelude::*;
 use rhai::Scope;
 
-use crate::{
-    runtime::{Script, ScriptComponent},
-    ScriptType, ScriptingStage,
-};
+use crate::{plugin::get_source_payload, runtime::ScriptComponent, ScriptType, ScriptingStage};
 
 pub(crate) fn build(app: &mut App) {
     let mut rhai_eng = rhai::Engine::new();
@@ -32,9 +29,8 @@ fn compile(
         .filter(|(_entity, s)| s.script_type == ScriptType::Rhai);
 
     for (entity, script) in rhai_scripts {
-        let script_untyped = registry.get_untyped(script.script_id.as_ref().unwrap().id());
-        let script_typed = script_untyped.unwrap().get::<Script>(&registry).unwrap();
-        let source_payload = std::str::from_utf8(&script_typed.compiled_script).unwrap();
+        let source_payload = get_source_payload(script, &registry);
+        let source_payload = std::str::from_utf8(source_payload).unwrap();
         println!("{}", &source_payload);
 
         let ast = rhai_eng.compile(source_payload).unwrap();
