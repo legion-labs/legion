@@ -47,10 +47,12 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
         direct_args.push(OsString::from("--build-plan"));
     };
 
+    let mut env = vec![];
+    args.build_args.add_env(&mut env);
     let cmd = CargoCommand::Build {
         direct_args: direct_args.as_slice(),
         args: &[],
-        env: &[],
+        env: &env,
         skip_sccache: false,
     };
 

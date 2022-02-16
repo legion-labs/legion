@@ -25,84 +25,87 @@ impl Default for Coloring {
 /// Arguments for controlling cargo build and other similar commands (like check).
 #[derive(Debug, Args, Default, Clone)]
 pub struct BuildArgs {
-    #[clap(long, short)]
     /// No output printed to stdout
-    pub(crate) quiet: bool,
     #[clap(long, short)]
+    pub(crate) quiet: bool,
     /// Number of parallel build jobs, defaults to # of CPUs
+    #[clap(long, short)]
     pub(crate) jobs: Option<u16>,
-    #[clap(long)]
     /// Only this package's library
+    #[clap(long)]
     pub(crate) lib: bool,
-    #[clap(long, number_of_values = 1)]
     /// Only the specified binary
+    #[clap(long, number_of_values = 1)]
     pub(crate) bin: Vec<String>,
-    #[clap(long)]
     /// All binaries
+    #[clap(long)]
     pub(crate) bins: bool,
-    #[clap(long, number_of_values = 1)]
     /// Only the specified example
+    #[clap(long, number_of_values = 1)]
     pub(crate) example: Vec<String>,
-    #[clap(long)]
     /// All examples
+    #[clap(long)]
     pub(crate) examples: bool,
-    #[clap(long, number_of_values = 1)]
     /// Only the specified test target
+    #[clap(long, number_of_values = 1)]
     pub(crate) test: Vec<String>,
-    #[clap(long)]
     /// All tests
+    #[clap(long)]
     pub(crate) tests: bool,
-    #[clap(long, number_of_values = 1)]
     /// Only the specified bench target
-    pub(crate) bench: Vec<String>,
-    #[clap(long)]
-    /// All benches
-    pub(crate) benches: bool,
-    #[clap(long)]
-    /// All targets
-    pub(crate) all_targets: bool,
-    #[clap(long)]
-    /// Artifacts in release mode, with optimizations
-    pub(crate) release: bool,
-    #[clap(long)]
-    /// Artifacts with the specified profile
-    pub(crate) profile: Option<String>,
     #[clap(long, number_of_values = 1)]
+    pub(crate) bench: Vec<String>,
+    /// All benches
+    #[clap(long)]
+    pub(crate) benches: bool,
+    /// All targets
+    #[clap(long)]
+    pub(crate) all_targets: bool,
+    /// Artifacts in release mode, with optimizations
+    #[clap(long)]
+    pub(crate) release: bool,
+    /// Artifacts with the specified profile
+    #[clap(long)]
+    pub(crate) profile: Option<String>,
     /// Space-separated list of features to activate
+    #[clap(long, number_of_values = 1)]
     pub(crate) features: Vec<String>,
-    #[clap(long)]
     /// Activate all available features
+    #[clap(long)]
     pub(crate) all_features: bool,
-    #[clap(long)]
     /// Do not activate the `default` feature
+    #[clap(long)]
     pub(crate) no_default_features: bool,
-    #[clap(long)]
     /// TRIPLE
+    #[clap(long)]
     pub(crate) target: Option<String>,
-    #[clap(long, parse(from_os_str))]
     /// Directory for all generated artifacts
-    pub(crate) target_dir: Option<OsString>,
     #[clap(long, parse(from_os_str))]
+    pub(crate) target_dir: Option<OsString>,
     /// Path to Cargo.toml
+    #[clap(long, parse(from_os_str))]
     pub(crate) manifest_path: Option<OsString>,
-    #[clap(long)]
     /// Error format
+    #[clap(long)]
     pub(crate) message_format: Option<String>,
-    #[clap(long, short, parse(from_occurrences))]
     /// Use verbose output (-vv very verbose/build.rs output)
+    #[clap(long, short, parse(from_occurrences))]
     pub(crate) verbose: usize,
-    #[clap(long, arg_enum, default_value = "auto")]
     /// Coloring: auto, always, never
+    #[clap(long, arg_enum, default_value = "auto")]
     pub(crate) color: Coloring,
-    #[clap(long)]
     /// Require Cargo.lock and cache are up to date
+    #[clap(long)]
     pub(crate) frozen: bool,
-    #[clap(long)]
     /// Require Cargo.lock is up to date
-    pub(crate) locked: bool,
     #[clap(long)]
+    pub(crate) locked: bool,
     /// Run without accessing the network
+    #[clap(long)]
     pub(crate) offline: bool,
+    /// Run without accessing the network
+    #[clap(long)]
+    pub(crate) symlink_out_dir: Option<String>,
 }
 
 impl BuildArgs {
@@ -218,6 +221,16 @@ impl BuildArgs {
         if self.offline {
             direct_args.push(OsString::from("--offline"));
         };
+    }
+
+    pub fn add_env(&self, env: &mut Vec<(&str, Option<&str>)>) {
+        if let Some(symlink_out_dir) = &self.symlink_out_dir {
+            if symlink_out_dir == "1" || symlink_out_dir == "true" {
+                env.push(("LGN_SYMLINK_OUT_DIR", Some("1")));
+            } else {
+                env.push(("LGN_SYMLINK_OUT_DIR", Some("0")));
+            }
+        }
     }
 
     pub fn mode(&self) -> &str {
