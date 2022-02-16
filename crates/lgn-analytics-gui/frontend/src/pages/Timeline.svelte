@@ -65,6 +65,10 @@
     RangeSelectionOnMouseMove,
     SelectionState,
   } from "@/lib/time_range_selection";
+  import {
+    getLodFromPixelSizeMs,
+    MergeThresholdForLOD as mergeThresholdForLOD,
+  } from "@/lib/lod";
 
   export let processId: string;
 
@@ -267,7 +271,7 @@
       return null;
     }
     const currentPixelSize = (vr[1] - vr[0]) / canvas.width;
-    return getViewLOD(currentPixelSize);
+    return getLodFromPixelSizeMs(currentPixelSize);
   }
 
   function findBestLod(block: ThreadBlock) {
@@ -684,30 +688,17 @@
     }
   }
 
-  function LogX(x: number, y: number): number {
-    return Math.log(y) / Math.log(x);
-  }
-
-  function getViewLOD(pixelSizeMs: number): number {
-    const pixelSizeNs = pixelSizeMs * 1000000;
-    return Math.max(0, Math.floor(LogX(100, pixelSizeNs)));
-  }
-
-  function MergeThresholdForLOD(lod: number): number {
-    return Math.pow(100, lod - 2) / 10;
-  }
-
   //debug variables (displayed in debug div)
   let pixelSize = 0;
   let LOD = 0;
   let mergeThreshold = 0;
   let nbEventsRepresented = 0;
   $: {
-    LOD = getViewLOD(pixelSize);
+    LOD = getLodFromPixelSizeMs(pixelSize);
   }
 
   $: {
-    mergeThreshold = MergeThresholdForLOD(LOD);
+    mergeThreshold = mergeThresholdForLOD(LOD);
   }
 </script>
 
