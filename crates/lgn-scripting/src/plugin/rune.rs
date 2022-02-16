@@ -17,8 +17,8 @@ use rune::{
 };
 
 use crate::{
-    runtime::{Script, ScriptComponent},
-    ScriptType, ScriptingEventCache, ScriptingStage,
+    plugin::get_script_payload, runtime::ScriptComponent, ScriptType, ScriptingEventCache,
+    ScriptingStage,
 };
 
 pub(crate) fn build(app: &mut App) -> Result<(), ContextError> {
@@ -49,13 +49,12 @@ fn compile(
         .filter(|(_entity, s)| s.script_type == ScriptType::Rune);
 
     for (entity, script) in rune_scripts {
-        let script_untyped = registry.get_untyped(script.script_id.as_ref().unwrap().id());
-        let script_typed = script_untyped.unwrap().get::<Script>(&registry).unwrap();
-        let source_payload = str::from_utf8(&script_typed.compiled_script).unwrap();
-        info!("script payload: {}", &source_payload);
+        let script_payload = get_script_payload(script, &registry);
+        let script_payload = str::from_utf8(script_payload).unwrap();
+        info!("script payload: {}", &script_payload);
 
         let mut sources = Sources::new();
-        sources.insert(Source::new("entry", &source_payload));
+        sources.insert(Source::new("entry", &script_payload));
 
         let mut diagnostics = Diagnostics::new();
 
