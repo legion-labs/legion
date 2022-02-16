@@ -9,7 +9,6 @@ use dolly::{prelude::*, rig::CameraRig};
 use lgn_app::prelude::*;
 use lgn_core::Name;
 use lgn_ecs::prelude::*;
-use lgn_input::mouse::MouseMotion;
 use lgn_math::Vec3;
 use lgn_renderer::components::CameraComponent;
 use lgn_transform::components::Transform;
@@ -24,7 +23,6 @@ fn main() {
 
     app.insert_resource(GameState::default())
         .add_startup_system_to_stage(StartupStage::PostStartup, game_setup)
-        .add_system(update_mouse)
         .add_system(game_logic);
 
     start_runtime(&mut app);
@@ -37,7 +35,6 @@ struct GameState {
     ball_id: Option<u32>,
     velocity: f32,
     direction: Vec3,
-    paddle_delta: f32,
 }
 
 fn game_setup(mut cameras: Query<'_, '_, &mut CameraComponent>, mut state: ResMut<'_, GameState>) {
@@ -58,19 +55,6 @@ fn game_setup(mut cameras: Query<'_, '_, &mut CameraComponent>, mut state: ResMu
     state.direction.x = rand::random::<f32>() - 0.5_f32;
     state.direction.y = rand::random::<f32>() - 0.5_f32;
     state.direction = state.direction.normalize() * 0.1_f32;
-}
-
-fn update_mouse(
-    mut mouse_motion_events: EventReader<'_, '_, MouseMotion>,
-    mut state: ResMut<'_, GameState>,
-) {
-    // aggregate mouse movement
-    let mut mouse_delta_x = 0_f32;
-    for motion_event in mouse_motion_events.iter() {
-        mouse_delta_x += motion_event.delta.x;
-    }
-
-    state.paddle_delta = mouse_delta_x / 200_f32;
 }
 
 fn game_logic(
@@ -94,14 +78,10 @@ fn game_logic(
     // update paddles
     let mut left_paddle = 0.0;
     let mut right_paddle = 0.0;
-    for (entity, _name, mut transform) in entities.iter_mut() {
+    for (entity, _name, transform) in entities.iter() {
         if entity.id() == left_paddle_id {
-            // transform.translation.y -= state.paddle_delta;
-            transform.translation.y = transform.translation.y.clamp(-2.0, 2.0);
             left_paddle = transform.translation.y;
         } else if entity.id() == right_paddle_id {
-            // transform.translation.y += state.paddle_delta;
-            transform.translation.y = transform.translation.y.clamp(-2.0, 2.0);
             right_paddle = transform.translation.y;
         }
     }

@@ -118,6 +118,10 @@ fn tick(world: &mut World) {
                 } else if input == "{events}" {
                     let events = Events(event_cache);
                     args.push(events.to_value().unwrap());
+                } else if input == "{result}" {
+                    let rune_vms = world.get_non_send_resource::<VMCollection>().unwrap();
+                    let vm_context = rune_vms.get(script.vm_index).as_ref().unwrap();
+                    args.push(vm_context.last_result.clone());
                 } else {
                     // default to 64-bit integer
                     let value = i64::from_str(input.as_str()).unwrap();
@@ -130,9 +134,9 @@ fn tick(world: &mut World) {
 
         {
             let mut rune_vms = world.get_non_send_resource_mut::<VMCollection>().unwrap();
-            let vm = rune_vms.get_mut(script_vm_index).as_mut().unwrap();
-            let mut vm_exec = vm.execute(script_entry_fn, args).unwrap();
-            let _result = vm_exec.complete().unwrap();
+            let vm_context = rune_vms.get_mut(script_vm_index).as_mut().unwrap();
+            let mut vm_exec = vm_context.vm.execute(script_entry_fn, args).unwrap();
+            vm_context.last_result = vm_exec.complete().unwrap();
         }
     }
 }
@@ -146,17 +150,29 @@ struct ScriptExecutionContext {
 
 #[derive(Default)]
 struct VMCollection {
-    vms: Vec<Option<Vm>>,
+    vms: Vec<Option<VMContext>>,
+}
+
+struct VMContext {
+    vm: Vm,
+    last_result: Value,
 }
 
 impl VMCollection {
     fn append(&mut self, context: &Context, unit: Unit) -> usize {
         let vm = Vm::new(Arc::new(context.runtime()), Arc::new(unit));
-        self.vms.push(Some(vm));
+        self.vms.push(Some(VMContext {
+            vm,
+            last_result: ().to_value().unwrap(),
+        }));
         self.vms.len() - 1
     }
 
-    fn get_mut(&mut self, index: usize) -> &mut Option<Vm> {
+    fn get(&self, index: usize) -> &Option<VMContext> {
+        &self.vms[index]
+    }
+
+    fn get_mut(&mut self, index: usize) -> &mut Option<VMContext> {
         &mut self.vms[index]
     }
 }
