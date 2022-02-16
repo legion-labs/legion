@@ -183,6 +183,15 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
         "[html]": {
           "editor.defaultFormatter": "esbenp.prettier-vscode"
         },
+        "[javascript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+        },
+        "[json]": {
+          "editor.defaultFormatter": "vscode.json-language-features",
+        },
+        "[jsonc]": {
+          "editor.defaultFormatter": "vscode.json-language-features",
+        },
         "[typescript]": {
           "editor.defaultFormatter": "esbenp.prettier-vscode"
         },
