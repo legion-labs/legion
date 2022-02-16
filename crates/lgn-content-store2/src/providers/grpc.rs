@@ -1,5 +1,6 @@
 use std::{
     pin::Pin,
+    sync::Arc,
     task::{Context, Poll},
 };
 
@@ -21,12 +22,12 @@ use crate::{ContentReader, ContentWriter, Error, Identifier, Result};
 
 /// A `GrpcProvider` is a provider that delegates to a `gRPC` service.
 pub struct GrpcProvider {
-    client: Mutex<ContentStoreClient<GrpcWebClient>>,
+    client: Arc<Mutex<ContentStoreClient<GrpcWebClient>>>,
 }
 
 impl GrpcProvider {
     pub async fn new(uri: Uri) -> Self {
-        let client = Mutex::new(ContentStoreClient::new(GrpcWebClient::new(uri)));
+        let client = Arc::new(Mutex::new(ContentStoreClient::new(GrpcWebClient::new(uri))));
 
         Self { client }
     }
@@ -85,10 +86,10 @@ impl ContentWriter for GrpcProvider {
         match resp.content_writer {
             Some(lgn_content_store_proto::get_content_writer_response::ContentWriter::Url(url)) => {
                 if url.is_empty() {
-                    // Issue a call for direct upload.
-                    //
-                    // We probably need to write something that implemented AsyncWrite again...
-                    unimplemented!();
+                    Ok(Box::pin(GrpcUploader::new(
+                        Arc::clone(&self.client),
+                        id.clone(),
+                    )))
                 } else {
                     let uploader = HttpUploader::new(url)?;
 
@@ -96,6 +97,107 @@ impl ContentWriter for GrpcProvider {
                 }
             }
             None => Err(Error::AlreadyExists),
+        }
+    }
+}
+
+#[pin_project]
+struct GrpcUploader {
+    #[pin]
+    state: GrpcUploaderState,
+}
+
+enum GrpcUploaderState {
+    Invalid,
+    Writing(
+        std::io::Cursor<Vec<u8>>,
+        Identifier,
+        Arc<Mutex<ContentStoreClient<GrpcWebClient>>>,
+    ),
+    Uploading(Pin<Box<dyn Future<Output = Result<(), std::io::Error>> + Send + 'static>>),
+}
+
+impl GrpcUploader {
+    pub fn new(client: Arc<Mutex<ContentStoreClient<GrpcWebClient>>>, id: Identifier) -> Self {
+        let state = GrpcUploaderState::Writing(std::io::Cursor::new(Vec::new()), id, client);
+
+        Self { state }
+    }
+
+    async fn upload(
+        data: Vec<u8>,
+        id: Identifier,
+        client: Arc<Mutex<ContentStoreClient<GrpcWebClient>>>,
+    ) -> Result<(), std::io::Error> {
+        let req = lgn_content_store_proto::WriteContentRequest {
+            id: id.to_string(),
+            data,
+        };
+
+        client
+            .lock()
+            .await
+            .write_content(req)
+            .await
+            .map_err(|err| {
+                std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    anyhow::anyhow!("gRPC request failed: {}", err),
+                )
+            })?;
+
+        Ok(())
+    }
+}
+
+impl AsyncWrite for GrpcUploader {
+    fn poll_write(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<std::result::Result<usize, std::io::Error>> {
+        let this = self.project();
+
+        if let GrpcUploaderState::Writing(cursor, _, _) = this.state.get_mut() {
+            Pin::new(cursor).poll_write(cx, buf)
+        } else {
+            panic!("HttpUploader::poll_write called after completion")
+        }
+    }
+
+    fn poll_flush(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<std::result::Result<(), std::io::Error>> {
+        let this = self.project();
+
+        if let GrpcUploaderState::Writing(cursor, _, _) = this.state.get_mut() {
+            Pin::new(cursor).poll_flush(cx)
+        } else {
+            panic!("HttpUploader::poll_flush called after completion")
+        }
+    }
+
+    fn poll_shutdown(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<std::result::Result<(), std::io::Error>> {
+        let this = self.project();
+        let state = this.state.get_mut();
+
+        loop {
+            *state = match std::mem::replace(state, GrpcUploaderState::Invalid) {
+                GrpcUploaderState::Invalid => unreachable!("the state should never be invalid"),
+                GrpcUploaderState::Writing(mut cursor, id, client) => {
+                    match Pin::new(&mut cursor).poll_shutdown(cx) {
+                        Poll::Ready(Ok(())) => GrpcUploaderState::Uploading(Box::pin(
+                            Self::upload(cursor.into_inner(), id, client),
+                        )),
+                        p => return p,
+                    }
+                }
+                GrpcUploaderState::Uploading(mut call) => return Pin::new(&mut call).poll(cx),
+            };
         }
     }
 }
@@ -138,7 +240,7 @@ impl AsyncWrite for HttpUploader {
     ) -> Poll<std::result::Result<usize, std::io::Error>> {
         let this = self.project();
 
-        // Before writing, we poll the call future to see if it's ready all
+        // Before writing, we poll the call future to see if it's ready and
         // allow it to progress.
         //
         // If it is ready, we should not be writing and we must fail.
@@ -168,7 +270,7 @@ impl AsyncWrite for HttpUploader {
     ) -> Poll<std::result::Result<(), std::io::Error>> {
         let this = self.project();
 
-        // Before flushing, we poll the call future to see if it's ready all
+        // Before flushing, we poll the call future to see if it's ready and
         // allow it to progress.
         //
         // If it is ready, we should not be flushing and we must fail.
@@ -188,7 +290,7 @@ impl AsyncWrite for HttpUploader {
         if let Some(w) = this.w.get_mut() {
             Pin::new(w).poll_flush(cx)
         } else {
-            panic!("HttpUploader::poll_write called after completion")
+            panic!("HttpUploader::poll_flush called after completion")
         }
     }
 
