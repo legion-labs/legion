@@ -116,7 +116,6 @@ impl MeshManager {
         renderer: &Renderer,
         mut ids_meshes: Vec<(ResourceId, StaticMeshRenderData)>,
     ) {
-        println!("Mesh added");
         let start_idx = self.mesh_description_offsets.len();
         let (resource_ids, meshes): (Vec<ResourceId>, Vec<StaticMeshRenderData>) =
             ids_meshes.iter().cloned().unzip();
@@ -127,11 +126,20 @@ impl MeshManager {
         }
     }
 
-    pub fn mesh_description_offset_for_visual(&self, visual_component: &VisualComponent) -> u32 {
-        if let Some(reference) = visual_component.mesh_reference_type.clone() {
-            self.mesh_description_offset_from_mesh_reference(reference)
+    pub fn mesh_description_offset_for_visual(
+        &self,
+        visual_component: &VisualComponent,
+    ) -> (u32, bool) {
+        if let Some(reference) = &visual_component.mesh_reference_type {
+            (
+                self.mesh_description_offset_from_mesh_reference(reference),
+                self.reference_to_id_map.get(&reference.id().id).is_some(),
+            )
         } else {
-            self.mesh_description_offset_from_id(visual_component.mesh_id as u32)
+            (
+                self.mesh_description_offset_from_id(visual_component.mesh_id as u32),
+                true,
+            )
         }
     }
 
@@ -145,9 +153,9 @@ impl MeshManager {
 
     fn mesh_description_offset_from_mesh_reference(
         &self,
-        mesh_reference: MeshReferenceType,
+        mesh_reference: &MeshReferenceType,
     ) -> u32 {
-        self.mesh_description_offsets[self.get_id_from_reference(&mesh_reference)]
+        self.mesh_description_offsets[self.get_id_from_reference(mesh_reference)]
     }
 
     fn get_id_from_reference(&self, mesh_reference: &MeshReferenceType) -> usize {

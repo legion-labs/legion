@@ -11,6 +11,7 @@
 mod cgen {
     include!(concat!(env!("OUT_DIR"), "/rust/mod.rs"));
 }
+use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;
 
 #[allow(unused_imports)]
@@ -23,6 +24,7 @@ pub use labels::*;
 
 mod renderer;
 use lgn_core::BumpAllocatorPool;
+use lgn_data_runtime::ResourceId;
 use lgn_graphics_api::{AddressMode, CompareOp, FilterType, MipMapMode, ResourceUsage, SamplerDef};
 use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_math::{Vec2, Vec4};
@@ -140,6 +142,7 @@ impl Plugin for RendererPlugin {
         app.insert_resource(DebugDisplay::default());
         app.insert_resource(LightingManager::default());
         app.insert_resource(GpuInstanceManager::new(&static_buffer));
+        app.insert_resource(MissingVisualTracker::default());
         app.insert_resource(descriptor_heap_manager);
         app.insert_resource(PersistentDescriptorSetManager::new());
         app.add_plugin(EguiPlugin::new());
@@ -181,11 +184,9 @@ impl Plugin for RendererPlugin {
             app.add_system_to_stage(RenderStage::Prepare, ui_lights);
         }
         app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
-        app.add_system_to_stage(RenderStage::Prepare, update_meshes.before("test_label"));
-        app.add_system_to_stage(
-            RenderStage::Prepare,
-            update_gpu_instances.label("test_label"),
-        );
+        app.add_system_to_stage(RenderStage::Prepare, update_meshes);
+        app.add_system_to_stage(RenderStage::Prepare, update_gpu_instances);
+        app.add_system_to_stage(RenderStage::Prepare, update_missing_visuals);
         app.add_system_to_stage(RenderStage::Prepare, update_lights);
         app.add_system_to_stage(RenderStage::Prepare, camera_control);
         app.add_system_to_stage(RenderStage::Prepare, prepare_shaders);
@@ -319,14 +320,135 @@ fn update_meshes(
     renderer: ResMut<'_, Renderer>,
     mut mesh_manager: ResMut<'_, MeshManager>,
     mut updated_meshes: Query<'_, '_, &mut MeshComponent, Changed<MeshComponent>>,
+    mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
 ) {
     for mut updated_mesh in updated_meshes.iter_mut() {
         let mut meshes = Vec::new();
         for submesh in &updated_mesh.submeshes {
             meshes.push((submesh.0, submesh.1.clone()));
+            missing_visuals_tracker.add_visuals(submesh.0);
         }
         mesh_manager.add_meshes_by_references(renderer.as_ref(), meshes);
     }
+#[derive(Default)]
+struct MissingVisualTracker {
+    entities: BTreeMap<ResourceId, HashSet<Entity>>,
+    visuals_added: Vec<ResourceId>,
+}
+
+impl MissingVisualTracker {
+    fn add_entity(&mut self, resource_id: ResourceId, entity_id: Entity) {
+        if let Some(entry) = self.entities.get_mut(&resource_id) {
+            entry.insert(entity_id);
+        } else {
+            let mut set = HashSet::new();
+            set.insert(entity_id);
+            self.entities.insert(resource_id, set);
+        }
+    }
+
+    fn add_visuals(&mut self, resource_id: ResourceId) {
+        self.visuals_added.push(resource_id);
+    }
+
+    fn get_entities_to_update(&mut self) -> HashSet<Entity> {
+        let mut entities = HashSet::new();
+        for visual in &self.visuals_added {
+            if let Some(entry) = self.entities.get(visual) {
+                for entity in entry {
+                    entities.insert(*entity);
+                }
+                self.entities.remove_entry(visual);
+            }
+        }
+        self.visuals_added.clear();
+        entities
+    }
+}
+
+#[span_fn]
+#[allow(
+    clippy::needless_pass_by_value,
+    clippy::type_complexity,
+    clippy::too_many_arguments
+)]
+fn update_missing_visuals(
+    mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
+    visuals_query: Query<
+        '_,
+        '_,
+        (Entity, &VisualComponent, Option<&MaterialComponent>),
+        Without<ManipulatorComponent>,
+    >,
+
+    renderer: Res<'_, Renderer>,
+    picking_manager: Res<'_, PickingManager>,
+    mut picking_data_manager: ResMut<'_, GpuPickingDataManager>,
+    uniform_data: Res<'_, GpuUniformData>,
+    mut instance_manager: ResMut<'_, GpuInstanceManager>,
+    mesh_manager: Res<'_, MeshManager>,
+    color_manager: Res<'_, GpuEntityColorManager>,
+    transform_manager: Res<'_, GpuEntityTransformManager>,
+) {
+    for entity in missing_visuals_tracker.get_entities_to_update() {
+        let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
+        let mut picking_context = PickingIdContext::new(&picking_manager);
+
+        let mut picking_block: Option<IndexBlock> = None;
+        let mut instance_block: Option<IndexBlock> = None;
+
+        if let Ok((entity, visual_component, mat_component)) = visuals_query.get(entity) {
+            picking_data_manager.remove_gpu_data(entity);
+            instance_manager.remove_gpu_instance(entity);
+
+            let color: (f32, f32, f32, f32) = (
+                f32::from(visual_component.color.r) / 255.0f32,
+                f32::from(visual_component.color.g) / 255.0f32,
+                f32::from(visual_component.color.b) / 255.0f32,
+                f32::from(visual_component.color.a) / 255.0f32,
+            );
+            let mut instance_color = cgen::cgen_type::GpuInstanceColor::default();
+            instance_color.set_color(Vec4::new(color.0, color.1, color.2, color.3).into());
+            instance_color.set_color_blend(1.0.into());
+
+            color_manager.update_gpu_data(entity, 0, &[instance_color], &mut updater);
+
+            // Fallback to default material if we do not have a specific material set
+            let mut material_va = uniform_data.default_material_gpu_offset;
+            if let Some(material) = mat_component {
+                material_va = material.gpu_offset();
+            }
+
+            picking_data_manager.alloc_gpu_data(entity, &mut picking_block);
+
+            let mut picking_data = cgen::cgen_type::GpuInstancePickingData::default();
+            picking_data.set_picking_id(picking_context.aquire_picking_id(entity).into());
+            picking_data_manager.update_gpu_data(entity, 0, &[picking_data], &mut updater);
+
+            let instance_vas = GpuInstanceVAs {
+                submesh_va: mesh_manager
+                    .mesh_description_offset_for_visual(visual_component)
+                    .0,
+                material_va,
+                color_va: color_manager.id_va_list(entity)[0].1 as u32,
+                transform_va: transform_manager.id_va_list(entity)[0].1 as u32,
+                picking_data_va: picking_data_manager.id_va_list(entity)[0].1 as u32,
+            };
+
+            instance_manager.add_gpu_instance(
+                entity,
+                &mut instance_block,
+                &mut updater,
+                &instance_vas,
+            );
+        }
+        instance_manager.return_index_block(instance_block);
+        picking_data_manager.return_index_block(picking_block);
+
+        renderer.add_update_job_block(updater.job_blocks());
+    }
+}
+
 #[allow(
     clippy::needless_pass_by_value,
     clippy::type_complexity,
@@ -347,6 +469,7 @@ fn update_gpu_instances(
         (Entity, &VisualComponent, Option<&MaterialComponent>),
         (Changed<VisualComponent>, Without<ManipulatorComponent>),
     >,
+    mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
 ) {
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
     let mut picking_context = PickingIdContext::new(&picking_manager);
@@ -382,8 +505,14 @@ fn update_gpu_instances(
         picking_data.set_picking_id(picking_context.aquire_picking_id(entity).into());
         picking_data_manager.update_gpu_data(&entity, 0, &[picking_data], &mut updater);
 
+        let (submesh_va, ready) = mesh_manager.mesh_description_offset_for_visual(mesh);
+        if !ready {
+            if let Some(mesh_reference) = &mesh.mesh_reference_type {
+                missing_visuals_tracker.add_entity(mesh_reference.id().id, entity);
+            }
+        }
         let instance_vas = GpuInstanceVAs {
-            submesh_va: mesh_manager.mesh_description_offset_for_visual(mesh),
+            submesh_va,
             material_va: material_manager.va_for_index(material_key, 0) as u32,
             color_va: color_manager.va_for_index(Some(entity), 0) as u32,
             transform_va: transform_manager.va_for_index(Some(entity), 0) as u32,

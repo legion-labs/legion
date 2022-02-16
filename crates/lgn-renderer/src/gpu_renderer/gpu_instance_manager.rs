@@ -69,6 +69,8 @@ impl GpuInstanceManager {
         gpu_instance_id
     }
 
+    pub fn update_gpu_instance(&mut self, enity: Entity) {}
+
     pub fn remove_gpu_instance(&mut self, entity: Entity) {
         self.va_table_manager.remove_gpu_data(&entity);
     }
