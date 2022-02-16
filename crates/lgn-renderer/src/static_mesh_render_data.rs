@@ -14,34 +14,6 @@ pub struct StaticMeshRenderData {
     pub colors: Option<Vec<Vec4>>,
 }
 
-// bitflags::bitflags! {
-//     pub struct MeshFormat: u32 {
-//         const POSITION = 0x0001;
-//         const NORMAL = 0x0002;
-//         const TANGENT = 0x0004;
-//         const TEX_COORD = 0x0008;
-//         const INDEX = 0x0010;
-//         const COLOR = 0x0020;
-//     }
-// }
-
-// impl Default for MeshFormat {
-//     fn default() -> Self {
-//         Self::empty()
-//     }
-// }
-
-// #[derive(Default)]
-// pub struct MeshInfo {
-//     pub format: MeshFormat,
-//     pub position_offset: u32,
-//     pub normal_offset: u32,
-//     pub tangent_offset: u32,
-//     pub tex_coord_offset: u32,
-//     pub index_offset: u32,
-//     pub color_offset: u32,
-// }
-
 fn add_vertex_data(vertex_data: &mut Vec<f32>, pos: Vec3, normal_opt: Option<Vec3>) {
     let mut normal = Vec3::new(pos.x, 0.0, pos.z).normalize();
     if let Some(normal_opt) = normal_opt {
