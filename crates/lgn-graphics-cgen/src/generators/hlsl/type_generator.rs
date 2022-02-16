@@ -125,6 +125,10 @@ fn generate_hlsl_bitfield<'a>(_ctx: &GeneratorContext<'a>, ty: &CGenType) -> Str
         }
         writer.new_line();
 
+        writer.add_line(format!(
+            "static const {0} {0}_{1:16} = {{ 0x{2:08x} }};",
+            bf_type.name, "NONE", 0
+        ));
         let mut hex_value = 1;
         for value in &bf_type.values {
             writer.add_line(format!(

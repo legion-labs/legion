@@ -139,11 +139,10 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
         let infos: Vec<_> = ctx
             .model
             .object_iter::<CGenType>()
-            .filter_map(|cgen_type| {
-                if matches!(cgen_type.object(), CGenType::Struct(_)) {
+            .filter_map(|cgen_type| match cgen_type.object() {
+                CGenType::Native(_) => None,
+                CGenType::BitField(_) | CGenType::Struct(_) => {
                     Some(embedded_fs_info(ctx, cgen_type.object()))
-                } else {
-                    None
                 }
             })
             .chain(

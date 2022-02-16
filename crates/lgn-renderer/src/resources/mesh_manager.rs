@@ -1,10 +1,7 @@
 use lgn_graphics_api::PagedBufferAllocation;
 
 use super::{UnifiedStaticBuffer, UniformGPUDataUpdater};
-use crate::{
-    static_mesh_render_data::{MeshInfo, StaticMeshRenderData},
-    Renderer,
-};
+use crate::{cgen, static_mesh_render_data::StaticMeshRenderData, Renderer};
 
 pub struct MeshManager {
     static_buffer: UnifiedStaticBuffer,
@@ -71,8 +68,8 @@ impl MeshManager {
         }
         let mut vertex_data_size_in_bytes = 0;
         for mesh in &meshes {
-            vertex_data_size_in_bytes +=
-                u64::from(mesh.size_in_bytes()) + std::mem::size_of::<MeshInfo>() as u64;
+            vertex_data_size_in_bytes += u64::from(mesh.size_in_bytes())
+                + std::mem::size_of::<cgen::cgen_type::MeshDescription>() as u64;
         }
 
         let static_allocation = self
@@ -80,20 +77,22 @@ impl MeshManager {
             .allocate_segment(vertex_data_size_in_bytes);
 
         let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
-        let mut static_mesh_infos = Vec::with_capacity(meshes.len());
+        let mut static_mesh_descs = Vec::with_capacity(meshes.len());
         let mut offset = static_allocation.offset();
 
         for mesh in &meshes {
-            let (new_offset, mesh_info) = mesh.make_gpu_update_job(&mut updater, offset as u32);
-            static_mesh_infos.push(mesh_info);
+            let (new_offset, mesh_desc) = mesh.make_gpu_update_job(&mut updater, offset as u32);
+            static_mesh_descs.push(mesh_desc);
             offset = u64::from(new_offset);
         }
 
         let mut mesh_description_offsets = Vec::with_capacity(meshes.len());
-        updater.add_update_jobs(&static_mesh_infos, offset);
-        for (i, _mesh_info) in static_mesh_infos.into_iter().enumerate() {
-            mesh_description_offsets
-                .push(offset as u32 + (i * std::mem::size_of::<MeshInfo>()) as u32);
+        updater.add_update_jobs(&static_mesh_descs, offset);
+        for (i, _) in static_mesh_descs.into_iter().enumerate() {
+            mesh_description_offsets.push(
+                offset as u32
+                    + (i * std::mem::size_of::<cgen::cgen_type::MeshDescription>()) as u32,
+            );
         }
 
         renderer.add_update_job_block(updater.job_blocks());

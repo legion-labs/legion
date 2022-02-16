@@ -161,7 +161,10 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
         let id = *id;
         let ty = model.get_from_id::<CGenType>(id).unwrap();
         match ty {
-            CGenType::Native(_) | CGenType::BitField(_) => (),
+            CGenType::Native(_) => (),
+            CGenType::BitField(bitfield_ty) => {
+                text.push_str(&format!("struct {} {{ uint value; }};\n", bitfield_ty.name));
+            }
             CGenType::Struct(struct_ty) => {
                 text.push_str(&format!("struct {} {{\n", struct_ty.name));
                 for m in &struct_ty.members {

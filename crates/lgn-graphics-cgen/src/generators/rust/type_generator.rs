@@ -357,6 +357,7 @@ fn generate_rust_bitfield(_ctx: &GeneratorContext<'_>, _ty_id: u32, ty: &CGenTyp
             let mut writer =
                 writer.add_block(&[format!("pub struct {} : u32 {{", bf_type.name)], &["}"]);
 
+            writer.add_line(format!("const {:16} = 0x{:08x};", "NONE", 0));
             let mut hex_value = 1;
             for value in &bf_type.values {
                 writer.add_line(format!("const {:16} = 0x{:08x};", value, hex_value));
@@ -370,7 +371,16 @@ fn generate_rust_bitfield(_ctx: &GeneratorContext<'_>, _ty_id: u32, ty: &CGenTyp
         let mut writer = writer.add_block(&[format!("impl {} {{", bf_type.name)], &["}"]);
         writer.add_line("pub fn def() -> &'static CGenTypeDef { &TYPE_DEF }");
     }
+    writer.new_line();
 
+    {
+        let mut writer =
+            writer.add_block(&[format!("impl Default for {} {{", bf_type.name)], &["}"]);
+        {
+            let mut writer = writer.add_block(&["fn default() -> Self {"], &["}"]);
+            writer.add_line("Self::NONE");
+        }
+    }
     writer.new_line();
 
     writer.build()
