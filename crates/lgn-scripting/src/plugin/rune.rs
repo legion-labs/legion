@@ -7,7 +7,7 @@ use std::{
 
 use lgn_app::prelude::*;
 use lgn_data_runtime::AssetRegistry;
-use lgn_ecs::{prelude::*, world::EntityMut};
+use lgn_ecs::prelude::*;
 use lgn_tracing::prelude::*;
 use rune::{
     runtime::Protocol,
@@ -97,6 +97,7 @@ fn tick(world: &mut World) {
         .iter(world)
         .collect::<Vec<_>>();
 
+    let world_ptr = world as *mut World;
     let event_cache =
         world.get_resource::<ScriptingEventCache>().unwrap() as *const ScriptingEventCache;
 
@@ -105,17 +106,15 @@ fn tick(world: &mut World) {
 
         let (script_vm_index, script_entry_fn) = {
             let script = world
-                .entity_mut(entity)
+                .entity(entity)
                 .get::<ScriptExecutionContext>()
                 .unwrap();
 
             for input in &script.input_args {
-                let arg_path: Vec<&str> = input.split('.').collect();
-
-                if arg_path[0] == "{self}" {
-                    let entity = Entity::new(world, entity);
+                if input == "{self}" {
+                    let entity = Entity::new(world_ptr, entity);
                     args.push(entity.to_value().unwrap());
-                } else if arg_path[0] == "{events}" {
+                } else if input == "{events}" {
                     let events = Events(event_cache);
                     args.push(events.to_value().unwrap());
                 } else {
@@ -178,14 +177,14 @@ fn make_scripting_module() -> Result<Module, ContextError> {
 }
 
 #[derive(Any)]
-struct Entity(EntityMut<'static>);
+struct Entity {
+    world: *mut World,
+    entity: lgn_ecs::prelude::Entity,
+}
 
 impl Entity {
-    fn new<'w>(world: &'w mut World, entity: lgn_ecs::prelude::Entity) -> Self {
-        let entity: EntityMut<'w> = world.entity_mut(entity);
-        let entity_ptr = &entity as *const EntityMut<'w>;
-        let entity_static_ptr: *const EntityMut<'static> = std::mem::transmute(entity_ptr);
-        Self(*entity_static_ptr)
+    fn new(world: *mut World, entity: lgn_ecs::prelude::Entity) -> Self {
+        Self { world, entity }
     }
 }
 
@@ -194,7 +193,7 @@ fn make_ecs_module() -> Result<Module, ContextError> {
 
     module.ty::<Entity>()?;
     module.field_fn(Protocol::GET, "transform", |entity: &Entity| {
-        Transform::new(&mut entity.0)
+        Transform::new(entity)
     })?;
 
     Ok(module)
@@ -204,11 +203,15 @@ fn make_ecs_module() -> Result<Module, ContextError> {
 struct Transform(*mut lgn_transform::prelude::Transform);
 
 impl Transform {
-    fn new<'a>(entity: &mut EntityMut<'a>) -> Self {
+    fn new(entity: &Entity) -> Self {
+        let mut entity = unsafe {
+            let world: &mut World = &mut *entity.world;
+            world.entity_mut(entity.entity)
+        };
         let transform = entity
             .get_mut::<lgn_transform::prelude::Transform>()
-            .unwrap();
-        let transform = transform.into_inner();
+            .unwrap()
+            .into_inner();
         Self(transform as *mut lgn_transform::prelude::Transform)
     }
 }
@@ -230,19 +233,29 @@ fn make_transform_module() -> Result<Module, ContextError> {
 struct Vec2Ref(*const lgn_math::Vec2);
 
 impl Vec2Ref {
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     fn new(vec: &lgn_math::Vec2) -> Self {
         Self(vec as *const lgn_math::Vec2)
     }
 }
 
-#[derive(Any)]
-struct Vec2Mut(*mut lgn_math::Vec2);
+// #[derive(Any)]
+// struct Vec2Mut(*mut lgn_math::Vec2);
 
-impl Vec2Mut {
-    fn new(vec: &mut lgn_math::Vec2) -> Self {
-        Self(vec as *mut lgn_math::Vec2)
-    }
-}
+// impl Vec2Mut {
+//     fn new(vec: &mut lgn_math::Vec2) -> Self {
+//         Self(vec as *mut lgn_math::Vec2)
+//     }
+// }
+
+// #[derive(Any)]
+// struct Vec3Ref(*const lgn_math::Vec3);
+
+// impl Vec3Ref {
+//     fn new(vec: &lgn_math::Vec3) -> Self {
+//         Self(vec as *const lgn_math::Vec3)
+//     }
+// }
 
 #[derive(Any)]
 struct Vec3Mut(*mut lgn_math::Vec3);
@@ -258,72 +271,78 @@ fn make_math_module() -> Result<Module, ContextError> {
 
     module.ty::<Vec2Ref>()?;
     module.field_fn(Protocol::GET, "x", |v: &Vec2Ref| unsafe { (*v.0).x })?;
+    module.field_fn(Protocol::GET, "y", |v: &Vec2Ref| unsafe { (*v.0).y })?;
 
-    module.ty::<Vec2Mut>()?;
-    module.field_fn(Protocol::GET, "x", |v: &Vec2Mut| unsafe { (*v.0).x })?;
-    module.field_fn(Protocol::SET, "x", |v: &mut Vec2Mut, x: f32| unsafe {
-        (*v.0).x = x;
-    })?;
-    module.field_fn(
-        Protocol::ADD_ASSIGN,
-        "x",
-        |v: &mut Vec2Mut, x: f32| unsafe {
-            (*v.0).x += x;
-        },
-    )?;
-    module.field_fn(
-        Protocol::SUB_ASSIGN,
-        "x",
-        |v: &mut Vec2Mut, x: f32| unsafe {
-            (*v.0).x -= x;
-        },
-    )?;
-    module.field_fn(
-        Protocol::MUL_ASSIGN,
-        "x",
-        |v: &mut Vec2Mut, x: f32| unsafe {
-            (*v.0).x *= x;
-        },
-    )?;
-    module.field_fn(
-        Protocol::DIV_ASSIGN,
-        "x",
-        |v: &mut Vec2Mut, x: f32| unsafe {
-            (*v.0).x /= x;
-        },
-    )?;
-    module.field_fn(Protocol::GET, "y", |v: &Vec2Mut| unsafe { (*v.0).y })?;
-    module.field_fn(Protocol::SET, "y", |v: &mut Vec2Mut, y: f32| unsafe {
-        (*v.0).y = y;
-    })?;
-    module.field_fn(
-        Protocol::ADD_ASSIGN,
-        "y",
-        |v: &mut Vec2Mut, y: f32| unsafe {
-            (*v.0).y += y;
-        },
-    )?;
-    module.field_fn(
-        Protocol::SUB_ASSIGN,
-        "y",
-        |v: &mut Vec2Mut, y: f32| unsafe {
-            (*v.0).y -= y;
-        },
-    )?;
-    module.field_fn(
-        Protocol::MUL_ASSIGN,
-        "y",
-        |v: &mut Vec2Mut, y: f32| unsafe {
-            (*v.0).y *= y;
-        },
-    )?;
-    module.field_fn(
-        Protocol::DIV_ASSIGN,
-        "y",
-        |v: &mut Vec2Mut, y: f32| unsafe {
-            (*v.0).y /= y;
-        },
-    )?;
+    // module.ty::<Vec2Mut>()?;
+    // module.field_fn(Protocol::GET, "x", |v: &Vec2Mut| unsafe { (*v.0).x })?;
+    // module.field_fn(Protocol::SET, "x", |v: &mut Vec2Mut, x: f32| unsafe {
+    //     (*v.0).x = x;
+    // })?;
+    // module.field_fn(
+    //     Protocol::ADD_ASSIGN,
+    //     "x",
+    //     |v: &mut Vec2Mut, x: f32| unsafe {
+    //         (*v.0).x += x;
+    //     },
+    // )?;
+    // module.field_fn(
+    //     Protocol::SUB_ASSIGN,
+    //     "x",
+    //     |v: &mut Vec2Mut, x: f32| unsafe {
+    //         (*v.0).x -= x;
+    //     },
+    // )?;
+    // module.field_fn(
+    //     Protocol::MUL_ASSIGN,
+    //     "x",
+    //     |v: &mut Vec2Mut, x: f32| unsafe {
+    //         (*v.0).x *= x;
+    //     },
+    // )?;
+    // module.field_fn(
+    //     Protocol::DIV_ASSIGN,
+    //     "x",
+    //     |v: &mut Vec2Mut, x: f32| unsafe {
+    //         (*v.0).x /= x;
+    //     },
+    // )?;
+    // module.field_fn(Protocol::GET, "y", |v: &Vec2Mut| unsafe { (*v.0).y })?;
+    // module.field_fn(Protocol::SET, "y", |v: &mut Vec2Mut, y: f32| unsafe {
+    //     (*v.0).y = y;
+    // })?;
+    // module.field_fn(
+    //     Protocol::ADD_ASSIGN,
+    //     "y",
+    //     |v: &mut Vec2Mut, y: f32| unsafe {
+    //         (*v.0).y += y;
+    //     },
+    // )?;
+    // module.field_fn(
+    //     Protocol::SUB_ASSIGN,
+    //     "y",
+    //     |v: &mut Vec2Mut, y: f32| unsafe {
+    //         (*v.0).y -= y;
+    //     },
+    // )?;
+    // module.field_fn(
+    //     Protocol::MUL_ASSIGN,
+    //     "y",
+    //     |v: &mut Vec2Mut, y: f32| unsafe {
+    //         (*v.0).y *= y;
+    //     },
+    // )?;
+    // module.field_fn(
+    //     Protocol::DIV_ASSIGN,
+    //     "y",
+    //     |v: &mut Vec2Mut, y: f32| unsafe {
+    //         (*v.0).y /= y;
+    //     },
+    // )?;
+
+    // module.ty::<Vec3Ref>()?;
+    // module.field_fn(Protocol::GET, "x", |v: &Vec3Ref| unsafe { (*v.0).x })?;
+    // module.field_fn(Protocol::GET, "y", |v: &Vec3Ref| unsafe { (*v.0).y })?;
+    // module.field_fn(Protocol::GET, "z", |v: &Vec3Ref| unsafe { (*v.0).z })?;
 
     module.ty::<Vec3Mut>()?;
     module.field_fn(Protocol::GET, "x", |v: &Vec3Mut| unsafe { (*v.0).x })?;

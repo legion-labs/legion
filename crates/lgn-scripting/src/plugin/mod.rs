@@ -127,6 +127,6 @@ fn get_script_payload_by_id<'registry>(
     registry: &'registry Res<'_, Arc<AssetRegistry>>,
 ) -> &'registry [u8] {
     let script_untyped = registry.get_untyped(script_id).unwrap();
-    let script_typed = script_untyped.get::<Script>(&registry).unwrap();
+    let script_typed = script_untyped.get::<Script>(registry).unwrap();
     &script_typed.compiled_script
 }
