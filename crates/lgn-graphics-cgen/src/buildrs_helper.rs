@@ -1,17 +1,6 @@
-use std::{fs, path::Path};
+use std::path::Path;
 
 use crate::run;
-
-#[macro_export]
-macro_rules! build_graphics_cgen {
-    () => {
-        run_graphics_cgen(
-            &std::env::var("CARGO_PKG_NAME").unwrap(),
-            Path::new(env!("CARGO_MANIFEST_DIR")),
-            Path::new(&std::env::var("OUT_DIR").unwrap()),
-        )
-    };
-}
 
 /// .
 ///
@@ -32,8 +21,6 @@ macro_rules! build_graphics_cgen {
 ///
 /// This function will return an error if .
 ///
-
-#[allow(clippy::redundant_closure_for_method_calls)]
 pub fn run_graphics_cgen(
     crate_name: &str,
     manifest_dir: impl AsRef<Path>,
@@ -66,43 +53,18 @@ pub fn run_graphics_cgen(
             }
         }
     }
-    let result = result.map(|_| ()).map_err(std::convert::Into::into);
-
-    result.and_then(|_| {
-        if std::env::var("LGN_SYMLINK_OUT_DIR").is_ok() {
-            let symlink_path = manifest_dir.as_ref().join("out_dir");
-            let create_symlink = if symlink_path.exists() {
-                let attr = fs::symlink_metadata(&symlink_path).unwrap();
-                if !attr.is_symlink() {
-                    false
-                } else {
-                    let res = remove_symlink_dir(&symlink_path);
-                    res.is_ok()
-                }
-            } else {
-                true
-            };
-            if create_symlink {
-                create_symlink_dir(out_dir.as_ref(), &symlink_path).map_err(|err| err.into())
-            } else {
-                Ok(())
-            }
-        } else {
-            Ok(())
-        }
-    })
+    result.map(|_| ()).map_err(std::convert::Into::into)
 }
 
-fn create_symlink_dir(src: &Path, dst: &Path) -> std::io::Result<()> {
-    #[cfg(windows)]
-    return std::os::windows::fs::symlink_dir(src, dst);
-    #[cfg(not(windows))]
-    return std::os::unix::fs::symlink(src, dst);
-}
-
-fn remove_symlink_dir(src: &Path) -> std::io::Result<()> {
-    #[cfg(windows)]
-    return std::fs::remove_dir(src);
-    #[cfg(not(windows))]
-    return std::fs::remove_file(src);
+/// Run the code generation form a build rs file
+/// Expect the variables `CARGO_MANIFEST_DIR` and `OUT_DIR` to be set
+/// # Errors
+/// Errors on failing to generate build files
+pub fn build_graphics_cgen() -> Result<(), Box<dyn std::error::Error>> {
+    run_graphics_cgen(
+        &std::env::var("CARGO_PKG_NAME").unwrap(),
+        Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap()),
+        Path::new(&std::env::var("OUT_DIR").unwrap()),
+    )
+    .and_then(|_| lgn_build_utils::symlink_out_dir().map_err(std::convert::Into::into))
 }

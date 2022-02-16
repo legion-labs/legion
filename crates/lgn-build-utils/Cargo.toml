@@ -9,5 +9,3 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 thiserror = "1.0"
-walkdir = "2.0"
-which = "4.2"

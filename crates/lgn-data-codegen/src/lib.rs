@@ -17,11 +17,12 @@ mod struct_meta_info;
 
 use std::collections::HashMap;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{error::Error, io::Cursor};
 
 use enum_meta_info::EnumMetaInfo;
+use lgn_build_utils::symlink_out_dir;
 use quote::{format_ident, ToTokens};
 use struct_meta_info::StructMetaInfo;
 use syn::ItemUse;
@@ -47,7 +48,15 @@ impl GenerationType {
 
 /// Directory Code Generator (called from Build Scripts)
 /// # Errors
-pub fn generate_for_directory(
+pub fn generate_def() -> Result<(), Box<dyn Error>> {
+    let out_dir = PathBuf::from(&std::env::var("OUT_DIR").unwrap());
+    let directory = PathBuf::from(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("def");
+    println!("cargo:rerun-if-changed={}", directory.display());
+    generate_for_directory(&directory, out_dir)
+        .and_then(|_| symlink_out_dir().map_err(std::convert::Into::into))
+}
+
+fn generate_for_directory(
     src_dir: impl AsRef<Path>,
     out_dir: impl AsRef<Path>,
 ) -> Result<(), Box<dyn Error>> {

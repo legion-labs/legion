@@ -4079,8 +4079,6 @@ name = "lgn-build-utils"
 version = "0.1.0"
 dependencies = [
  "thiserror",
- "walkdir",
- "which",
 ]
 
 [[package]]
@@ -4402,6 +4400,7 @@ dependencies = [
 name = "lgn-data-codegen"
 version = "0.1.0"
 dependencies = [
+ "lgn-build-utils",
  "lgn-utils",
  "proc-macro2",
  "quote",
@@ -4621,6 +4620,7 @@ dependencies = [
  "fxhash",
  "hassle-rs",
  "heck 0.4.0",
+ "lgn-build-utils",
  "lgn-graphics-api",
  "lgn-telemetry-sink",
  "lgn-tracing",
