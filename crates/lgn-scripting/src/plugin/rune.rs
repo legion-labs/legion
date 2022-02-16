@@ -244,6 +244,10 @@ impl Vec2Ref {
     fn get(&self) -> &lgn_math::Vec2 {
         unsafe { &*self.0 }
     }
+
+    fn display(&self, buf: &mut String) -> fmt::Result {
+        write!(buf, "{}", self.get())
+    }
 }
 
 // #[derive(Any)]
@@ -261,6 +265,10 @@ impl Vec2Ref {
 //     fn get_mut(&mut self) -> &mut lgn_math::Vec2 {
 //         unsafe { &mut *self.0 }
 //     }
+//
+//     fn display(&self, buf: &mut String) -> fmt::Result {
+//         write!(buf, "{}", self.get())
+//     }
 // }
 
 // #[derive(Any)]
@@ -273,6 +281,10 @@ impl Vec2Ref {
 //
 //     fn get(&self) -> &lgn_math::Vec3 {
 //         unsafe { &*self.0 }
+//     }
+//
+//     fn display(&self, buf: &mut String) -> fmt::Result {
+//         write!(buf, "{}", self.get())
 //     }
 // }
 
@@ -301,10 +313,12 @@ fn make_math_module() -> Result<Module, ContextError> {
     let mut module = Module::with_crate("lgn_math");
 
     module.ty::<Vec2Ref>()?;
+    module.inst_fn(Protocol::STRING_DISPLAY, Vec2Ref::display)?;
     module.field_fn(Protocol::GET, "x", |v: &Vec2Ref| v.get().x)?;
     module.field_fn(Protocol::GET, "y", |v: &Vec2Ref| v.get().y)?;
 
     // module.ty::<Vec2Mut>()?;
+    // module.inst_fn(Protocol::STRING_DISPLAY, Vec2Mut::display)?;
     // module.field_fn(Protocol::GET, "x", |v: &Vec2Mut| v.get().x)?;
     // module.field_fn(Protocol::SET, "x", |v: &mut Vec2Mut, x: f32| {
     //     v.get_mut().x = x;
@@ -371,6 +385,7 @@ fn make_math_module() -> Result<Module, ContextError> {
     // )?;
 
     // module.ty::<Vec3Ref>()?;
+    // module.inst_fn(Protocol::STRING_DISPLAY, Vec3Ref::display)?;
     // module.field_fn(Protocol::GET, "x", |v: &Vec3Ref| v.get().x)?;
     // module.field_fn(Protocol::GET, "y", |v: &Vec3Ref| v.get().y)?;
     // module.field_fn(Protocol::GET, "z", |v: &Vec3Ref| v.get().z)?;
