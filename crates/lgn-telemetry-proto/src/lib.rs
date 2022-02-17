@@ -4,7 +4,8 @@
     clippy::missing_errors_doc,
     clippy::doc_markdown,
     clippy::wildcard_imports,
-    clippy::similar_names
+    clippy::similar_names,
+    clippy::use_self
 )]
 
 use std::io::{Read, Write};
@@ -13,6 +14,10 @@ use anyhow::{Context, Result};
 
 pub mod telemetry {
     tonic::include_proto!("telemetry");
+}
+
+pub mod health {
+    tonic::include_proto!("health");
 }
 
 pub mod ingestion {

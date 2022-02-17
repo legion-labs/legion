@@ -17,6 +17,7 @@ mod cache;
 mod call_tree;
 mod call_tree_store;
 mod cumulative_call_graph;
+mod health_check_service;
 mod metrics;
 
 use std::str::FromStr;
@@ -28,10 +29,13 @@ use auth::AuthLayer;
 use clap::{AppSettings, Parser, Subcommand};
 use lgn_blob_storage::{AwsS3BlobStorage, AwsS3Url, LocalBlobStorage, Lz4BlobStorageAdapter};
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalyticsServer;
+use lgn_telemetry_proto::health::health_server::HealthServer;
 use lgn_telemetry_sink::TelemetryGuard;
 use lgn_tracing::prelude::*;
 use std::net::SocketAddr;
 use tonic::transport::Server;
+
+use crate::health_check_service::HealthCheckService;
 
 #[derive(Parser, Debug)]
 #[clap(name = "Legion Performance Analytics Server")]
@@ -110,7 +114,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_ctrlc_handling();
     span_scope!("analytics-srv::main");
     let args = Cli::parse();
-    let service = match args.spec {
+    let analytics_service = match args.spec {
         DataLakeSpec::Local {
             data_lake_path,
             cache_path,
@@ -125,12 +129,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let auth_layer = tower::ServiceBuilder::new()
         .layer(AuthLayer::default())
         .into_inner();
-
-    let server = PerformanceAnalyticsServer::new(service);
+    let analytics_server = PerformanceAnalyticsServer::new(analytics_service);
+    let health_check_server = HealthServer::new(HealthCheckService {});
     Server::builder()
         .accept_http1(true)
         .layer(auth_layer)
-        .add_service(tonic_web::enable(server))
+        .add_service(tonic_web::enable(health_check_server))
+        .add_service(tonic_web::enable(analytics_server))
         .serve(args.listen_endpoint)
         .await?;
     Ok(())

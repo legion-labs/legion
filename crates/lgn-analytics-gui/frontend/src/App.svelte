@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Router, Route } from "svelte-navigator";
+  import Health from "@/pages/Health.svelte";
   import Log from "@/pages/Log.svelte";
   import Timeline from "@/pages/Timeline.svelte";
   import Graph from "@/pages/Graph.svelte";
@@ -32,6 +33,7 @@
           <Route path="/" primary={false}>
             <ProcessList />
           </Route>
+          <Route path="/health"><Health /></Route>
           <Route path="/log/:id" let:params let:location primary={false}>
             {#key params.id + location.search}
               <Log id={params.id} />
