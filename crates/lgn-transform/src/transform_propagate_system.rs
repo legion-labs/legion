@@ -89,7 +89,10 @@ mod test {
     };
 
     use super::*;
-    use crate::hierarchy::{parent_update_system, BuildChildren, BuildWorldChildren};
+    use crate::{
+        hierarchy::{parent_update_system, BuildChildren, BuildWorldChildren},
+        TransformBundle,
+    };
 
     #[test]
     fn did_propagate() {
@@ -103,33 +106,23 @@ mod test {
         schedule.add_stage("update", update_stage);
 
         // Root entity
-        world.spawn().insert_bundle((
-            Transform::from_xyz(1.0, 0.0, 0.0),
-            GlobalTransform::identity(),
-        ));
+        world
+            .spawn()
+            .insert_bundle(TransformBundle::from(Transform::from_xyz(1.0, 0.0, 0.0)));
 
         let mut children = Vec::new();
         world
             .spawn()
-            .insert_bundle((
-                Transform::from_xyz(1.0, 0.0, 0.0),
-                GlobalTransform::identity(),
-            ))
+            .insert_bundle(TransformBundle::from(Transform::from_xyz(1.0, 0.0, 0.0)))
             .with_children(|parent| {
                 children.push(
                     parent
-                        .spawn_bundle((
-                            Transform::from_xyz(0.0, 2.0, 0.),
-                            GlobalTransform::identity(),
-                        ))
+                        .spawn_bundle(TransformBundle::from(Transform::from_xyz(0.0, 2.0, 0.)))
                         .id(),
                 );
                 children.push(
                     parent
-                        .spawn_bundle((
-                            Transform::from_xyz(0.0, 0.0, 3.),
-                            GlobalTransform::identity(),
-                        ))
+                        .spawn_bundle(TransformBundle::from(Transform::from_xyz(0.0, 0.0, 3.)))
                         .id(),
                 );
             });
@@ -162,25 +155,16 @@ mod test {
         let mut commands = Commands::new(&mut queue, &world);
         let mut children = Vec::new();
         commands
-            .spawn_bundle((
-                Transform::from_xyz(1.0, 0.0, 0.0),
-                GlobalTransform::identity(),
-            ))
+            .spawn_bundle(TransformBundle::from(Transform::from_xyz(1.0, 0.0, 0.0)))
             .with_children(|parent| {
                 children.push(
                     parent
-                        .spawn_bundle((
-                            Transform::from_xyz(0.0, 2.0, 0.0),
-                            GlobalTransform::identity(),
-                        ))
+                        .spawn_bundle(TransformBundle::from(Transform::from_xyz(0.0, 2.0, 0.0)))
                         .id(),
                 );
                 children.push(
                     parent
-                        .spawn_bundle((
-                            Transform::from_xyz(0.0, 0.0, 3.0),
-                            GlobalTransform::identity(),
-                        ))
+                        .spawn_bundle(TransformBundle::from(Transform::from_xyz(0.0, 0.0, 3.0)))
                         .id(),
                 );
             });
