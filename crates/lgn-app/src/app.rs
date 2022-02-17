@@ -719,7 +719,7 @@ impl App {
     ///     }
     /// }
     ///
-    /// App::new()
+    /// App::default()
     ///     .init_resource::<MyCounter>();
     /// ```
     pub fn init_resource<R: Resource + FromWorld>(&mut self) -> &mut Self {
