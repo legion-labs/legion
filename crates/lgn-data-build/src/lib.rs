@@ -133,6 +133,7 @@
 use std::path::PathBuf;
 
 use lgn_data_compiler::compiler_api::CompilerError;
+use lgn_data_offline::{ResourcePathId, Transform};
 use thiserror::Error;
 
 /// Data build error. todo(kstasik): revisit how errors are handled/propagated
@@ -146,8 +147,8 @@ pub enum Error {
     #[error("Not found.")]
     NotFound,
     /// Compiler not found.
-    #[error("Compiler not found.")]
-    CompilerNotFound,
+    #[error("Compiler transform '{0}' not found in path: {1}")]
+    CompilerNotFound(Transform, ResourcePathId),
     /// IO error.
     #[error("IO error.")]
     Io(Box<dyn std::error::Error + Send + Sync>),

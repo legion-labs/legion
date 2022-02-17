@@ -14,6 +14,8 @@ service PropertyInspector {
   rpc InsertNewArrayElement(InsertNewArrayElementRequest) returns (InsertNewArrayElementResponse);
 
   rpc ReorderArrayElement(ReorderArrayElementRequest) returns (ReorderArrayElementResponse);
+
+  rpc UpdateSelection(UpdateSelectionRequest) returns (UpdateSelectionResponse);
 }
 
 message GetResourcePropertiesRequest {
@@ -74,3 +76,8 @@ message ReorderArrayElementRequest {
   uint64 new_index = 4;
 }
 message ReorderArrayElementResponse {}
+
+message UpdateSelectionRequest {
+  string resource_id = 1;
+}
+message UpdateSelectionResponse {};

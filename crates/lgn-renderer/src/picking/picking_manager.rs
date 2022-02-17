@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex};
 
+use lgn_app::EventWriter;
 use lgn_ecs::prelude::{Commands, Entity, Query};
 use lgn_input::{
     mouse::{MouseButton, MouseButtonInput, MouseMotion},
@@ -13,7 +14,7 @@ use crate::{
     components::{ManipulatorComponent, PickedComponent},
 };
 
-use super::ManipulatorType;
+use super::{picking_event::PickingEvent, ManipulatorType};
 
 pub struct PickingIdBlock {
     picking_ids: Vec<u32>,
@@ -110,8 +111,10 @@ pub struct PickingManagerInner {
     picked_pos: Vec2,
     current_picking_data: Vec<PickingData>,
     current_type: ManipulatorType,
-    manipulated_entity: Entity,
-    manipulated_entity_parent: Option<Entity>,
+    manipulated_entity: Option<Entity>,
+
+    active_selection: Vec<Entity>,
+    active_selection_dirty: bool,
 }
 
 #[derive(Clone)]
@@ -138,8 +141,9 @@ impl PickingManager {
                 picked_pos: Vec2::ZERO,
                 current_picking_data: Vec::new(),
                 current_type: ManipulatorType::Position,
-                manipulated_entity: Entity::from_raw(u32::MAX),
-                manipulated_entity_parent: None,
+                manipulated_entity: None,
+                active_selection: Vec::new(),
+                active_selection_dirty: false,
             })),
         }
     }
@@ -262,6 +266,12 @@ impl PickingManager {
         }
     }
 
+    pub fn set_active_selection(&self, entities: Vec<Entity>) {
+        let inner = &mut *self.inner.lock().unwrap();
+        inner.active_selection = entities;
+        inner.active_selection_dirty = true;
+    }
+
     pub fn screen_rect(&self) -> Vec2 {
         let inner = self.inner.lock().unwrap();
 
@@ -295,6 +305,7 @@ impl PickingManager {
     pub(super) fn update_picking_components(
         &self,
         mut commands: Commands<'_, '_>,
+        mut event_writer: EventWriter<'_, '_, PickingEvent>,
         mut picked_components: Query<
             '_,
             '_,
@@ -309,9 +320,32 @@ impl PickingManager {
     ) {
         let inner = &mut *self.inner.lock().unwrap();
 
+        // Add and Remove all the PickedComponent if the Active Selection changed
+        if inner.active_selection_dirty {
+            inner.active_selection_dirty = false;
+
+            // Remove PickedComponent that are no longer in the active selection
+            for (entity, _, _, manipulator_component) in picked_components.iter() {
+                if manipulator_component.is_none() && !inner.active_selection.contains(&entity) {
+                    commands.entity(entity).remove::<PickedComponent>();
+                }
+            }
+
+            // Add PickedComponent that don't have a pickedComponent already
+            for entity in &inner.active_selection {
+                if picked_components.get(*entity).is_err() {
+                    let new_component = PickedComponent::new();
+                    commands.entity(*entity).insert(new_component);
+                }
+            }
+            inner.manipulated_entity = inner.active_selection.iter().last().copied();
+        }
+
         if inner.picking_state == PickingState::Processing {
-            if inner.current_picking_data.is_empty() {
-                inner.manipulated_entity = Entity::from_raw(u32::MAX);
+            if inner.current_picking_data.is_empty() && inner.manipulated_entity.is_some() {
+                inner.manipulated_entity = None;
+                // Notify Clear Selection
+                event_writer.send(PickingEvent::ClearSelection);
             }
 
             let mut picked_entities = Vec::with_capacity(inner.current_picking_data.len());
@@ -326,16 +360,11 @@ impl PickingManager {
                     panic!();
                 }
             }
-            let mut manipulator_picked = false;
-            for picked_entity in &picked_entities {
-                for (entity, _manipulator) in manipulator_entities.iter() {
-                    if entity == *picked_entity {
-                        manipulator_picked = true;
-                    }
-                }
-            }
+            let manipulator_picked = picked_entities
+                .iter()
+                .any(|entity| manipulator_entities.get(*entity).is_ok());
 
-            for (entity, transform, mut picked_component, manipulator_component) in
+            for (entity, _transform, mut picked_component, manipulator_component) in
                 picked_components.iter_mut()
             {
                 if !manipulator_picked || manipulator_component.is_some() {
@@ -344,26 +373,19 @@ impl PickingManager {
                         &mut inner.current_picking_data,
                         &mut picked_entities,
                     );
-
-                    if manipulator_component.is_none() && !picked_component.is_empty() {
-                        inner.manip_entity_base_transform = *transform;
-                        inner.manipulated_entity = entity;
-                    }
                 }
             }
 
             let i = 0;
             while i < inner.current_picking_data.len() {
                 let entity_id = picked_entities[i];
-                let mut is_manipulator = false;
-
-                for (entity, _manipulator) in manipulator_entities.iter() {
-                    if entity == entity_id {
-                        is_manipulator = true;
-                    }
-                }
+                let is_manipulator = manipulator_entities.get(entity_id).is_ok();
 
                 if !manipulator_picked || is_manipulator {
+                    if !is_manipulator {
+                        event_writer.send(PickingEvent::EntityPicked(entity_id));
+                        inner.manipulated_entity = Some(entity_id);
+                    }
                     let mut add_component = commands.entity(entity_id);
                     let mut new_component = PickedComponent::new();
                     new_component.replace_picking_ids(
@@ -387,28 +409,15 @@ impl PickingManager {
         inner.current_type
     }
 
-    pub fn manipulated_entity(&self) -> Entity {
+    pub fn manipulated_entity(&self) -> Option<Entity> {
         let inner = self.inner.lock().unwrap();
 
         inner.manipulated_entity
     }
 
-    pub fn manipulated_entity_parent(&self) -> Option<Entity> {
-        let inner = self.inner.lock().unwrap();
-        inner.manipulated_entity_parent
-    }
-
-    pub fn set_manip_entity(
-        &self,
-        entity: Entity,
-        parent: Option<Entity>,
-        base_transform: &Transform,
-    ) {
+    pub fn set_base_picking_transform(&self, base_transform: &Transform) {
         let mut inner = self.inner.lock().unwrap();
-
         inner.manip_entity_base_transform = *base_transform;
-        inner.manipulated_entity = entity;
-        inner.manipulated_entity_parent = parent;
     }
 
     pub fn base_picking_transform(&self) -> Transform {

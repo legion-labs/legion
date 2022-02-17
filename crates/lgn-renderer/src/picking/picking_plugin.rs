@@ -6,11 +6,10 @@ use lgn_input::{
 };
 use lgn_math::Vec2;
 use lgn_tracing::span_fn;
-use lgn_transform::prelude::{Parent, Transform};
+use lgn_transform::{components::GlobalTransform, prelude::Transform};
 use lgn_window::WindowResized;
-use std::ops::Deref;
 
-use super::{ManipulatorManager, PickingIdContext, PickingManager};
+use super::{picking_event::PickingEvent, ManipulatorManager, PickingIdContext, PickingManager};
 use crate::{
     components::{
         CameraComponent, LightComponent, ManipulatorComponent, PickedComponent, RenderSurface,
@@ -32,6 +31,7 @@ pub enum PickingSystemLabel {
 impl Plugin for PickingPlugin {
     fn build(&self, app: &mut App) {
         let picking_manager = PickingManager::new(4096);
+        app.add_event::<PickingEvent>();
         app.insert_resource(picking_manager);
 
         app.add_system_to_stage(CoreStage::PostUpdate, gather_input);
@@ -121,6 +121,7 @@ fn lights_added(
 fn update_picking_components(
     picking_manager: Res<'_, PickingManager>,
     commands: Commands<'_, '_>,
+    event_writer: EventWriter<'_, '_, PickingEvent>,
     query: Query<
         '_,
         '_,
@@ -133,7 +134,7 @@ fn update_picking_components(
     >,
     manipulator_entities: Query<'_, '_, (Entity, &ManipulatorComponent)>,
 ) {
-    picking_manager.update_picking_components(commands, query, manipulator_entities);
+    picking_manager.update_picking_components(commands, event_writer, query, manipulator_entities);
 }
 
 #[span_fn]
@@ -141,25 +142,29 @@ fn update_picking_components(
 #[allow(clippy::needless_pass_by_value)]
 fn update_picked_entity(
     picking_manager: Res<'_, PickingManager>,
-    mut newly_picked_query: Query<
+    newly_picked_query: Query<
         '_,
         '_,
-        (Entity, Option<&Parent>, &mut Transform),
+        (Entity, &Transform),
         (Added<PickedComponent>, Without<ManipulatorComponent>),
     >,
 ) {
-    for (entity, parent, transform) in newly_picked_query.iter_mut() {
-        picking_manager.set_manip_entity(entity, parent.map(|p| *p.deref()), &transform);
+    for (entity, transform) in newly_picked_query.iter() {
+        if Some(entity) == picking_manager.manipulated_entity() {
+            picking_manager.set_base_picking_transform(transform);
+        }
     }
 }
 
 #[span_fn]
 #[allow(clippy::type_complexity)]
+#[allow(clippy::too_many_arguments)]
 #[allow(clippy::needless_pass_by_value)]
 fn update_manipulator_component(
     mut commands: Commands<'_, '_>,
     picking_manager: Res<'_, PickingManager>,
     manipulator_manager: Res<'_, ManipulatorManager>,
+    mut event_writer: EventWriter<'_, '_, PickingEvent>,
     q_cameras: Query<
         '_,
         '_,
@@ -172,8 +177,8 @@ fn update_manipulator_component(
         '_,
         (
             Entity,
-            Option<&Parent>,
             &mut Transform,
+            &GlobalTransform,
             &mut PickedComponent,
         ),
         Without<ManipulatorComponent>,
@@ -183,7 +188,6 @@ fn update_manipulator_component(
         '_,
         (
             Entity,
-            Option<&Parent>,
             &mut Transform,
             &mut ManipulatorComponent,
             Option<&mut PickedComponent>,
@@ -191,7 +195,7 @@ fn update_manipulator_component(
     >,
 ) {
     let mut selected_part = usize::MAX;
-    for (_entity, _parent, _transform, manipulator, picked_component) in manipulator_query.iter() {
+    for (_entity, _transform, manipulator, picked_component) in manipulator_query.iter() {
         if picked_component.is_some() && picking_manager.mouse_button_down() {
             selected_part = manipulator.part_num;
         }
@@ -199,9 +203,7 @@ fn update_manipulator_component(
 
     let mut update_manip_entity = false;
     let mut active_manipulator_part = false;
-    for (entity, _parent, _transform, mut manipulator, picked_component) in
-        manipulator_query.iter_mut()
-    {
+    for (entity, _transform, mut manipulator, picked_component) in manipulator_query.iter_mut() {
         manipulator.selected = false;
         if selected_part != usize::MAX
             && manipulator_manager.match_manipulator_parts(
@@ -219,8 +221,8 @@ fn update_manipulator_component(
     }
 
     let mut select_entity_transform = None;
-    for (entity, parent, mut transform, picked) in picked_query.iter_mut() {
-        if entity == picking_manager.manipulated_entity() {
+    for (entity, mut transform, global_transform, picked) in picked_query.iter_mut() {
+        if picking_manager.manipulated_entity() == Some(entity) {
             if active_manipulator_part {
                 let base_transform = picking_manager.base_picking_transform();
 
@@ -246,32 +248,28 @@ fn update_manipulator_component(
                     }
                 }
             } else if update_manip_entity {
-                picking_manager.set_manip_entity(entity, parent.map(|p| *p.deref()), &transform);
+                if !picking_manager.mouse_button_down()
+                    && (*transform) != picking_manager.base_picking_transform()
+                {
+                    event_writer.send(PickingEvent::ApplyTransaction(entity, *transform));
+                }
+                picking_manager.set_base_picking_transform(&transform);
+                // Notify the transform
             }
-            select_entity_transform = Some(*transform);
+            select_entity_transform = Some(*global_transform);
         } else if picked.is_empty() {
             commands.entity(entity).remove::<PickedComponent>();
         }
     }
 
-    for (entity, parent, mut transform, mut manipulator, _picked_component) in
-        manipulator_query.iter_mut()
+    // Update the Manipulator Transform using the Manipulated Entity GlobalTransform
+    for (_entity, mut transform, mut manipulator, _picked_component) in manipulator_query.iter_mut()
     {
         manipulator.active = false;
-
         if let Some(entity_transform) = select_entity_transform {
             if manipulator.part_type == manipulator_manager.current_manipulator_type() {
                 manipulator_manager
                     .manipulator_transform_from_entity_transform(&entity_transform, &mut transform);
-
-                if parent.map(Parent::deref) != picking_manager.manipulated_entity_parent().as_ref()
-                {
-                    if let Some(parent) = picking_manager.manipulated_entity_parent() {
-                        commands.entity(entity).insert(Parent(parent));
-                    } else {
-                        commands.entity(entity).remove::<Parent>();
-                    }
-                }
                 manipulator.active = true;
             }
         }

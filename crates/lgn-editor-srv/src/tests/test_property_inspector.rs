@@ -13,9 +13,9 @@ async fn test_property_inspector() -> anyhow::Result<()> {
     let project_dir = tempfile::tempdir().unwrap();
 
     {
-        let data_manager = crate::test_resource_browser::setup_project(&project_dir).await;
+        let transaction_manager = crate::test_resource_browser::setup_project(&project_dir).await;
         let property_inspector = crate::property_inspector_plugin::PropertyInspectorRPC {
-            data_manager: data_manager.clone(),
+            transaction_manager: transaction_manager.clone(),
         };
 
         // Create a dummy Scene Entity
@@ -32,8 +32,8 @@ async fn test_property_inspector() -> anyhow::Result<()> {
                 false,
             ));
 
-            let mut data_manager = data_manager.lock().await;
-            data_manager
+            let mut transaction_manager = transaction_manager.lock().await;
+            transaction_manager
                 .commit_transaction(transaction)
                 .await
                 .map_err(|err| Status::internal(err.to_string()))?;

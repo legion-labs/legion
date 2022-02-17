@@ -31,7 +31,6 @@ pub fn find_derived_path(path: &ResourcePathId) -> ResourcePathId {
         lgn_graphics_data::offline::Material::TYPE => {
             path.push(lgn_graphics_data::runtime::Material::TYPE)
         }
-        generic_data::offline::DebugCube::TYPE => path.push(generic_data::runtime::DebugCube::TYPE),
         _ => {
             panic!("unrecognized offline type {}", offline_type);
         }
@@ -122,7 +121,6 @@ pub async fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathNa
                     | runtime_data::Mesh::TYPE
                     | lgn_graphics_data::runtime_texture::Texture::TYPE
                     | lgn_graphics_data::runtime::Material::TYPE
-                    | generic_data::runtime::DebugCube::TYPE
             )
         };
 

@@ -11,7 +11,7 @@ use std::{
     sync::Arc,
 };
 
-use generic_data::offline::{DebugCube, TestComponent, TestEntity};
+use generic_data::offline::{TestComponent, TestEntity};
 use lgn_data_offline::resource::{
     Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
 };
@@ -292,44 +292,64 @@ async fn build_debug_cubes(
         let id = if let Ok(id) = project.find_resource(&name).await {
             id
         } else {
-            let kind = DebugCube::TYPE;
+            let kind = offline_data::Entity::TYPE;
             let id = ResourceTypeAndId {
                 kind,
                 id: ResourceId::from_str(cube_ids[index]).unwrap(),
             };
             let cube_entity_handle = resources.new_resource(kind).unwrap();
-            let cube_entity = cube_entity_handle.get_mut::<DebugCube>(resources).unwrap();
+            let cube_entity = cube_entity_handle
+                .get_mut::<offline_data::Entity>(resources)
+                .unwrap();
 
-            cube_entity.color = match index {
-                0 => (255, 0, 0).into(),
-                1 => (255, 255, 0).into(),
-                2 => (255, 0, 255).into(),
-                3 => (0, 0, 255).into(),
-                _ => (192, 192, 192).into(),
-            };
+            cube_entity.components.push(Box::new(offline_data::Name {
+                name: format!("DebugCube{}", index),
+            }));
 
-            cube_entity.mesh_id = 1;
-            cube_entity.rotation_speed = match index {
-                0 => (0.4f32, 0.0f32, 0.0f32).into(),
-                1 => (0.0f32, 0.4f32, 0.0f32).into(),
-                2 => (0.0f32, 0.0f32, 0.4f32).into(),
-                3 => (0.0f32, 0.3f32, 0.0f32).into(),
-                _ => (0.0f32, 0.0f32, 0.0f32).into(),
-            };
+            cube_entity
+                .components
+                .push(Box::new(offline_data::RotationComponent {
+                    rotation_speed: match index {
+                        0 => (0.4f32, 0.0f32, 0.0f32).into(),
+                        1 => (0.0f32, 0.4f32, 0.0f32).into(),
+                        2 => (0.0f32, 0.0f32, 0.4f32).into(),
+                        3 => (0.0f32, 0.3f32, 0.0f32).into(),
+                        _ => (0.0f32, 0.0f32, 0.0f32).into(),
+                    },
+                }));
 
-            cube_entity.position = match index {
-                0 => (0.0f32, 0.0f32, 1.0f32).into(),
-                1 => (1.0f32, 0.0f32, 0.0f32).into(),
-                2 => (-1.0f32, 0.0f32, 0.0f32).into(),
-                3 => (0.0f32, 1.0f32, 0.0f32).into(),
-                _ => (0.0f32, 0.0f32, 0.0f32).into(),
-            };
+            cube_entity
+                .components
+                .push(Box::new(offline_data::Transform {
+                    position: match index {
+                        0 => (0.0f32, 0.0f32, 1.0f32).into(),
+                        1 => (1.0f32, 0.0f32, 0.0f32).into(),
+                        2 => (-1.0f32, 0.0f32, 0.0f32).into(),
+                        3 => (0.0f32, 1.0f32, 0.0f32).into(),
+                        _ => (0.0f32, 0.0f32, 0.0f32).into(),
+                    },
+                    ..sample_data::offline::Transform::default()
+                }));
+
+            cube_entity
+                .components
+                .push(Box::new(offline_data::StaticMesh {
+                    mesh_id: lgn_graphics_data::DefaultMeshType::Cube,
+                    color: match index {
+                        0 => (255, 0, 0).into(),
+                        1 => (255, 255, 0).into(),
+                        2 => (255, 0, 255).into(),
+                        3 => (0, 0, 255).into(),
+                        _ => (192, 192, 192).into(),
+                    },
+                    ..sample_data::offline::StaticMesh::default()
+                }));
 
             project
                 .add_resource_with_id(
                     name.clone(),
-                    DebugCube::TYPENAME,
-                    DebugCube::TYPE,
+                    offline_data::Entity::TYPENAME,
+                    offline_data::Entity::TYPE,
                     id.id,
                     cube_entity_handle,
                     resources,

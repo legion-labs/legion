@@ -11,24 +11,25 @@ use lgn_data_runtime::{
 };
 use tokio::sync::Mutex;
 
+use crate::SelectionManager;
 use crate::{
     build_manager::BuildManager, ArrayOperation, CloneResourceOperation, CreateResourceOperation,
-    DataManager, DeleteResourceOperation, Error, RenameResourceOperation, Transaction,
+    DeleteResourceOperation, Error, RenameResourceOperation, Transaction, TransactionManager,
     UpdatePropertyOperation,
 };
 
 async fn validate_test_entity(
     res_id: ResourceTypeAndId,
-    data_manager: &mut DataManager,
+    transaction_manager: &mut TransactionManager,
     callback: fn(test_entity: &TestEntity),
 ) {
-    if let Some(handle) = data_manager
+    if let Some(handle) = transaction_manager
         .loaded_resource_handles
         .lock()
         .await
         .get(res_id)
     {
-        let resource_registry = data_manager.resource_registry.lock().await;
+        let resource_registry = transaction_manager.resource_registry.lock().await;
         let test_entity = handle.get::<TestEntity>(&resource_registry).unwrap();
         callback(test_entity);
     }
@@ -36,7 +37,7 @@ async fn validate_test_entity(
 
 async fn test_array_insert_operation(
     resource_id: ResourceTypeAndId,
-    data_manager: &mut DataManager,
+    transaction_manager: &mut TransactionManager,
 ) -> Result<(), Error> {
     // Add two entries to test_blob array
     let transaction = Transaction::new()
@@ -58,15 +59,15 @@ async fn test_array_insert_operation(
             Some(6),
             "253",
         ));
-    data_manager.commit_transaction(transaction).await?;
-    validate_test_entity(resource_id, data_manager, |test_entity| {
+    transaction_manager.commit_transaction(transaction).await?;
+    validate_test_entity(resource_id, transaction_manager, |test_entity| {
         assert_eq!(test_entity.test_blob, vec![255u8, 254u8, 0, 1, 2, 3, 253]);
     })
     .await;
 
     // Undo transaction
-    data_manager.undo_transaction().await?;
-    validate_test_entity(resource_id, data_manager, |test_entity| {
+    transaction_manager.undo_transaction().await?;
+    validate_test_entity(resource_id, transaction_manager, |test_entity| {
         assert_eq!(test_entity.test_blob, vec![0, 1, 2, 3]);
     })
     .await;
@@ -75,21 +76,21 @@ async fn test_array_insert_operation(
 
 async fn test_array_delete_operation(
     resource_id: ResourceTypeAndId,
-    data_manager: &mut DataManager,
+    transaction_manager: &mut TransactionManager,
 ) -> Result<(), Error> {
     // Add two entries to test_blob array
     let transaction = Transaction::new()
         .add_operation(ArrayOperation::delete_element(resource_id, "test_blob", 3))
         .add_operation(ArrayOperation::delete_element(resource_id, "test_blob", 1));
-    data_manager.commit_transaction(transaction).await?;
-    validate_test_entity(resource_id, data_manager, |test_entity| {
+    transaction_manager.commit_transaction(transaction).await?;
+    validate_test_entity(resource_id, transaction_manager, |test_entity| {
         assert_eq!(test_entity.test_blob, vec![0, 2]);
     })
     .await;
 
     // Undo transaction
-    data_manager.undo_transaction().await?;
-    validate_test_entity(resource_id, data_manager, |test_entity| {
+    transaction_manager.undo_transaction().await?;
+    validate_test_entity(resource_id, transaction_manager, |test_entity| {
         assert_eq!(test_entity.test_blob, vec![0, 1, 2, 3]);
     })
     .await;
@@ -99,7 +100,7 @@ async fn test_array_delete_operation(
 
 async fn test_array_reorder_operation(
     resource_id: ResourceTypeAndId,
-    data_manager: &mut DataManager,
+    transaction_manager: &mut TransactionManager,
 ) -> Result<(), Error> {
     // Add two entries to test_blob array
     let transaction = Transaction::new()
@@ -115,15 +116,15 @@ async fn test_array_reorder_operation(
             2,
             3,
         ));
-    data_manager.commit_transaction(transaction).await?;
-    validate_test_entity(resource_id, data_manager, |test_entity| {
+    transaction_manager.commit_transaction(transaction).await?;
+    validate_test_entity(resource_id, transaction_manager, |test_entity| {
         assert_eq!(test_entity.test_blob, vec![1, 0, 3, 2]);
     })
     .await;
 
     // Undo transaction
-    data_manager.undo_transaction().await?;
-    validate_test_entity(resource_id, data_manager, |test_entity| {
+    transaction_manager.undo_transaction().await?;
+    validate_test_entity(resource_id, transaction_manager, |test_entity| {
         assert_eq!(test_entity.test_blob, vec![0, 1, 2, 3]);
     })
     .await;
@@ -162,11 +163,12 @@ async fn test_transaction_system() -> Result<(), Error> {
 
     let project = Arc::new(Mutex::new(project));
     {
-        let mut data_manager = DataManager::new(
+        let mut transaction_manager = TransactionManager::new(
             project.clone(),
             resource_registry.clone(),
             asset_registry.clone(),
             build_manager,
+            SelectionManager::create(),
         );
         let resource_path: ResourcePathName = "/entity/create_test77".into();
 
@@ -225,22 +227,22 @@ async fn test_transaction_system() -> Result<(), Error> {
                 None,
                 ref_path_id.to_string().as_str(),
             ));
-        data_manager.commit_transaction(transaction).await?;
+        transaction_manager.commit_transaction(transaction).await?;
 
         asset_registry.update();
 
         assert!(project.lock().await.exists_named(&resource_path).await);
 
         // Test Array Insert Operation
-        test_array_insert_operation(new_id, &mut data_manager).await?;
+        test_array_insert_operation(new_id, &mut transaction_manager).await?;
         asset_registry.update();
 
         // Test Array Delete Operation
-        test_array_delete_operation(new_id, &mut data_manager).await?;
+        test_array_delete_operation(new_id, &mut transaction_manager).await?;
         asset_registry.update();
 
         // Test Array Reorder Operation
-        test_array_reorder_operation(new_id, &mut data_manager).await?;
+        test_array_reorder_operation(new_id, &mut transaction_manager).await?;
         asset_registry.update();
 
         // Expected clone name
@@ -251,7 +253,7 @@ async fn test_transaction_system() -> Result<(), Error> {
         };
         let transaction =
             Transaction::new().add_operation(CloneResourceOperation::new(new_id, clone_id, None));
-        data_manager.commit_transaction(transaction).await?;
+        transaction_manager.commit_transaction(transaction).await?;
         asset_registry.update();
         assert!(project.lock().await.exists_named(&clone_name).await);
         assert!(project.lock().await.exists(clone_id.id).await);
@@ -262,50 +264,50 @@ async fn test_transaction_system() -> Result<(), Error> {
             clone_id,
             rename_new_name.clone(),
         ));
-        data_manager.commit_transaction(transaction).await?;
+        transaction_manager.commit_transaction(transaction).await?;
         asset_registry.update();
         assert!(project.lock().await.exists_named(&rename_new_name).await);
         assert!(!project.lock().await.exists_named(&clone_name).await);
 
         // Undo Rename
-        data_manager.undo_transaction().await?;
+        transaction_manager.undo_transaction().await?;
         asset_registry.update();
         assert!(!project.lock().await.exists_named(&rename_new_name).await);
         assert!(project.lock().await.exists_named(&clone_name).await);
 
         // Undo Clone
-        data_manager.undo_transaction().await?;
+        transaction_manager.undo_transaction().await?;
         asset_registry.update();
         assert!(!project.lock().await.exists_named(&clone_name).await);
         assert!(!project.lock().await.exists(clone_id.id).await);
 
         // Delete the created Resource
         let transaction = Transaction::new().add_operation(DeleteResourceOperation::new(new_id));
-        data_manager.commit_transaction(transaction).await?;
+        transaction_manager.commit_transaction(transaction).await?;
         asset_registry.update();
         assert!(!project.lock().await.exists_named(&resource_path).await);
         assert!(!project.lock().await.exists(new_id.id).await);
 
         // Undo delete
-        data_manager.undo_transaction().await?;
+        transaction_manager.undo_transaction().await?;
         asset_registry.update();
         assert!(project.lock().await.exists_named(&resource_path).await);
         assert!(project.lock().await.exists(new_id.id).await);
 
         // Undo Create
-        data_manager.undo_transaction().await?;
+        transaction_manager.undo_transaction().await?;
         asset_registry.update();
         assert!(!project.lock().await.exists_named(&resource_path).await);
         assert!(!project.lock().await.exists(new_id.id).await);
 
         // Redo Create
-        data_manager.redo_transaction().await?;
+        transaction_manager.redo_transaction().await?;
         asset_registry.update();
         assert!(project.lock().await.exists_named(&resource_path).await);
         assert!(project.lock().await.exists(new_id.id).await);
 
         // Redo Delete
-        data_manager.redo_transaction().await?;
+        transaction_manager.redo_transaction().await?;
         asset_registry.update();
         assert!(!project.lock().await.exists_named(&resource_path).await);
         assert!(!project.lock().await.exists(new_id.id).await);
@@ -331,7 +333,10 @@ async fn test_transaction_system() -> Result<(), Error> {
                 "[1,2,3]",
             ));
         assert!(
-            !data_manager.commit_transaction(transaction).await.is_ok(),
+            !transaction_manager
+                .commit_transaction(transaction)
+                .await
+                .is_ok(),
             "Transaction with invalid property update shouldn't succceed"
         );
         asset_registry.update();
@@ -347,7 +352,7 @@ async fn test_transaction_system() -> Result<(), Error> {
                 "/entity/autoincrement1337".into(),
                 true,
             ));
-            data_manager.commit_transaction(transaction).await?;
+            transaction_manager.commit_transaction(transaction).await?;
         }
         asset_registry.update();
         assert!(
@@ -365,7 +370,7 @@ async fn test_transaction_system() -> Result<(), Error> {
                 .await
         );
 
-        drop(data_manager);
+        drop(transaction_manager);
     }
 
     drop(resource_registry);

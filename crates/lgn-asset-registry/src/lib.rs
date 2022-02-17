@@ -11,7 +11,7 @@ mod loading_states;
 
 use std::{fs::File, path::Path, sync::Arc};
 
-use asset_entities::AssetToEntityMap;
+pub use asset_entities::AssetToEntityMap;
 use asset_handles::AssetHandles;
 use asset_to_ecs::load_ecs_asset;
 pub use config::{AssetRegistrySettings, DataBuildConfig};
@@ -107,6 +107,7 @@ impl AssetRegistryPlugin {
     }
 
     // Request load for all assets specified in config.
+    #[allow(clippy::needless_pass_by_value)]
     fn preload_assets(
         config: ResMut<'_, AssetRegistrySettings>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
@@ -117,15 +118,11 @@ impl AssetRegistryPlugin {
             asset_loading_states.insert(*asset_id, LoadingState::Pending);
             asset_handles.insert(*asset_id, registry.load_untyped(*asset_id));
         }
-
-        drop(config);
-        drop(registry);
     }
 
-    fn update_registry(registry: ResMut<'_, Arc<AssetRegistry>>) {
+    #[allow(clippy::needless_pass_by_value)]
+    fn update_registry(registry: Res<'_, Arc<AssetRegistry>>) {
         registry.update();
-
-        drop(registry);
     }
 
     #[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)]
@@ -178,14 +175,6 @@ impl AssetRegistryPlugin {
                             &mut entity_to_id_map,
                             &mut data_context,
                         ) && !load_ecs_asset::<lgn_graphics_data::runtime_texture::Texture>(
-                            asset_id,
-                            handle,
-                            &registry,
-                            &mut commands,
-                            &mut asset_to_entity_map,
-                            &mut entity_to_id_map,
-                            &mut data_context,
-                        ) && !load_ecs_asset::<generic_data::runtime::DebugCube>(
                             asset_id,
                             handle,
                             &registry,

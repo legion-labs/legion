@@ -1,19 +1,14 @@
+use lgn_content_store::{ContentStore, ContentStoreAddr};
+use lgn_ecs::schedule::SystemLabel;
 use std::{
     any::Any,
-    cell::{Cell, UnsafeCell},
+    cell::Cell,
     collections::HashMap,
-    ops::{Deref, DerefMut},
     path::Path,
-    sync::{
-        atomic::{AtomicIsize, Ordering},
-        Arc,
-    },
+    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
     thread::{self, JoinHandle},
     time::Duration,
 };
-
-use lgn_content_store::{ContentStore, ContentStoreAddr};
-use lgn_ecs::schedule::SystemLabel;
 
 use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
@@ -69,95 +64,17 @@ pub enum AssetRegistryError {
     InvalidData(String),
 }
 
-/// Wraps a borrowed reference to a resource.
-///
-/// This wrapper type helps track the number of references to resources.
-/// For more see [`AssetRegistry`].
-pub struct Ref<'a, T> {
-    resource: &'a T,
-    guard: &'a AtomicIsize,
+/// Return a Guarded Ref to a Asset
+pub struct AssetRegistryGuard<'a, T: ?Sized + 'a> {
+    //lock: &'a RwLock<Inner>,
+    _guard: RwLockReadGuard<'a, Inner>,
+    ptr: *const T,
 }
 
-impl<'a, T> Drop for Ref<'a, T> {
-    fn drop(&mut self) {
-        assert!(0 < self.guard.fetch_sub(1, Ordering::Acquire));
-    }
-}
-
-impl<'a, T> Deref for Ref<'a, T> {
-    type Target = &'a T;
-
+impl<'a, T: ?Sized + 'a> std::ops::Deref for AssetRegistryGuard<'a, T> {
+    type Target = T;
     fn deref(&self) -> &Self::Target {
-        &self.resource
-    }
-}
-
-impl<'a, T> Ref<'a, T> {
-    fn new(resource: &'a T, guard: &'a AtomicIsize) -> Self {
-        assert!(0 <= guard.fetch_add(1, Ordering::Acquire));
-        Self { resource, guard }
-    }
-}
-
-struct InnerReadGuard<'a> {
-    inner: &'a UnsafeCell<Inner>,
-    guard: &'a AtomicIsize,
-}
-
-impl<'a> InnerReadGuard<'a> {
-    fn new(inner: &'a UnsafeCell<Inner>, guard: &'a AtomicIsize) -> Self {
-        assert!(0 <= guard.fetch_add(1, Ordering::Acquire));
-        Self { inner, guard }
-    }
-
-    fn detach<'b>(&self) -> &'b Inner {
-        unsafe { self.inner.get().as_ref().unwrap() }
-    }
-}
-
-impl<'a> Drop for InnerReadGuard<'a> {
-    fn drop(&mut self) {
-        assert!(0 < self.guard.fetch_sub(1, Ordering::Acquire));
-    }
-}
-
-impl<'a> Deref for InnerReadGuard<'a> {
-    type Target = Inner;
-
-    fn deref(&self) -> &Self::Target {
-        unsafe { self.inner.get().as_ref().unwrap() }
-    }
-}
-
-struct InnerWriteGuard<'a> {
-    inner: &'a UnsafeCell<Inner>,
-    guard: &'a AtomicIsize,
-}
-
-impl<'a> InnerWriteGuard<'a> {
-    fn new(inner: &'a UnsafeCell<Inner>, guard: &'a AtomicIsize) -> Self {
-        assert_eq!(0, guard.fetch_sub(1, Ordering::Acquire));
-        Self { inner, guard }
-    }
-}
-
-impl<'a> Drop for InnerWriteGuard<'a> {
-    fn drop(&mut self) {
-        assert_eq!(-1, self.guard.fetch_add(1, Ordering::Acquire));
-    }
-}
-
-impl<'a> Deref for InnerWriteGuard<'a> {
-    type Target = Inner;
-
-    fn deref(&self) -> &Self::Target {
-        unsafe { self.inner.get().as_ref().unwrap() }
-    }
-}
-
-impl<'a> DerefMut for InnerWriteGuard<'a> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { self.inner.get().as_mut().unwrap() }
+        unsafe { &*self.ptr }
     }
 }
 
@@ -251,18 +168,17 @@ impl AssetRegistryOptions {
         let (loader, mut io) = create_loader(self.devices);
 
         let registry = Arc::new(AssetRegistry {
-            rw_guard: AtomicIsize::new(0),
-            inner: UnsafeCell::new(Inner {
+            inner: RwLock::new(Inner {
                 assets: HashMap::new(),
                 load_errors: HashMap::new(),
                 load_event_senders: Vec::new(),
+                loader,
             }),
-            loader,
             load_thread: Cell::new(None),
         });
 
         for (kind, mut loader) in self.loaders {
-            loader.register_registry(Arc::clone(&registry));
+            loader.register_registry(registry.clone());
             io.register_loader(kind, loader);
         }
 
@@ -279,6 +195,7 @@ impl AssetRegistryOptions {
 
 struct Inner {
     assets: HashMap<ResourceTypeAndId, Box<dyn Any + Send + Sync>>,
+    loader: AssetLoaderStub,
     load_errors: HashMap<ResourceTypeAndId, AssetRegistryError>,
     load_event_senders: Vec<crossbeam_channel::Sender<ResourceLoadEvent>>,
 }
@@ -297,9 +214,7 @@ struct Inner {
 ///
 /// [`Handle`]: [`crate::Handle`]
 pub struct AssetRegistry {
-    rw_guard: AtomicIsize,
-    inner: UnsafeCell<Inner>,
-    loader: AssetLoaderStub,
+    inner: RwLock<Inner>,
     load_thread: Cell<Option<JoinHandle<()>>>,
 }
 
@@ -327,7 +242,7 @@ pub enum ResourceLoadEvent {
 
 impl Drop for AssetRegistry {
     fn drop(&mut self) {
-        self.loader.terminate();
+        self.write_inner().loader.terminate();
         self.load_thread.take().unwrap().join().unwrap();
     }
 }
@@ -337,12 +252,12 @@ impl Drop for AssetRegistry {
 unsafe impl Sync for AssetRegistry {}
 
 impl AssetRegistry {
-    fn read_inner(&self) -> InnerReadGuard<'_> {
-        InnerReadGuard::new(&self.inner, &self.rw_guard)
+    fn read_inner(&self) -> RwLockReadGuard<'_, Inner> {
+        self.inner.read().unwrap()
     }
 
-    fn write_inner(&self) -> InnerWriteGuard<'_> {
-        InnerWriteGuard::new(&self.inner, &self.rw_guard)
+    fn write_inner(&self) -> RwLockWriteGuard<'_, Inner> {
+        self.inner.write().unwrap()
     }
 
     /// Requests an asset load.
@@ -350,24 +265,24 @@ impl AssetRegistry {
     /// The asset will be unloaded after all instances of [`HandleUntyped`] and
     /// [`Handle`] that refer to that asset go out of scope.
     pub fn load_untyped(&self, type_id: ResourceTypeAndId) -> HandleUntyped {
-        self.loader.load(type_id)
+        self.write_inner().loader.load(type_id)
     }
 
     /// Trigger a reload of a given primary resource.
     pub fn reload(&self, type_id: ResourceTypeAndId) -> bool {
-        self.loader.reload(type_id)
+        self.write_inner().loader.reload(type_id)
     }
 
     /// Returns a handle to the resource if a handle to this resource already
     /// exists.
     pub fn get_untyped(&self, type_id: ResourceTypeAndId) -> Option<HandleUntyped> {
-        self.loader.get_handle(type_id)
+        self.write_inner().loader.get_handle(type_id)
     }
 
     /// Same as [`Self::load_untyped`] but blocks until the resource load
     /// completes or returns an error.
     pub fn load_untyped_sync(&self, type_id: ResourceTypeAndId) -> HandleUntyped {
-        let handle = self.loader.load(type_id);
+        let handle = self.write_inner().loader.load(type_id);
         // todo: this will be improved with async/await
         while !handle.is_loaded(self) && !handle.is_err(self) {
             self.update();
@@ -392,13 +307,16 @@ impl AssetRegistry {
     }
 
     /// Retrieves a reference to an asset, None if asset is not loaded.
-    pub(crate) fn get<T: Any + Resource>(&self, id: ResourceTypeAndId) -> Option<Ref<'_, T>> {
-        let inner = self.read_inner();
-
-        if let Some(asset) = inner.detach().assets.get(&id) {
-            return asset
-                .downcast_ref::<T>()
-                .map(|a| Ref::new(a, &self.rw_guard));
+    pub(crate) fn get<T: Any + Resource>(
+        &self,
+        id: ResourceTypeAndId,
+    ) -> Option<AssetRegistryGuard<'_, T>> {
+        let guard = self.inner.read().unwrap();
+        let inner: &Inner = &guard;
+        if let Some(asset) = inner.assets.get(&id) {
+            if let Some(ptr) = asset.downcast_ref::<T>().map(|c| c as *const T) {
+                return Some(AssetRegistryGuard { _guard: guard, ptr });
+            }
         }
         None
     }
@@ -414,13 +332,13 @@ impl AssetRegistry {
 
         {
             let mut inner = self.write_inner();
-            for removed_id in self.loader.collect_dropped_handles() {
+            for removed_id in inner.loader.collect_dropped_handles() {
                 inner.load_errors.remove(&removed_id);
                 inner.assets.remove(&removed_id);
-                self.loader.unload(removed_id);
+                inner.loader.unload(removed_id);
             }
 
-            while let Some(result) = self.loader.try_result() {
+            while let Some(result) = inner.loader.try_result() {
                 // todo: add success/failure callbacks using the provided LoadId.
                 match result {
                     LoaderResult::Loaded(handle, resource, _load_id) => {

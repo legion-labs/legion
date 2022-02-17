@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, Weak},
 };
 
-use crate::{AssetRegistry, Ref, Resource, ResourceTypeAndId};
+use crate::{AssetRegistry, Resource, ResourceTypeAndId};
 
 //
 //
@@ -93,7 +93,10 @@ impl HandleUntyped {
     }
 
     /// Retrieve a reference asset `T` from [`AssetRegistry`].
-    pub fn get<'a, T: Any + Resource>(&'_ self, registry: &'a AssetRegistry) -> Option<Ref<'a, T>> {
+    pub fn get<'a, T: Any + Resource>(
+        &'_ self,
+        registry: &'a AssetRegistry,
+    ) -> Option<crate::AssetRegistryGuard<'a, T>> {
         registry.get::<T>(self.inner.type_id)
     }
 
@@ -149,7 +152,10 @@ impl<T: Any + Resource> From<HandleUntyped> for Handle<T> {
 
 impl<T: Any + Resource> Handle<T> {
     /// Retrieve a reference asset `T` from [`AssetRegistry`].
-    pub fn get<'a>(&'_ self, registry: &'a AssetRegistry) -> Option<Ref<'a, T>> {
+    pub fn get<'a>(
+        &'_ self,
+        registry: &'a AssetRegistry,
+    ) -> Option<crate::AssetRegistryGuard<'a, T>> {
         registry.get::<T>(self.inner.type_id)
     }
 

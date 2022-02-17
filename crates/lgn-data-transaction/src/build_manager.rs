@@ -39,10 +39,8 @@ impl BuildManager {
         project: &Project,
     ) -> Result<(ResourcePathId, Vec<ResourceTypeAndId>), Error> {
         let start = std::time::Instant::now();
-        // TODO HACK. Assume DebugCube until proper mapping is exposed
-        let runtime_type = if resource_id.kind == ResourceType::new(b"offline_debugcube") {
-            ResourceType::new(b"runtime_debugcube")
-        } else if resource_id.kind == ResourceType::new(b"offline_testentity") {
+        // TODO HACK.
+        let runtime_type = if resource_id.kind == ResourceType::new(b"offline_testentity") {
             ResourceType::new(b"runtime_testentity")
         } else if resource_id.kind == ResourceType::new(b"offline_entity") {
             ResourceType::new(b"runtime_entity")
@@ -87,5 +85,12 @@ impl BuildManager {
     /// Runtime manifest
     pub fn get_manifest(&self) -> &Manifest {
         &self.manifest
+    }
+
+    /// Return the Offline source from a runtime id
+    pub fn resolve_offline_id(&self, runtime_id: ResourceTypeAndId) -> Option<ResourceTypeAndId> {
+        self.build
+            .lookup_pathid(runtime_id)
+            .map(|path| path.source_resource())
     }
 }

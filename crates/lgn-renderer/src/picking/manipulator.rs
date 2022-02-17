@@ -198,7 +198,7 @@ impl ManipulatorManager {
                 position: PositionManipulator::new(),
                 rotation: RotationManipulator::new(),
                 scale: ScaleManipulator::new(),
-                current_type: ManipulatorType::Rotation,
+                current_type: ManipulatorType::Position,
             })),
         }
     }
@@ -310,7 +310,7 @@ impl ManipulatorManager {
 
     pub fn manipulator_transform_from_entity_transform(
         &self,
-        entity_transform: &Transform,
+        entity_transform: &GlobalTransform,
         manipulator_transform: &mut Transform,
     ) {
         let inner = self.inner.lock().unwrap();
