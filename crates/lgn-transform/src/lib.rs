@@ -37,7 +37,7 @@ use prelude::{parent_update_system, GlobalTransform, Transform};
 /// ## [`Transform`] and [`GlobalTransform`]
 ///
 /// [`Transform`] is the position of an entity relative to its parent position, or the reference
-/// frame if it doesn't have a [`Parent`](Parent).
+/// frame if it doesn't have a [`Parent`](crate::components::Parent).
 ///
 /// [`GlobalTransform`] is the position of an entity relative to the reference frame.
 ///
@@ -96,7 +96,7 @@ pub struct TransformPlugin;
 pub enum TransformSystem {
     /// Propagates changes in transform to childrens' [`GlobalTransform`]
     TransformPropagate,
-    /// Updates [`Parent`] when changes in the hierarchy occur
+    /// Updates [`Parent`](crate::components::Parent) when changes in the hierarchy occur
     ParentUpdate,
 }
 
