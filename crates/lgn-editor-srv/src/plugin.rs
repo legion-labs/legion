@@ -17,8 +17,8 @@ use lgn_input::{
     mouse::{MouseButtonInput, MouseMotion},
     Input,
 };
-use lgn_renderer::picking::PickingEvent;
-use lgn_renderer::picking::{ManipulatorManager, PickingManager};
+use lgn_graphics_renderer::picking::PickingEvent;
+use lgn_graphics_renderer::picking::{ManipulatorManager, PickingManager};
 use lgn_tracing::{error, info, warn};
 use lgn_transform::components::Transform;
 use tokio::sync::Mutex;
