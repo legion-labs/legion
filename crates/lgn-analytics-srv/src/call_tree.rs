@@ -174,7 +174,7 @@ pub(crate) async fn compute_block_call_tree(
     block_id: &str,
 ) -> Result<CallTree> {
     let ts_offset = process.start_ticks;
-    let inv_tsc_frequency = 1000.0 / process.tsc_frequency as f64;
+    let inv_tsc_frequency = get_process_tick_length_ms(process);
     let block = find_block(connection, block_id).await?;
     let mut builder = CallTreeBuilder::new(
         block.begin_ticks,
