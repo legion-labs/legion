@@ -10,6 +10,8 @@
     propertyIsSpeed,
     propertyIsScript,
     propertyIsString,
+    propertyIsResourcePathId,
+    propertyIsEnum,
     propertyIsVec,
     propertyIsVec3,
     ResourceProperty,
@@ -25,6 +27,9 @@
   import SpeedProperty from "./properties/SpeedProperty.svelte";
   import StringProperty from "./properties/StringProperty.svelte";
   import Vec3Property from "./properties/Vec3Property.svelte";
+  import ResourcePathIdProperty from "./properties/ResourcePathIdProperty.svelte";
+  import EnumProperty from "./properties/EnumProperty.svelte";
+
   import PropertyInputOption from "./PropertyInputOption.svelte";
   import { RemoveVectorSubPropertyEvent } from "./types";
 
@@ -102,6 +107,23 @@
     <StringProperty
       on:input={({ detail }) => onInput({ value: detail })}
       bind:value={property.value}
+    />
+  {:else if propertyIsResourcePathId(property)}
+    <ResourcePathIdProperty
+      on:input={({ detail }) => onInput({ value: detail })}
+      bind:value={property.value}
+    />
+  {:else if propertyIsEnum(property)}
+    <EnumProperty
+      on:input={({ detail }) => onInput({ value: detail })}
+      value={{
+        item: property.value,
+        value: property.value,
+      }}
+      options={property.subProperties.map((variant) => ({
+        item: variant.name,
+        value: variant.name,
+      }))}
     />
   {:else if propertyIsNumber(property)}
     <NumberProperty

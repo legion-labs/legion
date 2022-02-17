@@ -12,6 +12,7 @@
     getResourceProperties,
     removeResource,
     renameResource,
+    updateSelection,
   } from "@/api";
   import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
   import currentResourceStore from "@/stores/currentResource";
@@ -107,6 +108,8 @@
         if (!currentResourceDescription) {
           throw new Error("Current resource description not found");
         }
+
+        updateSelection(currentResourceDescription.id);
 
         return getResourceProperties(currentResourceDescription);
       });

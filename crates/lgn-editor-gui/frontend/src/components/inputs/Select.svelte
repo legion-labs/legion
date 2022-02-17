@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { createEventDispatcher } from "svelte";
   import Icon from "@iconify/svelte";
   import clickOutside from "@lgn/web-client/src/actions/clickOutside";
   import keyboardNavigation, {
@@ -8,6 +9,10 @@
   import KeyboardNavigationStore from "@lgn/web-client/src/stores/keyboardNavigation";
 
   type Item = $$Generic;
+
+  const dispatch = createEventDispatcher<{
+    change: Option | "";
+  }>();
 
   type Option = { value: string; item: Item };
 
@@ -47,6 +52,10 @@
 
   function select(option: Option | "") {
     value = option;
+    if (option != "") {
+      dispatch("change", option);
+    } else {
+    }
 
     close();
   }

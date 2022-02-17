@@ -74,10 +74,20 @@ where
         TypeDefinition::Array(array_descriptor) => {
             let mut array_parent = T::new_item(item_info)?;
             for index in 0..unsafe { (array_descriptor.len)(item_info.base) } {
+                let base = unsafe { (array_descriptor.get)(item_info.base, index) }?;
+                let array_index =
+                    if let TypeDefinition::BoxDyn(box_dyn) = array_descriptor.inner_type {
+                        format!("[{}]", unsafe {
+                            (box_dyn.get_inner_type)(base).get_type_name()
+                        })
+                    } else {
+                        format!("[{}]", index)
+                    };
+
                 let child = internal_collect_properties::<T>(&ItemInfo {
-                    base: unsafe { (array_descriptor.get)(item_info.base, index) }?,
+                    base,
                     type_def: array_descriptor.inner_type,
-                    suffix: Some(format!("[{}]", index).as_str()),
+                    suffix: Some(array_index.as_str()),
                     depth: item_info.depth + 1,
                     field_descriptor: None,
                 })?;

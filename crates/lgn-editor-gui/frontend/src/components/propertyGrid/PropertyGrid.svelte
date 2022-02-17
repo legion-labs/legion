@@ -107,17 +107,19 @@
     <div class="italic">Resource has no properties</div>
   {:else}
     {#each $currentResourceData.properties as property, index (property.name)}
-      <PropertyContainer
-        on:input={onInput}
-        on:addVectorSubProperty={addVectorSubProperty}
-        on:removeVectorSubProperty={removeVectorSubProperty}
-        pathParts={propertyIsGroup(property) || !property.name
-          ? []
-          : [property.name]}
-        {property}
-        {index}
-        parentProperty={null}
-      />
+      {#if !property.attributes.hidden}
+        <PropertyContainer
+          on:input={onInput}
+          on:addVectorSubProperty={addVectorSubProperty}
+          on:removeVectorSubProperty={removeVectorSubProperty}
+          pathParts={propertyIsGroup(property) || !property.name
+            ? []
+            : [property.name]}
+          {property}
+          {index}
+          parentProperty={null}
+        />
+      {/if}
     {/each}
   {/if}
 </div>

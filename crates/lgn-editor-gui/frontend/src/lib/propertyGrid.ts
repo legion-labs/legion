@@ -1,6 +1,7 @@
 import { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
 import { ResourceProperty as RawResourceProperty } from "@lgn/proto-editor/dist/property_inspector";
 import { filterMap } from "./array";
+import { Emitter } from "monaco-editor";
 
 /** Matches any `ptype` of format "Vec<subPType>" */
 const vecPTypeRegExp = /^Vec\<(.+)\>$/;
@@ -54,12 +55,22 @@ export type Quat = [number, number, number, number];
 
 export type QuatProperty = ResourcePropertyWithValueBase<"Quat", Quat>;
 
+export type ResourcePathId = string;
+export type ResourcePathIdProperty = ResourcePropertyWithValueBase<
+  "ResourcePathId",
+  ResourcePathId
+>;
+
+export type EnumProperty = ResourcePropertyWithValueBase<"Enum", string>;
+
 /** List all the possible primitive resources */
 export type PrimitiveResourceProperty =
   | BooleanProperty
   | SpeedProperty
   | ColorProperty
   | StringProperty
+  | ResourcePathIdProperty
+  | EnumProperty
   | NumberProperty
   | Vec3Property
   | QuatProperty;
@@ -157,6 +168,18 @@ export function propertyIsString(
   return property.ptype === "String";
 }
 
+export function propertyIsResourcePathId(
+  property: ResourceProperty
+): property is ResourcePathIdProperty {
+  return property.ptype === "ResourcePathId";
+}
+
+export function propertyIsEnum(
+  property: ResourceProperty
+): property is EnumProperty {
+  return property.ptype.startsWith("_enum_:");
+}
+
 export function propertyIsNumber(
   property: ResourceProperty
 ): property is NumberProperty {
@@ -183,6 +206,8 @@ export function propertyIsPrimitive(
     propertyIsSpeed,
     propertyIsColor,
     propertyIsString,
+    propertyIsResourcePathId,
+    propertyIsEnum,
     propertyIsNumber,
     propertyIsVec3,
     propertyIsQuat,
@@ -287,6 +312,8 @@ const primitivePTypes: PrimitiveResourceProperty["ptype"][] = [
   "Speed",
   "Color",
   "String",
+  "ResourcePathId",
+  "Enum",
   "i32",
   "u32",
   "f32",
@@ -402,6 +429,26 @@ export function buildDefaultPrimitiveProperty(
     case "String": {
       return {
         ptype: "String",
+        name,
+        attributes: {},
+        subProperties: [],
+        value: "",
+      };
+    }
+
+    case "ResourcePathId": {
+      return {
+        ptype: "ResourcePathId",
+        name,
+        attributes: {},
+        subProperties: [],
+        value: "",
+      };
+    }
+
+    case "Enum": {
+      return {
+        ptype: "Enum",
         name,
         attributes: {},
         subProperties: [],

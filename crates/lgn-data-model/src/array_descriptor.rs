@@ -98,6 +98,9 @@ macro_rules! implement_array_descriptor {
                 },
                 delete_element : |array: *mut(), index : usize, old_value_ser:  Option<&mut dyn::erased_serde::Serializer> | unsafe {
                     let array = &mut (*(array as *mut Vec<$type_id>));
+                    if index >= array.len() {
+                        return Err($crate::ReflectionError::InvalidArrayIndex(index, concat!("Vec<",stringify!($type_id),">")));
+                    }
                     let old_value = array.remove(index);
                     if let Some(serializer) = old_value_ser {
                        ::erased_serde::serialize(&old_value, serializer)
@@ -107,6 +110,12 @@ macro_rules! implement_array_descriptor {
                 },
                 reorder_element : |array: *mut(), old_index : usize, new_index : usize  | unsafe {
                     let array = &mut (*(array as *mut Vec<$type_id>));
+                    if old_index >= array.len() {
+                        return Err($crate::ReflectionError::InvalidArrayIndex(old_index, concat!("Vec<",stringify!($type_id),">")));
+                    }
+                    if new_index > array.len() {
+                        return Err($crate::ReflectionError::InvalidArrayIndex(new_index, concat!("Vec<",stringify!($type_id),">")));
+                    }
                     let value = array.remove(old_index);
                     array.insert(new_index, value);
                     Ok(())
