@@ -7,6 +7,7 @@ use std::{
 };
 
 use lgn_app::prelude::*;
+use lgn_core::prelude::*;
 use lgn_data_runtime::AssetRegistry;
 use lgn_ecs::{prelude::*, world::EntityMut};
 use lgn_tracing::prelude::*;
@@ -118,6 +119,9 @@ fn tick(world: &mut World) {
                 } else if input == "{events}" {
                     let events = Events(event_cache);
                     args.push(events.to_value().unwrap());
+                } else if input == "{entities}" {
+                    let entity_lookup = EntityLookupByName::new(world_ptr);
+                    args.push(entity_lookup.to_value().unwrap());
                 } else if input == "{result}" {
                     let rune_vms = world.get_non_send_resource::<VMCollection>().unwrap();
                     let vm_context = rune_vms.get(script.vm_index).as_ref().unwrap();
@@ -210,6 +214,32 @@ impl Entity {
     }
 }
 
+#[derive(Any)]
+struct EntityLookupByName {
+    world: *mut World,
+}
+
+impl EntityLookupByName {
+    fn new(world: *mut World) -> Self {
+        Self { world }
+    }
+
+    fn lookup(&self, entity_name: &str) -> Option<Entity> {
+        let world = unsafe { &mut *self.world };
+
+        let mut query = world.query::<(lgn_ecs::prelude::Entity, &Name)>();
+        let entity_name: Name = entity_name.into();
+
+        for (entity, name) in query.iter(world) {
+            if entity_name == *name {
+                return Some(Entity::new(self.world, entity));
+            }
+        }
+
+        None
+    }
+}
+
 fn make_ecs_module() -> Result<Module, ContextError> {
     let mut module = Module::with_crate("lgn_ecs");
 
@@ -217,6 +247,9 @@ fn make_ecs_module() -> Result<Module, ContextError> {
     module.field_fn(Protocol::GET, "transform", |entity: &Entity| {
         Transform::new(entity)
     })?;
+
+    module.ty::<EntityLookupByName>()?;
+    module.inst_fn(Protocol::INDEX_GET, EntityLookupByName::lookup)?;
 
     Ok(module)
 }

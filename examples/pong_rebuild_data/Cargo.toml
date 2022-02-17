@@ -17,7 +17,6 @@ lgn-data-runtime = { path = "../../crates/lgn-data-runtime", version = "0.1.0" }
 lgn-data-transaction = { path = "../../crates/lgn-data-transaction", version = "0.1.0" }
 lgn-ecs = { path = "../../crates/lgn-ecs", version = "0.1.0" }
 lgn-graphics-data = { path = "../../crates/lgn-graphics-data", version = "0.1.0" }
-lgn-input = { path = "../../crates/lgn-input", version = "0.1.0" }
 lgn-math = { path = "../../crates/lgn-math", version = "0.1.0" }
 lgn-scripting = { path = "../../crates/lgn-scripting", version = "0.1.0", features = [
     "offline",

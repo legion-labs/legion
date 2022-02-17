@@ -359,7 +359,7 @@ struct Vec2 {
     y,
 }
 
-pub fn update(entity, last_result) {
+pub fn update(entity, last_result, entities) {
     let ball_direction = if last_result is unit {
         let v = Vec2 {
             x: random() - 0.5,
@@ -385,6 +385,17 @@ pub fn update(entity, last_result) {
 
     position.clamp_x(-3.0, 3.0);
     position.clamp_y(-2.0, 2.0);
+
+    // update paddles
+    let left_paddle = 0.0;
+    if let Some(entity) = entities["Pad Left"] {
+        left_paddle = entity.transform.translation.y;
+    }
+    let right_paddle = 0.0;
+    if let Some(entity) = entities["Pad Right"] {
+        right_paddle = entity.transform.translation.y;
+    }
+    println!("paddles: {}, {}", left_paddle, right_paddle);
 
     // check for collision with paddles (dimensions = 0.2 x 1.0 x 0.2)
     // Note: x-axis is inverted so values decrease towards the right
@@ -432,7 +443,11 @@ pub fn update(entity, last_result) {
 
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
             script_type: ScriptType::Rune,
-            input_values: vec!["{entity}".to_string(), "{result}".to_string()],
+            input_values: vec![
+                "{entity}".to_string(),
+                "{result}".to_string(),
+                "{entities}".to_string(),
+            ],
             entry_fn: "update".to_string(),
             script_id: Some(ball_script),
             temp_script: "".to_string(),
