@@ -4641,9 +4641,9 @@ dependencies = [
 name = "lgn-graphics-cgen-runtime"
 version = "0.1.0"
 dependencies = [
- "glam",
  "half",
  "lgn-graphics-api",
+ "lgn-math",
 ]
 
 [[package]]

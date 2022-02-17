@@ -29,16 +29,19 @@ envs = []
 [lints.direct-dependencies]
 bans = [
     { name = "clap", version = "2", reason = "use `clap` 3.0 or above, it supports the a derive based api" },
-    { name = "structopts", version = "*", reason = "use `clap` 3.0 or above, it supports the a derive based api" },
-    { name = "winapi", version = "*", reason = "use `windows` instead, it's Microsoft supported" },
+    { name = "glam", version = "*", reason = "use `lgn-math` instead, our solution for math types", exceptions = [
+        "lgn-math",
+    ] },
     #{ name = "lazy_static", version = "*", reason = "use once_cell instead, it's gonna be standarized one day" },
     { name = "log", version = "*", reason = "use `lgn-tracing` instead, our logging solution", exceptions = [
         "lgn-tracing",
         "lgn-telemetry-sink",
     ] },
+    { name = "structopts", version = "*", reason = "use `clap` 3.0 or above, it supports the a derive based api" },
     { name = "tracing", version = "*", reason = "use `lgn-tracing` instead, our tracing solution", exceptions = [
         "lgn-telemetry-sink",
     ] },
+    { name = "winapi", version = "*", reason = "use `windows` instead, it's Microsoft supported" },
 ]
 
 ################################################################################

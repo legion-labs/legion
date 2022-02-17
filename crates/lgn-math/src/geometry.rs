@@ -1,6 +1,6 @@
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
-use glam::Vec2;
+use crate::Vec2;
 
 /// A two dimensional "size" as defined by a width and height
 #[derive(Copy, Clone, PartialEq, Debug)]
