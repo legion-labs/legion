@@ -4,9 +4,11 @@
     ProcessInstance,
   } from "@lgn/proto-telemetry/dist/analytics";
   import { onMount } from "svelte";
-  import { link } from "svelte-navigator";
   import log from "@lgn/web-client/src/lib/log";
   import { makeGrpcClient } from "@/lib/client";
+  import User from "./User.svelte";
+  import Platform from "./Platform.svelte";
+  import ProcessTime from "./ProcessTime.svelte";
 
   let client: PerformanceAnalyticsClientImpl | null = null;
   let processList: ProcessInstance[] = [];
@@ -36,24 +38,11 @@
 
   onMount(async () => {
     client = await makeGrpcClient();
-    getRecentProcesses();
+    await getRecentProcesses();
   });
-
-  function formatLocalTime(timeStr: string): string {
-    const time = new Date(timeStr);
-    return time.toLocaleTimeString(navigator.language, {
-      timeZoneName: "short",
-      hour12: false,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-  }
 </script>
 
 <div>
-  <h1>Legion Performance Analytics</h1>
-  <h2>Process List</h2>
   <center>
     <div class="search-div">
       <!-- svelte-ignore a11y-autofocus -->
@@ -61,52 +50,69 @@
         autofocus
         type="text"
         class="search-input"
-        placeholder="search exe"
+        placeholder="Search process..."
         on:input={onSearchChange}
       />
     </div>
     <table>
       <thead>
-        <th>start time</th>
-        <th>exe</th>
-        <th>username</th>
-        <th>computer</th>
-        <th>log</th>
-        <th>metrics</th>
-        <th>timeline</th>
+        <th>User</th>
+        <th>Executable</th>
+        <th />
+        <th />
+        <th />
+        <th>Target</th>
+        <th>Platform</th>
+        <th>Start Time</th>
       </thead>
       <tbody>
         {#each processList as { nbCpuBlocks, nbMetricBlocks, nbLogBlocks, processInfo } (processInfo?.processId)}
           <tr>
-            <td>{formatLocalTime(processInfo?.startTime)}</td>
-            <td>{processInfo?.exe}</td>
-            <td>{processInfo?.username}</td>
-            <td>{processInfo?.computer}</td>
+            <td><User user={processInfo?.username ?? ""} /></td>
+            <td
+              ><span title={processInfo?.exe}>
+                {processInfo?.exe.split("/").pop()?.split("\\").pop()}
+              </span>
+            </td>
             <td>
               {#if nbLogBlocks > 0 && processInfo}
                 <div>
-                  <a href={`/log/${processInfo?.processId}`} use:link> log </a>
+                  <a href={`/log/${processInfo?.processId}`}
+                    ><i
+                      title="Log ({nbLogBlocks})"
+                      class="bi bi-card-text"
+                    /></a
+                  >
                 </div>
               {/if}
             </td>
             <td>
               {#if nbMetricBlocks > 0 && processInfo}
                 <div>
-                  <a href={`/metrics/${processInfo?.processId}`} use:link>
-                    metrics
-                  </a>
+                  <a href={`/metrics/${processInfo?.processId}`}
+                    ><i
+                      title="Metrics ({nbMetricBlocks})"
+                      class="bi bi-graph-up"
+                    /></a
+                  >
                 </div>
               {/if}
             </td>
             <td>
               {#if nbCpuBlocks > 0 && processInfo}
                 <div>
-                  <a href={`/timeline/${processInfo?.processId}`} use:link>
-                    timeline
-                  </a>
+                  <a href={`/timeline/${processInfo?.processId}`}
+                    ><i
+                      title="Timeline ({nbCpuBlocks})"
+                      class="bi bi-body-text"
+                    /></a
+                  >
                 </div>
               {/if}
             </td>
+            <td>N/A</td>
+            <td><Platform process={processInfo} /></td>
+            <td><ProcessTime process={processInfo} /></td>
           </tr>
         {/each}
       </tbody>
@@ -115,17 +121,9 @@
 </div>
 
 <style lang="postcss">
-  h1 {
-    @apply text-2xl;
-  }
-
-  h2 {
-    @apply text-xl;
-  }
-
   table {
     @apply border-collapse;
-    width: 95%;
+    width: 100%;
   }
 
   table tbody {
@@ -137,7 +135,7 @@
   }
 
   table th {
-    @apply py-1 text-center border border-[rgb(153,153,153)];
+    @apply py-1 pl-1 text-center border border-[rgb(153,153,153)];
     border-style: none;
     text-align: left;
   }
@@ -148,16 +146,21 @@
 
   table td {
     @apply p-1 text-left border border-[rgb(153,153,153)];
-    font-family: monospace;
     border-style: none;
+    @apply text-sm;
+  }
+
+  table th {
+    text-transform: capitalize;
+    @apply text-sm;
   }
 
   table td div {
-    @apply p-1;
+    @apply p-0;
   }
 
   a {
-    @apply text-[#ca2f0f] underline;
+    @apply text-[#000000] underline;
   }
 
   .search-div {
@@ -167,7 +170,8 @@
   .search-input {
     border-style: solid;
     border-width: 2px;
-    border-radius: 8px;
-    text-align: center;
+    padding-left: 4px;
+    border-color: rgb(175, 175, 175);
+    min-width: 400px;
   }
 </style>
