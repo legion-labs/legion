@@ -6,6 +6,8 @@
   import MetricsCanvas from "./components/MetricCanvas.svelte";
   import { InitAuthStatus } from "@lgn/web-client/src/lib/auth";
   import { onMount } from "svelte";
+  import Header from "./components/Header.svelte";
+  import ProcessList from "./components/ProcessList.svelte";
 
   export let initAuthStatus: InitAuthStatus | null;
 
