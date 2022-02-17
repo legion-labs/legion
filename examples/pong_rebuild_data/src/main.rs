@@ -395,7 +395,6 @@ pub fn update(entity, last_result, entities) {
     if let Some(entity) = entities["Pad Right"] {
         right_paddle = entity.transform.translation.y;
     }
-    println!("paddles: {}, {}", left_paddle, right_paddle);
 
     // check for collision with paddles (dimensions = 0.2 x 1.0 x 0.2)
     // Note: x-axis is inverted so values decrease towards the right
@@ -403,6 +402,66 @@ pub fn update(entity, last_result, entities) {
         x: position.x + VELOCITY * ball_direction.x,
         y: position.y + VELOCITY * ball_direction.y,
     };
+
+    if ball_direction.x > 0.0 {
+        // moving left
+        if (position.x < 2.3
+            && new_position.x >= 2.3
+            && position.y > left_paddle - 0.5
+            && position.y < left_paddle + 0.5)
+            || (position.x < -2.5
+                && new_position.x >= -2.5
+                && position.y > right_paddle - 0.5
+                && position.y < right_paddle + 0.5)
+        {
+            ball_direction.x = -ball_direction.x;
+        }
+    } else {
+        // moving right
+        if (position.x > -2.3
+            && new_position.x <= -2.3
+            && position.y > right_paddle - 0.5
+            && position.y < right_paddle + 0.5)
+            || (position.x > 2.5
+                && new_position.x <= 2.5
+                && position.y > left_paddle - 0.5
+                && position.y < left_paddle + 0.5)
+        {
+            ball_direction.x = -ball_direction.x;
+        }
+    }
+
+    if ball_direction.y > 0.0 {
+        // moving up
+        let left_bottom = left_paddle - 0.5;
+        let right_bottom = right_paddle - 0.5;
+        if (position.y < left_bottom
+            && new_position.y >= left_bottom
+            && position.x > 2.3
+            && position.x < 2.5)
+            || (position.y < right_bottom
+                && new_position.y >= right_bottom
+                && position.x < -2.3
+                && position.x > -2.5)
+        {
+            ball_direction.y = -ball_direction.y;
+        }
+    } else {
+        // moving down
+        let left_top = left_paddle + 0.5;
+        let right_top = right_paddle + 0.5;
+        if (position.y > left_top
+            && new_position.y <= left_top
+            && position.x > 2.3
+            && position.x < 2.5)
+            || (position.y > right_top
+                && new_position.y <= right_top
+                && position.x < -2.3
+                && position.x > -2.5)
+        {
+            ball_direction.y = -ball_direction.y;
+        }
+    }    
 
     position.x += VELOCITY * ball_direction.x;
     position.y += VELOCITY * ball_direction.y;
