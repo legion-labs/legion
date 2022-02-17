@@ -20,7 +20,6 @@ lgn-data-runtime = { path = "../lgn-data-runtime" }
 lgn-data-compiler = { path = "../lgn-data-compiler" }
 
 # Compilers
-lgn-compiler-debugcube = { path = "../lgn-debugcube-compiler" }
 lgn-compiler-material = { path = "../lgn-material-compiler" }
 lgn-compiler-png2tex = { path = "../lgn-png2tex-compiler" }
 lgn-compiler-psd2tex = { path = "../lgn-psd2tex-compiler" }

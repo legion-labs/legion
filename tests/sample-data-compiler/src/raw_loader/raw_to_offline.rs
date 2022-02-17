@@ -113,7 +113,8 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
             Some(parent) => lookup_asset_path(references, &parent),
             None => None,
         };
-        let mut components: Vec<Box<dyn Component>> = Vec::new();
+        let mut components: Vec<Box<dyn Component>> =
+            vec![Box::new(offline_data::Name { name: raw.name })];
         for component in raw.components {
             match component {
                 raw_data::Component::Transform(raw) => {
@@ -144,8 +145,8 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
                 }
             }
         }
+
         Self {
-            //name: raw.name,
             children,
             parent,
             components,

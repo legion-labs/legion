@@ -4,8 +4,8 @@
 #![allow(clippy::missing_errors_doc)]
 #![warn(missing_docs)]
 
-mod data_manager;
-pub use data_manager::*;
+mod transaction_manager;
+pub use transaction_manager::*;
 
 mod build_manager;
 pub use build_manager::*;
@@ -37,5 +37,12 @@ pub use array_element_operation::*;
 
 pub mod reparent_resource_operation;
 pub use reparent_resource_operation::*;
+
+pub mod selection_operation;
+pub use selection_operation::*;
+
+pub mod selection_manager;
+pub use selection_manager::*;
+
 #[cfg(test)]
 pub(crate) mod test_transaction;

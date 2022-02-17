@@ -4,9 +4,7 @@ use lgn_app::prelude::*;
 use lgn_data_runtime::AssetRegistry;
 use lgn_ecs::prelude::*;
 
-use crate::{
-    plugin::get_source_payload_by_id, runtime::ScriptComponent, ScriptType, ScriptingStage,
-};
+use crate::{plugin::get_script_by_id, runtime::ScriptComponent, ScriptType, ScriptingStage};
 
 pub(crate) fn build(app: &mut App) {
     app.init_non_send_resource::<RuntimeCollection>()
@@ -26,7 +24,7 @@ fn compile(
 
     for (entity, script) in mun_scripts {
         let script_id = script.script_id.as_ref().unwrap().id();
-        let source_payload = get_source_payload_by_id(script_id, &registry);
+        let source_payload = &get_script_by_id(script_id, &registry).compiled_script;
 
         let lib_path = {
             let mut temp_crate = std::env::temp_dir();

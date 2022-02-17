@@ -12,14 +12,23 @@ Some helpers, like `close`, will be passed down to the slots.
   import { createEventDispatcher } from "svelte";
 
   const dispatch = createEventDispatcher<{ close: undefined }>();
+
+  /**
+   * If set the modal won't allow the user to close it (no close button, etc...).
+   *
+   * _Use with care._
+   */
+  export let noClose: boolean;
 </script>
 
 <div class="root">
   <div class="header">
     <div><slot name="title" /></div>
-    <div class="close" on:click={() => dispatch("close")} title="Close modal">
-      <Icon icon="ic:baseline-close" />
-    </div>
+    {#if !noClose}
+      <div class="close" on:click={() => dispatch("close")} title="Close modal">
+        <Icon icon="ic:baseline-close" />
+      </div>
+    {/if}
   </div>
   <div class="body">
     <slot name="body" />

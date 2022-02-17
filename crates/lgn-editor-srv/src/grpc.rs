@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use lgn_data_transaction::DataManager;
+use lgn_data_transaction::TransactionManager;
 use lgn_editor_proto::editor::{
     editor_server::{Editor, EditorServer},
     RedoTransactionRequest, RedoTransactionResponse, UndoTransactionRequest,
@@ -10,14 +10,15 @@ use tokio::sync::Mutex;
 use tonic::{Request, Response, Status};
 
 pub(crate) struct GRPCServer {
-    data_manager: Arc<Mutex<DataManager>>,
+    transaction_manager: Arc<Mutex<TransactionManager>>,
 }
 
 impl GRPCServer {
     /// Instanciate a new `GRPCServer` using the specified
-    /// `webrtc::WebRTCServer`.
-    pub(crate) fn new(data_manager: Arc<Mutex<DataManager>>) -> Self {
-        Self { data_manager }
+    pub(crate) fn new(transaction_manager: Arc<Mutex<TransactionManager>>) -> Self {
+        Self {
+            transaction_manager,
+        }
     }
 
     pub fn service(self) -> EditorServer<Self> {
@@ -31,8 +32,8 @@ impl Editor for GRPCServer {
         &self,
         _request: Request<UndoTransactionRequest>,
     ) -> Result<Response<UndoTransactionResponse>, Status> {
-        let mut data_manager = self.data_manager.lock().await;
-        data_manager
+        let mut transaction_manager = self.transaction_manager.lock().await;
+        transaction_manager
             .undo_transaction()
             .await
             .map_err(|err| Status::internal(format!("Undo transaction failed: {}", err)))?;
@@ -44,8 +45,8 @@ impl Editor for GRPCServer {
         &self,
         _request: Request<RedoTransactionRequest>,
     ) -> Result<Response<RedoTransactionResponse>, Status> {
-        let mut data_manager = self.data_manager.lock().await;
-        data_manager
+        let mut transaction_manager = self.transaction_manager.lock().await;
+        transaction_manager
             .redo_transaction()
             .await
             .map_err(|err| Status::internal(format!("Redo transaction failed: {}", err)))?;

@@ -6,7 +6,7 @@ use lgn_data_runtime::{AssetRegistry, ResourceTypeAndId};
 use lgn_tracing::error;
 use tokio::sync::MutexGuard;
 
-use crate::{BuildManager, DataManager, Error};
+use crate::{BuildManager, Error, SelectionManager, TransactionManager};
 
 /// Describe a Lock on the Database (Project/ResourceRegistry/LoadedResources)
 pub struct LockContext<'a> {
@@ -20,19 +20,22 @@ pub struct LockContext<'a> {
     pub asset_registry: Arc<AssetRegistry>,
     /// Reference to build manager.
     pub build: MutexGuard<'a, BuildManager>,
+    /// Reference to SelectionManager
+    pub selection_manager: Arc<SelectionManager>,
     // List of Resource changed during the lock (that need saving)
     pub(crate) changed_resources: HashSet<ResourceTypeAndId>,
 }
 
 impl<'a> LockContext<'a> {
     /// Create a new Lock on the `DataManager`
-    pub async fn new(data_manager: &'a DataManager) -> LockContext<'a> {
+    pub async fn new(transaction_manager: &'a TransactionManager) -> LockContext<'a> {
         Self {
-            project: data_manager.project.lock().await,
-            resource_registry: data_manager.resource_registry.lock().await,
-            asset_registry: data_manager.asset_registry.clone(),
-            build: data_manager.build_manager.lock().await,
-            loaded_resource_handles: data_manager.loaded_resource_handles.lock().await,
+            project: transaction_manager.project.lock().await,
+            resource_registry: transaction_manager.resource_registry.lock().await,
+            asset_registry: transaction_manager.asset_registry.clone(),
+            build: transaction_manager.build_manager.lock().await,
+            selection_manager: transaction_manager.selection_manager.clone(),
+            loaded_resource_handles: transaction_manager.loaded_resource_handles.lock().await,
             changed_resources: HashSet::new(),
         }
     }
@@ -44,8 +47,13 @@ impl<'a> LockContext<'a> {
                     .save_resource(*resource_id, &handle, &mut self.resource_registry)
                     .await
                     .map_err(|err| Error::Project(*resource_id, err))?;
+
+                self.asset_registry.reload(*resource_id);
             }
         }
+        // HACK: Wait a few ms for the asset_registry to process the reload
+        // request above. Should be handled elsewhere when the missing pieces are in place
+        std::thread::sleep(std::time::Duration::from_millis(30));
 
         for resource_id in &self.changed_resources {
             match self

@@ -71,7 +71,11 @@
   }
 
   async function authenticate() {
-    await authClient.login();
+    const authorizationUrl = await authClient.getAuthorizationUrl();
+
+    if (authorizationUrl) {
+      window.location.href = authorizationUrl;
+    }
   }
 
   // Used only in Tauri

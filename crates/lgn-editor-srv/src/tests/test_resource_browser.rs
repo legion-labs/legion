@@ -11,7 +11,9 @@ use lgn_data_runtime::{manifest::Manifest, AssetRegistryOptions, Resource, Resou
 use lgn_graphics_data::DefaultMeshType;
 use lgn_math::Vec3;
 
-use lgn_data_transaction::{ArrayOperation, BuildManager, DataManager, Transaction};
+use lgn_data_transaction::{
+    ArrayOperation, BuildManager, SelectionManager, Transaction, TransactionManager,
+};
 use lgn_editor_proto::resource_browser::{
     resource_browser_server::ResourceBrowser, CloneResourceRequest, CreateResourceRequest,
     DeleteResourceRequest, GetResourceTypeNamesRequest, InitPropertyValue, RenameResourceRequest,
@@ -66,7 +68,7 @@ use lgn_editor_proto::resource_browser::{
                 ))
 }*/
 
-pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<DataManager>> {
+pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<TransactionManager>> {
     let build_dir = project_dir.as_ref().join("temp");
     std::fs::create_dir_all(&build_dir).unwrap();
 
@@ -100,11 +102,12 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Da
         .unwrap();
     let project = Arc::new(Mutex::new(project));
 
-    Arc::new(Mutex::new(DataManager::new(
+    Arc::new(Mutex::new(TransactionManager::new(
         project,
         resource_registry,
         asset_registry,
         build_manager,
+        SelectionManager::create(),
     )))
 }
 
@@ -112,12 +115,13 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Da
 async fn test_resource_browser() -> anyhow::Result<()> {
     //let project_dir = std::path::PathBuf::from("d:/local_db/");
     //std::fs::remove_dir_all(&project_dir.join("offline")).ok();
+    //std::fs::remove_dir_all(&project_dir.join("remote")).ok();
     let project_dir = tempfile::tempdir().unwrap();
 
     {
-        let data_manager = setup_project(&project_dir).await;
+        let transaction_manager = setup_project(&project_dir).await;
         let resource_browser = crate::resource_browser_plugin::ResourceBrowserRPC {
-            data_manager: data_manager.clone(),
+            transaction_manager: transaction_manager.clone(),
         };
 
         // Read all Resoruce Type registered
@@ -143,7 +147,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                 resource_path: Some("root_entity_".into()),
                 parent_resource_id: None,
                 init_values: vec![InitPropertyValue {
-                    property_path: "components[0].position".into(),
+                    property_path: "components[Transform].position".into(),
                     json_value: json!(Vec3::new(0.0, 0.0, 0.0)).to_string(),
                 }],
             }))
@@ -163,7 +167,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
         // Add Script + ScriptComponent
         /*{
             let transaction = add_scripting_component(&root_entity_id);
-            let mut guard = data_manager.lock().await;
+            let mut guard = transaction_manager.lock().await;
             guard.commit_transaction(transaction).await.unwrap();
         }*/
 
@@ -199,7 +203,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                         resource_path: Some("child".into()),
                         parent_resource_id: Some(root_entity_id.to_string()),
                         init_values: vec![InitPropertyValue {
-                            property_path: "components[0].position".into(),
+                            property_path: "components[Transform].position".into(),
                             json_value: json!(Vec3::new(offsets[i as usize], 0.0, 0.0,))
                                 .to_string(),
                         }],
@@ -253,7 +257,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                         .to_string(),
                     ));
 
-                let mut guard = data_manager.lock().await;
+                let mut guard = transaction_manager.lock().await;
                 guard.commit_transaction(transaction).await.unwrap();
 
                 color_id = (color_id + 1) % colors.len();
@@ -266,6 +270,10 @@ async fn test_resource_browser() -> anyhow::Result<()> {
             .clone_resource(Request::new(CloneResourceRequest {
                 source_id: root_entity_id.to_string(),
                 target_parent_id: None, // Same Parent
+                init_values: vec![InitPropertyValue {
+                    property_path: "components[Transform].position".into(),
+                    json_value: json!(Vec3::new(0.0, 0.0, 2.0,)).to_string(),
+                }],
             }))
             .await?
             .into_inner()
@@ -277,7 +285,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
             .await?;
 
         {
-            let mut guard = data_manager.lock().await;
+            let mut guard = transaction_manager.lock().await;
             guard.undo_transaction().await?; // Undo delete
             guard.undo_transaction().await?; // Undo clone
         }

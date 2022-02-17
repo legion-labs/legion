@@ -91,7 +91,7 @@ pub async fn print_chrome_trace(
 
     let (tx, rx) = std::sync::mpsc::channel();
 
-    let inv_tsc_frequency = 1000.0 * 1000.0 / root_process_info.tsc_frequency as f64;
+    let inv_tsc_frequency = 1000.0 * get_process_tick_length_ms(&root_process_info);
     let root_process_start = root_process_info.start_ticks;
     let mut events = json::Array::new();
 

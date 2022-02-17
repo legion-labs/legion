@@ -4112,18 +4112,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-compiler-debugcube"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "generic-data",
- "lgn-data-codegen",
- "lgn-data-compiler",
- "lgn-data-offline",
- "lgn-data-runtime",
-]
-
-[[package]]
 name = "lgn-compiler-material"
 version = "0.1.0"
 dependencies = [
@@ -4321,7 +4309,6 @@ dependencies = [
  "byteorder",
  "bytes",
  "pin-project",
- "sha2 0.10.1",
  "smallvec",
  "tempfile",
  "thiserror",
@@ -4641,9 +4628,9 @@ dependencies = [
 name = "lgn-graphics-cgen-runtime"
 version = "0.1.0"
 dependencies = [
- "glam",
  "half",
  "lgn-graphics-api",
+ "lgn-math",
 ]
 
 [[package]]
@@ -4932,6 +4919,7 @@ dependencies = [
  "inventory",
  "lazy_static",
  "lgn-app",
+ "lgn-core",
  "lgn-data-codegen",
  "lgn-data-model",
  "lgn-data-offline",
@@ -4943,6 +4931,7 @@ dependencies = [
  "lgn-transform",
  "memoffset 0.6.5",
  "mun_runtime",
+ "rand 0.8.4",
  "rhai",
  "rune",
  "rune-modules",
@@ -5208,7 +5197,6 @@ dependencies = [
 name = "lgn-ubercompiler"
 version = "0.1.0"
 dependencies = [
- "lgn-compiler-debugcube",
  "lgn-compiler-material",
  "lgn-compiler-png2tex",
  "lgn-compiler-psd2tex",
@@ -6917,7 +6905,6 @@ dependencies = [
  "lgn-renderer",
  "lgn-telemetry-sink",
  "lgn-transform",
- "rand 0.8.4",
  "runtime-srv",
 ]
 
@@ -6937,11 +6924,9 @@ dependencies = [
  "lgn-data-transaction",
  "lgn-ecs",
  "lgn-graphics-data",
- "lgn-input",
  "lgn-math",
  "lgn-scripting",
  "lgn-telemetry-sink",
- "rand 0.8.4",
  "sample-data",
  "serde_json",
  "tokio",

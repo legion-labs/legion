@@ -37,6 +37,9 @@ pub enum ReflectionError {
     #[error("Error parsing array index in path '{0}' on ArrayDescriptor '{1}'")]
     ParsingArrayIndex(String, String),
 
+    #[error("Array key '{0}' on ArrayDescriptor '{1}'")]
+    ArrayKeyNotFound(String, String),
+
     #[error("Option field '{0}' not found on empty OptionDescriptor '{1}'")]
     FieldNotFoundOnEmptyOption(String, String),
 
@@ -160,24 +163,53 @@ fn internal_find_property<'a>(
                 });
             }
 
-            let parsed_index = if path.starts_with('[') {
-                path.find(']').and_then(|end_brace| {
+            if path.starts_with('[') {
+                if let Some(end_brace) = path.find(']') {
                     rest_of_path = path[(end_brace + 1)..].trim_start_matches('.');
-                    path[1..end_brace].parse::<u32>().ok()
-                })
-            } else {
-                None
-            };
-
-            if let Some(index) = parsed_index {
-                let element_base = unsafe { (array_descriptor.get)(base, index as usize) }?;
-                internal_find_property(element_base, array_descriptor.inner_type, rest_of_path)
-            } else {
-                Err(ReflectionError::ParsingArrayIndex(
-                    path.into(),
-                    array_descriptor.base_descriptor.type_name.clone(),
-                ))
+                    // Extract the index or 'key'
+                    let index_identifier = &path[1..end_brace];
+                    if index_identifier.chars().next().map(char::is_numeric) == Some(true) {
+                        let parsed_index = index_identifier.parse::<u32>().map_err(|_err| {
+                            ReflectionError::ParsingArrayIndex(
+                                index_identifier.into(),
+                                array_descriptor.base_descriptor.type_name.clone(),
+                            )
+                        })?;
+                        let element_base =
+                            unsafe { (array_descriptor.get)(base, parsed_index as usize) }?;
+                        return internal_find_property(
+                            element_base,
+                            array_descriptor.inner_type,
+                            rest_of_path,
+                        );
+                    } else if let TypeDefinition::BoxDyn(box_desc) = array_descriptor.inner_type {
+                        let count = unsafe { (array_descriptor.len)(base) };
+                        for index in 0..count {
+                            let element_base =
+                                unsafe { (array_descriptor.get)(base, index as usize) }?;
+                            let inner_type = unsafe { (box_desc.get_inner_type)(element_base) };
+                            if inner_type.get_type_name().to_lowercase()
+                                == index_identifier.to_lowercase()
+                            {
+                                return internal_find_property(
+                                    element_base,
+                                    array_descriptor.inner_type,
+                                    rest_of_path,
+                                );
+                            }
+                        }
+                        return Err(ReflectionError::ArrayKeyNotFound(
+                            index_identifier.into(),
+                            array_descriptor.base_descriptor.type_name.clone(),
+                        ));
+                    }
+                }
             }
+
+            Err(ReflectionError::ParsingArrayIndex(
+                path.into(),
+                array_descriptor.base_descriptor.type_name.clone(),
+            ))
         }
 
         TypeDefinition::Primitive(primitive_descriptor) => Ok(ReflectedPtr {

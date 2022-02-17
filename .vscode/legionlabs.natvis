@@ -14,6 +14,7 @@
 	<DisplayString Condition="(*(u64*)&amp;__0 == 0x80b97dd7e2e9edca)">offline_mesh ({__0,x})</DisplayString>
 	<DisplayString Condition="(*(u64*)&amp;__0 == 0x4976b194d8a1e0c2)">offline_psd ({__0,x})</DisplayString>
 	<DisplayString Condition="(*(u64*)&amp;__0 == 0x0bac9261332b6ce8)">offline_testentity ({__0,x})</DisplayString>
+	<DisplayString Condition="(*(u64*)&amp;__0 == 0x648242a8cf00bfee)">offline_texture ({__0,x})</DisplayString>
 	<DisplayString Condition="(*(u64*)&amp;__0 == 0x1d9ddd99aad89045)">runtime_entity ({__0,x})</DisplayString>
 	<DisplayString Condition="(*(u64*)&amp;__0 == 0x1a377760c95e361c)">png ({__0,x})</DisplayString>
 	<DisplayString>{__0,x}</DisplayString>

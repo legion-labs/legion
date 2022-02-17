@@ -10,6 +10,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 # Legion engine
 lgn-app = { path = "../lgn-app", version = "0.1.0" }
+lgn-core = { path = "../lgn-core", version = "0.1.0" }
 lgn-data-model = { path = "../lgn-data-model", version = "0.1.0" }
 lgn-data-offline = { path = "../lgn-data-offline", version = "0.1.0" }
 lgn-data-runtime = { path = "../lgn-data-runtime", version = "0.1.0" }
@@ -25,6 +26,7 @@ erased-serde = "0.3.12"
 lazy_static = "1.4"
 memoffset = "0.6"
 mun_runtime = "0.3.0"
+rand = "0.8"
 rune = "0.10.3"
 rune-modules = "0.10.3"
 rhai = "1.4.1"
@@ -40,3 +42,14 @@ lgn-data-codegen = { path = "../lgn-data-codegen", version = "0.1.0" }
 default = ["runtime"]
 offline = []
 runtime = []
+
+[package.metadata.cargo-udeps.ignore]
+normal = [
+    "lgn-core",
+    "lgn-input",
+    "lgn-transform",
+    "mun_runtime",
+    "rhai",
+    "rune",
+    "rune-modules",
+]

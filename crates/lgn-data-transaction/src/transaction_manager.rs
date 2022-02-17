@@ -8,7 +8,9 @@ use lgn_tracing::{info, warn};
 use thiserror::Error;
 use tokio::sync::Mutex;
 
-use crate::{build_manager::BuildManager, LockContext, Transaction};
+use crate::{
+    build_manager::BuildManager, selection_manager::SelectionManager, LockContext, Transaction,
+};
 
 /// Error returned by the Transaction System.
 #[derive(Error, Debug)]
@@ -75,7 +77,7 @@ pub enum Error {
 }
 
 /// System that manage the current state of the Loaded Offline Data
-pub struct DataManager {
+pub struct TransactionManager {
     commited_transactions: Vec<Transaction>,
     rollbacked_transactions: Vec<Transaction>,
     pub(crate) loaded_resource_handles: Arc<Mutex<ResourceHandles>>,
@@ -84,15 +86,17 @@ pub struct DataManager {
     pub(crate) resource_registry: Arc<Mutex<ResourceRegistry>>,
     pub(crate) asset_registry: Arc<AssetRegistry>,
     pub(crate) build_manager: Arc<Mutex<BuildManager>>,
+    pub(crate) selection_manager: Arc<SelectionManager>,
 }
 
-impl DataManager {
+impl TransactionManager {
     /// Create a `DataManager` from a `Project` and `ResourceRegistry`
     pub fn new(
         project: Arc<Mutex<Project>>,
         resource_registry: Arc<Mutex<ResourceRegistry>>,
         asset_registry: Arc<AssetRegistry>,
         build_manager: BuildManager,
+        selection_manager: Arc<SelectionManager>,
     ) -> Self {
         Self {
             commited_transactions: Vec::new(),
@@ -102,6 +106,7 @@ impl DataManager {
             asset_registry,
             loaded_resource_handles: Arc::new(Mutex::new(ResourceHandles::default())),
             build_manager: Arc::new(Mutex::new(build_manager)),
+            selection_manager,
         }
     }
 

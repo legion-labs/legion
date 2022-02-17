@@ -1,4 +1,4 @@
 {
-  "script": "const MOUSE_DELTA_SCALE = 200.0;\n\npub fn move_right_paddle(entity, events) {\n    let delta_x = events.mouse_motion.x / MOUSE_DELTA_SCALE;\n    entity.transform.translation.y += delta_x;\n    entity.transform.translation.clamp_y(-2.0, 2.0);\n}",
+  "script": "\nconst MOUSE_DELTA_SCALE = 200.0;\n\npub fn update(entity, events) {\n    let delta_x = events.mouse_motion.x / MOUSE_DELTA_SCALE;\n    entity.transform.translation.y += delta_x;\n    entity.transform.translation.clamp_y(-2.0, 2.0);\n}",
   "script_type": "Rune"
 }

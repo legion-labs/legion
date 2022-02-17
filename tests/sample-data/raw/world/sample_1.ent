@@ -6,9 +6,9 @@
         "runtime_instance(world/sample_1/cube_2.ent.ins)",
         "runtime_instance(world/sample_1/cube_3.ent.ins)",
         "runtime_instance(world/sample_1/cube_group_1.ent.ins)",
-        "runtime_debugcube(entity/DebugCube0)",
-        "runtime_debugcube(entity/DebugCube1)",
-        "runtime_debugcube(entity/DebugCube2)",
+        "runtime_entity(entity/DebugCube0)",
+        "runtime_entity(entity/DebugCube1)",
+        "runtime_entity(entity/DebugCube2)",
     ],
     parent: None,
     components: [

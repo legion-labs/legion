@@ -1,6 +1,11 @@
 {
   "components": [
     {
+      "Name": {
+        "name": "Ground"
+      }
+    },
+    {
       "Transform": {
         "apply_to_children": true,
         "position": [

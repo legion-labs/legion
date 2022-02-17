@@ -79,6 +79,7 @@ message RenameResourceResponse {}
 message CloneResourceRequest {
   string source_id = 1;
   optional string target_parent_id = 2;
+  repeated InitPropertyValue init_values = 3;
 }
 message CloneResourceResponse {
   string new_id = 1;

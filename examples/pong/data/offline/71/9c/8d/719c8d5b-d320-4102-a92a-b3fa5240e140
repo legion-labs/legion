@@ -35,7 +35,7 @@
     },
     {
       "ScriptComponent": {
-        "entry_fn": "move_left_paddle",
+        "entry_fn": "update",
         "input_values": [
           "{entity}",
           "{events}"

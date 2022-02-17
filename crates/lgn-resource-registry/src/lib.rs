@@ -13,7 +13,7 @@ use lgn_content_store::ContentStoreAddr;
 use lgn_data_build::DataBuildOptions;
 use lgn_data_offline::resource::{Project, ResourceRegistryOptions};
 use lgn_data_runtime::{manifest::Manifest, AssetRegistry, AssetRegistryScheduling};
-use lgn_data_transaction::{BuildManager, DataManager};
+use lgn_data_transaction::{BuildManager, SelectionManager, TransactionManager};
 use lgn_ecs::prelude::*;
 pub use settings::ResourceRegistrySettings;
 use tokio::sync::Mutex;
@@ -32,6 +32,7 @@ pub enum ResourceRegistryPluginScheduling {
 
 impl Plugin for ResourceRegistryPlugin {
     fn build(&self, app: &mut App) {
+        app.insert_resource(SelectionManager::create());
         app.add_startup_system_to_stage(StartupStage::PreStartup, Self::pre_setup);
         app.add_startup_system_to_stage(
             StartupStage::PostStartup,
@@ -61,8 +62,9 @@ impl ResourceRegistryPlugin {
         let async_rt = world.get_resource::<TokioAsyncRuntime>().unwrap();
         let asset_registry = world.get_resource::<Arc<AssetRegistry>>().unwrap();
         let manifest = world.get_resource::<Manifest>().unwrap();
+        let selection_manager = world.get_resource::<Arc<SelectionManager>>().unwrap();
 
-        let data_manager = async_rt.block_on(async move {
+        let transaction_manager = async_rt.block_on(async move {
             let project = Project::open(&project_dir)
                 .await
                 .expect("unable to open project dir");
@@ -77,11 +79,12 @@ impl ResourceRegistryPlugin {
                 .await
                 .expect("the editor requires valid build manager");
 
-            Arc::new(Mutex::new(DataManager::new(
+            Arc::new(Mutex::new(TransactionManager::new(
                 Arc::new(Mutex::new(project)),
                 registry,
                 asset_registry.clone(),
                 build_manager,
+                selection_manager.clone(),
             )))
         });
 
@@ -89,14 +92,14 @@ impl ResourceRegistryPlugin {
             let async_rt = world
                 .get_resource::<TokioAsyncRuntime>()
                 .expect("async plugin did not provide tokio runtime");
-            let data_manager = data_manager.clone();
+            let transaction_manager = transaction_manager.clone();
             async_rt.start_detached(async move {
-                let mut data_manager = data_manager.lock().await;
-                data_manager.load_all_resources().await;
+                let mut transaction_manager = transaction_manager.lock().await;
+                transaction_manager.load_all_resources().await;
             });
         }
 
-        world.insert_resource(data_manager);
+        world.insert_resource(transaction_manager);
     }
 }
 

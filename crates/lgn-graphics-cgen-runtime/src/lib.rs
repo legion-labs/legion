@@ -10,6 +10,7 @@ use lgn_graphics_api::{
     PushConstantDef, RootSignature, RootSignatureDef, Sampler, ShaderResourceType,
     ShaderStageFlags, TextureView, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
+use lgn_math::prelude::*;
 
 use half::prelude::*;
 
@@ -54,13 +55,13 @@ pub struct Float2([f32; 2]);
 
 impl_native_type_def!(Float2);
 
-impl From<glam::Vec2> for Float2 {
-    fn from(value: glam::Vec2) -> Self {
+impl From<Vec2> for Float2 {
+    fn from(value: Vec2) -> Self {
         Self(value.to_array())
     }
 }
 
-impl From<Float2> for glam::Vec2 {
+impl From<Float2> for Vec2 {
     fn from(value: Float2) -> Self {
         Self::new(value.0[0], value.0[1])
     }
@@ -74,13 +75,13 @@ pub struct Float3([f32; 3]);
 
 impl_native_type_def!(Float3);
 
-impl From<glam::Vec3> for Float3 {
-    fn from(value: glam::Vec3) -> Self {
+impl From<Vec3> for Float3 {
+    fn from(value: Vec3) -> Self {
         Self(value.to_array())
     }
 }
 
-impl From<Float3> for glam::Vec3 {
+impl From<Float3> for Vec3 {
     fn from(value: Float3) -> Self {
         Self::new(value.0[0], value.0[1], value.0[2])
     }
@@ -94,13 +95,13 @@ pub struct Float4([f32; 4]);
 
 impl_native_type_def!(Float4);
 
-impl From<glam::Vec4> for Float4 {
-    fn from(value: glam::Vec4) -> Self {
+impl From<Vec4> for Float4 {
+    fn from(value: Vec4) -> Self {
         Self(value.to_array())
     }
 }
 
-impl From<Float4> for glam::Vec4 {
+impl From<Float4> for Vec4 {
     fn from(value: Float4) -> Self {
         Self::new(value.0[0], value.0[1], value.0[2], value.0[3])
     }
@@ -134,13 +135,13 @@ pub struct Uint2([u32; 2]);
 
 impl_native_type_def!(Uint2);
 
-impl From<glam::UVec2> for Uint2 {
-    fn from(value: glam::UVec2) -> Self {
+impl From<UVec2> for Uint2 {
+    fn from(value: UVec2) -> Self {
         Self(value.to_array())
     }
 }
 
-impl From<Uint2> for glam::UVec2 {
+impl From<Uint2> for UVec2 {
     fn from(value: Uint2) -> Self {
         Self::new(value.0[0], value.0[1])
     }
@@ -154,13 +155,13 @@ pub struct Uint3([u32; 3]);
 
 impl_native_type_def!(Uint3);
 
-impl From<glam::UVec3> for Uint3 {
-    fn from(value: glam::UVec3) -> Self {
+impl From<UVec3> for Uint3 {
+    fn from(value: UVec3) -> Self {
         Self(value.to_array())
     }
 }
 
-impl From<Uint3> for glam::UVec3 {
+impl From<Uint3> for UVec3 {
     fn from(value: Uint3) -> Self {
         Self::new(value.0[0], value.0[1], value.0[2])
     }
@@ -174,13 +175,13 @@ pub struct Uint4([u32; 4]);
 
 impl_native_type_def!(Uint4);
 
-impl From<glam::UVec4> for Uint4 {
-    fn from(value: glam::UVec4) -> Self {
+impl From<UVec4> for Uint4 {
+    fn from(value: UVec4) -> Self {
         Self(value.to_array())
     }
 }
 
-impl From<Uint4> for glam::UVec4 {
+impl From<Uint4> for UVec4 {
     fn from(value: Uint4) -> Self {
         Self::new(value.0[0], value.0[1], value.0[2], value.0[3])
     }
@@ -220,8 +221,8 @@ pub struct Half2([u16; 2]);
 
 impl_native_type_def!(Half2);
 
-impl From<glam::Vec2> for Half2 {
-    fn from(value: glam::Vec2) -> Self {
+impl From<Vec2> for Half2 {
+    fn from(value: Vec2) -> Self {
         Self([
             half::f16::from_f32(value.x).to_bits(),
             half::f16::from_f32(value.y).to_bits(),
@@ -229,7 +230,7 @@ impl From<glam::Vec2> for Half2 {
     }
 }
 
-impl From<Half2> for glam::Vec2 {
+impl From<Half2> for Vec2 {
     fn from(value: Half2) -> Self {
         Self::new(
             half::f16::from_bits(value.0[0]).to_f32(),
@@ -246,8 +247,8 @@ pub struct Half3([u16; 3]);
 
 impl_native_type_def!(Half3);
 
-impl From<glam::Vec3> for Half3 {
-    fn from(value: glam::Vec3) -> Self {
+impl From<Vec3> for Half3 {
+    fn from(value: Vec3) -> Self {
         Self([
             half::f16::from_f32(value.x).to_bits(),
             half::f16::from_f32(value.y).to_bits(),
@@ -256,7 +257,7 @@ impl From<glam::Vec3> for Half3 {
     }
 }
 
-impl From<Half3> for glam::Vec3 {
+impl From<Half3> for Vec3 {
     fn from(value: Half3) -> Self {
         Self::new(
             half::f16::from_bits(value.0[0]).to_f32(),
@@ -274,8 +275,8 @@ pub struct Half4([u16; 4]);
 
 impl_native_type_def!(Half4);
 
-impl From<glam::Vec4> for Half4 {
-    fn from(value: glam::Vec4) -> Self {
+impl From<Vec4> for Half4 {
+    fn from(value: Vec4) -> Self {
         Self([
             half::f16::from_f32(value.x).to_bits(),
             half::f16::from_f32(value.y).to_bits(),
@@ -285,7 +286,7 @@ impl From<glam::Vec4> for Half4 {
     }
 }
 
-impl From<Half4> for glam::Vec4 {
+impl From<Half4> for Vec4 {
     fn from(value: Half4) -> Self {
         Self::new(
             half::f16::from_bits(value.0[0]).to_f32(),
@@ -304,8 +305,8 @@ pub struct Float4x4([f32; 16]);
 
 impl_native_type_def!(Float4x4);
 
-impl From<glam::Mat4> for Float4x4 {
-    fn from(value: glam::Mat4) -> Self {
+impl From<Mat4> for Float4x4 {
+    fn from(value: Mat4) -> Self {
         Self(value.to_cols_array())
     }
 }

@@ -13,7 +13,8 @@ use lgn_editor_proto::property_inspector::{
     DeleteArrayElementRequest, DeleteArrayElementResponse, GetResourcePropertiesRequest,
     GetResourcePropertiesResponse, InsertNewArrayElementRequest, InsertNewArrayElementResponse,
     ReorderArrayElementRequest, ReorderArrayElementResponse, ResourceDescription, ResourceProperty,
-    UpdateResourcePropertiesRequest, UpdateResourcePropertiesResponse,
+    UpdateResourcePropertiesRequest, UpdateResourcePropertiesResponse, UpdateSelectionRequest,
+    UpdateSelectionResponse,
 };
 
 use lgn_data_model::{
@@ -24,12 +25,12 @@ use lgn_data_model::{
 use lgn_data_offline::resource::ResourcePathName;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_data_transaction::{
-    ArrayOperation, DataManager, LockContext, Transaction, UpdatePropertyOperation,
+    ArrayOperation, LockContext, Transaction, TransactionManager, UpdatePropertyOperation,
 };
 use lgn_ecs::prelude::*;
 
 pub(crate) struct PropertyInspectorRPC {
-    pub(crate) data_manager: Arc<Mutex<DataManager>>,
+    pub(crate) transaction_manager: Arc<Mutex<TransactionManager>>,
 }
 
 #[derive(Default)]
@@ -62,11 +63,11 @@ impl Plugin for PropertyInspectorPlugin {
 impl PropertyInspectorPlugin {
     #[allow(clippy::needless_pass_by_value)]
     fn setup(
-        data_manager: Res<'_, Arc<Mutex<DataManager>>>,
+        transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
         mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
     ) {
         let property_inspector = PropertyInspectorServer::new(PropertyInspectorRPC {
-            data_manager: data_manager.clone(),
+            transaction_manager: transaction_manager.clone(),
         });
         grpc_settings.register_service(property_inspector);
     }
@@ -182,6 +183,36 @@ impl PropertyCollector for ResourcePropertyCollector {
 
 #[tonic::async_trait]
 impl PropertyInspector for PropertyInspectorRPC {
+    async fn update_selection(
+        &self,
+        request: Request<UpdateSelectionRequest>,
+    ) -> Result<Response<UpdateSelectionResponse>, Status> {
+        let request = request.into_inner();
+
+        let resource_id = request
+            .resource_id
+            .parse::<ResourceTypeAndId>()
+            .map_err(|_err| {
+                Status::internal(format!(
+                    "Invalid ResourceID format: {}",
+                    request.resource_id
+                ))
+            })?;
+
+        let transaction = Transaction::new().add_operation(
+            lgn_data_transaction::SelectionOperation::set_selection(&[resource_id]),
+        );
+
+        {
+            let mut transaction_manager = self.transaction_manager.lock().await;
+            transaction_manager
+                .commit_transaction(transaction)
+                .await
+                .map_err(|err| Status::internal(err.to_string()))?;
+        };
+        Ok(Response::new(UpdateSelectionResponse {}))
+    }
+
     async fn get_resource_properties(
         &self,
         request: Request<GetResourcePropertiesRequest>,
@@ -189,8 +220,8 @@ impl PropertyInspector for PropertyInspectorRPC {
         let request = request.into_inner();
         let resource_id = parse_resource_id(request.id.as_str())?;
 
-        let data_manager = self.data_manager.lock().await;
-        let ctx = LockContext::new(&data_manager).await;
+        let transaction_manager = self.transaction_manager.lock().await;
+        let ctx = LockContext::new(&transaction_manager).await;
         let handle = ctx
             .loaded_resource_handles
             .get(resource_id)
@@ -226,7 +257,7 @@ impl PropertyInspector for PropertyInspectorRPC {
         let request = request.into_inner();
         let resource_id = parse_resource_id(request.id.as_str())?;
 
-        let mut data_manager = self.data_manager.lock().await;
+        let mut transaction_manager = self.transaction_manager.lock().await;
         {
             let mut transaction = Transaction::new();
             for update in &request.property_updates {
@@ -236,7 +267,7 @@ impl PropertyInspector for PropertyInspectorRPC {
                     update.json_value.as_str(),
                 ));
             }
-            data_manager
+            transaction_manager
                 .commit_transaction(transaction)
                 .await
                 .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
@@ -264,7 +295,7 @@ impl PropertyInspector for PropertyInspectorRPC {
             transaction
         };
 
-        self.data_manager
+        self.transaction_manager
             .lock()
             .await
             .commit_transaction(transaction)
@@ -290,7 +321,7 @@ impl PropertyInspector for PropertyInspectorRPC {
             ))
         };
 
-        self.data_manager
+        self.transaction_manager
             .lock()
             .await
             .commit_transaction(transaction)
@@ -315,7 +346,7 @@ impl PropertyInspector for PropertyInspectorRPC {
             ))
         };
 
-        self.data_manager
+        self.transaction_manager
             .lock()
             .await
             .commit_transaction(transaction)

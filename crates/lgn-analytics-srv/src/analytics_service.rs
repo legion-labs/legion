@@ -185,7 +185,7 @@ impl AnalyticsService {
     ) -> Result<ProcessLogReply> {
         let mut connection = self.pool.acquire().await?;
         let mut entries = vec![];
-        let inv_tsc_frequency = 1000.0 / process.tsc_frequency as f64; // factor out
+        let inv_tsc_frequency = get_process_tick_length_ms(process); // factor out
         let ts_offset = process.start_ticks;
         let mut entry_index: u64 = 0;
         for stream in find_process_log_streams(&mut connection, &process.process_id).await? {

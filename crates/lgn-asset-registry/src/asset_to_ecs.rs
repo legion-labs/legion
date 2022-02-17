@@ -94,6 +94,7 @@ impl AssetToECS for runtime_data::Entity {
         };
 
         let mut transform_inserted = false;
+        let mut name_inserted = false;
         for component in &runtime_entity.components {
             if let Some(transform) = component.downcast_ref::<runtime_data::Transform>() {
                 entity.insert(Transform {
@@ -112,6 +113,7 @@ impl AssetToECS for runtime_data::Entity {
             {
                 entity.insert(script.clone());
             } else if let Some(name) = component.downcast_ref::<runtime_data::Name>() {
+                name_inserted = true;
                 entity.insert(Name::new(name.name.clone()));
             } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
                 entity.insert(visual.clone());
@@ -126,6 +128,10 @@ impl AssetToECS for runtime_data::Entity {
             } else if let Some(physics) = component.downcast_ref::<runtime_data::Physics>() {
                 entity.insert(physics.clone());
             }
+        }
+
+        if !name_inserted {
+            entity.insert(Name::new(asset_id.id.to_string()));
         }
 
         if !transform_inserted {
@@ -257,35 +263,27 @@ impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {
     }
 }
 
-impl AssetToECS for generic_data::runtime::DebugCube {
+impl AssetToECS for lgn_scripting::runtime::Script {
     fn create_in_ecs(
         commands: &mut Commands<'_, '_>,
-        debug_cube: &Self,
+        entity: &Self,
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
         _entity_to_id_map: &mut ResMut<'_, EntityToGpuDataIdMap>,
         _data_context: &mut GpuUniformDataContext<'_>,
     ) -> Option<Entity> {
-        let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
+        let ecs_entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
             commands.entity(entity)
         } else {
             commands.spawn()
         };
 
-        if !debug_cube.name.is_empty() {
-            entity.insert(Name::new(debug_cube.name.clone()));
-        }
-        entity.insert(Transform {
-            translation: debug_cube.position,
-            rotation: debug_cube.rotation,
-            scale: debug_cube.scale,
-        });
-        entity.insert(GlobalTransform::default());
-        entity.insert(VisualComponent::new(debug_cube.mesh_id, debug_cube.color));
+        info!(
+            "Loading script resource {} bytes",
+            entity.compiled_script.len()
+        );
 
-        Some(entity.id())
+        Some(ecs_entity.id())
     }
 }
-
-impl AssetToECS for lgn_scripting::runtime::Script {}
