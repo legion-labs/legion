@@ -29,9 +29,9 @@ message GetContentWriterResponse {
 }
 
 message WriteContentRequest {
-  string id = 1;
-  bytes data = 2;
+  bytes data = 1;
 }
 
 message WriteContentResponse {
+  string id = 1;
 }

@@ -6,35 +6,54 @@ use std::{
 
 use async_trait::async_trait;
 use futures::{stream::TryStreamExt, Future};
-use http::Uri;
+use http_body::Body;
 use lgn_content_store_proto::{
     content_store_client::ContentStoreClient, read_content_response::Content,
+    GetContentWriterRequest, GetContentWriterResponse, ReadContentRequest, ReadContentResponse,
+    WriteContentRequest, WriteContentResponse,
 };
-use lgn_online::grpc::GrpcWebClient;
 use pin_project::pin_project;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
     sync::Mutex,
 };
 use tokio_util::{compat::FuturesAsyncReadCompatExt, io::ReaderStream};
+use tonic::{codegen::StdError, Request, Response};
 
-use crate::{ContentReader, ContentWriter, Error, Identifier, Result};
+use crate::{
+    traits::ContentAddressProvider, ContentProvider, ContentReader, ContentWriter, Error,
+    Identifier, Result,
+};
 
 /// A `GrpcProvider` is a provider that delegates to a `gRPC` service.
-pub struct GrpcProvider {
-    client: Arc<Mutex<ContentStoreClient<GrpcWebClient>>>,
+pub struct GrpcProvider<C> {
+    client: Arc<Mutex<ContentStoreClient<C>>>,
 }
 
-impl GrpcProvider {
-    pub async fn new(uri: Uri) -> Self {
-        let client = Arc::new(Mutex::new(ContentStoreClient::new(GrpcWebClient::new(uri))));
+impl<C> GrpcProvider<C>
+where
+    C: tonic::client::GrpcService<tonic::body::BoxBody> + Send,
+    C::ResponseBody: Body + Send + 'static,
+    C::Error: Into<StdError>,
+    C::Future: Send + 'static,
+    <C::ResponseBody as Body>::Error: Into<StdError> + Send,
+{
+    pub async fn new(grpc_client: C) -> Self {
+        let client = Arc::new(Mutex::new(ContentStoreClient::new(grpc_client)));
 
         Self { client }
     }
 }
 
 #[async_trait]
-impl ContentReader for GrpcProvider {
+impl<C> ContentReader for GrpcProvider<C>
+where
+    C: tonic::client::GrpcService<tonic::body::BoxBody> + Send,
+    C::ResponseBody: Body + Send + 'static,
+    C::Error: Into<StdError>,
+    C::Future: Send + 'static,
+    <C::ResponseBody as Body>::Error: Into<StdError> + Send,
+{
     async fn get_content_reader(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncRead + Send>>> {
         let req = lgn_content_store_proto::ReadContentRequest { id: id.to_string() };
 
@@ -70,7 +89,14 @@ impl ContentReader for GrpcProvider {
 }
 
 #[async_trait]
-impl ContentWriter for GrpcProvider {
+impl<C> ContentWriter for GrpcProvider<C>
+where
+    C: tonic::client::GrpcService<tonic::body::BoxBody> + Send + 'static,
+    C::ResponseBody: Body + Send + 'static,
+    C::Error: Into<StdError>,
+    C::Future: Send + 'static,
+    <C::ResponseBody as Body>::Error: Into<StdError> + Send,
+{
     async fn get_content_writer(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncWrite + Send>>> {
         let req = lgn_content_store_proto::GetContentWriterRequest { id: id.to_string() };
 
@@ -102,23 +128,30 @@ impl ContentWriter for GrpcProvider {
 }
 
 #[pin_project]
-struct GrpcUploader {
+struct GrpcUploader<C> {
     #[pin]
-    state: GrpcUploaderState,
+    state: GrpcUploaderState<C>,
 }
 
-enum GrpcUploaderState {
+enum GrpcUploaderState<C> {
     Invalid,
     Writing(
         std::io::Cursor<Vec<u8>>,
         Identifier,
-        Arc<Mutex<ContentStoreClient<GrpcWebClient>>>,
+        Arc<Mutex<ContentStoreClient<C>>>,
     ),
     Uploading(Pin<Box<dyn Future<Output = Result<(), std::io::Error>> + Send + 'static>>),
 }
 
-impl GrpcUploader {
-    pub fn new(client: Arc<Mutex<ContentStoreClient<GrpcWebClient>>>, id: Identifier) -> Self {
+impl<C> GrpcUploader<C>
+where
+    C: tonic::client::GrpcService<tonic::body::BoxBody> + Send + 'static,
+    C::ResponseBody: Body + Send + 'static,
+    C::Error: Into<StdError>,
+    C::Future: Send + 'static,
+    <C::ResponseBody as Body>::Error: Into<StdError> + Send,
+{
+    pub fn new(client: Arc<Mutex<ContentStoreClient<C>>>, id: Identifier) -> Self {
         let state = GrpcUploaderState::Writing(std::io::Cursor::new(Vec::new()), id, client);
 
         Self { state }
@@ -127,14 +160,18 @@ impl GrpcUploader {
     async fn upload(
         data: Vec<u8>,
         id: Identifier,
-        client: Arc<Mutex<ContentStoreClient<GrpcWebClient>>>,
+        client: Arc<Mutex<ContentStoreClient<C>>>,
     ) -> Result<(), std::io::Error> {
-        let req = lgn_content_store_proto::WriteContentRequest {
-            id: id.to_string(),
-            data,
-        };
+        id.matches(&data).map_err(|err| {
+            std::io::Error::new(
+                std::io::ErrorKind::Other,
+                anyhow::anyhow!("the data does not match the specified id: {}", err),
+            )
+        })?;
 
-        client
+        let req = lgn_content_store_proto::WriteContentRequest { data };
+
+        let res_id: Identifier = client
             .lock()
             .await
             .write_content(req)
@@ -144,13 +181,36 @@ impl GrpcUploader {
                     std::io::ErrorKind::Other,
                     anyhow::anyhow!("gRPC request failed: {}", err),
                 )
+            })?
+            .into_inner()
+            .id
+            .parse()
+            .map_err(|err| {
+                std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    anyhow::anyhow!("failed to parse response id: {}", err),
+                )
             })?;
 
-        Ok(())
+        if res_id != id {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                anyhow::anyhow!("the response id does not match the request id"),
+            ))
+        } else {
+            Ok(())
+        }
     }
 }
 
-impl AsyncWrite for GrpcUploader {
+impl<C> AsyncWrite for GrpcUploader<C>
+where
+    C: tonic::client::GrpcService<tonic::body::BoxBody> + Send + 'static,
+    C::ResponseBody: Body + Send + 'static,
+    C::Error: Into<StdError>,
+    C::Future: Send + 'static,
+    <C::ResponseBody as Body>::Error: Into<StdError> + Send,
+{
     fn poll_write(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -335,5 +395,142 @@ impl AsyncWrite for HttpUploader {
                 Poll::Ready(Err(std::io::Error::new(std::io::ErrorKind::Other, err)))
             }
         }
+    }
+}
+
+pub struct GrpcService<Provider, AddressProvider> {
+    provider: Provider,
+    address_provider: AddressProvider,
+    size_threshold: u64,
+}
+
+impl<Provider, AddressProvider> GrpcService<Provider, AddressProvider> {
+    /// Instanciate a new `GrpcService` with the given `Provider` and
+    /// `AddressProvider`.
+    ///
+    /// Read and write requests are routed to the `Provider` if the size is
+    /// below the specified `size_threshold`.
+    ///
+    /// Otherwise, the request is routed to the `AddressProvider` to get the
+    /// address of the downloader/uploader.
+    pub fn new(provider: Provider, address_provider: AddressProvider, size_threshold: u64) -> Self {
+        Self {
+            provider,
+            address_provider,
+            size_threshold,
+        }
+    }
+}
+
+#[async_trait]
+impl<Provider, AddressProvider> lgn_content_store_proto::content_store_server::ContentStore
+    for GrpcService<Provider, AddressProvider>
+where
+    Provider: ContentProvider + Send + Sync + 'static,
+    AddressProvider: ContentAddressProvider + Send + Sync + 'static,
+{
+    async fn read_content(
+        &self,
+        request: Request<ReadContentRequest>,
+    ) -> Result<Response<ReadContentResponse>, tonic::Status> {
+        let id: Identifier = request.into_inner().id.parse().map_err(|err| {
+            tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                format!("failed to parse identifier: {}", err),
+            )
+        })?;
+
+        Ok(Response::new(ReadContentResponse {
+            content: if id.data_size() < self.size_threshold {
+                match self.provider.read_content(&id).await {
+                    Ok(data) => Some(Content::Data(data)),
+                    Err(Error::NotFound) => None,
+                    Err(err) => {
+                        return Err(tonic::Status::new(
+                            tonic::Code::Internal,
+                            format!("failed to read content: {}", err),
+                        ))
+                    }
+                }
+            } else {
+                match self.address_provider.get_content_read_address(&id).await {
+                    Ok(url) => Some(Content::Url(url)),
+                    Err(Error::NotFound) => None,
+                    Err(err) => {
+                        return Err(tonic::Status::new(
+                            tonic::Code::Internal,
+                            format!("failed to read content address: {}", err),
+                        ))
+                    }
+                }
+            },
+        }))
+    }
+
+    async fn get_content_writer(
+        &self,
+        request: Request<GetContentWriterRequest>,
+    ) -> Result<Response<GetContentWriterResponse>, tonic::Status> {
+        let id: Identifier = request.into_inner().id.parse().map_err(|err| {
+            tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                format!("failed to parse identifier: {}", err),
+            )
+        })?;
+
+        Ok(Response::new(GetContentWriterResponse {
+            content_writer: if id.data_size() < self.size_threshold {
+                // An empty URL means that the content is small enough to be
+                // fetched directly from the provider and passed through the
+                // gRPC stream.
+                Some(
+                    lgn_content_store_proto::get_content_writer_response::ContentWriter::Url(
+                        "".to_string(),
+                    ),
+                )
+            } else {
+                match self.address_provider.get_content_write_address(&id).await {
+                    Ok(url) => Some(
+                        lgn_content_store_proto::get_content_writer_response::ContentWriter::Url(
+                            url,
+                        ),
+                    ),
+                    Err(Error::AlreadyExists) => None,
+                    Err(err) => {
+                        return Err(tonic::Status::new(
+                            tonic::Code::Internal,
+                            format!("failed to read content address: {}", err),
+                        ))
+                    }
+                }
+            },
+        }))
+    }
+
+    async fn write_content(
+        &self,
+        request: Request<WriteContentRequest>,
+    ) -> Result<Response<WriteContentResponse>, tonic::Status> {
+        let data = request.into_inner().data;
+
+        if data.len() >= self.size_threshold as usize {
+            return Err(tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                format!(
+                    "refusing to write content of size {} that exceeds the size threshold of {}",
+                    data.len(),
+                    self.size_threshold
+                ),
+            ));
+        }
+
+        let id = self.provider.write_content(&data).await.map_err(|err| {
+            tonic::Status::new(
+                tonic::Code::Internal,
+                format!("failed to write content: {}", err),
+            )
+        })?;
+
+        Ok(Response::new(WriteContentResponse { id: id.to_string() }))
     }
 }

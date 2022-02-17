@@ -187,6 +187,48 @@ impl Identifier {
     pub fn is_hash_ref(&self) -> bool {
         matches!(self, Self::HashRef(_, _, _))
     }
+
+    /// Checks whether the specified data buffer matches the identifier.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Error::DataMismatch` if the data does not match the identifier.
+    pub fn matches(&self, buf: &[u8]) -> Result<()> {
+        match self {
+            Self::Data(data) => {
+                if buf != data.as_slice() {
+                    Err(Error::DataMismatch {
+                        reason: "data differs".into(),
+                    })
+                } else {
+                    Ok(())
+                }
+            }
+            Self::HashRef(size, hash_alg, hash) => {
+                if buf.len() != *size as usize {
+                    Err(Error::DataMismatch {
+                        reason: "data size differs".into(),
+                    })
+                } else {
+                    match hash_alg {
+                        HashAlgorithm::Blake3 => {
+                            let mut hasher = blake3::Hasher::new();
+                            hasher.update(buf);
+                            let buf_hash = hasher.finalize();
+
+                            if buf_hash.as_bytes() != hash.as_slice() {
+                                Err(Error::DataMismatch {
+                                    reason: "data hash differs".into(),
+                                })
+                            } else {
+                                Ok(())
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -255,5 +297,26 @@ mod tests {
             .to_string(),
             "AgEAAQoLDA0ODw"
         );
+    }
+
+    #[test]
+    fn test_identifier_matches() {
+        let id = Identifier::new_data(&[0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]);
+
+        assert!(id.matches(&[0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F]).is_ok());
+        assert!(id.matches(&[0x0A, 0x0B, 0x0C, 0x0D, 0x0F, 0x0F]).is_err());
+        assert!(id.matches(&[0x0A, 0x0B]).is_err());
+
+        let id = Identifier::new_hash_ref(
+            2,
+            HashAlgorithm::Blake3,
+            hex::decode("983589fda95f1ee2ca6b6f3120f4f9a81cef431e5ad762df3a4473e20aa97a8c")
+                .unwrap()
+                .as_slice(),
+        );
+
+        assert!(id.matches(&[0x0A, 0x0B]).is_ok());
+        assert!(id.matches(&[0x0A, 0x0B, 0x0C]).is_err());
+        assert!(id.matches(&[0x0A, 0x0C]).is_err());
     }
 }

@@ -9,4 +9,7 @@ mod traits;
 pub use errors::{Error, Result};
 pub use identifier::{HashAlgorithm, Identifier};
 pub use providers::*;
-pub use traits::{ContentReader, ContentWriter};
+pub use traits::{
+    ContentAddressProvider, ContentAddressReader, ContentAddressWriter, ContentProvider,
+    ContentReader, ContentWriter,
+};

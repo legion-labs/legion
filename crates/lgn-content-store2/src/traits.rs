@@ -73,3 +73,38 @@ pub trait ContentWriter {
             .map(|_| id)
     }
 }
+
+/// `ContentProvider` is trait for all types that are both readers and writers.
+pub trait ContentProvider: ContentReader + ContentWriter {}
+
+/// Blanket implementation of `ContentProvider`.
+impl<T> ContentProvider for T where T: ContentReader + ContentWriter {}
+
+/// Provides addresses for content.
+#[async_trait]
+pub trait ContentAddressReader {
+    /// Returns the address of the content referenced by the specified identifier.
+    ///
+    /// # Errors
+    ///
+    /// If the identifier does not match any content, `Error::NotFound` is
+    /// returned.
+    async fn get_content_read_address(&self, id: &Identifier) -> Result<String>;
+}
+
+/// Provides addresses for content.
+#[async_trait]
+pub trait ContentAddressWriter {
+    /// Returns the address of the content referenced by the specified identifier.
+    ///
+    /// # Errors
+    ///
+    /// If the identifier already exists, `Error::AlreadyExists` is returned.
+    async fn get_content_write_address(&self, id: &Identifier) -> Result<String>;
+}
+
+/// `ContentAddressProvider` is trait for all types that are both address readers and writers.
+pub trait ContentAddressProvider: ContentAddressReader + ContentAddressWriter {}
+
+/// Blanket implementation of `ContentAddressProvider`.
+impl<T> ContentAddressProvider for T where T: ContentAddressReader + ContentAddressWriter {}

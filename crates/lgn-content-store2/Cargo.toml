@@ -16,6 +16,7 @@ byteorder = "1.4.3"
 bytes = "1.1.0"
 futures = "0.3"
 http = "0.2.6"
+http-body = "0.4"
 lgn-online = { path = "../lgn-online", version = "0.1.0" }
 lgn-content-store-proto = { path = "../lgn-content-store-proto", version = "0.1.0" }
 pin-project = "1"
@@ -23,6 +24,7 @@ reqwest = { version = "0.11.9", features = ["stream"] }
 smallvec = "1.8.0"
 tempfile = "3.2"
 thiserror = "1.0"
+tonic = "0.6"
 tokio = { version = "1", features = ["full", "tracing"] }
 tokio-pipe = "0.2"
 tokio-stream = "0.1.8"
@@ -34,3 +36,4 @@ aws = ["aws-config", "aws-sdk-s3"]
 
 [dev-dependencies]
 uuid = { version = "0.8", features = ["v4"] }
+hex = "0.4"
