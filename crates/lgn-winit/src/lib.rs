@@ -97,7 +97,7 @@ fn change_window(world: &mut World) {
                             .to_physical::<f64>(scale_factor),
                     );
                 }
-                lgn_window::WindowCommand::SetVsync { .. } => (),
+                lgn_window::WindowCommand::SetPresentMode { .. } => (),
                 lgn_window::WindowCommand::SetResizable { resizable } => {
                     let window = winit_windows.get_window(id).unwrap();
                     window.set_resizable(resizable);
