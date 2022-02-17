@@ -42,3 +42,13 @@ lgn-data-codegen = { path = "../lgn-data-codegen", version = "0.1.0" }
 default = ["runtime"]
 offline = []
 runtime = []
+
+[package.metadata.cargo-udeps.ignore]
+normal = [
+    "lgn-input",
+    "lgn-transform",
+    "mun_runtime",
+    "rhai",
+    "rune",
+    "rune-modules",
+]
