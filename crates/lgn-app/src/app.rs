@@ -53,7 +53,7 @@ pub struct App {
     pub world: World,
     /// The [runner function](Self::set_runner) is primarily responsible for managing
     /// the application's event loop and advancing the [`Schedule`].
-    /// Typically, it is not configured manually, but set by one of Bevy's built-in plugins.
+    /// Typically, it is not configured manually, but set by one of Legion's built-in plugins.
     /// See `legion::winit::WinitPlugin` and [`ScheduleRunnerPlugin`](crate::schedule_runner::ScheduleRunnerPlugin).
     pub runner: Box<dyn FnOnce(App)>,
     /// A container of [`Stage`]s set to be run in a linear order.

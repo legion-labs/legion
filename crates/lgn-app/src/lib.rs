@@ -5,8 +5,6 @@
 
 // crate-specific lint exceptions:
 // #![warn(missing_docs)]
-//! This crate is about everything concerning the highest-level, application layer of a Bevy
-//! app.
 
 mod app;
 mod plugin;

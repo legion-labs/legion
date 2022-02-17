@@ -27,7 +27,7 @@ use lgn_ecs::{
 use prelude::{parent_update_system, GlobalTransform, Transform};
 
 /// A [`Bundle`] of the [`Transform`] and [`GlobalTransform`]
-/// [`Component`](bevy_ecs::component::Component)s, which describe the position of an entity.
+/// [`Component`](lgn_ecs::component::Component)s, which describe the position of an entity.
 ///
 /// * To place or move an entity, you should set its [`Transform`].
 /// * To get the global position of an entity, you should get its [`GlobalTransform`].
