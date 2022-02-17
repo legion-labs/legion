@@ -14,7 +14,9 @@ use lgn_telemetry_sink::TelemetryGuard;
 use lgn_tracing::{debug, span_fn};
 use lgn_utils::HashMap;
 
-use crate::{CoreStage, Events, Plugin, PluginGroup, PluginGroupBuilder, StartupStage};
+use crate::{
+    CoreStage, Events, Plugin, PluginGroup, PluginGroupBuilder, StartupSchedule, StartupStage,
+};
 
 lgn_utils::define_label!(AppLabel);
 
@@ -208,7 +210,7 @@ impl App {
     /// ```
     pub fn add_startup_stage<S: Stage>(&mut self, label: impl StageLabel, stage: S) -> &mut Self {
         self.schedule
-            .stage(CoreStage::Startup, |schedule: &mut Schedule| {
+            .stage(StartupSchedule, |schedule: &mut Schedule| {
                 schedule.add_stage(label, stage)
             });
         self
@@ -239,7 +241,7 @@ impl App {
         stage: S,
     ) -> &mut Self {
         self.schedule
-            .stage(CoreStage::Startup, |schedule: &mut Schedule| {
+            .stage(StartupSchedule, |schedule: &mut Schedule| {
                 schedule.add_stage_after(target, label, stage)
             });
         self
@@ -270,7 +272,7 @@ impl App {
         stage: S,
     ) -> &mut Self {
         self.schedule
-            .stage(CoreStage::Startup, |schedule: &mut Schedule| {
+            .stage(StartupSchedule, |schedule: &mut Schedule| {
                 schedule.add_stage_before(target, label, stage)
             });
         self
@@ -374,6 +376,11 @@ impl App {
         stage_label: impl StageLabel,
         system: impl IntoSystemDescriptor<Params>,
     ) -> &mut Self {
+        use std::any::TypeId;
+        assert!(
+            stage_label.type_id() != TypeId::of::<StartupStage>(),
+            "add systems to a startup stage using App::add_startup_system_to_stage"
+        );
         self.schedule.add_system_to_stage(stage_label, system);
         self
     }
@@ -404,6 +411,11 @@ impl App {
         stage_label: impl StageLabel,
         system_set: SystemSet,
     ) -> &mut Self {
+        use std::any::TypeId;
+        assert!(
+            stage_label.type_id() != TypeId::of::<StartupStage>(),
+            "add system sets to a startup stage using App::add_startup_system_set_to_stage"
+        );
         self.schedule
             .add_system_set_to_stage(stage_label, system_set);
         self
@@ -427,7 +439,7 @@ impl App {
     /// }
     ///
     /// App::default()
-    ///     .add_startup_system(my_startup_system.system());
+    ///     .add_startup_system(my_startup_system);
     /// ```
     pub fn add_startup_system<Params>(
         &mut self,
@@ -482,7 +494,7 @@ impl App {
         system: impl IntoSystemDescriptor<Params>,
     ) -> &mut Self {
         self.schedule
-            .stage(CoreStage::Startup, |schedule: &mut Schedule| {
+            .stage(StartupSchedule, |schedule: &mut Schedule| {
                 schedule.add_system_to_stage(stage_label, system)
             });
         self
@@ -519,7 +531,7 @@ impl App {
         system_set: SystemSet,
     ) -> &mut Self {
         self.schedule
-            .stage(CoreStage::Startup, |schedule: &mut Schedule| {
+            .stage(StartupSchedule, |schedule: &mut Schedule| {
                 schedule.add_system_set_to_stage(stage_label, system_set)
             });
         self
@@ -596,7 +608,7 @@ impl App {
     pub fn add_default_stages(&mut self) -> &mut Self {
         self.add_stage(CoreStage::First, SystemStage::parallel())
             .add_stage(
-                CoreStage::Startup,
+                StartupSchedule,
                 Schedule::default()
                     .with_run_criteria(RunOnce::default())
                     .with_stage(StartupStage::PreStartup, SystemStage::parallel())
@@ -657,18 +669,15 @@ impl App {
     /// App::default()
     ///    .insert_resource(MyCounter { counter: 0 });
     /// ```
-    pub fn insert_resource<T>(&mut self, resource: T) -> &mut Self
-    where
-        T: Resource,
-    {
+    pub fn insert_resource<R: Resource>(&mut self, resource: R) -> &mut Self {
         self.world.insert_resource(resource);
         self
     }
 
     /// Inserts a non-send resource to the app
     ///
-    /// You usually want to use `insert_resource`, but there are some special
-    /// cases when a resource must be non-send.
+    /// You usually want to use `insert_resource`,
+    /// but there are some special cases when a resource cannot be sent across threads.
     ///
     /// ## Example
     /// ```
@@ -681,19 +690,18 @@ impl App {
     /// App::default()
     ///     .insert_non_send_resource(MyCounter { counter: 0 });
     /// ```
-    pub fn insert_non_send_resource<T>(&mut self, resource: T) -> &mut Self
-    where
-        T: 'static,
-    {
-        self.world.insert_non_send(resource);
+    pub fn insert_non_send_resource<R: 'static>(&mut self, resource: R) -> &mut Self {
+        self.world.insert_non_send_resource(resource);
         self
     }
 
-    /// Initialize a resource in the current [`App`], if it does not exist yet
+    /// Initialize a resource with standard starting values by adding it to the [`World`]
     ///
     /// If the resource already exists, nothing happens.
     ///
-    /// Adds a resource that implements `Default` or [`FromWorld`] trait.
+    /// The resource must implement the [`FromWorld`] trait.
+    /// If the `Default` trait is implemented, the `FromWorld` trait will use
+    /// the `Default::default` method to initialize the resource.
     ///
     /// ## Example
     /// ```
@@ -711,37 +719,21 @@ impl App {
     ///     }
     /// }
     ///
-    /// App::default()
+    /// App::new()
     ///     .init_resource::<MyCounter>();
     /// ```
-    pub fn init_resource<R>(&mut self) -> &mut Self
-    where
-        R: FromWorld + Send + Sync + 'static,
-    {
-        // PERF: We could avoid double hashing here, since the `from_resources` call is
-        // guaranteed not to modify the map. However, we would need to be
-        // borrowing resources both mutably and immutably, so we would need to
-        // be extremely certain this is correct
-        if !self.world.contains_resource::<R>() {
-            let resource = R::from_world(&mut self.world);
-            self.insert_resource(resource);
-        }
+    pub fn init_resource<R: Resource + FromWorld>(&mut self) -> &mut Self {
+        self.world.init_resource::<R>();
         self
     }
 
-    /// Initialize a non-send resource in the current [`App`], if it does not
-    /// exist yet.
+    /// Initialize a non-send resource with standard starting values by adding it to the [`World`]
     ///
-    /// Adds a resource that implements `Default` or [`FromWorld`] trait.
-    pub fn init_non_send_resource<R>(&mut self) -> &mut Self
-    where
-        R: FromWorld + 'static,
-    {
-        // See perf comment in init_resource
-        if self.world.get_non_send_resource::<R>().is_none() {
-            let resource = R::from_world(&mut self.world);
-            self.world.insert_non_send(resource);
-        }
+    /// The resource must implement the [`FromWorld`] trait.
+    /// If the `Default` trait is implemented, the `FromWorld` trait will use
+    /// the `Default::default` method to initialize the resource.
+    pub fn init_non_send_resource<R: 'static + FromWorld>(&mut self) -> &mut Self {
+        self.world.init_non_send_resource::<R>();
         self
     }
 

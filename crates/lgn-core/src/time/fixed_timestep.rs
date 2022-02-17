@@ -83,7 +83,7 @@ impl Default for FixedTimestep {
     fn default() -> Self {
         Self {
             state: LocalFixedTimestepState::default(),
-            internal_system: Box::new(Self::prepare_system.system()),
+            internal_system: Box::new(IntoSystem::into_system(Self::prepare_system)),
         }
     }
 }
@@ -113,6 +113,7 @@ impl FixedTimestep {
 
     /// Sets the label for the timestep. Setting a label allows a timestep
     /// to be observed by the global [`FixedTimesteps`] resource.
+    #[must_use]
     pub fn with_label(mut self, label: &str) -> Self {
         self.state.label = Some(label.to_string());
         self

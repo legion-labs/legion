@@ -71,7 +71,7 @@ where
 ///         println!("{} is looking lovely today!", name.name);
 ///     }
 /// }
-/// # compliment_entity_system.system();
+/// # lgn_ecs::system::assert_is_system(compliment_entity_system);
 /// ```
 pub struct With<T>(PhantomData<T>);
 
@@ -194,7 +194,7 @@ unsafe impl<T> ReadOnlyFetch for WithFetch<T> {}
 ///         println!("{} has no permit!", name.name);
 ///     }
 /// }
-/// # no_permit_system.system();
+/// # lgn_ecs::system::assert_is_system(no_permit_system);
 /// ```
 pub struct Without<T>(PhantomData<T>);
 
@@ -323,7 +323,7 @@ unsafe impl<T> ReadOnlyFetch for WithoutFetch<T> {}
 ///         println!("Entity {:?} got a new style or color", entity);
 ///     }
 /// }
-/// # print_cool_entity_system.system();
+/// # lgn_ecs::system::assert_is_system(print_cool_entity_system);
 /// ```
 pub struct Or<T>(pub T);
 
@@ -495,7 +495,9 @@ macro_rules! impl_tick_filter {
 
             #[inline]
             fn update_component_access(&self, access: &mut FilteredAccess<ComponentId>) {
-                assert!(!access.access().has_write(self.component_id), "$state_name<{}> conflicts with a previous access in this query. Shared access cannot coincide with exclusive access.",
+                assert!(
+                    !access.access().has_write(self.component_id),
+                    "$state_name<{}> conflicts with a previous access in this query. Shared access cannot coincide with exclusive access.",
                         std::any::type_name::<T>());
                 access.add_read(self.component_id);
             }
@@ -624,7 +626,7 @@ impl_tick_filter!(
     ///     }
     /// }
     ///
-    /// # print_add_name_component.system();
+    /// # lgn_ecs::system::assert_is_system(print_add_name_component);
     /// ```
     Added,
     /// The [`FetchState`] of [`Added`].
@@ -669,7 +671,7 @@ impl_tick_filter!(
     ///     }
     /// }
     ///
-    /// # print_moving_objects_system.system();
+    /// # lgn_ecs::system::assert_is_system(print_moving_objects_system);
     /// ```
     Changed,
     /// The [`FetchState`] of [`Changed`].

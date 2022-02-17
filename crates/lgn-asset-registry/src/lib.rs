@@ -93,11 +93,13 @@ impl AssetRegistryPlugin {
         }
 
         world.insert_resource(manifest);
-        world.insert_non_send(registry_options);
+        world.insert_non_send_resource(registry_options);
     }
 
     fn post_setup(world: &mut World) {
-        let registry_options = world.remove_non_send::<AssetRegistryOptions>().unwrap();
+        let registry_options = world
+            .remove_non_send_resource::<AssetRegistryOptions>()
+            .unwrap();
         let registry = registry_options.create();
 
         let load_events = registry.subscribe_to_load_events();

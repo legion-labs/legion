@@ -4,7 +4,7 @@ use crate::App;
 
 /// A collection of Legion App logic and configuration
 ///
-/// Plugins configure an [App](crate::App). When an [App](crate::App) registers
+/// Plugins configure an [`App`](crate::App). When an [`App`](crate::App) registers
 /// a plugin, the plugin's [`Plugin::build`] function is run.
 pub trait Plugin: Any + Send + Sync {
     /// Configures the [`App`] to which this plugin is added.

@@ -7,7 +7,7 @@
 
 mod component;
 
-use lgn_macro_utils::{derive_label, LegionManifest};
+use lgn_macro_utils::{derive_label, get_named_struct_fields, LegionManifest};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::{format_ident, quote};
@@ -16,7 +16,7 @@ use syn::{
     parse_macro_input,
     punctuated::Punctuated,
     token::Comma,
-    DeriveInput, Field, GenericParam, Ident, Index, LitInt, Result, Token,
+    DeriveInput, Field, GenericParam, Ident, Index, LitInt, Result, Token, TypeParam,
 };
 
 struct AllTuples {
@@ -90,7 +90,7 @@ pub fn derive_bundle(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     let ecs_path = legion_ecs_path();
 
-    let named_fields = match lgn_macro_utils::get_named_struct_fields(&ast.data) {
+    let named_fields = match get_named_struct_fields(&ast.data) {
         Ok(fields) => &fields.named,
         Err(e) => return e.into_compile_error().into(),
     };
@@ -303,10 +303,9 @@ static SYSTEM_PARAM_ATTRIBUTE_NAME: &str = "system_param";
 
 /// Implement `SystemParam` to use a struct as a parameter in a system
 #[proc_macro_derive(SystemParam, attributes(system_param))]
-
 pub fn derive_system_param(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
-    let fields = match lgn_macro_utils::get_named_struct_fields(&ast.data) {
+    let fields = match get_named_struct_fields(&ast.data) {
         Ok(fields) => &fields.named,
         Err(e) => return e.into_compile_error().into(),
     };
@@ -363,12 +362,18 @@ pub fn derive_system_param(input: TokenStream) -> TokenStream {
         .collect();
 
     let mut punctuated_generics = Punctuated::<_, Token![,]>::new();
-    punctuated_generics.extend(lifetimeless_generics.iter());
+    punctuated_generics.extend(lifetimeless_generics.iter().map(|g| match g {
+        GenericParam::Type(g) => GenericParam::Type(TypeParam {
+            default: None,
+            ..g.clone()
+        }),
+        _ => unreachable!(),
+    }));
 
     let mut punctuated_generic_idents = Punctuated::<_, Token![,]>::new();
     punctuated_generic_idents.extend(lifetimeless_generics.iter().map(|g| match g {
         GenericParam::Type(g) => &g.ident,
-        _ => panic!(),
+        _ => unreachable!(),
     }));
 
     let struct_name = &ast.ident;
@@ -408,7 +413,7 @@ pub fn derive_system_param(input: TokenStream) -> TokenStream {
             }
         }
 
-        impl #impl_generics #path::system::SystemParamFetch<'w, 's> for #fetch_struct_name <(#(<#field_types as #path::system::SystemParam>::Fetch,)*), #punctuated_generic_idents> {
+        impl #impl_generics #path::system::SystemParamFetch<'w, 's> for #fetch_struct_name <(#(<#field_types as #path::system::SystemParam>::Fetch,)*), #punctuated_generic_idents> #where_clause {
             type Item = #struct_name #ty_generics;
             unsafe fn get_param(
                 state: &'s mut Self,
@@ -433,7 +438,7 @@ pub fn derive_system_label(input: TokenStream) -> TokenStream {
     trait_path
         .segments
         .push(format_ident!("SystemLabel").into());
-    derive_label(input, trait_path)
+    derive_label(input, &trait_path)
 }
 
 #[proc_macro_derive(StageLabel)]
@@ -442,7 +447,7 @@ pub fn derive_stage_label(input: TokenStream) -> TokenStream {
     let mut trait_path = legion_ecs_path();
     trait_path.segments.push(format_ident!("schedule").into());
     trait_path.segments.push(format_ident!("StageLabel").into());
-    derive_label(input, trait_path)
+    derive_label(input, &trait_path)
 }
 
 #[proc_macro_derive(AmbiguitySetLabel)]
@@ -453,7 +458,7 @@ pub fn derive_ambiguity_set_label(input: TokenStream) -> TokenStream {
     trait_path
         .segments
         .push(format_ident!("AmbiguitySetLabel").into());
-    derive_label(input, trait_path)
+    derive_label(input, &trait_path)
 }
 
 #[proc_macro_derive(RunCriteriaLabel)]
@@ -464,7 +469,7 @@ pub fn derive_run_criteria_label(input: TokenStream) -> TokenStream {
     trait_path
         .segments
         .push(format_ident!("RunCriteriaLabel").into());
-    derive_label(input, trait_path)
+    derive_label(input, &trait_path)
 }
 
 pub(crate) fn legion_ecs_path() -> syn::Path {

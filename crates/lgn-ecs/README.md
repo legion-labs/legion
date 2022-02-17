@@ -199,7 +199,7 @@ fn system_changed(query: Query<&Position, Changed<Velocity>>) {
     }
 }
 
-// Gets the i32 component of all Entities that had a f32 component added since the last run of the System
+// Gets the Position component of all Entities that had a Velocity component added since the last run of the System
 fn system_added(query: Query<&Position, Added<Velocity>>) {
     for position in query.iter() {
     }
@@ -229,8 +229,8 @@ Bevy ECS supports multiple component storage types.
 
 Components can be stored in:
 
-- **Tables**: Fast and cache friendly iteration, but slower adding and removing of components. This is the default storage type.
-- **Sparse Sets**: Fast adding and removing of components, but slower iteration.
+* **Tables**: Fast and cache friendly iteration, but slower adding and removing of components. This is the default storage type.
+* **Sparse Sets**: Fast adding and removing of components, but slower iteration.
 
 Component storage types are configurable, and they default to table storage if the storage is not manually defined.
 
