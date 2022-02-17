@@ -8,7 +8,6 @@ import { authClient } from "@lgn/web-client/src/lib/auth";
 export function getRemoteHost() {
   const remoteHost =
     "analytics-nlb-cddd70eafd32d85b.elb.ca-central-1.amazonaws.com";
-  // const remoteHost = "localhost";
   return remoteHost;
 }
 
