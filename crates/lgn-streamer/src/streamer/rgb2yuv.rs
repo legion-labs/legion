@@ -1,6 +1,6 @@
 use lgn_graphics_api::prelude::*;
 use lgn_graphics_cgen_runtime::CGenShaderKey;
-use lgn_renderer::{
+use lgn_graphics_renderer::{
     components::RenderSurface,
     resources::{PipelineHandle, PipelineManager},
     RenderContext,

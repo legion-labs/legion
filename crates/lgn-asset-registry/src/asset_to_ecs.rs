@@ -4,7 +4,7 @@ use crate::asset_entities::AssetToEntityMap;
 use lgn_core::Name;
 use lgn_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
-use lgn_renderer::{
+use lgn_graphics_renderer::{
     components::{MaterialComponent, TextureComponent, VisualComponent},
     resources::GpuUniformDataContext,
     EntityToGpuDataIdMap,

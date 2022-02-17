@@ -1,7 +1,7 @@
 use lgn_graphics_data::{
     encode_mip_chain_from_offline_texture, rgba_from_source, ColorChannels, TextureFormat,
 };
-use lgn_renderer::{components::TextureComponent, resources::GpuUniformDataContext};
+use lgn_graphics_renderer::{components::TextureComponent, resources::GpuUniformDataContext};
 use png::ColorType;
 
 use std::path::Path;

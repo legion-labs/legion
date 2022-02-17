@@ -2,7 +2,7 @@
 
 use lgn_ecs::prelude::Component;
 use lgn_graphics_api::DeviceContext;
-use lgn_renderer::{
+use lgn_graphics_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents, RenderSurfaceId},
     resources::PipelineManager,
     RenderContext,
@@ -93,7 +93,7 @@ impl Presenter for PresenterSnapshot {
     fn resize(
         &mut self,
         _device_context: &DeviceContext,
-        _extents: lgn_renderer::components::RenderSurfaceExtents,
+        _extents: lgn_graphics_renderer::components::RenderSurfaceExtents,
     ) {
         unreachable!();
     }

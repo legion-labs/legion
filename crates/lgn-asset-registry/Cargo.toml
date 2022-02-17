@@ -21,7 +21,7 @@ lgn-graphics-data = { path = "../lgn-graphics-data", version = "0.1.0", features
     "runtime",
 ] }
 lgn-transform = { path = "../lgn-transform", version = "0.1.0" }
-lgn-renderer = { path = "../lgn-renderer", version = "0.1.0" }
+lgn-graphics-renderer = { path = "../lgn-graphics-renderer", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-scripting = { path = "../lgn-scripting", version = "0.1.0", features = [
     "runtime",

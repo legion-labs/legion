@@ -1,6 +1,6 @@
-#include "crate://lgn-renderer/gpu/pipeline_layout/const_color_pipeline_layout.hlsl"
+#include "crate://lgn-graphics-renderer/gpu/pipeline_layout/const_color_pipeline_layout.hlsl"
 
-#include "crate://lgn-renderer/gpu/include/mesh.hsh"
+#include "crate://lgn-graphics-renderer/gpu/include/mesh.hsh"
 
 struct VertexIn {
     float4 pos : POSITION;

@@ -8,8 +8,8 @@
 use dolly::{prelude::*, rig::CameraRig};
 use lgn_app::prelude::*;
 use lgn_ecs::prelude::*;
+use lgn_graphics_renderer::components::CameraComponent;
 use lgn_math::prelude::*;
-use lgn_renderer::components::CameraComponent;
 use runtime_srv::{build_runtime, start_runtime};
 
 fn main() {

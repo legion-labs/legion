@@ -9,12 +9,12 @@ use lgn_codec_api::{
 use lgn_config::config_get_or;
 use lgn_ecs::prelude::*;
 use lgn_graphics_api::DeviceContext;
-use lgn_mp4::{AvcConfig, MediaConfig, Mp4Config, Mp4Stream};
-use lgn_renderer::{
+use lgn_graphics_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
     resources::PipelineManager,
     RenderContext,
 };
+use lgn_mp4::{AvcConfig, MediaConfig, Mp4Config, Mp4Stream};
 use lgn_tracing::prelude::*;
 use lgn_tracing::{debug, warn};
 use lgn_utils::memory::write_any;

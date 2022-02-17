@@ -2,7 +2,7 @@ use std::{fs::File, io, path::Path};
 
 use lgn_app::{App, Plugin};
 use lgn_ecs::prelude::{Commands, Res};
-use lgn_renderer::components::VisualComponent;
+use lgn_graphics_renderer::components::VisualComponent;
 use lgn_transform::components::{GlobalTransform, Transform};
 use png::OutputInfo;
 

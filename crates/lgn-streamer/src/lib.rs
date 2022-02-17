@@ -17,7 +17,7 @@ mod cgen {
 use cgen::*;
 use lgn_ecs::prelude::{Res, ResMut};
 use lgn_graphics_cgen_runtime::CGenRegistryList;
-use lgn_renderer::{resources::PipelineManager, Renderer};
+use lgn_graphics_renderer::{resources::PipelineManager, Renderer};
 
 mod grpc;
 mod streamer;

@@ -11,11 +11,7 @@ use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::GraphicsPlugin;
-use lgn_input::InputPlugin;
-use lgn_math::Vec3;
-use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlugin};
-use lgn_presenter_window::component::PresenterWindow;
-use lgn_renderer::{
+use lgn_graphics_renderer::{
     components::{
         LightComponent, LightType, MaterialComponent, RenderSurface, RenderSurfaceCreatedForWindow,
         RenderSurfaceExtents, VisualComponent,
@@ -23,6 +19,10 @@ use lgn_renderer::{
     resources::{DefaultMeshType, GpuUniformData, GpuUniformDataContext, PipelineManager},
     {Renderer, RendererPlugin},
 };
+use lgn_input::InputPlugin;
+use lgn_math::Vec3;
+use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlugin};
+use lgn_presenter_window::component::PresenterWindow;
 use lgn_transform::{
     components::{GlobalTransform, Transform},
     TransformPlugin,

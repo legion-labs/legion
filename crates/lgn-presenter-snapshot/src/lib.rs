@@ -18,7 +18,7 @@ mod offscreen_capture;
 use lgn_app::{App, Plugin};
 use lgn_ecs::prelude::{Res, ResMut};
 use lgn_graphics_cgen_runtime::CGenRegistryList;
-use lgn_renderer::{resources::PipelineManager, Renderer};
+use lgn_graphics_renderer::{resources::PipelineManager, Renderer};
 use offscreen_capture::OffscreenHelper;
 
 #[derive(Default)]

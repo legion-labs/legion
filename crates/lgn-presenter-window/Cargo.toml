@@ -11,7 +11,7 @@ lgn-graphics-api = { path = "../lgn-graphics-api", version = "0.1.0" }
 lgn-app = { path = "../lgn-app", version = "0.1.0" }
 lgn-ecs = { path = "../lgn-ecs", version = "0.1.0" }
 lgn-core = { path = "../lgn-core", version = "0.1.0" }
-lgn-renderer = { path = "../lgn-renderer", version = "0.1.0" }
+lgn-graphics-renderer = { path = "../lgn-graphics-renderer", version = "0.1.0" }
 lgn-tasks = { path = "../lgn-tasks", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 crossbeam-channel = "0.5"

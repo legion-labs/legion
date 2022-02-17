@@ -22,7 +22,7 @@ use lgn_data_runtime::{
     ResourceLoadEvent,
 };
 use lgn_ecs::prelude::*;
-use lgn_renderer::{
+use lgn_graphics_renderer::{
     resources::{GpuUniformData, GpuUniformDataContext},
     EntityToGpuDataIdMap,
 };

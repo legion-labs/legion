@@ -4,15 +4,15 @@ use bytes::Bytes;
 use lgn_app::{AppExit, Events};
 use lgn_async::TokioAsyncRuntime;
 use lgn_ecs::prelude::*;
+use lgn_graphics_renderer::{
+    components::{RenderSurface, RenderSurfaceCreatedForWindow},
+    resources::PipelineManager,
+    Renderer,
+};
 use lgn_input::{
     keyboard::KeyboardInput,
     mouse::{MouseButtonInput, MouseMotion, MouseWheel},
     touch::TouchInput,
-};
-use lgn_renderer::{
-    components::{RenderSurface, RenderSurfaceCreatedForWindow},
-    resources::PipelineManager,
-    Renderer,
 };
 use lgn_tracing::{error, info, trace, warn};
 use lgn_window::{WindowCreated, WindowResized, Windows};

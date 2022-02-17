@@ -41,4 +41,4 @@ offline = []
 runtime = []
 
 [package.metadata.cargo-udeps.ignore]
-normal = ["lgn-renderer", "lgn-transform"]
+normal = ["lgn-graphics-renderer", "lgn-transform"]

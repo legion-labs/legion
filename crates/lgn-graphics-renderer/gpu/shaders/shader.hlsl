@@ -1,11 +1,11 @@
-#include "crate://lgn-renderer/gpu/pipeline_layout/shader_pipeline_layout.hlsl"
-#include "crate://lgn-renderer/gpu/cgen_type/gpu_instance_transform.hlsl"
-#include "crate://lgn-renderer/gpu/cgen_type/gpu_instance_color.hlsl"
-#include "crate://lgn-renderer/gpu/cgen_type/gpu_instance_picking_data.hlsl"
-#include "crate://lgn-renderer/gpu/cgen_type/gpu_instance_va_table.hlsl"
+#include "crate://lgn-graphics-renderer/gpu/pipeline_layout/shader_pipeline_layout.hlsl"
+#include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_transform.hlsl"
+#include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_color.hlsl"
+#include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_picking_data.hlsl"
+#include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_va_table.hlsl"
 
-#include "crate://lgn-renderer/gpu/include/brdf.hsh"
-#include "crate://lgn-renderer/gpu/include/mesh.hsh"
+#include "crate://lgn-graphics-renderer/gpu/include/brdf.hsh"
+#include "crate://lgn-graphics-renderer/gpu/include/mesh.hsh"
 
 struct GpuPipelineVertexIn
 {
