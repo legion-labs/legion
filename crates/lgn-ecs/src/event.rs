@@ -261,7 +261,7 @@ fn internal_event_reader<'a, T>(
         State::B => a.iter().chain(b.iter()),
     };
     iterator
-            .map(map_instance_event_with_id)
+        .map(map_instance_event_with_id)
         .inspect(move |(_, id)| *last_event_count = (id.id + 1).max(*last_event_count))
 }
 
