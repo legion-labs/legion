@@ -2,6 +2,7 @@
   import { Router, links, Route, globalHistory } from "svelte-navigator";
   import Home from "@/pages/Home.svelte";
   import About from "@/pages/About.svelte";
+  import Health from "@/pages/Health.svelte";
   import Log from "@/pages/Log.svelte";
   import Timeline from "@/pages/Timeline.svelte";
   import Graph from "@/pages/Graph.svelte";
@@ -45,6 +46,7 @@
     </div>
     <Route path="/" primary={false}><Home /></Route>
     <Route path="/about"><About /></Route>
+    <Route path="/health"><Health /></Route>
     <Route path="/log/:id" let:params let:location primary={false}>
       {#key params.id + location.search}
         <Log id={params.id} />
