@@ -68,7 +68,7 @@
       <tbody>
         {#each processList as { nbCpuBlocks, nbMetricBlocks, nbLogBlocks, processInfo } (processInfo?.processId)}
           <tr>
-            <td><User user={processInfo?.username ?? ""} /></td>
+            <td><User user={processInfo?.realname ?? ""} /></td>
             <td
               ><span title={processInfo?.exe}>
                 {processInfo?.exe.split("/").pop()?.split("\\").pop()}
