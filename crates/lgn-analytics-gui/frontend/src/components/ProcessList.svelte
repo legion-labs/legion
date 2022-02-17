@@ -58,12 +58,12 @@
       <thead>
         <th>User</th>
         <th>Executable</th>
-        <th />
-        <th />
-        <th />
         <th>Target</th>
         <th>Platform</th>
         <th>Start Time</th>
+        <th />
+        <th />
+        <th />
       </thead>
       <tbody>
         {#each processList as { nbCpuBlocks, nbMetricBlocks, nbLogBlocks, processInfo } (processInfo?.processId)}
@@ -74,6 +74,9 @@
                 {processInfo?.exe.split("/").pop()?.split("\\").pop()}
               </span>
             </td>
+            <td>N/A</td>
+            <td><Platform process={processInfo} /></td>
+            <td><ProcessTime process={processInfo} /></td>
             <td>
               {#if nbLogBlocks > 0 && processInfo}
                 <div>
@@ -110,9 +113,6 @@
                 </div>
               {/if}
             </td>
-            <td>N/A</td>
-            <td><Platform process={processInfo} /></td>
-            <td><ProcessTime process={processInfo} /></td>
           </tr>
         {/each}
       </tbody>
