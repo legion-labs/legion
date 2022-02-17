@@ -248,11 +248,13 @@ fn update_manipulator_component(
                     }
                 }
             } else if update_manip_entity {
-                picking_manager.set_base_picking_transform(&transform);
-                // Notify the transform
-                if !picking_manager.mouse_button_down() {
+                if !picking_manager.mouse_button_down()
+                    && (*transform) != picking_manager.base_picking_transform()
+                {
                     event_writer.send(PickingEvent::ApplyTransaction(entity, *transform));
                 }
+                picking_manager.set_base_picking_transform(&transform);
+                // Notify the transform
             }
             select_entity_transform = Some(*global_transform);
         } else if picked.is_empty() {

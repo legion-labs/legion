@@ -243,7 +243,6 @@ pub enum ResourceLoadEvent {
 impl Drop for AssetRegistry {
     fn drop(&mut self) {
         self.write_inner().loader.terminate();
-        //self.loader.terminate();
         self.load_thread.take().unwrap().join().unwrap();
     }
 }
@@ -308,7 +307,7 @@ impl AssetRegistry {
     }
 
     /// Retrieves a reference to an asset, None if asset is not loaded.
-    pub fn get<T: Any + Resource>(
+    pub(crate) fn get<T: Any + Resource>(
         &self,
         id: ResourceTypeAndId,
     ) -> Option<AssetRegistryGuard<'_, T>> {

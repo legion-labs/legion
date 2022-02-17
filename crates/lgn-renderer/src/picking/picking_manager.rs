@@ -344,7 +344,7 @@ impl PickingManager {
         if inner.picking_state == PickingState::Processing {
             if inner.current_picking_data.is_empty() && inner.manipulated_entity.is_some() {
                 inner.manipulated_entity = None;
-                // Notifiy Clear Selection
+                // Notify Clear Selection
                 event_writer.send(PickingEvent::ClearSelection);
             }
 
@@ -373,11 +373,6 @@ impl PickingManager {
                         &mut inner.current_picking_data,
                         &mut picked_entities,
                     );
-
-                    if manipulator_component.is_none() && !picked_component.is_empty() {
-                        //inner.manip_entity_base_transform = *transform;
-                        //inner.manipulated_entity = Some(entity);
-                    }
                 }
             }
 

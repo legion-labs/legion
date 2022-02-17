@@ -87,7 +87,7 @@ impl BuildManager {
         &self.manifest
     }
 
-    /// Return the Offline soure from a runtime id
+    /// Return the Offline source from a runtime id
     pub fn resolve_offline_id(&self, runtime_id: ResourceTypeAndId) -> Option<ResourceTypeAndId> {
         self.build
             .lookup_pathid(runtime_id)
