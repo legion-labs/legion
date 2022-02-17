@@ -81,7 +81,7 @@ impl LegionManifest {
 ///
 /// - `input`: The [`syn::DeriveInput`] for struct that is deriving the label trait
 /// - `trait_path`: The path [`syn::Path`] to the label trait
-pub fn derive_label(input: syn::DeriveInput, trait_path: syn::Path) -> TokenStream {
+pub fn derive_label(input: syn::DeriveInput, trait_path: &syn::Path) -> TokenStream {
     let ident = input.ident;
 
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
@@ -91,15 +91,12 @@ pub fn derive_label(input: syn::DeriveInput, trait_path: syn::Path) -> TokenStre
     });
     where_clause.predicates.push(syn::parse2(quote! { Self: Eq + ::std::fmt::Debug + ::std::hash::Hash + Clone + Send + Sync + 'static }).unwrap());
 
-    let stream = quote! {
+    (quote! {
         impl #impl_generics #trait_path for #ident #ty_generics #where_clause {
             fn dyn_clone(&self) -> std::boxed::Box<dyn #trait_path> {
                 std::boxed::Box::new(std::clone::Clone::clone(self))
             }
         }
-    };
-
-    drop(trait_path);
-
-    stream.into()
+    })
+    .into()
 }

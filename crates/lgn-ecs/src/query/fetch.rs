@@ -264,8 +264,11 @@ unsafe impl<T: Component> FetchState for ReadState<T> {
     }
 
     fn update_component_access(&self, access: &mut FilteredAccess<ComponentId>) {
-        assert!(!access.access().has_write(self.component_id), "&{} conflicts with a previous access in this query. Shared access cannot coincide with exclusive access.",
-                std::any::type_name::<T>());
+        assert!(
+            !access.access().has_write(self.component_id),
+            "&{} conflicts with a previous access in this query. Shared access cannot coincide with exclusive access.",
+                std::any::type_name::<T>(),
+        );
         access.add_read(self.component_id);
     }
 
@@ -464,8 +467,11 @@ unsafe impl<T: Component> FetchState for WriteState<T> {
     }
 
     fn update_component_access(&self, access: &mut FilteredAccess<ComponentId>) {
-        assert!(!access.access().has_read(self.component_id), "&mut {} conflicts with a previous access in this query. Mutable component access must be unique.",
-                std::any::type_name::<T>());
+        assert!(
+            !access.access().has_read(self.component_id),
+            "&mut {} conflicts with a previous access in this query. Mutable component access must be unique.",
+                std::any::type_name::<T>(),
+        );
         access.add_write(self.component_id);
     }
 
@@ -561,7 +567,7 @@ impl<'w, 's, T: Component> Fetch<'w, 's> for WriteFetch<T> {
                 Mut {
                     value: &mut *self.table_components.as_ptr().add(table_row),
                     ticks: Ticks {
-                        component_ticks: &mut *(&*self.table_ticks.add(table_row)).get(),
+                        component_ticks: &mut *(*self.table_ticks.add(table_row)).get(),
                         change_tick: self.change_tick,
                         last_change_tick: self.last_change_tick,
                     },
@@ -588,7 +594,7 @@ impl<'w, 's, T: Component> Fetch<'w, 's> for WriteFetch<T> {
         Mut {
             value: &mut *self.table_components.as_ptr().add(table_row),
             ticks: Ticks {
-                component_ticks: &mut *(&*self.table_ticks.add(table_row)).get(),
+                component_ticks: &mut *(*self.table_ticks.add(table_row)).get(),
                 change_tick: self.change_tick,
                 last_change_tick: self.last_change_tick,
             },
@@ -818,7 +824,7 @@ impl<'w, 's, T: Fetch<'w, 's>> Fetch<'w, 's> for OptionFetch<T> {
 ///         }
 ///     }
 /// }
-/// # print_moving_objects_system.system();
+/// # lgn_ecs::system::assert_is_system(print_moving_objects_system);
 /// ```
 #[derive(Clone)]
 pub struct ChangeTrackers<T: Component> {
@@ -878,8 +884,11 @@ unsafe impl<T: Component> FetchState for ChangeTrackersState<T> {
     }
 
     fn update_component_access(&self, access: &mut FilteredAccess<ComponentId>) {
-        assert!(!access.access().has_write(self.component_id), "ChangeTrackers<{}> conflicts with a previous access in this query. Shared access cannot coincide with exclusive access.",
-                std::any::type_name::<T>());
+        assert!(
+            !access.access().has_write(self.component_id),
+ "ChangeTrackers<{}> conflicts with a previous access in this query. Shared access cannot coincide with exclusive access.",
+                std::any::type_name::<T>()
+        );
         access.add_read(self.component_id);
     }
 
@@ -1001,7 +1010,7 @@ impl<'w, 's, T: Component> Fetch<'w, 's> for ChangeTrackersFetch<T> {
             StorageType::Table => {
                 let table_row = *self.entity_table_rows.add(archetype_index);
                 ChangeTrackers {
-                    component_ticks: (&*self.table_ticks.add(table_row)).clone(),
+                    component_ticks: (*self.table_ticks.add(table_row)).clone(),
                     marker: PhantomData,
                     last_change_tick: self.last_change_tick,
                     change_tick: self.change_tick,
@@ -1010,7 +1019,7 @@ impl<'w, 's, T: Component> Fetch<'w, 's> for ChangeTrackersFetch<T> {
             StorageType::SparseSet => {
                 let entity = *self.entities.add(archetype_index);
                 ChangeTrackers {
-                    component_ticks: (&*self.sparse_set).get_ticks(entity).cloned().unwrap(),
+                    component_ticks: (*self.sparse_set).get_ticks(entity).cloned().unwrap(),
                     marker: PhantomData,
                     last_change_tick: self.last_change_tick,
                     change_tick: self.change_tick,
@@ -1022,7 +1031,7 @@ impl<'w, 's, T: Component> Fetch<'w, 's> for ChangeTrackersFetch<T> {
     #[inline]
     unsafe fn table_fetch(&mut self, table_row: usize) -> Self::Item {
         ChangeTrackers {
-            component_ticks: (&*self.table_ticks.add(table_row)).clone(),
+            component_ticks: (*self.table_ticks.add(table_row)).clone(),
             marker: PhantomData,
             last_change_tick: self.last_change_tick,
             change_tick: self.change_tick,
@@ -1115,7 +1124,120 @@ macro_rules! impl_tuple_fetch {
     };
 }
 
+/// The `AnyOf` query parameter fetches entities with any of the component types included in T.
+///
+/// `Query<AnyOf<(&A, &B, &mut C)>>` is equivalent to `Query<(Option<&A>, Option<&B>, Option<&mut C>), (Or(With<A>, With<B>, With<C>)>`.
+/// Each of the components in `T` is returned as an `Option`, as with `Option<A>` queries.
+/// Entities are guaranteed to have at least one of the components in `T`.
+pub struct AnyOf<T>(T);
+
+macro_rules! impl_anytuple_fetch {
+    ($(($name: ident, $state: ident)),*) => {
+        #[allow(non_snake_case)]
+        impl<'w, 's, $($name: Fetch<'w, 's>),*> Fetch<'w, 's> for AnyOf<($(($name, bool),)*)> {
+            type Item = ($(Option<$name::Item>,)*);
+            type State = AnyOf<($($name::State,)*)>;
+
+            #[allow(clippy::unused_unit)]
+            unsafe fn init(_world: &World, state: &Self::State, _last_change_tick: u32, _change_tick: u32) -> Self {
+                let ($($name,)*) = &state.0;
+                AnyOf(($(($name::init(_world, $name, _last_change_tick, _change_tick), false),)*))
+            }
+
+
+            const IS_DENSE: bool = true $(&& $name::IS_DENSE)*;
+
+            #[inline]
+            unsafe fn set_archetype(&mut self, _state: &Self::State, _archetype: &Archetype, _tables: &Tables) {
+                let ($($name,)*) = &mut self.0;
+                let ($($state,)*) = &_state.0;
+                $(
+                    $name.1 = $state.matches_archetype(_archetype);
+                    if $name.1 {
+                        $name.0.set_archetype($state, _archetype, _tables);
+                    }
+                )*
+            }
+
+            #[inline]
+            unsafe fn set_table(&mut self, _state: &Self::State, _table: &Table) {
+                let ($($name,)*) = &mut self.0;
+                let ($($state,)*) = &_state.0;
+                $(
+                    $name.1 = $state.matches_table(_table);
+                    if $name.1 {
+                        $name.0.set_table($state, _table);
+                    }
+                )*
+            }
+
+            #[inline]
+            #[allow(clippy::unused_unit)]
+            unsafe fn table_fetch(&mut self, _table_row: usize) -> Self::Item {
+                let ($($name,)*) = &mut self.0;
+                ($(
+                    $name.1.then(|| $name.0.table_fetch(_table_row)),
+                )*)
+            }
+
+            #[inline]
+            #[allow(clippy::unused_unit)]
+            unsafe fn archetype_fetch(&mut self, _archetype_index: usize) -> Self::Item {
+                let ($($name,)*) = &mut self.0;
+                ($(
+                    $name.1.then(|| $name.0.archetype_fetch(_archetype_index)),
+                )*)
+            }
+        }
+
+        // SAFETY: update_component_access and update_archetype_component_access are called for each item in the tuple
+        #[allow(non_snake_case)]
+        #[allow(clippy::unused_unit)]
+        unsafe impl<$($name: FetchState),*> FetchState for AnyOf<($($name,)*)> {
+            fn init(_world: &mut World) -> Self {
+                AnyOf(($($name::init(_world),)*))
+            }
+
+            fn update_component_access(&self, _access: &mut FilteredAccess<ComponentId>) {
+                let ($($name,)*) = &self.0;
+                $($name.update_component_access(_access);)*
+            }
+
+            fn update_archetype_component_access(&self, _archetype: &Archetype, _access: &mut Access<ArchetypeComponentId>) {
+                let ($($name,)*) = &self.0;
+                $(
+                    if $name.matches_archetype(_archetype) {
+                        $name.update_archetype_component_access(_archetype, _access);
+                    }
+                )*
+            }
+
+            fn matches_archetype(&self, _archetype: &Archetype) -> bool {
+                let ($($name,)*) = &self.0;
+                false $(|| $name.matches_archetype(_archetype))*
+            }
+
+            fn matches_table(&self, _table: &Table) -> bool {
+                let ($($name,)*) = &self.0;
+                false $(|| $name.matches_table(_table))*
+            }
+        }
+
+        impl<$($name: WorldQuery),*> WorldQuery for AnyOf<($($name,)*)> {
+            type Fetch = AnyOf<($(($name::Fetch, bool),)*)>;
+            type ReadOnlyFetch = AnyOf<($(($name::ReadOnlyFetch, bool),)*)>;
+
+            type State = AnyOf<($($name::State,)*)>;
+        }
+
+        /// SAFETY: each item in the tuple is read only
+        unsafe impl<$($name: ReadOnlyFetch),*> ReadOnlyFetch for AnyOf<($(($name, bool),)*)> {}
+
+    };
+}
+
 all_tuples!(impl_tuple_fetch, 0, 15, F, S);
+all_tuples!(impl_anytuple_fetch, 0, 15, F, S);
 
 /// [`Fetch`] that does not actually fetch anything
 ///

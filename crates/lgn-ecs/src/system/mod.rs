@@ -31,7 +31,7 @@
 //!     }
 //!     round.0 += 1;
 //! }
-//! # update_score_system.system();
+//! # lgn_ecs::system::assert_is_system(update_score_system);
 //! ```
 //!
 //! # System ordering
@@ -57,6 +57,7 @@
 //! - [`EventWriter`](crate::event::EventWriter)
 //! - [`NonSend`] and `Option<NonSend>`
 //! - [`NonSendMut`] and `Option<NonSendMut>`
+//! - [`&World`](crate::world::World)
 //! - [`RemovedComponents`]
 //! - [`SystemChangeTick`]
 //! - [`Archetypes`](crate::archetype::Archetypes) (Provides Archetype metadata)
@@ -84,6 +85,13 @@ pub use query::*;
 pub use system::*;
 pub use system_chaining::*;
 pub use system_param::*;
+
+pub fn assert_is_system<In, Out, Params, S: IntoSystem<In, Out, Params>>(sys: S) {
+    if false {
+        // Check it can be converted into a system
+        IntoSystem::into_system(sys);
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -128,7 +136,7 @@ mod tests {
             }
         }
 
-        let mut system = sys.system();
+        let mut system = IntoSystem::into_system(sys);
         let mut world = World::new();
         world.spawn().insert(A);
 
@@ -432,7 +440,7 @@ mod tests {
         world.insert_resource(false);
         struct NotSend1(std::rc::Rc<i32>);
         struct NotSend2(std::rc::Rc<i32>);
-        world.insert_non_send(NotSend1(std::rc::Rc::new(0)));
+        world.insert_non_send_resource(NotSend1(std::rc::Rc::new(0)));
 
         fn sys(
             op: Option<NonSend<'_, NotSend1>>,
@@ -456,8 +464,8 @@ mod tests {
         struct NotSend1(std::rc::Rc<i32>);
         struct NotSend2(std::rc::Rc<i32>);
 
-        world.insert_non_send(NotSend1(std::rc::Rc::new(1)));
-        world.insert_non_send(NotSend2(std::rc::Rc::new(2)));
+        world.insert_non_send_resource(NotSend1(std::rc::Rc::new(1)));
+        world.insert_non_send_resource(NotSend2(std::rc::Rc::new(2)));
 
         fn sys(
             _op: NonSend<'_, NotSend1>,
@@ -515,8 +523,8 @@ mod tests {
         world.clear_trackers();
 
         // Then, try removing a component
-        world.spawn().insert(W(3)).id();
-        world.spawn().insert(W(4)).id();
+        world.spawn().insert(W(3));
+        world.spawn().insert(W(4));
         world.entity_mut(entity_to_remove_w_from).remove::<W<i32>>();
 
         fn validate_remove(
@@ -605,8 +613,8 @@ mod tests {
         fn sys_y(_: Res<'_, A>, _: ResMut<'_, B>, _: Query<'_, '_, (&C, &mut D)>) {}
 
         let mut world = World::default();
-        let mut x = sys_x.system();
-        let mut y = sys_y.system();
+        let mut x = IntoSystem::into_system(sys_x);
+        let mut y = IntoSystem::into_system(sys_y);
         x.initialize(&mut world);
         y.initialize(&mut world);
 
@@ -634,11 +642,11 @@ mod tests {
         let mut world = World::default();
         world.spawn().insert(A).insert(C);
 
-        let mut without_filter = without_filter.system();
+        let mut without_filter = IntoSystem::into_system(without_filter);
         without_filter.initialize(&mut world);
         without_filter.run((), &mut world);
 
-        let mut with_filter = with_filter.system();
+        let mut with_filter = IntoSystem::into_system(with_filter);
         with_filter.initialize(&mut world);
         with_filter.run((), &mut world);
     }
@@ -686,8 +694,8 @@ mod tests {
         ) {
         }
         let mut world = World::default();
-        let mut x = sys_x.system();
-        let mut y = sys_y.system();
+        let mut x = IntoSystem::into_system(sys_x);
+        let mut y = IntoSystem::into_system(sys_y);
         x.initialize(&mut world);
         y.initialize(&mut world);
     }

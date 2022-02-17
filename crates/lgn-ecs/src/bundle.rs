@@ -14,7 +14,7 @@ use crate::{
     storage::{SparseSetIndex, SparseSets, Storages, Table},
 };
 
-/// An ordered collection of components.
+/// An ordered collection of [`Component`]s.
 ///
 /// Commonly used for spawning entities and adding and removing components in
 /// bulk. This trait is automatically implemented for tuples of components:
@@ -309,8 +309,8 @@ impl BundleInfo {
 
     /// Adds a bundle to the given archetype and returns the resulting
     /// archetype. This could be the same [`ArchetypeId`], in the event that
-    /// adding the given bundle does not result in an Archetype change.
-    /// Results are cached in the Archetype Graph to avoid redundant work.
+    /// adding the given bundle does not result in an [`Archetype`] change.
+    /// Results are cached in the [`Archetype`] graph to avoid redundant work.
     pub(crate) fn add_bundle_to_archetype(
         &self,
         archetypes: &mut Archetypes,
@@ -419,7 +419,7 @@ impl<'a, 'b> BundleInserter<'a, 'b> {
     /// # Safety
     /// `entity` must currently exist in the source archetype for this inserter.
     /// `archetype_index` must be `entity`'s location in the archetype.
-    /// `T` must match this `BundleInfo`'s type
+    /// `T` must match this [`BundleInfo`]'s type
     #[inline]
     pub unsafe fn insert<T: Bundle>(
         &mut self,
@@ -552,7 +552,7 @@ impl<'a, 'b> BundleSpawner<'a, 'b> {
     }
     /// # Safety
     /// `entity` must be allocated (but non existent), `T` must match this
-    /// `BundleInfo`'s type
+    /// [`BundleInfo`]'s type
     #[inline]
     pub unsafe fn spawn_non_existent<T: Bundle>(
         &mut self,
@@ -576,7 +576,7 @@ impl<'a, 'b> BundleSpawner<'a, 'b> {
     }
 
     /// # Safety
-    /// `T` must match this `BundleInfo`'s type
+    /// `T` must match this [`BundleInfo`]'s type
     #[inline]
     pub unsafe fn spawn<T: Bundle>(&mut self, bundle: T) -> Entity {
         let entity = self.entities.alloc();

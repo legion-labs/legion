@@ -29,6 +29,7 @@ impl<'w> EntityRef<'w> {
     }
 
     #[inline]
+    #[must_use = "Omit the .id() call if you do not need to store the `Entity` identifier."]
     pub fn id(&self) -> Entity {
         self.entity
     }
@@ -116,6 +117,7 @@ impl<'w> EntityMut<'w> {
     }
 
     #[inline]
+    #[must_use = "Omit the .id() call if you do not need to store the `Entity` identifier."]
     pub fn id(&self) -> Entity {
         self.entity
     }

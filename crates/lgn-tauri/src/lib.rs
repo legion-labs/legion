@@ -40,7 +40,7 @@ impl<A: tauri::Assets> Plugin for TauriPlugin<A> {
         app.set_runner(move |mut app| {
             let settings = app
                 .world
-                .remove_non_send::<TauriPluginSettings<tauri::Wry>>()
+                .remove_non_send_resource::<TauriPluginSettings<tauri::Wry>>()
                 .expect("the Tauri plugin was not configured");
 
             let tauri_app = settings

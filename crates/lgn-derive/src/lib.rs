@@ -28,5 +28,5 @@ pub fn derive_app_label(input: TokenStream) -> TokenStream {
     let input = syn::parse_macro_input!(input as syn::DeriveInput);
     let mut trait_path = LegionManifest::default().get_path("lgn_app");
     trait_path.segments.push(format_ident!("AppLabel").into());
-    derive_label(input, trait_path)
+    derive_label(input, &trait_path)
 }

@@ -6,7 +6,6 @@ use std::{
 };
 
 pub use lgn_ecs_macros::Component;
-use thiserror::Error;
 
 use crate::{
     storage::{SparseSetIndex, Storages},
@@ -252,16 +251,6 @@ pub struct Components {
     components: Vec<ComponentInfo>,
     indices: std::collections::HashMap<TypeId, usize, fxhash::FxBuildHasher>,
     resource_indices: std::collections::HashMap<TypeId, usize, fxhash::FxBuildHasher>,
-}
-
-#[derive(Debug, Error)]
-pub enum ComponentsError {
-    #[error("A component of type {name:?} ({type_id:?}) already exists")]
-    ComponentAlreadyExists {
-        type_id: TypeId,
-        name: String,
-        existing_id: ComponentId,
-    },
 }
 
 impl Components {
