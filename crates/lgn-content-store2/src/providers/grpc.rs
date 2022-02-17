@@ -133,12 +133,14 @@ struct GrpcUploader<C> {
     state: GrpcUploaderState<C>,
 }
 
+#[allow(clippy::type_complexity)]
 enum GrpcUploaderState<C> {
-    Invalid,
     Writing(
-        std::io::Cursor<Vec<u8>>,
-        Identifier,
-        Arc<Mutex<ContentStoreClient<C>>>,
+        Option<(
+            std::io::Cursor<Vec<u8>>,
+            Identifier,
+            Arc<Mutex<ContentStoreClient<C>>>,
+        )>,
     ),
     Uploading(Pin<Box<dyn Future<Output = Result<(), std::io::Error>> + Send + 'static>>),
 }
@@ -152,7 +154,8 @@ where
     <C::ResponseBody as Body>::Error: Into<StdError> + Send,
 {
     pub fn new(client: Arc<Mutex<ContentStoreClient<C>>>, id: Identifier) -> Self {
-        let state = GrpcUploaderState::Writing(std::io::Cursor::new(Vec::new()), id, client);
+        let state =
+            GrpcUploaderState::Writing(Some((std::io::Cursor::new(Vec::new()), id, client)));
 
         Self { state }
     }
@@ -218,7 +221,7 @@ where
     ) -> Poll<std::result::Result<usize, std::io::Error>> {
         let this = self.project();
 
-        if let GrpcUploaderState::Writing(cursor, _, _) = this.state.get_mut() {
+        if let GrpcUploaderState::Writing(Some((cursor, _, _))) = this.state.get_mut() {
             Pin::new(cursor).poll_write(cx, buf)
         } else {
             panic!("HttpUploader::poll_write called after completion")
@@ -231,7 +234,7 @@ where
     ) -> Poll<std::result::Result<(), std::io::Error>> {
         let this = self.project();
 
-        if let GrpcUploaderState::Writing(cursor, _, _) = this.state.get_mut() {
+        if let GrpcUploaderState::Writing(Some((cursor, _, _))) = this.state.get_mut() {
             Pin::new(cursor).poll_flush(cx)
         } else {
             panic!("HttpUploader::poll_flush called after completion")
@@ -246,17 +249,24 @@ where
         let state = this.state.get_mut();
 
         loop {
-            *state = match std::mem::replace(state, GrpcUploaderState::Invalid) {
-                GrpcUploaderState::Invalid => unreachable!("the state should never be invalid"),
-                GrpcUploaderState::Writing(mut cursor, id, client) => {
-                    match Pin::new(&mut cursor).poll_shutdown(cx) {
-                        Poll::Ready(Ok(())) => GrpcUploaderState::Uploading(Box::pin(
-                            Self::upload(cursor.into_inner(), id, client),
-                        )),
+            *state = match state {
+                GrpcUploaderState::Writing(args) => {
+                    let res = Pin::new(&mut args.as_mut().unwrap().0).poll_shutdown(cx);
+
+                    match res {
+                        Poll::Ready(Ok(())) => {
+                            let (cursor, id, client) = args.take().unwrap();
+
+                            GrpcUploaderState::Uploading(Box::pin(Self::upload(
+                                cursor.into_inner(),
+                                id,
+                                client,
+                            )))
+                        }
                         p => return p,
                     }
                 }
-                GrpcUploaderState::Uploading(mut call) => return Pin::new(&mut call).poll(cx),
+                GrpcUploaderState::Uploading(call) => return Pin::new(call).poll(cx),
             };
         }
     }
