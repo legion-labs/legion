@@ -11,6 +11,7 @@
   import { MetricStreamer } from "@/lib/Metric/MetricStreamer";
   import { MetricState } from "@/lib/Metric/MetricState";
   import { getLodFromPixelSizeNs } from "@/lib/lod";
+  import MetricSelection from "./Metric/MetricSelection.svelte";
   export let id: string;
 
   let metricStreamer: MetricStreamer;
@@ -259,6 +260,7 @@
   }
 </script>
 
+<MetricSelection />
 <div bind:clientWidth={mainWidth}>
   <div id="metric-canvas" style="position:relative" />
   {#if loading}
