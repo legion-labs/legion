@@ -73,7 +73,7 @@ impl ResourceRegistryPlugin {
 
             let build_options = DataBuildOptions::new(&build_dir, compilers)
                 .content_store(&ContentStoreAddr::from(build_dir.as_path()))
-                .asset_registry(asset_registry.clone());
+                .manifest(manifest.clone());
 
             let build_manager = BuildManager::new(build_options, &project, manifest.clone())
                 .await

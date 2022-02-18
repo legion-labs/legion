@@ -51,9 +51,6 @@ impl<'a> LockContext<'a> {
                 self.asset_registry.reload(*resource_id);
             }
         }
-        // HACK: Wait a few ms for the asset_registry to process the reload
-        // request above. Should be handled elsewhere when the missing pieces are in place
-        std::thread::sleep(std::time::Duration::from_millis(30));
 
         for resource_id in &self.changed_resources {
             match self

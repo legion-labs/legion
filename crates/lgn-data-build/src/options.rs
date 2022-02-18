@@ -6,7 +6,7 @@ use std::{
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;
-use lgn_data_runtime::AssetRegistry;
+use lgn_data_runtime::{manifest::Manifest, AssetRegistry};
 
 use crate::{DataBuild, Error};
 
@@ -36,6 +36,7 @@ pub struct DataBuildOptions {
     pub(crate) contentstore_path: ContentStoreAddr,
     pub(crate) compiler_options: CompilerRegistryOptions,
     pub(crate) registry: Option<Arc<AssetRegistry>>,
+    pub(crate) manifest: Option<Manifest>,
 }
 
 impl DataBuildOptions {
@@ -49,6 +50,7 @@ impl DataBuildOptions {
             contentstore_path: ContentStoreAddr::from(buildindex_dir.as_ref()),
             compiler_options,
             registry: None,
+            manifest: None,
         }
     }
 
@@ -62,6 +64,12 @@ impl DataBuildOptions {
     /// a new instance of asset registry.
     pub fn asset_registry(mut self, registry: Arc<AssetRegistry>) -> Self {
         self.registry = Some(registry);
+        self
+    }
+
+    /// Set manifest used by the asset registry during data compilation.
+    pub fn manifest(mut self, manifest: Manifest) -> Self {
+        self.manifest = Some(manifest);
         self
     }
 
