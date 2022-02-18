@@ -3812,7 +3812,7 @@ checksum = "68f2d64f2edebec4ce84ad108148e67e1064789bee435edc5b60ad398714a3a9"
 [[package]]
 name = "ispc-tex"
 version = "0.1.0"
-source = "git+https://github.com/legion-labs/ispc-tex-rs.git?branch=main#13cce980fa8a457b57bdda8cb4dcc08f5ca18ae0"
+source = "git+https://github.com/legion-labs/ispc-tex-rs.git?branch=main#44dc31594dcb7675760a3a7d16e691a2366c6509"
 dependencies = [
  "ispc_rt",
 ]
@@ -9439,9 +9439,9 @@ dependencies = [
 
 [[package]]
 name = "tower-http"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33ed53e1fd082268841975cb39587fa9fca9a7a30da84f97818ef667c97f2872"
+checksum = "2bb284cac1883d54083a0edbdc9cabf931dfed87455f8c7266c01ece6394a43a"
 dependencies = [
  "bitflags",
  "bytes",
