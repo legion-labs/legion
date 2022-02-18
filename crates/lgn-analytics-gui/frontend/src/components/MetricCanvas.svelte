@@ -69,7 +69,9 @@
   });
 
   onDestroy(() => {
-    document.getElementsByClassName("canvas")[0].replaceChildren();
+    if (canvas) {
+      canvas.replaceChildren();
+    }
     if (pointSubscription) {
       pointSubscription();
     }
@@ -116,7 +118,7 @@
   }
 
   function createChart() {
-    container = d3.select(".canvas");
+    container = d3.select("#metric-canvas");
 
     const svgGroup = container
       .append("svg")
@@ -255,7 +257,7 @@
 </script>
 
 <div bind:clientWidth={mainWidth}>
-  <div class="canvas" />
+  <div id="metric-canvas" style="position:relative" />
   {#if loading}
     <div>Loading...</div>
   {:else}
