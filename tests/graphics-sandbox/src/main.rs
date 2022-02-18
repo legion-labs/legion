@@ -47,7 +47,6 @@ struct SnapshotFrameCounter {
 #[derive(Parser, Default)]
 #[clap(name = "graphics-sandbox")]
 #[clap(about = "A sandbox for graphics", version, author)]
-#[clap(arg_required_else_help(true))]
 struct Args {
     /// The width of the window
     #[clap(short, long, default_value_t = 1280.0)]
