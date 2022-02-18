@@ -1,5 +1,6 @@
 use lgn_content_store::{Checksum, ContentStore};
 use lgn_data_runtime::{ResourceType, ResourceTypeAndId};
+use lgn_tracing::span_scope;
 use serde::{Deserialize, Serialize};
 
 use crate::Error;
@@ -10,7 +11,7 @@ struct AssetFile {
     version: u16,
     deps: Vec<ResourceTypeAndId>,
     kind: ResourceType,
-    assets: Vec<Vec<u8>>,
+    assets: Vec<serde_bytes::ByteBuf>,
 }
 
 const ASSET_FILE_VERSION: u16 = 1;
@@ -23,6 +24,8 @@ pub fn write_assetfile(
         + Clone,
     content_store: &impl ContentStore,
 ) -> Result<Vec<u8>, Error> {
+    span_scope!("write_assetfile");
+
     // Prepare dependencies
     let mut primary_dependencies: Vec<ResourceTypeAndId> = reference_list.map(|r| r.1 .0).collect();
     primary_dependencies.sort();
@@ -30,11 +33,14 @@ pub fn write_assetfile(
 
     let mut asset_contents = vec![];
     let mut kind: Option<ResourceType> = None;
-    for content in asset_list {
-        if asset_contents.is_empty() {
-            kind = Some(content.0.kind);
+    {
+        span_scope!("content_store_read");
+        for content in asset_list {
+            if asset_contents.is_empty() {
+                kind = Some(content.0.kind);
+            }
+            asset_contents.push(content_store.read(content.1).unwrap());
         }
-        asset_contents.push(content_store.read(content.1).unwrap());
     }
 
     let asset = AssetFile {
@@ -42,10 +48,16 @@ pub fn write_assetfile(
         version: ASSET_FILE_VERSION,
         deps: primary_dependencies,
         kind: kind.unwrap(),
-        assets: asset_contents,
+        assets: asset_contents
+            .into_iter()
+            .map(serde_bytes::ByteBuf::from)
+            .collect::<Vec<_>>(),
     };
 
-    bincode::serialize(&asset).map_err(|_e| Error::LinkFailed)
+    {
+        span_scope!("bincode::serialize");
+        bincode::serialize(&asset).map_err(|_e| Error::LinkFailed)
+    }
 }
 
 #[cfg(test)]

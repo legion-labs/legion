@@ -14,6 +14,7 @@ use lgn_data_offline::Transform;
 use lgn_data_offline::{resource::Project, ResourcePathId};
 use lgn_data_runtime::manifest::Manifest;
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions, ResourceTypeAndId};
+use lgn_tracing::span_scope;
 use lgn_utils::{DefaultHash, DefaultHasher};
 use petgraph::{algo, Graph};
 
@@ -325,6 +326,8 @@ impl DataBuild {
         ),
         Error,
     > {
+        span_scope!("compile_node");
+
         let (resource_infos, resource_references, stats): (
             Vec<CompiledResourceInfo>,
             Vec<CompiledResourceReference>,
@@ -346,6 +349,7 @@ impl DataBuild {
                     .collect::<Vec<_>>(),
                 )
             } else {
+                span_scope!("compiler_compile");
                 let CompilationOutput {
                     compiled_resources,
                     resource_references,
@@ -449,6 +453,7 @@ impl DataBuild {
         env: &CompilationEnv,
         manifest: Option<&Manifest>,
     ) -> Result<CompileOutput, Error> {
+        span_scope!("compile_path");
         if self.source_index.current().is_none() {
             return Err(Error::SourceIndex);
         }
@@ -668,6 +673,8 @@ impl DataBuild {
         resources: &[CompiledResourceInfo],
         references: &[CompiledResourceReference],
     ) -> Result<Vec<CompiledResource>, Error> {
+        span_scope!("link");
+
         let mut resource_files = Vec::with_capacity(resources.len());
         for resource in resources {
             //
@@ -691,10 +698,12 @@ impl DataBuild {
 
             let output = write_assetfile(resource_list, reference_list, &self.content_store)?;
 
-            let checksum = self
-                .content_store
-                .store(&output)
-                .ok_or(Error::InvalidContentStore)?;
+            let checksum = {
+                span_scope!("content_store");
+                self.content_store
+                    .store(&output)
+                    .ok_or(Error::InvalidContentStore)?
+            };
 
             let asset_file = CompiledResource {
                 path: resource.compiled_path.clone(),
