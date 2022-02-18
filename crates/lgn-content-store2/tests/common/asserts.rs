@@ -32,4 +32,20 @@ macro_rules! assert_write_content {
     }};
 }
 
-pub(crate) use {assert_content_not_found, assert_read_content, assert_write_content};
+macro_rules! assert_write_avoided {
+    ($provider:expr, $id:expr) => {{
+        #[allow(clippy::string_lit_as_bytes)]
+        match $provider.get_content_writer($id).await {
+            Ok(_) => panic!(
+                "content was written with the specified identifier `{}`",
+                $id
+            ),
+            Err(Error::AlreadyExists {}) => {}
+            Err(err) => panic!("unexpected error: {}", err),
+        }
+    }};
+}
+
+pub(crate) use {
+    assert_content_not_found, assert_read_content, assert_write_avoided, assert_write_content,
+};

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use lgn_content_store2::{
     AwsS3Provider, ContentReader, ContentWriter, Error, GrpcProvider, GrpcService, Identifier,
     LocalProvider, SmallContentProvider,
@@ -23,8 +25,7 @@ async fn test_local_provider() {
     assert_read_content!(provider, id, "A");
 
     // Another write should yield no error.
-    let new_id = assert_write_content!(provider, "A");
-    assert_eq!(id, new_id);
+    assert_write_avoided!(provider, &id);
 }
 
 #[tokio::test]
@@ -79,8 +80,7 @@ async fn test_aws_s3_provider() {
     assert_read_content!(provider, id, "A");
 
     // Another write should yield no error.
-    let new_id = assert_write_content!(provider, "A");
-    assert_eq!(id, new_id);
+    assert_write_avoided!(provider, &id);
 
     provider
         .delete_content(&id)
@@ -94,16 +94,25 @@ async fn test_grpc_provider() {
     let local_provider = LocalProvider::new(root.path())
         .await
         .expect("failed to create local provider");
-    let address_provider = FakeContentAddressProvider::new();
-    let service = GrpcService::new(local_provider, address_provider, 2);
+
+    let http_server = httpmock::prelude::MockServer::start_async().await;
+
+    let address_provider = Arc::new(FakeContentAddressProvider::new(http_server.url("/")));
+    let service = GrpcService::new(local_provider, Arc::clone(&address_provider), 1);
     let service = lgn_content_store_proto::content_store_server::ContentStoreServer::new(service);
     let server = tonic::transport::Server::builder().add_service(service);
 
     let addr_str = get_random_localhost_addr();
 
-    async fn f(addr_str: &str) {
+    async fn f(
+        addr_str: &str,
+        http_server: &httpmock::MockServer,
+        address_provider: Arc<FakeContentAddressProvider>,
+    ) {
         let client = GrpcClient::new(format!("http://{}", addr_str).parse().unwrap());
         let provider = GrpcProvider::new(client).await;
+
+        // First we try with a small file.
 
         let id = Identifier::new_hash_ref_from_data(b"A");
         assert_content_not_found!(provider, id);
@@ -115,7 +124,35 @@ async fn test_grpc_provider() {
         let new_id = assert_write_content!(provider, "A");
         assert_eq!(id, new_id);
 
-        // TODO: Test with a bigger content to trigger the HTTP URL mechanism.
+        // Now let's try again with a larger file.
+
+        let id = Identifier::new_hash_ref_from_data(b"AA");
+        assert_content_not_found!(provider, id);
+
+        let write_mock = http_server
+            .mock_async(|when, then| {
+                when.method("POST").path(format!("/{}/write", id));
+                then.status(201).body(b"");
+            })
+            .await;
+        let read_mock = http_server
+            .mock_async(|when, then| {
+                when.method("GET").path(format!("/{}/read", id));
+                then.status(200).body(b"AA");
+            })
+            .await;
+
+        let id = assert_write_content!(provider, "AA");
+        assert_read_content!(provider, id, "AA");
+
+        write_mock.assert();
+        read_mock.assert();
+
+        // Make sure the next write yields `Error::AlreadyExists`.
+        address_provider.set_already_exists(true).await;
+
+        // Another write should be useless.
+        assert_write_avoided!(provider, &id);
     }
 
     loop {
@@ -123,7 +160,7 @@ async fn test_grpc_provider() {
             res = async {
                 server.serve(addr_str.parse().unwrap()).await
             } => panic!("server is no longer bound: {}", res.unwrap_err()),
-            _ = f(&addr_str) => break
+            _ = f(&addr_str, &http_server, address_provider) => break
         };
     }
 }

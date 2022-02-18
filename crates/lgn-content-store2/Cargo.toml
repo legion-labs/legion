@@ -37,3 +37,4 @@ aws = ["aws-config", "aws-sdk-s3"]
 [dev-dependencies]
 uuid = { version = "0.8", features = ["v4"] }
 hex = "0.4"
+httpmock = "0.6"

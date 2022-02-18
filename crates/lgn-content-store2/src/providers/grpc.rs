@@ -70,17 +70,25 @@ where
             Some(content) => Ok(match content {
                 Content::Data(data) => Box::pin(std::io::Cursor::new(data)),
                 Content::Url(url) => Box::pin(
-                    reqwest::get(&url)
+                    match reqwest::get(&url)
                         .await
                         .map_err(|err| {
                             anyhow::anyhow!("failed to fetch content from {}: {}", url, err)
                         })?
                         .error_for_status()
-                        .map_err(|err| anyhow::anyhow!("HTTP error: {}", err))?
-                        .bytes_stream()
-                        .map_err(|e| futures::io::Error::new(futures::io::ErrorKind::Other, e))
-                        .into_async_read()
-                        .compat(),
+                    {
+                        Ok(resp) => resp
+                            .bytes_stream()
+                            .map_err(|e| futures::io::Error::new(futures::io::ErrorKind::Other, e))
+                            .into_async_read()
+                            .compat(),
+                        Err(err) => {
+                            return match err.status() {
+                                Some(reqwest::StatusCode::NOT_FOUND) => Err(Error::NotFound),
+                                _ => Err(anyhow::anyhow!("HTTP error: {}", err).into()),
+                            }
+                        }
+                    },
                 ),
             }),
             None => Err(Error::NotFound),
@@ -419,7 +427,7 @@ impl<Provider, AddressProvider> GrpcService<Provider, AddressProvider> {
     /// `AddressProvider`.
     ///
     /// Read and write requests are routed to the `Provider` if the size is
-    /// below the specified `size_threshold`.
+    /// below or equal the specified `size_threshold`.
     ///
     /// Otherwise, the request is routed to the `AddressProvider` to get the
     /// address of the downloader/uploader.
@@ -451,7 +459,7 @@ where
         })?;
 
         Ok(Response::new(ReadContentResponse {
-            content: if id.data_size() < self.size_threshold {
+            content: if id.data_size() <= self.size_threshold {
                 match self.provider.read_content(&id).await {
                     Ok(data) => Some(Content::Data(data)),
                     Err(Error::NotFound) => None,
@@ -489,7 +497,7 @@ where
         })?;
 
         Ok(Response::new(GetContentWriterResponse {
-            content_writer: if id.data_size() < self.size_threshold {
+            content_writer: if id.data_size() <= self.size_threshold {
                 // An empty URL means that the content is small enough to be
                 // fetched directly from the provider and passed through the
                 // gRPC stream.
@@ -523,7 +531,7 @@ where
     ) -> Result<Response<WriteContentResponse>, tonic::Status> {
         let data = request.into_inner().data;
 
-        if data.len() >= self.size_threshold as usize {
+        if data.len() > self.size_threshold as usize {
             return Err(tonic::Status::new(
                 tonic::Code::InvalidArgument,
                 format!(

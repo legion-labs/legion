@@ -1,4 +1,4 @@
-use std::pin::Pin;
+use std::{pin::Pin, sync::Arc};
 
 use async_trait::async_trait;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
@@ -108,3 +108,63 @@ pub trait ContentAddressProvider: ContentAddressReader + ContentAddressWriter {}
 
 /// Blanket implementation of `ContentAddressProvider`.
 impl<T> ContentAddressProvider for T where T: ContentAddressReader + ContentAddressWriter {}
+
+/// Blanket implementations for Arc<T> variants.
+
+#[async_trait]
+impl<T: ContentReader + Send + Sync> ContentReader for Arc<T> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncRead + Send>>> {
+        self.as_ref().get_content_reader(id).await
+    }
+}
+
+#[async_trait]
+impl<T: ContentWriter + Send + Sync> ContentWriter for Arc<T> {
+    async fn get_content_writer(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncWrite + Send>>> {
+        self.as_ref().get_content_writer(id).await
+    }
+}
+
+#[async_trait]
+impl<T: ContentAddressReader + Send + Sync> ContentAddressReader for Arc<T> {
+    async fn get_content_read_address(&self, id: &Identifier) -> Result<String> {
+        self.as_ref().get_content_read_address(id).await
+    }
+}
+
+#[async_trait]
+impl<T: ContentAddressWriter + Send + Sync> ContentAddressWriter for Arc<T> {
+    async fn get_content_write_address(&self, id: &Identifier) -> Result<String> {
+        self.as_ref().get_content_write_address(id).await
+    }
+}
+
+/// Blanket implementations for &T variants.
+
+#[async_trait]
+impl<T: ContentReader + Send + Sync> ContentReader for &T {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncRead + Send>>> {
+        (**self).get_content_reader(id).await
+    }
+}
+
+#[async_trait]
+impl<T: ContentWriter + Send + Sync> ContentWriter for &T {
+    async fn get_content_writer(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncWrite + Send>>> {
+        (**self).get_content_writer(id).await
+    }
+}
+
+#[async_trait]
+impl<T: ContentAddressReader + Send + Sync> ContentAddressReader for &T {
+    async fn get_content_read_address(&self, id: &Identifier) -> Result<String> {
+        (**self).get_content_read_address(id).await
+    }
+}
+
+#[async_trait]
+impl<T: ContentAddressWriter + Send + Sync> ContentAddressWriter for &T {
+    async fn get_content_write_address(&self, id: &Identifier) -> Result<String> {
+        (**self).get_content_write_address(id).await
+    }
+}
