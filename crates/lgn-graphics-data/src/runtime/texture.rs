@@ -52,7 +52,7 @@ impl Texture {
 }
 
 /// Reference Type for Texture
-#[derive(serde::Serialize, serde::Deserialize, PartialEq)]
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Clone)]
 pub struct TextureReferenceType(lgn_data_runtime::Reference<Texture>);
 impl TextureReferenceType {
     /// Expose internal id

@@ -313,11 +313,13 @@ impl PickingRenderPass {
             cmd_buffer.push_constant(&push_constant_data);
 
             for (_index, (entity, static_mesh)) in static_meshes.iter().enumerate() {
-                for (gpu_instance_id, _) in instance_manager.id_va_list(*entity) {
-                    let num_vertices = mesh_manager
-                        .mesh_from_id(static_mesh.mesh_id as u32)
-                        .num_vertices() as u32;
-                    cmd_buffer.draw_instanced(num_vertices, 0, 1, *gpu_instance_id);
+                if let Some(list) = instance_manager.id_va_list(*entity) {
+                    for (gpu_instance_id, _) in list {
+                        let num_vertices = mesh_manager
+                            .mesh_from_id(static_mesh.mesh_id as u32)
+                            .num_vertices() as u32;
+                        cmd_buffer.draw_instanced(num_vertices, 0, 1, *gpu_instance_id);
+                    }
                 }
             }
 

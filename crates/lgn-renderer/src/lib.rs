@@ -11,14 +11,13 @@
 mod cgen {
     include!(concat!(env!("OUT_DIR"), "/rust/mod.rs"));
 }
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 #[allow(unused_imports)]
 use cgen::*;
 
 mod labels;
-use components::{MaterialComponent, TextureComponent};
+use components::MaterialComponent;
 use gpu_renderer::GpuInstanceManager;
 pub use labels::*;
 
@@ -35,7 +34,7 @@ pub use render_context::*;
 pub mod resources;
 use resources::{
     BindlessTextureManager, GpuDataPlugin, GpuEntityColorManager, GpuEntityTransformManager,
-    GpuPickingDataManager, GpuUniformData, PipelineManager,
+    GpuMaterialManager, GpuPickingDataManager, PipelineManager,
 };
 
 pub mod components;
@@ -83,19 +82,6 @@ use crate::{
     },
     labels::CommandBufferLabel,
 };
-
-#[derive(Default)]
-pub struct EntityToGpuDataIdMap(BTreeMap<Entity, u32>);
-
-impl EntityToGpuDataIdMap {
-    pub fn get(&self, entity_id: Entity) -> Option<u32> {
-        self.0.get(&entity_id).copied()
-    }
-
-    pub fn insert(&mut self, entity_id: Entity, id: u32) -> Option<u32> {
-        self.0.insert(entity_id, id)
-    }
-}
 
 #[derive(Default)]
 pub struct RendererPlugin {
@@ -146,7 +132,6 @@ impl Plugin for RendererPlugin {
         app.insert_resource(BindlessTextureManager::new(renderer.device_context(), 256));
         app.insert_resource(DebugDisplay::default());
         app.insert_resource(LightingManager::default());
-        app.insert_resource(EntityToGpuDataIdMap::default());
         app.insert_resource(GpuInstanceManager::new(&static_buffer));
         app.add_plugin(EguiPlugin::new());
         app.add_plugin(PickingPlugin {});
@@ -163,7 +148,6 @@ impl Plugin for RendererPlugin {
         //
         app.add_startup_system(init_cgen);
         app.add_startup_system(init_manipulation_manager);
-        app.add_startup_system(init_default_materials);
         app.add_startup_system(create_camera);
 
         //
@@ -188,16 +172,7 @@ impl Plugin for RendererPlugin {
             app.add_system_to_stage(RenderStage::Prepare, ui_lights);
         }
         app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
-
-        app.add_system_to_stage(CoreStage::PostUpdate, alloc_color_address);
-
-        app.add_system_to_stage(CoreStage::PostUpdate, alloc_transform_address);
-        app.add_system_to_stage(RenderStage::Prepare, upload_transform_data);
-
-        app.add_system_to_stage(RenderStage::Prepare, update_bindless_textures);
-        app.add_system_to_stage(RenderStage::Prepare, update_materials);
         app.add_system_to_stage(RenderStage::Prepare, update_gpu_instances);
-
         app.add_system_to_stage(RenderStage::Prepare, update_lights);
         app.add_system_to_stage(RenderStage::Prepare, camera_control);
         app.add_system_to_stage(RenderStage::Prepare, prepare_shaders);
@@ -313,98 +288,10 @@ fn init_manipulation_manager(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn init_default_materials(
-    commands: Commands<'_, '_>,
-    mut uniform_data: ResMut<'_, GpuUniformData>,
-) {
-    uniform_data.initialize_default_material(commands);
-}
-
-#[allow(clippy::needless_pass_by_value)]
 fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
     renderer.begin_frame();
 }
 
-#[span_fn]
-#[allow(clippy::needless_pass_by_value)]
-fn alloc_color_address(
-    mut color_manager: ResMut<'_, GpuEntityColorManager>,
-    query: Query<'_, '_, Entity, Added<VisualComponent>>,
-) {
-    let mut index_block: Option<IndexBlock> = None;
-    for entity in query.iter() {
-        color_manager.alloc_gpu_data(entity, &mut index_block);
-    }
-    color_manager.return_index_block(index_block);
-}
-
-#[span_fn]
-#[allow(clippy::needless_pass_by_value)]
-fn alloc_transform_address(
-    mut transform_manager: ResMut<'_, GpuEntityTransformManager>,
-    query: Query<'_, '_, Entity, Added<GlobalTransform>>,
-) {
-    let mut index_block: Option<IndexBlock> = None;
-    for entity in query.iter() {
-        transform_manager.alloc_gpu_data(entity, &mut index_block);
-    }
-    transform_manager.return_index_block(index_block);
-}
-
-#[span_fn]
-#[allow(clippy::needless_pass_by_value)]
-fn upload_transform_data(
-    renderer: Res<'_, Renderer>,
-    transform_manager: Res<'_, GpuEntityTransformManager>,
-    query: Query<'_, '_, (Entity, &GlobalTransform), Changed<GlobalTransform>>,
-) {
-    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
-
-    for (entity, transform) in query.iter() {
-        let mut world = cgen::cgen_type::GpuInstanceTransform::default();
-        world.set_world(transform.compute_matrix().into());
-
-        transform_manager.update_gpu_data(entity, 0, &[world], &mut updater);
-    }
-
-    renderer.add_update_job_block(updater.job_blocks());
-}
-
-#[span_fn]
-#[allow(clippy::needless_pass_by_value)]
-fn update_bindless_textures(
-    renderer: ResMut<'_, Renderer>,
-    pipeline_manager: Res<'_, PipelineManager>,
-    bump_allocator_pool: ResMut<'_, BumpAllocatorPool>,
-    bindless_tex_manager: ResMut<'_, BindlessTextureManager>,
-    updated_textures: Query<'_, '_, &mut TextureComponent, Changed<TextureComponent>>,
-) {
-    let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool, &pipeline_manager);
-    let cmd_buffer = render_context.alloc_command_buffer();
-
-    bindless_tex_manager.update_textures(renderer.device_context(), &cmd_buffer, updated_textures);
-
-    render_context
-        .graphics_queue()
-        .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
-
-    render_context.release_bump_allocator(&bump_allocator_pool);
-}
-
-#[span_fn]
-#[allow(clippy::needless_pass_by_value)]
-fn update_materials(
-    renderer: ResMut<'_, Renderer>,
-    updated_materials: Query<'_, '_, &mut MaterialComponent, Changed<MaterialComponent>>,
-) {
-    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
-    for material in updated_materials.iter() {
-        material.update_gpu_data(&mut updater);
-    }
-    renderer.add_update_job_block(updater.job_blocks());
-}
-
-#[span_fn]
 #[allow(
     clippy::needless_pass_by_value,
     clippy::type_complexity,
@@ -414,9 +301,9 @@ fn update_gpu_instances(
     renderer: Res<'_, Renderer>,
     picking_manager: Res<'_, PickingManager>,
     mut picking_data_manager: ResMut<'_, GpuPickingDataManager>,
-    uniform_data: Res<'_, GpuUniformData>,
     mut instance_manager: ResMut<'_, GpuInstanceManager>,
     mesh_manager: Res<'_, MeshManager>,
+    material_manager: Res<'_, GpuMaterialManager>,
     color_manager: Res<'_, GpuEntityColorManager>,
     transform_manager: Res<'_, GpuEntityTransformManager>,
     instance_query: Query<
@@ -430,7 +317,7 @@ fn update_gpu_instances(
     let mut picking_context = PickingIdContext::new(&picking_manager);
 
     for (entity, _mesh, _mat_component) in instance_query.iter() {
-        picking_data_manager.remove_gpu_data(entity);
+        picking_data_manager.remove_gpu_data(&entity);
         instance_manager.remove_gpu_instance(entity);
     }
 
@@ -447,26 +334,25 @@ fn update_gpu_instances(
         instance_color.set_color(Vec4::new(color.0, color.1, color.2, color.3).into());
         instance_color.set_color_blend(if mat_component.is_none() { 1.0 } else { 0.0 }.into());
 
-        color_manager.update_gpu_data(entity, 0, &[instance_color], &mut updater);
+        color_manager.update_gpu_data(&entity, 0, &[instance_color], &mut updater);
 
-        // Fallback to default material if we do not have a specific material set
-        let mut material_va = uniform_data.default_material_gpu_offset;
+        let mut material_key = None;
         if let Some(material) = mat_component {
-            material_va = material.gpu_offset();
+            material_key = Some(material.material_id);
         }
 
         picking_data_manager.alloc_gpu_data(entity, &mut picking_block);
 
         let mut picking_data = cgen::cgen_type::GpuInstancePickingData::default();
         picking_data.set_picking_id(picking_context.aquire_picking_id(entity).into());
-        picking_data_manager.update_gpu_data(entity, 0, &[picking_data], &mut updater);
+        picking_data_manager.update_gpu_data(&entity, 0, &[picking_data], &mut updater);
 
         let instance_vas = GpuInstanceVAs {
             submesh_va: mesh_manager.mesh_description_offset_from_id(mesh.mesh_id as u32),
-            material_va,
-            color_va: color_manager.id_va_list(entity)[0].1 as u32,
-            transform_va: transform_manager.id_va_list(entity)[0].1 as u32,
-            picking_data_va: picking_data_manager.id_va_list(entity)[0].1 as u32,
+            material_va: material_manager.va_for_index(material_key, 0) as u32,
+            color_va: color_manager.va_for_index(Some(entity), 0) as u32,
+            transform_va: transform_manager.va_for_index(Some(entity), 0) as u32,
+            picking_data_va: picking_data_manager.va_for_index(Some(entity), 0) as u32,
         };
 
         instance_manager.add_gpu_instance(entity, &mut instance_block, &mut updater, &instance_vas);

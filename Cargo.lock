@@ -4876,6 +4876,7 @@ dependencies = [
  "epaint",
  "lgn-app",
  "lgn-core",
+ "lgn-data-runtime",
  "lgn-ecs",
  "lgn-embedded-fs",
  "lgn-graphics-api",

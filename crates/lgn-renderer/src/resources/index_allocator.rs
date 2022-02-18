@@ -43,10 +43,6 @@ impl IndexBlock {
     pub fn base_index(&self) -> u32 {
         self.base_index
     }
-
-    pub fn is_empty(&self) -> bool {
-        self.indexes.is_empty()
-    }
 }
 
 pub(crate) struct IndexAllocatorInner {

@@ -4,39 +4,25 @@ use crate::asset_entities::AssetToEntityMap;
 use lgn_core::Name;
 use lgn_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
-use lgn_renderer::{
-    components::{MaterialComponent, TextureComponent, VisualComponent},
-    resources::GpuUniformDataContext,
-    EntityToGpuDataIdMap,
-};
+use lgn_renderer::components::{MaterialComponent, TextureComponent, VisualComponent};
 use lgn_tracing::info;
 use lgn_transform::prelude::*;
 use sample_data::runtime as runtime_data;
 
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn load_ecs_asset<T>(
     asset_id: &ResourceTypeAndId,
     handle: &HandleUntyped,
     registry: &Res<'_, Arc<AssetRegistry>>,
     commands: &mut Commands<'_, '_>,
     asset_to_entity_map: &mut ResMut<'_, AssetToEntityMap>,
-    entity_to_id_map: &mut ResMut<'_, EntityToGpuDataIdMap>,
-    data_context: &mut GpuUniformDataContext<'_>,
 ) -> bool
 where
     T: AssetToECS + Resource + 'static,
 {
     if asset_id.kind == T::TYPE {
         if let Some(asset) = handle.get::<T>(registry) {
-            let entity = T::create_in_ecs(
-                commands,
-                &asset,
-                asset_id,
-                registry,
-                asset_to_entity_map,
-                entity_to_id_map,
-                data_context,
-            );
+            let entity =
+                T::create_in_ecs(commands, &asset, asset_id, registry, asset_to_entity_map);
 
             if let Some(entity_id) = entity {
                 if let Some(old_entity) = asset_to_entity_map.insert(*asset_id, entity_id) {
@@ -70,8 +56,6 @@ pub(crate) trait AssetToECS {
         _asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
         _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-        _entity_to_id_map: &mut ResMut<'_, EntityToGpuDataIdMap>,
-        _data_context: &mut GpuUniformDataContext<'_>,
     ) -> Option<Entity> {
         None
     }
@@ -84,8 +68,6 @@ impl AssetToECS for runtime_data::Entity {
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-        _entity_to_id_map: &mut ResMut<'_, EntityToGpuDataIdMap>,
-        _data_context: &mut GpuUniformDataContext<'_>,
     ) -> Option<Entity> {
         let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
             commands.entity(entity)
@@ -167,8 +149,6 @@ impl AssetToECS for runtime_data::Instance {
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-        _entity_to_id_map: &mut ResMut<'_, EntityToGpuDataIdMap>,
-        _data_context: &mut GpuUniformDataContext<'_>,
     ) -> Option<Entity> {
         let entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
             commands.entity(entity)
@@ -186,8 +166,6 @@ impl AssetToECS for lgn_graphics_data::runtime::Material {
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-        entity_to_id_map: &mut ResMut<'_, EntityToGpuDataIdMap>,
-        data_context: &mut GpuUniformDataContext<'_>,
     ) -> Option<Entity> {
         let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
             commands.entity(entity)
@@ -195,37 +173,14 @@ impl AssetToECS for lgn_graphics_data::runtime::Material {
             commands.spawn()
         };
 
-        let mut material_component = MaterialComponent::new(data_context);
-        if let Some(albedo_id) = material.albedo.as_ref() {
-            if let Some(albedo) = asset_to_entity_map.get(albedo_id.id()) {
-                if let Some(texture_id) = entity_to_id_map.get(albedo) {
-                    material_component.albedo_texture = texture_id;
-                }
-            }
-        }
-        if let Some(normal_id) = material.normal.as_ref() {
-            if let Some(normal) = asset_to_entity_map.get(normal_id.id()) {
-                if let Some(texture_id) = entity_to_id_map.get(normal) {
-                    material_component.normal_texture = texture_id;
-                }
-            }
-        }
-        if let Some(metalness_id) = material.metalness.as_ref() {
-            if let Some(metalness) = asset_to_entity_map.get(metalness_id.id()) {
-                if let Some(texture_id) = entity_to_id_map.get(metalness) {
-                    material_component.metalness_texture = texture_id;
-                }
-            }
-        }
-        if let Some(roughness_id) = material.roughness.as_ref() {
-            if let Some(roughness) = asset_to_entity_map.get(roughness_id.id()) {
-                if let Some(texture_id) = entity_to_id_map.get(roughness) {
-                    material_component.roughness_texture = texture_id;
-                }
-            }
-        }
+        entity.insert(MaterialComponent::new(
+            *asset_id,
+            material.albedo.clone(),
+            material.normal.clone(),
+            material.metalness.clone(),
+            material.roughness.clone(),
+        ));
 
-        entity.insert(material_component);
         Some(entity.id())
     }
 }
@@ -239,8 +194,6 @@ impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-        entity_to_id_map: &mut ResMut<'_, EntityToGpuDataIdMap>,
-        data_context: &mut GpuUniformDataContext<'_>,
     ) -> Option<Entity> {
         let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
             commands.entity(entity)
@@ -249,14 +202,13 @@ impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {
         };
 
         let texture_component = TextureComponent::new(
-            texture.texture_data.clone(),
-            texture.format,
+            *asset_id,
             texture.width,
             texture.height,
-            data_context,
+            texture.format,
+            texture.texture_data.clone(),
         );
 
-        entity_to_id_map.insert(entity.id(), texture_component.texture_id());
         entity.insert(texture_component);
 
         Some(entity.id())
@@ -270,8 +222,6 @@ impl AssetToECS for lgn_scripting::runtime::Script {
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-        _entity_to_id_map: &mut ResMut<'_, EntityToGpuDataIdMap>,
-        _data_context: &mut GpuUniformDataContext<'_>,
     ) -> Option<Entity> {
         let ecs_entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
             commands.entity(entity)
