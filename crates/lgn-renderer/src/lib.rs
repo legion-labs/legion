@@ -24,7 +24,6 @@ pub use labels::*;
 mod renderer;
 use lgn_core::BumpAllocatorPool;
 use lgn_graphics_api::{AddressMode, CompareOp, FilterType, MipMapMode, ResourceUsage, SamplerDef};
-use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_math::{Vec2, Vec4};
 pub use renderer::*;
 
@@ -124,7 +123,6 @@ impl Plugin for RendererPlugin {
         // Resources
         //
         app.insert_resource(ManipulatorManager::new());
-        app.insert_resource(CGenRegistryList::new());
         app.insert_resource(RenderSurfaces::new());
         app.insert_resource(BindlessTextureManager::new(renderer.device_context(), 256));
         app.insert_resource(DebugDisplay::default());
@@ -264,15 +262,12 @@ fn on_window_close_requested(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn init_cgen(
-    mut renderer: ResMut<'_, Renderer>,
-    mut cgen_registries: ResMut<'_, CGenRegistryList>,
-) {
+fn init_cgen(mut renderer: ResMut<'_, Renderer>) {
     let cgen_registry = Arc::new(cgen::initialize(renderer.device_context()));
     renderer
         .pipeline_manager_mut()
         .register_shader_families(&cgen_registry);
-    cgen_registries.push(cgen_registry);
+    renderer.cgen_registry_list_mut().push(cgen_registry);
 }
 
 #[allow(clippy::needless_pass_by_value)]

@@ -238,9 +238,8 @@ fn alloc_material_address(
 #[span_fn]
 #[allow(clippy::needless_pass_by_value)]
 fn allocate_bindless_textures(
-    renderer: ResMut<'_, Renderer>,
-
-    bump_allocator_pool: ResMut<'_, BumpAllocatorPool>,
+    renderer: Res<'_, Renderer>,
+    bump_allocator_pool: Res<'_, BumpAllocatorPool>,
     mut bindless_tex_manager: ResMut<'_, BindlessTextureManager>,
     mut updated_textures: Query<'_, '_, &mut TextureComponent, Changed<TextureComponent>>,
 ) {
@@ -290,7 +289,7 @@ fn upload_transform_data(
 fn upload_material_data(
     renderer: Res<'_, Renderer>,
     material_manager: Res<'_, GpuMaterialManager>,
-    bindless_textures: ResMut<'_, BindlessTextureManager>,
+    bindless_textures: Res<'_, BindlessTextureManager>,
     query: Query<'_, '_, &MaterialComponent, Changed<MaterialComponent>>,
 ) {
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
@@ -352,10 +351,9 @@ fn upload_material_data(
 #[span_fn]
 #[allow(clippy::needless_pass_by_value)]
 fn upload_bindless_textures(
-    renderer: ResMut<'_, Renderer>,
-
-    bump_allocator_pool: ResMut<'_, BumpAllocatorPool>,
-    bindless_tex_manager: ResMut<'_, BindlessTextureManager>,
+    renderer: Res<'_, Renderer>,
+    bump_allocator_pool: Res<'_, BumpAllocatorPool>,
+    mut bindless_tex_manager: ResMut<'_, BindlessTextureManager>,
 ) {
     let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool);
     let cmd_buffer = render_context.alloc_command_buffer();
@@ -370,13 +368,8 @@ fn upload_bindless_textures(
 }
 
 #[span_fn]
-fn mark_defaults_as_uploaded(
-    mut material_manager: ResMut<'_, GpuMaterialManager>,
-    mut bindless_tex_manager: ResMut<'_, BindlessTextureManager>,
-) {
+fn mark_defaults_as_uploaded(mut material_manager: ResMut<'_, GpuMaterialManager>) {
     material_manager.default_uploaded();
-
-    bindless_tex_manager.clear_upload_jobs();
 }
 
 pub(crate) struct GpuVaTableForGpuInstance {

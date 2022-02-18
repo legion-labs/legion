@@ -133,11 +133,11 @@ impl BindlessTextureManager {
     #[span_fn]
     #[allow(clippy::needless_pass_by_value)]
     pub fn upload_textures(
-        &self,
+        &mut self,
         device_context: &DeviceContext,
         cmd_buffer: &HLCommandBuffer<'_>,
     ) {
-        for upload in &self.upload_jobs {
+        for upload in self.upload_jobs.drain(..) {
             for mip_level in 0..upload.texture_data.len() as u8 {
                 upload_texture_data(
                     device_context,
@@ -148,10 +148,6 @@ impl BindlessTextureManager {
                 );
             }
         }
-    }
-
-    pub fn clear_upload_jobs(&mut self) {
-        self.upload_jobs.clear();
     }
 
     pub fn return_index_block(&self, index_block: Option<IndexBlock>) {

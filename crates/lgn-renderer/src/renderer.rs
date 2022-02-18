@@ -7,6 +7,7 @@ use lgn_graphics_api::{
     GfxApi, QueueType, Semaphore,
 };
 
+use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_tracing::span_fn;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
@@ -37,6 +38,7 @@ pub struct Renderer {
     spotlights_data: SpotLightsStaticBuffer,
     pipeline_manager: PipelineManager,
     mesh_manager: MeshManager,
+    cgen_registry_list: CGenRegistryList,
     // This should be last, as it must be destroyed last.
     api: GfxApi,
 }
@@ -94,6 +96,7 @@ impl Renderer {
         let transient_buffer = TransientPagedBuffer::new(device_context, 512, 64 * 1024);
         let pipeline_manager = PipelineManager::new(device_context);
         let mesh_manager = MeshManager::new(&static_buffer, &transient_buffer);
+        let cgen_registry_list = CGenRegistryList::new();
 
         Self {
             frame_idx: 0,
@@ -124,6 +127,7 @@ impl Renderer {
             spotlights_data,
             pipeline_manager,
             mesh_manager,
+            cgen_registry_list,
             api,
         }
     }
@@ -146,6 +150,14 @@ impl Renderer {
 
     pub fn pipeline_manager_mut(&mut self) -> &mut PipelineManager {
         &mut self.pipeline_manager
+    }
+
+    pub fn cgen_registry_list(&self) -> &CGenRegistryList {
+        &self.cgen_registry_list
+    }
+
+    pub fn cgen_registry_list_mut(&mut self) -> &mut CGenRegistryList {
+        &mut self.cgen_registry_list
     }
 
     pub fn mesh_manager(&self) -> &MeshManager {

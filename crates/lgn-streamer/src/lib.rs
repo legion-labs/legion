@@ -16,7 +16,6 @@ mod cgen {
 #[allow(unused_imports)]
 use cgen::*;
 use lgn_ecs::prelude::ResMut;
-use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_renderer::Renderer;
 
 mod grpc;
@@ -58,13 +57,10 @@ impl Plugin for StreamerPlugin {
     }
 }
 
-fn init_cgen(
-    mut renderer: ResMut<'_, Renderer>,
-    mut cgen_registries: ResMut<'_, CGenRegistryList>,
-) {
+fn init_cgen(mut renderer: ResMut<'_, Renderer>) {
     let cgen_registry = Arc::new(cgen::initialize(renderer.device_context()));
     renderer
         .pipeline_manager_mut()
         .register_shader_families(&cgen_registry);
-    cgen_registries.push(cgen_registry);
+    renderer.cgen_registry_list_mut().push(cgen_registry);
 }
