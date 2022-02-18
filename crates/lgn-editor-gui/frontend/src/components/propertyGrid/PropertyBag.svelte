@@ -68,18 +68,20 @@
     </div>
   {/if}
   {#each property.subProperties as subProperty, index (subProperty.name)}
-    <PropertyContainer
-      on:input
-      on:addVectorSubProperty
-      on:removeVectorSubProperty
-      pathParts={propertyIsGroup(property) || !property.name
-        ? pathParts
-        : [...pathParts, property.name]}
-      property={subProperty}
-      bind:parentProperty={property}
-      level={level + 1}
-      {index}
-    />
+    {#if !subProperty.attributes.hidden}
+      <PropertyContainer
+        on:input
+        on:addVectorSubProperty
+        on:removeVectorSubProperty
+        pathParts={propertyIsGroup(property) || !property.name
+          ? pathParts
+          : [...pathParts, property.name]}
+        property={subProperty}
+        bind:parentProperty={property}
+        level={level + 1}
+        {index}
+      />
+    {/if}
   {/each}
 </div>
 

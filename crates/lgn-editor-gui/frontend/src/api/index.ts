@@ -106,6 +106,17 @@ export async function updateResourceProperties(
   });
 }
 
+/**
+ * Update selection
+ * @param resourceId The resource ID
+ * @returns
+ */
+export async function updateSelection(resourceId: string) {
+  await propertyInspectorClient.updateSelection({
+    resourceId: resourceId,
+  });
+}
+
 export type AddVectorSubProperty = {
   path: string;
   index: number;

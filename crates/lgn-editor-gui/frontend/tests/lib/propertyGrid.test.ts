@@ -17,6 +17,8 @@ import {
   propertyIsQuat,
   propertyIsSpeed,
   propertyIsString,
+  propertyIsResourcePathId,
+  propertyIsEnum,
   propertyIsVec,
   propertyIsVec3,
   ptypeBelongsToPrimitive,
@@ -172,6 +174,42 @@ describe("propertyIsString", () => {
   it("returns `false` when the property's `ptype` !== `String`", () => {
     expect(
       propertyIsString(
+        buildDefaultPrimitiveProperty("My resource property", "i32")
+      )
+    ).toBe(false);
+  });
+});
+
+describe("propertyIsResourcePathId", () => {
+  it("returns `true` when the property's `ptype` === `ResourcePathId`", () => {
+    expect(
+      propertyIsResourcePathId(
+        buildDefaultPrimitiveProperty("My resource property", "ResourcePathId")
+      )
+    ).toBe(true);
+  });
+
+  it("returns `false` when the property's `ptype` !== `ResourcePathId`", () => {
+    expect(
+      propertyIsResourcePathId(
+        buildDefaultPrimitiveProperty("My resource property", "i32")
+      )
+    ).toBe(false);
+  });
+});
+
+describe("propertyIsEnum", () => {
+  it("returns `true` when the property's `ptype` starts with `_enum_:`", () => {
+    expect(
+      propertyIsEnum(
+        buildDefaultPrimitiveProperty("My resource property", "_enum_:Test")
+      )
+    ).toBe(true);
+  });
+
+  it("returns `false` when the property's `ptype` !== `_enum_:`", () => {
+    expect(
+      propertyIsEnum(
         buildDefaultPrimitiveProperty("My resource property", "i32")
       )
     ).toBe(false);
