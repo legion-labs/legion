@@ -98,7 +98,9 @@ where
         let clone = self.inner.clone();
         let mut inner = std::mem::replace(&mut self.inner, clone);
         Box::pin(async move {
-            if req.method() == http::method::Method::OPTIONS || req.uri() == "/health.Health/Check"
+            if req.method() == http::method::Method::OPTIONS
+                || req.uri() == "/health.Health/Check"
+                || req.uri() == "/health"
             {
                 return inner
                     .call(req)
