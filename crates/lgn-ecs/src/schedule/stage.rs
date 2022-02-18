@@ -150,6 +150,7 @@ impl SystemStage {
         self.executor = executor;
     }
 
+    #[must_use]
     pub fn with_system<Params>(mut self, system: impl IntoSystemDescriptor<Params>) -> Self {
         self.add_system(system);
         self
@@ -271,6 +272,7 @@ impl SystemStage {
         &self.exclusive_before_commands
     }
 
+    #[must_use]
     pub fn with_system_set(mut self, system_set: SystemSet) -> Self {
         self.add_system_set(system_set);
         self
@@ -328,11 +330,12 @@ impl SystemStage {
         self
     }
 
+    #[must_use]
     pub fn with_run_criteria<Param, S: IntoSystem<(), ShouldRun, Param>>(
         mut self,
         system: S,
     ) -> Self {
-        self.set_run_criteria(system.system());
+        self.set_run_criteria(system);
         self
     }
 
@@ -340,10 +343,12 @@ impl SystemStage {
         &mut self,
         system: S,
     ) -> &mut Self {
-        self.stage_run_criteria.set(Box::new(system.system()));
+        self.stage_run_criteria
+            .set(Box::new(IntoSystem::into_system(system)));
         self
     }
 
+    #[must_use]
     pub fn with_system_run_criteria(mut self, run_criteria: RunCriteriaDescriptor) -> Self {
         self.add_system_run_criteria(run_criteria);
         self
@@ -1451,7 +1456,6 @@ mod tests {
     }
 
     #[test]
-
     fn parallel_run_criteria() {
         let mut world = World::new();
 
@@ -1537,17 +1541,15 @@ mod tests {
                     .after("0")
                     .with_run_criteria(every_other_time.label("every other time")),
             )
+            .with_system(make_parallel(2).label("2").after("1").with_run_criteria(
+                RunCriteria::pipe("every other time", IntoSystem::into_system(eot_piped)),
+            ))
             .with_system(
-                make_parallel(2)
-                    .label("2")
-                    .after("1")
-                    .with_run_criteria(RunCriteria::pipe("every other time", eot_piped.system())),
-            )
-            .with_system(
-                make_parallel(3)
-                    .label("3")
-                    .after("2")
-                    .with_run_criteria("every other time".pipe(eot_piped.system()).label("piped")),
+                make_parallel(3).label("3").after("2").with_run_criteria(
+                    "every other time"
+                        .pipe(IntoSystem::into_system(eot_piped))
+                        .label("piped"),
+                ),
             )
             .with_system(make_parallel(4).after("3").with_run_criteria("piped"));
         for _ in 0..4 {
@@ -1631,7 +1633,6 @@ mod tests {
     }
 
     #[test]
-
     fn ambiguity_detection() {
         use super::{find_ambiguities, SystemContainer};
 

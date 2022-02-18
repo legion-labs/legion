@@ -135,7 +135,7 @@ impl ParallelSystemExecutor for ParallelExecutor {
                             .finish_receiver
                             .recv()
                             .await
-                            .unwrap_or_else(|error| unreachable!(error));
+                            .unwrap_or_else(|error| unreachable!("{}", error));
                         self.process_finished_system(index);
                         // Gather other systems than may have finished.
                         while let Ok(index) = self.finish_receiver.try_recv() {
@@ -203,7 +203,7 @@ impl ParallelExecutor {
                     start_receiver
                         .recv()
                         .await
-                        .unwrap_or_else(|error| unreachable!(error));
+                        .unwrap_or_else(|error| unreachable!("{}", error));
                     // TODO: add system name to async trace scope
                     // span_scope!();
                     // let system_guard = system_span.enter();
@@ -215,7 +215,7 @@ impl ParallelExecutor {
                     finish_sender
                         .send(index)
                         .await
-                        .unwrap_or_else(|error| unreachable!(error));
+                        .unwrap_or_else(|error| unreachable!("{}", error));
                 };
 
                 // let task = task.instrument(overhead_span);
@@ -268,7 +268,7 @@ impl ParallelExecutor {
                     .start_sender
                     .send(())
                     .await
-                    .unwrap_or_else(|error| unreachable!(error));
+                    .unwrap_or_else(|error| unreachable!("{}", error));
                 self.running.set(index, true);
                 if !system_metadata.is_send {
                     self.non_send_running = true;
@@ -444,10 +444,39 @@ mod tests {
     }
 
     #[test]
+    fn world() {
+        let mut world = World::new();
+        world.spawn().insert(W(0usize));
+        fn wants_world(_: &World) {}
+        fn wants_mut(_: Query<'_, '_, &mut W<usize>>) {}
+        let mut stage = SystemStage::parallel()
+            .with_system(wants_mut)
+            .with_system(wants_mut);
+        stage.run(&mut world);
+        assert_eq!(
+            receive_events(&world),
+            vec![StartedSystems(1), StartedSystems(1),]
+        );
+        let mut stage = SystemStage::parallel()
+            .with_system(wants_mut)
+            .with_system(wants_world);
+        stage.run(&mut world);
+        assert_eq!(
+            receive_events(&world),
+            vec![StartedSystems(1), StartedSystems(1),]
+        );
+        let mut stage = SystemStage::parallel()
+            .with_system(wants_world)
+            .with_system(wants_world);
+        stage.run(&mut world);
+        assert_eq!(receive_events(&world), vec![StartedSystems(2),]);
+    }
+
+    #[test]
     fn non_send_resource() {
         use std::thread;
         let mut world = World::new();
-        world.insert_non_send(thread::current().id());
+        world.insert_non_send_resource(thread::current().id());
         fn non_send(thread_id: NonSend<'_, thread::ThreadId>) {
             assert_eq!(thread::current().id(), *thread_id);
         }

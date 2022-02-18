@@ -129,14 +129,10 @@ where
 {
     fn next_batch(&mut self) -> Option<B> {
         match &mut self.iter {
-            Some(iter) => {
-                if let b @ Some(_) = iter.next_batch() {
-                    b
-                } else {
-                    self.iter = None;
-                    None
-                }
-            }
+            Some(iter) => iter.next_batch().or_else(|| {
+                self.iter = None;
+                None
+            }),
             None => None,
         }
     }
@@ -203,11 +199,12 @@ where
     P: ParallelIterator<B> + Clone,
 {
     fn next_batch(&mut self) -> Option<B> {
-        if let batch @ Some(_) = self.curr.as_mut().and_then(ParallelIterator::next_batch) {
-            batch
-        } else {
-            self.curr = Some(self.iter.clone());
-            self.next_batch()
-        }
+        self.curr
+            .as_mut()
+            .and_then(ParallelIterator::next_batch)
+            .or_else(|| {
+                self.curr = Some(self.iter.clone());
+                self.next_batch()
+            })
     }
 }

@@ -1,5 +1,4 @@
 use instant::Duration;
-use lgn_ecs::component::Component;
 
 /// A Stopwatch is a struct that track elapsed time when started.
 ///
@@ -22,7 +21,7 @@ use lgn_ecs::component::Component;
 /// assert!(stopwatch.paused());
 /// assert_eq!(stopwatch.elapsed_secs(), 0.0);
 /// ```
-#[derive(Component, Clone, Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Stopwatch {
     elapsed: Duration,
     paused: bool,

@@ -25,6 +25,7 @@ use crate::{component::ComponentTicks, system::Resource};
 ///    resource.0 = 42; // triggers change detection via [`DerefMut`]
 /// }
 /// ```
+///
 pub trait DetectChanges {
     /// Returns true if (and only if) this value been added since the last
     /// execution of this system.

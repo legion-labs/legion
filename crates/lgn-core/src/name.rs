@@ -66,11 +66,55 @@ impl Name {
     }
 }
 
+impl std::fmt::Display for Name {
+    #[inline(always)]
+    #[allow(clippy::inline_always)]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.name, f)
+    }
+}
+
+/* Conversions from strings */
+
 impl From<&str> for Name {
     #[inline(always)]
     #[allow(clippy::inline_always)]
     fn from(name: &str) -> Self {
         Self::new(name.to_owned())
+    }
+}
+
+impl From<String> for Name {
+    #[inline(always)]
+    #[allow(clippy::inline_always)]
+    fn from(name: String) -> Self {
+        Self::new(name)
+    }
+}
+
+/* Conversions to strings */
+
+impl AsRef<str> for Name {
+    #[inline(always)]
+    #[allow(clippy::inline_always)]
+    fn as_ref(&self) -> &str {
+        &self.name
+    }
+}
+
+impl From<&Name> for String {
+    #[inline(always)]
+    #[allow(clippy::inline_always)]
+    fn from(val: &Name) -> Self {
+        val.as_str().to_owned()
+    }
+}
+
+impl From<Name> for String {
+    #[inline(always)]
+    #[allow(clippy::inline_always)]
+    fn from(val: Name) -> Self {
+        val.name.into_owned()
     }
 }
 

@@ -10,7 +10,7 @@ use crate::{
     bundle::Bundle,
     component::Component,
     entity::{Entities, Entity},
-    world::World,
+    world::{FromWorld, World},
 };
 
 /// A [`World`] mutation.
@@ -162,7 +162,7 @@ impl<'w, 's> Commands<'w, 's> {
     ///         // or insert single components like this:
     ///         .insert(Label("hello world"));
     /// }
-    /// # example_system.system();
+    /// # lgn_ecs::system::assert_is_system(example_system);
     /// ```
     pub fn spawn_bundle<'a, T: Bundle>(&'a mut self, bundle: T) -> EntityCommands<'w, 's, 'a> {
         let mut e = self.spawn();
@@ -194,7 +194,7 @@ impl<'w, 's> Commands<'w, 's> {
     ///         // adds a single component to the entity
     ///         .insert(Label("hello world"));
     /// }
-    /// # example_system.system();
+    /// # lgn_ecs::system::assert_is_system(example_system);
     /// ```
     #[track_caller]
     pub fn entity<'a>(&'a mut self, entity: Entity) -> EntityCommands<'w, 's, 'a> {
@@ -238,7 +238,7 @@ impl<'w, 's> Commands<'w, 's> {
     ///     ),
     /// ]);
     /// # }
-    /// # system.system();
+    /// # lgn_ecs::system::assert_is_system(system);
     /// ```
     pub fn spawn_batch<I>(&mut self, bundles_iter: I)
     where
@@ -270,6 +270,40 @@ impl<'w, 's> Commands<'w, 's> {
         self.queue.push(InsertOrSpawnBatch { bundles_iter });
     }
 
+    /// Inserts a resource with standard starting values to the [`World`].
+    ///
+    /// If the resource already exists, nothing happens.
+    ///
+    /// The value given by the [`FromWorld::from_world`] method will be used.
+    /// Note that any resource with the `Default` trait automatically implements `FromWorld`,
+    /// and those default values will be here instead.
+    ///
+    /// See [`World::init_resource`] for more details.
+    /// Note that commands do not take effect immediately.
+    /// When possible, prefer the equivalent methods on `App` or `World`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use lgn_ecs::prelude::*;
+    /// #
+    /// # #[derive(Default)]
+    /// # struct Scoreboard {
+    /// #     current_score: u32,
+    /// #     high_score: u32,
+    /// # }
+    /// #
+    /// # fn system(mut commands: Commands) {
+    /// commands.init_resource::<Scoreboard>();
+    /// # }
+    /// # lgn_ecs::system::assert_is_system(system);
+    /// ```
+    pub fn init_resource<R: Resource + FromWorld>(&mut self) {
+        self.queue.push(InitResource::<R> {
+            _phantom: PhantomData::<R>::default(),
+        });
+    }
+
     /// Inserts a resource to the [`World`], overwriting any previous value of
     /// the same type.
     ///
@@ -291,7 +325,7 @@ impl<'w, 's> Commands<'w, 's> {
     ///     high_score: 0,
     /// });
     /// # }
-    /// # system.system();
+    /// # lgn_ecs::system::assert_is_system(system);
     /// ```
     pub fn insert_resource<T: Resource>(&mut self, resource: T) {
         self.queue.push(InsertResource { resource });
@@ -314,10 +348,10 @@ impl<'w, 's> Commands<'w, 's> {
     /// # fn system(mut commands: Commands) {
     /// commands.remove_resource::<Scoreboard>();
     /// # }
-    /// # system.system();
+    /// # lgn_ecs::system::assert_is_system(system);
     /// ```
-    pub fn remove_resource<T: Resource>(&mut self) {
-        self.queue.push(RemoveResource::<T> {
+    pub fn remove_resource<R: Resource>(&mut self) {
+        self.queue.push(RemoveResource::<R> {
             phantom: PhantomData,
         });
     }
@@ -355,7 +389,7 @@ impl<'w, 's> Commands<'w, 's> {
     ///         },
     ///     });
     /// }
-    /// # add_combat_stats_system.system();
+    /// # lgn_ecs::system::assert_is_system(add_combat_stats_system);
     /// ```
     pub fn add<C: Command>(&mut self, command: C) {
         self.queue.push(command);
@@ -377,11 +411,12 @@ impl<'w, 's, 'a> EntityCommands<'w, 's, 'a> {
     /// # use lgn_ecs::prelude::*;
     /// #
     /// fn my_system(mut commands: Commands) {
-    ///     let entity_id = commands.spawn().id();    
+    ///     let entity_id = commands.spawn().id();
     /// }
-    /// # my_system.system();
+    /// # lgn_ecs::system::assert_is_system(my_system);
     /// ```
     #[inline]
+    #[must_use = "Omit the .id() call if you do not need to store the `Entity` identifier."]
     pub fn id(&self) -> Entity {
         self.entity
     }
@@ -413,9 +448,9 @@ impl<'w, 's, 'a> EntityCommands<'w, 's, 'a> {
     ///         health: Health(100),
     ///         strength: Strength(40),
     ///         defense: Defense(20),
-    ///     });    
+    ///     });
     /// }
-    /// # add_combat_stats_system.system();
+    /// # lgn_ecs::system::assert_is_system(add_combat_stats_system);
     /// ```
     pub fn insert_bundle(&mut self, bundle: impl Bundle) -> &mut Self {
         self.commands.add(InsertBundle {
@@ -449,7 +484,7 @@ impl<'w, 's, 'a> EntityCommands<'w, 's, 'a> {
     ///     commands.spawn().insert_bundle((Component1, Component2));
     ///     commands.spawn_bundle((Component1, Component2));
     /// }
-    /// # example_system.system();
+    /// # lgn_ecs::system::assert_is_system(example_system);
     /// ```
     pub fn insert(&mut self, component: impl Component) -> &mut Self {
         self.commands.add(Insert {
@@ -477,9 +512,9 @@ impl<'w, 's, 'a> EntityCommands<'w, 's, 'a> {
     /// # struct CombatBundle { a: Dummy }; // dummy field, unit bundles are not permitted.
     /// #
     /// fn remove_combat_stats_system(mut commands: Commands, player: Res<PlayerEntity>) {
-    ///     commands.entity(player.entity).remove_bundle::<CombatBundle>();    
+    ///     commands.entity(player.entity).remove_bundle::<CombatBundle>();
     /// }
-    /// # remove_combat_stats_system.system();
+    /// # lgn_ecs::system::assert_is_system(remove_combat_stats_system);
     /// ```
     pub fn remove_bundle<T>(&mut self) -> &mut Self
     where
@@ -509,7 +544,7 @@ impl<'w, 's, 'a> EntityCommands<'w, 's, 'a> {
     /// fn convert_enemy_system(mut commands: Commands, enemy: Res<TargetEnemy>) {
     ///     commands.entity(enemy.entity).remove::<Enemy>();
     /// }
-    /// # convert_enemy_system.system();
+    /// # lgn_ecs::system::assert_is_system(convert_enemy_system);
     /// ```
     pub fn remove<T>(&mut self) -> &mut Self
     where
@@ -540,7 +575,7 @@ impl<'w, 's, 'a> EntityCommands<'w, 's, 'a> {
     /// {
     ///     commands.entity(character_to_remove.entity).despawn();
     /// }
-    /// # remove_character_system.system();
+    /// # lgn_ecs::system::assert_is_system(remove_character_system);
     /// ```
     pub fn despawn(&mut self) {
         self.commands.add(Despawn {
@@ -551,6 +586,15 @@ impl<'w, 's, 'a> EntityCommands<'w, 's, 'a> {
     /// Returns the underlying [`Commands`].
     pub fn commands(&mut self) -> &mut Commands<'w, 's> {
         self.commands
+    }
+}
+
+impl<F> Command for F
+where
+    F: FnOnce(&mut World) + Send + Sync + 'static,
+{
+    fn write(self, world: &mut World) {
+        self(world);
     }
 }
 
@@ -714,23 +758,33 @@ where
     }
 }
 
-pub struct InsertResource<T: Resource> {
-    pub resource: T,
+pub struct InitResource<R: Resource + FromWorld> {
+    _phantom: PhantomData<R>,
 }
 
-impl<T: Resource> Command for InsertResource<T> {
+impl<R: Resource + FromWorld> Command for InitResource<R> {
+    fn write(self, world: &mut World) {
+        world.init_resource::<R>();
+    }
+}
+
+pub struct InsertResource<R: Resource> {
+    pub resource: R,
+}
+
+impl<R: Resource> Command for InsertResource<R> {
     fn write(self, world: &mut World) {
         world.insert_resource(self.resource);
     }
 }
 
-pub struct RemoveResource<T: Resource> {
-    pub phantom: PhantomData<T>,
+pub struct RemoveResource<R: Resource> {
+    pub phantom: PhantomData<R>,
 }
 
-impl<T: Resource> Command for RemoveResource<T> {
+impl<R: Resource> Command for RemoveResource<R> {
     fn write(self, world: &mut World) {
-        world.remove_resource::<T>();
+        world.remove_resource::<R>();
     }
 }
 
@@ -771,6 +825,10 @@ mod tests {
     #[derive(Component)]
     struct W<T>(T);
 
+    fn simple_command(world: &mut World) {
+        world.spawn().insert_bundle((W(0u32), W(42u64)));
+    }
+
     #[test]
     fn commands() {
         let mut world = World::default();
@@ -799,6 +857,27 @@ mod tests {
             .map(|(a, b)| (a.0, b.0))
             .collect::<Vec<_>>();
         assert_eq!(results2, vec![]);
+
+        // test adding simple (FnOnce) commands
+        {
+            let mut commands = Commands::new(&mut command_queue, &world);
+
+            // set up a simple command using a closure that adds one additional entity
+            commands.add(|world: &mut World| {
+                world.spawn().insert_bundle((W(42u32), W(0u64)));
+            });
+
+            // set up a simple command using a function that adds one additional entity
+            commands.add(simple_command);
+        }
+        command_queue.apply(&mut world);
+        let results3 = world
+            .query::<(&W<u32>, &W<u64>)>()
+            .iter(&world)
+            .map(|(a, b)| (a.0, b.0))
+            .collect::<Vec<_>>();
+
+        assert_eq!(results3, vec![(42u32, 0u64), (0u32, 42u64)]);
     }
 
     #[test]

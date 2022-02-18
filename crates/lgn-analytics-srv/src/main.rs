@@ -27,13 +27,16 @@ use analytics_service::AnalyticsService;
 use anyhow::{Context, Result};
 use auth::AuthLayer;
 use clap::{AppSettings, Parser, Subcommand};
+// use http::{header, Method};
 use lgn_blob_storage::{AwsS3BlobStorage, AwsS3Url, LocalBlobStorage, Lz4BlobStorageAdapter};
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalyticsServer;
 use lgn_telemetry_proto::health::health_server::HealthServer;
 use lgn_telemetry_sink::TelemetryGuard;
 use lgn_tracing::prelude::*;
 use std::net::SocketAddr;
+// use std::time::Duration;
 use tonic::transport::Server;
+use tower_http::cors::CorsLayer;
 
 use crate::health_check_service::HealthCheckService;
 
@@ -126,6 +129,37 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         } => connect_to_remote_data_lake(&db_uri, &s3_lake_url, &s3_cache_url).await?,
     };
 
+    // let origins = vec![
+    //     "http://localhost:3000".parse().unwrap(),
+    //     "http://localhost".parse().unwrap(),
+    //     "https://analytics.legionengine.com/".parse().unwrap(),
+    // ];
+
+    // let cors = CorsLayer::new()
+    //     .allow_origin(Origin::list(origins))
+    //     .allow_credentials(true)
+    //     .max_age(Duration::from_secs(60 * 60))
+    //     .allow_headers(vec![
+    //         header::ACCEPT,
+    //         header::ACCEPT_LANGUAGE,
+    //         header::AUTHORIZATION,
+    //         header::CONTENT_LANGUAGE,
+    //         header::CONTENT_TYPE,
+    //     ])
+    //     .allow_methods(vec![
+    //         Method::GET,
+    //         Method::POST,
+    //         Method::PUT,
+    //         Method::DELETE,
+    //         Method::HEAD,
+    //         Method::OPTIONS,
+    //         Method::CONNECT,
+    //         Method::PATCH,
+    //         Method::TRACE,
+    //     ])
+    //     .expose_headers(tower_http::cors::any());
+
+    let cors = CorsLayer::permissive();
     let auth_layer = tower::ServiceBuilder::new()
         .layer(AuthLayer::default())
         .into_inner();
@@ -133,6 +167,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let health_check_server = HealthServer::new(HealthCheckService {});
     Server::builder()
         .accept_http1(true)
+        .layer(cors)
         .layer(auth_layer)
         .add_service(tonic_web::enable(health_check_server))
         .add_service(tonic_web::enable(analytics_server))

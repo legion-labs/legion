@@ -3,16 +3,17 @@
 How are systems implemented in existing Rust ECS solutions?
 
 Solutions:
-* [Bevy](#Bevy)
-* [DCES](#DCES)
-* [Dotrix](#Dotrix)
-* [ecs-rs](#ecs-rs)
-* [hecs](#hecs)
-* [Legion](#Legion)
-* [Planck](#Planck)
-* [Rustic](#Rustic)
-* [Shipyard](#Shipyard)
-* [Specs](#Specs)
+
+- [Bevy](#Bevy)
+- [DCES](#DCES)
+- [Dotrix](#Dotrix)
+- [ecs-rs](#ecs-rs)
+- [hecs](#hecs)
+- [Legion](#Legion)
+- [Planck](#Planck)
+- [Rustic](#Rustic)
+- [Shipyard](#Shipyard)
+- [Specs](#Specs)
 
 ## Bevy
 
@@ -36,14 +37,14 @@ fn score_check_system(game_rules: Res<GameRules>,
 ) { ... }
 
 // registration
-App::new()
+App::default()
     .add_startup_system(startup_system)
     .add_system(print_message_system)
 ```
 
 ### Storage
 
-``` Rust
+```Rust
 // can register anything that implements the IntoSystemDescriptor trait
 
 trait IntoSystemDescriptor<Params> {
@@ -116,9 +117,11 @@ pub trait SystemParam: Sized {
     type Fetch: for<'a> SystemParamFetch<'a>;
 }
 ```
+
 The `impl_system_function!` macro (in combination with `all_tuples!`) is used to implement `SystemParamFunction` for all function types with arity up to 16. The implementations take care of packing/unpacking the argument list to a tuple. (See [`function_system.rs`](https://github.com/bevyengine/bevy/blob/main/crates/legion_ecs/src/system/function_system.rs) for code)
 
 The function types match with this pattern:
+
 ```Rust
 for <'a> &'a mut Func:
     FnMut(In<Input>, $($param),*) -> Out +
@@ -127,9 +130,9 @@ for <'a> &'a mut Func:
 
 ### References
 
-* Bevy the book, [section 2.3. ecs](https://bevyengine.org/learn/book/getting-started/ecs/)
-* [ecs crate README](https://github.com/bevyengine/bevy/blob/main/crates/bevy_ecs/README.md)
-* [ECS guided introduction](https://github.com/bevyengine/bevy/blob/latest/examples/ecs/ecs_guide.rs)
+- Bevy the book, [section 2.3. ecs](https://bevyengine.org/learn/book/getting-started/ecs/)
+- [ecs crate README](https://github.com/bevyengine/bevy/blob/main/crates/bevy_ecs/README.md)
+- [ECS guided introduction](https://github.com/bevyengine/bevy/blob/latest/examples/ecs/ecs_guide.rs)
 
 ## DCES
 
@@ -191,8 +194,11 @@ fn main() {
     }
 }
 ```
+
 ### References
-* [hecs README](https://github.com/Ralith/hecs)
+
+- [hecs README](https://github.com/Ralith/hecs)
+
 ## Legion
 
 (to do)
@@ -226,6 +232,7 @@ fn main() {
     world.run(in_acid).unwrap();
 }
 ```
+
 We call `run_with_data` instead of run when we want to pass data to a system.
 
 If you want to pass multiple variables, you can use a tuple.
@@ -269,8 +276,8 @@ Macros that allow conversion of types for multiple arguments in [`into_workload_
 
 ### References
 
-* [Shipyard User's Guide](https://leudz.github.io/shipyard/guide/0.5.0)
-    * [Systems](https://leudz.github.io/shipyard/guide/0.5.0/fundamentals/systems.html)
+- [Shipyard User's Guide](https://leudz.github.io/shipyard/guide/0.5.0)
+  - [Systems](https://leudz.github.io/shipyard/guide/0.5.0/fundamentals/systems.html)
 
 ## Specs
 
@@ -281,7 +288,7 @@ Part of the Amethyst project, Specs is its ECS system. The actual system schedul
 ```Rust
 pub trait System<'a> {
     type SystemData: DynamicSystemData<'a>;
-    
+
     fn run(&mut self, data: Self::SystemData);
 
     // Return the accessor from the [`SystemData`].
@@ -307,6 +314,7 @@ impl<'a> System<'a> for SysA {
 ### Storage
 
 Systems are stored in the dispatcher, which uses stages:
+
 ```Rust
 pub struct Stage<'a> {
     groups: GroupVec<ArrayVec<[SystemExecSend<'a>; MAX_SYSTEMS_PER_GROUP]>>,
@@ -337,4 +345,4 @@ The macro `impl_data` is used to implement SystemData for tuples of sizes from 1
 
 ### References
 
-* [System Data](https://specs.amethyst.rs/docs/tutorials/06_system_data.html), The Specs Book
+- [System Data](https://specs.amethyst.rs/docs/tutorials/06_system_data.html), The Specs Book

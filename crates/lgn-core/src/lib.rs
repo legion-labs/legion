@@ -20,7 +20,7 @@ pub use task_pool_options::DefaultTaskPoolOptions;
 pub use time::*;
 
 pub mod prelude {
-    //! The Bevy Core Prelude.
+    //! The Legion Core Prelude.
     #[doc(hidden)]
     pub use crate::{DefaultTaskPoolOptions, Name, Time, Timer};
 }
@@ -35,7 +35,7 @@ use lgn_ecs::{
 #[derive(Default)]
 pub struct CorePlugin;
 
-/// A `SystemLabel` enum for ordering systems relative to core Bevy systems.
+/// A `SystemLabel` enum for ordering systems relative to core Legion systems.
 #[derive(Debug, PartialEq, Eq, Clone, Hash, SystemLabel)]
 pub enum CoreSystem {
     /// Updates the elapsed time. Any system that interacts with [Time] component should run after
