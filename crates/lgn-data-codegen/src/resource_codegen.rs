@@ -70,7 +70,7 @@ pub(crate) fn generate(resource_struct_info: &StructMetaInfo) -> TokenStream {
                     .map_err(|err| lgn_data_runtime::AssetLoaderError::ErrorLoading(<#offline_identifier as lgn_data_runtime::Resource>::TYPENAME,
                         format!("Error parsing json values ({})", err)))?;
 
-                lgn_data_model::json_utils::reflection_apply_json_edit::<#offline_identifier>(&mut instance, &values)
+                lgn_data_model::json_utils::reflection_apply_json_edit(&mut instance, &values)
                     .map_err(|err| lgn_data_runtime::AssetLoaderError::ErrorLoading(<#offline_identifier as lgn_data_runtime::Resource>::TYPENAME, err.to_string()))?;
                 Ok(Box::new(instance))
             }

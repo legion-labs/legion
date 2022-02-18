@@ -1,6 +1,9 @@
 use tonic::{Request, Status};
 
-use lgn_editor_proto::property_inspector::property_inspector_server::PropertyInspector;
+use lgn_editor_proto::property_inspector::{
+    property_inspector_server::PropertyInspector, GetAvailableDynTraitsRequest,
+    InsertNewArrayElementRequest,
+};
 
 use lgn_data_offline::resource::ResourcePathName;
 use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
@@ -40,6 +43,33 @@ async fn test_property_inspector() -> anyhow::Result<()> {
 
             new_id
         };
+
+        // Try to create all the register Components
+        {
+            let response = property_inspector
+                .get_available_dyn_traits(Request::new(GetAvailableDynTraitsRequest {
+                    trait_name: "dyn Component".into(),
+                }))
+                .await?
+                .into_inner();
+
+            print!("creating {} components: ", response.available_traits.len());
+            for component_type in response.available_traits {
+                print!("{}, ", component_type);
+                property_inspector
+                    .insert_new_array_element(Request::new(InsertNewArrayElementRequest {
+                        resource_id: new_id.to_string(),
+                        array_path: "components".into(),
+                        index: 0,
+                        json_value: Some(
+                            serde_json::json!({
+                            component_type : {} })
+                            .to_string(),
+                        ),
+                    }))
+                    .await?;
+            }
+        }
 
         // Get properties for the newly create Resource
         {

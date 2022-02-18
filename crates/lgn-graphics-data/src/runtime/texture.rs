@@ -2,7 +2,7 @@
 
 use std::{any::Any, io};
 
-use lgn_data_model::implement_primitive_type_def;
+use lgn_data_model::implement_reference_type_def;
 use lgn_data_runtime::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
 use serde::{Deserialize, Serialize};
 
@@ -51,16 +51,7 @@ impl Texture {
     }
 }
 
-/// Reference Type for Texture
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Clone)]
-pub struct TextureReferenceType(lgn_data_runtime::Reference<Texture>);
-impl TextureReferenceType {
-    /// Expose internal id
-    pub fn id(&self) -> lgn_data_runtime::ResourceTypeAndId {
-        self.0.id()
-    }
-}
-implement_primitive_type_def!(TextureReferenceType);
+implement_reference_type_def!(TextureReferenceType, Texture);
 
 /// Loader of [`Texture`].
 #[derive(Default)]

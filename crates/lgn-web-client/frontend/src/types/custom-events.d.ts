@@ -66,5 +66,9 @@ declare namespace svelte.JSX {
         target: EventTarget & Window;
       }
     ) => void;
-  }
+
+    "onrefresh-property"?: (
+      event: CustomEvent<{path: String;value : unknown;}>
+    ) => void;
+}
 }

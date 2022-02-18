@@ -25,7 +25,9 @@ macro_rules! implement_enum_descriptor {
     ($type_id:ty, $attributes:expr, $variants:expr) => {
         lazy_static::lazy_static! {
         static ref TYPE_DESCRIPTOR: $crate::EnumDescriptor = $crate::EnumDescriptor {
-            base_descriptor : $crate::create_base_descriptor!($type_id, stringify!($type_id).into()),
+            base_descriptor : $crate::create_base_descriptor!($type_id, stringify!($type_id).into(),
+                            Result::<$type_id, $crate::ReflectionError>::Ok(<$type_id>::default())),
+
             attributes : $attributes,
             variants : $variants
         };

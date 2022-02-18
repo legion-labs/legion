@@ -16,12 +16,16 @@ pub struct BaseDescriptor {
         property: *mut (),
         format: &mut dyn erased_serde::Deserializer<'_>,
     ) -> Result<(), ReflectionError>,
+
+    /// Function serialize a new default property
+    pub serialize_new_instance:
+        fn(serializer: &mut dyn ::erased_serde::Serializer) -> Result<(), ReflectionError>,
 }
 
 /// Create the instantiate a `BaseDescriptor` with basic serde accessor
 #[macro_export]
 macro_rules! create_base_descriptor {
-    ($type_id:ty, $type_name:expr) => {
+    ($type_id:ty, $type_name:expr, $default_expr:expr) => {
         $crate::BaseDescriptor {
             type_name: $type_name,
             size: std::mem::size_of::<$type_id>(),
@@ -37,6 +41,13 @@ macro_rules! create_base_descriptor {
                         .map_err(|err| $crate::ReflectionError::ErrorErasedSerde(err))?;
                     Ok(())
                 },
+
+                serialize_new_instance : | serializer : &mut dyn::erased_serde::Serializer|  {
+                let element : $type_id  = ($default_expr)?;
+                ::erased_serde::serialize(&element, serializer)
+                .map_err(|err| $crate::ReflectionError::ErrorErasedSerde(err))?;
+                Ok(())
+            },
         }
     };
 }

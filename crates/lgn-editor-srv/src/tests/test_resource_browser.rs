@@ -241,20 +241,24 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                         sub_child_id,
                         "components",
                         None,
-                        json!({ "Light": sample_data::offline::Light {
-                        }})
-                        .to_string(),
+                        Some(
+                            json!({ "Light": sample_data::offline::Light {
+                            }})
+                            .to_string(),
+                        ),
                     ))
                     .add_operation(ArrayOperation::insert_element(
                         sub_child_id,
                         "components",
                         None,
-                        json!({ "StaticMesh": sample_data::offline::StaticMesh {
-                            mesh_id: mesh_ids[mesh_id ],
-                            color : colors[color_id],
-                            mesh : None,
-                        }})
-                        .to_string(),
+                        Some(
+                            json!({ "StaticMesh": sample_data::offline::StaticMesh {
+                                mesh_id: mesh_ids[mesh_id ],
+                                color : colors[color_id],
+                                mesh : None,
+                            }})
+                            .to_string(),
+                        ),
                     ));
 
                 let mut guard = transaction_manager.lock().await;

@@ -120,19 +120,28 @@ export async function updateSelection(resourceId: string) {
 export type AddVectorSubProperty = {
   path: string;
   index: number;
-  value: ResourcePropertyWithValue["value"] | null;
+  jsonValue: string | undefined;
 };
 
 export async function addPropertyInPropertyVector(
   resourceId: string,
-  { path, index, value }: AddVectorSubProperty
+  { path, index, jsonValue }: AddVectorSubProperty
 ) {
-  await propertyInspectorClient.insertNewArrayElement({
+  let result = await propertyInspectorClient.insertNewArrayElement({
     resourceId,
     arrayPath: path,
     index,
-    jsonValue: JSON.stringify(value),
+    jsonValue,
   });
+
+  let value = result.newValue;
+  if (value) {
+    window.dispatchEvent(
+      new CustomEvent("refresh-property", {
+        detail: { path, value },
+      })
+    );
+  }
 }
 
 export type RemoveVectorSubProperty = {
@@ -153,6 +162,12 @@ export async function removeVectorSubProperty(
 
 export async function getResourceTypes() {
   return resourceBrowserClient.getResourceTypeNames({});
+}
+
+export async function getAvailableComponentTypes() {
+  return propertyInspectorClient.getAvailableDynTraits({
+    traitName: "dyn Component",
+  });
 }
 
 export async function createResource({
