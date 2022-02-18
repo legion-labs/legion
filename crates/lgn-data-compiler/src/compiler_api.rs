@@ -71,7 +71,7 @@
 
 use std::{env, io::stdout, path::PathBuf, str::FromStr, sync::Arc};
 
-use clap::{AppSettings, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
 use lgn_data_model::ReflectionError;
 use lgn_data_offline::{resource::ResourceProcessorError, ResourcePathId, Transform};
@@ -444,7 +444,7 @@ fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), CompilerErr
 #[derive(Parser, Debug)]
 #[clap(name = "TODO: compiler name")]
 #[clap(about = "CLI to query a local telemetry data lake", version, author)]
-#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+#[clap(arg_required_else_help(true))]
 struct Cli {
     #[clap(subcommand)]
     command: Commands,

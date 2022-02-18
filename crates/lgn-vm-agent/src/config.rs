@@ -1,6 +1,6 @@
 use std::{fs, path::PathBuf};
 
-use clap::{AppSettings, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use lgn_tracing::LevelFilter;
 
 pub(crate) struct Config {
@@ -19,7 +19,7 @@ pub(crate) enum CommandConfig {
 #[clap(
     long_about = "The Virtual-Machine Agent (VM-Agent) that provisions and orchestrates the different components that compose a Legion Labs virtual-machine instance."
 )]
-#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+#[clap(arg_required_else_help(true))]
 struct Cli {
     /// The root path where the VM-Agent will look for all necessary executables and deployment resources.
     #[clap(short = 'C', long, default_value = ".")]

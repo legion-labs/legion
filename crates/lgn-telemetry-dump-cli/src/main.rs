@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
-use clap::{AppSettings, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use lgn_analytics::alloc_sql_pool;
 use lgn_blob_storage::LocalBlobStorage;
 use lgn_telemetry_sink::TelemetryGuard;
@@ -29,7 +29,7 @@ use crate::{
 #[derive(Parser, Debug)]
 #[clap(name = "Legion Telemetry Dump")]
 #[clap(about = "CLI to query a local telemetry data lake", version, author)]
-#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+#[clap(arg_required_else_help(true))]
 struct Cli {
     /// local path to folder containing telemetry.db3
     db: PathBuf,

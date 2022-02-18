@@ -5,7 +5,7 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
-use clap::{AppSettings, Parser};
+use clap::Parser;
 use lgn_graphics_cgen::run::{run, CGenBuildResult, CGenContextBuilder};
 use lgn_telemetry_sink::TelemetryGuard;
 use lgn_tracing::LevelFilter;
@@ -13,7 +13,7 @@ use lgn_tracing::LevelFilter;
 #[derive(Parser, Debug)]
 #[clap(name = "graphics-cgen")]
 #[clap(about = "Graphics code generator", version, author)]
-#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+#[clap(arg_required_else_help(true))]
 struct Cli {
     /// Verbose mode
     #[clap(long, short)]

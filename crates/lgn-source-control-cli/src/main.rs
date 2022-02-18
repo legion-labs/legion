@@ -5,7 +5,7 @@
 
 use std::{collections::BTreeSet, path::PathBuf};
 
-use clap::{AppSettings, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use lgn_source_control::*;
 use lgn_telemetry_sink::{Config, TelemetryGuard};
 use lgn_tracing::*;
@@ -15,7 +15,7 @@ use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 #[derive(Parser, Debug)]
 #[clap(name = "Legion Source Control")]
 #[clap(about = "CLI to interact with Legion Source Control", version, author)]
-#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+#[clap(arg_required_else_help(true))]
 struct Cli {
     #[clap(subcommand)]
     command: Commands,

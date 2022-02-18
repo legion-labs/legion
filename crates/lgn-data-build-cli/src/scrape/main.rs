@@ -198,7 +198,7 @@ use std::{
 };
 
 use byteorder::{LittleEndian, ReadBytesExt};
-use clap::{AppSettings, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use lgn_content_store::Checksum;
 use lgn_data_offline::{
     resource::{Project, ResourcePathName},
@@ -212,7 +212,7 @@ use config::Config;
 #[derive(Parser, Debug)]
 #[clap(name = "Data Scraper")]
 #[clap(about = "Data scraping utility", version, author)]
-#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+#[clap(arg_required_else_help(true))]
 struct Cli {
     #[clap(subcommand)]
     command: Commands,
@@ -258,7 +258,7 @@ enum Commands {
     #[clap(name = "configure")]
     Configure {
         /// Paths to code directories to scan for resource types
-        #[clap(long, use_delimiter = true)]
+        #[clap(long, use_value_delimiter = true)]
         code_path: Option<Vec<PathBuf>>,
         /// Path to project index to be able to resolve ResourcePathName
         #[clap(long)]

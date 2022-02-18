@@ -9,7 +9,7 @@
 
 use std::{fs, path::PathBuf};
 
-use clap::{AppSettings, Parser};
+use clap::Parser;
 use lgn_data_offline::resource::ResourcePathName;
 use sample_data_compiler::{offline_compiler, raw_loader};
 
@@ -20,7 +20,7 @@ use sample_data_compiler::{offline_compiler, raw_loader};
     version,
     author
 )]
-#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+#[clap(arg_required_else_help(true))]
 struct Args {
     /// Folder containing raw/ directory
     #[clap(long, default_value = "tests/sample-data")]

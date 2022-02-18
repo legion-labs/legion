@@ -3,7 +3,7 @@
 
 use std::{path::PathBuf, str::FromStr};
 
-use clap::{AppSettings, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::{
@@ -18,7 +18,7 @@ use lgn_data_runtime::{ResourceType, ResourceTypeAndId};
 #[derive(Parser, Debug)]
 #[clap(name = "Data Build")]
 #[clap(about = "Data Build CLI", version, author)]
-#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+#[clap(arg_required_else_help(true))]
 struct Cli {
     #[clap(subcommand)]
     command: Commands,

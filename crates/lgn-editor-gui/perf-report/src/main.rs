@@ -6,14 +6,14 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::Result;
-use clap::{AppSettings, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use lgn_analytics::prelude::*;
 use lgn_blob_storage::LocalBlobStorage;
 
 /// Legion Editor Performance Report
 #[derive(Parser, Debug)]
 #[clap(about, version, author)]
-#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+#[clap(arg_required_else_help(true))]
 struct Cli {
     /// local path to folder containing telemetry.db3
     db: String,

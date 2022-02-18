@@ -26,7 +26,7 @@ use std::{path::PathBuf, sync::Arc};
 use analytics_service::AnalyticsService;
 use anyhow::{Context, Result};
 use auth::AuthLayer;
-use clap::{AppSettings, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 // use http::{header, Method};
 use lgn_blob_storage::{AwsS3BlobStorage, AwsS3Url, LocalBlobStorage, Lz4BlobStorageAdapter};
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalyticsServer;
@@ -43,7 +43,7 @@ use crate::health_check_service::HealthCheckService;
 #[derive(Parser, Debug)]
 #[clap(name = "Legion Performance Analytics Server")]
 #[clap(about = "Legion Performance Analytics Server", version, author)]
-#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+#[clap(arg_required_else_help(true))]
 struct Cli {
     #[clap(long, default_value = "[::1]:9090")]
     listen_endpoint: SocketAddr,

@@ -5,7 +5,7 @@
 
 use std::path::PathBuf;
 
-use clap::{AppSettings, Parser};
+use clap::Parser;
 use lgn_source_control_fs::run;
 use lgn_telemetry_sink::{Config, TelemetryGuard};
 use lgn_tracing::*;
@@ -18,7 +18,7 @@ use lgn_tracing::*;
     version,
     author
 )]
-#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+#[clap(arg_required_else_help(true))]
 struct Cli {
     #[clap(name = "debug", short, long, help = "Enable debug logging")]
     debug: bool,

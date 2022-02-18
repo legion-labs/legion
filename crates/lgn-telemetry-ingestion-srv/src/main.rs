@@ -18,7 +18,7 @@ mod remote_data_lake;
 use std::path::PathBuf;
 
 use anyhow::Result;
-use clap::{AppSettings, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use lgn_telemetry_proto::ingestion::telemetry_ingestion_server::TelemetryIngestionServer;
 use lgn_telemetry_sink::TelemetryGuard;
 use lgn_tracing::LevelFilter;
@@ -30,7 +30,7 @@ use tonic::transport::Server;
 #[derive(Parser, Debug)]
 #[clap(name = "Legion Telemetry Ingestion Server")]
 #[clap(about = "Legion Telemetry Ingestion Server", version, author)]
-#[clap(setting(AppSettings::ArgRequiredElseHelp))]
+#[clap(arg_required_else_help(true))]
 struct Cli {
     #[clap(long, default_value = "[::1]:8080")]
     listen_endpoint: SocketAddr,
