@@ -7,10 +7,15 @@ import { authClient } from "@lgn/web-client/src/lib/auth";
 
 export function getRemoteHost() {
   const remoteHost =
-    "analytics-nlb-cddd70eafd32d85b.elb.ca-central-1.amazonaws.com";
+   "analytics-nlb-cddd70eafd32d85b.elb.ca-central-1.amazonaws.com";
   // const remoteHost = "analytics-api.playground.legionlabs.com";
   // const remoteHost = "localhost";
   return remoteHost;
+}
+
+export function getUrl(){
+  // return "https://" + getRemoteHost() + ":443";
+  return "http://" + getRemoteHost() + ":9090";
 }
 
 export async function makeGrpcClient() {
@@ -25,7 +30,7 @@ export async function makeGrpcClient() {
 
   const options = { metadata: metadata };
   const client = new PerformanceAnalyticsClientImpl(
-    new GrpcWebImpl("http://" + getRemoteHost() + ":9090", options)
+    new GrpcWebImpl(getUrl(), options)
   );
 
   return client;
