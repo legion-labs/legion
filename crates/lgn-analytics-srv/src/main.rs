@@ -156,7 +156,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Method::CONNECT,
             Method::PATCH,
             Method::TRACE,
-        ]);
+        ])
+        .expose_headers(tower_http::cors::any());
     let auth_layer = tower::ServiceBuilder::new()
         .layer(AuthLayer::default())
         .into_inner();
