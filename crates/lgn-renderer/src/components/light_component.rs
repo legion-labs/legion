@@ -5,7 +5,6 @@ use lgn_transform::components::Transform;
 
 use crate::{
     cgen::cgen_type::{DirectionalLight, OmniDirectionalLight, SpotLight},
-    debug_display::DebugDisplay,
     egui::egui_plugin::Egui,
     lighting::LightingManager,
     resources::{DefaultMeshType, UniformGPUDataUpdater},
@@ -94,7 +93,7 @@ pub(crate) fn ui_lights(
 
 #[allow(clippy::needless_pass_by_value)]
 pub(crate) fn debug_display_lights(
-    debug_display: Res<'_, DebugDisplay>,
+    renderer: Res<'_, Renderer>,
     bump_allocator_pool: Res<'_, BumpAllocatorPool>,
     lights: Query<'_, '_, (&LightComponent, &Transform)>,
 ) {
@@ -103,50 +102,52 @@ pub(crate) fn debug_display_lights(
     }
 
     bump_allocator_pool.scoped_bump(|bump| {
-        debug_display.create_display_list(bump, |builder| {
-            for (light, transform) in lights.iter() {
-                builder.add_mesh(
-                    Transform::identity()
-                        .with_translation(transform.translation)
-                        .with_scale(Vec3::new(0.2, 0.2, 0.2)) // assumes the size of sphere 1.0. Needs to be scaled in order to match picking silhouette
-                        .with_rotation(transform.rotation)
-                        .compute_matrix(),
-                    DefaultMeshType::Sphere as u32,
-                    light.color,
-                );
-                match light.light_type {
-                    LightType::Directional => {
-                        builder.add_mesh(
-                            Transform::identity()
-                                .with_translation(
-                                    transform.translation
-                                        - transform.rotation.mul_vec3(Vec3::new(0.0, 0.3, 0.0)), // assumes arrow length to be 0.3
-                                )
-                                .with_rotation(transform.rotation)
-                                .compute_matrix(),
-                            DefaultMeshType::Arrow as u32,
-                            light.color,
-                        );
+        renderer
+            .debug_display()
+            .create_display_list(bump, |builder| {
+                for (light, transform) in lights.iter() {
+                    builder.add_mesh(
+                        Transform::identity()
+                            .with_translation(transform.translation)
+                            .with_scale(Vec3::new(0.2, 0.2, 0.2)) // assumes the size of sphere 1.0. Needs to be scaled in order to match picking silhouette
+                            .with_rotation(transform.rotation)
+                            .compute_matrix(),
+                        DefaultMeshType::Sphere as u32,
+                        light.color,
+                    );
+                    match light.light_type {
+                        LightType::Directional => {
+                            builder.add_mesh(
+                                Transform::identity()
+                                    .with_translation(
+                                        transform.translation
+                                            - transform.rotation.mul_vec3(Vec3::new(0.0, 0.3, 0.0)), // assumes arrow length to be 0.3
+                                    )
+                                    .with_rotation(transform.rotation)
+                                    .compute_matrix(),
+                                DefaultMeshType::Arrow as u32,
+                                light.color,
+                            );
+                        }
+                        LightType::Spotlight { cone_angle, .. } => {
+                            let factor = 4.0 * (cone_angle / 2.0).tan(); // assumes that default cone mesh has 1 to 4 ratio between radius and height
+                            builder.add_mesh(
+                                Transform::identity()
+                                    .with_translation(
+                                        transform.translation
+                                            - transform.rotation.mul_vec3(Vec3::new(0.0, 1.0, 0.0)), // assumes cone height to be 1.0
+                                    )
+                                    .with_scale(Vec3::new(factor, 1.0, factor))
+                                    .with_rotation(transform.rotation)
+                                    .compute_matrix(),
+                                DefaultMeshType::Cone as u32,
+                                light.color,
+                            );
+                        }
+                        LightType::Omnidirectional { .. } => (),
                     }
-                    LightType::Spotlight { cone_angle, .. } => {
-                        let factor = 4.0 * (cone_angle / 2.0).tan(); // assumes that default cone mesh has 1 to 4 ratio between radius and height
-                        builder.add_mesh(
-                            Transform::identity()
-                                .with_translation(
-                                    transform.translation
-                                        - transform.rotation.mul_vec3(Vec3::new(0.0, 1.0, 0.0)), // assumes cone height to be 1.0
-                                )
-                                .with_scale(Vec3::new(factor, 1.0, factor))
-                                .with_rotation(transform.rotation)
-                                .compute_matrix(),
-                            DefaultMeshType::Cone as u32,
-                            light.color,
-                        );
-                    }
-                    LightType::Omnidirectional { .. } => (),
                 }
-            }
-        });
+            });
     });
 }
 

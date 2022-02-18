@@ -13,6 +13,7 @@ use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
 use crate::cgen::cgen_type::{DirectionalLight, OmniDirectionalLight, SpotLight};
 
+use crate::debug_display::DebugDisplay;
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, DescriptorPool, DescriptorPoolHandle, GpuSafePool,
     MeshManager, PipelineManager, TransientPagedBuffer, UnifiedStaticBuffer, UniformGPUData,
@@ -39,6 +40,7 @@ pub struct Renderer {
     pipeline_manager: PipelineManager,
     mesh_manager: MeshManager,
     cgen_registry_list: CGenRegistryList,
+    debug_display: DebugDisplay,
     // This should be last, as it must be destroyed last.
     api: GfxApi,
 }
@@ -97,6 +99,7 @@ impl Renderer {
         let pipeline_manager = PipelineManager::new(device_context);
         let mesh_manager = MeshManager::new(&static_buffer, &transient_buffer);
         let cgen_registry_list = CGenRegistryList::new();
+        let debug_display = DebugDisplay::default();
 
         Self {
             frame_idx: 0,
@@ -128,6 +131,7 @@ impl Renderer {
             pipeline_manager,
             mesh_manager,
             cgen_registry_list,
+            debug_display,
             api,
         }
     }
@@ -162,6 +166,10 @@ impl Renderer {
 
     pub fn mesh_manager(&self) -> &MeshManager {
         &self.mesh_manager
+    }
+
+    pub fn debug_display(&self) -> &DebugDisplay {
+        &self.debug_display
     }
 
     pub fn graphics_queue_guard(&self, queue_type: QueueType) -> RwLockReadGuard<'_, Queue> {
@@ -281,6 +289,8 @@ impl Renderer {
 
     #[span_fn]
     pub(crate) fn end_frame(&mut self) {
+        self.debug_display.end_frame();
+
         let graphics_queue = self.graphics_queue.write();
         let frame_fence = &self.frame_fences[self.render_frame_idx];
 

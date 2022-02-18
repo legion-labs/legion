@@ -71,7 +71,6 @@ use lgn_tracing::span_fn;
 use lgn_transform::components::GlobalTransform;
 use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 
-use crate::debug_display::DebugDisplay;
 use crate::resources::UniformGPUDataUpdater;
 
 use crate::{
@@ -125,7 +124,6 @@ impl Plugin for RendererPlugin {
         app.insert_resource(ManipulatorManager::new());
         app.insert_resource(RenderSurfaces::new());
         app.insert_resource(BindlessTextureManager::new(renderer.device_context(), 256));
-        app.insert_resource(DebugDisplay::default());
         app.insert_resource(LightingManager::default());
         app.insert_resource(GpuInstanceManager::new(&static_buffer));
         app.add_plugin(EguiPlugin::new());
@@ -175,18 +173,19 @@ impl Plugin for RendererPlugin {
         //
         // Stage: Render
         //
+        app.add_system_to_stage(
+            RenderStage::Render,
+            render_begin.exclusive_system().at_start(),
+        );
+
         app.add_system_set_to_stage(
             RenderStage::Render,
             SystemSet::new()
                 .with_system(render_update)
-                .before(CommandBufferLabel::Submit)
                 .label(CommandBufferLabel::Generate),
         );
 
-        app.add_system_to_stage(
-            RenderStage::Render,
-            render_post_update.label(CommandBufferLabel::Submit),
-        );
+        app.add_system_to_stage(RenderStage::Render, render_end.exclusive_system().at_end());
     }
 }
 
@@ -362,6 +361,14 @@ fn prepare_shaders(mut renderer: ResMut<'_, Renderer>) {
     renderer.pipeline_manager_mut().update();
 }
 
+///
+/// Render Stage
+///
+
+fn render_begin(mut egui: ResMut<'_, Egui>) {
+    crate::egui::egui_plugin::end_frame(&mut egui);
+}
+
 #[span_fn]
 #[allow(
     clippy::needless_pass_by_value,
@@ -369,11 +376,14 @@ fn prepare_shaders(mut renderer: ResMut<'_, Renderer>) {
     clippy::type_complexity
 )]
 fn render_update(
-    renderer: ResMut<'_, Renderer>,
-    bindless_textures: ResMut<'_, BindlessTextureManager>,
-    bump_allocator_pool: ResMut<'_, BumpAllocatorPool>,
-    picking_manager: ResMut<'_, PickingManager>,
+    renderer: Res<'_, Renderer>,
+    bindless_textures: Res<'_, BindlessTextureManager>,
+    bump_allocator_pool: Res<'_, BumpAllocatorPool>,
+    picking_manager: Res<'_, PickingManager>,
     instance_manager: Res<'_, GpuInstanceManager>,
+    lighting_manager: Res<'_, LightingManager>,
+    egui: Res<'_, Egui>,
+
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
     q_drawables: Query<'_, '_, (Entity, &VisualComponent), Without<ManipulatorComponent>>,
     q_picked_drawables: Query<
@@ -387,14 +397,9 @@ fn render_update(
         '_,
         (&VisualComponent, &GlobalTransform, &ManipulatorComponent),
     >,
-    lighting_manager: Res<'_, LightingManager>,
     q_lights: Query<'_, '_, (&LightComponent, &GlobalTransform)>,
-    mut egui: ResMut<'_, Egui>,
-    mut debug_display: ResMut<'_, DebugDisplay>,
     q_cameras: Query<'_, '_, &CameraComponent>,
 ) {
-    crate::egui::egui_plugin::end_frame(&mut egui);
-
     let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool);
     let q_drawables = q_drawables
         .iter()
@@ -546,7 +551,6 @@ fn render_update(
             q_picked_drawables.as_slice(),
             q_manipulator_drawables.as_slice(),
             camera_component,
-            debug_display.as_mut(),
         );
 
         let egui_pass = render_surface.egui_renderpass();
@@ -570,11 +574,10 @@ fn render_update(
             render_surface.present(&render_context);
         }
     }
-    debug_display.clear();
     render_context.release_bump_allocator(&bump_allocator_pool);
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn render_post_update(mut renderer: ResMut<'_, Renderer>) {
+fn render_end(mut renderer: ResMut<'_, Renderer>) {    
     renderer.end_frame();
 }

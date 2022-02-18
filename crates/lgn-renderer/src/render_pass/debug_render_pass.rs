@@ -11,7 +11,7 @@ use lgn_transform::prelude::GlobalTransform;
 use crate::{
     cgen,
     components::{CameraComponent, ManipulatorComponent, RenderSurface, VisualComponent},
-    debug_display::{DebugDisplay, DebugPrimitiveType},
+    debug_display::DebugPrimitiveType,
     hl_gfx_api::HLCommandBuffer,
     picking::ManipulatorManager,
     resources::{DefaultMeshType, PipelineHandle},
@@ -239,7 +239,6 @@ impl DebugRenderPass {
         &self,
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
-        debug_display: &mut DebugDisplay,
     ) {
         let pipeline = render_context
             .renderer()
@@ -250,19 +249,22 @@ impl DebugRenderPass {
         cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
         cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
 
-        debug_display.render_primitives(|primitive| {
-            let mesh_id = match primitive.primitive_type {
-                DebugPrimitiveType::Mesh { mesh_id } => mesh_id,
-            };
+        render_context
+            .renderer()
+            .debug_display()
+            .render_primitives(|primitive| {
+                let mesh_id = match primitive.primitive_type {
+                    DebugPrimitiveType::Mesh { mesh_id } => mesh_id,
+                };
 
-            render_mesh(
-                render_context,
-                mesh_id as u32,
-                &primitive.transform,
-                primitive.color.extend(1.0),
-                cmd_buffer,
-            );
-        });
+                render_mesh(
+                    render_context,
+                    mesh_id as u32,
+                    &primitive.transform,
+                    primitive.color.extend(1.0),
+                    cmd_buffer,
+                );
+            });
     }
 
     fn render_manipulators(
@@ -330,7 +332,6 @@ impl DebugRenderPass {
         picked_meshes: &[(&VisualComponent, &GlobalTransform)],
         manipulator_meshes: &[(&VisualComponent, &GlobalTransform, &ManipulatorComponent)],
         camera: &CameraComponent,
-        debug_display: &mut DebugDisplay,
     ) {
         cmd_buffer.begin_render_pass(
             &[ColorRenderTargetBinding {
@@ -356,7 +357,7 @@ impl DebugRenderPass {
 
         self.render_picked(render_context, cmd_buffer, picked_meshes);
 
-        self.render_debug_display(render_context, cmd_buffer, debug_display);
+        self.render_debug_display(render_context, cmd_buffer);
 
         self.render_manipulators(
             render_context,
