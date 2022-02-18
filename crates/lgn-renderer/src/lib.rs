@@ -578,6 +578,6 @@ fn render_update(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn render_end(mut renderer: ResMut<'_, Renderer>) {    
+fn render_end(mut renderer: ResMut<'_, Renderer>) {
     renderer.end_frame();
 }
