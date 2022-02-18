@@ -98,11 +98,11 @@ where
 
     async fn refresh_login_with(
         &self,
-        refresh_token: String,
+        client_token_set: ClientTokenSet,
         authenticator: &A,
     ) -> Result<ClientTokenSet> {
         authenticator
-            .refresh_login(refresh_token)
+            .refresh_login(client_token_set)
             .await
             .map(|token_set| {
                 if let Err(err) = self.write_token_set_to_cache(&token_set) {
@@ -144,11 +144,15 @@ where
                                 err
                             );
 
-                            if let Some(refresh_token) = token_set.refresh_token {
-                                return self
-                                    .refresh_login_with(refresh_token, &authenticator)
-                                    .await;
+                            if token_set.refresh_token.is_some() {
+                                return self.refresh_login_with(token_set, &authenticator).await;
                             }
+
+                            authenticator.login(scopes, extra_params).await?
+                        } else if !token_set.is_compliant_with_scopes(scopes) {
+                            warn!(
+                                "Cached access token scopes don't match required scopes, refreshing login...",
+                            );
 
                             authenticator.login(scopes, extra_params).await?
                         } else {
@@ -184,10 +188,11 @@ where
         Ok(token_set)
     }
 
-    async fn refresh_login(&self, refresh_token: String) -> Result<ClientTokenSet> {
+    async fn refresh_login(&self, client_token_set: ClientTokenSet) -> Result<ClientTokenSet> {
         let authenticator = self.authenticator().await;
 
-        self.refresh_login_with(refresh_token, &authenticator).await
+        self.refresh_login_with(client_token_set, &authenticator)
+            .await
     }
 
     /// Perform a logout, delegating its execution to the owned `Authenticator`

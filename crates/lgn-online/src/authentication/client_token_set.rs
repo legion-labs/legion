@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{collections::BTreeSet, time::Duration};
 
 use openidconnect::{core::CoreTokenResponse, OAuth2TokenResponse, TokenResponse};
 use serde::{Deserialize, Serialize};
@@ -13,6 +13,22 @@ pub struct ClientTokenSet {
     pub expires_in: Option<Duration>,
     pub refresh_token: Option<String>,
     pub id_token: Option<String>,
+    pub scopes: Option<Vec<String>>,
+}
+
+impl ClientTokenSet {
+    pub fn set_scopes(&mut self, scopes: &[String]) -> &mut Self {
+        self.scopes = Some(scopes.to_vec());
+
+        self
+    }
+
+    /// Checks whether or not the [`ClientTokenSet`] is compliant with
+    /// the provided scopes.
+    pub fn is_compliant_with_scopes(&self, scopes: &[String]) -> bool {
+        // For now we only return `true` if the scopes are stricly equal but it could change in the future
+        BTreeSet::from_iter(&self.scopes.clone().unwrap_or_default()) == BTreeSet::from_iter(scopes)
+    }
 }
 
 impl TryFrom<CoreTokenResponse> for ClientTokenSet {
@@ -31,6 +47,9 @@ impl TryFrom<CoreTokenResponse> for ClientTokenSet {
                 .refresh_token()
                 .map(|refresh_token| refresh_token.secret().clone()),
             id_token: core_token_response.id_token().map(ToString::to_string),
+            scopes: core_token_response
+                .scopes()
+                .map(|scopes| scopes.iter().map(|scope| scope.to_string()).collect()),
         })
     }
 }

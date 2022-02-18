@@ -52,11 +52,12 @@ impl Authenticator for StaticApiKey {
             id_token: None,
             token_type: String::from("Legion API Key"),
             expires_in: None,
+            scopes: None,
         })
     }
     async fn refresh_login(
         &self,
-        _refresh_token: String,
+        _client_token_set: ClientTokenSet,
     ) -> lgn_online::authentication::Result<ClientTokenSet> {
         self.login(&[], &None).await
     }

@@ -20,7 +20,7 @@ use url::Url;
 
 use super::{Authenticator, ClientTokenSet, Error, Result, UserInfo};
 
-const DEFAULT_PORT: u16 = 3000;
+const DEFAULT_PORT: u16 = 80;
 
 pub struct OAuthClient {
     client: CoreClient,
@@ -72,7 +72,7 @@ impl OAuthClient {
         Ok(self)
     }
 
-    pub fn set_port<RU>(&mut self, port: u16) -> &mut Self {
+    pub fn set_port(mut self, port: u16) -> Self {
         self.port = port;
 
         self
@@ -450,22 +450,42 @@ impl Authenticator for OAuthClient {
             }
         }
 
-        token_response.try_into()
+        let mut client_token_set: ClientTokenSet = token_response.try_into()?;
+
+        client_token_set.set_scopes(scopes);
+
+        Ok(client_token_set)
     }
 
     /// Get a token set from a refresh token.
     ///
     /// If the call does not return a new refresh token within the `TokenSet`,
     /// the specified refresh token will be filled in instead.
-    async fn refresh_login(&self, refresh_token: String) -> Result<ClientTokenSet> {
-        let token_response = self
-            .client
-            .exchange_refresh_token(&RefreshToken::new(refresh_token))
-            .request_async(async_http_client)
-            .await
-            .map_err(Error::internal)?;
+    ///
+    /// Consumes the [`ClientTokenSet`] entirely.
+    async fn refresh_login(&self, client_token_set: ClientTokenSet) -> Result<ClientTokenSet> {
+        if let Some(refresh_token) = client_token_set.refresh_token {
+            let token_response = self
+                .client
+                .exchange_refresh_token(&RefreshToken::new(refresh_token))
+                .request_async(async_http_client)
+                .await
+                .map_err(Error::internal)?;
 
-        token_response.try_into()
+            let scopes = client_token_set.scopes;
+
+            let mut client_token_set: ClientTokenSet = token_response.try_into()?;
+
+            if let Some(ref scopes) = scopes {
+                client_token_set.set_scopes(scopes);
+            }
+
+            Ok(client_token_set)
+        } else {
+            Err(Error::Internal(
+                "provided client token set doesn't contain any refresh_token attribute".into(),
+            ))
+        }
     }
 
     /// Logout by opening an interactive browser window

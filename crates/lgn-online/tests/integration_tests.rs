@@ -90,12 +90,13 @@ impl Authenticator for MockAuthenticator {
             id_token: Some("id_token".into()),
             token_type: "token_type".into(),
             expires_in: Some(Duration::new(123456789, 0)),
+            scopes: None,
         })
     }
 
     async fn refresh_login(
         &self,
-        _refresh_token: String,
+        _client_token_set: ClientTokenSet,
     ) -> authentication::Result<ClientTokenSet> {
         self.login(&[], &None).await
     }

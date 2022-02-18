@@ -26,7 +26,7 @@ pub trait Authenticator {
     ) -> Result<ClientTokenSet>;
 
     /// Perform a non-interactive login by using a refresh login.
-    async fn refresh_login(&self, refresh_token: String) -> Result<ClientTokenSet>;
+    async fn refresh_login(&self, client_token_set: ClientTokenSet) -> Result<ClientTokenSet>;
 
     /// Perform a logout, possibly using an interactive prompt.
     async fn logout(&self) -> Result<()>;
@@ -45,8 +45,8 @@ where
         self.deref().login(scopes, extra_params).await
     }
 
-    async fn refresh_login(&self, refresh_token: String) -> Result<ClientTokenSet> {
-        self.deref().refresh_login(refresh_token).await
+    async fn refresh_login(&self, client_token_set: ClientTokenSet) -> Result<ClientTokenSet> {
+        self.deref().refresh_login(client_token_set).await
     }
 
     async fn logout(&self) -> Result<()> {

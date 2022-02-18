@@ -10,8 +10,6 @@ const DEFAULT_CLIENT_ID: &str = "5m58nrjfv6kr144prif9jk62di";
 
 const DEFAULT_REDIRECT_URI: &str = "http://localhost:3000/";
 
-const DEFAULT_PORT: &str = "5000";
-
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
 #[clap(about, version, author)]
@@ -31,10 +29,6 @@ pub struct Config {
     /// The redirect uri (must be registered in the issuer)
     #[clap(long, default_value = DEFAULT_REDIRECT_URI)]
     pub redirect_uri: Url,
-
-    /// The port used by the temporary server to retrieve the authentication code
-    #[clap(long, default_value = DEFAULT_PORT)]
-    pub port: u16,
 }
 
 impl Config {
