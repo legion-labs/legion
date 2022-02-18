@@ -67,7 +67,7 @@
       {/if}
     </div>
   {/if}
-  {#each property.subProperties as subProperty, index (subProperty.name)}
+  {#each property.subProperties as subProperty, index (`${subProperty.name}-${index}`)}
     {#if !subProperty.attributes.hidden}
       <PropertyContainer
         on:input

@@ -230,7 +230,6 @@
         modalStore.open(createResourceModalId, CreateResourceModal, {
           payload:
             entrySetName === "resource" ? currentResourceDescription : null,
-          fullScreen: true,
         });
       }
 
