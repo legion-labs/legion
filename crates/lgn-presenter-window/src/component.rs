@@ -136,7 +136,7 @@ impl Drop for PresenterWindow {
 }
 
 impl Presenter for PresenterWindow {
-    fn resize(&mut self, _device_context: &DeviceContext, extents: RenderSurfaceExtents) {
+    fn resize(&mut self, _renderer: &Renderer, extents: RenderSurfaceExtents) {
         self.extents = extents;
     }
 

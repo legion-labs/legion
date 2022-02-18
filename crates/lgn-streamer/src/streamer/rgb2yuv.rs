@@ -1,10 +1,6 @@
 use lgn_graphics_api::prelude::*;
 use lgn_graphics_cgen_runtime::CGenShaderKey;
-use lgn_renderer::{
-    components::RenderSurface,
-    resources::{PipelineHandle, PipelineManager},
-    RenderContext,
-};
+use lgn_renderer::{components::RenderSurface, resources::PipelineHandle, RenderContext, Renderer};
 use lgn_tracing::span_fn;
 
 use crate::cgen;
@@ -19,11 +15,7 @@ struct ResolutionDependentResources {
 }
 
 impl ResolutionDependentResources {
-    fn new(
-        device_context: &DeviceContext,
-        render_frame_count: u32,
-        resolution: Resolution,
-    ) -> Self {
+    fn new(renderer: &Renderer, render_frame_count: u32, resolution: Resolution) -> Self {
         let mut yuv_images = Vec::with_capacity(render_frame_count as usize);
         let mut yuv_image_uavs = Vec::with_capacity(render_frame_count as usize);
         let mut copy_yuv_images = Vec::with_capacity(render_frame_count as usize);
@@ -43,11 +35,11 @@ impl ResolutionDependentResources {
                 tiling: TextureTiling::Optimal,
             };
 
-            let y_image = device_context.create_texture(&yuv_plane_def);
+            let y_image = renderer.device_context().create_texture(&yuv_plane_def);
             yuv_plane_def.extents.width /= 2;
             yuv_plane_def.extents.height /= 2;
-            let u_image = device_context.create_texture(&yuv_plane_def);
-            let v_image = device_context.create_texture(&yuv_plane_def);
+            let u_image = renderer.device_context().create_texture(&yuv_plane_def);
+            let v_image = renderer.device_context().create_texture(&yuv_plane_def);
 
             let yuv_plane_uav_def = TextureViewDef {
                 gpu_view_type: GPUViewType::UnorderedAccess,
@@ -63,7 +55,7 @@ impl ResolutionDependentResources {
             let u_image_uav = u_image.create_view(&yuv_plane_uav_def);
             let v_image_uav = v_image.create_view(&yuv_plane_uav_def);
 
-            let copy_yuv_image = device_context.create_texture(&TextureDef {
+            let copy_yuv_image = renderer.device_context().create_texture(&TextureDef {
                 extents: Extents3D {
                     width: resolution.width,
                     height: resolution.height,
@@ -99,14 +91,10 @@ pub struct RgbToYuvConverter {
 }
 
 impl RgbToYuvConverter {
-    pub fn new(
-        pipeline_manager: &PipelineManager,
-        device_context: &DeviceContext,
-        resolution: Resolution,
-    ) -> Self {
+    pub fn new(renderer: &Renderer, resolution: Resolution) -> Self {
         let root_signature = cgen::pipeline_layout::RGB2YUVPipelineLayout::root_signature();
 
-        let pipeline_handle = pipeline_manager.register_pipeline(
+        let pipeline_handle = renderer.pipeline_manager().register_pipeline(
             cgen::CRATE_ID,
             CGenShaderKey::make(
                 cgen::shader::rgb2yuv_shader::ID,
@@ -126,7 +114,7 @@ impl RgbToYuvConverter {
 
         let render_frame_count = 1u32;
         let resolution_dependent_resources =
-            ResolutionDependentResources::new(device_context, render_frame_count, resolution);
+            ResolutionDependentResources::new(renderer, render_frame_count, resolution);
 
         Self {
             render_frame_count: 1,
@@ -135,13 +123,10 @@ impl RgbToYuvConverter {
         }
     }
 
-    pub fn resize(&mut self, device_context: &DeviceContext, resolution: Resolution) -> bool {
+    pub fn resize(&mut self, renderer: &Renderer, resolution: Resolution) -> bool {
         if resolution != self.resolution_dependent_resources.resolution {
-            self.resolution_dependent_resources = ResolutionDependentResources::new(
-                device_context,
-                self.render_frame_count,
-                resolution,
-            );
+            self.resolution_dependent_resources =
+                ResolutionDependentResources::new(renderer, self.render_frame_count, resolution);
             true
         } else {
             false
@@ -152,7 +137,6 @@ impl RgbToYuvConverter {
     pub fn convert(
         &mut self,
         render_context: &RenderContext<'_>,
-
         render_surface: &mut RenderSurface,
         yuv: &mut [u8],
     ) -> anyhow::Result<()> {
@@ -187,6 +171,7 @@ impl RgbToYuvConverter {
             );
 
             let pipeline = render_context
+                .renderer()
                 .pipeline_manager()
                 .get_pipeline(self.pipeline_handle)
                 .unwrap();

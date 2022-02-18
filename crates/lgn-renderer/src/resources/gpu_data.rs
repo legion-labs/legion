@@ -17,8 +17,8 @@ use crate::{
 };
 
 use super::{
-    BindlessTextureManager, IndexAllocator, IndexBlock, PipelineManager, UnifiedStaticBuffer,
-    UniformGPUData, UniformGPUDataUpdater,
+    BindlessTextureManager, IndexAllocator, IndexBlock, UnifiedStaticBuffer, UniformGPUData,
+    UniformGPUDataUpdater,
 };
 
 pub struct GpuDataPlugin {
@@ -239,12 +239,12 @@ fn alloc_material_address(
 #[allow(clippy::needless_pass_by_value)]
 fn allocate_bindless_textures(
     renderer: ResMut<'_, Renderer>,
-    pipeline_manager: Res<'_, PipelineManager>,
+
     bump_allocator_pool: ResMut<'_, BumpAllocatorPool>,
     mut bindless_tex_manager: ResMut<'_, BindlessTextureManager>,
     mut updated_textures: Query<'_, '_, &mut TextureComponent, Changed<TextureComponent>>,
 ) {
-    let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool, &pipeline_manager);
+    let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool);
     let cmd_buffer = render_context.alloc_command_buffer();
 
     let mut index_block = None;
@@ -280,7 +280,9 @@ fn upload_transform_data(
         transform_manager.update_gpu_data(&entity, 0, &[world], &mut updater);
     }
 
-    renderer.add_update_job_block(updater.job_blocks());
+    renderer
+        .static_buffer()
+        .add_update_job_block(updater.job_blocks());
 }
 
 #[span_fn]
@@ -342,18 +344,20 @@ fn upload_material_data(
         material_manager.update_gpu_data(&material.material_id, 0, &[gpu_material], &mut updater);
     }
 
-    renderer.add_update_job_block(updater.job_blocks());
+    renderer
+        .static_buffer()
+        .add_update_job_block(updater.job_blocks());
 }
 
 #[span_fn]
 #[allow(clippy::needless_pass_by_value)]
 fn upload_bindless_textures(
     renderer: ResMut<'_, Renderer>,
-    pipeline_manager: Res<'_, PipelineManager>,
+
     bump_allocator_pool: ResMut<'_, BumpAllocatorPool>,
     bindless_tex_manager: ResMut<'_, BindlessTextureManager>,
 ) {
-    let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool, &pipeline_manager);
+    let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool);
     let cmd_buffer = render_context.alloc_command_buffer();
 
     bindless_tex_manager.upload_textures(renderer.device_context(), &cmd_buffer);

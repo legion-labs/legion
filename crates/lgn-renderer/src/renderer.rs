@@ -14,7 +14,7 @@ use crate::cgen::cgen_type::{DirectionalLight, OmniDirectionalLight, SpotLight};
 
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, DescriptorPool, DescriptorPoolHandle, GpuSafePool,
-    TransientPagedBuffer, UnifiedStaticBuffer, UniformGPUData, UniformGPUDataUploadJobBlock,
+    MeshManager, PipelineManager, TransientPagedBuffer, UnifiedStaticBuffer, UniformGPUData,
 };
 use crate::RenderContext;
 
@@ -35,6 +35,8 @@ pub struct Renderer {
     omnidirectional_lights_data: OmniDirectionalLightsStaticBuffer,
     directional_lights_data: DirectionalLightsStaticBuffer,
     spotlights_data: SpotLightsStaticBuffer,
+    pipeline_manager: PipelineManager,
+    mesh_manager: MeshManager,
     // This should be last, as it must be destroyed last.
     api: GfxApi,
 }
@@ -65,26 +67,21 @@ impl Renderer {
         let num_render_frames = 2usize;
         let api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
         let device_context = api.device_context();
-
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, false);
-
         let omnidirectional_lights_data =
             OmniDirectionalLightsStaticBuffer::new(UniformGPUData::<OmniDirectionalLight>::new(
                 &static_buffer,
                 OmniDirectionalLight::PAGE_SIZE,
             ));
-
         let directional_lights_data =
             DirectionalLightsStaticBuffer::new(UniformGPUData::<DirectionalLight>::new(
                 &static_buffer,
                 DirectionalLight::PAGE_SIZE,
             ));
-
         let spotlights_data = SpotLightsStaticBuffer::new(UniformGPUData::<SpotLight>::new(
             &static_buffer,
             SpotLight::PAGE_SIZE,
         ));
-
         let descriptor_heap_def = DescriptorHeapDef {
             max_descriptor_sets: 32 * 4096,
             sampler_count: 32 * 128,
@@ -94,6 +91,9 @@ impl Renderer {
             texture_count: 32 * 1024,
             rw_texture_count: 32 * 1024,
         };
+        let transient_buffer = TransientPagedBuffer::new(device_context, 512, 64 * 1024);
+        let pipeline_manager = PipelineManager::new(device_context);
+        let mesh_manager = MeshManager::new(&static_buffer, &transient_buffer);
 
         Self {
             frame_idx: 0,
@@ -117,11 +117,13 @@ impl Renderer {
                 .unwrap(),
             command_buffer_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
             descriptor_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
-            transient_buffer: TransientPagedBuffer::new(device_context, 512, 64 * 1024),
+            transient_buffer,
             static_buffer,
             omnidirectional_lights_data,
             directional_lights_data,
             spotlights_data,
+            pipeline_manager,
+            mesh_manager,
             api,
         }
     }
@@ -138,6 +140,18 @@ impl Renderer {
         self.render_frame_idx
     }
 
+    pub fn pipeline_manager(&self) -> &PipelineManager {
+        &self.pipeline_manager
+    }
+
+    pub fn pipeline_manager_mut(&mut self) -> &mut PipelineManager {
+        &mut self.pipeline_manager
+    }
+
+    pub fn mesh_manager(&self) -> &MeshManager {
+        &self.mesh_manager
+    }
+
     pub fn graphics_queue_guard(&self, queue_type: QueueType) -> RwLockReadGuard<'_, Queue> {
         match queue_type {
             QueueType::Graphics => self.graphics_queue.read(),
@@ -146,8 +160,8 @@ impl Renderer {
     }
 
     // TMP: change that.
-    pub(crate) fn transient_buffer(&self) -> TransientPagedBuffer {
-        self.transient_buffer.clone()
+    pub(crate) fn transient_buffer(&self) -> &TransientPagedBuffer {
+        &self.transient_buffer
     }
 
     impl_static_buffer_accessor!(
@@ -166,10 +180,6 @@ impl Renderer {
 
     pub fn static_buffer(&self) -> &UnifiedStaticBuffer {
         &self.static_buffer
-    }
-
-    pub fn add_update_job_block(&self, job_blocks: &mut Vec<UniformGPUDataUploadJobBlock>) {
-        self.static_buffer.add_update_job_block(job_blocks);
     }
 
     #[span_fn]

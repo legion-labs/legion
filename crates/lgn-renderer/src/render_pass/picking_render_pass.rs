@@ -23,11 +23,8 @@ use crate::{
     gpu_renderer::GpuInstanceManager,
     hl_gfx_api::HLCommandBuffer,
     picking::{ManipulatorManager, PickingManager, PickingState},
-    resources::{
-        DefaultMeshType, GpuSafePool, MeshManager, OnFrameEventHandler, PipelineHandle,
-        PipelineManager,
-    },
-    RenderContext,
+    resources::{DefaultMeshType, GpuSafePool, OnFrameEventHandler, PipelineHandle},
+    RenderContext, Renderer,
 };
 
 struct ReadbackBufferPool {
@@ -139,7 +136,7 @@ pub struct PickingRenderPass {
 }
 
 impl PickingRenderPass {
-    pub fn new(device_context: &DeviceContext, pipeline_manager: &PipelineManager) -> Self {
+    pub fn new(renderer: &Renderer) -> Self {
         let root_signature = cgen::pipeline_layout::PickingPipelineLayout::root_signature();
 
         let mut vertex_layout = VertexLayout::default();
@@ -170,7 +167,7 @@ impl PickingRenderPass {
             back_stencil_fail_op: StencilOp::default(),
             back_stencil_pass_op: StencilOp::default(),
         };
-        let pipeline_handle = pipeline_manager.register_pipeline(
+        let pipeline_handle = renderer.pipeline_manager().register_pipeline(
             cgen::CRATE_ID,
             CGenShaderKey::make(shader::picking_shader::ID, shader::picking_shader::NONE),
             move |device_context, shader| {
@@ -204,15 +201,18 @@ impl PickingRenderPass {
             creation_flags: ResourceCreation::empty(),
         };
 
-        let count_buffer = device_context.create_buffer(&count_buffer_def);
+        let count_buffer = renderer.device_context().create_buffer(&count_buffer_def);
 
         let count_alloc_def = MemoryAllocationDef {
             memory_usage: MemoryUsage::GpuOnly,
             always_mapped: false,
         };
 
-        let count_allocation =
-            MemoryAllocation::from_buffer(device_context, &count_buffer, &count_alloc_def);
+        let count_allocation = MemoryAllocation::from_buffer(
+            renderer.device_context(),
+            &count_buffer,
+            &count_alloc_def,
+        );
 
         let count_rw_view_def =
             BufferViewDef::as_structured_buffer(count_buffer.definition(), 4, false);
@@ -225,15 +225,18 @@ impl PickingRenderPass {
             creation_flags: ResourceCreation::empty(),
         };
 
-        let picked_buffer = device_context.create_buffer(&picked_buffer_def);
+        let picked_buffer = renderer.device_context().create_buffer(&picked_buffer_def);
 
         let picked_alloc_def = MemoryAllocationDef {
             memory_usage: MemoryUsage::GpuOnly,
             always_mapped: false,
         };
 
-        let picked_allocation =
-            MemoryAllocation::from_buffer(device_context, &picked_buffer, &picked_alloc_def);
+        let picked_allocation = MemoryAllocation::from_buffer(
+            renderer.device_context(),
+            &picked_buffer,
+            &picked_alloc_def,
+        );
 
         let picked_rw_view_def =
             BufferViewDef::as_structured_buffer(picked_buffer.definition(), 16, false);
@@ -261,7 +264,6 @@ impl PickingRenderPass {
         static_meshes: &[(Entity, &VisualComponent)],
         manipulator_meshes: &[(&VisualComponent, &GlobalTransform, &ManipulatorComponent)],
         lights: &[(&LightComponent, &GlobalTransform)],
-        mesh_manager: &MeshManager,
         camera: &CameraComponent,
     ) {
         self.readback_buffer_pools.begin_frame();
@@ -289,6 +291,7 @@ impl PickingRenderPass {
             );
 
             let pipeline = render_context
+                .renderer()
                 .pipeline_manager()
                 .get_pipeline(self.pipeline_handle)
                 .unwrap();
@@ -315,7 +318,9 @@ impl PickingRenderPass {
             for (_index, (entity, static_mesh)) in static_meshes.iter().enumerate() {
                 if let Some(list) = instance_manager.id_va_list(*entity) {
                     for (gpu_instance_id, _) in list {
-                        let num_vertices = mesh_manager
+                        let num_vertices = render_context
+                            .renderer()
+                            .mesh_manager()
                             .mesh_from_id(static_mesh.mesh_id as u32)
                             .num_vertices() as u32;
                         cmd_buffer.draw_instanced(num_vertices, 0, 1, *gpu_instance_id);
@@ -341,11 +346,11 @@ impl PickingRenderPass {
                     );
 
                     render_mesh(
+                        render_context,
                         &custom_world,
                         manipulator.picking_id,
                         picking_distance,
                         static_mesh.mesh_id as u32,
-                        mesh_manager,
                         &cmd_buffer,
                     );
                 }
@@ -355,11 +360,11 @@ impl PickingRenderPass {
                 let picking_distance = 1.0;
                 let custom_world = transform.with_scale(transform.scale * 0.2).compute_matrix();
                 render_mesh(
+                    render_context,
                     &custom_world,
                     light.picking_id,
                     picking_distance,
                     DefaultMeshType::Sphere as u32,
-                    mesh_manager,
                     &cmd_buffer,
                 );
             }
@@ -459,22 +464,34 @@ impl PickingRenderPass {
     }
 }
 fn render_mesh(
+    render_context: &RenderContext<'_>,
     custom_world: &Mat4,
     picking_id: u32,
     picking_distance: f32,
     mesh_id: u32,
-    mesh_manager: &MeshManager,
     cmd_buffer: &HLCommandBuffer<'_>,
 ) {
     let mut push_constant_data = cgen::cgen_type::PickingPushConstantData::default();
     push_constant_data.set_world((*custom_world).into());
-    push_constant_data
-        .set_mesh_description_offset(mesh_manager.mesh_description_offset_from_id(mesh_id).into());
+    push_constant_data.set_mesh_description_offset(
+        render_context
+            .renderer()
+            .mesh_manager()
+            .mesh_description_offset_from_id(mesh_id)
+            .into(),
+    );
     push_constant_data.set_picking_id(picking_id.into());
     push_constant_data.set_picking_distance(picking_distance.into());
     push_constant_data.set_use_gpu_pipeline(0.into());
 
     cmd_buffer.push_constant(&push_constant_data);
 
-    cmd_buffer.draw(mesh_manager.mesh_from_id(mesh_id).num_vertices() as u32, 0);
+    cmd_buffer.draw(
+        render_context
+            .renderer()
+            .mesh_manager()
+            .mesh_from_id(mesh_id)
+            .num_vertices() as u32,
+        0,
+    );
 }

@@ -15,9 +15,9 @@ mod cgen {
 
 #[allow(unused_imports)]
 use cgen::*;
-use lgn_ecs::prelude::{Res, ResMut};
+use lgn_ecs::prelude::ResMut;
 use lgn_graphics_cgen_runtime::CGenRegistryList;
-use lgn_renderer::{resources::PipelineManager, Renderer};
+use lgn_renderer::Renderer;
 
 mod grpc;
 mod streamer;
@@ -59,11 +59,12 @@ impl Plugin for StreamerPlugin {
 }
 
 fn init_cgen(
-    renderer: Res<'_, Renderer>,
-    mut pipeline_manager: ResMut<'_, PipelineManager>,
+    mut renderer: ResMut<'_, Renderer>,
     mut cgen_registries: ResMut<'_, CGenRegistryList>,
 ) {
     let cgen_registry = Arc::new(cgen::initialize(renderer.device_context()));
-    pipeline_manager.register_shader_families(&cgen_registry);
+    renderer
+        .pipeline_manager_mut()
+        .register_shader_families(&cgen_registry);
     cgen_registries.push(cgen_registry);
 }

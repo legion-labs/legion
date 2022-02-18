@@ -221,5 +221,7 @@ pub(crate) fn update_lights(
         updater.add_update_jobs(&spotlights_data, gpu_data.offset());
         renderer.release_spotlights_data(gpu_data);
     }
-    renderer.add_update_job_block(updater.job_blocks());
+    renderer
+        .static_buffer()
+        .add_update_job_block(updater.job_blocks());
 }

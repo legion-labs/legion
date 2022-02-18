@@ -1,7 +1,7 @@
 use lgn_graphics_api::PagedBufferAllocation;
 
-use super::{UnifiedStaticBuffer, UniformGPUDataUpdater};
-use crate::{cgen, static_mesh_render_data::StaticMeshRenderData, Renderer};
+use super::{TransientPagedBuffer, UnifiedStaticBuffer, UniformGPUDataUpdater};
+use crate::{cgen, static_mesh_render_data::StaticMeshRenderData};
 
 pub struct MeshManager {
     static_buffer: UnifiedStaticBuffer,
@@ -33,11 +33,9 @@ pub enum DefaultMeshType {
 }
 
 impl MeshManager {
-    pub fn new(renderer: &Renderer) -> Self {
-        let static_buffer = renderer.static_buffer().clone();
-
+    pub fn new(static_buffer: &UnifiedStaticBuffer, paged_buffer: &TransientPagedBuffer) -> Self {
         let mut mesh_manager = Self {
-            static_buffer,
+            static_buffer: static_buffer.clone(),
             static_meshes: Vec::new(),
             mesh_description_offsets: Vec::new(),
             allocations: Vec::new(),
@@ -58,11 +56,16 @@ impl MeshManager {
             StaticMeshRenderData::new_torus(0.01, 8, 0.5, 128),
         ];
 
-        mesh_manager.add_meshes(renderer, default_meshes);
+        mesh_manager.add_meshes(static_buffer, paged_buffer, default_meshes);
         mesh_manager
     }
 
-    pub fn add_meshes(&mut self, renderer: &Renderer, mut meshes: Vec<StaticMeshRenderData>) {
+    fn add_meshes(
+        &mut self,
+        static_buffer: &UnifiedStaticBuffer,
+        paged_buffer: &TransientPagedBuffer,
+        mut meshes: Vec<StaticMeshRenderData>,
+    ) {
         if meshes.is_empty() {
             return;
         }
@@ -76,7 +79,7 @@ impl MeshManager {
             .static_buffer
             .allocate_segment(vertex_data_size_in_bytes);
 
-        let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
+        let mut updater = UniformGPUDataUpdater::new(paged_buffer, 64 * 1024);
         let mut static_mesh_descs = Vec::with_capacity(meshes.len());
         let mut offset = static_allocation.offset();
 
@@ -95,7 +98,8 @@ impl MeshManager {
             );
         }
 
-        renderer.add_update_job_block(updater.job_blocks());
+        static_buffer.add_update_job_block(updater.job_blocks());
+
         self.static_meshes.append(&mut meshes);
         self.mesh_description_offsets
             .append(&mut mesh_description_offsets);

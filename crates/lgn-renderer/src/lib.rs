@@ -34,7 +34,7 @@ pub use render_context::*;
 pub mod resources;
 use resources::{
     BindlessTextureManager, GpuDataPlugin, GpuEntityColorManager, GpuEntityTransformManager,
-    GpuMaterialManager, GpuPickingDataManager, PipelineManager,
+    GpuMaterialManager, GpuPickingDataManager,
 };
 
 pub mod components;
@@ -62,7 +62,7 @@ use crate::{
     gpu_renderer::GpuInstanceVAs,
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingIdContext, PickingManager, PickingPlugin},
-    resources::{IndexBlock, MeshManager},
+    resources::IndexBlock,
     RenderStage,
 };
 use lgn_app::{App, CoreStage, Events, Plugin};
@@ -103,7 +103,6 @@ impl RendererPlugin {
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
         let renderer = Renderer::new();
-        let device_context = renderer.device_context().clone();
         let static_buffer = renderer.static_buffer().clone();
 
         //
@@ -124,11 +123,9 @@ impl Plugin for RendererPlugin {
         //
         // Resources
         //
-        app.insert_resource(PipelineManager::new(&device_context));
         app.insert_resource(ManipulatorManager::new());
         app.insert_resource(CGenRegistryList::new());
         app.insert_resource(RenderSurfaces::new());
-        app.insert_resource(MeshManager::new(&renderer));
         app.insert_resource(BindlessTextureManager::new(renderer.device_context(), 256));
         app.insert_resource(DebugDisplay::default());
         app.insert_resource(LightingManager::default());
@@ -201,14 +198,13 @@ fn on_window_created(
     mut event_window_created: EventReader<'_, '_, WindowCreated>,
     window_list: Res<'_, Windows>,
     renderer: Res<'_, Renderer>,
-    pipeline_manager: Res<'_, PipelineManager>,
     mut render_surfaces: ResMut<'_, RenderSurfaces>,
     mut event_render_surface_created: ResMut<'_, Events<RenderSurfaceCreatedForWindow>>,
 ) {
     for ev in event_window_created.iter() {
         let wnd = window_list.get(ev.id).unwrap();
         let extents = RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height());
-        let render_surface = RenderSurface::new(&renderer, &pipeline_manager, extents);
+        let render_surface = RenderSurface::new(&renderer, extents);
 
         render_surfaces.insert(ev.id, render_surface.id());
 
@@ -238,7 +234,7 @@ fn on_window_resized(
             if let Some(mut render_surface) = render_surface {
                 let wnd = wnd_list.get(ev.id).unwrap();
                 render_surface.resize(
-                    renderer.device_context(),
+                    &renderer,
                     RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height()),
                 );
             }
@@ -269,12 +265,13 @@ fn on_window_close_requested(
 
 #[allow(clippy::needless_pass_by_value)]
 fn init_cgen(
-    renderer: Res<'_, Renderer>,
-    mut pipeline_manager: ResMut<'_, PipelineManager>,
+    mut renderer: ResMut<'_, Renderer>,
     mut cgen_registries: ResMut<'_, CGenRegistryList>,
 ) {
     let cgen_registry = Arc::new(cgen::initialize(renderer.device_context()));
-    pipeline_manager.register_shader_families(&cgen_registry);
+    renderer
+        .pipeline_manager_mut()
+        .register_shader_families(&cgen_registry);
     cgen_registries.push(cgen_registry);
 }
 
@@ -302,7 +299,6 @@ fn update_gpu_instances(
     picking_manager: Res<'_, PickingManager>,
     mut picking_data_manager: ResMut<'_, GpuPickingDataManager>,
     mut instance_manager: ResMut<'_, GpuInstanceManager>,
-    mesh_manager: Res<'_, MeshManager>,
     material_manager: Res<'_, GpuMaterialManager>,
     color_manager: Res<'_, GpuEntityColorManager>,
     transform_manager: Res<'_, GpuEntityTransformManager>,
@@ -348,7 +344,9 @@ fn update_gpu_instances(
         picking_data_manager.update_gpu_data(&entity, 0, &[picking_data], &mut updater);
 
         let instance_vas = GpuInstanceVAs {
-            submesh_va: mesh_manager.mesh_description_offset_from_id(mesh.mesh_id as u32),
+            submesh_va: renderer
+                .mesh_manager()
+                .mesh_description_offset_from_id(mesh.mesh_id as u32),
             material_va: material_manager.va_for_index(material_key, 0) as u32,
             color_va: color_manager.va_for_index(Some(entity), 0) as u32,
             transform_va: transform_manager.va_for_index(Some(entity), 0) as u32,
@@ -360,11 +358,13 @@ fn update_gpu_instances(
     instance_manager.return_index_block(instance_block);
     picking_data_manager.return_index_block(picking_block);
 
-    renderer.add_update_job_block(updater.job_blocks());
+    renderer
+        .static_buffer()
+        .add_update_job_block(updater.job_blocks());
 }
 
-fn prepare_shaders(mut pipeline_manager: ResMut<'_, PipelineManager>) {
-    pipeline_manager.update();
+fn prepare_shaders(mut renderer: ResMut<'_, Renderer>) {
+    renderer.pipeline_manager_mut().update();
 }
 
 #[span_fn]
@@ -376,9 +376,7 @@ fn prepare_shaders(mut pipeline_manager: ResMut<'_, PipelineManager>) {
 fn render_update(
     renderer: ResMut<'_, Renderer>,
     bindless_textures: ResMut<'_, BindlessTextureManager>,
-    pipeline_manager: Res<'_, PipelineManager>,
     bump_allocator_pool: ResMut<'_, BumpAllocatorPool>,
-    mesh_manager: ResMut<'_, MeshManager>,
     picking_manager: ResMut<'_, PickingManager>,
     instance_manager: Res<'_, GpuInstanceManager>,
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
@@ -402,7 +400,7 @@ fn render_update(
 ) {
     crate::egui::egui_plugin::end_frame(&mut egui);
 
-    let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool, &pipeline_manager);
+    let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool);
     let q_drawables = q_drawables
         .iter()
         .collect::<Vec<(Entity, &VisualComponent)>>();
@@ -531,7 +529,6 @@ fn render_update(
             q_drawables.as_slice(),
             q_manipulator_drawables.as_slice(),
             q_lights.as_slice(),
-            &mesh_manager,
             camera_component,
         );
 
@@ -540,7 +537,6 @@ fn render_update(
         render_pass.render(
             &render_context,
             &mut cmd_buffer,
-            &mesh_manager,
             &instance_manager,
             render_surface.as_mut(),
             q_drawables.as_slice(),
@@ -555,7 +551,6 @@ fn render_update(
             q_picked_drawables.as_slice(),
             q_manipulator_drawables.as_slice(),
             camera_component,
-            &mesh_manager,
             debug_display.as_mut(),
         );
 

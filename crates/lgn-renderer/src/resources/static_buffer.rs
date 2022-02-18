@@ -326,9 +326,9 @@ pub struct UniformGPUDataUpdater {
 }
 
 impl UniformGPUDataUpdater {
-    pub fn new(paged_buffer: TransientPagedBuffer, block_size: u64) -> Self {
+    pub fn new(paged_buffer: &TransientPagedBuffer, block_size: u64) -> Self {
         Self {
-            paged_buffer,
+            paged_buffer: paged_buffer.clone(),
             job_blocks: Vec::new(),
             block_size,
         }

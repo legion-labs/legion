@@ -16,8 +16,8 @@ use crate::{
     components::{RenderSurface, VisualComponent},
     gpu_renderer::GpuInstanceManager,
     hl_gfx_api::HLCommandBuffer,
-    resources::{MeshManager, PipelineHandle, PipelineManager},
-    RenderContext,
+    resources::PipelineHandle,
+    RenderContext, Renderer,
 };
 
 pub struct TmpRenderPass {
@@ -30,7 +30,7 @@ embedded_watched_file!(INCLUDE_BRDF, "gpu/include/brdf.hsh");
 embedded_watched_file!(INCLUDE_MESH, "gpu/include/mesh.hsh");
 
 impl TmpRenderPass {
-    pub fn new(pipeline_manager: &PipelineManager) -> Self {
+    pub fn new(renderer: &Renderer) -> Self {
         let root_signature = cgen::pipeline_layout::ShaderPipelineLayout::root_signature();
 
         let mut vertex_layout = VertexLayout::default();
@@ -62,7 +62,7 @@ impl TmpRenderPass {
             back_stencil_pass_op: StencilOp::default(),
         };
 
-        let pipeline_handle = pipeline_manager.register_pipeline(
+        let pipeline_handle = renderer.pipeline_manager().register_pipeline(
             cgen::CRATE_ID,
             CGenShaderKey::make(
                 cgen::shader::default_shader::ID,
@@ -111,12 +111,12 @@ impl TmpRenderPass {
         &self,
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
-        mesh_manager: &MeshManager,
         instance_manager: &GpuInstanceManager,
         render_surface: &mut RenderSurface,
         static_meshes: &[(Entity, &VisualComponent)],
     ) {
         let pipeline = render_context
+            .renderer()
             .pipeline_manager()
             .get_pipeline(self.pipeline_handle)
             .unwrap();
@@ -150,7 +150,9 @@ impl TmpRenderPass {
         for (_index, (entity, static_mesh)) in static_meshes.iter().enumerate() {
             if let Some(list) = instance_manager.id_va_list(*entity) {
                 for (gpu_instance_id, _) in list {
-                    let num_vertices = mesh_manager
+                    let num_vertices = render_context
+                        .renderer()
+                        .mesh_manager()
                         .mesh_from_id(static_mesh.mesh_id as u32)
                         .num_vertices() as u32;
                     cmd_buffer.draw_instanced(num_vertices, 0, 1, *gpu_instance_id);

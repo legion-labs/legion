@@ -4,15 +4,15 @@ use lgn_graphics_api::prelude::*;
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_math::Vec2;
 
-use crate::cgen;
 use crate::components::RenderSurface;
 use crate::egui::egui_plugin::Egui;
+use crate::{cgen, Renderer};
 
 use crate::hl_gfx_api::HLCommandBuffer;
 
 use crate::RenderContext;
 
-use crate::resources::{PipelineHandle, PipelineManager};
+use crate::resources::PipelineHandle;
 
 pub struct EguiPass {
     pipeline_handle: PipelineHandle,
@@ -21,7 +21,7 @@ pub struct EguiPass {
 }
 
 impl EguiPass {
-    pub fn new(device_context: &DeviceContext, pipeline_manager: &PipelineManager) -> Self {
+    pub fn new(renderer: &Renderer) -> Self {
         let root_signature = cgen::pipeline_layout::EguiPipelineLayout::root_signature();
 
         let mut vertex_layout = VertexLayout::default();
@@ -48,7 +48,7 @@ impl EguiPass {
             rate: VertexAttributeRate::Vertex,
         });
 
-        let pipeline_handle = pipeline_manager.register_pipeline(
+        let pipeline_handle = renderer.pipeline_manager().register_pipeline(
             cgen::CRATE_ID,
             CGenShaderKey::make(
                 cgen::shader::egui_shader::ID,
@@ -84,7 +84,7 @@ impl EguiPass {
             max_anisotropy: 1.0,
             compare_op: CompareOp::LessOrEqual,
         };
-        let sampler = device_context.create_sampler(&sampler_def);
+        let sampler = renderer.device_context().create_sampler(&sampler_def);
 
         Self {
             pipeline_handle,
@@ -201,6 +201,7 @@ impl EguiPass {
         let transient_allocator = render_context.transient_buffer_allocator();
 
         let pipeline = render_context
+            .renderer()
             .pipeline_manager()
             .get_pipeline(self.pipeline_handle)
             .unwrap();

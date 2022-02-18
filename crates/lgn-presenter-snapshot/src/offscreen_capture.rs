@@ -3,8 +3,8 @@ use lgn_graphics_api::prelude::*;
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
-    resources::{PipelineHandle, PipelineManager},
-    RenderContext,
+    resources::PipelineHandle,
+    RenderContext, Renderer,
 };
 use lgn_tracing::span_fn;
 
@@ -19,14 +19,10 @@ pub struct OffscreenHelper {
 }
 
 impl OffscreenHelper {
-    pub fn new(
-        pipeline_manager: &PipelineManager,
-        device_context: &DeviceContext,
-        resolution: RenderSurfaceExtents,
-    ) -> Self {
+    pub fn new(renderer: &Renderer, resolution: RenderSurfaceExtents) -> Self {
         let root_signature = cgen::pipeline_layout::DisplayMapperPipelineLayout::root_signature();
 
-        let pipeline_handle = pipeline_manager.register_pipeline(
+        let pipeline_handle = renderer.pipeline_manager().register_pipeline(
             cgen::CRATE_ID,
             CGenShaderKey::make(
                 cgen::shader::display_mapper_shader::ID,
@@ -62,9 +58,9 @@ impl OffscreenHelper {
             address_mode_w: AddressMode::ClampToEdge,
             ..SamplerDef::default()
         };
-        let bilinear_sampler = device_context.create_sampler(&sampler_def);
+        let bilinear_sampler = renderer.device_context().create_sampler(&sampler_def);
 
-        let render_image = device_context.create_texture(&TextureDef {
+        let render_image = renderer.device_context().create_texture(&TextureDef {
             extents: Extents3D {
                 width: resolution.width(),
                 height: resolution.height(),
@@ -83,7 +79,7 @@ impl OffscreenHelper {
             render_image.definition(),
         ));
 
-        let copy_image = device_context.create_texture(&TextureDef {
+        let copy_image = renderer.device_context().create_texture(&TextureDef {
             extents: Extents3D {
                 width: resolution.width(),
                 height: resolution.height(),
@@ -141,6 +137,7 @@ impl OffscreenHelper {
         );
 
         let pipeline = render_context
+            .renderer()
             .pipeline_manager()
             .get_pipeline(self.pipeline_handle)
             .unwrap();
