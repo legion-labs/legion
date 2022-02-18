@@ -479,6 +479,12 @@ impl Project {
         Ok((meta.type_id, resource_hash, dependencies))
     }
 
+    /// Returns type of the resource.
+    pub fn resource_type(&self, id: ResourceId) -> Result<ResourceType, Error> {
+        let meta = self.read_meta(id)?;
+        Ok(meta.type_id)
+    }
+
     /// Returns the name of the resource from its `.meta` file.
     pub fn resource_name(&self, id: ResourceId) -> Result<ResourcePathName, Error> {
         let meta = self.read_meta(id)?;

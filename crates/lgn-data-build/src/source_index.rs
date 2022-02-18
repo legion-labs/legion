@@ -292,7 +292,6 @@ impl SourceIndex {
                         .any(|(_, tree)| matches!(tree, Tree::Directory { .. }));
 
                     if is_leaf {
-                        // calculate SourceContent and return.
                         let mut content = SourceContent::new(version);
 
                         let resource_paths = children
