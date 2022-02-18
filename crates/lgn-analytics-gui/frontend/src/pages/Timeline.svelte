@@ -1,4 +1,7 @@
 <script context="module" lang="ts">
+  import { SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
+  import { Block } from "@lgn/proto-telemetry/dist/block";
+
   type Thread = {
     streamInfo: Stream;
     maxDepth: number;
@@ -25,15 +28,12 @@
     Loaded,
   }
 
-  import { SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
-
   type ThreadBlockLOD = {
     state: LODState;
     tracks: SpanTrack[];
     lodId: number;
   };
 
-  import { Block } from "@lgn/proto-telemetry/dist/block";
   type ThreadBlock = {
     blockDefinition: Block; // block metadata stored in data lake
     beginMs: number; // relative to main process
