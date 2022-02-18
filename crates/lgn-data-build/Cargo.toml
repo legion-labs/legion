@@ -11,10 +11,12 @@ lgn-data-compiler = { path = "../lgn-data-compiler", version = "0.1.0" }
 lgn-content-store = { path = "../lgn-content-store", version = "0.1.0" }
 lgn-data-runtime = { path = "../lgn-data-runtime", version = "0.1.0" }
 lgn-utils = { path = "../lgn-utils", version = "0.1.0" }
+lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 tokio = { version = "1.13", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_with = "1.11.0"
+serde_bytes = "0.11"
 petgraph = "0.6"
 byteorder = "1.4"
 hex = "0.4.3"

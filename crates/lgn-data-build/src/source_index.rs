@@ -11,6 +11,7 @@ use lgn_data_offline::{
     ResourcePathId,
 };
 use lgn_data_runtime::{ResourceId, ResourceTypeAndId};
+use lgn_tracing::span_scope;
 use lgn_utils::DefaultHasher;
 use petgraph::{Directed, Graph};
 use serde::{Deserialize, Serialize};
@@ -167,6 +168,8 @@ impl SourceContent {
         &self,
         compile_path: ResourcePathId,
     ) -> Graph<ResourcePathId, ()> {
+        span_scope!("generate_build_graph");
+
         let mut dep_graph = Graph::<ResourcePathId, (), Directed>::new();
         let mut indices = HashMap::<ResourcePathId, petgraph::prelude::NodeIndex>::new();
         let mut processed = vec![];
