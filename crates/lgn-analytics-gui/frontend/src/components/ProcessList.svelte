@@ -58,7 +58,6 @@
       <thead>
         <th>User</th>
         <th>Executable</th>
-        <th>Target</th>
         <th>Platform</th>
         <th>Start Time</th>
         <th />
@@ -74,7 +73,6 @@
                 {processInfo?.exe.split("/").pop()?.split("\\").pop()}
               </span>
             </td>
-            <td>N/A</td>
             <td><Platform process={processInfo} /></td>
             <td><ProcessTime process={processInfo} /></td>
             <td>
