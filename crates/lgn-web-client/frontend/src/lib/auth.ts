@@ -2,7 +2,6 @@ import userInfo from "../stores/userInfo";
 import { getCookie, setCookie } from "./cookie";
 import log from "./log";
 import getPkce from "oauth-pkce";
-import { invoke } from "@tauri-apps/api";
 
 // https://connect2id.com/products/server/docs/api/token#token-response
 export type ClientTokenSet = {
@@ -441,9 +440,14 @@ export class LegionClient extends Client<UserInfo> {
   }
 
   override async userInfo(): Promise<UserInfo> {
-    const accessToken = window.__TAURI_METADATA__
-      ? await invoke("plugin:browser|get_access_token")
-      : getCookie(this.#cookieStorage.accessTokenName);
+    let accessToken: string | null = null;
+
+    if (window.__TAURI_METADATA__) {
+      const { invoke } = await import("@tauri-apps/api");
+      accessToken = await invoke("plugin:browser|get_access_token");
+    } else {
+      accessToken = getCookie(this.#cookieStorage.accessTokenName);
+    }
 
     if (!accessToken) {
       throw new Error("Access token not found");
@@ -496,6 +500,8 @@ export async function initAuth({
   if (window.__TAURI_METADATA__) {
     try {
       await userInfo.run(async () => {
+        const { invoke } = await import("@tauri-apps/api");
+
         const userInfo = (await invoke("plugin:browser|authenticate", {
           scopes: authClient.loginConfig.scopes,
           extraParams: authClient.loginConfig.extraParams,

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { appWindow } from "@tauri-apps/api/window";
   import topBarMenu, {
     Id as TopBarMenuId,
     menus as topBarMenus,
@@ -11,7 +10,6 @@
   import { onMount } from "svelte";
   import Icon from "@iconify/svelte";
   import { authClient, UserInfo } from "../lib/auth";
-  import { invoke } from "@tauri-apps/api";
 
   const { data: userInfoData } = userInfo;
 
@@ -25,10 +23,12 @@
 
   let topBarClose: HTMLDivElement | undefined;
 
-  onMount(() => {
+  onMount(async () => {
     if (!window.__TAURI_METADATA__) {
       return;
     }
+
+    const { appWindow } = await import("@tauri-apps/api/window");
 
     function topBarMouseDownListener(event: MouseEvent) {
       event.detail === 2
@@ -85,6 +85,8 @@
   async function authenticate() {
     if (window.__TAURI_METADATA__) {
       await userInfo.run(async () => {
+        const { invoke } = await import("@tauri-apps/api");
+
         const userInfo = (await invoke("plugin:browser|authenticate", {
           scopes: authClient.loginConfig.scopes,
           extraParams: authClient.loginConfig.extraParams,
