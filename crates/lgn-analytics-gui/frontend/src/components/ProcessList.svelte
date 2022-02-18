@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { link } from "svelte-navigator";
   import {
     PerformanceAnalyticsClientImpl,
     ProcessInstance,
@@ -78,36 +79,33 @@
             <td>
               {#if nbLogBlocks > 0 && processInfo}
                 <div>
-                  <a href={`/log/${processInfo?.processId}`}
-                    ><i
-                      title="Log ({nbLogBlocks})"
-                      class="bi bi-card-text"
-                    /></a
-                  >
+                  <a href={`/log/${processInfo?.processId}`} use:link>
+                    <i title="Log ({nbLogBlocks})" class="bi bi-card-text" />
+                  </a>
                 </div>
               {/if}
             </td>
             <td>
               {#if nbMetricBlocks > 0 && processInfo}
                 <div>
-                  <a href={`/metrics/${processInfo?.processId}`}
-                    ><i
+                  <a href={`/metrics/${processInfo?.processId}`} use:link>
+                    <i
                       title="Metrics ({nbMetricBlocks})"
                       class="bi bi-graph-up"
-                    /></a
-                  >
+                    />
+                  </a>
                 </div>
               {/if}
             </td>
             <td>
               {#if nbCpuBlocks > 0 && processInfo}
                 <div>
-                  <a href={`/timeline/${processInfo?.processId}`}
-                    ><i
+                  <a href={`/timeline/${processInfo?.processId}`} use:link>
+                    <i
                       title="Timeline ({nbCpuBlocks})"
                       class="bi bi-body-text"
-                    /></a
-                  >
+                    />
+                  </a>
                 </div>
               {/if}
             </td>
