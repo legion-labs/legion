@@ -44,6 +44,7 @@
   let gyAxis: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
   let xAxis: d3.Axis<d3.NumberValue>;
   let yAxis: d3.Axis<d3.NumberValue>;
+  let zoom: d3.ZoomBehavior<Element, unknown>;
 
   let container: d3.Selection<d3.BaseType, unknown, HTMLElement, any>;
   let brush: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
@@ -153,7 +154,7 @@
 
     gyAxis = svgGroup.append("g").call(yAxis);
 
-    const zoom = d3
+    zoom = d3
       .zoom()
       .filter((e) => !e.shiftKey)
       .scaleExtent([1, getPixelSizeNs()])
@@ -202,6 +203,8 @@
     updateLod();
 
     var startTime = performance.now();
+
+    zoom.translateExtent([[0, 0], getTranslateExtent()]);
 
     container.select("svg").attr("height", outerHeight).attr("width", width);
 
