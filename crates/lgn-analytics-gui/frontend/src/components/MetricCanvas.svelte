@@ -10,6 +10,7 @@
   import { Point } from "@/lib/Metric/MetricPoint";
   import { MetricStreamer } from "@/lib/Metric/MetricStreamer";
   import { MetricState } from "@/lib/Metric/MetricState";
+  import { getLodFromPixelSizeNs } from "@/lib/lod";
   export let id: string;
 
   let metricStreamer: MetricStreamer;
@@ -59,8 +60,6 @@
 
   const getDeltaMs = () => currentMaxMs - currentMinMs;
   const getPixelSizeNs = () => (getDeltaMs() * 1_000_000) / width;
-  const getLod = () =>
-    Math.max(0, Math.floor(Math.log(getPixelSizeNs()) / Math.log(100)));
 
   onMount(async () => {
     client = await makeGrpcClient();
@@ -84,7 +83,7 @@
     }
     deltaMs = getDeltaMs();
     pixelSizeNs = getPixelSizeNs();
-    lod = getLod();
+    lod = getLodFromPixelSizeNs(pixelSizeNs);
     metricStreamer!.tick(lod, currentMinMs, currentMaxMs);
     updatePoints(get(metricStore));
   }
