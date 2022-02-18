@@ -1,8 +1,8 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use lgn_content_store2::{
-    AwsS3Provider, ContentReader, ContentWriter, Error, GrpcProvider, GrpcService, Identifier,
-    LocalProvider, SmallContentProvider,
+    AwsS3Provider, ContentAddressReader, ContentAddressWriter, ContentReader, ContentWriter, Error,
+    GrpcProvider, GrpcService, Identifier, LocalProvider, SmallContentProvider,
 };
 
 mod common;
@@ -82,6 +82,39 @@ async fn test_aws_s3_provider() {
     // Another write should yield no error.
     assert_write_avoided!(provider, &id);
 
+    // Make sure we can access the data through the URLs.
+    let read_url = provider.get_content_read_address(&id).await.unwrap();
+    let data = reqwest::get(read_url)
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap();
+
+    assert_eq!(b"A", &*data);
+
+    let id = Identifier::new_hash_ref_from_data(b"Hello");
+
+    // This read should fail as the value does not exist yet.
+    assert!(provider.get_content_read_address(&id).await.is_err());
+
+    let write_url = provider.get_content_write_address(&id).await.unwrap();
+    reqwest::Client::new()
+        .put(write_url)
+        .body("Hello")
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap();
+
+    assert_read_content!(provider, id, "Hello");
+
+    // This write should fail as the value already exists.
+    assert!(provider.get_content_write_address(&id).await.is_err());
+
     provider
         .delete_content(&id)
         .await
@@ -132,7 +165,7 @@ async fn test_grpc_provider() {
 
         let write_mock = http_server
             .mock_async(|when, then| {
-                when.method("POST").path(format!("/{}/write", id));
+                when.method("PUT").path(format!("/{}/write", id));
                 then.status(201).body(b"");
             })
             .await;

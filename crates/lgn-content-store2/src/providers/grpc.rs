@@ -300,7 +300,7 @@ impl HttpUploader {
         let w = Some(w);
         let call = Box::pin(
             client
-                .post(url)
+                .put(url)
                 .body(reqwest::Body::wrap_stream(stream))
                 .send(),
         );
