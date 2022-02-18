@@ -22,7 +22,7 @@ using the `openModal` function provided by the `lib/modal.ts` module) and open u
 
   <div
     class="root"
-    class:with-lg-margin={window.__TAURI__}
+    class:with-lg-margin={window.__TAURI_METADATA__}
     transition:fade={{ duration: config?.noTransition ? 0 : 100 }}
   >
     <div>

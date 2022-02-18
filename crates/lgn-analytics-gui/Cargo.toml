@@ -14,11 +14,17 @@ lgn-app = { path = "../lgn-app", version = "0.1.0" }
 lgn-async = { path = "../lgn-async", version = "0.1.0" }
 lgn-online = { path = "../lgn-online", version = "0.1.0" }
 lgn-tauri = { path = "../lgn-tauri", version = "0.1.0" }
+lgn-web-client = { path = "../lgn-web-client", version = "0.1.0" }
 anyhow = "1.0.44"
 clap = { version = "3.0", features = ["derive"] }
 url = "2.2.2"
 tauri = { version = "1.0.0-rc.3", features = ["api-all"] }
 directories = "4"
+tokio = { version = "1.13", features = [
+    "macros",
+    "rt-multi-thread",
+    "tracing",
+] }
 
 [build-dependencies]
 lgn-build-utils = { path = "../lgn-build-utils", version = "0.1.0" }

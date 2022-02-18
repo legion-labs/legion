@@ -18,7 +18,7 @@ Some helpers, like `close`, will be passed down to the slots.
    *
    * _Use with care._
    */
-  export let noClose: boolean;
+  export let noClose: boolean = false;
 </script>
 
 <div class="root">

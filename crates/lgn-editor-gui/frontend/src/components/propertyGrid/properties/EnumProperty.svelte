@@ -14,7 +14,7 @@
 
   export let disabled = false;
 
-  function onChange({ detail: entry }: CustomEvent<"" | EnumOption>) {
+  function onSelect({ detail: entry }: CustomEvent<"" | EnumOption>) {
     if (entry == "") {
       dispatch("input", "");
     } else {
@@ -23,6 +23,6 @@
   }
 </script>
 
-<Select bind:value {options} {disabled} on:change={onChange}>
+<Select bind:value {options} {disabled} on:select={onSelect}>
   <div slot="option" let:option>{option.item}</div>
 </Select>

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
@@ -97,11 +98,11 @@ where
 
     async fn refresh_login_with(
         &self,
-        refresh_token: &str,
+        client_token_set: ClientTokenSet,
         authenticator: &A,
     ) -> Result<ClientTokenSet> {
         authenticator
-            .refresh_login(refresh_token)
+            .refresh_login(client_token_set)
             .await
             .map(|token_set| {
                 if let Err(err) = self.write_token_set_to_cache(&token_set) {
@@ -125,7 +126,11 @@ where
     /// `login` method, which may prompt the user for credentials.
     ///
     /// If the tokens end up being refreshed, they will be stored in the cache.
-    async fn login(&self) -> Result<ClientTokenSet> {
+    async fn login(
+        &self,
+        scopes: &[String],
+        extra_params: &Option<HashMap<String, String>>,
+    ) -> Result<ClientTokenSet> {
         let authenticator = self.authenticator().await;
 
         let token_set = match self.read_token_set_from_cache() {
@@ -139,13 +144,17 @@ where
                                 err
                             );
 
-                            if let Some(refresh_token) = &token_set.refresh_token {
-                                return self
-                                    .refresh_login_with(refresh_token, &authenticator)
-                                    .await;
+                            if token_set.refresh_token.is_some() {
+                                return self.refresh_login_with(token_set, &authenticator).await;
                             }
 
-                            authenticator.login().await?
+                            authenticator.login(scopes, extra_params).await?
+                        } else if !token_set.is_compliant_with_scopes(scopes) {
+                            warn!(
+                                "Cached access token scopes don't match required scopes, refreshing login...",
+                            );
+
+                            authenticator.login(scopes, extra_params).await?
                         } else {
                             debug!("Reusing cached access token.");
 
@@ -159,14 +168,14 @@ where
 
                         self.delete_cache()?;
 
-                        authenticator.login().await?
+                        authenticator.login(scopes, extra_params).await?
                     }
                 }
             }
             Err(err) => {
                 warn!("Failed to read access token from cache: {}", err);
 
-                authenticator.login().await?
+                authenticator.login(scopes, extra_params).await?
             }
         };
 
@@ -179,10 +188,11 @@ where
         Ok(token_set)
     }
 
-    async fn refresh_login(&self, refresh_token: &str) -> Result<ClientTokenSet> {
+    async fn refresh_login(&self, client_token_set: ClientTokenSet) -> Result<ClientTokenSet> {
         let authenticator = self.authenticator().await;
 
-        self.refresh_login_with(refresh_token, &authenticator).await
+        self.refresh_login_with(client_token_set, &authenticator)
+            .await
     }
 
     /// Perform a logout, delegating its execution to the owned `Authenticator`
