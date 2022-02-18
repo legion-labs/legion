@@ -28,7 +28,7 @@ expression: first_buildindex
       "context_hash": "e81bf7e1d7e5c6e1",
       "source_hash": "bcc583a4fc0cd39b",
       "compiled_path": "(1a377760c95e361c,2839ea70-c411-4302-8f67-e899fdf27645)|648242a8cf00bfee|0659c0b6c23b950d_Albedo",
-      "compiled_checksum": "fd5de9757933afdf6050dc79ef3a88f9",
+      "compiled_checksum": "c972bdf91eec990ead30800bdc38b0bd",
       "compiled_size": 5592500
     },
     {
@@ -36,7 +36,7 @@ expression: first_buildindex
       "context_hash": "e81bf7e1d7e5c6e1",
       "source_hash": "bcc583a4fc0cd39b",
       "compiled_path": "(1a377760c95e361c,2839ea70-c411-4302-8f67-e899fdf27645)|648242a8cf00bfee|0659c0b6c23b950d_AlbedoBlend",
-      "compiled_checksum": "894c04bb71afc0a081762db00bda8b3b",
+      "compiled_checksum": "ca61e93d637978090c486688b1f3b583",
       "compiled_size": 5592500
     },
     {
@@ -44,7 +44,7 @@ expression: first_buildindex
       "context_hash": "e81bf7e1d7e5c6e1",
       "source_hash": "bcc583a4fc0cd39b",
       "compiled_path": "(1a377760c95e361c,2839ea70-c411-4302-8f67-e899fdf27645)|648242a8cf00bfee|0659c0b6c23b950d_Normal",
-      "compiled_checksum": "fd5de9757933afdf6050dc79ef3a88f9",
+      "compiled_checksum": "c972bdf91eec990ead30800bdc38b0bd",
       "compiled_size": 5592500
     },
     {
@@ -108,7 +108,7 @@ expression: first_buildindex
       "context_hash": "e81bf7e1d7e5c6e1",
       "source_hash": "d89d7cba2ceca343",
       "compiled_path": "(1a377760c95e361c,b11243e1-009c-4b69-8be7-cd5bef0ed3e8)|648242a8cf00bfee|0659c0b6c23b950d_Albedo",
-      "compiled_checksum": "a43baf605e697ca76a6b6c5f1a6ee370",
+      "compiled_checksum": "40564b71c94dac42f3bb273996c91148",
       "compiled_size": 5592500
     },
     {
@@ -116,7 +116,7 @@ expression: first_buildindex
       "context_hash": "e81bf7e1d7e5c6e1",
       "source_hash": "d89d7cba2ceca343",
       "compiled_path": "(1a377760c95e361c,b11243e1-009c-4b69-8be7-cd5bef0ed3e8)|648242a8cf00bfee|0659c0b6c23b950d_AlbedoBlend",
-      "compiled_checksum": "d8edcf5f39dbbf78394117aa75ad81b1",
+      "compiled_checksum": "db5ca865655cafe90d831660be8cba9e",
       "compiled_size": 5592500
     },
     {
@@ -124,7 +124,7 @@ expression: first_buildindex
       "context_hash": "e81bf7e1d7e5c6e1",
       "source_hash": "d89d7cba2ceca343",
       "compiled_path": "(1a377760c95e361c,b11243e1-009c-4b69-8be7-cd5bef0ed3e8)|648242a8cf00bfee|0659c0b6c23b950d_Normal",
-      "compiled_checksum": "a43baf605e697ca76a6b6c5f1a6ee370",
+      "compiled_checksum": "40564b71c94dac42f3bb273996c91148",
       "compiled_size": 5592500
     },
     {
