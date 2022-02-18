@@ -33,6 +33,7 @@ async fn test_property_inspector() -> anyhow::Result<()> {
                 new_id,
                 ResourcePathName::new("dummy_entity"),
                 false,
+                None,
             ));
 
             let mut transaction_manager = transaction_manager.lock().await;

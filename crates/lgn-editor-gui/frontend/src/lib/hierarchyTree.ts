@@ -240,7 +240,8 @@ export class Entries<Item> {
   insert<PItem extends { path: string }>(item: PItem): this {
     function insert(
       [part, ...parts]: string[],
-      entries: Entry<Item>[]
+      entries: Entry<Item>[],
+      item: PItem
     ): Entry<Item>[] {
       if (!parts.length) {
         const newEntry: Entry<Item> = {
@@ -259,18 +260,12 @@ export class Entries<Item> {
         return entries;
       }
 
-      entry.subEntries = insert(parts, entry.subEntries || []);
+      entry.subEntries = insert(parts, entry.subEntries || [], item);
 
       return entries;
     }
 
-    this.entries = components(item.path).reduce((acc, part) => {
-      acc;
-
-      return acc;
-    }, this.entries);
-
-    this.entries = insert(components(item.path), this.entries);
+    this.entries = insert(components(item.path), this.entries, item);
 
     this.#sort();
 

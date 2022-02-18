@@ -30,6 +30,7 @@ use lgn_editor_proto::resource_browser::{
                 script_id,
                 ResourcePathName::new("root_script"),
                 false,
+                None,
             ))
             .add_operation(UpdatePropertyOperation::new(
                 script_id,
@@ -122,6 +123,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
         let transaction_manager = setup_project(&project_dir).await;
         let resource_browser = crate::resource_browser_plugin::ResourceBrowserRPC {
             transaction_manager: transaction_manager.clone(),
+            uploads_folder: "".into(),
         };
 
         // Read all Resoruce Type registered

@@ -23,6 +23,8 @@ use lgn_tracing::{error, info, warn};
 use lgn_transform::components::Transform;
 use tokio::sync::Mutex;
 
+use crate::source_control_plugin::{RawFilesStreamerConfig, SharedRawFilesStreamer};
+
 #[derive(Default)]
 pub struct EditorPlugin;
 
@@ -32,6 +34,7 @@ impl Plugin for EditorPlugin {
     fn build(&self, app: &mut App) {
         app
         .insert_resource(SelectionManager::create())
+        .insert_resource(SharedRawFilesStreamer::default())
         .add_system_to_stage(CoreStage::PostUpdate, Self::process_input)
         .add_system_to_stage(CoreStage::PostUpdate, Self::update_selection)
         .add_startup_system_to_stage(

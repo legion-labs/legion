@@ -68,7 +68,7 @@
 
   $: isHighlighted = highlightedEntry ? entry === highlightedEntry : false;
 
-  $: nameExtension = extension(entry.name);
+  $: nameExtension = extension(entry.name)?.toLowerCase();
 
   $: iconName =
     (nameExtension && iconNames[nameExtension]) ||

@@ -1,5 +1,7 @@
 //! Transaction Operation to Create a Resource
 
+use std::{fs::File, path::PathBuf};
+
 use async_trait::async_trait;
 use lgn_data_offline::resource::ResourcePathName;
 use lgn_data_runtime::ResourceTypeAndId;
@@ -11,6 +13,7 @@ pub struct CreateResourceOperation {
     resource_id: ResourceTypeAndId,
     resource_path: ResourcePathName,
     auto_increment_name: bool,
+    content_path: Option<PathBuf>,
 }
 
 impl CreateResourceOperation {
@@ -19,11 +22,13 @@ impl CreateResourceOperation {
         resource_id: ResourceTypeAndId,
         resource_path: ResourcePathName,
         auto_increment_name: bool,
+        content_path: Option<PathBuf>,
     ) -> Box<Self> {
         Box::new(Self {
             resource_id,
             resource_path,
             auto_increment_name,
+            content_path,
         })
     }
 }
@@ -31,10 +36,18 @@ impl CreateResourceOperation {
 #[async_trait]
 impl TransactionOperation for CreateResourceOperation {
     async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
-        let handle = ctx
-            .resource_registry
-            .new_resource(self.resource_id.kind)
-            .ok_or(Error::InvalidResourceType(self.resource_id.kind))?;
+        let handle = if let Some(ref path) = self.content_path {
+            let mut reader =
+                File::open(path).map_err(|_err| Error::InvalidFilePath(path.clone()))?;
+
+            ctx.resource_registry
+                .deserialize_resource(self.resource_id.kind, &mut reader)
+                .map_err(|err| Error::InvalidResourceDeserialization(self.resource_id, err))?
+        } else {
+            ctx.resource_registry
+                .new_resource(self.resource_id.kind)
+                .ok_or(Error::InvalidResourceType(self.resource_id.kind))?
+        };
 
         // Validate duplicate id/name
         if ctx.project.exists(self.resource_id.id).await {
