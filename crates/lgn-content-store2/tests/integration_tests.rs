@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{net::SocketAddr, sync::Arc};
 
 use lgn_content_store2::{
     AwsS3Provider, ContentReader, ContentWriter, Error, GrpcProvider, GrpcService, Identifier,
@@ -102,14 +102,15 @@ async fn test_grpc_provider() {
     let service = lgn_content_store_proto::content_store_server::ContentStoreServer::new(service);
     let server = tonic::transport::Server::builder().add_service(service);
 
-    let addr_str = get_random_localhost_addr();
+    let incoming = TcpIncoming::new().unwrap();
+    let addr = incoming.addr();
 
     async fn f(
-        addr_str: &str,
+        socket_addr: &SocketAddr,
         http_server: &httpmock::MockServer,
         address_provider: Arc<FakeContentAddressProvider>,
     ) {
-        let client = GrpcClient::new(format!("http://{}", addr_str).parse().unwrap());
+        let client = GrpcClient::new(format!("http://{}", socket_addr).parse().unwrap());
         let provider = GrpcProvider::new(client).await;
 
         // First we try with a small file.
@@ -158,9 +159,9 @@ async fn test_grpc_provider() {
     loop {
         tokio::select! {
             res = async {
-                server.serve(addr_str.parse().unwrap()).await
+                server.serve_with_incoming(incoming).await
             } => panic!("server is no longer bound: {}", res.unwrap_err()),
-            _ = f(&addr_str, &http_server, address_provider) => break
+            _ = f(&addr, &http_server, address_provider) => break
         };
     }
 }

@@ -1,12 +1,40 @@
 mod asserts;
 mod providers;
 
-pub(crate) use asserts::*;
-pub use providers::*;
+use std::{
+    net::SocketAddr,
+    pin::Pin,
+    task::{Context, Poll},
+};
 
-pub fn get_random_localhost_addr() -> String {
-    match std::net::TcpListener::bind("127.0.0.1:0") {
-        Ok(stream) => format!("127.0.0.1:{}", stream.local_addr().unwrap().port()),
-        Err(_) => "127.0.0.1:50051".to_string(),
+pub(crate) use asserts::*;
+use futures::Stream;
+use hyper::server::{
+    accept::Accept,
+    conn::{AddrIncoming, AddrStream},
+};
+pub(crate) use providers::*;
+
+pub struct TcpIncoming {
+    inner: AddrIncoming,
+}
+
+impl TcpIncoming {
+    pub(crate) fn new() -> Result<Self, anyhow::Error> {
+        let mut inner = AddrIncoming::bind(&"127.0.0.1:0".parse()?)?;
+        inner.set_nodelay(true);
+        Ok(Self { inner })
+    }
+
+    pub(crate) fn addr(&self) -> SocketAddr {
+        self.inner.local_addr()
+    }
+}
+
+impl Stream for TcpIncoming {
+    type Item = Result<AddrStream, std::io::Error>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        Pin::new(&mut self.inner).poll_accept(cx)
     }
 }

@@ -38,3 +38,4 @@ aws = ["aws-config", "aws-sdk-s3"]
 uuid = { version = "0.8", features = ["v4"] }
 hex = "0.4"
 httpmock = "0.6"
+hyper = "0.14"
