@@ -1,6 +1,5 @@
 <script lang="ts">
   import { formatExecutionTime } from "@/lib/format";
-  import { link } from "svelte-navigator";
 
   export let timeRange: [number, number] | undefined;
   export let processId: string;
@@ -24,7 +23,6 @@
     <div class="nav-link">
       <a
         href={`/cumulative-call-graph?process=${processId}&begin=${timeRange[0]}&end=${timeRange[1]}`}
-        use:link
       >
         Cumulative Call Graph
       </a>
@@ -32,7 +30,6 @@
     <div class="nav-link">
       <a
         href={`/timeline/${processId}?timelineStart=${timeRange[0]}&timelineEnd=${timeRange[1]}`}
-        use:link
       >
         Timeline
       </a>

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { link } from "svelte-navigator";
   import {
     PerformanceAnalyticsClientImpl,
     ProcessInstance,
@@ -7,10 +6,10 @@
   import { onMount } from "svelte";
   import log from "@lgn/web-client/src/lib/log";
   import { makeGrpcClient } from "@/lib/client";
-  import User from "./User.svelte";
-  import Computer from "./Computer.svelte";
-  import Platform from "./Platform.svelte";
-  import ProcessTime from "./ProcessTime.svelte";
+  import User from "@/components/List/User.svelte";
+  import Computer from "@/components/List/Computer.svelte";
+  import Platform from "@/components/List/Platform.svelte";
+  import ProcessTime from "@/components/List/ProcessTime.svelte";
 
   let client: PerformanceAnalyticsClientImpl | null = null;
   let processList: ProcessInstance[] = [];
@@ -82,7 +81,7 @@
             <td>
               {#if nbLogBlocks > 0 && processInfo}
                 <div>
-                  <a href={`/log/${processInfo?.processId}`} use:link>
+                  <a href={`/log/${processInfo?.processId}`}>
                     <i title="Log ({nbLogBlocks})" class="bi bi-card-text" />
                   </a>
                 </div>
@@ -91,7 +90,7 @@
             <td>
               {#if nbMetricBlocks > 0 && processInfo}
                 <div>
-                  <a href={`/metrics/${processInfo?.processId}`} use:link>
+                  <a href={`/metrics/${processInfo?.processId}`}>
                     <i
                       title="Metrics ({nbMetricBlocks})"
                       class="bi bi-graph-up"
@@ -103,7 +102,7 @@
             <td>
               {#if nbCpuBlocks > 0 && processInfo}
                 <div>
-                  <a href={`/timeline/${processInfo?.processId}`} use:link>
+                  <a href={`/timeline/${processInfo?.processId}`}>
                     <i
                       title="Timeline ({nbCpuBlocks})"
                       class="bi bi-body-text"

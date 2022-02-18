@@ -1,14 +1,7 @@
 <script lang="ts">
-  import { Router, Route } from "svelte-navigator";
-  import Health from "@/pages/Health.svelte";
-  import Log from "@/pages/Log.svelte";
-  import Timeline from "@/pages/Timeline.svelte";
-  import Graph from "@/pages/Graph.svelte";
-  import MetricsCanvas from "./components/Metric/MetricCanvas.svelte";
   import { InitAuthStatus } from "@lgn/web-client/src/lib/auth";
   import { onMount } from "svelte";
   import Header from "./components/Misc/Header.svelte";
-  import ProcessList from "./components/List/ProcessList.svelte";
 
   export let initAuthStatus: InitAuthStatus | null;
 
@@ -24,13 +17,7 @@
   });
 </script>
 
-<div class="w-full h-screen p-2">
-  <div class="grid">
-    <Header />
-    <div class="pl-5 pr-5 pt-5">
-      <Router>
-        <div id="app">
-          <Route path="/" primary={false}>
+      <!--      <Route path="/" primary={false}>
             <ProcessList />
           </Route>
           <Route path="/health"><Health /></Route>
@@ -51,17 +38,17 @@
           </Route>
           <Route path="/cumulative-call-graph" primary={false}>
             <Graph />
-          </Route>
-        </div>
-      </Router>
-    </div>
-  </div>
-</div>
+          </Route> -->
+      <!-- </Router> --> 
 
-<style lang="postcss">
-  #app {
-    @apply text-center text-[#2c3e50];
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-</style>
+
+<div class="w-full h-screen p-2">
+  <div class="grid">
+    <Header />
+    <div class="p-5">
+       <div id="app">
+         <slot />
+    </div>
+</div>
+</div>
+</div>

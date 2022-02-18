@@ -59,16 +59,16 @@ function htmlPlugin(env) {
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  build: {
-    rollupOptions: {
-      input: {
-        main: path.resolve(dirname, "index.html"),
-        ...(shouldInjectSpaHack
-          ? { notFound: path.resolve(dirname, "404.html") }
-          : {}),
-      },
-    },
-  },
+  // build: {
+  //   rollupOptions: {
+  //     input: {
+  //       main: path.resolve(dirname, "index.html"),
+  //       ...(shouldInjectSpaHack
+  //         ? { notFound: path.resolve(dirname, "404.html") }
+  //         : {}),
+  //     },
+  //   },
+  // },
   plugins: [
     tsconfigPaths({
       extensions: [".ts", ".svelte"],

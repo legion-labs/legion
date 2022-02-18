@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { link } from "svelte-navigator";
   import {
     LogEntry,
     PerformanceAnalyticsClientImpl,
@@ -89,7 +88,7 @@
 
       {#if processInfo.parentProcessId}
         <div class="nav-link">
-          <a href={`/log/${processInfo.parentProcessId}`} use:link>
+          <a href={`/log/${processInfo.parentProcessId}`}>
             Parent Process Log
           </a>
         </div>
@@ -112,7 +111,6 @@
               MAX_NB_ENTRIES_IN_PAGE,
               nbEntries
             )}`}
-            use:link
           >
             First
           </a>
@@ -123,7 +121,6 @@
               0,
               viewRange[0] - MAX_NB_ENTRIES_IN_PAGE
             )}&end=${viewRange[0]}`}
-            use:link
           >
             Previous
           </a>
@@ -135,7 +132,6 @@
             href={`/log/${id}?begin=${viewRange[1]}&end=${
               viewRange[1] + MAX_NB_ENTRIES_IN_PAGE
             }`}
-            use:link
           >
             Next
           </a>
@@ -145,7 +141,6 @@
             href={`/log/${id}?begin=${
               nbEntries - MAX_NB_ENTRIES_IN_PAGE
             }&end=${nbEntries}`}
-            use:link
           >
             Last
           </a>

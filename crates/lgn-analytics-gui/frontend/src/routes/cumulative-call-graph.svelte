@@ -7,7 +7,6 @@
     endMs: number;
   };
 
-  import { useLocation } from "svelte-navigator";
   import { onMount } from "svelte";
   import {
     CumulativeCallGraphNode,

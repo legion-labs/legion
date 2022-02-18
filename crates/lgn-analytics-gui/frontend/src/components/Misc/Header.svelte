@@ -2,8 +2,7 @@
   import User from "../List/User.svelte";
   import { authClient } from "@lgn/web-client/src/lib/auth";
   import { onMount } from "svelte";
-  import { link } from "svelte-navigator";
-  import iconPath from "../../../icons/128x128.png";
+  import iconPath from "../../assets/icons/128x128.png";
 
   let user: string | undefined;
 
@@ -16,7 +15,7 @@
   <div class="flex items-center gap-3">
     <img src={iconPath} alt="logo" style="height:24px" class="inline" />
     <span class="font-bold text-xl">
-      <a href="/" use:link>Legion Performance Analytics</a>
+      <a href="/">Legion Performance Analytics</a>
     </span>
   </div>
   {#if user}

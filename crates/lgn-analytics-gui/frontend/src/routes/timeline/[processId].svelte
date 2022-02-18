@@ -44,7 +44,6 @@
 </script>
 
 <script lang="ts">
-  import { link } from "svelte-navigator";
   import {
     BlockSpansReply,
     PerformanceAnalyticsClientImpl,
@@ -740,7 +739,7 @@
       <div>{currentProcess.exe} {currentProcess.processId}</div>
       {#if currentProcess.parentProcessId}
         <div class="parent-process">
-          <a href={`/timeline/${currentProcess.parentProcessId}`} use:link>
+          <a href={`/timeline/${currentProcess.parentProcessId}`}>
             Parent timeline
           </a>
         </div>
