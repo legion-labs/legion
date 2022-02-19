@@ -28,15 +28,17 @@ pub struct Args {
 #[span_fn]
 pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     let mut pass_through_args: Vec<OsString> = vec![];
-    for lint in &ctx.config().clippy.deny {
+    let clippy_cfg = &ctx.config().lints.clippy;
+
+    for lint in &clippy_cfg.deny {
         pass_through_args.push("-D".into());
         pass_through_args.push(lint.into());
     }
-    for lint in &ctx.config().clippy.warn {
+    for lint in &clippy_cfg.warn {
         pass_through_args.push("-W".into());
         pass_through_args.push(lint.into());
     }
-    for lint in &ctx.config().clippy.allow {
+    for lint in &clippy_cfg.allow {
         pass_through_args.push("-A".into());
         pass_through_args.push(lint.into());
     }

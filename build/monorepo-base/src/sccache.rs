@@ -6,14 +6,14 @@ use std::{
 use camino::Utf8Path;
 use lgn_tracing::{error, info};
 
-use crate::{config::Sccache, installer::Installer};
+use crate::{config::SccacheConfig, installer::Installer};
 
 /// If the project is configured for sccache, and the env variable `SKIP_SCCACHE` is unset then returns true.
 /// If the `warn_if_not_correct_location` parameter is set to true, warnings will be logged if the project is configured for sccache
 /// but the `CARGO_HOME` or project root are not in the right locations.
 pub fn sccache_should_run(
     workspace_root: &Utf8Path,
-    sccache_config: &Option<Sccache>,
+    sccache_config: &Option<SccacheConfig>,
     warn_if_not_correct_location: bool,
 ) -> bool {
     if var_os("SKIP_SCCACHE").is_none() {
@@ -98,7 +98,7 @@ pub fn stop_sccache_server() {
 pub fn apply_sccache_if_possible<'a>(
     workspace_root: &'a Utf8Path,
     installer: &'a Installer,
-    sccache_config: &'a Option<Sccache>,
+    sccache_config: &'a Option<SccacheConfig>,
 ) -> std::result::Result<Vec<(&'a str, Option<String>)>, &'a str> {
     let mut envs = vec![];
     if sccache_should_run(workspace_root, sccache_config, var_os("CI").is_some()) {

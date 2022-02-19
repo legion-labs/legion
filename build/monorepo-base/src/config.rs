@@ -3,38 +3,45 @@ use std::{collections::HashMap, fs};
 use camino::Utf8Path;
 use serde::Deserialize;
 
-#[derive(Clone, Deserialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "kebab-case")]
-pub struct MonorepoBaseConfig {
-    pub cargo: Cargo,
-}
-
-pub const MONOREPO_FILE: &str = "monorepo.toml";
+pub const MONOREPO_CONFIG_PATH: &str = ".monorepo";
 pub const MONOREPO_DEPTH: usize = 2;
 
-impl MonorepoBaseConfig {
-    /// Reads the monorepo config file from the given root directory.
-    ///
+#[derive(Clone, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct Tools {
+    pub cargo_installs: HashMap<String, CargoInstallation>,
+}
+
+impl Tools {
+    /// Creates a new `Tools` instance.
     /// # Errors
-    /// If the config file cannot be parsed, an error is returned.
-    ///
+    /// If the tools file cannot be parsed.
     pub fn new(root: &Utf8Path) -> Result<Self, toml::de::Error> {
-        let monorepo_file = root.join(MONOREPO_FILE);
-        toml::from_slice(&fs::read(monorepo_file).unwrap())
+        let tools_file = root.join(MONOREPO_CONFIG_PATH).join("tools.toml");
+        toml::from_slice(&fs::read(tools_file).unwrap())
     }
 }
 
 #[derive(Clone, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
-pub struct Cargo {
-    pub sccache: Option<Sccache>,
-    pub user_sccache: Option<Sccache>,
-    pub installs: HashMap<String, CargoInstallation>,
+pub struct Sccache {
+    pub sccache: Option<SccacheConfig>,
+    pub user_sccache: Option<SccacheConfig>,
+}
+
+impl Sccache {
+    /// Creates a new `Sccache` instance.
+    /// # Errors
+    /// If the sccache file cannot be parsed.
+    pub fn new(root: &Utf8Path) -> Result<Self, toml::de::Error> {
+        let sccache_file = root.join(MONOREPO_CONFIG_PATH).join("sccache.toml");
+        toml::from_slice(&fs::read(sccache_file).unwrap())
+    }
 }
 
 #[derive(Clone, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
-pub struct Sccache {
+pub struct SccacheConfig {
     /// Where cargo home must reside for sccache to function properly.  Paths are embedded in binaries by rustc.
     pub required_cargo_home: HostConfig,
     /// Where the git repo for this project must reside.  Paths are embedded in binaries by rustc.

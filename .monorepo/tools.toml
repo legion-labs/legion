@@ -1,0 +1,12 @@
+# cargo tools installation
+[cargo-installs]
+cargo-deny = { version = "0.11.1" }
+grcov = { version = "0.8.6" }
+mdbook = { version = "0.4.15" }
+wasm-bindgen-cli = { version = "0.2.79" }
+
+[cargo-installs.sccache]
+version = "0.2.16-alpha.0"
+git = "https://github.com/diem/sccache.git"
+rev = "ef50d87a58260c30767520045e242ccdbdb965af"
+features = ["s3"]

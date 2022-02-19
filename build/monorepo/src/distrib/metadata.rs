@@ -65,9 +65,9 @@ impl Metadata {
         {
             self.dists.push(DistMetadata::Zip(ZipMetadata {
                 name: Some(package.name().to_owned()),
-                s3_bucket: Some(ctx.config().dist.bucket.clone()),
-                region: ctx.config().dist.region.clone(),
-                s3_bucket_prefix: Some(ctx.config().dist.prefix.clone()),
+                s3_bucket: Some(ctx.config().publish.s3.bucket.clone()),
+                region: ctx.config().publish.s3.region.clone(),
+                s3_bucket_prefix: Some(ctx.config().publish.s3.prefix.clone()),
                 extra_files: vec![],
             }));
         }
@@ -78,13 +78,13 @@ impl Metadata {
                     metadata.name.get_or_insert(package.name().to_string());
                     metadata
                         .s3_bucket
-                        .get_or_insert(ctx.config().dist.bucket.clone());
-                    if let Some(region) = &ctx.config().dist.region {
+                        .get_or_insert(ctx.config().publish.s3.bucket.clone());
+                    if let Some(region) = &ctx.config().publish.s3.region {
                         metadata.region.get_or_insert(region.clone());
                     }
                     metadata
                         .s3_bucket_prefix
-                        .get_or_insert(ctx.config().dist.prefix.clone());
+                        .get_or_insert(ctx.config().publish.s3.prefix.clone());
                 }
                 DistMetadata::Docker(metadata) => {
                     metadata.name.get_or_insert(package.name().to_string());
@@ -93,13 +93,13 @@ impl Metadata {
                     metadata.name.get_or_insert(package.name().to_string());
                     metadata
                         .s3_bucket
-                        .get_or_insert(ctx.config().dist.bucket.clone());
-                    if let Some(region) = &ctx.config().dist.region {
+                        .get_or_insert(ctx.config().publish.s3.bucket.clone());
+                    if let Some(region) = &ctx.config().publish.s3.region {
                         metadata.region.get_or_insert(region.clone());
                     }
                     metadata
                         .s3_bucket_prefix
-                        .get_or_insert(ctx.config().dist.prefix.clone());
+                        .get_or_insert(ctx.config().publish.s3.prefix.clone());
                 }
             }
         }

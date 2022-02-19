@@ -6,7 +6,7 @@ use std::process::{Command, Stdio};
 
 use camino::Utf8Path;
 use monorepo_base::{
-    config::{MonorepoBaseConfig, MONOREPO_DEPTH},
+    config::{Sccache, Tools, MONOREPO_DEPTH},
     installer::Installer,
     sccache::{apply_sccache_if_possible, log_sccache_stats, stop_sccache_server},
 };
@@ -17,10 +17,11 @@ fn main() -> std::io::Result<()> {
         .nth(MONOREPO_DEPTH)
         .unwrap();
 
-    let config = MonorepoBaseConfig::new(workspace_root).unwrap();
-    let installer = Installer::new(config.cargo.installs.clone());
+    let tools = Tools::new(workspace_root).unwrap();
+    let sccache = Sccache::new(workspace_root).unwrap();
+    let installer = Installer::new(tools.cargo_installs);
     let sccache_envs =
-        apply_sccache_if_possible(workspace_root, &installer, &config.cargo.sccache).unwrap();
+        apply_sccache_if_possible(workspace_root, &installer, &sccache.sccache).unwrap();
 
     let mut cmd = Command::new("cargo");
     cmd.args(["build", "-p", "monorepo"]);

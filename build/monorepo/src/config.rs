@@ -3,68 +3,54 @@ use std::{collections::HashMap, fs};
 use camino::Utf8Path;
 use determinator::rules::DeterminatorRules;
 use lgn_tracing::span_fn;
-use monorepo_base::config::{Cargo, HostConfig, MONOREPO_FILE};
+use monorepo_base::config::{HostConfig, Sccache, Tools, MONOREPO_CONFIG_PATH};
 use serde::Deserialize;
 
 use crate::{Error, Result};
 #[derive(Clone, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct MonorepoConfig {
-    pub cargo: Cargo,
-    pub vscode: VsCode,
-    pub clippy: Clippy,
-    pub rustdoc: RustDoc,
+    pub tools: Tools,
+    pub sccache: Sccache,
     pub lints: Lints,
-    pub dist: Dist,
+    pub editor: Editor,
+    pub publish: Publish,
     pub determinator: DeterminatorRules,
     pub npm: Npm,
-    pub package_sets: HashMap<String, Vec<String>>,
-}
-
-#[derive(Clone, Deserialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "kebab-case")]
-pub struct LocalMonorepoConfig {
-    pub vscode: Option<VsCode>,
-    pub cargo: Option<Cargo>,
+    pub package_sets: PackageSets,
 }
 
 impl MonorepoConfig {
     #[span_fn]
     pub fn new(root: &Utf8Path) -> Result<Self> {
-        let mut contents = vec![];
-        let monorepo_file = root.join(MONOREPO_FILE);
-        let mut config: Self = read_config(&monorepo_file, &mut contents)?;
-        let local_monorepo_file = root.join("monorepo.local.toml");
-        if std::fs::metadata(&local_monorepo_file).is_ok() {
-            let local_config = read_config(&local_monorepo_file, &mut contents)?;
-            config.merge_with(&local_config);
-        }
-        Ok(config)
-    }
-    pub fn merge_with(&mut self, other: &LocalMonorepoConfig) {
-        if let Some(vs_code) = &other.vscode {
-            self.vscode = vs_code.clone();
-        }
-        if let Some(cargo) = &other.cargo {
-            let installs = self.cargo.installs.clone();
-            self.cargo = cargo.clone();
-            // should probably invert this, overrides taking precedence ?
-            self.cargo.installs.extend(installs.into_iter());
-        }
-    }
-}
+        let tools = Tools::new(root)
+            .map_err(|err| Error::new("failed to parse tools file").with_source(err))?;
+        let sccache = Sccache::new(root)
+            .map_err(|err| Error::new("failed to parse sccache file").with_source(err))?;
+        let lints = Lints::new(root)?;
+        let editor = Editor::new(root)?;
+        let publish = Publish::new(root)?;
+        let determinator = {
+            let determinator_file = root.join(MONOREPO_CONFIG_PATH).join("determinator.toml");
+            toml::from_slice(&fs::read(&determinator_file).unwrap()).map_err(|err| {
+                Error::new(format!("could not read config file {}", determinator_file))
+                    .with_source(err)
+            })?
+        };
+        let npm = Npm::new(root)?;
+        let package_sets = PackageSets::new(root)?;
 
-pub fn read_config<'de, T: Deserialize<'de>>(
-    path: &Utf8Path,
-    contents: &'de mut Vec<u8>,
-) -> Result<T> {
-    *contents = fs::read(path).map_err(|err| {
-        Error::new(format!("could not read config file {}", path)).with_source(err)
-    })?;
-    let config: T = toml::from_slice(contents).map_err(|err| {
-        Error::new(format!("failed to parse config file {}", path)).with_source(err)
-    })?;
-    Ok(config)
+        Ok(Self {
+            tools,
+            sccache,
+            lints,
+            editor,
+            publish,
+            determinator,
+            npm,
+            package_sets,
+        })
+    }
 }
 
 #[derive(Clone, Deserialize, Debug, PartialEq, Eq)]
@@ -72,6 +58,17 @@ pub fn read_config<'de, T: Deserialize<'de>>(
 pub struct Lints {
     pub direct_dependencies: DirectDependencies,
     pub crate_attributes: CrateAttributes,
+    pub clippy: Clippy,
+    pub rustdoc: RustDoc,
+}
+
+impl Lints {
+    pub fn new(root: &Utf8Path) -> Result<Self> {
+        let lints_file = root.join(MONOREPO_CONFIG_PATH).join("lints.toml");
+        toml::from_slice(&fs::read(&lints_file).unwrap()).map_err(|err| {
+            Error::new(format!("could not read config file {}", lints_file)).with_source(err)
+        })
+    }
 }
 
 /// Dependencies lints configurations
@@ -131,10 +128,24 @@ pub struct Clippy {
 #[derive(Clone, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct RustDoc {
-    pub entry_point: String,
     pub allow: Vec<String>,
     pub warn: Vec<String>,
     pub deny: Vec<String>,
+}
+
+#[derive(Clone, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct Editor {
+    pub vscode: VsCode,
+}
+
+impl Editor {
+    pub fn new(root: &Utf8Path) -> Result<Self> {
+        let lints_file = root.join(MONOREPO_CONFIG_PATH).join("editor.toml");
+        toml::from_slice(&fs::read(&lints_file).unwrap()).map_err(|err| {
+            Error::new(format!("could not read config file {}", lints_file)).with_source(err)
+        })
+    }
 }
 
 #[derive(Default, Clone, Deserialize, Debug, PartialEq, Eq)]
@@ -149,7 +160,23 @@ pub struct VsCode {
 
 #[derive(Clone, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
-pub struct Dist {
+pub struct Publish {
+    pub s3: S3Bucket,
+    pub rustdoc: RustdocPublish,
+}
+
+impl Publish {
+    pub fn new(root: &Utf8Path) -> Result<Self> {
+        let publish_file = root.join(MONOREPO_CONFIG_PATH).join("publish.toml");
+        toml::from_slice(&fs::read(&publish_file).unwrap()).map_err(|err| {
+            Error::new(format!("could not read config file {}", publish_file)).with_source(err)
+        })
+    }
+}
+
+#[derive(Clone, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct S3Bucket {
     /// s3 bucket location
     pub bucket: String,
     /// prefix to files uploaded in to s3
@@ -158,10 +185,40 @@ pub struct Dist {
     pub region: Option<String>,
 }
 
+#[derive(Clone, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct RustdocPublish {
+    pub entry_point: String,
+}
+
 #[derive(Clone, Default, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct Npm {
     pub package_manager: String,
     #[serde(default)]
     pub include: Vec<String>,
+}
+
+impl Npm {
+    pub fn new(root: &Utf8Path) -> Result<Self> {
+        let npm_file = root.join(MONOREPO_CONFIG_PATH).join("npm.toml");
+        toml::from_slice(&fs::read(&npm_file).unwrap()).map_err(|err| {
+            Error::new(format!("could not read config file {}", npm_file)).with_source(err)
+        })
+    }
+}
+
+#[derive(Clone, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct PackageSets {
+    pub package_sets: HashMap<String, Vec<String>>,
+}
+
+impl PackageSets {
+    pub fn new(root: &Utf8Path) -> Result<Self> {
+        let package_sets_file = root.join(MONOREPO_CONFIG_PATH).join("pkg_sets.toml");
+        toml::from_slice(&fs::read(&package_sets_file).unwrap()).map_err(|err| {
+            Error::new(format!("could not read config file {}", package_sets_file)).with_source(err)
+        })
+    }
 }
