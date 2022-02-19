@@ -4,12 +4,17 @@ on:
   schedule:
     # Run the job every 3 hours
     - cron: "0 */3 * * *"
+
   workflow_dispatch:
     inputs:
-      name:
-        description: "Release tag"
-        required: false
-        default: "preflight"
+      web:
+        description: "Web"
+        default: true
+        type: boolean
+      apps:
+        description: "Apps"
+        default: true
+        type: boolean
 
 env:
   CARGO_TERM_COLOR: always
@@ -18,6 +23,7 @@ env:
 jobs:
   build_release:
     name: Building release binaries
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.apps == true
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -49,6 +55,7 @@ jobs:
 
   build_web_release:
     name: Building static websites
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.web == true
     runs-on: [self-hosted, linux, common, build]
     steps:
       - uses: actions/checkout@v2
@@ -77,6 +84,7 @@ jobs:
 
   deploy_web_release:
     name: Deploying static websites
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.web == true
     needs: build_web_release
     runs-on: ubuntu-20.04
     strategy:
