@@ -57,6 +57,8 @@ jobs:
         run: pnpm install --unsafe-perm
 
       - name: Npm build
+        env:
+          GITHUB_PAGES: "true"
         run: pnpm build
 
       - name: Upload analytics artifacts
