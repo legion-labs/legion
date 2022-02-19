@@ -84,7 +84,7 @@ jobs:
 
   deploy_web_release:
     name: Deploying static websites
-    if: github.event_name != 'workflow_dispatch' || github.event.inputs.web == true
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.web == 'true'
     needs: build_web_release
     runs-on: ubuntu-20.04
     strategy:
