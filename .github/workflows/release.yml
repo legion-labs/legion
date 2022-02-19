@@ -23,7 +23,7 @@ env:
 jobs:
   build_release:
     name: Building release binaries
-    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.apps == true }}
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.apps == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -55,7 +55,7 @@ jobs:
 
   build_web_release:
     name: Building static websites
-    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.web == true }}
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.web == 'true'
     runs-on: [self-hosted, linux, common, build]
     steps:
       - uses: actions/checkout@v2
@@ -84,7 +84,7 @@ jobs:
 
   deploy_web_release:
     name: Deploying static websites
-    if: ${{  github.event_name != 'workflow_dispatch' || github.event.inputs.web == true }}
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.web == true
     needs: build_web_release
     runs-on: ubuntu-20.04
     strategy:
