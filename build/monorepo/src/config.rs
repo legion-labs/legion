@@ -147,11 +147,14 @@ impl Editor {
                 Error::new(format!("could not read config file {}", editor_file)).with_source(err)
             })?;
         let editor_local_file = root.join(MONOREPO_CONFIG_PATH).join("editor.local.toml");
-        let editor_local_value: toml::Value =
-            toml::from_slice(&fs::read(&editor_local_file).unwrap()).map_err(|err| {
-                Error::new(format!("could not read config file {}", editor_file)).with_source(err)
-            })?;
-        merge_tomls(&mut editor_value, editor_local_value);
+        if editor_local_file.exists() {
+            let editor_local_value: toml::Value =
+                toml::from_slice(&fs::read(&editor_local_file).unwrap()).map_err(|err| {
+                    Error::new(format!("could not read config file {}", editor_file))
+                        .with_source(err)
+                })?;
+            merge_tomls(&mut editor_value, editor_local_value);
+        }
         editor_value.try_into().map_err(|err| {
             Error::new(format!("could not parse config file {}", editor_file)).with_source(err)
         })
