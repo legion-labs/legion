@@ -141,9 +141,19 @@ pub struct Editor {
 
 impl Editor {
     pub fn new(root: &Utf8Path) -> Result<Self> {
-        let lints_file = root.join(MONOREPO_CONFIG_PATH).join("editor.toml");
-        toml::from_slice(&fs::read(&lints_file).unwrap()).map_err(|err| {
-            Error::new(format!("could not read config file {}", lints_file)).with_source(err)
+        let editor_file = root.join(MONOREPO_CONFIG_PATH).join("editor.toml");
+        let mut editor_value: toml::Value = toml::from_slice(&fs::read(&editor_file).unwrap())
+            .map_err(|err| {
+                Error::new(format!("could not read config file {}", editor_file)).with_source(err)
+            })?;
+        let editor_local_file = root.join(MONOREPO_CONFIG_PATH).join("editor.local.toml");
+        let editor_local_value: toml::Value =
+            toml::from_slice(&fs::read(&editor_local_file).unwrap()).map_err(|err| {
+                Error::new(format!("could not read config file {}", editor_file)).with_source(err)
+            })?;
+        merge_tomls(&mut editor_value, editor_local_value);
+        editor_value.try_into().map_err(|err| {
+            Error::new(format!("could not parse config file {}", editor_file)).with_source(err)
         })
     }
 }
@@ -221,4 +231,20 @@ impl PackageSets {
             Error::new(format!("could not read config file {}", package_sets_file)).with_source(err)
         })
     }
+}
+
+fn merge_tomls(a: &mut toml::Value, b: toml::Value) {
+    if let toml::Value::Table(a) = a {
+        if let toml::Value::Table(b) = b {
+            for (k, v) in b {
+                if let Some(value) = a.get_mut(&k) {
+                    merge_tomls(value, v);
+                } else {
+                    a.insert(k, v);
+                }
+            }
+            return;
+        }
+    }
+    *a = b;
 }
