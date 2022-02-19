@@ -45,28 +45,7 @@ impl std::fmt::Display for Identifier {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let mut enc = base64::write::EncoderStringWriter::new(base64::URL_SAFE_NO_PAD);
 
-        match self {
-            Self::HashRef(size, alg, hash) => {
-                let mut size_buf = [0; 8];
-                byteorder::NetworkEndian::write_u64(&mut size_buf, *size);
-
-                let idx = size_buf
-                    .iter()
-                    .position(|&b| b != 0)
-                    .unwrap_or(size_buf.len() - 1);
-
-                let size_len: u8 = (size_buf.len() - idx).try_into().unwrap();
-
-                enc.write_all(&[size_len]).unwrap();
-                enc.write_all(&size_buf[idx..]).unwrap();
-                enc.write_all(&[*alg as u8]).unwrap();
-                enc.write_all(hash).unwrap();
-            }
-            Self::Data(data) => {
-                enc.write_all(&[0_u8]).unwrap();
-                enc.write_all(data).unwrap();
-            }
-        }
+        self.write_all_to(&mut enc).unwrap();
 
         write!(f, "{}", enc.into_inner())
     }
@@ -228,6 +207,45 @@ impl Identifier {
                 }
             }
         }
+    }
+
+    /// Create a vector from this identifier.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `w` cannot be written to
+    pub fn write_all_to(&self, mut w: impl Write) -> std::io::Result<()> {
+        match self {
+            Self::HashRef(size, alg, hash) => {
+                let mut size_buf = [0; 8];
+                byteorder::NetworkEndian::write_u64(&mut size_buf, *size);
+
+                let idx = size_buf
+                    .iter()
+                    .position(|&b| b != 0)
+                    .unwrap_or(size_buf.len() - 1);
+
+                let size_len: u8 = (size_buf.len() - idx).try_into().unwrap();
+
+                w.write_all(&[size_len])?;
+                w.write_all(&size_buf[idx..])?;
+                w.write_all(&[*alg as u8])?;
+                w.write_all(hash)?;
+            }
+            Self::Data(data) => {
+                w.write_all(&[0_u8])?;
+                w.write_all(data)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Create a vector from this identifier.
+    pub fn as_vec(&self) -> Vec<u8> {
+        let mut buf = Vec::new();
+        self.write_all_to(&mut buf).unwrap();
+        buf
     }
 }
 

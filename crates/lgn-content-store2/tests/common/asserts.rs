@@ -15,10 +15,7 @@ macro_rules! assert_read_content {
             .await
             .expect("failed to read content");
 
-        assert_eq!(
-            $expected_content,
-            String::from_utf8(content).expect("failed to parse content")
-        );
+        assert_eq!(content, $expected_content);
     }};
 }
 
@@ -26,7 +23,7 @@ macro_rules! assert_write_content {
     ($provider:expr, $content:expr) => {{
         #[allow(clippy::string_lit_as_bytes)]
         $provider
-            .write_content($content.as_bytes())
+            .write_content($content)
             .await
             .expect("failed to write content")
     }};

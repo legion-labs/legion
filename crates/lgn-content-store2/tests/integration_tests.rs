@@ -1,8 +1,9 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use lgn_content_store2::{
-    AwsS3Provider, ContentAddressReader, ContentAddressWriter, ContentReader, ContentWriter, Error,
-    GrpcProvider, GrpcService, Identifier, LocalProvider, SmallContentProvider,
+    AwsDynamoDbProvider, AwsS3Provider, ContentAddressReader, ContentAddressWriter, ContentReader,
+    ContentWriter, Error, GrpcProvider, GrpcService, Identifier, LocalProvider,
+    SmallContentProvider,
 };
 
 mod common;
@@ -21,8 +22,8 @@ async fn test_local_provider() {
     let id = Identifier::new_hash_ref_from_data(b"A");
     assert_content_not_found!(provider, id);
 
-    let id = assert_write_content!(provider, "A");
-    assert_read_content!(provider, id, "A");
+    let id = assert_write_content!(provider, b"A");
+    assert_read_content!(provider, id, b"A");
 
     // Another write should yield no error.
     assert_write_avoided!(provider, &id);
@@ -38,12 +39,12 @@ async fn test_small_content_provider() {
     // Files of 1 bytes or less are stored in the identifier.
     let provider = SmallContentProvider::new_with_size_threshold(provider, 1);
 
-    let id = assert_write_content!(provider, "A");
+    let id = assert_write_content!(provider, b"A");
     assert!(id.is_data());
-    assert_read_content!(provider, id, "A");
+    assert_read_content!(provider, id, b"A");
 
     // Another write should yield no error.
-    let new_id = assert_write_content!(provider, "A");
+    let new_id = assert_write_content!(provider, b"A");
     assert_eq!(id, new_id);
 
     // Since we have a hash-ref identifier, it should still not be found as the
@@ -55,9 +56,9 @@ async fn test_small_content_provider() {
     let id = Identifier::new_hash_ref_from_data(b"AA");
     assert_content_not_found!(provider, id);
 
-    let id = assert_write_content!(provider, "AA");
+    let id = assert_write_content!(provider, b"AA");
     assert!(id.is_hash_ref());
-    assert_read_content!(provider, id, "AA");
+    assert_read_content!(provider, id, b"AA");
 }
 
 #[cfg(feature = "aws")]
@@ -76,8 +77,8 @@ async fn test_aws_s3_provider() {
 
     assert_content_not_found!(provider, id);
 
-    let id = assert_write_content!(provider, "A");
-    assert_read_content!(provider, id, "A");
+    let id = assert_write_content!(provider, b"A");
+    assert_read_content!(provider, id, b"A");
 
     // Another write should yield no error.
     assert_write_avoided!(provider, &id);
@@ -110,10 +111,33 @@ async fn test_aws_s3_provider() {
         .error_for_status()
         .unwrap();
 
-    assert_read_content!(provider, id, "Hello");
+    assert_read_content!(provider, id, b"Hello");
 
     // This write should fail as the value already exists.
     assert!(provider.get_content_write_address(&id).await.is_err());
+
+    provider
+        .delete_content(&id)
+        .await
+        .expect("failed to delete content");
+}
+
+#[cfg(feature = "aws")]
+#[ignore]
+#[tokio::test]
+async fn test_aws_dynamodb_provider() {
+    let provider = AwsDynamoDbProvider::new("content-store-test").await;
+
+    let data = uuid::Uuid::new_v4();
+    let data = data.as_bytes();
+    let id = Identifier::new_hash_ref_from_data(data);
+    assert_content_not_found!(provider, id);
+
+    let id = assert_write_content!(provider, data);
+    assert_read_content!(provider, id, data);
+
+    // Another write should yield no error.
+    assert_write_avoided!(provider, &id);
 
     provider
         .delete_content(&id)
@@ -151,11 +175,11 @@ async fn test_grpc_provider() {
         let id = Identifier::new_hash_ref_from_data(b"A");
         assert_content_not_found!(provider, id);
 
-        let id = assert_write_content!(provider, "A");
-        assert_read_content!(provider, id, "A");
+        let id = assert_write_content!(provider, b"A");
+        assert_read_content!(provider, id, b"A");
 
         // Another write should yield no error.
-        let new_id = assert_write_content!(provider, "A");
+        let new_id = assert_write_content!(provider, b"A");
         assert_eq!(id, new_id);
 
         // Now let's try again with a larger file.
@@ -176,8 +200,8 @@ async fn test_grpc_provider() {
             })
             .await;
 
-        let id = assert_write_content!(provider, "AA");
-        assert_read_content!(provider, id, "AA");
+        let id = assert_write_content!(provider, b"AA");
+        assert_read_content!(provider, id, b"AA");
 
         write_mock.assert();
         read_mock.assert();
