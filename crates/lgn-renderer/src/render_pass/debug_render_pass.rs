@@ -239,7 +239,7 @@ impl DebugRenderPass {
         &self,
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
-        debug_display: &mut DebugDisplay,
+        debug_display: &DebugDisplay,
         mesh_manager: &MeshManager,
     ) {
         let pipeline = render_context
@@ -332,7 +332,7 @@ impl DebugRenderPass {
         manipulator_meshes: &[(&VisualComponent, &GlobalTransform, &ManipulatorComponent)],
         camera: &CameraComponent,
         mesh_manager: &MeshManager,
-        debug_display: &mut DebugDisplay,
+        debug_display: &DebugDisplay,
     ) {
         cmd_buffer.begin_render_pass(
             &[ColorRenderTargetBinding {
