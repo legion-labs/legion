@@ -6,7 +6,6 @@ use async_recursion::async_recursion;
 use lgn_analytics::prelude::*;
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
-use lgn_telemetry_proto::analytics::BlockSpansRequest;
 use lgn_telemetry_proto::analytics::CumulativeCallGraphReply;
 use lgn_telemetry_proto::analytics::FindProcessReply;
 use lgn_telemetry_proto::analytics::FindProcessRequest;
@@ -29,6 +28,9 @@ use lgn_telemetry_proto::analytics::ProcessNbLogEntriesRequest;
 use lgn_telemetry_proto::analytics::RecentProcessesRequest;
 use lgn_telemetry_proto::analytics::SearchProcessRequest;
 use lgn_telemetry_proto::analytics::{BlockSpansReply, ProcessMetricReply};
+use lgn_telemetry_proto::analytics::{
+    BlockSpansRequest, ListProcessBlocksRequest, ProcessBlocksReply,
+};
 use lgn_tracing::dispatch::init_thread_stream;
 use lgn_tracing::prelude::*;
 use tonic::{Request, Response, Status};
@@ -270,6 +272,10 @@ impl AnalyticsService {
             self.pool.clone(),
         );
         Ok(metric_handler.fetch_metric(request).await?)
+    }
+
+    async fn list_process_blocks_impl(&self, process_id: &str) -> Result<ProcessBlocksReply> {
+        Ok(ProcessBlocksReply { blocks: vec![] })
     }
 }
 
@@ -557,6 +563,23 @@ impl PerformanceAnalytics for AnalyticsService {
             Ok(reply) => Ok(Response::new(reply)),
             Err(e) => Err(Status::internal(format!(
                 "Error in fetch_process_metric: {}",
+                e
+            ))),
+        }
+    }
+
+    async fn list_process_blocks(
+        &self,
+        request: Request<ListProcessBlocksRequest>,
+    ) -> Result<Response<ProcessBlocksReply>, Status> {
+        let inner_request = request.into_inner();
+        match self
+            .list_process_blocks_impl(&inner_request.process_id)
+            .await
+        {
+            Ok(reply) => Ok(Response::new(reply)),
+            Err(e) => Err(Status::internal(format!(
+                "Error in list_process_blocks: {}",
                 e
             ))),
         }

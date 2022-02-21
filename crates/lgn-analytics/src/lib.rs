@@ -304,6 +304,31 @@ pub async fn find_process_streams(
     Ok(res)
 }
 
+pub async fn find_process_blocks(
+    connection: &mut sqlx::AnyConnection,
+    process_id: &str,
+    tag: &str,
+) -> Result<Vec<EncodedBlock>> {
+    let blocks = sqlx::query(
+        "SELECT B.stream_id, B.begin_time, B.begin_ticks, B.end_time, B.end_ticks, B.nb_objects
+        FROM streams S
+        LEFT JOIN blocks B
+        ON S.stream_id = B.stream_id
+        WHERE S.process_id = ?  
+        AND S.tags like ?
+        AND B.block_id IS NOT NULL",
+    )
+    .bind(process_id)
+    .bind(tag)
+    .fetch_all(connection)
+    .await
+    .with_context(|| "find_process_blocks")?
+    .iter()
+    .map(|r| map_block(r))
+    .collect();
+    Ok(blocks)
+}
+
 pub async fn find_process_log_streams(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
@@ -359,6 +384,21 @@ pub async fn find_stream(
         tags: tags_str.split(' ').map(ToOwned::to_owned).collect(),
         properties,
     })
+}
+
+fn map_block(row: impl Row<Database = sqlx::Any>) -> EncodedBlock {
+    let mut block = EncodedBlock {
+        block_id: row.get("block_id"),
+        stream_id: row.get("stream_id"),
+        begin_time: row.get("begin_time"),
+        begin_ticks: row.get("begin_ticks"),
+        end_time: row.get("end_time"),
+        end_ticks: row.get("end_ticks"),
+        nb_objects: row.get("nb_objects"),
+        payload: None,
+    };
+    // Will need to call a lambda to post write the object
+    block
 }
 
 pub async fn find_block(

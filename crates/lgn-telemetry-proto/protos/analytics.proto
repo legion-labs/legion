@@ -13,6 +13,7 @@ service PerformanceAnalytics {
       returns (CumulativeCallGraphReply);
   rpc find_process(FindProcessRequest) returns (FindProcessReply);
   rpc list_process_children(ListProcessChildrenRequest) returns (ProcessChildrenReply);
+  rpc list_process_blocks(ListProcessBlocksRequest) returns (ProcessBlocksReply);
   rpc list_process_log_entries(ProcessLogRequest) returns (ProcessLogReply);
   rpc nb_process_log_entries(ProcessNbLogEntriesRequest) returns (ProcessNbLogEntriesReply);
   rpc list_process_streams(ListProcessStreamsRequest) returns (ListStreamsReply);
@@ -44,6 +45,14 @@ message ProcessInstance {
 
 message ProcessListReply {
   repeated ProcessInstance processes = 1;
+}
+
+message ListProcessBlocksRequest {
+  string process_id = 1;
+}
+
+message ProcessBlocksReply {
+  repeated telemetry.Block blocks = 1;
 }
 
 // search_processes
