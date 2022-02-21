@@ -374,32 +374,53 @@ fn prepare_shaders(mut pipeline_manager: ResMut<'_, PipelineManager>) {
     clippy::type_complexity
 )]
 fn render_update(
-    renderer: ResMut<'_, Renderer>,
-    bindless_textures: ResMut<'_, BindlessTextureManager>,
-    pipeline_manager: Res<'_, PipelineManager>,
-    bump_allocator_pool: ResMut<'_, BumpAllocatorPool>,
-    mesh_manager: ResMut<'_, MeshManager>,
-    picking_manager: ResMut<'_, PickingManager>,
-    instance_manager: Res<'_, GpuInstanceManager>,
-    mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
-    q_drawables: Query<'_, '_, (Entity, &VisualComponent), Without<ManipulatorComponent>>,
-    q_picked_drawables: Query<
-        '_,
-        '_,
-        (&VisualComponent, &GlobalTransform),
-        (With<PickedComponent>, Without<ManipulatorComponent>),
-    >,
-    q_manipulator_drawables: Query<
-        '_,
-        '_,
-        (&VisualComponent, &GlobalTransform, &ManipulatorComponent),
-    >,
-    lighting_manager: Res<'_, LightingManager>,
-    q_lights: Query<'_, '_, (&LightComponent, &GlobalTransform)>,
-    mut egui: ResMut<'_, Egui>,
-    mut debug_display: ResMut<'_, DebugDisplay>,
-    q_cameras: Query<'_, '_, &CameraComponent>,
+    resources: (
+        ResMut<'_, Renderer>,
+        ResMut<'_, BindlessTextureManager>,
+        Res<'_, PipelineManager>,
+        ResMut<'_, BumpAllocatorPool>,
+        ResMut<'_, MeshManager>,
+        ResMut<'_, PickingManager>,
+        Res<'_, GpuInstanceManager>,
+        ResMut<'_, Egui>,
+        ResMut<'_, DebugDisplay>,
+        Res<'_, LightingManager>,
+    ),
+    queries: (
+        Query<'_, '_, &mut RenderSurface>,
+        Query<'_, '_, (Entity, &VisualComponent), Without<ManipulatorComponent>>,
+        Query<
+            '_,
+            '_,
+            (&VisualComponent, &GlobalTransform),
+            (With<PickedComponent>, Without<ManipulatorComponent>),
+        >,
+        Query<'_, '_, (&VisualComponent, &GlobalTransform, &ManipulatorComponent)>,
+        Query<'_, '_, (&LightComponent, &GlobalTransform)>,
+        Query<'_, '_, &CameraComponent>,
+    ),
 ) {
+    // resources
+    let renderer = resources.0;
+    let bindless_textures = resources.1;
+    let pipeline_manager = resources.2;
+    let bump_allocator_pool = resources.3;
+    let mesh_manager = resources.4;
+    let picking_manager = resources.5;
+    let instance_manager = resources.6;
+    let mut egui = resources.7;
+    let mut debug_display = resources.8;
+    let lighting_manager = resources.9;
+
+    // queries
+    let mut q_render_surfaces = queries.0;
+    let q_drawables = queries.1;
+    let q_picked_drawables = queries.2;
+    let q_manipulator_drawables = queries.3;
+    let q_lights = queries.4;
+    let q_cameras = queries.5;
+
+    // start
     crate::egui::egui_plugin::end_frame(&mut egui);
 
     let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool, &pipeline_manager);
