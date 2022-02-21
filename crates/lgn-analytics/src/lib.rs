@@ -15,6 +15,7 @@ use lgn_telemetry_proto::telemetry::{
 use lgn_tracing::prelude::*;
 use lgn_tracing_transit::{parse_object_buffer, read_dependencies, Member, UserDefinedType, Value};
 use prost::Message;
+use sqlx::any::AnyRow;
 use sqlx::Row;
 
 pub async fn alloc_sql_pool(data_folder: &Path) -> Result<sqlx::AnyPool> {
@@ -310,7 +311,7 @@ pub async fn find_process_blocks(
     tag: &str,
 ) -> Result<Vec<EncodedBlock>> {
     let blocks = sqlx::query(
-        "SELECT B.stream_id, B.begin_time, B.begin_ticks, B.end_time, B.end_ticks, B.nb_objects
+        "SELECT B.stream_id, B.block_id, B.begin_time, B.begin_ticks, B.end_time, B.end_ticks, B.nb_objects
         FROM streams S
         LEFT JOIN blocks B
         ON S.stream_id = B.stream_id
@@ -324,7 +325,7 @@ pub async fn find_process_blocks(
     .await
     .with_context(|| "find_process_blocks")?
     .iter()
-    .map(|r| map_block(r))
+    .map(|r| map_block(r, |r| r))
     .collect();
     Ok(blocks)
 }
@@ -386,18 +387,29 @@ pub async fn find_stream(
     })
 }
 
-fn map_block(row: impl Row<Database = sqlx::Any>) -> EncodedBlock {
-    let mut block = EncodedBlock {
-        block_id: row.get("block_id"),
-        stream_id: row.get("stream_id"),
-        begin_time: row.get("begin_time"),
-        begin_ticks: row.get("begin_ticks"),
-        end_time: row.get("end_time"),
-        end_ticks: row.get("end_ticks"),
-        nb_objects: row.get("nb_objects"),
+fn map_block<F>(row: &AnyRow, mut post_write: F) -> EncodedBlock
+where
+    F: FnMut(&EncodedBlock) -> &EncodedBlock,
+{
+    let block = EncodedBlock {
+        block_id: row
+            .try_get("block_id")
+            .unwrap_or_else(|_| String::from("invalid")),
+        stream_id: row
+            .try_get("stream_id")
+            .unwrap_or_else(|_| String::from("invalid")),
+        begin_time: row
+            .try_get("begin_time")
+            .unwrap_or_else(|_| String::from("invalid")),
+        end_time: row
+            .try_get("end_time")
+            .unwrap_or_else(|_| String::from("invalid")),
+        begin_ticks: row.try_get("begin_ticks").unwrap_or(-1),
+        end_ticks: row.try_get("end_ticks").unwrap_or(-1),
+        nb_objects: row.try_get("nb_objects").unwrap_or(-1),
         payload: None,
     };
-    // Will need to call a lambda to post write the object
+    post_write(&block);
     block
 }
 
