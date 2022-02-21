@@ -50,25 +50,19 @@
     return m.name.toLowerCase().includes(searchString.toLowerCase());
   }
 
-  function onMetricSwitched(e: CustomEvent) {
-    if (e.detail.metric instanceof MetricSelectionState) {
-      const metric = e.detail.metric;
-      const index = state.indexOf(metric);
-      state[index] = metric;
-      state = state;
-      if (metric.selected) {
-        if (!userUsedMetrics.includes(metric.name)) {
-          userUsedMetrics = [...userUsedMetrics, metric.name].slice(-5);
-        }
-        localStorage.setItem(
-          "metric-lastUsed",
-          JSON.stringify(userUsedMetrics)
-        );
+  function onMetricSwitched(metric: MetricSelectionState) {
+    const index = state.indexOf(metric);
+    state[index] = metric;
+    state = state;
+    if (metric.selected) {
+      if (!userUsedMetrics.includes(metric.name)) {
+        userUsedMetrics = [...userUsedMetrics, metric.name].slice(-5);
       }
-      dispatcher("metric-switched", {
-        metric: metric as MetricSelectionState,
-      });
+      localStorage.setItem("metric-lastUsed", JSON.stringify(userUsedMetrics));
     }
+    dispatcher("metric-switched", {
+      metric: metric as MetricSelectionState,
+    });
   }
 
   function handleKeydown(event: KeyboardEvent) {
@@ -99,13 +93,10 @@
           <div>
             <input
               type="text"
-              class="metric-search border-b-2 border-t-2 border-l-2"
+              class="metric-search border-2"
               placeholder="Search metric..."
               on:input={onSearchChange}
             />
-            <button class="bg-gray-200 inline-block w-6 h-fit">
-              <i class="bi bi-search" />
-            </button>
           </div>
           <div class="flex space-x-3 select-none">
             <div class="text-gray-400">
@@ -113,9 +104,10 @@
             </div>
             <div
               on:click={() => {
-                state.forEach((m) => (m.selected = false));
-                state = [...state];
-                return;
+                state.forEach((m) => {
+                  m.selected = false;
+                  onMetricSwitched(m);
+                });
               }}
             >
               <i class="bi bi-x-circle" />
@@ -129,7 +121,7 @@
             <div class="grid grid-cols-1 justify-items-start">
               {#each recentlyUsedMetrics as metric}
                 <MetricSelectionItem
-                  on:metric-switched={(e) => onMetricSwitched(e)}
+                  on:metric-switched={(e) => onMetricSwitched(e.detail.metric)}
                   {metric}
                 />
               {/each}
@@ -140,7 +132,7 @@
             <div class="grid grid-cols-2 justify-items-start">
               {#each filteredMetrics as metric}
                 <MetricSelectionItem
-                  on:metric-switched={(e) => onMetricSwitched(e)}
+                  on:metric-switched={(e) => onMetricSwitched(e.detail.metric)}
                   {metric}
                 />
               {/each}
