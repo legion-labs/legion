@@ -21,6 +21,7 @@ http-body = "0.4"
 lgn-online = { path = "../lgn-online", version = "0.1.0" }
 lgn-content-store-proto = { path = "../lgn-content-store-proto", version = "0.1.0" }
 pin-project = "1"
+redis = { version = "0.21.0", features = ["tokio-comp"], optional = true }
 reqwest = { version = "0.11.9", features = ["stream"] }
 smallvec = "1.8.0"
 tempfile = "3.2"
@@ -32,7 +33,7 @@ tokio-stream = "0.1.8"
 tokio-util = { version = "0.6.9", features = ["full"] }
 
 [features]
-default = ["aws"]
+default = ["aws", "redis"]
 aws = ["aws-config", "aws-sdk-s3", "aws-sdk-dynamodb"]
 
 [dev-dependencies]

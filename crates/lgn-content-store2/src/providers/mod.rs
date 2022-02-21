@@ -4,8 +4,12 @@ mod aws_dynamodb;
 mod aws_s3;
 mod grpc;
 mod local;
+#[cfg(feature = "redis")]
+mod redis;
 mod small_content;
 
+#[cfg(feature = "redis")]
+pub use self::redis::RedisProvider;
 #[cfg(feature = "aws")]
 pub use aws_dynamodb::AwsDynamoDbProvider;
 #[cfg(feature = "aws")]

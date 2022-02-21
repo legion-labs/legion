@@ -1,10 +1,14 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use lgn_content_store2::{
-    AwsDynamoDbProvider, AwsS3Provider, ContentAddressReader, ContentAddressWriter, ContentReader,
-    ContentWriter, Error, GrpcProvider, GrpcService, Identifier, LocalProvider,
-    SmallContentProvider,
+    ContentAddressReader, ContentAddressWriter, ContentReader, ContentWriter, Error, GrpcProvider,
+    GrpcService, Identifier, LocalProvider, SmallContentProvider,
 };
+
+#[cfg(feature = "redis")]
+use lgn_content_store2::RedisProvider;
+#[cfg(feature = "aws")]
+use lgn_content_store2::{AwsDynamoDbProvider, AwsS3Provider};
 
 mod common;
 
@@ -127,6 +131,33 @@ async fn test_aws_s3_provider() {
 #[tokio::test]
 async fn test_aws_dynamodb_provider() {
     let provider = AwsDynamoDbProvider::new("content-store-test").await;
+
+    let data = uuid::Uuid::new_v4();
+    let data = data.as_bytes();
+    let id = Identifier::new_hash_ref_from_data(data);
+    assert_content_not_found!(provider, id);
+
+    let id = assert_write_content!(provider, data);
+    assert_read_content!(provider, id, data);
+
+    // Another write should yield no error.
+    assert_write_avoided!(provider, &id);
+
+    provider
+        .delete_content(&id)
+        .await
+        .expect("failed to delete content");
+}
+
+#[cfg(feature = "redis")]
+#[ignore]
+#[tokio::test]
+async fn test_redis_provider() {
+    let redis_url =
+        std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379".to_string());
+    let provider = RedisProvider::new(redis_url, "content-store")
+        .await
+        .expect("failed to create Redis provider");
 
     let data = uuid::Uuid::new_v4();
     let data = data.as_bytes();
