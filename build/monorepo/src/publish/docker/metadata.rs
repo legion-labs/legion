@@ -1,9 +1,9 @@
 use camino::Utf8PathBuf;
 use serde::{Deserialize, Serialize};
 
-use crate::distrib::{dist_package::DistPackage, dist_target::DistTarget, metadata::CopyCommand};
+use crate::publish::{metadata::CopyCommand, package::PublishPackage, target::PublishTarget};
 
-use super::DockerDistTarget;
+use super::DockerPublishTarget;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
@@ -30,8 +30,8 @@ fn default_target_runtime() -> String {
 }
 
 impl DockerMetadata {
-    pub fn into_dist_target<'g>(self, package: &'g DistPackage<'g>) -> DistTarget<'g> {
-        DistTarget::Docker(DockerDistTarget {
+    pub fn into_dist_target<'g>(self, package: &'g PublishPackage<'g>) -> PublishTarget<'g> {
+        PublishTarget::Docker(DockerPublishTarget {
             package,
             metadata: self,
         })

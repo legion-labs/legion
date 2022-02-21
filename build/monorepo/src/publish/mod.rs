@@ -9,16 +9,16 @@ use crate::{
 };
 
 mod aws_lambda;
-mod dist_package;
-mod dist_target;
 mod docker;
 mod hash;
 mod metadata;
+mod package;
+mod target;
 mod zip;
 
-use dist_package::DistPackage;
-use dist_target::DistTarget;
 use lgn_tracing::{set_max_level, LevelFilter};
+use package::PublishPackage;
+use target::PublishTarget;
 
 #[derive(Debug, clap::Args, Default)]
 pub struct Args {
@@ -55,7 +55,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     let dist_packages: Vec<_> = selected_packages
         .iter()
         .map(|name| {
-            DistPackage::new(
+            PublishPackage::new(
                 ctx,
                 ctx.package_graph()?
                     .workspace()

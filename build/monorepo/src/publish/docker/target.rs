@@ -14,10 +14,10 @@ use tinytemplate::TinyTemplate;
 use crate::{
     cargo::{target_config, target_dir},
     context::Context,
-    distrib::{
+    publish::{
         self,
-        dist_target::{clean, copy_binaries, copy_extra_files},
-        DistPackage,
+        target::{clean, copy_binaries, copy_extra_files},
+        PublishPackage,
     },
     Error, ErrorContext, Result,
 };
@@ -26,24 +26,24 @@ use super::DockerMetadata;
 
 pub const DEFAULT_DOCKER_REGISTRY_ENV_VAR_NAME: &str = "MONOREPO_DOCKER_REGISTRY";
 
-pub struct DockerDistTarget<'g> {
-    pub package: &'g DistPackage<'g>,
+pub struct DockerPublishTarget<'g> {
+    pub package: &'g PublishPackage<'g>,
     pub metadata: DockerMetadata,
 }
 
-impl Display for DockerDistTarget<'_> {
+impl Display for DockerPublishTarget<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "docker[{}]", self.package.name())
     }
 }
 
-impl<'g> DockerDistTarget<'g> {
+impl<'g> DockerPublishTarget<'g> {
     pub fn name(&self) -> &str {
         // we are supposed to have filled the name with a default value
         self.metadata.name.as_ref().unwrap()
     }
 
-    pub fn build(&self, ctx: &Context, args: &distrib::Args) -> Result<()> {
+    pub fn build(&self, ctx: &Context, args: &publish::Args) -> Result<()> {
         if target_config(ctx, &args.build_args)?.contains("windows") {
             skip_step!(
                 "Unsupported",
@@ -67,7 +67,7 @@ impl<'g> DockerDistTarget<'g> {
         Ok(())
     }
 
-    pub fn publish(&self, ctx: &Context, args: &distrib::Args) -> Result<()> {
+    pub fn publish(&self, ctx: &Context, args: &publish::Args) -> Result<()> {
         if target_config(ctx, &args.build_args)?.contains("windows") {
             skip_step!(
                 "Unsupported",
@@ -90,7 +90,7 @@ impl<'g> DockerDistTarget<'g> {
         Ok(())
     }
 
-    fn docker_pull(args: &distrib::Args, docker_image_name: &str) -> Result<bool> {
+    fn docker_pull(args: &publish::Args, docker_image_name: &str) -> Result<bool> {
         let mut cmd = Command::new("docker");
 
         debug!(
@@ -121,7 +121,7 @@ impl<'g> DockerDistTarget<'g> {
         }
     }
 
-    fn docker_push(&self, args: &distrib::Args) -> Result<()> {
+    fn docker_push(&self, args: &publish::Args) -> Result<()> {
         let mut cmd = Command::new("docker");
         let docker_image_name = self.docker_image_name()?;
 
@@ -283,7 +283,7 @@ impl<'g> DockerDistTarget<'g> {
         }
     }
 
-    fn build_dockerfile(&self, args: &distrib::Args, docker_file: &Utf8Path) -> Result<()> {
+    fn build_dockerfile(&self, args: &publish::Args, docker_file: &Utf8Path) -> Result<()> {
         if cfg!(windows) {
             skip_step!("Unsupported", "Docker build is not supported on Windows");
             return Ok(());
@@ -373,11 +373,11 @@ impl<'g> DockerDistTarget<'g> {
         )))
     }
 
-    fn docker_root(&self, ctx: &Context, args: &distrib::Args) -> Result<Utf8PathBuf> {
+    fn docker_root(&self, ctx: &Context, args: &publish::Args) -> Result<Utf8PathBuf> {
         target_dir(ctx, &args.build_args).map(|dir| dir.join("docker").join(self.name()))
     }
 
-    fn docker_target_bin_dir(&self, ctx: &Context, args: &distrib::Args) -> Result<Utf8PathBuf> {
+    fn docker_target_bin_dir(&self, ctx: &Context, args: &publish::Args) -> Result<Utf8PathBuf> {
         let relative_target_bin_dir = self
             .metadata
             .target_bin_dir
@@ -391,7 +391,7 @@ impl<'g> DockerDistTarget<'g> {
     fn write_dockerfile(
         &self,
         ctx: &Context,
-        args: &distrib::Args,
+        args: &publish::Args,
         binaries: &HashMap<String, Utf8PathBuf>,
     ) -> Result<Utf8PathBuf> {
         let dockerfile = self.generate_dockerfile(binaries)?;
@@ -417,7 +417,7 @@ impl<'g> DockerDistTarget<'g> {
         Ok(dockerfile_path)
     }
 
-    fn dockerfile_name(&self, ctx: &Context, args: &distrib::Args) -> Result<Utf8PathBuf> {
+    fn dockerfile_name(&self, ctx: &Context, args: &publish::Args) -> Result<Utf8PathBuf> {
         self.docker_root(ctx, args)
             .map(|dir| dir.join("Dockerfile"))
     }

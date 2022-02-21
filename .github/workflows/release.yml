@@ -41,7 +41,7 @@ jobs:
       - name: Build
         env:
           MONOREPO_DOCKER_REGISTRY: ${{ secrets.MONOREPO_DOCKER_REGISTRY }}
-        run: cargo m dist --release --force -p analytics-web -p editor-client -p editor-srv -p telemetry-ingestion-srv -p analytics-srv -p source-control-srv
+        run: cargo m publish --release --force -p analytics-web -p editor-client -p editor-srv -p telemetry-ingestion-srv -p analytics-srv -p source-control-srv
 
       - name: Upload Zip artifacts to github
         if: runner.os == 'Windows'

@@ -8,44 +8,44 @@ use walkdir::WalkDir;
 use crate::{context::Context, error::ErrorContext, Error};
 
 use super::{
-    aws_lambda::AwsLambdaDistTarget, docker::DockerDistTarget, metadata::CopyCommand,
-    zip::ZipDistTarget, Result,
+    aws_lambda::AwsLambdaDistTarget, docker::DockerPublishTarget, metadata::CopyCommand,
+    zip::ZipPublishTarget, Result,
 };
 
 // Quite frankly, this structure is not used much and never in a context where
 // its performance is critical. So we don't really care about the size of the
 // enum.
 #[allow(clippy::large_enum_variant)]
-pub enum DistTarget<'g> {
+pub enum PublishTarget<'g> {
     AwsLambda(AwsLambdaDistTarget<'g>),
-    Docker(DockerDistTarget<'g>),
-    Zip(ZipDistTarget<'g>),
+    Docker(DockerPublishTarget<'g>),
+    Zip(ZipPublishTarget<'g>),
 }
 
-impl DistTarget<'_> {
+impl PublishTarget<'_> {
     pub fn build(&self, ctx: &Context, args: &super::Args) -> Result<()> {
         match self {
-            DistTarget::AwsLambda(dist_target) => dist_target.build(ctx, args),
-            DistTarget::Docker(dist_target) => dist_target.build(ctx, args),
-            DistTarget::Zip(dist_target) => dist_target.build(ctx, args),
+            PublishTarget::AwsLambda(dist_target) => dist_target.build(ctx, args),
+            PublishTarget::Docker(dist_target) => dist_target.build(ctx, args),
+            PublishTarget::Zip(dist_target) => dist_target.build(ctx, args),
         }
     }
 
     pub fn publish(&self, ctx: &Context, args: &super::Args) -> Result<()> {
         match self {
-            DistTarget::AwsLambda(dist_target) => dist_target.publish(ctx, args),
-            DistTarget::Docker(dist_target) => dist_target.publish(ctx, args),
-            DistTarget::Zip(dist_target) => dist_target.publish(ctx, args),
+            PublishTarget::AwsLambda(dist_target) => dist_target.publish(ctx, args),
+            PublishTarget::Docker(dist_target) => dist_target.publish(ctx, args),
+            PublishTarget::Zip(dist_target) => dist_target.publish(ctx, args),
         }
     }
 }
 
-impl Display for DistTarget<'_> {
+impl Display for PublishTarget<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DistTarget::AwsLambda(dist_target) => dist_target.fmt(f),
-            DistTarget::Docker(dist_target) => dist_target.fmt(f),
-            DistTarget::Zip(dist_target) => dist_target.fmt(f),
+            PublishTarget::AwsLambda(dist_target) => dist_target.fmt(f),
+            PublishTarget::Docker(dist_target) => dist_target.fmt(f),
+            PublishTarget::Zip(dist_target) => dist_target.fmt(f),
         }
     }
 }

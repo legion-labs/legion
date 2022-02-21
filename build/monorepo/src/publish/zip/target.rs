@@ -6,34 +6,34 @@ use lgn_tracing::debug;
 
 use crate::cargo::{target_config, target_dir};
 use crate::context::Context;
-use crate::distrib::dist_target::{
+use crate::publish::target::{
     build_zip_archive, clean, copy_binaries, copy_extra_files,
     DEFAULT_AWS_LAMBDA_S3_BUCKET_ENV_VAR_NAME,
 };
-use crate::distrib::{self, dist_package::DistPackage};
+use crate::publish::{self, package::PublishPackage};
 
 use crate::{Error, Result};
 
 use super::ZipMetadata;
 
-pub struct ZipDistTarget<'g> {
-    pub package: &'g DistPackage<'g>,
+pub struct ZipPublishTarget<'g> {
+    pub package: &'g PublishPackage<'g>,
     pub metadata: ZipMetadata,
 }
 
-impl Display for ZipDistTarget<'_> {
+impl Display for ZipPublishTarget<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "zip[{}]", self.package.name())
     }
 }
 
-impl<'g> ZipDistTarget<'g> {
+impl<'g> ZipPublishTarget<'g> {
     pub fn name(&self) -> &str {
         // we are supposed to have filled the name with a default value
         self.metadata.name.as_ref().unwrap()
     }
 
-    pub fn build(&self, ctx: &Context, args: &distrib::Args) -> Result<()> {
+    pub fn build(&self, ctx: &Context, args: &publish::Args) -> Result<()> {
         let root = self.zip_root(ctx, args)?;
         let archive = self.archive_path(ctx, args)?;
 
@@ -48,7 +48,7 @@ impl<'g> ZipDistTarget<'g> {
         Ok(())
     }
 
-    pub fn publish(&self, ctx: &Context, args: &distrib::Args) -> Result<()> {
+    pub fn publish(&self, ctx: &Context, args: &publish::Args) -> Result<()> {
         let archive = self.archive_path(ctx, args)?;
         let region = self.metadata.region.clone();
         let s3_bucket = self.s3_bucket()?;
@@ -78,13 +78,13 @@ impl<'g> ZipDistTarget<'g> {
         }
     }
 
-    fn archive_path(&self, ctx: &Context, args: &crate::distrib::Args) -> Result<Utf8PathBuf> {
+    fn archive_path(&self, ctx: &Context, args: &crate::publish::Args) -> Result<Utf8PathBuf> {
         Ok(target_dir(ctx, &args.build_args)?
             .join("zip")
             .join(format!("{}.zip", self.name())))
     }
 
-    fn zip_root(&self, ctx: &Context, args: &distrib::Args) -> Result<Utf8PathBuf> {
+    fn zip_root(&self, ctx: &Context, args: &publish::Args) -> Result<Utf8PathBuf> {
         Ok(target_dir(ctx, &args.build_args)?
             .join("zip")
             .join(self.name()))

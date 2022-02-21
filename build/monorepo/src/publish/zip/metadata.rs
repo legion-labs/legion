@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::distrib::{dist_package::DistPackage, dist_target::DistTarget, metadata::CopyCommand};
+use crate::publish::{metadata::CopyCommand, package::PublishPackage, target::PublishTarget};
 
-use super::ZipDistTarget;
+use super::ZipPublishTarget;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
@@ -18,8 +18,8 @@ pub struct ZipMetadata {
 }
 
 impl ZipMetadata {
-    pub fn into_dist_target<'g>(self, package: &'g DistPackage<'g>) -> DistTarget<'g> {
-        DistTarget::Zip(ZipDistTarget {
+    pub fn into_dist_target<'g>(self, package: &'g PublishPackage<'g>) -> PublishTarget<'g> {
+        PublishTarget::Zip(ZipPublishTarget {
             package,
             metadata: self,
         })

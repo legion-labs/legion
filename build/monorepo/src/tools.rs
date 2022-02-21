@@ -7,9 +7,11 @@ use crate::{context::Context, Error, Result};
 
 #[derive(Debug, clap::Args)]
 pub struct Args {
-    #[clap(long)]
     /// Run in 'check' mode. Exits with 0 if all tools installed. Exits with 1 and if not, printing failed
+    #[clap(long)]
     check: bool,
+    #[clap(long)]
+    root: Option<String>,
 }
 
 #[span_fn]
@@ -17,7 +19,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     let success = if args.check {
         ctx.installer().check_all()
     } else {
-        ctx.installer().install_all()
+        ctx.installer().install_all(args.root.as_deref())
     };
     if success {
         Ok(())

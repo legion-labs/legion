@@ -18,13 +18,13 @@ use crate::{
 
 /// A package in the workspace.
 #[derive(Clone)]
-pub struct DistPackage<'g> {
+pub struct PublishPackage<'g> {
     package: guppy::graph::PackageMetadata<'g>,
     metadata: Metadata,
     hash: String,
 }
 
-impl<'g> DistPackage<'g> {
+impl<'g> PublishPackage<'g> {
     pub(super) fn new(
         ctx: &'g Context,
         package: guppy::graph::PackageMetadata<'g>,
@@ -36,7 +36,7 @@ impl<'g> DistPackage<'g> {
         );
 
         let metadata = Metadata::new(ctx, &package)?;
-        let hash = HashSource::hash(&package, hash_cache, Some(&metadata.dists))?;
+        let hash = HashSource::hash(&package, hash_cache, Some(&metadata.publications))?;
 
         Ok(Self {
             package,
@@ -153,7 +153,7 @@ impl<'g> DistPackage<'g> {
     }
 
     pub fn metadata_hash(&self, version: &semver::Version) -> Option<&String> {
-        if let Some(dist_hash) = &self.metadata.dist_hash {
+        if let Some(dist_hash) = &self.metadata.publish_hash {
             if *version == dist_hash.version {
                 return Some(&dist_hash.hash);
             }

@@ -5,13 +5,13 @@ use monorepo_base::skip_step;
 
 use lgn_tracing::debug;
 
-use super::super::DistPackage;
+use super::super::PublishPackage;
 use crate::{
     cargo::target_dir,
     context::Context,
-    distrib::{
+    publish::{
         self,
-        dist_target::{
+        target::{
             build_zip_archive, clean, copy_binaries, copy_extra_files,
             DEFAULT_AWS_LAMBDA_S3_BUCKET_ENV_VAR_NAME,
         },
@@ -22,7 +22,7 @@ use crate::{
 use super::AwsLambdaMetadata;
 
 pub struct AwsLambdaDistTarget<'g> {
-    pub package: &'g DistPackage<'g>,
+    pub package: &'g PublishPackage<'g>,
     pub metadata: AwsLambdaMetadata,
 }
 
@@ -38,7 +38,7 @@ impl<'g> AwsLambdaDistTarget<'g> {
         self.metadata.name.as_ref().unwrap()
     }
 
-    pub fn build(&self, ctx: &Context, args: &crate::distrib::Args) -> Result<()> {
+    pub fn build(&self, ctx: &Context, args: &crate::publish::Args) -> Result<()> {
         if cfg!(windows) {
             skip_step!(
                 "Unsupported",
@@ -65,7 +65,7 @@ impl<'g> AwsLambdaDistTarget<'g> {
         Ok(())
     }
 
-    pub fn publish(&self, ctx: &Context, args: &crate::distrib::Args) -> Result<()> {
+    pub fn publish(&self, ctx: &Context, args: &crate::publish::Args) -> Result<()> {
         if cfg!(windows) {
             skip_step!(
                 "Unsupported",
@@ -87,7 +87,7 @@ impl<'g> AwsLambdaDistTarget<'g> {
         Ok(())
     }
 
-    fn upload_archive(&self, ctx: &Context, args: &crate::distrib::Args) -> Result<()> {
+    fn upload_archive(&self, ctx: &Context, args: &crate::publish::Args) -> Result<()> {
         // this is not tested, just a placeholder
         let archive_path = self.archive_path(ctx, args)?;
         let region = self.metadata.region.clone();
@@ -116,12 +116,12 @@ impl<'g> AwsLambdaDistTarget<'g> {
         }
     }
 
-    fn archive_path(&self, ctx: &Context, args: &crate::distrib::Args) -> Result<Utf8PathBuf> {
+    fn archive_path(&self, ctx: &Context, args: &crate::publish::Args) -> Result<Utf8PathBuf> {
         self.lambda_root(ctx, args)
             .map(|dir| dir.join(format!("aws-lambda-{}.zip", self.name())))
     }
 
-    fn lambda_root(&self, ctx: &Context, args: &distrib::Args) -> Result<Utf8PathBuf> {
+    fn lambda_root(&self, ctx: &Context, args: &publish::Args) -> Result<Utf8PathBuf> {
         target_dir(ctx, &args.build_args).map(|dir| dir.join("aws-lambda").join(self.name()))
     }
 

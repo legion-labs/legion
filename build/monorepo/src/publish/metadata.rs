@@ -7,8 +7,8 @@ use lgn_tracing::debug;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    aws_lambda::AwsLambdaMetadata, docker::DockerMetadata, zip::ZipMetadata, DistPackage,
-    DistTarget,
+    aws_lambda::AwsLambdaMetadata, docker::DockerMetadata, zip::ZipMetadata, PublishPackage,
+    PublishTarget,
 };
 
 use crate::{context::Context, Error, ErrorContext, Result};
@@ -16,10 +16,10 @@ use crate::{context::Context, Error, ErrorContext, Result};
 /// The root metadata structure.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(super) struct Metadata {
-    #[serde(rename = "dist")]
-    pub dists: Vec<DistMetadata>,
-    #[serde(default, rename = "dist-hash")]
-    pub dist_hash: Option<HashMetadata>,
+    #[serde(rename = "publish")]
+    pub publications: Vec<PublishMetadata>,
+    #[serde(default, rename = "publish-hash")]
+    pub publish_hash: Option<HashMetadata>,
 }
 
 impl Metadata {
@@ -49,8 +49,11 @@ impl Metadata {
         Ok(metadata)
     }
 
-    pub(super) fn dist_targets<'g>(&self, package: &'g DistPackage<'g>) -> Vec<DistTarget<'g>> {
-        self.dists
+    pub(super) fn dist_targets<'g>(
+        &self,
+        package: &'g PublishPackage<'g>,
+    ) -> Vec<PublishTarget<'g>> {
+        self.publications
             .iter()
             .map(|dist_metadata| dist_metadata.to_dist_target(package))
             .collect()
@@ -59,11 +62,11 @@ impl Metadata {
     fn set_defaults(&mut self, ctx: &Context, package: &guppy::graph::PackageMetadata<'_>) {
         // Add default zip dist target if not exist
         if !self
-            .dists
+            .publications
             .iter()
-            .any(|dist_metadata| matches!(dist_metadata, DistMetadata::Zip(_)))
+            .any(|dist_metadata| matches!(dist_metadata, PublishMetadata::Zip(_)))
         {
-            self.dists.push(DistMetadata::Zip(ZipMetadata {
+            self.publications.push(PublishMetadata::Zip(ZipMetadata {
                 name: Some(package.name().to_owned()),
                 s3_bucket: Some(ctx.config().publish.s3.bucket.clone()),
                 region: ctx.config().publish.s3.region.clone(),
@@ -72,9 +75,9 @@ impl Metadata {
             }));
         }
 
-        for dist_metadata in &mut self.dists {
+        for dist_metadata in &mut self.publications {
             match dist_metadata {
-                DistMetadata::AwsLambda(metadata) => {
+                PublishMetadata::AwsLambda(metadata) => {
                     metadata.name.get_or_insert(package.name().to_string());
                     metadata
                         .s3_bucket
@@ -86,10 +89,10 @@ impl Metadata {
                         .s3_bucket_prefix
                         .get_or_insert(ctx.config().publish.s3.prefix.clone());
                 }
-                DistMetadata::Docker(metadata) => {
+                PublishMetadata::Docker(metadata) => {
                     metadata.name.get_or_insert(package.name().to_string());
                 }
-                DistMetadata::Zip(metadata) => {
+                PublishMetadata::Zip(metadata) => {
                     metadata.name.get_or_insert(package.name().to_string());
                     metadata
                         .s3_bucket
@@ -108,7 +111,7 @@ impl Metadata {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
-pub(super) enum DistMetadata {
+pub(super) enum PublishMetadata {
     #[serde(rename = "docker")]
     Docker(DockerMetadata),
     #[serde(rename = "aws-lambda")]
@@ -117,8 +120,8 @@ pub(super) enum DistMetadata {
     Zip(ZipMetadata),
 }
 
-impl DistMetadata {
-    pub fn to_dist_target<'g>(&self, package: &'g DistPackage<'g>) -> DistTarget<'g> {
+impl PublishMetadata {
+    pub fn to_dist_target<'g>(&self, package: &'g PublishPackage<'g>) -> PublishTarget<'g> {
         match self {
             Self::Docker(docker) => docker.clone().into_dist_target(package),
             Self::AwsLambda(lambda) => lambda.clone().into_dist_target(package),

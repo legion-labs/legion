@@ -17,7 +17,6 @@ mod ci;
 mod clippy;
 mod config;
 mod context;
-mod distrib;
 mod doc;
 mod error;
 mod fix;
@@ -26,6 +25,7 @@ mod git;
 mod hakari;
 mod lint;
 mod npm;
+mod publish;
 mod run;
 mod test;
 mod tools;
@@ -87,8 +87,8 @@ enum Commands {
     #[clap(name = "ci")]
     Ci(ci::Args),
     /// Build a distribution version of executables, docker images, lambda functions, etc.
-    #[clap(name = "dist")]
-    Dist(distrib::Args),
+    #[clap(name = "publish")]
+    Publish(publish::Args),
     /// List packages changed since merge base with the given commit
     ///
     /// Note that this compares against the merge base (common ancestor) of the specified commit.
@@ -139,7 +139,7 @@ fn main() {
 
         Commands::Cd(args) => cd::run(&args, &ctx),
         Commands::Ci(args) => ci::run(&args, &ctx),
-        Commands::Dist(args) => distrib::run(&args, &ctx),
+        Commands::Publish(args) => publish::run(&args, &ctx),
         Commands::ChangedSince(args) => changed_since::run(&args, &ctx),
         Commands::Hakari => hakari::run(&ctx),
         Commands::Lint(args) => lint::run(&args, &ctx),

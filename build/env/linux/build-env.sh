@@ -62,6 +62,9 @@ sudo apt-get install -y \
     libfuse3-dev \
     musl-tools
 
+# Create a link for clang format
+sudo ln -s clang-format-${LLVM_VERSION} /usr/bin/clang-format
+
 NINJA_LATEST=$(curl -s https://api.github.com/repos/ninja-build/ninja/releases/latest | \
     jq -r ".assets[] | select(.name | test(\"linux\")) | .browser_download_url")
 sudo wget $NINJA_LATEST
@@ -189,12 +192,13 @@ echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https:/
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 
-apt-get update && apt-get install -y terraform kubectl docker-ce docker-ce-cli containerd.io
-
+sudo apt-get update && sudo apt-get install -y terraform kubectl docker-ce docker-ce-cli containerd.io
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 unzip awscliv2.zip
 sudo ./aws/install
 rm -rf ./awscliv2.zip ./aws
+
+sudo usermod -aG docker $USER
 
 # Cleanup apt-get caches
 sudo rm -rf /var/lib/apt/lists/*

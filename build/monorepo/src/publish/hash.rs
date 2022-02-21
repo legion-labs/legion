@@ -5,7 +5,7 @@ use guppy::{graph::PackageMetadata, PackageId};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
-use super::metadata::DistMetadata;
+use super::metadata::PublishMetadata;
 use crate::{Error, Result};
 
 /// A structure whose sole purpose is to help compute a deterministic hash of a
@@ -26,14 +26,14 @@ pub(crate) struct HashSource<'g> {
     links: Option<&'g str>,
     direct_links: Vec<String>,
     sources: String,
-    dist_metadatas: Option<&'g Vec<DistMetadata>>,
+    dist_metadatas: Option<&'g Vec<PublishMetadata>>,
 }
 
 impl<'g> HashSource<'g> {
     pub(super) fn hash(
         package: &PackageMetadata<'g>,
         hash_cache: &mut HashMap<PackageId, String>,
-        dist_metadatas: Option<&'g Vec<DistMetadata>>,
+        dist_metadatas: Option<&'g Vec<PublishMetadata>>,
     ) -> Result<String> {
         if let Some(hash) = hash_cache.get(package.id()) {
             return Ok(hash.clone());

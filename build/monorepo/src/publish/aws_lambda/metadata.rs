@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 use super::super::{
-    aws_lambda::AwsLambdaDistTarget, dist_package::DistPackage, dist_target::DistTarget,
-    metadata::CopyCommand,
+    aws_lambda::AwsLambdaDistTarget, metadata::CopyCommand, package::PublishPackage,
+    target::PublishTarget,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -26,8 +26,8 @@ fn default_target_runtime() -> String {
 }
 
 impl AwsLambdaMetadata {
-    pub fn into_dist_target<'g>(self, package: &'g DistPackage<'g>) -> DistTarget<'g> {
-        DistTarget::AwsLambda(AwsLambdaDistTarget {
+    pub fn into_dist_target<'g>(self, package: &'g PublishPackage<'g>) -> PublishTarget<'g> {
+        PublishTarget::AwsLambda(AwsLambdaDistTarget {
             package,
             metadata: self,
         })
