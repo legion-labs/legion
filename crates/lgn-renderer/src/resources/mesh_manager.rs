@@ -2,8 +2,12 @@ use lgn_graphics_api::PagedBufferAllocation;
 use lgn_math::Vec4;
 
 use super::{UnifiedStaticBuffer, UniformGPUDataUpdater};
-use crate::{cgen, static_mesh_render_data::StaticMeshRenderData, Renderer};
+use crate::{
+    cgen::{self, cgen_type::MeshDescription},
     components::SubMesh,
+    static_mesh_render_data::StaticMeshRenderData,
+    Renderer,
+};
 
 pub struct MeshMetaData {
     pub draw_call_count: u32,
@@ -99,7 +103,6 @@ impl MeshManager {
             offset = u64::from(new_offset);
         }
 
-
         renderer.add_update_job_block(updater.job_blocks());
         self.static_meshes.append(&mut mesh_meta_datas);
         self.allocations.push(static_allocation);
@@ -113,7 +116,7 @@ impl MeshManager {
         let mut vertex_data_size_in_bytes = 0;
         for mesh in meshes {
             vertex_data_size_in_bytes +=
-                u64::from(mesh.size_in_bytes()) + std::mem::size_of::<MeshInfo>() as u64;
+                u64::from(mesh.size_in_bytes()) + std::mem::size_of::<MeshDescription>() as u64;
         }
 
         let static_allocation = self

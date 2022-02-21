@@ -3,8 +3,8 @@ use lgn_graphics_data::runtime::{MaterialReferenceType, MeshReferenceType};
 use lgn_math::{Vec2, Vec4};
 
 use crate::{
+    cgen::cgen_type::{MeshAttribMask, MeshDescription},
     resources::UniformGPUDataUpdater,
-    static_mesh_render_data::{MeshFormat, MeshInfo},
 };
 
 pub struct SubMesh {
@@ -19,25 +19,25 @@ pub struct SubMesh {
 }
 
 impl SubMesh {
-    pub fn get_mesh_format(&self) -> MeshFormat {
-        let mut format = MeshFormat::empty();
+    pub fn get_mesh_attrib_mask(&self) -> MeshAttribMask {
+        let mut format = MeshAttribMask::empty();
         if self.positions.is_some() {
-            format |= MeshFormat::POSITION;
+            format |= MeshAttribMask::POSITION;
         }
         if self.normals.is_some() {
-            format |= MeshFormat::NORMAL;
+            format |= MeshAttribMask::NORMAL;
         }
         if self.tangents.is_some() {
-            format |= MeshFormat::TANGENT;
+            format |= MeshAttribMask::TANGENT;
         }
         if self.tex_coords.is_some() {
-            format |= MeshFormat::TEX_COORD;
+            format |= MeshAttribMask::TEX_COORD;
         }
         if self.indices.is_some() {
-            format |= MeshFormat::INDEX;
+            format |= MeshAttribMask::INDEX;
         }
         if self.colors.is_some() {
-            format |= MeshFormat::COLOR;
+            format |= MeshAttribMask::COLOR;
         }
         format
     }
@@ -71,45 +71,43 @@ impl SubMesh {
         updater: &mut UniformGPUDataUpdater,
         offset: u32,
     ) -> (u32, u32) {
-        let mut mesh_info = MeshInfo {
-            format: self.get_mesh_format(),
-            ..MeshInfo::default()
-        };
+        let mut mesh_desc = MeshDescription::default();
+        mesh_desc.set_attrib_mask(self.get_mesh_attrib_mask());
         let mut offset = offset;
 
         if let Some(positions) = &self.positions {
-            mesh_info.position_offset = offset;
+            mesh_desc.set_position_offset(offset.into());
             updater.add_update_jobs(positions, u64::from(offset));
             offset += (std::mem::size_of::<Vec4>() * positions.len()) as u32;
         }
         if let Some(normals) = &self.normals {
-            mesh_info.normal_offset = offset;
+            mesh_desc.set_normal_offset(offset.into());
             updater.add_update_jobs(normals, u64::from(offset));
             offset += (std::mem::size_of::<Vec4>() * normals.len()) as u32;
         }
         if let Some(tangents) = &self.tangents {
-            mesh_info.tangent_offset = offset;
+            mesh_desc.set_tangent_offset(offset.into());
             updater.add_update_jobs(tangents, u64::from(offset));
             offset += (std::mem::size_of::<Vec4>() * tangents.len()) as u32;
         }
         if let Some(tex_coords) = &self.tex_coords {
-            mesh_info.tex_coord_offset = offset;
+            mesh_desc.set_tex_coord_offset(offset.into());
             updater.add_update_jobs(tex_coords, u64::from(offset));
             offset += (std::mem::size_of::<Vec2>() * tex_coords.len()) as u32;
         }
         if let Some(indices) = &self.indices {
-            mesh_info.index_offset = offset;
+            mesh_desc.set_index_offset(offset.into());
             updater.add_update_jobs(indices, u64::from(offset));
             offset += (std::mem::size_of::<u32>() * indices.len()) as u32;
         }
         if let Some(colors) = &self.colors {
-            mesh_info.color_offset = offset;
+            mesh_desc.set_color_offset(offset.into());
             updater.add_update_jobs(colors, u64::from(offset));
             offset += (std::mem::size_of::<Vec4>() * colors.len()) as u32;
         }
-        updater.add_update_jobs(&[mesh_info], u64::from(offset));
+        updater.add_update_jobs(&[mesh_desc], u64::from(offset));
         let mesh_info_offset = offset;
-        offset += std::mem::size_of::<MeshInfo>() as u32;
+        offset += std::mem::size_of::<MeshDescription>() as u32;
         (offset, mesh_info_offset)
     }
 

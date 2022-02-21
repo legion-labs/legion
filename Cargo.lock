@@ -6498,7 +6498,7 @@ version = "4.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "80e47cfc4c0a1a519d9a025ebfbac3a2439d1b5cdf397d72dcb79b11d9920dab"
 dependencies = [
- "base64",
+ "base64 0.13.0",
  "chrono",
  "getrandom 0.2.4",
  "http",
@@ -6623,7 +6623,7 @@ version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6db0c030c3036f53c7108668641151b244358d221303a17985b07ac9bb60091"
 dependencies = [
- "base64",
+ "base64 0.13.0",
  "chrono",
  "http",
  "itertools 0.9.0",

@@ -3,6 +3,7 @@ use std::ops::Mul;
 use lgn_math::{Mat4, Vec2, Vec3, Vec4};
 
 use crate::{cgen, resources::UniformGPUDataUpdater, DOWN_VECTOR, UP_VECTOR};
+use crate::cgen::cgen_type::MeshDescription;
 use crate::resources::UniformGPUDataUpdater;
 
 #[derive(Clone)]
@@ -54,7 +55,7 @@ impl StaticMeshRenderData {
         updater: &mut UniformGPUDataUpdater,
         offset: u32,
     ) -> (u32, u32) {
-        let mut mesh_desc = cgen::cgen_type::MeshDescription::default();
+        let mut mesh_desc = MeshDescription::default();
         mesh_desc.set_attrib_mask(self.get_mesh_attrib_mask());
         let mut offset = offset;
 
@@ -88,9 +89,9 @@ impl StaticMeshRenderData {
             updater.add_update_jobs(colors, u64::from(offset));
             offset += (std::mem::size_of::<Vec4>() * colors.len()) as u32;
         }
-        updater.add_update_jobs(&[mesh_info], u64::from(offset));
+        updater.add_update_jobs(&[mesh_desc], u64::from(offset));
         let mesh_info_offset = offset;
-        offset += std::mem::size_of::<MeshInfo>() as u32;
+        offset += std::mem::size_of::<MeshDescription>() as u32;
         (offset, mesh_info_offset)
     }
 

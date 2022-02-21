@@ -18,7 +18,7 @@ use std::sync::Arc;
 use cgen::*;
 
 mod labels;
-use components::MaterialComponent;
+use components::{MaterialComponent, MeshComponent};
 use gpu_renderer::GpuInstanceManager;
 pub use labels::*;
 
@@ -313,8 +313,6 @@ fn render_pre_update(
     descriptor_heap_manager.begin_frame();
 }
 
-}
-
 #[span_fn]
 #[allow(clippy::needless_pass_by_value)]
 fn update_meshes(
@@ -339,6 +337,8 @@ fn update_meshes(
             model_manager.add_model(mesh_reference.id().id, ModelMetaData { meshes });
         }
     }
+}
+
 #[derive(Default)]
 struct MissingVisualTracker {
     entities: BTreeMap<ResourceId, HashSet<Entity>>,
@@ -393,10 +393,10 @@ fn update_missing_visuals(
     renderer: Res<'_, Renderer>,
     picking_manager: Res<'_, PickingManager>,
     mut picking_data_manager: ResMut<'_, GpuPickingDataManager>,
-    uniform_data: Res<'_, GpuUniformData>,
     mut instance_manager: ResMut<'_, GpuInstanceManager>,
     model_manager: Res<'_, ModelManager>,
     mesh_manager: Res<'_, MeshManager>,
+    material_manager: Res<'_, GpuMaterialManager>,
     color_manager: Res<'_, GpuEntityColorManager>,
     transform_manager: Res<'_, GpuEntityTransformManager>,
 ) {
@@ -408,7 +408,7 @@ fn update_missing_visuals(
         let mut instance_block: Option<IndexBlock> = None;
 
         if let Ok((entity, visual_component, mat_component)) = visuals_query.get(entity) {
-            picking_data_manager.remove_gpu_data(entity);
+            picking_data_manager.remove_gpu_data(&entity);
             instance_manager.remove_gpu_instance(entity);
 
             let color: (f32, f32, f32, f32) = (
@@ -421,19 +421,18 @@ fn update_missing_visuals(
             instance_color.set_color(Vec4::new(color.0, color.1, color.2, color.3).into());
             instance_color.set_color_blend(1.0.into());
 
-            color_manager.update_gpu_data(entity, 0, &[instance_color], &mut updater);
+            color_manager.update_gpu_data(&entity, 0, &[instance_color], &mut updater);
 
-            // Fallback to default material if we do not have a specific material set
-            let mut material_va = uniform_data.default_material_gpu_offset;
+            let mut material_key = None;
             if let Some(material) = mat_component {
-                material_va = material.gpu_offset();
+                material_key = Some(material.material_id);
             }
 
             picking_data_manager.alloc_gpu_data(entity, &mut picking_block);
 
             let mut picking_data = cgen::cgen_type::GpuInstancePickingData::default();
             picking_data.set_picking_id(picking_context.aquire_picking_id(entity).into());
-            picking_data_manager.update_gpu_data(entity, 0, &[picking_data], &mut updater);
+            picking_data_manager.update_gpu_data(&entity, 0, &[picking_data], &mut updater);
 
             let (model_meta_data, ready) = model_manager.get_model_meta_data(visual_component);
             if !ready {
@@ -445,10 +444,10 @@ fn update_missing_visuals(
                 let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
                 let instance_vas = GpuInstanceVAs {
                     submesh_va: mesh_meta_data.mesh_description_offset,
-                    material_va, //TODO mesh.material_id
-                    color_va: color_manager.id_va_list(entity)[0].1 as u32,
-                    transform_va: transform_manager.id_va_list(entity)[0].1 as u32,
-                    picking_data_va: picking_data_manager.id_va_list(entity)[0].1 as u32,
+                    material_va: material_manager.va_for_index(material_key, 0) as u32,
+                    color_va: color_manager.va_for_index(Some(entity), 0) as u32,
+                    transform_va: transform_manager.va_for_index(Some(entity), 0) as u32,
+                    picking_data_va: picking_data_manager.va_for_index(Some(entity), 0) as u32,
                 };
 
                 instance_manager.add_gpu_instance(
