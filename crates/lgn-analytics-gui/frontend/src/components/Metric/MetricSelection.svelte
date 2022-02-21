@@ -9,15 +9,22 @@
   let state: MetricSelectionState[] = [];
   let show = false;
   let searchString: string | undefined;
+  let userUsedMetrics: string[];
 
   $: filteredMetrics = state.filter((m) => filterMetric(m));
-  $: recentMetrics = state.slice(0, 5);
   $: selectedMetricCount = state.filter((m) => m.selected).length;
+  $: recentlyUsedMetrics = state.filter((m) =>
+    userUsedMetrics.includes(m.name)
+  );
 
   onMount(() => {
     state = metrics.map((m) => {
       return new MetricSelectionState(m.name, m.unit);
     });
+    const jsonData = localStorage.getItem("metric-lastUsed");
+    userUsedMetrics = jsonData
+      ? JSON.parse(jsonData)
+      : state.filter((s) => s.selected).map((s) => s.name);
   });
 
   function onSearchChange(
@@ -50,14 +57,12 @@
       state[index] = metric;
       state = state;
       if (metric.selected) {
-        const jsonData = localStorage.getItem("metric-lastUsed");
-        const metricsUsed = jsonData ? JSON.parse(jsonData) : [];
-        if (!metricsUsed.includes(metric.name)) {
-          metricsUsed.push(metric.name);
+        if (!userUsedMetrics.includes(metric.name)) {
+          userUsedMetrics = [...userUsedMetrics, metric.name].slice(-5);
         }
         localStorage.setItem(
           "metric-lastUsed",
-          JSON.stringify(metricsUsed.slice(-5))
+          JSON.stringify(userUsedMetrics)
         );
       }
       dispatcher("metric-switched", {
@@ -122,7 +127,7 @@
           <div class=" metric-scrollable ">
             <div class="metric-category-header select-none">Recently Used</div>
             <div class="grid grid-cols-1 justify-items-start">
-              {#each recentMetrics as metric}
+              {#each recentlyUsedMetrics as metric}
                 <MetricSelectionItem
                   on:metric-switched={(e) => onMetricSwitched(e)}
                   {metric}
