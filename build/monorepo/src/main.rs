@@ -23,6 +23,7 @@ mod fix;
 mod fmt;
 mod git;
 mod hakari;
+mod insta;
 mod lint;
 mod npm;
 mod publish;
@@ -78,6 +79,9 @@ enum Commands {
     /// Run `cargo tests`
     #[clap(name = "test")]
     Test(test::Args),
+    /// Run `cargo insta`
+    #[clap(name = "insta")]
+    Insta(insta::Args),
 
     // Non Cargo commands:
     /// Run CD on the monorepo
@@ -136,6 +140,7 @@ fn main() {
         Commands::Fmt(args) => fmt::run(args, &ctx),
         Commands::Run(args) => run::run(&args, &ctx),
         Commands::Test(args) => test::run(args, &ctx),
+        Commands::Insta(args) => insta::run(&args, &ctx),
 
         Commands::Cd(args) => cd::run(&args, &ctx),
         Commands::Ci(args) => ci::run(&args, &ctx),
