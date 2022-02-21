@@ -38,5 +38,6 @@ aws = ["aws-config", "aws-sdk-s3", "aws-sdk-dynamodb"]
 [dev-dependencies]
 uuid = { version = "0.8", features = ["v4"] }
 hex = "0.4"
-httpmock = "0.6"
+httptest = "0.15"
 hyper = "0.14"
+pretty_env_logger = "0.4"

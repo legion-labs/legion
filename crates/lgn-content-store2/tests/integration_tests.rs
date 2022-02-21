@@ -147,14 +147,19 @@ async fn test_aws_dynamodb_provider() {
 
 #[tokio::test]
 async fn test_grpc_provider() {
+    // To debug this test more easily, you may want to specify: RUST_LOG=httptest=debug
+    let _ = pretty_env_logger::try_init();
+
     let root = tempfile::tempdir().expect("failed to create temp directory");
     let local_provider = LocalProvider::new(root.path())
         .await
         .expect("failed to create local provider");
 
-    let http_server = httpmock::prelude::MockServer::start_async().await;
+    let http_server = httptest::Server::run();
 
-    let address_provider = Arc::new(FakeContentAddressProvider::new(http_server.url("/")));
+    let address_provider = Arc::new(FakeContentAddressProvider::new(
+        http_server.url("/").to_string(),
+    ));
     let service = GrpcService::new(local_provider, Arc::clone(&address_provider), 1);
     let service = lgn_content_store_proto::content_store_server::ContentStoreServer::new(service);
     let server = tonic::transport::Server::builder().add_service(service);
@@ -164,7 +169,7 @@ async fn test_grpc_provider() {
 
     async fn f(
         socket_addr: &SocketAddr,
-        http_server: &httpmock::MockServer,
+        http_server: &httptest::Server,
         address_provider: Arc<FakeContentAddressProvider>,
     ) {
         let client = GrpcClient::new(format!("http://{}", socket_addr).parse().unwrap());
@@ -185,26 +190,36 @@ async fn test_grpc_provider() {
         // Now let's try again with a larger file.
 
         let id = Identifier::new_hash_ref_from_data(b"AA");
+
+        http_server.expect(
+            httptest::Expectation::matching(httptest::all_of![
+                httptest::matchers::request::method("GET"),
+                httptest::matchers::request::path(format!("/{}/read", id)),
+            ])
+            .respond_with(httptest::responders::status_code(404)),
+        );
+
         assert_content_not_found!(provider, id);
 
-        let write_mock = http_server
-            .mock_async(|when, then| {
-                when.method("PUT").path(format!("/{}/write", id));
-                then.status(201).body(b"");
-            })
-            .await;
-        let read_mock = http_server
-            .mock_async(|when, then| {
-                when.method("GET").path(format!("/{}/read", id));
-                then.status(200).body(b"AA");
-            })
-            .await;
+        http_server.expect(
+            httptest::Expectation::matching(httptest::all_of![
+                httptest::matchers::request::method("PUT"),
+                httptest::matchers::request::path(format!("/{}/write", id)),
+                httptest::matchers::request::body("AA"),
+            ])
+            .respond_with(httptest::responders::status_code(201)),
+        );
+
+        http_server.expect(
+            httptest::Expectation::matching(httptest::all_of![
+                httptest::matchers::request::method("GET"),
+                httptest::matchers::request::path(format!("/{}/read", id)),
+            ])
+            .respond_with(httptest::responders::status_code(200).body("AA")),
+        );
 
         let id = assert_write_content!(provider, b"AA");
         assert_read_content!(provider, id, b"AA");
-
-        write_mock.assert();
-        read_mock.assert();
 
         // Make sure the next write yields `Error::AlreadyExists`.
         address_provider.set_already_exists(true).await;
