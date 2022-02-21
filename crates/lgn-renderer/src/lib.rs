@@ -180,18 +180,17 @@ impl Plugin for RendererPlugin {
         //
         // Stage: Render
         //
-        app.add_system_set_to_stage(
+        app.add_system_to_stage(
             RenderStage::Render,
-            SystemSet::new()
-                .with_system(render_update)
-                .before(CommandBufferLabel::Submit)
-                .label(CommandBufferLabel::Generate),
+            render_begin.exclusive_system().at_start(),
         );
 
         app.add_system_to_stage(
             RenderStage::Render,
-            render_post_update.label(CommandBufferLabel::Submit),
+            render_update.label(CommandBufferLabel::Generate),
         );
+
+        app.add_system_to_stage(RenderStage::Render, render_end.exclusive_system().at_end());
     }
 }
 
@@ -373,17 +372,27 @@ fn prepare_shaders(mut pipeline_manager: ResMut<'_, PipelineManager>) {
     clippy::too_many_arguments,
     clippy::type_complexity
 )]
+fn render_begin(mut egui_manager: ResMut<'_, Egui>) {
+    crate::egui::egui_plugin::end_frame(&mut egui_manager);
+}
+
+#[span_fn]
+#[allow(
+    clippy::needless_pass_by_value,
+    clippy::too_many_arguments,
+    clippy::type_complexity
+)]
 fn render_update(
     resources: (
-        ResMut<'_, Renderer>,
-        ResMut<'_, BindlessTextureManager>,
+        Res<'_, Renderer>,
+        Res<'_, BindlessTextureManager>,
         Res<'_, PipelineManager>,
-        ResMut<'_, BumpAllocatorPool>,
-        ResMut<'_, MeshManager>,
-        ResMut<'_, PickingManager>,
+        Res<'_, BumpAllocatorPool>,
+        Res<'_, MeshManager>,
+        Res<'_, PickingManager>,
         Res<'_, GpuInstanceManager>,
-        ResMut<'_, Egui>,
-        ResMut<'_, DebugDisplay>,
+        Res<'_, Egui>,
+        Res<'_, DebugDisplay>,
         Res<'_, LightingManager>,
     ),
     queries: (
@@ -408,8 +417,8 @@ fn render_update(
     let mesh_manager = resources.4;
     let picking_manager = resources.5;
     let instance_manager = resources.6;
-    let mut egui = resources.7;
-    let mut debug_display = resources.8;
+    let egui = resources.7;
+    let debug_display = resources.8;
     let lighting_manager = resources.9;
 
     // queries
@@ -421,7 +430,6 @@ fn render_update(
     let q_cameras = queries.5;
 
     // start
-    crate::egui::egui_plugin::end_frame(&mut egui);
 
     let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool, &pipeline_manager);
     let q_drawables = q_drawables
@@ -577,7 +585,7 @@ fn render_update(
             q_manipulator_drawables.as_slice(),
             camera_component,
             &mesh_manager,
-            debug_display.as_mut(),
+            &debug_display,
         );
 
         let egui_pass = render_surface.egui_renderpass();
@@ -601,11 +609,11 @@ fn render_update(
             render_surface.present(&render_context);
         }
     }
-    debug_display.clear();
     render_context.release_bump_allocator(&bump_allocator_pool);
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn render_post_update(mut renderer: ResMut<'_, Renderer>) {
+fn render_end(mut renderer: ResMut<'_, Renderer>, mut debug_display: ResMut<'_, DebugDisplay>) {
+    debug_display.clear();
     renderer.end_frame();
 }
