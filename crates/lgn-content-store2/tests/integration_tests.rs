@@ -31,6 +31,9 @@ async fn test_local_provider() {
 
     // Another write should yield no error.
     assert_write_avoided!(provider, &id);
+
+    let fake_id = Identifier::new_hash_ref_from_data(b"XXX");
+    assert_read_contents!(provider, [&id, &fake_id], [Ok(b"A"), Err(Error::NotFound)]);
 }
 
 #[tokio::test]
@@ -86,6 +89,9 @@ async fn test_aws_s3_provider() {
 
     // Another write should yield no error.
     assert_write_avoided!(provider, &id);
+
+    let fake_id = Identifier::new_hash_ref_from_data(b"XXX");
+    assert_read_contents!(provider, [&id, &fake_id], [Ok(b"A"), Err(Error::NotFound)]);
 
     // Make sure we can access the data through the URLs.
     let read_url = provider.get_content_read_address(&id).await.unwrap();
@@ -143,6 +149,9 @@ async fn test_aws_dynamodb_provider() {
     // Another write should yield no error.
     assert_write_avoided!(provider, &id);
 
+    let fake_id = Identifier::new_hash_ref_from_data(b"XXX");
+    assert_read_contents!(provider, [&id, &fake_id], [Ok(data), Err(Error::NotFound)]);
+
     provider
         .delete_content(&id)
         .await
@@ -169,6 +178,9 @@ async fn test_redis_provider() {
 
     // Another write should yield no error.
     assert_write_avoided!(provider, &id);
+
+    let fake_id = Identifier::new_hash_ref_from_data(b"XXX");
+    assert_read_contents!(provider, [&id, &fake_id], [Ok(data), Err(Error::NotFound)]);
 
     provider
         .delete_content(&id)
@@ -257,6 +269,25 @@ async fn test_grpc_provider() {
 
         // Another write should be useless.
         assert_write_avoided!(provider, &id);
+
+        let fake_id = Identifier::new_hash_ref_from_data(b"XXX");
+
+        http_server.expect(
+            httptest::Expectation::matching(httptest::all_of![
+                httptest::matchers::request::method("GET"),
+                httptest::matchers::request::path(format!("/{}/read", id)),
+            ])
+            .respond_with(httptest::responders::status_code(200).body("AA")),
+        );
+        http_server.expect(
+            httptest::Expectation::matching(httptest::all_of![
+                httptest::matchers::request::method("GET"),
+                httptest::matchers::request::path(format!("/{}/read", fake_id)),
+            ])
+            .respond_with(httptest::responders::status_code(404)),
+        );
+
+        assert_read_contents!(provider, [&id, &fake_id], [Ok(b"AA"), Err(Error::NotFound)]);
     }
 
     loop {

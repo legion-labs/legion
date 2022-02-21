@@ -1,6 +1,7 @@
 use std::{pin::Pin, sync::Arc};
 
 use async_trait::async_trait;
+use futures::future::join_all;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use crate::{Error, Identifier, Result};
@@ -21,6 +22,24 @@ pub trait ContentReader {
     /// returned.
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead>;
 
+    /// Returns an async reader for each of the specified identifiers.
+    ///
+    /// If the content for a given identifier does not exist, `Error::NotFound`
+    /// is returned instead.
+    ///
+    /// If the high-level request fails, an error is returned.
+    async fn get_content_readers(
+        &self,
+        ids: impl IntoIterator<Item = &'async_trait Identifier> + Send + Sync + 'async_trait,
+    ) -> Result<Vec<Result<ContentAsyncRead>>> {
+        let futures = ids
+            .into_iter()
+            .map(|id| self.get_content_reader(id))
+            .collect::<Vec<_>>();
+
+        Ok(join_all(futures).await)
+    }
+
     /// Read the content referenced by the specified identifier.
     async fn read_content(&self, id: &Identifier) -> Result<Vec<u8>> {
         let mut reader = self.get_content_reader(id).await?;
@@ -32,6 +51,34 @@ pub trait ContentReader {
             .await
             .map_err(|err| anyhow::anyhow!("failed to read content: {}", err).into())
             .map(|_| result)
+    }
+
+    /// Read the contents referenced by the specified identifiers.
+    async fn read_contents(
+        &self,
+        ids: impl IntoIterator<Item = &'async_trait Identifier> + Send + Sync + 'async_trait,
+    ) -> Result<Vec<Result<Vec<u8>>>> {
+        let readers = self.get_content_readers(ids).await?;
+        let futures = readers
+            .into_iter()
+            .map(|r| async move {
+                match r {
+                    Ok(mut reader) => {
+                        let mut result = Vec::new();
+                        reader
+                            .read_to_end(&mut result)
+                            .await
+                            .map_err(|err| {
+                                anyhow::anyhow!("failed to read content: {}", err).into()
+                            })
+                            .map(|_| result)
+                    }
+                    Err(err) => Err(err),
+                }
+            })
+            .collect::<Vec<_>>();
+
+        Ok(join_all(futures).await)
     }
 }
 
