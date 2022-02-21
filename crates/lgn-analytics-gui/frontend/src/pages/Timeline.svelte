@@ -216,6 +216,7 @@
       processId: process.processId,
     });
 
+    // we should really fetch all the descendents server-side to accomplish this in fewer queries
     for (let i = 0; i < processes.length; ++i) {
       await fetchChildren(processes[i]);
     }
