@@ -31,7 +31,10 @@
   let currentMaxMs = Infinity;
   let brushStart = -Infinity;
   let brushEnd = Infinity;
-  let points: Point[][] = [];
+  let points: {
+    points: Point[];
+    name: string;
+  }[] = [];
   let loading = true;
   let updateTime: number;
   let lod: number;
@@ -79,6 +82,15 @@
     }
   });
 
+  function hashString(string: String): number {
+    let hash = 0;
+    for (let i = 0; i < string.length; i++) {
+      hash = string.charCodeAt(i) + ((hash << 5) - hash);
+      hash = hash & hash;
+    }
+    return hash;
+  }
+
   function updateLod() {
     if (x) {
       const scaleX = transform.rescaleX(x);
@@ -114,9 +126,14 @@
   function updatePoints(states: MetricState[]) {
     points = states
       .filter((m) => m.enabled)
-      .map((m) =>
-        Array.from(m.getViewportPoints(currentMinMs, currentMaxMs, lod))
-      );
+      .map((m) => {
+        return {
+          points: Array.from(
+            m.getViewportPoints(currentMinMs, currentMaxMs, lod)
+          ),
+          name: m.name,
+        };
+      });
   }
 
   function createChart() {
@@ -217,11 +234,15 @@
     x.range([0, width]);
 
     const yMax = d3.max(
-      points.flatMap((p) => d3.max(p.map((point) => point.value)) ?? 0)
+      points
+        .map((p) => p.points)
+        .flatMap((p) => d3.max(p.map((point) => point.value)) ?? 0)
     );
 
     const yMin = d3.min(
-      points.flatMap((p) => d3.min(p.map((point) => point.value)) ?? 0)
+      points
+        .map((p) => p.points)
+        .flatMap((p) => d3.min(p.map((point) => point.value)) ?? 0)
     );
 
     y.range([height, 0]).domain([yMin ?? 0, yMax ?? 0]);
@@ -243,10 +264,11 @@
       .y((d) => y(d[1]))
       .context(context);
 
-    points.forEach((points, i) => {
+    points.forEach((data, i) => {
       context.beginPath();
-      line(points.map((newPoints) => [newPoints.time, newPoints.value]));
-      context.strokeStyle = d3.schemeCategory10[i];
+      line(data.points.map((newPoints) => [newPoints.time, newPoints.value]));
+      const color = Math.abs(hashString(data.name)) % 10;
+      context.strokeStyle = d3.schemeCategory10[color];
       context.lineWidth = 0.33;
       context.stroke();
     });
@@ -260,7 +282,14 @@
   }
 </script>
 
-<MetricSelection />
+{#if !loading}
+  <MetricSelection
+    metrics={$metricStore}
+    on:metric-switched={(e) => {
+      metricStreamer.updateFromSelectionState(e.detail.metric);
+    }}
+  />
+{/if}
 <div bind:clientWidth={mainWidth}>
   <div id="metric-canvas" style="position:relative" />
   {#if loading}
@@ -329,12 +358,6 @@
           <ul>
             {#each $metricStore as ms}
               <li>
-                <input
-                  type="checkbox"
-                  id={ms.name + "_select"}
-                  checked={ms.enabled}
-                  on:click={(e) => metricStreamer.switchMetricFlag(ms, e)}
-                />
                 {ms.name} (unit: {ms.unit})<br />
                 {ms.min} _ {ms.max} ({formatExecutionTime(ms.max - ms.min)})<br
                 />

@@ -1,23 +1,40 @@
 <script lang="ts">
+  import { MetricState } from "@/lib/Metric/MetricState";
   import clickOutside from "@lgn/web-client/src/actions/clickOutside";
+  import { createEventDispatcher, onMount } from "svelte";
   import MetricSelectionItem from "./MetricSelectionItem.svelte";
   import { MetricSelectionState } from "./MetricSelectionState";
-  let show = true;
+  export let metrics: MetricState[];
+  const dispatcher = createEventDispatcher();
+  let state: MetricSelectionState[] = [];
+  let show = false;
   let searchString: string | undefined;
-  let totalMetrics = Array.from(Array(125).keys()).map(
-    (k) => new MetricSelectionState(`Metric With Biscuit ${k}`, "ms")
-  );
+
+  $: filteredMetrics = state.filter((m) => filterMetric(m));
+  $: recentMetrics = state.slice(0, 5);
+  $: selectedMetricCount = state.filter((m) => m.selected).length;
+
+  onMount(() => {
+    state = metrics.map((m) => {
+      return new MetricSelectionState(m.name, m.unit);
+    });
+  });
 
   function onSearchChange(
-    evt: Event & { currentTarget: EventTarget & HTMLInputElement }
+    e: Event & { currentTarget: EventTarget & HTMLInputElement }
   ) {
-    searchString = evt.currentTarget.value;
-    totalMetrics = totalMetrics;
+    updateSearch(e.currentTarget.value);
   }
 
-  $: metrics = totalMetrics.filter((m) => filterMetric(m)).slice(5);
-  $: recentMetrics = totalMetrics.slice(0, 5);
-  $: selectedMetricCount = totalMetrics.filter((m) => m.selected).length;
+  function updateSearch(value: string) {
+    searchString = value;
+    filteredMetrics = filteredMetrics;
+  }
+
+  function close() {
+    show = false;
+    updateSearch("");
+  }
 
   function filterMetric(m: MetricSelectionState) {
     if (!searchString) {
@@ -28,17 +45,30 @@
 
   function onMetricSwitched(e: CustomEvent) {
     if (e.detail.metric instanceof MetricSelectionState) {
-      const index = totalMetrics.indexOf(e.detail.metric);
-      if (index) {
-        totalMetrics[index] = e.detail.metric;
-        totalMetrics = totalMetrics;
+      const metric = e.detail.metric;
+      const index = state.indexOf(metric);
+      state[index] = metric;
+      state = state;
+      if (metric.selected) {
+        const jsonData = localStorage.getItem("metric-lastUsed");
+        const metricsUsed = jsonData ? JSON.parse(jsonData) : [];
+        if (!metricsUsed.includes(metric.name)) {
+          metricsUsed.push(metric.name);
+        }
+        localStorage.setItem(
+          "metric-lastUsed",
+          JSON.stringify(metricsUsed.slice(-5))
+        );
       }
+      dispatcher("metric-switched", {
+        metric: metric as MetricSelectionState,
+      });
     }
   }
 
   function handleKeydown(event: KeyboardEvent) {
     if (show && event.code == "Escape") {
-      show = false;
+      close();
     }
   }
 </script>
@@ -48,7 +78,7 @@
 <div
   use:clickOutside
   on:click-outside={() => {
-    show = false;
+    close();
   }}
 >
   <div
@@ -78,8 +108,8 @@
             </div>
             <div
               on:click={() => {
-                totalMetrics.forEach((m) => (m.selected = false));
-                totalMetrics = [...totalMetrics];
+                state.forEach((m) => (m.selected = false));
+                state = [...state];
                 return;
               }}
             >
@@ -103,7 +133,7 @@
           <div class="col-span-2 metric-scrollable">
             <div class="metric-category-header select-none">All Metrics</div>
             <div class="grid grid-cols-2 justify-items-start">
-              {#each metrics as metric}
+              {#each filteredMetrics as metric}
                 <MetricSelectionItem
                   on:metric-switched={(e) => onMetricSwitched(e)}
                   {metric}

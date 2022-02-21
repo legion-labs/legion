@@ -1,16 +1,17 @@
+import { MetricSelectionState } from "@/components/Metric/MetricSelectionState";
 import { makeGrpcClient } from "@/lib/client";
 import { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
 import { get, Writable, writable } from "svelte/store";
 import { MetricState } from "./MetricState";
 
 export class MetricStreamer {
-  currentMinMs: number = -Infinity;
-  currentMaxMs: number = Infinity;
+  currentMinMs = -Infinity;
+  currentMaxMs = Infinity;
   metricStore: Writable<MetricState[]>;
   private client: PerformanceAnalyticsClientImpl | null = null;
   private processId: string;
-  private tscFrequency: number = 0;
-  private processStartTicks: number = 0;
+  private tscFrequency = 0;
+  private processStartTicks = 0;
   constructor(processId: string) {
     this.processId = processId;
     this.metricStore = writable([]);
@@ -28,15 +29,16 @@ export class MetricStreamer {
     this.currentMaxMs = Math.max(...get(this.metricStore).map((s) => s.max));
   }
 
-  switchMetricFlag(
-    metricState: MetricState,
-    e: MouseEvent & { currentTarget: EventTarget & HTMLInputElement }
-  ) {
+  updateFromSelectionState(metricSelectionState: MetricSelectionState) {
     this.metricStore.update((data) => {
-      let index = data.indexOf(metricState);
-      let metric = data[index];
-      metric.enabled = e.currentTarget.checked;
-      data[index] = metric;
+      const metric = data.filter(
+        (m) => m.name === metricSelectionState.name
+      )[0];
+      if (metric) {
+        metric.enabled = metricSelectionState.selected;
+        const index = data.indexOf(metric);
+        data[index] = metric;
+      }
       return data;
     });
   }
@@ -48,7 +50,7 @@ export class MetricStreamer {
   }
 
   async fetchSelectedMetricsAsync(lod: number) {
-    let metrics = get(this.metricStore).filter((m) => m.enabled);
+    const metrics = get(this.metricStore).filter((m) => m.enabled);
 
     const missingBlocks = metrics.map((m) => {
       return {
@@ -70,9 +72,9 @@ export class MetricStreamer {
         .join("\n")}`
     );
 
-    let result = await Promise.all(
+    const result = await Promise.all(
       metrics.map(async (m) => {
-        let result = await this.client!.fetch_process_metric({
+        const result = await this.client?.fetch_process_metric({
           blocks: Array.from(
             m.getViewportBlocks(this.currentMinMs, this.currentMaxMs)
           ),
@@ -93,12 +95,14 @@ export class MetricStreamer {
 
     this.metricStore.update((metrics) => {
       result.forEach((reply) => {
-        let metric = metrics.filter((m) => m.name === reply.name)[0];
+        const metric = metrics.filter((m) => m.name === reply.name)[0];
         if (metric) {
-          let index = metrics.indexOf(metric);
-          let metricInArray = metrics[index];
-          if (metricInArray.store(reply.result)) {
-            metrics[index] = metricInArray;
+          const index = metrics.indexOf(metric);
+          const metricInArray = metrics[index];
+          if (reply.result) {
+            if (metricInArray.store(reply.result)) {
+              metrics[index] = metricInArray;
+            }
           }
         }
       });
