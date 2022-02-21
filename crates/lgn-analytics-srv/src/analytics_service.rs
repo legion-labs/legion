@@ -274,8 +274,14 @@ impl AnalyticsService {
         Ok(metric_handler.fetch_metric(request).await?)
     }
 
-    async fn list_process_blocks_impl(&self, process_id: &str) -> Result<ProcessBlocksReply> {
-        Ok(ProcessBlocksReply { blocks: vec![] })
+    async fn list_process_blocks_impl(
+        &self,
+        request: ListProcessBlocksRequest,
+    ) -> Result<ProcessBlocksReply> {
+        let mut connection = self.pool.acquire().await?;
+        let blocks =
+            find_process_blocks(&mut connection, &request.process_id, &request.tag).await?;
+        Ok(ProcessBlocksReply { blocks })
     }
 }
 
@@ -573,10 +579,7 @@ impl PerformanceAnalytics for AnalyticsService {
         request: Request<ListProcessBlocksRequest>,
     ) -> Result<Response<ProcessBlocksReply>, Status> {
         let inner_request = request.into_inner();
-        match self
-            .list_process_blocks_impl(&inner_request.process_id)
-            .await
-        {
+        match self.list_process_blocks_impl(inner_request).await {
             Ok(reply) => Ok(Response::new(reply)),
             Err(e) => Err(Status::internal(format!(
                 "Error in list_process_blocks: {}",

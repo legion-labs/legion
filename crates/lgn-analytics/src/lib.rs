@@ -325,7 +325,7 @@ pub async fn find_process_blocks(
     .await
     .with_context(|| "find_process_blocks")?
     .iter()
-    .map(|r| map_block(r, |r| r))
+    .map(|r| map_row_block(r, |_| ()))
     .collect();
     Ok(blocks)
 }
@@ -387,11 +387,11 @@ pub async fn find_stream(
     })
 }
 
-fn map_block<F>(row: &AnyRow, mut post_write: F) -> EncodedBlock
+fn map_row_block<F>(row: &AnyRow, mut post_write: F) -> EncodedBlock
 where
-    F: FnMut(&EncodedBlock) -> &EncodedBlock,
+    F: FnMut(&mut EncodedBlock),
 {
-    let block = EncodedBlock {
+    let mut block = EncodedBlock {
         block_id: row
             .try_get("block_id")
             .unwrap_or_else(|_| String::from("invalid")),
@@ -409,7 +409,7 @@ where
         nb_objects: row.try_get("nb_objects").unwrap_or(-1),
         payload: None,
     };
-    post_write(&block);
+    post_write(&mut block);
     block
 }
 
@@ -427,18 +427,7 @@ pub async fn find_block(
     .fetch_one(connection)
     .await
     .with_context(|| "find_block")?;
-
-    let block = EncodedBlock {
-        block_id: String::from(block_id),
-        stream_id: row.get("stream_id"),
-        begin_time: row.get("begin_time"),
-        begin_ticks: row.get("begin_ticks"),
-        end_time: row.get("end_time"),
-        end_ticks: row.get("end_ticks"),
-        payload: None,
-        nb_objects: row.get("nb_objects"),
-    };
-    Ok(block)
+    Ok(map_row_block(&row, |r| r.block_id = String::from(block_id)))
 }
 
 pub async fn find_stream_blocks(
@@ -456,16 +445,7 @@ pub async fn find_stream_blocks(
     .await
     .with_context(|| "find_stream_blocks")?
     .iter()
-    .map(|r| EncodedBlock {
-        block_id: r.get("block_id"),
-        stream_id: String::from(stream_id),
-        begin_time: r.get("begin_time"),
-        begin_ticks: r.get("begin_ticks"),
-        end_time: r.get("end_time"),
-        end_ticks: r.get("end_ticks"),
-        payload: None,
-        nb_objects: r.get("nb_objects"),
-    })
+    .map(|r| map_row_block(r, |r| r.stream_id = String::from(stream_id)))
     .collect();
     Ok(blocks)
 }
@@ -491,16 +471,7 @@ pub async fn find_stream_blocks_in_range(
     .await
     .with_context(|| "find_stream_blocks")?
     .iter()
-    .map(|r| EncodedBlock {
-        block_id: r.get("block_id"),
-        stream_id: String::from(stream_id),
-        begin_time: r.get("begin_time"),
-        begin_ticks: r.get("begin_ticks"),
-        end_time: r.get("end_time"),
-        end_ticks: r.get("end_ticks"),
-        payload: None,
-        nb_objects: r.get("nb_objects"),
-    })
+    .map(|r| map_row_block(r, |r| r.stream_id = String::from(stream_id)))
     .collect();
     Ok(blocks)
 }
@@ -749,6 +720,7 @@ pub mod prelude {
     pub use crate::fetch_recent_processes;
     pub use crate::find_block;
     pub use crate::find_process;
+    pub use crate::find_process_blocks;
     pub use crate::find_process_log_entry;
     pub use crate::find_process_log_streams;
     pub use crate::find_process_metrics_streams;

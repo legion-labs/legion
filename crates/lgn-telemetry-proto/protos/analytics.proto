@@ -49,6 +49,7 @@ message ProcessListReply {
 
 message ListProcessBlocksRequest {
   string process_id = 1;
+  string tag = 2;
 }
 
 message ProcessBlocksReply {
