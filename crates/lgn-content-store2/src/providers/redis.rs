@@ -1,15 +1,12 @@
 use async_trait::async_trait;
-use futures::Future;
-use pin_project::pin_project;
 use redis::AsyncCommands;
 use std::io::Cursor;
-use std::pin::Pin;
-use std::task::{Context, Poll};
-use tokio::io::AsyncWrite;
 
 use crate::{
     ContentAsyncRead, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
 };
+
+use super::{Uploader, UploaderImpl};
 
 pub struct RedisProvider {
     key_prefix: String,
@@ -61,10 +58,14 @@ impl RedisProvider {
     }
 
     pub(crate) fn get_key(&self, id: &Identifier) -> String {
-        if self.key_prefix.is_empty() {
+        Self::get_key_with_prefix(id, &self.key_prefix)
+    }
+
+    pub(crate) fn get_key_with_prefix(id: &Identifier, key_prefix: &str) -> String {
+        if key_prefix.is_empty() {
             id.to_string()
         } else {
-            format!("{}:{}", self.key_prefix, id)
+            format!("{}:{}", key_prefix, id)
         }
     }
 }
@@ -107,9 +108,11 @@ impl ContentWriter for RedisProvider {
         match con.exists(&key).await {
             Ok(true) => Err(Error::AlreadyExists),
             Ok(false) => Ok(Box::pin(RedisUploader::new(
-                self.client.clone(),
-                key,
                 id.clone(),
+                RedisUploaderImpl {
+                    client: self.client.clone(),
+                    key_prefix: self.key_prefix.clone(),
+                },
             ))),
             Err(err) => Err(anyhow::anyhow!(
                 "failed to check if content exists for key `{}`: {}",
@@ -121,112 +124,32 @@ impl ContentWriter for RedisProvider {
     }
 }
 
-#[pin_project]
-struct RedisUploader {
-    #[pin]
-    state: RedisUploaderState,
+type RedisUploader = Uploader<RedisUploaderImpl>;
+
+struct RedisUploaderImpl {
+    client: redis::Client,
+    key_prefix: String,
 }
 
-#[allow(clippy::type_complexity)]
-enum RedisUploaderState {
-    Writing(Option<(std::io::Cursor<Vec<u8>>, Identifier, redis::Client, String)>),
-    Uploading(Pin<Box<dyn Future<Output = Result<(), std::io::Error>> + Send + 'static>>),
-}
+#[async_trait]
+impl UploaderImpl for RedisUploaderImpl {
+    async fn upload(self, data: Vec<u8>, id: Identifier) -> Result<()> {
+        let key = RedisProvider::get_key_with_prefix(&id, &self.key_prefix);
 
-impl RedisUploader {
-    pub fn new(client: redis::Client, key: String, id: Identifier) -> Self {
-        let state =
-            RedisUploaderState::Writing(Some((std::io::Cursor::new(Vec::new()), id, client, key)));
-
-        Self { state }
-    }
-
-    async fn upload(
-        data: Vec<u8>,
-        id: Identifier,
-        client: redis::Client,
-        key: String,
-    ) -> Result<(), std::io::Error> {
-        id.matches(&data).map_err(|err| {
-            std::io::Error::new(
-                std::io::ErrorKind::Other,
-                anyhow::anyhow!("the data does not match the specified id: {}", err),
-            )
-        })?;
-
-        let mut con = client.get_async_connection().await.map_err(|err| {
-            std::io::Error::new(
-                std::io::ErrorKind::Other,
-                anyhow::anyhow!("failed to get connection to Redis: {}", err),
-            )
-        })?;
+        let mut con = self
+            .client
+            .get_async_connection()
+            .await
+            .map_err(|err| anyhow::anyhow!("failed to get connection to Redis: {}", err))?;
 
         match con.set_nx(&key, data).await {
             Ok(()) => Ok(()),
-            Err(err) => Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                anyhow::anyhow!("failed to set content in Redis for key `{}`: {}", key, err),
-            )),
-        }
-    }
-}
-
-impl AsyncWrite for RedisUploader {
-    fn poll_write(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &[u8],
-    ) -> Poll<std::result::Result<usize, std::io::Error>> {
-        let this = self.project();
-
-        if let RedisUploaderState::Writing(Some((cursor, _, _, _))) = this.state.get_mut() {
-            Pin::new(cursor).poll_write(cx, buf)
-        } else {
-            panic!("HttpUploader::poll_write called after completion")
-        }
-    }
-
-    fn poll_flush(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<std::result::Result<(), std::io::Error>> {
-        let this = self.project();
-
-        if let RedisUploaderState::Writing(Some((cursor, _, _, _))) = this.state.get_mut() {
-            Pin::new(cursor).poll_flush(cx)
-        } else {
-            panic!("HttpUploader::poll_flush called after completion")
-        }
-    }
-
-    fn poll_shutdown(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<std::result::Result<(), std::io::Error>> {
-        let this = self.project();
-        let state = this.state.get_mut();
-
-        loop {
-            *state = match state {
-                RedisUploaderState::Writing(args) => {
-                    let res = Pin::new(&mut args.as_mut().unwrap().0).poll_shutdown(cx);
-
-                    match res {
-                        Poll::Ready(Ok(())) => {
-                            let (cursor, id, client, key) = args.take().unwrap();
-
-                            RedisUploaderState::Uploading(Box::pin(Self::upload(
-                                cursor.into_inner(),
-                                id,
-                                client,
-                                key,
-                            )))
-                        }
-                        p => return p,
-                    }
-                }
-                RedisUploaderState::Uploading(call) => return Pin::new(call).poll(cx),
-            };
+            Err(err) => {
+                Err(
+                    anyhow::anyhow!("failed to set content in Redis for key `{}`: {}", key, err)
+                        .into(),
+                )
+            }
         }
     }
 }

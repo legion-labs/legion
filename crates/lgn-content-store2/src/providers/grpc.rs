@@ -22,6 +22,8 @@ use crate::{
     ContentReader, ContentWriter, Error, Identifier, Result,
 };
 
+use super::{Uploader, UploaderImpl};
+
 /// A `GrpcProvider` is a provider that delegates to a `gRPC` service.
 pub struct GrpcProvider<C> {
     client: Arc<Mutex<ContentStoreClient<C>>>,
@@ -118,8 +120,10 @@ where
             Some(lgn_content_store_proto::get_content_writer_response::ContentWriter::Url(url)) => {
                 if url.is_empty() {
                     Ok(Box::pin(GrpcUploader::new(
-                        Arc::clone(&self.client),
                         id.clone(),
+                        GrpcUploaderImpl {
+                            client: Arc::clone(&self.client),
+                        },
                     )))
                 } else {
                     let uploader = HttpUploader::new(url)?;
@@ -132,25 +136,14 @@ where
     }
 }
 
-#[pin_project]
-struct GrpcUploader<C> {
-    #[pin]
-    state: GrpcUploaderState<C>,
+type GrpcUploader<C> = Uploader<GrpcUploaderImpl<C>>;
+
+struct GrpcUploaderImpl<C> {
+    client: Arc<Mutex<ContentStoreClient<C>>>,
 }
 
-#[allow(clippy::type_complexity)]
-enum GrpcUploaderState<C> {
-    Writing(
-        Option<(
-            std::io::Cursor<Vec<u8>>,
-            Identifier,
-            Arc<Mutex<ContentStoreClient<C>>>,
-        )>,
-    ),
-    Uploading(Pin<Box<dyn Future<Output = Result<(), std::io::Error>> + Send + 'static>>),
-}
-
-impl<C> GrpcUploader<C>
+#[async_trait]
+impl<C> UploaderImpl for GrpcUploaderImpl<C>
 where
     C: tonic::client::GrpcService<tonic::body::BoxBody> + Send + 'static,
     C::ResponseBody: Body + Send + 'static,
@@ -158,121 +151,25 @@ where
     C::Future: Send + 'static,
     <C::ResponseBody as Body>::Error: Into<StdError> + Send,
 {
-    pub fn new(client: Arc<Mutex<ContentStoreClient<C>>>, id: Identifier) -> Self {
-        let state =
-            GrpcUploaderState::Writing(Some((std::io::Cursor::new(Vec::new()), id, client)));
-
-        Self { state }
-    }
-
-    async fn upload(
-        data: Vec<u8>,
-        id: Identifier,
-        client: Arc<Mutex<ContentStoreClient<C>>>,
-    ) -> Result<(), std::io::Error> {
-        id.matches(&data).map_err(|err| {
-            std::io::Error::new(
-                std::io::ErrorKind::Other,
-                anyhow::anyhow!("the data does not match the specified id: {}", err),
-            )
-        })?;
-
+    async fn upload(self, data: Vec<u8>, id: Identifier) -> Result<()> {
         let req = lgn_content_store_proto::WriteContentRequest { data };
 
-        let res_id: Identifier = client
+        let res_id: Identifier = self
+            .client
             .lock()
             .await
             .write_content(req)
             .await
-            .map_err(|err| {
-                std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    anyhow::anyhow!("gRPC request failed: {}", err),
-                )
-            })?
+            .map_err(|err| anyhow::anyhow!("gRPC request failed: {}", err))?
             .into_inner()
             .id
             .parse()
-            .map_err(|err| {
-                std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    anyhow::anyhow!("failed to parse response id: {}", err),
-                )
-            })?;
+            .map_err(|err| anyhow::anyhow!("failed to parse response id: {}", err))?;
 
         if res_id != id {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                anyhow::anyhow!("the response id does not match the request id"),
-            ))
+            Err(anyhow::anyhow!("the response id does not match the request id").into())
         } else {
             Ok(())
-        }
-    }
-}
-
-impl<C> AsyncWrite for GrpcUploader<C>
-where
-    C: tonic::client::GrpcService<tonic::body::BoxBody> + Send + 'static,
-    C::ResponseBody: Body + Send + 'static,
-    C::Error: Into<StdError>,
-    C::Future: Send + 'static,
-    <C::ResponseBody as Body>::Error: Into<StdError> + Send,
-{
-    fn poll_write(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &[u8],
-    ) -> Poll<std::result::Result<usize, std::io::Error>> {
-        let this = self.project();
-
-        if let GrpcUploaderState::Writing(Some((cursor, _, _))) = this.state.get_mut() {
-            Pin::new(cursor).poll_write(cx, buf)
-        } else {
-            panic!("HttpUploader::poll_write called after completion")
-        }
-    }
-
-    fn poll_flush(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<std::result::Result<(), std::io::Error>> {
-        let this = self.project();
-
-        if let GrpcUploaderState::Writing(Some((cursor, _, _))) = this.state.get_mut() {
-            Pin::new(cursor).poll_flush(cx)
-        } else {
-            panic!("HttpUploader::poll_flush called after completion")
-        }
-    }
-
-    fn poll_shutdown(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<std::result::Result<(), std::io::Error>> {
-        let this = self.project();
-        let state = this.state.get_mut();
-
-        loop {
-            *state = match state {
-                GrpcUploaderState::Writing(args) => {
-                    let res = Pin::new(&mut args.as_mut().unwrap().0).poll_shutdown(cx);
-
-                    match res {
-                        Poll::Ready(Ok(())) => {
-                            let (cursor, id, client) = args.take().unwrap();
-
-                            GrpcUploaderState::Uploading(Box::pin(Self::upload(
-                                cursor.into_inner(),
-                                id,
-                                client,
-                            )))
-                        }
-                        p => return p,
-                    }
-                }
-                GrpcUploaderState::Uploading(call) => return Pin::new(call).poll(cx),
-            };
         }
     }
 }
