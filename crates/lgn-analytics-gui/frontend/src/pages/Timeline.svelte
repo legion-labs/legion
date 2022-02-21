@@ -208,7 +208,6 @@
   }
 
   async function fetchChildren(process: Process) {
-    console.log(process);
     if (!client) {
       log.error("no client in fetchChildren");
       return;
