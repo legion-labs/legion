@@ -1,5 +1,5 @@
 use lgn_ecs::prelude::*;
-use lgn_graphics_data::{runtime_mesh::MeshReferenceType, Color};
+use lgn_graphics_data::{runtime::MeshReferenceType, Color};
 
 use crate::resources::DefaultMeshType;
 
@@ -7,15 +7,15 @@ use crate::resources::DefaultMeshType;
 pub struct VisualComponent {
     pub color: Color,
     pub mesh_id: usize,
-    pub mesh_reference_type: Option<MeshReferenceType>,
+    pub mesh_reference: Option<MeshReferenceType>,
 }
 
 impl VisualComponent {
-    pub fn new(mesh_reference_type: Option<MeshReferenceType>, color: Color) -> Self {
+    pub fn new(mesh_reference: Option<MeshReferenceType>, color: Color) -> Self {
         Self {
             color: Color::from((0, 255, 0)),
             mesh_id: 0,
-            mesh_reference_type,
+            mesh_reference,
         }
     }
 
@@ -23,7 +23,7 @@ impl VisualComponent {
         Self {
             color,
             mesh_id: mesh_type as usize,
-            mesh_reference_type: None,
+            mesh_reference: None,
         }
     }
 }

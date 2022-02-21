@@ -326,10 +326,10 @@ impl PickingRenderPass {
             for (_index, (entity, static_mesh)) in static_meshes.iter().enumerate() {
                 if let Some(list) = instance_manager.id_va_list(*entity) {
                     for (gpu_instance_id, _) in list {
-                        let num_vertices = mesh_manager
-                            .mesh_from_id(static_mesh.mesh_id as u32)
-                            .num_vertices() as u32;
-                        cmd_buffer.draw_instanced(num_vertices, 0, 1, *gpu_instance_id);
+                        let draw_call_count = mesh_manager
+                            .get_mesh_meta_data(static_mesh.mesh_id as u32)
+                            .draw_call_count;
+                        cmd_buffer.draw_instanced(draw_call_count, 0, 1, *gpu_instance_id);
                     }
                 }
             }
@@ -478,14 +478,14 @@ fn render_mesh(
     cmd_buffer: &HLCommandBuffer<'_>,
 ) {
     let mut push_constant_data = cgen::cgen_type::PickingPushConstantData::default();
+    let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh_id);
     push_constant_data.set_world((*custom_world).into());
-    push_constant_data
-        .set_mesh_description_offset(mesh_manager.mesh_description_offset_from_id(mesh_id).into());
+    push_constant_data.set_mesh_description_offset(mesh_meta_data.mesh_description_offset.into());
     push_constant_data.set_picking_id(picking_id.into());
     push_constant_data.set_picking_distance(picking_distance.into());
     push_constant_data.set_use_gpu_pipeline(0.into());
 
     cmd_buffer.push_constant(&push_constant_data);
 
-    cmd_buffer.draw(mesh_manager.mesh_from_id(mesh_id).num_vertices() as u32, 0);
+    cmd_buffer.draw(mesh_meta_data.draw_call_count, 0);
 }

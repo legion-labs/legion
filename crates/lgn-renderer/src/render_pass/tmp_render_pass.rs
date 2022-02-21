@@ -16,7 +16,7 @@ use crate::{
     components::{RenderSurface, VisualComponent},
     gpu_renderer::GpuInstanceManager,
     hl_gfx_api::HLCommandBuffer,
-    resources::{MeshManager, PipelineHandle, PipelineManager},
+    resources::{MeshManager, ModelManager, PipelineHandle, PipelineManager},
     RenderContext,
 };
 
@@ -112,6 +112,7 @@ impl TmpRenderPass {
         &self,
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
+        model_manager: &ModelManager,
         mesh_manager: &MeshManager,
         instance_manager: &GpuInstanceManager,
         render_surface: &mut RenderSurface,
@@ -155,10 +156,15 @@ impl TmpRenderPass {
         );
 
         for (_index, (entity, static_mesh)) in static_meshes.iter().enumerate() {
+            let (model_meta_data, _) = model_manager.get_model_meta_data(static_mesh);
+            let i = 0;
             if let Some(list) = instance_manager.id_va_list(*entity) {
                 for (gpu_instance_id, _) in list {
-                    let num_vertices = mesh_manager.mesh_for_visual(&static_mesh).num_vertices() as u32;
-                    cmd_buffer.draw_instanced(num_vertices, 0, 1, *gpu_instance_id);
+                    let draw_call_count = mesh_manager
+                        .get_mesh_meta_data(model_meta_data.meshes[i].mesh_id)
+                        .draw_call_count;
+                    cmd_buffer.draw_instanced(draw_call_count, 0, 1, *gpu_instance_id);
+                    i += 1;
                 }
             }
         }

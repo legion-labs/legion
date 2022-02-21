@@ -4377,8 +4377,8 @@ dependencies = [
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
+ "lgn-graphics-data",
  "lgn-tracing",
- "sample-data",
 ]
 
 [[package]]

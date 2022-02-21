@@ -1,6 +1,6 @@
 use std::{any::Any, io, path::Path};
 
-use crate::runtime_mesh::Mesh;
+use crate::runtime::{Mesh, SubMesh};
 use gltf::{
     mesh::util::{ReadIndices, ReadTexCoords},
     Document,
@@ -33,6 +33,7 @@ impl GltfFile {
     pub fn new_mesh(&self) -> Vec<(Mesh, String)> {
         let mut meshes = Vec::new();
         for mesh in self.document.as_ref().unwrap().meshes() {
+            let mut submeshes = Vec::new();
             for primitive in mesh.primitives() {
                 let mut positions: Vec<Vec3> = Vec::new();
                 let mut normals: Vec<Vec3> = Vec::new();
@@ -90,18 +91,17 @@ impl GltfFile {
                     .collect();
                 let indices = Some(indices);
                 let tangents = calculate_tangents(&positions, &tex_coords, &indices);
-                meshes.push((
-                    Mesh {
-                        positions: Some(positions),
-                        normals: Some(normals),
-                        tangents: Some(tangents),
-                        tex_coords: Some(tex_coords),
-                        indices,
-                        colors: None,
-                    },
-                    String::from(mesh.name().unwrap()),
-                ));
+                submeshes.push(SubMesh {
+                    positions: Some(positions),
+                    normals: Some(normals),
+                    tangents: Some(tangents),
+                    tex_coords: Some(tex_coords),
+                    indices,
+                    colors: None,
+                    material: None,
+                });
             }
+            meshes.push((Mesh { submeshes }, String::from(mesh.name().unwrap())));
         }
         meshes
     }

@@ -1,3 +1,3 @@
 fn main() {
-    lgn_data_codegen::compiler_container_gen!("../../tests/sample-data/def/mesh.rs");
+    lgn_data_codegen::compiler_container_gen!("../lgn-graphics-data/def/mesh.rs");
 }

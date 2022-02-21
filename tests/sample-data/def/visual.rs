@@ -1,6 +1,6 @@
 #[component()]
 struct Visual {
-    #[legion(resource_type = crate::runtime::Mesh)]
+    #[legion(resource_type = lgn_graphics_data::runtime::Mesh)]
     pub renderable_geometry: Option<ResourcePathId>,
 
     pub shadow_receiver: bool,

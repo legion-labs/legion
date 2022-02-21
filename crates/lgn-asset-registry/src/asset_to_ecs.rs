@@ -249,7 +249,10 @@ impl AssetToECS for lgn_graphics_data::runtime_mesh::Mesh {
                 colors: mesh.colors.clone(),
             },
         )];
-        let mesh_component = MeshComponent { submeshes };
+        let mesh_component = MeshComponent {
+            mesh_id: asset_id.id,
+            submeshes,
+        };
         entity.insert(mesh_component);
 
         Some(entity.id())

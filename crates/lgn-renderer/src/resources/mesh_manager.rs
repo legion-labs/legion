@@ -1,21 +1,21 @@
-use std::collections::BTreeMap;
-
-use lgn_data_runtime::ResourceId;
-use lgn_ecs::prelude::{Local, Query, Res, ResMut, Without};
 use lgn_graphics_api::PagedBufferAllocation;
-use lgn_graphics_data::runtime_mesh::MeshReferenceType;
+use lgn_math::Vec4;
 
-use super::{GpuUniformData, GpuUniformDataContext, UnifiedStaticBuffer, UniformGPUDataUpdater};
+use super::{UnifiedStaticBuffer, UniformGPUDataUpdater};
 use crate::{cgen, static_mesh_render_data::StaticMeshRenderData, Renderer};
-    components::{ManipulatorComponent, VisualComponent},
-    egui::egui_plugin::Egui,
+    components::SubMesh,
+
+pub struct MeshMetaData {
+    pub draw_call_count: u32,
+    pub mesh_description_offset: u32,
+    pub positions: Vec<Vec4>, // for AABB calculation
+}
 
 pub struct MeshManager {
     static_buffer: UnifiedStaticBuffer,
-    static_meshes: Vec<StaticMeshRenderData>,
-    mesh_description_offsets: Vec<u32>,
+    static_meshes: Vec<MeshMetaData>,
+    default_mesh_id: u32,
     allocations: Vec<PagedBufferAllocation>,
-    reference_to_id_map: BTreeMap<ResourceId, usize>,
 }
 
 impl Drop for MeshManager {
@@ -47,9 +47,8 @@ impl MeshManager {
         let mut mesh_manager = Self {
             static_buffer,
             static_meshes: Vec::new(),
-            mesh_description_offsets: Vec::new(),
+            default_mesh_id: 1, // Cube
             allocations: Vec::new(),
-            reference_to_id_map: BTreeMap::new(),
         };
 
         // Keep consistent with DefaultMeshType
@@ -86,155 +85,73 @@ impl MeshManager {
             .allocate_segment(vertex_data_size_in_bytes);
 
         let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
-        let mut static_mesh_descs = Vec::with_capacity(meshes.len());
         let mut offset = static_allocation.offset();
+        let mut mesh_meta_datas = Vec::new();
 
         for mesh in &meshes {
-            let (new_offset, mesh_desc) = mesh.make_gpu_update_job(&mut updater, offset as u32);
-            static_mesh_descs.push(mesh_desc);
+            let (new_offset, mesh_info_offset) =
+                mesh.make_gpu_update_job(&mut updater, offset as u32);
+            mesh_meta_datas.push(MeshMetaData {
+                draw_call_count: mesh.num_vertices() as u32,
+                mesh_description_offset: mesh_info_offset,
+                positions: mesh.positions.unwrap(),
+            });
             offset = u64::from(new_offset);
         }
 
-        let mut mesh_description_offsets = Vec::with_capacity(meshes.len());
-        updater.add_update_jobs(&static_mesh_descs, offset);
-        for (i, _) in static_mesh_descs.into_iter().enumerate() {
-            mesh_description_offsets.push(
-                offset as u32
-                    + (i * std::mem::size_of::<cgen::cgen_type::MeshDescription>()) as u32,
-            );
-        }
 
         renderer.add_update_job_block(updater.job_blocks());
-        self.static_meshes.append(&mut meshes);
-        self.mesh_description_offsets
-            .append(&mut mesh_description_offsets);
+        self.static_meshes.append(&mut mesh_meta_datas);
         self.allocations.push(static_allocation);
     }
 
-    pub fn add_meshes_by_references(
-        &mut self,
-        renderer: &Renderer,
-        mut ids_meshes: Vec<(ResourceId, StaticMeshRenderData)>,
-    ) {
-        let start_idx = self.mesh_description_offsets.len();
-        let (resource_ids, meshes): (Vec<ResourceId>, Vec<StaticMeshRenderData>) =
-            ids_meshes.iter().cloned().unzip();
-        self.add_meshes(renderer, meshes);
-        for (idx, resource_id) in resource_ids.iter().enumerate() {
-            self.reference_to_id_map
-                .insert(*resource_id, start_idx + idx);
+    pub fn add_mesh_components(&self, renderer: &Renderer, meshes: &Vec<SubMesh>) -> Vec<u32> {
+        if meshes.is_empty() {
+            return Vec::new();
         }
-    }
-
-    pub fn mesh_description_offset_for_visual(
-        &self,
-        visual_component: &VisualComponent,
-    ) -> (u32, bool) {
-        if let Some(reference) = &visual_component.mesh_reference_type {
-            (
-                self.mesh_description_offset_from_mesh_reference(reference),
-                self.reference_to_id_map.get(&reference.id().id).is_some(),
-            )
-        } else {
-            (
-                self.mesh_description_offset_from_id(visual_component.mesh_id as u32),
-                true,
-            )
+        let mesh_ids = Vec::new();
+        let mut vertex_data_size_in_bytes = 0;
+        for mesh in meshes {
+            vertex_data_size_in_bytes +=
+                u64::from(mesh.size_in_bytes()) + std::mem::size_of::<MeshInfo>() as u64;
         }
-    }
 
-    pub fn mesh_description_offset_from_id(&self, mesh_id: u32) -> u32 {
-        if mesh_id < self.mesh_description_offsets.len() as u32 {
-            self.mesh_description_offsets[mesh_id as usize]
-        } else {
-            0
+        let static_allocation = self
+            .static_buffer
+            .allocate_segment(vertex_data_size_in_bytes);
+
+        let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
+        let mut offset = static_allocation.offset();
+        let mut mesh_meta_datas = Vec::new();
+
+        for mesh in meshes {
+            mesh_ids.push(mesh_meta_datas.len() as u32);
+            let (new_offset, mesh_info_offset) =
+                mesh.make_gpu_update_job(&mut updater, offset as u32);
+            mesh_meta_datas.push(MeshMetaData {
+                draw_call_count: mesh.num_vertices() as u32,
+                mesh_description_offset: mesh_info_offset,
+                positions: mesh.positions.unwrap(),
+            });
+            offset = u64::from(new_offset);
         }
+
+        renderer.add_update_job_block(updater.job_blocks());
+        self.static_meshes.append(&mut mesh_meta_datas);
+        self.allocations.push(static_allocation);
+
+        mesh_ids
     }
 
-    fn mesh_description_offset_from_mesh_reference(
-        &self,
-        mesh_reference: &MeshReferenceType,
-    ) -> u32 {
-        self.mesh_description_offsets[self.get_id_from_reference(mesh_reference)]
-    }
-
-    fn get_id_from_reference(&self, mesh_reference: &MeshReferenceType) -> usize {
-        if let Some(mesh_id) = self.reference_to_id_map.get(&mesh_reference.id().id) {
-            *mesh_id
-        } else {
-            0
-        }
-    }
-
-    pub fn mesh_for_visual(&self, visual_component: &VisualComponent) -> &StaticMeshRenderData {
-        if let Some(reference) = &visual_component.mesh_reference_type {
-            &self.static_meshes[self.get_id_from_reference(reference)]
-        } else {
-            &self.static_meshes[visual_component.mesh_id as usize]
-        }
-    }
-
-    pub fn mesh_from_id(&self, mesh_id: u32) -> &StaticMeshRenderData {
+    pub fn get_mesh_meta_data(&self, mesh_id: u32) -> &MeshMetaData {
         &self.static_meshes[mesh_id as usize]
     }
+
+    //pub fn mesh_from_id(&self, mesh_id: u32) -> &StaticMeshRenderData {
+    //    &self.static_meshes[mesh_id as usize]
+    //}
 
     pub fn max_id(&self) -> usize {
         self.static_meshes.len()
     }
 }
-
-pub struct MeshManagerUIState {
-    path: String,
-}
-
-impl Default for MeshManagerUIState {
-    fn default() -> Self {
-        Self {
-            path: String::from(
-                //"C:/work/glTF-Sample-Models/2.0/FlightHelmet/glTF/FlightHelmet.gltf",
-                //"C:/work/glTF-Sample-Models/sourceModels/DragonAttenuation/Dragon_Attenuation.blend",
-                "C:/work/glTF-Sample-Models/2.0/DragonAttenuation/glTF/DragonAttenuation.gltf",
-            ),
-        }
-    }
-}
-
-//#[allow(clippy::needless_pass_by_value)]
-//pub fn ui_mesh_manager(
-//    egui_ctx: Res<'_, Egui>,
-//    _renderer: Res<'_, Renderer>,
-//    mut mesh_manager: ResMut<'_, MeshManager>,
-//    mut ui_state: Local<'_, MeshManagerUIState>,
-//    mut q_static_meshes: Query<'_, '_, &mut StaticMesh, Without<ManipulatorComponent>>,
-//    uniform_data: Res<'_, GpuUniformData>,
-//) {
-//    let data_context = GpuUniformDataContext::new(&uniform_data);
-//
-//    egui::Window::new("Mesh manager").show(&egui_ctx.ctx, |ui| {
-//        ui.add(egui::text_edit::TextEdit::singleline(&mut ui_state.path));
-//        //if ui.small_button("Load mesh (gltf)").clicked() {
-//        //    mesh_manager.add_meshes(
-//        //        renderer.as_ref(),
-//        //        StaticMeshRenderData::new_gltf(ui_state.path.clone()),
-//        //    );
-//        //}
-//        for (idx, mut mesh) in q_static_meshes.iter_mut().enumerate() {
-//            let selected_text = format!("Mesh ID {}", mesh.mesh_id);
-//            let mut selected_idx = mesh.mesh_id;
-//            egui::ComboBox::from_label(format!("Mesh {}", idx))
-//                .selected_text(selected_text)
-//                .show_ui(ui, |ui| {
-//                    for mesh_id in 0..mesh_manager.max_id() {
-//                        ui.selectable_value(
-//                            &mut selected_idx,
-//                            mesh_id as usize,
-//                            format!("Mesh ID {}", mesh_id),
-//                        );
-//                    }
-//                });
-//            if selected_idx != mesh.mesh_id {
-//                mesh.set_mesh_id(&mesh_manager, selected_idx);
-//            }
-//        }
-//    });
-//}

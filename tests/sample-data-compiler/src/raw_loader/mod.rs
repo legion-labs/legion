@@ -125,16 +125,6 @@ pub async fn build_offline(root_folder: impl AsRef<Path>) {
                         )
                         .await;
                     }
-                    "mesh" => {
-                        load_ron_resource::<raw_data::Mesh, offline_data::Mesh>(
-                            resource_id,
-                            path,
-                            &resource_ids,
-                            &mut project,
-                            &mut resources,
-                        )
-                        .await;
-                    }
                     "psd" => {
                         load_psd_resource(resource_id, path, &mut project, &mut resources).await;
                     }
@@ -193,7 +183,6 @@ fn ext_to_resource_kind(ext: &str) -> (&str, ResourceType) {
             lgn_graphics_data::offline::Material::TYPENAME,
             lgn_graphics_data::offline::Material::TYPE,
         ),
-        "mesh" => (offline_data::Mesh::TYPENAME, offline_data::Mesh::TYPE),
         "psd" => (
             lgn_graphics_data::offline_psd::PsdFile::TYPENAME,
             lgn_graphics_data::offline_psd::PsdFile::TYPE,

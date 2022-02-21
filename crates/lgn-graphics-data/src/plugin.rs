@@ -44,6 +44,6 @@ fn add_loaders(asset_registry: NonSendMut<'_, AssetRegistryOptions>) {
     {
         crate::runtime::add_loaders(asset_registry)
             .add_loader_mut::<crate::runtime_texture::Texture>()
-            .add_loader_mut::<crate::runtime_mesh::Mesh>();
+            .add_loader_mut::<crate::runtime::Mesh>();
     }
 }

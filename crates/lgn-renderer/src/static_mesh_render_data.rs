@@ -53,7 +53,7 @@ impl StaticMeshRenderData {
         &self,
         updater: &mut UniformGPUDataUpdater,
         offset: u32,
-    ) -> (u32, cgen::cgen_type::MeshDescription) {
+    ) -> (u32, u32) {
         let mut mesh_desc = cgen::cgen_type::MeshDescription::default();
         mesh_desc.set_attrib_mask(self.get_mesh_attrib_mask());
         let mut offset = offset;
@@ -88,7 +88,10 @@ impl StaticMeshRenderData {
             updater.add_update_jobs(colors, u64::from(offset));
             offset += (std::mem::size_of::<Vec4>() * colors.len()) as u32;
         }
-        (offset, mesh_desc)
+        updater.add_update_jobs(&[mesh_info], u64::from(offset));
+        let mesh_info_offset = offset;
+        offset += std::mem::size_of::<MeshInfo>() as u32;
+        (offset, mesh_info_offset)
     }
 
     pub fn size_in_bytes(&self) -> u32 {

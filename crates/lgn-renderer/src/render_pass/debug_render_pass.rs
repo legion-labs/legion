@@ -404,12 +404,12 @@ fn render_aabb_for_mesh(
     cmd_buffer: &mut HLCommandBuffer<'_>,
     mesh_manager: &MeshManager,
 ) {
-    let mesh = mesh_manager.mesh_from_id(mesh_id);
+    let mesh = mesh_manager.get_mesh_meta_data(mesh_id);
 
     let mut min_bound = Vec3::new(f32::MAX, f32::MAX, f32::MAX);
     let mut max_bound = Vec3::new(f32::MIN, f32::MIN, f32::MIN);
 
-    for position in mesh.positions.as_ref().unwrap() {
+    for position in &mesh.positions {
         let world_pos = transform.compute_matrix().mul_vec4(*position).xyz();
 
         min_bound = min_bound.min(world_pos);
@@ -441,12 +441,12 @@ fn render_mesh(
 ) {
     let mut push_constant_data = cgen::cgen_type::ConstColorPushConstantData::default();
 
+    let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh_id);
     push_constant_data.set_world((*world_xform).into());
     push_constant_data.set_color(color.into());
-    push_constant_data
-        .set_mesh_description_offset(mesh_manager.mesh_description_offset_from_id(mesh_id).into());
+    push_constant_data.set_mesh_description_offset(mesh_meta_data.mesh_description_offset.into());
 
     cmd_buffer.push_constant(&push_constant_data);
 
-    cmd_buffer.draw(mesh_manager.mesh_from_id(mesh_id).num_vertices() as u32, 0);
+    cmd_buffer.draw(mesh_meta_data.draw_call_count, 0);
 }

@@ -8,7 +8,7 @@ use lgn_data_compiler::{
 };
 use lgn_data_offline::{resource::ResourceProcessor, Transform};
 use lgn_data_runtime::{AssetRegistryOptions, Resource};
-use lgn_graphics_data::runtime_mesh::MeshProcessor;
+use lgn_graphics_data::offline::MeshProcessor;
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -17,7 +17,7 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     data_version: "1",
     transform: &Transform::new(
         lgn_graphics_data::offline_gltf::GltfFile::TYPE,
-        lgn_graphics_data::runtime_mesh::Mesh::TYPE,
+        lgn_graphics_data::runtime::Mesh::TYPE,
     ),
     init_func: init,
     compiler_hash_func: hash_code_and_data,

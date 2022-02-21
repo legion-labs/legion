@@ -309,35 +309,3 @@ impl FromRaw<raw_data::Material> for lgn_graphics_data::offline::Material {
         }
     }
 }
-
-// ----- Mesh conversions -----
-
-impl FromRaw<raw_data::Mesh> for offline_data::Mesh {
-    fn from_raw(
-        raw: raw_data::Mesh,
-        references: &HashMap<ResourcePathName, ResourceTypeAndId>,
-    ) -> Self {
-        Self {
-            sub_meshes: raw
-                .sub_meshes
-                .iter()
-                .map(|sub_mesh| offline_data::SubMesh::from_raw(sub_mesh, references))
-                .collect(),
-        }
-    }
-}
-
-impl FromRaw<&raw_data::SubMesh> for offline_data::SubMesh {
-    fn from_raw(
-        raw: &raw_data::SubMesh,
-        references: &HashMap<ResourcePathName, ResourceTypeAndId>,
-    ) -> Self {
-        Self {
-            positions: raw.positions.clone(),
-            normals: raw.normals.clone(),
-            uvs: raw.uvs.clone(),
-            indices: raw.indices.clone(),
-            material: lookup_asset_path(references, &raw.material),
-        }
-    }
-}

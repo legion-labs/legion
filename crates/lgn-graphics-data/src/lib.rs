@@ -42,10 +42,6 @@ pub mod offline_psd;
 #[path = "offline/texture.rs"]
 pub mod offline_texture;
 
-#[cfg(feature = "runtime")]
-#[path = "runtime/mesh.rs"]
-pub mod runtime_mesh;
-
 #[cfg(feature = "offline")]
 #[path = "offline/gltf.rs"]
 pub mod offline_gltf;
