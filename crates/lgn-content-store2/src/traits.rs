@@ -5,6 +5,12 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use crate::{Error, Identifier, Result};
 
+/// A reader as returned by the `ContentReader` trait.
+pub type ContentAsyncRead = Pin<Box<dyn AsyncRead + Send>>;
+
+/// A writer as returned by the `ContentWriter` trait.
+pub type ContentAsyncWrite = Pin<Box<dyn AsyncWrite + Send>>;
+
 /// ContentReader is a trait for reading content from a content-store.
 #[async_trait]
 pub trait ContentReader {
@@ -13,7 +19,7 @@ pub trait ContentReader {
     ///
     /// If the identifier does not match any content, `Error::NotFound` is
     /// returned.
-    async fn get_content_reader(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncRead + Send>>>;
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead>;
 
     /// Read the content referenced by the specified identifier.
     async fn read_content(&self, id: &Identifier) -> Result<Vec<u8>> {
@@ -47,7 +53,7 @@ pub trait ContentWriter {
     ///
     /// If the data already exists, `Error::AlreadyExists` is returned and the
     /// caller should consider that the write operation is not necessary.
-    async fn get_content_writer(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncWrite + Send>>>;
+    async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite>;
 
     /// Write the specified content and returns the newly associated identifier.
     ///

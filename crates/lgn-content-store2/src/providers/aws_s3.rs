@@ -8,13 +8,13 @@ use std::sync::Mutex;
 use std::task::{Context, Poll};
 use std::time::Duration;
 use std::{fmt::Display, pin::Pin};
-use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::io::AsyncWrite;
 use tokio_stream::Stream;
 use tokio_util::io::StreamReader;
 
 use crate::{
-    ContentAddressReader, ContentAddressWriter, ContentReader, ContentWriter, Error, Identifier,
-    Result,
+    ContentAddressReader, ContentAddressWriter, ContentAsyncRead, ContentAsyncWrite, ContentReader,
+    ContentWriter, Error, Identifier, Result,
 };
 
 pub struct AwsS3Provider {
@@ -253,7 +253,7 @@ impl AsyncWrite for ByteStreamWriter {
 
 #[async_trait]
 impl ContentReader for AwsS3Provider {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncRead + Send>>> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
         let key = self.blob_key(id);
 
         let object = match self
@@ -289,7 +289,7 @@ impl ContentReader for AwsS3Provider {
 
 #[async_trait]
 impl ContentWriter for AwsS3Provider {
-    async fn get_content_writer(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncWrite + Send>>> {
+    async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
         let key = self.blob_key(id);
 
         match self

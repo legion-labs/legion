@@ -6,9 +6,11 @@ use pin_project::pin_project;
 use std::io::Cursor;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::io::AsyncWrite;
 
-use crate::{ContentReader, ContentWriter, Error, Identifier, Result};
+use crate::{
+    ContentAsyncRead, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
+};
 
 pub struct AwsDynamoDbProvider {
     table_name: String,
@@ -94,14 +96,14 @@ impl AwsDynamoDbProvider {
 
 #[async_trait]
 impl ContentReader for AwsDynamoDbProvider {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncRead + Send>>> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
         Ok(Box::pin(Cursor::new(self.get_content(id).await?)))
     }
 }
 
 #[async_trait]
 impl ContentWriter for AwsDynamoDbProvider {
-    async fn get_content_writer(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncWrite + Send>>> {
+    async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
         match self.get_content(id).await {
             Ok(_) => Err(Error::AlreadyExists),
             Err(Error::NotFound) => Ok(Box::pin(DynamoDbUploader::new(

@@ -5,9 +5,11 @@ use redis::AsyncCommands;
 use std::io::Cursor;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::io::AsyncWrite;
 
-use crate::{ContentReader, ContentWriter, Error, Identifier, Result};
+use crate::{
+    ContentAsyncRead, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
+};
 
 pub struct RedisProvider {
     key_prefix: String,
@@ -69,7 +71,7 @@ impl RedisProvider {
 
 #[async_trait]
 impl ContentReader for RedisProvider {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncRead + Send>>> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
         let mut con = self
             .client
             .get_async_connection()
@@ -93,7 +95,7 @@ impl ContentReader for RedisProvider {
 
 #[async_trait]
 impl ContentWriter for RedisProvider {
-    async fn get_content_writer(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncWrite + Send>>> {
+    async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
         let key = self.get_key(id);
 
         let mut con = self

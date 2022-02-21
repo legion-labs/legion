@@ -13,16 +13,13 @@ use lgn_content_store_proto::{
     WriteContentRequest, WriteContentResponse,
 };
 use pin_project::pin_project;
-use tokio::{
-    io::{AsyncRead, AsyncWrite},
-    sync::Mutex,
-};
+use tokio::{io::AsyncWrite, sync::Mutex};
 use tokio_util::{compat::FuturesAsyncReadCompatExt, io::ReaderStream};
 use tonic::{codegen::StdError, Request, Response};
 
 use crate::{
-    traits::ContentAddressProvider, ContentProvider, ContentReader, ContentWriter, Error,
-    Identifier, Result,
+    traits::ContentAddressProvider, ContentAsyncRead, ContentAsyncWrite, ContentProvider,
+    ContentReader, ContentWriter, Error, Identifier, Result,
 };
 
 /// A `GrpcProvider` is a provider that delegates to a `gRPC` service.
@@ -54,7 +51,7 @@ where
     C::Future: Send + 'static,
     <C::ResponseBody as Body>::Error: Into<StdError> + Send,
 {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncRead + Send>>> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
         let req = lgn_content_store_proto::ReadContentRequest { id: id.to_string() };
 
         let resp = self
@@ -105,7 +102,7 @@ where
     C::Future: Send + 'static,
     <C::ResponseBody as Body>::Error: Into<StdError> + Send,
 {
-    async fn get_content_writer(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncWrite + Send>>> {
+    async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
         let req = lgn_content_store_proto::GetContentWriterRequest { id: id.to_string() };
 
         let resp = self
