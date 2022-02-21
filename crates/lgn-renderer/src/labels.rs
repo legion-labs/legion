@@ -11,5 +11,5 @@ pub enum RenderStage {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, SystemLabel)]
 pub enum CommandBufferLabel {
-    Generate,    
+    Generate,
 }
