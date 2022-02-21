@@ -134,7 +134,7 @@
     processList.push(process);
     currentProcess = process;
     await fetchStreams(process);
-    await fetchChildren();
+    await fetchChildren(process);
     fetchPreferedLods(loadingProgression);
   }
 
@@ -207,14 +207,19 @@
     await Promise.all(promises);
   }
 
-  async function fetchChildren() {
+  async function fetchChildren(process: Process) {
+    console.log(process);
     if (!client) {
       log.error("no client in fetchChildren");
       return;
     }
     const { processes } = await client.list_process_children({
-      processId: processId,
+      processId: process.processId,
     });
+
+    for (let i = 0; i < processes.length; ++i) {
+      await fetchChildren(processes[i]);
+    }
 
     let promises = processes.map((process) => {
       processList.push(process);
