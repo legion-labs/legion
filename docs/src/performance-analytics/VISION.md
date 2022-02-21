@@ -282,7 +282,6 @@ Could support the interface to get visibility into crates that are already instr
 - Time series continued (Tim)
 - Timeline improvements (Tim)
 - Async function tracing (MAD)
-- UI redesign continued (Alexandra)
 
 ## April 2022
 - Unreal telemetry module (MAD)
