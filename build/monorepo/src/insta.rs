@@ -1,6 +1,6 @@
 use lgn_tracing::span_fn;
 
-use crate::{cargo::Cargo, context::Context, Result};
+use crate::{cargo::Cargo, context::Context, Error, Result};
 
 #[derive(Debug, clap::Args)]
 pub struct Args {
@@ -35,5 +35,12 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
         Commands::Accept => ["accept"],
     };
 
-    cmd.args(args).run()
+    if cmd.args(args).run().is_ok() {
+        Ok(())
+    } else {
+        if !ctx.installer().install_via_cargo_if_needed("cargo-insta") {
+            return Err(Error::new("could not find/install cargo-insta"));
+        }
+        cmd.run()
+    }
 }
