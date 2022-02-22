@@ -4,7 +4,11 @@ use crate::asset_entities::AssetToEntityMap;
 use lgn_core::Name;
 use lgn_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
-use lgn_renderer::components::{MaterialComponent, TextureComponent, VisualComponent};
+use lgn_graphics_data::runtime::MeshReferenceType;
+use lgn_renderer::{
+    components::{MaterialComponent, MeshComponent, SubMesh, TextureComponent, VisualComponent},
+    static_mesh_render_data::StaticMeshRenderData,
+};
 
 use lgn_tracing::info;
 use lgn_transform::prelude::*;
@@ -87,10 +91,7 @@ impl AssetToECS for runtime_data::Entity {
                 });
                 transform_inserted = true;
             } else if let Some(static_mesh) = component.downcast_ref::<runtime_data::StaticMesh>() {
-                entity.insert(VisualComponent::new(
-                    static_mesh.mesh.clone(),
-                    static_mesh.color,
-                ));
+                entity.insert(VisualComponent::new(&static_mesh.mesh, static_mesh.color));
             } else if let Some(script) =
                 component.downcast_ref::<lgn_scripting::runtime::ScriptComponent>()
             {
@@ -188,8 +189,6 @@ impl AssetToECS for lgn_graphics_data::runtime::Material {
     }
 }
 
-impl AssetToECS for runtime_data::Mesh {}
-
 impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {
     fn create_in_ecs(
         commands: &mut Commands<'_, '_>,
@@ -222,15 +221,13 @@ impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {
     }
 }
 
-impl AssetToECS for lgn_graphics_data::runtime_mesh::Mesh {
+impl AssetToECS for lgn_graphics_data::runtime::Mesh {
     fn create_in_ecs(
         commands: &mut Commands<'_, '_>,
         mesh: &Self,
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
-        entity_to_id_map: &mut ResMut<'_, EntityToGpuDataIdMap>,
-        data_context: &mut GpuUniformDataContext<'_>,
     ) -> Option<Entity> {
         let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
             commands.entity(entity)
@@ -238,19 +235,44 @@ impl AssetToECS for lgn_graphics_data::runtime_mesh::Mesh {
             commands.spawn()
         };
 
-        let mut submeshes = vec![(
-            asset_id.id,
-            StaticMeshRenderData {
-                positions: mesh.positions.clone(),
-                normals: mesh.normals.clone(),
-                tangents: mesh.tangents.clone(),
-                tex_coords: mesh.tex_coords.clone(),
-                indices: mesh.indices.clone(),
-                colors: mesh.colors.clone(),
-            },
-        )];
+        let mut submeshes = Vec::new();
+        for submesh in &mesh.submeshes {
+            submeshes.push(SubMesh {
+                positions: if !submesh.positions.is_empty() {
+                    Some(submesh.positions.clone())
+                } else {
+                    None
+                },
+                normals: if !submesh.normals.is_empty() {
+                    Some(submesh.normals.clone())
+                } else {
+                    None
+                },
+                tangents: if !submesh.tangents.is_empty() {
+                    Some(submesh.tangents.clone())
+                } else {
+                    None
+                },
+                tex_coords: if !submesh.tex_coords.is_empty() {
+                    Some(submesh.tex_coords.clone())
+                } else {
+                    None
+                },
+                indices: if !submesh.indices.is_empty() {
+                    Some(submesh.indices.clone())
+                } else {
+                    None
+                },
+                colors: if !submesh.colors.is_empty() {
+                    Some(submesh.colors.clone())
+                } else {
+                    None
+                },
+                material_id: None,
+            });
+        }
         let mesh_component = MeshComponent {
-            mesh_id: asset_id.id,
+            mesh_id: Some(*asset_id),
             submeshes,
         };
         entity.insert(mesh_component);
@@ -277,7 +299,6 @@ impl AssetToECS for lgn_scripting::runtime::Script {
             "Loading script resource {} bytes",
             entity.compiled_script.len()
         );
-
 
         Some(ecs_entity.id())
     }

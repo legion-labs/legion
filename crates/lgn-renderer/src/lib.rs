@@ -24,7 +24,7 @@ pub use labels::*;
 
 mod renderer;
 use lgn_core::BumpAllocatorPool;
-use lgn_data_runtime::ResourceId;
+use lgn_data_runtime::{ResourceId, ResourceTypeAndId};
 use lgn_graphics_api::{AddressMode, CompareOp, FilterType, MipMapMode, ResourceUsage, SamplerDef};
 use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_math::{Vec2, Vec4};
@@ -323,30 +323,30 @@ fn update_meshes(
     mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
 ) {
     for mut updated_mesh in updated_meshes.iter_mut() {
-        if let Some(mesh_reference) = updated_mesh.mesh_id {
-            missing_visuals_tracker.add_visuals(mesh_reference.id().id);
+        if let Some(mesh_reference) = &updated_mesh.mesh_id {
+            missing_visuals_tracker.add_visuals(*mesh_reference);
             let ids = mesh_manager.add_mesh_components(&renderer, &updated_mesh.submeshes);
 
-            let meshes = Vec::new();
+            let mut meshes = Vec::new();
             for (idx, submeshes) in updated_mesh.submeshes.iter().enumerate() {
                 meshes.push(SubMesh {
                     mesh_id: ids[idx],
                     material_id: u32::MAX, //TODO
                 });
             }
-            model_manager.add_model(mesh_reference.id().id, ModelMetaData { meshes });
+            model_manager.add_model(*mesh_reference, ModelMetaData { meshes });
         }
     }
 }
 
 #[derive(Default)]
 struct MissingVisualTracker {
-    entities: BTreeMap<ResourceId, HashSet<Entity>>,
-    visuals_added: Vec<ResourceId>,
+    entities: BTreeMap<ResourceTypeAndId, HashSet<Entity>>,
+    visuals_added: Vec<ResourceTypeAndId>,
 }
 
 impl MissingVisualTracker {
-    fn add_entity(&mut self, resource_id: ResourceId, entity_id: Entity) {
+    fn add_entity(&mut self, resource_id: ResourceTypeAndId, entity_id: Entity) {
         if let Some(entry) = self.entities.get_mut(&resource_id) {
             entry.insert(entity_id);
         } else {
@@ -356,7 +356,7 @@ impl MissingVisualTracker {
         }
     }
 
-    fn add_visuals(&mut self, resource_id: ResourceId) {
+    fn add_visuals(&mut self, resource_id: ResourceTypeAndId) {
         self.visuals_added.push(resource_id);
     }
 
@@ -437,10 +437,10 @@ fn update_missing_visuals(
             let (model_meta_data, ready) = model_manager.get_model_meta_data(visual_component);
             if !ready {
                 if let Some(reference) = &visual_component.mesh_reference {
-                    missing_visuals_tracker.add_entity(reference.id().id, entity);
+                    missing_visuals_tracker.add_entity(*reference, entity);
                 }
             }
-            for mesh in model_meta_data.meshes {
+            for mesh in &model_meta_data.meshes {
                 let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
                 let instance_vas = GpuInstanceVAs {
                     submesh_va: mesh_meta_data.mesh_description_offset,
@@ -525,10 +525,10 @@ fn update_gpu_instances(
         let (model_meta_data, ready) = model_manager.get_model_meta_data(mesh);
         if !ready {
             if let Some(reference) = &mesh.mesh_reference {
-                missing_visuals_tracker.add_entity(reference.id().id, entity);
+                missing_visuals_tracker.add_entity(*reference, entity);
             }
         }
-        for mesh in model_meta_data.meshes {
+        for mesh in &model_meta_data.meshes {
             let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
             let instance_vas = GpuInstanceVAs {
                 submesh_va: mesh_meta_data.mesh_description_offset,

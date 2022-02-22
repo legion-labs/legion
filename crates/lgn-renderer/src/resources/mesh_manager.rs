@@ -98,7 +98,7 @@ impl MeshManager {
             mesh_meta_datas.push(MeshMetaData {
                 draw_call_count: mesh.num_vertices() as u32,
                 mesh_description_offset: mesh_info_offset,
-                positions: mesh.positions.unwrap(),
+                positions: mesh.positions.as_ref().unwrap().clone(),
             });
             offset = u64::from(new_offset);
         }
@@ -108,11 +108,11 @@ impl MeshManager {
         self.allocations.push(static_allocation);
     }
 
-    pub fn add_mesh_components(&self, renderer: &Renderer, meshes: &Vec<SubMesh>) -> Vec<u32> {
+    pub fn add_mesh_components(&mut self, renderer: &Renderer, meshes: &Vec<SubMesh>) -> Vec<u32> {
         if meshes.is_empty() {
             return Vec::new();
         }
-        let mesh_ids = Vec::new();
+        let mut mesh_ids = Vec::new();
         let mut vertex_data_size_in_bytes = 0;
         for mesh in meshes {
             vertex_data_size_in_bytes +=
@@ -128,13 +128,13 @@ impl MeshManager {
         let mut mesh_meta_datas = Vec::new();
 
         for mesh in meshes {
-            mesh_ids.push(mesh_meta_datas.len() as u32);
+            mesh_ids.push(self.static_meshes.len() as u32);
             let (new_offset, mesh_info_offset) =
                 mesh.make_gpu_update_job(&mut updater, offset as u32);
             mesh_meta_datas.push(MeshMetaData {
                 draw_call_count: mesh.num_vertices() as u32,
                 mesh_description_offset: mesh_info_offset,
-                positions: mesh.positions.unwrap(),
+                positions: mesh.positions.as_ref().unwrap().clone(),
             });
             offset = u64::from(new_offset);
         }

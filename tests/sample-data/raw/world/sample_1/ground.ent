@@ -9,7 +9,7 @@
             scale: (1, 1, 1),
         )),
         Visual((
-            renderable_geometry: "runtime_mesh(world/sample_1/ground.mesh)",
+            renderable_geometry: "None",
             shadow_receiver: true,
             shadow_caster_sun: true,
             shadow_caster_local: true,

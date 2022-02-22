@@ -17,7 +17,7 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     data_version: "1",
     transform: &Transform::new(
         lgn_graphics_data::offline_gltf::GltfFile::TYPE,
-        lgn_graphics_data::runtime::Mesh::TYPE,
+        lgn_graphics_data::offline::Mesh::TYPE,
     ),
     init_func: init,
     compiler_hash_func: hash_code_and_data,

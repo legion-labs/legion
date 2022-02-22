@@ -6,12 +6,12 @@ pub struct Mesh {
 }
 
 pub struct SubMesh {
-    pub positions: Option<Vec<Vec4>>,
-    pub normals: Option<Vec<Vec4>>,
-    pub tangents: Option<Vec<Vec4>>,
-    pub tex_coords: Option<Vec<Vec2>>,
-    pub indices: Option<Vec<u32>>,
-    pub colors: Option<Vec<Vec4>>,
+    pub positions: Vec<Vec4>,
+    pub normals: Vec<Vec4>,
+    pub tangents: Vec<Vec4>,
+    pub tex_coords: Vec<Vec2>,
+    pub indices: Vec<u32>,
+    pub colors: Vec<Vec4>,
 
     #[legion(resource_type = crate::runtime::Material)]
     pub material: Option<ResourcePathId>,

@@ -1,3 +1,4 @@
+use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::Component;
 use lgn_graphics_data::runtime::{MaterialReferenceType, MeshReferenceType};
 use lgn_math::{Vec2, Vec4};
@@ -124,13 +125,13 @@ impl SubMesh {
 
 #[derive(Component)]
 pub struct MeshComponent {
-    pub mesh_id: Option<MeshReferenceType>,
+    pub mesh_id: Option<ResourceTypeAndId>,
     pub submeshes: Vec<SubMesh>,
 }
 
 impl MeshComponent {
     fn size_in_bytes(&self) -> u32 {
-        let size = 0;
+        let mut size = 0;
         for submesh in &self.submeshes {
             size += submesh.size_in_bytes();
         }

@@ -34,10 +34,7 @@ pub async fn build_offline(root_folder: impl AsRef<Path>) {
             let (mut project, resources) = setup_project(root_folder).await;
             let mut resources = resources.lock().await;
 
-            let mut file_paths = find_files(
-                &raw_dir,
-                &["ent", "ins", "mat", "mesh", "psd", "png", "gltf"],
-            );
+            let mut file_paths = find_files(&raw_dir, &["ent", "ins", "mat", "psd", "png", "gltf"]);
 
             let gltf_folders = file_paths
                 .iter()

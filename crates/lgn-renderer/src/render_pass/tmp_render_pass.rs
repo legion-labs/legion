@@ -157,7 +157,7 @@ impl TmpRenderPass {
 
         for (_index, (entity, static_mesh)) in static_meshes.iter().enumerate() {
             let (model_meta_data, _) = model_manager.get_model_meta_data(static_mesh);
-            let i = 0;
+            let mut i = 0;
             if let Some(list) = instance_manager.id_va_list(*entity) {
                 for (gpu_instance_id, _) in list {
                     let draw_call_count = mesh_manager
