@@ -12,9 +12,20 @@ impl Transform {
             .get_mut::<lgn_transform::prelude::Transform>()
             .map(|t| Self(t.into_inner()))
     }
+
+    // fn get(&self) -> &mut lgn_transform::prelude::Transform {
+    //     #![allow(unsafe_code)]
+    //     unsafe { &*self.0 }
+    // }
+
+    // fn get_mut(&mut self) -> &mut lgn_transform::prelude::Transform {
+    //     #![allow(unsafe_code)]
+    //     unsafe { &mut *self.0 }
+    // }
 }
 
 pub(crate) fn make_transform_module() -> Result<Module, ContextError> {
+    #![allow(unsafe_code)]
     let mut module = Module::with_crate("lgn_transform");
 
     module.ty::<Transform>()?;

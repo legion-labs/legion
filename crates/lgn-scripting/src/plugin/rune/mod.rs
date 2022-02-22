@@ -1,5 +1,3 @@
-#![allow(unsafe_code)]
-
 use std::{
     str::{self, FromStr},
     sync::Arc,

@@ -12,6 +12,7 @@ impl Vec2 {
     }
 
     fn get(&self) -> &lgn_math::Vec2 {
+        #![allow(unsafe_code)]
         unsafe { &*self.0 }
     }
 
@@ -35,10 +36,12 @@ impl Vec3 {
     }
 
     fn get(&self) -> &lgn_math::Vec3 {
+        #![allow(unsafe_code)]
         unsafe { &*self.0 }
     }
 
     fn get_mut(&mut self) -> &mut lgn_math::Vec3 {
+        #![allow(unsafe_code)]
         unsafe { &mut *self.0 }
     }
 

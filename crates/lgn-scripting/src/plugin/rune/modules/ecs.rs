@@ -16,6 +16,7 @@ impl Entity {
     }
 
     pub(crate) fn get_mut(&self) -> EntityMut<'_> {
+        #![allow(unsafe_code)]
         let world = unsafe { &mut *self.world };
         world.entity_mut(self.entity)
     }
@@ -32,6 +33,7 @@ impl EntityLookupByName {
     }
 
     fn lookup(&self, entity_name: &str) -> Option<Entity> {
+        #![allow(unsafe_code)]
         let world = unsafe { &mut *self.world };
 
         let mut query = world.query::<(lgn_ecs::prelude::Entity, &Name)>();
