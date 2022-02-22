@@ -21,6 +21,9 @@ test_int = 1337
 test_float = 1337.1337
 test_string = "TestString"
 
+[test_config.sub_config]
+test_nested = 42
+
 [logging]
 #logs_buffer_size = 10485760
 #metrics_buffer_size = 1048576

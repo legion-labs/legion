@@ -96,33 +96,51 @@ impl Config {
     }
 
     fn find_table_entry<'a>(&'a self, property_name: &str) -> Option<&'a Value> {
-        property_name
-            .split_once('.')
-            .and_then(|(table_name, variable_name)| {
-                self.entries
-                    .get(table_name)
-                    .and_then(Value::as_table)
-                    .and_then(|table| table.get(variable_name))
-            })
-            .or_else(|| {
-                warn!("Configs entry not found: {}", property_name);
-                None
-            })
+        let mut parts = property_name.split('.');
+
+        if let Some(first_part) = parts.next() {
+            let mut node: &toml::Value = self.entries.get(first_part)?;
+
+            for part in parts {
+                if let toml::Value::Table(table) = node {
+                    if let Some(value) = table.get(part) {
+                        node = value;
+                    } else {
+                        warn!("Configs entry not found: {}", property_name);
+                        return None;
+                    }
+                }
+            }
+
+            Some(node)
+        } else {
+            warn!("Configs entry not found: {}", property_name);
+            None
+        }
     }
 
     fn find_table_entry_mut<'a>(&'a mut self, property_name: &str) -> Option<&'a mut Value> {
-        property_name
-            .split_once('.')
-            .and_then(|(table_name, variable_name)| {
-                self.entries
-                    .get_mut(table_name)
-                    .and_then(Value::as_table_mut)
-                    .and_then(|table| table.get_mut(variable_name))
-            })
-            .or_else(|| {
-                warn!("Configs entry not found: {}", property_name);
-                None
-            })
+        let mut parts = property_name.split('.');
+
+        if let Some(first_part) = parts.next() {
+            let mut node: &mut toml::Value = self.entries.get_mut(first_part)?;
+
+            for part in parts {
+                if let toml::Value::Table(table) = node {
+                    if let Some(value) = table.get_mut(part) {
+                        node = value;
+                    } else {
+                        warn!("Configs entry not found: {}", property_name);
+                        return None;
+                    }
+                }
+            }
+
+            Some(node)
+        } else {
+            warn!("Configs entry not found: {}", property_name);
+            None
+        }
     }
 
     pub fn get<'de, T>(&self, key: &str) -> Option<T>
@@ -189,6 +207,8 @@ macro_rules! config_get_or {
 
 #[test]
 fn test_config() {
+    use std::collections::HashMap;
+
     let configs = Config::new();
 
     configs.get_absolute_path("editor_srv.project_dir").unwrap();
@@ -204,6 +224,33 @@ fn test_config() {
 
     let test_float: f32 = configs.get("test_config.test_float").unwrap();
     assert!((test_float - 1337.1337f32).abs() < f32::EPSILON);
+
+    let test_sub_config: i32 = configs.get("test_config.sub_config.test_nested").unwrap();
+    assert_eq!(test_sub_config, 42);
+
+    let test_config: HashMap<String, toml::Value> = configs.get("test_config").unwrap();
+    assert_eq!(
+        test_config,
+        [
+            (
+                "test_string".to_string(),
+                toml::Value::String("TestString".to_string())
+            ),
+            ("test_bool".to_string(), toml::Value::Boolean(false)),
+            ("test_int".to_string(), toml::Value::Integer(1337)),
+            ("test_float".to_string(), toml::Value::Float(1337.1337f64)),
+            (
+                "sub_config".to_string(),
+                toml::Value::Table(
+                    [("test_nested".to_string(), toml::Value::Integer(42),)]
+                        .into_iter()
+                        .collect()
+                )
+            ),
+        ]
+        .into_iter()
+        .collect(),
+    );
 }
 
 #[test]
