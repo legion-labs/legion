@@ -270,8 +270,6 @@ impl DescriptorHeapPartition {
 
         DescriptorSetWriter::new(
             DescriptorSetHandle {
-                layout_uid: descriptor_set_layout.uid(),
-                frequency: descriptor_set_layout.frequency(),
                 backend_descriptor_set_handle: result[0],
             },
             descriptor_set_layout,
@@ -296,8 +294,6 @@ impl DescriptorHeapPartition {
 
         let mut writer = DescriptorSetWriter::new(
             DescriptorSetHandle {
-                layout_uid: descriptor_set_layout.uid(),
-                frequency: descriptor_set_layout.frequency(),
                 backend_descriptor_set_handle: result[0],
             },
             descriptor_set_layout,

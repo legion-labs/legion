@@ -294,8 +294,8 @@ impl PickingRenderPass {
                 .unwrap();
 
             cmd_buffer.bind_pipeline(pipeline);
-            cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
-            cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
+            cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set());
+            cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set());
 
             cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
 
@@ -304,7 +304,10 @@ impl PickingRenderPass {
             picking_descriptor_set.set_picked_objects(&self.picked_rw_view);
             let picking_descriptor_set_handle =
                 render_context.write_descriptor_set(&picking_descriptor_set);
-            cmd_buffer.bind_descriptor_set_handle(picking_descriptor_set_handle);
+            cmd_buffer.bind_descriptor_set_handle((
+                cgen::descriptor_set::PickingDescriptorSet::descriptor_set_layout(),
+                picking_descriptor_set_handle,
+            ));
 
             let mut push_constant_data = cgen::cgen_type::PickingPushConstantData::default();
             push_constant_data.set_picking_distance(1.0.into());

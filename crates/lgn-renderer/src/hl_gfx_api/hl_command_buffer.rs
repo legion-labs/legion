@@ -3,8 +3,8 @@ use std::mem;
 use lgn_graphics_api::{
     Buffer, BufferBarrier, BufferCopy, BufferSubAllocation, CmdBlitParams,
     CmdCopyBufferToTextureParams, CmdCopyTextureParams, ColorRenderTargetBinding,
-    DepthStencilRenderTargetBinding, DescriptorSetHandle, IndexBufferBinding, IndexType, Pipeline,
-    Texture, TextureBarrier, VertexBufferBinding,
+    DepthStencilRenderTargetBinding, DescriptorSetHandle, DescriptorSetLayout, IndexBufferBinding,
+    IndexType, Pipeline, Texture, TextureBarrier, VertexBufferBinding,
 };
 
 use crate::resources::{CommandBufferHandle, CommandBufferPoolHandle};
@@ -84,24 +84,28 @@ impl<'rc> HLCommandBuffer<'rc> {
     // tmp? rely on a sort of cache. investigate!
     //
 
-    pub fn bind_descriptor_set_handle(&self, handle: DescriptorSetHandle) {
+    pub fn bind_descriptor_set_handle(
+        &self,
+        layout_handle: (&DescriptorSetLayout, DescriptorSetHandle),
+    ) {
         assert!(self.cur_pipeline.is_some());
 
         let cur_pipeline = self.cur_pipeline.as_ref().unwrap();
         let pipeline_type = cur_pipeline.pipeline_type();
         let root_signature = cur_pipeline.root_signature();
-        let set_index = handle.frequency;
+        let descriptor_set_layout = layout_handle.0;
+        let set_index = descriptor_set_layout.frequency();
 
         assert_eq!(
-            root_signature.definition().descriptor_set_layouts[set_index as usize].uid(),
-            handle.layout_uid
+            &root_signature.definition().descriptor_set_layouts[set_index as usize],
+            descriptor_set_layout
         );
 
         self.cmd_buffer.cmd_bind_descriptor_set_handle(
             pipeline_type,
             root_signature,
             set_index,
-            handle,
+            layout_handle.1,
         );
     }
 

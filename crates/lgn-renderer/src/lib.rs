@@ -506,7 +506,10 @@ fn render_update(
         let frame_descriptor_set_handle =
             render_context.write_descriptor_set(&frame_descriptor_set);
 
-        render_context.set_frame_descriptor_set_handle(frame_descriptor_set_handle);
+        render_context.set_frame_descriptor_set(
+            cgen::descriptor_set::FrameDescriptorSet::descriptor_set_layout(),
+            frame_descriptor_set_handle,
+        );
     }
 
     // For each surface/view, we have to execute the render graph
@@ -544,7 +547,10 @@ fn render_update(
             let view_descriptor_set_handle =
                 render_context.write_descriptor_set(&view_descriptor_set);
 
-            render_context.set_view_descriptor_set_handle(view_descriptor_set_handle);
+            render_context.set_view_descriptor_set(
+                cgen::descriptor_set::ViewDescriptorSet::descriptor_set_layout(),
+                view_descriptor_set_handle,
+            );
         }
 
         let mut cmd_buffer = render_context.alloc_command_buffer();

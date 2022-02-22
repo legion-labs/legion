@@ -61,10 +61,6 @@ impl DescriptorHeapDef {
 //
 #[derive(Clone, Copy)]
 pub struct DescriptorSetHandle {
-    // minimal set of information to avoid
-    // referencing the descriptor set layout
-    pub layout_uid: u32,
-    pub frequency: u32,
     pub(crate) backend_descriptor_set_handle: BackendDescriptorSetHandle,
 }
 

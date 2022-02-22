@@ -144,8 +144,8 @@ impl TmpRenderPass {
         );
 
         cmd_buffer.bind_pipeline(pipeline);
-        cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
-        cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
+        cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set());
+        cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set());
 
         for (_index, (entity, static_mesh)) in static_meshes.iter().enumerate() {
             if let Some(list) = instance_manager.id_va_list(*entity) {

@@ -22,8 +22,8 @@ pub struct RenderContext<'frame> {
     transient_buffer_allocator: TransientBufferAllocatorHandle,
     bump_allocator: BumpAllocatorHandle,
     // tmp
-    frame_descriptor_set_handle: Option<DescriptorSetHandle>,
-    view_descriptor_set_handle: Option<DescriptorSetHandle>,
+    frame_descriptor_set: Option<(&'frame DescriptorSetLayout, DescriptorSetHandle)>,
+    view_descriptor_set: Option<(&'frame DescriptorSetLayout, DescriptorSetHandle)>,
 }
 
 impl<'frame> RenderContext<'frame> {
@@ -47,8 +47,8 @@ impl<'frame> RenderContext<'frame> {
                 ),
             ),
             bump_allocator: bump_allocator_pool.acquire_bump_allocator(),
-            frame_descriptor_set_handle: None,
-            view_descriptor_set_handle: None,
+            frame_descriptor_set: None,
+            view_descriptor_set: None,
         }
     }
 
@@ -113,20 +113,28 @@ impl<'frame> RenderContext<'frame> {
         &self.bump_allocator
     }
 
-    pub fn frame_descriptor_set_handle(&self) -> DescriptorSetHandle {
-        self.frame_descriptor_set_handle.unwrap()
+    pub fn frame_descriptor_set(&self) -> (&DescriptorSetLayout, DescriptorSetHandle) {
+        self.frame_descriptor_set.unwrap()
     }
 
-    pub fn set_frame_descriptor_set_handle(&mut self, handle: DescriptorSetHandle) {
-        self.frame_descriptor_set_handle = Some(handle);
+    pub fn set_frame_descriptor_set(
+        &mut self,
+        layout: &'frame DescriptorSetLayout,
+        handle: DescriptorSetHandle,
+    ) {
+        self.frame_descriptor_set = Some((layout, handle));
     }
 
-    pub fn view_descriptor_set_handle(&self) -> DescriptorSetHandle {
-        self.view_descriptor_set_handle.unwrap()
+    pub fn view_descriptor_set(&self) -> (&DescriptorSetLayout, DescriptorSetHandle) {
+        self.view_descriptor_set.unwrap()
     }
 
-    pub fn set_view_descriptor_set_handle(&mut self, handle: DescriptorSetHandle) {
-        self.view_descriptor_set_handle = Some(handle);
+    pub fn set_view_descriptor_set(
+        &mut self,
+        layout: &'frame DescriptorSetLayout,
+        handle: DescriptorSetHandle,
+    ) {
+        self.view_descriptor_set = Some((layout, handle));
     }
 
     pub fn release_bump_allocator(&mut self, bump_allocator_pool: &BumpAllocatorPool) {
