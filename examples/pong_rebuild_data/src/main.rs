@@ -538,16 +538,6 @@ pub fn update(entity, last_result, entities) {
     };
 
     // scene
-    let scene_script = build_script(
-        project,
-        resource_registry,
-        "f7e3757c-22b1-44af-a8d3-5ae080c4fef1",
-        ScriptType::Rune,
-        "/scene/scene_script",
-        r#"pub fn update() {}"#,
-    )
-    .await;
-
     let scene_id = {
         let mut resources = resource_registry.lock().await;
         let id = ResourceTypeAndId {
@@ -559,15 +549,6 @@ pub fn update(entity, last_result, entities) {
         let entity = handle
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
-
-        let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
-            script_type: ScriptType::Rune,
-            input_values: vec![],
-            entry_fn: "update".to_string(),
-            script_id: Some(scene_script),
-            temp_script: "".to_string(),
-        });
-        entity.components.push(script_component);
 
         entity.children.push(ground_path_id);
         entity.children.push(pad_right_path_id);

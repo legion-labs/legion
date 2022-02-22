@@ -22,6 +22,6 @@ cargo mrun --bin pong_rebuild_data
 ## Data exploration
 
 ```sh
-cargo mrun --bin data-scrape -- configure --project examples/data --buildindex examples/data/temp
+cargo mrun --bin data-scrape -- configure --project examples/pong/data --buildindex examples/pong/data/temp
 cargo mrun --bin data-scrape -- asset examples/pong/data/temp
 ```
