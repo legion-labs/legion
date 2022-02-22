@@ -7,6 +7,11 @@ default_scene = "/world/sample_1.ent"
 project_dir = "tests/sample-data"
 server_addr = "[::1]:50052"
 
+[physics]
+enable_visual_debugger = true
+length_tolerance = 1.0
+speed_tolerance = 1.0
+
 [streamer]
 max_frame_time = 33_000 #microsec
 
@@ -21,7 +26,6 @@ test_string = "TestString"
 #metrics_buffer_size = 1048576
 #threads_buffer_size = 10485760
 #max_level_filter = "ERROR"
-
 
 [logging.level_filters]
 #webrtc = "WARN"
