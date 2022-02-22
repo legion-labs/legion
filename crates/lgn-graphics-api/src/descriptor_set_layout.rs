@@ -11,10 +11,10 @@ static NEXT_DESCRIPTOR_SET_LAYOUT_ID: std::sync::atomic::AtomicU32 =
 #[derive(Clone, Debug)]
 pub struct Descriptor {
     pub name: String,
-    pub binding: u32,
     pub shader_resource_type: ShaderResourceType,
+    // pub binding: u32,
+    pub flat_index: u32,
     pub element_count: u32,
-    pub update_data_offset: u32,
 }
 
 impl Descriptor {
@@ -26,7 +26,7 @@ impl Descriptor {
 #[derive(Debug, Clone, Hash)]
 pub struct DescriptorDef {
     pub name: String,
-    pub binding: u32,
+    // pub binding: u32,
     pub shader_resource_type: ShaderResourceType,
     pub array_size: u32,
 }
@@ -60,11 +60,12 @@ impl Default for DescriptorSetLayoutDef {
 #[derive(Debug)]
 pub(crate) struct DescriptorSetLayoutInner {
     device_context: DeviceContext,
-    definition: DescriptorSetLayoutDef,
+    // definition: DescriptorSetLayoutDef,
     id: u32,
     frequency: u32,
-    binding_mask: u64,
+    // binding_mask: u64,
     descriptors: Vec<Descriptor>,
+    flat_descriptor_count: u32,
 
     pub(crate) backend_layout: BackendDescriptorSetLayout,
 }
@@ -85,9 +86,9 @@ impl DescriptorSetLayout {
         &self.inner.device_context
     }
 
-    pub fn definition(&self) -> &DescriptorSetLayoutDef {
-        &self.inner.definition
-    }
+    // pub fn definition(&self) -> &DescriptorSetLayoutDef {
+    //     &self.inner.definition
+    // }
 
     pub fn uid(&self) -> u32 {
         self.inner.id
@@ -98,33 +99,67 @@ impl DescriptorSetLayout {
     }
 
     pub fn binding_mask(&self) -> u64 {
-        self.inner.binding_mask
+        (1u64 << self.inner.descriptors.len()) - 1
     }
 
-    pub fn find_descriptor_index_by_name(&self, name: &str) -> Option<usize> {
+    pub fn descriptor_count(&self) -> u32 {
+        self.inner.descriptors.len() as u32
+    }
+
+    pub fn flat_descriptor_count(&self) -> u32 {
+        self.inner.flat_descriptor_count
+    }
+
+    pub fn descriptor(&self, index: u32) -> &Descriptor {
+        &self.inner.descriptors[index as usize]
+    }
+
+    pub fn find_descriptor_index_by_name(&self, name: &str) -> Option<u32> {
         self.inner
             .descriptors
             .iter()
             .position(|descriptor| name == descriptor.name)
-    }
-
-    pub fn descriptor(&self, index: usize) -> &Descriptor {
-        &self.inner.descriptors[index]
+            .map(|x| x as u32)
     }
 
     pub fn new(
         device_context: &DeviceContext,
         definition: &DescriptorSetLayoutDef,
     ) -> GfxResult<Self> {
-        let mut binding_mask = 0;
+        // for descriptor_def in &definition.descriptor_defs {}
+        // assert!(definition
+        //     .descriptor_defs
+        //     .is_sorted_by(|x, y| x.binding.cmp(&y.binding)));
+
+        assert!(definition.descriptor_defs.len() < MAX_DESCRIPTOR_BINDINGS);
+        // assert!((descriptor_def.binding as usize) < MAX_DESCRIPTOR_BINDINGS);
+
+        let mut flat_descriptor_count = 0;
+        // let mut binding_mask = 0;
+        let mut descriptors = Vec::new();
+
         for descriptor_def in &definition.descriptor_defs {
-            assert!((descriptor_def.binding as usize) < MAX_DESCRIPTOR_BINDINGS);
-            let mask = 1u64 << descriptor_def.binding;
-            assert!((binding_mask & mask) == 0, "Binding already in use");
-            binding_mask |= mask;
+            // assert!((descriptor_def.binding as usize) < MAX_DESCRIPTOR_BINDINGS);
+            // let mask = 1u64 << descriptor_def.binding;
+            // assert!((binding_mask & mask) == 0, "Binding already in use");
+            // binding_mask |= mask;
+            let element_count = descriptor_def.array_size_normalized();
+
+            let descriptor = Descriptor {
+                name: descriptor_def.name.clone(),
+                // binding: descriptor_def.binding,
+                shader_resource_type: descriptor_def.shader_resource_type,
+                element_count,
+                flat_index: flat_descriptor_count,
+                // typed_flat_index: 0,
+            };
+
+            flat_descriptor_count += element_count;
+
+            descriptors.push(descriptor);
         }
-        let (backend_layout, descriptors) =
-            BackendDescriptorSetLayout::new(device_context, definition)?;
+
+        let backend_layout = BackendDescriptorSetLayout::new(device_context, &descriptors)?;
 
         let descriptor_set_layout_id =
             NEXT_DESCRIPTOR_SET_LAYOUT_ID.fetch_add(1, Ordering::Relaxed);
@@ -134,11 +169,12 @@ impl DescriptorSetLayout {
                 .deferred_dropper()
                 .new_drc(DescriptorSetLayoutInner {
                     device_context: device_context.clone(),
-                    definition: definition.clone(),
+                    // definition: definition.clone(),
                     id: descriptor_set_layout_id,
                     frequency: definition.frequency,
-                    binding_mask,
+                    // binding_mask,
                     descriptors,
+                    flat_descriptor_count,
                     backend_layout,
                 }),
         };

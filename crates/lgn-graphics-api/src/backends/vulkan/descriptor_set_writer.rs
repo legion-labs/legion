@@ -23,7 +23,7 @@ impl<'frame> VulkanDescriptorSetWriter<'frame> {
         let vk_image_info_count = descriptor_set_layout.vk_image_info_count();
         let vk_buffer_info_count = descriptor_set_layout.vk_buffer_info_count();
         let vk_pending_writes = bump.alloc_slice_fill_default::<vk::WriteDescriptorSet>(
-            descriptor_set_layout.definition().descriptor_defs.len(),
+            descriptor_set_layout.descriptor_count() as usize,
         );
 
         let vk_image_infos =
@@ -44,14 +44,16 @@ impl<'frame> DescriptorSetWriter<'frame> {
     #[allow(clippy::todo)]
     pub fn backend_set_descriptors_by_index(
         &mut self,
-        descriptor_index: usize,
+        descriptor_index: u32,
         update_datas: &[DescriptorRef<'_>],
     ) {
         let descriptor = self.descriptor_set_layout.descriptor(descriptor_index);
-        let descriptor_binding = descriptor.binding;
+        let descriptor_binding = descriptor_index;
         assert!((descriptor.element_count_normalized() as usize) == update_datas.len());
 
-        let descriptor_first_update_data = descriptor.update_data_offset;
+        let descriptor_first_update_data = self
+            .descriptor_set_layout
+            .vk_typed_flat_index(descriptor_index);
         let descriptor_set = &self.descriptor_set;
         let vk_descriptor_type = super::internal::shader_resource_type_to_descriptor_type(
             descriptor.shader_resource_type,
@@ -79,12 +81,13 @@ impl<'frame> DescriptorSetWriter<'frame> {
                 }
 
                 // Queue a descriptor write
-                self.backend_write.vk_pending_writes[descriptor_index] = write_descriptor_builder
-                    .image_info(
-                        &self.backend_write.vk_image_infos
-                            [descriptor_first_update_data as usize..next_index as usize],
-                    )
-                    .build();
+                self.backend_write.vk_pending_writes[descriptor_index as usize] =
+                    write_descriptor_builder
+                        .image_info(
+                            &self.backend_write.vk_image_infos
+                                [descriptor_first_update_data as usize..next_index as usize],
+                        )
+                        .build();
             }
 
             ShaderResourceType::ConstantBuffer
@@ -106,12 +109,13 @@ impl<'frame> DescriptorSetWriter<'frame> {
                     next_index += 1;
                 }
                 // Queue a descriptor write
-                self.backend_write.vk_pending_writes[descriptor_index] = write_descriptor_builder
-                    .buffer_info(
-                        &self.backend_write.vk_buffer_infos
-                            [descriptor_first_update_data as usize..next_index as usize],
-                    )
-                    .build();
+                self.backend_write.vk_pending_writes[descriptor_index as usize] =
+                    write_descriptor_builder
+                        .buffer_info(
+                            &self.backend_write.vk_buffer_infos
+                                [descriptor_first_update_data as usize..next_index as usize],
+                        )
+                        .build();
             }
             ShaderResourceType::Texture2D
             | ShaderResourceType::Texture2DArray
@@ -133,12 +137,13 @@ impl<'frame> DescriptorSetWriter<'frame> {
                     next_index += 1;
                 }
 
-                self.backend_write.vk_pending_writes[descriptor_index] = write_descriptor_builder
-                    .image_info(
-                        &self.backend_write.vk_image_infos
-                            [descriptor_first_update_data as usize..next_index as usize],
-                    )
-                    .build();
+                self.backend_write.vk_pending_writes[descriptor_index as usize] =
+                    write_descriptor_builder
+                        .image_info(
+                            &self.backend_write.vk_image_infos
+                                [descriptor_first_update_data as usize..next_index as usize],
+                        )
+                        .build();
             }
             ShaderResourceType::RWTexture2D
             | ShaderResourceType::RWTexture2DArray
@@ -158,12 +163,13 @@ impl<'frame> DescriptorSetWriter<'frame> {
                     next_index += 1;
                 }
 
-                self.backend_write.vk_pending_writes[descriptor_index] = write_descriptor_builder
-                    .image_info(
-                        &self.backend_write.vk_image_infos
-                            [descriptor_first_update_data as usize..next_index as usize],
-                    )
-                    .build();
+                self.backend_write.vk_pending_writes[descriptor_index as usize] =
+                    write_descriptor_builder
+                        .image_info(
+                            &self.backend_write.vk_image_infos
+                                [descriptor_first_update_data as usize..next_index as usize],
+                        )
+                        .build();
             }
         }
     }

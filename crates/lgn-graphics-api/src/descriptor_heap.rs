@@ -176,6 +176,7 @@ impl DescriptorHeapPartition {
     }
 
     pub fn reset(&self) -> GfxResult<()> {
+        assert!(self.inner.transient);
         self.backend_reset()
     }
 
@@ -191,11 +192,11 @@ impl DescriptorHeapPartition {
         self.backend_get_writer(descriptor_set_layout, bump)
     }
 
-    pub fn write<'frame>(
-        &self,
-        descriptor_set: &impl DescriptorSetDataProvider,
-        bump: &'frame bumpalo::Bump,
-    ) -> GfxResult<DescriptorSetHandle> {
-        self.backend_write(descriptor_set, bump)
-    }
+    // pub fn write<'frame>(
+    //     &self,
+    //     descriptor_set: &impl DescriptorSetDataProvider,
+    //     bump: &'frame bumpalo::Bump,
+    // ) -> GfxResult<DescriptorSetHandle> {
+    //     self.backend_write(descriptor_set, bump)
+    // }
 }

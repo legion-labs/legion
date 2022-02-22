@@ -1,6 +1,6 @@
 use lgn_core::{BumpAllocatorHandle, BumpAllocatorPool, Handle};
 use lgn_graphics_api::{
-    DescriptorHeapDef, DescriptorSetDataProvider, DescriptorSetHandle, DescriptorSetLayout,
+    DescriptorHeapDef, DescriptorRef, DescriptorSetHandle, DescriptorSetLayout,
     DescriptorSetWriter, QueueType,
 };
 
@@ -93,16 +93,16 @@ impl<'frame> RenderContext<'frame> {
     #[allow(clippy::todo)]
     pub fn write_descriptor_set(
         &self,
-        descriptor_set: &impl DescriptorSetDataProvider, // tmp: find an other way
+        layout: &DescriptorSetLayout,
+        descriptors: &[DescriptorRef<'_>],
+        // descriptor_set: &impl DescriptorSetDataProvider, // tmp: find an other way
     ) -> DescriptorSetHandle {
-        if let Ok(handle) = self
-            .descriptor_pool
-            .write_descriptor_set(descriptor_set, &self.bump_allocator)
-        {
-            handle
-        } else {
-            todo!("Descriptor OOM! ")
-        }
+        self.descriptor_pool.write_descriptor_set(
+            self.renderer.device_context(),
+            layout,
+            descriptors,
+            &self.bump_allocator,
+        )
     }
 
     pub(crate) fn transient_buffer_allocator(&self) -> &TransientBufferAllocatorHandle {

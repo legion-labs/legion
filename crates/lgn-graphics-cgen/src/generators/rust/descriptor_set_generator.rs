@@ -194,6 +194,10 @@ fn generate_rust_descriptor_set(
         writer.add_line("pub fn new() -> Self { Self::default() }");
         writer.new_line();
 
+        // impl: descriptor_refs
+        writer.add_line("pub fn descriptor_refs(&self) -> &[DescriptorRef<'a>] { &self.descriptor_refs }");
+        writer.new_line();
+
         // impl: set methods
         for (descriptor_index, descriptor) in descriptor_set.descriptors.iter().enumerate() {
             let (descriptor_ref_type, descriptor_input_decl) =

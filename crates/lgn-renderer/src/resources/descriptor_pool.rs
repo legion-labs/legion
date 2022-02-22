@@ -1,7 +1,7 @@
 use bumpalo::Bump;
 use lgn_graphics_api::{
-    DescriptorHeap, DescriptorHeapDef, DescriptorHeapPartition, DescriptorSetDataProvider,
-    DescriptorSetHandle, DescriptorSetLayout, DescriptorSetWriter, GfxResult,
+    DescriptorHeap, DescriptorHeapDef, DescriptorHeapPartition, DescriptorRef, DescriptorSetHandle,
+    DescriptorSetLayout, DescriptorSetWriter, DeviceContext, GfxResult,
 };
 
 use lgn_core::Handle;
@@ -44,10 +44,18 @@ impl DescriptorPool {
 
     pub fn write_descriptor_set<'frame>(
         &self,
-        descriptor_set: &impl DescriptorSetDataProvider,
+        device_context: &DeviceContext,
+        layout: &DescriptorSetLayout,
+        descriptors: &[DescriptorRef<'_>],
+        // descriptor_set: &impl DescriptorSetDataProvider,
         bump: &'frame Bump,
-    ) -> GfxResult<DescriptorSetHandle> {
-        self.descriptor_heap_partition.write(descriptor_set, bump)
+    ) -> DescriptorSetHandle {
+        let mut writer = self
+            .descriptor_heap_partition
+            .get_writer(layout, bump)
+            .unwrap();
+        writer.set_descriptors(descriptors);
+        writer.flush(device_context)
     }
 
     fn reset(&self) {

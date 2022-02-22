@@ -1,9 +1,8 @@
 use lgn_tracing::error;
 
 use crate::{
-    backends::BackendDescriptorSetWriter, DescriptorRef, DescriptorSetDataProvider,
-    DescriptorSetHandle, DescriptorSetLayout, DeviceContext, GfxError, GfxResult,
-    MAX_DESCRIPTOR_BINDINGS,
+    backends::BackendDescriptorSetWriter, DescriptorRef, DescriptorSetHandle, DescriptorSetLayout,
+    DeviceContext, GfxError, GfxResult, MAX_DESCRIPTOR_BINDINGS,
 };
 
 pub struct DescriptorSetWriter<'frame> {
@@ -43,23 +42,48 @@ impl<'frame> DescriptorSetWriter<'frame> {
         Ok(())
     }
 
-    pub fn set_descriptors_by_index(&mut self, index: usize, update_datas: &[DescriptorRef<'_>]) {
-        let descriptor = self.descriptor_set_layout.descriptor(index);
-        self.write_mask &= !(1u64 << descriptor.binding);
+    pub fn set_descriptors_by_index(&mut self, index: u32, update_datas: &[DescriptorRef<'_>]) {
+        self.write_mask &= !(1u64 << index);
         self.backend_set_descriptors_by_index(index, update_datas);
     }
 
-    pub fn set_descriptors(&mut self, descriptor_set: &impl DescriptorSetDataProvider) {
-        let descriptor_count = self
-            .descriptor_set_layout
-            .definition()
-            .descriptor_defs
-            .len();
+    // pub fn set_descriptors(&mut self, descriptor_set: &impl DescriptorSetDataProvider) {
+    //     let descriptor_count = self
+    //         .descriptor_set_layout
+    //         .definition()
+    //         .descriptor_defs
+    //         .len();
 
+    //     for index in 0..descriptor_count {
+    //         let descriptor_refs = descriptor_set.descriptor_refs(index);
+    //         self.set_descriptors_by_index(index, descriptor_refs);
+    //     }
+    // }
+
+    pub fn set_descriptors(&mut self, descriptor_refs: &[DescriptorRef<'_>]) {
+        let flat_descriptor_count = self.descriptor_set_layout.flat_descriptor_count();
+        assert_eq!(flat_descriptor_count as usize, descriptor_refs.len());
+
+        let descriptor_count = self.descriptor_set_layout.descriptor_count();
         for index in 0..descriptor_count {
-            let descriptor_refs = descriptor_set.descriptor_refs(index);
-            self.set_descriptors_by_index(index, descriptor_refs);
+            let descriptor = self.descriptor_set_layout.descriptor(index);
+            let first_descriptor = descriptor.flat_index as usize;
+            let descriptor_count = descriptor.element_count as usize;
+            self.set_descriptors_by_index(
+                index,
+                &descriptor_refs[first_descriptor..first_descriptor + descriptor_count],
+            );
         }
+
+        // for (index, descriptor_def) in layout.definition().descriptor_defs.iter().enumerate() {
+        //     let descriptor_refs = descriptor_set.descriptor_refs(index);
+        //     self.set_descriptors_by_index(index, descriptor_refs);
+        // }
+
+        // for index in 0..descriptor_count {
+        //     let descriptor_refs = descriptor_set.descriptor_refs(index);
+        //     self.set_descriptors_by_index(index, descriptor_refs);
+        // }
     }
 
     pub fn flush(self, device_context: &DeviceContext) -> DescriptorSetHandle {
@@ -67,7 +91,7 @@ impl<'frame> DescriptorSetWriter<'frame> {
             error!(
                 "An instance of DescriptorSetWriter cannot be flushed due to missing descriptors"
             );
-            for i in 0..MAX_DESCRIPTOR_BINDINGS {
+            for i in 0..MAX_DESCRIPTOR_BINDINGS as u32 {
                 let mask = 1u64 << i;
                 if (self.write_mask & mask) != 0 {
                     error!("{:?}", self.descriptor_set_layout.descriptor(i));

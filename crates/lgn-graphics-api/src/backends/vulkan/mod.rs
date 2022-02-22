@@ -68,7 +68,7 @@ pub(crate) mod backend_impl {
     pub(crate) type BackendDeviceContext = super::VulkanDeviceContext;
     pub(crate) type BackendBuffer = super::VulkanBuffer;
     pub(crate) type BackendCommandBuffer = super::VulkanCommandBuffer;
-    pub(crate) type BackendCommandPool = super::VulkanCommandPool;
+    pub(crate) type BackendCommandPool = super::VulkanCommandPool;    
     pub(crate) type BackendDescriptorSetHandle = ash::vk::DescriptorSet;
     pub(crate) type BackendDescriptorHeap = super::VulkanDescriptorHeap;
     pub(crate) type BackendDescriptorHeapPartition = super::VulkanDescriptorHeapPartition;

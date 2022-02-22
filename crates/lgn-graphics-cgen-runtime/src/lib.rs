@@ -585,10 +585,9 @@ impl CGenRegistry {
             .descriptor_defs
             .reserve_exact(def.descriptor_defs.len());
 
-        for (i, cgen_descriptor_def) in def.descriptor_defs.iter().enumerate() {
+        for cgen_descriptor_def in def.descriptor_defs {
             let descriptor_def = DescriptorDef {
                 name: cgen_descriptor_def.name.to_string(),
-                binding: u32::try_from(i).unwrap(),
                 shader_resource_type: cgen_descriptor_def.shader_resource_type,
                 array_size: cgen_descriptor_def.array_size,
             };

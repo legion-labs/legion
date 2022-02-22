@@ -302,8 +302,10 @@ impl PickingRenderPass {
             let mut picking_descriptor_set = cgen::descriptor_set::PickingDescriptorSet::default();
             picking_descriptor_set.set_picked_count(&self.count_rw_view);
             picking_descriptor_set.set_picked_objects(&self.picked_rw_view);
-            let picking_descriptor_set_handle =
-                render_context.write_descriptor_set(&picking_descriptor_set);
+            let picking_descriptor_set_handle = render_context.write_descriptor_set(
+                cgen::descriptor_set::PickingDescriptorSet::descriptor_set_layout(),
+                picking_descriptor_set.descriptor_refs(),
+            );
             cmd_buffer.bind_descriptor_set_handle((
                 cgen::descriptor_set::PickingDescriptorSet::descriptor_set_layout(),
                 picking_descriptor_set_handle,
