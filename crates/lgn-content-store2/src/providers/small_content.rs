@@ -1,9 +1,8 @@
 use async_trait::async_trait;
-use std::pin::Pin;
 
-use tokio::io::{AsyncRead, AsyncWrite};
-
-use crate::{ContentReader, ContentWriter, Error, Identifier, Result};
+use crate::{
+    ContentAsyncRead, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
+};
 
 /// A `SmallContentProvider` is a provider that implements the small-content optimization or delegates to a specified provider.
 pub struct SmallContentProvider<Inner> {
@@ -17,7 +16,7 @@ impl<Inner> SmallContentProvider<Inner> {
     pub fn new(inner: Inner) -> Self {
         Self {
             inner,
-            size_threshold: Identifier::SIZE_THRESHOLD,
+            size_threshold: Identifier::SMALL_IDENTIFIER_SIZE,
         }
     }
 
@@ -33,11 +32,9 @@ impl<Inner> SmallContentProvider<Inner> {
 
 #[async_trait]
 impl<Inner: ContentReader + Send + Sync> ContentReader for SmallContentProvider<Inner> {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncRead + Send>>> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
         if let Identifier::Data(data) = id {
-            Ok(Box::pin(InMemoryAsyncRead {
-                data: data.to_vec(),
-            }))
+            Ok(Box::pin(std::io::Cursor::new(data.to_vec())))
         } else {
             self.inner.get_content_reader(id).await
         }
@@ -57,7 +54,7 @@ impl<Inner: ContentReader + Send + Sync> ContentReader for SmallContentProvider<
 
 #[async_trait]
 impl<Inner: ContentWriter + Send + Sync> ContentWriter for SmallContentProvider<Inner> {
-    async fn get_content_writer(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncWrite + Send>>> {
+    async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
         if id.is_data() {
             return Err(Error::AlreadyExists);
         }
@@ -71,30 +68,5 @@ impl<Inner: ContentWriter + Send + Sync> ContentWriter for SmallContentProvider<
         } else {
             Ok(Identifier::Data(data.into()))
         }
-    }
-}
-
-/// An in-memory async reader.
-///
-/// Returns a flat buffer.
-struct InMemoryAsyncRead {
-    data: Vec<u8>,
-}
-
-#[async_trait]
-impl AsyncRead for InMemoryAsyncRead {
-    fn poll_read(
-        self: Pin<&mut Self>,
-        _cx: &mut std::task::Context<'_>,
-        buf: &mut tokio::io::ReadBuf<'_>,
-    ) -> std::task::Poll<tokio::io::Result<()>> {
-        let this = self.get_mut();
-        let data = &mut this.data;
-        let len = std::cmp::min(buf.remaining(), data.len());
-
-        buf.put_slice(&data[..len]);
-        data.drain(..len);
-
-        std::task::Poll::Ready(Ok(()))
     }
 }

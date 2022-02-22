@@ -587,6 +587,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "aws-sdk-dynamodb"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "744378e3b1b37438ef18e9195c9d3ab0953d2d4d367ca4f350f30c9619798d9b"
+dependencies = [
+ "aws-endpoint",
+ "aws-http",
+ "aws-sig-auth",
+ "aws-smithy-async",
+ "aws-smithy-client",
+ "aws-smithy-http",
+ "aws-smithy-http-tower",
+ "aws-smithy-json",
+ "aws-smithy-types",
+ "aws-types",
+ "bytes",
+ "fastrand",
+ "http",
+ "tokio-stream",
+ "tower",
+]
+
+[[package]]
 name = "aws-sdk-s3"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1393,7 +1416,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "50b727aacc797f9fc28e355d21f34709ac4fc9adecfe470ad07b8f4464f53062"
 dependencies = [
  "bytes",
+ "futures-core",
  "memchr",
+ "pin-project-lite",
+ "tokio",
+ "tokio-util 0.6.9",
 ]
 
 [[package]]
@@ -1442,7 +1469,7 @@ dependencies = [
  "crossbeam-utils 0.8.7",
  "futures",
  "hdrhistogram",
- "humantime",
+ "humantime 2.1.0",
  "prost-types",
  "serde",
  "serde_json",
@@ -2555,6 +2582,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "env_logger"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44533bbbb3bb3c1fa17d9f2e4e38bbbaf8396ba82193c4cb1b6445d711445d36"
+dependencies = [
+ "atty",
+ "humantime 1.3.0",
+ "log",
+ "regex",
+ "termcolor",
+]
+
+[[package]]
 name = "epaint"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3543,6 +3583,37 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4a1e36c821dbe04574f602848a19f742f4fb3c98d40449f11bcad18d6b17421"
 
 [[package]]
+name = "httptest"
+version = "0.15.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f6f25cfb6def593d43fae1ead24861f217e93bc70768a45cc149a69b5f049df4"
+dependencies = [
+ "bstr",
+ "bytes",
+ "crossbeam-channel 0.5.2",
+ "form_urlencoded",
+ "futures",
+ "http",
+ "hyper",
+ "log",
+ "once_cell",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "tokio",
+]
+
+[[package]]
+name = "humantime"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df004cfca50ef23c36850aaaa59ad52cc70d0e90243c3c7737a4dd32dc7a3c4f"
+dependencies = [
+ "quick-error",
+]
+
+[[package]]
 name = "humantime"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4329,24 +4400,50 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-content-store-proto"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "prost",
+ "prost-types",
+ "tokio",
+ "tonic",
+ "tonic-build",
+]
+
+[[package]]
 name = "lgn-content-store2"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
  "aws-config",
+ "aws-sdk-dynamodb",
  "aws-sdk-s3",
  "base64",
  "blake3",
  "byteorder",
  "bytes",
+ "futures",
+ "hex",
+ "http",
+ "http-body",
+ "httptest",
+ "hyper",
+ "lgn-content-store-proto",
+ "lgn-online",
  "pin-project",
+ "pretty_env_logger",
+ "redis",
+ "reqwest",
  "smallvec",
  "tempfile",
+ "testcontainers",
  "thiserror",
  "tokio",
  "tokio-stream",
  "tokio-util 0.6.9",
+ "tonic",
  "uuid",
 ]
 
@@ -7054,6 +7151,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
 
 [[package]]
+name = "pretty_env_logger"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "926d36b9553851b8b0005f1275891b392ee4d2d833852c417ed025477350fb9d"
+dependencies = [
+ "env_logger",
+ "log",
+]
+
+[[package]]
 name = "proc-macro-crate"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7172,6 +7279,12 @@ checksum = "66890f88bfcd0252de16c1090eea1fa2529be5d4dd8425d6418aab214f260185"
 dependencies = [
  "thiserror",
 ]
+
+[[package]]
+name = "quick-error"
+version = "1.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1d01941d82fa2ab50be1e79e6714289dd7cde78eba4c074bc5a4374f650dfe0"
 
 [[package]]
 name = "quickcheck"
@@ -7341,6 +7454,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "redis"
+version = "0.21.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a80b5f38d7f5a020856a0e16e40a9cfabf88ae8f0e4c2dcd8a3114c1e470852"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "combine",
+ "dtoa",
+ "futures-util",
+ "itoa 0.4.8",
+ "percent-encoding",
+ "pin-project-lite",
+ "sha1",
+ "tokio",
+ "tokio-util 0.6.9",
+ "url",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.1.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7468,6 +7601,7 @@ dependencies = [
  "tokio",
  "tokio-native-tls",
  "tokio-rustls 0.23.2",
+ "tokio-util 0.6.9",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -9166,6 +9300,21 @@ checksum = "633c1a546cee861a1a6d0dc69ebeca693bf4296661ba7852b9d21d159e0506df"
 dependencies = [
  "libc",
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "testcontainers"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d5e3ed6e3598dbf32cba8cb356b881c085e0adea57597f387723430dd94b4084"
+dependencies = [
+ "hex",
+ "hmac 0.10.1",
+ "log",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "sha2 0.9.9",
 ]
 
 [[package]]
