@@ -1,10 +1,20 @@
 //! Physics plugin
+//! Interfaces with NVIDIA's `PhysX` library
+//! Reference: [`PhysX` 4.1 SDK Guide](https://gameworksdocs.nvidia.com/PhysX/4.1/documentation/physxguide/Manual/Index.html)
 
 mod labels;
 pub use labels::*;
 
+mod callbacks;
+use callbacks::{OnAdvance, OnCollision, OnConstraintBreak, OnTrigger, OnWakeSleep};
+
+mod rigid_dynamic;
+use rigid_dynamic::RigidDynamicActor;
+
+mod settings;
+pub use settings::PhysicsSettings;
+
 use lgn_app::prelude::*;
-use lgn_config::Config;
 use lgn_core::prelude::*;
 use lgn_ecs::prelude::*;
 use lgn_tracing::prelude::*;
@@ -35,32 +45,6 @@ type PxScene = physx::scene::PxScene<
     OnAdvance,
 >;
 //struct DynamicRigidBodyHandle(PxRigidStatic);
-
-pub struct PhysicsSettings {
-    enable_visual_debugger: bool,
-    length_tolerance: f32,
-    speed_tolerance: f32,
-}
-
-impl PhysicsSettings {
-    pub fn from_config(config: &Config) -> Self {
-        Self {
-            enable_visual_debugger: config.get_or("physics.enable_visual_debugger", false),
-            length_tolerance: config.get_or("physics.length_tolerance", 1.0_f32),
-            speed_tolerance: config.get_or("physics.speed_tolerance", 1.0_f32),
-        }
-    }
-}
-
-impl Default for PhysicsSettings {
-    fn default() -> Self {
-        Self {
-            enable_visual_debugger: false,
-            length_tolerance: 1.0_f32,
-            speed_tolerance: 1.0_f32,
-        }
-    }
-}
 
 #[derive(Default)]
 pub struct PhysicsPlugin {}
@@ -116,8 +100,7 @@ impl PhysicsPlugin {
             return;
         }
 
-        #[allow(unsafe_code)]
-        let mut scratch = unsafe { ScratchBuffer::new(4) };
+        let mut scratch = Self::create_scratch_buffer();
 
         scene
             .step(
@@ -139,64 +122,10 @@ impl PhysicsPlugin {
         }
     }
 
-    // fn create_dynamic() {
-    //     let mut sphere_actor = physics
-    //         .create_rigid_dynamic(
-    //             PxTransform::from_translation(&PxVec3::new(0.0, 40.0, 100.0)),
-    //             &sphere_geo,
-    //             material.as_mut(),
-    //             10.0,
-    //             PxTransform::default(),
-    //             (),
-    //         )
-    //         .unwrap();
-    //     sphere_actor.set_angular_damping(0.5);
-    //     sphere_actor.set_rigid_body_flag(RigidBodyFlag::EnablePoseIntegrationPreview, true);
-    //     scene.add_dynamic_actor(sphere_actor);
-    // }
-}
-
-#[derive(Component)]
-struct RigidDynamicActor {
-    actor: Owner<PxRigidDynamic>,
-}
-
-// callbacks
-
-struct OnCollision;
-impl CollisionCallback for OnCollision {
-    fn on_collision(
-        &mut self,
-        _header: &physx_sys::PxContactPairHeader,
-        _pairs: &[physx_sys::PxContactPair],
-    ) {
-    }
-}
-struct OnTrigger;
-impl TriggerCallback for OnTrigger {
-    fn on_trigger(&mut self, _pairs: &[physx_sys::PxTriggerPair]) {}
-}
-
-struct OnConstraintBreak;
-impl ConstraintBreakCallback for OnConstraintBreak {
-    fn on_constraint_break(&mut self, _constraints: &[physx_sys::PxConstraintInfo]) {}
-}
-struct OnWakeSleep;
-impl WakeSleepCallback<PxArticulationLink, PxRigidStatic, PxRigidDynamic> for OnWakeSleep {
-    fn on_wake_sleep(
-        &mut self,
-        _actors: &[&physx::actor::ActorMap<PxArticulationLink, PxRigidStatic, PxRigidDynamic>],
-        _is_waking: bool,
-    ) {
-    }
-}
-
-struct OnAdvance;
-impl AdvanceCallback<PxArticulationLink, PxRigidDynamic> for OnAdvance {
-    fn on_advance(
-        &self,
-        _actors: &[&physx::rigid_body::RigidBodyMap<PxArticulationLink, PxRigidDynamic>],
-        _transforms: &[PxTransform],
-    ) {
+    fn create_scratch_buffer() -> ScratchBuffer {
+        #[allow(unsafe_code)]
+        unsafe {
+            ScratchBuffer::new(4)
+        }
     }
 }
