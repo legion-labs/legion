@@ -4,7 +4,8 @@ use aws_sdk_dynamodb::Blob;
 use std::io::Cursor;
 
 use crate::{
-    ContentAsyncRead, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
+    traits::get_content_readers_impl, ContentAsyncRead, ContentAsyncWrite, ContentReader,
+    ContentWriter, Error, Identifier, Result,
 };
 
 use super::{Uploader, UploaderImpl};
@@ -95,6 +96,13 @@ impl AwsDynamoDbProvider {
 impl ContentReader for AwsDynamoDbProvider {
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
         Ok(Box::pin(Cursor::new(self.get_content(id).await?)))
+    }
+
+    async fn get_content_readers(
+        &self,
+        ids: &[Identifier],
+    ) -> Result<Vec<Result<ContentAsyncRead>>> {
+        get_content_readers_impl(self, ids).await
     }
 }
 

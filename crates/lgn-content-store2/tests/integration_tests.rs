@@ -1,8 +1,8 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use lgn_content_store2::{
-    ContentAddressReader, ContentAddressWriter, ContentReader, ContentWriter, Error, GrpcProvider,
-    GrpcService, Identifier, LocalProvider, SmallContentProvider,
+    ContentAddressReader, ContentAddressWriter, ContentReaderExt, ContentWriter, ContentWriterExt,
+    Error, GrpcProvider, GrpcService, Identifier, LocalProvider, SmallContentProvider,
 };
 
 #[cfg(feature = "redis")]
@@ -16,6 +16,23 @@ mod common;
 use common::*;
 use lgn_online::grpc::GrpcClient;
 
+const BIG_DATA_A: [u8; 128] = [0x41; 128];
+const BIGGER_DATA_A: [u8; 512] = [0x41; 512];
+const BIG_DATA_B: [u8; 128] = [0x42; 128];
+const BIG_DATA_X: [u8; 128] = [0x58; 128];
+const BIGGER_DATA_X: [u8; 512] = [0x58; 512];
+const SMALL_DATA_A: [u8; 16] = [0x41; 16];
+
+#[test]
+fn test_data_invariants() {
+    assert!(Identifier::new(&BIG_DATA_A).is_hash_ref());
+    assert!(Identifier::new(&BIGGER_DATA_A).is_hash_ref());
+    assert!(Identifier::new(&BIG_DATA_B).is_hash_ref());
+    assert!(Identifier::new(&BIG_DATA_X).is_hash_ref());
+    assert!(Identifier::new(&BIGGER_DATA_X).is_hash_ref());
+    assert!(Identifier::new(&SMALL_DATA_A).is_data());
+}
+
 #[tokio::test]
 async fn test_local_provider() {
     let root = tempfile::tempdir().expect("failed to create temp directory");
@@ -23,17 +40,21 @@ async fn test_local_provider() {
         .await
         .expect("failed to create local provider");
 
-    let id = Identifier::new_hash_ref_from_data(b"A");
+    let id = Identifier::new(&BIG_DATA_A);
     assert_content_not_found!(provider, id);
 
-    let id = assert_write_content!(provider, b"A");
-    assert_read_content!(provider, id, b"A");
+    let id = assert_write_content!(provider, &BIG_DATA_A);
+    assert_read_content!(provider, id, &BIG_DATA_A);
 
     // Another write should yield no error.
     assert_write_avoided!(provider, &id);
 
-    let fake_id = Identifier::new_hash_ref_from_data(b"XXX");
-    assert_read_contents!(provider, [&id, &fake_id], [Ok(b"A"), Err(Error::NotFound)]);
+    let fake_id = Identifier::new(&BIG_DATA_X);
+    assert_read_contents!(
+        provider,
+        &[id, fake_id],
+        [Ok(&BIG_DATA_A), Err(Error::NotFound)]
+    );
 }
 
 #[tokio::test]
@@ -43,29 +64,23 @@ async fn test_small_content_provider() {
         .await
         .expect("failed to create local provider");
 
-    // Files of 1 bytes or less are stored in the identifier.
-    let provider = SmallContentProvider::new_with_size_threshold(provider, 1);
+    let provider = SmallContentProvider::new(provider);
 
-    let id = assert_write_content!(provider, b"A");
+    let id = assert_write_content!(provider, &SMALL_DATA_A);
     assert!(id.is_data());
-    assert_read_content!(provider, id, b"A");
+    assert_read_content!(provider, id, &SMALL_DATA_A);
 
     // Another write should yield no error.
-    let new_id = assert_write_content!(provider, b"A");
+    let new_id = assert_write_content!(provider, &SMALL_DATA_A);
     assert_eq!(id, new_id);
 
-    // Since we have a hash-ref identifier, it should still not be found as the
-    // SmallContentProvider would have elided the actual write before.
-    let id = Identifier::new_hash_ref_from_data(b"A");
-    assert_content_not_found!(provider, id);
-
     // Now let's try again with a larger file.
-    let id = Identifier::new_hash_ref_from_data(b"AA");
+    let id = Identifier::new(&BIG_DATA_A);
     assert_content_not_found!(provider, id);
 
-    let id = assert_write_content!(provider, b"AA");
+    let id = assert_write_content!(provider, &BIG_DATA_A);
     assert!(id.is_hash_ref());
-    assert_read_content!(provider, id, b"AA");
+    assert_read_content!(provider, id, &BIG_DATA_A);
 }
 
 #[cfg(feature = "aws")]
@@ -80,18 +95,22 @@ async fn test_aws_s3_provider() {
     .unwrap();
 
     let provider = AwsS3Provider::new(aws_s3_url).await;
-    let id = Identifier::new_hash_ref_from_data(b"A");
+    let id = Identifier::new(&BIG_DATA_A);
 
     assert_content_not_found!(provider, id);
 
-    let id = assert_write_content!(provider, b"A");
-    assert_read_content!(provider, id, b"A");
+    let id = assert_write_content!(provider, &BIG_DATA_A);
+    assert_read_content!(provider, id, &BIG_DATA_A);
 
     // Another write should yield no error.
     assert_write_avoided!(provider, &id);
 
-    let fake_id = Identifier::new_hash_ref_from_data(b"XXX");
-    assert_read_contents!(provider, [&id, &fake_id], [Ok(b"A"), Err(Error::NotFound)]);
+    let fake_id = Identifier::new(&BIG_DATA_X);
+    assert_read_contents!(
+        provider,
+        &[id.clone(), fake_id],
+        [Ok(&BIG_DATA_A), Err(Error::NotFound)]
+    );
 
     // Make sure we can access the data through the URLs.
     let read_url = provider.get_content_read_address(&id).await.unwrap();
@@ -104,9 +123,9 @@ async fn test_aws_s3_provider() {
         .await
         .unwrap();
 
-    assert_eq!(b"A", &*data);
+    assert_eq!(&BIG_DATA_A, &*data);
 
-    let id = Identifier::new_hash_ref_from_data(b"Hello");
+    let id = Identifier::new(&BIG_DATA_B);
 
     // This read should fail as the value does not exist yet.
     assert!(provider.get_content_read_address(&id).await.is_err());
@@ -114,14 +133,14 @@ async fn test_aws_s3_provider() {
     let write_url = provider.get_content_write_address(&id).await.unwrap();
     reqwest::Client::new()
         .put(write_url)
-        .body("Hello")
+        .body(std::str::from_utf8(&BIG_DATA_B).unwrap())
         .send()
         .await
         .unwrap()
         .error_for_status()
         .unwrap();
 
-    assert_read_content!(provider, id, b"Hello");
+    assert_read_content!(provider, id, &BIG_DATA_B);
 
     // This write should fail as the value already exists.
     assert!(provider.get_content_write_address(&id).await.is_err());
@@ -138,9 +157,13 @@ async fn test_aws_s3_provider() {
 async fn test_aws_dynamodb_provider() {
     let provider = AwsDynamoDbProvider::new("content-store-test").await;
 
-    let data = uuid::Uuid::new_v4();
-    let data = data.as_bytes();
-    let id = Identifier::new_hash_ref_from_data(data);
+    let uid = uuid::Uuid::new_v4();
+    let mut data = Vec::new();
+    std::io::Write::write_all(&mut data, &BIG_DATA_A).unwrap();
+    std::io::Write::write_all(&mut data, uid.as_bytes()).unwrap();
+    let data = &*data;
+
+    let id = Identifier::new(data);
     assert_content_not_found!(provider, id);
 
     let id = assert_write_content!(provider, data);
@@ -149,8 +172,12 @@ async fn test_aws_dynamodb_provider() {
     // Another write should yield no error.
     assert_write_avoided!(provider, &id);
 
-    let fake_id = Identifier::new_hash_ref_from_data(b"XXX");
-    assert_read_contents!(provider, [&id, &fake_id], [Ok(data), Err(Error::NotFound)]);
+    let fake_id = Identifier::new(&BIG_DATA_X);
+    assert_read_contents!(
+        provider,
+        &[id.clone(), fake_id],
+        [Ok(data), Err(Error::NotFound)]
+    );
 
     provider
         .delete_content(&id)
@@ -171,9 +198,13 @@ async fn test_redis_provider() {
         .await
         .expect("failed to create Redis provider");
 
-    let data = uuid::Uuid::new_v4();
-    let data = data.as_bytes();
-    let id = Identifier::new_hash_ref_from_data(data);
+    let uid = uuid::Uuid::new_v4();
+    let mut data = Vec::new();
+    std::io::Write::write_all(&mut data, &BIG_DATA_A).unwrap();
+    std::io::Write::write_all(&mut data, uid.as_bytes()).unwrap();
+    let data = &*data;
+
+    let id = Identifier::new(data);
     assert_content_not_found!(provider, id);
 
     let id = assert_write_content!(provider, data);
@@ -182,8 +213,12 @@ async fn test_redis_provider() {
     // Another write should yield no error.
     assert_write_avoided!(provider, &id);
 
-    let fake_id = Identifier::new_hash_ref_from_data(b"XXX");
-    assert_read_contents!(provider, [&id, &fake_id], [Ok(data), Err(Error::NotFound)]);
+    let fake_id = Identifier::new(&BIG_DATA_X);
+    assert_read_contents!(
+        provider,
+        &[id.clone(), fake_id],
+        [Ok(data), Err(Error::NotFound)]
+    );
 
     provider
         .delete_content(&id)
@@ -206,7 +241,11 @@ async fn test_grpc_provider() {
     let address_provider = Arc::new(FakeContentAddressProvider::new(
         http_server.url("/").to_string(),
     ));
-    let service = GrpcService::new(local_provider, Arc::clone(&address_provider), 1);
+    let service = GrpcService::new(
+        local_provider,
+        Arc::clone(&address_provider),
+        BIG_DATA_A.len().try_into().unwrap(),
+    );
     let service = lgn_content_store_proto::content_store_server::ContentStoreServer::new(service);
     let server = tonic::transport::Server::builder().add_service(service);
 
@@ -223,19 +262,19 @@ async fn test_grpc_provider() {
 
         // First we try with a small file.
 
-        let id = Identifier::new_hash_ref_from_data(b"A");
+        let id = Identifier::new(&BIG_DATA_A);
         assert_content_not_found!(provider, id);
 
-        let id = assert_write_content!(provider, b"A");
-        assert_read_content!(provider, id, b"A");
+        let id = assert_write_content!(provider, &BIG_DATA_A);
+        assert_read_content!(provider, id, &BIG_DATA_A);
 
         // Another write should yield no error.
-        let new_id = assert_write_content!(provider, b"A");
+        let new_id = assert_write_content!(provider, &BIG_DATA_A);
         assert_eq!(id, new_id);
 
         // Now let's try again with a larger file.
 
-        let id = Identifier::new_hash_ref_from_data(b"AA");
+        let id = Identifier::new(&BIGGER_DATA_A);
 
         http_server.expect(
             httptest::Expectation::matching(httptest::all_of![
@@ -251,7 +290,7 @@ async fn test_grpc_provider() {
             httptest::Expectation::matching(httptest::all_of![
                 httptest::matchers::request::method("PUT"),
                 httptest::matchers::request::path(format!("/{}/write", id)),
-                httptest::matchers::request::body("AA"),
+                httptest::matchers::request::body(std::str::from_utf8(&BIGGER_DATA_A).unwrap()),
             ])
             .respond_with(httptest::responders::status_code(201)),
         );
@@ -261,11 +300,14 @@ async fn test_grpc_provider() {
                 httptest::matchers::request::method("GET"),
                 httptest::matchers::request::path(format!("/{}/read", id)),
             ])
-            .respond_with(httptest::responders::status_code(200).body("AA")),
+            .respond_with(
+                httptest::responders::status_code(200)
+                    .body(std::str::from_utf8(&BIGGER_DATA_A).unwrap()),
+            ),
         );
 
-        let id = assert_write_content!(provider, b"AA");
-        assert_read_content!(provider, id, b"AA");
+        let id = assert_write_content!(provider, &BIGGER_DATA_A);
+        assert_read_content!(provider, &id, &BIGGER_DATA_A);
 
         // Make sure the next write yields `Error::AlreadyExists`.
         address_provider.set_already_exists(true).await;
@@ -273,24 +315,44 @@ async fn test_grpc_provider() {
         // Another write should be useless.
         assert_write_avoided!(provider, &id);
 
-        let fake_id = Identifier::new_hash_ref_from_data(b"XXX");
+        let fake_id = Identifier::new(&BIG_DATA_X);
+        let fake_id_2 = Identifier::new(&BIGGER_DATA_X);
 
         http_server.expect(
             httptest::Expectation::matching(httptest::all_of![
                 httptest::matchers::request::method("GET"),
                 httptest::matchers::request::path(format!("/{}/read", id)),
             ])
-            .respond_with(httptest::responders::status_code(200).body("AA")),
+            .respond_with(
+                httptest::responders::status_code(200)
+                    .body(std::str::from_utf8(&BIGGER_DATA_A).unwrap()),
+            ),
         );
         http_server.expect(
             httptest::Expectation::matching(httptest::all_of![
                 httptest::matchers::request::method("GET"),
-                httptest::matchers::request::path(format!("/{}/read", fake_id)),
+                httptest::matchers::request::path(format!("/{}/read", fake_id_2)),
             ])
             .respond_with(httptest::responders::status_code(404)),
         );
 
-        assert_read_contents!(provider, [&id, &fake_id], [Ok(b"AA"), Err(Error::NotFound)]);
+        // So we fetch 3 ids:
+        // - The first one exists as a bigger file so we also expect a HTTP
+        // fetch to happen.
+        // - The second one does not exist and is not big enough to go through
+        // HTTP, so should not trigger a HTTP fetch.
+        // - The third one does not exist and is big enough to go through HTTP,
+        // so should trigger a HTTP fetch that returns 404.
+
+        assert_read_contents!(
+            provider,
+            &[id, fake_id, fake_id_2],
+            [
+                Ok(&BIGGER_DATA_A),
+                Err(Error::NotFound),
+                Err(Error::NotFound)
+            ]
+        );
     }
 
     loop {

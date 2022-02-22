@@ -12,6 +12,7 @@ use tokio::io::AsyncWrite;
 use tokio_stream::Stream;
 use tokio_util::io::StreamReader;
 
+use crate::traits::get_content_readers_impl;
 use crate::{
     ContentAddressReader, ContentAddressWriter, ContentAsyncRead, ContentAsyncWrite, ContentReader,
     ContentWriter, Error, Identifier, Result,
@@ -284,6 +285,13 @@ impl ContentReader for AwsS3Provider {
         let stream = StreamReader::new(bytestream);
 
         Ok(Box::pin(stream))
+    }
+
+    async fn get_content_readers(
+        &self,
+        ids: &[Identifier],
+    ) -> Result<Vec<Result<ContentAsyncRead>>> {
+        get_content_readers_impl(self, ids).await
     }
 }
 

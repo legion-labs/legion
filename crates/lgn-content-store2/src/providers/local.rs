@@ -3,7 +3,8 @@ use async_trait::async_trait;
 use std::path::PathBuf;
 
 use crate::{
-    ContentAsyncRead, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
+    traits::get_content_readers_impl, ContentAsyncRead, ContentAsyncWrite, ContentReader,
+    ContentWriter, Error, Identifier, Result,
 };
 
 /// A `LocalProvider` is a provider that stores content on the local filesystem.
@@ -60,6 +61,13 @@ impl ContentReader for LocalProvider {
                 }
             }
         }
+    }
+
+    async fn get_content_readers(
+        &self,
+        ids: &[Identifier],
+    ) -> Result<Vec<Result<ContentAsyncRead>>> {
+        get_content_readers_impl(self, ids).await
     }
 }
 

@@ -3,7 +3,8 @@ use redis::AsyncCommands;
 use std::io::Cursor;
 
 use crate::{
-    ContentAsyncRead, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
+    traits::get_content_readers_impl, ContentAsyncRead, ContentAsyncWrite, ContentReader,
+    ContentWriter, Error, Identifier, Result,
 };
 
 use super::{Uploader, UploaderImpl};
@@ -91,6 +92,13 @@ impl ContentReader for RedisProvider {
             )
             .into()),
         }
+    }
+
+    async fn get_content_readers(
+        &self,
+        ids: &[Identifier],
+    ) -> Result<Vec<Result<ContentAsyncRead>>> {
+        get_content_readers_impl(self, ids).await
     }
 }
 

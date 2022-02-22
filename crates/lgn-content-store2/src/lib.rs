@@ -11,5 +11,6 @@ pub use identifier::{HashAlgorithm, Identifier};
 pub use providers::*;
 pub use traits::{
     ContentAddressProvider, ContentAddressReader, ContentAddressWriter, ContentAsyncRead,
-    ContentAsyncWrite, ContentProvider, ContentReader, ContentWriter,
+    ContentAsyncWrite, ContentProvider, ContentReader, ContentReaderExt, ContentWriter,
+    ContentWriterExt,
 };

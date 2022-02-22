@@ -39,14 +39,8 @@ macro_rules! assert_read_contents {
                         panic!("unexpected errors: {:?} & {:?}", err, expected_err)
                     }
                 },
-                (Ok(_), Err(_)) => panic!(
-                    "content was found with the specified identifier `{}`",
-                    $ids[i]
-                ),
-                (Err(_), Ok(_)) => panic!(
-                    "content was not found with the specified identifier `{}`",
-                    $ids[i]
-                ),
+                (Ok(_), Err(_)) => panic!("content was found at index {}", i),
+                (Err(_), Ok(_)) => panic!("content was not found at index {}", i),
             };
         }
     }};

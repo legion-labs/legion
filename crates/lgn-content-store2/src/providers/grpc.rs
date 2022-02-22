@@ -18,8 +18,11 @@ use tokio_util::{compat::FuturesAsyncReadCompatExt, io::ReaderStream};
 use tonic::{codegen::StdError, Request, Response};
 
 use crate::{
-    traits::ContentAddressProvider, ContentAsyncRead, ContentAsyncWrite, ContentProvider,
-    ContentReader, ContentWriter, Error, Identifier, Result,
+    traits::{
+        get_content_readers_impl, ContentAddressProvider, ContentReaderExt, ContentWriterExt,
+    },
+    ContentAsyncRead, ContentAsyncWrite, ContentProvider, ContentReader, ContentWriter, Error,
+    Identifier, Result,
 };
 
 use super::{Uploader, UploaderImpl};
@@ -95,6 +98,13 @@ where
             }),
             None => Err(Error::NotFound),
         }
+    }
+
+    async fn get_content_readers(
+        &self,
+        ids: &[Identifier],
+    ) -> Result<Vec<Result<ContentAsyncRead>>> {
+        get_content_readers_impl(self, ids).await
     }
 }
 

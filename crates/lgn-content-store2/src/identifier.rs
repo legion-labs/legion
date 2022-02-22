@@ -101,8 +101,7 @@ impl FromStr for Identifier {
 }
 
 impl Identifier {
-    /// The size under which the content is stored directly in the identifier.
-    pub(crate) const SMALL_IDENTIFIER_SIZE: usize = SMALL_IDENTIFIER_SIZE;
+    pub const SMALL_IDENTIFIER_SIZE: usize = SMALL_IDENTIFIER_SIZE;
 
     /// Create an identifier for an empty file.
     pub fn empty() -> Self {
@@ -111,15 +110,27 @@ impl Identifier {
 
     /// Create an identifier from a data slice.
     ///
+    /// The identifier will use Small Identifier Optimization if the data is
+    /// small identifier.
+    pub fn new(data: &[u8]) -> Self {
+        if data.len() <= SMALL_IDENTIFIER_SIZE {
+            Self::new_data(data)
+        } else {
+            Self::new_hash_ref_from_data(data)
+        }
+    }
+
+    /// Create an identifier from a data slice.
+    ///
     /// The identifier will contain the specified data.
-    pub fn new_data(data: &[u8]) -> Self {
+    pub(crate) fn new_data(data: &[u8]) -> Self {
         Self::Data(data.into())
     }
 
     /// Create an identifier from a hash to a blob and its associated size
     ///
     /// The identifier will contain a reference to the blob.
-    pub fn new_hash_ref(size: usize, alg: HashAlgorithm, hash: &[u8]) -> Self {
+    pub(crate) fn new_hash_ref(size: usize, alg: HashAlgorithm, hash: &[u8]) -> Self {
         let size: u64 = size.try_into().expect("size cannot exceed u64");
 
         Self::HashRef(size, alg, hash.into())
@@ -128,7 +139,7 @@ impl Identifier {
     /// Create a new hash ref identifier by hashing the specified data.
     ///
     /// The identifier will contain a reference to the blob.
-    pub fn new_hash_ref_from_data(data: &[u8]) -> Self {
+    pub(crate) fn new_hash_ref_from_data(data: &[u8]) -> Self {
         let mut hasher = blake3::Hasher::new();
         hasher.update(data);
         let hash = hasher.finalize();
