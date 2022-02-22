@@ -6,13 +6,11 @@ use super::{ecs::Entity, math::Vec3};
 pub(crate) struct Transform(*mut lgn_transform::prelude::Transform);
 
 impl Transform {
-    pub(crate) fn new(entity: &Entity) -> Self {
+    pub(crate) fn new(entity: &Entity) -> Option<Self> {
         let mut entity = entity.get_mut();
-        let transform = entity
+        entity
             .get_mut::<lgn_transform::prelude::Transform>()
-            .unwrap()
-            .into_inner();
-        Self(transform as *mut lgn_transform::prelude::Transform)
+            .map(|t| Self(t.into_inner()))
     }
 }
 
