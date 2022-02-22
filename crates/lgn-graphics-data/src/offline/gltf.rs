@@ -1,6 +1,6 @@
 use std::{any::Any, io, path::Path};
 
-use crate::offline::{Mesh, SubMesh};
+use crate::offline::{Mesh, Model};
 use gltf::{
     mesh::util::{ReadIndices, ReadTexCoords},
     Document,
@@ -30,11 +30,11 @@ impl GltfFile {
         }
     }
 
-    pub fn new_mesh(&self) -> Vec<(Mesh, String)> {
-        let mut meshes = Vec::new();
-        for mesh in self.document.as_ref().unwrap().meshes() {
-            let mut submeshes = Vec::new();
-            for primitive in mesh.primitives() {
+    pub fn gather_models(&self) -> Vec<(Model, String)> {
+        let mut models = Vec::new();
+        for model in self.document.as_ref().unwrap().meshes() {
+            let mut meshes = Vec::new();
+            for primitive in model.primitives() {
                 let mut positions: Vec<Vec3> = Vec::new();
                 let mut normals: Vec<Vec3> = Vec::new();
                 let mut tex_coords: Vec<Vec2> = Vec::new();
@@ -90,8 +90,8 @@ impl GltfFile {
                     .map(|v: Vec3| Vec4::new(v.x, v.y, v.z, 0.0))
                     .collect();
                 let mut indices = Some(indices);
-                let tangents = calculate_tangents(&positions, &tex_coords, &indices);
-                submeshes.push(SubMesh {
+                let tangents = lgn_math::calculate_tangents(&positions, &tex_coords, &indices);
+                meshes.push(Mesh {
                     positions,
                     normals,
                     tangents,
@@ -101,9 +101,9 @@ impl GltfFile {
                     material: None,
                 });
             }
-            meshes.push((Mesh { submeshes }, String::from(mesh.name().unwrap())));
+            models.push((Model { meshes }, String::from(model.name().unwrap())));
         }
-        meshes
+        models
     }
 }
 
@@ -193,71 +193,4 @@ impl ResourceProcessor for GltfFileProcessor {
     ) -> Result<Box<dyn Any + Send + Sync>, ResourceProcessorError> {
         Ok(self.load(reader)?)
     }
-}
-
-#[allow(unsafe_code, clippy::uninit_vec)]
-fn calculate_tangents(
-    positions: &[Vec4],
-    tex_coords: &[Vec2],
-    indices: &Option<Vec<u32>>,
-) -> Vec<Vec4> {
-    let length = positions.len();
-    let mut tangents = Vec::with_capacity(length);
-    //let mut bitangents = Vec::with_capacity(length);
-    unsafe {
-        tangents.set_len(length);
-        //bitangents.set_len(length);
-    }
-
-    let num_triangles = if let Some(indices) = &indices {
-        indices.len() / 3
-    } else {
-        length / 3
-    };
-
-    for i in 0..num_triangles {
-        let idx0 = if let Some(indices) = &indices {
-            indices[i * 3] as usize
-        } else {
-            i * 3
-        };
-        let idx1 = if let Some(indices) = &indices {
-            indices[i * 3 + 1] as usize
-        } else {
-            i * 3 + 1
-        };
-        let idx2 = if let Some(indices) = &indices {
-            indices[i * 3 + 2] as usize
-        } else {
-            i * 3 + 2
-        };
-        let v0 = positions[idx0].truncate();
-        let v1 = positions[idx1].truncate();
-        let v2 = positions[idx2].truncate();
-
-        let uv0 = tex_coords[idx0];
-        let uv1 = tex_coords[idx1];
-        let uv2 = tex_coords[idx2];
-
-        let edge1 = v1 - v0;
-        let edge2 = v2 - v0;
-
-        let delta_uv1 = uv1 - uv0;
-        let delta_uv2 = uv2 - uv0;
-
-        let f = delta_uv1.y * delta_uv2.x - delta_uv1.x * delta_uv2.y;
-        //let b = (delta_uv2.x * edge1 - delta_uv1.x * edge2) / f;
-        let t = (delta_uv1.y * edge2 - delta_uv2.y * edge1) / f;
-        let t = t.extend(0.0);
-
-        tangents[idx0] = t;
-        tangents[idx1] = t;
-        tangents[idx2] = t;
-
-        //bitangents[idx0] = b;
-        //bitangents[idx1] = b;
-        //bitangents[idx2] = b;
-    }
-
-    tangents
 }

@@ -1,16 +1,16 @@
 use std::collections::BTreeMap;
 
-use lgn_data_runtime::{ResourceId, ResourceTypeAndId};
+use lgn_data_runtime::ResourceTypeAndId;
 
 use crate::components::VisualComponent;
 
-pub struct SubMesh {
+pub struct Mesh {
     pub mesh_id: u32,
     pub material_id: u32,
 }
 
 pub struct ModelMetaData {
-    pub meshes: Vec<SubMesh>,
+    pub meshes: Vec<Mesh>,
 }
 
 pub struct ModelManager {
@@ -20,10 +20,10 @@ pub struct ModelManager {
 
 impl ModelManager {
     pub fn new() -> Self {
-        ModelManager {
+        Self {
             model_meta_datas: BTreeMap::new(),
             default_model: ModelMetaData {
-                meshes: vec![SubMesh {
+                meshes: vec![Mesh {
                     mesh_id: 1, // cube
                     material_id: u32::MAX,
                 }],
@@ -39,7 +39,7 @@ impl ModelManager {
         &self,
         visual_component: &VisualComponent,
     ) -> (&ModelMetaData, bool) {
-        if let Some(reference) = &visual_component.mesh_reference {
+        if let Some(reference) = &visual_component.model_reference {
             if let Some(model_meta_data) = self.model_meta_datas.get(&reference) {
                 return (model_meta_data, true);
             }

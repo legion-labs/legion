@@ -24,7 +24,9 @@ pub fn find_derived_path(path: &ResourcePathId) -> ResourcePathId {
     match offline_type {
         offline_data::Entity::TYPE => path.push(runtime_data::Entity::TYPE),
         offline_data::Instance::TYPE => path.push(runtime_data::Instance::TYPE),
-        lgn_graphics_data::offline::Mesh::TYPE => path.push(lgn_graphics_data::runtime::Mesh::TYPE),
+        lgn_graphics_data::offline::Model::TYPE => {
+            path.push(lgn_graphics_data::runtime::Model::TYPE)
+        }
         lgn_graphics_data::offline_psd::PsdFile::TYPE => path
             .push(lgn_graphics_data::offline_texture::Texture::TYPE)
             .push(lgn_graphics_data::runtime_texture::Texture::TYPE),
@@ -120,7 +122,7 @@ pub async fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathNa
                     | runtime_data::Instance::TYPE
                     | lgn_graphics_data::runtime_texture::Texture::TYPE
                     | lgn_graphics_data::runtime::Material::TYPE
-                    | lgn_graphics_data::runtime::Mesh::TYPE
+                    | lgn_graphics_data::runtime::Model::TYPE
             )
         };
 

@@ -8,7 +8,7 @@ pub fn create() -> compiler_node::CompilerRegistryOptions {
         .add_compiler(&lgn_compiler_psd2tex::COMPILER_INFO)
         .add_compiler(&lgn_compiler_runtime_entity::COMPILER_INFO)
         .add_compiler(&lgn_compiler_runtime_instance::COMPILER_INFO)
-        .add_compiler(&lgn_compiler_runtime_mesh::COMPILER_INFO)
+        .add_compiler(&lgn_compiler_runtime_model::COMPILER_INFO)
         .add_compiler(&lgn_compiler_test_atoi::COMPILER_INFO)
         .add_compiler(&lgn_compiler_test_base64::COMPILER_INFO)
         .add_compiler(&lgn_compiler_test_refs::COMPILER_INFO)

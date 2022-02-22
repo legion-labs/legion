@@ -4369,7 +4369,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-compiler-runtime-mesh"
+name = "lgn-compiler-runtime-model"
 version = "0.1.0"
 dependencies = [
  "bincode",
@@ -5451,7 +5451,7 @@ dependencies = [
  "lgn-compiler-psd2tex",
  "lgn-compiler-runtime-entity",
  "lgn-compiler-runtime-instance",
- "lgn-compiler-runtime-mesh",
+ "lgn-compiler-runtime-model",
  "lgn-compiler-script2asm",
  "lgn-compiler-test-atoi",
  "lgn-compiler-test-base64",

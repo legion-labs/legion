@@ -26,7 +26,7 @@ lgn-compiler-psd2tex = { path = "../lgn-psd2tex-compiler" }
 lgn-compiler-gltf = { path = "../lgn-gltf-compiler" }
 lgn-compiler-runtime-entity = { path = "../lgn-runtime-entity-compiler" }
 lgn-compiler-runtime-instance = { path = "../lgn-runtime-instance-compiler" }
-lgn-compiler-runtime-mesh = { path = "../lgn-runtime-mesh-compiler" }
+lgn-compiler-runtime-model = { path = "../lgn-runtime-model-compiler" }
 lgn-compiler-test-atoi = { path = "../../tests/atoi-compiler" }
 lgn-compiler-test-base64 = { path = "../../tests/base64-compiler" }
 lgn-compiler-test-refs = { path = "../../tests/refs-compiler" }

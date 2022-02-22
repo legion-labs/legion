@@ -1,53 +1,74 @@
 use std::ops::Mul;
 
+use lgn_data_runtime::ResourceTypeAndId;
+use lgn_ecs::prelude::Component;
+use lgn_graphics_data::runtime::MaterialReferenceType;
 use lgn_math::{Mat4, Vec2, Vec3, Vec4};
 
-use crate::{cgen, resources::UniformGPUDataUpdater, DOWN_VECTOR, UP_VECTOR};
-use crate::cgen::cgen_type::MeshDescription;
-use crate::resources::UniformGPUDataUpdater;
+use crate::{
+    cgen::cgen_type::{MeshAttribMask, MeshDescription},
+    resources::UniformGPUDataUpdater,
+    DOWN_VECTOR,
+    UP_VECTOR
+};
 
-#[derive(Clone)]
-pub struct StaticMeshRenderData {
+pub struct Mesh {
     pub positions: Option<Vec<Vec4>>,
     pub normals: Option<Vec<Vec4>>,
     pub tangents: Option<Vec<Vec4>>,
     pub tex_coords: Option<Vec<Vec2>>,
     pub indices: Option<Vec<u32>>,
     pub colors: Option<Vec<Vec4>>,
+
+    pub material_id: Option<MaterialReferenceType>,
 }
 
-fn add_vertex_data(vertex_data: &mut Vec<f32>, pos: Vec3, normal_opt: Option<Vec3>) {
-    let mut normal = Vec3::new(pos.x, 0.0, pos.z).normalize();
-    if let Some(normal_opt) = normal_opt {
-        normal = normal_opt;
-    }
-    vertex_data.append(&mut vec![
-        pos.x, pos.y, pos.z, 1.0, normal.x, normal.y, normal.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    ]);
-}
-
-impl StaticMeshRenderData {
-    pub fn get_mesh_attrib_mask(&self) -> cgen::cgen_type::MeshAttribMask {
-        let mut format = cgen::cgen_type::MeshAttribMask::empty();
+impl Mesh {
+    pub fn get_mesh_attrib_mask(&self) -> MeshAttribMask {
+        let mut format = MeshAttribMask::empty();
         if self.positions.is_some() {
-            format |= cgen::cgen_type::MeshAttribMask::POSITION;
+            format |= MeshAttribMask::POSITION;
         }
         if self.normals.is_some() {
-            format |= cgen::cgen_type::MeshAttribMask::NORMAL;
+            format |= MeshAttribMask::NORMAL;
         }
         if self.tangents.is_some() {
-            format |= cgen::cgen_type::MeshAttribMask::TANGENT;
+            format |= MeshAttribMask::TANGENT;
         }
         if self.tex_coords.is_some() {
-            format |= cgen::cgen_type::MeshAttribMask::TEX_COORD;
+            format |= MeshAttribMask::TEX_COORD;
         }
         if self.indices.is_some() {
-            format |= cgen::cgen_type::MeshAttribMask::INDEX;
+            format |= MeshAttribMask::INDEX;
         }
         if self.colors.is_some() {
-            format |= cgen::cgen_type::MeshAttribMask::COLOR;
+            format |= MeshAttribMask::COLOR;
         }
         format
+    }
+
+    pub fn size_in_bytes(&self) -> u32 {
+        let mut size = 0;
+
+        if let Some(positions) = &self.positions {
+            size += (std::mem::size_of::<Vec4>() * positions.len()) as u32;
+        }
+        if let Some(normals) = &self.normals {
+            size += (std::mem::size_of::<Vec4>() * normals.len()) as u32;
+        }
+        if let Some(tangents) = &self.tangents {
+            size += (std::mem::size_of::<Vec4>() * tangents.len()) as u32;
+        }
+        if let Some(tex_coords) = &self.tex_coords {
+            size += (std::mem::size_of::<Vec2>() * tex_coords.len()) as u32;
+        }
+        if let Some(indices) = &self.indices {
+            size += (std::mem::size_of::<u32>() * indices.len()) as u32;
+        }
+        if let Some(colors) = &self.colors {
+            size += (std::mem::size_of::<Vec4>() * colors.len()) as u32;
+        }
+        size
     }
 
     pub fn make_gpu_update_job(
@@ -93,82 +114,6 @@ impl StaticMeshRenderData {
         let mesh_info_offset = offset;
         offset += std::mem::size_of::<MeshDescription>() as u32;
         (offset, mesh_info_offset)
-    }
-
-    pub fn size_in_bytes(&self) -> u32 {
-        let mut size = 0;
-
-        if let Some(positions) = &self.positions {
-            size += (std::mem::size_of::<Vec4>() * positions.len()) as u32;
-        }
-        if let Some(normals) = &self.normals {
-            size += (std::mem::size_of::<Vec4>() * normals.len()) as u32;
-        }
-        if let Some(tangents) = &self.tangents {
-            size += (std::mem::size_of::<Vec4>() * tangents.len()) as u32;
-        }
-        if let Some(tex_coords) = &self.tex_coords {
-            size += (std::mem::size_of::<Vec2>() * tex_coords.len()) as u32;
-        }
-        if let Some(indices) = &self.indices {
-            size += (std::mem::size_of::<u32>() * indices.len()) as u32;
-        }
-        if let Some(colors) = &self.colors {
-            size += (std::mem::size_of::<Vec4>() * colors.len()) as u32;
-        }
-        size
-    }
-
-    fn from_vertex_data(vertex_data: &[f32]) -> Self {
-        let mut positions = Vec::new();
-        let mut normals = Vec::new();
-        let mut colors = Vec::new();
-        let mut tex_coords = Vec::new();
-        for i in 0..vertex_data.len() / 14 {
-            let idx = i * 14;
-            positions.push(Vec4::new(
-                vertex_data[idx],
-                vertex_data[idx + 1],
-                vertex_data[idx + 2],
-                vertex_data[idx + 3],
-            ));
-            normals.push(Vec4::new(
-                vertex_data[idx + 4],
-                vertex_data[idx + 5],
-                vertex_data[idx + 6],
-                vertex_data[idx + 7],
-            ));
-            colors.push(Vec4::new(
-                vertex_data[idx + 8],
-                vertex_data[idx + 9],
-                vertex_data[idx + 10],
-                vertex_data[idx + 11],
-            ));
-            tex_coords.push(Vec2::new(vertex_data[idx + 12], vertex_data[idx + 13]));
-        }
-        let tangents = calculate_tangents(&positions, &tex_coords, &None);
-        Self {
-            positions: Some(positions),
-            normals: Some(normals),
-            tangents: Some(tangents),
-            tex_coords: Some(tex_coords),
-            indices: None,
-            colors: Some(colors),
-        }
-    }
-
-    pub fn calculate_tangents(&mut self) {
-        assert!(self.positions.is_some());
-        assert!(self.tex_coords.is_some());
-        self.tangents = Some(calculate_tangents(
-            self.positions.as_ref().unwrap(),
-            self.tex_coords.as_ref().unwrap(),
-            &self.indices,
-        ));
-    }
-
-    pub fn num_triangles(&self) -> usize {
-        self.num_vertices() / 3
     }
 
     pub fn num_vertices(&self) -> usize {
@@ -624,6 +569,8 @@ impl StaticMeshRenderData {
             tex_coords: Some(tex_coords),
             colors: Some(colors),
             indices: None,
+
+            material_id: None,
         }
     }
 
@@ -729,71 +676,70 @@ impl StaticMeshRenderData {
 
         Self::from_vertex_data(&vertex_data)
     }
+
+    fn from_vertex_data(vertex_data: &[f32]) -> Self {
+        let mut positions = Vec::new();
+        let mut normals = Vec::new();
+        let mut colors = Vec::new();
+        let mut tex_coords = Vec::new();
+        for i in 0..vertex_data.len() / 14 {
+            let idx = i * 14;
+            positions.push(Vec4::new(
+                vertex_data[idx],
+                vertex_data[idx + 1],
+                vertex_data[idx + 2],
+                vertex_data[idx + 3],
+            ));
+            normals.push(Vec4::new(
+                vertex_data[idx + 4],
+                vertex_data[idx + 5],
+                vertex_data[idx + 6],
+                vertex_data[idx + 7],
+            ));
+            colors.push(Vec4::new(
+                vertex_data[idx + 8],
+                vertex_data[idx + 9],
+                vertex_data[idx + 10],
+                vertex_data[idx + 11],
+            ));
+            tex_coords.push(Vec2::new(vertex_data[idx + 12], vertex_data[idx + 13]));
+        }
+        let tangents = lgn_math::calculate_tangents(&positions, &tex_coords, &None);
+        Self {
+            positions: Some(positions),
+            normals: Some(normals),
+            tangents: Some(tangents),
+            tex_coords: Some(tex_coords),
+            indices: None,
+            colors: Some(colors),
+
+            material_id: None,
+        }
+    }
+
+    pub fn calculate_tangents(&mut self) {
+        assert!(self.positions.is_some());
+        assert!(self.tex_coords.is_some());
+        self.tangents = Some(lgn_math::calculate_tangents(
+            self.positions.as_ref().unwrap(),
+            self.tex_coords.as_ref().unwrap(),
+            &self.indices,
+        ));
+    }
 }
 
-#[allow(unsafe_code)]
-pub fn calculate_tangents(
-    positions: &[Vec4],
-    tex_coords: &[Vec2],
-    indices: &Option<Vec<u32>>,
-) -> Vec<Vec4> {
-    let length = positions.len();
-    let mut tangents = Vec::with_capacity(length);
-    //let mut bitangents = Vec::with_capacity(length);
-    unsafe {
-        tangents.set_len(length);
-        //bitangents.set_len(length);
+fn add_vertex_data(vertex_data: &mut Vec<f32>, pos: Vec3, normal_opt: Option<Vec3>) {
+    let mut normal = Vec3::new(pos.x, 0.0, pos.z).normalize();
+    if let Some(normal_opt) = normal_opt {
+        normal = normal_opt;
     }
+    vertex_data.append(&mut vec![
+        pos.x, pos.y, pos.z, 1.0, normal.x, normal.y, normal.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    ]);
+}
 
-    let num_triangles = if let Some(indices) = &indices {
-        indices.len() / 3
-    } else {
-        length / 3
-    };
-
-    for i in 0..num_triangles {
-        let idx0 = if let Some(indices) = &indices {
-            indices[i * 3] as usize
-        } else {
-            i * 3
-        };
-        let idx1 = if let Some(indices) = &indices {
-            indices[i * 3 + 1] as usize
-        } else {
-            i * 3 + 1
-        };
-        let idx2 = if let Some(indices) = &indices {
-            indices[i * 3 + 2] as usize
-        } else {
-            i * 3 + 2
-        };
-        let v0 = positions[idx0].truncate();
-        let v1 = positions[idx1].truncate();
-        let v2 = positions[idx2].truncate();
-
-        let uv0 = tex_coords[idx0];
-        let uv1 = tex_coords[idx1];
-        let uv2 = tex_coords[idx2];
-
-        let edge1 = v1 - v0;
-        let edge2 = v2 - v0;
-
-        let delta_uv1 = uv1 - uv0;
-        let delta_uv2 = uv2 - uv0;
-
-        let f = delta_uv1.y * delta_uv2.x - delta_uv1.x * delta_uv2.y;
-        //let b = (delta_uv2.x * edge1 - delta_uv1.x * edge2) / f;
-        let t = (delta_uv1.y * edge2 - delta_uv2.y * edge1) / f;
-        let t = t.extend(0.0);
-
-        tangents[idx0] = t;
-        tangents[idx1] = t;
-        tangents[idx2] = t;
-
-        //bitangents[idx0] = b;
-        //bitangents[idx1] = b;
-        //bitangents[idx2] = b;
-    }
-
-    tangents
+#[derive(Component)]
+pub struct ModelComponent {
+    pub model_id: Option<ResourceTypeAndId>,
+    pub meshes: Vec<Mesh>,
 }

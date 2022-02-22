@@ -1,11 +1,11 @@
 use lgn_math::prelude::*;
 
 #[resource()]
-pub struct Mesh {
-    pub submeshes: Vec<SubMesh>,
+pub struct Model {
+    pub meshes: Vec<Mesh>,
 }
 
-pub struct SubMesh {
+pub struct Mesh {
     pub positions: Vec<Vec4>,
     pub normals: Vec<Vec4>,
     pub tangents: Vec<Vec4>,

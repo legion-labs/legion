@@ -4,10 +4,8 @@ use crate::asset_entities::AssetToEntityMap;
 use lgn_core::Name;
 use lgn_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
-use lgn_graphics_data::runtime::MeshReferenceType;
-use lgn_renderer::{
-    components::{MaterialComponent, MeshComponent, SubMesh, TextureComponent, VisualComponent},
-    static_mesh_render_data::StaticMeshRenderData,
+use lgn_renderer::components::{
+    MaterialComponent, Mesh, ModelComponent, TextureComponent, VisualComponent,
 };
 
 use lgn_tracing::info;
@@ -221,10 +219,10 @@ impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {
     }
 }
 
-impl AssetToECS for lgn_graphics_data::runtime::Mesh {
+impl AssetToECS for lgn_graphics_data::runtime::Model {
     fn create_in_ecs(
         commands: &mut Commands<'_, '_>,
-        mesh: &Self,
+        model: &Self,
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
         asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
@@ -235,47 +233,47 @@ impl AssetToECS for lgn_graphics_data::runtime::Mesh {
             commands.spawn()
         };
 
-        let mut submeshes = Vec::new();
-        for submesh in &mesh.submeshes {
-            submeshes.push(SubMesh {
-                positions: if !submesh.positions.is_empty() {
-                    Some(submesh.positions.clone())
+        let mut meshes = Vec::new();
+        for mesh in &model.meshes {
+            meshes.push(Mesh {
+                positions: if !mesh.positions.is_empty() {
+                    Some(mesh.positions.clone())
                 } else {
                     None
                 },
-                normals: if !submesh.normals.is_empty() {
-                    Some(submesh.normals.clone())
+                normals: if !mesh.normals.is_empty() {
+                    Some(mesh.normals.clone())
                 } else {
                     None
                 },
-                tangents: if !submesh.tangents.is_empty() {
-                    Some(submesh.tangents.clone())
+                tangents: if !mesh.tangents.is_empty() {
+                    Some(mesh.tangents.clone())
                 } else {
                     None
                 },
-                tex_coords: if !submesh.tex_coords.is_empty() {
-                    Some(submesh.tex_coords.clone())
+                tex_coords: if !mesh.tex_coords.is_empty() {
+                    Some(mesh.tex_coords.clone())
                 } else {
                     None
                 },
-                indices: if !submesh.indices.is_empty() {
-                    Some(submesh.indices.clone())
+                indices: if !mesh.indices.is_empty() {
+                    Some(mesh.indices.clone())
                 } else {
                     None
                 },
-                colors: if !submesh.colors.is_empty() {
-                    Some(submesh.colors.clone())
+                colors: if !mesh.colors.is_empty() {
+                    Some(mesh.colors.clone())
                 } else {
                     None
                 },
                 material_id: None,
             });
         }
-        let mesh_component = MeshComponent {
-            mesh_id: Some(*asset_id),
-            submeshes,
+        let model_component = ModelComponent {
+            model_id: Some(*asset_id),
+            meshes,
         };
-        entity.insert(mesh_component);
+        entity.insert(model_component);
 
         Some(entity.id())
     }
