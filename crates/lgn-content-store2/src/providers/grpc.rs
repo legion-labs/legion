@@ -27,6 +27,7 @@ use super::{Uploader, UploaderImpl};
 /// A `GrpcProvider` is a provider that delegates to a `gRPC` service.
 pub struct GrpcProvider<C> {
     client: Arc<Mutex<ContentStoreClient<C>>>,
+    buf_size: usize,
 }
 
 impl<C> GrpcProvider<C>
@@ -39,8 +40,10 @@ where
 {
     pub async fn new(grpc_client: C) -> Self {
         let client = Arc::new(Mutex::new(ContentStoreClient::new(grpc_client)));
+        // The buffer for HTTP uploaders is set to 1MB.
+        let buf_size = 1024 * 1024;
 
-        Self { client }
+        Self { client, buf_size }
     }
 }
 
@@ -126,7 +129,7 @@ where
                         },
                     )))
                 } else {
-                    let uploader = HttpUploader::new(url)?;
+                    let uploader = HttpUploader::new(url, self.buf_size);
 
                     Ok(Box::pin(uploader))
                 }
@@ -177,18 +180,17 @@ where
 #[pin_project]
 struct HttpUploader {
     #[pin]
-    w: Option<tokio_pipe::PipeWrite>,
+    w: Option<tokio::io::DuplexStream>,
 
     #[pin]
     call: Pin<Box<dyn Future<Output = Result<reqwest::Response, reqwest::Error>> + Send + 'static>>,
 }
 
 impl HttpUploader {
-    pub fn new(url: String) -> Result<Self> {
+    pub fn new(url: String, buf_size: usize) -> Self {
         let client = reqwest::Client::new();
 
-        let (r, w) =
-            tokio_pipe::pipe().map_err(|err| anyhow::anyhow!("failed to create pipe: {}", err))?;
+        let (r, w) = tokio::io::duplex(buf_size);
 
         let stream = ReaderStream::new(r);
         let w = Some(w);
@@ -199,7 +201,7 @@ impl HttpUploader {
                 .send(),
         );
 
-        Ok(Self { w, call })
+        Self { w, call }
     }
 }
 
