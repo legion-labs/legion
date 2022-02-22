@@ -4451,6 +4451,7 @@ dependencies = [
  "pretty_env_logger",
  "redis",
  "reqwest",
+ "serde",
  "smallvec",
  "tempfile",
  "testcontainers",

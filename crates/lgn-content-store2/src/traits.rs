@@ -222,10 +222,47 @@ impl<T: ContentAddressWriter + Send + Sync> ContentAddressWriter for Arc<T> {
     }
 }
 
+/// Blanket implementations for Box<T> variants.
+
+#[async_trait]
+impl<T: ContentReader + Send + Sync + ?Sized> ContentReader for Box<T> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
+        self.as_ref().get_content_reader(id).await
+    }
+
+    async fn get_content_readers(
+        &self,
+        ids: &[Identifier],
+    ) -> Result<Vec<Result<ContentAsyncRead>>> {
+        self.as_ref().get_content_readers(ids).await
+    }
+}
+
+#[async_trait]
+impl<T: ContentWriter + Send + Sync + ?Sized> ContentWriter for Box<T> {
+    async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
+        self.as_ref().get_content_writer(id).await
+    }
+}
+
+#[async_trait]
+impl<T: ContentAddressReader + Send + Sync + ?Sized> ContentAddressReader for Box<T> {
+    async fn get_content_read_address(&self, id: &Identifier) -> Result<String> {
+        self.as_ref().get_content_read_address(id).await
+    }
+}
+
+#[async_trait]
+impl<T: ContentAddressWriter + Send + Sync + ?Sized> ContentAddressWriter for Box<T> {
+    async fn get_content_write_address(&self, id: &Identifier) -> Result<String> {
+        self.as_ref().get_content_write_address(id).await
+    }
+}
+
 /// Blanket implementations for &T variants.
 
 #[async_trait]
-impl<T: ContentReader + Send + Sync> ContentReader for &T {
+impl<T: ContentReader + Send + Sync + ?Sized> ContentReader for &T {
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
         (**self).get_content_reader(id).await
     }
@@ -239,21 +276,21 @@ impl<T: ContentReader + Send + Sync> ContentReader for &T {
 }
 
 #[async_trait]
-impl<T: ContentWriter + Send + Sync> ContentWriter for &T {
+impl<T: ContentWriter + Send + Sync + ?Sized> ContentWriter for &T {
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
         (**self).get_content_writer(id).await
     }
 }
 
 #[async_trait]
-impl<T: ContentAddressReader + Send + Sync> ContentAddressReader for &T {
+impl<T: ContentAddressReader + Send + Sync + ?Sized> ContentAddressReader for &T {
     async fn get_content_read_address(&self, id: &Identifier) -> Result<String> {
         (**self).get_content_read_address(id).await
     }
 }
 
 #[async_trait]
-impl<T: ContentAddressWriter + Send + Sync> ContentAddressWriter for &T {
+impl<T: ContentAddressWriter + Send + Sync + ?Sized> ContentAddressWriter for &T {
     async fn get_content_write_address(&self, id: &Identifier) -> Result<String> {
         (**self).get_content_write_address(id).await
     }
