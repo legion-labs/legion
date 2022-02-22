@@ -10,6 +10,7 @@
     - [Additional research on systems](./core/ecs-research-systems.md)
   - [ECS design](./core/ecs-design.md)
   - [Physics engine research](./core/physics-research.md)
+  - [Scripting](./core/scripting.md)
 
 - [Data Pipeline](./data-pipeline/README.md)
 
