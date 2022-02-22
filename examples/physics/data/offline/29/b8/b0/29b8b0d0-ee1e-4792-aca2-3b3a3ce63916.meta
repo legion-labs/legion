@@ -1,0 +1,9 @@
+{
+  "name": "/scene.ent",
+  "type_name": "offline_entity",
+  "type_id": "1c0ff9e497b0740f",
+  "dependencies": [
+    "(1c0ff9e497b0740f,63c338c9-0d03-4636-8a17-8f0cba02b618)|1d9ddd99aad89045"
+  ],
+  "content_checksum": "94aee6f136eff4ad0e0d6ef552c521a8"
+}
