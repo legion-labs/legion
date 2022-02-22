@@ -117,7 +117,7 @@ impl AnalyticsService {
     async fn list_stream_blocks_impl(
         &self,
         stream_id: &str,
-    ) -> Result<Vec<lgn_telemetry_sink::EncodedBlock>> {
+    ) -> Result<Vec<lgn_telemetry_proto::telemetry::BlockMetadata>> {
         let mut connection = self.pool.acquire().await?;
         find_stream_blocks(&mut connection, stream_id).await
     }

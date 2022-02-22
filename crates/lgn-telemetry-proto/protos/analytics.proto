@@ -66,7 +66,7 @@ message ListStreamBlocksRequest {
 }
 
 message ListStreamBlocksReply {
-  repeated telemetry.Block blocks = 1;
+  repeated telemetry.BlockMetadata blocks = 1;
 }
 
 // block_spans
