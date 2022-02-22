@@ -1,5 +1,6 @@
 import { makeGrpcClient } from "@/lib/client";
 import { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
+import Semaphore from "semaphore-async-await";
 import { get, Writable, writable } from "svelte/store";
 import { MetricState } from "./MetricState";
 
@@ -9,21 +10,51 @@ export class MetricStreamer {
   metricStore: Writable<MetricState[]>;
   private client: PerformanceAnalyticsClientImpl | null = null;
   private processId: string;
-  private tscFrequency = 0;
-  private processStartTicks = 0;
+  private semaphore: Semaphore;
   constructor(processId: string) {
     this.processId = processId;
     this.metricStore = writable([]);
+    this.semaphore = new Semaphore(8);
   }
 
   async initializeAsync() {
     this.client = await makeGrpcClient();
-    const reply = await this.client.list_process_metrics({
-      processId: this.processId,
-    });
-    this.tscFrequency = reply.tscFrequency;
-    this.processStartTicks = reply.processStartTicks;
-    this.metricStore.set(reply.metrics.map((m) => new MetricState(true, m)));
+    const blocks = (
+      await this.client.list_process_blocks({
+        processId: this.processId,
+        tag: "metrics",
+      })
+    ).blocks;
+
+    const blockManifests = await Promise.all(
+      blocks.map(async (block) => {
+        const blockManifest = await this.client?.fetch_block_metric_manifest({
+          blockId: block.blockId,
+          streamId: block.streamId,
+          processId: this.processId,
+        });
+        return blockManifest;
+      })
+    );
+
+    const metricStates = new Map<string, MetricState>();
+
+    for (const blockManifest of blockManifests) {
+      if (blockManifest) {
+        for (const metricDesc of blockManifest?.metrics) {
+          if (!metricStates.get(metricDesc.name)) {
+            metricStates.set(
+              metricDesc.name,
+              new MetricState(true, metricDesc)
+            );
+          }
+          const metricState = metricStates.get(metricDesc.name);
+          metricState?.registerBlock(blockManifest);
+        }
+      }
+    }
+
+    this.metricStore.set(Array.from(metricStates.values()));
     this.currentMinMs = Math.min(...get(this.metricStore).map((s) => s.min));
     this.currentMaxMs = Math.max(...get(this.metricStore).map((s) => s.max));
   }
@@ -44,10 +75,10 @@ export class MetricStreamer {
   tick(lod: number, min: number, max: number) {
     this.currentMinMs = min;
     this.currentMaxMs = max;
-    this.fetchSelectedMetricsAsync(lod);
+    this.fetchSelectedMetrics(lod);
   }
 
-  async fetchSelectedMetricsAsync(lod: number) {
+  fetchSelectedMetrics(lod: number) {
     const metrics = get(this.metricStore).filter((m) => m.enabled);
 
     const missingBlocks = metrics.map((m) => {
@@ -70,39 +101,31 @@ export class MetricStreamer {
         .join("\n")}`
     );
 
-    const result = await Promise.all(
-      metrics.map(async (m) => {
-        const result = await this.client?.fetch_process_metric({
-          blocks: Array.from(
-            m.getViewportBlocks(this.currentMinMs, this.currentMaxMs)
-          ),
-          params: {
-            lod: lod,
-            metricName: m.name,
+    missingBlocks.forEach((metric) => {
+      metric.blocks.forEach(async (block) => {
+        await this.semaphore.acquire();
+        try {
+          const blockData = await this.client?.fetch_block_metric({
             processId: this.processId,
-            tscFrequency: this.tscFrequency,
-            processStartTicks: this.processStartTicks,
-          },
-        });
-        return {
-          result: result,
-          name: m.name,
-        };
-      })
-    );
-
-    this.metricStore.update((metrics) => {
-      result.forEach((reply) => {
-        const metric = metrics.filter((m) => m.name === reply.name)[0];
-        if (metric) {
-          const index = metrics.indexOf(metric);
-          const metricInArray = metrics[index];
-          if (reply.result && metricInArray.store(reply.result)) {
-            metrics[index] = metricInArray;
-          }
+            streamId: block.streamId,
+            metricName: metric.name,
+            blockId: block.blockId,
+            lod: lod,
+          });
+          this.metricStore.update((metrics) => {
+            const m = metrics.filter((m) => m.name === metric.name)[0];
+            if (m) {
+              const index = metrics.indexOf(m);
+              if (blockData && m.store(block.blockId, blockData)) {
+                metrics[index] = m;
+              }
+            }
+            return metrics;
+          });
+        } finally {
+          this.semaphore.release();
         }
       });
-      return metrics;
     });
   }
 }

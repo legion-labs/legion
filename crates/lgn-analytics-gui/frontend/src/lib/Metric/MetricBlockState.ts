@@ -47,7 +47,7 @@ export class MetricBlockState {
   *getPoints(min: number, max: number, lod: number) {
     const data = this.data.get(Math.max(lod, Math.min(...this.data.keys())));
     if (data) {
-      for (let point of data) {
+      for (const point of data) {
         if (point.time >= min && point.time <= max) {
           yield point;
         }

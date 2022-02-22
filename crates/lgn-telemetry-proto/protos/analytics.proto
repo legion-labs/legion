@@ -15,13 +15,13 @@ service PerformanceAnalytics {
   rpc list_process_children(ListProcessChildrenRequest) returns (ProcessChildrenReply);
   rpc list_process_blocks(ListProcessBlocksRequest) returns (ProcessBlocksReply);
   rpc list_process_log_entries(ProcessLogRequest) returns (ProcessLogReply);
-  rpc nb_process_log_entries(ProcessNbLogEntriesRequest) returns (ProcessNbLogEntriesReply);
   rpc list_process_streams(ListProcessStreamsRequest) returns (ListStreamsReply);
   rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
-  rpc search_processes(SearchProcessRequest) returns (ProcessListReply);
   rpc list_stream_blocks(ListStreamBlocksRequest) returns (ListStreamBlocksReply);
-  rpc list_process_metrics(ListProcessMetricsRequest) returns (ProcessMetricManifestReply);
-  rpc fetch_process_metric(MetricBlockRequest) returns (ProcessMetricReply);
+  rpc nb_process_log_entries(ProcessNbLogEntriesRequest) returns (ProcessNbLogEntriesReply);
+  rpc fetch_block_metric_manifest(MetricBlockManifestRequest) returns (MetricBlockManifest);
+  rpc fetch_block_metric(MetricBlockRequest) returns (MetricBlockData);
+  rpc search_processes(SearchProcessRequest) returns (ProcessListReply);
 }
 
 // find_process
