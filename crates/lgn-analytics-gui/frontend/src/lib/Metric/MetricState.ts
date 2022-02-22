@@ -49,7 +49,7 @@ export class MetricState {
 
   *getViewportPoints(min: number, max: number, lod: number) {
     for (const block of this.getViewportBlocks(min, max)) {
-      let blockState = this.blocks.get(block.blockId);
+      const blockState = this.blocks.get(block.blockId);
       if (blockState) {
         for (const point of blockState.getPoints(min, max, lod)) {
           yield point;
