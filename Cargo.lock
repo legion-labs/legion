@@ -6899,6 +6899,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "physics-rebuild-data"
+version = "0.1.0"
+dependencies = [
+ "generic-data",
+ "lgn-app",
+ "lgn-compiler-runtime-entity",
+ "lgn-content-store",
+ "lgn-data-build",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-data-transaction",
+ "lgn-ecs",
+ "lgn-graphics-data",
+ "lgn-math",
+ "lgn-telemetry-sink",
+ "sample-data",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "physx"
 version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
