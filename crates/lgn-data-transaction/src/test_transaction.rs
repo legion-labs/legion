@@ -204,19 +204,19 @@ async fn test_transaction_system() -> Result<(), Error> {
             ))
             .add_operation(UpdatePropertyOperation::new(
                 new_id,
-                "test_string",
-                "\"Update1\"",
-            ))
-            .add_operation(UpdatePropertyOperation::new(new_id, "test_bool", "false"))
-            .add_operation(UpdatePropertyOperation::new(
-                new_id,
-                "test_position",
-                "[1,2,3]",
+                &[("test_string", "\"Update1\"")],
             ))
             .add_operation(UpdatePropertyOperation::new(
                 new_id,
-                "test_resource_path_option",
-                ref_path_id.to_string().as_str(),
+                &[("test_bool", "false")],
+            ))
+            .add_operation(UpdatePropertyOperation::new(
+                new_id,
+                &[("test_position", "[1,2,3]")],
+            ))
+            .add_operation(UpdatePropertyOperation::new(
+                new_id,
+                &[("test_resource_path_option", ref_path_id.to_string())],
             ))
             .add_operation(ArrayOperation::insert_element(
                 new_id,
@@ -331,15 +331,13 @@ async fn test_transaction_system() -> Result<(), Error> {
             ))
             .add_operation(UpdatePropertyOperation::new(
                 new_id,
-                "test_string",
-                "\"Update2\"",
-            ))
-            .add_operation(UpdatePropertyOperation::new(new_id, "test_bool", "false"))
-            .add_operation(UpdatePropertyOperation::new(
-                new_id,
-                "INVALID_PROPERTY",
-                "[1,2,3]",
+                &[
+                    ("test_string", "\"Update2\""),
+                    ("test_bool", "false"),
+                    ("INVALID_PROPERTY", "[1,2,3]"),
+                ],
             ));
+
         assert!(
             !transaction_manager
                 .commit_transaction(transaction)

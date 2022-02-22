@@ -53,20 +53,21 @@
         return;
       }
 
-      const resourcePath = config.payload
-        ? join([config.payload.path, $name.value])
-        : $name.value;
+      const resourceName = $name.value;
+      const parentResourceId = config.payload?.id;
 
       // TODO: As soon as the folder-ish resources are supported, drop
-      log.info(`New path: ${resourcePath}`);
+      log.info(`New path: ${resourceName}`);
+      log.info(`Parent: ${parentResourceId}`);
 
       const resourceType = $type.value.item;
 
       try {
         await createResourceStore.run(() =>
           createResourceApi({
-            resourcePath,
+            resourceName,
             resourceType,
+            parentResourceId,
           })
         );
       } catch (error) {

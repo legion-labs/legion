@@ -44,6 +44,15 @@
     focus();
   }
 
+  export function force_selection(name: string) {
+    const entry = entries.find((entry) => entry.name == name);
+    if (!entry) {
+      return;
+    }
+    setHighlightedEntry(entry);
+    select();
+  }
+
   export function startNameEdit(item: Item) {
     const entry = entries.find((entry) => entry.item === item);
 

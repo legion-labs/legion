@@ -3,6 +3,7 @@ use crate::{Error, LockContext, TransactionOperation};
 use async_trait::async_trait;
 use lgn_data_runtime::ResourceTypeAndId;
 
+#[derive(Debug)]
 enum SelectionOpType {
     Set,
     Add,
@@ -11,6 +12,7 @@ enum SelectionOpType {
 }
 
 /// Operation to modify an array Property
+#[derive(Debug)]
 pub struct SelectionOperation {
     operation_type: SelectionOpType,
     resource_ids: Vec<ResourceTypeAndId>,

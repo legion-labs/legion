@@ -50,6 +50,27 @@ impl Manifest {
             self.0.pin().insert(*id, *value);
         }
     }
+
+    /// apply the chnages to our manifest and only retain what's changed/new
+    pub fn get_delta(&self, other: &Self) -> Vec<ResourceTypeAndId> {
+        let guard = self.0.pin();
+        other
+            .0
+            .pin()
+            .iter()
+            .filter_map(|(id, (checksum, size))| {
+                if let Some((old_checksum, old_size)) = guard.get(id) {
+                    if checksum != old_checksum || size != old_size {
+                        Some(*id)
+                    } else {
+                        None
+                    }
+                } else {
+                    Some(*id)
+                }
+            })
+            .collect::<Vec<_>>()
+    }
 }
 
 impl Serialize for Manifest {

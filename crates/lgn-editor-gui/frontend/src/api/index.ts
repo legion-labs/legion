@@ -185,15 +185,18 @@ export async function getAvailableComponentTypes() {
 }
 
 export async function createResource({
-  resourcePath,
+  resourceName,
   resourceType,
+  parentResourceId,
 }: {
-  resourcePath: string;
+  resourceName: string;
   resourceType: string;
+  parentResourceId: string | undefined;
 }) {
   return resourceBrowserClient.createResource({
-    resourcePath,
+    resourceName,
     resourceType,
+    parentResourceId,
   });
 }
 

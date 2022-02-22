@@ -20,7 +20,7 @@
 
   const resizeVideoTimeout = 300;
 
-  const connectionRetry = 5;
+  const connectionRetry = 1000;
 
   export let desiredResolution: Resolution | null = null;
 
@@ -96,16 +96,18 @@
       log.debug("video", iceEvent);
 
       if (peerConnection && iceEvent.candidate === null) {
-        const remoteDescription = await retry(() => {
-          if (peerConnection && peerConnection.localDescription) {
-            return initializeStream(
-              serverType,
-              peerConnection.localDescription
-            );
-          }
-
-          return Promise.resolve(null);
-        }, connectionRetry);
+        const remoteDescription = await retry(
+          debounce(() => {
+            if (peerConnection && peerConnection.localDescription) {
+              return initializeStream(
+                serverType,
+                peerConnection.localDescription
+              );
+            }
+            return Promise.resolve(null);
+          }, 1_000),
+          connectionRetry
+        );
 
         if (remoteDescription) {
           peerConnection.setRemoteDescription(remoteDescription);
@@ -123,10 +125,7 @@
         window.setTimeout(() => {
           if (videoElement) {
             videoElement.pause();
-            videoElement.removeAttribute("src");
-            videoElement.load();
           }
-
           $statusStore = "Reconnecting...";
 
           destroyResources();

@@ -53,13 +53,16 @@ impl BuildManager {
             ResourceType::new(b"runtime_script")
         } else {
             error!(
-                "Data Build {} Failed: Cannot find runtime type mapping",
+                "Data Build {:?} Failed: Cannot find runtime type mapping",
                 resource_id
             );
             resource_id.kind
         };
 
         let derived_id = ResourcePathId::from(resource_id).push(runtime_type);
+
+        let start_manifest = Manifest::default();
+        start_manifest.extend(self.runtime_manifest.clone());
 
         self.build.source_pull(project).await?;
         match self.build.compile_with_manifest(
@@ -68,18 +71,20 @@ impl BuildManager {
             Some(&self.intermediate_manifest),
         ) {
             Ok(output) => {
+                let rt_manifest = output.into_rt_manifest(|_rpid| true);
+                let changed_resources = start_manifest.get_delta(&rt_manifest);
                 info!(
-                    "Data build {} Succeeded ({:?})",
+                    "Data build {:?} succeeded, {} changed assets ({:?}) ",
                     resource_id,
+                    changed_resources.len(),
                     start.elapsed(),
                 );
-                let rt_manifest = output.into_rt_manifest(|_rpid| true);
-                let built = rt_manifest.resources();
+
                 self.runtime_manifest.extend(rt_manifest);
-                Ok((derived_id, built))
+                Ok((derived_id, changed_resources))
             }
             Err(e) => {
-                error!("Data Build {} Failed: '{}'", resource_id, e);
+                error!("Data Build {:?} Failed: '{}'", resource_id, e);
                 Err(e)
             }
         }

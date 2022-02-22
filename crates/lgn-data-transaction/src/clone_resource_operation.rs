@@ -1,11 +1,13 @@
 //! Transaction Operation to Clone a Resource
 
 use async_trait::async_trait;
+use lgn_data_model::{json_utils::set_property_from_json_string, ReflectionError};
 use lgn_data_runtime::ResourceTypeAndId;
 
 use crate::{Error, LockContext, TransactionOperation};
 
 /// Clone a Resource Operation
+#[derive(Debug)]
 pub struct CloneResourceOperation {
     source_resource_id: ResourceTypeAndId,
     clone_resource_id: ResourceTypeAndId,
@@ -58,6 +60,26 @@ impl TransactionOperation for CloneResourceOperation {
         source_raw_name.replace_parent_info(self.target_parent_id, None);
 
         source_raw_name = ctx.project.get_incremental_name(&source_raw_name).await;
+
+        if let Some(entity_name) = source_raw_name.to_string().rsplit('/').next() {
+            if let Some(reflection) = ctx
+                .resource_registry
+                .get_resource_reflection_mut(self.source_resource_id.kind, &clone_handle)
+            {
+                // Try to set the name component field
+                if let Err(err) = set_property_from_json_string(
+                    reflection,
+                    "components[Name].name",
+                    &serde_json::json!(entity_name).to_string(),
+                ) {
+                    match err {
+                        ReflectionError::FieldNotFoundOnStruct(_, _)
+                        | ReflectionError::ArrayKeyNotFound(_, _) => {} // ignore missing name components
+                        _ => return Err(Error::Reflection(self.clone_resource_id, err)),
+                    }
+                }
+            }
+        }
 
         ctx.project
             .add_resource_with_id(

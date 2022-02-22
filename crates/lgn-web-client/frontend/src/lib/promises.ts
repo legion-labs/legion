@@ -6,22 +6,22 @@ import log from "./log";
  * @param ms How long the provided function should be debounced
  * @returns The provided function, debounced
  */
-export function debounce<Args extends unknown[]>(
-  f: (...args: Args) => void,
+export function debounce<Args extends unknown[], Ret>(
+  f: (...args: Args) => Ret,
   ms: number
-) {
+): (...args: Args) => Promise<Ret> {
   let timeout: ReturnType<typeof setTimeout> | null;
+  return (...args: Args) =>
+    new Promise<Ret>((resolve) => {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
 
-  return (...args: Args) => {
-    if (timeout) {
-      clearTimeout(timeout);
-    }
-
-    timeout = setTimeout(() => {
-      timeout = null;
-      f(...args);
-    }, ms);
-  };
+      timeout = setTimeout(() => {
+        timeout = null;
+        resolve(f(...args));
+      }, ms);
+    });
 }
 
 // TODO: This function can freeze the browser when misused, let's try to get rid of it

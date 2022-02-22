@@ -85,7 +85,8 @@ async fn test_property_inspector() -> anyhow::Result<()> {
             assert_eq!(desc.path.as_str(), "/dummy_entity");
             assert_eq!(desc.id, new_id.to_string());
             assert_eq!(response.properties[0].ptype, "Entity");
-            assert_eq!(response.properties[0].sub_properties[0].name, "children");
+            assert_eq!(response.properties[0].sub_properties[0].name, "id");
+            assert_eq!(response.properties[0].sub_properties[1].name, "children");
         }
     }
     Ok(())

@@ -185,6 +185,7 @@
           createResource({
             resourcePath: name,
             resourceType: "png",
+            parentResourceId: undefined,
           })
         )
       );
@@ -221,9 +222,15 @@
           return;
         }
 
-        await cloneResource({ sourceId: currentResourceDescription.id });
+        let detail = await cloneResource({
+          sourceId: currentResourceDescription.id,
+        });
 
         await allResources.run(getAllResources);
+        if (detail.newResource) {
+          resourceHierarchyTree.force_selection(detail.newResource.id);
+          fetchCurrentResourceDescription(detail.newResource);
+        }
 
         return;
       }

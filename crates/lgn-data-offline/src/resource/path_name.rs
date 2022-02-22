@@ -31,8 +31,11 @@ impl ResourcePathName {
     ///
     /// Panics if name starts with a separator (is an absolute path).
     pub fn new(name: impl AsRef<str>) -> Self {
-        assert_ne!(name.as_ref().chars().next().unwrap(), SEPARATOR);
-        let mut s = String::from(SEPARATOR);
+        let mut s = if !name.as_ref().starts_with(SEPARATOR) {
+            String::from(SEPARATOR)
+        } else {
+            String::new()
+        };
         s.push_str(name.as_ref());
         Self(s)
     }
@@ -43,7 +46,6 @@ impl ResourcePathName {
     ///
     /// Panics if path starts with a separator (is an absolute path).
     pub fn push(&mut self, path: impl AsRef<str>) {
-        assert_ne!(path.as_ref().chars().next().unwrap(), SEPARATOR);
         self.0.push(SEPARATOR);
         self.0.push_str(path.as_ref());
     }
@@ -109,7 +111,6 @@ impl fmt::Display for ResourcePathName {
 #[allow(clippy::fallible_impl_from)]
 impl From<String> for ResourcePathName {
     fn from(s: String) -> Self {
-        assert_eq!(s.chars().next().unwrap(), SEPARATOR);
         Self(s)
     }
 }
@@ -132,13 +133,13 @@ impl FromStr for ResourcePathName {
 
 impl From<&str> for ResourcePathName {
     fn from(s: &str) -> Self {
-        Self::from(s.to_owned())
+        Self::new(s.to_owned())
     }
 }
 
 impl<T: AsRef<str>> From<&T> for ResourcePathName {
     fn from(s: &T) -> Self {
-        Self::from(s.as_ref().to_owned())
+        Self::new(s.as_ref().to_owned())
     }
 }
 

@@ -4,7 +4,8 @@
 
 use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
-use lgn_data_offline::resource::Project;
+use lgn_data_model::json_utils::get_property_as_json_string;
+use lgn_data_offline::resource::{Project, ResourceHandles, ResourceRegistry};
 use lgn_data_offline::{resource::ResourcePathName, ResourcePathId};
 use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_data_transaction::{
@@ -54,6 +55,7 @@ fn parse_resource_id(value: &str) -> Result<ResourceTypeAndId, Status> {
         .map_err(|_err| Status::internal(format!("Invalid ResourceID format: {}", value)))
 }
 
+#[derive(Debug)]
 struct IndexSnapshot {
     entity_to_parent: HashMap<ResourceTypeAndId, ResourceTypeAndId>,
     parent_to_entities: HashMap<ResourceTypeAndId, Vec<ResourceTypeAndId>>,
@@ -61,7 +63,11 @@ struct IndexSnapshot {
 }
 
 impl IndexSnapshot {
-    async fn new(project: &Project) -> Self {
+    async fn new(
+        project: &Project,
+        asset_handles: &ResourceHandles,
+        resource_registry: &ResourceRegistry,
+    ) -> Self {
         let mut entity_to_parent = HashMap::new();
         let mut parent_to_entities = HashMap::new();
         let mut entity_to_names = HashMap::new();
@@ -71,7 +77,21 @@ impl IndexSnapshot {
                 let kind = project.resource_type(id).unwrap();
                 let res_id = ResourceTypeAndId { kind, id };
 
-                if let Some(parent_id) = res_name.extract_parent_info().0 {
+                let mut parent_id = res_name.extract_parent_info().0;
+                if parent_id.is_none() && kind == sample_data::offline::Entity::TYPE {
+                    if let Some(asset) = asset_handles.get(res_id) {
+                        if let Some(entity) = resource_registry
+                            .get(asset)
+                            .map(|v| v.downcast_ref::<sample_data::offline::Entity>().unwrap())
+                        {
+                            if let Some(parent) = &entity.parent {
+                                parent_id = Some(parent.source_resource()); // Some(parent.resource_id());
+                            }
+                        }
+                    }
+                }
+
+                if let Some(parent_id) = parent_id {
                     entity_to_parent.insert(res_id, parent_id);
                     parent_to_entities
                         .entry(parent_id)
@@ -167,10 +187,18 @@ impl ResourceBrowserPlugin {
 
 // Create a basic entity with Transform Component + Parenting update
 fn template_entity(
+    name: &str,
     entity_id: ResourceTypeAndId,
     parent_id: Option<ResourceTypeAndId>,
     mut transaction: Transaction,
 ) -> Transaction {
+    transaction = transaction.add_operation(ArrayOperation::insert_element(
+        entity_id,
+        "components",
+        None,
+        Some(serde_json::json!({ "Name": { "name" : name} }).to_string()),
+    ));
+
     transaction = transaction.add_operation(ArrayOperation::insert_element(
         entity_id,
         "components",
@@ -180,6 +208,7 @@ fn template_entity(
                 .to_string(),
         ),
     ));
+
     transaction = update_entity_parenting(entity_id, parent_id, None, transaction);
 
     transaction
@@ -220,21 +249,21 @@ fn update_entity_parenting(
             parent_path = parent_path.push(sample_data::runtime::Entity::TYPE);
             transaction = transaction.add_operation(UpdatePropertyOperation::new(
                 entity_id,
-                "parent",
-                json!(parent_path).to_string(),
+                &[("parent", json!(parent_path).to_string())],
             ));
         }
     } else {
         // Reset parent property
-        transaction =
-            transaction.add_operation(UpdatePropertyOperation::new(entity_id, "parent", "null"));
+        transaction = transaction.add_operation(UpdatePropertyOperation::new(
+            entity_id,
+            &[("parent", "null")],
+        ));
     }
 
     // Reset children
     transaction = transaction.add_operation(UpdatePropertyOperation::new(
         entity_id,
-        "children",
-        serde_json::Value::Array(Vec::new()).to_string(),
+        &[("children", serde_json::Value::Array(Vec::new()).to_string())],
     ));
 
     transaction
@@ -275,6 +304,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
                         id: resource_id,
                     }),
                     path,
+                    r#type: kind.as_pretty().trim_start_matches("offline_").into(),
                     version: 1,
                 })
             })
@@ -301,10 +331,10 @@ impl ResourceBrowser for ResourceBrowserRPC {
             id: ResourceId::new(),
         };
 
-        let name = request
-            .resource_path
-            .as_ref()
-            .map_or(resource_type.trim_start_matches("offline_"), String::as_str);
+        let name = request.resource_name.as_ref().map_or(
+            request.resource_type.trim_start_matches("offline_"),
+            String::as_str,
+        );
 
         let mut parent_id: Option<ResourceTypeAndId> = None;
         let mut resource_path = if let Some(parent_id_str) = &request.parent_resource_id {
@@ -330,15 +360,14 @@ impl ResourceBrowser for ResourceBrowserRPC {
         // Until we support 'template', Initiate Entity with
         // some TransformComponent and update parenting
         if resource_type == "offline_entity" {
-            transaction = template_entity(new_resource_id, parent_id, transaction);
+            transaction = template_entity(name, new_resource_id, parent_id, transaction);
         }
 
         // Add Init Values
         for init_value in request.init_values {
             transaction = transaction.add_operation(UpdatePropertyOperation::new(
                 new_resource_id,
-                init_value.property_path,
-                init_value.json_value,
+                &[(init_value.property_path, init_value.json_value)],
             ));
         }
 
@@ -389,7 +418,12 @@ impl ResourceBrowser for ResourceBrowserRPC {
         let index_snapshot = {
             let transaction_manager = self.transaction_manager.lock().await;
             let ctx = LockContext::new(&transaction_manager).await;
-            IndexSnapshot::new(&ctx.project).await
+            IndexSnapshot::new(
+                &ctx.project,
+                &ctx.loaded_resource_handles,
+                &ctx.resource_registry,
+            )
+            .await
         };
 
         // Recursively gather all the children entities as well
@@ -474,7 +508,12 @@ impl ResourceBrowser for ResourceBrowserRPC {
         let index_snapshot = {
             let transaction_manager = self.transaction_manager.lock().await;
             let ctx = LockContext::new(&transaction_manager).await;
-            IndexSnapshot::new(&ctx.project).await
+            IndexSnapshot::new(
+                &ctx.project,
+                &ctx.loaded_resource_handles,
+                &ctx.resource_registry,
+            )
+            .await
         };
 
         // Are we cloning into another target
@@ -542,21 +581,37 @@ impl ResourceBrowser for ResourceBrowserRPC {
         for init_value in request.init_values {
             transaction = transaction.add_operation(UpdatePropertyOperation::new(
                 *clone_id,
-                init_value.property_path,
-                init_value.json_value,
+                &[(init_value.property_path, init_value.json_value)],
             ));
         }
 
-        {
+        let path = {
             let mut transaction_manager = self.transaction_manager.lock().await;
             transaction_manager
                 .commit_transaction(transaction)
                 .await
                 .map_err(|err| Status::internal(err.to_string()))?;
+
+            let guard = LockContext::new(&transaction_manager).await;
+            guard
+                .project
+                .resource_name(clone_id.id)
+                .map_err(|err| Status::internal(err.to_string()))?
+                .as_str()
+                .to_string()
         };
 
         Ok(Response::new(CloneResourceResponse {
-            new_id: clone_id.to_string(),
+            new_resource: Some(ResourceDescription {
+                id: clone_id.to_string(),
+                path,
+                r#type: clone_id
+                    .kind
+                    .as_pretty()
+                    .trim_start_matches("offline_")
+                    .into(),
+                version: 1,
+            }),
         }))
     }
 
@@ -577,7 +632,12 @@ impl ResourceBrowser for ResourceBrowserRPC {
             let index_snapshot = {
                 let transaction_manager = self.transaction_manager.lock().await;
                 let ctx = LockContext::new(&transaction_manager).await;
-                IndexSnapshot::new(&ctx.project).await
+                IndexSnapshot::new(
+                    &ctx.project,
+                    &ctx.loaded_resource_handles,
+                    &ctx.resource_registry,
+                )
+                .await
             };
 
             let old_parent = index_snapshot.entity_to_parent.get(&resource_id).copied();

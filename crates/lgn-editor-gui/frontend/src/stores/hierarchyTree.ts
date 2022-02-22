@@ -8,6 +8,10 @@
 import { Entries, Entry } from "@/lib/hierarchyTree";
 import { Orchestrator, Writable } from "@lgn/web-client/src/lib/store";
 
+interface IconSetter<Item> {
+  (entry: Entry<Item | symbol>): void;
+}
+
 export default class<Item extends { path: string }> implements Orchestrator {
   name = "hierarchTree";
 
@@ -24,7 +28,13 @@ export default class<Item extends { path: string }> implements Orchestrator {
   }
 
   /** Loads an array of element as hierarchy tree entries in the store */
-  load(resources: Item[]) {
-    this.entries.set(Entries.fromArray(resources, Symbol));
+  load(resources: Item[], iconSetter: IconSetter<Item> | null) {
+    let entries = Entries.fromArray(resources, Symbol);
+    if (iconSetter) {
+      for (var entry of entries) {
+        iconSetter(entry[1]);
+      }
+    }
+    this.entries.set(entries);
   }
 }

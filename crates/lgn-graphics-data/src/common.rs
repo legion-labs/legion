@@ -2,7 +2,7 @@ use lgn_tracing::{span_fn, span_scope};
 use serde::{Deserialize, Serialize};
 
 /// High level texture format to let artist control how it is encoded
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Debug)]
 pub enum TextureFormat {
     /// encode RGB or RGBA channels into BC1 (4 bits per pixel).
     BC1 = 0,

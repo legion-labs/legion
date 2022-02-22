@@ -15,6 +15,9 @@ speed_tolerance = 1.0
 [streamer]
 max_frame_time = 33_000 #microsec
 
+[data_transaction]
+log_operation = false
+
 [test_config]
 test_bool = false
 test_int = 1337

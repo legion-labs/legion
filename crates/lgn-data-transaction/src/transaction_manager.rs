@@ -20,15 +20,15 @@ pub enum Error {
     NoCommittedTransaction,
 
     /// Resource failed to deserializer from memory
-    #[error("ResourceId '{0}' failed to deserialize")]
+    #[error("ResourceId '{0:?}' failed to deserialize")]
     InvalidResourceDeserialization(ResourceTypeAndId, ResourceRegistryError),
 
     /// Resource failed to deserializer from memory
-    #[error("ResourceId '{0}' failed to serialize")]
+    #[error("ResourceId '{0:?}' failed to serialize")]
     InvalidResourceSerialization(ResourceTypeAndId, ResourceRegistryError),
 
     /// Resource Id Already Exists
-    #[error("Resource '{0}' already exists in the Project")]
+    #[error("Resource '{0:?}' already exists in the Project")]
     ResourceIdAlreadyExist(ResourceTypeAndId),
 
     /// Resource Path Already Exists
@@ -40,15 +40,15 @@ pub enum Error {
     ResourceNameNotFound(ResourcePathName),
 
     /// Invalid Delete Operation
-    #[error("Invalid DeleteOperation on Resource '{0}'")]
+    #[error("Invalid DeleteOperation on Resource '{0:?}'")]
     InvalidDeleteOperation(ResourceTypeAndId),
 
     /// Invalid Resource
-    #[error("ResourceId '{0}' not found")]
+    #[error("ResourceId '{0:?}' not found")]
     InvalidResource(ResourceTypeAndId),
 
     /// Invalid Resource Reflection
-    #[error("Resource '{0}' doesn't have reflection.")]
+    #[error("Resource '{0:?}' doesn't have reflection.")]
     InvalidTypeReflection(ResourceTypeAndId),
 
     /// Invalid Resource Type
@@ -72,7 +72,7 @@ pub enum Error {
     Reflection(ResourceTypeAndId, lgn_data_model::ReflectionError),
 
     /// Reflection Error fallack
-    #[error("DataBuild failed fro Resource '{0}': {1}")]
+    #[error("DataBuild failed fro Resource '{0:?}': {1}")]
     Databuild(ResourceTypeAndId, lgn_data_build::Error),
 
     /// External file loading Error
@@ -123,14 +123,15 @@ impl TransactionManager {
             .await
             .map_err(|_err| Error::ResourceNameNotFound(resource_path.clone()))?;
 
-        let (runtime_path_id, _results) = ctx
+        let (_runtime_path_id, changed_assets) = ctx
             .build
             .build_all_derived(resource_id, &ctx.project)
             .await
             .map_err(|err| Error::Databuild(resource_id, err))?;
 
-        ctx.asset_registry
-            .load_untyped(runtime_path_id.resource_id());
+        for asset_id in changed_assets {
+            ctx.asset_registry.load_untyped(asset_id);
+        }
         Ok(())
     }
 
@@ -139,19 +140,19 @@ impl TransactionManager {
         let project = self.project.lock().await;
         let mut resource_registry = self.resource_registry.lock().await;
         let mut resource_handles = self.loaded_resource_handles.lock().await;
-        let png_type = ResourceType::new(b"png");
 
         for resource_id in project.resource_list().await {
-            let kind = project.resource_type(resource_id).unwrap();
+            let kind = project.resource_type(resource_id).ok();
+            if kind.is_none() {
+                warn!("Skipping unknown resource type for Id:{}", resource_id);
+                continue;
+            }
+            let kind = kind.unwrap();
+
             let type_id = ResourceTypeAndId {
                 kind,
                 id: resource_id,
             };
-
-            // hack, skip png
-            if kind == png_type {
-                continue;
-            }
 
             let start = std::time::Instant::now();
             project

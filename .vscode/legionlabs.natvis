@@ -7,16 +7,25 @@
 
   <Type Name="lgn_data_runtime::resource::ResourceType">
 	<DisplayString Condition="(*(u64*)&amp;__0 == 0x1c0ff9e497b0740f)">offline_entity ({__0,x})</DisplayString>
-	<DisplayString Condition="(*(u64*)&amp;__0 == 0x45307156cdfef705)">offline_script ({__0,x})</DisplayString>
-	<DisplayString Condition="(*(u64*)&amp;__0 == 0x09cde0390abe0694)">offline_debugcube ({__0,x})</DisplayString>
-	<DisplayString Condition="(*(u64*)&amp;__0 == 0x91dc60590cba171e)">offline_instance ({__0,x})</DisplayString>
-	<DisplayString Condition="(*(u64*)&amp;__0 == 0x07dd9f5d1793ed64)">offline_material ({__0,x})</DisplayString>
-	<DisplayString Condition="(*(u64*)&amp;__0 == 0x80b97dd7e2e9edca)">offline_mesh ({__0,x})</DisplayString>
-	<DisplayString Condition="(*(u64*)&amp;__0 == 0x4976b194d8a1e0c2)">offline_psd ({__0,x})</DisplayString>
-	<DisplayString Condition="(*(u64*)&amp;__0 == 0x0bac9261332b6ce8)">offline_testentity ({__0,x})</DisplayString>
-	<DisplayString Condition="(*(u64*)&amp;__0 == 0x648242a8cf00bfee)">offline_texture ({__0,x})</DisplayString>
 	<DisplayString Condition="(*(u64*)&amp;__0 == 0x1d9ddd99aad89045)">runtime_entity ({__0,x})</DisplayString>
-	<DisplayString Condition="(*(u64*)&amp;__0 == 0x1a377760c95e361c)">png ({__0,x})</DisplayString>
+
+	<DisplayString Condition="(*(u64*)&amp;__0 == 0x45307156cdfef705)">offline_script ({__0,x})</DisplayString>
+	<DisplayString Condition="(*(u64*)&amp;__0 == 0x17bed132bc803773)">runtime_script ({__0,x})</DisplayString>
+
+	<DisplayString Condition="(*(u64*)&amp;__0 == 0x91dc60590cba171e)">offline_instance ({__0,x})</DisplayString>
+	<DisplayString Condition="(*(u64*)&amp;__0 == 0xe5c099cc30495fed)">runtime_instance ({__0,x})</DisplayString>
+
+	<DisplayString Condition="(*(u64*)&amp;__0 == 0x07dd9f5d1793ed64)">offline_material ({__0,x})</DisplayString>
+  <DisplayString Condition="(*(u64*)&amp;__0 == 0x738a5b850f6f8b3a)">runtime_material({__0,x})</DisplayString>
+
+	<DisplayString Condition="(*(u64*)&amp;__0 == 0x80b97dd7e2e9edca)">offline_mesh ({__0,x})</DisplayString>
+  <DisplayString Condition="(*(u64*)&amp;__0 == 0x9c9a840b84935d1f)">runtime_mesh({__0,x})</DisplayString>
+	
+	<DisplayString Condition="(*(u64*)&amp;__0 == 0x4976b194d8a1e0c2)">offline_psd ({__0,x})</DisplayString>
+	<DisplayString Condition="(*(u64*)&amp;__0 == 0x1a377760c95e361c)">png({__0,x})</DisplayString>
+	<DisplayString Condition="(*(u64*)&amp;__0 == 0x648242a8cf00bfee)">offline_texture ({__0,x})</DisplayString>
+  <DisplayString Condition="(*(u64*)&amp;__0 == 0x0659c0b6c23b950d)">runtime_texture({__0,x})</DisplayString>
+
 	<DisplayString>{__0,x}</DisplayString>
   </Type>
 
