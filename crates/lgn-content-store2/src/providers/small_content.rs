@@ -16,7 +16,7 @@ impl<Inner> SmallContentProvider<Inner> {
     pub fn new(inner: Inner) -> Self {
         Self {
             inner,
-            size_threshold: Identifier::SIZE_THRESHOLD,
+            size_threshold: Identifier::SMALL_IDENTIFIER_SIZE,
         }
     }
 

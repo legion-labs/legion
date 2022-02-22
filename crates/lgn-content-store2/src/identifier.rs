@@ -18,8 +18,11 @@ use crate::{Error, Result};
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Identifier {
     HashRef(u64, HashAlgorithm, SmallVec<[u8; HASH_SIZE]>),
-    Data(SmallVec<[u8; HASH_SIZE]>),
+    Data(SmallVec<[u8; SMALL_IDENTIFIER_SIZE]>),
 }
+
+const HASH_SIZE: usize = 32;
+const SMALL_IDENTIFIER_SIZE: usize = 64; // SmallVec has only a finite number of implementations/supported sizes for the backing array.
 
 /// A hash algorithm used to compute the identifier.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -38,8 +41,6 @@ impl TryFrom<u8> for HashAlgorithm {
         }
     }
 }
-
-const HASH_SIZE: usize = 32;
 
 impl std::fmt::Display for Identifier {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -100,7 +101,8 @@ impl FromStr for Identifier {
 }
 
 impl Identifier {
-    pub(crate) const SIZE_THRESHOLD: usize = HASH_SIZE;
+    /// The size under which the content is stored directly in the identifier.
+    pub(crate) const SMALL_IDENTIFIER_SIZE: usize = SMALL_IDENTIFIER_SIZE;
 
     /// Create an identifier for an empty file.
     pub fn empty() -> Self {
