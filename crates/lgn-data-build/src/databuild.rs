@@ -109,14 +109,13 @@ impl DataBuild {
         resource_dir: &Path,
         cas_addr: ContentStoreAddr,
         compilers: &CompilerRegistry,
+        manifest: Option<Manifest>,
     ) -> Result<Arc<AssetRegistry>, Error> {
         let source_store = HddContentStore::open(cas_addr).ok_or(Error::InvalidContentStore)?;
+        let manifest = manifest.unwrap_or_default();
 
         let mut options = AssetRegistryOptions::new()
-            .add_device_cas(
-                Box::new(source_store),
-                lgn_data_runtime::manifest::Manifest::default(),
-            )
+            .add_device_cas(Box::new(source_store), manifest)
             .add_device_dir(resource_dir);
 
         options = compilers.init_all(options);
@@ -142,6 +141,7 @@ impl DataBuild {
                     &project.resource_dir(),
                     config.contentstore_path.clone(),
                     &compilers,
+                    config.manifest,
                 )
             },
             Ok,
@@ -173,6 +173,7 @@ impl DataBuild {
                     &project.resource_dir(),
                     config.contentstore_path.clone(),
                     &compilers,
+                    config.manifest,
                 )
             },
             Ok,
@@ -215,6 +216,7 @@ impl DataBuild {
                     &project.resource_dir(),
                     config.contentstore_path.clone(),
                     &compilers,
+                    config.manifest,
                 )
             },
             Ok,

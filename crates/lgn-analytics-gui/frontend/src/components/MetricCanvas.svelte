@@ -136,6 +136,12 @@
       });
   }
 
+  function refreshZoom() {
+    const extent = [width, outerHeight] as [number, number];
+    zoom.translateExtent([[0, 0], extent]);
+    zoom.extent([[0, 0], extent]);
+  }
+
   function createChart() {
     container = d3.select("#metric-canvas");
 
@@ -176,10 +182,11 @@
       .zoom()
       .filter((e) => !e.shiftKey)
       .scaleExtent([1, getPixelSizeNs()])
-      .translateExtent([[0, 0], getTranslateExtent()])
       .on("zoom", (event) => {
         transform = event.transform;
       });
+
+    refreshZoom();
 
     container.call(zoom as any);
 
@@ -222,7 +229,7 @@
 
     var startTime = performance.now();
 
-    zoom.translateExtent([[0, 0], getTranslateExtent()]);
+    refreshZoom();
 
     container.select("svg").attr("height", outerHeight).attr("width", width);
 
@@ -275,10 +282,6 @@
 
     gxAxis.call(xAxis.scale(scaleX));
     gyAxis.call(yAxis.scale(y));
-  }
-
-  function getTranslateExtent(): [number, number] {
-    return [mainWidth, outerHeight];
   }
 </script>
 

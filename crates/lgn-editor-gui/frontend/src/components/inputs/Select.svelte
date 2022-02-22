@@ -11,7 +11,7 @@
   type Item = $$Generic;
 
   const dispatch = createEventDispatcher<{
-    change: Option | "";
+    select: Option | "";
   }>();
 
   type Option = { value: string; item: Item };
@@ -52,10 +52,8 @@
 
   function select(option: Option | "") {
     value = option;
-    if (option != "") {
-      dispatch("change", option);
-    } else {
-    }
+
+    dispatch("select", option);
 
     close();
   }

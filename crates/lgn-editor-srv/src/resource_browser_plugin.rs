@@ -65,7 +65,7 @@ impl IndexSnapshot {
 
         for id in project.resource_list().await {
             if let Ok(res_name) = project.raw_resource_name(id) {
-                let kind = project.resource_info(id).unwrap().0;
+                let kind = project.resource_type(id).unwrap();
                 let res_id = ResourceTypeAndId { kind, id };
 
                 if let Some(parent_id) = res_name.extract_parent_info().0 {
@@ -254,7 +254,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
                     .unwrap_or_else(|_err| "".into())
                     .to_string();
 
-                let (kind, _, _) = ctx.project.resource_info(resource_id).unwrap();
+                let kind = ctx.project.resource_type(resource_id).unwrap();
 
                 // Basic Filter
                 if !request.search_token.is_empty() {

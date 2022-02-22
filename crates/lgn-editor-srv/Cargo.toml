@@ -71,7 +71,7 @@ lgn-streamer = { path = "../lgn-streamer", version = "0.1.0", features = [
 ] }
 
 
-[[package.metadata.monorepo.dist]]
+[[package.metadata.monorepo.publish]]
 type = "docker"
 template = """
 FROM ubuntu:20.04
@@ -85,7 +85,7 @@ extra-files = [
     { source = "../../tests/sample-data/*", destination = "/usr/src/app/" },
 ]
 
-[[package.metadata.monorepo.dist]]
+[[package.metadata.monorepo.publish]]
 type = "zip"
 extra-files = [
     { source = "../../tests/sample-data/*", destination = "tests/sample-data" },

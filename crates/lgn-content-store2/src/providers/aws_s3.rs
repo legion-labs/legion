@@ -1,28 +1,49 @@
 use async_trait::async_trait;
+use aws_sdk_s3::presigning::config::PresigningConfig;
 use bytes::Bytes;
 use pin_project::pin_project;
 use std::future::Future;
 use std::str::FromStr;
 use std::sync::Mutex;
 use std::task::{Context, Poll};
+use std::time::Duration;
 use std::{fmt::Display, pin::Pin};
-use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::io::AsyncWrite;
 use tokio_stream::Stream;
 use tokio_util::io::StreamReader;
 
-use crate::{ContentReader, ContentWriter, Error, Identifier, Result};
+use crate::{
+    ContentAddressReader, ContentAddressWriter, ContentAsyncRead, ContentAsyncWrite, ContentReader,
+    ContentWriter, Error, Identifier, Result,
+};
 
 pub struct AwsS3Provider {
     url: AwsS3Url,
     client: aws_sdk_s3::Client,
+    validity_duration: Duration,
 }
 
 impl AwsS3Provider {
+    /// Generates a new AWS S3 provider using the specified bucket and root.
+    ///
+    /// The default AWS configuration is used.
     pub async fn new(url: AwsS3Url) -> Self {
         let config = aws_config::load_from_env().await;
         let client = aws_sdk_s3::Client::new(&config);
 
-        Self { url, client }
+        Self {
+            url,
+            client,
+            validity_duration: Duration::from_secs(60),
+        }
+    }
+
+    /// Set the validity duration for presigned URLs.
+    pub fn with_validity_duration(self, validity_duration: Duration) -> Self {
+        Self {
+            validity_duration,
+            ..self
+        }
     }
 
     fn blob_key(&self, id: &Identifier) -> String {
@@ -49,6 +70,42 @@ impl AwsS3Provider {
             Err(err) => {
                 Err(
                     anyhow::anyhow!("failed to delete object `{}` from AWS S3: {}", key, err)
+                        .into(),
+                )
+            }
+        }
+    }
+
+    /// Check whether an object exists with the specified identifier.
+    ///
+    /// # Errors
+    ///
+    /// Only if an object's existence cannot be determined, an error is returned.
+    pub async fn check_object_existence(&self, id: &Identifier) -> Result<bool> {
+        let key = self.blob_key(id);
+
+        match self
+            .client
+            .get_object_acl()
+            .bucket(&self.url.bucket_name)
+            .key(&key)
+            .send()
+            .await
+        {
+            Ok(_) => Ok(true),
+            Err(aws_sdk_s3::SdkError::ServiceError { err, raw: _ }) => {
+                if let aws_sdk_s3::error::GetObjectAclErrorKind::NoSuchKey(_) = err.kind {
+                    Ok(false)
+                } else {
+                    Err(
+                        anyhow::anyhow!("failed to get object acl `{}` from AWS S3: {}", key, err)
+                            .into(),
+                    )
+                }
+            }
+            Err(err) => {
+                Err(
+                    anyhow::anyhow!("failed to get object acl `{}` from AWS S3: {}", key, err)
                         .into(),
                 )
             }
@@ -196,7 +253,7 @@ impl AsyncWrite for ByteStreamWriter {
 
 #[async_trait]
 impl ContentReader for AwsS3Provider {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncRead + Send>>> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
         let key = self.blob_key(id);
 
         let object = match self
@@ -232,7 +289,7 @@ impl ContentReader for AwsS3Provider {
 
 #[async_trait]
 impl ContentWriter for AwsS3Provider {
-    async fn get_content_writer(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncWrite + Send>>> {
+    async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
         let key = self.blob_key(id);
 
         match self
@@ -262,6 +319,68 @@ impl ContentWriter for AwsS3Provider {
         let writer = ByteStreamWriter::new(self.client.clone(), self.url.bucket_name.clone(), key);
 
         Ok(Box::pin(writer))
+    }
+}
+
+#[async_trait]
+impl ContentAddressReader for AwsS3Provider {
+    async fn get_content_read_address(&self, id: &Identifier) -> Result<String> {
+        if !self.check_object_existence(id).await? {
+            return Err(Error::NotFound);
+        }
+
+        let key = self.blob_key(id);
+
+        Ok(self
+            .client
+            .get_object()
+            .bucket(&self.url.bucket_name)
+            .key(&key)
+            .presigned(
+                PresigningConfig::expires_in(self.validity_duration)
+                    .map_err(|err| anyhow::anyhow!("failed to create presigned URL: {}", err))?,
+            )
+            .await
+            .map_err(|err| {
+                anyhow::anyhow!(
+                    "failed to generate AWS S3 get signature for object `{}`: {}",
+                    key,
+                    err
+                )
+            })?
+            .uri()
+            .to_string())
+    }
+}
+
+#[async_trait]
+impl ContentAddressWriter for AwsS3Provider {
+    async fn get_content_write_address(&self, id: &Identifier) -> Result<String> {
+        if self.check_object_existence(id).await? {
+            return Err(Error::AlreadyExists);
+        }
+
+        let key = self.blob_key(id);
+
+        Ok(self
+            .client
+            .put_object()
+            .bucket(&self.url.bucket_name)
+            .key(&key)
+            .presigned(
+                PresigningConfig::expires_in(self.validity_duration)
+                    .map_err(|err| anyhow::anyhow!("failed to create presigned URL: {}", err))?,
+            )
+            .await
+            .map_err(|err| {
+                anyhow::anyhow!(
+                    "failed to generate AWS S3 put signature for object `{}`: {}",
+                    key,
+                    err
+                )
+            })?
+            .uri()
+            .to_string())
     }
 }
 

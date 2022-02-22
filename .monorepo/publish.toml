@@ -1,0 +1,7 @@
+[s3]
+bucket = "legionlabs-ci-artefacts"
+prefix = "releases/legion/"
+region = "ca-central-1"
+
+[rustdoc]
+entry-point = "lgn-app"

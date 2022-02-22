@@ -19,7 +19,9 @@ impl Installer {
 
     pub fn install_via_cargo_if_needed(&self, name: &str) -> bool {
         match &self.cargo_installations.get(name) {
-            Some(cargo_installation) => install_cargo_component_if_needed(name, cargo_installation),
+            Some(cargo_installation) => {
+                install_cargo_component_if_needed(name, cargo_installation, None)
+            }
             None => {
                 skip_step!("Installer", "No installation for {}", name);
                 false
@@ -49,16 +51,20 @@ impl Installer {
         check_all_cargo_components(iter.as_slice())
     }
 
-    pub fn install_all(&self) -> bool {
+    pub fn install_all(&self, root: Option<&str>) -> bool {
         let iter = self
             .cargo_installations
             .iter()
             .collect::<Vec<(&String, &CargoInstallation)>>();
-        install_all_cargo_components(iter.as_slice())
+        install_all_cargo_components(iter.as_slice(), root)
     }
 }
 
-fn install_cargo_component_if_needed(name: &str, installation: &CargoInstallation) -> bool {
+fn install_cargo_component_if_needed(
+    name: &str,
+    installation: &CargoInstallation,
+    root: Option<&str>,
+) -> bool {
     if !check_installed_cargo_component(name, &installation.version) {
         action_step!("Installer", "Installing {} {}", name, installation.version);
         //prevent recursive install attempts of sccache.
@@ -75,13 +81,15 @@ fn install_cargo_component_if_needed(name: &str, installation: &CargoInstallatio
             cmd.arg("--git");
             cmd.arg(git_url);
             if let Some(git_rev) = &installation.git_rev {
-                cmd.arg("--rev");
-                cmd.arg(git_rev);
+                cmd.arg("--rev").arg(git_rev);
             }
         } else {
             cmd.arg("--version").arg(&installation.version);
         }
         cmd.arg("--locked");
+        if let Some(root) = root {
+            cmd.arg("--root").arg(root);
+        }
         cmd.arg(name);
         cmd.stdout(Stdio::inherit()).stderr(Stdio::inherit());
         let result = cmd.output();
@@ -123,11 +131,18 @@ fn check_installed_cargo_component(name: &str, version: &str) -> bool {
     found
 }
 
-pub fn install_all_cargo_components(tools: &[(&String, &CargoInstallation)]) -> bool {
+pub fn install_all_cargo_components(
+    tools: &[(&String, &CargoInstallation)],
+    root: Option<&str>,
+) -> bool {
     let mut success: bool = true;
     for (name, installation) in tools {
-        success &= install_cargo_component_if_needed(name, installation);
+        success &= install_cargo_component_if_needed(name, installation, root);
     }
+    //if let cargo_home = std::env::var_os("CARGO_HOME") {
+    //    std::fs::copy(from, to)
+    //}
+
     success
 }
 

@@ -4,6 +4,7 @@ mod labels;
 pub use labels::*;
 
 use lgn_app::prelude::*;
+use lgn_config::Config;
 use lgn_core::prelude::*;
 use lgn_ecs::prelude::*;
 use lgn_tracing::prelude::*;
@@ -35,6 +36,32 @@ type PxScene = physx::scene::PxScene<
 >;
 //struct DynamicRigidBodyHandle(PxRigidStatic);
 
+pub struct PhysicsSettings {
+    enable_visual_debugger: bool,
+    length_tolerance: f32,
+    speed_tolerance: f32,
+}
+
+impl PhysicsSettings {
+    pub fn from_config(config: &Config) -> Self {
+        Self {
+            enable_visual_debugger: config.get_or("physics.enable_visual_debugger", false),
+            length_tolerance: config.get_or("physics.length_tolerance", 1.0_f32),
+            speed_tolerance: config.get_or("physics.speed_tolerance", 1.0_f32),
+        }
+    }
+}
+
+impl Default for PhysicsSettings {
+    fn default() -> Self {
+        Self {
+            enable_visual_debugger: false,
+            length_tolerance: 1.0_f32,
+            speed_tolerance: 1.0_f32,
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct PhysicsPlugin {}
 
@@ -54,12 +81,12 @@ impl Plugin for PhysicsPlugin {
 }
 
 impl PhysicsPlugin {
-    fn setup(mut commands: Commands<'_, '_>) {
+    fn setup(settings: Res<'_, PhysicsSettings>, mut commands: Commands<'_, '_>) {
         let mut physics_builder = PhysicsFoundationBuilder::<DefaultAllocator>::default();
         physics_builder
-            .enable_visual_debugger(false)
-            .set_length_tolerance(1.0)
-            .set_speed_tolerance(1.0)
+            .enable_visual_debugger(settings.enable_visual_debugger)
+            .set_length_tolerance(settings.length_tolerance)
+            .set_speed_tolerance(settings.speed_tolerance)
             .with_extensions(false);
         let mut physics = physics_builder.build::<PxShape>().unwrap();
 
@@ -77,6 +104,9 @@ impl PhysicsPlugin {
 
         // Note: important to insert physics after scene, for drop order
         commands.insert_resource(physics);
+
+        commands.remove_resource::<PhysicsSettings>(); // no longer needed
+        drop(settings);
     }
 
     #[span_fn]

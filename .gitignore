@@ -22,7 +22,7 @@
 
 # local user files
 legion_local.toml
-monorepo.local.toml
+.monorepo/editor.local.toml
 
 # Pnpm/NodeJs files
 node_modules/

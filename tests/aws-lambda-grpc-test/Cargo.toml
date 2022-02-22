@@ -27,10 +27,10 @@ http-body = "0.4.4"
 bytes = "1.1"
 
 
-[package.metadata.monorepo.dist-hash]
+[package.metadata.monorepo.publish-hash]
 version = "0.1.0"
 hash = "sha256:21de1dbfd6d6f0e811b3d496004aff43280cc37b2272b101ce0327c923bd1a7d"
 
-[[package.metadata.monorepo.dist]]
+[[package.metadata.monorepo.publish]]
 type = "aws-lambda"
 binary = "aws-lambda-grpc-test"

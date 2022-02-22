@@ -31,15 +31,16 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
     args.no_deps = true;
 
     let mut rustodc_flags: Vec<String> = vec![];
-    for lint in &ctx.config().rustdoc.deny {
+    let rustdoc_cfg = &ctx.config().lints.rustdoc;
+    for lint in &rustdoc_cfg.deny {
         rustodc_flags.push("-D".into());
         rustodc_flags.push(lint.into());
     }
-    for lint in &ctx.config().rustdoc.warn {
+    for lint in &rustdoc_cfg.warn {
         rustodc_flags.push("-W".into());
         rustodc_flags.push(lint.into());
     }
-    for lint in &ctx.config().rustdoc.allow {
+    for lint in &rustdoc_cfg.allow {
         rustodc_flags.push("-A".into());
         rustodc_flags.push(lint.into());
     }
@@ -64,12 +65,13 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
     let packages = args.package_args.to_selected_packages(ctx)?;
     cmd.run_on_packages(ctx, &packages)?;
 
-    if packages.includes_package(&ctx.config().rustdoc.entry_point) {
+    let entry_point = &ctx.config().publish.rustdoc.entry_point;
+    if packages.includes_package(entry_point) {
         std::fs::write(
             ctx.workspace_root().join("target/doc/index.html"),
             format!(
                 "<meta http-equiv=\"refresh\" content=\"0; URL={}/index.html\"/>",
-                ctx.config().rustdoc.entry_point.replace("-", "_")
+                entry_point.replace("-", "_")
             ),
         )
         .map_err(|err| Error::new("Could not write entry point").with_source(err))?;

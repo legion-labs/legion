@@ -40,7 +40,7 @@ name = "telemetry-generator"
 path = "test/generator.rs"
 
 
-[[package.metadata.monorepo.dist]]
+[[package.metadata.monorepo.publish]]
 name = "telemetry-ingestion-srv"
 type = "docker"
 template = """

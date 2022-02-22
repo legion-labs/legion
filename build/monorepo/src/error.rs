@@ -114,7 +114,7 @@ impl Error {
                     .unwrap();
                 write!(&mut stderr, "Caused by").unwrap();
                 stderr.reset().unwrap();
-                write!(&mut stderr, ": {}", source).unwrap();
+                writeln!(&mut stderr, ": {}", source).unwrap();
             }
 
             if let Some(explanation) = self.explanation() {
@@ -126,7 +126,7 @@ impl Error {
                             .set_intense(true),
                     )
                     .unwrap();
-                write!(&mut stderr, "\n{}", explanation).unwrap();
+                writeln!(&mut stderr, "{}", explanation).unwrap();
                 stderr.reset().unwrap();
             }
 
@@ -139,9 +139,9 @@ impl Error {
                             .set_intense(true),
                     )
                     .unwrap();
-                writeln!(&mut stderr, "\nOutput follows:").unwrap();
+                writeln!(&mut stderr, "Output follows:").unwrap();
                 stderr.reset().unwrap();
-                write!(&mut stderr, "{}", output).unwrap();
+                writeln!(&mut stderr, "{}", output).unwrap();
             }
         } else {
             eprintln!("{}", self);

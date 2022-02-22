@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::future::Future;
 use std::task::{Context, Poll};
 
@@ -15,17 +16,28 @@ use crate::authentication::Authenticator;
 pub struct AuthenticatedClient<C, A> {
     client: C,
     authenticator: A,
+    scopes: Vec<String>,
+    /// Typically the identity provider
+    extra_params: Option<HashMap<String, String>>,
 }
 
 impl<C, A> AuthenticatedClient<C, A>
 where
     A: Authenticator + Clone,
 {
-    pub fn new(client: C, authenticator: A) -> Self {
+    pub fn new(client: C, authenticator: A, scopes: &[String]) -> Self {
         Self {
             client,
             authenticator,
+            scopes: scopes.to_vec(),
+            extra_params: None,
         }
+    }
+
+    pub fn set_extra_params(&mut self, extra_params: Option<HashMap<String, String>>) -> &mut Self {
+        self.extra_params = extra_params;
+
+        self
     }
 
     fn authenticate_request<'r, 'a, ReqBody>(
@@ -38,10 +50,12 @@ where
         'r: 'a,
     {
         let authenticator = self.authenticator.clone();
+        let scopes = self.scopes.clone();
+        let extra_params = self.extra_params.clone();
 
         async move {
             let token_set = authenticator
-                .login()
+                .login(&scopes, &extra_params)
                 .await
                 .map_err(Error::AuthenticationError)?;
 

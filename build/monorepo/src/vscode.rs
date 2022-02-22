@@ -32,7 +32,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
         .collect();
     bin_packages.sort_by(|a, b| a.name().cmp(b.name()));
 
-    let vscode_config = &ctx.config().vscode;
+    let vscode_config = &ctx.config().editor.vscode;
     let debugger_type = vscode_config.debugger_type.as_str();
 
     for package in vscode_config.overrides.keys() {

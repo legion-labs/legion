@@ -1,0 +1,35 @@
+[[path-rule]]
+globs = [
+    ".github/actions/*",
+    ".github/workflows/*",
+    "rust-toolchain.toml",
+    ".monorepo/*",
+]
+mark-changed = "all"
+
+[[path-rule]]
+globs = [
+    ".github/images/*",
+    ".github/dependabot.yml",
+    ".vscode/*",
+    ".monorepo/editor.toml",
+    ".monorepo/pkg_sets.toml",
+    ".monorepo/npm.toml",
+    ".clang-format",
+    "docs/**/*",
+    "build/env/**/*",
+    "pnpm-*",
+    "deny.toml",
+    "Makefile",
+    "legion.toml",
+    "npm-pkgs/**/*",
+    "package.json",
+    "trace-*",
+    # Ignore *.md documentation
+    "*.md",
+]
+mark-changed = []
+
+[[package-rule]]
+on-affected = ["monorepo"]
+mark-changed = "all"

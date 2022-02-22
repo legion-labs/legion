@@ -1,0 +1,138 @@
+
+# dependencies lints
+[[direct-dependencies.bans]]
+name = "clap"
+version = "2"
+reason = "use `clap` 3.0 or above, it supports the a derive based api"
+
+[[direct-dependencies.bans]]
+name = "glam"
+version = "*"
+reason = "use `lgn-math` instead, our solution for math types"
+exceptions = ["lgn-math"]
+
+#[[direct-dependencies.bans]]
+#name = "lazy_static"
+#version = "*"
+#reason = "use once_cell instead, it's gonna be standarized one day"
+
+[[direct-dependencies.bans]]
+name = "log"
+version = "*"
+reason = "use `lgn-tracing` instead, our logging solution"
+exceptions = ["lgn-tracing", "lgn-telemetry-sink"]
+
+[[direct-dependencies.bans]]
+name = "structopts"
+version = "*"
+reason = "use `clap` 3.0 or above, it supports the a derive based api"
+
+[[direct-dependencies.bans]]
+name = "tracing"
+version = "*"
+reason = "use `lgn-tracing` instead, our tracing solution"
+exceptions = ["lgn-telemetry-sink"]
+
+[[direct-dependencies.bans]]
+name = "winapi"
+version = "*"
+reason = "use `windows` instead, it's Microsoft supported"
+
+# crate attributes lints
+[crate-attributes]
+license-rules = [
+    { spdx = "MIT OR Apache-2.0", globs = [
+        "crates/*",
+        "examples/*",
+        "tests/*",
+    ] },
+]
+edition = "2021"
+
+[[crate-attributes.name-rules]]
+help = "official crates names must start with lgn-, be lower kebab-case"
+pattern = "^(?:lgn-)[a-z0-9-]+$"
+globs = ["crates/*", "build/*"]
+glob-literal-separator = true
+
+[[crate-attributes.name-rules]]
+help = "tests and examples must not start with lgn-, but have to be lower kebab-case"
+pattern = "^[a-z0-9-]+$"
+negative-pattern = "^(?:lgn-).*$"
+globs = ["examples/*", "tests/*"]
+glob-literal-separator = true
+
+[[crate-attributes.bins-rules]]
+help = "official crates binaries must start with lgn-, be lower kebab-case"
+pattern = "^(?:lgn-)[a-z0-9-]+$"
+globs = ["crates/*", "build/*"]
+glob-literal-separator = true
+
+
+[rustdoc]
+deny = ["warnings"]
+warn = [
+    # Rustdoc lints
+    "rustdoc::broken_intra_doc_links",
+    "rustdoc::missing_crate_level_docs",
+    "rustdoc::private_intra_doc_links",
+]
+allow = []
+
+################################################################################
+
+[clippy]
+deny = ["unsafe_code"]
+warn = [
+    # Rustc lints
+    "future_incompatible",
+    "nonstandard_style",
+    "rust_2018_idioms",
+    # Clippy pedantic lints, treat all as warnings by default, add exceptions in allow list below
+    "clippy::pedantic",
+    # Clippy nursery lints, still under development
+    "clippy::debug_assert_with_mut_call",
+    "clippy::disallowed_method",
+    "clippy::disallowed_type",
+    "clippy::empty_line_after_outer_attr",
+    "clippy::equatable_if_let",
+    "clippy::fallible_impl_from",
+    "clippy::imprecise_flops",
+    "clippy::mutex_integer",
+    "clippy::nonstandard_macro_braces",
+    "clippy::path_buf_push_overwrite",
+    "clippy::string_lit_as_bytes",
+    "clippy::suspicious_operation_groupings",
+    "clippy::trailing_empty_array",
+    "clippy::trivial_regex",
+    "clippy::use_self",
+    "clippy::useless_let_if_seq",
+    "clippy::useless_transmute",
+    # Clippy restriction lints, usually not considered bad, but useful in specific cases
+    "clippy::dbg_macro",
+    "clippy::exit",
+    "clippy::float_cmp_const",
+    "clippy::map_err_ignore",
+    'clippy::mem_forget',
+    "clippy::missing_enforced_import_renames",
+    "clippy::rest_pat_in_fully_bound_structs",
+    "clippy::string_to_string",
+    "clippy::todo",
+    "clippy::unimplemented",
+    "clippy::verbose_file_reads",
+]
+allow = [
+    # Clippy pedantic exceptions
+    "clippy::cast_possible_truncation",
+    "clippy::cast_sign_loss",
+    "clippy::if_not_else",
+    "clippy::items_after_statements",
+    "clippy::missing_panics_doc",
+    "clippy::module_name_repetitions",
+    "clippy::must_use_candidate",
+    "clippy::similar_names",
+    "clippy::shadow_unrelated",
+    "clippy::unreadable_literal",
+    "clippy::unseparated_literal_suffix",
+    "clippy::too_many_lines",
+]

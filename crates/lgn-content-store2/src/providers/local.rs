@@ -1,10 +1,10 @@
 use anyhow::Context;
 use async_trait::async_trait;
-use std::{path::PathBuf, pin::Pin};
+use std::path::PathBuf;
 
-use tokio::io::{AsyncRead, AsyncWrite};
-
-use crate::{ContentReader, ContentWriter, Error, Identifier, Result};
+use crate::{
+    ContentAsyncRead, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
+};
 
 /// A `LocalProvider` is a provider that stores content on the local filesystem.
 pub struct LocalProvider(PathBuf);
@@ -30,7 +30,7 @@ impl LocalProvider {
 
 #[async_trait]
 impl ContentReader for LocalProvider {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncRead + Send>>> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
         let path = self.0.join(id.to_string());
 
         match tokio::fs::File::open(&path).await {
@@ -65,7 +65,7 @@ impl ContentReader for LocalProvider {
 
 #[async_trait]
 impl ContentWriter for LocalProvider {
-    async fn get_content_writer(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncWrite + Send>>> {
+    async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
         let path = self.0.join(id.to_string());
 
         if tokio::fs::metadata(&path).await.is_ok() {

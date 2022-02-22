@@ -1,7 +1,6 @@
 import { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
 import { ResourceProperty as RawResourceProperty } from "@lgn/proto-editor/dist/property_inspector";
 import { filterMap } from "./array";
-import { Emitter } from "monaco-editor";
 
 /** Matches any `ptype` of format "Vec<subPType>" */
 const vecPTypeRegExp = /^Vec\<(.+)\>$/;
@@ -56,12 +55,16 @@ export type Quat = [number, number, number, number];
 export type QuatProperty = ResourcePropertyWithValueBase<"Quat", Quat>;
 
 export type ResourcePathId = string;
+
 export type ResourcePathIdProperty = ResourcePropertyWithValueBase<
   "ResourcePathId",
   ResourcePathId
 >;
 
-export type EnumProperty = ResourcePropertyWithValueBase<"Enum", string>;
+export type EnumProperty = ResourcePropertyWithValueBase<
+  `_enum_:${string}`,
+  string
+>;
 
 /** List all the possible primitive resources */
 export type PrimitiveResourceProperty =
@@ -313,7 +316,6 @@ const primitivePTypes: PrimitiveResourceProperty["ptype"][] = [
   "Color",
   "String",
   "ResourcePathId",
-  "Enum",
   "i32",
   "u32",
   "f32",
@@ -331,7 +333,9 @@ const primitivePTypes: PrimitiveResourceProperty["ptype"][] = [
 export function ptypeBelongsToPrimitive(
   ptype: string
 ): ptype is PrimitiveResourceProperty["ptype"] {
-  return (primitivePTypes as string[]).includes(ptype);
+  return (
+    (primitivePTypes as string[]).includes(ptype) || ptype.startsWith("_enum_:")
+  );
 }
 
 /** Builds an Option property from a property */
@@ -395,6 +399,16 @@ export function buildDefaultPrimitiveProperty(
   name: string,
   ptype: PrimitiveResourceProperty["ptype"]
 ): PrimitiveResourceProperty {
+  if (ptype.startsWith("_enum_:")) {
+    return {
+      ptype,
+      name,
+      attributes: {},
+      subProperties: [],
+      value: "",
+    } as EnumProperty;
+  }
+
   switch (ptype) {
     case "Color": {
       return {
@@ -446,16 +460,6 @@ export function buildDefaultPrimitiveProperty(
       };
     }
 
-    case "Enum": {
-      return {
-        ptype: "Enum",
-        name,
-        attributes: {},
-        subProperties: [],
-        value: "",
-      };
-    }
-
     case "Vec3": {
       return {
         ptype: "Vec3",
@@ -491,6 +495,8 @@ export function buildDefaultPrimitiveProperty(
       };
     }
   }
+
+  throw new Error(`Unknown primitive property ptype ${ptype}`);
 }
 
 export type ResourceWithProperties = {

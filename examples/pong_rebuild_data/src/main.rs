@@ -212,8 +212,10 @@ const MOUSE_DELTA_SCALE = 200.0;
 
 pub fn update(entity, events) {
     let delta_x = events.mouse_motion.x / MOUSE_DELTA_SCALE;
-    entity.transform.translation.y += delta_x;
-    entity.transform.translation.clamp_y(-2.0, 2.0);
+    if let Some(transform) = entity.transform {
+        transform.translation.y += delta_x;
+        transform.translation.clamp_y(-2.0, 2.0);
+    }
 }"#,
     )
     .await;
@@ -283,8 +285,10 @@ const MOUSE_DELTA_SCALE = 200.0;
 
 pub fn update(entity, events) {
     let delta_x = events.mouse_motion.x / MOUSE_DELTA_SCALE;
-    entity.transform.translation.y -= delta_x;
-    entity.transform.translation.clamp_y(-2.0, 2.0);
+    if let Some(transform) = entity.transform {
+        transform.translation.y -= delta_x;
+        transform.translation.clamp_y(-2.0, 2.0);
+    }
 }"#,
     )
     .await;
@@ -374,7 +378,8 @@ pub fn update(entity, last_result, entities) {
         last_result
     };
 
-    let position = entity.transform.translation;
+    let transform = entity.transform.unwrap();
+    let position = transform.translation;
 
     if position.x < -3.0 || position.x > 3.0 {
         ball_direction.x = -ball_direction.x;
@@ -389,11 +394,15 @@ pub fn update(entity, last_result, entities) {
     // update paddles
     let left_paddle = 0.0;
     if let Some(entity) = entities["Pad Left"] {
-        left_paddle = entity.transform.translation.y;
+        if let Some(transform) = entity.transform {
+            left_paddle = transform.translation.y;
+        }
     }
     let right_paddle = 0.0;
     if let Some(entity) = entities["Pad Right"] {
-        right_paddle = entity.transform.translation.y;
+        if let Some(transform) = entity.transform {
+            right_paddle = transform.translation.y;
+        }
     }
 
     // check for collision with paddles (dimensions = 0.2 x 1.0 x 0.2)

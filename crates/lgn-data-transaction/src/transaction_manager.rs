@@ -138,7 +138,7 @@ impl TransactionManager {
         let png_type = ResourceType::new(b"png");
 
         for resource_id in project.resource_list().await {
-            let (kind, _, _) = project.resource_info(resource_id).unwrap();
+            let kind = project.resource_type(resource_id).unwrap();
             let type_id = ResourceTypeAndId {
                 kind,
                 id: resource_id,

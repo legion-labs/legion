@@ -99,10 +99,8 @@ export class MetricStreamer {
         if (metric) {
           const index = metrics.indexOf(metric);
           const metricInArray = metrics[index];
-          if (reply.result) {
-            if (metricInArray.store(reply.result)) {
-              metrics[index] = metricInArray;
-            }
+          if (reply.result && metricInArray.store(reply.result)) {
+            metrics[index] = metricInArray;
           }
         }
       });
