@@ -162,8 +162,11 @@ async fn test_aws_dynamodb_provider() {
 #[ignore]
 #[tokio::test]
 async fn test_redis_provider() {
-    let redis_url =
-        std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379".to_string());
+    let docker = testcontainers::clients::Cli::default();
+    let redis =
+        testcontainers::Docker::run(&docker, testcontainers::images::redis::Redis::default());
+
+    let redis_url = format!("redis://localhost:{}", redis.get_host_port(6379).unwrap());
     let provider = RedisProvider::new(redis_url, "content-store")
         .await
         .expect("failed to create Redis provider");
