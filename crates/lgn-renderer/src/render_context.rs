@@ -1,7 +1,6 @@
 use lgn_core::{BumpAllocatorHandle, BumpAllocatorPool, Handle};
 use lgn_graphics_api::{
-    DescriptorHeapDef, DescriptorRef, DescriptorSetHandle, DescriptorSetLayout,
-    DescriptorSetWriter, QueueType,
+    DescriptorHeapDef, DescriptorRef, DescriptorSetHandle, DescriptorSetLayout, QueueType,
 };
 
 use crate::{
@@ -75,20 +74,20 @@ impl<'frame> RenderContext<'frame> {
         &self.descriptor_pool
     }
 
-    #[allow(clippy::todo)]
-    pub fn alloc_descriptor_set(
-        &self,
-        descriptor_set_layout: &DescriptorSetLayout,
-    ) -> DescriptorSetWriter<'_> {
-        if let Ok(writer) = self
-            .descriptor_pool
-            .allocate_descriptor_set(descriptor_set_layout, &self.bump_allocator)
-        {
-            writer
-        } else {
-            todo!("Descriptor OOM! ")
-        }
-    }
+    // #[allow(clippy::todo)]
+    // pub fn alloc_descriptor_set(
+    //     &self,
+    //     descriptor_set_layout: &DescriptorSetLayout,
+    // ) -> DescriptorSetWriter {
+    //     if let Ok(writer) = self
+    //         .descriptor_pool
+    //         .allocate_descriptor_set(descriptor_set_layout, &self.bump_allocator)
+    //     {
+    //         writer
+    //     } else {
+    //         todo!("Descriptor OOM! ")
+    //     }
+    // }
 
     #[allow(clippy::todo)]
     pub fn write_descriptor_set(
@@ -98,10 +97,10 @@ impl<'frame> RenderContext<'frame> {
         // descriptor_set: &impl DescriptorSetDataProvider, // tmp: find an other way
     ) -> DescriptorSetHandle {
         self.descriptor_pool.write_descriptor_set(
-            self.renderer.device_context(),
+            // self.renderer.device_context(),
             layout,
             descriptors,
-            &self.bump_allocator,
+            // &self.bump_allocator,
         )
     }
 

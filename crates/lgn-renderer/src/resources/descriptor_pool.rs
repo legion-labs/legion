@@ -1,7 +1,6 @@
-use bumpalo::Bump;
 use lgn_graphics_api::{
     DescriptorHeap, DescriptorHeapDef, DescriptorHeapPartition, DescriptorRef, DescriptorSetHandle,
-    DescriptorSetLayout, DescriptorSetWriter, DeviceContext, GfxResult,
+    DescriptorSetLayout,
 };
 
 use lgn_core::Handle;
@@ -33,29 +32,27 @@ impl DescriptorPool {
         &self.descriptor_heap_partition
     }
 
-    pub fn allocate_descriptor_set<'frame>(
-        &self,
-        descriptor_set_layout: &DescriptorSetLayout,
-        bump: &'frame Bump,
-    ) -> GfxResult<DescriptorSetWriter<'frame>> {
-        self.descriptor_heap_partition
-            .get_writer(descriptor_set_layout, bump)
-    }
+    // pub fn allocate_descriptor_set(
+    //     &self,
+    //     descriptor_set_layout: &DescriptorSetLayout,
+    // ) -> GfxResult<DescriptorSetWriter> {
+    //     self.descriptor_heap_partition
+    //         .get_writer(descriptor_set_layout)
+    // }
 
-    pub fn write_descriptor_set<'frame>(
+    pub fn write_descriptor_set(
         &self,
-        device_context: &DeviceContext,
+        // device_context: &DeviceContext,
         layout: &DescriptorSetLayout,
         descriptors: &[DescriptorRef<'_>],
         // descriptor_set: &impl DescriptorSetDataProvider,
-        bump: &'frame Bump,
+        // bump: &'frame Bump,
     ) -> DescriptorSetHandle {
-        let mut writer = self
-            .descriptor_heap_partition
-            .get_writer(layout, bump)
-            .unwrap();
-        writer.set_descriptors(descriptors);
-        writer.flush(device_context)
+        self.descriptor_heap_partition
+            .write(layout, descriptors)
+            .unwrap()
+        // writer.set_descriptors(descriptors);
+        // writer.flush(device_context)
     }
 
     fn reset(&self) {

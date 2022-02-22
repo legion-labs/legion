@@ -3,8 +3,8 @@
 use crate::{
     backends::{BackendDescriptorHeap, BackendDescriptorHeapPartition, BackendDescriptorSetHandle},
     deferred_drop::Drc,
-    DescriptorRef, DescriptorSetLayout, DescriptorSetLayoutDef, DescriptorSetWriter, DeviceContext,
-    GfxResult, ShaderResourceType,
+    DescriptorRef, DescriptorSetLayout, DescriptorSetLayoutDef, DeviceContext, GfxResult,
+    ShaderResourceType,
 };
 
 /// Used to create a `DescriptorHeap`
@@ -184,19 +184,20 @@ impl DescriptorHeapPartition {
         self.inner.transient
     }
 
-    pub fn get_writer<'frame>(
+    // pub fn get_writer<'frame>(
+    //     &self,
+    //     descriptor_set_layout: &DescriptorSetLayout,
+    //     bump: &'frame bumpalo::Bump,
+    // ) -> GfxResult<DescriptorSetWriter<'frame>> {
+    //     self.backend_get_writer(descriptor_set_layout, bump)
+    // }
+
+    pub fn write(
         &self,
         descriptor_set_layout: &DescriptorSetLayout,
-        bump: &'frame bumpalo::Bump,
-    ) -> GfxResult<DescriptorSetWriter<'frame>> {
-        self.backend_get_writer(descriptor_set_layout, bump)
+        descriptor_refs: &[DescriptorRef<'_>],
+    ) -> GfxResult<DescriptorSetHandle> {
+        assert!(self.inner.transient);
+        self.backend_write(descriptor_set_layout, descriptor_refs)
     }
-
-    // pub fn write<'frame>(
-    //     &self,
-    //     descriptor_set: &impl DescriptorSetDataProvider,
-    //     bump: &'frame bumpalo::Bump,
-    // ) -> GfxResult<DescriptorSetHandle> {
-    //     self.backend_write(descriptor_set, bump)
-    // }
 }
