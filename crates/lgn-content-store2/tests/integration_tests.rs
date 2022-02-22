@@ -2,7 +2,8 @@ use std::{net::SocketAddr, sync::Arc};
 
 use lgn_content_store2::{
     ContentAddressReader, ContentAddressWriter, ContentReaderExt, ContentWriter, ContentWriterExt,
-    Error, GrpcProvider, GrpcService, Identifier, LocalProvider, SmallContentProvider,
+    Error, GrpcProvider, GrpcService, Identifier, LocalProvider, MemoryProvider,
+    SmallContentProvider,
 };
 
 #[cfg(feature = "redis")]
@@ -31,6 +32,27 @@ fn test_data_invariants() {
     assert!(Identifier::new(&BIG_DATA_X).is_hash_ref());
     assert!(Identifier::new(&BIGGER_DATA_X).is_hash_ref());
     assert!(Identifier::new(&SMALL_DATA_A).is_data());
+}
+
+#[tokio::test]
+async fn test_memory_provider() {
+    let provider = MemoryProvider::new();
+
+    let id = Identifier::new(&BIG_DATA_A);
+    assert_content_not_found!(provider, id);
+
+    let id = assert_write_content!(provider, &BIG_DATA_A);
+    assert_read_content!(provider, id, &BIG_DATA_A);
+
+    // Another write should yield no error.
+    assert_write_avoided!(provider, &id);
+
+    let fake_id = Identifier::new(&BIG_DATA_X);
+    assert_read_contents!(
+        provider,
+        &[id, fake_id],
+        [Ok(&BIG_DATA_A), Err(Error::NotFound)]
+    );
 }
 
 #[tokio::test]
