@@ -23,6 +23,8 @@ impl StreamBlock for LogBlock {
             objects: compress(self.events.as_bytes())?,
         };
 
+        let payload_size = payload.dependencies.len() + payload.objects.len();
+
         Ok(EncodedBlock {
             stream_id: self.stream_id.clone(),
             block_id,
@@ -37,6 +39,7 @@ impl StreamBlock for LogBlock {
             end_ticks: end.ticks,
             payload: Some(payload),
             nb_objects: self.nb_objects() as i32,
+            payload_size: payload_size as i64,
         })
     }
 }
@@ -51,6 +54,7 @@ impl StreamBlock for MetricsBlock {
             dependencies: compress(self.events.extract().as_bytes())?,
             objects: compress(self.events.as_bytes())?,
         };
+        let payload_size = payload.dependencies.len() + payload.objects.len();
 
         Ok(EncodedBlock {
             stream_id: self.stream_id.clone(),
@@ -66,6 +70,7 @@ impl StreamBlock for MetricsBlock {
             end_ticks: end.ticks,
             payload: Some(payload),
             nb_objects: self.nb_objects() as i32,
+            payload_size: payload_size as i64,
         })
     }
 }
@@ -80,6 +85,7 @@ impl StreamBlock for ThreadBlock {
             dependencies: compress(self.events.extract().as_bytes())?,
             objects: compress(self.events.as_bytes())?,
         };
+        let payload_size = payload.dependencies.len() + payload.objects.len();
 
         Ok(EncodedBlock {
             stream_id: self.stream_id.clone(),
@@ -95,6 +101,7 @@ impl StreamBlock for ThreadBlock {
             end_ticks: end.ticks,
             payload: Some(payload),
             nb_objects: self.nb_objects() as i32,
+            payload_size: payload_size as i64,
         })
     }
 }

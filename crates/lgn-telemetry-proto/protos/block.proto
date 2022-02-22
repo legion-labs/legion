@@ -17,4 +17,5 @@ message Block {
   int64 end_ticks = 6;
   BlockPayload payload = 7;
   int32 nb_objects = 8;
+  int64 payload_size = 9;
 }

@@ -103,6 +103,7 @@ pub async fn connect_to_remote_data_lake(
         AwsS3BlobStorage::new(AwsS3Url::from_str(s3_url_cache)?).await,
     ));
     let pool = sqlx::any::AnyPoolOptions::new()
+        .max_connections(10)
         .connect(db_uri)
         .await
         .with_context(|| String::from("Connecting to telemetry database"))?;
