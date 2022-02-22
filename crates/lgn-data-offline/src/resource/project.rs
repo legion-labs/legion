@@ -6,7 +6,7 @@ use std::{
     str::FromStr,
 };
 
-use lgn_content_store::content_checksum_from_read;
+use lgn_content_store::{content_checksum_from_read, Checksum};
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_source_control::{
     IndexBackend, LocalIndexBackend, Workspace, WorkspaceConfig, WorkspaceRegistration,
@@ -14,8 +14,7 @@ use lgn_source_control::{
 use thiserror::Error;
 
 use crate::resource::{
-    metadata::{Metadata, ResourceHash},
-    ResourceHandleUntyped, ResourcePathName, ResourceRegistry,
+    metadata::Metadata, ResourceHandleUntyped, ResourcePathName, ResourceRegistry,
 };
 use crate::ResourcePathId;
 
@@ -471,7 +470,7 @@ impl Project {
     pub fn resource_info(
         &self,
         id: ResourceId,
-    ) -> Result<(ResourceType, ResourceHash, Vec<ResourcePathId>), Error> {
+    ) -> Result<(ResourceType, Checksum, Vec<ResourcePathId>), Error> {
         let meta = self.read_meta(id)?;
         let resource_hash = meta.resource_hash();
         let dependencies = meta.dependencies;
