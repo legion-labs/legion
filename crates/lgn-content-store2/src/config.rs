@@ -85,6 +85,13 @@ impl ProviderConfig {
                     .parse()
                     .map_err(|err| anyhow::anyhow!("failed to parse gRPC url: {}", err))?;
                 let client = lgn_online::grpc::GrpcClient::new(uri);
+                let authenticator = lgn_online::authentication::OAuthClient::new_from_config()
+                    .await
+                    .map_err(|err| {
+                        anyhow::anyhow!("failed to instanciate an OAuth client: {}", err)
+                    })?;
+
+                let client = lgn_online::grpc::AuthenticatedClient::new(client, authenticator, &[]);
 
                 Box::new(SmallContentProvider::new(GrpcProvider::new(client).await))
             }

@@ -15,6 +15,7 @@ use openidconnect::{
     Nonce, OAuth2TokenResponse, PkceCodeChallenge, RedirectUrl, RefreshToken, Scope,
     SubjectIdentifier, TokenResponse,
 };
+use serde::Deserialize;
 use tokio::sync::{oneshot, Mutex};
 use url::Url;
 
@@ -22,6 +23,7 @@ use super::{Authenticator, ClientTokenSet, Error, Result, UserInfo};
 
 const DEFAULT_PORT: u16 = 80;
 
+#[derive(Clone)]
 pub struct OAuthClient {
     client: CoreClient,
     client_id: ClientId,
@@ -33,7 +35,26 @@ pub struct OAuthClient {
     port: u16,
 }
 
+#[derive(Deserialize, Debug)]
+struct OAuthConfig {
+    issuer_url: String,
+    client_id: String,
+}
+
 impl OAuthClient {
+    /// Instanciate a new `OAuthClient` from the current configuration.
+    pub async fn new_from_config() -> Result<Self> {
+        let config: OAuthConfig = match lgn_config::Config::new()
+            .get("oauth")
+            .ok_or_else(|| anyhow::anyhow!("failed to load oauth config"))
+        {
+            Ok(config) => config,
+            Err(err) => return Err(Error::Internal(format!("{}", err))),
+        };
+
+        Self::new(config.issuer_url, config.client_id).await
+    }
+
     pub async fn new<'a, IU, ID>(issuer_url: IU, client_id: ID) -> Result<Self>
     where
         IU: Into<String>,

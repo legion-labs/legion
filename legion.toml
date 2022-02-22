@@ -33,6 +33,10 @@ test_nested = 42
 [logging.level_filters]
 #webrtc = "WARN"
 
+[oauth]
+issuer_url = "https://cognito-idp.ca-central-1.amazonaws.com/ca-central-1_SkZKDimWz"
+client_id = "5m58nrjfv6kr144prif9jk62di"
+
 [content_store.provider]
 type = "local"
 path = "/tmp/content_store"
