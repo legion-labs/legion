@@ -212,8 +212,10 @@ const MOUSE_DELTA_SCALE = 200.0;
 
 pub fn update(entity, events) {
     let delta_x = events.mouse_motion.x / MOUSE_DELTA_SCALE;
-    entity.transform.translation.y += delta_x;
-    entity.transform.translation.clamp_y(-2.0, 2.0);
+    if let Some(transform) = entity.transform {
+        transform.translation.y += delta_x;
+        transform.translation.clamp_y(-2.0, 2.0);
+    }
 }"#,
     )
     .await;
@@ -283,8 +285,10 @@ const MOUSE_DELTA_SCALE = 200.0;
 
 pub fn update(entity, events) {
     let delta_x = events.mouse_motion.x / MOUSE_DELTA_SCALE;
-    entity.transform.translation.y -= delta_x;
-    entity.transform.translation.clamp_y(-2.0, 2.0);
+    if let Some(transform) = entity.transform {
+        transform.translation.y -= delta_x;
+        transform.translation.clamp_y(-2.0, 2.0);
+    }
 }"#,
     )
     .await;
@@ -374,7 +378,8 @@ pub fn update(entity, last_result, entities) {
         last_result
     };
 
-    let position = entity.transform.translation;
+    let transform = entity.transform.unwrap();
+    let position = transform.translation;
 
     if position.x < -3.0 || position.x > 3.0 {
         ball_direction.x = -ball_direction.x;
@@ -389,11 +394,15 @@ pub fn update(entity, last_result, entities) {
     // update paddles
     let left_paddle = 0.0;
     if let Some(entity) = entities["Pad Left"] {
-        left_paddle = entity.transform.translation.y;
+        if let Some(transform) = entity.transform {
+            left_paddle = transform.translation.y;
+        }
     }
     let right_paddle = 0.0;
     if let Some(entity) = entities["Pad Right"] {
-        right_paddle = entity.transform.translation.y;
+        if let Some(transform) = entity.transform {
+            right_paddle = transform.translation.y;
+        }
     }
 
     // check for collision with paddles (dimensions = 0.2 x 1.0 x 0.2)
@@ -529,16 +538,6 @@ pub fn update(entity, last_result, entities) {
     };
 
     // scene
-    let scene_script = build_script(
-        project,
-        resource_registry,
-        "f7e3757c-22b1-44af-a8d3-5ae080c4fef1",
-        ScriptType::Rune,
-        "/scene/scene_script",
-        r#"pub fn update() {}"#,
-    )
-    .await;
-
     let scene_id = {
         let mut resources = resource_registry.lock().await;
         let id = ResourceTypeAndId {
@@ -550,15 +549,6 @@ pub fn update(entity, last_result, entities) {
         let entity = handle
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
-
-        let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
-            script_type: ScriptType::Rune,
-            input_values: vec![],
-            entry_fn: "update".to_string(),
-            script_id: Some(scene_script),
-            temp_script: "".to_string(),
-        });
-        entity.components.push(script_component);
 
         entity.children.push(ground_path_id);
         entity.children.push(pad_right_path_id);

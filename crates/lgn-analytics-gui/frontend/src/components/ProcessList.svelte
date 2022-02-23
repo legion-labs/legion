@@ -8,6 +8,7 @@
   import log from "@lgn/web-client/src/lib/log";
   import { makeGrpcClient } from "@/lib/client";
   import User from "./User.svelte";
+  import Computer from "./Computer.svelte";
   import Platform from "./Platform.svelte";
   import ProcessTime from "./ProcessTime.svelte";
 
@@ -59,6 +60,7 @@
       <thead>
         <th>User</th>
         <th>Executable</th>
+        <th>Computer</th>
         <th>Platform</th>
         <th>Start Time</th>
         <th />
@@ -74,6 +76,7 @@
                 {processInfo?.exe.split("/").pop()?.split("\\").pop()}
               </span>
             </td>
+            <td><Computer process={processInfo} /></td>
             <td><Platform process={processInfo} /></td>
             <td><ProcessTime process={processInfo} /></td>
             <td>

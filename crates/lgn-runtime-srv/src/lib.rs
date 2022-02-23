@@ -22,7 +22,7 @@ use lgn_data_runtime::ResourceTypeAndId;
 use lgn_graphics_data::GraphicsPlugin;
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_input::InputPlugin;
-use lgn_physics::PhysicsPlugin;
+use lgn_physics::{PhysicsPlugin, PhysicsSettings};
 use lgn_renderer::RendererPlugin;
 use lgn_scripting::ScriptingPlugin;
 use lgn_streamer::StreamerPlugin;
@@ -66,6 +66,10 @@ struct Args {
     #[cfg(feature = "standalone")]
     #[clap(long)]
     standalone: bool,
+
+    /// Enable physics visual debugger
+    #[clap(long)]
+    physics_debugger: bool,
 }
 
 pub fn build_runtime(
@@ -122,6 +126,12 @@ pub fn build_runtime(
     #[cfg(not(feature = "standalone"))]
     let standalone = false;
 
+    // physics settings
+    let enable_visual_debugger =
+        args.physics_debugger || settings.get_or("physics.enable_visual_debugger", false);
+    let length_tolerance = settings.get_or("physics.length_tolerance", 1.0_f32);
+    let speed_tolerance = settings.get_or("physics.speed_tolerance", 1.0_f32);
+
     let mut app = App::default();
 
     app
@@ -142,6 +152,11 @@ pub fn build_runtime(
         .add_plugin(GenericDataPlugin::default())
         .add_plugin(ScriptingPlugin::default())
         .add_plugin(SampleDataPlugin::default())
+        .insert_resource(PhysicsSettings::new(
+            enable_visual_debugger,
+            length_tolerance,
+            speed_tolerance,
+        ))
         .add_plugin(PhysicsPlugin::default())
         .add_plugin(GraphicsPlugin::default())
         .add_plugin(InputPlugin::default())

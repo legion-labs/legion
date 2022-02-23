@@ -1,3 +1,4 @@
+import { MetricSelectionState } from "@/components/Metric/MetricSelectionState";
 import { makeGrpcClient } from "@/lib/client";
 import { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
 import Semaphore from "semaphore-async-await";
@@ -59,15 +60,16 @@ export class MetricStreamer {
     this.currentMaxMs = Math.max(...get(this.metricStore).map((s) => s.max));
   }
 
-  switchMetricFlag(
-    metricState: MetricState,
-    e: MouseEvent & { currentTarget: EventTarget & HTMLInputElement }
-  ) {
+  updateFromSelectionState(metricSelectionState: MetricSelectionState) {
     this.metricStore.update((data) => {
-      const index = data.indexOf(metricState);
-      const metric = data[index];
-      metric.enabled = e.currentTarget.checked;
-      data[index] = metric;
+      const metric = data.filter(
+        (m) => m.name === metricSelectionState.name
+      )[0];
+      if (metric) {
+        metric.enabled = metricSelectionState.selected;
+        const index = data.indexOf(metric);
+        data[index] = metric;
+      }
       return data;
     });
   }

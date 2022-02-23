@@ -18,7 +18,8 @@ macro_rules! implement_option_descriptor {
     ($type_id:ty) => {
         lazy_static::lazy_static! {
             static ref OPTION_DESCRIPTOR: $crate::OptionDescriptor = $crate::OptionDescriptor {
-                base_descriptor : $crate::create_base_descriptor!(Option<$type_id>, concat!("Option<",stringify!($type_id),">").into()),
+                base_descriptor : $crate::create_base_descriptor!(Option<$type_id>, concat!("Option<",stringify!($type_id),">").into(),
+                    Result::<Option::<$type_id>, $crate::ReflectionError>::Ok(Option::<$type_id>::None)),
                 inner_type: <$type_id as $crate::TypeReflection>::get_type_def(),
                 get_inner:  |option: *const ()| unsafe {
                     (*(option as *const Option<$type_id>))

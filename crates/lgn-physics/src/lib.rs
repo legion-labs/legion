@@ -1,7 +1,18 @@
 //! Physics plugin
+//! Interfaces with NVIDIA's `PhysX` library
+//! Reference: [`PhysX` 4.1 SDK Guide](https://gameworksdocs.nvidia.com/PhysX/4.1/documentation/physxguide/Manual/Index.html)
 
 mod labels;
 pub use labels::*;
+
+mod callbacks;
+use callbacks::{OnAdvance, OnCollision, OnConstraintBreak, OnTrigger, OnWakeSleep};
+
+mod rigid_dynamic;
+use rigid_dynamic::RigidDynamicActor;
+
+mod settings;
+pub use settings::PhysicsSettings;
 
 use lgn_app::prelude::*;
 use lgn_core::prelude::*;
@@ -54,14 +65,22 @@ impl Plugin for PhysicsPlugin {
 }
 
 impl PhysicsPlugin {
-    fn setup(mut commands: Commands<'_, '_>) {
-        let mut physics_builder = PhysicsFoundationBuilder::<DefaultAllocator>::default();
-        physics_builder
-            .enable_visual_debugger(false)
-            .set_length_tolerance(1.0)
-            .set_speed_tolerance(1.0)
-            .with_extensions(false);
-        let mut physics = physics_builder.build::<PxShape>().unwrap();
+    fn setup(settings: Res<'_, PhysicsSettings>, mut commands: Commands<'_, '_>) {
+        let length_tolerance = settings.length_tolerance;
+        let speed_tolerance = settings.speed_tolerance;
+        let mut physics = Self::create_physics(
+            settings.enable_visual_debugger,
+            length_tolerance,
+            speed_tolerance,
+        );
+        if physics.is_none() && settings.enable_visual_debugger {
+            // likely failed to connect to visual debugger, retry without
+            physics = Self::create_physics(false, length_tolerance, speed_tolerance);
+            if physics.is_some() {
+                error!("failed to connect to physics visual debugger");
+            }
+        }
+        let mut physics = physics.unwrap();
 
         {
             let scene: Owner<PxScene> = physics
@@ -77,6 +96,9 @@ impl PhysicsPlugin {
 
         // Note: important to insert physics after scene, for drop order
         commands.insert_resource(physics);
+
+        commands.remove_resource::<PhysicsSettings>(); // no longer needed
+        drop(settings);
     }
 
     #[span_fn]
@@ -86,8 +108,7 @@ impl PhysicsPlugin {
             return;
         }
 
-        #[allow(unsafe_code)]
-        let mut scratch = unsafe { ScratchBuffer::new(4) };
+        let mut scratch = Self::create_scratch_buffer();
 
         scene
             .step(
@@ -109,64 +130,24 @@ impl PhysicsPlugin {
         }
     }
 
-    // fn create_dynamic() {
-    //     let mut sphere_actor = physics
-    //         .create_rigid_dynamic(
-    //             PxTransform::from_translation(&PxVec3::new(0.0, 40.0, 100.0)),
-    //             &sphere_geo,
-    //             material.as_mut(),
-    //             10.0,
-    //             PxTransform::default(),
-    //             (),
-    //         )
-    //         .unwrap();
-    //     sphere_actor.set_angular_damping(0.5);
-    //     sphere_actor.set_rigid_body_flag(RigidBodyFlag::EnablePoseIntegrationPreview, true);
-    //     scene.add_dynamic_actor(sphere_actor);
-    // }
-}
-
-#[derive(Component)]
-struct RigidDynamicActor {
-    actor: Owner<PxRigidDynamic>,
-}
-
-// callbacks
-
-struct OnCollision;
-impl CollisionCallback for OnCollision {
-    fn on_collision(
-        &mut self,
-        _header: &physx_sys::PxContactPairHeader,
-        _pairs: &[physx_sys::PxContactPair],
-    ) {
+    fn create_physics(
+        enable_visual_debugger: bool,
+        length_tolerance: f32,
+        speed_tolerance: f32,
+    ) -> Option<PhysicsFoundation<DefaultAllocator, PxShape>> {
+        let mut physics_builder = PhysicsFoundationBuilder::<DefaultAllocator>::default();
+        physics_builder
+            .enable_visual_debugger(enable_visual_debugger)
+            .set_length_tolerance(length_tolerance)
+            .set_speed_tolerance(speed_tolerance)
+            .with_extensions(false);
+        physics_builder.build()
     }
-}
-struct OnTrigger;
-impl TriggerCallback for OnTrigger {
-    fn on_trigger(&mut self, _pairs: &[physx_sys::PxTriggerPair]) {}
-}
 
-struct OnConstraintBreak;
-impl ConstraintBreakCallback for OnConstraintBreak {
-    fn on_constraint_break(&mut self, _constraints: &[physx_sys::PxConstraintInfo]) {}
-}
-struct OnWakeSleep;
-impl WakeSleepCallback<PxArticulationLink, PxRigidStatic, PxRigidDynamic> for OnWakeSleep {
-    fn on_wake_sleep(
-        &mut self,
-        _actors: &[&physx::actor::ActorMap<PxArticulationLink, PxRigidStatic, PxRigidDynamic>],
-        _is_waking: bool,
-    ) {
-    }
-}
-
-struct OnAdvance;
-impl AdvanceCallback<PxArticulationLink, PxRigidDynamic> for OnAdvance {
-    fn on_advance(
-        &self,
-        _actors: &[&physx::rigid_body::RigidBodyMap<PxArticulationLink, PxRigidDynamic>],
-        _transforms: &[PxTransform],
-    ) {
+    fn create_scratch_buffer() -> ScratchBuffer {
+        #[allow(unsafe_code)]
+        unsafe {
+            ScratchBuffer::new(4)
+        }
     }
 }

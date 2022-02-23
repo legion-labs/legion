@@ -127,7 +127,7 @@ impl AnalyticsService {
     async fn list_stream_blocks_impl(
         &self,
         stream_id: &str,
-    ) -> Result<Vec<lgn_telemetry_sink::EncodedBlock>> {
+    ) -> Result<Vec<lgn_telemetry_proto::telemetry::BlockMetadata>> {
         let mut connection = self.pool.acquire().await?;
         find_stream_blocks(&mut connection, stream_id).await
     }
@@ -304,6 +304,7 @@ impl PerformanceAnalytics for AnalyticsService {
                 Ok(Response::new(reply))
             }
             Err(e) => {
+                error!("Error in find_process: {:?}", e);
                 return Err(Status::internal(format!("Error in find_process: {}", e)));
             }
         }
@@ -322,6 +323,7 @@ impl PerformanceAnalytics for AnalyticsService {
                 Ok(Response::new(reply))
             }
             Err(e) => {
+                error!("Error in list_recent_processes_impl: {:?}", e);
                 return Err(Status::internal(format!(
                     "Error in list_recent_processes_impl: {}",
                     e
@@ -345,6 +347,7 @@ impl PerformanceAnalytics for AnalyticsService {
                 Ok(Response::new(reply))
             }
             Err(e) => {
+                error!("Error in list_recent_processes_impl: {:?}", e);
                 return Err(Status::internal(format!(
                     "Error in list_recent_processes_impl: {}",
                     e
@@ -370,6 +373,7 @@ impl PerformanceAnalytics for AnalyticsService {
                 Ok(Response::new(reply))
             }
             Err(e) => {
+                error!("Error in list_process_streams: {:?}", e);
                 return Err(Status::internal(format!(
                     "Error in list_process_streams: {}",
                     e
@@ -390,6 +394,7 @@ impl PerformanceAnalytics for AnalyticsService {
                 Ok(Response::new(reply))
             }
             Err(e) => {
+                error!("Error in list_stream_blocks: {:?}", e);
                 return Err(Status::internal(format!(
                     "Error in list_stream_blocks: {}",
                     e
@@ -405,11 +410,13 @@ impl PerformanceAnalytics for AnalyticsService {
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
         if inner_request.process.is_none() {
+            error!("Missing process in block_spans");
             return Err(Status::internal(String::from(
                 "Missing process in block_spans",
             )));
         }
         if inner_request.stream.is_none() {
+            error!("Missing stream in block_spans");
             return Err(Status::internal(String::from(
                 "Missing stream in block_spans",
             )));
@@ -426,6 +433,7 @@ impl PerformanceAnalytics for AnalyticsService {
         {
             Ok(block_spans) => Ok(Response::new(block_spans)),
             Err(e) => {
+                error!("Error in block_spans: {:?}", e);
                 return Err(Status::internal(format!("Error in block_spans: {}", e)));
             }
         }
@@ -438,6 +446,7 @@ impl PerformanceAnalytics for AnalyticsService {
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
         if inner_request.process.is_none() {
+            error!("Missing process in process_cumulative_call_graph");
             return Err(Status::internal(String::from(
                 "Missing process in process_cumulative_call_graph",
             )));
@@ -451,10 +460,13 @@ impl PerformanceAnalytics for AnalyticsService {
             .await
         {
             Ok(reply) => Ok(Response::new(reply)),
-            Err(e) => Err(Status::internal(format!(
-                "Error in process_cumulative_call_graph: {}",
-                e
-            ))),
+            Err(e) => {
+                error!("Error in process_cumulative_call_graph: {:?}", e);
+                Err(Status::internal(format!(
+                    "Error in process_cumulative_call_graph: {}",
+                    e
+                )))
+            }
         }
     }
 
@@ -465,6 +477,7 @@ impl PerformanceAnalytics for AnalyticsService {
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
         if inner_request.process.is_none() {
+            error!("Missing process in list_process_log_entries");
             return Err(Status::internal(String::from(
                 "Missing process in list_process_log_entries",
             )));
@@ -478,10 +491,13 @@ impl PerformanceAnalytics for AnalyticsService {
             .await
         {
             Ok(reply) => Ok(Response::new(reply)),
-            Err(e) => Err(Status::internal(format!(
-                "Error in list_process_log_entries: {}",
-                e
-            ))),
+            Err(e) => {
+                error!("Error in list_process_log_entries: {:?}", e);
+                Err(Status::internal(format!(
+                    "Error in list_process_log_entries: {}",
+                    e
+                )))
+            }
         }
     }
 
@@ -492,6 +508,7 @@ impl PerformanceAnalytics for AnalyticsService {
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
         if inner_request.process_id.is_empty() {
+            error!("Missing process_id in nb_process_log_entries");
             return Err(Status::internal(String::from(
                 "Missing process_id in nb_process_log_entries",
             )));
@@ -501,10 +518,13 @@ impl PerformanceAnalytics for AnalyticsService {
             .await
         {
             Ok(reply) => Ok(Response::new(reply)),
-            Err(e) => Err(Status::internal(format!(
-                "Error in nb_process_log_entries: {}",
-                e
-            ))),
+            Err(e) => {
+                error!("Error in nb_process_log_entries: {:?}", e);
+                Err(Status::internal(format!(
+                    "Error in nb_process_log_entries: {}",
+                    e
+                )))
+            }
         }
     }
 
@@ -515,6 +535,7 @@ impl PerformanceAnalytics for AnalyticsService {
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
         if inner_request.process_id.is_empty() {
+            error!("Missing process_id in list_process_children");
             return Err(Status::internal(String::from(
                 "Missing process_id in list_process_children",
             )));
@@ -524,10 +545,13 @@ impl PerformanceAnalytics for AnalyticsService {
             .await
         {
             Ok(reply) => Ok(Response::new(reply)),
-            Err(e) => Err(Status::internal(format!(
-                "Error in list_process_children: {}",
-                e
-            ))),
+            Err(e) => {
+                error!("Error in list_process_children: {:?}", e);
+                Err(Status::internal(format!(
+                    "Error in list_process_children: {}",
+                    e
+                )))
+            }
         }
     }
 
@@ -538,10 +562,13 @@ impl PerformanceAnalytics for AnalyticsService {
         let inner_request = request.into_inner();
         match self.list_process_blocks_impl(inner_request).await {
             Ok(reply) => Ok(Response::new(reply)),
-            Err(e) => Err(Status::internal(format!(
-                "Error in list_process_blocks: {}",
-                e
-            ))),
+            Err(e) => {
+                error!("Error in list_process_blocks: {:?}", e);
+                Err(Status::internal(format!(
+                    "Error in list_process_blocks: {}",
+                    e
+                )))
+            }
         }
     }
 
@@ -552,10 +579,13 @@ impl PerformanceAnalytics for AnalyticsService {
         let inner_request = request.into_inner();
         match self.fetch_block_metric_impl(inner_request).await {
             Ok(reply) => Ok(Response::new(reply)),
-            Err(e) => Err(Status::internal(format!(
-                "Error in fetch_block_metric: {}",
-                e
-            ))),
+            Err(e) => {
+                error!("Error in fetch_block_metric: {:?}", e);
+                Err(Status::internal(format!(
+                    "Error in fetch_block_metric: {}",
+                    e
+                )))
+            }
         }
     }
 
@@ -566,10 +596,13 @@ impl PerformanceAnalytics for AnalyticsService {
         let inner_request = request.into_inner();
         match self.fetch_block_metric_manifest_impl(inner_request).await {
             Ok(reply) => Ok(Response::new(reply)),
-            Err(e) => Err(Status::internal(format!(
-                "Error in fetch_block_metric_manifest: {}",
-                e
-            ))),
+            Err(e) => {
+                error!("Error in fetch_block_metric_manifest: {:?}", e);
+                Err(Status::internal(format!(
+                    "Error in fetch_block_metric_manifest: {}",
+                    e
+                )))
+            }
         }
     }
 }

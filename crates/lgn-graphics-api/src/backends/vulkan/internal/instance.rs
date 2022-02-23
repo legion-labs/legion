@@ -138,7 +138,7 @@ impl VkInstance {
     ) -> GfxResult<(Vec<&CStr>, Vec<&CStr>)> {
         let layers = entry.enumerate_instance_layer_properties()?;
         debug!("Available layers: {:#?}", layers);
-        let extensions = entry.enumerate_instance_extension_properties()?;
+        let extensions = entry.enumerate_instance_extension_properties(None)?;
         debug!("Available extensions: {:#?}", extensions);
         let mut layer_names = vec![];
         let mut extension_names = vec![];

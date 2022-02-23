@@ -242,6 +242,12 @@ export function propertyIsComponent(
   ].some((predicate) => predicate(property));
 }
 
+export function propertyIsDynComponent(
+  property: ResourceProperty
+): property is ComponentResourceProperty {
+  return property.ptype.indexOf("<dyn Component>") != -1;
+}
+
 export function propertyIsGroup(
   property: ResourceProperty
 ): property is GroupResourceProperty {

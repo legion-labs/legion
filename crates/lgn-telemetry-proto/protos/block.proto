@@ -6,6 +6,7 @@ message BlockPayload {
   bytes objects = 2;
 }
 
+// Block is sent from the instrumented app
 message Block {
   string block_id = 1;
   string stream_id = 2;
@@ -17,4 +18,16 @@ message Block {
   int64 end_ticks = 6;
   BlockPayload payload = 7;
   int32 nb_objects = 8;
+}
+
+// BlockMetadata is stored in sql database
+message BlockMetadata {
+  string block_id = 1;
+  string stream_id = 2;
+  string begin_time = 3;
+  int64 begin_ticks = 4;
+  string end_time = 5;
+  int64 end_ticks = 6;
+  int32 nb_objects = 7;
+  int64 payload_size = 8;
 }

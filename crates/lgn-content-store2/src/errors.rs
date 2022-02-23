@@ -5,6 +5,10 @@ use thiserror::Error;
 pub enum Error {
     #[error("invalid identifier: {0}")]
     InvalidIdentifier(#[source] anyhow::Error),
+    #[error("data mismatch: {reason}")]
+    DataMismatch { reason: String },
+    #[error("invalid hash algorithm")]
+    InvalidHashAlgorithm,
     #[error("the content was not found")]
     NotFound,
     #[error("the content already exists")]
@@ -16,4 +20,4 @@ pub enum Error {
 }
 
 /// A result type that can be used to indicate errors.
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;

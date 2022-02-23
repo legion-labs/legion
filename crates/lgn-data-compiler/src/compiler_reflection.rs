@@ -59,8 +59,8 @@ fn convert_json_value_to_runtime(
         }
         TypeDefinition::BoxDyn(box_dyn_descriptor) => {
             // For BoxDyn, pipe directly to the inner type
-            let sub_base = unsafe { (box_dyn_descriptor.get_inner)(source) };
-            let sub_type = unsafe { (box_dyn_descriptor.get_inner_type)(source) };
+            let sub_base = (box_dyn_descriptor.get_inner)(source);
+            let sub_type = (box_dyn_descriptor.get_inner_type)(source);
 
             if let serde_json::Value::Object(object) = json_value {
                 if object.len() == 1 {
@@ -78,8 +78,8 @@ fn convert_json_value_to_runtime(
 
         TypeDefinition::Array(array_descriptor) => {
             if let serde_json::Value::Array(array) = json_value {
-                for index in 0..unsafe { (array_descriptor.len)(source) } {
-                    let item_base = unsafe { (array_descriptor.get)(source, index) }?;
+                for index in 0..(array_descriptor.len)(source) {
+                    let item_base = (array_descriptor.get)(source, index)?;
                     let item_type_def = array_descriptor.inner_type;
                     if let Some(element_value) = array.get_mut(index) {
                         convert_json_value_to_runtime(item_base, item_type_def, element_value)?;

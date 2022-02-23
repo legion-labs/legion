@@ -10,7 +10,7 @@ use anyhow::{Context, Result};
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::decompress;
 use lgn_telemetry_proto::telemetry::{
-    Block as EncodedBlock, ContainerMetadata, Process as ProcessInfo, Stream as StreamInfo,
+    BlockMetadata, ContainerMetadata, Process as ProcessInfo, Stream as StreamInfo,
 };
 use lgn_tracing::prelude::*;
 use lgn_tracing_transit::{parse_object_buffer, read_dependencies, Member, UserDefinedType, Value};
@@ -309,9 +309,9 @@ pub async fn find_process_blocks(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
     tag: &str,
-) -> Result<Vec<EncodedBlock>> {
+) -> Result<Vec<BlockMetadata>> {
     let blocks = sqlx::query(
-        "SELECT B.stream_id, B.block_id, B.begin_time, B.begin_ticks, B.end_time, B.end_ticks, B.nb_objects
+        "SELECT B.*
         FROM streams S
         LEFT JOIN blocks B
         ON S.stream_id = B.stream_id
@@ -387,8 +387,8 @@ pub async fn find_stream(
     })
 }
 
-fn map_row_block(row: &AnyRow) -> EncodedBlock {
-    EncodedBlock {
+fn map_row_block(row: &AnyRow) -> BlockMetadata {
+    BlockMetadata {
         block_id: row.get("block_id"),
         stream_id: row.get("stream_id"),
         begin_time: row.get("begin_time"),
@@ -396,16 +396,16 @@ fn map_row_block(row: &AnyRow) -> EncodedBlock {
         begin_ticks: row.get("begin_ticks"),
         end_ticks: row.get("end_ticks"),
         nb_objects: row.get("nb_objects"),
-        payload: None,
+        payload_size: row.get("payload_size"),
     }
 }
 
 pub async fn find_block(
     connection: &mut sqlx::AnyConnection,
     block_id: &str,
-) -> Result<EncodedBlock> {
+) -> Result<BlockMetadata> {
     let row = sqlx::query(
-        "SELECT block_id, stream_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects
+        "SELECT block_id, stream_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects, payload_size
          FROM blocks
          WHERE block_id = ?
          ;",
@@ -420,9 +420,9 @@ pub async fn find_block(
 pub async fn find_stream_blocks(
     connection: &mut sqlx::AnyConnection,
     stream_id: &str,
-) -> Result<Vec<EncodedBlock>> {
+) -> Result<Vec<BlockMetadata>> {
     let blocks = sqlx::query(
-        "SELECT block_id, stream_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects
+        "SELECT block_id, stream_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects, payload_size
          FROM blocks
          WHERE stream_id = ?
          ORDER BY begin_time;",
@@ -442,9 +442,9 @@ pub async fn find_stream_blocks_in_range(
     stream_id: &str,
     begin_time: &str,
     end_time: &str,
-) -> Result<Vec<EncodedBlock>> {
+) -> Result<Vec<BlockMetadata>> {
     let blocks = sqlx::query(
-        "SELECT stream_id, block_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects
+        "SELECT block_id, stream_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects, payload_size
          FROM blocks
          WHERE stream_id = ?
          AND begin_time <= ?
@@ -617,7 +617,7 @@ pub async fn for_each_log_entry_in_block<Predicate: FnMut(i64, String) -> bool>(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
     stream: &StreamInfo,
-    block: &EncodedBlock,
+    block: &BlockMetadata,
     mut fun: Predicate,
 ) -> Result<()> {
     let payload = fetch_block_payload(connection, blob_storage, block.block_id.clone()).await?;

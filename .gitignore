@@ -41,3 +41,6 @@ trace-*.json
 
 # Symlinks we use for debugging build scripts output
 **/out_dir
+
+build/env/linux/install/rust-toolchain.toml
+build/env/linux/install/tools.toml

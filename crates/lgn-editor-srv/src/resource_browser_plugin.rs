@@ -170,7 +170,10 @@ fn template_entity(
         entity_id,
         "components",
         None,
-        serde_json::json!({ "Transform": sample_data::offline::Transform::default() }).to_string(),
+        Some(
+            serde_json::json!({ "Transform": sample_data::offline::Transform::default() })
+                .to_string(),
+        ),
     ));
     transaction = update_entity_parenting(entity_id, parent_id, None, transaction);
 
@@ -205,7 +208,7 @@ fn update_entity_parenting(
                 new_parent,
                 "children",
                 None, // insert at end
-                json!(current_path).to_string(),
+                Some(json!(current_path).to_string()),
             ));
 
             let mut parent_path: ResourcePathId = new_parent.into();

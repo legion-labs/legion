@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# -e tells the shell to exit if a command exits with an error (except if the exit value is tested in
+#    some other way).
+# -u tells the shell to treat expanding an unset parameter an error, which helps to catch e.g. typos
+#    in variable names.
+# -x  tells the shell to print commands and their arguments as they are executed.
+set -eux
+
+###################################################################################################
+
+INSTALL_LIST=($(dasel select -f tools.toml -m 'cargo-installs.-'))
+
+for tool in "${INSTALL_LIST[@]}"
+do
+    echo "Installing $tool"
+    TOOL_VERSION=$(dasel select -f tools.toml "cargo-installs.$tool.version")
+    TOOL_IN_GIT=$(dasel select -f tools.toml  "cargo-installs.$tool" | grep -c 'git =' || true)
+    if [[ $TOOL_IN_GIT -eq 0 ]] ; then
+        cargo install $tool --version $TOOL_VERSION --locked
+    else
+        TOOL_GIT_URL=$(dasel select -f tools.toml "cargo-installs.$tool.git")
+        TOOL_GIT_REV=$(dasel select -f tools.toml "cargo-installs.$tool.rev")
+        cargo install $tool --git $TOOL_GIT_URL --rev $TOOL_GIT_REV --locked
+    fi
+done
+
+rm -rf $CARGO_HOME/registry
+rm -rf $CARGO_HOME/git
+
+
+###################################################################################################
