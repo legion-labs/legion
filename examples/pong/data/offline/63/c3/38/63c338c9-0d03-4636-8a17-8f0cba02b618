@@ -1,17 +1,12 @@
 {
   "components": [
     {
-      "Name": {
-        "name": "Ground"
-      }
-    },
-    {
       "Transform": {
         "apply_to_children": false,
         "position": [
           0.0,
           0.0,
-          -0.10000000149011612
+          0.10000000149011612
         ],
         "rotation": [
           0.0,
