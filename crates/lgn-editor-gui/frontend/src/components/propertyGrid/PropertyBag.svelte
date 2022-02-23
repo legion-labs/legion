@@ -2,7 +2,6 @@
   import { PropertyUpdate } from "@/api";
   import {
     BagResourceProperty,
-    buildDefaultPrimitiveProperty,
     propertyIsDynComponent,
     propertyIsGroup,
     propertyIsOption,
@@ -40,6 +39,7 @@
 
   function addVectorSubProperty() {
     const index = property.subProperties.length;
+
     dispatch("addVectorSubProperty", {
       path: [...pathParts, property.name].join("."),
       index,
@@ -50,6 +50,7 @@
   function removeComponent() {
     if (!parentProperty) {
       log.error("Vector sub property parent not found");
+
       return;
     }
 
@@ -57,10 +58,11 @@
       log.error(
         "A vector sub property was removed while no resources were selected"
       );
+
       return;
     }
 
-    for (var i = 0; i < parentProperty.subProperties.length; ++i) {
+    for (let i = 0; i < parentProperty.subProperties.length; ++i) {
       if (parentProperty.subProperties[i].name == property.name) {
         dispatch("removeVectorSubProperty", {
           path: pathParts.join("."),
@@ -82,7 +84,7 @@
       </div>
       {#if parentProperty && propertyIsDynComponent(parentProperty)}
         <div
-          class="close-button"
+          class="delete-button"
           on:click={removeComponent}
           title="Remove Component"
         >
@@ -141,10 +143,10 @@
   }
 
   .add-vector {
-    @apply flex items-center justify-center h-7 w-7 border-l-2 border-gray-700 cursor-pointer;
+    @apply flex items-center justify-center h-7 w-7 border-l-2 border-gray-700 bg-green-800 bg-opacity-70 rounded-r-sm cursor-pointer;
   }
 
-  .close-button {
-    @apply flex flex-row flex-shrink-0 items-center justify-center h-5 w-6 rounded-sm text-xl bg-gray-700 ml-1 cursor-pointer;
+  .delete-button {
+    @apply flex items-center justify-center h-7 w-7 border-l-2 border-gray-700 bg-red-800 bg-opacity-70 rounded-r-sm cursor-pointer;
   }
 </style>

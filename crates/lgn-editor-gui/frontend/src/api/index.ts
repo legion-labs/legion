@@ -135,6 +135,7 @@ export async function addPropertyInPropertyVector(
   });
 
   const value = result.newValue;
+
   if (value) {
     window.dispatchEvent(
       new CustomEvent("refresh-property", {

@@ -131,7 +131,9 @@
       on:highlight={({ detail: entry }) => setHighlightedEntry(entry)}
       on:nameEdited={setName}
     >
-      <slot name="name" slot="name" let:itemName {itemName} />
+      <svelte:fragment slot="name" let:itemName>
+        <slot name="name" {itemName} />
+      </svelte:fragment>
     </Inner>
   {/each}
 </div>
