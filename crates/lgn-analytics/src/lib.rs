@@ -384,7 +384,7 @@ pub async fn find_block(
         end_time: row.get("end_time"),
         end_ticks: row.get("end_ticks"),
         nb_objects: row.get("nb_objects"),
-        payload_size: row.get("payload_size"),
+        payload_size: row.try_get("payload_size").unwrap_or(0),
     };
     Ok(block)
 }
@@ -412,7 +412,7 @@ pub async fn find_stream_blocks(
         end_time: r.get("end_time"),
         end_ticks: r.get("end_ticks"),
         nb_objects: r.get("nb_objects"),
-        payload_size: r.get("payload_size"),
+        payload_size: r.try_get("payload_size").unwrap_or(0),
     })
     .collect();
     Ok(blocks)
@@ -447,7 +447,7 @@ pub async fn find_stream_blocks_in_range(
         end_time: r.get("end_time"),
         end_ticks: r.get("end_ticks"),
         nb_objects: r.get("nb_objects"),
-        payload_size: r.get("payload_size"),
+        payload_size: r.try_get("payload_size").unwrap_or(0),
     })
     .collect();
     Ok(blocks)
