@@ -15,11 +15,14 @@ impl VulkanDescriptorSetLayout {
         device_context: &DeviceContext,
         descriptors: &[Descriptor],
     ) -> GfxResult<Self> {
+        let mut vk_bindless_info = vk::DescriptorSetLayoutBindingFlagsCreateInfo::builder();
         let mut vk_bindings = Vec::<vk::DescriptorSetLayoutBinding>::new();
+        let mut vk_descriptor_binding_flags = Vec::new();
         // let mut flat_index = 0;
         let mut typed_flat_indices = Vec::new();
-        let mut vk_image_info_count = 0;
-        let mut vk_buffer_info_count = 0;
+        let mut image_info_count = 0;
+        let mut buffer_info_count = 0;
+        let mut bindless = false;
 
         for (binding, descriptor) in descriptors.iter().enumerate() {
             let element_count = descriptor.element_count;
@@ -31,42 +34,9 @@ impl VulkanDescriptorSetLayout {
             let vk_binding = vk::DescriptorSetLayoutBinding::builder()
                 .binding(binding as u32)
                 .descriptor_type(vk_descriptor_type)
-                .descriptor_count(element_count)
+                .descriptor_count(element_count.get())
                 .stage_flags(vk::ShaderStageFlags::ALL)
                 .build();
-
-            // let descriptor = Descriptor {
-            //     name: descriptor_def.name.clone(),
-            //     binding: descriptor_def.binding,
-            //     shader_resource_type: descriptor_def.shader_resource_type,
-            //     element_count,
-            //     flat_index,
-            //     typed_flat_index: match descriptor_def.shader_resource_type {
-            //         crate::ShaderResourceType::ConstantBuffer
-            //         | crate::ShaderResourceType::StructuredBuffer
-            //         | crate::ShaderResourceType::RWStructuredBuffer
-            //         | crate::ShaderResourceType::ByteAddressBuffer
-            //         | crate::ShaderResourceType::RWByteAddressBuffer => {
-            //             let offset = vk_buffer_info_count;
-            //             vk_buffer_info_count += vk_binding.descriptor_count;
-            //             offset
-            //         }
-
-            //         crate::ShaderResourceType::Sampler
-            //         | crate::ShaderResourceType::Texture2D
-            //         | crate::ShaderResourceType::RWTexture2D
-            //         | crate::ShaderResourceType::Texture2DArray
-            //         | crate::ShaderResourceType::RWTexture2DArray
-            //         | crate::ShaderResourceType::Texture3D
-            //         | crate::ShaderResourceType::RWTexture3D
-            //         | crate::ShaderResourceType::TextureCube
-            //         | crate::ShaderResourceType::TextureCubeArray => {
-            //             let offset = vk_image_info_count;
-            //             vk_image_info_count += vk_binding.descriptor_count;
-            //             offset
-            //         }
-            //     },
-            // };
 
             let typed_flat_index = match descriptor.shader_resource_type {
                 crate::ShaderResourceType::ConstantBuffer
@@ -74,8 +44,8 @@ impl VulkanDescriptorSetLayout {
                 | crate::ShaderResourceType::RWStructuredBuffer
                 | crate::ShaderResourceType::ByteAddressBuffer
                 | crate::ShaderResourceType::RWByteAddressBuffer => {
-                    let offset = vk_buffer_info_count;
-                    vk_buffer_info_count += vk_binding.descriptor_count;
+                    let offset = buffer_info_count;
+                    buffer_info_count += vk_binding.descriptor_count;
                     offset
                 }
                 crate::ShaderResourceType::Sampler
@@ -87,8 +57,8 @@ impl VulkanDescriptorSetLayout {
                 | crate::ShaderResourceType::RWTexture3D
                 | crate::ShaderResourceType::TextureCube
                 | crate::ShaderResourceType::TextureCubeArray => {
-                    let offset = vk_image_info_count;
-                    vk_image_info_count += vk_binding.descriptor_count;
+                    let offset = image_info_count;
+                    image_info_count += vk_binding.descriptor_count;
                     offset
                 }
             };
@@ -97,19 +67,45 @@ impl VulkanDescriptorSetLayout {
 
             // flat_index += element_count;
             vk_bindings.push(vk_binding);
+
+            let mut vk_binding_flag = vk::DescriptorBindingFlags::default();
+
+            if descriptor.bindless {
+                vk_binding_flag |= vk::DescriptorBindingFlags::UPDATE_AFTER_BIND
+                    | vk::DescriptorBindingFlags::UPDATE_UNUSED_WHILE_PENDING
+                    | vk::DescriptorBindingFlags::PARTIALLY_BOUND;
+            }
+
+            vk_descriptor_binding_flags.push(vk_binding_flag);
+
+            bindless |= descriptor.bindless;
+        }
+
+        let mut create_flags = vk::DescriptorSetLayoutCreateFlags::default();
+
+        if bindless {
+            create_flags |= vk::DescriptorSetLayoutCreateFlags::UPDATE_AFTER_BIND_POOL;
+        }
+
+        let mut create_info = vk::DescriptorSetLayoutCreateInfo::builder()
+            .bindings(&vk_bindings)
+            .flags(create_flags);
+
+        if bindless {
+            vk_bindless_info = vk_bindless_info.binding_flags(&vk_descriptor_binding_flags);
+            create_info = create_info.push_next(&mut vk_bindless_info);
         }
 
         let vk_layout = unsafe {
-            device_context.vk_device().create_descriptor_set_layout(
-                &*vk::DescriptorSetLayoutCreateInfo::builder().bindings(&vk_bindings),
-                None,
-            )?
+            device_context
+                .vk_device()
+                .create_descriptor_set_layout(&*create_info, None)?
         };
 
         Ok(Self {
             vk_layout,
-            vk_image_info_count,
-            vk_buffer_info_count,
+            vk_image_info_count: image_info_count,
+            vk_buffer_info_count: buffer_info_count,
             typed_flat_indices,
         })
     }

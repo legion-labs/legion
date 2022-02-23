@@ -203,7 +203,7 @@ impl RgbToYuvConverter {
 
             let descriptor_set_handle = render_context.write_descriptor_set(
                 cgen::descriptor_set::RGB2YUVDescriptorSet::descriptor_set_layout(),
-                &descriptor_set,
+                descriptor_set.descriptor_refs(),
             );
             cmd_buffer.bind_descriptor_set_handle((
                 cgen::descriptor_set::RGB2YUVDescriptorSet::descriptor_set_layout(),

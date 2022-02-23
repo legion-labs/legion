@@ -40,7 +40,6 @@ fn generate_rust_descriptor_set(
             "Sampler,",
             "BufferView,",
             "TextureView,",
-            "DescriptorSetDataProvider,",
         ]);
     }
     writer.new_line();
@@ -72,6 +71,7 @@ fn generate_rust_descriptor_set(
                 "shader_resource_type: ShaderResourceType::{},",
                 descriptor.def.shader_resource_type()
             ));
+            writer.add_line(format!("bindless: {},", descriptor.bindless));
             writer.add_line(format!("flat_index_start: {},", descriptor.flat_index));
             writer.add_line(format!(
                 "flat_index_end: {},",
@@ -195,7 +195,9 @@ fn generate_rust_descriptor_set(
         writer.new_line();
 
         // impl: descriptor_refs
-        writer.add_line("pub fn descriptor_refs(&self) -> &[DescriptorRef<'a>] { &self.descriptor_refs }");
+        writer.add_line(
+            "pub fn descriptor_refs(&self) -> &[DescriptorRef<'a>] { &self.descriptor_refs }",
+        );
         writer.new_line();
 
         // impl: set methods
@@ -305,45 +307,6 @@ fn generate_rust_descriptor_set(
                 )],
                 &["}"],
             );
-        }
-    }
-
-    writer.new_line();
-
-    // trait: DescriptorSetDataProvider
-    {
-        let mut writer = writer.add_block(
-            &[format!(
-                "impl<'a> DescriptorSetDataProvider for {}<'a> {{",
-                descriptor_set.name
-            )],
-            &["}"],
-        );
-
-        {
-            let mut writer = writer.add_block(&["fn frequency(&self) -> u32 {"], &["}"]);
-            writer.add_line("Self::frequency()");
-        }
-
-        writer.new_line();
-
-        {
-            let mut writer = writer.add_block(
-                &["fn layout(&self) -> &'static DescriptorSetLayout {"],
-                &["}"],
-            );
-            writer.add_line("Self::descriptor_set_layout()");
-        }
-        writer.new_line();
-
-        {
-            let mut writer = writer.add_block(
-                &["fn descriptor_refs(&self, descriptor_index: usize) -> &[DescriptorRef<'a>] {"],
-                &["}"],
-            );
-            writer.add_line("&self.descriptor_refs[
-                DESCRIPTOR_DEFS[descriptor_index].flat_index_start as usize .. DESCRIPTOR_DEFS[descriptor_index].flat_index_end as usize
-             ]");
         }
     }
 

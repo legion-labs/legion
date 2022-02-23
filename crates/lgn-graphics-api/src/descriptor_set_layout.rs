@@ -1,4 +1,4 @@
-use std::sync::atomic::Ordering;
+use std::{num::NonZeroU32, sync::atomic::Ordering};
 
 use crate::{
     backends::BackendDescriptorSetLayout, deferred_drop::Drc, DeviceContext, GfxResult,
@@ -12,21 +12,15 @@ static NEXT_DESCRIPTOR_SET_LAYOUT_ID: std::sync::atomic::AtomicU32 =
 pub struct Descriptor {
     pub name: String,
     pub shader_resource_type: ShaderResourceType,
-    // pub binding: u32,
+    pub bindless: bool,
     pub flat_index: u32,
-    pub element_count: u32,
-}
-
-impl Descriptor {
-    pub fn element_count_normalized(&self) -> u32 {
-        self.element_count.max(1)
-    }
+    pub element_count: NonZeroU32,
 }
 
 #[derive(Debug, Clone, Hash)]
 pub struct DescriptorDef {
     pub name: String,
-    // pub binding: u32,
+    pub bindless: bool,
     pub shader_resource_type: ShaderResourceType,
     pub array_size: u32,
 }
@@ -147,11 +141,10 @@ impl DescriptorSetLayout {
 
             let descriptor = Descriptor {
                 name: descriptor_def.name.clone(),
-                // binding: descriptor_def.binding,
+                bindless: descriptor_def.bindless,
                 shader_resource_type: descriptor_def.shader_resource_type,
-                element_count,
+                element_count: NonZeroU32::new(element_count).unwrap(),
                 flat_index: flat_descriptor_count,
-                // typed_flat_index: 0,
             };
 
             flat_descriptor_count += element_count;

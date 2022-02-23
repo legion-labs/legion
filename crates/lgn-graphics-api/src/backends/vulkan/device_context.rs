@@ -34,7 +34,6 @@ pub(crate) struct PhysicalDeviceInfo {
     pub(crate) score: i32,
     pub(crate) queue_family_indices: VkQueueFamilyIndices,
     pub(crate) properties: vk::PhysicalDeviceProperties,
-    pub(crate) _features: vk::PhysicalDeviceFeatures,
     pub(crate) extension_properties: Vec<ash::vk::ExtensionProperties>,
     pub(crate) all_queue_families: Vec<ash::vk::QueueFamilyProperties>,
     pub(crate) required_extensions: Vec<&'static CStr>,
@@ -348,8 +347,8 @@ fn query_physical_device_info(
         }
     };
 
-    let features: vk::PhysicalDeviceFeatures =
-        unsafe { instance.get_physical_device_features(device) };
+    // let mut features2 = vk::PhysicalDeviceFeatures2::default();
+    // unsafe { instance.get_physical_device_features2(device, &mut features2) };
     let all_queue_families: Vec<ash::vk::QueueFamilyProperties> =
         unsafe { instance.get_physical_device_queue_family_properties(device) };
 
@@ -381,7 +380,6 @@ fn query_physical_device_info(
             queue_family_indices,
             properties,
             extension_properties: extensions,
-            _features: features,
             all_queue_families,
             required_extensions,
         };
@@ -624,6 +622,17 @@ fn create_logical_device(
         .fragment_stores_and_atomics(true)
         .wide_lines(true);
 
+    let mut indexing_features = vk::PhysicalDeviceDescriptorIndexingFeatures::builder()
+        .descriptor_binding_partially_bound(true)
+        .descriptor_binding_sampled_image_update_after_bind(true)
+        .descriptor_binding_storage_buffer_update_after_bind(true)
+        .descriptor_binding_update_unused_while_pending(true)        
+        .runtime_descriptor_array(true);
+
+    let mut features2 = vk::PhysicalDeviceFeatures2::builder()
+        .features(*features)
+        .push_next(&mut indexing_features);
+
     let mut queue_families_to_create = FnvHashMap::default();
     for (&queue_family_index, &count) in &queue_requirements.queue_counts {
         queue_families_to_create.insert(queue_family_index, vec![1.0_f32; count as usize]);
@@ -642,7 +651,8 @@ fn create_logical_device(
     let device_create_info = vk::DeviceCreateInfo::builder()
         .queue_create_infos(&queue_infos)
         .enabled_extension_names(&device_extension_names)
-        .enabled_features(&features);
+        // .enabled_features(&features)
+        .push_next(&mut features2);
 
     let device: ash::Device =
         unsafe { instance.create_device(physical_device, &device_create_info, None)? };

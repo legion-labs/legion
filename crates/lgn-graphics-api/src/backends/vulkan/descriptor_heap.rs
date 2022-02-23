@@ -226,7 +226,8 @@ impl VulkanDescriptorHeapPartition {
         let device = device_context.vk_device();
         let mut heap_pool_config: DescriptorHeapPoolConfig = definition.into();
         if !transient {
-            heap_pool_config.pool_flags = ash::vk::DescriptorPoolCreateFlags::FREE_DESCRIPTOR_SET;
+            heap_pool_config.pool_flags = ash::vk::DescriptorPoolCreateFlags::FREE_DESCRIPTOR_SET
+                | ash::vk::DescriptorPoolCreateFlags::UPDATE_AFTER_BIND;
         }
 
         let vk_pool = heap_pool_config.create_pool(device)?;

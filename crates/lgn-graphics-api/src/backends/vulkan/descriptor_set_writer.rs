@@ -72,12 +72,12 @@ impl<'a> DescriptorSetWriter<'a> {
                 vk_buffer_info_count as usize,
             );
         unsafe { vk_buffer_infos.set_len(vk_buffer_info_count as usize) };
-        
+
         let descriptor_set = &self.descriptor_set;
 
         for descriptor_index in 0..descriptor_count {
             let descriptor = self.descriptor_set_layout.descriptor(descriptor_index);
-            let element_count = descriptor.element_count_normalized();
+            let element_count = descriptor.element_count.get();
             let update_datas = &descriptor_refs[descriptor.flat_index as usize
                 ..descriptor.flat_index as usize + element_count as usize];
             let vk_typed_flat_index = self

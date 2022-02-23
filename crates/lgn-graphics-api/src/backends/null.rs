@@ -18,13 +18,13 @@ use crate::{
     CmdCopyBufferToTextureParams, CmdCopyTextureParams, ColorRenderTargetBinding, CommandBuffer,
     CommandBufferDef, CommandPool, CommandPoolDef, ComputePipelineDef,
     DepthStencilRenderTargetBinding, Descriptor, DescriptorHeapDef, DescriptorHeapPartition,
-    DescriptorRef, DescriptorSetDataProvider, DescriptorSetHandle, DescriptorSetLayout,
-    DescriptorSetLayoutDef, DescriptorSetWriter, DeviceContext, DeviceInfo, ExtensionMode, Fence,
-    FenceStatus, Format, GfxResult, GraphicsPipelineDef, IndexBufferBinding, MemoryAllocation,
-    MemoryAllocationDef, PagedBufferAllocation, Pipeline, PipelineType, PlaneSlice,
-    PresentSuccessResult, Queue, QueueType, RootSignature, RootSignatureDef, SamplerDef, Semaphore,
-    ShaderModuleDef, Swapchain, SwapchainDef, SwapchainImage, Texture, TextureBarrier, TextureDef,
-    TextureSubResource, TextureViewDef, VertexBufferBinding,
+    DescriptorRef, DescriptorSet, DescriptorSetHandle, DescriptorSetLayout, DescriptorSetWriter,
+    DeviceContext, DeviceInfo, ExtensionMode, Fence, FenceStatus, Format, GfxResult,
+    GraphicsPipelineDef, IndexBufferBinding, MemoryAllocation, MemoryAllocationDef,
+    PagedBufferAllocation, Pipeline, PipelineType, PlaneSlice, PresentSuccessResult, Queue,
+    QueueType, RootSignature, RootSignatureDef, SamplerDef, Semaphore, ShaderModuleDef, Swapchain,
+    SwapchainDef, SwapchainImage, Texture, TextureBarrier, TextureDef, TextureSubResource,
+    TextureViewDef, VertexBufferBinding,
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -335,18 +335,14 @@ impl DescriptorHeapPartition {
         unimplemented!()
     }
 
-    pub(crate) fn backend_get_writer<'frame>(
-        &self,
-        descriptor_set_layout: &DescriptorSetLayout,
-        bump: &'frame bumpalo::Bump,
-    ) -> GfxResult<DescriptorSetWriter<'frame>> {
+    pub(crate) fn backend_alloc(&self, layout: &DescriptorSetLayout) -> GfxResult<DescriptorSet> {
         unimplemented!()
     }
 
-    pub(crate) fn backend_write<'frame>(
+    pub(crate) fn backend_write(
         &self,
-        descriptor_set: &impl DescriptorSetDataProvider,
-        bump: &'frame bumpalo::Bump,
+        layout: &DescriptorSetLayout,
+        descriptor_refs: &[DescriptorRef<'_>],
     ) -> GfxResult<DescriptorSetHandle> {
         unimplemented!()
     }
@@ -360,8 +356,8 @@ pub(crate) struct NullDescriptorSetLayout;
 impl NullDescriptorSetLayout {
     pub(crate) fn new(
         device_context: &DeviceContext,
-        definition: &DescriptorSetLayoutDef,
-    ) -> GfxResult<(Self, Vec<Descriptor>)> {
+        descriptors: &[Descriptor],
+    ) -> GfxResult<Self> {
         unimplemented!()
     }
 
@@ -386,17 +382,24 @@ impl<'frame> NullDescriptorSetWriter<'frame> {
 }
 
 impl<'frame> DescriptorSetWriter<'frame> {
-    pub fn backend_set_descriptors_by_index(
+    pub fn backend_set_descriptors(
         &mut self,
-        descriptor_index: usize,
-        update_datas: &[DescriptorRef<'_>],
+        device_context: &DeviceContext,
+        descriptor_refs: &[DescriptorRef<'_>],
     ) {
-        unimplemented!()
+        unimplemented!();
     }
+    // pub fn backend_set_descriptors_by_index(
+    //     &mut self,
+    //     descriptor_index: usize,
+    //     update_datas: &[DescriptorRef<'_>],
+    // ) {
+    //     unimplemented!()
+    // }
 
-    pub fn backend_flush(&self, device_context: &DeviceContext) {
-        unimplemented!()
-    }
+    // pub fn backend_flush(&self, device_context: &DeviceContext) {
+    //     unimplemented!()
+    // }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

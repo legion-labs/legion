@@ -342,6 +342,7 @@ pub struct CGenTypeDef {
 pub struct CGenDescriptorDef {
     pub name: &'static str,
     pub shader_resource_type: lgn_graphics_api::ShaderResourceType,
+    pub bindless: bool,
     pub flat_index_start: u32,
     pub flat_index_end: u32,
     pub array_size: u32,
@@ -588,6 +589,7 @@ impl CGenRegistry {
         for cgen_descriptor_def in def.descriptor_defs {
             let descriptor_def = DescriptorDef {
                 name: cgen_descriptor_def.name.to_string(),
+                bindless: cgen_descriptor_def.bindless,
                 shader_resource_type: cgen_descriptor_def.shader_resource_type,
                 array_size: cgen_descriptor_def.array_size,
             };

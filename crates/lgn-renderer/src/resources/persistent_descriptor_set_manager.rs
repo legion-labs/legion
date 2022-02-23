@@ -5,11 +5,17 @@ use crate::cgen;
 use super::DescriptorHeapManager;
 
 pub struct PersistentDescriptorSetManager {
-    descriptor_set: DescriptorSet,
+    descriptor_set: Option<DescriptorSet>,
 }
 
 impl PersistentDescriptorSetManager {
-    pub fn new(descriptor_heap_manager: &DescriptorHeapManager) -> Self {
+    pub fn new() -> Self {
+        Self {
+            descriptor_set: None,
+        }
+    }
+
+    pub fn initialize(&mut self, descriptor_heap_manager: &DescriptorHeapManager) {
         let layout = cgen::descriptor_set::PersistentDescriptorSet::descriptor_set_layout();
 
         let def = DescriptorHeapDef::from_descriptor_set_layout_def(layout.definition(), 1);
@@ -19,8 +25,6 @@ impl PersistentDescriptorSetManager {
             .alloc_partition(false, &def)
             .unwrap();
 
-        let descriptor_set = persistent_partition.alloc(layout).unwrap();
-
-        PersistentDescriptorSetManager { descriptor_set }
+        self.descriptor_set = Some(persistent_partition.alloc(layout).unwrap());
     }
 }

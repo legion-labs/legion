@@ -109,8 +109,6 @@ impl Plugin for RendererPlugin {
         let static_buffer = renderer.static_buffer().clone();
         let descriptor_heap_manager =
             DescriptorHeapManager::new(NUM_RENDER_FRAMES, &device_context);
-        let persisent_descriptor_set_manager =
-            PersistentDescriptorSetManager::new(&descriptor_heap_manager);
         //
         // Add renderer stages first. It is needed for the plugins.
         //
@@ -139,7 +137,7 @@ impl Plugin for RendererPlugin {
         app.insert_resource(LightingManager::default());
         app.insert_resource(GpuInstanceManager::new(&static_buffer));
         app.insert_resource(descriptor_heap_manager);
-        app.insert_resource(persisent_descriptor_set_manager);
+        app.insert_resource(PersistentDescriptorSetManager::new());
         app.add_plugin(EguiPlugin::new());
         app.add_plugin(PickingPlugin {});
         app.add_plugin(GpuDataPlugin::new(&static_buffer));
@@ -278,10 +276,13 @@ fn init_cgen(
     renderer: Res<'_, Renderer>,
     mut pipeline_manager: ResMut<'_, PipelineManager>,
     mut cgen_registries: ResMut<'_, CGenRegistryList>,
+    descriptor_heap_manager: Res<'_, DescriptorHeapManager>,
+    mut persistent_descriptor_set_manager: ResMut<'_, PersistentDescriptorSetManager>,
 ) {
     let cgen_registry = Arc::new(cgen::initialize(renderer.device_context()));
     pipeline_manager.register_shader_families(&cgen_registry);
     cgen_registries.push(cgen_registry);
+    persistent_descriptor_set_manager.initialize(&descriptor_heap_manager);
 }
 
 #[allow(clippy::needless_pass_by_value)]
