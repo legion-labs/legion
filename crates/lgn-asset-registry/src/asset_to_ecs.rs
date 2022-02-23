@@ -206,7 +206,11 @@ impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {
             texture.width,
             texture.height,
             texture.format,
-            texture.texture_data.clone(),
+            texture // TODO: Avoid cloning in the future
+                .texture_data
+                .iter()
+                .map(|bytebuf| bytebuf.clone().into_vec())
+                .collect::<Vec<_>>(),
         );
 
         entity.insert(texture_component);

@@ -15,6 +15,7 @@ doc = false
 
 [dependencies]
 lgn-data-offline = { path = "../lgn-data-offline", version = "0.1.0" }
+lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-data-runtime = { path = "../lgn-data-runtime", version = "0.1.0" }
 lgn-graphics-data = { path = "../lgn-graphics-data", version = "0.1.0", features = [
     "runtime",
@@ -23,3 +24,4 @@ lgn-graphics-data = { path = "../lgn-graphics-data", version = "0.1.0", features
 lgn-data-compiler = { path = "../lgn-data-compiler", version = "0.1.0" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+png = "0.17"

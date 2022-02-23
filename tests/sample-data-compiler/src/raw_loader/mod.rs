@@ -469,18 +469,12 @@ async fn load_png_resource(
     project: &mut Project,
     resources: &mut ResourceRegistry,
 ) -> Option<ResourceTypeAndId> {
-    let loaded_png = PngFile::from_file_path(file)?;
-
-    let resource = project
-        .load_resource(resource_id, resources)
-        .unwrap()
-        .typed::<PngFile>();
-
-    let initial_resource = resource.get_mut(resources).unwrap();
-    *initial_resource = loaded_png;
-
+    let reader = fs::read(file).ok()?;
+    let handle = resources
+        .deserialize_resource(PngFile::TYPE, &mut reader.as_slice())
+        .ok()?;
     project
-        .save_resource(resource_id, resource, resources)
+        .save_resource(resource_id, handle, resources)
         .await
         .unwrap();
     Some(resource_id)
