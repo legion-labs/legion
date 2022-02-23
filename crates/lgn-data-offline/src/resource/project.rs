@@ -259,10 +259,22 @@ impl Project {
     /// or increment the suffix number until resource name is not used
     /// Ex: /world/sample => /world/sample1
     /// Ex: /world/instance1099 => /world/instance1100
+    /// Ex: /world/thingy.psd => /world/thingy1.psd
     pub async fn get_incremental_name(&self, resource_path: &ResourcePathName) -> ResourcePathName {
-        let mut name: String = resource_path.to_string();
+        let path = Path::new(resource_path.as_ref());
 
-        // extract the current suffix number if avaiable
+        let ext = path
+            .extension()
+            .map(|ext| ext.to_string_lossy().into_owned());
+
+        let mut name = if ext.is_some() {
+            // We may want to drop non utf-8 character anyways?
+            path.with_extension("").to_string_lossy().into_owned()
+        } else {
+            resource_path.to_string()
+        };
+
+        // extract the current suffix number if available
         let mut suffix = String::new();
         name.chars()
             .rev()
@@ -273,7 +285,12 @@ impl Project {
         let mut index = suffix.parse::<u32>().unwrap_or(1);
         loop {
             // Check if the resource_name exists, if not increment index
-            let new_path: ResourcePathName = format!("{}{}", name, index).into();
+            let mut new_path = format!("{}{}", name, index).into();
+
+            if let Some(ref ext) = ext {
+                new_path = new_path + "." + ext.as_str();
+            }
+
             if !self.exists_named(&new_path).await {
                 return new_path;
             }
