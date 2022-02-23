@@ -33,8 +33,9 @@ pub use render_context::*;
 
 pub mod resources;
 use resources::{
-    BindlessTextureManager, GpuDataPlugin, GpuEntityColorManager, GpuEntityTransformManager,
-    GpuMaterialManager, GpuPickingDataManager, PipelineManager,
+    BindlessTextureManager, DescriptorHeapManager, GpuDataPlugin, GpuEntityColorManager,
+    GpuEntityTransformManager, GpuMaterialManager, GpuPickingDataManager,
+    PersistentDescriptorSetManager, PipelineManager,
 };
 
 pub mod components;
@@ -102,10 +103,14 @@ impl RendererPlugin {
 
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
-        let renderer = Renderer::new();
+        const NUM_RENDER_FRAMES: usize = 2;
+        let renderer = Renderer::new(NUM_RENDER_FRAMES);
         let device_context = renderer.device_context().clone();
         let static_buffer = renderer.static_buffer().clone();
-
+        let descriptor_heap_manager =
+            DescriptorHeapManager::new(NUM_RENDER_FRAMES, &device_context);
+        let persisent_descriptor_set_manager =
+            PersistentDescriptorSetManager::new(&descriptor_heap_manager);
         //
         // Add renderer stages first. It is needed for the plugins.
         //
@@ -133,6 +138,8 @@ impl Plugin for RendererPlugin {
         app.insert_resource(DebugDisplay::default());
         app.insert_resource(LightingManager::default());
         app.insert_resource(GpuInstanceManager::new(&static_buffer));
+        app.insert_resource(descriptor_heap_manager);
+        app.insert_resource(persisent_descriptor_set_manager);
         app.add_plugin(EguiPlugin::new());
         app.add_plugin(PickingPlugin {});
         app.add_plugin(GpuDataPlugin::new(&static_buffer));
@@ -394,6 +401,7 @@ fn render_update(
         Res<'_, Egui>,
         Res<'_, DebugDisplay>,
         Res<'_, LightingManager>,
+        Res<'_, DescriptorHeapManager>,
     ),
     queries: (
         Query<'_, '_, &mut RenderSurface>,
@@ -420,7 +428,7 @@ fn render_update(
     let egui = resources.7;
     let debug_display = resources.8;
     let lighting_manager = resources.9;
-
+    let descriptor_heap_manager = resources.10;
     // queries
     let mut q_render_surfaces = queries.0;
     let q_drawables = queries.1;
@@ -431,7 +439,12 @@ fn render_update(
 
     // start
 
-    let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool, &pipeline_manager);
+    let mut render_context = RenderContext::new(
+        &renderer,
+        &descriptor_heap_manager,
+        &bump_allocator_pool,
+        &pipeline_manager,
+    );
     let q_drawables = q_drawables
         .iter()
         .collect::<Vec<(Entity, &VisualComponent)>>();
@@ -623,7 +636,12 @@ fn render_update(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn render_end(mut renderer: ResMut<'_, Renderer>, mut debug_display: ResMut<'_, DebugDisplay>) {
-    debug_display.clear();
+fn render_end(
+    mut renderer: ResMut<'_, Renderer>,
+    mut debug_display: ResMut<'_, DebugDisplay>,
+    mut descriptor_heap_manager: ResMut<'_, DescriptorHeapManager>,
+) {
+    descriptor_heap_manager.end_frame();
+    debug_display.end_frame();
     renderer.end_frame();
 }

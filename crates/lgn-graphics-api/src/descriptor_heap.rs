@@ -7,6 +7,11 @@ use crate::{
     ShaderResourceType,
 };
 
+pub struct DescriptorSet {
+    pub(crate) layout: DescriptorSetLayout,
+    pub(crate) handle: DescriptorSetHandle,
+}
+
 /// Used to create a `DescriptorHeap`
 #[derive(Default, Clone, Copy)]
 pub struct DescriptorHeapDef {
@@ -184,6 +189,11 @@ impl DescriptorHeapPartition {
         self.inner.transient
     }
 
+    pub fn alloc(&self, layout: &DescriptorSetLayout) -> GfxResult<DescriptorSet> {
+        assert!(!self.inner.transient);
+        self.backend_alloc(layout)
+    }
+
     // pub fn get_writer<'frame>(
     //     &self,
     //     descriptor_set_layout: &DescriptorSetLayout,
@@ -194,10 +204,10 @@ impl DescriptorHeapPartition {
 
     pub fn write(
         &self,
-        descriptor_set_layout: &DescriptorSetLayout,
+        layout: &DescriptorSetLayout,
         descriptor_refs: &[DescriptorRef<'_>],
     ) -> GfxResult<DescriptorSetHandle> {
         assert!(self.inner.transient);
-        self.backend_write(descriptor_set_layout, descriptor_refs)
+        self.backend_write(layout, descriptor_refs)
     }
 }

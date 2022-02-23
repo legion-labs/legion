@@ -201,8 +201,14 @@ impl RgbToYuvConverter {
             descriptor_set.set_u_image(&yuv_images_views.1);
             descriptor_set.set_v_image(&yuv_images_views.2);
 
-            let descriptor_set_handle = render_context.write_descriptor_set(&descriptor_set);
-            cmd_buffer.bind_descriptor_set_handle(descriptor_set_handle);
+            let descriptor_set_handle = render_context.write_descriptor_set(
+                cgen::descriptor_set::RGB2YUVDescriptorSet::descriptor_set_layout(),
+                &descriptor_set,
+            );
+            cmd_buffer.bind_descriptor_set_handle((
+                cgen::descriptor_set::RGB2YUVDescriptorSet::descriptor_set_layout(),
+                descriptor_set_handle,
+            ));
 
             cmd_buffer.dispatch(
                 ((self.resolution_dependent_resources.resolution.width + 7) / 8) as u32,

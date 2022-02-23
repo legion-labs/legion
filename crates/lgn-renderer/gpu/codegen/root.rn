@@ -12,6 +12,8 @@ pub fn main() {
 
     products.extend( mesh::main() );
 
+    
+
     let view_data = #{
         type: "Struct",
         name: "ViewData",
@@ -104,6 +106,16 @@ pub fn main() {
     products.push( material_data );    
     
     products.extend( lighting::main() );
+
+    let persistent_descriptor_set = #{
+        type: "DescriptorSet",
+        name: "PersistentDescriptorSet",
+        frequency: 0,
+        descriptors: [            
+            #{ type:"Texture2D", name:"material_textures", content:"Float4", array_len:256 },            
+        ]
+    };
+    products.push( persistent_descriptor_set );
 
     let frame_descriptor_set = #{
         type: "DescriptorSet",

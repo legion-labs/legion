@@ -1,5 +1,5 @@
 use crate::{
-    DescriptorHeapDef, DescriptorHeapPartition, DescriptorRef, DescriptorSetHandle,
+    DescriptorHeapDef, DescriptorHeapPartition, DescriptorRef, DescriptorSet, DescriptorSetHandle,
     DescriptorSetLayout, DescriptorSetWriter, DeviceContext, GfxResult,
 };
 
@@ -275,15 +275,34 @@ impl DescriptorHeapPartition {
     //     )
     // }
 
+    pub(crate) fn backend_alloc(&self, layout: &DescriptorSetLayout) -> GfxResult<DescriptorSet> {
+        let device_context = &self.inner.heap.inner.device_context;
+        let device = device_context.vk_device();
+        let allocate_info = ash::vk::DescriptorSetAllocateInfo::builder()
+            .set_layouts(&[layout.vk_layout()])
+            .descriptor_pool(self.inner.backend_descriptor_heap_partition.vk_pool)
+            .build();
+        let result = unsafe { device.allocate_descriptor_sets(&allocate_info)? };
+        let handle = DescriptorSetHandle {
+            backend_descriptor_set_handle: result[0],
+        };
+
+        // Ok(writer.flush())
+        Ok(DescriptorSet {
+            layout: layout.clone(),
+            handle,
+        })
+    }
+
     pub(crate) fn backend_write(
         &self,
-        descriptor_set_layout: &DescriptorSetLayout,
+        layout: &DescriptorSetLayout,
         descriptor_refs: &[DescriptorRef<'_>],
     ) -> GfxResult<DescriptorSetHandle> {
         let device_context = &self.inner.heap.inner.device_context;
         let device = device_context.vk_device();
         let allocate_info = ash::vk::DescriptorSetAllocateInfo::builder()
-            .set_layouts(&[descriptor_set_layout.vk_layout()])
+            .set_layouts(&[layout.vk_layout()])
             .descriptor_pool(self.inner.backend_descriptor_heap_partition.vk_pool)
             .build();
         let result = unsafe { device.allocate_descriptor_sets(&allocate_info)? };
@@ -291,7 +310,7 @@ impl DescriptorHeapPartition {
             backend_descriptor_set_handle: result[0],
         };
 
-        let mut writer = DescriptorSetWriter::new(descriptor_handle, descriptor_set_layout);
+        let mut writer = DescriptorSetWriter::new(descriptor_handle, layout);
         writer.set_descriptors(device_context, descriptor_refs);
         // Ok(writer.flush())
         Ok(descriptor_handle)

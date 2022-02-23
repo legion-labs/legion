@@ -49,7 +49,7 @@ impl DebugDisplay {
         }
     }
 
-    pub fn clear(&mut self) {
+    pub fn end_frame(&mut self) {
         *self.display_lists.lock().unwrap() = std::ptr::null();
     }
 }

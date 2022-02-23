@@ -60,7 +60,7 @@ impl Default for DescriptorSetLayoutDef {
 #[derive(Debug)]
 pub(crate) struct DescriptorSetLayoutInner {
     device_context: DeviceContext,
-    // definition: DescriptorSetLayoutDef,
+    definition: DescriptorSetLayoutDef,
     id: u32,
     frequency: u32,
     // binding_mask: u64,
@@ -86,9 +86,9 @@ impl DescriptorSetLayout {
         &self.inner.device_context
     }
 
-    // pub fn definition(&self) -> &DescriptorSetLayoutDef {
-    //     &self.inner.definition
-    // }
+    pub fn definition(&self) -> &DescriptorSetLayoutDef {
+        &self.inner.definition
+    }
 
     pub fn uid(&self) -> u32 {
         self.inner.id
@@ -169,7 +169,7 @@ impl DescriptorSetLayout {
                 .deferred_dropper()
                 .new_drc(DescriptorSetLayoutInner {
                     device_context: device_context.clone(),
-                    // definition: definition.clone(),
+                    definition: definition.clone(),
                     id: descriptor_set_layout_id,
                     frequency: definition.frequency,
                     // binding_mask,
