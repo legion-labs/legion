@@ -127,14 +127,14 @@ export async function addPropertyInPropertyVector(
   resourceId: string,
   { path, index, jsonValue }: AddVectorSubProperty
 ) {
-  let result = await propertyInspectorClient.insertNewArrayElement({
+  const result = await propertyInspectorClient.insertNewArrayElement({
     resourceId,
     arrayPath: path,
     index,
     jsonValue,
   });
 
-  let value = result.newValue;
+  const value = result.newValue;
   if (value) {
     window.dispatchEvent(
       new CustomEvent("refresh-property", {
