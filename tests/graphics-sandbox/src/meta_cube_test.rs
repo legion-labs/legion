@@ -3,7 +3,7 @@ use std::{fs::File, io, path::Path};
 use lgn_app::{App, Plugin};
 use lgn_ecs::prelude::{Commands, Res};
 use lgn_renderer::components::VisualComponent;
-use lgn_transform::components::{GlobalTransform, Transform};
+use lgn_transform::prelude::{Transform, TransformBundle};
 use png::OutputInfo;
 
 use super::DefaultMeshType;
@@ -86,12 +86,11 @@ impl MetaCubeResource {
 
                     commands
                         .spawn()
-                        .insert(Transform::from_xyz(
+                        .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
                             x as f32 * 2.0,
                             y as f32 * 2.0,
                             z as f32 * 2.0,
-                        ))
-                        .insert(GlobalTransform::identity())
+                        )))
                         .insert(VisualComponent::new(
                             DefaultMeshType::Cube as usize,
                             (r, g, b).into(),
