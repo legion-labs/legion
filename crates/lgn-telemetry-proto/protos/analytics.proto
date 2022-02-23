@@ -53,7 +53,7 @@ message ListProcessBlocksRequest {
 }
 
 message ProcessBlocksReply {
-  repeated telemetry.Block blocks = 1;
+  repeated telemetry.BlockMetadata blocks = 1;
 }
 
 // search_processes
