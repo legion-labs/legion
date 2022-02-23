@@ -2,14 +2,22 @@
   "components": [
     {
       "Name": {
-        "name": "Cube"
+        "name": "DebugCube2"
+      }
+    },
+    {
+      "RotationComponent": {
+        "rotation_speed": [
+          0.0,
+          0.0,
+          0.4000000059604645
+        ]
       }
     },
     {
       "Transform": {
-        "apply_to_children": true,
         "position": [
-          0.0,
+          -1.0,
           0.0,
           0.0
         ],
@@ -27,25 +35,10 @@
       }
     },
     {
-      "Visual": {
-        "gi_contribution": 0,
-        "renderable_geometry": null,
-        "shadow_caster_local": true,
-        "shadow_caster_sun": true,
-        "shadow_receiver": true
-      }
-    },
-    {
       "StaticMesh": {
-        "color": 4278190335,
+        "color": 4278255615,
         "mesh": null,
         "mesh_id": "Cube"
-      }
-    },
-    {
-      "Physics": {
-        "collision_geometry": null,
-        "dynamic": false
       }
     }
   ]
