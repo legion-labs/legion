@@ -63,7 +63,7 @@ impl Plugin for PhysicsPlugin {
 
         app.add_system_to_stage(PhysicsStage::Update, Self::create_physics_components);
         app.add_system_to_stage(PhysicsStage::Update, Self::step_simulation);
-        // app.add_system_to_stage(PhysicsStage::Update, Self::sync_transforms);
+        app.add_system_to_stage(PhysicsStage::Update, Self::sync_transforms);
     }
 }
 
@@ -174,11 +174,17 @@ impl PhysicsPlugin {
     }
 
     #[span_fn]
-    // fn sync_transforms(mut query: Query<'_, '_, (&RigidDynamicActor, &mut Transform)>) {
-    //     for (dynamic, mut transform) in query.iter_mut() {
-    //         *transform = Transform::from_matrix(dynamic.actor.get_global_pose().into());
-    //     }
-    // }
+    fn sync_transforms(
+        mut scene: ResMut<'_, Owner<PxScene>>,
+        mut query: Query<'_, '_, &mut Transform>,
+    ) {
+        for actor in scene.get_dynamic_actors() {
+            let entity = actor.get_user_data();
+            if let Ok(mut transform) = query.get_mut(*entity) {
+                *transform = Transform::from_matrix(actor.get_global_pose().into());
+            }
+        }
+    }
 
     fn create_physics_foundation(
         enable_visual_debugger: bool,
