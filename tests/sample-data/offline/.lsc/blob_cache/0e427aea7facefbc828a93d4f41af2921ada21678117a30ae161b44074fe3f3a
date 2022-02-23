@@ -1,7 +1,7 @@
 {
-  "name": "/entity/DebugCube2",
+  "name": "/entity/DebugCube1",
   "type_name": "offline_entity",
   "type_id": "1c0ff9e497b0740f",
   "dependencies": [],
-  "content_checksum": "771965ad1dc8ed8792f8b36f8f81c92f"
+  "content_checksum": "1d8948a27f13b6c61e3d46438db1ccf5"
 }

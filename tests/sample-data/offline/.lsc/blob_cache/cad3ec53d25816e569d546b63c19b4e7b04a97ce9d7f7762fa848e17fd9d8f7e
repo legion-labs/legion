@@ -2,25 +2,24 @@
   "components": [
     {
       "Name": {
-        "name": "DebugCube2"
+        "name": "DebugCube0"
       }
     },
     {
       "RotationComponent": {
         "rotation_speed": [
+          0.4000000059604645,
           0.0,
-          0.0,
-          0.4000000059604645
+          0.0
         ]
       }
     },
     {
       "Transform": {
-        "apply_to_children": false,
         "position": [
-          -1.0,
           0.0,
-          0.0
+          0.0,
+          1.0
         ],
         "rotation": [
           0.0,
@@ -37,7 +36,7 @@
     },
     {
       "StaticMesh": {
-        "color": 4278255615,
+        "color": 4278190335,
         "mesh": null,
         "mesh_id": "Cube"
       }

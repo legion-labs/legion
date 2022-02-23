@@ -10,6 +10,4 @@ struct Transform {
 
     #[legion(default=(1.0,1.0,1.0))]
     pub scale: Vec3,
-
-    pub apply_to_children: bool,
 }
