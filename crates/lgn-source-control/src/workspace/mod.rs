@@ -38,6 +38,13 @@ pub enum Staging {
     UnstagedOnly,
 }
 
+pub enum CommitMode {
+    /// In this mode committing staged files containing no changes or calling commit with no staged changes is treated as error.
+    Strict,
+    /// In this mode staged files with no changes will be ignored/skipped. Committing no changes is effectively a noop.
+    Lenient,
+}
+
 impl Staging {
     pub fn from_bool(staged_only: bool, unstaged_only: bool) -> Self {
         assert!(
@@ -728,7 +735,7 @@ impl Workspace {
     /// # Returns
     ///
     /// The commit id.
-    pub async fn commit(&self, message: &str) -> Result<Commit> {
+    pub async fn commit(&self, message: &str, behavior: CommitMode) -> Result<Commit> {
         let fs_tree = self.get_filesystem_tree([].into()).await?;
 
         let current_branch = self.backend.get_current_branch().await?;
@@ -746,21 +753,23 @@ impl Workspace {
         //    assert_not_locked(workspace, &abs_path).await?;
         //}
 
-        let unchanged_files_marked_for_edition: BTreeSet<_> = staged_changes
-            .iter()
-            .filter_map(|(path, change)| {
-                if change.change_type().has_modifications() {
-                    None
-                } else {
-                    Some(path.clone())
-                }
-            })
-            .collect();
+        if matches!(behavior, CommitMode::Strict) {
+            let unchanged_files_marked_for_edition: BTreeSet<_> = staged_changes
+                .iter()
+                .filter_map(|(path, change)| {
+                    if change.change_type().has_modifications() {
+                        None
+                    } else {
+                        Some(path.clone())
+                    }
+                })
+                .collect();
 
-        if !unchanged_files_marked_for_edition.is_empty() {
-            return Err(Error::unchanged_files_marked_for_edition(
-                unchanged_files_marked_for_edition,
-            ));
+            if !unchanged_files_marked_for_edition.is_empty() {
+                return Err(Error::unchanged_files_marked_for_edition(
+                    unchanged_files_marked_for_edition,
+                ));
+            }
         }
 
         // Upload all the data straight away.
@@ -776,7 +785,9 @@ impl Workspace {
             .with_changes(staged_changes.values())?;
         let tree_id = tree.id();
 
-        if commit.root_tree_id == tree_id {
+        let empty_commit = commit.root_tree_id == tree_id;
+
+        if empty_commit && matches!(behavior, CommitMode::Strict) {
             return Err(Error::EmptyCommitNotAllowed);
         }
 
@@ -793,22 +804,28 @@ impl Workspace {
         }
 
         let staged_changes = staged_changes.into_values().collect::<BTreeSet<_>>();
-        let mut commit = Commit::new_unique_now(
-            whoami::username(),
-            message,
-            staged_changes.clone(),
-            tree_id,
-            parent_commits,
-        );
 
-        commit.id = self
-            .index_backend
-            .commit_to_branch(&commit, &branch)
-            .await?;
+        let commit = if !empty_commit {
+            let mut commit = Commit::new_unique_now(
+                whoami::username(),
+                message,
+                staged_changes.clone(),
+                tree_id,
+                parent_commits,
+            );
 
-        branch.head = commit.id;
+            commit.id = self
+                .index_backend
+                .commit_to_branch(&commit, &branch)
+                .await?;
 
-        self.backend.set_current_branch(&branch).await?;
+            branch.head = commit.id;
+
+            self.backend.set_current_branch(&branch).await?;
+            commit
+        } else {
+            commit
+        };
 
         let mut changes_to_save = Vec::new();
 
