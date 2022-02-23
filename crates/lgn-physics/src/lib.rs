@@ -66,13 +66,21 @@ impl Plugin for PhysicsPlugin {
 
 impl PhysicsPlugin {
     fn setup(settings: Res<'_, PhysicsSettings>, mut commands: Commands<'_, '_>) {
-        let mut physics_builder = PhysicsFoundationBuilder::<DefaultAllocator>::default();
-        physics_builder
-            .enable_visual_debugger(settings.enable_visual_debugger)
-            .set_length_tolerance(settings.length_tolerance)
-            .set_speed_tolerance(settings.speed_tolerance)
-            .with_extensions(false);
-        let mut physics = physics_builder.build::<PxShape>().unwrap();
+        let length_tolerance = settings.length_tolerance;
+        let speed_tolerance = settings.speed_tolerance;
+        let mut physics = Self::create_physics(
+            settings.enable_visual_debugger,
+            length_tolerance,
+            speed_tolerance,
+        );
+        if physics.is_none() && settings.enable_visual_debugger {
+            // likely failed to connect to visual debugger, retry without
+            physics = Self::create_physics(false, length_tolerance, speed_tolerance);
+            if physics.is_some() {
+                error!("failed to connect to physics visual debugger");
+            }
+        }
+        let mut physics = physics.unwrap();
 
         {
             let scene: Owner<PxScene> = physics
@@ -120,6 +128,20 @@ impl PhysicsPlugin {
         for (dynamic, mut transform) in query.iter_mut() {
             *transform = Transform::from_matrix(dynamic.actor.get_global_pose().into());
         }
+    }
+
+    fn create_physics(
+        enable_visual_debugger: bool,
+        length_tolerance: f32,
+        speed_tolerance: f32,
+    ) -> Option<PhysicsFoundation<DefaultAllocator, PxShape>> {
+        let mut physics_builder = PhysicsFoundationBuilder::<DefaultAllocator>::default();
+        physics_builder
+            .enable_visual_debugger(enable_visual_debugger)
+            .set_length_tolerance(length_tolerance)
+            .set_speed_tolerance(speed_tolerance)
+            .with_extensions(false);
+        physics_builder.build()
     }
 
     fn create_scratch_buffer() -> ScratchBuffer {
