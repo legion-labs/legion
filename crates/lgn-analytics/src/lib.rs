@@ -310,7 +310,7 @@ pub async fn find_process_blocks(
     process_id: &str,
     tag: &str,
 ) -> Result<Vec<BlockMetadata>> {
-    let blocks = sqlx::query(
+    let rows = sqlx::query(
         "SELECT B.*
         FROM streams S
         LEFT JOIN blocks B
@@ -323,10 +323,11 @@ pub async fn find_process_blocks(
     .bind(tag)
     .fetch_all(connection)
     .await
-    .with_context(|| "find_process_blocks")?
-    .iter()
-    .map(map_row_block)
-    .collect();
+    .with_context(|| "find_process_blocks")?;
+    let mut blocks = Vec::new();
+    for r in rows {
+        blocks.push(map_row_block(&r)?);
+    }
     Ok(blocks)
 }
 
@@ -387,17 +388,18 @@ pub async fn find_stream(
     })
 }
 
-fn map_row_block(row: &AnyRow) -> BlockMetadata {
-    BlockMetadata {
-        block_id: row.get("block_id"),
-        stream_id: row.get("stream_id"),
-        begin_time: row.get("begin_time"),
-        end_time: row.get("end_time"),
-        begin_ticks: row.get("begin_ticks"),
-        end_ticks: row.get("end_ticks"),
-        nb_objects: row.get("nb_objects"),
-        payload_size: row.try_get("payload_size").unwrap_or(0),
-    }
+fn map_row_block(row: &AnyRow) -> Result<BlockMetadata> {
+    let opt_size: Option<i64> = row.try_get("payload_size")?;
+    Ok(BlockMetadata {
+        block_id: row.try_get("block_id")?,
+        stream_id: row.try_get("stream_id")?,
+        begin_time: row.try_get("begin_time")?,
+        end_time: row.try_get("end_time")?,
+        begin_ticks: row.try_get("begin_ticks")?,
+        end_ticks: row.try_get("end_ticks")?,
+        nb_objects: row.try_get("nb_objects")?,
+        payload_size: opt_size.unwrap_or(0),
+    })
 }
 
 pub async fn find_block(
@@ -414,14 +416,14 @@ pub async fn find_block(
     .fetch_one(connection)
     .await
     .with_context(|| "find_block")?;
-    Ok(map_row_block(&row))
+    map_row_block(&row)
 }
 
 pub async fn find_stream_blocks(
     connection: &mut sqlx::AnyConnection,
     stream_id: &str,
 ) -> Result<Vec<BlockMetadata>> {
-    let blocks = sqlx::query(
+    let rows = sqlx::query(
         "SELECT block_id, stream_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects, payload_size
          FROM blocks
          WHERE stream_id = ?
@@ -430,10 +432,11 @@ pub async fn find_stream_blocks(
     .bind(stream_id)
     .fetch_all(connection)
     .await
-    .with_context(|| "find_stream_blocks")?
-    .iter()
-    .map(map_row_block)
-    .collect();
+        .with_context(|| "find_stream_blocks")?;
+    let mut blocks = Vec::new();
+    for r in rows {
+        blocks.push(map_row_block(&r)?);
+    }
     Ok(blocks)
 }
 
@@ -443,7 +446,7 @@ pub async fn find_stream_blocks_in_range(
     begin_time: &str,
     end_time: &str,
 ) -> Result<Vec<BlockMetadata>> {
-    let blocks = sqlx::query(
+    let rows = sqlx::query(
         "SELECT block_id, stream_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects, payload_size
          FROM blocks
          WHERE stream_id = ?
@@ -456,10 +459,11 @@ pub async fn find_stream_blocks_in_range(
     .bind(begin_time)
     .fetch_all(connection)
     .await
-    .with_context(|| "find_stream_blocks")?
-    .iter()
-    .map(map_row_block)
-    .collect();
+    .with_context(|| "find_stream_blocks")?;
+    let mut blocks = Vec::new();
+    for r in rows {
+        blocks.push(map_row_block(&r)?);
+    }
     Ok(blocks)
 }
 
