@@ -325,7 +325,7 @@ pub async fn find_process_blocks(
     .await
     .with_context(|| "find_process_blocks")?
     .iter()
-    .map(|r| map_row_block(r, |_| ()))
+    .map(map_row_block)
     .collect();
     Ok(blocks)
 }
@@ -387,30 +387,17 @@ pub async fn find_stream(
     })
 }
 
-fn map_row_block<F>(row: &AnyRow, mut post_write: F) -> EncodedBlock
-where
-    F: FnMut(&mut EncodedBlock),
-{
-    let mut block = EncodedBlock {
-        block_id: row
-            .try_get("block_id")
-            .unwrap_or_else(|_| String::from("invalid")),
-        stream_id: row
-            .try_get("stream_id")
-            .unwrap_or_else(|_| String::from("invalid")),
-        begin_time: row
-            .try_get("begin_time")
-            .unwrap_or_else(|_| String::from("invalid")),
-        end_time: row
-            .try_get("end_time")
-            .unwrap_or_else(|_| String::from("invalid")),
-        begin_ticks: row.try_get("begin_ticks").unwrap_or(-1),
-        end_ticks: row.try_get("end_ticks").unwrap_or(-1),
-        nb_objects: row.try_get("nb_objects").unwrap_or(-1),
+fn map_row_block(row: &AnyRow) -> EncodedBlock {
+    EncodedBlock {
+        block_id: row.get("block_id"),
+        stream_id: row.get("stream_id"),
+        begin_time: row.get("begin_time"),
+        end_time: row.get("end_time"),
+        begin_ticks: row.get("begin_ticks"),
+        end_ticks: row.get("end_ticks"),
+        nb_objects: row.get("nb_objects"),
         payload: None,
-    };
-    post_write(&mut block);
-    block
+    }
 }
 
 pub async fn find_block(
@@ -418,7 +405,7 @@ pub async fn find_block(
     block_id: &str,
 ) -> Result<EncodedBlock> {
     let row = sqlx::query(
-        "SELECT stream_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects
+        "SELECT block_id, stream_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects
          FROM blocks
          WHERE block_id = ?
          ;",
@@ -427,7 +414,7 @@ pub async fn find_block(
     .fetch_one(connection)
     .await
     .with_context(|| "find_block")?;
-    Ok(map_row_block(&row, |r| r.block_id = String::from(block_id)))
+    Ok(map_row_block(&row))
 }
 
 pub async fn find_stream_blocks(
@@ -435,7 +422,7 @@ pub async fn find_stream_blocks(
     stream_id: &str,
 ) -> Result<Vec<EncodedBlock>> {
     let blocks = sqlx::query(
-        "SELECT block_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects
+        "SELECT block_id, stream_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects
          FROM blocks
          WHERE stream_id = ?
          ORDER BY begin_time;",
@@ -445,7 +432,7 @@ pub async fn find_stream_blocks(
     .await
     .with_context(|| "find_stream_blocks")?
     .iter()
-    .map(|r| map_row_block(r, |r| r.stream_id = String::from(stream_id)))
+    .map(map_row_block)
     .collect();
     Ok(blocks)
 }
@@ -457,7 +444,7 @@ pub async fn find_stream_blocks_in_range(
     end_time: &str,
 ) -> Result<Vec<EncodedBlock>> {
     let blocks = sqlx::query(
-        "SELECT block_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects
+        "SELECT stream_id, block_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects
          FROM blocks
          WHERE stream_id = ?
          AND begin_time <= ?
@@ -471,7 +458,7 @@ pub async fn find_stream_blocks_in_range(
     .await
     .with_context(|| "find_stream_blocks")?
     .iter()
-    .map(|r| map_row_block(r, |r| r.stream_id = String::from(stream_id)))
+    .map(map_row_block)
     .collect();
     Ok(blocks)
 }
