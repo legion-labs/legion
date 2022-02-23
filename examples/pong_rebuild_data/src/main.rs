@@ -166,16 +166,12 @@ async fn create_offline_data(
         let entity = handle
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
-        entity.components.push(Box::new(sample_data::offline::Name {
-            name: "Ground".to_string(),
-        }));
         entity
             .components
             .push(Box::new(sample_data::offline::Transform {
-                position: (0_f32, 0_f32, -0.1_f32).into(),
+                position: (0_f32, 0_f32, 0.1_f32).into(),
                 rotation: Quat::default(),
                 scale: (12_f32, 8_f32, 0.01_f32).into(),
-                apply_to_children: false,
             }));
         entity
             .components
@@ -187,7 +183,7 @@ async fn create_offline_data(
 
         project
             .add_resource_with_id(
-                "/scene/Ground".into(),
+                "/scene/ground.ent".into(),
                 sample_data::offline::Entity::TYPENAME,
                 id.kind,
                 id.id,
@@ -239,7 +235,6 @@ pub fn update(entity, events) {
                 position: (-2.4_f32, 0_f32, 0_f32).into(),
                 rotation: Quat::default(),
                 scale: (0.4_f32, 2_f32, 0.4_f32).into(),
-                apply_to_children: false,
             }));
         entity
             .components
@@ -260,7 +255,7 @@ pub fn update(entity, events) {
 
         project
             .add_resource_with_id(
-                "/scene/Pad Right".into(),
+                "/scene/pad-right.ent".into(),
                 sample_data::offline::Entity::TYPENAME,
                 id.kind,
                 id.id,
@@ -312,7 +307,6 @@ pub fn update(entity, events) {
                 position: (2.4_f32, 0_f32, 0_f32).into(),
                 rotation: Quat::default(),
                 scale: (0.4_f32, 2_f32, 0.4_f32).into(),
-                apply_to_children: false,
             }));
         entity
             .components
@@ -333,7 +327,7 @@ pub fn update(entity, events) {
 
         project
             .add_resource_with_id(
-                "/scene/Pad Left".into(),
+                "/scene/pad-left.ent".into(),
                 sample_data::offline::Entity::TYPENAME,
                 id.kind,
                 id.id,
@@ -499,7 +493,6 @@ pub fn update(entity, last_result, entities) {
                 position: Vec3::default(),
                 rotation: Quat::default(),
                 scale: (0.4_f32, 0.4_f32, 0.4_f32).into(),
-                apply_to_children: false,
             }));
         entity
             .components
@@ -524,7 +517,7 @@ pub fn update(entity, last_result, entities) {
 
         project
             .add_resource_with_id(
-                "/scene/Ball".into(),
+                "/scene/ball.ent".into(),
                 sample_data::offline::Entity::TYPENAME,
                 id.kind,
                 id.id,
@@ -549,6 +542,15 @@ pub fn update(entity, last_result, entities) {
         let entity = handle
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
+
+        // move back scene, and scale down
+        entity
+            .components
+            .push(Box::new(sample_data::offline::Transform {
+                position: (0_f32, 0_f32, 4_f32).into(),
+                rotation: Quat::default(),
+                scale: (0.5_f32, 0.5_f32, 0.5_f32).into(),
+            }));
 
         entity.children.push(ground_path_id);
         entity.children.push(pad_right_path_id);

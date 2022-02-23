@@ -396,7 +396,7 @@ fn map_row_block(row: &AnyRow) -> BlockMetadata {
         begin_ticks: row.get("begin_ticks"),
         end_ticks: row.get("end_ticks"),
         nb_objects: row.get("nb_objects"),
-        payload_size: row.get("payload_size"),
+        payload_size: row.try_get("payload_size").unwrap_or(0),
     }
 }
 

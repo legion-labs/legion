@@ -160,7 +160,6 @@ impl From<raw_data::Transform> for offline_data::Transform {
             position: raw.position,
             rotation: raw.rotation,
             scale: raw.scale,
-            apply_to_children: raw.apply_to_children,
         }
     }
 }

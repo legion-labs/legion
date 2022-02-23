@@ -1,7 +1,7 @@
 {
-  "name": "/scene/Ground",
+  "name": "/scene/ground.ent",
   "type_name": "offline_entity",
   "type_id": "1c0ff9e497b0740f",
   "dependencies": [],
-  "content_checksum": "d1dc8f1cea2f2b2ee95da605764f6c57"
+  "content_checksum": "b0a498f77a49e35e74637af6fca984de"
 }

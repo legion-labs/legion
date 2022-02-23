@@ -6,6 +6,12 @@
 cargo mrun --bin pong -- --standalone
 ```
 
+or
+
+```sh
+cargo m run --bin runtime-srv -- --project=examples/pong/data --root="(1d9ddd99aad89045,b3440a7c-ba07-5628-e7f8-bb89ed5de900)" --standalone
+```
+
 ## Editing data
 
 ```sh
@@ -16,7 +22,7 @@ cargo m run --bin editor-client
 ## Data regeneration
 
 ```sh
-cargo m run --bin pong_rebuild_data
+cargo m run --bin pong-rebuild-data
 ```
 
 ## Data exploration

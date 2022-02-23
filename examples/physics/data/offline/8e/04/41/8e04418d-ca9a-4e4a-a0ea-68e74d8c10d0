@@ -2,7 +2,6 @@
   "components": [
     {
       "Transform": {
-        "apply_to_children": false,
         "position": [
           -1.0,
           0.10000000149011612,

@@ -16,7 +16,7 @@ cargo m run --bin editor-client
 ## Data regeneration
 
 ```sh
-cargo m run --bin physics_rebuild_data
+cargo m run --bin physics-rebuild-data
 ```
 
 ## Data exploration

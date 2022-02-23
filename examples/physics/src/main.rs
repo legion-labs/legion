@@ -133,7 +133,6 @@ async fn create_offline_data(
                 position: (0_f32, -1_f32, 0_f32).into(),
                 rotation: Quat::default(),
                 scale: (12_f32, 0.1_f32, 12_f32).into(),
-                apply_to_children: false,
             }));
         entity
             .components
@@ -175,7 +174,6 @@ async fn create_offline_data(
                 position: (-1_f32, 0.1_f32, 1_f32).into(),
                 rotation: Quat::from_rotation_z(0.3_f32),
                 scale: (1_f32, 1_f32, 1_f32).into(),
-                apply_to_children: false,
             }));
         entity
             .components
@@ -217,7 +215,6 @@ async fn create_offline_data(
                 position: (-1_f32, 1.3_f32, 1.2_f32).into(),
                 rotation: Quat::from_rotation_x(-0.2_f32),
                 scale: (1_f32, 1_f32, 1_f32).into(),
-                apply_to_children: false,
             }));
         entity
             .components
@@ -259,7 +256,6 @@ async fn create_offline_data(
                 position: (-0.5_f32, 0_f32, 0.5_f32).into(),
                 rotation: Quat::from_rotation_y(1_f32),
                 scale: (1_f32, 1_f32, 1_f32).into(),
-                apply_to_children: false,
             }));
         entity
             .components

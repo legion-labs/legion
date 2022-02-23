@@ -7,7 +7,6 @@
     },
     {
       "Transform": {
-        "apply_to_children": true,
         "position": [
           0.0,
           0.0,

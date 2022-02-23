@@ -26,11 +26,11 @@ fn main() {
 
 fn game_setup(mut cameras: Query<'_, '_, &mut CameraComponent>) {
     for mut camera in cameras.iter_mut() {
-        let eye = Vec3::new(0.0, 0.0, 7.0);
+        let eye = Vec3::new(0.0, 0.0, -7.0);
 
         camera.camera_rig = CameraRig::builder()
             .with(Position::new(eye))
-            .with(YawPitch::new())
+            .with(LookAt::new(Vec3::ZERO))
             .build();
 
         camera.speed = 5_f32;
