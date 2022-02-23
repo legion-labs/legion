@@ -14,6 +14,7 @@ path = "src/main.rs"
 doc = false
 
 [dependencies]
+lgn-tracing = { path = "../../crates/lgn-tracing", version = "0.1.0" }
 lgn-data-offline = { path = "../../crates/lgn-data-offline", version = "0.1.0" }
 lgn-data-runtime = { path = "../../crates/lgn-data-runtime", version = "0.1.0" }
 lgn-data-compiler = { path = "../../crates/lgn-data-compiler", version = "0.1.0" }

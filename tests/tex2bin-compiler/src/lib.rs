@@ -31,6 +31,7 @@ fn init(registry: AssetRegistryOptions) -> AssetRegistryOptions {
     registry.add_loader::<lgn_graphics_data::offline_texture::Texture>()
 }
 
+#[lgn_tracing::span_fn]
 fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
     let resources = context.registry();
 

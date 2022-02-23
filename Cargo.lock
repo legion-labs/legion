@@ -4223,6 +4223,7 @@ dependencies = [
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-graphics-data",
+ "lgn-tracing",
 ]
 
 [[package]]
@@ -4233,6 +4234,8 @@ dependencies = [
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-graphics-data",
+ "lgn-tracing",
+ "png 0.17.3",
  "serde",
  "serde_json",
 ]
@@ -4245,6 +4248,7 @@ dependencies = [
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-graphics-data",
+ "lgn-tracing",
  "serde",
  "serde_json",
 ]
@@ -4258,6 +4262,7 @@ dependencies = [
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
+ "lgn-tracing",
  "sample-data",
 ]
 
@@ -4270,6 +4275,7 @@ dependencies = [
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
+ "lgn-tracing",
  "sample-data",
 ]
 
@@ -4282,6 +4288,7 @@ dependencies = [
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
+ "lgn-tracing",
  "sample-data",
 ]
 
@@ -4295,6 +4302,7 @@ dependencies = [
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-scripting",
+ "lgn-tracing",
  "serde",
  "serde_json",
  "zip",
@@ -4366,6 +4374,7 @@ dependencies = [
  "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
+ "lgn-tracing",
 ]
 
 [[package]]
@@ -4376,6 +4385,7 @@ dependencies = [
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-graphics-data",
+ "lgn-tracing",
  "serde",
  "serde_json",
 ]
@@ -4779,10 +4789,11 @@ dependencies = [
  "lgn-data-runtime",
  "lgn-ecs",
  "lgn-math",
+ "lgn-tracing",
  "memoffset 0.6.5",
- "png 0.17.3",
  "psd",
  "serde",
+ "serde_bytes",
  "serde_json",
  "tbc",
  "typetag",

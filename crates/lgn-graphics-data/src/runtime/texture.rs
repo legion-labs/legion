@@ -19,7 +19,7 @@ pub struct Texture {
     /// Desired HW texture format
     pub format: TextureFormat,
     /// Mip chain pixel data of the image in hardware encoded form
-    pub texture_data: Vec<Vec<u8>>,
+    pub texture_data: Vec<serde_bytes::ByteBuf>,
 }
 
 impl Asset for Texture {
@@ -45,7 +45,10 @@ impl Texture {
                 format,
                 alpha_blended,
                 rgba,
-            ),
+            )
+            .into_iter()
+            .map(serde_bytes::ByteBuf::from)
+            .collect::<Vec<_>>(),
         };
         bincode::serialize_into(writer, &texture).unwrap();
     }
