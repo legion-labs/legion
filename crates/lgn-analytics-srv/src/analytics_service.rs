@@ -283,7 +283,12 @@ impl AnalyticsService {
         let mut connection = self.pool.acquire().await?;
         let blocks =
             find_process_blocks(&mut connection, &request.process_id, &request.tag).await?;
-        Ok(ProcessBlocksReply { blocks })
+        let process = find_process(&mut connection, &request.process_id).await?;
+        Ok(ProcessBlocksReply {
+            blocks,
+            process_start_ticks: process.start_ticks,
+            tsc_frequency: process.tsc_frequency,
+        })
     }
 }
 

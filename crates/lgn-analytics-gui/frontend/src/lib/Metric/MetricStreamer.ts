@@ -6,8 +6,10 @@ import { get, Writable, writable } from "svelte/store";
 import { MetricState } from "./MetricState";
 
 export class MetricStreamer {
-  currentMinMs = -Infinity;
-  currentMaxMs = Infinity;
+  minTick = NaN;
+  maxTick = NaN;
+  tscFrequency = NaN;
+  processStartTicks = NaN;
   metricStore: Writable<MetricState[]>;
   private client: PerformanceAnalyticsClientImpl | null = null;
   private processId: string;
@@ -20,15 +22,16 @@ export class MetricStreamer {
 
   async initializeAsync() {
     this.client = await makeGrpcClient();
-    const blocks = (
-      await this.client.list_process_blocks({
-        processId: this.processId,
-        tag: "metrics",
-      })
-    ).blocks;
+    const processBlockReply = await this.client.list_process_blocks({
+      processId: this.processId,
+      tag: "metrics",
+    });
+
+    this.tscFrequency = processBlockReply.tscFrequency;
+    this.processStartTicks = processBlockReply.processStartTicks;
 
     const blockManifests = await Promise.all(
-      blocks.map(async (block) => {
+      processBlockReply.blocks.map(async (block) => {
         const blockManifest = await this.client?.fetch_block_metric_manifest({
           blockId: block.blockId,
           streamId: block.streamId,
@@ -46,7 +49,7 @@ export class MetricStreamer {
           if (!metricStates.get(metricDesc.name)) {
             metricStates.set(
               metricDesc.name,
-              new MetricState(true, metricDesc)
+              new MetricState(true, metricDesc, this.processStartTicks)
             );
           }
           const metricState = metricStates.get(metricDesc.name);
@@ -56,8 +59,16 @@ export class MetricStreamer {
     }
 
     this.metricStore.set(Array.from(metricStates.values()));
-    this.currentMinMs = Math.min(...get(this.metricStore).map((s) => s.min));
-    this.currentMaxMs = Math.max(...get(this.metricStore).map((s) => s.max));
+    this.minTick = Math.min(...get(this.metricStore).map((s) => s.minTick));
+    this.maxTick = Math.max(...get(this.metricStore).map((s) => s.maxTick));
+  }
+
+  getTickOffsetMs(tick: number) {
+    return ((tick - this.processStartTicks) * 1_000) / this.tscFrequency;
+  }
+
+  getTickRawMs(tick: number) {
+    return (tick * 1000) / this.tscFrequency;
   }
 
   updateFromSelectionState(metricSelectionState: MetricSelectionState) {
@@ -74,21 +85,17 @@ export class MetricStreamer {
     });
   }
 
-  tick(lod: number, min: number, max: number) {
-    this.currentMinMs = min;
-    this.currentMaxMs = max;
-    this.fetchSelectedMetrics(lod);
+  tick(lod: number, minTick: number, maxTick: number) {
+    this.fetchSelectedMetrics(lod, minTick, maxTick);
   }
 
-  fetchSelectedMetrics(lod: number) {
+  fetchSelectedMetrics(lod: number, minTick: number, maxTick: number) {
     const metrics = get(this.metricStore).filter((m) => m.enabled);
 
     const missingBlocks = metrics.map((m) => {
       return {
         name: m.name,
-        blocks: Array.from(
-          m.requestMissingBlocks(this.currentMinMs, this.currentMaxMs, lod)
-        ),
+        blocks: Array.from(m.requestMissingBlocks(minTick, maxTick, lod)),
       };
     });
 
@@ -108,6 +115,8 @@ export class MetricStreamer {
         await this.semaphore.acquire();
         try {
           const blockData = await this.client?.fetch_block_metric({
+            processStartTicks: this.processStartTicks,
+            tscFrequency: this.tscFrequency,
             processId: this.processId,
             streamId: block.streamId,
             metricName: metric.name,

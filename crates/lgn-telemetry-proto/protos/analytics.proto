@@ -54,6 +54,8 @@ message ListProcessBlocksRequest {
 
 message ProcessBlocksReply {
   repeated telemetry.BlockMetadata blocks = 1;
+  int64 process_start_ticks = 2;
+  uint64 tsc_frequency = 3;
 }
 
 // search_processes
