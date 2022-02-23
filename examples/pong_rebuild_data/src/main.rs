@@ -172,7 +172,6 @@ async fn create_offline_data(
                 position: (0_f32, 0_f32, 0.1_f32).into(),
                 rotation: Quat::default(),
                 scale: (12_f32, 8_f32, 0.01_f32).into(),
-                apply_to_children: false,
             }));
         entity
             .components
@@ -236,7 +235,6 @@ pub fn update(entity, events) {
                 position: (-2.4_f32, 0_f32, 0_f32).into(),
                 rotation: Quat::default(),
                 scale: (0.4_f32, 2_f32, 0.4_f32).into(),
-                apply_to_children: false,
             }));
         entity
             .components
@@ -309,7 +307,6 @@ pub fn update(entity, events) {
                 position: (2.4_f32, 0_f32, 0_f32).into(),
                 rotation: Quat::default(),
                 scale: (0.4_f32, 2_f32, 0.4_f32).into(),
-                apply_to_children: false,
             }));
         entity
             .components
@@ -496,7 +493,6 @@ pub fn update(entity, last_result, entities) {
                 position: Vec3::default(),
                 rotation: Quat::default(),
                 scale: (0.4_f32, 0.4_f32, 0.4_f32).into(),
-                apply_to_children: false,
             }));
         entity
             .components
@@ -554,7 +550,6 @@ pub fn update(entity, last_result, entities) {
                 position: (0_f32, 0_f32, 4_f32).into(),
                 rotation: Quat::default(),
                 scale: (0.5_f32, 0.5_f32, 0.5_f32).into(),
-                apply_to_children: false,
             }));
 
         entity.children.push(ground_path_id);

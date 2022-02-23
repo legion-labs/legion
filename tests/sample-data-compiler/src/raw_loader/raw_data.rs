@@ -38,7 +38,6 @@ pub struct Transform {
     pub position: Vec3,
     pub rotation: Quat,
     pub scale: Vec3,
-    pub apply_to_children: bool,
 }
 
 #[derive(Serialize, Deserialize)]
