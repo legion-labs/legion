@@ -1,8 +1,8 @@
 [
   {
     "resource_id": "(1d9ddd99aad89045,0b259a19-1b55-553e-bcf5-1b2974c44ac6)",
-    "checksum": "e2ecbf5130bc05e99a7e621645f40815",
-    "size": 171
+    "checksum": "e19ef010a3339229812c3938247fb055",
+    "size": 212
   },
   {
     "resource_id": "(1d9ddd99aad89045,1fa058cb-5877-5ffe-dcb7-1f364a804a8f)",
@@ -11,17 +11,17 @@
   },
   {
     "resource_id": "(1d9ddd99aad89045,3e01d556-6671-5f0f-3f38-c8693587fc66)",
-    "checksum": "77c09580c30ab7767a9090641c2049e6",
-    "size": 171
+    "checksum": "8882f63f9457b513ac44d8cb800a292f",
+    "size": 212
   },
   {
     "resource_id": "(1d9ddd99aad89045,4c7bd015-fe21-5bfc-1152-3d4a657418b4)",
-    "checksum": "960ce14e99eb4eb8c173f3e82078c465",
-    "size": 171
+    "checksum": "38f3c369e905ac00403d7062c39d9143",
+    "size": 212
   },
   {
     "resource_id": "(1d9ddd99aad89045,7a9abbad-e09d-577e-74bd-b69a3ac8b00e)",
-    "checksum": "72ef680172dfeabb2f7adf1d1eac0462",
-    "size": 171
+    "checksum": "95d6d97c8faae8f6abbb15614a4df423",
+    "size": 212
   }
 ]

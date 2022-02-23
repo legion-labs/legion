@@ -2,6 +2,9 @@
 //! Interfaces with NVIDIA's `PhysX` library
 //! Reference: [`PhysX` 4.1 SDK Guide](https://gameworksdocs.nvidia.com/PhysX/4.1/documentation/physxguide/Manual/Index.html)
 
+// generated from def\physics.rs
+include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
+
 mod labels;
 pub use labels::*;
 

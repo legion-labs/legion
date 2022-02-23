@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
-lgn-data-offline = { path = "../lgn-data-offline", version = "0.1.0" }
+lgn-data-offline = { path = "../lgn-data-offline", version = "0.1.0", optional = true }
 lgn-data-runtime = { path = "../lgn-data-runtime", version = "0.1.0" }
 lgn-math = { path = "../lgn-math", version = "0.1.0" }
 lgn-app = { path = "../../crates/lgn-app", version = "0.1.0" }
@@ -17,8 +17,7 @@ lgn-ecs = { path = "../../crates/lgn-ecs", version = "0.1.0" }
 lgn-data-model = { path = "../../crates/lgn-data-model", version = "0.1.0" }
 ispc-tex = { git = "https://github.com/legion-labs/ispc-tex-rs.git", branch = "main" }
 tbc = "0.3.0"
-psd = "0.3.0"
-
+psd = { version = "0.3.0", optional = true }
 
 # codegen
 lazy_static = "1.4"
@@ -34,5 +33,6 @@ typetag = "0.1.8"
 lgn-data-codegen = { path = "../../crates/lgn-data-codegen", version = "0.1.0" }
 
 [features]
-offline = []
+default = ["runtime"]
+offline = ["lgn-data-offline", "psd"]
 runtime = []

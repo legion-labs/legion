@@ -141,6 +141,11 @@ async fn create_offline_data(
                 color: (0x10, 0x10, 0x55).into(),
                 mesh: None,
             }));
+        entity
+            .components
+            .push(Box::new(lgn_physics::offline::PhysicsComponent {
+                dynamic: false,
+            }));
 
         project
             .add_resource_with_id(
@@ -181,6 +186,11 @@ async fn create_offline_data(
                 mesh_id: lgn_graphics_data::DefaultMeshType::Cube,
                 color: (0xFF, 0xFF, 0x20).into(),
                 mesh: None,
+            }));
+        entity
+            .components
+            .push(Box::new(lgn_physics::offline::PhysicsComponent {
+                dynamic: true,
             }));
 
         project
@@ -223,6 +233,11 @@ async fn create_offline_data(
                 color: (0xFF, 0x20, 0xFF).into(),
                 mesh: None,
             }));
+        entity
+            .components
+            .push(Box::new(lgn_physics::offline::PhysicsComponent {
+                dynamic: true,
+            }));
 
         project
             .add_resource_with_id(
@@ -263,6 +278,11 @@ async fn create_offline_data(
                 mesh_id: lgn_graphics_data::DefaultMeshType::Cube,
                 color: (0x20, 0xFF, 0xFF).into(),
                 mesh: None,
+            }));
+        entity
+            .components
+            .push(Box::new(lgn_physics::offline::PhysicsComponent {
+                dynamic: true,
             }));
 
         project
