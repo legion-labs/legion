@@ -11,7 +11,7 @@ use tower::Service;
 use super::web::client::GrpcWebClient as GrpcWebClientImpl;
 
 /// A `gRPC` generic client.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct GenericGrpcClient<C> {
     inner: C,
     uri: Uri,

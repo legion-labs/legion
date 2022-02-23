@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use aws_sdk_s3::presigning::config::PresigningConfig;
 use bytes::Bytes;
 use pin_project::pin_project;
+use std::collections::{BTreeMap, BTreeSet};
 use std::future::Future;
 use std::str::FromStr;
 use std::sync::Mutex;
@@ -18,6 +19,7 @@ use crate::{
     ContentWriter, Error, Identifier, Result,
 };
 
+#[derive(Debug, Clone)]
 pub struct AwsS3Provider {
     url: AwsS3Url,
     client: aws_sdk_s3::Client,
@@ -289,8 +291,8 @@ impl ContentReader for AwsS3Provider {
 
     async fn get_content_readers<'ids>(
         &self,
-        ids: &'ids [Identifier],
-    ) -> Result<Vec<(&'ids Identifier, Result<ContentAsyncRead>)>> {
+        ids: &'ids BTreeSet<Identifier>,
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
         get_content_readers_impl(self, ids).await
     }
 }

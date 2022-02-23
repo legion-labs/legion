@@ -1,7 +1,10 @@
 use async_trait::async_trait;
 use aws_sdk_dynamodb::model::AttributeValue;
 use aws_sdk_dynamodb::Blob;
-use std::io::Cursor;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    io::Cursor,
+};
 
 use crate::{
     traits::get_content_readers_impl, ContentAsyncRead, ContentAsyncWrite, ContentReader,
@@ -10,6 +13,7 @@ use crate::{
 
 use super::{Uploader, UploaderImpl};
 
+#[derive(Debug, Clone)]
 pub struct AwsDynamoDbProvider {
     table_name: String,
     client: aws_sdk_dynamodb::Client,
@@ -100,8 +104,8 @@ impl ContentReader for AwsDynamoDbProvider {
 
     async fn get_content_readers<'ids>(
         &self,
-        ids: &'ids [Identifier],
-    ) -> Result<Vec<(&'ids Identifier, Result<ContentAsyncRead>)>> {
+        ids: &'ids BTreeSet<Identifier>,
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
         get_content_readers_impl(self, ids).await
     }
 }

@@ -12,7 +12,7 @@ use super::{Error, Result};
 use crate::authentication::Authenticator;
 
 /// A `gRPC` client wrapper that adds authentication.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct AuthenticatedClient<C, A> {
     client: C,
     authenticator: A,

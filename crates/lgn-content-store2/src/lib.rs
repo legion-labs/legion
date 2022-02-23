@@ -1,12 +1,17 @@
 //! A content-store implementation that stores immutable assets in a efficient
 //! and cachable manner.
 
+mod buf_utils;
+mod chunk_identifier;
+mod chunker;
 mod config;
 mod errors;
 mod identifier;
 mod providers;
 mod traits;
 
+pub use chunk_identifier::ChunkIdentifier;
+pub use chunker::Chunker;
 pub use config::{
     Config, GrpcProviderConfig, LocalProviderConfig, ProviderConfig, RedisProviderConfig,
 };

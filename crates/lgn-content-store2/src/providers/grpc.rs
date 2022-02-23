@@ -1,4 +1,5 @@
 use std::{
+    collections::{BTreeMap, BTreeSet},
     pin::Pin,
     sync::Arc,
     task::{Context, Poll},
@@ -28,6 +29,7 @@ use crate::{
 use super::{Uploader, UploaderImpl};
 
 /// A `GrpcProvider` is a provider that delegates to a `gRPC` service.
+#[derive(Debug, Clone)]
 pub struct GrpcProvider<C> {
     client: Arc<Mutex<ContentStoreClient<C>>>,
     buf_size: usize,
@@ -102,8 +104,8 @@ where
 
     async fn get_content_readers<'ids>(
         &self,
-        ids: &'ids [Identifier],
-    ) -> Result<Vec<(&'ids Identifier, Result<ContentAsyncRead>)>> {
+        ids: &'ids BTreeSet<Identifier>,
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
         get_content_readers_impl(self, ids).await
     }
 }

@@ -1,15 +1,18 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{BTreeMap, BTreeSet, HashMap},
+    sync::Arc,
+};
 
 use async_trait::async_trait;
 use tokio::sync::RwLock;
 
 use crate::{
-    traits::get_content_readers_impl, ContentAsyncRead, ContentAsyncWrite, ContentReader,
-    ContentWriter, Error, Identifier, Result, Uploader, UploaderImpl,
+    ContentAsyncRead, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
+    Uploader, UploaderImpl,
 };
 
 /// A `LocalProvider` is a provider that stores content on the local filesystem.
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct MemoryProvider {
     map: Arc<RwLock<HashMap<Identifier, Vec<u8>>>>,
 }
@@ -35,9 +38,26 @@ impl ContentReader for MemoryProvider {
 
     async fn get_content_readers<'ids>(
         &self,
-        ids: &'ids [Identifier],
-    ) -> Result<Vec<(&'ids Identifier, Result<ContentAsyncRead>)>> {
-        get_content_readers_impl(self, ids).await
+        ids: &'ids BTreeSet<Identifier>,
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+        let map = self.map.read().await;
+
+        let res = ids
+            .iter()
+            .map(|id| {
+                (
+                    id,
+                    match map.get(id) {
+                        Some(content) => {
+                            Ok(Box::pin(std::io::Cursor::new(content.clone())) as ContentAsyncRead)
+                        }
+                        None => Err(Error::NotFound),
+                    },
+                )
+            })
+            .collect::<BTreeMap<_, Result<_>>>();
+
+        Ok(res)
     }
 }
 

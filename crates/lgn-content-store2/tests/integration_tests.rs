@@ -1,9 +1,13 @@
-use std::{net::SocketAddr, sync::Arc};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    net::SocketAddr,
+    sync::Arc,
+};
 
 use lgn_content_store2::{
-    ContentAddressReader, ContentAddressWriter, ContentReaderExt, ContentWriter, ContentWriterExt,
-    Error, GrpcProvider, GrpcService, Identifier, LocalProvider, MemoryProvider,
-    SmallContentProvider,
+    ChunkIdentifier, Chunker, ContentAddressReader, ContentAddressWriter, ContentReaderExt,
+    ContentWriter, ContentWriterExt, Error, GrpcProvider, GrpcService, Identifier, LocalProvider,
+    MemoryProvider, SmallContentProvider,
 };
 
 #[cfg(feature = "redis")]
@@ -16,6 +20,7 @@ mod common;
 #[allow(clippy::wildcard_imports)]
 use common::*;
 use lgn_online::grpc::GrpcClient;
+use rand::Rng;
 
 const BIG_DATA_A: [u8; 128] = [0x41; 128];
 const BIGGER_DATA_A: [u8; 512] = [0x41; 512];
@@ -35,6 +40,56 @@ fn test_data_invariants() {
 }
 
 #[tokio::test]
+async fn test_chunker() {
+    let provider = MemoryProvider::new();
+    let chunk_size = 2;
+    let chunker = Chunker::new(provider.clone()).with_chunk_size(chunk_size);
+
+    // The content has a lots of repeats, so we expect to get a lot of identical chunks.
+    let chunk_id = chunker.write_chunk(&BIG_DATA_A).await.unwrap();
+    let data = chunker.read_chunk(&chunk_id).await.unwrap();
+
+    assert_eq!(data, &BIG_DATA_A);
+    assert_eq!(chunk_id.data_size(), BIG_DATA_A.len());
+
+    // This should now exist in the provider.
+    let id = Identifier::new(&BIG_DATA_A[..chunk_size]);
+    assert_read_content!(provider, id, &BIG_DATA_A[..chunk_size]);
+
+    // This chunk should be invalid as we point artificially to a an underlying
+    // chunk.
+    let chunk_id = ChunkIdentifier::new(2, id);
+
+    match chunker.read_chunk(&chunk_id).await {
+        Err(Error::InvalidChunkIndex(_)) => {}
+        Err(err) => panic!("unexpected error: {}", err),
+        Ok(_) => panic!("expected error"),
+    };
+
+    // This chunk should not exist.
+    let chunk_id = ChunkIdentifier::new(2, Identifier::new(&BIG_DATA_X));
+
+    match chunker.read_chunk(&chunk_id).await {
+        Err(Error::NotFound) => {}
+        Err(err) => panic!("unexpected error: {}", err),
+        Ok(_) => panic!("expected error"),
+    };
+
+    // The content should have no repeats.
+    let mut buf = vec![0; 512];
+    let mut rng = rand::thread_rng();
+
+    for x in &mut buf {
+        *x = rng.gen::<u8>();
+    }
+
+    let chunk_id = chunker.write_chunk(&buf).await.unwrap();
+    let data = chunker.read_chunk(&chunk_id).await.unwrap();
+
+    assert_eq!(data, buf);
+}
+
+#[tokio::test]
 async fn test_memory_provider() {
     let provider = MemoryProvider::new();
 
@@ -50,7 +105,7 @@ async fn test_memory_provider() {
     let fake_id = Identifier::new(&BIG_DATA_X);
     assert_read_contents!(
         provider,
-        &[id, fake_id],
+        [id, fake_id],
         [Ok(&BIG_DATA_A), Err(Error::NotFound)]
     );
 }
@@ -74,7 +129,7 @@ async fn test_local_provider() {
     let fake_id = Identifier::new(&BIG_DATA_X);
     assert_read_contents!(
         provider,
-        &[id, fake_id],
+        [id, fake_id],
         [Ok(&BIG_DATA_A), Err(Error::NotFound)]
     );
 }
@@ -130,7 +185,7 @@ async fn test_aws_s3_provider() {
     let fake_id = Identifier::new(&BIG_DATA_X);
     assert_read_contents!(
         provider,
-        &[id.clone(), fake_id],
+        [id.clone(), fake_id],
         [Ok(&BIG_DATA_A), Err(Error::NotFound)]
     );
 
@@ -197,7 +252,7 @@ async fn test_aws_dynamodb_provider() {
     let fake_id = Identifier::new(&BIG_DATA_X);
     assert_read_contents!(
         provider,
-        &[id.clone(), fake_id],
+        [id.clone(), fake_id],
         [Ok(data), Err(Error::NotFound)]
     );
 
@@ -238,7 +293,7 @@ async fn test_redis_provider() {
     let fake_id = Identifier::new(&BIG_DATA_X);
     assert_read_contents!(
         provider,
-        &[id.clone(), fake_id],
+        [id.clone(), fake_id],
         [Ok(data), Err(Error::NotFound)]
     );
 
@@ -368,7 +423,7 @@ async fn test_grpc_provider() {
 
         assert_read_contents!(
             provider,
-            &[id, fake_id, fake_id_2],
+            [id, fake_id, fake_id_2],
             [
                 Ok(&BIGGER_DATA_A),
                 Err(Error::NotFound),

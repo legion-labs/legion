@@ -1,4 +1,6 @@
 use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt::Debug,
     pin::Pin,
     sync::Arc,
     task::{Context, Poll},
@@ -12,18 +14,36 @@ use crate::{
     ContentAsyncRead, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
 };
 
-pub trait TransferCallbacks: Send + Sync {
-    fn on_transfer_avoided(&self, id: &Identifier);
-    fn on_transfer_started(&self, id: &Identifier);
-    fn on_transfer_progress(&self, id: &Identifier, increment: usize, total: usize);
-    fn on_transfer_stopped(&self, id: &Identifier, result: Result<usize>);
+pub trait TransferCallbacks<Id>: Debug + Send + Sync {
+    fn on_transfer_avoided(&self, id: &Id, total: usize);
+    fn on_transfer_started(&self, id: &Id, total: usize);
+    fn on_transfer_progress(&self, id: &Id, total: usize, inc: usize, current: usize);
+    fn on_transfer_stopped(
+        &self,
+        id: &Id,
+        total: usize,
+        inc: usize,
+        current: usize,
+        result: Result<()>,
+    );
 }
 
 /// A `MonitorProvider` is a provider that tracks uploads and downloads.
+#[derive(Debug)]
 pub struct MonitorProvider<Inner> {
     inner: Inner,
-    on_download_callbacks: Option<Arc<Box<dyn TransferCallbacks>>>,
-    on_upload_callbacks: Option<Arc<Box<dyn TransferCallbacks>>>,
+    on_download_callbacks: Option<Arc<Box<dyn TransferCallbacks<Identifier>>>>,
+    on_upload_callbacks: Option<Arc<Box<dyn TransferCallbacks<Identifier>>>>,
+}
+
+impl<Inner: Clone> Clone for MonitorProvider<Inner> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            on_download_callbacks: self.on_download_callbacks.clone(),
+            on_upload_callbacks: self.on_upload_callbacks.clone(),
+        }
+    }
 }
 
 impl<Inner> MonitorProvider<Inner> {
@@ -37,12 +57,18 @@ impl<Inner> MonitorProvider<Inner> {
         }
     }
 
-    pub fn on_download_callbacks(mut self, callbacks: impl TransferCallbacks + 'static) -> Self {
+    pub fn on_download_callbacks(
+        mut self,
+        callbacks: impl TransferCallbacks<Identifier> + 'static,
+    ) -> Self {
         self.on_download_callbacks = Some(Arc::new(Box::new(callbacks)));
         self
     }
 
-    pub fn on_upload_callbacks(mut self, callbacks: impl TransferCallbacks + 'static) -> Self {
+    pub fn on_upload_callbacks(
+        mut self,
+        callbacks: impl TransferCallbacks<Identifier> + 'static,
+    ) -> Self {
         self.on_upload_callbacks = Some(Arc::new(Box::new(callbacks)));
         self
     }
@@ -57,6 +83,7 @@ impl<Inner: ContentReader + Send + Sync> ContentReader for MonitorProvider<Inner
             Box::pin(MonitorAsyncAdapter::new(
                 reader,
                 id.clone(),
+                id.data_size(),
                 Arc::clone(callbacks),
             ))
         } else {
@@ -66,8 +93,8 @@ impl<Inner: ContentReader + Send + Sync> ContentReader for MonitorProvider<Inner
 
     async fn get_content_readers<'ids>(
         &self,
-        ids: &'ids [Identifier],
-    ) -> Result<Vec<(&'ids Identifier, Result<ContentAsyncRead>)>> {
+        ids: &'ids BTreeSet<Identifier>,
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
         let readers = self.inner.get_content_readers(ids).await?;
 
         Ok(if let Some(callbacks) = &self.on_download_callbacks {
@@ -80,6 +107,7 @@ impl<Inner: ContentReader + Send + Sync> ContentReader for MonitorProvider<Inner
                             Ok(reader) => Ok(Box::pin(MonitorAsyncAdapter::new(
                                 reader,
                                 id.clone(),
+                                id.data_size(),
                                 Arc::clone(callbacks),
                             )) as ContentAsyncRead),
                             Err(err) => Err(err),
@@ -100,7 +128,7 @@ impl<Inner: ContentWriter + Send + Sync> ContentWriter for MonitorProvider<Inner
             Ok(writer) => Ok(writer),
             Err(Error::AlreadyExists) => {
                 if let Some(callbacks) = &self.on_upload_callbacks {
-                    callbacks.on_transfer_avoided(id);
+                    callbacks.on_transfer_avoided(id, id.data_size());
                 }
 
                 Err(Error::AlreadyExists)
@@ -112,6 +140,7 @@ impl<Inner: ContentWriter + Send + Sync> ContentWriter for MonitorProvider<Inner
             Box::pin(MonitorAsyncAdapter::new(
                 writer,
                 id.clone(),
+                id.data_size(),
                 Arc::clone(callbacks),
             ))
         } else {
@@ -121,30 +150,43 @@ impl<Inner: ContentWriter + Send + Sync> ContentWriter for MonitorProvider<Inner
 }
 
 #[pin_project]
-struct MonitorAsyncAdapter<Inner> {
+pub struct MonitorAsyncAdapter<Inner, Id> {
     #[pin]
     inner: Inner,
-    id: Identifier,
+    id: Id,
     #[pin]
+    started: bool,
     total: usize,
-    callbacks: Arc<Box<dyn TransferCallbacks>>,
+    #[pin]
+    current: usize,
+    #[pin]
+    inc: usize,
+    progress_step: usize,
+    callbacks: Arc<Box<dyn TransferCallbacks<Id>>>,
 }
 
-impl<Inner> MonitorAsyncAdapter<Inner> {
-    fn new(inner: Inner, id: Identifier, callbacks: Arc<Box<dyn TransferCallbacks>>) -> Self {
-        callbacks.on_transfer_started(&id);
-
+impl<Inner, Id> MonitorAsyncAdapter<Inner, Id> {
+    pub fn new(
+        inner: Inner,
+        id: Id,
+        total: usize,
+        callbacks: Arc<Box<dyn TransferCallbacks<Id>>>,
+    ) -> Self {
         Self {
             inner,
             id,
-            total: 0,
+            started: false,
+            total,
+            current: 0,
+            inc: 0,
+            progress_step: total / 100,
             callbacks,
         }
     }
 }
 
 #[async_trait]
-impl<Inner: AsyncRead + Send> AsyncRead for MonitorAsyncAdapter<Inner> {
+impl<Inner: AsyncRead + Send, Id> AsyncRead for MonitorAsyncAdapter<Inner, Id> {
     fn poll_read(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -152,20 +194,41 @@ impl<Inner: AsyncRead + Send> AsyncRead for MonitorAsyncAdapter<Inner> {
     ) -> Poll<Result<(), std::io::Error>> {
         let mut this = self.project();
 
+        if !*this.started {
+            *this.started = true;
+            this.callbacks.on_transfer_started(this.id, *this.total);
+        }
+
+        let before = buf.filled().len();
+
         match this.inner.poll_read(cx, buf) {
             Poll::Pending => Poll::Pending,
             Poll::Ready(res) => {
-                let inc = buf.filled().len();
+                let diff = buf.filled().len() - before;
 
-                if inc > 0 {
-                    *this.total += inc;
-                    this.callbacks
-                        .on_transfer_progress(this.id, inc, *this.total);
+                if diff > 0 {
+                    *this.inc += diff;
+
+                    if *this.inc > *this.progress_step {
+                        *this.current += *this.inc;
+
+                        this.callbacks.on_transfer_progress(
+                            this.id,
+                            *this.total,
+                            *this.inc,
+                            *this.current,
+                        );
+
+                        *this.inc = 0;
+                    }
                 } else {
                     this.callbacks.on_transfer_stopped(
                         this.id,
+                        *this.total,
+                        *this.inc,
+                        *this.current,
                         match &res {
-                            Ok(_) => Ok(inc),
+                            Ok(_) => Ok(()),
                             Err(err) => Err(anyhow::anyhow!("{}", err).into()),
                         },
                     );
@@ -178,7 +241,7 @@ impl<Inner: AsyncRead + Send> AsyncRead for MonitorAsyncAdapter<Inner> {
 }
 
 #[async_trait]
-impl<Inner: AsyncWrite + Send> AsyncWrite for MonitorAsyncAdapter<Inner> {
+impl<Inner: AsyncWrite + Send, Id> AsyncWrite for MonitorAsyncAdapter<Inner, Id> {
     fn poll_write(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -186,20 +249,41 @@ impl<Inner: AsyncWrite + Send> AsyncWrite for MonitorAsyncAdapter<Inner> {
     ) -> Poll<Result<usize, std::io::Error>> {
         let mut this = self.project();
 
+        if !*this.started {
+            *this.started = true;
+            this.callbacks.on_transfer_started(this.id, *this.total);
+        }
+
         match this.inner.poll_write(cx, buf) {
             Poll::Pending => Poll::Pending,
-            Poll::Ready(Ok(inc)) => {
-                if inc > 0 {
-                    *this.total += inc;
-                    this.callbacks
-                        .on_transfer_progress(this.id, inc, *this.total);
+            Poll::Ready(Ok(diff)) => {
+                if diff > 0 {
+                    *this.inc += diff;
+
+                    if *this.inc > *this.progress_step {
+                        *this.current += *this.inc;
+
+                        this.callbacks.on_transfer_progress(
+                            this.id,
+                            *this.total,
+                            *this.inc,
+                            *this.current,
+                        );
+
+                        *this.inc = 0;
+                    }
                 }
 
-                Poll::Ready(Ok(inc))
+                Poll::Ready(Ok(diff))
             }
             Poll::Ready(Err(err)) => {
-                this.callbacks
-                    .on_transfer_stopped(this.id, Err(anyhow::anyhow!("{}", err).into()));
+                this.callbacks.on_transfer_stopped(
+                    this.id,
+                    *this.total,
+                    *this.inc,
+                    *this.current,
+                    Err(anyhow::anyhow!("{}", err).into()),
+                );
 
                 Poll::Ready(Err(err))
             }
@@ -211,8 +295,13 @@ impl<Inner: AsyncWrite + Send> AsyncWrite for MonitorAsyncAdapter<Inner> {
         let res = this.inner.poll_flush(cx);
 
         if let Poll::Ready(Err(err)) = &res {
-            this.callbacks
-                .on_transfer_stopped(this.id, Err(anyhow::anyhow!("{}", err).into()));
+            this.callbacks.on_transfer_stopped(
+                this.id,
+                *this.total,
+                *this.inc,
+                *this.current,
+                Err(anyhow::anyhow!("{}", err).into()),
+            );
         }
 
         res
@@ -227,11 +316,22 @@ impl<Inner: AsyncWrite + Send> AsyncWrite for MonitorAsyncAdapter<Inner> {
 
         match &res {
             Poll::Ready(Ok(_)) => {
-                this.callbacks.on_transfer_stopped(this.id, Ok(*this.total));
+                this.callbacks.on_transfer_stopped(
+                    this.id,
+                    *this.total,
+                    *this.inc,
+                    *this.current,
+                    Ok(()),
+                );
             }
             Poll::Ready(Err(err)) => {
-                this.callbacks
-                    .on_transfer_stopped(this.id, Err(anyhow::anyhow!("{}", err).into()));
+                this.callbacks.on_transfer_stopped(
+                    this.id,
+                    *this.total,
+                    *this.inc,
+                    *this.current,
+                    Err(anyhow::anyhow!("{}", err).into()),
+                );
             }
             Poll::Pending => {}
         }

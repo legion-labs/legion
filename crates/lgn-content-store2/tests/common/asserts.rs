@@ -21,27 +21,44 @@ macro_rules! assert_read_content {
 
 macro_rules! assert_read_contents {
     ($provider:expr, $ids:expr, $expected_contents:expr) => {{
+        let expected_contents: Vec<_> = $expected_contents.into_iter().collect();
+        let ids: Vec<_> = $ids.into_iter().collect();
+
+        assert_eq!(expected_contents.len(), ids.len());
+
+        let expected_contents = ids
+            .iter()
+            .cloned()
+            .zip(expected_contents)
+            .collect::<BTreeMap<_, _>>();
+        let ids = ids.into_iter().collect::<BTreeSet<Identifier>>();
+
         let contents = $provider
-            .read_contents($ids)
+            .read_contents(&ids)
             .await
             .expect("failed to read contents");
 
-        assert_eq!(contents.len(), $expected_contents.len());
-
-        for (i, content) in contents.iter().enumerate() {
-            let expected_content = &$expected_contents[i];
+        for id in &ids {
+            let content = contents
+                .get(id)
+                .expect(&format!("failed to find content for `{}`", id));
+            let expected_content = expected_contents
+                .get(id)
+                .expect(&format!("failed to find expected content for `{}`", id));
 
             match (content, expected_content) {
                 (Ok(content), Ok(expected_content)) => assert_eq!(content, expected_content),
-                (Err(err), Err(expected_err)) => match (err, expected_err) {
-                    (Error::NotFound { .. }, Error::NotFound { .. }) => {}
-                    (err, expected_err) => {
-                        panic!("unexpected errors: {:?} & {:?}", err, expected_err)
-                    }
-                },
-                (Ok(_), Err(_)) => panic!("content was found at index {}", i),
-                (Err(_), Ok(_)) => panic!("content was not found at index {}", i),
-            };
+                (Err(err), Err(expected_err)) => {
+                    assert_eq!(err.to_string(), expected_err.to_string())
+                }
+                (Ok(_), Err(_)) => {
+                    panic!("content was found with the specified identifier `{}`", id)
+                }
+                (Err(_), Ok(_)) => panic!(
+                    "content was not found with the specified identifier `{}`",
+                    id
+                ),
+            }
         }
     }};
 }

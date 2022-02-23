@@ -23,7 +23,7 @@ use super::{Authenticator, ClientTokenSet, Error, Result, UserInfo};
 
 const DEFAULT_PORT: u16 = 80;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct OAuthClient {
     client: CoreClient,
     client_id: ClientId,

@@ -9,6 +9,8 @@ pub enum Error {
     DataMismatch { reason: String },
     #[error("invalid hash algorithm")]
     InvalidHashAlgorithm,
+    #[error("invalid chunk index")]
+    InvalidChunkIndex(#[source] anyhow::Error),
     #[error("the content was not found")]
     NotFound,
     #[error("the content already exists")]

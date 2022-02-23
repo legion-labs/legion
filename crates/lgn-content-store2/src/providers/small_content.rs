@@ -1,3 +1,8 @@
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt::Debug,
+};
+
 use async_trait::async_trait;
 
 use crate::{
@@ -6,8 +11,17 @@ use crate::{
 };
 
 /// A `SmallContentProvider` is a provider that implements the small-content optimization or delegates to a specified provider.
+#[derive(Debug)]
 pub struct SmallContentProvider<Inner> {
     inner: Inner,
+}
+
+impl<Inner: Clone> Clone for SmallContentProvider<Inner> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+        }
+    }
 }
 
 impl<Inner> SmallContentProvider<Inner> {
@@ -30,8 +44,8 @@ impl<Inner: ContentReader + Send + Sync> ContentReader for SmallContentProvider<
 
     async fn get_content_readers<'ids>(
         &self,
-        ids: &'ids [Identifier],
-    ) -> Result<Vec<(&'ids Identifier, Result<ContentAsyncRead>)>> {
+        ids: &'ids BTreeSet<Identifier>,
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
         get_content_readers_impl(self, ids).await
     }
 }

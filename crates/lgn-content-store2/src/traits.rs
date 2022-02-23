@@ -1,4 +1,8 @@
-use std::{pin::Pin, sync::Arc};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    pin::Pin,
+    sync::Arc,
+};
 
 use async_trait::async_trait;
 use futures::future::join_all;
@@ -30,22 +34,22 @@ pub trait ContentReader {
     /// If the high-level request fails, an error is returned.
     async fn get_content_readers<'ids>(
         &self,
-        ids: &'ids [Identifier],
-    ) -> Result<Vec<(&'ids Identifier, Result<ContentAsyncRead>)>>;
+        ids: &'ids BTreeSet<Identifier>,
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>>;
 }
 
 /// A default implementation for the `get_content_readers` method that just
 /// calls in parallel `get_content_reader` for each identifier.
 pub(crate) async fn get_content_readers_impl<'ids>(
     reader: &(dyn ContentReader + Send + Sync),
-    ids: &'ids [Identifier],
-) -> Result<Vec<(&'ids Identifier, Result<ContentAsyncRead>)>> {
+    ids: &'ids BTreeSet<Identifier>,
+) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
     let futures = ids
         .iter()
         .map(|id| async move { (id, reader.get_content_reader(id).await) })
         .collect::<Vec<_>>();
 
-    Ok(join_all(futures).await)
+    Ok(join_all(futures).await.into_iter().collect())
 }
 
 #[async_trait]
@@ -58,7 +62,7 @@ pub trait ContentReaderExt: ContentReader {
 
         let mut reader = self.get_content_reader(id).await?;
 
-        let mut result = Vec::new();
+        let mut result = Vec::with_capacity(id.data_size());
 
         reader
             .read_to_end(&mut result)
@@ -68,29 +72,35 @@ pub trait ContentReaderExt: ContentReader {
     }
 
     /// Read the contents referenced by the specified identifiers.
-    async fn read_contents(&self, ids: &[Identifier]) -> Result<Vec<Result<Vec<u8>>>> {
+    async fn read_contents<'ids>(
+        &self,
+        ids: &'ids BTreeSet<Identifier>,
+    ) -> Result<BTreeMap<&'ids Identifier, Result<Vec<u8>>>> {
         let readers = self.get_content_readers(ids).await?;
         let futures = readers
             .into_iter()
             .map(|(id, r)| async move {
-                match r {
-                    Ok(mut reader) => {
-                        let mut result = Vec::new();
-                        reader
-                            .read_to_end(&mut result)
-                            .await
-                            .map_err(|err| {
-                                anyhow::anyhow!("failed to read content for `{}`: {}", id, err)
-                                    .into()
-                            })
-                            .map(|_| result)
-                    }
-                    Err(err) => Err(err),
-                }
+                (
+                    id,
+                    match r {
+                        Ok(mut reader) => {
+                            let mut result = Vec::with_capacity(id.data_size());
+                            reader
+                                .read_to_end(&mut result)
+                                .await
+                                .map_err(|err| {
+                                    anyhow::anyhow!("failed to read content for `{}`: {}", id, err)
+                                        .into()
+                                })
+                                .map(|_| result)
+                        }
+                        Err(err) => Err(err),
+                    },
+                )
             })
             .collect::<Vec<_>>();
 
-        Ok(join_all(futures).await)
+        Ok(join_all(futures).await.into_iter().collect())
     }
 }
 
@@ -196,8 +206,8 @@ impl<T: ContentReader + Send + Sync> ContentReader for Arc<T> {
 
     async fn get_content_readers<'ids>(
         &self,
-        ids: &'ids [Identifier],
-    ) -> Result<Vec<(&'ids Identifier, Result<ContentAsyncRead>)>> {
+        ids: &'ids BTreeSet<Identifier>,
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
         self.as_ref().get_content_readers(ids).await
     }
 }
@@ -233,8 +243,8 @@ impl<T: ContentReader + Send + Sync + ?Sized> ContentReader for Box<T> {
 
     async fn get_content_readers<'ids>(
         &self,
-        ids: &'ids [Identifier],
-    ) -> Result<Vec<(&'ids Identifier, Result<ContentAsyncRead>)>> {
+        ids: &'ids BTreeSet<Identifier>,
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
         self.as_ref().get_content_readers(ids).await
     }
 }
@@ -270,8 +280,8 @@ impl<T: ContentReader + Send + Sync + ?Sized> ContentReader for &T {
 
     async fn get_content_readers<'ids>(
         &self,
-        ids: &'ids [Identifier],
-    ) -> Result<Vec<(&'ids Identifier, Result<ContentAsyncRead>)>> {
+        ids: &'ids BTreeSet<Identifier>,
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
         (**self).get_content_readers(ids).await
     }
 }
