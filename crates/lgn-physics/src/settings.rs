@@ -1,5 +1,3 @@
-use lgn_config::Config;
-
 pub struct PhysicsSettings {
     pub(crate) enable_visual_debugger: bool,
     pub(crate) length_tolerance: f32,
@@ -7,21 +5,17 @@ pub struct PhysicsSettings {
 }
 
 impl PhysicsSettings {
-    pub fn from_config(config: &Config) -> Self {
+    pub fn new(enable_visual_debugger: bool, length_tolerance: f32, speed_tolerance: f32) -> Self {
         Self {
-            enable_visual_debugger: config.get_or("physics.enable_visual_debugger", false),
-            length_tolerance: config.get_or("physics.length_tolerance", 1.0_f32),
-            speed_tolerance: config.get_or("physics.speed_tolerance", 1.0_f32),
+            enable_visual_debugger,
+            length_tolerance,
+            speed_tolerance,
         }
     }
 }
 
 impl Default for PhysicsSettings {
     fn default() -> Self {
-        Self {
-            enable_visual_debugger: false,
-            length_tolerance: 1.0_f32,
-            speed_tolerance: 1.0_f32,
-        }
+        Self::new(false, 1.0_f32, 1.0_f32)
     }
 }
