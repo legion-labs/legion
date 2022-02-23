@@ -40,12 +40,6 @@
         "mesh": null,
         "mesh_id": "Plane"
       }
-    },
-    {
-      "Physics": {
-        "collision_geometry": "(80b97dd7e2e9edca,7948dc8c-8bc6-4aaf-b3cf-0a21633edc44)|9c9a840b84935d1f",
-        "dynamic": false
-      }
     }
   ],
   "parent": "(1c0ff9e497b0740f,5d6c8521-ef7f-4402-8fac-01c5c4f53329)"

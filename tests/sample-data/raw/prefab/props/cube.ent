@@ -18,9 +18,5 @@
         StaticMesh((
             mesh_id: 1,
         )),
-        Physics((
-            dynamic: false,
-            collision_geometry: "offline_mesh(raw/prefab/props/cube.obj)",
-        )),
     ],
 )
