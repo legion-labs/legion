@@ -309,18 +309,12 @@ impl SourceIndex {
                             (
                                 ResourceId::from_str(path.file_stem().unwrap().to_str().unwrap())
                                     .unwrap(),
-                                hash,
+                                Checksum::from_str(&hash).unwrap(),
                             )
                         });
 
-                        for (resource_id, source_control_hash) in resource_list {
-                            let (kind, resource_hash, resource_deps) =
-                                project.resource_info(resource_id)?;
-
-                            assert_eq!(
-                                resource_hash,
-                                Checksum::from_str(&source_control_hash).unwrap(),
-                            );
+                        for (resource_id, resource_hash) in resource_list {
+                            let (kind, resource_deps) = project.resource_info(resource_id)?;
 
                             content.update_resource(
                                 ResourcePathId::from(ResourceTypeAndId {
