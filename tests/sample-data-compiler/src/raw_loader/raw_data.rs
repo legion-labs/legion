@@ -73,7 +73,6 @@ pub enum Component {
     Navmesh(NavMesh),
     View(View),
     Light(Light),
-    Physics(Physics),
     StaticMesh(StaticMesh),
 }
 
@@ -101,12 +100,6 @@ pub struct Material {
     pub base_metalness: f32,
     pub base_roughness: f32,
     pub reflectance: f32,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Physics {
-    pub dynamic: bool,
-    pub collision_geometry: String,
 }
 
 #[derive(Serialize, Deserialize)]
