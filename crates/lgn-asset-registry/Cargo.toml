@@ -31,9 +31,6 @@ lgn-scripting = { path = "../lgn-scripting", version = "0.1.0", features = [
 sample-data = { path = "../../tests/sample-data", version = "0.1.0", features = [
     "runtime",
 ] }
-generic-data = { path = "../../tests/generic-data", version = "0.1.0", features = [
-    "runtime",
-] }
 
 # other
 crossbeam-channel = "0.5.1"

@@ -4128,7 +4128,6 @@ name = "lgn-asset-registry"
 version = "0.1.0"
 dependencies = [
  "crossbeam-channel 0.5.2",
- "generic-data",
  "lgn-app",
  "lgn-config",
  "lgn-content-store",
