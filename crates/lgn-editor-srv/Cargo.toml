@@ -50,6 +50,10 @@ lgn-graphics-data = { path = "../lgn-graphics-data", version = "0.1.0", features
     "offline",
     "runtime",
 ] }
+lgn-physics = { path = "../lgn-physics", version = "0.1.0", features = [
+    "offline",
+    "runtime",
+] }
 lgn-scripting = { path = "../lgn-scripting", version = "0.1.0", features = [
     "offline",
     "runtime",
