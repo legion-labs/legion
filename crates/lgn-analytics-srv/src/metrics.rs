@@ -41,20 +41,29 @@ pub async fn get_process_metrics_time_range(
 }
 
 #[allow(clippy::cast_possible_wrap)]
-fn reduce_lod(source: &MetricBlockData, lod: u32) -> Vec<MetricDataPoint> {
+#[allow(clippy::cast_precision_loss)]
+fn reduce_lod(
+    source: &MetricBlockData,
+    lod: u32,
+    tsc_frequency: u64,
+    start_ticks: i64,
+) -> Vec<MetricDataPoint> {
     let merge_threshold = 100.0_f64.powi(lod as i32 - 2) / 10.0;
     let mut points: Vec<MetricDataPoint> = vec![];
     let mut max = f64::MIN;
     let mut acc = 0.0;
+    let inv_tsc_frequency = get_tsc_frequency_inverse_ms(tsc_frequency);
     for i in 0..source.points.len() - 1 {
         let point = &source.points[i];
         max = f64::max(point.value, max);
         let next_point = &source.points[i + 1];
-        let delta = next_point.time_ms - point.time_ms;
+        let point_time_ms = (point.tick - start_ticks as u64) as f64 * inv_tsc_frequency;
+        let next_point_time_ms = (next_point.tick - start_ticks as u64) as f64 * inv_tsc_frequency;
+        let delta = next_point_time_ms - point_time_ms;
         acc += delta;
         if acc > merge_threshold {
             points.push(MetricDataPoint {
-                time_ms: point.time_ms,
+                tick: point.tick,
                 value: max,
             });
             max = f64::MIN;
@@ -107,7 +116,6 @@ impl MetricHandler {
                         async {
                             Ok(self
                                 .get_raw_block_data(
-                                    &request.process_id,
                                     &request.block_id,
                                     &request.stream_id,
                                     &request.metric_name,
@@ -119,7 +127,12 @@ impl MetricHandler {
                 if request.lod > 0 {
                     Ok(MetricBlockData {
                         lod: request.lod,
-                        points: reduce_lod(&raw, request.lod),
+                        points: reduce_lod(
+                            &raw,
+                            request.lod,
+                            request.tsc_frequency,
+                            request.process_start_ticks,
+                        ),
                     })
                 } else {
                     Ok(raw)
@@ -184,20 +197,17 @@ impl MetricHandler {
     #[allow(clippy::cast_precision_loss)]
     async fn get_raw_block_data(
         &self,
-        process_id: &str,
         block_id: &str,
         stream_id: &str,
         metric_name: &str,
     ) -> Result<MetricBlockData> {
         let mut connection = self.pool.acquire().await?;
-        let process = find_process(&mut connection, process_id).await?;
         let payload = fetch_block_payload(
             &mut connection,
             self.blob_storage.clone(),
             block_id.to_string(),
         )
         .await?;
-        let inv_tsc_frequency = get_process_tick_length_ms(&process);
         let stream = find_stream(&mut connection, stream_id).await?;
         let mut points = vec![];
         parse_block(&stream, &payload, |val| {
@@ -206,10 +216,9 @@ impl MetricHandler {
                 let name = metric_desc.get_ref("name").unwrap().as_str().unwrap();
                 if name == metric_name {
                     let time = obj.get::<i64>("time").unwrap();
-                    let time_ms = (time - process.start_ticks) as f64 * inv_tsc_frequency;
                     let value = obj.get::<u64>("value").unwrap();
                     points.push(MetricDataPoint {
-                        time_ms,
+                        tick: time as u64,
                         value: value as f64,
                     });
                 }
