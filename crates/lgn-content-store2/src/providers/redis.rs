@@ -94,10 +94,10 @@ impl ContentReader for RedisProvider {
         }
     }
 
-    async fn get_content_readers(
+    async fn get_content_readers<'ids>(
         &self,
-        ids: &[Identifier],
-    ) -> Result<Vec<Result<ContentAsyncRead>>> {
+        ids: &'ids [Identifier],
+    ) -> Result<Vec<(&'ids Identifier, Result<ContentAsyncRead>)>> {
         get_content_readers_impl(self, ids).await
     }
 }

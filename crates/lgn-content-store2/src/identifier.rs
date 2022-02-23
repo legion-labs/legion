@@ -150,10 +150,10 @@ impl Identifier {
     }
 
     /// Returns the size of the data pointed to by this identifier.
-    pub fn data_size(&self) -> u64 {
+    pub fn data_size(&self) -> usize {
         match self {
-            Self::HashRef(size, _, _) => (*size),
-            Self::Data(data) => data.len().try_into().expect("size cannot exceed usize"),
+            Self::HashRef(size, _, _) => (*size).try_into().expect("size cannot fit in usize"), // This should never happen on a modern architecture.
+            Self::Data(data) => data.len(),
         }
     }
 

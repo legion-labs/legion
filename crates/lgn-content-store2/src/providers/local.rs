@@ -37,7 +37,12 @@ impl ContentReader for LocalProvider {
         match tokio::fs::File::open(&path).await {
             Ok(file) => match file.metadata().await {
                 Ok(metadata) => {
-                    if metadata.len() != id.data_size() {
+                    let metadata_size: usize = metadata
+                        .len()
+                        .try_into()
+                        .expect("metadata size does not fit in usize"); // Should never happen on a modern architecture.
+
+                    if metadata_size != id.data_size() {
                         Err(Error::Corrupt)
                     } else {
                         Ok(Box::pin(file))
@@ -63,10 +68,10 @@ impl ContentReader for LocalProvider {
         }
     }
 
-    async fn get_content_readers(
+    async fn get_content_readers<'ids>(
         &self,
-        ids: &[Identifier],
-    ) -> Result<Vec<Result<ContentAsyncRead>>> {
+        ids: &'ids [Identifier],
+    ) -> Result<Vec<(&'ids Identifier, Result<ContentAsyncRead>)>> {
         get_content_readers_impl(self, ids).await
     }
 }

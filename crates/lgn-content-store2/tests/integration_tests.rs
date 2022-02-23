@@ -266,7 +266,7 @@ async fn test_grpc_provider() {
     let service = GrpcService::new(
         local_provider,
         Arc::clone(&address_provider),
-        BIG_DATA_A.len().try_into().unwrap(),
+        BIG_DATA_A.len(),
     );
     let service = lgn_content_store_proto::content_store_server::ContentStoreServer::new(service);
     let server = tonic::transport::Server::builder().add_service(service);

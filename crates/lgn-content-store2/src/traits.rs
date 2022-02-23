@@ -28,21 +28,21 @@ pub trait ContentReader {
     /// is returned instead.
     ///
     /// If the high-level request fails, an error is returned.
-    async fn get_content_readers(
+    async fn get_content_readers<'ids>(
         &self,
-        ids: &[Identifier],
-    ) -> Result<Vec<Result<ContentAsyncRead>>>;
+        ids: &'ids [Identifier],
+    ) -> Result<Vec<(&'ids Identifier, Result<ContentAsyncRead>)>>;
 }
 
 /// A default implementation for the `get_content_readers` method that just
 /// calls in parallel `get_content_reader` for each identifier.
-pub(crate) async fn get_content_readers_impl(
+pub(crate) async fn get_content_readers_impl<'ids>(
     reader: &(dyn ContentReader + Send + Sync),
-    ids: &[Identifier],
-) -> Result<Vec<Result<ContentAsyncRead>>> {
+    ids: &'ids [Identifier],
+) -> Result<Vec<(&'ids Identifier, Result<ContentAsyncRead>)>> {
     let futures = ids
         .iter()
-        .map(|id| reader.get_content_reader(id))
+        .map(|id| async move { (id, reader.get_content_reader(id).await) })
         .collect::<Vec<_>>();
 
     Ok(join_all(futures).await)
@@ -72,7 +72,7 @@ pub trait ContentReaderExt: ContentReader {
         let readers = self.get_content_readers(ids).await?;
         let futures = readers
             .into_iter()
-            .map(|r| async move {
+            .map(|(id, r)| async move {
                 match r {
                     Ok(mut reader) => {
                         let mut result = Vec::new();
@@ -80,7 +80,8 @@ pub trait ContentReaderExt: ContentReader {
                             .read_to_end(&mut result)
                             .await
                             .map_err(|err| {
-                                anyhow::anyhow!("failed to read content: {}", err).into()
+                                anyhow::anyhow!("failed to read content for `{}`: {}", id, err)
+                                    .into()
                             })
                             .map(|_| result)
                     }
@@ -193,10 +194,10 @@ impl<T: ContentReader + Send + Sync> ContentReader for Arc<T> {
         self.as_ref().get_content_reader(id).await
     }
 
-    async fn get_content_readers(
+    async fn get_content_readers<'ids>(
         &self,
-        ids: &[Identifier],
-    ) -> Result<Vec<Result<ContentAsyncRead>>> {
+        ids: &'ids [Identifier],
+    ) -> Result<Vec<(&'ids Identifier, Result<ContentAsyncRead>)>> {
         self.as_ref().get_content_readers(ids).await
     }
 }
@@ -230,10 +231,10 @@ impl<T: ContentReader + Send + Sync + ?Sized> ContentReader for Box<T> {
         self.as_ref().get_content_reader(id).await
     }
 
-    async fn get_content_readers(
+    async fn get_content_readers<'ids>(
         &self,
-        ids: &[Identifier],
-    ) -> Result<Vec<Result<ContentAsyncRead>>> {
+        ids: &'ids [Identifier],
+    ) -> Result<Vec<(&'ids Identifier, Result<ContentAsyncRead>)>> {
         self.as_ref().get_content_readers(ids).await
     }
 }
@@ -267,10 +268,10 @@ impl<T: ContentReader + Send + Sync + ?Sized> ContentReader for &T {
         (**self).get_content_reader(id).await
     }
 
-    async fn get_content_readers(
+    async fn get_content_readers<'ids>(
         &self,
-        ids: &[Identifier],
-    ) -> Result<Vec<Result<ContentAsyncRead>>> {
+        ids: &'ids [Identifier],
+    ) -> Result<Vec<(&'ids Identifier, Result<ContentAsyncRead>)>> {
         (**self).get_content_readers(ids).await
     }
 }

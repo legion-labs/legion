@@ -5,6 +5,7 @@ mod aws_s3;
 mod grpc;
 mod local;
 mod memory;
+mod monitor;
 #[cfg(feature = "redis")]
 mod redis;
 mod small_content;
@@ -19,5 +20,6 @@ pub use aws_s3::{AwsS3Provider, AwsS3Url};
 pub use grpc::{GrpcProvider, GrpcService};
 pub use local::LocalProvider;
 pub use memory::MemoryProvider;
+pub use monitor::{MonitorProvider, TransferCallbacks};
 pub use small_content::SmallContentProvider;
 pub(crate) use uploader::{Uploader, UploaderImpl};

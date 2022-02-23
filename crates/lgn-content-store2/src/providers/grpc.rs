@@ -100,10 +100,10 @@ where
         }
     }
 
-    async fn get_content_readers(
+    async fn get_content_readers<'ids>(
         &self,
-        ids: &[Identifier],
-    ) -> Result<Vec<Result<ContentAsyncRead>>> {
+        ids: &'ids [Identifier],
+    ) -> Result<Vec<(&'ids Identifier, Result<ContentAsyncRead>)>> {
         get_content_readers_impl(self, ids).await
     }
 }
@@ -325,7 +325,7 @@ impl AsyncWrite for HttpUploader {
 pub struct GrpcService<Provider, AddressProvider> {
     provider: Provider,
     address_provider: AddressProvider,
-    size_threshold: u64,
+    size_threshold: usize,
 }
 
 impl<Provider, AddressProvider> GrpcService<Provider, AddressProvider> {
@@ -337,7 +337,11 @@ impl<Provider, AddressProvider> GrpcService<Provider, AddressProvider> {
     ///
     /// Otherwise, the request is routed to the `AddressProvider` to get the
     /// address of the downloader/uploader.
-    pub fn new(provider: Provider, address_provider: AddressProvider, size_threshold: u64) -> Self {
+    pub fn new(
+        provider: Provider,
+        address_provider: AddressProvider,
+        size_threshold: usize,
+    ) -> Self {
         Self {
             provider,
             address_provider,

@@ -98,10 +98,10 @@ impl ContentReader for AwsDynamoDbProvider {
         Ok(Box::pin(Cursor::new(self.get_content(id).await?)))
     }
 
-    async fn get_content_readers(
+    async fn get_content_readers<'ids>(
         &self,
-        ids: &[Identifier],
-    ) -> Result<Vec<Result<ContentAsyncRead>>> {
+        ids: &'ids [Identifier],
+    ) -> Result<Vec<(&'ids Identifier, Result<ContentAsyncRead>)>> {
         get_content_readers_impl(self, ids).await
     }
 }
