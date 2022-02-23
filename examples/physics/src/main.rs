@@ -116,40 +116,162 @@ async fn create_offline_data(
     project: &mut Project,
     resource_registry: &Arc<Mutex<ResourceRegistry>>,
 ) -> Vec<ResourceTypeAndId> {
-    // ground
-    let ground_path_id = {
+    let ground_id = {
         let mut resources = resource_registry.lock().await;
         let id = ResourceTypeAndId {
             kind: sample_data::offline::Entity::TYPE,
-            id: ResourceId::from_str("63c338c9-0d03-4636-8a17-8f0cba02b618").unwrap(),
+            id: ResourceId::from_str("8859bf63-f187-4aa3-afd5-425130c7ba04").unwrap(),
         };
         let handle = resources.new_resource(id.kind).unwrap();
 
         let entity = handle
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
-        entity.components.push(Box::new(sample_data::offline::Name {
-            name: "Ground".to_string(),
-        }));
         entity
             .components
             .push(Box::new(sample_data::offline::Transform {
-                position: (0_f32, 0_f32, -0.1_f32).into(),
+                position: (0_f32, 0_f32, -1_f32).into(),
                 rotation: Quat::default(),
-                scale: (12_f32, 8_f32, 0.01_f32).into(),
+                scale: (12_f32, 12_f32, 0.1_f32).into(),
                 apply_to_children: false,
             }));
         entity
             .components
             .push(Box::new(sample_data::offline::StaticMesh {
                 mesh_id: lgn_graphics_data::DefaultMeshType::Cube,
-                color: (208, 255, 208).into(),
+                color: (0xD0, 0xFF, 0xD0).into(),
                 mesh: None,
             }));
 
         project
             .add_resource_with_id(
-                "/scene/Ground".into(),
+                "/scene/ground.ent".into(),
+                sample_data::offline::Entity::TYPENAME,
+                id.kind,
+                id.id,
+                handle,
+                &mut resources,
+            )
+            .await
+            .unwrap();
+        let path: ResourcePathId = id.into();
+        path.push(sample_data::runtime::Entity::TYPE)
+    };
+
+    let box_a_id = {
+        let mut resources = resource_registry.lock().await;
+        let id = ResourceTypeAndId {
+            kind: sample_data::offline::Entity::TYPE,
+            id: ResourceId::from_str("8e04418d-ca9a-4e4a-a0ea-68e74d8c10d0").unwrap(),
+        };
+        let handle = resources.new_resource(id.kind).unwrap();
+
+        let entity = handle
+            .get_mut::<sample_data::offline::Entity>(&mut resources)
+            .unwrap();
+        entity
+            .components
+            .push(Box::new(sample_data::offline::Transform {
+                position: (-1_f32, -1_f32, 3_f32).into(),
+                rotation: Quat::from_rotation_z(0.3_f32),
+                scale: (1_f32, 1_f32, 1_f32).into(),
+                apply_to_children: false,
+            }));
+        entity
+            .components
+            .push(Box::new(sample_data::offline::StaticMesh {
+                mesh_id: lgn_graphics_data::DefaultMeshType::Cube,
+                color: (0xFF, 0xFF, 0x20).into(),
+                mesh: None,
+            }));
+
+        project
+            .add_resource_with_id(
+                "/scene/box-a.ent".into(),
+                sample_data::offline::Entity::TYPENAME,
+                id.kind,
+                id.id,
+                handle,
+                &mut resources,
+            )
+            .await
+            .unwrap();
+        let path: ResourcePathId = id.into();
+        path.push(sample_data::runtime::Entity::TYPE)
+    };
+
+    let box_b_id = {
+        let mut resources = resource_registry.lock().await;
+        let id = ResourceTypeAndId {
+            kind: sample_data::offline::Entity::TYPE,
+            id: ResourceId::from_str("b355fa97-97ee-44f9-afbf-1c2920ce5064").unwrap(),
+        };
+        let handle = resources.new_resource(id.kind).unwrap();
+
+        let entity = handle
+            .get_mut::<sample_data::offline::Entity>(&mut resources)
+            .unwrap();
+        entity
+            .components
+            .push(Box::new(sample_data::offline::Transform {
+                position: (-1_f32, -1.2_f32, 5_f32).into(),
+                rotation: Quat::from_rotation_x(-0.2_f32),
+                scale: (1_f32, 1_f32, 1_f32).into(),
+                apply_to_children: false,
+            }));
+        entity
+            .components
+            .push(Box::new(sample_data::offline::StaticMesh {
+                mesh_id: lgn_graphics_data::DefaultMeshType::Cube,
+                color: (0xFF, 0x20, 0xFF).into(),
+                mesh: None,
+            }));
+
+        project
+            .add_resource_with_id(
+                "/scene/box-b.ent".into(),
+                sample_data::offline::Entity::TYPENAME,
+                id.kind,
+                id.id,
+                handle,
+                &mut resources,
+            )
+            .await
+            .unwrap();
+        let path: ResourcePathId = id.into();
+        path.push(sample_data::runtime::Entity::TYPE)
+    };
+
+    let box_c_id = {
+        let mut resources = resource_registry.lock().await;
+        let id = ResourceTypeAndId {
+            kind: sample_data::offline::Entity::TYPE,
+            id: ResourceId::from_str("6715d493-d7d4-4155-bc18-0e1795c53580").unwrap(),
+        };
+        let handle = resources.new_resource(id.kind).unwrap();
+
+        let entity = handle
+            .get_mut::<sample_data::offline::Entity>(&mut resources)
+            .unwrap();
+        entity
+            .components
+            .push(Box::new(sample_data::offline::Transform {
+                position: (-0.5_f32, -0.5_f32, 2_f32).into(),
+                rotation: Quat::from_rotation_y(1_f32),
+                scale: (1_f32, 1_f32, 1_f32).into(),
+                apply_to_children: false,
+            }));
+        entity
+            .components
+            .push(Box::new(sample_data::offline::StaticMesh {
+                mesh_id: lgn_graphics_data::DefaultMeshType::Cube,
+                color: (0xFF, 0x20, 0xFF).into(),
+                mesh: None,
+            }));
+
+        project
+            .add_resource_with_id(
+                "/scene/box-c.ent".into(),
                 sample_data::offline::Entity::TYPENAME,
                 id.kind,
                 id.id,
@@ -166,7 +288,7 @@ async fn create_offline_data(
         let mut resources = resource_registry.lock().await;
         let id = ResourceTypeAndId {
             kind: sample_data::offline::Entity::TYPE,
-            id: ResourceId::from_str("29b8b0d0-ee1e-4792-aca2-3b3a3ce63916").unwrap(),
+            id: ResourceId::from_str("09f7380d-51b2-4061-9fe4-52ceccce55e7").unwrap(),
         };
         let handle = resources.new_resource(id.kind).unwrap();
 
@@ -174,7 +296,10 @@ async fn create_offline_data(
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
 
-        entity.children.push(ground_path_id);
+        entity.children.push(box_a_id);
+        entity.children.push(box_b_id);
+        entity.children.push(box_c_id);
+        entity.children.push(ground_id);
 
         project
             .add_resource_with_id(

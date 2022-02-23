@@ -1,0 +1,32 @@
+{
+  "components": [
+    {
+      "Transform": {
+        "apply_to_children": false,
+        "position": [
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          12.0,
+          12.0,
+          0.10000000149011612
+        ]
+      }
+    },
+    {
+      "StaticMesh": {
+        "color": 3506426111,
+        "mesh": null,
+        "mesh_id": "Cube"
+      }
+    }
+  ]
+}

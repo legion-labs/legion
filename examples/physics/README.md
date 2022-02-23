@@ -3,7 +3,7 @@
 ## Launching
 
 ```sh
-cargo m run --bin runtime-srv -- --standalone
+cargo m run --bin runtime-srv -- --project=examples/physics/data --standalone --physics-debugger
 ```
 
 ## Editing data
