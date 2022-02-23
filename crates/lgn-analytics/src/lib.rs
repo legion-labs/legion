@@ -15,6 +15,7 @@ use lgn_telemetry_proto::telemetry::{
 use lgn_tracing::prelude::*;
 use lgn_tracing_transit::{parse_object_buffer, read_dependencies, Member, UserDefinedType, Value};
 use prost::Message;
+use sqlx::any::AnyRow;
 use sqlx::Row;
 
 pub async fn alloc_sql_pool(data_folder: &Path) -> Result<sqlx::AnyPool> {
@@ -304,6 +305,31 @@ pub async fn find_process_streams(
     Ok(res)
 }
 
+pub async fn find_process_blocks(
+    connection: &mut sqlx::AnyConnection,
+    process_id: &str,
+    tag: &str,
+) -> Result<Vec<BlockMetadata>> {
+    let blocks = sqlx::query(
+        "SELECT B.*
+        FROM streams S
+        LEFT JOIN blocks B
+        ON S.stream_id = B.stream_id
+        WHERE S.process_id = ?  
+        AND S.tags like ?
+        AND B.block_id IS NOT NULL",
+    )
+    .bind(process_id)
+    .bind(tag)
+    .fetch_all(connection)
+    .await
+    .with_context(|| "find_process_blocks")?
+    .iter()
+    .map(map_row_block)
+    .collect();
+    Ok(blocks)
+}
+
 pub async fn find_process_log_streams(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
@@ -361,12 +387,25 @@ pub async fn find_stream(
     })
 }
 
+fn map_row_block(row: &AnyRow) -> BlockMetadata {
+    BlockMetadata {
+        block_id: row.get("block_id"),
+        stream_id: row.get("stream_id"),
+        begin_time: row.get("begin_time"),
+        end_time: row.get("end_time"),
+        begin_ticks: row.get("begin_ticks"),
+        end_ticks: row.get("end_ticks"),
+        nb_objects: row.get("nb_objects"),
+        payload_size: row.try_get("payload_size").unwrap_or(0),
+    }
+}
+
 pub async fn find_block(
     connection: &mut sqlx::AnyConnection,
     block_id: &str,
 ) -> Result<BlockMetadata> {
     let row = sqlx::query(
-        "SELECT stream_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects, payload_size
+        "SELECT block_id, stream_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects, payload_size
          FROM blocks
          WHERE block_id = ?
          ;",
@@ -375,18 +414,7 @@ pub async fn find_block(
     .fetch_one(connection)
     .await
     .with_context(|| "find_block")?;
-
-    let block = BlockMetadata {
-        block_id: String::from(block_id),
-        stream_id: row.get("stream_id"),
-        begin_time: row.get("begin_time"),
-        begin_ticks: row.get("begin_ticks"),
-        end_time: row.get("end_time"),
-        end_ticks: row.get("end_ticks"),
-        nb_objects: row.get("nb_objects"),
-        payload_size: row.try_get("payload_size").unwrap_or(0),
-    };
-    Ok(block)
+    Ok(map_row_block(&row))
 }
 
 pub async fn find_stream_blocks(
@@ -394,7 +422,7 @@ pub async fn find_stream_blocks(
     stream_id: &str,
 ) -> Result<Vec<BlockMetadata>> {
     let blocks = sqlx::query(
-        "SELECT block_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects, payload_size
+        "SELECT block_id, stream_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects, payload_size
          FROM blocks
          WHERE stream_id = ?
          ORDER BY begin_time;",
@@ -404,16 +432,7 @@ pub async fn find_stream_blocks(
     .await
     .with_context(|| "find_stream_blocks")?
     .iter()
-    .map(|r| BlockMetadata {
-        block_id: r.get("block_id"),
-        stream_id: String::from(stream_id),
-        begin_time: r.get("begin_time"),
-        begin_ticks: r.get("begin_ticks"),
-        end_time: r.get("end_time"),
-        end_ticks: r.get("end_ticks"),
-        nb_objects: r.get("nb_objects"),
-        payload_size: r.try_get("payload_size").unwrap_or(0),
-    })
+    .map(map_row_block)
     .collect();
     Ok(blocks)
 }
@@ -425,7 +444,7 @@ pub async fn find_stream_blocks_in_range(
     end_time: &str,
 ) -> Result<Vec<BlockMetadata>> {
     let blocks = sqlx::query(
-        "SELECT block_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects, payload_size
+        "SELECT block_id, stream_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects, payload_size
          FROM blocks
          WHERE stream_id = ?
          AND begin_time <= ?
@@ -439,16 +458,7 @@ pub async fn find_stream_blocks_in_range(
     .await
     .with_context(|| "find_stream_blocks")?
     .iter()
-    .map(|r| BlockMetadata {
-        block_id: r.get("block_id"),
-        stream_id: String::from(stream_id),
-        begin_time: r.get("begin_time"),
-        begin_ticks: r.get("begin_ticks"),
-        end_time: r.get("end_time"),
-        end_ticks: r.get("end_ticks"),
-        nb_objects: r.get("nb_objects"),
-        payload_size: r.try_get("payload_size").unwrap_or(0),
-    })
+    .map(map_row_block)
     .collect();
     Ok(blocks)
 }
@@ -697,6 +707,7 @@ pub mod prelude {
     pub use crate::fetch_recent_processes;
     pub use crate::find_block;
     pub use crate::find_process;
+    pub use crate::find_process_blocks;
     pub use crate::find_process_log_entry;
     pub use crate::find_process_log_streams;
     pub use crate::find_process_metrics_streams;

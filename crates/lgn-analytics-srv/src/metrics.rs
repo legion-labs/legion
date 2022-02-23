@@ -3,17 +3,12 @@ use anyhow::Result;
 use lgn_analytics::find_stream;
 use lgn_analytics::prelude::*;
 use lgn_blob_storage::BlobStorage;
-use lgn_telemetry_proto::analytics::BlockManifest;
 use lgn_telemetry_proto::analytics::MetricBlockData;
 use lgn_telemetry_proto::analytics::MetricBlockDesc;
-use lgn_telemetry_proto::analytics::MetricBlockItem;
+use lgn_telemetry_proto::analytics::MetricBlockManifest;
 use lgn_telemetry_proto::analytics::MetricBlockRequest;
 use lgn_telemetry_proto::analytics::MetricDataPoint;
 use lgn_telemetry_proto::analytics::MetricDesc;
-use lgn_telemetry_proto::analytics::MetricManifest;
-use lgn_telemetry_proto::analytics::MetricRequestParams;
-use lgn_telemetry_proto::analytics::ProcessMetricManifestReply;
-use lgn_telemetry_proto::analytics::ProcessMetricReply;
 use lgn_tracing_transit::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -46,7 +41,7 @@ pub async fn get_process_metrics_time_range(
 }
 
 #[allow(clippy::cast_possible_wrap)]
-fn reduce_lod(source: MetricBlockData, lod: u32) -> MetricBlockData {
+fn reduce_lod(source: &MetricBlockData, lod: u32) -> Vec<MetricDataPoint> {
     let merge_threshold = 100.0_f64.powi(lod as i32 - 2) / 10.0;
     let mut points: Vec<MetricDataPoint> = vec![];
     let mut max = f64::MIN;
@@ -66,12 +61,7 @@ fn reduce_lod(source: MetricBlockData, lod: u32) -> MetricBlockData {
             acc = 0.0;
         }
     }
-
-    MetricBlockData {
-        block_id: source.block_id,
-        lod,
-        points,
-    }
+    points
 }
 
 fn get_lod_block_key(block_id: &str, metric_name: &str, lod: u32) -> String {
@@ -83,8 +73,8 @@ fn get_lod_block_key(block_id: &str, metric_name: &str, lod: u32) -> String {
     .join("_")
 }
 
-fn get_request_cache_key(block_id: &str, params: &MetricRequestParams) -> String {
-    get_lod_block_key(block_id, &params.metric_name, params.lod)
+fn get_lod_block_request_key(request: &MetricBlockRequest) -> String {
+    get_lod_block_key(&request.block_id, &request.metric_name, request.lod)
 }
 
 pub struct MetricHandler {
@@ -106,151 +96,119 @@ impl MetricHandler {
         }
     }
 
-    #[allow(clippy::cast_precision_loss)]
-    pub async fn list_process_metrics(
-        &self,
-        process_id: &str,
-    ) -> Result<ProcessMetricManifestReply> {
-        let mut sql = self.pool.acquire().await?;
-        let process = find_process(&mut sql, process_id).await?;
-        let inv_tsc_frequency = get_process_tick_length_ms(&process);
-        let mut blocks = vec![];
-        for stream in find_process_metrics_streams(&mut sql, process_id).await? {
-            for block in find_stream_blocks(&mut sql, &stream.stream_id).await? {
-                let begin_tick_offset = block.begin_ticks - process.start_ticks;
-                let end_tick_offset = block.end_ticks - process.start_ticks;
-                let block_desc = MetricBlockDesc {
-                    block_id: block.block_id.clone(),
-                    begin_ticks: begin_tick_offset,
-                    end_ticks: end_tick_offset,
-                    begin_time_ms: begin_tick_offset as f64 * inv_tsc_frequency,
-                    end_time_ms: end_tick_offset as f64 * inv_tsc_frequency,
-                    stream_id: stream.stream_id.clone(),
-                };
-                let payload =
-                    fetch_block_payload(&mut sql, self.blob_storage.clone(), block.block_id)
-                        .await?;
-                let mut block_manifest = BlockManifest {
-                    desc: Some(block_desc),
-                    metrics: vec![],
-                };
-                let mut metrics = HashMap::<String, MetricDesc>::new();
-                parse_block(&stream, &payload, |val| {
-                    if let Value::Object(obj) = val {
-                        let metric_desc = obj.get::<Object>("desc").unwrap();
-                        let name = metric_desc.get_ref("name").unwrap().as_str().unwrap();
-                        metrics
-                            .entry(name.to_owned())
-                            .or_insert_with(|| MetricDesc {
-                                name: name.to_owned(),
-                                unit: metric_desc
-                                    .get_ref("unit")
-                                    .unwrap()
-                                    .as_str()
-                                    .unwrap()
-                                    .to_string(),
-                            });
-                    }
-                    true
-                })?;
-                block_manifest.metrics = metrics.values().cloned().collect();
-                blocks.push(block_manifest);
-            }
-        }
-
-        let mut manifests = HashMap::new();
-
-        for block in blocks {
-            for metric in block.metrics {
-                let manifest =
-                    manifests
-                        .entry(metric.name.clone())
-                        .or_insert_with(|| MetricManifest {
-                            name: metric.name,
-                            unit: metric.unit,
-                            blocks: vec![],
-                        });
-
-                if let Some(ref desc) = block.desc {
-                    manifest.blocks.push(desc.clone());
-                }
-            }
-        }
-
-        Ok(ProcessMetricManifestReply {
-            metrics: manifests.values().cloned().collect(),
-            process_start_ticks: process.start_ticks,
-            tsc_frequency: process.tsc_frequency,
-        })
-    }
-
-    pub async fn fetch_metric(&self, request: MetricBlockRequest) -> Result<ProcessMetricReply> {
-        let mut blocks = vec![];
-        for block_item in request.blocks {
-            if let Some(ref params) = request.params {
-                blocks.push(self.get_block_lod(block_item, params.clone()).await?);
-            }
-        }
-        Ok(ProcessMetricReply { blocks })
-    }
-
-    async fn get_block_lod(
-        &self,
-        block_item: MetricBlockItem,
-        params: MetricRequestParams,
-    ) -> Result<MetricBlockData> {
-        let lod = params.lod;
+    pub async fn get_block_lod_data(&self, request: MetricBlockRequest) -> Result<MetricBlockData> {
         Ok(self
             .cache
-            .get_or_put(
-                &get_request_cache_key(&block_item.block_id, &params),
-                async {
-                    let raw = self
-                        .cache
-                        .get_or_put(
-                            &get_lod_block_key(&block_item.block_id, &params.metric_name, 0),
-                            async { Ok(self.get_raw_block(block_item, params).await?) },
-                        )
-                        .await?;
-                    if lod > 0 {
-                        Ok(reduce_lod(raw, lod))
-                    } else {
-                        Ok(raw)
-                    }
-                },
-            )
+            .get_or_put(&get_lod_block_request_key(&request), async {
+                let raw = self
+                    .cache
+                    .get_or_put(
+                        &get_lod_block_key(&request.block_id, &request.metric_name, 0),
+                        async {
+                            Ok(self
+                                .get_raw_block_data(
+                                    &request.process_id,
+                                    &request.block_id,
+                                    &request.stream_id,
+                                    &request.metric_name,
+                                )
+                                .await?)
+                        },
+                    )
+                    .await?;
+                if request.lod > 0 {
+                    Ok(MetricBlockData {
+                        lod: request.lod,
+                        points: reduce_lod(&raw, request.lod),
+                    })
+                } else {
+                    Ok(raw)
+                }
+            })
             .await?)
     }
 
     #[allow(clippy::cast_precision_loss)]
-    async fn get_raw_block(
+    pub async fn get_block_manifest(
         &self,
-        block_item: MetricBlockItem,
-        params: MetricRequestParams,
-    ) -> Result<MetricBlockData> {
-        let inv_tsc_frequency = get_tsc_frequency_inverse_ms(params.tsc_frequency as u64);
-        let mut metric_block_data = MetricBlockData {
-            block_id: block_item.block_id.clone(),
-            lod: 0,
-            points: vec![],
-        };
+        process_id: &str,
+        block_id: &str,
+        stream_id: &str,
+    ) -> Result<MetricBlockManifest> {
         let mut connection = self.pool.acquire().await?;
-        let stream = find_stream(&mut connection, &block_item.stream_id).await?;
+        let process = find_process(&mut connection, process_id).await?;
+        let inv_tsc_frequency = get_process_tick_length_ms(&process);
+        let block = find_block(&mut connection, block_id).await?;
+        let begin_tick_offset = block.begin_ticks - process.start_ticks;
+        let end_tick_offset = block.end_ticks - process.start_ticks;
+        let desc = MetricBlockDesc {
+            block_id: block.block_id.clone(),
+            begin_ticks: begin_tick_offset,
+            end_ticks: end_tick_offset,
+            begin_time_ms: begin_tick_offset as f64 * inv_tsc_frequency,
+            end_time_ms: end_tick_offset as f64 * inv_tsc_frequency,
+            stream_id: stream_id.to_string(),
+        };
         let payload = fetch_block_payload(
             &mut connection,
             self.blob_storage.clone(),
-            block_item.block_id.clone(),
+            block_id.to_string(),
         )
         .await?;
+        let stream = find_stream(&mut connection, stream_id).await?;
+        let mut metrics = HashMap::<String, MetricDesc>::new();
         parse_block(&stream, &payload, |val| {
             if let Value::Object(obj) = val {
                 let metric_desc = obj.get::<Object>("desc").unwrap();
                 let name = metric_desc.get_ref("name").unwrap().as_str().unwrap();
-                if name == params.metric_name {
+                metrics
+                    .entry(name.to_owned())
+                    .or_insert_with(|| MetricDesc {
+                        name: name.to_owned(),
+                        unit: metric_desc
+                            .get_ref("unit")
+                            .unwrap()
+                            .as_str()
+                            .unwrap()
+                            .to_string(),
+                    });
+            }
+            true
+        })?;
+        Ok(MetricBlockManifest {
+            desc: Some(desc),
+            metrics: metrics.values().cloned().collect(),
+        })
+    }
+
+    #[allow(clippy::cast_precision_loss)]
+    async fn get_raw_block_data(
+        &self,
+        process_id: &str,
+        block_id: &str,
+        stream_id: &str,
+        metric_name: &str,
+    ) -> Result<MetricBlockData> {
+        let mut connection = self.pool.acquire().await?;
+        let process = find_process(&mut connection, process_id).await?;
+        let payload = fetch_block_payload(
+            &mut connection,
+            self.blob_storage.clone(),
+            block_id.to_string(),
+        )
+        .await?;
+        let inv_tsc_frequency = get_process_tick_length_ms(&process);
+        let stream = find_stream(&mut connection, stream_id).await?;
+        let mut points = vec![];
+        parse_block(&stream, &payload, |val| {
+            if let Value::Object(obj) = val {
+                let metric_desc = obj.get::<Object>("desc").unwrap();
+                let name = metric_desc.get_ref("name").unwrap().as_str().unwrap();
+                if name == metric_name {
                     let time = obj.get::<i64>("time").unwrap();
-                    let time_ms = (time - params.process_start_ticks) as f64 * inv_tsc_frequency;
+                    let time_ms = (time - process.start_ticks) as f64 * inv_tsc_frequency;
                     let value = obj.get::<u64>("value").unwrap();
-                    metric_block_data.points.push(MetricDataPoint {
+                    points.push(MetricDataPoint {
                         time_ms,
                         value: value as f64,
                     });
@@ -258,7 +216,6 @@ impl MetricHandler {
             }
             true
         })?;
-
-        Ok(metric_block_data)
+        Ok(MetricBlockData { points, lod: 0 })
     }
 }

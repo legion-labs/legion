@@ -1,36 +1,38 @@
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
-
 use anyhow::Result;
 use async_recursion::async_recursion;
 use lgn_analytics::prelude::*;
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
-use lgn_telemetry_proto::analytics::BlockSpansRequest;
+use lgn_telemetry_proto::analytics::BlockSpansReply;
 use lgn_telemetry_proto::analytics::CumulativeCallGraphReply;
 use lgn_telemetry_proto::analytics::FindProcessReply;
 use lgn_telemetry_proto::analytics::FindProcessRequest;
 use lgn_telemetry_proto::analytics::ListProcessChildrenRequest;
-use lgn_telemetry_proto::analytics::ListProcessMetricsRequest;
 use lgn_telemetry_proto::analytics::ListProcessStreamsRequest;
 use lgn_telemetry_proto::analytics::ListStreamBlocksReply;
 use lgn_telemetry_proto::analytics::ListStreamBlocksRequest;
 use lgn_telemetry_proto::analytics::ListStreamsReply;
 use lgn_telemetry_proto::analytics::LogEntry;
+use lgn_telemetry_proto::analytics::MetricBlockData;
+use lgn_telemetry_proto::analytics::MetricBlockManifest;
+use lgn_telemetry_proto::analytics::MetricBlockManifestRequest;
 use lgn_telemetry_proto::analytics::MetricBlockRequest;
 use lgn_telemetry_proto::analytics::ProcessChildrenReply;
 use lgn_telemetry_proto::analytics::ProcessCumulativeCallGraphRequest;
 use lgn_telemetry_proto::analytics::ProcessListReply;
 use lgn_telemetry_proto::analytics::ProcessLogReply;
 use lgn_telemetry_proto::analytics::ProcessLogRequest;
-use lgn_telemetry_proto::analytics::ProcessMetricManifestReply;
 use lgn_telemetry_proto::analytics::ProcessNbLogEntriesReply;
 use lgn_telemetry_proto::analytics::ProcessNbLogEntriesRequest;
 use lgn_telemetry_proto::analytics::RecentProcessesRequest;
 use lgn_telemetry_proto::analytics::SearchProcessRequest;
-use lgn_telemetry_proto::analytics::{BlockSpansReply, ProcessMetricReply};
+use lgn_telemetry_proto::analytics::{
+    BlockSpansRequest, ListProcessBlocksRequest, ProcessBlocksReply,
+};
 use lgn_tracing::dispatch::init_thread_stream;
 use lgn_tracing::prelude::*;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use tonic::{Request, Response, Status};
 
 use crate::cache::DiskCache;
@@ -84,6 +86,14 @@ impl AnalyticsService {
             cache: Arc::new(DiskCache::new(cache_blobs.clone())),
             call_trees: CallTreeStore::new(pool, data_lake_blobs, cache_blobs),
         }
+    }
+
+    fn get_metric_handler(&self) -> MetricHandler {
+        MetricHandler::new(
+            Arc::clone(&self.data_lake_blobs),
+            Arc::clone(&self.cache),
+            self.pool.clone(),
+        )
     }
 
     async fn find_process_impl(&self, process_id: &str) -> Result<lgn_telemetry_sink::ProcessInfo> {
@@ -248,28 +258,32 @@ impl AnalyticsService {
         })
     }
 
-    async fn list_process_metrics_impl(
-        &self,
-        process_id: &str,
-    ) -> Result<ProcessMetricManifestReply> {
-        let metric_handler = MetricHandler::new(
-            Arc::clone(&self.data_lake_blobs),
-            Arc::clone(&self.cache),
-            self.pool.clone(),
-        );
-        Ok(metric_handler.list_process_metrics(process_id).await?)
-    }
-
-    async fn fetch_process_metric_impl(
+    async fn fetch_block_metric_impl(
         &self,
         request: MetricBlockRequest,
-    ) -> Result<ProcessMetricReply> {
-        let metric_handler = MetricHandler::new(
-            Arc::clone(&self.data_lake_blobs),
-            Arc::clone(&self.cache),
-            self.pool.clone(),
-        );
-        Ok(metric_handler.fetch_metric(request).await?)
+    ) -> Result<MetricBlockData> {
+        let metric_handler = self.get_metric_handler();
+        Ok(metric_handler.get_block_lod_data(request).await?)
+    }
+
+    async fn fetch_block_metric_manifest_impl(
+        &self,
+        request: MetricBlockManifestRequest,
+    ) -> Result<MetricBlockManifest> {
+        let metric_handler = self.get_metric_handler();
+        Ok(metric_handler
+            .get_block_manifest(&request.process_id, &request.block_id, &request.stream_id)
+            .await?)
+    }
+
+    async fn list_process_blocks_impl(
+        &self,
+        request: ListProcessBlocksRequest,
+    ) -> Result<ProcessBlocksReply> {
+        let mut connection = self.pool.acquire().await?;
+        let blocks =
+            find_process_blocks(&mut connection, &request.process_id, &request.tag).await?;
+        Ok(ProcessBlocksReply { blocks })
     }
 }
 
@@ -541,53 +555,51 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
-    async fn list_process_metrics(
+    async fn list_process_blocks(
         &self,
-        request: Request<ListProcessMetricsRequest>,
-    ) -> Result<Response<ProcessMetricManifestReply>, Status> {
-        let _guard = RequestGuard::new();
+        request: Request<ListProcessBlocksRequest>,
+    ) -> Result<Response<ProcessBlocksReply>, Status> {
         let inner_request = request.into_inner();
-        if inner_request.process_id.is_empty() {
-            error!("Missing process_id in list_process_metrics");
-            return Err(Status::internal(String::from(
-                "Missing process_id in list_process_metrics",
-            )));
-        }
-        match self
-            .list_process_metrics_impl(&inner_request.process_id)
-            .await
-        {
+        match self.list_process_blocks_impl(inner_request).await {
             Ok(reply) => Ok(Response::new(reply)),
             Err(e) => {
-                error!("Error in list_process_metrics: {:?}", e);
+                error!("Error in list_process_blocks: {:?}", e);
                 Err(Status::internal(format!(
-                    "Error in list_process_metrics: {}",
+                    "Error in list_process_blocks: {}",
                     e
                 )))
             }
         }
     }
 
-    async fn fetch_process_metric(
+    async fn fetch_block_metric(
         &self,
         request: Request<MetricBlockRequest>,
-    ) -> Result<Response<ProcessMetricReply>, Status> {
-        let _guard = RequestGuard::new();
+    ) -> Result<Response<MetricBlockData>, Status> {
         let inner_request = request.into_inner();
-        if inner_request.params.is_none()
-            || inner_request.params.as_ref().unwrap().process_id.is_empty()
-        {
-            error!("Missing process_id in fetch_process_metric");
-            return Err(Status::internal(String::from(
-                "Missing process_id in fetch_process_metric",
-            )));
-        }
-        match self.fetch_process_metric_impl(inner_request).await {
+        match self.fetch_block_metric_impl(inner_request).await {
             Ok(reply) => Ok(Response::new(reply)),
             Err(e) => {
-                error!("Error in fetch_process_metric: {:?}", e);
+                error!("Error in fetch_block_metric: {:?}", e);
                 Err(Status::internal(format!(
-                    "Error in fetch_process_metric: {}",
+                    "Error in fetch_block_metric: {}",
+                    e
+                )))
+            }
+        }
+    }
+
+    async fn fetch_block_metric_manifest(
+        &self,
+        request: Request<MetricBlockManifestRequest>,
+    ) -> Result<Response<MetricBlockManifest>, Status> {
+        let inner_request = request.into_inner();
+        match self.fetch_block_metric_manifest_impl(inner_request).await {
+            Ok(reply) => Ok(Response::new(reply)),
+            Err(e) => {
+                error!("Error in fetch_block_metric_manifest: {:?}", e);
+                Err(Status::internal(format!(
+                    "Error in fetch_block_metric_manifest: {}",
                     e
                 )))
             }

@@ -13,14 +13,15 @@ service PerformanceAnalytics {
       returns (CumulativeCallGraphReply);
   rpc find_process(FindProcessRequest) returns (FindProcessReply);
   rpc list_process_children(ListProcessChildrenRequest) returns (ProcessChildrenReply);
+  rpc list_process_blocks(ListProcessBlocksRequest) returns (ProcessBlocksReply);
   rpc list_process_log_entries(ProcessLogRequest) returns (ProcessLogReply);
-  rpc nb_process_log_entries(ProcessNbLogEntriesRequest) returns (ProcessNbLogEntriesReply);
   rpc list_process_streams(ListProcessStreamsRequest) returns (ListStreamsReply);
   rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
-  rpc search_processes(SearchProcessRequest) returns (ProcessListReply);
   rpc list_stream_blocks(ListStreamBlocksRequest) returns (ListStreamBlocksReply);
-  rpc list_process_metrics(ListProcessMetricsRequest) returns (ProcessMetricManifestReply);
-  rpc fetch_process_metric(MetricBlockRequest) returns (ProcessMetricReply);
+  rpc nb_process_log_entries(ProcessNbLogEntriesRequest) returns (ProcessNbLogEntriesReply);
+  rpc fetch_block_metric_manifest(MetricBlockManifestRequest) returns (MetricBlockManifest);
+  rpc fetch_block_metric(MetricBlockRequest) returns (MetricBlockData);
+  rpc search_processes(SearchProcessRequest) returns (ProcessListReply);
 }
 
 // find_process
@@ -44,6 +45,15 @@ message ProcessInstance {
 
 message ProcessListReply {
   repeated ProcessInstance processes = 1;
+}
+
+message ListProcessBlocksRequest {
+  string process_id = 1;
+  string tag = 2;
+}
+
+message ProcessBlocksReply {
+  repeated telemetry.BlockMetadata blocks = 1;
 }
 
 // search_processes
