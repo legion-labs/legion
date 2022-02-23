@@ -163,7 +163,8 @@ impl TelemetryIngestion for IngestionService {
         };
 
         let encoded_payload = payload.encode_to_vec();
-        if encoded_payload.len() >= 128 * 1024 {
+        let payload_size = encoded_payload.len();
+        if payload_size >= 128 * 1024 {
             if let Err(e) = self
                 .blob_storage
                 .write_blob(&block.block_id, &encoded_payload)
@@ -189,7 +190,7 @@ impl TelemetryIngestion for IngestionService {
         }
 
         #[allow(clippy::cast_possible_wrap)]
-        if let Err(e) = sqlx::query("INSERT INTO blocks VALUES(?,?,?,?,?,?,?);")
+        if let Err(e) = sqlx::query("INSERT INTO blocks VALUES(?,?,?,?,?,?,?,?);")
             .bind(block.block_id.clone())
             .bind(block.stream_id)
             .bind(block.begin_time)
@@ -197,6 +198,7 @@ impl TelemetryIngestion for IngestionService {
             .bind(block.end_time)
             .bind(block.end_ticks as i64)
             .bind(block.nb_objects)
+            .bind(payload_size as i64)
             .execute(&mut connection)
             .await
         {
