@@ -16,6 +16,8 @@ service PropertyInspector {
   rpc ReorderArrayElement(ReorderArrayElementRequest) returns (ReorderArrayElementResponse);
 
   rpc UpdateSelection(UpdateSelectionRequest) returns (UpdateSelectionResponse);
+
+  rpc GetAvailableDynTraits(GetAvailableDynTraitsRequest) returns (GetAvailableDynTraitsResponse);
 }
 
 message GetResourcePropertiesRequest {
@@ -65,9 +67,11 @@ message InsertNewArrayElementRequest {
   string resource_id = 1;
   string array_path = 2;
   uint64 index = 3;
-  string json_value = 4;
+  optional string json_value = 4;
 }
-message InsertNewArrayElementResponse {}
+message InsertNewArrayElementResponse {
+  ResourceProperty new_value = 1;
+}
 
 message ReorderArrayElementRequest {
   string resource_id = 1;
@@ -81,3 +85,11 @@ message UpdateSelectionRequest {
   string resource_id = 1;
 }
 message UpdateSelectionResponse {};
+
+message GetAvailableDynTraitsRequest {
+  string trait_name = 1;
+}
+
+message GetAvailableDynTraitsResponse {
+  repeated string available_traits = 1;
+}

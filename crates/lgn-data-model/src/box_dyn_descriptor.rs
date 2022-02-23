@@ -1,16 +1,18 @@
-use crate::{BaseDescriptor, TypeDefinition};
+use crate::{BaseDescriptor, TypeDefinition, TypeReflection};
 /// Define the reflection of a Box<dyn Type>
 pub struct BoxDynDescriptor {
     /// Base Descriptor of the Option Type
     pub base_descriptor: BaseDescriptor,
     /// Return the type of the instance inside the Box
-    pub get_inner_type: unsafe fn(box_base: *const ()) -> TypeDefinition,
+    pub get_inner_type: fn(box_base: *const ()) -> TypeDefinition,
     /// Return a raw pointer of the Box content
-    pub get_inner: unsafe fn(box_base: *const ()) -> *const (),
+    pub get_inner: fn(box_base: *const ()) -> *const (),
     /// Return a raw pointer of the Box content
-    pub get_inner_mut: unsafe fn(box_base: *mut ()) -> *mut (),
+    pub get_inner_mut: fn(box_base: *mut ()) -> *mut (),
     /// Return a new instance using name
     pub find_type: fn(type_name: &str) -> Option<TypeDefinition>,
+    /// Return a new instance using name
+    pub new_instance: fn(type_name: &str) -> Option<Box<dyn TypeReflection>>,
 }
 
 /// Macro to implement reflection for Box<dyn Type>
@@ -36,7 +38,9 @@ macro_rules! implement_box_dyn_reflection {
             fn get_type_def() -> $crate::TypeDefinition {
                 lazy_static::lazy_static! {
                     static ref TYPE_DESCRIPTOR: $crate::BoxDynDescriptor = $crate::BoxDynDescriptor {
-                        base_descriptor : $crate::create_base_descriptor!(Box<$type_id>, concat!("Box<",stringify!($type_id),">").into()),
+                        base_descriptor : $crate::create_base_descriptor!(Box<$type_id>, concat!("Box<",stringify!($type_id),">").into(),
+                        Err($crate::ReflectionError::UnsupportedDefault(stringify!($type_id)))
+                    ),
                         get_inner_type: |box_base: *const ()| unsafe {
                             let boxed = &*(box_base.cast::<Box<$type_id>>());
                             (*(*boxed)).get_type()
@@ -56,7 +60,17 @@ macro_rules! implement_box_dyn_reflection {
                                 }
                             }
                             None
-                        }
+                        },
+                        new_instance : |type_name : &str| {
+                            for factory in inventory::iter::<$factory_id> {
+                                if factory.name == type_name {
+                                    if let $crate::TypeDefinition::Struct(st) = (factory.get_type_def)() {
+                                        return Some((st.new_instance)())
+                                    }
+                                }
+                            }
+                            None
+                        },
                     };
                 }
                 $crate::TypeDefinition::BoxDyn(&TYPE_DESCRIPTOR)

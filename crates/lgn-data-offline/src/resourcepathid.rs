@@ -101,7 +101,10 @@ pub struct ResourcePathId {
     transforms: Vec<(ResourceType, Option<String>)>,
 }
 
-implement_primitive_type_def!(ResourcePathId);
+implement_primitive_type_def!(
+    ResourcePathId,
+    Err(ReflectionError::UnsupportedDefault("ResourcePathId"))
+);
 
 impl From<ResourceTypeAndId> for ResourcePathId {
     fn from(type_id: ResourceTypeAndId) -> Self {

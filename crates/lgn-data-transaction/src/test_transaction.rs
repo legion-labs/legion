@@ -45,19 +45,19 @@ async fn test_array_insert_operation(
             resource_id,
             "test_blob",
             Some(0),
-            "255",
+            Some("255"),
         ))
         .add_operation(ArrayOperation::insert_element(
             resource_id,
             "test_blob",
             Some(1),
-            "254",
+            Some("254"),
         ))
         .add_operation(ArrayOperation::insert_element(
             resource_id,
             "test_blob",
             Some(6),
-            "253",
+            Some("253"),
         ));
     transaction_manager.commit_transaction(transaction).await?;
     validate_test_entity(resource_id, transaction_manager, |test_entity| {
@@ -219,13 +219,13 @@ async fn test_transaction_system() -> Result<(), Error> {
                 new_id,
                 "test_resource_path_vec",
                 None,
-                ref_path_id.to_string().as_str(),
+                Some(ref_path_id.to_string()),
             ))
             .add_operation(ArrayOperation::insert_element(
                 new_id,
                 "test_resource_path_vec",
                 None,
-                ref_path_id.to_string().as_str(),
+                Some(ref_path_id.to_string()),
             ));
         transaction_manager.commit_transaction(transaction).await?;
 

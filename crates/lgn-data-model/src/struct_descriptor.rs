@@ -19,7 +19,8 @@ macro_rules! implement_struct_descriptor {
     ($type_id:ty, $attributes:expr, $field:expr) => {
         lazy_static::lazy_static! {
                 static ref TYPE_DESCRIPTOR: $crate::StructDescriptor = $crate::StructDescriptor {
-                base_descriptor : $crate::create_base_descriptor!($type_id, stringify!($type_id).into()),
+                base_descriptor : $crate::create_base_descriptor!($type_id, stringify!($type_id).into(),
+                                    Result::<$type_id, $crate::ReflectionError>::Ok(<$type_id>::default())),
                 attributes : $attributes,
                 new_instance : || Box::new(<$type_id>::default()),
                 fields: $field

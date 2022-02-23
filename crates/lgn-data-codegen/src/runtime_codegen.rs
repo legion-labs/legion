@@ -53,13 +53,7 @@ pub(crate) fn generate(struct_info: &StructMetaInfo) -> TokenStream {
             type Loader = #runtime_loader;
         }
 
-        #[derive(serde::Serialize,serde::Deserialize, PartialEq, Clone)]
-        pub struct #runtime_reftype (lgn_data_runtime::Reference<#runtime_identifier>);
-        impl #runtime_reftype {
-            pub fn id(&self) -> lgn_data_runtime::ResourceTypeAndId { self.0.id() }
-        }
-
-        lgn_data_model::implement_primitive_type_def!(#runtime_reftype);
+        lgn_data_model::implement_reference_type_def!(#runtime_reftype, #runtime_identifier);
 
         #[derive(Default)]
         pub struct #runtime_loader {}

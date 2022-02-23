@@ -7,20 +7,21 @@ use tokio::sync::Mutex;
 use tonic::{codegen::http::status, Request, Response, Status};
 
 use lgn_app::prelude::*;
-use lgn_data_model::{collector::collect_properties, ReflectionError};
 use lgn_editor_proto::property_inspector::{
     property_inspector_server::{PropertyInspector, PropertyInspectorServer},
-    DeleteArrayElementRequest, DeleteArrayElementResponse, GetResourcePropertiesRequest,
-    GetResourcePropertiesResponse, InsertNewArrayElementRequest, InsertNewArrayElementResponse,
-    ReorderArrayElementRequest, ReorderArrayElementResponse, ResourceDescription, ResourceProperty,
+    DeleteArrayElementRequest, DeleteArrayElementResponse, GetAvailableDynTraitsRequest,
+    GetAvailableDynTraitsResponse, GetResourcePropertiesRequest, GetResourcePropertiesResponse,
+    InsertNewArrayElementRequest, InsertNewArrayElementResponse, ReorderArrayElementRequest,
+    ReorderArrayElementResponse, ResourceDescription, ResourceProperty, ResourcePropertyUpdate,
     UpdateResourcePropertiesRequest, UpdateResourcePropertiesResponse, UpdateSelectionRequest,
     UpdateSelectionResponse,
 };
 
 use lgn_data_model::{
-    collector::{ItemInfo, PropertyCollector},
+    collector::{collect_properties, ItemInfo, PropertyCollector},
     json_utils::{self, get_property_as_json_string},
-    TypeDefinition,
+    utils::find_property,
+    ReflectionError, TypeDefinition,
 };
 use lgn_data_offline::resource::ResourcePathName;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
@@ -128,7 +129,7 @@ impl PropertyCollector for ResourcePropertyCollector {
                 sub_properties = enum_descriptor
                     .variants
                     .iter()
-                    .map(|enum_variant| Self::Item {
+                    .map(|enum_variant| ResourceProperty {
                         name: enum_variant.variant_name.clone(),
                         ptype: "_enumvariant_".into(),
                         json_value: Some(serde_json::json!(enum_variant.variant_name).to_string()),
@@ -143,7 +144,7 @@ impl PropertyCollector for ResourcePropertyCollector {
             _ => {}
         }
 
-        Ok(Self::Item {
+        Ok(ResourceProperty {
             name,
             ptype,
             json_value,
@@ -317,7 +318,7 @@ impl PropertyInspector for PropertyInspectorRPC {
                 resource_id,
                 request.array_path.as_str(),
                 Some(request.index as usize),
-                request.json_value.as_str(),
+                request.json_value,
             ))
         };
 
@@ -328,7 +329,54 @@ impl PropertyInspector for PropertyInspectorRPC {
             .await
             .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
 
-        Ok(Response::new(InsertNewArrayElementResponse {}))
+        let transaction_manager = self.transaction_manager.lock().await;
+        let ctx = LockContext::new(&transaction_manager).await;
+        let handle = ctx
+            .loaded_resource_handles
+            .get(resource_id)
+            .ok_or_else(|| Status::internal(format!("Invalid ResourceID: {}", resource_id)))?;
+
+        let reflection = ctx
+            .resource_registry
+            .get_resource_reflection(resource_id.kind, handle)
+            .ok_or_else(|| {
+                Status::internal(format!("Invalid ResourceID format: {}", resource_id))
+            })?;
+
+        //let mut indexed_path = format!("{}[{}]", request.array_path, request.index);
+        let array_prop = find_property(reflection, &request.array_path)
+            .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
+
+        if let TypeDefinition::Array(array_desc) = array_prop.type_def {
+            let mut base = array_prop.base;
+            let mut type_def = array_desc.inner_type;
+            base = (array_desc.get)(base, request.index as usize)
+                .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
+
+            let array_subscript = if let TypeDefinition::BoxDyn(box_desc) = array_desc.inner_type {
+                type_def = (box_desc.get_inner_type)(base);
+                base = (box_desc.get_inner)(base);
+                format!("[{}]", type_def.get_type_name())
+            } else {
+                format!("[{}]", request.index)
+            };
+
+            let resource_property = ItemInfo {
+                base,
+                field_descriptor: None,
+                type_def,
+                suffix: Some(&array_subscript),
+                depth: 0,
+            }
+            .collect::<ResourcePropertyCollector>()
+            .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
+
+            Ok(Response::new(InsertNewArrayElementResponse {
+                new_value: Some(resource_property),
+            }))
+        } else {
+            Err(Status::internal("Invalid Array Descriptor"))
+        }
     }
 
     async fn reorder_array_element(
@@ -354,5 +402,35 @@ impl PropertyInspector for PropertyInspectorRPC {
             .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
 
         Ok(Response::new(ReorderArrayElementResponse {}))
+    }
+
+    async fn get_available_dyn_traits(
+        &self,
+        request: Request<GetAvailableDynTraitsRequest>,
+    ) -> Result<Response<GetAvailableDynTraitsResponse>, Status> {
+        let request = request.get_ref();
+
+        let available_traits = match request.trait_name.as_str() {
+            "dyn Component" => {
+                let mut results = vec![];
+                for entry in inventory::iter::<lgn_data_runtime::ComponentFactory> {
+                    results.push(entry.name.into());
+                }
+                results.sort();
+                Some(results)
+            }
+            _ => None,
+        };
+
+        if let Some(available_traits) = available_traits {
+            Ok(Response::new(GetAvailableDynTraitsResponse {
+                available_traits,
+            }))
+        } else {
+            Err(Status::internal(format!(
+                "Unknown factory '{}'",
+                request.trait_name
+            )))
+        }
     }
 }

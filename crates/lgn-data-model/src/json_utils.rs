@@ -44,8 +44,8 @@ pub fn reflection_save_relative_json<T: Sized + serde::Serialize>(
 }
 
 /// Apply json edit an object,
-pub fn reflection_apply_json_edit<T: TypeReflection>(
-    object: &mut T,
+pub fn reflection_apply_json_edit(
+    object: &mut dyn TypeReflection,
     values: &serde_json::Value,
 ) -> Result<(), ReflectionError> {
     internal_apply_json_edit(
@@ -85,22 +85,18 @@ fn internal_apply_json_edit(
             if let serde_json::Value::Array(array) = json_value {
                 let array_target = target.unwrap();
                 // Reset array using descriptor
-                unsafe {
-                    (array_descriptor.clear)(array_target);
-                }
+                (array_descriptor.clear)(array_target);
 
                 for value in array.iter() {
                     // For each element, apply the values and return the merge json
                     match internal_apply_json_edit(None, array_descriptor.inner_type, value) {
                         Ok(merged_json) => {
                             // Add the new element into the array using the merged_json result
-                            unsafe {
-                                (array_descriptor.insert_element)(
-                                    array_target,
-                                    None,
-                                    &mut <dyn erased_serde::Deserializer<'_>>::erase(&merged_json),
-                                )?;
-                            }
+                            (array_descriptor.insert_element)(
+                                array_target,
+                                None,
+                                &mut <dyn erased_serde::Deserializer<'_>>::erase(merged_json),
+                            )?;
                         }
                         Err(ReflectionError::TypeNotFound(type_name)) => {
                             // Ignore missing type

@@ -41,6 +41,12 @@
   import { onMount } from "svelte";
   import authStatus from "@/stores/authStatus";
   import AuthModal from "@/components/AuthModal.svelte";
+  import {
+    BagResourceProperty,
+    formatProperties,
+    ResourceProperty,
+    UnitResourceProperty,
+  } from "@/lib/propertyGrid";
 
   contextMenuStore.register("resource", contextMenuEntries.resourceEntries);
   contextMenuStore.register(
@@ -181,6 +187,60 @@
     }
   }
 
+  function refreshProperty(
+    event: CustomEvent<{
+      path: string;
+      value: unknown;
+    }>
+  ) {
+    if (!$currentResourceData) {
+      log.error("No resources selected");
+      return;
+    }
+    let resourceProperty = event.detail.value as ResourceProperty;
+    if (resourceProperty) {
+      for (var property of $currentResourceData.properties) {
+        if (internal_refresh(event.detail.path, property, resourceProperty)) {
+          break;
+        }
+      }
+    }
+
+    // Force refresh (TODO: try to only refresh what need to be refreshed)
+    $currentResourceData.properties = $currentResourceData.properties;
+  }
+
+  function internal_refresh(
+    rest_of_path: string,
+    base: ResourceProperty,
+    value: ResourceProperty
+  ): boolean {
+    if (base as BagResourceProperty) {
+      if (rest_of_path == "") {
+        let formatted = formatProperties([value])[0];
+
+        let found = base.subProperties.find((v) => v.name == value.name);
+        if (found) {
+          found = formatted;
+        } else {
+          base.subProperties.push(formatted);
+        }
+        return true;
+      }
+
+      for (const property of base.subProperties) {
+        if (rest_of_path.startsWith(property.name)) {
+          rest_of_path = rest_of_path.substr(property.name.length);
+          if (rest_of_path.startsWith(".")) {
+            rest_of_path = rest_of_path.slice(1);
+          }
+          return internal_refresh(rest_of_path, property, value);
+        }
+      }
+    }
+    return false;
+  }
+
   async function tryAgain() {
     $currentResourceData = null;
     currentResourceDescription = null;
@@ -247,6 +307,7 @@
 <Notifications store={notificationsStore} />
 
 <svelte:window
+  on:refresh-property={refreshProperty}
   on:contextmenu-action={autoClose(
     select(handleResourceRename, "resource", "resourcePanel")
   )}
@@ -346,7 +407,7 @@
               {tab}
             </div>
             <div class="property-grid-content" slot="content">
-              <PropertyGrid />
+              <PropertyGrid {modalStore} />
             </div>
           </Panel>
         </div>
