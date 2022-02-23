@@ -4917,14 +4917,23 @@ dependencies = [
 name = "lgn-physics"
 version = "0.1.0"
 dependencies = [
+ "erased-serde",
+ "inventory",
+ "lazy_static",
  "lgn-app",
  "lgn-core",
+ "lgn-data-codegen",
+ "lgn-data-model",
+ "lgn-data-runtime",
  "lgn-ecs",
  "lgn-math",
  "lgn-tracing",
  "lgn-transform",
+ "memoffset 0.6.5",
  "physx",
  "physx-sys",
+ "serde",
+ "typetag",
 ]
 
 [[package]]
@@ -6913,6 +6922,7 @@ dependencies = [
  "lgn-ecs",
  "lgn-graphics-data",
  "lgn-math",
+ "lgn-physics",
  "lgn-telemetry-sink",
  "sample-data",
  "serde_json",

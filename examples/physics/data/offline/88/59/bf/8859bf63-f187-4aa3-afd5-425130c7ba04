@@ -26,6 +26,11 @@
         "mesh": null,
         "mesh_id": "Cube"
       }
+    },
+    {
+      "PhysicsComponent": {
+        "dynamic": false
+      }
     }
   ]
 }

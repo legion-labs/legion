@@ -17,6 +17,10 @@ lgn-data-transaction = { path = "../../crates/lgn-data-transaction", version = "
 lgn-ecs = { path = "../../crates/lgn-ecs", version = "0.1.0" }
 lgn-graphics-data = { path = "../../crates/lgn-graphics-data", version = "0.1.0" }
 lgn-math = { path = "../../crates/lgn-math", version = "0.1.0" }
+lgn-physics = { path = "../../crates/lgn-physics", version = "0.1.0", features = [
+    "offline",
+    "runtime",
+] }
 lgn-telemetry-sink = { path = "../../crates/lgn-telemetry-sink", version = "0.1.0" }
 
 generic-data = { path = "../../tests/generic-data", version = "0.1.0", features = [
