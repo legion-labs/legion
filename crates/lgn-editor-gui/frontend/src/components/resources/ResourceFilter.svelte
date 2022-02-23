@@ -14,7 +14,7 @@
     dispatch("filter", { name });
   }
 
-  function submit(event: SubmitEvent) {
+  function submit(event: Event /* SubmitEvent */) {
     event.preventDefault();
 
     dispatch("filter", { name });

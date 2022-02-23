@@ -21,6 +21,7 @@ run({
         refreshToken: "editor_refresh_token",
       },
       extraParams: {
+        // eslint-disable-next-line camelcase
         identity_provider: "Azure",
       },
       scopes: [

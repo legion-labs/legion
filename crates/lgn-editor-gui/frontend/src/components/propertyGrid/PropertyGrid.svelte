@@ -75,6 +75,7 @@
   }: CustomEvent<AddVectorSubPropertyEvent>) {
     if (!$currentResourceData) {
       log.error("No resources selected");
+
       return;
     }
 
@@ -141,6 +142,6 @@
 
 <style lang="postcss">
   .root {
-    @apply h-full px-1 py-1 overflow-y-auto;
+    @apply h-full w-full px-1 py-1 overflow-y-auto overflow-x-hidden;
   }
 </style>

@@ -85,11 +85,13 @@ export class CookieStorage {
 
   // The refresh token arbitraly last for 1 day by default
   store(
+    // eslint-disable-next-line camelcase
     { access_token, expires_in, refresh_token }: ClientTokenSet,
     refreshTokenExpiresIn = 24 * 60 * 60
   ) {
     setCookie(this.accessTokenName, access_token, expires_in);
 
+    // eslint-disable-next-line camelcase
     if (refresh_token) {
       setCookie(this.refreshTokenName, refresh_token, refreshTokenExpiresIn);
     }
@@ -203,8 +205,11 @@ class Client<UserInfo> {
     }
 
     const body = new URLSearchParams({
+      // eslint-disable-next-line camelcase
       grant_type: "refresh_token",
+      // eslint-disable-next-line camelcase
       client_id: this.clientId,
+      // eslint-disable-next-line camelcase
       refresh_token: refreshToken,
     });
 
@@ -242,9 +247,12 @@ class Client<UserInfo> {
     }
 
     const body = new URLSearchParams({
+      // eslint-disable-next-line camelcase
       grant_type: "authorization_code",
+      // eslint-disable-next-line camelcase
       client_id: this.clientId,
       code,
+      // eslint-disable-next-line camelcase
       redirect_uri: redirectUri,
     });
 
@@ -444,6 +452,7 @@ export class LegionClient extends Client<UserInfo> {
 
     if (window.__TAURI_METADATA__) {
       const { invoke } = await import("@tauri-apps/api");
+
       accessToken = await invoke("plugin:browser|get_access_token");
     } else {
       accessToken = getCookie(this.#cookieStorage.accessTokenName);

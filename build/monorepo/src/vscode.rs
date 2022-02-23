@@ -164,6 +164,10 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     let settings_file = ctx.workspace_root().join(".vscode").join("settings.json");
     let settings = json!({
         "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll.eslint": true
+        },
+        "eslint.validate": ["javascript", "typescript", "svelte"],
         "files.eol": "\n",
         "protoc": {
             "options": [

@@ -212,11 +212,13 @@ function createEvents(state: State, element: HTMLElement, onInput: Listener) {
 
         break;
       }
+
       case WheelEvent.DOM_DELTA_LINE: {
         unit = "Line";
 
         break;
       }
+
       case WheelEvent.DOM_DELTA_PAGE: {
         log.error(
           logLabel,
@@ -225,6 +227,7 @@ function createEvents(state: State, element: HTMLElement, onInput: Listener) {
 
         return;
       }
+
       default: {
         log.error(
           logLabel,
@@ -383,7 +386,9 @@ function createEvents(state: State, element: HTMLElement, onInput: Listener) {
 
     const keyboardInput: KeyboardInput = {
       type: "KeyboardInput",
+      // eslint-disable-next-line camelcase
       key_code: key,
+      // eslint-disable-next-line camelcase
       scan_code: 0,
       state: "Pressed",
     };
@@ -406,7 +411,9 @@ function createEvents(state: State, element: HTMLElement, onInput: Listener) {
 
     const keyboardInput: KeyboardInput = {
       type: "KeyboardInput",
+      // eslint-disable-next-line camelcase
       key_code: key,
+      // eslint-disable-next-line camelcase
       scan_code: 0,
       state: "Released",
     };

@@ -45,7 +45,6 @@
     BagResourceProperty,
     formatProperties,
     ResourceProperty,
-    UnitResourceProperty,
   } from "@/lib/propertyGrid";
 
   contextMenuStore.register("resource", contextMenuEntries.resourceEntries);
@@ -195,12 +194,14 @@
   ) {
     if (!$currentResourceData) {
       log.error("No resources selected");
+
       return;
     }
-    let resourceProperty = event.detail.value as ResourceProperty;
+    const resourceProperty = event.detail.value as ResourceProperty;
+
     if (resourceProperty) {
-      for (var property of $currentResourceData.properties) {
-        if (internal_refresh(event.detail.path, property, resourceProperty)) {
+      for (const property of $currentResourceData.properties) {
+        if (internalRefresh(event.detail.path, property, resourceProperty)) {
           break;
         }
       }
@@ -210,34 +211,39 @@
     $currentResourceData.properties = $currentResourceData.properties;
   }
 
-  function internal_refresh(
-    rest_of_path: string,
+  function internalRefresh(
+    restOfPath: string,
     base: ResourceProperty,
     value: ResourceProperty
   ): boolean {
     if (base as BagResourceProperty) {
-      if (rest_of_path == "") {
-        let formatted = formatProperties([value])[0];
+      if (restOfPath == "") {
+        const formatted = formatProperties([value])[0];
 
         let found = base.subProperties.find((v) => v.name == value.name);
+
         if (found) {
           found = formatted;
         } else {
           base.subProperties.push(formatted);
         }
+
         return true;
       }
 
       for (const property of base.subProperties) {
-        if (rest_of_path.startsWith(property.name)) {
-          rest_of_path = rest_of_path.substr(property.name.length);
-          if (rest_of_path.startsWith(".")) {
-            rest_of_path = rest_of_path.slice(1);
+        if (restOfPath.startsWith(property.name)) {
+          restOfPath = restOfPath.substring(property.name.length);
+
+          if (restOfPath.startsWith(".")) {
+            restOfPath = restOfPath.slice(1);
           }
-          return internal_refresh(rest_of_path, property, value);
+
+          return internalRefresh(restOfPath, property, value);
         }
       }
     }
+
     return false;
   }
 
@@ -291,6 +297,8 @@
           payload:
             entrySetName === "resource" ? currentResourceDescription : null,
         });
+
+        return;
       }
 
       default: {

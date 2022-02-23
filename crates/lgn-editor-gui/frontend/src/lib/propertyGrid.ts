@@ -3,10 +3,10 @@ import { ResourceProperty as RawResourceProperty } from "@lgn/proto-editor/dist/
 import { filterMap } from "./array";
 
 /** Matches any `ptype` of format "Vec<subPType>" */
-const vecPTypeRegExp = /^Vec\<(.+)\>$/;
+const vecPTypeRegExp = /^Vec<(.+)>$/;
 
 /** Matches any `ptype` of format "Option<subPType>" */
-const optionPTypeRegExp = /^Option\<(.+)\>$/;
+const optionPTypeRegExp = /^Option<(.+)>$/;
 
 /** Shared by all resource properties, be it a primitive, a vector, an option, or a component */
 type ResourcePropertyBase<Type extends string = string> = {
@@ -491,6 +491,8 @@ export function buildDefaultPrimitiveProperty(
     case "i32":
     case "u32":
     case "u8":
+
+    // eslint-disable-next-line no-fallthrough
     case "usize": {
       return {
         ptype,

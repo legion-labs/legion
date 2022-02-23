@@ -173,8 +173,13 @@ It also supports manual RGBA edition with 4 different inputs.
     class="dropdown-toggle"
     class:disabled
     on:click={disabled ? null : toggle}
-    style="--current-rgba-color: {hsvToColorString(colors.hsv)}"
-  />
+  >
+    <div
+      class="dropdown-toggle-color"
+      class:disabled
+      style="--current-rgba-color: {hsvToColorString(colors.hsv)}"
+    />
+  </div>
   <div
     class="dropdown"
     class:invisible={!visible}
@@ -290,7 +295,11 @@ It also supports manual RGBA edition with 4 different inputs.
   }
 
   .dropdown-toggle {
-    @apply h-full w-full border border-white cursor-pointer;
+    @apply flex items-center justify-center h-full w-full cursor-pointer;
+  }
+
+  .dropdown-toggle-color {
+    @apply h-5 w-5 border border-white rounded-sm cursor-pointer;
     background-color: var(--current-rgba-color);
   }
 
