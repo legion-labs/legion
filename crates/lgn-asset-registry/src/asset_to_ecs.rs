@@ -5,7 +5,8 @@ use lgn_core::Name;
 use lgn_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
 use lgn_renderer::components::{
-    MaterialComponent, Mesh, ModelComponent, TextureComponent, VisualComponent,
+    LightComponent, LightType, MaterialComponent, Mesh, ModelComponent, TextureComponent,
+    VisualComponent,
 };
 
 use lgn_tracing::info;
@@ -106,10 +107,23 @@ impl AssetToECS for runtime_data::Entity {
             } else if let Some(view) = component.downcast_ref::<runtime_data::View>() {
                 entity.insert(view.clone());
             } else if let Some(light) = component.downcast_ref::<runtime_data::Light>() {
-                entity.insert(light.clone());
+                entity.insert(LightComponent {
+                    light_type: match light.light_type {
+                        0 => LightType::Omnidirectional,
+                        1 => LightType::Directional,
+                        _ => LightType::Spotlight {
+                            cone_angle: light.cone_angle,
+                        },
+                    },
+                    radiance: light.radiance,
+                    color: light.color,
+                    enabled: light.enabled,
+                    ..LightComponent::default()
+                });
             } else if let Some(physics) =
                 component.downcast_ref::<lgn_physics::runtime::PhysicsRigidActor>()
             {
+
                 entity.insert(physics.clone());
             }
         }

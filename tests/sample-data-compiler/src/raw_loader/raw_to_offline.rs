@@ -241,8 +241,14 @@ impl From<raw_data::View> for offline_data::View {
 }*/
 
 impl From<raw_data::Light> for offline_data::Light {
-    fn from(_raw: raw_data::Light) -> Self {
-        Self {}
+    fn from(raw: raw_data::Light) -> Self {
+        Self {
+            light_type: raw.light_type,
+            color: raw.color,
+            radiance: raw.radiance,
+            enabled: raw.enabled,
+            cone_angle: raw.cone_angle,
+        }
     }
 }
 
@@ -272,7 +278,11 @@ impl FromRaw<raw_data::StaticMesh> for offline_data::StaticMesh {
             } else {
                 None
             },
-            ..Self::default()
+            color: lgn_graphics_data::Color::from((
+                raw.color.x as u8,
+                raw.color.y as u8,
+                raw.color.z as u8,
+            )),
         }
     }
 }

@@ -58,12 +58,19 @@ pub struct View {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct Light {}
+pub struct Light {
+    pub light_type: u32, //TODO: change to enum support when it will be supported
+    pub color: Vec3,
+    pub radiance: f32,
+    pub enabled: bool,
+    pub cone_angle: f32,
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct StaticMesh {
     pub mesh_asset_path: Option<String>,
     pub mesh_id: usize,
+    pub color: Vec3,
 }
 
 #[derive(Serialize, Deserialize)]

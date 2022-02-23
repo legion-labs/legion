@@ -91,6 +91,7 @@ impl GltfFile {
                     .collect();
                 let mut indices = Some(indices);
                 let tangents = lgn_math::calculate_tangents(&positions, &tex_coords, &indices);
+
                 meshes.push(Mesh {
                     positions,
                     normals,

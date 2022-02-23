@@ -16,8 +16,9 @@
             gi_contribution: 0,
         )),
         StaticMesh((
-            mesh_asset_path: Some("runtime_model(offline_model(model/FlightHelmet.gltf, 'Hose_low'))"),
+            mesh_asset_path: None,
             mesh_id: 1,
+            color: (255, 0, 0),
         )),
     ],
 )
