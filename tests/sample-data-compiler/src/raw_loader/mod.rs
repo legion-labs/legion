@@ -308,18 +308,6 @@ async fn build_debug_cubes(
 
             cube_entity
                 .components
-                .push(Box::new(offline_data::RotationComponent {
-                    rotation_speed: match index {
-                        0 => (0.4f32, 0.0f32, 0.0f32).into(),
-                        1 => (0.0f32, 0.4f32, 0.0f32).into(),
-                        2 => (0.0f32, 0.0f32, 0.4f32).into(),
-                        3 => (0.0f32, 0.3f32, 0.0f32).into(),
-                        _ => (0.0f32, 0.0f32, 0.0f32).into(),
-                    },
-                }));
-
-            cube_entity
-                .components
                 .push(Box::new(offline_data::Transform {
                     position: match index {
                         0 => (0.0f32, 0.0f32, 1.0f32).into(),

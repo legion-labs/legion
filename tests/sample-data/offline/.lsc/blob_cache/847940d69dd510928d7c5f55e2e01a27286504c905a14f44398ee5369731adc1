@@ -1,0 +1,36 @@
+{
+  "components": [
+    {
+      "Name": {
+        "name": "DebugCube1"
+      }
+    },
+    {
+      "Transform": {
+        "position": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "StaticMesh": {
+        "color": 4294902015,
+        "mesh": null,
+        "mesh_id": "Cube"
+      }
+    }
+  ]
+}
