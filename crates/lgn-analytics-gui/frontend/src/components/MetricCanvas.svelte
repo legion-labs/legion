@@ -21,7 +21,7 @@
   const outerHeight = 600;
   const height = outerHeight - margin.top - margin.bottom;
 
-  let mainWidth: number = 0;
+  let mainWidth = 0;
   $: width = mainWidth - margin.left - margin.right;
 
   let client: PerformanceAnalyticsClientImpl | null = null;
@@ -82,7 +82,7 @@
     }
   });
 
-  function hashString(string: String): number {
+  function hashString(string: string): number {
     let hash = 0;
     for (let i = 0; i < string.length; i++) {
       hash = string.charCodeAt(i) + ((hash << 5) - hash);
