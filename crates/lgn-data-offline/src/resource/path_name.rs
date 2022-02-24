@@ -1,4 +1,4 @@
-use std::{fmt, hash::Hash, str::FromStr};
+use std::{fmt, hash::Hash, ops::Add, str::FromStr};
 
 use lgn_data_runtime::ResourceTypeAndId;
 use serde::{Deserialize, Serialize};
@@ -89,6 +89,14 @@ impl ResourcePathName {
         } else if let Some(new_path) = new_path {
             *self = new_path;
         }
+    }
+}
+
+impl Add<&'_ str> for ResourcePathName {
+    type Output = Self;
+
+    fn add(self, rhs: &'_ str) -> Self::Output {
+        (self.0 + rhs).into()
     }
 }
 
