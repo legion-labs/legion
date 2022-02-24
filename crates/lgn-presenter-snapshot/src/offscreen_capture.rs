@@ -153,10 +153,10 @@ impl OffscreenHelper {
             cgen::descriptor_set::DisplayMapperDescriptorSet::descriptor_set_layout(),
             descriptor_set.descriptor_refs(),
         );
-        cmd_buffer.bind_descriptor_set_handle((
+        cmd_buffer.bind_descriptor_set(
             cgen::descriptor_set::DisplayMapperDescriptorSet::descriptor_set_layout(),
             descriptor_set_handle,
-        ));
+        );
 
         cmd_buffer.draw(3, 0);
 

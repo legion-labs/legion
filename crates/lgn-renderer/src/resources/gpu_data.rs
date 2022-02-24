@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use lgn_app::{App, CoreStage, Plugin};
-use lgn_core::BumpAllocatorPool;
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::{Added, Changed, Entity, Query, Res, ResMut};
 use lgn_graphics_api::{PagedBufferAllocation, VertexBufferBinding};
@@ -240,17 +239,12 @@ fn alloc_material_address(
 fn allocate_bindless_textures(
     renderer: Res<'_, Renderer>,
     pipeline_manager: Res<'_, PipelineManager>,
-    bump_allocator_pool: Res<'_, BumpAllocatorPool>,
+
     mut bindless_tex_manager: ResMut<'_, BindlessTextureManager>,
     descriptor_heap_manager: Res<'_, DescriptorHeapManager>,
     mut updated_textures: Query<'_, '_, &mut TextureComponent, Changed<TextureComponent>>,
 ) {
-    let mut render_context = RenderContext::new(
-        &renderer,
-        &descriptor_heap_manager,
-        &bump_allocator_pool,
-        &pipeline_manager,
-    );
+    let render_context = RenderContext::new(&renderer, &descriptor_heap_manager, &pipeline_manager);
     let cmd_buffer = render_context.alloc_command_buffer();
 
     let mut index_block = None;
@@ -266,8 +260,6 @@ fn allocate_bindless_textures(
     render_context
         .graphics_queue()
         .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
-
-    render_context.release_bump_allocator(&bump_allocator_pool);
 }
 
 #[span_fn]
@@ -356,16 +348,10 @@ fn upload_material_data(
 fn upload_bindless_textures(
     renderer: Res<'_, Renderer>,
     pipeline_manager: Res<'_, PipelineManager>,
-    bump_allocator_pool: Res<'_, BumpAllocatorPool>,
     bindless_tex_manager: ResMut<'_, BindlessTextureManager>,
     descriptor_heap_manager: Res<'_, DescriptorHeapManager>,
 ) {
-    let mut render_context = RenderContext::new(
-        &renderer,
-        &descriptor_heap_manager,
-        &bump_allocator_pool,
-        &pipeline_manager,
-    );
+    let render_context = RenderContext::new(&renderer, &descriptor_heap_manager, &pipeline_manager);
     let cmd_buffer = render_context.alloc_command_buffer();
 
     bindless_tex_manager.upload_textures(renderer.device_context(), &cmd_buffer);
@@ -373,8 +359,6 @@ fn upload_bindless_textures(
     render_context
         .graphics_queue()
         .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
-
-    render_context.release_bump_allocator(&bump_allocator_pool);
 }
 
 #[span_fn]

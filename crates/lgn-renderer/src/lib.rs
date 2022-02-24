@@ -426,7 +426,7 @@ fn render_update(
     let renderer = resources.0;
     let bindless_textures = resources.1;
     let pipeline_manager = resources.2;
-    let bump_allocator_pool = resources.3;
+    // let bump_allocator_pool = resources.3;
     let mesh_manager = resources.4;
     let picking_manager = resources.5;
     let instance_manager = resources.6;
@@ -434,6 +434,7 @@ fn render_update(
     let debug_display = resources.8;
     let lighting_manager = resources.9;
     let descriptor_heap_manager = resources.10;
+
     // queries
     let mut q_render_surfaces = queries.0;
     let q_drawables = queries.1;
@@ -443,13 +444,8 @@ fn render_update(
     let q_cameras = queries.5;
 
     // start
-
-    let mut render_context = RenderContext::new(
-        &renderer,
-        &descriptor_heap_manager,
-        &bump_allocator_pool,
-        &pipeline_manager,
-    );
+    let mut render_context =
+        RenderContext::new(&renderer, &descriptor_heap_manager, &pipeline_manager);
     let q_drawables = q_drawables
         .iter()
         .collect::<Vec<(Entity, &VisualComponent)>>();
@@ -637,7 +633,6 @@ fn render_update(
             render_surface.present(&render_context);
         }
     }
-    render_context.release_bump_allocator(&bump_allocator_pool);
 }
 
 #[allow(clippy::needless_pass_by_value)]

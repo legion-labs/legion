@@ -18,7 +18,6 @@ impl VulkanDescriptorSetLayout {
         let mut vk_bindless_info = vk::DescriptorSetLayoutBindingFlagsCreateInfo::builder();
         let mut vk_bindings = Vec::<vk::DescriptorSetLayoutBinding>::new();
         let mut vk_descriptor_binding_flags = Vec::new();
-        // let mut flat_index = 0;
         let mut typed_flat_indices = Vec::new();
         let mut image_info_count = 0;
         let mut buffer_info_count = 0;
@@ -64,8 +63,6 @@ impl VulkanDescriptorSetLayout {
             };
 
             typed_flat_indices.push(typed_flat_index);
-
-            // flat_index += element_count;
             vk_bindings.push(vk_binding);
 
             let mut vk_binding_flag = vk::DescriptorBindingFlags::default();
@@ -103,7 +100,7 @@ impl VulkanDescriptorSetLayout {
         };
 
         Ok(Self {
-            vk_layout,
+                vk_layout,
             vk_image_info_count: image_info_count,
             vk_buffer_info_count: buffer_info_count,
             typed_flat_indices,

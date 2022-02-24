@@ -347,8 +347,6 @@ fn query_physical_device_info(
         }
     };
 
-    // let mut features2 = vk::PhysicalDeviceFeatures2::default();
-    // unsafe { instance.get_physical_device_features2(device, &mut features2) };
     let all_queue_families: Vec<ash::vk::QueueFamilyProperties> =
         unsafe { instance.get_physical_device_queue_family_properties(device) };
 
@@ -651,7 +649,6 @@ fn create_logical_device(
     let device_create_info = vk::DeviceCreateInfo::builder()
         .queue_create_infos(&queue_infos)
         .enabled_extension_names(&device_extension_names)
-        // .enabled_features(&features)
         .push_next(&mut features2);
 
     let device: ash::Device =

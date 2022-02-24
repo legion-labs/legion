@@ -30,27 +30,14 @@ impl DescriptorPool {
         &self.descriptor_heap_partition
     }
 
-    // pub fn allocate_descriptor_set(
-    //     &self,
-    //     descriptor_set_layout: &DescriptorSetLayout,
-    // ) -> GfxResult<DescriptorSetWriter> {
-    //     self.descriptor_heap_partition
-    //         .get_writer(descriptor_set_layout)
-    // }
-
     pub fn write_descriptor_set(
         &self,
-        // device_context: &DeviceContext,
         layout: &DescriptorSetLayout,
         descriptors: &[DescriptorRef<'_>],
-        // descriptor_set: &impl DescriptorSetDataProvider,
-        // bump: &'frame Bump,
     ) -> DescriptorSetHandle {
         self.descriptor_heap_partition
             .write(layout, descriptors)
             .unwrap()
-        // writer.set_descriptors(descriptors);
-        // writer.flush(device_context)
     }
 
     fn reset(&self) {

@@ -1,4 +1,4 @@
-use lgn_core::{BumpAllocatorHandle, BumpAllocatorPool, Handle};
+use lgn_core::Handle;
 use lgn_graphics_api::{
     DescriptorHeapDef, DescriptorRef, DescriptorSetHandle, DescriptorSetLayout, QueueType,
 };
@@ -21,7 +21,6 @@ pub struct RenderContext<'frame> {
     cmd_buffer_pool: CommandBufferPoolHandle,
     descriptor_pool: DescriptorPoolHandle,
     transient_buffer_allocator: TransientBufferAllocatorHandle,
-    bump_allocator: BumpAllocatorHandle,
     // tmp
     frame_descriptor_set: Option<(&'frame DescriptorSetLayout, DescriptorSetHandle)>,
     view_descriptor_set: Option<(&'frame DescriptorSetLayout, DescriptorSetHandle)>,
@@ -31,7 +30,6 @@ impl<'frame> RenderContext<'frame> {
     pub fn new(
         renderer: &'frame Renderer,
         descriptor_heap_manager: &'frame DescriptorHeapManager,
-        bump_allocator_pool: &'frame BumpAllocatorPool,
         pipeline_manager: &'frame PipelineManager,
     ) -> Self {
         let heap_def = default_descriptor_heap_size();
@@ -49,7 +47,6 @@ impl<'frame> RenderContext<'frame> {
                     1000,
                 ),
             ),
-            bump_allocator: bump_allocator_pool.acquire_bump_allocator(),
             frame_descriptor_set: None,
             view_descriptor_set: None,
         }
@@ -78,43 +75,19 @@ impl<'frame> RenderContext<'frame> {
         &self.descriptor_pool
     }
 
-    // #[allow(clippy::todo)]
-    // pub fn alloc_descriptor_set(
-    //     &self,
-    //     descriptor_set_layout: &DescriptorSetLayout,
-    // ) -> DescriptorSetWriter {
-    //     if let Ok(writer) = self
-    //         .descriptor_pool
-    //         .allocate_descriptor_set(descriptor_set_layout, &self.bump_allocator)
-    //     {
-    //         writer
-    //     } else {
-    //         todo!("Descriptor OOM! ")
-    //     }
-    // }
-
     #[allow(clippy::todo)]
     pub fn write_descriptor_set(
         &self,
         layout: &DescriptorSetLayout,
         descriptors: &[DescriptorRef<'_>],
-        // descriptor_set: &impl DescriptorSetDataProvider, // tmp: find an other way
     ) -> DescriptorSetHandle {
-        self.descriptor_pool.write_descriptor_set(
-            // self.renderer.device_context(),
-            layout,
-            descriptors,
-            // &self.bump_allocator,
-        )
+        self.descriptor_pool
+            .write_descriptor_set(layout, descriptors)
     }
 
     pub(crate) fn transient_buffer_allocator(&self) -> &TransientBufferAllocatorHandle {
         &self.transient_buffer_allocator
     }
-
-    // pub fn bump_allocator(&self) -> &BumpAllocatorHandle {
-    //     &self.bump_allocator
-    // }
 
     pub fn frame_descriptor_set(&self) -> (&DescriptorSetLayout, DescriptorSetHandle) {
         self.frame_descriptor_set.unwrap()
@@ -138,10 +111,6 @@ impl<'frame> RenderContext<'frame> {
         handle: DescriptorSetHandle,
     ) {
         self.view_descriptor_set = Some((layout, handle));
-    }
-
-    pub fn release_bump_allocator(&mut self, bump_allocator_pool: &BumpAllocatorPool) {
-        bump_allocator_pool.release_bump_allocator(self.bump_allocator.transfer());
     }
 }
 

@@ -57,7 +57,6 @@ pub(crate) struct DescriptorSetLayoutInner {
     definition: DescriptorSetLayoutDef,
     id: u32,
     frequency: u32,
-    // binding_mask: u64,
     descriptors: Vec<Descriptor>,
     flat_descriptor_count: u32,
 
@@ -92,10 +91,6 @@ impl DescriptorSetLayout {
         self.inner.frequency
     }
 
-    pub fn binding_mask(&self) -> u64 {
-        (1u64 << self.inner.descriptors.len()) - 1
-    }
-
     pub fn descriptor_count(&self) -> u32 {
         self.inner.descriptors.len() as u32
     }
@@ -120,23 +115,12 @@ impl DescriptorSetLayout {
         device_context: &DeviceContext,
         definition: &DescriptorSetLayoutDef,
     ) -> GfxResult<Self> {
-        // for descriptor_def in &definition.descriptor_defs {}
-        // assert!(definition
-        //     .descriptor_defs
-        //     .is_sorted_by(|x, y| x.binding.cmp(&y.binding)));
-
         assert!(definition.descriptor_defs.len() < MAX_DESCRIPTOR_BINDINGS);
-        // assert!((descriptor_def.binding as usize) < MAX_DESCRIPTOR_BINDINGS);
 
         let mut flat_descriptor_count = 0;
-        // let mut binding_mask = 0;
         let mut descriptors = Vec::new();
 
         for descriptor_def in &definition.descriptor_defs {
-            // assert!((descriptor_def.binding as usize) < MAX_DESCRIPTOR_BINDINGS);
-            // let mask = 1u64 << descriptor_def.binding;
-            // assert!((binding_mask & mask) == 0, "Binding already in use");
-            // binding_mask |= mask;
             let element_count = descriptor_def.array_size_normalized();
 
             let descriptor = Descriptor {
@@ -165,7 +149,6 @@ impl DescriptorSetLayout {
                     definition: definition.clone(),
                     id: descriptor_set_layout_id,
                     frequency: definition.frequency,
-                    // binding_mask,
                     descriptors,
                     flat_descriptor_count,
                     backend_layout,

@@ -19,12 +19,6 @@ impl PersistentDescriptorSetManager {
         let layout = cgen::descriptor_set::PersistentDescriptorSet::descriptor_set_layout();
 
         let def = DescriptorHeapDef::from_descriptor_set_layout_def(layout.definition(), 1);
-
-        // let persistent_partition = descriptor_heap_manager
-        //     .descriptor_heap()
-        //     .alloc_partition(false, &def)
-        //     .unwrap();
-
         let persistent_partition =
             DescriptorHeapPartition::new(descriptor_heap_manager.descriptor_heap(), false, &def)
                 .unwrap();

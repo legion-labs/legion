@@ -12,8 +12,6 @@ pub fn main() {
 
     products.extend( mesh::main() );
 
-    
-
     let view_data = #{
         type: "Struct",
         name: "ViewData",

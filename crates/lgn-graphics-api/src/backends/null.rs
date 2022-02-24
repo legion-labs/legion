@@ -388,18 +388,7 @@ impl<'frame> DescriptorSetWriter<'frame> {
         descriptor_refs: &[DescriptorRef<'_>],
     ) {
         unimplemented!();
-    }
-    // pub fn backend_set_descriptors_by_index(
-    //     &mut self,
-    //     descriptor_index: usize,
-    //     update_datas: &[DescriptorRef<'_>],
-    // ) {
-    //     unimplemented!()
-    // }
-
-    // pub fn backend_flush(&self, device_context: &DeviceContext) {
-    //     unimplemented!()
-    // }
+    }    
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -84,28 +84,24 @@ impl<'rc> HLCommandBuffer<'rc> {
     // tmp? rely on a sort of cache. investigate!
     //
 
-    pub fn bind_descriptor_set_handle(
-        &self,
-        layout_handle: (&DescriptorSetLayout, DescriptorSetHandle),
-    ) {
+    pub fn bind_descriptor_set(&self, layout: &DescriptorSetLayout, handle: DescriptorSetHandle) {
         assert!(self.cur_pipeline.is_some());
 
         let cur_pipeline = self.cur_pipeline.as_ref().unwrap();
         let pipeline_type = cur_pipeline.pipeline_type();
         let root_signature = cur_pipeline.root_signature();
-        let descriptor_set_layout = layout_handle.0;
-        let set_index = descriptor_set_layout.frequency();
+        let set_index = layout.frequency();
 
         assert_eq!(
             &root_signature.definition().descriptor_set_layouts[set_index as usize],
-            descriptor_set_layout
+            layout
         );
 
         self.cmd_buffer.cmd_bind_descriptor_set_handle(
             pipeline_type,
             root_signature,
             set_index,
-            layout_handle.1,
+            handle,
         );
     }
 
