@@ -30,14 +30,13 @@ apt-get update && apt-get install -y \
 ###################################################################################################
 
 # Clang and LLVM
-echo $DIST_VERSION
-LLVM_VERSION_STRING="-$LLVM_VERSION"
-case "$DIST_VERSION" in
-    Debian_11* )     REPO_NAME="deb http://apt.llvm.org/bullseye/  llvm-toolchain-bullseye$LLVM_VERSION_STRING  main" ;;
-    Ubuntu_20.04 )   REPO_NAME="deb http://apt.llvm.org/focal/     llvm-toolchain-focal$LLVM_VERSION_STRING   main" ;;
-    Ubuntu_22.04 )   REPO_NAME="deb http://apt.llvm.org/jammy/     llvm-toolchain-jammy$LLVM_VERSION_STRING main" ;;
+echo $DISTRO_NAME_VERSION
+case "$DISTRO_NAME_VERSION" in
+    Debian_11* )     REPO_NAME="deb http://apt.llvm.org/bullseye/  llvm-toolchain-bullseye-$LLVM_VERSION  main" ;;
+    Ubuntu_20.04 )   REPO_NAME="deb http://apt.llvm.org/focal/     llvm-toolchain-focal-$LLVM_VERSION   main" ;;
+    Ubuntu_22.04 )   REPO_NAME="deb http://apt.llvm.org/jammy/     llvm-toolchain-jammy-$LLVM_VERSION main" ;;
     * )
-        echo "Distribution '$DISTRO' in version '$VERSION' is not supported by this script (${DIST_VERSION})."
+        echo "Distribution '$DISTRO' in version '$DISTRO_VERSION' is not supported by this script (${DISTRO_NAME_VERSION})."
         exit 1
 esac
 
@@ -72,7 +71,13 @@ XWIN_PREFIX="xwin-$XWIN_VERSION-x86_64-unknown-linux-musl"
 wget -qO- https://github.com/Jake-Shadle/xwin/releases/download/$XWIN_VERSION/$XWIN_PREFIX.tar.gz |
     tar -xzv -C /usr/bin --strip-components=1 $XWIN_PREFIX/xwin
 xwin --accept-license 1 --version 17 --cache-dir /tmp/xwin-cache splat --output /xwin
+ln -sf /xwin/sdk/lib/um/x86_64/iphlpapi.lib /xwin/sdk/lib/um/x86_64/Iphlpapi.lib
 rm -rf /tmp/xwin-cache
+
+###################################################################################################
+
+# MacOS for down the road maybe?
+# https://github.com/tpoechtrager/osxcross
 
 ###################################################################################################
 

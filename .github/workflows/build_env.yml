@@ -1,0 +1,14 @@
+on:
+  schedule:
+    # Run the job every 3 hours
+    - cron: "0 */12 * * *"
+  workflow_dispatch:
+
+jobs:
+  build_container:
+    name: Building env container
+    runs-on: [self-hosted, linux, common, build]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build
+        run: ./build/env/setup.sh

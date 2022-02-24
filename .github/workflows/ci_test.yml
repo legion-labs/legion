@@ -149,6 +149,20 @@ jobs:
         id: set-base-ref
         run: echo "::set-output name=base_ref::${{ env.base_ref }}"
 
+  setup_container:
+    name: Building env container
+    if: ${{ false }} # disable for now
+    runs-on: [self-hosted, linux, common, build]
+    outputs:
+      base_ref: ${{ steps.setup-container.outputs.container }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build
+        id: setup-container
+        env:
+          MONOREPO_DOCKER_REGISTRY: ${{ secrets.MONOREPO_DOCKER_REGISTRY }}
+        run: ./build/env/setup.sh
+
   runner_selection:
     name: Runner selection
     needs: base_ref_selection

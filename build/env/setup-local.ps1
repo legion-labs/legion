@@ -38,14 +38,6 @@ Write-Host $(date) '--------------------- Install Rust -------------------------
 scoop install rustup-msvc
 rustup install 1.58.0
 rustup install 1.58.1
-rustup target add x86_64-unknown-linux-musl --toolchain '1.58.0'
-rustup target add x86_64-unknown-linux-musl --toolchain '1.58.1'
-cargo install cargo-deny --version "0.11.1" --locked
-cargo install mdbook --version "0.4.15" --locked
-cargo install sccache --git "https://github.com/diem/sccache.git" --rev ef50d87a58260c30767520045e242ccdbdb965af
-cargo install wasm-bindgen-cli --version "0.2.79"
-Remove-Item "$env:SCOOP\persist\rustup-msvc\.cargo\registry" -Force -Recurse
-Remove-Item "$env:SCOOP\persist\rustup-msvc\.cargo\git" -Force -Recurse
 
 Write-Host $(date) '---------------------- Install VulkanSdk/dcx ---------------------------'
 scoop install legion-labs/vulkan --global
@@ -63,39 +55,5 @@ nvm install 16.10.0
 nvm use 16.10.0
 npm --version
 npm -g i yarn pnpm
-
-Write-Host $(date) '-----------------------------------------------------------------------'
-Write-Host $(date) '-------------------------- Perform Checks -----------------------------'
-Write-Host $(date) '-----------------------------------------------------------------------'
-
-Write-Host $(date) '------------------------ Check base utils -----------------------------'
-scoop --version
-git --version
-python --version
-
-Write-Host $(date) '------------------------- Check cpp utils -----------------------------'
-ninja --version
-cmake --version
-nasm --version
-
-git clone https://github.com/jameskbride/cmake-hello-world.git
-
-Push-Location cmake-hello-world
-    New-Item build -ItemType Directory
-    Push-Location build
-        cmake ..
-        cmake --build .
-    Pop-Location
-Pop-Location
-Remove-Item cmake-hello-world -Recurse -Force
-
-Write-Host $(date) '------------------------- Check rust utils -----------------------------'
-rustup show
-cargo new test_rust
-Push-Location test_rust
-    cargo build
-    cargo run
-Pop-Location
-Remove-Item test_rust -Recurse -Force
 
 Stop-Transcript

@@ -37,10 +37,6 @@ ENV RUSTUP_HOME=/opt/.rustup \
     CXX_x86_64_pc_windows_msvc="clang-cl" \
     AR_x86_64_pc_windows_msvc="llvm-lib" \
     LDFLAGS="-fuse-ld=lld" \
-    # wine can be quite spammy with log messages and they're generally uninteresting
-    WINEDEBUG="-all" \
-    # Use wine to run test executables
-    CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUNNER="wine" \
     # Note that we only disable unused-command-line-argument here since clang-cl
     # doesn't implement all of the options supported by cl, but the ones it doesn't
     # are _generally_ not interesting.
@@ -48,7 +44,7 @@ ENV RUSTUP_HOME=/opt/.rustup \
     # Let cargo know what linker to invoke if you haven't already specified it
     # in a .cargo/config.toml file
     CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER="lld-link" \
-    CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUSTFLAGS="-Lnative=/xwin/crt/lib/x86_64 -Lnative=/xwin/sdk/lib/um/x86_64 -Lnative=/xwin/sdk/lib/ucrt/x86_64"
+    CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUSTFLAGS="-Lnative=/xwin/crt/lib/x86_64 -Lnative=/xwin/sdk/lib/um/x86_64 -Lnative=/xwin/sdk/lib/ucrt/x86_64 -Lnative=/xwin/vulkan-sdk/Lib"
 
 ENV CFLAGS_x86_64_pc_windows_msvc="$CL_FLAGS" \
     CXXFLAGS_x86_64_pc_windows_msvc="$CL_FLAGS"
@@ -71,6 +67,6 @@ ENV NODE_PATH="$NVM_DIR/v$NODE_VERSION/lib/node_modules" \
 
 RUN apt-get remove -y --auto-remove && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /
+WORKDIR /github/workspace
 
 CMD [ "/bin/bash" ]

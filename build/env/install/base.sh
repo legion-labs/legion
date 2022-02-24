@@ -16,7 +16,7 @@ DASEL_VERSION=1.22.1
 apt-get update && apt-get install -y \
     lsb-release \
     curl wget \
-    tar zip unzip \
+    tar zip unzip p7zip-full \
     git \
     python3 \
     ca-certificates software-properties-common \
@@ -25,5 +25,3 @@ apt-get update && apt-get install -y \
 # Dazel is used to parse anything other than Json (Especially toml used by Rust).
 wget -qO /usr/bin/dasel https://github.com/TomWright/dasel/releases/download/v$DASEL_VERSION/dasel_linux_amd64
 chmod a+x /usr/bin/dasel
-
-###################################################################################################

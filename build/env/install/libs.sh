@@ -10,6 +10,7 @@ set -eux
 ###################################################################################################
 
 VULKAN_VERSION=1.3.204
+DXC_VERSION=1.6.2112
 
 ###################################################################################################
 
@@ -19,33 +20,22 @@ wget -O - https://dl.winehq.org/wine-builds/winehq.key | apt-key add -
 
 source "$(dirname "$0")/helper.sh"
 
-case "$DIST_VERSION" in
-    Debian_11* )     REPO_NAME="deb https://dl.winehq.org/wine-builds/debian/ bullseye  main" ;;
-    Ubuntu_20.04 )   REPO_NAME="deb https://dl.winehq.org/wine-builds/ubuntu/ focal main" ;;
-    Ubuntu_22.04 )   REPO_NAME="deb https://dl.winehq.org/wine-builds/ubuntu/ jammy main" ;;
-    * )
-        echo "Distribution '$DISTRO' in version '$VERSION' is not supported by this script (${DIST_VERSION})."
-        exit 1
-esac
-
-add-apt-repository "${REPO_NAME}"
-
 wget -qO - https://packages.lunarg.com/lunarg-signing-key-pub.asc | apt-key add -
-case "$DIST_VERSION" in
+case "$DISTRO_NAME_VERSION" in
     Debian_11* )
-        wget -qO /etc/apt/sources.list.d/lunarg-vulkan-1.3.204-bullseye.list \
-            https://packages.lunarg.com/vulkan/1.3.204/lunarg-vulkan-1.3.204-bullseye.list
+        wget -qO /etc/apt/sources.list.d/lunarg-vulkan-$VULKAN_VERSION-bullseye.list \
+            https://packages.lunarg.com/vulkan/$VULKAN_VERSION/lunarg-vulkan-$VULKAN_VERSION-bullseye.list
         ;;
     Ubuntu_20.04 )
-        wget -qO /etc/apt/sources.list.d/lunarg-vulkan-1.3.204-focal.list \
-            https://packages.lunarg.com/vulkan/1.3.204/lunarg-vulkan-1.3.204-focal.list
+        wget -qO /etc/apt/sources.list.d/lunarg-vulkan-$VULKAN_VERSION-focal.list \
+            https://packages.lunarg.com/vulkan/$VULKAN_VERSION/lunarg-vulkan-$VULKAN_VERSION-focal.list
         ;;
     Ubuntu_22.04 )
-        wget -qO /etc/apt/sources.list.d/lunarg-vulkan-1.3.204-jammy.list \
-            https://packages.lunarg.com/vulkan/1.3.204/lunarg-vulkan-1.3.204-jammy.list
+        wget -qO /etc/apt/sources.list.d/lunarg-vulkan-$VULKAN_VERSION-jammy.list \
+            https://packages.lunarg.com/vulkan/$VULKAN_VERSION/lunarg-vulkan-$VULKAN_VERSION-jammy.list
         ;;
     * )
-        echo "Distribution '$DISTRO' in version '$VERSION' is not supported by this script (${DIST_VERSION})."
+        echo "Distribution '$DISTRO' in version '$DISTRO_VERSION' is not supported by this script (${DISTRO_NAME_VERSION})."
         exit 1
 esac
 
@@ -61,8 +51,9 @@ apt-get update && apt-get install -y \
     libwebkit2gtk-4.0-dev \
     fuse3 \
     libfuse3-dev \
-    winehq-staging \
     vulkan-sdk
+
+###################################################################################################
 
 if [ -d "/usr/lib/dxc" ]; then
     echo "/usr/lib/dxc" | tee -a /etc/ld.so.conf.d/dxc.conf
@@ -71,7 +62,7 @@ else
     # We need to build dxcompiler from source here
     echo "Building libdxcompiler.so from source."
     DXC_HOME=$HOME/DirectXShaderCompiler
-    git clone --depth 1 --branch release-1.6.2110 https://github.com/microsoft/DirectXShaderCompiler.git $DXC_HOME
+    git clone --depth 1 --branch release-$DXC_VERSION https://github.com/microsoft/DirectXShaderCompiler.git $DXC_HOME
     pushd $DXC_HOME
         git submodule update --init --depth 1
         mkdir build
@@ -90,3 +81,8 @@ else
     popd
     rm -rf $DXC_HOME
 fi
+
+wget -qO vulkan-sdk.exe https://sdk.lunarg.com/sdk/download/$VULKAN_VERSION.0/windows/VulkanSDK-$VULKAN_VERSION.0-Installer.exe
+7z x -y vulkan-sdk.exe -o/xwin/vulkan-sdk
+chmod -R a+xr /xwin/vulkan-sdk
+rm vulkan-sdk.exe
