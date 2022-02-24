@@ -563,7 +563,7 @@ impl DataBuild {
                         // different source_hash depending on the compiler
                         // used as compilers can filter dependencies out.
                         //
-                        source_index.compute_source_hash(compile_node.clone()).get()
+                        source_index.compute_source_hash(compile_node.clone())
                     } else {
                         //
                         // since this is a path-derived resource its hash is equal to the

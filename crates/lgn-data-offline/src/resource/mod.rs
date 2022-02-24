@@ -91,7 +91,6 @@ mod project;
 pub use self::project::*;
 
 mod metadata;
-pub use self::metadata::*;
 
 mod path_name;
 pub use self::path_name::*;
