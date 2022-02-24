@@ -44,10 +44,7 @@ export class MetricStreamer {
       if (blockManifest) {
         for (const metricDesc of blockManifest?.metrics) {
           if (!metricStates.get(metricDesc.name)) {
-            metricStates.set(
-              metricDesc.name,
-              new MetricState(true, metricDesc)
-            );
+            metricStates.set(metricDesc.name, new MetricState(metricDesc));
           }
           const metricState = metricStates.get(metricDesc.name);
           metricState?.registerBlock(blockManifest);
@@ -60,20 +57,6 @@ export class MetricStreamer {
     this.currentMaxMs = Math.max(...get(this.metricStore).map((s) => s.max));
   }
 
-  updateFromSelectionState(metricSelectionState: MetricSelectionState) {
-    this.metricStore.update((data) => {
-      const metric = data.filter(
-        (m) => m.name === metricSelectionState.name
-      )[0];
-      if (metric) {
-        metric.enabled = metricSelectionState.selected;
-        const index = data.indexOf(metric);
-        data[index] = metric;
-      }
-      return data;
-    });
-  }
-
   tick(lod: number, min: number, max: number) {
     this.currentMinMs = min;
     this.currentMaxMs = max;
@@ -81,7 +64,7 @@ export class MetricStreamer {
   }
 
   fetchSelectedMetrics(lod: number) {
-    const metrics = get(this.metricStore).filter((m) => m.enabled);
+    const metrics = get(this.metricStore).filter((m) => m.canBeDisplayed());
 
     const missingBlocks = metrics.map((m) => {
       return {
@@ -95,13 +78,6 @@ export class MetricStreamer {
     if (!missingBlocks.flatMap((b) => b.blocks).length) {
       return;
     }
-
-    console.log(
-      `Fetching \n${missingBlocks
-        .flatMap((b) => b.blocks)
-        .map((b) => `${b.blockId} (${lod})`)
-        .join("\n")}`
-    );
 
     missingBlocks.forEach((metric) => {
       metric.blocks.forEach(async (block) => {

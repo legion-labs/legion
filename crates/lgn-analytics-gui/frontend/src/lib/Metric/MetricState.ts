@@ -4,20 +4,29 @@ import {
   MetricBlockManifest,
   MetricDesc,
 } from "@lgn/proto-telemetry/dist/metric";
+import { get } from "svelte/store";
 import { MetricBlockState } from "./MetricBlockState";
+import { addToSelectionStore, selectionStore } from "./MetricSelectionStore";
 
 export class MetricState {
-  enabled: boolean;
   name: string;
   unit: string;
   min = -Infinity;
   max = Infinity;
   private blocks: Map<string, MetricBlockState>;
-  constructor(enabled: boolean, metricDesc: MetricDesc) {
-    this.enabled = enabled;
+  constructor(metricDesc: MetricDesc) {
     this.name = metricDesc.name;
     this.unit = metricDesc.unit;
     this.blocks = new Map();
+    addToSelectionStore(this);
+  }
+
+  canBeDisplayed(): boolean {
+    const metric = get(selectionStore).filter((m) => m.name === this.name)[0];
+    if (!metric) {
+      return false;
+    }
+    return metric.selected && !metric.hidden;
   }
 
   registerBlock(manifest: MetricBlockManifest) {
