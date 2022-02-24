@@ -4749,6 +4749,7 @@ dependencies = [
  "lgn-tracing",
  "lgn-utils",
  "raw-window-handle",
+ "smallvec",
  "strum 0.23.0",
  "vk-mem",
 ]

@@ -1,5 +1,5 @@
 use crate::{
-    DescriptorHeapDef, DescriptorHeapPartition, DescriptorSetDataProvider, DescriptorSetHandle,
+    DescriptorHeapDef, DescriptorHeapPartition, DescriptorRef, DescriptorSet, DescriptorSetHandle,
     DescriptorSetLayout, DescriptorSetWriter, DeviceContext, GfxResult,
 };
 
@@ -226,7 +226,8 @@ impl VulkanDescriptorHeapPartition {
         let device = device_context.vk_device();
         let mut heap_pool_config: DescriptorHeapPoolConfig = definition.into();
         if !transient {
-            heap_pool_config.pool_flags = ash::vk::DescriptorPoolCreateFlags::FREE_DESCRIPTOR_SET;
+            heap_pool_config.pool_flags = ash::vk::DescriptorPoolCreateFlags::FREE_DESCRIPTOR_SET
+                | ash::vk::DescriptorPoolCreateFlags::UPDATE_AFTER_BIND;
         }
 
         let vk_pool = heap_pool_config.create_pool(device)?;
@@ -255,57 +256,44 @@ impl DescriptorHeapPartition {
         }
     }
 
-    pub(crate) fn backend_get_writer<'frame>(
-        &self,
-        descriptor_set_layout: &DescriptorSetLayout,
-        bump: &'frame bumpalo::Bump,
-    ) -> GfxResult<DescriptorSetWriter<'frame>> {
-        let device = self.inner.heap.inner.device_context.vk_device();
-        let allocate_info = ash::vk::DescriptorSetAllocateInfo::builder()
-            .set_layouts(&[descriptor_set_layout.vk_layout()])
-            .descriptor_pool(self.inner.backend_descriptor_heap_partition.vk_pool)
-            .build();
+    pub(crate) fn backend_alloc(&self, layout: &DescriptorSetLayout) -> GfxResult<DescriptorSet> {
+        let handle = self.alloc_vk_descriptor_set(layout)?;
 
-        let result = unsafe { device.allocate_descriptor_sets(&allocate_info)? };
-
-        DescriptorSetWriter::new(
-            DescriptorSetHandle {
-                layout_uid: descriptor_set_layout.uid(),
-                frequency: descriptor_set_layout.frequency(),
-                backend_descriptor_set_handle: result[0],
-            },
-            descriptor_set_layout,
-            bump,
-        )
+        Ok(DescriptorSet {
+            _partition: self.clone(),
+            _layout: layout.clone(),
+            _handle: handle,
+        })
     }
 
-    pub(crate) fn backend_write<'frame>(
+    pub(crate) fn backend_write(
         &self,
-        descriptor_set: &impl DescriptorSetDataProvider,
-        bump: &'frame bumpalo::Bump,
+        layout: &DescriptorSetLayout,
+        descriptor_refs: &[DescriptorRef<'_>],
+    ) -> GfxResult<DescriptorSetHandle> {
+        let handle = self.alloc_vk_descriptor_set(layout)?;
+        let device_context = &self.inner.heap.inner.device_context;
+        let mut writer = DescriptorSetWriter::new(device_context, &handle, layout);
+        writer.set_descriptors(descriptor_refs);
+
+        Ok(handle)
+    }
+
+    fn alloc_vk_descriptor_set(
+        &self,
+        layout: &DescriptorSetLayout,
     ) -> GfxResult<DescriptorSetHandle> {
         let device_context = &self.inner.heap.inner.device_context;
         let device = device_context.vk_device();
-        let descriptor_set_layout = descriptor_set.layout();
         let allocate_info = ash::vk::DescriptorSetAllocateInfo::builder()
-            .set_layouts(&[descriptor_set_layout.vk_layout()])
+            .set_layouts(&[layout.vk_layout()])
             .descriptor_pool(self.inner.backend_descriptor_heap_partition.vk_pool)
             .build();
 
+        // todo: replace by custom unsafe code to avoid this heap allocation
         let result = unsafe { device.allocate_descriptor_sets(&allocate_info)? };
-
-        let mut writer = DescriptorSetWriter::new(
-            DescriptorSetHandle {
-                layout_uid: descriptor_set_layout.uid(),
-                frequency: descriptor_set_layout.frequency(),
-                backend_descriptor_set_handle: result[0],
-            },
-            descriptor_set_layout,
-            bump,
-        )?;
-
-        writer.set_descriptors(descriptor_set);
-
-        Ok(writer.flush(device_context))
+        Ok(DescriptorSetHandle {
+            backend_descriptor_set_handle: result[0],
+        })
     }
 }

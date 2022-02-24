@@ -86,6 +86,7 @@ impl DescriptorDef {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Descriptor {
     pub name: String,
+    pub bindless: bool,
     pub flat_index: u32,
     pub array_len: Option<u32>,
     pub def: DescriptorDef,
@@ -172,7 +173,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
     /// # Errors
     /// todo
     pub fn add_samplers(self, name: &str, array_len: Option<u32>) -> Result<Self> {
-        self.add_descriptor(name, array_len, DescriptorDef::Sampler)
+        self.add_descriptor(name, false, array_len, DescriptorDef::Sampler)
     }
 
     /// Add `ConstantBuffers`.
@@ -193,6 +194,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
             })?;
         self.add_descriptor(
             name,
+            false,
             None,
             DescriptorDef::ConstantBuffer(ConstantBufferDef { ty_handle }),
         )
@@ -226,7 +228,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         } else {
             DescriptorDef::StructuredBuffer(def)
         };
-        self.add_descriptor(name, array_len, def)
+        self.add_descriptor(name, false, array_len, def)
     }
 
     /// Add `ByteAddressBuffer`.
@@ -244,7 +246,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         } else {
             DescriptorDef::ByteAddressBuffer
         };
-        self.add_descriptor(name, array_len, def)
+        self.add_descriptor(name, false, array_len, def)
     }
 
     /// Add descriptor.
@@ -256,6 +258,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         name: &str,
         tex_type: &str,
         fmt: &str,
+        bindless: bool,
         array_len: Option<u32>,
         read_write: bool,
     ) -> Result<Self> {
@@ -330,12 +333,13 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
             }
         };
 
-        self.add_descriptor(name, array_len, ds)
+        self.add_descriptor(name, bindless, array_len, ds)
     }
 
     fn add_descriptor(
         mut self,
         name: &str,
+        bindless: bool,
         array_len: Option<u32>,
         def: DescriptorDef,
     ) -> Result<Self> {
@@ -351,6 +355,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         self.names.insert(name.to_string());
         self.product.descriptors.push(Descriptor {
             name: name.to_owned(),
+            bindless,
             flat_index: self.flat_index,
             array_len,
             def,

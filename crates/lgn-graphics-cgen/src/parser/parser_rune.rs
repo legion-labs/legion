@@ -169,6 +169,7 @@ fn add_descriptor_set_internal(model: &mut db::Model, data: &DescriptorSetData) 
                     &def.name,
                     "2D",
                     &def.content,
+                    def.bindless,
                     def.array_len,
                     descriptor.read_write(),
                 )?;
@@ -178,6 +179,7 @@ fn add_descriptor_set_internal(model: &mut db::Model, data: &DescriptorSetData) 
                     &def.name,
                     "3D",
                     &def.content,
+                    def.bindless,
                     def.array_len,
                     descriptor.read_write(),
                 )?;
@@ -187,19 +189,27 @@ fn add_descriptor_set_internal(model: &mut db::Model, data: &DescriptorSetData) 
                     &def.name,
                     "2DArray",
                     &def.content,
+                    def.bindless,
                     def.array_len,
                     descriptor.read_write(),
                 )?;
             }
             DescriptorData::TextureCube(def) => {
-                builder =
-                    builder.add_texture(&def.name, "Cube", &def.content, def.array_len, false)?;
+                builder = builder.add_texture(
+                    &def.name,
+                    "Cube",
+                    &def.content,
+                    def.bindless,
+                    def.array_len,
+                    false,
+                )?;
             }
             DescriptorData::TextureCubeArray(def) => {
                 builder = builder.add_texture(
                     &def.name,
                     "CubeArray",
                     &def.content,
+                    def.bindless,
                     def.array_len,
                     false,
                 )?;
@@ -352,6 +362,8 @@ struct ByteAddressBufferData {
 struct TextureData {
     name: String,
     content: String,
+    #[serde(default)]
+    bindless: bool,
     array_len: Option<u32>,
 }
 
