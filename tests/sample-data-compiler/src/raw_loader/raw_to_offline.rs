@@ -256,10 +256,6 @@ impl From<raw_data::Light> for offline_data::Light {
     }
 }
 
-        }
-    }
-}
-
 // ----- Instance conversions -----
 
 impl FromRaw<raw_data::Instance> for offline_data::Instance {

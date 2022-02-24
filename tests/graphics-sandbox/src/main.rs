@@ -193,12 +193,11 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
         ));
 
     // sphere 2
+    commands
+        .spawn()
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
             0.5, 0.0, 0.0,
         )))
-    commands
-        .spawn()
-        .insert(Transform::from_xyz(0.0, 0.0, 0.0))
         .insert(VisualComponent::new_default_mesh(
             DefaultMeshType::Sphere,
             (0, 255, 0).into(),
@@ -210,7 +209,6 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
             0.0, 0.0, 0.0,
         )))
-        .insert(GlobalTransform::identity())
         .insert(VisualComponent::new_default_mesh(
             DefaultMeshType::Sphere,
             (0, 0, 255).into(),

@@ -16,6 +16,5 @@
             shadow_caster_local: true,
             gi_contribution: 0,
         )),
-        )),
     ],
 )

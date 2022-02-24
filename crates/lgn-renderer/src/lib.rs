@@ -695,6 +695,7 @@ fn render_update(
             q_manipulator_drawables.as_slice(),
             q_lights.as_slice(),
             &mesh_manager,
+            &model_manager,
             camera_component,
         );
 
@@ -720,6 +721,7 @@ fn render_update(
             q_manipulator_drawables.as_slice(),
             camera_component,
             &mesh_manager,
+            &model_manager,
             &debug_display,
         );
 

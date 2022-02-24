@@ -14,7 +14,7 @@ use crate::{
     debug_display::{DebugDisplay, DebugPrimitiveType},
     hl_gfx_api::HLCommandBuffer,
     picking::ManipulatorManager,
-    resources::{DefaultMeshType, MeshManager, PipelineHandle, PipelineManager},
+    resources::{DefaultMeshType, MeshManager, ModelManager, PipelineHandle, PipelineManager},
     RenderContext,
 };
 
@@ -209,6 +209,7 @@ impl DebugRenderPass {
         cmd_buffer: &mut HLCommandBuffer<'_>,
         picked_meshes: &[(&VisualComponent, &GlobalTransform)],
         mesh_manager: &MeshManager,
+        model_manager: &ModelManager,
     ) {
         cmd_buffer.bind_descriptor_set(
             render_context.frame_descriptor_set().0,
@@ -227,22 +228,20 @@ impl DebugRenderPass {
             .pipeline_manager()
             .get_pipeline(self.solid_pso_depth_handle)
             .unwrap();
-        for (_index, (static_mesh_component, transform)) in picked_meshes.iter().enumerate() {
-            cmd_buffer.bind_pipeline(wire_pso_depth_pipeline);
-            render_aabb_for_mesh(
-                static_mesh_component.mesh_id as u32,
-                transform,
-                cmd_buffer,
-                mesh_manager,
-            );
-            cmd_buffer.bind_pipeline(solid_pso_depth_pipeline);
-            render_mesh(
-                static_mesh_component.mesh_id as u32,
-                &transform.compute_matrix(),
-                Vec4::new(0.0, 0.5, 0.5, 0.75),
-                cmd_buffer,
-                mesh_manager,
-            );
+        for (_index, (visual_component, transform)) in picked_meshes.iter().enumerate() {
+            let (model_meta_data, _ready) = model_manager.get_model_meta_data(visual_component);
+            for mesh in &model_meta_data.meshes {
+                cmd_buffer.bind_pipeline(wire_pso_depth_pipeline);
+                render_aabb_for_mesh(mesh.mesh_id as u32, transform, cmd_buffer, mesh_manager);
+                cmd_buffer.bind_pipeline(solid_pso_depth_pipeline);
+                render_mesh(
+                    mesh.mesh_id as u32,
+                    &transform.compute_matrix(),
+                    Vec4::new(0.0, 0.5, 0.5, 0.75),
+                    cmd_buffer,
+                    mesh_manager,
+                );
+            }
         }
     }
 
@@ -291,6 +290,7 @@ impl DebugRenderPass {
         render_surface: &mut RenderSurface,
         manipulator_meshes: &[(&VisualComponent, &GlobalTransform, &ManipulatorComponent)],
         mesh_manager: &MeshManager,
+        model_manager: &ModelManager,
         camera: &CameraComponent,
     ) {
         let (view_matrix, projection_matrix) = camera.build_view_projection(
@@ -298,8 +298,7 @@ impl DebugRenderPass {
             render_surface.extents().height() as f32,
         );
 
-        for (_index, (static_mesh, transform, manipulator)) in manipulator_meshes.iter().enumerate()
-        {
+        for (_index, (visual, transform, manipulator)) in manipulator_meshes.iter().enumerate() {
             if manipulator.active {
                 let scaled_world_matrix = ManipulatorManager::scale_manipulator_for_viewport(
                     transform,
@@ -312,10 +311,10 @@ impl DebugRenderPass {
                     Vec4::new(1.0, 1.0, 0.0, 1.0)
                 } else {
                     Vec4::new(
-                        f32::from(static_mesh.color.r) / 255.0f32,
-                        f32::from(static_mesh.color.g) / 255.0f32,
-                        f32::from(static_mesh.color.b) / 255.0f32,
-                        f32::from(static_mesh.color.a) / 255.0f32,
+                        f32::from(visual.color.r) / 255.0f32,
+                        f32::from(visual.color.g) / 255.0f32,
+                        f32::from(visual.color.b) / 255.0f32,
+                        f32::from(visual.color.a) / 255.0f32,
                     )
                 };
 
@@ -335,13 +334,16 @@ impl DebugRenderPass {
                     render_context.view_descriptor_set().1,
                 );
 
-                render_mesh(
-                    static_mesh.mesh_id as u32,
-                    &scaled_world_matrix,
-                    color,
-                    cmd_buffer,
-                    mesh_manager,
-                );
+                let (model_meta_data, _ready) = model_manager.get_model_meta_data(visual);
+                for mesh in &model_meta_data.meshes {
+                    render_mesh(
+                        mesh.mesh_id as u32,
+                        &scaled_world_matrix,
+                        color,
+                        cmd_buffer,
+                        mesh_manager,
+                    );
+                }
             }
         }
     }
@@ -356,6 +358,7 @@ impl DebugRenderPass {
         manipulator_meshes: &[(&VisualComponent, &GlobalTransform, &ManipulatorComponent)],
         camera: &CameraComponent,
         mesh_manager: &MeshManager,
+        model_manager: &ModelManager,
         debug_display: &DebugDisplay,
     ) {
         cmd_buffer.begin_render_pass(
@@ -380,7 +383,13 @@ impl DebugRenderPass {
 
         self.render_ground_plane(render_context, cmd_buffer, mesh_manager);
 
-        self.render_picked(render_context, cmd_buffer, picked_meshes, mesh_manager);
+        self.render_picked(
+            render_context,
+            cmd_buffer,
+            picked_meshes,
+            mesh_manager,
+            model_manager,
+        );
 
         self.render_debug_display(render_context, cmd_buffer, debug_display, mesh_manager);
 
@@ -390,6 +399,7 @@ impl DebugRenderPass {
             render_surface,
             manipulator_meshes,
             mesh_manager,
+            model_manager,
             camera,
         );
 
