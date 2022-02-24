@@ -3,7 +3,7 @@
   import { Entry, Entries } from "@/lib/hierarchyTree";
   import keyboardNavigation from "@lgn/web-client/src/actions/keyboardNavigation";
   import KeyboardNavigationStore from "@lgn/web-client/src/stores/keyboardNavigation";
-  import Inner from "./Inner.svelte";
+  import HierarchyTreeItem from "./HierarchyTreeItem.svelte";
 
   type Item = $$Generic;
 
@@ -26,6 +26,8 @@
   export let highlightedItem: Item | null = null;
 
   export let currentlyRenameEntry: Entry<Item> | null = null;
+
+  export let withItemContextMenu: string | null = null;
 
   let hierarchyTree: HTMLElement | null;
 
@@ -116,16 +118,17 @@
   on:navigation-rename={() => highlightedItem && startNameEdit(highlightedItem)}
   on:navigation-remove={() => highlightedItem && remove(highlightedItem)}
   use:keyboardNavigation={{
-    size: entries.size,
+    size: entries.size(),
     store: keyboardNavigationStore,
   }}
   bind:this={hierarchyTree}
 >
   {#each entries.entries as entry (entry.index)}
-    <Inner
+    <HierarchyTreeItem
       index={entry.index}
       {entry}
       {highlightedEntry}
+      {withItemContextMenu}
       bind:currentlyRenameEntry
       on:dblclick={select}
       on:highlight={({ detail: entry }) => setHighlightedEntry(entry)}
@@ -134,7 +137,7 @@
       <svelte:fragment slot="name" let:itemName>
         <slot name="name" {itemName} />
       </svelte:fragment>
-    </Inner>
+    </HierarchyTreeItem>
   {/each}
 </div>
 

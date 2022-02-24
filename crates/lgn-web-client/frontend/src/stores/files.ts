@@ -10,6 +10,7 @@ export default class Files extends Writable<File[] | null> {
     mimeTypes,
   }: { multiple?: boolean; mimeTypes?: string[] } = {}) {
     const fileInput = document.createElement("input");
+
     fileInput.type = "file";
     fileInput.multiple = !!multiple;
     fileInput.style.display = "none";

@@ -23,7 +23,7 @@
     "browser-headers": "^0.4.1",
     "google-protobuf": "^3.19.4",
     "long": "^5.2.0",
-    "pnpm": "^6.31.0",
+    "pnpm": "^6.32.1",
     "protobufjs": "^6.11.2"
   }
 }

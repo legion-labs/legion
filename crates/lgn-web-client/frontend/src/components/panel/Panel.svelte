@@ -1,5 +1,4 @@
 <script lang="ts">
-  import Icon from "@iconify/svelte";
   import clickOutside from "../../actions/clickOutside";
   import Loader from "../Loader.svelte";
 

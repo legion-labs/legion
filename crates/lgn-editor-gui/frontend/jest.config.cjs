@@ -13,5 +13,5 @@ module.exports = {
     "^\\@\\/(.*)": "<rootDir>/src/$1",
   },
   setupFilesAfterEnv: ["<rootDir>/tests/setup.ts"],
-  transformIgnorePatterns: ["node_modules/(?!(@tauri-apps/api)/)"],
+  transformIgnorePatterns: ["node_modules/(?!(@tauri-apps/api|svelte-forms)/)"],
 };

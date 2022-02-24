@@ -18,7 +18,7 @@ export const resourcesSuite = suite("Entries.fromArray", (bench) => {
     const entries = Entries.fromArray(resources, Symbol);
 
     return () => {
-      entries.size;
+      entries.recalculateSize();
     };
   });
 
@@ -77,7 +77,6 @@ export const resourcesSuite = suite("Entries.fromArray", (bench) => {
 
   bench.add("Insert item early in entries", { iter: 10_000 }, () => {
     const entries = Entries.fromArray(resources, Symbol);
-
     const entry = entries.getFromIndex(2) as Entry<{ path: string }>;
 
     return () => {
@@ -87,8 +86,7 @@ export const resourcesSuite = suite("Entries.fromArray", (bench) => {
 
   bench.add("Insert item late in entries", { iter: 10_000 }, () => {
     const entries = Entries.fromArray(resources, Symbol);
-
-    const entry = entries.getFromIndex(entries.size - 2) as Entry<{
+    const entry = entries.getFromIndex(entries.size() - 2) as Entry<{
       path: string;
     }>;
 
@@ -125,7 +123,7 @@ export const bigResourcesSuite = suite(
       const entries = Entries.fromArray(bigResources, Symbol);
 
       return () => {
-        entries.size;
+        entries.recalculateSize();
       };
     });
 
@@ -215,7 +213,6 @@ export const bigResourcesSuite = suite(
       { iter: 100 },
       () => {
         const entries = Entries.fromArray(bigResources, Symbol);
-
         const entry = entries.getFromIndex(2) as Entry<{ path: string }>;
 
         return () => {
@@ -229,8 +226,7 @@ export const bigResourcesSuite = suite(
       { iter: 100 },
       () => {
         const entries = Entries.fromArray(bigResources, Symbol);
-
-        const entry = entries.getFromIndex(entries.size - 2) as Entry<{
+        const entry = entries.getFromIndex(entries.size() - 2) as Entry<{
           path: string;
         }>;
 
