@@ -2,6 +2,5 @@
   "name": "/scene/ground.ent",
   "type_name": "offline_entity",
   "type_id": "1c0ff9e497b0740f",
-  "dependencies": [],
-  "content_checksum": "c2b42bdf1653db0ac84f977f41414c4e"
+  "dependencies": []
 }

@@ -2,6 +2,5 @@
   "name": "/scene/box-b.ent",
   "type_name": "offline_entity",
   "type_id": "1c0ff9e497b0740f",
-  "dependencies": [],
-  "content_checksum": "21ec16dc00ed31b3573468e1b8064ffe"
+  "dependencies": []
 }
