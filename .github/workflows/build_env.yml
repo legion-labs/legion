@@ -12,6 +12,7 @@ jobs:
     runs-on: [self-hosted, linux, common, build]
     steps:
       - uses: actions/checkout@v2
+      - run: npm install tweetsodium
       - name: Test nodejs in our runners
         uses: actions/github-script@v6
         with:
