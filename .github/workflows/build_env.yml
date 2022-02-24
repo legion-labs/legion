@@ -1,3 +1,5 @@
+name: Build Env Schedule Test
+
 on:
   schedule:
     # Run the job every 3 hours
