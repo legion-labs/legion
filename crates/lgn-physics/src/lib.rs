@@ -178,7 +178,9 @@ impl PhysicsPlugin {
         for actor in scene.get_dynamic_actors() {
             let entity = actor.get_user_data();
             if let Ok(mut transform) = query.get_mut(*entity) {
-                *transform = Transform::from_matrix(actor.get_global_pose().into());
+                let global_transform = GlobalTransform::from_matrix(actor.get_global_pose().into());
+                // TODO: use parent global to determine child local
+                *transform = global_transform.into();
             }
         }
     }
