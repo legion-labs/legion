@@ -68,6 +68,7 @@ use crate::{
 use lgn_app::{App, CoreStage, Events, Plugin};
 
 use lgn_ecs::prelude::*;
+use lgn_math::Vec3;
 use lgn_tracing::span_fn;
 use lgn_transform::components::GlobalTransform;
 use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
@@ -82,6 +83,8 @@ use crate::{
     },
     labels::CommandBufferLabel,
 };
+
+pub const UP_VECTOR: Vec3 = Vec3::Y;
 
 #[derive(Default)]
 pub struct RendererPlugin {

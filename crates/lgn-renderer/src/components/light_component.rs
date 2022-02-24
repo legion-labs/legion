@@ -9,7 +9,7 @@ use crate::{
     egui::egui_plugin::Egui,
     lighting::LightingManager,
     resources::{DefaultMeshType, UniformGPUDataUpdater},
-    Renderer,
+    Renderer, UP_VECTOR,
 };
 
 pub enum LightType {
@@ -172,7 +172,7 @@ pub(crate) fn update_lights(
         }
         match light.light_type {
             LightType::Directional => {
-                let direction = transform.rotation.mul_vec3(Vec3::Y);
+                let direction = transform.rotation.mul_vec3(UP_VECTOR);
                 let mut dir_light = DirectionalLight::default();
                 dir_light.set_dir(direction.into());
                 dir_light.set_color(light.color.into());
@@ -187,7 +187,7 @@ pub(crate) fn update_lights(
                 omnidirectional_lights_data.push(omni_light);
             }
             LightType::Spotlight { cone_angle } => {
-                let direction = transform.rotation.mul_vec3(Vec3::Y);
+                let direction = transform.rotation.mul_vec3(UP_VECTOR);
                 let mut spotlight = SpotLight::default();
                 spotlight.set_dir(direction.into());
                 spotlight.set_color(light.color.into());

@@ -9,7 +9,7 @@ use lgn_input::{
 };
 use lgn_math::{Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
 
-use crate::cgen;
+use crate::{cgen, UP_VECTOR};
 
 #[derive(Component)]
 pub struct CameraComponent {
@@ -22,7 +22,7 @@ impl CameraComponent {
     pub fn build_view_projection(&self, width: f32, height: f32) -> (Mat4, Mat4) {
         let eye = self.camera_rig.final_transform.position;
         let center = eye + self.camera_rig.final_transform.forward();
-        let up = Vec3::Y; // self.camera_rig.final_transform.up();
+        let up = UP_VECTOR; // self.camera_rig.final_transform.up();
         let view_matrix = Mat4::look_at_lh(eye, center, up);
 
         let fov_y_radians: f32 = 45.0;
@@ -76,7 +76,7 @@ impl Default for CameraComponent {
         let center = Vec3::ZERO;
 
         let forward = (center - eye).normalize();
-        let right = forward.cross(Vec3::Y).normalize();
+        let right = forward.cross(UP_VECTOR).normalize();
         let up = right.cross(forward);
         let rotation = Quat::from_mat3(&Mat3::from_cols(right, up, -forward));
 
