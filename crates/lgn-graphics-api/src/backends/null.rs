@@ -382,8 +382,16 @@ impl<'frame> NullDescriptorSetWriter<'frame> {
 }
 
 impl<'frame> DescriptorSetWriter<'frame> {
+    #[allow(clippy::unused_self, clippy::todo)]
+    pub fn backend_set_descriptors_by_index(
+        &self,
+        _index: u32,
+        _update_datas: &[DescriptorRef<'_>],
+    ) {
+        unimplemented!();
+    }    
     pub fn backend_set_descriptors(
-        &mut self,
+        &self,
         device_context: &DeviceContext,
         descriptor_refs: &[DescriptorRef<'_>],
     ) {
