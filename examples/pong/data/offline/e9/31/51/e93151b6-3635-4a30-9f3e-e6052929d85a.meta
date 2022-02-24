@@ -2,6 +2,5 @@
   "name": "/scene/pad_right_script",
   "type_name": "offline_script",
   "type_id": "45307156cdfef705",
-  "dependencies": [],
-  "content_checksum": "d77fe7aad594726bb0217722870eaf96"
+  "dependencies": []
 }

@@ -2,6 +2,5 @@
   "name": "/scene/ball_script",
   "type_name": "offline_script",
   "type_id": "45307156cdfef705",
-  "dependencies": [],
-  "content_checksum": "0e790f99c375df4e976c4e6a3ec1b41f"
+  "dependencies": []
 }
