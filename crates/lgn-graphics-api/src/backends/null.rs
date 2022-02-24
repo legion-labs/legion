@@ -390,11 +390,7 @@ impl<'frame> DescriptorSetWriter<'frame> {
     ) {
         unimplemented!();
     }
-    pub fn backend_set_descriptors(
-        &self,
-        device_context: &DeviceContext,
-        descriptor_refs: &[DescriptorRef<'_>],
-    ) {
+    pub fn backend_set_descriptors(&self, descriptor_refs: &[DescriptorRef<'_>]) {
         unimplemented!();
     }
 }
