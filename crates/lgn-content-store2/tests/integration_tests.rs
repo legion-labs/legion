@@ -10,6 +10,8 @@ use lgn_content_store2::{
     MemoryProvider, SmallContentProvider,
 };
 
+#[cfg(feature = "lru")]
+use lgn_content_store2::LruProvider;
 #[cfg(feature = "redis")]
 use lgn_content_store2::RedisProvider;
 #[cfg(feature = "aws")]
@@ -108,6 +110,43 @@ async fn test_memory_provider() {
         [id, fake_id],
         [Ok(&BIG_DATA_A), Err(Error::NotFound)]
     );
+}
+
+#[cfg(feature = "lru")]
+#[tokio::test]
+async fn test_lru_provider() {
+    let provider = LruProvider::new(2);
+
+    let id = Identifier::new(&BIG_DATA_A);
+    assert_content_not_found!(provider, id);
+
+    let id = assert_write_content!(provider, &BIG_DATA_A);
+    assert_read_content!(provider, id, &BIG_DATA_A);
+
+    // Another write should yield no error.
+    assert_write_avoided!(provider, &id);
+
+    let fake_id = Identifier::new(&BIG_DATA_X);
+    assert_read_contents!(
+        provider,
+        [id.clone(), fake_id],
+        [Ok(&BIG_DATA_A), Err(Error::NotFound)]
+    );
+
+    // Write enough content to make the LRU full.
+    assert_write_content!(provider, &BIG_DATA_B);
+    assert_write_content!(provider, &BIGGER_DATA_A);
+
+    // The value should have been evicted.
+    assert_content_not_found!(provider, id);
+
+    // Rewrite the value and this time make frequent reads to avoid eviction.
+    assert_write_content!(provider, &BIG_DATA_A);
+    assert_read_content!(provider, id, &BIG_DATA_A);
+    assert_write_content!(provider, &BIG_DATA_B);
+    assert_read_content!(provider, id, &BIG_DATA_A);
+    assert_write_content!(provider, &BIGGER_DATA_A);
+    assert_read_content!(provider, id, &BIG_DATA_A);
 }
 
 #[tokio::test]

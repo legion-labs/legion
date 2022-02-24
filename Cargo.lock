@@ -4455,6 +4455,7 @@ dependencies = [
  "lgn-config",
  "lgn-content-store-proto",
  "lgn-online",
+ "lru",
  "pin-project",
  "pretty_env_logger",
  "rand 0.8.5",
@@ -5550,6 +5551,15 @@ dependencies = [
  "serde_json",
  "tracing",
  "tracing-subscriber 0.3.9",
+]
+
+[[package]]
+name = "lru"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "274353858935c992b13c0ca408752e2121da852d07dec7ce5f108c77dfa14d1f"
+dependencies = [
+ "hashbrown",
 ]
 
 [[package]]

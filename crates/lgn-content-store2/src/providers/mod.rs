@@ -4,6 +4,8 @@ mod aws_dynamodb;
 mod aws_s3;
 mod grpc;
 mod local;
+#[cfg(feature = "lru")]
+mod lru;
 mod memory;
 mod monitor;
 #[cfg(feature = "redis")]
@@ -11,6 +13,8 @@ mod redis;
 mod small_content;
 mod uploader;
 
+#[cfg(feature = "lru")]
+pub use self::lru::LruProvider;
 #[cfg(feature = "redis")]
 pub use self::redis::RedisProvider;
 #[cfg(feature = "aws")]

@@ -16,7 +16,7 @@ path = "src/bin.rs"
 required-features = ["cli"]
 
 [features]
-default = ["aws", "redis", "cli"]
+default = ["aws", "redis", "lru", "cli"]
 aws = ["aws-config", "aws-sdk-s3", "aws-sdk-dynamodb"]
 cli = ["clap", "indicatif", "bytesize"]
 
@@ -40,6 +40,7 @@ itertools = "0.10"
 lgn-online = { path = "../lgn-online", version = "0.1.0" }
 lgn-config = { path = "../lgn-config", version = "0.1.0" }
 lgn-content-store-proto = { path = "../lgn-content-store-proto", version = "0.1.0" }
+lru = { version = "0.7", optional = true }
 pin-project = "1"
 redis = { version = "0.21.0", features = ["tokio-comp"], optional = true }
 reqwest = { version = "0.11.9", features = ["stream"] }
