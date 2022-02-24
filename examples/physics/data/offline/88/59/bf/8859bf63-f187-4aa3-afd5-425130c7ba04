@@ -28,8 +28,10 @@
       }
     },
     {
-      "PhysicsComponent": {
-        "dynamic": false
+      "PhysicsRigidActor": {
+        "actor_type": "Static",
+        "collision_mesh": null,
+        "collision_mesh_type": "Cube"
       }
     }
   ]
