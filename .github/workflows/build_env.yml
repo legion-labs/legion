@@ -7,11 +7,10 @@ on:
   workflow_dispatch:
 
 jobs:
-  build_container:
-    name: Building env container
+  update_ecr_password:
+    name: Fetching the ECR password
     runs-on: [self-hosted, linux, common, build]
     steps:
-      - uses: actions/checkout@v2
       - run: npm install tweetsodium
       - name: Test nodejs in our runners
         uses: actions/github-script@v6
@@ -33,7 +32,7 @@ jobs:
             const key = pub_key.data.key;
             const key_id = pub_key.data.key_id;
             const value = ecr_login.stdout;
-            console.log(ecr_login);
+
             // Convert the message and key to Uint8Array's (Buffer implements that interface)
             const message_bytes = Buffer.from(value);
             const key_bytes = Buffer.from(key, 'base64');
@@ -52,6 +51,21 @@ jobs:
                 key_id,
             })
 
+  test_ecr_password:
+    name: Testing the ECR password
+    runs-on: [self-hosted, linux, common, build]
+    container:
+      image: 550877636976.dkr.ecr.ca-central-1.amazonaws.com/legion-labs-build-env-linux-rust
+      credentials:
+        username: AWS
+        password: ${{ secrets.ECR_PASSWORD}}
+      steps:
+        - run: echo "Inside a container pulled from ECR \o/"
+
+  build_build_env:
+    name: Building env container
+    runs-on: [self-hosted, linux, common, build]
+    steps:
       - name: Build
         if: ${{ false }}
         run: ./build/env/setup.sh
