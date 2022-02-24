@@ -39,4 +39,4 @@ sqlite> select count(*) from blocks;
 sqlite> <CTRL-Z> <ENTER>
 ```
  - `telemetry.db3-shm` and `telemetry.db3-wal` should be gone
- - copy `telemetry.db3` to `legion\client\telemetry-dump\tests\data`
+ - copy `telemetry.db3` to `legion\crates\lgn-telemetry-admin-cli\tests\data`

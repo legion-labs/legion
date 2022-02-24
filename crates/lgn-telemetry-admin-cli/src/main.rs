@@ -1,4 +1,4 @@
-//! Telemetry Dump CLI
+//! Telemetry Admin CLI
 
 // crate-specific lint exceptions:
 //#![]
@@ -35,7 +35,7 @@ use crate::{
 };
 
 #[derive(Parser, Debug)]
-#[clap(name = "Legion Telemetry Dump")]
+#[clap(name = "Legion Telemetry Admin")]
 #[clap(about = "CLI to query a local telemetry data lake", version, author)]
 #[clap(arg_required_else_help(true))]
 struct Cli {
