@@ -211,7 +211,7 @@ where
         let folder = GeneratorContext::object_folder::<T>();
         let mut writer = writer.add_block(
             &[
-                "#[allow(dead_code, clippy::needless_range_loop, clippy::derivable_impls)]"
+                "#[allow(dead_code, clippy::needless_range_loop, clippy::identity_op, clippy::derivable_impls)]"
                     .to_string(),
                 format!("pub mod {} {{", folder),
             ],

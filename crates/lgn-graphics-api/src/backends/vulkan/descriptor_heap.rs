@@ -256,39 +256,9 @@ impl DescriptorHeapPartition {
         }
     }
 
-    // pub(crate) fn backend_get_writer(
-    //     &self,
-    //     descriptor_set_layout: &DescriptorSetLayout,
-    // ) -> GfxResult<DescriptorSetWriter> {
-    //     let device = self.inner.heap.inner.device_context.vk_device();
-    //     let allocate_info = ash::vk::DescriptorSetAllocateInfo::builder()
-    //         .set_layouts(&[descriptor_set_layout.vk_layout()])
-    //         .descriptor_pool(self.inner.backend_descriptor_heap_partition.vk_pool)
-    //         .build();
-
-    //     let result = unsafe { device.allocate_descriptor_sets(&allocate_info)? };
-
-    //     DescriptorSetWriter::new(
-    //         DescriptorSetHandle {
-    //             backend_descriptor_set_handle: result[0],
-    //         },
-    //         descriptor_set_layout,
-    //     )
-    // }
-
     pub(crate) fn backend_alloc(&self, layout: &DescriptorSetLayout) -> GfxResult<DescriptorSet> {
-        let device_context = &self.inner.heap.inner.device_context;
-        let device = device_context.vk_device();
-        let allocate_info = ash::vk::DescriptorSetAllocateInfo::builder()
-            .set_layouts(&[layout.vk_layout()])
-            .descriptor_pool(self.inner.backend_descriptor_heap_partition.vk_pool)
-            .build();
-        let result = unsafe { device.allocate_descriptor_sets(&allocate_info)? };
-        let handle = DescriptorSetHandle {
-            backend_descriptor_set_handle: result[0],
-        };
+        let handle = self.alloc_vk_descriptor_set(layout)?;
 
-        // Ok(writer.flush())
         Ok(DescriptorSet {
             _partition: self.clone(),
             _layout: layout.clone(),
@@ -301,20 +271,29 @@ impl DescriptorHeapPartition {
         layout: &DescriptorSetLayout,
         descriptor_refs: &[DescriptorRef<'_>],
     ) -> GfxResult<DescriptorSetHandle> {
+        let handle = self.alloc_vk_descriptor_set(layout)?;
+        let device_context = &self.inner.heap.inner.device_context;
+        let mut writer = DescriptorSetWriter::new(device_context, &handle, layout);
+        writer.set_descriptors(descriptor_refs);
+
+        Ok(handle)
+    }
+
+    fn alloc_vk_descriptor_set(
+        &self,
+        layout: &DescriptorSetLayout,
+    ) -> GfxResult<DescriptorSetHandle> {
         let device_context = &self.inner.heap.inner.device_context;
         let device = device_context.vk_device();
         let allocate_info = ash::vk::DescriptorSetAllocateInfo::builder()
             .set_layouts(&[layout.vk_layout()])
             .descriptor_pool(self.inner.backend_descriptor_heap_partition.vk_pool)
             .build();
-        let result = unsafe { device.allocate_descriptor_sets(&allocate_info)? };
-        let descriptor_handle = DescriptorSetHandle {
-            backend_descriptor_set_handle: result[0],
-        };
 
-        let mut writer = DescriptorSetWriter::new(descriptor_handle, layout);
-        writer.set_descriptors(device_context, descriptor_refs);
-        // Ok(writer.flush())
-        Ok(descriptor_handle)
+        // todo: replace by custom unsafe code to avoid this heap allocation
+        let result = unsafe { device.allocate_descriptor_sets(&allocate_info)? };
+        Ok(DescriptorSetHandle {
+            backend_descriptor_set_handle: result[0],
+        })
     }
 }

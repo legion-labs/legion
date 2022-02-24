@@ -44,7 +44,7 @@ impl DescriptorHeapManager {
 
     pub fn acquire_descriptor_pool(&self, heap_def: &DescriptorHeapDef) -> DescriptorPoolHandle {
         let mut pool = self.descriptor_pools.lock();
-        pool.acquire_or_create(|| DescriptorPool::new(self.heap.clone(), heap_def))
+        pool.acquire_or_create(|| DescriptorPool::new(&self.heap, heap_def))
     }
 
     pub fn release_descriptor_pool(&self, handle: DescriptorPoolHandle) {

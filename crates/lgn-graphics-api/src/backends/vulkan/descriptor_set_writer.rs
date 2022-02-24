@@ -2,52 +2,35 @@ use ash::vk;
 use smallvec::SmallVec;
 
 use crate::{
-    DescriptorRef, DescriptorSetLayout, DescriptorSetWriter, DeviceContext, GfxResult,
-    ShaderResourceType, MAX_DESCRIPTOR_BINDINGS,
+    DescriptorRef, DescriptorSetLayout, DescriptorSetWriter, GfxResult, ShaderResourceType,
+    MAX_DESCRIPTOR_BINDINGS,
 };
 
-pub struct VulkanDescriptorSetWriter {
-    // vk_image_infos: &'frame mut [vk::DescriptorImageInfo],
-// vk_buffer_infos: &'frame mut [vk::DescriptorBufferInfo],
-// vk_pending_writes: &'frame mut [vk::WriteDescriptorSet],
-}
+pub struct VulkanDescriptorSetWriter;
 
 impl VulkanDescriptorSetWriter {
     pub fn new(descriptor_set_layout: &DescriptorSetLayout) -> GfxResult<Self> {
         if descriptor_set_layout.vk_layout() == vk::DescriptorSetLayout::null() {
-            return Err("Descriptor set layout does not exist in this root signature".into());
+            return Err("Invalid vulkan DescriptorSetLayout".into());
         }
 
-        // let vk_image_info_count = descriptor_set_layout.vk_image_info_count();
-        // let vk_buffer_info_count = descriptor_set_layout.vk_buffer_info_count();
-        // let vk_pending_writes = bump.alloc_slice_fill_default::<vk::WriteDescriptorSet>(
-        //     descriptor_set_layout.descriptor_count() as usize,
-        // );
-
-        // let vk_image_infos =
-        //     bump.alloc_slice_fill_default::<vk::DescriptorImageInfo>(vk_image_info_count as usize);
-
-        // let vk_buffer_infos = bump
-        //     .alloc_slice_fill_default::<vk::DescriptorBufferInfo>(vk_buffer_info_count as usize);
-
-        Ok(Self {
-            // device_context,
-            // vk_image_infos,
-            // vk_buffer_infos,
-            // vk_pending_writes,
-        })
+        Ok(Self)
     }
 }
 
 impl<'a> DescriptorSetWriter<'a> {
-    #[allow(clippy::todo)]
-    pub fn backend_set_descriptors(
-        &mut self,
-        device_context: &DeviceContext,
-        descriptor_refs: &[DescriptorRef<'_>],
+    #[allow(clippy::unused_self, clippy::todo)]
+    pub fn backend_set_descriptors_by_index(
+        &self,
+        _index: u32,
+        _update_datas: &[DescriptorRef<'_>],
     ) {
-        const MAX_BUFFER_DESCRIPTORS: usize = 256;
-        const MAX_IMAGE_DESCRIPTORS: usize = 256;
+        todo!();
+    }
+
+    pub fn backend_set_descriptors(&self, descriptor_refs: &[DescriptorRef<'_>]) {
+        const BUFFER_INFOS_STACK_CAPACITY: usize = 512;
+        const IMAGE_INFOS_STACK_CAPACITY: usize = 512;
 
         let descriptor_count = self.descriptor_set_layout.descriptor_count();
         let vk_image_info_count = self.descriptor_set_layout.vk_image_info_count();
@@ -60,13 +43,13 @@ impl<'a> DescriptorSetWriter<'a> {
         unsafe { vk_pending_writes.set_len(descriptor_count as usize) };
 
         let mut vk_image_infos =
-            SmallVec::<[vk::DescriptorImageInfo; MAX_IMAGE_DESCRIPTORS]>::with_capacity(
+            SmallVec::<[vk::DescriptorImageInfo; IMAGE_INFOS_STACK_CAPACITY]>::with_capacity(
                 vk_image_info_count as usize,
             );
         unsafe { vk_image_infos.set_len(vk_image_info_count as usize) };
 
         let mut vk_buffer_infos =
-            SmallVec::<[vk::DescriptorBufferInfo; MAX_BUFFER_DESCRIPTORS]>::with_capacity(
+            SmallVec::<[vk::DescriptorBufferInfo; BUFFER_INFOS_STACK_CAPACITY]>::with_capacity(
                 vk_buffer_info_count as usize,
             );
         unsafe { vk_buffer_infos.set_len(vk_buffer_info_count as usize) };
@@ -189,17 +172,9 @@ impl<'a> DescriptorSetWriter<'a> {
         }
 
         unsafe {
-            device_context
+            self.device_context
                 .vk_device()
                 .update_descriptor_sets(&vk_pending_writes, &[]);
         }
     }
-
-    // pub fn backend_flush(&self) {
-    //     unsafe {
-    //         device_context
-    //             .vk_device()
-    //             .update_descriptor_sets(self.backend_write.vk_pending_writes, &[]);
-    //     }
-    // }
 }
