@@ -16,6 +16,7 @@ jobs:
       - name: Test nodejs in our runners
         uses: actions/github-script@v6
         with:
+          github-token: ${{ secrets.ECR_GH_ACCESS_TOKEN }}
           script: |
             const sodium = require('tweetsodium');
 
@@ -33,7 +34,7 @@ jobs:
                 }
             };
             await exec.exec('aws', ['ecr', 'get-login-password', '--region', 'ca-central-1'], options);
-            console.log(ecr_output);
+
             const pub_key = await github.rest.actions.getRepoPublicKey({
                 owner,
                 repo,
