@@ -2,14 +2,14 @@
   "components": [
     {
       "Name": {
-        "name": "Ground"
+        "name": "Helmet Glass Plastic"
       }
     },
     {
       "Transform": {
         "position": [
           0.0,
-          0.0,
+          0.5,
           0.0
         ],
         "rotation": [
@@ -27,9 +27,9 @@
     },
     {
       "Visual": {
-        "color": 16711935,
+        "color": 65535,
         "gi_contribution": 0,
-        "renderable_geometry": "(0d4207bbf3a2fd08,0075173a-9ae1-43d2-a669-a24b8519d397)|44e4b6023fb7a8d3_Cube|5c4b1b522bf5dcb0",
+        "renderable_geometry": "(0d4207bbf3a2fd08,4cbc25ba-8743-4f20-9a58-6419770c951f)|44e4b6023fb7a8d3_GlassPlastic_low|5c4b1b522bf5dcb0",
         "shadow_caster_local": true,
         "shadow_caster_sun": true,
         "shadow_receiver": true
