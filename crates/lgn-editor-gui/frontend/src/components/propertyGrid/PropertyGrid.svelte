@@ -10,8 +10,7 @@
   import log from "@lgn/web-client/src/lib/log";
   import PropertyContainer from "./PropertyContainer.svelte";
   import CreateComponentModal from "@/components/resources/CreateComponentModal.svelte";
-  import ModalStore from "@lgn/web-client/src/stores/modal";
-  export let modalStore: ModalStore;
+  import modal from "@/stores/modal";
 
   import {
     AddVectorSubPropertyEvent,
@@ -80,7 +79,7 @@
     }
 
     if (propertyIsDynComponent(property)) {
-      modalStore.open(createComponentModalId, CreateComponentModal, {
+      modal.open(createComponentModalId, CreateComponentModal, {
         payload: {
           id: $currentResourceData.id,
           path: path,

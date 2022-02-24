@@ -4,6 +4,7 @@
   import { extension } from "@/lib/path";
   import Icon from "@iconify/svelte";
   import { keyboardNavigationItem } from "@lgn/web-client/src/actions/keyboardNavigation";
+  import contextMenuAction from "@/actions/contextMenu";
   import TextInput from "../inputs/TextInput.svelte";
 
   type Item = $$Generic;
@@ -33,12 +34,42 @@
 
   export let highlightedEntry: Entry<Item> | null = null;
 
-  // TODO: Should be in a store?
   export let currentlyRenameEntry: Entry<Item> | null = null;
+
+  export let withItemContextMenu: string | null = null;
 
   let mode: "view" | "edit";
 
   let isExpanded = true;
+
+  $: isHighlighted = highlightedEntry ? entry === highlightedEntry : false;
+
+  $: nameExtension = extension(entry.name)?.toLowerCase();
+
+  $: iconName =
+    (nameExtension && iconNames[nameExtension]) ||
+    "ic:outline-insert-drive-file";
+
+  $: mode =
+    currentlyRenameEntry && currentlyRenameEntry === entry ? "edit" : "view";
+
+  $: nameValue = mode === "edit" ? entryName() : "";
+
+  $: if (!isHighlighted) {
+    cancelNameEdit();
+  }
+
+  function extractAutoSelectRange() {
+    const name = entryName();
+
+    const ext = extension(name);
+
+    if (ext == null) {
+      return true;
+    }
+
+    return [0, name.length - ext.length - 1] as const;
+  }
 
   function highlight() {
     dispatch("highlight", entry);
@@ -66,21 +97,13 @@
     isExpanded = !isExpanded;
   }
 
-  $: isHighlighted = highlightedEntry ? entry === highlightedEntry : false;
+  // Simple wrapper for the `contextMenu` action that handles `null` values
+  function contextMenu(element: HTMLElement) {
+    if (withItemContextMenu == null) {
+      return;
+    }
 
-  $: nameExtension = extension(entry.name)?.toLowerCase();
-
-  $: iconName =
-    (nameExtension && iconNames[nameExtension]) ||
-    "ic:outline-insert-drive-file";
-
-  $: mode =
-    currentlyRenameEntry && currentlyRenameEntry === entry ? "edit" : "view";
-
-  $: nameValue = mode === "edit" ? entryName() : "";
-
-  $: if (!isHighlighted) {
-    cancelNameEdit();
+    return contextMenuAction(element, withItemContextMenu);
   }
 </script>
 
@@ -91,6 +114,7 @@
     class:lg-space={mode === "view"}
     class:highlighted-view={isHighlighted && mode === "view"}
     on:mousedown={highlight}
+    use:contextMenu
   >
     {#if entry.subEntries}
       <div class="icon" class:expanded={isExpanded} on:click={toggleExpanded}>
@@ -109,7 +133,12 @@
           on:submit={renameFile}
           on:keydown={(event) => event.key === "Escape" && cancelNameEdit()}
         >
-          <TextInput autoFocus autoSelect size="sm" bind:value={nameValue} />
+          <TextInput
+            autoFocus
+            autoSelect={extractAutoSelectRange()}
+            size="sm"
+            bind:value={nameValue}
+          />
         </form>
       {/if}
     </div>
@@ -121,6 +150,7 @@
           index={subEntry.index}
           entry={subEntry}
           {highlightedEntry}
+          {withItemContextMenu}
           bind:currentlyRenameEntry
           on:highlight
           on:nameEdited
