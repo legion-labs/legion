@@ -21,7 +21,7 @@ use lgn_tracing::prelude::*;
 use lgn_transform::prelude::*;
 use physx::{foundation::DefaultAllocator, physics::PhysicsFoundationBuilder, prelude::*};
 
-use crate::runtime::PhysicsComponent;
+use crate::runtime::PhysicsRigidActor;
 
 // type aliases
 
@@ -61,7 +61,7 @@ impl Plugin for PhysicsPlugin {
             SystemStage::parallel(),
         );
 
-        app.add_system_to_stage(PhysicsStage::Update, Self::create_physics_components);
+        app.add_system_to_stage(PhysicsStage::Update, Self::create_physics_actors);
         app.add_system_to_stage(PhysicsStage::Update, Self::step_simulation);
         app.add_system_to_stage(PhysicsStage::Update, Self::sync_transforms);
     }
@@ -108,43 +108,46 @@ impl PhysicsPlugin {
         drop(settings);
     }
 
-    fn create_physics_components(
-        query: Query<'_, '_, (Entity, &PhysicsComponent, &Transform)>,
-        mut physics_foundation: ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
+    fn create_physics_actors(
+        query: Query<'_, '_, (Entity, &PhysicsRigidActor, &Transform)>,
+        mut physics: ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         mut scene: ResMut<'_, Owner<PxScene>>,
         mut default_material: ResMut<'_, Owner<PxMaterial>>,
         box_geometry: Res<'_, PxBoxGeometry>,
         mut commands: Commands<'_, '_>,
     ) {
-        for (entity, physics, transform) in query.iter() {
+        for (entity, rigid_actor, transform) in query.iter() {
             let transform: PxTransform = transform.compute_matrix().into();
-            if physics.dynamic {
-                let mut cube_actor = physics_foundation
-                    .create_rigid_dynamic(
-                        transform,
-                        &*box_geometry,
-                        &mut default_material,
-                        10_f32,
-                        PxTransform::default(),
-                        entity,
-                    )
-                    .unwrap();
-                cube_actor.set_angular_damping(0.5);
-                scene.add_dynamic_actor(cube_actor);
-            } else {
-                let cube_actor = physics_foundation
-                    .create_rigid_static(
-                        transform,
-                        &*box_geometry,
-                        &mut default_material,
-                        PxTransform::default(),
-                        entity,
-                    )
-                    .unwrap();
-                scene.add_static_actor(cube_actor);
+            match rigid_actor.actor_type {
+                RigidActorType::Dynamic => {
+                    let mut cube_actor = physics
+                        .create_rigid_dynamic(
+                            transform,
+                            &*box_geometry,
+                            &mut default_material,
+                            10_f32,
+                            PxTransform::default(),
+                            entity,
+                        )
+                        .unwrap();
+                    cube_actor.set_angular_damping(0.5);
+                    scene.add_dynamic_actor(cube_actor);
+                }
+                RigidActorType::Static => {
+                    let cube_actor = physics
+                        .create_rigid_static(
+                            transform,
+                            &*box_geometry,
+                            &mut default_material,
+                            PxTransform::default(),
+                            entity,
+                        )
+                        .unwrap();
+                    scene.add_static_actor(cube_actor);
+                }
             }
 
-            commands.entity(entity).remove::<PhysicsComponent>();
+            commands.entity(entity).remove::<PhysicsRigidActor>();
         }
 
         drop(query);

@@ -108,7 +108,7 @@ impl AssetToECS for runtime_data::Entity {
             } else if let Some(light) = component.downcast_ref::<runtime_data::Light>() {
                 entity.insert(light.clone());
             } else if let Some(physics) =
-                component.downcast_ref::<lgn_physics::runtime::PhysicsComponent>()
+                component.downcast_ref::<lgn_physics::runtime::PhysicsRigidActor>()
             {
                 entity.insert(physics.clone());
             }
