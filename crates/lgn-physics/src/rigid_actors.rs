@@ -15,7 +15,8 @@ impl RigidDynamicActor {
         debug_assert!(rigid_actor.actor_type == RigidActorType::Dynamic);
         assert!(rigid_actor.collision_mesh_type == DefaultMeshType::Cube);
         assert!(rigid_actor.collision_mesh.is_none());
-        let extents = transform.scale / 2_f32;
+        // default cube is size 0.5 x 0.5 x 0.5
+        let extents = transform.scale * 0.25_f32;
         Self {
             geometry: PxBoxGeometry::new(extents.x, extents.y, extents.z),
         }
@@ -56,7 +57,8 @@ impl RigidStaticActor {
         debug_assert!(rigid_actor.actor_type == RigidActorType::Static);
         assert!(rigid_actor.collision_mesh_type == DefaultMeshType::Cube);
         assert!(rigid_actor.collision_mesh.is_none());
-        let extents = transform.scale / 2_f32;
+        // default cube is size 0.5 x 0.5 x 0.5
+        let extents = transform.scale * 0.25_f32;
         Self {
             geometry: PxBoxGeometry::new(extents.x, extents.y, extents.z),
         }
