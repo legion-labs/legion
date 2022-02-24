@@ -347,19 +347,16 @@ async fn build_debug_cubes(
                     ..sample_data::offline::Transform::default()
                 }));
 
-            cube_entity
-                .components
-                .push(Box::new(offline_data::StaticMesh {
-                    mesh_id: lgn_graphics_data::DefaultMeshType::Cube,
-                    color: match index {
-                        0 => (255, 0, 0).into(),
-                        1 => (255, 255, 0).into(),
-                        2 => (255, 0, 255).into(),
-                        3 => (0, 0, 255).into(),
-                        _ => (192, 192, 192).into(),
-                    },
-                    ..sample_data::offline::StaticMesh::default()
-                }));
+            cube_entity.components.push(Box::new(offline_data::Visual {
+                color: match index {
+                    0 => (255, 0, 0).into(),
+                    1 => (255, 255, 0).into(),
+                    2 => (255, 0, 255).into(),
+                    3 => (0, 0, 255).into(),
+                    _ => (192, 192, 192).into(),
+                },
+                ..sample_data::offline::Visual::default()
+            }));
 
             project
                 .add_resource_with_id(

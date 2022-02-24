@@ -9,16 +9,13 @@
             scale: (1, 1, 1),
         )),
         Visual((
-            renderable_geometry: "None",
+            renderable_geometry: Some("runtime_model(offline_model(models/cube/cube.gltf, 'Cube'))"),
+            color: (0, 255, 0),
             shadow_receiver: true,
             shadow_caster_sun: true,
             shadow_caster_local: true,
             gi_contribution: 0,
         )),
-        StaticMesh((
-            mesh_asset_path: None,
-            mesh_id: 0,
-            color: (0, 255, 0),
         )),
     ],
 )

@@ -89,8 +89,6 @@ impl AssetToECS for runtime_data::Entity {
                     scale: transform.scale,
                 });
                 transform_inserted = true;
-            } else if let Some(static_mesh) = component.downcast_ref::<runtime_data::StaticMesh>() {
-                entity.insert(VisualComponent::new(&static_mesh.mesh, static_mesh.color));
             } else if let Some(script) =
                 component.downcast_ref::<lgn_scripting::runtime::ScriptComponent>()
             {
@@ -99,7 +97,10 @@ impl AssetToECS for runtime_data::Entity {
                 name_inserted = true;
                 entity.insert(Name::new(name.name.clone()));
             } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
-                entity.insert(visual.clone());
+                entity.insert(VisualComponent::new(
+                    &visual.renderable_geometry,
+                    visual.color,
+                ));
             } else if let Some(gi) = component.downcast_ref::<runtime_data::GlobalIllumination>() {
                 entity.insert(gi.clone());
             } else if let Some(nav_mesh) = component.downcast_ref::<runtime_data::NavMesh>() {

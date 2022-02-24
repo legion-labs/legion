@@ -9,10 +9,13 @@
             scale: (1, 1, 1),
             apply_to_children: true,
         )),
-        StaticMesh((
-            mesh_asset_path: Some("runtime_model(offline_model(model/FlightHelmet.gltf, 'Hose_low'))"),
-            mesh_id: 0,
+        Visual((
+            renderable_geometry: Some("runtime_model(offline_model(models/helmet/FlightHelmet.gltf, 'Hose_low'))"),
             color: (255, 0, 0),
+            shadow_receiver: true,
+            shadow_caster_sun: true,
+            shadow_caster_local: true,
+            gi_contribution: 0,
         )),
     ],
 )

@@ -137,11 +137,6 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
                 raw_data::Component::Light(raw) => {
                     components.push(Box::new(Into::<offline_data::Light>::into(raw)));
                 }
-                raw_data::Component::StaticMesh(raw) => {
-                    components.push(Box::new(offline_data::StaticMesh::from_raw(
-                        raw, references,
-                    )));
-                }
             }
         }
 
@@ -169,7 +164,16 @@ impl FromRaw<raw_data::Visual> for offline_data::Visual {
         references: &HashMap<ResourcePathName, ResourceTypeAndId>,
     ) -> Self {
         Self {
-            renderable_geometry: lookup_asset_path(references, &raw.renderable_geometry),
+            renderable_geometry: if let Some(path) = &raw.renderable_geometry {
+                lookup_asset_path(references, path)
+            } else {
+                None
+            },
+            color: lgn_graphics_data::Color::from((
+                raw.color.x as u8,
+                raw.color.y as u8,
+                raw.color.z as u8,
+            )),
             shadow_receiver: raw.shadow_receiver,
             shadow_caster_sun: raw.shadow_caster_sun,
             shadow_caster_local: raw.shadow_caster_local,
@@ -252,37 +256,6 @@ impl From<raw_data::Light> for offline_data::Light {
     }
 }
 
-use lgn_graphics_data::DefaultMeshType;
-
-impl FromRaw<raw_data::StaticMesh> for offline_data::StaticMesh {
-    fn from_raw(
-        raw: raw_data::StaticMesh,
-        references: &HashMap<ResourcePathName, ResourceTypeAndId>,
-    ) -> Self {
-        Self {
-            mesh_id: match raw.mesh_id {
-                1 => DefaultMeshType::Cube,
-                2 => DefaultMeshType::Pyramid,
-                3 => DefaultMeshType::WireframeCube,
-                4 => DefaultMeshType::GroundPlane,
-                5 => DefaultMeshType::Torus,
-                6 => DefaultMeshType::Cone,
-                7 => DefaultMeshType::Cylinder,
-                8 => DefaultMeshType::Sphere,
-                9 => DefaultMeshType::Arrow,
-                10 => DefaultMeshType::RotationRing,
-                _ => DefaultMeshType::Plane,
-            },
-            mesh: if let Some(path) = &raw.mesh_asset_path {
-                lookup_asset_path(references, path)
-            } else {
-                None
-            },
-            color: lgn_graphics_data::Color::from((
-                raw.color.x as u8,
-                raw.color.y as u8,
-                raw.color.z as u8,
-            )),
         }
     }
 }

@@ -175,10 +175,9 @@ async fn create_offline_data(
             }));
         entity
             .components
-            .push(Box::new(sample_data::offline::StaticMesh {
-                mesh_id: lgn_graphics_data::DefaultMeshType::Cube,
+            .push(Box::new(sample_data::offline::Visual {
                 color: (208, 255, 208).into(),
-                mesh: None,
+                ..sample_data::offline::Visual::default()
             }));
 
         project
@@ -238,10 +237,9 @@ pub fn update(entity, events) {
             }));
         entity
             .components
-            .push(Box::new(sample_data::offline::StaticMesh {
-                mesh_id: lgn_graphics_data::DefaultMeshType::Cube,
+            .push(Box::new(sample_data::offline::Visual {
                 color: (0, 255, 255).into(),
-                mesh: None,
+                ..sample_data::offline::Visual::default()
             }));
 
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
@@ -310,10 +308,9 @@ pub fn update(entity, events) {
             }));
         entity
             .components
-            .push(Box::new(sample_data::offline::StaticMesh {
-                mesh_id: lgn_graphics_data::DefaultMeshType::Cube,
+            .push(Box::new(sample_data::offline::Visual {
                 color: (0, 0, 255).into(),
-                mesh: None,
+                ..sample_data::offline::Visual::default()
             }));
 
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
@@ -496,10 +493,9 @@ pub fn update(entity, last_result, entities) {
             }));
         entity
             .components
-            .push(Box::new(sample_data::offline::StaticMesh {
-                mesh_id: lgn_graphics_data::DefaultMeshType::Sphere,
+            .push(Box::new(sample_data::offline::Visual {
                 color: (255, 16, 64).into(),
-                mesh: None,
+                ..sample_data::offline::Visual::default()
             }));
 
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
