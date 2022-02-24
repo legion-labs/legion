@@ -11,6 +11,9 @@ pub use labels::*;
 mod callbacks;
 use callbacks::{OnAdvance, OnCollision, OnConstraintBreak, OnTrigger, OnWakeSleep};
 
+mod rigid_actors;
+use rigid_actors::{RigidDynamicActor, RigidStaticActor};
+
 mod settings;
 pub use settings::PhysicsSettings;
 
@@ -46,7 +49,6 @@ type PxScene = physx::scene::PxScene<
     OnWakeSleep,
     OnAdvance,
 >;
-//struct DynamicRigidBodyHandle(PxRigidStatic);
 
 #[derive(Default)]
 pub struct PhysicsPlugin {}
@@ -96,9 +98,6 @@ impl PhysicsPlugin {
         let default_material = physics.create_material(0.5, 0.5, 0.6, ()).unwrap();
         commands.insert_resource(default_material);
 
-        let box_geometry = PxBoxGeometry::new(0.5, 0.5, 0.5);
-        commands.insert_resource(box_geometry);
-
         commands.insert_resource(scene);
 
         // Note: important to insert physics after scene, for drop order
@@ -109,49 +108,44 @@ impl PhysicsPlugin {
     }
 
     fn create_physics_actors(
-        query: Query<'_, '_, (Entity, &PhysicsRigidActor, &Transform)>,
+        query: Query<'_, '_, (Entity, &PhysicsRigidActor, &GlobalTransform)>,
         mut physics: ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         mut scene: ResMut<'_, Owner<PxScene>>,
         mut default_material: ResMut<'_, Owner<PxMaterial>>,
-        box_geometry: Res<'_, PxBoxGeometry>,
         mut commands: Commands<'_, '_>,
     ) {
         for (entity, rigid_actor, transform) in query.iter() {
-            let transform: PxTransform = transform.compute_matrix().into();
+            let mut commands = commands.entity(entity);
+
             match rigid_actor.actor_type {
                 RigidActorType::Dynamic => {
-                    let mut cube_actor = physics
-                        .create_rigid_dynamic(
-                            transform,
-                            &*box_geometry,
-                            &mut default_material,
-                            10_f32,
-                            PxTransform::default(),
-                            entity,
-                        )
-                        .unwrap();
-                    cube_actor.set_angular_damping(0.5);
-                    scene.add_dynamic_actor(cube_actor);
+                    let component = RigidDynamicActor::new(rigid_actor, transform);
+                    component.add_actor_to_scene(
+                        &mut physics,
+                        &mut scene,
+                        transform,
+                        entity,
+                        &mut default_material,
+                    );
+                    commands.insert(component);
                 }
                 RigidActorType::Static => {
-                    let cube_actor = physics
-                        .create_rigid_static(
-                            transform,
-                            &*box_geometry,
-                            &mut default_material,
-                            PxTransform::default(),
-                            entity,
-                        )
-                        .unwrap();
-                    scene.add_static_actor(cube_actor);
+                    let component = RigidStaticActor::new(rigid_actor, transform);
+                    component.add_actor_to_scene(
+                        &mut physics,
+                        &mut scene,
+                        transform,
+                        entity,
+                        &mut default_material,
+                    );
+                    commands.insert(component);
                 }
             }
 
-            commands.entity(entity).remove::<PhysicsRigidActor>();
+            commands.remove::<PhysicsRigidActor>();
         }
 
         drop(query);
-        drop(box_geometry);
     }
 
     #[span_fn]
