@@ -22,7 +22,7 @@ impl CameraComponent {
     pub fn build_view_projection(&self, width: f32, height: f32) -> (Mat4, Mat4) {
         let eye = self.camera_rig.final_transform.position;
         let center = eye + self.camera_rig.final_transform.forward();
-        let up = Vec3::new(0.0, 1.0, 0.0); // self.camera_rig.final_transform.up();
+        let up = Vec3::Y; // self.camera_rig.final_transform.up();
         let view_matrix = Mat4::look_at_lh(eye, center, up);
 
         let fov_y_radians: f32 = 45.0;
@@ -73,7 +73,7 @@ impl CameraComponent {
 impl Default for CameraComponent {
     fn default() -> Self {
         let eye = Vec3::new(0.0, 1.0, -2.0);
-        let center = Vec3::new(0.0, 0.0, 0.0);
+        let center = Vec3::ZERO;
 
         let forward = (center - eye).normalize();
         let right = forward.cross(Vec3::Y).normalize();

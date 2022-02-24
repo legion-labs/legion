@@ -31,7 +31,7 @@ impl Default for LightComponent {
     fn default() -> Self {
         Self {
             light_type: LightType::Omnidirectional,
-            color: Vec3::new(1.0, 1.0, 1.0),
+            color: Vec3::ONE,
             radiance: 40.0,
             enabled: true,
             picking_id: 0,
@@ -133,8 +133,7 @@ pub(crate) fn debug_display_lights(
                         builder.add_mesh(
                             Transform::identity()
                                 .with_translation(
-                                    transform.translation
-                                        - transform.rotation.mul_vec3(Vec3::new(0.0, 1.0, 0.0)), // assumes cone height to be 1.0
+                                    transform.translation - transform.rotation.mul_vec3(Vec3::Y), // assumes cone height to be 1.0
                                 )
                                 .with_scale(Vec3::new(factor, 1.0, factor))
                                 .with_rotation(transform.rotation)

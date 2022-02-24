@@ -84,9 +84,7 @@ pub struct ScriptingEventCache {
 impl Default for ScriptingEventCache {
     fn default() -> Self {
         Self {
-            mouse_motion: MouseMotion {
-                delta: Vec2::default(),
-            },
+            mouse_motion: MouseMotion { delta: Vec2::ZERO },
         }
     }
 }

@@ -294,7 +294,7 @@ impl StaticMeshRenderData {
         let base_normal = Vec3::new(0.0, -1.0, 0.0);
 
         let top_point = Vec3::new(0.0, length, 0.0);
-        let top_normal = Vec3::new(0.0, 1.0, 0.0);
+        let top_normal = Vec3::Y;
 
         for _i in 0..steps {
             let last_base_point = Vec3::new(cur_angle.cos(), 0.0, cur_angle.sin()).mul(radius);
@@ -374,15 +374,13 @@ impl StaticMeshRenderData {
         let mut cur_torus_angle = 0.0f32;
 
         for _i in 0..torus_steps {
-            let last_torus_rot_normal =
-                Mat4::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), cur_torus_angle);
+            let last_torus_rot_normal = Mat4::from_axis_angle(Vec3::Z, cur_torus_angle);
             let last_torus_rot_point =
                 last_torus_rot_normal * Mat4::from_translation(Vec3::new(torus_radius, 0.0, 0.0));
 
             cur_torus_angle += inc_torus_angle;
 
-            let next_torus_rot_normal =
-                Mat4::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), cur_torus_angle);
+            let next_torus_rot_normal = Mat4::from_axis_angle(Vec3::Z, cur_torus_angle);
             let next_torus_rot_point =
                 next_torus_rot_normal * Mat4::from_translation(Vec3::new(torus_radius, 0.0, 0.0));
 

@@ -144,9 +144,9 @@ pub(super) fn plane_normal_for_camera_pos(
     let camera_pos = camera.camera_rig.final_transform.position;
     let dir_to_camera = (camera_pos - base_entity_transform.translation).normalize();
 
-    let xy_plane_normal = rotation.mul_vec3(Vec3::new(0.0, 0.0, 1.0));
-    let xz_plane_normal = rotation.mul_vec3(Vec3::new(0.0, 1.0, 0.0));
-    let yz_plane_normal = rotation.mul_vec3(Vec3::new(1.0, 0.0, 0.0));
+    let xy_plane_normal = rotation.mul_vec3(Vec3::Z);
+    let xz_plane_normal = rotation.mul_vec3(Vec3::Y);
+    let yz_plane_normal = rotation.mul_vec3(Vec3::X);
 
     let xy_plane_facing_cam = dir_to_camera.dot(xy_plane_normal).abs();
     let xz_plane_facing_cam = dir_to_camera.dot(xz_plane_normal).abs();

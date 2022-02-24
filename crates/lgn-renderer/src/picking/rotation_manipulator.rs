@@ -93,9 +93,9 @@ impl RotationManipulator {
     ) -> Transform {
         let plane_point = base_entity_transform.translation;
         let plane_normal = match component {
-            RotationComponents::XAxis => Vec3::new(1.0, 0.0, 0.0),
-            RotationComponents::YAxis => Vec3::new(0.0, 1.0, 0.0),
-            RotationComponents::ZAxis => Vec3::new(0.0, 0.0, 1.0),
+            RotationComponents::XAxis => Vec3::X,
+            RotationComponents::YAxis => Vec3::Y,
+            RotationComponents::ZAxis => Vec3::Z,
         };
 
         let picked_world_point =

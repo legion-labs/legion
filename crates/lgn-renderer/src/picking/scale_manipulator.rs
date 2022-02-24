@@ -29,10 +29,8 @@ impl ScaleManipulator {
         let rotate_z_pointer =
             Mat4::from_axis_angle(Vec3::new(0.0, 0.0, -1.0), std::f32::consts::PI * 0.5);
 
-        let rotate_xy_plane =
-            Mat4::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), std::f32::consts::PI * 0.5);
-        let rotate_yz_plane =
-            Mat4::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), std::f32::consts::PI * 0.5);
+        let rotate_xy_plane = Mat4::from_axis_angle(Vec3::X, std::f32::consts::PI * 0.5);
+        let rotate_yz_plane = Mat4::from_axis_angle(Vec3::Z, std::f32::consts::PI * 0.5);
 
         let cube_offset = Mat4::from_translation(Vec3::new(0.0, 0.5, 0.0));
         let plane_offset = Mat4::from_translation(Vec3::new(0.2, 0.0, -0.2));

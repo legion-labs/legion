@@ -27,11 +27,7 @@ mod test {
         use crate::{FaceToward, Mat4, Vec3, Vec4};
 
         // Completely arbitrary arguments
-        let matrix = Mat4::face_toward(
-            Vec3::new(50.0, 60.0, 0.0),
-            Vec3::new(0.0, 0.0, 0.0),
-            Vec3::new(0.0, 1.0, 0.0),
-        );
+        let matrix = Mat4::face_toward(Vec3::new(50.0, 60.0, 0.0), Vec3::ZERO, Vec3::Y);
 
         assert_eq!(matrix.x_axis, Vec4::new(0.0, 0.0, -1.0, -0.0));
         assert_eq!(matrix.y_axis, Vec4::new(-0.7682213, 0.6401844, 0.0, 0.0));

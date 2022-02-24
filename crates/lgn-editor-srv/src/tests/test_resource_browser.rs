@@ -150,7 +150,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                 parent_resource_id: None,
                 init_values: vec![InitPropertyValue {
                     property_path: "components[Transform].position".into(),
-                    json_value: json!(Vec3::new(0.0, 0.0, 0.0)).to_string(),
+                    json_value: json!(Vec3::ZERO).to_string(),
                 }],
             }))
             .await?

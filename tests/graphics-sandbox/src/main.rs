@@ -223,7 +223,7 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
         .insert(LightComponent {
             light_type: LightType::Directional,
             radiance: 40.0,
-            color: Vec3::new(1.0, 1.0, 1.0),
+            color: Vec3::ONE,
             enabled: false,
             ..LightComponent::default()
         });
@@ -237,7 +237,7 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
         .insert(LightComponent {
             light_type: LightType::Omnidirectional,
             radiance: 40.0,
-            color: Vec3::new(1.0, 1.0, 1.0),
+            color: Vec3::ONE,
             enabled: false,
             ..LightComponent::default()
         });
@@ -251,7 +251,7 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
         .insert(LightComponent {
             light_type: LightType::Omnidirectional,
             radiance: 40.0,
-            color: Vec3::new(1.0, 1.0, 1.0),
+            color: Vec3::ONE,
             enabled: false,
             ..LightComponent::default()
         });
@@ -267,7 +267,7 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
                 cone_angle: std::f32::consts::PI / 4.0,
             },
             radiance: 40.0,
-            color: Vec3::new(1.0, 1.0, 1.0),
+            color: Vec3::ONE,
             enabled: true,
             ..LightComponent::default()
         });
