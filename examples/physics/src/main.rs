@@ -143,8 +143,10 @@ async fn create_offline_data(
             }));
         entity
             .components
-            .push(Box::new(lgn_physics::offline::PhysicsComponent {
-                dynamic: false,
+            .push(Box::new(lgn_physics::offline::PhysicsRigidActor {
+                actor_type: lgn_physics::RigidActorType::Static,
+                collision_mesh_type: lgn_graphics_data::DefaultMeshType::Cube,
+                collision_mesh: None,
             }));
 
         project
@@ -178,7 +180,7 @@ async fn create_offline_data(
             .push(Box::new(sample_data::offline::Transform {
                 position: (-1_f32, 0.1_f32, 1_f32).into(),
                 rotation: Quat::from_rotation_z(0.3_f32),
-                scale: (1_f32, 1_f32, 1_f32).into(),
+                scale: Vec3::ONE,
             }));
         entity
             .components
@@ -189,8 +191,10 @@ async fn create_offline_data(
             }));
         entity
             .components
-            .push(Box::new(lgn_physics::offline::PhysicsComponent {
-                dynamic: true,
+            .push(Box::new(lgn_physics::offline::PhysicsRigidActor {
+                actor_type: lgn_physics::RigidActorType::Dynamic,
+                collision_mesh_type: lgn_graphics_data::DefaultMeshType::Cube,
+                collision_mesh: None,
             }));
 
         project
@@ -224,7 +228,7 @@ async fn create_offline_data(
             .push(Box::new(sample_data::offline::Transform {
                 position: (-1_f32, 1.3_f32, 1.2_f32).into(),
                 rotation: Quat::from_rotation_x(-0.2_f32),
-                scale: (1_f32, 1_f32, 1_f32).into(),
+                scale: Vec3::ONE,
             }));
         entity
             .components
@@ -235,8 +239,10 @@ async fn create_offline_data(
             }));
         entity
             .components
-            .push(Box::new(lgn_physics::offline::PhysicsComponent {
-                dynamic: true,
+            .push(Box::new(lgn_physics::offline::PhysicsRigidActor {
+                actor_type: lgn_physics::RigidActorType::Dynamic,
+                collision_mesh_type: lgn_graphics_data::DefaultMeshType::Cube,
+                collision_mesh: None,
             }));
 
         project
@@ -270,7 +276,7 @@ async fn create_offline_data(
             .push(Box::new(sample_data::offline::Transform {
                 position: (-0.5_f32, 0_f32, 0.5_f32).into(),
                 rotation: Quat::from_rotation_y(1_f32),
-                scale: (1_f32, 1_f32, 1_f32).into(),
+                scale: Vec3::ONE,
             }));
         entity
             .components
@@ -281,8 +287,10 @@ async fn create_offline_data(
             }));
         entity
             .components
-            .push(Box::new(lgn_physics::offline::PhysicsComponent {
-                dynamic: true,
+            .push(Box::new(lgn_physics::offline::PhysicsRigidActor {
+                actor_type: lgn_physics::RigidActorType::Dynamic,
+                collision_mesh_type: lgn_graphics_data::DefaultMeshType::Cube,
+                collision_mesh: None,
             }));
 
         project

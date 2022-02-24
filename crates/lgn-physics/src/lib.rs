@@ -11,6 +11,9 @@ pub use labels::*;
 mod callbacks;
 use callbacks::{OnAdvance, OnCollision, OnConstraintBreak, OnTrigger, OnWakeSleep};
 
+mod rigid_actors;
+use rigid_actors::{RigidDynamicActor, RigidStaticActor};
+
 mod settings;
 pub use settings::PhysicsSettings;
 
@@ -21,7 +24,7 @@ use lgn_tracing::prelude::*;
 use lgn_transform::prelude::*;
 use physx::{foundation::DefaultAllocator, physics::PhysicsFoundationBuilder, prelude::*};
 
-use crate::runtime::PhysicsComponent;
+use crate::runtime::PhysicsRigidActor;
 
 // type aliases
 
@@ -46,7 +49,6 @@ type PxScene = physx::scene::PxScene<
     OnWakeSleep,
     OnAdvance,
 >;
-//struct DynamicRigidBodyHandle(PxRigidStatic);
 
 #[derive(Default)]
 pub struct PhysicsPlugin {}
@@ -61,7 +63,7 @@ impl Plugin for PhysicsPlugin {
             SystemStage::parallel(),
         );
 
-        app.add_system_to_stage(PhysicsStage::Update, Self::create_physics_components);
+        app.add_system_to_stage(PhysicsStage::Update, Self::create_physics_actors);
         app.add_system_to_stage(PhysicsStage::Update, Self::step_simulation);
         app.add_system_to_stage(PhysicsStage::Update, Self::sync_transforms);
     }
@@ -96,9 +98,6 @@ impl PhysicsPlugin {
         let default_material = physics.create_material(0.5, 0.5, 0.6, ()).unwrap();
         commands.insert_resource(default_material);
 
-        let box_geometry = PxBoxGeometry::new(0.5, 0.5, 0.5);
-        commands.insert_resource(box_geometry);
-
         commands.insert_resource(scene);
 
         // Note: important to insert physics after scene, for drop order
@@ -108,47 +107,45 @@ impl PhysicsPlugin {
         drop(settings);
     }
 
-    fn create_physics_components(
-        query: Query<'_, '_, (Entity, &PhysicsComponent, &Transform)>,
-        mut physics_foundation: ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
+    fn create_physics_actors(
+        query: Query<'_, '_, (Entity, &PhysicsRigidActor, &GlobalTransform)>,
+        mut physics: ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         mut scene: ResMut<'_, Owner<PxScene>>,
         mut default_material: ResMut<'_, Owner<PxMaterial>>,
-        box_geometry: Res<'_, PxBoxGeometry>,
         mut commands: Commands<'_, '_>,
     ) {
-        for (entity, physics, transform) in query.iter() {
-            let transform: PxTransform = transform.compute_matrix().into();
-            if physics.dynamic {
-                let mut cube_actor = physics_foundation
-                    .create_rigid_dynamic(
+        for (entity, rigid_actor, transform) in query.iter() {
+            let mut commands = commands.entity(entity);
+
+            match rigid_actor.actor_type {
+                RigidActorType::Dynamic => {
+                    let component = RigidDynamicActor::new(rigid_actor, transform);
+                    component.add_actor_to_scene(
+                        &mut physics,
+                        &mut scene,
                         transform,
-                        &*box_geometry,
-                        &mut default_material,
-                        10_f32,
-                        PxTransform::default(),
                         entity,
-                    )
-                    .unwrap();
-                cube_actor.set_angular_damping(0.5);
-                scene.add_dynamic_actor(cube_actor);
-            } else {
-                let cube_actor = physics_foundation
-                    .create_rigid_static(
+                        &mut default_material,
+                    );
+                    commands.insert(component);
+                }
+                RigidActorType::Static => {
+                    let component = RigidStaticActor::new(rigid_actor, transform);
+                    component.add_actor_to_scene(
+                        &mut physics,
+                        &mut scene,
                         transform,
-                        &*box_geometry,
-                        &mut default_material,
-                        PxTransform::default(),
                         entity,
-                    )
-                    .unwrap();
-                scene.add_static_actor(cube_actor);
+                        &mut default_material,
+                    );
+                    commands.insert(component);
+                }
             }
 
-            commands.entity(entity).remove::<PhysicsComponent>();
+            commands.remove::<PhysicsRigidActor>();
         }
 
         drop(query);
-        drop(box_geometry);
     }
 
     #[span_fn]
@@ -181,7 +178,9 @@ impl PhysicsPlugin {
         for actor in scene.get_dynamic_actors() {
             let entity = actor.get_user_data();
             if let Ok(mut transform) = query.get_mut(*entity) {
-                *transform = Transform::from_matrix(actor.get_global_pose().into());
+                let global_transform = GlobalTransform::from_matrix(actor.get_global_pose().into());
+                // TODO: use parent global to determine child local
+                *transform = global_transform.into();
             }
         }
     }
