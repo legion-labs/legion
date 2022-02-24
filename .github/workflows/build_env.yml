@@ -12,5 +12,32 @@ jobs:
     runs-on: [self-hosted, linux, common, build]
     steps:
       - uses: actions/checkout@v2
+      - name: Test nodejs in our runners
+        uses: actions/github-script@v6
+        with:
+          result-encoding: string
+          script: |
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
+            let ecr_output = '';
+            let ecr_error = '';
+            const options = {};
+            options.listeners = {
+                stdout: (data: Buffer) => {
+                    ecr_output += data.toString();
+                },
+                stderr: (data: Buffer) => {
+                    ecr_error += data.toString();
+                }
+            };
+            await exec.exec('aws", ['ecr', 'describe-repositories', '--region', 'ca-central-1'], options);
+            console.log(ecr_output);
+            const pub_key = await github.rest.actions.getRepoPublicKey({
+                owner,
+                repo,
+            });
+            console.log(result);
+            return pub_key.data.key;
+
       - name: Build
+        if: ${{ false }}
         run: ./build/env/setup.sh
