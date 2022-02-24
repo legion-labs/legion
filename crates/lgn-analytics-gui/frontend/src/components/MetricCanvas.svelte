@@ -21,14 +21,14 @@
   const outerHeight = 600;
   const height = outerHeight - margin.top - margin.bottom;
 
-  let mainWidth = 0;
+  let mainWidth: number = 0;
   $: width = mainWidth - margin.left - margin.right;
 
   let client: PerformanceAnalyticsClientImpl | null = null;
-  let totalMinTick = NaN;
-  let totalMaxTick = NaN;
-  let currentMinTick = NaN;
-  let currentMaxTick = NaN;
+  let totalMinMs = -Infinity;
+  let totalMaxMs = Infinity;
+  let currentMinMs = -Infinity;
+  let currentMaxMs = Infinity;
   let brushStart = -Infinity;
   let brushEnd = Infinity;
   let points: {
@@ -41,20 +41,17 @@
   let deltaMs: number;
   let pixelSizeNs: number;
 
-  let x: d3.ScaleLinear<number, number, never>;
+  let x: d3.ScaleTime<number, number, never>;
   let y: d3.ScaleLinear<number, number, never>;
 
-  /* eslint-disable @typescript-eslint/no-explicit-any */
   let gxAxis: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
   let gyAxis: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
-  let container: d3.Selection<d3.BaseType, unknown, HTMLElement, any>;
-  let brush: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
-  /* eslint-enable @typescript-eslint/no-explicit-any */
-
   let xAxis: d3.Axis<d3.NumberValue>;
   let yAxis: d3.Axis<d3.NumberValue>;
   let zoom: d3.ZoomBehavior<Element, unknown>;
 
+  let container: d3.Selection<d3.BaseType, unknown, HTMLElement, any>;
+  let brush: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
   let context: CanvasRenderingContext2D;
   let transform: d3.ZoomTransform = d3.zoomIdentity;
   let canvas: HTMLCanvasElement;
@@ -66,9 +63,7 @@
     }
   }
 
-  const getDeltaMs = () =>
-    metricStreamer.getTickOffsetMs(currentMaxTick) -
-    metricStreamer.getTickOffsetMs(currentMinTick);
+  const getDeltaMs = () => currentMaxMs - currentMinMs;
   const getPixelSizeNs = () => (getDeltaMs() * 1_000_000) / width;
 
   onMount(async () => {
@@ -79,16 +74,15 @@
   });
 
   onDestroy(() => {
-    const element = document.getElementById("metric-canvas");
-    if (element) {
-      element.replaceChildren();
+    if (canvas) {
+      canvas.replaceChildren();
     }
     if (pointSubscription) {
       pointSubscription();
     }
   });
 
-  function hashString(string: string): number {
+  function hashString(string: String): number {
     let hash = 0;
     for (let i = 0; i < string.length; i++) {
       hash = string.charCodeAt(i) + ((hash << 5) - hash);
@@ -100,13 +94,13 @@
   function updateLod() {
     if (x) {
       const scaleX = transform.rescaleX(x);
-      currentMinTick = scaleX.domain()[0].valueOf();
-      currentMaxTick = scaleX.domain()[1].valueOf();
+      currentMinMs = scaleX.domain()[0].valueOf();
+      currentMaxMs = scaleX.domain()[1].valueOf();
     }
     deltaMs = getDeltaMs();
     pixelSizeNs = getPixelSizeNs();
     lod = getLodFromPixelSizeNs(pixelSizeNs);
-    metricStreamer?.tick(lod, currentMinTick, currentMaxTick);
+    metricStreamer!.tick(lod, currentMinMs, currentMaxMs);
     updatePoints(get(metricStore));
   }
 
@@ -120,8 +114,8 @@
     metricStore = metricStreamer.metricStore;
     await metricStreamer.initializeAsync();
 
-    totalMinTick = currentMinTick = metricStreamer.minTick;
-    totalMaxTick = currentMaxTick = metricStreamer.maxTick;
+    totalMinMs = currentMinMs = metricStreamer.currentMinMs;
+    totalMaxMs = currentMaxMs = metricStreamer.currentMaxMs;
 
     pointSubscription = metricStore.subscribe((metricStates) => {
       updatePoints(metricStates);
@@ -135,7 +129,7 @@
       .map((m) => {
         return {
           points: Array.from(
-            m.getViewportPoints(currentMinTick, currentMaxTick, lod)
+            m.getViewportPoints(currentMinMs, currentMaxMs, lod)
           ),
           name: m.name,
         };
@@ -167,17 +161,14 @@
 
     canvas = canvasChart.node() as HTMLCanvasElement;
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     context = canvas.getContext("2d")!;
 
-    x = d3.scaleLinear().domain([totalMinTick, totalMaxTick]);
+    x = d3.scaleTime().domain([totalMinMs, totalMaxMs]).nice();
     y = d3.scaleLinear().nice();
 
     xAxis = d3
       .axisBottom(x)
-      .tickFormat((t) =>
-        formatExecutionTime(metricStreamer.getTickRawMs(t.valueOf()))
-      );
+      .tickFormat((d) => formatExecutionTime((d as Date).valueOf()));
     yAxis = d3.axisLeft(y);
 
     gxAxis = svgGroup
@@ -197,7 +188,6 @@
 
     refreshZoom();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     container.call(zoom as any);
 
     brush = container
@@ -283,9 +273,7 @@
 
     points.forEach((data, i) => {
       context.beginPath();
-      line(
-        data.points.map((newPoints) => [newPoints.tickOffset, newPoints.value])
-      );
+      line(data.points.map((newPoints) => [newPoints.time, newPoints.value]));
       const color = Math.abs(hashString(data.name)) % 10;
       context.strokeStyle = d3.schemeCategory10[color];
       context.lineWidth = 0.33;
@@ -345,19 +333,19 @@
           <br />
           <li>
             <span class="font-bold">Min</span>
-            {totalMinTick}
+            {totalMinMs.toFixed(2)}
           </li>
           <li>
             <span class="font-bold">Current Min</span>
-            {currentMinTick}
+            {currentMinMs.toFixed(2)}
           </li>
           <li>
             <span class="font-bold">Max</span>
-            {totalMaxTick}
+            {totalMaxMs.toFixed(2)}
           </li>
           <li>
             <span class="font-bold">Current Max</span>
-            {currentMaxTick}
+            {currentMaxMs.toFixed(2)}
           </li>
           <li>
             <span class="font-bold">BrushStart</span>
@@ -372,27 +360,22 @@
         {#if metricStreamer}
           <ul>
             {#each $metricStore as ms}
-              {#if ms.enabled}
-                <li>
-                  {ms.name} (unit: {ms.unit})<br />
-                  {ms.minTick} _ {ms.maxTick} ({formatExecutionTime(
-                    metricStreamer.getTickOffsetMs(ms.maxTick) -
-                      metricStreamer.getTickOffsetMs(ms.minTick)
-                  )})<br />
-                  {#each Array.from(ms.getViewportBlocks(currentMinTick, currentMaxTick)) as b}
-                    <div style="font-size:0.7rem">
-                      {b.blockId}
-                      {b.minTick.toFixed(0)}
-                      {b.maxTick.toFixed(0)} ({formatExecutionTime(
-                        metricStreamer.getTickOffsetMs(b.maxTick) -
-                          metricStreamer.getTickOffsetMs(b.minTick)
-                      )}) ({Array.from(
-                        b.getPoints(currentMinTick, currentMaxTick, lod)
-                      ).length})
-                    </div>
-                  {/each}
-                </li>
-              {/if}
+              <li>
+                {ms.name} (unit: {ms.unit})<br />
+                {ms.min} _ {ms.max} ({formatExecutionTime(ms.max - ms.min)})<br
+                />
+                {#each Array.from(ms.getViewportBlocks(currentMinMs, currentMaxMs)) as b}
+                  <div style="font-size:0.7rem">
+                    {b.blockId}
+                    {b.minMs.toFixed(0)}
+                    {b.maxMs.toFixed(0)} ({formatExecutionTime(
+                      b.maxMs - b.minMs
+                    )}) ({Array.from(
+                      b.getPoints(currentMinMs, currentMaxMs, lod)
+                    ).length})
+                  </div>
+                {/each}
+              </li>
             {/each}
           </ul>
         {/if}

@@ -10,16 +10,14 @@ export class MetricState {
   enabled: boolean;
   name: string;
   unit: string;
-  minTick = NaN;
-  maxTick = NaN;
+  min = -Infinity;
+  max = Infinity;
   private blocks: Map<string, MetricBlockState>;
-  private startTick: number;
-  constructor(enabled: boolean, metricDesc: MetricDesc, startTick: number) {
+  constructor(enabled: boolean, metricDesc: MetricDesc) {
     this.enabled = enabled;
     this.name = metricDesc.name;
     this.unit = metricDesc.unit;
     this.blocks = new Map();
-    this.startTick = startTick;
   }
 
   registerBlock(manifest: MetricBlockManifest) {
@@ -29,24 +27,24 @@ export class MetricState {
         new MetricBlockState(manifest.desc)
       );
     }
-    this.minTick = Math.min(
-      ...Array.from(this.blocks.values()).map((v) => v.minTick)
+    this.min = Math.min(
+      ...Array.from(this.blocks.values()).map((v) => v.minMs)
     );
-    this.maxTick = Math.max(
-      ...Array.from(this.blocks.values()).map((b) => b.maxTick)
+    this.max = Math.max(
+      ...Array.from(this.blocks.values()).map((b) => b.maxMs)
     );
   }
 
-  *getViewportBlocks(min: number, max: number) {
+  *getViewportBlocks(minMs: number, maxMs: number) {
     for (const [_, value] of this.blocks) {
-      if (value.isInViewport(min, max)) {
+      if (value.isInViewport(minMs, maxMs)) {
         yield value;
       }
     }
   }
 
-  *requestMissingBlocks(min: number, max: number, lod: number) {
-    for (const block of [...this.getViewportBlocks(min, max)]) {
+  *requestMissingBlocks(minMs: number, maxMs: number, lod: number) {
+    for (const block of [...this.getViewportBlocks(minMs, maxMs)]) {
       if (block.requestLod(lod)) {
         yield block;
       }
@@ -77,7 +75,10 @@ export class MetricState {
 
   private mapToPoints(blockData: MetricBlockData): Point[] {
     return blockData.points.map((p) => {
-      return new Point(p.tickOffset - this.startTick, p.value);
+      return <Point>{
+        time: p.timeMs + this.min,
+        value: p.value,
+      };
     });
   }
 }

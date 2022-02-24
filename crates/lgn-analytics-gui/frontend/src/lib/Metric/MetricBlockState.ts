@@ -4,17 +4,17 @@ import { MetricBlockDesc } from "@lgn/proto-telemetry/dist/metric";
 export class MetricBlockState {
   blockId: string;
   streamId: string;
-  minTick: number;
-  maxTick: number;
+  minMs: number;
+  maxMs: number;
   private data: Map<number, Point[]>;
-  private lodRequestList: Map<number, boolean>;
+  private inFlight: Map<number, boolean>;
   constructor(metricBlockDesc: MetricBlockDesc) {
     this.blockId = metricBlockDesc.blockId;
     this.streamId = metricBlockDesc.streamId;
-    this.minTick = metricBlockDesc.beginTicks;
-    this.maxTick = metricBlockDesc.endTicks;
+    this.minMs = metricBlockDesc.beginTimeMs;
+    this.maxMs = metricBlockDesc.endTimeMs;
     this.data = new Map();
-    this.lodRequestList = new Map();
+    this.inFlight = new Map();
   }
 
   hasLod(lod: number) {
@@ -25,10 +25,10 @@ export class MetricBlockState {
     if (this.hasLod(lod)) {
       return false;
     }
-    if (this.lodRequestList.get(lod)) {
+    if (this.inFlight.get(lod)) {
       return false;
     }
-    this.lodRequestList.set(lod, true);
+    this.inFlight.set(lod, true);
     return true;
   }
 
@@ -40,8 +40,8 @@ export class MetricBlockState {
     return true;
   }
 
-  isInViewport(minTick: number, maxTick: number) {
-    return !(this.minTick > maxTick || this.maxTick < minTick);
+  isInViewport(min: number, max: number) {
+    return !(this.minMs > max || this.maxMs < min);
   }
 
   *getPoints(min: number, max: number, lod: number) {
@@ -52,31 +52,29 @@ export class MetricBlockState {
 
     const points = [];
     for (const point of data) {
-      if (point.tickOffset >= min && point.tickOffset <= max) {
+      if (point.time >= min && point.time <= max) {
         points.push(point);
       }
     }
 
     if (points.length > 0) {
-      const boundaryInPoint = data[data.indexOf(points[0]) - 1];
-      if (boundaryInPoint && !points.includes(boundaryInPoint)) {
-        points.unshift(boundaryInPoint);
-      }
-      const boundaryOutPoint =
-        data[data.indexOf(points[points.length - 1]) + 1];
-      if (boundaryOutPoint && !points.includes(boundaryOutPoint)) {
-        points.push(boundaryOutPoint);
+      if (data.length != points.length) {
+        const boundaryInPoint = data[data.indexOf(points[0]) - 1];
+        if (boundaryInPoint && !points.includes(boundaryInPoint)) {
+          points.unshift(boundaryInPoint);
+        }
+        const boundaryOutPoint =
+          data[data.indexOf(points[points.length - 1]) + 1];
+        if (boundaryOutPoint && !points.includes(boundaryOutPoint)) {
+          points.push(boundaryOutPoint);
+        }
       }
     } else {
-      const nextMinPoint = data
-        .filter((p) => p.tickOffset <= min)
-        .sort((a, b) => (a > b ? 1 : -1))[0];
+      const nextMinPoint = data.filter((p) => p.time <= min)[0];
       if (nextMinPoint && !points.includes(nextMinPoint)) {
         points.push(nextMinPoint);
       }
-      const nextMaxPoint = data
-        .filter((p) => p.tickOffset >= max)
-        .sort((a, b) => (a > b ? -1 : 1))[0];
+      const nextMaxPoint = data.filter((p) => p.time >= max)[0];
       if (nextMaxPoint && !points.includes(nextMaxPoint)) {
         points.push(nextMaxPoint);
       }

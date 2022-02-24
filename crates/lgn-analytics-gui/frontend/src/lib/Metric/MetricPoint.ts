@@ -1,8 +1,4 @@
-export class Point {
-  tickOffset: number;
+export interface Point {
+  time: number;
   value: number;
-  constructor(tickOffset: number, value: number) {
-    this.tickOffset = tickOffset;
-    this.value = value;
-  }
 }

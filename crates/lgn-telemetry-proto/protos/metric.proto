@@ -17,7 +17,7 @@ message MetricBlockData {
 }
 
 message MetricDataPoint {
-  uint64 tick = 1;
+  double time_ms = 1;
   double value = 2;
 }
 
@@ -27,8 +27,6 @@ message MetricBlockRequest {
   string stream_id = 3;
   string metric_name = 4;
   uint32 lod = 5;
-  int64 process_start_ticks = 6;
-  uint64 tsc_frequency = 7;
 }
 
 message MetricBlockManifestRequest {
