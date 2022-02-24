@@ -68,13 +68,18 @@ async fn find_process_with_metrics_data(connection: &mut sqlx::AnyConnection) ->
 #[test]
 fn test_list_processes() {
     let data_path = setup_data_dir("list-processes");
-    dump_cli_sys(&[data_path.to_str().unwrap(), "recent-processes"]);
+    dump_cli_sys(&["--local", data_path.to_str().unwrap(), "recent-processes"]);
 }
 
 #[test]
 fn test_find_processes() {
     let data_path = setup_data_dir("find-processes");
-    dump_cli_sys(&[data_path.to_str().unwrap(), "find-processes", "exe"]);
+    dump_cli_sys(&[
+        "--local",
+        data_path.to_str().unwrap(),
+        "find-processes",
+        "exe",
+    ]);
 }
 
 #[tokio::main]
@@ -88,14 +93,19 @@ async fn test_process_tree() -> Result<()> {
     if !process_info.parent_process_id.is_empty() {
         process_id = process_info.parent_process_id;
     }
-    dump_cli_sys(&[data_path.to_str().unwrap(), "process-tree", &process_id]);
+    dump_cli_sys(&[
+        "--local",
+        data_path.to_str().unwrap(),
+        "process-tree",
+        &process_id,
+    ]);
     Ok(())
 }
 
 #[test]
 fn test_logs_by_process() {
     let data_path = setup_data_dir("logs_by_process");
-    dump_cli_sys(&[data_path.to_str().unwrap(), "logs-by-process"]);
+    dump_cli_sys(&["--local", data_path.to_str().unwrap(), "logs-by-process"]);
 }
 
 #[tokio::main]
@@ -105,7 +115,12 @@ async fn test_print_log() -> Result<()> {
     let pool = alloc_sql_pool(&data_path).await.unwrap();
     let mut connection = pool.acquire().await.unwrap();
     let process_id = find_process_with_log_data(&mut connection).await?;
-    dump_cli_sys(&[data_path.to_str().unwrap(), "process-log", &process_id]);
+    dump_cli_sys(&[
+        "--local",
+        data_path.to_str().unwrap(),
+        "process-log",
+        &process_id,
+    ]);
     Ok(())
 }
 
@@ -117,6 +132,7 @@ async fn test_thread_events() -> Result<()> {
     let mut connection = pool.acquire().await.unwrap();
     let process_id = find_process_with_thread_data(&mut connection).await?;
     dump_cli_sys(&[
+        "--local",
         data_path.to_str().unwrap(),
         "process-thread-events",
         &process_id,
@@ -131,6 +147,11 @@ async fn test_metrics_events() -> Result<()> {
     let pool = alloc_sql_pool(&data_path).await.unwrap();
     let mut connection = pool.acquire().await.unwrap();
     let process_id = find_process_with_metrics_data(&mut connection).await?;
-    dump_cli_sys(&[data_path.to_str().unwrap(), "process-metrics", &process_id]);
+    dump_cli_sys(&[
+        "--local",
+        data_path.to_str().unwrap(),
+        "process-metrics",
+        &process_id,
+    ]);
     Ok(())
 }
