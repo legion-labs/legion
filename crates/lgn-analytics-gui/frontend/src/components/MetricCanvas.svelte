@@ -41,7 +41,7 @@
   let deltaMs: number;
   let pixelSizeNs: number;
 
-  let x: d3.ScaleTime<number, number, never>;
+  let x: d3.ScaleLinear<number, number, never>;
   let y: d3.ScaleLinear<number, number, never>;
 
   let gxAxis: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
@@ -163,12 +163,12 @@
 
     context = canvas.getContext("2d")!;
 
-    x = d3.scaleTime().domain([totalMinMs, totalMaxMs]).nice();
+    x = d3.scaleLinear().domain([totalMinMs, totalMaxMs]).nice();
     y = d3.scaleLinear().nice();
 
     xAxis = d3
       .axisBottom(x)
-      .tickFormat((d) => formatExecutionTime((d as Date).valueOf()));
+      .tickFormat((d) => formatExecutionTime(d.valueOf()));
     yAxis = d3.axisLeft(y);
 
     gxAxis = svgGroup
