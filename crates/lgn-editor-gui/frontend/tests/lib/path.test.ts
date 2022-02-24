@@ -6,7 +6,7 @@ import {
 } from "@/lib/path";
 
 describe("detectMainPathSeparator", () => {
-  it("detects the path separator for a given path", () => {
+  test("detects the path separator for a given path", () => {
     expect(detectMainPathSeparator("")).toBe(null);
     expect(detectMainPathSeparator("foobar")).toBe(null);
     expect(detectMainPathSeparator(".foo")).toBe(null);
@@ -20,7 +20,7 @@ describe("detectMainPathSeparator", () => {
 });
 
 describe("components", () => {
-  it("returns the components of a path", () => {
+  test("returns the components of a path", () => {
     expect(components("")).toEqual([]);
     expect(components("foobar")).toEqual(["foobar"]);
     expect(components(".foo")).toEqual([".foo"]);
@@ -34,7 +34,7 @@ describe("components", () => {
 });
 
 describe("fileName", () => {
-  it("detects the file name for a given path", () => {
+  test("detects the file name for a given path", () => {
     expect(fileName("")).toBe(null);
     expect(fileName("foobar")).toBe("foobar");
     expect(fileName(".foo")).toBe(".foo");
@@ -48,7 +48,7 @@ describe("fileName", () => {
 });
 
 describe("extension", () => {
-  it("extracts the extension of a file path", () => {
+  test("extracts the extension of a file path", () => {
     expect(extension("foo.ts")).toBe("ts");
     expect(extension("foo")).toBe(null);
     expect(extension("")).toBe(null);
@@ -58,7 +58,7 @@ describe("extension", () => {
     expect(extension(".")).toBe(null);
   });
 
-  it("extracts the extension of a file path for relative paths", () => {
+  test("extracts the extension of a file path for relative paths", () => {
     expect(extension("./foo.ts")).toBe("ts");
     expect(extension("./foo")).toBe(null);
     expect(extension("./")).toBe(null);
@@ -68,7 +68,7 @@ describe("extension", () => {
     expect(extension("./.")).toBe(null);
   });
 
-  it("extracts the extension of a file path for long relative paths", () => {
+  test("extracts the extension of a file path for long relative paths", () => {
     expect(extension("../../../foo.ts")).toBe("ts");
     expect(extension("../../../foo")).toBe(null);
     expect(extension("../../../")).toBe(null);

@@ -119,7 +119,6 @@
         <Icon icon="ic:baseline-keyboard-arrow-down" />
       </div>
     </div>
-    <!-- on:mouseenter={resetHighlightedOptionIndex} -->
     <div class="options" class:hidden={!isOpen} use:keyboardNavigationContainer>
       {#if $$slots.unselect}
         <div
@@ -188,7 +187,7 @@
   }
 
   .selected-label {
-    @apply flex flex-row h-full w-full p-2 justify-between;
+    @apply flex flex-row h-full w-full px-2 justify-between items-center;
   }
 
   .disabled .icon {
