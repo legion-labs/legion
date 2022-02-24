@@ -59,8 +59,8 @@ jobs:
       credentials:
         username: AWS
         password: ${{ secrets.ECR_PASSWORD}}
-      steps:
-        - run: echo "Inside a container pulled from ECR \o/"
+    steps:
+      - run: echo "Inside a container pulled from ECR \o/"
 
   build_build_env:
     name: Building env container
