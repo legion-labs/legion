@@ -8,8 +8,9 @@ use crate::{
 };
 
 pub struct DescriptorSet {
-    pub(crate) layout: DescriptorSetLayout,
-    pub(crate) handle: DescriptorSetHandle,
+    pub(crate) _partition: DescriptorHeapPartition,
+    pub(crate) _layout: DescriptorSetLayout,
+    pub(crate) _handle: DescriptorSetHandle,
 }
 
 /// Used to create a `DescriptorHeap`
@@ -111,20 +112,8 @@ impl DescriptorHeap {
         })
     }
 
-    pub fn alloc_partition(
-        &self,
-        transient: bool,
-        definition: &DescriptorHeapDef,
-    ) -> GfxResult<DescriptorHeapPartition> {
-        // todo(vdbdd): is there enough room inside this heap to allocate this partition
-        DescriptorHeapPartition::new(self.clone(), transient, definition)
-    }
-
-    #[allow(clippy::unused_self)]
-    #[allow(clippy::needless_pass_by_value)]
-    #[allow(clippy::todo)]
-    pub fn free_partition(&self, _partition: DescriptorHeapPartition) {
-        // todo(vdbdd): free
+    pub fn device_context(&self) -> &DeviceContext {
+        &self.inner.device_context
     }
 }
 
@@ -149,24 +138,28 @@ impl Drop for DescriptorHeapPartitionInner {
 // DescriptorHeapPartition
 //
 
+#[derive(Clone)]
 pub struct DescriptorHeapPartition {
-    pub(crate) inner: Box<DescriptorHeapPartitionInner>,
+    pub(crate) inner: Drc<DescriptorHeapPartitionInner>,
 }
 
 impl DescriptorHeapPartition {
-    pub(crate) fn new(
-        heap: DescriptorHeap,
+    pub fn new(
+        heap: &DescriptorHeap,
         transient: bool,
         definition: &DescriptorHeapDef,
     ) -> GfxResult<Self> {
         let platform_descriptor_heap_partition =
             BackendDescriptorHeapPartition::new(&heap.inner.device_context, transient, definition)?;
         Ok(Self {
-            inner: Box::new(DescriptorHeapPartitionInner {
-                heap,
-                transient,
-                backend_descriptor_heap_partition: platform_descriptor_heap_partition,
-            }),
+            inner: heap
+                .device_context()
+                .deferred_dropper()
+                .new_drc(DescriptorHeapPartitionInner {
+                    heap: heap.clone(),
+                    transient,
+                    backend_descriptor_heap_partition: platform_descriptor_heap_partition,
+                }),
         })
     }
 
@@ -183,14 +176,6 @@ impl DescriptorHeapPartition {
         assert!(!self.inner.transient);
         self.backend_alloc(layout)
     }
-
-    // pub fn get_writer<'frame>(
-    //     &self,
-    //     descriptor_set_layout: &DescriptorSetLayout,
-    //     bump: &'frame bumpalo::Bump,
-    // ) -> GfxResult<DescriptorSetWriter<'frame>> {
-    //     self.backend_get_writer(descriptor_set_layout, bump)
-    // }
 
     pub fn write(
         &self,

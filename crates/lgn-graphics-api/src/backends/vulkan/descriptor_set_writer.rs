@@ -51,9 +51,7 @@ impl<'a> DescriptorSetWriter<'a> {
 
         let descriptor_count = self.descriptor_set_layout.descriptor_count();
         let vk_image_info_count = self.descriptor_set_layout.vk_image_info_count();
-        // assert!((vk_image_info_count as usize) < MAX_IMAGE_DESCRIPTORS);
         let vk_buffer_info_count = self.descriptor_set_layout.vk_buffer_info_count();
-        // assert!((vk_buffer_info_count as usize) < MAX_BUFFER_DESCRIPTORS);
 
         let mut vk_pending_writes =
             SmallVec::<[vk::WriteDescriptorSet; MAX_DESCRIPTOR_BINDINGS]>::with_capacity(

@@ -8,8 +8,7 @@ use lgn_core::Handle;
 use super::OnFrameEventHandler;
 
 pub struct DescriptorPool {
-    descriptor_heap: DescriptorHeap,
-    descriptor_heap_partition: Handle<DescriptorHeapPartition>,
+    descriptor_heap_partition: DescriptorHeapPartition,
 }
 
 impl DescriptorPool {
@@ -17,13 +16,9 @@ impl DescriptorPool {
         descriptor_heap: DescriptorHeap,
         heap_partition_def: &DescriptorHeapDef,
     ) -> Self {
-        let descriptor_heap_partition = Handle::new(
-            descriptor_heap
-                .alloc_partition(true, heap_partition_def)
-                .unwrap(),
-        );
+        let descriptor_heap_partition =
+            DescriptorHeapPartition::new(&descriptor_heap, true, heap_partition_def).unwrap();
         Self {
-            descriptor_heap,
             descriptor_heap_partition,
         }
     }
@@ -57,13 +52,6 @@ impl DescriptorPool {
 
     fn reset(&self) {
         self.descriptor_heap_partition.reset().unwrap();
-    }
-}
-
-impl Drop for DescriptorPool {
-    fn drop(&mut self) {
-        self.descriptor_heap
-            .free_partition(self.descriptor_heap_partition.take());
     }
 }
 

@@ -290,8 +290,9 @@ impl DescriptorHeapPartition {
 
         // Ok(writer.flush())
         Ok(DescriptorSet {
-            layout: layout.clone(),
-            handle,
+            _partition: self.clone(),
+            _layout: layout.clone(),
+            _handle: handle,
         })
     }
 
