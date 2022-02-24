@@ -55,7 +55,7 @@ jobs:
     name: Testing the ECR password
     runs-on: [self-hosted, linux, common, build]
     container:
-      image: 550877636976.dkr.ecr.ca-central-1.amazonaws.com/legion-labs-build-env-linux-rust
+      image: 550877636976.dkr.ecr.ca-central-1.amazonaws.com/legion-labs/legion/telemetry-ingestion-srv
       credentials:
         username: AWS
         password: ${{ secrets.ECR_PASSWORD}}
