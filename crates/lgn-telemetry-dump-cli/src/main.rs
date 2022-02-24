@@ -3,17 +3,25 @@
 // crate-specific lint exceptions:
 //#![]
 
+mod lake_size;
 mod process_log;
 mod process_metrics;
 mod process_search;
 mod process_thread_events;
 
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::Arc;
 
+use anyhow::bail;
+use anyhow::Context;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use lake_size::fill_block_sizes;
 use lgn_analytics::alloc_sql_pool;
+use lgn_blob_storage::AwsS3BlobStorage;
+use lgn_blob_storage::AwsS3Url;
+use lgn_blob_storage::BlobStorage;
 use lgn_blob_storage::LocalBlobStorage;
 use lgn_telemetry_sink::TelemetryGuard;
 use process_log::{print_logs_by_process, print_process_log};
@@ -31,8 +39,14 @@ use crate::{
 #[clap(about = "CLI to query a local telemetry data lake", version, author)]
 #[clap(arg_required_else_help(true))]
 struct Cli {
-    /// local path to folder containing telemetry.db3
-    db: PathBuf,
+    #[clap(short, long)]
+    local: Option<PathBuf>,
+
+    #[clap(short, long, name = "remote-db-url")]
+    remote_db_url: Option<String>,
+
+    #[clap(short, long, name = "s3-lake-url")]
+    s3_lake_url: Option<String>,
 
     #[clap(subcommand)]
     command: Commands,
@@ -82,6 +96,9 @@ enum Commands {
         /// process guid
         process_id: String,
     },
+    /// Prints the metrics streams of the process
+    #[clap(name = "fill-block-sizes")]
+    FillBlockSizes,
 }
 
 #[tokio::main]
@@ -90,10 +107,34 @@ async fn main() -> Result<()> {
 
     let args = Cli::parse();
 
-    let data_path = args.db;
-    let blocks_folder = data_path.join("blobs");
-    let blob_storage = Arc::new(LocalBlobStorage::new(blocks_folder).await?);
-    let pool = alloc_sql_pool(&data_path).await.unwrap();
+    let pool;
+    let blob_storage: Arc<dyn BlobStorage>;
+
+    if let Some(local_path) = args.local {
+        if args.remote_db_url.is_some() {
+            bail!("remote-db-url and local path can't be both specified");
+        }
+        let blocks_folder = local_path.join("blobs");
+        blob_storage = Arc::new(LocalBlobStorage::new(blocks_folder).await?);
+        pool = alloc_sql_pool(&local_path).await.unwrap();
+    } else {
+        if args.remote_db_url.is_none() {
+            bail!("remote-db-url or local path has to be specified");
+        }
+
+        if args.s3_lake_url.is_none() {
+            bail!("s3-lake-url is required when connecting to a remote data lake");
+        }
+
+        blob_storage =
+            Arc::new(AwsS3BlobStorage::new(AwsS3Url::from_str(&args.s3_lake_url.unwrap())?).await);
+
+        pool = sqlx::any::AnyPoolOptions::new()
+            .connect(&args.remote_db_url.unwrap())
+            .await
+            .with_context(|| String::from("Connecting to telemetry database"))?;
+    }
+
     let mut connection = pool.acquire().await.unwrap();
     match args.command {
         Commands::RecentProcesses => {
@@ -119,6 +160,9 @@ async fn main() -> Result<()> {
         }
         Commands::ProcessMetrics { process_id } => {
             print_process_metrics(&mut connection, blob_storage, &process_id).await?;
+        }
+        Commands::FillBlockSizes => {
+            fill_block_sizes(&mut connection, blob_storage).await?;
         }
     }
     Ok(())
