@@ -22,18 +22,9 @@ jobs:
 
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
 
-            let ecr_output = '';
-            let ecr_error = '';
             const options = {};
-            options.listeners = {
-                stdout: (data) => {
-                    ecr_output += data.toString();
-                },
-                stderr: (data) => {
-                    ecr_error += data.toString();
-                }
-            };
-            await exec.exec('aws', ['ecr', 'get-login-password', '--region', 'ca-central-1'], options);
+            options.silent = true;
+            const ecr_login = await exec.getExecOutput('aws', ['ecr', 'get-login-password', '--region', 'ca-central-1'], options);
 
             const pub_key = await github.rest.actions.getRepoPublicKey({
                 owner,
@@ -41,8 +32,8 @@ jobs:
             });
             const key = pub_key.data.key;
             const key_id = pub_key.data.key_id;
-            const value = ecr_output;
-
+            const value = ecr_login.stdout;
+            console.log(ecr_login);
             // Convert the message and key to Uint8Array's (Buffer implements that interface)
             const message_bytes = Buffer.from(value);
             const key_bytes = Buffer.from(key, 'base64');
@@ -53,8 +44,7 @@ jobs:
             // Base64 the encrypted secret
             const encrypted_value = Buffer.from(encrypted_bytes).toString('base64');
             const secret_name = 'ECR_PASSWORD';
-            console.log(encrypted_value);
-            await octokit.rest.actions.createOrUpdateRepoSecret({
+            await github.rest.actions.createOrUpdateRepoSecret({
                 owner,
                 repo,
                 secret_name,
