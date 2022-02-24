@@ -1,6 +1,8 @@
 use std::hash::{BuildHasher, Hash, Hasher};
 
 use ahash::{AHasher, RandomState};
+use sha2::Digest;
+use sha2::Sha256;
 use siphasher::sip128::{Hasher128, SipHasher};
 
 /// The `DefaultHash` trait is used to obtain a hash value for a single typed
@@ -9,6 +11,8 @@ pub trait DefaultHash {
     fn default_hash(&self) -> u64;
 
     fn default_hash_128(&self) -> u128;
+
+    fn default_hash_256(&self) -> [u8; 32];
 }
 
 // Default implementation of DefaultHash for all types that implement the `Hash`
@@ -30,6 +34,12 @@ where
         let mut hasher = DefaultHasher128::new();
         self.hash(&mut hasher);
         hasher.finish_128()
+    }
+
+    fn default_hash_256(&self) -> [u8; 32] {
+        let mut hasher = DefaultHasher256::new();
+        self.hash(&mut hasher);
+        hasher.finish_256()
     }
 }
 
@@ -68,6 +78,38 @@ impl Hasher for DefaultHasher128 {
 
     fn finish(&self) -> u64 {
         self.0.finish()
+    }
+}
+
+pub struct DefaultHasher256(Sha256);
+
+impl DefaultHasher256 {
+    pub fn new() -> Self {
+        Self(Sha256::new())
+    }
+
+    pub fn finish_256(self) -> [u8; 32] {
+        self.0
+            .finalize()
+            .as_slice()
+            .try_into()
+            .expect("wrong length")
+    }
+}
+
+impl Default for DefaultHasher256 {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Hasher for DefaultHasher256 {
+    fn finish(&self) -> u64 {
+        panic!()
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        self.0.update(bytes);
     }
 }
 

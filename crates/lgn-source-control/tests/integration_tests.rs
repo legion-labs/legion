@@ -144,6 +144,49 @@ async fn test_add_and_commit() {
 }
 
 #[tokio::test]
+async fn lenient_commit() {
+    let (index, ws, _paths) = init_test_workspace_and_index!();
+    create_file!(ws, "apple.txt", "I am an apple");
+    create_file!(ws, "orange.txt", "I am an orange");
+    create_file!(ws, "vegetables/carrot.txt", "I am a carrot");
+    workspace_add_files!(ws, ["."]);
+    workspace_commit!(ws, "Added some fruits");
+
+    // commit no changes.
+    {
+        let new_edited_files = ws.checkout_files([Path::new("vegetables")]).await.unwrap();
+        assert_eq!(new_edited_files, [cp("/vegetables/carrot.txt")].into());
+
+        assert_unstaged_changes!(ws, []);
+        assert_staged_changes!(
+            ws,
+            [edit(
+                "/vegetables/carrot.txt",
+                "3cfa2f8506a5d2e1a397a03f1e92f5d96e77315d5d428568848e100d14089ce9",
+                "3cfa2f8506a5d2e1a397a03f1e92f5d96e77315d5d428568848e100d14089ce9",
+                13,
+                13,
+            )]
+        );
+
+        assert_file_read_write!(ws, "vegetables/carrot.txt");
+        assert_file_content!(ws, "vegetables/carrot.txt", "I am a carrot");
+
+        workspace_commit_lenient!(ws, "no commit");
+
+        assert_staged_changes!(ws, []);
+        assert_unstaged_changes!(ws, []);
+
+        assert_file_read_only!(ws, "vegetables/carrot.txt");
+    }
+
+    // empty commit
+    workspace_commit_lenient!(ws, "empty");
+
+    cleanup_test_workspace_and_index!(ws, index);
+}
+
+#[tokio::test]
 async fn test_edit_and_commit() {
     let (index, ws, _paths) = init_test_workspace_and_index!();
 

@@ -10,11 +10,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use lgn_utils::{DefaultHash, DefaultHasher128};
+use lgn_utils::{DefaultHash, DefaultHasher256};
 
 /// Returns the hash of the provided data.
 pub fn content_checksum(data: &[u8]) -> Checksum {
-    data.default_hash_128().into()
+    data.default_hash_256().into()
 }
 
 /// Returns the hash of the data provided through a Read trait.
@@ -23,7 +23,7 @@ pub fn content_checksum(data: &[u8]) -> Checksum {
 ///
 /// If an error is returned, the checksum is unavailable.
 pub fn content_checksum_from_read(data: &mut impl io::Read) -> io::Result<Checksum> {
-    let mut hasher = DefaultHasher128::new();
+    let mut hasher = DefaultHasher256::new();
     let mut buffer = [0; 1024];
     loop {
         let count = data.read(&mut buffer)?;
@@ -34,7 +34,7 @@ pub fn content_checksum_from_read(data: &mut impl io::Read) -> io::Result<Checks
         hasher.write(&buffer[..count]);
     }
 
-    Ok(hasher.finish_128().into())
+    Ok(hasher.finish_256().into())
 }
 
 /// The address of the [`ContentStore`].
