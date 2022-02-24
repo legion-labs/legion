@@ -388,7 +388,7 @@ impl<'frame> DescriptorSetWriter<'frame> {
         descriptor_refs: &[DescriptorRef<'_>],
     ) {
         unimplemented!();
-    }    
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

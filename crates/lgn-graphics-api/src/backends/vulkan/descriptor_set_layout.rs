@@ -100,7 +100,7 @@ impl VulkanDescriptorSetLayout {
         };
 
         Ok(Self {
-                vk_layout,
+            vk_layout,
             vk_image_info_count: image_info_count,
             vk_buffer_info_count: buffer_info_count,
             typed_flat_indices,
