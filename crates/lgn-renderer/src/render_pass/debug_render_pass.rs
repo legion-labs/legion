@@ -282,6 +282,7 @@ impl DebugRenderPass {
         });
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn render_manipulators(
         &self,
         render_context: &RenderContext<'_>,

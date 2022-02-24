@@ -328,7 +328,7 @@ impl PickingRenderPass {
                 if let Some(list) = instance_manager.id_va_list(*entity) {
                     let (model_meta_data, _ready) = model_manager.get_model_meta_data(visual);
                     // TODO: this code assumes that list of instances and vector of meshes are of the same size and in the same order
-                    for (idx, (gpu_instance_id, _)) in list.into_iter().enumerate() {
+                    for (idx, (gpu_instance_id, _)) in list.iter().enumerate() {
                         let draw_call_count = mesh_manager
                             .get_mesh_meta_data(model_meta_data.meshes[idx].mesh_id as u32)
                             .draw_call_count;

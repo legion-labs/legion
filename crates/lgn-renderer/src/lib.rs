@@ -36,7 +36,7 @@ pub use render_context::*;
 pub mod resources;
 use resources::{
     BindlessTextureManager, DescriptorHeapManager, GpuDataPlugin, GpuEntityColorManager,
-    GpuEntityTransformManager, GpuMaterialManager, GpuPickingDataManager, ModelManager
+    GpuEntityTransformManager, GpuMaterialManager, GpuPickingDataManager, ModelManager,
     PersistentDescriptorSetManager, PipelineManager,
 };
 

@@ -61,7 +61,7 @@ impl ModelManager {
         visual_component: &VisualComponent,
     ) -> (&ModelMetaData, bool) {
         if let Some(reference) = &visual_component.model_reference {
-            if let Some(model_meta_data) = self.model_meta_datas.get(&reference) {
+            if let Some(model_meta_data) = self.model_meta_datas.get(reference) {
                 return (model_meta_data, true);
             }
             return (&self.default_model, false);

@@ -83,7 +83,7 @@ impl MeshManager {
         mesh_manager
     }
 
-    pub fn add_meshes(&mut self, renderer: &Renderer, meshes: &Vec<Mesh>) -> Vec<u32> {
+    pub fn add_meshes(&mut self, renderer: &Renderer, meshes: &[Mesh]) -> Vec<u32> {
         if meshes.is_empty() {
             return Vec::new();
         }

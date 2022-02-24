@@ -45,4 +45,3 @@ pub(crate) use persistent_descriptor_set_manager::*;
 
 mod model_manager;
 pub use model_manager::*;
-
