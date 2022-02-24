@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { bufferCount, map, tap, mergeMap } from "rxjs/operators";
   import { Panel, PanelList } from "@lgn/web-client/src/components/panel";
   import ContextMenu from "@lgn/web-client/src/components/ContextMenu.svelte";
   import Notifications from "@lgn/web-client/src/components/Notifications.svelte";
@@ -8,10 +9,13 @@
   import StatusBar from "@lgn/web-client/src/components/StatusBar.svelte";
   import {
     cloneResource,
+    createResource,
     getAllResources,
     getResourceProperties,
+    initFileUpload,
     removeResource,
     renameResource,
+    streamFileUpload,
     updateSelection,
   } from "@/api";
   import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
@@ -40,12 +44,16 @@
   import ResourceFilter from "@/components/resources/ResourceFilter.svelte";
   import { onMount } from "svelte";
   import authStatus from "@/stores/authStatus";
+  import Files from "@lgn/web-client/src/stores/files";
   import AuthModal from "@/components/AuthModal.svelte";
   import {
     BagResourceProperty,
     formatProperties,
     ResourceProperty,
   } from "@/lib/propertyGrid";
+  import { UploadStatus } from "@lgn/proto-editor/dist/source_control";
+  import { readFile } from "@lgn/web-client/src/lib/files";
+  import notifications from "@/stores/notifications";
 
   contextMenuStore.register("resource", contextMenuEntries.resourceEntries);
   contextMenuStore.register(
@@ -82,6 +90,10 @@
     loading: allResourcesLoading,
   } = allResourcesStore;
 
+  const files = new Files();
+
+  let uploadingFiles = false;
+
   let currentResourceDescription: ResourceDescription | null = null;
 
   let resourceHierarchyTree: HierarchyTree<
@@ -90,6 +102,10 @@
 
   $: if ($allResourcesData) {
     resourceEntriesOrchestrator.load($allResourcesData);
+  }
+
+  $: if ($files) {
+    uploadFiles();
   }
 
   allResourcesStore.run(getAllResources);
@@ -253,6 +269,86 @@
     await allResourcesStore.run(getAllResources);
   }
 
+  async function uploadFiles() {
+    if (!$files || !$files.length) {
+      return;
+    }
+
+    uploadingFiles = true;
+
+    try {
+      const filesWithId = await Promise.all(
+        $files.map((file) =>
+          initFileUpload({
+            name: file.name,
+            size: file.size,
+          }).then(({ id, name, status }) => {
+            if (!id || !name || status === UploadStatus.REJECTED) {
+              notifications.push(Symbol.for("file-upload"), {
+                title: "File Upload",
+                message: `File ${file.name} couldn't be uploaded`,
+                type: "error",
+              });
+
+              return null;
+            }
+
+            return { id, name, file };
+          })
+        )
+      );
+
+      const promises = filesWithId.reduce((acc, fileWithId) => {
+        if (!fileWithId) {
+          return acc;
+        }
+
+        const { id, name, file } = fileWithId;
+
+        const promise = readFile(file).then(
+          (content) =>
+            new Promise<string>((resolve, reject) => {
+              streamFileUpload({
+                id,
+                content: new Uint8Array(content),
+              }).subscribe({
+                error(error) {
+                  reject(error);
+                },
+                next({ progress }) {
+                  console.log("ID", progress?.id);
+                },
+                complete() {
+                  resolve(name);
+                },
+              });
+            })
+        );
+
+        return [...acc, promise];
+      }, [] as Promise<string>[]);
+
+      const names = await Promise.all(promises);
+
+      await Promise.all(
+        names.map((name) =>
+          createResource({
+            resourcePath: name,
+            resourceType: "png",
+          })
+            .then(console.log.bind(console, "Ok: "))
+            .catch(console.log.bind(console, "Error: "))
+        )
+      );
+
+      allResourcesStore.run(getAllResources);
+    } catch (error) {
+      log.error(log.json`File upload failed: ${error}`);
+    } finally {
+      uploadingFiles = false;
+    }
+  }
+
   async function handleResourceRename({
     detail: { action, entrySetName },
   }: ContextMenuActionEvent<
@@ -268,6 +364,12 @@
         await cloneResource({ sourceId: currentResourceDescription.id });
 
         await allResourcesStore.run(getAllResources);
+
+        return;
+      }
+
+      case "import": {
+        files.open({ multiple: true, mimeTypes: ["image/png"] });
 
         return;
       }
@@ -357,7 +459,7 @@
         </div>
         <div class="h-separator" />
         <div class="resource-browser">
-          <Panel tabs={["Resource Browser"]}>
+          <Panel loading={uploadingFiles} tabs={["Resource Browser"]}>
             <div slot="tab" let:tab>{tab}</div>
             <div slot="header">
               <ResourceFilter

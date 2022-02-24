@@ -10,4 +10,8 @@ impl ResourceRegistrySettings {
             root_folder: root_folder.as_ref().to_owned(),
         }
     }
+
+    pub fn root_folder(&self) -> &Path {
+        self.root_folder.as_path()
+    }
 }

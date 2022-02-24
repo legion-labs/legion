@@ -21,15 +21,18 @@ use lgn_editor_proto::resource_browser::{
     ReparentResourceResponse, SearchResourcesRequest,
 };
 
+use lgn_resource_registry::ResourceRegistrySettings;
 use lgn_tracing::span_scope;
 use serde_json::json;
 use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
 use std::{str::FromStr, sync::Arc};
 use tokio::sync::Mutex;
 use tonic::{codegen::http::status, Request, Response, Status};
 
 pub(crate) struct ResourceBrowserRPC {
     pub(crate) transaction_manager: Arc<Mutex<TransactionManager>>,
+    pub(crate) uploads_folder: PathBuf,
 }
 
 pub(crate) struct ResourceBrowserSettings {
@@ -120,12 +123,14 @@ pub enum SelectionOperation {
 impl ResourceBrowserPlugin {
     #[allow(clippy::needless_pass_by_value)]
     fn setup(
+        settings: Res<'_, ResourceRegistrySettings>,
         transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
         mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
     ) {
         span_scope!("resource_browser::setup");
         let resource_browser_service = ResourceBrowserServer::new(ResourceBrowserRPC {
             transaction_manager: transaction_manager.clone(),
+            uploads_folder: settings.root_folder().join("uploads"),
         });
         grpc_settings.register_service(resource_browser_service);
     }
@@ -289,15 +294,17 @@ impl ResourceBrowser for ResourceBrowserRPC {
     ) -> Result<Response<CreateResourceResponse>, Status> {
         let request = request.into_inner();
 
+        let resource_type = request.resource_type.as_str();
+
         let new_resource_id = ResourceTypeAndId {
-            kind: ResourceType::new(request.resource_type.as_bytes()),
+            kind: ResourceType::new(resource_type.as_bytes()),
             id: ResourceId::new(),
         };
 
-        let name = request.resource_path.as_ref().map_or(
-            request.resource_type.trim_start_matches("offline_"),
-            String::as_str,
-        );
+        let name = request
+            .resource_path
+            .as_ref()
+            .map_or(resource_type.trim_start_matches("offline_"), String::as_str);
 
         let mut parent_id: Option<ResourceTypeAndId> = None;
         let mut resource_path = if let Some(parent_id_str) = &request.parent_resource_id {
@@ -309,15 +316,20 @@ impl ResourceBrowser for ResourceBrowserRPC {
             ResourcePathName::new(name)
         };
 
+        // We use the resource path as the content path for now as it's a temporary implementation
+        let content_path = (resource_type == "png")
+            .then(|| self.uploads_folder.join(&resource_path.as_ref()[1..]));
+
         let mut transaction = Transaction::new().add_operation(CreateResourceOperation::new(
             new_resource_id,
             resource_path,
             true, // Allow auto-rename
+            content_path,
         ));
 
         // Until we support 'template', Initiate Entity with
         // some TransformComponent and update parenting
-        if request.resource_type.as_str() == "offline_entity" {
+        if resource_type == "offline_entity" {
             transaction = template_entity(new_resource_id, parent_id, transaction);
         }
 

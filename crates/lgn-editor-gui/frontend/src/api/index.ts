@@ -1,3 +1,4 @@
+import { Observable } from "rxjs";
 import log from "@lgn/web-client/src/lib/log";
 import {
   GrpcWebImpl as EditorResourceBrowserWebImpl,
@@ -8,6 +9,12 @@ import {
   GrpcWebImpl as EditorPropertyInspectorWebImpl,
   PropertyInspectorClientImpl,
 } from "@lgn/proto-editor/dist/property_inspector";
+import {
+  GrpcWebImpl as EditorSourceControlWebImpl,
+  SourceControlClientImpl,
+  UploadRawFileRequest,
+  UploadRawFileResponse,
+} from "@lgn/proto-editor/dist/source_control";
 import {
   formatProperties,
   ResourcePropertyWithValue,
@@ -22,6 +29,12 @@ const resourceBrowserClient = new ResourceBrowserClientImpl(
 
 const propertyInspectorClient = new PropertyInspectorClientImpl(
   new EditorPropertyInspectorWebImpl(editorServerURL, { debug: false })
+);
+
+const sourceControlClient = new SourceControlClientImpl(
+  new EditorSourceControlWebImpl(editorServerURL, {
+    debug: false,
+  })
 );
 
 /**
@@ -218,4 +231,27 @@ export async function cloneResource({
  */
 export async function onSendEditionCommand(jsonCommand: string) {
   log.info("video", `Sending edition_command=${jsonCommand}`);
+}
+
+export async function initFileUpload({
+  name,
+  size,
+}: {
+  name: string;
+  size: number;
+}) {
+  return sourceControlClient.initUploadRawFile({ name, size });
+}
+
+export function streamFileUpload({
+  id,
+  content,
+}: {
+  id: string;
+  content: Uint8Array;
+}): Observable<UploadRawFileResponse> {
+  return sourceControlClient.uploadRawFile({
+    id,
+    content,
+  });
 }

@@ -1,5 +1,7 @@
 <script lang="ts">
+  import Icon from "@iconify/svelte";
   import clickOutside from "../../actions/clickOutside";
+  import Loader from "../Loader.svelte";
 
   type Tab = $$Generic;
 
@@ -10,6 +12,8 @@
   export let key: (tab: Tab, index: number) => Tab = (tab) => tab;
 
   export let activeTab: Tab | null | undefined = tabs[0];
+
+  export let loading = false;
 
   let isFocused = false;
 
@@ -32,7 +36,10 @@
           class:tab-active={activeTab === tab}
           on:click={() => (activeTab = tab)}
         >
-          <slot name="tab" {tab} {isFocused} {activeTab} />
+          <div><slot name="tab" {tab} {isFocused} {activeTab} /></div>
+          {#if loading}
+            <div><Loader /></div>
+          {/if}
         </div>
       {/each}
     </div>
@@ -73,7 +80,7 @@
   }
 
   .tab {
-    @apply flex flex-row relative items-center bg-gray-700 px-2 cursor-pointer first:rounded-tl-sm last:rounded-tr-sm border-b-2 border-transparent;
+    @apply flex flex-row space-x-2 relative items-center bg-gray-700 px-2 cursor-pointer first:rounded-tl-sm last:rounded-tr-sm border-b-2 border-transparent;
   }
 
   .tab-inactive {

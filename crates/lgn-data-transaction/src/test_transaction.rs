@@ -193,11 +193,13 @@ async fn test_transaction_system() -> Result<(), Error> {
                 new_id,
                 resource_path.clone(),
                 false,
+                None,
             ))
             .add_operation(CreateResourceOperation::new(
                 ref_new_id,
                 ref_resource_path.clone(),
                 false,
+                None,
             ))
             .add_operation(UpdatePropertyOperation::new(
                 new_id,
@@ -320,7 +322,12 @@ async fn test_transaction_system() -> Result<(), Error> {
             id: ResourceId::new(),
         };
         let transaction = Transaction::new()
-            .add_operation(CreateResourceOperation::new(new_id, resource_path, false))
+            .add_operation(CreateResourceOperation::new(
+                new_id,
+                resource_path,
+                false,
+                None,
+            ))
             .add_operation(UpdatePropertyOperation::new(
                 new_id,
                 "test_string",
@@ -351,6 +358,7 @@ async fn test_transaction_system() -> Result<(), Error> {
                 },
                 "/entity/autoincrement1337".into(),
                 true,
+                None,
             ));
             transaction_manager.commit_transaction(transaction).await?;
         }

@@ -133,3 +133,9 @@ impl<T: AsRef<str>> From<&T> for ResourcePathName {
         Self::from(s.as_ref().to_owned())
     }
 }
+
+impl AsRef<str> for ResourcePathName {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
