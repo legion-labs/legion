@@ -247,11 +247,11 @@ mod test {
 
         let touch_event = Touch {
             id: 4,
-            start_position: Vec2::new(0.0, 0.0),
+            start_position: Vec2::ZERO,
             start_force: None,
-            previous_position: Vec2::new(0.0, 0.0),
+            previous_position: Vec2::ZERO,
             previous_force: None,
-            position: Vec2::new(0.0, 0.0),
+            position: Vec2::ZERO,
             force: None,
         };
 

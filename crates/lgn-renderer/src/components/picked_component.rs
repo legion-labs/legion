@@ -39,13 +39,13 @@ impl PickedComponent {
     }
 
     pub fn get_closest_point(&self) -> Vec3 {
-        let mut clostest_point = Vec3::new(f32::MAX, f32::MAX, f32::MAX);
+        let mut closest_point = Vec3::new(f32::MAX, f32::MAX, f32::MAX);
         for picking_data in &self.picking_data {
             let picking_pos = Vec3::from(picking_data.picking_pos());
-            if picking_pos.z < clostest_point.z {
-                clostest_point = picking_pos;
+            if picking_pos.z < closest_point.z {
+                closest_point = picking_pos;
             }
         }
-        clostest_point
+        closest_point
     }
 }

@@ -134,7 +134,7 @@ impl PickingManager {
                     pos: Vec2::NAN,
                 },
                 manip_entity_base_transform: Transform::default(),
-                screen_rect: Vec2::default(),
+                screen_rect: Vec2::ZERO,
                 picking_state: PickingState::Ready,
                 current_cpu_frame_no: 0,
                 picked_cpu_frame_no: u64::MAX,

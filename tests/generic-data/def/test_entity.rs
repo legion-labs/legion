@@ -8,11 +8,11 @@ pub struct TestEntity {
     #[legion(default = "string literal", readonly)]
     test_string: String,
 
-    #[legion(default = (255,0,0,255), group = "GroupTest1")]
+    #[legion(default = (255, 0, 0, 255), group = "GroupTest1")]
     test_color: Color,
 
     // Default with Tuple()
-    #[legion(default=(0.0,0.0,0.0), hidden, group = "GroupTest1")]
+    #[legion(default = Vec3::ZERO, hidden, group = "GroupTest1")]
     pub test_position: Vec3,
 
     // Default with Constant value

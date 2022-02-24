@@ -170,7 +170,7 @@ async fn create_offline_data(
             .components
             .push(Box::new(sample_data::offline::Transform {
                 position: (0_f32, 0_f32, 0.1_f32).into(),
-                rotation: Quat::default(),
+                rotation: Quat::IDENTITY,
                 scale: (12_f32, 8_f32, 0.01_f32).into(),
             }));
         entity
@@ -233,7 +233,7 @@ pub fn update(entity, events) {
             .components
             .push(Box::new(sample_data::offline::Transform {
                 position: (-2.4_f32, 0_f32, 0_f32).into(),
-                rotation: Quat::default(),
+                rotation: Quat::IDENTITY,
                 scale: (0.4_f32, 2_f32, 0.4_f32).into(),
             }));
         entity
@@ -305,7 +305,7 @@ pub fn update(entity, events) {
             .components
             .push(Box::new(sample_data::offline::Transform {
                 position: (2.4_f32, 0_f32, 0_f32).into(),
-                rotation: Quat::default(),
+                rotation: Quat::IDENTITY,
                 scale: (0.4_f32, 2_f32, 0.4_f32).into(),
             }));
         entity
@@ -490,8 +490,8 @@ pub fn update(entity, last_result, entities) {
         entity
             .components
             .push(Box::new(sample_data::offline::Transform {
-                position: Vec3::default(),
-                rotation: Quat::default(),
+                position: Vec3::ZERO,
+                rotation: Quat::IDENTITY,
                 scale: (0.4_f32, 0.4_f32, 0.4_f32).into(),
             }));
         entity
@@ -548,7 +548,7 @@ pub fn update(entity, last_result, entities) {
             .components
             .push(Box::new(sample_data::offline::Transform {
                 position: (0_f32, 0_f32, 4_f32).into(),
-                rotation: Quat::default(),
+                rotation: Quat::IDENTITY,
                 scale: (0.5_f32, 0.5_f32, 0.5_f32).into(),
             }));
 
