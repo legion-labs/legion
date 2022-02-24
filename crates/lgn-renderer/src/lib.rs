@@ -296,11 +296,11 @@ fn init_manipulation_manager(
 
 #[allow(clippy::needless_pass_by_value)]
 fn render_pre_update(
-    mut renderer: ResMut<'_, Renderer>,    
+    mut renderer: ResMut<'_, Renderer>,
     mut descriptor_heap_manager: ResMut<'_, DescriptorHeapManager>,
 ) {
     renderer.begin_frame();
-    descriptor_heap_manager.begin_frame();    
+    descriptor_heap_manager.begin_frame();
 }
 
 #[allow(

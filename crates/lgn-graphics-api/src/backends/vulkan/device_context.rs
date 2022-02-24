@@ -626,7 +626,7 @@ fn create_logical_device(
         .descriptor_binding_partially_bound(true)
         .descriptor_binding_sampled_image_update_after_bind(true)
         .descriptor_binding_storage_buffer_update_after_bind(true)
-        .descriptor_binding_update_unused_while_pending(true)        
+        .descriptor_binding_update_unused_while_pending(true)
         .runtime_descriptor_array(true);
 
     let mut features2 = vk::PhysicalDeviceFeatures2::builder()
