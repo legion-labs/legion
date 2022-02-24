@@ -2,7 +2,7 @@ use std::ops::Mul;
 
 use lgn_math::{Mat4, Vec2, Vec3, Vec4};
 
-use crate::{cgen, resources::UniformGPUDataUpdater, UP_VECTOR};
+use crate::{cgen, resources::UniformGPUDataUpdater, DOWN_VECTOR, UP_VECTOR};
 
 pub struct StaticMeshRenderData {
     pub positions: Option<Vec<Vec4>>,
@@ -290,7 +290,7 @@ impl StaticMeshRenderData {
         let mut cur_angle = 0.0f32;
 
         let base_point = Vec3::ZERO;
-        let base_normal = Vec3::new(0.0, -1.0, 0.0);
+        let base_normal = DOWN_VECTOR;
 
         let top_point = Vec3::new(0.0, length, 0.0);
         let top_normal = UP_VECTOR;
@@ -338,7 +338,7 @@ impl StaticMeshRenderData {
         let base_point = Vec3::ZERO;
         let top_point = Vec3::new(0.0, length, 0.0);
 
-        let base_normal = Vec3::new(0.0, -1.0, 0.0);
+        let base_normal = DOWN_VECTOR;
 
         for _i in 0..steps {
             let last_base_point = Vec3::new(cur_angle.cos(), 0.0, cur_angle.sin()).mul(radius);
