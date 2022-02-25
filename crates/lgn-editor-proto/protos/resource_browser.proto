@@ -17,6 +17,8 @@ service ResourceBrowser {
   rpc CloneResource(CloneResourceRequest) returns (CloneResourceResponse);
 
   rpc ReparentResource(ReparentResourceRequest) returns (ReparentResourceResponse);
+
+  rpc OpenScene(OpenSceneRequest) returns (OpenSceneResponse);
 }
 
 message SearchResourcesRequest {
@@ -86,6 +88,12 @@ message CloneResourceResponse {
 
 message ReparentResourceRequest {
   string id = 1;
-  string new_parent = 2;
+  string new_path = 2;
 }
 message ReparentResourceResponse {}
+
+message OpenSceneRequest {
+  string id = 1;
+}
+
+message OpenSceneResponse {}

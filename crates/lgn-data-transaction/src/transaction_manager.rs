@@ -114,14 +114,9 @@ impl TransactionManager {
         }
     }
 
-    /// Build a resource by name
-    pub async fn build_by_name(&self, resource_path: &ResourcePathName) -> Result<(), Error> {
+    /// Build a resource by id
+    pub async fn build_by_id(&self, resource_id: ResourceTypeAndId) -> Result<(), Error> {
         let mut ctx = LockContext::new(self).await;
-        let resource_id = ctx
-            .project
-            .find_resource(resource_path)
-            .await
-            .map_err(|_err| Error::ResourceNameNotFound(resource_path.clone()))?;
 
         let (_runtime_path_id, changed_assets) = ctx
             .build
@@ -133,6 +128,18 @@ impl TransactionManager {
             ctx.asset_registry.load_untyped(asset_id);
         }
         Ok(())
+    }
+
+    /// Build a resource by name
+    pub async fn build_by_name(&self, resource_path: &ResourcePathName) -> Result<(), Error> {
+        let resource_id = {
+            let ctx = LockContext::new(self).await;
+            ctx.project
+                .find_resource(resource_path)
+                .await
+                .map_err(|_err| Error::ResourceNameNotFound(resource_path.clone()))?
+        };
+        self.build_by_id(resource_id).await
     }
 
     /// Load all resources from a `Project`

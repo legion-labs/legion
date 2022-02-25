@@ -11,6 +11,7 @@
     getAllResources,
     getStagedResources,
     initFileUpload,
+    openScene,
     removeResource,
     renameResource,
     reparentResources,
@@ -192,6 +193,14 @@
     Pick<ContextMenuEntryRecord, "resource" | "resourcePanel">
   >) {
     switch (action) {
+      case "open_scene": {
+        if (currentResourceDescriptionEntry) {
+          await openScene({ id: currentResourceDescriptionEntry?.item.id });
+        }
+
+        return;
+      }
+
       case "clone": {
         if (!resourceHierarchyTree || !currentResourceDescriptionEntry) {
           return;
@@ -248,7 +257,7 @@
           payload: {
             resourceDescription:
               entrySetName === "resource"
-                ? currentResourceDescriptionEntry
+                ? currentResourceDescriptionEntry?.item
                 : null,
           },
         });
@@ -345,9 +354,9 @@
     draggedEntry: Entry<ResourceDescription>;
     dropzoneEntry: Entry<ResourceDescription>;
   }>) {
-    const newParent = dropzoneEntry.subEntries[0]?.item.id;
+    const newPath = dropzoneEntry.item.path;
 
-    if (!newParent) {
+    if (!newPath) {
       log.error(log.json`Couldn't find id for ${dropzoneEntry}`);
 
       return;
@@ -355,7 +364,7 @@
 
     await reparentResources({
       id: draggedEntry.item.id,
-      newParent,
+      newPath,
     });
 
     await allResources.run(getAllResources);
