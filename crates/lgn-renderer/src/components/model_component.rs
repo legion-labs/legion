@@ -8,8 +8,7 @@ use lgn_math::{Mat4, Vec2, Vec3, Vec4};
 use crate::{
     cgen::cgen_type::{MeshAttribMask, MeshDescription},
     resources::UniformGPUDataUpdater,
-    DOWN_VECTOR,
-    UP_VECTOR
+    DOWN_VECTOR, UP_VECTOR,
 };
 
 pub struct Mesh {
