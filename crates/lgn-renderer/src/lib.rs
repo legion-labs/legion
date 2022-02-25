@@ -22,7 +22,6 @@ use gpu_renderer::{GpuInstanceManager, MeshRenderer, RenderElement};
 pub use labels::*;
 
 mod renderer;
-use lgn_core::BumpAllocatorPool;
 use lgn_graphics_api::{AddressMode, CompareOp, FilterType, MipMapMode, ResourceUsage, SamplerDef};
 use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_math::{Vec2, Vec4};
@@ -428,10 +427,9 @@ fn render_begin(mut egui_manager: ResMut<'_, Egui>) {
 fn render_update(
     resources: (
         Res<'_, Renderer>,
-        Res<'_, MeshRenderer>,
         Res<'_, BindlessTextureManager>,
         Res<'_, PipelineManager>,
-        Res<'_, BumpAllocatorPool>,
+        Res<'_, MeshRenderer>,
         Res<'_, MeshManager>,
         Res<'_, PickingManager>,
         Res<'_, GpuInstanceManager>,
@@ -456,17 +454,16 @@ fn render_update(
 ) {
     // resources
     let renderer = resources.0;
-    let mesh_renerer = resources.1;
-    let bindless_textures = resources.2;
-    let pipeline_manager = resources.3;
-    // let bump_allocator_pool = resources.4;
-    let mesh_manager = resources.5;
-    let picking_manager = resources.6;
-    let instance_manager = resources.7;
-    let egui = resources.8;
-    let debug_display = resources.9;
-    let lighting_manager = resources.10;
-    let descriptor_heap_manager = resources.11;
+    let bindless_textures = resources.1;
+    let pipeline_manager = resources.2;
+    let mesh_renderer = resources.3;
+    let mesh_manager = resources.4;
+    let picking_manager = resources.5;
+    let instance_manager = resources.6;
+    let egui = resources.7;
+    let debug_display = resources.8;
+    let lighting_manager = resources.9;
+    let descriptor_heap_manager = resources.10;
 
     // queries
     let mut q_render_surfaces = queries.0;
@@ -625,7 +622,7 @@ fn render_update(
             &render_context,
             &mut cmd_buffer,
             render_surface.as_mut(),
-            &mesh_renerer,
+            &mesh_renderer,
         );
 
         let debug_renderpass = render_surface.debug_renderpass();
