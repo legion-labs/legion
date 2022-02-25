@@ -184,6 +184,28 @@ impl CommandBuffer {
         unimplemented!()
     }
 
+    pub(crate) fn backend_cmd_draw_indirect(
+        &self,
+        indirect_arg_buffer: &Buffer,
+        indirect_arg_offset: u64,
+        draw_count: u32,
+        stride: u32,
+    ) {
+        unimplemented!()
+    }
+
+    pub(crate) fn backend_cmd_draw_indirect_count(
+        &self,
+        indirect_arg_buffer: &Buffer,
+        indirect_arg_offset: u64,
+        count_buffer: &Buffer,
+        count_offset: u64,
+        max_draw_count: u32,
+        stride: u32,
+    ) {
+        unimplemented!()
+    }
+
     pub(crate) fn backend_cmd_draw_indexed(
         &self,
         index_count: u32,
@@ -200,6 +222,28 @@ impl CommandBuffer {
         instance_count: u32,
         first_instance: u32,
         vertex_offset: i32,
+    ) {
+        unimplemented!()
+    }
+
+    pub(crate) fn backend_cmd_draw_indexed_indirect(
+        &self,
+        indirect_arg_buffer: &Buffer,
+        indirect_arg_offset: u64,
+        draw_count: u32,
+        stride: u32,
+    ) {
+        unimplemented!()
+    }
+
+    pub(crate) fn backend_cmd_draw_indexed_indirect_count(
+        &self,
+        indirect_arg_buffer: &Buffer,
+        indirect_arg_offset: u64,
+        count_buffer: &Buffer,
+        count_offset: u64,
+        max_draw_count: u32,
+        stride: u32,
     ) {
         unimplemented!()
     }
