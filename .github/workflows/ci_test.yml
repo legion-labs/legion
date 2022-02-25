@@ -186,7 +186,7 @@ jobs:
           fi
 
   update_ecr_password:
-    name: Fetching the ECR password
+    name: Fetch ECR password
     runs-on: [self-hosted, linux, common, build]
     steps:
       - run: npm install tweetsodium
@@ -230,8 +230,7 @@ jobs:
             })
 
   setup_container:
-    name: Building env container
-    needs: update_ecr_password
+    name: Setup env container
     runs-on: [self-hosted, linux, common, build]
     outputs:
       container: ${{ steps.setup-container.outputs.container }}

@@ -20,12 +20,13 @@ for /f %%i in ('docker images -q %TAG% ^2^> nul') do (
     set LOCAL_CONTAINER_EXISTS="1"
 )
 if defined MONOREPO_DOCKER_REGISTRY (
-    set TAG="%MONOREPO_DOCKER_REGISTRY%/%TAG%"
+    set REPO_TAG="%MONOREPO_DOCKER_REGISTRY%/%TAG%"
     aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin
-    docker pull %TAG%
+    docker pull %REPO_TAG%
     if "%ERRORLEVEL%"=="0" (
         docker build . -t %TAG%
-        docker push %TAG%
+        docker tag %REPO_TAG%
+        docker push %REPO_TAG%
     )
 ) else (
     if "%LOCAL_CONTAINER_EXISTS%"=="" (
