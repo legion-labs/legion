@@ -11,7 +11,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  MONOREPO_DOCKER_REGISTRY: 550877636976.dkr.ecr.ca-central-1.amazonaws.com/legion-labs/legion
 
 jobs:
   lint:
@@ -195,6 +194,8 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Build
+        env:
+          MONOREPO_DOCKER_REGISTRY: ${{ secrets.MONOREPO_DOCKER_REGISTRY }}
         run: ./build/env/setup.sh
 
       - name: Set repo tag
