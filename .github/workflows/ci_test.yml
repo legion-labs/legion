@@ -248,7 +248,7 @@ jobs:
     needs: [setup_container]
     runs-on: [self-hosted, linux, common, build]
     container:
-      image: ${{ env.MONOREPO_DOCKER_REGISTRY }}/${{ needs.setup_container.outputs.container }}
+      image: ${{ env.MONOREPO_DOCKER_REGISTRY }}
       credentials:
         username: AWS
         password: ${{ secrets.ECR_PASSWORD }}
