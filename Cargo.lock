@@ -1348,6 +1348,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd16c4719339c4530435d38e511904438d07cce7950afa3718a84ac36c10e89e"
 
 [[package]]
+name = "chacha20"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01b72a433d0cf2aef113ba70f62634c56fddb0f244e6377185c56a7cadbd8f91"
+dependencies = [
+ "cfg-if 1.0.0",
+ "cipher 0.3.0",
+ "cpufeatures",
+ "zeroize",
+]
+
+[[package]]
+name = "chacha20poly1305"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b84ed6d1d5f7aa9bdde921a5090e0ca4d934d250ea3b402a5fab3a994e28a2a"
+dependencies = [
+ "aead 0.4.3",
+ "chacha20",
+ "cipher 0.3.0",
+ "poly1305",
+ "zeroize",
+]
+
+[[package]]
 name = "chrono"
 version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2812,6 +2837,12 @@ dependencies = [
  "matches",
  "percent-encoding",
 ]
+
+[[package]]
+name = "freelist"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d551effe48679acc28180236aeefec6c5534b10190fdf4a60c84e27f1aae14b1"
 
 [[package]]
 name = "fs_extra"
@@ -4807,13 +4838,18 @@ dependencies = [
  "bincode",
  "clap 3.1.6",
  "erased-serde",
+ "freelist",
  "integer-asset",
  "lgn-content-store",
+ "lgn-data-compiler-remote",
  "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
+ "lgn-telemetry-sink",
+ "lgn-tracing",
  "lgn-utils",
  "multitext-resource",
+ "rand 0.8.5",
  "refs-asset",
  "refs-resource",
  "serde",
@@ -4821,6 +4857,26 @@ dependencies = [
  "tempfile",
  "text-resource",
  "thiserror",
+ "zip",
+]
+
+[[package]]
+name = "lgn-data-compiler-remote"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "chacha20poly1305",
+ "clap 3.1.2",
+ "lgn-telemetry-sink",
+ "lgn-tracing",
+ "lz4_flex",
+ "rand 0.7.3",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "threadpool",
+ "zip",
 ]
 
 [[package]]
@@ -5824,6 +5880,15 @@ checksum = "d7be8908e2ed6f31c02db8a9fa962f03e36c53fbfde437363eae3306b85d7e17"
 dependencies = [
  "cc",
  "libc",
+]
+
+[[package]]
+name = "lz4_flex"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5827b976d911b5d2e42b2ccfc7c0d2461a1414e8280436885218762fc529b3f8"
+dependencies = [
+ "twox-hash",
 ]
 
 [[package]]
@@ -7223,6 +7288,7 @@ dependencies = [
 name = "physics-rebuild-data"
 version = "0.1.0"
 dependencies = [
+ "clap 3.1.2",
  "generic-data",
  "lgn-app",
  "lgn-compiler-runtime-entity",
@@ -7238,7 +7304,9 @@ dependencies = [
  "lgn-graphics-renderer",
  "lgn-math",
  "lgn-physics",
+ "lgn-scripting",
  "lgn-telemetry-sink",
+ "lgn-tracing",
  "sample-data",
  "serde_json",
  "tokio",
@@ -7421,6 +7489,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5da3b0203fd7ee5720aa0b5e790b591aa5d3f41c3ed2c34a3a393382198af2f7"
 
 [[package]]
+name = "poly1305"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "048aeb476be11a4b6ca432ca569e375810de9294ae78f4774e78ea98a9246ede"
+dependencies = [
+ "cpufeatures",
+ "opaque-debug",
+ "universal-hash",
+]
+
+[[package]]
 name = "polyval"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7447,6 +7526,7 @@ dependencies = [
 name = "pong"
 version = "0.1.0"
 dependencies = [
+ "clap 3.1.2",
  "dolly",
  "generic-data",
  "lgn-app",
@@ -7457,7 +7537,9 @@ dependencies = [
  "lgn-input",
  "lgn-math",
  "lgn-telemetry-sink",
+ "lgn-tracing",
  "lgn-transform",
+ "rand 0.8.5",
  "runtime-srv",
 ]
 
@@ -7465,6 +7547,7 @@ dependencies = [
 name = "pong-rebuild-data"
 version = "0.1.0"
 dependencies = [
+ "clap 3.1.2",
  "generic-data",
  "lgn-app",
  "lgn-compiler-runtime-entity",
@@ -7482,6 +7565,7 @@ dependencies = [
  "lgn-math",
  "lgn-scripting",
  "lgn-telemetry-sink",
+ "lgn-tracing",
  "sample-data",
  "serde_json",
  "tokio",
@@ -9735,6 +9819,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5516c27b78311c50bf42c071425c560ac799b11c30b31f87e3081965fe5e0180"
 dependencies = [
  "once_cell",
+]
+
+[[package]]
+name = "threadpool"
+version = "1.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d050e60b33d41c19108b32cea32164033a9013fe3b46cbd4457559bfbf77afaa"
+dependencies = [
+ "num_cpus",
 ]
 
 [[package]]

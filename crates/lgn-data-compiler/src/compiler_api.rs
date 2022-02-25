@@ -69,18 +69,28 @@
 // This disables the lint crate-wide as a workaround to allow the doc above.
 #![allow(clippy::needless_doctest_main)]
 
-use std::{env, io::stdout, path::PathBuf, str::FromStr, sync::Arc};
+use std::{
+    convert::Infallible,
+    env,
+    ffi::OsString,
+    io::{self, stdout, Read, Write},
+    path::{PathBuf, StripPrefixError},
+    str::FromStr,
+    sync::Arc,
+};
 
 use clap::{Parser, Subcommand};
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
+use lgn_data_compiler_remote::NCError;
 use lgn_data_model::ReflectionError;
 use lgn_data_offline::{resource::ResourceProcessorError, ResourcePathId, Transform};
 use lgn_data_runtime::{AssetRegistry, AssetRegistryError, AssetRegistryOptions};
 use serde::{Deserialize, Serialize};
+use zip::result::ZipError;
 
 use crate::{
     compiler_cmd::{
-        CompilerCompileCmdOutput, CompilerHashCmdOutput, CompilerInfoCmdOutput,
+        CommandBuilder, CompilerCompileCmdOutput, CompilerHashCmdOutput, CompilerInfoCmdOutput,
         COMMAND_ARG_COMPILED_ASSET_STORE, COMMAND_ARG_DER_DEPS, COMMAND_ARG_LOCALE,
         COMMAND_ARG_PLATFORM, COMMAND_ARG_RESOURCE_DIR, COMMAND_ARG_SRC_DEPS, COMMAND_ARG_TARGET,
         COMMAND_ARG_TRANSFORM, COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
@@ -106,7 +116,7 @@ pub const DATA_BUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// references between resources that define load-time dependencies.
 ///
 /// [`ContentStore`]: ../content_store/index.html
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CompilationOutput {
     /// List of compiled resource's metadata.
     pub compiled_resources: Vec<CompiledResource>,
@@ -252,9 +262,25 @@ pub enum CompilerError {
     #[error(transparent)]
     AssetRegistry(#[from] AssetRegistryError),
 
+    /// Zip crate errors
+    #[error(transparent)]
+    Compression(#[from] ZipError),
+
+    /// Infallible
+    #[error(transparent)]
+    Unreachable(#[from] Infallible),
+
+    /// Strip
+    #[error(transparent)]
+    Strip(#[from] StripPrefixError),
+
     /// Compiler-specific compilation error.
     #[error("{0}")]
     CompilationError(String),
+
+    /// Data executor error.
+    #[error(transparent)]
+    RemoteExecution(#[from] NCError),
 }
 
 impl CompilerDescriptor {
@@ -435,7 +461,7 @@ fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), CompilerErr
                 compiled_resources: compilation_output.compiled_resources,
                 resource_references: compilation_output.resource_references,
             };
-            serde_json::to_writer_pretty(stdout(), &output)?;
+            stdout().write_all(output.to_string().as_bytes())?;
             Ok(())
         }
     }
@@ -509,19 +535,25 @@ enum Commands {
 /// > **NOTE**: Data compiler must not write to stdout because this could break
 /// the specific output that is expected.
 pub fn compiler_main(
-    args: env::Args,
+    _args: env::Args,
     descriptor: &'static CompilerDescriptor,
 ) -> Result<(), CompilerError> {
     let compilers = CompilerRegistryOptions::default().add_compiler(descriptor);
 
-    multi_compiler_main(args, compilers)
+    multi_compiler_main(compilers)
 }
 
 /// Same as `compiler_main` but supports many compilers in a single binary.
-pub fn multi_compiler_main(
-    args: env::Args,
-    compilers: CompilerRegistryOptions,
-) -> Result<(), CompilerError> {
+pub fn multi_compiler_main(compilers: CompilerRegistryOptions) -> Result<(), CompilerError> {
+    let mut args = env::args().map(OsString::from).collect();
+
+    let mut input = String::new();
+    if io::stdin().read_to_string(&mut input)? > 0 {
+        if let Ok(stdin_args) = CommandBuilder::from_bytes(input.as_bytes()) {
+            args = stdin_args.to_os_args();
+        }
+    }
+
     let args = Cli::try_parse_from(args).map_err(|err| {
         eprintln!("{}", err);
         CompilerError::InvalidArgs

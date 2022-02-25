@@ -1,18 +1,20 @@
-use std::{fmt, io, path::Path, sync::Arc};
-
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_offline::{ResourcePathId, Transform};
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
+use std::{fmt, io, path::Path, sync::Arc};
 
 use crate::{
     compiler_api::{
         CompilationEnv, CompilationOutput, CompilerDescriptor, CompilerError, CompilerInfo,
     },
-    compiler_cmd::list_compilers,
+    compiler_cmd::{list_compilers, CompilerLocation},
     CompiledResource, CompilerHash,
 };
 
-use super::{binary_stub::BinCompilerStub, inproc_stub::InProcessCompilerStub};
+use super::{
+    binary_stub::BinCompilerStub, inproc_stub::InProcessCompilerStub,
+    remote_stub::RemoteCompilerStub,
+};
 
 /// Interface allowing to support multiple types of compilers - in-process,
 /// external executables. By returning multiple `CompilerInfo` via `info` the implementation
@@ -51,14 +53,14 @@ pub struct CompilerRegistryOptions {
 }
 
 impl CompilerRegistryOptions {
-    /// Creates `CompilerRegistry` based on provided compiler directory paths.
-    pub fn from_dirs(dirs: &[impl AsRef<Path>]) -> Self {
+    fn compilers_dirs_internal(
+        dirs: &[impl AsRef<Path>],
+        creator: impl Fn(CompilerLocation) -> Box<dyn CompilerStub>,
+    ) -> Self {
         let compilers = list_compilers(dirs)
             .into_iter()
             .map(|info| {
-                let compiler: Box<dyn CompilerStub> = Box::new(BinCompilerStub {
-                    bin_path: info.path,
-                });
+                let compiler: Box<dyn CompilerStub> = creator(info);
                 compiler
             })
             .collect::<Vec<Box<dyn CompilerStub>>>();
@@ -66,9 +68,18 @@ impl CompilerRegistryOptions {
         Self { compilers }
     }
 
+    /// Creates `CompilerRegistry` based on provided compiler directory paths.
+    pub fn local_compilers_dirs(dirs: &[impl AsRef<Path>]) -> Self {
+        Self::compilers_dirs_internal(dirs, |info| {
+            Box::new(BinCompilerStub {
+                bin_path: info.path,
+            })
+        })
+    }
+
     /// Creates `CompilerRegistry` based on provided compiler directory path.
-    pub fn from_dir(dir: impl AsRef<Path>) -> Self {
-        Self::from_dirs(std::slice::from_ref(&dir))
+    pub fn local_compilers(dir: impl AsRef<Path>) -> Self {
+        Self::local_compilers_dirs(std::slice::from_ref(&dir))
     }
 
     /// Register an in-process compiler.
@@ -76,6 +87,16 @@ impl CompilerRegistryOptions {
         let compiler = Box::new(InProcessCompilerStub { descriptor });
         self.compilers.push(compiler);
         self
+    }
+
+    /// Register an uber compiler for remote compilation.
+    pub fn remote_compilers(compilers_dir: impl AsRef<Path>, endpoint: &str) -> Self {
+        Self::compilers_dirs_internal(std::slice::from_ref(&compilers_dir), |info| {
+            Box::new(RemoteCompilerStub {
+                server_addr: endpoint.to_string(),
+                bin_path: info.path,
+            })
+        })
     }
 
     /// Creates a new compiler registry based on specified options.

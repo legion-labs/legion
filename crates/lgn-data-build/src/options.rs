@@ -26,7 +26,7 @@ use crate::{DataBuild, Error};
 /// # use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 /// # tokio_test::block_on(async {
 /// let project = Project::open("project/").await.unwrap();
-/// let build = DataBuildOptions::new(".", CompilerRegistryOptions::from_dir("./"))
+/// let build = DataBuildOptions::new(".", CompilerRegistryOptions::local_compilers("./"))
 ///         .content_store(&ContentStoreAddr::from("./content_store/"))
 ///         .create(&project).await.unwrap();
 /// # })

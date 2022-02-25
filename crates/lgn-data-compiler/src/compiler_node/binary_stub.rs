@@ -25,10 +25,8 @@ impl CompilerStub for BinCompilerStub {
         transform: Transform,
         env: &CompilationEnv,
     ) -> io::Result<CompilerHash> {
-        let cmd = CompilerHashCmd::new(env, Some(transform));
-        let transforms = cmd
-            .execute(&self.bin_path)
-            .map(|output| output.compiler_hash_list)?;
+        let cmd = CompilerHashCmd::new(&self.bin_path, env, Some(transform));
+        let transforms = cmd.execute().map(|output| output.compiler_hash_list)?;
 
         if transforms.len() == 1 && transforms[0].0 == transform {
             return Ok(transforms[0].1);
@@ -55,25 +53,26 @@ impl CompilerStub for BinCompilerStub {
         resource_dir: &Path,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
-        let mut cmd = CompilerCompileCmd::new(
+        CompilerCompileCmd::new(
+            &self.bin_path,
             &compile_path,
             dependencies,
             derived_deps,
             &cas_addr,
             resource_dir,
             env,
-        );
-
-        cmd.execute(&self.bin_path)
-            .map(|output| CompilationOutput {
-                compiled_resources: output.compiled_resources,
-                resource_references: output.resource_references,
-            })
-            .map_err(CompilerError::StdoutError)
+        )
+        .execute()
+        .map(|output| CompilationOutput {
+            compiled_resources: output.compiled_resources,
+            resource_references: output.resource_references,
+        })
+        .map_err(CompilerError::StdoutError)
     }
 
     fn info(&self) -> io::Result<Vec<CompilerInfo>> {
-        let cmd = CompilerInfoCmd::default();
-        cmd.execute(&self.bin_path).map(CompilerInfoCmdOutput::take)
+        CompilerInfoCmd::new(&self.bin_path)
+            .execute()
+            .map(CompilerInfoCmdOutput::take)
     }
 }

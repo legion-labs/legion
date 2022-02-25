@@ -112,7 +112,7 @@ async fn main() -> Result<(), String> {
                 .and_then(|s| {
                     let mut exe_dir = PathBuf::from(&s);
                     if exe_dir.pop() && exe_dir.is_dir() {
-                        Some(CompilerRegistryOptions::from_dir(&exe_dir))
+                        Some(CompilerRegistryOptions::local_compilers(&exe_dir))
                     } else {
                         None
                     }

@@ -66,12 +66,14 @@ pub async fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathNa
     }
     .unwrap();
 
-    let mut build =
-        DataBuildOptions::new(build_index_dir, CompilerRegistryOptions::from_dir(exe_path))
-            .content_store(&asset_store_path)
-            .open_or_create(&project)
-            .await
-            .expect("new build index");
+    let mut build = DataBuildOptions::new(
+        build_index_dir,
+        CompilerRegistryOptions::local_compilers(exe_path),
+    )
+    .content_store(&asset_store_path)
+    .open_or_create(&project)
+    .await
+    .expect("new build index");
 
     build.source_pull(&project).await.expect("successful pull");
 
