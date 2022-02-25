@@ -1,64 +1,32 @@
 #![allow(unsafe_code)]
 
-use lgn_ecs::prelude::Entity;
 use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::{
-    BlendState, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState,
-    DepthStencilClearValue, DepthStencilRenderTargetBinding, Format, GraphicsPipelineDef, LoadOp,
-    PrimitiveTopology, RasterizerState, ResourceState, SampleCount, StencilOp, StoreOp,
-    VertexAttributeRate, VertexLayout, VertexLayoutAttribute, VertexLayoutBuffer,
+    ColorClearValue, ColorRenderTargetBinding, DepthStencilClearValue,
+    DepthStencilRenderTargetBinding, LoadOp, ResourceState, StoreOp,
 };
-use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_tracing::span_fn;
 
 use crate::{
-    cgen,
-    components::{RenderSurface, VisualComponent},
-    gpu_renderer::{GpuInstanceManager, MeshRenderer, RenderLayer},
+    components::RenderSurface,
+    gpu_renderer::{DefaultLayers, MeshRenderer},
     hl_gfx_api::HLCommandBuffer,
-    resources::{MeshManager, PipelineHandle, PipelineManager},
     RenderContext,
 };
 
-pub struct TmpRenderPass {
-    pub color: [f32; 4],
-    pub speed: f32,
-}
+pub struct TmpRenderPass {}
 
 embedded_watched_file!(INCLUDE_BRDF, "gpu/include/brdf.hsh");
 embedded_watched_file!(INCLUDE_MESH, "gpu/include/mesh.hsh");
 
 impl TmpRenderPass {
-    pub fn new(pipeline_manager: &PipelineManager) -> Self {
-        Self {
-            color: [0f32, 0f32, 0.2f32, 1.0f32],
-            speed: 1.0f32,
-        }
-    }
-
-    pub fn set_color(&mut self, color: [f32; 4]) {
-        self.color = color;
-    }
-
-    pub fn set_speed(&mut self, speed: f32) {
-        self.speed = speed;
-    }
-
     #[span_fn]
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn render(
-        &self,
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
-        instance_manager: &GpuInstanceManager,
         render_surface: &mut RenderSurface,
         mesh_renerer: &MeshRenderer,
     ) {
-        let pipeline = render_context
-            .pipeline_manager()
-            .get_pipeline(self.pipeline_handle)
-            .unwrap();
-
         render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
 
         cmd_buffer.begin_render_pass(
@@ -81,28 +49,7 @@ impl TmpRenderPass {
             }),
         );
 
-        //cmd_buffer.bind_pipeline(pipeline);
-        cmd_buffer.bind_descriptor_set(
-            render_context.frame_descriptor_set().0,
-            render_context.frame_descriptor_set().1,
-        );
-        cmd_buffer.bind_descriptor_set(
-            render_context.view_descriptor_set().0,
-            render_context.view_descriptor_set().1,
-        );
-
-        render_set.draw(cmd_buffer, None, None);
-
-        // for (_index, (entity, static_mesh)) in static_meshes.iter().enumerate() {
-        //     if let Some(list) = instance_manager.id_va_list(*entity) {
-        //         for (gpu_instance_id, _) in list {
-        //             let num_vertices = mesh_manager
-        //                 .mesh_from_id(static_mesh.mesh_id as u32)
-        //                 .num_vertices() as u32;
-        //             cmd_buffer.draw_instanced(num_vertices, 0, 1, *gpu_instance_id);
-        //         }
-        //     }
-        // }
+        mesh_renerer.draw(render_context, cmd_buffer, DefaultLayers::Opaque as usize);
 
         cmd_buffer.end_render_pass();
     }

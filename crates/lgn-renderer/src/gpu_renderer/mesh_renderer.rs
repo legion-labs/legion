@@ -1,3 +1,5 @@
+use lgn_app::{App, Plugin};
+use lgn_ecs::prelude::{Res, ResMut};
 use lgn_graphics_api::{
     BlendState, Buffer, BufferDef, CompareOp, DepthState, DeviceContext, Format,
     GraphicsPipelineDef, PrimitiveTopology, RasterizerState, ResourceCreation, ResourceUsage,
@@ -9,46 +11,77 @@ use lgn_graphics_cgen_runtime::CGenShaderKey;
 use crate::{
     cgen,
     hl_gfx_api::HLCommandBuffer,
+    labels::RenderStage,
     resources::{PipelineHandle, PipelineManager, UnifiedStaticBuffer, UniformGPUDataUpdater},
-    Renderer,
+    RenderContext, Renderer,
 };
 
-use super::RenderLayer;
+use super::{RenderElement, RenderLayer, RenderStateSet};
 
-enum DefaultLayers {
+#[derive(Default)]
+pub struct MeshRendererPlugin {}
+
+pub(crate) enum DefaultLayers {
     Opaque = 0,
 }
 
+impl Plugin for MeshRendererPlugin {
+    fn build(&self, app: &mut App) {
+        //
+        // Stage Prepare
+        //
+        app.add_system_to_stage(RenderStage::Prepare, prepare);
+    }
+}
+
+#[allow(clippy::needless_pass_by_value)]
+fn prepare(renderer: Res<'_, Renderer>, mut mesh_renderer: ResMut<'_, MeshRenderer>) {
+    mesh_renderer.prepare(&renderer);
+}
+
 pub struct MeshRenderer {
-    layers: Vec<RenderLayer>,
-    tmp_pipeline_handle: PipelineHandle,
+    default_layers: Vec<RenderLayer>,
     indirect_arg_buffer: Option<Buffer>,
     count_buffer: Option<Buffer>,
+    tmp_batch_idx: u32,
 }
 
 impl MeshRenderer {
     pub fn new(static_buffer: &UnifiedStaticBuffer, pipeline_manager: &PipelineManager) -> Self {
-        let opaque_layer = RenderLayer::new(static_buffer, false);
+        let mut opaque_layer = RenderLayer::new(static_buffer, true);
+        let tmp_pipeline_handle = build_temp_pso(pipeline_manager);
+
+        let tmp_batch_idx = opaque_layer.register_state_set(&RenderStateSet {
+            pipeline_handle: tmp_pipeline_handle,
+        });
 
         Self {
-            layers: vec![opaque_layer],
-            tmp_pipeline_handle: build_temp_pso(pipeline_manager),
+            default_layers: vec![opaque_layer],
             indirect_arg_buffer: None,
             count_buffer: None,
+            tmp_batch_idx,
         }
     }
 
-    pub fn register_material(&self) {}
+    pub fn register_material(&mut self, material_idx: u32) {
+        for layer in &mut self.default_layers {
+            layer.register_material(material_idx, self.tmp_batch_idx);
+        }
+    }
 
-    pub fn register_element(&self) {}
+    pub fn register_element(&mut self, material_idx: u32, element: &RenderElement) {
+        for layer in &mut self.default_layers {
+            layer.register_element(material_idx, element);
+        }
+    }
 
     pub fn prepare(&mut self, renderer: &Renderer) {
         let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
 
-        let count_buffer_size: u64 = 0;
-        let indirect_arg_buffer_size = 0;
+        let mut count_buffer_size: u64 = 0;
+        let mut indirect_arg_buffer_size = 0;
 
-        for layer in self.layers {
+        for layer in &mut self.default_layers {
             layer.aggregate_offsets(&mut updater);
 
             let (batch_inc, element_inc) = layer.get_arg_buffer_sizes();
@@ -68,23 +101,19 @@ impl MeshRenderer {
         create_or_replace_buffer(
             renderer.device_context(),
             &mut self.indirect_arg_buffer,
-            count_buffer_size,
+            indirect_arg_buffer_size,
         );
     }
 
-    pub fn cull() {}
-
     pub fn draw(
         &self,
+        render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
-        pipeline_manager: &PipelineManager,
-        indirect_arg_buffer: Option<&Buffer>,
-        count_buffer: Option<&Buffer>,
         layer_id: usize,
     ) {
-        self.layers[layer_id].draw(
+        self.default_layers[layer_id].draw(
+            render_context,
             cmd_buffer,
-            pipeline_manager,
             self.indirect_arg_buffer.as_ref(),
             self.count_buffer.as_ref(),
         );

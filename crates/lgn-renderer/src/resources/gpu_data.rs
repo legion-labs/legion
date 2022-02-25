@@ -11,6 +11,7 @@ use lgn_transform::components::GlobalTransform;
 use crate::{
     cgen,
     components::{MaterialComponent, TextureComponent, VisualComponent},
+    gpu_renderer::MeshRenderer,
     labels::RenderStage,
     RenderContext, Renderer,
 };
@@ -37,6 +38,7 @@ pub(crate) struct GpuDataManager<K, T> {
     index_allocator: IndexAllocator,
     data_map: BTreeMap<K, Vec<(u32, u64)>>,
     default_uploaded: bool,
+    default_id: u32,
     default_va: u64,
 }
 
@@ -55,6 +57,7 @@ impl<K, T> GpuDataManager<K, T> {
             index_allocator,
             data_map: BTreeMap::new(),
             default_uploaded: false,
+            default_id,
             default_va,
         }
     }
@@ -72,6 +75,18 @@ impl<K, T> GpuDataManager<K, T> {
             self.data_map.insert(key, vec![(gpu_data_id, gpu_data_va)]);
         }
         (gpu_data_id, gpu_data_va)
+    }
+
+    pub fn id_for_index(&self, optional: Option<K>, index: usize) -> u32
+    where
+        K: Ord,
+    {
+        if let Some(key) = optional {
+            if let Some(value) = self.data_map.get(&key) {
+                return value[index].0;
+            }
+        }
+        self.default_id
     }
 
     pub fn va_for_index(&self, optional: Option<K>, index: usize) -> u64
@@ -225,11 +240,15 @@ fn alloc_transform_address(
 #[allow(clippy::needless_pass_by_value)]
 fn alloc_material_address(
     mut material_manager: ResMut<'_, GpuMaterialManager>,
+    mut mesh_renderer: ResMut<'_, MeshRenderer>,
     query: Query<'_, '_, &MaterialComponent, Added<MaterialComponent>>,
 ) {
     let mut index_block: Option<IndexBlock> = None;
     for material in query.iter() {
-        material_manager.alloc_gpu_data(material.material_id, &mut index_block);
+        let (id, _va) = material_manager.alloc_gpu_data(material.material_id, &mut index_block);
+
+        // TMP location
+        mesh_renderer.register_material(id);
     }
     material_manager.return_index_block(index_block);
 }

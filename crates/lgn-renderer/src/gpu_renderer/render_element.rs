@@ -1,6 +1,6 @@
 use crate::{hl_gfx_api::HLCommandBuffer, resources::MeshManager};
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct RenderElement {
     pub(super) gpu_instance_id: u32,
     vertex_count: u32,

@@ -143,7 +143,7 @@ impl<'rc> HLCommandBuffer<'rc> {
         );
     }
 
-    pub(crate) fn draw_indirect(
+    pub fn draw_indirect(
         &self,
         indirect_arg_buffer: &Buffer,
         indirect_arg_offset: u64,
@@ -158,7 +158,7 @@ impl<'rc> HLCommandBuffer<'rc> {
         );
     }
 
-    pub(crate) fn draw_indirect_count(
+    pub fn draw_indirect_count(
         &self,
         indirect_arg_buffer: &Buffer,
         indirect_arg_offset: u64,
@@ -199,7 +199,7 @@ impl<'rc> HLCommandBuffer<'rc> {
         );
     }
 
-    pub(crate) fn draw_indexed_indirect(
+    pub fn draw_indexed_indirect(
         &self,
         indirect_arg_buffer: &Buffer,
         indirect_arg_offset: u64,
@@ -214,7 +214,7 @@ impl<'rc> HLCommandBuffer<'rc> {
         );
     }
 
-    pub(crate) fn draw_indexed_indirect_count(
+    pub fn draw_indexed_indirect_count(
         &self,
         indirect_arg_buffer: &Buffer,
         indirect_arg_offset: u64,

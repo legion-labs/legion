@@ -207,7 +207,6 @@ pub(crate) fn handle_stream_events(
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn update_streams(
-    mut query: Query<'_, '_, &mut RenderSurface>,
     mut video_stream_events: EventReader<'_, '_, VideoStreamEvent>,
     mut input_mouse_motion: EventWriter<'_, '_, MouseMotion>,
     mut input_mouse_button_input: EventWriter<'_, '_, MouseButtonInput>,
@@ -250,21 +249,7 @@ pub(crate) fn update_streams(
                 }
             }
             VideoStreamEventInfo::Speed { speed } => {
-                trace!("received speed command {}", speed);
-
-                match query.get_mut(event.stream_id.entity) {
-                    Ok(render_surface) => {
-                        let render_pass = render_surface.test_renderpass();
-
-                        render_pass.write().set_speed(*speed);
-                    }
-                    Err(query_err) => {
-                        // TODO
-                        // Most likely: "The given entity does not have the requested component"
-                        // i.e. the entity associated with the stream-id does not have a RenderSurface
-                        error!("{}", query_err);
-                    }
-                }
+                error!("received unimplemented speed command {}", speed);
             }
             VideoStreamEventInfo::Input { input } => {
                 trace!("received input: {:?}", input);

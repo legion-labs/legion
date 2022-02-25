@@ -2,18 +2,26 @@ use lgn_graphics_api::{Buffer, PagedBufferAllocation};
 
 use crate::{
     hl_gfx_api::HLCommandBuffer,
-    resources::{PipelineManager, UnifiedStaticBuffer, UniformGPUDataUpdater},
+    resources::{UnifiedStaticBuffer, UniformGPUDataUpdater},
+    RenderContext,
 };
 
 use super::{RenderBatch, RenderElement, RenderStateSet};
 
 pub struct RenderLayer {
     static_buffer: UnifiedStaticBuffer,
-    material_page: PagedBufferAllocation,
+    material_page: Option<PagedBufferAllocation>,
     material_to_batch: Vec<u32>,
     batches: Vec<RenderBatch>,
     cpu_render_set: bool,
     element_count: u64,
+}
+
+impl Drop for RenderLayer {
+    fn drop(&mut self) {
+        self.static_buffer
+            .free_segment(self.material_page.take().unwrap());
+    }
 }
 
 impl RenderLayer {
@@ -24,7 +32,7 @@ impl RenderLayer {
 
         Self {
             static_buffer: static_buffer.clone(),
-            material_page,
+            material_page: Some(material_page),
             material_to_batch: vec![],
             batches: vec![],
             cpu_render_set,
@@ -47,7 +55,7 @@ impl RenderLayer {
         }
     }
 
-    pub fn register_element(&mut self, material_idx: usize, element: &RenderElement) {
+    pub fn register_element(&mut self, material_idx: u32, element: &RenderElement) {
         let batch_idx = self.material_to_batch[material_idx as usize] as usize;
         if self.cpu_render_set {
             self.batches[batch_idx].add_cpu_element(element);
@@ -58,25 +66,30 @@ impl RenderLayer {
     }
 
     pub fn aggregate_offsets(&mut self, updater: &mut UniformGPUDataUpdater) {
-        let aggregate_offset: u64 = 0;
+        if !self.cpu_render_set {
+            let mut aggregate_offset: u64 = 0;
 
-        let mut per_batch_offsets = Vec::new();
-        per_batch_offsets.resize(self.batches.len(), 0);
+            let mut per_batch_offsets = Vec::new();
+            per_batch_offsets.resize(self.batches.len(), 0);
 
-        let mut per_material_offsets = Vec::new();
-        per_material_offsets.resize(self.material_to_batch.len(), 0);
+            let mut per_material_offsets = Vec::new();
+            per_material_offsets.resize(self.material_to_batch.len(), 0);
 
-        for (batch_idx, batch) in self.batches.iter().enumerate() {
-            per_batch_offsets[batch_idx as usize] = aggregate_offset;
+            for (batch_idx, batch) in self.batches.iter_mut().enumerate() {
+                per_batch_offsets[batch_idx as usize] = aggregate_offset;
 
-            batch.calculate_offsets(&mut aggregate_offset);
+                batch.calculate_offsets(&mut aggregate_offset);
+            }
+
+            for (meterial_idx, batch_idx) in self.material_to_batch.iter().enumerate() {
+                per_material_offsets[meterial_idx] = per_batch_offsets[*batch_idx as usize];
+            }
+
+            updater.add_update_jobs(
+                &per_batch_offsets,
+                self.material_page.as_ref().unwrap().offset(),
+            );
         }
-
-        for (meterial_idx, batch_idx) in self.material_to_batch.iter().enumerate() {
-            per_material_offsets[meterial_idx] = per_batch_offsets[*batch_idx as usize];
-        }
-
-        updater.add_update_jobs(&per_batch_offsets, self.material_page.offset());
     }
 
     pub fn get_arg_buffer_sizes(&self) -> (u64, u64) {
@@ -85,18 +98,18 @@ impl RenderLayer {
 
     pub fn draw(
         &self,
+        render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
-        pipeline_manager: &PipelineManager,
         indirect_arg_buffer: Option<&Buffer>,
         count_buffer: Option<&Buffer>,
     ) {
-        for batch in self.batches {
+        for batch in &self.batches {
             batch.draw(
+                render_context,
                 cmd_buffer,
-                pipeline_manager,
                 indirect_arg_buffer,
                 count_buffer,
-            )
+            );
         }
     }
 }

@@ -18,7 +18,7 @@ use cgen::*;
 
 mod labels;
 use components::MaterialComponent;
-use gpu_renderer::GpuInstanceManager;
+use gpu_renderer::{GpuInstanceManager, MeshRenderer, RenderElement};
 pub use labels::*;
 
 mod renderer;
@@ -63,6 +63,7 @@ use crate::{
     gpu_renderer::GpuInstanceVas,
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingIdContext, PickingManager, PickingPlugin},
+    render_pass::TmpRenderPass,
     resources::{IndexBlock, MeshManager},
     RenderStage,
 };
@@ -113,6 +114,7 @@ impl Plugin for RendererPlugin {
         let static_buffer = renderer.static_buffer().clone();
         let descriptor_heap_manager =
             DescriptorHeapManager::new(NUM_RENDER_FRAMES, &device_context);
+        let pipeline_manager = PipelineManager::new(&device_context);
         //
         // Add renderer stages first. It is needed for the plugins.
         //
@@ -131,7 +133,8 @@ impl Plugin for RendererPlugin {
         //
         // Resources
         //
-        app.insert_resource(PipelineManager::new(&device_context));
+        app.insert_resource(MeshRenderer::new(&static_buffer, &pipeline_manager));
+        app.insert_resource(pipeline_manager);
         app.insert_resource(ManipulatorManager::new());
         app.insert_resource(CGenRegistryList::new());
         app.insert_resource(RenderSurfaces::new());
@@ -314,6 +317,7 @@ fn render_pre_update(
 )]
 fn update_gpu_instances(
     renderer: Res<'_, Renderer>,
+    mut mesh_renderer: ResMut<'_, MeshRenderer>,
     picking_manager: Res<'_, PickingManager>,
     mut picking_data_manager: ResMut<'_, GpuPickingDataManager>,
     mut instance_manager: ResMut<'_, GpuInstanceManager>,
@@ -370,7 +374,17 @@ fn update_gpu_instances(
             picking_data_va: picking_data_manager.va_for_index(Some(entity), 0) as u32,
         };
 
-        instance_manager.add_gpu_instance(entity, &mut instance_block, &mut updater, &instance_vas);
+        let gpu_instance_id = instance_manager.add_gpu_instance(
+            entity,
+            &mut instance_block,
+            &mut updater,
+            &instance_vas,
+        );
+
+        mesh_renderer.register_element(
+            material_manager.id_for_index(material_key, 0),
+            &RenderElement::new(gpu_instance_id, mesh.mesh_id as u32, &mesh_manager),
+        );
     }
     instance_manager.return_index_block(instance_block);
     picking_data_manager.return_index_block(picking_block);
@@ -401,6 +415,7 @@ fn render_begin(mut egui_manager: ResMut<'_, Egui>) {
 fn render_update(
     resources: (
         Res<'_, Renderer>,
+        Res<'_, MeshRenderer>,
         Res<'_, BindlessTextureManager>,
         Res<'_, PipelineManager>,
         Res<'_, BumpAllocatorPool>,
@@ -428,16 +443,17 @@ fn render_update(
 ) {
     // resources
     let renderer = resources.0;
-    let bindless_textures = resources.1;
-    let pipeline_manager = resources.2;
-    // let bump_allocator_pool = resources.3;
-    let mesh_manager = resources.4;
-    let picking_manager = resources.5;
-    let instance_manager = resources.6;
-    let egui = resources.7;
-    let debug_display = resources.8;
-    let lighting_manager = resources.9;
-    let descriptor_heap_manager = resources.10;
+    let mesh_renerer = resources.1;
+    let bindless_textures = resources.2;
+    let pipeline_manager = resources.3;
+    // let bump_allocator_pool = resources.4;
+    let mesh_manager = resources.5;
+    let picking_manager = resources.6;
+    let instance_manager = resources.7;
+    let egui = resources.8;
+    let debug_display = resources.9;
+    let lighting_manager = resources.10;
+    let descriptor_heap_manager = resources.11;
 
     // queries
     let mut q_render_surfaces = queries.0;
@@ -592,15 +608,11 @@ fn render_update(
             camera_component,
         );
 
-        let render_pass = render_surface.test_renderpass();
-        let render_pass = render_pass.write();
-        render_pass.render(
+        TmpRenderPass::render(
             &render_context,
             &mut cmd_buffer,
-            &mesh_manager,
-            &instance_manager,
             render_surface.as_mut(),
-            q_drawables.as_slice(),
+            &mesh_renerer,
         );
 
         let debug_renderpass = render_surface.debug_renderpass();

@@ -1,14 +1,11 @@
 use lgn_graphics_api::Buffer;
 
-use crate::{
-    hl_gfx_api::HLCommandBuffer,
-    resources::{PipelineHandle, PipelineManager},
-};
+use crate::{hl_gfx_api::HLCommandBuffer, resources::PipelineHandle, RenderContext};
 
 use super::RenderElement;
 
 #[derive(Clone)]
-pub(crate) struct RenderStateSet {
+pub struct RenderStateSet {
     pub(super) pipeline_handle: PipelineHandle,
 }
 
@@ -21,7 +18,7 @@ pub struct RenderBatch {
 }
 
 impl RenderBatch {
-    pub fn new(state_set: &RenderStateSet) -> Self {
+    pub(crate) fn new(state_set: &RenderStateSet) -> Self {
         Self {
             state_set: state_set.clone(),
             elements: vec![],
@@ -34,7 +31,7 @@ impl RenderBatch {
         self.elements.push(*element);
     }
 
-    pub fn remove_cpu_element(&mut self, element: &RenderElement) {
+    pub fn _remove_cpu_element(&mut self, element: &RenderElement) {
         for (index, matching) in self.elements.iter().enumerate() {
             if element.gpu_instance_id == matching.gpu_instance_id {
                 self.elements.swap_remove(index);
@@ -43,7 +40,7 @@ impl RenderBatch {
         }
     }
 
-    pub fn reset_cpu_elements(&mut self) {
+    pub fn _reset_cpu_elements(&mut self) {
         self.elements.clear();
     }
 
@@ -51,42 +48,52 @@ impl RenderBatch {
         self.element_count += 1;
     }
 
-    pub fn remove_gpu_element(&mut self) {
+    pub fn _remove_gpu_element(&mut self) {
         self.element_count -= 1;
     }
 
     pub fn calculate_offsets(&mut self, aggregate_offset: &mut u64) {
         self.element_offset = *aggregate_offset;
-        *aggregate_offset += self.element_count as u64;
+        *aggregate_offset += u64::from(self.element_count);
     }
 
     pub fn draw(
         &self,
+        render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
-        pipeline_manager: &PipelineManager,
         indirect_arg_buffer: Option<&Buffer>,
         count_buffer: Option<&Buffer>,
     ) {
-        const INDIRECT_ARG_STRIDE: u32 = 20;
+        const INDIRECT_ARG_STRIDE: u64 = 20;
 
-        let pipeline = pipeline_manager
+        let pipeline = render_context
+            .pipeline_manager()
             .get_pipeline(self.state_set.pipeline_handle)
             .unwrap();
 
         cmd_buffer.bind_pipeline(pipeline);
 
+        cmd_buffer.bind_descriptor_set(
+            render_context.frame_descriptor_set().0,
+            render_context.frame_descriptor_set().1,
+        );
+        cmd_buffer.bind_descriptor_set(
+            render_context.view_descriptor_set().0,
+            render_context.view_descriptor_set().1,
+        );
+
         if self.element_count > 0 {
             cmd_buffer.draw_indexed_indirect_count(
                 indirect_arg_buffer.unwrap(),
-                self.element_offset * INDIRECT_ARG_STRIDE as u64,
+                self.element_offset * INDIRECT_ARG_STRIDE,
                 count_buffer.unwrap(),
                 self.element_offset,
                 self.element_count,
-                INDIRECT_ARG_STRIDE,
+                INDIRECT_ARG_STRIDE as u32,
             );
         }
 
-        for element in self.elements {
+        for element in &self.elements {
             element.draw(cmd_buffer);
         }
     }
