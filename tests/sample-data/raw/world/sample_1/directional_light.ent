@@ -1,0 +1,21 @@
+
+(
+    name: "Sunlight",
+    children: [],
+    parent: Some("world/sample_1.ent"),
+    components: [
+        Transform((
+            position: (0, 2, 0),
+            rotation: (0, 0, 0, 1),
+            scale: (1, 1, 1),
+            apply_to_children: true,
+        )),
+        Light((
+            light_type: 1,
+            color: (1, 1, 1),
+            radiance: 40,
+            enabled: true,
+            cone_angle: 0,
+        )),
+    ],
+)

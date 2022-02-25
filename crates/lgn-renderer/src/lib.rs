@@ -11,18 +11,20 @@
 mod cgen {
     include!(concat!(env!("OUT_DIR"), "/rust/mod.rs"));
 }
+use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;
 
 #[allow(unused_imports)]
 use cgen::*;
 
 mod labels;
-use components::MaterialComponent;
+use components::{MaterialComponent, ModelComponent};
 use gpu_renderer::GpuInstanceManager;
 pub use labels::*;
 
 mod renderer;
 use lgn_core::BumpAllocatorPool;
+use lgn_data_runtime::ResourceTypeAndId;
 use lgn_graphics_api::{AddressMode, CompareOp, FilterType, MipMapMode, ResourceUsage, SamplerDef};
 use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_math::{Vec2, Vec4};
@@ -34,7 +36,7 @@ pub use render_context::*;
 pub mod resources;
 use resources::{
     BindlessTextureManager, DescriptorHeapManager, GpuDataPlugin, GpuEntityColorManager,
-    GpuEntityTransformManager, GpuMaterialManager, GpuPickingDataManager,
+    GpuEntityTransformManager, GpuMaterialManager, GpuPickingDataManager, ModelManager,
     PersistentDescriptorSetManager, PipelineManager,
 };
 
@@ -43,8 +45,6 @@ pub mod components;
 pub mod gpu_renderer;
 
 pub mod picking;
-
-pub mod static_mesh_render_data;
 
 pub mod debug_display;
 pub mod egui;
@@ -75,7 +75,7 @@ use lgn_transform::components::GlobalTransform;
 use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 
 use crate::debug_display::DebugDisplay;
-use crate::resources::UniformGPUDataUpdater;
+use crate::resources::{Mesh, ModelMetaData, UniformGPUDataUpdater};
 
 use crate::{
     components::{
@@ -135,11 +135,13 @@ impl Plugin for RendererPlugin {
         app.insert_resource(ManipulatorManager::new());
         app.insert_resource(CGenRegistryList::new());
         app.insert_resource(RenderSurfaces::new());
+        app.insert_resource(ModelManager::new());
         app.insert_resource(MeshManager::new(&renderer));
         app.insert_resource(BindlessTextureManager::new(renderer.device_context(), 256));
         app.insert_resource(DebugDisplay::default());
         app.insert_resource(LightingManager::default());
         app.insert_resource(GpuInstanceManager::new(&static_buffer));
+        app.insert_resource(MissingVisualTracker::default());
         app.insert_resource(descriptor_heap_manager);
         app.insert_resource(PersistentDescriptorSetManager::new());
         app.add_plugin(EguiPlugin::new());
@@ -181,7 +183,9 @@ impl Plugin for RendererPlugin {
             app.add_system_to_stage(RenderStage::Prepare, ui_lights);
         }
         app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
+        app.add_system_to_stage(RenderStage::Prepare, update_models);
         app.add_system_to_stage(RenderStage::Prepare, update_gpu_instances);
+        app.add_system_to_stage(RenderStage::Prepare, update_missing_visuals);
         app.add_system_to_stage(RenderStage::Prepare, update_lights);
         app.add_system_to_stage(RenderStage::Prepare, camera_control);
         app.add_system_to_stage(RenderStage::Prepare, prepare_shaders);
@@ -307,6 +311,90 @@ fn render_pre_update(
     descriptor_heap_manager.begin_frame();
 }
 
+#[span_fn]
+#[allow(clippy::needless_pass_by_value)]
+fn update_models(
+    renderer: Res<'_, Renderer>,
+    mut model_manager: ResMut<'_, ModelManager>,
+    mut mesh_manager: ResMut<'_, MeshManager>,
+    mut updated_models: Query<'_, '_, &mut ModelComponent, Changed<ModelComponent>>,
+    mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
+) {
+    for updated_model in updated_models.iter_mut() {
+        if let Some(mesh_reference) = &updated_model.model_id {
+            missing_visuals_tracker.add_visuals(*mesh_reference);
+            let ids = mesh_manager.add_meshes(&renderer, &updated_model.meshes);
+
+            let mut meshes = Vec::new();
+            for (idx, _meshes) in updated_model.meshes.iter().enumerate() {
+                meshes.push(Mesh {
+                    mesh_id: ids[idx],
+                    material_id: u32::MAX, //TODO
+                });
+            }
+            model_manager.add_model(*mesh_reference, ModelMetaData { meshes });
+        }
+    }
+}
+
+#[derive(Default)]
+struct MissingVisualTracker {
+    entities: BTreeMap<ResourceTypeAndId, HashSet<Entity>>,
+    visuals_added: Vec<ResourceTypeAndId>,
+}
+
+impl MissingVisualTracker {
+    fn add_entity(&mut self, resource_id: ResourceTypeAndId, entity_id: Entity) {
+        if let Some(entry) = self.entities.get_mut(&resource_id) {
+            entry.insert(entity_id);
+        } else {
+            let mut set = HashSet::new();
+            set.insert(entity_id);
+            self.entities.insert(resource_id, set);
+        }
+    }
+
+    fn add_visuals(&mut self, resource_id: ResourceTypeAndId) {
+        self.visuals_added.push(resource_id);
+    }
+
+    fn get_entities_to_update(&mut self) -> HashSet<Entity> {
+        let mut entities = HashSet::new();
+        for visual in &self.visuals_added {
+            if let Some(entry) = self.entities.get(visual) {
+                for entity in entry {
+                    entities.insert(*entity);
+                }
+                self.entities.remove_entry(visual);
+            }
+        }
+        self.visuals_added.clear();
+        entities
+    }
+}
+
+#[span_fn]
+#[allow(
+    clippy::needless_pass_by_value,
+    clippy::type_complexity,
+    clippy::too_many_arguments
+)]
+fn update_missing_visuals(
+    mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
+    mut visuals_query: Query<
+        '_,
+        '_,
+        (Entity, &mut VisualComponent, Option<&MaterialComponent>),
+        Without<ManipulatorComponent>,
+    >,
+) {
+    for entity in missing_visuals_tracker.get_entities_to_update() {
+        if let Ok((_entity, mut visual_component, _mat_component)) = visuals_query.get_mut(entity) {
+            visual_component.as_mut(); // Will trigger 'changed' to the visual component and it will be updated on the next update_gpu_instances()
+        }
+    }
+}
+
 #[allow(
     clippy::needless_pass_by_value,
     clippy::type_complexity,
@@ -317,6 +405,7 @@ fn update_gpu_instances(
     picking_manager: Res<'_, PickingManager>,
     mut picking_data_manager: ResMut<'_, GpuPickingDataManager>,
     mut instance_manager: ResMut<'_, GpuInstanceManager>,
+    model_manager: Res<'_, ModelManager>,
     mesh_manager: Res<'_, MeshManager>,
     material_manager: Res<'_, GpuMaterialManager>,
     color_manager: Res<'_, GpuEntityColorManager>,
@@ -327,6 +416,7 @@ fn update_gpu_instances(
         (Entity, &VisualComponent, Option<&MaterialComponent>),
         (Changed<VisualComponent>, Without<ManipulatorComponent>),
     >,
+    mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
 ) {
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
     let mut picking_context = PickingIdContext::new(&picking_manager);
@@ -362,15 +452,29 @@ fn update_gpu_instances(
         picking_data.set_picking_id(picking_context.aquire_picking_id(entity).into());
         picking_data_manager.update_gpu_data(&entity, 0, &[picking_data], &mut updater);
 
-        let instance_vas = GpuInstanceVAs {
-            submesh_va: mesh_manager.mesh_description_offset_from_id(mesh.mesh_id as u32),
-            material_va: material_manager.va_for_index(material_key, 0) as u32,
-            color_va: color_manager.va_for_index(Some(entity), 0) as u32,
-            transform_va: transform_manager.va_for_index(Some(entity), 0) as u32,
-            picking_data_va: picking_data_manager.va_for_index(Some(entity), 0) as u32,
-        };
+        let (model_meta_data, ready) = model_manager.get_model_meta_data(mesh);
+        if !ready {
+            if let Some(reference) = &mesh.model_reference {
+                missing_visuals_tracker.add_entity(*reference, entity);
+            }
+        }
+        for mesh in &model_meta_data.meshes {
+            let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
+            let instance_vas = GpuInstanceVAs {
+                submesh_va: mesh_meta_data.mesh_description_offset,
+                material_va: material_manager.va_for_index(material_key, 0) as u32,
+                color_va: color_manager.va_for_index(Some(entity), 0) as u32,
+                transform_va: transform_manager.va_for_index(Some(entity), 0) as u32,
+                picking_data_va: picking_data_manager.va_for_index(Some(entity), 0) as u32,
+            };
 
-        instance_manager.add_gpu_instance(entity, &mut instance_block, &mut updater, &instance_vas);
+            instance_manager.add_gpu_instance(
+                entity,
+                &mut instance_block,
+                &mut updater,
+                &instance_vas,
+            );
+        }
     }
     instance_manager.return_index_block(instance_block);
     picking_data_manager.return_index_block(picking_block);
@@ -411,6 +515,7 @@ fn render_update(
         Res<'_, DebugDisplay>,
         Res<'_, LightingManager>,
         Res<'_, DescriptorHeapManager>,
+        ResMut<'_, ModelManager>,
     ),
     queries: (
         Query<'_, '_, &mut RenderSurface>,
@@ -438,6 +543,7 @@ fn render_update(
     let debug_display = resources.8;
     let lighting_manager = resources.9;
     let descriptor_heap_manager = resources.10;
+    let model_manager = resources.11;
 
     // queries
     let mut q_render_surfaces = queries.0;
@@ -589,6 +695,7 @@ fn render_update(
             q_manipulator_drawables.as_slice(),
             q_lights.as_slice(),
             &mesh_manager,
+            &model_manager,
             camera_component,
         );
 
@@ -597,6 +704,7 @@ fn render_update(
         render_pass.render(
             &render_context,
             &mut cmd_buffer,
+            &model_manager,
             &mesh_manager,
             &instance_manager,
             render_surface.as_mut(),
@@ -613,6 +721,7 @@ fn render_update(
             q_manipulator_drawables.as_slice(),
             camera_component,
             &mesh_manager,
+            &model_manager,
             &debug_display,
         );
 

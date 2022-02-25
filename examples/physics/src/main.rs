@@ -136,10 +136,9 @@ async fn create_offline_data(
             }));
         entity
             .components
-            .push(Box::new(sample_data::offline::StaticMesh {
-                mesh_id: lgn_graphics_data::DefaultMeshType::Cube,
+            .push(Box::new(sample_data::offline::Visual {
                 color: (0x10, 0x10, 0x55).into(),
-                mesh: None,
+                ..sample_data::offline::Visual::default()
             }));
         entity
             .components
@@ -184,10 +183,9 @@ async fn create_offline_data(
             }));
         entity
             .components
-            .push(Box::new(sample_data::offline::StaticMesh {
-                mesh_id: lgn_graphics_data::DefaultMeshType::Cube,
+            .push(Box::new(sample_data::offline::Visual {
                 color: (0xFF, 0xFF, 0x20).into(),
-                mesh: None,
+                ..sample_data::offline::Visual::default()
             }));
         entity
             .components
@@ -232,10 +230,9 @@ async fn create_offline_data(
             }));
         entity
             .components
-            .push(Box::new(sample_data::offline::StaticMesh {
-                mesh_id: lgn_graphics_data::DefaultMeshType::Cube,
+            .push(Box::new(sample_data::offline::Visual {
                 color: (0xFF, 0x20, 0xFF).into(),
-                mesh: None,
+                ..sample_data::offline::Visual::default()
             }));
         entity
             .components
@@ -280,10 +277,9 @@ async fn create_offline_data(
             }));
         entity
             .components
-            .push(Box::new(sample_data::offline::StaticMesh {
-                mesh_id: lgn_graphics_data::DefaultMeshType::Cube,
+            .push(Box::new(sample_data::offline::Visual {
                 color: (0x20, 0xFF, 0xFF).into(),
-                mesh: None,
+                ..sample_data::offline::Visual::default()
             }));
         entity
             .components

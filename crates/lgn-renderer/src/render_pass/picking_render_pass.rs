@@ -24,8 +24,8 @@ use crate::{
     hl_gfx_api::HLCommandBuffer,
     picking::{ManipulatorManager, PickingManager, PickingState},
     resources::{
-        DefaultMeshType, GpuSafePool, MeshManager, OnFrameEventHandler, PipelineHandle,
-        PipelineManager,
+        DefaultMeshType, GpuSafePool, MeshManager, ModelManager, OnFrameEventHandler,
+        PipelineHandle, PipelineManager,
     },
     RenderContext,
 };
@@ -262,6 +262,7 @@ impl PickingRenderPass {
         manipulator_meshes: &[(&VisualComponent, &GlobalTransform, &ManipulatorComponent)],
         lights: &[(&LightComponent, &GlobalTransform)],
         mesh_manager: &MeshManager,
+        model_manager: &ModelManager,
         camera: &CameraComponent,
     ) {
         self.readback_buffer_pools.begin_frame();
@@ -323,13 +324,15 @@ impl PickingRenderPass {
 
             cmd_buffer.push_constant(&push_constant_data);
 
-            for (_index, (entity, static_mesh)) in static_meshes.iter().enumerate() {
+            for (_index, (entity, visual)) in static_meshes.iter().enumerate() {
                 if let Some(list) = instance_manager.id_va_list(*entity) {
-                    for (gpu_instance_id, _) in list {
-                        let num_vertices = mesh_manager
-                            .mesh_from_id(static_mesh.mesh_id as u32)
-                            .num_vertices() as u32;
-                        cmd_buffer.draw_instanced(num_vertices, 0, 1, *gpu_instance_id);
+                    let (model_meta_data, _ready) = model_manager.get_model_meta_data(visual);
+                    // TODO: this code assumes that list of instances and vector of meshes are of the same size and in the same order
+                    for (idx, (gpu_instance_id, _)) in list.iter().enumerate() {
+                        let draw_call_count = mesh_manager
+                            .get_mesh_meta_data(model_meta_data.meshes[idx].mesh_id as u32)
+                            .draw_call_count;
+                        cmd_buffer.draw_instanced(draw_call_count, 0, 1, *gpu_instance_id);
                     }
                 }
             }
@@ -339,26 +342,28 @@ impl PickingRenderPass {
                 render_surface.extents().height() as f32,
             );
 
-            for (_index, (static_mesh, transform, manipulator)) in
-                manipulator_meshes.iter().enumerate()
+            for (_index, (visual, transform, manipulator)) in manipulator_meshes.iter().enumerate()
             {
-                if manipulator.active {
-                    let picking_distance = 50.0;
-                    let custom_world = ManipulatorManager::scale_manipulator_for_viewport(
-                        transform,
-                        &manipulator.local_transform,
-                        &view_matrix,
-                        &projection_matrix,
-                    );
+                let (model_meta_data, _ready) = model_manager.get_model_meta_data(visual);
+                for mesh in &model_meta_data.meshes {
+                    if manipulator.active {
+                        let picking_distance = 50.0;
+                        let custom_world = ManipulatorManager::scale_manipulator_for_viewport(
+                            transform,
+                            &manipulator.local_transform,
+                            &view_matrix,
+                            &projection_matrix,
+                        );
 
-                    render_mesh(
-                        &custom_world,
-                        manipulator.picking_id,
-                        picking_distance,
-                        static_mesh.mesh_id as u32,
-                        mesh_manager,
-                        &cmd_buffer,
-                    );
+                        render_mesh(
+                            &custom_world,
+                            manipulator.picking_id,
+                            picking_distance,
+                            mesh.mesh_id as u32,
+                            mesh_manager,
+                            &cmd_buffer,
+                        );
+                    }
                 }
             }
 
@@ -478,14 +483,14 @@ fn render_mesh(
     cmd_buffer: &HLCommandBuffer<'_>,
 ) {
     let mut push_constant_data = cgen::cgen_type::PickingPushConstantData::default();
+    let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh_id);
     push_constant_data.set_world((*custom_world).into());
-    push_constant_data
-        .set_mesh_description_offset(mesh_manager.mesh_description_offset_from_id(mesh_id).into());
+    push_constant_data.set_mesh_description_offset(mesh_meta_data.mesh_description_offset.into());
     push_constant_data.set_picking_id(picking_id.into());
     push_constant_data.set_picking_distance(picking_distance.into());
     push_constant_data.set_use_gpu_pipeline(0.into());
 
     cmd_buffer.push_constant(&push_constant_data);
 
-    cmd_buffer.draw(mesh_manager.mesh_from_id(mesh_id).num_vertices() as u32, 0);
+    cmd_buffer.draw(mesh_meta_data.draw_call_count, 0);
 }

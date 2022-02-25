@@ -7,10 +7,12 @@
 
 mod face_toward;
 mod geometry;
+mod mesh;
 
 pub use face_toward::*;
 pub use geometry::*;
 pub use glam::*;
+pub use mesh::*;
 
 pub mod prelude {
     #[doc(hidden)]

@@ -13,6 +13,6 @@ struct PhysicsRigidActor {
     #[legion(default = DefaultMeshType::Cube)]
     pub collision_mesh_type: DefaultMeshType,
 
-    #[legion(resource_type = sample_data::runtime::Mesh, default = None)]
+    #[legion(resource_type = lgn_graphics_data::runtime::Model, default = None)]
     pub collision_mesh: Option<ResourcePathId>,
 }

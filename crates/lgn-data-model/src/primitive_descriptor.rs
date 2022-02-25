@@ -123,4 +123,5 @@ implement_primitive_type_def!(String);
 use lgn_math::prelude::*;
 implement_primitive_type_def!(Vec2);
 implement_primitive_type_def!(Vec3);
+implement_primitive_type_def!(Vec4);
 implement_primitive_type_def!(Quat);

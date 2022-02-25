@@ -26,7 +26,8 @@ pub enum GIContribution {
 
 #[derive(Serialize, Deserialize)]
 pub struct Visual {
-    pub renderable_geometry: String,
+    pub renderable_geometry: Option<String>,
+    pub color: Vec3,
     pub shadow_receiver: bool,
     pub shadow_caster_sun: bool,
     pub shadow_caster_local: bool,
@@ -58,11 +59,12 @@ pub struct View {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct Light {}
-
-#[derive(Serialize, Deserialize)]
-pub struct StaticMesh {
-    pub mesh_id: usize,
+pub struct Light {
+    pub light_type: u32, //TODO: change to enum support when it will be supported
+    pub color: Vec3,
+    pub radiance: f32,
+    pub enabled: bool,
+    pub cone_angle: f32,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -73,7 +75,6 @@ pub enum Component {
     Navmesh(NavMesh),
     View(View),
     Light(Light),
-    StaticMesh(StaticMesh),
 }
 
 #[derive(Serialize, Deserialize)]

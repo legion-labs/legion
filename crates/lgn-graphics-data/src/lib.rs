@@ -24,6 +24,8 @@ pub use common::*;
 pub mod plugin;
 pub use plugin::*;
 
+pub(crate) mod helpers;
+
 #[cfg(feature = "runtime")]
 #[path = "runtime/texture.rs"]
 pub mod runtime_texture;
@@ -39,3 +41,7 @@ pub mod offline_psd;
 #[cfg(feature = "offline")]
 #[path = "offline/texture.rs"]
 pub mod offline_texture;
+
+#[cfg(feature = "offline")]
+#[path = "offline/gltf.rs"]
+pub mod offline_gltf;
