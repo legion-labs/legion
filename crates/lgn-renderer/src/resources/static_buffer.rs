@@ -7,12 +7,45 @@ use lgn_graphics_api::{
     BarrierQueueTransition, Buffer, BufferAllocation, BufferBarrier, BufferCopy, BufferDef,
     BufferView, BufferViewDef, DeviceContext, MemoryAllocation, MemoryAllocationDef,
     MemoryPagesAllocation, MemoryUsage, PagedBufferAllocation, ResourceCreation, ResourceState,
-    ResourceUsage, Semaphore,
+    ResourceUsage, Semaphore, VertexBufferBinding,
 };
 use lgn_tracing::span_fn;
 
 use super::{RangeAllocator, SparseBindingManager, TransientPagedBuffer};
 use crate::RenderContext;
+
+pub(crate) struct StaticBufferAllocation {
+    static_buffer: UnifiedStaticBuffer,
+    allocation: Option<PagedBufferAllocation>,
+}
+
+impl Drop for StaticBufferAllocation {
+    fn drop(&mut self) {
+        self.static_buffer
+            .free_segment(self.allocation.take().unwrap());
+    }
+}
+
+impl StaticBufferAllocation {
+    pub fn offset(&self) -> u64 {
+        self.allocation.as_ref().unwrap().offset()
+    }
+
+    pub fn size(&self) -> u64 {
+        self.allocation.as_ref().unwrap().size()
+    }
+
+    pub fn vertex_buffer_binding(&self) -> VertexBufferBinding<'_> {
+        self.allocation.as_ref().unwrap().vertex_buffer_binding()
+    }
+
+    pub fn structured_buffer_view(&self, struct_size: u64, read_only: bool) -> BufferView {
+        self.allocation
+            .as_ref()
+            .unwrap()
+            .structured_buffer_view(struct_size, read_only)
+    }
+}
 
 pub(crate) struct UnifiedStaticBufferInner {
     buffer: Buffer,
@@ -89,7 +122,7 @@ impl UnifiedStaticBuffer {
         }
     }
 
-    pub fn allocate_segment(&self, segment_size: u64) -> PagedBufferAllocation {
+    pub(crate) fn allocate_segment(&self, segment_size: u64) -> StaticBufferAllocation {
         let inner = &mut *self.inner.lock().unwrap();
 
         let page_size = inner.page_size;
@@ -109,20 +142,23 @@ impl UnifiedStaticBuffer {
             MemoryPagesAllocation::empty_allocation(inner.buffer.device_context())
         };
 
-        let paged_allocation = PagedBufferAllocation {
+        let allocation = PagedBufferAllocation {
             buffer: inner.buffer.clone(),
             memory: allocation,
             range: location,
         };
 
         if let Some(binding_manager) = &mut inner.binding_manager {
-            binding_manager.add_sparse_binding(paged_allocation.clone());
+            binding_manager.add_sparse_binding(allocation.clone());
         }
 
-        paged_allocation
+        StaticBufferAllocation {
+            static_buffer: self.clone(),
+            allocation: Some(allocation),
+        }
     }
 
-    pub fn free_segment(&self, segment: PagedBufferAllocation) {
+    fn free_segment(&self, segment: PagedBufferAllocation) {
         let inner = &mut *self.inner.lock().unwrap();
 
         inner.segment_allocator.free(segment.range);
@@ -139,7 +175,7 @@ impl UnifiedStaticBuffer {
     }
 
     #[span_fn]
-    pub fn flush_updater(
+    pub(crate) fn flush_updater(
         &self,
         prev_frame_semaphore: &Semaphore,
         unbind_semaphore: &Semaphore,
@@ -210,7 +246,7 @@ impl UnifiedStaticBuffer {
 
 pub struct UniformGPUData<T> {
     static_buffer: UnifiedStaticBuffer,
-    allocated_pages: RwLock<Vec<PagedBufferAllocation>>,
+    allocated_pages: RwLock<Vec<StaticBufferAllocation>>,
     page_size: u64,
     element_size: u64,
     marker: std::marker::PhantomData<T>,

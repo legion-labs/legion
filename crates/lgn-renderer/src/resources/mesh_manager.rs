@@ -1,21 +1,11 @@
-use lgn_graphics_api::PagedBufferAllocation;
-
-use super::{UnifiedStaticBuffer, UniformGPUDataUpdater};
+use super::{StaticBufferAllocation, UnifiedStaticBuffer, UniformGPUDataUpdater};
 use crate::{cgen, static_mesh_render_data::StaticMeshRenderData, Renderer};
 
 pub struct MeshManager {
     static_buffer: UnifiedStaticBuffer,
     static_meshes: Vec<StaticMeshRenderData>,
     mesh_description_offsets: Vec<u32>,
-    allocations: Vec<PagedBufferAllocation>,
-}
-
-impl Drop for MeshManager {
-    fn drop(&mut self) {
-        while let Some(allocation) = self.allocations.pop() {
-            self.static_buffer.free_segment(allocation);
-        }
-    }
+    allocations: Vec<StaticBufferAllocation>,
 }
 
 pub enum DefaultMeshType {

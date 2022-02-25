@@ -1,27 +1,19 @@
-use lgn_graphics_api::{Buffer, PagedBufferAllocation};
+use lgn_graphics_api::Buffer;
 
 use crate::{
     hl_gfx_api::HLCommandBuffer,
-    resources::{UnifiedStaticBuffer, UniformGPUDataUpdater},
+    resources::{StaticBufferAllocation, UnifiedStaticBuffer, UniformGPUDataUpdater},
     RenderContext,
 };
 
 use super::{RenderBatch, RenderElement, RenderStateSet};
 
 pub struct RenderLayer {
-    static_buffer: UnifiedStaticBuffer,
-    material_page: Option<PagedBufferAllocation>,
+    material_page: StaticBufferAllocation,
     material_to_batch: Vec<u32>,
     batches: Vec<RenderBatch>,
     cpu_render_set: bool,
     element_count: u64,
-}
-
-impl Drop for RenderLayer {
-    fn drop(&mut self) {
-        self.static_buffer
-            .free_segment(self.material_page.take().unwrap());
-    }
 }
 
 impl RenderLayer {
@@ -31,8 +23,7 @@ impl RenderLayer {
         let material_page = static_buffer.allocate_segment(page_size as u64);
 
         Self {
-            static_buffer: static_buffer.clone(),
-            material_page: Some(material_page),
+            material_page,
             material_to_batch: vec![],
             batches: vec![],
             cpu_render_set,
@@ -95,10 +86,7 @@ impl RenderLayer {
                 per_material_offsets[meterial_idx] = per_batch_offsets[*batch_idx as usize];
             }
 
-            updater.add_update_jobs(
-                &per_batch_offsets,
-                self.material_page.as_ref().unwrap().offset(),
-            );
+            updater.add_update_jobs(&per_batch_offsets, self.material_page.offset());
         }
     }
 

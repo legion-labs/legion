@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use lgn_app::{App, CoreStage, Plugin};
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::{Added, Changed, Entity, Query, Res, ResMut};
-use lgn_graphics_api::{PagedBufferAllocation, VertexBufferBinding};
+use lgn_graphics_api::VertexBufferBinding;
 use lgn_math::Vec4;
 use lgn_tracing::span_fn;
 use lgn_transform::components::GlobalTransform;
@@ -17,7 +17,7 @@ use crate::{
 
 use super::{
     BindlessTextureManager, DescriptorHeapManager, IndexAllocator, IndexBlock, PipelineManager,
-    UnifiedStaticBuffer, UniformGPUData, UniformGPUDataUpdater,
+    StaticBufferAllocation, UnifiedStaticBuffer, UniformGPUData, UniformGPUDataUpdater,
 };
 
 pub struct GpuDataPlugin {
@@ -390,7 +390,7 @@ fn mark_defaults_as_uploaded(
 }
 
 pub(crate) struct GpuVaTableForGpuInstance {
-    static_allocation: PagedBufferAllocation,
+    static_allocation: StaticBufferAllocation,
 }
 
 impl GpuVaTableForGpuInstance {
