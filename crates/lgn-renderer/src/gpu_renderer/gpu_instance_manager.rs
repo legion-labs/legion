@@ -77,10 +77,6 @@ impl GpuInstanceManager {
         self.va_table_adresses.vertex_buffer_binding()
     }
 
-    pub fn id_va_list(&self, entity: Entity) -> Option<&[(u32, u64)]> {
-        self.va_table_manager.id_va_list(Some(entity))
-    }
-
     pub fn return_index_block(&self, index_block: Option<IndexBlock>) {
         self.va_table_manager.return_index_block(index_block);
     }

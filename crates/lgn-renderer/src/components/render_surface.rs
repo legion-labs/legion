@@ -292,10 +292,7 @@ impl RenderSurface {
             num_render_frames,
             render_frame_idx: 0,
             signal_sems,
-            picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(
-                device_context,
-                pipeline_manager,
-            ))),
+            picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(device_context))),
             debug_renderpass: Arc::new(RwLock::new(DebugRenderPass::new(pipeline_manager))),
             egui_renderpass: Arc::new(RwLock::new(EguiPass::new(device_context, pipeline_manager))),
             presenters: Vec::new(),
