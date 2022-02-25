@@ -10,7 +10,7 @@ set -eux
 ###################################################################################################
 
 LLVM_VERSION=13
-XWIN_VERSION=0.1.6
+XWIN_VERSION=0.1.7
 NINJA_VERSION=1.10.2
 CMAKE_VERSION=3.22.2
 
@@ -71,7 +71,6 @@ XWIN_PREFIX="xwin-$XWIN_VERSION-x86_64-unknown-linux-musl"
 wget -qO- https://github.com/Jake-Shadle/xwin/releases/download/$XWIN_VERSION/$XWIN_PREFIX.tar.gz |
     tar -xzv -C /usr/bin --strip-components=1 $XWIN_PREFIX/xwin
 xwin --accept-license 1 --version 17 --cache-dir /tmp/xwin-cache splat --output /xwin
-ln -sf /xwin/sdk/lib/um/x86_64/iphlpapi.lib /xwin/sdk/lib/um/x86_64/Iphlpapi.lib
 rm -rf /tmp/xwin-cache
 
 ###################################################################################################
