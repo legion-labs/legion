@@ -187,7 +187,6 @@ jobs:
 
   setup_container:
     name: Setup build env container
-    if: ${{ false }}
     runs-on: [self-hosted, linux, common, build]
     outputs:
       container: ${{ steps.set-repo-tag.outputs.container }}
@@ -247,11 +246,10 @@ jobs:
 
   test_build_env:
     name: Testing the Build environment
-    if: ${{ false }}
     needs: [setup_container]
     runs-on: [self-hosted, linux, common, build]
     container:
-      image: ${{ needs.setup_container.outputs.container }}
+      image: ${{ needs.setup_container.outputs.container }}/${{ needs.setup_container.outputs.container }}
       credentials:
         username: AWS
         password: ${{ secrets.ECR_PASSWORD }}
