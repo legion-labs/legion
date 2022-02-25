@@ -62,8 +62,7 @@ use crate::{
     gpu_renderer::{GpuInstanceVas, MeshRenderer, MeshRendererPlugin},
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingIdContext, PickingManager, PickingPlugin},
-render_pass::TmpRenderPass,
-    resources::{BindlessTexturePlugin, IndexBlock, MeshManager},
+    resources::{BindlessTexturePlugin, MeshManager},
     RenderStage,
 };
 use lgn_app::{App, CoreStage, Events, Plugin};
@@ -354,8 +353,6 @@ fn update_gpu_instances(
         }
     }
 
-    let mut picking_block: Option<IndexBlock> = None;
-    let mut instance_block: Option<IndexBlock> = None;
     for (entity, mesh, mat_component) in instance_query.iter() {
         let color: (f32, f32, f32, f32) = (
             f32::from(mesh.color.r) / 255.0f32,
@@ -383,11 +380,7 @@ fn update_gpu_instances(
             material_key = Some(material.material_id);
         }
 
-        picking_data_manager.alloc_gpu_data(
-            entity,
-            renderer.static_buffer_allocator(),
-            &mut picking_block,
-        );
+        picking_data_manager.alloc_gpu_data(entity, renderer.static_buffer_allocator());
 
         let mut picking_data = cgen::cgen_type::GpuInstancePickingData::default();
         picking_data.set_picking_id(picking_context.aquire_picking_id(entity).into());
@@ -434,8 +427,6 @@ fn update_gpu_instances(
         }
         event_writer.send(GpuInstanceEvent::Added(added_instances));
     }
-    instance_manager.return_index_block(instance_block);
-    picking_data_manager.return_index_block(picking_block);
 
     renderer.add_update_job_block(updater.job_blocks());
 }
@@ -473,6 +464,7 @@ fn render_update(
         Res<'_, DebugDisplay>,
         Res<'_, LightingManager>,
         Res<'_, DescriptorHeapManager>,
+        Res<'_, PersistentDescriptorSetManager>,
         ResMut<'_, ModelManager>,
     ),
     queries: (
@@ -490,7 +482,7 @@ fn render_update(
 ) {
     // resources
     let renderer = resources.0;
-    let bindless_textures = resources.1;
+    let bindless_texture_manager = resources.1;
     let pipeline_manager = resources.2;
     let mesh_renderer = resources.3;
     let mesh_manager = resources.4;
@@ -500,7 +492,8 @@ fn render_update(
     let debug_display = resources.8;
     let lighting_manager = resources.9;
     let descriptor_heap_manager = resources.10;
-    let model_manager = resources.11;
+    let persistent_descriptor_set_manager = resources.11;
+    let model_manager = resources.12;
 
     // queries
     let mut q_render_surfaces = queries.0;
@@ -534,6 +527,13 @@ fn render_update(
 
     renderer.flush_update_jobs(&render_context);
 
+    // Persistent descriptor set
+    {
+        let descriptor_set = persistent_descriptor_set_manager.descriptor_set();
+        render_context
+            .set_persistent_descriptor_set(descriptor_set.layout(), *descriptor_set.handle());
+    }
+
     // Frame descriptor set
     {
         let mut frame_descriptor_set = cgen::descriptor_set::FrameDescriptorSet::default();
@@ -561,14 +561,14 @@ fn render_update(
             instance_manager.structured_buffer_view(std::mem::size_of::<u32>() as u64, true);
         frame_descriptor_set.set_va_table_address_buffer(&va_table_address_buffer);
 
-        let default_black_texture = bindless_textures.default_black_texture_view();
-        let bindlesss_descriptors = bindless_textures.bindless_texures_for_update();
+        let default_black_texture = bindless_texture_manager.default_black_texture_view();
+        let bindlesss_descriptors = bindless_texture_manager.bindless_texures_for_update();
 
         let mut desc_refs = [&default_black_texture; 256];
         for index in 0..bindlesss_descriptors.len() {
             desc_refs[index] = &bindlesss_descriptors[index];
         }
-        frame_descriptor_set.set_material_textures(&desc_refs);
+        // frame_descriptor_set.set_material_textures(&desc_refs);
 
         let sampler_def = SamplerDef {
             min_filter: FilterType::Linear,
@@ -649,6 +649,7 @@ fn render_update(
         picking_pass.render(
             &picking_manager,
             &render_context,
+            &mut cmd_buffer,
             render_surface.as_mut(),
             &instance_manager,
             q_manipulator_drawables.as_slice(),

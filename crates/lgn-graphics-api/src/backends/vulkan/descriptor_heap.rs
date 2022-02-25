@@ -261,8 +261,8 @@ impl DescriptorHeapPartition {
 
         Ok(DescriptorSet {
             _partition: self.clone(),
-            _layout: layout.clone(),
-            _handle: handle,
+            layout: layout.clone(),
+            handle,
         })
     }
 

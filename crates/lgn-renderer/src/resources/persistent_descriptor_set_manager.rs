@@ -25,4 +25,8 @@ impl PersistentDescriptorSetManager {
 
         self.descriptor_set = Some(persistent_partition.alloc(layout).unwrap());
     }
+
+    pub fn descriptor_set(&self) -> &DescriptorSet {
+        self.descriptor_set.as_ref().unwrap()
+    }
 }

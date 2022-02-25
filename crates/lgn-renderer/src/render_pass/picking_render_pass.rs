@@ -191,6 +191,7 @@ impl PickingRenderPass {
         &mut self,
         picking_manager: &PickingManager,
         render_context: &RenderContext<'_>,
+        cmd_buffer: &mut HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
         instance_manager: &GpuInstanceManager,
         manipulator_meshes: &[(&VisualComponent, &GlobalTransform, &ManipulatorComponent)],
@@ -208,8 +209,6 @@ impl PickingRenderPass {
         readback.get_gpu_results(picking_manager.frame_no_picked());
 
         if picking_manager.picking_state() == PickingState::Rendering {
-            let mut cmd_buffer = render_context.alloc_command_buffer();
-
             render_surface.transition_to(&cmd_buffer, ResourceState::RENDER_TARGET);
 
             self.init_picking_results(&cmd_buffer);
@@ -230,14 +229,8 @@ impl PickingRenderPass {
                 .unwrap();
 
             cmd_buffer.bind_pipeline(pipeline);
-            cmd_buffer.bind_descriptor_set(
-                render_context.frame_descriptor_set().0,
-                render_context.frame_descriptor_set().1,
-            );
-            cmd_buffer.bind_descriptor_set(
-                render_context.view_descriptor_set().0,
-                render_context.view_descriptor_set().1,
-            );
+
+            render_context.bind_default_descriptor_sets(cmd_buffer);
 
             cmd_buffer.bind_index_buffer(
                 &render_context
@@ -316,12 +309,12 @@ impl PickingRenderPass {
 
             cmd_buffer.end_render_pass();
 
-            self.copy_picking_results_to_readback(&cmd_buffer, &readback);
+            self.copy_picking_results_to_readback(cmd_buffer, &readback);
 
-            {
-                let graphics_queue = render_context.graphics_queue();
-                graphics_queue.submit(&mut [cmd_buffer.finalize()], &[], &[], None);
-            }
+            // {
+            //     let graphics_queue = render_context.graphics_queue();
+            //     graphics_queue.submit(&mut [cmd_buffer.finalize()], &[], &[], None);
+            // }
 
             readback.sent_to_gpu(picking_manager.frame_no_for_picking());
         }

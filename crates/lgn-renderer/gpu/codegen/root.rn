@@ -12,6 +12,11 @@ pub fn main() {
 
     products.extend( mesh::main() );
 
+    // 
+    // Next step:
+    // let view_data = Struct::from_json( ... );
+    //
+    
     let view_data = #{
         type: "Struct",
         name: "ViewData",
@@ -118,7 +123,7 @@ pub fn main() {
     let frame_descriptor_set = #{
         type: "DescriptorSet",
         name: "FrameDescriptorSet",
-        frequency: 0,
+        frequency: 1,
         descriptors: [
             #{ type:"ConstantBuffer", name:"lighting_data", content:"LightingData" },
             #{ type:"StructuredBuffer", name:"directional_lights", content:"DirectionalLight" },
@@ -126,7 +131,6 @@ pub fn main() {
             #{ type:"StructuredBuffer", name:"spot_lights", content:"SpotLight" },
             #{ type:"ByteAddressBuffer", name:"static_buffer" },
             #{ type:"StructuredBuffer", name:"va_table_address_buffer", content:"Uint1"  },
-            #{ type:"Texture2D", name:"material_textures", content:"Float4", array_len:256 },
             #{ type:"Sampler", name:"material_sampler" },
         ]
     };
@@ -135,7 +139,7 @@ pub fn main() {
     let view_descriptor_set = #{
         type: "DescriptorSet",
         name: "ViewDescriptorSet",
-        frequency: 1,
+        frequency: 2,
         descriptors: [
             #{ type:"ConstantBuffer", name:"view_data", content:"ViewData" },            
         ]
@@ -143,10 +147,10 @@ pub fn main() {
     products.push( view_descriptor_set );
 
     products.extend( egui::main() );
-    products.extend( const_color::main(frame_descriptor_set, view_descriptor_set) );    
-    products.extend( picking::main(frame_descriptor_set, view_descriptor_set) );    
-    products.extend( default_shader::main(frame_descriptor_set, view_descriptor_set) );        
-    products.extend( culling::main(frame_descriptor_set, view_descriptor_set) );     
+    products.extend( const_color::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );    
+    products.extend( picking::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );    
+    products.extend( default_shader::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );        
+	 products.extend( culling::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );
 
     products
 }

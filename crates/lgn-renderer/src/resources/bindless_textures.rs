@@ -2,7 +2,9 @@ use std::collections::BTreeMap;
 
 use lgn_app::{CoreStage, Plugin};
 use lgn_data_runtime::ResourceTypeAndId;
-use lgn_ecs::prelude::{Changed, Query, Res, ResMut};
+use lgn_ecs::prelude::{
+    Added, Changed, Commands, Component, Entity, Query, RemovedComponents, Res, ResMut,
+};
 use lgn_graphics_api::{
     BufferDef, CmdCopyBufferToTextureParams, DeviceContext, Extents3D, Format, MemoryAllocation,
     MemoryAllocationDef, MemoryUsage, ResourceFlags, ResourceState, ResourceUsage, Texture,
@@ -16,11 +18,21 @@ use crate::{
     Renderer,
 };
 
-use super::{DescriptorHeapManager, IndexAllocator, IndexBlock, PipelineManager};
+use super::{DescriptorHeapManager, IndexAllocator, PipelineManager};
 
 struct UploadTextureJobs {
     texture: Texture,
     texture_data: Vec<Vec<u8>>,
+}
+
+#[derive(Component)]
+struct GPUTextureComponent {
+    texture: Texture,
+}
+
+#[derive(Component)]
+struct BindlessTextureComponent {
+    bindless_id: u32,
 }
 
 pub struct BindlessTexturePlugin {
@@ -38,18 +50,20 @@ impl BindlessTexturePlugin {
 impl Plugin for BindlessTexturePlugin {
     fn build(&self, app: &mut lgn_app::App) {
         app.insert_resource(BindlessTextureManager::new(&self.device_context, 256));
-        app.add_system_to_stage(CoreStage::PostUpdate, allocate_bindless_textures);
+        app.add_startup_system(on_startup);
+        app.add_system_to_stage(CoreStage::PostUpdate, on_texture_add_or_modify);
+        app.add_system_to_stage(CoreStage::PostUpdate, on_texture_removed);
         app.add_system_to_stage(RenderStage::Prepare, upload_bindless_textures);
-        app.add_system_to_stage(RenderStage::Render, mark_defaults_as_uploaded);
     }
 }
 
 pub struct BindlessTextureManager {
-    textures: Vec<Texture>,
+    // textures: Vec<Texture>,
     bindless_array: Vec<TextureView>,
     upload_jobs: Vec<UploadTextureJobs>,
     index_allocator: IndexAllocator,
     ref_to_gpu_id: BTreeMap<ResourceTypeAndId, u32>,
+    entity_map: BTreeMap<Entity, u32>,
     default_texture_id: u32,
 }
 
@@ -70,11 +84,9 @@ impl BindlessTextureManager {
             tiling: TextureTiling::Linear,
         };
 
-        let index_allocator = IndexAllocator::new(256);
+        let mut index_allocator = IndexAllocator::new(256);
 
-        let mut index_block = None;
-        let default_texture_id = index_allocator.acquire_index(&mut index_block);
-        index_allocator.release_index_block(index_block.unwrap());
+        let default_texture_id = index_allocator.acquire_index();
 
         let default_black_texture = device_context.create_texture(&texture_def);
 
@@ -92,16 +104,17 @@ impl BindlessTextureManager {
         }
 
         let upload_default = UploadTextureJobs {
-            texture: default_black_texture.clone(),
+            texture: default_black_texture,
             texture_data: vec![texture_data],
         };
 
         Self {
-            textures: vec![default_black_texture],
+            // textures: vec![default_black_texture],
             bindless_array: descriptor_array,
             upload_jobs: vec![upload_default],
             index_allocator,
             ref_to_gpu_id: BTreeMap::new(),
+            entity_map: BTreeMap::new(),
             default_texture_id,
         }
     }
@@ -109,10 +122,9 @@ impl BindlessTextureManager {
     pub fn allocate_texture(
         &mut self,
         device_context: &DeviceContext,
-        texture_component: &mut TextureComponent,
-        index_block: &mut Option<IndexBlock>,
-    ) {
-        let bindless_id = self.index_allocator.acquire_index(index_block);
+        texture_component: &TextureComponent,
+    ) -> (Texture, u32) {
+        let bindless_id = self.index_allocator.acquire_index();
 
         if let Some(stored_id) = self.ref_to_gpu_id.get_mut(&texture_component.texture_id) {
             *stored_id = bindless_id;
@@ -148,22 +160,29 @@ impl BindlessTextureManager {
         let texture_view_def = TextureViewDef::as_shader_resource_view(&texture_def);
 
         self.bindless_array[bindless_id as usize] = new_texture.create_view(&texture_view_def);
-        self.textures.push(new_texture.clone());
+        // self.textures.push(new_texture);
 
-        self.upload_jobs.push(UploadTextureJobs {
-            texture: new_texture,
-            texture_data: std::mem::take(&mut texture_component.texture_data),
-        });
+        // self.upload_jobs.push(UploadTextureJobs {
+        //     texture: new_texture,
+        //     texture_data: std::mem::take(&mut texture_component.texture_data),
+        // });
+
+        (new_texture, bindless_id)
+    }
+
+    pub fn remove_entity(&mut self, entity: Entity) {
+        let binding_id = self.entity_map.get(&entity);
+        let binding_id = binding_id.unwrap();
     }
 
     #[span_fn]
     #[allow(clippy::needless_pass_by_value)]
     pub fn upload_textures(
-        &self,
+        &mut self,
         device_context: &DeviceContext,
         cmd_buffer: &HLCommandBuffer<'_>,
     ) {
-        for upload in &self.upload_jobs {
+        for upload in self.upload_jobs.drain(..) {
             for mip_level in 0..upload.texture_data.len() as u8 {
                 upload_texture_data(
                     device_context,
@@ -173,16 +192,6 @@ impl BindlessTextureManager {
                     mip_level,
                 );
             }
-        }
-    }
-
-    pub fn clear_upload_jobs(&mut self) {
-        self.upload_jobs.clear();
-    }
-
-    pub fn return_index_block(&self, index_block: Option<IndexBlock>) {
-        if let Some(block) = index_block {
-            self.index_allocator.release_index_block(block);
         }
     }
 
@@ -258,30 +267,55 @@ pub fn upload_texture_data(
 
 #[span_fn]
 #[allow(clippy::needless_pass_by_value)]
-fn allocate_bindless_textures(
+fn on_startup(
+    mut commands: Commands<'_, '_>,
     renderer: Res<'_, Renderer>,
-    pipeline_manager: Res<'_, PipelineManager>,
+
+    mut bindless_tex_manager: ResMut<'_, BindlessTextureManager>,    
+) {
+        
+}
+
+#[span_fn]
+#[allow(clippy::needless_pass_by_value)]
+fn on_texture_add_or_modify(
+    mut commands: Commands<'_, '_>,
+    renderer: Res<'_, Renderer>,
 
     mut bindless_tex_manager: ResMut<'_, BindlessTextureManager>,
-    descriptor_heap_manager: Res<'_, DescriptorHeapManager>,
-    mut updated_textures: Query<'_, '_, &mut TextureComponent, Changed<TextureComponent>>,
+
+    q_added_textures: Query<'_, '_, (Entity, &TextureComponent), Added<TextureComponent>>,
+    q_modified_textures: Query<'_, '_, (Entity, &TextureComponent), Changed<TextureComponent>>,
 ) {
-    let render_context = RenderContext::new(&renderer, &descriptor_heap_manager, &pipeline_manager);
-    let cmd_buffer = render_context.alloc_command_buffer();
+    for (entity, texture_component) in q_added_textures.iter() {
+        let (texture, bindless_id) =
+            bindless_tex_manager.allocate_texture(renderer.device_context(), texture_component);
 
-    let mut index_block = None;
-    for mut texture in updated_textures.iter_mut() {
-        bindless_tex_manager.allocate_texture(
-            renderer.device_context(),
-            &mut texture,
-            &mut index_block,
-        );
+        commands
+            .entity(entity)
+            .insert(GPUTextureComponent { texture })
+            .insert(BindlessTextureComponent { bindless_id });
     }
-    bindless_tex_manager.return_index_block(index_block);
 
-    render_context
-        .graphics_queue()
-        .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
+    for (entity, texture_component) in q_modified_textures.iter() {
+        let (texture, _) =
+            bindless_tex_manager.allocate_texture(renderer.device_context(), texture_component);
+
+        commands
+            .entity(entity)
+            .insert(GPUTextureComponent { texture });
+    }
+}
+
+#[span_fn]
+#[allow(clippy::needless_pass_by_value)]
+fn on_texture_removed(
+    removed_entities: RemovedComponents<'_, TextureComponent>,
+    mut bindless_tex_manager: ResMut<'_, BindlessTextureManager>,
+) {
+    for entity in removed_entities.iter() {
+        bindless_tex_manager.remove_entity(entity);
+    }
 }
 
 #[span_fn]
@@ -289,20 +323,28 @@ fn allocate_bindless_textures(
 fn upload_bindless_textures(
     renderer: Res<'_, Renderer>,
     pipeline_manager: Res<'_, PipelineManager>,
-    bindless_tex_manager: ResMut<'_, BindlessTextureManager>,
+    mut bindless_tex_manager: ResMut<'_, BindlessTextureManager>,
     descriptor_heap_manager: Res<'_, DescriptorHeapManager>,
+    q_modified_gpu_textures: Query<
+        '_,
+        '_,
+        (Entity, &TextureComponent, &GPUTextureComponent),
+        Changed<GPUTextureComponent>,
+    >,
 ) {
-    let render_context = RenderContext::new(&renderer, &descriptor_heap_manager, &pipeline_manager);
-    let cmd_buffer = render_context.alloc_command_buffer();
+    if !q_modified_gpu_textures.is_empty() {
+        let render_context =
+            RenderContext::new(&renderer, &descriptor_heap_manager, &pipeline_manager);
+        let cmd_buffer = render_context.alloc_command_buffer();
 
-    bindless_tex_manager.upload_textures(renderer.device_context(), &cmd_buffer);
+        for (a, b, c) in q_modified_gpu_textures.iter() {
+            dbg!(&a);
+        }
 
-    render_context
-        .graphics_queue()
-        .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
-}
+        bindless_tex_manager.upload_textures(renderer.device_context(), &cmd_buffer);
 
-#[span_fn]
-fn mark_defaults_as_uploaded(mut bindless_tex_manager: ResMut<'_, BindlessTextureManager>) {
-    bindless_tex_manager.clear_upload_jobs();
+        render_context
+            .graphics_queue()
+            .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
+    }
 }

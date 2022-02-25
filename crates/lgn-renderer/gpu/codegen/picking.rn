@@ -1,4 +1,4 @@
-pub fn main(frame_descriptor_set, view_descriptor_set ) {    
+pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set ) {    
     [        
         #{
             type: "Struct",
@@ -23,7 +23,7 @@ pub fn main(frame_descriptor_set, view_descriptor_set ) {
         #{
             type: "DescriptorSet",
             name: "PickingDescriptorSet",
-            frequency: 2,
+            frequency: 3,
             descriptors: [
                 #{ name: "picked_count", type: "RWStructuredBuffer", content: "Uint1" },
                 #{ name: "picked_objects", type: "RWStructuredBuffer", content: "PickingData" },
@@ -32,7 +32,7 @@ pub fn main(frame_descriptor_set, view_descriptor_set ) {
         #{
             type: "PipelineLayout",
             name: "PickingPipelineLayout",
-            descriptor_sets: [ frame_descriptor_set.name, view_descriptor_set.name, "PickingDescriptorSet" ],
+            descriptor_sets: [ persistent_descriptor_set.name, frame_descriptor_set.name, view_descriptor_set.name, "PickingDescriptorSet" ],
             push_constant: "PickingPushConstantData"
         },
         #{            

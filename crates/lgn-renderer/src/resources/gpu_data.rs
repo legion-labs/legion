@@ -16,7 +16,7 @@ use crate::{
 };
 
 use super::{
-    BindlessTextureManager, IndexAllocator, IndexBlock, UnifiedStaticBufferAllocator, UniformGPUData,
+    BindlessTextureManager, IndexAllocator, UnifiedStaticBufferAllocator, UniformGPUData,
     UniformGPUDataUpdater,
 };
 
@@ -34,7 +34,7 @@ pub(crate) struct GpuDataManager<K, T> {
 
 impl<K, T> GpuDataManager<K, T> {
     pub fn new(page_size: u64, block_size: u32) -> Self {
-        let index_allocator = IndexAllocator::new(block_size);
+        let mut index_allocator = IndexAllocator::new(block_size);
         let gpu_data = UniformGPUData::<T>::new(None, page_size);
 
         Self {
@@ -51,12 +51,12 @@ impl<K, T> GpuDataManager<K, T> {
         &mut self,
         key: K,
         allocator: &UnifiedStaticBufferAllocator,
-        index_block: &mut Option<IndexBlock>,
+        
     ) -> (u32, u64)
     where
         K: Ord,
     {
-        let gpu_data_id = self.index_allocator.acquire_index(index_block);
+        let gpu_data_id = self.index_allocator.acquire_index();
         let gpu_data_va = self.gpu_data.ensure_index_allocated(allocator, gpu_data_id);
 
         if let Some(gpu_data) = self.data_map.get_mut(&key) {
@@ -144,12 +144,6 @@ impl<K, T> GpuDataManager<K, T> {
     pub fn default_uploaded(&mut self) {
         self.default_uploaded = true;
     }
-
-    pub fn return_index_block(&self, index_block: Option<IndexBlock>) {
-        if let Some(block) = index_block {
-            self.index_allocator.release_index_block(block);
-        }
-    }
 }
 
 pub(crate) type GpuEntityTransformManager =
@@ -199,11 +193,9 @@ fn alloc_color_address(
     mut color_manager: ResMut<'_, GpuEntityColorManager>,
     query: Query<'_, '_, Entity, Added<VisualComponent>>,
 ) {
-    let mut index_block: Option<IndexBlock> = None;
     for entity in query.iter() {
-        color_manager.alloc_gpu_data(entity, renderer.static_buffer_allocator(), &mut index_block);
+        color_manager.alloc_gpu_data(entity, renderer.static_buffer_allocator());
     }
-    color_manager.return_index_block(index_block);
 }
 
 #[span_fn]
@@ -213,15 +205,13 @@ fn alloc_transform_address(
     mut transform_manager: ResMut<'_, GpuEntityTransformManager>,
     query: Query<'_, '_, Entity, Added<GlobalTransform>>,
 ) {
-    let mut index_block: Option<IndexBlock> = None;
     for entity in query.iter() {
         transform_manager.alloc_gpu_data(
             entity,
             renderer.static_buffer_allocator(),
-            &mut index_block,
+            
         );
     }
-    transform_manager.return_index_block(index_block);
 }
 
 #[span_fn]
@@ -231,15 +221,13 @@ fn alloc_material_address(
     mut material_manager: ResMut<'_, GpuMaterialManager>,
     query: Query<'_, '_, &MaterialComponent, Added<MaterialComponent>>,
 ) {
-    let mut index_block: Option<IndexBlock> = None;
     for material in query.iter() {
         material_manager.alloc_gpu_data(
             material.material_id,
             renderer.static_buffer_allocator(),
-            &mut index_block,
+
         );
     }
-    material_manager.return_index_block(index_block);
 }
 
 #[span_fn]
