@@ -11,7 +11,7 @@ use crate::{
 
 pub(crate) type GpuVaTableManager = GpuDataManager<Entity, cgen::cgen_type::GpuInstanceVATable>;
 
-pub(crate) struct GpuInstanceVAs {
+pub(crate) struct GpuInstanceVas {
     pub submesh_va: u32,
     pub material_va: u32,
 
@@ -38,7 +38,7 @@ impl GpuInstanceManager {
         entity: Entity,
         index_block: &mut Option<IndexBlock>,
         updater: &mut UniformGPUDataUpdater,
-        instance_vas: &GpuInstanceVAs,
+        instance_vas: &GpuInstanceVas,
     ) -> u32 {
         let (gpu_instance_id, va_table_address) =
             self.va_table_manager.alloc_gpu_data(entity, index_block);

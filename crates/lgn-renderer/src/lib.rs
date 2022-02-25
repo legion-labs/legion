@@ -59,7 +59,7 @@ use crate::{
         RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces,
     },
     egui::egui_plugin::{Egui, EguiPlugin},
-    gpu_renderer::GpuInstanceVAs,
+    gpu_renderer::GpuInstanceVas,
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingIdContext, PickingManager, PickingPlugin},
     resources::{IndexBlock, MeshManager},
@@ -347,7 +347,7 @@ fn update_gpu_instances(
         picking_data.set_picking_id(picking_context.aquire_picking_id(entity).into());
         picking_data_manager.update_gpu_data(&entity, 0, &[picking_data], &mut updater);
 
-        let instance_vas = GpuInstanceVAs {
+        let instance_vas = GpuInstanceVas {
             submesh_va: mesh_manager.mesh_description_offset_from_id(mesh.mesh_id as u32),
             material_va: material_manager.va_for_index(material_key, 0) as u32,
             color_va: color_manager.va_for_index(Some(entity), 0) as u32,

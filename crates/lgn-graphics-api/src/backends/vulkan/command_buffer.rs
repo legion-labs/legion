@@ -372,6 +372,49 @@ impl CommandBuffer {
         }
     }
 
+    pub(crate) fn backend_cmd_draw_indirect(
+        &self,
+        indirect_arg_buffer: &Buffer,
+        indirect_arg_offset: u64,
+        draw_count: u32,
+        stride: u32,
+    ) {
+        unsafe {
+            self.inner.device_context.vk_device().cmd_draw_indirect(
+                self.inner.backend_command_buffer.vk_command_buffer,
+                indirect_arg_buffer.vk_buffer(),
+                indirect_arg_offset,
+                draw_count,
+                stride,
+            );
+        }
+    }
+
+    pub(crate) fn backend_cmd_draw_indirect_count(
+        &self,
+        indirect_arg_buffer: &Buffer,
+        indirect_arg_offset: u64,
+        count_buffer: &Buffer,
+        count_offset: u64,
+        max_draw_count: u32,
+        stride: u32,
+    ) {
+        unsafe {
+            self.inner
+                .device_context
+                .vk_device()
+                .cmd_draw_indirect_count(
+                    self.inner.backend_command_buffer.vk_command_buffer,
+                    indirect_arg_buffer.vk_buffer(),
+                    indirect_arg_offset,
+                    count_buffer.vk_buffer(),
+                    count_offset,
+                    max_draw_count,
+                    stride,
+                );
+        }
+    }
+
     pub(crate) fn backend_cmd_draw_indexed(
         &self,
         index_count: u32,
@@ -407,6 +450,52 @@ impl CommandBuffer {
                 vertex_offset,
                 first_instance,
             );
+        }
+    }
+
+    pub(crate) fn backend_cmd_draw_indexed_indirect(
+        &self,
+        indirect_arg_buffer: &Buffer,
+        indirect_arg_offset: u64,
+        draw_count: u32,
+        stride: u32,
+    ) {
+        unsafe {
+            self.inner
+                .device_context
+                .vk_device()
+                .cmd_draw_indexed_indirect(
+                    self.inner.backend_command_buffer.vk_command_buffer,
+                    indirect_arg_buffer.vk_buffer(),
+                    indirect_arg_offset,
+                    draw_count,
+                    stride,
+                );
+        }
+    }
+
+    pub(crate) fn backend_cmd_draw_indexed_indirect_count(
+        &self,
+        indirect_arg_buffer: &Buffer,
+        indirect_arg_offset: u64,
+        count_buffer: &Buffer,
+        count_offset: u64,
+        max_draw_count: u32,
+        stride: u32,
+    ) {
+        unsafe {
+            self.inner
+                .device_context
+                .vk_device()
+                .cmd_draw_indexed_indirect_count(
+                    self.inner.backend_command_buffer.vk_command_buffer,
+                    indirect_arg_buffer.vk_buffer(),
+                    indirect_arg_offset,
+                    count_buffer.vk_buffer(),
+                    count_offset,
+                    max_draw_count,
+                    stride,
+                );
         }
     }
 
