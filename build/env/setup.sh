@@ -17,7 +17,7 @@ if [[ $MONOREPO_DOCKER_REGISTRY ]] ; then
     docker pull $ECR_REPO_TAG
     if [[ $? -ne 0 ]] ; then
         docker build . -t $TAG
-        docker tag "$TAG" "$REPO_TAG"
+        docker tag "$TAG" "$ECR_REPO_TAG"
         # we login again here in case our password expired, since the build step takes around 20min
         aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin $MONOREPO_DOCKER_REGISTRY
         docker push "$ECR_REPO_TAG"
