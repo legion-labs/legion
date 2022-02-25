@@ -104,10 +104,10 @@ impl<R: Runtime> BrowserPlugin<R> {
         let projects_dir = directories::ProjectDirs::from("com", "legionlabs", application)
             .ok_or_else(|| anyhow!("Failed to get project directory"))?;
 
-        let mut oauth_client = OAuthClient::new(issuer_url.to_string(), client_id).await?;
-
-        oauth_client = oauth_client.set_redirect_uri(redirect_uri)?;
-        oauth_client = oauth_client.set_port(redirect_uri.port().unwrap_or(DEFAULT_PORT));
+        let oauth_client = OAuthClient::new(issuer_url.to_string(), client_id)
+            .await?
+            .set_redirect_uri(redirect_uri)?
+            .set_port(redirect_uri.port().unwrap_or(DEFAULT_PORT));
 
         let oauth_client = Arc::new(OAuthClientTokenCache::new(oauth_client, projects_dir));
 

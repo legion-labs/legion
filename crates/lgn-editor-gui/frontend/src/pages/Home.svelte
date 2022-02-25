@@ -21,39 +21,8 @@
   import SceneExplorer from "@/components/SceneExplorer.svelte";
   import ResourceBrowser from "@/components/ResourceBrowser.svelte";
   import modal from "@/stores/modal";
-  import { Entry } from "@/lib/hierarchyTree";
 
   const { data: currentResourceData } = currentResource;
-
-  function iconSetter(entry: Entry<ResourceDescription | symbol> | null) {
-    if (entry) {
-      const type = (entry.item as ResourceDescription).type;
-
-      if (type == "entity") {
-        entry.icon = "ic:outline-token";
-      } else if (type == "script") {
-        entry.icon = "ic:outline-text_snippet";
-      } else if (type == "instance") {
-        entry.icon = "ic:outline-pages";
-      } else if (type == "material") {
-        entry.icon = "ic:outline-style";
-      } else if (type == "mesh" || type == "model" || type == "gltf") {
-        entry.icon = "ic:outline-format-shapes";
-      } else if (type == "psd") {
-        entry.icon = "ic:outline-image";
-      } else if (type == "png") {
-        entry.icon = "ic:outline-image";
-      } else if (type == "texture") {
-        entry.icon = "ic:outline-image";
-      }
-
-      if (entry.subEntries) {
-        for (const subEntry of entry.subEntries) {
-          iconSetter(subEntry);
-        }
-      }
-    }
-  }
 
   const {
     data: allResourcesData,
@@ -76,7 +45,7 @@
   }
 
   $: if ($allResourcesData) {
-    resourceEntriesOrchestrator.load($allResourcesData, iconSetter);
+    resourceEntriesOrchestrator.load($allResourcesData);
   }
 
   onMount(() => {

@@ -9,6 +9,7 @@
 
   type $$Slots = {
     name: { itemName: string };
+    icon: { entry: Entry<Item> };
   };
 
   const dispatch = createEventDispatcher<{
@@ -31,6 +32,13 @@
 
   let hierarchyTree: HTMLElement | null;
 
+  /**
+   * Currently highlighted entry _in the drag and drop context_
+   * If a resource is dragged over an other resource this
+   * variable will be populated by the entry that's being overed
+   */
+  let dndHighlightedEntry: Entry<Item> | null = null;
+
   $: highlightedEntry =
     entries.find((entry) => entry.item === highlightedItem) || null;
 
@@ -42,17 +50,6 @@
 
   $: if (!currentlyRenameEntry) {
     focus();
-  }
-
-  export function forceSelection(name: string) {
-    const entry = entries.find((entry) => entry.name == name);
-
-    if (!entry) {
-      return;
-    }
-
-    setHighlightedEntry(entry);
-    select();
   }
 
   export function startNameEdit(item: Item) {
@@ -141,10 +138,15 @@
       {highlightedEntry}
       {withItemContextMenu}
       bind:currentlyRenameEntry
+      bind:dndHighlightedEntry
       on:dblclick={select}
       on:highlight={({ detail: entry }) => setHighlightedEntry(entry)}
       on:nameEdited={setName}
+      on:moved
     >
+      <svelte:fragment slot="icon" let:entry>
+        <slot name="icon" {entry} />
+      </svelte:fragment>
       <svelte:fragment slot="name" let:itemName>
         <slot name="name" {itemName} />
       </svelte:fragment>

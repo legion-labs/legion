@@ -11,6 +11,7 @@
     initFileUpload,
     removeResource,
     renameResource,
+    reparentResources,
     streamFileUpload,
   } from "@/api";
   import allResources from "@/stores/allResources";
@@ -36,6 +37,8 @@
   import { ContextMenuEntryRecord } from "@/stores/contextMenu";
   import modal from "@/stores/modal";
   import CreateResourceModal from "./resources/CreateResourceModal.svelte";
+  import Icon from "@iconify/svelte";
+  import { iconFor } from "@/lib/resourceBrowser";
 
   const createResourceModalId = Symbol();
 
@@ -183,7 +186,7 @@
       await Promise.all(
         names.map((name) =>
           createResource({
-            resourcePath: name,
+            resourceName: name,
             resourceType: "png",
             parentResourceId: undefined,
           })
@@ -222,15 +225,25 @@
           return;
         }
 
-        const detail = await cloneResource({
+        const { newResource } = await cloneResource({
           sourceId: currentResourceDescription.id,
         });
 
         await allResources.run(getAllResources);
 
-        if (detail.newResource) {
-          resourceHierarchyTree.forceSelection(detail.newResource.id);
-          fetchCurrentResourceDescription(detail.newResource);
+        if (newResource) {
+          const entry = resourceEntries.find(
+            (entry) =>
+              typeof entry.item !== "symbol" && entry.item.id == newResource.id
+          );
+
+          if (!entry || typeof entry.item === "symbol") {
+            return;
+          }
+
+          currentResourceDescription = entry.item;
+
+          fetchCurrentResourceDescription(newResource);
         }
 
         return;
@@ -337,6 +350,28 @@
 
     return false;
   }
+
+  async function moveEntry({
+    detail: { draggedEntry, dropzoneEntry },
+  }: CustomEvent<{
+    draggedEntry: Entry<ResourceDescription>;
+    dropzoneEntry: Entry<ResourceDescription>;
+  }>) {
+    const newParent = dropzoneEntry.subEntries[0]?.item.id;
+
+    if (!newParent) {
+      log.error(log.json`Couldn't find id for ${dropzoneEntry}`);
+
+      return;
+    }
+
+    await reparentResources({
+      id: draggedEntry.item.id,
+      newParent,
+    });
+
+    await allResources.run(getAllResources);
+  }
 </script>
 
 <svelte:window
@@ -358,11 +393,15 @@
         on:select={selectResource}
         on:nameEdited={saveEditedResourceProperty}
         on:removed={removeResourceProperty}
+        on:moved={moveEntry}
         bind:entries={resourceEntries}
         bind:currentlyRenameEntry={currentlyRenameResource}
         bind:highlightedItem={currentResourceDescription}
         bind:this={resourceHierarchyTree}
       >
+        <div slot="icon" let:entry>
+          <Icon icon={iconFor(entry)} />
+        </div>
         <div class="item" slot="name" let:itemName>
           {itemName}
         </div>

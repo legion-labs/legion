@@ -11,6 +11,7 @@ export function debounce<Args extends unknown[], Ret>(
   ms: number
 ): (...args: Args) => Promise<Ret> {
   let timeout: ReturnType<typeof setTimeout> | null;
+
   return (...args: Args) =>
     new Promise<Ret>((resolve) => {
       if (timeout) {

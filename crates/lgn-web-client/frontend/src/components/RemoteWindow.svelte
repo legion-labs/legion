@@ -104,6 +104,7 @@
                 peerConnection.localDescription
               );
             }
+
             return Promise.resolve(null);
           }, 1_000),
           connectionRetry

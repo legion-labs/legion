@@ -1,12 +1,10 @@
-import log from "@lgn/web-client/src/lib/log";
 import { components } from "./path";
 
 export type Entry<Item> = {
   name: string;
   index: number;
-  icon: string | null;
   item: Item;
-  subEntries: Entry<Item>[] | null;
+  subEntries: Entry<Item>[];
 };
 
 // TODO: Improve performance if needed, and stop using recursion
@@ -59,17 +57,12 @@ export class Entries<Item> {
 
       pathComponents.reduce((ref, name, index) => {
         if (!ref[name]) {
-          const subentries: Entry<PItem>[] = [];
-
-          ref[name] = {
-            subEntries: subentries,
-          } as Ref;
+          ref[name] = { subEntries: [] as Entry<PItem | AltItem>[] } as Ref;
 
           const entry = {
             name,
             // Dumb index, will be set again properly later
             index: -1,
-            icon: null,
             item:
               index < pathComponents.length - 1
                 ? buildItemFromName(name)
@@ -169,7 +162,15 @@ export class Entries<Item> {
         }
 
         if (entry.subEntries) {
-          return [...acc, { ...entry, subEntries: filter(entry.subEntries) }];
+          const subEntries = filter(entry.subEntries);
+
+          return [
+            ...acc,
+            {
+              ...entry,
+              subEntries,
+            },
+          ];
         }
 
         return [...acc, entry];
@@ -229,10 +230,7 @@ export class Entries<Item> {
           return entry;
         }
 
-        return {
-          ...entry,
-          subEntries: update(entry.subEntries),
-        };
+        return { ...entry, subEntries: update(entry.subEntries) };
       });
     }
 
@@ -252,10 +250,9 @@ export class Entries<Item> {
       if (!parts.length) {
         const newEntry: Entry<Item> = {
           index: -1,
-          icon: null,
           item: item as unknown as Item,
           name: part,
-          subEntries: null,
+          subEntries: [],
         };
 
         return [...entries, newEntry];
@@ -272,7 +269,11 @@ export class Entries<Item> {
       return entries;
     }
 
-    this.entries = insert(components(item.path), this.entries, item);
+    this.entries = insert(
+      item.path ? components(item.path) : [],
+      this.entries,
+      item
+    );
 
     this.#sort();
 

@@ -11,7 +11,9 @@ export default defineConfig({
     tsconfigPaths({
       extensions: [".ts", ".svelte"],
     }),
-    svelte({ hot: !process.env.VITEST }),
+    // The `!!` trick is necesary here or the whole expression
+    // will return `undefined` which make hot `true`...
+    svelte({ hot: !!process.env.DEV && !process.env.VITEST }),
     viteTsProto({
       modules: [
         { name: "@lgn/proto-runtime", glob: "*.proto" },

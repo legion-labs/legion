@@ -27,6 +27,7 @@ export default function keyboardNavigation(
   { size, store }: Config
 ) {
   htmlElement.tabIndex = -1;
+  htmlElement.style.outline = "none";
 
   function handleKeyboard(event: KeyboardEvent) {
     store.update(({ currentIndex }) => {

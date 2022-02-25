@@ -41,21 +41,21 @@ Some helpers, like `close`, will be passed down to the slots.
 <style lang="postcss">
   .root {
     @apply w-96 bg-gray-700 rounded-sm shadow-lg shadow-black;
+  }
 
-    .header {
-      @apply flex flex-row justify-between items-center border-b-2 border-orange-700 px-2 py-1 text-lg h-12 font-semibold;
+  .header {
+    @apply flex flex-row justify-between items-center border-b-2 border-orange-700 px-2 py-1 text-lg h-12 font-semibold;
+  }
 
-      .close {
-        @apply flex justify-center items-center cursor-pointer text-orange-700;
-      }
-    }
+  .close {
+    @apply flex justify-center items-center cursor-pointer text-orange-700;
+  }
 
-    .body {
-      @apply shadow-lg shadow-gray-800;
-    }
+  .body {
+    @apply shadow-lg shadow-gray-800;
+  }
 
-    .footer {
-      @apply bg-gray-500 rounded-b-sm px-2 py-1;
-    }
+  .footer {
+    @apply bg-gray-500 rounded-b-sm px-2 py-1;
   }
 </style>

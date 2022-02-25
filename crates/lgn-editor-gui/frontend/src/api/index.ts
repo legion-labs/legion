@@ -258,3 +258,18 @@ export function streamFileUpload({
     content,
   });
 }
+
+// FIXME: This function is known for being broken
+// the api is not fully over yet and it might change soon
+export function reparentResources({
+  id,
+  newParent,
+}: {
+  id: string;
+  newParent: string;
+}) {
+  return resourceBrowserClient.reparentResource({
+    id,
+    newParent,
+  });
+}

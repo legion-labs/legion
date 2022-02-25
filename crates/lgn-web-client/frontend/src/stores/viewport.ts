@@ -14,6 +14,7 @@ export type Script = CommonConfig & {
   type: "script";
   onChange(newValue: string): void;
   value: string;
+  readonly?: boolean;
   lang: string;
 };
 

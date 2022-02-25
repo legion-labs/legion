@@ -3,7 +3,7 @@
 
   export let value: number;
 
-  export let disabled = false;
+  export let readonly = false;
 </script>
 
 <!-- For now the number property is only a Range but it might change -->
@@ -14,5 +14,5 @@
   withNumberInput
   on:input
   bind:value
-  {disabled}
+  {readonly}
 />

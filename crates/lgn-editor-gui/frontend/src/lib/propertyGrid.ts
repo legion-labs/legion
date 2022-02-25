@@ -1,6 +1,9 @@
-import { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
-import { ResourceProperty as RawResourceProperty } from "@lgn/proto-editor/dist/property_inspector";
-import { filterMap } from "./array";
+// TODO: Use the `ResourceDescription` from resource_property.proto instead (?)
+import {
+  ResourceDescription,
+  ResourceProperty as RawResourceProperty,
+} from "@lgn/proto-editor/dist/property_inspector";
+import { filterMap, NonEmptyArray } from "@lgn/web-client/src/lib/array";
 
 /** Matches any `ptype` of format "Vec<subPType>" */
 const vecPTypeRegExp = /^Vec<(.+)>$/;
@@ -389,7 +392,7 @@ export function buildVecProperty<
   SubProperty extends ResourcePropertyBase | ResourcePropertyWithValueBase
 >(
   name: string,
-  subProperties: [SubProperty, ...SubProperty[]]
+  subProperties: NonEmptyArray<SubProperty>
 ): VecResourceProperty<SubProperty> {
   return {
     attributes: {},

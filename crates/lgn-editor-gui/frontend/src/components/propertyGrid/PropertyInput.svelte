@@ -58,11 +58,7 @@
   }
 
   function isReadonly(): boolean {
-    if (property.attributes.readonly) {
-      return true;
-    }
-
-    return false;
+    return "readonly" in property.attributes;
   }
 
   // Vector related code
@@ -108,20 +104,20 @@
     </div>
   {:else if propertyIsScript(property)}
     <ScriptProperty
-      disabled={isReadonly()}
+      readonly={isReadonly()}
       name={property.name}
       on:input={({ detail }) => onInput({ value: detail })}
       bind:value={property.value}
     />
   {:else if propertyIsString(property)}
     <StringProperty
-      disabled={isReadonly()}
+      readonly={isReadonly()}
       on:input={({ detail }) => onInput({ value: detail })}
       bind:value={property.value}
     />
   {:else if propertyIsResourcePathId(property)}
     <ResourcePathIdProperty
-      disabled={isReadonly()}
+      readonly={isReadonly()}
       on:input={({ detail }) => onInput({ value: detail })}
       bind:value={property.value}
     />
@@ -140,31 +136,31 @@
     />
   {:else if propertyIsNumber(property)}
     <NumberProperty
-      disabled={isReadonly()}
+      readonly={isReadonly()}
       on:input={({ detail }) => onInput({ value: detail })}
       bind:value={property.value}
     />
   {:else if propertyIsColor(property)}
     <ColorProperty
-      disabled={isReadonly()}
+      readonly={isReadonly()}
       on:input={({ detail }) => onInput({ value: detail })}
       bind:value={property.value}
     />
   {:else if propertyIsSpeed(property)}
     <SpeedProperty
-      disabled={isReadonly()}
+      readonly={isReadonly()}
       on:input={({ detail }) => onInput({ value: detail })}
       bind:value={property.value}
     />
   {:else if propertyIsVec3(property)}
     <Vec3Property
-      disabled={isReadonly()}
+      readonly={isReadonly()}
       on:input={({ detail }) => onInput({ value: detail })}
       bind:value={property.value}
     />
   {:else if propertyIsQuat(property)}
     <QuatProperty
-      disabled={isReadonly()}
+      readonly={isReadonly()}
       on:input={({ detail }) => onInput({ value: detail })}
       bind:value={property.value}
     />

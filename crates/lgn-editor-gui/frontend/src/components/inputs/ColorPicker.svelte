@@ -56,6 +56,8 @@ It also supports manual RGBA edition with 4 different inputs.
    */
   export let disabled = false;
 
+  export let readonly = false;
+
   /** A word on semantic:
    * `hPicker` refers to the Hue range input
    * `svPicker` to the "main" block that allows for both Saturation and Value selection
@@ -88,8 +90,13 @@ It also supports manual RGBA edition with 4 different inputs.
     hColor = { r, g, b, a: 255 };
   }
 
-  // Closes the dropdown if the color picker gets disabled
-  $: if (disabled) {
+  // TODO: The "inactive" set still needs some improvements:
+  // - Block range input for good (using a div on top?)
+  // - Make it more explicit that the input is disabled (add an overlay?)
+  $: inactive = disabled || readonly;
+
+  // Closes the dropdown if the color picker gets inactive
+  $: if (inactive) {
     visible = false;
   }
 
@@ -195,10 +202,10 @@ It also supports manual RGBA edition with 4 different inputs.
             class="sv-selector-black-gradient-mask"
             bind:clientWidth={svPickerCursorWidth}
             bind:clientHeight={svPickerCursorHeight}
-            on:mousedown={svSelect}
-            on:mouseup={svSelectEnd}
-            on:mousemove={svSelectMove}
-            on:mouseleave={svSelectEnd}
+            on:mousedown={inactive ? null : svSelect}
+            on:mouseup={inactive ? null : svSelectEnd}
+            on:mousemove={inactive ? null : svSelectMove}
+            on:mouseleave={inactive ? null : svSelectEnd}
           />
           <div
             class="sv-selector-cursor"
@@ -218,7 +225,7 @@ It also supports manual RGBA edition with 4 different inputs.
           class="h-selector"
           style="--current-background: {rgbaToColorString(hColor, true)}"
           value={colors.hsv.h}
-          on:input={updateHue}
+          on:input={inactive ? null : updateHue}
         />
       </div>
       <div class="alpha-selector-container">
@@ -234,7 +241,7 @@ It also supports manual RGBA edition with 4 different inputs.
               class="alpha-selector"
               style="--current-background: {rgbaToColorString(hColor, true)}"
               value={colors.hsv.a}
-              on:input={updateAlpha}
+              on:input={inactive ? null : updateAlpha}
             />
           </div>
         </div>
@@ -248,6 +255,7 @@ It also supports manual RGBA edition with 4 different inputs.
             min={0}
             max={255}
             value={colors.rgba.r}
+            {readonly}
             on:input={(event) => updateRgbaColor("r", event)}
           />
         </div>
@@ -270,6 +278,7 @@ It also supports manual RGBA edition with 4 different inputs.
             min={0}
             max={255}
             value={colors.rgba.b}
+            {readonly}
             on:input={(event) => updateRgbaColor("b", event)}
           />
         </div>
@@ -281,6 +290,7 @@ It also supports manual RGBA edition with 4 different inputs.
             min={0}
             max={255}
             value={colors.rgba.a}
+            {readonly}
             on:input={(event) => updateRgbaColor("a", event)}
           />
         </div>
