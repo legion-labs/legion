@@ -1,5 +1,5 @@
 use lgn_ecs::prelude::*;
-use lgn_math::Vec3;
+use lgn_math::Vec4;
 
 use crate::cgen::cgen_type::PickingData;
 
@@ -38,11 +38,11 @@ impl PickedComponent {
         self.picking_data.is_empty()
     }
 
-    pub fn get_closest_point(&self) -> Vec3 {
-        let mut closest_point = Vec3::new(f32::MAX, f32::MAX, f32::MAX);
+    pub fn get_closest_point(&self) -> Vec4 {
+        let mut closest_point = Vec4::new(f32::MAX, f32::MAX, f32::MAX, f32::MAX);
         for picking_data in &self.picking_data {
-            let picking_pos = Vec3::from(picking_data.picking_pos());
-            if picking_pos.z < closest_point.z {
+            let picking_pos = Vec4::from(picking_data.picking_pos());
+            if picking_pos.w < closest_point.w {
                 closest_point = picking_pos;
             }
         }
