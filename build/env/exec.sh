@@ -9,21 +9,22 @@ cp "$MONOREPO_ROOT/.monorepo/tools.toml" "$SCRIPT_DIR/install/tools.toml"
 
 pushd $SCRIPT_DIR 1> /dev/null
 
-CONTAINER_HASH=$(sha1sum install/* | sha1sum | head -c 40)
+IMAGE_TAG=$(sha1sum install/* | sha1sum | head -c 40)
 
 rm install/rust-toolchain.toml install/tools.toml 1> /dev/null
 
 popd 1> /dev/null
 
-TAG="build-env:$CONTAINER_HASH"
+IMAGE_NAME="build-env"
+IMAGE="$IMAGE_NAME:$IMAGE_TAG"
 if [[ -n $MONOREPO_DOCKER_REGISTRY ]] ; then
-    TAG="$MONOREPO_DOCKER_REGISTRY/$TAG:$CONTAINER_HASH"
+    IMAGE="$MONOREPO_DOCKER_REGISTRY/$IMAGE_NAME:$IMAGE_TAG"
     aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin
-    docker pull $TAG
+    docker pull $IMAGE
 fi
 
-if [[ "$(docker images -q $TAG 2> /dev/null)" == "" ]]; then
-    echo "Missing docker image with tag $TAG"
+if [[ "$(docker images -q $IMAGE 2> /dev/null)" == "" ]]; then
+    echo "Missing docker image with tag $IMAGE"
     echo "Run build.sh to build the image"
     exit 1
 fi
@@ -34,7 +35,7 @@ if [[ -z $CI || $CI -eq false ]] ; then
         -v "/var/run/docker.sock":"/var/run/docker.sock" \
         -v "$(realpath $MONOREPO_ROOT)":/github/workspace \
         --workdir /github/workspace \
-        $TAG
+        $IMAGE
 else
     docker run --name build-env \
         --workdir /github/workspace \
@@ -46,6 +47,6 @@ else
         -v "/github/work/_temp/_github_workflow":"/github/workflow" \
         -v "/github/work/_temp/_runner_file_commands":"/github/file_commands" \
         -v "/github/work/legion/legion":"/github/workspace" \
-        $TAG \
+        $IMAGE \
         $@
 fi

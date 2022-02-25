@@ -10,29 +10,30 @@ copy "%MONOREPO_ROOT%\.monorepo\tools.toml" "%SCRIPT_DIR%\install\tools.toml" 1>
 
 pushd %SCRIPT_DIR%
 
+set IMAGE_NAME="build-env"
+
 set BB=.\utils\busybox.exe
 for /f %%i in ('%BB% sha1sum install/* ^| %BB% sha1sum ^| %BB% head -c 40') do (
-    set CONTAINER_HASH=%%i
+    set IMAGE_TAG=%%i
 )
 
-set TAG="build-env:%CONTAINER_HASH%"
 for /f %%i in ('docker images -q %TAG% ^2^> nul') do (
     set LOCAL_CONTAINER_EXISTS="1"
 )
 if defined MONOREPO_DOCKER_REGISTRY (
-    set REPO_TAG="%MONOREPO_DOCKER_REGISTRY%/%TAG%"
+    set IMAGE="%MONOREPO_DOCKER_REGISTRY%/%IMAGE_NAME%:%IMAGE_TAG%"
     aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin
-    docker pull %REPO_TAG%
+    docker manifest inspect $IMAGE > nul 2>&1
     if "%ERRORLEVEL%"=="0" (
-        docker build . -t %TAG%
-        docker tag %REPO_TAG%
-        docker push %REPO_TAG%
+        docker build . -t %IMAGE%
+        docker push %IMAGE%
     )
 ) else (
+    set IMAGE="%IMAGE_NAME%:%IMAGE_TAG%"
     if "%LOCAL_CONTAINER_EXISTS%"=="" (
-        docker build . -t %TAG%
+        docker build . -t %IMAGE%
     ) else (
-        echo "Image %TAG% already exists"
+        echo "Image %IMAGE% already exists"
     )
 )
 

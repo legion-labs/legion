@@ -10,29 +10,31 @@ copy "%MONOREPO_ROOT%\.monorepo\tools.toml" "%SCRIPT_DIR%\install\tools.toml" 1>
 
 pushd %SCRIPT_DIR%
 
+set IMAGE_NAME="build-env"
+
 set BB=.\utils\busybox.exe
 for /f %%i in ('%BB% sha1sum install/* ^| %BB% sha1sum ^| %BB% head -c 40') do (
-    set CONTAINER_HASH=%%i
+    set IMAGE_TAG=%%i
 )
 
 del install\rust-toolchain.toml install\tools.toml
 
 popd
 
-set TAG="build-env:%CONTAINER_HASH%"
+set IMAGE="%IMAGE_NAME%:%IMAGE_TAG%"
 if defined MONOREPO_DOCKER_REGISTRY (
-    set TAG="%MONOREPO_DOCKER_REGISTRY%/%TAG%"
-    aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin
+    set IMAGE="%MONOREPO_DOCKER_REGISTRY%/%IMAGE_NAME%:%IMAGE_TAG%"
+    aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin %MONOREPO_DOCKER_REGISTRY%
     docker pull %TAG%
 )
 
-for /f %%i in ('docker images -q %TAG% ^2^> nul') do (
+for /f %%i in ('docker images -q %IMAGE% ^2^> nul') do (
     docker run --name build-env ^
         --rm ^
         -v "/var/run/docker.sock":"/var/run/docker.sock" ^
         -v "%MONOREPO_ROOT%":/github/workspace ^
         --workdir /github/workspace ^
-        %TAG% %*
+        %IMAGE% %*
     exit %ERRORLEVEL%
 )
 
