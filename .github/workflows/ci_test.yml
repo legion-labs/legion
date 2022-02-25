@@ -149,20 +149,6 @@ jobs:
         id: set-base-ref
         run: echo "::set-output name=base_ref::${{ env.base_ref }}"
 
-  setup_container:
-    name: Building env container
-    if: ${{ false }} # disable for now
-    runs-on: [self-hosted, linux, common, build]
-    outputs:
-      base_ref: ${{ steps.setup-container.outputs.container }}
-    steps:
-      - uses: actions/checkout@v2
-      - name: Build
-        id: setup-container
-        env:
-          MONOREPO_DOCKER_REGISTRY: ${{ secrets.MONOREPO_DOCKER_REGISTRY }}
-        run: ./build/env/setup.sh
-
   runner_selection:
     name: Runner selection
     needs: base_ref_selection
@@ -198,3 +184,76 @@ jobs:
             echo "::set-output name=linux_runner::[[\"self-hosted\",\"linux\",\"common\",\"build\"]]"
             echo "::set-output name=windows_runner::[[\"self-hosted\",\"windows\",\"common\",\"build\"]]"
           fi
+
+  setup_container:
+    name: Setup build env container
+    if: ${{ false }}
+    runs-on: [self-hosted, linux, common, build]
+    outputs:
+      container: ${{ steps.set-repo-tag.outputs.container }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build
+        env:
+          MONOREPO_DOCKER_REGISTRY: ${{ secrets.MONOREPO_DOCKER_REGISTRY }}
+        run: ./build/env/setup.sh
+
+      - name: Set repo tag
+        id: set-repo-tag
+        run: echo "::set-output name=container::${{ env.ecr_repo_tag }}"
+
+      - name: Install NodeJS script dependencies
+        run: npm install tweetsodium
+
+      - name: Set ECR password secret
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.ECR_GH_ACCESS_TOKEN }}
+          script: |
+            const sodium = require('tweetsodium');
+
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
+
+            const options = {};
+            options.silent = true;
+            const ecr_login = await exec.getExecOutput('aws', ['ecr', 'get-login-password', '--region', 'ca-central-1'], options);
+
+            const pub_key = await github.rest.actions.getRepoPublicKey({
+                owner,
+                repo,
+            });
+            const key = pub_key.data.key;
+            const key_id = pub_key.data.key_id;
+            const value = ecr_login.stdout;
+
+            // Convert the message and key to Uint8Array's (Buffer implements that interface)
+            const message_bytes = Buffer.from(value);
+            const key_bytes = Buffer.from(key, 'base64');
+
+            // Encrypt using LibSodium.
+            const encrypted_bytes = sodium.seal(message_bytes, key_bytes);
+
+            // Base64 the encrypted secret
+            const encrypted_value = Buffer.from(encrypted_bytes).toString('base64');
+            const secret_name = 'ECR_PASSWORD';
+            await github.rest.actions.createOrUpdateRepoSecret({
+                owner,
+                repo,
+                secret_name,
+                encrypted_value,
+                key_id,
+            })
+
+  test_build_env:
+    name: Testing the Build environment
+    if: ${{ false }}
+    needs: [setup_container]
+    runs-on: [self-hosted, linux, common, build]
+    container:
+      image: ${{ needs.setup_container.outputs.container }}
+      credentials:
+        username: AWS
+        password: ${{ secrets.ECR_PASSWORD }}
+    steps:
+      - run: cargo m --help
