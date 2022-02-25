@@ -6,6 +6,7 @@
   import { keyboardNavigationItem } from "@lgn/web-client/src/actions/keyboardNavigation";
   import contextMenuAction from "@/actions/contextMenu";
   import TextInput from "../inputs/TextInput.svelte";
+  import sortable from "@lgn/web-client/src/actions/sortable";
 
   type Item = $$Generic;
 
@@ -107,7 +108,12 @@
   }
 </script>
 
-<div class="root" on:dblclick use:keyboardNavigationItem={index}>
+<div
+  class="root"
+  on:dblclick
+  use:keyboardNavigationItem={index}
+  data-not-draggable={!!entry.subEntries}
+>
   <div
     class="name"
     class:font-semibold={entry.subEntries}
@@ -145,7 +151,16 @@
   </div>
   {#if entry.subEntries && isExpanded}
     {#each entry.subEntries || [] as subEntry (subEntry.index)}
-      <div class="sub-entries">
+      <div
+        class="sub-entries"
+        use:sortable={{
+          group: "nested",
+          animation: 150,
+          fallbackOnBody: true,
+          swapThreshold: 0.65,
+          filter: '[data-not-draggable="true"]',
+        }}
+      >
         <svelte:self
           index={subEntry.index}
           entry={subEntry}

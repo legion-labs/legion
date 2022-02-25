@@ -418,6 +418,7 @@ importers:
       '@testing-library/jest-dom': ^5.16.2
       '@testing-library/svelte': ^3.0.3
       '@types/color-convert': ^2.0.0
+      '@types/sortablejs': ^1.10.7
       '@typescript-eslint/eslint-plugin': ^5.12.1
       '@typescript-eslint/parser': ^5.12.1
       autoprefixer: ^10.4.2
@@ -438,6 +439,7 @@ importers:
       prettier-plugin-svelte: ^2.6.0
       protobufjs: ^6.11.2
       rxjs: 6.6.7
+      sortablejs: ^1.14.0
       svelte: ^3.46.4
       svelte-check: ^2.4.5
       svelte-preprocess: ^4.10.4
@@ -459,12 +461,14 @@ importers:
       pnpm: 6.32.1
       protobufjs: 6.11.2
       rxjs: 6.6.7
+      sortablejs: 1.14.0
     devDependencies:
       '@sveltejs/vite-plugin-svelte': 1.0.0-next.37_svelte@3.46.4+vite@2.8.4
       '@swc/core': 1.2.144
       '@testing-library/jest-dom': 5.16.2
       '@testing-library/svelte': 3.0.3_svelte@3.46.4
       '@types/color-convert': 2.0.0
+      '@types/sortablejs': 1.10.7
       '@typescript-eslint/eslint-plugin': 5.12.1_aa3af6382115a42a71cc388b7b2c30b3
       '@typescript-eslint/parser': 5.12.1_eslint@8.9.0+typescript@4.5.5
       autoprefixer: 10.4.2_postcss@8.4.6
@@ -1783,6 +1787,10 @@ packages:
     resolution: {integrity: sha512-BPdoIt1lfJ6B7rw35ncdwBZrAssjcwzI5LByIrYs+tpXlj/CAkuVdRsgZDdP4lq5EjyWzwxZCqAoFyHKFwp32g==}
     dependencies:
       '@types/node': 17.0.21
+    dev: true
+
+  /@types/sortablejs/1.10.7:
+    resolution: {integrity: sha512-lGCwwgpj8zW/ZmaueoPVSP7nnc9t8VqVWXS+ASX3eoUUENmiazv0rlXyTRludXzuX9ALjPsMqBu85TgJNWbTOg==}
     dev: true
 
   /@types/stack-utils/2.0.1:
@@ -5244,6 +5252,10 @@ packages:
       sander: 0.5.1
       sourcemap-codec: 1.4.8
     dev: true
+
+  /sortablejs/1.14.0:
+    resolution: {integrity: sha512-pBXvQCs5/33fdN1/39pPL0NZF20LeRbLQ5jtnheIPN9JQAaufGjKdWduZn4U7wCtVuzKhmRkI0DFYHYRbB2H1w==}
+    dev: false
 
   /source-map-js/1.0.2:
     resolution: {integrity: sha512-R0XvVJ9WusLiqTCEiGCmICCMplcCkIwwR11mOSD9CR5u+IXYdiseeEuXCVAjS54zqwkLcPNnmU4OeJ6tUrWhDw==}

@@ -25,6 +25,7 @@
     "@testing-library/jest-dom": "^5.16.2",
     "@testing-library/svelte": "^3.0.3",
     "@types/color-convert": "^2.0.0",
+    "@types/sortablejs": "^1.10.7",
     "@typescript-eslint/eslint-plugin": "^5.12.1",
     "@typescript-eslint/parser": "^5.12.1",
     "autoprefixer": "^10.4.2",
@@ -57,6 +58,7 @@
     "oauth-pkce": "^0.0.6",
     "pnpm": "^6.32.1",
     "protobufjs": "^6.11.2",
-    "rxjs": "6.6.7"
+    "rxjs": "6.6.7",
+    "sortablejs": "^1.14.0"
   }
 }

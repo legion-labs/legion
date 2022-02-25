@@ -4,6 +4,7 @@
   import keyboardNavigation from "@lgn/web-client/src/actions/keyboardNavigation";
   import KeyboardNavigationStore from "@lgn/web-client/src/stores/keyboardNavigation";
   import HierarchyTreeItem from "./HierarchyTreeItem.svelte";
+  import sortable from "@lgn/web-client/src/actions/sortable";
 
   type Item = $$Generic;
 
@@ -117,11 +118,18 @@
   on:navigation-select={select}
   on:navigation-rename={() => highlightedItem && startNameEdit(highlightedItem)}
   on:navigation-remove={() => highlightedItem && remove(highlightedItem)}
+  bind:this={hierarchyTree}
   use:keyboardNavigation={{
     size: entries.size(),
     store: keyboardNavigationStore,
   }}
-  bind:this={hierarchyTree}
+  use:sortable={{
+    group: "nested",
+    animation: 150,
+    fallbackOnBody: true,
+    swapThreshold: 0.65,
+    filter: "[data-not-draggable]",
+  }}
 >
   {#each entries.entries as entry (entry.index)}
     <HierarchyTreeItem
@@ -144,5 +152,9 @@
 <style lang="postcss">
   .root {
     @apply h-full px-2 overflow-y-auto;
+  }
+
+  :global(.highlight) {
+    @apply bg-gray-800;
   }
 </style>
