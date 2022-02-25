@@ -82,8 +82,14 @@ impl TmpRenderPass {
         );
 
         //cmd_buffer.bind_pipeline(pipeline);
-        cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
-        cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
+        cmd_buffer.bind_descriptor_set(
+            render_context.frame_descriptor_set().0,
+            render_context.frame_descriptor_set().1,
+        );
+        cmd_buffer.bind_descriptor_set(
+            render_context.view_descriptor_set().0,
+            render_context.view_descriptor_set().1,
+        );
 
         render_set.draw(cmd_buffer, None, None);
 

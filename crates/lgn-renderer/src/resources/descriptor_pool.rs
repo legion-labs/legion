@@ -1,7 +1,6 @@
-use bumpalo::Bump;
 use lgn_graphics_api::{
-    DescriptorHeap, DescriptorHeapDef, DescriptorHeapPartition, DescriptorSetDataProvider,
-    DescriptorSetHandle, DescriptorSetLayout, DescriptorSetWriter, GfxResult,
+    DescriptorHeap, DescriptorHeapDef, DescriptorHeapPartition, DescriptorRef, DescriptorSetHandle,
+    DescriptorSetLayout,
 };
 
 use lgn_core::Handle;
@@ -9,23 +8,21 @@ use lgn_core::Handle;
 use super::OnFrameEventHandler;
 
 pub struct DescriptorPool {
-    descriptor_heap: DescriptorHeap,
-    descriptor_heap_partition: Handle<DescriptorHeapPartition>,
+    descriptor_heap_partition: DescriptorHeapPartition,
 }
 
 impl DescriptorPool {
     pub(crate) fn new(
-        descriptor_heap: DescriptorHeap,
+        descriptor_heap: &DescriptorHeap,
         heap_partition_def: &DescriptorHeapDef,
     ) -> Self {
-        let descriptor_heap_partition = Handle::new(
-            descriptor_heap
-                .alloc_partition(true, heap_partition_def)
-                .unwrap(),
-        );
         Self {
-            descriptor_heap,
-            descriptor_heap_partition,
+            descriptor_heap_partition: DescriptorHeapPartition::new(
+                descriptor_heap,
+                true,
+                heap_partition_def,
+            )
+            .unwrap(),
         }
     }
 
@@ -33,32 +30,18 @@ impl DescriptorPool {
         &self.descriptor_heap_partition
     }
 
-    pub fn allocate_descriptor_set<'frame>(
+    pub fn write_descriptor_set(
         &self,
-        descriptor_set_layout: &DescriptorSetLayout,
-        bump: &'frame Bump,
-    ) -> GfxResult<DescriptorSetWriter<'frame>> {
+        layout: &DescriptorSetLayout,
+        descriptors: &[DescriptorRef<'_>],
+    ) -> DescriptorSetHandle {
         self.descriptor_heap_partition
-            .get_writer(descriptor_set_layout, bump)
-    }
-
-    pub fn write_descriptor_set<'frame>(
-        &self,
-        descriptor_set: &impl DescriptorSetDataProvider,
-        bump: &'frame Bump,
-    ) -> GfxResult<DescriptorSetHandle> {
-        self.descriptor_heap_partition.write(descriptor_set, bump)
+            .write(layout, descriptors)
+            .unwrap()
     }
 
     fn reset(&self) {
         self.descriptor_heap_partition.reset().unwrap();
-    }
-}
-
-impl Drop for DescriptorPool {
-    fn drop(&mut self) {
-        self.descriptor_heap
-            .free_partition(self.descriptor_heap_partition.take());
     }
 }
 

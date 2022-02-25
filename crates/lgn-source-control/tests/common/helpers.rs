@@ -141,13 +141,25 @@ macro_rules! workspace_revert_files {
 
 macro_rules! workspace_commit {
     ($workspace:expr, $message:literal) => {{
-        $workspace.commit($message).await.expect("failed to commit")
+        $workspace
+            .commit($message, lgn_source_control::CommitMode::Strict)
+            .await
+            .expect("failed to commit")
+    }};
+}
+
+macro_rules! workspace_commit_lenient {
+    ($workspace:expr, $message:literal) => {{
+        $workspace
+            .commit($message, lgn_source_control::CommitMode::Lenient)
+            .await
+            .expect("failed to commit")
     }};
 }
 
 macro_rules! workspace_commit_error {
     ($workspace:expr, $message:literal) => {{
-        match $workspace.commit($message).await {
+        match $workspace.commit($message, lgn_source_control::CommitMode::Strict).await {
             Err(err) => err,
             Ok(_) => {
                 panic!("commit should have failed");
@@ -155,7 +167,7 @@ macro_rules! workspace_commit_error {
         }
     }};
     ($workspace:expr, $message:literal, $($err:tt)+) => {{
-        match $workspace.commit($message).await {
+        match $workspace.commit($message, lgn_source_control::CommitMode::Strict).await {
             Err($($err)+) => {},
             Err(err) => {
                 panic!("unexpected error `{}`", err);
@@ -247,6 +259,7 @@ pub(crate) fn delete(s: &str, old_hash: &str, old_size: u64) -> Change {
 pub(crate) use {
     cleanup_test_workspace_and_index, create_dir, create_file, delete_file,
     init_test_workspace_and_index, update_file, workspace_add_files, workspace_checkout_files,
-    workspace_commit, workspace_commit_error, workspace_create_branch, workspace_delete_files,
-    workspace_get_current_branch, workspace_revert_files, workspace_switch_branch,
+    workspace_commit, workspace_commit_error, workspace_commit_lenient, workspace_create_branch,
+    workspace_delete_files, workspace_get_current_branch, workspace_revert_files,
+    workspace_switch_branch,
 };

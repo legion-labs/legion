@@ -91,7 +91,6 @@ mod project;
 pub use self::project::*;
 
 mod metadata;
-pub use self::metadata::*;
 
 mod path_name;
 pub use self::path_name::*;
@@ -104,6 +103,9 @@ pub use self::handle::*;
 
 mod resource_handles;
 pub use self::resource_handles::*;
+
+mod utils;
+pub use self::utils::*;
 
 #[cfg(test)]
 pub(crate) mod test_resource;

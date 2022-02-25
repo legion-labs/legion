@@ -308,18 +308,6 @@ async fn build_debug_cubes(
 
             cube_entity
                 .components
-                .push(Box::new(offline_data::RotationComponent {
-                    rotation_speed: match index {
-                        0 => (0.4f32, 0.0f32, 0.0f32).into(),
-                        1 => (0.0f32, 0.4f32, 0.0f32).into(),
-                        2 => (0.0f32, 0.0f32, 0.4f32).into(),
-                        3 => (0.0f32, 0.3f32, 0.0f32).into(),
-                        _ => (0.0f32, 0.0f32, 0.0f32).into(),
-                    },
-                }));
-
-            cube_entity
-                .components
                 .push(Box::new(offline_data::Transform {
                     position: match index {
                         0 => (0.0f32, 0.0f32, 1.0f32).into(),
@@ -469,18 +457,12 @@ async fn load_png_resource(
     project: &mut Project,
     resources: &mut ResourceRegistry,
 ) -> Option<ResourceTypeAndId> {
-    let loaded_png = PngFile::from_file_path(file)?;
-
-    let resource = project
-        .load_resource(resource_id, resources)
-        .unwrap()
-        .typed::<PngFile>();
-
-    let initial_resource = resource.get_mut(resources).unwrap();
-    *initial_resource = loaded_png;
-
+    let reader = fs::read(file).ok()?;
+    let handle = resources
+        .deserialize_resource(PngFile::TYPE, &mut reader.as_slice())
+        .ok()?;
     project
-        .save_resource(resource_id, resource, resources)
+        .save_resource(resource_id, handle, resources)
         .await
         .unwrap();
     Some(resource_id)

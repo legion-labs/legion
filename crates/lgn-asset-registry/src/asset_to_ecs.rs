@@ -107,7 +107,9 @@ impl AssetToECS for runtime_data::Entity {
                 entity.insert(view.clone());
             } else if let Some(light) = component.downcast_ref::<runtime_data::Light>() {
                 entity.insert(light.clone());
-            } else if let Some(physics) = component.downcast_ref::<runtime_data::Physics>() {
+            } else if let Some(physics) =
+                component.downcast_ref::<lgn_physics::runtime::PhysicsRigidActor>()
+            {
                 entity.insert(physics.clone());
             }
         }
@@ -206,7 +208,11 @@ impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {
             texture.width,
             texture.height,
             texture.format,
-            texture.texture_data.clone(),
+            texture // TODO: Avoid cloning in the future
+                .texture_data
+                .iter()
+                .map(|bytebuf| bytebuf.clone().into_vec())
+                .collect::<Vec<_>>(),
         );
 
         entity.insert(texture_component);

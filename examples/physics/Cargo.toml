@@ -1,0 +1,40 @@
+[package]
+name = "physics-rebuild-data"
+version = "0.1.0"
+authors = ["Legion Labs <devs@legionlabs.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+lgn-app = { path = "../../crates/lgn-app", version = "0.1.0" }
+lgn-compiler-runtime-entity = { path = "../../crates/lgn-runtime-entity-compiler" }
+lgn-content-store = { path = "../../crates/lgn-content-store", version = "0.1.0" }
+lgn-data-build = { path = "../../crates/lgn-data-build", version = "0.1.0" }
+lgn-data-compiler = { path = "../../crates/lgn-data-compiler", version = "0.1.0" }
+lgn-data-offline = { path = "../../crates/lgn-data-offline", version = "0.1.0" }
+lgn-data-runtime = { path = "../../crates/lgn-data-runtime", version = "0.1.0" }
+lgn-data-transaction = { path = "../../crates/lgn-data-transaction", version = "0.1.0" }
+lgn-ecs = { path = "../../crates/lgn-ecs", version = "0.1.0" }
+lgn-graphics-data = { path = "../../crates/lgn-graphics-data", version = "0.1.0" }
+lgn-math = { path = "../../crates/lgn-math", version = "0.1.0" }
+lgn-physics = { path = "../../crates/lgn-physics", version = "0.1.0", features = [
+    "offline",
+    "runtime",
+] }
+lgn-telemetry-sink = { path = "../../crates/lgn-telemetry-sink", version = "0.1.0" }
+
+generic-data = { path = "../../tests/generic-data", version = "0.1.0", features = [
+    "offline",
+    "runtime",
+] }
+sample-data = { path = "../../tests/sample-data", version = "0.1.0", features = [
+    "offline",
+    "runtime",
+] }
+
+serde_json = "1.0"
+tokio = { version = "1.13", features = [
+    "macros",
+    "rt-multi-thread",
+    "tracing",
+] }

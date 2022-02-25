@@ -1,0 +1,55 @@
+syntax = "proto3";
+package source_control;
+
+service SourceControl {
+  rpc InitUploadRawFile(InitUploadRawFileRequest) returns (InitUploadRawFileResponse);
+  rpc UploadRawFile(UploadRawFileRequest) returns (stream UploadRawFileResponse);
+  rpc CancelUploadRawFile(CancelUploadRawFileRequest) returns (CancelUploadRawFileResponse);
+}
+
+message InitUploadRawFileRequest {
+  string name = 1;
+  uint64 size = 2;
+}
+
+enum UploadStatus {
+  STARTED = 0;
+  QUEUED = 1;
+  REJECTED = 2;
+  DONE = 3;
+}
+
+message InitUploadRawFileResponse {
+  UploadStatus status = 1;
+  // Not set if status is REJECTED
+  optional string id = 2;
+  // Not set if status is REJECTED
+  optional string name = 3;
+}
+
+message UploadRawFileRequest {
+  string id = 1;
+  bytes content = 2;
+}
+
+message UploadRawFileProgress {
+  string id = 1;
+  UploadStatus status = 2;
+  // Set only if status is STARTED or DONE
+  optional float completion = 3;
+}
+
+message UploadRawFileResponse {
+  oneof response {
+    UploadRawFileProgress progress = 1;
+    string error = 2;
+  }
+}
+
+message CancelUploadRawFileRequest {
+  string id = 1;
+}
+
+message CancelUploadRawFileResponse {
+  bool ok = 1;
+}

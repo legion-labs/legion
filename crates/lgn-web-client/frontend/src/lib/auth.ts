@@ -2,7 +2,6 @@ import userInfo from "../stores/userInfo";
 import { getCookie, setCookie } from "./cookie";
 import log from "./log";
 import getPkce from "oauth-pkce";
-import { invoke } from "@tauri-apps/api";
 
 // https://connect2id.com/products/server/docs/api/token#token-response
 export type ClientTokenSet = {
@@ -86,11 +85,13 @@ export class CookieStorage {
 
   // The refresh token arbitraly last for 1 day by default
   store(
+    // eslint-disable-next-line camelcase
     { access_token, expires_in, refresh_token }: ClientTokenSet,
     refreshTokenExpiresIn = 24 * 60 * 60
   ) {
     setCookie(this.accessTokenName, access_token, expires_in);
 
+    // eslint-disable-next-line camelcase
     if (refresh_token) {
       setCookie(this.refreshTokenName, refresh_token, refreshTokenExpiresIn);
     }
@@ -204,8 +205,11 @@ class Client<UserInfo> {
     }
 
     const body = new URLSearchParams({
+      // eslint-disable-next-line camelcase
       grant_type: "refresh_token",
+      // eslint-disable-next-line camelcase
       client_id: this.clientId,
+      // eslint-disable-next-line camelcase
       refresh_token: refreshToken,
     });
 
@@ -243,9 +247,12 @@ class Client<UserInfo> {
     }
 
     const body = new URLSearchParams({
+      // eslint-disable-next-line camelcase
       grant_type: "authorization_code",
+      // eslint-disable-next-line camelcase
       client_id: this.clientId,
       code,
+      // eslint-disable-next-line camelcase
       redirect_uri: redirectUri,
     });
 
@@ -346,7 +353,7 @@ export type UserInfo = {
 };
 
 export class LegionClient extends Client<UserInfo> {
-  #loginConfig: LoginConfig;
+  loginConfig: LoginConfig;
   #cookieStorage: CookieStorage;
   #authorizeVerifierStorageKey = "authorize-verifier";
 
@@ -358,10 +365,10 @@ export class LegionClient extends Client<UserInfo> {
   ) {
     super(issuerConfiguration, clientId, config);
 
-    this.#loginConfig = loginConfig;
+    this.loginConfig = loginConfig;
     this.#cookieStorage = new CookieStorage({
-      accessTokenName: this.#loginConfig.cookies?.accessToken,
-      refreshTokenName: this.#loginConfig.cookies?.refreshToken,
+      accessTokenName: this.loginConfig.cookies?.accessToken,
+      refreshTokenName: this.loginConfig.cookies?.refreshToken,
     });
   }
 
@@ -375,7 +382,7 @@ export class LegionClient extends Client<UserInfo> {
 
   get redirectUris() {
     return {
-      login: this.#loginConfig.redirectUri || this.config.redirectUri,
+      login: this.loginConfig.redirectUri || this.config.redirectUri,
     };
   }
 
@@ -392,8 +399,8 @@ export class LegionClient extends Client<UserInfo> {
 
     const authorizeUrl = authClient.authorizeUrl({
       responseType: "code",
-      scopes: this.#loginConfig.scopes,
-      extraParams: this.#loginConfig.extraParams,
+      scopes: this.loginConfig.scopes,
+      extraParams: this.loginConfig.extraParams,
       pkceChallenge: challenge,
     });
 
@@ -403,7 +410,7 @@ export class LegionClient extends Client<UserInfo> {
   }
 
   async getClientTokenSet(url: URL | string): Promise<ClientTokenSet | null> {
-    if (window.__TAURI__) {
+    if (window.__TAURI_METADATA__) {
       return null;
     }
 
@@ -441,9 +448,15 @@ export class LegionClient extends Client<UserInfo> {
   }
 
   override async userInfo(): Promise<UserInfo> {
-    const accessToken = window.__TAURI__
-      ? await invoke("plugin:browser|get_access_token")
-      : getCookie(this.#cookieStorage.accessTokenName);
+    let accessToken: string | null = null;
+
+    if (window.__TAURI_METADATA__) {
+      const { invoke } = await import("@tauri-apps/api");
+
+      accessToken = await invoke("plugin:browser|get_access_token");
+    } else {
+      accessToken = getCookie(this.#cookieStorage.accessTokenName);
+    }
 
     if (!accessToken) {
       throw new Error("Access token not found");
@@ -493,12 +506,15 @@ export async function initAuth({
   }
 
   // Tauri has its own way to deal with auth
-  if (window.__TAURI__) {
+  if (window.__TAURI_METADATA__) {
     try {
       await userInfo.run(async () => {
-        const userInfo = (await invoke(
-          "plugin:browser|authenticate"
-        )) as UserInfo;
+        const { invoke } = await import("@tauri-apps/api");
+
+        const userInfo = (await invoke("plugin:browser|authenticate", {
+          scopes: authClient.loginConfig.scopes,
+          extraParams: authClient.loginConfig.extraParams,
+        })) as UserInfo;
 
         log.debug("auth", userInfo);
 

@@ -1,0 +1,8 @@
+{
+  "albedo": "(1a377760c95e361c,b11243e1-009c-4b69-8be7-cd5bef0ed3e8)|648242a8cf00bfee|0659c0b6c23b950d_Albedo",
+  "base_albedo": 1375666431,
+  "metalness": "(1a377760c95e361c,8f3f0937-0965-4292-8d39-f75d4a7de488)|648242a8cf00bfee|0659c0b6c23b950d_Metalness",
+  "normal": "(1a377760c95e361c,2839ea70-c411-4302-8f67-e899fdf27645)|648242a8cf00bfee|0659c0b6c23b950d_Normal",
+  "reflectance": 1.0,
+  "roughness": "(1a377760c95e361c,6e0ca2bd-281a-4185-906c-acaa9897759a)|648242a8cf00bfee|0659c0b6c23b950d_Roughness"
+}

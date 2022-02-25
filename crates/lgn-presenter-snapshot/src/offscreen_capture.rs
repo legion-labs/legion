@@ -149,8 +149,14 @@ impl OffscreenHelper {
         let mut descriptor_set = cgen::descriptor_set::DisplayMapperDescriptorSet::default();
         descriptor_set.set_hdr_image(render_surface.shader_resource_view());
         descriptor_set.set_hdr_sampler(&self.bilinear_sampler);
-        let descriptor_set_handle = render_context.write_descriptor_set(&descriptor_set);
-        cmd_buffer.bind_descriptor_set_handle(descriptor_set_handle);
+        let descriptor_set_handle = render_context.write_descriptor_set(
+            cgen::descriptor_set::DisplayMapperDescriptorSet::descriptor_set_layout(),
+            descriptor_set.descriptor_refs(),
+        );
+        cmd_buffer.bind_descriptor_set(
+            cgen::descriptor_set::DisplayMapperDescriptorSet::descriptor_set_layout(),
+            descriptor_set_handle,
+        );
 
         cmd_buffer.draw(3, 0);
 

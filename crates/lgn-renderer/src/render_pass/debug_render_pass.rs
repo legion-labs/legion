@@ -185,8 +185,14 @@ impl DebugRenderPass {
             .get_pipeline(self.wire_pso_depth_handle)
             .unwrap();
         cmd_buffer.bind_pipeline(wire_pso_depth_pipeline);
-        cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
-        cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
+        cmd_buffer.bind_descriptor_set(
+            render_context.frame_descriptor_set().0,
+            render_context.frame_descriptor_set().1,
+        );
+        cmd_buffer.bind_descriptor_set(
+            render_context.view_descriptor_set().0,
+            render_context.view_descriptor_set().1,
+        );
 
         render_mesh(
             DefaultMeshType::GroundPlane as u32,
@@ -204,8 +210,14 @@ impl DebugRenderPass {
         picked_meshes: &[(&VisualComponent, &GlobalTransform)],
         mesh_manager: &MeshManager,
     ) {
-        cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
-        cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
+        cmd_buffer.bind_descriptor_set(
+            render_context.frame_descriptor_set().0,
+            render_context.frame_descriptor_set().1,
+        );
+        cmd_buffer.bind_descriptor_set(
+            render_context.view_descriptor_set().0,
+            render_context.view_descriptor_set().1,
+        );
 
         let wire_pso_depth_pipeline = render_context
             .pipeline_manager()
@@ -239,7 +251,7 @@ impl DebugRenderPass {
         &self,
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
-        debug_display: &mut DebugDisplay,
+        debug_display: &DebugDisplay,
         mesh_manager: &MeshManager,
     ) {
         let pipeline = render_context
@@ -247,8 +259,14 @@ impl DebugRenderPass {
             .get_pipeline(self.wire_pso_depth_handle)
             .unwrap();
         cmd_buffer.bind_pipeline(pipeline);
-        cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
-        cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
+        cmd_buffer.bind_descriptor_set(
+            render_context.frame_descriptor_set().0,
+            render_context.frame_descriptor_set().1,
+        );
+        cmd_buffer.bind_descriptor_set(
+            render_context.view_descriptor_set().0,
+            render_context.view_descriptor_set().1,
+        );
 
         debug_display.render_primitives(|primitive| {
             let mesh_id = match primitive.primitive_type {
@@ -308,8 +326,14 @@ impl DebugRenderPass {
                     .get_pipeline(self.solid_pso_nodepth_handle)
                     .unwrap();
                 cmd_buffer.bind_pipeline(pipeline);
-                cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
-                cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
+                cmd_buffer.bind_descriptor_set(
+                    render_context.frame_descriptor_set().0,
+                    render_context.frame_descriptor_set().1,
+                );
+                cmd_buffer.bind_descriptor_set(
+                    render_context.view_descriptor_set().0,
+                    render_context.view_descriptor_set().1,
+                );
 
                 render_mesh(
                     static_mesh.mesh_id as u32,
@@ -332,7 +356,7 @@ impl DebugRenderPass {
         manipulator_meshes: &[(&VisualComponent, &GlobalTransform, &ManipulatorComponent)],
         camera: &CameraComponent,
         mesh_manager: &MeshManager,
-        debug_display: &mut DebugDisplay,
+        debug_display: &DebugDisplay,
     ) {
         cmd_buffer.begin_render_pass(
             &[ColorRenderTargetBinding {

@@ -14,7 +14,7 @@ body {
 
 /* Customize scrollbar on Chrome, Safari, Edge */
 *::-webkit-scrollbar {
-  @apply w-3;
+  @apply w-2.5;
 }
 
 *::-webkit-scrollbar-track {

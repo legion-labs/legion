@@ -9,7 +9,7 @@ use crate::{
     egui::egui_plugin::Egui,
     lighting::LightingManager,
     resources::{DefaultMeshType, UniformGPUDataUpdater},
-    Renderer,
+    Renderer, UP_VECTOR,
 };
 
 pub enum LightType {
@@ -31,7 +31,7 @@ impl Default for LightComponent {
     fn default() -> Self {
         Self {
             light_type: LightType::Omnidirectional,
-            color: Vec3::new(1.0, 1.0, 1.0),
+            color: Vec3::ONE,
             radiance: 40.0,
             enabled: true,
             picking_id: 0,
@@ -133,8 +133,7 @@ pub(crate) fn debug_display_lights(
                         builder.add_mesh(
                             Transform::identity()
                                 .with_translation(
-                                    transform.translation
-                                        - transform.rotation.mul_vec3(Vec3::new(0.0, 1.0, 0.0)), // assumes cone height to be 1.0
+                                    transform.translation - transform.rotation.mul_vec3(Vec3::Y), // assumes cone height to be 1.0
                                 )
                                 .with_scale(Vec3::new(factor, 1.0, factor))
                                 .with_rotation(transform.rotation)
@@ -173,7 +172,7 @@ pub(crate) fn update_lights(
         }
         match light.light_type {
             LightType::Directional => {
-                let direction = transform.rotation.mul_vec3(Vec3::Y);
+                let direction = transform.rotation.mul_vec3(UP_VECTOR);
                 let mut dir_light = DirectionalLight::default();
                 dir_light.set_dir(direction.into());
                 dir_light.set_color(light.color.into());
@@ -188,7 +187,7 @@ pub(crate) fn update_lights(
                 omnidirectional_lights_data.push(omni_light);
             }
             LightType::Spotlight { cone_angle } => {
-                let direction = transform.rotation.mul_vec3(Vec3::Y);
+                let direction = transform.rotation.mul_vec3(UP_VECTOR);
                 let mut spotlight = SpotLight::default();
                 spotlight.set_dir(direction.into());
                 spotlight.set_color(light.color.into());

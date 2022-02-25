@@ -1,0 +1,71 @@
+name: Build Env Schedule Test
+
+on:
+  schedule:
+    # Run the job every 3 hours
+    - cron: "0 */12 * * *"
+  workflow_dispatch:
+
+jobs:
+  update_ecr_password:
+    name: Fetching the ECR password
+    runs-on: [self-hosted, linux, common, build]
+    steps:
+      - run: npm install tweetsodium
+      - name: Test nodejs in our runners
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.ECR_GH_ACCESS_TOKEN }}
+          script: |
+            const sodium = require('tweetsodium');
+
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
+
+            const options = {};
+            options.silent = true;
+            const ecr_login = await exec.getExecOutput('aws', ['ecr', 'get-login-password', '--region', 'ca-central-1'], options);
+
+            const pub_key = await github.rest.actions.getRepoPublicKey({
+                owner,
+                repo,
+            });
+            const key = pub_key.data.key;
+            const key_id = pub_key.data.key_id;
+            const value = ecr_login.stdout;
+
+            // Convert the message and key to Uint8Array's (Buffer implements that interface)
+            const message_bytes = Buffer.from(value);
+            const key_bytes = Buffer.from(key, 'base64');
+
+            // Encrypt using LibSodium.
+            const encrypted_bytes = sodium.seal(message_bytes, key_bytes);
+
+            // Base64 the encrypted secret
+            const encrypted_value = Buffer.from(encrypted_bytes).toString('base64');
+            const secret_name = 'ECR_PASSWORD';
+            await github.rest.actions.createOrUpdateRepoSecret({
+                owner,
+                repo,
+                secret_name,
+                encrypted_value,
+                key_id,
+            })
+
+  test_ecr_password:
+    name: Testing the ECR password
+    runs-on: [self-hosted, linux, common, build]
+    container:
+      image: 550877636976.dkr.ecr.ca-central-1.amazonaws.com/legion-labs/legion/telemetry-ingestion-srv:0.1.0
+      credentials:
+        username: AWS
+        password: ${{ secrets.ECR_PASSWORD}}
+    steps:
+      - run: echo "Inside a container pulled from ECR \o/"
+
+  build_build_env:
+    name: Building env container
+    runs-on: [self-hosted, linux, common, build]
+    steps:
+      - name: Build
+        if: ${{ false }}
+        run: ./build/env/setup.sh

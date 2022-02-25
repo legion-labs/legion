@@ -7,7 +7,7 @@ use std::{
 
 use lgn_content_store::{Checksum, ContentStore};
 use lgn_data_offline::{
-    resource::{Project, ResourceHash, Tree},
+    resource::{Project, Tree},
     ResourcePathId,
 };
 use lgn_data_runtime::{ResourceId, ResourceTypeAndId};
@@ -25,7 +25,7 @@ struct ResourceInfo {
     id: ResourcePathId,
     dependencies: Vec<ResourcePathId>,
     // hash of the content of this resource, None for derived resources.
-    resource_hash: Option<ResourceHash>,
+    resource_hash: Option<Checksum>,
 }
 
 impl ResourceInfo {
@@ -83,8 +83,8 @@ impl SourceContent {
     /// * `id` resource's content.
     /// * content of all `id`'s dependencies.
     /// todo: at one point dependency filtering here will be useful.
-    pub(crate) fn compute_source_hash(&self, id: ResourcePathId) -> ResourceHash {
-        let sorted_unique_resource_hashes: Vec<ResourceHash> = {
+    pub(crate) fn compute_source_hash(&self, id: ResourcePathId) -> u64 {
+        let sorted_unique_resource_hashes: Vec<Checksum> = {
             let mut unique_resources = HashMap::new();
             let mut queue: VecDeque<_> = VecDeque::new();
 
@@ -112,7 +112,7 @@ impl SourceContent {
                 }
             }
 
-            let mut hashes: Vec<ResourceHash> =
+            let mut hashes: Vec<Checksum> =
                 unique_resources.into_iter().filter_map(|t| t.1).collect();
             hashes.sort_unstable();
             hashes
@@ -122,13 +122,13 @@ impl SourceContent {
         for h in sorted_unique_resource_hashes {
             h.hash(&mut hasher);
         }
-        hasher.finish().into()
+        hasher.finish()
     }
 
     pub(crate) fn update_resource(
         &mut self,
         id: ResourcePathId,
-        resource_hash: Option<ResourceHash>,
+        resource_hash: Option<Checksum>,
         mut deps: Vec<ResourcePathId>,
     ) -> bool {
         self.record_pathid(&id);
@@ -279,7 +279,8 @@ impl SourceIndex {
     ) -> Result<(SourceContent, Vec<(Checksum, Vec<u8>)>), Error> {
         // NOTE: for now, we take only half of the source-control directory checksum as
         // the content store implementation uses 128bit integer.
-        let dir_checksum = Checksum::from_str(&directory.id()[..32]).unwrap();
+        let dir_checksum = Checksum::from_str(&directory.id()[..64])
+            .unwrap_or_else(|e| panic!("failed to read from '{}' with {}", directory.id(), e));
 
         if let Some(cached_data) = self.content_store.read(dir_checksum) {
             let source_index = SourceContent::read(&cached_data)?;
@@ -292,24 +293,28 @@ impl SourceIndex {
                         .any(|(_, tree)| matches!(tree, Tree::Directory { .. }));
 
                     if is_leaf {
-                        // calculate SourceContent and return.
                         let mut content = SourceContent::new(version);
 
-                        let resource_paths = children
+                        let resource_infos = children
                             .into_iter()
                             .filter_map(|(_, tree)| match tree {
                                 Tree::Directory { .. } => None,
-                                Tree::File { name, .. } => Some(PathBuf::from(&name)),
+                                Tree::File { name, info } => {
+                                    Some((PathBuf::from(&name), info.hash))
+                                }
                             })
-                            .filter(|path| path.extension().is_none());
+                            .filter(|(path, _)| path.extension().is_none());
 
-                        let resource_list = resource_paths.map(|p| {
-                            ResourceId::from_str(p.file_stem().unwrap().to_str().unwrap()).unwrap()
+                        let resource_list = resource_infos.map(|(path, hash)| {
+                            (
+                                ResourceId::from_str(path.file_stem().unwrap().to_str().unwrap())
+                                    .unwrap(),
+                                Checksum::from_str(&hash).unwrap(),
+                            )
                         });
 
-                        for resource_id in resource_list {
-                            let (kind, resource_hash, resource_deps) =
-                                project.resource_info(resource_id)?;
+                        for (resource_id, resource_hash) in resource_list {
+                            let (kind, resource_deps) = project.resource_info(resource_id)?;
 
                             content.update_resource(
                                 ResourcePathId::from(ResourceTypeAndId {
@@ -416,7 +421,7 @@ mod tests {
             let intermediate_deps = vec![source_resource.clone()];
             let output_deps = vec![intermediate_resource.clone()];
 
-            let resource_hash = Some(0.into()); // this is irrelevant to the test
+            let resource_hash = Some([0u8; 32].into()); // this is irrelevant to the test
 
             source_index.update_resource(
                 intermediate_resource.clone(),
@@ -468,7 +473,7 @@ mod tests {
         let intermediate_deps = vec![source_resource.clone()];
         let output_deps = vec![intermediate_resource.clone()];
 
-        let resource_hash = Some(0.into()); // this is irrelevant to the test
+        let resource_hash = Some([0u8; 32].into()); // this is irrelevant to the test
 
         source_index.update_resource(
             intermediate_resource.clone(),

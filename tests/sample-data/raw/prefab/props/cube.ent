@@ -7,7 +7,6 @@
             position: (0, 0, 0),
             rotation: (0, 0, 0, 1),
             scale: (1, 1, 1),
-            apply_to_children: true,
         )),
         Visual((
             renderable_geometry: "offline_mesh(raw/prefab/props/cube.obj)",
@@ -18,10 +17,6 @@
         )),
         StaticMesh((
             mesh_id: 1,
-        )),
-        Physics((
-            dynamic: false,
-            collision_geometry: "offline_mesh(raw/prefab/props/cube.obj)",
         )),
     ],
 )

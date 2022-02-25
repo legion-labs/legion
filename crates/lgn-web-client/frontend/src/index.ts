@@ -1,10 +1,12 @@
-import { initAuth, InitAuthStatus, LoginConfig } from "./lib/auth";
+import { authClient, initAuth, InitAuthStatus, LoginConfig } from "./lib/auth";
 import log, { Level as LogLevel } from "./lib/log";
 import userInfo from "./stores/userInfo";
 import { SvelteComponentTyped } from "svelte";
+import { grpc } from "@improbable-eng/grpc-web";
 
 export class AppComponent extends SvelteComponentTyped<{
   initAuthStatus: InitAuthStatus | null;
+  grpcMetadata: grpc.Metadata | null;
 }> {}
 
 export type AuthUserConfig = {
@@ -21,6 +23,11 @@ export type AuthUserConfig = {
    * [ignored](window.history.replaceState) for now.
    */
   redirectionTitle: string;
+  /**
+   * When set to `true` a new `grpcMetadata` prop is injected in the App component.
+   * It can be used to access an API that requires auth.
+   */
+  grpc?: boolean;
 };
 
 /**
@@ -60,11 +67,12 @@ export type Config = {
  * Run a Legion client.
  * _Must be called at the beginning of any application that uses this library._
  *
- * If the `forceAuth` option is `true` the unauthenticated users
- * will be redirected to Cognito.
- *
  * This function will inject the following props into the provided `appComponent`:
- * - `initAuthStatus`: can contain an `authorizationUrl` if auth failed. This url must be used to redirect the user.
+ * - `initAuthStatus`: can contain an `authorizationUrl` if auth failed.
+ *     This url must be used to redirect the user.
+ *     This has value `null` if `auth` config is not set.
+ * - `grpcMetadata`: contains a grpc `Metadata` object ready for auth.
+ *     This has value `null` if `auth` config is not set.
  */
 export async function run({
   appComponent: AppComponent,
@@ -95,6 +103,8 @@ export async function run({
 
   let initAuthStatus: InitAuthStatus | null = null;
 
+  let grpcMetadata: grpc.Metadata | null = null;
+
   if (authConfig) {
     const { clientId, issuerUrl, redirectUri, login } = authConfig;
 
@@ -104,10 +114,26 @@ export async function run({
       redirectUri,
       loginConfig: login,
     });
+
+    if (authConfig.grpc) {
+      const metadata = new grpc.Metadata();
+
+      const token = authClient.accessToken;
+
+      if (!token) {
+        log.warn(
+          "Couldn't build the grpc metadata object with auth, access token was not found"
+        );
+      }
+
+      metadata.set("Authorization", `Bearer ${token}`);
+
+      grpcMetadata = metadata;
+    }
   }
 
   try {
-    new AppComponent({ target, props: { initAuthStatus } });
+    new AppComponent({ target, props: { grpcMetadata, initAuthStatus } });
   } catch (error) {
     log.error(error);
 

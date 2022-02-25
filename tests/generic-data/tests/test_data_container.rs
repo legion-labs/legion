@@ -14,7 +14,7 @@ use lgn_math::prelude::*;
 fn test_default_implementation() {
     let entity = TestEntity::default();
     assert_eq!(entity.test_string.as_str(), "string literal");
-    assert_eq!(entity.test_position, Vec3::new(0.0, 0.0, 0.0));
+    assert_eq!(entity.test_position, Vec3::ZERO);
     assert_eq!(entity.test_rotation, Quat::IDENTITY);
     assert!(!entity.test_bool);
     assert!((entity.test_float32 - 32.32f32).abs() < f32::EPSILON);

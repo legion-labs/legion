@@ -15,10 +15,40 @@ macro_rules! assert_read_content {
             .await
             .expect("failed to read content");
 
-        assert_eq!(
-            $expected_content,
-            String::from_utf8(content).expect("failed to parse content")
-        );
+        assert_eq!(content, $expected_content);
+    }};
+}
+
+macro_rules! assert_read_contents {
+    ($provider:expr, $ids:expr, $expected_contents:expr) => {{
+        let contents = $provider
+            .read_contents($ids)
+            .await
+            .expect("failed to read contents");
+
+        assert_eq!(contents.len(), $expected_contents.len());
+
+        for (i, content) in contents.iter().enumerate() {
+            let expected_content = &$expected_contents[i];
+
+            match (content, expected_content) {
+                (Ok(content), Ok(expected_content)) => assert_eq!(content, expected_content),
+                (Err(err), Err(expected_err)) => match (err, expected_err) {
+                    (Error::NotFound { .. }, Error::NotFound { .. }) => {}
+                    (err, expected_err) => {
+                        panic!("unexpected errors: {:?} & {:?}", err, expected_err)
+                    }
+                },
+                (Ok(_), Err(_)) => panic!(
+                    "content was found with the specified identifier `{}`",
+                    $ids[i]
+                ),
+                (Err(_), Ok(_)) => panic!(
+                    "content was not found with the specified identifier `{}`",
+                    $ids[i]
+                ),
+            };
+        }
     }};
 }
 
@@ -26,10 +56,27 @@ macro_rules! assert_write_content {
     ($provider:expr, $content:expr) => {{
         #[allow(clippy::string_lit_as_bytes)]
         $provider
-            .write_content($content.as_bytes())
+            .write_content($content)
             .await
             .expect("failed to write content")
     }};
 }
 
-pub(crate) use {assert_content_not_found, assert_read_content, assert_write_content};
+macro_rules! assert_write_avoided {
+    ($provider:expr, $id:expr) => {{
+        #[allow(clippy::string_lit_as_bytes)]
+        match $provider.get_content_writer($id).await {
+            Ok(_) => panic!(
+                "content was written with the specified identifier `{}`",
+                $id
+            ),
+            Err(Error::AlreadyExists {}) => {}
+            Err(err) => panic!("unexpected error: {}", err),
+        }
+    }};
+}
+
+pub(crate) use {
+    assert_content_not_found, assert_read_content, assert_read_contents, assert_write_avoided,
+    assert_write_content,
+};

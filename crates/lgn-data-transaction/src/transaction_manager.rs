@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 use lgn_data_offline::resource::{
     Project, ResourceHandles, ResourcePathName, ResourceRegistry, ResourceRegistryError,
@@ -19,11 +19,11 @@ pub enum Error {
     #[error("No commit transaction available")]
     NoCommittedTransaction,
 
-    ///Resource failed to deserializer from memory
+    /// Resource failed to deserializer from memory
     #[error("ResourceId '{0}' failed to deserialize")]
     InvalidResourceDeserialization(ResourceTypeAndId, ResourceRegistryError),
 
-    ///Resource failed to deserializer from memory
+    /// Resource failed to deserializer from memory
     #[error("ResourceId '{0}' failed to serialize")]
     InvalidResourceSerialization(ResourceTypeAndId, ResourceRegistryError),
 
@@ -74,6 +74,10 @@ pub enum Error {
     /// Reflection Error fallack
     #[error("DataBuild failed fro Resource '{0}': {1}")]
     Databuild(ResourceTypeAndId, lgn_data_build::Error),
+
+    /// External file loading Error
+    #[error("Provided file path '{0}' couldn't be opened")]
+    InvalidFilePath(PathBuf),
 }
 
 /// System that manage the current state of the Loaded Offline Data
@@ -138,7 +142,7 @@ impl TransactionManager {
         let png_type = ResourceType::new(b"png");
 
         for resource_id in project.resource_list().await {
-            let (kind, _, _) = project.resource_info(resource_id).unwrap();
+            let kind = project.resource_type(resource_id).unwrap();
             let type_id = ResourceTypeAndId {
                 kind,
                 id: resource_id,

@@ -166,16 +166,12 @@ async fn create_offline_data(
         let entity = handle
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
-        entity.components.push(Box::new(sample_data::offline::Name {
-            name: "Ground".to_string(),
-        }));
         entity
             .components
             .push(Box::new(sample_data::offline::Transform {
-                position: (0_f32, 0_f32, -0.1_f32).into(),
-                rotation: Quat::default(),
+                position: (0_f32, 0_f32, 0.1_f32).into(),
+                rotation: Quat::IDENTITY,
                 scale: (12_f32, 8_f32, 0.01_f32).into(),
-                apply_to_children: false,
             }));
         entity
             .components
@@ -187,7 +183,7 @@ async fn create_offline_data(
 
         project
             .add_resource_with_id(
-                "/scene/Ground".into(),
+                "/scene/ground.ent".into(),
                 sample_data::offline::Entity::TYPENAME,
                 id.kind,
                 id.id,
@@ -212,8 +208,10 @@ const MOUSE_DELTA_SCALE = 200.0;
 
 pub fn update(entity, events) {
     let delta_x = events.mouse_motion.x / MOUSE_DELTA_SCALE;
-    entity.transform.translation.y += delta_x;
-    entity.transform.translation.clamp_y(-2.0, 2.0);
+    if let Some(transform) = entity.transform {
+        transform.translation.y += delta_x;
+        transform.translation.clamp_y(-2.0, 2.0);
+    }
 }"#,
     )
     .await;
@@ -235,9 +233,8 @@ pub fn update(entity, events) {
             .components
             .push(Box::new(sample_data::offline::Transform {
                 position: (-2.4_f32, 0_f32, 0_f32).into(),
-                rotation: Quat::default(),
+                rotation: Quat::IDENTITY,
                 scale: (0.4_f32, 2_f32, 0.4_f32).into(),
-                apply_to_children: false,
             }));
         entity
             .components
@@ -258,7 +255,7 @@ pub fn update(entity, events) {
 
         project
             .add_resource_with_id(
-                "/scene/Pad Right".into(),
+                "/scene/pad-right.ent".into(),
                 sample_data::offline::Entity::TYPENAME,
                 id.kind,
                 id.id,
@@ -283,8 +280,10 @@ const MOUSE_DELTA_SCALE = 200.0;
 
 pub fn update(entity, events) {
     let delta_x = events.mouse_motion.x / MOUSE_DELTA_SCALE;
-    entity.transform.translation.y -= delta_x;
-    entity.transform.translation.clamp_y(-2.0, 2.0);
+    if let Some(transform) = entity.transform {
+        transform.translation.y -= delta_x;
+        transform.translation.clamp_y(-2.0, 2.0);
+    }
 }"#,
     )
     .await;
@@ -306,9 +305,8 @@ pub fn update(entity, events) {
             .components
             .push(Box::new(sample_data::offline::Transform {
                 position: (2.4_f32, 0_f32, 0_f32).into(),
-                rotation: Quat::default(),
+                rotation: Quat::IDENTITY,
                 scale: (0.4_f32, 2_f32, 0.4_f32).into(),
-                apply_to_children: false,
             }));
         entity
             .components
@@ -329,7 +327,7 @@ pub fn update(entity, events) {
 
         project
             .add_resource_with_id(
-                "/scene/Pad Left".into(),
+                "/scene/pad-left.ent".into(),
                 sample_data::offline::Entity::TYPENAME,
                 id.kind,
                 id.id,
@@ -374,7 +372,8 @@ pub fn update(entity, last_result, entities) {
         last_result
     };
 
-    let position = entity.transform.translation;
+    let transform = entity.transform.unwrap();
+    let position = transform.translation;
 
     if position.x < -3.0 || position.x > 3.0 {
         ball_direction.x = -ball_direction.x;
@@ -389,11 +388,15 @@ pub fn update(entity, last_result, entities) {
     // update paddles
     let left_paddle = 0.0;
     if let Some(entity) = entities["Pad Left"] {
-        left_paddle = entity.transform.translation.y;
+        if let Some(transform) = entity.transform {
+            left_paddle = transform.translation.y;
+        }
     }
     let right_paddle = 0.0;
     if let Some(entity) = entities["Pad Right"] {
-        right_paddle = entity.transform.translation.y;
+        if let Some(transform) = entity.transform {
+            right_paddle = transform.translation.y;
+        }
     }
 
     // check for collision with paddles (dimensions = 0.2 x 1.0 x 0.2)
@@ -487,10 +490,9 @@ pub fn update(entity, last_result, entities) {
         entity
             .components
             .push(Box::new(sample_data::offline::Transform {
-                position: Vec3::default(),
-                rotation: Quat::default(),
+                position: Vec3::ZERO,
+                rotation: Quat::IDENTITY,
                 scale: (0.4_f32, 0.4_f32, 0.4_f32).into(),
-                apply_to_children: false,
             }));
         entity
             .components
@@ -515,7 +517,7 @@ pub fn update(entity, last_result, entities) {
 
         project
             .add_resource_with_id(
-                "/scene/Ball".into(),
+                "/scene/ball.ent".into(),
                 sample_data::offline::Entity::TYPENAME,
                 id.kind,
                 id.id,
@@ -529,16 +531,6 @@ pub fn update(entity, last_result, entities) {
     };
 
     // scene
-    let scene_script = build_script(
-        project,
-        resource_registry,
-        "f7e3757c-22b1-44af-a8d3-5ae080c4fef1",
-        ScriptType::Rune,
-        "/scene/scene_script",
-        r#"pub fn update() {}"#,
-    )
-    .await;
-
     let scene_id = {
         let mut resources = resource_registry.lock().await;
         let id = ResourceTypeAndId {
@@ -551,14 +543,14 @@ pub fn update(entity, last_result, entities) {
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
 
-        let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
-            script_type: ScriptType::Rune,
-            input_values: vec![],
-            entry_fn: "update".to_string(),
-            script_id: Some(scene_script),
-            temp_script: "".to_string(),
-        });
-        entity.components.push(script_component);
+        // move back scene, and scale down
+        entity
+            .components
+            .push(Box::new(sample_data::offline::Transform {
+                position: (0_f32, 0_f32, 4_f32).into(),
+                rotation: Quat::IDENTITY,
+                scale: (0.5_f32, 0.5_f32, 0.5_f32).into(),
+            }));
 
         entity.children.push(ground_path_id);
         entity.children.push(pad_right_path_id);

@@ -68,4 +68,34 @@ impl TypeDefinition {
             TypeDefinition::None => "None",
         }
     }
+
+    /// Return the name of the type
+    pub fn serialize_default(
+        &self,
+        serializer: &mut dyn ::erased_serde::Serializer,
+    ) -> Result<(), crate::ReflectionError> {
+        match *self {
+            TypeDefinition::Array(array_descriptor) => {
+                (array_descriptor.base_descriptor.serialize_new_instance)(serializer)
+            }
+            TypeDefinition::Struct(struct_descriptor) => {
+                (struct_descriptor.base_descriptor.serialize_new_instance)(serializer)
+            }
+            TypeDefinition::Primitive(primitive_descriptor) => {
+                (primitive_descriptor.base_descriptor.serialize_new_instance)(serializer)
+            }
+            TypeDefinition::Option(option_descriptor) => {
+                (option_descriptor.base_descriptor.serialize_new_instance)(serializer)
+            }
+            TypeDefinition::BoxDyn(box_dyn_descriptor) => {
+                (box_dyn_descriptor.base_descriptor.serialize_new_instance)(serializer)
+            }
+            TypeDefinition::Enum(enum_descriptor) => {
+                (enum_descriptor.base_descriptor.serialize_new_instance)(serializer)
+            }
+            TypeDefinition::None => {
+                Err(crate::ReflectionError::InvalidTypeDescriptor("None".into()))
+            }
+        }
+    }
 }

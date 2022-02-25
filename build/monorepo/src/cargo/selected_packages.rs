@@ -325,7 +325,7 @@ impl<'a> SelectedInclude<'a> {
         // TODO
         for name in subsets {
             let workspace = ctx.package_graph()?.workspace();
-            let subsets = &ctx.config().package_sets;
+            let subsets = &ctx.config().package_sets.package_sets;
 
             let name = name.as_ref();
             let subset = subsets.get(name).ok_or_else(|| {

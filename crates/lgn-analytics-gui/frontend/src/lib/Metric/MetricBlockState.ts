@@ -46,12 +46,40 @@ export class MetricBlockState {
 
   *getPoints(min: number, max: number, lod: number) {
     const data = this.data.get(Math.max(lod, Math.min(...this.data.keys())));
-    if (data) {
-      for (let point of data) {
-        if (point.time >= min && point.time <= max) {
-          yield point;
-        }
+    if (!data) {
+      return;
+    }
+
+    const points = [];
+    for (const point of data) {
+      if (point.time >= min && point.time <= max) {
+        points.push(point);
       }
+    }
+
+    if (points.length > 0) {
+      const boundaryInPoint = data[data.indexOf(points[0]) - 1];
+      if (boundaryInPoint && !points.includes(boundaryInPoint)) {
+        points.unshift(boundaryInPoint);
+      }
+      const boundaryOutPoint =
+        data[data.indexOf(points[points.length - 1]) + 1];
+      if (boundaryOutPoint && !points.includes(boundaryOutPoint)) {
+        points.push(boundaryOutPoint);
+      }
+    } else {
+      const nextMinPoint = data.filter((p) => p.time <= min)[0];
+      if (nextMinPoint && !points.includes(nextMinPoint)) {
+        points.push(nextMinPoint);
+      }
+      const nextMaxPoint = data.filter((p) => p.time >= max)[0];
+      if (nextMaxPoint && !points.includes(nextMaxPoint)) {
+        points.push(nextMaxPoint);
+      }
+    }
+
+    for (const p of points) {
+      yield p;
     }
   }
 }

@@ -44,7 +44,7 @@ impl Cargo {
             let result = apply_sccache_if_possible(
                 ctx.workspace_root(),
                 ctx.installer(),
-                &ctx.config().cargo.sccache,
+                &ctx.config().sccache.sccache,
             );
             match result {
                 Ok(env) => env
@@ -69,7 +69,7 @@ impl Cargo {
             IndexMap::new()
         };
         let on_drop = if !skip_sccache
-            && sccache_should_run(ctx.workspace_root(), &ctx.config().cargo.sccache, false)
+            && sccache_should_run(ctx.workspace_root(), &ctx.config().sccache.sccache, false)
         {
             || {
                 log_sccache_stats();

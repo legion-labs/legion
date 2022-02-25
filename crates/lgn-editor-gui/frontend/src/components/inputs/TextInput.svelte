@@ -1,6 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from "svelte";
 
+  type Range = readonly [number, number];
+
   // Type are not preserved when using the `on:input` shortcut
   // so we must use dispatch and explicitely type it
   const dispatch = createEventDispatcher<{
@@ -18,7 +20,12 @@
 
   export let autoFocus = false;
 
-  export let autoSelect = false;
+  /**
+   * Auto select the input content on focus,
+   * if `true` the whole text is selected,
+   * a Range can be provided if you need more control
+   */
+  export let autoSelect: boolean | Range = false;
 
   export let disabled = false;
 
@@ -33,8 +40,16 @@
   });
 
   function onFocus() {
-    if (autoSelect && input) {
+    if (!input || !autoSelect) {
+      return;
+    }
+
+    if (typeof autoSelect === "boolean") {
       input.select();
+    } else {
+      const [from, to] = autoSelect;
+
+      input.setSelectionRange(from, to);
     }
   }
 

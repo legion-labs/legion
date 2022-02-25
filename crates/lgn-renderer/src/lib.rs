@@ -33,8 +33,9 @@ pub use render_context::*;
 
 pub mod resources;
 use resources::{
-    BindlessTextureManager, GpuDataPlugin, GpuEntityColorManager, GpuEntityTransformManager,
-    GpuMaterialManager, GpuPickingDataManager, PipelineManager,
+    BindlessTextureManager, DescriptorHeapManager, GpuDataPlugin, GpuEntityColorManager,
+    GpuEntityTransformManager, GpuMaterialManager, GpuPickingDataManager,
+    PersistentDescriptorSetManager, PipelineManager,
 };
 
 pub mod components;
@@ -68,6 +69,7 @@ use crate::{
 use lgn_app::{App, CoreStage, Events, Plugin};
 
 use lgn_ecs::prelude::*;
+use lgn_math::{const_vec3, Vec3};
 use lgn_tracing::span_fn;
 use lgn_transform::components::GlobalTransform;
 use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
@@ -82,6 +84,9 @@ use crate::{
     },
     labels::CommandBufferLabel,
 };
+
+pub const UP_VECTOR: Vec3 = Vec3::Y;
+pub const DOWN_VECTOR: Vec3 = const_vec3!([0_f32, -1_f32, 0_f32]);
 
 #[derive(Default)]
 pub struct RendererPlugin {
@@ -102,10 +107,12 @@ impl RendererPlugin {
 
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
-        let renderer = Renderer::new();
+        const NUM_RENDER_FRAMES: usize = 2;
+        let renderer = Renderer::new(NUM_RENDER_FRAMES);
         let device_context = renderer.device_context().clone();
         let static_buffer = renderer.static_buffer().clone();
-
+        let descriptor_heap_manager =
+            DescriptorHeapManager::new(NUM_RENDER_FRAMES, &device_context);
         //
         // Add renderer stages first. It is needed for the plugins.
         //
@@ -133,6 +140,8 @@ impl Plugin for RendererPlugin {
         app.insert_resource(DebugDisplay::default());
         app.insert_resource(LightingManager::default());
         app.insert_resource(GpuInstanceManager::new(&static_buffer));
+        app.insert_resource(descriptor_heap_manager);
+        app.insert_resource(PersistentDescriptorSetManager::new());
         app.add_plugin(EguiPlugin::new());
         app.add_plugin(PickingPlugin {});
         app.add_plugin(GpuDataPlugin::new(&static_buffer));
@@ -180,18 +189,17 @@ impl Plugin for RendererPlugin {
         //
         // Stage: Render
         //
-        app.add_system_set_to_stage(
+        app.add_system_to_stage(
             RenderStage::Render,
-            SystemSet::new()
-                .with_system(render_update)
-                .before(CommandBufferLabel::Submit)
-                .label(CommandBufferLabel::Generate),
+            render_begin.exclusive_system().at_start(),
         );
 
         app.add_system_to_stage(
             RenderStage::Render,
-            render_post_update.label(CommandBufferLabel::Submit),
+            render_update.label(CommandBufferLabel::Generate),
         );
+
+        app.add_system_to_stage(RenderStage::Render, render_end.exclusive_system().at_end());
     }
 }
 
@@ -272,10 +280,13 @@ fn init_cgen(
     renderer: Res<'_, Renderer>,
     mut pipeline_manager: ResMut<'_, PipelineManager>,
     mut cgen_registries: ResMut<'_, CGenRegistryList>,
+    descriptor_heap_manager: Res<'_, DescriptorHeapManager>,
+    mut persistent_descriptor_set_manager: ResMut<'_, PersistentDescriptorSetManager>,
 ) {
     let cgen_registry = Arc::new(cgen::initialize(renderer.device_context()));
     pipeline_manager.register_shader_families(&cgen_registry);
     cgen_registries.push(cgen_registry);
+    persistent_descriptor_set_manager.initialize(&descriptor_heap_manager);
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -288,8 +299,12 @@ fn init_manipulation_manager(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn render_pre_update(mut renderer: ResMut<'_, Renderer>) {
+fn render_pre_update(
+    mut renderer: ResMut<'_, Renderer>,
+    mut descriptor_heap_manager: ResMut<'_, DescriptorHeapManager>,
+) {
     renderer.begin_frame();
+    descriptor_heap_manager.begin_frame();
 }
 
 #[allow(
@@ -373,36 +388,68 @@ fn prepare_shaders(mut pipeline_manager: ResMut<'_, PipelineManager>) {
     clippy::too_many_arguments,
     clippy::type_complexity
 )]
-fn render_update(
-    renderer: ResMut<'_, Renderer>,
-    bindless_textures: ResMut<'_, BindlessTextureManager>,
-    pipeline_manager: Res<'_, PipelineManager>,
-    bump_allocator_pool: ResMut<'_, BumpAllocatorPool>,
-    mesh_manager: ResMut<'_, MeshManager>,
-    picking_manager: ResMut<'_, PickingManager>,
-    instance_manager: Res<'_, GpuInstanceManager>,
-    mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
-    q_drawables: Query<'_, '_, (Entity, &VisualComponent), Without<ManipulatorComponent>>,
-    q_picked_drawables: Query<
-        '_,
-        '_,
-        (&VisualComponent, &GlobalTransform),
-        (With<PickedComponent>, Without<ManipulatorComponent>),
-    >,
-    q_manipulator_drawables: Query<
-        '_,
-        '_,
-        (&VisualComponent, &GlobalTransform, &ManipulatorComponent),
-    >,
-    lighting_manager: Res<'_, LightingManager>,
-    q_lights: Query<'_, '_, (&LightComponent, &GlobalTransform)>,
-    mut egui: ResMut<'_, Egui>,
-    mut debug_display: ResMut<'_, DebugDisplay>,
-    q_cameras: Query<'_, '_, &CameraComponent>,
-) {
-    crate::egui::egui_plugin::end_frame(&mut egui);
+fn render_begin(mut egui_manager: ResMut<'_, Egui>) {
+    crate::egui::egui_plugin::end_frame(&mut egui_manager);
+}
 
-    let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool, &pipeline_manager);
+#[span_fn]
+#[allow(
+    clippy::needless_pass_by_value,
+    clippy::too_many_arguments,
+    clippy::type_complexity
+)]
+fn render_update(
+    resources: (
+        Res<'_, Renderer>,
+        Res<'_, BindlessTextureManager>,
+        Res<'_, PipelineManager>,
+        Res<'_, BumpAllocatorPool>,
+        Res<'_, MeshManager>,
+        Res<'_, PickingManager>,
+        Res<'_, GpuInstanceManager>,
+        Res<'_, Egui>,
+        Res<'_, DebugDisplay>,
+        Res<'_, LightingManager>,
+        Res<'_, DescriptorHeapManager>,
+    ),
+    queries: (
+        Query<'_, '_, &mut RenderSurface>,
+        Query<'_, '_, (Entity, &VisualComponent), Without<ManipulatorComponent>>,
+        Query<
+            '_,
+            '_,
+            (&VisualComponent, &GlobalTransform),
+            (With<PickedComponent>, Without<ManipulatorComponent>),
+        >,
+        Query<'_, '_, (&VisualComponent, &GlobalTransform, &ManipulatorComponent)>,
+        Query<'_, '_, (&LightComponent, &GlobalTransform)>,
+        Query<'_, '_, &CameraComponent>,
+    ),
+) {
+    // resources
+    let renderer = resources.0;
+    let bindless_textures = resources.1;
+    let pipeline_manager = resources.2;
+    // let bump_allocator_pool = resources.3;
+    let mesh_manager = resources.4;
+    let picking_manager = resources.5;
+    let instance_manager = resources.6;
+    let egui = resources.7;
+    let debug_display = resources.8;
+    let lighting_manager = resources.9;
+    let descriptor_heap_manager = resources.10;
+
+    // queries
+    let mut q_render_surfaces = queries.0;
+    let q_drawables = queries.1;
+    let q_picked_drawables = queries.2;
+    let q_manipulator_drawables = queries.3;
+    let q_lights = queries.4;
+    let q_cameras = queries.5;
+
+    // start
+    let mut render_context =
+        RenderContext::new(&renderer, &descriptor_heap_manager, &pipeline_manager);
     let q_drawables = q_drawables
         .iter()
         .collect::<Vec<(Entity, &VisualComponent)>>();
@@ -474,10 +521,15 @@ fn render_update(
         let material_sampler = renderer.device_context().create_sampler(&sampler_def);
         frame_descriptor_set.set_material_sampler(&material_sampler);
 
-        let frame_descriptor_set_handle =
-            render_context.write_descriptor_set(&frame_descriptor_set);
+        let frame_descriptor_set_handle = render_context.write_descriptor_set(
+            cgen::descriptor_set::FrameDescriptorSet::descriptor_set_layout(),
+            frame_descriptor_set.descriptor_refs(),
+        );
 
-        render_context.set_frame_descriptor_set_handle(frame_descriptor_set_handle);
+        render_context.set_frame_descriptor_set(
+            cgen::descriptor_set::FrameDescriptorSet::descriptor_set_layout(),
+            frame_descriptor_set_handle,
+        );
     }
 
     // For each surface/view, we have to execute the render graph
@@ -512,10 +564,15 @@ fn render_update(
             let mut view_descriptor_set = cgen::descriptor_set::ViewDescriptorSet::default();
             view_descriptor_set.set_view_data(&const_buffer_view);
 
-            let view_descriptor_set_handle =
-                render_context.write_descriptor_set(&view_descriptor_set);
+            let view_descriptor_set_handle = render_context.write_descriptor_set(
+                cgen::descriptor_set::ViewDescriptorSet::descriptor_set_layout(),
+                view_descriptor_set.descriptor_refs(),
+            );
 
-            render_context.set_view_descriptor_set_handle(view_descriptor_set_handle);
+            render_context.set_view_descriptor_set(
+                cgen::descriptor_set::ViewDescriptorSet::descriptor_set_layout(),
+                view_descriptor_set_handle,
+            );
         }
 
         let mut cmd_buffer = render_context.alloc_command_buffer();
@@ -556,7 +613,7 @@ fn render_update(
             q_manipulator_drawables.as_slice(),
             camera_component,
             &mesh_manager,
-            debug_display.as_mut(),
+            &debug_display,
         );
 
         let egui_pass = render_surface.egui_renderpass();
@@ -580,11 +637,15 @@ fn render_update(
             render_surface.present(&render_context);
         }
     }
-    debug_display.clear();
-    render_context.release_bump_allocator(&bump_allocator_pool);
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn render_post_update(mut renderer: ResMut<'_, Renderer>) {
+fn render_end(
+    mut renderer: ResMut<'_, Renderer>,
+    mut debug_display: ResMut<'_, DebugDisplay>,
+    mut descriptor_heap_manager: ResMut<'_, DescriptorHeapManager>,
+) {
+    descriptor_heap_manager.end_frame();
+    debug_display.end_frame();
     renderer.end_frame();
 }

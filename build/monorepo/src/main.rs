@@ -17,15 +17,16 @@ mod ci;
 mod clippy;
 mod config;
 mod context;
-mod distrib;
 mod doc;
 mod error;
 mod fix;
 mod fmt;
 mod git;
 mod hakari;
+mod insta;
 mod lint;
 mod npm;
+mod publish;
 mod run;
 mod test;
 mod tools;
@@ -78,6 +79,9 @@ enum Commands {
     /// Run `cargo tests`
     #[clap(name = "test")]
     Test(test::Args),
+    /// Run `cargo insta`
+    #[clap(name = "insta")]
+    Insta(insta::Args),
 
     // Non Cargo commands:
     /// Run CD on the monorepo
@@ -87,8 +91,8 @@ enum Commands {
     #[clap(name = "ci")]
     Ci(ci::Args),
     /// Build a distribution version of executables, docker images, lambda functions, etc.
-    #[clap(name = "dist")]
-    Dist(distrib::Args),
+    #[clap(name = "publish")]
+    Publish(publish::Args),
     /// List packages changed since merge base with the given commit
     ///
     /// Note that this compares against the merge base (common ancestor) of the specified commit.
@@ -136,10 +140,11 @@ fn main() {
         Commands::Fmt(args) => fmt::run(args, &ctx),
         Commands::Run(args) => run::run(&args, &ctx),
         Commands::Test(args) => test::run(args, &ctx),
+        Commands::Insta(args) => insta::run(&args, &ctx),
 
         Commands::Cd(args) => cd::run(&args, &ctx),
         Commands::Ci(args) => ci::run(&args, &ctx),
-        Commands::Dist(args) => distrib::run(&args, &ctx),
+        Commands::Publish(args) => publish::run(&args, &ctx),
         Commands::ChangedSince(args) => changed_since::run(&args, &ctx),
         Commands::Hakari => hakari::run(&ctx),
         Commands::Lint(args) => lint::run(&args, &ctx),

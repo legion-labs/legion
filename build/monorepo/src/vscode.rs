@@ -32,7 +32,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
         .collect();
     bin_packages.sort_by(|a, b| a.name().cmp(b.name()));
 
-    let vscode_config = &ctx.config().vscode;
+    let vscode_config = &ctx.config().editor.vscode;
     let debugger_type = vscode_config.debugger_type.as_str();
 
     for package in vscode_config.overrides.keys() {
@@ -164,6 +164,10 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     let settings_file = ctx.workspace_root().join(".vscode").join("settings.json");
     let settings = json!({
         "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll.eslint": true
+        },
+        "eslint.validate": ["javascript", "typescript", "svelte"],
         "files.eol": "\n",
         "protoc": {
             "options": [

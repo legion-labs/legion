@@ -69,6 +69,10 @@ pub enum ReflectionError {
     #[error("Value not found on ArrayDescriptor '{0}'")]
     InvalidArrayValue(&'static str),
 
+    /// Error when trying to add a Default to an array/Option on type that doesn't support Default::default()
+    #[error("Type {0} does not support default initialization, value must be specify")]
+    UnsupportedDefault(&'static str),
+
     /// Generic error when there's no context
     #[error("'{0}'")]
     Generic(String),
@@ -146,8 +150,8 @@ fn internal_find_property<'a>(
     match type_def {
         TypeDefinition::None => Err(ReflectionError::InvalidTypeDescriptor(path.into())),
         TypeDefinition::BoxDyn(box_dyn_descriptor) => {
-            let sub_type = unsafe { (box_dyn_descriptor.get_inner_type)(base) };
-            let sub_base = unsafe { (box_dyn_descriptor.get_inner)(base) };
+            let sub_type = (box_dyn_descriptor.get_inner_type)(base);
+            let sub_base = (box_dyn_descriptor.get_inner)(base);
             internal_find_property(sub_base, sub_type, path)
         }
 
@@ -175,19 +179,17 @@ fn internal_find_property<'a>(
                                 array_descriptor.base_descriptor.type_name.clone(),
                             )
                         })?;
-                        let element_base =
-                            unsafe { (array_descriptor.get)(base, parsed_index as usize) }?;
+                        let element_base = (array_descriptor.get)(base, parsed_index as usize)?;
                         return internal_find_property(
                             element_base,
                             array_descriptor.inner_type,
                             rest_of_path,
                         );
                     } else if let TypeDefinition::BoxDyn(box_desc) = array_descriptor.inner_type {
-                        let count = unsafe { (array_descriptor.len)(base) };
+                        let count = (array_descriptor.len)(base);
                         for index in 0..count {
-                            let element_base =
-                                unsafe { (array_descriptor.get)(base, index as usize) }?;
-                            let inner_type = unsafe { (box_desc.get_inner_type)(element_base) };
+                            let element_base = (array_descriptor.get)(base, index as usize)?;
+                            let inner_type = (box_desc.get_inner_type)(element_base);
                             if inner_type.get_type_name().to_lowercase()
                                 == index_identifier.to_lowercase()
                             {

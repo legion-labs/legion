@@ -14,7 +14,7 @@ use lgn_data_offline::Transform;
 use lgn_data_offline::{resource::Project, ResourcePathId};
 use lgn_data_runtime::manifest::Manifest;
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions, ResourceTypeAndId};
-use lgn_tracing::span_scope;
+use lgn_tracing::{span_fn, span_scope};
 use lgn_utils::{DefaultHash, DefaultHasher};
 use petgraph::{algo, Graph};
 
@@ -109,14 +109,13 @@ impl DataBuild {
         resource_dir: &Path,
         cas_addr: ContentStoreAddr,
         compilers: &CompilerRegistry,
+        manifest: Option<Manifest>,
     ) -> Result<Arc<AssetRegistry>, Error> {
         let source_store = HddContentStore::open(cas_addr).ok_or(Error::InvalidContentStore)?;
+        let manifest = manifest.unwrap_or_default();
 
         let mut options = AssetRegistryOptions::new()
-            .add_device_cas(
-                Box::new(source_store),
-                lgn_data_runtime::manifest::Manifest::default(),
-            )
+            .add_device_cas(Box::new(source_store), manifest)
             .add_device_dir(resource_dir);
 
         options = compilers.init_all(options);
@@ -142,6 +141,7 @@ impl DataBuild {
                     &project.resource_dir(),
                     config.contentstore_path.clone(),
                     &compilers,
+                    config.manifest,
                 )
             },
             Ok,
@@ -173,6 +173,7 @@ impl DataBuild {
                     &project.resource_dir(),
                     config.contentstore_path.clone(),
                     &compilers,
+                    config.manifest,
                 )
             },
             Ok,
@@ -215,6 +216,7 @@ impl DataBuild {
                     &project.resource_dir(),
                     config.contentstore_path.clone(),
                     &compilers,
+                    config.manifest,
                 )
             },
             Ok,
@@ -306,6 +308,7 @@ impl DataBuild {
     /// or more compilation results.
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
+    #[span_fn]
     fn compile_node(
         output_index: &mut OutputIndex,
         cas_addr: ContentStoreAddr,
@@ -326,8 +329,6 @@ impl DataBuild {
         ),
         Error,
     > {
-        span_scope!("compile_node");
-
         let (resource_infos, resource_references, stats): (
             Vec<CompiledResourceInfo>,
             Vec<CompiledResourceReference>,
@@ -349,7 +350,6 @@ impl DataBuild {
                     .collect::<Vec<_>>(),
                 )
             } else {
-                span_scope!("compiler_compile");
                 let CompilationOutput {
                     compiled_resources,
                     resource_references,
@@ -447,13 +447,13 @@ impl DataBuild {
     /// [`DataBuildOptions`] used to create this `DataBuild`.
     // TODO: The list might contain many versions of the same [`ResourceId`] compiled for many
     // contexts (platform, target, locale, etc).
+    #[span_fn]
     fn compile_path(
         &mut self,
         compile_path: ResourcePathId,
         env: &CompilationEnv,
         manifest: Option<&Manifest>,
     ) -> Result<CompileOutput, Error> {
-        span_scope!("compile_path");
         if self.source_index.current().is_none() {
             return Err(Error::SourceIndex);
         }
@@ -563,7 +563,7 @@ impl DataBuild {
                         // different source_hash depending on the compiler
                         // used as compilers can filter dependencies out.
                         //
-                        source_index.compute_source_hash(compile_node.clone()).get()
+                        source_index.compute_source_hash(compile_node.clone())
                     } else {
                         //
                         // since this is a path-derived resource its hash is equal to the
@@ -668,13 +668,12 @@ impl DataBuild {
     /// include reference (load-time dependency) information
     /// based on provided compilation information.
     /// Currently each resource is linked into a separate *asset file*.
+    #[span_fn]
     fn link(
         &mut self,
         resources: &[CompiledResourceInfo],
         references: &[CompiledResourceReference],
     ) -> Result<Vec<CompiledResource>, Error> {
-        span_scope!("link");
-
         let mut resource_files = Vec::with_capacity(resources.len());
         for resource in resources {
             //

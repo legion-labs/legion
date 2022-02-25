@@ -9,6 +9,7 @@ use super::{
 };
 
 pub type UnsecureValidation<'a> = Validation<'a, NoSignatureValidation>;
+
 /// Provides JWT validation.
 pub struct Validation<'a, SV = NoSignatureValidation> {
     /// A tolerance for the not-before and expiry times.

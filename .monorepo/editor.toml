@@ -1,0 +1,10 @@
+[vscode.debugger-type]
+windows = "cppvsdbg"
+linux = "lldb"
+macos = "lldb"
+
+[vscode.compounds]
+editor-compound = ["editor-client", "editor-srv"]
+
+[vscode.overrides]
+lgn-graphics-sandbox = { args = ["--egui"] }

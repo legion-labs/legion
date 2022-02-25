@@ -96,6 +96,7 @@ fn get_compiled_script(
     }
 }
 
+#[lgn_tracing::span_fn]
 fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
     let resources = context.registry();
 

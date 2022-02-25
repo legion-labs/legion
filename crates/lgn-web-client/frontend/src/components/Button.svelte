@@ -11,58 +11,55 @@
   export let fluid = false;
 </script>
 
-<div
-  class="root"
+<button
+  class="button"
   class:disabled
+  class:w-full={fluid}
   class:notice={variant === "notice" && !disabled}
   class:warning={variant === "warning" && !disabled}
   class:success={variant === "success" && !disabled}
   class:danger={variant === "danger" && !disabled}
   class:default={size === "default" && !disabled}
   class:lg={size === "lg"}
-  class:w-full={fluid}
+  on:click
+  {disabled}
+  {type}><slot /></button
 >
-  <button class="button" on:click {disabled} {type}><slot /></button>
-</div>
 
 <style lang="postcss">
-  .root {
-    @apply flex justify-center items-center rounded-sm cursor-pointer transition-colors font-semibold;
+  .button {
+    @apply flex justify-center h-full w-full px-4 outline-none items-center rounded-sm cursor-pointer transition-all duration-150 font-semibold shadow-sm shadow-gray-700 active:shadow-none;
   }
 
-  .root.disabled {
-    @apply bg-gray-700 cursor-not-allowed;
+  .button.disabled {
+    @apply bg-gray-700 cursor-not-allowed shadow-none;
   }
 
-  .root.disabled :global(*) {
+  .button.disabled :global(*) {
     @apply cursor-not-allowed;
   }
 
-  .root.notice {
+  .button.notice {
     @apply bg-gray-800 hover:bg-opacity-50;
   }
 
-  .root.warning {
+  .button.warning {
     @apply bg-orange-700 hover:bg-orange-800 text-gray-800 hover:text-white;
   }
 
-  .root.success {
+  .button.success {
     @apply bg-green-700 hover:bg-green-800;
   }
 
-  .root.danger {
+  .button.danger {
     @apply bg-red-600 hover:bg-red-800 text-gray-800;
   }
 
-  .root.default {
+  .button.default {
     @apply h-8 text-lg;
   }
 
-  .root.lg {
+  .button.lg {
     @apply h-10 text-xl;
-  }
-
-  .button {
-    @apply w-full h-full px-4 outline-none;
   }
 </style>

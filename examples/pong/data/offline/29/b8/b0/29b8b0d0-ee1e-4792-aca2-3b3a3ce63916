@@ -7,12 +7,23 @@
   ],
   "components": [
     {
-      "ScriptComponent": {
-        "entry_fn": "update",
-        "input_values": [],
-        "script_id": "(45307156cdfef705,f7e3757c-22b1-44af-a8d3-5ae080c4fef1)|17bed132bc803773",
-        "script_type": "Rune",
-        "temp_script": ""
+      "Transform": {
+        "position": [
+          0.0,
+          0.0,
+          4.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          0.5,
+          0.5,
+          0.5
+        ]
       }
     }
   ]

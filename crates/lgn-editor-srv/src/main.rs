@@ -32,6 +32,9 @@ use property_inspector_plugin::PropertyInspectorPlugin;
 mod resource_browser_plugin;
 use resource_browser_plugin::{ResourceBrowserPlugin, ResourceBrowserSettings};
 
+mod source_control_plugin;
+use source_control_plugin::SourceControlPlugin;
+
 #[cfg(test)]
 #[path = "tests/test_resource_browser.rs"]
 mod test_resource_browser;
@@ -132,6 +135,7 @@ fn main() {
     .insert_resource(ResourceBrowserSettings::new(default_scene))
     .add_plugin(ResourceBrowserPlugin::default())
     .add_plugin(PropertyInspectorPlugin::default())
+    .add_plugin(SourceControlPlugin::default())
     .add_plugin(TransformPlugin::default())
     .add_plugin(GenericDataPlugin::default())
     .add_plugin(ScriptingPlugin::default())
@@ -141,6 +145,9 @@ fn main() {
         add_primary_window: false,
         exit_on_close: false,
     });
+
+    // register missing types
+    let _ = lgn_physics::offline::PhysicsRigidActor::get_default_instance();
 
     if let Some(test_name) = args.test {
         match test_name.as_str() {

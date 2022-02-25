@@ -3,9 +3,15 @@
 use crate::{
     backends::{BackendDescriptorHeap, BackendDescriptorHeapPartition, BackendDescriptorSetHandle},
     deferred_drop::Drc,
-    DescriptorRef, DescriptorSetLayout, DescriptorSetLayoutDef, DescriptorSetWriter, DeviceContext,
-    GfxResult, ShaderResourceType,
+    DescriptorRef, DescriptorSetLayout, DescriptorSetLayoutDef, DeviceContext, GfxResult,
+    ShaderResourceType,
 };
+
+pub struct DescriptorSet {
+    pub(crate) _partition: DescriptorHeapPartition,
+    pub(crate) _layout: DescriptorSetLayout,
+    pub(crate) _handle: DescriptorSetHandle,
+}
 
 /// Used to create a `DescriptorHeap`
 #[derive(Default, Clone, Copy)]
@@ -61,21 +67,7 @@ impl DescriptorHeapDef {
 //
 #[derive(Clone, Copy)]
 pub struct DescriptorSetHandle {
-    // minimal set of information to avoid
-    // referencing the descriptor set layout
-    pub layout_uid: u32,
-    pub frequency: u32,
     pub(crate) backend_descriptor_set_handle: BackendDescriptorSetHandle,
-}
-
-//
-// DescriptorSetDataProvider
-//
-
-pub trait DescriptorSetDataProvider {
-    fn layout(&self) -> &'static DescriptorSetLayout;
-    fn frequency(&self) -> u32;
-    fn descriptor_refs(&self, descriptor_index: usize) -> &[DescriptorRef<'_>];
 }
 
 //
@@ -120,20 +112,8 @@ impl DescriptorHeap {
         })
     }
 
-    pub fn alloc_partition(
-        &self,
-        transient: bool,
-        definition: &DescriptorHeapDef,
-    ) -> GfxResult<DescriptorHeapPartition> {
-        // todo(vdbdd): is there enough room inside this heap to allocate this partition
-        DescriptorHeapPartition::new(self.clone(), transient, definition)
-    }
-
-    #[allow(clippy::unused_self)]
-    #[allow(clippy::needless_pass_by_value)]
-    #[allow(clippy::todo)]
-    pub fn free_partition(&self, _partition: DescriptorHeapPartition) {
-        // todo(vdbdd): free
+    pub fn device_context(&self) -> &DeviceContext {
+        &self.inner.device_context
     }
 }
 
@@ -158,28 +138,33 @@ impl Drop for DescriptorHeapPartitionInner {
 // DescriptorHeapPartition
 //
 
+#[derive(Clone)]
 pub struct DescriptorHeapPartition {
-    pub(crate) inner: Box<DescriptorHeapPartitionInner>,
+    pub(crate) inner: Drc<DescriptorHeapPartitionInner>,
 }
 
 impl DescriptorHeapPartition {
-    pub(crate) fn new(
-        heap: DescriptorHeap,
+    pub fn new(
+        heap: &DescriptorHeap,
         transient: bool,
         definition: &DescriptorHeapDef,
     ) -> GfxResult<Self> {
         let platform_descriptor_heap_partition =
             BackendDescriptorHeapPartition::new(&heap.inner.device_context, transient, definition)?;
         Ok(Self {
-            inner: Box::new(DescriptorHeapPartitionInner {
-                heap,
-                transient,
-                backend_descriptor_heap_partition: platform_descriptor_heap_partition,
-            }),
+            inner: heap
+                .device_context()
+                .deferred_dropper()
+                .new_drc(DescriptorHeapPartitionInner {
+                    heap: heap.clone(),
+                    transient,
+                    backend_descriptor_heap_partition: platform_descriptor_heap_partition,
+                }),
         })
     }
 
     pub fn reset(&self) -> GfxResult<()> {
+        assert!(self.inner.transient);
         self.backend_reset()
     }
 
@@ -187,19 +172,17 @@ impl DescriptorHeapPartition {
         self.inner.transient
     }
 
-    pub fn get_writer<'frame>(
-        &self,
-        descriptor_set_layout: &DescriptorSetLayout,
-        bump: &'frame bumpalo::Bump,
-    ) -> GfxResult<DescriptorSetWriter<'frame>> {
-        self.backend_get_writer(descriptor_set_layout, bump)
+    pub fn alloc(&self, layout: &DescriptorSetLayout) -> GfxResult<DescriptorSet> {
+        assert!(!self.inner.transient);
+        self.backend_alloc(layout)
     }
 
-    pub fn write<'frame>(
+    pub fn write(
         &self,
-        descriptor_set: &impl DescriptorSetDataProvider,
-        bump: &'frame bumpalo::Bump,
+        layout: &DescriptorSetLayout,
+        descriptor_refs: &[DescriptorRef<'_>],
     ) -> GfxResult<DescriptorSetHandle> {
-        self.backend_write(descriptor_set, bump)
+        assert!(self.inner.transient);
+        self.backend_write(layout, descriptor_refs)
     }
 }

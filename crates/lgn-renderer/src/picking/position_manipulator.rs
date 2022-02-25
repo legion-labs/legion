@@ -29,10 +29,8 @@ impl PositionManipulator {
         let rotate_z_pointer =
             Mat4::from_axis_angle(Vec3::new(0.0, 0.0, -1.0), std::f32::consts::PI * 0.5);
 
-        let rotate_xy_plane =
-            Mat4::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), std::f32::consts::PI * 0.5);
-        let rotate_yz_plane =
-            Mat4::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), std::f32::consts::PI * 0.5);
+        let rotate_yz_plane = Mat4::from_axis_angle(Vec3::X, std::f32::consts::PI * 0.5);
+        let rotate_xy_plane = Mat4::from_axis_angle(Vec3::Z, std::f32::consts::PI * 0.5);
 
         let cone_offset = Mat4::from_translation(Vec3::new(0.0, 0.5, 0.0));
         let plane_offset = Mat4::from_translation(Vec3::new(0.2, 0.0, -0.2));
@@ -111,7 +109,7 @@ impl PositionManipulator {
                 ManipulatorType::Position,
                 6,
                 true,
-                Transform::from_matrix(rotate_xy_plane * plane_offset).with_scale(plane_scale),
+                Transform::from_matrix(rotate_yz_plane * plane_offset).with_scale(plane_scale),
                 DefaultMeshType::Plane,
                 commands,
                 picking_context,
@@ -131,7 +129,7 @@ impl PositionManipulator {
                 ManipulatorType::Position,
                 8,
                 true,
-                Transform::from_matrix(rotate_yz_plane * plane_offset).with_scale(plane_scale),
+                Transform::from_matrix(rotate_xy_plane * plane_offset).with_scale(plane_scale),
                 DefaultMeshType::Plane,
                 commands,
                 picking_context,

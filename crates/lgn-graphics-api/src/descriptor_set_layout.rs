@@ -1,4 +1,4 @@
-use std::sync::atomic::Ordering;
+use std::{num::NonZeroU32, sync::atomic::Ordering};
 
 use crate::{
     backends::BackendDescriptorSetLayout, deferred_drop::Drc, DeviceContext, GfxResult,
@@ -11,22 +11,16 @@ static NEXT_DESCRIPTOR_SET_LAYOUT_ID: std::sync::atomic::AtomicU32 =
 #[derive(Clone, Debug)]
 pub struct Descriptor {
     pub name: String,
-    pub binding: u32,
     pub shader_resource_type: ShaderResourceType,
-    pub element_count: u32,
-    pub update_data_offset: u32,
-}
-
-impl Descriptor {
-    pub fn element_count_normalized(&self) -> u32 {
-        self.element_count.max(1)
-    }
+    pub bindless: bool,
+    pub flat_index: u32,
+    pub element_count: NonZeroU32,
 }
 
 #[derive(Debug, Clone, Hash)]
 pub struct DescriptorDef {
     pub name: String,
-    pub binding: u32,
+    pub bindless: bool,
     pub shader_resource_type: ShaderResourceType,
     pub array_size: u32,
 }
@@ -63,8 +57,8 @@ pub(crate) struct DescriptorSetLayoutInner {
     definition: DescriptorSetLayoutDef,
     id: u32,
     frequency: u32,
-    binding_mask: u64,
     descriptors: Vec<Descriptor>,
+    flat_descriptor_count: u32,
 
     pub(crate) backend_layout: BackendDescriptorSetLayout,
 }
@@ -97,34 +91,52 @@ impl DescriptorSetLayout {
         self.inner.frequency
     }
 
-    pub fn binding_mask(&self) -> u64 {
-        self.inner.binding_mask
+    pub fn descriptor_count(&self) -> u32 {
+        self.inner.descriptors.len() as u32
     }
 
-    pub fn find_descriptor_index_by_name(&self, name: &str) -> Option<usize> {
+    pub fn flat_descriptor_count(&self) -> u32 {
+        self.inner.flat_descriptor_count
+    }
+
+    pub fn descriptor(&self, index: u32) -> &Descriptor {
+        &self.inner.descriptors[index as usize]
+    }
+
+    pub fn find_descriptor_index_by_name(&self, name: &str) -> Option<u32> {
         self.inner
             .descriptors
             .iter()
             .position(|descriptor| name == descriptor.name)
-    }
-
-    pub fn descriptor(&self, index: usize) -> &Descriptor {
-        &self.inner.descriptors[index]
+            .map(|x| x as u32)
     }
 
     pub fn new(
         device_context: &DeviceContext,
         definition: &DescriptorSetLayoutDef,
     ) -> GfxResult<Self> {
-        let mut binding_mask = 0;
+        assert!(definition.descriptor_defs.len() < MAX_DESCRIPTOR_BINDINGS);
+
+        let mut flat_descriptor_count = 0;
+        let mut descriptors = Vec::new();
+
         for descriptor_def in &definition.descriptor_defs {
-            assert!((descriptor_def.binding as usize) < MAX_DESCRIPTOR_BINDINGS);
-            let mask = 1u64 << descriptor_def.binding;
-            assert!((binding_mask & mask) == 0, "Binding already in use");
-            binding_mask |= mask;
+            let element_count = descriptor_def.array_size_normalized();
+
+            let descriptor = Descriptor {
+                name: descriptor_def.name.clone(),
+                bindless: descriptor_def.bindless,
+                shader_resource_type: descriptor_def.shader_resource_type,
+                element_count: NonZeroU32::new(element_count).unwrap(),
+                flat_index: flat_descriptor_count,
+            };
+
+            flat_descriptor_count += element_count;
+
+            descriptors.push(descriptor);
         }
-        let (backend_layout, descriptors) =
-            BackendDescriptorSetLayout::new(device_context, definition)?;
+
+        let backend_layout = BackendDescriptorSetLayout::new(device_context, &descriptors)?;
 
         let descriptor_set_layout_id =
             NEXT_DESCRIPTOR_SET_LAYOUT_ID.fetch_add(1, Ordering::Relaxed);
@@ -137,8 +149,8 @@ impl DescriptorSetLayout {
                     definition: definition.clone(),
                     id: descriptor_set_layout_id,
                     frequency: definition.frequency,
-                    binding_mask,
                     descriptors,
+                    flat_descriptor_count,
                     backend_layout,
                 }),
         };

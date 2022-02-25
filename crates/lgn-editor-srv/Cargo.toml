@@ -30,11 +30,16 @@ lgn-tasks = { path = "../lgn-tasks" }
 lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
 lgn-window = { path = "../lgn-window", version = "0.1.0" }
 tokio = { version = "1.13", features = ["full", "tracing"] }
+tokio-stream = "0.1.8"
 tonic = "0.6"
 clap = { version = "3.0", features = ["derive"] }
 anyhow = "1.0"
 serde_json = "1.0"
 erased-serde = "0.3.12"
+inventory = "0.2"
+uuid = { version = "0.8", features = ["v4"] }
+bytes = "1.1.0"
+thiserror = "1.0.30"
 
 # PlugIn
 generic-data = { path = "../../tests/generic-data", version = "0.1.0", features = [
@@ -46,6 +51,10 @@ sample-data = { path = "../../tests/sample-data", version = "0.1.0", features = 
     "runtime",
 ] }
 lgn-graphics-data = { path = "../lgn-graphics-data", version = "0.1.0", features = [
+    "offline",
+    "runtime",
+] }
+lgn-physics = { path = "../lgn-physics", version = "0.1.0", features = [
     "offline",
     "runtime",
 ] }
@@ -71,7 +80,7 @@ lgn-streamer = { path = "../lgn-streamer", version = "0.1.0", features = [
 ] }
 
 
-[[package.metadata.monorepo.dist]]
+[[package.metadata.monorepo.publish]]
 type = "docker"
 template = """
 FROM ubuntu:20.04
@@ -85,7 +94,7 @@ extra-files = [
     { source = "../../tests/sample-data/*", destination = "/usr/src/app/" },
 ]
 
-[[package.metadata.monorepo.dist]]
+[[package.metadata.monorepo.publish]]
 type = "zip"
 extra-files = [
     { source = "../../tests/sample-data/*", destination = "tests/sample-data" },

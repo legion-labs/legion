@@ -1,4 +1,7 @@
 <script context="module" lang="ts">
+  import { SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
+  import { Block } from "@lgn/proto-telemetry/dist/block";
+
   type Thread = {
     streamInfo: Stream;
     maxDepth: number;
@@ -25,15 +28,12 @@
     Loaded,
   }
 
-  import { SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
-
   type ThreadBlockLOD = {
     state: LODState;
     tracks: SpanTrack[];
     lodId: number;
   };
 
-  import { Block } from "@lgn/proto-telemetry/dist/block";
   type ThreadBlock = {
     blockDefinition: Block; // block metadata stored in data lake
     beginMs: number; // relative to main process
@@ -134,7 +134,7 @@
     processList.push(process);
     currentProcess = process;
     await fetchStreams(process);
-    await fetchChildren();
+    await fetchChildren(process);
     fetchPreferedLods(loadingProgression);
   }
 
@@ -144,7 +144,7 @@
     let nbInFlight = 0;
     for (let blockId in blocks) {
       const block = blocks[blockId];
-      const preferedLod = computePreferedBlockLod(block.blockDefinition);
+      const preferedLod = computePreferedBlockLod(block);
       if (preferedLod == null) {
         continue;
       }
@@ -201,20 +201,25 @@
           block_ids: [],
         };
 
-        promises.push(fetchBlocks(stream.streamId));
+        promises.push(fetchBlocks(process, stream.streamId));
       }
     });
     await Promise.all(promises);
   }
 
-  async function fetchChildren() {
+  async function fetchChildren(process: Process) {
     if (!client) {
       log.error("no client in fetchChildren");
       return;
     }
     const { processes } = await client.list_process_children({
-      processId: processId,
+      processId: process.processId,
     });
+
+    // we should really fetch all the descendents server-side to accomplish this in fewer queries
+    for (let i = 0; i < processes.length; ++i) {
+      await fetchChildren(processes[i]);
+    }
 
     let promises = processes.map((process) => {
       processList.push(process);
@@ -223,24 +228,30 @@
     await Promise.all(promises);
   }
 
-  function RFC3339ToMs(time: string): number {
+  function processMsOffsetToRoot(process: Process): number {
     if (!currentProcess?.startTime) {
       throw new Error("Parent process start time undefined");
     }
     const parentStartTime = Date.parse(currentProcess?.startTime);
-    let parsed = Date.parse(time);
+    let parsed = Date.parse(process.startTime);
     return parsed - parentStartTime;
   }
 
-  async function fetchBlocks(streamId: string) {
+  function timestampToMs(process: Process, timestamp: number): number {
+    const nbTicks = timestamp - process.startTicks;
+    return (nbTicks * 1000.0) / process.tscFrequency;
+  }
+
+  async function fetchBlocks(process: Process, streamId: string) {
     if (!client) {
       log.error("no client in fetchBlocks");
       return;
     }
+    const processOffset = processMsOffsetToRoot(process);
     const response = await client.list_stream_blocks({ streamId });
     response.blocks.forEach((block) => {
-      let beginMs = RFC3339ToMs(block.beginTime);
-      let endMs = RFC3339ToMs(block.endTime);
+      let beginMs = processOffset + timestampToMs(process, block.beginTicks);
+      let endMs = processOffset + timestampToMs(process, block.endTicks);
       minMs = Math.min(minMs, beginMs);
       maxMs = Math.max(maxMs, endMs);
       nbEventsRepresented += block.nbObjects;
@@ -253,9 +264,9 @@
     });
   }
 
-  function computePreferedBlockLod(block: Block): number | null {
-    const beginBlock = RFC3339ToMs(block.beginTime);
-    const endBlock = RFC3339ToMs(block.endTime);
+  function computePreferedBlockLod(block: ThreadBlock): number | null {
+    const beginBlock = block.beginMs;
+    const endBlock = block.endMs;
     return computePreferedLodFromTimeRange(beginBlock, endBlock);
   }
 
@@ -372,7 +383,7 @@
     renderingContext.clearRect(0, 0, canvas.width, canvas.height);
     let threadVerticalOffset = yOffset;
 
-    const parentStartTime = Date.parse(currentProcess?.startTime);
+    const rootStartTime = Date.parse(currentProcess?.startTime);
 
     for (const streamId in threads) {
       const childProcess = findStreamProcess(streamId);
@@ -392,7 +403,7 @@
           drawThread(
             thread,
             threadVerticalOffset,
-            childStartTime - parentStartTime
+            childStartTime - rootStartTime
           );
         }
         threadVerticalOffset += threadHeight;
@@ -450,6 +461,7 @@
     if (lastSpan < 0) {
       lastSpan = ~lastSpan;
     }
+
     for (let spanIndex = firstSpan; spanIndex < lastSpan; spanIndex += 1) {
       const span = track.spans[spanIndex];
       const beginSpan = span.beginMs + processOffsetMs;

@@ -35,7 +35,7 @@ impl DebugDisplay {
     }
 
     #[span_fn]
-    pub fn render_primitives<F: FnMut(&DebugPrimitive)>(&mut self, mut f: F) {
+    pub fn render_primitives<F: FnMut(&DebugPrimitive)>(&self, mut f: F) {
         let mut p_display_list = self.display_lists.lock().unwrap().to_owned();
         while !p_display_list.is_null() {
             let display_list = unsafe { &*p_display_list };
@@ -49,7 +49,7 @@ impl DebugDisplay {
         }
     }
 
-    pub fn clear(&mut self) {
+    pub fn end_frame(&mut self) {
         *self.display_lists.lock().unwrap() = std::ptr::null();
     }
 }

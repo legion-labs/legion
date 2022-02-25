@@ -144,12 +144,12 @@ pub(super) fn plane_normal_for_camera_pos(
     let camera_pos = camera.camera_rig.final_transform.position;
     let dir_to_camera = (camera_pos - base_entity_transform.translation).normalize();
 
-    let xy_plane_normal = rotation.mul_vec3(Vec3::new(0.0, 0.0, 1.0));
-    let xz_plane_normal = rotation.mul_vec3(Vec3::new(0.0, 1.0, 0.0));
-    let yz_plane_normal = rotation.mul_vec3(Vec3::new(1.0, 0.0, 0.0));
+    let xy_plane_normal = rotation.mul_vec3(Vec3::Z);
+    let zx_plane_normal = rotation.mul_vec3(Vec3::Y);
+    let yz_plane_normal = rotation.mul_vec3(Vec3::X);
 
     let xy_plane_facing_cam = dir_to_camera.dot(xy_plane_normal).abs();
-    let xz_plane_facing_cam = dir_to_camera.dot(xz_plane_normal).abs();
+    let xz_plane_facing_cam = dir_to_camera.dot(zx_plane_normal).abs();
     let yz_plane_facing_cam = dir_to_camera.dot(yz_plane_normal).abs();
 
     match component {
@@ -157,7 +157,7 @@ pub(super) fn plane_normal_for_camera_pos(
             if xy_plane_facing_cam > xz_plane_facing_cam {
                 xy_plane_normal
             } else {
-                xz_plane_normal
+                zx_plane_normal
             }
         }
         AxisComponents::YAxis => {
@@ -169,13 +169,13 @@ pub(super) fn plane_normal_for_camera_pos(
         }
         AxisComponents::ZAxis => {
             if xz_plane_facing_cam > yz_plane_facing_cam {
-                xz_plane_normal
+                zx_plane_normal
             } else {
                 yz_plane_normal
             }
         }
         AxisComponents::XYPlane => xy_plane_normal,
-        AxisComponents::XZPlane => xz_plane_normal,
+        AxisComponents::XZPlane => zx_plane_normal,
         AxisComponents::YZPlane => yz_plane_normal,
     }
 }

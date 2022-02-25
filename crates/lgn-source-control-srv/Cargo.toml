@@ -19,7 +19,7 @@ tokio = { version = "1.13", features = ["full", "tracing"] }
 tonic = "0.6"
 url = "2.2"
 
-[[package.metadata.monorepo.dist]]
+[[package.metadata.monorepo.publish]]
 name = "source-control-srv"
 type = "docker"
 template = """

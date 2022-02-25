@@ -137,9 +137,6 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
                 raw_data::Component::Light(raw) => {
                     components.push(Box::new(Into::<offline_data::Light>::into(raw)));
                 }
-                raw_data::Component::Physics(raw) => {
-                    components.push(Box::new(offline_data::Physics::from_raw(raw, references)));
-                }
                 raw_data::Component::StaticMesh(raw) => {
                     components.push(Box::new(Into::<offline_data::StaticMesh>::into(raw)));
                 }
@@ -160,7 +157,6 @@ impl From<raw_data::Transform> for offline_data::Transform {
             position: raw.position,
             rotation: raw.rotation,
             scale: raw.scale,
-            apply_to_children: raw.apply_to_children,
         }
     }
 }
@@ -245,18 +241,6 @@ impl From<raw_data::View> for offline_data::View {
 impl From<raw_data::Light> for offline_data::Light {
     fn from(_raw: raw_data::Light) -> Self {
         Self {}
-    }
-}
-
-impl FromRaw<raw_data::Physics> for offline_data::Physics {
-    fn from_raw(
-        raw: raw_data::Physics,
-        references: &HashMap<ResourcePathName, ResourceTypeAndId>,
-    ) -> Self {
-        Self {
-            dynamic: raw.dynamic,
-            collision_geometry: lookup_asset_path(references, &raw.collision_geometry),
-        }
     }
 }
 

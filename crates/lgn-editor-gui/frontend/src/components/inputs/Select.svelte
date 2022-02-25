@@ -11,7 +11,7 @@
   type Item = $$Generic;
 
   const dispatch = createEventDispatcher<{
-    change: Option | "";
+    select: Option | "";
   }>();
 
   type Option = { value: string; item: Item };
@@ -52,10 +52,8 @@
 
   function select(option: Option | "") {
     value = option;
-    if (option != "") {
-      dispatch("change", option);
-    } else {
-    }
+
+    dispatch("select", option);
 
     close();
   }
@@ -202,7 +200,7 @@
   }
 
   .options {
-    @apply max-h-44 overflow-auto absolute py-1 mt-1 bg-gray-800 rounded-sm w-full shadow-lg shadow-gray-800;
+    @apply max-h-44 overflow-auto absolute z-10 py-1 mt-1 bg-gray-800 rounded-sm w-full shadow-lg shadow-gray-800;
   }
 
   .option {

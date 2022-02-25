@@ -204,6 +204,7 @@ impl EguiPass {
             .pipeline_manager()
             .get_pipeline(self.pipeline_handle)
             .unwrap();
+
         cmd_buffer.bind_pipeline(pipeline);
 
         let clipped_meshes = egui.ctx.tessellate(egui.shapes.clone());
@@ -212,8 +213,14 @@ impl EguiPass {
         descriptor_set.set_font_texture(&self.texture_data.as_ref().unwrap().2);
         descriptor_set.set_font_sampler(&self.sampler);
 
-        let descriptor_set_handle = render_context.write_descriptor_set(&descriptor_set);
-        cmd_buffer.bind_descriptor_set_handle(descriptor_set_handle);
+        let descriptor_set_handle = render_context.write_descriptor_set(
+            cgen::descriptor_set::EguiDescriptorSet::descriptor_set_layout(),
+            descriptor_set.descriptor_refs(),
+        );
+        cmd_buffer.bind_descriptor_set(
+            cgen::descriptor_set::EguiDescriptorSet::descriptor_set_layout(),
+            descriptor_set_handle,
+        );
 
         for egui::ClippedMesh(_clip_rect, mesh) in clipped_meshes {
             if mesh.is_empty() {
