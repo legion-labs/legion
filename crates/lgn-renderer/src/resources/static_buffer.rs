@@ -303,15 +303,13 @@ impl UniformGPUDataUploadJobBlock {
                 }
             }
 
-            for i in 0..data.len() as u64 {
-                let data_size = std::mem::size_of::<T>() as u64;
-                self.upload_jobs.push(BufferCopy {
-                    src_offset: upload_offset + (i * data_size),
-                    dst_offset: dst_offset + (i * data_size),
-                    size: data_size,
-                });
-                self.offset += data_size;
-            }
+            self.upload_jobs.push(BufferCopy {
+                src_offset: upload_offset,
+                dst_offset,
+                size: upload_size_in_bytes,
+            });
+            self.offset += upload_size_in_bytes;
+
             true
         } else {
             false
