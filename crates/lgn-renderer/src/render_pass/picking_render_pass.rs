@@ -209,9 +209,9 @@ impl PickingRenderPass {
         readback.get_gpu_results(picking_manager.frame_no_picked());
 
         if picking_manager.picking_state() == PickingState::Rendering {
-            render_surface.transition_to(&cmd_buffer, ResourceState::RENDER_TARGET);
+            render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
 
-            self.init_picking_results(&cmd_buffer);
+            self.init_picking_results(cmd_buffer);
 
             cmd_buffer.begin_render_pass(
                 &[ColorRenderTargetBinding {
@@ -288,7 +288,7 @@ impl PickingRenderPass {
                             picking_distance,
                             mesh.mesh_id as u32,
                             mesh_manager,
-                            &cmd_buffer,
+                            cmd_buffer,
                         );
                     }
                 }

@@ -53,6 +53,7 @@ pub mod hl_gfx_api;
 pub(crate) mod lighting;
 pub(crate) mod render_pass;
 
+use crate::render_pass::TmpRenderPass;
 use crate::{
     components::{
         debug_display_lights, ui_lights, update_lights, ManipulatorComponent, PickedComponent,
@@ -350,8 +351,8 @@ fn update_gpu_instances(
         picking_data_manager.remove_gpu_data(&entity);
         if let Some(removed_ids) = instance_manager.remove_gpu_instance(entity) {
             event_writer.send(GpuInstanceEvent::Removed(removed_ids));
+            }
         }
-    }
 
     for (entity, mesh, mat_component) in instance_query.iter() {
         let color: (f32, f32, f32, f32) = (
@@ -411,7 +412,7 @@ fn update_gpu_instances(
             let gpu_instance_id = instance_manager.add_gpu_instance(
                 entity,
                 renderer.static_buffer_allocator(),
-                &mut instance_block,
+                
                 &mut updater,
                 &instance_vas,
             );
@@ -465,7 +466,7 @@ fn render_update(
         Res<'_, LightingManager>,
         Res<'_, DescriptorHeapManager>,
         Res<'_, PersistentDescriptorSetManager>,
-        ResMut<'_, ModelManager>,
+        Res<'_, ModelManager>,
     ),
     queries: (
         Query<'_, '_, &mut RenderSurface>,
@@ -557,7 +558,7 @@ fn render_update(
         let static_buffer_ro_view = renderer.static_buffer_ro_view();
         frame_descriptor_set.set_static_buffer(&static_buffer_ro_view);
 
-        let va_table_address_buffer =
+			let va_table_address_buffer =
             instance_manager.structured_buffer_view(std::mem::size_of::<u32>() as u64, true);
         frame_descriptor_set.set_va_table_address_buffer(&va_table_address_buffer);
 
