@@ -108,11 +108,9 @@ importers:
       '@improbable-eng/grpc-web': ^0.15.0
       browser-headers: ^0.4.1
       google-protobuf: ^3.19.4
-      jest: ^27.4.7
       long: ^5.2.0
       pnpm: ^6.32.1
       protobufjs: ^6.11.2
-      ts-jest: ^27.1.3
       ts-proto: ^1.106.1
       typescript: ^4.5.5
     dependencies:
@@ -123,8 +121,6 @@ importers:
       pnpm: 6.32.1
       protobufjs: 6.11.2
     devDependencies:
-      jest: 27.5.1
-      ts-jest: 27.1.3_jest@27.5.1+typescript@4.5.5
       ts-proto: 1.106.1
       typescript: 4.5.5
 
@@ -139,23 +135,21 @@ importers:
       '@lgn/web-client': ^0.1.0
       '@sveltejs/vite-plugin-svelte': ^1.0.0-next.37
       '@swc/core': ^1.2.143
-      '@swc/jest': ^0.2.17
       '@tauri-apps/api': ^1.0.0-rc.1
       '@testing-library/jest-dom': ^5.16.2
       '@testing-library/svelte': ^3.0.3
       '@types/color-convert': ^2.0.0
-      '@types/jest': ^27.4.1
       '@typescript-eslint/eslint-plugin': ^5.12.1
       '@typescript-eslint/parser': ^5.12.1
       autoprefixer: ^10.4.2
       browser-headers: ^0.4.1
+      c8: ^7.11.0
       color-convert: ^2.0.1
       eslint: ^8.9.0
       eslint-config-prettier: ^8.4.0
       eslint-plugin-svelte3: ^3.4.1
       google-protobuf: ^3.19.4
       grpc-web: ^1.3.1
-      jest: ^27.5.1
       long: ^5.2.0
       monaco-editor: 0.32.1
       pnpm: ^6.32.1
@@ -168,7 +162,6 @@ importers:
       svelte: ^3.46.4
       svelte-check: ^2.4.5
       svelte-forms: ^2.2.1
-      svelte-jester: ^2.3.2
       svelte-preprocess: ^4.10.4
       tailwindcss: ^3.0.23
       ts-proto: ^1.106.1
@@ -176,6 +169,7 @@ importers:
       uuid-random: ^1.3.2
       vite: ^2.8.4
       vite-tsconfig-paths: ^3.4.1
+      vitest: ^0.5.5
     dependencies:
       '@iconify/svelte': 2.1.2
       '@improbable-eng/grpc-web': 0.15.0_google-protobuf@3.19.4
@@ -199,43 +193,39 @@ importers:
       '@lgn/vite-plugin-wasm': link:../../../npm-pkgs/vite-plugin-wasm
       '@sveltejs/vite-plugin-svelte': 1.0.0-next.37_svelte@3.46.4+vite@2.8.4
       '@swc/core': 1.2.144
-      '@swc/jest': 0.2.17_@swc+core@1.2.144
       '@testing-library/jest-dom': 5.16.2
       '@testing-library/svelte': 3.0.3_svelte@3.46.4
       '@types/color-convert': 2.0.0
-      '@types/jest': 27.4.1
       '@typescript-eslint/eslint-plugin': 5.12.1_aa3af6382115a42a71cc388b7b2c30b3
       '@typescript-eslint/parser': 5.12.1_eslint@8.9.0+typescript@4.5.5
       autoprefixer: 10.4.2_postcss@8.4.6
+      c8: 7.11.0
       eslint: 8.9.0
       eslint-config-prettier: 8.4.0
       eslint-plugin-svelte3: 3.4.1_eslint@8.9.0+svelte@3.46.4
-      jest: 27.5.1
       postcss: 8.4.6
       postcss-load-config: 3.1.3
       prettier: 2.5.1
       prettier-plugin-svelte: 2.6.0
       svelte: 3.46.4
       svelte-check: 2.4.5_06670835898ebc1da7d1c97a8716c619
-      svelte-jester: 2.3.2
       svelte-preprocess: 4.10.4_e1bf482d98c0166a5d6196b4af1639d5
       tailwindcss: 3.0.23_autoprefixer@10.4.2
       ts-proto: 1.106.1
       typescript: 4.5.5
       vite: 2.8.4
       vite-tsconfig-paths: 3.4.1_vite@2.8.4
+      vitest: 0.5.5_c8@7.11.0
 
   crates/lgn-editor-proto:
     specifiers:
       '@improbable-eng/grpc-web': ^0.15.0
       browser-headers: ^0.4.1
       google-protobuf: ^3.19.4
-      jest: ^27.5.1
       long: ^5.2.0
       pnpm: ^6.32.1
       protobufjs: ^6.11.2
       rxjs: 6.6.7
-      ts-jest: ^27.1.3
       ts-proto: ^1.106.1
       typescript: ^4.5.5
     dependencies:
@@ -247,8 +237,6 @@ importers:
       protobufjs: 6.11.2
       rxjs: 6.6.7
     devDependencies:
-      jest: 27.5.1
-      ts-jest: 27.1.3_jest@27.5.1+typescript@4.5.5
       ts-proto: 1.106.1
       typescript: 4.5.5
 
@@ -261,23 +249,21 @@ importers:
       '@lgn/web-client': ^0.1.0
       '@sveltejs/vite-plugin-svelte': ^1.0.0-next.37
       '@swc/core': ^1.2.143
-      '@swc/jest': ^0.2.17
       '@tauri-apps/api': ^1.0.0-rc.1
       '@testing-library/jest-dom': ^5.16.2
       '@testing-library/svelte': ^3.0.3
       '@types/color-convert': ^2.0.0
-      '@types/jest': ^27.4.1
       '@typescript-eslint/eslint-plugin': ^5.12.1
       '@typescript-eslint/parser': ^5.12.1
       autoprefixer: ^10.4.2
       browser-headers: ^0.4.1
+      c8: ^7.11.0
       color-convert: ^2.0.1
       eslint: ^8.9.0
       eslint-config-prettier: ^8.4.0
       eslint-plugin-svelte3: ^3.4.1
       google-protobuf: ^3.19.4
       grpc-web: ^1.3.1
-      jest: ^27.5.1
       long: ^5.2.0
       pnpm: ^6.32.1
       postcss: ^8.4.6
@@ -287,7 +273,6 @@ importers:
       protobufjs: ^6.11.2
       svelte: ^3.46.4
       svelte-check: ^2.4.5
-      svelte-jester: ^2.3.2
       svelte-preprocess: ^4.10.4
       tailwindcss: ^3.0.23
       ts-proto: ^1.106.1
@@ -295,6 +280,7 @@ importers:
       uuid-random: ^1.3.2
       vite: ^2.8.4
       vite-tsconfig-paths: ^3.4.1
+      vitest: ^0.5.5
     dependencies:
       '@improbable-eng/grpc-web': 0.15.0_google-protobuf@3.19.4
       '@lgn/proto-runtime': link:../../lgn-runtime-proto
@@ -313,42 +299,38 @@ importers:
       '@lgn/vite-plugin-ts-proto': link:../../../npm-pkgs/vite-plugin-ts-proto
       '@sveltejs/vite-plugin-svelte': 1.0.0-next.37_svelte@3.46.4+vite@2.8.4
       '@swc/core': 1.2.144
-      '@swc/jest': 0.2.17_@swc+core@1.2.144
       '@testing-library/jest-dom': 5.16.2
       '@testing-library/svelte': 3.0.3_svelte@3.46.4
       '@types/color-convert': 2.0.0
-      '@types/jest': 27.4.1
       '@typescript-eslint/eslint-plugin': 5.12.1_aa3af6382115a42a71cc388b7b2c30b3
       '@typescript-eslint/parser': 5.12.1_eslint@8.9.0+typescript@4.5.5
       autoprefixer: 10.4.2_postcss@8.4.6
+      c8: 7.11.0
       eslint: 8.9.0
       eslint-config-prettier: 8.4.0
       eslint-plugin-svelte3: 3.4.1_eslint@8.9.0+svelte@3.46.4
-      jest: 27.5.1
       postcss: 8.4.6
       postcss-load-config: 3.1.3
       prettier: 2.5.1
       prettier-plugin-svelte: 2.6.0
       svelte: 3.46.4
       svelte-check: 2.4.5_06670835898ebc1da7d1c97a8716c619
-      svelte-jester: 2.3.2
       svelte-preprocess: 4.10.4_e1bf482d98c0166a5d6196b4af1639d5
       tailwindcss: 3.0.23_autoprefixer@10.4.2
       ts-proto: 1.106.1
       typescript: 4.5.5
       vite: 2.8.4
       vite-tsconfig-paths: 3.4.1_vite@2.8.4
+      vitest: 0.5.5_c8@7.11.0
 
   crates/lgn-runtime-proto:
     specifiers:
       '@improbable-eng/grpc-web': ^0.15.0
       browser-headers: ^0.4.1
       google-protobuf: ^3.19.4
-      jest: ^27.5.1
       long: ^5.2.0
       pnpm: ^6.32.1
       protobufjs: ^6.11.2
-      ts-jest: ^27.1.3
       ts-proto: ^1.106.1
       typescript: ^4.5.5
     dependencies:
@@ -359,8 +341,6 @@ importers:
       pnpm: 6.32.1
       protobufjs: 6.11.2
     devDependencies:
-      jest: 27.5.1
-      ts-jest: 27.1.3_jest@27.5.1+typescript@4.5.5
       ts-proto: 1.106.1
       typescript: 4.5.5
 
@@ -369,11 +349,9 @@ importers:
       '@improbable-eng/grpc-web': ^0.15.0
       browser-headers: ^0.4.1
       google-protobuf: ^3.19.4
-      jest: ^27.5.1
       long: ^5.2.0
       pnpm: ^6.32.1
       protobufjs: ^6.11.2
-      ts-jest: ^27.1.3
       ts-proto: ^1.106.1
       typescript: ^4.5.5
     dependencies:
@@ -384,8 +362,6 @@ importers:
       pnpm: 6.32.1
       protobufjs: 6.11.2
     devDependencies:
-      jest: 27.5.1
-      ts-jest: 27.1.3_jest@27.5.1+typescript@4.5.5
       ts-proto: 1.106.1
       typescript: 4.5.5
 
@@ -394,11 +370,9 @@ importers:
       '@improbable-eng/grpc-web': ^0.15.0
       browser-headers: ^0.4.1
       google-protobuf: ^3.19.4
-      jest: ^27.5.1
       long: ^5.2.0
       pnpm: ^6.32.1
       protobufjs: ^6.11.2
-      ts-jest: ^27.1.3
       ts-proto: ^1.106.1
       typescript: ^4.5.5
     dependencies:
@@ -409,8 +383,6 @@ importers:
       pnpm: 6.32.1
       protobufjs: 6.11.2
     devDependencies:
-      jest: 27.5.1
-      ts-jest: 27.1.3_jest@27.5.1+typescript@4.5.5
       ts-proto: 1.106.1
       typescript: 4.5.5
 
@@ -419,11 +391,9 @@ importers:
       '@improbable-eng/grpc-web': ^0.15.0
       browser-headers: ^0.4.1
       google-protobuf: ^3.19.4
-      jest: ^27.5.1
       long: ^5.2.0
       pnpm: ^6.32.1
       protobufjs: ^6.11.2
-      ts-jest: ^27.1.3
       ts-proto: ^1.106.1
       typescript: ^4.5.5
     dependencies:
@@ -434,8 +404,6 @@ importers:
       pnpm: 6.32.1
       protobufjs: 6.11.2
     devDependencies:
-      jest: 27.5.1
-      ts-jest: 27.1.3_jest@27.5.1+typescript@4.5.5
       ts-proto: 1.106.1
       typescript: 4.5.5
 
@@ -444,23 +412,22 @@ importers:
       '@iconify/svelte': ^2.1.2
       '@improbable-eng/grpc-web': ^0.15.0
       '@lgn/proto-streaming': ^0.1.0
+      '@sveltejs/vite-plugin-svelte': ^1.0.0-next.37
       '@swc/core': ^1.2.143
-      '@swc/jest': ^0.2.17
       '@tauri-apps/api': ^1.0.0-rc.1
       '@testing-library/jest-dom': ^5.16.2
       '@testing-library/svelte': ^3.0.3
       '@types/color-convert': ^2.0.0
-      '@types/jest': ^27.4.1
       '@typescript-eslint/eslint-plugin': ^5.12.1
       '@typescript-eslint/parser': ^5.12.1
       autoprefixer: ^10.4.2
       browser-headers: ^0.4.1
+      c8: ^7.11.0
       eslint: ^8.9.0
       eslint-config-prettier: ^8.4.0
       eslint-plugin-svelte3: ^3.4.1
       google-protobuf: ^3.19.4
       grpc-web: ^1.3.1
-      jest: ^27.5.1
       long: ^5.2.0
       monaco-editor: 0.32.1
       oauth-pkce: ^0.0.6
@@ -473,11 +440,11 @@ importers:
       rxjs: 6.6.7
       svelte: ^3.46.4
       svelte-check: ^2.4.5
-      svelte-jester: ^2.3.2
       svelte-preprocess: ^4.10.4
       tailwindcss: ^3.0.23
       typescript: ^4.5.5
       vite: ^2.8.4
+      vitest: ^0.5.5
     dependencies:
       '@iconify/svelte': 2.1.2
       '@improbable-eng/grpc-web': 0.15.0_google-protobuf@3.19.4
@@ -493,30 +460,29 @@ importers:
       protobufjs: 6.11.2
       rxjs: 6.6.7
     devDependencies:
+      '@sveltejs/vite-plugin-svelte': 1.0.0-next.37_svelte@3.46.4+vite@2.8.4
       '@swc/core': 1.2.144
-      '@swc/jest': 0.2.17_@swc+core@1.2.144
       '@testing-library/jest-dom': 5.16.2
       '@testing-library/svelte': 3.0.3_svelte@3.46.4
       '@types/color-convert': 2.0.0
-      '@types/jest': 27.4.1
       '@typescript-eslint/eslint-plugin': 5.12.1_aa3af6382115a42a71cc388b7b2c30b3
       '@typescript-eslint/parser': 5.12.1_eslint@8.9.0+typescript@4.5.5
       autoprefixer: 10.4.2_postcss@8.4.6
+      c8: 7.11.0
       eslint: 8.9.0
       eslint-config-prettier: 8.4.0
       eslint-plugin-svelte3: 3.4.1_eslint@8.9.0+svelte@3.46.4
-      jest: 27.5.1
       postcss: 8.4.6
       postcss-load-config: 3.1.3
       prettier: 2.5.1
       prettier-plugin-svelte: 2.6.0
       svelte: 3.46.4
       svelte-check: 2.4.5_06670835898ebc1da7d1c97a8716c619
-      svelte-jester: 2.3.2
       svelte-preprocess: 4.10.4_e1bf482d98c0166a5d6196b4af1639d5
       tailwindcss: 3.0.23_autoprefixer@10.4.2
       typescript: 4.5.5
       vite: 2.8.4
+      vitest: 0.5.5_c8@7.11.0
 
   npm-pkgs/vite-plugin-ts-proto:
     specifiers:
@@ -1290,7 +1256,7 @@ packages:
       kleur: 4.1.4
       magic-string: 0.25.7
       svelte: 3.46.4
-      svelte-hmr: 0.14.9
+      svelte-hmr: 0.14.9_svelte@3.46.4
       vite: 2.8.4
     transitivePeerDependencies:
       - supports-color
@@ -1524,6 +1490,16 @@ packages:
     resolution: {integrity: sha512-K2waXdXBi2302XUdcHcR1jCeU0LL4TD9HRs/gk0N2Xvrht+G/BfJa4QObBQZfhMdxiCpV3COl5Nfq4uKTeTnJA==}
     dependencies:
       '@babel/types': 7.17.0
+    dev: true
+
+  /@types/chai-subset/1.3.3:
+    resolution: {integrity: sha512-frBecisrNGz+F4T6bcc+NLeolfiojh5FxW2klu669+8BARtyQv2C/GkNW6FUodVe4BroGMP/wER/YDGc7rEllw==}
+    dependencies:
+      '@types/chai': 4.3.0
+    dev: true
+
+  /@types/chai/4.3.0:
+    resolution: {integrity: sha512-/ceqdqeRraGolFTcfoXNiqjyQhZzbINDngeoAq9GoHa8PPK1yNzTaxWjA6BFWp5Ua9JpXEMSS4s5i9tS0hOJtw==}
     dev: true
 
   /@types/color-convert/2.0.0:
@@ -2088,7 +2064,7 @@ packages:
     resolution: {integrity: sha512-o/HelwhuKpTj/frsOsbNLNgnNGVIFsVP/SW2BSF14gVl7kAfMOJ6/8wUAUvG1R1NHKrfG+2sHZTu0yauT1qBrA==}
     engines: {node: '>=6.0'}
     dependencies:
-      '@babel/runtime': 7.16.5
+      '@babel/runtime': 7.17.2
       '@babel/runtime-corejs3': 7.16.5
     dev: true
 
@@ -2102,6 +2078,10 @@ packages:
     engines: {node: '>=8'}
     dev: true
 
+  /assertion-error/1.1.0:
+    resolution: {integrity: sha512-jgsaNduz+ndvGyFt3uSuWqvy4lCnIJiovtouQN5JZHOKCS2QuhEdbcQHFhVksz2N2U9hXJo8odG7ETyWlEeuDw==}
+    dev: true
+
   /asynckit/0.4.0:
     resolution: {integrity: sha1-x57Zf380y48robyXkLzDZkdLS3k=}
     dev: true
@@ -2109,6 +2089,7 @@ packages:
   /atob/2.1.2:
     resolution: {integrity: sha512-Wm6ukoaOGJi/73p/cl2GvLjTI5JM1k/O14isD73YML8StrH/7/lRFgmg8nICZgD3bZZvjwCGxtMOD3wWNAu8cg==}
     engines: {node: '>= 4.5.0'}
+    hasBin: true
     dev: true
 
   /autoprefixer/10.4.2_postcss@8.4.6:
@@ -2288,13 +2269,6 @@ packages:
       picocolors: 1.0.0
     dev: true
 
-  /bs-logger/0.2.6:
-    resolution: {integrity: sha512-pd8DCoxmbgc7hyPKOvxtqNcjYoOsABPQdcCUjGp3d42VR2CX1ORhk2A87oqqu5R1kk+76nsxZupkmyd+MVtCog==}
-    engines: {node: '>= 6'}
-    dependencies:
-      fast-json-stable-stringify: 2.1.0
-    dev: true
-
   /bser/2.1.1:
     resolution: {integrity: sha512-gQxTNE/GAfIIrmHLUE3oJyp5FO6HRBfhjnw4/wMmA63ZGDJnWBmgY/lyQBpnDUkGmAhbSe39tx2d/iTOAfglwQ==}
     dependencies:
@@ -2314,6 +2288,25 @@ packages:
     dependencies:
       base64-js: 1.5.1
       ieee754: 1.2.1
+    dev: true
+
+  /c8/7.11.0:
+    resolution: {integrity: sha512-XqPyj1uvlHMr+Y1IeRndC2X5P7iJzJlEJwBpCdBbq2JocXOgJfr+JVfJkyNMGROke5LfKrhSFXGFXnwnRJAUJw==}
+    engines: {node: '>=10.12.0'}
+    hasBin: true
+    dependencies:
+      '@bcoe/v8-coverage': 0.2.3
+      '@istanbuljs/schema': 0.1.3
+      find-up: 5.0.0
+      foreground-child: 2.0.0
+      istanbul-lib-coverage: 3.2.0
+      istanbul-lib-report: 3.0.0
+      istanbul-reports: 3.1.4
+      rimraf: 3.0.2
+      test-exclude: 6.0.0
+      v8-to-istanbul: 8.1.1
+      yargs: 16.2.0
+      yargs-parser: 20.2.9
     dev: true
 
   /callsites/3.1.0:
@@ -2344,6 +2337,19 @@ packages:
     resolution: {integrity: sha512-Wiz1Psk2MEK0pX3rUzWaunLTZzqS2JYZFzNKqAiJGiuxIjRPLgV6+VDPOg6lQOUxmDwhTlh198JsTTi8Hzw6aQ==}
     dev: true
 
+  /chai/4.3.6:
+    resolution: {integrity: sha512-bbcp3YfHCUzMOvKqsztczerVgBKSsEijCySNlHHbX3VG1nskvqjz5Rfso1gGwD6w6oOV3eI60pKuMOV5MV7p3Q==}
+    engines: {node: '>=4'}
+    dependencies:
+      assertion-error: 1.1.0
+      check-error: 1.0.2
+      deep-eql: 3.0.1
+      get-func-name: 2.0.0
+      loupe: 2.3.4
+      pathval: 1.1.1
+      type-detect: 4.0.8
+    dev: true
+
   /chalk/2.4.2:
     resolution: {integrity: sha512-Mti+f9lpJNcwF4tWV8/OrTTtF1gZi+f8FqlyAdouralcFWFQWF2+NgCHShjkCb+IFBLq9buZwE1xckQU4peSuQ==}
     engines: {node: '>=4'}
@@ -2372,6 +2378,10 @@ packages:
   /char-regex/1.0.2:
     resolution: {integrity: sha512-kWWXztvZ5SBQV+eRgKFeh8q5sLuZY2+8WUIzlxWVTg+oGwY14qylx1KbKzHd8P6ZYkAg0xyIDU9JMHhyJMZ1jw==}
     engines: {node: '>=10'}
+    dev: true
+
+  /check-error/1.0.2:
+    resolution: {integrity: sha1-V00xLt2Iu13YkS6Sht1sCu1KrII=}
     dev: true
 
   /chokidar/3.5.3:
@@ -2820,6 +2830,13 @@ packages:
 
   /dedent/0.7.0:
     resolution: {integrity: sha1-JJXduvbrh0q7Dhvp3yLS5aVEMmw=}
+    dev: true
+
+  /deep-eql/3.0.1:
+    resolution: {integrity: sha512-+QeIQyN5ZuO+3Uk5DYh6/1eKO0m0YmJFGNmFHGACpf1ClL1nmlV/p4gNgbl2pJGxgXb4faqo6UE+M5ACEMyVcw==}
+    engines: {node: '>=0.12'}
+    dependencies:
+      type-detect: 4.0.8
     dev: true
 
   /deep-is/0.1.4:
@@ -3425,6 +3442,14 @@ packages:
       path-exists: 4.0.0
     dev: true
 
+  /find-up/5.0.0:
+    resolution: {integrity: sha512-78/PXT1wlLLDgTzDs7sjq9hzz0vXD+zn+7wypEe4fXQxCmdmqfGsEPQxmiCSQI3ajFV91bVSsvNtrJRiW6nGng==}
+    engines: {node: '>=10'}
+    dependencies:
+      locate-path: 6.0.0
+      path-exists: 4.0.0
+    dev: true
+
   /flat-cache/3.0.4:
     resolution: {integrity: sha512-dm9s5Pw7Jc0GvMYbshN6zchCA9RgQlzzEZX3vylR9IqFfS8XciblUXOKfW6SiuJ0e13eDYZoZV5wdrev7P3Nwg==}
     engines: {node: ^10.12.0 || >=12.0.0}
@@ -3445,6 +3470,14 @@ packages:
     peerDependenciesMeta:
       debug:
         optional: true
+    dev: true
+
+  /foreground-child/2.0.0:
+    resolution: {integrity: sha512-dCIq9FpEcyQyXKCkyzmlPTFNgrCzPudOe+mhvJU5zAtlBnGVy2yKxtfsxK2tQBThwq225jcvBjpw1Gr40uzZCA==}
+    engines: {node: '>=8.0.0'}
+    dependencies:
+      cross-spawn: 7.0.3
+      signal-exit: 3.0.7
     dev: true
 
   /form-data/3.0.1:
@@ -3499,6 +3532,10 @@ packages:
   /get-caller-file/2.0.5:
     resolution: {integrity: sha512-DyFP3BM/3YHTQOCUL/w0OZHR0lpKeGrxotcHWcqNEdnltqFwXVfhEBQ94eIo34AfQpo0rGki4cyIiftY06h2Fg==}
     engines: {node: 6.* || 8.* || >= 10.*}
+    dev: true
+
+  /get-func-name/2.0.0:
+    resolution: {integrity: sha1-6td0q+5y4gQJQzoGY2YCPdaIekE=}
     dev: true
 
   /get-package-type/0.1.0:
@@ -4416,6 +4453,11 @@ packages:
     resolution: {integrity: sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==}
     dev: true
 
+  /local-pkg/0.4.1:
+    resolution: {integrity: sha512-lL87ytIGP2FU5PWwNDo0w3WhIo2gopIAxPg9RxDYF7m4rr5ahuZxP22xnJHIvaLTe4Z9P6uKKY2UHiwyB4pcrw==}
+    engines: {node: '>=14'}
+    dev: true
+
   /locate-path/5.0.0:
     resolution: {integrity: sha512-t7hw9pI+WvuwNJXwk5zVHpyhIqzg2qTlklJOf0mVxGSbe3Fp2VieZcduNYjaLDoy6p9uGpQEGWG87WpMKlNq8g==}
     engines: {node: '>=8'}
@@ -4423,8 +4465,11 @@ packages:
       p-locate: 4.1.0
     dev: true
 
-  /lodash.memoize/4.1.2:
-    resolution: {integrity: sha1-vMbEmkKihA7Zl/Mj6tpezRguC/4=}
+  /locate-path/6.0.0:
+    resolution: {integrity: sha512-iPZK6eYjbxRu3uB4/WZ3EsEIMJFMqAoopl3R+zuq0UjcAm/MO6KCweDgPfP3elTztoKP3KtnVHxTn2NHBSDVUw==}
+    engines: {node: '>=10'}
+    dependencies:
+      p-locate: 5.0.0
     dev: true
 
   /lodash.merge/4.6.2:
@@ -4441,6 +4486,12 @@ packages:
   /long/5.2.0:
     resolution: {integrity: sha512-9RTUNjK60eJbx3uz+TEGF7fUr29ZDxR5QzXcyDpeSfeH28S9ycINflOgOlppit5U+4kNTe83KQnMEerw7GmE8w==}
     dev: false
+
+  /loupe/2.3.4:
+    resolution: {integrity: sha512-OvKfgCC2Ndby6aSTREl5aCCPTNIzlDfQZvZxNUrBrihDhL3xcrYegTblhmEiCrg2kKQz4XsFIaemE5BF4ybSaQ==}
+    dependencies:
+      get-func-name: 2.0.0
+    dev: true
 
   /lower-case/2.0.2:
     resolution: {integrity: sha512-7fm3l3NAF9WfN6W3JOmf5drwpVqX78JtoGJ3A6W0a6ZnldM41w2fV5D490psKFTpMds8TJse/eHLFFsNHHjHgg==}
@@ -4470,10 +4521,6 @@ packages:
     engines: {node: '>=8'}
     dependencies:
       semver: 6.3.0
-    dev: true
-
-  /make-error/1.3.6:
-    resolution: {integrity: sha512-s8UhlNe7vPKomQhC1qFelMokr/Sc3AgNbso3n74mVPA5LTZwkB9NlXf4XPamLxJE8h0gh73rM94xvwRT2CVInw==}
     dev: true
 
   /makeerror/1.0.12:
@@ -4693,11 +4740,25 @@ packages:
       p-try: 2.2.0
     dev: true
 
+  /p-limit/3.1.0:
+    resolution: {integrity: sha512-TYOanM3wGwNGsZN2cVTYPArw454xnXj5qmWF1bEoAc4+cU/ol7GVh7odevjp1FNHduHc3KZMcFduxU5Xc6uJRQ==}
+    engines: {node: '>=10'}
+    dependencies:
+      yocto-queue: 0.1.0
+    dev: true
+
   /p-locate/4.1.0:
     resolution: {integrity: sha512-R79ZZ/0wAxKGu3oYMlz8jy/kbhsNrS7SKZ7PxEHBgJ5+F2mtFW2fK2cOtBh1cHYkQsbzFV7I+EoRKe6Yt0oK7A==}
     engines: {node: '>=8'}
     dependencies:
       p-limit: 2.3.0
+    dev: true
+
+  /p-locate/5.0.0:
+    resolution: {integrity: sha512-LaNjtRWUBY++zB5nE/NwcaoMylSPk+S+ZHNB1TzdbMJMny6dynpAGt7X/tl/QYq3TIeE6nxHppbo2LGymrG5Pw==}
+    engines: {node: '>=10'}
+    dependencies:
+      p-limit: 3.1.0
     dev: true
 
   /p-try/2.2.0:
@@ -4755,6 +4816,10 @@ packages:
   /path-type/4.0.0:
     resolution: {integrity: sha512-gDKb8aZMDeD/tZWs9P6+q0J9Mwkdl6xMV8TjnGP3qJVJ06bdMgkbBlLU8IdfOsIsFz2BW1rNVT3XuNEl8zPAvw==}
     engines: {node: '>=8'}
+    dev: true
+
+  /pathval/1.1.1:
+    resolution: {integrity: sha512-Dp6zGqpTdETdR63lehJYPeIOqpiNBNtc7BpWSLrOje7UaIsE5aY92r/AunQA7rsXvet3lrJ3JnZX29UPTKXyKQ==}
     dev: true
 
   /pend/1.2.0:
@@ -5135,6 +5200,7 @@ packages:
 
   /semver/6.3.0:
     resolution: {integrity: sha512-b39TBaTSfV6yBrapU89p5fKekE2m/NwnDocOVruQFS1/veMgdzuPcnOM34M6CwxW8jH/lxEa5rBoDeUwu5HHTw==}
+    hasBin: true
     dev: true
 
   /semver/7.3.5:
@@ -5186,6 +5252,7 @@ packages:
 
   /source-map-resolve/0.6.0:
     resolution: {integrity: sha512-KXBr9d/fO/bWo97NXsPIAW1bFSBOuCnjbNTBMO7N59hsv5i9yzRDfcYwwt0l04+VqnKC+EwzvJZIP/qkuMgR/w==}
+    deprecated: See https://github.com/lydell/source-map-resolve#deprecated
     dependencies:
       atob: 2.1.2
       decode-uri-component: 0.2.0
@@ -5354,8 +5421,10 @@ packages:
       is-promise: 4.0.0
     dev: false
 
-  /svelte-hmr/0.14.9:
+  /svelte-hmr/0.14.9_svelte@3.46.4:
     resolution: {integrity: sha512-bKE9+4qb4sAnA+TKHiYurUl970rjA0XmlP9TEP7K/ncyWz3m81kA4HOgmlZK/7irGK7gzZlaPDI3cmf8fp/+tg==}
+    peerDependencies:
+      svelte: '>=3.19.0'
     dependencies:
       svelte: 3.46.4
     dev: true
@@ -5554,6 +5623,16 @@ packages:
     resolution: {integrity: sha1-DdTJ/6q8NXlgsbckEV1+Doai4fU=}
     dev: true
 
+  /tinypool/0.1.2:
+    resolution: {integrity: sha512-fvtYGXoui2RpeMILfkvGIgOVkzJEGediv8UJt7TxdAOY8pnvUkFg/fkvqTfXG9Acc9S17Cnn1S4osDc2164guA==}
+    engines: {node: '>=14.0.0'}
+    dev: true
+
+  /tinyspy/0.3.0:
+    resolution: {integrity: sha512-c5uFHqtUp74R2DJE3/Efg0mH5xicmgziaQXMm/LvuuZn3RdpADH32aEGDRyCzObXT1DNfwDMqRQ/Drh1MlO12g==}
+    engines: {node: '>=14.0.0'}
+    dev: true
+
   /tmpl/1.0.5:
     resolution: {integrity: sha512-3f0uOEAQwIqGuWW2MVzYg8fV/QNnc/IpuJNG837rLuczAaLVHslWHZQj4IGiEl5Hs3kkbhwL9Ab7Hrsmuj+Smw==}
     dev: true
@@ -5587,39 +5666,6 @@ packages:
     engines: {node: '>=8'}
     dependencies:
       punycode: 2.1.1
-    dev: true
-
-  /ts-jest/27.1.3_jest@27.5.1+typescript@4.5.5:
-    resolution: {integrity: sha512-6Nlura7s6uM9BVUAoqLH7JHyMXjz8gluryjpPXxr3IxZdAXnU6FhjvVLHFtfd1vsE1p8zD1OJfskkc0jhTSnkA==}
-    engines: {node: ^10.13.0 || ^12.13.0 || ^14.15.0 || >=15.0.0}
-    hasBin: true
-    peerDependencies:
-      '@babel/core': '>=7.0.0-beta.0 <8'
-      '@types/jest': ^27.0.0
-      babel-jest: '>=27.0.0 <28'
-      esbuild: ~0.14.0
-      jest: ^27.0.0
-      typescript: '>=3.8 <5.0'
-    peerDependenciesMeta:
-      '@babel/core':
-        optional: true
-      '@types/jest':
-        optional: true
-      babel-jest:
-        optional: true
-      esbuild:
-        optional: true
-    dependencies:
-      bs-logger: 0.2.6
-      fast-json-stable-stringify: 2.1.0
-      jest: 27.5.1
-      jest-util: 27.5.1
-      json5: 2.2.0
-      lodash.memoize: 4.1.2
-      make-error: 1.3.6
-      semver: 7.3.5
-      typescript: 4.5.5
-      yargs-parser: 20.2.9
     dev: true
 
   /ts-poet/4.10.0:
@@ -5796,6 +5842,39 @@ packages:
       fsevents: 2.3.2
     dev: true
 
+  /vitest/0.5.5_c8@7.11.0:
+    resolution: {integrity: sha512-oBKIXpFOGN7jDdK0MO4uWcB+UOPRyEJveB8XDx74XsFNbjGF7vHmHqwAomNE8MGtDW8hBKvSSbr58hibFiQc5Q==}
+    engines: {node: '>=14.14.0'}
+    hasBin: true
+    peerDependencies:
+      '@vitest/ui': '*'
+      c8: '*'
+      happy-dom: '*'
+      jsdom: '*'
+    peerDependenciesMeta:
+      '@vitest/ui':
+        optional: true
+      c8:
+        optional: true
+      happy-dom:
+        optional: true
+      jsdom:
+        optional: true
+    dependencies:
+      '@types/chai': 4.3.0
+      '@types/chai-subset': 1.3.3
+      c8: 7.11.0
+      chai: 4.3.6
+      local-pkg: 0.4.1
+      tinypool: 0.1.2
+      tinyspy: 0.3.0
+      vite: 2.8.4
+    transitivePeerDependencies:
+      - less
+      - sass
+      - stylus
+    dev: true
+
   /w3c-hr-time/1.0.2:
     resolution: {integrity: sha512-z8P5DvDNjKDoFIHK7q8r8lackT6l+jo/Ye3HOle7l9nICP9lf1Ci25fy9vHd0JOWewkIFzXIEig3TdKT7JQ5fQ==}
     dependencies:
@@ -5865,6 +5944,7 @@ packages:
   /which/2.0.2:
     resolution: {integrity: sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==}
     engines: {node: '>= 8'}
+    hasBin: true
     dependencies:
       isexe: 2.0.0
     dev: true
@@ -5972,4 +6052,9 @@ packages:
     dependencies:
       buffer-crc32: 0.2.13
       fd-slicer: 1.1.0
+    dev: true
+
+  /yocto-queue/0.1.0:
+    resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
+    engines: {node: '>=10'}
     dev: true

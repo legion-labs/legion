@@ -10,7 +10,7 @@ First, you might want to read the documentation for the libraries the client use
 - [TypeScript](https://www.typescriptlang.org/) - The language the application is written in
 - [Tailwind](https://tailwindcss.com/) - An "atomic" css library that makes prototyping a breeze
 - [Vite](vitejs.dev/) - The application "runner" and bundler you will love
-- [Jest](https://jestjs.io/) - To test the client
+- [Vitest](https://vitest.dev/) - To test the client
 
 We also use [ESLint](https://eslint.org/) and [Prettier](https://prettier.io/) to keep our codebase as clean as posible.
 

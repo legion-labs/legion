@@ -11,7 +11,7 @@ export default defineConfig({
     tsconfigPaths({
       extensions: [".ts", ".svelte"],
     }),
-    svelte(),
+    svelte({ hot: !process.env.VITEST }),
     viteTsProto({
       modules: [
         { name: "@lgn/proto-runtime", glob: "*.proto" },
@@ -19,4 +19,9 @@ export default defineConfig({
       ],
     }),
   ],
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: "tests/setup.ts",
+  },
 });

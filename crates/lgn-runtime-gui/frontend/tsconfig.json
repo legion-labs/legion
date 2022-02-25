@@ -14,7 +14,7 @@
     "lib": ["esnext", "dom"],
     "types": [
       "svelte",
-      "jest",
+      "vitest/globals",
       "vite/client",
       "@lgn/web-client/src/types/tauri",
       "@lgn/web-client/src/types/custom-events"
