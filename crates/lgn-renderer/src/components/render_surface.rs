@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 use crate::egui::egui_pass::EguiPass;
 use crate::hl_gfx_api::HLCommandBuffer;
-use crate::render_pass::{DebugRenderPass, PickingRenderPass, TmpRenderPass};
+use crate::render_pass::{DebugRenderPass, PickingRenderPass};
 use crate::resources::PipelineManager;
 use crate::{RenderContext, Renderer};
 
@@ -168,7 +168,6 @@ pub struct RenderSurface {
     signal_sems: Vec<Semaphore>,
     picking_renderpass: Arc<RwLock<PickingRenderPass>>,
     debug_renderpass: Arc<RwLock<DebugRenderPass>>,
-    test_renderpass: Arc<RwLock<TmpRenderPass>>,
     egui_renderpass: Arc<RwLock<EguiPass>>,
 }
 
@@ -187,10 +186,6 @@ impl RenderSurface {
 
     pub fn picking_renderpass(&self) -> Arc<RwLock<PickingRenderPass>> {
         self.picking_renderpass.clone()
-    }
-
-    pub fn test_renderpass(&self) -> Arc<RwLock<TmpRenderPass>> {
-        self.test_renderpass.clone()
     }
 
     pub fn debug_renderpass(&self) -> Arc<RwLock<DebugRenderPass>> {
@@ -301,7 +296,6 @@ impl RenderSurface {
                 device_context,
                 pipeline_manager,
             ))),
-            test_renderpass: Arc::new(RwLock::new(TmpRenderPass::new(pipeline_manager))),
             debug_renderpass: Arc::new(RwLock::new(DebugRenderPass::new(pipeline_manager))),
             egui_renderpass: Arc::new(RwLock::new(EguiPass::new(device_context, pipeline_manager))),
             presenters: Vec::new(),

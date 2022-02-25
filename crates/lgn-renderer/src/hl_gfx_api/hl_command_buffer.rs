@@ -143,6 +143,40 @@ impl<'rc> HLCommandBuffer<'rc> {
         );
     }
 
+    pub fn draw_indirect(
+        &self,
+        indirect_arg_buffer: &Buffer,
+        indirect_arg_offset: u64,
+        draw_count: u32,
+        stride: u32,
+    ) {
+        self.cmd_buffer.cmd_draw_indirect(
+            indirect_arg_buffer,
+            indirect_arg_offset,
+            draw_count,
+            stride,
+        );
+    }
+
+    pub fn draw_indirect_count(
+        &self,
+        indirect_arg_buffer: &Buffer,
+        indirect_arg_offset: u64,
+        count_buffer: &Buffer,
+        count_offset: u64,
+        max_draw_count: u32,
+        stride: u32,
+    ) {
+        self.cmd_buffer.cmd_draw_indirect_count(
+            indirect_arg_buffer,
+            indirect_arg_offset,
+            count_buffer,
+            count_offset,
+            max_draw_count,
+            stride,
+        );
+    }
+
     pub fn draw_indexed(&self, index_count: u32, first_index: u32, vertex_offset: i32) {
         self.cmd_buffer
             .cmd_draw_indexed(index_count, first_index, vertex_offset);
@@ -162,6 +196,40 @@ impl<'rc> HLCommandBuffer<'rc> {
             instance_count,
             first_instance,
             vertex_offset,
+        );
+    }
+
+    pub fn draw_indexed_indirect(
+        &self,
+        indirect_arg_buffer: &Buffer,
+        indirect_arg_offset: u64,
+        draw_count: u32,
+        stride: u32,
+    ) {
+        self.cmd_buffer.cmd_draw_indexed_indirect(
+            indirect_arg_buffer,
+            indirect_arg_offset,
+            draw_count,
+            stride,
+        );
+    }
+
+    pub fn draw_indexed_indirect_count(
+        &self,
+        indirect_arg_buffer: &Buffer,
+        indirect_arg_offset: u64,
+        count_buffer: &Buffer,
+        count_offset: u64,
+        max_draw_count: u32,
+        stride: u32,
+    ) {
+        self.cmd_buffer.cmd_draw_indexed_indirect_count(
+            indirect_arg_buffer,
+            indirect_arg_offset,
+            count_buffer,
+            count_offset,
+            max_draw_count,
+            stride,
         );
     }
 

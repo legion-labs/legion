@@ -1,8 +1,7 @@
-use lgn_graphics_api::PagedBufferAllocation;
 use lgn_math::Vec4;
 use strum::EnumIter;
 
-use super::{UnifiedStaticBuffer, UniformGPUDataUpdater};
+use super::{StaticBufferAllocation, UnifiedStaticBuffer, UniformGPUDataUpdater};
 use crate::{cgen::cgen_type::MeshDescription, components::Mesh, Renderer};
 
 pub struct MeshMetaData {
@@ -14,15 +13,7 @@ pub struct MeshMetaData {
 pub struct MeshManager {
     static_buffer: UnifiedStaticBuffer,
     static_meshes: Vec<MeshMetaData>,
-    allocations: Vec<PagedBufferAllocation>,
-}
-
-impl Drop for MeshManager {
-    fn drop(&mut self) {
-        while let Some(allocation) = self.allocations.pop() {
-            self.static_buffer.free_segment(allocation);
-        }
-    }
+    allocations: Vec<StaticBufferAllocation>,
 }
 
 #[derive(EnumIter)]
