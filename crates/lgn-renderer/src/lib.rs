@@ -323,6 +323,7 @@ fn render_pre_update(
 fn update_gpu_instances(
     renderer: Res<'_, Renderer>,
     mut mesh_renderer: ResMut<'_, MeshRenderer>,
+    pipeline_manager: Res<'_, PipelineManager>,
     picking_manager: Res<'_, PickingManager>,
     mut picking_data_manager: ResMut<'_, GpuPickingDataManager>,
     mut instance_manager: ResMut<'_, GpuInstanceManager>,
@@ -397,7 +398,7 @@ fn update_gpu_instances(
         );
 
         let material_idx = material_manager.id_for_index(material_key, 0);
-        mesh_renderer.register_material(material_idx);
+        mesh_renderer.register_material(material_idx, &pipeline_manager);
         mesh_renderer.register_element(
             material_idx,
             &RenderElement::new(gpu_instance_id, mesh.mesh_id as u32, &mesh_manager),

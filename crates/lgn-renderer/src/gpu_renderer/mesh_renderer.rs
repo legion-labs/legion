@@ -28,23 +28,10 @@ pub(crate) enum DefaultLayers {
 impl Plugin for MeshRendererPlugin {
     fn build(&self, app: &mut App) {
         //
-        // Stage Startup
-        //
-        app.add_startup_system(init_default);
-
-        //
         // Stage Prepare
         //
         app.add_system_to_stage(RenderStage::Prepare, prepare);
     }
-}
-
-#[allow(clippy::needless_pass_by_value)]
-fn init_default(
-    pipeline_manager: Res<'_, PipelineManager>,
-    mut mesh_renderer: ResMut<'_, MeshRenderer>,
-) {
-    mesh_renderer.initialize(&pipeline_manager);
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -65,20 +52,20 @@ impl MeshRenderer {
             default_layers: vec![RenderLayer::new(static_buffer, true)],
             indirect_arg_buffer: None,
             count_buffer: None,
-            tmp_batch_idx: 0,
+            tmp_batch_idx: u32::MAX,
         }
     }
 
-    pub fn initialize(&mut self, pipeline_manager: &PipelineManager) {
-        let tmp_pipeline_handle = build_temp_pso(pipeline_manager);
+    pub fn register_material(&mut self, material_idx: u32, pipeline_manager: &PipelineManager) {
+        if self.tmp_batch_idx == u32::MAX {
+            let tmp_pipeline_handle = build_temp_pso(pipeline_manager);
 
-        self.tmp_batch_idx = self.default_layers[DefaultLayers::Opaque as usize]
-            .register_state_set(&RenderStateSet {
-                pipeline_handle: tmp_pipeline_handle,
-            });
-    }
+            self.tmp_batch_idx = self.default_layers[DefaultLayers::Opaque as usize]
+                .register_state_set(&RenderStateSet {
+                    pipeline_handle: tmp_pipeline_handle,
+                });
+        }
 
-    pub fn register_material(&mut self, material_idx: u32) {
         for layer in &mut self.default_layers {
             layer.register_material(material_idx, self.tmp_batch_idx);
         }
@@ -113,17 +100,21 @@ impl MeshRenderer {
 
         renderer.add_update_job_block(updater.job_blocks());
 
-        create_or_replace_buffer(
-            renderer.device_context(),
-            &mut self.count_buffer,
-            count_buffer_size,
-        );
+        if count_buffer_size != 0 {
+            create_or_replace_buffer(
+                renderer.device_context(),
+                &mut self.count_buffer,
+                count_buffer_size,
+            );
+        }
 
-        create_or_replace_buffer(
-            renderer.device_context(),
-            &mut self.indirect_arg_buffer,
-            indirect_arg_buffer_size,
-        );
+        if indirect_arg_buffer_size != 0 {
+            create_or_replace_buffer(
+                renderer.device_context(),
+                &mut self.indirect_arg_buffer,
+                indirect_arg_buffer_size,
+            );
+        }
     }
 
     pub fn draw(
