@@ -20,6 +20,15 @@ wget -O - https://dl.winehq.org/wine-builds/winehq.key | apt-key add -
 
 source "$(dirname "$0")/helper.sh"
 
+case "$DISTRO_NAME_VERSION" in
+    Debian_11* )     add-apt-repository "deb https://dl.winehq.org/wine-builds/debian/ bullseye  main" ;;
+    Ubuntu_20.04 )   add-apt-repository "deb https://dl.winehq.org/wine-builds/ubuntu/ focal main" ;;
+    Ubuntu_22.04 )   add-apt-repository "deb https://dl.winehq.org/wine-builds/ubuntu/ jammy main" ;;
+    * )
+        echo "Distribution '$DISTRO' in version '$DISTRO_VERSION' is not supported by this script (${DISTRO_NAME_VERSION})."
+        exit 1
+esac
+
 wget -qO - https://packages.lunarg.com/lunarg-signing-key-pub.asc | apt-key add -
 case "$DISTRO_NAME_VERSION" in
     Debian_11* )
@@ -52,6 +61,13 @@ apt-get update && apt-get install -y \
     fuse3 \
     libfuse3-dev \
     vulkan-sdk
+
+# We are pinning wine to 6.23 since tokio/mio port binding fails
+apt-get install -y \
+    winehq-staging=6.23~focal-1 \
+    wine-staging=6.23~focal-1 \
+    wine-staging-i386=6.23~focal-1 \
+    wine-staging-amd64=6.23~focal-1
 
 ###################################################################################################
 

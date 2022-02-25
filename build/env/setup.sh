@@ -17,8 +17,9 @@ if [[ $MONOREPO_DOCKER_REGISTRY ]] ; then
     if [[ $? -ne 0 ]] ; then
         docker build . -t $TAG
         aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin $MONOREPO_DOCKER_REGISTRY
-        docker tag "$TAG" "$ECR_REPO_TAG"
-        docker push "$ECR_REPO_TAG"
+        docker tag "$TAG" "$REPO_TAG"
+        docker push "$REPO_TAG"
+        echo "::set-output name=container::$REPO_TAG"
     fi
     echo "ecr_repo_tag=$ECR_REPO_TAG" >> $GITHUB_ENV
 else
@@ -32,4 +33,3 @@ fi
 rm install/rust-toolchain.toml install/tools.toml
 
 popd 1> /dev/null
-

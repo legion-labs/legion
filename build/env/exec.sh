@@ -30,11 +30,11 @@ fi
 
 if [[ -z $CI || $CI -eq false ]] ; then
     docker run --name build-env \
-        --rm \
+        -it --rm \
         -v "/var/run/docker.sock":"/var/run/docker.sock" \
         -v "$(realpath $MONOREPO_ROOT)":/github/workspace \
         --workdir /github/workspace \
-        $TAG $@
+        $TAG
 else
     docker run --name build-env \
         --workdir /github/workspace \
