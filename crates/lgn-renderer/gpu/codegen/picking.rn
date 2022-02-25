@@ -6,7 +6,8 @@ pub fn main(frame_descriptor_set, view_descriptor_set ) {
             fields: [
                 #{ name:"picking_pos", ty:"Float4" },
                 #{ name:"picking_id", ty:"Uint1" },
-                #{ name:"pad", ty:"Uint1", array_len:3 },            ]
+                #{ name:"pad", ty:"Uint1", array_len:3 },            
+            ]
         },
         #{
             type: "Struct",
