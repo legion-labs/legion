@@ -20,6 +20,7 @@ if [[ $MONOREPO_DOCKER_REGISTRY ]] ; then
         docker tag "$TAG" "$REPO_TAG"
         docker push "$REPO_TAG"
     fi
+    echo "::set-output name=container::$REPO_TAG"
 else
     if [[ "$(docker images -q $TAG 2> /dev/null)" != "" ]]; then
         echo "Image $TAG already exists"
@@ -32,6 +33,3 @@ rm install/rust-toolchain.toml install/tools.toml
 
 popd 1> /dev/null
 
-if [[ $MONOREPO_DOCKER_REGISTRY ]] ; then
-    echo "::set-output name=container::$REPO_TAG"
-fi
