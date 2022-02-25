@@ -77,7 +77,7 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET
         uint write_index = 0;
         InterlockedAdd(picked_count[0], 1, write_index);
 
-        picked_objects[write_index].picking_pos = vertex_out.picked_world_pos;
+        picked_objects[write_index].picking_pos = float4(vertex_out.picked_world_pos, vertex_out.hpos.z);
         picked_objects[write_index].picking_id = pickingId;
     }
 
