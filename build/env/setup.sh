@@ -12,11 +12,11 @@ pushd $SCRIPT_DIR 1> /dev/null
 CONTAINER_HASH=$(sha1sum install/* | sha1sum | head -c 40)
 TAG="build-env:$CONTAINER_HASH"
 if [[ $MONOREPO_DOCKER_REGISTRY ]] ; then
-    aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin $MONOREPO_DOCKER_REGISTRY
     REPO_TAG="$MONOREPO_DOCKER_REGISTRY/$TAG"
     docker pull $REPO_TAG
     if [[ $? -ne 0 ]] ; then
         docker build . -t $TAG
+        aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin $MONOREPO_DOCKER_REGISTRY
         docker tag "$TAG" "$REPO_TAG"
         docker push "$REPO_TAG"
     fi
@@ -32,6 +32,6 @@ rm install/rust-toolchain.toml install/tools.toml
 
 popd 1> /dev/null
 
-if [[ $CI && $CI -eq true ]] ; then
-    echo "::set-output name=container::$TAG"
+if [[ $MONOREPO_DOCKER_REGISTRY ]] ; then
+    echo "::set-output name=container::$REPO_TAG"
 fi

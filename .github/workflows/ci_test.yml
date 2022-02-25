@@ -185,12 +185,24 @@ jobs:
             echo "::set-output name=windows_runner::[[\"self-hosted\",\"windows\",\"common\",\"build\"]]"
           fi
 
-  update_ecr_password:
-    name: Fetch ECR password
+  setup_container:
+    name: Setup build env container
     runs-on: [self-hosted, linux, common, build]
+    outputs:
+      container: ${{ steps.setup-container.outputs.container }}
     steps:
-      - run: npm install tweetsodium
-      - name: Set ECR password
+      - uses: actions/checkout@v2
+
+      - name: Build
+        id: setup-container
+        env:
+          MONOREPO_DOCKER_REGISTRY: ${{ secrets.MONOREPO_DOCKER_REGISTRY }}
+        run: ./build/env/setup.sh
+
+      - name: Install NodeJS script dependencies
+        run: npm install tweetsodium
+
+      - name: Set ECR password secret
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.ECR_GH_ACCESS_TOKEN }}
@@ -229,22 +241,9 @@ jobs:
                 key_id,
             })
 
-  setup_container:
-    name: Setup env container
-    runs-on: [self-hosted, linux, common, build]
-    outputs:
-      container: ${{ steps.setup-container.outputs.container }}
-    steps:
-      - uses: actions/checkout@v2
-      - name: Build
-        id: setup-container
-        env:
-          MONOREPO_DOCKER_REGISTRY: ${{ secrets.MONOREPO_DOCKER_REGISTRY }}
-        run: ./build/env/setup.sh
-
   test_build_env:
     name: Testing the Build environment
-    needs: [setup_container, update_ecr_password]
+    needs: [setup_container]
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ needs.setup_container.outputs.container }}
