@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 
+use lgn_app::{CoreStage, Plugin};
 use lgn_data_runtime::ResourceTypeAndId;
+use lgn_ecs::prelude::{Changed, Query, Res, ResMut};
 use lgn_graphics_api::{
     BufferDef, CmdCopyBufferToTextureParams, DeviceContext, Extents3D, Format, MemoryAllocation,
     MemoryAllocationDef, MemoryUsage, ResourceFlags, ResourceState, ResourceUsage, Texture,
@@ -9,13 +11,37 @@ use lgn_graphics_api::{
 use lgn_graphics_data::{runtime_texture::TextureReferenceType, TextureFormat};
 use lgn_tracing::span_fn;
 
-use crate::{components::TextureComponent, hl_gfx_api::HLCommandBuffer};
+use crate::{
+    components::TextureComponent, hl_gfx_api::HLCommandBuffer, labels::RenderStage, RenderContext,
+    Renderer,
+};
 
-use super::{IndexAllocator, IndexBlock};
+use super::{DescriptorHeapManager, IndexAllocator, IndexBlock, PipelineManager};
 
 struct UploadTextureJobs {
     texture: Texture,
     texture_data: Vec<Vec<u8>>,
+}
+
+pub struct BindlessTexturePlugin {
+    device_context: DeviceContext,
+}
+
+impl BindlessTexturePlugin {
+    pub fn new(device_context: &DeviceContext) -> Self {
+        Self {
+            device_context: device_context.clone(),
+        }
+    }
+}
+
+impl Plugin for BindlessTexturePlugin {
+    fn build(&self, app: &mut lgn_app::App) {
+        app.insert_resource(BindlessTextureManager::new(&self.device_context, 256));
+        app.add_system_to_stage(CoreStage::PostUpdate, allocate_bindless_textures);
+        app.add_system_to_stage(RenderStage::Prepare, upload_bindless_textures);
+        app.add_system_to_stage(RenderStage::Render, mark_defaults_as_uploaded);
+    }
 }
 
 pub struct BindlessTextureManager {
@@ -228,4 +254,55 @@ pub fn upload_texture_data(
             ResourceState::SHADER_RESOURCE,
         )],
     );
+}
+
+#[span_fn]
+#[allow(clippy::needless_pass_by_value)]
+fn allocate_bindless_textures(
+    renderer: Res<'_, Renderer>,
+    pipeline_manager: Res<'_, PipelineManager>,
+
+    mut bindless_tex_manager: ResMut<'_, BindlessTextureManager>,
+    descriptor_heap_manager: Res<'_, DescriptorHeapManager>,
+    mut updated_textures: Query<'_, '_, &mut TextureComponent, Changed<TextureComponent>>,
+) {
+    let render_context = RenderContext::new(&renderer, &descriptor_heap_manager, &pipeline_manager);
+    let cmd_buffer = render_context.alloc_command_buffer();
+
+    let mut index_block = None;
+    for mut texture in updated_textures.iter_mut() {
+        bindless_tex_manager.allocate_texture(
+            renderer.device_context(),
+            &mut texture,
+            &mut index_block,
+        );
+    }
+    bindless_tex_manager.return_index_block(index_block);
+
+    render_context
+        .graphics_queue()
+        .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
+}
+
+#[span_fn]
+#[allow(clippy::needless_pass_by_value)]
+fn upload_bindless_textures(
+    renderer: Res<'_, Renderer>,
+    pipeline_manager: Res<'_, PipelineManager>,
+    bindless_tex_manager: ResMut<'_, BindlessTextureManager>,
+    descriptor_heap_manager: Res<'_, DescriptorHeapManager>,
+) {
+    let render_context = RenderContext::new(&renderer, &descriptor_heap_manager, &pipeline_manager);
+    let cmd_buffer = render_context.alloc_command_buffer();
+
+    bindless_tex_manager.upload_textures(renderer.device_context(), &cmd_buffer);
+
+    render_context
+        .graphics_queue()
+        .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
+}
+
+#[span_fn]
+fn mark_defaults_as_uploaded(mut bindless_tex_manager: ResMut<'_, BindlessTextureManager>) {
+    bindless_tex_manager.clear_upload_jobs();
 }

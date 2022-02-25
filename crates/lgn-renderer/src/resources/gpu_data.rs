@@ -10,14 +10,14 @@ use lgn_transform::components::GlobalTransform;
 
 use crate::{
     cgen,
-    components::{MaterialComponent, TextureComponent, VisualComponent},
+    components::{MaterialComponent, VisualComponent},
     labels::RenderStage,
-    RenderContext, Renderer,
+    Renderer,
 };
 
 use super::{
-    BindlessTextureManager, DescriptorHeapManager, IndexAllocator, IndexBlock, PipelineManager,
-    StaticBufferAllocation, UnifiedStaticBufferAllocator, UniformGPUData, UniformGPUDataUpdater,
+    BindlessTextureManager, IndexAllocator, IndexBlock, UnifiedStaticBufferAllocator, UniformGPUData,
+    UniformGPUDataUpdater,
 };
 
 #[derive(Default)]
@@ -177,7 +177,6 @@ impl Plugin for GpuDataPlugin {
         app.add_system_to_stage(CoreStage::PostUpdate, alloc_color_address);
         app.add_system_to_stage(CoreStage::PostUpdate, alloc_transform_address);
         app.add_system_to_stage(CoreStage::PostUpdate, alloc_material_address);
-        app.add_system_to_stage(CoreStage::PostUpdate, allocate_bindless_textures);
         app.add_system_to_stage(CoreStage::PostUpdate, upload_default_material);
 
         //
@@ -185,7 +184,6 @@ impl Plugin for GpuDataPlugin {
         //
         app.add_system_to_stage(RenderStage::Prepare, upload_transform_data);
         app.add_system_to_stage(RenderStage::Prepare, upload_material_data);
-        app.add_system_to_stage(RenderStage::Prepare, upload_bindless_textures);
 
         //
         // Stage: Render
@@ -242,34 +240,6 @@ fn alloc_material_address(
         );
     }
     material_manager.return_index_block(index_block);
-}
-
-#[span_fn]
-#[allow(clippy::needless_pass_by_value)]
-fn allocate_bindless_textures(
-    renderer: Res<'_, Renderer>,
-    pipeline_manager: Res<'_, PipelineManager>,
-
-    mut bindless_tex_manager: ResMut<'_, BindlessTextureManager>,
-    descriptor_heap_manager: Res<'_, DescriptorHeapManager>,
-    mut updated_textures: Query<'_, '_, &mut TextureComponent, Changed<TextureComponent>>,
-) {
-    let render_context = RenderContext::new(&renderer, &descriptor_heap_manager, &pipeline_manager);
-    let cmd_buffer = render_context.alloc_command_buffer();
-
-    let mut index_block = None;
-    for mut texture in updated_textures.iter_mut() {
-        bindless_tex_manager.allocate_texture(
-            renderer.device_context(),
-            &mut texture,
-            &mut index_block,
-        );
-    }
-    bindless_tex_manager.return_index_block(index_block);
-
-    render_context
-        .graphics_queue()
-        .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
 }
 
 #[span_fn]
@@ -368,31 +338,8 @@ fn upload_material_data(
 }
 
 #[span_fn]
-#[allow(clippy::needless_pass_by_value)]
-fn upload_bindless_textures(
-    renderer: Res<'_, Renderer>,
-    pipeline_manager: Res<'_, PipelineManager>,
-    bindless_tex_manager: ResMut<'_, BindlessTextureManager>,
-    descriptor_heap_manager: Res<'_, DescriptorHeapManager>,
-) {
-    let render_context = RenderContext::new(&renderer, &descriptor_heap_manager, &pipeline_manager);
-    let cmd_buffer = render_context.alloc_command_buffer();
-
-    bindless_tex_manager.upload_textures(renderer.device_context(), &cmd_buffer);
-
-    render_context
-        .graphics_queue()
-        .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
-}
-
-#[span_fn]
-fn mark_defaults_as_uploaded(
-    mut material_manager: ResMut<'_, GpuMaterialManager>,
-    mut bindless_tex_manager: ResMut<'_, BindlessTextureManager>,
-) {
+fn mark_defaults_as_uploaded(mut material_manager: ResMut<'_, GpuMaterialManager>) {
     material_manager.default_uploaded();
-
-    bindless_tex_manager.clear_upload_jobs();
 }
 
 pub(crate) struct GpuVaTableForGpuInstance {

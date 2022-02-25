@@ -62,8 +62,8 @@ use crate::{
     gpu_renderer::{GpuInstanceVas, MeshRenderer, MeshRendererPlugin},
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingIdContext, PickingManager, PickingPlugin},
-    render_pass::TmpRenderPass,
-    resources::{IndexBlock, MeshManager},
+render_pass::TmpRenderPass,
+    resources::{BindlessTexturePlugin, IndexBlock, MeshManager},
     RenderStage,
 };
 use lgn_app::{App, CoreStage, Events, Plugin};
@@ -114,10 +114,9 @@ impl Plugin for RendererPlugin {
 
         const NUM_RENDER_FRAMES: usize = 2;
         let renderer = Renderer::new(NUM_RENDER_FRAMES);
-        let device_context = renderer.device_context().clone();
-        let allocator = renderer.static_buffer_allocator().clone();
-        let descriptor_heap_manager =
-            DescriptorHeapManager::new(NUM_RENDER_FRAMES, &device_context);
+        let device_context = renderer.device_context();
+		  let allocator = renderer.static_buffer_allocator();
+        let descriptor_heap_manager = DescriptorHeapManager::new(NUM_RENDER_FRAMES, device_context);
         let pipeline_manager = PipelineManager::new(&device_context);
         //
         // Add renderer stages first. It is needed for the plugins.
@@ -137,20 +136,19 @@ impl Plugin for RendererPlugin {
         //
         // Resources
         //
-        app.insert_resource(MeshRenderer::new(&allocator));
-        app.insert_resource(pipeline_manager);
+        app.insert_resource(PipelineManager::new(device_context));
         app.insert_resource(ManipulatorManager::new());
         app.insert_resource(CGenRegistryList::new());
         app.insert_resource(RenderSurfaces::new());
         app.insert_resource(ModelManager::new());
-        app.insert_resource(MeshManager::new(&renderer));
-        app.insert_resource(BindlessTextureManager::new(renderer.device_context(), 256));
+        app.insert_resource(MeshManager::new(&allocator));
         app.insert_resource(DebugDisplay::default());
         app.insert_resource(LightingManager::default());
         app.insert_resource(GpuInstanceManager::new(&allocator));
         app.insert_resource(MissingVisualTracker::default());
         app.insert_resource(descriptor_heap_manager);
         app.insert_resource(PersistentDescriptorSetManager::new());
+        app.add_plugin(BindlessTexturePlugin::new(device_context));
         app.add_plugin(EguiPlugin::new());
         app.add_plugin(PickingPlugin {});
         app.add_plugin(GpuDataPlugin::default());
