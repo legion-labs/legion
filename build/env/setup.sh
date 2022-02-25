@@ -22,7 +22,7 @@ if [[ $MONOREPO_DOCKER_REGISTRY ]] ; then
         aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin $MONOREPO_DOCKER_REGISTRY
         docker push "$ECR_REPO_TAG"
     fi
-    echo "ecr_repo_tag=$TAG" >> $GITHUB_ENV
+    echo "ecr_repo_tag=$ECR_REPO_TAG" >> $GITHUB_ENV
 else
     if [[ "$(docker images -q $TAG 2> /dev/null)" != "" ]]; then
         echo "Image $TAG already exists"
