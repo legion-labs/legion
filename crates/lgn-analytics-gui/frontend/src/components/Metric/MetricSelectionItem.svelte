@@ -6,6 +6,9 @@
 
   function switchMetric() {
     metric.selected = !metric.selected;
+    if (metric.selected) {
+      metric.hidden = false;
+    }
     updateMetricSelection(metric);
   }
 </script>
