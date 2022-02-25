@@ -1,4 +1,4 @@
-use lgn_app::{App, Plugin};
+use lgn_app::{App, CoreStage, Plugin};
 use lgn_ecs::prelude::{Res, ResMut};
 use lgn_graphics_api::{
     BlendState, Buffer, BufferDef, CompareOp, DepthState, DeviceContext, Format,
@@ -28,10 +28,23 @@ pub(crate) enum DefaultLayers {
 impl Plugin for MeshRendererPlugin {
     fn build(&self, app: &mut App) {
         //
+        // Stage PreUpdate
+        //
+        app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update);
+
+        //
         // Stage Prepare
         //
         app.add_system_to_stage(RenderStage::Prepare, prepare);
     }
+}
+
+#[allow(clippy::needless_pass_by_value)]
+fn render_pre_update(
+    pipeline_manager: Res<'_, PipelineManager>,
+    mut mesh_renderer: ResMut<'_, MeshRenderer>,
+) {
+    mesh_renderer.initialize_tmp_pso(&pipeline_manager);
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -56,7 +69,7 @@ impl MeshRenderer {
         }
     }
 
-    pub fn register_material(&mut self, material_idx: u32, pipeline_manager: &PipelineManager) {
+    pub fn initialize_tmp_pso(&mut self, pipeline_manager: &PipelineManager) {
         if self.tmp_batch_idx == u32::MAX {
             let tmp_pipeline_handle = build_temp_pso(pipeline_manager);
 
@@ -65,7 +78,9 @@ impl MeshRenderer {
                     pipeline_handle: tmp_pipeline_handle,
                 });
         }
+    }
 
+    pub fn register_material(&mut self, material_idx: u32) {
         for layer in &mut self.default_layers {
             layer.register_material(material_idx, self.tmp_batch_idx);
         }
