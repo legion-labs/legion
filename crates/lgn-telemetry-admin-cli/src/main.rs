@@ -17,7 +17,7 @@ use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use lake_size::fill_block_sizes;
+use lake_size::{delete_old_blocks, fill_block_sizes};
 use lgn_analytics::alloc_sql_pool;
 use lgn_blob_storage::AwsS3BlobStorage;
 use lgn_blob_storage::AwsS3Url;
@@ -96,9 +96,12 @@ enum Commands {
         /// process guid
         process_id: String,
     },
-    /// Prints the metrics streams of the process
     #[clap(name = "fill-block-sizes")]
     FillBlockSizes,
+
+    /// Delete blocks x days old or older
+    #[clap(name = "delete-old-blocks")]
+    DeleteoldBlocks { min_days_old: i32 },
 }
 
 #[tokio::main]
@@ -163,6 +166,9 @@ async fn main() -> Result<()> {
         }
         Commands::FillBlockSizes => {
             fill_block_sizes(&mut connection, blob_storage).await?;
+        }
+        Commands::DeleteoldBlocks { min_days_old } => {
+            delete_old_blocks(&mut connection, blob_storage, min_days_old).await?;
         }
     }
     Ok(())
