@@ -19,11 +19,10 @@ use cgen::*;
 
 mod labels;
 use components::{MaterialComponent, ModelComponent};
-use gpu_renderer::GpuInstanceManager;
+use gpu_renderer::{GpuInstanceManager, MeshRenderer, RenderElement};
 pub use labels::*;
 
 mod renderer;
-use lgn_core::BumpAllocatorPool;
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_graphics_api::{AddressMode, CompareOp, FilterType, MipMapMode, ResourceUsage, SamplerDef};
 use lgn_graphics_cgen_runtime::CGenRegistryList;
@@ -60,9 +59,10 @@ use crate::{
         RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces,
     },
     egui::egui_plugin::{Egui, EguiPlugin},
-    gpu_renderer::GpuInstanceVAs,
+    gpu_renderer::{GpuInstanceVas, MeshRendererPlugin},
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingIdContext, PickingManager, PickingPlugin},
+    render_pass::TmpRenderPass,
     resources::{IndexBlock, MeshManager},
     RenderStage,
 };
@@ -113,6 +113,7 @@ impl Plugin for RendererPlugin {
         let static_buffer = renderer.static_buffer().clone();
         let descriptor_heap_manager =
             DescriptorHeapManager::new(NUM_RENDER_FRAMES, &device_context);
+        let pipeline_manager = PipelineManager::new(&device_context);
         //
         // Add renderer stages first. It is needed for the plugins.
         //
@@ -131,7 +132,8 @@ impl Plugin for RendererPlugin {
         //
         // Resources
         //
-        app.insert_resource(PipelineManager::new(&device_context));
+        app.insert_resource(MeshRenderer::new(&static_buffer));
+        app.insert_resource(pipeline_manager);
         app.insert_resource(ManipulatorManager::new());
         app.insert_resource(CGenRegistryList::new());
         app.insert_resource(RenderSurfaces::new());
@@ -147,6 +149,7 @@ impl Plugin for RendererPlugin {
         app.add_plugin(EguiPlugin::new());
         app.add_plugin(PickingPlugin {});
         app.add_plugin(GpuDataPlugin::new(&static_buffer));
+        app.add_plugin(MeshRendererPlugin {});
         app.insert_resource(renderer);
 
         //
@@ -402,6 +405,7 @@ fn update_missing_visuals(
 )]
 fn update_gpu_instances(
     renderer: Res<'_, Renderer>,
+    mut mesh_renderer: ResMut<'_, MeshRenderer>,
     picking_manager: Res<'_, PickingManager>,
     mut picking_data_manager: ResMut<'_, GpuPickingDataManager>,
     mut instance_manager: ResMut<'_, GpuInstanceManager>,
@@ -421,9 +425,19 @@ fn update_gpu_instances(
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
     let mut picking_context = PickingIdContext::new(&picking_manager);
 
-    for (entity, _mesh, _mat_component) in instance_query.iter() {
+    for (entity, _mesh, mat_component) in instance_query.iter() {
         picking_data_manager.remove_gpu_data(&entity);
-        instance_manager.remove_gpu_instance(entity);
+        if let Some(removed_ids) = instance_manager.remove_gpu_instance(entity) {
+            for removed_id in removed_ids {
+                let mut material_key = None;
+                if let Some(material) = mat_component {
+                    material_key = Some(material.material_id);
+                }
+
+                let material_idx = material_manager.id_for_index(material_key, 0);
+                mesh_renderer.unregister_element(material_idx, removed_id);
+            }
+        }
     }
 
     let mut picking_block: Option<IndexBlock> = None;
@@ -460,7 +474,7 @@ fn update_gpu_instances(
         }
         for mesh in &model_meta_data.meshes {
             let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
-            let instance_vas = GpuInstanceVAs {
+            let instance_vas = GpuInstanceVas {
                 submesh_va: mesh_meta_data.mesh_description_offset,
                 material_va: material_manager.va_for_index(material_key, 0) as u32,
                 color_va: color_manager.va_for_index(Some(entity), 0) as u32,
@@ -468,11 +482,18 @@ fn update_gpu_instances(
                 picking_data_va: picking_data_manager.va_for_index(Some(entity), 0) as u32,
             };
 
-            instance_manager.add_gpu_instance(
+            let gpu_instance_id = instance_manager.add_gpu_instance(
                 entity,
                 &mut instance_block,
                 &mut updater,
                 &instance_vas,
+            );
+
+            let material_idx = material_manager.id_for_index(material_key, 0);
+            mesh_renderer.register_material(material_idx);
+            mesh_renderer.register_element(
+                material_idx,
+                &RenderElement::new(gpu_instance_id, mesh.mesh_id as u32, &mesh_manager),
             );
         }
     }
@@ -507,7 +528,7 @@ fn render_update(
         Res<'_, Renderer>,
         Res<'_, BindlessTextureManager>,
         Res<'_, PipelineManager>,
-        Res<'_, BumpAllocatorPool>,
+        Res<'_, MeshRenderer>,
         Res<'_, MeshManager>,
         Res<'_, PickingManager>,
         Res<'_, GpuInstanceManager>,
@@ -535,7 +556,7 @@ fn render_update(
     let renderer = resources.0;
     let bindless_textures = resources.1;
     let pipeline_manager = resources.2;
-    // let bump_allocator_pool = resources.3;
+    let mesh_renderer = resources.3;
     let mesh_manager = resources.4;
     let picking_manager = resources.5;
     let instance_manager = resources.6;
@@ -699,16 +720,11 @@ fn render_update(
             camera_component,
         );
 
-        let render_pass = render_surface.test_renderpass();
-        let render_pass = render_pass.write();
-        render_pass.render(
+        TmpRenderPass::render(
             &render_context,
             &mut cmd_buffer,
-            &model_manager,
-            &mesh_manager,
-            &instance_manager,
             render_surface.as_mut(),
-            q_drawables.as_slice(),
+            &mesh_renderer,
         );
 
         let debug_renderpass = render_surface.debug_renderpass();

@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use lgn_app::{App, CoreStage, Plugin};
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::{Added, Changed, Entity, Query, Res, ResMut};
-use lgn_graphics_api::{PagedBufferAllocation, VertexBufferBinding};
+use lgn_graphics_api::VertexBufferBinding;
 use lgn_math::Vec4;
 use lgn_tracing::span_fn;
 use lgn_transform::components::GlobalTransform;
@@ -17,7 +17,7 @@ use crate::{
 
 use super::{
     BindlessTextureManager, DescriptorHeapManager, IndexAllocator, IndexBlock, PipelineManager,
-    UnifiedStaticBuffer, UniformGPUData, UniformGPUDataUpdater,
+    StaticBufferAllocation, UnifiedStaticBuffer, UniformGPUData, UniformGPUDataUpdater,
 };
 
 pub struct GpuDataPlugin {
@@ -37,6 +37,7 @@ pub(crate) struct GpuDataManager<K, T> {
     index_allocator: IndexAllocator,
     data_map: BTreeMap<K, Vec<(u32, u64)>>,
     default_uploaded: bool,
+    default_id: u32,
     default_va: u64,
 }
 
@@ -55,6 +56,7 @@ impl<K, T> GpuDataManager<K, T> {
             index_allocator,
             data_map: BTreeMap::new(),
             default_uploaded: false,
+            default_id,
             default_va,
         }
     }
@@ -72,6 +74,18 @@ impl<K, T> GpuDataManager<K, T> {
             self.data_map.insert(key, vec![(gpu_data_id, gpu_data_va)]);
         }
         (gpu_data_id, gpu_data_va)
+    }
+
+    pub fn id_for_index(&self, optional: Option<K>, index: usize) -> u32
+    where
+        K: Ord,
+    {
+        if let Some(key) = optional {
+            if let Some(value) = self.data_map.get(&key) {
+                return value[index].0;
+            }
+        }
+        self.default_id
     }
 
     pub fn va_for_index(&self, optional: Option<K>, index: usize) -> u64
@@ -112,7 +126,7 @@ impl<K, T> GpuDataManager<K, T> {
         }
     }
 
-    pub fn remove_gpu_data(&mut self, key: &K)
+    pub fn remove_gpu_data(&mut self, key: &K) -> Option<Vec<u32>>
     where
         K: Ord,
     {
@@ -122,6 +136,10 @@ impl<K, T> GpuDataManager<K, T> {
                 instance_ids.push(data.0);
             }
             self.index_allocator.release_index_ids(&instance_ids);
+
+            Some(instance_ids)
+        } else {
+            None
         }
     }
 
@@ -372,7 +390,7 @@ fn mark_defaults_as_uploaded(
 }
 
 pub(crate) struct GpuVaTableForGpuInstance {
-    static_allocation: PagedBufferAllocation,
+    static_allocation: StaticBufferAllocation,
 }
 
 impl GpuVaTableForGpuInstance {
