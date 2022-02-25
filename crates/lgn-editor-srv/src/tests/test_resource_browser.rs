@@ -244,8 +244,9 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                         "components",
                         None,
                         Some(
-                            json!({ "Light": sample_data::offline::Light {
-                            }})
+                            serde_json::json!({
+                                "Light" : {}
+                            })
                             .to_string(),
                         ),
                     ))
@@ -254,11 +255,9 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                         "components",
                         None,
                         Some(
-                            json!({ "StaticMesh": sample_data::offline::StaticMesh {
-                                mesh_id: mesh_ids[mesh_id ],
-                                color : colors[color_id],
-                                mesh : None,
-                            }})
+                            serde_json::json!({
+                                "Visual" : {}
+                            })
                             .to_string(),
                         ),
                     ));

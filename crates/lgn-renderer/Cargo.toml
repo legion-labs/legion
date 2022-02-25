@@ -8,10 +8,10 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 lgn-app = { path = "../lgn-app", version = "0.1.0" }
 lgn-core = { path = "../lgn-core", version = "0.1.0" }
+lgn-data-runtime = { path = "../lgn-data-runtime", version = "0.1.0" }
 lgn-ecs = { path = "../lgn-ecs", version = "0.1.0" }
 lgn-graphics-api = { path = "../lgn-graphics-api", version = "0.1.0" }
 lgn-graphics-cgen-runtime = { path = "../lgn-graphics-cgen-runtime", version = "0.1.0" }
-lgn-data-runtime = { path = "../lgn-data-runtime", version = "0.1.0" }
 lgn-graphics-data = { path = "../lgn-graphics-data", version = "0.1.0" }
 lgn-input = { path = "../lgn-input", version = "0.1.0" }
 lgn-math = { path = "../lgn-math", version = "0.1.0" }

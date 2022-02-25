@@ -10,11 +10,11 @@ pub struct RenderElement {
 
 impl RenderElement {
     pub fn new(gpu_instance_id: u32, mesh_id: u32, mesh_manager: &MeshManager) -> Self {
-        let mesh = mesh_manager.mesh_from_id(mesh_id);
+        let mesh = mesh_manager.get_mesh_meta_data(mesh_id);
 
         Self {
             gpu_instance_id,
-            vertex_count: mesh.num_vertices() as u32,
+            vertex_count: mesh.draw_call_count as u32,
             index_count: 0,
             index_offset: 0,
         }

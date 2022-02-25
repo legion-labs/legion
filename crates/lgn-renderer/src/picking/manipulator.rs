@@ -70,7 +70,7 @@ impl ManipulatorPart {
         let entity = entity_commands
             .insert(transform)
             .insert(GlobalTransform::identity())
-            .insert(VisualComponent::new(mesh_id as usize, color))
+            .insert(VisualComponent::new_default_mesh(mesh_id, color))
             .id();
 
         entity_commands.insert(ManipulatorComponent {

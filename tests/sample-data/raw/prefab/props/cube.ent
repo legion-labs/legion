@@ -9,14 +9,12 @@
             scale: (1, 1, 1),
         )),
         Visual((
-            renderable_geometry: "offline_mesh(raw/prefab/props/cube.obj)",
+            renderable_geometry: Some("runtime_model(offline_model(models/cube/cube.gltf, 'Cube'))"),
+            color: (255, 0, 0),
             shadow_receiver: true,
             shadow_caster_sun: true,
             shadow_caster_local: true,
             gi_contribution: 0,
-        )),
-        StaticMesh((
-            mesh_id: 1,
         )),
     ],
 )

@@ -191,6 +191,8 @@ skip = [
   { name = "libloading", version = "=0.6.7" },
   # Introduced by web browser
   { name = "widestring", version = "=0.4.3" },
+  # Remove when the new version of GLTF crate is released 
+  { name = "num-rational", version = "=0.3.2" },
 ] #{ name = "ansi_term", version = "=0.11.0" },
 # Similarly to `skip` allows you to skip certain crates during duplicate 
 # detection. Unlike skip, it also includes the entire tree of transitive 

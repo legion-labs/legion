@@ -23,7 +23,8 @@ fn register_resource_types(world: &mut World) {
         crate::offline::register_resource_types(resource_registry.into_inner())
             .add_type_mut::<crate::offline_psd::PsdFile>()
             .add_type_mut::<crate::offline_png::PngFile>()
-            .add_type_mut::<crate::offline_texture::Texture>();
+            .add_type_mut::<crate::offline_texture::Texture>()
+            .add_type_mut::<crate::offline_gltf::GltfFile>();
     }
 }
 
@@ -35,12 +36,14 @@ fn add_loaders(asset_registry: NonSendMut<'_, AssetRegistryOptions>) {
         crate::offline::add_loaders(asset_registry)
             .add_loader_mut::<crate::offline_psd::PsdFile>()
             .add_loader_mut::<crate::offline_png::PngFile>()
-            .add_loader_mut::<crate::offline_texture::Texture>();
+            .add_loader_mut::<crate::offline_texture::Texture>()
+            .add_loader_mut::<crate::offline_gltf::GltfFile>();
     }
 
     #[cfg(feature = "runtime")]
     {
         crate::runtime::add_loaders(asset_registry)
-            .add_loader_mut::<crate::runtime_texture::Texture>();
+            .add_loader_mut::<crate::runtime_texture::Texture>()
+            .add_loader_mut::<crate::runtime::Model>();
     }
 }

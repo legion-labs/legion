@@ -1,0 +1,21 @@
+(
+    name: "Helmet Lenses",
+    children: [],
+    parent: Some("world/sample_1.ent"),
+    components: [
+        Transform((
+            position: (0, 0.5, 0),
+            rotation: (0, 0, 0, 1),
+            scale: (1, 1, 1),
+            apply_to_children: true,
+        )),
+        Visual((
+            renderable_geometry: Some("runtime_model(offline_model(models/helmet/FlightHelmet.gltf, 'Lenses_low'))"),
+            color: (0, 255, 255),
+            shadow_receiver: true,
+            shadow_caster_sun: true,
+            shadow_caster_local: true,
+            gi_contribution: 0,
+        )),
+    ],
+)

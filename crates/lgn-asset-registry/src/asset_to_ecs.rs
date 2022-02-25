@@ -4,7 +4,11 @@ use crate::asset_entities::AssetToEntityMap;
 use lgn_core::Name;
 use lgn_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
-use lgn_renderer::components::{MaterialComponent, TextureComponent, VisualComponent};
+use lgn_renderer::components::{
+    LightComponent, LightType, MaterialComponent, Mesh, ModelComponent, TextureComponent,
+    VisualComponent,
+};
+
 use lgn_tracing::info;
 use lgn_transform::prelude::*;
 use sample_data::runtime as runtime_data;
@@ -85,11 +89,6 @@ impl AssetToECS for runtime_data::Entity {
                     scale: transform.scale,
                 });
                 transform_inserted = true;
-            } else if let Some(static_mesh) = component.downcast_ref::<runtime_data::StaticMesh>() {
-                entity.insert(VisualComponent::new(
-                    static_mesh.mesh_id as usize,
-                    static_mesh.color,
-                ));
             } else if let Some(script) =
                 component.downcast_ref::<lgn_scripting::runtime::ScriptComponent>()
             {
@@ -98,7 +97,10 @@ impl AssetToECS for runtime_data::Entity {
                 name_inserted = true;
                 entity.insert(Name::new(name.name.clone()));
             } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
-                entity.insert(visual.clone());
+                entity.insert(VisualComponent::new(
+                    &visual.renderable_geometry,
+                    visual.color,
+                ));
             } else if let Some(gi) = component.downcast_ref::<runtime_data::GlobalIllumination>() {
                 entity.insert(gi.clone());
             } else if let Some(nav_mesh) = component.downcast_ref::<runtime_data::NavMesh>() {
@@ -106,7 +108,19 @@ impl AssetToECS for runtime_data::Entity {
             } else if let Some(view) = component.downcast_ref::<runtime_data::View>() {
                 entity.insert(view.clone());
             } else if let Some(light) = component.downcast_ref::<runtime_data::Light>() {
-                entity.insert(light.clone());
+                entity.insert(LightComponent {
+                    light_type: match light.light_type {
+                        0 => LightType::Omnidirectional,
+                        1 => LightType::Directional,
+                        _ => LightType::Spotlight {
+                            cone_angle: light.cone_angle,
+                        },
+                    },
+                    radiance: light.radiance,
+                    color: light.color,
+                    enabled: light.enabled,
+                    ..LightComponent::default()
+                });
             } else if let Some(physics) =
                 component.downcast_ref::<lgn_physics::runtime::PhysicsRigidActor>()
             {
@@ -187,8 +201,6 @@ impl AssetToECS for lgn_graphics_data::runtime::Material {
     }
 }
 
-impl AssetToECS for runtime_data::Mesh {}
-
 impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {
     fn create_in_ecs(
         commands: &mut Commands<'_, '_>,
@@ -216,6 +228,66 @@ impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {
         );
 
         entity.insert(texture_component);
+
+        Some(entity.id())
+    }
+}
+
+impl AssetToECS for lgn_graphics_data::runtime::Model {
+    fn create_in_ecs(
+        commands: &mut Commands<'_, '_>,
+        model: &Self,
+        asset_id: &ResourceTypeAndId,
+        _registry: &Res<'_, Arc<AssetRegistry>>,
+        asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+    ) -> Option<Entity> {
+        let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
+            commands.entity(entity)
+        } else {
+            commands.spawn()
+        };
+
+        let mut meshes = Vec::new();
+        for mesh in &model.meshes {
+            meshes.push(Mesh {
+                positions: if !mesh.positions.is_empty() {
+                    Some(mesh.positions.clone())
+                } else {
+                    None
+                },
+                normals: if !mesh.normals.is_empty() {
+                    Some(mesh.normals.clone())
+                } else {
+                    None
+                },
+                tangents: if !mesh.tangents.is_empty() {
+                    Some(mesh.tangents.clone())
+                } else {
+                    None
+                },
+                tex_coords: if !mesh.tex_coords.is_empty() {
+                    Some(mesh.tex_coords.clone())
+                } else {
+                    None
+                },
+                indices: if !mesh.indices.is_empty() {
+                    Some(mesh.indices.clone())
+                } else {
+                    None
+                },
+                colors: if !mesh.colors.is_empty() {
+                    Some(mesh.colors.clone())
+                } else {
+                    None
+                },
+                material_id: None,
+            });
+        }
+        let model_component = ModelComponent {
+            model_id: Some(*asset_id),
+            meshes,
+        };
+        entity.insert(model_component);
 
         Some(entity.id())
     }

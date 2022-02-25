@@ -7,84 +7,54 @@ expression: incremental_manifest
 {
   "compiled_resources": [
     {
-      "path": "(1a377760c95e361c,b11243e1-009c-4b69-8be7-cd5bef0ed3e8)|648242a8cf00bfee",
-      "checksum": "f70b936281317b5ac7981e7337183c39071fa6fec7cb7ace3df9c928816b50cd",
-      "size": 16777274
+      "path": "(0d4207bbf3a2fd08,4cbc25ba-8743-4f20-9a58-6419770c951f)|44e4b6023fb7a8d3_GlassPlastic_low",
+      "checksum": "43659f8a0cba864c027c877b55e8c94a58eb449880f363bb265bb629821635a3",
+      "size": 2511625
     },
     {
-      "path": "(1a377760c95e361c,8f3f0937-0965-4292-8d39-f75d4a7de488)|648242a8cf00bfee",
-      "checksum": "589bdbf9de72a067a990c0091c3274231f9d7217e28cb1da1c8a2b55cc22c848",
-      "size": 4194362
+      "path": "(0d4207bbf3a2fd08,4cbc25ba-8743-4f20-9a58-6419770c951f)|44e4b6023fb7a8d3_Hose_low",
+      "checksum": "6f3bfd2c5d35552371e83330e399edd7f3d832330deaf1ac5f00cb91856f56d7",
+      "size": 5682213
     },
     {
-      "path": "(1a377760c95e361c,6e0ca2bd-281a-4185-906c-acaa9897759a)|648242a8cf00bfee",
-      "checksum": "c537b9e116b55aadeedc2b4cf360833b9ec988eb91b7919d78e8bc231afd2006",
-      "size": 4194362
+      "path": "(0d4207bbf3a2fd08,4cbc25ba-8743-4f20-9a58-6419770c951f)|44e4b6023fb7a8d3_LeatherParts_low",
+      "checksum": "7c32a7c93fddbf3ee73c518c619a8864d685274e70c60739552e20b8aaf72fa0",
+      "size": 6752133
     },
     {
-      "path": "(1a377760c95e361c,2839ea70-c411-4302-8f67-e899fdf27645)|648242a8cf00bfee",
-      "checksum": "6976d1d8609849368531037439a6f765b7f28f255e6b9bbdb48c86ccde46f663",
-      "size": 16777274
+      "path": "(0d4207bbf3a2fd08,4cbc25ba-8743-4f20-9a58-6419770c951f)|44e4b6023fb7a8d3_Lenses_low",
+      "checksum": "05badbc4a757f700544d4990d331ccd06eee1e50d1fcc83b422f6600459d9a4b",
+      "size": 231408
     },
     {
-      "path": "(1a377760c95e361c,b11243e1-009c-4b69-8be7-cd5bef0ed3e8)|648242a8cf00bfee|0659c0b6c23b950d_Albedo",
-      "checksum": "f0769682079397613c822f58806c7faf6640a51e50dcc050b586d22bb34678c2",
-      "size": 5592538
+      "path": "(0d4207bbf3a2fd08,4cbc25ba-8743-4f20-9a58-6419770c951f)|44e4b6023fb7a8d3_MetalParts_low",
+      "checksum": "6fac802c713aff16dcb608cf53e1ee325bc1d5f714a9faf06830a4a46d32b04e",
+      "size": 7191806
     },
     {
-      "path": "(1a377760c95e361c,b11243e1-009c-4b69-8be7-cd5bef0ed3e8)|648242a8cf00bfee|0659c0b6c23b950d_AlbedoBlend",
-      "checksum": "4ad4211a0b29290229a76291ec17e7190d1433174406b33e2e379ffbc99e347f",
-      "size": 5592538
+      "path": "(0d4207bbf3a2fd08,4cbc25ba-8743-4f20-9a58-6419770c951f)|44e4b6023fb7a8d3_RubberWood_low",
+      "checksum": "5e9268b0bc75c96e27ec320a91d013b4dcdfe2ed30eaac511066a787eb9f67bc",
+      "size": 7341527
     },
     {
-      "path": "(1a377760c95e361c,b11243e1-009c-4b69-8be7-cd5bef0ed3e8)|648242a8cf00bfee|0659c0b6c23b950d_Normal",
-      "checksum": "f0769682079397613c822f58806c7faf6640a51e50dcc050b586d22bb34678c2",
-      "size": 5592538
+      "path": "(0d4207bbf3a2fd08,0075173a-9ae1-43d2-a669-a24b8519d397)|44e4b6023fb7a8d3_Cube",
+      "checksum": "3f544d32793138ac41dea43f3ae9b30f22fc84ca147711da7056e6a6416747cf",
+      "size": 9248
     },
     {
-      "path": "(1a377760c95e361c,8f3f0937-0965-4292-8d39-f75d4a7de488)|648242a8cf00bfee|0659c0b6c23b950d_Metalness",
-      "checksum": "ae247e19fe0ff1a4ecbdc55b427670565d6482af993de5927cb1cf52dd7d46b1",
-      "size": 2796338
+      "path": "(0d4207bbf3a2fd08,4cbc25ba-8743-4f20-9a58-6419770c951f)|44e4b6023fb7a8d3_RubberWood_low|5c4b1b522bf5dcb0",
+      "checksum": "e9431bf512b045179e0f87102ee69749ce57ca3b9e891fe0400061d2877ba02c",
+      "size": 1053959
     },
     {
-      "path": "(1a377760c95e361c,8f3f0937-0965-4292-8d39-f75d4a7de488)|648242a8cf00bfee|0659c0b6c23b950d_Roughness",
-      "checksum": "ae247e19fe0ff1a4ecbdc55b427670565d6482af993de5927cb1cf52dd7d46b1",
-      "size": 2796338
-    },
-    {
-      "path": "(1a377760c95e361c,6e0ca2bd-281a-4185-906c-acaa9897759a)|648242a8cf00bfee|0659c0b6c23b950d_Metalness",
-      "checksum": "f1d949b1a094cd1d059498a9e0cbc21c773a57a5cb0c706cb7f9a753c05546df",
-      "size": 2796338
-    },
-    {
-      "path": "(1a377760c95e361c,6e0ca2bd-281a-4185-906c-acaa9897759a)|648242a8cf00bfee|0659c0b6c23b950d_Roughness",
-      "checksum": "f1d949b1a094cd1d059498a9e0cbc21c773a57a5cb0c706cb7f9a753c05546df",
-      "size": 2796338
-    },
-    {
-      "path": "(1a377760c95e361c,2839ea70-c411-4302-8f67-e899fdf27645)|648242a8cf00bfee|0659c0b6c23b950d_Albedo",
-      "checksum": "0cc2643b32c457290817ea471bf4426ab3bc04561d211c84092689e64a30b353",
-      "size": 5592538
-    },
-    {
-      "path": "(1a377760c95e361c,2839ea70-c411-4302-8f67-e899fdf27645)|648242a8cf00bfee|0659c0b6c23b950d_AlbedoBlend",
-      "checksum": "d55879df907242be87f688a2202e9e4623ac48819bd1912785f33b09d0858cf0",
-      "size": 5592538
-    },
-    {
-      "path": "(1a377760c95e361c,2839ea70-c411-4302-8f67-e899fdf27645)|648242a8cf00bfee|0659c0b6c23b950d_Normal",
-      "checksum": "0cc2643b32c457290817ea471bf4426ab3bc04561d211c84092689e64a30b353",
-      "size": 5592538
-    },
-    {
-      "path": "(07dd9f5d1793ed64,48909c46-ad4f-4d6b-a522-2e16e81ba082)|738a5b850f6f8b3a",
-      "checksum": "293f7abd36f31aef18feee18463e486983a6e77007009f37e4e6abb3da185e5c",
-      "size": 250
+      "path": "(0d4207bbf3a2fd08,0075173a-9ae1-43d2-a669-a24b8519d397)|44e4b6023fb7a8d3_Cube|5c4b1b522bf5dcb0",
+      "checksum": "a6cac0d36822de4f4a2e60bc84ae3eab61b45b445ce21f2045f9d2696c087eaa",
+      "size": 1583
     },
     {
       "path": "(1c0ff9e497b0740f,270c28b5-6368-4a21-8ef1-a7d03f85abb3)|1d9ddd99aad89045",
-      "checksum": "c797ee574c10f726b7a7a98be5df5c459cfe7084239baa6013e76b0b6289f8e7",
-      "size": 253
+      "checksum": "47abc41fa8e36e36715c2c35b9e0b553f14dfc2ba5dafab12081343dbe71c27e",
+      "size": 262
     },
     {
       "path": "(91dc60590cba171e,c6db12c5-47a6-407d-94da-b6853f36eb8a)|e5c099cc30495fed",
@@ -102,9 +72,29 @@ expression: incremental_manifest
       "size": 270
     },
     {
-      "path": "(80b97dd7e2e9edca,7948dc8c-8bc6-4aaf-b3cf-0a21633edc44)|9c9a840b84935d1f",
-      "checksum": "e78893128e7544efb674ebd3b15af465feb3c7bfe5b377dd3273cc6d4f094e65",
-      "size": 967
+      "path": "(0d4207bbf3a2fd08,4cbc25ba-8743-4f20-9a58-6419770c951f)|44e4b6023fb7a8d3_Lenses_low|5c4b1b522bf5dcb0",
+      "checksum": "66edb106cadd8e32af80e1ee56d141a1ec636885a86400f5ad11a3c2b20e1548",
+      "size": 33343
+    },
+    {
+      "path": "(0d4207bbf3a2fd08,4cbc25ba-8743-4f20-9a58-6419770c951f)|44e4b6023fb7a8d3_LeatherParts_low|5c4b1b522bf5dcb0",
+      "checksum": "419b0cfcc1fd73e0fae85b8cc54f0edce15ae1a392c3791eddeb489b305ba9c7",
+      "size": 964751
+    },
+    {
+      "path": "(0d4207bbf3a2fd08,4cbc25ba-8743-4f20-9a58-6419770c951f)|44e4b6023fb7a8d3_GlassPlastic_low|5c4b1b522bf5dcb0",
+      "checksum": "5f3f81e826c1406eb7c051a0ee15b73d4604093017129496b4503ecbc0678cf8",
+      "size": 359583
+    },
+    {
+      "path": "(0d4207bbf3a2fd08,4cbc25ba-8743-4f20-9a58-6419770c951f)|44e4b6023fb7a8d3_MetalParts_low|5c4b1b522bf5dcb0",
+      "checksum": "3b009027871c25ecb30d497b2ed6d3c8b3d25d5ab61e0fd2cf883ee559280a6f",
+      "size": 1004863
+    },
+    {
+      "path": "(0d4207bbf3a2fd08,4cbc25ba-8743-4f20-9a58-6419770c951f)|44e4b6023fb7a8d3_Hose_low|5c4b1b522bf5dcb0",
+      "checksum": "f3dfa4b584bf0583614aacacb8aa47fe5c6e7e6f4eee6196567c211d69b7ee08",
+      "size": 822687
     },
     {
       "path": "(91dc60590cba171e,ee30f104-3ef5-46e7-af16-4f085bd6f8e3)|e5c099cc30495fed",
@@ -127,29 +117,64 @@ expression: incremental_manifest
       "size": 87
     },
     {
+      "path": "(1c0ff9e497b0740f,e17615cb-5480-4c2a-be4a-3c0660078bb1)|1d9ddd99aad89045",
+      "checksum": "ecd95bae8086fc6917706a22a77ce8f09188cd777018085f656856fd32b8f2cf",
+      "size": 303
+    },
+    {
       "path": "(1c0ff9e497b0740f,e07c7027-a823-47e5-b0dd-8871e27adfce)|1d9ddd99aad89045",
-      "checksum": "55827e5f4df5416ef9cdde447514c5fba412fe710199e25dead50d2ed4ffd4cc",
-      "size": 327
+      "checksum": "a638ef6b947531ce7ca4720ef51b7ba87840e074c1febcf0ac95049b3e914eb6",
+      "size": 288
     },
     {
       "path": "(1c0ff9e497b0740f,db051b98-6ff5-4bac-bea8-50b5a13c3f1b)|1d9ddd99aad89045",
-      "checksum": "4a61e413c307438c5ff32553046983f3f9d47c9c3b24e3e801e0461483990174",
-      "size": 217
+      "checksum": "c5f1b7e4469b6ef65218446f76d1381f184c20b3b841d9cfc0fca1626040af40",
+      "size": 220
+    },
+    {
+      "path": "(1c0ff9e497b0740f,bca6fc26-f15b-4a2e-8766-8f16293bc544)|1d9ddd99aad89045",
+      "checksum": "1d1f510e6eefa00bc14a826eb3cb8119c7ebaa93efc249d85e12610d6ad4725d",
+      "size": 295
+    },
+    {
+      "path": "(1c0ff9e497b0740f,b868d53b-e0dc-4f53-875d-984719e57fa0)|1d9ddd99aad89045",
+      "checksum": "dcfe2b5e5c9550f4a3768ea1b9ca5559ab53df6a7b43d6e3c6ffd473bf012b69",
+      "size": 302
+    },
+    {
+      "path": "(1c0ff9e497b0740f,b7de73b9-39b1-4972-924a-758dd5ea4377)|1d9ddd99aad89045",
+      "checksum": "52e5dc4c47565cc25eb27b012ca0850f712a1ec83ec9fb019d7d260d0dba5239",
+      "size": 302
+    },
+    {
+      "path": "(1c0ff9e497b0740f,a0f8a107-7705-4eff-9230-9c486d8aedc4)|1d9ddd99aad89045",
+      "checksum": "92a180b0c6d1e931b7133a4c5e0f4969a4566adc52f3d076880e6b4f219263e8",
+      "size": 250
     },
     {
       "path": "(1c0ff9e497b0740f,7483c534-fe2a-4f16-b655-e9afe39a93ba)|1d9ddd99aad89045",
-      "checksum": "50025cf87f11983f8a98e307450edc3982d859be82e5cc6932e19a65c141bf39",
-      "size": 217
+      "checksum": "d9389b867f036e006ab84ca951a6acc1bd4797479b6898104a40726dc859662b",
+      "size": 220
+    },
+    {
+      "path": "(1c0ff9e497b0740f,41607fc3-e32b-425b-87b7-6fad264dff92)|1d9ddd99aad89045",
+      "checksum": "b3bdf7c8aea1a299b5fa57a0c0e2ada3bb09a1bbd07ca0dd1b155b79ae11506e",
+      "size": 300
+    },
+    {
+      "path": "(1c0ff9e497b0740f,23681ea4-aab8-4d44-92c8-91543cb3205f)|1d9ddd99aad89045",
+      "checksum": "9d29787fdd5680e8f44bf04992a5ec515baac92cc2c95ca6c2b38fcb22abddaa",
+      "size": 293
     },
     {
       "path": "(1c0ff9e497b0740f,202e3aa6-f158-4c77-890b-3f59b183b6bd)|1d9ddd99aad89045",
-      "checksum": "93ec81271d17a62beeaeaec925f52bdd63387bb3255173c7d04b52c6de28f396",
-      "size": 217
+      "checksum": "4df4000ebb32ab790b458a7096e6202149ab9c031e4d806de926a21108a4cdff",
+      "size": 220
     },
     {
       "path": "(1c0ff9e497b0740f,5d6c8521-ef7f-4402-8fac-01c5c4f53329)|1d9ddd99aad89045",
-      "checksum": "ec206def2e6367d195447aa89dcda17ae221c15e607722bd2f23911aa903a12e",
-      "size": 629
+      "checksum": "0f0263c0fedb42035f41decb1007f299c937307a1052e85424b617453adfaf1f",
+      "size": 965
     }
   ]
 }
