@@ -263,13 +263,13 @@ export function streamFileUpload({
 // the api is not fully over yet and it might change soon
 export function reparentResources({
   id,
-  newParent,
+  newPath,
 }: {
   id: string;
-  newParent: string;
+  newPath: string;
 }) {
   return resourceBrowserClient.reparentResource({
     id,
-    newParent,
+    newPath,
   });
 }

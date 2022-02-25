@@ -59,7 +59,8 @@ fn parse_resource_id(value: &str) -> Result<ResourceTypeAndId, Status> {
 struct IndexSnapshot {
     entity_to_parent: HashMap<ResourceTypeAndId, ResourceTypeAndId>,
     parent_to_entities: HashMap<ResourceTypeAndId, Vec<ResourceTypeAndId>>,
-    entity_to_names: HashMap<ResourceTypeAndId, ResourcePathName>,
+    entity_to_names: HashMap<ResourceTypeAndId, (ResourcePathName, ResourcePathName)>,
+    name_to_entity: HashMap<ResourcePathName, ResourceTypeAndId>,
 }
 
 impl IndexSnapshot {
@@ -71,13 +72,16 @@ impl IndexSnapshot {
         let mut entity_to_parent = HashMap::new();
         let mut parent_to_entities = HashMap::new();
         let mut entity_to_names = HashMap::new();
+        let mut name_to_entity = HashMap::new();
 
         for id in project.resource_list().await {
-            if let Ok(res_name) = project.raw_resource_name(id) {
+            if let (Ok(raw_name), Ok(res_name)) =
+                (project.raw_resource_name(id), project.resource_name(id))
+            {
                 let kind = project.resource_type(id).unwrap();
                 let res_id = ResourceTypeAndId { kind, id };
 
-                let mut parent_id = res_name.extract_parent_info().0;
+                let mut parent_id = raw_name.extract_parent_info().0;
                 if parent_id.is_none() && kind == sample_data::offline::Entity::TYPE {
                     if let Some(asset) = asset_handles.get(res_id) {
                         if let Some(entity) = resource_registry
@@ -98,13 +102,15 @@ impl IndexSnapshot {
                         .or_insert_with(Vec::new)
                         .push(res_id);
                 }
-                entity_to_names.insert(res_id, res_name);
+                name_to_entity.insert(res_name.clone(), res_id);
+                entity_to_names.insert(res_id, (raw_name, res_name));
             }
         }
         Self {
             entity_to_parent,
             parent_to_entities,
             entity_to_names,
+            name_to_entity,
         }
     }
 }
@@ -209,7 +215,7 @@ fn template_entity(
         ),
     ));
 
-    transaction = update_entity_parenting(entity_id, parent_id, None, transaction);
+    transaction = update_entity_parenting(entity_id, parent_id, None, transaction, true);
 
     transaction
 }
@@ -220,6 +226,7 @@ fn update_entity_parenting(
     new_parent: Option<ResourceTypeAndId>,
     old_parent: Option<ResourceTypeAndId>,
     mut transaction: Transaction,
+    clear_children: bool,
 ) -> Transaction {
     let mut current_path: ResourcePathId = entity_id.into();
     current_path = current_path.push(sample_data::runtime::Entity::TYPE);
@@ -260,11 +267,13 @@ fn update_entity_parenting(
         ));
     }
 
-    // Reset children
-    transaction = transaction.add_operation(UpdatePropertyOperation::new(
-        entity_id,
-        &[("children", serde_json::Value::Array(Vec::new()).to_string())],
-    ));
+    // Reset children (when cloning)
+    if clear_children {
+        transaction = transaction.add_operation(UpdatePropertyOperation::new(
+            entity_id,
+            &[("children", serde_json::Value::Array(Vec::new()).to_string())],
+        ));
+    }
 
     transaction
 }
@@ -571,7 +580,8 @@ impl ResourceBrowser for ResourceBrowserRPC {
             ));
 
             if clone_res_id.kind == sample_data::offline::Entity::TYPE {
-                transaction = update_entity_parenting(clone_res_id, parent, None, transaction);
+                transaction =
+                    update_entity_parenting(clone_res_id, parent, None, transaction, true);
             }
         }
 
@@ -615,35 +625,51 @@ impl ResourceBrowser for ResourceBrowserRPC {
         }))
     }
 
-    /// Clone a Resource
+    /// Reparent a Resource
     async fn reparent_resource(
         &self,
         request: Request<ReparentResourceRequest>,
     ) -> Result<Response<ReparentResourceResponse>, Status> {
         let request = request.get_ref();
         let resource_id = parse_resource_id(request.id.as_str())?;
-        let new_parent = parse_resource_id(request.new_parent.as_str())?;
+        let mut new_path = ResourcePathName::new(&request.new_path);
 
-        let mut transaction = Transaction::new()
-            .add_operation(ReparentResourceOperation::new(resource_id, new_parent));
-
-        if resource_id.kind == sample_data::offline::Entity::TYPE {
-            // Build Entity->Parent mapping table. TODO: This should be cached within a index somewhere at one point
-            let index_snapshot = {
-                let transaction_manager = self.transaction_manager.lock().await;
-                let ctx = LockContext::new(&transaction_manager).await;
-                IndexSnapshot::new(
-                    &ctx.project,
-                    &ctx.loaded_resource_handles,
-                    &ctx.resource_registry,
-                )
-                .await
-            };
-
-            let old_parent = index_snapshot.entity_to_parent.get(&resource_id).copied();
-            transaction =
-                update_entity_parenting(resource_id, Some(new_parent), old_parent, transaction);
+        let index_snapshot = {
+            let transaction_manager = self.transaction_manager.lock().await;
+            let ctx = LockContext::new(&transaction_manager).await;
+            IndexSnapshot::new(
+                &ctx.project,
+                &ctx.loaded_resource_handles,
+                &ctx.resource_registry,
+            )
+            .await
+        };
+        let new_parent = index_snapshot.name_to_entity.get(&new_path).copied();
+        if let Some(new_parent) = new_parent {
+            if new_parent == resource_id {
+                return Err(Status::internal("cannot parent to itself"));
+            }
+            new_path = ResourcePathName::new(format!("/!{}", new_parent));
         }
+
+        let old_parent = if resource_id.kind == sample_data::offline::Entity::TYPE {
+            index_snapshot.entity_to_parent.get(&resource_id).copied()
+        } else {
+            None
+        };
+
+        // Ignore same reparenting
+        if old_parent == new_parent {
+            return Ok(Response::new(ReparentResourceResponse {}));
+        }
+
+        let mut transaction = Transaction::new().add_operation(ReparentResourceOperation::new(
+            resource_id,
+            new_path.clone(),
+        ));
+
+        transaction =
+            update_entity_parenting(resource_id, new_parent, old_parent, transaction, false);
 
         {
             let mut transaction_manager = self.transaction_manager.lock().await;

@@ -134,7 +134,7 @@
   class:bg-gray-800={dndHighlightedEntry === entry}
   on:dblclick
   use:keyboardNavigationItem={index}
-  use:dropzone={entry.subEntries.length ? { accept: type } : null}
+  use:dropzone={entry.item != null ? { accept: type } : null}
   on:dnd-drop={onDrop}
   on:dnd-dragenter={onDragOver}
 >
@@ -152,10 +152,11 @@
         <Icon icon="ic:baseline-chevron-right" />
       </div>
     {:else}
-      <div class="icon">
-        <slot name="icon" {entry} />
-      </div>
+      <div class="w-5 icon" />
     {/if}
+    <div class="icon">
+      <slot name="icon" {entry} />
+    </div>
     <div class="name">
       {#if mode === "view"}
         <slot name="name" itemName={entry.name} />

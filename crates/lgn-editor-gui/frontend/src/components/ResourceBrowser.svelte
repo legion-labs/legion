@@ -357,9 +357,9 @@
     draggedEntry: Entry<ResourceDescription>;
     dropzoneEntry: Entry<ResourceDescription>;
   }>) {
-    const newParent = dropzoneEntry.subEntries[0]?.item.id;
+    const newPath = dropzoneEntry.item.path;
 
-    if (!newParent) {
+    if (!newPath) {
       log.error(log.json`Couldn't find id for ${dropzoneEntry}`);
 
       return;
@@ -367,7 +367,7 @@
 
     await reparentResources({
       id: draggedEntry.item.id,
-      newParent,
+      newPath,
     });
 
     await allResources.run(getAllResources);

@@ -88,6 +88,12 @@ impl ResourcePathName {
                 std::string::ToString::to_string,
             );
             self.0 = format!("/!{}{}", resource_id, new_path);
+        } else if let Some(new_parent_id) = new_parent_id {
+            self.0 = format!(
+                "/!{}{}",
+                new_parent_id,
+                new_path.unwrap_or_else(|| "".into())
+            );
         } else if let Some(new_path) = new_path {
             *self = new_path;
         }
