@@ -22,6 +22,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 pub type BoxedAsyncRead = Pin<Box<dyn AsyncRead + Send>>;
 pub type BoxedAsyncWrite = Pin<Box<dyn AsyncWrite + Send>>;
 
+#[derive(Debug)]
 pub struct BlobStats {
     pub size: u64,
 }
