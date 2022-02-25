@@ -12,15 +12,15 @@ pushd $SCRIPT_DIR 1> /dev/null
 CONTAINER_HASH=$(sha1sum install/* | sha1sum | head -c 40)
 TAG="build-env:$CONTAINER_HASH"
 if [[ $MONOREPO_DOCKER_REGISTRY ]] ; then
-    REPO_TAG="$MONOREPO_DOCKER_REGISTRY/$TAG"
-    docker pull $REPO_TAG
+    ECR_REPO_TAG="$MONOREPO_DOCKER_REGISTRY/$TAG"
+    docker pull $ECR_REPO_TAG
     if [[ $? -ne 0 ]] ; then
         docker build . -t $TAG
         aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin $MONOREPO_DOCKER_REGISTRY
-        docker tag "$TAG" "$REPO_TAG"
-        docker push "$REPO_TAG"
+        docker tag "$TAG" "$ECR_REPO_TAG"
+        docker push "$ECR_REPO_TAG"
     fi
-    echo "::set-output name=container::$REPO_TAG"
+    echo "ecr_repo_tag=$ECR_REPO_TAG" >> $GITHUB_ENV
 else
     if [[ "$(docker images -q $TAG 2> /dev/null)" != "" ]]; then
         echo "Image $TAG already exists"

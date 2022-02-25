@@ -189,15 +189,18 @@ jobs:
     name: Setup build env container
     runs-on: [self-hosted, linux, common, build]
     outputs:
-      container: ${{ steps.setup-container.outputs.container }}
+      container: ${{ steps.set-repo-tag.outputs.container }}
     steps:
       - uses: actions/checkout@v2
 
       - name: Build
-        id: setup-container
         env:
           MONOREPO_DOCKER_REGISTRY: ${{ secrets.MONOREPO_DOCKER_REGISTRY }}
         run: ./build/env/setup.sh
+
+      - name: Set repo tag
+        id: set-repo-tag
+        run: echo "::set-output name=container::${{ env.ecr_repo_tag }}"
 
       - name: Install NodeJS script dependencies
         run: npm install tweetsodium
