@@ -11,6 +11,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  MONOREPO_DOCKER_REGISTRY: 550877636976.dkr.ecr.ca-central-1.amazonaws.com/legion-labs/legion
 
 jobs:
   lint:
@@ -185,23 +186,20 @@ jobs:
             echo "::set-output name=windows_runner::[[\"self-hosted\",\"windows\",\"common\",\"build\"]]"
           fi
 
-  setup_container:
+  setup_image:
     name: Setup build env container
-    if: ${{ false }}
     runs-on: [self-hosted, linux, common, build]
     outputs:
-      container: ${{ steps.set-repo-tag.outputs.container }}
+      image: ${{ steps.set-image.outputs.image }}
     steps:
       - uses: actions/checkout@v2
 
       - name: Build
-        env:
-          MONOREPO_DOCKER_REGISTRY: ${{ secrets.MONOREPO_DOCKER_REGISTRY }}
         run: ./build/env/setup.sh
 
-      - name: Set repo tag
-        id: set-repo-tag
-        run: echo "::set-output name=container::${{ env.ecr_repo_tag }}"
+      - name: Set container image
+        id: set-image
+        run: echo "::set-output name=image::${{ env.image }}"
 
       - name: Install NodeJS script dependencies
         run: npm install tweetsodium
@@ -247,13 +245,13 @@ jobs:
 
   test_build_env:
     name: Testing the Build environment
-    if: ${{ false }}
-    needs: [setup_container]
+    needs: [setup_image]
     runs-on: [self-hosted, linux, common, build]
     container:
-      image: ${{ needs.setup_container.outputs.container }}
+      image: ${{ needs.setup_image.outputs.image }}
       credentials:
         username: AWS
         password: ${{ secrets.ECR_PASSWORD }}
     steps:
+      - uses: actions/checkout@v2
       - run: cargo m --help

@@ -9,25 +9,25 @@ cp "$MONOREPO_ROOT/.monorepo/tools.toml" "$SCRIPT_DIR/install/tools.toml"
 
 pushd $SCRIPT_DIR 1> /dev/null
 
-CONTAINER_HASH=$(sha1sum install/* | sha1sum | head -c 40)
-TAG="build-env:$CONTAINER_HASH"
+IMAGE_NAME="build-env"
+IMAGE_TAG=$(sha1sum install/* | sha1sum | head -c 40)
 if [[ $MONOREPO_DOCKER_REGISTRY ]] ; then
+    IMAGE="$MONOREPO_DOCKER_REGISTRY/$IMAGE_NAME:$IMAGE_TAG"
     aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin $MONOREPO_DOCKER_REGISTRY
-    ECR_REPO_TAG="$MONOREPO_DOCKER_REGISTRY/$TAG"
-    docker pull $ECR_REPO_TAG
+    docker manifest inspect $IMAGE &> /dev/null
     if [[ $? -ne 0 ]] ; then
-        docker build . -t $TAG
-        docker tag "$TAG" "$REPO_TAG"
+        docker build . -t $IMAGE
         # we login again here in case our password expired, since the build step takes around 20min
         aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin $MONOREPO_DOCKER_REGISTRY
-        docker push "$ECR_REPO_TAG"
+        docker push "$IMAGE"
     fi
-    echo "ecr_repo_tag=$ECR_REPO_TAG" >> $GITHUB_ENV
+    echo "image=$IMAGE" >> $GITHUB_ENV
 else
-    if [[ "$(docker images -q $TAG 2> /dev/null)" != "" ]]; then
-        echo "Image $TAG already exists"
+    IMAGE="$IMAGE_NAME:$IMAGE_TAG"
+    if [[ "$(docker images -q $IMAGE 2> /dev/null)" != "" ]]; then
+        echo "Image $IMAGE already exists"
     else
-        docker build . -t $TAG
+        docker build . -t $IMAGE
     fi
 fi
 
