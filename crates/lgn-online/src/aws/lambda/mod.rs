@@ -1,91 +1,60 @@
-use lgn_tracing::{error, info};
+use std::sync::Arc;
+
+use http::{Request, Response};
+use std::task::Poll;
+use tokio::sync::Mutex;
+use tonic::body::BoxBody;
+use tower::Service;
 
 pub mod api_gateway;
 
-/// Run a lambda once locally by expecting a JSON event payload on the specified
-/// reader, and writing the JSON event response to the specified writer.
-///
-/// # Examples
-///
-/// ```
-/// use std::io::{Read, Write};
-/// use serde::{Deserialize, Serialize};
-///
-/// use lambda_runtime::{Context, handler_fn};
-///
-/// #[derive(Deserialize, Clone)]
-/// pub struct Event {
-///     name: String,
-/// }
-///
-/// #[derive(Serialize, Clone)]
-/// pub struct Output {
-///     message: String,
-/// }
-///
-/// pub async fn handler(e: Event, _: Context) -> anyhow::Result<Output> {
-///     if e.name.is_empty() {
-///         return Err(anyhow::anyhow!("name is empty"));
-///     }
-///
-///     Ok(Output {
-///         message: format!("Hello, {}!", e.name),
-///     })
-/// }
-///
-/// #[tokio::main]
-/// async fn main() -> Result<(), lambda_runtime::Error> {
-///     let reader = "{\"name\": \"John Doe\"}".as_bytes();
-///     let mut writer = Vec::<u8>::new();
-///
-///     lgn_online::aws::lambda::run_lambda_once(handler_fn(handler), reader, &mut writer).await?;
-///     
-///     assert_eq!(String::from_utf8_lossy(&writer), "{\"message\":\"Hello, John Doe!\"}");
-///     
-///     Ok(())
-/// }
-/// ```
-pub async fn run_lambda_once<H, I, O, R, W>(
-    handler: H,
-    reader: R,
-    writer: &mut W,
-) -> Result<(), lambda_runtime::Error>
-where
-    H: lambda_runtime::Handler<I, O>,
-    <H as lambda_runtime::Handler<I, O>>::Error: Into<lambda_runtime::Error>,
-    I: for<'de> serde::Deserialize<'de>,
-    O: serde::Serialize,
-    R: std::io::Read,
-    W: std::io::Write,
-{
-    let i: I = serde_json::from_reader(reader)?;
-    let context = lambda_runtime::Context::default();
-    let o = handler.call(i, context).await.map_err(Into::into)?;
-
-    serde_json::to_writer(writer, &o).map_err(Into::into)
+pub fn is_running_as_lambda() -> bool {
+    std::env::var("AWS_LAMBDA_RUNTIME_API").is_ok()
+}
+/// An AWS Lambda handler that implements the GRPC service.
+pub struct AwsLambdaHandler<S> {
+    inner: Arc<Mutex<S>>,
 }
 
-/// Run a lamba handler locally unless the `API` environment variable is set.
-pub async fn run_lambda<H, I, O>(handler: H) -> Result<(), lambda_runtime::Error>
-where
-    H: lambda_runtime::Handler<I, O>,
-    <H as lambda_runtime::Handler<I, O>>::Error: Into<lambda_runtime::Error> + std::fmt::Display,
-    I: for<'de> serde::Deserialize<'de>,
-    O: serde::Serialize,
-{
-    if !is_running_as_lambda() {
-        info!("`AWS_LAMBDA_RUNTIME_API` is not set, running locally and expecting event as JSON on stdin");
-        run_lambda_once(handler, std::io::stdin(), &mut std::io::stdout())
-            .await
-            .map_err(|err| {
-                error!("Execution failed with: {}", err);
-                err
-            })
-    } else {
-        lambda_runtime::run(handler).await
+impl<S> AwsLambdaHandler<S> {
+    pub fn new(inner: S) -> Self {
+        Self {
+            inner: Arc::new(Mutex::new(inner)),
+        }
     }
 }
 
-pub fn is_running_as_lambda() -> bool {
-    std::env::var("AWS_LAMBDA_RUNTIME_API").is_ok()
+impl<'a, S> Service<lambda_http::Request> for AwsLambdaHandler<S>
+where
+    S: Service<Request<hyper::Body>, Response = Response<BoxBody>> + Send + 'static,
+    S::Future: Send + 'static,
+    S::Error: Into<lambda_runtime::Error>,
+{
+    type Error = lambda_runtime::Error;
+    type Response = Response<Vec<u8>>;
+    type Future = tonic::codegen::BoxFuture<Self::Response, Self::Error>;
+
+    fn poll_ready(
+        &mut self,
+        _: &mut std::task::Context<'_>,
+    ) -> Poll<std::result::Result<(), <Self as Service<lambda_http::Request>>::Error>> {
+        Ok(()).into()
+    }
+    fn call(
+        &mut self,
+        event: lambda_http::Request,
+    ) -> <Self as Service<lambda_http::Request>>::Future {
+        let request = event.map(|b| b.to_vec().into());
+        let inner = Arc::clone(&self.inner);
+
+        Box::pin(async move {
+            let mut inner = inner.lock().await;
+            let response = inner.call(request).await.map_err(Into::into)?;
+            drop(inner);
+
+            let (parts, body) = response.into_parts();
+            let body = hyper::body::to_bytes(body).await?.to_vec();
+            Ok(lambda_http::Response::from_parts(parts, body))
+        })
+    }
 }
