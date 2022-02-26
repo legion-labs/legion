@@ -540,7 +540,6 @@ fn render_update(
     ),
     queries: (
         Query<'_, '_, &mut RenderSurface>,
-        Query<'_, '_, (Entity, &VisualComponent), Without<ManipulatorComponent>>,
         Query<
             '_,
             '_,
@@ -568,18 +567,14 @@ fn render_update(
 
     // queries
     let mut q_render_surfaces = queries.0;
-    let q_drawables = queries.1;
-    let q_picked_drawables = queries.2;
-    let q_manipulator_drawables = queries.3;
-    let q_lights = queries.4;
-    let q_cameras = queries.5;
+    let q_picked_drawables = queries.1;
+    let q_manipulator_drawables = queries.2;
+    let q_lights = queries.3;
+    let q_cameras = queries.4;
 
     // start
     let mut render_context =
         RenderContext::new(&renderer, &descriptor_heap_manager, &pipeline_manager);
-    let q_drawables = q_drawables
-        .iter()
-        .collect::<Vec<(Entity, &VisualComponent)>>();
     let q_picked_drawables = q_picked_drawables
         .iter()
         .collect::<Vec<(&VisualComponent, &GlobalTransform)>>();
@@ -712,12 +707,12 @@ fn render_update(
             &render_context,
             render_surface.as_mut(),
             &instance_manager,
-            q_drawables.as_slice(),
             q_manipulator_drawables.as_slice(),
             q_lights.as_slice(),
             &mesh_manager,
             &model_manager,
             camera_component,
+            &mesh_renderer,
         );
 
         TmpRenderPass::render(

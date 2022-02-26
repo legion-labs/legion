@@ -100,18 +100,6 @@ impl<K, T> GpuDataManager<K, T> {
         self.default_va
     }
 
-    pub fn id_va_list(&self, optional: Option<K>) -> Option<&[(u32, u64)]>
-    where
-        K: Ord,
-    {
-        if let Some(key) = optional {
-            if let Some(value) = self.data_map.get(&key) {
-                return Some(value);
-            }
-        }
-        None
-    }
-
     pub fn update_gpu_data(
         &self,
         key: &K,

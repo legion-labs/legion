@@ -9,7 +9,7 @@ use lgn_graphics_api::{
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 
 use crate::{
-    cgen,
+    cgen::{self, shader},
     hl_gfx_api::HLCommandBuffer,
     labels::RenderStage,
     resources::{PipelineHandle, PipelineManager, UnifiedStaticBuffer, UniformGPUDataUpdater},
@@ -23,6 +23,7 @@ pub struct MeshRendererPlugin {}
 
 pub(crate) enum DefaultLayers {
     Opaque = 0,
+    Picking,
 }
 
 impl Plugin for MeshRendererPlugin {
@@ -56,33 +57,49 @@ pub struct MeshRenderer {
     default_layers: Vec<RenderLayer>,
     indirect_arg_buffer: Option<Buffer>,
     count_buffer: Option<Buffer>,
-    tmp_batch_idx: u32,
+    tmp_batch_ids: Vec<u32>,
+    tmp_pipeline_handles: Vec<PipelineHandle>,
 }
 
 impl MeshRenderer {
     pub fn new(static_buffer: &UnifiedStaticBuffer) -> Self {
         Self {
-            default_layers: vec![RenderLayer::new(static_buffer, true)],
+            default_layers: vec![
+                RenderLayer::new(static_buffer, true),
+                RenderLayer::new(static_buffer, true),
+            ],
             indirect_arg_buffer: None,
             count_buffer: None,
-            tmp_batch_idx: u32::MAX,
+            tmp_batch_ids: vec![],
+            tmp_pipeline_handles: vec![],
         }
     }
 
     pub fn initialize_tmp_pso(&mut self, pipeline_manager: &PipelineManager) {
-        if self.tmp_batch_idx == u32::MAX {
-            let tmp_pipeline_handle = build_temp_pso(pipeline_manager);
+        if self.tmp_batch_ids.is_empty() {
+            let pipeline_handle = build_temp_pso(pipeline_manager);
+            self.tmp_batch_ids.push(
+                self.default_layers[DefaultLayers::Opaque as usize]
+                    .register_state_set(&RenderStateSet { pipeline_handle }),
+            );
+            self.tmp_pipeline_handles.push(pipeline_handle);
 
-            self.tmp_batch_idx = self.default_layers[DefaultLayers::Opaque as usize]
-                .register_state_set(&RenderStateSet {
-                    pipeline_handle: tmp_pipeline_handle,
-                });
+            let pipeline_handle = build_picking_pso(pipeline_manager);
+            self.tmp_batch_ids.push(
+                self.default_layers[DefaultLayers::Picking as usize]
+                    .register_state_set(&RenderStateSet { pipeline_handle }),
+            );
+            self.tmp_pipeline_handles.push(pipeline_handle);
         }
     }
 
+    pub fn get_tmp_pso_handle(&self, layer_id: usize) -> PipelineHandle {
+        self.tmp_pipeline_handles[layer_id]
+    }
+
     pub fn register_material(&mut self, material_idx: u32) {
-        for layer in &mut self.default_layers {
-            layer.register_material(material_idx, self.tmp_batch_idx);
+        for (index, layer) in &mut self.default_layers.iter_mut().enumerate() {
+            layer.register_material(material_idx, self.tmp_batch_ids[index]);
         }
     }
 
@@ -219,6 +236,59 @@ fn build_temp_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
                     color_formats: &[Format::R16G16B16A16_SFLOAT],
                     sample_count: SampleCount::SampleCount1,
                     depth_stencil_format: Some(Format::D32_SFLOAT),
+                    primitive_topology: PrimitiveTopology::TriangleList,
+                })
+                .unwrap()
+        },
+    )
+}
+
+fn build_picking_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
+    let root_signature = cgen::pipeline_layout::PickingPipelineLayout::root_signature();
+
+    let mut vertex_layout = VertexLayout::default();
+    vertex_layout.attributes[0] = Some(VertexLayoutAttribute {
+        format: Format::R32_UINT,
+        buffer_index: 0,
+        location: 0,
+        byte_offset: 0,
+    });
+    vertex_layout.buffers[0] = Some(VertexLayoutBuffer {
+        stride: 4,
+        rate: VertexAttributeRate::Instance,
+    });
+
+    let depth_state = DepthState {
+        depth_test_enable: false,
+        depth_write_enable: false,
+        depth_compare_op: CompareOp::default(),
+        stencil_test_enable: false,
+        stencil_read_mask: 0xFF,
+        stencil_write_mask: 0xFF,
+        front_depth_fail_op: StencilOp::default(),
+        front_stencil_compare_op: CompareOp::Always,
+        front_stencil_fail_op: StencilOp::default(),
+        front_stencil_pass_op: StencilOp::default(),
+        back_depth_fail_op: StencilOp::default(),
+        back_stencil_compare_op: CompareOp::Always,
+        back_stencil_fail_op: StencilOp::default(),
+        back_stencil_pass_op: StencilOp::default(),
+    };
+    pipeline_manager.register_pipeline(
+        cgen::CRATE_ID,
+        CGenShaderKey::make(shader::picking_shader::ID, shader::picking_shader::NONE),
+        move |device_context, shader| {
+            device_context
+                .create_graphics_pipeline(&GraphicsPipelineDef {
+                    shader,
+                    root_signature,
+                    vertex_layout: &vertex_layout,
+                    blend_state: &BlendState::default_alpha_enabled(),
+                    depth_state: &depth_state,
+                    rasterizer_state: &RasterizerState::default(),
+                    color_formats: &[Format::R16G16B16A16_SFLOAT],
+                    sample_count: SampleCount::SampleCount1,
+                    depth_stencil_format: None,
                     primitive_topology: PrimitiveTopology::TriangleList,
                 })
                 .unwrap()
