@@ -9,7 +9,7 @@ cp "$MONOREPO_ROOT/.monorepo/tools.toml" "$SCRIPT_DIR/install/tools.toml"
 
 pushd $SCRIPT_DIR 1> /dev/null
 
-IMAGE_TAG=$(sha1sum install/* | sha1sum | head -c 40)
+IMAGE_TAG=$(sha1sum Dockerfile install/* | sha1sum | head -c 40)
 
 rm install/rust-toolchain.toml install/tools.toml 1> /dev/null
 

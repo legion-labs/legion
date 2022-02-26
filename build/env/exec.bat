@@ -13,7 +13,7 @@ pushd %SCRIPT_DIR%
 set IMAGE_NAME="build-env"
 
 set BB=.\utils\busybox.exe
-for /f %%i in ('%BB% sha1sum install/* ^| %BB% sha1sum ^| %BB% head -c 40') do (
+for /f %%i in ('%BB% sha1sum Dockerfile install/* ^| %BB% sha1sum ^| %BB% head -c 40') do (
     set IMAGE_TAG=%%i
 )
 

@@ -1,4 +1,10 @@
-# This docker image is mainly for debug/iteration speed purposes 
+###############################################################################
+# Master build environment for Linux and Windows
+###############################################################################
+# Increment the version below when you want to force the
+# image to force a rebuilt without any change to any dependency
+# Forced Version: 0
+###############################################################################
 FROM ubuntu:20.04
 
 LABEL org.opencontainers.image.authors='Legion Labs <devs@legionlabs.com>' \

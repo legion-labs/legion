@@ -10,7 +10,7 @@ cp "$MONOREPO_ROOT/.monorepo/tools.toml" "$SCRIPT_DIR/install/tools.toml"
 pushd $SCRIPT_DIR 1> /dev/null
 
 IMAGE_NAME="build-env"
-IMAGE_TAG=$(sha1sum install/* | sha1sum | head -c 40)
+IMAGE_TAG=$(sha1sum Dockerfile install/* | sha1sum | head -c 40)
 if [[ $MONOREPO_DOCKER_REGISTRY ]] ; then
     IMAGE="$MONOREPO_DOCKER_REGISTRY/$IMAGE_NAME:$IMAGE_TAG"
     aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin $MONOREPO_DOCKER_REGISTRY
