@@ -4003,7 +4003,8 @@ checksum = "68f2d64f2edebec4ce84ad108148e67e1064789bee435edc5b60ad398714a3a9"
 [[package]]
 name = "ispc-tex"
 version = "0.1.0"
-source = "git+https://github.com/legion-labs/ispc-tex-rs.git?rev=7b87ecc889fab569a085dccf4b8ef3dfe31b8fa5#7b87ecc889fab569a085dccf4b8ef3dfe31b8fa5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "49b5c4e052a29ad4790975ed715d8ae443c9335a8364ad0edfc2360836b707b0"
 dependencies = [
  "ispc_rt",
 ]
@@ -4383,7 +4384,7 @@ dependencies = [
  "lgn-data-runtime",
  "lgn-graphics-data",
  "lgn-tracing",
- "png 0.17.3",
+ "png 0.17.4",
  "serde",
  "serde_json",
 ]
@@ -4973,7 +4974,7 @@ dependencies = [
  "lgn-transform",
  "lgn-window",
  "lgn-winit",
- "png 0.17.3",
+ "png 0.17.4",
  "sample-data",
  "tbc",
 ]
@@ -5118,7 +5119,7 @@ dependencies = [
  "lgn-tasks",
  "lgn-tracing",
  "linkme",
- "png 0.17.3",
+ "png 0.17.4",
 ]
 
 [[package]]
@@ -7254,9 +7255,9 @@ dependencies = [
 
 [[package]]
 name = "png"
-version = "0.17.3"
+version = "0.17.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e8f1882177b17c98ec33a51f5910ecbf4db92ca0def706781a1f8d0c661f393"
+checksum = "02cd7d51cea7e2fa6bbcb8af5fbcad15b871451bfc2d20ed72dff2f4ae072a84"
 dependencies = [
  "bitflags",
  "crc32fast",
@@ -8236,7 +8237,7 @@ dependencies = [
  "lgn-graphics-data",
  "lgn-math",
  "lgn-utils",
- "png 0.17.3",
+ "png 0.17.4",
  "ron",
  "sample-data",
  "serde",

@@ -15,7 +15,7 @@ lgn-math = { path = "../lgn-math", version = "0.1.0" }
 lgn-app = { path = "../../crates/lgn-app", version = "0.1.0" }
 lgn-ecs = { path = "../../crates/lgn-ecs", version = "0.1.0" }
 lgn-data-model = { path = "../../crates/lgn-data-model", version = "0.1.0" }
-ispc-tex = { git = "https://github.com/legion-labs/ispc-tex-rs.git", rev = "7b87ecc889fab569a085dccf4b8ef3dfe31b8fa5" }
+ispc-tex = "0.1.0"
 tbc = "0.3.0"
 psd = { version = "0.3.0", optional = true }
 gltf = "0.16.0"
