@@ -1,12 +1,12 @@
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::Arc};
 
 use http::{Request, Response};
-use lambda_http::handler;
 use lgn_tracing::info;
+use tokio::sync::Mutex;
 use tonic::{body::BoxBody, transport::NamedService};
 use tower::Service;
 
-use super::{aws_lambda_handler::AwsLambdaHandler, Error, Result};
+use super::{Error, Result};
 use crate::aws::lambda::is_running_as_lambda;
 
 #[derive(Default)]
@@ -35,13 +35,29 @@ impl Server {
 
         match ExecutionEnvironment::guess() {
             ExecutionEnvironment::AWSLambda => {
-                let handler = handler(AwsLambdaHandler::new(service));
+                let service = &Arc::new(Mutex::new(service));
+
+                let handler =
+                    lambda_http::service_fn(move |event: lambda_http::Request| async move {
+                        let request = event.map(|b| b.to_vec().into());
+
+                        let response = service
+                            .lock()
+                            .await
+                            .call(request)
+                            .await
+                            .map_err(Into::into)?;
+
+                        let (parts, body) = response.into_parts();
+                        let body = hyper::body::to_bytes(body).await?.to_vec();
+                        Ok(lambda_http::Response::from_parts(parts, body))
+                    });
 
                 info!(
                     "AWS Lambda execution environment detected: starting gRPC-web server as lambda..."
                 );
 
-                lambda_runtime::run(handler)
+                lambda_http::run(handler)
                     .await
                     .map_err(Into::into)
                     .map_err(Error::Other)
