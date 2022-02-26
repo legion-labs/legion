@@ -3454,7 +3454,7 @@ dependencies = [
 [[package]]
 name = "hassle-rs"
 version = "0.6.0"
-source = "git+https://github.com/legion-labs/hassle-rs?branch=com_to_tinycom#a0dfd9354420b7c9e4755a94e56da695e73a8f10"
+source = "git+https://github.com/legion-labs/hassle-rs?rev=a0dfd9354420b7c9e4755a94e56da695e73a8f10#a0dfd9354420b7c9e4755a94e56da695e73a8f10"
 dependencies = [
  "bitflags",
  "libc",
@@ -3900,7 +3900,7 @@ checksum = "68f2d64f2edebec4ce84ad108148e67e1064789bee435edc5b60ad398714a3a9"
 [[package]]
 name = "ispc-tex"
 version = "0.1.0"
-source = "git+https://github.com/legion-labs/ispc-tex-rs.git?branch=main#7b87ecc889fab569a085dccf4b8ef3dfe31b8fa5"
+source = "git+https://github.com/legion-labs/ispc-tex-rs.git?rev=7b87ecc889fab569a085dccf4b8ef3dfe31b8fa5#7b87ecc889fab569a085dccf4b8ef3dfe31b8fa5"
 dependencies = [
  "ispc_rt",
 ]
@@ -4044,7 +4044,7 @@ dependencies = [
 [[package]]
 name = "lambda_http"
 version = "0.4.1"
-source = "git+https://github.com/legion-labs/aws-lambda-rust-runtime?branch=handler-lifefime-fix-v0.4.1#0bd6aebb651059d622b04aba66e48fb25f37d846"
+source = "git+https://github.com/legion-labs/aws-lambda-rust-runtime?rev=0bd6aebb651059d622b04aba66e48fb25f37d846#0bd6aebb651059d622b04aba66e48fb25f37d846"
 dependencies = [
  "base64",
  "http",
@@ -4057,7 +4057,7 @@ dependencies = [
 [[package]]
 name = "lambda_runtime"
 version = "0.4.1"
-source = "git+https://github.com/legion-labs/aws-lambda-rust-runtime?branch=handler-lifefime-fix-v0.4.1#0bd6aebb651059d622b04aba66e48fb25f37d846"
+source = "git+https://github.com/legion-labs/aws-lambda-rust-runtime?rev=0bd6aebb651059d622b04aba66e48fb25f37d846#0bd6aebb651059d622b04aba66e48fb25f37d846"
 dependencies = [
  "async-stream",
  "bytes",
@@ -10089,7 +10089,7 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 [[package]]
 name = "vk-mem"
 version = "0.2.3"
-source = "git+https://github.com/legion-labs/vk-mem-rs?branch=ash-fixes#9b998c5a49e297c8419adc12079335b57fe3809c"
+source = "git+https://github.com/legion-labs/vk-mem-rs?rev=9b998c5a49e297c8419adc12079335b57fe3809c#9b998c5a49e297c8419adc12079335b57fe3809c"
 dependencies = [
  "ash",
  "bitflags",
