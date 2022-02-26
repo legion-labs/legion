@@ -357,7 +357,8 @@ impl HlslCompiler {
         match result {
             Err(result) => {
                 let error_blob = result.0.get_error_buffer().unwrap();
-                let error = String::from_utf8(hassle_rs::DxcBlob::from(error_blob).to_vec()).unwrap();
+                let error =
+                    String::from_utf8(hassle_rs::DxcBlob::from(error_blob).to_vec()).unwrap();
                 Err(anyhow!(error))
             }
             Ok(result) => {

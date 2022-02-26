@@ -33,6 +33,7 @@
     "mlint",
     "MSRV",
     "multisample",
+    "multithreaded",
     "openh264",
     "perfetto",
     "physx",
