@@ -15,7 +15,7 @@ env:
 
 jobs:
   base_ref_selection_2:
-    uses: ./.github/workflows/build_env_setup.yml
+    uses: ./.github/workflows/base_ref_selection.yml
     with:
       caller_event_name: ${{ github.event_name }}
 
