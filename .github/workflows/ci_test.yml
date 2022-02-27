@@ -15,12 +15,12 @@ env:
 
 jobs:
   base_ref_selection_2:
-    uses: ./.github/workflows/reusable/build_env_setup.yml
+    uses: ./.github/workflows/build_env_setup.yml
     with:
       caller_event_name: ${{ github.event_name }}
 
   setup_image_2:
-    uses: ./.github/workflows/reusable/build_env_setup.yml
+    uses: ./.github/workflows/build_env_setup.yml
     run: echo
 
   print_setup_image_2_output:
