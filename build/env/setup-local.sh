@@ -66,3 +66,27 @@ export PATH=$NVM_DIR/versions/node/v$NODE_VERSION/bin:\$PATH" | tee /etc/profile
 
 echo '------------------------------------ Cloud Tools -------------------------------------------------'
 ./cloud.sh
+
+
+####################################################################################################
+# Some extra stuff to run on your own if your want
+####################################################################################################
+
+# sudo apt-get install zsh fonts-powerline -y
+# chsh -s $(which zsh)
+
+# Restart your prompt to and make sure you are on Zsh
+# Then run the following command and Press 2 when promted:
+# sh -c "$(wget https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O -)"
+
+# git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
+# Set ZSH_THEME="powerlevel10k/powerlevel10k" in ~/.zshrc
+
+# Restart your prompt and answer all questions :).
+
+# git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:=~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+# git clone https://github.com/zsh-users/zsh-autosuggestions.git ${ZSH_CUSTOM:=~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+# git clone https://github.com/zsh-users/zsh-completions ${ZSH_CUSTOM:=~/.oh-my-zsh/custom}/plugins/zsh-completions
+
+# set the follwing in your ~/.zshrc
+# plugins=(git zsh-syntax-highlighting zsh-autosuggestions zsh-completions)
