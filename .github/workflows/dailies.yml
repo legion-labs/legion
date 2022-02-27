@@ -1,4 +1,4 @@
-name: Build Env Schedule Test
+name: Dailies
 
 on:
   schedule:
@@ -17,6 +17,7 @@ jobs:
     name: Building env container
     runs-on: [self-hosted, linux, common, build]
     steps:
+      - uses: actions/checkout@v2
       - name: Build
         run: ./build/env/setup.sh
 
