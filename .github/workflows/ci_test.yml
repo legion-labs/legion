@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: setup_image_2
     steps:
-      - run: echo ${{ needs.job1.setup_image_2.image }}
+      - run: echo ${{ needs.setup_image_2.outputs.image }}
 
   lint:
     name: Running code checks
