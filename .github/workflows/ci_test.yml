@@ -55,11 +55,7 @@ jobs:
     needs: [lint, runner_selection, base_ref_selection]
     strategy:
       matrix:
-        os:
-          [
-            "${{ fromJSON(needs.runner_selection.outputs.linux_runner) }}",
-            "${{ fromJSON(needs.runner_selection.outputs.windows_runner) }}",
-          ]
+        os: "${{ fromJSON(needs.runner_selection.outputs.runners) }}"
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -171,8 +167,7 @@ jobs:
     needs: base_ref_selection
     runs-on: [self-hosted, linux, common, build]
     outputs:
-      linux_runner: ${{ steps.changed-crates.outputs.linux_runner }}
-      windows_runner: ${{ steps.changed-crates.outputs.windows_runner }}
+      runners: ${{ steps.changed-crates.outputs.runners }}
     env:
       LEGION_TELEMETRY_URL: ${{ secrets.LEGION_TELEMETRY_URL }}
     steps:
@@ -194,10 +189,8 @@ jobs:
           if [[ $crates ]]; then
             echo "A change impacting a graphics crate was detected"
             echo "Matched crates: $crates"
-            echo "::set-output name=linux_runner::[[\"self-hosted\",\"linux\",\"gpu\",\"build\"]]"
-            echo "::set-output name=windows_runner::[[\"self-hosted\",\"windows\",\"gpu\",\"build\"]]"
+            echo "::set-output name=runners::[[[\"self-hosted\",\"linux\",\"gpu\",\"build\"]], [[\"self-hosted\",\"windows\",\"gpu\",\"build\"]]]"
           else
             echo "No change impacting a graphics crate was detected"
-            echo "::set-output name=linux_runner::[[\"self-hosted\",\"linux\",\"common\",\"build\"]]"
-            echo "::set-output name=windows_runner::[[\"self-hosted\",\"windows\",\"common\",\"build\"]]"
+            echo "::set-output name=runners::[[[\"self-hosted\",\"linux\",\"common\",\"build\"]], [[\"self-hosted\",\"windows\",\"common\",\"build\"]]]"
           fi
