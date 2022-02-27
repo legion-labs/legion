@@ -15,8 +15,6 @@ RUST_VERSION=$(dasel select -f rust-toolchain.toml 'toolchain.channel')
 
 ###################################################################################################
 
-export RUSTUP_HOME=/opt/.rustup
-export CARGO_HOME=/opt/.cargo
 wget -O rustup-init.sh https://static.rust-lang.org/rustup/archive/$RUSTUP_VERSION/x86_64-unknown-linux-gnu/rustup-init
 echo "$RUSTUP_HASH *rustup-init.sh" | sha256sum -c -
 chmod +x rustup-init.sh

@@ -21,9 +21,9 @@ echo "------------------------------------- Install Libs -----------------------
 echo "------------------------------------- Install Rust -------------------------------------------"
 ./rust.sh
 
-export RUSTUP_HOME=/opt/.rustup
-export CARGO_HOME=/opt/.cargo
-export PATH="/opt/.cargo/bin:$PATH"
+export RUSTUP_HOME=/usr/local/rustup
+export CARGO_HOME=/usr/local/cargo
+export PATH="$CARGO_HOME/bin:$PATH"
 export CC_x86_64_pc_windows_msvc="clang-cl"
 export CXX_x86_64_pc_windows_msvc="clang-cl"
 export AR_x86_64_pc_windows_msvc="llvm-lib"
@@ -58,7 +58,7 @@ export NODE_VERSION=16.14.0
 ./node.sh
 
 # This version is duplicated in the node.sh script, make sure to update both
-echo "export NVM_DIR=/opt/.nvm
+echo "export NVM_DIR=/usr/local/nvm
 export NODE_PATH=$NVM_DIR/v$NODE_VERSION/lib/node_modules
 export PATH=$NVM_DIR/versions/node/v$NODE_VERSION/bin:\$PATH" | tee /etc/profile.d/build.sh
 

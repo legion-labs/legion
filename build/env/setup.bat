@@ -13,11 +13,12 @@ pushd %SCRIPT_DIR%
 set IMAGE_NAME="build-env"
 
 set BB=.\utils\busybox.exe
-for /f %%i in ('%BB% Dockerfile sha1sum install/* ^| %BB% sha1sum ^| %BB% head -c 40') do (
+for /f %%i in ('%BB% sha1sum Dockerfile install/* ^| %BB% sha1sum ^| %BB% head -c 40') do (
     set IMAGE_TAG=%%i
 )
 
-for /f %%i in ('docker images -q %TAG% ^2^> nul') do (
+set IMAGE="%IMAGE_NAME%:%IMAGE_TAG%"
+for /f %%i in ('docker images -q %IMAGE% ^2^> nul') do (
     set LOCAL_CONTAINER_EXISTS="1"
 )
 if defined MONOREPO_DOCKER_REGISTRY (
@@ -29,7 +30,6 @@ if defined MONOREPO_DOCKER_REGISTRY (
         docker push %IMAGE%
     )
 ) else (
-    set IMAGE="%IMAGE_NAME%:%IMAGE_TAG%"
     if "%LOCAL_CONTAINER_EXISTS%"=="" (
         docker build . -t %IMAGE%
     ) else (

@@ -30,15 +30,16 @@ RUN ./cpp.sh
 COPY ./install/libs.sh libs.sh
 RUN ./libs.sh
 
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo
+
 COPY ./install/rust.sh ./install/rust-toolchain.toml ./
 RUN ./rust.sh
 
 COPY ./install/libs.sh libs.sh
 RUN ./libs.sh
 
-ENV RUSTUP_HOME=/opt/.rustup \
-    CARGO_HOME=/opt/.cargo \
-    PATH="/opt/.cargo/bin:/xwin/vulkan-sdk/Bin:$PATH" \
+ENV PATH="$CARGO_HOME/bin:/xwin/vulkan-sdk/Bin:$PATH" \
     CC_x86_64_pc_windows_msvc="clang-cl" \
     CXX_x86_64_pc_windows_msvc="clang-cl" \
     AR_x86_64_pc_windows_msvc="llvm-lib" \
@@ -67,7 +68,7 @@ RUN ./cloud.sh
 
 # This version is duplicated in the node.sh script, make sure to update both
 ENV NODE_VERSION=16.14.0 \
-    NVM_DIR=/opt/.nvm
+    NVM_DIR=/usr/local/nvm
 
 COPY ./install/node.sh ./node.sh
 RUN ./node.sh

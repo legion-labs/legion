@@ -16,7 +16,7 @@ PROTOBUF_VERSION=3.19.4
 
 ###################################################################################################
 
-export NVM_DIR=/opt/.nvm
+export NVM_DIR=/usr/local/nvm
 mkdir -p ${NVM_DIR}
 
 wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh | bash && . ${NVM_DIR}/nvm.sh

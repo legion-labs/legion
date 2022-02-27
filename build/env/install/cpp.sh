@@ -92,6 +92,6 @@ chmod a+x /usr/bin/ninja
 # CMake
 CMAKE_PREFIX="cmake-$CMAKE_VERSION-linux-x86_64"
 wget -qO- https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/$CMAKE_PREFIX.tar.gz |
-    tar -xzC /opt
+    tar -xzC /usr/local
 
-ln -sf /opt/$CMAKE_PREFIX/bin/cmake /usr/bin/cmake
+ln -sf /usr/local/$CMAKE_PREFIX/bin/cmake /usr/local/bin/cmake
