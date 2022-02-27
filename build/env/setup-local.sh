@@ -19,10 +19,11 @@ echo "------------------------------------- Install Libs -----------------------
 ./libs.sh
 
 echo "------------------------------------- Install Rust -------------------------------------------"
-./rust.sh
-
 export RUSTUP_HOME=/usr/local/rustup
 export CARGO_HOME=/usr/local/cargo
+
+./rust.sh
+
 export PATH="$CARGO_HOME/bin:$PATH"
 export CC_x86_64_pc_windows_msvc="clang-cl"
 export CXX_x86_64_pc_windows_msvc="clang-cl"
@@ -55,6 +56,7 @@ export CXXFLAGS_x86_64_pc_windows_msvc=\"$CL_FLAGS\"" | tee /etc/profile.d/build
 
 echo "------------------------------------- Install Node ------------------------------------------"
 export NODE_VERSION=16.14.0
+export NVM_DIR=/usr/local/nvm
 ./node.sh
 
 # This version is duplicated in the node.sh script, make sure to update both

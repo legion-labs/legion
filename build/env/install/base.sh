@@ -13,7 +13,7 @@ DASEL_VERSION=1.22.1
 
 ###################################################################################################
 
-apt-get update && apt-get install -y \
+apt-get update && apt-get install -y --no-install-recommends \
     lsb-release \
     curl wget \
     tar zip unzip p7zip-full \

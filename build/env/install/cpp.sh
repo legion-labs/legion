@@ -42,7 +42,7 @@ esac
 
 wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
 add-apt-repository "${REPO_NAME}"
-apt-get update && apt-get install -y \
+apt-get update && apt-get install -y --no-install-recommends \
     clang-$LLVM_VERSION llvm-$LLVM_VERSION lldb-$LLVM_VERSION lld-$LLVM_VERSION \
     clang-format-$LLVM_VERSION libclang-$LLVM_VERSION-dev libunwind-$LLVM_VERSION-dev \
     llvm-$LLVM_VERSION-tools

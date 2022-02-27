@@ -48,7 +48,7 @@ case "$DISTRO_NAME_VERSION" in
         exit 1
 esac
 
-apt-get update && apt-get install -y \
+apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
     libglib2.0-dev \
     libcairo-dev \
@@ -63,7 +63,7 @@ apt-get update && apt-get install -y \
     vulkan-sdk
 
 # We are pinning wine to 6.23 since tokio/mio port binding fails
-apt-get install -y \
+apt-get install -y --no-install-recommends \
     winehq-staging=6.23~focal-1 \
     wine-staging=6.23~focal-1 \
     wine-staging-i386=6.23~focal-1 \

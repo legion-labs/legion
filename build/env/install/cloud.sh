@@ -31,7 +31,7 @@ echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https:/
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $DISTRO_CODENAME stable"
 
-apt-get update && apt-get install -y \
+apt-get update && apt-get install -y --no-install-recommends \
     terraform=$TERRAFORM_VERSION \
     kubectl=$KUBECTL_VERSION \
     docker-ce-cli=$DOCKER_VERSION \
