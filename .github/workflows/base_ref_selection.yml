@@ -4,6 +4,10 @@ on:
       caller_event_name:
         required: true
         type: string
+    outputs:
+      base_ref:
+        description: "The base git ref to use"
+        value: ${{ jobs.base_ref_selection.outputs.base_ref }}
 
 jobs:
   base_ref_selection:

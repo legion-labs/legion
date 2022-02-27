@@ -7,6 +7,10 @@ on:
     secrets:
       github-token:
         required: true
+    outputs:
+      image:
+        description: "The resulting container image name to use"
+        value: ${{ jobs.setup_image.outputs.image }}
 
 env:
   MONOREPO_DOCKER_REGISTRY: 550877636976.dkr.ecr.ca-central-1.amazonaws.com/legion-labs/legion
