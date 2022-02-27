@@ -4,6 +4,9 @@ on:
       tag:
         required: false
         type: string
+    secrets:
+      github-token:
+        required: true
 
 env:
   MONOREPO_DOCKER_REGISTRY: 550877636976.dkr.ecr.ca-central-1.amazonaws.com/legion-labs/legion
@@ -32,7 +35,7 @@ jobs:
       - name: Set ECR password secret
         uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.ECR_GH_ACCESS_TOKEN }}
+          github-token: ${{ secrets.github-token }}
           script: |
             const sodium = require('tweetsodium');
 

@@ -21,6 +21,8 @@ jobs:
 
   setup_image_2:
     uses: ./.github/workflows/build_env_setup.yml
+    secrets:
+      github-token: ${{ secrets.ECR_GH_ACCESS_TOKEN }
 
   print_setup_image_2_output:
     runs-on: ubuntu-latest
