@@ -1,0 +1,69 @@
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: false
+        type: string
+
+env:
+  MONOREPO_DOCKER_REGISTRY: 550877636976.dkr.ecr.ca-central-1.amazonaws.com/legion-labs/legion
+
+jobs:
+  setup_image:
+    name: Setup build env container
+    runs-on: [self-hosted, linux, common, build]
+    outputs:
+      image: ${{ steps.set-image.outputs.image }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build
+        env:
+          IMAGE_TAG: ${{ inputs.tag }}
+        run: ./build/env/setup.sh
+
+      - name: Set container image
+        id: set-image
+        run: echo "::set-output name=image::${{ env.image }}"
+
+      - name: Install NodeJS script dependencies
+        run: npm install tweetsodium
+
+      - name: Set ECR password secret
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.ECR_GH_ACCESS_TOKEN }}
+          script: |
+            const sodium = require('tweetsodium');
+
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
+
+            const options = {};
+            options.silent = true;
+            const ecr_login = await exec.getExecOutput('aws', ['ecr', 'get-login-password', '--region', 'ca-central-1'], options);
+
+            const pub_key = await github.rest.actions.getRepoPublicKey({
+                owner,
+                repo,
+            });
+            const key = pub_key.data.key;
+            const key_id = pub_key.data.key_id;
+            const value = ecr_login.stdout;
+
+            // Convert the message and key to Uint8Array's (Buffer implements that interface)
+            const message_bytes = Buffer.from(value);
+            const key_bytes = Buffer.from(key, 'base64');
+
+            // Encrypt using LibSodium.
+            const encrypted_bytes = sodium.seal(message_bytes, key_bytes);
+
+            // Base64 the encrypted secret
+            const encrypted_value = Buffer.from(encrypted_bytes).toString('base64');
+            const secret_name = 'ECR_PASSWORD';
+            await github.rest.actions.createOrUpdateRepoSecret({
+                owner,
+                repo,
+                secret_name,
+                encrypted_value,
+                key_id,
+            })

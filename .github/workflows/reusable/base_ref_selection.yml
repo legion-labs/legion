@@ -1,0 +1,51 @@
+on:
+  workflow_call:
+    inputs:
+      caller_event_name:
+        required: true
+        type: string
+
+jobs:
+  base_ref_selection:
+    name: Base ref selection
+    runs-on: ubuntu-latest
+    outputs:
+      base_ref: ${{ steps.set-base-ref.outputs.base_ref }}
+    steps:
+      # we do a little bit of gymnastics here to make sure that id of the
+      # step that sets the output is constant, this is why we use
+      # an environment variable to store the id of the step that sets the
+      - name: Set base ref for PRs
+        if: inputs.caller_event_name == 'pull_request'
+        run: echo "base_ref=origin/$GITHUB_BASE_REF" >> $GITHUB_ENV
+
+      - name: Retrieve base ref for branch
+        id: last-green-commit
+        if: inputs.caller_event_name != 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          result-encoding: string
+          script: |
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
+            const { GITHUB_REF_NAME } = process.env
+            return github.rest.actions
+              .listWorkflowRuns({
+                owner,
+                repo,
+                workflow_id: "ci_test.yml",
+                status: "success",
+                branch: GITHUB_REF_NAME,
+                event: "push",
+              })
+              .then((res) => {
+                return res.data.workflow_runs.length > 0
+                    ? res.data.workflow_runs[0].head_commit.id
+                    : "HEAD";
+              })
+      - name: Set base ref for PRs
+        if: inputs.caller_event_name != 'pull_request'
+        run: echo "base_ref=${{steps.last-green-commit.outputs.result}}" >> $GITHUB_ENV
+
+      - name: Set base ref
+        id: set-base-ref
+        run: echo "::set-output name=base_ref::${{ env.base_ref }}"
