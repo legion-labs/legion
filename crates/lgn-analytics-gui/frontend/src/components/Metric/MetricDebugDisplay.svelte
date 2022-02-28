@@ -84,19 +84,22 @@
     {#if metricStreamer}
       <ul>
         {#each $metricStore as ms}
-          <li>
-            {ms.name} (unit: {ms.unit})<br />
-            {ms.min} _ {ms.max} ({formatExecutionTime(ms.max - ms.min)})<br />
-            {#each Array.from(ms.getViewportBlocks(currentMinMs, currentMaxMs)) as b}
-              <div style="font-size:0.7rem">
-                {b.blockId}
-                {b.minMs.toFixed(0)}
-                {b.maxMs.toFixed(0)} ({formatExecutionTime(b.maxMs - b.minMs)})
-                ({Array.from(b.getPoints(currentMinMs, currentMaxMs, lod))
-                  .length})
-              </div>
-            {/each}
-          </li>
+          {#if ms.canBeDisplayed()}
+            <li>
+              {ms.name} (unit: {ms.unit})<br />
+              {ms.min} _ {ms.max} ({formatExecutionTime(ms.max - ms.min)})<br />
+              {#each Array.from(ms.getViewportBlocks(currentMinMs, currentMaxMs)) as b}
+                <div style="font-size:0.7rem">
+                  {b.blockId}
+                  {b.minMs.toFixed(0)}
+                  {b.maxMs.toFixed(0)} ({formatExecutionTime(
+                    b.maxMs - b.minMs
+                  )}) ({Array.from(b.getPoints(currentMinMs, currentMaxMs, lod))
+                    .length})
+                </div>
+              {/each}
+            </li>
+          {/if}
         {/each}
       </ul>
     {/if}

@@ -90,4 +90,18 @@ export class MetricState {
       };
     });
   }
+
+  getClosestValue(time: number): Point | null {
+    const threshold = 100;
+    const data = Array.from(
+      this.getViewportPoints(time - threshold, time + threshold, 0)
+    );
+    if (data.length <= 0) {
+      return null;
+    }
+    const result = data.reduce((p, c) =>
+      Math.abs(c.time - time) < Math.abs(p.time - time) ? c : p
+    );
+    return result;
+  }
 }

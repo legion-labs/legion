@@ -68,11 +68,15 @@ export class MetricBlockState {
         points.push(boundaryOutPoint);
       }
     } else {
-      const nextMinPoint = data.filter((p) => p.time <= min)[0];
+      const nextMinPoint = data
+        .filter((p) => p.time <= min)
+        .sort((a, b) => (a > b ? -1 : 1))[0];
       if (nextMinPoint && !points.includes(nextMinPoint)) {
         points.push(nextMinPoint);
       }
-      const nextMaxPoint = data.filter((p) => p.time >= max)[0];
+      const nextMaxPoint = data
+        .filter((p) => p.time >= max)
+        .sort((a, b) => (a > b ? 1 : -1))[0];
       if (nextMaxPoint && !points.includes(nextMaxPoint)) {
         points.push(nextMaxPoint);
       }

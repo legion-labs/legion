@@ -15,6 +15,8 @@
   import { selectionStore } from "@/lib/Metric/MetricSelectionStore";
   import { getMetricColor } from "@/lib/Metric/MetricColor";
   import MetricDebugDisplay from "./Metric/MetricDebugDisplay.svelte";
+  import MetricTooltip from "./Metric/MetricTooltip.svelte";
+  import { D3ZoomEvent } from "d3";
   export let id: string;
 
   let metricStreamer: MetricStreamer;
@@ -28,13 +30,14 @@
   let mainWidth = 0;
   $: width = mainWidth - margin.left - margin.right;
 
+  let metricTooltip: MetricTooltip;
   let client: PerformanceAnalyticsClientImpl | null = null;
   let totalMinMs = -Infinity;
   let totalMaxMs = Infinity;
   let currentMinMs = -Infinity;
   let currentMaxMs = Infinity;
-  let brushStart = -Infinity;
-  let brushEnd = Infinity;
+  let brushStart = NaN;
+  let brushEnd = NaN;
   let points: {
     points: Point[];
     name: string;
@@ -44,16 +47,19 @@
   let lod: number;
   let deltaMs: number;
   let pixelSizeNs: number;
+  // let initialWidth: number;
 
   let x: d3.ScaleLinear<number, number, never>;
   let y: d3.ScaleLinear<number, number, never>;
 
+  let brushFunction: d3.BrushBehavior<unknown>;
   /* eslint-disable @typescript-eslint/no-explicit-any */
   let svgGroup: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
   let gxAxis: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
   let gyAxis: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
   let container: d3.Selection<d3.BaseType, unknown, HTMLElement, any>;
-  let brush: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
+  let zoomEvent: D3ZoomEvent<HTMLCanvasElement, any>;
+  let brushSvg: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   let xAxis: d3.Axis<d3.NumberValue>;
@@ -67,8 +73,17 @@
   let selectionSubsription: Unsubscriber | undefined;
 
   $: {
-    if (mainWidth && transform) {
+    if (transform && !loading) {
+      updateLod();
+      updatePoints(get(metricStore));
       updateChart();
+      tick();
+    }
+  }
+
+  $: {
+    if (mainWidth) {
+      transform = transform;
     }
   }
 
@@ -77,9 +92,14 @@
 
   onMount(async () => {
     client = await makeGrpcClient();
-    await fetchMetricsAsync().then(() => (loading = false));
-    createChart();
-    updateChart();
+    await fetchMetricsAsync().then(() => {
+      createChart();
+      updateLod();
+      updatePoints(get(metricStore));
+      updateChart();
+      tick();
+      loading = false;
+    });
   });
 
   onDestroy(() => {
@@ -95,15 +115,19 @@
   });
 
   function updateLod() {
+    deltaMs = getDeltaMs();
+    pixelSizeNs = getPixelSizeNs();
+    lod = getLodFromPixelSizeNs(pixelSizeNs);
     if (x) {
+      x.range([0, width]);
       const scaleX = transform.rescaleX(x);
       currentMinMs = scaleX.domain()[0].valueOf();
       currentMaxMs = scaleX.domain()[1].valueOf();
     }
-    deltaMs = getDeltaMs();
-    pixelSizeNs = getPixelSizeNs();
-    lod = getLodFromPixelSizeNs(pixelSizeNs);
-    metricStreamer!.tick(lod, currentMinMs, currentMaxMs);
+  }
+
+  function tick() {
+    metricStreamer?.tick(lod, currentMinMs, currentMaxMs);
     updatePoints(get(metricStore));
   }
 
@@ -120,7 +144,7 @@
     totalMinMs = currentMinMs = metricStreamer.currentMinMs;
     totalMaxMs = currentMaxMs = metricStreamer.currentMaxMs;
 
-    selectionSubsription = selectionStore.subscribe((selectionState) => {
+    selectionSubsription = selectionStore.subscribe(() => {
       update(get(metricStore));
     });
 
@@ -135,6 +159,9 @@
   }
 
   function updatePoints(states: MetricState[]) {
+    if (!states) {
+      return;
+    }
     points = states
       .filter((m) => m.canBeDisplayed())
       .map((m) => {
@@ -149,8 +176,9 @@
 
   function refreshZoom() {
     const extent = [width, outerHeight] as [number, number];
-    zoom.translateExtent([[0, 0], extent]);
-    zoom.extent([[0, 0], extent]);
+    const origin = [0, 0] as [number, number];
+    zoom.translateExtent([origin, extent]);
+    zoom.extent([origin, extent]);
   }
 
   function createChart() {
@@ -161,17 +189,35 @@
       .append("g")
       .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
-    const canvasChart = container
-      .append("canvas")
-      .style("position", "absolute")
-      .style("top", 0)
-      .style("left", 0)
-      .style("margin-left", `${margin.left}px`)
-      .style("margin-top", `${margin.top}px`)
-      .style("pointer-events", "none");
+    let fo = svgGroup
+      .append("foreignObject")
+      .attr("x", 0)
+      .attr("y", 0)
+      .attr("width", width)
+      .attr("height", height);
+
+    var foBody = fo
+      .append("xhtml:body")
+      .style("width", `${width}px`)
+      .style("height", `${height}px`);
+
+    const canvasChart = foBody.append("canvas");
+
+    svgGroup.on("mousemove", (e: MouseEvent) => {
+      metricTooltip.show(e.offsetX, e.offsetY);
+    });
+
+    svgGroup.on("mouseover", (e) => {
+      metricTooltip.enable();
+    });
+
+    svgGroup.on("mouseout", (e) => {
+      metricTooltip.hide();
+    });
 
     canvas = canvasChart.node() as HTMLCanvasElement;
 
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     context = canvas.getContext("2d")!;
 
     x = d3.scaleLinear().domain([totalMinMs, totalMaxMs]);
@@ -194,26 +240,30 @@
       .filter((e) => !e.shiftKey)
       .scaleExtent([1, getPixelSizeNs()])
       .on("zoom", (event) => {
+        zoomEvent = event;
         transform = event.transform;
+        if (brushEnd && brushStart) {
+          const scaleX = transform.rescaleX(x);
+          const start = scaleX(brushStart).valueOf();
+          const end = scaleX(brushEnd).valueOf();
+          brushSvg.call(brushFunction.move, [
+            Math.max(0, start),
+            Math.max(0, end),
+          ]);
+        }
       });
 
     refreshZoom();
 
-    container.call(zoom as any);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    svgGroup.call(zoom as any);
 
-    brush = container
-      .select("svg")
-      .append("g")
-      .on("contextmenu", (e) => {
-        e.preventDefault();
-      });
-
-    var brushFunction = d3
+    brushFunction = d3
       .brushX()
       .filter((e) => e.shiftKey)
       .extent([
-        [margin.left + 1, margin.top],
-        [width, height + margin.top - 1],
+        [1, 0],
+        [width - margin.left, height - 1],
       ])
       .on("end", (e: d3.D3BrushEvent<number>) => {
         const scaleX = transform.rescaleX(x);
@@ -222,7 +272,20 @@
         brushEnd = scaleX.invert(selection[1]).valueOf();
       });
 
-    brush.call(brushFunction);
+    brushSvg = svgGroup.append("g");
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    brushSvg.call(brushFunction as any);
+  }
+
+  function updateChartWidth() {
+    if (container) {
+      container.select("svg").attr("height", outerHeight).attr("width", width);
+      container
+        .select("canvas")
+        .attr("height", height)
+        .attr("width", width - margin.left);
+    }
   }
 
   function updateChart() {
@@ -230,26 +293,16 @@
       return;
     }
 
-    if (brush) {
-      brush.call(d3.brush().clear);
-      brushStart = -Infinity;
-      brushEnd = Infinity;
-    }
-
-    updateLod();
-
     var startTime = performance.now();
+
+    x.range([0, width]);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    svgGroup.call(zoom as any);
 
     refreshZoom();
 
-    container.select("svg").attr("height", outerHeight).attr("width", width);
-
-    container
-      .select("canvas")
-      .attr("height", height)
-      .attr("width", width - margin.left);
-
-    x.range([0, width]);
+    updateChartWidth();
 
     const yMax = d3.max(
       points
@@ -273,18 +326,15 @@
   function draw() {
     const scaleX = transform.rescaleX(x);
 
-    context.fillStyle = "rgba(0, 0, 0, 0)";
-    context.fillRect(0, 0, width, height);
-
     var line = d3
       .line()
       .x((d) => scaleX(d[0]))
       .y((d) => y(d[1]))
       .context(context);
 
-    points.forEach((data, i) => {
+    points.forEach((data) => {
       context.beginPath();
-      line(data.points.map((newPoints) => [newPoints.time, newPoints.value]));
+      line(data.points.map((p) => [p.time, p.value]));
       context.strokeStyle = getMetricColor(data.name);
       context.lineWidth = 0.33;
       context.stroke();
@@ -293,10 +343,26 @@
     gxAxis.call(xAxis.scale(scaleX));
     gyAxis.call(yAxis.scale(y));
   }
+
+  function handleKeydown(event: KeyboardEvent) {
+    if (brushStart && brushEnd && event.code == "Escape") {
+      brushSvg.call(d3.brush().clear);
+      brushStart = NaN;
+      brushEnd = NaN;
+    }
+  }
 </script>
+
+<svelte:window on:keydown={handleKeydown} />
 
 {#if !loading}
   <MetricSelection />
+  <MetricTooltip
+    bind:this={metricTooltip}
+    xScale={transform.rescaleX(x)}
+    {zoomEvent}
+    {metricStreamer}
+  />
 {/if}
 <div bind:clientWidth={mainWidth}>
   <div id="metric-canvas" style="position:relative" />
