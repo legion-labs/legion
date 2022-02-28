@@ -33,7 +33,6 @@ on:
 jobs:
   runner_selection:
     name: Runner selection
-    needs: base_ref_selection
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ inputs.image }}
