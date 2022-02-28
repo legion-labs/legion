@@ -354,7 +354,7 @@ async fn build_debug_cubes(
                         ..sample_data::offline::Transform::default()
                     }));
 
-	       cube_entity.components.push(Box::new(offline_data::Visual {
+                cube_entity.components.push(Box::new(offline_data::Visual {
                     color: match index {
                         0 => (255, 0, 0).into(),
                         1 => (255, 255, 0).into(),
@@ -362,7 +362,7 @@ async fn build_debug_cubes(
                         3 => (0, 0, 255).into(),
                         _ => (192, 192, 192).into(),
                     },
-                ..sample_data::offline::Visual::default()
+                    ..sample_data::offline::Visual::default()
                 }));
 
                 project
