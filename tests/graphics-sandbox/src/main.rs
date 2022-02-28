@@ -35,10 +35,18 @@ struct SnapshotDescriptor {
     height: f32,
 }
 
-#[derive(Default)]
 struct SnapshotFrameCounter {
     frame_count: i32,
     frame_target: i32,
+}
+
+impl Default for SnapshotFrameCounter {
+    fn default() -> Self {
+        Self {
+            frame_count: 0,
+            frame_target: 1,
+        }
+    }
 }
 
 #[derive(Parser, Default)]
