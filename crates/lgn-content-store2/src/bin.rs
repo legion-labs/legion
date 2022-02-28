@@ -176,8 +176,7 @@ async fn main() -> anyhow::Result<()> {
     let args: Args = Args::parse();
     let config = Config::new();
     let provider = config
-        .provider
-        .new_provider()
+        .instanciate_provider()
         .await
         .map_err(|err| anyhow::anyhow!("failed to create content provider: {}", err))?;
     let provider = MonitorProvider::new(provider);

@@ -3,14 +3,15 @@ use std::path::PathBuf;
 use serde::Deserialize;
 
 use crate::{
-    ContentProvider, GrpcProvider, LocalProvider, MemoryProvider, RedisProvider, Result,
-    SmallContentProvider,
+    CachingProvider, ContentProvider, GrpcProvider, LocalProvider, LruProvider, MemoryProvider,
+    RedisProvider, Result, SmallContentProvider,
 };
 
 /// The configuration of the content-store.
 #[derive(Deserialize, Debug, Default)]
 pub struct Config {
     pub provider: ProviderConfig,
+    pub caching_provider: Option<ProviderConfig>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -18,6 +19,7 @@ pub struct Config {
 #[serde(rename_all = "snake_case")]
 pub enum ProviderConfig {
     Memory {},
+    Lru(LruProviderConfig),
     Local(LocalProviderConfig),
     Redis(RedisProviderConfig),
     Grpc(GrpcProviderConfig),
@@ -25,7 +27,7 @@ pub enum ProviderConfig {
 
 #[derive(Deserialize, Debug)]
 pub struct LocalProviderConfig {
-    pub path: PathBuf,
+    pub path: Option<PathBuf>,
 }
 
 fn default_redis_url() -> String {
@@ -51,6 +53,12 @@ pub struct GrpcProviderConfig {
     pub url: String,
 }
 
+#[derive(Deserialize, Debug)]
+pub struct LruProviderConfig {
+    #[serde(default)]
+    pub size: usize,
+}
+
 impl Config {
     /// Create a new configuration by reading the available configuration files.
     pub fn new() -> Self {
@@ -62,6 +70,22 @@ impl Config {
             Self::default()
         }
     }
+
+    /// Instanciate the provider for the configuration.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the provider cannot be instanciated.
+    pub async fn instanciate_provider(&self) -> Result<Box<dyn ContentProvider + Send + Sync>> {
+        let provider = self.provider.instanciate().await?;
+
+        if let Some(caching_provider) = &self.caching_provider {
+            let caching_provider = caching_provider.instanciate().await?;
+            Ok(Box::new(CachingProvider::new(provider, caching_provider)))
+        } else {
+            Ok(provider)
+        }
+    }
 }
 
 impl ProviderConfig {
@@ -70,12 +94,20 @@ impl ProviderConfig {
     /// # Errors
     ///
     /// This function will return an error if the provider cannot be instanciated.
-    pub async fn new_provider(&self) -> Result<Box<dyn ContentProvider + Send + Sync>> {
+    pub async fn instanciate(&self) -> Result<Box<dyn ContentProvider + Send + Sync>> {
         Ok(match self {
             Self::Memory {} => Box::new(SmallContentProvider::new(MemoryProvider::new())),
-            Self::Local(ref config) => Box::new(SmallContentProvider::new(
-                LocalProvider::new(config.path.clone()).await?,
-            )),
+            Self::Lru(ref config) => {
+                Box::new(SmallContentProvider::new(LruProvider::new(config.size)))
+            }
+            Self::Local(ref config) => {
+                let path = match &config.path {
+                    Some(path) => path.clone(),
+                    None => std::env::temp_dir().join("lgn-content-store"),
+                };
+
+                Box::new(SmallContentProvider::new(LocalProvider::new(path).await?))
+            }
             Self::Redis(ref config) => Box::new(SmallContentProvider::new(
                 RedisProvider::new(config.url.clone(), config.key_prefix.clone()).await?,
             )),
