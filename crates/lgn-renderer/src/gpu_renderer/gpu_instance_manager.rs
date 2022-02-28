@@ -1,5 +1,5 @@
 use lgn_ecs::prelude::Entity;
-use lgn_graphics_api::VertexBufferBinding;
+use lgn_graphics_api::{BufferView, VertexBufferBinding};
 
 use crate::{
     cgen,
@@ -75,6 +75,11 @@ impl GpuInstanceManager {
 
     pub fn vertex_buffer_binding(&self) -> VertexBufferBinding<'_> {
         self.va_table_adresses.vertex_buffer_binding()
+    }
+
+    pub fn structured_buffer_view(&self, struct_size: u64, read_only: bool) -> BufferView {
+        self.va_table_adresses
+            .structured_buffer_view(struct_size, read_only)
     }
 
     pub fn return_index_block(&self, index_block: Option<IndexBlock>) {

@@ -13,7 +13,7 @@ pub struct RenderLayer {
     material_to_batch: Vec<u32>,
     batches: Vec<RenderBatch>,
     cpu_render_set: bool,
-    element_count: u64,
+    element_count: u32,
 }
 
 impl RenderLayer {
@@ -66,32 +66,39 @@ impl RenderLayer {
         self.element_count -= 1;
     }
 
-    pub fn aggregate_offsets(&mut self, updater: &mut UniformGPUDataUpdater) {
-        if !self.cpu_render_set {
-            let mut aggregate_offset: u64 = 0;
+    pub fn aggregate_offsets(
+        &mut self,
+        updater: &mut UniformGPUDataUpdater,
+        count_buffer_offset: &mut u64,
+        indirect_arg_buffer_offset: &mut u64,
+    ) -> u32 {
+        if !self.cpu_render_set && !self.material_to_batch.is_empty() {
+            let mut per_batch_offsets: Vec<(u32, u32)> = Vec::new();
+            per_batch_offsets.resize(self.batches.len(), (0, 0));
 
-            let mut per_batch_offsets = Vec::new();
-            per_batch_offsets.resize(self.batches.len(), 0);
-
-            let mut per_material_offsets = Vec::new();
-            per_material_offsets.resize(self.material_to_batch.len(), 0);
+            let mut per_material_offsets: Vec<(u32, u32)> = Vec::new();
+            per_material_offsets.resize(self.material_to_batch.len(), (0, 0));
 
             for (batch_idx, batch) in self.batches.iter_mut().enumerate() {
-                per_batch_offsets[batch_idx as usize] = aggregate_offset;
+                per_batch_offsets[batch_idx as usize] = (
+                    *count_buffer_offset as u32,
+                    *indirect_arg_buffer_offset as u32,
+                );
 
-                batch.calculate_offsets(&mut aggregate_offset);
+                *count_buffer_offset += 1;
+                batch.calculate_indirect_offsets(indirect_arg_buffer_offset);
             }
 
-            for (meterial_idx, batch_idx) in self.material_to_batch.iter().enumerate() {
-                per_material_offsets[meterial_idx] = per_batch_offsets[*batch_idx as usize];
+            for (material_id, batch_id) in self.material_to_batch.iter().enumerate() {
+                per_material_offsets[material_id] = per_batch_offsets[*batch_id as usize];
             }
 
-            updater.add_update_jobs(&per_batch_offsets, self.material_page.offset());
+            updater.add_update_jobs(&per_material_offsets, self.material_page.offset());
+
+            self.material_page.offset() as u32
+        } else {
+            0
         }
-    }
-
-    pub fn get_arg_buffer_sizes(&self) -> (u64, u64) {
-        (self.batches.len() as u64, self.element_count)
     }
 
     pub fn draw(
@@ -101,13 +108,16 @@ impl RenderLayer {
         indirect_arg_buffer: Option<&Buffer>,
         count_buffer: Option<&Buffer>,
     ) {
+        let mut count_offset = 0;
         for batch in &self.batches {
             batch.draw(
                 render_context,
                 cmd_buffer,
                 indirect_arg_buffer,
                 count_buffer,
+                count_offset,
             );
+            count_offset += 4;
         }
     }
 }

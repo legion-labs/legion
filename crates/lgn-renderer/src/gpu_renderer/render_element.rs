@@ -34,3 +34,8 @@ impl RenderElement {
         }
     }
 }
+
+pub enum GpuInstanceEvent {
+    Added(Vec<(u32, RenderElement)>),
+    Removed(Vec<u32>),
+}

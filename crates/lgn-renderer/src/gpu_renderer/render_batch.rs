@@ -52,9 +52,9 @@ impl RenderBatch {
         self.element_count -= 1;
     }
 
-    pub fn calculate_offsets(&mut self, aggregate_offset: &mut u64) {
-        self.element_offset = *aggregate_offset;
-        *aggregate_offset += u64::from(self.element_count);
+    pub fn calculate_indirect_offsets(&mut self, indirect_arg_buffer_offset: &mut u64) {
+        self.element_offset = *indirect_arg_buffer_offset;
+        *indirect_arg_buffer_offset += u64::from(self.element_count);
     }
 
     pub fn draw(
@@ -63,38 +63,41 @@ impl RenderBatch {
         cmd_buffer: &mut HLCommandBuffer<'_>,
         indirect_arg_buffer: Option<&Buffer>,
         count_buffer: Option<&Buffer>,
+        count_offset: u64,
     ) {
         const INDIRECT_ARG_STRIDE: u64 = 20;
 
-        let pipeline = render_context
-            .pipeline_manager()
-            .get_pipeline(self.state_set.pipeline_handle)
-            .unwrap();
+        if self.element_count > 0 || !self.elements.is_empty() {
+            let pipeline = render_context
+                .pipeline_manager()
+                .get_pipeline(self.state_set.pipeline_handle)
+                .unwrap();
 
-        cmd_buffer.bind_pipeline(pipeline);
+            cmd_buffer.bind_pipeline(pipeline);
 
-        cmd_buffer.bind_descriptor_set(
-            render_context.frame_descriptor_set().0,
-            render_context.frame_descriptor_set().1,
-        );
-        cmd_buffer.bind_descriptor_set(
-            render_context.view_descriptor_set().0,
-            render_context.view_descriptor_set().1,
-        );
-
-        if self.element_count > 0 {
-            cmd_buffer.draw_indexed_indirect_count(
-                indirect_arg_buffer.unwrap(),
-                self.element_offset * INDIRECT_ARG_STRIDE,
-                count_buffer.unwrap(),
-                self.element_offset,
-                self.element_count,
-                INDIRECT_ARG_STRIDE as u32,
+            cmd_buffer.bind_descriptor_set(
+                render_context.frame_descriptor_set().0,
+                render_context.frame_descriptor_set().1,
             );
-        }
+            cmd_buffer.bind_descriptor_set(
+                render_context.view_descriptor_set().0,
+                render_context.view_descriptor_set().1,
+            );
 
-        for element in &self.elements {
-            element.draw(cmd_buffer);
+            if self.element_count > 0 {
+                cmd_buffer.draw_indirect_count(
+                    indirect_arg_buffer.unwrap(),
+                    self.element_offset * INDIRECT_ARG_STRIDE,
+                    count_buffer.unwrap(),
+                    count_offset,
+                    self.element_count,
+                    INDIRECT_ARG_STRIDE as u32,
+                );
+            }
+
+            for element in &self.elements {
+                element.draw(cmd_buffer);
+            }
         }
     }
 }

@@ -81,6 +81,7 @@ impl Mesh {
 
         if let Some(positions) = &self.positions {
             mesh_desc.set_position_offset(offset.into());
+            mesh_desc.set_vertex_count((positions.len() as u32).into());
             updater.add_update_jobs(positions, u64::from(offset));
             offset += (std::mem::size_of::<Vec4>() * positions.len()) as u32;
         }
@@ -101,6 +102,7 @@ impl Mesh {
         }
         if let Some(indices) = &self.indices {
             mesh_desc.set_index_offset(offset.into());
+            mesh_desc.set_index_count((indices.len() as u32).into());
             updater.add_update_jobs(indices, u64::from(offset));
             offset += (std::mem::size_of::<u32>() * indices.len()) as u32;
         }
@@ -109,6 +111,7 @@ impl Mesh {
             updater.add_update_jobs(colors, u64::from(offset));
             offset += (std::mem::size_of::<Vec4>() * colors.len()) as u32;
         }
+
         updater.add_update_jobs(&[mesh_desc], u64::from(offset));
         let mesh_info_offset = offset;
         offset += std::mem::size_of::<MeshDescription>() as u32;

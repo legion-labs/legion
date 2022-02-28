@@ -19,7 +19,7 @@ use cgen::*;
 
 mod labels;
 use components::{MaterialComponent, ModelComponent};
-use gpu_renderer::{GpuInstanceManager, MeshRenderer, RenderElement};
+use gpu_renderer::{GpuInstanceEvent, GpuInstanceManager, MeshRenderer, RenderElement};
 pub use labels::*;
 
 mod renderer;
@@ -405,7 +405,6 @@ fn update_missing_visuals(
 )]
 fn update_gpu_instances(
     renderer: Res<'_, Renderer>,
-    mut mesh_renderer: ResMut<'_, MeshRenderer>,
     picking_manager: Res<'_, PickingManager>,
     mut picking_data_manager: ResMut<'_, GpuPickingDataManager>,
     mut instance_manager: ResMut<'_, GpuInstanceManager>,
@@ -414,6 +413,7 @@ fn update_gpu_instances(
     material_manager: Res<'_, GpuMaterialManager>,
     color_manager: Res<'_, GpuEntityColorManager>,
     transform_manager: Res<'_, GpuEntityTransformManager>,
+    mut event_writer: EventWriter<'_, '_, GpuInstanceEvent>,
     instance_query: Query<
         '_,
         '_,
@@ -425,18 +425,10 @@ fn update_gpu_instances(
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
     let mut picking_context = PickingIdContext::new(&picking_manager);
 
-    for (entity, _mesh, mat_component) in instance_query.iter() {
+    for (entity, _, _) in instance_query.iter() {
         picking_data_manager.remove_gpu_data(&entity);
         if let Some(removed_ids) = instance_manager.remove_gpu_instance(entity) {
-            for removed_id in removed_ids {
-                let mut material_key = None;
-                if let Some(material) = mat_component {
-                    material_key = Some(material.material_id);
-                }
-
-                let material_idx = material_manager.id_for_index(material_key, 0);
-                mesh_renderer.unregister_element(material_idx, removed_id);
-            }
+            event_writer.send(GpuInstanceEvent::Removed(removed_ids));
         }
     }
 
@@ -472,6 +464,8 @@ fn update_gpu_instances(
                 missing_visuals_tracker.add_entity(*reference, entity);
             }
         }
+
+        let mut added_instances = Vec::with_capacity(model_meta_data.meshes.len());
         for mesh in &model_meta_data.meshes {
             let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
             let instance_vas = GpuInstanceVas {
@@ -489,13 +483,13 @@ fn update_gpu_instances(
                 &instance_vas,
             );
 
-            let material_idx = material_manager.id_for_index(material_key, 0);
-            mesh_renderer.register_material(material_idx);
-            mesh_renderer.register_element(
-                material_idx,
-                &RenderElement::new(gpu_instance_id, mesh.mesh_id as u32, &mesh_manager),
-            );
+            let material_id = material_manager.id_for_index(material_key, 0);
+            added_instances.push((
+                material_id,
+                RenderElement::new(gpu_instance_id, mesh.mesh_id as u32, &mesh_manager),
+            ));
         }
+        event_writer.send(GpuInstanceEvent::Added(added_instances));
     }
     instance_manager.return_index_block(instance_block);
     picking_data_manager.return_index_block(picking_block);
@@ -620,6 +614,10 @@ fn render_update(
         let static_buffer_ro_view = renderer.static_buffer_ro_view();
         frame_descriptor_set.set_static_buffer(&static_buffer_ro_view);
 
+        let va_table_address_buffer =
+            instance_manager.structured_buffer_view(std::mem::size_of::<u32>() as u64, true);
+        frame_descriptor_set.set_va_table_address_buffer(&va_table_address_buffer);
+
         let default_black_texture = bindless_textures.default_black_texture_view();
         let bindlesss_descriptors = bindless_textures.bindless_texures_for_update();
 
@@ -653,6 +651,8 @@ fn render_update(
             frame_descriptor_set_handle,
         );
     }
+
+    mesh_renderer.cull(&render_context);
 
     // For each surface/view, we have to execute the render graph
     for mut render_surface in q_render_surfaces.iter_mut() {
