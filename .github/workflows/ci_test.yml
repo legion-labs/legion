@@ -48,7 +48,7 @@ jobs:
         password: ${{ secrets.ECR_PASSWORD }}
     strategy:
       matrix:
-        target: [x86_64-unknown-linux-gnu]
+        target: [x86_64-unknown-linux-gnu, x86_64-pc-windows-msvc]
     env:
       LEGION_TELEMETRY_URL: ${{ secrets.LEGION_TELEMETRY_URL }}
     steps:
@@ -60,22 +60,21 @@ jobs:
         uses: ./.github/actions/bootstrap
 
       - name: Run initial checks
-        run: |
-          echo "$CARGO_PKG_ARGS"
-          cargo m ci ${{ needs.change_detection.outputs.cargo_pkgs_args}} --target ${{ matrix.target }} check
+        run: cargo m ci ${{ needs.change_detection.outputs.cargo_pkgs_args }} --target ${{ matrix.target }} check
 
   test:
     name: Running tests
-    needs: [lint, change_detection, base_ref_selection]
+    needs: [lint, setup_image, change_detection]
     if: ${{ fromJSON(needs.change_detection.outputs.cargo_pkgs) }}
+    runs-on: [self-hosted, linux, common, build]
+    container:
+      image: ${{ needs.setup_image.outputs.image }}
+      credentials:
+        username: AWS
+        password: ${{ secrets.ECR_PASSWORD }}
     strategy:
       matrix:
-        os:
-          [
-            "${{ fromJSON(needs.change_detection.outputs.linux_runner) }}",
-            "${{ fromJSON(needs.change_detection.outputs.windows_runner) }}",
-          ]
-    runs-on: ${{ matrix.os }}
+        target: [x86_64-unknown-linux-gnu, x86_64-pc-windows-msvc]
     steps:
       - uses: actions/checkout@v2
         with:
@@ -84,8 +83,12 @@ jobs:
       - name: Bootstrap
         uses: ./.github/actions/bootstrap
 
+      - name: Build tests
+        run: cargo m ci ${{ needs.change_detection.outputs.cargo_pkgs_args}} --target ${{ matrix.target }} test --build
+
       - name: Run tests
-        run: cargo m ci --changed-since ${{ needs.base_ref_selection.outputs.base_ref }} test
+        if: ${{ matrix.target }} != 'x86_64-pc-windows-msvc'
+        run: cargo m ci ${{ needs.change_detection.outputs.cargo_pkgs_args}} --target ${{ matrix.target }} test --run
 
       - name: Upload GPU-test diffs
         if: ${{ failure() }}
@@ -93,6 +96,41 @@ jobs:
         with:
           name: GPU test diffs
           path: ./tests/graphics-sandbox/diffs
+
+  build_static_websites:
+    name: Building static websites
+    needs: [setup_image, change_detection]
+    if: ${{ fromJSON(needs.change_detection.outputs.npm_pkgs) }}
+    runs-on: [self-hosted, linux, common, build]
+    container:
+      image: ${{ needs.setup_image.outputs.image }}
+      credentials:
+        username: AWS
+        password: ${{ secrets.ECR_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Npm install
+        run: pnpm install --unsafe-perm
+
+      - name: Npm build
+        env:
+          GITHUB_PAGES: "true"
+        run: pnpm build
+
+      - name: Upload analytics artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: analytics
+          path: ./crates/lgn-analytics-gui/frontend/dist
+          retention-days: 5
+
+      - name: Upload editor artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: editor
+          path: ./crates/lgn-editor-gui/frontend/dist
+          retention-days: 5
 
   build_book:
     name: Building book
@@ -146,8 +184,8 @@ jobs:
   deploy_docs:
     name: Deploying docs
     needs: [build_docs, test]
-    runs-on: ubuntu-20.04
     if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/download-artifact@v2
         with:
@@ -170,6 +208,7 @@ jobs:
   deploy_book:
     name: Deploying book
     needs: [build_book]
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/download-artifact@v2
@@ -186,3 +225,32 @@ jobs:
           publish_dir: ./book
           force_orphan: true
           cname: book.legionengine.com
+
+  deploy_static_website:
+    name: Deploying static websites
+    needs: build_static_websites
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        include:
+          - app: analytics
+            deploy_key: ANALYTICS_DEPLOY_KEY
+
+          - app: editor
+            deploy_key: EDITOR_DEPLOY_KEY
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: ${{ matrix.app }}
+          path: ./${{ matrix.app }}
+
+      - name: Deploy Analytics
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          deploy_key: ${{ secrets[matrix.deploy_key] }}
+          external_repository: legion-labs/${{ matrix.app }}.legionengine.com
+          publish_branch: main
+          publish_dir: ./${{ matrix.app }}
+          force_orphan: true
+          cname: ${{ matrix.app }}.legionengine.com
