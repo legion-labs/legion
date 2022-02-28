@@ -277,7 +277,7 @@ impl DataBuild {
         &mut self,
         compile_path: ResourcePathId,
         env: &CompilationEnv,
-        manifest: Option<&Manifest>,
+        intermediate_output: Option<&Manifest>,
     ) -> Result<CompiledResources, Error> {
         self.output_index.record_pathid(&compile_path);
         let mut result = CompiledResources::default();
@@ -286,7 +286,7 @@ impl DataBuild {
             resources,
             references,
             statistics: _stats,
-        } = self.compile_path(compile_path, env, manifest)?;
+        } = self.compile_path(compile_path, env, intermediate_output)?;
 
         let assets = self.link(&resources, &references)?;
 
@@ -452,7 +452,7 @@ impl DataBuild {
         &mut self,
         compile_path: ResourcePathId,
         env: &CompilationEnv,
-        manifest: Option<&Manifest>,
+        intermediate_output: Option<&Manifest>,
     ) -> Result<CompileOutput, Error> {
         if self.source_index.current().is_none() {
             return Err(Error::SourceIndex);
@@ -620,7 +620,7 @@ impl DataBuild {
                 // update the CAS manifest with new content in order to make new resources
                 // visible to the next compilation node
                 // NOTE: right now all the resources are visible to all compilation nodes.
-                if let Some(manifest) = &manifest {
+                if let Some(manifest) = &intermediate_output {
                     for r in &resource_infos {
                         manifest.insert(
                             r.compiled_path.resource_id(),

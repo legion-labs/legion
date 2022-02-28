@@ -68,9 +68,14 @@ async fn main() {
         .content_store(&ContentStoreAddr::from(build_dir.as_path()))
         .asset_registry(asset_registry.clone());
 
-    let mut build_manager = BuildManager::new(data_build, &project, Manifest::default())
-        .await
-        .unwrap();
+    let mut build_manager = BuildManager::new(
+        data_build,
+        &project,
+        Manifest::default(),
+        Manifest::default(),
+    )
+    .await
+    .unwrap();
 
     for id in resource_ids {
         build_manager.build_all_derived(id, &project).await.unwrap();

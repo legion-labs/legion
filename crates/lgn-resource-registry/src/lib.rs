@@ -61,7 +61,8 @@ impl ResourceRegistryPlugin {
 
         let async_rt = world.get_resource::<TokioAsyncRuntime>().unwrap();
         let asset_registry = world.get_resource::<Arc<AssetRegistry>>().unwrap();
-        let manifest = world.get_resource::<Manifest>().unwrap();
+        let intermediate_manifest = Manifest::default();
+        let runtime_manifest = world.get_resource::<Manifest>().unwrap();
         let selection_manager = world.get_resource::<Arc<SelectionManager>>().unwrap();
 
         let transaction_manager = async_rt.block_on(async move {
@@ -73,11 +74,16 @@ impl ResourceRegistryPlugin {
 
             let build_options = DataBuildOptions::new(&build_dir, compilers)
                 .content_store(&ContentStoreAddr::from(build_dir.as_path()))
-                .manifest(manifest.clone());
+                .manifest(intermediate_manifest.clone());
 
-            let build_manager = BuildManager::new(build_options, &project, manifest.clone())
-                .await
-                .expect("the editor requires valid build manager");
+            let build_manager = BuildManager::new(
+                build_options,
+                &project,
+                runtime_manifest.clone(),
+                intermediate_manifest.clone(),
+            )
+            .await
+            .expect("the editor requires valid build manager");
 
             Arc::new(Mutex::new(TransactionManager::new(
                 Arc::new(Mutex::new(project)),
