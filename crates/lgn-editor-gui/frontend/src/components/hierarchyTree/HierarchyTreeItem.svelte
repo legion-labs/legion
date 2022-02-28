@@ -18,16 +18,6 @@
     nameEdited: { entry: Entry<Item>; newName: string };
   }>();
 
-  // TODO: Temporary extension to icon name map, should be dynamic
-  const iconNames: Record<string, string> = {
-    pdf: "ic:baseline-picture-as-pdf",
-    jpg: "ic:baseline-image",
-    jpeg: "ic:baseline-image",
-    png: "ic:baseline-image",
-    zip: "ic:baseline-archive",
-    rar: "ic:baseline-archive",
-  };
-
   export let index: number;
 
   export let entry: Entry<Item>;
@@ -43,12 +33,6 @@
   let isExpanded = true;
 
   $: isHighlighted = highlightedEntry ? entry === highlightedEntry : false;
-
-  $: nameExtension = extension(entry.name)?.toLowerCase();
-
-  $: iconName =
-    (nameExtension && iconNames[nameExtension]) ||
-    "ic:outline-insert-drive-file";
 
   $: mode =
     currentlyRenameEntry && currentlyRenameEntry === entry ? "edit" : "view";
@@ -97,6 +81,9 @@
     isExpanded = !isExpanded;
   }
 
+  $: iconName =
+    (entry.icon != null && entry.icon) || "ic:outline-insert-drive-file";
+
   // Simple wrapper for the `contextMenu` action that handles `null` values
   function contextMenu(element: HTMLElement) {
     if (withItemContextMenu == null) {
@@ -116,15 +103,16 @@
     on:mousedown={highlight}
     use:contextMenu
   >
-    {#if entry.subEntries}
+    {#if entry.subEntries && entry.subEntries.length > 0}
       <div class="icon" class:expanded={isExpanded} on:click={toggleExpanded}>
         <Icon icon="ic:baseline-chevron-right" />
       </div>
     {:else}
-      <div class="icon">
-        <Icon icon={iconName} />
-      </div>
+      <div class="w-6 icon" />
     {/if}
+    <div class="icon">
+      <Icon icon={iconName} />
+    </div>
     <div class="name">
       {#if mode === "view"}
         <slot name="name" itemName={entry.name} />

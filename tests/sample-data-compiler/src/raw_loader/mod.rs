@@ -12,8 +12,9 @@ use std::{
 };
 
 use generic_data::offline::{TestComponent, TestEntity};
-use lgn_data_offline::resource::{
-    Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
+use lgn_data_offline::{
+    resource::{Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions},
+    ResourcePathId,
 };
 use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_graphics_data::{offline_gltf::GltfFile, offline_png::PngFile, offline_psd::PsdFile};
@@ -314,63 +315,70 @@ async fn build_debug_cubes(
         "7483C534-FE2A-4F16-B655-E9AFE39A93BA",
     ];
 
-    // Create DebugCube DataContainer
-    for (index, _) in cube_ids.iter().enumerate() {
-        let name: ResourcePathName = format!("/entity/DebugCube{}", index).into();
-        let id = if let Ok(id) = project.find_resource(&name).await {
-            id
-        } else {
-            let kind = offline_data::Entity::TYPE;
-            let id = ResourceTypeAndId {
-                kind,
-                id: ResourceId::from_str(cube_ids[index]).unwrap(),
-            };
-            let cube_entity_handle = resources.new_resource(kind).unwrap();
-            let cube_entity = cube_entity_handle
-                .get_mut::<offline_data::Entity>(resources)
-                .unwrap();
+    let scene: ResourcePathName = "/world/sample_1.ent".into();
+    if let Ok(parent_id) = project.find_resource(&scene).await {
+        // Create DebugCube DataContainer
+        for (index, _) in cube_ids.iter().enumerate() {
+            let name: ResourcePathName = format!("/world/sample_1/DebugCube{}", index).into();
+            let id = if let Ok(id) = project.find_resource(&name).await {
+                id
+            } else {
+                let kind = offline_data::Entity::TYPE;
+                let id = ResourceTypeAndId {
+                    kind,
+                    id: ResourceId::from_str(cube_ids[index]).unwrap(),
+                };
+                let cube_entity_handle = resources.new_resource(kind).unwrap();
+                let cube_entity = cube_entity_handle
+                    .get_mut::<offline_data::Entity>(resources)
+                    .unwrap();
 
-            cube_entity.components.push(Box::new(offline_data::Name {
-                name: format!("DebugCube{}", index),
-            }));
+                let mut parent_path: ResourcePathId = parent_id.into();
+                parent_path = parent_path.push(sample_data::runtime::Entity::TYPE);
+                cube_entity.parent = Some(parent_path);
 
-            cube_entity
-                .components
-                .push(Box::new(offline_data::Transform {
-                    position: match index {
-                        0 => (0.0f32, 0.0f32, 1.0f32).into(),
-                        1 => (1.0f32, 0.0f32, 0.0f32).into(),
-                        2 => (-1.0f32, 0.0f32, 0.0f32).into(),
-                        3 => (0.0f32, 1.0f32, 0.0f32).into(),
-                        _ => (0.0f32, 0.0f32, 0.0f32).into(),
-                    },
-                    ..sample_data::offline::Transform::default()
+                cube_entity.components.push(Box::new(offline_data::Name {
+                    name: format!("DebugCube{}", index),
                 }));
 
-            cube_entity.components.push(Box::new(offline_data::Visual {
-                color: match index {
-                    0 => (255, 0, 0).into(),
-                    1 => (255, 255, 0).into(),
-                    2 => (255, 0, 255).into(),
-                    3 => (0, 0, 255).into(),
-                    _ => (192, 192, 192).into(),
-                },
-                ..sample_data::offline::Visual::default()
-            }));
+                cube_entity
+                    .components
+                    .push(Box::new(offline_data::Transform {
+                        position: match index {
+                            0 => (0.0f32, 0.0f32, 1.0f32).into(),
+                            1 => (1.0f32, 0.0f32, 0.0f32).into(),
+                            2 => (-1.0f32, 0.0f32, 0.0f32).into(),
+                            3 => (0.0f32, 1.0f32, 0.0f32).into(),
+                            _ => (0.0f32, 0.0f32, 0.0f32).into(),
+                        },
+                        ..sample_data::offline::Transform::default()
+                    }));
 
-            project
-                .add_resource_with_id(
-                    name.clone(),
-                    offline_data::Entity::TYPENAME,
-                    offline_data::Entity::TYPE,
-                    id.id,
-                    cube_entity_handle,
-                    resources,
-                )
-                .await
-                .unwrap()
-        };
-        ids.insert(name, id);
+                cube_entity.components.push(Box::new(offline_data::Visual {
+                    color: match index {
+                        0 => (255, 0, 0).into(),
+                        1 => (255, 255, 0).into(),
+                        2 => (255, 0, 255).into(),
+                        3 => (0, 0, 255).into(),
+                        _ => (192, 192, 192).into(),
+                    },
+                    ..sample_data::offline::Visual::default()
+                }));
+
+                project
+                    .add_resource_with_id(
+                        name.clone(),
+                        offline_data::Entity::TYPENAME,
+                        offline_data::Entity::TYPE,
+                        id.id,
+                        cube_entity_handle,
+                        resources,
+                    )
+                    .await
+                    .unwrap()
+            };
+            ids.insert(name, id);
+        }
     }
 }
 

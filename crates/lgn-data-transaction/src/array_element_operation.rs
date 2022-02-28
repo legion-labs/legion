@@ -11,6 +11,7 @@ use lgn_data_runtime::ResourceTypeAndId;
 use crate::{Error, LockContext, TransactionOperation};
 
 #[allow(clippy::enum_variant_names)]
+#[derive(Debug)]
 enum ArrayOpType {
     InsertElement(Option<usize>, Option<String>),
     DeleteElement(usize, Option<Vec<u8>>),
@@ -19,6 +20,7 @@ enum ArrayOpType {
 }
 
 /// Operation to modify an array Property
+#[derive(Debug)]
 pub struct ArrayOperation {
     resource_id: ResourceTypeAndId,
     array_path: String,

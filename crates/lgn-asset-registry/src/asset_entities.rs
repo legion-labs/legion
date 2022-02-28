@@ -24,4 +24,9 @@ impl AssetToEntityMap {
         self.entity_to_asset.insert(entity, asset_id);
         old_entity
     }
+
+    pub fn remove(&mut self, entity: Entity) {
+        let old_res_id = self.entity_to_asset.remove(&entity);
+        old_res_id.and_then(|old_res_id| self.asset_to_entity.remove(&old_res_id));
+    }
 }

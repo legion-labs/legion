@@ -228,14 +228,38 @@ impl PropertyInspector for PropertyInspectorRPC {
             .get(resource_id)
             .ok_or_else(|| Status::internal(format!("Invalid ResourceID: {}", resource_id)))?;
 
-        let property_bag = ctx
+        let mut property_bag = if let Some(reflection) = ctx
             .resource_registry
             .get_resource_reflection(resource_id.kind, handle)
-            .ok_or_else(|| Status::internal(format!("Invalid ResourceID format: {}", request.id)))
-            .map(|reflection| -> Result<ResourceProperty, ReflectionError> {
-                collect_properties::<ResourcePropertyCollector>(reflection)
-            })?
-            .map_err(|err| Status::internal(err.to_string()))?;
+        {
+            collect_properties::<ResourcePropertyCollector>(reflection)
+                .map_err(|err| Status::internal(err.to_string()))?
+        } else {
+            // Return a default bag if there's no reflection
+            ResourceProperty {
+                name: "".into(),
+                ptype: resource_id.kind.as_pretty().into(),
+                json_value: None,
+                attributes: HashMap::new(),
+                sub_properties: Vec::new(),
+            }
+        };
+
+        // Add Id property
+        property_bag.sub_properties.insert(
+            0,
+            ResourceProperty {
+                name: "id".into(),
+                ptype: "String".into(),
+                sub_properties: Vec::new(),
+                json_value: Some(serde_json::json!(resource_id.id.to_string()).to_string()),
+                attributes: {
+                    let mut attr = HashMap::new();
+                    attr.insert("readonly".into(), "true".into());
+                    attr
+                },
+            },
+        );
 
         Ok(Response::new(GetResourcePropertiesResponse {
             description: Some(ResourceDescription {
@@ -261,13 +285,14 @@ impl PropertyInspector for PropertyInspectorRPC {
         let mut transaction_manager = self.transaction_manager.lock().await;
         {
             let mut transaction = Transaction::new();
-            for update in &request.property_updates {
-                transaction = transaction.add_operation(UpdatePropertyOperation::new(
-                    resource_id,
-                    update.name.as_str(),
-                    update.json_value.as_str(),
-                ));
-            }
+            transaction = transaction.add_operation(UpdatePropertyOperation::new(
+                resource_id,
+                &request
+                    .property_updates
+                    .iter()
+                    .map(|update| (&update.name, &update.json_value))
+                    .collect::<Vec<_>>(),
+            ));
             transaction_manager
                 .commit_transaction(transaction)
                 .await

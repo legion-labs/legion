@@ -62,6 +62,8 @@ struct LoadState {
     /// The list of Resources that need to be loaded before the LoadState can be
     /// considered completed.
     references: Vec<HandleUntyped>,
+    /// Specify if it's a reload
+    reload: bool,
 }
 
 struct HandleMap {
@@ -291,35 +293,36 @@ impl AssetLoaderIO {
             }
         };
 
-        let mut output = load_func(primary_handle, &mut &asset_data[..], &mut self.loaders)?;
+        let output = load_func(primary_handle, &mut &asset_data[..], &mut self.loaders)?;
 
-        assert!(
-            output
-                .load_dependencies
-                .iter()
-                .all(|reference| self.loaded_resources.contains(&reference.primary)),
-            "Loading new dependencies not supported"
-        );
+        // Reloading with new dep not supported yet
+        let references = output
+            .load_dependencies
+            .iter()
+            .filter(|reference| !self.loaded_resources.contains(&reference.primary))
+            .map(|reference| self.handles.create_handle(reference.primary))
+            .collect::<Vec<_>>();
 
-        assert_eq!(
-            output.assets.len(),
-            1,
-            "Reload of secondary assets not supported"
-        );
-
-        let (_, primary_resource) = output.assets.first_mut().unwrap();
-
-        if let Some(boxed) = primary_resource {
-            let loader = self.loaders.get_mut(&primary_id.kind).unwrap();
-            loader.load_init(boxed.as_mut());
-        }
-        assert!(self.loaded_resources.contains(&primary_id));
-
-        if let Some(resource) = primary_resource.take() {
-            self.result_tx
-                .send(LoaderResult::Reloaded(primary_handle.clone(), resource))
+        for reference in &references {
+            self.request_tx
+                .send(LoaderRequest::Load(reference.clone(), None))
                 .unwrap();
         }
+
+        self.processing_list.push(LoadState {
+            primary_handle: primary_handle.clone(),
+            load_id: None,
+            assets: output
+                .assets
+                .into_iter()
+                .map(|(secondary_id, boxed)| {
+                    let handle = self.handles.create_handle(secondary_id);
+                    (handle, boxed)
+                })
+                .collect::<Vec<_>>(),
+            references,
+            reload: self.loaded_resources.contains(&primary_id),
+        });
 
         Ok(())
     }
@@ -379,6 +382,7 @@ impl AssetLoaderIO {
                 })
                 .collect::<Vec<_>>(),
             references,
+            reload: false,
         });
         Ok(())
     }
@@ -462,6 +466,7 @@ impl AssetLoaderIO {
         // check for completion.
         for index in (0..self.processing_list.len()).rev() {
             let pending = &self.processing_list[index];
+            let is_reload = pending.reload;
             let finished = pending
                 .references
                 .iter()
@@ -486,13 +491,19 @@ impl AssetLoaderIO {
                 // load notification.
                 let mut asset_iter = loaded.assets.into_iter();
                 let primary_asset = asset_iter.next().unwrap().1.unwrap();
-                self.result_tx
-                    .send(LoaderResult::Loaded(
-                        loaded.primary_handle,
-                        primary_asset,
-                        loaded.load_id,
-                    ))
-                    .unwrap();
+                if is_reload {
+                    self.result_tx
+                        .send(LoaderResult::Reloaded(loaded.primary_handle, primary_asset))
+                        .unwrap();
+                } else {
+                    self.result_tx
+                        .send(LoaderResult::Loaded(
+                            loaded.primary_handle,
+                            primary_asset,
+                            loaded.load_id,
+                        ))
+                        .unwrap();
+                }
 
                 for (id, asset) in asset_iter {
                     if let Some(asset) = asset {

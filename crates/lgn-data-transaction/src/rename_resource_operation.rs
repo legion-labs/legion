@@ -7,6 +7,7 @@ use lgn_data_runtime::ResourceTypeAndId;
 use crate::{Error, LockContext, TransactionOperation};
 
 /// Operation to rename a Resource
+#[derive(Debug)]
 pub struct RenameResourceOperation {
     resource_id: ResourceTypeAndId,
     new_path: ResourcePathName,

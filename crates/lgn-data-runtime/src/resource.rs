@@ -1,8 +1,11 @@
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::path::PathBuf;
+use std::sync::RwLock;
 use std::{fmt, hash::Hash, str::FromStr};
 
 use lgn_utils::DefaultHash;
+use once_cell::sync::OnceCell;
 use serde::ser::SerializeTuple;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::Write;
@@ -29,6 +32,9 @@ impl fmt::Debug for ResourceType {
     }
 }
 
+static RESOURCE_TYPE_MAPPING: OnceCell<RwLock<HashMap<ResourceType, &'static str>>> =
+    OnceCell::new();
+
 impl ResourceType {
     /// Creates a new type id from series of bytes.
     ///
@@ -45,6 +51,22 @@ impl ResourceType {
             None => panic!(),
         };
         Self(v)
+    }
+
+    /// Return the name of the `ResourceType`
+    pub fn as_pretty(self) -> &'static str {
+        let name_mapping = RESOURCE_TYPE_MAPPING.get_or_init(|| RwLock::new(HashMap::new()));
+        if let Some(value) = name_mapping.read().unwrap().get(&self) {
+            *value
+        } else {
+            "unknown"
+        }
+    }
+
+    /// Registry a name for a `ResourceType`
+    pub fn register_name(id: Self, name: &'static str) {
+        let name_mapping = RESOURCE_TYPE_MAPPING.get_or_init(|| RwLock::new(HashMap::new()));
+        name_mapping.write().unwrap().insert(id, name);
     }
 }
 
@@ -221,7 +243,7 @@ impl<'de> Deserialize<'de> for ResourceId {
 
 /// FIXME: This should only be a temporary struct, we should be using the
 /// `ResourceId` directly.
-#[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct ResourceTypeAndId {
     /// The associated `ResourceType`.
     pub kind: ResourceType,
@@ -247,6 +269,12 @@ impl FromStr for ResourceTypeAndId {
 impl fmt::Display for ResourceTypeAndId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("({},{})", self.kind, self.id))
+    }
+}
+
+impl fmt::Debug for ResourceTypeAndId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("({},{})", self.kind.as_pretty(), self.id))
     }
 }
 

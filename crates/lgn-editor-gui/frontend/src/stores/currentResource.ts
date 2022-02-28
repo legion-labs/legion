@@ -11,6 +11,11 @@ const currentResourceStore =
 export function fetchCurrentResourceDescription(
   currentResourceDescription: ResourceDescription
 ) {
+  // Ignore folder without id
+  if (!currentResourceDescription.id) {
+    return;
+  }
+
   try {
     currentResourceStore.run(() => {
       if (!currentResourceDescription) {

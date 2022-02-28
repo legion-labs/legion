@@ -1,8 +1,10 @@
+import log from "@lgn/web-client/src/lib/log";
 import { components } from "./path";
 
 export type Entry<Item> = {
   name: string;
   index: number;
+  icon: string | null;
   item: Item;
   subEntries: Entry<Item>[] | null;
 };
@@ -47,7 +49,7 @@ export class Entries<Item> {
 
     type Ref = {
       [key: string]: Ref;
-    } & { subEntries: Entry<PItem | AltItem>[] | null };
+    } & { subEntries: Entry<PItem | AltItem>[] };
 
     const entriesArray: Entry<PItem>[] = [];
     const ref = { subEntries: entriesArray } as Ref;
@@ -57,14 +59,17 @@ export class Entries<Item> {
 
       pathComponents.reduce((ref, name, index) => {
         if (!ref[name]) {
+          const subentries: Entry<PItem>[] = [];
+
           ref[name] = {
-            subEntries: index === pathComponents.length - 1 ? null : [],
+            subEntries: subentries,
           } as Ref;
 
           const entry = {
             name,
             // Dumb index, will be set again properly later
             index: -1,
+            icon: null,
             item:
               index < pathComponents.length - 1
                 ? buildItemFromName(name)
@@ -122,7 +127,12 @@ export class Entries<Item> {
   #sort() {
     function sort(entries: Entry<Item>[]): void {
       entries
-        .sort((entry1, entry2) => (entry1.name > entry2.name ? 1 : -1))
+        .sort(function (entry1, entry2) {
+          return entry1.name.localeCompare(entry2.name, undefined, {
+            numeric: true,
+            sensitivity: "base",
+          });
+        })
         .forEach((entry) => {
           if (entry.subEntries?.length) {
             sort(entry.subEntries);
@@ -233,7 +243,7 @@ export class Entries<Item> {
     return this;
   }
 
-  insert<PItem extends { path: string }>(item: PItem): this {
+  insert<PItem extends { path: string | null }>(item: PItem): this {
     function insert(
       [part, ...parts]: string[],
       entries: Entry<Item>[],
@@ -242,6 +252,7 @@ export class Entries<Item> {
       if (!parts.length) {
         const newEntry: Entry<Item> = {
           index: -1,
+          icon: null,
           item: item as unknown as Item,
           name: part,
           subEntries: null,

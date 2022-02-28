@@ -9,6 +9,7 @@ use lgn_data_runtime::ResourceTypeAndId;
 use crate::{Error, LockContext, TransactionOperation};
 
 /// Operation to Create a new Resource
+#[derive(Debug)]
 pub struct CreateResourceOperation {
     resource_id: ResourceTypeAndId,
     resource_path: ResourcePathName,

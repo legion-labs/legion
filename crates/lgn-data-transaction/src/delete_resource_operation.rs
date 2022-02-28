@@ -7,6 +7,7 @@ use lgn_data_runtime::ResourceTypeAndId;
 use crate::{Error, LockContext, TransactionOperation};
 
 /// Operation to Delete a resource
+#[derive(Debug)]
 pub struct DeleteResourceOperation {
     resource_id: ResourceTypeAndId,
     old_resource_name: Option<ResourcePathName>,

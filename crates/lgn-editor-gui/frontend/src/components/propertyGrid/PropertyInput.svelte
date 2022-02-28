@@ -57,6 +57,14 @@
     });
   }
 
+  function isReadonly(): boolean {
+    if (property.attributes.readonly) {
+      return true;
+    }
+
+    return false;
+  }
+
   // Vector related code
   // TODO: Extract this to a vector sub properties component?
 
@@ -93,28 +101,33 @@
   {#if propertyIsBoolean(property)}
     <div class="boolean-property">
       <BooleanProperty
+        disabled={isReadonly()}
         on:input={({ detail }) => onInput({ value: detail })}
         bind:value={property.value}
       />
     </div>
   {:else if propertyIsScript(property)}
     <ScriptProperty
+      disabled={isReadonly()}
       name={property.name}
       on:input={({ detail }) => onInput({ value: detail })}
       bind:value={property.value}
     />
   {:else if propertyIsString(property)}
     <StringProperty
+      disabled={isReadonly()}
       on:input={({ detail }) => onInput({ value: detail })}
       bind:value={property.value}
     />
   {:else if propertyIsResourcePathId(property)}
     <ResourcePathIdProperty
+      disabled={isReadonly()}
       on:input={({ detail }) => onInput({ value: detail })}
       bind:value={property.value}
     />
   {:else if propertyIsEnum(property)}
     <EnumProperty
+      disabled={isReadonly()}
       on:input={({ detail }) => onInput({ value: detail })}
       value={{
         item: property.value,
@@ -127,26 +140,31 @@
     />
   {:else if propertyIsNumber(property)}
     <NumberProperty
+      disabled={isReadonly()}
       on:input={({ detail }) => onInput({ value: detail })}
       bind:value={property.value}
     />
   {:else if propertyIsColor(property)}
     <ColorProperty
+      disabled={isReadonly()}
       on:input={({ detail }) => onInput({ value: detail })}
       bind:value={property.value}
     />
   {:else if propertyIsSpeed(property)}
     <SpeedProperty
+      disabled={isReadonly()}
       on:input={({ detail }) => onInput({ value: detail })}
       bind:value={property.value}
     />
   {:else if propertyIsVec3(property)}
     <Vec3Property
+      disabled={isReadonly()}
       on:input={({ detail }) => onInput({ value: detail })}
       bind:value={property.value}
     />
   {:else if propertyIsQuat(property)}
     <QuatProperty
+      disabled={isReadonly()}
       on:input={({ detail }) => onInput({ value: detail })}
       bind:value={property.value}
     />

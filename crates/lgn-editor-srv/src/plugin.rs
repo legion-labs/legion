@@ -109,16 +109,6 @@ impl EditorPlugin {
             match event {
                 PickingEvent::EntityPicked(id) => {
                     if let Some(runtime_id) = asset_to_entity_map.get_resource_id(*id) {
-                        if let Ok((entity, name)) = entities.get(*id) {
-                            info!(
-                                "EntitySelected: {:?} ({})",
-                                entity,
-                                name.map_or("", Name::as_str),
-                            );
-                        } else {
-                            warn!("EntitySelected failed, entity {:?} not found", id);
-                        }
-
                         let shift_pressed = false; //TODO: Support adding to selection keys.pressed(KeyCode::LShift);
 
                         let transaction_manager = transaction_manager.clone();
@@ -146,14 +136,7 @@ impl EditorPlugin {
                     }
                 }
                 PickingEvent::ApplyTransaction(id, transform) => {
-                    if let Ok((entity, name)) = entities.get(*id) {
-                        info!(
-                            "ApplyTransform {:?} ({}): {:?}",
-                            entity,
-                            name.map_or("", Name::as_str),
-                            transform
-                        );
-
+                    if let Ok((entity, _name)) = entities.get(*id) {
                         if let Some(runtime_id) = asset_to_entity_map.get_resource_id(entity) {
                             let position_value =
                                 serde_json::json!(transform.translation).to_string();
@@ -170,22 +153,16 @@ impl EditorPlugin {
                                 };
 
                                 if let Some(offline_res_id) = offline_res_id {
-                                    let transaction = Transaction::new()
-                                        .add_operation(UpdatePropertyOperation::new(
+                                    let transaction = Transaction::new().add_operation(
+                                        UpdatePropertyOperation::new(
                                             offline_res_id,
-                                            "components[Transform].position",
-                                            position_value,
-                                        ))
-                                        .add_operation(UpdatePropertyOperation::new(
-                                            offline_res_id,
-                                            "components[Transform].rotation",
-                                            rotation_value,
-                                        ))
-                                        .add_operation(UpdatePropertyOperation::new(
-                                            offline_res_id,
-                                            "components[Transform].scale",
-                                            scale_value,
-                                        ));
+                                            &[
+                                                ("components[Transform].position", position_value),
+                                                ("components[Transform].rotation", rotation_value),
+                                                ("components[Transform].scale", scale_value),
+                                            ],
+                                        ),
+                                    );
                                     if let Err(err) =
                                         transaction_manager.commit_transaction(transaction).await
                                     {

@@ -13,7 +13,7 @@ pub struct Transaction {
 }
 
 #[async_trait]
-pub trait TransactionOperation {
+pub trait TransactionOperation: std::fmt::Debug {
     async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> Result<(), Error>;
     async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> Result<(), Error>;
 }
@@ -22,12 +22,10 @@ impl Transaction {
     /// Create a new Transaction
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        let new_transaction = Self {
+        Self {
             id: uuid::Uuid::new_v4(),
             operations: Vec::new(),
-        };
-        info!("Begin Transaction: {}", &new_transaction.id);
-        new_transaction
+        }
     }
 
     pub(crate) async fn apply_transaction(
@@ -56,11 +54,17 @@ impl Transaction {
         } else {
             // All the ops complete, the the resources
             context.save_changed_resources().await?;
-            info!(
+            let mut log = format!(
                 "Transaction Applied: {} / {}ops",
                 &self.id,
                 self.operations.len()
             );
+            if lgn_config::config_get_or!("data_transaction.log_operation", false) {
+                for op in &self.operations {
+                    log.push_str(&format!("\n\t{:?}", op));
+                }
+            }
+            info!("{}", &log);
             Ok(())
         }
     }

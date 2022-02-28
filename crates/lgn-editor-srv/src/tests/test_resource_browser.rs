@@ -147,7 +147,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
         let root_entity_id = resource_browser
             .create_resource(Request::new(CreateResourceRequest {
                 resource_type: sample_data::offline::Entity::TYPENAME.into(),
-                resource_path: Some("root_entity_".into()),
+                resource_name: Some("root_entity_".into()),
                 parent_resource_id: None,
                 init_values: vec![InitPropertyValue {
                     property_path: "components[Transform].position".into(),
@@ -203,7 +203,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                 let child_id = resource_browser
                     .create_resource(Request::new(CreateResourceRequest {
                         resource_type: sample_data::offline::Entity::TYPENAME.into(),
-                        resource_path: Some("child".into()),
+                        resource_name: Some("child".into()),
                         parent_resource_id: Some(root_entity_id.to_string()),
                         init_values: vec![InitPropertyValue {
                             property_path: "components[Transform].position".into(),
@@ -229,7 +229,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                 let sub_child_id = resource_browser
                     .create_resource(Request::new(CreateResourceRequest {
                         resource_type: sample_data::offline::Entity::TYPENAME.into(),
-                        resource_path: Some("subchild".into()),
+                        resource_name: Some("subchild".into()),
                         parent_resource_id: Some(child_id.clone()),
                         init_values: Vec::new(),
                     }))
@@ -283,7 +283,9 @@ async fn test_resource_browser() -> anyhow::Result<()> {
             }))
             .await?
             .into_inner()
-            .new_id;
+            .new_resource
+            .unwrap()
+            .id;
 
         // Delete Clone
         resource_browser

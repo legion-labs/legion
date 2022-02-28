@@ -7,25 +7,26 @@ use lgn_data_runtime::ResourceTypeAndId;
 use crate::{Error, LockContext, TransactionOperation};
 
 /// Operation to update a Property Value through reflection
+#[derive(Debug)]
 pub struct UpdatePropertyOperation {
     resource_id: ResourceTypeAndId,
-    property_name: String,
-    new_value: String,
-    old_value: Option<String>,
+    new_values: Vec<(String, String)>,
+    old_values: Option<Vec<String>>,
 }
 
 impl UpdatePropertyOperation {
     /// Return a newly created `UpdatePropertyOperation`
     pub fn new(
         resource_id: ResourceTypeAndId,
-        property_name: impl AsRef<str>,
-        new_value: impl AsRef<str>,
+        new_values: &[(impl AsRef<str>, impl AsRef<str>)],
     ) -> Box<Self> {
         Box::new(Self {
             resource_id,
-            property_name: String::from(property_name.as_ref()),
-            new_value: String::from(new_value.as_ref()),
-            old_value: None,
+            new_values: new_values
+                .iter()
+                .map(|(a, b)| (a.as_ref().into(), b.as_ref().into()))
+                .collect::<Vec<_>>(),
+            old_values: None,
         })
     }
 }
@@ -43,26 +44,29 @@ impl TransactionOperation for UpdatePropertyOperation {
             .get_resource_reflection_mut(self.resource_id.kind, resource_handle)
             .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 
-        if self.old_value.is_none() {
-            self.old_value = Some(
-                get_property_as_json_string(reflection, self.property_name.as_str())
-                    .map_err(|err| Error::Reflection(self.resource_id, err))?,
-            );
-        }
+        // init old values
+        self.old_values.get_or_insert(
+            self.new_values
+                .iter()
+                .map(|(property_name, _new_json)| {
+                    let old_json = get_property_as_json_string(reflection, property_name)
+                        .map_err(|err| Error::Reflection(self.resource_id, err))?;
+                    Ok(old_json)
+                })
+                .collect::<Result<Vec<_>, _>>()?,
+        );
 
-        set_property_from_json_string(
-            reflection,
-            self.property_name.as_str(),
-            self.new_value.as_str(),
-        )
-        .map_err(|err| Error::Reflection(self.resource_id, err))?;
+        for (path, json_value) in &self.new_values {
+            set_property_from_json_string(reflection, path, json_value)
+                .map_err(|err| Error::Reflection(self.resource_id, err))?;
+        }
 
         ctx.changed_resources.insert(self.resource_id);
         Ok(())
     }
 
     async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
-        if let Some(old_value) = &self.old_value {
+        if let Some(old_values) = &self.old_values {
             let handle = ctx
                 .loaded_resource_handles
                 .get(self.resource_id)
@@ -73,12 +77,12 @@ impl TransactionOperation for UpdatePropertyOperation {
                 .get_resource_reflection_mut(self.resource_id.kind, handle)
                 .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 
-            set_property_from_json_string(
-                reflection,
-                self.property_name.as_str(),
-                old_value.as_str(),
-            )
-            .map_err(|err| Error::Reflection(self.resource_id, err))?;
+            if self.new_values.len() == old_values.len() {
+                for ((property, _), old_json) in self.new_values.iter().zip(old_values) {
+                    set_property_from_json_string(reflection, property, old_json)
+                        .map_err(|err| Error::Reflection(self.resource_id, err))?;
+                }
+            }
 
             ctx.changed_resources.insert(self.resource_id);
         }

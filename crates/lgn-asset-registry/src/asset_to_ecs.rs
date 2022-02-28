@@ -14,19 +14,26 @@ use lgn_transform::prelude::*;
 use sample_data::runtime as runtime_data;
 
 pub(crate) fn load_ecs_asset<T>(
-    asset_id: &ResourceTypeAndId,
     handle: &HandleUntyped,
     registry: &Res<'_, Arc<AssetRegistry>>,
     commands: &mut Commands<'_, '_>,
     asset_to_entity_map: &mut ResMut<'_, AssetToEntityMap>,
+    existing_children: Option<&Children>,
 ) -> bool
 where
     T: AssetToECS + Resource + 'static,
 {
+    let asset_id = &handle.id();
     if asset_id.kind == T::TYPE {
         if let Some(asset) = handle.get::<T>(registry) {
-            let entity =
-                T::create_in_ecs(commands, &asset, asset_id, registry, asset_to_entity_map);
+            let entity = T::create_in_ecs(
+                commands,
+                &asset,
+                asset_id,
+                registry,
+                asset_to_entity_map,
+                existing_children,
+            );
 
             if let Some(entity_id) = entity {
                 if let Some(old_entity) = asset_to_entity_map.insert(*asset_id, entity_id) {
@@ -34,18 +41,10 @@ where
                         commands.entity(old_entity).despawn();
                     }
                 }
-
-                info!(
-                    "Loaded {}: {} -> ECS id: {:?}",
-                    T::TYPENAME,
-                    asset_id.id,
-                    entity_id,
-                );
             } else {
-                info!("Loaded {}: {}", T::TYPENAME, *asset_id);
+                info!("Loaded {}: {}", T::TYPENAME, &asset_id.id);
             }
         }
-
         true
     } else {
         false
@@ -59,7 +58,8 @@ pub(crate) trait AssetToECS {
         _asset: &Self,
         _asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
-        _asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        _asset_to_entity_map: &mut ResMut<'_, AssetToEntityMap>,
+        _existing_children: Option<&Children>,
     ) -> Option<Entity> {
         None
     }
@@ -71,31 +71,49 @@ impl AssetToECS for runtime_data::Entity {
         runtime_entity: &Self,
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
-        asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        asset_to_entity_map: &mut ResMut<'_, AssetToEntityMap>,
+        existing_children: Option<&Children>,
     ) -> Option<Entity> {
         let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
+            // Look at the existing Ecs Entity children and unspawn
+            // the children not present in the data anymore
+            if let Some(existing_children) = existing_children {
+                for previous_child in existing_children.iter() {
+                    if let Some(resource_id) = asset_to_entity_map.get_resource_id(*previous_child)
+                    {
+                        if runtime_entity
+                            .children
+                            .iter()
+                            .find(|child_ref| child_ref.id() == resource_id)
+                            == None
+                        {
+                            commands.entity(*previous_child).despawn();
+                            asset_to_entity_map.remove(*previous_child);
+                        }
+                    }
+                }
+            }
             commands.entity(entity)
         } else {
             commands.spawn()
         };
 
-        let mut transform_inserted = false;
-        let mut name_inserted = false;
+        let mut local_transform: Option<Transform> = None;
+        let mut entity_name: Option<String> = None;
+
         for component in &runtime_entity.components {
             if let Some(transform) = component.downcast_ref::<runtime_data::Transform>() {
-                entity.insert(Transform {
+                local_transform = Some(Transform {
                     translation: transform.position,
                     rotation: transform.rotation,
                     scale: transform.scale,
                 });
-                transform_inserted = true;
             } else if let Some(script) =
                 component.downcast_ref::<lgn_scripting::runtime::ScriptComponent>()
             {
                 entity.insert(script.clone());
             } else if let Some(name) = component.downcast_ref::<runtime_data::Name>() {
-                name_inserted = true;
-                entity.insert(Name::new(name.name.clone()));
+                entity_name = Some(name.name.clone());
             } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
                 entity.insert(VisualComponent::new(
                     &visual.renderable_geometry,
@@ -128,13 +146,9 @@ impl AssetToECS for runtime_data::Entity {
             }
         }
 
-        if !name_inserted {
-            entity.insert(Name::new(asset_id.id.to_string()));
-        }
-
-        if !transform_inserted {
-            entity.insert(Transform::identity());
-        }
+        let name = entity_name.get_or_insert(asset_id.id.to_string());
+        entity.insert(Name::new(name.clone()));
+        entity.insert(local_transform.unwrap_or_default());
         entity.insert(GlobalTransform::identity());
 
         let entity_id = entity.id();
@@ -154,6 +168,13 @@ impl AssetToECS for runtime_data::Entity {
             }
         }
 
+        info!(
+            "Loaded {}: {} -> ECS id: {:?}| {}",
+            Self::TYPENAME,
+            asset_id.id,
+            entity_id,
+            name,
+        );
         Some(entity_id)
     }
 }
@@ -164,13 +185,21 @@ impl AssetToECS for runtime_data::Instance {
         _instance: &Self,
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
-        asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        asset_to_entity_map: &mut ResMut<'_, AssetToEntityMap>,
+        _existing_children: Option<&Children>,
     ) -> Option<Entity> {
         let entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
             commands.entity(entity)
         } else {
             commands.spawn()
         };
+
+        info!(
+            "Loaded {}: {} -> ECS id: {:?}",
+            Self::TYPENAME,
+            asset_id.id,
+            entity.id(),
+        );
         Some(entity.id())
     }
 }
@@ -181,7 +210,8 @@ impl AssetToECS for lgn_graphics_data::runtime::Material {
         material: &Self,
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
-        asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        asset_to_entity_map: &mut ResMut<'_, AssetToEntityMap>,
+        _existing_children: Option<&Children>,
     ) -> Option<Entity> {
         let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
             commands.entity(entity)
@@ -197,6 +227,12 @@ impl AssetToECS for lgn_graphics_data::runtime::Material {
             material.roughness.clone(),
         ));
 
+        info!(
+            "Loaded {}: {} -> ECS id: {:?}",
+            Self::TYPENAME,
+            asset_id.id,
+            entity.id(),
+        );
         Some(entity.id())
     }
 }
@@ -207,7 +243,8 @@ impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {
         texture: &Self,
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
-        asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        asset_to_entity_map: &mut ResMut<'_, AssetToEntityMap>,
+        _existing_children: Option<&Children>,
     ) -> Option<Entity> {
         let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
             commands.entity(entity)
@@ -228,7 +265,15 @@ impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {
         );
 
         entity.insert(texture_component);
-
+        info!(
+            "Loaded {}: {} -> ECS id: {:?} | width: {}, height: {}, format: {:?}",
+            Self::TYPENAME.trim_start_matches("runtime_"),
+            asset_id.id,
+            entity.id(),
+            texture.width,
+            texture.height,
+            texture.format
+        );
         Some(entity.id())
     }
 }
@@ -239,7 +284,8 @@ impl AssetToECS for lgn_graphics_data::runtime::Model {
         model: &Self,
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
-        asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        asset_to_entity_map: &mut ResMut<'_, AssetToEntityMap>,
+        _existing_children: Option<&Children>,
     ) -> Option<Entity> {
         let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
             commands.entity(entity)
@@ -299,7 +345,8 @@ impl AssetToECS for lgn_scripting::runtime::Script {
         entity: &Self,
         asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
-        asset_to_entity_map: &ResMut<'_, AssetToEntityMap>,
+        asset_to_entity_map: &mut ResMut<'_, AssetToEntityMap>,
+        _existing_children: Option<&Children>,
     ) -> Option<Entity> {
         let ecs_entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
             commands.entity(entity)
@@ -308,10 +355,12 @@ impl AssetToECS for lgn_scripting::runtime::Script {
         };
 
         info!(
-            "Loading script resource {} bytes",
+            "Loaded {}: {} -> ECS id: {:?} ({} bytes)",
+            Self::TYPENAME,
+            asset_id.id,
+            ecs_entity.id(),
             entity.compiled_script.len()
         );
-
         Some(ecs_entity.id())
     }
 }

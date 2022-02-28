@@ -152,6 +152,7 @@ impl AssetRegistryOptions {
     /// Enables support of a given [`Resource`] by adding corresponding
     /// [`AssetLoader`].
     pub fn add_loader<A: Asset>(mut self) -> Self {
+        ResourceType::register_name(A::TYPE, A::TYPENAME);
         self.loaders.insert(A::TYPE, Box::new(A::Loader::default()));
         self
     }
@@ -159,6 +160,7 @@ impl AssetRegistryOptions {
     /// Enables support of a given [`Resource`] by adding corresponding
     /// [`AssetLoader`].
     pub fn add_loader_mut<A: Asset>(&mut self) -> &mut Self {
+        ResourceType::register_name(A::TYPE, A::TYPENAME);
         self.loaders.insert(A::TYPE, Box::new(A::Loader::default()));
         self
     }
