@@ -1,0 +1,81 @@
+on:
+  workflow_call:
+    inputs:
+      base_ref:
+        required: true
+        type: string
+      image:
+        required: true
+        type: string
+    secrets:
+      ecr-password:
+        required: true
+    outputs:
+      linux_runner:
+        description: "The base git ref to use"
+        value: ${{ jobs.runner_selection.outputs.linux_runner }}
+      windows_runner:
+        description: "The base git ref to use"
+        value: ${{ jobs.runner_selection.outputs.windows_runner }}
+      docs:
+        description: "The base git ref to use"
+        value: ${{ jobs.runner_selection.outputs.docs }}
+      npm_pkgs:
+        description: "The base git ref to use"
+        value: ${{ jobs.runner_selection.outputs.npm_pkgs }}
+      cargo_pkgs:
+        description: "The base git ref to use"
+        value: ${{ jobs.runner_selection.outputs.cargo_pkgs }}
+      cargo_pkgs_names:
+        description: "The base git ref to use"
+        value: ${{ jobs.runner_selection.outputs.cargo_pkgs_names }}
+
+jobs:
+  runner_selection:
+    name: Runner selection
+    needs: base_ref_selection
+    runs-on: [self-hosted, linux, common, build]
+    container:
+      image: ${{ inputs.image }}
+      credentials:
+        username: AWS
+        password: ${{ secrets.ecr-password }}
+    outputs:
+      linux_runner: ${{ steps.changed-crates.outputs.linux_runner }}
+      windows_runner: ${{ steps.changed-crates.outputs.windows_runner }}
+      docs: ${{ steps.changed-crates.outputs.docs }}
+      npm_pkgs: ${{ steps.changed-crates.outputs.npm_pkgs }}
+      cargo_pkgs: ${{ steps.changed-crates.outputs.windows_runner }}
+      cargo_pkgs_names: ${{ steps.changed-crates.outputs.windows_runner }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Bootstrap
+        uses: ./.github/actions/bootstrap
+
+      - name: Test changed crates
+        id: changed-crates
+        run: |
+          changed=$(cargo m changed-since "${{ inputs.base_ref }}" --format=json)
+          if [[ $? != 0 ]]; then
+            echo "failed to detect changed crates"
+            exit 1
+          fi
+          echo "::set-output name=docs::$(echo $changed | jq '.docs')"
+          echo "::set-output name=npm_pkgs::$(echo $changed | jq '.npm_pkgs')"
+          crates=$(echo $changed | jq '.cargo_pkgsp[]|@sh')
+          echo "::set-output name=cargo_pkgs_names::$crates"
+          if [[ $crates ]]; then
+            echo "::set-output name=cargo_pkgs::true"
+            echo "A change impacting a graphics crate was detected"
+            echo "Matched crates: $crates"
+            echo "::set-output name=linux_runner::[[\"self-hosted\",\"linux\",\"gpu\",\"build\"]]"
+            echo "::set-output name=windows_runner::[[\"self-hosted\",\"windows\",\"gpu\",\"build\"]]"
+          else
+            echo "::set-output name=cargo_pkgs::false"
+            echo "No change impacting a graphics crate was detected"
+            echo "::set-output name=linux_runner::[[\"self-hosted\",\"linux\",\"common\",\"build\"]]"
+            echo "::set-output name=windows_runner::[[\"self-hosted\",\"windows\",\"common\",\"build\"]]"
+          fi
