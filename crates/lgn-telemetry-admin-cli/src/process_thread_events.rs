@@ -20,9 +20,9 @@ pub async fn print_process_thread_events(
             parse_block(&stream, &payload, |val| {
                 if let Value::Object(obj) = val {
                     let time = obj.get::<u64>("time").unwrap();
-                    let scope = obj.get::<Object>("thread_span_desc").unwrap();
-                    let name = scope.get::<String>("name").unwrap();
-                    let filename = scope.get::<String>("file").unwrap();
+                    let scope = obj.get::<Arc<Object>>("thread_span_desc").unwrap();
+                    let name = scope.get::<Arc<String>>("name").unwrap();
+                    let filename = scope.get::<Arc<String>>("file").unwrap();
                     let line = scope.get::<u32>("line").unwrap();
                     println!("{} {} {} {}:{}", time, obj.type_name, name, filename, line);
                 }
@@ -60,10 +60,10 @@ async fn extract_process_thread_events(
                     };
                     let tick = obj.get::<i64>("time").unwrap();
                     let time = format!("{}", (tick - ts_offset) as f64 * inv_tsc_frequency);
-                    let scope = obj.get::<Object>("scope").unwrap();
-                    let name = scope.get::<String>("name").unwrap();
+                    let scope = obj.get::<Arc<Object>>("scope").unwrap();
+                    let name = scope.get::<Arc<String>>("name").unwrap();
                     let event = json::object! {
-                        name: name,
+                        name: (*name).clone(),
                         cat: "PERF",
                         ph: phase,
                         pid: process_id.clone(),

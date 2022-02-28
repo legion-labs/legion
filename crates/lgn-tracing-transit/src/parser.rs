@@ -1,4 +1,4 @@
-use std::{collections::HashMap, hash::BuildHasher};
+use std::{collections::HashMap, hash::BuildHasher, sync::Arc};
 
 use anyhow::{bail, Result};
 
@@ -94,7 +94,7 @@ impl TransitValue for f64 {
     }
 }
 
-impl TransitValue for String {
+impl TransitValue for Arc<String> {
     fn get(value: &Value) -> Result<Self> {
         if let Value::String(val) = value {
             Ok(val.clone())
@@ -104,7 +104,7 @@ impl TransitValue for String {
     }
 }
 
-impl TransitValue for Object {
+impl TransitValue for Arc<Object> {
     fn get(value: &Value) -> Result<Self> {
         if let Value::Object(val) = value {
             Ok(val.clone())
@@ -116,8 +116,8 @@ impl TransitValue for Object {
 
 #[derive(Debug, Clone)]
 pub enum Value {
-    String(String), //todo: change to ref-counted
-    Object(Object), //todo: change to ref-counted
+    String(Arc<String>),
+    Object(Arc<Object>),
     U8(u8),
     U32(u32),
     U64(u64),
@@ -169,13 +169,16 @@ pub fn read_dependencies(udts: &[UserDefinedType], buffer: &[u8]) -> Result<Hash
                 let utf8_ptr = buffer.as_ptr().add(offset + std::mem::size_of::<usize>());
                 let slice = std::ptr::slice_from_raw_parts(utf8_ptr, nb_utf8_bytes);
                 let string = String::from(std::str::from_utf8(&*slice).unwrap());
-                let insert_res = hash.insert(string_id, Value::String(string));
+                let insert_res = hash.insert(string_id, Value::String(Arc::new(string)));
                 assert!(insert_res.is_none());
             }
         } else {
             assert!(udt.size > 0);
             let instance = parse_pod_instance(udt, &hash, offset, buffer);
-            let insert_res = hash.insert(instance.get::<u64>("id")?, Value::Object(instance));
+            let insert_res = hash.insert(
+                instance.get::<u64>("id")?,
+                Value::Object(Arc::new(instance)),
+            );
             assert!(insert_res.is_none());
         }
         offset += object_size;
@@ -216,7 +219,7 @@ where
             }
             vec![
                 (String::from("time"), Value::I64(time)),
-                (String::from("msg"), Value::String(msg.0)),
+                (String::from("msg"), Value::String(Arc::new(msg.0))),
                 (String::from("desc"), desc),
             ]
         },
@@ -350,7 +353,7 @@ where
         } else {
             parse_pod_instance(udt, dependencies, offset, buffer)
         };
-        if !fun(Value::Object(instance)) {
+        if !fun(Value::Object(Arc::new(instance))) {
             return Ok(());
         }
         offset += object_size;

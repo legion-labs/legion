@@ -11,9 +11,9 @@ pub async fn print_process_metrics(
     process_id: &str,
 ) -> Result<()> {
     for_each_process_metric(connection, blob_storage, process_id, |obj| {
-        let desc = obj.get::<Object>("desc").unwrap();
-        let name = desc.get::<String>("name").unwrap();
-        let unit = desc.get::<String>("unit").unwrap();
+        let desc = obj.get::<Arc<Object>>("desc").unwrap();
+        let name = desc.get::<Arc<String>>("name").unwrap();
+        let unit = desc.get::<Arc<String>>("unit").unwrap();
         let time = obj.get::<u64>("time").unwrap();
         if let Ok(int_value) = obj.get::<u64>("value") {
             println!("{} {} ({}) : {}", time, name, unit, int_value);

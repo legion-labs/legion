@@ -14,8 +14,8 @@ use lgn_tracing::prelude::*;
 use lgn_tracing_transit::prelude::*;
 
 trait ThreadBlockProcessor {
-    fn on_begin_scope(&mut self, scope_name: String, ts: i64);
-    fn on_end_scope(&mut self, scope_name: String, ts: i64);
+    fn on_begin_scope(&mut self, scope_name: &str, ts: i64);
+    fn on_end_scope(&mut self, scope_name: &str, ts: i64);
 }
 
 async fn parse_thread_block<Proc: ThreadBlockProcessor>(
@@ -30,11 +30,11 @@ async fn parse_thread_block<Proc: ThreadBlockProcessor>(
         span_scope!("obj_in_block");
         if let Value::Object(obj) = val {
             let tick = obj.get::<i64>("time").unwrap();
-            let scope = obj.get::<Object>("thread_span_desc").unwrap();
-            let name = scope.get::<String>("name").unwrap();
+            let scope = obj.get::<Arc<Object>>("thread_span_desc").unwrap();
+            let name = scope.get::<Arc<String>>("name").unwrap();
             match obj.type_name.as_str() {
-                "BeginThreadSpanEvent" => processor.on_begin_scope(name, tick),
-                "EndThreadSpanEvent" => processor.on_end_scope(name, tick),
+                "BeginThreadSpanEvent" => processor.on_begin_scope(&*name, tick),
+                "EndThreadSpanEvent" => processor.on_end_scope(&*name, tick),
                 _ => panic!("unknown event type {}", obj.type_name),
             };
         }
@@ -111,9 +111,9 @@ impl CallTreeBuilder {
         }
     }
 
-    fn record_scope_desc(&mut self, hash: u32, name: String) {
+    fn record_scope_desc(&mut self, hash: u32, name: &str) {
         self.scopes.entry(hash).or_insert_with(|| ScopeDesc {
-            name,
+            name: name.to_owned(),
             filename: "".to_string(),
             line: 0,
             hash,
@@ -123,9 +123,9 @@ impl CallTreeBuilder {
 
 impl ThreadBlockProcessor for CallTreeBuilder {
     #[span_fn]
-    fn on_begin_scope(&mut self, scope_name: String, ts: i64) {
+    fn on_begin_scope(&mut self, scope_name: &str, ts: i64) {
         let time = self.get_time(ts);
-        let hash = compute_scope_hash(&scope_name);
+        let hash = compute_scope_hash(scope_name);
         self.record_scope_desc(hash, scope_name);
         let scope = CallTreeNode {
             hash,
@@ -137,9 +137,9 @@ impl ThreadBlockProcessor for CallTreeBuilder {
     }
 
     #[span_fn]
-    fn on_end_scope(&mut self, scope_name: String, ts: i64) {
+    fn on_end_scope(&mut self, scope_name: &str, ts: i64) {
         let time = self.get_time(ts);
-        let hash = compute_scope_hash(&scope_name);
+        let hash = compute_scope_hash(scope_name);
         if let Some(mut old_top) = self.stack.pop() {
             if old_top.hash == hash {
                 old_top.end_ms = time;

@@ -159,7 +159,7 @@ impl MetricHandler {
         let mut metrics = HashMap::<String, MetricDesc>::new();
         parse_block(&stream, &payload, |val| {
             if let Value::Object(obj) = val {
-                let metric_desc = obj.get::<Object>("desc").unwrap();
+                let metric_desc = obj.get::<Arc<Object>>("desc").unwrap();
                 let name = metric_desc.get_ref("name").unwrap().as_str().unwrap();
                 metrics
                     .entry(name.to_owned())
@@ -202,7 +202,7 @@ impl MetricHandler {
         let mut points = vec![];
         parse_block(&stream, &payload, |val| {
             if let Value::Object(obj) = val {
-                let metric_desc = obj.get::<Object>("desc").unwrap();
+                let metric_desc = obj.get::<Arc<Object>>("desc").unwrap();
                 let name = metric_desc.get_ref("name").unwrap().as_str().unwrap();
                 if name == metric_name {
                     let time = obj.get::<i64>("time").unwrap();

@@ -558,23 +558,23 @@ fn log_entry_from_value(val: &Value) -> Option<(i64, String)> {
         match obj.type_name.as_str() {
             "LogStaticStrEvent" => {
                 let time = obj.get::<i64>("time").unwrap();
-                let desc = obj.get::<lgn_tracing_transit::Object>("desc").unwrap();
+                let desc = obj.get::<Arc<lgn_tracing_transit::Object>>("desc").unwrap();
                 let level = desc.get::<u32>("level").unwrap();
                 let entry = format!(
                     "[{}] {}",
                     format_log_level(level),
-                    desc.get::<String>("fmt_str").unwrap()
+                    desc.get::<Arc<String>>("fmt_str").unwrap()
                 );
                 Some((time, entry))
             }
             "LogStringEvent" => {
                 let time = obj.get::<i64>("time").unwrap();
-                let desc = obj.get::<lgn_tracing_transit::Object>("desc").unwrap();
+                let desc = obj.get::<Arc<lgn_tracing_transit::Object>>("desc").unwrap();
                 let level = desc.get::<u32>("level").unwrap();
                 let entry = format!(
                     "[{}] {}",
                     format_log_level(level),
-                    obj.get::<String>("msg").unwrap()
+                    obj.get::<Arc<String>>("msg").unwrap()
                 );
                 Some((time, entry))
             }
@@ -651,7 +651,7 @@ pub async fn for_each_process_log_entry<ProcessLogEntry: FnMut(i64, String)>(
     Ok(())
 }
 
-pub async fn for_each_process_metric<ProcessMetric: FnMut(lgn_tracing_transit::Object)>(
+pub async fn for_each_process_metric<ProcessMetric: FnMut(Arc<lgn_tracing_transit::Object>)>(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
     process_id: &str,

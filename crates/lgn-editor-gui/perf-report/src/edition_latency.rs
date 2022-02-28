@@ -102,7 +102,7 @@ async fn find_process_metrics(
         blob_storage,
         editor_server_process_id,
         |metric_instance| {
-            let metric_desc = metric_instance.get::<Object>("metric").unwrap();
+            let metric_desc = metric_instance.get::<Arc<Object>>("metric").unwrap();
             let name = metric_desc.get_ref("name").unwrap().as_str().unwrap();
             if name == metric_name {
                 let time = metric_instance.get::<i64>("time").unwrap();
