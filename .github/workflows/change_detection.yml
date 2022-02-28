@@ -14,25 +14,25 @@ on:
     outputs:
       linux_runner:
         description: "The base git ref to use"
-        value: ${{ jobs.runner_selection.outputs.linux_runner }}
+        value: ${{ jobs.change_detection.outputs.linux_runner }}
       windows_runner:
         description: "The base git ref to use"
-        value: ${{ jobs.runner_selection.outputs.windows_runner }}
+        value: ${{ jobs.change_detection.outputs.windows_runner }}
       docs:
         description: "The base git ref to use"
-        value: ${{ jobs.runner_selection.outputs.docs }}
+        value: ${{ jobs.change_detection.outputs.docs }}
       npm_pkgs:
         description: "The base git ref to use"
-        value: ${{ jobs.runner_selection.outputs.npm_pkgs }}
+        value: ${{ jobs.change_detection.outputs.npm_pkgs }}
       cargo_pkgs:
         description: "The base git ref to use"
-        value: ${{ jobs.runner_selection.outputs.cargo_pkgs }}
+        value: ${{ jobs.change_detection.outputs.cargo_pkgs }}
       cargo_pkgs_args:
         description: "The base git ref to use"
-        value: ${{ jobs.runner_selection.outputs.cargo_pkgs_args }}
+        value: ${{ jobs.change_detection.outputs.cargo_pkgs_args }}
 
 jobs:
-  runner_selection:
+  change_detection:
     name: Runner selection
     runs-on: [self-hosted, linux, common, build]
     container:
@@ -41,12 +41,12 @@ jobs:
         username: AWS
         password: ${{ secrets.ecr-password }}
     outputs:
-      linux_runner: ${{ steps.changed-crates.outputs.linux_runner }}
-      windows_runner: ${{ steps.changed-crates.outputs.windows_runner }}
-      docs: ${{ steps.changed-crates.outputs.docs }}
-      npm_pkgs: ${{ steps.changed-crates.outputs.npm_pkgs }}
-      cargo_pkgs: ${{ steps.changed-crates.outputs.cargo_pkgs }}
-      cargo_pkgs_args: ${{ steps.changed-crates.outputs.cargo_pkgs_args }}
+      linux_runner: ${{ steps.change-since.outputs.linux_runner }}
+      windows_runner: ${{ steps.change-since.outputs.windows_runner }}
+      docs: ${{ steps.change-since.outputs.docs }}
+      npm_pkgs: ${{ steps.change-since.outputs.npm_pkgs }}
+      cargo_pkgs: ${{ steps.change-since.outputs.cargo_pkgs }}
+      cargo_pkgs_args: ${{ steps.change-since.outputs.cargo_pkgs_args }}
     steps:
       - uses: actions/checkout@v2
         with:
@@ -56,7 +56,8 @@ jobs:
         uses: ./.github/actions/bootstrap
 
       - name: Test changed crates
-        id: changed-crates
+        id: change-since
+        shell: bash
         run: |
           changed=$(cargo m changed-since "${{ inputs.base_ref }}" --format=json)
           if [[ $? != 0 ]]; then
