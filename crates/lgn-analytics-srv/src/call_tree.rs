@@ -27,7 +27,6 @@ async fn parse_thread_block<Proc: ThreadBlockProcessor>(
 ) -> Result<()> {
     let payload = fetch_block_payload(connection, blob_storage, block_id).await?;
     parse_block(stream, &payload, |val| {
-        span_scope!("obj_in_block");
         if let Value::Object(obj) = val {
             let tick = obj.get::<i64>("time").unwrap();
             let scope = obj.get::<Arc<Object>>("thread_span_desc").unwrap();
@@ -122,7 +121,6 @@ impl CallTreeBuilder {
 }
 
 impl ThreadBlockProcessor for CallTreeBuilder {
-    #[span_fn]
     fn on_begin_scope(&mut self, scope_name: &str, ts: i64) {
         let time = self.get_time(ts);
         let hash = compute_scope_hash(scope_name);
@@ -136,7 +134,6 @@ impl ThreadBlockProcessor for CallTreeBuilder {
         self.stack.push(scope);
     }
 
-    #[span_fn]
     fn on_end_scope(&mut self, scope_name: &str, ts: i64) {
         let time = self.get_time(ts);
         let hash = compute_scope_hash(scope_name);
