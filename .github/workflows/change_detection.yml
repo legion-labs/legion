@@ -1,3 +1,4 @@
+name: Change Detection
 on:
   workflow_call:
     inputs:
@@ -62,9 +63,10 @@ jobs:
             echo "failed to detect changed crates"
             exit 1
           fi
+          echo $changed | jq
           echo "::set-output name=docs::$(echo $changed | jq '.docs')"
           echo "::set-output name=npm_pkgs::$(echo $changed | jq '.npm_pkgs')"
-          crates=$(echo $changed | jq '.cargo_pkgsp[]|@sh')
+          crates=$(echo $changed | jq '.cargo_pkgs[]|@sh')
           echo "::set-output name=cargo_pkgs_names::$crates"
           if [[ $crates ]]; then
             echo "::set-output name=cargo_pkgs::true"

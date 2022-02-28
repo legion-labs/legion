@@ -1,3 +1,5 @@
+name: Base ref selection
+
 on:
   workflow_call:
     inputs:
