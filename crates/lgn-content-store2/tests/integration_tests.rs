@@ -5,9 +5,9 @@ use std::{
 };
 
 use lgn_content_store2::{
-    ChunkIdentifier, Chunker, ContentAddressReader, ContentAddressWriter, ContentReaderExt,
-    ContentWriter, ContentWriterExt, Error, GrpcProvider, GrpcService, Identifier, LocalProvider,
-    MemoryProvider, SmallContentProvider,
+    CachingProvider, ChunkIdentifier, Chunker, ContentAddressReader, ContentAddressWriter,
+    ContentReaderExt, ContentWriter, ContentWriterExt, Error, GrpcProvider, GrpcService,
+    Identifier, LocalProvider, MemoryProvider, SmallContentProvider,
 };
 
 #[cfg(feature = "lru")]
@@ -147,6 +147,49 @@ async fn test_lru_provider() {
     assert_read_content!(provider, id, &BIG_DATA_A);
     assert_write_content!(provider, &BIGGER_DATA_A);
     assert_read_content!(provider, id, &BIG_DATA_A);
+}
+
+#[tokio::test]
+async fn test_caching_provider() {
+    let remote_provider = Arc::new(MemoryProvider::new());
+    let local_provider = Arc::new(MemoryProvider::new());
+    let provider = CachingProvider::new(Arc::clone(&remote_provider), Arc::clone(&local_provider));
+
+    let id = Identifier::new(&BIG_DATA_A);
+    assert_content_not_found!(provider, id);
+
+    let id = assert_write_content!(provider, &BIG_DATA_A);
+    assert_read_content!(provider, id, &BIG_DATA_A);
+    assert_read_content!(remote_provider, id, &BIG_DATA_A);
+    assert_read_content!(local_provider, id, &BIG_DATA_A);
+
+    // Another write should yield no error.
+    assert_write_avoided!(provider, &id);
+
+    let fake_id = Identifier::new(&BIG_DATA_X);
+    assert_read_contents!(
+        provider,
+        [id.clone(), fake_id.clone()],
+        [Ok(&BIG_DATA_A), Err(Error::NotFound)]
+    );
+
+    // Write a value to the remote but not the cache.
+    let id = assert_write_content!(remote_provider, &BIG_DATA_B);
+
+    // The value should be copied in the cache.
+    assert_read_content!(provider, id, &BIG_DATA_B);
+    assert_read_content!(local_provider, id, &BIG_DATA_B);
+
+    // Same test with a multi-read a value to the remote but not the cache.
+    let id = assert_write_content!(remote_provider, &BIGGER_DATA_A);
+
+    // The value should be copied in the cache.
+    assert_read_contents!(
+        provider,
+        [id.clone(), fake_id],
+        [Ok(&BIGGER_DATA_A), Err(Error::NotFound)]
+    );
+    assert_read_content!(local_provider, id, &BIGGER_DATA_A);
 }
 
 #[tokio::test]

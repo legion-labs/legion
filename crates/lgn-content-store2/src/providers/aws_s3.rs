@@ -139,6 +139,7 @@ struct ByteStreamWriter {
     client: aws_sdk_s3::Client,
     bucket_name: String,
     key: String,
+    // TODO: Rewrite this type with pin_project and avoid the mutex.
     state: Mutex<ByteStreamWriterState>,
 }
 
