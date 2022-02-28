@@ -66,9 +66,9 @@ jobs:
           fi
           echo "::set-output name=docs::$(echo $changed | jq '.docs')"
           echo "::set-output name=npm_pkgs::$(echo $changed | jq '.npm_pkgs')"
-          cargo_pkgs=$(echo $changed | jq --raw-output '.cargo_pkgs[]|"-p" + .')
+          cargo_pkgs_args=$(echo $changed | jq --raw-output '.cargo_pkgs|[("-p" + .[])]|join(" ")')
           echo "::set-output name=cargo_pkgs_args::$cargo_pkgs"
-          if [[ $cargo_pkgs ]]; then
+          if [[ $cargo_pkgs_args ]]; then
             echo "::set-output name=cargo_pkgs::true"
           else
             echo "::set-output name=cargo_pkgs::false"

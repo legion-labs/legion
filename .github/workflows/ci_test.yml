@@ -15,16 +15,19 @@ env:
 
 jobs:
   base_ref_selection:
+    name: Selecting base ref
     uses: ./.github/workflows/base_ref_selection.yml
     with:
       caller_event_name: ${{ github.event_name }}
 
   setup_image:
+    name: Setting up image
     uses: ./.github/workflows/build_env_setup.yml
     secrets:
       github-token: ${{ secrets.ECR_GH_ACCESS_TOKEN }}
 
   change_detection:
+    name: Deciding changes
     needs: [base_ref_selection, setup_image]
     uses: ./.github/workflows/change_detection.yml
     with:
@@ -36,13 +39,16 @@ jobs:
   lint:
     name: Running code checks
     if: ${{ fromJSON(needs.change_detection.outputs.cargo_pkgs) }}
-    needs: [base_ref_selection, change_detection, setup_image]
+    needs: [change_detection, setup_image]
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ needs.setup_image.outputs.image }}
       credentials:
         username: AWS
         password: ${{ secrets.ECR_PASSWORD }}
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-gnu]
     env:
       LEGION_TELEMETRY_URL: ${{ secrets.LEGION_TELEMETRY_URL }}
     steps:
@@ -54,12 +60,9 @@ jobs:
         uses: ./.github/actions/bootstrap
 
       - name: Run initial checks
-        env:
-          CARGO_PKG_ARGS: $${{ needs.change_detection.outputs.cargo_pkgs_args}}
         run: |
-          echo "$${{ needs.change_detection.outputs.cargo_pkgs_args}}"
           echo "$CARGO_PKG_ARGS"
-          cargo m ci --changed-since ${{ needs.base_ref_selection.outputs.base_ref }} check
+          cargo m ci ${{ needs.change_detection.outputs.cargo_pkgs_args}} --target ${{ matrix.target }} check
 
   test:
     name: Running tests
