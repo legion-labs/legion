@@ -35,8 +35,14 @@ jobs:
 
   lint:
     name: Running code checks
-    needs: base_ref_selection
+    if: ${{ fromJSON(needs.change_detection.outputs.cargo_pkgs) }}
+    needs: [base_ref_selection, change_detection, setup_image]
     runs-on: [self-hosted, linux, common, build]
+    container:
+      image: ${{ needs.setup_image.outputs.image }}
+      credentials:
+        username: AWS
+        password: ${{ secrets.ECR_PASSWORD }}
     env:
       LEGION_TELEMETRY_URL: ${{ secrets.LEGION_TELEMETRY_URL }}
     steps:
@@ -47,21 +53,24 @@ jobs:
       - name: Bootstrap
         uses: ./.github/actions/bootstrap
 
-      - name: Print changed crates
-        run: cargo m changed-since ${{ needs.base_ref_selection.outputs.base_ref }}
-
       - name: Run initial checks
-        run: cargo m ci --changed-since ${{ needs.base_ref_selection.outputs.base_ref }} check
+        env:
+          CARGO_PKG_ARGS: $${{ needs.change_detection.outputs.cargo_pkgs_args}}
+        run: |
+          echo "$${{ needs.change_detection.outputs.cargo_pkgs_args}}"
+          echo "$CARGO_PKG_ARGS"
+          cargo m ci --changed-since ${{ needs.base_ref_selection.outputs.base_ref }} check
 
   test:
     name: Running tests
-    needs: [lint, runner_selection, base_ref_selection]
+    needs: [lint, change_detection, base_ref_selection]
+    if: ${{ fromJSON(needs.change_detection.outputs.cargo_pkgs) }}
     strategy:
       matrix:
         os:
           [
-            "${{ fromJSON(needs.runner_selection.outputs.linux_runner) }}",
-            "${{ fromJSON(needs.runner_selection.outputs.windows_runner) }}",
+            "${{ fromJSON(needs.change_detection.outputs.linux_runner) }}",
+            "${{ fromJSON(needs.change_detection.outputs.windows_runner) }}",
           ]
     runs-on: ${{ matrix.os }}
     steps:
@@ -107,8 +116,14 @@ jobs:
 
   build_docs:
     name: Building docs
-    needs: lint
+    needs: [change_detection, setup_image, lint]
+    if: ${{ fromJSON(needs.change_detection.outputs.cargo_pkgs) }}
     runs-on: [self-hosted, linux, common, build]
+    container:
+      image: ${{ needs.setup_image.outputs.image }}
+      credentials:
+        username: AWS
+        password: ${{ secrets.ECR_PASSWORD }}
     steps:
       - uses: actions/checkout@v2
 
@@ -149,26 +164,22 @@ jobs:
           force_orphan: true
           cname: api.legionengine.com
 
-  ###############################################################################
-  runner_selection:
-    name: Runner selection
-    needs: base_ref_selection
-    runs-on: [self-hosted, linux, common, build]
-    outputs:
-      linux_runner: ${{ steps.changed-crates.outputs.linux_runner }}
-      windows_runner: ${{ steps.changed-crates.outputs.windows_runner }}
-    env:
-      LEGION_TELEMETRY_URL: ${{ secrets.LEGION_TELEMETRY_URL }}
+  deploy_book:
+    name: Deploying book
+    needs: [build_book]
+    runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/download-artifact@v2
         with:
-          fetch-depth: 0
+          name: book
+          path: ./book
 
-      - name: Bootstrap
-        uses: ./.github/actions/bootstrap
-
-      - name: Test changed crates
-        id: changed-crates
-        run: |
-          echo "::set-output name=linux_runner::[[\"self-hosted\",\"linux\",\"common\",\"build\"]]"
-          echo "::set-output name=windows_runner::[[\"self-hosted\",\"windows\",\"common\",\"build\"]]"
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          deploy_key: ${{ secrets.BOOK_DEPLOY_KEY }}
+          external_repository: legion-labs/book.legionengine.com
+          publish_branch: main
+          publish_dir: ./book
+          force_orphan: true
+          cname: book.legionengine.com

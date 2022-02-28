@@ -27,9 +27,9 @@ on:
       cargo_pkgs:
         description: "The base git ref to use"
         value: ${{ jobs.runner_selection.outputs.cargo_pkgs }}
-      cargo_pkgs_names:
+      cargo_pkgs_args:
         description: "The base git ref to use"
-        value: ${{ jobs.runner_selection.outputs.cargo_pkgs_names }}
+        value: ${{ jobs.runner_selection.outputs.cargo_pkgs_args }}
 
 jobs:
   runner_selection:
@@ -45,8 +45,8 @@ jobs:
       windows_runner: ${{ steps.changed-crates.outputs.windows_runner }}
       docs: ${{ steps.changed-crates.outputs.docs }}
       npm_pkgs: ${{ steps.changed-crates.outputs.npm_pkgs }}
-      cargo_pkgs: ${{ steps.changed-crates.outputs.windows_runner }}
-      cargo_pkgs_names: ${{ steps.changed-crates.outputs.windows_runner }}
+      cargo_pkgs: ${{ steps.changed-crates.outputs.cargo_pkgs }}
+      cargo_pkgs_args: ${{ steps.changed-crates.outputs.cargo_pkgs_args }}
     steps:
       - uses: actions/checkout@v2
         with:
@@ -63,19 +63,21 @@ jobs:
             echo "failed to detect changed crates"
             exit 1
           fi
-          echo $changed | jq
           echo "::set-output name=docs::$(echo $changed | jq '.docs')"
           echo "::set-output name=npm_pkgs::$(echo $changed | jq '.npm_pkgs')"
-          crates=$(echo $changed | jq '.cargo_pkgs[]|@sh')
-          echo "::set-output name=cargo_pkgs_names::$crates"
-          if [[ $crates ]]; then
+          cargo_pkgs=$(echo $changed | jq --raw-output '.cargo_pkgs[]|"-p" + .')
+          echo "::set-output name=cargo_pkgs_args::$crates"
+          if [[ $cargo_pkgs ]]; then
             echo "::set-output name=cargo_pkgs::true"
-            echo "A change impacting a graphics crate was detected"
-            echo "Matched crates: $crates"
+          else
+            echo "::set-output name=cargo_pkgs::false"
+          fi
+          graphics_cargo_pkgs=$(echo $changed | jq --raw-output '.cargo_pkgs[]|select((.|contains("graphics")) or (.|contains("renderer")))')
+          if [[ $graphics_cargo_pkgs ]]; then
+            echo "Matched crates: $graphics_cargo_pkgs"
             echo "::set-output name=linux_runner::[[\"self-hosted\",\"linux\",\"gpu\",\"build\"]]"
             echo "::set-output name=windows_runner::[[\"self-hosted\",\"windows\",\"gpu\",\"build\"]]"
           else
-            echo "::set-output name=cargo_pkgs::false"
             echo "No change impacting a graphics crate was detected"
             echo "::set-output name=linux_runner::[[\"self-hosted\",\"linux\",\"common\",\"build\"]]"
             echo "::set-output name=windows_runner::[[\"self-hosted\",\"windows\",\"common\",\"build\"]]"
