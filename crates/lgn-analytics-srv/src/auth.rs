@@ -13,7 +13,10 @@ pub enum AuthError {
     Other(#[from] StdError),
 }
 
-pub async fn validate_auth<T>(request: &http::Request<T>) -> Result<(), AuthError> {
+pub async fn validate_auth<T>(
+    user_info_url: &str,
+    request: &http::Request<T>,
+) -> Result<(), AuthError> {
     match request
         .headers()
         .get("Authorization")
@@ -28,10 +31,8 @@ pub async fn validate_auth<T>(request: &http::Request<T>) -> Result<(), AuthErro
             Err(AuthError::AccessDenied)
         }
         Some(Ok(auth)) => {
-            let url =
-                "https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/userInfo";
             let resp = reqwest::Client::new()
-                .get(url)
+                .get(user_info_url)
                 .header("Authorization", auth)
                 .send()
                 .await;
@@ -61,20 +62,26 @@ pub async fn validate_auth<T>(request: &http::Request<T>) -> Result<(), AuthErro
     }
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct AuthLayer;
+#[derive(Debug, Clone)]
+pub struct AuthLayer {
+    pub user_info_url: String,
+}
 
 impl<S> Layer<S> for AuthLayer {
     type Service = AuthServiceWrapper<S>;
 
     fn layer(&self, service: S) -> Self::Service {
-        AuthServiceWrapper { inner: service }
+        AuthServiceWrapper {
+            inner: service,
+            user_info_url: self.user_info_url.clone(),
+        }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct AuthServiceWrapper<S> {
     inner: S,
+    user_info_url: String,
 }
 
 impl<S> Service<http::Request<tonic::transport::Body>> for AuthServiceWrapper<S>
@@ -96,6 +103,7 @@ where
 
     fn call(&mut self, req: http::Request<tonic::transport::Body>) -> Self::Future {
         let clone = self.inner.clone();
+        let user_info_url = self.user_info_url.clone();
         let mut inner = std::mem::replace(&mut self.inner, clone);
         Box::pin(async move {
             if req.method() == http::method::Method::OPTIONS
@@ -109,7 +117,7 @@ where
                     .map_err(AuthError::Other);
             }
 
-            match validate_auth(&req).await {
+            match validate_auth(&user_info_url, &req).await {
                 Ok(_) => inner
                     .call(req)
                     .await

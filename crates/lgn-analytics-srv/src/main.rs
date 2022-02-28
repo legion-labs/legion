@@ -21,12 +21,14 @@ mod health_check_service;
 mod metrics;
 
 use std::str::FromStr;
+use std::time::Duration;
 use std::{path::PathBuf, sync::Arc};
 
 use analytics_service::AnalyticsService;
 use anyhow::{Context, Result};
 use auth::AuthLayer;
 use clap::{Parser, Subcommand};
+use http::{header, Method};
 // use http::{header, Method};
 use lgn_blob_storage::{AwsS3BlobStorage, AwsS3Url, LocalBlobStorage, Lz4BlobStorageAdapter};
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalyticsServer;
@@ -36,7 +38,7 @@ use lgn_tracing::prelude::*;
 use std::net::SocketAddr;
 // use std::time::Duration;
 use tonic::transport::Server;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{CorsLayer, Origin};
 
 use crate::health_check_service::HealthCheckService;
 
@@ -130,39 +132,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         } => connect_to_remote_data_lake(&db_uri, &s3_lake_url, &s3_cache_url).await?,
     };
 
-    // let origins = vec![
-    //     "http://localhost:3000".parse().unwrap(),
-    //     "http://localhost".parse().unwrap(),
-    //     "https://analytics.legionengine.com/".parse().unwrap(),
-    // ];
+    let origins = vec![
+        "http://localhost:3000".parse().unwrap(),
+        "http://localhost".parse().unwrap(),
+        "https://analytics.legionengine.com/".parse().unwrap(),
+    ];
 
-    // let cors = CorsLayer::new()
-    //     .allow_origin(Origin::list(origins))
-    //     .allow_credentials(true)
-    //     .max_age(Duration::from_secs(60 * 60))
-    //     .allow_headers(vec![
-    //         header::ACCEPT,
-    //         header::ACCEPT_LANGUAGE,
-    //         header::AUTHORIZATION,
-    //         header::CONTENT_LANGUAGE,
-    //         header::CONTENT_TYPE,
-    //     ])
-    //     .allow_methods(vec![
-    //         Method::GET,
-    //         Method::POST,
-    //         Method::PUT,
-    //         Method::DELETE,
-    //         Method::HEAD,
-    //         Method::OPTIONS,
-    //         Method::CONNECT,
-    //         Method::PATCH,
-    //         Method::TRACE,
-    //     ])
-    //     .expose_headers(tower_http::cors::any());
+    let cors = CorsLayer::new()
+        .allow_origin(Origin::list(origins))
+        .allow_credentials(true)
+        .max_age(Duration::from_secs(60 * 60))
+        .allow_headers(vec![
+            header::ACCEPT,
+            header::ACCEPT_LANGUAGE,
+            header::AUTHORIZATION,
+            header::CONTENT_LANGUAGE,
+            header::CONTENT_TYPE,
+        ])
+        .allow_methods(vec![
+            Method::GET,
+            Method::POST,
+            Method::PUT,
+            Method::HEAD,
+            Method::OPTIONS,
+            Method::CONNECT,
+        ])
+        .expose_headers(tower_http::cors::Any {});
 
-    let cors = CorsLayer::permissive();
     let auth_layer = tower::ServiceBuilder::new()
-        .layer(AuthLayer::default())
+        .layer(AuthLayer {
+            user_info_url: String::from(
+                "https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/userInfo",
+            ),
+        })
         .into_inner();
     let analytics_server = PerformanceAnalyticsServer::new(analytics_service);
     let health_check_server = HealthServer::new(HealthCheckService {});
