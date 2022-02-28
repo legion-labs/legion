@@ -157,9 +157,10 @@ async fn test_transaction_system() -> Result<(), Error> {
         .content_store(&ContentStoreAddr::from(build_dir.as_path()))
         .asset_registry(asset_registry.clone());
 
-    let build_manager = BuildManager::new(options, &project, Manifest::default())
-        .await
-        .unwrap();
+    let build_manager =
+        BuildManager::new(options, &project, Manifest::default(), Manifest::default())
+            .await
+            .unwrap();
 
     let project = Arc::new(Mutex::new(project));
     {

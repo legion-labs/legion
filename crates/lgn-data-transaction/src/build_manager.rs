@@ -8,7 +8,8 @@ use lgn_tracing::{error, info};
 pub struct BuildManager {
     build: DataBuild,
     compile_env: CompilationEnv,
-    manifest: Manifest,
+    runtime_manifest: Manifest,
+    intermediate_manifest: Manifest,
 }
 
 impl BuildManager {
@@ -16,7 +17,8 @@ impl BuildManager {
     pub async fn new(
         options: DataBuildOptions,
         project: &Project,
-        manifest: Manifest,
+        runtime_manifest: Manifest,
+        intermediate_manifest: Manifest,
     ) -> Result<Self, Error> {
         let editor_env = CompilationEnv {
             target: Target::Game,
@@ -28,7 +30,8 @@ impl BuildManager {
         Ok(Self {
             build,
             compile_env: editor_env,
-            manifest,
+            runtime_manifest,
+            intermediate_manifest,
         })
     }
 
@@ -62,7 +65,7 @@ impl BuildManager {
         match self.build.compile_with_manifest(
             derived_id.clone(),
             &self.compile_env,
-            Some(&self.manifest),
+            Some(&self.intermediate_manifest),
         ) {
             Ok(output) => {
                 info!(
@@ -72,7 +75,7 @@ impl BuildManager {
                 );
                 let rt_manifest = output.into_rt_manifest(|_rpid| true);
                 let built = rt_manifest.resources();
-                self.manifest.extend(rt_manifest);
+                self.runtime_manifest.extend(rt_manifest);
                 Ok((derived_id, built))
             }
             Err(e) => {
@@ -84,7 +87,7 @@ impl BuildManager {
 
     /// Runtime manifest
     pub fn get_manifest(&self) -> &Manifest {
-        &self.manifest
+        &self.runtime_manifest
     }
 
     /// Return the Offline source from a runtime id
