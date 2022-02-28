@@ -87,7 +87,7 @@ jobs:
         run: cargo m ci ${{ needs.change_detection.outputs.cargo_pkgs_args}} --target ${{ matrix.target }} test --build
 
       - name: Run tests
-        if: ${{ matrix.target }} != 'x86_64-pc-windows-msvc'
+        if: ${{ matrix.target != 'x86_64-pc-windows-msvc' }}
         run: cargo m ci ${{ needs.change_detection.outputs.cargo_pkgs_args}} --target ${{ matrix.target }} test --run
 
       - name: Upload GPU-test diffs
