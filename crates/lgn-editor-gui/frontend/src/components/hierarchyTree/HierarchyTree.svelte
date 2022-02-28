@@ -44,11 +44,13 @@
     focus();
   }
 
-  export function force_selection(name: string) {
+  export function forceSelection(name: string) {
     const entry = entries.find((entry) => entry.name == name);
+
     if (!entry) {
       return;
     }
+
     setHighlightedEntry(entry);
     select();
   }

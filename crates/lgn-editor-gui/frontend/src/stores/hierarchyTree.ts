@@ -29,9 +29,10 @@ export default class<Item extends { path: string }> implements Orchestrator {
 
   /** Loads an array of element as hierarchy tree entries in the store */
   load(resources: Item[], iconSetter: IconSetter<Item> | null) {
-    let entries = Entries.fromArray(resources, Symbol);
-    if (iconSetter) {
-      for (var entry of entries) {
+    const entries = Entries.fromArray(resources, Symbol);
+
+    if (iconSetter != null) {
+      for (const entry of entries) {
         iconSetter(entry[1]);
       }
     }

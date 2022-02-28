@@ -27,7 +27,8 @@
 
   function iconSetter(entry: Entry<ResourceDescription | symbol> | null) {
     if (entry) {
-      var type = (entry.item as ResourceDescription).type;
+      const type = (entry.item as ResourceDescription).type;
+
       if (type == "entity") {
         entry.icon = "ic:outline-token";
       } else if (type == "script") {
@@ -45,8 +46,9 @@
       } else if (type == "texture") {
         entry.icon = "ic:outline-image";
       }
+
       if (entry.subEntries) {
-        for (var subEntry of entry.subEntries) {
+        for (const subEntry of entry.subEntries) {
           iconSetter(subEntry);
         }
       }

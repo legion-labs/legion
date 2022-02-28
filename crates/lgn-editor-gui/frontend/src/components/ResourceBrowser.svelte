@@ -222,13 +222,14 @@
           return;
         }
 
-        let detail = await cloneResource({
+        const detail = await cloneResource({
           sourceId: currentResourceDescription.id,
         });
 
         await allResources.run(getAllResources);
+
         if (detail.newResource) {
-          resourceHierarchyTree.force_selection(detail.newResource.id);
+          resourceHierarchyTree.forceSelection(detail.newResource.id);
           fetchCurrentResourceDescription(detail.newResource);
         }
 

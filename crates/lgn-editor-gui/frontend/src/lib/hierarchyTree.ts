@@ -60,6 +60,7 @@ export class Entries<Item> {
       pathComponents.reduce((ref, name, index) => {
         if (!ref[name]) {
           const subentries: Entry<PItem>[] = [];
+
           ref[name] = {
             subEntries: subentries,
           } as Ref;
