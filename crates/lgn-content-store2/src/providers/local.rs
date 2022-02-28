@@ -1,12 +1,17 @@
 use anyhow::Context;
 use async_trait::async_trait;
-use std::path::PathBuf;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    path::PathBuf,
+};
 
 use crate::{
-    ContentAsyncRead, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
+    traits::get_content_readers_impl, ContentAsyncRead, ContentAsyncWrite, ContentReader,
+    ContentWriter, Error, Identifier, Result,
 };
 
 /// A `LocalProvider` is a provider that stores content on the local filesystem.
+#[derive(Debug, Clone)]
 pub struct LocalProvider(PathBuf);
 
 impl LocalProvider {
@@ -36,7 +41,12 @@ impl ContentReader for LocalProvider {
         match tokio::fs::File::open(&path).await {
             Ok(file) => match file.metadata().await {
                 Ok(metadata) => {
-                    if metadata.len() != id.data_size() {
+                    let metadata_size: usize = metadata
+                        .len()
+                        .try_into()
+                        .expect("metadata size does not fit in usize"); // Should never happen on a modern architecture.
+
+                    if metadata_size != id.data_size() {
                         Err(Error::Corrupt)
                     } else {
                         Ok(Box::pin(file))
@@ -61,6 +71,13 @@ impl ContentReader for LocalProvider {
             }
         }
     }
+
+    async fn get_content_readers<'ids>(
+        &self,
+        ids: &'ids BTreeSet<Identifier>,
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+        get_content_readers_impl(self, ids).await
+    }
 }
 
 #[async_trait]
@@ -68,8 +85,15 @@ impl ContentWriter for LocalProvider {
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
         let path = self.0.join(id.to_string());
 
-        if tokio::fs::metadata(&path).await.is_ok() {
-            return Err(Error::AlreadyExists);
+        if let Ok(metadata) = tokio::fs::metadata(&path).await {
+            let metadata_size: usize = metadata
+                .len()
+                .try_into()
+                .expect("metadata size does not fit in usize"); // Should never happen on a modern architecture.
+
+            if id.data_size() == metadata_size {
+                return Err(Error::AlreadyExists);
+            }
         }
 
         match tokio::fs::OpenOptions::new()

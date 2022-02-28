@@ -1,4 +1,5 @@
 use std::{
+    collections::{BTreeMap, BTreeSet},
     pin::Pin,
     sync::Arc,
     task::{Context, Poll},
@@ -18,13 +19,17 @@ use tokio_util::{compat::FuturesAsyncReadCompatExt, io::ReaderStream};
 use tonic::{codegen::StdError, Request, Response};
 
 use crate::{
-    traits::ContentAddressProvider, ContentAsyncRead, ContentAsyncWrite, ContentProvider,
-    ContentReader, ContentWriter, Error, Identifier, Result,
+    traits::{
+        get_content_readers_impl, ContentAddressProvider, ContentReaderExt, ContentWriterExt,
+    },
+    ContentAsyncRead, ContentAsyncWrite, ContentProvider, ContentReader, ContentWriter, Error,
+    Identifier, Result,
 };
 
 use super::{Uploader, UploaderImpl};
 
 /// A `GrpcProvider` is a provider that delegates to a `gRPC` service.
+#[derive(Debug, Clone)]
 pub struct GrpcProvider<C> {
     client: Arc<Mutex<ContentStoreClient<C>>>,
     buf_size: usize,
@@ -95,6 +100,13 @@ where
             }),
             None => Err(Error::NotFound),
         }
+    }
+
+    async fn get_content_readers<'ids>(
+        &self,
+        ids: &'ids BTreeSet<Identifier>,
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+        get_content_readers_impl(self, ids).await
     }
 }
 
@@ -315,7 +327,7 @@ impl AsyncWrite for HttpUploader {
 pub struct GrpcService<Provider, AddressProvider> {
     provider: Provider,
     address_provider: AddressProvider,
-    size_threshold: u64,
+    size_threshold: usize,
 }
 
 impl<Provider, AddressProvider> GrpcService<Provider, AddressProvider> {
@@ -327,7 +339,11 @@ impl<Provider, AddressProvider> GrpcService<Provider, AddressProvider> {
     ///
     /// Otherwise, the request is routed to the `AddressProvider` to get the
     /// address of the downloader/uploader.
-    pub fn new(provider: Provider, address_provider: AddressProvider, size_threshold: u64) -> Self {
+    pub fn new(
+        provider: Provider,
+        address_provider: AddressProvider,
+        size_threshold: usize,
+    ) -> Self {
         Self {
             provider,
             address_provider,

@@ -1,14 +1,19 @@
 use async_trait::async_trait;
 use aws_sdk_dynamodb::model::AttributeValue;
 use aws_sdk_dynamodb::Blob;
-use std::io::Cursor;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    io::Cursor,
+};
 
 use crate::{
-    ContentAsyncRead, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
+    traits::get_content_readers_impl, ContentAsyncRead, ContentAsyncWrite, ContentReader,
+    ContentWriter, Error, Identifier, Result,
 };
 
 use super::{Uploader, UploaderImpl};
 
+#[derive(Debug, Clone)]
 pub struct AwsDynamoDbProvider {
     table_name: String,
     client: aws_sdk_dynamodb::Client,
@@ -95,6 +100,13 @@ impl AwsDynamoDbProvider {
 impl ContentReader for AwsDynamoDbProvider {
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
         Ok(Box::pin(Cursor::new(self.get_content(id).await?)))
+    }
+
+    async fn get_content_readers<'ids>(
+        &self,
+        ids: &'ids BTreeSet<Identifier>,
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+        get_content_readers_impl(self, ids).await
     }
 }
 

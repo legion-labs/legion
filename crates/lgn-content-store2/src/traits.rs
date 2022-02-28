@@ -1,4 +1,8 @@
-use std::{pin::Pin, sync::Arc};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    pin::Pin,
+    sync::Arc,
+};
 
 use async_trait::async_trait;
 use futures::future::join_all;
@@ -28,23 +32,37 @@ pub trait ContentReader {
     /// is returned instead.
     ///
     /// If the high-level request fails, an error is returned.
-    async fn get_content_readers(
+    async fn get_content_readers<'ids>(
         &self,
-        ids: impl IntoIterator<Item = &'async_trait Identifier> + Send + Sync + 'async_trait,
-    ) -> Result<Vec<Result<ContentAsyncRead>>> {
-        let futures = ids
-            .into_iter()
-            .map(|id| self.get_content_reader(id))
-            .collect::<Vec<_>>();
+        ids: &'ids BTreeSet<Identifier>,
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>>;
+}
 
-        Ok(join_all(futures).await)
-    }
+/// A default implementation for the `get_content_readers` method that just
+/// calls in parallel `get_content_reader` for each identifier.
+pub(crate) async fn get_content_readers_impl<'ids>(
+    reader: &(dyn ContentReader + Send + Sync),
+    ids: &'ids BTreeSet<Identifier>,
+) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+    let futures = ids
+        .iter()
+        .map(|id| async move { (id, reader.get_content_reader(id).await) })
+        .collect::<Vec<_>>();
 
+    Ok(join_all(futures).await.into_iter().collect())
+}
+
+#[async_trait]
+pub trait ContentReaderExt: ContentReader {
     /// Read the content referenced by the specified identifier.
     async fn read_content(&self, id: &Identifier) -> Result<Vec<u8>> {
+        if let Identifier::Data(data) = id {
+            return Ok(data.to_vec());
+        }
+
         let mut reader = self.get_content_reader(id).await?;
 
-        let mut result = Vec::new();
+        let mut result = Vec::with_capacity(id.data_size());
 
         reader
             .read_to_end(&mut result)
@@ -54,33 +72,39 @@ pub trait ContentReader {
     }
 
     /// Read the contents referenced by the specified identifiers.
-    async fn read_contents(
+    async fn read_contents<'ids>(
         &self,
-        ids: impl IntoIterator<Item = &'async_trait Identifier> + Send + Sync + 'async_trait,
-    ) -> Result<Vec<Result<Vec<u8>>>> {
+        ids: &'ids BTreeSet<Identifier>,
+    ) -> Result<BTreeMap<&'ids Identifier, Result<Vec<u8>>>> {
         let readers = self.get_content_readers(ids).await?;
         let futures = readers
             .into_iter()
-            .map(|r| async move {
-                match r {
-                    Ok(mut reader) => {
-                        let mut result = Vec::new();
-                        reader
-                            .read_to_end(&mut result)
-                            .await
-                            .map_err(|err| {
-                                anyhow::anyhow!("failed to read content: {}", err).into()
-                            })
-                            .map(|_| result)
-                    }
-                    Err(err) => Err(err),
-                }
+            .map(|(id, r)| async move {
+                (
+                    id,
+                    match r {
+                        Ok(mut reader) => {
+                            let mut result = Vec::with_capacity(id.data_size());
+                            reader
+                                .read_to_end(&mut result)
+                                .await
+                                .map_err(|err| {
+                                    anyhow::anyhow!("failed to read content for `{}`: {}", id, err)
+                                        .into()
+                                })
+                                .map(|_| result)
+                        }
+                        Err(err) => Err(err),
+                    },
+                )
             })
             .collect::<Vec<_>>();
 
-        Ok(join_all(futures).await)
+        Ok(join_all(futures).await.into_iter().collect())
     }
 }
+
+impl<T: ContentReader> ContentReaderExt for T {}
 
 /// ContentWriter is a trait for writing content to a content-store.
 #[async_trait]
@@ -101,13 +125,21 @@ pub trait ContentWriter {
     /// If the data already exists, `Error::AlreadyExists` is returned and the
     /// caller should consider that the write operation is not necessary.
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite>;
+}
 
+#[async_trait]
+pub trait ContentWriterExt: ContentWriter {
     /// Write the specified content and returns the newly associated identifier.
     ///
     /// If the content already exists, the write is a no-op and no error is
     /// returned.
     async fn write_content(&self, data: &[u8]) -> Result<Identifier> {
-        let id = Identifier::new_hash_ref_from_data(data);
+        let id = Identifier::new(data);
+
+        if id.is_data() {
+            return Ok(id);
+        }
+
         let mut writer = match self.get_content_writer(&id).await {
             Ok(writer) => writer,
             Err(Error::AlreadyExists) => return Ok(id),
@@ -126,6 +158,8 @@ pub trait ContentWriter {
             .map(|_| id)
     }
 }
+
+impl<T: ContentWriter> ContentWriterExt for T {}
 
 /// `ContentProvider` is trait for all types that are both readers and writers.
 pub trait ContentProvider: ContentReader + ContentWriter {}
@@ -166,14 +200,21 @@ impl<T> ContentAddressProvider for T where T: ContentAddressReader + ContentAddr
 
 #[async_trait]
 impl<T: ContentReader + Send + Sync> ContentReader for Arc<T> {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncRead + Send>>> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
         self.as_ref().get_content_reader(id).await
+    }
+
+    async fn get_content_readers<'ids>(
+        &self,
+        ids: &'ids BTreeSet<Identifier>,
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+        self.as_ref().get_content_readers(ids).await
     }
 }
 
 #[async_trait]
 impl<T: ContentWriter + Send + Sync> ContentWriter for Arc<T> {
-    async fn get_content_writer(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncWrite + Send>>> {
+    async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
         self.as_ref().get_content_writer(id).await
     }
 }
@@ -192,31 +233,75 @@ impl<T: ContentAddressWriter + Send + Sync> ContentAddressWriter for Arc<T> {
     }
 }
 
-/// Blanket implementations for &T variants.
+/// Blanket implementations for Box<T> variants.
 
 #[async_trait]
-impl<T: ContentReader + Send + Sync> ContentReader for &T {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncRead + Send>>> {
-        (**self).get_content_reader(id).await
+impl<T: ContentReader + Send + Sync + ?Sized> ContentReader for Box<T> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
+        self.as_ref().get_content_reader(id).await
+    }
+
+    async fn get_content_readers<'ids>(
+        &self,
+        ids: &'ids BTreeSet<Identifier>,
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+        self.as_ref().get_content_readers(ids).await
     }
 }
 
 #[async_trait]
-impl<T: ContentWriter + Send + Sync> ContentWriter for &T {
-    async fn get_content_writer(&self, id: &Identifier) -> Result<Pin<Box<dyn AsyncWrite + Send>>> {
+impl<T: ContentWriter + Send + Sync + ?Sized> ContentWriter for Box<T> {
+    async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
+        self.as_ref().get_content_writer(id).await
+    }
+}
+
+#[async_trait]
+impl<T: ContentAddressReader + Send + Sync + ?Sized> ContentAddressReader for Box<T> {
+    async fn get_content_read_address(&self, id: &Identifier) -> Result<String> {
+        self.as_ref().get_content_read_address(id).await
+    }
+}
+
+#[async_trait]
+impl<T: ContentAddressWriter + Send + Sync + ?Sized> ContentAddressWriter for Box<T> {
+    async fn get_content_write_address(&self, id: &Identifier) -> Result<String> {
+        self.as_ref().get_content_write_address(id).await
+    }
+}
+
+/// Blanket implementations for &T variants.
+
+#[async_trait]
+impl<T: ContentReader + Send + Sync + ?Sized> ContentReader for &T {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
+        (**self).get_content_reader(id).await
+    }
+
+    async fn get_content_readers<'ids>(
+        &self,
+        ids: &'ids BTreeSet<Identifier>,
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+        (**self).get_content_readers(ids).await
+    }
+}
+
+#[async_trait]
+impl<T: ContentWriter + Send + Sync + ?Sized> ContentWriter for &T {
+    async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
         (**self).get_content_writer(id).await
     }
 }
 
 #[async_trait]
-impl<T: ContentAddressReader + Send + Sync> ContentAddressReader for &T {
+impl<T: ContentAddressReader + Send + Sync + ?Sized> ContentAddressReader for &T {
     async fn get_content_read_address(&self, id: &Identifier) -> Result<String> {
         (**self).get_content_read_address(id).await
     }
 }
 
 #[async_trait]
-impl<T: ContentAddressWriter + Send + Sync> ContentAddressWriter for &T {
+impl<T: ContentAddressWriter + Send + Sync + ?Sized> ContentAddressWriter for &T {
     async fn get_content_write_address(&self, id: &Identifier) -> Result<String> {
         (**self).get_content_write_address(id).await
     }

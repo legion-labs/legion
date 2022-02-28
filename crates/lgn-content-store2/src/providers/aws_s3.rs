@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use aws_sdk_s3::presigning::config::PresigningConfig;
 use bytes::Bytes;
 use pin_project::pin_project;
+use std::collections::{BTreeMap, BTreeSet};
 use std::future::Future;
 use std::str::FromStr;
 use std::sync::Mutex;
@@ -12,11 +13,13 @@ use tokio::io::AsyncWrite;
 use tokio_stream::Stream;
 use tokio_util::io::StreamReader;
 
+use crate::traits::get_content_readers_impl;
 use crate::{
     ContentAddressReader, ContentAddressWriter, ContentAsyncRead, ContentAsyncWrite, ContentReader,
     ContentWriter, Error, Identifier, Result,
 };
 
+#[derive(Debug, Clone)]
 pub struct AwsS3Provider {
     url: AwsS3Url,
     client: aws_sdk_s3::Client,
@@ -136,6 +139,7 @@ struct ByteStreamWriter {
     client: aws_sdk_s3::Client,
     bucket_name: String,
     key: String,
+    // TODO: Rewrite this type with pin_project and avoid the mutex.
     state: Mutex<ByteStreamWriterState>,
 }
 
@@ -284,6 +288,13 @@ impl ContentReader for AwsS3Provider {
         let stream = StreamReader::new(bytestream);
 
         Ok(Box::pin(stream))
+    }
+
+    async fn get_content_readers<'ids>(
+        &self,
+        ids: &'ids BTreeSet<Identifier>,
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+        get_content_readers_impl(self, ids).await
     }
 }
 

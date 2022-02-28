@@ -1104,6 +1104,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "bytesize"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c58ec36aac5066d5ca17df51b3e70279f5670a72102f5752cb7e7c856adfc70"
+
+[[package]]
 name = "bzip2"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3871,6 +3877,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "indicatif"
+version = "0.16.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d207dc617c7a380ab07ff572a6e52fa202a2a8f355860ac9c38e23f8196be1b"
+dependencies = [
+ "console",
+ "lazy_static",
+ "number_prefix",
+ "regex",
+]
+
+[[package]]
 name = "indoc"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4584,18 +4602,26 @@ dependencies = [
  "blake3",
  "byteorder",
  "bytes",
+ "bytesize",
+ "clap 3.1.2",
  "futures",
  "hex",
  "http",
  "http-body",
  "httptest",
  "hyper",
+ "indicatif",
+ "itertools 0.10.3",
+ "lgn-config",
  "lgn-content-store-proto",
  "lgn-online",
+ "lru",
  "pin-project",
  "pretty_env_logger",
+ "rand 0.8.5",
  "redis",
  "reqwest",
+ "serde",
  "smallvec",
  "tempfile",
  "testcontainers",
@@ -5052,6 +5078,7 @@ dependencies = [
  "hyper-rustls 0.23.0",
  "lambda_http",
  "lambda_runtime",
+ "lgn-config",
  "lgn-tracing",
  "openidconnect",
  "pin-project",
@@ -5700,6 +5727,15 @@ dependencies = [
  "serde_json",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "lru"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "274353858935c992b13c0ca408752e2121da852d07dec7ce5f108c77dfa14d1f"
+dependencies = [
+ "hashbrown",
 ]
 
 [[package]]
@@ -6551,6 +6587,12 @@ checksum = "97ba99ba6393e2c3734791401b66902d981cb03bf190af674ca69949b6d5fb15"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "number_prefix"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
 
 [[package]]
 name = "oauth2"

@@ -1,13 +1,19 @@
 use async_trait::async_trait;
 use redis::AsyncCommands;
-use std::io::Cursor;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    io::Cursor,
+};
 
 use crate::{
-    ContentAsyncRead, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
+    traits::get_content_readers_impl, ContentAsyncRead, ContentAsyncWrite, ContentReader,
+    ContentWriter, Error, Identifier, Result,
 };
 
 use super::{Uploader, UploaderImpl};
 
+/// A provider that stores content in Redis.
+#[derive(Debug, Clone)]
 pub struct RedisProvider {
     key_prefix: String,
     client: redis::Client,
@@ -91,6 +97,13 @@ impl ContentReader for RedisProvider {
             )
             .into()),
         }
+    }
+
+    async fn get_content_readers<'ids>(
+        &self,
+        ids: &'ids BTreeSet<Identifier>,
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+        get_content_readers_impl(self, ids).await
     }
 }
 
