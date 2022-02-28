@@ -43,6 +43,7 @@
         dispatch("addVectorSubProperty", event.detail)}
       on:removeVectorSubProperty={(event) =>
         dispatch("removeVectorSubProperty", event.detail)}
+      bind:parentProperty
       {property}
       {level}
       {pathParts}

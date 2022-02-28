@@ -11,7 +11,7 @@ license = "MIT OR Apache-2.0"
 lgn-graphics-api = { path = "../lgn-graphics-api", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-embedded-fs = { path = "../lgn-embedded-fs", version = "0.1.0" }
-hassle-rs = { git = "https://github.com/legion-labs/hassle-rs", branch = "com_to_tinycom" }
+hassle-rs = { git = "https://github.com/legion-labs/hassle-rs", rev = "957746c04479e7df7eb37c70ea733fc18aefcbc5" }
 normpath = "0.3"
 spirv-reflect = "0.2"
 spirv-tools = "0.7"

@@ -42,7 +42,7 @@
   // a resource at the top level
   export let config: Config<ResourceDescription | null>;
 
-  async function createResource(event: SubmitEvent) {
+  async function createResource(event: Event /* SubmitEvent */) {
     event.preventDefault();
 
     // Simulate a long request
@@ -69,7 +69,9 @@
             resourceType,
           })
         );
-      } catch (error) {}
+      } catch (error) {
+        // No op
+      }
 
       close();
 

@@ -14,7 +14,7 @@ use crate::{
     debug_display::{DebugDisplay, DebugPrimitiveType},
     hl_gfx_api::HLCommandBuffer,
     picking::ManipulatorManager,
-    resources::{DefaultMeshType, MeshManager, PipelineHandle, PipelineManager},
+    resources::{DefaultMeshType, MeshManager, ModelManager, PipelineHandle, PipelineManager},
     RenderContext,
 };
 
@@ -185,8 +185,14 @@ impl DebugRenderPass {
             .get_pipeline(self.wire_pso_depth_handle)
             .unwrap();
         cmd_buffer.bind_pipeline(wire_pso_depth_pipeline);
-        cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
-        cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
+        cmd_buffer.bind_descriptor_set(
+            render_context.frame_descriptor_set().0,
+            render_context.frame_descriptor_set().1,
+        );
+        cmd_buffer.bind_descriptor_set(
+            render_context.view_descriptor_set().0,
+            render_context.view_descriptor_set().1,
+        );
 
         render_mesh(
             DefaultMeshType::GroundPlane as u32,
@@ -203,9 +209,16 @@ impl DebugRenderPass {
         cmd_buffer: &mut HLCommandBuffer<'_>,
         picked_meshes: &[(&VisualComponent, &GlobalTransform)],
         mesh_manager: &MeshManager,
+        model_manager: &ModelManager,
     ) {
-        cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
-        cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
+        cmd_buffer.bind_descriptor_set(
+            render_context.frame_descriptor_set().0,
+            render_context.frame_descriptor_set().1,
+        );
+        cmd_buffer.bind_descriptor_set(
+            render_context.view_descriptor_set().0,
+            render_context.view_descriptor_set().1,
+        );
 
         let wire_pso_depth_pipeline = render_context
             .pipeline_manager()
@@ -215,22 +228,20 @@ impl DebugRenderPass {
             .pipeline_manager()
             .get_pipeline(self.solid_pso_depth_handle)
             .unwrap();
-        for (_index, (static_mesh_component, transform)) in picked_meshes.iter().enumerate() {
-            cmd_buffer.bind_pipeline(wire_pso_depth_pipeline);
-            render_aabb_for_mesh(
-                static_mesh_component.mesh_id as u32,
-                transform,
-                cmd_buffer,
-                mesh_manager,
-            );
-            cmd_buffer.bind_pipeline(solid_pso_depth_pipeline);
-            render_mesh(
-                static_mesh_component.mesh_id as u32,
-                &transform.compute_matrix(),
-                Vec4::new(0.0, 0.5, 0.5, 0.75),
-                cmd_buffer,
-                mesh_manager,
-            );
+        for (_index, (visual_component, transform)) in picked_meshes.iter().enumerate() {
+            let (model_meta_data, _ready) = model_manager.get_model_meta_data(visual_component);
+            for mesh in &model_meta_data.meshes {
+                cmd_buffer.bind_pipeline(wire_pso_depth_pipeline);
+                render_aabb_for_mesh(mesh.mesh_id as u32, transform, cmd_buffer, mesh_manager);
+                cmd_buffer.bind_pipeline(solid_pso_depth_pipeline);
+                render_mesh(
+                    mesh.mesh_id as u32,
+                    &transform.compute_matrix(),
+                    Vec4::new(0.0, 0.5, 0.5, 0.75),
+                    cmd_buffer,
+                    mesh_manager,
+                );
+            }
         }
     }
 
@@ -247,8 +258,14 @@ impl DebugRenderPass {
             .get_pipeline(self.wire_pso_depth_handle)
             .unwrap();
         cmd_buffer.bind_pipeline(pipeline);
-        cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
-        cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
+        cmd_buffer.bind_descriptor_set(
+            render_context.frame_descriptor_set().0,
+            render_context.frame_descriptor_set().1,
+        );
+        cmd_buffer.bind_descriptor_set(
+            render_context.view_descriptor_set().0,
+            render_context.view_descriptor_set().1,
+        );
 
         debug_display.render_primitives(|primitive| {
             let mesh_id = match primitive.primitive_type {
@@ -265,6 +282,7 @@ impl DebugRenderPass {
         });
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn render_manipulators(
         &self,
         render_context: &RenderContext<'_>,
@@ -273,6 +291,7 @@ impl DebugRenderPass {
         render_surface: &mut RenderSurface,
         manipulator_meshes: &[(&VisualComponent, &GlobalTransform, &ManipulatorComponent)],
         mesh_manager: &MeshManager,
+        model_manager: &ModelManager,
         camera: &CameraComponent,
     ) {
         let (view_matrix, projection_matrix) = camera.build_view_projection(
@@ -280,8 +299,7 @@ impl DebugRenderPass {
             render_surface.extents().height() as f32,
         );
 
-        for (_index, (static_mesh, transform, manipulator)) in manipulator_meshes.iter().enumerate()
-        {
+        for (_index, (visual, transform, manipulator)) in manipulator_meshes.iter().enumerate() {
             if manipulator.active {
                 let scaled_world_matrix = ManipulatorManager::scale_manipulator_for_viewport(
                     transform,
@@ -294,10 +312,10 @@ impl DebugRenderPass {
                     Vec4::new(1.0, 1.0, 0.0, 1.0)
                 } else {
                     Vec4::new(
-                        f32::from(static_mesh.color.r) / 255.0f32,
-                        f32::from(static_mesh.color.g) / 255.0f32,
-                        f32::from(static_mesh.color.b) / 255.0f32,
-                        f32::from(static_mesh.color.a) / 255.0f32,
+                        f32::from(visual.color.r) / 255.0f32,
+                        f32::from(visual.color.g) / 255.0f32,
+                        f32::from(visual.color.b) / 255.0f32,
+                        f32::from(visual.color.a) / 255.0f32,
                     )
                 };
 
@@ -308,16 +326,25 @@ impl DebugRenderPass {
                     .get_pipeline(self.solid_pso_nodepth_handle)
                     .unwrap();
                 cmd_buffer.bind_pipeline(pipeline);
-                cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
-                cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
-
-                render_mesh(
-                    static_mesh.mesh_id as u32,
-                    &scaled_world_matrix,
-                    color,
-                    cmd_buffer,
-                    mesh_manager,
+                cmd_buffer.bind_descriptor_set(
+                    render_context.frame_descriptor_set().0,
+                    render_context.frame_descriptor_set().1,
                 );
+                cmd_buffer.bind_descriptor_set(
+                    render_context.view_descriptor_set().0,
+                    render_context.view_descriptor_set().1,
+                );
+
+                let (model_meta_data, _ready) = model_manager.get_model_meta_data(visual);
+                for mesh in &model_meta_data.meshes {
+                    render_mesh(
+                        mesh.mesh_id as u32,
+                        &scaled_world_matrix,
+                        color,
+                        cmd_buffer,
+                        mesh_manager,
+                    );
+                }
             }
         }
     }
@@ -332,6 +359,7 @@ impl DebugRenderPass {
         manipulator_meshes: &[(&VisualComponent, &GlobalTransform, &ManipulatorComponent)],
         camera: &CameraComponent,
         mesh_manager: &MeshManager,
+        model_manager: &ModelManager,
         debug_display: &DebugDisplay,
     ) {
         cmd_buffer.begin_render_pass(
@@ -356,7 +384,13 @@ impl DebugRenderPass {
 
         self.render_ground_plane(render_context, cmd_buffer, mesh_manager);
 
-        self.render_picked(render_context, cmd_buffer, picked_meshes, mesh_manager);
+        self.render_picked(
+            render_context,
+            cmd_buffer,
+            picked_meshes,
+            mesh_manager,
+            model_manager,
+        );
 
         self.render_debug_display(render_context, cmd_buffer, debug_display, mesh_manager);
 
@@ -366,6 +400,7 @@ impl DebugRenderPass {
             render_surface,
             manipulator_meshes,
             mesh_manager,
+            model_manager,
             camera,
         );
 
@@ -380,12 +415,12 @@ fn render_aabb_for_mesh(
     cmd_buffer: &mut HLCommandBuffer<'_>,
     mesh_manager: &MeshManager,
 ) {
-    let mesh = mesh_manager.mesh_from_id(mesh_id);
+    let mesh = mesh_manager.get_mesh_meta_data(mesh_id);
 
     let mut min_bound = Vec3::new(f32::MAX, f32::MAX, f32::MAX);
     let mut max_bound = Vec3::new(f32::MIN, f32::MIN, f32::MIN);
 
-    for position in mesh.positions.as_ref().unwrap() {
+    for position in &mesh.positions {
         let world_pos = transform.compute_matrix().mul_vec4(*position).xyz();
 
         min_bound = min_bound.min(world_pos);
@@ -417,12 +452,12 @@ fn render_mesh(
 ) {
     let mut push_constant_data = cgen::cgen_type::ConstColorPushConstantData::default();
 
+    let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh_id);
     push_constant_data.set_world((*world_xform).into());
     push_constant_data.set_color(color.into());
-    push_constant_data
-        .set_mesh_description_offset(mesh_manager.mesh_description_offset_from_id(mesh_id).into());
+    push_constant_data.set_mesh_description_offset(mesh_meta_data.mesh_description_offset.into());
 
     cmd_buffer.push_constant(&push_constant_data);
 
-    cmd_buffer.draw(mesh_manager.mesh_from_id(mesh_id).num_vertices() as u32, 0);
+    cmd_buffer.draw(mesh_meta_data.draw_call_count, 0);
 }

@@ -1,31 +1,39 @@
 <script lang="ts">
-  import { MetricState } from "@/lib/Metric/MetricState";
+  import {
+    getRecentlyUsedMetrics,
+    selectionStore,
+    updateMetricSelection,
+  } from "@/lib/Metric/MetricSelectionStore";
   import clickOutside from "@lgn/web-client/src/actions/clickOutside";
-  import { createEventDispatcher, onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
+  import { get, Unsubscriber } from "svelte/store";
   import MetricSelectionItem from "./MetricSelectionItem.svelte";
   import { MetricSelectionState } from "./MetricSelectionState";
-  export let metrics: MetricState[];
-  const dispatcher = createEventDispatcher();
-  let state: MetricSelectionState[] = [];
+
   let show = false;
   let searchString: string | undefined;
-  let userUsedMetrics: string[];
-
-  $: filteredMetrics = state.filter((m) => filterMetric(m));
-  $: selectedMetricCount = state.filter((m) => m.selected).length;
-  $: recentlyUsedMetrics = state.filter((m) =>
-    userUsedMetrics.includes(m.name)
-  );
+  let subscription: Unsubscriber;
+  let selectedMetricCount: number;
+  let filteredMetrics: MetricSelectionState[];
+  let recentlyUsedMetrics: MetricSelectionState[];
 
   onMount(() => {
-    state = metrics.map((m) => {
-      return new MetricSelectionState(m.name, m.unit);
+    subscription = selectionStore.subscribe((selections) => {
+      selectedMetricCount = selections.filter((m) => m.selected).length;
+      filteredMetrics = getFilteredMetrics(selections);
+      recentlyUsedMetrics = selections.filter((m) => recentlyUsedFilter(m));
     });
-    const jsonData = localStorage.getItem("metric-lastUsed");
-    userUsedMetrics = jsonData
-      ? JSON.parse(jsonData)
-      : state.filter((s) => s.selected).map((s) => s.name);
   });
+
+  onDestroy(() => {
+    if (subscription) {
+      subscription();
+    }
+  });
+
+  function getFilteredMetrics(selection: MetricSelectionState[]) {
+    return selection.filter((m) => filterMetric(m));
+  }
 
   function onSearchChange(
     e: Event & { currentTarget: EventTarget & HTMLInputElement }
@@ -35,7 +43,7 @@
 
   function updateSearch(value: string) {
     searchString = value;
-    filteredMetrics = filteredMetrics;
+    filteredMetrics = getFilteredMetrics(get(selectionStore));
   }
 
   function close() {
@@ -50,19 +58,9 @@
     return m.name.toLowerCase().includes(searchString.toLowerCase());
   }
 
-  function onMetricSwitched(metric: MetricSelectionState) {
-    const index = state.indexOf(metric);
-    state[index] = metric;
-    state = state;
-    if (metric.selected) {
-      if (!userUsedMetrics.includes(metric.name)) {
-        userUsedMetrics = [...userUsedMetrics, metric.name].slice(-5);
-      }
-      localStorage.setItem("metric-lastUsed", JSON.stringify(userUsedMetrics));
-    }
-    dispatcher("metric-switched", {
-      metric: metric as MetricSelectionState,
-    });
+  function recentlyUsedFilter(metric: MetricSelectionState) {
+    const recent = getRecentlyUsedMetrics();
+    return recent.some((m) => m.name === metric.name);
   }
 
   function handleKeydown(event: KeyboardEvent) {
@@ -104,9 +102,9 @@
             </div>
             <div
               on:click={() => {
-                state.forEach((m) => {
+                get(selectionStore).forEach((m) => {
                   m.selected = false;
-                  onMetricSwitched(m);
+                  updateMetricSelection(m);
                 });
               }}
             >
@@ -120,10 +118,7 @@
             <div class="metric-category-header select-none">Recently Used</div>
             <div class="grid grid-cols-1 justify-items-start">
               {#each recentlyUsedMetrics as metric}
-                <MetricSelectionItem
-                  on:metric-switched={(e) => onMetricSwitched(e.detail.metric)}
-                  {metric}
-                />
+                <MetricSelectionItem {metric} />
               {/each}
             </div>
           </div>
@@ -131,10 +126,7 @@
             <div class="metric-category-header select-none">All Metrics</div>
             <div class="grid grid-cols-2 justify-items-start">
               {#each filteredMetrics as metric}
-                <MetricSelectionItem
-                  on:metric-switched={(e) => onMetricSwitched(e.detail.metric)}
-                  {metric}
-                />
+                <MetricSelectionItem {metric} />
               {/each}
             </div>
           </div>
@@ -156,9 +148,5 @@
 
   .main {
     width: fit-content;
-  }
-
-  button:hover {
-    @apply bg-gray-300;
   }
 </style>

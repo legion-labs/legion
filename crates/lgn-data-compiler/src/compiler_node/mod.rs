@@ -78,7 +78,7 @@ mod tests {
             Ok(CompilationOutput {
                 compiled_resources: vec![CompiledResource {
                     path: ctx.target_unnamed,
-                    checksum: Checksum::from(7),
+                    checksum: Checksum::from([7u8; 32]),
                     size: 7,
                 }],
                 resource_references: vec![],
@@ -160,7 +160,10 @@ mod tests {
 
             assert_eq!(output.compiled_resources.len(), 1);
             assert_eq!(output.compiled_resources[0].path, compile_path);
-            assert_eq!(output.compiled_resources[0].checksum, Checksum::from(7));
+            assert_eq!(
+                output.compiled_resources[0].checksum,
+                Checksum::from([7u8; 32])
+            );
             assert_eq!(output.compiled_resources[0].size, 7);
         }
     }

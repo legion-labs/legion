@@ -10,7 +10,7 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "lib": ["esnext", "dom"],
-    "types": ["svelte", "jest", "vite/client"],
+    "types": ["svelte", "vitest/globals", "vite/client"],
     "noEmit": true,
     "sourceMap": true,
     "declaration": true

@@ -338,6 +338,7 @@ export function fromBrowserKey(key: string, location: number): KeyCode | null {
         default:
           return null;
       }
+
     case "Control":
       switch (location) {
         case KeyboardEvent.DOM_KEY_LOCATION_RIGHT:
@@ -347,6 +348,7 @@ export function fromBrowserKey(key: string, location: number): KeyCode | null {
         default:
           return null;
       }
+
     case "Shift":
       switch (location) {
         case KeyboardEvent.DOM_KEY_LOCATION_RIGHT:

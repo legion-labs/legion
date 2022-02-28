@@ -30,6 +30,7 @@ use lgn_editor_proto::resource_browser::{
                 script_id,
                 ResourcePathName::new("root_script"),
                 false,
+                None,
             ))
             .add_operation(UpdatePropertyOperation::new(
                 script_id,
@@ -122,6 +123,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
         let transaction_manager = setup_project(&project_dir).await;
         let resource_browser = crate::resource_browser_plugin::ResourceBrowserRPC {
             transaction_manager: transaction_manager.clone(),
+            uploads_folder: "".into(),
         };
 
         // Read all Resoruce Type registered
@@ -148,7 +150,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                 parent_resource_id: None,
                 init_values: vec![InitPropertyValue {
                     property_path: "components[Transform].position".into(),
-                    json_value: json!(Vec3::new(0.0, 0.0, 0.0)).to_string(),
+                    json_value: json!(Vec3::ZERO).to_string(),
                 }],
             }))
             .await?
@@ -241,20 +243,23 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                         sub_child_id,
                         "components",
                         None,
-                        json!({ "Light": sample_data::offline::Light {
-                        }})
-                        .to_string(),
+                        Some(
+                            serde_json::json!({
+                                "Light" : {}
+                            })
+                            .to_string(),
+                        ),
                     ))
                     .add_operation(ArrayOperation::insert_element(
                         sub_child_id,
                         "components",
                         None,
-                        json!({ "StaticMesh": sample_data::offline::StaticMesh {
-                            mesh_id: mesh_ids[mesh_id ],
-                            color : colors[color_id],
-                            mesh : None,
-                        }})
-                        .to_string(),
+                        Some(
+                            serde_json::json!({
+                                "Visual" : {}
+                            })
+                            .to_string(),
+                        ),
                     ));
 
                 let mut guard = transaction_manager.lock().await;

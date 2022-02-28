@@ -1,3 +1,4 @@
+use lgn_tracing::{span_fn, span_scope};
 use serde::{Deserialize, Serialize};
 
 /// High level texture format to let artist control how it is encoded
@@ -40,6 +41,7 @@ fn average_color_values(data: &[u8], v0: u32, v1: u32, u0: u32, u1: u32, offset:
         / 4) as u8
 }
 
+#[span_fn]
 fn calc_mip_chain(
     width: u32,
     height: u32,
@@ -63,6 +65,7 @@ fn calc_mip_chain(
         TextureFormat::BC3 => ispc_tex::bc3::compress_blocks(&surface),
         #[allow(unsafe_code)]
         TextureFormat::BC4 => unsafe {
+            span_scope!("tbc::encode_image_bc4_r8_conv_u8");
             tbc::encode_image_bc4_r8_conv_u8(
                 std::slice::from_raw_parts(
                     rgba.as_ptr().cast::<tbc::color::Red8>(),
@@ -74,8 +77,10 @@ fn calc_mip_chain(
         },
         TextureFormat::BC7 => {
             if alpha_blended {
+                span_scope!("ispc_tex::bc7::compress_blocks_alpha");
                 ispc_tex::bc7::compress_blocks(&ispc_tex::bc7::opaque_basic_settings(), &surface)
             } else {
+                span_scope!(" ispc_tex::bc7::compress_blocks");
                 ispc_tex::bc7::compress_blocks(&ispc_tex::bc7::alpha_basic_settings(), &surface)
             }
         }
@@ -110,6 +115,7 @@ fn calc_mip_chain(
     }
 }
 
+#[span_fn]
 pub fn encode_mip_chain_from_offline_texture(
     width: u32,
     height: u32,
@@ -126,6 +132,7 @@ pub fn encode_mip_chain_from_offline_texture(
 
 // Vec<u8> as input is needed because it may be returned as output
 #[allow(clippy::ptr_arg)]
+#[span_fn]
 pub fn rgba_from_source(
     width: u32,
     height: u32,

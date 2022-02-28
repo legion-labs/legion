@@ -1,0 +1,45 @@
+{
+  "components": [
+    {
+      "Name": {
+        "name": "Cube"
+      }
+    },
+    {
+      "Transform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "Visual": {
+        "gi_contribution": 0,
+        "renderable_geometry": null,
+        "shadow_caster_local": true,
+        "shadow_caster_sun": true,
+        "shadow_receiver": true
+      }
+    },
+    {
+      "StaticMesh": {
+        "color": 4278190335,
+        "mesh": null,
+        "mesh_id": "Cube"
+      }
+    }
+  ]
+}

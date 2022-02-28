@@ -3,8 +3,7 @@
 use lgn_core::Handle;
 use lgn_graphics_api::Queue;
 use lgn_graphics_api::{
-    ApiDef, BufferView, DescriptorHeap, DescriptorHeapDef, DeviceContext, Fence, FenceStatus,
-    GfxApi, QueueType, Semaphore,
+    ApiDef, BufferView, DeviceContext, Fence, FenceStatus, GfxApi, QueueType, Semaphore,
 };
 
 use lgn_tracing::span_fn;
@@ -13,8 +12,8 @@ use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use crate::cgen::cgen_type::{DirectionalLight, OmniDirectionalLight, SpotLight};
 
 use crate::resources::{
-    CommandBufferPool, CommandBufferPoolHandle, DescriptorPool, DescriptorPoolHandle, GpuSafePool,
-    TransientPagedBuffer, UnifiedStaticBuffer, UniformGPUData, UniformGPUDataUploadJobBlock,
+    CommandBufferPool, CommandBufferPoolHandle, GpuSafePool, TransientPagedBuffer,
+    UnifiedStaticBuffer, UniformGPUData, UniformGPUDataUploadJobBlock,
 };
 use crate::RenderContext;
 
@@ -27,9 +26,7 @@ pub struct Renderer {
     sparse_bind_sems: Vec<Semaphore>,
     frame_fences: Vec<Fence>,
     graphics_queue: RwLock<Queue>,
-    descriptor_heap: DescriptorHeap,
     command_buffer_pools: Mutex<GpuSafePool<CommandBufferPool>>,
-    descriptor_pools: Mutex<GpuSafePool<DescriptorPool>>,
     transient_buffer: TransientPagedBuffer,
     static_buffer: UnifiedStaticBuffer,
     omnidirectional_lights_data: OmniDirectionalLightsStaticBuffer,
@@ -60,9 +57,7 @@ macro_rules! impl_static_buffer_accessor {
 }
 
 impl Renderer {
-    pub fn new() -> Self {
-        #![allow(unsafe_code)]
-        let num_render_frames = 2usize;
+    pub fn new(num_render_frames: usize) -> Self {
         let api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
         let device_context = api.device_context();
 
@@ -85,16 +80,6 @@ impl Renderer {
             SpotLight::PAGE_SIZE,
         ));
 
-        let descriptor_heap_def = DescriptorHeapDef {
-            max_descriptor_sets: 32 * 4096,
-            sampler_count: 32 * 128,
-            constant_buffer_count: 32 * 1024,
-            buffer_count: 32 * 1024,
-            rw_buffer_count: 32 * 1024,
-            texture_count: 32 * 1024,
-            rw_texture_count: 32 * 1024,
-        };
-
         Self {
             frame_idx: 0,
             render_frame_idx: 0,
@@ -112,11 +97,8 @@ impl Renderer {
                 .map(|_| device_context.create_fence().unwrap())
                 .collect(),
             graphics_queue: RwLock::new(device_context.create_queue(QueueType::Graphics).unwrap()),
-            descriptor_heap: device_context
-                .create_descriptor_heap(&descriptor_heap_def)
-                .unwrap(),
+
             command_buffer_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
-            descriptor_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
             transient_buffer: TransientPagedBuffer::new(device_context, 512, 64 * 1024),
             static_buffer,
             omnidirectional_lights_data,
@@ -206,19 +188,6 @@ impl Renderer {
         pool.release(handle);
     }
 
-    pub(crate) fn acquire_descriptor_pool(
-        &self,
-        heap_def: &DescriptorHeapDef,
-    ) -> DescriptorPoolHandle {
-        let mut pool = self.descriptor_pools.lock();
-        pool.acquire_or_create(|| DescriptorPool::new(self.descriptor_heap.clone(), heap_def))
-    }
-
-    pub(crate) fn release_descriptor_pool(&self, handle: DescriptorPoolHandle) {
-        let mut pool = self.descriptor_pools.lock();
-        pool.release(handle);
-    }
-
     #[span_fn]
     pub(crate) fn begin_frame(&mut self) {
         //
@@ -248,10 +217,6 @@ impl Renderer {
             let mut pool = self.command_buffer_pools.lock();
             pool.begin_frame();
         }
-        {
-            let mut pool = self.descriptor_pools.lock();
-            pool.begin_frame();
-        }
 
         // TMP: todo
         self.transient_buffer.begin_frame();
@@ -272,10 +237,6 @@ impl Renderer {
 
         {
             let mut pool = self.command_buffer_pools.lock();
-            pool.end_frame();
-        }
-        {
-            let mut pool = self.descriptor_pools.lock();
             pool.end_frame();
         }
     }

@@ -6,17 +6,7 @@
       }
     },
     {
-      "RotationComponent": {
-        "rotation_speed": [
-          0.4000000059604645,
-          0.0,
-          0.0
-        ]
-      }
-    },
-    {
       "Transform": {
-        "apply_to_children": false,
         "position": [
           0.0,
           0.0,
@@ -36,10 +26,13 @@
       }
     },
     {
-      "StaticMesh": {
+      "Visual": {
         "color": 4278190335,
-        "mesh": null,
-        "mesh_id": "Cube"
+        "gi_contribution": 0,
+        "renderable_geometry": null,
+        "shadow_caster_local": false,
+        "shadow_caster_sun": false,
+        "shadow_receiver": false
       }
     }
   ]

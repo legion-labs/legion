@@ -2,12 +2,14 @@
   import { PropertyUpdate } from "@/api";
   import {
     BagResourceProperty,
-    buildDefaultPrimitiveProperty,
+    propertyIsDynComponent,
     propertyIsGroup,
     propertyIsOption,
     propertyIsVec,
   } from "@/lib/propertyGrid";
+  import currentResource from "@/stores/currentResource";
   import { createEventDispatcher } from "svelte";
+  import log from "@lgn/web-client/src/lib/log";
   import Checkbox from "../inputs/Checkbox.svelte";
   import PropertyContainer from "./PropertyContainer.svelte";
   import {
@@ -20,12 +22,15 @@
     addVectorSubProperty: AddVectorSubPropertyEvent;
     removeVectorSubProperty: RemoveVectorSubPropertyEvent;
   }>();
+  const { data: currentResourceData } = currentResource;
 
   // TODO: Optional property bags are disabled until they're properly supported
   const disabledOptionalProperty = true;
 
   // Option resource property can be groups
   export let property: BagResourceProperty;
+
+  export let parentProperty: BagResourceProperty | null;
 
   export let level = 0;
 
@@ -35,22 +40,57 @@
   function addVectorSubProperty() {
     const index = property.subProperties.length;
 
-    const addedProperty = buildDefaultPrimitiveProperty(`[${index}]`, "u8");
-
-    property.subProperties = [...property.subProperties, addedProperty];
-
     dispatch("addVectorSubProperty", {
       path: [...pathParts, property.name].join("."),
       index,
-      value: addedProperty.value,
+      property,
     });
+  }
+
+  function removeComponent() {
+    if (!parentProperty) {
+      log.error("Vector sub property parent not found");
+
+      return;
+    }
+
+    if (!$currentResourceData) {
+      log.error(
+        "A vector sub property was removed while no resources were selected"
+      );
+
+      return;
+    }
+
+    for (let i = 0; i < parentProperty.subProperties.length; ++i) {
+      if (parentProperty.subProperties[i].name == property.name) {
+        dispatch("removeVectorSubProperty", {
+          path: pathParts.join("."),
+          index: i,
+        });
+        parentProperty.subProperties.splice(i, 1);
+        parentProperty.subProperties = parentProperty.subProperties;
+        break;
+      }
+    }
   }
 </script>
 
 <div class="root" class:with-indent={level > 1}>
   {#if property.name}
     <div class="property-name" title={property.name}>
-      <div class="truncate">{property.name}</div>
+      <div class="truncate">
+        {property.name}
+      </div>
+      {#if parentProperty && propertyIsDynComponent(parentProperty)}
+        <div
+          class="delete-button"
+          on:click={removeComponent}
+          title="Remove Component"
+        >
+          &#215;
+        </div>
+      {/if}
       {#if !disabledOptionalProperty && propertyIsOption(property)}
         <div class="optional">
           <Checkbox value={true} />
@@ -103,6 +143,10 @@
   }
 
   .add-vector {
-    @apply flex items-center justify-center h-7 w-7 border-l-2 border-gray-700 cursor-pointer;
+    @apply flex items-center justify-center h-7 w-7 border-l-2 border-gray-700 bg-green-800 bg-opacity-70 rounded-r-sm cursor-pointer;
+  }
+
+  .delete-button {
+    @apply flex items-center justify-center h-7 w-7 border-l-2 border-gray-700 bg-red-800 bg-opacity-70 rounded-r-sm cursor-pointer;
   }
 </style>

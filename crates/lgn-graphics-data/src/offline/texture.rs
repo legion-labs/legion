@@ -24,6 +24,7 @@ pub struct Texture {
     /// Texture height.
     pub height: u32,
     /// Texture pixel data.
+    #[serde(with = "serde_bytes")]
     pub rgba: Vec<u8>,
 }
 

@@ -2,6 +2,7 @@
   "name": "/prefab/props/cube.ent",
   "type_name": "offline_entity",
   "type_id": "1c0ff9e497b0740f",
-  "dependencies": [],
-  "content_checksum": "2ec6a607fe25fd635d72f3e4107a95c6"
+  "dependencies": [
+    "(0d4207bbf3a2fd08,0075173a-9ae1-43d2-a669-a24b8519d397)|44e4b6023fb7a8d3_Cube|5c4b1b522bf5dcb0"
+  ]
 }

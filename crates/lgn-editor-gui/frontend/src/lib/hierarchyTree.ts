@@ -5,7 +5,6 @@ export type Entry<Item> = {
   index: number;
   item: Item;
   subEntries: Entry<Item>[] | null;
-  // eslint-disable-next-line @typescript-eslint/ban-types
 };
 
 // TODO: Improve performance if needed, and stop using recursion
@@ -13,7 +12,7 @@ export type Entry<Item> = {
 export class Entries<Item> {
   entries: Entry<Item>[];
 
-  #size: number | null = null;
+  #size!: number;
 
   /**
    * Build an `Entries` object from any flat arrays of object.
@@ -94,14 +93,12 @@ export class Entries<Item> {
   /** Builds an `Entries` object from and array of `Entry` */
   constructor(entries: Entry<Item>[]) {
     this.entries = entries;
+
+    this.recalculateSize();
   }
 
   /** Computes the size of the `Entries` */
-  get size(): number {
-    if (typeof this.#size === "number") {
-      return this.#size;
-    }
-
+  recalculateSize(): number {
     function count(entries: Entry<Item>[], size = 0): number {
       return entries.reduce(
         (size, entry) =>
@@ -171,8 +168,7 @@ export class Entries<Item> {
 
     this.entries = filter(this.entries);
 
-    // Resets the size so it's computed again if needed
-    this.#size = null;
+    this.recalculateSize();
 
     this.#setIndices();
 
@@ -240,7 +236,8 @@ export class Entries<Item> {
   insert<PItem extends { path: string }>(item: PItem): this {
     function insert(
       [part, ...parts]: string[],
-      entries: Entry<Item>[]
+      entries: Entry<Item>[],
+      item: PItem
     ): Entry<Item>[] {
       if (!parts.length) {
         const newEntry: Entry<Item> = {
@@ -259,22 +256,16 @@ export class Entries<Item> {
         return entries;
       }
 
-      entry.subEntries = insert(parts, entry.subEntries || []);
+      entry.subEntries = insert(parts, entry.subEntries || [], item);
 
       return entries;
     }
 
-    this.entries = components(item.path).reduce((acc, part) => {
-      acc;
-
-      return acc;
-    }, this.entries);
-
-    this.entries = insert(components(item.path), this.entries);
+    this.entries = insert(components(item.path), this.entries, item);
 
     this.#sort();
 
-    this.#size = null;
+    this.recalculateSize();
 
     return this;
   }
@@ -292,6 +283,24 @@ export class Entries<Item> {
 
   remove(removedEntry: Entry<Item>): this {
     return this.filter((entry) => entry !== removedEntry);
+  }
+
+  isEmpty() {
+    return this.#size === 0;
+  }
+
+  intoItems() {
+    const items = [];
+
+    for (const [, entry] of this) {
+      items.push(entry.item);
+    }
+
+    return items;
+  }
+
+  size() {
+    return this.#size;
   }
 
   [Symbol.iterator]() {

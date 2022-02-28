@@ -6,16 +6,14 @@ use std::{
     str::FromStr,
 };
 
-use lgn_content_store::content_checksum_from_read;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_source_control::{
-    IndexBackend, LocalIndexBackend, Workspace, WorkspaceConfig, WorkspaceRegistration,
+    CommitMode, IndexBackend, LocalIndexBackend, Workspace, WorkspaceConfig, WorkspaceRegistration,
 };
 use thiserror::Error;
 
 use crate::resource::{
-    metadata::{Metadata, ResourceHash},
-    ResourceHandleUntyped, ResourcePathName, ResourceRegistry,
+    metadata::Metadata, ResourceHandleUntyped, ResourcePathName, ResourceRegistry,
 };
 use crate::ResourcePathId;
 
@@ -259,10 +257,22 @@ impl Project {
     /// or increment the suffix number until resource name is not used
     /// Ex: /world/sample => /world/sample1
     /// Ex: /world/instance1099 => /world/instance1100
+    /// Ex: /world/thingy.psd => /world/thingy1.psd
     pub async fn get_incremental_name(&self, resource_path: &ResourcePathName) -> ResourcePathName {
-        let mut name: String = resource_path.to_string();
+        let path = Path::new(resource_path.as_ref());
 
-        // extract the current suffix number if avaiable
+        let ext = path
+            .extension()
+            .map(|ext| ext.to_string_lossy().into_owned());
+
+        let mut name = if ext.is_some() {
+            // We may want to drop non utf-8 character anyways?
+            path.with_extension("").to_string_lossy().into_owned()
+        } else {
+            resource_path.to_string()
+        };
+
+        // extract the current suffix number if available
         let mut suffix = String::new();
         name.chars()
             .rev()
@@ -273,7 +283,12 @@ impl Project {
         let mut index = suffix.parse::<u32>().unwrap_or(1);
         loop {
             // Check if the resource_name exists, if not increment index
-            let new_path: ResourcePathName = format!("{}{}", name, index).into();
+            let mut new_path = format!("{}{}", name, index).into();
+
+            if let Some(ref ext) = ext {
+                new_path = new_path + "." + ext.as_str();
+            }
+
             if !self.exists_named(&new_path).await {
                 return new_path;
             }
@@ -339,25 +354,12 @@ impl Project {
             build_deps
         };
 
-        let content_checksum = {
-            let mut resource_file =
-                File::open(&resource_path).map_err(|e| Error::Io(resource_path.clone(), e))?;
-            content_checksum_from_read(&mut resource_file)
-                .map_err(|e| Error::Io(resource_path.clone(), e))?
-        };
-
         let meta_file = File::create(&meta_path).map_err(|e| {
             fs::remove_file(&resource_path).unwrap();
             Error::Io(meta_path.clone(), e)
         })?;
 
-        let metadata = Metadata::new_with_dependencies(
-            name,
-            kind_name,
-            kind,
-            content_checksum,
-            &build_dependencies,
-        );
+        let metadata = Metadata::new_with_dependencies(name, kind_name, kind, &build_dependencies);
         serde_json::to_writer_pretty(meta_file, &metadata).unwrap();
 
         {
@@ -423,14 +425,6 @@ impl Project {
             build_deps
         };
 
-        let content_checksum = {
-            let mut resource_file =
-                File::open(&resource_path).map_err(|e| Error::Io(resource_path.clone(), e))?;
-            content_checksum_from_read(&mut resource_file)
-                .map_err(|e| Error::Io(resource_path.clone(), e))?
-        };
-
-        metadata.content_checksum = content_checksum;
         metadata.dependencies = build_dependencies;
 
         meta_file.set_len(0).unwrap();
@@ -471,12 +465,11 @@ impl Project {
     pub fn resource_info(
         &self,
         id: ResourceId,
-    ) -> Result<(ResourceType, ResourceHash, Vec<ResourcePathId>), Error> {
+    ) -> Result<(ResourceType, Vec<ResourcePathId>), Error> {
         let meta = self.read_meta(id)?;
-        let resource_hash = meta.resource_hash();
         let dependencies = meta.dependencies;
 
-        Ok((meta.type_id, resource_hash, dependencies))
+        Ok((meta.type_id, dependencies))
     }
 
     /// Returns type of the resource.
@@ -603,7 +596,7 @@ impl Project {
     /// Moves `local` resources to `remote` resource list.
     pub async fn commit(&mut self, message: &str) -> Result<(), Error> {
         self.workspace
-            .commit(message)
+            .commit(message, CommitMode::Lenient)
             .await
             .map_err(Error::SourceControl)
             .map(|_| ())
@@ -980,6 +973,47 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn change_to_previous() {
+        let root = tempfile::tempdir().unwrap();
+        let mut project = Project::create_new(root.path()).await.expect("new project");
+        let resources = create_actor(&mut project).await;
+        let mut resources = resources.lock().await;
+
+        let actor_id = project
+            .find_resource(&ResourcePathName::new("hero.actor"))
+            .await
+            .unwrap();
+
+        project.commit("initial actor").await.unwrap();
+
+        // modify resource
+        let original_content = {
+            let handle = project.load_resource(actor_id, &mut resources).unwrap();
+            let content = handle.get_mut::<NullResource>(&mut resources).unwrap();
+            let previous_value = content.content;
+            content.content = 9;
+            project
+                .save_resource(actor_id, &handle, &mut resources)
+                .await
+                .unwrap();
+
+            previous_value
+        };
+
+        {
+            let handle = project.load_resource(actor_id, &mut resources).unwrap();
+            let content = handle.get_mut::<NullResource>(&mut resources).unwrap();
+            content.content = original_content;
+            project
+                .save_resource(actor_id, &handle, &mut resources)
+                .await
+                .unwrap();
+        }
+
+        project.commit("no changes").await.unwrap();
+    }
+
+    #[tokio::test]
     async fn immediate_dependencies() {
         let root = tempfile::tempdir().unwrap();
         let mut project = Project::create_new(root.path()).await.expect("new project");
@@ -990,7 +1024,7 @@ mod tests {
             .await
             .unwrap();
 
-        let (_, _, dependencies) = project.resource_info(top_level_resource.id).unwrap();
+        let (_, dependencies) = project.resource_info(top_level_resource.id).unwrap();
 
         assert_eq!(dependencies.len(), 2);
     }

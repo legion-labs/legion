@@ -2,14 +2,12 @@ use lgn_math::prelude::*;
 
 #[component]
 struct Transform {
-    #[legion(default=(0.0,0.0,0.0))]
+    #[legion(default = Vec3::ZERO)]
     pub position: Vec3,
 
-    #[legion(default= Quat::IDENTITY)]
+    #[legion(default = Quat::IDENTITY)]
     pub rotation: Quat,
 
-    #[legion(default=(1.0,1.0,1.0))]
+    #[legion(default = Vec3::ONE)]
     pub scale: Vec3,
-
-    pub apply_to_children: bool,
 }

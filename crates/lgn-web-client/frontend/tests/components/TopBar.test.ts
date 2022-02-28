@@ -1,8 +1,10 @@
-import TopBar from "@/components/TopBar.svelte";
-import { render, fireEvent } from "@testing-library/svelte";
+import TopBar from "../../src/components/TopBar.svelte";
+import { render, fireEvent, cleanup } from "@testing-library/svelte";
 
 describe("TopBar", () => {
-  it("works", async () => {
+  afterEach(() => cleanup());
+
+  test("works", async () => {
     const { getByTestId } = render(TopBar);
 
     const file = getByTestId("menu-1");

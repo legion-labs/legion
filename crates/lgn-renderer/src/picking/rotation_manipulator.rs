@@ -40,10 +40,8 @@ impl RotationManipulator {
         commands: &mut Commands<'_, '_>,
         picking_context: &mut PickingIdContext<'_>,
     ) {
-        let rotate_x_pointer =
-            Mat4::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), std::f32::consts::PI * 0.5);
-        let rotate_y_pointer =
-            Mat4::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), std::f32::consts::PI * 0.5);
+        let rotate_x_pointer = Mat4::from_axis_angle(Vec3::Y, std::f32::consts::PI * 0.5);
+        let rotate_y_pointer = Mat4::from_axis_angle(Vec3::X, std::f32::consts::PI * 0.5);
 
         let red = (255, 0, 0).into();
         let green = (0, 255, 0).into();
@@ -93,9 +91,9 @@ impl RotationManipulator {
     ) -> Transform {
         let plane_point = base_entity_transform.translation;
         let plane_normal = match component {
-            RotationComponents::XAxis => Vec3::new(1.0, 0.0, 0.0),
-            RotationComponents::YAxis => Vec3::new(0.0, 1.0, 0.0),
-            RotationComponents::ZAxis => Vec3::new(0.0, 0.0, 1.0),
+            RotationComponents::XAxis => Vec3::X,
+            RotationComponents::YAxis => Vec3::Y,
+            RotationComponents::ZAxis => Vec3::Z,
         };
 
         let picked_world_point =

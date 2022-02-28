@@ -1,13 +1,12 @@
 use std::net::SocketAddr;
 
 use http::{Request, Response};
-use lambda_http::handler;
 use lgn_tracing::info;
 use tonic::{body::BoxBody, transport::NamedService};
 use tower::Service;
 
-use super::{aws_lambda_handler::AwsLambdaHandler, Error, Result};
-use crate::aws::lambda::is_running_as_lambda;
+use super::{Error, Result};
+use crate::aws::lambda::{is_running_as_lambda, AwsLambdaHandler};
 
 #[derive(Default)]
 pub struct Server {
@@ -35,12 +34,7 @@ impl Server {
 
         match ExecutionEnvironment::guess() {
             ExecutionEnvironment::AWSLambda => {
-                let handler = handler(AwsLambdaHandler::new(service));
-
-                info!(
-                    "AWS Lambda execution environment detected: starting gRPC-web server as lambda..."
-                );
-
+                let handler = lambda_http::Adapter::from(AwsLambdaHandler::new(service));
                 lambda_runtime::run(handler)
                     .await
                     .map_err(Into::into)

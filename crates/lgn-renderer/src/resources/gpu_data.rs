@@ -1,10 +1,9 @@
 use std::collections::BTreeMap;
 
 use lgn_app::{App, CoreStage, Plugin};
-use lgn_core::BumpAllocatorPool;
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::{Added, Changed, Entity, Query, Res, ResMut};
-use lgn_graphics_api::{PagedBufferAllocation, VertexBufferBinding};
+use lgn_graphics_api::VertexBufferBinding;
 use lgn_math::Vec4;
 use lgn_tracing::span_fn;
 use lgn_transform::components::GlobalTransform;
@@ -17,8 +16,8 @@ use crate::{
 };
 
 use super::{
-    BindlessTextureManager, IndexAllocator, IndexBlock, PipelineManager, UnifiedStaticBuffer,
-    UniformGPUData, UniformGPUDataUpdater,
+    BindlessTextureManager, DescriptorHeapManager, IndexAllocator, IndexBlock, PipelineManager,
+    StaticBufferAllocation, UnifiedStaticBuffer, UniformGPUData, UniformGPUDataUpdater,
 };
 
 pub struct GpuDataPlugin {
@@ -38,6 +37,7 @@ pub(crate) struct GpuDataManager<K, T> {
     index_allocator: IndexAllocator,
     data_map: BTreeMap<K, Vec<(u32, u64)>>,
     default_uploaded: bool,
+    default_id: u32,
     default_va: u64,
 }
 
@@ -56,6 +56,7 @@ impl<K, T> GpuDataManager<K, T> {
             index_allocator,
             data_map: BTreeMap::new(),
             default_uploaded: false,
+            default_id,
             default_va,
         }
     }
@@ -75,6 +76,18 @@ impl<K, T> GpuDataManager<K, T> {
         (gpu_data_id, gpu_data_va)
     }
 
+    pub fn id_for_index(&self, optional: Option<K>, index: usize) -> u32
+    where
+        K: Ord,
+    {
+        if let Some(key) = optional {
+            if let Some(value) = self.data_map.get(&key) {
+                return value[index].0;
+            }
+        }
+        self.default_id
+    }
+
     pub fn va_for_index(&self, optional: Option<K>, index: usize) -> u64
     where
         K: Ord,
@@ -85,18 +98,6 @@ impl<K, T> GpuDataManager<K, T> {
             }
         }
         self.default_va
-    }
-
-    pub fn id_va_list(&self, optional: Option<K>) -> Option<&[(u32, u64)]>
-    where
-        K: Ord,
-    {
-        if let Some(key) = optional {
-            if let Some(value) = self.data_map.get(&key) {
-                return Some(value);
-            }
-        }
-        None
     }
 
     pub fn update_gpu_data(
@@ -113,7 +114,7 @@ impl<K, T> GpuDataManager<K, T> {
         }
     }
 
-    pub fn remove_gpu_data(&mut self, key: &K)
+    pub fn remove_gpu_data(&mut self, key: &K) -> Option<Vec<u32>>
     where
         K: Ord,
     {
@@ -123,6 +124,10 @@ impl<K, T> GpuDataManager<K, T> {
                 instance_ids.push(data.0);
             }
             self.index_allocator.release_index_ids(&instance_ids);
+
+            Some(instance_ids)
+        } else {
+            None
         }
     }
 
@@ -238,13 +243,14 @@ fn alloc_material_address(
 #[span_fn]
 #[allow(clippy::needless_pass_by_value)]
 fn allocate_bindless_textures(
-    renderer: ResMut<'_, Renderer>,
+    renderer: Res<'_, Renderer>,
     pipeline_manager: Res<'_, PipelineManager>,
-    bump_allocator_pool: ResMut<'_, BumpAllocatorPool>,
+
     mut bindless_tex_manager: ResMut<'_, BindlessTextureManager>,
+    descriptor_heap_manager: Res<'_, DescriptorHeapManager>,
     mut updated_textures: Query<'_, '_, &mut TextureComponent, Changed<TextureComponent>>,
 ) {
-    let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool, &pipeline_manager);
+    let render_context = RenderContext::new(&renderer, &descriptor_heap_manager, &pipeline_manager);
     let cmd_buffer = render_context.alloc_command_buffer();
 
     let mut index_block = None;
@@ -260,8 +266,6 @@ fn allocate_bindless_textures(
     render_context
         .graphics_queue()
         .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
-
-    render_context.release_bump_allocator(&bump_allocator_pool);
 }
 
 #[span_fn]
@@ -348,12 +352,12 @@ fn upload_material_data(
 #[span_fn]
 #[allow(clippy::needless_pass_by_value)]
 fn upload_bindless_textures(
-    renderer: ResMut<'_, Renderer>,
+    renderer: Res<'_, Renderer>,
     pipeline_manager: Res<'_, PipelineManager>,
-    bump_allocator_pool: ResMut<'_, BumpAllocatorPool>,
     bindless_tex_manager: ResMut<'_, BindlessTextureManager>,
+    descriptor_heap_manager: Res<'_, DescriptorHeapManager>,
 ) {
-    let mut render_context = RenderContext::new(&renderer, &bump_allocator_pool, &pipeline_manager);
+    let render_context = RenderContext::new(&renderer, &descriptor_heap_manager, &pipeline_manager);
     let cmd_buffer = render_context.alloc_command_buffer();
 
     bindless_tex_manager.upload_textures(renderer.device_context(), &cmd_buffer);
@@ -361,8 +365,6 @@ fn upload_bindless_textures(
     render_context
         .graphics_queue()
         .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
-
-    render_context.release_bump_allocator(&bump_allocator_pool);
 }
 
 #[span_fn]
@@ -376,7 +378,7 @@ fn mark_defaults_as_uploaded(
 }
 
 pub(crate) struct GpuVaTableForGpuInstance {
-    static_allocation: PagedBufferAllocation,
+    static_allocation: StaticBufferAllocation,
 }
 
 impl GpuVaTableForGpuInstance {

@@ -119,7 +119,6 @@
         <Icon icon="ic:baseline-keyboard-arrow-down" />
       </div>
     </div>
-    <!-- on:mouseenter={resetHighlightedOptionIndex} -->
     <div class="options" class:hidden={!isOpen} use:keyboardNavigationContainer>
       {#if $$slots.unselect}
         <div
@@ -188,7 +187,7 @@
   }
 
   .selected-label {
-    @apply flex flex-row h-full w-full p-2 justify-between;
+    @apply flex flex-row h-full w-full px-2 justify-between items-center;
   }
 
   .disabled .icon {
@@ -200,7 +199,7 @@
   }
 
   .options {
-    @apply max-h-44 overflow-auto absolute py-1 mt-1 bg-gray-800 rounded-sm w-full shadow-lg shadow-gray-800;
+    @apply max-h-44 overflow-auto absolute z-10 py-1 mt-1 bg-gray-800 rounded-sm w-full shadow-lg shadow-gray-800;
   }
 
   .option {

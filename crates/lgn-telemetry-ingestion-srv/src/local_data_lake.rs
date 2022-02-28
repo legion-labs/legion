@@ -1,24 +1,9 @@
 use anyhow::{Context, Result};
 use lgn_blob_storage::LocalBlobStorage;
-use lgn_tracing::info;
 use sqlx::migrate::MigrateDatabase;
 use std::path::PathBuf;
 
-use crate::{
-    ingestion_service::IngestionService,
-    local_telemetry_db::{create_tables, read_schema_version},
-};
-
-async fn migrate_db(connection: &mut sqlx::AnyConnection) -> Result<()> {
-    let mut current_version = read_schema_version(connection).await;
-    if 0 == current_version {
-        info!("creating v1 schema");
-        create_tables(connection).await?;
-        current_version = read_schema_version(connection).await;
-    }
-    assert_eq!(current_version, 1);
-    Ok(())
-}
+use crate::{ingestion_service::IngestionService, sql_migration::execute_migration};
 
 pub async fn connect_to_local_data_lake(path: PathBuf) -> Result<IngestionService> {
     let blocks_folder = path.join("blobs");
@@ -38,6 +23,6 @@ pub async fn connect_to_local_data_lake(path: PathBuf) -> Result<IngestionServic
         .await
         .with_context(|| String::from("Connecting to telemetry database"))?;
     let mut connection = pool.acquire().await?;
-    migrate_db(&mut connection).await?;
+    execute_migration(&mut connection).await?;
     Ok(IngestionService::new(pool, Box::new(blob_storage)))
 }

@@ -25,7 +25,7 @@ impl HddContentStore {
     }
 
     fn content_path(&self, id: Checksum) -> PathBuf {
-        let bytes = id.to_be_bytes();
+        let bytes = id.to_bytes();
         let hex = hex::encode(bytes);
         self.address.0.clone().join(hex)
     }

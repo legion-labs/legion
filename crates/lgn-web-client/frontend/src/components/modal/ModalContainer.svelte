@@ -23,7 +23,9 @@ using the `openModal` function provided by the `lib/modal.ts` module) and open u
   <div
     class="root"
     class:with-lg-margin={window.__TAURI_METADATA__}
+    on:keydown={(event) => event.key === "Escape" && store.close(id)}
     transition:fade={{ duration: config?.noTransition ? 0 : 100 }}
+    tabindex={-1}
   >
     <div>
       <svelte:component this={content} close={() => store.close(id)} {config} />

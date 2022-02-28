@@ -2,7 +2,7 @@
 
 use std::{any::Any, io};
 
-use lgn_data_model::implement_primitive_type_def;
+use lgn_data_model::implement_reference_type_def;
 use lgn_data_runtime::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
 use serde::{Deserialize, Serialize};
 
@@ -19,7 +19,7 @@ pub struct Texture {
     /// Desired HW texture format
     pub format: TextureFormat,
     /// Mip chain pixel data of the image in hardware encoded form
-    pub texture_data: Vec<Vec<u8>>,
+    pub texture_data: Vec<serde_bytes::ByteBuf>,
 }
 
 impl Asset for Texture {
@@ -45,22 +45,16 @@ impl Texture {
                 format,
                 alpha_blended,
                 rgba,
-            ),
+            )
+            .into_iter()
+            .map(serde_bytes::ByteBuf::from)
+            .collect::<Vec<_>>(),
         };
         bincode::serialize_into(writer, &texture).unwrap();
     }
 }
 
-/// Reference Type for Texture
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Clone)]
-pub struct TextureReferenceType(lgn_data_runtime::Reference<Texture>);
-impl TextureReferenceType {
-    /// Expose internal id
-    pub fn id(&self) -> lgn_data_runtime::ResourceTypeAndId {
-        self.0.id()
-    }
-}
-implement_primitive_type_def!(TextureReferenceType);
+implement_reference_type_def!(TextureReferenceType, Texture);
 
 /// Loader of [`Texture`].
 #[derive(Default)]

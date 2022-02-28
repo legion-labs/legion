@@ -23,6 +23,7 @@ export default class<Item extends { path: string }> implements Orchestrator {
     this.entries = new Writable(Entries.fromArray(resources, Symbol));
   }
 
+  /** Loads an array of element as hierarchy tree entries in the store */
   load(resources: Item[]) {
     this.entries.set(Entries.fromArray(resources, Symbol));
   }

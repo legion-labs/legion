@@ -1,9 +1,8 @@
 {
-  "name": "/scene/Pad Right",
+  "name": "/scene/pad-right.ent",
   "type_name": "offline_entity",
   "type_id": "1c0ff9e497b0740f",
   "dependencies": [
     "(45307156cdfef705,e93151b6-3635-4a30-9f3e-e6052929d85a)|17bed132bc803773"
-  ],
-  "content_checksum": "d3056ce6affa658339663c6843c2256a"
+  ]
 }

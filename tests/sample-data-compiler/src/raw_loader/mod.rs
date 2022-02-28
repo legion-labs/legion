@@ -16,7 +16,7 @@ use lgn_data_offline::resource::{
     Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
 };
 use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
-use lgn_graphics_data::{offline_png::PngFile, offline_psd::PsdFile};
+use lgn_graphics_data::{offline_gltf::GltfFile, offline_png::PngFile, offline_psd::PsdFile};
 use sample_data::offline as offline_data;
 use serde::de::DeserializeOwned;
 use tokio::sync::Mutex;
@@ -34,7 +34,38 @@ pub async fn build_offline(root_folder: impl AsRef<Path>) {
             let (mut project, resources) = setup_project(root_folder).await;
             let mut resources = resources.lock().await;
 
-            let file_paths = find_files(&raw_dir, &["ent", "ins", "mat", "mesh", "psd", "png"]);
+            let mut file_paths = find_files(&raw_dir, &["ent", "ins", "mat", "psd", "png", "gltf"]);
+
+            let gltf_folders = file_paths
+                .iter()
+                .filter_map(|v| {
+                    let mut v = v.clone();
+                    if let Some(extension) = v.extension() {
+                        if extension.eq("gltf") && v.pop() {
+                            Some(v)
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<PathBuf>>();
+
+            // hack to only load .png unassociated with .gltf
+            file_paths = file_paths
+                .iter()
+                .filter(|v| {
+                    let mut f = (*v).clone();
+                    if let Some(extension) = v.extension() {
+                        if f.pop() && !(extension.eq("png") && gltf_folders.contains(&f)) {
+                            return true;
+                        }
+                    }
+                    false
+                })
+                .cloned()
+                .collect();
 
             let file_paths_guids = file_paths
                 .iter()
@@ -91,21 +122,14 @@ pub async fn build_offline(root_folder: impl AsRef<Path>) {
                         )
                         .await;
                     }
-                    "mesh" => {
-                        load_ron_resource::<raw_data::Mesh, offline_data::Mesh>(
-                            resource_id,
-                            path,
-                            &resource_ids,
-                            &mut project,
-                            &mut resources,
-                        )
-                        .await;
-                    }
                     "psd" => {
                         load_psd_resource(resource_id, path, &mut project, &mut resources).await;
                     }
                     "png" => {
                         load_png_resource(resource_id, path, &mut project, &mut resources).await;
+                    }
+                    "gltf" => {
+                        load_gltf_resource(resource_id, path, &mut project, &mut resources).await;
                     }
                     _ => panic!(),
                 }
@@ -137,7 +161,8 @@ async fn setup_project(root_folder: &Path) -> (Project, Arc<Mutex<ResourceRegist
     lgn_graphics_data::offline::register_resource_types(&mut registry)
         .add_type_mut::<lgn_graphics_data::offline_texture::Texture>()
         .add_type_mut::<lgn_graphics_data::offline_psd::PsdFile>()
-        .add_type_mut::<lgn_graphics_data::offline_png::PngFile>();
+        .add_type_mut::<lgn_graphics_data::offline_png::PngFile>()
+        .add_type_mut::<lgn_graphics_data::offline_gltf::GltfFile>();
     generic_data::offline::register_resource_types(&mut registry);
     let registry = registry.create_async_registry();
 
@@ -155,7 +180,6 @@ fn ext_to_resource_kind(ext: &str) -> (&str, ResourceType) {
             lgn_graphics_data::offline::Material::TYPENAME,
             lgn_graphics_data::offline::Material::TYPE,
         ),
-        "mesh" => (offline_data::Mesh::TYPENAME, offline_data::Mesh::TYPE),
         "psd" => (
             lgn_graphics_data::offline_psd::PsdFile::TYPENAME,
             lgn_graphics_data::offline_psd::PsdFile::TYPE,
@@ -163,6 +187,10 @@ fn ext_to_resource_kind(ext: &str) -> (&str, ResourceType) {
         "png" => (
             lgn_graphics_data::offline_png::PngFile::TYPENAME,
             lgn_graphics_data::offline_png::PngFile::TYPE,
+        ),
+        "gltf" => (
+            lgn_graphics_data::offline_gltf::GltfFile::TYPENAME,
+            lgn_graphics_data::offline_gltf::GltfFile::TYPE,
         ),
         _ => panic!(),
     }
@@ -308,18 +336,6 @@ async fn build_debug_cubes(
 
             cube_entity
                 .components
-                .push(Box::new(offline_data::RotationComponent {
-                    rotation_speed: match index {
-                        0 => (0.4f32, 0.0f32, 0.0f32).into(),
-                        1 => (0.0f32, 0.4f32, 0.0f32).into(),
-                        2 => (0.0f32, 0.0f32, 0.4f32).into(),
-                        3 => (0.0f32, 0.3f32, 0.0f32).into(),
-                        _ => (0.0f32, 0.0f32, 0.0f32).into(),
-                    },
-                }));
-
-            cube_entity
-                .components
                 .push(Box::new(offline_data::Transform {
                     position: match index {
                         0 => (0.0f32, 0.0f32, 1.0f32).into(),
@@ -331,19 +347,16 @@ async fn build_debug_cubes(
                     ..sample_data::offline::Transform::default()
                 }));
 
-            cube_entity
-                .components
-                .push(Box::new(offline_data::StaticMesh {
-                    mesh_id: lgn_graphics_data::DefaultMeshType::Cube,
-                    color: match index {
-                        0 => (255, 0, 0).into(),
-                        1 => (255, 255, 0).into(),
-                        2 => (255, 0, 255).into(),
-                        3 => (0, 0, 255).into(),
-                        _ => (192, 192, 192).into(),
-                    },
-                    ..sample_data::offline::StaticMesh::default()
-                }));
+            cube_entity.components.push(Box::new(offline_data::Visual {
+                color: match index {
+                    0 => (255, 0, 0).into(),
+                    1 => (255, 255, 0).into(),
+                    2 => (255, 0, 255).into(),
+                    3 => (0, 0, 255).into(),
+                    _ => (192, 192, 192).into(),
+                },
+                ..sample_data::offline::Visual::default()
+            }));
 
             project
                 .add_resource_with_id(
@@ -469,15 +482,32 @@ async fn load_png_resource(
     project: &mut Project,
     resources: &mut ResourceRegistry,
 ) -> Option<ResourceTypeAndId> {
-    let loaded_png = PngFile::from_file_path(file)?;
+    let reader = fs::read(file).ok()?;
+    let handle = resources
+        .deserialize_resource(PngFile::TYPE, &mut reader.as_slice())
+        .ok()?;
+    project
+        .save_resource(resource_id, handle, resources)
+        .await
+        .unwrap();
+    Some(resource_id)
+}
+
+async fn load_gltf_resource(
+    resource_id: ResourceTypeAndId,
+    file: &Path,
+    project: &mut Project,
+    resources: &mut ResourceRegistry,
+) -> Option<ResourceTypeAndId> {
+    let loaded_mesh = GltfFile::from_path(file);
 
     let resource = project
         .load_resource(resource_id, resources)
         .unwrap()
-        .typed::<PngFile>();
+        .typed::<GltfFile>();
 
     let initial_resource = resource.get_mut(resources).unwrap();
-    *initial_resource = loaded_png;
+    *initial_resource = loaded_mesh;
 
     project
         .save_resource(resource_id, resource, resources)

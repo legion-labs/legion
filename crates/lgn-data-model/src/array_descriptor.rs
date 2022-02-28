@@ -19,16 +19,16 @@ pub struct ArrayDescriptor {
     /// Type of the Vec Element
     pub inner_type: TypeDefinition,
     /// Function to return the array size
-    pub len: unsafe fn(array: *const ()) -> usize,
+    pub len: fn(array: *const ()) -> usize,
     /// Function to return an element raw pointer
-    pub get: unsafe fn(array: *const (), index: usize) -> Result<*const (), ReflectionError>,
+    pub get: fn(array: *const (), index: usize) -> Result<*const (), ReflectionError>,
     /// Function to return an element mutable raw pointer
-    pub get_mut: unsafe fn(array: *mut (), index: usize) -> Result<*mut (), ReflectionError>,
+    pub get_mut: fn(array: *mut (), index: usize) -> Result<*mut (), ReflectionError>,
     /// Function to clear an array
-    pub clear: unsafe fn(array: *mut ()),
+    pub clear: fn(array: *mut ()),
 
     /// Function to insert a new defualt element at the specified index
-    pub insert_element: unsafe fn(
+    pub insert_element: fn(
         array: *mut (),
         index: Option<usize>,
         deserializer: &mut dyn ::erased_serde::Deserializer<'_>,
@@ -38,11 +38,8 @@ pub struct ArrayDescriptor {
     pub delete_element: DeleteElementFunction,
 
     /// Function to reorder an element with an array
-    pub reorder_element: unsafe fn(
-        array: *mut (),
-        old_index: usize,
-        new_index: usize,
-    ) -> Result<(), ReflectionError>,
+    pub reorder_element:
+        fn(array: *mut (), old_index: usize, new_index: usize) -> Result<(), ReflectionError>,
 
     /// Function to search and delete a value in an array
     pub delete_value: DeleteValueFunction,
@@ -67,7 +64,7 @@ macro_rules! implement_array_descriptor {
     ($type_id:ty) => {
         lazy_static::lazy_static! {
             static ref ARRAY_DESCRIPTOR: $crate::ArrayDescriptor = $crate::ArrayDescriptor {
-                base_descriptor : $crate::create_base_descriptor!(Vec<$type_id>, concat!("Vec<",stringify!($type_id),">").into()),
+                base_descriptor : $crate::create_base_descriptor!(Vec<$type_id>, concat!("Vec<",stringify!($type_id),">").into(), Result::<Vec::<$type_id>, $crate::ReflectionError>::Ok(Vec::<$type_id>::new())),
                 inner_type: <$type_id as $crate::TypeReflection>::get_type_def(),
                 len: |array: *const ()| unsafe { (*(array as *const Vec<$type_id>)).len() },
                 get: |array: *const (), index: usize| unsafe {
@@ -96,6 +93,7 @@ macro_rules! implement_array_descriptor {
                     array.insert(index, new_element);
                     Ok(())
                 },
+
                 delete_element : |array: *mut(), index : usize, old_value_ser:  Option<&mut dyn::erased_serde::Serializer> | unsafe {
                     let array = &mut (*(array as *mut Vec<$type_id>));
                     if index >= array.len() {

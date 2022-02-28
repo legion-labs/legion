@@ -21,10 +21,7 @@ use lgn_renderer::{
     resources::{DefaultMeshType, PipelineManager},
     {Renderer, RendererPlugin},
 };
-use lgn_transform::{
-    components::{GlobalTransform, Transform},
-    TransformPlugin,
-};
+use lgn_transform::prelude::{Transform, TransformBundle, TransformPlugin};
 use lgn_window::{WindowDescriptor, WindowPlugin, Windows};
 use lgn_winit::{WinitConfig, WinitPlugin, WinitWindows};
 use sample_data::SampleDataPlugin;
@@ -187,41 +184,46 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
     // sphere 1
     commands
         .spawn()
-        .insert(Transform::from_xyz(-0.5, 0.0, 0.0))
-        .insert(GlobalTransform::identity())
-        .insert(VisualComponent::new(
-            DefaultMeshType::Sphere as usize,
+        .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
+            -0.5, 0.0, 0.0,
+        )))
+        .insert(VisualComponent::new_default_mesh(
+            DefaultMeshType::Sphere,
             (255, 0, 0).into(),
         ));
 
     // sphere 2
     commands
         .spawn()
-        .insert(Transform::from_xyz(0.0, 0.0, 0.0))
-        .insert(VisualComponent::new(
-            DefaultMeshType::Sphere as usize,
+        .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
+            0.5, 0.0, 0.0,
+        )))
+        .insert(VisualComponent::new_default_mesh(
+            DefaultMeshType::Sphere,
             (0, 255, 0).into(),
         ));
 
     // sphere 3
     commands
         .spawn()
-        .insert(Transform::from_xyz(0.5, 0.0, 0.0))
-        .insert(GlobalTransform::identity())
-        .insert(VisualComponent::new(
-            DefaultMeshType::Sphere as usize,
+        .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
+            0.0, 0.0, 0.0,
+        )))
+        .insert(VisualComponent::new_default_mesh(
+            DefaultMeshType::Sphere,
             (0, 0, 255).into(),
         ));
 
     // directional light
     commands
         .spawn()
-        .insert(Transform::from_xyz(0.0, 1.0, 0.0))
-        .insert(GlobalTransform::identity())
+        .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
+            0.0, 1.0, 0.0,
+        )))
         .insert(LightComponent {
             light_type: LightType::Directional,
             radiance: 40.0,
-            color: Vec3::new(1.0, 1.0, 1.0),
+            color: Vec3::ONE,
             enabled: false,
             ..LightComponent::default()
         });
@@ -229,12 +231,13 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
     // omnidirectional light 1
     commands
         .spawn()
-        .insert(Transform::from_xyz(1.0, 1.0, 0.0))
-        .insert(GlobalTransform::identity())
+        .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
+            1.0, 1.0, 0.0,
+        )))
         .insert(LightComponent {
             light_type: LightType::Omnidirectional,
             radiance: 40.0,
-            color: Vec3::new(1.0, 1.0, 1.0),
+            color: Vec3::ONE,
             enabled: false,
             ..LightComponent::default()
         });
@@ -242,12 +245,13 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
     // omnidirectional light 2
     commands
         .spawn()
-        .insert(Transform::from_xyz(-1.0, 1.0, 0.0))
-        .insert(GlobalTransform::identity())
+        .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
+            -1.0, 1.0, 0.0,
+        )))
         .insert(LightComponent {
             light_type: LightType::Omnidirectional,
             radiance: 40.0,
-            color: Vec3::new(1.0, 1.0, 1.0),
+            color: Vec3::ONE,
             enabled: false,
             ..LightComponent::default()
         });
@@ -255,14 +259,15 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
     // spotlight
     commands
         .spawn()
-        .insert(Transform::from_xyz(0.0, 1.0, 0.0))
-        .insert(GlobalTransform::identity())
+        .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
+            0.0, 1.0, 0.0,
+        )))
         .insert(LightComponent {
             light_type: LightType::Spotlight {
                 cone_angle: std::f32::consts::PI / 4.0,
             },
             radiance: 40.0,
-            color: Vec3::new(1.0, 1.0, 1.0),
+            color: Vec3::ONE,
             enabled: true,
             ..LightComponent::default()
         });
@@ -271,36 +276,40 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
 fn init_scene(mut commands: Commands<'_, '_>) {
     commands
         .spawn()
-        .insert(Transform::from_xyz(-0.5, -0.1, 0.0))
-        .insert(GlobalTransform::identity())
-        .insert(VisualComponent::new(
-            DefaultMeshType::Plane as usize,
+        .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
+            -0.5, -0.1, 0.0,
+        )))
+        .insert(VisualComponent::new_default_mesh(
+            DefaultMeshType::Plane,
             (255, 0, 0).into(),
         ));
 
     commands
         .spawn()
-        .insert(Transform::from_xyz(0.0, 0.0, 0.0))
-        .insert(GlobalTransform::identity())
-        .insert(VisualComponent::new(
-            DefaultMeshType::Cube as usize,
+        .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
+            0.0, 0.0, 0.0,
+        )))
+        .insert(VisualComponent::new_default_mesh(
+            DefaultMeshType::Cube,
             (0, 255, 0).into(),
         ));
 
     commands
         .spawn()
-        .insert(Transform::from_xyz(0.5, 0.0, 0.0))
-        .insert(GlobalTransform::identity())
-        .insert(VisualComponent::new(
-            DefaultMeshType::Pyramid as usize,
+        .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
+            0.5, 0.0, 0.0,
+        )))
+        .insert(VisualComponent::new_default_mesh(
+            DefaultMeshType::Pyramid,
             (0, 0, 255).into(),
         ));
 
     // omnidirectional light
     commands
         .spawn()
-        .insert(Transform::from_xyz(1.0, 1.0, 0.0))
-        .insert(GlobalTransform::identity())
+        .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
+            1.0, 1.0, 0.0,
+        )))
         .insert(LightComponent {
             light_type: LightType::Omnidirectional,
             radiance: 10.0,

@@ -41,6 +41,7 @@ pub(crate) fn generate(
             registry.add_loader::<OfflineType>()
         }
 
+        #[lgn_tracing::span_fn]
         fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
             let resources = context.registry();
 

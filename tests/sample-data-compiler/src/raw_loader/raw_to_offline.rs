@@ -137,12 +137,6 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
                 raw_data::Component::Light(raw) => {
                     components.push(Box::new(Into::<offline_data::Light>::into(raw)));
                 }
-                raw_data::Component::Physics(raw) => {
-                    components.push(Box::new(offline_data::Physics::from_raw(raw, references)));
-                }
-                raw_data::Component::StaticMesh(raw) => {
-                    components.push(Box::new(Into::<offline_data::StaticMesh>::into(raw)));
-                }
             }
         }
 
@@ -160,7 +154,6 @@ impl From<raw_data::Transform> for offline_data::Transform {
             position: raw.position,
             rotation: raw.rotation,
             scale: raw.scale,
-            apply_to_children: raw.apply_to_children,
         }
     }
 }
@@ -171,7 +164,16 @@ impl FromRaw<raw_data::Visual> for offline_data::Visual {
         references: &HashMap<ResourcePathName, ResourceTypeAndId>,
     ) -> Self {
         Self {
-            renderable_geometry: lookup_asset_path(references, &raw.renderable_geometry),
+            renderable_geometry: if let Some(path) = &raw.renderable_geometry {
+                lookup_asset_path(references, path)
+            } else {
+                None
+            },
+            color: lgn_graphics_data::Color::from((
+                raw.color.x as u8,
+                raw.color.y as u8,
+                raw.color.z as u8,
+            )),
             shadow_receiver: raw.shadow_receiver,
             shadow_caster_sun: raw.shadow_caster_sun,
             shadow_caster_local: raw.shadow_caster_local,
@@ -243,42 +245,13 @@ impl From<raw_data::View> for offline_data::View {
 }*/
 
 impl From<raw_data::Light> for offline_data::Light {
-    fn from(_raw: raw_data::Light) -> Self {
-        Self {}
-    }
-}
-
-impl FromRaw<raw_data::Physics> for offline_data::Physics {
-    fn from_raw(
-        raw: raw_data::Physics,
-        references: &HashMap<ResourcePathName, ResourceTypeAndId>,
-    ) -> Self {
+    fn from(raw: raw_data::Light) -> Self {
         Self {
-            dynamic: raw.dynamic,
-            collision_geometry: lookup_asset_path(references, &raw.collision_geometry),
-        }
-    }
-}
-
-use lgn_graphics_data::DefaultMeshType;
-
-impl From<raw_data::StaticMesh> for offline_data::StaticMesh {
-    fn from(raw: raw_data::StaticMesh) -> Self {
-        Self {
-            mesh_id: match raw.mesh_id {
-                1 => DefaultMeshType::Cube,
-                2 => DefaultMeshType::Pyramid,
-                3 => DefaultMeshType::WireframeCube,
-                4 => DefaultMeshType::GroundPlane,
-                5 => DefaultMeshType::Torus,
-                6 => DefaultMeshType::Cone,
-                7 => DefaultMeshType::Cylinder,
-                8 => DefaultMeshType::Sphere,
-                9 => DefaultMeshType::Arrow,
-                10 => DefaultMeshType::RotationRing,
-                _ => DefaultMeshType::Plane,
-            },
-            ..Self::default()
+            light_type: raw.light_type,
+            color: raw.color,
+            radiance: raw.radiance,
+            enabled: raw.enabled,
+            cone_angle: raw.cone_angle,
         }
     }
 }
@@ -312,38 +285,6 @@ impl FromRaw<raw_data::Material> for lgn_graphics_data::offline::Material {
             base_metalness: raw.base_metalness,
             base_roughness: raw.base_roughness,
             reflectance: raw.reflectance,
-        }
-    }
-}
-
-// ----- Mesh conversions -----
-
-impl FromRaw<raw_data::Mesh> for offline_data::Mesh {
-    fn from_raw(
-        raw: raw_data::Mesh,
-        references: &HashMap<ResourcePathName, ResourceTypeAndId>,
-    ) -> Self {
-        Self {
-            sub_meshes: raw
-                .sub_meshes
-                .iter()
-                .map(|sub_mesh| offline_data::SubMesh::from_raw(sub_mesh, references))
-                .collect(),
-        }
-    }
-}
-
-impl FromRaw<&raw_data::SubMesh> for offline_data::SubMesh {
-    fn from_raw(
-        raw: &raw_data::SubMesh,
-        references: &HashMap<ResourcePathName, ResourceTypeAndId>,
-    ) -> Self {
-        Self {
-            positions: raw.positions.clone(),
-            normals: raw.normals.clone(),
-            uvs: raw.uvs.clone(),
-            indices: raw.indices.clone(),
-            material: lookup_asset_path(references, &raw.material),
         }
     }
 }

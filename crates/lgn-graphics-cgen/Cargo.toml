@@ -14,7 +14,7 @@ lgn-build-utils = { path = "../lgn-build-utils", version = "0.1.0" }
 anyhow = "1.0"
 clap = { version = "3.0", features = ["derive"] }
 fxhash = "0.2"
-hassle-rs = { git = "https://github.com/legion-labs/hassle-rs", branch = "com_to_tinycom" }
+hassle-rs = { git = "https://github.com/legion-labs/hassle-rs", rev = "957746c04479e7df7eb37c70ea733fc18aefcbc5" }
 heck = "0.4"
 petgraph = "0.6.0"
 proc-macro2 = "1.0"

@@ -1,0 +1,8 @@
+{
+  "name": "/world/sample_1/ground.mesh",
+  "type_name": "offline_mesh",
+  "type_id": "80b97dd7e2e9edca",
+  "dependencies": [
+    "(07dd9f5d1793ed64,48909c46-ad4f-4d6b-a522-2e16e81ba082)|738a5b850f6f8b3a"
+  ]
+}

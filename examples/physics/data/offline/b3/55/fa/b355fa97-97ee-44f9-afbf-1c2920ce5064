@@ -1,0 +1,38 @@
+{
+  "components": [
+    {
+      "Transform": {
+        "position": [
+          -1.0,
+          1.2999999523162842,
+          1.2000000476837158
+        ],
+        "rotation": [
+          -0.0998334214091301,
+          0.0,
+          0.0,
+          0.9950041770935059
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "StaticMesh": {
+        "color": 4280352767,
+        "mesh": null,
+        "mesh_id": "Cube"
+      }
+    },
+    {
+      "PhysicsRigidActor": {
+        "actor_type": "Dynamic",
+        "collision_mesh": null,
+        "collision_mesh_type": "Cube"
+      }
+    }
+  ]
+}

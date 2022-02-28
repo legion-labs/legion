@@ -3,8 +3,8 @@ use std::mem;
 use lgn_graphics_api::{
     Buffer, BufferBarrier, BufferCopy, BufferSubAllocation, CmdBlitParams,
     CmdCopyBufferToTextureParams, CmdCopyTextureParams, ColorRenderTargetBinding,
-    DepthStencilRenderTargetBinding, DescriptorSetHandle, IndexBufferBinding, IndexType, Pipeline,
-    Texture, TextureBarrier, VertexBufferBinding,
+    DepthStencilRenderTargetBinding, DescriptorSetHandle, DescriptorSetLayout, IndexBufferBinding,
+    IndexType, Pipeline, Texture, TextureBarrier, VertexBufferBinding,
 };
 
 use crate::resources::{CommandBufferHandle, CommandBufferPoolHandle};
@@ -84,17 +84,17 @@ impl<'rc> HLCommandBuffer<'rc> {
     // tmp? rely on a sort of cache. investigate!
     //
 
-    pub fn bind_descriptor_set_handle(&self, handle: DescriptorSetHandle) {
+    pub fn bind_descriptor_set(&self, layout: &DescriptorSetLayout, handle: DescriptorSetHandle) {
         assert!(self.cur_pipeline.is_some());
 
         let cur_pipeline = self.cur_pipeline.as_ref().unwrap();
         let pipeline_type = cur_pipeline.pipeline_type();
         let root_signature = cur_pipeline.root_signature();
-        let set_index = handle.frequency;
+        let set_index = layout.frequency();
 
         assert_eq!(
-            root_signature.definition().descriptor_set_layouts[set_index as usize].uid(),
-            handle.layout_uid
+            &root_signature.definition().descriptor_set_layouts[set_index as usize],
+            layout
         );
 
         self.cmd_buffer.cmd_bind_descriptor_set_handle(
@@ -143,6 +143,40 @@ impl<'rc> HLCommandBuffer<'rc> {
         );
     }
 
+    pub fn draw_indirect(
+        &self,
+        indirect_arg_buffer: &Buffer,
+        indirect_arg_offset: u64,
+        draw_count: u32,
+        stride: u32,
+    ) {
+        self.cmd_buffer.cmd_draw_indirect(
+            indirect_arg_buffer,
+            indirect_arg_offset,
+            draw_count,
+            stride,
+        );
+    }
+
+    pub fn draw_indirect_count(
+        &self,
+        indirect_arg_buffer: &Buffer,
+        indirect_arg_offset: u64,
+        count_buffer: &Buffer,
+        count_offset: u64,
+        max_draw_count: u32,
+        stride: u32,
+    ) {
+        self.cmd_buffer.cmd_draw_indirect_count(
+            indirect_arg_buffer,
+            indirect_arg_offset,
+            count_buffer,
+            count_offset,
+            max_draw_count,
+            stride,
+        );
+    }
+
     pub fn draw_indexed(&self, index_count: u32, first_index: u32, vertex_offset: i32) {
         self.cmd_buffer
             .cmd_draw_indexed(index_count, first_index, vertex_offset);
@@ -162,6 +196,40 @@ impl<'rc> HLCommandBuffer<'rc> {
             instance_count,
             first_instance,
             vertex_offset,
+        );
+    }
+
+    pub fn draw_indexed_indirect(
+        &self,
+        indirect_arg_buffer: &Buffer,
+        indirect_arg_offset: u64,
+        draw_count: u32,
+        stride: u32,
+    ) {
+        self.cmd_buffer.cmd_draw_indexed_indirect(
+            indirect_arg_buffer,
+            indirect_arg_offset,
+            draw_count,
+            stride,
+        );
+    }
+
+    pub fn draw_indexed_indirect_count(
+        &self,
+        indirect_arg_buffer: &Buffer,
+        indirect_arg_offset: u64,
+        count_buffer: &Buffer,
+        count_offset: u64,
+        max_draw_count: u32,
+        stride: u32,
+    ) {
+        self.cmd_buffer.cmd_draw_indexed_indirect_count(
+            indirect_arg_buffer,
+            indirect_arg_offset,
+            count_buffer,
+            count_offset,
+            max_draw_count,
+            stride,
         );
     }
 

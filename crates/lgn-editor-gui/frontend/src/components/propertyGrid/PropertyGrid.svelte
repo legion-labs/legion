@@ -5,10 +5,13 @@
     removeVectorSubProperty as removeVectorSubPropertyApi,
     addPropertyInPropertyVector as addPropertyInPropertyVectorApi,
   } from "@/api";
-  import { propertyIsGroup } from "@/lib/propertyGrid";
+  import { propertyIsDynComponent, propertyIsGroup } from "@/lib/propertyGrid";
   import currentResource from "@/stores/currentResource";
   import log from "@lgn/web-client/src/lib/log";
   import PropertyContainer from "./PropertyContainer.svelte";
+  import CreateComponentModal from "@/components/resources/CreateComponentModal.svelte";
+  import modal from "@/stores/modal";
+
   import {
     AddVectorSubPropertyEvent,
     RemoveVectorSubPropertyEvent,
@@ -16,6 +19,8 @@
 
   const { data: currentResourceData, error: currentResourceError } =
     currentResource;
+
+  const createComponentModalId = Symbol();
 
   const propertyUpdateDebounceTimeout = 100;
 
@@ -65,7 +70,7 @@
 
   /** Adds a new property to a vector, only useful for vectors */
   function addVectorSubProperty({
-    detail: { path, index, value },
+    detail: { path, property, index },
   }: CustomEvent<AddVectorSubPropertyEvent>) {
     if (!$currentResourceData) {
       log.error("No resources selected");
@@ -73,11 +78,21 @@
       return;
     }
 
-    addPropertyInPropertyVectorApi($currentResourceData.id, {
-      path,
-      index,
-      value,
-    });
+    if (propertyIsDynComponent(property)) {
+      modal.open(createComponentModalId, CreateComponentModal, {
+        payload: {
+          id: $currentResourceData.id,
+          path: path,
+          index: index,
+        },
+      });
+    } else {
+      addPropertyInPropertyVectorApi($currentResourceData.id, {
+        path,
+        index,
+        jsonValue: undefined,
+      });
+    }
   }
 
   /** Removes a new property from a vector, only useful for vectors */
@@ -126,6 +141,6 @@
 
 <style lang="postcss">
   .root {
-    @apply h-full px-1 py-1 overflow-y-auto;
+    @apply h-full w-full px-1 py-1 overflow-y-auto overflow-x-hidden;
   }
 </style>

@@ -12,8 +12,9 @@
 
 mod ingestion_service;
 mod local_data_lake;
-mod local_telemetry_db;
 mod remote_data_lake;
+mod sql_migration;
+mod sql_telemetry_db;
 
 use std::path::PathBuf;
 

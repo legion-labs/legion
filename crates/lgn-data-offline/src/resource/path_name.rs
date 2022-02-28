@@ -1,4 +1,4 @@
-use std::{fmt, hash::Hash, str::FromStr};
+use std::{fmt, hash::Hash, ops::Add, str::FromStr};
 
 use lgn_data_runtime::ResourceTypeAndId;
 use serde::{Deserialize, Serialize};
@@ -92,6 +92,14 @@ impl ResourcePathName {
     }
 }
 
+impl Add<&'_ str> for ResourcePathName {
+    type Output = Self;
+
+    fn add(self, rhs: &'_ str) -> Self::Output {
+        (self.0 + rhs).into()
+    }
+}
+
 impl fmt::Display for ResourcePathName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
@@ -131,5 +139,11 @@ impl From<&str> for ResourcePathName {
 impl<T: AsRef<str>> From<&T> for ResourcePathName {
     fn from(s: &T) -> Self {
         Self::from(s.as_ref().to_owned())
+    }
+}
+
+impl AsRef<str> for ResourcePathName {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
     }
 }

@@ -29,6 +29,7 @@ fn init(options: AssetRegistryOptions) -> AssetRegistryOptions {
     options.add_loader::<lgn_graphics_data::offline_psd::PsdFile>()
 }
 
+#[lgn_tracing::span_fn]
 fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
     let resources = context.registry();
 

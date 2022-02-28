@@ -8,14 +8,11 @@
   "private": true,
   "packageManager": "pnpm@6.24.1",
   "scripts": {
-    "check": "echo No checks yet",
-    "clean": "rimraf node_modules dist",
-    "test": "pnpm check"
+    "check": "pnpm check",
+    "clean": "rimraf node_modules dist"
   },
   "devDependencies": {
-    "jest": "^27.5.1",
-    "ts-jest": "^27.1.3",
-    "ts-proto": "^1.105.2",
+    "ts-proto": "^1.106.1",
     "typescript": "^4.5.5"
   },
   "dependencies": {
@@ -23,7 +20,8 @@
     "browser-headers": "^0.4.1",
     "google-protobuf": "^3.19.4",
     "long": "^5.2.0",
-    "pnpm": "^6.31.0",
-    "protobufjs": "^6.11.2"
+    "pnpm": "^6.32.1",
+    "protobufjs": "^6.11.2",
+    "rxjs": "6.6.7"
   }
 }

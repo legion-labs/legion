@@ -41,97 +41,97 @@ where
         depth: 0,
         field_descriptor: None,
     };
-    internal_collect_properties::<T>(&item_info)
+    item_info.collect::<T>()
 }
 
-fn internal_collect_properties<T>(item_info: &ItemInfo<'_>) -> Result<T::Item, ReflectionError>
-where
-    T: PropertyCollector,
-{
-    let result = match item_info.type_def {
-        TypeDefinition::None => {
-            let resource_type = item_info
-                .field_descriptor
-                .map_or(item_info.suffix.unwrap_or_default(), |f| {
-                    f.field_name.as_str()
-                });
+impl ItemInfo<'_> {
+    /// Collect all the properties of a `ItemInfo` (subfield)
+    pub fn collect<T>(&self) -> Result<T::Item, ReflectionError>
+    where
+        T: PropertyCollector,
+    {
+        let result = match self.type_def {
+            TypeDefinition::None => {
+                let resource_type = self
+                    .field_descriptor
+                    .map_or(self.suffix.unwrap_or_default(), |f| f.field_name.as_str());
 
-            return Err(ReflectionError::InvalidTypeDescriptor(resource_type.into()));
-        }
-        TypeDefinition::BoxDyn(box_dyn_descriptor) => {
-            // For BoxDyn, pipe directly to the inner type
-            let sub_base = unsafe { (box_dyn_descriptor.get_inner)(item_info.base) };
-            let sub_type = unsafe { (box_dyn_descriptor.get_inner_type)(item_info.base) };
-            internal_collect_properties::<T>(&ItemInfo {
-                base: sub_base,
-                type_def: sub_type,
-                suffix: item_info.suffix,
-                depth: item_info.depth,
-                field_descriptor: item_info.field_descriptor,
-            })?
-        }
+                return Err(ReflectionError::InvalidTypeDescriptor(resource_type.into()));
+            }
+            TypeDefinition::BoxDyn(box_dyn_descriptor) => {
+                // For BoxDyn, pipe directly to the inner type
+                let sub_base = (box_dyn_descriptor.get_inner)(self.base);
+                let sub_type = (box_dyn_descriptor.get_inner_type)(self.base);
+                let obj = ItemInfo {
+                    base: sub_base,
+                    type_def: sub_type,
+                    suffix: self.suffix,
+                    depth: self.depth,
+                    field_descriptor: self.field_descriptor,
+                };
+                obj.collect::<T>()?
+            }
 
-        TypeDefinition::Array(array_descriptor) => {
-            let mut array_parent = T::new_item(item_info)?;
-            for index in 0..unsafe { (array_descriptor.len)(item_info.base) } {
-                let base = unsafe { (array_descriptor.get)(item_info.base, index) }?;
-                let array_index =
-                    if let TypeDefinition::BoxDyn(box_dyn) = array_descriptor.inner_type {
-                        format!("[{}]", unsafe {
-                            (box_dyn.get_inner_type)(base).get_type_name()
-                        })
-                    } else {
-                        format!("[{}]", index)
+            TypeDefinition::Array(array_descriptor) => {
+                let mut array_parent = T::new_item(self)?;
+                for index in 0..(array_descriptor.len)(self.base) {
+                    let base = (array_descriptor.get)(self.base, index)?;
+                    let array_index =
+                        if let TypeDefinition::BoxDyn(box_dyn) = array_descriptor.inner_type {
+                            format!("[{}]", { (box_dyn.get_inner_type)(base).get_type_name() })
+                        } else {
+                            format!("[{}]", index)
+                        };
+
+                    let child = ItemInfo {
+                        base,
+                        type_def: array_descriptor.inner_type,
+                        suffix: Some(array_index.as_str()),
+                        depth: self.depth + 1,
+                        field_descriptor: None,
                     };
-
-                let child = internal_collect_properties::<T>(&ItemInfo {
-                    base,
-                    type_def: array_descriptor.inner_type,
-                    suffix: Some(array_index.as_str()),
-                    depth: item_info.depth + 1,
-                    field_descriptor: None,
-                })?;
-                T::add_child(&mut array_parent, child);
+                    T::add_child(&mut array_parent, child.collect::<T>()?);
+                }
+                array_parent
             }
-            array_parent
-        }
 
-        TypeDefinition::Enum(_enum_descriptor) => T::new_item(item_info)?,
-        TypeDefinition::Primitive(_primitive_descriptor) => T::new_item(item_info)?,
+            TypeDefinition::Enum(_enum_descriptor) => T::new_item(self)?,
+            TypeDefinition::Primitive(_primitive_descriptor) => T::new_item(self)?,
 
-        TypeDefinition::Option(option_descriptor) => {
-            let mut option_parent = T::new_item(item_info)?;
-            if let Some(value_base) = unsafe { (option_descriptor.get_inner)(item_info.base) } {
-                let child = internal_collect_properties::<T>(&ItemInfo {
-                    base: value_base,
-                    type_def: option_descriptor.inner_type,
-                    suffix: None,
-                    depth: item_info.depth + 1,
-                    field_descriptor: item_info.field_descriptor,
-                })?;
-                T::add_child(&mut option_parent, child);
-            }
-            option_parent
-        }
-        TypeDefinition::Struct(struct_descriptor) => {
-            let mut struct_parent = T::new_item(item_info)?;
-            struct_descriptor.fields.iter().try_for_each(
-                |field| -> Result<(), ReflectionError> {
-                    let field_base =
-                        unsafe { item_info.base.cast::<u8>().add(field.offset).cast::<()>() };
-                    let child = internal_collect_properties::<T>(&ItemInfo {
-                        base: field_base,
-                        type_def: field.field_type,
+            TypeDefinition::Option(option_descriptor) => {
+                let mut option_parent = T::new_item(self)?;
+                if let Some(value_base) = unsafe { (option_descriptor.get_inner)(self.base) } {
+                    let child = ItemInfo {
+                        base: value_base,
+                        type_def: option_descriptor.inner_type,
                         suffix: None,
-                        depth: item_info.depth + 1,
-                        field_descriptor: Some(field),
-                    })?;
-                    T::add_child(&mut struct_parent, child);
-                    Ok(())
-                },
-            )?;
-            struct_parent
-        }
-    };
-    Ok(result)
+                        depth: self.depth + 1,
+                        field_descriptor: self.field_descriptor,
+                    };
+                    T::add_child(&mut option_parent, child.collect::<T>()?);
+                }
+                option_parent
+            }
+            TypeDefinition::Struct(struct_descriptor) => {
+                let mut struct_parent = T::new_item(self)?;
+                struct_descriptor.fields.iter().try_for_each(
+                    |field| -> Result<(), ReflectionError> {
+                        let field_base =
+                            unsafe { self.base.cast::<u8>().add(field.offset).cast::<()>() };
+                        let child = ItemInfo {
+                            base: field_base,
+                            type_def: field.field_type,
+                            suffix: None,
+                            depth: self.depth + 1,
+                            field_descriptor: Some(field),
+                        };
+                        T::add_child(&mut struct_parent, child.collect::<T>()?);
+                        Ok(())
+                    },
+                )?;
+                struct_parent
+            }
+        };
+        Ok(result)
+    }
 }

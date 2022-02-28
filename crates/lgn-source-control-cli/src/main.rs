@@ -555,7 +555,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Commit { message } => {
             let workspace = Workspace::find_in_current_directory().await?;
 
-            match workspace.commit(&message).await {
+            match workspace.commit(&message, CommitMode::Strict).await {
                 Ok(_) => Ok(()),
                 Err(Error::UnchangedFilesMarkedForEdition { paths }) => {
                     let current_dir = std::env::current_dir()

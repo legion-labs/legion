@@ -1,27 +1,40 @@
 import { Point } from "@/lib/Metric/MetricPoint";
 import {
   MetricBlockData,
-  MetricManifest,
-  ProcessMetricReply,
+  MetricBlockManifest,
+  MetricDesc,
 } from "@lgn/proto-telemetry/dist/metric";
+import { get } from "svelte/store";
 import { MetricBlockState } from "./MetricBlockState";
+import { addToSelectionStore, selectionStore } from "./MetricSelectionStore";
 
 export class MetricState {
-  enabled: boolean;
   name: string;
   unit: string;
-  min: number;
-  max: number;
-  private manifest: MetricManifest;
+  min = -Infinity;
+  max = Infinity;
   private blocks: Map<string, MetricBlockState>;
-  constructor(enabled: boolean, manifest: MetricManifest) {
-    this.enabled = enabled;
-    this.manifest = manifest;
-    this.name = this.manifest.name;
-    this.unit = this.manifest.unit;
+  constructor(metricDesc: MetricDesc) {
+    this.name = metricDesc.name;
+    this.unit = metricDesc.unit;
     this.blocks = new Map();
-    for (const block of this.manifest.blocks) {
-      this.blocks.set(block.blockId, new MetricBlockState(block));
+    addToSelectionStore(this);
+  }
+
+  canBeDisplayed(): boolean {
+    const metric = get(selectionStore).filter((m) => m.name === this.name)[0];
+    if (!metric) {
+      return false;
+    }
+    return metric.selected && !metric.hidden;
+  }
+
+  registerBlock(manifest: MetricBlockManifest) {
+    if (manifest.desc) {
+      this.blocks.set(
+        manifest.desc.blockId,
+        new MetricBlockState(manifest.desc)
+      );
     }
     this.min = Math.min(
       ...Array.from(this.blocks.values()).map((v) => v.minMs)
@@ -58,14 +71,12 @@ export class MetricState {
     }
   }
 
-  store(processMetricReply: ProcessMetricReply): boolean {
+  store(blockId: string, metricBlockData: MetricBlockData): boolean {
     let mutated = false;
-    for (const blockData of processMetricReply.blocks) {
-      const block = this.blocks.get(blockData.blockId);
-      if (block) {
-        if (block.store(blockData.lod, this.mapToPoints(blockData))) {
-          mutated = true;
-        }
+    const block = this.blocks.get(blockId);
+    if (block) {
+      if (block.store(metricBlockData.lod, this.mapToPoints(metricBlockData))) {
+        mutated = true;
       }
     }
     return mutated;

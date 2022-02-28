@@ -2,31 +2,24 @@ use std::slice;
 
 use lgn_core::Handle;
 
-use lgn_ecs::prelude::Entity;
 use lgn_graphics_api::{
-    BarrierQueueTransition, BlendState, Buffer, BufferBarrier, BufferCopy, BufferDef, BufferView,
-    BufferViewDef, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState, DeviceContext,
-    Format, GraphicsPipelineDef, LoadOp, MemoryAllocation, MemoryAllocationDef, MemoryUsage,
-    PrimitiveTopology, RasterizerState, ResourceCreation, ResourceState, ResourceUsage,
-    SampleCount, StencilOp, StoreOp, VertexAttributeRate, VertexLayout, VertexLayoutAttribute,
-    VertexLayoutBuffer,
+    BarrierQueueTransition, Buffer, BufferBarrier, BufferCopy, BufferDef, BufferView,
+    BufferViewDef, ColorClearValue, ColorRenderTargetBinding, DeviceContext, LoadOp,
+    MemoryAllocation, MemoryAllocationDef, MemoryUsage, ResourceCreation, ResourceState,
+    ResourceUsage, StoreOp,
 };
-use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_math::Mat4;
 use lgn_transform::components::GlobalTransform;
 
 use crate::{
-    cgen::{self, cgen_type::PickingData, shader},
+    cgen::{self, cgen_type::PickingData},
     components::{
         CameraComponent, LightComponent, ManipulatorComponent, RenderSurface, VisualComponent,
     },
-    gpu_renderer::GpuInstanceManager,
+    gpu_renderer::{DefaultLayers, GpuInstanceManager, MeshRenderer},
     hl_gfx_api::HLCommandBuffer,
     picking::{ManipulatorManager, PickingManager, PickingState},
-    resources::{
-        DefaultMeshType, GpuSafePool, MeshManager, OnFrameEventHandler, PipelineHandle,
-        PipelineManager,
-    },
+    resources::{DefaultMeshType, GpuSafePool, MeshManager, ModelManager, OnFrameEventHandler},
     RenderContext,
 };
 
@@ -125,8 +118,6 @@ impl OnFrameEventHandler for ReadbackBufferPool {
 }
 
 pub struct PickingRenderPass {
-    pipeline_handle: PipelineHandle,
-
     readback_buffer_pools: GpuSafePool<ReadbackBufferPool>,
 
     count_buffer: Buffer,
@@ -139,62 +130,7 @@ pub struct PickingRenderPass {
 }
 
 impl PickingRenderPass {
-    pub fn new(device_context: &DeviceContext, pipeline_manager: &PipelineManager) -> Self {
-        let root_signature = cgen::pipeline_layout::PickingPipelineLayout::root_signature();
-
-        let mut vertex_layout = VertexLayout::default();
-        vertex_layout.attributes[0] = Some(VertexLayoutAttribute {
-            format: Format::R32_UINT,
-            buffer_index: 0,
-            location: 0,
-            byte_offset: 0,
-        });
-        vertex_layout.buffers[0] = Some(VertexLayoutBuffer {
-            stride: 4,
-            rate: VertexAttributeRate::Instance,
-        });
-
-        let depth_state = DepthState {
-            depth_test_enable: false,
-            depth_write_enable: false,
-            depth_compare_op: CompareOp::default(),
-            stencil_test_enable: false,
-            stencil_read_mask: 0xFF,
-            stencil_write_mask: 0xFF,
-            front_depth_fail_op: StencilOp::default(),
-            front_stencil_compare_op: CompareOp::Always,
-            front_stencil_fail_op: StencilOp::default(),
-            front_stencil_pass_op: StencilOp::default(),
-            back_depth_fail_op: StencilOp::default(),
-            back_stencil_compare_op: CompareOp::Always,
-            back_stencil_fail_op: StencilOp::default(),
-            back_stencil_pass_op: StencilOp::default(),
-        };
-        let pipeline_handle = pipeline_manager.register_pipeline(
-            cgen::CRATE_ID,
-            CGenShaderKey::make(shader::picking_shader::ID, shader::picking_shader::NONE),
-            move |device_context, shader| {
-                device_context
-                    .create_graphics_pipeline(&GraphicsPipelineDef {
-                        shader,
-                        root_signature,
-                        vertex_layout: &vertex_layout,
-                        blend_state: &BlendState::default_alpha_enabled(),
-                        depth_state: &depth_state,
-                        rasterizer_state: &RasterizerState::default(),
-                        color_formats: &[Format::R16G16B16A16_SFLOAT],
-                        sample_count: SampleCount::SampleCount1,
-                        depth_stencil_format: None,
-                        primitive_topology: PrimitiveTopology::TriangleList,
-                    })
-                    .unwrap()
-            },
-        );
-
-        //
-        // Pipeline state
-        //
-
+    pub fn new(device_context: &DeviceContext) -> Self {
         let count_buffer_def = BufferDef {
             size: 4,
 
@@ -240,7 +176,6 @@ impl PickingRenderPass {
         let picked_rw_view = BufferView::from_buffer(&picked_buffer, &picked_rw_view_def);
 
         Self {
-            pipeline_handle,
             readback_buffer_pools: GpuSafePool::new(3),
             count_buffer,
             _count_allocation: count_allocation,
@@ -258,11 +193,12 @@ impl PickingRenderPass {
         render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
         instance_manager: &GpuInstanceManager,
-        static_meshes: &[(Entity, &VisualComponent)],
         manipulator_meshes: &[(&VisualComponent, &GlobalTransform, &ManipulatorComponent)],
         lights: &[(&LightComponent, &GlobalTransform)],
         mesh_manager: &MeshManager,
+        model_manager: &ModelManager,
         camera: &CameraComponent,
+        mesh_renerer: &MeshRenderer,
     ) {
         self.readback_buffer_pools.begin_frame();
         let mut readback = self.readback_buffer_pools.acquire_or_create(|| {
@@ -290,21 +226,32 @@ impl PickingRenderPass {
 
             let pipeline = render_context
                 .pipeline_manager()
-                .get_pipeline(self.pipeline_handle)
+                .get_pipeline(mesh_renerer.get_tmp_pso_handle(DefaultLayers::Picking as usize))
                 .unwrap();
 
             cmd_buffer.bind_pipeline(pipeline);
-            cmd_buffer.bind_descriptor_set_handle(render_context.frame_descriptor_set_handle());
-            cmd_buffer.bind_descriptor_set_handle(render_context.view_descriptor_set_handle());
+            cmd_buffer.bind_descriptor_set(
+                render_context.frame_descriptor_set().0,
+                render_context.frame_descriptor_set().1,
+            );
+            cmd_buffer.bind_descriptor_set(
+                render_context.view_descriptor_set().0,
+                render_context.view_descriptor_set().1,
+            );
 
             cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
 
             let mut picking_descriptor_set = cgen::descriptor_set::PickingDescriptorSet::default();
             picking_descriptor_set.set_picked_count(&self.count_rw_view);
             picking_descriptor_set.set_picked_objects(&self.picked_rw_view);
-            let picking_descriptor_set_handle =
-                render_context.write_descriptor_set(&picking_descriptor_set);
-            cmd_buffer.bind_descriptor_set_handle(picking_descriptor_set_handle);
+            let picking_descriptor_set_handle = render_context.write_descriptor_set(
+                cgen::descriptor_set::PickingDescriptorSet::descriptor_set_layout(),
+                picking_descriptor_set.descriptor_refs(),
+            );
+            cmd_buffer.bind_descriptor_set(
+                cgen::descriptor_set::PickingDescriptorSet::descriptor_set_layout(),
+                picking_descriptor_set_handle,
+            );
 
             let mut push_constant_data = cgen::cgen_type::PickingPushConstantData::default();
             push_constant_data.set_picking_distance(1.0.into());
@@ -312,42 +259,39 @@ impl PickingRenderPass {
 
             cmd_buffer.push_constant(&push_constant_data);
 
-            for (_index, (entity, static_mesh)) in static_meshes.iter().enumerate() {
-                if let Some(list) = instance_manager.id_va_list(*entity) {
-                    for (gpu_instance_id, _) in list {
-                        let num_vertices = mesh_manager
-                            .mesh_from_id(static_mesh.mesh_id as u32)
-                            .num_vertices() as u32;
-                        cmd_buffer.draw_instanced(num_vertices, 0, 1, *gpu_instance_id);
-                    }
-                }
-            }
+            mesh_renerer.draw(
+                render_context,
+                &mut cmd_buffer,
+                DefaultLayers::Picking as usize,
+            );
 
             let (view_matrix, projection_matrix) = camera.build_view_projection(
                 render_surface.extents().width() as f32,
                 render_surface.extents().height() as f32,
             );
 
-            for (_index, (static_mesh, transform, manipulator)) in
-                manipulator_meshes.iter().enumerate()
+            for (_index, (visual, transform, manipulator)) in manipulator_meshes.iter().enumerate()
             {
-                if manipulator.active {
-                    let picking_distance = 50.0;
-                    let custom_world = ManipulatorManager::scale_manipulator_for_viewport(
-                        transform,
-                        &manipulator.local_transform,
-                        &view_matrix,
-                        &projection_matrix,
-                    );
+                let (model_meta_data, _ready) = model_manager.get_model_meta_data(visual);
+                for mesh in &model_meta_data.meshes {
+                    if manipulator.active {
+                        let picking_distance = 50.0;
+                        let custom_world = ManipulatorManager::scale_manipulator_for_viewport(
+                            transform,
+                            &manipulator.local_transform,
+                            &view_matrix,
+                            &projection_matrix,
+                        );
 
-                    render_mesh(
-                        &custom_world,
-                        manipulator.picking_id,
-                        picking_distance,
-                        static_mesh.mesh_id as u32,
-                        mesh_manager,
-                        &cmd_buffer,
-                    );
+                        render_mesh(
+                            &custom_world,
+                            manipulator.picking_id,
+                            picking_distance,
+                            mesh.mesh_id as u32,
+                            mesh_manager,
+                            &cmd_buffer,
+                        );
+                    }
                 }
             }
 
@@ -467,14 +411,14 @@ fn render_mesh(
     cmd_buffer: &HLCommandBuffer<'_>,
 ) {
     let mut push_constant_data = cgen::cgen_type::PickingPushConstantData::default();
+    let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh_id);
     push_constant_data.set_world((*custom_world).into());
-    push_constant_data
-        .set_mesh_description_offset(mesh_manager.mesh_description_offset_from_id(mesh_id).into());
+    push_constant_data.set_mesh_description_offset(mesh_meta_data.mesh_description_offset.into());
     push_constant_data.set_picking_id(picking_id.into());
     push_constant_data.set_picking_distance(picking_distance.into());
     push_constant_data.set_use_gpu_pipeline(0.into());
 
     cmd_buffer.push_constant(&push_constant_data);
 
-    cmd_buffer.draw(mesh_manager.mesh_from_id(mesh_id).num_vertices() as u32, 0);
+    cmd_buffer.draw(mesh_meta_data.draw_call_count, 0);
 }

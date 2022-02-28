@@ -58,16 +58,14 @@ export class MetricBlockState {
     }
 
     if (points.length > 0) {
-      if (data.length != points.length) {
-        const boundaryInPoint = data[data.indexOf(points[0]) - 1];
-        if (boundaryInPoint && !points.includes(boundaryInPoint)) {
-          points.unshift(boundaryInPoint);
-        }
-        const boundaryOutPoint =
-          data[data.indexOf(points[points.length - 1]) + 1];
-        if (boundaryOutPoint && !points.includes(boundaryOutPoint)) {
-          points.push(boundaryOutPoint);
-        }
+      const boundaryInPoint = data[data.indexOf(points[0]) - 1];
+      if (boundaryInPoint && !points.includes(boundaryInPoint)) {
+        points.unshift(boundaryInPoint);
+      }
+      const boundaryOutPoint =
+        data[data.indexOf(points[points.length - 1]) + 1];
+      if (boundaryOutPoint && !points.includes(boundaryOutPoint)) {
+        points.push(boundaryOutPoint);
       }
     } else {
       const nextMinPoint = data.filter((p) => p.time <= min)[0];

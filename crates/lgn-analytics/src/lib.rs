@@ -10,11 +10,12 @@ use anyhow::{Context, Result};
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::decompress;
 use lgn_telemetry_proto::telemetry::{
-    Block as EncodedBlock, ContainerMetadata, Process as ProcessInfo, Stream as StreamInfo,
+    BlockMetadata, ContainerMetadata, Process as ProcessInfo, Stream as StreamInfo,
 };
 use lgn_tracing::prelude::*;
 use lgn_tracing_transit::{parse_object_buffer, read_dependencies, Member, UserDefinedType, Value};
 use prost::Message;
+use sqlx::any::AnyRow;
 use sqlx::Row;
 
 pub async fn alloc_sql_pool(data_folder: &Path) -> Result<sqlx::AnyPool> {
@@ -304,6 +305,32 @@ pub async fn find_process_streams(
     Ok(res)
 }
 
+pub async fn find_process_blocks(
+    connection: &mut sqlx::AnyConnection,
+    process_id: &str,
+    tag: &str,
+) -> Result<Vec<BlockMetadata>> {
+    let rows = sqlx::query(
+        "SELECT B.*
+        FROM streams S
+        LEFT JOIN blocks B
+        ON S.stream_id = B.stream_id
+        WHERE S.process_id = ?  
+        AND S.tags like ?
+        AND B.block_id IS NOT NULL",
+    )
+    .bind(process_id)
+    .bind(tag)
+    .fetch_all(connection)
+    .await
+    .with_context(|| "find_process_blocks")?;
+    let mut blocks = Vec::new();
+    for r in rows {
+        blocks.push(map_row_block(&r)?);
+    }
+    Ok(blocks)
+}
+
 pub async fn find_process_log_streams(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
@@ -361,12 +388,26 @@ pub async fn find_stream(
     })
 }
 
+fn map_row_block(row: &AnyRow) -> Result<BlockMetadata> {
+    let opt_size: Option<i64> = row.try_get("payload_size")?;
+    Ok(BlockMetadata {
+        block_id: row.try_get("block_id")?,
+        stream_id: row.try_get("stream_id")?,
+        begin_time: row.try_get("begin_time")?,
+        end_time: row.try_get("end_time")?,
+        begin_ticks: row.try_get("begin_ticks")?,
+        end_ticks: row.try_get("end_ticks")?,
+        nb_objects: row.try_get("nb_objects")?,
+        payload_size: opt_size.unwrap_or(0),
+    })
+}
+
 pub async fn find_block(
     connection: &mut sqlx::AnyConnection,
     block_id: &str,
-) -> Result<EncodedBlock> {
+) -> Result<BlockMetadata> {
     let row = sqlx::query(
-        "SELECT stream_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects
+        "SELECT block_id, stream_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects, payload_size
          FROM blocks
          WHERE block_id = ?
          ;",
@@ -375,26 +416,15 @@ pub async fn find_block(
     .fetch_one(connection)
     .await
     .with_context(|| "find_block")?;
-
-    let block = EncodedBlock {
-        block_id: String::from(block_id),
-        stream_id: row.get("stream_id"),
-        begin_time: row.get("begin_time"),
-        begin_ticks: row.get("begin_ticks"),
-        end_time: row.get("end_time"),
-        end_ticks: row.get("end_ticks"),
-        payload: None,
-        nb_objects: row.get("nb_objects"),
-    };
-    Ok(block)
+    map_row_block(&row)
 }
 
 pub async fn find_stream_blocks(
     connection: &mut sqlx::AnyConnection,
     stream_id: &str,
-) -> Result<Vec<EncodedBlock>> {
-    let blocks = sqlx::query(
-        "SELECT block_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects
+) -> Result<Vec<BlockMetadata>> {
+    let rows = sqlx::query(
+        "SELECT block_id, stream_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects, payload_size
          FROM blocks
          WHERE stream_id = ?
          ORDER BY begin_time;",
@@ -402,19 +432,11 @@ pub async fn find_stream_blocks(
     .bind(stream_id)
     .fetch_all(connection)
     .await
-    .with_context(|| "find_stream_blocks")?
-    .iter()
-    .map(|r| EncodedBlock {
-        block_id: r.get("block_id"),
-        stream_id: String::from(stream_id),
-        begin_time: r.get("begin_time"),
-        begin_ticks: r.get("begin_ticks"),
-        end_time: r.get("end_time"),
-        end_ticks: r.get("end_ticks"),
-        payload: None,
-        nb_objects: r.get("nb_objects"),
-    })
-    .collect();
+        .with_context(|| "find_stream_blocks")?;
+    let mut blocks = Vec::new();
+    for r in rows {
+        blocks.push(map_row_block(&r)?);
+    }
     Ok(blocks)
 }
 
@@ -423,9 +445,9 @@ pub async fn find_stream_blocks_in_range(
     stream_id: &str,
     begin_time: &str,
     end_time: &str,
-) -> Result<Vec<EncodedBlock>> {
-    let blocks = sqlx::query(
-        "SELECT block_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects
+) -> Result<Vec<BlockMetadata>> {
+    let rows = sqlx::query(
+        "SELECT block_id, stream_id, begin_time, begin_ticks, end_time, end_ticks, nb_objects, payload_size
          FROM blocks
          WHERE stream_id = ?
          AND begin_time <= ?
@@ -437,19 +459,11 @@ pub async fn find_stream_blocks_in_range(
     .bind(begin_time)
     .fetch_all(connection)
     .await
-    .with_context(|| "find_stream_blocks")?
-    .iter()
-    .map(|r| EncodedBlock {
-        block_id: r.get("block_id"),
-        stream_id: String::from(stream_id),
-        begin_time: r.get("begin_time"),
-        begin_ticks: r.get("begin_ticks"),
-        end_time: r.get("end_time"),
-        end_ticks: r.get("end_ticks"),
-        payload: None,
-        nb_objects: r.get("nb_objects"),
-    })
-    .collect();
+    .with_context(|| "find_stream_blocks")?;
+    let mut blocks = Vec::new();
+    for r in rows {
+        blocks.push(map_row_block(&r)?);
+    }
     Ok(blocks)
 }
 
@@ -607,7 +621,7 @@ pub async fn for_each_log_entry_in_block<Predicate: FnMut(i64, String) -> bool>(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
     stream: &StreamInfo,
-    block: &EncodedBlock,
+    block: &BlockMetadata,
     mut fun: Predicate,
 ) -> Result<()> {
     let payload = fetch_block_payload(connection, blob_storage, block.block_id.clone()).await?;
@@ -697,6 +711,7 @@ pub mod prelude {
     pub use crate::fetch_recent_processes;
     pub use crate::find_block;
     pub use crate::find_process;
+    pub use crate::find_process_blocks;
     pub use crate::find_process_log_entry;
     pub use crate::find_process_log_streams;
     pub use crate::find_process_metrics_streams;
