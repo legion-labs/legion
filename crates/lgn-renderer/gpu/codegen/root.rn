@@ -4,7 +4,7 @@ mod egui;
 mod const_color;
 mod picking;
 mod default_shader;
-
+mod culling;
 
 pub fn main() {
 
@@ -125,6 +125,7 @@ pub fn main() {
             #{ type:"StructuredBuffer", name:"omni_directional_lights", content:"OmniDirectionalLight" },
             #{ type:"StructuredBuffer", name:"spot_lights", content:"SpotLight" },
             #{ type:"ByteAddressBuffer", name:"static_buffer" },
+            #{ type:"StructuredBuffer", name:"va_table_address_buffer", content:"Uint1"  },
             #{ type:"Texture2D", name:"material_textures", content:"Float4", array_len:256 },
             #{ type:"Sampler", name:"material_sampler" },
         ]
@@ -145,6 +146,7 @@ pub fn main() {
     products.extend( const_color::main(frame_descriptor_set, view_descriptor_set) );    
     products.extend( picking::main(frame_descriptor_set, view_descriptor_set) );    
     products.extend( default_shader::main(frame_descriptor_set, view_descriptor_set) );        
+    products.extend( culling::main(frame_descriptor_set, view_descriptor_set) );     
 
     products
 }

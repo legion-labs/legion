@@ -232,7 +232,7 @@ impl TransientBufferAllocator {
         }
     }
 
-    pub fn copy_data<T: Copy>(&self, data: &T, resource_usage: ResourceUsage) -> BufferAllocation {
+    pub fn copy_data<T>(&self, data: &T, resource_usage: ResourceUsage) -> BufferAllocation {
         let data_layout = std::alloc::Layout::new::<T>();
         let allocation = self.allocate(data_layout, resource_usage);
         let src = (data as *const T).cast::<u8>();
@@ -251,7 +251,7 @@ impl TransientBufferAllocator {
         allocation
     }
 
-    pub fn copy_data_slice<T: Copy>(
+    pub fn copy_data_slice<T>(
         &self,
         data: &[T],
         resource_usage: ResourceUsage,

@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use lgn_app::{App, CoreStage, Plugin};
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::{Added, Changed, Entity, Query, Res, ResMut};
-use lgn_graphics_api::VertexBufferBinding;
+use lgn_graphics_api::{BufferView, VertexBufferBinding};
 use lgn_math::Vec4;
 use lgn_tracing::span_fn;
 use lgn_transform::components::GlobalTransform;
@@ -401,5 +401,10 @@ impl GpuVaTableForGpuInstance {
 
     pub fn vertex_buffer_binding(&self) -> VertexBufferBinding<'_> {
         self.static_allocation.vertex_buffer_binding()
+    }
+
+    pub fn structured_buffer_view(&self, struct_size: u64, read_only: bool) -> BufferView {
+        self.static_allocation
+            .structured_buffer_view(struct_size, read_only)
     }
 }

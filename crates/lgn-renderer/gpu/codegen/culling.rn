@@ -1,0 +1,56 @@
+pub fn main(frame_descriptor_set, view_descriptor_set ) {    
+    [        
+        #{
+            type: "Struct",
+            name: "GpuInstanceData",
+            fields: [
+                #{ name:"gpu_instance_id", ty:"Uint1" },
+                #{ name:"material_id", ty:"Uint1" },
+            ]
+        },
+        #{
+            type: "Struct",
+            name: "RenderPassData",
+            fields: [
+                #{ name:"offset_base_va", ty:"Uint1" },
+            ]
+        },
+        #{
+            type: "Struct",
+            name: "CullingPushConstantData",
+            fields: [
+                #{ name:"num_gpu_instances", ty:"Uint1" },
+                #{ name:"num_render_passes", ty:"Uint1" },
+                #{ name:"padding", ty:"Uint2" },
+            ]
+        },
+        #{
+            type: "DescriptorSet",
+            name: "CullingDescriptorSet",
+            frequency: 2,
+            descriptors: [
+                #{ name:"count_buffer", type:"RWStructuredBuffer", content:"Uint1"  },
+                #{ name:"indirect_arg_buffer", type:"RWStructuredBuffer", content:"Uint1" },
+                #{ name:"gpu_instance_data", type:"StructuredBuffer", content:"GpuInstanceData" },
+                #{ name:"render_pass_data", type:"StructuredBuffer", content:"RenderPassData" },
+            ]        
+        },
+        #{
+            type: "PipelineLayout",
+            name: "CullingPipelineLayout",
+            descriptor_sets: [ frame_descriptor_set.name, view_descriptor_set.name, "CullingDescriptorSet" ],
+            push_constant: "CullingPushConstantData"
+        },
+        #{            
+            type: "Shader",
+            name: "CullingShader",
+            path: "gpu/shaders/culling.hlsl",
+            pipeline_layout: "CullingPipelineLayout",            
+            instances: [
+                #{                      
+                    stages: [ "CS" ],
+                },                
+            ]            
+        }
+    ]
+}

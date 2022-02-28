@@ -620,7 +620,8 @@ fn create_logical_device(
         .fragment_stores_and_atomics(true)
         .wide_lines(true);
 
-    let mut indexing_features = vk::PhysicalDeviceDescriptorIndexingFeatures::builder()
+    let mut vulkan_12_features = vk::PhysicalDeviceVulkan12Features::builder()
+        .draw_indirect_count(true)
         .descriptor_binding_partially_bound(true)
         .descriptor_binding_sampled_image_update_after_bind(true)
         .descriptor_binding_storage_buffer_update_after_bind(true)
@@ -629,7 +630,7 @@ fn create_logical_device(
 
     let mut features2 = vk::PhysicalDeviceFeatures2::builder()
         .features(*features)
-        .push_next(&mut indexing_features);
+        .push_next(&mut vulkan_12_features);
 
     let mut queue_families_to_create = FnvHashMap::default();
     for (&queue_family_index, &count) in &queue_requirements.queue_counts {
