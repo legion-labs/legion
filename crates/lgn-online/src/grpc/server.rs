@@ -6,6 +6,7 @@ use tonic::{body::BoxBody, transport::NamedService};
 use tower::Service;
 
 use super::{Error, Result};
+#[cfg(feature = "aws")]
 use crate::aws::lambda::{is_running_as_lambda, AwsLambdaHandler};
 
 #[derive(Default)]
@@ -28,11 +29,12 @@ impl Server {
             + Send
             + 'static,
         S::Future: Send + 'static,
-        S::Error: Into<lambda_runtime::Error> + Send,
+        S::Error: Into<Box<dyn std::error::Error + Send + Sync + 'static>> + Send,
     {
         let service = tonic_web::enable(service);
 
         match ExecutionEnvironment::guess() {
+            #[cfg(feature = "aws")]
             ExecutionEnvironment::AWSLambda => {
                 let handler = lambda_http::Adapter::from(AwsLambdaHandler::new(service));
                 lambda_runtime::run(handler)
@@ -62,16 +64,21 @@ impl Server {
 }
 
 pub enum ExecutionEnvironment {
+    #[cfg(feature = "aws")]
     AWSLambda,
     Local,
 }
 
 impl ExecutionEnvironment {
     pub fn guess() -> Self {
+        #[cfg(feature = "aws")]
         if is_running_as_lambda() {
             Self::AWSLambda
         } else {
             Self::Local
         }
+
+        #[cfg(not(feature = "aws"))]
+        Self::Local
     }
 }

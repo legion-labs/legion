@@ -5,6 +5,10 @@ authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
+[features]
+default = []
+aws = ["lambda_runtime", "lambda_http"]
+
 [dependencies]
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-config = { path = "../lgn-config", version = "0.1.0" }
@@ -18,7 +22,7 @@ tower-service = "0.3.1"
 tonic = { version = "0.6", features = ["tls-roots"] }
 tonic-web = "0.2"
 rustls = "0.20"
-webbrowser = "0.5"
+webbrowser = "0.6"
 url = "2.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -33,10 +37,10 @@ http = "0.2"
 http-body = "0.4"
 pin-project = "1"
 dyn-clone = "1"
-lambda_runtime = "0.5.0"
-lambda_http = "0.5.0"
-strum = "0.23"
-strum_macros = "0.23"
+lambda_runtime = { version = "0.5.0", optional = true }
+lambda_http = { version = "0.5.0", optional = true }
+strum = "0.24"
+strum_macros = "0.24"
 openidconnect = "2.2.0"
 
 [build-dependencies]
