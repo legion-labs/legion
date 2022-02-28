@@ -8,10 +8,16 @@ export type Entry<Item> = {
   subEntries: Entry<Item>[];
 };
 
+export function isEntry<Item>(
+  entry: Entry<Item | symbol>
+): entry is Entry<Item> {
+  return typeof entry.item !== "symbol";
+}
+
 // TODO: Improve performance if needed, and stop using recursion
 /** A wrapper class around the `Entry<Item>[]` type. */
-export class Entries<Item> {
-  entries: Entry<Item>[];
+export class Entries<Item extends { path: string }> {
+  entries: Entry<Item | symbol>[];
 
   #size!: number;
 
@@ -37,18 +43,18 @@ export class Entries<Item> {
    * assert(deepEqual(entries.entries, expectedEntries));
    * ```
    */
-  static fromArray<PItem extends { path: string }>(
-    items: PItem[]
-  ): Entries<PItem | symbol> {
+  static fromArray<Item extends { path: string }>(
+    items: Item[]
+  ): Entries<Item> {
     if (!items.length) {
       return new Entries([]);
     }
 
     type Ref = {
       [key: string]: Ref;
-    } & { subEntries: Entry<PItem | symbol>[] };
+    } & { subEntries: Entry<Item | symbol>[] };
 
-    const entriesArray: Entry<PItem>[] = [];
+    const entriesArray: Entry<Item>[] = [];
     const ref = { subEntries: entriesArray } as Ref;
 
     items.forEach((item) => {
@@ -57,7 +63,7 @@ export class Entries<Item> {
       pathComponents.reduce((ref, name, index) => {
         if (!ref[name]) {
           ref[name] = {
-            subEntries: [] as Entry<PItem | symbol>[],
+            subEntries: [] as Entry<Item | symbol>[],
           } as Ref;
 
           const entry = {
@@ -98,9 +104,9 @@ export class Entries<Item> {
 
   /** Computes the size of the `Entries` */
   recalculateSize() {
-    function count(entries: Entry<Item>[], size = 0): number {
+    function count(entries: Entry<Item | symbol>[], size = 0): number {
       return entries.reduce((size, entry) => {
-        const newSize = typeof entry.item === "symbol" ? size : size + 1;
+        const newSize = isEntry(entry) ? size + 1 : size;
 
         return entry.subEntries ? count(entry.subEntries, newSize) : newSize;
       }, size);
@@ -113,15 +119,13 @@ export class Entries<Item> {
     let index = 0;
 
     for (const entry of this) {
-      if (typeof entry.item !== "symbol") {
-        entry.index = index++;
-      }
+      entry.index = index++;
     }
   }
 
   // Could be exposed if needed
   #sort() {
-    function sort(entries: Entry<Item>[]): void {
+    function sort(entries: Entry<Item | symbol>[]): void {
       entries
         .sort(function (entry1, entry2) {
           return entry1.name.localeCompare(entry2.name, undefined, {
@@ -157,8 +161,8 @@ export class Entries<Item> {
   /**
    * Filters `Entries` based on a predicate.
    */
-  filter(pred: (entry: Entry<Item>) => boolean): this {
-    function filter(entries: Entry<Item>[]): Entry<Item>[] {
+  filter(pred: (entry: Entry<Item | symbol>) => boolean): this {
+    function filter(entries: Entry<Item | symbol>[]): Entry<Item | symbol>[] {
       return entries.reduce((acc, entry) => {
         if (!pred(entry)) {
           return acc;
@@ -177,7 +181,7 @@ export class Entries<Item> {
         }
 
         return [...acc, entry];
-      }, [] as Entry<Item>[]);
+      }, [] as Entry<Item | symbol>[]);
     }
 
     this.entries = filter(this.entries);
@@ -215,18 +219,20 @@ export class Entries<Item> {
       entry: Entry<Item>
     ) => Pick<Entry<Item>, "item" | "name"> | null
   ): this {
-    function update(entries: Entry<Item>[]): Entry<Item>[] {
+    function update(entries: Entry<Item | symbol>[]): Entry<Item | symbol>[] {
       return entries.map((entry) => {
-        const updatedEntry = shouldUpdate(entry);
+        if (isEntry(entry)) {
+          const updatedEntry = shouldUpdate(entry);
 
-        if (updatedEntry) {
-          return {
-            ...entry,
-            ...updatedEntry,
-            name:
-              ("name" in updatedEntry && updatedEntry.name.trim()) ||
-              entry.name,
-          };
+          if (updatedEntry) {
+            return {
+              ...entry,
+              ...updatedEntry,
+              name:
+                ("name" in updatedEntry && updatedEntry.name.trim()) ||
+                entry.name,
+            };
+          }
         }
 
         if (!entry.subEntries) {
@@ -244,16 +250,16 @@ export class Entries<Item> {
     return this;
   }
 
-  insert<PItem extends { path: string | null }>(item: PItem): this {
+  insert(item: Item): this {
     function insert(
       [part, ...parts]: string[],
-      entries: Entry<Item>[],
-      item: PItem
-    ): Entry<Item>[] {
+      entries: Entry<Item | symbol>[],
+      item: Item
+    ): Entry<Item | symbol>[] {
       if (!parts.length) {
         const newEntry: Entry<Item> = {
           index: null,
-          item: item as unknown as Item,
+          item,
           name: part,
           subEntries: [],
         };
@@ -272,11 +278,7 @@ export class Entries<Item> {
       return entries;
     }
 
-    this.entries = insert(
-      item.path ? components(item.path) : [],
-      this.entries,
-      item
-    );
+    this.entries = insert(components(item.path), this.entries, item);
 
     this.#sort();
 
@@ -304,7 +306,7 @@ export class Entries<Item> {
     return this.#size === 0;
   }
 
-  intoItems() {
+  intoItems(): Item[] {
     const items = [];
 
     for (const entry of this) {
@@ -319,9 +321,11 @@ export class Entries<Item> {
   }
 
   [Symbol.iterator]() {
-    function* iter(entries: Entry<Item>[]): Generator<Entry<Item>> {
+    function* iter(entries: Entry<Item | symbol>[]): Generator<Entry<Item>> {
       for (const entry of entries) {
-        yield entry;
+        if (isEntry(entry)) {
+          yield entry;
+        }
 
         if (entry.subEntries) {
           yield* iter(entry.subEntries);

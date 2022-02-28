@@ -1,16 +1,11 @@
 <script lang="ts">
   import Modal from "@lgn/web-client/src/components/modal/Modal.svelte";
   import Button from "@lgn/web-client/src/components/Button.svelte";
-  import { Config } from "@lgn/web-client/src/stores/modal";
 
-  // We don't get any payload when the user tries to create
-  // a resource at the top level
-  export let config: Config<string>;
+  export let authorizationUrl: string;
 
   function redirect() {
-    if (config.payload) {
-      window.location.href = config.payload;
-    }
+    window.location.href = authorizationUrl;
   }
 </script>
 

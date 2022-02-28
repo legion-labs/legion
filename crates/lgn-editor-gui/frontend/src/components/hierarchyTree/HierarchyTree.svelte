@@ -1,11 +1,11 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import { Entry, Entries } from "@/lib/hierarchyTree";
+  import { Entry, Entries, isEntry } from "@/lib/hierarchyTree";
   import keyboardNavigation from "@lgn/web-client/src/actions/keyboardNavigation";
   import KeyboardNavigationStore from "@lgn/web-client/src/stores/keyboardNavigation";
   import HierarchyTreeItem from "./HierarchyTreeItem.svelte";
 
-  type Item = $$Generic<{ id: string } | symbol>;
+  type Item = $$Generic<{ id: string; path: string }>;
 
   type $$Slots = {
     name: { itemName: string };
@@ -16,7 +16,7 @@
     highlight: Entry<Item>;
     select: Entry<Item>;
     nameEdited: { entry: Entry<Item>; newName: string };
-    removed: Entry<Item>;
+    removeRequest: Entry<Item>;
   }>();
 
   // Can be extracted if needed
@@ -24,7 +24,7 @@
 
   export let entries: Entries<Item>;
 
-  export let highlightedItem: Item | null = null;
+  export let highlightedEntry: Entry<Item> | null = null;
 
   export let currentlyRenameEntry: Entry<Item> | null = null;
 
@@ -40,9 +40,9 @@
   let dndHighlightedEntry: Entry<Item> | null = null;
 
   $: highlightedEntry =
-    entries.find((entry) => entry.item === highlightedItem) || null;
+    entries.find((entry) => entry === highlightedEntry) || null;
 
-  $: $keyboardNavigationStore.currentIndex = highlightedItem
+  $: $keyboardNavigationStore.currentIndex = highlightedEntry
     ? entries.findIndex((entry) =>
         highlightedEntry ? entry === highlightedEntry : false
       )
@@ -52,26 +52,12 @@
     focus();
   }
 
-  export function startNameEdit(item: Item) {
-    const entry = entries.find((entry) => entry.item === item);
-
-    if (!entry) {
-      return;
-    }
-
+  function startNameEdit(entry: Entry<Item>) {
     currentlyRenameEntry = entry;
   }
 
-  export function remove(item: Item) {
-    const entry = entries.find((entry) => entry.item === item);
-
-    if (!entry) {
-      return;
-    }
-
-    entries = entries.remove(entry);
-
-    dispatch("removed", entry);
+  function removeRequest(entry: Entry<Item>) {
+    dispatch("removeRequest", entry);
   }
 
   function select() {
@@ -93,7 +79,7 @@
   }
 
   function setHighlightedEntry(entry: Entry<Item>) {
-    highlightedItem = entry.item;
+    highlightedEntry = entry;
 
     if (highlightedEntry) {
       dispatch("highlight", highlightedEntry);
@@ -123,15 +109,17 @@
   class="root"
   on:navigation-change={setHighlightedEntryWithIndex}
   on:navigation-select={select}
-  on:navigation-rename={() => highlightedItem && startNameEdit(highlightedItem)}
-  on:navigation-remove={() => highlightedItem && remove(highlightedItem)}
+  on:navigation-rename={() =>
+    highlightedEntry && startNameEdit(highlightedEntry)}
+  on:navigation-remove={() =>
+    highlightedEntry && removeRequest(highlightedEntry)}
   use:keyboardNavigation={{
     size: entries.size(),
     store: keyboardNavigationStore,
   }}
   bind:this={hierarchyTree}
 >
-  {#each entries.entries as entry (typeof entry.item === "symbol" ? entry.item : entry.item.id)}
+  {#each entries.entries as entry (isEntry(entry) ? entry.item.id : entry.item)}
     <HierarchyTreeItem
       index={entry.index}
       {entry}

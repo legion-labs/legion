@@ -1,7 +1,15 @@
 import { suite } from "../benchmark";
 
-import { Entries, Entry } from "@/lib/hierarchyTree";
+import { Entries, Entry, isEntry } from "@/lib/hierarchyTree";
 import resources from "../resources/resourcesResponse.json";
+
+// Dumb polyfill for `getRandomValues`
+global.crypto = {
+  getRandomValues: (buf: ArrayBufferView) => {
+    return buf;
+  },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+} as any;
 
 export const resourcesSuite = suite("Entries.fromArray", (bench) => {
   bench.add(
@@ -61,17 +69,28 @@ export const resourcesSuite = suite("Entries.fromArray", (bench) => {
   bench.add("Remove early entry from entries", { iter: 10_000 }, () => {
     const entries = Entries.fromArray(resources);
 
+    const entry = entries.entries[0].subEntries[0];
+
+    if (!isEntry(entry)) {
+      throw new Error("Entry was not a proper entry");
+    }
+
     return () => {
-      entries.remove(entries.entries[2]);
+      entries.remove(entry);
     };
   });
 
   bench.add("Remove late entry from entries", { iter: 10_000 }, () => {
     const entries = Entries.fromArray(resources);
 
+    const entry = entries.entries[3].subEntries[0].subEntries[4];
+
+    if (!isEntry(entry)) {
+      throw new Error("Entry was not a proper entry");
+    }
+
     return () => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      entries.remove(entries.entries[3].subEntries[0].subEntries[4]);
+      entries.remove(entry);
     };
   });
 
@@ -80,7 +99,12 @@ export const resourcesSuite = suite("Entries.fromArray", (bench) => {
     const entry = entries.getFromIndex(2) as Entry<{ path: string }>;
 
     return () => {
-      entries.insert({ ...entry.item, path: `${entry.item.path} - Copy` });
+      entries.insert({
+        ...entry.item,
+        path: `${entry.item.path} - Copy`,
+        id: "id",
+        version: 1,
+      });
     };
   });
 
@@ -91,7 +115,12 @@ export const resourcesSuite = suite("Entries.fromArray", (bench) => {
     }>;
 
     return () => {
-      entries.insert({ ...entry.item, path: `${entry.item.path} - Copy` });
+      entries.insert({
+        ...entry.item,
+        path: `${entry.item.path} - Copy`,
+        id: "id",
+        version: 1,
+      });
     };
   });
 });
@@ -189,8 +218,14 @@ export const bigResourcesSuite = suite(
       () => {
         const entries = Entries.fromArray(bigResources);
 
+        const entry = entries.entries[0].subEntries[0].subEntries[0];
+
+        if (!isEntry(entry)) {
+          throw new Error("Entry was not a proper entry");
+        }
+
         return () => {
-          entries.remove(entries.entries[2]);
+          entries.remove(entry);
         };
       }
     );
@@ -201,9 +236,14 @@ export const bigResourcesSuite = suite(
       () => {
         const entries = Entries.fromArray(bigResources);
 
+        const entry = entries.entries[100].subEntries[0].subEntries[0];
+
+        if (!isEntry(entry)) {
+          throw new Error("Entry was not a proper entry");
+        }
+
         return () => {
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          entries.remove(entries.entries[3].subEntries[0].subEntries[4]);
+          entries.remove(entry);
         };
       }
     );
@@ -216,7 +256,12 @@ export const bigResourcesSuite = suite(
         const entry = entries.getFromIndex(2) as Entry<{ path: string }>;
 
         return () => {
-          entries.insert({ ...entry.item, path: `${entry.item.path} - Copy` });
+          entries.insert({
+            ...entry.item,
+            path: `${entry.item.path} - Copy`,
+            id: "id",
+            version: 1,
+          });
         };
       }
     );
@@ -231,7 +276,12 @@ export const bigResourcesSuite = suite(
         }>;
 
         return () => {
-          entries.insert({ ...entry.item, path: `${entry.item.path} - Copy` });
+          entries.insert({
+            ...entry.item,
+            path: `${entry.item.path} - Copy`,
+            id: "id",
+            version: 1,
+          });
         };
       }
     );

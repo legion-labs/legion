@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Entry } from "@/lib/hierarchyTree";
+  import { Entry, isEntry } from "@/lib/hierarchyTree";
   import { createEventDispatcher } from "svelte";
   import { extension } from "@/lib/path";
   import Icon from "@iconify/svelte";
@@ -13,7 +13,7 @@
   } from "@lgn/web-client/src/actions/dnd";
   import { nullable as nullableAction } from "@lgn/web-client/src/lib/action";
 
-  type Item = $$Generic<{ id: string } | symbol>;
+  type Item = $$Generic<{ id: string }>;
 
   type $$Slots = {
     name: { itemName: string };
@@ -32,7 +32,7 @@
 
   export let index: number | null;
 
-  export let entry: Entry<Item>;
+  export let entry: Entry<Item | symbol>;
 
   export let highlightedEntry: Entry<Item> | null = null;
 
@@ -51,8 +51,8 @@
 
   let isExpanded = true;
 
-  // TODO: Don't rely on symbols and use a filter instead
-  $: isDisabled = typeof entry.item === "symbol";
+  // TODO: Use a filter instead
+  $: isDisabled = !isEntry(entry);
 
   $: isHighlighted = highlightedEntry ? entry === highlightedEntry : false;
 
@@ -91,7 +91,7 @@
   }
 
   function highlight() {
-    if (isDisabled) {
+    if (isDisabled || !isEntry(entry)) {
       return;
     }
 
@@ -100,6 +100,10 @@
 
   function renameFile(event: Event) {
     event.preventDefault();
+
+    if (isDisabled || !isEntry(entry)) {
+      return;
+    }
 
     currentlyRenameEntry = null;
 
@@ -125,12 +129,20 @@
   }: CustomEvent<{ originalEvent: DragEvent }>) {
     originalEvent.stopPropagation();
 
+    if (isDisabled || !isEntry(entry)) {
+      return;
+    }
+
     dndHighlightedEntry = entry;
   }
 
   function onDrop({
     detail: { item: draggedEntry },
   }: CustomEvent<{ item: Entry<Item> }>) {
+    if (isDisabled || !isEntry(entry)) {
+      return;
+    }
+
     dispatch("moved", {
       draggedEntry,
       dropzoneEntry: entry,
@@ -163,12 +175,20 @@
           <Icon icon="ic:baseline-chevron-right" />
         </div>
         <div class="icon">
-          <slot name="icon" {entry} />
+          {#if !isEntry(entry)}
+            <Icon class="w-full h-full" icon="ic:baseline-folder-open" />
+          {:else}
+            <slot name="icon" {entry} />
+          {/if}
         </div>
       </div>
     {:else}
       <div class="icon">
-        <slot name="icon" {entry} />
+        {#if !isEntry(entry)}
+          <Icon class="w-full h-full" icon="ic:baseline-folder-open" />
+        {:else}
+          <slot name="icon" {entry} />
+        {/if}
       </div>
     {/if}
     <div class="name">
@@ -190,7 +210,7 @@
     </div>
   </div>
   {#if entry.subEntries.length && isExpanded}
-    {#each entry.subEntries as subEntry (typeof subEntry.item === "symbol" ? subEntry.item : subEntry.item.id)}
+    {#each entry.subEntries as subEntry (isEntry(subEntry) ? subEntry.item.id : subEntry.item)}
       <div class="sub-entries">
         <svelte:self
           index={subEntry.index}

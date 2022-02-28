@@ -7,18 +7,11 @@
 
   export let currentResourceDescription: ResourceDescription | null;
 
-  export let resourceEntries: Entries<ResourceDescription | symbol>;
+  export let resourceEntries: Entries<ResourceDescription>;
 
   export let allResourcesLoading: boolean;
 
-  // This part is not well optimized but should be dropped eventually
-  $: allResources = resourceEntries.intoItems().reduce((acc, resource) => {
-    if (typeof resource === "symbol") {
-      return acc;
-    }
-
-    return [...acc, resource];
-  }, [] as ResourceDescription[]);
+  $: allResources = resourceEntries.intoItems();
 </script>
 
 <Panel loading={allResourcesLoading} tabs={["Scene Explorer"]}>

@@ -81,7 +81,7 @@
     if (propertyIsDynComponent(property)) {
       modal.open(createComponentModalId, CreateComponentModal, {
         payload: {
-          id: $currentResourceData.id,
+          resourceId: $currentResourceData.id,
           path: path,
           index: index,
         },

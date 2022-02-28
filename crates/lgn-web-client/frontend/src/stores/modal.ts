@@ -1,20 +1,22 @@
 import { SvelteComponentTyped } from "svelte";
 import { Writable } from "../lib/store";
+import Prompt from "../components/modal/Prompt.svelte";
 
-export type Config<Payload = unknown> = {
-  payload?: Payload;
+export type Payload = Record<string, unknown>;
+
+export type Config<P = Payload> = {
+  payload?: P;
   noTransition?: boolean;
 };
 
-export class Content extends SvelteComponentTyped<{
-  close?(): void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  config?: Config<any>;
-}> {}
+// TODO: Improve typings
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export class Content extends SvelteComponentTyped<any> {}
 
 export type Value = Record<
   symbol,
   {
+    id: symbol;
     content: typeof Content;
     config?: Config;
   }
@@ -33,8 +35,21 @@ export default class extends Writable<Value> {
 
     this.update((modals) => ({
       ...modals,
-      [id]: { content, config },
+      [id]: { content, config, id },
     }));
+  }
+
+  /** Opens a prompt modal */
+  prompt(
+    id: symbol,
+    config?: Config<{
+      title?: string;
+      message?: string;
+      cancelLabel?: string;
+      confirmLabel?: string;
+    }>
+  ) {
+    this.open(id, Prompt, config);
   }
 
   /** Closes a modal */
