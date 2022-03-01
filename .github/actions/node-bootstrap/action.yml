@@ -1,4 +1,4 @@
-name: "Rust Bootstrap"
+name: "Node Bootstrap"
 description: "Bootstraps the rust environment"
 inputs:
   init:
@@ -8,29 +8,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Mirror cargo dependencies
-      if: ${{ inputs.init }}
-      run: cargo fetcher --include-index --url "https://legionlabs-ci-artefacts.s3-ca-central-1.amazonaws.com/fetch-cache/" mirror
-      shell: bash
-
-    - name: Sync cargo dependencies
-      run: cargo fetcher --include-index --url "https://legionlabs-ci-artefacts.s3-ca-central-1.amazonaws.com/fetch-cache/" sync
-      shell: bash
-
-    - name: Bootstrap monorepo
-      if: ${{ inputs.init }}
-      run: |
-        echo "::group::Build and run the bootstrap package"
-        cargo run -p bootstrap
-        echo "::endgroup::"
-        echo "::group::Copy executables to s3"
-        cargo m --help
-        aws s3 cp ./target/debug/monorepo s3://legionlabs-ci-artefacts/monorepo-$GITHUB_RUN_ID --region ca-central-1
-        echo "::endgroup::"
-      shell: bash
-
-    - name: Bootstrap monorepo
-      run: |
-        aws s3 cp s3://legionlabs-ci-artefacts/monorepo-$GITHUB_RUN_ID ./target/monorepo --region ca-central-1
-        ./target/monorepo --help
-      shell: bash
+    - uses: actions/cache@v2
+      with:
+        path: "**/node_modules"
+        key: ${{ runner.os }}-modules-${{ hashFiles('**/pnpm-lock.lock') }}

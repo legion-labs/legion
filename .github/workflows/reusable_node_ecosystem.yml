@@ -16,7 +16,12 @@ on:
       analytics-deploy-key:
         required: false
 
-# TODO: @Kevin: change detection should operate i
+# TODO: @Kevin: multiple aspects can be improved:
+# * Change detection (listing packages than changed)
+# * Bootstrapping (not used/tested but something along the of ./node-bootstrap/action.yml)
+# * Bootstrap can be called also when releasing the cargo crates since we might depend on npm stuff
+# * we can switch to monorepo commands if more commands are necessary, as the idea is always to do
+# less in the workflow (hard to debug, iterate, etc.)
 
 jobs:
   check_test:

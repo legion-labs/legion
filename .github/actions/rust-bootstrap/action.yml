@@ -24,13 +24,16 @@ runs:
         cargo run -p bootstrap
         echo "::endgroup::"
         echo "::group::Copy executables to s3"
-        cargo m --help
-        aws s3 cp ./target/debug/monorepo s3://legionlabs-ci-artefacts/monorepo-$GITHUB_RUN_ID --region ca-central-1
+        tar -czvf ./target/monorepo.tar.gz --directory ./target/debug monorepo
+        aws s3 cp ./target/monorepo.tar.gz s3://legionlabs-ci-artefacts/bootstrap/monorepo-$GITHUB_RUN_ID.tar.gz --region ca-central-1
         echo "::endgroup::"
       shell: bash
 
     - name: Bootstrap monorepo
       run: |
-        aws s3 cp s3://legionlabs-ci-artefacts/monorepo-$GITHUB_RUN_ID ./target/monorepo --region ca-central-1
+        aws s3 cp s3://legionlabs-ci-artefacts/bootstrap/monorepo-$GITHUB_RUN_ID.tar.gz ./target/monorepo.tar.gz --region ca-central-1
+        tar -xzvf ./target/monorepo.tar.gz --directory ./target
         ./target/monorepo --help
+        ./target/monorepo build -plgn-math
+        exit 1
       shell: bash
