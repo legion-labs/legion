@@ -48,8 +48,7 @@ jobs:
 
   node:
     name: Node ecosystem
-    if: ${{ fromJSON(needs.change_detection.outputs.npm_pkgs) }}
-    needs: [change_detection, image_setup]
+    needs: [image_setup]
     uses: ./.github/workflows/reusable_node_ecosystem.yml
     with:
       image: ${{ needs.image_setup.outputs.image }}
@@ -59,7 +58,7 @@ jobs:
 
   book:
     name: Building book
-    needs: [image_setup, change_detection]
+    needs: [image_setup]
     uses: ./.github/workflows/reusable_book.yml
     with:
       image: ${{ needs.image_setup.outputs.image }}
