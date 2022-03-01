@@ -5,7 +5,9 @@ use super::{StaticBufferAllocation, UnifiedStaticBuffer, UniformGPUDataUpdater};
 use crate::{cgen::cgen_type::MeshDescription, components::Mesh, Renderer};
 
 pub struct MeshMetaData {
-    pub draw_call_count: u32,
+    pub vertex_count: u32,
+    pub index_count: u32,
+    pub index_offset: u32,
     pub mesh_description_offset: u32,
     pub positions: Vec<Vec4>, // for AABB calculation
 }
@@ -63,7 +65,7 @@ impl MeshManager {
             Mesh::new_wireframe_cube(1.0),
             Mesh::new_ground_plane(6, 5, 0.25),
             Mesh::new_torus(0.1, 32, 0.5, 128),
-            Mesh::new_cone(0.25, 1.0, 32),
+            Mesh::new_cone(0.25, 1.0, 32, 0),
             Mesh::new_cylinder(0.25, 1.0, 32),
             Mesh::new_sphere(0.25, 64, 64),
             Mesh::new_arrow(),
@@ -95,10 +97,12 @@ impl MeshManager {
 
         for mesh in meshes {
             mesh_ids.push(self.static_meshes.len() as u32);
-            let (new_offset, mesh_info_offset) =
+            let (new_offset, mesh_info_offset, index_offset) =
                 mesh.make_gpu_update_job(&mut updater, offset as u32);
             mesh_meta_datas.push(MeshMetaData {
-                draw_call_count: mesh.num_vertices() as u32,
+                vertex_count: mesh.num_vertices() as u32,
+                index_count: mesh.num_indices() as u32,
+                index_offset,
                 mesh_description_offset: mesh_info_offset,
                 positions: mesh.positions.as_ref().unwrap().clone(),
             });

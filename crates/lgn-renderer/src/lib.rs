@@ -698,6 +698,7 @@ fn render_update(
         }
 
         let mut cmd_buffer = render_context.alloc_command_buffer();
+        cmd_buffer.bind_index_buffer(&renderer.static_buffer().index_buffer_binding());
         cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
 
         let picking_pass = render_surface.picking_renderpass();

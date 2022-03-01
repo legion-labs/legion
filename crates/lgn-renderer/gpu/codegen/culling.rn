@@ -5,7 +5,7 @@ pub fn main(frame_descriptor_set, view_descriptor_set ) {
             name: "GpuInstanceData",
             fields: [
                 #{ name:"gpu_instance_id", ty:"Uint1" },
-                #{ name:"material_id", ty:"Uint1" },
+                #{ name:"state_id", ty:"Uint1" },
             ]
         },
         #{

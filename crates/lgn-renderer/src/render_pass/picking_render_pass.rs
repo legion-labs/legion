@@ -239,6 +239,12 @@ impl PickingRenderPass {
                 render_context.view_descriptor_set().1,
             );
 
+            cmd_buffer.bind_index_buffer(
+                &render_context
+                    .renderer()
+                    .static_buffer()
+                    .index_buffer_binding(),
+            );
             cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
 
             let mut picking_descriptor_set = cgen::descriptor_set::PickingDescriptorSet::default();
@@ -420,5 +426,5 @@ fn render_mesh(
 
     cmd_buffer.push_constant(&push_constant_data);
 
-    cmd_buffer.draw(mesh_meta_data.draw_call_count, 0);
+    cmd_buffer.draw(mesh_meta_data.vertex_count, 0);
 }

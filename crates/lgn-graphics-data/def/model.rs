@@ -10,7 +10,7 @@ pub struct Mesh {
     pub normals: Vec<Vec4>,
     pub tangents: Vec<Vec4>,
     pub tex_coords: Vec<Vec2>,
-    pub indices: Vec<u32>,
+    pub indices: Vec<u16>,
     pub colors: Vec<Vec4>,
 
     #[legion(resource_type = crate::runtime::Material)]

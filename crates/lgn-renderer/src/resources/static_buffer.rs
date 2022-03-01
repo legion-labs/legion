@@ -5,9 +5,9 @@ use std::{
 
 use lgn_graphics_api::{
     BarrierQueueTransition, Buffer, BufferAllocation, BufferBarrier, BufferCopy, BufferDef,
-    BufferView, BufferViewDef, DeviceContext, MemoryAllocation, MemoryAllocationDef,
-    MemoryPagesAllocation, MemoryUsage, PagedBufferAllocation, ResourceCreation, ResourceState,
-    ResourceUsage, Semaphore, VertexBufferBinding,
+    BufferView, BufferViewDef, DeviceContext, IndexBufferBinding, IndexType, MemoryAllocation,
+    MemoryAllocationDef, MemoryPagesAllocation, MemoryUsage, PagedBufferAllocation,
+    ResourceCreation, ResourceState, ResourceUsage, Semaphore, VertexBufferBinding,
 };
 use lgn_tracing::span_fn;
 
@@ -241,6 +241,16 @@ impl UnifiedStaticBuffer {
         let inner = self.inner.lock().unwrap();
 
         inner.read_only_view.clone()
+    }
+
+    pub fn index_buffer_binding(&self) -> IndexBufferBinding {
+        let inner = self.inner.lock().unwrap();
+
+        IndexBufferBinding {
+            buffer: inner.buffer.clone(),
+            byte_offset: 0,
+            index_type: IndexType::Uint16,
+        }
     }
 }
 
