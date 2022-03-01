@@ -9,13 +9,34 @@ on:
         required: true
         type: string
       deploy:
-        required: true
+        required: false
         type: boolean
+        default: false
+      benchmark:
+        required: false
+        type: boolean
+        default: false
+      coverage:
+        required: false
+        type: boolean
+        default: false
+      timings:
+        required: false
+        type: boolean
+        default: false
     secrets:
       ecr-password:
-        required: false
+        required: true
       docs-deploy-key:
         required: false
+      coverage-deploy-key:
+        required: false
+      build-timings-deploy-key:
+        required: false
+
+env:
+  MONOREPO_DOCKER_REGISTRY: 550877636976.dkr.ecr.ca-central-1.amazonaws.com/legion-labs/legion
+  CARGO_TERM_COLOR: always
 
 jobs:
   lint:
@@ -72,7 +93,6 @@ jobs:
 
   publish:
     name: Building release binaries
-    if: ${{ inputs.deploy }}
     needs: [test]
     runs-on: [self-hosted, linux, common, build]
     strategy:
@@ -85,12 +105,15 @@ jobs:
         uses: ./.github/actions/bootstrap
 
       - name: Build
-        env:
-          MONOREPO_DOCKER_REGISTRY: ${{ secrets.MONOREPO_DOCKER_REGISTRY }}
+        if: ${{ !inputs.deploy }}
+        run: cargo m publish --release --force ${{ inputs.pkgs_arg }} --target ${{ matrix.target }} --build-only
+
+      - name: Build and publish
+        if: ${{ inputs.deploy }}
         run: cargo m publish --release --force ${{ inputs.pkgs_arg }} --target ${{ matrix.target }}
 
       - name: Upload Zip artifacts to github
-        if: ${{ matrix.target == 'x86_64-pc-windows-msvc' }}
+        if: ${{ inputs.deploy && matrix.target == 'x86_64-pc-windows-msvc' }}
         uses: actions/upload-artifact@v2
         with:
           name: zip-release
@@ -147,3 +170,114 @@ jobs:
           publish_dir: ./doc
           force_orphan: true
           cname: api.legionengine.com
+
+  benchmark:
+    name: Running benchmarks
+    if: ${{ inputs.benchmark }}
+    needs: [lint]
+    runs-on: [self-hosted, linux, common, build]
+    container:
+      image: ${{ inputs.image }}
+      credentials:
+        username: AWS
+        password: ${{ secrets.ecr-password }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Bootstrap
+        uses: ./.github/actions/bootstrap
+
+      - name: Build benchmarks
+        run: cargo m ci bench
+
+  timings:
+    name: Running a timed build
+    if: ${{ inputs.timings }}
+    needs: [lint]
+    runs-on: [self-hosted, linux, common, build]
+    container:
+      image: ${{ inputs.image }}
+      credentials:
+        username: AWS
+        password: ${{ secrets.ecr-password }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build with timings
+        run: make timings
+
+      - name: Upload report
+        uses: actions/upload-artifact@v2
+        with:
+          name: timings
+          path: ./timings
+          retention-days: 60
+
+  deploy_timings:
+    name: Deploying timings
+    needs: [timings]
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: timings
+          path: ./timings
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          deploy_key: ${{ secrets.build-timings-deploy-key }}
+          external_repository: legion-labs/build-timings.legionengine.com
+          publish_branch: main
+          publish_dir: ./timings
+          force_orphan: true
+          cname: build-timings.legionengine.com
+
+  coverage:
+    name: Running code coverage analysis
+    if: ${{ inputs.coverage }}
+    needs: [lint]
+    runs-on: [self-hosted, linux, common, build]
+    container:
+      image: ${{ inputs.image }}
+      credentials:
+        username: AWS
+        password: ${{ secrets.ecr-password }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Bootstrap
+        uses: ./.github/actions/bootstrap
+
+      - name: Build and run tests with coverage
+        run: make cov
+
+      - name: Build coverage report
+        run: make grcov
+
+      - name: Upload report
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage
+          path: ./target/debug/coverage
+          retention-days: 60
+
+  deploy_coverage:
+    name: Deploying coverage report
+    needs: [coverage]
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: coverage
+          path: ./coverage
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          deploy_key: ${{ secrets.coverage-deploy-key }}
+          external_repository: legion-labs/cov.legionengine.com
+          publish_branch: main
+          publish_dir: ./coverage
+          force_orphan: true
+          cname: cov.legionengine.com

@@ -80,7 +80,7 @@ impl<'g> PublishPackage<'g> {
             return self.update_hash(args);
         }
         self.build_dist_targets(ctx, args)?;
-        if args.no_dist {
+        if args.build_only {
             return Ok(());
         }
         self.publish_dist_targets(ctx, args)
