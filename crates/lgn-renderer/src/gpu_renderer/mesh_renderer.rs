@@ -26,8 +26,17 @@ use crate::{
 
 use super::{GpuInstanceEvent, RenderElement, RenderLayer, RenderStateSet};
 
-#[derive(Default)]
-pub struct MeshRendererPlugin {}
+pub struct MeshRendererPlugin {
+    static_buffer: UnifiedStaticBuffer,
+}
+
+impl MeshRendererPlugin {
+    pub fn new(static_buffer: &UnifiedStaticBuffer) -> Self {
+        Self {
+            static_buffer: static_buffer.clone(),
+        }
+    }
+}
 
 pub(crate) enum DefaultLayers {
     Opaque = 0,
@@ -36,6 +45,11 @@ pub(crate) enum DefaultLayers {
 
 impl Plugin for MeshRendererPlugin {
     fn build(&self, app: &mut App) {
+        //
+        // Resources
+        //
+        app.insert_resource(MeshRenderer::new(&self.static_buffer));
+
         //
         // Events
         //

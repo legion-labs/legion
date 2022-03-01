@@ -152,7 +152,7 @@ impl Plugin for RendererPlugin {
         app.add_plugin(EguiPlugin::new());
         app.add_plugin(PickingPlugin {});
         app.add_plugin(GpuDataPlugin::default());
-        app.add_plugin(MeshRendererPlugin {});
+        app.add_plugin(MeshRendererPlugin::new(static_buffer));
         app.insert_resource(renderer);
 
         //
@@ -351,8 +351,8 @@ fn update_gpu_instances(
         picking_data_manager.remove_gpu_data(&entity);
         if let Some(removed_ids) = instance_manager.remove_gpu_instance(entity) {
             event_writer.send(GpuInstanceEvent::Removed(removed_ids));
-            }
         }
+    }
 
     for (entity, mesh, mat_component) in instance_query.iter() {
         let color: (f32, f32, f32, f32) = (
@@ -558,7 +558,7 @@ fn render_update(
         let static_buffer_ro_view = renderer.static_buffer_ro_view();
         frame_descriptor_set.set_static_buffer(&static_buffer_ro_view);
 
-			let va_table_address_buffer =
+        let va_table_address_buffer =
             instance_manager.structured_buffer_view(std::mem::size_of::<u32>() as u64, true);
         frame_descriptor_set.set_va_table_address_buffer(&va_table_address_buffer);
 
