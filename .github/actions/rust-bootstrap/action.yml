@@ -25,7 +25,7 @@ runs:
         echo "::endgroup::"
         echo "::group::Copy executables to s3"
         tar -czvf ./target/monorepo.tar.gz --directory ./target/debug monorepo
-        aws s3 cp ./target/monorepo.tar.gz s3://legionlabs-ci-artefacts/bootstrap/monorepo-$GITHUB_RUN_ID.tar.gz --region ca-central-1
+        aws s3 cp ./target/monorepo.tar.gz s3://legionlabs-ci-artefacts/bootstrap/monorepo-$GITHUB_RUN_ID.tar.gz --region ca-central-1 --expires $(date -d "+10 days" --iso-860=seconds)
         echo "::endgroup::"
       shell: bash
 
@@ -35,4 +35,5 @@ runs:
         tar -xzvf ./target/monorepo.tar.gz --directory ./target
         cp ./target/monorepo /usr/local/bin/monorepo
         monorepo --help
+        exit 1
       shell: bash
