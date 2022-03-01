@@ -2,9 +2,10 @@
   import { makeGrpcClient } from "@/lib/client";
   import { formatExecutionTime } from "@/lib/format";
   import { getLodFromPixelSizeNs } from "@/lib/lod";
+  import { MetricAxisCollection } from "@/lib/Metric/MetricAxisCollection";
   import { getMetricColor } from "@/lib/Metric/MetricColor";
-  import { Point } from "@/lib/Metric/MetricPoint";
   import { selectionStore } from "@/lib/Metric/MetricSelectionStore";
+  import { MetricSlice } from "@/lib/Metric/MetricSlice";
   import { MetricState } from "@/lib/Metric/MetricState";
   import { MetricStreamer } from "@/lib/Metric/MetricStreamer";
   import { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
@@ -20,6 +21,7 @@
   export let id: string;
 
   let metricStreamer: MetricStreamer;
+  let axisCollection: MetricAxisCollection;
   let metricStore: Writable<MetricState[]>;
 
   const margin = { top: 20, right: 50, bottom: 40, left: 70 };
@@ -38,19 +40,14 @@
   let currentMaxMs = Infinity;
   let brushStart = NaN;
   let brushEnd = NaN;
-  let points: {
-    points: Point[];
-    name: string;
-  }[] = [];
+  let points: MetricSlice[];
   let loading = true;
   let updateTime: number;
   let lod: number;
   let deltaMs: number;
   let pixelSizeNs: number;
-  // let initialWidth: number;
-
   let x: d3.ScaleLinear<number, number, never>;
-  let y: d3.ScaleLinear<number, number, never>;
+  let bestY: d3.ScaleLinear<number, number, never>;
 
   let brushFunction: d3.BrushBehavior<unknown>;
   /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -72,8 +69,8 @@
   let pointSubscription: Unsubscriber | undefined;
   let selectionSubsription: Unsubscriber | undefined;
 
-  $: {
-    if (transform && !loading) {
+  $: if (!loading) {
+    if (transform) {
       updateLod();
       updatePoints(get(metricStore));
       updateChart();
@@ -92,6 +89,7 @@
 
   onMount(async () => {
     client = await makeGrpcClient();
+    axisCollection = new MetricAxisCollection();
     await fetchMetricsAsync().then(() => {
       createChart();
       updateLod();
@@ -128,7 +126,6 @@
 
   function tick() {
     metricStreamer?.tick(lod, currentMinMs, currentMaxMs);
-    updatePoints(get(metricStore));
   }
 
   async function fetchMetricsAsync() {
@@ -164,6 +161,7 @@
     if (!states) {
       return;
     }
+
     points = states
       .filter((m) => m.canBeDisplayed())
       .map((m) => {
@@ -172,8 +170,11 @@
             m.getViewportPoints(currentMinMs, currentMaxMs, lod, true)
           ),
           name: m.name,
+          unit: m.unit,
         };
       });
+
+    axisCollection.update(points);
   }
 
   function refreshZoom() {
@@ -223,12 +224,13 @@
     context = canvas.getContext("2d")!;
 
     x = d3.scaleLinear().domain([totalMinMs, totalMaxMs]);
-    y = d3.scaleLinear().nice();
 
     xAxis = d3
       .axisBottom(x)
       .tickFormat((d) => formatExecutionTime(d.valueOf()));
-    yAxis = d3.axisLeft(y);
+
+    bestY = axisCollection.getBestAxisScale([height, 0]);
+    yAxis = d3.axisLeft(bestY);
 
     gxAxis = svgGroup
       .append("g")
@@ -296,55 +298,33 @@
     }
 
     var startTime = performance.now();
-
     x.range([0, width]);
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     svgGroup.call(zoom as any);
-
     refreshZoom();
-
     updateChartWidth();
-
-    const yMax = d3.max(
-      points
-        .map((p) => p.points)
-        .flatMap((p) => d3.max(p.map((point) => point.value)) ?? 0)
-    );
-
-    const yMin = d3.min(
-      points
-        .map((p) => p.points)
-        .flatMap((p) => d3.min(p.map((point) => point.value)) ?? 0)
-    );
-
-    y.range([height, 0]).domain([yMin ?? 0, yMax ?? 0]);
-
+    bestY = axisCollection.getBestAxisScale([height, 0]);
     draw();
-
     updateTime = Math.floor(performance.now() - startTime);
+  }
+
+  function getLine(
+    x: d3.ScaleLinear<number, number, never>,
+    y: d3.ScaleLinear<number, number, never>
+  ): d3.Line<[number, number]> {
+    return d3
+      .line()
+      .x((d) => x(d[0]))
+      .y((d) => y(d[1]))
+      .context(context);
   }
 
   function draw() {
     const scaleX = transform.rescaleX(x);
-
-    var line = d3
-      .line()
-      .x((d) => scaleX(d[0]))
-      .y((d) => y(d[1]))
-      .context(context);
-
-    points.forEach((data) => {
-      const color = (context.strokeStyle = getMetricColor(data.name));
-      context.beginPath();
-      line(data.points.map((p) => [p.time, p.value]));
-      context.strokeStyle = color;
-      context.lineWidth = 0.33;
-      context.stroke();
-    });
-
     for (const metric of points) {
       const color = (context.strokeStyle = getMetricColor(metric.name));
+      const scaleY = axisCollection.getAxisScale(metric.unit, [height, 0]);
+      var line = getLine(scaleX, scaleY);
       context.beginPath();
       line(metric.points.map((p) => [p.time, p.value]));
       context.strokeStyle = color;
@@ -353,7 +333,13 @@
       if (lod <= 3) {
         for (const point of metric.points) {
           context.beginPath();
-          context.arc(scaleX(point.time), y(point.value), 1, 0, 2 * Math.PI);
+          context.arc(
+            scaleX(point.time),
+            scaleY(point.value),
+            1,
+            0,
+            2 * Math.PI
+          );
           context.fillStyle = color;
           context.fill();
         }
@@ -361,7 +347,7 @@
     }
 
     gxAxis.call(xAxis.scale(scaleX));
-    gyAxis.call(yAxis.scale(y));
+    gyAxis.call(yAxis.scale(bestY));
   }
 
   function handleKeydown(event: KeyboardEvent) {

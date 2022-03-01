@@ -102,13 +102,22 @@ export class MetricState {
   }
 
   getClosestValue(time: number): Point | null {
-    const data = Array.from(
-      this.getViewportPoints(this.min, this.max, 0, false)
-    );
-    const points = data.filter((p) => p.time > time);
-    if (points.length == 0) {
-      return null;
+    let result = null;
+    for (const item of this.getViewportPoints(
+      time - this.min / 100,
+      time + this.max / 100,
+      0,
+      false
+    )) {
+      if (item.time > time) {
+        if (!result) {
+          result = item;
+        }
+        if (item.time < result.time) {
+          result = item;
+        }
+      }
     }
-    return points[0];
+    return result;
   }
 }
