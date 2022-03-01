@@ -399,8 +399,8 @@
         bind:highlightedItem={currentResourceDescription}
         bind:this={resourceHierarchyTree}
       >
-        <div slot="icon" let:entry>
-          <Icon icon={iconFor(entry)} />
+        <div class="w-full h-full" slot="icon" let:entry>
+          <Icon class="w-full h-full" icon={iconFor(entry)} />
         </div>
         <div class="item" slot="name" let:itemName>
           {itemName}

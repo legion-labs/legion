@@ -148,8 +148,13 @@
     use:draggable={!entry.subEntries.length ? { item: entry, type } : null}
   >
     {#if entry.subEntries.length > 0}
-      <div class="icon" class:expanded={isExpanded} on:click={toggleExpanded}>
-        <Icon icon="ic:baseline-chevron-right" />
+      <div class="icon-container" on:click={toggleExpanded}>
+        <div class="folder-icon" class:expanded={isExpanded}>
+          <Icon icon="ic:baseline-chevron-right" />
+        </div>
+        <div class="icon">
+          <slot name="icon" {entry} />
+        </div>
       </div>
     {:else}
       <div class="icon">
@@ -215,11 +220,19 @@
     @apply space-x-1;
   }
 
-  .icon {
-    @apply flex items-center text-orange-700 transition-all duration-150;
+  .icon-container {
+    @apply flex items-center space-x-1;
   }
 
-  .icon.expanded {
+  .icon {
+    @apply flex items-center h-5 w-5 text-orange-700 opacity-50;
+  }
+
+  .folder-icon {
+    @apply flex items-center h-2.5 w-2.5 transition-all duration-150;
+  }
+
+  .folder-icon.expanded {
     @apply rotate-90;
   }
 
