@@ -42,3 +42,14 @@ jobs:
       deploy: ${{ false }}
     secrets:
       ecr-password: ${{ secrets.ECR_PASSWORD }}
+
+  book:
+    name: Building book
+    needs: [image_setup, change_detection]
+    uses: ./.github/workflows/reusable_book.yml
+    with:
+      image: ${{ needs.image_setup.outputs.image }}
+      deploy: ${{ false }}
+    secrets:
+      ecr-password: ${{ secrets.ECR_PASSWORD }}
+      deploy-key: ${{ secrets.BOOK_DEPLOY_KEY }}
