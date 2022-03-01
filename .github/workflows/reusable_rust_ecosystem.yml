@@ -54,7 +54,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Bootstrap
-        uses: ./.github/actions/bootstrap
+        uses: ./.github/actions/rust-bootstrap
 
       - name: Run initial checks
         run: cargo m ci ${{ inputs.pkgs_arg }} --target ${{ matrix.target }} check
@@ -75,7 +75,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Bootstrap
-        uses: ./.github/actions/bootstrap
+        uses: ./.github/actions/rust-bootstrap
 
       - name: Build tests
         run: cargo m ci ${{ inputs.pkgs_arg }} --target ${{ matrix.target }} test --build
@@ -102,7 +102,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Bootstrap
-        uses: ./.github/actions/bootstrap
+        uses: ./.github/actions/rust-bootstrap
 
       - name: Build
         if: ${{ !inputs.deploy }}
@@ -135,7 +135,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Bootstrap
-        uses: ./.github/actions/bootstrap
+        uses: ./.github/actions/rust-bootstrap
 
       - name: Build docs
         run: cargo m doc
@@ -185,7 +185,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Bootstrap
-        uses: ./.github/actions/bootstrap
+        uses: ./.github/actions/rust-bootstrap
 
       - name: Build benchmarks
         run: cargo m ci bench
@@ -247,7 +247,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Bootstrap
-        uses: ./.github/actions/bootstrap
+        uses: ./.github/actions/rust-bootstrap
 
       - name: Build and run tests with coverage
         run: make cov

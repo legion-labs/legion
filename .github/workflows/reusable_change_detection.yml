@@ -53,7 +53,9 @@ jobs:
           fetch-depth: 0
 
       - name: Bootstrap
-        uses: ./.github/actions/bootstrap
+        uses: ./.github/actions/rust-bootstrap
+        with:
+          init: true
 
       - name: Test changed crates
         id: change-since
