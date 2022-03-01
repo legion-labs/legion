@@ -297,7 +297,7 @@ impl CommandBuffer {
         }
     }
 
-    pub(crate) fn backend_cmd_bind_index_buffer(&self, binding: &IndexBufferBinding) {
+    pub(crate) fn backend_cmd_bind_index_buffer(&self, binding: &IndexBufferBinding<'_>) {
         unsafe {
             self.inner.device_context.vk_device().cmd_bind_index_buffer(
                 self.inner.backend_command_buffer.vk_command_buffer,
