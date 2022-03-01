@@ -98,7 +98,11 @@ else
     rm -rf $DXC_HOME
 fi
 
-wget -qO vulkan-sdk.exe https://sdk.lunarg.com/sdk/download/$VULKAN_VERSION.0/windows/VulkanSDK-$VULKAN_VERSION.0-Installer.exe
+# check here for the available windows versions https://vulkan.lunarg.com/sdk/home
+# Note that there is a minor version appended, and LunarG deletes sometimes the older minor version...
+# If you ever get a CI failure at this line check the website and update accordingly.
+# We periodically build images from scratch to detect stale dependencies.
+wget -qO vulkan-sdk.exe https://sdk.lunarg.com/sdk/download/$VULKAN_VERSION.1/windows/VulkanSDK-$VULKAN_VERSION.1-Installer.exe
 7z x -y vulkan-sdk.exe -o/xwin/vulkan-sdk
 chmod -R a+xr /xwin/vulkan-sdk
 rm vulkan-sdk.exe
