@@ -38,7 +38,7 @@ jobs:
               .listWorkflowRuns({
                 owner,
                 repo,
-                workflow_id: "ci_test.yml",
+                workflow_id: "ci.yml",
                 status: "success",
                 branch: GITHUB_REF_NAME,
                 event: "push",

@@ -26,6 +26,7 @@ on:
 jobs:
   check_test:
     name: Checks and tests
+    if: ${{ false }}
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ inputs.image }}
