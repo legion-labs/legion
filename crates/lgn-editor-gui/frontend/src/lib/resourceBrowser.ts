@@ -1,0 +1,48 @@
+import { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
+import { Entry } from "./hierarchyTree";
+
+export function iconFor(entry: Entry<ResourceDescription | symbol>) {
+  if (typeof entry.item === "symbol") {
+    return "ic:outline-insert-drive-file";
+  }
+
+  switch (entry.item.type) {
+    case "entity": {
+      return "ic:outline-token";
+    }
+
+    case "script": {
+      return "ic:outline-text_snippet";
+    }
+
+    case "instance": {
+      return "ic:outline-pages";
+    }
+
+    case "material": {
+      return "ic:outline-style";
+    }
+
+    case "mesh":
+    case "model":
+
+    // eslint-disable-next-line no-fallthrough
+    case "gltf": {
+      return "ic:outline-format-shapes";
+    }
+
+    case "psd": {
+      return "ic:outline-image";
+    }
+
+    case "png": {
+      return "ic:outline-image";
+    }
+
+    case "texture": {
+      return "ic:outline-image";
+    }
+  }
+
+  return "ic:outline-insert-drive-file";
+}

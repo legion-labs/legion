@@ -2,6 +2,7 @@ import userInfo from "../stores/userInfo";
 import { getCookie, setCookie } from "./cookie";
 import log from "./log";
 import getPkce from "oauth-pkce";
+import { NonEmptyArray } from "./array";
 
 // https://connect2id.com/products/server/docs/api/token#token-response
 export type ClientTokenSet = {
@@ -107,7 +108,7 @@ export class CookieStorage {
 }
 
 export type LoginConfig = {
-  scopes: [string, ...string[]];
+  scopes: NonEmptyArray<string>;
   extraParams?: Record<string, string>;
   popupTitle?: string;
   redirectUri?: string;
@@ -140,7 +141,7 @@ class Client<UserInfo> {
     pkceChallenge,
   }: {
     responseType: string;
-    scopes: [string, ...string[]];
+    scopes: NonEmptyArray<string>;
     extraParams?: Record<string, string>;
     redirectUri?: string;
     pkceChallenge?: string;

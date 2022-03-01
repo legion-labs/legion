@@ -13,6 +13,8 @@
 
   export let value: string;
 
+  export let readonly = false;
+
   let editorContainer: HTMLDivElement | undefined;
 
   let editor: monaco.editor.IStandaloneCodeEditor | undefined;
@@ -27,6 +29,7 @@
       language: "rust",
       automaticLayout: true,
       theme,
+      readOnly: readonly,
     });
 
     editor.onDidChangeModelContent(

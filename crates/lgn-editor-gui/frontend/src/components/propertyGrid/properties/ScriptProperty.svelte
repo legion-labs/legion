@@ -11,7 +11,8 @@
 
   export let value: string;
 
-  export let disabled = false;
+  // TODO: Handle readonly mode in scripts
+  export let readonly = false;
 
   $: dispatch("input", value);
 
@@ -25,6 +26,7 @@
           value = newValue;
         },
         value,
+        readonly,
         lang: "rune",
         removable: true,
       },
@@ -34,7 +36,7 @@
 </script>
 
 <div class="root">
-  <Button {disabled} fluid on:click={openViewport}>
+  <Button fluid on:click={openViewport}>
     <i>Edit...</i>
   </Button>
 </div>

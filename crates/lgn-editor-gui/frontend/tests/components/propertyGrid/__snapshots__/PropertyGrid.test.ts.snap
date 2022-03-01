@@ -34,7 +34,47 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
           <div
             class="root"
           >
-            
+            <div
+              class="root svelte-tg2vtt"
+            >
+              <div
+                class="property-name svelte-tg2vtt"
+                title="test_string"
+              >
+                <div
+                  class="truncate"
+                >
+                  test_string
+                </div>
+              </div>
+               
+              <div
+                class="property-input-container svelte-tg2vtt"
+              >
+                <div
+                  class="property-input svelte-tg2vtt"
+                >
+                  <div
+                    class="root svelte-1gjlayc"
+                  >
+                    <div
+                      class="root svelte-jk7kfq w-full readonly default"
+                    >
+                       
+                      <input
+                        aria-autocomplete="none"
+                        autocomplete="none"
+                        class="input svelte-jk7kfq default"
+                        readonly=""
+                        type="text"
+                      />
+                       
+                    </div>
+                     
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           
           
@@ -89,10 +129,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                           class="root svelte-1nb3fu7"
                         >
                           <div
-                            class="root svelte-19khs1x w-full default with-extension"
+                            class="root svelte-jk7kfq w-full default with-extension"
                           >
                             <div
-                              class="extension left-extension svelte-19khs1x extension-default"
+                              class="extension left-extension svelte-jk7kfq extension-default"
                             >
                               <div
                                 class="h-full w-full flex items-center justify-center text-xl font-bold"
@@ -106,12 +146,12 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                             <input
                               aria-autocomplete="none"
                               autocomplete="none"
-                              class="input svelte-19khs1x with-right-extension with-left-extension default"
+                              class="input svelte-jk7kfq with-right-extension with-left-extension default"
                               type="text"
                             />
                              
                             <div
-                              class="extension right-extension svelte-19khs1x extension-default"
+                              class="extension right-extension svelte-jk7kfq extension-default"
                             >
                               <div
                                 class="root svelte-1agkg6l"
@@ -202,7 +242,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                         <input
                                           aria-autocomplete="none"
                                           autocomplete="none"
-                                          class="input svelte-eswj42 default w-full no-arrow"
+                                          class="input svelte-1s4bysp default w-full no-arrow"
                                           max="255"
                                           min="0"
                                           step="0"
@@ -216,7 +256,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                         <input
                                           aria-autocomplete="none"
                                           autocomplete="none"
-                                          class="input svelte-eswj42 default w-full no-arrow"
+                                          class="input svelte-1s4bysp default w-full no-arrow"
                                           max="255"
                                           min="0"
                                           step="0"
@@ -230,7 +270,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                         <input
                                           aria-autocomplete="none"
                                           autocomplete="none"
-                                          class="input svelte-eswj42 default w-full no-arrow"
+                                          class="input svelte-1s4bysp default w-full no-arrow"
                                           max="255"
                                           min="0"
                                           step="0"
@@ -244,7 +284,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                         <input
                                           aria-autocomplete="none"
                                           autocomplete="none"
-                                          class="input svelte-eswj42 default w-full no-arrow"
+                                          class="input svelte-1s4bysp default w-full no-arrow"
                                           max="255"
                                           min="0"
                                           step="0"
@@ -303,7 +343,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                             <input
                               aria-autocomplete="none"
                               autocomplete="none"
-                              class="input svelte-eswj42 default w-full no-arrow"
+                              class="input svelte-1s4bysp default w-full no-arrow"
                               step="0"
                               type="number"
                             />
@@ -315,7 +355,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                             <input
                               aria-autocomplete="none"
                               autocomplete="none"
-                              class="input svelte-eswj42 default w-full no-arrow"
+                              class="input svelte-1s4bysp default w-full no-arrow"
                               step="0"
                               type="number"
                             />
@@ -327,7 +367,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                             <input
                               aria-autocomplete="none"
                               autocomplete="none"
-                              class="input svelte-eswj42 default w-full no-arrow"
+                              class="input svelte-1s4bysp default w-full no-arrow"
                               step="0"
                               type="number"
                             />
@@ -339,7 +379,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                             <input
                               aria-autocomplete="none"
                               autocomplete="none"
-                              class="input svelte-eswj42 default w-full no-arrow"
+                              class="input svelte-1s4bysp default w-full no-arrow"
                               step="0"
                               type="number"
                             />
@@ -451,7 +491,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         <input
                           aria-autocomplete="none"
                           autocomplete="none"
-                          class="input svelte-eswj42 default w-full no-arrow text-right"
+                          class="input svelte-1s4bysp default w-full no-arrow text-right"
                           step="0"
                           type="number"
                         />
@@ -492,7 +532,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         <input
                           aria-autocomplete="none"
                           autocomplete="none"
-                          class="input svelte-eswj42 default w-full no-arrow text-right"
+                          class="input svelte-1s4bysp default w-full no-arrow text-right"
                           step="0"
                           type="number"
                         />
@@ -536,7 +576,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                     <input
                       aria-autocomplete="none"
                       autocomplete="none"
-                      class="input svelte-eswj42 default w-full no-arrow text-right"
+                      class="input svelte-1s4bysp default w-full no-arrow text-right"
                       step="0"
                       type="number"
                     />
@@ -604,7 +644,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         <input
                           aria-autocomplete="none"
                           autocomplete="none"
-                          class="input svelte-eswj42 default w-full no-arrow text-right"
+                          class="input svelte-1s4bysp default w-full no-arrow text-right"
                           step="0"
                           type="number"
                         />
@@ -650,7 +690,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         <input
                           aria-autocomplete="none"
                           autocomplete="none"
-                          class="input svelte-eswj42 default w-full no-arrow text-right"
+                          class="input svelte-1s4bysp default w-full no-arrow text-right"
                           step="0"
                           type="number"
                         />
@@ -696,7 +736,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         <input
                           aria-autocomplete="none"
                           autocomplete="none"
-                          class="input svelte-eswj42 default w-full no-arrow text-right"
+                          class="input svelte-1s4bysp default w-full no-arrow text-right"
                           step="0"
                           type="number"
                         />
@@ -742,7 +782,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         <input
                           aria-autocomplete="none"
                           autocomplete="none"
-                          class="input svelte-eswj42 default w-full no-arrow text-right"
+                          class="input svelte-1s4bysp default w-full no-arrow text-right"
                           step="0"
                           type="number"
                         />
@@ -866,7 +906,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                 <input
                                   aria-autocomplete="none"
                                   autocomplete="none"
-                                  class="input svelte-eswj42 default w-full no-arrow text-right"
+                                  class="input svelte-1s4bysp default w-full no-arrow text-right"
                                   step="0"
                                   type="number"
                                 />
@@ -937,7 +977,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                 <input
                                   aria-autocomplete="none"
                                   autocomplete="none"
-                                  class="input svelte-eswj42 default w-full no-arrow text-right"
+                                  class="input svelte-1s4bysp default w-full no-arrow text-right"
                                   step="0"
                                   type="number"
                                 />
@@ -1008,7 +1048,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                 <input
                                   aria-autocomplete="none"
                                   autocomplete="none"
-                                  class="input svelte-eswj42 default w-full no-arrow text-right"
+                                  class="input svelte-1s4bysp default w-full no-arrow text-right"
                                   step="0"
                                   type="number"
                                 />
@@ -1053,13 +1093,13 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         class="root svelte-1gjlayc"
                       >
                         <div
-                          class="root svelte-19khs1x w-full default"
+                          class="root svelte-jk7kfq w-full default"
                         >
                            
                           <input
                             aria-autocomplete="none"
                             autocomplete="none"
-                            class="input svelte-19khs1x default"
+                            class="input svelte-jk7kfq default"
                             type="text"
                           />
                            
@@ -1128,7 +1168,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                 <input
                                   aria-autocomplete="none"
                                   autocomplete="none"
-                                  class="input svelte-eswj42 default w-full no-arrow"
+                                  class="input svelte-1s4bysp default w-full no-arrow"
                                   step="0"
                                   type="number"
                                 />
@@ -1140,7 +1180,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                 <input
                                   aria-autocomplete="none"
                                   autocomplete="none"
-                                  class="input svelte-eswj42 default w-full no-arrow"
+                                  class="input svelte-1s4bysp default w-full no-arrow"
                                   step="0"
                                   type="number"
                                 />
@@ -1152,7 +1192,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                 <input
                                   aria-autocomplete="none"
                                   autocomplete="none"
-                                  class="input svelte-eswj42 default w-full no-arrow"
+                                  class="input svelte-1s4bysp default w-full no-arrow"
                                   step="0"
                                   type="number"
                                 />
@@ -1236,7 +1276,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                 <input
                                   aria-autocomplete="none"
                                   autocomplete="none"
-                                  class="input svelte-eswj42 default w-full no-arrow"
+                                  class="input svelte-1s4bysp default w-full no-arrow"
                                   step="0"
                                   type="number"
                                 />
@@ -1248,7 +1288,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                 <input
                                   aria-autocomplete="none"
                                   autocomplete="none"
-                                  class="input svelte-eswj42 default w-full no-arrow"
+                                  class="input svelte-1s4bysp default w-full no-arrow"
                                   step="0"
                                   type="number"
                                 />
@@ -1260,7 +1300,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                 <input
                                   aria-autocomplete="none"
                                   autocomplete="none"
-                                  class="input svelte-eswj42 default w-full no-arrow"
+                                  class="input svelte-1s4bysp default w-full no-arrow"
                                   step="0"
                                   type="number"
                                 />
@@ -1438,7 +1478,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                             <input
                               aria-autocomplete="none"
                               autocomplete="none"
-                              class="input svelte-eswj42 default w-full no-arrow"
+                              class="input svelte-1s4bysp default w-full no-arrow"
                               step="0"
                               type="number"
                             />
@@ -1450,7 +1490,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                             <input
                               aria-autocomplete="none"
                               autocomplete="none"
-                              class="input svelte-eswj42 default w-full no-arrow"
+                              class="input svelte-1s4bysp default w-full no-arrow"
                               step="0"
                               type="number"
                             />
@@ -1462,7 +1502,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                             <input
                               aria-autocomplete="none"
                               autocomplete="none"
-                              class="input svelte-eswj42 default w-full no-arrow"
+                              class="input svelte-1s4bysp default w-full no-arrow"
                               step="0"
                               type="number"
                             />

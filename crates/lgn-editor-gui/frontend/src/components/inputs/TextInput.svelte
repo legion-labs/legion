@@ -29,9 +29,13 @@
 
   export let disabled = false;
 
+  export let readonly = false;
+
   export let placeholder: string | null = null;
 
   let input: HTMLInputElement | undefined;
+
+  $: inactive = disabled || readonly;
 
   onMount(() => {
     if (autoFocus && input) {
@@ -66,10 +70,11 @@
   class="root"
   class:w-full={fluid}
   class:disabled
+  class:readonly
   class:default={size === "default"}
   class:sm={size === "sm"}
   class:lg={size === "lg"}
-  class:error={status === "error" && !disabled}
+  class:error={status === "error" && !inactive}
   class:with-extension={$$slots.rightExtension || $$slots.leftExtension}
 >
   {#if $$slots.leftExtension}
@@ -94,11 +99,12 @@
     aria-autocomplete="none"
     type="text"
     {disabled}
+    {readonly}
     {placeholder}
     bind:value
     bind:this={input}
-    on:input={disabled ? null : onInput}
-    on:focus={disabled ? null : onFocus}
+    on:input={inactive ? null : onInput}
+    on:focus={inactive ? null : onFocus}
   />
   {#if $$slots.rightExtension}
     <div
@@ -123,6 +129,10 @@
 
   .root.disabled {
     @apply text-gray-400 cursor-not-allowed;
+  }
+
+  .root.readonly {
+    @apply text-gray-400;
   }
 
   .root.default {

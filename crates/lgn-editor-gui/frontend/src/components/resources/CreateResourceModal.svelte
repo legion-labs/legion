@@ -16,7 +16,6 @@
     ResourceDescription,
   } from "@lgn/proto-editor/dist/resource_browser";
   import allResourcesStore from "@/stores/allResources";
-  import { join } from "@/lib/path";
   import Field from "../Field.svelte";
   import log from "@lgn/web-client/src/lib/log";
   import { Config } from "@lgn/web-client/src/stores/modal";

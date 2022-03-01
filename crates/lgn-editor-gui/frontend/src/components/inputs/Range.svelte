@@ -18,6 +18,10 @@
 
   export let disabled = false;
 
+  export let readonly = false;
+
+  $: inactive = disabled || readonly;
+
   function onRangeInput(
     event: Event & { currentTarget: EventTarget & HTMLInputElement }
   ) {
@@ -31,7 +35,7 @@
   }
 </script>
 
-<div class="root" class:disabled class:w-full={fluid}>
+<div class="root" class:disabled class:readonly class:w-full={fluid}>
   <div class="slider-container group">
     <div>{min}</div>
     <input
@@ -39,9 +43,10 @@
       type="range"
       {min}
       {max}
-      on:input={disabled ? null : onRangeInput}
+      on:input={inactive ? null : onRangeInput}
       bind:value
       {disabled}
+      {readonly}
     />
     <div>{max}</div>
   </div>
@@ -55,6 +60,7 @@
         noArrow
         fluid
         {disabled}
+        {readonly}
       />
     </div>
   {/if}
@@ -67,6 +73,10 @@
 
   .root.disabled {
     @apply text-gray-400 cursor-not-allowed;
+  }
+
+  .root.readonly {
+    @apply text-gray-400;
   }
 
   .slider-container {

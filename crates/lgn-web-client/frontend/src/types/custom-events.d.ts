@@ -70,5 +70,25 @@ declare namespace svelte.JSX {
     "onrefresh-property"?: (
       event: CustomEvent<{ path: string; value: unknown }>
     ) => void;
+
+    "ondnd-drop"?: (
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      event: CustomEvent<{ item: any; originalEvent: DragEvent }>
+    ) => void;
+
+    "ondnd-dragover"?: (
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      event: CustomEvent<{ item: any; originalEvent: DragEvent }>
+    ) => void;
+
+    "ondnd-dragenter"?: (
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      event: CustomEvent<{ item: any; originalEvent: DragEvent }>
+    ) => void;
+
+    "ondnd-dragleave"?: (
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      event: CustomEvent<{ item: any; originalEvent: DragEvent }>
+    ) => void;
   }
 }

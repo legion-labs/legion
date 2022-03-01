@@ -50,3 +50,9 @@ export function prependIfNonPresent<T>(
 ): T[] {
   return array.some(pred) ? array : [item(), ...array];
 }
+
+export type NonEmptyArray<T> = [T, ...T[]];
+
+export function isNonEmpty<T>(xs: T[]): xs is NonEmptyArray<T> {
+  return xs.length ? true : false;
+}

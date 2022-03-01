@@ -8,7 +8,6 @@
   "private": true,
   "packageManager": "pnpm@6.24.1",
   "scripts": {
-    "check": "pnpm check",
     "clean": "rimraf node_modules dist"
   },
   "devDependencies": {

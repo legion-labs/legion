@@ -7,7 +7,7 @@
 
   export let value: Vec3;
 
-  export let disabled = false;
+  export let readonly = false;
 
   function updateVectorAt(index: 0 | 1 | 2, { detail }: CustomEvent<number>) {
     dispatch("input", Object.assign([], value, { [index]: detail }));
@@ -22,7 +22,7 @@
       noArrow
       fluid
       autoSelect
-      {disabled}
+      {readonly}
     />
   </div>
   <div>
@@ -32,7 +32,7 @@
       noArrow
       fluid
       autoSelect
-      {disabled}
+      {readonly}
     />
   </div>
   <div>
@@ -42,7 +42,7 @@
       noArrow
       fluid
       autoSelect
-      {disabled}
+      {readonly}
     />
   </div>
 </div>

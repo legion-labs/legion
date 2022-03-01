@@ -6,17 +6,29 @@
   import { keyboardNavigationItem } from "@lgn/web-client/src/actions/keyboardNavigation";
   import contextMenuAction from "@/actions/contextMenu";
   import TextInput from "../inputs/TextInput.svelte";
+  import {
+    isDragging,
+    dropzone as dropzoneAction,
+    draggable as draggableAction,
+  } from "@lgn/web-client/src/actions/dnd";
+  import { nullable as nullableAction } from "@lgn/web-client/src/lib/action";
 
   type Item = $$Generic;
 
   type $$Slots = {
     name: { itemName: string };
+    icon: { entry: Entry<Item> };
   };
 
   const dispatch = createEventDispatcher<{
     highlight: Entry<Item>;
     nameEdited: { entry: Entry<Item>; newName: string };
+    moved: { draggedEntry: Entry<Item>; dropzoneEntry: Entry<Item> };
   }>();
+
+  // DnD type
+  // TODO: Will probably have to be shared throughout the whole application
+  const type = "RESOURCE";
 
   export let index: number;
 
@@ -27,6 +39,13 @@
   export let currentlyRenameEntry: Entry<Item> | null = null;
 
   export let withItemContextMenu: string | null = null;
+
+  /**
+   * Currently highlighted entry _in the drag and drop context_
+   * If a resource is dragged over an other resource this
+   * variable will be populated by the entry that's being overed
+   */
+  export let dndHighlightedEntry: Entry<Item> | null;
 
   let mode: "view" | "edit";
 
@@ -39,9 +58,19 @@
 
   $: nameValue = mode === "edit" ? entryName() : "";
 
+  $: if (!$isDragging) {
+    dndHighlightedEntry = null;
+  }
+
   $: if (!isHighlighted) {
     cancelNameEdit();
   }
+
+  const draggable = nullableAction(draggableAction);
+
+  const dropzone = nullableAction(dropzoneAction);
+
+  const contextMenu = nullableAction(contextMenuAction);
 
   function extractAutoSelectRange() {
     const name = entryName();
@@ -52,6 +81,7 @@
       return true;
     }
 
+    // -1 for the '.'
     return [0, name.length - ext.length - 1] as const;
   }
 
@@ -81,38 +111,51 @@
     isExpanded = !isExpanded;
   }
 
-  $: iconName =
-    (entry.icon != null && entry.icon) || "ic:outline-insert-drive-file";
+  function onDragOver({
+    detail: { originalEvent },
+  }: CustomEvent<{ originalEvent: DragEvent }>) {
+    originalEvent.stopPropagation();
 
-  // Simple wrapper for the `contextMenu` action that handles `null` values
-  function contextMenu(element: HTMLElement) {
-    if (withItemContextMenu == null) {
-      return;
-    }
+    dndHighlightedEntry = entry;
+  }
 
-    return contextMenuAction(element, withItemContextMenu);
+  function onDrop({
+    detail: { item: draggedEntry },
+  }: CustomEvent<{ item: Entry<Item> }>) {
+    dispatch("moved", {
+      draggedEntry,
+      dropzoneEntry: entry,
+    });
   }
 </script>
 
-<div class="root" on:dblclick use:keyboardNavigationItem={index}>
+<div
+  class="root"
+  class:bg-gray-800={dndHighlightedEntry === entry}
+  on:dblclick
+  use:keyboardNavigationItem={index}
+  use:dropzone={entry.subEntries.length ? { accept: type } : null}
+  on:dnd-drop={onDrop}
+  on:dnd-dragenter={onDragOver}
+>
   <div
     class="name"
-    class:font-semibold={entry.subEntries}
+    class:font-semibold={entry.subEntries.length}
     class:lg-space={mode === "view"}
     class:highlighted-view={isHighlighted && mode === "view"}
     on:mousedown={highlight}
-    use:contextMenu
+    use:contextMenu={withItemContextMenu}
+    use:draggable={!entry.subEntries.length ? { item: entry, type } : null}
   >
-    {#if entry.subEntries && entry.subEntries.length > 0}
+    {#if entry.subEntries.length > 0}
       <div class="icon" class:expanded={isExpanded} on:click={toggleExpanded}>
         <Icon icon="ic:baseline-chevron-right" />
       </div>
     {:else}
-      <div class="w-6 icon" />
+      <div class="icon">
+        <slot name="icon" {entry} />
+      </div>
     {/if}
-    <div class="icon">
-      <Icon icon={iconName} />
-    </div>
     <div class="name">
       {#if mode === "view"}
         <slot name="name" itemName={entry.name} />
@@ -131,8 +174,8 @@
       {/if}
     </div>
   </div>
-  {#if entry.subEntries && isExpanded}
-    {#each entry.subEntries || [] as subEntry (subEntry.index)}
+  {#if entry.subEntries.length && isExpanded}
+    {#each entry.subEntries as subEntry (subEntry.index)}
       <div class="sub-entries">
         <svelte:self
           index={subEntry.index}
@@ -140,10 +183,14 @@
           {highlightedEntry}
           {withItemContextMenu}
           bind:currentlyRenameEntry
+          bind:dndHighlightedEntry
           on:highlight
           on:nameEdited
+          on:moved
           let:itemName
+          let:entry
         >
+          <slot name="icon" slot="icon" {entry} />
           <slot name="name" slot="name" {itemName} />
         </svelte:self>
       </div>

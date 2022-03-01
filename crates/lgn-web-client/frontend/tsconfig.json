@@ -10,7 +10,14 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "lib": ["esnext", "dom"],
-    "types": ["svelte", "vitest/globals", "vite/client"],
+    "types": [
+      "svelte",
+      // The @testing-library/jest-dom lib relies on @types/jest
+      // which global types conflict with vitest, as long as
+      // the conflict isn't solved we need to comment this out
+      // "vitest/globals",
+      "vite/client"
+    ],
     "noEmit": true,
     "sourceMap": true,
     "declaration": true

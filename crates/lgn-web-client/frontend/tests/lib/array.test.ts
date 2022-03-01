@@ -1,4 +1,4 @@
-import { filterMap, takeWhile } from "@/lib/array";
+import { filterMap, takeWhile } from "../../src/lib/array";
 
 describe("filterMap", () => {
   test("returns an empty array when the provided array is empty", () => {

@@ -57,6 +57,7 @@
         on:change={({ detail: newValue }) =>
           activeTab.type === "script" && activeTab.onChange(newValue)}
         value={activeTab.value}
+        readonly={activeTab.readonly}
       />
     {/if}
   </div>

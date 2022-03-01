@@ -32,7 +32,11 @@
 
   export let disabled = false;
 
+  export let readonly = false;
+
   let input: HTMLInputElement | undefined;
+
+  $: inactive = disabled || readonly;
 
   onMount(() => {
     if (autoFocus && input) {
@@ -61,6 +65,7 @@
   class="input"
   class:default={size === "default"}
   class:disabled
+  class:readonly
   class:w-full={fluid}
   class:no-arrow={noArrow}
   class:text-right={align === "right"}
@@ -71,9 +76,10 @@
   {max}
   {step}
   {disabled}
+  {readonly}
   bind:this={input}
   bind:value
-  on:input={disabled ? null : onInput}
+  on:input={inactive ? null : onInput}
   on:focus={onFocus}
 />
 
@@ -84,6 +90,10 @@
 
   .disabled {
     @apply text-gray-400 cursor-not-allowed;
+  }
+
+  .readonly {
+    @apply text-gray-400;
   }
 
   .default {

@@ -7,7 +7,7 @@
 
   export let value: Quat;
 
-  export let disabled = false;
+  export let readonly = false;
 
   function updateVectorAt(
     index: 0 | 1 | 2 | 3,
@@ -25,7 +25,7 @@
       noArrow
       fluid
       autoSelect
-      {disabled}
+      {readonly}
     />
   </div>
   <div>
@@ -35,7 +35,7 @@
       noArrow
       fluid
       autoSelect
-      {disabled}
+      {readonly}
     />
   </div>
   <div>
@@ -45,7 +45,7 @@
       noArrow
       fluid
       autoSelect
-      {disabled}
+      {readonly}
     />
   </div>
   <div>
@@ -55,7 +55,7 @@
       noArrow
       fluid
       autoSelect
-      {disabled}
+      {readonly}
     />
   </div>
 </div>

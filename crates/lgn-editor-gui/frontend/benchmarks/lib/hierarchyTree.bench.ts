@@ -71,7 +71,7 @@ export const resourcesSuite = suite("Entries.fromArray", (bench) => {
 
     return () => {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      entries.remove(entries.entries[3].subEntries![0].subEntries![4]);
+      entries.remove(entries.entries[3].subEntries[0].subEntries[4]);
     };
   });
 
@@ -203,7 +203,7 @@ export const bigResourcesSuite = suite(
 
         return () => {
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          entries.remove(entries.entries[3].subEntries![0].subEntries![4]);
+          entries.remove(entries.entries[3].subEntries[0].subEntries[4]);
         };
       }
     );

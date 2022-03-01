@@ -455,9 +455,10 @@ export default function remoteWindowInputs(
   element: HTMLElement,
   onInput: Listener
 ) {
-  element.style.touchAction = "none";
-
   element.tabIndex = -1;
+
+  element.style.touchAction = "none";
+  element.style.outline = "none";
 
   const state: State = {
     mouseState: "Released",

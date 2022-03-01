@@ -11,7 +11,7 @@
 
   export let value: number;
 
-  export let disabled = false;
+  export let readonly = false;
 
   let visible = false;
 
@@ -44,7 +44,7 @@
     on:input={setColorsFromTextInput}
     fluid
     autoSelect
-    {disabled}
+    {readonly}
   >
     <div
       class="h-full w-full flex items-center justify-center text-xl font-bold"
@@ -59,7 +59,7 @@
       bind:visible
       colors={colorSetFromHex(hexValue)}
       position="left"
-      {disabled}
+      {readonly}
     />
   </TextInput>
 </div>
