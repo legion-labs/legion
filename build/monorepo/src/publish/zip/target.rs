@@ -34,8 +34,8 @@ impl<'g> ZipPublishTarget<'g> {
     }
 
     pub fn build(&self, ctx: &Context, args: &publish::Args) -> Result<()> {
-        let root = self.zip_root(ctx, args)?;
-        let archive = self.archive_path(ctx, args)?;
+        let root = self.zip_root(ctx, args);
+        let archive = self.archive_path(ctx, args);
 
         clean(&root)?;
 
@@ -49,7 +49,7 @@ impl<'g> ZipPublishTarget<'g> {
     }
 
     pub fn publish(&self, ctx: &Context, args: &publish::Args) -> Result<()> {
-        let archive = self.archive_path(ctx, args)?;
+        let archive = self.archive_path(ctx, args);
         let region = self.metadata.region.clone();
         let s3_bucket = self.s3_bucket()?;
         let s3_key = format!(
@@ -78,16 +78,16 @@ impl<'g> ZipPublishTarget<'g> {
         }
     }
 
-    fn archive_path(&self, ctx: &Context, args: &crate::publish::Args) -> Result<Utf8PathBuf> {
-        Ok(target_dir(ctx, &args.build_args)?
+    fn archive_path(&self, ctx: &Context, args: &crate::publish::Args) -> Utf8PathBuf {
+        target_dir(ctx, &args.build_args)
             .join("zip")
-            .join(format!("{}.zip", self.name())))
+            .join(format!("{}.zip", self.name()))
     }
 
-    fn zip_root(&self, ctx: &Context, args: &publish::Args) -> Result<Utf8PathBuf> {
-        Ok(target_dir(ctx, &args.build_args)?
+    fn zip_root(&self, ctx: &Context, args: &publish::Args) -> Utf8PathBuf {
+        target_dir(ctx, &args.build_args)
             .join("zip")
-            .join(self.name()))
+            .join(self.name())
     }
 
     fn s3_bucket(&self) -> Result<String> {

@@ -143,7 +143,7 @@ impl<'g> PublishPackage<'g> {
                     Error::new("failed to find binary").with_explanation(format!(
                         "The binary `{}` was not found in the target directory `{}`",
                         binary,
-                        target_dir(ctx, &args.build_args)?
+                        target_dir(ctx, &args.build_args)
                     )),
                 );
             }

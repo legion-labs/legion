@@ -47,8 +47,8 @@ impl<'g> AwsLambdaDistTarget<'g> {
             return Ok(());
         }
 
-        let root = self.lambda_root(ctx, args)?;
-        let archive = self.archive_path(ctx, args)?;
+        let root = self.lambda_root(ctx, args);
+        let archive = self.archive_path(ctx, args);
 
         clean(&root)?;
 
@@ -89,7 +89,7 @@ impl<'g> AwsLambdaDistTarget<'g> {
 
     fn upload_archive(&self, ctx: &Context, args: &crate::publish::Args) -> Result<()> {
         // this is not tested, just a placeholder
-        let archive_path = self.archive_path(ctx, args)?;
+        let archive_path = self.archive_path(ctx, args);
         let region = self.metadata.region.clone();
         let s3_bucket = self.s3_bucket()?;
         let s3_key = format!(
@@ -116,13 +116,15 @@ impl<'g> AwsLambdaDistTarget<'g> {
         }
     }
 
-    fn archive_path(&self, ctx: &Context, args: &crate::publish::Args) -> Result<Utf8PathBuf> {
+    fn archive_path(&self, ctx: &Context, args: &crate::publish::Args) -> Utf8PathBuf {
         self.lambda_root(ctx, args)
-            .map(|dir| dir.join(format!("aws-lambda-{}.zip", self.name())))
+            .join(format!("aws-lambda-{}.zip", self.name()))
     }
 
-    fn lambda_root(&self, ctx: &Context, args: &publish::Args) -> Result<Utf8PathBuf> {
-        target_dir(ctx, &args.build_args).map(|dir| dir.join("aws-lambda").join(self.name()))
+    fn lambda_root(&self, ctx: &Context, args: &publish::Args) -> Utf8PathBuf {
+        target_dir(ctx, &args.build_args)
+            .join("aws-lambda")
+            .join(self.name())
     }
 
     fn s3_bucket(&self) -> Result<String> {

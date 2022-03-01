@@ -246,6 +246,8 @@ impl BuildArgs {
     fn top_level_target_dir(&self) -> Utf8PathBuf {
         Utf8PathBuf::from(if let Some(target_dir) = &self.target_dir {
             target_dir.to_string_lossy().to_string()
+        } else if let Ok(target) = std::env::var("CARGO_TARGET_DIR") {
+            target
         } else {
             "target".to_string()
         })
@@ -260,21 +262,19 @@ pub fn target_config(ctx: &Context, args: &BuildArgs) -> Result<String> {
     }
 }
 
-pub fn target_dir(ctx: &Context, args: &BuildArgs) -> Result<Utf8PathBuf> {
+pub fn target_dir(ctx: &Context, args: &BuildArgs) -> Utf8PathBuf {
     let mut path = args.top_level_target_dir();
     if path.is_relative() {
         path = ctx.workspace_root().join(path);
     }
     if let Some(target) = &args.target {
-        if ctx.target_config()? != target {
-            path.join(target);
-        }
+        path = path.join(target);
     }
-    Ok(path.join(args.mode()))
+    path.join(args.mode())
 }
 
 pub fn target_bin(ctx: &Context, args: &BuildArgs, binary: &str) -> Result<Utf8PathBuf> {
-    target_dir(ctx, args).map(|dir| dir.join(append_ext_for_target_cfg(ctx, args, binary).unwrap()))
+    Ok(target_dir(ctx, args).join(append_ext_for_target_cfg(ctx, args, binary)?))
 }
 
 fn append_ext_for_target_cfg(ctx: &Context, args: &BuildArgs, binary: &str) -> Result<String> {

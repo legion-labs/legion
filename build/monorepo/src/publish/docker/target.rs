@@ -52,8 +52,8 @@ impl<'g> DockerPublishTarget<'g> {
             return Ok(());
         }
 
-        let root = self.docker_root(ctx, args)?;
-        let docker_target_bin_dir = self.docker_target_bin_dir(ctx, args)?;
+        let root = self.docker_root(ctx, args);
+        let docker_target_bin_dir = self.docker_target_bin_dir(ctx, args);
 
         clean(&root)?;
 
@@ -373,19 +373,20 @@ impl<'g> DockerPublishTarget<'g> {
         )))
     }
 
-    fn docker_root(&self, ctx: &Context, args: &publish::Args) -> Result<Utf8PathBuf> {
-        target_dir(ctx, &args.build_args).map(|dir| dir.join("docker").join(self.name()))
+    fn docker_root(&self, ctx: &Context, args: &publish::Args) -> Utf8PathBuf {
+        target_dir(ctx, &args.build_args)
+            .join("docker")
+            .join(self.name())
     }
 
-    fn docker_target_bin_dir(&self, ctx: &Context, args: &publish::Args) -> Result<Utf8PathBuf> {
+    fn docker_target_bin_dir(&self, ctx: &Context, args: &publish::Args) -> Utf8PathBuf {
         let relative_target_bin_dir = self
             .metadata
             .target_bin_dir
             .strip_prefix("/")
             .unwrap_or(&self.metadata.target_bin_dir);
 
-        self.docker_root(ctx, args)
-            .map(|dir| dir.join(relative_target_bin_dir))
+        self.docker_root(ctx, args).join(relative_target_bin_dir)
     }
 
     fn write_dockerfile(
@@ -398,7 +399,7 @@ impl<'g> DockerPublishTarget<'g> {
 
         debug!("Generated Dockerfile:\n{}", dockerfile);
 
-        let dockerfile_path = self.dockerfile_name(ctx, args)?;
+        let dockerfile_path = self.dockerfile_name(ctx, args);
         let dockerfile_root = dockerfile_path.parent();
 
         std::fs::create_dir_all(dockerfile_root.unwrap())
@@ -417,9 +418,8 @@ impl<'g> DockerPublishTarget<'g> {
         Ok(dockerfile_path)
     }
 
-    fn dockerfile_name(&self, ctx: &Context, args: &publish::Args) -> Result<Utf8PathBuf> {
-        self.docker_root(ctx, args)
-            .map(|dir| dir.join("Dockerfile"))
+    fn dockerfile_name(&self, ctx: &Context, args: &publish::Args) -> Utf8PathBuf {
+        self.docker_root(ctx, args).join("Dockerfile")
     }
 
     fn generate_context(&self, binaries: &HashMap<String, Utf8PathBuf>) -> TemplateContext {
