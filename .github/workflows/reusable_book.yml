@@ -14,8 +14,8 @@ on:
       deploy-key:
         required: true
 jobs:
-  build_book:
-    name: Building book
+  build:
+    name: Build
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ inputs.image }}
@@ -35,9 +35,9 @@ jobs:
           path: ./target/book
           retention-days: 5
 
-  deploy_book:
-    name: Deploying book
-    needs: [build_book]
+  deploy:
+    name: Deployment
+    needs: [build]
     if: ${{ inputs.deploy }}
     runs-on: ubuntu-20.04
     steps:

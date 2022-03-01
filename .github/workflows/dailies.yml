@@ -16,7 +16,7 @@ jobs:
       github-token: ${{ secrets.ECR_GH_ACCESS_TOKEN }}
 
   bootstrap_rust:
-    name: Bootstrap Rust
+    name: Rust bootstrap
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ inputs.image }}

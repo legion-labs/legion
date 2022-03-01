@@ -1,4 +1,4 @@
-name: Change Detection
+name: Change Detection reusable workflow
 on:
   workflow_call:
     inputs:
@@ -33,7 +33,7 @@ on:
 
 jobs:
   change_detection:
-    name: Runner selection
+    name: Change detection
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ inputs.image }}

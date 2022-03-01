@@ -19,7 +19,7 @@ env:
 
 jobs:
   setup_image:
-    name: Setup build env container
+    name: Setup Image
     runs-on: [self-hosted, linux, common, build]
     outputs:
       image: ${{ steps.set-image.outputs.image }}

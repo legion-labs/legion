@@ -1,4 +1,4 @@
-name: CI - Test
+name: CI
 
 on:
   push:
@@ -60,7 +60,7 @@ jobs:
       editor-deploy-key: ${{ secrets.EDITOR_DEPLOY_KEY }}
 
   book:
-    name: Building book
+    name: Book
     needs: [image_setup, change_detection]
     if: ${{ fromJSON(needs.change_detection.outputs.docs) }}
     uses: ./.github/workflows/reusable_book.yml
