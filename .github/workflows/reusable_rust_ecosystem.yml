@@ -37,6 +37,7 @@ on:
 env:
   MONOREPO_DOCKER_REGISTRY: 550877636976.dkr.ecr.ca-central-1.amazonaws.com/legion-labs/legion
   CARGO_TERM_COLOR: always
+  LGN_TELEMETRY_ENABLED: http://telemetry-ingestion-nlb-d60c0374061bf84a.elb.ca-central-1.amazonaws.com:8080
 
 jobs:
   lint:

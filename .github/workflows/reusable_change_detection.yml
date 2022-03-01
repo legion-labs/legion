@@ -31,6 +31,10 @@ on:
         description: "The base git ref to use"
         value: ${{ jobs.change_detection.outputs.cargo_pkgs_args }}
 
+env:
+  CARGO_TERM_COLOR: always
+  LGN_TELEMETRY_ENABLED: http://telemetry-ingestion-nlb-d60c0374061bf84a.elb.ca-central-1.amazonaws.com:8080
+
 jobs:
   change_detection:
     name: Change detection

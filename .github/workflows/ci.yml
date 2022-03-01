@@ -6,10 +6,6 @@ on:
       - main
   pull_request:
 
-env:
-  CARGO_TERM_COLOR: always
-  MONOREPO_DOCKER_REGISTRY: 550877636976.dkr.ecr.ca-central-1.amazonaws.com/legion-labs/legion
-
 jobs:
   base_ref_selection:
     name: Base ref selection
