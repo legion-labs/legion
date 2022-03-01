@@ -15,9 +15,25 @@ jobs:
     secrets:
       github-token: ${{ secrets.ECR_GH_ACCESS_TOKEN }}
 
+  bootstrap_rust:
+    name: Bootstrap Rust
+    runs-on: [self-hosted, linux, common, build]
+    container:
+      image: ${{ inputs.image }}
+      credentials:
+        username: AWS
+        password: ${{ secrets.ECR_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Bootstrap
+        uses: ./.github/actions/rust-bootstrap
+        with:
+          init: true
+
   rust:
     name: Rust ecosystem
-    needs: [image_setup]
+    needs: [image_setup, bootstrap_rust]
     uses: ./.github/workflows/reusable_rust_ecosystem.yml
     env:
       SKIP_SCCACHE: "1"

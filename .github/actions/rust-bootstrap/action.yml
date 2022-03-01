@@ -32,8 +32,6 @@ runs:
     - name: Bootstrap monorepo
       run: |
         aws s3 cp s3://legionlabs-ci-artefacts/bootstrap/monorepo-$GITHUB_RUN_ID.tar.gz ./target/monorepo.tar.gz --region ca-central-1
-        tar -xzvf ./target/monorepo.tar.gz --directory ./target
-        cp ./target/monorepo /usr/local/bin/monorepo
+        tar -xzvf ./target/monorepo.tar.gz --directory /usr/local/bin
         monorepo --help
-        exit 1
       shell: bash
