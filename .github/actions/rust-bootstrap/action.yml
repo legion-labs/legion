@@ -20,12 +20,13 @@ runs:
     - name: Bootstrap monorepo
       if: ${{ inputs.init }}
       run: |
+        echo "${{ inputs.init }}"
         echo "::group::Build and run the bootstrap package"
         cargo run -p bootstrap
         echo "::endgroup::"
         echo "::group::Copy executables to s3"
         tar -czvf ./target/monorepo.tar.gz --directory ./target/debug monorepo
-        aws s3 cp ./target/monorepo.tar.gz s3://legionlabs-ci-artefacts/bootstrap/monorepo-$GITHUB_RUN_ID.tar.gz --region ca-central-1 --expires $(date -d "+10 days" --iso-860=seconds)
+        aws s3 cp ./target/monorepo.tar.gz s3://legionlabs-ci-artefacts/bootstrap/monorepo-$GITHUB_RUN_ID.tar.gz --region ca-central-1 --expires $(date -d "+1 days" --iso-860=seconds)
         echo "::endgroup::"
       shell: bash
 
@@ -34,4 +35,5 @@ runs:
         aws s3 cp s3://legionlabs-ci-artefacts/bootstrap/monorepo-$GITHUB_RUN_ID.tar.gz ./target/monorepo.tar.gz --region ca-central-1
         tar -xzvf ./target/monorepo.tar.gz --directory /usr/local/bin
         monorepo --help
+        exit 0
       shell: bash
