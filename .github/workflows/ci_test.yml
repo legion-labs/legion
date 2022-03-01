@@ -65,7 +65,7 @@ jobs:
     name: Building book
     needs: [image_setup, change_detection]
     if: ${{ fromJSON(needs.change_detection.outputs.docs) }}
-    uses: ./.github/workflows/change_detection.yml
+    uses: ./.github/workflows/reusable_book.yml
     with:
       image: ${{ needs.image_setup.outputs.image }}
       deploy: ${{ github.ref == 'refs/heads/main' }}
