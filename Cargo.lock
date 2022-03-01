@@ -4928,7 +4928,6 @@ dependencies = [
  "ash",
  "backtrace",
  "bitflags",
- "bumpalo",
  "crossbeam-channel 0.5.2",
  "fnv",
  "lgn-tracing",
@@ -4954,14 +4953,12 @@ dependencies = [
  "lgn-tracing",
  "lgn-utils",
  "petgraph",
- "proc-macro2",
  "relative-path",
  "rune",
  "serde",
  "serde_json",
  "spirv-reflect",
  "strum 0.23.0",
- "syn",
 ]
 
 [[package]]
@@ -5146,7 +5143,6 @@ dependencies = [
  "memoffset 0.6.5",
  "physx",
  "physx-sys",
- "sample-data",
  "serde",
  "typetag",
 ]

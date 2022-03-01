@@ -17,11 +17,9 @@ fxhash = "0.2"
 hassle-rs = { git = "https://github.com/legion-labs/hassle-rs", rev = "957746c04479e7df7eb37c70ea733fc18aefcbc5" }
 heck = "0.4"
 petgraph = "0.6.0"
-proc-macro2 = "1.0"
 relative-path = "1.6"
 rune = "0.10.3"
 serde = "1.0"
 serde_json = "1.0"
 spirv-reflect = "0.2"
 strum = { version = "0.23", features = ["derive"] }
-syn = { version = "1.0", features = ["extra-traits", "full"] }
