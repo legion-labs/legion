@@ -37,7 +37,6 @@ jobs:
     name: Rust ecosystem
     if: ${{ fromJSON(needs.change_detection.outputs.cargo_pkgs) }}
     needs: [change_detection, image_setup]
-    runs-on: [self-hosted, linux, common, build]
     uses: ./.github/workflows/reusable_rust_ecosystem.yml
     with:
       image: ${{ needs.image_setup.outputs.image }}
@@ -51,7 +50,6 @@ jobs:
     name: Node ecosystem
     if: ${{ fromJSON(needs.change_detection.outputs.npm_pkgs) }}
     needs: [change_detection, image_setup]
-    runs-on: [self-hosted, linux, common, build]
     uses: ./.github/workflows/reusable_node_ecosystem.yml
     with:
       image: ${{ needs.image_setup.outputs.image }}
