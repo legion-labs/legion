@@ -35,8 +35,6 @@ jobs:
     name: Rust ecosystem
     needs: [image_setup, bootstrap_rust]
     uses: ./.github/workflows/reusable_rust_ecosystem.yml
-    env:
-      SKIP_SCCACHE: "1"
     with:
       image: ${{ needs.image_setup.outputs.image }}
       pkgs_arg: --workspace
