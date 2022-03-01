@@ -262,6 +262,7 @@ fn test_build(
             },
             build_args: BuildArgs {
                 verbose,
+                target: target.clone(),
                 ..BuildArgs::default()
             },
             ..build::Args::default()
