@@ -1,4 +1,4 @@
-name: Build env setup
+name: Build setup reusable workflow
 
 on:
   workflow_call:
