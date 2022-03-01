@@ -156,6 +156,7 @@
   function update(states: MetricState[]) {
     updatePoints(states);
     updateChart();
+    tick();
   }
 
   function updatePoints(states: MetricState[]) {
