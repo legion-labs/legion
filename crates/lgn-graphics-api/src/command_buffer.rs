@@ -127,7 +127,7 @@ impl CommandBuffer {
         self.backend_cmd_bind_vertex_buffers(first_binding, bindings);
     }
 
-    pub fn cmd_bind_index_buffer(&self, binding: &IndexBufferBinding) {
+    pub fn cmd_bind_index_buffer(&self, binding: &IndexBufferBinding<'_>) {
         self.backend_cmd_bind_index_buffer(binding);
     }
 

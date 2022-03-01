@@ -37,9 +37,9 @@ impl<AllocType> BufferSubAllocation<AllocType> {
         }
     }
 
-    pub fn index_buffer_binding(&self, index_type: IndexType) -> IndexBufferBinding {
+    pub fn index_buffer_binding(&self, index_type: IndexType) -> IndexBufferBinding<'_> {
         IndexBufferBinding {
-            buffer: self.buffer.clone(),
+            buffer: &self.buffer,
             byte_offset: self.offset(),
             index_type,
         }

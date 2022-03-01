@@ -632,8 +632,8 @@ pub struct VertexBufferBinding<'a> {
 }
 
 /// An index buffer to be bound during a renderpass
-pub struct IndexBufferBinding {
-    pub buffer: Buffer,
+pub struct IndexBufferBinding<'a> {
+    pub buffer: &'a Buffer,
     pub byte_offset: u64,
     pub index_type: IndexType,
 }
