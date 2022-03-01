@@ -64,7 +64,7 @@ impl<'rc> HLCommandBuffer<'rc> {
         );
     }
 
-    pub fn bind_index_buffer(&self, binding: &IndexBufferBinding<'_>) {
+    pub fn bind_index_buffer(&self, binding: &IndexBufferBinding) {
         self.cmd_buffer.cmd_bind_index_buffer(binding);
     }
 
@@ -74,7 +74,7 @@ impl<'rc> HLCommandBuffer<'rc> {
         index_type: IndexType,
     ) {
         self.bind_index_buffer(&IndexBufferBinding {
-            buffer: &buffer_suballoc.buffer,
+            buffer: buffer_suballoc.buffer.clone(),
             byte_offset: buffer_suballoc.offset(),
             index_type,
         });

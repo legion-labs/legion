@@ -362,6 +362,13 @@ impl DebugRenderPass {
         model_manager: &ModelManager,
         debug_display: &DebugDisplay,
     ) {
+        cmd_buffer.bind_index_buffer(
+            &render_context
+                .renderer()
+                .static_buffer()
+                .index_buffer_binding(),
+        );
+
         cmd_buffer.begin_render_pass(
             &[ColorRenderTargetBinding {
                 texture_view: render_surface.render_target_view(),
@@ -459,5 +466,9 @@ fn render_mesh(
 
     cmd_buffer.push_constant(&push_constant_data);
 
-    cmd_buffer.draw(mesh_meta_data.draw_call_count, 0);
+    if mesh_meta_data.index_count != 0 {
+        cmd_buffer.draw_indexed(mesh_meta_data.index_count, mesh_meta_data.index_offset, 0);
+    } else {
+        cmd_buffer.draw(mesh_meta_data.vertex_count, 0);
+    }
 }
