@@ -32,6 +32,28 @@ macro_rules! span_scope {
     };
 }
 
+#[macro_export]
+macro_rules! async_span_scope {
+    ($scope_name:ident, $name:expr) => {
+        static $scope_name: $crate::spans::SpanMetadata = $crate::spans::SpanMetadata {
+            lod: $crate::Verbosity::Max,
+            name: $name,
+            target: module_path!(),
+            module_path: module_path!(),
+            file: file!(),
+            line: line!(),
+        };
+        let span_id = $crate::dispatch::on_begin_async_scope(&$scope_name);
+        let guard_named = $crate::guards::AsyncSpanGuard {
+            span_desc: &$scope_name,
+            span_id,
+        };
+    };
+    ($name:expr) => {
+        $crate::async_span_scope!(_METADATA_NAMED, $name);
+    };
+}
+
 /// Records a integer metric.
 ///
 /// # Examples

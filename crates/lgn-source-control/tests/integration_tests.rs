@@ -8,9 +8,11 @@ use std::path::Path;
 use lgn_source_control::{
     Error, Index, MapOtherError, Staging, Workspace, WorkspaceConfig, WorkspaceRegistration,
 };
+use lgn_telemetry_sink::TelemetryGuard;
 
 #[tokio::test]
 async fn test_add_and_commit() {
+    let _telemetry_guard = TelemetryGuard::default();
     let (index, ws, _paths) = init_test_workspace_and_index!();
 
     // Add some files.
@@ -145,6 +147,7 @@ async fn test_add_and_commit() {
 
 #[tokio::test]
 async fn lenient_commit() {
+    let _telemetry_guard = TelemetryGuard::default();
     let (index, ws, _paths) = init_test_workspace_and_index!();
     create_file!(ws, "apple.txt", "I am an apple");
     create_file!(ws, "orange.txt", "I am an orange");
@@ -188,6 +191,7 @@ async fn lenient_commit() {
 
 #[tokio::test]
 async fn test_edit_and_commit() {
+    let _telemetry_guard = TelemetryGuard::default();
     let (index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
@@ -267,6 +271,7 @@ async fn test_edit_and_commit() {
 
 #[tokio::test]
 async fn test_delete_and_commit() {
+    let _telemetry_guard = TelemetryGuard::default();
     let (index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
@@ -303,6 +308,7 @@ async fn test_delete_and_commit() {
 
 #[tokio::test]
 async fn test_add_empty_directory() {
+    let _telemetry_guard = TelemetryGuard::default();
     let (index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
@@ -321,6 +327,7 @@ async fn test_add_empty_directory() {
 
 #[tokio::test]
 async fn test_add_non_existing_path() {
+    let _telemetry_guard = TelemetryGuard::default();
     let (index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
@@ -343,6 +350,7 @@ async fn test_add_non_existing_path() {
 
 #[tokio::test]
 async fn test_add_then_delete() {
+    let _telemetry_guard = TelemetryGuard::default();
     let (index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
@@ -370,6 +378,7 @@ async fn test_add_then_delete() {
 
 #[tokio::test]
 async fn test_edit_and_commit_with_extra_unstaged_changes_then_revert() {
+    let _telemetry_guard = TelemetryGuard::default();
     let (index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
@@ -472,6 +481,7 @@ async fn test_edit_and_commit_with_extra_unstaged_changes_then_revert() {
 
 #[tokio::test]
 async fn test_revert_after_add_and_edit() {
+    let _telemetry_guard = TelemetryGuard::default();
     let (index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am a new apple");
@@ -548,6 +558,7 @@ async fn test_revert_after_add_and_edit() {
 
 #[tokio::test]
 async fn test_revert_staged_only_with_unstaged_changes() {
+    let _telemetry_guard = TelemetryGuard::default();
     let (index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am a new apple");
@@ -593,6 +604,7 @@ async fn test_revert_staged_only_with_unstaged_changes() {
 
 #[tokio::test]
 async fn test_revert_staged_only_with_staged_and_unstaged_changes() {
+    let _telemetry_guard = TelemetryGuard::default();
     let (index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am a new apple");
@@ -656,6 +668,7 @@ async fn test_revert_staged_only_with_staged_and_unstaged_changes() {
 
 #[tokio::test]
 async fn test_revert_unstaged_only_with_unstaged_changes() {
+    let _telemetry_guard = TelemetryGuard::default();
     let (index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am a new apple");
@@ -693,6 +706,7 @@ async fn test_revert_unstaged_only_with_unstaged_changes() {
 
 #[tokio::test]
 async fn test_sync_forward_and_backward() {
+    let _telemetry_guard = TelemetryGuard::default();
     let (index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "apple version 1");
@@ -791,6 +805,7 @@ async fn test_sync_forward_and_backward() {
 
 #[tokio::test]
 async fn test_sync_forward_with_non_conflicting_changes() {
+    let _telemetry_guard = TelemetryGuard::default();
     let (index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "tangerine.txt", "tangerine version 1");
@@ -961,6 +976,7 @@ async fn test_sync_forward_with_non_conflicting_changes() {
 
 #[tokio::test]
 async fn test_sync_forward_with_conflicting_changes() {
+    let _telemetry_guard = TelemetryGuard::default();
     let (index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "apple version 1");
@@ -1061,6 +1077,7 @@ async fn test_sync_forward_with_conflicting_changes() {
 
 #[tokio::test]
 async fn test_create_branch_switch_detach_attach() {
+    let _telemetry_guard = TelemetryGuard::default();
     let (index, ws, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "apple version 1");

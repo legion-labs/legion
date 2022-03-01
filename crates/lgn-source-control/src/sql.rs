@@ -1,27 +1,32 @@
+use lgn_tracing::async_span_scope;
 use sqlx::migrate::MigrateDatabase;
 use sqlx::Executor;
 
 use crate::{MapOtherError, Result};
 
 pub async fn create_database(uri: &str) -> Result<()> {
+    async_span_scope!("create_database");
     sqlx::Any::create_database(uri)
         .await
         .map_other_err("failed to create database")
 }
 
 pub async fn database_exists(uri: &str) -> Result<bool> {
+    async_span_scope!("database_exists");
     sqlx::Any::database_exists(uri)
         .await
         .map_other_err("failed to check if database exists")
 }
 
 pub async fn drop_database(uri: &str) -> Result<()> {
+    async_span_scope!("drop_database");
     sqlx::Any::drop_database(uri)
         .await
         .map_other_err("failed to drop database")
 }
 
 pub async fn execute_sql(connection: &mut sqlx::AnyConnection, sql: &str) -> Result<()> {
+    async_span_scope!("execute_sql");
     connection
         .execute(sql)
         .await
@@ -36,6 +41,7 @@ pub struct SqlConnectionPool {
 
 impl SqlConnectionPool {
     pub async fn new(database_uri: &str) -> Result<Self> {
+        async_span_scope!("SqlConnectionPool::new");
         let pool = sqlx::any::AnyPoolOptions::new()
             .connect(database_uri)
             .await
@@ -45,6 +51,7 @@ impl SqlConnectionPool {
     }
 
     pub async fn acquire(&self) -> Result<sqlx::pool::PoolConnection<sqlx::Any>> {
+        async_span_scope!("SqlConnectionPool::acquire");
         self.pool
             .acquire()
             .await
@@ -52,6 +59,7 @@ impl SqlConnectionPool {
     }
 
     pub async fn begin(&self) -> Result<sqlx::Transaction<'static, sqlx::Any>> {
+        async_span_scope!("SqlConnectionPool::begin");
         self.pool
             .begin()
             .await
@@ -59,6 +67,7 @@ impl SqlConnectionPool {
     }
 
     pub async fn close(&self) {
+        async_span_scope!("SqlConnectionPool::close");
         self.pool.close().await;
     }
 }

@@ -5311,6 +5311,7 @@ dependencies = [
  "lgn-blob-storage",
  "lgn-online",
  "lgn-source-control-proto",
+ "lgn-telemetry-sink",
  "lgn-tracing",
  "lz4",
  "path-clean",

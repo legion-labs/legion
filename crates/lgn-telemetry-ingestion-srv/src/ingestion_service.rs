@@ -2,7 +2,7 @@ use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::ingestion::telemetry_ingestion_server::TelemetryIngestion;
 use lgn_telemetry_proto::ingestion::InsertReply;
 use lgn_telemetry_proto::telemetry::{Block, Process, Stream};
-use lgn_tracing::{error, info};
+use lgn_tracing::{async_span_scope, error, info};
 use prost::Message;
 use tonic::{Request, Response, Status};
 
@@ -51,6 +51,7 @@ impl TelemetryIngestion for IngestionService {
         &self,
         request: Request<Process>,
     ) -> Result<Response<InsertReply>, Status> {
+        async_span_scope!("insert_process");
         validate_auth(&request)?;
         let process_info = request.into_inner();
         info!(
@@ -101,6 +102,7 @@ impl TelemetryIngestion for IngestionService {
         &self,
         request: Request<Stream>,
     ) -> Result<Response<InsertReply>, Status> {
+        async_span_scope!("insert_stream");
         validate_auth(&request)?;
         let stream_info = request.into_inner();
         match self.db_pool.acquire().await {
@@ -145,6 +147,7 @@ impl TelemetryIngestion for IngestionService {
     }
 
     async fn insert_block(&self, request: Request<Block>) -> Result<Response<InsertReply>, Status> {
+        async_span_scope!("insert_block");
         validate_auth(&request)?;
         let block = request.into_inner();
         info!("new block {}", block.block_id);
