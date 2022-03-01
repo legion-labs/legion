@@ -1,13 +1,10 @@
 use lgn_ecs::prelude::{Commands, Entity, Res};
-use lgn_graphics_data::Color;
+use lgn_graphics_data::{Color, DefaultMeshType};
 use lgn_input::keyboard::KeyCode;
 use lgn_math::{Mat4, Quat, Vec2, Vec3, Vec4, Vec4Swizzles};
 use lgn_transform::prelude::{GlobalTransform, Transform};
 
-use crate::{
-    components::{CameraComponent, ManipulatorComponent, VisualComponent},
-    resources::DefaultMeshType,
-};
+use crate::components::{CameraComponent, ManipulatorComponent, VisualComponent};
 
 use super::{
     position_manipulator::PositionManipulator,

@@ -1,5 +1,6 @@
 use lgn_core::BumpAllocatorPool;
 use lgn_ecs::prelude::*;
+use lgn_graphics_data::DefaultMeshType;
 use lgn_math::Vec3;
 use lgn_transform::components::Transform;
 
@@ -8,7 +9,7 @@ use crate::{
     debug_display::DebugDisplay,
     egui::egui_plugin::Egui,
     lighting::LightingManager,
-    resources::{DefaultMeshType, UniformGPUDataUpdater},
+    resources::UniformGPUDataUpdater,
     Renderer, UP_VECTOR,
 };
 

@@ -1,11 +1,10 @@
 use std::{collections::BTreeMap, str::FromStr};
 
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
-use strum::IntoEnumIterator;
 
 use crate::components::VisualComponent;
 
-use super::{DefaultMeshType, DEFAULT_MESH_GUIDS};
+use super::DEFAULT_MESH_GUIDS;
 
 pub struct Mesh {
     pub mesh_id: u32,
@@ -25,10 +24,10 @@ impl ModelManager {
     pub fn new() -> Self {
         let mut model_meta_datas = BTreeMap::new();
 
-        for (idx, _mesh_type) in DefaultMeshType::iter().enumerate() {
+        for (idx, (_mesh_type, mesh_guid)) in DEFAULT_MESH_GUIDS.iter().enumerate() {
             let id = ResourceTypeAndId {
                 kind: ResourceType::from_raw(1),
-                id: ResourceId::from_str(DEFAULT_MESH_GUIDS[idx]).unwrap(),
+                id: ResourceId::from_str(mesh_guid).unwrap(),
             };
             model_meta_datas.insert(
                 id,

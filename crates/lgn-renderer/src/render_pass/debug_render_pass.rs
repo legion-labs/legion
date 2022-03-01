@@ -4,6 +4,7 @@ use lgn_graphics_api::{
     LoadOp, PrimitiveTopology, RasterizerState, SampleCount, StencilOp, StoreOp, VertexLayout,
 };
 use lgn_graphics_cgen_runtime::CGenShaderKey;
+use lgn_graphics_data::DefaultMeshType;
 use lgn_math::{Mat4, Vec3, Vec4, Vec4Swizzles};
 
 use lgn_transform::prelude::GlobalTransform;
@@ -14,7 +15,7 @@ use crate::{
     debug_display::{DebugDisplay, DebugPrimitiveType},
     hl_gfx_api::HLCommandBuffer,
     picking::ManipulatorManager,
-    resources::{DefaultMeshType, MeshManager, ModelManager, PipelineHandle, PipelineManager},
+    resources::{MeshManager, ModelManager, PipelineHandle, PipelineManager},
     RenderContext,
 };
 

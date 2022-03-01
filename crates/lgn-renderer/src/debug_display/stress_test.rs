@@ -1,11 +1,10 @@
 use lgn_app::{App, CoreStage};
 use lgn_core::BumpAllocatorPool;
 use lgn_ecs::prelude::Res;
+use lgn_graphics_data::DefaultMeshType;
 use lgn_math::Vec3;
 use lgn_tracing::span_fn;
 use lgn_transform::components::Transform;
-
-use crate::resources::DefaultMeshType;
 
 use super::DebugDisplay;
 

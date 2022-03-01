@@ -119,6 +119,12 @@ impl AssetToECS for runtime_data::Entity {
                     &visual.renderable_geometry,
                     visual.color,
                 ));
+            } else if let Some(default_mesh) = component.downcast_ref::<runtime_data::DefaultMesh>()
+            {
+                entity.insert(VisualComponent::new_default_mesh(
+                    default_mesh.mesh_type,
+                    default_mesh.color,
+                ));
             } else if let Some(gi) = component.downcast_ref::<runtime_data::GlobalIllumination>() {
                 entity.insert(gi.clone());
             } else if let Some(nav_mesh) = component.downcast_ref::<runtime_data::NavMesh>() {

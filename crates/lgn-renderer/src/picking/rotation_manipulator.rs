@@ -1,8 +1,9 @@
 use lgn_ecs::prelude::Commands;
+use lgn_graphics_data::DefaultMeshType;
 use lgn_math::{Mat3, Mat4, Quat, Vec2, Vec3};
 use lgn_transform::components::Transform;
 
-use crate::{components::CameraComponent, resources::DefaultMeshType};
+use crate::components::CameraComponent;
 
 use super::{new_world_point_for_cursor, ManipulatorPart, ManipulatorType, PickingIdContext};
 

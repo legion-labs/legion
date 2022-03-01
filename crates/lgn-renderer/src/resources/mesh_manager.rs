@@ -1,5 +1,5 @@
+use lgn_graphics_data::DefaultMeshType;
 use lgn_math::Vec4;
-use strum::EnumIter;
 
 use super::{StaticBufferAllocation, UnifiedStaticBuffer, UniformGPUDataUpdater};
 use crate::{cgen::cgen_type::MeshDescription, components::Mesh, Renderer};
@@ -16,33 +16,51 @@ pub struct MeshManager {
     allocations: Vec<StaticBufferAllocation>,
 }
 
-#[derive(EnumIter)]
-pub enum DefaultMeshType {
-    Plane = 0,
-    Cube,
-    Pyramid,
-    WireframeCube,
-    GroundPlane,
-    Torus,
-    Cone,
-    Cylinder,
-    Sphere,
-    Arrow,
-    RotationRing,
-}
-
-pub const DEFAULT_MESH_GUIDS: [&str; 11] = [
-    "f6d83574-3098-4c90-8782-9bc8df96c58e",
-    "c75cd9e7-57f5-4469-b400-8f5b3a071f9e",
-    "05dcb241-f663-4b07-8b02-e1f66e23e01c",
-    "a897c7ae-290b-4a90-91c2-78e1a00e5548",
-    "582fee7b-fcc6-4351-ae38-7b0e149b48ca",
-    "bb492db3-0985-4515-9f93-0cc5c6ecf8fc",
-    "c0d167de-bc48-40b6-92b9-1580c14116da",
-    "5b74aae6-83e7-4e36-8636-0572aaf6fdfa",
-    "f5a4b115-1478-4b2e-93f8-585214dec334",
-    "53c027f6-e349-44fa-b921-178f84513df7",
-    "7038f75c-04ca-438e-bc67-8fe397c9dbf6",
+pub(crate) const DEFAULT_MESH_GUIDS: [(DefaultMeshType, &str); 11] = [
+    (
+        DefaultMeshType::Plane,
+        "f6d83574-3098-4c90-8782-9bc8df96c58e",
+    ),
+    (
+        DefaultMeshType::Cube,
+        "c75cd9e7-57f5-4469-b400-8f5b3a071f9e",
+    ),
+    (
+        DefaultMeshType::Pyramid,
+        "05dcb241-f663-4b07-8b02-e1f66e23e01c",
+    ),
+    (
+        DefaultMeshType::WireframeCube,
+        "a897c7ae-290b-4a90-91c2-78e1a00e5548",
+    ),
+    (
+        DefaultMeshType::GroundPlane,
+        "582fee7b-fcc6-4351-ae38-7b0e149b48ca",
+    ),
+    (
+        DefaultMeshType::Torus,
+        "bb492db3-0985-4515-9f93-0cc5c6ecf8fc",
+    ),
+    (
+        DefaultMeshType::Cone,
+        "c0d167de-bc48-40b6-92b9-1580c14116da",
+    ),
+    (
+        DefaultMeshType::Cylinder,
+        "5b74aae6-83e7-4e36-8636-0572aaf6fdfa",
+    ),
+    (
+        DefaultMeshType::Sphere,
+        "f5a4b115-1478-4b2e-93f8-585214dec334",
+    ),
+    (
+        DefaultMeshType::Arrow,
+        "53c027f6-e349-44fa-b921-178f84513df7",
+    ),
+    (
+        DefaultMeshType::RotationRing,
+        "7038f75c-04ca-438e-bc67-8fe397c9dbf6",
+    ),
 ];
 
 impl MeshManager {
@@ -69,6 +87,7 @@ impl MeshManager {
             Mesh::new_arrow(),
             Mesh::new_torus(0.01, 8, 0.5, 128),
         ];
+        debug_assert_eq!(default_meshes.len(), DEFAULT_MESH_GUIDS.len());
 
         mesh_manager.add_meshes(renderer, &default_meshes);
         mesh_manager

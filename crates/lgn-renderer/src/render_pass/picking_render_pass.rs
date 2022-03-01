@@ -8,6 +8,7 @@ use lgn_graphics_api::{
     MemoryAllocation, MemoryAllocationDef, MemoryUsage, ResourceCreation, ResourceState,
     ResourceUsage, StoreOp,
 };
+use lgn_graphics_data::DefaultMeshType;
 use lgn_math::Mat4;
 use lgn_transform::components::GlobalTransform;
 
@@ -19,7 +20,7 @@ use crate::{
     gpu_renderer::{DefaultLayers, GpuInstanceManager, MeshRenderer},
     hl_gfx_api::HLCommandBuffer,
     picking::{ManipulatorManager, PickingManager, PickingState},
-    resources::{DefaultMeshType, GpuSafePool, MeshManager, ModelManager, OnFrameEventHandler},
+    resources::{GpuSafePool, MeshManager, ModelManager, OnFrameEventHandler},
     RenderContext,
 };
 
