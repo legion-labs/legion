@@ -94,7 +94,6 @@ impl CallTreeBuilder {
         (ts - self.ts_offset) as f64 * self.inv_tsc_frequency
     }
 
-    #[span_fn]
     fn add_child_to_top(&mut self, scope: CallTreeNode) {
         if let Some(mut top) = self.stack.pop() {
             top.children.push(scope);
@@ -198,7 +197,6 @@ fn compute_scope_hash(name: &str) -> u32 {
     const_xxh32(name.as_bytes(), 0)
 }
 
-#[span_fn]
 fn make_spans_from_tree(tree: &CallTreeNode, depth: u32, lod: &mut SpanBlockLod) {
     let span = Span {
         scope_hash: tree.hash,
