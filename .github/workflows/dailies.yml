@@ -17,6 +17,7 @@ jobs:
 
   bootstrap_rust:
     name: Rust bootstrap
+    needs: [image_setup]
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ inputs.image }}

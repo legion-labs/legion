@@ -94,6 +94,7 @@ jobs:
   publish:
     name: Release
     needs: [test]
+    if: ${{ false }}
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ inputs.image }}
