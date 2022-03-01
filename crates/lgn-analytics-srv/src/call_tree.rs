@@ -18,6 +18,17 @@ trait ThreadBlockProcessor {
     fn on_end_scope(&mut self, scope_name: &str, ts: i64);
 }
 
+fn on_thread_event<F>(obj: &lgn_tracing_transit::Object, mut fun: F) -> Result<()>
+where
+    F: FnMut(&str, i64),
+{
+    let tick = obj.get::<i64>("time")?;
+    let scope = obj.get::<Arc<Object>>("thread_span_desc")?;
+    let name = scope.get::<Arc<String>>("name")?;
+    fun(&*name, tick);
+    Ok(())
+}
+
 async fn parse_thread_block<Proc: ThreadBlockProcessor>(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
@@ -28,14 +39,25 @@ async fn parse_thread_block<Proc: ThreadBlockProcessor>(
     let payload = fetch_block_payload(connection, blob_storage, block_id).await?;
     parse_block(stream, &payload, |val| {
         if let Value::Object(obj) = val {
-            let tick = obj.get::<i64>("time").unwrap();
-            let scope = obj.get::<Arc<Object>>("thread_span_desc").unwrap();
-            let name = scope.get::<Arc<String>>("name").unwrap();
             match obj.type_name.as_str() {
-                "BeginThreadSpanEvent" => processor.on_begin_scope(&*name, tick),
-                "EndThreadSpanEvent" => processor.on_end_scope(&*name, tick),
-                _ => panic!("unknown event type {}", obj.type_name),
-            };
+                "BeginThreadSpanEvent" => {
+                    if let Err(e) = on_thread_event(&obj, |name, ts| {
+                        processor.on_begin_scope(name, ts);
+                    }) {
+                        warn!("Error reading BeginThreadSpanEvent: {:?}", e);
+                    }
+                }
+                "EndThreadSpanEvent" => {
+                    if let Err(e) = on_thread_event(&obj, |name, ts| {
+                        processor.on_end_scope(name, ts);
+                    }) {
+                        warn!("Error reading EndThreadSpanEvent: {:?}", e);
+                    }
+                }
+                event_type => {
+                    warn!("unknown event type {}", event_type);
+                }
+            }
         }
         true //continue
     })?;
