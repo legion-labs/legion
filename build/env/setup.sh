@@ -17,20 +17,28 @@ if [[ -z $IMAGE_TAG ]]; then
 fi
 if [[ $MONOREPO_DOCKER_REGISTRY ]] ; then
     IMAGE="$MONOREPO_DOCKER_REGISTRY/$IMAGE_NAME:$IMAGE_TAG"
+    echo "Using image $IMAGE"
     aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin $MONOREPO_DOCKER_REGISTRY
+    PUSH=0
     if [[ $IMAGE_TAG -eq "latest" ]]; then
+        echo "Building image $IMAGE"
         docker build . -t $IMAGE
+        PUSH=1
     else
         docker manifest inspect $IMAGE &> /dev/null
         if [[ $? -ne 0 ]]; then
+            echo "Building image $IMAGE"
             # Pull latest image in case we can share some layers
             docker pull "$MONOREPO_DOCKER_REGISTRY/$IMAGE_NAME:latest"
             docker build . -t $IMAGE
+            PUSH=1
         fi
     fi
-    # we login again here in case our password expired, since the build step takes around 20min
-    aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin $MONOREPO_DOCKER_REGISTRY
-    docker push "$IMAGE"
+    if [[ $PUSH -eq 1 ]]; then
+        # we login again here in case our password expired, since the build step takes around 20min
+        aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin $MONOREPO_DOCKER_REGISTRY
+        docker push "$IMAGE"
+    fi
     echo "image=$IMAGE" >> $GITHUB_ENV
 else
     IMAGE="$IMAGE_NAME:$IMAGE_TAG"
