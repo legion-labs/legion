@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 
 [features]
 default = []
-aws = ["lambda_runtime", "lambda_http"]
+aws = ["lambda_runtime", "lambda_http", "strum", "strum_macros"]
 
 [dependencies]
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
@@ -39,8 +39,8 @@ pin-project = "1"
 dyn-clone = "1"
 lambda_runtime = { version = "0.5.0", optional = true }
 lambda_http = { version = "0.5.0", optional = true }
-strum = "0.23"
-strum_macros = "0.23"
+strum = { version = "0.23", optional = true }
+strum_macros = { version = "0.23", optional = true }
 openidconnect = "2.2.0"
 
 [build-dependencies]
