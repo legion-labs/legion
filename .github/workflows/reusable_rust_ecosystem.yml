@@ -73,6 +73,7 @@ jobs:
   publish:
     name: Building release binaries
     if: ${{ inputs.deploy }}
+    needs: [test]
     runs-on: [self-hosted, linux, common, build]
     strategy:
       matrix:
@@ -100,6 +101,7 @@ jobs:
 
   build_docs:
     name: Building docs
+    needs: [lint]
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ inputs.image }}
@@ -124,7 +126,7 @@ jobs:
 
   deploy_docs:
     name: Deploying docs
-    needs: [build_docs, test]
+    needs: [build_docs]
     if: ${{ inputs.deploy }}
     runs-on: ubuntu-20.04
     steps:

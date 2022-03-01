@@ -19,8 +19,8 @@ on:
 # TODO: @Kevin: change detection should operate i
 
 jobs:
-  test:
-    name: Running code checks
+  check_test:
+    name: Running code checks and tests
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ inputs.image }}
@@ -41,7 +41,7 @@ jobs:
 
   build:
     name: Building static websites
-    needs: [check]
+    needs: [check_test]
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ inputs.image }}
@@ -75,7 +75,7 @@ jobs:
 
   deploy:
     name: Deploying static websites
-    needs: build_static_websites
+    needs: [build]
     if: ${{ inputs.deploy }}
     runs-on: ubuntu-20.04
     strategy:
