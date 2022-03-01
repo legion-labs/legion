@@ -362,8 +362,8 @@ impl LevelFilter {
 
 #[repr(u32)]
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
-/// An enum representing the level of details for `metrics`/`thread_spans`/`spans`.
-pub enum Lod {
+/// An enum representing the level of verbosity for `metrics`/`thread_spans`/`spans`.
+pub enum Verbosity {
     /// The "min" level.
     ///
     /// Designates vey low details events, meaning overall lower frequency.
@@ -392,14 +392,14 @@ pub enum LodFilter {
     Max,
 }
 
-impl PartialEq<LodFilter> for Lod {
+impl PartialEq<LodFilter> for Verbosity {
     #[inline(always)]
     fn eq(&self, other: &LodFilter) -> bool {
         *self as u32 == *other as u32
     }
 }
 
-impl PartialOrd for Lod {
+impl PartialOrd for Verbosity {
     #[inline(always)]
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
@@ -426,7 +426,7 @@ impl PartialOrd for Lod {
     }
 }
 
-impl PartialOrd<LodFilter> for Lod {
+impl PartialOrd<LodFilter> for Verbosity {
     #[inline(always)]
     fn partial_cmp(&self, other: &LodFilter) -> Option<cmp::Ordering> {
         Some((*self as u32).cmp(&(*other as u32)))
@@ -453,14 +453,14 @@ impl PartialOrd<LodFilter> for Lod {
     }
 }
 
-impl Ord for Lod {
+impl Ord for Verbosity {
     #[inline(always)]
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         (*self as u32).cmp(&(*other as u32))
     }
 }
 
-impl FromStr for Lod {
+impl FromStr for Verbosity {
     type Err = ParseLevelError;
     fn from_str(level: &str) -> Result<Self, Self::Err> {
         ok_or(
@@ -476,13 +476,13 @@ impl FromStr for Lod {
     }
 }
 
-impl fmt::Display for Lod {
+impl fmt::Display for Verbosity {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.pad(self.as_str())
     }
 }
 
-impl Lod {
+impl Verbosity {
     fn from_usize(u: usize) -> Option<Self> {
         match u {
             1 => Some(Self::Min),
@@ -539,9 +539,9 @@ impl Lod {
     }
 }
 
-impl PartialEq<Lod> for LodFilter {
+impl PartialEq<Verbosity> for LodFilter {
     #[inline(always)]
-    fn eq(&self, other: &Lod) -> bool {
+    fn eq(&self, other: &Verbosity) -> bool {
         other.eq(self)
     }
 }
@@ -573,29 +573,29 @@ impl PartialOrd for LodFilter {
     }
 }
 
-impl PartialOrd<Lod> for LodFilter {
+impl PartialOrd<Verbosity> for LodFilter {
     #[inline(always)]
-    fn partial_cmp(&self, other: &Lod) -> Option<cmp::Ordering> {
+    fn partial_cmp(&self, other: &Verbosity) -> Option<cmp::Ordering> {
         Some((*self as u32).cmp(&(*other as u32)))
     }
 
     #[inline(always)]
-    fn lt(&self, other: &Lod) -> bool {
+    fn lt(&self, other: &Verbosity) -> bool {
         (*self as u32) < *other as u32
     }
 
     #[inline(always)]
-    fn le(&self, other: &Lod) -> bool {
+    fn le(&self, other: &Verbosity) -> bool {
         *self as u32 <= *other as u32
     }
 
     #[inline(always)]
-    fn gt(&self, other: &Lod) -> bool {
+    fn gt(&self, other: &Verbosity) -> bool {
         *self as u32 > *other as u32
     }
 
     #[inline(always)]
-    fn ge(&self, other: &Lod) -> bool {
+    fn ge(&self, other: &Verbosity) -> bool {
         *self as u32 >= *other as u32
     }
 }
@@ -657,8 +657,8 @@ impl LodFilter {
     ///
     /// Returns `None` if `self` is `LodFilter::Off`.
     #[inline(always)]
-    pub fn to_level(self) -> Option<Lod> {
-        Lod::from_u32(self as u32)
+    pub fn to_level(self) -> Option<Verbosity> {
+        Verbosity::from_u32(self as u32)
     }
 
     /// Returns the string representation of the `LodFilter`.

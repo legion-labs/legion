@@ -1,10 +1,10 @@
 use lgn_tracing_transit::prelude::*;
 
-use crate::Lod;
+use crate::Verbosity;
 
 #[derive(Debug)]
 pub struct MetricMetadata {
-    pub lod: Lod,
+    pub lod: Verbosity,
     pub name: &'static str,
     pub unit: &'static str,
     pub target: &'static str,

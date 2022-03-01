@@ -1,15 +1,6 @@
 use std::{marker::PhantomData, sync::Arc};
 
-use crate::{
-    dispatch::{
-        flush_log_buffer, flush_metrics_buffer, flush_thread_buffer, init_event_dispatch,
-        init_thread_stream, on_end_scope, shutdown_dispatch,
-    },
-    errors::Result,
-    event::EventSink,
-    panic_hook::init_panic_hook,
-    spans::ThreadSpanMetadata,
-};
+use crate::{dispatch::{flush_log_buffer, flush_metrics_buffer, flush_thread_buffer, init_event_dispatch, init_thread_stream, on_end_async_scope, on_end_scope, shutdown_dispatch}, errors::Result, event::EventSink, panic_hook::init_panic_hook, spans::SpanMetadata};
 
 pub struct TracingSystemGuard {}
 
@@ -84,15 +75,26 @@ impl Default for TracingThreadGuard {
     }
 }
 
+// sync scope guard
 pub struct ThreadSpanGuard {
-    // the value of the function pointer will identity the scope uniquely within that process
-    // instance
-    pub thread_span_desc: &'static ThreadSpanMetadata,
+    pub thread_span_desc: &'static SpanMetadata,
     pub _dummy_ptr: PhantomData<*mut u8>, // to mark the object as !Send
 }
 
 impl Drop for ThreadSpanGuard {
     fn drop(&mut self) {
         on_end_scope(self.thread_span_desc);
+    }
+}
+
+// async scope guard
+pub struct AsyncSpanGuard {
+    pub span_desc: &'static SpanMetadata,
+    pub span_id: u64,
+}
+
+impl Drop for AsyncSpanGuard {
+    fn drop(&mut self) {
+        on_end_async_scope(self.span_id, self.span_desc);
     }
 }

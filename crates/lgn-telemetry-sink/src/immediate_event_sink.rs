@@ -239,6 +239,12 @@ impl EventSink for ImmediateEventSink {
                         ThreadEventQueueAny::EndThreadSpanEvent(evt) => {
                             ("E", evt.time, evt.thread_span_desc.name)
                         }
+                        ThreadEventQueueAny::BeginAsyncSpanEvent(evt) => {
+                            ("B", evt.time, evt.span_desc.name)
+                        }
+                        ThreadEventQueueAny::EndAsyncSpanEvent(evt) => {
+                            ("E", evt.time, evt.span_desc.name)
+                        }
                     };
                     let time = 1000.0 * 1000.0 * (tick - process_data.start_ticks) as f64
                         / process_data.tsc_frequency as f64;

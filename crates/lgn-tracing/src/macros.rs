@@ -13,8 +13,8 @@
 #[macro_export]
 macro_rules! span_scope {
     ($scope_name:ident, $name:expr) => {
-        static $scope_name: $crate::spans::ThreadSpanMetadata = $crate::spans::ThreadSpanMetadata {
-            lod: $crate::Lod::Max,
+        static $scope_name: $crate::spans::SpanMetadata = $crate::spans::SpanMetadata {
+            lod: $crate::Verbosity::Max,
             name: $name,
             target: module_path!(),
             module_path: module_path!(),
@@ -48,7 +48,7 @@ macro_rules! span_scope {
 macro_rules! imetric {
     ($name:literal, $unit:literal, $value:expr) => {{
         static METRIC_METADATA: $crate::metrics::MetricMetadata = $crate::metrics::MetricMetadata {
-            lod: $crate::Lod::Max,
+            lod: $crate::Verbosity::Max,
             name: $name,
             unit: $unit,
             target: "",
@@ -76,7 +76,7 @@ macro_rules! imetric {
 macro_rules! fmetric {
     ($name:literal, $unit:literal, $value:expr) => {{
         static METRIC_METADATA: $crate::metrics::MetricMetadata = $crate::metrics::MetricMetadata {
-            lod: $crate::Lod::Max,
+            lod: $crate::Verbosity::Max,
             name: $name,
             unit: $unit,
             target: "",

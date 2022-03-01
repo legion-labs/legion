@@ -2,19 +2,27 @@ use std::collections::HashSet;
 
 use lgn_tracing_transit::prelude::*;
 
-use super::{BeginThreadSpanEvent, EndThreadSpanEvent, ThreadSpanMetadata, ThreadSpanRecord};
+use super::{
+    BeginAsyncSpanEvent, BeginThreadSpanEvent, EndAsyncSpanEvent, EndThreadSpanEvent, SpanMetadata,
+    SpanRecord,
+};
 use crate::event::{EventBlock, EventStream, ExtractDeps};
 
 declare_queue_struct!(
-    struct ThreadEventQueue<BeginThreadSpanEvent, EndThreadSpanEvent> {}
+    struct ThreadEventQueue<
+        BeginThreadSpanEvent,
+        EndThreadSpanEvent,
+        BeginAsyncSpanEvent,
+        EndAsyncSpanEvent,
+    > {}
 );
 
 declare_queue_struct!(
-    struct ThreadDepsQueue<ThreadSpanRecord, StaticString> {}
+    struct ThreadDepsQueue<SpanRecord, StaticString> {}
 );
 
 fn record_scope_event_dependencies(
-    thread_span_desc: &'static ThreadSpanMetadata,
+    thread_span_desc: &'static SpanMetadata,
     recorded_deps: &mut HashSet<u64>,
     deps: &mut ThreadDepsQueue,
 ) {
@@ -36,7 +44,7 @@ fn record_scope_event_dependencies(
         if recorded_deps.insert(file.ptr as u64) {
             deps.push(file);
         }
-        deps.push(ThreadSpanRecord {
+        deps.push(SpanRecord {
             id: thread_span_ptr,
             name: thread_span_desc.name.as_ptr(),
             target: thread_span_desc.target.as_ptr(),
@@ -69,6 +77,12 @@ impl ExtractDeps for ThreadEventQueue {
                         &mut recorded_deps,
                         &mut deps,
                     );
+                }
+                ThreadEventQueueAny::BeginAsyncSpanEvent(evt) => {
+                    record_scope_event_dependencies(evt.span_desc, &mut recorded_deps, &mut deps);
+                }
+                ThreadEventQueueAny::EndAsyncSpanEvent(evt) => {
+                    record_scope_event_dependencies(evt.span_desc, &mut recorded_deps, &mut deps);
                 }
             }
         }

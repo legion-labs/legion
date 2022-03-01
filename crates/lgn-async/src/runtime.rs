@@ -10,8 +10,8 @@ use lgn_tasks::logical_core_count;
 use lgn_tracing::{
     dispatch::{flush_thread_buffer, init_thread_stream, on_begin_scope, on_end_scope},
     max_lod,
-    spans::ThreadSpanMetadata,
-    Lod,
+    spans::SpanMetadata,
+    Verbosity,
 };
 use retain_mut::RetainMut;
 use tokio::runtime::{Builder, Handle, Runtime};
@@ -30,8 +30,8 @@ pub struct TokioAsyncRuntimeHandle(Handle);
 
 impl Default for TokioAsyncRuntime {
     fn default() -> Self {
-        static PARK_SPAN_METADATA: ThreadSpanMetadata = ThreadSpanMetadata {
-            lod: Lod::Max,
+        static PARK_SPAN_METADATA: SpanMetadata = SpanMetadata {
+            lod: Verbosity::Max,
             name: "tokio::busy",
             target: module_path!(),
             module_path: module_path!(),
