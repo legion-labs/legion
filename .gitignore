@@ -44,3 +44,4 @@ trace-*.json
 
 build/env/install/rust-toolchain.toml
 build/env/install/tools.toml
+crates/lgn-analytics-gui/frontend/.env.local

@@ -6,16 +6,11 @@ import { grpc } from "@improbable-eng/grpc-web";
 import { authClient } from "@lgn/web-client/src/lib/auth";
 
 export function getRemoteHost() {
-  // const remoteHost =
-  //   "analytics-nlb-cddd70eafd32d85b.elb.ca-central-1.amazonaws.com";
-  const remoteHost = "analytics-api.playground.legionlabs.com";
-  // const remoteHost = "localhost";
-  return remoteHost;
+  return import.meta.env.VITE_LEGION_ANALYTICS_REMOTE_HOST;
 }
 
 export function getUrl() {
-  return "https://" + getRemoteHost() + ":9090";
-  // return "http://" + getRemoteHost() + ":9090";
+  return import.meta.env.VITE_LEGION_ANALYTICS_API_URL;
 }
 
 export async function makeGrpcClient() {
