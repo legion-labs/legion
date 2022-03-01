@@ -55,7 +55,7 @@ jobs:
       - name: Bootstrap
         uses: ./.github/actions/rust-bootstrap
         with:
-          init: true
+          init: "true"
 
       - name: Test changed crates
         id: change-since

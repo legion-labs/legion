@@ -3,13 +3,13 @@ description: "Bootstraps the rust environment"
 inputs:
   init:
     required: false
-    type: boolean
-    default: false
+    default: "false"
+
 runs:
   using: "composite"
   steps:
     - name: Mirror cargo dependencies
-      if: ${{ inputs.init }}
+      if: ${{ inputs.init == 'true' }}
       run: cargo fetcher --include-index --url "https://legionlabs-ci-artefacts.s3-ca-central-1.amazonaws.com/fetch-cache/" mirror
       shell: bash
 
@@ -18,9 +18,8 @@ runs:
       shell: bash
 
     - name: Bootstrap monorepo
-      if: ${{ inputs.init }}
+      if: ${{ inputs.init == 'true' }}
       run: |
-        echo "${{ inputs.init }}"
         echo "::group::Build and run the bootstrap package"
         cargo run -p bootstrap
         echo "::endgroup::"
@@ -35,5 +34,4 @@ runs:
         aws s3 cp s3://legionlabs-ci-artefacts/bootstrap/monorepo-$GITHUB_RUN_ID.tar.gz ./target/monorepo.tar.gz --region ca-central-1
         tar -xzvf ./target/monorepo.tar.gz --directory /usr/local/bin
         monorepo --help
-        exit 0
       shell: bash

@@ -29,7 +29,7 @@ jobs:
       - name: Bootstrap
         uses: ./.github/actions/rust-bootstrap
         with:
-          init: true
+          init: "true"
 
   rust:
     name: Rust ecosystem

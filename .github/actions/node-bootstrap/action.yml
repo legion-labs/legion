@@ -3,8 +3,7 @@ description: "Bootstraps the rust environment"
 inputs:
   init:
     required: false
-    type: boolean
-    default: false
+    default: "false"
 runs:
   using: "composite"
   steps:
