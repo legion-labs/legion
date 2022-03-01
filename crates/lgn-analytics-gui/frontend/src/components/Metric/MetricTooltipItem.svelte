@@ -14,10 +14,9 @@
     />
     <span class="name">{metric.name}</span>
   </div>
-  <div>
-    <span class="font-semibold">{value?.value}</span><span
-      class="pl-1 text-slate-500">({metric.unit})</span
-    >
+  <div class="pl-2">
+    <span class="font-semibold">{value?.value.toLocaleString()}</span>
+    <span class="pl-1 text-slate-500">({metric.unit})</span>
   </div>
 </div>
 

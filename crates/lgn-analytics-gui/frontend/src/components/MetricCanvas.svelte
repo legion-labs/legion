@@ -1,22 +1,22 @@
 <script lang="ts">
   import { makeGrpcClient } from "@/lib/client";
   import { formatExecutionTime } from "@/lib/format";
+  import { getLodFromPixelSizeNs } from "@/lib/lod";
+  import { getMetricColor } from "@/lib/Metric/MetricColor";
+  import { Point } from "@/lib/Metric/MetricPoint";
+  import { selectionStore } from "@/lib/Metric/MetricSelectionStore";
+  import { MetricState } from "@/lib/Metric/MetricState";
+  import { MetricStreamer } from "@/lib/Metric/MetricStreamer";
   import { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
+  import log from "@lgn/web-client/src/lib/log";
   import * as d3 from "d3";
+  import { D3ZoomEvent } from "d3";
   import { onDestroy, onMount } from "svelte";
   import { get, Unsubscriber, Writable } from "svelte/store";
-  import log from "@lgn/web-client/src/lib/log";
-  import { Point } from "@/lib/Metric/MetricPoint";
-  import { MetricStreamer } from "@/lib/Metric/MetricStreamer";
-  import { MetricState } from "@/lib/Metric/MetricState";
-  import { getLodFromPixelSizeNs } from "@/lib/lod";
-  import MetricSelection from "./Metric/MetricSelection.svelte";
-  import MetricLegendGroup from "./Metric/MetricLegendGroup.svelte";
-  import { selectionStore } from "@/lib/Metric/MetricSelectionStore";
-  import { getMetricColor } from "@/lib/Metric/MetricColor";
   import MetricDebugDisplay from "./Metric/MetricDebugDisplay.svelte";
+  import MetricLegendGroup from "./Metric/MetricLegendGroup.svelte";
+  import MetricSelection from "./Metric/MetricSelection.svelte";
   import MetricTooltip from "./Metric/MetricTooltip.svelte";
-  import { D3ZoomEvent } from "d3";
   export let id: string;
 
   let metricStreamer: MetricStreamer;
@@ -154,6 +154,7 @@
   }
 
   function update(states: MetricState[]) {
+    updateLod();
     updatePoints(states);
     updateChart();
     tick();
@@ -168,7 +169,7 @@
       .map((m) => {
         return {
           points: Array.from(
-            m.getViewportPoints(currentMinMs, currentMaxMs, lod)
+            m.getViewportPoints(currentMinMs, currentMaxMs, lod, true)
           ),
           name: m.name,
         };
@@ -334,12 +335,30 @@
       .context(context);
 
     points.forEach((data) => {
+      const color = (context.strokeStyle = getMetricColor(data.name));
       context.beginPath();
       line(data.points.map((p) => [p.time, p.value]));
-      context.strokeStyle = getMetricColor(data.name);
+      context.strokeStyle = color;
       context.lineWidth = 0.33;
       context.stroke();
     });
+
+    for (const metric of points) {
+      const color = (context.strokeStyle = getMetricColor(metric.name));
+      context.beginPath();
+      line(metric.points.map((p) => [p.time, p.value]));
+      context.strokeStyle = color;
+      context.lineWidth = 0.33;
+      context.stroke();
+      if (lod <= 3) {
+        for (const point of metric.points) {
+          context.beginPath();
+          context.arc(scaleX(point.time), y(point.value), 1, 0, 2 * Math.PI);
+          context.fillStyle = color;
+          context.fill();
+        }
+      }
+    }
 
     gxAxis.call(xAxis.scale(scaleX));
     gyAxis.call(yAxis.scale(y));
@@ -361,6 +380,7 @@
   <MetricTooltip
     bind:this={metricTooltip}
     xScale={transform.rescaleX(x)}
+    leftMargin={margin.left}
     {zoomEvent}
     {metricStreamer}
   />

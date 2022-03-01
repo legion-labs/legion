@@ -44,7 +44,7 @@ export class MetricBlockState {
     return !(this.minMs > max || this.maxMs < min);
   }
 
-  *getPoints(min: number, max: number, lod: number) {
+  *getPoints(min: number, max: number, lod: number, withBoundaries: boolean) {
     const data = this.data.get(Math.max(lod, Math.min(...this.data.keys())));
     if (!data) {
       return;
@@ -57,28 +57,30 @@ export class MetricBlockState {
       }
     }
 
-    if (points.length > 0) {
-      const boundaryInPoint = data[data.indexOf(points[0]) - 1];
-      if (boundaryInPoint && !points.includes(boundaryInPoint)) {
-        points.unshift(boundaryInPoint);
-      }
-      const boundaryOutPoint =
-        data[data.indexOf(points[points.length - 1]) + 1];
-      if (boundaryOutPoint && !points.includes(boundaryOutPoint)) {
-        points.push(boundaryOutPoint);
-      }
-    } else {
-      const nextMinPoint = data
-        .filter((p) => p.time <= min)
-        .sort((a, b) => (a > b ? -1 : 1))[0];
-      if (nextMinPoint && !points.includes(nextMinPoint)) {
-        points.push(nextMinPoint);
-      }
-      const nextMaxPoint = data
-        .filter((p) => p.time >= max)
-        .sort((a, b) => (a > b ? 1 : -1))[0];
-      if (nextMaxPoint && !points.includes(nextMaxPoint)) {
-        points.push(nextMaxPoint);
+    if (withBoundaries) {
+      if (points.length > 0) {
+        const boundaryInPoint = data[data.indexOf(points[0]) - 1];
+        if (boundaryInPoint && !points.includes(boundaryInPoint)) {
+          points.unshift(boundaryInPoint);
+        }
+        const boundaryOutPoint =
+          data[data.indexOf(points[points.length - 1]) + 1];
+        if (boundaryOutPoint && !points.includes(boundaryOutPoint)) {
+          points.push(boundaryOutPoint);
+        }
+      } else {
+        const nextMinPoint = data
+          .filter((p) => p.time <= min)
+          .sort((a, b) => (a > b ? -1 : 1))[0];
+        if (nextMinPoint && !points.includes(nextMinPoint)) {
+          points.push(nextMinPoint);
+        }
+        const nextMaxPoint = data
+          .filter((p) => p.time >= max)
+          .sort((a, b) => (a > b ? 1 : -1))[0];
+        if (nextMaxPoint && !points.includes(nextMaxPoint)) {
+          points.push(nextMaxPoint);
+        }
       }
     }
 

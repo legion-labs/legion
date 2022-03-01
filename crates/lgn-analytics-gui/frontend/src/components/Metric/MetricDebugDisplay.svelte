@@ -94,8 +94,9 @@
                   {b.minMs.toFixed(0)}
                   {b.maxMs.toFixed(0)} ({formatExecutionTime(
                     b.maxMs - b.minMs
-                  )}) ({Array.from(b.getPoints(currentMinMs, currentMaxMs, lod))
-                    .length})
+                  )}) ({Array.from(
+                    b.getPoints(currentMinMs, currentMaxMs, lod, true)
+                  ).length})
                 </div>
               {/each}
             </li>

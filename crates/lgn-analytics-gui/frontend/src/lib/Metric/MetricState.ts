@@ -60,11 +60,21 @@ export class MetricState {
     }
   }
 
-  *getViewportPoints(min: number, max: number, lod: number) {
+  *getViewportPoints(
+    min: number,
+    max: number,
+    lod: number,
+    withBoundaries: boolean
+  ) {
     for (const block of this.getViewportBlocks(min, max)) {
       const blockState = this.blocks.get(block.blockId);
       if (blockState) {
-        for (const point of blockState.getPoints(min, max, lod)) {
+        for (const point of blockState.getPoints(
+          min,
+          max,
+          lod,
+          withBoundaries
+        )) {
           yield point;
         }
       }
@@ -92,16 +102,13 @@ export class MetricState {
   }
 
   getClosestValue(time: number): Point | null {
-    const threshold = 100;
     const data = Array.from(
-      this.getViewportPoints(time - threshold, time + threshold, 0)
+      this.getViewportPoints(this.min, this.max, 0, false)
     );
-    if (data.length <= 0) {
+    const points = data.filter((p) => p.time > time);
+    if (points.length == 0) {
       return null;
     }
-    const result = data.reduce((p, c) =>
-      Math.abs(c.time - time) < Math.abs(p.time - time) ? c : p
-    );
-    return result;
+    return points[0];
   }
 }

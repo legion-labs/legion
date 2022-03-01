@@ -1,4 +1,3 @@
-import { MetricSelectionState } from "@/components/Metric/MetricSelectionState";
 import { makeGrpcClient } from "@/lib/client";
 import { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
 import Semaphore from "semaphore-async-await";
