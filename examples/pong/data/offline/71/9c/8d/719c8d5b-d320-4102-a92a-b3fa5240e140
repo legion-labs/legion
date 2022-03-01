@@ -26,10 +26,13 @@
       }
     },
     {
-      "StaticMesh": {
+      "Visual": {
         "color": 65535,
-        "mesh": null,
-        "mesh_id": "Cube"
+        "gi_contribution": 0,
+        "renderable_geometry": null,
+        "shadow_caster_local": false,
+        "shadow_caster_sun": false,
+        "shadow_receiver": false
       }
     },
     {
