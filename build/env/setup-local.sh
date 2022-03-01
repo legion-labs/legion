@@ -62,7 +62,7 @@ export NVM_DIR=/usr/local/nvm
 # This version is duplicated in the node.sh script, make sure to update both
 echo "export NVM_DIR=/usr/local/nvm
 export NODE_PATH=$NVM_DIR/v$NODE_VERSION/lib/node_modules
-export PATH=$NVM_DIR/versions/node/v$NODE_VERSION/bin:\$PATH" | tee /etc/profile.d/build.sh
+export PATH=$NVM_DIR/versions/node/v$NODE_VERSION/bin:\$PATH" | tee -a /etc/profile.d/build.sh
 
 echo '------------------------------------ Cloud Tools -------------------------------------------------'
 ./cloud.sh

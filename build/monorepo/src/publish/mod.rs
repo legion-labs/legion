@@ -28,7 +28,7 @@ pub struct Args {
     pub(crate) build_args: BuildArgs,
     /// Do not distribute the executable stop at the building step
     #[clap(long)]
-    no_dist: bool,
+    build_only: bool,
     /// Tag the new version
     #[clap(long)]
     update_hash: bool,
@@ -73,7 +73,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
                 ..SelectedPackageArgs::default()
             },
             build_args: args.build_args.clone(),
-            no_dist: args.no_dist,
+            build_only: args.build_only,
             force: args.force,
             dry_run: args.dry_run,
             update_hash: args.update_hash,

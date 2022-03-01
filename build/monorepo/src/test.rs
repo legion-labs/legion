@@ -61,7 +61,7 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
             return Err(Error::new("Could not install grcov"));
         }
 
-        let shared_envionment = vec![
+        let shared_environment = vec![
             ("RUSTC_BOOTSTRAP", Some("1")),
             // Recommend flags for use with grcov, with these flags removed: -Copt-level=0, -Clink-dead-code.
             // for more info see:  https://github.com/mozilla/grcov#example-how-to-generate-gcda-fiels-for-a-rust-project
@@ -69,7 +69,7 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
             ("RUST_MIN_STACK", Some("8388608")),
         ];
 
-        let mut build_env_vars = shared_envionment.clone();
+        let mut build_env_vars = shared_environment.clone();
         build_env_vars.push((llvm_profile_key, Some(llvm_profile_path_ignored)));
 
         action_step!(
@@ -92,7 +92,7 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
             return build_result;
         }
 
-        let mut output = shared_envionment.clone();
+        let mut output = shared_environment.clone();
         output.push((llvm_profile_key, Some(llvm_profile_path)));
         output
     } else {

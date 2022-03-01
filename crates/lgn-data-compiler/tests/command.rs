@@ -34,7 +34,7 @@ fn command_info() {
 #[test]
 fn command_compiler_hash() {
     let exe_path = common::compiler_exe("test-refs");
-    assert!(exe_path.exists());
+    assert!(exe_path.exists(), "{}", exe_path.display());
 
     // get all hashes
     let command = CompilerHashCmd::new(&common::test_env(), None);

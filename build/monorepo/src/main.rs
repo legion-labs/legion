@@ -128,7 +128,6 @@ fn main() {
         });
 
     span_scope!("monorepo::main");
-
     let args = Cli::parse();
     if let Err(err) = context::Context::new().and_then(|ctx| match args.command {
         Commands::Build(args) => build::run(args, &ctx),

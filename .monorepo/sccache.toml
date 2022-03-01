@@ -1,9 +1,9 @@
 [sccache]
 bucket = "legionlabs-ci-artefacts"
-prefix = "sccache/legion/"
+prefix = "sccache2/legion/"
 public = false
 region = "ca-central-1"
 endpoint = "https://s3-ca-central-1.amazonaws.com"
-required-cargo-home = { windows = "C:\\Scoop\\user\\persist\\rustup-msvc\\.cargo", linux = "/home/ubuntu/.cargo", macos = "tbd" }
-required-git-home = { windows = "C:\\github\\work\\legion\\legion", linux = "/github/work/legion/legion", macos = "tbd" }
+required-cargo-home = { windows = "C:\\Scoop\\user\\persist\\rustup-msvc\\.cargo", linux = "/usr/local/cargo", macos = "tbd" }
+required-git-home = { windows = "C:\\github\\work\\legion\\legion", linux = "/__w/legion/legion", macos = "tbd" }
 envs = []

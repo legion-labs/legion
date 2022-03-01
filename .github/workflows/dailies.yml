@@ -6,117 +6,66 @@ on:
     - cron: "0 10,22 * * *"
   workflow_dispatch:
 
-env:
-  CARGO_TERM_COLOR: always
-  MONOREPO_DOCKER_REGISTRY: 550877636976.dkr.ecr.ca-central-1.amazonaws.com/legion-labs/legion
-  IMAGE_TAG: latest
-  SKIP_SCCACHE: "1"
-
 jobs:
-  build_build_env:
-    name: Building env container
-    runs-on: [self-hosted, linux, common, build]
-    steps:
-      - uses: actions/checkout@v2
-      - name: Build
-        run: ./build/env/setup.sh
+  image_setup:
+    name: Image Setup
+    uses: ./.github/workflows/reusable_build_env_setup.yml
+    with:
+      tag: latest
+    secrets:
+      github-token: ${{ secrets.ECR_GH_ACCESS_TOKEN }}
 
-  benchmark:
-    name: Running benchmarks
-    if: github.event_name == 'schedule'
-    strategy:
-      matrix:
-        os:
-          [
-            [self-hosted, windows, common, build],
-            [self-hosted, linux, common, build],
-          ]
-    runs-on: ${{ matrix.os }}
+  bootstrap_rust:
+    name: Bootstrap Rust
+    runs-on: [self-hosted, linux, common, build]
+    container:
+      image: ${{ inputs.image }}
+      credentials:
+        username: AWS
+        password: ${{ secrets.ECR_PASSWORD }}
     steps:
       - uses: actions/checkout@v2
 
       - name: Bootstrap
-        uses: ./.github/actions/bootstrap
-
-      - name: Build benchmarks
-        run: cargo m ci bench
-
-  timings:
-    name: Running a timed build
-    if: github.event_name == 'schedule'
-    runs-on: [self-hosted, linux, common, build]
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Build with timings
-        run: make timings
-
-      - name: Upload report
-        uses: actions/upload-artifact@v2
+        uses: ./.github/actions/rust-bootstrap
         with:
-          name: timings
-          path: ./timings
-          retention-days: 60
+          init: "true"
 
-  deploy_timings:
-    name: Deploying book
-    needs: [timings]
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/download-artifact@v2
-        with:
-          name: timings
-          path: ./timings
+  rust:
+    name: Rust ecosystem
+    needs: [image_setup, bootstrap_rust]
+    uses: ./.github/workflows/reusable_rust_ecosystem.yml
+    env:
+      SKIP_SCCACHE: "1"
+    with:
+      image: ${{ needs.image_setup.outputs.image }}
+      pkgs_arg: --workspace
+      benchmark: true
+      coverage: true
+      timings: true
+    secrets:
+      ecr-password: ${{ secrets.ECR_PASSWORD }}
+      coverage-deploy-key: ${{ secrets.COV_DEPLOY_KEY }}
+      build-timings-deploy-key: ${{ secrets.BUILD_TIMINGS_DEPLOY_KEY }}
 
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          deploy_key: ${{ secrets.BUILD_TIMINGS_DEPLOY_KEY }}
-          external_repository: legion-labs/build-timings.legionengine.com
-          publish_branch: main
-          publish_dir: ./timings
-          force_orphan: true
-          cname: build-timings.legionengine.com
+  node:
+    name: Node ecosystem
+    if: ${{ fromJSON(needs.change_detection.outputs.npm_pkgs) }}
+    needs: [change_detection, image_setup]
+    uses: ./.github/workflows/reusable_node_ecosystem.yml
+    with:
+      image: ${{ needs.image_setup.outputs.image }}
+      deploy: ${{ false }}
+    secrets:
+      ecr-password: ${{ secrets.ECR_PASSWORD }}
 
-  coverage:
-    name: Running code coverage analysis
-    if: github.event_name == 'schedule'
-    runs-on: [self-hosted, linux, gpu, build]
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Bootstrap
-        uses: ./.github/actions/bootstrap
-
-      - name: Build and run tests with coverage
-        run: make cov
-
-      - name: Build coverage report
-        run: make grcov
-
-      - name: Upload report
-        uses: actions/upload-artifact@v2
-        with:
-          name: coverage
-          path: ./target/debug/coverage
-          retention-days: 60
-
-  deploy_coverage:
-    name: Deploying coverage report
-    needs: [coverage]
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/download-artifact@v2
-        with:
-          name: coverage
-          path: ./coverage
-
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          deploy_key: ${{ secrets.COV_DEPLOY_KEY }}
-          external_repository: legion-labs/cov.legionengine.com
-          publish_branch: main
-          publish_dir: ./coverage
-          force_orphan: true
-          cname: cov.legionengine.com
+  book:
+    name: Building book
+    needs: [image_setup, change_detection]
+    uses: ./.github/workflows/reusable_book.yml
+    with:
+      image: ${{ needs.image_setup.outputs.image }}
+      deploy: ${{ false }}
+    secrets:
+      ecr-password: ${{ secrets.ECR_PASSWORD }}
+      deploy-key: ${{ secrets.BOOK_DEPLOY_KEY }}

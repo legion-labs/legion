@@ -9,7 +9,7 @@ use guppy::graph::{BuildTargetId, DependencyDirection};
 use lgn_tracing::{span_fn, warn};
 use serde::Deserialize;
 
-use crate::changed_since::changed_since_impl;
+use crate::changed_since::{changed_since_impl, ChangedElements};
 use crate::context::Context;
 use crate::{Error, Result};
 
@@ -78,7 +78,11 @@ impl SelectedPackageArgs {
                     "May only use --changes-since if working in a local git repository.",
                 )
             })?;
-            let determinator_set = changed_since_impl(git_cli, ctx, base)?;
+            let ChangedElements {
+                docs: _,
+                npm_pkgs: _,
+                determinator_set,
+            } = changed_since_impl(git_cli, ctx, base)?;
             if self.direct_only {
                 includes = includes.intersection(
                     determinator_set

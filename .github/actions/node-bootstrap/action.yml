@@ -1,0 +1,13 @@
+name: "Node Bootstrap"
+description: "Bootstraps the rust environment"
+inputs:
+  init:
+    required: false
+    default: "false"
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/cache@v2
+      with:
+        path: "**/node_modules"
+        key: ${{ runner.os }}-modules-${{ hashFiles('**/pnpm-lock.lock') }}

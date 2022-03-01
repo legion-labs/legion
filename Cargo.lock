@@ -6045,6 +6045,7 @@ dependencies = [
  "toml_edit",
  "walkdir",
  "which",
+ "wildmatch",
  "zip",
 ]
 

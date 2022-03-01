@@ -2,9 +2,6 @@ name: CI - Test
 
 on:
   push:
-    paths-ignore:
-      - "docs/**"
-      - ".github/workflows/ci_book.yml"
     branches:
       - main
   pull_request:
@@ -14,261 +11,62 @@ env:
   MONOREPO_DOCKER_REGISTRY: 550877636976.dkr.ecr.ca-central-1.amazonaws.com/legion-labs/legion
 
 jobs:
-  base_ref_selection_2:
-    uses: ./.github/workflows/base_ref_selection.yml
+  base_ref_selection:
+    name: Base ref selection
+    uses: ./.github/workflows/reusable_base_ref_selection.yml
     with:
       caller_event_name: ${{ github.event_name }}
 
-  setup_image_2:
-    uses: ./.github/workflows/build_env_setup.yml
+  image_setup:
+    name: Image Setup
+    uses: ./.github/workflows/reusable_build_env_setup.yml
     secrets:
       github-token: ${{ secrets.ECR_GH_ACCESS_TOKEN }}
 
-  print_setup_image_2_output:
-    runs-on: ubuntu-latest
-    needs: setup_image_2
-    steps:
-      - run: echo ${{ needs.setup_image_2.outputs.image }}
+  change_detection:
+    name: Change detection
+    needs: [base_ref_selection, image_setup]
+    uses: ./.github/workflows/reusable_change_detection.yml
+    with:
+      base_ref: ${{ needs.base_ref_selection.outputs.base_ref }}
+      image: ${{ needs.image_setup.outputs.image }}
+    secrets:
+      ecr-password: ${{ secrets.ECR_PASSWORD }}
 
-  lint:
-    name: Running code checks
-    needs: base_ref_selection
-    runs-on: [self-hosted, linux, common, build]
-    env:
-      LEGION_TELEMETRY_URL: ${{ secrets.LEGION_TELEMETRY_URL }}
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
+  rust:
+    name: Rust ecosystem
+    if: ${{ fromJSON(needs.change_detection.outputs.cargo_pkgs) }}
+    needs: [change_detection, image_setup]
+    uses: ./.github/workflows/reusable_rust_ecosystem.yml
+    with:
+      image: ${{ needs.image_setup.outputs.image }}
+      pkgs_arg: ${{ needs.change_detection.outputs.cargo_pkgs_args }}
+      deploy: ${{ github.ref == 'refs/heads/main' }}
+    secrets:
+      ecr-password: ${{ secrets.ECR_PASSWORD }}
+      docs-deploy-key: ${{ secrets.DOCS_DEPLOY_KEY }}
 
-      - name: Bootstrap
-        uses: ./.github/actions/bootstrap
+  node:
+    name: Node ecosystem
+    if: ${{ fromJSON(needs.change_detection.outputs.npm_pkgs) }}
+    needs: [change_detection, image_setup]
+    uses: ./.github/workflows/reusable_node_ecosystem.yml
+    with:
+      image: ${{ needs.image_setup.outputs.image }}
+      deploy: ${{ github.ref == 'refs/heads/main' }}
+    secrets:
+      ecr-password: ${{ secrets.ECR_PASSWORD }}
+      analytics-deploy-key: ${{ secrets.ANALYTICS_DEPLOY_KEY }}
+      editor-deploy-key: ${{ secrets.EDITOR_DEPLOY_KEY }}
 
-      - name: Print changed crates
-        run: cargo m changed-since ${{ needs.base_ref_selection.outputs.base_ref }}
-
-      - name: Run initial checks
-        run: cargo m ci --changed-since ${{ needs.base_ref_selection.outputs.base_ref }} check
-
-  test:
-    name: Running tests
-    needs: [lint, runner_selection, base_ref_selection]
-    strategy:
-      matrix:
-        os:
-          [
-            "${{ fromJSON(needs.runner_selection.outputs.linux_runner) }}",
-            "${{ fromJSON(needs.runner_selection.outputs.windows_runner) }}",
-          ]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-
-      - name: Bootstrap
-        uses: ./.github/actions/bootstrap
-
-      - name: Run tests
-        run: cargo m ci --changed-since ${{ needs.base_ref_selection.outputs.base_ref }} test
-
-      - name: Upload GPU-test diffs
-        if: ${{ failure() }}
-        uses: actions/upload-artifact@v2.3.1
-        with:
-          name: GPU test diffs
-          path: ./tests/graphics-sandbox/diffs
-
-  build_docs:
-    name: Building docs
-    needs: lint
-    runs-on: [self-hosted, linux, common, build]
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Bootstrap
-        uses: ./.github/actions/bootstrap
-
-      - name: Build docs
-        run: cargo m doc
-
-      - name: Upload docs
-        uses: actions/upload-artifact@v2
-        with:
-          name: doc
-          path: ./target/doc
-          retention-days: 5
-
-  deploy_docs:
-    name: Deploying docs
-    needs: [build_docs, test]
-    runs-on: ubuntu-20.04
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/download-artifact@v2
-        with:
-          name: doc
-          path: ./doc
-
-      - run: sleep 5
-
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
-        continue-on-error: true
-        with:
-          deploy_key: ${{ secrets.DOCS_DEPLOY_KEY }}
-          external_repository: legion-labs/api.legionengine.com
-          publish_branch: main
-          publish_dir: ./doc
-          force_orphan: true
-          cname: api.legionengine.com
-
-  ###############################################################################
-
-  base_ref_selection:
-    name: Base ref selection
-    runs-on: ubuntu-latest
-    outputs:
-      base_ref: ${{ steps.set-base-ref.outputs.base_ref }}
-    steps:
-      - name: Set base ref for PRs
-        if: github.event_name == 'pull_request'
-        run: echo "base_ref=origin/$GITHUB_BASE_REF" >> $GITHUB_ENV
-
-      - name: Retrieve base ref for branch
-        id: last-green-commit
-        if: github.event_name != 'pull_request'
-        uses: actions/github-script@v6
-        with:
-          result-encoding: string
-          script: |
-            const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
-            const { GITHUB_REF_NAME } = process.env
-            return github.rest.actions
-              .listWorkflowRuns({
-                owner,
-                repo,
-                workflow_id: "ci_test.yml",
-                status: "success",
-                branch: GITHUB_REF_NAME,
-                event: "push",
-              })
-              .then((res) => {
-                return res.data.workflow_runs.length > 0
-                    ? res.data.workflow_runs[0].head_commit.id
-                    : "HEAD";
-              })
-      - name: Set base ref for PRs
-        if: github.event_name != 'pull_request'
-        run: echo "base_ref=${{steps.last-green-commit.outputs.result}}" >> $GITHUB_ENV
-
-      - name: Set base ref
-        id: set-base-ref
-        run: echo "::set-output name=base_ref::${{ env.base_ref }}"
-
-  runner_selection:
-    name: Runner selection
-    needs: base_ref_selection
-    runs-on: [self-hosted, linux, common, build]
-    outputs:
-      linux_runner: ${{ steps.changed-crates.outputs.linux_runner }}
-      windows_runner: ${{ steps.changed-crates.outputs.windows_runner }}
-    env:
-      LEGION_TELEMETRY_URL: ${{ secrets.LEGION_TELEMETRY_URL }}
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-
-      - name: Bootstrap
-        uses: ./.github/actions/bootstrap
-
-      - name: Test changed crates
-        id: changed-crates
-        run: |
-          crates=$(cargo m changed-since "${{ needs.base_ref_selection.outputs.base_ref }}" --matches-any renderer graphics-sandbox)
-          if [[ $? != 0 ]]; then
-            echo "failed to detect changed crates"
-            exit 1
-          fi
-          if [[ $crates ]]; then
-            echo "A change impacting a graphics crate was detected"
-            echo "Matched crates: $crates"
-            echo "::set-output name=linux_runner::[[\"self-hosted\",\"linux\",\"gpu\",\"build\"]]"
-            echo "::set-output name=windows_runner::[[\"self-hosted\",\"windows\",\"gpu\",\"build\"]]"
-          else
-            echo "No change impacting a graphics crate was detected"
-            echo "::set-output name=linux_runner::[[\"self-hosted\",\"linux\",\"common\",\"build\"]]"
-            echo "::set-output name=windows_runner::[[\"self-hosted\",\"windows\",\"common\",\"build\"]]"
-          fi
-
-  setup_image:
-    name: Setup build env container
-    runs-on: [self-hosted, linux, common, build]
-    if: ${{ false }}
-    outputs:
-      image: ${{ steps.set-image.outputs.image }}
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Build
-        run: ./build/env/setup.sh
-
-      - name: Set container image
-        id: set-image
-        run: echo "::set-output name=image::${{ env.image }}"
-
-      - name: Install NodeJS script dependencies
-        run: npm install tweetsodium
-
-      - name: Set ECR password secret
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.ECR_GH_ACCESS_TOKEN }}
-          script: |
-            const sodium = require('tweetsodium');
-
-            const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
-
-            const options = {};
-            options.silent = true;
-            const ecr_login = await exec.getExecOutput('aws', ['ecr', 'get-login-password', '--region', 'ca-central-1'], options);
-
-            const pub_key = await github.rest.actions.getRepoPublicKey({
-                owner,
-                repo,
-            });
-            const key = pub_key.data.key;
-            const key_id = pub_key.data.key_id;
-            const value = ecr_login.stdout;
-
-            // Convert the message and key to Uint8Array's (Buffer implements that interface)
-            const message_bytes = Buffer.from(value);
-            const key_bytes = Buffer.from(key, 'base64');
-
-            // Encrypt using LibSodium.
-            const encrypted_bytes = sodium.seal(message_bytes, key_bytes);
-
-            // Base64 the encrypted secret
-            const encrypted_value = Buffer.from(encrypted_bytes).toString('base64');
-            const secret_name = 'ECR_PASSWORD';
-            await github.rest.actions.createOrUpdateRepoSecret({
-                owner,
-                repo,
-                secret_name,
-                encrypted_value,
-                key_id,
-            })
-
-  test_build_env:
-    name: Testing the Build environment
-    needs: [setup_image]
-    runs-on: [self-hosted, linux, common, build]
-    container:
-      image: ${{ needs.setup_image.outputs.image }}
-      credentials:
-        username: AWS
-        password: ${{ secrets.ECR_PASSWORD }}
-    steps:
-      - uses: actions/checkout@v2
-      - run: cargo m --help
+  book:
+    name: Building book
+    needs: [image_setup, change_detection]
+    if: ${{ fromJSON(needs.change_detection.outputs.docs) }}
+    uses: ./.github/workflows/reusable_book.yml
+    with:
+      image: ${{ needs.image_setup.outputs.image }}
+      deploy: ${{ github.ref == 'refs/heads/main' }}
+    secrets:
+      ecr-password: ${{ secrets.ECR_PASSWORD }}
+      deploy-key: ${{ secrets.BOOK_DEPLOY_KEY }}

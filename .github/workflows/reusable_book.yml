@@ -1,17 +1,27 @@
-name: CI - Book
-
+name: Book reusable workflow
 on:
-  push:
-    paths:
-      - "docs/**"
-      - ".github/workflows/ci_book.yml"
-    branches:
-      - main
-
+  workflow_call:
+    inputs:
+      image:
+        required: true
+        type: string
+      deploy:
+        required: true
+        type: boolean
+    secrets:
+      ecr-password:
+        required: true
+      deploy-key:
+        required: true
 jobs:
   build_book:
     name: Building book
     runs-on: [self-hosted, linux, common, build]
+    container:
+      image: ${{ inputs.image }}
+      credentials:
+        username: AWS
+        password: ${{ secrets.ecr-password }}
     steps:
       - uses: actions/checkout@v2
 
@@ -28,6 +38,7 @@ jobs:
   deploy_book:
     name: Deploying book
     needs: [build_book]
+    if: ${{ inputs.deploy }}
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/download-artifact@v2
@@ -38,7 +49,7 @@ jobs:
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
-          deploy_key: ${{ secrets.BOOK_DEPLOY_KEY }}
+          deploy_key: ${{ secrets.deploy-key }}
           external_repository: legion-labs/book.legionengine.com
           publish_branch: main
           publish_dir: ./book

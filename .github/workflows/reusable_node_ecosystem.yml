@@ -1,0 +1,108 @@
+name: Rust ecosystem reusable workflow
+on:
+  workflow_call:
+    inputs:
+      image:
+        required: true
+        type: string
+      deploy:
+        required: true
+        type: boolean
+    secrets:
+      ecr-password:
+        required: true
+      editor-deploy-key:
+        required: false
+      analytics-deploy-key:
+        required: false
+
+# TODO: @Kevin: multiple aspects can be improved:
+# * Change detection (listing packages than changed)
+# * Bootstrapping (not used/tested but something along the of ./node-bootstrap/action.yml)
+# * Bootstrap can be called also when releasing the cargo crates since we might depend on npm stuff
+# * we can switch to monorepo commands if more commands are necessary, as the idea is always to do
+# less in the workflow (hard to debug, iterate, etc.)
+
+jobs:
+  check_test:
+    name: Running code checks and tests
+    runs-on: [self-hosted, linux, common, build]
+    container:
+      image: ${{ inputs.image }}
+      credentials:
+        username: AWS
+        password: ${{ secrets.ecr-password }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Npm install
+        run: pnpm install --unsafe-perm
+
+      - name: Npm check
+        run: pnpm check
+
+      - name: Npm test
+        run: pnpm test
+
+  build:
+    name: Building static websites
+    needs: [check_test]
+    runs-on: [self-hosted, linux, common, build]
+    container:
+      image: ${{ inputs.image }}
+      credentials:
+        username: AWS
+        password: ${{ secrets.ecr-password }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Npm install
+        run: pnpm install --unsafe-perm
+
+      - name: Npm build
+        env:
+          GITHUB_PAGES: "true"
+        run: pnpm build
+
+      - name: Upload analytics artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: analytics
+          path: ./crates/lgn-analytics-gui/frontend/dist
+          retention-days: 5
+
+      - name: Upload editor artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: editor
+          path: ./crates/lgn-editor-gui/frontend/dist
+          retention-days: 5
+
+  deploy:
+    name: Deploying static websites
+    needs: [build]
+    if: ${{ inputs.deploy }}
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        include:
+          - app: analytics
+            deploy_key: analytics-deploy-key
+
+          - app: editor
+            deploy_key: editor-deploy-key
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: ${{ matrix.app }}
+          path: ./${{ matrix.app }}
+
+      - name: Deploy Analytics
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          deploy_key: ${{ secrets[matrix.deploy_key] }}
+          external_repository: legion-labs/${{ matrix.app }}.legionengine.com
+          publish_branch: main
+          publish_dir: ./${{ matrix.app }}
+          force_orphan: true
+          cname: ${{ matrix.app }}.legionengine.com
