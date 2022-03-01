@@ -23,7 +23,7 @@ pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set
         #{
             type: "DescriptorSet",
             name: "PickingDescriptorSet",
-            frequency: 3,
+            frequency: crate::USER_DESCRIPTOR_SET_FREQUENCY,
             descriptors: [
                 #{ name: "picked_count", type: "RWStructuredBuffer", content: "Uint1" },
                 #{ name: "picked_objects", type: "RWStructuredBuffer", content: "PickingData" },

@@ -199,7 +199,7 @@ impl PickingRenderPass {
         mesh_manager: &MeshManager,
         model_manager: &ModelManager,
         camera: &CameraComponent,
-        mesh_renerer: &MeshRenderer,
+        mesh_renderer: &MeshRenderer,
     ) {
         self.readback_buffer_pools.begin_frame();
         let mut readback = self.readback_buffer_pools.acquire_or_create(|| {
@@ -225,7 +225,7 @@ impl PickingRenderPass {
 
             let pipeline = render_context
                 .pipeline_manager()
-                .get_pipeline(mesh_renerer.get_tmp_pso_handle(DefaultLayers::Picking as usize))
+                .get_pipeline(mesh_renderer.get_tmp_pso_handle(DefaultLayers::Picking as usize))
                 .unwrap();
 
             cmd_buffer.bind_pipeline(pipeline);
@@ -258,11 +258,7 @@ impl PickingRenderPass {
 
             cmd_buffer.push_constant(&push_constant_data);
 
-            mesh_renerer.draw(
-                render_context,
-                &mut cmd_buffer,
-                DefaultLayers::Picking as usize,
-            );
+            mesh_renderer.draw(render_context, cmd_buffer, DefaultLayers::Picking as usize);
 
             let (view_matrix, projection_matrix) = camera.build_view_projection(
                 render_surface.extents().width() as f32,
@@ -303,7 +299,7 @@ impl PickingRenderPass {
                     picking_distance,
                     DefaultMeshType::Sphere as u32,
                     mesh_manager,
-                    &cmd_buffer,
+                    cmd_buffer,
                 );
             }
 

@@ -6,6 +6,11 @@ mod picking;
 mod default_shader;
 mod culling;
 
+const PERSISTENT_DESCRIPTOR_SET_FREQUENCY   = 0;
+const FRAME_DESCRIPTOR_SET_FREQUENCY        = 1;
+const VIEW_DESCRIPTOR_SET_FREQUENCY         = 2;
+const USER_DESCRIPTOR_SET_FREQUENCY         = 3;
+
 pub fn main() {
 
     let products = [];
@@ -113,7 +118,7 @@ pub fn main() {
     let persistent_descriptor_set = #{
         type: "DescriptorSet",
         name: "PersistentDescriptorSet",
-        frequency: 0,
+        frequency: PERSISTENT_DESCRIPTOR_SET_FREQUENCY,
         descriptors: [            
             #{ type:"Texture2D", name:"material_textures", content:"Float4", array_len:256, bindless:true },            
         ]
@@ -123,7 +128,7 @@ pub fn main() {
     let frame_descriptor_set = #{
         type: "DescriptorSet",
         name: "FrameDescriptorSet",
-        frequency: 1,
+        frequency: FRAME_DESCRIPTOR_SET_FREQUENCY,
         descriptors: [
             #{ type:"ConstantBuffer", name:"lighting_data", content:"LightingData" },
             #{ type:"StructuredBuffer", name:"directional_lights", content:"DirectionalLight" },
@@ -139,7 +144,7 @@ pub fn main() {
     let view_descriptor_set = #{
         type: "DescriptorSet",
         name: "ViewDescriptorSet",
-        frequency: 2,
+        frequency: VIEW_DESCRIPTOR_SET_FREQUENCY,
         descriptors: [
             #{ type:"ConstantBuffer", name:"view_data", content:"ViewData" },            
         ]
@@ -150,7 +155,7 @@ pub fn main() {
     products.extend( const_color::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );    
     products.extend( picking::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );    
     products.extend( default_shader::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );        
-	 products.extend( culling::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );
+	products.extend( culling::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );
 
     products
 }

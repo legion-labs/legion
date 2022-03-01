@@ -117,7 +117,7 @@ impl Plugin for RendererPlugin {
         let device_context = renderer.device_context();
 		  let allocator = renderer.static_buffer_allocator();
         let descriptor_heap_manager = DescriptorHeapManager::new(NUM_RENDER_FRAMES, device_context);
-        let pipeline_manager = PipelineManager::new(&device_context);
+        let pipeline_manager = PipelineManager::new(device_context);
         //
         // Add renderer stages first. It is needed for the plugins.
         //
@@ -404,10 +404,10 @@ fn update_gpu_instances(
                 } else {
                     material_manager.va_for_index(material_key, 0) as u32
                 },
-                color_va: color_manager.va_for_index(Some(entity), 0) as u32,
-                transform_va: transform_manager.va_for_index(Some(entity), 0) as u32,
-                picking_data_va: picking_data_manager.va_for_index(Some(entity), 0) as u32,
-            };
+            color_va: color_manager.va_for_index(Some(entity), 0) as u32,
+            transform_va: transform_manager.va_for_index(Some(entity), 0) as u32,
+            picking_data_va: picking_data_manager.va_for_index(Some(entity), 0) as u32,
+        };
 
             let gpu_instance_id = instance_manager.add_gpu_instance(
                 entity,
