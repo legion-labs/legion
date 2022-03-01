@@ -2,6 +2,10 @@
 
 [**Introduction**](./README.md)
 
+# Setup
+
+- [Programmer](./setup/programmer.md)
+
 # Features
 
 - [Core](./core/README.md)

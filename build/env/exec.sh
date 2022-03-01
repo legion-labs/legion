@@ -29,24 +29,10 @@ if [[ "$(docker images -q $IMAGE 2> /dev/null)" == "" ]]; then
     exit 1
 fi
 
-if [[ -z $CI || $CI -eq false ]] ; then
-    docker run --name build-env \
-        -it --rm \
-        -v "/var/run/docker.sock":"/var/run/docker.sock" \
-        -v "$(realpath $MONOREPO_ROOT)":/github/workspace \
-        --workdir /github/workspace \
-        $IMAGE
-else
-    docker run --name build-env \
-        --workdir /github/workspace \
-        --rm \
-        -e CI=true \
-        -e MONOREPO_DOCKER_REGISTRY \
-        -v "/var/run/docker.sock":"/var/run/docker.sock" \
-        -v "/github/work/_temp/_github_home":"/github/home" \
-        -v "/github/work/_temp/_github_workflow":"/github/workflow" \
-        -v "/github/work/_temp/_runner_file_commands":"/github/file_commands" \
-        -v "/github/work/legion/legion":"/github/workspace" \
-        $IMAGE \
-        $@
-fi
+docker run --name build-env \
+    -it --rm \
+    -e CARGO_TARGET_DIR="target\docker" \
+    -v "/var/run/docker.sock":"/var/run/docker.sock" \
+    -v "$(realpath $MONOREPO_ROOT)":/github/workspace \
+    --workdir /github/workspace \
+    $IMAGE
