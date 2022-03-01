@@ -20,7 +20,7 @@ if [[ $MONOREPO_DOCKER_REGISTRY ]] ; then
     echo "Using image $IMAGE"
     aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin $MONOREPO_DOCKER_REGISTRY
     PUSH=0
-    if [[ $IMAGE_TAG -eq "latest" ]]; then
+    if [[ $IMAGE_TAG == "latest" ]]; then
         echo "Building image $IMAGE"
         docker build . -t $IMAGE
         PUSH=1
