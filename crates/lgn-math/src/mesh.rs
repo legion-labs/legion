@@ -4,7 +4,7 @@ use crate::{Vec2, Vec4};
 pub fn calculate_tangents(
     positions: &[Vec4],
     tex_coords: &[Vec2],
-    indices: &Option<Vec<u32>>,
+    indices: &Option<Vec<u16>>,
 ) -> Vec<Vec4> {
     let length = positions.len();
     let mut tangents = Vec::with_capacity(length);

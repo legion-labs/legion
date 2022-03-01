@@ -154,13 +154,13 @@ impl MeshRenderer {
         self.tmp_pipeline_handles[layer_id]
     }
 
-    fn register_material(&mut self, material_id: u32) {
+    fn register_material(&mut self, _material_id: u32) {
         for (index, layer) in &mut self.default_layers.iter_mut().enumerate() {
-            layer.register_material(material_id, self.tmp_batch_ids[index]);
+            layer.register_state(0, self.tmp_batch_ids[index]);
         }
     }
 
-    fn register_element(&mut self, material_id: u32, element: &RenderElement) {
+    fn register_element(&mut self, _material_id: u32, element: &RenderElement) {
         let new_index = self.gpu_instance_data.len() as u32;
         if element.gpu_instance_id > self.instance_data_idxs.len() as u32 {
             self.instance_data_idxs
@@ -171,12 +171,12 @@ impl MeshRenderer {
 
         let mut instance_data = GpuInstanceData::default();
         instance_data.set_gpu_instance_id(element.gpu_instance_id.into());
-        instance_data.set_material_id(material_id.into());
-        self.gpu_instance_data.push(instance_data);
 
         for layer in &mut self.default_layers {
-            layer.register_element(material_id, element);
+            instance_data.set_state_id(0.into());
+            layer.register_element(0, element);
         }
+        self.gpu_instance_data.push(instance_data);
     }
 
     fn unregister_element(&mut self, gpu_instance_id: u32) {
@@ -195,7 +195,7 @@ impl MeshRenderer {
         }
 
         for layer in &mut self.default_layers {
-            layer.unregister_element(removed_instance.material_id().into(), gpu_instance_id);
+            layer.unregister_element(removed_instance.state_id().into(), gpu_instance_id);
         }
     }
 

@@ -9,8 +9,8 @@ use crate::{
 use super::{RenderBatch, RenderElement, RenderStateSet};
 
 pub struct RenderLayer {
-    material_page: StaticBufferAllocation,
-    material_to_batch: Vec<u32>,
+    state_page: StaticBufferAllocation,
+    state_to_batch: Vec<u32>,
     batches: Vec<RenderBatch>,
     cpu_render_set: bool,
     element_count: u32,
@@ -23,8 +23,8 @@ impl RenderLayer {
         let material_page = static_buffer.allocate_segment(page_size as u64);
 
         Self {
-            material_page,
-            material_to_batch: vec![],
+            state_page: material_page,
+            state_to_batch: vec![],
             batches: vec![],
             cpu_render_set,
             element_count: 0,
@@ -37,31 +37,31 @@ impl RenderLayer {
         new_index
     }
 
-    pub fn register_material(&mut self, material_idx: u32, batch_idx: u32) {
-        if self.material_to_batch.len() < material_idx as usize {
-            self.material_to_batch
-                .resize((material_idx + 1) as usize, batch_idx);
+    pub fn register_state(&mut self, state_id: u32, batch_idx: u32) {
+        if self.state_to_batch.len() <= state_id as usize {
+            self.state_to_batch
+                .resize((state_id + 1) as usize, batch_idx);
         } else {
-            self.material_to_batch[material_idx as usize] = batch_idx;
+            self.state_to_batch[state_id as usize] = batch_idx;
         }
     }
 
-    pub fn register_element(&mut self, material_idx: u32, element: &RenderElement) {
-        let batch_idx = self.material_to_batch[material_idx as usize] as usize;
+    pub fn register_element(&mut self, state_id: u32, element: &RenderElement) {
+        let batch_id = self.state_to_batch[state_id as usize] as usize;
         if self.cpu_render_set {
-            self.batches[batch_idx].add_cpu_element(element);
+            self.batches[batch_id].add_cpu_element(element);
         } else {
-            self.batches[batch_idx].add_gpu_element();
+            self.batches[batch_id].add_gpu_element();
         }
         self.element_count += 1;
     }
 
-    pub fn unregister_element(&mut self, material_idx: u32, gpu_instance_id: u32) {
-        let batch_idx = self.material_to_batch[material_idx as usize] as usize;
+    pub fn unregister_element(&mut self, state_id: u32, gpu_instance_id: u32) {
+        let batch_id = self.state_to_batch[state_id as usize] as usize;
         if self.cpu_render_set {
-            self.batches[batch_idx].remove_cpu_element(gpu_instance_id);
+            self.batches[batch_id].remove_cpu_element(gpu_instance_id);
         } else {
-            self.batches[batch_idx].remove_gpu_element();
+            self.batches[batch_id].remove_gpu_element();
         }
         self.element_count -= 1;
     }
@@ -72,12 +72,12 @@ impl RenderLayer {
         count_buffer_offset: &mut u64,
         indirect_arg_buffer_offset: &mut u64,
     ) -> u32 {
-        if !self.cpu_render_set && !self.material_to_batch.is_empty() {
+        if !self.cpu_render_set && !self.state_to_batch.is_empty() {
             let mut per_batch_offsets: Vec<(u32, u32)> = Vec::new();
             per_batch_offsets.resize(self.batches.len(), (0, 0));
 
-            let mut per_material_offsets: Vec<(u32, u32)> = Vec::new();
-            per_material_offsets.resize(self.material_to_batch.len(), (0, 0));
+            let mut per_state_offsets: Vec<(u32, u32)> = Vec::new();
+            per_state_offsets.resize(self.state_to_batch.len(), (0, 0));
 
             for (batch_idx, batch) in self.batches.iter_mut().enumerate() {
                 per_batch_offsets[batch_idx as usize] = (
@@ -89,13 +89,13 @@ impl RenderLayer {
                 batch.calculate_indirect_offsets(indirect_arg_buffer_offset);
             }
 
-            for (material_id, batch_id) in self.material_to_batch.iter().enumerate() {
-                per_material_offsets[material_id] = per_batch_offsets[*batch_id as usize];
+            for (state_id, batch_id) in self.state_to_batch.iter().enumerate() {
+                per_state_offsets[state_id] = per_batch_offsets[*batch_id as usize];
             }
 
-            updater.add_update_jobs(&per_material_offsets, self.material_page.offset());
+            updater.add_update_jobs(&per_state_offsets, self.state_page.offset());
 
-            self.material_page.offset() as u32
+            self.state_page.offset() as u32
         } else {
             0
         }

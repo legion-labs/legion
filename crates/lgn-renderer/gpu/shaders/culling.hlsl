@@ -11,7 +11,7 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
         for (uint pass_idx = 0; pass_idx < push_constant.num_render_passes; pass_idx++) {
 
             uint offset_base_va = render_pass_data[pass_idx].offset_base_va;
-            uint offset_va = offset_base_va += (instance_data.material_id * 8);
+            uint offset_va = offset_base_va += (instance_data.state_id * 8);
             
             uint count_offset = static_buffer.Load<uint>(offset_va);
             uint indirect_arg_offset = static_buffer.Load<uint>(offset_va + 4);
@@ -24,19 +24,11 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
             GpuInstanceVATable addresses = static_buffer.Load<GpuInstanceVATable>(va_table_address);
             MeshDescription mesh_desc = static_buffer.Load<MeshDescription>(addresses.mesh_description_va);
 
-            if( mesh_desc.attrib_mask.is_set(MeshAttribMask_INDEX)) {
-                indirect_arg_buffer[inirect_offset + 0] = mesh_desc.index_count;
-                indirect_arg_buffer[inirect_offset + 1] = 1;
-                //indirect_arg_buffer[inirect_offset + 2] = mesh_desc.index_offset;
-                indirect_arg_buffer[inirect_offset + 2] = 0;
-                indirect_arg_buffer[inirect_offset + 3] = instance_data.gpu_instance_id;
-            }
-            else {
-                indirect_arg_buffer[inirect_offset + 0] = mesh_desc.vertex_count;
-                indirect_arg_buffer[inirect_offset + 1] = 1;
-                indirect_arg_buffer[inirect_offset + 2] = 0;
-                indirect_arg_buffer[inirect_offset + 3] = instance_data.gpu_instance_id;
-            }
+            indirect_arg_buffer[inirect_offset + 0] = mesh_desc.index_count;
+            indirect_arg_buffer[inirect_offset + 1] = 1;
+            indirect_arg_buffer[inirect_offset + 2] = mesh_desc.index_offset;
+            indirect_arg_buffer[inirect_offset + 3] = 0;
+            indirect_arg_buffer[inirect_offset + 4] = instance_data.gpu_instance_id;
         }
     }
 }

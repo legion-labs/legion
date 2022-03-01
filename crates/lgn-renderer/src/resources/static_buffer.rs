@@ -5,9 +5,9 @@ use std::{
 
 use lgn_graphics_api::{
     BarrierQueueTransition, Buffer, BufferAllocation, BufferBarrier, BufferCopy, BufferDef,
-    BufferView, BufferViewDef, DeviceContext, MemoryAllocation, MemoryAllocationDef,
-    MemoryPagesAllocation, MemoryUsage, PagedBufferAllocation, ResourceCreation, ResourceState,
-    ResourceUsage, Semaphore, VertexBufferBinding,
+    BufferView, BufferViewDef, DeviceContext, IndexBufferBinding, IndexType, MemoryAllocation,
+    MemoryAllocationDef, MemoryPagesAllocation, MemoryUsage, PagedBufferAllocation,
+    ResourceCreation, ResourceState, ResourceUsage, Semaphore, VertexBufferBinding,
 };
 use lgn_tracing::span_fn;
 
@@ -48,19 +48,19 @@ impl StaticBufferAllocation {
 }
 
 pub(crate) struct UnifiedStaticBufferInner {
-    buffer: Buffer,
     segment_allocator: RangeAllocator,
     _allocation: Option<MemoryAllocation>,
     binding_manager: Option<SparseBindingManager>,
     sparse_binding: bool,
     page_size: u64,
-    read_only_view: BufferView,
     job_blocks: Vec<UniformGPUDataUploadJobBlock>,
 }
 
 #[derive(Clone)]
 pub struct UnifiedStaticBuffer {
     inner: Arc<Mutex<UnifiedStaticBufferInner>>,
+    read_only_view: BufferView,
+    buffer: Buffer,
 }
 
 impl UnifiedStaticBuffer {
@@ -110,15 +110,15 @@ impl UnifiedStaticBuffer {
 
         Self {
             inner: Arc::new(Mutex::new(UnifiedStaticBufferInner {
-                buffer,
                 segment_allocator: RangeAllocator::new(virtual_buffer_size),
                 _allocation: allocation,
                 binding_manager,
                 sparse_binding,
                 page_size: required_alignment,
-                read_only_view,
                 job_blocks: Vec::new(),
             })),
+            read_only_view,
+            buffer,
         }
     }
 
@@ -134,16 +134,16 @@ impl UnifiedStaticBuffer {
 
         let allocation = if inner.sparse_binding {
             MemoryPagesAllocation::for_sparse_buffer(
-                inner.buffer.device_context(),
-                &inner.buffer,
+                self.buffer.device_context(),
+                &self.buffer,
                 page_count,
             )
         } else {
-            MemoryPagesAllocation::empty_allocation(inner.buffer.device_context())
+            MemoryPagesAllocation::empty_allocation(self.buffer.device_context())
         };
 
         let allocation = PagedBufferAllocation {
-            buffer: inner.buffer.clone(),
+            buffer: self.buffer.clone(),
             memory: allocation,
             range: location,
         };
@@ -199,7 +199,7 @@ impl UnifiedStaticBuffer {
 
         cmd_buffer.resource_barrier(
             &[BufferBarrier {
-                buffer: &inner.buffer,
+                buffer: &self.buffer,
                 src_state: ResourceState::SHADER_RESOURCE,
                 dst_state: ResourceState::COPY_DST,
                 queue_transition: BarrierQueueTransition::None,
@@ -210,7 +210,7 @@ impl UnifiedStaticBuffer {
         for job in &inner.job_blocks {
             cmd_buffer.copy_buffer_to_buffer(
                 &job.upload_allocation.buffer,
-                &inner.buffer,
+                &self.buffer,
                 &job.upload_jobs,
             );
         }
@@ -218,7 +218,7 @@ impl UnifiedStaticBuffer {
 
         cmd_buffer.resource_barrier(
             &[BufferBarrier {
-                buffer: &inner.buffer,
+                buffer: &self.buffer,
                 src_state: ResourceState::COPY_DST,
                 dst_state: ResourceState::SHADER_RESOURCE,
                 queue_transition: BarrierQueueTransition::None,
@@ -238,9 +238,15 @@ impl UnifiedStaticBuffer {
     }
 
     pub fn read_only_view(&self) -> BufferView {
-        let inner = self.inner.lock().unwrap();
+        self.read_only_view.clone()
+    }
 
-        inner.read_only_view.clone()
+    pub fn index_buffer_binding(&self) -> IndexBufferBinding<'_> {
+        IndexBufferBinding {
+            buffer: &self.buffer,
+            byte_offset: 0,
+            index_type: IndexType::Uint16,
+        }
     }
 }
 
