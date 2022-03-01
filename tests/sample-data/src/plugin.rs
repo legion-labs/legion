@@ -10,17 +10,15 @@ pub struct SampleDataPlugin;
 impl Plugin for SampleDataPlugin {
     fn build(&self, app: &mut App) {
         #[cfg(feature = "offline")]
-        app.add_startup_system(register_resource_types.exclusive_system());
+        app.add_startup_system(register_resource_types);
 
         app.add_startup_system(add_loaders);
     }
 }
 
 #[cfg(feature = "offline")]
-fn register_resource_types(world: &mut World) {
-    if let Some(resource_registry) = world.get_non_send_resource_mut::<ResourceRegistryOptions>() {
-        crate::offline::register_resource_types(resource_registry.into_inner());
-    }
+fn register_resource_types(resource_registry: NonSendMut<'_, ResourceRegistryOptions>) {
+    crate::offline::register_resource_types(resource_registry.into_inner());
 }
 
 #[allow(unused_variables)]

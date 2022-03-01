@@ -11,21 +11,19 @@ pub struct GraphicsPlugin;
 impl Plugin for GraphicsPlugin {
     fn build(&self, app: &mut App) {
         #[cfg(feature = "offline")]
-        app.add_startup_system(register_resource_types.exclusive_system());
+        app.add_startup_system(register_resource_types);
 
         app.add_startup_system(add_loaders);
     }
 }
 
 #[cfg(feature = "offline")]
-fn register_resource_types(world: &mut World) {
-    if let Some(resource_registry) = world.get_non_send_resource_mut::<ResourceRegistryOptions>() {
-        crate::offline::register_resource_types(resource_registry.into_inner())
-            .add_type_mut::<crate::offline_psd::PsdFile>()
-            .add_type_mut::<crate::offline_png::PngFile>()
-            .add_type_mut::<crate::offline_texture::Texture>()
-            .add_type_mut::<crate::offline_gltf::GltfFile>();
-    }
+fn register_resource_types(resource_registry: NonSendMut<'_, ResourceRegistryOptions>) {
+    crate::offline::register_resource_types(resource_registry.into_inner())
+        .add_type_mut::<crate::offline_psd::PsdFile>()
+        .add_type_mut::<crate::offline_png::PngFile>()
+        .add_type_mut::<crate::offline_texture::Texture>()
+        .add_type_mut::<crate::offline_gltf::GltfFile>();
 }
 
 #[allow(unused_variables)]
