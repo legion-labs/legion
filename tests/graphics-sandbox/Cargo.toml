@@ -35,5 +35,10 @@ clap = { version = "3.0", features = ["derive"] }
 [target.'cfg(target_os = "linux")'.dependencies]
 lgn-winit = { path = "../../crates/lgn-winit", features = ["x11"] }
 
+[target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
+lgn-presenter-snapshot = { path = "../../crates/lgn-presenter-snapshot", version = "0.1.0", features = [
+    "vulkan",
+] }
+
 [dev-dependencies]
 lgn-test-utils = { path = "../../crates/lgn-test-utils" }

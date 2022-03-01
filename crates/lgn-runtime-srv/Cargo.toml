@@ -49,3 +49,8 @@ standalone = []
 
 [target.'cfg(target_os = "linux")'.dependencies]
 lgn-winit = { path = "../lgn-winit", features = ["x11"] }
+
+[target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
+lgn-streamer = { path = "../lgn-streamer", version = "0.1.0", features = [
+    "vulkan",
+] }
