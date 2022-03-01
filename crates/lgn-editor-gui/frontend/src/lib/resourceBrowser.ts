@@ -2,7 +2,6 @@ import { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
 import { Entry } from "./hierarchyTree";
 
 export function iconFor(entry: Entry<ResourceDescription | symbol>) {
-  // All entries that are "symbols" are folders
   if (typeof entry.item === "symbol") {
     return "ic:baseline-folder-open";
   }

@@ -1,8 +1,9 @@
+import { v4 as uuid } from "uuid";
 import { components } from "./path";
 
 export type Entry<Item> = {
   name: string;
-  index: number;
+  index: number | null;
   item: Item;
   subEntries: Entry<Item>[];
 };
@@ -36,18 +37,16 @@ export class Entries<Item> {
    * assert(deepEqual(entries.entries, expectedEntries));
    * ```
    */
-  static fromArray<PItem extends { path: string }, AltItem>(
-    items: PItem[],
-    /** This function is called when an `Item` is not present, typically used for "folders" */
-    buildItemFromName: (name: string) => PItem | AltItem
-  ): Entries<PItem | AltItem> {
+  static fromArray<PItem extends { path: string }>(
+    items: PItem[]
+  ): Entries<PItem | symbol> {
     if (!items.length) {
       return new Entries([]);
     }
 
     type Ref = {
       [key: string]: Ref;
-    } & { subEntries: Entry<PItem | AltItem>[] };
+    } & { subEntries: Entry<PItem | symbol>[] };
 
     const entriesArray: Entry<PItem>[] = [];
     const ref = { subEntries: entriesArray } as Ref;
@@ -57,16 +56,18 @@ export class Entries<Item> {
 
       pathComponents.reduce((ref, name, index) => {
         if (!ref[name]) {
-          ref[name] = { subEntries: [] as Entry<PItem | AltItem>[] } as Ref;
+          ref[name] = {
+            subEntries: [] as Entry<PItem | symbol>[],
+          } as Ref;
 
           const entry = {
             name,
-            // Dumb index, will be set again properly later
-            index: -1,
-            item:
-              index < pathComponents.length - 1
-                ? buildItemFromName(name)
-                : item,
+            // Null index, will be set again properly later
+            index: null,
+            // Svelte stringifies symbols when the're used as keys
+            // here we get best of both worlds: our symbols are guaranteed
+            // to be unique even when stringified
+            item: index < pathComponents.length - 1 ? Symbol.for(uuid()) : item,
             subEntries: ref[name].subEntries,
           };
 
@@ -96,23 +97,25 @@ export class Entries<Item> {
   }
 
   /** Computes the size of the `Entries` */
-  recalculateSize(): number {
+  recalculateSize() {
     function count(entries: Entry<Item>[], size = 0): number {
-      return entries.reduce(
-        (size, entry) =>
-          entry.subEntries ? count(entry.subEntries, size + 1) : size + 1,
-        size
-      );
+      return entries.reduce((size, entry) => {
+        const newSize = typeof entry.item === "symbol" ? size : size + 1;
+
+        return entry.subEntries ? count(entry.subEntries, newSize) : newSize;
+      }, size);
     }
 
     this.#size = count(this.entries);
-
-    return this.#size;
   }
 
   #setIndices() {
-    for (const [index, entry] of this) {
-      entry.index = index;
+    let index = 0;
+
+    for (const entry of this) {
+      if (typeof entry.item !== "symbol") {
+        entry.index = index++;
+      }
     }
   }
 
@@ -142,7 +145,7 @@ export class Entries<Item> {
    * Finds an entry in an `Entries` array.
    */
   find(pred: (entry: Entry<Item>) => boolean): Entry<Item> | null {
-    for (const [, entry] of this) {
+    for (const entry of this) {
       if (pred(entry)) {
         return entry;
       }
@@ -192,9 +195,9 @@ export class Entries<Item> {
    * Unlike `Array.prototype.findIndex`, this method returns `null` if the index is not found, not -1.
    */
   findIndex(pred: (entry: Entry<Item>) => boolean): number | null {
-    for (const [index, entry] of this) {
+    for (const entry of this) {
       if (pred(entry)) {
-        return index;
+        return entry.index;
       }
     }
 
@@ -249,7 +252,7 @@ export class Entries<Item> {
     ): Entry<Item>[] {
       if (!parts.length) {
         const newEntry: Entry<Item> = {
-          index: -1,
+          index: null,
           item: item as unknown as Item,
           name: part,
           subEntries: [],
@@ -284,8 +287,8 @@ export class Entries<Item> {
 
   /** Get an entry from its index */
   getFromIndex(index: number): Entry<Item> | null {
-    for (const [entryIndex, entry] of this) {
-      if (entryIndex === index) {
+    for (const entry of this) {
+      if (entry.index === index) {
         return entry;
       }
     }
@@ -304,7 +307,7 @@ export class Entries<Item> {
   intoItems() {
     const items = [];
 
-    for (const [, entry] of this) {
+    for (const entry of this) {
       items.push(entry.item);
     }
 
@@ -316,13 +319,9 @@ export class Entries<Item> {
   }
 
   [Symbol.iterator]() {
-    let index = 0;
-
-    function* iter(
-      entries: Entry<Item>[]
-    ): Generator<[index: number, entry: Entry<Item>]> {
+    function* iter(entries: Entry<Item>[]): Generator<Entry<Item>> {
       for (const entry of entries) {
-        yield [index++, entry];
+        yield entry;
 
         if (entry.subEntries) {
           yield* iter(entry.subEntries);

@@ -40,16 +40,16 @@
   import Icon from "@iconify/svelte";
   import { iconFor } from "@/lib/resourceBrowser";
 
-  const createResourceModalId = Symbol();
+  const createResourceModalId = Symbol.for("create-resource-modal");
 
   const files = new Files();
 
   export let currentResourceDescription: ResourceDescription | null;
 
-  export let resourceEntries: Entries<symbol | ResourceDescription>;
+  export let resourceEntries: Entries<ResourceDescription | symbol>;
 
   export let currentlyRenameResource: Entry<
-    symbol | ResourceDescription
+    ResourceDescription | symbol
   > | null;
 
   export let allResourcesLoading: boolean;
@@ -78,7 +78,7 @@
     try {
       await removeResource({ id: entry.item.id });
     } catch (error) {
-      notifications.push(Symbol(), {
+      notifications.push(Symbol.for("resource-creation-error"), {
         type: "error",
         title: "Resources",
         message: "An error occured while removing the resource",
@@ -112,8 +112,10 @@
 
     try {
       await renameResource({ id: entry.item.id, newPath });
+
+      allResources.run(getAllResources);
     } catch (error) {
-      notifications.push(Symbol(), {
+      notifications.push(Symbol.for("resource-renaming-error"), {
         type: "error",
         title: "Resources",
         message: "An error occured while renaming the resource",
@@ -205,7 +207,7 @@
     detail: resourceDescription,
   }: CustomEvent<Entry<ResourceDescription | symbol>>) {
     resourceDescription &&
-      !(typeof resourceDescription.item === "symbol") &&
+      typeof resourceDescription.item !== "symbol" &&
       fetchCurrentResourceDescription(resourceDescription.item);
   }
 

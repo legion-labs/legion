@@ -7,7 +7,7 @@
 
   export let currentResourceDescription: ResourceDescription | null;
 
-  export let resourceEntries: Entries<symbol | ResourceDescription>;
+  export let resourceEntries: Entries<ResourceDescription | symbol>;
 
   export let allResourcesLoading: boolean;
 

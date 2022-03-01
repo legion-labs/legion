@@ -24,12 +24,12 @@ export default class<Item extends { path: string }> implements Orchestrator {
   constructor(resources: Item[] = []) {
     this.currentlyRenameEntry = new Writable<Entry<Item | symbol> | null>(null);
 
-    this.entries = new Writable(Entries.fromArray(resources, Symbol));
+    this.entries = new Writable(Entries.fromArray(resources));
   }
 
   /** Loads an array of element as hierarchy tree entries in the store */
   load(resources: Item[]) {
-    const entries = Entries.fromArray(resources, Symbol);
+    const entries = Entries.fromArray(resources);
 
     this.entries.set(entries);
   }
