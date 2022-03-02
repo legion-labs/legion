@@ -19,7 +19,7 @@ apt-get update && apt-get install -y --no-install-recommends \
     tar zip unzip p7zip-full \
     git \
     python3 \
-    ca-certificates software-properties-common \
+    gpg-agent ca-certificates software-properties-common \
     jq
 
 # Dazel is used to parse anything other than Json (Especially toml used by Rust).
