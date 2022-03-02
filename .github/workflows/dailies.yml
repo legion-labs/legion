@@ -11,7 +11,7 @@ jobs:
     name: Image Setup
     uses: ./.github/workflows/reusable_build_env_setup.yml
     with:
-      tag: latest
+      tag:
     secrets:
       github-token: ${{ secrets.ECR_GH_ACCESS_TOKEN }}
 
@@ -20,7 +20,7 @@ jobs:
     needs: [image_setup]
     runs-on: [self-hosted, linux, common, build]
     container:
-      image: ${{ inputs.image }}
+      image: ${{ needs.image_setup.outputs.image }}
       credentials:
         username: AWS
         password: ${{ secrets.ECR_PASSWORD }}
