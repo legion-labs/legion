@@ -31,9 +31,13 @@
       }
     },
     {
-      "PhysicsRigidActor": {
+      "PhysicsRigidBox": {
         "actor_type": "Dynamic",
-        "collision_geometry": "Box"
+        "half_extents": [
+          0.25,
+          0.25,
+          0.25
+        ]
       }
     }
   ]

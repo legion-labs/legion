@@ -12,7 +12,7 @@ mod callbacks;
 use callbacks::{OnAdvance, OnCollision, OnConstraintBreak, OnTrigger, OnWakeSleep};
 
 mod rigid_actors;
-use rigid_actors::{RigidDynamicActor, RigidStaticActor};
+use rigid_actors::BoxCollisionGeometry;
 
 mod settings;
 pub use settings::PhysicsSettings;
@@ -24,7 +24,10 @@ use lgn_tracing::prelude::*;
 use lgn_transform::prelude::*;
 use physx::{foundation::DefaultAllocator, physics::PhysicsFoundationBuilder, prelude::*};
 
-use crate::runtime::PhysicsRigidActor;
+use crate::{
+    rigid_actors::{add_dynamic_actor_to_scene, add_static_actor_to_scene},
+    runtime::PhysicsRigidBox,
+};
 
 // type aliases
 
@@ -63,7 +66,7 @@ impl Plugin for PhysicsPlugin {
             SystemStage::parallel(),
         );
 
-        app.add_system_to_stage(PhysicsStage::Update, Self::create_physics_actors);
+        app.add_system_to_stage(PhysicsStage::Update, Self::create_physics_boxes);
         app.add_system_to_stage(PhysicsStage::Update, Self::step_simulation);
         app.add_system_to_stage(PhysicsStage::Update, Self::sync_transforms);
     }
@@ -107,42 +110,42 @@ impl PhysicsPlugin {
         drop(settings);
     }
 
-    fn create_physics_actors(
-        query: Query<'_, '_, (Entity, &PhysicsRigidActor, &GlobalTransform)>,
+    fn create_physics_boxes(
+        query: Query<'_, '_, (Entity, &PhysicsRigidBox, &GlobalTransform)>,
         mut physics: ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         mut scene: ResMut<'_, Owner<PxScene>>,
         mut default_material: ResMut<'_, Owner<PxMaterial>>,
         mut commands: Commands<'_, '_>,
     ) {
-        for (entity, rigid_actor, transform) in query.iter() {
-            let mut commands = commands.entity(entity);
+        for (entity, rigid_box, transform) in query.iter() {
+            let geometry_component = BoxCollisionGeometry::new(rigid_box);
 
-            match rigid_actor.actor_type {
+            match rigid_box.actor_type {
                 RigidActorType::Dynamic => {
-                    let component = RigidDynamicActor::new(rigid_actor, transform);
-                    component.add_actor_to_scene(
+                    add_dynamic_actor_to_scene(
                         &mut physics,
                         &mut scene,
                         transform,
+                        &geometry_component,
                         entity,
                         &mut default_material,
                     );
-                    commands.insert(component);
                 }
                 RigidActorType::Static => {
-                    let component = RigidStaticActor::new(rigid_actor, transform);
-                    component.add_actor_to_scene(
+                    add_static_actor_to_scene(
                         &mut physics,
                         &mut scene,
                         transform,
+                        &geometry_component,
                         entity,
                         &mut default_material,
                     );
-                    commands.insert(component);
                 }
             }
-
-            commands.remove::<PhysicsRigidActor>();
+            commands
+                .entity(entity)
+                .insert(geometry_component)
+                .remove::<PhysicsRigidBox>();
         }
 
         drop(query);

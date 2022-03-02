@@ -140,7 +140,7 @@ impl AssetToECS for runtime_data::Entity {
                     ..LightComponent::default()
                 });
             } else if let Some(physics) =
-                component.downcast_ref::<lgn_physics::runtime::PhysicsRigidActor>()
+                component.downcast_ref::<lgn_physics::runtime::PhysicsRigidBox>()
             {
                 entity.insert(physics.clone());
             }
