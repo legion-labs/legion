@@ -1,7 +1,6 @@
 <script context="module" lang="ts">
   import { SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
-  import { Block } from "@lgn/proto-telemetry/dist/block";
-  import { Block, BlockMetadata } from "@lgn/proto-telemetry/dist/block";
+  import { BlockMetadata } from "@lgn/proto-telemetry/dist/block";
 
   type Thread = {
     streamInfo: Stream;
@@ -36,7 +35,6 @@
   };
 
   type ThreadBlock = {
-    blockDefinition: Block; // block metadata stored in data lake
     blockDefinition: BlockMetadata; // block metadata stored in data lake
     beginMs: number; // relative to main process
     endMs: number; // relative to main process
