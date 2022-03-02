@@ -386,10 +386,7 @@
 
     await tick();
     canvas.width = Math.max(400, Math.round(windowInnerWidth * 0.95));
-    canvas.height = Math.min(
-      1000,
-      window.innerHeight - canvas.getBoundingClientRect().top - 20
-    );
+    canvas.height = Math.max(400, window.innerHeight * 0.75);
 
     renderingContext.clearRect(0, 0, canvas.width, canvas.height);
     let threadVerticalOffset = yOffset;
