@@ -12,6 +12,7 @@
 //#![allow()]
 
 mod analytics_service;
+mod async_spans;
 mod auth;
 mod cache;
 mod call_tree;

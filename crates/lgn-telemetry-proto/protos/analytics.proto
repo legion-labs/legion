@@ -19,6 +19,7 @@ service PerformanceAnalytics {
   rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
   rpc list_stream_blocks(ListStreamBlocksRequest) returns (ListStreamBlocksReply);
   rpc nb_process_log_entries(ProcessNbLogEntriesRequest) returns (ProcessNbLogEntriesReply);
+  rpc fetch_block_async_stats(BlockAsyncStatsRequest) returns (BlockAsyncEventsStatReply);
   rpc fetch_block_metric_manifest(MetricBlockManifestRequest) returns (MetricBlockManifest);
   rpc fetch_block_metric(MetricBlockRequest) returns (MetricBlockData);
   rpc search_processes(SearchProcessRequest) returns (ProcessListReply);
@@ -182,4 +183,17 @@ message ListProcessChildrenRequest {
 
 message ProcessChildrenReply {
   repeated telemetry.Process processes = 1;
+}
+
+// fetch_block_async_stats
+message BlockAsyncStatsRequest {
+  telemetry.Process process = 1;
+  string block_id = 2;
+}
+
+message BlockAsyncEventsStatReply {
+  string block_id = 1;
+  double begin_ms = 2;
+  double end_ms = 3;
+  uint64 nb_events = 4;
 }

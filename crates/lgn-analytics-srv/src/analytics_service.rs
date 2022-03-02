@@ -1,8 +1,10 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 use async_recursion::async_recursion;
 use lgn_analytics::prelude::*;
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
+use lgn_telemetry_proto::analytics::BlockAsyncEventsStatReply;
+use lgn_telemetry_proto::analytics::BlockAsyncStatsRequest;
 use lgn_telemetry_proto::analytics::BlockSpansReply;
 use lgn_telemetry_proto::analytics::CumulativeCallGraphReply;
 use lgn_telemetry_proto::analytics::FindProcessReply;
@@ -35,6 +37,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 
+use crate::async_spans::compute_block_async_stats;
 use crate::cache::DiskCache;
 use crate::call_tree::compute_block_spans;
 use crate::call_tree::reduce_lod;
@@ -284,6 +287,17 @@ impl AnalyticsService {
         let blocks =
             find_process_blocks(&mut connection, &request.process_id, &request.tag).await?;
         Ok(ProcessBlocksReply { blocks })
+    }
+
+    async fn fetch_block_async_stats_impl(
+        &self,
+        request: BlockAsyncStatsRequest,
+    ) -> Result<BlockAsyncEventsStatReply> {
+        if request.process.is_none() {
+            bail!("missing process in fetch_block_async_stats request");
+        }
+        let mut connection = self.pool.acquire().await?;
+        compute_block_async_stats(&mut connection, &request.process.unwrap())
     }
 }
 
@@ -600,6 +614,23 @@ impl PerformanceAnalytics for AnalyticsService {
                 error!("Error in fetch_block_metric_manifest: {:?}", e);
                 Err(Status::internal(format!(
                     "Error in fetch_block_metric_manifest: {}",
+                    e
+                )))
+            }
+        }
+    }
+
+    async fn fetch_block_async_stats(
+        &self,
+        request: Request<BlockAsyncStatsRequest>,
+    ) -> Result<Response<BlockAsyncEventsStatReply>, Status> {
+        let inner_request = request.into_inner();
+        match self.fetch_block_async_stats_impl(inner_request).await {
+            Ok(reply) => Ok(Response::new(reply)),
+            Err(e) => {
+                error!("Error in fetch_block_async_stats: {:?}", e);
+                Err(Status::internal(format!(
+                    "Error in fetch_block_async_stats: {}",
                     e
                 )))
             }

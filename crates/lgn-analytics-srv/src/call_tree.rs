@@ -54,6 +54,7 @@ async fn parse_thread_block<Proc: ThreadBlockProcessor>(
                         warn!("Error reading EndThreadSpanEvent: {:?}", e);
                     }
                 }
+                "BeginAsyncSpanEvent" | "EndAsyncSpanEvent" => {}
                 event_type => {
                     warn!("unknown event type {}", event_type);
                 }

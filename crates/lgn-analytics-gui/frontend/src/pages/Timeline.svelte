@@ -220,10 +220,11 @@
       processId: process.processId,
     });
 
+    // commented-out - children will be collapsed by default
     // we should really fetch all the descendents server-side to accomplish this in fewer queries
-    for (let i = 0; i < processes.length; ++i) {
-      await fetchChildren(processes[i]);
-    }
+    // for (let i = 0; i < processes.length; ++i) {
+    //   await fetchChildren(processes[i]);
+    // }
 
     let promises = processes.map((process) => {
       processList.push(process);
