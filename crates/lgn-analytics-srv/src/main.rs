@@ -132,36 +132,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         } => connect_to_remote_data_lake(&db_uri, &s3_lake_url, &s3_cache_url).await?,
     };
 
-    let origins = vec![
-        "http://localhost:3000".parse().unwrap(),
-        "http://localhost".parse().unwrap(),
-        "https://analytics.legionengine.com/".parse().unwrap(),
-    ];
+    // cors fails: Access to fetch at 'https://analytics-api.playground.legionlabs.com:9090/analytics.PerformanceAnalytics/list_recent_processes' from origin 'https://analytics.legionengine.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. If an opaque response serves your needs, set the request's mode to 'no-cors' to fetch the resource with CORS disabled.
+    // let origins = vec![
+    //     "http://localhost:3000".parse().unwrap(),
+    //     "http://localhost".parse().unwrap(),
+    //     "https://analytics.legionengine.com/".parse().unwrap(),
+    // ];
 
-    let cors = CorsLayer::new()
-        .allow_origin(Origin::list(origins))
-        .allow_credentials(true)
-        .max_age(Duration::from_secs(60 * 60))
-        .allow_headers(vec![
-            header::ACCEPT,
-            header::ACCEPT_LANGUAGE,
-            header::AUTHORIZATION,
-            header::CONTENT_LANGUAGE,
-            header::CONTENT_TYPE,
-            http::header::HeaderName::from_static("x-grpc-web"),
-        ])
-        .allow_methods(vec![
-            Method::GET,
-            Method::POST,
-            Method::PUT,
-            Method::HEAD,
-            Method::OPTIONS,
-            Method::CONNECT,
-        ])
-        .expose_headers(tower_http::cors::Any {});
+    // let cors = CorsLayer::new()
+    //     .allow_origin(Origin::list(origins))
+    //     .allow_credentials(true)
+    //     .max_age(Duration::from_secs(60 * 60))
+    //     .allow_headers(vec![
+    //         header::ACCEPT,
+    //         header::ACCEPT_LANGUAGE,
+    //         header::AUTHORIZATION,
+    //         header::CONTENT_LANGUAGE,
+    //         header::CONTENT_TYPE,
+    //         http::header::HeaderName::from_static("x-grpc-web"),
+    //     ])
+    //     .allow_methods(vec![
+    //         Method::GET,
+    //         Method::POST,
+    //         Method::PUT,
+    //         Method::HEAD,
+    //         Method::OPTIONS,
+    //         Method::CONNECT,
+    //     ])
+    //     .expose_headers(tower_http::cors::Any {});
 
     let auth_layer = tower::ServiceBuilder::new() //todo: compose with cors layer
-        .layer(cors)
         .layer(AuthLayer {
             user_info_url: String::from(
                 "https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/userInfo",
