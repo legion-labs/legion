@@ -34,7 +34,7 @@ jobs:
 
   rust:
     name: Rust ecosystem
-    needs: [bootstrap_rust]
+    needs: [bootstrap_rust, image_setup]
     uses: ./.github/workflows/reusable_rust_ecosystem.yml
     with:
       image: ${{ needs.image_setup.outputs.image }}
