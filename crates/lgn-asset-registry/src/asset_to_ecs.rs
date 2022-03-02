@@ -143,6 +143,22 @@ impl AssetToECS for runtime_data::Entity {
                 component.downcast_ref::<lgn_physics::runtime::PhysicsRigidBox>()
             {
                 entity.insert(physics.clone());
+            } else if let Some(physics) =
+                component.downcast_ref::<lgn_physics::runtime::PhysicsRigidCapsule>()
+            {
+                entity.insert(physics.clone());
+            } else if let Some(physics) =
+                component.downcast_ref::<lgn_physics::runtime::PhysicsRigidHeightField>()
+            {
+                entity.insert(physics.clone());
+            } else if let Some(physics) =
+                component.downcast_ref::<lgn_physics::runtime::PhysicsRigidPlane>()
+            {
+                entity.insert(physics.clone());
+            } else if let Some(physics) =
+                component.downcast_ref::<lgn_physics::runtime::PhysicsRigidSphere>()
+            {
+                entity.insert(physics.clone());
             }
         }
 

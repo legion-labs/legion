@@ -193,9 +193,9 @@ async fn create_offline_data(
             }));
         entity
             .components
-            .push(Box::new(lgn_physics::offline::PhysicsRigidBox {
+            .push(Box::new(lgn_physics::offline::PhysicsRigidSphere {
                 actor_type: lgn_physics::RigidActorType::Dynamic,
-                half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
+                radius: 0.25_f32,
             }));
 
         project
@@ -239,9 +239,9 @@ async fn create_offline_data(
             }));
         entity
             .components
-            .push(Box::new(lgn_physics::offline::PhysicsRigidBox {
+            .push(Box::new(lgn_physics::offline::PhysicsRigidSphere {
                 actor_type: lgn_physics::RigidActorType::Dynamic,
-                half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
+                radius: 0.25_f32,
             }));
 
         project
@@ -285,9 +285,9 @@ async fn create_offline_data(
             }));
         entity
             .components
-            .push(Box::new(lgn_physics::offline::PhysicsRigidBox {
+            .push(Box::new(lgn_physics::offline::PhysicsRigidSphere {
                 actor_type: lgn_physics::RigidActorType::Dynamic,
-                half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
+                radius: 0.25_f32,
             }));
 
         project
