@@ -64,6 +64,24 @@ impl<Provider: ContentReader> Chunker<Provider> {
     /// If the content referenced by the identifier is not a chunk index,
     /// `Error::InvalidChunkIndex` is returned.
     pub async fn get_chunk_reader(&self, id: &ChunkIdentifier) -> Result<ContentAsyncRead> {
+        // TODO: This implementation is actually not great:
+        //
+        // It fetches all the readers in one go but reads them one at a time.
+        // This means that the later used readers have all the time in the world
+        // to timeout before an actual read is even attempted.
+        //
+        // It is also not very nice to the backend to spam it with requests all
+        // at once.
+        //
+        // It would be better if we fetched readers as we go along and forgo
+        // failing early in favor of more reliable reads.
+        //
+        // Alternatively, we we could make it so that the HTTP AsyncRead don't
+        // actually establish the connection until first polled. That would help
+        // too. Not sure if it is possible to do efficiently though.
+        //
+        // Anthony D.: a task for you? :D
+
         let mut reader = self.provider.get_content_reader(id.content_id()).await?;
         let chunk_index = ChunkIndex::read_from(&mut reader).await?;
         let ids = chunk_index.identifiers();

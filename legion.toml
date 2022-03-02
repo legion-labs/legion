@@ -36,12 +36,20 @@ test_nested = 42
 [logging.level_filters]
 #webrtc = "WARN"
 
-[oauth]
+[authentication.signature_validation]
+type = "aws_cognito"
+region = "ca-central-1"
+user_pool_id = "ca-central-1_SkZKDimWz"
+
+[authentication.authenticator]
+type = "oauth"
 issuer_url = "https://cognito-idp.ca-central-1.amazonaws.com/ca-central-1_SkZKDimWz"
 client_id = "5m58nrjfv6kr144prif9jk62di"
+redirect_uri = "http://localhost:3000/"
 
 [content_store.provider]
-type = "local"
+type = "grpc"
+url = "http://localhost:5000"
 
 [content_store.caching_provider]
 type = "lru"

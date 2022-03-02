@@ -7,12 +7,15 @@ use std::{
 
 use async_trait::async_trait;
 use futures::{stream::TryStreamExt, Future};
+use http::header;
 use http_body::Body;
 use lgn_content_store_proto::{
     content_store_client::ContentStoreClient, read_content_response::Content,
     GetContentWriterRequest, GetContentWriterResponse, ReadContentRequest, ReadContentResponse,
     WriteContentRequest, WriteContentResponse,
 };
+use lgn_online::authentication::UserInfo;
+use lgn_tracing::{debug, info};
 use pin_project::pin_project;
 use tokio::{io::AsyncWrite, sync::Mutex};
 use tokio_util::{compat::FuturesAsyncReadCompatExt, io::ReaderStream};
@@ -45,8 +48,8 @@ where
 {
     pub async fn new(grpc_client: C) -> Self {
         let client = Arc::new(Mutex::new(ContentStoreClient::new(grpc_client)));
-        // The buffer for HTTP uploaders is set to 1MB.
-        let buf_size = 1024 * 1024;
+        // The buffer for HTTP uploaders is set to 2MB.
+        let buf_size = 2 * 1024 * 1024;
 
         Self { client, buf_size }
     }
@@ -141,7 +144,7 @@ where
                         },
                     )))
                 } else {
-                    let uploader = HttpUploader::new(url, self.buf_size);
+                    let uploader = HttpUploader::new(id.clone(), url, self.buf_size);
 
                     Ok(Box::pin(uploader))
                 }
@@ -196,24 +199,35 @@ struct HttpUploader {
 
     #[pin]
     call: Pin<Box<dyn Future<Output = Result<reqwest::Response, reqwest::Error>> + Send + 'static>>,
+
+    id: Identifier,
 }
 
 impl HttpUploader {
-    pub fn new(url: String, buf_size: usize) -> Self {
+    pub fn new(id: Identifier, url: String, buf_size: usize) -> Self {
         let client = reqwest::Client::new();
 
         let (r, w) = tokio::io::duplex(buf_size);
 
         let stream = ReaderStream::new(r);
         let w = Some(w);
+
+        debug!(
+            "Starting HTTP upload for asset {} to {} ({} byte(s))",
+            &id,
+            url,
+            id.data_size()
+        );
+
         let call = Box::pin(
             client
                 .put(url)
+                .header(header::CONTENT_LENGTH, id.data_size())
                 .body(reqwest::Body::wrap_stream(stream))
                 .send(),
         );
 
-        Self { w, call }
+        Self { w, call, id }
     }
 }
 
@@ -297,6 +311,8 @@ impl AsyncWrite for HttpUploader {
             Poll::Ready(Ok(())) => {
                 // Shutdown went fine: let's make sure we never poll the writer again.
                 w.take();
+
+                debug!("Completed HTTP upload for asset {}", this.id);
             }
             Poll::Ready(Err(err)) => return Poll::Ready(Err(err)),
             Poll::Pending => return Poll::Pending,
@@ -363,12 +379,22 @@ where
         &self,
         request: Request<ReadContentRequest>,
     ) -> Result<Response<ReadContentResponse>, tonic::Status> {
+        let user_info = request.extensions().get::<UserInfo>().cloned();
+
         let id: Identifier = request.into_inner().id.parse().map_err(|err| {
             tonic::Status::new(
                 tonic::Code::InvalidArgument,
                 format!("failed to parse identifier: {}", err),
             )
         })?;
+
+        if let Some(user_info) = user_info {
+            info!(
+                "Received read_content request for {} from user {}",
+                id,
+                user_info.username()
+            );
+        }
 
         Ok(Response::new(ReadContentResponse {
             content: if id.data_size() <= self.size_threshold {
@@ -401,12 +427,22 @@ where
         &self,
         request: Request<GetContentWriterRequest>,
     ) -> Result<Response<GetContentWriterResponse>, tonic::Status> {
+        let user_info = request.extensions().get::<UserInfo>().cloned();
+
         let id: Identifier = request.into_inner().id.parse().map_err(|err| {
             tonic::Status::new(
                 tonic::Code::InvalidArgument,
                 format!("failed to parse identifier: {}", err),
             )
         })?;
+
+        if let Some(user_info) = user_info {
+            info!(
+                "Received get_content_writer request for {} from user {}",
+                id,
+                user_info.username()
+            );
+        }
 
         Ok(Response::new(GetContentWriterResponse {
             content_writer: if id.data_size() <= self.size_threshold {
@@ -441,6 +477,15 @@ where
         &self,
         request: Request<WriteContentRequest>,
     ) -> Result<Response<WriteContentResponse>, tonic::Status> {
+        let user_info = request.extensions().get::<UserInfo>().cloned();
+
+        if let Some(user_info) = user_info {
+            info!(
+                "Received write_content request from user {}",
+                user_info.username()
+            );
+        }
+
         let data = request.into_inner().data;
 
         if data.len() > self.size_threshold as usize {

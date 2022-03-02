@@ -1,6 +1,8 @@
 mod aws_cognito_signature_validation;
 mod rsa_signature_validation;
 
+use std::ops::Deref;
+
 pub use aws_cognito_signature_validation::AwsCognitoSignatureValidation;
 pub use rsa_signature_validation::RsaSignatureValidation;
 
@@ -90,8 +92,40 @@ pub trait SignatureValidation {
     ) -> ValidationResult<'a>;
 }
 
+/// Blanket implementation boxed signature validation types.
+impl<T> SignatureValidation for Box<T>
+where
+    T: SignatureValidation,
+{
+    fn validate_signature<'a>(
+        &self,
+        alg: &'a str,
+        kid: Option<&'a str>,
+        message: &'a str,
+        signature: &'a [u8],
+    ) -> ValidationResult<'a> {
+        self.deref()
+            .validate_signature(alg, kid, message, signature)
+    }
+}
+
+/// A boxed `SignatureValidation` type.
+pub struct BoxedSignatureValidation(pub Box<dyn SignatureValidation + Send + Sync>);
+
+impl SignatureValidation for BoxedSignatureValidation {
+    fn validate_signature<'a>(
+        &self,
+        alg: &'a str,
+        kid: Option<&'a str>,
+        message: &'a str,
+        signature: &'a [u8],
+    ) -> ValidationResult<'a> {
+        self.0.validate_signature(alg, kid, message, signature)
+    }
+}
+
 /// A signature validation that always succeeds.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct NoSignatureValidation;
 
 impl SignatureValidation for NoSignatureValidation {
@@ -109,6 +143,7 @@ impl SignatureValidation for NoSignatureValidation {
 ///
 /// If the first `SignatureValidation` returns `ValidationResult::Unsupported`,
 /// the second one will be tried.
+#[derive(Clone)]
 pub struct SignatureValidationChain<First, Second> {
     first: First,
     second: Second,

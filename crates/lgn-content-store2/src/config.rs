@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use serde::Deserialize;
 
 use crate::{
-    CachingProvider, ContentProvider, GrpcProvider, LocalProvider, LruProvider, MemoryProvider,
-    RedisProvider, Result, SmallContentProvider,
+    AwsDynamoDbProvider, AwsS3Provider, AwsS3Url, CachingProvider, ContentProvider, GrpcProvider,
+    LocalProvider, LruProvider, MemoryProvider, RedisProvider, Result, SmallContentProvider,
 };
 
 /// The configuration of the content-store.
@@ -23,6 +23,8 @@ pub enum ProviderConfig {
     Local(LocalProviderConfig),
     Redis(RedisProviderConfig),
     Grpc(GrpcProviderConfig),
+    AwsS3(AwsS3ProviderConfig),
+    AwsDynamoDb(AwsDynamoDbProviderConfig),
 }
 
 #[derive(Deserialize, Debug)]
@@ -57,6 +59,19 @@ pub struct GrpcProviderConfig {
 pub struct LruProviderConfig {
     #[serde(default)]
     pub size: usize,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct AwsS3ProviderConfig {
+    pub bucket_name: String,
+
+    #[serde(default)]
+    pub root: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct AwsDynamoDbProviderConfig {
+    pub table_name: String,
 }
 
 impl Config {
@@ -97,10 +112,8 @@ impl ProviderConfig {
     pub async fn instanciate(&self) -> Result<Box<dyn ContentProvider + Send + Sync>> {
         Ok(match self {
             Self::Memory {} => Box::new(SmallContentProvider::new(MemoryProvider::new())),
-            Self::Lru(ref config) => {
-                Box::new(SmallContentProvider::new(LruProvider::new(config.size)))
-            }
-            Self::Local(ref config) => {
+            Self::Lru(config) => Box::new(SmallContentProvider::new(LruProvider::new(config.size))),
+            Self::Local(config) => {
                 let path = match &config.path {
                     Some(path) => path.clone(),
                     None => std::env::temp_dir().join("lgn-content-store"),
@@ -108,20 +121,32 @@ impl ProviderConfig {
 
                 Box::new(SmallContentProvider::new(LocalProvider::new(path).await?))
             }
-            Self::Redis(ref config) => Box::new(SmallContentProvider::new(
+            Self::Redis(config) => Box::new(SmallContentProvider::new(
                 RedisProvider::new(config.url.clone(), config.key_prefix.clone()).await?,
             )),
-            Self::Grpc(ref config) => {
+            Self::AwsS3(config) => Box::new(SmallContentProvider::new(
+                AwsS3Provider::new(AwsS3Url {
+                    bucket_name: config.bucket_name.clone(),
+                    root: config.root.clone(),
+                })
+                .await,
+            )),
+            Self::AwsDynamoDb(config) => Box::new(SmallContentProvider::new(
+                AwsDynamoDbProvider::new(config.table_name.clone()).await,
+            )),
+            Self::Grpc(config) => {
                 let uri = config
                     .url
                     .parse()
                     .map_err(|err| anyhow::anyhow!("failed to parse gRPC url: {}", err))?;
                 let client = lgn_online::grpc::GrpcClient::new(uri);
-                let authenticator = lgn_online::authentication::OAuthClient::new_from_config()
-                    .await
+                let authenticator_config = lgn_online::authentication::AuthenticatorConfig::new()
                     .map_err(|err| {
-                        anyhow::anyhow!("failed to instanciate an OAuth client: {}", err)
-                    })?;
+                    anyhow::anyhow!("failed to create authenticator config: {}", err)
+                })?;
+                let authenticator = authenticator_config.authenticator().await.map_err(|err| {
+                    anyhow::anyhow!("failed to instanciate an authenticator: {}", err)
+                })?;
 
                 let client = lgn_online::grpc::AuthenticatedClient::new(client, authenticator, &[]);
 

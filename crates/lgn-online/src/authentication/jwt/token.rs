@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use anyhow::{anyhow, Context};
 
 use super::{signature_validation::SignatureValidation, Header, Validation};
@@ -60,7 +58,7 @@ impl<'a> Token<'a> {
     /// Convert the token into its claims.
     ///
     /// This method validates the token and is recommended.
-    pub fn into_claims<C, T>(self, validation: &Validation<'_, T>) -> anyhow::Result<C>
+    pub fn into_claims<C, T>(self, validation: &Validation<T>) -> anyhow::Result<C>
     where
         C: serde::de::DeserializeOwned,
         T: SignatureValidation,
@@ -68,8 +66,8 @@ impl<'a> Token<'a> {
         self.validate(validation)?.into_claims_unsafe()
     }
 
-    /// Validate the token without consuming it.
-    pub fn validate<T>(self, validation: &Validation<'_, T>) -> anyhow::Result<Self>
+    /// Validate the token.
+    pub fn validate<T>(self, validation: &Validation<T>) -> anyhow::Result<Self>
     where
         T: SignatureValidation,
     {
@@ -136,16 +134,8 @@ impl<'a> TryFrom<&'a str> for Token<'a> {
     }
 }
 
-impl<'a> From<Token<'a>> for &'a str {
-    fn from(token: Token<'a>) -> Self {
-        token.raw
-    }
-}
-
-impl Deref for Token<'_> {
-    type Target = str;
-
-    fn deref(&self) -> &str {
-        self.raw
+impl std::fmt::Display for Token<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.raw)
     }
 }

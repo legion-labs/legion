@@ -17,7 +17,7 @@ use serde::{de, Deserialize, Deserializer, Serialize};
 /// let _: UserInfo = serde_json::from_str(r#"{"sub": "foo", "email_verified": "true"}"#).unwrap();
 /// let _: UserInfo = serde_json::from_str(r#"{"sub": "foo", "email_verified": true}"#).unwrap();
 /// ```
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct UserInfo {
     pub sub: String,
     pub name: Option<String>,
@@ -25,6 +25,7 @@ pub struct UserInfo {
     pub family_name: Option<String>,
     pub middle_name: Option<String>,
     pub nickname: Option<String>,
+    pub username: Option<String>,
     pub preferred_username: Option<String>,
     pub profile: Option<String>,
     pub picture: Option<String>,
@@ -53,6 +54,53 @@ pub struct UserInfo {
     pub azure_oid: Option<String>,
     #[serde(rename = "custom:azure_tid")]
     pub azure_tid: Option<String>,
+}
+
+impl UserInfo {
+    pub fn name(&self) -> String {
+        if let Some(name) = &self.name {
+            name.to_string()
+        } else {
+            match (&self.given_name, &self.middle_name, &self.family_name) {
+                (Some(given_name), Some(middle_name), Some(family_name)) => {
+                    format!("{} {} {}", given_name, middle_name, family_name)
+                }
+                (Some(given_name), None, Some(family_name)) => {
+                    format!("{} {}", given_name, family_name)
+                }
+                (Some(given_name), Some(middle_name), None) => {
+                    format!("{} {}", given_name, middle_name)
+                }
+                (Some(given_name), None, None) => given_name.to_string(),
+                (None, Some(middle_name), Some(family_name)) => {
+                    format!("{} {}", middle_name, family_name)
+                }
+                (None, Some(middle_name), None) => middle_name.to_string(),
+                (None, None, Some(family_name)) => family_name.to_string(),
+                (None, None, None) => {
+                    if let Some(nickname) = &self.nickname {
+                        nickname.to_string()
+                    } else if let Some(email) = &self.email {
+                        email.to_string()
+                    } else {
+                        "<unknown>".to_string()
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn username(&self) -> String {
+        if let Some(preferred_username) = &self.preferred_username {
+            preferred_username.to_string()
+        } else if let Some(username) = &self.username {
+            username.to_string()
+        } else if let Some(email) = &self.email {
+            email.to_string()
+        } else {
+            "<unknown>".to_string()
+        }
+    }
 }
 
 fn deserialize_string_bool<'de, D>(deserializer: D) -> Result<Option<bool>, D::Error>

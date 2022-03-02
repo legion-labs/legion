@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use directories::ProjectDirs;
@@ -11,10 +12,11 @@ use tokio::sync::{Mutex, MutexGuard};
 use super::{jwt::UnsecureValidation, Authenticator, ClientTokenSet, Error, Result};
 
 /// A `TokenCache` stores authentication tokens and handles their lifetime.
+#[derive(Clone)]
 pub struct TokenCache<A> {
     project_dirs: ProjectDirs,
-    validation: UnsecureValidation<'static>,
-    authenticator: Mutex<A>,
+    validation: UnsecureValidation,
+    authenticator: Arc<Mutex<A>>,
 }
 
 impl<A> TokenCache<A>
@@ -26,8 +28,15 @@ where
         Self {
             project_dirs,
             validation: UnsecureValidation::default(),
-            authenticator: Mutex::new(authenticator),
+            authenticator: Arc::new(Mutex::new(authenticator)),
         }
+    }
+
+    /// Instanciate a new `TokenCache`
+    pub fn new_with_application_name(authenticator: A, application: &str) -> Self {
+        let project_dirs = ProjectDirs::from("com", "legionlabs", application)
+            .expect("failed to determine project dirs");
+        Self::new(authenticator, project_dirs)
     }
 
     /// Get the `Authenticator` used by this `TokenCache`.
