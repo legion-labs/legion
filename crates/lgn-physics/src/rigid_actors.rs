@@ -1,9 +1,10 @@
 use lgn_ecs::prelude::*;
-use lgn_graphics_data::DefaultMeshType;
 use lgn_transform::prelude::*;
 use physx::{foundation::DefaultAllocator, prelude::*};
 
-use crate::{runtime::PhysicsRigidActor, PxMaterial, PxScene, PxShape, RigidActorType};
+use crate::{
+    runtime::PhysicsRigidActor, CollisionGeometry, PxMaterial, PxScene, PxShape, RigidActorType,
+};
 
 #[derive(Component)]
 pub(crate) struct RigidDynamicActor {
@@ -13,12 +14,15 @@ pub(crate) struct RigidDynamicActor {
 impl RigidDynamicActor {
     pub(crate) fn new(rigid_actor: &PhysicsRigidActor, transform: &GlobalTransform) -> Self {
         debug_assert!(rigid_actor.actor_type == RigidActorType::Dynamic);
-        assert!(rigid_actor.collision_mesh_type == DefaultMeshType::Cube);
-        assert!(rigid_actor.collision_mesh.is_none());
-        // default cube is size 0.5 x 0.5 x 0.5
-        let extents = transform.scale * 0.25_f32;
-        Self {
-            geometry: PxBoxGeometry::new(extents.x, extents.y, extents.z),
+        match rigid_actor.collision_geometry {
+            CollisionGeometry::Box => {
+                // default cube is size 0.5 x 0.5 x 0.5
+                let extents = transform.scale * 0.25_f32;
+                Self {
+                    geometry: PxBoxGeometry::new(extents.x, extents.y, extents.z),
+                }
+            }
+            _ => panic!("unsupported geometry"),
         }
     }
 
@@ -55,12 +59,15 @@ pub(crate) struct RigidStaticActor {
 impl RigidStaticActor {
     pub(crate) fn new(rigid_actor: &PhysicsRigidActor, transform: &GlobalTransform) -> Self {
         debug_assert!(rigid_actor.actor_type == RigidActorType::Static);
-        assert!(rigid_actor.collision_mesh_type == DefaultMeshType::Cube);
-        assert!(rigid_actor.collision_mesh.is_none());
-        // default cube is size 0.5 x 0.5 x 0.5
-        let extents = transform.scale * 0.25_f32;
-        Self {
-            geometry: PxBoxGeometry::new(extents.x, extents.y, extents.z),
+        match rigid_actor.collision_geometry {
+            CollisionGeometry::Box => {
+                // default cube is size 0.5 x 0.5 x 0.5
+                let extents = transform.scale * 0.25_f32;
+                Self {
+                    geometry: PxBoxGeometry::new(extents.x, extents.y, extents.z),
+                }
+            }
+            _ => panic!("unsupported geometry"),
         }
     }
 
