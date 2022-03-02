@@ -1,5 +1,5 @@
 import { keepElementVisible } from "../lib/html";
-import KeyboardNavigationStore from "../stores/keyboardNavigation";
+import type KeyboardNavigationStore from "../stores/keyboardNavigation";
 
 export type Config = {
   size: number;

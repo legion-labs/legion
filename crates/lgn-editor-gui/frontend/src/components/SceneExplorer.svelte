@@ -1,9 +1,9 @@
 <script lang="ts">
   import { fetchCurrentResourceDescription } from "@/stores/currentResource";
-  import { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
+  import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
   import Panel from "@lgn/web-client/src/components/panel/Panel.svelte";
   import PanelList from "@lgn/web-client/src/components/panel/PanelList.svelte";
-  import { Entries } from "@/lib/hierarchyTree";
+  import type { Entries } from "@/lib/hierarchyTree";
 
   export let currentResourceDescription: ResourceDescription | null;
 

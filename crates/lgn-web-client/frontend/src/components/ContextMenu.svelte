@@ -118,8 +118,8 @@ export default buildContextMenu<ContextMenuEntryRecord>();
   import clickOutside from "../actions/clickOutside";
   import { remToPx } from "../lib/html";
   import { sleep } from "../lib/promises";
-  import { Position } from "../lib/types";
-  import ContextMenuStore from "../stores/contextMenu";
+  import type { Position } from "../lib/types";
+  import type ContextMenuStore from "../stores/contextMenu";
   import { buildCustomEvent, Entry, ItemEntry } from "../types/contextMenu";
 
   const entryHeightRem = 2.5;

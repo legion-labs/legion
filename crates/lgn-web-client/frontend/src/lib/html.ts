@@ -35,6 +35,10 @@ export function keepElementVisible(
  * Returns `null` if `rem` is lt 0 or if the `fontSize` can't be read.
  */
 export function remToPx(rem: number): number | null {
+  if (typeof getComputedStyle === "undefined") {
+    return null;
+  }
+
   if (rem < 0) {
     return null;
   }

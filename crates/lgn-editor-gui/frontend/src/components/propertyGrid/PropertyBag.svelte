@@ -1,19 +1,19 @@
 <script lang="ts">
-  import { PropertyUpdate } from "@/api";
+  import type { PropertyUpdate } from "@/api";
   import {
-    BagResourceProperty,
     propertyIsDynComponent,
     propertyIsGroup,
     propertyIsOption,
     propertyIsVec,
   } from "@/lib/propertyGrid";
+  import type { BagResourceProperty } from "@/lib/propertyGrid";
   import modal from "@/stores/modal";
   import currentResource from "@/stores/currentResource";
   import { createEventDispatcher } from "svelte";
   import log from "@lgn/web-client/src/lib/log";
   import Checkbox from "../inputs/Checkbox.svelte";
   import PropertyContainer from "./PropertyContainer.svelte";
-  import {
+  import type {
     AddVectorSubPropertyEvent,
     RemoveVectorSubPropertyEvent,
   } from "./types";

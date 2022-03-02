@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { PropertyUpdate } from "@/api";
+  import type { PropertyUpdate } from "@/api";
   import {
     buildDefaultPrimitiveProperty,
     extractOptionPType,
-    OptionResourceProperty,
     propertyIsOption,
     ptypeBelongsToPrimitive,
   } from "@/lib/propertyGrid";
+  import type { OptionResourceProperty } from "@/lib/propertyGrid";
   import { createEventDispatcher } from "svelte";
   import Checkbox from "../inputs/Checkbox.svelte";
   import PropertyInput from "./PropertyInput.svelte";

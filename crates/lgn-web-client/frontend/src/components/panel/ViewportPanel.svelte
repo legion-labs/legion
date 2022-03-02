@@ -3,8 +3,8 @@
   import Panel from "./Panel.svelte";
   import RemoteWindow from "../RemoteWindow.svelte";
   import ScriptEditor from "../ScriptEditor.svelte";
-  import ViewportOrchestrator from "../../stores/viewport";
-  import { Resolution } from "../../lib/types";
+  import type ViewportOrchestrator from "../../stores/viewport";
+  import type { Resolution } from "../../lib/types";
 
   /** The global viewport orchestrator */
   export let orchestrator: ViewportOrchestrator;

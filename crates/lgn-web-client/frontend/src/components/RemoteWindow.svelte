@@ -8,13 +8,13 @@
     ServerType,
   } from "../api";
   import log from "../lib/log";
-  import { PushableHTMLVideoElement } from "../actions/videoPlayer";
+  import type { PushableHTMLVideoElement } from "../actions/videoPlayer";
   import resize from "../actions/resize";
   import videoPlayer from "../actions/videoPlayer";
   import remoteWindowInputs, {
     RemoteWindowInput,
   } from "../actions/remoteWindowInputs";
-  import { Resolution } from "../lib/types";
+  import type { Resolution } from "../lib/types";
 
   const reconnectionTimeout = 600;
 

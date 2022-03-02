@@ -1,5 +1,5 @@
-import { ResourceWithProperties } from "@/lib/propertyGrid";
-import { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
+import type { ResourceWithProperties } from "@/lib/propertyGrid";
+import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
 import { AsyncStoreOrchestrator } from "@lgn/web-client/src/stores/asyncStore";
 import notifications from "@/stores/notifications";
 import { getResourceProperties, updateSelection } from "@/api";

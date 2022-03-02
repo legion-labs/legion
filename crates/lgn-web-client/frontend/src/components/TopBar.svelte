@@ -13,6 +13,8 @@
 
   const { data: userInfoData } = userInfo;
 
+  const isTauri = !!window.__TAURI_METADATA__;
+
   export let documentTitle: string | null = null;
 
   let topBarHandle: HTMLDivElement | undefined;
@@ -24,7 +26,7 @@
   let topBarClose: HTMLDivElement | undefined;
 
   onMount(async () => {
-    if (!window.__TAURI_METADATA__) {
+    if (!isTauri) {
       return;
     }
 
@@ -83,7 +85,7 @@
   }
 
   async function authenticate() {
-    if (window.__TAURI_METADATA__) {
+    if (isTauri) {
       await userInfo.run(async () => {
         const { invoke } = await import("@tauri-apps/api");
 
@@ -108,7 +110,7 @@
   }
 </script>
 
-<div class="root" class:tauri={window.__TAURI_METADATA__}>
+<div class="root" class:tauri={isTauri}>
   <div use:clickOutside on:click-outside={closeMenu} class="menus">
     <div class="brand" title="Legion Editor">
       <BrandLogo class="brand-logo" />
@@ -127,7 +129,7 @@
         <div
           data-testid="dropdown-{menu.id}"
           class="menu-dropdown"
-          class:tauri={window.__TAURI_METADATA__}
+          class:tauri={isTauri}
           class:hidden={$topBarMenu !== menu.id}
         >
           <div class="menu-dropdown-items">
@@ -168,7 +170,7 @@
         <Icon icon="ic:baseline-account-circle" />
       {/if}
     </div>
-    {#if window.__TAURI_METADATA__}
+    {#if isTauri}
       <div class="window-decorations">
         <div class="window-decoration" bind:this={topBarMinimize}>
           <Icon icon="ic:baseline-minimize" />

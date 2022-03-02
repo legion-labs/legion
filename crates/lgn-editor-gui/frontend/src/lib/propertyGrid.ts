@@ -1,9 +1,10 @@
 // TODO: Use the `ResourceDescription` from resource_property.proto instead (?)
-import {
+import type {
   ResourceDescription,
   ResourceProperty as RawResourceProperty,
 } from "@lgn/proto-editor/dist/property_inspector";
-import { filterMap, NonEmptyArray } from "@lgn/web-client/src/lib/array";
+import type { NonEmptyArray } from "@lgn/web-client/src/lib/array";
+import { filterMap } from "@lgn/web-client/src/lib/array";
 
 /** Matches any `ptype` of format "Vec<subPType>" */
 const vecPTypeRegExp = /^Vec<(.+)>$/;

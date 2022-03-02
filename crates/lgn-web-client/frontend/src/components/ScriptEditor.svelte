@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy, onMount } from "svelte";
-  import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
+  import type * as monaco from "monaco-editor/esm/vs/editor/editor.api";
   import { debounce } from "../lib/promises";
 
   const dispatch = createEventDispatcher<{
@@ -19,7 +19,9 @@
 
   let editor: monaco.editor.IStandaloneCodeEditor | undefined;
 
-  onMount(() => {
+  onMount(async () => {
+    const monaco = await import("monaco-editor/esm/vs/editor/editor.api");
+
     if (!editorContainer) {
       return;
     }

@@ -4,7 +4,7 @@
 // https://github.com/react-dnd/react-dnd/tree/main/packages/dnd-core
 
 import { derived } from "svelte/store";
-import { ActionReturn } from "../lib/action";
+import type { ActionReturn } from "../lib/action";
 import DnD from "../stores/dnd";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

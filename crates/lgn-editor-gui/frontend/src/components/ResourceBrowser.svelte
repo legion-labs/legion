@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
+  import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
   import Panel from "@lgn/web-client/src/components/panel/Panel.svelte";
   import HierarchyTree from "./hierarchyTree/HierarchyTree.svelte";
   import ResourceFilter from "./resources/ResourceFilter.svelte";
@@ -18,23 +18,18 @@
   import { fetchCurrentResourceDescription } from "@/stores/currentResource";
   import { components, join } from "@/lib/path";
   import notifications from "@/stores/notifications";
-  import { Entries, Entry } from "@/lib/hierarchyTree";
+  import type { Entries, Entry } from "@/lib/hierarchyTree";
   import log from "@lgn/web-client/src/lib/log";
   import Files from "@lgn/web-client/src/stores/files";
   import { UploadStatus } from "@lgn/proto-editor/dist/source_control";
   import { readFile } from "@lgn/web-client/src/lib/files";
-  import {
-    BagResourceProperty,
-    formatProperties,
-    ResourceProperty,
-  } from "@/lib/propertyGrid";
-  import {
-    autoClose,
-    Event as ContextMenuActionEvent,
-    select,
-  } from "@lgn/web-client/src/types/contextMenu";
+  import { formatProperties } from "@/lib/propertyGrid";
+  import type { ResourceProperty } from "@/lib/propertyGrid";
+  import type { BagResourceProperty } from "@/lib/propertyGrid";
+  import { autoClose, select } from "@lgn/web-client/src/types/contextMenu";
+  import type { Event as ContextMenuActionEvent } from "@lgn/web-client/src/types/contextMenu";
   import currentResource from "@/stores/currentResource";
-  import { ContextMenuEntryRecord } from "@/stores/contextMenu";
+  import type { ContextMenuEntryRecord } from "@/stores/contextMenu";
   import modal from "@/stores/modal";
   import CreateResourceModal from "./resources/CreateResourceModal.svelte";
   import Icon from "@iconify/svelte";

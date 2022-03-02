@@ -7,7 +7,6 @@ const redirectUri = document.location.origin + "/";
 run({
   appComponent: App as typeof AppComponent,
   auth: {
-    redirectionTitle: "Home",
     issuerUrl:
       "https://cognito-idp.ca-central-1.amazonaws.com/ca-central-1_SkZKDimWz",
     redirectUri,

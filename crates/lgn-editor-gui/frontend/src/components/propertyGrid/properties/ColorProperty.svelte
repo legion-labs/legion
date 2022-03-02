@@ -1,7 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import clickOutside from "@lgn/web-client/src/actions/clickOutside";
-  import { ColorSet, colorSetFromHex } from "@/lib/colors";
+  import { colorSetFromHex } from "@/lib/colors";
+  import type { ColorSet } from "@/lib/colors";
   import ColorPicker from "@/components/inputs/ColorPicker.svelte";
   import TextInput from "@/components/inputs/TextInput.svelte";
 

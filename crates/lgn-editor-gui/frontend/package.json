@@ -9,8 +9,8 @@
   "type": "module",
   "packageManager": "pnpm@6.24.1",
   "scripts": {
-    "start": "vite",
-    "build": "vite build",
+    "start": "svelte-kit dev",
+    "build": "svelte-kit build",
     "check": "pnpm lint && pnpm fmt:check && pnpm svelte:check",
     "lint": "eslint --ext .ts,.svelte .",
     "lint:fix": "eslint --ext .ts,.svelte --fix .",
@@ -24,6 +24,8 @@
   "devDependencies": {
     "@lgn/vite-plugin-ts-proto": "workspace:^0.1.0",
     "@lgn/vite-plugin-wasm": "workspace:^0.1.0",
+    "@sveltejs/adapter-static": "^1.0.0-next.28",
+    "@sveltejs/kit": "^1.0.0-next.290",
     "@sveltejs/vite-plugin-svelte": "^1.0.0-next.39",
     "@swc/core": "^1.2.147",
     "@testing-library/jest-dom": "^5.16.2",

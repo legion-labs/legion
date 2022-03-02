@@ -1,5 +1,5 @@
 import { noop, safe_not_equal as safeNotEqual } from "svelte/internal";
-import {
+import type {
   StartStopNotifier,
   Subscriber,
   Unsubscriber,

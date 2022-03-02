@@ -42,8 +42,10 @@ function levelPriority(level: Level) {
 }
 
 declare global {
-  interface Window {
-    __LOG__: { level: Level; namespace: RegExp } | null;
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace globalThis {
+    // eslint-disable-next-line no-var
+    var __LOG__: { level: Level; namespace: RegExp } | null;
   }
 }
 
@@ -51,12 +53,12 @@ const localStorageKey = "__LOG__";
 
 /** Inits the log system, should be called in the `index` */
 function init() {
-  try {
+  if (typeof localStorage !== "undefined") {
     const log = localStorage.getItem(localStorageKey);
 
-    window.__LOG__ = log ? JSON.parse(log) : null;
-  } catch {
-    window.__LOG__ = null;
+    globalThis.__LOG__ = log ? JSON.parse(log) : null;
+  } else {
+    globalThis.__LOG__ = null;
   }
 }
 
@@ -64,16 +66,20 @@ function init() {
 function set(level: Level, namespace = /.*/) {
   const log = { level, namespace };
 
-  localStorage.setItem(localStorageKey, JSON.stringify(log));
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem(localStorageKey, JSON.stringify(log));
+  }
 
-  window.__LOG__ = log;
+  globalThis.__LOG__ = log;
 }
 
-/** Basically stop displaying any log */
+/** Stop displaying any log */
 function hush() {
-  window.__LOG__ = null;
+  globalThis.__LOG__ = null;
 
-  localStorage.removeItem(localStorageKey);
+  if (typeof localStorage !== "undefined") {
+    localStorage.removeItem(localStorageKey);
+  }
 }
 
 /** Log function that accepts a level, a message, and optionally a namespace to log into */
@@ -81,12 +87,12 @@ function log(
   level: Level,
   ...args: [namespace: string, message: unknown] | [message: unknown]
 ) {
-  if (!window.__LOG__) {
+  if (!globalThis.__LOG__) {
     return;
   }
 
   const { level: requestedLevel, namespace: requestedNamespace } =
-    window.__LOG__;
+    globalThis.__LOG__;
 
   const namespace = args.length === 2 ? args[0] : "";
 

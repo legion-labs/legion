@@ -1,5 +1,7 @@
 {
+  "extends": "./.svelte-kit/tsconfig.json",
   "compilerOptions": {
+    "isolatedModules": false,
     "noEmit": true,
     "allowJs": true,
     "checkJs": true,
@@ -19,13 +21,17 @@
       // the conflict isn't solved we need to comment this out
       // "vitest/globals",
       "vite/client",
+      "@sveltejs/kit",
       "@lgn/web-client/src/types/tauri",
       "@lgn/web-client/src/types/custom-events"
     ],
     "baseUrl": ".",
     "paths": {
       "@/resources/*": ["tests/resources/*"],
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      // Sveltekit insists on having these two
+      "$lib": ["src/lib"],
+      "$lib/*": ["src/lib/*"]
     }
   },
   "include": [

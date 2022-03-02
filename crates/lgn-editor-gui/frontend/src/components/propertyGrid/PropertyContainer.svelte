@@ -1,15 +1,14 @@
 <script lang="ts">
-  import { PropertyUpdate } from "@/api";
-
-  import {
+  import type { PropertyUpdate } from "@/api";
+  import { propertyIsBag } from "@/lib/propertyGrid";
+  import type {
     BagResourceProperty,
-    propertyIsBag,
     ResourceProperty,
   } from "@/lib/propertyGrid";
   import { createEventDispatcher } from "svelte";
   import PropertyBag from "./PropertyBag.svelte";
   import PropertyUnit from "./PropertyUnit.svelte";
-  import {
+  import type {
     AddVectorSubPropertyEvent,
     RemoveVectorSubPropertyEvent,
   } from "./types";

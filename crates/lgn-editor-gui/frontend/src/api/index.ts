@@ -1,4 +1,4 @@
-import { Observable } from "rxjs";
+import type { Observable } from "rxjs";
 import log from "@lgn/web-client/src/lib/log";
 import {
   GrpcWebImpl as EditorResourceBrowserWebImpl,
@@ -12,11 +12,10 @@ import {
 import {
   GrpcWebImpl as EditorSourceControlWebImpl,
   SourceControlClientImpl,
-  UploadRawFileRequest,
   UploadRawFileResponse,
 } from "@lgn/proto-editor/dist/source_control";
-import {
-  formatProperties,
+import { formatProperties } from "../lib/propertyGrid";
+import type {
   ResourcePropertyWithValue,
   ResourceWithProperties,
 } from "../lib/propertyGrid";
