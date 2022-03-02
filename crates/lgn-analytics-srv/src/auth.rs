@@ -106,10 +106,8 @@ where
         let user_info_url = self.user_info_url.clone();
         let mut inner = std::mem::replace(&mut self.inner, clone);
         Box::pin(async move {
-            if req.method() == http::method::Method::OPTIONS
-                || req.uri() == "/health.Health/Check"
-                || req.uri() == "/health"
-            {
+            //todo: move health check in its own layer
+            if req.uri() == "/health.Health/Check" || req.uri() == "/health" {
                 return inner
                     .call(req)
                     .await
