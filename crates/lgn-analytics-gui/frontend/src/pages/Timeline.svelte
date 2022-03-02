@@ -374,7 +374,7 @@
   }
 
   async function drawCanvas() {
-    var startTime = performance.now();
+    const startTime = performance.now();
 
     if (!canvas || !renderingContext) {
       return;
