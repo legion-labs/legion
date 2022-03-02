@@ -44,21 +44,19 @@
 
   const files = new Files();
 
-  export let currentResourceDescription: ResourceDescription | null;
+  export let currentResourceDescriptionEntry: Entry<ResourceDescription> | null;
 
-  export let resourceEntries: Entries<ResourceDescription | symbol>;
+  export let resourceEntries: Entries<ResourceDescription>;
 
-  export let currentlyRenameResource: Entry<
-    ResourceDescription | symbol
-  > | null;
+  export let currentlyRenameResourceEntry: Entry<ResourceDescription> | null;
 
   export let allResourcesLoading: boolean;
 
   let uploadingFiles = false;
 
-  let resourceHierarchyTree: HierarchyTree<
-    ResourceDescription | symbol
-  > | null = null;
+  let resourceHierarchyTree: HierarchyTree<ResourceDescription> | null = null;
+
+  let removePromptId: symbol | null = null;
 
   $: loading = uploadingFiles || allResourcesLoading;
 
@@ -68,38 +66,12 @@
 
   const { data: currentResourceData } = currentResource;
 
-  async function removeResourceProperty({
-    detail: entry,
-  }: CustomEvent<Entry<ResourceDescription | symbol>>) {
-    if (typeof entry.item === "symbol") {
-      return;
-    }
-
-    try {
-      await removeResource({ id: entry.item.id });
-    } catch (error) {
-      notifications.push(Symbol.for("resource-creation-error"), {
-        type: "error",
-        title: "Resources",
-        message: "An error occured while removing the resource",
-      });
-
-      log.error(
-        log.json`An error occured while removing the resource ${entry.item}: ${error}`
-      );
-    }
-  }
-
   async function saveEditedResourceProperty({
     detail: { entry, newName },
   }: CustomEvent<{
-    entry: Entry<ResourceDescription | symbol>;
+    entry: Entry<ResourceDescription>;
     newName: string;
   }>) {
-    if (typeof entry.item === "symbol") {
-      return;
-    }
-
     const pathComponents = components(entry.item.path);
 
     if (!pathComponents) {
@@ -205,10 +177,10 @@
 
   function selectResource({
     detail: resourceDescription,
-  }: CustomEvent<Entry<ResourceDescription | symbol>>) {
-    resourceDescription &&
-      typeof resourceDescription.item !== "symbol" &&
+  }: CustomEvent<Entry<ResourceDescription>>) {
+    if (resourceDescription) {
       fetchCurrentResourceDescription(resourceDescription.item);
+    }
   }
 
   function filter({ detail: { name } }: CustomEvent<{ name: string }>) {
@@ -223,12 +195,12 @@
   >) {
     switch (action) {
       case "clone": {
-        if (!resourceHierarchyTree || !currentResourceDescription) {
+        if (!resourceHierarchyTree || !currentResourceDescriptionEntry) {
           return;
         }
 
         const { newResource } = await cloneResource({
-          sourceId: currentResourceDescription.id,
+          sourceId: currentResourceDescriptionEntry.item.id,
         });
 
         await allResources.run(getAllResources);
@@ -243,7 +215,7 @@
             return;
           }
 
-          currentResourceDescription = entry.item;
+          currentResourceDescriptionEntry = entry;
 
           fetchCurrentResourceDescription(newResource);
         }
@@ -258,29 +230,29 @@
       }
 
       case "rename": {
-        if (!resourceHierarchyTree || !currentResourceDescription) {
+        if (!resourceHierarchyTree || !currentResourceDescriptionEntry) {
           return;
         }
 
-        resourceHierarchyTree.startNameEdit(currentResourceDescription);
+        currentlyRenameResourceEntry = currentResourceDescriptionEntry;
 
         return;
       }
 
       case "remove": {
-        if (!resourceHierarchyTree || !currentResourceDescription) {
-          return;
-        }
-
-        resourceHierarchyTree.remove(currentResourceDescription);
+        openRemoveResourcePrompt("request-resource-remove-context-menu");
 
         return;
       }
 
       case "new": {
         modal.open(createResourceModalId, CreateResourceModal, {
-          payload:
-            entrySetName === "resource" ? currentResourceDescription : null,
+          payload: {
+            resourceDescription:
+              entrySetName === "resource"
+                ? currentResourceDescriptionEntry
+                : null,
+          },
         });
 
         return;
@@ -374,6 +346,57 @@
 
     await allResources.run(getAllResources);
   }
+
+  function openRemoveResourcePrompt(symbolKey: string) {
+    removePromptId = Symbol.for(symbolKey);
+
+    modal.prompt(removePromptId);
+  }
+
+  async function removeResourceProperty({
+    detail,
+  }: CustomEvent<{ answer: boolean; id: symbol }>) {
+    if (
+      !removePromptId ||
+      !resourceHierarchyTree ||
+      !currentResourceDescriptionEntry ||
+      typeof currentResourceDescriptionEntry.item === "symbol"
+    ) {
+      return;
+    }
+
+    const id = removePromptId;
+
+    removePromptId = null;
+
+    if (id !== detail.id || !detail.answer) {
+      return;
+    }
+
+    const entry = resourceEntries.find(
+      (entry) => entry === currentResourceDescriptionEntry
+    );
+
+    if (!entry) {
+      return;
+    }
+
+    resourceEntries = resourceEntries.remove(entry);
+
+    try {
+      await removeResource({ id: currentResourceDescriptionEntry.item.id });
+    } catch (error) {
+      notifications.push(Symbol.for("resource-creation-error"), {
+        type: "error",
+        title: "Resources",
+        message: "An error occured while removing the resource",
+      });
+
+      log.error(
+        log.json`An error occured while removing the resource ${currentResourceDescriptionEntry.item}: ${error}`
+      );
+    }
+  }
 </script>
 
 <svelte:window
@@ -381,6 +404,7 @@
   on:contextmenu-action={autoClose(
     select(handleResourceActions, "resource", "resourcePanel")
   )}
+  on:prompt-answer={removeResourceProperty}
 />
 
 <Panel {loading} tabs={["Resource Browser"]}>
@@ -394,11 +418,12 @@
         withItemContextMenu="resource"
         on:select={selectResource}
         on:nameEdited={saveEditedResourceProperty}
-        on:removed={removeResourceProperty}
         on:moved={moveEntry}
+        on:removeRequest={() =>
+          openRemoveResourcePrompt("request-resource-remove-keyboard")}
         bind:entries={resourceEntries}
-        bind:currentlyRenameEntry={currentlyRenameResource}
-        bind:highlightedItem={currentResourceDescription}
+        bind:currentlyRenameEntry={currentlyRenameResourceEntry}
+        bind:highlightedEntry={currentResourceDescriptionEntry}
         bind:this={resourceHierarchyTree}
       >
         <div class="w-full h-full" slot="icon" let:entry>

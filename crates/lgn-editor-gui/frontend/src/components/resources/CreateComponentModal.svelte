@@ -9,7 +9,6 @@
   import { getAvailableComponentTypes } from "@/api";
   import { GetAvailableDynTraitsResponse } from "@lgn/proto-editor/dist/property_inspector";
   import Field from "../Field.svelte";
-  import { Config } from "@lgn/web-client/src/stores/modal";
 
   const createComponentStore = new AsyncStoreOrchestrator();
 
@@ -26,13 +25,11 @@
 
   export let close: () => void;
 
-  // We don't get any payload when the user tries to create
-  // a resource at the top level
-  export let config: Config<{
-    id: string;
-    path: string;
-    index: number;
-  }>;
+  export let resourceId: string;
+
+  export let path: string;
+
+  export let index: number;
 
   async function getComponentList(event: Event /* SubmitEvent */) {
     event.preventDefault();
@@ -45,21 +42,19 @@
         return;
       }
 
-      if (config.payload) {
-        const jsonValue = `{"${$type.value.item}": {}}`;
+      const jsonValue = `{"${$type.value.item}": {}}`;
 
-        const path = config.payload.path;
+      const value = await addPropertyInPropertyVectorApi(resourceId, {
+        path,
+        index,
+        jsonValue,
+      });
 
-        const value = await addPropertyInPropertyVectorApi(config.payload.id, {
-          path: config.payload.path,
-          index: config.payload.index,
-          jsonValue,
-        });
-
-        window.dispatchEvent(
-          new CustomEvent("refresh-property", { detail: { path, value } })
-        );
-      }
+      window.dispatchEvent(
+        new CustomEvent("refresh-property", {
+          detail: { path, value },
+        })
+      );
 
       close();
 

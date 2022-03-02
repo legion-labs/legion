@@ -1,11 +1,7 @@
 import { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
 import { Entry } from "./hierarchyTree";
 
-export function iconFor(entry: Entry<ResourceDescription | symbol>) {
-  if (typeof entry.item === "symbol") {
-    return "ic:baseline-folder-open";
-  }
-
+export function iconFor(entry: Entry<ResourceDescription>) {
   switch (entry.item.type) {
     case "entity": {
       return "ic:outline-token";

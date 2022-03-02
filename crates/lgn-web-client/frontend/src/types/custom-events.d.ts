@@ -90,5 +90,9 @@ declare namespace svelte.JSX {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       event: CustomEvent<{ item: any; originalEvent: DragEvent }>
     ) => void;
+
+    "onprompt-answer"?: (
+      event: CustomEvent<{ answer: boolean; id: symbol }>
+    ) => void;
   }
 }

@@ -52,7 +52,7 @@
   }
 
   .button.danger {
-    @apply bg-red-600 hover:bg-red-800 text-gray-800;
+    @apply bg-red-600 hover:bg-red-800 text-white;
   }
 
   .button.default {
