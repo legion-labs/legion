@@ -1,4 +1,4 @@
-use crate::BaseDescriptor;
+use crate::{BaseDescriptor, FieldDescriptor};
 use std::collections::HashMap;
 
 /// Define the reflection for a Enum type
@@ -13,10 +13,12 @@ pub struct EnumDescriptor {
 
 /// Descriptor of a Enum Variant
 pub struct EnumVariantDescriptor {
-    /// Name of the field
+    /// Name of the variant
     pub variant_name: String,
-    /// List of Attributes for the Field
+    /// List of Attributes for the variant
     pub attributes: Option<HashMap<String, String>>,
+    /// Fields of the variant
+    pub fields: Vec<FieldDescriptor>,
 }
 
 /// Macro to implement Enum Descriptor for a type

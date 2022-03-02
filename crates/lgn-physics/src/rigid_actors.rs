@@ -3,7 +3,8 @@ use lgn_transform::prelude::*;
 use physx::{foundation::DefaultAllocator, prelude::*};
 
 use crate::{
-    runtime::PhysicsRigidActor, CollisionGeometry, PxMaterial, PxScene, PxShape, RigidActorType,
+    runtime::{CollisionGeometry, PhysicsRigidActor},
+    PxMaterial, PxScene, PxShape, RigidActorType,
 };
 
 #[derive(Component)]

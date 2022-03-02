@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     enum_meta_info::{EnumMetaInfo, EnumVariantMetaInfo},
-    ModuleMetaInfo,
+    GenerationType, ModuleMetaInfo,
 };
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -34,22 +34,86 @@ fn generate_from_string_match_arms(variants: &[EnumVariantMetaInfo]) -> Vec<Toke
         .collect()
 }
 
-/// Generate token stream for variant descriptors
-fn generate_enum_variant_descriptors(variants: &[EnumVariantMetaInfo]) -> Vec<TokenStream> {
-    variants
+/*
+/// Generate the JSON write serialization for members.
+/// Don't serialize members at default values
+/// Skip 'transient' value
+fn generate_variant_field_descriptors(
+    variant_info: &EnumVariantMetaInfo,
+    gen_type: GenerationType,
+) -> Vec<TokenStream> {
+    variant_info
+        .members
         .iter()
-        .map(|v| {
-            let variant_name = v.name.to_string();
-            let attribute_impl = v.attributes.generate_descriptor_impl();
+        .filter(|m| {
+            (gen_type == GenerationType::OfflineFormat && !m.is_runtime_only())
+                || (gen_type == GenerationType::RuntimeFormat && !m.is_offline_only())
+        })
+        .map(|m| {
+            let variant_type_name = &variant_info.name;
+            let member_ident = &m.name;
+            let member_name = m.name.to_string();
+
+            let member_type = match gen_type {
+                GenerationType::OfflineFormat => m.type_path.clone(),
+                GenerationType::RuntimeFormat => m.get_runtime_type(),
+            };
+            let attribute_impl = m.attributes.generate_descriptor_impl();
+
             quote! {
-                lgn_data_model::EnumVariantDescriptor {
-                    variant_name : #variant_name.into(),
+                lgn_data_model::FieldDescriptor {
+                    field_name : #member_name.into(),
+                    offset: memoffset::offset_of!(#variant_type_name, #member_ident),
+                    field_type : <#member_type as lgn_data_model::TypeReflection>::get_type_def(),
                     attributes : #attribute_impl
                 },
             }
         })
         .collect()
 }
+
+/// Generate fields members definition
+fn generate_fields(members: &[MemberMetaInfo], gen_type: GenerationType) -> Vec<TokenStream> {
+    members
+        .iter()
+        .filter(|m| {
+            (gen_type == GenerationType::OfflineFormat && !m.is_runtime_only())
+                || (gen_type == GenerationType::RuntimeFormat && !m.is_offline_only())
+        })
+        .map(|m| {
+            let member_ident = format_ident!("{}", &m.name);
+            let type_id = match gen_type {
+                GenerationType::OfflineFormat => m.type_path.clone(),
+                GenerationType::RuntimeFormat => m.get_runtime_type(),
+            };
+            quote! { pub #member_ident : #type_id, }
+        })
+        .collect()
+}
+*/
+
+/// Generate token stream for variant descriptors
+fn generate_enum_variant_descriptors(
+    variants: &[EnumVariantMetaInfo],
+    _gen_type: Option<GenerationType>,
+) -> Vec<TokenStream> {
+    variants
+        .iter()
+        .map(|v| {
+            let variant_name = v.name.to_string();
+            let attribute_impl = v.attributes.generate_descriptor_impl();
+            //let members_impl = generate_fields(&v.members, gen_type);
+            quote! {
+                lgn_data_model::EnumVariantDescriptor {
+                    variant_name: #variant_name.into(),
+                    attributes: #attribute_impl,
+                    fields: Vec::new(),
+                },
+            }
+        })
+        .collect()
+}
+
 /// Generate token stream for custom serde implementation
 /// Serialize as "String" in human readable or as u32 value in binary format
 fn generate_serde_impls(enum_meta_info: &EnumMetaInfo) -> TokenStream {
@@ -118,84 +182,93 @@ fn generate_serde_impls(enum_meta_info: &EnumMetaInfo) -> TokenStream {
 }
 
 pub(crate) fn generate_reflection(
+    enum_meta_info: &EnumMetaInfo,
+    gen_type: Option<GenerationType>,
+) -> TokenStream {
+    let enum_name = &enum_meta_info.name;
+
+    // Grab the 'default_literal' or first option
+    let default_value = if let Some(default_literal) = &enum_meta_info.attributes.default_literal {
+        default_literal.clone()
+    } else if let Some(variant) = enum_meta_info.variants.get(0) {
+        let variant_name = &variant.name;
+        quote! { Self::#variant_name}
+    } else {
+        quote! {}
+    };
+
+    let enum_variants = generate_enum_variants(&enum_meta_info.variants);
+    let enum_from_string_match_arms = generate_from_string_match_arms(&enum_meta_info.variants);
+    let enum_variants_descriptors =
+        generate_enum_variant_descriptors(&enum_meta_info.variants, gen_type);
+
+    let serde_impls = generate_serde_impls(enum_meta_info);
+    let enum_attributes = enum_meta_info.attributes.generate_descriptor_impl();
+    let repr_impl = if enum_meta_info.has_only_unit_variants() {
+        quote! { #[repr(u32)]}
+    } else {
+        quote! {}
+    };
+
+    quote! {
+        #[derive(PartialEq, Clone, Copy)]
+        #[non_exhaustive]
+        #repr_impl
+        pub enum #enum_name {
+            #(#enum_variants)*
+        }
+
+        #serde_impls
+
+        impl lgn_data_model::TypeReflection for #enum_name {
+            fn get_type(&self) -> lgn_data_model::TypeDefinition { Self::get_type_def() }
+
+            #[allow(unused_mut)]
+            #[allow(clippy::let_and_return)]
+            fn get_type_def() -> lgn_data_model::TypeDefinition {
+                lgn_data_model::implement_enum_descriptor!(#enum_name,
+                    #enum_attributes,
+                    vec![
+                    #(#enum_variants_descriptors)*
+                    ]
+                );
+                lgn_data_model::TypeDefinition::Enum(&TYPE_DESCRIPTOR)
+            }
+            fn get_option_def() -> lgn_data_model::TypeDefinition {
+                lgn_data_model::implement_option_descriptor!(#enum_name);
+                lgn_data_model::TypeDefinition::Option(&OPTION_DESCRIPTOR)
+            }
+            fn get_array_def() -> lgn_data_model::TypeDefinition {
+                lgn_data_model::implement_array_descriptor!(#enum_name);
+                lgn_data_model::TypeDefinition::Array(&ARRAY_DESCRIPTOR)
+            }
+        }
+
+        impl From<String> for #enum_name {
+            fn from(s: String)-> Self {
+                return match s.as_str() {
+                    #(#enum_from_string_match_arms)*
+                    _ => Self::default()
+                }
+            }
+        }
+
+        impl Default for #enum_name {
+            fn default() -> Self {
+                #default_value
+            }
+        }
+    }
+}
+
+pub(crate) fn generate_top_module_reflection(
     module_meta_infos: &HashMap<String, ModuleMetaInfo>,
 ) -> TokenStream {
     let enum_codegen: Vec<_> = module_meta_infos
         .iter()
         .flat_map(|(_mod_name, module_meta_info)| &module_meta_info.enum_meta_infos)
-        .map(|enum_meta_info| {
-            let enum_name = &enum_meta_info.name;
-
-            // Grab the 'default_literal' or first option
-            let default_value =
-                if let Some(default_literal) = &enum_meta_info.attributes.default_literal {
-                    default_literal.clone()
-                } else if let Some(variant) = enum_meta_info.variants.get(0) {
-                    let variant_name = &variant.name;
-                    quote! { Self::#variant_name}
-                } else {
-                    quote! {}
-                };
-
-            let enum_variants = generate_enum_variants(&enum_meta_info.variants);
-            let enum_from_string_match_arms =
-                generate_from_string_match_arms(&enum_meta_info.variants);
-            let enum_variants_descriptors =
-                generate_enum_variant_descriptors(&enum_meta_info.variants);
-
-            let serde_impls = generate_serde_impls(enum_meta_info);
-            let enum_attributes = enum_meta_info.attributes.generate_descriptor_impl();
-
-            quote! {
-                #[derive(PartialEq, Clone, Copy)]
-                #[non_exhaustive]
-                #[repr(u32)]
-                pub enum #enum_name {
-                    #(#enum_variants)*
-                }
-
-                #serde_impls
-
-                impl lgn_data_model::TypeReflection for #enum_name {
-                    fn get_type(&self) -> lgn_data_model::TypeDefinition { Self::get_type_def() }
-
-                    #[allow(unused_mut)]
-                    #[allow(clippy::let_and_return)]
-                    fn get_type_def() -> lgn_data_model::TypeDefinition {
-                        lgn_data_model::implement_enum_descriptor!(#enum_name,
-                            #enum_attributes,
-                            vec![
-                            #(#enum_variants_descriptors)*
-                            ]
-                        );
-                        lgn_data_model::TypeDefinition::Enum(&TYPE_DESCRIPTOR)
-                    }
-                    fn get_option_def() -> lgn_data_model::TypeDefinition {
-                        lgn_data_model::implement_option_descriptor!(#enum_name);
-                        lgn_data_model::TypeDefinition::Option(&OPTION_DESCRIPTOR)
-                    }
-                    fn get_array_def() -> lgn_data_model::TypeDefinition {
-                        lgn_data_model::implement_array_descriptor!(#enum_name);
-                        lgn_data_model::TypeDefinition::Array(&ARRAY_DESCRIPTOR)
-                    }
-                }
-
-                impl From<String> for #enum_name {
-                    fn from(s: String)-> Self {
-                        return match s.as_str() {
-                            #(#enum_from_string_match_arms)*
-                            _ => Self::default()
-                        }
-                    }
-                }
-
-                impl Default for #enum_name {
-                    fn default() -> Self {
-                        #default_value
-                    }
-                }
-            }
-        })
+        .filter(|enum_meta_info| enum_meta_info.has_only_unit_variants())
+        .map(|enum_meta_info| generate_reflection(enum_meta_info, None))
         .collect::<Vec<TokenStream>>();
 
     quote! {

@@ -107,8 +107,12 @@ fn generate_for_directory(
             writeln!(codegen_file, "pub mod {} {{", gen_type.name())?;
 
             for (sub_mod_name, info) in &processed_sub_mods {
-                let content =
-                    generate_data_definition(&info.struct_meta_infos, &info.uses, gen_type)?;
+                let content = generate_data_definition(
+                    &info.struct_meta_infos,
+                    &info.enum_meta_infos,
+                    &info.uses,
+                    gen_type,
+                )?;
                 writeln!(codegen_file, "mod {} {{", sub_mod_name)?;
                 codegen_file.write_all(&content)?;
                 writeln!(codegen_file, "}}")?;
@@ -130,7 +134,7 @@ fn generate_for_directory(
 
     // Write Enums top module
     codegen_file.write_all(
-        enum_codegen::generate_reflection(&processed_sub_mods)
+        enum_codegen::generate_top_module_reflection(&processed_sub_mods)
             .to_string()
             .as_bytes(),
     )?;
@@ -194,6 +198,7 @@ fn extract_meta_infos(source_path: &std::path::Path) -> ModuleMetaInfo {
 /// # Errors
 fn generate_data_definition(
     structs: &[StructMetaInfo],
+    enums: &[EnumMetaInfo],
     uses: &[ItemUse],
     gen_type: GenerationType,
 ) -> Result<Vec<u8>, Box<dyn Error>> {
@@ -204,7 +209,7 @@ fn generate_data_definition(
         .try_for_each(|ts| cursor.write_all(ts.to_token_stream().to_string().as_bytes()))?;
 
     // Write auto-added imports
-    let imports = structs
+    let mut imports = structs
         .iter()
         .flat_map(|s| {
             if gen_type == GenerationType::RuntimeFormat {
@@ -214,6 +219,14 @@ fn generate_data_definition(
             }
         })
         .collect::<Vec<_>>();
+
+    imports.extend(enums.iter().flat_map(|e| {
+        if gen_type == GenerationType::RuntimeFormat {
+            e.runtime_imports()
+        } else {
+            e.offline_imports()
+        }
+    }));
 
     let imports = quote::quote! {
         #[allow(clippy::wildcard_imports)]
@@ -246,6 +259,17 @@ fn generate_data_definition(
         }
         writeln!(cursor)
     })?;
+
+    // Generate enum code, for enums that have non-unit variants
+    enums
+        .iter()
+        .filter(|meta_info| !meta_info.has_only_unit_variants())
+        .try_for_each(|meta_info| {
+            let out_token = enum_codegen::generate_reflection(meta_info, Some(gen_type));
+            cursor.write_all(out_token.to_string().as_bytes())?;
+
+            writeln!(cursor)
+        })?;
 
     cursor.flush()?;
 

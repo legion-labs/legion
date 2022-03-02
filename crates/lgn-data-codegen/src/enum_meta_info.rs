@@ -1,7 +1,10 @@
-use crate::{attributes::Attributes, member_meta_info::MemberMetaInfo};
+use std::collections::HashSet;
+
 use proc_macro2::TokenStream;
 use quote::ToTokens;
-use syn::{Fields, ItemEnum};
+use syn::{Fields, ItemEnum, Path};
+
+use crate::{attributes::Attributes, member_meta_info::MemberMetaInfo};
 
 #[derive(Debug)]
 pub(crate) struct EnumMetaInfo {
@@ -22,6 +25,29 @@ impl EnumMetaInfo {
             enum_meta_info.variants.push(EnumVariantMetaInfo::new(v));
         }
         enum_meta_info
+    }
+
+    pub(crate) fn has_only_unit_variants(&self) -> bool {
+        !self
+            .variants
+            .iter()
+            .any(|variant| !variant.is_unit_variant())
+    }
+
+    pub(crate) fn offline_imports(&self) -> HashSet<&syn::Path> {
+        let mut output = HashSet::new();
+        for variant in &self.variants {
+            variant.append_offline_imports(&mut output);
+        }
+        output
+    }
+
+    pub(crate) fn runtime_imports(&self) -> HashSet<&syn::Path> {
+        let mut output = HashSet::new();
+        for variant in &self.variants {
+            variant.append_runtime_imports(&mut output);
+        }
+        output
     }
 }
 
@@ -57,6 +83,26 @@ impl EnumVariantMetaInfo {
                 .map(|(_e, expr)| expr.into_token_stream()),
             attributes: Attributes::new(&variant.attrs),
             members,
+        }
+    }
+
+    fn is_unit_variant(&self) -> bool {
+        self.members.is_empty()
+    }
+
+    pub(crate) fn append_offline_imports<'a>(&'a self, output: &mut HashSet<&'a Path>) {
+        for member in &self.members {
+            for import in &member.offline_imports {
+                output.insert(import);
+            }
+        }
+    }
+
+    pub(crate) fn append_runtime_imports<'a>(&'a self, output: &mut HashSet<&'a Path>) {
+        for member in &self.members {
+            for import in &member.runtime_imports {
+                output.insert(import);
+            }
         }
     }
 }

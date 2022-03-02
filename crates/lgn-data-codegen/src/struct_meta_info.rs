@@ -1,10 +1,12 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    collections::HashSet,
+    hash::{Hash, Hasher},
+};
 
-use crate::attributes::Attributes;
-use crate::member_meta_info::MemberMetaInfo;
 use lgn_utils::DefaultHasher;
-use std::collections::HashSet;
 use syn::{Ident, ItemStruct};
+
+use crate::{attributes::Attributes, member_meta_info::MemberMetaInfo};
 
 #[derive(Debug)]
 pub(crate) struct StructMetaInfo {
