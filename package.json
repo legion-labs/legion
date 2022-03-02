@@ -14,6 +14,7 @@
     "clean": "pnpm -r clean && rimraf node_modules",
     "test": "pnpm -r test",
     "benchmark": "pnpm -r benchmark",
+    "dependencies:update": "pnpm up -r -i --latest",
     "analytics:start": "pnpm -C crates/lgn-analytics-gui/frontend start",
     "editor:start": "pnpm -C crates/lgn-editor-gui/frontend start",
     "runtime:start": "pnpm -C crates/lgn-runtime-gui/frontend start"
