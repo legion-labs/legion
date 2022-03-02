@@ -169,7 +169,7 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
         color += spec_color * lighting.specular;
     }
 
-    for (i = 0; i < lighting_data.num_omni_directional_lights; i++)
+    for (uint i = 0; i < lighting_data.num_omni_directional_lights; i++)
     {
         OmniDirectionalLight light = omni_directional_lights[i];
         Lighting lighting = CalculateIncidentOmniDirectionalLight(light, vertex_out.pos, lighting_normal, lightingMaterial);
@@ -178,7 +178,7 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
         color += spec_color * lighting.specular;
     }
 
-    for (i = 0; i < lighting_data.num_spot_lights; i++)
+    for (uint i = 0; i < lighting_data.num_spot_lights; i++)
     {
         SpotLight light = spot_lights[i];
         Lighting lighting = CalculateIncidentSpotLight(light, vertex_out.pos, lighting_normal, lightingMaterial);
