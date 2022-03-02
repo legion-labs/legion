@@ -18,7 +18,7 @@ WORKDIR /install
 
 # Presinstall packages that require interactive user input
 RUN apt-get update && DEBIAN_FRONTEND="noninteractive" TZ="America/Toronto"\
-    apt-get install -y sudo tzdata keyboard-configuration
+    apt-get install -y --no-install-recommends tzdata keyboard-configuration
 
 # Build layers in order of frequency of changes
 COPY ./install/base.sh ./install/helper.sh ./

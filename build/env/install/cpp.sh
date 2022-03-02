@@ -21,7 +21,7 @@ source "$(dirname "$0")/helper.sh"
 ###################################################################################################
 
 # Install base build utils
-apt-get update && apt-get install -y \
+apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     build-essential \
     musl-tools \

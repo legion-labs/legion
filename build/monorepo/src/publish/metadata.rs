@@ -60,21 +60,6 @@ impl Metadata {
     }
 
     fn set_defaults(&mut self, ctx: &Context, package: &guppy::graph::PackageMetadata<'_>) {
-        // Add default zip dist target if not exist
-        if !self
-            .publications
-            .iter()
-            .any(|dist_metadata| matches!(dist_metadata, PublishMetadata::Zip(_)))
-        {
-            self.publications.push(PublishMetadata::Zip(ZipMetadata {
-                name: Some(package.name().to_owned()),
-                s3_bucket: Some(ctx.config().publish.s3.bucket.clone()),
-                region: ctx.config().publish.s3.region.clone(),
-                s3_bucket_prefix: Some(ctx.config().publish.s3.prefix.clone()),
-                extra_files: vec![],
-            }));
-        }
-
         for dist_metadata in &mut self.publications {
             match dist_metadata {
                 PublishMetadata::AwsLambda(metadata) => {

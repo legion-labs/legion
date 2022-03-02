@@ -21,6 +21,6 @@ chmod +x rustup-init.sh
 ./rustup-init.sh -y --no-modify-path --default-toolchain $RUST_VERSION
 rm rustup-init.sh -f
 source $CARGO_HOME/env
-sudo chmod -R a+w $RUSTUP_HOME $CARGO_HOME
+chmod -R a+w $RUSTUP_HOME $CARGO_HOME
 rustup component add llvm-tools-preview
 rustup target add x86_64-unknown-linux-musl x86_64-pc-windows-msvc

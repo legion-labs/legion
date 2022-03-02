@@ -61,3 +61,6 @@ path = "perf-report/src/main.rs"
 [package.metadata.npm]
 name = "editor"
 path = "frontend"
+
+[[package.metadata.monorepo.publish]]
+type = "zip"

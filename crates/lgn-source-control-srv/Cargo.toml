@@ -25,10 +25,10 @@ type = "docker"
 template = """
 FROM ubuntu:20.04
 
-RUN apt-get update && apt-get install -y libssl-dev ca-certificates
+RUN apt-get update && apt-get install -y --no-install-recommends libssl-dev ca-certificates
 
 { copy_all }
 
-CMD ["{ binaries.source-control-srv }"]
+ENTRYPOINT ["{ binaries.source-control-srv }"]
 """
 allow-aws-ecr-creation = true
