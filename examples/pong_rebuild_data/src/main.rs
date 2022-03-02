@@ -180,9 +180,9 @@ async fn create_offline_data(
             }));
         entity
             .components
-            .push(Box::new(sample_data::offline::Visual {
+            .push(Box::new(sample_data::offline::DefaultMesh {
                 color: (208, 255, 208).into(),
-                ..sample_data::offline::Visual::default()
+                mesh_type: lgn_graphics_data::DefaultMeshType::Cube,
             }));
 
         project
@@ -242,9 +242,9 @@ pub fn update(entity, events) {
             }));
         entity
             .components
-            .push(Box::new(sample_data::offline::Visual {
+            .push(Box::new(sample_data::offline::DefaultMesh {
                 color: (0, 255, 255).into(),
-                ..sample_data::offline::Visual::default()
+                mesh_type: lgn_graphics_data::DefaultMeshType::Cube,
             }));
 
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
@@ -313,9 +313,9 @@ pub fn update(entity, events) {
             }));
         entity
             .components
-            .push(Box::new(sample_data::offline::Visual {
+            .push(Box::new(sample_data::offline::DefaultMesh {
                 color: (0, 0, 255).into(),
-                ..sample_data::offline::Visual::default()
+                mesh_type: lgn_graphics_data::DefaultMeshType::Cube,
             }));
 
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
@@ -498,9 +498,9 @@ pub fn update(entity, last_result, entities) {
             }));
         entity
             .components
-            .push(Box::new(sample_data::offline::Visual {
+            .push(Box::new(sample_data::offline::DefaultMesh {
                 color: (255, 16, 64).into(),
-                ..sample_data::offline::Visual::default()
+                mesh_type: lgn_graphics_data::DefaultMeshType::Sphere,
             }));
 
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {

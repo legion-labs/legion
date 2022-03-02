@@ -21,13 +21,9 @@
       }
     },
     {
-      "Visual": {
+      "DefaultMesh": {
         "color": 3506426111,
-        "gi_contribution": 0,
-        "renderable_geometry": null,
-        "shadow_caster_local": false,
-        "shadow_caster_sun": false,
-        "shadow_receiver": false
+        "mesh_type": "Cube"
       }
     }
   ]

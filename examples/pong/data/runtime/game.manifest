@@ -16,18 +16,18 @@
   },
   {
     "resource_id": "(1d9ddd99aad89045,1940748c-72d9-53bb-8f9b-04da4d99fd7e)",
-    "checksum": "ed08ef4f3e6c1cfdccc92007fbe41de51cb1ed44f45aefe603e4ce125821fba2",
-    "size": 386
+    "checksum": "e5b2a1a01eea0ff6bbe6d48c9240516fa73b3c6e335be7e4f87b93d2a6f1b8ed",
+    "size": 383
   },
   {
     "resource_id": "(1d9ddd99aad89045,3ecbba67-ee61-5ae4-2e32-d083d26c88ff)",
-    "checksum": "b141173b861b17b04b58fb0313f0a46bb4f055635f9d6d628d328b5e93a59fec",
-    "size": 174
+    "checksum": "e2209f1f63aead63379d7d09458ae803400291ad17d8389d0b69059cb2434d23",
+    "size": 171
   },
   {
     "resource_id": "(1d9ddd99aad89045,468b01a3-8e51-5ac7-09d5-534456811d2d)",
-    "checksum": "243033a3540c32b941d4ba1e6e9e86a2aa77930132ad6ffa82e1472b51a165a9",
-    "size": 372
+    "checksum": "dd584262555b384257f0cc140dfff961adc396586cfe9d12db2859790218ca6c",
+    "size": 369
   },
   {
     "resource_id": "(1d9ddd99aad89045,b3440a7c-ba07-5628-e7f8-bb89ed5de900)",
@@ -36,7 +36,7 @@
   },
   {
     "resource_id": "(1d9ddd99aad89045,bb6914df-7c35-51b6-dbd4-5789431d665b)",
-    "checksum": "539e9ca0d8a0e9fb02cd5810fe5e50fa0882d4672afa6a55de74ad5721c10699",
-    "size": 373
+    "checksum": "15782ae362971af81061361b610e703b191711b3e4b438c070a2214e402ae104",
+    "size": 370
   }
 ]
