@@ -4,7 +4,7 @@ use crate::attributes::Attributes;
 use crate::member_meta_info::MemberMetaInfo;
 use lgn_utils::DefaultHasher;
 use std::collections::HashSet;
-use syn::{Ident, ItemStruct, Type};
+use syn::{Ident, ItemStruct};
 
 #[derive(Debug)]
 pub(crate) struct StructMetaInfo {
@@ -31,13 +31,7 @@ impl StructMetaInfo {
             members: item_struct
                 .fields
                 .iter()
-                .filter_map(|field| {
-                    if let Type::Path(type_path) = &field.ty {
-                        Some(MemberMetaInfo::new(field, type_path.path.clone()))
-                    } else {
-                        None
-                    }
-                })
+                .filter_map(MemberMetaInfo::new)
                 .collect::<Vec<MemberMetaInfo>>(),
         }
     }

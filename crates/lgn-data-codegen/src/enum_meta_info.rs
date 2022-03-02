@@ -1,7 +1,7 @@
-use crate::attributes::Attributes;
+use crate::{attributes::Attributes, member_meta_info::MemberMetaInfo};
 use proc_macro2::TokenStream;
 use quote::ToTokens;
-use syn::ItemEnum;
+use syn::{Fields, ItemEnum};
 
 #[derive(Debug)]
 pub(crate) struct EnumMetaInfo {
@@ -30,10 +30,25 @@ pub(crate) struct EnumVariantMetaInfo {
     pub name: syn::Ident,
     pub discriminant: Option<TokenStream>,
     pub attributes: Attributes,
+    pub members: Vec<MemberMetaInfo>,
 }
 
 impl EnumVariantMetaInfo {
     fn new(variant: &syn::Variant) -> Self {
+        let members = match &variant.fields {
+            Fields::Named(fields_named) => fields_named
+                .named
+                .iter()
+                .filter_map(MemberMetaInfo::new)
+                .collect(),
+            Fields::Unnamed(fields_unnamed) => fields_unnamed
+                .unnamed
+                .iter()
+                .filter_map(MemberMetaInfo::new)
+                .collect(),
+            Fields::Unit => Vec::new(),
+        };
+
         Self {
             name: variant.ident.clone(),
             discriminant: variant
@@ -41,6 +56,7 @@ impl EnumVariantMetaInfo {
                 .as_ref()
                 .map(|(_e, expr)| expr.into_token_stream()),
             attributes: Attributes::new(&variant.attrs),
+            members,
         }
     }
 }

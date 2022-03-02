@@ -13,25 +13,29 @@ pub(crate) struct MemberMetaInfo {
 }
 
 impl MemberMetaInfo {
-    pub(crate) fn new(member_field: &syn::Field, type_path: syn::Path) -> Self {
-        let mut member = Self {
-            name: member_field.ident.as_ref().unwrap().clone(),
-            type_path,
-            attributes: Attributes::new(&member_field.attrs),
-            offline_imports: HashSet::new(),
-            runtime_imports: HashSet::new(),
-        };
+    pub(crate) fn new(member_field: &syn::Field) -> Option<Self> {
+        if let syn::Type::Path(type_path) = &member_field.ty {
+            let mut member = Self {
+                name: member_field.ident.as_ref().unwrap().clone(),
+                type_path: type_path.path.clone(),
+                attributes: Attributes::new(&member_field.attrs),
+                offline_imports: HashSet::new(),
+                runtime_imports: HashSet::new(),
+            };
 
-        // Add import if we have a ResourceType
-        if member.attributes.values.contains_key(RESOURCE_TYPE_ATTR) {
-            member
-                .offline_imports
-                .insert(syn::parse_str("lgn_data_offline::ResourcePathId").unwrap());
-            member
-                .runtime_imports
-                .insert(syn::parse_str("lgn_data_runtime::Reference").unwrap());
+            // Add import if we have a ResourceType
+            if member.attributes.values.contains_key(RESOURCE_TYPE_ATTR) {
+                member
+                    .offline_imports
+                    .insert(syn::parse_str("lgn_data_offline::ResourcePathId").unwrap());
+                member
+                    .runtime_imports
+                    .insert(syn::parse_str("lgn_data_runtime::Reference").unwrap());
+            }
+            Some(member)
+        } else {
+            None
         }
-        member
     }
 
     pub(crate) fn is_option(&self) -> bool {
