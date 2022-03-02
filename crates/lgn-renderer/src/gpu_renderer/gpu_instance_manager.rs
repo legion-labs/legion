@@ -4,7 +4,7 @@ use lgn_graphics_api::{BufferView, VertexBufferBinding};
 use crate::{
     cgen,
     resources::{
-        GpuDataManager, GpuVaTableForGpuInstance, IndexBlock, UnifiedStaticBuffer,
+        GpuDataManager, GpuVaTableForGpuInstance, IndexBlock, UnifiedStaticBufferAllocator,
         UniformGPUDataUpdater,
     },
 };
@@ -26,22 +26,24 @@ pub(crate) struct GpuInstanceManager {
 }
 
 impl GpuInstanceManager {
-    pub fn new(static_buffer: &UnifiedStaticBuffer) -> Self {
+    pub fn new(allocator: &UnifiedStaticBufferAllocator) -> Self {
         Self {
-            va_table_manager: GpuVaTableManager::new(static_buffer, 64 * 1024, 4096),
-            va_table_adresses: GpuVaTableForGpuInstance::new(static_buffer),
+            va_table_manager: GpuVaTableManager::new(64 * 1024, 4096),
+            va_table_adresses: GpuVaTableForGpuInstance::new(allocator),
         }
     }
 
     pub fn add_gpu_instance(
         &mut self,
         entity: Entity,
+        allocator: &UnifiedStaticBufferAllocator,
         index_block: &mut Option<IndexBlock>,
         updater: &mut UniformGPUDataUpdater,
         instance_vas: &GpuInstanceVas,
     ) -> u32 {
         let (gpu_instance_id, va_table_address) =
-            self.va_table_manager.alloc_gpu_data(entity, index_block);
+            self.va_table_manager
+                .alloc_gpu_data(entity, allocator, index_block);
 
         self.va_table_adresses
             .set_va_table_address_for_gpu_instance(

@@ -2,7 +2,7 @@ use lgn_graphics_api::Buffer;
 
 use crate::{
     hl_gfx_api::HLCommandBuffer,
-    resources::{StaticBufferAllocation, UnifiedStaticBuffer, UniformGPUDataUpdater},
+    resources::{StaticBufferAllocation, UnifiedStaticBufferAllocator, UniformGPUDataUpdater},
     RenderContext,
 };
 
@@ -17,10 +17,10 @@ pub struct RenderLayer {
 }
 
 impl RenderLayer {
-    pub fn new(static_buffer: &UnifiedStaticBuffer, cpu_render_set: bool) -> Self {
+    pub fn new(allocator: &UnifiedStaticBufferAllocator, cpu_render_set: bool) -> Self {
         const TEMP_MAX_MATERIAL_COUNT: usize = 8192;
         let page_size = TEMP_MAX_MATERIAL_COUNT * std::mem::size_of::<u32>();
-        let material_page = static_buffer.allocate_segment(page_size as u64);
+        let material_page = allocator.allocate_segment(page_size as u64);
 
         Self {
             state_page: material_page,

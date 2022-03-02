@@ -17,7 +17,9 @@ use crate::{
     },
     hl_gfx_api::HLCommandBuffer,
     labels::RenderStage,
-    resources::{PipelineHandle, PipelineManager, UnifiedStaticBuffer, UniformGPUDataUpdater},
+    resources::{
+        PipelineHandle, PipelineManager, UnifiedStaticBufferAllocator, UniformGPUDataUpdater,
+    },
     RenderContext, Renderer,
 };
 
@@ -113,11 +115,11 @@ pub struct MeshRenderer {
 }
 
 impl MeshRenderer {
-    pub(crate) fn new(static_buffer: &UnifiedStaticBuffer) -> Self {
+    pub(crate) fn new(allocator: &UnifiedStaticBufferAllocator) -> Self {
         Self {
             default_layers: vec![
-                RenderLayer::new(static_buffer, false),
-                RenderLayer::new(static_buffer, false),
+                RenderLayer::new(allocator, false),
+                RenderLayer::new(allocator, false),
             ],
             indirect_arg_buffer: None,
             count_buffer: None,

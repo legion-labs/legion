@@ -1,7 +1,7 @@
 use lgn_math::Vec4;
 use strum::EnumIter;
 
-use super::{StaticBufferAllocation, UnifiedStaticBuffer, UniformGPUDataUpdater};
+use super::{StaticBufferAllocation, UnifiedStaticBufferAllocator, UniformGPUDataUpdater};
 use crate::{cgen::cgen_type::MeshDescription, components::Mesh, Renderer};
 
 pub struct MeshMetaData {
@@ -13,7 +13,7 @@ pub struct MeshMetaData {
 }
 
 pub struct MeshManager {
-    static_buffer: UnifiedStaticBuffer,
+    allocator: UnifiedStaticBufferAllocator,
     static_meshes: Vec<MeshMetaData>,
     allocations: Vec<StaticBufferAllocation>,
 }
@@ -49,10 +49,10 @@ pub const DEFAULT_MESH_GUIDS: [&str; 11] = [
 
 impl MeshManager {
     pub fn new(renderer: &Renderer) -> Self {
-        let static_buffer = renderer.static_buffer().clone();
+        let allocator = renderer.static_buffer_allocator();
 
         let mut mesh_manager = Self {
-            static_buffer,
+            allocator: allocator.clone(),
             static_meshes: Vec::new(),
             allocations: Vec::new(),
         };
@@ -87,9 +87,7 @@ impl MeshManager {
                 u64::from(mesh.size_in_bytes()) + std::mem::size_of::<MeshDescription>() as u64;
         }
 
-        let static_allocation = self
-            .static_buffer
-            .allocate_segment(vertex_data_size_in_bytes);
+        let static_allocation = self.allocator.allocate_segment(vertex_data_size_in_bytes);
 
         let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
         let mut offset = static_allocation.offset();
