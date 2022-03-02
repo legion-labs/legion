@@ -43,13 +43,13 @@ expression: manifest
     },
     {
       "path": "(0d4207bbf3a2fd08,4cbc25ba-8743-4f20-9a58-6419770c951f)|44e4b6023fb7a8d3_RubberWood_low|5c4b1b522bf5dcb0",
-      "checksum": "e9431bf512b045179e0f87102ee69749ce57ca3b9e891fe0400061d2877ba02c",
-      "size": 1053959
+      "checksum": "a58ebf6768c631725819da22f52d7683f1349f1c4728a02c358e2a159540fdf1",
+      "size": 908891
     },
     {
       "path": "(0d4207bbf3a2fd08,0075173a-9ae1-43d2-a669-a24b8519d397)|44e4b6023fb7a8d3_Cube|5c4b1b522bf5dcb0",
-      "checksum": "a6cac0d36822de4f4a2e60bc84ae3eab61b45b445ce21f2045f9d2696c087eaa",
-      "size": 1583
+      "checksum": "89c3f1c83fd687dc2056924af6d5d268bc9a52abc62870f2b3027c889065f14d",
+      "size": 1511
     },
     {
       "path": "(1c0ff9e497b0740f,270c28b5-6368-4a21-8ef1-a7d03f85abb3)|1d9ddd99aad89045",
@@ -73,28 +73,28 @@ expression: manifest
     },
     {
       "path": "(0d4207bbf3a2fd08,4cbc25ba-8743-4f20-9a58-6419770c951f)|44e4b6023fb7a8d3_Lenses_low|5c4b1b522bf5dcb0",
-      "checksum": "66edb106cadd8e32af80e1ee56d141a1ec636885a86400f5ad11a3c2b20e1548",
-      "size": 33343
+      "checksum": "a9d7c7219536d8f176e7e8ac4ea1ddff3a03e7d155bbb3f8746288d9b942c1a3",
+      "size": 28927
     },
     {
       "path": "(0d4207bbf3a2fd08,4cbc25ba-8743-4f20-9a58-6419770c951f)|44e4b6023fb7a8d3_LeatherParts_low|5c4b1b522bf5dcb0",
-      "checksum": "419b0cfcc1fd73e0fae85b8cc54f0edce15ae1a392c3791eddeb489b305ba9c7",
-      "size": 964751
+      "checksum": "8f976fec37815fed97017ea651905502df01be15703ec04c2be3a733f260c99e",
+      "size": 833375
     },
     {
       "path": "(0d4207bbf3a2fd08,4cbc25ba-8743-4f20-9a58-6419770c951f)|44e4b6023fb7a8d3_GlassPlastic_low|5c4b1b522bf5dcb0",
-      "checksum": "5f3f81e826c1406eb7c051a0ee15b73d4604093017129496b4503ecbc0678cf8",
-      "size": 359583
+      "checksum": "0c24e8c755a3424103929b9d342112545e280ed45b564ff3822c1d6e036dae48",
+      "size": 310767
     },
     {
       "path": "(0d4207bbf3a2fd08,4cbc25ba-8743-4f20-9a58-6419770c951f)|44e4b6023fb7a8d3_MetalParts_low|5c4b1b522bf5dcb0",
-      "checksum": "3b009027871c25ecb30d497b2ed6d3c8b3d25d5ab61e0fd2cf883ee559280a6f",
-      "size": 1004863
+      "checksum": "283368b21275c18450b5cb3989f7db0c74a2514532bc987dbf7f9b36ba7b19b4",
+      "size": 884287
     },
     {
       "path": "(0d4207bbf3a2fd08,4cbc25ba-8743-4f20-9a58-6419770c951f)|44e4b6023fb7a8d3_Hose_low|5c4b1b522bf5dcb0",
-      "checksum": "f3dfa4b584bf0583614aacacb8aa47fe5c6e7e6f4eee6196567c211d69b7ee08",
-      "size": 822687
+      "checksum": "b25450860716eb5a1692c74f3de53ad4316dd2ee0e129bfdba97b58e992d418b",
+      "size": 704607
     },
     {
       "path": "(91dc60590cba171e,ee30f104-3ef5-46e7-af16-4f085bd6f8e3)|e5c099cc30495fed",
