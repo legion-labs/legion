@@ -9,7 +9,7 @@
   } from "@lgn/proto-telemetry/dist/metric";
   import { onMount } from "svelte";
   import { zoomHorizontalViewRange } from "@/lib/zoom";
-  import TimeRangeDetails from "@/components/TimeRangeDetails.svelte";
+  import TimeRangeDetails from "@/components/Misc/TimeRangeDetails.svelte";
   import {
     DrawSelectedRange,
     NewSelectionState,

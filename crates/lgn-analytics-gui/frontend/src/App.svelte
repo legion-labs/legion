@@ -4,11 +4,11 @@
   import Log from "@/pages/Log.svelte";
   import Timeline from "@/pages/Timeline.svelte";
   import Graph from "@/pages/Graph.svelte";
-  import MetricsCanvas from "./components/MetricCanvas.svelte";
+  import MetricsCanvas from "./components/Metric/MetricCanvas.svelte";
   import { InitAuthStatus } from "@lgn/web-client/src/lib/auth";
   import { onMount } from "svelte";
-  import Header from "./components/Header.svelte";
-  import ProcessList from "./components/ProcessList.svelte";
+  import Header from "./components/Misc/Header.svelte";
+  import ProcessList from "./components/List/ProcessList.svelte";
 
   export let initAuthStatus: InitAuthStatus | null;
 

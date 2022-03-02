@@ -1,9 +1,9 @@
 <script lang="ts">
-  import User from "./User.svelte";
+  import User from "../List/User.svelte";
   import { authClient } from "@lgn/web-client/src/lib/auth";
   import { onMount } from "svelte";
   import { link } from "svelte-navigator";
-  import iconPath from "../../icons/128x128.png";
+  import iconPath from "../../../icons/128x128.png";
 
   let user: string | undefined;
 

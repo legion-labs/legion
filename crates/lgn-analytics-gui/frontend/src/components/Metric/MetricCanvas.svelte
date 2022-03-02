@@ -14,10 +14,10 @@
   import { D3ZoomEvent } from "d3";
   import { onDestroy, onMount } from "svelte";
   import { get, Unsubscriber, Writable } from "svelte/store";
-  import MetricDebugDisplay from "./Metric/MetricDebugDisplay.svelte";
-  import MetricLegendGroup from "./Metric/MetricLegendGroup.svelte";
-  import MetricSelection from "./Metric/MetricSelection.svelte";
-  import MetricTooltip from "./Metric/MetricTooltip.svelte";
+  import MetricDebugDisplay from "./MetricDebugDisplay.svelte";
+  import MetricLegendGroup from "./MetricLegendGroup.svelte";
+  import MetricSelection from "./MetricSelection.svelte";
+  import MetricTooltip from "./MetricTooltip.svelte";
   export let id: string;
 
   let metricStreamer: MetricStreamer;

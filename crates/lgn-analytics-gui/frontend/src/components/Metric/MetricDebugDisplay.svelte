@@ -3,7 +3,7 @@
   import { MetricState } from "@/lib/Metric/MetricState";
   import { MetricStreamer } from "@/lib/Metric/MetricStreamer";
   import { Writable } from "svelte/store";
-  import TimeRangeDetails from "../TimeRangeDetails.svelte";
+  import TimeRangeDetails from "../Misc/TimeRangeDetails.svelte";
   export let width: number;
   export let mainWidth: number;
   export let updateTime: number;

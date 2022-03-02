@@ -54,7 +54,7 @@
   import { onMount } from "svelte";
   import { formatExecutionTime } from "@/lib/format";
   import { zoomHorizontalViewRange } from "@/lib/zoom";
-  import TimeRangeDetails from "@/components/TimeRangeDetails.svelte";
+  import TimeRangeDetails from "@/components/Misc/TimeRangeDetails.svelte";
   import binarySearch from "binary-search";
   import { makeGrpcClient } from "@/lib/client";
   import log from "@lgn/web-client/src/lib/log";
