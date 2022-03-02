@@ -21,6 +21,7 @@
   import SceneExplorer from "@/components/SceneExplorer.svelte";
   import ResourceBrowser from "@/components/ResourceBrowser.svelte";
   import modal from "@/stores/modal";
+  import { Entry } from "@/lib/hierarchyTree";
 
   const { data: currentResourceData } = currentResource;
 
@@ -34,11 +35,13 @@
     new HierarchyTreeOrchestrator<ResourceDescription>();
 
   const {
-    currentlyRenameEntry: currentlyRenameResource,
+    currentlyRenameEntry: currentlyRenameResourceEntry,
     entries: resourceEntries,
   } = resourceEntriesOrchestrator;
 
-  let currentResourceDescription: ResourceDescription | null = null;
+  let currentResourceDescriptionEntry: Entry<ResourceDescription> | null = null;
+
+  $: currentResourceDescription = currentResourceDescriptionEntry?.item ?? null;
 
   $: if ($allResourcesError) {
     reloadResources();
@@ -53,7 +56,7 @@
 
     if ($authStatus && $authStatus.type === "error") {
       modal.open(Symbol.for("auth-modal"), AuthModal, {
-        payload: $authStatus.authorizationUrl,
+        payload: { authorizationUrl: $authStatus.authorizationUrl },
         noTransition: true,
       });
     }
@@ -61,7 +64,7 @@
 
   async function reloadResources() {
     $currentResourceData = null;
-    currentResourceDescription = null;
+    currentResourceDescriptionEntry = null;
     await allResourcesStore.run(getAllResources);
   }
 </script>
@@ -88,8 +91,8 @@
         <div class="resource-browser">
           <ResourceBrowser
             allResourcesLoading={$allResourcesLoading}
-            bind:currentResourceDescription
-            bind:currentlyRenameResource={$currentlyRenameResource}
+            bind:currentResourceDescriptionEntry
+            bind:currentlyRenameResourceEntry={$currentlyRenameResourceEntry}
             bind:resourceEntries={$resourceEntries}
           />
         </div>

@@ -18,7 +18,6 @@
   import allResourcesStore from "@/stores/allResources";
   import Field from "../Field.svelte";
   import log from "@lgn/web-client/src/lib/log";
-  import { Config } from "@lgn/web-client/src/stores/modal";
 
   const createResourceStore = new AsyncStoreOrchestrator();
 
@@ -37,9 +36,9 @@
 
   export let close: () => void;
 
-  // We don't get any payload when the user tries to create
+  // We don't get any resource description when the user tries to create
   // a resource at the top level
-  export let config: Config<ResourceDescription | null>;
+  export let resourceDescription: ResourceDescription | null;
 
   async function createResource(event: Event /* SubmitEvent */) {
     event.preventDefault();
@@ -53,7 +52,7 @@
       }
 
       const resourceName = $name.value;
-      const parentResourceId = config.payload?.id;
+      const parentResourceId = resourceDescription?.id;
 
       // TODO: As soon as the folder-ish resources are supported, drop
       log.info(`New path: ${resourceName}`);

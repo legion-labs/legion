@@ -28,7 +28,12 @@ using the `openModal` function provided by the `lib/modal.ts` module) and open u
     tabindex={-1}
   >
     <div>
-      <svelte:component this={content} close={() => store.close(id)} {config} />
+      <svelte:component
+        this={content}
+        {id}
+        close={() => store.close(id)}
+        {...config?.payload || {}}
+      />
     </div>
   </div>
 {/each}

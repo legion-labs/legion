@@ -7,6 +7,7 @@
     propertyIsOption,
     propertyIsVec,
   } from "@/lib/propertyGrid";
+  import modal from "@/stores/modal";
   import currentResource from "@/stores/currentResource";
   import { createEventDispatcher } from "svelte";
   import log from "@lgn/web-client/src/lib/log";
@@ -37,6 +38,8 @@
   /** The property path parts */
   export let pathParts: string[];
 
+  let removePromptId: symbol | null = null;
+
   function addVectorSubProperty() {
     const index = property.subProperties.length;
 
@@ -47,7 +50,27 @@
     });
   }
 
-  function removeComponent() {
+  function requestRemoveComponent() {
+    removePromptId = Symbol.for("request-component-remove");
+
+    modal.prompt(removePromptId);
+  }
+
+  function removeComponent({
+    detail,
+  }: CustomEvent<{ answer: boolean; id: symbol }>) {
+    if (!removePromptId) {
+      return;
+    }
+
+    const id = removePromptId;
+
+    removePromptId = null;
+
+    if (id !== detail.id || !detail.answer) {
+      return;
+    }
+
     if (!parentProperty) {
       log.error("Vector sub property parent not found");
 
@@ -62,19 +85,29 @@
       return;
     }
 
-    for (let i = 0; i < parentProperty.subProperties.length; ++i) {
-      if (parentProperty.subProperties[i].name == property.name) {
-        dispatch("removeVectorSubProperty", {
-          path: pathParts.join("."),
-          index: i,
-        });
-        parentProperty.subProperties.splice(i, 1);
-        parentProperty.subProperties = parentProperty.subProperties;
-        break;
-      }
+    const subPropertyIndex = parentProperty.subProperties.findIndex(
+      (subProperty) => subProperty.name === property.name
+    );
+
+    if (subPropertyIndex < 0) {
+      log.error(
+        log.json`Sub property with name ${property.name} not found in ${property}`
+      );
+
+      return;
     }
+
+    dispatch("removeVectorSubProperty", {
+      path: pathParts.join("."),
+      index: subPropertyIndex,
+    });
+
+    parentProperty.subProperties.splice(subPropertyIndex, 1);
+    parentProperty.subProperties = parentProperty.subProperties;
   }
 </script>
+
+<svelte:window on:prompt-answer={removeComponent} />
 
 <div class="root" class:with-indent={level > 1}>
   {#if property.name}
@@ -85,7 +118,7 @@
       {#if parentProperty && propertyIsDynComponent(parentProperty)}
         <div
           class="delete-button"
-          on:click={removeComponent}
+          on:click={requestRemoveComponent}
           title="Remove Component"
         >
           &#215;

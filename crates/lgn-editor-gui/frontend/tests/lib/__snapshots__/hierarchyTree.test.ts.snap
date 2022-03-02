@@ -508,7 +508,61 @@ Entries {
     {
       "index": null,
       "item": Symbol(same-old-id),
-      "name": "monde",
+      "name": "prefab",
+      "subEntries": [
+        {
+          "index": null,
+          "item": Symbol(same-old-id),
+          "name": "props",
+          "subEntries": [
+            {
+              "index": 5,
+              "item": {
+                "id": "(91dc60590cba171e,7d0e930c-eb69-45c4-a695-fcb787f3700f)",
+                "path": "/prefab/props/cube_group_cube_1.ent.ins",
+                "version": 1,
+              },
+              "name": "cube_group_cube_1.ent.ins",
+              "subEntries": [],
+            },
+            {
+              "index": 6,
+              "item": {
+                "id": "(91dc60590cba171e,c6db12c5-47a6-407d-94da-b6853f36eb8a)",
+                "path": "/prefab/props/cube_group_cube_2.ent.ins",
+                "version": 1,
+              },
+              "name": "cube_group_cube_2.ent.ins",
+              "subEntries": [],
+            },
+            {
+              "index": 7,
+              "item": {
+                "id": "(1c0ff9e497b0740f,45d44b64-b97c-486d-a0d7-151974c28263)",
+                "path": "/prefab/props/cube_group.ent",
+                "version": 1,
+              },
+              "name": "cube_group.ent",
+              "subEntries": [],
+            },
+            {
+              "index": 8,
+              "item": {
+                "id": "(1c0ff9e497b0740f,270c28b5-6368-4a21-8ef1-a7d03f85abb3)",
+                "path": "/prefab/props/cube.ent",
+                "version": 1,
+              },
+              "name": "cube.ent",
+              "subEntries": [],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      "index": null,
+      "item": Symbol(same-old-id),
+      "name": "world",
       "subEntries": [
         {
           "index": null,
@@ -516,7 +570,7 @@ Entries {
           "name": "sample_1",
           "subEntries": [
             {
-              "index": 5,
+              "index": 9,
               "item": {
                 "id": "(91dc60590cba171e,7d083d64-cbf9-4786-ae8b-44924b3e2035)",
                 "path": "/world/sample_1/cube_1.ent.ins",
@@ -526,7 +580,7 @@ Entries {
               "subEntries": [],
             },
             {
-              "index": 6,
+              "index": 10,
               "item": {
                 "id": "(91dc60590cba171e,ee30f104-3ef5-46e7-af16-4f085bd6f8e3)",
                 "path": "/world/sample_1/cube_2.ent.ins",
@@ -536,7 +590,7 @@ Entries {
               "subEntries": [],
             },
             {
-              "index": 7,
+              "index": 11,
               "item": {
                 "id": "(91dc60590cba171e,4f595c8b-3b9a-41d6-9cf6-a7557dd2e8ee)",
                 "path": "/world/sample_1/cube_3.ent.ins",
@@ -546,7 +600,7 @@ Entries {
               "subEntries": [],
             },
             {
-              "index": 8,
+              "index": 12,
               "item": {
                 "id": "(91dc60590cba171e,181f9358-000f-47db-9583-7c9448c3dba8)",
                 "path": "/world/sample_1/cube_group_1.ent.ins",
@@ -556,7 +610,7 @@ Entries {
               "subEntries": [],
             },
             {
-              "index": 9,
+              "index": 13,
               "item": {
                 "id": "(1c0ff9e497b0740f,e07c7027-a823-47e5-b0dd-8871e27adfce)",
                 "path": "/world/sample_1/ground.ent",
@@ -566,7 +620,7 @@ Entries {
               "subEntries": [],
             },
             {
-              "index": 10,
+              "index": 14,
               "item": {
                 "id": "(07dd9f5d1793ed64,48909c46-ad4f-4d6b-a522-2e16e81ba082)",
                 "path": "/world/sample_1/ground.mat",
@@ -576,7 +630,7 @@ Entries {
               "subEntries": [],
             },
             {
-              "index": 11,
+              "index": 15,
               "item": {
                 "id": "(80b97dd7e2e9edca,7948dc8c-8bc6-4aaf-b3cf-0a21633edc44)",
                 "path": "/world/sample_1/ground.mesh",
@@ -588,7 +642,7 @@ Entries {
           ],
         },
         {
-          "index": 12,
+          "index": 16,
           "item": {
             "id": "(1c0ff9e497b0740f,5d6c8521-ef7f-4402-8fac-01c5c4f53329)",
             "path": "/world/sample_1.ent",
@@ -596,60 +650,6 @@ Entries {
           },
           "name": "sample_1.ent",
           "subEntries": [],
-        },
-      ],
-    },
-    {
-      "index": null,
-      "item": Symbol(same-old-id),
-      "name": "prefab",
-      "subEntries": [
-        {
-          "index": null,
-          "item": Symbol(same-old-id),
-          "name": "props",
-          "subEntries": [
-            {
-              "index": 13,
-              "item": {
-                "id": "(91dc60590cba171e,7d0e930c-eb69-45c4-a695-fcb787f3700f)",
-                "path": "/prefab/props/cube_group_cube_1.ent.ins",
-                "version": 1,
-              },
-              "name": "cube_group_cube_1.ent.ins",
-              "subEntries": [],
-            },
-            {
-              "index": 14,
-              "item": {
-                "id": "(91dc60590cba171e,c6db12c5-47a6-407d-94da-b6853f36eb8a)",
-                "path": "/prefab/props/cube_group_cube_2.ent.ins",
-                "version": 1,
-              },
-              "name": "cube_group_cube_2.ent.ins",
-              "subEntries": [],
-            },
-            {
-              "index": 15,
-              "item": {
-                "id": "(1c0ff9e497b0740f,45d44b64-b97c-486d-a0d7-151974c28263)",
-                "path": "/prefab/props/cube_group.ent",
-                "version": 1,
-              },
-              "name": "cube_group.ent",
-              "subEntries": [],
-            },
-            {
-              "index": 16,
-              "item": {
-                "id": "(1c0ff9e497b0740f,270c28b5-6368-4a21-8ef1-a7d03f85abb3)",
-                "path": "/prefab/props/cube.ent",
-                "version": 1,
-              },
-              "name": "cube.ent",
-              "subEntries": [],
-            },
-          ],
         },
       ],
     },

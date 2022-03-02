@@ -8,21 +8,14 @@
 import { Entries, Entry } from "@/lib/hierarchyTree";
 import { Orchestrator, Writable } from "@lgn/web-client/src/lib/store";
 
-interface IconSetter<Item> {
-  (entry: Entry<Item | symbol>): void;
-}
-
 export default class<Item extends { path: string }> implements Orchestrator {
   name = "hierarchTree";
 
-  // `symbol` is used only for folder like resources
-  // (which will be replaced by proper resources eventually)
-
-  currentlyRenameEntry: Writable<Entry<Item | symbol> | null>;
-  entries: Writable<Entries<Item | symbol>>;
+  currentlyRenameEntry: Writable<Entry<Item> | null>;
+  entries: Writable<Entries<Item>>;
 
   constructor(resources: Item[] = []) {
-    this.currentlyRenameEntry = new Writable<Entry<Item | symbol> | null>(null);
+    this.currentlyRenameEntry = new Writable<Entry<Item> | null>(null);
 
     this.entries = new Writable(Entries.fromArray(resources));
   }
