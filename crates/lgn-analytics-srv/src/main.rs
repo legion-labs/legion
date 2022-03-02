@@ -159,7 +159,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ])
         .expose_headers(tower_http::cors::Any {});
 
-    let auth_layer = tower::ServiceBuilder::new()
+    let auth_layer = tower::ServiceBuilder::new() //todo: compose with cors layer
         .layer(AuthLayer {
             user_info_url: String::from(
                 "https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/userInfo",
@@ -170,7 +170,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let health_check_server = HealthServer::new(HealthCheckService {});
     Server::builder()
         .accept_http1(true)
-        .layer(cors)
+        .layer(cors) //this is useless
         .layer(auth_layer)
         .add_service(tonic_web::enable(health_check_server))
         .add_service(tonic_web::enable(analytics_server))
