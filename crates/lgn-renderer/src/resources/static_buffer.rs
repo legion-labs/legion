@@ -14,53 +14,11 @@ use lgn_tracing::span_fn;
 use super::{RangeAllocator, SparseBindingManager, TransientPagedBuffer};
 use crate::RenderContext;
 
-pub(crate) struct StaticBufferAllocation {
-    static_buffer: UnifiedStaticBuffer,
-    allocation: Option<PagedBufferAllocation>,
-}
-
-impl Drop for StaticBufferAllocation {
-    fn drop(&mut self) {
-        self.static_buffer
-            .free_segment(self.allocation.take().unwrap());
-    }
-}
-
-impl StaticBufferAllocation {
-    pub fn offset(&self) -> u64 {
-        self.allocation.as_ref().unwrap().offset()
-    }
-
-    pub fn size(&self) -> u64 {
-        self.allocation.as_ref().unwrap().size()
-    }
-
-    pub fn vertex_buffer_binding(&self) -> VertexBufferBinding<'_> {
-        self.allocation.as_ref().unwrap().vertex_buffer_binding()
-    }
-
-    pub fn structured_buffer_view(&self, struct_size: u64, read_only: bool) -> BufferView {
-        self.allocation
-            .as_ref()
-            .unwrap()
-            .structured_buffer_view(struct_size, read_only)
-    }
-}
-
-pub(crate) struct UnifiedStaticBufferInner {
-    segment_allocator: RangeAllocator,
-    _allocation: Option<MemoryAllocation>,
-    binding_manager: Option<SparseBindingManager>,
-    sparse_binding: bool,
-    page_size: u64,
-    job_blocks: Vec<UniformGPUDataUploadJobBlock>,
-}
-
-#[derive(Clone)]
 pub struct UnifiedStaticBuffer {
-    inner: Arc<Mutex<UnifiedStaticBufferInner>>,
-    read_only_view: BufferView,
     buffer: Buffer,
+    read_only_view: BufferView,
+    _allocation: Option<MemoryAllocation>,
+    allocator: UnifiedStaticBufferAllocator,
 }
 
 impl UnifiedStaticBuffer {
@@ -109,16 +67,99 @@ impl UnifiedStaticBuffer {
         };
 
         Self {
-            inner: Arc::new(Mutex::new(UnifiedStaticBufferInner {
+            buffer: buffer.clone(),
+            _allocation: allocation,
+            read_only_view,
+            allocator: UnifiedStaticBufferAllocator::new(
+                &buffer,
+                virtual_buffer_size,
+                binding_manager,
+                sparse_binding,
+                required_alignment,
+            ),
+        }
+    }
+
+    pub fn allocator(&self) -> &UnifiedStaticBufferAllocator {
+        &self.allocator
+    }
+
+    pub fn read_only_view(&self) -> BufferView {
+        self.read_only_view.clone()
+    }
+
+    pub fn index_buffer_binding(&self) -> IndexBufferBinding<'_> {
+        IndexBufferBinding {
+            buffer: &self.buffer,
+            byte_offset: 0,
+            index_type: IndexType::Uint16,
+        }
+    }
+}
+
+pub(crate) struct StaticBufferAllocation {
+    allocator: UnifiedStaticBufferAllocator,
+    allocation: Option<PagedBufferAllocation>,
+}
+
+impl Drop for StaticBufferAllocation {
+    fn drop(&mut self) {
+        self.allocator.free_segment(self.allocation.take().unwrap());
+    }
+}
+
+impl StaticBufferAllocation {
+    pub fn offset(&self) -> u64 {
+        self.allocation.as_ref().unwrap().offset()
+    }
+
+    pub fn size(&self) -> u64 {
+        self.allocation.as_ref().unwrap().size()
+    }
+
+    pub fn vertex_buffer_binding(&self) -> VertexBufferBinding<'_> {
+        self.allocation.as_ref().unwrap().vertex_buffer_binding()
+    }
+
+    pub fn structured_buffer_view(&self, struct_size: u64, read_only: bool) -> BufferView {
+        self.allocation
+            .as_ref()
+            .unwrap()
+            .structured_buffer_view(struct_size, read_only)
+    }
+}
+
+pub(crate) struct UnifiedStaticBufferAllocatorInner {
+    buffer: Buffer,
+    segment_allocator: RangeAllocator,
+    binding_manager: Option<SparseBindingManager>,
+    sparse_binding: bool,
+    page_size: u64,
+    job_blocks: Vec<UniformGPUDataUploadJobBlock>,
+}
+
+#[derive(Clone)]
+pub struct UnifiedStaticBufferAllocator {
+    inner: Arc<Mutex<UnifiedStaticBufferAllocatorInner>>,
+}
+
+impl UnifiedStaticBufferAllocator {
+    pub fn new(
+        buffer: &Buffer,
+        virtual_buffer_size: u64,
+        binding_manager: Option<SparseBindingManager>,
+        sparse_binding: bool,
+        required_alignment: u64,
+    ) -> Self {
+        Self {
+            inner: Arc::new(Mutex::new(UnifiedStaticBufferAllocatorInner {
+                buffer: buffer.clone(),
                 segment_allocator: RangeAllocator::new(virtual_buffer_size),
-                _allocation: allocation,
                 binding_manager,
                 sparse_binding,
                 page_size: required_alignment,
                 job_blocks: Vec::new(),
             })),
-            read_only_view,
-            buffer,
         }
     }
 
@@ -134,16 +175,16 @@ impl UnifiedStaticBuffer {
 
         let allocation = if inner.sparse_binding {
             MemoryPagesAllocation::for_sparse_buffer(
-                self.buffer.device_context(),
-                &self.buffer,
+                inner.buffer.device_context(),
+                &inner.buffer,
                 page_count,
             )
         } else {
-            MemoryPagesAllocation::empty_allocation(self.buffer.device_context())
+            MemoryPagesAllocation::empty_allocation(inner.buffer.device_context())
         };
 
         let allocation = PagedBufferAllocation {
-            buffer: self.buffer.clone(),
+            buffer: inner.buffer.clone(),
             memory: allocation,
             range: location,
         };
@@ -153,7 +194,7 @@ impl UnifiedStaticBuffer {
         }
 
         StaticBufferAllocation {
-            static_buffer: self.clone(),
+            allocator: self.clone(),
             allocation: Some(allocation),
         }
     }
@@ -199,7 +240,7 @@ impl UnifiedStaticBuffer {
 
         cmd_buffer.resource_barrier(
             &[BufferBarrier {
-                buffer: &self.buffer,
+                buffer: &inner.buffer,
                 src_state: ResourceState::SHADER_RESOURCE,
                 dst_state: ResourceState::COPY_DST,
                 queue_transition: BarrierQueueTransition::None,
@@ -210,7 +251,7 @@ impl UnifiedStaticBuffer {
         for job in &inner.job_blocks {
             cmd_buffer.copy_buffer_to_buffer(
                 &job.upload_allocation.buffer,
-                &self.buffer,
+                &inner.buffer,
                 &job.upload_jobs,
             );
         }
@@ -218,7 +259,7 @@ impl UnifiedStaticBuffer {
 
         cmd_buffer.resource_barrier(
             &[BufferBarrier {
-                buffer: &self.buffer,
+                buffer: &inner.buffer,
                 src_state: ResourceState::COPY_DST,
                 dst_state: ResourceState::SHADER_RESOURCE,
                 queue_transition: BarrierQueueTransition::None,
@@ -236,22 +277,9 @@ impl UnifiedStaticBuffer {
 
         graphics_queue.submit(&mut [cmd_buffer.finalize()], &wait_sems, &[], None);
     }
-
-    pub fn read_only_view(&self) -> BufferView {
-        self.read_only_view.clone()
-    }
-
-    pub fn index_buffer_binding(&self) -> IndexBufferBinding<'_> {
-        IndexBufferBinding {
-            buffer: &self.buffer,
-            byte_offset: 0,
-            index_type: IndexType::Uint16,
-        }
-    }
 }
 
 pub struct UniformGPUData<T> {
-    static_buffer: UnifiedStaticBuffer,
     allocated_pages: RwLock<Vec<StaticBufferAllocation>>,
     page_size: u64,
     element_size: u64,
@@ -259,19 +287,26 @@ pub struct UniformGPUData<T> {
 }
 
 impl<T> UniformGPUData<T> {
-    pub fn new(static_buffer: &UnifiedStaticBuffer, page_size: u64) -> Self {
-        let page = static_buffer.allocate_segment(page_size);
-        let page_size = page.size();
+    pub fn new(allocator: Option<&UnifiedStaticBufferAllocator>, mut page_size: u64) -> Self {
+        let mut allocated_pages = Vec::new();
+        if let Some(allocator) = allocator {
+            let page = allocator.allocate_segment(page_size);
+            page_size = page.size();
+            allocated_pages.push(page);
+        }
         Self {
-            static_buffer: static_buffer.clone(),
-            allocated_pages: RwLock::new(vec![page]),
+            allocated_pages: RwLock::new(allocated_pages),
             page_size,
             element_size: std::mem::size_of::<T>() as u64,
             marker: ::std::marker::PhantomData,
         }
     }
 
-    pub fn ensure_index_allocated(&self, index: u32) -> u64 {
+    pub fn ensure_index_allocated(
+        &self,
+        allocator: &UnifiedStaticBufferAllocator,
+        index: u32,
+    ) -> u64 {
         let index_64 = u64::from(index);
         let elements_per_page = self.page_size / self.element_size;
         let required_pages = (index_64 / elements_per_page) + 1;
@@ -290,7 +325,7 @@ impl<T> UniformGPUData<T> {
         let mut page_write_access = self.allocated_pages.write().unwrap();
 
         while (page_write_access.len() as u64) < required_pages {
-            page_write_access.push(self.static_buffer.allocate_segment(self.page_size));
+            page_write_access.push(allocator.allocate_segment(self.page_size));
         }
 
         page_write_access[index_of_page as usize].offset() + (index_in_page * self.element_size)

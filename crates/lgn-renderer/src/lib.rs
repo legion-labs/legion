@@ -110,7 +110,7 @@ impl Plugin for RendererPlugin {
         const NUM_RENDER_FRAMES: usize = 2;
         let renderer = Renderer::new(NUM_RENDER_FRAMES);
         let device_context = renderer.device_context().clone();
-        let static_buffer = renderer.static_buffer().clone();
+        let allocator = renderer.static_buffer_allocator().clone();
         let descriptor_heap_manager =
             DescriptorHeapManager::new(NUM_RENDER_FRAMES, &device_context);
         let pipeline_manager = PipelineManager::new(&device_context);
@@ -132,7 +132,7 @@ impl Plugin for RendererPlugin {
         //
         // Resources
         //
-        app.insert_resource(MeshRenderer::new(&static_buffer));
+        app.insert_resource(MeshRenderer::new(&allocator));
         app.insert_resource(pipeline_manager);
         app.insert_resource(ManipulatorManager::new());
         app.insert_resource(CGenRegistryList::new());
@@ -142,13 +142,13 @@ impl Plugin for RendererPlugin {
         app.insert_resource(BindlessTextureManager::new(renderer.device_context(), 256));
         app.insert_resource(DebugDisplay::default());
         app.insert_resource(LightingManager::default());
-        app.insert_resource(GpuInstanceManager::new(&static_buffer));
+        app.insert_resource(GpuInstanceManager::new(&allocator));
         app.insert_resource(MissingVisualTracker::default());
         app.insert_resource(descriptor_heap_manager);
         app.insert_resource(PersistentDescriptorSetManager::new());
         app.add_plugin(EguiPlugin::new());
         app.add_plugin(PickingPlugin {});
-        app.add_plugin(GpuDataPlugin::new(&static_buffer));
+        app.add_plugin(GpuDataPlugin::default());
         app.add_plugin(MeshRendererPlugin {});
         app.insert_resource(renderer);
 
@@ -452,7 +452,11 @@ fn update_gpu_instances(
             material_key = Some(material.material_id);
         }
 
-        picking_data_manager.alloc_gpu_data(entity, &mut picking_block);
+        picking_data_manager.alloc_gpu_data(
+            entity,
+            renderer.static_buffer_allocator(),
+            &mut picking_block,
+        );
 
         let mut picking_data = cgen::cgen_type::GpuInstancePickingData::default();
         picking_data.set_picking_id(picking_context.aquire_picking_id(entity).into());
@@ -478,6 +482,7 @@ fn update_gpu_instances(
 
             let gpu_instance_id = instance_manager.add_gpu_instance(
                 entity,
+                renderer.static_buffer_allocator(),
                 &mut instance_block,
                 &mut updater,
                 &instance_vas,

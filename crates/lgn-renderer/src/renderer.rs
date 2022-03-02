@@ -13,7 +13,8 @@ use crate::cgen::cgen_type::{DirectionalLight, OmniDirectionalLight, SpotLight};
 
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, GpuSafePool, TransientPagedBuffer,
-    UnifiedStaticBuffer, UniformGPUData, UniformGPUDataUploadJobBlock,
+    UnifiedStaticBuffer, UnifiedStaticBufferAllocator, UniformGPUData,
+    UniformGPUDataUploadJobBlock,
 };
 use crate::RenderContext;
 
@@ -65,18 +66,18 @@ impl Renderer {
 
         let omnidirectional_lights_data =
             OmniDirectionalLightsStaticBuffer::new(UniformGPUData::<OmniDirectionalLight>::new(
-                &static_buffer,
+                Some(static_buffer.allocator()),
                 OmniDirectionalLight::PAGE_SIZE,
             ));
 
         let directional_lights_data =
             DirectionalLightsStaticBuffer::new(UniformGPUData::<DirectionalLight>::new(
-                &static_buffer,
+                Some(static_buffer.allocator()),
                 DirectionalLight::PAGE_SIZE,
             ));
 
         let spotlights_data = SpotLightsStaticBuffer::new(UniformGPUData::<SpotLight>::new(
-            &static_buffer,
+            Some(static_buffer.allocator()),
             SpotLight::PAGE_SIZE,
         ));
 
@@ -150,8 +151,14 @@ impl Renderer {
         &self.static_buffer
     }
 
+    pub fn static_buffer_allocator(&self) -> &UnifiedStaticBufferAllocator {
+        self.static_buffer.allocator()
+    }
+
     pub fn add_update_job_block(&self, job_blocks: &mut Vec<UniformGPUDataUploadJobBlock>) {
-        self.static_buffer.add_update_job_block(job_blocks);
+        self.static_buffer
+            .allocator()
+            .add_update_job_block(job_blocks);
     }
 
     #[span_fn]
@@ -160,7 +167,7 @@ impl Renderer {
         let unbind_semaphore = &self.sparse_unbind_sems[self.render_frame_idx];
         let bind_semaphore = &self.sparse_bind_sems[self.render_frame_idx];
 
-        self.static_buffer.flush_updater(
+        self.static_buffer.allocator().flush_updater(
             prev_frame_semaphore,
             unbind_semaphore,
             bind_semaphore,

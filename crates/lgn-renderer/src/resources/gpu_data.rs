@@ -17,20 +17,11 @@ use crate::{
 
 use super::{
     BindlessTextureManager, DescriptorHeapManager, IndexAllocator, IndexBlock, PipelineManager,
-    StaticBufferAllocation, UnifiedStaticBuffer, UniformGPUData, UniformGPUDataUpdater,
+    StaticBufferAllocation, UnifiedStaticBufferAllocator, UniformGPUData, UniformGPUDataUpdater,
 };
 
-pub struct GpuDataPlugin {
-    static_buffer: UnifiedStaticBuffer,
-}
-
-impl GpuDataPlugin {
-    pub fn new(static_buffer: &UnifiedStaticBuffer) -> Self {
-        Self {
-            static_buffer: static_buffer.clone(),
-        }
-    }
-}
+#[derive(Default)]
+pub struct GpuDataPlugin {}
 
 pub(crate) struct GpuDataManager<K, T> {
     gpu_data: UniformGPUData<T>,
@@ -42,31 +33,31 @@ pub(crate) struct GpuDataManager<K, T> {
 }
 
 impl<K, T> GpuDataManager<K, T> {
-    pub fn new(static_buffer: &UnifiedStaticBuffer, page_size: u64, block_size: u32) -> Self {
+    pub fn new(page_size: u64, block_size: u32) -> Self {
         let index_allocator = IndexAllocator::new(block_size);
-        let gpu_data = UniformGPUData::<T>::new(static_buffer, page_size);
-
-        let mut index_block = None;
-        let default_id = index_allocator.acquire_index(&mut index_block);
-        let default_va = gpu_data.ensure_index_allocated(default_id);
-        index_allocator.release_index_block(index_block.unwrap());
+        let gpu_data = UniformGPUData::<T>::new(None, page_size);
 
         Self {
             gpu_data,
             index_allocator,
             data_map: BTreeMap::new(),
             default_uploaded: false,
-            default_id,
-            default_va,
+            default_id: u32::MAX,
+            default_va: u64::MAX,
         }
     }
 
-    pub fn alloc_gpu_data(&mut self, key: K, index_block: &mut Option<IndexBlock>) -> (u32, u64)
+    pub fn alloc_gpu_data(
+        &mut self,
+        key: K,
+        allocator: &UnifiedStaticBufferAllocator,
+        index_block: &mut Option<IndexBlock>,
+    ) -> (u32, u64)
     where
         K: Ord,
     {
         let gpu_data_id = self.index_allocator.acquire_index(index_block);
-        let gpu_data_va = self.gpu_data.ensure_index_allocated(gpu_data_id);
+        let gpu_data_va = self.gpu_data.ensure_index_allocated(allocator, gpu_data_id);
 
         if let Some(gpu_data) = self.data_map.get_mut(&key) {
             gpu_data.push((gpu_data_id, gpu_data_va));
@@ -131,8 +122,21 @@ impl<K, T> GpuDataManager<K, T> {
         }
     }
 
-    pub fn upload_default(&self, default: T, updater: &mut UniformGPUDataUpdater) {
+    pub fn upload_default(
+        &mut self,
+        default: T,
+        allocator: &UnifiedStaticBufferAllocator,
+        updater: &mut UniformGPUDataUpdater,
+    ) {
         if !self.default_uploaded {
+            let mut index_block = None;
+            self.default_id = self.index_allocator.acquire_index(&mut index_block);
+            self.default_va = self
+                .gpu_data
+                .ensure_index_allocated(allocator, self.default_id);
+            self.index_allocator
+                .release_index_block(index_block.unwrap());
+
             updater.add_update_jobs(&[default], self.default_va);
         }
     }
@@ -161,23 +165,11 @@ impl Plugin for GpuDataPlugin {
         //
         // Resources
         //
-        app.insert_resource(GpuEntityTransformManager::new(
-            &self.static_buffer,
-            64 * 1024,
-            1024,
-        ));
-        app.insert_resource(GpuEntityColorManager::new(
-            &self.static_buffer,
-            64 * 1024,
-            256,
-        ));
-        app.insert_resource(GpuPickingDataManager::new(
-            &self.static_buffer,
-            64 * 1024,
-            1024,
-        ));
+        app.insert_resource(GpuEntityTransformManager::new(64 * 1024, 1024));
+        app.insert_resource(GpuEntityColorManager::new(64 * 1024, 256));
+        app.insert_resource(GpuPickingDataManager::new(64 * 1024, 1024));
 
-        app.insert_resource(GpuMaterialManager::new(&self.static_buffer, 64 * 1024, 256));
+        app.insert_resource(GpuMaterialManager::new(64 * 1024, 256));
 
         //
         // Stage PostUpdate
@@ -204,12 +196,13 @@ impl Plugin for GpuDataPlugin {
 #[span_fn]
 #[allow(clippy::needless_pass_by_value)]
 fn alloc_color_address(
+    renderer: Res<'_, Renderer>,
     mut color_manager: ResMut<'_, GpuEntityColorManager>,
     query: Query<'_, '_, Entity, Added<VisualComponent>>,
 ) {
     let mut index_block: Option<IndexBlock> = None;
     for entity in query.iter() {
-        color_manager.alloc_gpu_data(entity, &mut index_block);
+        color_manager.alloc_gpu_data(entity, renderer.static_buffer_allocator(), &mut index_block);
     }
     color_manager.return_index_block(index_block);
 }
@@ -217,12 +210,17 @@ fn alloc_color_address(
 #[span_fn]
 #[allow(clippy::needless_pass_by_value)]
 fn alloc_transform_address(
+    renderer: Res<'_, Renderer>,
     mut transform_manager: ResMut<'_, GpuEntityTransformManager>,
     query: Query<'_, '_, Entity, Added<GlobalTransform>>,
 ) {
     let mut index_block: Option<IndexBlock> = None;
     for entity in query.iter() {
-        transform_manager.alloc_gpu_data(entity, &mut index_block);
+        transform_manager.alloc_gpu_data(
+            entity,
+            renderer.static_buffer_allocator(),
+            &mut index_block,
+        );
     }
     transform_manager.return_index_block(index_block);
 }
@@ -230,12 +228,17 @@ fn alloc_transform_address(
 #[span_fn]
 #[allow(clippy::needless_pass_by_value)]
 fn alloc_material_address(
+    renderer: Res<'_, Renderer>,
     mut material_manager: ResMut<'_, GpuMaterialManager>,
     query: Query<'_, '_, &MaterialComponent, Added<MaterialComponent>>,
 ) {
     let mut index_block: Option<IndexBlock> = None;
     for material in query.iter() {
-        material_manager.alloc_gpu_data(material.material_id, &mut index_block);
+        material_manager.alloc_gpu_data(
+            material.material_id,
+            renderer.static_buffer_allocator(),
+            &mut index_block,
+        );
     }
     material_manager.return_index_block(index_block);
 }
@@ -291,7 +294,7 @@ fn upload_transform_data(
 #[allow(clippy::needless_pass_by_value)]
 fn upload_material_data(
     renderer: Res<'_, Renderer>,
-    material_manager: Res<'_, GpuMaterialManager>,
+    mut material_manager: ResMut<'_, GpuMaterialManager>,
     bindless_textures: ResMut<'_, BindlessTextureManager>,
     query: Query<'_, '_, &MaterialComponent, Changed<MaterialComponent>>,
 ) {
@@ -307,7 +310,11 @@ fn upload_material_data(
     default_material.set_metalness_texture(u32::MAX.into());
     default_material.set_roughness_texture(u32::MAX.into());
 
-    material_manager.upload_default(default_material, &mut updater);
+    material_manager.upload_default(
+        default_material,
+        renderer.static_buffer_allocator(),
+        &mut updater,
+    );
 
     for material in query.iter() {
         let mut gpu_material = cgen::cgen_type::MaterialData::default();
@@ -382,9 +389,9 @@ pub(crate) struct GpuVaTableForGpuInstance {
 }
 
 impl GpuVaTableForGpuInstance {
-    pub fn new(static_buffer: &UnifiedStaticBuffer) -> Self {
+    pub fn new(allocator: &UnifiedStaticBufferAllocator) -> Self {
         Self {
-            static_allocation: static_buffer.allocate_segment(4 * 1024 * 1024),
+            static_allocation: allocator.allocate_segment(4 * 1024 * 1024),
         }
     }
 
