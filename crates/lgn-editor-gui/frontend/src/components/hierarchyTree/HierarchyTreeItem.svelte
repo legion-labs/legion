@@ -3,7 +3,7 @@
   import { createEventDispatcher } from "svelte";
   import { extension } from "@/lib/path";
   import Icon from "@iconify/svelte";
-  import { keyboardNavigationItem } from "@lgn/web-client/src/actions/keyboardNavigation";
+  import { keyboardNavigationItem as keyboardNavigationItemAction } from "@lgn/web-client/src/actions/keyboardNavigation";
   import contextMenuAction from "@/actions/contextMenu";
   import TextInput from "../inputs/TextInput.svelte";
   import {
@@ -13,7 +13,7 @@
   } from "@lgn/web-client/src/actions/dnd";
   import { nullable as nullableAction } from "@lgn/web-client/src/lib/action";
 
-  type Item = $$Generic;
+  type Item = $$Generic<{ id: string } | symbol>;
 
   type $$Slots = {
     name: { itemName: string };
@@ -30,7 +30,7 @@
   // TODO: Will probably have to be shared throughout the whole application
   const type = "RESOURCE";
 
-  export let index: number;
+  export let index: number | null;
 
   export let entry: Entry<Item>;
 
@@ -50,6 +50,9 @@
   let mode: "view" | "edit";
 
   let isExpanded = true;
+
+  // TODO: Don't rely on symbols and use a filter instead
+  $: isDisabled = typeof entry.item === "symbol";
 
   $: isHighlighted = highlightedEntry ? entry === highlightedEntry : false;
 
@@ -72,6 +75,8 @@
 
   const contextMenu = nullableAction(contextMenuAction);
 
+  const keyboardNavigationItem = nullableAction(keyboardNavigationItemAction);
+
   function extractAutoSelectRange() {
     const name = entryName();
 
@@ -86,6 +91,10 @@
   }
 
   function highlight() {
+    if (isDisabled) {
+      return;
+    }
+
     dispatch("highlight", entry);
   }
 
@@ -133,23 +142,29 @@
   class="root"
   class:bg-gray-800={dndHighlightedEntry === entry}
   on:dblclick
-  use:keyboardNavigationItem={index}
-  use:dropzone={entry.subEntries.length ? { accept: type } : null}
+  use:keyboardNavigationItem={isDisabled ? null : index}
+  use:dropzone={{ accept: type }}
   on:dnd-drop={onDrop}
   on:dnd-dragenter={onDragOver}
 >
   <div
     class="name"
+    class:disabled={isDisabled}
     class:font-semibold={entry.subEntries.length}
     class:lg-space={mode === "view"}
     class:highlighted-view={isHighlighted && mode === "view"}
     on:mousedown={highlight}
-    use:contextMenu={withItemContextMenu}
-    use:draggable={!entry.subEntries.length ? { item: entry, type } : null}
+    use:contextMenu={isDisabled ? null : withItemContextMenu}
+    use:draggable={isDisabled ? null : { item: entry, type }}
   >
     {#if entry.subEntries.length > 0}
-      <div class="icon" class:expanded={isExpanded} on:click={toggleExpanded}>
-        <Icon icon="ic:baseline-chevron-right" />
+      <div class="icon-container" on:click={toggleExpanded}>
+        <div class="folder-icon" class:expanded={isExpanded}>
+          <Icon icon="ic:baseline-chevron-right" />
+        </div>
+        <div class="icon">
+          <slot name="icon" {entry} />
+        </div>
       </div>
     {:else}
       <div class="icon">
@@ -175,7 +190,7 @@
     </div>
   </div>
   {#if entry.subEntries.length && isExpanded}
-    {#each entry.subEntries as subEntry (subEntry.index)}
+    {#each entry.subEntries as subEntry (typeof subEntry.item === "symbol" ? subEntry.item : subEntry.item.id)}
       <div class="sub-entries">
         <svelte:self
           index={subEntry.index}
@@ -204,7 +219,11 @@
   }
 
   .name {
-    @apply flex items-center h-7 w-full px-1 cursor-pointer border border-transparent;
+    @apply flex items-center h-7 w-full px-1 border border-transparent;
+  }
+
+  .name.disabled {
+    @apply cursor-not-allowed;
   }
 
   .name.highlighted-view {
@@ -215,11 +234,19 @@
     @apply space-x-1;
   }
 
-  .icon {
-    @apply flex items-center text-orange-700 transition-all duration-150;
+  .icon-container {
+    @apply flex items-center space-x-1;
   }
 
-  .icon.expanded {
+  .icon {
+    @apply flex items-center h-5 w-5 text-orange-700 opacity-50;
+  }
+
+  .folder-icon {
+    @apply flex items-center h-2.5 w-2.5 transition-all duration-150 cursor-pointer;
+  }
+
+  .folder-icon.expanded {
     @apply rotate-90;
   }
 

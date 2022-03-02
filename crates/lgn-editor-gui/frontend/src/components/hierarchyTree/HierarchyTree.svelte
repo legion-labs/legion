@@ -5,7 +5,7 @@
   import KeyboardNavigationStore from "@lgn/web-client/src/stores/keyboardNavigation";
   import HierarchyTreeItem from "./HierarchyTreeItem.svelte";
 
-  type Item = $$Generic;
+  type Item = $$Generic<{ id: string } | symbol>;
 
   type $$Slots = {
     name: { itemName: string };
@@ -131,7 +131,7 @@
   }}
   bind:this={hierarchyTree}
 >
-  {#each entries.entries as entry (entry.index)}
+  {#each entries.entries as entry (typeof entry.item === "symbol" ? entry.item : entry.item.id)}
     <HierarchyTreeItem
       index={entry.index}
       {entry}

@@ -3,7 +3,7 @@ import { Entry } from "./hierarchyTree";
 
 export function iconFor(entry: Entry<ResourceDescription | symbol>) {
   if (typeof entry.item === "symbol") {
-    return "ic:outline-insert-drive-file";
+    return "ic:baseline-folder-open";
   }
 
   switch (entry.item.type) {
@@ -31,18 +31,16 @@ export function iconFor(entry: Entry<ResourceDescription | symbol>) {
       return "ic:outline-format-shapes";
     }
 
-    case "psd": {
-      return "ic:outline-image";
-    }
+    case "psd":
+    case "png":
 
-    case "png": {
-      return "ic:outline-image";
-    }
-
+    // eslint-disable-next-line no-fallthrough
     case "texture": {
       return "ic:outline-image";
     }
   }
 
-  return "ic:outline-insert-drive-file";
+  return entry.subEntries.length
+    ? "ic:baseline-folder-open"
+    : "ic:outline-insert-drive-file";
 }

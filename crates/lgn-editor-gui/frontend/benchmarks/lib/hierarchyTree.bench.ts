@@ -9,13 +9,13 @@ export const resourcesSuite = suite("Entries.fromArray", (bench) => {
     { iter: 10_000 },
     () => {
       return () => {
-        Entries.fromArray(resources, Symbol);
+        Entries.fromArray(resources);
       };
     }
   );
 
   bench.add("Compute size of entries", { iter: 10_000 }, () => {
-    const entries = Entries.fromArray(resources, Symbol);
+    const entries = Entries.fromArray(resources);
 
     return () => {
       entries.recalculateSize();
@@ -23,7 +23,7 @@ export const resourcesSuite = suite("Entries.fromArray", (bench) => {
   });
 
   bench.add("Find early entry in entries", { iter: 10_000 }, () => {
-    const entries = Entries.fromArray(resources, Symbol);
+    const entries = Entries.fromArray(resources);
 
     return () => {
       entries.find((entry) => entry.name === "DebugCube1");
@@ -31,7 +31,7 @@ export const resourcesSuite = suite("Entries.fromArray", (bench) => {
   });
 
   bench.add("Find late entry in entries", { iter: 10_000 }, () => {
-    const entries = Entries.fromArray(resources, Symbol);
+    const entries = Entries.fromArray(resources);
 
     return () => {
       entries.find((entry) => entry.name === "ground.mat");
@@ -39,7 +39,7 @@ export const resourcesSuite = suite("Entries.fromArray", (bench) => {
   });
 
   bench.add("Update early entry in entries", { iter: 10_000 }, () => {
-    const entries = Entries.fromArray(resources, Symbol);
+    const entries = Entries.fromArray(resources);
 
     return () => {
       entries.update((entry) =>
@@ -49,7 +49,7 @@ export const resourcesSuite = suite("Entries.fromArray", (bench) => {
   });
 
   bench.add("Update late entry in entries", { iter: 10_000 }, () => {
-    const entries = Entries.fromArray(resources, Symbol);
+    const entries = Entries.fromArray(resources);
 
     return () => {
       entries.update((entry) =>
@@ -59,7 +59,7 @@ export const resourcesSuite = suite("Entries.fromArray", (bench) => {
   });
 
   bench.add("Remove early entry from entries", { iter: 10_000 }, () => {
-    const entries = Entries.fromArray(resources, Symbol);
+    const entries = Entries.fromArray(resources);
 
     return () => {
       entries.remove(entries.entries[2]);
@@ -67,7 +67,7 @@ export const resourcesSuite = suite("Entries.fromArray", (bench) => {
   });
 
   bench.add("Remove late entry from entries", { iter: 10_000 }, () => {
-    const entries = Entries.fromArray(resources, Symbol);
+    const entries = Entries.fromArray(resources);
 
     return () => {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -76,7 +76,7 @@ export const resourcesSuite = suite("Entries.fromArray", (bench) => {
   });
 
   bench.add("Insert item early in entries", { iter: 10_000 }, () => {
-    const entries = Entries.fromArray(resources, Symbol);
+    const entries = Entries.fromArray(resources);
     const entry = entries.getFromIndex(2) as Entry<{ path: string }>;
 
     return () => {
@@ -85,7 +85,7 @@ export const resourcesSuite = suite("Entries.fromArray", (bench) => {
   });
 
   bench.add("Insert item late in entries", { iter: 10_000 }, () => {
-    const entries = Entries.fromArray(resources, Symbol);
+    const entries = Entries.fromArray(resources);
     const entry = entries.getFromIndex(entries.size() - 2) as Entry<{
       path: string;
     }>;
@@ -114,13 +114,13 @@ export const bigResourcesSuite = suite(
       { iter: 100 },
       () => {
         return () => {
-          Entries.fromArray(bigResources, Symbol);
+          Entries.fromArray(bigResources);
         };
       }
     );
 
     bench.add("Compute size of entries - big resources", { iter: 100 }, () => {
-      const entries = Entries.fromArray(bigResources, Symbol);
+      const entries = Entries.fromArray(bigResources);
 
       return () => {
         entries.recalculateSize();
@@ -131,7 +131,7 @@ export const bigResourcesSuite = suite(
       "Find early entry in entries - big resources",
       { iter: 100 },
       () => {
-        const entries = Entries.fromArray(bigResources, Symbol);
+        const entries = Entries.fromArray(bigResources);
 
         return () => {
           entries.find((entry) => entry.name === "DebugCube1");
@@ -143,7 +143,7 @@ export const bigResourcesSuite = suite(
       "Find late entry in entries - big resources",
       { iter: 100 },
       () => {
-        const entries = Entries.fromArray(bigResources, Symbol);
+        const entries = Entries.fromArray(bigResources);
 
         return () => {
           entries.find((entry) => entry.name === "ground.mat");
@@ -155,7 +155,7 @@ export const bigResourcesSuite = suite(
       "Update early entry in entries - big resources",
       { iter: 100 },
       () => {
-        const entries = Entries.fromArray(bigResources, Symbol);
+        const entries = Entries.fromArray(bigResources);
 
         return () => {
           entries.update((entry) =>
@@ -171,7 +171,7 @@ export const bigResourcesSuite = suite(
       "Update late entry in entries - big resources",
       { iter: 100 },
       () => {
-        const entries = Entries.fromArray(bigResources, Symbol);
+        const entries = Entries.fromArray(bigResources);
 
         return () => {
           entries.update((entry) =>
@@ -187,7 +187,7 @@ export const bigResourcesSuite = suite(
       "Remove early entry from entries - big resources",
       { iter: 100 },
       () => {
-        const entries = Entries.fromArray(bigResources, Symbol);
+        const entries = Entries.fromArray(bigResources);
 
         return () => {
           entries.remove(entries.entries[2]);
@@ -199,7 +199,7 @@ export const bigResourcesSuite = suite(
       "Remove late entry from entries - big resources",
       { iter: 100 },
       () => {
-        const entries = Entries.fromArray(bigResources, Symbol);
+        const entries = Entries.fromArray(bigResources);
 
         return () => {
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -212,7 +212,7 @@ export const bigResourcesSuite = suite(
       "Insert item early in entries - big resources",
       { iter: 100 },
       () => {
-        const entries = Entries.fromArray(bigResources, Symbol);
+        const entries = Entries.fromArray(bigResources);
         const entry = entries.getFromIndex(2) as Entry<{ path: string }>;
 
         return () => {
@@ -225,7 +225,7 @@ export const bigResourcesSuite = suite(
       "Insert item late in entries - big resources",
       { iter: 100 },
       () => {
-        const entries = Entries.fromArray(bigResources, Symbol);
+        const entries = Entries.fromArray(bigResources);
         const entry = entries.getFromIndex(entries.size() - 2) as Entry<{
           path: string;
         }>;
