@@ -1,6 +1,7 @@
 <script context="module" lang="ts">
   import { SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
   import { BlockMetadata } from "@lgn/proto-telemetry/dist/block";
+  import { BarLoader } from "svelte-loading-spinners";
 
   type Thread = {
     streamInfo: Stream;
@@ -51,7 +52,7 @@
   import { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
   import { Process } from "@lgn/proto-telemetry/dist/process";
   import { Stream } from "@lgn/proto-telemetry/dist/stream";
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { formatExecutionTime } from "@/lib/format";
   import { zoomHorizontalViewRange } from "@/lib/zoom";
   import TimeRangeDetails from "@/components/Misc/TimeRangeDetails.svelte";
@@ -94,6 +95,9 @@
   let currentSelection: [number, number] | undefined;
   let loadingProgression: LoadingState = { current: 0, total: 0 };
   let client: PerformanceAnalyticsClientImpl | null = null;
+  let drawTime: number;
+  let loading = true;
+  let windowInnerWidth: number;
 
   onMount(async () => {
     client = await makeGrpcClient();
@@ -311,6 +315,7 @@
   }
 
   function onLodReceived(response: BlockSpansReply) {
+    loading = false;
     const blockId = response.blockId;
     if (!response.lod) {
       throw new Error(`Error fetching spans for block ${blockId}`);
@@ -368,7 +373,9 @@
     refreshTimer = setTimeout(drawCanvas, 10);
   }
 
-  function drawCanvas() {
+  async function drawCanvas() {
+    var startTime = performance.now();
+
     if (!canvas || !renderingContext) {
       return;
     }
@@ -377,8 +384,12 @@
       throw new Error("Current process not set");
     }
 
-    canvas.height =
-      window.innerHeight - canvas.getBoundingClientRect().top - 20;
+    await tick();
+    canvas.width = Math.max(400, Math.round(windowInnerWidth * 0.95));
+    canvas.height = Math.min(
+      1000,
+      window.innerHeight - canvas.getBoundingClientRect().top - 20
+    );
 
     renderingContext.clearRect(0, 0, canvas.width, canvas.height);
     let threadVerticalOffset = yOffset;
@@ -411,6 +422,8 @@
     }
 
     DrawSelectedRange(canvas, renderingContext, selectionState, getViewRange());
+
+    drawTime = Math.floor(performance.now() - startTime);
   }
 
   function drawSpanTrack(
@@ -712,11 +725,21 @@
   $: {
     mergeThreshold = mergeThresholdForLOD(LOD);
   }
+
+  $: {
+    if (windowInnerWidth) {
+      drawCanvas();
+    }
+  }
+
+  $: display = `display:${loading ? "none" : "block"}`;
 </script>
+
+<svelte:window bind:innerWidth={windowInnerWidth} />
 
 <div>
   {#if currentProcess}
-    <div>
+    <div style={display}>
       <div>{currentProcess.exe} {currentProcess.processId}</div>
       {#if currentProcess.parentProcessId}
         <div class="parent-process">
@@ -728,20 +751,27 @@
     </div>
   {/if}
 
+  {#if loading}
+    <div class="flex items-center justify-center loader">
+      <BarLoader />
+    </div>
+  {/if}
+
   <canvas
-    class="timeline-canvas"
+    style={display}
+    class="timeline-canvas shadow-sm"
     bind:this={canvas}
     id="canvas_timeline"
-    width="1024px"
+    width={windowInnerWidth}
     on:wheel|preventDefault={onZoom}
     on:mousemove|preventDefault={onMouseMove}
     on:mousedown|preventDefault={onMouseDown}
   />
 
-  <div id="rightcolumn">
+  <div style={display}>
     <TimeRangeDetails timeRange={currentSelection} {processId} />
     <div id="debugdiv">
-      <h3>debug stats</h3>
+      <div>Drawtime: {drawTime} ms</div>
       <div>
         <span>Pixel Size</span>
         <span>{formatExecutionTime(pixelSize)}</span>
@@ -759,12 +789,12 @@
         <span>{nbEventsRepresented}</span>
       </div>
     </div>
+    {#if loadingProgression}
+      <div id="totalLoadingProgress">
+        <div id="loadedProgress" />
+      </div>
+    {/if}
   </div>
-  {#if loadingProgression}
-    <div id="totalLoadingProgress">
-      <div id="loadedProgress" />
-    </div>
-  {/if}
 </div>
 
 <style lang="postcss">
@@ -774,10 +804,6 @@
 
   .timeline-canvas {
     margin: auto;
-    display: inline-block;
-  }
-
-  #rightcolumn {
     display: inline-block;
   }
 
@@ -796,5 +822,9 @@
   #debugdiv {
     margin: 20px 0px 0px 0px;
     text-align: left;
+  }
+
+  .loader {
+    height: 90vh;
   }
 </style>

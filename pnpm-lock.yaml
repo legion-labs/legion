@@ -48,6 +48,7 @@ importers:
       svelte: ^3.46.4
       svelte-check: ^2.4.5
       svelte-jester: ^2.3.2
+      svelte-loading-spinners: ^0.1.7
       svelte-navigator: ^3.1.5
       svelte-preprocess: ^4.10.4
       tailwindcss: ^3.0.23
@@ -69,6 +70,7 @@ importers:
       long: 5.2.0
       protobufjs: 6.11.2
       semaphore-async-await: 1.5.1
+      svelte-loading-spinners: 0.1.7
       svelte-navigator: 3.1.5_svelte@3.46.4+typescript@4.5.5
       uuid-random: 1.3.2
     devDependencies:
@@ -5451,6 +5453,10 @@ packages:
       - ts-node
       - utf-8-validate
     dev: true
+
+  /svelte-loading-spinners/0.1.7:
+    resolution: {integrity: sha512-EKCId1DjVL2RSUVJJsvtNcqQHox03XIgh4xh/4p7r6ST7d8mut6INY9/LqK4A17PFU64+3quZmqiSfOlf480CA==}
+    dev: false
 
   /svelte-navigator/3.1.5_svelte@3.46.4+typescript@4.5.5:
     resolution: {integrity: sha512-CGTaexasSLpUaTSN2AlYqii0JeisIgg7uZbm8XCLKlpM9Qv3IltlJ7Nvh90Xw9ND97KqtGOjNJ3LNwMN1ABV0w==}
