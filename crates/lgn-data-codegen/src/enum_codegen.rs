@@ -34,36 +34,39 @@ fn generate_from_string_match_arms(variants: &[EnumVariantMetaInfo]) -> Vec<Toke
         .collect()
 }
 
-/*
 /// Generate the JSON write serialization for members.
 /// Don't serialize members at default values
 /// Skip 'transient' value
-fn generate_variant_field_descriptors(
+fn generate_field_descriptors(
+    enum_meta_info: &EnumMetaInfo,
     variant_info: &EnumVariantMetaInfo,
-    gen_type: GenerationType,
+    gen_type: Option<GenerationType>,
 ) -> Vec<TokenStream> {
+    let enum_type_name = &enum_meta_info.name;
+
     variant_info
         .members
         .iter()
         .filter(|m| {
-            (gen_type == GenerationType::OfflineFormat && !m.is_runtime_only())
-                || (gen_type == GenerationType::RuntimeFormat && !m.is_offline_only())
+            (gen_type == Some(GenerationType::OfflineFormat) && !m.is_runtime_only())
+                || (gen_type == Some(GenerationType::RuntimeFormat) && !m.is_offline_only())
         })
         .map(|m| {
             let variant_type_name = &variant_info.name;
             let member_ident = &m.name;
             let member_name = m.name.to_string();
 
-            let member_type = match gen_type {
-                GenerationType::OfflineFormat => m.type_path.clone(),
-                GenerationType::RuntimeFormat => m.get_runtime_type(),
+            let member_type = if gen_type == Some(GenerationType::OfflineFormat) {
+                m.type_path.clone()
+            } else {
+                m.get_runtime_type()
             };
             let attribute_impl = m.attributes.generate_descriptor_impl();
 
             quote! {
                 lgn_data_model::FieldDescriptor {
                     field_name : #member_name.into(),
-                    offset: memoffset::offset_of!(#variant_type_name, #member_ident),
+                    offset: memoffset::offset_of!(#enum_type_name::#variant_type_name, #member_ident),
                     field_type : <#member_type as lgn_data_model::TypeReflection>::get_type_def(),
                     attributes : #attribute_impl
                 },
@@ -72,6 +75,7 @@ fn generate_variant_field_descriptors(
         .collect()
 }
 
+/*
 /// Generate fields members definition
 fn generate_fields(members: &[MemberMetaInfo], gen_type: GenerationType) -> Vec<TokenStream> {
     members
@@ -94,20 +98,24 @@ fn generate_fields(members: &[MemberMetaInfo], gen_type: GenerationType) -> Vec<
 
 /// Generate token stream for variant descriptors
 fn generate_enum_variant_descriptors(
-    variants: &[EnumVariantMetaInfo],
-    _gen_type: Option<GenerationType>,
+    enum_meta_info: &EnumMetaInfo,
+    gen_type: Option<GenerationType>,
 ) -> Vec<TokenStream> {
-    variants
+    enum_meta_info
+        .variants
         .iter()
-        .map(|v| {
-            let variant_name = v.name.to_string();
-            let attribute_impl = v.attributes.generate_descriptor_impl();
-            //let members_impl = generate_fields(&v.members, gen_type);
+        .map(|variant_meta_info| {
+            let variant_name = variant_meta_info.name.to_string();
+            let attribute_impl = variant_meta_info.attributes.generate_descriptor_impl();
+            let fields_descriptors =
+                generate_field_descriptors(enum_meta_info, variant_meta_info, gen_type);
             quote! {
                 lgn_data_model::EnumVariantDescriptor {
                     variant_name: #variant_name.into(),
                     attributes: #attribute_impl,
-                    fields: Vec::new(),
+                    fields: vec![
+                        #(#fields_descriptors)*
+                    ],
                 },
             }
         })
@@ -199,8 +207,7 @@ pub(crate) fn generate_reflection(
 
     let enum_variants = generate_enum_variants(&enum_meta_info.variants);
     let enum_from_string_match_arms = generate_from_string_match_arms(&enum_meta_info.variants);
-    let enum_variants_descriptors =
-        generate_enum_variant_descriptors(&enum_meta_info.variants, gen_type);
+    let enum_variants_descriptors = generate_enum_variant_descriptors(&enum_meta_info, gen_type);
 
     let serde_impls = generate_serde_impls(enum_meta_info);
     let enum_attributes = enum_meta_info.attributes.generate_descriptor_impl();
