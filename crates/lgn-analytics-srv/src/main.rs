@@ -21,24 +21,19 @@ mod health_check_service;
 mod metrics;
 
 use std::str::FromStr;
-use std::time::Duration;
 use std::{path::PathBuf, sync::Arc};
 
 use analytics_service::AnalyticsService;
 use anyhow::{Context, Result};
 use auth::AuthLayer;
 use clap::{Parser, Subcommand};
-use http::{header, Method};
-// use http::{header, Method};
 use lgn_blob_storage::{AwsS3BlobStorage, AwsS3Url, LocalBlobStorage, Lz4BlobStorageAdapter};
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalyticsServer;
 use lgn_telemetry_proto::health::health_server::HealthServer;
 use lgn_telemetry_sink::TelemetryGuard;
 use lgn_tracing::prelude::*;
 use std::net::SocketAddr;
-// use std::time::Duration;
 use tonic::transport::Server;
-use tower_http::cors::{CorsLayer, Origin};
 
 use crate::health_check_service::HealthCheckService;
 
