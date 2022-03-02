@@ -5,11 +5,6 @@
 
 template<typename TVertexIn>
 TVertexIn LoadVertex(MeshDescription mesh_desc, uint vertexId) {
-
-    if( mesh_desc.attrib_mask.is_set(MeshAttribMask_INDEX)) {
-        vertexId = static_buffer.Load<uint>(mesh_desc.index_offset + vertexId * 4);
-    }    
-
     TVertexIn vertex_in = (TVertexIn)0;
     if( mesh_desc.attrib_mask.is_set(MeshAttribMask_POSITION)) {    
         vertex_in.pos = static_buffer.Load<float4>(mesh_desc.position_offset + vertexId * 16);
@@ -28,6 +23,5 @@ TVertexIn LoadVertex(MeshDescription mesh_desc, uint vertexId) {
     }
     return vertex_in;
 }
-
 
 #endif // MESH_DESCRIPTION_HSH

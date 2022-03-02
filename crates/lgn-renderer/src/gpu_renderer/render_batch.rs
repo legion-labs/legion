@@ -85,7 +85,7 @@ impl RenderBatch {
             );
 
             if self.element_count > 0 {
-                cmd_buffer.draw_indirect_count(
+                cmd_buffer.draw_indexed_indirect_count(
                     indirect_arg_buffer.unwrap(),
                     self.element_offset * INDIRECT_ARG_STRIDE,
                     count_buffer.unwrap(),

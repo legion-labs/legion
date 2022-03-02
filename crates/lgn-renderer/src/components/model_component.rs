@@ -16,7 +16,7 @@ pub struct Mesh {
     pub normals: Option<Vec<Vec4>>,
     pub tangents: Option<Vec<Vec4>>,
     pub tex_coords: Option<Vec<Vec2>>,
-    pub indices: Option<Vec<u32>>,
+    pub indices: Option<Vec<u16>>,
     pub colors: Option<Vec<Vec4>>,
 
     pub material_id: Option<MaterialReferenceType>,
@@ -74,10 +74,11 @@ impl Mesh {
         &self,
         updater: &mut UniformGPUDataUpdater,
         offset: u32,
-    ) -> (u32, u32) {
+    ) -> (u32, u32, u32) {
         let mut mesh_desc = MeshDescription::default();
         mesh_desc.set_attrib_mask(self.get_mesh_attrib_mask());
         let mut offset = offset;
+        let mut index_offset = 0;
 
         if let Some(positions) = &self.positions {
             mesh_desc.set_position_offset(offset.into());
@@ -101,7 +102,9 @@ impl Mesh {
             offset += (std::mem::size_of::<Vec2>() * tex_coords.len()) as u32;
         }
         if let Some(indices) = &self.indices {
-            mesh_desc.set_index_offset(offset.into());
+            // Convert from byte offset to index offset, byte offset is only needed for uploading data
+            index_offset = offset / 2;
+            mesh_desc.set_index_offset(index_offset.into());
             mesh_desc.set_index_count((indices.len() as u32).into());
             updater.add_update_jobs(indices, u64::from(offset));
             offset += (std::mem::size_of::<u32>() * indices.len()) as u32;
@@ -115,17 +118,28 @@ impl Mesh {
         updater.add_update_jobs(&[mesh_desc], u64::from(offset));
         let mesh_info_offset = offset;
         offset += std::mem::size_of::<MeshDescription>() as u32;
-        (offset, mesh_info_offset)
+        (offset, mesh_info_offset, index_offset)
     }
 
     pub fn num_vertices(&self) -> usize {
-        if let Some(indices) = &self.indices {
-            return indices.len();
-        }
         if let Some(positions) = &self.positions {
             return positions.len();
         }
-        unreachable!()
+        0
+    }
+
+    pub fn num_indices(&self) -> usize {
+        if let Some(indices) = &self.indices {
+            return indices.len();
+        }
+        0
+    }
+
+    pub fn index_offset(&self) -> usize {
+        if let Some(indices) = &self.indices {
+            return indices.len();
+        }
+        0
     }
 
     pub fn new_cube(size: f32) -> Self {
@@ -136,46 +150,43 @@ impl Mesh {
              half_size, -half_size, -half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
              half_size,  half_size, -half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
              half_size,  half_size,  half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
-             half_size, -half_size, -half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
-             half_size,  half_size,  half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
              half_size, -half_size,  half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
             // -x
-            -half_size, -half_size, -half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size,  half_size,  half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
-            -half_size,  half_size, -half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
-            -half_size, -half_size, -half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size, -half_size,  half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
-            -half_size,  half_size,  half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+            -half_size, -half_size,  half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+            -half_size,  half_size,  half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+            -half_size,  half_size, -half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+            -half_size, -half_size, -half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
             // +y
-             half_size,  half_size, -half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size,  half_size, -half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
-             half_size,  half_size,  half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
-             half_size,  half_size,  half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
-            -half_size,  half_size, -half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
-            -half_size,  half_size,  half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+            -half_size,  half_size,  half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
+            -half_size,  half_size, -half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+             half_size,  half_size, -half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+             half_size,  half_size,  half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
             // -y
-             half_size, -half_size, -half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
-             half_size, -half_size,  half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size, -half_size, -half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
-             half_size, -half_size,  half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size, -half_size,  half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
-            -half_size, -half_size, -half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+            -half_size, -half_size, -half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+            -half_size, -half_size,  half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+             half_size, -half_size,  half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+             half_size, -half_size, -half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
             // +z
              half_size, -half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
              half_size,  half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
-            -half_size, -half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size, -half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-             half_size,  half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
             -half_size,  half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+            -half_size, -half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
             // -z
-             half_size, -half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size, -half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
-             half_size,  half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
-            -half_size, -half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
-            -half_size,  half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
-             half_size,  half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+            -half_size, -half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+            -half_size,  half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+             half_size,  half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+             half_size, -half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
         ];
-        Self::from_vertex_data(&vertex_data)
+
+        let mut index_data: Vec<u16> = vec![];
+        index_data.extend_from_slice(&[0, 1, 2, 0, 2, 3]);
+        index_data.extend_from_slice(&[4, 5, 6, 4, 6, 7]);
+        index_data.extend_from_slice(&[8, 9, 10, 8, 10, 11]);
+        index_data.extend_from_slice(&[12, 13, 14, 12, 14, 15]);
+        index_data.extend_from_slice(&[16, 17, 18, 16, 18, 19]);
+        index_data.extend_from_slice(&[20, 21, 22, 20, 22, 23]);
+
+        Self::from_vertex_data(&vertex_data, Some(index_data))
     }
 
     pub fn new_pyramid(base_size: f32, height: f32) -> Self {
@@ -198,9 +209,7 @@ impl Mesh {
              half_size, -half_size, -half_size, 1.0,  0.0, -1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
              half_size, -half_size,  half_size, 1.0,  0.0, -1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
             -half_size, -half_size, -half_size, 1.0,  0.0, -1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-             half_size, -half_size,  half_size, 1.0,  0.0, -1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
             -half_size, -half_size,  half_size, 1.0,  0.0, -1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
-            -half_size, -half_size, -half_size, 1.0,  0.0, -1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
             // 1
              half_size, -half_size, -half_size, 1.0, normal1.x, normal1.y, normal1.z, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
              half_size, -half_size,  half_size, 1.0, normal1.x, normal1.y, normal1.z, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
@@ -218,7 +227,15 @@ impl Mesh {
              half_size, -half_size, -half_size, 1.0, normal4.x, normal4.y, normal4.z, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
                    0.0,       top_y,       0.0, 1.0, normal4.x, normal4.y, normal4.z, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
         ];
-        Self::from_vertex_data(&vertex_data)
+
+        let mut index_data: Vec<u16> = vec![];
+        index_data.extend_from_slice(&[0, 1, 2, 1, 3, 2]);
+        index_data.extend_from_slice(&[4, 5, 6]);
+        index_data.extend_from_slice(&[7, 8, 9]);
+        index_data.extend_from_slice(&[10, 11, 12]);
+        index_data.extend_from_slice(&[13, 14, 15]);
+
+        Self::from_vertex_data(&vertex_data, Some(index_data))
     }
 
     pub fn new_plane(size: f32) -> Self {
@@ -228,12 +245,13 @@ impl Mesh {
             -half_size, 0.0, -half_size, 1.0,  0.0, 1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0, -1.0, -1.0,
             -half_size, 0.0,  half_size, 1.0,  0.0, 1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0, -1.0,  1.0,
              half_size, 0.0, -half_size, 1.0,  0.0, 1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0,  1.0, -1.0,
-             half_size, 0.0, -half_size, 1.0,  0.0, 1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0,  1.0, -1.0,
-            -half_size, 0.0,  half_size, 1.0,  0.0, 1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0, -1.0,  1.0,
              half_size, 0.0,  half_size, 1.0,  0.0, 1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0,  1.0,  1.0,
-            -half_size, 0.0,  half_size, 0.0, 1.0, 0.0,
         ];
-        Self::from_vertex_data(&vertex_data)
+
+        let mut index_data: Vec<u16> = vec![];
+        index_data.extend_from_slice(&[0, 1, 2, 2, 1, 3]);
+
+        Self::from_vertex_data(&vertex_data, Some(index_data))
     }
 
     pub fn new_cylinder(radius: f32, length: f32, steps: u32) -> Self {
@@ -248,6 +266,8 @@ impl Mesh {
         let top_point = Vec3::new(0.0, length, 0.0);
         let top_normal = UP_VECTOR;
 
+        let mut current_index = 0u16;
+        let mut index_data: Vec<u16> = vec![];
         for _i in 0..steps {
             let last_base_point = Vec3::new(cur_angle.cos(), 0.0, cur_angle.sin()).mul(radius);
             let last_top_point =
@@ -263,26 +283,36 @@ impl Mesh {
             add_vertex_data(&mut vertex_data, last_base_point, Some(base_normal));
             add_vertex_data(&mut vertex_data, next_base_point, Some(base_normal));
             add_vertex_data(&mut vertex_data, base_point, Some(base_normal));
+            index_data.extend_from_slice(&[current_index, current_index + 1, current_index + 2]);
+            current_index += 3;
 
             // sides
             add_vertex_data(&mut vertex_data, last_base_point, None);
             add_vertex_data(&mut vertex_data, last_top_point, None);
             add_vertex_data(&mut vertex_data, next_base_point, None);
-
-            add_vertex_data(&mut vertex_data, next_base_point, None);
-            add_vertex_data(&mut vertex_data, last_top_point, None);
             add_vertex_data(&mut vertex_data, next_top_point, None);
+            index_data.extend_from_slice(&[
+                current_index,
+                current_index + 1,
+                current_index + 2,
+                current_index + 2,
+                current_index + 1,
+                current_index + 3,
+            ]);
+            current_index += 4;
 
             // top
             add_vertex_data(&mut vertex_data, last_top_point, Some(top_normal));
             add_vertex_data(&mut vertex_data, top_point, Some(top_normal));
             add_vertex_data(&mut vertex_data, next_top_point, Some(top_normal));
+            index_data.extend_from_slice(&[current_index, current_index + 1, current_index + 2]);
+            current_index += 3;
         }
 
-        Self::from_vertex_data(&vertex_data)
+        Self::from_vertex_data(&vertex_data, Some(index_data))
     }
 
-    pub fn new_cone(radius: f32, length: f32, steps: u32) -> Self {
+    pub fn new_cone(radius: f32, length: f32, steps: u32, initial_index: u16) -> Self {
         let mut vertex_data = Vec::<f32>::new();
 
         let inc_angle = (2.0 * std::f32::consts::PI) / steps as f32;
@@ -293,6 +323,8 @@ impl Mesh {
 
         let base_normal = DOWN_VECTOR;
 
+        let mut current_index = initial_index;
+        let mut index_data: Vec<u16> = vec![];
         for _i in 0..steps {
             let last_base_point = Vec3::new(cur_angle.cos(), 0.0, cur_angle.sin()).mul(radius);
 
@@ -304,14 +336,18 @@ impl Mesh {
             add_vertex_data(&mut vertex_data, last_base_point, Some(base_normal));
             add_vertex_data(&mut vertex_data, next_base_point, Some(base_normal));
             add_vertex_data(&mut vertex_data, base_point, Some(base_normal));
+            index_data.extend_from_slice(&[current_index, current_index + 1, current_index + 2]);
+            current_index += 3;
 
             // side
             add_vertex_data(&mut vertex_data, last_base_point, None);
             add_vertex_data(&mut vertex_data, top_point, None);
             add_vertex_data(&mut vertex_data, next_base_point, None);
+            index_data.extend_from_slice(&[current_index, current_index + 1, current_index + 2]);
+            current_index += 3;
         }
 
-        Self::from_vertex_data(&vertex_data)
+        Self::from_vertex_data(&vertex_data, Some(index_data))
     }
 
     pub fn new_torus(
@@ -324,6 +360,9 @@ impl Mesh {
 
         let inc_torus_angle = (2.0 * std::f32::consts::PI) / torus_steps as f32;
         let mut cur_torus_angle = 0.0f32;
+
+        let mut current_index = 0u16;
+        let mut index_data: Vec<u16> = vec![];
 
         for _i in 0..torus_steps {
             let last_torus_rot_normal = Mat4::from_axis_angle(Vec3::Z, cur_torus_angle);
@@ -391,26 +430,25 @@ impl Mesh {
                     back_right_point.truncate(),
                     Some(back_right_normal.truncate()),
                 );
-
-                add_vertex_data(
-                    &mut vertex_data,
-                    back_right_point.truncate(),
-                    Some(back_right_normal.truncate()),
-                );
-                add_vertex_data(
-                    &mut vertex_data,
-                    front_left_point.truncate(),
-                    Some(front_left_normal.truncate()),
-                );
                 add_vertex_data(
                     &mut vertex_data,
                     front_right_point.truncate(),
                     Some(front_right_normal.truncate()),
                 );
+
+                index_data.extend_from_slice(&[
+                    current_index,
+                    current_index + 1,
+                    current_index + 2,
+                    current_index + 2,
+                    current_index + 1,
+                    current_index + 3,
+                ]);
+                current_index += 4;
             }
         }
 
-        Self::from_vertex_data(&vertex_data)
+        Self::from_vertex_data(&vertex_data, Some(index_data))
     }
 
     pub fn new_wireframe_cube(size: f32) -> Self {
@@ -446,7 +484,7 @@ impl Mesh {
             -half_size, -half_size,  half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
              half_size, -half_size,  half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
         ];
-        Self::from_vertex_data(&vertex_data)
+        Self::from_vertex_data(&vertex_data, None)
     }
 
     pub fn new_ground_plane(num_squares: u32, num_sub_squares: u32, minor_spacing: f32) -> Self {
@@ -535,12 +573,13 @@ impl Mesh {
             0.05,
         );
 
-        Self::from_vertex_data(&vertex_data)
+        Self::from_vertex_data(&vertex_data, None)
     }
 
     pub fn new_arrow() -> Self {
         let arrow = Self::new_cylinder(0.01, 0.3, 10);
-        let cone = Self::new_cone(0.025, 0.1, 10);
+        let initial_index = arrow.indices.as_ref().unwrap().len() as u16;
+        let cone = Self::new_cone(0.025, 0.1, 10, initial_index);
         let mut positions = arrow.positions.unwrap();
         positions.append(
             &mut cone
@@ -563,6 +602,8 @@ impl Mesh {
         tex_coords.append(&mut cone.tex_coords.unwrap());
         let mut colors = arrow.colors.unwrap();
         colors.append(&mut cone.colors.unwrap());
+        let mut indices = arrow.indices.unwrap();
+        indices.append(&mut cone.indices.unwrap());
 
         Self {
             positions: Some(positions),
@@ -570,7 +611,7 @@ impl Mesh {
             tangents: None,
             tex_coords: Some(tex_coords),
             colors: Some(colors),
-            indices: None,
+            indices: Some(indices),
 
             material_id: None,
         }
@@ -582,6 +623,10 @@ impl Mesh {
         let angle = 2.0 * std::f32::consts::PI / sails as f32;
         let v_delta = 1.0 / slices as f32;
         let u_delta = 1.0 / slices as f32;
+
+        let mut current_index = 0u16;
+        let mut index_data: Vec<u16> = vec![];
+
         for slice in 0..slices {
             let y0 = -radius + slice as f32 * slice_size;
             let y1 = -radius + (slice + 1) as f32 * slice_size;
@@ -611,6 +656,13 @@ impl Mesh {
                     vertex_data.push(1.0);
                     vertex_data.append(&mut n1.to_array().to_vec());
                     vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u1, v1]);
+
+                    index_data.extend_from_slice(&[
+                        current_index,
+                        current_index + 1,
+                        current_index + 2,
+                    ]);
+                    current_index += 3;
                 } else if slice == slices - 1 {
                     let pole = Vec3::new(0.0, y1, 0.0);
                     let lr = (radius * radius - y0 * y0).sqrt();
@@ -632,6 +684,13 @@ impl Mesh {
                     vertex_data.push(1.0);
                     vertex_data.append(&mut vec![0.0, 1.0, 0.0]);
                     vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u0, v1]);
+
+                    index_data.extend_from_slice(&[
+                        current_index,
+                        current_index + 1,
+                        current_index + 2,
+                    ]);
+                    current_index += 3;
                 } else {
                     let lr = (radius * radius - y0 * y0).sqrt();
                     let langle = angle * (sail as f32);
@@ -656,14 +715,6 @@ impl Mesh {
                     vertex_data.push(1.0);
                     vertex_data.append(&mut n1.to_array().to_vec());
                     vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u0, v1]);
-                    vertex_data.append(&mut p1.to_array().to_vec());
-                    vertex_data.push(1.0);
-                    vertex_data.append(&mut n1.to_array().to_vec());
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u0, v1]);
-                    vertex_data.append(&mut p2.to_array().to_vec());
-                    vertex_data.push(1.0);
-                    vertex_data.append(&mut n2.to_array().to_vec());
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u1, v0]);
                     let lr = (radius * radius - y1 * y1).sqrt();
                     let langle = angle * ((sail + 1) as f32);
                     let p1 = Vec3::new(lr * langle.cos(), y1, lr * langle.sin());
@@ -672,14 +723,24 @@ impl Mesh {
                     vertex_data.push(1.0);
                     vertex_data.append(&mut n1.to_array().to_vec());
                     vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u1, v1]);
+
+                    index_data.extend_from_slice(&[
+                        current_index,
+                        current_index + 1,
+                        current_index + 2,
+                        current_index + 2,
+                        current_index + 1,
+                        current_index + 3,
+                    ]);
+                    current_index += 4;
                 }
             }
         }
 
-        Self::from_vertex_data(&vertex_data)
+        Self::from_vertex_data(&vertex_data, Some(index_data))
     }
 
-    fn from_vertex_data(vertex_data: &[f32]) -> Self {
+    fn from_vertex_data(vertex_data: &[f32], index_data: Option<Vec<u16>>) -> Self {
         let mut positions = Vec::new();
         let mut normals = Vec::new();
         let mut colors = Vec::new();
@@ -712,7 +773,7 @@ impl Mesh {
             normals: Some(normals),
             tangents: Some(tangents),
             tex_coords: Some(tex_coords),
-            indices: None,
+            indices: index_data,
             colors: Some(colors),
 
             material_id: None,

@@ -14,9 +14,9 @@ impl RenderElement {
 
         Self {
             gpu_instance_id,
-            vertex_count: mesh.draw_call_count as u32,
-            index_count: 0,
-            index_offset: 0,
+            vertex_count: mesh.vertex_count,
+            index_count: mesh.index_count,
+            index_offset: mesh.index_offset,
         }
     }
 
