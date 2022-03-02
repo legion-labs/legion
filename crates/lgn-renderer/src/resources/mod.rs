@@ -1,5 +1,5 @@
-mod bindless_textures;
-pub(crate) use bindless_textures::*;
+mod texture_manager_plugin;
+pub(crate) use texture_manager_plugin::*;
 
 mod command_buffer_pool;
 pub(crate) use command_buffer_pool::*;

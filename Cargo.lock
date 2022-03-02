@@ -4991,7 +4991,6 @@ dependencies = [
  "ash",
  "backtrace",
  "bitflags",
- "bumpalo",
  "crossbeam-channel",
  "fnv",
  "lgn-tracing",

@@ -7,7 +7,7 @@ use lgn_ecs::prelude::*;
 use lgn_math::Vec3;
 use lgn_renderer::components::{
     LightComponent, LightType, MaterialComponent, Mesh, ModelComponent, TextureComponent,
-    VisualComponent,
+    TextureData, VisualComponent,
 };
 
 use lgn_tracing::info;
@@ -282,16 +282,20 @@ impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {
             commands.spawn()
         };
 
+        let texture_mips = texture // TODO: Avoid cloning in the future
+            .texture_data
+            .iter()
+            .map(AsRef::as_ref)
+            .collect::<Vec<_>>();
+
+        let texture_data = TextureData::from_slices(&texture_mips);
+
         let texture_component = TextureComponent::new(
             *asset_id,
             texture.width,
             texture.height,
             texture.format,
-            texture // TODO: Avoid cloning in the future
-                .texture_data
-                .iter()
-                .map(|bytebuf| bytebuf.clone().into_vec())
-                .collect::<Vec<_>>(),
+            texture_data,
         );
 
         entity.insert(texture_component);

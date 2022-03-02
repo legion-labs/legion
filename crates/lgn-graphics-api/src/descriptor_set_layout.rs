@@ -75,42 +75,6 @@ pub struct DescriptorSetLayout {
 }
 
 impl DescriptorSetLayout {
-    pub fn device_context(&self) -> &DeviceContext {
-        &self.inner.device_context
-    }
-
-    pub fn definition(&self) -> &DescriptorSetLayoutDef {
-        &self.inner.definition
-    }
-
-    pub fn uid(&self) -> u32 {
-        self.inner.id
-    }
-
-    pub fn frequency(&self) -> u32 {
-        self.inner.frequency
-    }
-
-    pub fn descriptor_count(&self) -> u32 {
-        self.inner.descriptors.len() as u32
-    }
-
-    pub fn flat_descriptor_count(&self) -> u32 {
-        self.inner.flat_descriptor_count
-    }
-
-    pub fn descriptor(&self, index: u32) -> &Descriptor {
-        &self.inner.descriptors[index as usize]
-    }
-
-    pub fn find_descriptor_index_by_name(&self, name: &str) -> Option<u32> {
-        self.inner
-            .descriptors
-            .iter()
-            .position(|descriptor| name == descriptor.name)
-            .map(|x| x as u32)
-    }
-
     pub fn new(
         device_context: &DeviceContext,
         definition: &DescriptorSetLayoutDef,
@@ -156,6 +120,42 @@ impl DescriptorSetLayout {
         };
 
         Ok(result)
+    }
+
+    pub fn device_context(&self) -> &DeviceContext {
+        &self.inner.device_context
+    }
+
+    pub fn definition(&self) -> &DescriptorSetLayoutDef {
+        &self.inner.definition
+    }
+
+    pub fn uid(&self) -> u32 {
+        self.inner.id
+    }
+
+    pub fn frequency(&self) -> u32 {
+        self.inner.frequency
+    }
+
+    pub fn descriptor_count(&self) -> u32 {
+        self.inner.descriptors.len() as u32
+    }
+
+    pub fn descriptor(&self, index: u32) -> &Descriptor {
+        &self.inner.descriptors[index as usize]
+    }
+
+    pub fn find_descriptor_index_by_name(&self, name: &str) -> Option<u32> {
+        self.inner
+            .descriptors
+            .iter()
+            .position(|descriptor| name == descriptor.name)
+            .map(|x| x as u32)
+    }
+
+    pub(crate) fn flat_descriptor_count(&self) -> u32 {
+        self.inner.flat_descriptor_count
     }
 }
 

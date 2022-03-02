@@ -34,9 +34,9 @@ pub use render_context::*;
 
 pub mod resources;
 use resources::{
-    BindlessTextureManager, DescriptorHeapManager, GpuDataPlugin, GpuEntityColorManager,
-    GpuEntityTransformManager, GpuMaterialManager, GpuPickingDataManager, MissingVisualTracker,
-    ModelManager, PersistentDescriptorSetManager, PipelineManager,
+    DescriptorHeapManager, GpuDataPlugin, GpuEntityColorManager, GpuEntityTransformManager,
+    GpuMaterialManager, GpuPickingDataManager, ModelManager, PersistentDescriptorSetManager,
+    PipelineManager, TextureManager,
 };
 
 pub mod components;
@@ -63,7 +63,7 @@ use crate::{
     gpu_renderer::{GpuInstanceVas, MeshRenderer, MeshRendererPlugin},
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingIdContext, PickingManager, PickingPlugin},
-    resources::{BindlessTexturePlugin, MeshManager},
+    resources::{MeshManager, TextureManagerPlugin},
     RenderStage,
 };
 use lgn_app::{App, CoreStage, Events, Plugin};
@@ -147,8 +147,8 @@ impl Plugin for RendererPlugin {
         app.insert_resource(GpuInstanceManager::new(&allocator));
         app.insert_resource(MissingVisualTracker::default());
         app.insert_resource(descriptor_heap_manager);
-        app.insert_resource(PersistentDescriptorSetManager::new());
-        app.add_plugin(BindlessTexturePlugin::new(device_context));
+        app.insert_resource(PersistentDescriptorSetManager::new(device_context));
+        app.add_plugin(TextureManagerPlugin::new(device_context));
         app.add_plugin(EguiPlugin::new());
         app.add_plugin(PickingPlugin {});
         app.add_plugin(GpuDataPlugin::default());
@@ -404,10 +404,10 @@ fn update_gpu_instances(
                 } else {
                     material_manager.va_for_index(material_key, 0) as u32
                 },
-            color_va: color_manager.va_for_index(Some(entity), 0) as u32,
-            transform_va: transform_manager.va_for_index(Some(entity), 0) as u32,
-            picking_data_va: picking_data_manager.va_for_index(Some(entity), 0) as u32,
-        };
+                color_va: color_manager.va_for_index(Some(entity), 0) as u32,
+                transform_va: transform_manager.va_for_index(Some(entity), 0) as u32,
+                picking_data_va: picking_data_manager.va_for_index(Some(entity), 0) as u32,
+            };
 
             let gpu_instance_id = instance_manager.add_gpu_instance(
                 entity,
@@ -455,7 +455,7 @@ fn render_begin(mut egui_manager: ResMut<'_, Egui>) {
 fn render_update(
     resources: (
         Res<'_, Renderer>,
-        Res<'_, BindlessTextureManager>,
+        Res<'_, TextureManager>, // unused
         Res<'_, PipelineManager>,
         Res<'_, MeshRenderer>,
         Res<'_, MeshManager>,
@@ -483,7 +483,7 @@ fn render_update(
 ) {
     // resources
     let renderer = resources.0;
-    let bindless_texture_manager = resources.1;
+    // let bindless_texture_manager = resources.1;
     let pipeline_manager = resources.2;
     let mesh_renderer = resources.3;
     let mesh_manager = resources.4;
@@ -561,15 +561,6 @@ fn render_update(
         let va_table_address_buffer =
             instance_manager.structured_buffer_view(std::mem::size_of::<u32>() as u64, true);
         frame_descriptor_set.set_va_table_address_buffer(&va_table_address_buffer);
-
-        let default_black_texture = bindless_texture_manager.default_black_texture_view();
-        let bindlesss_descriptors = bindless_texture_manager.bindless_texures_for_update();
-
-        let mut desc_refs = [&default_black_texture; 256];
-        for index in 0..bindlesss_descriptors.len() {
-            desc_refs[index] = &bindlesss_descriptors[index];
-        }
-        // frame_descriptor_set.set_material_textures(&desc_refs);
 
         let sampler_def = SamplerDef {
             min_filter: FilterType::Linear,

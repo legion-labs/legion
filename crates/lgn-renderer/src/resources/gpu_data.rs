@@ -12,6 +12,7 @@ use crate::{
     cgen,
     components::{MaterialComponent, VisualComponent},
     labels::RenderStage,
+    resources::MaterialTextureType,
     Renderer,
 };
 
@@ -252,6 +253,7 @@ fn upload_transform_data(
 #[allow(clippy::needless_pass_by_value)]
 fn upload_default_material(
     renderer: Res<'_, Renderer>,
+	 texture_resources: ResMut<'_, TextureResourceManager>,
     mut material_manager: ResMut<'_, GpuMaterialManager>,
 ) {
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
@@ -299,23 +301,35 @@ fn upload_material_data(
         gpu_material.set_reflectance(material.reflectance.into());
         gpu_material.set_base_roughness(material.base_roughness.into());
         gpu_material.set_albedo_texture(
-            bindless_textures
-                .bindless_id_for_texture(&material.albedo_texture)
+            texture_resources
+                .bindless_index_for_texture_resource(
+                    MaterialTextureType::Albedo,
+                    &material.albedo_texture,
+                )
                 .into(),
         );
         gpu_material.set_normal_texture(
-            bindless_textures
-                .bindless_id_for_texture(&material.normal_texture)
+            texture_resources
+                .bindless_index_for_texture_resource(
+                    MaterialTextureType::Normal,
+                    &material.normal_texture,
+                )
                 .into(),
         );
         gpu_material.set_metalness_texture(
-            bindless_textures
-                .bindless_id_for_texture(&material.metalness_texture)
+            texture_resources
+                .bindless_index_for_texture_resource(
+                    MaterialTextureType::Metalness,
+                    &material.metalness_texture,
+                )
                 .into(),
         );
         gpu_material.set_roughness_texture(
-            bindless_textures
-                .bindless_id_for_texture(&material.roughness_texture)
+            texture_resources
+                .bindless_index_for_texture_resource(
+                    MaterialTextureType::Roughness,
+                    &material.roughness_texture,
+                )
                 .into(),
         );
 
