@@ -527,12 +527,12 @@ impl Verbosity {
     /// # Examples
     ///
     /// ```
-    /// use lgn_tracing::Lod;
+    /// use lgn_tracing::Verbosity;
     ///
-    /// let mut lods = Lod::iter();
+    /// let mut lods = Verbosity::iter();
     ///
-    /// assert_eq!(Some(Lod::Min), lods.next());
-    /// assert_eq!(Some(Lod::Max), lods.last());
+    /// assert_eq!(Some(Verbosity::Min), lods.next());
+    /// assert_eq!(Some(Verbosity::Max), lods.last());
     /// ```
     pub fn iter() -> impl Iterator<Item = Self> {
         (1..4).map(|i| Self::from_usize(i).unwrap())
