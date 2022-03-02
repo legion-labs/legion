@@ -31,7 +31,7 @@ if defined MONOREPO_DOCKER_REGISTRY (
 for /f %%i in ('docker images -q %IMAGE% ^2^> nul') do (
     docker run --name build-env ^
         --rm ^
-        -e CARGO_TARGET_DIR="target\docker" ^
+        -e CARGO_TARGET_DIR="target/docker" ^
         -v "/var/run/docker.sock":"/var/run/docker.sock" ^
         -v "%MONOREPO_ROOT%":/github/workspace ^
         --workdir /github/workspace ^
