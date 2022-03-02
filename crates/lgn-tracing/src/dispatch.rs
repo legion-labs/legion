@@ -17,9 +17,11 @@ use crate::metrics::{
     FloatMetricEvent, IntegerMetricEvent, MetricMetadata, MetricsBlock, MetricsStream,
 };
 use crate::spans::{
-    BeginAsyncSpanEvent, BeginThreadSpanEvent, EndAsyncSpanEvent, EndThreadSpanEvent, SpanMetadata,
-    ThreadBlock, ThreadEventQueueTypeIndex, ThreadStream,
+    BeginThreadSpanEvent, EndThreadSpanEvent, SpanMetadata, ThreadBlock, ThreadEventQueueTypeIndex,
+    ThreadStream,
 };
+
+// use crate::spans::{BeginAsyncSpanEvent, EndAsyncSpanEvent};
 use crate::{frequency, info, now, warn, Level, ProcessInfo};
 
 pub fn init_event_dispatch(
@@ -177,23 +179,23 @@ pub fn on_end_scope(scope: &'static SpanMetadata) {
 }
 
 #[inline(always)]
-pub fn on_begin_async_scope(scope: &'static SpanMetadata) -> u64 {
+pub fn on_begin_async_scope(_scope: &'static SpanMetadata) -> u64 {
     let id = unsafe { G_ASYNC_SPAN_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed) };
-    on_thread_event(BeginAsyncSpanEvent {
-        span_desc: scope,
-        span_id: id as u64,
-        time: now(),
-    });
+    // on_thread_event(BeginAsyncSpanEvent {
+    //     span_desc: scope,
+    //     span_id: id as u64,
+    //     time: now(),
+    // });
     id as u64
 }
 
 #[inline(always)]
-pub fn on_end_async_scope(span_id: u64, scope: &'static SpanMetadata) {
-    on_thread_event(EndAsyncSpanEvent {
-        span_desc: scope,
-        span_id,
-        time: now(),
-    });
+pub fn on_end_async_scope(_span_id: u64, _scope: &'static SpanMetadata) {
+    // on_thread_event(EndAsyncSpanEvent {
+    //     span_desc: scope,
+    //     span_id,
+    //     time: now(),
+    // });
 }
 
 static mut G_DISPATCH: Option<Dispatch> = None;
