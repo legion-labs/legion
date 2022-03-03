@@ -36,7 +36,7 @@ pub mod resources;
 use resources::{
     DescriptorHeapManager, GpuDataPlugin, GpuEntityColorManager, GpuEntityTransformManager,
     GpuMaterialManager, GpuPickingDataManager, ModelManager, PersistentDescriptorSetManager,
-    PipelineManager, TextureManager,
+    PipelineManager, SharedResourcesPlugin, TextureManager,
 };
 
 pub mod components;
@@ -116,7 +116,7 @@ impl Plugin for RendererPlugin {
         let renderer = Renderer::new(NUM_RENDER_FRAMES);
         let device_context = renderer.device_context();
 		  let allocator = renderer.static_buffer_allocator();
-        let descriptor_heap_manager = DescriptorHeapManager::new(NUM_RENDER_FRAMES, device_context);
+        let descriptor_heap_manager = DescriptorHeapManager::new(NUM_RENDER_FRAMES, device_context);        
         //
         // Add renderer stages first. It is needed for the plugins.
         //
@@ -147,6 +147,7 @@ impl Plugin for RendererPlugin {
         app.insert_resource(MissingVisualTracker::default());
         app.insert_resource(descriptor_heap_manager);
         app.insert_resource(PersistentDescriptorSetManager::new(device_context));
+        app.add_plugin(SharedResourcesPlugin::default());
         app.add_plugin(TextureManagerPlugin::new(device_context));
         app.add_plugin(EguiPlugin::new());
         app.add_plugin(PickingPlugin {});

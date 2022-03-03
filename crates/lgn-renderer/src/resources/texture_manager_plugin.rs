@@ -6,32 +6,22 @@ use lgn_ecs::prelude::{
     Added, Changed, Commands, Component, Entity, Query, RemovedComponents, Res, ResMut,
 };
 use lgn_graphics_api::{
-    BufferDef, CmdCopyBufferToTextureParams, DeviceContext, Extents3D, Format, MemoryAllocation,
-    MemoryAllocationDef, MemoryUsage, ResourceFlags, ResourceState, ResourceUsage, Texture,
-    TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef,
+    BufferDef, CmdCopyBufferToTextureParams, CommandBuffer, DeviceContext, Extents3D, Format,
+    MemoryAllocation, MemoryAllocationDef, MemoryUsage, QueueType, ResourceFlags, ResourceState,
+    ResourceUsage, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef,
 };
 use lgn_graphics_data::{runtime_texture::TextureReferenceType, TextureFormat};
 use lgn_tracing::span_fn;
 
 use crate::{
     components::{TextureComponent, TextureData},
-    hl_gfx_api::HLCommandBuffer,
     labels::RenderStage,
-    RenderContext, Renderer,
+    Renderer,
 };
 
-use super::{
-    DescriptorHeapManager, IndexAllocator, PersistentDescriptorSetManager, PipelineManager,
-};
-use strum::{EnumCount, IntoEnumIterator};
+use super::{IndexAllocator, PersistentDescriptorSetManager};
 
-#[derive(strum::EnumCount, strum::EnumIter)]
-pub enum MaterialTextureType {
-    Albedo,
-    Normal,
-    Metalness,
-    Roughness,
-}
+pub enum TextureEvent {}
 
 #[derive(Default, Clone)]
 struct UploadTextureJob {
@@ -59,7 +49,7 @@ impl Default for GpuTextureId {
 
 #[derive(Component)]
 struct GPUTextureComponent {
-    gpu_texture_id: GpuTextureId,
+    _gpu_texture_id: GpuTextureId,
 }
 
 pub struct TextureManagerPlugin {
@@ -76,12 +66,12 @@ impl TextureManagerPlugin {
 
 impl Plugin for TextureManagerPlugin {
     fn build(&self, app: &mut lgn_app::App) {
-        let mut texture_manager = TextureManager::new(&self.device_context, 256);
-        let texture_resource_manager = TextureResourceManager::new(&mut texture_manager);
+        let texture_manager = TextureManager::new(&self.device_context, 256);
+        let texture_resource_manager = TextureResourceManager::new();
+        app.add_event::<TextureEvent>();
         app.insert_resource(texture_manager);
         app.insert_resource(texture_resource_manager);
-        app.add_system_to_stage(RenderStage::Prepare, upload_textures);
-        app.add_system_to_stage(RenderStage::Prepare, update_persistent_descriptor_set);
+        app.add_system_to_stage(RenderStage::Prepare, update_texture_manager);
         app.add_system_to_stage(RenderStage::Prepare, on_texture_added);
         app.add_system_to_stage(RenderStage::Prepare, on_texture_modified);
         app.add_system_to_stage(RenderStage::Prepare, on_texture_removed);
@@ -92,14 +82,14 @@ impl Plugin for TextureManagerPlugin {
 enum TextureState {
     Invalid,
     QueuedForUpload,
-    Uploaded,
-    Valid,
+    Ready,
 }
 
 #[derive(Clone)]
 struct TextureInfo {
     generation: u32,
     state: TextureState,
+    bindless_index: Option<u32>,
     texture_view: Option<TextureView>,
 }
 
@@ -108,6 +98,7 @@ impl Default for TextureInfo {
         Self {
             generation: INVALID_GENERATION + 1,
             state: TextureState::Invalid,
+            bindless_index: None,
             texture_view: None,
         }
     }
@@ -118,7 +109,8 @@ pub struct TextureManager {
     device_context: DeviceContext,
     texture_info: Vec<TextureInfo>,
     upload_jobs: Vec<UploadTextureJob>,
-    index_allocator: IndexAllocator,
+    gpu_texture_id_allocator: IndexAllocator,
+    bindless_index_allocator: IndexAllocator,
 }
 
 impl TextureManager {
@@ -128,8 +120,19 @@ impl TextureManager {
             device_context: device_context.clone(),
             texture_info: Vec::new(),
             upload_jobs: Vec::new(),
-            index_allocator: IndexAllocator::new(block_size),
+            gpu_texture_id_allocator: IndexAllocator::new(block_size),
+            bindless_index_allocator: IndexAllocator::new(block_size),
         }
+    }
+
+    pub fn is_valid(&self, gpu_texture_id: GpuTextureId) -> bool {
+        let index = gpu_texture_id.index as usize;
+        if index >= self.texture_info.len() {
+            return false;
+        }
+        let texture_info = &self.texture_info[index];
+        let generation = gpu_texture_id.generation;
+        texture_info.generation == generation
     }
 
     pub fn allocate_texture(
@@ -137,10 +140,9 @@ impl TextureManager {
         texture_def: &TextureDef,
         texture_data: &TextureData,
     ) -> GpuTextureId {
-        let index = self.allocate_index();
         let texture_view = self.create_texture_view(texture_def);
+        let index = self.allocate_texture_info();
         let mut texture_info = &mut self.texture_info[index as usize];
-        texture_info.state = TextureState::QueuedForUpload;
         texture_info.texture_view = Some(texture_view);
 
         let gpu_texture_id = GpuTextureId {
@@ -184,39 +186,63 @@ impl TextureManager {
         // becomes invalid (generation mismatch).
 
         let texture_info = self.texture_info_mut(gpu_texture_id);
-        texture_info.generation = texture_info.generation + 1;
+        texture_info.generation += 1;
         texture_info.state = TextureState::Invalid;
         texture_info.texture_view = None;
     }
 
     pub fn get_bindless_index(&self, gpu_texture_id: GpuTextureId) -> Option<u32> {
         if self.is_valid(gpu_texture_id) {
-            Some(gpu_texture_id.index)
+            let texture_info = self.texture_info(gpu_texture_id);
+            texture_info.bindless_index
         } else {
             None
         }
     }
 
     #[span_fn]
-    pub fn upload_textures(
+    pub fn update(
         &mut self,
-        device_context: &DeviceContext,
-        cmd_buffer: &HLCommandBuffer<'_>,
+        renderer: &Renderer,
+        persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
     ) {
+        if self.upload_jobs.is_empty() {
+            return;
+        }
+
         let mut upload_jobs = std::mem::take(&mut self.upload_jobs);
 
+        self.upload_textures(renderer, &upload_jobs);
+        self.update_persistent_descriptor_set(persistent_descriptor_set_manager, &upload_jobs);
+
         for upload_job in &upload_jobs {
+            let texture_info = self.texture_info_mut(upload_job.gpu_texture_id);
+            texture_info.state = TextureState::Ready;
+        }
+
+        upload_jobs.resize(0, UploadTextureJob::default());
+
+        self.upload_jobs = upload_jobs;
+    }
+
+    #[span_fn]
+    fn upload_textures(&mut self, renderer: &Renderer, upload_jobs: &[UploadTextureJob]) {
+        let device_context = renderer.device_context();
+        let cmd_buffer_pool = renderer.acquire_command_buffer_pool(QueueType::Graphics);
+        let cmd_buffer = cmd_buffer_pool.acquire();
+
+        cmd_buffer.begin().unwrap();
+
+        for upload_job in upload_jobs {
             let gpu_texture_id = upload_job.gpu_texture_id;
             if self.is_valid(gpu_texture_id) {
-                let texture_info = self.texture_info_mut(gpu_texture_id);
-                texture_info.state = TextureState::Uploaded;
                 let texture = self.texture_handle(gpu_texture_id);
                 let texture_data = upload_job.texture_data.as_ref().unwrap();
                 let mip_slices = texture_data.data();
                 for (mip_level, mip_data) in mip_slices.iter().enumerate() {
                     upload_texture_data(
                         device_context,
-                        cmd_buffer,
+                        &cmd_buffer,
                         texture,
                         mip_data,
                         mip_level as u8,
@@ -225,13 +251,36 @@ impl TextureManager {
             }
         }
 
-        upload_jobs.resize(0, UploadTextureJob::default());
+        cmd_buffer.end().unwrap();
 
-        self.upload_jobs = upload_jobs;
+        let graphics_queue = renderer.graphics_queue_guard(QueueType::Graphics);
+
+        graphics_queue
+            .submit(&[&cmd_buffer], &[], &[], None)
+            .unwrap();
+
+        cmd_buffer_pool.release(cmd_buffer);
+
+        renderer.release_command_buffer_pool(cmd_buffer_pool);
     }
 
-    fn allocate_index(&mut self) -> u32 {
-        let index = self.index_allocator.acquire_index();
+    fn update_persistent_descriptor_set(
+        &mut self,
+        persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
+        upload_jobs: &[UploadTextureJob],
+    ) {
+        for upload_job in upload_jobs {
+            let bindless_index = self.bindless_index_allocator.acquire_index();
+            let texture_info = self.texture_info_mut(upload_job.gpu_texture_id);
+            assert!(texture_info.bindless_index == None);
+            texture_info.bindless_index = Some(bindless_index);
+            persistent_descriptor_set_manager
+                .set_texture_(bindless_index, texture_info.texture_view.as_ref().unwrap());
+        }
+    }
+
+    fn allocate_texture_info(&mut self) -> u32 {
+        let index = self.gpu_texture_id_allocator.acquire_index();
 
         if index as usize >= self.texture_info.len() {
             let required_size = next_multiple_of(index as usize, self.block_size as usize);
@@ -239,25 +288,22 @@ impl TextureManager {
                 .resize(required_size, TextureInfo::default());
         }
 
+        assert!(self.texture_info[index as usize].state == TextureState::Invalid);
+
         index
     }
 
     fn create_texture_view(&self, texture_def: &TextureDef) -> TextureView {
-        let new_texture = self.device_context.create_texture(texture_def);
-        let texture_view_def = TextureViewDef::as_shader_resource_view(texture_def);
-        new_texture.create_view(&texture_view_def)
+        let texture = self.device_context.create_texture(texture_def);
+        texture.create_view(&TextureViewDef::as_shader_resource_view(texture_def))
     }
 
     fn queue_for_upload(&mut self, gpu_texture_id: GpuTextureId, texture_data: &TextureData) {
         assert!(self.is_valid(gpu_texture_id));
 
-        let current_state = {
-            let texture_info = self.texture_info(gpu_texture_id);
-            texture_info.state
-        };
+        let current_state = self.texture_state(gpu_texture_id);
 
         match current_state {
-            TextureState::Invalid => unreachable!(),
             TextureState::QueuedForUpload => {
                 // patch the current upload queue as we know it is safe (mut access)
                 for upload_job in &mut self.upload_jobs {
@@ -267,7 +313,7 @@ impl TextureManager {
                     }
                 }
             }
-            TextureState::Uploaded | TextureState::Valid => {
+            TextureState::Invalid | TextureState::Ready => {
                 self.upload_jobs.push(UploadTextureJob {
                     gpu_texture_id,
                     texture_data: Some(texture_data.clone()),
@@ -279,35 +325,6 @@ impl TextureManager {
         texture_info.state = TextureState::QueuedForUpload;
     }
 
-    fn update_persistent_descriptor_set(
-        &mut self,
-        persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
-    ) {
-        for (index, texture_info) in self.texture_info.iter_mut().enumerate() {
-            if texture_info.state == TextureState::Uploaded {
-                persistent_descriptor_set_manager
-                    .set_texture_(index as u32, texture_info.texture_view.as_ref().unwrap());
-                texture_info.state = TextureState::Valid;
-            }
-        }
-    }
-
-    pub fn is_valid(&self, gpu_texture_id: GpuTextureId) -> bool {
-        let index = gpu_texture_id.index as usize;
-        if index >= self.texture_info.len() {
-            return false;
-        }
-        let texture_info = &self.texture_info[index];
-        let generation = gpu_texture_id.generation;
-        return texture_info.generation == generation;
-    }
-
-    fn texture_handle(&self, gpu_texture_id: GpuTextureId) -> &Texture {
-        assert!(self.is_valid(gpu_texture_id));
-        let texture_info = self.texture_info(gpu_texture_id);
-        texture_info.texture_view.as_ref().unwrap().texture()
-    }
-
     fn texture_info(&self, gpu_texture_id: GpuTextureId) -> &TextureInfo {
         assert!(self.is_valid(gpu_texture_id));
         &self.texture_info[gpu_texture_id.index as usize]
@@ -317,63 +334,30 @@ impl TextureManager {
         assert!(self.is_valid(gpu_texture_id));
         &mut self.texture_info[gpu_texture_id.index as usize]
     }
+
+    fn texture_handle(&self, gpu_texture_id: GpuTextureId) -> &Texture {
+        assert!(self.is_valid(gpu_texture_id));
+        let texture_info = self.texture_info(gpu_texture_id);
+        texture_info.texture_view.as_ref().unwrap().texture()
+    }
+
+    fn texture_state(&self, gpu_texture_id: GpuTextureId) -> TextureState {
+        assert!(self.is_valid(gpu_texture_id));
+        let texture_info = self.texture_info(gpu_texture_id);
+        texture_info.state
+    }
 }
 
 pub struct TextureResourceManager {
     entity_to_resource_id: BTreeMap<Entity, ResourceTypeAndId>,
     resource_id_to_gpu_texture_id: BTreeMap<ResourceTypeAndId, GpuTextureId>,
-    // todo: move to default resource manager
-    gpu_texture_ids: [GpuTextureId; MaterialTextureType::COUNT],
 }
 
 impl TextureResourceManager {
-    pub fn new(texture_manager: &mut TextureManager) -> Self {
-        // move those default texture in a shared resource manager
-        let gpu_texture_ids: [GpuTextureId; MaterialTextureType::COUNT] =
-            MaterialTextureType::iter()
-                .map(|mat_tex_type| match mat_tex_type {
-                    MaterialTextureType::Albedo
-                    | MaterialTextureType::Normal
-                    | MaterialTextureType::Roughness
-                    | MaterialTextureType::Metalness => {
-                        // todo: implement data variation
-                        let texture_def = TextureDef {
-                            extents: Extents3D {
-                                width: 4,
-                                height: 4,
-                                depth: 1,
-                            },
-                            array_length: 1,
-                            mip_count: 1,
-                            format: Format::R8G8B8A8_UNORM,
-                            usage_flags: ResourceUsage::AS_SHADER_RESOURCE
-                                | ResourceUsage::AS_TRANSFERABLE,
-                            resource_flags: ResourceFlags::empty(),
-                            mem_usage: MemoryUsage::GpuOnly,
-                            tiling: TextureTiling::Linear,
-                        };
-
-                        let mut texture_data = Vec::<u8>::with_capacity(64);
-                        for _index in 0..16 {
-                            texture_data.push(0);
-                            texture_data.push(0);
-                            texture_data.push(0);
-                            texture_data.push(255);
-                        }
-
-                        texture_manager
-                            .allocate_texture(&texture_def, &TextureData::from_slice(&texture_data))
-                    }
-                })
-                .collect::<Vec<GpuTextureId>>()
-                .as_slice()
-                .try_into()
-                .unwrap();
-
+    pub fn new() -> Self {
         Self {
             entity_to_resource_id: BTreeMap::new(),
             resource_id_to_gpu_texture_id: BTreeMap::new(),
-            gpu_texture_ids,
         }
     }
 
@@ -405,10 +389,7 @@ impl TextureResourceManager {
     ) {
         let resource_id = self.entity_to_resource_id.get(&entity).unwrap();
 
-        let gpu_texture_id = self
-            .resource_id_to_gpu_texture_id
-            .get(&resource_id)
-            .unwrap();
+        let gpu_texture_id = self.resource_id_to_gpu_texture_id.get(resource_id).unwrap();
 
         let texture_def = Self::texture_def_from_texture_component(texture_component);
 
@@ -422,10 +403,7 @@ impl TextureResourceManager {
     pub fn remove_by_entity(&mut self, texture_manager: &mut TextureManager, entity: Entity) {
         let resource_id = self.entity_to_resource_id.get(&entity).unwrap();
 
-        let gpu_texture_id = self
-            .resource_id_to_gpu_texture_id
-            .get(&resource_id)
-            .unwrap();
+        let gpu_texture_id = self.resource_id_to_gpu_texture_id.get(resource_id).unwrap();
 
         texture_manager.release_texture(*gpu_texture_id);
     }
@@ -433,22 +411,13 @@ impl TextureResourceManager {
     pub fn bindless_index_for_resource_id(
         &self,
         texture_manager: &TextureManager,
-        texture_type: MaterialTextureType,
-        optional_id: &Option<TextureReferenceType>,
-    ) -> u32 {
-        let gpu_texture_id = if let Some(texture_id) = optional_id {
-            let gpu_texture_id =
-                if let Some(id) = self.resource_id_to_gpu_texture_id.get(&texture_id.id()) {
-                    *id
-                } else {
-                    self.gpu_texture_ids[texture_type as usize]
-                };
-            gpu_texture_id
-        } else {
-            self.gpu_texture_ids[texture_type as usize]
-        };
-        // will return a valid bindless index
-        texture_manager.get_bindless_index(gpu_texture_id).unwrap()
+        texture_id: &TextureReferenceType,
+    ) -> Option<u32> {
+        let gpu_texture_id = self.resource_id_to_gpu_texture_id.get(&texture_id.id());
+        match gpu_texture_id {
+            Some(gpu_texture_id) => texture_manager.get_bindless_index(*gpu_texture_id),
+            None => None,
+        }
     }
 
     fn texture_def_from_texture_component(texture_component: &TextureComponent) -> TextureDef {
@@ -477,12 +446,13 @@ impl TextureResourceManager {
 }
 
 fn next_multiple_of(value: usize, multiple: usize) -> usize {
+    // todo: replace with value.next_multiple_of asap
     ((value + multiple - 1) / multiple) * multiple
 }
 
 fn upload_texture_data(
     device_context: &DeviceContext,
-    cmd_buffer: &HLCommandBuffer<'_>,
+    cmd_buffer: &CommandBuffer,
     texture: &Texture,
     data: &[u8],
     mip_level: u8,
@@ -501,7 +471,7 @@ fn upload_texture_data(
 
     buffer_memory.copy_to_host_visible_buffer(data);
 
-    cmd_buffer.resource_barrier(
+    cmd_buffer.cmd_resource_barrier(
         &[],
         &[TextureBarrier::state_transition(
             texture,
@@ -510,7 +480,7 @@ fn upload_texture_data(
         )],
     );
 
-    cmd_buffer.copy_buffer_to_texture(
+    cmd_buffer.cmd_copy_buffer_to_texture(
         &staging_buffer,
         texture,
         &CmdCopyBufferToTextureParams {
@@ -519,7 +489,7 @@ fn upload_texture_data(
         },
     );
 
-    cmd_buffer.resource_barrier(
+    cmd_buffer.cmd_resource_barrier(
         &[],
         &[TextureBarrier::state_transition(
             texture,
@@ -529,6 +499,7 @@ fn upload_texture_data(
     );
 }
 
+#[allow(clippy::needless_pass_by_value)]
 #[span_fn]
 fn on_texture_added(
     mut commands: Commands<'_, '_>,
@@ -543,12 +514,13 @@ fn on_texture_added(
             texture_component,
         );
 
-        commands
-            .entity(entity)
-            .insert(GPUTextureComponent { gpu_texture_id });
+        commands.entity(entity).insert(GPUTextureComponent {
+            _gpu_texture_id: gpu_texture_id,
+        });
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 #[span_fn]
 fn on_texture_modified(
     mut texture_manager: ResMut<'_, TextureManager>,
@@ -561,10 +533,11 @@ fn on_texture_modified(
     >,
 ) {
     for (entity, texture_component, _) in q_modified_textures.iter() {
-        texture_resource_manager.update_by_entity(&mut texture_manager, entity, &texture_component);
+        texture_resource_manager.update_by_entity(&mut texture_manager, entity, texture_component);
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 #[span_fn]
 fn on_texture_removed(
     removed_entities: RemovedComponents<'_, TextureComponent>,
@@ -576,26 +549,12 @@ fn on_texture_removed(
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 #[span_fn]
-fn upload_textures(
+fn update_texture_manager(
     renderer: Res<'_, Renderer>,
-    pipeline_manager: Res<'_, PipelineManager>,
-    mut texture_manager: ResMut<'_, TextureManager>,
-    descriptor_heap_manager: Res<'_, DescriptorHeapManager>,
-) {
-    let render_context = RenderContext::new(&renderer, &descriptor_heap_manager, &pipeline_manager);
-    let cmd_buffer = render_context.alloc_command_buffer();
-
-    texture_manager.upload_textures(renderer.device_context(), &cmd_buffer);
-
-    render_context
-        .graphics_queue()
-        .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
-}
-
-fn update_persistent_descriptor_set(
     mut texture_manager: ResMut<'_, TextureManager>,
     mut persistent_descriptor_set_manager: ResMut<'_, PersistentDescriptorSetManager>,
 ) {
-    texture_manager.update_persistent_descriptor_set(&mut persistent_descriptor_set_manager);
+    texture_manager.update(&renderer, &mut persistent_descriptor_set_manager);
 }

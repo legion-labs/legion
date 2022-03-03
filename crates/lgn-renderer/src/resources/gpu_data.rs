@@ -12,7 +12,7 @@ use crate::{
     cgen,
     components::{MaterialComponent, VisualComponent},
     labels::RenderStage,
-    resources::MaterialTextureType,
+    resources::SharedTextureId,
     Renderer,
 };
 
@@ -255,6 +255,7 @@ fn upload_default_material(
     renderer: Res<'_, Renderer>,
     texture_manager: Res<'_, TextureManager>,
     texture_resource_manager: Res<'_, TextureResourceManager>,
+	 shared_resources_manager: Res<'_, SharedResourcesManager>,
     mut material_manager: ResMut<'_, GpuMaterialManager>,
 ) {
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
@@ -302,43 +303,63 @@ fn upload_material_data(
         gpu_material.set_reflectance(material.reflectance.into());
         gpu_material.set_base_roughness(material.base_roughness.into());
         gpu_material.set_albedo_texture(
-            // todo: this optionnal resource id must be managed at call site
+            material
+                .albedo_texture
+                .as_ref()
+                .map(|texture_id| {
             texture_resource_manager
-                .bindless_index_for_resource_id(
-                    &texture_manager,
-                    MaterialTextureType::Albedo,
-                    &material.albedo_texture,
-                )
+                        .bindless_index_for_resource_id(&texture_manager, texture_id)
+                        .unwrap_or_else(|| {
+                            shared_resources_manager
+                                .default_texture_bindless_index(SharedTextureId::Albedo)
+                        })
+                })
+                .unwrap()
                 .into(),
         );
         gpu_material.set_normal_texture(
-            // todo: this optionnal resource id must be managed at call site
+            material
+                .normal_texture
+                .as_ref()
+                .map(|texture_id| {
             texture_resource_manager
-                .bindless_index_for_resource_id(
-                    &texture_manager,
-                    MaterialTextureType::Normal,
-                    &material.normal_texture,
-                )
+                        .bindless_index_for_resource_id(&texture_manager, texture_id)
+                        .unwrap_or_else(|| {
+                            shared_resources_manager
+                                .default_texture_bindless_index(SharedTextureId::Normal)
+                        })
+                })
+                .unwrap()
                 .into(),
         );
         gpu_material.set_metalness_texture(
-            // todo: this optionnal resource id must be managed at call site
+            material
+                .metalness_texture
+                .as_ref()
+                .map(|texture_id| {
             texture_resource_manager
-                .bindless_index_for_resource_id(
-                    &texture_manager,
-                    MaterialTextureType::Metalness,
-                    &material.metalness_texture,
-                )
+                        .bindless_index_for_resource_id(&texture_manager, texture_id)
+                        .unwrap_or_else(|| {
+                            shared_resources_manager
+                                .default_texture_bindless_index(SharedTextureId::Metalness)
+                        })
+                })
+                .unwrap()
                 .into(),
         );
         gpu_material.set_roughness_texture(
-            // todo: this optionnal resource id must be managed at call site
+            material
+                .roughness_texture
+                .as_ref()
+                .map(|texture_id| {
             texture_resource_manager
-                .bindless_index_for_resource_id(
-                    &texture_manager,
-                    MaterialTextureType::Roughness,
-                    &material.roughness_texture,
-                )
+                        .bindless_index_for_resource_id(&texture_manager, texture_id)
+                        .unwrap_or_else(|| {
+                            shared_resources_manager
+                                .default_texture_bindless_index(SharedTextureId::Roughness)
+                        })
+                })
+                .unwrap()
                 .into(),
         );
 
