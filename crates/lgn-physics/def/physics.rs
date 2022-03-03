@@ -22,13 +22,13 @@ struct PhysicsRigidCapsule {
     half_height: f32,
 }
 
-// #[component]
-// struct PhysicsRigidConvexMesh {
-//     #[legion(default = RigidActorType::Dynamic)]
-//     pub actor_type: RigidActorType,
-//     // [PhysX convex mesh geometry](https://gameworksdocs.nvidia.com/PhysX/4.1/documentation/physxguide/Manual/Geometry.html#convex-meshes)
-//     scale: MeshScale,
-// }
+#[component]
+struct PhysicsRigidConvexMesh {
+    #[legion(default = RigidActorType::Dynamic)]
+    pub actor_type: RigidActorType,
+    // [PhysX convex mesh geometry](https://gameworksdocs.nvidia.com/PhysX/4.1/documentation/physxguide/Manual/Geometry.html#convex-meshes)
+    scale: MeshScale,
+}
 
 #[component]
 struct PhysicsRigidPlane {
@@ -55,15 +55,15 @@ struct PhysicsRigidSphere {
     radius: f32,
 }
 
-// #[component]
-// struct PhysicsRigidTriangleMesh {
-//     #[legion(default = RigidActorType::Dynamic)]
-//     pub actor_type: RigidActorType,
-//     // [PhysX triangle mesh geometry](https://gameworksdocs.nvidia.com/PhysX/4.1/documentation/physxguide/Manual/Geometry.html#triangle-meshes)
-//     scale: MeshScale,
-// }
+#[component]
+struct PhysicsRigidTriangleMesh {
+    #[legion(default = RigidActorType::Dynamic)]
+    pub actor_type: RigidActorType,
+    // [PhysX triangle mesh geometry](https://gameworksdocs.nvidia.com/PhysX/4.1/documentation/physxguide/Manual/Geometry.html#triangle-meshes)
+    scale: MeshScale,
+}
 
-// struct MeshScale {
-//     scale: Vec3,
-//     rotation: Quat,
-// }
+struct MeshScale {
+    scale: Vec3,
+    rotation: Quat,
+}

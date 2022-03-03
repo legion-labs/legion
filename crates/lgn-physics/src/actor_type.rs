@@ -1,8 +1,8 @@
 use crate::RigidActorType;
 
 use crate::runtime::{
-    PhysicsRigidBox, PhysicsRigidCapsule, PhysicsRigidHeightField, PhysicsRigidPlane,
-    PhysicsRigidSphere,
+    PhysicsRigidBox, PhysicsRigidCapsule, PhysicsRigidConvexMesh, PhysicsRigidHeightField,
+    PhysicsRigidPlane, PhysicsRigidSphere, PhysicsRigidTriangleMesh,
 };
 
 pub(crate) trait WithActorType {
@@ -20,6 +20,13 @@ impl WithActorType for PhysicsRigidCapsule {
         self.actor_type
     }
 }
+
+impl WithActorType for PhysicsRigidConvexMesh {
+    fn get_actor_type(&self) -> RigidActorType {
+        self.actor_type
+    }
+}
+
 impl WithActorType for PhysicsRigidHeightField {
     fn get_actor_type(&self) -> RigidActorType {
         self.actor_type
@@ -33,6 +40,12 @@ impl WithActorType for PhysicsRigidPlane {
 }
 
 impl WithActorType for PhysicsRigidSphere {
+    fn get_actor_type(&self) -> RigidActorType {
+        self.actor_type
+    }
+}
+
+impl WithActorType for PhysicsRigidTriangleMesh {
     fn get_actor_type(&self) -> RigidActorType {
         self.actor_type
     }

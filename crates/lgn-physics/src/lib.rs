@@ -5,6 +5,8 @@
 // generated from def\physics.rs
 include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
 
+mod data_def_ext;
+
 mod actor_type;
 use actor_type::WithActorType;
 
@@ -26,8 +28,6 @@ use lgn_ecs::prelude::*;
 use lgn_tracing::prelude::*;
 use lgn_transform::prelude::*;
 use physx::{foundation::DefaultAllocator, physics::PhysicsFoundationBuilder, prelude::*};
-
-use crate::runtime::{PhysicsRigidBox, PhysicsRigidCapsule, PhysicsRigidPlane, PhysicsRigidSphere};
 
 // type aliases
 
@@ -68,20 +68,32 @@ impl Plugin for PhysicsPlugin {
 
         app.add_system_to_stage(
             PhysicsStage::Update,
-            Self::create_rigid_actors::<PhysicsRigidBox>,
+            Self::create_rigid_actors::<runtime::PhysicsRigidBox>,
         );
         app.add_system_to_stage(
             PhysicsStage::Update,
-            Self::create_rigid_actors::<PhysicsRigidCapsule>,
+            Self::create_rigid_actors::<runtime::PhysicsRigidCapsule>,
+        );
+        // app.add_system_to_stage(
+        //     PhysicsStage::Update,
+        //     Self::create_rigid_actors::<runtime::PhysicsRigidConvexMesh>,
+        // );
+        // app.add_system_to_stage(
+        //     PhysicsStage::Update,
+        //     Self::create_rigid_actors::<runtime::PhysicsRigidHeightField>,
+        // );
+        app.add_system_to_stage(
+            PhysicsStage::Update,
+            Self::create_rigid_actors::<runtime::PhysicsRigidPlane>,
         );
         app.add_system_to_stage(
             PhysicsStage::Update,
-            Self::create_rigid_actors::<PhysicsRigidPlane>,
+            Self::create_rigid_actors::<runtime::PhysicsRigidSphere>,
         );
-        app.add_system_to_stage(
-            PhysicsStage::Update,
-            Self::create_rigid_actors::<PhysicsRigidSphere>,
-        );
+        // app.add_system_to_stage(
+        //     PhysicsStage::Update,
+        //     Self::create_rigid_actors::<runtime::PhysicsRigidTriangleMesh>,
+        // );
         app.add_system_to_stage(PhysicsStage::Update, Self::step_simulation);
         app.add_system_to_stage(PhysicsStage::Update, Self::sync_transforms);
     }
@@ -136,7 +148,7 @@ impl PhysicsPlugin {
         CollisionGeometry: for<'a> From<&'a T>,
     {
         for (entity, physics_component, transform) in query.iter() {
-            let geometry_component: CollisionGeometry = physics_component.into();
+            let geometry: CollisionGeometry = physics_component.into();
 
             match physics_component.get_actor_type() {
                 RigidActorType::Dynamic => {
@@ -144,7 +156,7 @@ impl PhysicsPlugin {
                         &mut physics,
                         &mut scene,
                         transform,
-                        &geometry_component,
+                        &geometry,
                         entity,
                         &mut default_material,
                     );
@@ -154,17 +166,14 @@ impl PhysicsPlugin {
                         &mut physics,
                         &mut scene,
                         transform,
-                        &geometry_component,
+                        &geometry,
                         entity,
                         &mut default_material,
                     );
                 }
             }
 
-            commands
-                .entity(entity)
-                .insert(geometry_component)
-                .remove::<T>();
+            commands.entity(entity).insert(geometry).remove::<T>();
         }
 
         drop(query);

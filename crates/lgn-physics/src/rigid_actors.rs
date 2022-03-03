@@ -2,21 +2,21 @@ use lgn_ecs::prelude::*;
 use lgn_transform::prelude::*;
 use physx::{foundation::DefaultAllocator, prelude::*, traits::Class};
 
-use crate::{
-    runtime::{PhysicsRigidBox, PhysicsRigidCapsule, PhysicsRigidPlane, PhysicsRigidSphere},
-    PxMaterial, PxScene, PxShape,
-};
+use crate::{runtime, PxMaterial, PxScene, PxShape};
 
 #[derive(Component)]
 pub(crate) enum CollisionGeometry {
     Box(PxBoxGeometry),
     Capsule(PxCapsuleGeometry),
+    //ConvexMesh(PxConvexMeshGeometry),
+    //HeightField(PxHeightFieldGeometry),
     Plane(PxPlaneGeometry),
     Sphere(PxSphereGeometry),
+    //TriangleMesh(PxTriangleMeshGeometry),
 }
 
-impl From<&PhysicsRigidBox> for CollisionGeometry {
-    fn from(value: &PhysicsRigidBox) -> Self {
+impl From<&runtime::PhysicsRigidBox> for CollisionGeometry {
+    fn from(value: &runtime::PhysicsRigidBox) -> Self {
         Self::Box(PxBoxGeometry::new(
             value.half_extents.x,
             value.half_extents.y,
@@ -25,20 +25,20 @@ impl From<&PhysicsRigidBox> for CollisionGeometry {
     }
 }
 
-impl From<&PhysicsRigidCapsule> for CollisionGeometry {
-    fn from(value: &PhysicsRigidCapsule) -> Self {
+impl From<&runtime::PhysicsRigidCapsule> for CollisionGeometry {
+    fn from(value: &runtime::PhysicsRigidCapsule) -> Self {
         Self::Capsule(PxCapsuleGeometry::new(value.radius, value.half_height))
     }
 }
 
-impl From<&PhysicsRigidPlane> for CollisionGeometry {
-    fn from(_value: &PhysicsRigidPlane) -> Self {
+impl From<&runtime::PhysicsRigidPlane> for CollisionGeometry {
+    fn from(_value: &runtime::PhysicsRigidPlane) -> Self {
         Self::Plane(PxPlaneGeometry::new())
     }
 }
 
-impl From<&PhysicsRigidSphere> for CollisionGeometry {
-    fn from(value: &PhysicsRigidSphere) -> Self {
+impl From<&runtime::PhysicsRigidSphere> for CollisionGeometry {
+    fn from(value: &runtime::PhysicsRigidSphere) -> Self {
         Self::Sphere(PxSphereGeometry::new(value.radius))
     }
 }
@@ -49,8 +49,11 @@ unsafe impl Class<PxGeometry> for CollisionGeometry {
         match self {
             Self::Box(geometry) => geometry.as_ptr(),
             Self::Capsule(geometry) => geometry.as_ptr(),
+            // Self::ConvexMesh(geometry) => geometry.as_ptr(),
+            // Self::HeightField(geometry) => geometry.as_ptr(),
             Self::Plane(geometry) => geometry.as_ptr(),
             Self::Sphere(geometry) => geometry.as_ptr(),
+            // Self::TriangleMesh(geometry) => geometry.as_ptr(),
         }
     }
 
@@ -58,8 +61,11 @@ unsafe impl Class<PxGeometry> for CollisionGeometry {
         match self {
             Self::Box(geometry) => geometry.as_mut_ptr(),
             Self::Capsule(geometry) => geometry.as_mut_ptr(),
+            // Self::ConvexMesh(geometry) => geometry.as_mut_ptr(),
+            // Self::HeightField(geometry) => geometry.as_mut_ptr(),
             Self::Plane(geometry) => geometry.as_mut_ptr(),
             Self::Sphere(geometry) => geometry.as_mut_ptr(),
+            // Self::TriangleMesh(geometry) => geometry.as_mut_ptr(),
         }
     }
 }
