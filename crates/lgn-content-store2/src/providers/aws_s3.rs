@@ -50,7 +50,11 @@ impl AwsS3Provider {
     }
 
     fn blob_key(&self, id: &Identifier) -> String {
-        format!("{}/{}", self.url.root, id)
+        if self.url.root.is_empty() {
+            id.to_string()
+        } else {
+            format!("{}/{}", self.url.root, id)
+        }
     }
 
     /// Delete the content with the specified identifier.
