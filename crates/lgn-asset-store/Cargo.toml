@@ -1,0 +1,34 @@
+[package]
+name = "lgn-asset-store"
+description = "Store assets and retrieve them efficiently from the content-store"
+version = "0.1.0"
+authors = ["Legion Labs <devs@legionlabs.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[lib]
+name = "lgn_asset_store"
+path = "src/lib.rs"
+
+#[[bin]]
+#name = "lgn-asset-store-cli"
+#path = "src/bin.rs"
+#required-features = ["cli"]
+
+[features]
+default = ["cli"]
+cli = ["clap"]
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "3.0", features = ["derive"], optional = true }
+lgn-online = { path = "../lgn-online", version = "0.1.0" }
+lgn-content-store = { path = "../lgn-content-store", version = "0.1.0" }
+lgn-tracing = { path = "../lgn-tracing", version = "0.1.0", optional = true }
+lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0", optional = true }
+lgn-cli-utils = { path = "../lgn-cli-utils", version = "0.1.0", optional = true }
+thiserror = "1.0"
+tokio = { version = "1", features = ["full", "tracing"] }
+
+[dev-dependencies]
+uuid = { version = "0.8", features = ["v4"] }
