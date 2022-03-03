@@ -1,6 +1,6 @@
-use std::{collections::BTreeMap, rc::Weak, sync::Arc};
+use std::collections::BTreeMap;
 
-use lgn_app::{CoreStage, Plugin};
+use lgn_app::Plugin;
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::{
     Added, Changed, Commands, Component, Entity, Query, RemovedComponents, Res, ResMut,
@@ -39,7 +39,7 @@ struct UploadTextureJob {
     texture_data: Option<TextureData>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct GpuTextureId {
     generation: u32,
     index: u32,
@@ -80,16 +80,15 @@ impl Plugin for TextureManagerPlugin {
         let texture_resource_manager = TextureResourceManager::new(&mut texture_manager);
         app.insert_resource(texture_manager);
         app.insert_resource(texture_resource_manager);
-        app.add_startup_system(on_startup);
-        app.add_system_to_stage(CoreStage::PostUpdate, on_texture_added);
-        app.add_system_to_stage(CoreStage::PostUpdate, on_texture_modified);
-        app.add_system_to_stage(CoreStage::PostUpdate, on_texture_removed);
         app.add_system_to_stage(RenderStage::Prepare, upload_textures);
         app.add_system_to_stage(RenderStage::Prepare, update_persistent_descriptor_set);
+        app.add_system_to_stage(RenderStage::Prepare, on_texture_added);
+        app.add_system_to_stage(RenderStage::Prepare, on_texture_modified);
+        app.add_system_to_stage(RenderStage::Prepare, on_texture_removed);
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 enum TextureState {
     Invalid,
     QueuedForUpload,
@@ -115,65 +114,21 @@ impl Default for TextureInfo {
 }
 
 pub struct TextureManager {
-    // textures: Vec<Texture>,
     block_size: u32,
     device_context: DeviceContext,
     texture_info: Vec<TextureInfo>,
-    // bindless_array: Vec<TextureView>,
     upload_jobs: Vec<UploadTextureJob>,
     index_allocator: IndexAllocator,
-    // ref_to_gpu_id: BTreeMap<ResourceTypeAndId, u32>,
-    // entity_map: BTreeMap<Entity, u32>,
-    // default_texture_id: Option<u32>,
 }
 
 impl TextureManager {
     pub fn new(device_context: &DeviceContext, block_size: u32) -> Self {
-        // let texture_def = TextureDef {
-        //     extents: Extents3D {
-        //         width: 4,
-        //         height: 4,
-        //         depth: 1,
-        //     },
-        //     array_length: 1,
-        //     mip_count: 1,
-        //     format: Format::R8G8B8A8_UNORM,
-        //     usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
-        //     resource_flags: ResourceFlags::empty(),
-        //     mem_usage: MemoryUsage::GpuOnly,
-        //     tiling: TextureTiling::Linear,
-        // };
-
-        let mut index_allocator = IndexAllocator::new(block_size);
-
-        // let default_texture_id = index_allocator.acquire_index();
-
-        // let default_black_texture = device_context.create_texture(&texture_def);
-
-        // let default_black_texture_view_def = TextureViewDef::as_shader_resource_view(&texture_def);
-
-        // let descriptor_array =
-        //     vec![default_black_texture.create_view(&default_black_texture_view_def,); array_size];
-
-        // let mut texture_data = Vec::<u8>::with_capacity(64);
-        // for _index in 0..16 {
-        //     texture_data.push(0);
-        //     texture_data.push(0);
-        //     texture_data.push(0);
-        //     texture_data.push(255);
-        // }
-
-        // let upload_default = UploadTextureJobs {
-        //     texture: default_black_texture,
-        //     texture_data: vec![texture_data],
-        // };
-
         Self {
             block_size,
             device_context: device_context.clone(),
             texture_info: Vec::new(),
             upload_jobs: Vec::new(),
-            index_allocator,
+            index_allocator: IndexAllocator::new(block_size),
         }
     }
 
@@ -182,95 +137,67 @@ impl TextureManager {
         texture_def: &TextureDef,
         texture_data: &TextureData,
     ) -> GpuTextureId {
-        let index = self.index_allocator.acquire_index();
-        let new_texture = self.device_context.create_texture(texture_def);
-        let texture_view_def = TextureViewDef::as_shader_resource_view(texture_def);
-        // self.bindless_array[bindless_id as usize] = new_texture.create_view(&texture_view_def);
-
-        if index as usize >= self.texture_info.len() {
-            let required_size = next_multiple_of(index as usize, self.block_size as usize);
-            self.texture_info
-                .resize(required_size, TextureInfo::default());
-        }
+        let index = self.allocate_index();
+        let texture_view = self.create_texture_view(texture_def);
         let mut texture_info = &mut self.texture_info[index as usize];
-        let generation = texture_info.generation;
         texture_info.state = TextureState::QueuedForUpload;
-        texture_info.texture_view = Some(new_texture.create_view(&texture_view_def));
+        texture_info.texture_view = Some(texture_view);
 
-        let gpu_texture_id = GpuTextureId { generation, index };
+        let gpu_texture_id = GpuTextureId {
+            generation: texture_info.generation,
+            index,
+        };
 
-        self.upload_jobs.push(UploadTextureJob {
-            gpu_texture_id,
-            texture_data: Some(texture_data.clone()),
-        });
+        self.queue_for_upload(gpu_texture_id, texture_data);
 
         gpu_texture_id
     }
 
+    pub fn update_texture(
+        &mut self,
+        gpu_texture_id: GpuTextureId,
+        texture_def: &TextureDef,
+        texture_data: &TextureData,
+    ) {
+        assert!(self.is_valid(gpu_texture_id));
+
+        let recreate_texture_view = {
+            let current_texture_handle = self.texture_handle(gpu_texture_id);
+            let current_texture_def = current_texture_handle.definition();
+            current_texture_def != texture_def
+        };
+        if recreate_texture_view {
+            let texture_view = self.create_texture_view(texture_def);
+            let texture_info = self.texture_info_mut(gpu_texture_id);
+
+            // The previous texture/texture_view is being pushed is the deferred delete queue
+            // Should be updated in the persistent descriptor set
+            texture_info.texture_view = Some(texture_view);
+        }
+        self.queue_for_upload(gpu_texture_id, texture_data);
+    }
+
     pub fn release_texture(&mut self, gpu_texture_id: GpuTextureId) {
-        unimplemented!();
+        assert!(self.is_valid(gpu_texture_id));
+
+        // No need to remove from the upload queue because the gpu_texture_id stored in the upload_job
+        // becomes invalid (generation mismatch).
+
+        let texture_info = self.texture_info_mut(gpu_texture_id);
+        texture_info.generation = texture_info.generation + 1;
+        texture_info.state = TextureState::Invalid;
+        texture_info.texture_view = None;
     }
 
-    pub fn update_texture(&mut self, gpu_texture_id: GpuTextureId, texture_def: &TextureDef) {
-        unimplemented!();
-
-        // let bindless_id = self.index_allocator.acquire_index();
-
-        // if let Some(stored_id) = self.ref_to_gpu_id.get_mut(&texture_component.texture_id) {
-        //     *stored_id = bindless_id;
-        // } else {
-        //     self.ref_to_gpu_id
-        //         .insert(texture_component.texture_id, bindless_id);
-        // }
-
-        // let format = match texture_component.format {
-        //     TextureFormat::BC1 => Format::BC1_RGBA_UNORM_BLOCK,
-        //     TextureFormat::BC3 => Format::BC3_UNORM_BLOCK,
-        //     TextureFormat::BC4 => Format::BC4_UNORM_BLOCK,
-        //     TextureFormat::BC7 => Format::BC7_UNORM_BLOCK,
-        // };
-
-        // let texture_def = TextureDef {
-        //     extents: Extents3D {
-        //         width: texture_component.width,
-        //         height: texture_component.height,
-        //         depth: 1,
-        //     },
-        //     array_length: 1,
-        //     mip_count: texture_component.texture_data.len() as u32,
-        //     format,
-        //     usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
-        //     resource_flags: ResourceFlags::empty(),
-        //     mem_usage: MemoryUsage::GpuOnly,
-        //     tiling: TextureTiling::Optimal,
-        // };
-
-        // let new_texture = self.device_context.create_texture(&texture_def);
-
-        // let texture_view_def = TextureViewDef::as_shader_resource_view(&texture_def);
-
-        // self.bindless_array[bindless_id as usize] = new_texture.create_view(&texture_view_def);
-        // // self.textures.push(new_texture);
-
-        // // self.upload_jobs.push(UploadTextureJobs {
-        // //     texture: new_texture,
-        // //     texture_data: std::mem::take(&mut texture_component.texture_data),
-        // // });
+    pub fn get_bindless_index(&self, gpu_texture_id: GpuTextureId) -> Option<u32> {
+        if self.is_valid(gpu_texture_id) {
+            Some(gpu_texture_id.index)
+        } else {
+            None
+        }
     }
 
-    // pub fn allocate_bindless_id(&mut self, texture_id: ResourceTypeAndId) -> u32 {
-    //     // let bindless_id = if let Some(stored_id) = self.ref_to_gpu_id.get(&texture_id) {
-    //     //     *stored_id
-    //     // } else {
-    //     //     let bindless_id = self.index_allocator.acquire_index();
-    //     //     self.ref_to_gpu_id.insert(texture_id, bindless_id);
-    //     //     bindless_id
-    //     // };
-    //     // bindless_id
-    //     unimplemented!()
-    // }
     #[span_fn]
-    #[allow(clippy::needless_pass_by_value)]
     pub fn upload_textures(
         &mut self,
         device_context: &DeviceContext,
@@ -301,6 +228,55 @@ impl TextureManager {
         upload_jobs.resize(0, UploadTextureJob::default());
 
         self.upload_jobs = upload_jobs;
+    }
+
+    fn allocate_index(&mut self) -> u32 {
+        let index = self.index_allocator.acquire_index();
+
+        if index as usize >= self.texture_info.len() {
+            let required_size = next_multiple_of(index as usize, self.block_size as usize);
+            self.texture_info
+                .resize(required_size, TextureInfo::default());
+        }
+
+        index
+    }
+
+    fn create_texture_view(&self, texture_def: &TextureDef) -> TextureView {
+        let new_texture = self.device_context.create_texture(texture_def);
+        let texture_view_def = TextureViewDef::as_shader_resource_view(texture_def);
+        new_texture.create_view(&texture_view_def)
+    }
+
+    fn queue_for_upload(&mut self, gpu_texture_id: GpuTextureId, texture_data: &TextureData) {
+        assert!(self.is_valid(gpu_texture_id));
+
+        let current_state = {
+            let texture_info = self.texture_info(gpu_texture_id);
+            texture_info.state
+        };
+
+        match current_state {
+            TextureState::Invalid => unreachable!(),
+            TextureState::QueuedForUpload => {
+                // patch the current upload queue as we know it is safe (mut access)
+                for upload_job in &mut self.upload_jobs {
+                    if upload_job.gpu_texture_id == gpu_texture_id {
+                        upload_job.texture_data = Some(texture_data.clone());
+                        break;
+                    }
+                }
+            }
+            TextureState::Uploaded | TextureState::Valid => {
+                self.upload_jobs.push(UploadTextureJob {
+                    gpu_texture_id,
+                    texture_data: Some(texture_data.clone()),
+                });
+            }
+        }
+
+        let texture_info = self.texture_info_mut(gpu_texture_id);
+        texture_info.state = TextureState::QueuedForUpload;
     }
 
     fn update_persistent_descriptor_set(
@@ -344,13 +320,15 @@ impl TextureManager {
 }
 
 pub struct TextureResourceManager {
-    ref_to_gpu_id: BTreeMap<ResourceTypeAndId, u32>,
+    entity_to_resource_id: BTreeMap<Entity, ResourceTypeAndId>,
+    resource_id_to_gpu_texture_id: BTreeMap<ResourceTypeAndId, GpuTextureId>,
+    // todo: move to default resource manager
     gpu_texture_ids: [GpuTextureId; MaterialTextureType::COUNT],
-    // bindless_texture_ids: [u32; MaterialTextureType::COUNT],
 }
 
 impl TextureResourceManager {
     pub fn new(texture_manager: &mut TextureManager) -> Self {
+        // move those default texture in a shared resource manager
         let gpu_texture_ids: [GpuTextureId; MaterialTextureType::COUNT] =
             MaterialTextureType::iter()
                 .map(|mat_tex_type| match mat_tex_type {
@@ -393,24 +371,107 @@ impl TextureResourceManager {
                 .unwrap();
 
         Self {
-            ref_to_gpu_id: BTreeMap::new(),
+            entity_to_resource_id: BTreeMap::new(),
+            resource_id_to_gpu_texture_id: BTreeMap::new(),
             gpu_texture_ids,
         }
     }
 
-    pub fn bindless_index_for_texture_resource(
+    pub fn allocate_texture(
+        &mut self,
+        texture_manager: &mut TextureManager,
+        entity: Entity,
+        texture_component: &TextureComponent,
+    ) -> GpuTextureId {
+        let texture_def = Self::texture_def_from_texture_component(texture_component);
+
+        let gpu_texture_id =
+            texture_manager.allocate_texture(&texture_def, &texture_component.texture_data);
+
+        self.entity_to_resource_id
+            .insert(entity, texture_component.texture_id);
+
+        self.resource_id_to_gpu_texture_id
+            .insert(texture_component.texture_id, gpu_texture_id);
+
+        gpu_texture_id
+    }
+
+    pub fn update_by_entity(
+        &mut self,
+        texture_manager: &mut TextureManager,
+        entity: Entity,
+        texture_component: &TextureComponent,
+    ) {
+        let resource_id = self.entity_to_resource_id.get(&entity).unwrap();
+
+        let gpu_texture_id = self
+            .resource_id_to_gpu_texture_id
+            .get(&resource_id)
+            .unwrap();
+
+        let texture_def = Self::texture_def_from_texture_component(texture_component);
+
+        texture_manager.update_texture(
+            *gpu_texture_id,
+            &texture_def,
+            &texture_component.texture_data,
+        );
+    }
+
+    pub fn remove_by_entity(&mut self, texture_manager: &mut TextureManager, entity: Entity) {
+        let resource_id = self.entity_to_resource_id.get(&entity).unwrap();
+
+        let gpu_texture_id = self
+            .resource_id_to_gpu_texture_id
+            .get(&resource_id)
+            .unwrap();
+
+        texture_manager.release_texture(*gpu_texture_id);
+    }
+
+    pub fn bindless_index_for_resource_id(
         &self,
+        texture_manager: &TextureManager,
         texture_type: MaterialTextureType,
         optional_id: &Option<TextureReferenceType>,
     ) -> u32 {
-        if let Some(texture_id) = optional_id {
-            if let Some(id) = self.ref_to_gpu_id.get(&texture_id.id()) {
-                *id
-            } else {
-                self.gpu_texture_ids[texture_type as usize].index
-            }
+        let gpu_texture_id = if let Some(texture_id) = optional_id {
+            let gpu_texture_id =
+                if let Some(id) = self.resource_id_to_gpu_texture_id.get(&texture_id.id()) {
+                    *id
+                } else {
+                    self.gpu_texture_ids[texture_type as usize]
+                };
+            gpu_texture_id
         } else {
-            u32::MAX
+            self.gpu_texture_ids[texture_type as usize]
+        };
+        // will return a valid bindless index
+        texture_manager.get_bindless_index(gpu_texture_id).unwrap()
+    }
+
+    fn texture_def_from_texture_component(texture_component: &TextureComponent) -> TextureDef {
+        let format = match texture_component.format {
+            TextureFormat::BC1 => Format::BC1_RGBA_UNORM_BLOCK,
+            TextureFormat::BC3 => Format::BC3_UNORM_BLOCK,
+            TextureFormat::BC4 => Format::BC4_UNORM_BLOCK,
+            TextureFormat::BC7 => Format::BC7_UNORM_BLOCK,
+        };
+
+        TextureDef {
+            extents: Extents3D {
+                width: texture_component.width,
+                height: texture_component.height,
+                depth: 1,
+            },
+            array_length: 1,
+            mip_count: texture_component.texture_data.mip_count() as u32,
+            format,
+            usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
+            resource_flags: ResourceFlags::empty(),
+            mem_usage: MemoryUsage::GpuOnly,
+            tiling: TextureTiling::Optimal,
         }
     }
 }
@@ -469,89 +530,29 @@ fn upload_texture_data(
 }
 
 #[span_fn]
-#[allow(clippy::needless_pass_by_value)]
-fn on_startup(
-    mut commands: Commands<'_, '_>,
-    renderer: Res<'_, Renderer>,
-    mut texture_manager: ResMut<'_, TextureManager>,
-) {
-    // let texture_def = TextureDef {
-    //     extents: Extents3D {
-    //         width: 4,
-    //         height: 4,
-    //         depth: 1,
-    //     },
-    //     array_length: 1,
-    //     mip_count: 1,
-    //     format: Format::R8G8B8A8_UNORM,
-    //     usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
-    //     resource_flags: ResourceFlags::empty(),
-    //     mem_usage: MemoryUsage::GpuOnly,
-    //     tiling: TextureTiling::Linear,
-    // };
-
-    // let mut texture_data = Vec::<u8>::with_capacity(64);
-    // for _index in 0..16 {
-    //     texture_data.push(0);
-    //     texture_data.push(0);
-    //     texture_data.push(0);
-    //     texture_data.push(255);
-    // }
-
-    // texture_manager.allocate_texture(&texture_def, &TextureData::from_slice(&texture_data));;
-}
-
-#[span_fn]
-#[allow(clippy::needless_pass_by_value)]
 fn on_texture_added(
     mut commands: Commands<'_, '_>,
-    renderer: Res<'_, Renderer>,
     mut texture_manager: ResMut<'_, TextureManager>,
+    mut texture_resource_manager: ResMut<'_, TextureResourceManager>,
     q_added_textures: Query<'_, '_, (Entity, &TextureComponent), Added<TextureComponent>>,
 ) {
     for (entity, texture_component) in q_added_textures.iter() {
-        let format = match texture_component.format {
-            TextureFormat::BC1 => Format::BC1_RGBA_UNORM_BLOCK,
-            TextureFormat::BC3 => Format::BC3_UNORM_BLOCK,
-            TextureFormat::BC4 => Format::BC4_UNORM_BLOCK,
-            TextureFormat::BC7 => Format::BC7_UNORM_BLOCK,
-        };
-
-        let texture_def = TextureDef {
-            extents: Extents3D {
-                width: texture_component.width,
-                height: texture_component.height,
-                depth: 1,
-            },
-            array_length: 1,
-            mip_count: texture_component.texture_data.mip_count() as u32,
-            format,
-            usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
-            resource_flags: ResourceFlags::empty(),
-            mem_usage: MemoryUsage::GpuOnly,
-            tiling: TextureTiling::Optimal,
-        };
-
-        let gpu_texture_id =
-            texture_manager.allocate_texture(&texture_def, &texture_component.texture_data);
-
-        // let bindless_texture_id =
-        //     texture_manager.allocate_bindless_id(texture_component.texture_id);
+        let gpu_texture_id = texture_resource_manager.allocate_texture(
+            &mut texture_manager,
+            entity,
+            texture_component,
+        );
 
         commands
             .entity(entity)
             .insert(GPUTextureComponent { gpu_texture_id });
-        // .insert(BindlessTextureComponent {
-        //     bindless_texture_id,
-        // });
     }
 }
 
 #[span_fn]
-#[allow(clippy::needless_pass_by_value)]
 fn on_texture_modified(
-    renderer: Res<'_, Renderer>,
     mut texture_manager: ResMut<'_, TextureManager>,
+    mut texture_resource_manager: ResMut<'_, TextureResourceManager>,
     q_modified_textures: Query<
         '_,
         '_,
@@ -559,59 +560,29 @@ fn on_texture_modified(
         Changed<TextureComponent>,
     >,
 ) {
-    for (entity, texture_component, gpu_texture_component) in q_modified_textures.iter() {
-        let format = match texture_component.format {
-            TextureFormat::BC1 => Format::BC1_RGBA_UNORM_BLOCK,
-            TextureFormat::BC3 => Format::BC3_UNORM_BLOCK,
-            TextureFormat::BC4 => Format::BC4_UNORM_BLOCK,
-            TextureFormat::BC7 => Format::BC7_UNORM_BLOCK,
-        };
-
-        let texture_def = TextureDef {
-            extents: Extents3D {
-                width: texture_component.width,
-                height: texture_component.height,
-                depth: 1,
-            },
-            array_length: 1,
-            mip_count: texture_component.texture_data.mip_count() as u32,
-            format,
-            usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
-            resource_flags: ResourceFlags::empty(),
-            mem_usage: MemoryUsage::GpuOnly,
-            tiling: TextureTiling::Optimal,
-        };
-
-        texture_manager.update_texture(gpu_texture_component.gpu_texture_id, &texture_def);
+    for (entity, texture_component, _) in q_modified_textures.iter() {
+        texture_resource_manager.update_by_entity(&mut texture_manager, entity, &texture_component);
     }
 }
 
 #[span_fn]
-#[allow(clippy::needless_pass_by_value)]
 fn on_texture_removed(
     removed_entities: RemovedComponents<'_, TextureComponent>,
     mut texture_manager: ResMut<'_, TextureManager>,
+    mut texture_resource_manager: ResMut<'_, TextureResourceManager>,
 ) {
     for removed_entity in removed_entities.iter() {
-        unimplemented!();
+        texture_resource_manager.remove_by_entity(&mut texture_manager, removed_entity);
     }
 }
 
 #[span_fn]
-#[allow(clippy::needless_pass_by_value)]
 fn upload_textures(
     renderer: Res<'_, Renderer>,
     pipeline_manager: Res<'_, PipelineManager>,
     mut texture_manager: ResMut<'_, TextureManager>,
     descriptor_heap_manager: Res<'_, DescriptorHeapManager>,
-    // q_modified_gpu_textures: Query<
-    //     '_,
-    //     '_,
-    //     (Entity, &TextureComponent, &GPUTextureComponent),
-    //     Changed<GPUTextureComponent>,
-    // >,
 ) {
-    // if !q_modified_gpu_textures.is_empty() {
     let render_context = RenderContext::new(&renderer, &descriptor_heap_manager, &pipeline_manager);
     let cmd_buffer = render_context.alloc_command_buffer();
 
@@ -620,7 +591,6 @@ fn upload_textures(
     render_context
         .graphics_queue()
         .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
-    // }
 }
 
 fn update_persistent_descriptor_set(

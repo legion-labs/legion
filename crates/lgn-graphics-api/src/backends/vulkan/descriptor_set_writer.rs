@@ -32,7 +32,7 @@ impl<'a> DescriptorSetWriter<'a> {
         let vk_image_info_count = descriptor_refs.len() as u32;
         let vk_buffer_info_count = descriptor_refs.len() as u32;
 
-        let mut vk_pending_writes = vk::WriteDescriptorSet::default();
+        let vk_pending_writes; //  = vk::WriteDescriptorSet::default();
 
         let mut vk_image_infos =
             SmallVec::<[vk::DescriptorImageInfo; IMAGE_INFOS_STACK_CAPACITY]>::with_capacity(
@@ -49,7 +49,7 @@ impl<'a> DescriptorSetWriter<'a> {
         let descriptor_set = &self.descriptor_set;
 
         let descriptor = self.descriptor_set_layout.descriptor(descriptor_index);
-        let element_count = descriptor_refs.len();
+
         let vk_descriptor_type = super::internal::shader_resource_type_to_descriptor_type(
             descriptor.shader_resource_type,
         );

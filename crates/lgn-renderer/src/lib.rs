@@ -117,7 +117,6 @@ impl Plugin for RendererPlugin {
         let device_context = renderer.device_context();
 		  let allocator = renderer.static_buffer_allocator();
         let descriptor_heap_manager = DescriptorHeapManager::new(NUM_RENDER_FRAMES, device_context);
-        let pipeline_manager = PipelineManager::new(device_context);
         //
         // Add renderer stages first. It is needed for the plugins.
         //

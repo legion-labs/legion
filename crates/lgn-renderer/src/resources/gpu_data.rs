@@ -253,7 +253,8 @@ fn upload_transform_data(
 #[allow(clippy::needless_pass_by_value)]
 fn upload_default_material(
     renderer: Res<'_, Renderer>,
-	 texture_resources: ResMut<'_, TextureResourceManager>,
+    texture_manager: Res<'_, TextureManager>,
+    texture_resource_manager: Res<'_, TextureResourceManager>,
     mut material_manager: ResMut<'_, GpuMaterialManager>,
 ) {
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
@@ -301,32 +302,40 @@ fn upload_material_data(
         gpu_material.set_reflectance(material.reflectance.into());
         gpu_material.set_base_roughness(material.base_roughness.into());
         gpu_material.set_albedo_texture(
-            texture_resources
-                .bindless_index_for_texture_resource(
+            // todo: this optionnal resource id must be managed at call site
+            texture_resource_manager
+                .bindless_index_for_resource_id(
+                    &texture_manager,
                     MaterialTextureType::Albedo,
                     &material.albedo_texture,
                 )
                 .into(),
         );
         gpu_material.set_normal_texture(
-            texture_resources
-                .bindless_index_for_texture_resource(
+            // todo: this optionnal resource id must be managed at call site
+            texture_resource_manager
+                .bindless_index_for_resource_id(
+                    &texture_manager,
                     MaterialTextureType::Normal,
                     &material.normal_texture,
                 )
                 .into(),
         );
         gpu_material.set_metalness_texture(
-            texture_resources
-                .bindless_index_for_texture_resource(
+            // todo: this optionnal resource id must be managed at call site
+            texture_resource_manager
+                .bindless_index_for_resource_id(
+                    &texture_manager,
                     MaterialTextureType::Metalness,
                     &material.metalness_texture,
                 )
                 .into(),
         );
         gpu_material.set_roughness_texture(
-            texture_resources
-                .bindless_index_for_texture_resource(
+            // todo: this optionnal resource id must be managed at call site
+            texture_resource_manager
+                .bindless_index_for_resource_id(
+                    &texture_manager,
                     MaterialTextureType::Roughness,
                     &material.roughness_texture,
                 )
