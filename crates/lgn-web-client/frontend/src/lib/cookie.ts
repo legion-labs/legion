@@ -1,5 +1,3 @@
-const cookieDomain = window.location.hostname;
-
 /**
  * Fast cookie lookup function
  * @param name Cookie name
@@ -30,5 +28,7 @@ export function setCookie(
   value: { toString(): string },
   maxAge?: number
 ) {
+  const cookieDomain = window.location.hostname;
+
   document.cookie = `${name}=${value.toString()};domain=${cookieDomain};path=/;max-age=${maxAge};samesite=strict;secure;`;
 }

@@ -5,8 +5,10 @@
  * It could also contain an array of id pointing to the currently expanded entries in the tree.
  */
 
-import { Entries, Entry } from "@/lib/hierarchyTree";
-import { Orchestrator, Writable } from "@lgn/web-client/src/lib/store";
+import type { Entry } from "@/lib/hierarchyTree";
+import { Entries } from "@/lib/hierarchyTree";
+import type { Orchestrator } from "@lgn/web-client/src/lib/store";
+import { Writable } from "@lgn/web-client/src/lib/store";
 
 export default class<Item extends { path: string }> implements Orchestrator {
   name = "hierarchTree";

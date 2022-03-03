@@ -28,6 +28,7 @@ legion_local.toml
 node_modules/
 dist/
 .pnpm-debug.log
+.svelte-kit/
 
 # Npm/Yarn files
 yarn-debug.log*

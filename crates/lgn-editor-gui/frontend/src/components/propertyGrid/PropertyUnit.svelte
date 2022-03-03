@@ -1,8 +1,11 @@
 <script lang="ts">
-  import { PropertyUpdate } from "@/api";
-  import { BagResourceProperty, ResourceProperty } from "@/lib/propertyGrid";
+  import type { PropertyUpdate } from "@/api";
+  import type {
+    BagResourceProperty,
+    ResourceProperty,
+  } from "@/lib/propertyGrid";
   import PropertyInput from "./PropertyInput.svelte";
-  import { RemoveVectorSubPropertyEvent } from "./types";
+  import type { RemoveVectorSubPropertyEvent } from "./types";
 
   type $$Events = {
     input: CustomEvent<PropertyUpdate>;

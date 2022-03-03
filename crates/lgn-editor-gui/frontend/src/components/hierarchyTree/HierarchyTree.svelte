@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import { Entry, Entries, isEntry } from "@/lib/hierarchyTree";
+  import { Entries, isEntry } from "@/lib/hierarchyTree";
+  import type { Entry } from "@/lib/hierarchyTree";
   import keyboardNavigation from "@lgn/web-client/src/actions/keyboardNavigation";
   import KeyboardNavigationStore from "@lgn/web-client/src/stores/keyboardNavigation";
   import HierarchyTreeItem from "./HierarchyTreeItem.svelte";

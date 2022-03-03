@@ -1,7 +1,6 @@
 <script lang="ts">
-  import { PropertyUpdate } from "@/api";
+  import type { PropertyUpdate } from "@/api";
   import {
-    BagResourceProperty,
     propertyIsBoolean,
     propertyIsColor,
     propertyIsNumber,
@@ -14,6 +13,9 @@
     propertyIsEnum,
     propertyIsVec,
     propertyIsVec3,
+  } from "@/lib/propertyGrid";
+  import type {
+    BagResourceProperty,
     ResourceProperty,
   } from "@/lib/propertyGrid";
   import currentResource from "@/stores/currentResource";
@@ -29,9 +31,8 @@
   import Vec3Property from "./properties/Vec3Property.svelte";
   import ResourcePathIdProperty from "./properties/ResourcePathIdProperty.svelte";
   import EnumProperty from "./properties/EnumProperty.svelte";
-
   import PropertyInputOption from "./PropertyInputOption.svelte";
-  import { RemoveVectorSubPropertyEvent } from "./types";
+  import type { RemoveVectorSubPropertyEvent } from "./types";
 
   const dispatch = createEventDispatcher<{
     input: PropertyUpdate;

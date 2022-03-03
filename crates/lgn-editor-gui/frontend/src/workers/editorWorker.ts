@@ -1,6 +1,6 @@
 import "monaco-editor/esm/vs/basic-languages/monaco.contribution";
 
-import { Environment } from "monaco-editor/esm/vs/editor/editor.api";
+import type { Environment } from "monaco-editor/esm/vs/editor/editor.api";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 
 // Take from the `monaco.d.ts` file provided with the `monaco-editor` npm module.

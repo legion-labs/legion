@@ -10,7 +10,7 @@
   import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
   import currentResource from "@/stores/currentResource";
   import HierarchyTreeOrchestrator from "@/stores/hierarchyTree";
-  import { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
+  import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
   import contextMenu from "@/stores/contextMenu";
   import allResourcesStore from "@/stores/allResources";
   import viewportOrchestrator from "@/stores/viewport";
@@ -21,7 +21,7 @@
   import SceneExplorer from "@/components/SceneExplorer.svelte";
   import ResourceBrowser from "@/components/ResourceBrowser.svelte";
   import modal from "@/stores/modal";
-  import { Entry } from "@/lib/hierarchyTree";
+  import type { Entry } from "@/lib/hierarchyTree";
 
   const { data: currentResourceData } = currentResource;
 

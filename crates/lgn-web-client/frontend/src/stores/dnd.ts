@@ -1,5 +1,5 @@
 import { Writable } from "../lib/store";
-import { Position } from "../lib/types";
+import type { Position } from "../lib/types";
 
 export type Value<Item = unknown> = {
   item: Item;

@@ -9,6 +9,14 @@ import { fileURLToPath } from "url";
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // TODO: Drop this option when vite-tsconfig-paths
+  // will work properly with SvelteKit
+  resolve: {
+    alias: {
+      "@/resources": path.resolve("./tests/resources"),
+      "@": path.resolve("./src"),
+    },
+  },
   build: {
     target: "node16",
     lib: {
@@ -24,9 +32,10 @@ export default defineConfig({
   },
   plugins: [
     tsconfigPaths({
-      extensions: [".ts", ".svelte"],
+      root: path.join(path.dirname(fileURLToPath(import.meta.url)), ".."),
+      extensions: [".ts", ".svelte", ".json"],
     }),
-    svelte(),
+    svelte({ hot: false }),
     viteTsProto({
       modules: [
         { name: "@lgn/proto-editor", glob: "*.proto" },

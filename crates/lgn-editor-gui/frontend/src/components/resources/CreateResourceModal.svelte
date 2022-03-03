@@ -11,7 +11,7 @@
     createResource as createResourceApi,
     getAllResources,
   } from "@/api";
-  import {
+  import type {
     GetResourceTypeNamesResponse,
     ResourceDescription,
   } from "@lgn/proto-editor/dist/resource_browser";

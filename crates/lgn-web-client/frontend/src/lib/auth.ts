@@ -1,8 +1,8 @@
 import userInfo from "../stores/userInfo";
 import { getCookie, setCookie } from "./cookie";
 import log from "./log";
+import type { NonEmptyArray } from "./array";
 import getPkce from "oauth-pkce";
-import { NonEmptyArray } from "./array";
 
 // https://connect2id.com/products/server/docs/api/token#token-response
 export type ClientTokenSet = {
@@ -60,15 +60,18 @@ class IssuerConfiguration {
     this.config = config;
   }
 
-  static async fromString(url: string) {
+  static async fromString(
+    url: string,
+    fetch = globalThis.fetch.bind(globalThis)
+  ) {
     const configResponse = await fetch(url + suffix);
     const config = await configResponse.json();
 
     return new IssuerConfiguration(config);
   }
 
-  static async fromUrl(url: URL) {
-    return IssuerConfiguration.fromString(url.toString());
+  static async fromUrl(url: URL, fetch = globalThis.fetch.bind(globalThis)) {
+    return IssuerConfiguration.fromString(url.toString(), fetch);
   }
 }
 
@@ -121,23 +124,28 @@ export type LoginConfig = {
 class Client<UserInfo> {
   protected clientId: string;
   protected issuerConfiguration: IssuerConfiguration;
-  protected config: { redirectUri?: string };
+  protected fetch: typeof globalThis.fetch;
+  protected redirectUri?: string;
 
   constructor(
     issuerConfiguration: IssuerConfiguration,
     clientId: string,
-    config: { redirectUri?: string }
+    {
+      fetch = globalThis.fetch.bind(globalThis),
+      redirectUri,
+    }: { fetch?: typeof globalThis.fetch; redirectUri?: string } = {}
   ) {
     this.clientId = clientId;
     this.issuerConfiguration = issuerConfiguration;
-    this.config = config;
+    this.redirectUri = redirectUri;
+    this.fetch = fetch;
   }
 
   authorizeUrl({
     responseType,
     scopes,
     extraParams,
-    redirectUri = this.config.redirectUri,
+    redirectUri = this.redirectUri,
     pkceChallenge,
   }: {
     responseType: string;
@@ -221,8 +229,9 @@ class Client<UserInfo> {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
     };
 
-    const response = await fetch(
-      new Request(this.issuerConfiguration.config.token_endpoint, requestInit)
+    const response = await this.fetch(
+      this.issuerConfiguration.config.token_endpoint,
+      requestInit
     );
 
     if (!response.ok) {
@@ -236,7 +245,7 @@ class Client<UserInfo> {
     code: string,
     {
       pkceVerifier,
-      redirectUri = this.config.redirectUri,
+      redirectUri = this.redirectUri,
     }: { pkceVerifier?: string; redirectUri?: string } = {}
   ) {
     if (!this.issuerConfiguration.config.token_endpoint) {
@@ -268,8 +277,9 @@ class Client<UserInfo> {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
     };
 
-    const response = await fetch(
-      new Request(this.issuerConfiguration.config.token_endpoint, requestInit)
+    const response = await this.fetch(
+      this.issuerConfiguration.config.token_endpoint,
+      requestInit
     );
 
     if (!response.ok) {
@@ -295,7 +305,7 @@ class Client<UserInfo> {
       requestInit
     );
 
-    const response = await fetch(request);
+    const response = await this.fetch(request);
 
     if (!response.ok) {
       throw new Error(await response.text());
@@ -361,7 +371,7 @@ export class LegionClient extends Client<UserInfo> {
   constructor(
     issuerConfiguration: IssuerConfiguration,
     clientId: string,
-    config: { redirectUri?: string },
+    config: { fetch?: typeof globalThis.fetch; redirectUri?: string },
     loginConfig: LoginConfig
   ) {
     super(issuerConfiguration, clientId, config);
@@ -383,7 +393,7 @@ export class LegionClient extends Client<UserInfo> {
 
   get redirectUris() {
     return {
-      login: this.loginConfig.redirectUri || this.config.redirectUri,
+      login: this.loginConfig.redirectUri || this.redirectUri,
     };
   }
 
@@ -479,28 +489,57 @@ export type InitAuthStatus =
 
 export let authClient: LegionClient;
 
+export type InitAuthUserConfig = {
+  /** The issuer url (i.e. the oauth provider url) */
+  issuerUrl: string;
+  /** The url to redirect the user to after they're logged in */
+  redirectUri: string;
+  /** The oauth client id */
+  clientId: string;
+  /** Login related configuration */
+  login: LoginConfig;
+  /**
+   * When set to `true` a new `grpcMetadata` prop is injected in the App component.
+   * It can be used to access an API that requires auth.
+   */
+  grpc?: boolean;
+  /** Overrides the `fetch` function */
+  fetch?: typeof globalThis.fetch;
+  /** The current url to read code from, defaults to `globalThis.location` */
+  url?: URL | Location;
+  /**
+   * Function used after the user is logged and is redirected to the provided `redirectUri`
+   * Defaults to `window.history.replaceState`.
+   *
+   * The `url` argument will have the same value as `InitAuthUserConfig.url`.
+   *
+   * If you provide your own function it's strongly adviced to use an alternative that's close
+   * to  `window.history.replaceState` with history state replacement.
+   */
+  redirectFunction?: (url: string) => Promise<void>;
+};
+
 export async function initAuth({
   issuerUrl,
   clientId,
   redirectUri,
-  loginConfig,
-  force = false,
-}: {
-  issuerUrl: string;
-  clientId: string;
-  redirectUri: string;
-  loginConfig: LoginConfig;
-  force?: boolean;
-}): Promise<InitAuthStatus> {
+  login,
+  redirectFunction,
+  fetch = globalThis.fetch.bind(globalThis),
+  url = globalThis.location,
+}: InitAuthUserConfig): Promise<InitAuthStatus> {
   // Initialize the auth client
-  if (!authClient || force) {
-    const issuerConfiguration = await IssuerConfiguration.fromString(issuerUrl);
+  if (!authClient) {
+    const issuerConfiguration = await IssuerConfiguration.fromString(
+      issuerUrl,
+      fetch
+    );
 
     const client = new LegionClient(
       issuerConfiguration,
       clientId,
-      { redirectUri },
-      loginConfig
+      { fetch, redirectUri },
+      login
     );
 
     authClient = client;
@@ -532,18 +571,18 @@ export async function initAuth({
   // Try to get the code from the url, if present and an error occurs
   // we assume the user is not logged in properly and must be redirected to the authorize url
   try {
-    const clientTokenSet = await authClient.getClientTokenSet(
-      window.location.href
-    );
+    const clientTokenSet = await authClient.getClientTokenSet(url.href);
 
     if (clientTokenSet) {
-      window.history.replaceState(
-        null,
-        "Redirection",
-        authClient.redirectUris.login
-      );
-
       authClient.storeClientTokenSet(clientTokenSet);
+
+      if (authClient.redirectUris.login) {
+        if (redirectFunction) {
+          await redirectFunction(authClient.redirectUris.login);
+        } else {
+          window.history.replaceState(null, "", authClient.redirectUris.login);
+        }
+      }
     }
   } catch (error) {
     log.warn(

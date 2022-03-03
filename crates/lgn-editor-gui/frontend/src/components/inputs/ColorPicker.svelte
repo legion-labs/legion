@@ -15,14 +15,13 @@ It also supports manual RGBA edition with 4 different inputs.
 
   import colorConvert from "color-convert";
   import {
-    ColorSet,
     colorSetFromHsv,
     colorSetFromRgba,
     hsvToColorString,
     maxHueValue,
-    Rgba,
     rgbaToColorString,
   } from "@/lib/colors";
+  import type { ColorSet, Rgba } from "@/lib/colors";
   import NumberInput from "./NumberInput.svelte";
   import { createEventDispatcher } from "svelte";
 

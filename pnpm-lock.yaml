@@ -135,6 +135,8 @@ importers:
       '@lgn/vite-plugin-ts-proto': workspace:^0.1.0
       '@lgn/vite-plugin-wasm': workspace:^0.1.0
       '@lgn/web-client': ^0.1.0
+      '@sveltejs/adapter-static': ^1.0.0-next.28
+      '@sveltejs/kit': ^1.0.0-next.290
       '@sveltejs/vite-plugin-svelte': ^1.0.0-next.39
       '@swc/core': ^1.2.147
       '@tauri-apps/api': ^1.0.0-rc.1
@@ -196,6 +198,8 @@ importers:
     devDependencies:
       '@lgn/vite-plugin-ts-proto': link:../../../npm-pkgs/vite-plugin-ts-proto
       '@lgn/vite-plugin-wasm': link:../../../npm-pkgs/vite-plugin-wasm
+      '@sveltejs/adapter-static': 1.0.0-next.28
+      '@sveltejs/kit': 1.0.0-next.290_svelte@3.46.4
       '@sveltejs/vite-plugin-svelte': 1.0.0-next.39_svelte@3.46.4+vite@2.8.6
       '@swc/core': 1.2.147
       '@testing-library/jest-dom': 5.16.2
@@ -418,12 +422,14 @@ importers:
       '@iconify/svelte': ^2.1.2
       '@improbable-eng/grpc-web': ^0.15.0
       '@lgn/proto-streaming': ^0.1.0
+      '@sveltejs/kit': ^1.0.0-next.291
       '@sveltejs/vite-plugin-svelte': ^1.0.0-next.39
       '@swc/core': ^1.2.147
       '@tauri-apps/api': ^1.0.0-rc.1
       '@testing-library/jest-dom': ^5.16.2
       '@testing-library/svelte': ^3.0.3
       '@types/color-convert': ^2.0.0
+      '@types/estree': ^0.0.51
       '@typescript-eslint/eslint-plugin': ^5.13.0
       '@typescript-eslint/parser': ^5.13.0
       autoprefixer: ^10.4.2
@@ -466,11 +472,13 @@ importers:
       protobufjs: 6.11.2
       rxjs: 6.6.7
     devDependencies:
+      '@sveltejs/kit': 1.0.0-next.291_svelte@3.46.4
       '@sveltejs/vite-plugin-svelte': 1.0.0-next.39_svelte@3.46.4+vite@2.8.6
       '@swc/core': 1.2.147
       '@testing-library/jest-dom': 5.16.2
       '@testing-library/svelte': 3.0.3_svelte@3.46.4
       '@types/color-convert': 2.0.0
+      '@types/estree': 0.0.51
       '@typescript-eslint/eslint-plugin': 5.13.0_33fffc354ccfa91fbe7d1677b9395a0a
       '@typescript-eslint/parser': 5.13.0_eslint@8.10.0+typescript@4.6.2
       autoprefixer: 10.4.2_postcss@8.4.7
@@ -1235,6 +1243,50 @@ packages:
       '@sinonjs/commons': 1.8.3
     dev: true
 
+  /@sveltejs/adapter-static/1.0.0-next.28:
+    resolution: {integrity: sha512-c4xLyeSwnbGQxe4f1SLpHTbxZDm3TEr43scR3tOlVgQN+mnAL9aDdl3nTtdzWmrUDmDEmY4GriAwLyFLZuINLw==}
+    dependencies:
+      tiny-glob: 0.2.9
+    dev: true
+
+  /@sveltejs/kit/1.0.0-next.290_svelte@3.46.4:
+    resolution: {integrity: sha512-3Q0uX/auFYsoj3o7+vQtZ+ZsuRLAmVsra5hvkvml18EjfX1wGRNdLlPcl6VE95eAvViWe/65vGaNNC+02h1crA==}
+    engines: {node: '>=14.13'}
+    hasBin: true
+    peerDependencies:
+      svelte: ^3.44.0
+    dependencies:
+      '@sveltejs/vite-plugin-svelte': 1.0.0-next.39_svelte@3.46.4+vite@2.8.6
+      sade: 1.8.1
+      svelte: 3.46.4
+      vite: 2.8.6
+    transitivePeerDependencies:
+      - diff-match-patch
+      - less
+      - sass
+      - stylus
+      - supports-color
+    dev: true
+
+  /@sveltejs/kit/1.0.0-next.291_svelte@3.46.4:
+    resolution: {integrity: sha512-mFd1EJbxoyPGiomYwYhZnjNLPYahCC2gHfKvPetguL/7BCHcyUjjYQbwTTmjVxtgBs0oLzKVA9bt45gpr9JqBQ==}
+    engines: {node: '>=14.13'}
+    hasBin: true
+    peerDependencies:
+      svelte: ^3.44.0
+    dependencies:
+      '@sveltejs/vite-plugin-svelte': 1.0.0-next.39_svelte@3.46.4+vite@2.8.6
+      sade: 1.8.1
+      svelte: 3.46.4
+      vite: 2.8.6
+    transitivePeerDependencies:
+      - diff-match-patch
+      - less
+      - sass
+      - stylus
+      - supports-color
+    dev: true
+
   /@sveltejs/vite-plugin-svelte/1.0.0-next.39_svelte@3.46.4+vite@2.8.6:
     resolution: {integrity: sha512-gnvvcAW2LK+KnUn8lKb2ypcXKwSp2K57mem5C4VNKfjxdRpM6+XwNavWwVf6otnDhz3qPYl/TKKW6/dRr6eeAw==}
     engines: {node: ^14.13.1 || >= 16}
@@ -1685,6 +1737,10 @@ packages:
       '@types/d3-timer': 3.0.0
       '@types/d3-transition': 3.0.1
       '@types/d3-zoom': 3.0.1
+    dev: true
+
+  /@types/estree/0.0.51:
+    resolution: {integrity: sha512-CuPgU6f3eT/XgKKPqKd/gLZV1Xmvf1a2R5POBOGQa6uv82xpls89HU5zKeVoyR8XzHd1RGNOlQlvUe3CFkjWNQ==}
     dev: true
 
   /@types/geojson/7946.0.8:
@@ -3599,6 +3655,10 @@ packages:
     engines: {node: '>=8'}
     dependencies:
       type-fest: 0.20.2
+    dev: true
+
+  /globalyzer/0.1.0:
+    resolution: {integrity: sha512-40oNTM9UfG6aBmuKxk/giHn5nQ8RVz/SS4Ir6zgzOv9/qC3kKZ9v4etGTcJbEl/NyVQH7FGU7d+X1egr57Md2Q==}
     dev: true
 
   /globby/11.1.0:
@@ -5635,6 +5695,13 @@ packages:
 
   /through/2.3.8:
     resolution: {integrity: sha1-DdTJ/6q8NXlgsbckEV1+Doai4fU=}
+    dev: true
+
+  /tiny-glob/0.2.9:
+    resolution: {integrity: sha512-g/55ssRPUjShh+xkfx9UPDXqhckHEsHr4Vd9zX55oSdGZc/MD0m3sferOkwWtp98bv+kcVfEHtRJgBVJzelrzg==}
+    dependencies:
+      globalyzer: 0.1.0
+      globrex: 0.1.2
     dev: true
 
   /tinypool/0.1.2:

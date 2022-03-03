@@ -1,5 +1,5 @@
 <script lang="ts">
-  import NotificationsStore from "../stores/notifications";
+  import type NotificationsStore from "../stores/notifications";
 
   export let store: NotificationsStore;
 </script>

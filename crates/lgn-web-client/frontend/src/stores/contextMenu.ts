@@ -1,5 +1,5 @@
 import { Writable } from "../lib/store";
-import { Entry } from "../types/contextMenu";
+import type { Entry } from "../types/contextMenu";
 
 export default class<Names extends string> extends Writable<
   Partial<Record<Names, Entry[]>>

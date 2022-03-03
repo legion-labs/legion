@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { Entry, isEntry } from "@/lib/hierarchyTree";
+  import { isEntry } from "@/lib/hierarchyTree";
+  import type { Entry } from "@/lib/hierarchyTree";
   import { createEventDispatcher } from "svelte";
   import { extension } from "@/lib/path";
   import Icon from "@iconify/svelte";

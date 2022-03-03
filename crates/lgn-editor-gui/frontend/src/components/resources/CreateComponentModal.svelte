@@ -7,7 +7,7 @@
   import { AsyncStoreOrchestrator } from "@lgn/web-client/src/stores/asyncStore";
   import Select from "../inputs/Select.svelte";
   import { getAvailableComponentTypes } from "@/api";
-  import { GetAvailableDynTraitsResponse } from "@lgn/proto-editor/dist/property_inspector";
+  import type { GetAvailableDynTraitsResponse } from "@lgn/proto-editor/dist/property_inspector";
   import Field from "../Field.svelte";
 
   const createComponentStore = new AsyncStoreOrchestrator();

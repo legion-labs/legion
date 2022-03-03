@@ -1,4 +1,5 @@
-import { Orchestrator, Writable } from "../lib/store";
+import type { Orchestrator } from "../lib/store";
+import { Writable } from "../lib/store";
 import MapStore from "./map";
 
 type CommonConfig = {

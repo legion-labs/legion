@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Writable } from "svelte/store";
+  import type { Writable } from "svelte/store";
 
   type Value = $$Generic;
 
