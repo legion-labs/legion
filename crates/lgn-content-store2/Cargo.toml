@@ -76,6 +76,7 @@ tower = { version = "0.4", optional = true }
 tower-http = { version = "0.2", features = ["cors"], optional = true }
 
 [dev-dependencies]
+rmp-serde = "1"
 uuid = { version = "0.8", features = ["v4"] }
 hex = "0.4"
 httptest = "0.15"

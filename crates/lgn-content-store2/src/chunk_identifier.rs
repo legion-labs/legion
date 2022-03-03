@@ -4,8 +4,10 @@ use std::{
     str::FromStr,
 };
 
+use serde::{de::Visitor, Deserialize, Serialize};
+
 use crate::{
-    buf_utils::{read_prefixed_size, write_prefixed_size},
+    buf_utils::{get_size_len, read_prefixed_size, write_prefixed_size},
     Error, Identifier, Result,
 };
 
@@ -76,5 +78,53 @@ impl ChunkIdentifier {
     pub fn write_to(&self, mut w: impl Write) -> std::io::Result<()> {
         write_prefixed_size(&mut w, self.0)?;
         self.1.write_to(w)
+    }
+
+    /// Returns the size of this identifier, when serialized as a byte vector.
+    pub fn bytes_len(&self) -> usize {
+        get_size_len(self.0) + self.1.bytes_len()
+    }
+
+    /// Create a vector from this identifier.
+    pub fn as_vec(&self) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(self.bytes_len());
+        self.write_to(&mut buf).unwrap();
+        buf
+    }
+}
+
+impl Serialize for ChunkIdentifier {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_bytes(&self.as_vec())
+    }
+}
+
+struct ChunkIdentifierVisitor;
+
+impl<'de> Visitor<'de> for ChunkIdentifierVisitor {
+    type Value = ChunkIdentifier;
+
+    fn expecting(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("a byte array")
+    }
+
+    fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Self::Value::read_from(std::io::Cursor::new(v.to_vec()))
+            .map_err(|err| serde::de::Error::custom(err.to_string()))
+    }
+}
+
+impl<'de> Deserialize<'de> for ChunkIdentifier {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_bytes(ChunkIdentifierVisitor)
     }
 }

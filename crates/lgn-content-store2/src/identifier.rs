@@ -1,4 +1,5 @@
 use byteorder::ReadBytesExt;
+use serde::{de::Visitor, Deserialize, Serialize};
 use smallvec::SmallVec;
 use std::{
     fmt::{Display, Formatter},
@@ -290,6 +291,42 @@ impl Identifier {
     }
 }
 
+impl Serialize for Identifier {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_bytes(&self.as_vec())
+    }
+}
+
+struct IdentifierVisitor;
+
+impl<'de> Visitor<'de> for IdentifierVisitor {
+    type Value = Identifier;
+
+    fn expecting(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("a byte array")
+    }
+
+    fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Identifier::read_from(std::io::Cursor::new(v.to_vec()))
+            .map_err(|err| serde::de::Error::custom(err.to_string()))
+    }
+}
+
+impl<'de> Deserialize<'de> for Identifier {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_bytes(IdentifierVisitor)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -377,5 +414,19 @@ mod tests {
         assert!(id.matches(&[0x0A, 0x0B]).is_ok());
         assert!(id.matches(&[0x0A, 0x0B, 0x0C]).is_err());
         assert!(id.matches(&[0x0A, 0x0C]).is_err());
+    }
+
+    #[test]
+    fn test_identifier_serialization() {
+        let id: Identifier = "AAECAw".parse().unwrap();
+
+        assert_eq!(
+            rmp_serde::to_vec(&id).unwrap(),
+            [0xC4, 0x04, 0x00, 0x01, 0x02, 0x03].to_vec()
+        );
+        assert_eq!(
+            id,
+            rmp_serde::from_slice(&[0xC4, 0x04, 0x00, 0x01, 0x02, 0x03]).unwrap()
+        );
     }
 }
