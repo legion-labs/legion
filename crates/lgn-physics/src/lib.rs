@@ -16,6 +16,8 @@ use callbacks::{OnAdvance, OnCollision, OnConstraintBreak, OnTrigger, OnWakeSlee
 mod labels;
 pub use labels::*;
 
+mod mesh_scale;
+
 mod rigid_actors;
 use rigid_actors::{add_dynamic_actor_to_scene, add_static_actor_to_scene, CollisionGeometry};
 
@@ -69,11 +71,11 @@ impl Plugin for PhysicsPlugin {
         app.add_system_to_stage(
             PhysicsStage::Update,
             Self::create_rigid_actors::<runtime::PhysicsRigidBox>,
-        );
-        app.add_system_to_stage(
+        )
+        .add_system_to_stage(
             PhysicsStage::Update,
             Self::create_rigid_actors::<runtime::PhysicsRigidCapsule>,
-        );
+        )
         // app.add_system_to_stage(
         //     PhysicsStage::Update,
         //     Self::create_rigid_actors::<runtime::PhysicsRigidConvexMesh>,
@@ -82,11 +84,11 @@ impl Plugin for PhysicsPlugin {
         //     PhysicsStage::Update,
         //     Self::create_rigid_actors::<runtime::PhysicsRigidHeightField>,
         // );
-        app.add_system_to_stage(
+        .add_system_to_stage(
             PhysicsStage::Update,
             Self::create_rigid_actors::<runtime::PhysicsRigidPlane>,
-        );
-        app.add_system_to_stage(
+        )
+        .add_system_to_stage(
             PhysicsStage::Update,
             Self::create_rigid_actors::<runtime::PhysicsRigidSphere>,
         );
@@ -94,8 +96,9 @@ impl Plugin for PhysicsPlugin {
         //     PhysicsStage::Update,
         //     Self::create_rigid_actors::<runtime::PhysicsRigidTriangleMesh>,
         // );
-        app.add_system_to_stage(PhysicsStage::Update, Self::step_simulation);
-        app.add_system_to_stage(PhysicsStage::Update, Self::sync_transforms);
+
+        app.add_system_to_stage(PhysicsStage::Update, Self::step_simulation)
+            .add_system_to_stage(PhysicsStage::Update, Self::sync_transforms);
     }
 }
 
