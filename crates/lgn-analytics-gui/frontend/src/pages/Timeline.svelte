@@ -44,6 +44,7 @@
   } from "@/lib/lod";
   import { Thread } from "@/lib/Timeline/Thread";
   import { LODState, ThreadBlock } from "@/lib/Timeline/ThreadBlock";
+  import { processMsOffsetToRoot, timestampToMs } from "@/lib/time";
 
   export let processId: string;
 
@@ -207,26 +208,12 @@
     await Promise.all(promises);
   }
 
-  function processMsOffsetToRoot(process: Process): number {
-    if (!currentProcess?.startTime) {
-      throw new Error("Parent process start time undefined");
-    }
-    const parentStartTime = Date.parse(currentProcess?.startTime);
-    let parsed = Date.parse(process.startTime);
-    return parsed - parentStartTime;
-  }
-
-  function timestampToMs(process: Process, timestamp: number): number {
-    const nbTicks = timestamp - process.startTicks;
-    return (nbTicks * 1000.0) / process.tscFrequency;
-  }
-
   async function fetchBlocks(process: Process, stream: Stream) {
     if (!client) {
       log.error("no client in fetchBlocks");
       return;
     }
-    const processOffset = processMsOffsetToRoot(process);
+    const processOffset = processMsOffsetToRoot(currentProcess, process);
     const response = await client.list_stream_blocks({
       streamId: stream.streamId,
     });
