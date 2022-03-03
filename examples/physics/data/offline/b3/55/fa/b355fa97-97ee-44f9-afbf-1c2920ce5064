@@ -31,9 +31,13 @@
       }
     },
     {
-      "PhysicsRigidSphere": {
+      "PhysicsRigidBox": {
         "actor_type": "Dynamic",
-        "radius": 0.25
+        "half_extents": [
+          0.25,
+          0.25,
+          0.25
+        ]
       }
     }
   ]

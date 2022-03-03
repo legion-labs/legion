@@ -11,14 +11,6 @@ struct MeshScale {
     rotation: Quat,
 }
 
-// #[component]
-// struct PhysicsRigidActor {
-//     #[legion(default = RigidActorType::Dynamic)]
-//     pub actor_type: RigidActorType,
-
-//     pub collision_geometry: CollisionGeometry,
-// }
-
 #[component]
 struct PhysicsRigidSphere {
     #[legion(default = RigidActorType::Dynamic)]
