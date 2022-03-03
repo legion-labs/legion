@@ -9,6 +9,7 @@ use physx_sys::{PxMeshScale, PxMeshScale_new, PxMeshScale_new_3};
 impl<T> MeshScale for T where T: Class<PxMeshScale> {}
 
 pub trait MeshScale: Class<PxMeshScale> {
+    #[allow(clippy::new_ret_no_self)]
     fn new(scale: &PxVec3, rotation: &PxQuat) -> PxMeshScale {
         #[allow(unsafe_code)]
         unsafe {
