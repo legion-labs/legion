@@ -3,14 +3,6 @@
   import { BlockMetadata } from "@lgn/proto-telemetry/dist/block";
   import { BarLoader } from "svelte-loading-spinners";
 
-  type Thread = {
-    streamInfo: Stream;
-    maxDepth: number;
-    minMs: number;
-    maxMs: number;
-    block_ids: string[];
-  };
-
   type BeginPan = {
     beginMouseX: number;
     beginMouseY: number;
@@ -51,7 +43,6 @@
   } from "@lgn/proto-telemetry/dist/analytics";
   import { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
   import { Process } from "@lgn/proto-telemetry/dist/process";
-  import { Stream } from "@lgn/proto-telemetry/dist/stream";
   import { onMount, tick } from "svelte";
   import { formatExecutionTime } from "@/lib/format";
   import { zoomHorizontalViewRange } from "@/lib/zoom";
@@ -70,6 +61,7 @@
     getLodFromPixelSizeMs,
     MergeThresholdForLOD as mergeThresholdForLOD,
   } from "@/lib/lod";
+  import { Thread } from "@/lib/Timeline/Thread";
 
   export let processId: string;
 
