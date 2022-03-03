@@ -5,11 +5,14 @@
 // generated from def\physics.rs
 include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
 
-mod labels;
-pub use labels::*;
+mod actor_type;
+use actor_type::WithActorType;
 
 mod callbacks;
 use callbacks::{OnAdvance, OnCollision, OnConstraintBreak, OnTrigger, OnWakeSleep};
+
+mod labels;
+pub use labels::*;
 
 mod rigid_actors;
 use rigid_actors::{add_dynamic_actor_to_scene, add_static_actor_to_scene, CollisionGeometry};
@@ -63,8 +66,14 @@ impl Plugin for PhysicsPlugin {
             SystemStage::parallel(),
         );
 
-        app.add_system_to_stage(PhysicsStage::Update, Self::create_physics_boxes);
-        app.add_system_to_stage(PhysicsStage::Update, Self::create_physics_spheres);
+        app.add_system_to_stage(
+            PhysicsStage::Update,
+            Self::create_rigid_actors::<PhysicsRigidBox>,
+        );
+        app.add_system_to_stage(
+            PhysicsStage::Update,
+            Self::create_rigid_actors::<PhysicsRigidSphere>,
+        );
         app.add_system_to_stage(PhysicsStage::Update, Self::step_simulation);
         app.add_system_to_stage(PhysicsStage::Update, Self::sync_transforms);
     }
@@ -108,17 +117,20 @@ impl PhysicsPlugin {
         drop(settings);
     }
 
-    fn create_physics_boxes(
-        query: Query<'_, '_, (Entity, &PhysicsRigidBox, &GlobalTransform)>,
+    fn create_rigid_actors<T>(
+        query: Query<'_, '_, (Entity, &T, &GlobalTransform)>,
         mut physics: ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         mut scene: ResMut<'_, Owner<PxScene>>,
         mut default_material: ResMut<'_, Owner<PxMaterial>>,
         mut commands: Commands<'_, '_>,
-    ) {
-        for (entity, rigid_box, transform) in query.iter() {
-            let geometry_component: CollisionGeometry = rigid_box.into();
+    ) where
+        T: Component + WithActorType,
+        CollisionGeometry: for<'a> From<&'a T>,
+    {
+        for (entity, physics_component, transform) in query.iter() {
+            let geometry_component: CollisionGeometry = physics_component.into();
 
-            match rigid_box.actor_type {
+            match physics_component.get_actor_type() {
                 RigidActorType::Dynamic => {
                     add_dynamic_actor_to_scene(
                         &mut physics,
@@ -140,51 +152,11 @@ impl PhysicsPlugin {
                     );
                 }
             }
+
             commands
                 .entity(entity)
                 .insert(geometry_component)
-                .remove::<PhysicsRigidBox>();
-        }
-
-        drop(query);
-    }
-
-    fn create_physics_spheres(
-        query: Query<'_, '_, (Entity, &PhysicsRigidSphere, &GlobalTransform)>,
-        mut physics: ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
-        mut scene: ResMut<'_, Owner<PxScene>>,
-        mut default_material: ResMut<'_, Owner<PxMaterial>>,
-        mut commands: Commands<'_, '_>,
-    ) {
-        for (entity, rigid_sphere, transform) in query.iter() {
-            let geometry_component: CollisionGeometry = rigid_sphere.into();
-
-            match rigid_sphere.actor_type {
-                RigidActorType::Dynamic => {
-                    add_dynamic_actor_to_scene(
-                        &mut physics,
-                        &mut scene,
-                        transform,
-                        &geometry_component,
-                        entity,
-                        &mut default_material,
-                    );
-                }
-                RigidActorType::Static => {
-                    add_static_actor_to_scene(
-                        &mut physics,
-                        &mut scene,
-                        transform,
-                        &geometry_component,
-                        entity,
-                        &mut default_material,
-                    );
-                }
-            }
-            commands
-                .entity(entity)
-                .insert(geometry_component)
-                .remove::<PhysicsRigidSphere>();
+                .remove::<T>();
         }
 
         drop(query);
