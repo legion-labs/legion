@@ -115,8 +115,8 @@ ENV NVIDIA_DRIVER_CAPABILITIES compute,graphics,video,utility
 
 { copy_all }
 
-EXPORT 50051/tcp
-EXPORT 50051/udp
+EXPOSE 50051/tcp
+EXPOSE 50051/udp
 
 WORKDIR /usr/src/app
 
