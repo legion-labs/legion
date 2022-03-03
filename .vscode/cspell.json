@@ -30,6 +30,7 @@
     "itertools",
     "legionengine",
     "linkme",
+    "lods",
     "metadatas",
     "mlint",
     "MSRV",

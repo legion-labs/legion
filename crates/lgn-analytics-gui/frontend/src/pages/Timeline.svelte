@@ -1,6 +1,5 @@
 <script context="module" lang="ts">
   import { SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
-  import { BlockMetadata } from "@lgn/proto-telemetry/dist/block";
   import { BarLoader } from "svelte-loading-spinners";
 
   type BeginPan = {
@@ -13,25 +12,6 @@
   type LoadingState = {
     current: number;
     total: number;
-  };
-
-  enum LODState {
-    Missing,
-    Requested,
-    Loaded,
-  }
-
-  type ThreadBlockLOD = {
-    state: LODState;
-    tracks: SpanTrack[];
-    lodId: number;
-  };
-
-  type ThreadBlock = {
-    blockDefinition: BlockMetadata; // block metadata stored in data lake
-    beginMs: number; // relative to main process
-    endMs: number; // relative to main process
-    lods: ThreadBlockLOD[];
   };
 </script>
 
@@ -62,6 +42,7 @@
     MergeThresholdForLOD as mergeThresholdForLOD,
   } from "@/lib/lod";
   import { Thread } from "@/lib/Timeline/Thread";
+  import { LODState, ThreadBlock } from "@/lib/Timeline/ThreadBlock";
 
   export let processId: string;
 
