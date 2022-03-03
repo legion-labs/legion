@@ -5,12 +5,12 @@ import {
 import { grpc } from "@improbable-eng/grpc-web";
 import { authClient } from "@lgn/web-client/src/lib/auth";
 
-export function getRemoteHost() {
-  return import.meta.env.VITE_LEGION_ANALYTICS_REMOTE_HOST;
+export function getRemoteHost(): string {
+  return import.meta.env.VITE_LEGION_ANALYTICS_REMOTE_HOST as string;
 }
 
-export function getUrl() {
-  return import.meta.env.VITE_LEGION_ANALYTICS_API_URL;
+export function getUrl(): string {
+  return import.meta.env.VITE_LEGION_ANALYTICS_API_URL as string;
 }
 
 export async function makeGrpcClient() {

@@ -188,7 +188,8 @@ message ProcessChildrenReply {
 // fetch_block_async_stats
 message BlockAsyncStatsRequest {
   telemetry.Process process = 1;
-  string block_id = 2;
+  telemetry.Stream stream = 2;
+  string block_id = 3;
 }
 
 message BlockAsyncEventsStatReply {

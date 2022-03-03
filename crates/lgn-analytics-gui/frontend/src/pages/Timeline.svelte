@@ -23,6 +23,7 @@
   } from "@lgn/proto-telemetry/dist/analytics";
   import { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
   import { Process } from "@lgn/proto-telemetry/dist/process";
+  import { Stream } from "@lgn/proto-telemetry/dist/stream";
   import { onMount, tick } from "svelte";
   import { formatExecutionTime } from "@/lib/format";
   import { zoomHorizontalViewRange } from "@/lib/zoom";
@@ -178,7 +179,7 @@
           block_ids: [],
         };
 
-        promises.push(fetchBlocks(process, stream.streamId));
+        promises.push(fetchBlocks(process, stream));
       }
     });
     await Promise.all(promises);
@@ -220,26 +221,36 @@
     return (nbTicks * 1000.0) / process.tscFrequency;
   }
 
-  async function fetchBlocks(process: Process, streamId: string) {
+  async function fetchBlocks(process: Process, stream: Stream) {
     if (!client) {
       log.error("no client in fetchBlocks");
       return;
     }
     const processOffset = processMsOffsetToRoot(process);
-    const response = await client.list_stream_blocks({ streamId });
-    response.blocks.forEach((block) => {
+    const response = await client.list_stream_blocks({
+      streamId: stream.streamId,
+    });
+    for (let i = 0; i < response.blocks.length; i += 1) {
+      let block = response.blocks[i];
       let beginMs = processOffset + timestampToMs(process, block.beginTicks);
       let endMs = processOffset + timestampToMs(process, block.endTicks);
       minMs = Math.min(minMs, beginMs);
       maxMs = Math.max(maxMs, endMs);
       nbEventsRepresented += block.nbObjects;
+      const asyncStatsReply = await client.fetch_block_async_stats({
+        process,
+        stream,
+        blockId: block.blockId,
+      });
+      // console.log(asyncStatsReply);
       blocks[block.blockId] = {
         blockDefinition: block,
         beginMs: beginMs,
         endMs: endMs,
         lods: [],
+        asyncStats: asyncStatsReply,
       };
-    });
+    }
   }
 
   function computePreferedBlockLod(block: ThreadBlock): number | null {

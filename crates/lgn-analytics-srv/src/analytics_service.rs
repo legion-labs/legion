@@ -296,8 +296,18 @@ impl AnalyticsService {
         if request.process.is_none() {
             bail!("missing process in fetch_block_async_stats request");
         }
+        if request.stream.is_none() {
+            bail!("missing stream in fetch_block_async_stats request");
+        }
         let mut connection = self.pool.acquire().await?;
-        compute_block_async_stats(&mut connection, &request.process.unwrap())
+        compute_block_async_stats(
+            &mut connection,
+            self.data_lake_blobs.clone(),
+            request.process.unwrap(),
+            request.stream.unwrap(),
+            request.block_id,
+        )
+        .await
     }
 }
 
