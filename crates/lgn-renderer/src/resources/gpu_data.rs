@@ -178,6 +178,7 @@ impl Plugin for GpuDataPlugin {
         app.add_system_to_stage(CoreStage::PostUpdate, alloc_transform_address);
         app.add_system_to_stage(CoreStage::PostUpdate, alloc_material_address);
         app.add_system_to_stage(CoreStage::PostUpdate, allocate_bindless_textures);
+        app.add_system_to_stage(CoreStage::PostUpdate, upload_default_material);
 
         //
         // Stage Prepare
@@ -290,13 +291,10 @@ fn upload_transform_data(
     renderer.add_update_job_block(updater.job_blocks());
 }
 
-#[span_fn]
 #[allow(clippy::needless_pass_by_value)]
-fn upload_material_data(
+fn upload_default_material(
     renderer: Res<'_, Renderer>,
     mut material_manager: ResMut<'_, GpuMaterialManager>,
-    bindless_textures: ResMut<'_, BindlessTextureManager>,
-    query: Query<'_, '_, &MaterialComponent, Changed<MaterialComponent>>,
 ) {
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
 
@@ -315,6 +313,19 @@ fn upload_material_data(
         renderer.static_buffer_allocator(),
         &mut updater,
     );
+
+    renderer.add_update_job_block(updater.job_blocks());
+}
+
+#[span_fn]
+#[allow(clippy::needless_pass_by_value)]
+fn upload_material_data(
+    renderer: Res<'_, Renderer>,
+    material_manager: ResMut<'_, GpuMaterialManager>,
+    bindless_textures: ResMut<'_, BindlessTextureManager>,
+    query: Query<'_, '_, &MaterialComponent, Changed<MaterialComponent>>,
+) {
+    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
 
     for material in query.iter() {
         let mut gpu_material = cgen::cgen_type::MaterialData::default();
