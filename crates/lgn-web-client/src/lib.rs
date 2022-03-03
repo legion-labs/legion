@@ -45,8 +45,6 @@ use lgn_online::authentication::{
 use tauri::{plugin::Plugin, Invoke, Manager, Runtime};
 use url::Url;
 
-const DEFAULT_PORT: u16 = 80;
-
 type OAuthClientTokenCache = OnlineTokenCache<OAuthClient>;
 
 #[tauri::command]
@@ -106,8 +104,7 @@ impl<R: Runtime> BrowserPlugin<R> {
 
         let oauth_client = OAuthClient::new(issuer_url.to_string(), client_id)
             .await?
-            .set_redirect_uri(redirect_uri)?
-            .set_port(redirect_uri.port().unwrap_or(DEFAULT_PORT));
+            .set_redirect_uri(redirect_uri)?;
 
         let oauth_client = Arc::new(OAuthClientTokenCache::new(oauth_client, projects_dir));
 

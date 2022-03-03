@@ -5,13 +5,13 @@ use lgn_tracing::debug;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    SignatureValidation,
+    BoxedSignatureValidation, SignatureValidation,
     ValidationResult::{self, Unsupported},
 };
 use crate::authentication::jwt::signature_validation::RsaSignatureValidation;
 
 pub struct AwsCognitoSignatureValidation {
-    keys: HashMap<String, Box<dyn SignatureValidation>>,
+    keys: HashMap<String, BoxedSignatureValidation>,
 }
 
 impl AwsCognitoSignatureValidation {
@@ -37,7 +37,7 @@ impl AwsCognitoSignatureValidation {
             .keys
             .into_iter()
             .filter_map(|jwk| match jwk.to_rsa_signature_validation() {
-                Ok(rsa_signature_validation) => Some((jwk.kid.clone(), rsa_signature_validation)),
+                Ok(rsa_signature_validation) => Some((jwk.kid, rsa_signature_validation)),
                 _ => None,
             })
             .collect();
@@ -45,7 +45,7 @@ impl AwsCognitoSignatureValidation {
         Self::new_from_keys(keys)
     }
 
-    fn new_from_keys(keys: HashMap<String, Box<dyn SignatureValidation>>) -> anyhow::Result<Self> {
+    fn new_from_keys(keys: HashMap<String, BoxedSignatureValidation>) -> anyhow::Result<Self> {
         if keys.is_empty() {
             bail!("no valid keys found in JWKS");
         }
@@ -89,7 +89,7 @@ struct Jwk {
 }
 
 impl Jwk {
-    fn to_rsa_signature_validation(&self) -> anyhow::Result<Box<dyn SignatureValidation>> {
+    fn to_rsa_signature_validation(&self) -> anyhow::Result<BoxedSignatureValidation> {
         match self.kty.as_str() {
             "RSA" => match &self.n {
                 None => {
@@ -109,7 +109,7 @@ impl Jwk {
                         let rsa_signature_validation =
                             RsaSignatureValidation::new_from_components(n, e)?;
 
-                        Ok(Box::new(rsa_signature_validation))
+                        Ok(BoxedSignatureValidation(Box::new(rsa_signature_validation)))
                     }
                 },
             },

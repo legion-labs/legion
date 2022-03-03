@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::future::Future;
+use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use http::{Request, Response};
@@ -12,23 +13,37 @@ use super::{Error, Result};
 use crate::authentication::Authenticator;
 
 /// A `gRPC` client wrapper that adds authentication.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct AuthenticatedClient<C, A> {
     client: C,
-    authenticator: A,
+    authenticator: Arc<A>,
     scopes: Vec<String>,
     /// Typically the identity provider
     extra_params: Option<HashMap<String, String>>,
 }
 
+impl<C, A> Clone for AuthenticatedClient<C, A>
+where
+    C: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            client: self.client.clone(),
+            authenticator: Arc::clone(&self.authenticator),
+            scopes: self.scopes.clone(),
+            extra_params: self.extra_params.clone(),
+        }
+    }
+}
+
 impl<C, A> AuthenticatedClient<C, A>
 where
-    A: Authenticator + Clone,
+    A: Authenticator,
 {
     pub fn new(client: C, authenticator: A, scopes: &[String]) -> Self {
         Self {
             client,
-            authenticator,
+            authenticator: Arc::new(authenticator),
             scopes: scopes.to_vec(),
             extra_params: None,
         }
@@ -49,7 +64,7 @@ where
         A: 'a,
         'r: 'a,
     {
-        let authenticator = self.authenticator.clone();
+        let authenticator = Arc::clone(&self.authenticator);
         let scopes = self.scopes.clone();
         let extra_params = self.extra_params.clone();
 
@@ -76,7 +91,7 @@ where
     C: Service<Request<ReqBody>, Response = Response<ResBody>> + Clone + Send + Sync + 'static,
     C::Error: Into<StdError>,
     C::Future: Send + 'static,
-    A: Authenticator + Clone + Send + Sync + 'static,
+    A: Authenticator + Send + Sync + 'static,
     ReqBody: Send + 'static,
     ResBody: http_body::Body + Send + 'static,
     <ResBody as http_body::Body>::Error: Into<StdError> + Send,

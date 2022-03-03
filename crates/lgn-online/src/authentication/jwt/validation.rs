@@ -8,10 +8,11 @@ use super::{
     Token,
 };
 
-pub type UnsecureValidation<'a> = Validation<'a, NoSignatureValidation>;
+pub type UnsecureValidation = Validation<NoSignatureValidation>;
 
 /// Provides JWT validation.
-pub struct Validation<'a, SV = NoSignatureValidation> {
+#[derive(Clone)]
+pub struct Validation<SV = NoSignatureValidation> {
     /// A tolerance for the not-before and expiry times.
     leeway: time::Duration,
 
@@ -30,16 +31,16 @@ pub struct Validation<'a, SV = NoSignatureValidation> {
     validate_nbf: bool,
 
     /// A issuer to check.
-    iss: Option<&'a str>,
+    iss: Option<String>,
 
     /// A subject identifier to check.
-    sub: Option<&'a str>,
+    sub: Option<String>,
 
     /// A audience to check.
-    aud: Option<&'a str>,
+    aud: Option<String>,
 }
 
-impl<SV> Default for Validation<'_, SV>
+impl<SV> Default for Validation<SV>
 where
     SV: Default,
 {
@@ -57,7 +58,7 @@ where
     }
 }
 
-impl<'a, SV> Validation<'a, SV>
+impl<'a, SV> Validation<SV>
 where
     SV: SignatureValidation,
 {
@@ -105,20 +106,20 @@ where
     }
 
     /// Sets the issuer to check.
-    pub fn with_iss(mut self, iss: &'a str) -> Self {
-        self.iss = Some(iss);
+    pub fn with_iss(mut self, iss: impl Into<String>) -> Self {
+        self.iss = Some(iss.into());
         self
     }
 
     /// Sets the subject identifier to check.
-    pub fn with_sub(mut self, sub: &'a str) -> Self {
-        self.sub = Some(sub);
+    pub fn with_sub(mut self, sub: impl Into<String>) -> Self {
+        self.sub = Some(sub.into());
         self
     }
 
     /// Sets the audience to check.
-    pub fn with_aud(mut self, aud: &'a str) -> Self {
-        self.aud = Some(aud);
+    pub fn with_aud(mut self, aud: impl Into<String>) -> Self {
+        self.aud = Some(aud.into());
         self
     }
 
@@ -156,7 +157,7 @@ where
             }
         }
 
-        if let Some(iss) = self.iss {
+        if let Some(iss) = &self.iss {
             match &claims.iss {
                 Some(claims_iss) => {
                     if iss != claims_iss {
@@ -171,7 +172,7 @@ where
             }
         }
 
-        if let Some(sub) = self.sub {
+        if let Some(sub) = &self.sub {
             match &claims.sub {
                 Some(claims_sub) => {
                     if sub != claims_sub {
@@ -189,7 +190,7 @@ where
             }
         }
 
-        if let Some(aud) = self.aud {
+        if let Some(aud) = &self.aud {
             match &claims.aud {
                 Some(claims_aud) => {
                     if aud != claims_aud {

@@ -30,17 +30,29 @@ use echo::{
     EchoRequest, EchoResponse,
 };
 use lgn_online::{
-    authentication::{self, Authenticator, ClientTokenSet},
+    authentication::{
+        self,
+        jwt::{signature_validation::NoSignatureValidation, RequestAuthorizer, Validation},
+        Authenticator, ClientTokenSet,
+    },
     grpc::{AuthenticatedClient, GrpcClient, GrpcWebClient},
 };
 use lgn_tracing::{error, info};
+use serde::Deserialize;
 use sum::{
     summer_client::SummerClient,
     summer_server::{Summer, SummerServer},
     SumRequest, SumResponse,
 };
 use tonic::{Request, Response, Status};
+use tower_http::auth::RequireAuthorizationLayer;
 
+#[derive(Clone, Default, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
+struct Claims {
+    name: String,
+}
+
+#[derive(Clone, Default)]
 struct Service {}
 
 fn get_random_localhost_addr() -> String {
@@ -53,11 +65,18 @@ fn get_random_localhost_addr() -> String {
 #[tonic::async_trait]
 impl Echoer for Service {
     async fn echo(&self, request: Request<EchoRequest>) -> Result<Response<EchoResponse>, Status> {
+        let claims = request.extensions().get::<Claims>().cloned();
         let request = request.into_inner();
 
         info!("Got a request: {:?}", request);
 
-        Ok(Response::new(EchoResponse { msg: request.msg }))
+        Ok(Response::new(EchoResponse {
+            msg: if let Some(claims) = claims {
+                format!("{}: {}", claims.name, request.msg)
+            } else {
+                request.msg
+            },
+        }))
     }
 }
 
@@ -85,7 +104,7 @@ impl Authenticator for MockAuthenticator {
         _extra_params: &Option<HashMap<String, String>>,
     ) -> authentication::Result<ClientTokenSet> {
         Ok(ClientTokenSet {
-            access_token: "access_token".into(),
+            access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjEyMywic3ViIjoiMTIzNDU2Nzg5MCIsIm5hbWUiOiJKb2huIERvZSIsImlhdCI6MTUxNjIzOTAyMn0.9P2Lckmb0Kmy-5lVME8CzHeKDQJ_pAsCJVRIRFsDcZ8".into(),
             refresh_token: None,
             id_token: Some("id_token".into()),
             token_type: "token_type".into(),
@@ -110,8 +129,8 @@ impl Authenticator for MockAuthenticator {
 #[serial_test::serial]
 async fn test_service_multiplexer() -> anyhow::Result<()> {
     //let server = lgn_grpc::server::transport::http2::Server::default();
-    let echo_service = EchoerServer::new(Service {});
-    let sum_service = SummerServer::new(Service {});
+    let echo_service = EchoerServer::new(Service::default());
+    let sum_service = SummerServer::new(Service::default());
     let service = lgn_online::grpc::MultiplexerService::builder()
         .add_service(echo_service)
         .add_service(sum_service)
@@ -193,8 +212,75 @@ async fn test_service_multiplexer() -> anyhow::Result<()> {
 
 #[tokio::test]
 #[serial_test::serial]
+async fn test_service_authentication() -> anyhow::Result<()> {
+    //let server = lgn_grpc::server::transport::http2::Server::default();
+    let echo_service = EchoerServer::new(Service::default());
+
+    let validation = Validation::<NoSignatureValidation>::default().disable_exp_validation();
+
+    let server = tonic::transport::Server::builder()
+        .layer(RequireAuthorizationLayer::custom(RequestAuthorizer::<
+            Claims,
+            _,
+            _,
+        >::new(validation)))
+        .add_service(echo_service);
+
+    let addr_str = get_random_localhost_addr();
+    let addr = addr_str.parse()?;
+
+    async fn f(addr_str: &str) -> anyhow::Result<()> {
+        let client = GrpcClient::new(format!("http://{}", addr_str).parse()?);
+
+        let authenticator = MockAuthenticator::default();
+        let client = AuthenticatedClient::new(client, authenticator, &[]);
+
+        {
+            let msg: String = "hello".into();
+
+            let resp = backoff::future::retry(ExponentialBackoff::default(), || async {
+                let mut echo_client = EchoerClient::new(client.clone());
+
+                let resp = echo_client
+                    .echo(Request::new(EchoRequest { msg: msg.clone() }))
+                    .await;
+
+                if let Err(e) = &resp {
+                    error!("unexpected error: {}", e);
+                }
+
+                Ok(resp?)
+            })
+            .await?;
+
+            // The reply should be prefixed with the name contained in the claims.
+            assert_eq!(resp.into_inner().msg, format!("John Doe: {}", msg));
+        }
+
+        Ok(())
+    }
+
+    loop {
+        tokio::select! {
+            res = async {
+                info!("starting gRPC server...");
+
+                server.serve(addr).await
+            } => panic!("server is no longer bound: {}", res.unwrap_err()),
+            res = f(&addr_str) => match res {
+                Ok(_) => break,
+                Err(err) => panic!("client execution failed: {}", err),
+            },
+        };
+    }
+
+    Ok(())
+}
+
+#[tokio::test]
+#[serial_test::serial]
 async fn test_http2_client_and_server() -> anyhow::Result<()> {
-    let echo_service = EchoerServer::new(Service {});
+    let echo_service = EchoerServer::new(Service::default());
 
     let server = tonic::transport::Server::builder().add_service(echo_service);
 
@@ -248,7 +334,7 @@ async fn test_http2_client_and_server() -> anyhow::Result<()> {
 #[tokio::test]
 #[serial_test::serial]
 async fn test_http1_client_and_server() -> anyhow::Result<()> {
-    let echo_service = EchoerServer::new(Service {});
+    let echo_service = EchoerServer::new(Service::default());
 
     let server = tonic::transport::Server::builder()
         .accept_http1(true)

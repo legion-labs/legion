@@ -37,7 +37,7 @@ impl AwsS3Provider {
         Self {
             url,
             client,
-            validity_duration: Duration::from_secs(60),
+            validity_duration: Duration::from_secs(60 * 30),
         }
     }
 
@@ -403,7 +403,11 @@ pub struct AwsS3Url {
 
 impl Display for AwsS3Url {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "s3://{}/{}", self.bucket_name, self.root)
+        if self.root.is_empty() {
+            write!(f, "s3://{}", self.bucket_name)
+        } else {
+            write!(f, "s3://{}/{}", self.bucket_name, self.root)
+        }
     }
 }
 
@@ -425,11 +429,7 @@ impl FromStr for AwsS3Url {
                 .filter(|s| !s.is_empty())
                 .ok_or_else(|| anyhow::anyhow!("invalid S3 URL: missing bucket name in `{}`", s))?
                 .into(),
-            root: splitter
-                .next()
-                .filter(|s| !s.is_empty())
-                .ok_or_else(|| anyhow::anyhow!("invalid S3 URL: missing root path in `{}`", s))?
-                .into(),
+            root: splitter.next().unwrap_or_default().to_string(),
         })
     }
 }
@@ -458,13 +458,20 @@ mod tests {
 
     #[test]
     fn test_aws_s3_from_url_invalid() {
-        assert!("s3://test-bucket".parse::<AwsS3Url>().is_err());
         assert!("s3:///test-root/".parse::<AwsS3Url>().is_err());
         assert!("s3://".parse::<AwsS3Url>().is_err());
     }
 
     #[test]
     fn test_aws_s3_display() {
+        assert_eq!(
+            "s3://test-bucket",
+            &AwsS3Url {
+                bucket_name: "test-bucket".into(),
+                root: "".into(),
+            }
+            .to_string()
+        );
         assert_eq!(
             "s3://test-bucket/test-root",
             &AwsS3Url {

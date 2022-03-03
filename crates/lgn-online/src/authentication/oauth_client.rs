@@ -15,44 +15,31 @@ use openidconnect::{
     Nonce, OAuth2TokenResponse, PkceCodeChallenge, RedirectUrl, RefreshToken, Scope,
     SubjectIdentifier, TokenResponse,
 };
-use serde::Deserialize;
 use tokio::sync::{oneshot, Mutex};
 use url::Url;
 
-use super::{Authenticator, ClientTokenSet, Error, Result, UserInfo};
+use super::{Authenticator, ClientTokenSet, Error, OAuthClientConfig, Result, UserInfo};
 
-const DEFAULT_PORT: u16 = 80;
+const DEFAULT_REDIRECT_URI: &str = "http://localhost:3000";
 
 #[derive(Debug, Clone)]
 pub struct OAuthClient {
     client: CoreClient,
     client_id: ClientId,
     provider_metadata: CoreProviderMetadata,
-    redirect_uri: Option<RedirectUrl>,
-    // A port is identified for each transport protocol and
-    // address combination by a 16-bit unsigned number, known as the port number
-    // https://en.wikipedia.org/wiki/Port_(computer_networking)
-    port: u16,
-}
-
-#[derive(Deserialize, Debug)]
-struct OAuthConfig {
-    issuer_url: String,
-    client_id: String,
+    redirect_uri: RedirectUrl,
 }
 
 impl OAuthClient {
-    /// Instanciate a new `OAuthClient` from the current configuration.
-    pub async fn new_from_config() -> Result<Self> {
-        let config: OAuthConfig = match lgn_config::Config::new()
-            .get("oauth")
-            .ok_or_else(|| anyhow::anyhow!("failed to load oauth config"))
-        {
-            Ok(config) => config,
-            Err(err) => return Err(Error::Internal(format!("{}", err))),
-        };
+    /// Instanciate a new `OAuthClient` from the specified configuration.
+    pub async fn new_from_config(config: &OAuthClientConfig) -> Result<Self> {
+        let client = Self::new(config.issuer_url.clone(), config.client_id.clone()).await?;
 
-        Self::new(config.issuer_url, config.client_id).await
+        if let Some(redirect_uri) = &config.redirect_uri {
+            client.set_redirect_uri(redirect_uri)
+        } else {
+            Ok(client)
+        }
     }
 
     pub async fn new<'a, IU, ID>(issuer_url: IU, client_id: ID) -> Result<Self>
@@ -69,16 +56,18 @@ impl OAuthClient {
             .await
             .map_err(|error| Error::Internal(format!("{}", error)))?;
 
+        let redirect_uri = RedirectUrl::new(DEFAULT_REDIRECT_URI.to_string()).unwrap();
+
         let client =
             CoreClient::from_provider_metadata(provider_metadata.clone(), client_id.clone(), None)
-                .set_auth_type(AuthType::RequestBody);
+                .set_auth_type(AuthType::RequestBody)
+                .set_redirect_uri(redirect_uri.clone());
 
         Ok(Self {
             client,
             client_id,
-            port: DEFAULT_PORT,
             provider_metadata,
-            redirect_uri: None,
+            redirect_uri,
         })
     }
 
@@ -88,15 +77,9 @@ impl OAuthClient {
 
         self.client = self.client.set_redirect_uri(redirect_uri.clone());
 
-        self.redirect_uri = Some(redirect_uri);
+        self.redirect_uri = redirect_uri;
 
         Ok(self)
-    }
-
-    pub fn set_port(mut self, port: u16) -> Self {
-        self.port = port;
-
-        self
     }
 
     pub async fn user_info(
@@ -132,10 +115,7 @@ impl OAuthClient {
             let mut query_pairs = url.query_pairs_mut();
 
             query_pairs.append_pair("client_id", &self.client_id);
-
-            if let Some(ref redirect_uri) = self.redirect_uri {
-                query_pairs.append_pair("redirect_uri", redirect_uri);
-            }
+            query_pairs.append_pair("redirect_uri", &self.redirect_uri);
         }
 
         url.to_string()
@@ -397,7 +377,15 @@ impl OAuthClient {
     }
 
     fn get_callback_addr(&self) -> SocketAddr {
-        SocketAddr::from(([127, 0, 0, 1], self.port))
+        let port = self.redirect_uri.url().port().unwrap_or_else(|| {
+            if self.redirect_uri.url().scheme() == "http" {
+                80
+            } else {
+                443
+            }
+        });
+
+        SocketAddr::from(([127, 0, 0, 1], port))
     }
 }
 
