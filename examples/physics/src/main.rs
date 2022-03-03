@@ -305,6 +305,56 @@ async fn create_offline_data(
         path.push(sample_data::runtime::Entity::TYPE)
     };
 
+    let pyramid_id = {
+        let mut resources = resource_registry.lock().await;
+        let id = ResourceTypeAndId {
+            kind: sample_data::offline::Entity::TYPE,
+            id: ResourceId::from_str("9ffa97ef-3ae1-4859-aaeb-91f7268cad50").unwrap(),
+        };
+        let handle = resources.new_resource(id.kind).unwrap();
+
+        let entity = handle
+            .get_mut::<sample_data::offline::Entity>(&mut resources)
+            .unwrap();
+        entity
+            .components
+            .push(Box::new(sample_data::offline::Transform {
+                position: (0_f32, 0_f32, 0_f32).into(),
+                rotation: Quat::IDENTITY,
+                scale: Vec3::ONE,
+            }));
+        entity
+            .components
+            .push(Box::new(sample_data::offline::Visual {
+                color: (0x00, 0x00, 0x00).into(),
+                ..sample_data::offline::Visual::default()
+            }));
+        entity
+            .components
+            .push(Box::new(lgn_physics::offline::PhysicsRigidConvexMesh {
+                actor_type: lgn_physics::RigidActorType::Dynamic,
+                vertices: vec![Vec3::Y, Vec3::X, -Vec3::X, Vec3::Z, -Vec3::Z],
+                scale: lgn_physics::offline::MeshScale {
+                    scale: Vec3::ONE,
+                    rotation: Quat::IDENTITY,
+                },
+            }));
+
+        project
+            .add_resource_with_id(
+                "/scene/pyramid.ent".into(),
+                sample_data::offline::Entity::TYPENAME,
+                id.kind,
+                id.id,
+                handle,
+                &mut resources,
+            )
+            .await
+            .unwrap();
+        let path: ResourcePathId = id.into();
+        path.push(sample_data::runtime::Entity::TYPE)
+    };
+
     let scene_id = {
         let mut resources = resource_registry.lock().await;
         let id = ResourceTypeAndId {
@@ -320,6 +370,7 @@ async fn create_offline_data(
         entity.children.push(box_a_id);
         entity.children.push(box_b_id);
         entity.children.push(box_c_id);
+        entity.children.push(pyramid_id);
         entity.children.push(ground_id);
 
         project

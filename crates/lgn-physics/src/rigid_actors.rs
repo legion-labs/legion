@@ -71,7 +71,7 @@ impl ConvertToGeometry for runtime::PhysicsRigidConvexMesh {
         let mut mesh_desc = PxConvexMeshDesc::new();
         mesh_desc.obj.points.data = vertices.as_ptr().cast::<std::ffi::c_void>();
         mesh_desc.obj.points.count = vertices.len() as u32;
-        mesh_desc.obj.points.stride = std::mem::size_of::<PxVec3> as u32;
+        mesh_desc.obj.points.stride = std::mem::size_of::<PxVec3>() as u32;
         assert!(cooking.validate_convex_mesh(&mesh_desc));
 
         let cooking_result = cooking.create_convex_mesh(physics.physics_mut(), &mesh_desc);

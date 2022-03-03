@@ -83,10 +83,10 @@ impl Plugin for PhysicsPlugin {
             PhysicsStage::Update,
             Self::create_rigid_actors::<runtime::PhysicsRigidCapsule>,
         )
-        // app.add_system_to_stage(
-        //     PhysicsStage::Update,
-        //     Self::create_rigid_actors::<runtime::PhysicsRigidConvexMesh>,
-        // );
+        .add_system_to_stage(
+            PhysicsStage::Update,
+            Self::create_rigid_actors::<runtime::PhysicsRigidConvexMesh>,
+        )
         // app.add_system_to_stage(
         //     PhysicsStage::Update,
         //     Self::create_rigid_actors::<runtime::PhysicsRigidHeightField>,
