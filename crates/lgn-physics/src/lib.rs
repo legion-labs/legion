@@ -12,10 +12,7 @@ mod callbacks;
 use callbacks::{OnAdvance, OnCollision, OnConstraintBreak, OnTrigger, OnWakeSleep};
 
 mod rigid_actors;
-use rigid_actors::{
-    add_dynamic_actor_to_scene, add_static_actor_to_scene, BoxCollisionGeometry,
-    SphereCollisionGeometry,
-};
+use rigid_actors::{add_dynamic_actor_to_scene, add_static_actor_to_scene, CollisionGeometry};
 
 mod settings;
 pub use settings::PhysicsSettings;
@@ -119,7 +116,7 @@ impl PhysicsPlugin {
         mut commands: Commands<'_, '_>,
     ) {
         for (entity, rigid_box, transform) in query.iter() {
-            let geometry_component = BoxCollisionGeometry::new(rigid_box);
+            let geometry_component: CollisionGeometry = rigid_box.into();
 
             match rigid_box.actor_type {
                 RigidActorType::Dynamic => {
@@ -160,7 +157,7 @@ impl PhysicsPlugin {
         mut commands: Commands<'_, '_>,
     ) {
         for (entity, rigid_sphere, transform) in query.iter() {
-            let geometry_component = SphereCollisionGeometry::new(rigid_sphere);
+            let geometry_component: CollisionGeometry = rigid_sphere.into();
 
             match rigid_sphere.actor_type {
                 RigidActorType::Dynamic => {

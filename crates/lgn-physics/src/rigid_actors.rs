@@ -8,46 +8,41 @@ use crate::{
 };
 
 #[derive(Component)]
-pub(crate) struct BoxCollisionGeometry(PxBoxGeometry);
+pub(crate) enum CollisionGeometry {
+    Box(PxBoxGeometry),
+    Sphere(PxSphereGeometry),
+}
 
-impl BoxCollisionGeometry {
-    pub(crate) fn new(rigid_box: &PhysicsRigidBox) -> Self {
-        Self(PxBoxGeometry::new(
-            rigid_box.half_extents.x,
-            rigid_box.half_extents.y,
-            rigid_box.half_extents.z,
+impl From<&PhysicsRigidBox> for CollisionGeometry {
+    fn from(value: &PhysicsRigidBox) -> Self {
+        Self::Box(PxBoxGeometry::new(
+            value.half_extents.x,
+            value.half_extents.y,
+            value.half_extents.z,
         ))
     }
 }
 
-#[allow(unsafe_code)]
-unsafe impl Class<PxGeometry> for BoxCollisionGeometry {
-    fn as_ptr(&self) -> *const PxGeometry {
-        self.0.as_ptr()
-    }
-
-    fn as_mut_ptr(&mut self) -> *mut PxGeometry {
-        self.0.as_mut_ptr()
-    }
-}
-
-#[derive(Component)]
-pub(crate) struct SphereCollisionGeometry(PxSphereGeometry);
-
-impl SphereCollisionGeometry {
-    pub(crate) fn new(rigid_sphere: &PhysicsRigidSphere) -> Self {
-        Self(PxSphereGeometry::new(rigid_sphere.radius))
+impl From<&PhysicsRigidSphere> for CollisionGeometry {
+    fn from(value: &PhysicsRigidSphere) -> Self {
+        Self::Sphere(PxSphereGeometry::new(value.radius))
     }
 }
 
 #[allow(unsafe_code)]
-unsafe impl Class<PxGeometry> for SphereCollisionGeometry {
+unsafe impl Class<PxGeometry> for CollisionGeometry {
     fn as_ptr(&self) -> *const PxGeometry {
-        self.0.as_ptr()
+        match self {
+            Self::Box(geometry) => geometry.as_ptr(),
+            Self::Sphere(geometry) => geometry.as_ptr(),
+        }
     }
 
     fn as_mut_ptr(&mut self) -> *mut PxGeometry {
-        self.0.as_mut_ptr()
+        match self {
+            Self::Box(geometry) => geometry.as_mut_ptr(),
+            Self::Sphere(geometry) => geometry.as_mut_ptr(),
+        }
     }
 }
 
