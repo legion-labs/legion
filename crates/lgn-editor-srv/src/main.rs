@@ -146,9 +146,6 @@ fn main() {
         exit_on_close: false,
     });
 
-    // register missing types
-    let _ = lgn_physics::offline::PhysicsRigidActor::get_default_instance();
-
     if let Some(test_name) = args.test {
         match test_name.as_str() {
             "lifecycle" => {

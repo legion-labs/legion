@@ -1,94 +1,91 @@
 use lgn_ecs::prelude::*;
 use lgn_transform::prelude::*;
-use physx::{foundation::DefaultAllocator, prelude::*};
+use physx::{foundation::DefaultAllocator, prelude::*, traits::Class};
 
 use crate::{
-    runtime::PhysicsRigidActor, CollisionGeometry, PxMaterial, PxScene, PxShape, RigidActorType,
+    runtime::{PhysicsRigidBox, PhysicsRigidSphere},
+    PxMaterial, PxScene, PxShape,
 };
 
 #[derive(Component)]
-pub(crate) struct RigidDynamicActor {
-    geometry: PxBoxGeometry,
+pub(crate) enum CollisionGeometry {
+    Box(PxBoxGeometry),
+    Sphere(PxSphereGeometry),
 }
 
-impl RigidDynamicActor {
-    pub(crate) fn new(rigid_actor: &PhysicsRigidActor, transform: &GlobalTransform) -> Self {
-        debug_assert!(rigid_actor.actor_type == RigidActorType::Dynamic);
-        match rigid_actor.collision_geometry {
-            CollisionGeometry::Box => {
-                // default cube is size 0.5 x 0.5 x 0.5
-                let extents = transform.scale * 0.25_f32;
-                Self {
-                    geometry: PxBoxGeometry::new(extents.x, extents.y, extents.z),
-                }
-            }
-            _ => panic!("unsupported geometry"),
+impl From<&PhysicsRigidBox> for CollisionGeometry {
+    fn from(value: &PhysicsRigidBox) -> Self {
+        Self::Box(PxBoxGeometry::new(
+            value.half_extents.x,
+            value.half_extents.y,
+            value.half_extents.z,
+        ))
+    }
+}
+
+impl From<&PhysicsRigidSphere> for CollisionGeometry {
+    fn from(value: &PhysicsRigidSphere) -> Self {
+        Self::Sphere(PxSphereGeometry::new(value.radius))
+    }
+}
+
+#[allow(unsafe_code)]
+unsafe impl Class<PxGeometry> for CollisionGeometry {
+    fn as_ptr(&self) -> *const PxGeometry {
+        match self {
+            Self::Box(geometry) => geometry.as_ptr(),
+            Self::Sphere(geometry) => geometry.as_ptr(),
         }
     }
 
-    pub(crate) fn add_actor_to_scene(
-        &self,
-        physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
-        scene: &mut ResMut<'_, Owner<PxScene>>,
-        transform: &GlobalTransform,
-        entity: Entity,
-        material: &mut ResMut<'_, Owner<PxMaterial>>,
-    ) {
-        let transform: PxTransform = transform.compute_matrix().into();
-        let mut actor = physics
-            .create_rigid_dynamic(
-                transform,
-                &self.geometry,
-                material,
-                10_f32,
-                PxTransform::default(),
-                entity,
-            )
-            .unwrap();
-        actor.set_angular_damping(0.5);
-        scene.add_dynamic_actor(actor);
-    }
-}
-
-#[derive(Component)]
-pub(crate) struct RigidStaticActor {
-    //geometry: Box<dyn Geometry + Send + Sync>,
-    geometry: PxBoxGeometry,
-}
-
-impl RigidStaticActor {
-    pub(crate) fn new(rigid_actor: &PhysicsRigidActor, transform: &GlobalTransform) -> Self {
-        debug_assert!(rigid_actor.actor_type == RigidActorType::Static);
-        match rigid_actor.collision_geometry {
-            CollisionGeometry::Box => {
-                // default cube is size 0.5 x 0.5 x 0.5
-                let extents = transform.scale * 0.25_f32;
-                Self {
-                    geometry: PxBoxGeometry::new(extents.x, extents.y, extents.z),
-                }
-            }
-            _ => panic!("unsupported geometry"),
+    fn as_mut_ptr(&mut self) -> *mut PxGeometry {
+        match self {
+            Self::Box(geometry) => geometry.as_mut_ptr(),
+            Self::Sphere(geometry) => geometry.as_mut_ptr(),
         }
     }
+}
 
-    pub(crate) fn add_actor_to_scene(
-        &self,
-        physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
-        scene: &mut ResMut<'_, Owner<PxScene>>,
-        transform: &GlobalTransform,
-        entity: Entity,
-        material: &mut ResMut<'_, Owner<PxMaterial>>,
-    ) {
-        let transform: PxTransform = transform.compute_matrix().into();
-        let actor = physics
-            .create_rigid_static(
-                transform,
-                &self.geometry,
-                material,
-                PxTransform::default(),
-                entity,
-            )
-            .unwrap();
-        scene.add_static_actor(actor);
-    }
+pub(crate) fn add_dynamic_actor_to_scene(
+    physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
+    scene: &mut ResMut<'_, Owner<PxScene>>,
+    transform: &GlobalTransform,
+    geometry: &impl Geometry,
+    entity: Entity,
+    material: &mut ResMut<'_, Owner<PxMaterial>>,
+) {
+    let transform: PxTransform = transform.compute_matrix().into();
+    let mut actor = physics
+        .create_rigid_dynamic(
+            transform,
+            geometry,
+            material,
+            10_f32,
+            PxTransform::default(),
+            entity,
+        )
+        .unwrap();
+    actor.set_angular_damping(0.5);
+    scene.add_dynamic_actor(actor);
+}
+
+pub(crate) fn add_static_actor_to_scene(
+    physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
+    scene: &mut ResMut<'_, Owner<PxScene>>,
+    transform: &GlobalTransform,
+    geometry: &impl Geometry,
+    entity: Entity,
+    material: &mut ResMut<'_, Owner<PxMaterial>>,
+) {
+    let transform: PxTransform = transform.compute_matrix().into();
+    let actor = physics
+        .create_rigid_static(
+            transform,
+            geometry,
+            material,
+            PxTransform::default(),
+            entity,
+        )
+        .unwrap();
+    scene.add_static_actor(actor);
 }

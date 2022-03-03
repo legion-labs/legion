@@ -147,9 +147,9 @@ async fn create_offline_data(
             }));
         entity
             .components
-            .push(Box::new(lgn_physics::offline::PhysicsRigidActor {
+            .push(Box::new(lgn_physics::offline::PhysicsRigidBox {
                 actor_type: lgn_physics::RigidActorType::Static,
-                collision_geometry: lgn_physics::CollisionGeometry::Box,
+                half_extents: (3_f32, 0.25_f32, 3_f32).into(),
             }));
 
         project
@@ -193,9 +193,9 @@ async fn create_offline_data(
             }));
         entity
             .components
-            .push(Box::new(lgn_physics::offline::PhysicsRigidActor {
+            .push(Box::new(lgn_physics::offline::PhysicsRigidBox {
                 actor_type: lgn_physics::RigidActorType::Dynamic,
-                collision_geometry: lgn_physics::CollisionGeometry::Box,
+                half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
             }));
 
         project
@@ -239,9 +239,9 @@ async fn create_offline_data(
             }));
         entity
             .components
-            .push(Box::new(lgn_physics::offline::PhysicsRigidActor {
+            .push(Box::new(lgn_physics::offline::PhysicsRigidBox {
                 actor_type: lgn_physics::RigidActorType::Dynamic,
-                collision_geometry: lgn_physics::CollisionGeometry::Box,
+                half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
             }));
 
         project
@@ -285,9 +285,9 @@ async fn create_offline_data(
             }));
         entity
             .components
-            .push(Box::new(lgn_physics::offline::PhysicsRigidActor {
+            .push(Box::new(lgn_physics::offline::PhysicsRigidBox {
                 actor_type: lgn_physics::RigidActorType::Dynamic,
-                collision_geometry: lgn_physics::CollisionGeometry::Box,
+                half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
             }));
 
         project
