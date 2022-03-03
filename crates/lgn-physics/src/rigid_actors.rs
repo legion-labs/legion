@@ -3,13 +3,15 @@ use lgn_transform::prelude::*;
 use physx::{foundation::DefaultAllocator, prelude::*, traits::Class};
 
 use crate::{
-    runtime::{PhysicsRigidBox, PhysicsRigidSphere},
+    runtime::{PhysicsRigidBox, PhysicsRigidCapsule, PhysicsRigidPlane, PhysicsRigidSphere},
     PxMaterial, PxScene, PxShape,
 };
 
 #[derive(Component)]
 pub(crate) enum CollisionGeometry {
     Box(PxBoxGeometry),
+    Capsule(PxCapsuleGeometry),
+    Plane(PxPlaneGeometry),
     Sphere(PxSphereGeometry),
 }
 
@@ -20,6 +22,18 @@ impl From<&PhysicsRigidBox> for CollisionGeometry {
             value.half_extents.y,
             value.half_extents.z,
         ))
+    }
+}
+
+impl From<&PhysicsRigidCapsule> for CollisionGeometry {
+    fn from(value: &PhysicsRigidCapsule) -> Self {
+        Self::Capsule(PxCapsuleGeometry::new(value.radius, value.half_height))
+    }
+}
+
+impl From<&PhysicsRigidPlane> for CollisionGeometry {
+    fn from(_value: &PhysicsRigidPlane) -> Self {
+        Self::Plane(PxPlaneGeometry::new())
     }
 }
 
@@ -34,6 +48,8 @@ unsafe impl Class<PxGeometry> for CollisionGeometry {
     fn as_ptr(&self) -> *const PxGeometry {
         match self {
             Self::Box(geometry) => geometry.as_ptr(),
+            Self::Capsule(geometry) => geometry.as_ptr(),
+            Self::Plane(geometry) => geometry.as_ptr(),
             Self::Sphere(geometry) => geometry.as_ptr(),
         }
     }
@@ -41,6 +57,8 @@ unsafe impl Class<PxGeometry> for CollisionGeometry {
     fn as_mut_ptr(&mut self) -> *mut PxGeometry {
         match self {
             Self::Box(geometry) => geometry.as_mut_ptr(),
+            Self::Capsule(geometry) => geometry.as_mut_ptr(),
+            Self::Plane(geometry) => geometry.as_mut_ptr(),
             Self::Sphere(geometry) => geometry.as_mut_ptr(),
         }
     }

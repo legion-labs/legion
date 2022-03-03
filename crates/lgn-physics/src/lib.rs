@@ -27,7 +27,7 @@ use lgn_tracing::prelude::*;
 use lgn_transform::prelude::*;
 use physx::{foundation::DefaultAllocator, physics::PhysicsFoundationBuilder, prelude::*};
 
-use crate::runtime::{PhysicsRigidBox, PhysicsRigidSphere};
+use crate::runtime::{PhysicsRigidBox, PhysicsRigidCapsule, PhysicsRigidPlane, PhysicsRigidSphere};
 
 // type aliases
 
@@ -69,6 +69,14 @@ impl Plugin for PhysicsPlugin {
         app.add_system_to_stage(
             PhysicsStage::Update,
             Self::create_rigid_actors::<PhysicsRigidBox>,
+        );
+        app.add_system_to_stage(
+            PhysicsStage::Update,
+            Self::create_rigid_actors::<PhysicsRigidCapsule>,
+        );
+        app.add_system_to_stage(
+            PhysicsStage::Update,
+            Self::create_rigid_actors::<PhysicsRigidPlane>,
         );
         app.add_system_to_stage(
             PhysicsStage::Update,
