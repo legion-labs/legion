@@ -75,6 +75,7 @@ const DIFF_THREASHOLD: f64 = 0.001;
 // rm ./test/graphics-sandbox/tests/refs/simple-scene/simple-scene.png
 // mv ./simple-scene.png ./test/graphics-sandbox/tests/refs/simple-scene
 #[test]
+#[ignore]
 fn gpu_simple_scene() {
     let test_name = "simple-scene";
     let setup_name = "simple-scene";
