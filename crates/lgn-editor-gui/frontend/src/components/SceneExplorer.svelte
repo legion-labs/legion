@@ -4,6 +4,11 @@
   import Panel from "@lgn/web-client/src/components/panel/Panel.svelte";
   import PanelList from "@lgn/web-client/src/components/panel/PanelList.svelte";
   import type { Entries } from "@/lib/hierarchyTree";
+  import { createEventDispatcher } from "svelte";
+
+  const dispatch = createEventDispatcher<{
+    currentResourceDescriptionChange: ResourceDescription;
+  }>();
 
   export let currentResourceDescription: ResourceDescription | null;
 
@@ -25,6 +30,8 @@
         on:select={({ detail: resourceDescription }) =>
           resourceDescription &&
           fetchCurrentResourceDescription(resourceDescription)}
+        on:highlight={({ detail: item }) =>
+          dispatch("currentResourceDescriptionChange", item)}
         bind:highlightedItem={currentResourceDescription}
       >
         <div slot="default" let:item={resource}>
