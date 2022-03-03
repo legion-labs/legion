@@ -2,13 +2,13 @@
   "components": [
     {
       "Name": {
-        "name": "DebugCube2"
+        "name": "DebugCube1"
       }
     },
     {
       "Transform": {
         "position": [
-          -0.8794494867324829,
+          1.0,
           0.0,
           0.0
         ],
@@ -27,7 +27,7 @@
     },
     {
       "Visual": {
-        "color": 4278255615,
+        "color": 4294902015,
         "gi_contribution": 0,
         "renderable_geometry": null,
         "shadow_caster_local": false,

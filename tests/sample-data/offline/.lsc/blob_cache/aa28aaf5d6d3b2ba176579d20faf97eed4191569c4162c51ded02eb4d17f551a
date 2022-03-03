@@ -1,5 +1,5 @@
 {
-  "name": "/entity/DebugCube1",
+  "name": "/world/sample_1/helmet/helmet_metal_parts.ent",
   "type_name": "offline_entity",
   "type_id": "1c0ff9e497b0740f",
   "dependencies": []

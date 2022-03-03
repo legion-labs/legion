@@ -133,4 +133,5 @@ extra-files = [
 type = "zip"
 extra-files = [
     { source = "../../tests/sample-data/*", destination = "tests/sample-data" },
+    { source = "../../legion.toml", destination = "" },
 ]

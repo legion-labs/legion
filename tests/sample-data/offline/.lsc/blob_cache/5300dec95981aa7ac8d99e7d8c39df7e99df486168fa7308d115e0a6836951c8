@@ -2,14 +2,14 @@
   "components": [
     {
       "Name": {
-        "name": "DebugCube2"
+        "name": "Helmet Leather Parts"
       }
     },
     {
       "Transform": {
         "position": [
-          -0.8794494867324829,
           0.0,
+          0.5,
           0.0
         ],
         "rotation": [
@@ -27,14 +27,14 @@
     },
     {
       "Visual": {
-        "color": 4278255615,
+        "color": 4294902015,
         "gi_contribution": 0,
-        "renderable_geometry": null,
-        "shadow_caster_local": false,
-        "shadow_caster_sun": false,
-        "shadow_receiver": false
+        "renderable_geometry": "(0d4207bbf3a2fd08,4cbc25ba-8743-4f20-9a58-6419770c951f)|44e4b6023fb7a8d3_LeatherParts_low|5c4b1b522bf5dcb0",
+        "shadow_caster_local": true,
+        "shadow_caster_sun": true,
+        "shadow_receiver": true
       }
     }
   ],
-  "parent": "(1c0ff9e497b0740f,5d6c8521-ef7f-4402-8fac-01c5c4f53329)|1d9ddd99aad89045"
+  "parent": "(1c0ff9e497b0740f,5d6c8521-ef7f-4402-8fac-01c5c4f53329)"
 }
