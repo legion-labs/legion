@@ -82,16 +82,51 @@ lgn-streamer = { path = "../lgn-streamer", version = "0.1.0", features = [
 
 [[package.metadata.monorepo.publish]]
 type = "docker"
-template = """
+template = '''
 FROM ubuntu:20.04
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget ca-certificates \
+    unzip \
+    gnupg \
+    libx11-xcb-dev \
+    libxkbcommon-dev \
+    libwayland-dev \
+    libxrandr-dev \
+    libegl1-mesa-dev
+
+RUN wget -qO lunarg-signing-key-pub.asc https://packages.lunarg.com/lunarg-signing-key-pub.asc && \
+    apt-key add lunarg-signing-key-pub.asc && \
+    wget -qO /etc/apt/sources.list.d/lunarg-vulkan-1.3.204-focal.list https://packages.lunarg.com/vulkan/1.3.204/lunarg-vulkan-1.3.204-focal.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends vulkan-sdk && \
+    echo "/usr/lib/dxc" | tee -a /etc/ld.so.conf.d/dxc.conf && \
+    ldconfig
+
+RUN wget -qO /tmp/driver.zip https://s3.amazonaws.com/nvidia-gaming/linux/latest/vGPUSW-495.50-Nov2021-vGaming-Linux-Guest-Drivers.zip && \
+    unzip /tmp/driver.zip -d /tmp/driver && \
+    chmod u+x /tmp/driver/Linux/NVIDIA-Linux-x86_64-495.50-grid.run && \
+    cd /tmp/driver && ./Linux/NVIDIA-Linux-x86_64-495.50-grid.run -s --extract-only && \
+    cp -r /tmp/driver/NVIDIA-Linux-x86_64-495.50-grid/lib* /usr/lib/x86_64-linux-gnu/ && \
+    rm -rf /tmp/driver*
+
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES compute,graphics,video,utility
 
 { copy_all }
 
+EXPORT 50051/tcp
+EXPORT 50051/udp
+
+WORKDIR /usr/src/app
+
 CMD ["{ binaries.editor-srv }"]
-"""
+'''
 allow-aws-ecr-creation = true
 extra-files = [
-    { source = "../../tests/sample-data/*", destination = "/usr/src/app/" },
+    { source = "../../tests/sample-data/*", destination = "/usr/src/app/tests/sample-data/" },
+    { source = "../../legion.toml", destination = "/usr/src/app/" },
+    { source = "nvidia_icd.json", destination = "/etc/vulkan/icd.d/" },
 ]
 
 [[package.metadata.monorepo.publish]]

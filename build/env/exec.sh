@@ -31,7 +31,7 @@ fi
 
 docker run --name build-env \
     -it --rm \
-    -e CARGO_TARGET_DIR="target\docker" \
+    -e CARGO_TARGET_DIR="target/docker" \
     -v "/var/run/docker.sock":"/var/run/docker.sock" \
     -v "$(realpath $MONOREPO_ROOT)":/github/workspace \
     --workdir /github/workspace \
