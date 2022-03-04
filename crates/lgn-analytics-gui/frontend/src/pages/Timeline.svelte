@@ -58,9 +58,6 @@
 
   export let processId: string;
 
-  let timelineStart: number | undefined;
-  let timelineEnd: number | undefined;
-
   let canvas: HTMLCanvasElement | undefined;
   let refreshTimer: ReturnType<typeof setTimeout> | null = null;
   let processList: Process[] = [];
@@ -71,7 +68,6 @@
   let scopes: Record<number, ScopeDesc> = {
     0: { name: "", filename: "", line: 0, hash: 0 },
   };
-  let viewRange: [number, number] | undefined;
   let beginPan: BeginPan | undefined;
   let selectionState: SelectionState = NewSelectionState();
   let currentSelection: [number, number] | undefined;
@@ -82,17 +78,11 @@
   let windowInnerWidth: number;
 
   onMount(async () => {
-    state = new TimelineState();
     client = await makeGrpcClient();
     const urlParams = new URLSearchParams(window.location.search);
-    const startParam = urlParams.get("timelineStart");
-    if (startParam) {
-      timelineStart = Number.parseFloat(startParam);
-    }
-    const endParam = urlParams.get("timelineEnd");
-    if (endParam) {
-      timelineEnd = Number.parseFloat(endParam);
-    }
+    const start = Number.parseFloat(urlParams.get("timelineStart") ?? "");
+    const end = Number.parseFloat(urlParams.get("timelineEnd") ?? "");
+    state = new TimelineState(start, end);
 
     const canvas = document.getElementById("canvas_timeline");
     if (!canvas || !(canvas instanceof HTMLCanvasElement)) {
@@ -136,7 +126,7 @@
       }
       const preferedLod = computePreferredBlockLod(
         canvas.width,
-        getViewRange(),
+        state.getViewRange(),
         block
       );
       if (preferedLod == null) {
@@ -358,7 +348,12 @@
       }
     }
 
-    DrawSelectedRange(canvas, renderingContext, selectionState, getViewRange());
+    DrawSelectedRange(
+      canvas,
+      renderingContext,
+      selectionState,
+      state.getViewRange()
+    );
 
     drawTime = Math.floor(performance.now() - startTime);
   }
@@ -461,7 +456,7 @@
       return;
     }
 
-    const [begin, end] = getViewRange();
+    const [begin, end] = state.getViewRange();
     const invTimeSpan = 1.0 / (end - begin);
     const canvasWidth = canvas.clientWidth;
     const msToPixelsFactor = invTimeSpan * canvasWidth;
@@ -497,7 +492,7 @@
       let block = state.blocks[block_id];
       let lodToRender = !canvas
         ? null
-        : findBestLod(canvas.width, getViewRange(), block);
+        : findBestLod(canvas.width, state.getViewRange(), block);
 
       if (block.beginMs > end || block.endMs < begin) {
         return;
@@ -540,22 +535,6 @@
     });
   }
 
-  function getViewRange(): [number, number] {
-    if (viewRange) {
-      return viewRange;
-    }
-
-    let start = state.minMs;
-    if (timelineStart) {
-      start = timelineStart;
-    }
-    let end = state.maxMs;
-    if (timelineEnd) {
-      end = timelineEnd;
-    }
-    return [start, end];
-  }
-
   function onPan(event: MouseEvent) {
     if (!canvas) {
       throw new Error("Canvas can't be found");
@@ -565,7 +544,7 @@
       beginPan = {
         beginMouseX: event.offsetX,
         beginMouseY: event.offsetY,
-        viewRange: getViewRange(),
+        viewRange: state.getViewRange(),
         beginYOffset: yOffset,
       };
     }
@@ -574,10 +553,10 @@
       (beginPan.viewRange[1] - beginPan.viewRange[0]) / canvas.width;
     const offsetMs = factor * (beginPan.beginMouseX - event.offsetX);
 
-    viewRange = [
+    state.setViewRange([
       beginPan.viewRange[0] + offsetMs,
       beginPan.viewRange[1] + offsetMs,
-    ];
+    ]);
 
     yOffset = beginPan.beginYOffset + event.offsetY - beginPan.beginMouseY;
   }
@@ -612,7 +591,7 @@
         event,
         selectionState,
         canvas,
-        getViewRange()
+        state.getViewRange()
       ) ||
       PanOnMouseMove(event)
     ) {
@@ -628,7 +607,9 @@
     if (!canvas) {
       throw new Error("Canvas can't be found");
     }
-    viewRange = zoomHorizontalViewRange(getViewRange(), canvas.width, event);
+    state.setViewRange(
+      zoomHorizontalViewRange(state.getViewRange(), canvas.width, event)
+    );
     fetchPreferedLods(loadingProgression);
     invalidateCanvas();
     updatePixelSize();
@@ -638,7 +619,7 @@
     if (!canvas) {
       return;
     }
-    let vr = getViewRange();
+    let vr = state.getViewRange();
     pixelSize = (vr[1] - vr[0]) / canvas.width;
   }
 
