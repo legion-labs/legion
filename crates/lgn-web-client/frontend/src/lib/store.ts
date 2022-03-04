@@ -1,9 +1,12 @@
+import { BehaviorSubject, Observable } from "rxjs";
 import { noop, safe_not_equal as safeNotEqual } from "svelte/internal";
-import type {
+import {
   StartStopNotifier,
   Subscriber,
   Unsubscriber,
   Updater,
+  writable,
+  Readable as SvelteReadable,
 } from "svelte/store";
 
 /** A store orchestrator is an object that contains and orchestrate/manipulate store(s) but is not a store itself */
@@ -104,4 +107,28 @@ export class Writable<T> extends Readable<T> {
   override update(fn: Updater<T>): void {
     super.update(fn);
   }
+}
+
+/**
+ * Takes a readable/writable store and turns it into a `BehaviorSubject`
+ *
+ * When used with the auto subscribed operator `$` the value _can_ be
+ * `undefined` at runtime if you pipe the returned subject to some
+ * async operators (like `delay` for instance).
+ */
+export function fromStore<Value>(store: SvelteReadable<Value>) {
+  const subject = new BehaviorSubject<Value>(null as unknown as Value);
+
+  store.subscribe((value) => subject.next(value));
+
+  return subject;
+}
+
+/** Takes an Observable and turns into a Svelte's `Writable` store */
+export function toStore<Value>(observable: Observable<Value>) {
+  const store = writable<Value>();
+
+  observable.subscribe((value) => store.set(value));
+
+  return store;
 }
