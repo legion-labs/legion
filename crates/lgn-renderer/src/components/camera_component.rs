@@ -2,6 +2,7 @@ use dolly::prelude::{Position, Smooth, YawPitch};
 use dolly::rig::CameraRig;
 use lgn_core::Time;
 use lgn_ecs::prelude::*;
+use lgn_graphics_cgen_runtime::Float4;
 use lgn_input::Input;
 use lgn_input::{
     keyboard::KeyCode,
@@ -32,6 +33,56 @@ impl CameraComponent {
         let projection_matrix = Mat4::perspective_lh(fov_y_radians, aspect_ratio, z_near, z_far);
 
         (view_matrix, projection_matrix)
+    }
+
+    pub fn build_culling_planes(&self, aspect_ratio: f32) -> [Float4; 6] {
+        let fov_y_radians: f32 = 45.0;
+        let z_near: f32 = 0.01;
+        let z_far: f32 = 100.0;
+
+        let eye = self.camera_rig.final_transform.position;
+        let forward = self.camera_rig.final_transform.forward();
+        let up = self.camera_rig.final_transform.up();
+        let right = self.camera_rig.final_transform.right();
+
+        let half_v_side = z_far * (fov_y_radians * 0.5).tan();
+        let half_h_side = half_v_side * aspect_ratio;
+
+        let near_face_point = eye + forward * z_near;
+        let near_normal = -forward;
+        let near_plane: Float4 =
+            Vec4::from((near_normal, -near_normal.dot(near_face_point))).into();
+
+        let far_face_point = eye + forward * z_far;
+        let far_normal = forward;
+        let far_plane: Float4 = Vec4::from((far_normal, -far_normal.dot(far_face_point))).into();
+
+        let front_mult_far = z_far * forward;
+
+        let right_side = front_mult_far - right * half_h_side;
+        let right_normal = up.cross(right_side).normalize();
+        let right_plane: Float4 = Vec4::from((right_normal, -right_normal.dot(eye))).into();
+
+        let left_side = front_mult_far + right * half_h_side;
+        let left_normal = left_side.cross(up).normalize();
+        let left_plane: Float4 = Vec4::from((left_normal, -left_normal.dot(eye))).into();
+
+        let top_side = front_mult_far - up * half_v_side;
+        let top_normal = top_side.cross(right).normalize();
+        let top_plane: Float4 = Vec4::from((top_normal, -top_normal.dot(eye))).into();
+
+        let bottom_side = front_mult_far + up * half_v_side;
+        let bottom_normal = right.cross(bottom_side).normalize();
+        let bottom_plane: Float4 = Vec4::from((bottom_normal, -bottom_normal.dot(eye))).into();
+
+        [
+            near_plane,
+            far_plane,
+            right_plane,
+            left_plane,
+            top_plane,
+            bottom_plane,
+        ]
     }
 
     pub fn tmp_build_view_data(

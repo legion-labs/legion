@@ -23,8 +23,8 @@ pub fn main() {
                  #{ name:"tex_coord_offset", ty:"Uint1" },
                  #{ name:"index_offset", ty:"Uint1" },
                  #{ name:"color_offset", ty:"Uint1" },                 
-                 #{ name:"vertex_count", ty:"Uint1" },
                  #{ name:"index_count", ty:"Uint1" },
+                 #{ name:"bounding_sphere", ty:"Float4" },
             ]
         }
     ]

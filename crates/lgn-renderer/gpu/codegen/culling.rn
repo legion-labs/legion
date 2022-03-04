@@ -12,7 +12,9 @@ pub fn main(frame_descriptor_set, view_descriptor_set ) {
             type: "Struct",
             name: "RenderPassData",
             fields: [
+                #{ name:"culling_planes", ty:"Float4", array_len:6 },
                 #{ name:"offset_base_va", ty:"Uint1" },
+                #{ name:"padding", ty:"Uint1", array_len:3 },
             ]
         },
         #{

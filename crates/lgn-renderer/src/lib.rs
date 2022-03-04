@@ -190,7 +190,10 @@ impl Plugin for RendererPlugin {
         app.add_system_to_stage(RenderStage::Prepare, update_gpu_instances);
         app.add_system_to_stage(RenderStage::Prepare, update_missing_visuals);
         app.add_system_to_stage(RenderStage::Prepare, update_lights);
-        app.add_system_to_stage(RenderStage::Prepare, camera_control);
+        app.add_system_to_stage(
+            RenderStage::Prepare,
+            camera_control.exclusive_system().at_start(),
+        );
         app.add_system_to_stage(RenderStage::Prepare, prepare_shaders);
 
         //
@@ -398,6 +401,7 @@ fn update_missing_visuals(
     }
 }
 
+#[span_fn]
 #[allow(
     clippy::needless_pass_by_value,
     clippy::type_complexity,

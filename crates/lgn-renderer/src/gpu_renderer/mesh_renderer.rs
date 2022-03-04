@@ -1,5 +1,5 @@
 use lgn_app::{App, CoreStage, EventReader, Plugin};
-use lgn_ecs::prelude::{Res, ResMut};
+use lgn_ecs::prelude::{Query, Res, ResMut};
 use lgn_graphics_api::{
     BarrierQueueTransition, BlendState, Buffer, BufferBarrier, BufferDef, BufferView,
     BufferViewDef, CompareOp, ComputePipelineDef, DepthState, DeviceContext, Format,
@@ -15,6 +15,7 @@ use crate::{
         cgen_type::{GpuInstanceData, RenderPassData},
         shader,
     },
+    components::{CameraComponent, RenderSurface},
     hl_gfx_api::HLCommandBuffer,
     labels::RenderStage,
     resources::{
@@ -88,8 +89,20 @@ fn update_render_elements(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn prepare(renderer: Res<'_, Renderer>, mut mesh_renderer: ResMut<'_, MeshRenderer>) {
-    mesh_renderer.prepare(&renderer);
+fn prepare(
+    renderer: Res<'_, Renderer>,
+    mut mesh_renderer: ResMut<'_, MeshRenderer>,
+    surfaces: Query<'_, '_, &mut RenderSurface>,
+    cameras: Query<'_, '_, &CameraComponent>,
+) {
+    let cameras = cameras.iter().collect::<Vec<&CameraComponent>>();
+    let surfaces = surfaces.iter().collect::<Vec<&RenderSurface>>();
+
+    if !cameras.is_empty() && !surfaces.is_empty() {
+        let aspect_ratio =
+            surfaces[0].extents().width() as f32 / surfaces[0].extents().height() as f32;
+        mesh_renderer.prepare(&renderer, cameras[0], aspect_ratio);
+    };
 }
 
 struct CullingArgBuffer {
@@ -201,7 +214,7 @@ impl MeshRenderer {
         }
     }
 
-    fn prepare(&mut self, renderer: &Renderer) {
+    fn prepare(&mut self, renderer: &Renderer, camera: &CameraComponent, aspect_ratio: f32) {
         let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
 
         let mut count_buffer_size: u64 = 0;
@@ -216,6 +229,7 @@ impl MeshRenderer {
             );
 
             let mut pass_data = RenderPassData::default();
+            pass_data.set_culling_planes(camera.build_culling_planes(aspect_ratio));
             pass_data.set_offset_base_va(offset_base_va.into());
             self.render_pass_data.push(pass_data);
         }

@@ -10,6 +10,7 @@ pub struct MeshMetaData {
     pub index_offset: u32,
     pub mesh_description_offset: u32,
     pub positions: Vec<Vec4>, // for AABB calculation
+    pub bounding_sphere: Vec4,
 }
 
 pub struct MeshManager {
@@ -103,6 +104,7 @@ impl MeshManager {
                 index_offset,
                 mesh_description_offset: mesh_info_offset,
                 positions: mesh.positions.as_ref().unwrap().clone(),
+                bounding_sphere: mesh.bounding_sphere,
             });
             offset = u64::from(new_offset);
         }

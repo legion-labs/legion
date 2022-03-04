@@ -20,6 +20,7 @@ pub struct Mesh {
     pub colors: Option<Vec<Vec4>>,
 
     pub material_id: Option<MaterialReferenceType>,
+    pub bounding_sphere: Vec4,
 }
 
 impl Mesh {
@@ -70,6 +71,31 @@ impl Mesh {
         size
     }
 
+    pub fn calculate_bounding_sphere(positions: &[Vec4]) -> Vec4 {
+        let mut min_bound = Vec4::new(f32::MAX, f32::MAX, f32::MAX, 1.0);
+        let mut max_bound = Vec4::new(f32::MIN, f32::MIN, f32::MIN, 1.0);
+
+        for position in positions {
+            min_bound = min_bound.min(*position);
+            max_bound = max_bound.max(*position);
+        }
+
+        let delta = max_bound - min_bound;
+        let mut mid_point = min_bound + delta * 0.5;
+
+        let mut max_length: f32 = 0.0;
+        for position in positions {
+            let delta = *position - mid_point;
+            let length = delta.abs().length();
+
+            if length > max_length {
+                max_length = length;
+            }
+        }
+        mid_point.w = max_length;
+        mid_point
+    }
+
     pub fn make_gpu_update_job(
         &self,
         updater: &mut UniformGPUDataUpdater,
@@ -82,7 +108,6 @@ impl Mesh {
 
         if let Some(positions) = &self.positions {
             mesh_desc.set_position_offset(offset.into());
-            mesh_desc.set_vertex_count((positions.len() as u32).into());
             updater.add_update_jobs(positions, u64::from(offset));
             offset += (std::mem::size_of::<Vec4>() * positions.len()) as u32;
         }
@@ -114,6 +139,7 @@ impl Mesh {
             updater.add_update_jobs(colors, u64::from(offset));
             offset += (std::mem::size_of::<Vec4>() * colors.len()) as u32;
         }
+        mesh_desc.set_bounding_sphere(self.bounding_sphere.into());
 
         updater.add_update_jobs(&[mesh_desc], u64::from(offset));
         let mesh_info_offset = offset;
@@ -605,6 +631,8 @@ impl Mesh {
         let mut indices = arrow.indices.unwrap();
         indices.append(&mut cone.indices.unwrap());
 
+        let bounding_sphere = Self::calculate_bounding_sphere(&positions);
+
         Self {
             positions: Some(positions),
             normals: Some(normals),
@@ -614,6 +642,7 @@ impl Mesh {
             indices: Some(indices),
 
             material_id: None,
+            bounding_sphere,
         }
     }
 
@@ -768,6 +797,8 @@ impl Mesh {
             tex_coords.push(Vec2::new(vertex_data[idx + 12], vertex_data[idx + 13]));
         }
         let tangents = lgn_math::calculate_tangents(&positions, &tex_coords, &None);
+        let bounding_sphere = Self::calculate_bounding_sphere(&positions);
+
         Self {
             positions: Some(positions),
             normals: Some(normals),
@@ -777,6 +808,7 @@ impl Mesh {
             colors: Some(colors),
 
             material_id: None,
+            bounding_sphere,
         }
     }
 
