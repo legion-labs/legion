@@ -176,8 +176,8 @@ pub enum Error {
     #[error("Asset linking failed.")]
     LinkFailed,
     /// Compilation did not produce expected output.
-    #[error("Compilation did not produce expected output.")]
-    OutputNotPresent,
+    #[error("Compilation of {0} did not produce expected output '{1}'.")]
+    OutputNotPresent(ResourcePathId, String),
     /// Compiler returned an error.
     #[error("Compiler returned an error: '{0}'")]
     Compiler(#[source] CompilerError),

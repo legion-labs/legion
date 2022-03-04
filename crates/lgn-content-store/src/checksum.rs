@@ -3,7 +3,7 @@ use std::{fmt, str::FromStr};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Represents the checksum of a content file, as an unsigned 128-bit value.
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Eq, Hash, PartialEq, PartialOrd, Ord)]
 pub struct Checksum([u8; 32]);
 
 impl Checksum {
@@ -16,6 +16,12 @@ impl Checksum {
 impl From<[u8; 32]> for Checksum {
     fn from(value: [u8; 32]) -> Self {
         Self(value)
+    }
+}
+
+impl fmt::Debug for Checksum {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("{:064x}", hex_fmt::HexFmt(self.0)))
     }
 }
 

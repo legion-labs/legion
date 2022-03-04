@@ -14,7 +14,7 @@ use lgn_data_offline::Transform;
 use lgn_data_offline::{resource::Project, ResourcePathId};
 use lgn_data_runtime::manifest::Manifest;
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions, ResourceTypeAndId};
-use lgn_tracing::{span_fn, span_scope};
+use lgn_tracing::{info, span_fn, span_scope};
 use lgn_utils::{DefaultHash, DefaultHasher};
 use petgraph::{algo, Graph};
 
@@ -282,6 +282,9 @@ impl DataBuild {
         self.output_index.record_pathid(&compile_path);
         let mut result = CompiledResources::default();
 
+        let start = std::time::Instant::now();
+        info!("Compilation of {} Started", compile_path);
+
         let CompileOutput {
             resources,
             references,
@@ -301,6 +304,8 @@ impl DataBuild {
                 result.compiled_resources.push(asset);
             }
         }
+
+        info!("Compilation Ended ({}ms)", start.elapsed().as_millis());
         Ok(result)
     }
 
@@ -364,6 +369,12 @@ impl DataBuild {
                         env,
                     )
                     .map_err(Error::Compiler)?;
+
+                // a resource cannot refer to itself
+                assert_eq!(
+                    resource_references.iter().filter(|(a, b)| a == b).count(),
+                    0
+                );
 
                 output_index.insert_compiled(
                     compile_node,
@@ -512,6 +523,8 @@ impl DataBuild {
         let mut accumulated_dependencies = vec![];
         let mut node_hash = HashMap::<_, (u64, u64)>::new();
 
+        let mut compiled_at_node = HashMap::<ResourcePathId, _>::new();
+
         for compile_node_index in topological_order {
             let compile_node = build_graph.node_weight(compile_node_index).unwrap();
             // compile non-source dependencies.
@@ -533,6 +546,14 @@ impl DataBuild {
                 //  'name' is dropped as we always compile input as a whole.
                 let expected_name = compile_node.name();
                 let compile_node = compile_node.to_unnamed();
+
+                // check if the unnamed ResourcePathId has been already compiled and early out.
+                if let Some(node_index) = compiled_at_node.get(&compile_node) {
+                    node_hash.insert(compile_node_index, *node_hash.get(node_index).unwrap());
+                    continue;
+                }
+
+                compiled_at_node.insert(compile_node.clone(), compile_node_index);
 
                 //
                 // for derived resources the build index will not have dependencies for.
@@ -603,6 +624,9 @@ impl DataBuild {
 
                 node_hash.insert(compile_node_index, (context_hash, source_hash));
 
+                info!("Compiling {} ({:?}) ...", compile_node, expected_name);
+                let start = std::time::Instant::now();
+
                 let (resource_infos, resource_references, stats) = Self::compile_node(
                     &mut self.output_index,
                     self.content_store.address(),
@@ -616,6 +640,12 @@ impl DataBuild {
                     compiler,
                     self.compilers.registry(),
                 )?;
+
+                info!(
+                    "Compiling {} Ended ({}ms)",
+                    compile_node,
+                    start.elapsed().as_millis()
+                );
 
                 // update the CAS manifest with new content in order to make new resources
                 // visible to the next compilation node
@@ -640,7 +670,10 @@ impl DataBuild {
                             .name()
                             .map_or(false, |name| name == expected_name)
                     }) {
-                        return Err(Error::OutputNotPresent);
+                        return Err(Error::OutputNotPresent(
+                            compile_node,
+                            expected_name.to_string(),
+                        ));
                     }
                 }
 
@@ -651,6 +684,15 @@ impl DataBuild {
                         size: res.compiled_size,
                     }
                 }));
+
+                assert_eq!(
+                    compiled_resources
+                        .iter()
+                        .filter(|&info| resource_infos.iter().any(|a| a == info))
+                        .count(),
+                    0,
+                    "duplicate compilation output detected"
+                );
 
                 compiled_resources.extend(resource_infos);
                 compile_stats.extend(stats);
@@ -676,39 +718,58 @@ impl DataBuild {
     ) -> Result<Vec<CompiledResource>, Error> {
         let mut resource_files = Vec::with_capacity(resources.len());
         for resource in resources {
-            //
-            // for now, every derived resource gets an `assetfile` representation.
-            //
-            let asset_id = resource.compiled_path.resource_id();
+            info!("Linking {:?} ...", resource);
+            let (checksum, size) = if let Some((checksum, size)) = self.output_index.find_linked(
+                resource.compiled_path.clone(),
+                resource.context_hash.clone(),
+                resource.source_hash.clone(),
+            ) {
+                (checksum, size)
+            } else {
+                //
+                // for now, every derived resource gets an `assetfile` representation.
+                //
+                let asset_id = resource.compiled_path.resource_id();
 
-            let resource_list = std::iter::once((asset_id, resource.compiled_checksum));
-            let reference_list = references
-                .iter()
-                .filter(|r| r.is_reference_of(resource))
-                .map(|r| {
-                    (
-                        resource.compiled_path.resource_id(),
+                let resource_list = std::iter::once((asset_id, resource.compiled_checksum));
+                let reference_list = references
+                    .iter()
+                    .filter(|r| r.is_reference_of(resource))
+                    .map(|r| {
                         (
-                            r.compiled_reference.resource_id(),
-                            r.compiled_reference.resource_id(),
-                        ),
-                    )
-                });
+                            resource.compiled_path.resource_id(),
+                            (
+                                r.compiled_reference.resource_id(),
+                                r.compiled_reference.resource_id(),
+                            ),
+                        )
+                    });
 
-            let output = write_assetfile(resource_list, reference_list, &self.content_store)?;
+                let output = write_assetfile(resource_list, reference_list, &self.content_store)?;
 
-            let checksum = {
-                span_scope!("content_store");
-                self.content_store
-                    .store(&output)
-                    .ok_or(Error::InvalidContentStore)?
+                let checksum = {
+                    span_scope!("content_store");
+                    self.content_store
+                        .store(&output)
+                        .ok_or(Error::InvalidContentStore)?
+                };
+                self.output_index.insert_linked(
+                    resource.compiled_path.clone(),
+                    resource.context_hash.clone(),
+                    resource.source_hash.clone(),
+                    checksum,
+                    output.len(),
+                );
+                (checksum, output.len())
             };
 
             let asset_file = CompiledResource {
                 path: resource.compiled_path.clone(),
                 checksum,
-                size: output.len(),
+                size,
             };
+
+            info!("Linked {} into: {}", resource.compiled_path, checksum);
             resource_files.push(asset_file);
         }
 

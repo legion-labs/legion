@@ -16,7 +16,7 @@ use serde_with::DisplayFromStr;
 
 use crate::Error;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub(crate) struct CompiledResourceInfo {
     /// The path the resource was compiled from, i.e.:
     /// "ResourcePathId("anim.fbx").push("anim.offline")
@@ -54,12 +54,23 @@ impl CompiledResourceReference {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct LinkedResource {
+    id: ResourcePathId,
+    context_hash: AssetHash,
+    source_hash: AssetHash,
+    checksum: Checksum,
+    size: usize,
+}
+
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
 struct OutputContent {
     version: String,
     compiled_resources: Vec<CompiledResourceInfo>,
     compiled_resource_references: Vec<CompiledResourceReference>,
+    #[serde_as(as = "Vec<(_, _)>")]
+    linked_resources: BTreeMap<(ResourcePathId, AssetHash, AssetHash), (Checksum, usize)>,
     #[serde_as(as = "Vec<(DisplayFromStr, _)>")]
     pathid_mapping: BTreeMap<ResourceTypeAndId, ResourcePathId>,
 }
@@ -106,6 +117,7 @@ impl OutputIndex {
             version: String::from(version),
             compiled_resources: vec![],
             compiled_resource_references: vec![],
+            linked_resources: BTreeMap::<_, _>::new(),
             pathid_mapping: BTreeMap::<_, _>::new(),
         };
 
@@ -246,6 +258,31 @@ impl OutputIndex {
         }
     }
 
+    pub(crate) fn find_linked(
+        &self,
+        id: ResourcePathId,
+        context_hash: AssetHash,
+        source_hash: AssetHash,
+    ) -> Option<(Checksum, usize)> {
+        self.content
+            .linked_resources
+            .get(&(id, context_hash, source_hash))
+            .copied()
+    }
+
+    pub(crate) fn insert_linked(
+        &mut self,
+        id: ResourcePathId,
+        context_hash: AssetHash,
+        source_hash: AssetHash,
+        checksum: Checksum,
+        size: usize,
+    ) {
+        self.content
+            .linked_resources
+            .insert((id, context_hash, source_hash), (checksum, size));
+    }
+
     pub(crate) fn output_index_file(buildindex_dir: impl AsRef<Path>) -> PathBuf {
         buildindex_dir.as_ref().join("output.index")
     }
@@ -282,7 +319,7 @@ mod tests {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct AssetHash(u64);
 
 impl AssetHash {
