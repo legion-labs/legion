@@ -3,9 +3,10 @@ use heck::ToShoutySnakeCase;
 use crate::{
     db::CGenType,
     generators::{file_writer::FileWriter, product::Product, CGenVariant, GeneratorContext},
+    struct_layout::StructLayout,
 };
 
-use super::utils::member_declaration;
+use super::utils::{is_matrix_type, load_declaration, member_declaration};
 
 pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     let mut products = Vec::new();
@@ -15,11 +16,7 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
             CGenType::Native(_) => None,
             CGenType::Struct(_) => {
                 let ty_layout = ctx.struct_layouts.get(ty_ref.id());
-                if ty_layout.is_some() {
-                    Some(generate_hlsl_struct(ctx, ty_ref.object()))
-                } else {
-                    None
-                }
+                ty_layout.map(|ty_layout| generate_hlsl_struct(ctx, ty_layout, ty_ref.object()))
             }
             CGenType::BitField(_) => Some(generate_hlsl_bitfield(ctx, ty_ref.object())),
         } {
@@ -33,7 +30,11 @@ pub fn run(ctx: &GeneratorContext<'_>) -> Vec<Product> {
     products
 }
 
-fn generate_hlsl_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String {
+fn generate_hlsl_struct<'a>(
+    ctx: &GeneratorContext<'a>,
+    ty_layout: &StructLayout,
+    ty: &CGenType,
+) -> String {
     let struct_ty = ty.struct_type();
     let mut writer = FileWriter::new();
 
@@ -72,6 +73,38 @@ fn generate_hlsl_struct<'a>(ctx: &GeneratorContext<'a>, ty: &CGenType) -> String
             }
         }
 
+        // Loader
+        {
+            writer.new_line();
+            let mut writer = writer.add_block(
+                &[format!(
+                    "{} Load{}(ByteAddressBuffer buffer, uint va) {{",
+                    struct_ty.name, struct_ty.name
+                )],
+                &["};"],
+            );
+
+            let mut has_matrix = false;
+            for m in &struct_ty.members {
+                if is_matrix_type(ctx.model, m) {
+                    has_matrix = true;
+                }
+            }
+
+            if has_matrix {
+                writer.add_line(&format!(
+                    "{} value = ({})0;",
+                    struct_ty.name, struct_ty.name
+                ));
+                for (i, m) in struct_ty.members.iter().enumerate() {
+                    let offset = ty_layout.members[i].offset;
+                    writer.add_line(load_declaration(ctx.model, m, offset));
+                }
+                writer.add_line(&"return value;".to_string());
+            } else {
+                writer.add_line(&format!("return buffer.Load<{}>(va);", struct_ty.name));
+            }
+        }
         writer.new_line();
     }
 
