@@ -351,6 +351,7 @@ impl AssetToECS for lgn_graphics_data::runtime::Model {
                     None
                 },
                 material_id: None,
+                bounding_sphere: Mesh::calculate_bounding_sphere(&mesh.positions),
             });
         }
         let model_component = ModelComponent {
