@@ -3,6 +3,8 @@ use async_recursion::async_recursion;
 use lgn_analytics::prelude::*;
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
+use lgn_telemetry_proto::analytics::AsyncSpansReply;
+use lgn_telemetry_proto::analytics::AsyncSpansRequest;
 use lgn_telemetry_proto::analytics::BlockAsyncEventsStatReply;
 use lgn_telemetry_proto::analytics::BlockAsyncStatsRequest;
 use lgn_telemetry_proto::analytics::BlockSpansReply;
@@ -308,6 +310,11 @@ impl AnalyticsService {
             request.block_id,
         )
         .await
+    }
+
+    async fn fetch_async_spans_impl(&self, _request: AsyncSpansRequest) -> Result<AsyncSpansReply> {
+        // let mut connection = self.pool.acquire().await?;
+        bail!("not impl")
     }
 }
 
@@ -641,6 +648,23 @@ impl PerformanceAnalytics for AnalyticsService {
                 error!("Error in fetch_block_async_stats: {:?}", e);
                 Err(Status::internal(format!(
                     "Error in fetch_block_async_stats: {}",
+                    e
+                )))
+            }
+        }
+    }
+
+    async fn fetch_async_spans(
+        &self,
+        request: Request<AsyncSpansRequest>,
+    ) -> Result<Response<AsyncSpansReply>, Status> {
+        let inner_request = request.into_inner();
+        match self.fetch_async_spans_impl(inner_request).await {
+            Ok(reply) => Ok(Response::new(reply)),
+            Err(e) => {
+                error!("Error in fetch_fetch_async_spans: {:?}", e);
+                Err(Status::internal(format!(
+                    "Error in fetch_async_spans: {}",
                     e
                 )))
             }

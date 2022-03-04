@@ -19,6 +19,7 @@ service PerformanceAnalytics {
   rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
   rpc list_stream_blocks(ListStreamBlocksRequest) returns (ListStreamBlocksReply);
   rpc nb_process_log_entries(ProcessNbLogEntriesRequest) returns (ProcessNbLogEntriesReply);
+  rpc fetch_async_spans(AsyncSpansRequest) returns (AsyncSpansReply);
   rpc fetch_block_async_stats(BlockAsyncStatsRequest) returns (BlockAsyncEventsStatReply);
   rpc fetch_block_metric_manifest(MetricBlockManifestRequest) returns (MetricBlockManifest);
   rpc fetch_block_metric(MetricBlockRequest) returns (MetricBlockData);
@@ -197,4 +198,18 @@ message BlockAsyncEventsStatReply {
   double begin_ms = 2;
   double end_ms = 3;
   uint64 nb_events = 4;
+}
+
+// fetch_async_spans
+message AsyncSpansRequest {
+  int32 section_sequence_number = 1;
+  uint32 section_lod = 2;
+  repeated string block_ids =
+      3;  // thread blocks intersecting with the requested section could be computed server-side.
+}
+
+message AsyncSpansReply {
+  int32 section_sequence_number = 1;
+  uint32 section_lod = 2;
+  repeated SpanTrack tracks = 3;
 }
