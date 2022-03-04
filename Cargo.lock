@@ -4381,6 +4381,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-asset-store"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-stream",
+ "clap 3.1.2",
+ "futures-util",
+ "lgn-cli-utils",
+ "lgn-content-store2",
+ "lgn-online",
+ "lgn-telemetry-sink",
+ "lgn-tracing",
+ "rmp-serde",
+ "serde",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "uuid",
+]
+
+[[package]]
 name = "lgn-async"
 version = "0.1.0"
 dependencies = [
@@ -4703,6 +4724,7 @@ dependencies = [
  "rand 0.8.5",
  "redis",
  "reqwest",
+ "rmp-serde",
  "serde",
  "smallvec",
  "tempfile",
@@ -8042,6 +8064,27 @@ dependencies = [
  "untrusted",
  "web-sys",
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "rmp"
+version = "0.8.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f55e5fa1446c4d5dd1f5daeed2a4fe193071771a2636274d0d7a3b082aa7ad6"
+dependencies = [
+ "byteorder",
+ "num-traits",
+]
+
+[[package]]
+name = "rmp-serde"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3eedffbfcc6a428f230c04baf8f59bd73c1781361e4286111fe900849aaddaf"
+dependencies = [
+ "byteorder",
+ "rmp",
+ "serde",
 ]
 
 [[package]]
