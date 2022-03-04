@@ -135,14 +135,9 @@ where
         &self,
         provider: impl ContentProvider + Send + Sync + Copy,
         tree: Tree,
-        asset: Asset<Metadata>,
+        key: &str,
     ) -> Result<Tree> {
-        let key = match self.key_getter.get_key(asset.metadata()) {
-            Some(key) => key,
-            None => return Ok(tree), // The asset does not have the required key, and therefore cannot be added to the tree.
-        };
-
-        let path = self.key_path_splitter.split_key(&key);
+        let path = self.key_path_splitter.split_key(key);
 
         if path.is_empty() {
             return Ok(tree); // If the key, assume the asset cannot be added to the tree.
@@ -174,7 +169,7 @@ where
                 tree.without_child(key)
             } else {
                 tree.with_named_tree_id((*key).to_string(), last_tree.save(provider).await?)
-            }
+            };
         }
 
         last_tree.save(provider).await?;
@@ -456,20 +451,32 @@ mod tests {
         //
         // In a nutshell: the key is the 'what', the tree is the 'where' and the
         // index is the 'how'.
-        assert_eq!(
-            file_index
-                .get_asset(provider, &file_tree, "/assets/a")
-                .await
-                .unwrap(),
-            Some(asset_a.clone())
-        );
-        assert_eq!(
-            oid_index
-                .get_asset(provider, &oid_tree, "abcdef")
-                .await
-                .unwrap(),
-            Some(asset_a.clone())
-        );
+
+        // Fetch an asset by path: use the file index.
+        let asset = file_index
+            .get_asset(provider, &file_tree, "/assets/a")
+            .await
+            .unwrap() // Result
+            .unwrap(); // Option
+
+        assert_eq!(asset, asset_a.clone());
+
+        // We fetched that asset by its path: we can access any of its metadata!
+        assert_eq!(asset.metadata().path, "/assets/a");
+        assert_eq!(asset.metadata().oid, "abcdef");
+
+        // Fetch an asset by OID: use the oid index.
+        let asset = oid_index
+            .get_asset(provider, &oid_tree, "abcdef")
+            .await
+            .unwrap() // Result
+            .unwrap(); // Option
+
+        assert_eq!(asset, asset_a.clone());
+
+        // We fetched that asset by its OID: we can access any of its metadata!
+        assert_eq!(asset.metadata().path, "/assets/a");
+        assert_eq!(asset.metadata().oid, "abcdef");
 
         // Fetching by OID in the file index? No. Won't work, as expected.
         assert_eq!(
@@ -482,7 +489,7 @@ mod tests {
 
         // List all the assets in the index. Should be discouraged in real code: mostly useful for tests.
         let assets_as_files = file_index
-            .all_assets(provider, file_tree)
+            .all_assets(provider, file_tree.clone())
             .map(|(key, asset)| (key, asset.unwrap()))
             .collect::<Vec<_>>()
             .await;
@@ -495,8 +502,9 @@ mod tests {
             ]
         );
 
+        // The same with the OID index.
         let assets_as_oids = oid_index
-            .all_assets(provider, oid_tree)
+            .all_assets(provider, oid_tree.clone())
             .map(|(key, asset)| (key, asset.unwrap()))
             .collect::<Vec<_>>()
             .await;
@@ -507,6 +515,40 @@ mod tests {
                 ("abcdef".to_string(), asset_a.clone()),
                 ("abefef".to_string(), asset_b.clone())
             ]
+        );
+
+        // Remove an asset from the indexes.
+        let file_tree = file_index
+            .remove_asset(provider, file_tree, "/assets/b")
+            .await
+            .unwrap();
+        let oid_tree = oid_index
+            .remove_asset(provider, oid_tree, "abefef")
+            .await
+            .unwrap();
+
+        // List all the assets in the index. Should be discouraged in real code: mostly useful for tests.
+        let assets_as_files = file_index
+            .all_assets(provider, file_tree.clone())
+            .map(|(key, asset)| (key, asset.unwrap()))
+            .collect::<Vec<_>>()
+            .await;
+
+        assert_eq!(
+            assets_as_files,
+            vec![("/assets/a".to_string(), asset_a.clone()),]
+        );
+
+        // The same with the OID index.
+        let assets_as_oids = oid_index
+            .all_assets(provider, oid_tree.clone())
+            .map(|(key, asset)| (key, asset.unwrap()))
+            .collect::<Vec<_>>()
+            .await;
+
+        assert_eq!(
+            assets_as_oids,
+            vec![("abcdef".to_string(), asset_a.clone()),]
         );
     }
 }

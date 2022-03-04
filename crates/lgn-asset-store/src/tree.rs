@@ -34,6 +34,11 @@ impl Tree {
         self.children.is_empty()
     }
 
+    /// Get the children count.
+    pub fn children_count(&self) -> usize {
+        self.children.len()
+    }
+
     /// Load a tree from the content-store.
     ///
     /// # Errors
