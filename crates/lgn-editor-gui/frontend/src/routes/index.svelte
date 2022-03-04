@@ -62,6 +62,18 @@
     }
   });
 
+  function setCurrentDescriptionEntry({
+    detail: resource,
+  }: CustomEvent<ResourceDescription>) {
+    const entry = $resourceEntries.find((entry) => entry.item === resource);
+
+    if (!entry) {
+      return;
+    }
+
+    currentResourceDescriptionEntry = entry;
+  }
+
   async function reloadResources() {
     $currentResourceData = null;
     currentResourceDescriptionEntry = null;
@@ -84,7 +96,8 @@
           <SceneExplorer
             allResourcesLoading={$allResourcesLoading}
             resourceEntries={$resourceEntries}
-            bind:currentResourceDescription
+            {currentResourceDescription}
+            on:currentResourceDescriptionChange={setCurrentDescriptionEntry}
           />
         </div>
         <div class="h-separator" />
