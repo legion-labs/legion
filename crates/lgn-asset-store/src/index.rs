@@ -5,7 +5,7 @@ use lgn_content_store2::{ContentProvider, ContentReader};
 use serde::{de::DeserializeOwned, Serialize};
 use tokio_stream::Stream;
 
-use crate::{Asset, Result, Tree, TreeNode};
+use crate::{Asset, Result, SingleAssetTree, Tree, TreeNode};
 
 /// An index of assets.
 pub struct Index<Metadata> {
@@ -27,7 +27,7 @@ where
         }
     }
 
-    /// Get an asset by its key.
+    /// Get an asset by its key in a single asset tree.
     ///
     /// If no such asset exists, returns `Ok(None)`.
     ///
@@ -37,7 +37,7 @@ where
     pub async fn get_asset(
         &self,
         provider: impl ContentReader + Send + Sync + Copy,
-        tree: &Tree,
+        tree: &SingleAssetTree,
         key: &str,
     ) -> Result<Option<Asset<Metadata>>> {
         let path = self.key_path_splitter.split_key(key);
@@ -55,13 +55,16 @@ where
         // If N is less than the length of the path + 1, then the path is not
         // complete and new empty nodes are created.
         if let Some(tree) = self.resolve_tree(provider, tree, path).await? {
-            tree.lookup_asset(provider, asset_key).await
+            match tree.lookup_leaf(asset_key) {
+                Some(asset_id) => Asset::load(provider, asset_id).await.map(Some),
+                None => Ok(None),
+            }
         } else {
             Ok(None)
         }
     }
 
-    /// Add an asset to the specified index tree.
+    /// Add an asset to the specified single asset tree.
     ///
     /// Any existing asset with the same key will be overwritten silently.
     ///
@@ -71,9 +74,9 @@ where
     pub async fn add_asset(
         &self,
         provider: impl ContentProvider + Send + Sync + Copy,
-        tree: Tree,
+        tree: SingleAssetTree,
         asset: Asset<Metadata>,
-    ) -> Result<Tree> {
+    ) -> Result<SingleAssetTree> {
         let key = match self.key_getter.get_key(asset.metadata()) {
             Some(key) => key,
             None => return Ok(tree), // The asset does not have the required key, and therefore cannot be added to the tree.
@@ -110,33 +113,36 @@ where
 
         let mut last_tree = iter
             .next()
-            .map(|(key, tree)| tree.with_named_asset_id((*key).to_string(), asset_id))
+            .map(|(key, tree)| tree.with_named_leaf((*key).to_string(), asset_id))
             .unwrap();
         let mut last_tree_id = last_tree.save(provider).await?;
 
         for (key, tree) in iter {
-            last_tree = tree.with_named_tree_id((*key).to_string(), last_tree_id);
+            last_tree = tree.with_named_branch((*key).to_string(), last_tree_id);
             last_tree_id = last_tree.save(provider).await?;
         }
 
         Ok(last_tree)
     }
 
-    /// Remove an asset from the specified index tree.
+    /// Remove an entry from the specified tree.
     ///
-    /// If the asset is not found, the tree is returned unchanged.
+    /// If the entry is not found, the tree is returned unchanged.
     ///
-    /// Empty tree nodes in the removal path are removed.
+    /// Empty tree nodes in the removal path are removed too.
     ///
     /// # Errors
     ///
-    /// Returns an error if the asset could not be removed.
-    pub async fn remove_asset(
+    /// Returns an error if the entry could not be removed.
+    pub async fn remove_entry<LeafType>(
         &self,
         provider: impl ContentProvider + Send + Sync + Copy,
-        tree: Tree,
+        tree: Tree<LeafType>,
         key: &str,
-    ) -> Result<Tree> {
+    ) -> Result<Tree<LeafType>>
+    where
+        LeafType: DeserializeOwned + Serialize,
+    {
         let path = self.key_path_splitter.split_key(key);
 
         if path.is_empty() {
@@ -168,7 +174,7 @@ where
             last_tree = if last_tree.is_empty() {
                 tree.without_child(key)
             } else {
-                tree.with_named_tree_id((*key).to_string(), last_tree.save(provider).await?)
+                tree.with_named_branch((*key).to_string(), last_tree.save(provider).await?)
             };
         }
 
@@ -177,7 +183,8 @@ where
         Ok(last_tree)
     }
 
-    /// Returns a stream that iterates over all assets in the specified tree.
+    /// Returns a stream that iterates over all assets in the specified single
+    /// asset tree.
     ///
     /// # Warning
     ///
@@ -187,7 +194,7 @@ where
     pub fn all_assets<'s>(
         &'s self,
         provider: impl ContentReader + Send + Sync + Copy + 's,
-        tree: Tree,
+        tree: SingleAssetTree,
     ) -> impl Stream<Item = (String, Result<Asset<Metadata>>)> + 's {
         let mut trees = VecDeque::new();
         trees.push_back((String::default(), tree));
@@ -226,26 +233,29 @@ where
     /// # Errors
     ///
     /// Returns an error if the path cannot be resolved.
-    pub async fn resolve_tree(
+    pub async fn resolve_tree<LeafType>(
         &self,
         provider: impl ContentReader + Send + Sync + Copy,
-        tree: &Tree,
+        tree: &Tree<LeafType>,
         path: &[&str],
-    ) -> Result<Option<Tree>> {
+    ) -> Result<Option<Tree<LeafType>>>
+    where
+        LeafType: DeserializeOwned + Clone,
+    {
         if path.is_empty() {
             return Ok(None);
         }
 
         let (first, path) = path.split_first().unwrap();
 
-        let mut tree = if let Some(node) = tree.lookup_tree(provider, first).await? {
+        let mut tree = if let Some(node) = tree.lookup_branch(provider, first).await? {
             node
         } else {
             return Ok(None);
         };
 
         for element in path {
-            if let Some(node) = tree.lookup_tree(provider, element).await? {
+            if let Some(node) = tree.lookup_branch(provider, element).await? {
                 tree = node;
             } else {
                 return Ok(None);
@@ -256,12 +266,15 @@ where
     }
 
     /// Resolve a path of trees.
-    async fn resolve_tree_path(
+    async fn resolve_tree_path<LeafType>(
         &self,
         provider: impl ContentProvider + Send + Sync + Copy,
-        tree: Tree,
+        tree: Tree<LeafType>,
         path: &[&str],
-    ) -> Result<Vec<Tree>> {
+    ) -> Result<Vec<Tree<LeafType>>>
+    where
+        LeafType: DeserializeOwned,
+    {
         let mut result = Vec::with_capacity(path.len());
         result.push(tree);
 
@@ -269,7 +282,7 @@ where
             if let Some(node) = result
                 .last()
                 .unwrap()
-                .lookup_tree(provider, element)
+                .lookup_branch(provider, element)
                 .await?
             {
                 result.push(node);
@@ -360,7 +373,7 @@ mod tests {
     use lgn_content_store2::MemoryProvider;
     use serde::{Deserialize, Serialize};
 
-    use crate::{Asset, Index, KeyPathSplitter, Tree};
+    use crate::{Asset, Index, KeyPathSplitter, SingleAssetTree};
 
     #[test]
     fn test_key_path_splitter_separator() {
@@ -426,11 +439,11 @@ mod tests {
         // Note that the actual storage only happens once, thanks to the content
         // store implicit deduplication.
         let file_tree = file_index
-            .add_asset(provider, Tree::default(), asset_a.clone())
+            .add_asset(provider, SingleAssetTree::default(), asset_a.clone())
             .await
             .unwrap();
         let oid_tree = oid_index
-            .add_asset(provider, Tree::default(), asset_a.clone())
+            .add_asset(provider, SingleAssetTree::default(), asset_a.clone())
             .await
             .unwrap();
         let file_tree = file_index
@@ -519,11 +532,11 @@ mod tests {
 
         // Remove an asset from the indexes.
         let file_tree = file_index
-            .remove_asset(provider, file_tree, "/assets/b")
+            .remove_entry(provider, file_tree, "/assets/b")
             .await
             .unwrap();
         let oid_tree = oid_index
-            .remove_asset(provider, oid_tree, "abefef")
+            .remove_entry(provider, oid_tree, "abefef")
             .await
             .unwrap();
 
