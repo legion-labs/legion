@@ -20,6 +20,7 @@ mod call_tree_store;
 mod cumulative_call_graph;
 mod health_check_service;
 mod metrics;
+mod thread_block_processor;
 
 use std::str::FromStr;
 use std::{path::PathBuf, sync::Arc};

@@ -11,59 +11,6 @@ use lgn_telemetry_proto::analytics::Span;
 use lgn_telemetry_proto::analytics::SpanBlockLod;
 use lgn_telemetry_proto::analytics::SpanTrack;
 use lgn_tracing::prelude::*;
-use lgn_tracing_transit::prelude::*;
-
-trait ThreadBlockProcessor {
-    fn on_begin_scope(&mut self, scope_name: &str, ts: i64);
-    fn on_end_scope(&mut self, scope_name: &str, ts: i64);
-}
-
-fn on_thread_event<F>(obj: &lgn_tracing_transit::Object, mut fun: F) -> Result<()>
-where
-    F: FnMut(&str, i64),
-{
-    let tick = obj.get::<i64>("time")?;
-    let scope = obj.get::<Arc<Object>>("thread_span_desc")?;
-    let name = scope.get::<Arc<String>>("name")?;
-    fun(&*name, tick);
-    Ok(())
-}
-
-async fn parse_thread_block<Proc: ThreadBlockProcessor>(
-    connection: &mut sqlx::AnyConnection,
-    blob_storage: Arc<dyn BlobStorage>,
-    stream: &lgn_telemetry_sink::StreamInfo,
-    block_id: String,
-    processor: &mut Proc,
-) -> Result<()> {
-    let payload = fetch_block_payload(connection, blob_storage, block_id).await?;
-    parse_block(stream, &payload, |val| {
-        if let Value::Object(obj) = val {
-            match obj.type_name.as_str() {
-                "BeginThreadSpanEvent" => {
-                    if let Err(e) = on_thread_event(&obj, |name, ts| {
-                        processor.on_begin_scope(name, ts);
-                    }) {
-                        warn!("Error reading BeginThreadSpanEvent: {:?}", e);
-                    }
-                }
-                "EndThreadSpanEvent" => {
-                    if let Err(e) = on_thread_event(&obj, |name, ts| {
-                        processor.on_end_scope(name, ts);
-                    }) {
-                        warn!("Error reading EndThreadSpanEvent: {:?}", e);
-                    }
-                }
-                "BeginAsyncSpanEvent" | "EndAsyncSpanEvent" => {}
-                event_type => {
-                    warn!("unknown event type {}", event_type);
-                }
-            }
-        }
-        true //continue
-    })?;
-    Ok(())
-}
 
 struct CallTreeBuilder {
     ts_begin_block: i64,
@@ -143,7 +90,7 @@ impl CallTreeBuilder {
 }
 
 impl ThreadBlockProcessor for CallTreeBuilder {
-    fn on_begin_scope(&mut self, scope_name: &str, ts: i64) {
+    fn on_begin_thread_scope(&mut self, scope_name: &str, ts: i64) {
         let time = self.get_time(ts);
         let hash = compute_scope_hash(scope_name);
         self.record_scope_desc(hash, scope_name);
@@ -156,7 +103,7 @@ impl ThreadBlockProcessor for CallTreeBuilder {
         self.stack.push(scope);
     }
 
-    fn on_end_scope(&mut self, scope_name: &str, ts: i64) {
+    fn on_end_thread_scope(&mut self, scope_name: &str, ts: i64) {
         let time = self.get_time(ts);
         let hash = compute_scope_hash(scope_name);
         if let Some(mut old_top) = self.stack.pop() {
@@ -182,6 +129,9 @@ impl ThreadBlockProcessor for CallTreeBuilder {
             self.add_child_to_top(scope);
         }
     }
+
+    fn on_begin_async_scope(&mut self, _span_id: u64, _scope_name: &str, _ts: i64) {}
+    fn on_end_async_scope(&mut self, _span_id: u64, _scope_name: &str, _ts: i64) {}
 }
 
 #[allow(clippy::cast_precision_loss)]
@@ -214,6 +164,9 @@ pub(crate) async fn compute_block_call_tree(
 
 pub(crate) type ScopeHashMap = std::collections::HashMap<u32, ScopeDesc>;
 use xxhash_rust::const_xxh32::xxh32 as const_xxh32;
+
+use crate::thread_block_processor::parse_thread_block;
+use crate::thread_block_processor::ThreadBlockProcessor;
 
 fn compute_scope_hash(name: &str) -> u32 {
     //todo: add filename
