@@ -719,38 +719,54 @@ impl DataBuild {
         let mut resource_files = Vec::with_capacity(resources.len());
         for resource in resources {
             info!("Linking {:?} ...", resource);
-            //
-            // for now, every derived resource gets an `assetfile` representation.
-            //
-            let asset_id = resource.compiled_path.resource_id();
+            let (checksum, size) = if let Some((checksum, size)) = self.output_index.find_linked(
+                resource.compiled_path.clone(),
+                resource.context_hash.clone(),
+                resource.source_hash.clone(),
+            ) {
+                (checksum, size)
+            } else {
+                //
+                // for now, every derived resource gets an `assetfile` representation.
+                //
+                let asset_id = resource.compiled_path.resource_id();
 
-            let resource_list = std::iter::once((asset_id, resource.compiled_checksum));
-            let reference_list = references
-                .iter()
-                .filter(|r| r.is_reference_of(resource))
-                .map(|r| {
-                    (
-                        resource.compiled_path.resource_id(),
+                let resource_list = std::iter::once((asset_id, resource.compiled_checksum));
+                let reference_list = references
+                    .iter()
+                    .filter(|r| r.is_reference_of(resource))
+                    .map(|r| {
                         (
-                            r.compiled_reference.resource_id(),
-                            r.compiled_reference.resource_id(),
-                        ),
-                    )
-                });
+                            resource.compiled_path.resource_id(),
+                            (
+                                r.compiled_reference.resource_id(),
+                                r.compiled_reference.resource_id(),
+                            ),
+                        )
+                    });
 
-            let output = write_assetfile(resource_list, reference_list, &self.content_store)?;
+                let output = write_assetfile(resource_list, reference_list, &self.content_store)?;
 
-            let checksum = {
-                span_scope!("content_store");
-                self.content_store
-                    .store(&output)
-                    .ok_or(Error::InvalidContentStore)?
+                let checksum = {
+                    span_scope!("content_store");
+                    self.content_store
+                        .store(&output)
+                        .ok_or(Error::InvalidContentStore)?
+                };
+                self.output_index.insert_linked(
+                    resource.compiled_path.clone(),
+                    resource.context_hash.clone(),
+                    resource.source_hash.clone(),
+                    checksum,
+                    output.len(),
+                );
+                (checksum, output.len())
             };
 
             let asset_file = CompiledResource {
                 path: resource.compiled_path.clone(),
                 checksum,
-                size: output.len(),
+                size,
             };
 
             info!("Linked {} into: {}", resource.compiled_path, checksum);
