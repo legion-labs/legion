@@ -8,4 +8,4 @@ mod tree;
 pub use asset::{Asset, AssetIdentifier};
 pub use errors::{Error, Result};
 pub use index::{Index, KeyGetter, KeyPathSplitter};
-pub use tree::{MultiAssetsTree, SingleAssetTree, Tree, TreeNode};
+pub use tree::{MultiAssetsTree, Tree, TreeNode, UniqueAssetTree};

@@ -6,10 +6,12 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use crate::{AssetIdentifier, Result};
 use std::collections::{BTreeMap, BTreeSet};
 
-/// A hierarchical tree of assets where the leafs are single assets.
-pub type SingleAssetTree = Tree<AssetIdentifier>;
+/// A hierarchical tree of assets where the leafs are single assets which appear
+/// exactly once.
+pub type UniqueAssetTree = Tree<AssetIdentifier>;
 
-/// A hierarchical tree of assets where the leafs are lists of assets.
+/// A hierarchical tree of assets where the leafs are lists of assets where
+/// assets may appear multiple times or not at all.
 pub type MultiAssetsTree = Tree<BTreeSet<AssetIdentifier>>;
 
 /// A tree of assets.

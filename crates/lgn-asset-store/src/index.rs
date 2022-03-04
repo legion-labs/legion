@@ -6,7 +6,7 @@ use lgn_content_store2::{ContentProvider, ContentReader};
 use serde::{de::DeserializeOwned, Serialize};
 use tokio_stream::{Stream, StreamExt};
 
-use crate::{Asset, MultiAssetsTree, Result, SingleAssetTree, Tree, TreeNode};
+use crate::{Asset, MultiAssetsTree, Result, Tree, TreeNode, UniqueAssetTree};
 
 /// An index of assets.
 pub struct Index<Metadata, KeyType> {
@@ -18,7 +18,7 @@ impl<Metadata> Index<Metadata, String>
 where
     Metadata: Serialize + DeserializeOwned,
 {
-    /// Add an asset to the specified single asset tree.
+    /// Add an asset to the specified unique asset tree.
     ///
     /// Any existing asset with the same key will be overwritten silently.
     ///
@@ -28,9 +28,9 @@ where
     pub async fn add_asset(
         &self,
         provider: impl ContentProvider + Send + Sync + Copy,
-        tree: SingleAssetTree,
+        tree: UniqueAssetTree,
         asset: &Asset<Metadata>,
-    ) -> Result<SingleAssetTree> {
+    ) -> Result<UniqueAssetTree> {
         let asset_id = asset.save(provider).await?;
         let key = match self.key_getter.get_key(asset.metadata()) {
             Some(key) => key,
@@ -52,9 +52,9 @@ where
     pub async fn remove_asset(
         &self,
         provider: impl ContentProvider + Send + Sync + Copy,
-        tree: SingleAssetTree,
+        tree: UniqueAssetTree,
         asset: &Asset<Metadata>,
-    ) -> Result<SingleAssetTree> {
+    ) -> Result<UniqueAssetTree> {
         let key = match self.key_getter.get_key(asset.metadata()) {
             Some(key) => key,
             None => return Ok(tree), // The asset does not have the required key, and therefore cannot be removed from the tree.
@@ -63,7 +63,7 @@ where
         self.remove_entry(provider, tree, &key).await
     }
 
-    /// Get an asset by its key in a single asset tree.
+    /// Get an asset by its key in a unique asset tree.
     ///
     /// If no such asset exists, returns `Ok(None)`.
     ///
@@ -73,7 +73,7 @@ where
     pub async fn get_asset(
         &self,
         provider: impl ContentReader + Send + Sync + Copy,
-        tree: &SingleAssetTree,
+        tree: &UniqueAssetTree,
         key: &str,
     ) -> Result<Option<Asset<Metadata>>> {
         match self.get_entry(provider, tree, key).await? {
@@ -82,7 +82,7 @@ where
         }
     }
 
-    /// Returns a stream that iterates over all assets in the specified single
+    /// Returns a stream that iterates over all assets in the specified unique
     /// asset tree.
     ///
     /// # Warning
@@ -93,7 +93,7 @@ where
     pub fn all_assets<'s>(
         &'s self,
         provider: impl ContentReader + Send + Sync + Copy + 's,
-        tree: SingleAssetTree,
+        tree: UniqueAssetTree,
     ) -> impl Stream<Item = (String, Result<Asset<Metadata>>)> + 's {
         stream! {
             let asset_ids = self.all_entries(provider, tree);
@@ -588,7 +588,7 @@ mod tests {
     use lgn_content_store2::MemoryProvider;
     use serde::{Deserialize, Serialize};
 
-    use crate::{Asset, Index, KeyPathSplitter, MultiAssetsTree, SingleAssetTree};
+    use crate::{Asset, Index, KeyPathSplitter, MultiAssetsTree, UniqueAssetTree};
 
     #[test]
     fn test_key_path_splitter_separator() {
@@ -636,7 +636,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_single_index() {
+    async fn test_unique_index() {
         // In a real case obviously, we can use the default provider.
         let provider = &MemoryProvider::new();
 
@@ -664,11 +664,11 @@ mod tests {
         // Note that the actual storage only happens once, thanks to the content
         // store implicit deduplication.
         let file_tree = file_index
-            .add_asset(provider, SingleAssetTree::default(), &asset_a)
+            .add_asset(provider, UniqueAssetTree::default(), &asset_a)
             .await
             .unwrap();
         let oid_tree = oid_index
-            .add_asset(provider, SingleAssetTree::default(), &asset_a)
+            .add_asset(provider, UniqueAssetTree::default(), &asset_a)
             .await
             .unwrap();
         let file_tree = file_index
