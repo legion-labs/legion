@@ -125,9 +125,17 @@ impl<LeafType> Tree<LeafType> {
         self.children.len()
     }
 
-    /// Lookup an asset identifier in the tree.
+    /// Lookup a node in the tree.
     ///
-    /// If the asset is not found, returns `None`.
+    /// If the leaf is not found, returns `None`.
+    /// If the specified key points to a branch, returns `None`.
+    pub fn lookup(&self, key: &str) -> Option<&TreeNode<LeafType>> {
+        self.children.get(key)
+    }
+
+    /// Lookup a leaf in the tree.
+    ///
+    /// If the leaf is not found, returns `None`.
     /// If the specified key points to a branch, returns `None`.
     pub fn lookup_leaf(&self, key: &str) -> Option<&LeafType> {
         if let Some(node) = self.children.get(key) {
@@ -143,7 +151,7 @@ impl<LeafType> Tree<LeafType> {
     /// Lookup a sub-tree identifier in the tree.
     ///
     /// If the tree is not found, returns `None`.
-    /// If the specified key points to an asset, returns `None`.
+    /// If the specified key points to a leaf, returns `None`.
     pub fn lookup_branch_id(&self, key: &str) -> Option<&TreeIdentifier> {
         if let Some(node) = self.children.get(key) {
             match node {

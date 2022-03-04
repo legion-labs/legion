@@ -1,11 +1,12 @@
 use std::collections::VecDeque;
 
 use async_stream::stream;
+use futures_util::pin_mut;
 use lgn_content_store2::{ContentProvider, ContentReader};
 use serde::{de::DeserializeOwned, Serialize};
-use tokio_stream::Stream;
+use tokio_stream::{Stream, StreamExt};
 
-use crate::{Asset, Result, SingleAssetTree, Tree, TreeNode};
+use crate::{Asset, MultiAssetsTree, Result, SingleAssetTree, Tree, TreeNode};
 
 /// An index of assets.
 pub struct Index<Metadata> {
@@ -40,13 +41,57 @@ where
         tree: &SingleAssetTree,
         key: &str,
     ) -> Result<Option<Asset<Metadata>>> {
+        match self.get_entry(provider, tree, key).await? {
+            Some(asset_id) => Asset::load(provider, &asset_id).await.map(Some),
+            None => Ok(None),
+        }
+    }
+
+    /// Get a stream of assets by their key in a multi assets tree.
+    ///
+    /// If no such asset exists, returns `Ok(None)`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the asset cannot be searched for.
+    pub async fn get_assets<'s>(
+        &'s self,
+        provider: impl ContentReader + Send + Sync + Copy + 's,
+        tree: &'s MultiAssetsTree,
+        key: &str,
+    ) -> Result<Option<impl Stream<Item = Result<Asset<Metadata>>> + 's>> {
+        Ok(self.get_entry(provider, tree, key).await?.map(|asset_ids| {
+            stream! {
+                for asset_id in asset_ids {
+                    yield Asset::load(provider, &asset_id).await;
+                }
+            }
+        }))
+    }
+
+    /// Get a leaf by its key in a tree.
+    ///
+    /// If no such leaf exists, returns `Ok(None)`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the leaf cannot be searched for.
+    pub async fn get_entry<LeafType>(
+        &self,
+        provider: impl ContentReader + Send + Sync + Copy,
+        tree: &Tree<LeafType>,
+        key: &str,
+    ) -> Result<Option<LeafType>>
+    where
+        LeafType: Clone + DeserializeOwned,
+    {
         let path = self.key_path_splitter.split_key(key);
 
         if path.is_empty() {
             return Ok(None); // If the key is empty, the asset cannot be found.
         }
 
-        let (asset_key, path) = path.split_last().unwrap();
+        let (leaf_key, path) = path.split_last().unwrap();
 
         // This returns [tree, tree_node1, tree_node2, ..., tree_nodeN] where
         // tree_nodeN is the last node in the path which should contain the
@@ -54,11 +99,8 @@ where
         //
         // If N is less than the length of the path + 1, then the path is not
         // complete and new empty nodes are created.
-        if let Some(tree) = self.resolve_tree(provider, tree, path).await? {
-            match tree.lookup_leaf(asset_key) {
-                Some(asset_id) => Asset::load(provider, asset_id).await.map(Some),
-                None => Ok(None),
-            }
+        if let Some(tree) = self.resolve_tree_from_path(provider, tree, path).await? {
+            Ok(tree.lookup_leaf(leaf_key).cloned())
         } else {
             Ok(None)
         }
@@ -77,24 +119,43 @@ where
         tree: SingleAssetTree,
         asset: Asset<Metadata>,
     ) -> Result<SingleAssetTree> {
+        let asset_id = asset.save(provider).await?;
         let key = match self.key_getter.get_key(asset.metadata()) {
             Some(key) => key,
             None => return Ok(tree), // The asset does not have the required key, and therefore cannot be added to the tree.
         };
 
-        let path = self.key_path_splitter.split_key(&key);
+        self.add_entry(provider, tree, asset_id, &key).await
+    }
+
+    /// Add an entry to the specified tree.
+    ///
+    /// Any existing entry with the same key will be overwritten silently.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the entry could not be added.
+    pub async fn add_entry<LeafType>(
+        &self,
+        provider: impl ContentProvider + Send + Sync + Copy,
+        tree: Tree<LeafType>,
+        entry: LeafType,
+        key: &str,
+    ) -> Result<Tree<LeafType>>
+    where
+        LeafType: DeserializeOwned + Serialize,
+    {
+        let path = self.key_path_splitter.split_key(key);
 
         if path.is_empty() {
-            return Ok(tree); // If the key is empty, assume the asset cannot be added to the tree.
+            return Ok(tree); // If the key is empty, assume the entry cannot be added to the tree.
         }
-
-        let asset_id = asset.save(provider).await?;
 
         let (asset_key, path) = path.split_last().unwrap();
 
         // This returns [tree, tree_node1, tree_node2, ..., tree_nodeN] where
         // tree_nodeN is the last node in the path which should contain the
-        // asset.
+        // entry.
         //
         // If N is less than the length of the path + 1, then the path is not
         // complete and new empty nodes are created.
@@ -113,7 +174,7 @@ where
 
         let mut last_tree = iter
             .next()
-            .map(|(key, tree)| tree.with_named_leaf((*key).to_string(), asset_id))
+            .map(|(key, tree)| tree.with_named_leaf((*key).to_string(), entry))
             .unwrap();
         let mut last_tree_id = last_tree.save(provider).await?;
 
@@ -123,6 +184,29 @@ where
         }
 
         Ok(last_tree)
+    }
+
+    /// Remove an asset from the specified tree.
+    ///
+    /// If the asset is not found, the tree is returned unchanged.
+    ///
+    /// Empty tree nodes in the removal path are removed too.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the entry could not be removed.
+    pub async fn remove_asset(
+        &self,
+        provider: impl ContentProvider + Send + Sync + Copy,
+        tree: SingleAssetTree,
+        asset: &Asset<Metadata>,
+    ) -> Result<SingleAssetTree> {
+        let key = match self.key_getter.get_key(asset.metadata()) {
+            Some(key) => key,
+            None => return Ok(tree), // The asset does not have the required key, and therefore cannot be removed from the tree.
+        };
+
+        self.remove_entry(provider, tree, &key).await
     }
 
     /// Remove an entry from the specified tree.
@@ -196,6 +280,35 @@ where
         provider: impl ContentReader + Send + Sync + Copy + 's,
         tree: SingleAssetTree,
     ) -> impl Stream<Item = (String, Result<Asset<Metadata>>)> + 's {
+        stream! {
+            let asset_ids = self.all_entries(provider, tree);
+
+            pin_mut!(asset_ids); // needed for iteration
+
+            while let Some((prefix, asset_id)) = asset_ids.next().await {
+                match asset_id {
+                    Ok(asset_id) => yield (prefix, Asset::<Metadata>::load(provider, &asset_id).await),
+                    Err(err) => yield (prefix, Err(err)),
+                }
+            }
+        }
+    }
+
+    /// Returns a stream that iterates over all entries in the specified tree.
+    ///
+    /// # Warning
+    ///
+    /// This method is not intended to be used in production as it iterates over
+    /// the entire tree. If you think you need to use this method, please think
+    /// twice, and then some more.
+    pub fn all_entries<'s, LeafType>(
+        &'s self,
+        provider: impl ContentReader + Send + Sync + Copy + 's,
+        tree: Tree<LeafType>,
+    ) -> impl Stream<Item = (String, Result<LeafType>)> + 's
+    where
+        LeafType: Clone + DeserializeOwned + 's,
+    {
         let mut trees = VecDeque::new();
         trees.push_back((String::default(), tree));
 
@@ -205,8 +318,8 @@ where
                     let new_prefix = self.key_path_splitter.join_keys(&prefix, key);
 
                     match node {
-                        TreeNode::Leaf(asset_id) => {
-                            yield (new_prefix, Asset::<Metadata>::load(provider, asset_id).await);
+                        TreeNode::Leaf(entry) => {
+                            yield (new_prefix, Ok(entry.clone()));
                         },
                         TreeNode::Branch(tree_id) => {
                             match Tree::load(provider, tree_id).await {
@@ -237,13 +350,36 @@ where
         &self,
         provider: impl ContentReader + Send + Sync + Copy,
         tree: &Tree<LeafType>,
+        key: &str,
+    ) -> Result<Option<Tree<LeafType>>>
+    where
+        LeafType: DeserializeOwned + Clone,
+    {
+        let path = self.key_path_splitter.split_key(key);
+
+        self.resolve_tree_from_path(provider, tree, &path).await
+    }
+
+    /// Resolve a tree from a path.
+    ///
+    /// Might be used to fetch a "directory" of assets.
+    ///
+    /// If the path does not exist, `Ok(None)` is returned.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the path cannot be resolved.
+    async fn resolve_tree_from_path<LeafType>(
+        &self,
+        provider: impl ContentReader + Send + Sync + Copy,
+        tree: &Tree<LeafType>,
         path: &[&str],
     ) -> Result<Option<Tree<LeafType>>>
     where
         LeafType: DeserializeOwned + Clone,
     {
         if path.is_empty() {
-            return Ok(None);
+            return Ok(None); // If the key is empty, there is nothing to resolve.
         }
 
         let (first, path) = path.split_first().unwrap();
@@ -532,11 +668,11 @@ mod tests {
 
         // Remove an asset from the indexes.
         let file_tree = file_index
-            .remove_entry(provider, file_tree, "/assets/b")
+            .remove_asset(provider, file_tree, &asset_b)
             .await
             .unwrap();
         let oid_tree = oid_index
-            .remove_entry(provider, oid_tree, "abefef")
+            .remove_asset(provider, oid_tree, &asset_b)
             .await
             .unwrap();
 
