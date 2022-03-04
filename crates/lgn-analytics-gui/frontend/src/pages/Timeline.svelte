@@ -54,6 +54,7 @@
     processMsOffsetToRoot,
     timestampToMs,
   } from "@/lib/time";
+  import { TimelineState } from "@/lib/Timeline/TimelineState";
 
   export let processId: string;
 
@@ -65,8 +66,7 @@
   let processList: Process[] = [];
   let currentProcess: Process | undefined;
   let renderingContext: CanvasRenderingContext2D | undefined;
-  let minMs = Infinity;
-  let maxMs = -Infinity;
+  let timelineState: TimelineState;
   let yOffset = 0;
   let threads: Record<string, Thread> = {};
   let blocks: Record<string, ThreadBlock> = {};
@@ -84,6 +84,7 @@
   let windowInnerWidth: number;
 
   onMount(async () => {
+    timelineState = new TimelineState();
     client = await makeGrpcClient();
     const urlParams = new URLSearchParams(window.location.search);
     const startParam = urlParams.get("timelineStart");
@@ -237,8 +238,8 @@
       let block = response.blocks[i];
       let beginMs = processOffset + timestampToMs(process, block.beginTicks);
       let endMs = processOffset + timestampToMs(process, block.endTicks);
-      minMs = Math.min(minMs, beginMs);
-      maxMs = Math.max(maxMs, endMs);
+      timelineState.minMs = Math.min(timelineState.minMs, beginMs);
+      timelineState.maxMs = Math.max(timelineState.maxMs, endMs);
       nbEventsRepresented += block.nbObjects;
       const asyncStatsReply = await client.fetch_block_async_stats({
         process,
@@ -547,11 +548,11 @@
       return viewRange;
     }
 
-    let start = minMs;
+    let start = timelineState.minMs;
     if (timelineStart) {
       start = timelineStart;
     }
-    let end = maxMs;
+    let end = timelineState.maxMs;
     if (timelineEnd) {
       end = timelineEnd;
     }
