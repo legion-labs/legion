@@ -66,10 +66,8 @@
   let processList: Process[] = [];
   let currentProcess: Process | undefined;
   let renderingContext: CanvasRenderingContext2D | undefined;
-  let timelineState: TimelineState;
+  let state: TimelineState;
   let yOffset = 0;
-  let threads: Record<string, Thread> = {};
-  let blocks: Record<string, ThreadBlock> = {};
   let scopes: Record<number, ScopeDesc> = {
     0: { name: "", filename: "", line: 0, hash: 0 },
   };
@@ -84,7 +82,7 @@
   let windowInnerWidth: number;
 
   onMount(async () => {
-    timelineState = new TimelineState();
+    state = new TimelineState();
     client = await makeGrpcClient();
     const urlParams = new URLSearchParams(window.location.search);
     const startParam = urlParams.get("timelineStart");
@@ -131,8 +129,8 @@
     let nbMissing = 0;
     let nbLoaded = 0;
     let nbInFlight = 0;
-    for (let blockId in blocks) {
-      const block = blocks[blockId];
+    for (let blockId in state.blocks) {
+      const block = state.blocks[blockId];
       if (!canvas) {
         return null;
       }
@@ -165,7 +163,7 @@
       }
       nbMissing += 1;
       if (nbInFlight < 8) {
-        fetchBlockSpans(blocks[blockId], preferedLod);
+        fetchBlockSpans(state.blocks[blockId], preferedLod);
         nbInFlight += 1;
       }
     }
@@ -189,7 +187,7 @@
     let promises: Promise<void>[] = [];
     streams.forEach((stream) => {
       if (stream.tags.includes("cpu")) {
-        threads[stream.streamId] = {
+        state.threads[stream.streamId] = {
           streamInfo: stream,
           maxDepth: 0,
           minMs: Infinity,
@@ -238,8 +236,8 @@
       let block = response.blocks[i];
       let beginMs = processOffset + timestampToMs(process, block.beginTicks);
       let endMs = processOffset + timestampToMs(process, block.endTicks);
-      timelineState.minMs = Math.min(timelineState.minMs, beginMs);
-      timelineState.maxMs = Math.max(timelineState.maxMs, endMs);
+      state.minMs = Math.min(state.minMs, beginMs);
+      state.maxMs = Math.max(state.maxMs, endMs);
       nbEventsRepresented += block.nbObjects;
       const asyncStatsReply = await client.fetch_block_async_stats({
         process,
@@ -247,7 +245,7 @@
         blockId: block.blockId,
       });
       // console.log(asyncStatsReply);
-      blocks[block.blockId] = {
+      state.blocks[block.blockId] = {
         blockDefinition: block,
         beginMs: beginMs,
         endMs: endMs,
@@ -265,8 +263,8 @@
     }
     scopes = { ...scopes, ...response.scopes };
 
-    const block = blocks[response.blockId];
-    let thread = threads[block.blockDefinition.streamId];
+    const block = state.blocks[response.blockId];
+    let thread = state.threads[block.blockDefinition.streamId];
     thread.maxDepth = Math.max(thread.maxDepth, response.lod.tracks.length);
     thread.minMs = Math.min(thread.minMs, response.beginMs);
     thread.maxMs = Math.max(thread.maxMs, response.endMs);
@@ -293,7 +291,7 @@
     const fut = client.block_spans({
       blockId: blockId,
       process,
-      stream: threads[streamId].streamInfo,
+      stream: state.threads[streamId].streamInfo,
       lodId: lodToFetch,
     });
     fut.then(onLodReceived, (e) => {
@@ -302,8 +300,7 @@
   }
 
   function findStreamProcess(streamId: string) {
-    const stream = threads[streamId].streamInfo;
-
+    const stream = state.threads[streamId].streamInfo;
     return processList.find(
       (process) => process.processId === stream.processId
     );
@@ -336,7 +333,7 @@
 
     const rootStartTime = Date.parse(currentProcess?.startTime);
 
-    for (const streamId in threads) {
+    for (const streamId in state.threads) {
       const childProcess = findStreamProcess(streamId);
 
       if (!childProcess) {
@@ -344,7 +341,7 @@
       }
 
       const childStartTime = Date.parse(childProcess.startTime);
-      const thread = threads[streamId];
+      const thread = state.threads[streamId];
       if (thread.block_ids.length > 0) {
         const threadHeight = (thread.maxDepth + 2) * 20;
         if (
@@ -497,7 +494,7 @@
     );
 
     thread.block_ids.forEach((block_id) => {
-      let block = blocks[block_id];
+      let block = state.blocks[block_id];
       let lodToRender = !canvas
         ? null
         : findBestLod(canvas.width, getViewRange(), block);
@@ -548,11 +545,11 @@
       return viewRange;
     }
 
-    let start = timelineState.minMs;
+    let start = state.minMs;
     if (timelineStart) {
       start = timelineStart;
     }
-    let end = timelineState.maxMs;
+    let end = state.maxMs;
     if (timelineEnd) {
       end = timelineEnd;
     }
