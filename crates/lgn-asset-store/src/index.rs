@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{BTreeSet, VecDeque};
 
 use async_stream::stream;
 use futures_util::pin_mut;
@@ -9,23 +9,58 @@ use tokio_stream::{Stream, StreamExt};
 use crate::{Asset, MultiAssetsTree, Result, SingleAssetTree, Tree, TreeNode};
 
 /// An index of assets.
-pub struct Index<Metadata> {
+pub struct Index<Metadata, KeyType> {
     key_path_splitter: KeyPathSplitter,
-    key_getter: Box<dyn KeyGetter<Metadata, KeyType = String>>,
+    key_getter: Box<dyn KeyGetter<Metadata, KeyType = KeyType>>,
 }
 
-impl<Metadata> Index<Metadata>
+impl<Metadata> Index<Metadata, String>
 where
     Metadata: Serialize + DeserializeOwned,
 {
-    pub fn new(
-        key_path_splitter: KeyPathSplitter,
-        key_getter: impl KeyGetter<Metadata, KeyType = String> + 'static,
-    ) -> Self {
-        Self {
-            key_path_splitter,
-            key_getter: Box::new(key_getter),
-        }
+    /// Add an asset to the specified single asset tree.
+    ///
+    /// Any existing asset with the same key will be overwritten silently.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the asset could not be added.
+    pub async fn add_asset(
+        &self,
+        provider: impl ContentProvider + Send + Sync + Copy,
+        tree: SingleAssetTree,
+        asset: &Asset<Metadata>,
+    ) -> Result<SingleAssetTree> {
+        let asset_id = asset.save(provider).await?;
+        let key = match self.key_getter.get_key(asset.metadata()) {
+            Some(key) => key,
+            None => return Ok(tree), // The asset does not have the required key, and therefore cannot be added to the tree.
+        };
+
+        self.add_entry(provider, tree, asset_id, &key).await
+    }
+
+    /// Remove an asset from the specified tree.
+    ///
+    /// If the asset is not found, the tree is returned unchanged.
+    ///
+    /// Empty tree nodes in the removal path are removed too.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the entry could not be removed.
+    pub async fn remove_asset(
+        &self,
+        provider: impl ContentProvider + Send + Sync + Copy,
+        tree: SingleAssetTree,
+        asset: &Asset<Metadata>,
+    ) -> Result<SingleAssetTree> {
+        let key = match self.key_getter.get_key(asset.metadata()) {
+            Some(key) => key,
+            None => return Ok(tree), // The asset does not have the required key, and therefore cannot be removed from the tree.
+        };
+
+        self.remove_entry(provider, tree, &key).await
     }
 
     /// Get an asset by its key in a single asset tree.
@@ -45,6 +80,105 @@ where
             Some(asset_id) => Asset::load(provider, &asset_id).await.map(Some),
             None => Ok(None),
         }
+    }
+
+    /// Returns a stream that iterates over all assets in the specified single
+    /// asset tree.
+    ///
+    /// # Warning
+    ///
+    /// This method is not intended to be used in production as it iterates over
+    /// the entire tree. If you think you need to use this method, please think
+    /// twice, and then some more.
+    pub fn all_assets<'s>(
+        &'s self,
+        provider: impl ContentReader + Send + Sync + Copy + 's,
+        tree: SingleAssetTree,
+    ) -> impl Stream<Item = (String, Result<Asset<Metadata>>)> + 's {
+        stream! {
+            let asset_ids = self.all_entries(provider, tree);
+
+            pin_mut!(asset_ids); // needed for iteration
+
+            while let Some((prefix, asset_id)) = asset_ids.next().await {
+                match asset_id {
+                    Ok(asset_id) => yield (prefix, Asset::<Metadata>::load(provider, &asset_id).await),
+                    Err(err) => yield (prefix, Err(err)),
+                }
+            }
+        }
+    }
+}
+
+impl<Metadata> Index<Metadata, BTreeSet<String>>
+where
+    Metadata: Serialize + DeserializeOwned,
+{
+    /// Add an asset to the specified multi assets tree.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the asset could not be added.
+    pub async fn add_asset(
+        &self,
+        provider: impl ContentProvider + Send + Sync + Copy,
+        mut tree: MultiAssetsTree,
+        asset: &Asset<Metadata>,
+    ) -> Result<MultiAssetsTree> {
+        let asset_id = asset.save(provider).await?;
+        let keys = match self.key_getter.get_key(asset.metadata()) {
+            Some(key) => key,
+            None => return Ok(tree), // The asset does not have the required key, and therefore cannot be added to the tree.
+        };
+
+        for key in &keys {
+            let asset_ids = match self.get_entry(provider, &tree, key).await? {
+                Some(mut asset_ids) => {
+                    asset_ids.insert(asset_id.clone());
+                    asset_ids
+                }
+                None => BTreeSet::from_iter([asset_id.clone()]),
+            };
+
+            tree = self.add_entry(provider, tree, asset_ids, key).await?;
+        }
+
+        Ok(tree)
+    }
+
+    /// Remove an asset from the specified multi assets tree.
+    ///
+    /// If the asset is not found, the tree is returned unchanged.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the asset could not be removed.
+    pub async fn remove_asset(
+        &self,
+        provider: impl ContentProvider + Send + Sync + Copy,
+        mut tree: MultiAssetsTree,
+        asset: &Asset<Metadata>,
+    ) -> Result<MultiAssetsTree> {
+        let asset_id = asset.save(provider).await?;
+        let keys = match self.key_getter.get_key(asset.metadata()) {
+            Some(key) => key,
+            None => return Ok(tree), // The asset does not have the required key, and therefore cannot be added to the tree.
+        };
+
+        for key in &keys {
+            if let Some(mut asset_ids) = self.get_entry(provider, &tree, key).await? {
+                // Only actually write if the asset was listed.
+                if asset_ids.remove(&asset_id) {
+                    if asset_ids.is_empty() {
+                        tree = self.remove_entry(provider, tree, key).await?;
+                    } else {
+                        tree = self.add_entry(provider, tree, asset_ids, key).await?;
+                    }
+                }
+            }
+        }
+
+        Ok(tree)
     }
 
     /// Get a stream of assets by their key in a multi assets tree.
@@ -67,6 +201,21 @@ where
                 }
             }
         }))
+    }
+}
+
+impl<Metadata, KeyType> Index<Metadata, KeyType>
+where
+    Metadata: Serialize + DeserializeOwned,
+{
+    pub fn new(
+        key_path_splitter: KeyPathSplitter,
+        key_getter: impl KeyGetter<Metadata, KeyType = KeyType> + 'static,
+    ) -> Self {
+        Self {
+            key_path_splitter,
+            key_getter: Box::new(key_getter),
+        }
     }
 
     /// Get a leaf by its key in a tree.
@@ -104,28 +253,6 @@ where
         } else {
             Ok(None)
         }
-    }
-
-    /// Add an asset to the specified single asset tree.
-    ///
-    /// Any existing asset with the same key will be overwritten silently.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the asset could not be added.
-    pub async fn add_asset(
-        &self,
-        provider: impl ContentProvider + Send + Sync + Copy,
-        tree: SingleAssetTree,
-        asset: Asset<Metadata>,
-    ) -> Result<SingleAssetTree> {
-        let asset_id = asset.save(provider).await?;
-        let key = match self.key_getter.get_key(asset.metadata()) {
-            Some(key) => key,
-            None => return Ok(tree), // The asset does not have the required key, and therefore cannot be added to the tree.
-        };
-
-        self.add_entry(provider, tree, asset_id, &key).await
     }
 
     /// Add an entry to the specified tree.
@@ -186,29 +313,6 @@ where
         Ok(last_tree)
     }
 
-    /// Remove an asset from the specified tree.
-    ///
-    /// If the asset is not found, the tree is returned unchanged.
-    ///
-    /// Empty tree nodes in the removal path are removed too.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the entry could not be removed.
-    pub async fn remove_asset(
-        &self,
-        provider: impl ContentProvider + Send + Sync + Copy,
-        tree: SingleAssetTree,
-        asset: &Asset<Metadata>,
-    ) -> Result<SingleAssetTree> {
-        let key = match self.key_getter.get_key(asset.metadata()) {
-            Some(key) => key,
-            None => return Ok(tree), // The asset does not have the required key, and therefore cannot be removed from the tree.
-        };
-
-        self.remove_entry(provider, tree, &key).await
-    }
-
     /// Remove an entry from the specified tree.
     ///
     /// If the entry is not found, the tree is returned unchanged.
@@ -265,33 +369,6 @@ where
         last_tree.save(provider).await?;
 
         Ok(last_tree)
-    }
-
-    /// Returns a stream that iterates over all assets in the specified single
-    /// asset tree.
-    ///
-    /// # Warning
-    ///
-    /// This method is not intended to be used in production as it iterates over
-    /// the entire tree. If you think you need to use this method, please think
-    /// twice, and then some more.
-    pub fn all_assets<'s>(
-        &'s self,
-        provider: impl ContentReader + Send + Sync + Copy + 's,
-        tree: SingleAssetTree,
-    ) -> impl Stream<Item = (String, Result<Asset<Metadata>>)> + 's {
-        stream! {
-            let asset_ids = self.all_entries(provider, tree);
-
-            pin_mut!(asset_ids); // needed for iteration
-
-            while let Some((prefix, asset_id)) = asset_ids.next().await {
-                match asset_id {
-                    Ok(asset_id) => yield (prefix, Asset::<Metadata>::load(provider, &asset_id).await),
-                    Err(err) => yield (prefix, Err(err)),
-                }
-            }
-        }
     }
 
     /// Returns a stream that iterates over all entries in the specified tree.
@@ -439,11 +516,11 @@ pub trait KeyGetter<Metadata> {
 }
 
 /// A blanket implementation of `KeyGetter` for functions.
-impl<Metadata, T> KeyGetter<Metadata> for T
+impl<Metadata, KeyType, T> KeyGetter<Metadata> for T
 where
-    T: Fn(&Metadata) -> Option<String>,
+    T: Fn(&Metadata) -> Option<KeyType>,
 {
-    type KeyType = String;
+    type KeyType = KeyType;
 
     fn get_key(&self, metadata: &Metadata) -> Option<Self::KeyType> {
         (self)(metadata)
@@ -505,11 +582,13 @@ impl KeyPathSplitter {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+
     use futures_util::stream::StreamExt;
     use lgn_content_store2::MemoryProvider;
     use serde::{Deserialize, Serialize};
 
-    use crate::{Asset, Index, KeyPathSplitter, SingleAssetTree};
+    use crate::{Asset, Index, KeyPathSplitter, MultiAssetsTree, SingleAssetTree};
 
     #[test]
     fn test_key_path_splitter_separator() {
@@ -533,21 +612,31 @@ mod tests {
         assert_eq!(splitter.split_key("abcde"), vec!["ab", "cd", "e"]);
     }
 
-    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
     struct Metadata {
         path: String,
         oid: String,
+        parents: Vec<String>,
     }
 
     fn meta(path: &str, oid: &str) -> Metadata {
         Metadata {
             path: path.to_string(),
             oid: oid.to_string(),
+            parents: Vec::new(),
+        }
+    }
+
+    fn metap(path: &str, oid: &str, parents: &[&str]) -> Metadata {
+        Metadata {
+            path: path.to_string(),
+            oid: oid.to_string(),
+            parents: parents.iter().copied().map(ToOwned::to_owned).collect(),
         }
     }
 
     #[tokio::test]
-    async fn test_index() {
+    async fn test_single_index() {
         // In a real case obviously, we can use the default provider.
         let provider = &MemoryProvider::new();
 
@@ -575,19 +664,19 @@ mod tests {
         // Note that the actual storage only happens once, thanks to the content
         // store implicit deduplication.
         let file_tree = file_index
-            .add_asset(provider, SingleAssetTree::default(), asset_a.clone())
+            .add_asset(provider, SingleAssetTree::default(), &asset_a)
             .await
             .unwrap();
         let oid_tree = oid_index
-            .add_asset(provider, SingleAssetTree::default(), asset_a.clone())
+            .add_asset(provider, SingleAssetTree::default(), &asset_a)
             .await
             .unwrap();
         let file_tree = file_index
-            .add_asset(provider, file_tree, asset_b.clone())
+            .add_asset(provider, file_tree, &asset_b)
             .await
             .unwrap();
         let oid_tree = oid_index
-            .add_asset(provider, oid_tree, asset_b.clone())
+            .add_asset(provider, oid_tree, &asset_b)
             .await
             .unwrap();
 
@@ -698,6 +787,148 @@ mod tests {
         assert_eq!(
             assets_as_oids,
             vec![("abcdef".to_string(), asset_a.clone()),]
+        );
+    }
+
+    #[tokio::test]
+    async fn test_multi_index() {
+        // In a real case obviously, we can use the default provider.
+        let provider = &MemoryProvider::new();
+
+        // Let's create an index that stores assets according to their parents
+        // and allows a reversed-dependency search.
+        let deps_index = Index::new(KeyPathSplitter::Size(2), |m: &Metadata| {
+            Some(m.parents.clone().into_iter().collect::<BTreeSet<_>>())
+        });
+
+        // Let's create a bunch of assets.
+        let asset_a = Asset::new_from_data(
+            provider,
+            meta("/assets/a", "001122aa"),
+            b"hello world from A",
+        )
+        .await
+        .unwrap();
+        let asset_b = Asset::new_from_data(
+            provider,
+            meta("/assets/b", "001122bb"),
+            b"hello world from B",
+        )
+        .await
+        .unwrap();
+        // Asset C has A and B for parents.
+        let asset_c = Asset::new_from_data(
+            provider,
+            metap(
+                "/assets/c",
+                "001133cc",
+                &[&asset_a.metadata().oid, &asset_b.metadata().oid],
+            ),
+            b"hello world from C",
+        )
+        .await
+        .unwrap();
+        // Asset D has A and C for parents.
+        let asset_d = Asset::new_from_data(
+            provider,
+            metap(
+                "/assets/d",
+                "002233dd",
+                &[&asset_a.metadata().oid, &asset_c.metadata().oid],
+            ),
+            b"hello world from C",
+        )
+        .await
+        .unwrap();
+
+        // We add each asset to the index.
+        let mut deps_tree = MultiAssetsTree::default();
+
+        for asset in [&asset_a, &asset_b, &asset_c, &asset_d] {
+            deps_tree = deps_index
+                .add_asset(provider, deps_tree, asset)
+                .await
+                .unwrap();
+        }
+
+        // Get all the assets that depend on A.
+        let assets = deps_index
+            .get_assets(provider, &deps_tree, &asset_a.metadata().oid)
+            .await
+            .unwrap() // Result
+            .unwrap() // Option
+            .map(std::result::Result::unwrap)
+            .collect::<BTreeSet<_>>()
+            .await;
+
+        // The order of returned assets is not specified (but if you are
+        // curious: it actually depends on the ordering of asset identifiers
+        // which are hashes).
+        //
+        // This should never matter, as there is no logical ordering of assets
+        // dependencies.
+        assert_eq!(
+            assets,
+            vec![asset_c.clone(), asset_d.clone()].into_iter().collect()
+        );
+
+        let asset_ids = deps_index
+            .all_entries(provider, deps_tree.clone())
+            .map(|(key, asset_ids)| (key, asset_ids.unwrap()))
+            .collect::<Vec<_>>()
+            .await;
+
+        assert_eq!(
+            asset_ids,
+            vec![
+                (
+                    asset_a.metadata().oid.clone(),
+                    vec![asset_c.as_identifier(), asset_d.as_identifier()]
+                        .into_iter()
+                        .collect()
+                ),
+                (
+                    asset_b.metadata().oid.clone(),
+                    vec![asset_c.as_identifier()].into_iter().collect()
+                ),
+                (
+                    asset_c.metadata().oid.clone(),
+                    vec![asset_d.as_identifier()].into_iter().collect()
+                ),
+            ],
+        );
+
+        deps_tree = deps_index
+            .remove_asset(provider, deps_tree, &asset_c)
+            .await
+            .unwrap();
+
+        let asset_ids = deps_index
+            .all_entries(provider, deps_tree.clone())
+            .map(|(key, asset_ids)| (key, asset_ids.unwrap()))
+            .collect::<Vec<_>>()
+            .await;
+
+        // If you look closely, you will notice than even though C was removed
+        // from the index, it still appears as a parent for D.
+        //
+        // This is *NOT* a bug, as D effectively still references C.
+        //
+        // A proper integration of the asset store should of course query the
+        // dependency index and update all related assets as well to avoid this
+        // situation.
+        assert_eq!(
+            asset_ids,
+            vec![
+                (
+                    asset_a.metadata().oid.clone(),
+                    vec![asset_d.as_identifier()].into_iter().collect()
+                ),
+                (
+                    asset_c.metadata().oid.clone(),
+                    vec![asset_d.as_identifier()].into_iter().collect()
+                ),
+            ],
         );
     }
 }
