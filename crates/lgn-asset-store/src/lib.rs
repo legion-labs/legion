@@ -1,3 +1,5 @@
+//! A set of structures and functions to store and index assets.
+
 mod asset;
 mod errors;
 mod index;

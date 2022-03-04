@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use async_stream::stream;
 use lgn_content_store2::{ContentProvider, ContentReader};
 use serde::{de::DeserializeOwned, Serialize};
@@ -192,22 +194,25 @@ where
         provider: impl ContentReader + Send + Sync + Copy + 's,
         tree: Tree,
     ) -> impl Stream<Item = (String, Result<Asset<Metadata>>)> + 's {
-        let mut trees = vec![(String::default(), tree)];
+        let mut trees = VecDeque::new();
+        trees.push_back((String::default(), tree));
 
         stream! {
-            while let Some((prefix, current_tree)) = trees.pop() {
+            while let Some((prefix, current_tree)) = trees.pop_front() {
                 for (key, node) in current_tree.iter() {
+                    let new_prefix = self.key_path_splitter.join_keys(&prefix, key);
+
                     match node {
                         TreeNode::Leaf(asset_id) => {
-                            yield (self.key_path_splitter.join_keys(&prefix, key), Asset::<Metadata>::load(provider, asset_id).await);
+                            yield (new_prefix, Asset::<Metadata>::load(provider, asset_id).await);
                         },
                         TreeNode::Branch(tree_id) => {
                             match Tree::load(provider, tree_id).await {
                                 Ok(tree) => {
-                                    trees.push((key.to_string(), tree));
+                                    trees.push_back((new_prefix, tree));
                                 },
                                 Err(err) => {
-                                    yield (self.key_path_splitter.join_keys(&prefix, key), Err(err));
+                                    yield (new_prefix, Err(err));
                                 },
                             };
                         },
@@ -218,7 +223,15 @@ where
     }
 
     /// Resolve a tree from a path.
-    async fn resolve_tree(
+    ///
+    /// Might be used to fetch a "directory" of assets.
+    ///
+    /// If the path does not exist, `Ok(None)` is returned.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the path cannot be resolved.
+    pub async fn resolve_tree(
         &self,
         provider: impl ContentReader + Send + Sync + Copy,
         tree: &Tree,
@@ -405,11 +418,11 @@ mod tests {
 
         // Let's create a bunch of assets.
         let asset_a =
-            Asset::new_from_data(provider, meta("assets/a", "abcd"), b"hello world from A")
+            Asset::new_from_data(provider, meta("/assets/a", "abcdef"), b"hello world from A")
                 .await
                 .unwrap();
         let asset_b =
-            Asset::new_from_data(provider, meta("assets/b", "abef"), b"hello world from B")
+            Asset::new_from_data(provider, meta("/assets/b", "abefef"), b"hello world from B")
                 .await
                 .unwrap();
 
@@ -445,14 +458,14 @@ mod tests {
         // index is the 'how'.
         assert_eq!(
             file_index
-                .get_asset(provider, &file_tree, "assets/a")
+                .get_asset(provider, &file_tree, "/assets/a")
                 .await
                 .unwrap(),
             Some(asset_a.clone())
         );
         assert_eq!(
             oid_index
-                .get_asset(provider, &oid_tree, "abcd")
+                .get_asset(provider, &oid_tree, "abcdef")
                 .await
                 .unwrap(),
             Some(asset_a.clone())
@@ -461,7 +474,7 @@ mod tests {
         // Fetching by OID in the file index? No. Won't work, as expected.
         assert_eq!(
             file_index
-                .get_asset(provider, &file_tree, "abcd")
+                .get_asset(provider, &file_tree, "abcdef")
                 .await
                 .unwrap(),
             None,
@@ -477,8 +490,8 @@ mod tests {
         assert_eq!(
             assets_as_files,
             vec![
-                ("assets/a".to_string(), asset_a.clone()),
-                ("assets/b".to_string(), asset_b.clone())
+                ("/assets/a".to_string(), asset_a.clone()),
+                ("/assets/b".to_string(), asset_b.clone())
             ]
         );
 
@@ -491,8 +504,8 @@ mod tests {
         assert_eq!(
             assets_as_oids,
             vec![
-                ("abcd".to_string(), asset_a.clone()),
-                ("abef".to_string(), asset_b.clone())
+                ("abcdef".to_string(), asset_a.clone()),
+                ("abefef".to_string(), asset_b.clone())
             ]
         );
     }
