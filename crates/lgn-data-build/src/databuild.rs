@@ -371,7 +371,7 @@ impl DataBuild {
                     .map_err(Error::Compiler)?;
 
                 // a resource cannot refer to itself
-                    assert_eq!(
+                assert_eq!(
                     resource_references.iter().filter(|(a, b)| a == b).count(),
                     0
                 );
@@ -523,6 +523,8 @@ impl DataBuild {
         let mut accumulated_dependencies = vec![];
         let mut node_hash = HashMap::<_, (u64, u64)>::new();
 
+        let mut compiled_at_node = HashMap::<ResourcePathId, _>::new();
+
         for compile_node_index in topological_order {
             let compile_node = build_graph.node_weight(compile_node_index).unwrap();
             // compile non-source dependencies.
@@ -544,6 +546,14 @@ impl DataBuild {
                 //  'name' is dropped as we always compile input as a whole.
                 let expected_name = compile_node.name();
                 let compile_node = compile_node.to_unnamed();
+
+                // check if the unnamed ResourcePathId has been already compiled and early out.
+                if let Some(node_index) = compiled_at_node.get(&compile_node) {
+                    node_hash.insert(compile_node_index, *node_hash.get(node_index).unwrap());
+                    continue;
+                }
+
+                compiled_at_node.insert(compile_node.clone(), compile_node_index);
 
                 //
                 // for derived resources the build index will not have dependencies for.
@@ -614,7 +624,7 @@ impl DataBuild {
 
                 node_hash.insert(compile_node_index, (context_hash, source_hash));
 
-                info!("Compiling {} ...", compile_node);
+                info!("Compiling {} ({:?}) ...", compile_node, expected_name);
                 let start = std::time::Instant::now();
 
                 let (resource_infos, resource_references, stats) = Self::compile_node(
@@ -674,6 +684,15 @@ impl DataBuild {
                         size: res.compiled_size,
                     }
                 }));
+
+                assert_eq!(
+                    compiled_resources
+                        .iter()
+                        .filter(|&info| resource_infos.iter().any(|a| a == info))
+                        .count(),
+                    0,
+                    "duplicate compilation output detected"
+                );
 
                 compiled_resources.extend(resource_infos);
                 compile_stats.extend(stats);

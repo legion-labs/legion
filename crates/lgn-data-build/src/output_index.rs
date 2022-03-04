@@ -16,7 +16,7 @@ use serde_with::DisplayFromStr;
 
 use crate::Error;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub(crate) struct CompiledResourceInfo {
     /// The path the resource was compiled from, i.e.:
     /// "ResourcePathId("anim.fbx").push("anim.offline")
