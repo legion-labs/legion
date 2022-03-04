@@ -14,7 +14,7 @@ use lgn_data_offline::Transform;
 use lgn_data_offline::{resource::Project, ResourcePathId};
 use lgn_data_runtime::manifest::Manifest;
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions, ResourceTypeAndId};
-use lgn_tracing::{span_fn, span_scope};
+use lgn_tracing::{info, span_fn, span_scope};
 use lgn_utils::{DefaultHash, DefaultHasher};
 use petgraph::{algo, Graph};
 
@@ -282,6 +282,9 @@ impl DataBuild {
         self.output_index.record_pathid(&compile_path);
         let mut result = CompiledResources::default();
 
+        let start = std::time::Instant::now();
+        info!("Compilation of {} Started", compile_path);
+
         let CompileOutput {
             resources,
             references,
@@ -301,6 +304,8 @@ impl DataBuild {
                 result.compiled_resources.push(asset);
             }
         }
+
+        info!("Compilation Ended ({}ms)", start.elapsed().as_millis());
         Ok(result)
     }
 
@@ -364,6 +369,12 @@ impl DataBuild {
                         env,
                     )
                     .map_err(Error::Compiler)?;
+
+                // a resource cannot refer to itself
+                    assert_eq!(
+                    resource_references.iter().filter(|(a, b)| a == b).count(),
+                    0
+                );
 
                 output_index.insert_compiled(
                     compile_node,
@@ -603,6 +614,9 @@ impl DataBuild {
 
                 node_hash.insert(compile_node_index, (context_hash, source_hash));
 
+                info!("Compiling {} ...", compile_node);
+                let start = std::time::Instant::now();
+
                 let (resource_infos, resource_references, stats) = Self::compile_node(
                     &mut self.output_index,
                     self.content_store.address(),
@@ -616,6 +630,12 @@ impl DataBuild {
                     compiler,
                     self.compilers.registry(),
                 )?;
+
+                info!(
+                    "Compiling {} Ended ({}ms)",
+                    compile_node,
+                    start.elapsed().as_millis()
+                );
 
                 // update the CAS manifest with new content in order to make new resources
                 // visible to the next compilation node
@@ -640,7 +660,10 @@ impl DataBuild {
                             .name()
                             .map_or(false, |name| name == expected_name)
                     }) {
-                        return Err(Error::OutputNotPresent);
+                        return Err(Error::OutputNotPresent(
+                            compile_node,
+                            expected_name.to_string(),
+                        ));
                     }
                 }
 
@@ -676,6 +699,7 @@ impl DataBuild {
     ) -> Result<Vec<CompiledResource>, Error> {
         let mut resource_files = Vec::with_capacity(resources.len());
         for resource in resources {
+            info!("Linking {:?} ...", resource);
             //
             // for now, every derived resource gets an `assetfile` representation.
             //
@@ -709,6 +733,8 @@ impl DataBuild {
                 checksum,
                 size: output.len(),
             };
+
+            info!("Linked {} into: {}", resource.compiled_path, checksum);
             resource_files.push(asset_file);
         }
 

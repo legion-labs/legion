@@ -418,7 +418,12 @@ async fn main() -> Result<(), String> {
         }
         Commands::Graph { id } => {
             if let Some(config) = config {
-                let (build, project) = config.open().await?;
+                let (mut build, project) = config.open().await?;
+                build
+                    .source_pull(&project)
+                    .await
+                    .map_err(|e| format!("Source pull failed: {}", e))?;
+
                 let rid = {
                     if let Ok(resource_id) = id.parse() {
                         build
