@@ -1,3 +1,5 @@
+import { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
+import { Process } from "@lgn/proto-telemetry/dist/process";
 import { Thread } from "./Thread";
 import { ThreadBlock } from "./ThreadBlock";
 
@@ -7,8 +9,10 @@ export class TimelineState {
   threads: Record<string, Thread> = {};
   blocks: Record<string, ThreadBlock> = {};
   eventCount = 0;
-  timelineStart: number | undefined;
-  timelineEnd: number | undefined;
+  processes: Process[] = [];
+  scopes: Record<number, ScopeDesc> = {};
+  private timelineStart: number | undefined;
+  private timelineEnd: number | undefined;
   private viewRange: [number, number] | null = null;
   constructor(start: number | undefined, end: number | undefined) {
     this.timelineStart = start;
@@ -32,5 +36,10 @@ export class TimelineState {
       end = this.timelineEnd;
     }
     return [start, end];
+  }
+
+  findStreamProcess(streamId: string) {
+    const stream = this.threads[streamId].streamInfo;
+    return this.processes.find((p) => p.processId === stream.processId);
   }
 }

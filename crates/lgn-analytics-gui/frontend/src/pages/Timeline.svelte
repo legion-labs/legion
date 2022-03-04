@@ -21,7 +21,6 @@
     BlockSpansReply,
     PerformanceAnalyticsClientImpl,
   } from "@lgn/proto-telemetry/dist/analytics";
-  import { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
   import { Process } from "@lgn/proto-telemetry/dist/process";
   import { Stream } from "@lgn/proto-telemetry/dist/stream";
   import { onMount, tick } from "svelte";
@@ -43,11 +42,7 @@
     MergeThresholdForLOD as mergeThresholdForLOD,
   } from "@/lib/lod";
   import { Thread } from "@/lib/Timeline/Thread";
-  import {
-    LODState,
-    ThreadBlock,
-    ThreadBlockLOD,
-  } from "@/lib/Timeline/ThreadBlock";
+  import { LODState, ThreadBlock } from "@/lib/Timeline/ThreadBlock";
   import {
     computePreferredBlockLod,
     findBestLod,
@@ -60,14 +55,10 @@
 
   let canvas: HTMLCanvasElement | undefined;
   let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-  let processList: Process[] = [];
   let currentProcess: Process | undefined;
   let renderingContext: CanvasRenderingContext2D | undefined;
   let state: TimelineState;
   let yOffset = 0;
-  let scopes: Record<number, ScopeDesc> = {
-    0: { name: "", filename: "", line: 0, hash: 0 },
-  };
   let beginPan: BeginPan | undefined;
   let selectionState: SelectionState = NewSelectionState();
   let currentSelection: [number, number] | undefined;
@@ -108,7 +99,7 @@
       throw new Error(`Process ${processId} not found`);
     }
 
-    processList.push(process);
+    state.processes.push(process);
     currentProcess = process;
     await fetchStreams(process);
     await fetchChildren(process);
@@ -207,7 +198,7 @@
     // }
 
     let promises = processes.map((process) => {
-      processList.push(process);
+      state.processes.push(process);
       return fetchStreams(process);
     });
     await Promise.all(promises);
@@ -251,7 +242,7 @@
     if (!response.lod) {
       throw new Error(`Error fetching spans for block ${blockId}`);
     }
-    scopes = { ...scopes, ...response.scopes };
+    state.scopes = { ...state.scopes, ...response.scopes };
 
     const block = state.blocks[response.blockId];
     let thread = state.threads[block.blockDefinition.streamId];
@@ -272,7 +263,7 @@
       return;
     }
     const streamId = block.blockDefinition.streamId;
-    const process = findStreamProcess(streamId);
+    const process = state.findStreamProcess(streamId);
     if (!process) {
       throw new Error(`Process ${streamId} not found`);
     }
@@ -287,13 +278,6 @@
     fut.then(onLodReceived, (e) => {
       console.log("Error fetching block spans", e);
     });
-  }
-
-  function findStreamProcess(streamId: string) {
-    const stream = state.threads[streamId].streamInfo;
-    return processList.find(
-      (process) => process.processId === stream.processId
-    );
   }
 
   function invalidateCanvas() {
@@ -324,7 +308,7 @@
     const rootStartTime = Date.parse(currentProcess?.startTime);
 
     for (const streamId in state.threads) {
-      const childProcess = findStreamProcess(streamId);
+      const childProcess = state.findStreamProcess(streamId);
 
       if (!childProcess) {
         throw new Error("Child process not found");
@@ -424,7 +408,7 @@
       renderingContext.globalAlpha = 1.0;
 
       if (span.scopeHash != 0) {
-        const { name } = scopes[span.scopeHash];
+        const { name } = state.scopes[span.scopeHash];
         if (callWidth > characterWidth * 5) {
           const nbChars = Math.floor(callWidth / characterWidth);
 
