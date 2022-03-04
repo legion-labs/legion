@@ -69,7 +69,7 @@ fn save_image(path: &Path, data: &[u8], width: u32, height: u32) {
     writer.write_image_data(data).unwrap(); // Save
 }
 
-const DIFF_THREASHOLD: f64 = 0.001;
+const DIFF_THRESHOLD: f64 = 0.001;
 
 // cargo run --bin lgn-graphics-sandbox -- --snapshot
 // rm ./test/graphics-sandbox/tests/refs/simple-scene/simple-scene.png
@@ -98,7 +98,7 @@ fn gpu_simple_scene() {
         snapshot.width,
         snapshot.height,
     );
-    if diff_coeff >= DIFF_THREASHOLD {
+    if diff_coeff >= DIFF_THRESHOLD {
         let diff_image_path = format!("diffs/{}_diff.png", setup_name);
         println!("Path to diff: {}", diff_image_path);
         save_image(
@@ -113,10 +113,10 @@ fn gpu_simple_scene() {
             snapshot.height,
         );
         assert!(
-            diff_coeff < DIFF_THREASHOLD,
+            diff_coeff < DIFF_THRESHOLD,
             "image diff threashold {} < {}",
             diff_coeff,
-            DIFF_THREASHOLD
+            DIFF_THRESHOLD
         );
     }
 }
