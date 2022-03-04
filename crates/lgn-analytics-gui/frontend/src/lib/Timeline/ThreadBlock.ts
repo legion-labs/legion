@@ -1,4 +1,7 @@
-import { BlockAsyncEventsStatReply, SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
+import {
+  BlockAsyncEventsStatReply,
+  SpanTrack,
+} from "@lgn/proto-telemetry/dist/analytics";
 import { BlockMetadata } from "@lgn/proto-telemetry/dist/block";
 
 export type ThreadBlock = {
@@ -9,7 +12,7 @@ export type ThreadBlock = {
   asyncStats: BlockAsyncEventsStatReply | null;
 };
 
-type ThreadBlockLOD = {
+export type ThreadBlockLOD = {
   state: LODState;
   tracks: SpanTrack[];
   lodId: number;

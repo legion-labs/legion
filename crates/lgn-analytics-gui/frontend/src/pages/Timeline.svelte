@@ -43,8 +43,17 @@
     MergeThresholdForLOD as mergeThresholdForLOD,
   } from "@/lib/lod";
   import { Thread } from "@/lib/Timeline/Thread";
-  import { LODState, ThreadBlock } from "@/lib/Timeline/ThreadBlock";
-  import { processMsOffsetToRoot, timestampToMs } from "@/lib/time";
+  import {
+    LODState,
+    ThreadBlock,
+    ThreadBlockLOD,
+  } from "@/lib/Timeline/ThreadBlock";
+  import {
+    computePreferredBlockLod,
+    findBestLod,
+    processMsOffsetToRoot,
+    timestampToMs,
+  } from "@/lib/time";
 
   export let processId: string;
 
@@ -123,7 +132,14 @@
     let nbInFlight = 0;
     for (let blockId in blocks) {
       const block = blocks[blockId];
-      const preferedLod = computePreferedBlockLod(block);
+      if (!canvas) {
+        return null;
+      }
+      const preferedLod = computePreferredBlockLod(
+        canvas.width,
+        getViewRange(),
+        block
+      );
       if (preferedLod == null) {
         continue;
       }
@@ -238,52 +254,6 @@
         asyncStats: asyncStatsReply,
       };
     }
-  }
-
-  function computePreferedBlockLod(block: ThreadBlock): number | null {
-    const beginBlock = block.beginMs;
-    const endBlock = block.endMs;
-    return computePreferedLodFromTimeRange(beginBlock, endBlock);
-  }
-
-  function computePreferedLodFromTimeRange(
-    beginMs: number,
-    endMs: number
-  ): number | null {
-    if (!canvas) {
-      return null;
-    }
-    const vr = getViewRange();
-    if (beginMs > vr[1] || endMs < vr[0]) {
-      return null;
-    }
-    const currentPixelSize = (vr[1] - vr[0]) / canvas.width;
-    return getLodFromPixelSizeMs(currentPixelSize);
-  }
-
-  function findBestLod(block: ThreadBlock) {
-    const preferedLod = computePreferedLodFromTimeRange(
-      block.beginMs,
-      block.endMs
-    );
-    if (preferedLod == null) {
-      return null;
-    }
-    return block.lods.reduce((lhs, rhs) => {
-      if (lhs.tracks.length == 0) {
-        return rhs;
-      }
-      if (rhs.tracks.length == 0) {
-        return lhs;
-      }
-      if (
-        Math.abs(lhs.lodId - preferedLod) < Math.abs(rhs.lodId - preferedLod)
-      ) {
-        return lhs;
-      } else {
-        return rhs;
-      }
-    });
   }
 
   function onLodReceived(response: BlockSpansReply) {
@@ -527,7 +497,10 @@
 
     thread.block_ids.forEach((block_id) => {
       let block = blocks[block_id];
-      let lodToRender = findBestLod(block);
+      let lodToRender = !canvas
+        ? null
+        : findBestLod(canvas.width, getViewRange(), block);
+
       if (block.beginMs > end || block.endMs < begin) {
         return;
       }
