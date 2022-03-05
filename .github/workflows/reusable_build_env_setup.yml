@@ -6,9 +6,6 @@ on:
       tag:
         required: false
         type: string
-    secrets:
-      github-token:
-        required: true
     outputs:
       image:
         description: "The resulting container image name to use"

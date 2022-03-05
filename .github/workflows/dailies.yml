@@ -12,8 +12,6 @@ jobs:
     uses: ./.github/workflows/reusable_build_env_setup.yml
     with:
       tag:
-    secrets:
-      github-token: ${{ secrets.ECR_GH_ACCESS_TOKEN }}
 
   bootstrap_rust:
     name: Rust bootstrap
@@ -43,7 +41,6 @@ jobs:
       coverage: true
       timings: true
     secrets:
-      ecr-password: ${{ secrets.ECR_PASSWORD }}
       coverage-deploy-key: ${{ secrets.COV_DEPLOY_KEY }}
       build-timings-deploy-key: ${{ secrets.BUILD_TIMINGS_DEPLOY_KEY }}
 
@@ -54,8 +51,6 @@ jobs:
     with:
       image: ${{ needs.image_setup.outputs.image }}
       deploy: ${{ false }}
-    secrets:
-      ecr-password: ${{ secrets.ECR_PASSWORD }}
 
   book:
     name: Building book
@@ -65,5 +60,4 @@ jobs:
       image: ${{ needs.image_setup.outputs.image }}
       deploy: ${{ false }}
     secrets:
-      ecr-password: ${{ secrets.ECR_PASSWORD }}
       deploy-key: ${{ secrets.BOOK_DEPLOY_KEY }}

@@ -8,9 +8,6 @@ on:
       image:
         required: true
         type: string
-    secrets:
-      ecr-password:
-        required: true
     outputs:
       linux_runner:
         description: "The base git ref to use"
@@ -41,9 +38,6 @@ jobs:
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ inputs.image }}
-      credentials:
-        username: AWS
-        password: ${{ secrets.ecr-password }}
     outputs:
       linux_runner: ${{ steps.change-since.outputs.linux_runner }}
       windows_runner: ${{ steps.change-since.outputs.windows_runner }}
