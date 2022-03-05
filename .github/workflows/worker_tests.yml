@@ -1,4 +1,4 @@
-name: Dailies
+name: Test
 
 on:
   push:
@@ -20,9 +20,6 @@ jobs:
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ needs.image_setup.outputs.image }}
-      credentials:
-        username: AWS
-        password: ${{ secrets.ECR_PASSWORD }}
     steps:
       - uses: actions/checkout@v2
 
