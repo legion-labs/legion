@@ -1,0 +1,31 @@
+name: Dailies
+
+on:
+  push:
+    branches:
+      - test-workers
+
+jobs:
+  image_setup:
+    name: Image Setup
+    uses: ./.github/workflows/reusable_build_env_setup.yml
+    with:
+      tag:
+    secrets:
+      github-token: ${{ secrets.ECR_GH_ACCESS_TOKEN }}
+
+  test:
+    name: Test
+    needs: [image_setup]
+    runs-on: [self-hosted, linux, common, build]
+    container:
+      image: ${{ needs.image_setup.outputs.image }}
+      credentials:
+        username: AWS
+        password: ${{ secrets.ECR_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name:
+        runs: |
+          echo "Yay! We've come this far!"
