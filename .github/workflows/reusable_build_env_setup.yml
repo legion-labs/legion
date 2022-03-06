@@ -21,7 +21,8 @@ jobs:
     outputs:
       image: ${{ steps.set-image.outputs.image }}
     steps:
-      - run: |
+      - name: Fixing up access rights for files from previous steps
+        run: |
           sudo chown -R ubuntu:ubuntu .
 
       - uses: actions/checkout@v2
