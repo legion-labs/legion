@@ -16,8 +16,6 @@ jobs:
   image_setup:
     name: Image Setup
     uses: ./.github/workflows/reusable_build_env_setup.yml
-    secrets:
-      github-token: ${{ secrets.ECR_GH_ACCESS_TOKEN }}
 
   change_detection:
     name: Change detection
@@ -26,8 +24,6 @@ jobs:
     with:
       base_ref: ${{ needs.base_ref_selection.outputs.base_ref }}
       image: ${{ needs.image_setup.outputs.image }}
-    secrets:
-      ecr-password: ${{ secrets.ECR_PASSWORD }}
 
   rust:
     name: Rust ecosystem
@@ -39,7 +35,6 @@ jobs:
       pkgs_arg: ${{ needs.change_detection.outputs.cargo_pkgs_args }}
       deploy: ${{ github.ref == 'refs/heads/main' }}
     secrets:
-      ecr-password: ${{ secrets.ECR_PASSWORD }}
       docs-deploy-key: ${{ secrets.DOCS_DEPLOY_KEY }}
 
   node:
@@ -51,7 +46,6 @@ jobs:
       image: ${{ needs.image_setup.outputs.image }}
       deploy: ${{ github.ref == 'refs/heads/main' }}
     secrets:
-      ecr-password: ${{ secrets.ECR_PASSWORD }}
       analytics-deploy-key: ${{ secrets.ANALYTICS_DEPLOY_KEY }}
       editor-deploy-key: ${{ secrets.EDITOR_DEPLOY_KEY }}
 
@@ -64,5 +58,4 @@ jobs:
       image: ${{ needs.image_setup.outputs.image }}
       deploy: ${{ github.ref == 'refs/heads/main' }}
     secrets:
-      ecr-password: ${{ secrets.ECR_PASSWORD }}
       deploy-key: ${{ secrets.BOOK_DEPLOY_KEY }}

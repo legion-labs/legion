@@ -20,7 +20,6 @@
 *.sh text eol=lf
 
 tests/sample-data/**/* eol=lf
-build/env/install/version eol=lf
 
 # Declare files that will always have CRLF line endings on checkout.
 *.sln text eol=crlf

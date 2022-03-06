@@ -9,8 +9,6 @@ on:
         required: true
         type: boolean
     secrets:
-      ecr-password:
-        required: true
       editor-deploy-key:
         required: false
       analytics-deploy-key:
@@ -30,9 +28,6 @@ jobs:
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ inputs.image }}
-      credentials:
-        username: AWS
-        password: ${{ secrets.ecr-password }}
     steps:
       - uses: actions/checkout@v2
 
@@ -51,9 +46,6 @@ jobs:
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ inputs.image }}
-      credentials:
-        username: AWS
-        password: ${{ secrets.ecr-password }}
     steps:
       - uses: actions/checkout@v2
 

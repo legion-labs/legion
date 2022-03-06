@@ -25,8 +25,6 @@ on:
         type: boolean
         default: false
     secrets:
-      ecr-password:
-        required: true
       docs-deploy-key:
         required: false
       coverage-deploy-key:
@@ -45,9 +43,6 @@ jobs:
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ inputs.image }}
-      credentials:
-        username: AWS
-        password: ${{ secrets.ecr-password }}
     strategy:
       matrix:
         target: [x86_64-unknown-linux-gnu, x86_64-pc-windows-msvc]
@@ -66,9 +61,6 @@ jobs:
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ inputs.image }}
-      credentials:
-        username: AWS
-        password: ${{ secrets.ecr-password }}
     strategy:
       matrix:
         target: [x86_64-unknown-linux-gnu, x86_64-pc-windows-msvc]
@@ -98,9 +90,6 @@ jobs:
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ inputs.image }}
-      credentials:
-        username: AWS
-        password: ${{ secrets.ecr-password }}
     strategy:
       matrix:
         target: [x86_64-unknown-linux-gnu, x86_64-pc-windows-msvc]
@@ -134,9 +123,6 @@ jobs:
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ inputs.image }}
-      credentials:
-        username: AWS
-        password: ${{ secrets.ecr-password }}
     steps:
       - uses: actions/checkout@v2
 
@@ -184,9 +170,6 @@ jobs:
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ inputs.image }}
-      credentials:
-        username: AWS
-        password: ${{ secrets.ecr-password }}
     steps:
       - uses: actions/checkout@v2
 
@@ -203,9 +186,6 @@ jobs:
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ inputs.image }}
-      credentials:
-        username: AWS
-        password: ${{ secrets.ecr-password }}
     steps:
       - uses: actions/checkout@v2
 
@@ -246,9 +226,6 @@ jobs:
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ inputs.image }}
-      credentials:
-        username: AWS
-        password: ${{ secrets.ecr-password }}
     steps:
       - uses: actions/checkout@v2
 
