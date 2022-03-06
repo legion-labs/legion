@@ -20,24 +20,19 @@ Write-Host $(date) '--------------------- Update scoop -------------------------
 [System.Environment]::SetEnvironmentVariable('SCOOP_GLOBAL','C:\Scoop\global', 'User')
 
 Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
-scoop install git zip unzip make python jq
+scoop install git zip unzip python jq
 scoop bucket add extras
 scoop bucket add legion-labs https://github.com/legion-labs/scoop-bucket
 scoop update
 
 Write-Host $(date) '--------------------- Install C++ -------------------------------------'
-scoop install winsdk --global
-scoop install vs_buildtools --global
 scoop install legion-labs/llvm
 scoop install cmake
 scoop install ninja
 scoop install nasm
-scoop cache rm llvm
 
 Write-Host $(date) '--------------------- Install Rust -----------------------------------'
 scoop install rustup-msvc
-rustup install 1.58.0
-rustup install 1.58.1
 
 Write-Host $(date) '---------------------- Install VulkanSdk/dcx ---------------------------'
 scoop install legion-labs/vulkan --global

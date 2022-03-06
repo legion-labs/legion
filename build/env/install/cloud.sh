@@ -14,6 +14,7 @@ KUBECTL_VERSION=1.23.4-00
 DOCKER_VERSION=5:20.10.12~3-0~ubuntu-focal
 CONTAINERD_VERSION=1.4.12-1
 AWS_CLI_VERSION=2.4.20
+ECR_LOGIN_VERSION=0.6.0
 
 ###################################################################################################
 
@@ -36,6 +37,16 @@ apt-get update && apt-get install -y --no-install-recommends \
     kubectl=$KUBECTL_VERSION \
     docker-ce-cli=$DOCKER_VERSION \
     containerd.io=$CONTAINERD_VERSION
+
+wget -qO /usr/local/bin/docker-credential-ecr-login https://amazon-ecr-credential-helper-releases.s3.us-east-2.amazonaws.com/$ECR_LOGIN_VERSION/linux-amd64/docker-credential-ecr-login
+chmod a+x /usr/local/bin/docker-credential-ecr-login
+
+mkdir ~/.docker
+echo '{
+    "credHelpers": {
+		"550877636976.dkr.ecr.ca-central-1.amazonaws.com": "ecr-login"
+	}
+}' | tee ~/.docker/config.json
 
 ###################################################################################################
 

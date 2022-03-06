@@ -2,9 +2,11 @@
 
 ## Target audience
 
-The programmer setup is targeted toward people making changes to the engine and the pipeline elements, people writing frontend code and rust code.
+The programmer setup is targeted toward people making changes to the engine and the pipeline elements, people writing frontend code and rust code. Scripting within the engine doesn't require you to go through the setup process.
 
 ## Environment setup
+
+Note that Legion Labs internally uses scoop to install local dependencies and update them, although not a perquisite, it simplifies some of the following steps.
 
 ### C/C++ and Rust
 
@@ -14,9 +16,33 @@ The programmer setup is targeted toward people making changes to the engine and 
 
 ## Monorepo tooling
 
-## Cloud access (Legion Labs employee or partner)
+## Cloud access (Legion Labs employee or partner with SSO access)
 
-#TODO(doc): Liem can you document the sso setup :)
+First you need to install aws cli and a couple of tools.
+
+[Configure you SSO access](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html#sso-configure-profile-auto) with the information given to you in the welcome email.
+
+```bash
+$ aws configure sso
+SSO start URL [None]: [None]: <given to you in the welcome email>
+SSO   [None]:ca-central-1
+```
+
+The AWS CLI will attempt to open your default browser and begin the login process for your AWS SSO account.
+
+```powershell
+scoop install ecr-login
+```
+
+Add this to your docker config file `~/.docker/config.json`:
+
+```json
+{
+  "credHelpers": {
+    "550877636976.dkr.ecr.ca-central-1.amazonaws.com": "ecr-login"
+  }
+}
+```
 
 ## Build environment docker image
 
