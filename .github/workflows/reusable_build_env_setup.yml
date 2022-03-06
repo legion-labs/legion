@@ -21,8 +21,10 @@ jobs:
     outputs:
       image: ${{ steps.set-image.outputs.image }}
     steps:
-      - uses: actions/checkout@v2
+      - run: |
+          sudo chown -R ubuntu:ubuntu .
 
+      - uses: actions/checkout@v2
       - name: Build
         env:
           IMAGE_TAG: ${{ inputs.tag }}
