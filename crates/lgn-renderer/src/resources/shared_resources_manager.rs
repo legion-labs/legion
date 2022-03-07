@@ -62,9 +62,9 @@ impl SharedResourcesManager {
     ) -> GpuTextureId {
         let (texture_def, texture_data) = match shared_texture_id {
             SharedTextureId::Albedo => Self::create_albedo_texture(),
-            SharedTextureId::Normal => Self::create_normal_texture(), // Self::create_normal_texture(),
-            SharedTextureId::Metalness => Self::create_metalness_texture(), // Self::create_metallness_texture(),
-            SharedTextureId::Roughness => Self::create_roughness_texture(), // Self::create_roughness_texture(),
+            SharedTextureId::Normal => Self::create_normal_texture(),
+            SharedTextureId::Metalness => Self::create_metalness_texture(),
+            SharedTextureId::Roughness => Self::create_roughness_texture(),
         };
         texture_manager.allocate_texture(&texture_def, &texture_data)
     }

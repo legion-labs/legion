@@ -133,7 +133,8 @@ impl TextureManager {
         texture_def: &TextureDef,
         texture_data: &TextureData,
     ) -> GpuTextureId {
-        let texture_view = self.create_texture_view(texture_def);
+        let texture_def = Self::build_texture_def(texture_def);
+        let texture_view = self.create_texture_view(&texture_def);
         let index = self.allocate_texture_info();
         let mut texture_info = &mut self.texture_info[index as usize];
         texture_info.texture_view = Some(texture_view);
@@ -156,13 +157,14 @@ impl TextureManager {
     ) {
         assert!(self.is_valid(gpu_texture_id));
 
+        let texture_def = Self::build_texture_def(texture_def);
         let recreate_texture_view = {
             let current_texture_handle = self.texture_handle(gpu_texture_id);
             let current_texture_def = current_texture_handle.definition();
-            current_texture_def != texture_def
+            current_texture_def != &texture_def
         };
         if recreate_texture_view {
-            let texture_view = self.create_texture_view(texture_def);
+            let texture_view = self.create_texture_view(&texture_def);
             let texture_info = self.texture_info_mut(gpu_texture_id);
 
             // The previous texture/texture_view is being pushed is the deferred delete queue
@@ -284,6 +286,19 @@ impl TextureManager {
         assert!(self.texture_info[index as usize].state == TextureState::Invalid);
 
         index
+    }
+
+    fn build_texture_def(texture_def: &TextureDef) -> TextureDef {
+        assert!(texture_def
+            .usage_flags
+            .contains(ResourceUsage::AS_SHADER_RESOURCE));
+        assert_eq!(texture_def.mem_usage, MemoryUsage::GpuOnly);
+
+        let mut result = *texture_def;
+        result.usage_flags |= ResourceUsage::AS_TRANSFERABLE;
+        result.tiling = TextureTiling::Optimal;
+
+        result
     }
 
     fn create_texture_view(&self, texture_def: &TextureDef) -> TextureView {
