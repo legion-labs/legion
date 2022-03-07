@@ -103,7 +103,7 @@
     }
     const section = [0.0, 1000.0] as [number, number]; //section is in relative ms
 
-    let blocksOfInterest = [];
+    let blocksOfInterest : string[] = [];
     for (const streamId in state.threads) {
       const thread = state.threads[streamId];
       if (thread.streamInfo.processId === process.processId) {
@@ -115,7 +115,12 @@
         });
       }
     }
-    // console.log(blocksOfInterest);
+    const reply = await client.fetch_async_spans({
+      sectionSequenceNumber: 1,
+      sectionLod: 0,
+      blockIds: blocksOfInterest,
+    });
+    console.log(reply);
   }
 
   async function fetchProcessInfo() {

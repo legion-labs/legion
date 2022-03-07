@@ -317,11 +317,12 @@ impl AnalyticsService {
         let mut connection = self.pool.acquire().await?;
         compute_async_spans(
             &mut connection,
-            &self.data_lake_blobs,
+            self.data_lake_blobs.clone(),
             request.section_sequence_number,
             request.section_lod,
-            &request.block_ids,
+            request.block_ids,
         )
+        .await
     }
 }
 

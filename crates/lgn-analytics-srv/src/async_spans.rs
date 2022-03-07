@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
-use anyhow::{bail, Result};
-use lgn_analytics::get_process_tick_length_ms;
+use anyhow::Result;
+use lgn_analytics::{fetch_block_payload, get_process_tick_length_ms};
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::{AsyncSpansReply, BlockAsyncEventsStatReply};
+use lgn_tracing::warn;
 
 use crate::thread_block_processor::{parse_thread_block, ThreadBlockProcessor};
 
@@ -71,12 +72,23 @@ pub async fn compute_block_async_stats(
     })
 }
 
-pub fn compute_async_spans(
-    _connection: &mut sqlx::AnyConnection,
-    _blob_storage: &Arc<dyn BlobStorage>,
-    _section_sequence_number: i32,
-    _section_lod: u32,
-    _block_ids: &[String],
+pub async fn compute_async_spans(
+    connection: &mut sqlx::AnyConnection,
+    blob_storage: Arc<dyn BlobStorage>,
+    section_sequence_number: i32,
+    section_lod: u32,
+    block_ids: Vec<String>,
 ) -> Result<AsyncSpansReply> {
-    bail!("not impl");
+    for block_id in &block_ids {
+        let _payload =
+            fetch_block_payload(connection, blob_storage.clone(), block_id.clone()).await?;
+        warn!("{}", block_id);
+    }
+    let tracks = vec![];
+    let reply = AsyncSpansReply {
+        section_sequence_number,
+        section_lod,
+        tracks,
+    };
+    Ok(reply)
 }
