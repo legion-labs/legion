@@ -194,7 +194,7 @@ impl Plugin for RendererPlugin {
         TextureResourceManager::init_ecs(app);
         MeshRenderer::init_ecs(app);
 
-        // todo: convert
+        // todo: convert?
         app.add_plugin(GpuDataPlugin::default());
 
         // Plugins are optionnal
