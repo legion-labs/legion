@@ -288,4 +288,18 @@ Could support the interface to get visibility into crates that are already instr
 - Cumulative call graph improvements (Tim)
 
 ---
+## todo
+- GPU profiling
+- Memory profiling
+- Object Graphs
+  * Why is this texture loaded?
+- Process dashboards
+  * monitoring thousands of processes
+- Task-based timeline
+  * unifying thread-bound and async tasks
+- Heat maps
+- Real-time logs, metrics and timeline
+
+
+---
 ![bg](figures/question_mark.jpg)
