@@ -177,15 +177,6 @@ async fn test_resource_browser() -> anyhow::Result<()> {
         // Create an Hierarchy of Child->SubChild with increment_name
         {
             let offsets: Vec<f32> = vec![-1.0, 0.0, 1.0];
-            let mesh_ids: Vec<DefaultMeshType> = vec![
-                DefaultMeshType::Cube,
-                DefaultMeshType::Pyramid,
-                DefaultMeshType::Torus,
-                DefaultMeshType::Cone,
-                DefaultMeshType::Cylinder,
-                DefaultMeshType::Sphere,
-                DefaultMeshType::Arrow,
-            ];
 
             let colors: Vec<lgn_graphics_data::Color> = vec![
                 (255, 0, 0).into(),
@@ -196,7 +187,6 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                 (255, 0, 255).into(),
             ];
             let mut color_id = 0;
-            let mut mesh_id = 0;
 
             #[allow(clippy::needless_range_loop)]
             for i in 0..3u16 {
@@ -267,7 +257,6 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                 guard.commit_transaction(transaction).await.unwrap();
 
                 color_id = (color_id + 1) % colors.len();
-                mesh_id = (mesh_id + 1) % mesh_ids.len();
             }
         }
 
