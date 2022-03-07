@@ -44,6 +44,7 @@ impl CommandPool {
         })
     }
 
+    // todo: should be mut self
     pub fn create_command_buffer(
         &self,
         command_buffer_def: &CommandBufferDef,

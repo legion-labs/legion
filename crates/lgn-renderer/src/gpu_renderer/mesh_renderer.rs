@@ -1,4 +1,4 @@
-use lgn_app::{App, CoreStage, EventReader, Plugin};
+use lgn_app::{App, CoreStage, EventReader};
 use lgn_ecs::prelude::{Query, Res, ResMut};
 use lgn_graphics_api::{
     BarrierQueueTransition, BlendState, Buffer, BufferBarrier, BufferDef, BufferView,
@@ -26,30 +26,13 @@ use crate::{
 
 use super::{GpuInstanceEvent, RenderElement, RenderLayer, RenderStateSet};
 
-pub struct MeshRendererPlugin {
-    static_buffer_allocator: UnifiedStaticBufferAllocator,
-}
-
-impl MeshRendererPlugin {
-    pub fn new(static_buffer_allocator: &UnifiedStaticBufferAllocator) -> Self {
-        Self {
-            static_buffer_allocator: static_buffer_allocator.clone(),
-        }
-    }
-}
-
 pub(crate) enum DefaultLayers {
     Opaque = 0,
     Picking,
 }
 
-impl Plugin for MeshRendererPlugin {
-    fn build(&self, app: &mut App) {
-        //
-        // Resources
-        //
-        app.insert_resource(MeshRenderer::new(&self.static_buffer_allocator));
-
+impl MeshRenderer {
+    pub fn init_ecs(app: &mut App) {
         //
         // Events
         //

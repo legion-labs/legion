@@ -60,7 +60,7 @@ use crate::{
         RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces,
     },
     egui::egui_plugin::{Egui, EguiPlugin},
-    gpu_renderer::{GpuInstanceVas, MeshRenderer, MeshRendererPlugin},
+    gpu_renderer::GpuInstanceVas,
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingIdContext, PickingManager, PickingPlugin},
     resources::MeshManager,
@@ -144,6 +144,8 @@ impl Plugin for RendererPlugin {
             &mut persistent_descriptor_set_manager,
         );
 
+        let mesh_renderer = MeshRenderer::new(renderer.static_buffer_allocator());
+
         renderer.end_frame();
 
         //
@@ -185,14 +187,15 @@ impl Plugin for RendererPlugin {
         app.insert_resource(shared_resources_manager);
         app.insert_resource(texture_manager);
         app.insert_resource(texture_resource_manager);
+        app.insert_resource(mesh_renderer);
 
         // Init ecs
         TextureManager::init_ecs(app);
         TextureResourceManager::init_ecs(app);
+        MeshRenderer::init_ecs(app);
 
         // todo: convert
         app.add_plugin(GpuDataPlugin::default());
-        app.add_plugin(MeshRendererPlugin::new(renderer.static_buffer_allocator()));
 
         // Plugins are optionnal
         app.add_plugin(EguiPlugin::new());
