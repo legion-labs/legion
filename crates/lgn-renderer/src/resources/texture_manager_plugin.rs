@@ -471,6 +471,7 @@ fn upload_texture_data(
     data: &[u8],
     mip_level: u8,
 ) {
+    // todo: this code must be completly rewritten (-> upload manager)
     let staging_buffer = device_context.create_buffer(&BufferDef::for_staging_buffer_data(
         data,
         ResourceUsage::empty(),
@@ -485,6 +486,7 @@ fn upload_texture_data(
 
     buffer_memory.copy_to_host_visible_buffer(data);
 
+    // todo: not needed
     cmd_buffer.cmd_resource_barrier(
         &[],
         &[TextureBarrier::state_transition(
@@ -503,6 +505,7 @@ fn upload_texture_data(
         },
     );
 
+    // todo: not needed
     cmd_buffer.cmd_resource_barrier(
         &[],
         &[TextureBarrier::state_transition(

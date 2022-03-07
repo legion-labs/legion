@@ -1,3 +1,4 @@
+use lgn_graphics_data::Color;
 use strum::{EnumCount, IntoEnumIterator};
 
 use lgn_graphics_api::{
@@ -72,26 +73,25 @@ impl SharedResourcesManager {
     fn create_albedo_texture() -> (TextureDef, TextureData) {
         let texture_def = TextureDef {
             extents: Extents3D {
-                width: 4,
-                height: 4,
+                width: 2,
+                height: 2,
                 depth: 1,
             },
             array_length: 1,
             mip_count: 1,
-            format: Format::R8G8B8A8_UNORM,
+            format: Format::R8G8B8A8_SRGB,
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
             resource_flags: ResourceFlags::empty(),
             mem_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Linear,
         };
 
-        let mut texture_data = Vec::<u8>::with_capacity(64);
-        for _index in 0..16 {
-            texture_data.push(0);
-            texture_data.push(0);
-            texture_data.push(0);
-            texture_data.push(255);
-        }
+        let mut texture_data = [Color::default(); 4];
+
+        texture_data[0] = Color::new(255, 0, 0, 255);
+        texture_data[1] = Color::new(0, 255, 0, 255);
+        texture_data[2] = Color::new(0, 0, 255, 255);
+        texture_data[3] = Color::new(0, 0, 0, 255);
 
         (texture_def, TextureData::from_slice(&texture_data))
     }
@@ -99,8 +99,8 @@ impl SharedResourcesManager {
     fn create_normal_texture() -> (TextureDef, TextureData) {
         let texture_def = TextureDef {
             extents: Extents3D {
-                width: 4,
-                height: 4,
+                width: 2,
+                height: 2,
                 depth: 1,
             },
             array_length: 1,
@@ -112,13 +112,12 @@ impl SharedResourcesManager {
             tiling: TextureTiling::Linear,
         };
 
-        let mut texture_data = Vec::<u8>::with_capacity(64);
-        for _index in 0..16 {
-            texture_data.push(0);
-            texture_data.push(0);
-            texture_data.push(0);
-            texture_data.push(255);
-        }
+        let mut texture_data = [Color::default(); 4];
+
+        texture_data[0] = Color::new(0, 0, 127, 255);
+        texture_data[1] = Color::new(0, 0, 127, 255);
+        texture_data[2] = Color::new(0, 0, 127, 255);
+        texture_data[3] = Color::new(0, 0, 127, 255);
 
         (texture_def, TextureData::from_slice(&texture_data))
     }
@@ -126,26 +125,25 @@ impl SharedResourcesManager {
     fn create_metalness_texture() -> (TextureDef, TextureData) {
         let texture_def = TextureDef {
             extents: Extents3D {
-                width: 4,
-                height: 4,
+                width: 2,
+                height: 2,
                 depth: 1,
             },
             array_length: 1,
             mip_count: 1,
-            format: Format::R8G8B8A8_UNORM,
+            format: Format::R8_UNORM,
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
             resource_flags: ResourceFlags::empty(),
             mem_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Linear,
         };
 
-        let mut texture_data = Vec::<u8>::with_capacity(64);
-        for _index in 0..16 {
-            texture_data.push(0);
-            texture_data.push(0);
-            texture_data.push(0);
-            texture_data.push(255);
-        }
+        let mut texture_data = [0_u8; 4];
+
+        texture_data[0] = 0;
+        texture_data[1] = 0;
+        texture_data[2] = 0;
+        texture_data[3] = 0;
 
         (texture_def, TextureData::from_slice(&texture_data))
     }
@@ -153,26 +151,25 @@ impl SharedResourcesManager {
     fn create_roughness_texture() -> (TextureDef, TextureData) {
         let texture_def = TextureDef {
             extents: Extents3D {
-                width: 4,
-                height: 4,
+                width: 2,
+                height: 2,
                 depth: 1,
             },
             array_length: 1,
             mip_count: 1,
-            format: Format::R8G8B8A8_UNORM,
+            format: Format::R8_UNORM,
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
             resource_flags: ResourceFlags::empty(),
             mem_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Linear,
         };
 
-        let mut texture_data = Vec::<u8>::with_capacity(64);
-        for _index in 0..16 {
-            texture_data.push(0);
-            texture_data.push(0);
-            texture_data.push(0);
-            texture_data.push(255);
-        }
+        let mut texture_data = [0_u8; 4];
+
+        texture_data[0] = 240;
+        texture_data[1] = 240;
+        texture_data[2] = 240;
+        texture_data[3] = 240;
 
         (texture_def, TextureData::from_slice(&texture_data))
     }
