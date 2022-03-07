@@ -59,7 +59,7 @@ jobs:
         id: change-since
         shell: bash
         run: |
-          changed=$(cargo m changed-since "${{ inputs.base_ref }}" --format=json)
+          changed=$(monorepo changed-since "${{ inputs.base_ref }}" --format=json)
           if [[ $? != 0 ]]; then
             echo "failed to detect changed crates"
             exit 1
