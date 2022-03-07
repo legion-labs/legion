@@ -32,19 +32,20 @@ struct VertexOut {
 };
 
 VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
-    GpuInstanceVATable addresses = static_buffer.Load<GpuInstanceVATable>(vertexIn.va_table_address);
-    MeshDescription mesh_desc = static_buffer.Load<MeshDescription>(addresses.mesh_description_va);
+    GpuInstanceVATable addresses = LoadGpuInstanceVATable(static_buffer, vertexIn.va_table_address);
+    MeshDescription mesh_desc = LoadMeshDescription(static_buffer, addresses.mesh_description_va);
 
     VertexIn vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
     VertexOut vertex_out;
 
-    GpuInstanceTransform transform = static_buffer.Load<GpuInstanceTransform>(addresses.world_transform_va);
+    GpuInstanceTransform transform = LoadGpuInstanceTransform(static_buffer, addresses.world_transform_va);
 
-    float4 pos_view_relative = mul(view_data.view, mul(vertex_in.pos, transform.world));
+    float4 pos_view_relative = mul(view_data.view, mul(transform.world, vertex_in.pos));
+
     vertex_out.hpos = mul(view_data.projection, pos_view_relative);
     vertex_out.pos = pos_view_relative.xyz;
-    vertex_out.normal = mul(view_data.view, mul(vertex_in.normal, transform.world)).xyz;
-    vertex_out.tangent = mul(view_data.view, mul(vertex_in.tangent, transform.world)).xyz;
+    vertex_out.normal = mul(view_data.view, mul(transform.world, vertex_in.normal)).xyz;
+    vertex_out.tangent = mul(view_data.view, mul(transform.world, vertex_in.tangent)).xyz;
     vertex_out.uv_coord = vertex_in.uv_coord;
     vertex_out.va_table_address = vertexIn.va_table_address;
     return vertex_out;
@@ -110,10 +111,10 @@ Lighting CalculateIncidentSpotLight(SpotLight light, float3 pos, float3 normal, 
 }
 
 float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
-    GpuInstanceVATable addresses = static_buffer.Load<GpuInstanceVATable>(vertex_out.va_table_address);
+    GpuInstanceVATable addresses = LoadGpuInstanceVATable(static_buffer, vertex_out.va_table_address);
 
-    MaterialData material = static_buffer.Load<MaterialData>(addresses.material_data_va);
-    GpuInstanceColor instance_color = static_buffer.Load<GpuInstanceColor>(addresses.instance_color_va);
+    MaterialData material = LoadMaterialData(static_buffer, addresses.material_data_va);
+    GpuInstanceColor instance_color = LoadGpuInstanceColor(static_buffer, addresses.instance_color_va);
 
     LightingMaterial lightingMaterial = (LightingMaterial)0;
 
@@ -142,7 +143,9 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
     float3 material_normal = lighting_normal;
 
     if (material.normal_texture != 0xFFFFFFFF) {
-        float3x3 tangent_to_view_space = transpose(float3x3(view_tangent, view_binormal, view_normal));
+        float3x3 tangent_to_view_space = float3x3(float3(view_tangent.x, view_binormal.x, view_normal.x),
+                                                  float3(view_tangent.y, view_binormal.y, view_normal.y),
+                                                  float3(view_tangent.z, view_binormal.z, view_normal.z));
 
         material_normal = material_textures[material.normal_texture].Sample(material_sampler, vertex_out.uv_coord).rgb;
 

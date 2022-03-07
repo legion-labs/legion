@@ -17,7 +17,7 @@ struct VertexOut {
 };
 
 VertexOut main_vs(uint vertexId: SV_VertexID) {
-    MeshDescription mesh_desc = static_buffer.Load<MeshDescription>(push_constant.mesh_description_offset);
+    MeshDescription mesh_desc = LoadMeshDescription(static_buffer, push_constant.mesh_description_offset);
 
     VertexIn vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexId);
     VertexOut vertex_out;
