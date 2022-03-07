@@ -41,20 +41,11 @@ impl SharedResourcesManager {
         texture_manager: &mut TextureManager,
         persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
     ) -> Self {
-        let mut shared_textures = [SharedTexture::default(); SharedTextureId::COUNT];
-
-        for (index, shared_texture_id) in SharedTextureId::iter().enumerate() {
-            let gpu_texture_id = Self::create_texture(texture_manager, shared_texture_id);
-            shared_textures[index].gpu_texture_id = gpu_texture_id;
-        }
-
-        texture_manager.update(renderer, persistent_descriptor_set_manager);
-
-        for shared_texture in &mut shared_textures {
-            let gpu_texture_id = shared_texture.gpu_texture_id;
-            shared_texture.bindless_index =
-                texture_manager.get_bindless_index(gpu_texture_id).unwrap();
-        }
+        let shared_textures = Self::create_shared_textures(
+            texture_manager,
+            renderer,
+            persistent_descriptor_set_manager,
+        );
 
         Self {
             textures: shared_textures,
@@ -184,5 +175,24 @@ impl SharedResourcesManager {
         }
 
         (texture_def, TextureData::from_slice(&texture_data))
+    }
+
+    fn create_shared_textures(
+        texture_manager: &mut TextureManager,
+        renderer: &Renderer,
+        persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
+    ) -> [SharedTexture; SharedTextureId::COUNT] {
+        let mut shared_textures = [SharedTexture::default(); SharedTextureId::COUNT];
+        for (index, shared_texture_id) in SharedTextureId::iter().enumerate() {
+            let gpu_texture_id = Self::create_texture(texture_manager, shared_texture_id);
+            shared_textures[index].gpu_texture_id = gpu_texture_id;
+        }
+        texture_manager.update(renderer, persistent_descriptor_set_manager);
+        for shared_texture in &mut shared_textures {
+            let gpu_texture_id = shared_texture.gpu_texture_id;
+            shared_texture.bindless_index =
+                texture_manager.get_bindless_index(gpu_texture_id).unwrap();
+        }
+        shared_textures
     }
 }
