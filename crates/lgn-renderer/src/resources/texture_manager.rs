@@ -141,6 +141,8 @@ impl TextureManager {
         texture_def: &TextureDef,
         texture_data: &TextureData,
     ) {
+        // todo: untested
+
         assert!(self.is_valid(gpu_texture_id));
 
         let texture_def = Self::build_texture_def(texture_def);
@@ -161,13 +163,20 @@ impl TextureManager {
     }
 
     pub fn release_texture(&mut self, gpu_texture_id: GpuTextureId) {
+        // todo: untested
+
         assert!(self.is_valid(gpu_texture_id));
 
         // No need to remove from the upload queue because the gpu_texture_id stored in the upload_job
         // becomes invalid (generation mismatch).
 
         let texture_info = self.texture_info_mut(gpu_texture_id);
-        texture_info.generation += 1;
+        let next_generation = texture_info.generation + 1;
+        *texture_info = TextureInfo {
+            generation: next_generation,
+            ..TextureInfo::default()
+        };
+
         texture_info.state = TextureState::Invalid;
         texture_info.texture_view = None;
     }
@@ -288,6 +297,7 @@ impl TextureManager {
     }
 
     fn create_texture_view(&self, texture_def: &TextureDef) -> TextureView {
+        // todo: bundle all the default views in the resource instead of having them separatly
         let texture = self.device_context.create_texture(texture_def);
         texture.create_view(&TextureViewDef::as_shader_resource_view(texture_def))
     }
@@ -342,6 +352,7 @@ impl TextureManager {
     }
 }
 
+// todo: lot of things to change
 pub struct TextureResourceManager {
     entity_to_resource_id: BTreeMap<Entity, ResourceTypeAndId>,
     resource_id_to_gpu_texture_id: BTreeMap<ResourceTypeAndId, GpuTextureId>,
@@ -421,11 +432,34 @@ impl TextureResourceManager {
     }
 
     fn texture_def_from_texture_component(texture_component: &TextureComponent) -> TextureDef {
+        // todo: not valid
+        //
         let format = match texture_component.format {
-            TextureFormat::BC1 => Format::BC1_RGBA_UNORM_BLOCK,
-            TextureFormat::BC3 => Format::BC3_UNORM_BLOCK,
-            TextureFormat::BC4 => Format::BC4_UNORM_BLOCK,
-            TextureFormat::BC7 => Format::BC7_UNORM_BLOCK,
+            TextureFormat::BC1 => {
+                if texture_component.srgb {
+                    Format::BC1_RGBA_SRGB_BLOCK
+                } else {
+                    Format::BC1_RGBA_UNORM_BLOCK
+                }
+            }
+            TextureFormat::BC3 => {
+                if texture_component.srgb {
+                    Format::BC3_SRGB_BLOCK
+                } else {
+                    Format::BC3_UNORM_BLOCK
+                }
+            }
+            TextureFormat::BC4 => {
+                assert!(!texture_component.srgb);
+                Format::BC4_UNORM_BLOCK
+            }
+            TextureFormat::BC7 => {
+                if texture_component.srgb {
+                    Format::BC7_SRGB_BLOCK
+                } else {
+                    Format::BC7_UNORM_BLOCK
+                }
+            }
         };
 
         TextureDef {

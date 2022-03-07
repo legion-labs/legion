@@ -18,6 +18,8 @@ pub struct Texture {
     pub height: u32,
     /// Desired HW texture format
     pub format: TextureFormat,
+    /// Color encoding
+    pub srgb: bool,
     /// Mip chain pixel data of the image in hardware encoded form
     pub texture_data: Vec<serde_bytes::ByteBuf>,
 }
@@ -31,6 +33,7 @@ impl Texture {
         width: u32,
         height: u32,
         format: TextureFormat,
+        srgb: bool,
         alpha_blended: bool,
         rgba: &[u8],
         writer: &mut dyn std::io::Write,
@@ -39,6 +42,7 @@ impl Texture {
             width,
             height,
             format,
+            srgb,
             texture_data: encode_mip_chain_from_offline_texture(
                 width,
                 height,

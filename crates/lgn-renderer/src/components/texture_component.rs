@@ -54,6 +54,7 @@ pub struct TextureComponent {
     pub(crate) width: u32,
     pub(crate) height: u32,
     pub(crate) format: TextureFormat,
+    pub(crate) srgb: bool,
     pub(crate) texture_data: TextureData,
 }
 
@@ -64,6 +65,7 @@ impl TextureComponent {
         width: u32,
         height: u32,
         format: TextureFormat,
+        srgb: bool,
         texture_data: TextureData,
     ) -> Self {
         Self {
@@ -71,6 +73,7 @@ impl TextureComponent {
             width,
             height,
             format,
+            srgb,
             texture_data,
         }
     }

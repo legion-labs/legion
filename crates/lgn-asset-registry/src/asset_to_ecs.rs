@@ -295,6 +295,7 @@ impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {
             texture.width,
             texture.height,
             texture.format,
+            texture.srgb,
             texture_data,
         );
 
