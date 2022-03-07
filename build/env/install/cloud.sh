@@ -41,12 +41,14 @@ apt-get update && apt-get install -y --no-install-recommends \
 wget -qO /usr/local/bin/docker-credential-ecr-login https://amazon-ecr-credential-helper-releases.s3.us-east-2.amazonaws.com/$ECR_LOGIN_VERSION/linux-amd64/docker-credential-ecr-login
 chmod a+x /usr/local/bin/docker-credential-ecr-login
 
-mkdir ~/.docker
-echo '{
+if [[ ! -d ~/.docker ]]; then    
+    mkdir ~/.docker
+    echo '{
     "credHelpers": {
-		"550877636976.dkr.ecr.ca-central-1.amazonaws.com": "ecr-login"
-	}
+        "550877636976.dkr.ecr.ca-central-1.amazonaws.com": "ecr-login"
+    }
 }' | tee ~/.docker/config.json
+fi
 
 ###################################################################################################
 

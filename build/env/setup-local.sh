@@ -6,6 +6,11 @@
 set -eux
 
 script_dir="$(dirname "$0")"
+monorepo_root="$script_dir/../.."
+
+# These files are outide the context
+cp "$monorepo_root/rust-toolchain.toml" "$script_dir/install/rust-toolchain.toml"
+cp "$monorepo_root/.monorepo/tools.toml" "$script_dir/install/tools.toml"
 
 pushd "$script_dir/install"
 
