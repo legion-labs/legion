@@ -33,6 +33,9 @@ pub struct Args {
     /// Do not run tests, only compile the test executables
     #[clap(long)]
     pub(crate) no_run: bool,
+    /// Run ignored tests with filter
+    #[clap(long)]
+    pub(crate) ignored: Vec<String>,
     /// Directory to output HTML coverage report (using grcov)
     #[clap(long, parse(from_os_str))]
     pub(crate) html_cov_dir: Option<PathBuf>,
@@ -96,23 +99,18 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
         vec![]
     };
 
-    let mut direct_args = if args.legacy_runner {
-        vec![]
-    } else {
-        vec!["run".into()]
-    };
-    args.build_args.add_args(&mut direct_args);
-    if args.no_run {
-        direct_args.push(OsString::from("--no-run"));
-    };
-    if args.no_fail_fast {
-        direct_args.push(OsString::from("--no-fail-fast"));
-    };
-    if args.doc {
-        direct_args.push(OsString::from("--doc"));
-    }
-
+    let mut direct_args = vec![];
     let cmd = if args.legacy_runner {
+        args.build_args.add_args(&mut direct_args);
+        if args.no_run {
+            direct_args.push(OsString::from("--no-run"));
+        };
+        if args.no_fail_fast {
+            direct_args.push(OsString::from("--no-fail-fast"));
+        };
+        if args.doc {
+            direct_args.push(OsString::from("--doc"));
+        }
         CargoCommand::Test {
             direct_args: direct_args.as_slice(),
             args: &args.args,
@@ -123,6 +121,21 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
         if !ctx.installer().install_via_cargo_if_needed("cargo-nextest") {
             return Err(Error::new("Could not install cargo-nextest"));
         }
+        if args.no_run {
+            direct_args.push(OsString::from("list"));
+        } else {
+            direct_args.push(OsString::from("run"));
+        }
+        if !args.ignored.is_empty() {
+            for ignored in args.ignored {
+                direct_args.push(OsString::from(ignored));
+            }
+            direct_args.push("--run-ignored".into());
+            direct_args.push("ignored-only".into());
+        }
+        if args.no_fail_fast {
+            direct_args.push(OsString::from("--no-fail-fast"));
+        };
         CargoCommand::Nextest {
             direct_args: direct_args.as_slice(),
             args: &args.args,
