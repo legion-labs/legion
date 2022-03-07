@@ -94,4 +94,4 @@ echo '------------------------------------ Cloud Tools -------------------------
 # git clone https://github.com/zsh-users/zsh-completions ${ZSH_CUSTOM:=~/.oh-my-zsh/custom}/plugins/zsh-completions
 
 # set the follwing in your ~/.zshrc
-# plugins=(git zsh-syntax-highlighting zsh-autosuggestions zsh-completions)
+# plugins=(git aws zsh-syntax-highlighting zsh-autosuggestions zsh-completions)
