@@ -3,19 +3,43 @@ use lgn_content_store2::{
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-use crate::{Asset, AssetIdentifier, Result};
-use std::collections::BTreeMap;
+use crate::{AssetIdentifier, Result};
+use std::collections::{BTreeMap, BTreeSet};
+
+/// A hierarchical tree of assets where the leafs are single assets which appear
+/// exactly once.
+pub type UniqueAssetTree = Tree<AssetIdentifier>;
+
+/// A hierarchical tree of assets where the leafs are lists of assets where
+/// assets may appear multiple times or not at all.
+pub type MultiAssetsTree = Tree<BTreeSet<AssetIdentifier>>;
 
 /// A tree of assets.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Tree {
-    children: BTreeMap<String, TreeNode>,
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Tree<LeafType> {
+    children: BTreeMap<String, TreeNode<LeafType>>,
+}
+
+impl<LeafType: Clone> Clone for Tree<LeafType> {
+    fn clone(&self) -> Self {
+        Self {
+            children: self.children.clone(),
+        }
+    }
+}
+
+impl<LeafType> Default for Tree<LeafType> {
+    fn default() -> Self {
+        Self {
+            children: BTreeMap::default(),
+        }
+    }
 }
 
 /// A tree node.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum TreeNode {
-    Leaf(AssetIdentifier),
+pub enum TreeNode<LeafType> {
+    Leaf(LeafType),
     Branch(TreeIdentifier),
 }
 
@@ -23,22 +47,10 @@ pub enum TreeNode {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct TreeIdentifier(pub Identifier);
 
-impl Tree {
-    /// Create a new tree from the list of its children.
-    pub fn new(children: BTreeMap<String, TreeNode>) -> Self {
-        Self { children }
-    }
-
-    /// Checks whether the tree is empty.
-    pub fn is_empty(&self) -> bool {
-        self.children.is_empty()
-    }
-
-    /// Get the children count.
-    pub fn children_count(&self) -> usize {
-        self.children.len()
-    }
-
+impl<LeafType> Tree<LeafType>
+where
+    LeafType: DeserializeOwned,
+{
     /// Load a tree from the content-store.
     ///
     /// # Errors
@@ -54,6 +66,30 @@ impl Tree {
             .map_err(|err| anyhow::anyhow!("failed to parse tree: {}", err))?)
     }
 
+    /// Lookup a sub-tree in the tree.
+    ///
+    /// If the tree is not found, returns `Ok(None)`.
+    /// If the specified key points to an asset, returns `Ok(None)`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the asset exists but could not be loaded.
+    pub async fn lookup_branch(
+        &self,
+        provider: impl ContentReader + Send + Sync,
+        key: &str,
+    ) -> Result<Option<Self>> {
+        match self.lookup_branch_id(key) {
+            Some(id) => Ok(Some(Self::load(provider, id).await?)),
+            None => Ok(None),
+        }
+    }
+}
+
+impl<LeafType> Tree<LeafType>
+where
+    LeafType: Serialize,
+{
     /// Save the tree to the content-store.
     ///
     /// # Errors
@@ -66,36 +102,47 @@ impl Tree {
         Ok(TreeIdentifier(id))
     }
 
-    /// Lookup an asset in the tree.
-    ///
-    /// If the asset is not found, returns `Ok(None)`.
-    /// If the specified key points to a branch, returns `Ok(None)`.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the asset exists but could not be loaded.
-    pub async fn lookup_asset<Metadata>(
-        &self,
-        provider: impl ContentReader + Send + Sync,
-        key: &str,
-    ) -> Result<Option<Asset<Metadata>>>
-    where
-        Metadata: DeserializeOwned,
-    {
-        match self.lookup_asset_id(key) {
-            Some(id) => Ok(Some(Asset::load(provider, id).await?)),
-            None => Ok(None),
-        }
+    pub fn as_identifier(&self) -> TreeIdentifier {
+        TreeIdentifier(Identifier::new(&self.as_vec()))
     }
 
-    /// Lookup an asset identifier in the tree.
+    fn as_vec(&self) -> Vec<u8> {
+        rmp_serde::to_vec(&self).unwrap()
+    }
+}
+
+impl<LeafType> Tree<LeafType> {
+    /// Create a new tree from the list of its children.
+    pub fn new(children: BTreeMap<String, TreeNode<LeafType>>) -> Self {
+        Self { children }
+    }
+
+    /// Checks whether the tree is empty.
+    pub fn is_empty(&self) -> bool {
+        self.children.is_empty()
+    }
+
+    /// Get the children count.
+    pub fn children_count(&self) -> usize {
+        self.children.len()
+    }
+
+    /// Lookup a node in the tree.
     ///
-    /// If the asset is not found, returns `None`.
+    /// If the leaf is not found, returns `None`.
     /// If the specified key points to a branch, returns `None`.
-    pub fn lookup_asset_id(&self, key: &str) -> Option<&AssetIdentifier> {
+    pub fn lookup(&self, key: &str) -> Option<&TreeNode<LeafType>> {
+        self.children.get(key)
+    }
+
+    /// Lookup a leaf in the tree.
+    ///
+    /// If the leaf is not found, returns `None`.
+    /// If the specified key points to a branch, returns `None`.
+    pub fn lookup_leaf(&self, key: &str) -> Option<&LeafType> {
         if let Some(node) = self.children.get(key) {
             match node {
-                TreeNode::Leaf(asset_id) => Some(asset_id),
+                TreeNode::Leaf(leaf) => Some(leaf),
                 TreeNode::Branch(_) => None,
             }
         } else {
@@ -103,30 +150,11 @@ impl Tree {
         }
     }
 
-    /// Lookup a sub-tree in the tree.
-    ///
-    /// If the tree is not found, returns `Ok(None)`.
-    /// If the specified key points to an asset, returns `Ok(None)`.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the asset exists but could not be loaded.
-    pub async fn lookup_tree(
-        &self,
-        provider: impl ContentReader + Send + Sync,
-        key: &str,
-    ) -> Result<Option<Self>> {
-        match self.lookup_tree_id(key) {
-            Some(id) => Ok(Some(Self::load(provider, id).await?)),
-            None => Ok(None),
-        }
-    }
-
     /// Lookup a sub-tree identifier in the tree.
     ///
     /// If the tree is not found, returns `None`.
-    /// If the specified key points to an asset, returns `None`.
-    pub fn lookup_tree_id(&self, key: &str) -> Option<&TreeIdentifier> {
+    /// If the specified key points to a leaf, returns `None`.
+    pub fn lookup_branch_id(&self, key: &str) -> Option<&TreeIdentifier> {
         if let Some(node) = self.children.get(key) {
             match node {
                 TreeNode::Leaf(_) => None,
@@ -138,19 +166,19 @@ impl Tree {
     }
 
     /// Returns an iterator over the children of the tree.
-    pub fn iter(&self) -> impl Iterator<Item = (&str, &TreeNode)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &TreeNode<LeafType>)> {
         self.children.iter().map(|(key, node)| (key.as_str(), node))
     }
 
-    /// Add a named asset to the tree.
-    pub fn with_named_asset_id(mut self, key: String, asset_id: AssetIdentifier) -> Self {
-        self.children.insert(key, TreeNode::Leaf(asset_id));
+    /// Add a named leaf to the tree.
+    pub fn with_named_leaf(mut self, key: String, leaf: LeafType) -> Self {
+        self.children.insert(key, TreeNode::Leaf(leaf));
         self
     }
 
     /// Add a named sub-tree to the tree.
-    pub fn with_named_tree_id(mut self, key: String, tree_id: TreeIdentifier) -> Self {
-        self.children.insert(key, TreeNode::Branch(tree_id));
+    pub fn with_named_branch(mut self, key: String, branch: TreeIdentifier) -> Self {
+        self.children.insert(key, TreeNode::Branch(branch));
         self
     }
 
@@ -158,13 +186,5 @@ impl Tree {
     pub fn without_child(mut self, key: &str) -> Self {
         self.children.remove(key);
         self
-    }
-
-    pub fn as_identifier(&self) -> TreeIdentifier {
-        TreeIdentifier(Identifier::new(&self.as_vec()))
-    }
-
-    fn as_vec(&self) -> Vec<u8> {
-        rmp_serde::to_vec(&self).unwrap()
     }
 }
