@@ -146,6 +146,11 @@ impl DescriptorSetLayout {
         &self.inner.descriptors[index as usize]
     }
 
+    pub fn find_descriptor_by_name(&self, name: &str) -> Option<&Descriptor> {
+        let index = self.find_descriptor_index_by_name(name);
+        index.map(|x| self.descriptor(x))
+    }
+
     pub fn find_descriptor_index_by_name(&self, name: &str) -> Option<u32> {
         self.inner
             .descriptors

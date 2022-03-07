@@ -307,11 +307,6 @@ impl PickingRenderPass {
 
             self.copy_picking_results_to_readback(cmd_buffer, &readback);
 
-            // {
-            //     let graphics_queue = render_context.graphics_queue();
-            //     graphics_queue.submit(&mut [cmd_buffer.finalize()], &[], &[], None);
-            // }
-
             readback.sent_to_gpu(picking_manager.frame_no_for_picking());
         }
 

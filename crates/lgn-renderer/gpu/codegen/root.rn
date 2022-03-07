@@ -120,7 +120,7 @@ pub fn main() {
         name: "PersistentDescriptorSet",
         frequency: PERSISTENT_DESCRIPTOR_SET_FREQUENCY,
         descriptors: [            
-            #{ type:"Texture2D", name:"material_textures", content:"Float4", array_len:256, bindless:true },            
+            #{ type:"Texture2D", name:"material_textures", content:"Float4", array_len:10240, bindless:true },            
         ]
     };
     products.push( persistent_descriptor_set );

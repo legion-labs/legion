@@ -268,7 +268,7 @@ impl TextureManager {
             assert!(texture_info.bindless_index == None);
             texture_info.bindless_index = Some(bindless_index);
             persistent_descriptor_set_manager
-                .set_texture_(bindless_index, texture_info.texture_view.as_ref().unwrap());
+                .set_bindless_texture(bindless_index, texture_info.texture_view.as_ref().unwrap());
         }
     }
 

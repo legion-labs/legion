@@ -306,7 +306,6 @@ impl DebugRenderPass {
                     .pipeline_manager()
                     .get_pipeline(self.solid_pso_nodepth_handle)
                     .unwrap();
-
                 cmd_buffer.bind_pipeline(pipeline);
 
                 render_context.bind_default_descriptor_sets(cmd_buffer);
