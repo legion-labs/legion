@@ -47,7 +47,7 @@ enum CompilersSource {
 }
 
 #[derive(Parser)]
-#[clap(name = "Pong data rebuilder")]
+#[clap(name = "Physics data rebuilder")]
 struct Args {
     /// Compile resources remotely.
     #[clap(arg_enum, default_value = "in-process")]
@@ -99,7 +99,6 @@ async fn main() {
 
     let mut compilers_path = env::current_exe().expect("cannot access current_exe");
     compilers_path.pop(); // pop the .exe name
-    compilers_path.pop(); // pop the examples dir
 
     let compilers = match args.compilers {
         CompilersSource::InProcess => CompilerRegistryOptions::default().add_compiler(&lgn_compiler_runtime_entity::COMPILER_INFO).add_compiler(&lgn_compiler_runtime_model::COMPILER_INFO),
