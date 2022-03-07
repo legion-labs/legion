@@ -57,6 +57,7 @@ jobs:
 
   test:
     name: Tests
+    if: ${{ false }}
     needs: [lint]
     runs-on: [self-hosted, linux, common, build]
     container:
@@ -86,6 +87,7 @@ jobs:
 
   publish:
     name: Release
+    if: ${{ false }}
     needs: [test]
     runs-on: [self-hosted, linux, common, build]
     container:
@@ -119,6 +121,7 @@ jobs:
 
   build_docs:
     name: Api docs
+    if: ${{ false }}
     needs: [lint]
     runs-on: [self-hosted, linux, common, build]
     container:
