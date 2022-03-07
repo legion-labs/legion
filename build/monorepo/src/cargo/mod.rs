@@ -276,6 +276,12 @@ pub enum CargoCommand<'a> {
         env: &'a [(&'a str, Option<&'a str>)],
         skip_sccache: bool,
     },
+    Nextest {
+        direct_args: &'a [OsString],
+        args: &'a [OsString],
+        env: &'a [(&'a str, Option<&'a str>)],
+        skip_sccache: bool,
+    },
     Build {
         direct_args: &'a [OsString],
         args: &'a [OsString],
@@ -348,6 +354,7 @@ impl<'a> CargoCommand<'a> {
             CargoCommand::Doc { .. } => "doc",
             CargoCommand::Fix { .. } => "fix",
             CargoCommand::Test { .. } => "test",
+            CargoCommand::Nextest { .. } => "nextest",
             CargoCommand::Build { .. } => "build",
             CargoCommand::Run { .. } => "run",
         }
@@ -360,6 +367,7 @@ impl<'a> CargoCommand<'a> {
             | CargoCommand::Doc { args, .. }
             | CargoCommand::Fix { args, .. }
             | CargoCommand::Test { args, .. }
+            | CargoCommand::Nextest { args, .. }
             | CargoCommand::Build { args, .. }
             | CargoCommand::Run { args, .. } => args,
             CargoCommand::Check { .. } => &[],
@@ -374,6 +382,7 @@ impl<'a> CargoCommand<'a> {
             | CargoCommand::Doc { direct_args, .. }
             | CargoCommand::Fix { direct_args, .. }
             | CargoCommand::Test { direct_args, .. }
+            | CargoCommand::Nextest { direct_args, .. }
             | CargoCommand::Build { direct_args, .. }
             | CargoCommand::Run { direct_args, .. } => direct_args,
         }
@@ -385,6 +394,7 @@ impl<'a> CargoCommand<'a> {
             | CargoCommand::Build { env, .. }
             | CargoCommand::Doc { env, .. }
             | CargoCommand::Test { env, .. }
+            | CargoCommand::Nextest { env, .. }
             | CargoCommand::Run { env, .. } => env,
             CargoCommand::Check { .. } | CargoCommand::Clippy { .. } | CargoCommand::Fix { .. } => {
                 &[]
