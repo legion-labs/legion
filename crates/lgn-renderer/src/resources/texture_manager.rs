@@ -54,20 +54,6 @@ struct GPUTextureComponent {
     _gpu_texture_id: GpuTextureId,
 }
 
-// impl Plugin for TextureManagerPlugin {
-//     fn build(&self, app: &mut lgn_app::App) {
-//         let texture_manager = TextureManager::new(&self.device_context, 256);
-//         let texture_resource_manager = TextureResourceManager::new();
-//         app.add_event::<TextureEvent>();
-//         app.insert_resource(texture_manager);
-//         app.insert_resource(texture_resource_manager);
-//         app.add_system_to_stage(RenderStage::Prepare, update_texture_manager);
-//         app.add_system_to_stage(RenderStage::Prepare, on_texture_added);
-//         app.add_system_to_stage(RenderStage::Prepare, on_texture_modified);
-//         app.add_system_to_stage(RenderStage::Prepare, on_texture_removed);
-//     }
-// }
-
 #[derive(Clone, Copy, PartialEq)]
 enum TextureState {
     Invalid,
@@ -486,7 +472,7 @@ fn upload_texture_data(
 
     buffer_memory.copy_to_host_visible_buffer(data);
 
-    // todo: not needed
+    // todo: not needed here
     cmd_buffer.cmd_resource_barrier(
         &[],
         &[TextureBarrier::state_transition(
@@ -505,7 +491,7 @@ fn upload_texture_data(
         },
     );
 
-    // todo: not needed
+    // todo: not needed here
     cmd_buffer.cmd_resource_barrier(
         &[],
         &[TextureBarrier::state_transition(

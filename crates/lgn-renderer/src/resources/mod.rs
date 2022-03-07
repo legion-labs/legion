@@ -1,5 +1,5 @@
-mod texture_manager_plugin;
-pub(crate) use texture_manager_plugin::*;
+mod texture_manager;
+pub(crate) use texture_manager::*;
 
 mod command_buffer_pool;
 pub(crate) use command_buffer_pool::*;
