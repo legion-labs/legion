@@ -47,7 +47,7 @@ jobs:
       matrix:
         target: [x86_64-unknown-linux-gnu, x86_64-pc-windows-msvc]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Bootstrap
         uses: ./.github/actions/rust-bootstrap
@@ -65,7 +65,7 @@ jobs:
       matrix:
         target: [x86_64-unknown-linux-gnu, x86_64-pc-windows-msvc]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Bootstrap
         uses: ./.github/actions/rust-bootstrap
@@ -94,7 +94,7 @@ jobs:
       matrix:
         target: [x86_64-unknown-linux-gnu, x86_64-pc-windows-msvc]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Bootstrap
         uses: ./.github/actions/rust-bootstrap
@@ -124,7 +124,7 @@ jobs:
     container:
       image: ${{ inputs.image }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Bootstrap
         uses: ./.github/actions/rust-bootstrap
@@ -171,7 +171,7 @@ jobs:
     container:
       image: ${{ inputs.image }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Bootstrap
         uses: ./.github/actions/rust-bootstrap
@@ -187,7 +187,7 @@ jobs:
     container:
       image: ${{ inputs.image }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Build with timings
         run: make timings
@@ -227,7 +227,7 @@ jobs:
     container:
       image: ${{ inputs.image }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Bootstrap
         uses: ./.github/actions/rust-bootstrap
