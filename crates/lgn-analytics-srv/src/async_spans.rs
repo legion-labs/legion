@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use lgn_analytics::get_process_tick_length_ms;
 use lgn_blob_storage::BlobStorage;
-use lgn_telemetry_proto::analytics::BlockAsyncEventsStatReply;
+use lgn_telemetry_proto::analytics::{AsyncSpansReply, BlockAsyncEventsStatReply};
 
 use crate::thread_block_processor::{parse_thread_block, ThreadBlockProcessor};
 
@@ -69,4 +69,14 @@ pub async fn compute_block_async_stats(
         end_ms: processor.max_ts as f64 * inv_tsc_frequency,
         nb_events: processor.nb_events,
     })
+}
+
+pub fn compute_async_spans(
+    _connection: &mut sqlx::AnyConnection,
+    _blob_storage: &Arc<dyn BlobStorage>,
+    _section_sequence_number: i32,
+    _section_lod: u32,
+    _block_ids: &[String],
+) -> Result<AsyncSpansReply> {
+    bail!("not impl");
 }

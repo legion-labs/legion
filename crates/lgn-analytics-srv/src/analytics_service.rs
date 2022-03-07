@@ -39,6 +39,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 
+use crate::async_spans::compute_async_spans;
 use crate::async_spans::compute_block_async_stats;
 use crate::cache::DiskCache;
 use crate::call_tree::compute_block_spans;
@@ -312,9 +313,15 @@ impl AnalyticsService {
         .await
     }
 
-    async fn fetch_async_spans_impl(&self, _request: AsyncSpansRequest) -> Result<AsyncSpansReply> {
-        // let mut connection = self.pool.acquire().await?;
-        bail!("not impl")
+    async fn fetch_async_spans_impl(&self, request: AsyncSpansRequest) -> Result<AsyncSpansReply> {
+        let mut connection = self.pool.acquire().await?;
+        compute_async_spans(
+            &mut connection,
+            &self.data_lake_blobs,
+            request.section_sequence_number,
+            request.section_lod,
+            &request.block_ids,
+        )
     }
 }
 
