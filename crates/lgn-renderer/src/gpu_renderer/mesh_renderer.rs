@@ -27,13 +27,13 @@ use crate::{
 use super::{GpuInstanceEvent, RenderElement, RenderLayer, RenderStateSet};
 
 pub struct MeshRendererPlugin {
-    static_buffer: UnifiedStaticBuffer,
+    static_buffer_allocator: UnifiedStaticBufferAllocator,
 }
 
 impl MeshRendererPlugin {
-    pub fn new(static_buffer: &UnifiedStaticBuffer) -> Self {
+    pub fn new(static_buffer_allocator: &UnifiedStaticBufferAllocator) -> Self {
         Self {
-            static_buffer: static_buffer.clone(),
+            static_buffer_allocator: static_buffer_allocator.clone(),
         }
     }
 }
@@ -48,7 +48,7 @@ impl Plugin for MeshRendererPlugin {
         //
         // Resources
         //
-        app.insert_resource(MeshRenderer::new(&self.static_buffer));
+        app.insert_resource(MeshRenderer::new(&self.static_buffer_allocator));
 
         //
         // Events

@@ -175,10 +175,10 @@ impl Plugin for RendererPlugin {
         app.insert_resource(cgen_registry_list);
         app.insert_resource(RenderSurfaces::new());
         app.insert_resource(ModelManager::new());
-        app.insert_resource(MeshManager::new(&allocator));
+        app.insert_resource(MeshManager::new(&renderer));
         app.insert_resource(DebugDisplay::default());
         app.insert_resource(LightingManager::default());
-        app.insert_resource(GpuInstanceManager::new(&allocator));
+        app.insert_resource(GpuInstanceManager::new(renderer.static_buffer_allocator()));
         app.insert_resource(MissingVisualTracker::default());
         app.insert_resource(descriptor_heap_manager);
         app.insert_resource(persistent_descriptor_set_manager);
@@ -187,12 +187,12 @@ impl Plugin for RendererPlugin {
         app.insert_resource(texture_resource_manager);
 
         // Init ecs
-        TextureManager::init_ecs(app);        
-        TextureResourceManager::init_ecs(app);        
+        TextureManager::init_ecs(app);
+        TextureResourceManager::init_ecs(app);
 
         // todo: convert
         app.add_plugin(GpuDataPlugin::default());
-        app.add_plugin(MeshRendererPlugin::new(renderer.static_buffer()));
+        app.add_plugin(MeshRendererPlugin::new(renderer.static_buffer_allocator()));
 
         // Plugins are optionnal
         app.add_plugin(EguiPlugin::new());
@@ -437,7 +437,6 @@ fn update_gpu_instances(
             let gpu_instance_id = instance_manager.add_gpu_instance(
                 entity,
                 renderer.static_buffer_allocator(),
-                
                 &mut updater,
                 &instance_vas,
             );
