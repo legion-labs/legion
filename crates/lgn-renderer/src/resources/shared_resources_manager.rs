@@ -1,7 +1,5 @@
 use strum::{EnumCount, IntoEnumIterator};
 
-use lgn_app::Plugin;
-use lgn_ecs::prelude::{Commands, Res, ResMut};
 use lgn_graphics_api::{
     Extents3D, Format, MemoryUsage, ResourceFlags, ResourceUsage, TextureDef, TextureTiling,
 };
@@ -30,15 +28,6 @@ impl Default for SharedTexture {
             gpu_texture_id: GpuTextureId::default(),
             bindless_index: u32::MAX,
         }
-    }
-}
-
-#[derive(Default)]
-pub struct SharedResourcesPlugin;
-
-impl Plugin for SharedResourcesPlugin {
-    fn build(&self, app: &mut lgn_app::App) {
-        app.add_startup_system(on_startup);
     }
 }
 
@@ -196,20 +185,4 @@ impl SharedResourcesManager {
 
         (texture_def, TextureData::from_slice(&texture_data))
     }
-}
-
-#[allow(clippy::needless_pass_by_value)]
-fn on_startup(
-    mut commands: Commands<'_, '_>,
-    renderer: Res<'_, Renderer>,
-    mut texture_manager: ResMut<'_, TextureManager>,
-    mut persistent_descriptor_set_manager: ResMut<'_, PersistentDescriptorSetManager>,
-) {
-    let shared_resources_manager = SharedResourcesManager::new(
-        &renderer,
-        &mut texture_manager,
-        &mut persistent_descriptor_set_manager,
-    );
-
-    commands.insert_resource(shared_resources_manager);
 }

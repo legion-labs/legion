@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use lgn_app::Plugin;
+use lgn_app::App;
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::{
     Added, Changed, Commands, Component, Entity, Query, RemovedComponents, Res, ResMut,
@@ -20,6 +20,8 @@ use crate::{
 };
 
 use super::{IndexAllocator, PersistentDescriptorSetManager};
+
+const BLOCK_SIZE: u32 = 256;
 
 pub enum TextureEvent {}
 
@@ -52,31 +54,19 @@ struct GPUTextureComponent {
     _gpu_texture_id: GpuTextureId,
 }
 
-pub struct TextureManagerPlugin {
-    device_context: DeviceContext,
-}
-
-impl TextureManagerPlugin {
-    pub fn new(device_context: &DeviceContext) -> Self {
-        Self {
-            device_context: device_context.clone(),
-        }
-    }
-}
-
-impl Plugin for TextureManagerPlugin {
-    fn build(&self, app: &mut lgn_app::App) {
-        let texture_manager = TextureManager::new(&self.device_context, 256);
-        let texture_resource_manager = TextureResourceManager::new();
-        app.add_event::<TextureEvent>();
-        app.insert_resource(texture_manager);
-        app.insert_resource(texture_resource_manager);
-        app.add_system_to_stage(RenderStage::Prepare, update_texture_manager);
-        app.add_system_to_stage(RenderStage::Prepare, on_texture_added);
-        app.add_system_to_stage(RenderStage::Prepare, on_texture_modified);
-        app.add_system_to_stage(RenderStage::Prepare, on_texture_removed);
-    }
-}
+// impl Plugin for TextureManagerPlugin {
+//     fn build(&self, app: &mut lgn_app::App) {
+//         let texture_manager = TextureManager::new(&self.device_context, 256);
+//         let texture_resource_manager = TextureResourceManager::new();
+//         app.add_event::<TextureEvent>();
+//         app.insert_resource(texture_manager);
+//         app.insert_resource(texture_resource_manager);
+//         app.add_system_to_stage(RenderStage::Prepare, update_texture_manager);
+//         app.add_system_to_stage(RenderStage::Prepare, on_texture_added);
+//         app.add_system_to_stage(RenderStage::Prepare, on_texture_modified);
+//         app.add_system_to_stage(RenderStage::Prepare, on_texture_removed);
+//     }
+// }
 
 #[derive(Clone, Copy, PartialEq)]
 enum TextureState {
@@ -105,7 +95,6 @@ impl Default for TextureInfo {
 }
 
 pub struct TextureManager {
-    block_size: u32,
     device_context: DeviceContext,
     texture_info: Vec<TextureInfo>,
     upload_jobs: Vec<UploadTextureJob>,
@@ -114,15 +103,19 @@ pub struct TextureManager {
 }
 
 impl TextureManager {
-    pub fn new(device_context: &DeviceContext, block_size: u32) -> Self {
+    pub fn new(device_context: &DeviceContext) -> Self {
         Self {
-            block_size,
             device_context: device_context.clone(),
             texture_info: Vec::new(),
             upload_jobs: Vec::new(),
-            gpu_texture_id_allocator: IndexAllocator::new(block_size),
-            bindless_index_allocator: IndexAllocator::new(block_size),
+            gpu_texture_id_allocator: IndexAllocator::new(BLOCK_SIZE),
+            bindless_index_allocator: IndexAllocator::new(BLOCK_SIZE),
         }
+    }
+
+    pub fn init_ecs(app: &mut App) {
+        app.add_event::<TextureEvent>();
+        app.add_system_to_stage(RenderStage::Prepare, update_texture_manager);
     }
 
     pub fn is_valid(&self, gpu_texture_id: GpuTextureId) -> bool {
@@ -283,7 +276,7 @@ impl TextureManager {
         let index = self.gpu_texture_id_allocator.acquire_index();
 
         if index as usize >= self.texture_info.len() {
-            let required_size = next_multiple_of(index as usize, self.block_size as usize);
+            let required_size = next_multiple_of(index as usize, BLOCK_SIZE as usize);
             self.texture_info
                 .resize(required_size, TextureInfo::default());
         }
@@ -359,6 +352,12 @@ impl TextureResourceManager {
             entity_to_resource_id: BTreeMap::new(),
             resource_id_to_gpu_texture_id: BTreeMap::new(),
         }
+    }
+
+    pub fn init_ecs(app: &mut App) {
+        app.add_system_to_stage(RenderStage::Prepare, on_texture_added);
+        app.add_system_to_stage(RenderStage::Prepare, on_texture_modified);
+        app.add_system_to_stage(RenderStage::Prepare, on_texture_removed);
     }
 
     pub fn allocate_texture(

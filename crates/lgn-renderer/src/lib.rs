@@ -36,7 +36,7 @@ pub mod resources;
 use resources::{
     DescriptorHeapManager, GpuDataPlugin, GpuEntityColorManager, GpuEntityTransformManager,
     GpuMaterialManager, GpuPickingDataManager, ModelManager, PersistentDescriptorSetManager,
-    PipelineManager, SharedResourcesPlugin, TextureManager,
+    PipelineManager, TextureManager,
 };
 
 pub mod components;
@@ -63,7 +63,7 @@ use crate::{
     gpu_renderer::{GpuInstanceVas, MeshRenderer, MeshRendererPlugin},
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingIdContext, PickingManager, PickingPlugin},
-    resources::{MeshManager, TextureManagerPlugin},
+    resources::MeshManager,
     RenderStage,
 };
 use lgn_app::{App, CoreStage, Events, Plugin};
@@ -75,7 +75,9 @@ use lgn_transform::components::GlobalTransform;
 use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 
 use crate::debug_display::DebugDisplay;
-use crate::resources::{update_missing_visuals, update_models, UniformGPUDataUpdater};
+use crate::resources::{
+    Mesh, ModelMetaData, SharedResourcesManager, TextureResourceManager, UniformGPUDataUpdater,
+};
 
 use crate::{
     components::{
@@ -107,16 +109,43 @@ impl RendererPlugin {
 
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
+        // TODO: Config resource? The renderer could be some kind of state machine reacting on some config changes?
         // TODO: refactor this with data pipeline resources
         EMBEDDED_FS.add_file(&render_pass::INCLUDE_BRDF);
         EMBEDDED_FS.add_file(&render_pass::INCLUDE_MESH);
         EMBEDDED_FS.add_file(&render_pass::SHADER_SHADER);
 
         const NUM_RENDER_FRAMES: usize = 2;
-        let renderer = Renderer::new(NUM_RENDER_FRAMES);
-        let device_context = renderer.device_context();
-		  let allocator = renderer.static_buffer_allocator();
-        let descriptor_heap_manager = DescriptorHeapManager::new(NUM_RENDER_FRAMES, device_context);        
+
+        //
+        // Init in dependency order
+        //
+        let mut renderer = Renderer::new(NUM_RENDER_FRAMES);
+        let cgen_registry = Arc::new(cgen::initialize(renderer.device_context()));
+
+        renderer.begin_frame();
+
+        let descriptor_heap_manager =
+            DescriptorHeapManager::new(NUM_RENDER_FRAMES, renderer.device_context());
+        let mut pipeline_manager = PipelineManager::new(renderer.device_context());
+        pipeline_manager.register_shader_families(&cgen_registry);
+        let mut cgen_registry_list = CGenRegistryList::new();
+        cgen_registry_list.push(cgen_registry);
+        let mut persistent_descriptor_set_manager = PersistentDescriptorSetManager::new(
+            renderer.device_context(),
+            &descriptor_heap_manager,
+        );
+        let mut texture_manager = TextureManager::new(renderer.device_context());
+        let texture_resource_manager = TextureResourceManager::new();
+
+        let shared_resources_manager = SharedResourcesManager::new(
+            &renderer,
+            &mut texture_manager,
+            &mut persistent_descriptor_set_manager,
+        );
+
+        renderer.end_frame();
+
         //
         // Add renderer stages first. It is needed for the plugins.
         //
@@ -133,11 +162,17 @@ impl Plugin for RendererPlugin {
         );
 
         //
+        // Stage Startup
+        //
+        app.add_startup_system(init_manipulation_manager);
+        app.add_startup_system(create_camera);
+
+        //
         // Resources
         //
-        app.insert_resource(PipelineManager::new(device_context));
+        app.insert_resource(pipeline_manager);
         app.insert_resource(ManipulatorManager::new());
-        app.insert_resource(CGenRegistryList::new());
+        app.insert_resource(cgen_registry_list);
         app.insert_resource(RenderSurfaces::new());
         app.insert_resource(ModelManager::new());
         app.insert_resource(MeshManager::new(&allocator));
@@ -146,26 +181,30 @@ impl Plugin for RendererPlugin {
         app.insert_resource(GpuInstanceManager::new(&allocator));
         app.insert_resource(MissingVisualTracker::default());
         app.insert_resource(descriptor_heap_manager);
-        app.insert_resource(PersistentDescriptorSetManager::new(device_context));
-        app.add_plugin(SharedResourcesPlugin::default());
-        app.add_plugin(TextureManagerPlugin::new(device_context));
+        app.insert_resource(persistent_descriptor_set_manager);
+        app.insert_resource(shared_resources_manager);
+        app.insert_resource(texture_manager);
+        app.insert_resource(texture_resource_manager);
+
+        // Init ecs
+        TextureManager::init_ecs(app);        
+        TextureResourceManager::init_ecs(app);        
+
+        // todo: convert
+        app.add_plugin(GpuDataPlugin::default());
+        app.add_plugin(MeshRendererPlugin::new(renderer.static_buffer()));
+
+        // Plugins are optionnal
         app.add_plugin(EguiPlugin::new());
         app.add_plugin(PickingPlugin {});
-        app.add_plugin(GpuDataPlugin::default());
-        app.add_plugin(MeshRendererPlugin::new(static_buffer));
+
+        // This resource needs to be shutdown after all other resources
         app.insert_resource(renderer);
 
         //
         // Events
         //
         app.add_event::<RenderSurfaceCreatedForWindow>();
-
-        //
-        // Stage Startup
-        //
-        app.add_startup_system(init_cgen);
-        app.add_startup_system(init_manipulation_manager);
-        app.add_startup_system(create_camera);
 
         //
         // Stage PreUpdate
@@ -286,20 +325,6 @@ fn on_window_close_requested(
         }
         render_surfaces.remove(ev.id);
     }
-}
-
-#[allow(clippy::needless_pass_by_value)]
-fn init_cgen(
-    renderer: Res<'_, Renderer>,
-    mut pipeline_manager: ResMut<'_, PipelineManager>,
-    mut cgen_registries: ResMut<'_, CGenRegistryList>,
-    descriptor_heap_manager: Res<'_, DescriptorHeapManager>,
-    mut persistent_descriptor_set_manager: ResMut<'_, PersistentDescriptorSetManager>,
-) {
-    let cgen_registry = Arc::new(cgen::initialize(renderer.device_context()));
-    pipeline_manager.register_shader_families(&cgen_registry);
-    cgen_registries.push(cgen_registry);
-    persistent_descriptor_set_manager.initialize(&descriptor_heap_manager);
 }
 
 #[allow(clippy::needless_pass_by_value)]

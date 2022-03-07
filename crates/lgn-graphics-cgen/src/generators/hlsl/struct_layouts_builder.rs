@@ -206,6 +206,7 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
             "-fspv-target-env=vulkan1.1",
             "-enable-16bit-types",
             "-HV 2021",
+            "-no-legacy-cbuf-layout",
         ],
         &[],
     )?;
