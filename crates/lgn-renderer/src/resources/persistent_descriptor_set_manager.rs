@@ -43,6 +43,7 @@ impl PersistentDescriptorSetManager {
         }
     }
 
+    // todo: make batched versions (set_bindless_textureS with a slice?)
     pub fn set_bindless_texture(&mut self, index: u32, texture_view: &TextureView) {
         assert!(index < BINDLESS_TEXTURE_ARRAY_LEN);
 
@@ -52,7 +53,7 @@ impl PersistentDescriptorSetManager {
             self.descriptor_set.layout(),
         );
 
-        // cache this index
+        // todo:  cache this index
         let material_textures_index = self
             .descriptor_set
             .layout()

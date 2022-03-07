@@ -82,9 +82,12 @@ impl Default for TextureInfo {
 
 pub struct TextureManager {
     device_context: DeviceContext,
+    // todo: use some kind of paged vector
     texture_info: Vec<TextureInfo>,
+    // todo: use some kind of queue maybe?
     upload_jobs: Vec<UploadTextureJob>,
     gpu_texture_id_allocator: IndexAllocator,
+    // todo: separate bindless allocation from texture management?
     bindless_index_allocator: IndexAllocator,
 }
 
@@ -544,6 +547,10 @@ fn on_texture_added(
     mut texture_resource_manager: ResMut<'_, TextureResourceManager>,
     q_added_textures: Query<'_, '_, (Entity, &TextureComponent), Added<TextureComponent>>,
 ) {
+    if q_added_textures.is_empty() {
+        return;
+    }
+
     for (entity, texture_component) in q_added_textures.iter() {
         let gpu_texture_id = texture_resource_manager.allocate_texture(
             &mut texture_manager,
@@ -569,6 +576,10 @@ fn on_texture_modified(
         Changed<TextureComponent>,
     >,
 ) {
+    if q_modified_textures.is_empty() {
+        return;
+    }
+
     for (entity, texture_component, _) in q_modified_textures.iter() {
         texture_resource_manager.update_by_entity(&mut texture_manager, entity, texture_component);
     }
@@ -581,6 +592,7 @@ fn on_texture_removed(
     mut texture_manager: ResMut<'_, TextureManager>,
     mut texture_resource_manager: ResMut<'_, TextureResourceManager>,
 ) {
+    // todo: must be send some events to refresh the material
     for removed_entity in removed_entities.iter() {
         texture_resource_manager.remove_by_entity(&mut texture_manager, removed_entity);
     }
@@ -593,5 +605,6 @@ fn update_texture_manager(
     mut texture_manager: ResMut<'_, TextureManager>,
     mut persistent_descriptor_set_manager: ResMut<'_, PersistentDescriptorSetManager>,
 ) {
+    // todo: must be send some events to refresh the material
     texture_manager.update(&renderer, &mut persistent_descriptor_set_manager);
 }
