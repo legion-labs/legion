@@ -252,7 +252,7 @@ impl Renderer {
 impl Drop for Renderer {
     fn drop(&mut self) {
         {
-            let  graphics_queue = self.graphics_queue_guard(QueueType::Graphics);
+            let graphics_queue = self.graphics_queue_guard(QueueType::Graphics);
             graphics_queue.wait_for_queue_idle().unwrap();
         }
         std::mem::drop(self.spotlights_data.take());

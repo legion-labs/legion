@@ -75,7 +75,7 @@ impl RenderBatch {
 
             cmd_buffer.bind_pipeline(pipeline);
 
-        render_context.bind_default_descriptor_sets(cmd_buffer);
+            render_context.bind_default_descriptor_sets(cmd_buffer);
 
             if self.element_count > 0 {
                 cmd_buffer.draw_indexed_indirect_count(
