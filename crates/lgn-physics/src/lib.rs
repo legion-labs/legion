@@ -20,7 +20,7 @@ mod mesh_scale;
 
 mod rigid_actors;
 use rigid_actors::{
-    add_dynamic_actor_to_scene, add_static_actor_to_scene, CollisionGeometry, ConvertToGeometry,
+    add_dynamic_actor_to_scene, add_static_actor_to_scene, CollisionComponent, Convert,
 };
 
 mod settings;
@@ -161,10 +161,10 @@ impl PhysicsPlugin {
         mut default_material: ResMut<'_, Owner<PxMaterial>>,
         mut commands: Commands<'_, '_>,
     ) where
-        T: Component + ConvertToGeometry + WithActorType,
+        T: Component + Convert + WithActorType,
     {
         for (entity, physics_component, transform) in query.iter() {
-            let geometry: CollisionGeometry = physics_component.convert(&mut physics, &cooking);
+            let collision: CollisionComponent = physics_component.convert(&mut physics, &cooking);
 
             match physics_component.get_actor_type() {
                 RigidActorType::Dynamic => {
@@ -172,7 +172,7 @@ impl PhysicsPlugin {
                         &mut physics,
                         &mut scene,
                         transform,
-                        &geometry,
+                        &collision.geometry,
                         entity,
                         &mut default_material,
                     );
@@ -182,14 +182,14 @@ impl PhysicsPlugin {
                         &mut physics,
                         &mut scene,
                         transform,
-                        &geometry,
+                        &collision.geometry,
                         entity,
                         &mut default_material,
                     );
                 }
             }
 
-            commands.entity(entity).insert(geometry).remove::<T>();
+            commands.entity(entity).insert(collision).remove::<T>();
         }
 
         drop(query);
