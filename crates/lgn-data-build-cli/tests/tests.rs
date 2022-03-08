@@ -96,7 +96,11 @@ async fn build_device() {
         .expect("successful compilation");
 
     assert_eq!(
-        build.lookup_pathid(derived.resource_id()).as_ref(),
+        build
+            .lookup_pathid(derived.resource_id())
+            .await
+            .unwrap()
+            .as_ref(),
         Some(&derived)
     );
 

@@ -14,7 +14,7 @@ use lgn_data_runtime::ResourceTypeAndId;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::serde_as;
 use serde_with::DisplayFromStr;
-use sqlx::{migrate::MigrateDatabase, Executor};
+use sqlx::{migrate::MigrateDatabase, Executor, Row};
 
 use crate::Error;
 
@@ -164,7 +164,10 @@ impl OutputIndex {
                     context_hash BIGINT,
                     source_hash BIGINT,
                     checksum CHAR(64),
-                    size BIGINT);";
+                    size BIGINT);
+                CREATE TABLE pathid_mapping(
+                    resource_id VARCHAR(255), 
+                    resource_path_id VARCHAR(255));";
 
             connection
                 .execute(statement)
@@ -493,14 +496,53 @@ impl OutputIndex {
         buildindex_dir.as_ref().join("output.index")
     }
 
-    pub fn record_pathid(&mut self, id: &ResourcePathId) {
+    pub async fn record_pathid(&mut self, id: &ResourcePathId) -> Result<(), Error> {
+        {
+            let query = sqlx::query("INSERT OR REPLACE into pathid_mapping VALUES(?, ?);")
+                .bind(id.resource_id().to_string())
+                .bind(id.to_string());
+
+            self.database
+                .execute(query)
+                .await
+                .map_err(Error::Database)?;
+        }
+
         self.content
             .pathid_mapping
             .insert(id.resource_id(), id.clone());
+
+        Ok(())
     }
 
-    pub fn lookup_pathid(&self, id: ResourceTypeAndId) -> Option<ResourcePathId> {
-        self.content.pathid_mapping.get(&id).cloned()
+    pub async fn lookup_pathid(
+        &self,
+        id: ResourceTypeAndId,
+    ) -> Result<Option<ResourcePathId>, Error> {
+        let db_output = {
+            let statement = sqlx::query(
+                "SELECT resource_path_id
+                    FROM pathid_mapping
+                    WHERE resource_id = ?",
+            )
+            .bind(id.to_string());
+
+            let result = statement
+                .fetch_optional(&self.database)
+                .await
+                .map_err(Error::Database)?;
+
+            if let Some(id) = result {
+                let id: String = id.get("resource_path_id");
+                Some(ResourcePathId::from_str(&id).unwrap())
+            } else {
+                None
+            }
+        };
+        let output = self.content.pathid_mapping.get(&id).cloned();
+        assert_eq!(db_output, output);
+
+        Ok(output)
     }
 }
 

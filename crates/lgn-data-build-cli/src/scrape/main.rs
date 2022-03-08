@@ -354,7 +354,7 @@ async fn main() -> Result<(), String> {
                     if let Ok(rid) = ResourcePathId::from_str(&id) {
                         rid
                     } else if let Ok(resource_id) = id.parse() {
-                        if let Some(rid) = build.lookup_pathid(resource_id) {
+                        if let Some(rid) = build.lookup_pathid(resource_id).await.unwrap() {
                             rid
                         } else {
                             return Err(format!(
@@ -428,6 +428,8 @@ async fn main() -> Result<(), String> {
                     if let Ok(resource_id) = id.parse() {
                         build
                             .lookup_pathid(resource_id)
+                            .await
+                            .map_err(|e| format!("Path Id lookup failed {}", e))?
                             .ok_or(format!("ResourceId '{}' not found", resource_id))?
                     } else {
                         ResourcePathId::from_str(&id)

@@ -243,13 +243,16 @@ impl DataBuild {
     /// Returns a source of a resource id.
     ///
     /// It will return None if the build never recorded a source for a given id.
-    pub fn lookup_pathid(&self, id: ResourceTypeAndId) -> Option<ResourcePathId> {
+    pub async fn lookup_pathid(
+        &self,
+        id: ResourceTypeAndId,
+    ) -> Result<Option<ResourcePathId>, Error> {
         if let Some(source_index) = self.source_index.current() {
             if let Some(id) = source_index.lookup_pathid(id) {
-                return Some(id);
+                return Ok(Some(id));
             }
         }
-        self.output_index.lookup_pathid(id)
+        self.output_index.lookup_pathid(id).await
     }
 
     /// Updates the build database with information about resources from
@@ -288,7 +291,7 @@ impl DataBuild {
         env: &CompilationEnv,
         intermediate_output: Option<&Manifest>,
     ) -> Result<CompiledResources, Error> {
-        self.output_index.record_pathid(&compile_path);
+        self.output_index.record_pathid(&compile_path).await?;
         let mut result = CompiledResources::default();
 
         let start = std::time::Instant::now();
