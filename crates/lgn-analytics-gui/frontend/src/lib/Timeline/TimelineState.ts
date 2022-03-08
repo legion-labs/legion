@@ -1,5 +1,6 @@
 import { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
 import { Process } from "@lgn/proto-telemetry/dist/process";
+import { zoomHorizontalViewRange } from "../zoom";
 import { Thread } from "./Thread";
 import { ThreadBlock } from "./ThreadBlock";
 
@@ -11,6 +12,7 @@ export class TimelineState {
   eventCount = 0;
   processes: Process[] = [];
   scopes: Record<number, ScopeDesc> = {};
+  ready = false;
   private timelineStart: number | undefined;
   private timelineEnd: number | undefined;
   private viewRange: [number, number] | null = null;
@@ -21,6 +23,16 @@ export class TimelineState {
 
   setViewRange(range: [number, number]) {
     this.viewRange = range;
+  }
+
+  setViewRangeFromWheel(
+    viewRange: [number, number],
+    canvasWidth: number,
+    wheelEvent: WheelEvent
+  ) {
+    this.setViewRange(
+      zoomHorizontalViewRange(viewRange, canvasWidth, wheelEvent)
+    );
   }
 
   getViewRange(): [number, number] {

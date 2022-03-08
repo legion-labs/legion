@@ -2,13 +2,14 @@
   import { Router, Route } from "svelte-navigator";
   import Health from "@/pages/Health.svelte";
   import Log from "@/pages/Log.svelte";
-  import Timeline from "@/pages/Timeline.svelte";
   import Graph from "@/pages/Graph.svelte";
   import MetricsCanvas from "./components/Metric/MetricCanvas.svelte";
   import { InitAuthStatus } from "@lgn/web-client/src/lib/auth";
   import { onMount } from "svelte";
   import Header from "./components/Misc/Header.svelte";
   import ProcessList from "./components/List/ProcessList.svelte";
+  import TimelineRenderer from "./components/Timeline/TimelineRenderer.svelte";
+  import LoadingBar from "./components/Misc/LoadingBar.svelte";
 
   export let initAuthStatus: InitAuthStatus | null;
 
@@ -25,6 +26,7 @@
 </script>
 
 <div class="w-full h-screen p-2">
+  <LoadingBar />
   <div class="grid">
     <Header />
     <div class="pl-5 pr-5 pt-5">
@@ -41,7 +43,7 @@
           </Route>
           <Route path="/timeline/:id" let:params let:location primary={false}>
             {#key params.id + location.search}
-              <Timeline processId={params.id} />
+              <TimelineRenderer processId={params.id} />
             {/key}
           </Route>
           <Route path="/metrics/:id" let:params primary={false}>

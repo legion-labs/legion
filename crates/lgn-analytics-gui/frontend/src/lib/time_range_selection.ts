@@ -59,7 +59,7 @@ function UpdateSelectedRange(
 export function RangeSelectionOnMouseMove(
   event: MouseEvent,
   selectionState: SelectionState,
-  canvas: HTMLCanvasElement,
+  canvasWidth: number,
   currentViewRange: [number, number]
 ): boolean {
   if (event.buttons !== 1) {
@@ -68,7 +68,7 @@ export function RangeSelectionOnMouseMove(
   }
 
   if (event.shiftKey) {
-    UpdateSelectedRange(event, canvas.width, currentViewRange, selectionState);
+    UpdateSelectedRange(event, canvasWidth, currentViewRange, selectionState);
     return true;
   }
   return false;

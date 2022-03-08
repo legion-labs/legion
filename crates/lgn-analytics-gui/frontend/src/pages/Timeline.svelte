@@ -103,12 +103,13 @@
     }
     const section = [0.0, 1000.0] as [number, number]; //section is in relative ms
 
-    let blocksOfInterest : string[] = [];
+    let blocksOfInterest: string[] = [];
     for (const streamId in state.threads) {
       const thread = state.threads[streamId];
       if (thread.streamInfo.processId === process.processId) {
         thread.block_ids.forEach((block_id) => {
           const stats = state.blocks[block_id].asyncStats;
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           if (rangesOverlap(section, [stats!.beginMs, stats!.endMs])) {
             blocksOfInterest.push(block_id);
           }
@@ -610,7 +611,7 @@
       RangeSelectionOnMouseMove(
         event,
         selectionState,
-        canvas,
+        canvas.width,
         state.getViewRange()
       ) ||
       PanOnMouseMove(event)
