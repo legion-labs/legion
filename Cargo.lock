@@ -1106,12 +1106,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4a45a46ab1f2412e53d3a0ade76ffad2025804294569aae387231a0cd6e0899"
 
 [[package]]
-name = "byte-slice-cast"
-version = "1.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87c5fdd0166095e1d463fc6cc01aa8ce547ad77a4e84d42eb6762b084e28067e"
-
-[[package]]
 name = "bytemuck"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5271,7 +5265,6 @@ dependencies = [
  "anyhow",
  "bitflags",
  "bumpalo",
- "byte-slice-cast",
  "dolly",
  "egui",
  "epaint",
