@@ -12,7 +12,7 @@ use lgn_data_offline::{
 };
 use lgn_data_runtime::{ResourceId, ResourceTypeAndId};
 use lgn_tracing::span_scope;
-use lgn_utils::DefaultHasher;
+use lgn_utils::{DefaultHasher, DefaultHasher256};
 use petgraph::{Directed, Graph};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -277,10 +277,12 @@ impl SourceIndex {
         version: &str,
         mut uploads: Vec<(Checksum, Vec<u8>)>,
     ) -> Result<(SourceContent, Vec<(Checksum, Vec<u8>)>), Error> {
-        // NOTE: for now, we take only half of the source-control directory checksum as
-        // the content store implementation uses 128bit integer.
-        let dir_checksum = Checksum::from_str(&directory.id()[..64])
-            .unwrap_or_else(|e| panic!("failed to read from '{}' with {}", directory.id(), e));
+        let dir_checksum = {
+            let mut hasher = DefaultHasher256::new();
+            hasher.write(directory.id().as_bytes());
+            hasher.write(version.as_bytes());
+            Checksum::from(hasher.finish_256())
+        };
 
         if let Some(cached_data) = self.content_store.read(dir_checksum) {
             let source_index = SourceContent::read(&cached_data)?;
