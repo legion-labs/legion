@@ -33,10 +33,3 @@ lgn-data-codegen = { path = "../../crates/lgn-data-codegen", version = "0.1.0" }
 default = ["runtime"]
 offline = ["lgn-data-offline", "inventory"]
 runtime = []
-
-[dev-dependencies]
-tempfile = "3.2"
-insta = "1.8"
-lgn-data-compiler = { path = "../../crates/lgn-data-compiler", version = "0.1.0" }
-serde_json = "1.0"
-json = "0.12"
