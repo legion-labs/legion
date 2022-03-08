@@ -165,7 +165,7 @@
 
 <style>
   .canvas {
-    max-height: 75vh;
+    max-height: calc(100vh - 150px);
     overflow-y: visible;
     overflow-x: hidden;
   }
