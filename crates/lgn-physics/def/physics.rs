@@ -27,6 +27,7 @@ struct PhysicsRigidConvexMesh {
     #[legion(default = RigidActorType::Dynamic)]
     pub actor_type: RigidActorType,
     // [PhysX convex mesh geometry](https://gameworksdocs.nvidia.com/PhysX/4.1/documentation/physxguide/Manual/Geometry.html#convex-meshes)
+    vertices: Vec<Vec3>,
     scale: MeshScale,
 }
 
