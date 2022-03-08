@@ -1,5 +1,6 @@
 import { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
 import { Process } from "@lgn/proto-telemetry/dist/process";
+import { NewSelectionState, SelectionState } from "../time_range_selection";
 import { zoomHorizontalViewRange } from "../zoom";
 import { Thread } from "./Thread";
 import { ThreadBlock } from "./ThreadBlock";
@@ -13,12 +14,15 @@ export class TimelineState {
   processes: Process[] = [];
   scopes: Record<number, ScopeDesc> = {};
   ready = false;
+  selectionState: SelectionState;
+  currentSelection: [number, number] | undefined;
   private timelineStart: number | undefined;
   private timelineEnd: number | undefined;
   private viewRange: [number, number] | null = null;
   constructor(start: number | undefined, end: number | undefined) {
     this.timelineStart = start;
     this.timelineEnd = end;
+    this.selectionState = NewSelectionState();
   }
 
   setViewRange(range: [number, number]) {
