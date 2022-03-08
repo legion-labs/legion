@@ -131,10 +131,10 @@ impl DataBuild {
 
         let source_index = SourceIndex::new(Box::new(content_store.clone()));
 
-        let output_index = OutputIndex::create_new(
-            &OutputIndex::output_index_file(&config.buildindex_dir),
+        let output_index = OutputIndex::create_new(OutputIndex::database_uri(
+            &config.buildindex_dir,
             Self::version(),
-        )
+        ))
         .await?;
 
         let compilers = config.compiler_options.create();
@@ -164,10 +164,10 @@ impl DataBuild {
             .ok_or(Error::InvalidContentStore)?;
 
         let source_index = SourceIndex::new(Box::new(content_store.clone()));
-        let output_index = OutputIndex::open(
-            &OutputIndex::output_index_file(&config.buildindex_dir),
+        let output_index = OutputIndex::open(OutputIndex::database_uri(
+            &config.buildindex_dir,
             Self::version(),
-        )
+        ))
         .await?;
 
         let compilers = config.compiler_options.create();
@@ -201,18 +201,18 @@ impl DataBuild {
 
         let source_index = SourceIndex::new(Box::new(content_store.clone()));
 
-        let output_index = match OutputIndex::open(
-            &OutputIndex::output_index_file(&config.buildindex_dir),
+        let output_index = match OutputIndex::open(OutputIndex::database_uri(
+            &config.buildindex_dir,
             Self::version(),
-        )
+        ))
         .await
         {
             Ok(output_index) => Ok(output_index),
             Err(Error::NotFound) => {
-                OutputIndex::create_new(
-                    &OutputIndex::output_index_file(&config.buildindex_dir),
+                OutputIndex::create_new(OutputIndex::database_uri(
+                    &config.buildindex_dir,
                     Self::version(),
-                )
+                ))
                 .await
             }
             Err(e) => Err(e),
@@ -813,13 +813,6 @@ impl DataBuild {
         Ok(env::current_dir()?
             .join(build_name)
             .with_extension("manifest"))
-    }
-}
-
-// todo(kstasik): file IO on destructor - is it ok?
-impl Drop for DataBuild {
-    fn drop(&mut self) {
-        self.output_index.flush().unwrap();
     }
 }
 

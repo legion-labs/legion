@@ -1,19 +1,10 @@
-use std::{
-    cmp::Ordering,
-    collections::BTreeMap,
-    fs::{File, OpenOptions},
-    io::Seek,
-    path::{Path, PathBuf},
-    str::FromStr,
-};
+use std::{path::Path, str::FromStr};
 
 use lgn_content_store::Checksum;
 use lgn_data_compiler::CompiledResource;
 use lgn_data_offline::ResourcePathId;
 use lgn_data_runtime::ResourceTypeAndId;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_with::serde_as;
-use serde_with::DisplayFromStr;
 use sqlx::{migrate::MigrateDatabase, Executor, Row};
 
 use crate::Error;
@@ -65,78 +56,21 @@ struct LinkedResource {
     size: usize,
 }
 
-#[serde_as]
-#[derive(Serialize, Deserialize, Debug)]
-struct OutputContent {
-    version: String,
-    compiled_resources: Vec<CompiledResourceInfo>,
-    compiled_resource_references: Vec<CompiledResourceReference>,
-    #[serde_as(as = "Vec<(_, _)>")]
-    linked_resources: BTreeMap<(ResourcePathId, AssetHash, AssetHash), (Checksum, usize)>,
-    #[serde_as(as = "Vec<(DisplayFromStr, _)>")]
-    pathid_mapping: BTreeMap<ResourceTypeAndId, ResourcePathId>,
-}
-
-impl OutputContent {
-    // sort contents so serialization is deterministic
-    fn pre_serialize(&mut self) {
-        self.compiled_resources.sort_by(|a, b| {
-            let mut result = a.compile_path.cmp(&b.compile_path);
-            if result == Ordering::Equal {
-                result = a.compiled_path.cmp(&b.compiled_path);
-            }
-            result
-        });
-        self.compiled_resource_references.sort_by(|a, b| {
-            let mut result = a.compile_path.cmp(&b.compile_path);
-            if result == Ordering::Equal {
-                result = a.compiled_path.cmp(&b.compiled_path);
-                if result == Ordering::Equal {
-                    result = a.compiled_reference.cmp(&b.compiled_reference);
-                }
-            }
-            result
-        });
-    }
-}
-
 #[derive(Debug)]
 pub(crate) struct OutputIndex {
-    content: OutputContent,
-    file: File,
     database: sqlx::AnyPool,
 }
 
 impl OutputIndex {
-    fn database_uri(output_index: &Path, version: &str) -> String {
-        let db_path = output_index
-            .parent()
-            .unwrap()
+    pub(crate) fn database_uri(buildindex_dir: impl AsRef<Path>, version: &str) -> String {
+        let db_path = buildindex_dir
+            .as_ref()
             .join(format!("output-{}.db3", version));
         format!("sqlite://{}", db_path.to_str().unwrap().replace("\\", "/"))
     }
 
-    pub(crate) async fn create_new(output_index: &Path, version: &str) -> Result<Self, Error> {
-        let output_file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create_new(true)
-            .open(output_index)
-            .map_err(|e| Error::Io(e.into()))?;
-
-        let output_content = OutputContent {
-            version: String::from(version),
-            compiled_resources: vec![],
-            compiled_resource_references: vec![],
-            linked_resources: BTreeMap::<_, _>::new(),
-            pathid_mapping: BTreeMap::<_, _>::new(),
-        };
-
-        serde_json::to_writer_pretty(&output_file, &output_content)
-            .map_err(|e| Error::Io(e.into()))?;
-
+    pub(crate) async fn create_new(db_uri: String) -> Result<Self, Error> {
         let database = {
-            let db_uri = Self::database_uri(output_index, version);
             sqlx::Any::create_database(&db_uri)
                 .await
                 .map_err(Error::Database)?;
@@ -176,61 +110,31 @@ impl OutputIndex {
 
             connection
         };
-        Ok(Self {
-            content: output_content,
-            file: output_file,
-            database,
-        })
+        Ok(Self { database })
     }
 
-    async fn load(path: impl AsRef<Path>, version: &str) -> Result<Self, Error> {
-        let output_file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(path.as_ref())
-            .map_err(|_e| Error::NotFound)?;
-
-        let output_content: OutputContent =
-            serde_json::from_reader(&output_file).map_err(|e| Error::Io(e.into()))?;
-
+    async fn load(db_uri: String) -> Result<Self, Error> {
         let database = {
-            let db_uri = Self::database_uri(path.as_ref(), version);
             sqlx::any::AnyPoolOptions::new()
                 .connect(&db_uri)
                 .await
                 .map_err(Error::Database)?
         };
 
-        Ok(Self {
-            content: output_content,
-            file: output_file,
-            database,
-        })
+        Ok(Self { database })
     }
 
-    pub(crate) async fn open(output_index: &Path, version: &str) -> Result<Self, Error> {
-        if !output_index.exists() {
+    pub(crate) async fn open(db_uri: String) -> Result<Self, Error> {
+        if !sqlx::Any::database_exists(&db_uri)
+            .await
+            .map_err(Error::Database)?
+        {
             return Err(Error::NotFound);
         }
 
-        let output_index = Self::load(output_index, version).await?;
-
-        if output_index.content.version != version {
-            return Err(Error::VersionMismatch {
-                value: output_index.content.version,
-                expected: version.to_owned(),
-            });
-        }
+        let output_index = Self::load(db_uri).await?;
 
         Ok(output_index)
-    }
-
-    pub(crate) fn flush(&mut self) -> Result<(), Error> {
-        self.content.pre_serialize();
-        self.file.set_len(0).unwrap();
-        self.file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        serde_json::to_writer_pretty(&self.file, &self.content).map_err(|e| Error::Io(e.into()))?;
-        Ok(())
     }
 
     pub(crate) async fn insert_compiled(
@@ -286,39 +190,6 @@ impl OutputIndex {
             }
         }
 
-        let mut compiled_assets_desc: Vec<_> = compiled_resources
-            .iter()
-            .map(|asset| CompiledResourceInfo {
-                compile_path: compile_path.clone(),
-                context_hash,
-                source_hash,
-                compiled_path: asset.path.clone(),
-                compiled_checksum: asset.checksum,
-                compiled_size: asset.size,
-            })
-            .collect();
-
-        let mut compiled_references_desc: Vec<_> = compiled_references
-            .iter()
-            .map(
-                |(compiled_guid, compiled_reference)| CompiledResourceReference {
-                    compile_path: compile_path.clone(),
-                    context_hash,
-                    source_hash,
-                    compiled_path: compiled_guid.clone(),
-                    compiled_reference: compiled_reference.clone(),
-                },
-            )
-            .collect();
-
-        self.content
-            .compiled_resources
-            .append(&mut compiled_assets_desc);
-
-        self.content
-            .compiled_resource_references
-            .append(&mut compiled_references_desc);
-
         Ok(())
     }
 
@@ -328,106 +199,58 @@ impl OutputIndex {
         context_hash: AssetHash,
         source_hash: AssetHash,
     ) -> Option<(Vec<CompiledResourceInfo>, Vec<CompiledResourceReference>)> {
-        let (db_compiled, db_references) = {
-            let statement = sqlx::query_as(
-                "SELECT compiled_path, compiled_checksum, compiled_size 
+        let statement = sqlx::query_as(
+            "SELECT compiled_path, compiled_checksum, compiled_size 
             FROM compiled_output
             WHERE compile_path = ? AND context_hash = ? AND source_hash = ?",
+        )
+        .bind(compile_path.to_string())
+        .bind(context_hash.into_i64())
+        .bind(source_hash.into_i64());
+
+        let result: Vec<(String, String, i64)> = statement.fetch_all(&self.database).await.unwrap();
+        let compiled = result
+            .into_iter()
+            .map(|(id, checksum, size)| CompiledResourceInfo {
+                compile_path: compile_path.clone(),
+                context_hash,
+                source_hash,
+                compiled_path: ResourcePathId::from_str(&id).unwrap(),
+                compiled_checksum: Checksum::from_str(&checksum).unwrap(),
+                compiled_size: size as usize,
+            })
+            .collect::<Vec<_>>();
+
+        if compiled.is_empty() {
+            return None;
+        }
+
+        let references = {
+            let statement = sqlx::query_as(
+                "SELECT compiled_path, compiled_reference
+                    FROM compiled_reference
+                    WHERE compile_path = ? AND context_hash = ? AND source_hash = ?",
             )
             .bind(compile_path.to_string())
             .bind(context_hash.into_i64())
             .bind(source_hash.into_i64());
 
-            let result: Vec<(String, String, i64)> =
-                statement.fetch_all(&self.database).await.unwrap();
-            let compiled = result
+            let result: Vec<(String, String)> = statement.fetch_all(&self.database).await.unwrap();
+
+            result
                 .into_iter()
-                .map(|(id, checksum, size)| CompiledResourceInfo {
-                    compile_path: compile_path.clone(),
-                    context_hash,
-                    source_hash,
-                    compiled_path: ResourcePathId::from_str(&id).unwrap(),
-                    compiled_checksum: Checksum::from_str(&checksum).unwrap(),
-                    compiled_size: size as usize,
-                })
-                .collect::<Vec<_>>();
-
-            let references = if !compiled.is_empty() {
-                let statement = sqlx::query_as(
-                    "SELECT compiled_path, compiled_reference
-                    FROM compiled_reference
-                    WHERE compile_path = ? AND context_hash = ? AND source_hash = ?",
+                .map(
+                    |(compiled_path, compiled_reference)| CompiledResourceReference {
+                        compile_path: compile_path.clone(),
+                        context_hash,
+                        source_hash,
+                        compiled_path: ResourcePathId::from_str(&compiled_path).unwrap(),
+                        compiled_reference: ResourcePathId::from_str(&compiled_reference).unwrap(),
+                    },
                 )
-                .bind(compile_path.to_string())
-                .bind(context_hash.into_i64())
-                .bind(source_hash.into_i64());
-
-                let result: Vec<(String, String)> =
-                    statement.fetch_all(&self.database).await.unwrap();
-
-                result
-                    .into_iter()
-                    .map(
-                        |(compiled_path, compiled_reference)| CompiledResourceReference {
-                            compile_path: compile_path.clone(),
-                            context_hash,
-                            source_hash,
-                            compiled_path: ResourcePathId::from_str(&compiled_path).unwrap(),
-                            compiled_reference: ResourcePathId::from_str(&compiled_reference)
-                                .unwrap(),
-                        },
-                    )
-                    .collect::<Vec<_>>()
-            } else {
-                vec![]
-            };
-            (compiled, references)
+                .collect::<Vec<_>>()
         };
-
-        let asset_objects: Vec<CompiledResourceInfo> = self
-            .content
-            .compiled_resources
-            .iter()
-            .filter(|asset| {
-                &asset.compile_path == compile_path
-                    && asset.context_hash == context_hash
-                    && asset.source_hash == source_hash
-            })
-            .cloned()
-            .collect();
-
-        if asset_objects.is_empty() {
-            None
-        } else {
-            let asset_references: Vec<CompiledResourceReference> = self
-                .content
-                .compiled_resource_references
-                .iter()
-                .filter(|reference| {
-                    &reference.compile_path == compile_path
-                        && reference.context_hash == context_hash
-                        && reference.source_hash == source_hash
-                })
-                .cloned()
-                .collect();
-
-            if asset_objects.len() != db_compiled.len()
-                || !asset_objects.iter().all(|e| {
-                    let found = db_compiled.contains(e);
-                    if !found {
-                        println!("not found {:?}", e);
-                    }
-                    found
-                })
-            {
-                println!("obj: {:?}", asset_objects);
-                println!("dbs: {:?}", db_compiled);
-                panic!();
-            }
-            assert_eq!(asset_references, db_references);
-
-            Some((asset_objects, asset_references))
-        }
+        Some((compiled, references))
     }
 
     pub(crate) async fn find_linked(
@@ -436,7 +259,7 @@ impl OutputIndex {
         context_hash: AssetHash,
         source_hash: AssetHash,
     ) -> Result<Option<(Checksum, usize)>, Error> {
-        let db_output = {
+        let output = {
             let statement = sqlx::query_as(
                 "SELECT checksum, size
                     FROM linked_output
@@ -454,13 +277,6 @@ impl OutputIndex {
             result.map(|(checksum, size)| (Checksum::from_str(&checksum).unwrap(), size as usize))
         };
 
-        let output = self
-            .content
-            .linked_resources
-            .get(&(id, context_hash, source_hash))
-            .copied();
-        assert_eq!(output, db_output);
-
         Ok(output)
     }
 
@@ -472,45 +288,30 @@ impl OutputIndex {
         checksum: Checksum,
         size: usize,
     ) -> Result<(), Error> {
-        {
-            let query = sqlx::query("INSERT OR REPLACE into linked_output VALUES(?, ?, ?, ?, ?);")
-                .bind(id.to_string())
-                .bind(context_hash.into_i64())
-                .bind(source_hash.into_i64())
-                .bind(checksum.to_string())
-                .bind(size as i64);
+        let query = sqlx::query("INSERT OR REPLACE into linked_output VALUES(?, ?, ?, ?, ?);")
+            .bind(id.to_string())
+            .bind(context_hash.into_i64())
+            .bind(source_hash.into_i64())
+            .bind(checksum.to_string())
+            .bind(size as i64);
 
-            self.database
-                .execute(query)
-                .await
-                .map_err(Error::Database)?;
-        }
-        self.content
-            .linked_resources
-            .insert((id, context_hash, source_hash), (checksum, size));
+        self.database
+            .execute(query)
+            .await
+            .map_err(Error::Database)?;
 
         Ok(())
     }
 
-    pub(crate) fn output_index_file(buildindex_dir: impl AsRef<Path>) -> PathBuf {
-        buildindex_dir.as_ref().join("output.index")
-    }
-
     pub async fn record_pathid(&mut self, id: &ResourcePathId) -> Result<(), Error> {
-        {
-            let query = sqlx::query("INSERT OR REPLACE into pathid_mapping VALUES(?, ?);")
-                .bind(id.resource_id().to_string())
-                .bind(id.to_string());
+        let query = sqlx::query("INSERT OR REPLACE into pathid_mapping VALUES(?, ?);")
+            .bind(id.resource_id().to_string())
+            .bind(id.to_string());
 
-            self.database
-                .execute(query)
-                .await
-                .map_err(Error::Database)?;
-        }
-
-        self.content
-            .pathid_mapping
-            .insert(id.resource_id(), id.clone());
+        self.database
+            .execute(query)
+            .await
+            .map_err(Error::Database)?;
 
         Ok(())
     }
@@ -519,7 +320,7 @@ impl OutputIndex {
         &self,
         id: ResourceTypeAndId,
     ) -> Result<Option<ResourcePathId>, Error> {
-        let db_output = {
+        let output = {
             let statement = sqlx::query(
                 "SELECT resource_path_id
                     FROM pathid_mapping
@@ -539,8 +340,6 @@ impl OutputIndex {
                 None
             }
         };
-        let output = self.content.pathid_mapping.get(&id).cloned();
-        assert_eq!(db_output, output);
 
         Ok(output)
     }
@@ -564,12 +363,12 @@ mod tests {
         let buildindex_dir = work_dir.path();
         {
             let _output_index =
-                OutputIndex::create_new(&OutputIndex::output_index_file(&buildindex_dir), "0.0.1")
+                OutputIndex::create_new(OutputIndex::database_uri(&buildindex_dir, "0.0.1"))
                     .await
                     .unwrap();
         }
         assert!(
-            OutputIndex::open(&OutputIndex::output_index_file(&buildindex_dir), "0.0.2")
+            OutputIndex::open(OutputIndex::database_uri(&buildindex_dir, "0.0.2"))
                 .await
                 .is_err()
         );
@@ -579,20 +378,20 @@ mod tests {
     async fn create_open() {
         let work_dir = tempfile::tempdir().unwrap();
         let index_path = work_dir.path();
-        let index_file = OutputIndex::output_index_file(&index_path);
+        let index_db = OutputIndex::database_uri(&index_path, "0.0.1");
         {
-            let _index = OutputIndex::create_new(&index_file, "0.0.1").await.unwrap();
+            let _index = OutputIndex::create_new(index_db.clone()).await.unwrap();
         }
 
-        let _opened = OutputIndex::open(&index_file, "0.0.1").await.unwrap();
+        let _opened = OutputIndex::open(index_db).await.unwrap();
     }
 
     #[tokio::test]
     async fn outputs() {
         let work_dir = tempfile::tempdir().unwrap();
         let index_path = work_dir.path();
-        let index_file = OutputIndex::output_index_file(&index_path);
-        let mut index = OutputIndex::create_new(&index_file, "0.0.1").await.unwrap();
+        let index_db = OutputIndex::database_uri(&index_path, "0.0.1");
+        let mut index = OutputIndex::create_new(index_db).await.unwrap();
 
         // no dependencies and no references.
         let compile_path = ResourcePathId::from(ResourceTypeAndId {
