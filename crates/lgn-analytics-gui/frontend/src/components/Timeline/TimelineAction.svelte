@@ -28,7 +28,7 @@
   {/if}
 </div>
 
-<style>
+<style lang="postcss">
   .action {
     @apply text-gray-100 p-1;
   }

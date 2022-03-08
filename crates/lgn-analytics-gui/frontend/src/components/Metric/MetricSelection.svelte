@@ -136,7 +136,7 @@
   {/if}
 </div>
 
-<style>
+<style lang="postcss">
   .metric-category-header {
     @apply font-semibold text-left;
   }
