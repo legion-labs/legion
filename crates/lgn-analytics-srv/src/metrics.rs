@@ -173,7 +173,7 @@ impl MetricHandler {
                             .to_string(),
                     });
             }
-            true
+            Ok(true)
         })?;
         Ok(MetricBlockManifest {
             desc: Some(desc),
@@ -214,7 +214,7 @@ impl MetricHandler {
                     });
                 }
             }
-            true
+            Ok(true)
         })?;
         Ok(MetricBlockData { points, lod: 0 })
     }

@@ -5,6 +5,8 @@ use lgn_analytics::{fetch_block_payload, get_process_tick_length_ms};
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::{AsyncSpansReply, BlockAsyncEventsStatReply};
 use lgn_tracing::warn;
+use lgn_tracing_transit::Object;
+// use std::collections::HashMap;
 
 use crate::thread_block_processor::{parse_thread_block, ThreadBlockProcessor};
 
@@ -27,22 +29,27 @@ impl StatsProcessor {
 }
 
 impl ThreadBlockProcessor for StatsProcessor {
-    fn on_begin_thread_scope(&mut self, _scope_name: &str, _ts: i64) {}
-
-    fn on_end_thread_scope(&mut self, _scope_name: &str, _ts: i64) {}
-
-    fn on_begin_async_scope(&mut self, _span_id: u64, _scope_name: &str, ts: i64) {
-        let relative_ts = ts - self.process_start_ts;
-        self.min_ts = self.min_ts.min(relative_ts);
-        self.max_ts = self.max_ts.max(relative_ts);
-        self.nb_events += 1;
+    fn on_begin_thread_scope(&mut self, _scope: Arc<Object>, _ts: i64) -> Result<()> {
+        Ok(())
+    }
+    fn on_end_thread_scope(&mut self, _scope: Arc<Object>, _ts: i64) -> Result<()> {
+        Ok(())
     }
 
-    fn on_end_async_scope(&mut self, _span_id: u64, _scope_name: &str, ts: i64) {
+    fn on_begin_async_scope(&mut self, _span_id: u64, _scope: Arc<Object>, ts: i64) -> Result<()> {
         let relative_ts = ts - self.process_start_ts;
         self.min_ts = self.min_ts.min(relative_ts);
         self.max_ts = self.max_ts.max(relative_ts);
         self.nb_events += 1;
+        Ok(())
+    }
+
+    fn on_end_async_scope(&mut self, _span_id: u64, _scope: Arc<Object>, ts: i64) -> Result<()> {
+        let relative_ts = ts - self.process_start_ts;
+        self.min_ts = self.min_ts.min(relative_ts);
+        self.max_ts = self.max_ts.max(relative_ts);
+        self.nb_events += 1;
+        Ok(())
     }
 }
 
@@ -70,6 +77,38 @@ pub async fn compute_block_async_stats(
         end_ms: processor.max_ts as f64 * inv_tsc_frequency,
         nb_events: processor.nb_events,
     })
+}
+
+// struct BeginSpan {}
+
+// struct EndSpan {}
+
+// enum SpanEvent {
+//     Begin(BeginSpan),
+//     End(EndSpan),
+// }
+
+struct AsyncSpanBuilder {
+    // unmatched_events: HashMap<u64, SpanEvent>,
+// complete_spans: Vec<SpanEvent>,
+}
+
+impl ThreadBlockProcessor for AsyncSpanBuilder {
+    fn on_begin_thread_scope(&mut self, _scope: Arc<Object>, _ts: i64) -> Result<()> {
+        Ok(())
+    }
+
+    fn on_end_thread_scope(&mut self, _scope: Arc<Object>, _ts: i64) -> Result<()> {
+        Ok(())
+    }
+
+    fn on_begin_async_scope(&mut self, _span_id: u64, _scope: Arc<Object>, _ts: i64) -> Result<()> {
+        Ok(())
+    }
+
+    fn on_end_async_scope(&mut self, _span_id: u64, _scope: Arc<Object>, _ts: i64) -> Result<()> {
+        Ok(())
+    }
 }
 
 pub async fn compute_async_spans(

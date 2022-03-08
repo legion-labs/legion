@@ -7,33 +7,29 @@ use lgn_tracing::warn;
 use lgn_tracing_transit::{Object, Value};
 
 pub trait ThreadBlockProcessor {
-    fn on_begin_thread_scope(&mut self, scope_name: &str, ts: i64);
-    fn on_end_thread_scope(&mut self, scope_name: &str, ts: i64);
-    fn on_begin_async_scope(&mut self, span_id: u64, scope_name: &str, ts: i64);
-    fn on_end_async_scope(&mut self, span_id: u64, scope_name: &str, ts: i64);
+    fn on_begin_thread_scope(&mut self, scope: Arc<Object>, ts: i64) -> Result<()>;
+    fn on_end_thread_scope(&mut self, scope: Arc<Object>, ts: i64) -> Result<()>;
+    fn on_begin_async_scope(&mut self, span_id: u64, scope: Arc<Object>, ts: i64) -> Result<()>;
+    fn on_end_async_scope(&mut self, span_id: u64, scope: Arc<Object>, ts: i64) -> Result<()>;
 }
 
 fn on_thread_event<F>(obj: &lgn_tracing_transit::Object, mut fun: F) -> Result<()>
 where
-    F: FnMut(&str, i64),
+    F: FnMut(Arc<Object>, i64) -> Result<()>,
 {
     let tick = obj.get::<i64>("time")?;
     let scope = obj.get::<Arc<Object>>("thread_span_desc")?;
-    let name = scope.get::<Arc<String>>("name")?;
-    fun(&*name, tick);
-    Ok(())
+    fun(scope, tick)
 }
 
 fn on_async_thread_event<F>(obj: &lgn_tracing_transit::Object, mut fun: F) -> Result<()>
 where
-    F: FnMut(u64, &str, i64),
+    F: FnMut(u64, Arc<Object>, i64) -> Result<()>,
 {
     let tick = obj.get::<i64>("time")?;
     let span_id = obj.get::<u64>("span_id")?;
     let scope = obj.get::<Arc<Object>>("span_desc")?;
-    let name = scope.get::<Arc<String>>("name")?;
-    fun(span_id, &*name, tick);
-    Ok(())
+    fun(span_id, scope, tick)
 }
 
 pub async fn parse_thread_block<Proc: ThreadBlockProcessor>(
@@ -48,29 +44,29 @@ pub async fn parse_thread_block<Proc: ThreadBlockProcessor>(
         if let Value::Object(obj) = val {
             match obj.type_name.as_str() {
                 "BeginThreadSpanEvent" => {
-                    if let Err(e) = on_thread_event(&obj, |name, ts| {
-                        processor.on_begin_thread_scope(name, ts);
+                    if let Err(e) = on_thread_event(&obj, |scope, ts| {
+                        processor.on_begin_thread_scope(scope, ts)
                     }) {
                         warn!("Error reading BeginThreadSpanEvent: {:?}", e);
                     }
                 }
                 "EndThreadSpanEvent" => {
-                    if let Err(e) = on_thread_event(&obj, |name, ts| {
-                        processor.on_end_thread_scope(name, ts);
-                    }) {
+                    if let Err(e) =
+                        on_thread_event(&obj, |name, ts| processor.on_end_thread_scope(name, ts))
+                    {
                         warn!("Error reading EndThreadSpanEvent: {:?}", e);
                     }
                 }
                 "BeginAsyncSpanEvent" => {
                     if let Err(e) = on_async_thread_event(&obj, |id, name, ts| {
-                        processor.on_begin_async_scope(id, name, ts);
+                        processor.on_begin_async_scope(id, name, ts)
                     }) {
                         warn!("Error reading BeginAsyncSpanEvent: {:?}", e);
                     }
                 }
                 "EndAsyncSpanEvent" => {
                     if let Err(e) = on_async_thread_event(&obj, |id, name, ts| {
-                        processor.on_end_async_scope(id, name, ts);
+                        processor.on_end_async_scope(id, name, ts)
                     }) {
                         warn!("Error reading BeginAsyncSpanEvent: {:?}", e);
                     }
@@ -80,7 +76,7 @@ pub async fn parse_thread_block<Proc: ThreadBlockProcessor>(
                 }
             }
         }
-        true //continue
+        Ok(true) //continue
     })?;
     Ok(())
 }

@@ -90,10 +90,11 @@ impl CallTreeBuilder {
 }
 
 impl ThreadBlockProcessor for CallTreeBuilder {
-    fn on_begin_thread_scope(&mut self, scope_name: &str, ts: i64) {
+    fn on_begin_thread_scope(&mut self, scope: Arc<Object>, ts: i64) -> Result<()> {
         let time = self.get_time(ts);
-        let hash = compute_scope_hash(scope_name);
-        self.record_scope_desc(hash, scope_name);
+        let scope_name = scope.get::<Arc<String>>("name")?;
+        let hash = compute_scope_hash(&scope_name);
+        self.record_scope_desc(hash, &scope_name);
         let scope = CallTreeNode {
             hash,
             begin_ms: time,
@@ -101,25 +102,27 @@ impl ThreadBlockProcessor for CallTreeBuilder {
             children: Vec::new(),
         };
         self.stack.push(scope);
+        Ok(())
     }
 
-    fn on_end_thread_scope(&mut self, scope_name: &str, ts: i64) {
+    fn on_end_thread_scope(&mut self, scope: Arc<Object>, ts: i64) -> Result<()> {
         let time = self.get_time(ts);
-        let hash = compute_scope_hash(scope_name);
+        let scope_name = scope.get::<Arc<String>>("name")?;
+        let hash = compute_scope_hash(&scope_name);
         if let Some(mut old_top) = self.stack.pop() {
             if old_top.hash == hash {
                 old_top.end_ms = time;
                 self.add_child_to_top(old_top);
             } else if old_top.hash == 0 {
-                self.record_scope_desc(hash, scope_name);
+                self.record_scope_desc(hash, &scope_name);
                 old_top.hash = hash;
                 old_top.end_ms = time;
                 self.add_child_to_top(old_top);
             } else {
-                panic!("top scope mismatch");
+                anyhow::bail!("top scope mismatch parsing thread block");
             }
         } else {
-            self.record_scope_desc(hash, scope_name);
+            self.record_scope_desc(hash, &scope_name);
             let scope = CallTreeNode {
                 hash,
                 begin_ms: self.get_time(self.ts_begin_block),
@@ -128,10 +131,15 @@ impl ThreadBlockProcessor for CallTreeBuilder {
             };
             self.add_child_to_top(scope);
         }
+        Ok(())
     }
 
-    fn on_begin_async_scope(&mut self, _span_id: u64, _scope_name: &str, _ts: i64) {}
-    fn on_end_async_scope(&mut self, _span_id: u64, _scope_name: &str, _ts: i64) {}
+    fn on_begin_async_scope(&mut self, _span_id: u64, _scope: Arc<Object>, _ts: i64) -> Result<()> {
+        Ok(())
+    }
+    fn on_end_async_scope(&mut self, _span_id: u64, _scope: Arc<Object>, _ts: i64) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[allow(clippy::cast_precision_loss)]
@@ -163,6 +171,7 @@ pub(crate) async fn compute_block_call_tree(
 }
 
 pub(crate) type ScopeHashMap = std::collections::HashMap<u32, ScopeDesc>;
+use lgn_tracing_transit::Object;
 use xxhash_rust::const_xxh32::xxh32 as const_xxh32;
 
 use crate::thread_block_processor::parse_thread_block;

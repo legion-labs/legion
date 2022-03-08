@@ -524,7 +524,7 @@ pub fn parse_block<F>(
     fun: F,
 ) -> Result<()>
 where
-    F: FnMut(Value) -> bool,
+    F: FnMut(Value) -> Result<bool>,
 {
     let dep_udts =
         container_metadata_as_transit_udt_vec(stream.dependencies_metadata.as_ref().unwrap());
@@ -602,10 +602,10 @@ pub async fn find_process_log_entry<Res, Predicate: FnMut(i64, String) -> Option
                 if let Some((time, msg)) = log_entry_from_value(&val) {
                     if let Some(x) = pred(time, msg) {
                         found_entry = Some(x);
-                        return false; //do not continue
+                        return Ok(false); //do not continue
                     }
                 }
-                true //continue
+                Ok(true) //continue
             })?;
             if found_entry.is_some() {
                 return Ok(found_entry);
@@ -628,10 +628,10 @@ pub async fn for_each_log_entry_in_block<Predicate: FnMut(i64, String) -> bool>(
     parse_block(stream, &payload, |val| {
         if let Some((time, msg)) = log_entry_from_value(&val) {
             if !fun(time, msg) {
-                return false; //do not continue
+                return Ok(false); //do not continue
             }
         }
-        true //continue
+        Ok(true) //continue
     })?;
     Ok(())
 }
@@ -666,7 +666,7 @@ pub async fn for_each_process_metric<ProcessMetric: FnMut(Arc<lgn_tracing_transi
                 if let Value::Object(obj) = val {
                     process_metric(obj);
                 }
-                true //continue
+                Ok(true) //continue
             })?;
         }
     }

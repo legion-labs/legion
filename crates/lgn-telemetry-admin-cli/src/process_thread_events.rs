@@ -19,14 +19,14 @@ pub async fn print_process_thread_events(
                     .await?;
             parse_block(&stream, &payload, |val| {
                 if let Value::Object(obj) = val {
-                    let time = obj.get::<u64>("time").unwrap();
-                    let scope = obj.get::<Arc<Object>>("thread_span_desc").unwrap();
-                    let name = scope.get::<Arc<String>>("name").unwrap();
-                    let filename = scope.get::<Arc<String>>("file").unwrap();
-                    let line = scope.get::<u32>("line").unwrap();
+                    let time = obj.get::<u64>("time")?;
+                    let scope = obj.get::<Arc<Object>>("thread_span_desc")?;
+                    let name = scope.get::<Arc<String>>("name")?;
+                    let filename = scope.get::<Arc<String>>("file")?;
+                    let line = scope.get::<u32>("line")?;
                     println!("{} {} {} {}:{}", time, obj.type_name, name, filename, line);
                 }
-                true //continue
+                Ok(true) //continue
             })?;
             println!();
         }
@@ -58,10 +58,10 @@ async fn extract_process_thread_events(
                         "EndScopeEvent" => "E",
                         _ => panic!("unknown event type {}", obj.type_name),
                     };
-                    let tick = obj.get::<i64>("time").unwrap();
+                    let tick = obj.get::<i64>("time")?;
                     let time = format!("{}", (tick - ts_offset) as f64 * inv_tsc_frequency);
-                    let scope = obj.get::<Arc<Object>>("scope").unwrap();
-                    let name = scope.get::<Arc<String>>("name").unwrap();
+                    let scope = obj.get::<Arc<Object>>("scope")?;
+                    let name = scope.get::<Arc<String>>("name")?;
                     let event = json::object! {
                         name: (*name).clone(),
                         cat: "PERF",
@@ -73,7 +73,7 @@ async fn extract_process_thread_events(
                     };
                     events.push(event);
                 }
-                true //continue
+                Ok(true) //continue
             })?;
         }
     }

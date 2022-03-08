@@ -325,7 +325,7 @@ pub fn parse_object_buffer<F, S>(
     mut fun: F,
 ) -> Result<()>
 where
-    F: FnMut(Value) -> bool,
+    F: FnMut(Value) -> Result<bool>,
     S: BuildHasher,
 {
     let mut offset = 0;
@@ -353,7 +353,7 @@ where
         } else {
             parse_pod_instance(udt, dependencies, offset, buffer)
         };
-        if !fun(Value::Object(Arc::new(instance))) {
+        if !fun(Value::Object(Arc::new(instance)))? {
             return Ok(());
         }
         offset += object_size;
