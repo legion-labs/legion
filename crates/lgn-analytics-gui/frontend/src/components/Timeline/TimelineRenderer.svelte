@@ -46,7 +46,7 @@
 
   async function onZoom(event: WheelEvent) {
     stateStore.update((s) => {
-      s.setViewRangeFromWheel(s.getViewRange(), windowInnerWidth, event);
+      s.setViewRangeFromWheel(s.getViewRange(), canvasWidth, event);
       return s;
     });
 
