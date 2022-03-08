@@ -32,20 +32,6 @@ pub(crate) struct CompiledResourceInfo {
     pub(crate) compiled_size: usize,
 }
 
-#[allow(clippy::fallible_impl_from)]
-impl From<(String, i64, i64, String, String, i64)> for CompiledResourceInfo {
-    fn from(row: (String, i64, i64, String, String, i64)) -> Self {
-        Self {
-            compile_path: ResourcePathId::from_str(&row.0).unwrap(),
-            context_hash: AssetHash(row.1 as u64),
-            source_hash: AssetHash(row.2 as u64),
-            compiled_path: ResourcePathId::from_str(&row.3).unwrap(),
-            compiled_checksum: Checksum::from_str(&row.4).unwrap(),
-            compiled_size: row.5 as usize,
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub(crate) struct CompiledResourceReference {
     pub(crate) compile_path: ResourcePathId,
@@ -53,19 +39,6 @@ pub(crate) struct CompiledResourceReference {
     pub(crate) source_hash: AssetHash,
     pub(crate) compiled_path: ResourcePathId,
     pub(crate) compiled_reference: ResourcePathId,
-}
-
-#[allow(clippy::fallible_impl_from)]
-impl From<(String, i64, i64, String, String)> for CompiledResourceReference {
-    fn from(row: (String, i64, i64, String, String)) -> Self {
-        Self {
-            compile_path: ResourcePathId::from_str(&row.0).unwrap(),
-            context_hash: AssetHash(row.1 as u64),
-            source_hash: AssetHash(row.2 as u64),
-            compiled_path: ResourcePathId::from_str(&row.3).unwrap(),
-            compiled_reference: ResourcePathId::from_str(&row.4).unwrap(),
-        }
-    }
 }
 
 impl CompiledResourceReference {
@@ -353,32 +326,54 @@ impl OutputIndex {
         source_hash: AssetHash,
     ) -> Option<(Vec<CompiledResourceInfo>, Vec<CompiledResourceReference>)> {
         let (db_compiled, db_references) = {
-            let statement = sqlx::query_as("SELECT compile_path, context_hash, source_hash, compiled_path, compiled_checksum, compiled_size 
+            let statement = sqlx::query_as(
+                "SELECT compiled_path, compiled_checksum, compiled_size 
             FROM compiled_output
-            WHERE compile_path = ? AND context_hash = ? AND source_hash = ?").bind(compile_path.to_string()).bind(context_hash.into_i64()).bind(source_hash.into_i64());
+            WHERE compile_path = ? AND context_hash = ? AND source_hash = ?",
+            )
+            .bind(compile_path.to_string())
+            .bind(context_hash.into_i64())
+            .bind(source_hash.into_i64());
 
-            let result: Vec<(String, i64, i64, String, String, i64)> =
+            let result: Vec<(String, String, i64)> =
                 statement.fetch_all(&self.database).await.unwrap();
             let compiled = result
                 .into_iter()
-                .map(CompiledResourceInfo::from)
+                .map(|(id, checksum, size)| CompiledResourceInfo {
+                    compile_path: compile_path.clone(),
+                    context_hash,
+                    source_hash,
+                    compiled_path: ResourcePathId::from_str(&id).unwrap(),
+                    compiled_checksum: Checksum::from_str(&checksum).unwrap(),
+                    compiled_size: size as usize,
+                })
                 .collect::<Vec<_>>();
 
             let references = if !compiled.is_empty() {
                 let statement = sqlx::query_as(
-                "SELECT compile_path, context_hash, source_hash, compiled_path, compiled_reference
+                    "SELECT compiled_path, compiled_reference
                     FROM compiled_reference
                     WHERE compile_path = ? AND context_hash = ? AND source_hash = ?",
-                    ).bind(compile_path.to_string())
-                    .bind(context_hash.into_i64())
-                    .bind(source_hash.into_i64());
+                )
+                .bind(compile_path.to_string())
+                .bind(context_hash.into_i64())
+                .bind(source_hash.into_i64());
 
-                let result: Vec<(String, i64, i64, String, String)> =
+                let result: Vec<(String, String)> =
                     statement.fetch_all(&self.database).await.unwrap();
 
                 result
                     .into_iter()
-                    .map(CompiledResourceReference::from)
+                    .map(
+                        |(compiled_path, compiled_reference)| CompiledResourceReference {
+                            compile_path: compile_path.clone(),
+                            context_hash,
+                            source_hash,
+                            compiled_path: ResourcePathId::from_str(&compiled_path).unwrap(),
+                            compiled_reference: ResourcePathId::from_str(&compiled_reference)
+                                .unwrap(),
+                        },
+                    )
                     .collect::<Vec<_>>()
             } else {
                 vec![]
