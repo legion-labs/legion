@@ -388,6 +388,43 @@ pub async fn find_stream(
     })
 }
 
+pub async fn find_block_stream(
+    connection: &mut sqlx::AnyConnection,
+    block_id: &str,
+) -> Result<StreamInfo> {
+    let row = sqlx::query(
+        "SELECT streams.stream_id as stream_id, process_id, dependencies_metadata, objects_metadata, tags, properties
+         FROM streams, blocks
+         WHERE streams.stream_id = blocks.stream_id
+         AND   blocks.block_id = ?
+         ;",
+    )
+    .bind(block_id)
+    .fetch_one(connection)
+    .await
+    .with_context(|| "find_block_stream")?;
+    let dependencies_metadata_buffer: Vec<u8> = row.get("dependencies_metadata");
+    let dependencies_metadata =
+        lgn_telemetry_proto::telemetry::ContainerMetadata::decode(&*dependencies_metadata_buffer)
+            .with_context(|| "decoding dependencies metadata")?;
+    let objects_metadata_buffer: Vec<u8> = row.get("objects_metadata");
+    let objects_metadata =
+        lgn_telemetry_proto::telemetry::ContainerMetadata::decode(&*objects_metadata_buffer)
+            .with_context(|| "decoding objects metadata")?;
+    let tags_str: String = row.get("tags");
+    let properties_str: String = row.get("properties");
+    let properties: std::collections::HashMap<String, String> =
+        serde_json::from_str(&properties_str).unwrap();
+    Ok(StreamInfo {
+        stream_id: row.get("stream_id"),
+        process_id: row.get("process_id"),
+        dependencies_metadata: Some(dependencies_metadata),
+        objects_metadata: Some(objects_metadata),
+        tags: tags_str.split(' ').map(ToOwned::to_owned).collect(),
+        properties,
+    })
+}
+
 fn map_row_block(row: &AnyRow) -> Result<BlockMetadata> {
     let opt_size: Option<i64> = row.try_get("payload_size")?;
     Ok(BlockMetadata {

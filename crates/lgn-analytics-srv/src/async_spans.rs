@@ -1,12 +1,11 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use lgn_analytics::{fetch_block_payload, get_process_tick_length_ms};
+use lgn_analytics::{find_block_stream, get_process_tick_length_ms};
 use lgn_blob_storage::BlobStorage;
-use lgn_telemetry_proto::analytics::{AsyncSpansReply, BlockAsyncEventsStatReply};
-use lgn_tracing::warn;
+use lgn_telemetry_proto::analytics::{AsyncSpansReply, BlockAsyncEventsStatReply, Span};
 use lgn_tracing_transit::Object;
-// use std::collections::HashMap;
+use std::collections::HashMap;
 
 use crate::thread_block_processor::{parse_thread_block, ThreadBlockProcessor};
 
@@ -79,18 +78,30 @@ pub async fn compute_block_async_stats(
     })
 }
 
-// struct BeginSpan {}
+#[derive(Debug)]
+struct BeginSpan {}
 
-// struct EndSpan {}
+#[derive(Debug)]
+struct EndSpan {}
 
-// enum SpanEvent {
-//     Begin(BeginSpan),
-//     End(EndSpan),
-// }
+#[derive(Debug)]
+enum SpanEvent {
+    Begin(BeginSpan),
+    End(EndSpan),
+}
 
 struct AsyncSpanBuilder {
-    // unmatched_events: HashMap<u64, SpanEvent>,
-// complete_spans: Vec<SpanEvent>,
+    unmatched_events: HashMap<u64, SpanEvent>,
+    complete_spans: Vec<Span>,
+}
+
+impl AsyncSpanBuilder {
+    fn new() -> Self {
+        Self {
+            unmatched_events: HashMap::new(),
+            complete_spans: Vec::new(),
+        }
+    }
 }
 
 impl ThreadBlockProcessor for AsyncSpanBuilder {
@@ -102,11 +113,55 @@ impl ThreadBlockProcessor for AsyncSpanBuilder {
         Ok(())
     }
 
-    fn on_begin_async_scope(&mut self, _span_id: u64, _scope: Arc<Object>, _ts: i64) -> Result<()> {
+    fn on_begin_async_scope(&mut self, span_id: u64, _scope: Arc<Object>, _ts: i64) -> Result<()> {
+        if let Some(evt) = self.unmatched_events.remove(&span_id) {
+            match evt {
+                SpanEvent::Begin(begin_span) => {
+                    anyhow::bail!(
+                        "duplicate begin event for span id {}: {:?}",
+                        span_id,
+                        begin_span
+                    );
+                }
+                SpanEvent::End(_end_event) => {
+                    self.complete_spans.push(Span {
+                        scope_hash: 0,
+                        begin_ms: 0.0,
+                        end_ms: 0.0,
+                        alpha: 255,
+                    });
+                }
+            }
+        } else {
+            self.unmatched_events
+                .insert(span_id, SpanEvent::Begin(BeginSpan {}));
+        }
         Ok(())
     }
 
-    fn on_end_async_scope(&mut self, _span_id: u64, _scope: Arc<Object>, _ts: i64) -> Result<()> {
+    fn on_end_async_scope(&mut self, span_id: u64, _scope: Arc<Object>, _ts: i64) -> Result<()> {
+        if let Some(evt) = self.unmatched_events.remove(&span_id) {
+            match evt {
+                SpanEvent::End(end_span) => {
+                    anyhow::bail!(
+                        "duplicate end event for span id {}: {:?}",
+                        span_id,
+                        end_span
+                    );
+                }
+                SpanEvent::Begin(_begin_span) => {
+                    self.complete_spans.push(Span {
+                        scope_hash: 0,
+                        begin_ms: 0.0,
+                        end_ms: 0.0,
+                        alpha: 255,
+                    });
+                }
+            }
+        } else {
+            self.unmatched_events
+                .insert(span_id, SpanEvent::End(EndSpan {}));
+        }
         Ok(())
     }
 }
@@ -119,9 +174,16 @@ pub async fn compute_async_spans(
     block_ids: Vec<String>,
 ) -> Result<AsyncSpansReply> {
     for block_id in &block_ids {
-        let _payload =
-            fetch_block_payload(connection, blob_storage.clone(), block_id.clone()).await?;
-        warn!("{}", block_id);
+        let mut builder = AsyncSpanBuilder::new();
+        let stream = find_block_stream(connection, block_id).await?;
+        parse_thread_block(
+            connection,
+            blob_storage.clone(),
+            &stream,
+            block_id.clone(),
+            &mut builder,
+        )
+        .await?;
     }
     let tracks = vec![];
     let reply = AsyncSpansReply {
