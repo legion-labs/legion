@@ -92,6 +92,7 @@ async fn build_device() {
                 locale: Locale::new("en"),
             },
         )
+        .await
         .expect("successful compilation");
 
     assert_eq!(

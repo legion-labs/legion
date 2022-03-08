@@ -164,6 +164,7 @@ async fn main() -> Result<(), String> {
                         locale,
                     },
                 )
+                .await
                 .map_err(|e| format!("Compilation Failed: '{}'", e))?;
 
             if runtime_flag {

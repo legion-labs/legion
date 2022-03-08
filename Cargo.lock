@@ -4779,6 +4779,7 @@ dependencies = [
  "serde_bytes",
  "serde_json",
  "serde_with",
+ "sqlx",
  "tempfile",
  "text-resource",
  "thiserror",

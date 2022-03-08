@@ -54,5 +54,6 @@ async fn create() {
         &OutputIndex::output_index_file(&buildindex_dir),
         DataBuild::version(),
     )
+    .await
     .expect("failed to open build index file");
 }

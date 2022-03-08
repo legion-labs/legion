@@ -65,11 +65,15 @@ impl BuildManager {
         start_manifest.extend(self.runtime_manifest.clone());
 
         self.build.source_pull(project).await?;
-        match self.build.compile_with_manifest(
-            derived_id.clone(),
-            &self.compile_env,
-            Some(&self.intermediate_manifest),
-        ) {
+        match self
+            .build
+            .compile_with_manifest(
+                derived_id.clone(),
+                &self.compile_env,
+                Some(&self.intermediate_manifest),
+            )
+            .await
+        {
             Ok(output) => {
                 let rt_manifest = output.into_rt_manifest(|_rpid| true);
                 let changed_resources = start_manifest.get_delta(&rt_manifest);
