@@ -1,7 +1,6 @@
 use lgn_ecs::prelude::*;
 use lgn_transform::prelude::GlobalTransform;
 use physx::{
-    convex_mesh::ConvexMesh,
     cooking::{ConvexMeshCookingResult, PxConvexMeshDesc, PxCooking},
     foundation::DefaultAllocator,
     prelude::*,
@@ -11,6 +10,7 @@ use physx_sys::{PxConvexFlag, PxConvexMeshGeometryFlags, PxMeshScale};
 
 use crate::{mesh_scale::MeshScale, runtime, PxMaterial, PxScene, PxShape};
 
+#[derive(Component)]
 pub(crate) enum CollisionGeometry {
     Box(PxBoxGeometry),
     Capsule(PxCapsuleGeometry),
@@ -27,23 +27,12 @@ unsafe impl Send for CollisionGeometry {}
 #[allow(unsafe_code)]
 unsafe impl Sync for CollisionGeometry {}
 
-enum CollisionMesh {
-    ConvexMesh(Owner<ConvexMesh>),
-    None,
-}
-
-#[derive(Component)]
-pub(crate) struct CollisionComponent {
-    pub(crate) geometry: CollisionGeometry,
-    _mesh: CollisionMesh,
-}
-
 pub(crate) trait Convert {
     fn convert(
         &self,
         physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         cooking: &Res<'_, Owner<PxCooking>>,
-    ) -> CollisionComponent;
+    ) -> CollisionGeometry;
 }
 
 impl Convert for runtime::PhysicsRigidBox {
@@ -51,15 +40,12 @@ impl Convert for runtime::PhysicsRigidBox {
         &self,
         _physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         _cooking: &Res<'_, Owner<PxCooking>>,
-    ) -> CollisionComponent {
-        CollisionComponent {
-            geometry: CollisionGeometry::Box(PxBoxGeometry::new(
-                self.half_extents.x,
-                self.half_extents.y,
-                self.half_extents.z,
-            )),
-            _mesh: CollisionMesh::None,
-        }
+    ) -> CollisionGeometry {
+        CollisionGeometry::Box(PxBoxGeometry::new(
+            self.half_extents.x,
+            self.half_extents.y,
+            self.half_extents.z,
+        ))
     }
 }
 
@@ -68,14 +54,8 @@ impl Convert for runtime::PhysicsRigidCapsule {
         &self,
         _physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         _cooking: &Res<'_, Owner<PxCooking>>,
-    ) -> CollisionComponent {
-        CollisionComponent {
-            geometry: CollisionGeometry::Capsule(PxCapsuleGeometry::new(
-                self.radius,
-                self.half_height,
-            )),
-            _mesh: CollisionMesh::None,
-        }
+    ) -> CollisionGeometry {
+        CollisionGeometry::Capsule(PxCapsuleGeometry::new(self.radius, self.half_height))
     }
 }
 
@@ -85,7 +65,7 @@ impl Convert for runtime::PhysicsRigidConvexMesh {
         &self,
         physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         cooking: &Res<'_, Owner<PxCooking>>,
-    ) -> CollisionComponent {
+    ) -> CollisionGeometry {
         let vertices: Vec<PxVec3> = self.vertices.iter().map(|v| (*v).into()).collect();
         let mut mesh_desc = PxConvexMeshDesc::new();
         mesh_desc.obj.points.data = vertices.as_ptr().cast::<std::ffi::c_void>();
@@ -98,23 +78,22 @@ impl Convert for runtime::PhysicsRigidConvexMesh {
 
         let cooking_result = cooking.create_convex_mesh(physics.physics_mut(), &mesh_desc);
 
-        match cooking_result {
-            ConvexMeshCookingResult::Success(mut convex_mesh) => {
-                let mesh_scale: PxMeshScale = (&self.scale).into();
-                let flags = PxConvexMeshGeometryFlags { mBits: 0 };
-                let geometry = CollisionGeometry::ConvexMesh(PxConvexMeshGeometry::new(
-                    convex_mesh.as_mut(),
-                    &mesh_scale,
-                    flags,
-                ));
-                CollisionComponent {
-                    geometry,
-                    _mesh: CollisionMesh::ConvexMesh(convex_mesh),
-                }
-            }
-            _ => {
-                panic!("mesh cooking failed");
-            }
+        if let ConvexMeshCookingResult::Success(mut convex_mesh) = cooking_result {
+            let mesh_scale: PxMeshScale = (&self.scale).into();
+            let flags = PxConvexMeshGeometryFlags { mBits: 0 };
+            let geometry = CollisionGeometry::ConvexMesh(PxConvexMeshGeometry::new(
+                convex_mesh.as_mut(),
+                &mesh_scale,
+                flags,
+            ));
+
+            // prevent cooked mesh from being dropped immediately
+            #[allow(clippy::mem_forget)]
+            std::mem::forget(convex_mesh);
+
+            geometry
+        } else {
+            panic!("mesh cooking failed");
         }
     }
 }
@@ -124,11 +103,8 @@ impl Convert for runtime::PhysicsRigidPlane {
         &self,
         _physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         _cooking: &Res<'_, Owner<PxCooking>>,
-    ) -> CollisionComponent {
-        CollisionComponent {
-            geometry: CollisionGeometry::Plane(PxPlaneGeometry::new()),
-            _mesh: CollisionMesh::None,
-        }
+    ) -> CollisionGeometry {
+        CollisionGeometry::Plane(PxPlaneGeometry::new())
     }
 }
 
@@ -137,11 +113,8 @@ impl Convert for runtime::PhysicsRigidSphere {
         &self,
         _physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         _cooking: &Res<'_, Owner<PxCooking>>,
-    ) -> CollisionComponent {
-        CollisionComponent {
-            geometry: CollisionGeometry::Sphere(PxSphereGeometry::new(self.radius)),
-            _mesh: CollisionMesh::None,
-        }
+    ) -> CollisionGeometry {
+        CollisionGeometry::Sphere(PxSphereGeometry::new(self.radius))
     }
 }
 
