@@ -165,13 +165,13 @@
 
 <style>
   .canvas {
-    max-height: 90vh;
+    max-height: 75vh;
     overflow-y: visible;
     overflow-x: hidden;
   }
 
   .action-container {
-    padding-top: 4px;
+    padding-top: 8px;
   }
 
   .loader {
