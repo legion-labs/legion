@@ -1,8 +1,8 @@
 use lgn_ecs::prelude::*;
 use lgn_transform::prelude::GlobalTransform;
 use physx::{
-    cooking::PxCooking,
-    cooking::{ConvexMeshCookingResult, PxConvexMeshDesc},
+    //convex_mesh::ConvexMesh,
+    cooking::{ConvexMeshCookingResult, PxConvexMeshDesc, PxCooking},
     foundation::DefaultAllocator,
     prelude::*,
     traits::Class,
@@ -15,7 +15,7 @@ use crate::{mesh_scale::MeshScale, runtime, PxMaterial, PxScene, PxShape};
 pub(crate) enum CollisionGeometry {
     Box(PxBoxGeometry),
     Capsule(PxCapsuleGeometry),
-    ConvexMesh(PxConvexMeshGeometry),
+    ConvexMesh(/*Owner<ConvexMesh>,*/ PxConvexMeshGeometry),
     //HeightField(PxHeightFieldGeometry),
     Plane(PxPlaneGeometry),
     Sphere(PxSphereGeometry),
@@ -73,14 +73,16 @@ impl ConvertToGeometry for runtime::PhysicsRigidConvexMesh {
         mesh_desc.obj.points.count = vertices.len() as u32;
         mesh_desc.obj.points.stride = std::mem::size_of::<PxVec3>() as u32;
         mesh_desc.obj.flags.mBits = PxConvexFlag::eCOMPUTE_CONVEX as u16;
-        assert!(cooking.validate_convex_mesh(&mesh_desc));
+
+        // can't validate yet, since convex hull is not computed
+        //assert!(cooking.validate_convex_mesh(&mesh_desc));
 
         let cooking_result = cooking.create_convex_mesh(physics.physics_mut(), &mesh_desc);
 
         match cooking_result {
             ConvexMeshCookingResult::Success(mut convex_mesh) => {
                 let mesh_scale: PxMeshScale = (&self.scale).into();
-                let flags: PxConvexMeshGeometryFlags = ConvexMeshGeometryFlag::TightBounds.into();
+                let flags = PxConvexMeshGeometryFlags { mBits: 0 };
                 CollisionGeometry::ConvexMesh(PxConvexMeshGeometry::new(
                     &mut convex_mesh,
                     &mesh_scale,
