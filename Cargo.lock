@@ -3998,20 +3998,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "insta"
-version = "1.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4c0c443f6dceb3a1cb7607c87501aa91e4b9c976044f725c2a74ca2152c91a4"
-dependencies = [
- "console",
- "once_cell",
- "serde",
- "serde_json",
- "serde_yaml",
- "similar",
-]
-
-[[package]]
 name = "instant"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4779,6 +4765,7 @@ dependencies = [
  "serde_bytes",
  "serde_json",
  "serde_with",
+ "sqlx",
  "tempfile",
  "text-resource",
  "thiserror",
@@ -5769,12 +5756,6 @@ dependencies = [
  "pkg-config",
  "vcpkg",
 ]
-
-[[package]]
-name = "linked-hash-map"
-version = "0.5.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fb9b38af92608140b86b693604b9ffcc5824240a484d1ecd4795bacb2fe88f3"
 
 [[package]]
 name = "linkme"
@@ -8385,13 +8366,10 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "erased-serde",
- "insta",
  "inventory",
- "json",
  "lazy_static",
  "lgn-app",
  "lgn-data-codegen",
- "lgn-data-compiler",
  "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
@@ -8401,7 +8379,6 @@ dependencies = [
  "memoffset 0.6.5",
  "serde",
  "serde_json",
- "tempfile",
  "typetag",
 ]
 
@@ -8685,18 +8662,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_yaml"
-version = "0.8.23"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4a521f2940385c165a24ee286aa8599633d162077a54bdcae2a6fd5a7bfa7a0"
-dependencies = [
- "indexmap",
- "ryu",
- "serde",
- "yaml-rust",
-]
-
-[[package]]
 name = "serial_test"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8839,12 +8804,6 @@ dependencies = [
  "digest 0.9.0",
  "rand_core 0.5.1",
 ]
-
-[[package]]
-name = "similar"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e24979f63a11545f5f2c60141afe249d4f19f84581ea2138065e400941d83d3"
 
 [[package]]
 name = "simple_asn1"
@@ -11460,15 +11419,6 @@ name = "xxhash-rust"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "886f21441c6731b9e06a9fdacbc5e29319c17a4069c2a511d80349874864702d"
-
-[[package]]
-name = "yaml-rust"
-version = "0.4.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56c1936c4cc7a1c9ab21a1ebb602eb942ba868cbd44a99cb7cdc5892335e1c85"
-dependencies = [
- "linked-hash-map",
-]
 
 [[package]]
 name = "yasna"

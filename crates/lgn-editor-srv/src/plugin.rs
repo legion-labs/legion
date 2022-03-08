@@ -116,7 +116,7 @@ impl EditorPlugin {
                             let mut transaction_manager = transaction_manager.lock().await;
                             let offline_res_id = {
                                 let ctx = LockContext::new(&transaction_manager).await;
-                                ctx.build.resolve_offline_id(runtime_id)
+                                ctx.build.resolve_offline_id(runtime_id).await
                             };
                             if let Some(offline_res_id) = offline_res_id {
                                 let transaction =
@@ -149,7 +149,7 @@ impl EditorPlugin {
                                 let mut transaction_manager = transaction_manager.lock().await;
                                 let offline_res_id = {
                                     let ctx = LockContext::new(&transaction_manager).await;
-                                    ctx.build.resolve_offline_id(runtime_id)
+                                    ctx.build.resolve_offline_id(runtime_id).await
                                 };
 
                                 if let Some(offline_res_id) = offline_res_id {

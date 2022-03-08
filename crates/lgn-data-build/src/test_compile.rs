@@ -154,6 +154,7 @@ async fn compile_change_no_deps() {
 
         let compile_output = build
             .compile_path(target.clone(), &test_env(), None)
+            .await
             .unwrap();
 
         assert_eq!(compile_output.resources.len(), 1);
@@ -204,6 +205,7 @@ async fn compile_change_no_deps() {
             .expect("failed to pull from project");
         let compile_output = build
             .compile_path(target.clone(), &test_env(), None)
+            .await
             .unwrap();
 
         assert_eq!(compile_output.resources.len(), 1);
@@ -337,6 +339,7 @@ async fn intermediate_resource() {
 
     let compile_output = build
         .compile_path(integer_path.clone(), &test_env(), None)
+        .await
         .unwrap();
 
     assert_eq!(compile_output.resources.len(), 2); // intermediate and final result
@@ -423,6 +426,7 @@ async fn unnamed_cache_use() {
             statistics,
         } = build
             .compile_path(target.clone(), &test_env(), None)
+            .await
             .expect("successful compilation");
 
         assert_eq!(resources.len(), NUM_OUTPUTS);
@@ -438,6 +442,7 @@ async fn unnamed_cache_use() {
             statistics,
         } = build
             .compile_path(target.clone(), &test_env(), None)
+            .await
             .expect("successful compilation");
 
         assert_eq!(resources.len(), NUM_OUTPUTS);
@@ -456,6 +461,7 @@ async fn unnamed_cache_use() {
             statistics,
         } = build
             .compile_path(target.clone(), &test_env(), None)
+            .await
             .expect("successful compilation");
 
         assert_eq!(resources.len(), NUM_OUTPUTS);
@@ -475,6 +481,7 @@ async fn unnamed_cache_use() {
             statistics,
         } = build
             .compile_path(target, &test_env(), None)
+            .await
             .expect("successful compilation");
 
         assert_eq!(resources.len(), 5);
@@ -541,6 +548,7 @@ async fn named_path_cache_use() {
     // compile "integer path 0"
     let compile_output = build
         .compile_path(integer_path_0.clone(), &test_env(), None)
+        .await
         .unwrap();
 
     assert_eq!(compile_output.resources.len(), magic_list.len() + 1);
@@ -588,6 +596,7 @@ async fn named_path_cache_use() {
     // compile "integer path 1"
     let compile_output = build
         .compile_path(integer_path_1.clone(), &test_env(), None)
+        .await
         .unwrap();
 
     assert_eq!(compile_output.resources.len(), magic_list.len() + 1);
@@ -607,6 +616,7 @@ async fn named_path_cache_use() {
     // recompile "integer path 0" - all from cache
     let compile_output = build
         .compile_path(integer_path_0.clone(), &test_env(), None)
+        .await
         .unwrap();
 
     assert_eq!(compile_output.resources.len(), magic_list.len() + 1);
@@ -641,6 +651,7 @@ async fn named_path_cache_use() {
 
     let compile_output = build
         .compile_path(integer_path_0.clone(), &test_env(), None)
+        .await
         .unwrap();
 
     // ..recompiled: multitext -> text_0, text_1
@@ -686,6 +697,7 @@ async fn named_path_cache_use() {
     // compile from "text_0"
     let compile_output = build
         .compile_path(integer_path_0.clone(), &test_env(), None)
+        .await
         .unwrap();
 
     // ..recompiled: multitext -> text_0, text_1, text_0 -> integer
@@ -707,6 +719,7 @@ async fn named_path_cache_use() {
     // compile from "text_1"
     let compile_output = build
         .compile_path(integer_path_1, &test_env(), None)
+        .await
         .unwrap();
 
     // ..recompiled: text_1 -> integer
@@ -794,6 +807,7 @@ async fn link() {
     let target = ResourcePathId::from(parent_id).push(refs_asset::RefsAsset::TYPE);
     let compile_output = build
         .compile_path(target, &test_env(), None)
+        .await
         .expect("successful compilation");
 
     assert_eq!(compile_output.resources.len(), 2);
@@ -801,6 +815,7 @@ async fn link() {
 
     let link_output = build
         .link(&compile_output.resources, &compile_output.references)
+        .await
         .expect("successful linking");
 
     assert_eq!(compile_output.resources.len(), link_output.len());
@@ -884,7 +899,7 @@ async fn verify_manifest() {
     build.source_pull(&project).await.unwrap();
 
     let compile_path = ResourcePathId::from(parent_resource).push(refs_asset::RefsAsset::TYPE);
-    let manifest = build.compile(compile_path, &test_env()).unwrap();
+    let manifest = build.compile(compile_path, &test_env()).await.unwrap();
 
     // both test(child_id) and test(parent_id) are separate resources.
     assert_eq!(manifest.compiled_resources.len(), 2);

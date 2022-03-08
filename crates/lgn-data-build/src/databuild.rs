@@ -14,12 +14,14 @@ use lgn_data_offline::Transform;
 use lgn_data_offline::{resource::Project, ResourcePathId};
 use lgn_data_runtime::manifest::Manifest;
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions, ResourceTypeAndId};
-use lgn_tracing::{info, span_fn, span_scope};
+use lgn_tracing::{info, span_scope};
 use lgn_utils::{DefaultHash, DefaultHasher};
 use petgraph::{algo, Graph};
 
 use crate::asset_file_writer::write_assetfile;
-use crate::output_index::{CompiledResourceInfo, CompiledResourceReference, OutputIndex};
+use crate::output_index::{
+    AssetHash, CompiledResourceInfo, CompiledResourceReference, OutputIndex,
+};
 use crate::source_index::SourceIndex;
 use crate::{DataBuildOptions, Error};
 
@@ -47,12 +49,12 @@ fn compute_context_hash(
     transform: Transform,
     compiler_hash: CompilerHash,
     databuild_version: &'static str,
-) -> u64 {
+) -> AssetHash {
     let mut hasher = DefaultHasher::new();
     transform.hash(&mut hasher);
     compiler_hash.hash(&mut hasher);
     databuild_version.hash(&mut hasher);
-    hasher.finish()
+    AssetHash::from(hasher.finish())
 }
 
 /// Data build interface.
@@ -92,7 +94,7 @@ fn compute_context_hash(
 /// let manifest = build.compile(
 ///                         compile_path,
 ///                         &env,
-///                      ).expect("compilation output");
+///                      ).await.expect("compilation output");
 /// # })
 /// ```
 #[derive(Debug)]
@@ -129,10 +131,11 @@ impl DataBuild {
 
         let source_index = SourceIndex::new(Box::new(content_store.clone()));
 
-        let output_index = OutputIndex::create_new(
-            &OutputIndex::output_index_file(&config.buildindex_dir),
+        let output_index = OutputIndex::create_new(OutputIndex::database_uri(
+            &config.buildindex_dir,
             Self::version(),
-        )?;
+        ))
+        .await?;
 
         let compilers = config.compiler_options.create();
         let registry = config.registry.map_or_else(
@@ -161,10 +164,11 @@ impl DataBuild {
             .ok_or(Error::InvalidContentStore)?;
 
         let source_index = SourceIndex::new(Box::new(content_store.clone()));
-        let output_index = OutputIndex::open(
-            &OutputIndex::output_index_file(&config.buildindex_dir),
+        let output_index = OutputIndex::open(OutputIndex::database_uri(
+            &config.buildindex_dir,
             Self::version(),
-        )?;
+        ))
+        .await?;
 
         let compilers = config.compiler_options.create();
         let registry = config.registry.map_or_else(
@@ -197,15 +201,20 @@ impl DataBuild {
 
         let source_index = SourceIndex::new(Box::new(content_store.clone()));
 
-        let output_index = match OutputIndex::open(
-            &OutputIndex::output_index_file(&config.buildindex_dir),
+        let output_index = match OutputIndex::open(OutputIndex::database_uri(
+            &config.buildindex_dir,
             Self::version(),
-        ) {
+        ))
+        .await
+        {
             Ok(output_index) => Ok(output_index),
-            Err(Error::NotFound) => OutputIndex::create_new(
-                &OutputIndex::output_index_file(&config.buildindex_dir),
-                Self::version(),
-            ),
+            Err(Error::NotFound) => {
+                OutputIndex::create_new(OutputIndex::database_uri(
+                    &config.buildindex_dir,
+                    Self::version(),
+                ))
+                .await
+            }
             Err(e) => Err(e),
         }?;
 
@@ -234,13 +243,16 @@ impl DataBuild {
     /// Returns a source of a resource id.
     ///
     /// It will return None if the build never recorded a source for a given id.
-    pub fn lookup_pathid(&self, id: ResourceTypeAndId) -> Option<ResourcePathId> {
+    pub async fn lookup_pathid(
+        &self,
+        id: ResourceTypeAndId,
+    ) -> Result<Option<ResourcePathId>, Error> {
         if let Some(source_index) = self.source_index.current() {
             if let Some(id) = source_index.lookup_pathid(id) {
-                return Some(id);
+                return Ok(Some(id));
             }
         }
-        self.output_index.lookup_pathid(id)
+        self.output_index.lookup_pathid(id).await
     }
 
     /// Updates the build database with information about resources from
@@ -264,22 +276,22 @@ impl DataBuild {
     ///
     /// Provided `target`, `platform` and `locale` define the compilation
     /// context that can yield different compilation results.
-    pub fn compile(
+    pub async fn compile(
         &mut self,
         compile_path: ResourcePathId,
         env: &CompilationEnv,
     ) -> Result<CompiledResources, Error> {
-        self.compile_with_manifest(compile_path, env, None)
+        self.compile_with_manifest(compile_path, env, None).await
     }
 
     /// Same as `compile` but it updates the `manifest` provided as an argument.
-    pub fn compile_with_manifest(
+    pub async fn compile_with_manifest(
         &mut self,
         compile_path: ResourcePathId,
         env: &CompilationEnv,
         intermediate_output: Option<&Manifest>,
     ) -> Result<CompiledResources, Error> {
-        self.output_index.record_pathid(&compile_path);
+        self.output_index.record_pathid(&compile_path).await?;
         let mut result = CompiledResources::default();
 
         let start = std::time::Instant::now();
@@ -289,9 +301,11 @@ impl DataBuild {
             resources,
             references,
             statistics: _stats,
-        } = self.compile_path(compile_path, env, intermediate_output)?;
+        } = self
+            .compile_path(compile_path, env, intermediate_output)
+            .await?;
 
-        let assets = self.link(&resources, &references)?;
+        let assets = self.link(&resources, &references).await?;
 
         for asset in assets {
             if let Some(existing) = result
@@ -313,14 +327,13 @@ impl DataBuild {
     /// or more compilation results.
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
-    #[span_fn]
-    fn compile_node(
+    async fn compile_node(
         output_index: &mut OutputIndex,
         cas_addr: ContentStoreAddr,
         project_dir: &Path,
         compile_node: &ResourcePathId,
-        context_hash: u64,
-        source_hash: u64,
+        context_hash: AssetHash,
+        source_hash: AssetHash,
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         env: &CompilationEnv,
@@ -340,8 +353,9 @@ impl DataBuild {
             _,
         ) = {
             let now = SystemTime::now();
-            if let Some((cached_infos, cached_references)) =
-                output_index.find_compiled(compile_node, context_hash, source_hash)
+            if let Some((cached_infos, cached_references)) = output_index
+                .find_compiled(compile_node, context_hash, source_hash)
+                .await
             {
                 let resource_count = cached_infos.len();
                 (
@@ -376,21 +390,23 @@ impl DataBuild {
                     0
                 );
 
-                output_index.insert_compiled(
-                    compile_node,
-                    context_hash,
-                    source_hash,
-                    &compiled_resources,
-                    &resource_references,
-                );
+                output_index
+                    .insert_compiled(
+                        compile_node,
+                        context_hash,
+                        source_hash,
+                        &compiled_resources,
+                        &resource_references,
+                    )
+                    .await?;
                 let resource_count = compiled_resources.len();
                 (
                     compiled_resources
                         .iter()
                         .map(|resource| CompiledResourceInfo {
-                            context_hash: context_hash.into(),
+                            context_hash,
                             compile_path: compile_node.clone(),
-                            source_hash: source_hash.into(),
+                            source_hash,
                             compiled_path: resource.path.clone(),
                             compiled_checksum: resource.checksum,
                             compiled_size: resource.size,
@@ -399,9 +415,9 @@ impl DataBuild {
                     resource_references
                         .iter()
                         .map(|reference| CompiledResourceReference {
-                            context_hash: context_hash.into(),
+                            context_hash,
                             compile_path: compile_node.clone(),
-                            source_hash: source_hash.into(),
+                            source_hash,
                             compiled_path: reference.0.clone(),
                             compiled_reference: reference.1.clone(),
                         })
@@ -458,8 +474,7 @@ impl DataBuild {
     /// [`DataBuildOptions`] used to create this `DataBuild`.
     // TODO: The list might contain many versions of the same [`ResourceId`] compiled for many
     // contexts (platform, target, locale, etc).
-    #[span_fn]
-    fn compile_path(
+    async fn compile_path(
         &mut self,
         compile_path: ResourcePathId,
         env: &CompilationEnv,
@@ -521,7 +536,7 @@ impl DataBuild {
         // in the future this should be improved.
         //
         let mut accumulated_dependencies = vec![];
-        let mut node_hash = HashMap::<_, (u64, u64)>::new();
+        let mut node_hash = HashMap::<_, (AssetHash, AssetHash)>::new();
 
         let mut compiled_at_node = HashMap::<ResourcePathId, _>::new();
 
@@ -605,6 +620,7 @@ impl DataBuild {
                                 *dep_context_hash,
                                 *dep_source_hash,
                             )
+                            .await
                             .unwrap()
                             .0;
                         // can we assume there is a result of a requested name?
@@ -618,7 +634,7 @@ impl DataBuild {
 
                         // this is how we truncate the 128 bit long checksum
                         // and convert it to a 64 bit source_hash.
-                        source.compiled_checksum.default_hash()
+                        AssetHash::from(source.compiled_checksum.default_hash())
                     }
                 };
 
@@ -639,7 +655,8 @@ impl DataBuild {
                     env,
                     compiler,
                     self.compilers.registry(),
-                )?;
+                )
+                .await?;
 
                 info!(
                     "Compiling {} Ended ({}ms)",
@@ -710,8 +727,7 @@ impl DataBuild {
     /// include reference (load-time dependency) information
     /// based on provided compilation information.
     /// Currently each resource is linked into a separate *asset file*.
-    #[span_fn]
-    fn link(
+    async fn link(
         &mut self,
         resources: &[CompiledResourceInfo],
         references: &[CompiledResourceReference],
@@ -719,11 +735,15 @@ impl DataBuild {
         let mut resource_files = Vec::with_capacity(resources.len());
         for resource in resources {
             info!("Linking {:?} ...", resource);
-            let (checksum, size) = if let Some((checksum, size)) = self.output_index.find_linked(
-                resource.compiled_path.clone(),
-                resource.context_hash.clone(),
-                resource.source_hash.clone(),
-            ) {
+            let (checksum, size) = if let Some((checksum, size)) = self
+                .output_index
+                .find_linked(
+                    resource.compiled_path.clone(),
+                    resource.context_hash,
+                    resource.source_hash,
+                )
+                .await?
+            {
                 (checksum, size)
             } else {
                 //
@@ -753,13 +773,15 @@ impl DataBuild {
                         .store(&output)
                         .ok_or(Error::InvalidContentStore)?
                 };
-                self.output_index.insert_linked(
-                    resource.compiled_path.clone(),
-                    resource.context_hash.clone(),
-                    resource.source_hash.clone(),
-                    checksum,
-                    output.len(),
-                );
+                self.output_index
+                    .insert_linked(
+                        resource.compiled_path.clone(),
+                        resource.context_hash,
+                        resource.source_hash,
+                        checksum,
+                        output.len(),
+                    )
+                    .await?;
                 (checksum, output.len())
             };
 
@@ -791,13 +813,6 @@ impl DataBuild {
         Ok(env::current_dir()?
             .join(build_name)
             .with_extension("manifest"))
-    }
-}
-
-// todo(kstasik): file IO on destructor - is it ok?
-impl Drop for DataBuild {
-    fn drop(&mut self) {
-        self.output_index.flush().unwrap();
     }
 }
 

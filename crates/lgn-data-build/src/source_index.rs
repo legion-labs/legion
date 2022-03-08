@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use serde_with::DisplayFromStr;
 
-use crate::Error;
+use crate::{output_index::AssetHash, Error};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ResourceInfo {
@@ -83,7 +83,7 @@ impl SourceContent {
     /// * `id` resource's content.
     /// * content of all `id`'s dependencies.
     /// todo: at one point dependency filtering here will be useful.
-    pub(crate) fn compute_source_hash(&self, id: ResourcePathId) -> u64 {
+    pub(crate) fn compute_source_hash(&self, id: ResourcePathId) -> AssetHash {
         let sorted_unique_resource_hashes: Vec<Checksum> = {
             let mut unique_resources = HashMap::new();
             let mut queue: VecDeque<_> = VecDeque::new();
@@ -122,7 +122,7 @@ impl SourceContent {
         for h in sorted_unique_resource_hashes {
             h.hash(&mut hasher);
         }
-        hasher.finish()
+        AssetHash::from(hasher.finish())
     }
 
     pub(crate) fn update_resource(
