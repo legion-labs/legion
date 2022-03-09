@@ -1,23 +1,28 @@
 [
   {
     "resource_id": "(1d9ddd99aad89045,0b259a19-1b55-553e-bcf5-1b2974c44ac6)",
-    "checksum": "9b294a04d26f8a5bd0ae61f3a5e7500ce5e8a034a8b5905fba39ad540a3dbe6e",
-    "size": 229
+    "checksum": "69a34e938f8eefd775c6f5c1d5f5a790b01330a1b834b773ab5cd9471e79b60b",
+    "size": 277
   },
   {
     "resource_id": "(1d9ddd99aad89045,1fa058cb-5877-5ffe-dcb7-1f364a804a8f)",
-    "checksum": "c09f741e4d39db768d6627bd7ea0f632a3f5256ca91be6d855b048a533a071ad",
-    "size": 295
+    "checksum": "e871b5f647a7b608eb40554480aebf5c4a59da30cf1fc9bc04f12d9976b3e3c0",
+    "size": 343
+  },
+  {
+    "resource_id": "(1d9ddd99aad89045,28552dae-e951-5564-2d51-9369e947e022)",
+    "checksum": "91b58df05c0763ee2fd6602607b189bba2ccf8e7d1f198a189ddb0a938af6956",
+    "size": 272
   },
   {
     "resource_id": "(1d9ddd99aad89045,3e01d556-6671-5f0f-3f38-c8693587fc66)",
-    "checksum": "2ec35c4cbe0bac5ff1109027a0da541527c58fa068e69714bc0fbe1eb139d781",
-    "size": 229
+    "checksum": "35513b71e5aacb0ba87d2f6c236a593e5b0e035af48d92cf7143e2ebedccc421",
+    "size": 277
   },
   {
     "resource_id": "(1d9ddd99aad89045,4c7bd015-fe21-5bfc-1152-3d4a657418b4)",
-    "checksum": "2b9f17cb0cfd9bbcd24a4468a589828cf1df7720cde8f0898b4d9e386a8ddd56",
-    "size": 229
+    "checksum": "faf86bd853fc7c8d880998b19bab956b05b8d341c9012eb8f8cd561e9ef3633a",
+    "size": 277
   },
   {
     "resource_id": "(1d9ddd99aad89045,72169cc9-a270-5620-f8ca-41be341f4286)",
@@ -26,7 +31,17 @@
   },
   {
     "resource_id": "(1d9ddd99aad89045,7a9abbad-e09d-577e-74bd-b69a3ac8b00e)",
-    "checksum": "6adc830bd36265db49ae2d533226533e0e1a96946a90f58533f6beaf99628d28",
-    "size": 229
+    "checksum": "e7b405c35321faf1c6061358470497d31b4ed9722d17c54b08a6957c45ab0153",
+    "size": 277
+  },
+  {
+    "resource_id": "(5c4b1b522bf5dcb0,80e0428e-56c9-5533-0f8c-877b34ff3742)",
+    "checksum": "01929104331d57085c4bac9b9a92918483ec2416fd5feb83e3dd556cc0f7e029",
+    "size": 1895
+  },
+  {
+    "resource_id": "(5c4b1b522bf5dcb0,f829b095-f15c-51ff-9744-489f15d808ce)",
+    "checksum": "962f2568b0c3c54ac05c9b9bfe1d811c81cadfdd7ebe79bdb78e582fe3402d0f",
+    "size": 1218911
   }
 ]

@@ -1,0 +1,40 @@
+{
+  "components": [
+    {
+      "Transform": {
+        "position": [
+          1.2000000476837158,
+          3.299999952316284,
+          0.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "Visual": {
+        "color": 542113791,
+        "gi_contribution": 0,
+        "renderable_geometry": "(44e4b6023fb7a8d3,53db2f32-ce66-4e01-b06f-960aaa7712e4)|5c4b1b522bf5dcb0",
+        "shadow_caster_local": false,
+        "shadow_caster_sun": false,
+        "shadow_receiver": false
+      }
+    },
+    {
+      "PhysicsRigidSphere": {
+        "actor_type": "Dynamic",
+        "radius": 0.25
+      }
+    }
+  ]
+}

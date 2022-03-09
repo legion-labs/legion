@@ -22,6 +22,7 @@ use lgn_data_runtime::{manifest::Manifest, AssetRegistryOptions};
 use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 use lgn_data_transaction::BuildManager;
 use lgn_math::prelude::*;
+use lgn_renderer::components::Mesh;
 use tokio::sync::Mutex;
 
 #[tokio::main]
@@ -47,8 +48,9 @@ async fn main() {
         .expect("failed to create a project");
 
     let mut resource_registry = ResourceRegistryOptions::new();
-    sample_data::offline::register_resource_types(&mut resource_registry);
+    lgn_graphics_data::offline::register_resource_types(&mut resource_registry);
     generic_data::offline::register_resource_types(&mut resource_registry);
+    sample_data::offline::register_resource_types(&mut resource_registry);
     let content_store = HddContentStore::open(ContentStoreAddr::from(build_dir.clone())).unwrap();
     let resource_registry = resource_registry.create_async_registry();
 
@@ -57,12 +59,14 @@ async fn main() {
     let mut asset_registry = AssetRegistryOptions::new()
         .add_device_dir(project.resource_dir())
         .add_device_cas(Box::new(content_store), Manifest::default());
-    sample_data::offline::add_loaders(&mut asset_registry);
+    lgn_graphics_data::offline::add_loaders(&mut asset_registry);
     generic_data::offline::add_loaders(&mut asset_registry);
+    sample_data::offline::add_loaders(&mut asset_registry);
     let asset_registry = asset_registry.create();
 
     let compilers = CompilerRegistryOptions::default()
-        .add_compiler(&lgn_compiler_runtime_entity::COMPILER_INFO);
+        .add_compiler(&lgn_compiler_runtime_entity::COMPILER_INFO)
+        .add_compiler(&lgn_compiler_runtime_model::COMPILER_INFO);
 
     let data_build = DataBuildOptions::new(&build_dir, compilers)
         .content_store(&ContentStoreAddr::from(build_dir.as_path()))
@@ -117,10 +121,71 @@ fn clean_folders(project_dir: impl AsRef<Path>) {
     clean("project.index");
 }
 
+async fn create_offline_model(
+    project: &mut Project,
+    resource_registry: &Arc<Mutex<ResourceRegistry>>,
+    resource_id: &str,
+    mesh: Mesh,
+    resource_path: &str,
+) -> ResourcePathId {
+    let mut resources = resource_registry.lock().await;
+    let id = ResourceTypeAndId {
+        kind: lgn_graphics_data::offline::Model::TYPE,
+        id: ResourceId::from_str(resource_id).unwrap(),
+    };
+    let handle = resources.new_resource(id.kind).unwrap();
+
+    let model = handle
+        .get_mut::<lgn_graphics_data::offline::Model>(&mut resources)
+        .unwrap();
+    let mesh = lgn_graphics_data::offline::Mesh {
+        positions: mesh.positions.unwrap(),
+        normals: mesh.normals.unwrap(),
+        tangents: mesh.tangents.unwrap(),
+        tex_coords: mesh.tex_coords.unwrap(),
+        indices: mesh.indices.unwrap(),
+        colors: mesh.colors.unwrap(),
+        material: None,
+    };
+    model.meshes.push(mesh);
+
+    project
+        .add_resource_with_id(
+            resource_path.into(),
+            lgn_graphics_data::offline::Model::TYPENAME,
+            id.kind,
+            id.id,
+            handle,
+            &mut resources,
+        )
+        .await
+        .unwrap();
+    let path: ResourcePathId = id.into();
+    path.push(lgn_graphics_data::runtime::Model::TYPE)
+}
+
 async fn create_offline_data(
     project: &mut Project,
     resource_registry: &Arc<Mutex<ResourceRegistry>>,
 ) -> Vec<ResourceTypeAndId> {
+    let cube_model_id = create_offline_model(
+        project,
+        resource_registry,
+        "c26b19b2-e80a-4db5-a53c-ba24492d8015",
+        Mesh::new_cube(0.5),
+        "/scene/models/cube.mod",
+    )
+    .await;
+
+    let sphere_model_id = create_offline_model(
+        project,
+        resource_registry,
+        "53db2f32-ce66-4e01-b06f-960aaa7712e4",
+        Mesh::new_sphere(0.25, 64, 64),
+        "/scene/models/sphere.mod",
+    )
+    .await;
+
     let ground_id = {
         let mut resources = resource_registry.lock().await;
         let id = ResourceTypeAndId {
@@ -142,6 +207,7 @@ async fn create_offline_data(
         entity
             .components
             .push(Box::new(sample_data::offline::Visual {
+                renderable_geometry: Some(cube_model_id.clone()),
                 color: (0x10, 0x10, 0x55).into(),
                 ..sample_data::offline::Visual::default()
             }));
@@ -188,6 +254,7 @@ async fn create_offline_data(
         entity
             .components
             .push(Box::new(sample_data::offline::Visual {
+                renderable_geometry: Some(cube_model_id.clone()),
                 color: (0xFF, 0xFF, 0x20).into(),
                 ..sample_data::offline::Visual::default()
             }));
@@ -234,6 +301,7 @@ async fn create_offline_data(
         entity
             .components
             .push(Box::new(sample_data::offline::Visual {
+                renderable_geometry: Some(cube_model_id.clone()),
                 color: (0xFF, 0x20, 0xFF).into(),
                 ..sample_data::offline::Visual::default()
             }));
@@ -280,6 +348,7 @@ async fn create_offline_data(
         entity
             .components
             .push(Box::new(sample_data::offline::Visual {
+                renderable_geometry: Some(cube_model_id.clone()),
                 color: (0x20, 0xFF, 0xFF).into(),
                 ..sample_data::offline::Visual::default()
             }));
@@ -293,6 +362,53 @@ async fn create_offline_data(
         project
             .add_resource_with_id(
                 "/scene/box-c.ent".into(),
+                sample_data::offline::Entity::TYPENAME,
+                id.kind,
+                id.id,
+                handle,
+                &mut resources,
+            )
+            .await
+            .unwrap();
+        let path: ResourcePathId = id.into();
+        path.push(sample_data::runtime::Entity::TYPE)
+    };
+
+    let ball_a_id = {
+        let mut resources = resource_registry.lock().await;
+        let id = ResourceTypeAndId {
+            kind: sample_data::offline::Entity::TYPE,
+            id: ResourceId::from_str("4dd86281-c3d0-4040-aa59-b3c6cc84eb83").unwrap(),
+        };
+        let handle = resources.new_resource(id.kind).unwrap();
+
+        let entity = handle
+            .get_mut::<sample_data::offline::Entity>(&mut resources)
+            .unwrap();
+        entity
+            .components
+            .push(Box::new(sample_data::offline::Transform {
+                position: (1.2_f32, 3.3_f32, 0.5_f32).into(),
+                rotation: Quat::IDENTITY,
+                scale: Vec3::ONE,
+            }));
+        entity
+            .components
+            .push(Box::new(sample_data::offline::Visual {
+                renderable_geometry: Some(sphere_model_id.clone()),
+                color: (0x20, 0x4F, 0xFF).into(),
+                ..sample_data::offline::Visual::default()
+            }));
+        entity
+            .components
+            .push(Box::new(lgn_physics::offline::PhysicsRigidSphere {
+                actor_type: lgn_physics::RigidActorType::Dynamic,
+                radius: 0.25_f32,
+            }));
+
+        project
+            .add_resource_with_id(
+                "/scene/ball-a.ent".into(),
                 sample_data::offline::Entity::TYPENAME,
                 id.kind,
                 id.id,
@@ -370,6 +486,7 @@ async fn create_offline_data(
         entity.children.push(box_a_id);
         entity.children.push(box_b_id);
         entity.children.push(box_c_id);
+        entity.children.push(ball_a_id);
         entity.children.push(pyramid_id);
         entity.children.push(ground_id);
 
