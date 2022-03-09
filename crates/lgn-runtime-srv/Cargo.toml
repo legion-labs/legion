@@ -49,3 +49,12 @@ standalone = []
 
 [target.'cfg(target_os = "linux")'.dependencies]
 lgn-winit = { path = "../lgn-winit", features = ["x11"] }
+
+[[package.metadata.monorepo.publish]]
+type = "zip"
+extra-files = [
+    { source = "../../legion.toml", destination = "" },
+    { source = "../../tests/sample-data/runtime/*", destination = "tests/sample-data/runtime" },
+    { source = "../../examples/physics/data/runtime/*", destination = "examples/physics/runtime" },
+    { source = "../../examples/pong/data/runtime/*", destination = "examples/pong/runtime" },
+]
