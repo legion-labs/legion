@@ -55,9 +55,6 @@ type = "zip"
 extra-files = [
     { source = "../../legion.toml", destination = "" },
     { source = "../../tests/sample-data/runtime/*", destination = "tests/sample-data/runtime" },
-    { source = "../../tests/sample-data/temp/*", destination = "tests/sample-data/temp" },
     { source = "../../examples/physics/data/runtime/*", destination = "examples/physics/runtime" },
-    { source = "../../examples/physics/data/temp/*", destination = "examples/physics/temp" },
     { source = "../../examples/pong/data/runtime/*", destination = "examples/pong/runtime" },
-    { source = "../../examples/pong/data/temp/*", destination = "examples/pong/temp" },
 ]
