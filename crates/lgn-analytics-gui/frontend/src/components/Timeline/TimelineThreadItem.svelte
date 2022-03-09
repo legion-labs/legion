@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatExecutionTime } from "@/lib/format";
   import { Thread } from "@/lib/Timeline/Thread";
   import { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { spanPixelHeight } from "@/lib/Timeline/TimelineValues";
@@ -10,7 +11,7 @@
   export let width: number;
   let collapsed = false;
   const wheelDispatch = createEventDispatcher<{ zoom: WheelEvent }>();
-  $: threadName = thread.streamInfo.streamId;
+  $: threadName = thread.streamInfo.properties["thread-name"];
 </script>
 
 {#if thread.block_ids.length > 0}
@@ -25,13 +26,15 @@
     <div
       class="thread px-1"
       on:click={() => (collapsed = !collapsed)}
-      title={threadName}
+      title={`${threadName}\n${thread.block_ids.length} block(s)`}
     >
       <span class="text">
-        <i
-          class={`icon bi bi-arrow-${collapsed ? "up" : "down"}-circle`}
-        />{threadName}</span
+        <i class={`icon bi bi-arrow-${collapsed ? "up" : "down"}-circle`} />
+        <span class="thread-name">{threadName}</span></span
       >
+      <span class="text text-xs text-slate-300"
+        >{formatExecutionTime(thread.maxMs - thread.minMs)}
+      </span>
     </div>
     <TimelineThread
       {thread}
@@ -48,22 +51,24 @@
     overflow-y: hidden;
   }
 
-  .text {
-    float: left;
+  .thread-name {
+    @apply capitalize;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    width: 100%;
+  }
+
+  .text {
+    @apply flex;
   }
 
   .icon {
     @apply pr-1;
-    float: left;
   }
 
   .thread {
     @apply text-sm text-slate-400;
-    max-width: 150px;
+    width: 170px;
     overflow: hidden;
     cursor: pointer;
     background-color: #f0f0f0;

@@ -104,10 +104,9 @@
     const beginThreadPixels = (beginThread - begin) * msToPixelsFactor;
     const endThreadPixels = (endThread - begin) * msToPixelsFactor;
 
-    // ctx.fillStyle = "#FCFCFC";
     ctx.fillStyle = "#F0F0F0";
     ctx.fillRect(0, 0, canvasWidth, height);
-    ctx.fillStyle = "#F0F0F0";
+    ctx.fillStyle = "#e8e8e8";
     ctx.fillRect(
       beginThreadPixels,
       0,
@@ -247,7 +246,6 @@
 </script>
 
 <canvas
-  title={`${thread.streamInfo.streamId}/${thread.minMs}/${thread.maxMs}/${thread.block_ids.length}`}
   {width}
   {height}
   style={`display:${displayable ? "block" : "none"}`}

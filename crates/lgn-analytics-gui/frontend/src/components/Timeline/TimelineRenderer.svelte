@@ -29,7 +29,7 @@
   let div: HTMLElement;
 
   $: if (windowInnerWidth) {
-    canvasWidth = windowInnerWidth - 220;
+    canvasWidth = windowInnerWidth - 230;
   }
 
   $: style = `display:${$stateStore?.ready ? "block" : "none"}`;
@@ -132,7 +132,7 @@
 {/if}
 
 {#if stateManager?.process && $stateStore.ready}
-  <div class="flex flex-row justify-between pb-2 pr-6">
+  <div class="flex flex-row justify-between pb-2">
     <TimelineDetails process={stateManager?.process} />
     <TimelineDebug {canvasWidth} store={stateStore} />
   </div>
@@ -180,7 +180,7 @@
   }
 
   .action-container {
-    padding-top: 8px;
+    padding-top: 4px;
   }
 
   .loader {
