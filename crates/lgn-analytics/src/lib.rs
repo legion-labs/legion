@@ -3,6 +3,8 @@
 // crate-specific lint exceptions:
 #![allow(clippy::missing_errors_doc)]
 
+pub mod time;
+
 use std::path::Path;
 use std::sync::Arc;
 
@@ -75,6 +77,23 @@ pub async fn find_process(
          WHERE process_id = ?;",
     )
     .bind(process_id)
+    .fetch_one(connection)
+    .await?;
+    Ok(process_from_row(&row))
+}
+
+pub async fn find_block_process(
+    connection: &mut sqlx::AnyConnection,
+    block_id: &str,
+) -> Result<ProcessInfo> {
+    let row = sqlx::query(
+        "SELECT processes.process_id AS process_id, exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time, start_ticks, parent_process_id
+         FROM processes, streams, blocks
+         WHERE blocks.block_id = ?
+         AND blocks.stream_id = streams.stream_id
+         AND processes.process_id = streams.process_id;"
+    )
+    .bind(block_id)
     .fetch_one(connection)
     .await?;
     Ok(process_from_row(&row))
@@ -380,6 +399,43 @@ pub async fn find_stream(
         serde_json::from_str(&properties_str).unwrap();
     Ok(StreamInfo {
         stream_id: String::from(stream_id),
+        process_id: row.get("process_id"),
+        dependencies_metadata: Some(dependencies_metadata),
+        objects_metadata: Some(objects_metadata),
+        tags: tags_str.split(' ').map(ToOwned::to_owned).collect(),
+        properties,
+    })
+}
+
+pub async fn find_block_stream(
+    connection: &mut sqlx::AnyConnection,
+    block_id: &str,
+) -> Result<StreamInfo> {
+    let row = sqlx::query(
+        "SELECT streams.stream_id as stream_id, process_id, dependencies_metadata, objects_metadata, tags, properties
+         FROM streams, blocks
+         WHERE streams.stream_id = blocks.stream_id
+         AND   blocks.block_id = ?
+         ;",
+    )
+    .bind(block_id)
+    .fetch_one(connection)
+    .await
+    .with_context(|| "find_block_stream")?;
+    let dependencies_metadata_buffer: Vec<u8> = row.get("dependencies_metadata");
+    let dependencies_metadata =
+        lgn_telemetry_proto::telemetry::ContainerMetadata::decode(&*dependencies_metadata_buffer)
+            .with_context(|| "decoding dependencies metadata")?;
+    let objects_metadata_buffer: Vec<u8> = row.get("objects_metadata");
+    let objects_metadata =
+        lgn_telemetry_proto::telemetry::ContainerMetadata::decode(&*objects_metadata_buffer)
+            .with_context(|| "decoding objects metadata")?;
+    let tags_str: String = row.get("tags");
+    let properties_str: String = row.get("properties");
+    let properties: std::collections::HashMap<String, String> =
+        serde_json::from_str(&properties_str).unwrap();
+    Ok(StreamInfo {
+        stream_id: row.get("stream_id"),
         process_id: row.get("process_id"),
         dependencies_metadata: Some(dependencies_metadata),
         objects_metadata: Some(objects_metadata),
@@ -695,21 +751,14 @@ where
     Ok(())
 }
 
-pub fn get_process_tick_length_ms(process_info: &lgn_telemetry_proto::telemetry::Process) -> f64 {
-    get_tsc_frequency_inverse_ms(process_info.tsc_frequency)
-}
-
-#[allow(clippy::cast_precision_loss)]
-pub fn get_tsc_frequency_inverse_ms(tsc_frequency: u64) -> f64 {
-    1000.0 / tsc_frequency as f64
-}
-
 pub mod prelude {
     pub use crate::alloc_sql_pool;
     pub use crate::fetch_block_payload;
     pub use crate::fetch_child_processes;
     pub use crate::fetch_recent_processes;
     pub use crate::find_block;
+    pub use crate::find_block_process;
+    pub use crate::find_block_stream;
     pub use crate::find_process;
     pub use crate::find_process_blocks;
     pub use crate::find_process_log_entry;
@@ -723,9 +772,9 @@ pub mod prelude {
     pub use crate::for_each_process_in_tree;
     pub use crate::for_each_process_log_entry;
     pub use crate::for_each_process_metric;
-    pub use crate::get_process_tick_length_ms;
-    pub use crate::get_tsc_frequency_inverse_ms;
     pub use crate::parse_block;
     pub use crate::processes_by_name_substring;
     pub use crate::search_processes;
+    pub use crate::time::get_process_tick_length_ms;
+    pub use crate::time::get_tsc_frequency_inverse_ms;
 }

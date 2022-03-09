@@ -138,10 +138,14 @@ async fn main() -> Result<(), String> {
 
             let derived = {
                 if let Ok(id) = resource.parse::<ResourceTypeAndId>() {
-                    build.lookup_pathid(id).ok_or(format!(
-                        "Cannot resolve ResourceId to ResourcePathId: '{}'",
-                        resource
-                    ))?
+                    build
+                        .lookup_pathid(id)
+                        .await
+                        .map_err(|e| e.to_string())?
+                        .ok_or(format!(
+                            "Cannot resolve ResourceId to ResourcePathId: '{}'",
+                            resource
+                        ))?
                 } else if let Ok(id) = ResourcePathId::from_str(&resource) {
                     id
                 } else if let Ok(name) = ResourcePathName::from_str(&resource) {
@@ -164,6 +168,7 @@ async fn main() -> Result<(), String> {
                         locale,
                     },
                 )
+                .await
                 .map_err(|e| format!("Compilation Failed: '{}'", e))?;
 
             if runtime_flag {

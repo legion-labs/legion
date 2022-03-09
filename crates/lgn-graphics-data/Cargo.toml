@@ -18,7 +18,7 @@ lgn-data-model = { path = "../../crates/lgn-data-model", version = "0.1.0" }
 ispc-tex = "0.1.0"
 tbc = "0.3.0"
 psd = { version = "0.3.0", optional = true }
-gltf = { version = "0.16.0", optional = true }
+gltf = { version = "1.0.0", optional = true }
 
 # codegen
 lazy_static = "1.4"

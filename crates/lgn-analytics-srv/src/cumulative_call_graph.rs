@@ -9,8 +9,8 @@ use lgn_telemetry_proto::analytics::{
 };
 use lgn_tracing::prelude::*;
 
-use crate::call_tree::ScopeHashMap;
 use crate::call_tree_store::CallTreeStore;
+use crate::scope::ScopeHashMap;
 
 struct NodeStatsAcc {
     durations_ms: Vec<f64>,

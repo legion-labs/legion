@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use aws_sdk_dynamodb::model::AttributeValue;
-use aws_sdk_dynamodb::Blob;
+use aws_sdk_dynamodb::types::Blob;
 use std::{
     collections::{BTreeMap, BTreeSet},
     io::Cursor,

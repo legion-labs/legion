@@ -40,7 +40,7 @@ impl AwsS3BlobStorage {
 
         match req.send().await {
             Ok(output) => Ok(Some(output.content_length() as u64)),
-            Err(aws_sdk_s3::SdkError::ServiceError { err, raw: _ }) => {
+            Err(aws_sdk_s3::types::SdkError::ServiceError { err, raw: _ }) => {
                 if let aws_sdk_s3::error::GetObjectErrorKind::NoSuchKey(_) = err.kind {
                     Ok(None)
                 } else {
@@ -60,7 +60,7 @@ impl AwsS3BlobStorage {
 
 #[pin_project]
 #[derive(Debug)]
-struct ByteStreamReader(#[pin] aws_sdk_s3::ByteStream);
+struct ByteStreamReader(#[pin] aws_sdk_s3::types::ByteStream);
 
 impl Stream for ByteStreamReader {
     type Item = std::result::Result<Bytes, std::io::Error>;
@@ -88,7 +88,7 @@ type ByteStreamWriterBoxedFuture = Box<
     dyn Future<
             Output = std::result::Result<
                 aws_sdk_s3::output::PutObjectOutput,
-                aws_sdk_s3::SdkError<aws_sdk_s3::error::PutObjectError>,
+                aws_sdk_s3::types::SdkError<aws_sdk_s3::error::PutObjectError>,
             >,
         > + Send
         + 'static,
@@ -141,7 +141,7 @@ impl ByteStreamWriter {
 
         let fut = match &mut *state {
             ByteStreamWriterState::Writing(buffer) => {
-                let body = aws_sdk_s3::ByteStream::from(std::mem::take(buffer));
+                let body = aws_sdk_s3::types::ByteStream::from(std::mem::take(buffer));
 
                 let fut = self
                     .client

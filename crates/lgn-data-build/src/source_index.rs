@@ -12,13 +12,13 @@ use lgn_data_offline::{
 };
 use lgn_data_runtime::{ResourceId, ResourceTypeAndId};
 use lgn_tracing::span_scope;
-use lgn_utils::DefaultHasher;
+use lgn_utils::{DefaultHasher, DefaultHasher256};
 use petgraph::{Directed, Graph};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use serde_with::DisplayFromStr;
 
-use crate::Error;
+use crate::{output_index::AssetHash, Error};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ResourceInfo {
@@ -83,7 +83,7 @@ impl SourceContent {
     /// * `id` resource's content.
     /// * content of all `id`'s dependencies.
     /// todo: at one point dependency filtering here will be useful.
-    pub(crate) fn compute_source_hash(&self, id: ResourcePathId) -> u64 {
+    pub(crate) fn compute_source_hash(&self, id: ResourcePathId) -> AssetHash {
         let sorted_unique_resource_hashes: Vec<Checksum> = {
             let mut unique_resources = HashMap::new();
             let mut queue: VecDeque<_> = VecDeque::new();
@@ -122,7 +122,7 @@ impl SourceContent {
         for h in sorted_unique_resource_hashes {
             h.hash(&mut hasher);
         }
-        hasher.finish()
+        AssetHash::from(hasher.finish())
     }
 
     pub(crate) fn update_resource(
@@ -277,10 +277,12 @@ impl SourceIndex {
         version: &str,
         mut uploads: Vec<(Checksum, Vec<u8>)>,
     ) -> Result<(SourceContent, Vec<(Checksum, Vec<u8>)>), Error> {
-        // NOTE: for now, we take only half of the source-control directory checksum as
-        // the content store implementation uses 128bit integer.
-        let dir_checksum = Checksum::from_str(&directory.id()[..64])
-            .unwrap_or_else(|e| panic!("failed to read from '{}' with {}", directory.id(), e));
+        let dir_checksum = {
+            let mut hasher = DefaultHasher256::new();
+            hasher.write(directory.id().as_bytes());
+            hasher.write(version.as_bytes());
+            Checksum::from(hasher.finish_256())
+        };
 
         if let Some(cached_data) = self.content_store.read(dir_checksum) {
             let source_index = SourceContent::read(&cached_data)?;

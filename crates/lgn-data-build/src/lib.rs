@@ -184,6 +184,9 @@ pub enum Error {
     /// Source Index error.
     #[error("Source Index error")]
     SourceIndex,
+    /// Output database error.
+    #[error("Database error")]
+    Database(#[source] sqlx::Error),
 }
 
 mod asset_file_writer;

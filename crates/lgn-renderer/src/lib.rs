@@ -24,6 +24,7 @@ pub use labels::*;
 
 mod renderer;
 use lgn_data_runtime::ResourceTypeAndId;
+use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{AddressMode, CompareOp, FilterType, MipMapMode, ResourceUsage, SamplerDef};
 use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_math::{Vec2, Vec4};
@@ -107,6 +108,11 @@ impl RendererPlugin {
 
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
+        // TODO: refactor this with data pipeline resources
+        EMBEDDED_FS.add_file(&render_pass::INCLUDE_BRDF);
+        EMBEDDED_FS.add_file(&render_pass::INCLUDE_MESH);
+        EMBEDDED_FS.add_file(&render_pass::SHADER_SHADER);
+
         const NUM_RENDER_FRAMES: usize = 2;
         let renderer = Renderer::new(NUM_RENDER_FRAMES);
         let device_context = renderer.device_context().clone();

@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use lgn_analytics::prelude::*;
+use lgn_analytics::time::ConvertTicks;
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::BlockSpansReply;
 use lgn_telemetry_proto::analytics::CallTree;
@@ -15,26 +16,19 @@ use lgn_tracing::prelude::*;
 struct CallTreeBuilder {
     ts_begin_block: i64,
     ts_end_block: i64,
-    ts_offset: i64,
-    inv_tsc_frequency: f64,
     stack: Vec<CallTreeNode>,
     scopes: ScopeHashMap,
+    convert_ticks: ConvertTicks,
 }
 
 impl CallTreeBuilder {
-    pub fn new(
-        ts_begin_block: i64,
-        ts_end_block: i64,
-        ts_offset: i64,
-        inv_tsc_frequency: f64,
-    ) -> Self {
+    pub fn new(ts_begin_block: i64, ts_end_block: i64, convert_ticks: ConvertTicks) -> Self {
         Self {
             ts_begin_block,
             ts_end_block,
-            ts_offset,
-            inv_tsc_frequency,
             stack: Vec::new(),
             scopes: ScopeHashMap::new(),
+            convert_ticks,
         }
     }
 
@@ -59,11 +53,6 @@ impl CallTreeBuilder {
         }
     }
 
-    #[allow(clippy::cast_precision_loss)]
-    fn get_time(&self, ts: i64) -> f64 {
-        (ts - self.ts_offset) as f64 * self.inv_tsc_frequency
-    }
-
     fn add_child_to_top(&mut self, scope: CallTreeNode) {
         if let Some(mut top) = self.stack.pop() {
             top.children.push(scope);
@@ -71,8 +60,8 @@ impl CallTreeBuilder {
         } else {
             let new_root = CallTreeNode {
                 hash: 0,
-                begin_ms: self.get_time(self.ts_begin_block),
-                end_ms: self.get_time(self.ts_end_block),
+                begin_ms: self.convert_ticks.get_time(self.ts_begin_block),
+                end_ms: self.convert_ticks.get_time(self.ts_end_block),
                 children: vec![scope],
             };
             self.stack.push(new_root);
@@ -91,14 +80,14 @@ impl CallTreeBuilder {
 
 impl ThreadBlockProcessor for CallTreeBuilder {
     fn on_begin_thread_scope(&mut self, scope: Arc<Object>, ts: i64) -> Result<()> {
-        let time = self.get_time(ts);
+        let time = self.convert_ticks.get_time(ts);
         let scope_name = scope.get::<Arc<String>>("name")?;
         let hash = compute_scope_hash(&scope_name);
         self.record_scope_desc(hash, &scope_name);
         let scope = CallTreeNode {
             hash,
             begin_ms: time,
-            end_ms: self.get_time(self.ts_end_block),
+            end_ms: self.convert_ticks.get_time(self.ts_end_block),
             children: Vec::new(),
         };
         self.stack.push(scope);
@@ -106,7 +95,7 @@ impl ThreadBlockProcessor for CallTreeBuilder {
     }
 
     fn on_end_thread_scope(&mut self, scope: Arc<Object>, ts: i64) -> Result<()> {
-        let time = self.get_time(ts);
+        let time = self.convert_ticks.get_time(ts);
         let scope_name = scope.get::<Arc<String>>("name")?;
         let hash = compute_scope_hash(&scope_name);
         if let Some(mut old_top) = self.stack.pop() {
@@ -125,7 +114,7 @@ impl ThreadBlockProcessor for CallTreeBuilder {
             self.record_scope_desc(hash, &scope_name);
             let scope = CallTreeNode {
                 hash,
-                begin_ms: self.get_time(self.ts_begin_block),
+                begin_ms: self.convert_ticks.get_time(self.ts_begin_block),
                 end_ms: time,
                 children: Vec::new(),
             };
@@ -150,14 +139,11 @@ pub(crate) async fn compute_block_call_tree(
     stream: &lgn_telemetry_sink::StreamInfo,
     block_id: &str,
 ) -> Result<CallTree> {
-    let ts_offset = process.start_ticks;
-    let inv_tsc_frequency = get_process_tick_length_ms(process);
     let block = find_block(connection, block_id).await?;
     let mut builder = CallTreeBuilder::new(
         block.begin_ticks,
         block.end_ticks,
-        ts_offset,
-        inv_tsc_frequency,
+        ConvertTicks::new(process),
     );
     parse_thread_block(
         connection,
@@ -170,17 +156,12 @@ pub(crate) async fn compute_block_call_tree(
     Ok(builder.finish())
 }
 
-pub(crate) type ScopeHashMap = std::collections::HashMap<u32, ScopeDesc>;
 use lgn_tracing_transit::Object;
-use xxhash_rust::const_xxh32::xxh32 as const_xxh32;
 
+use crate::scope::compute_scope_hash;
+use crate::scope::ScopeHashMap;
 use crate::thread_block_processor::parse_thread_block;
 use crate::thread_block_processor::ThreadBlockProcessor;
-
-fn compute_scope_hash(name: &str) -> u32 {
-    //todo: add filename
-    const_xxh32(name.as_bytes(), 0)
-}
 
 fn make_spans_from_tree(tree: &CallTreeNode, depth: u32, lod: &mut SpanBlockLod) {
     let span = Span {

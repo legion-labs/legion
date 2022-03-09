@@ -16,8 +16,12 @@ use callbacks::{OnAdvance, OnCollision, OnConstraintBreak, OnTrigger, OnWakeSlee
 mod labels;
 pub use labels::*;
 
+mod mesh_scale;
+
 mod rigid_actors;
-use rigid_actors::{add_dynamic_actor_to_scene, add_static_actor_to_scene, CollisionGeometry};
+use rigid_actors::{
+    add_dynamic_actor_to_scene, add_static_actor_to_scene, CollisionGeometry, Convert,
+};
 
 mod settings;
 pub use settings::PhysicsSettings;
@@ -27,7 +31,12 @@ use lgn_core::prelude::*;
 use lgn_ecs::prelude::*;
 use lgn_tracing::prelude::*;
 use lgn_transform::prelude::*;
-use physx::{foundation::DefaultAllocator, physics::PhysicsFoundationBuilder, prelude::*};
+use physx::{
+    cooking::{PxCooking, PxCookingParams},
+    foundation::DefaultAllocator,
+    physics::PhysicsFoundationBuilder,
+    prelude::*,
+};
 
 // type aliases
 
@@ -69,33 +78,34 @@ impl Plugin for PhysicsPlugin {
         app.add_system_to_stage(
             PhysicsStage::Update,
             Self::create_rigid_actors::<runtime::PhysicsRigidBox>,
-        );
-        app.add_system_to_stage(
+        )
+        .add_system_to_stage(
             PhysicsStage::Update,
             Self::create_rigid_actors::<runtime::PhysicsRigidCapsule>,
-        );
-        // app.add_system_to_stage(
-        //     PhysicsStage::Update,
-        //     Self::create_rigid_actors::<runtime::PhysicsRigidConvexMesh>,
-        // );
+        )
+        .add_system_to_stage(
+            PhysicsStage::Update,
+            Self::create_rigid_actors::<runtime::PhysicsRigidConvexMesh>,
+        )
         // app.add_system_to_stage(
         //     PhysicsStage::Update,
         //     Self::create_rigid_actors::<runtime::PhysicsRigidHeightField>,
         // );
-        app.add_system_to_stage(
+        .add_system_to_stage(
             PhysicsStage::Update,
             Self::create_rigid_actors::<runtime::PhysicsRigidPlane>,
-        );
-        app.add_system_to_stage(
+        )
+        .add_system_to_stage(
             PhysicsStage::Update,
             Self::create_rigid_actors::<runtime::PhysicsRigidSphere>,
+        )
+        .add_system_to_stage(
+            PhysicsStage::Update,
+            Self::create_rigid_actors::<runtime::PhysicsRigidTriangleMesh>,
         );
-        // app.add_system_to_stage(
-        //     PhysicsStage::Update,
-        //     Self::create_rigid_actors::<runtime::PhysicsRigidTriangleMesh>,
-        // );
-        app.add_system_to_stage(PhysicsStage::Update, Self::step_simulation);
-        app.add_system_to_stage(PhysicsStage::Update, Self::sync_transforms);
+
+        app.add_system_to_stage(PhysicsStage::Update, Self::step_simulation)
+            .add_system_to_stage(PhysicsStage::Update, Self::sync_transforms);
     }
 }
 
@@ -117,6 +127,10 @@ impl PhysicsPlugin {
         }
         let mut physics = physics.unwrap();
 
+        // physics cooking, for runtime mesh creation
+        let cooking_params = PxCookingParams::new(&physics).unwrap();
+        let cooking = PxCooking::new(physics.foundation_mut(), &cooking_params).unwrap();
+
         let scene: Owner<PxScene> = physics
             .create(SceneDescriptor {
                 gravity: PxVec3::new(0.0, -9.81, 0.0),
@@ -130,6 +144,8 @@ impl PhysicsPlugin {
 
         commands.insert_resource(scene);
 
+        commands.insert_resource(cooking);
+
         // Note: important to insert physics after scene, for drop order
         commands.insert_resource(physics);
 
@@ -140,15 +156,15 @@ impl PhysicsPlugin {
     fn create_rigid_actors<T>(
         query: Query<'_, '_, (Entity, &T, &GlobalTransform)>,
         mut physics: ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
+        cooking: Res<'_, Owner<PxCooking>>,
         mut scene: ResMut<'_, Owner<PxScene>>,
         mut default_material: ResMut<'_, Owner<PxMaterial>>,
         mut commands: Commands<'_, '_>,
     ) where
-        T: Component + WithActorType,
-        CollisionGeometry: for<'a> From<&'a T>,
+        T: Component + Convert + WithActorType,
     {
         for (entity, physics_component, transform) in query.iter() {
-            let geometry: CollisionGeometry = physics_component.into();
+            let geometry: CollisionGeometry = physics_component.convert(&mut physics, &cooking);
 
             match physics_component.get_actor_type() {
                 RigidActorType::Dynamic => {
@@ -177,6 +193,7 @@ impl PhysicsPlugin {
         }
 
         drop(query);
+        drop(cooking);
     }
 
     #[span_fn]

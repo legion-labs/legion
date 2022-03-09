@@ -22,9 +22,8 @@ on:
 # less in the workflow (hard to debug, iterate, etc.)
 
 jobs:
-  check_test:
+  check:
     name: Checks and tests
-    if: ${{ false }}
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ inputs.image }}
@@ -34,15 +33,15 @@ jobs:
       - name: Npm install
         run: pnpm install --unsafe-perm
 
+      - name: Npm build (necessary for subsequent commands...)
+        run: pnpm build
+
       - name: Npm check
         run: pnpm check
 
-      - name: Npm test
-        run: pnpm test
-
   build:
     name: Build
-    needs: [check_test]
+    needs: [check]
     runs-on: [self-hosted, linux, common, build]
     container:
       image: ${{ inputs.image }}

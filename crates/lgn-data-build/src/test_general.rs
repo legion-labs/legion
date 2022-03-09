@@ -50,9 +50,10 @@ async fn create() {
             .expect("valid data build index");
     }
 
-    let _index = OutputIndex::open(
-        &OutputIndex::output_index_file(&buildindex_dir),
+    let _index = OutputIndex::open(OutputIndex::database_uri(
+        &buildindex_dir,
         DataBuild::version(),
-    )
+    ))
+    .await
     .expect("failed to open build index file");
 }

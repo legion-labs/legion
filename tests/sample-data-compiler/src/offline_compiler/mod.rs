@@ -101,6 +101,7 @@ pub async fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathNa
                     locale,
                 },
             )
+            .await
             .expect("valid manifest");
 
         //

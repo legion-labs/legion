@@ -27,21 +27,12 @@
 //#![allow()]
 
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use std::sync::mpsc::channel;
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::path::Path;
+use std::sync::RwLock;
 
-use bus::{Bus, BusReader};
-use lgn_tracing::{error, info};
-use linkme::distributed_slice;
-use notify::{watcher, DebouncedEvent, RecursiveMode, Watcher};
+use once_cell::sync::Lazy;
 
 pub mod macros;
-
-#[distributed_slice]
-pub static EMBEDDED_FILES: [EmbeddedFile] = [..];
-
 pub struct EmbeddedFile {
     path: &'static str,
     content: &'static [u8],
@@ -73,60 +64,23 @@ impl EmbeddedFile {
     }
 }
 
+#[derive(Default)]
 pub struct EmbeddedFileSystem {
-    path_to_content: HashMap<&'static str, &'static EmbeddedFile>,
-    bus: Arc<Mutex<Bus<&'static str>>>,
+    path_to_content: RwLock<HashMap<&'static str, &'static EmbeddedFile>>,
 }
+
+pub static EMBEDDED_FS: Lazy<EmbeddedFileSystem> = Lazy::new(|| EmbeddedFileSystem {
+    path_to_content: RwLock::new(HashMap::new()),
+});
 
 impl EmbeddedFileSystem {
     /// Initializes the embedded file system.
-    pub fn init() -> Self {
-        // Create a channel to receive the events.
-        let (tx, rx) = channel();
 
-        // Create a watcher object, delivering debounced events.
-        // The notification back-end is selected based on the platform.
-        let mut watcher = watcher(tx, Duration::from_secs(10)).unwrap();
-
-        let mut path_to_content = HashMap::<&'static str, &'static EmbeddedFile>::new();
-        let mut watched_to_path = HashMap::<PathBuf, &'static str>::new();
-        for file in EMBEDDED_FILES {
-            info!("{} -- {:?}", file.path, file.original_path);
-            path_to_content.insert(file.path, file);
-            if let Some(watch_path) = file.original_path {
-                let watch_path = std::fs::canonicalize(watch_path).unwrap();
-                watched_to_path.insert(watch_path.clone(), file.path);
-                watcher
-                    .watch(watch_path, RecursiveMode::NonRecursive)
-                    .unwrap();
-            }
-        }
-
-        let bus = Arc::new(Mutex::new(Bus::<&'static str>::new(10)));
-        let bus_clone = bus.clone();
-        std::thread::spawn(move || {
-            let _watcher = watcher;
-            loop {
-                match rx.recv() {
-                    Ok(DebouncedEvent::Write(ref path)) => {
-                        info!("{:?}", path);
-                        bus_clone
-                            .lock()
-                            .unwrap()
-                            .broadcast(watched_to_path.get(path).unwrap());
-                    }
-                    Ok(event) => {
-                        info!("{:?}", event);
-                    }
-                    Err(e) => error!("watch error: {:?}", e),
-                }
-            }
-        });
-
-        Self {
-            path_to_content,
-            bus,
-        }
+    pub fn add_file(&self, file: &'static EmbeddedFile) {
+        self.path_to_content
+            .write()
+            .unwrap()
+            .insert(file.path, file);
     }
 
     /// Returns the origin path if available
@@ -136,7 +90,12 @@ impl EmbeddedFileSystem {
     ///
     pub fn original_path<P: AsRef<Path>>(&self, path: P) -> Result<Option<&Path>, std::io::Error> {
         let path = path.as_ref();
-        if let Some(file) = self.path_to_content.get(path.to_str().unwrap()) {
+        if let Some(file) = self
+            .path_to_content
+            .read()
+            .unwrap()
+            .get(path.to_str().unwrap())
+        {
             Ok(file.original_path.map(Path::new))
         } else {
             Err(std::io::Error::new(
@@ -156,7 +115,12 @@ impl EmbeddedFileSystem {
     ///
     pub fn read_all<P: AsRef<Path>>(&self, path: P) -> Result<Vec<u8>, std::io::Error> {
         let path = path.as_ref();
-        if let Some(file) = self.path_to_content.get(path.to_str().unwrap()) {
+        if let Some(file) = self
+            .path_to_content
+            .read()
+            .unwrap()
+            .get(path.to_str().unwrap())
+        {
             if let Some(original_path) = file.original_path {
                 if let Ok(content) = std::fs::read(original_path) {
                     return Ok(content);
@@ -180,11 +144,6 @@ impl EmbeddedFileSystem {
         let content = self.read_all(path)?;
         Ok(String::from_utf8_lossy(&content).to_string())
     }
-
-    /// Add a receiver to the watch bus
-    pub fn add_receiver(&mut self) -> BusReader<&'static str> {
-        self.bus.lock().unwrap().add_rx()
-    }
 }
 
 #[cfg(test)]
@@ -201,7 +160,8 @@ mod tests {
 
     #[test]
     fn test_embedded_fs() {
-        let embedded_fs = EmbeddedFileSystem::init();
+        let embedded_fs = EmbeddedFileSystem::default();
+        embedded_fs.add_file(&FILE);
         assert_eq!(FILE.content(), embedded_fs.read_all(FILE.path()).unwrap());
     }
 }
