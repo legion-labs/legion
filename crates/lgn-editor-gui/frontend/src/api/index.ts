@@ -20,21 +20,33 @@ import type {
   ResourceWithProperties,
 } from "../lib/propertyGrid";
 
-const editorServerURL = "http://[::1]:50051";
+const defaultEditorServerURL = "http://[::1]:50051";
 
-const resourceBrowserClient = new ResourceBrowserClientImpl(
-  new EditorResourceBrowserWebImpl(editorServerURL, { debug: false })
-);
+let resourceBrowserClient: ResourceBrowserClientImpl;
 
-const propertyInspectorClient = new PropertyInspectorClientImpl(
-  new EditorPropertyInspectorWebImpl(editorServerURL, { debug: false })
-);
+let propertyInspectorClient: PropertyInspectorClientImpl;
 
-const sourceControlClient = new SourceControlClientImpl(
-  new EditorSourceControlWebImpl(editorServerURL, {
-    debug: false,
-  })
-);
+let sourceControlClient: SourceControlClientImpl;
+
+export function initApiClient({
+  editorServerUrl = defaultEditorServerURL,
+}: {
+  editorServerUrl?: string;
+}) {
+  resourceBrowserClient = new ResourceBrowserClientImpl(
+    new EditorResourceBrowserWebImpl(editorServerUrl, { debug: false })
+  );
+
+  propertyInspectorClient = new PropertyInspectorClientImpl(
+    new EditorPropertyInspectorWebImpl(editorServerUrl, { debug: false })
+  );
+
+  sourceControlClient = new SourceControlClientImpl(
+    new EditorSourceControlWebImpl(editorServerUrl, {
+      debug: false,
+    })
+  );
+}
 
 /**
  * Eagerly fetches all the resource descriptions on the server

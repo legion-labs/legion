@@ -5,6 +5,7 @@ import type { Level as LogLevel } from "./lib/log";
 import userInfo from "./stores/userInfo";
 import { SvelteComponentTyped } from "svelte";
 import grpcWeb from "@improbable-eng/grpc-web";
+import { initApiClient } from "./api";
 
 export class AppComponent extends SvelteComponentTyped<{
   initAuthStatus: InitAuthStatus | null;
@@ -42,6 +43,8 @@ export type Config = {
   logLevel: LogLevel | null;
   /** Hook called before the application start */
   onPreInit?(): Promise<void> | void;
+  editorServerUrl?: string;
+  runtimeServerUrl?: string;
 };
 
 /**
@@ -61,8 +64,12 @@ export async function run({
   rootQuerySelector,
   logLevel,
   onPreInit,
+  editorServerUrl,
+  runtimeServerUrl,
 }: Config): Promise<void> {
   onPreInit && (await onPreInit());
+
+  initApiClient({ editorServerUrl, runtimeServerUrl });
 
   const target = getTarget(rootQuerySelector);
 
@@ -126,6 +133,8 @@ export type HeadlessConfig = {
   logLevel: LogLevel | null;
   /** Hook called before the application start */
   onPreInit?(): Promise<void> | void;
+  editorServerUrl?: string;
+  runtimeServerUrl?: string;
 };
 
 /**
@@ -144,11 +153,15 @@ export async function headlessRun({
   auth: authConfig,
   logLevel,
   onPreInit,
+  editorServerUrl,
+  runtimeServerUrl,
 }: HeadlessConfig): Promise<{
   initAuthStatus: InitAuthStatus | null;
   grpcMetadata: grpcWeb.grpc.Metadata | null;
 }> {
   onPreInit && (await onPreInit());
+
+  initApiClient({ editorServerUrl, runtimeServerUrl });
 
   if (logLevel) {
     log.init();
