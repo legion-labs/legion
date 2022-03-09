@@ -22,6 +22,7 @@ use lgn_data_runtime::{manifest::Manifest, AssetRegistryOptions};
 use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 use lgn_data_transaction::BuildManager;
 use lgn_math::prelude::*;
+use lgn_renderer::components::Mesh;
 use lgn_scripting::ScriptType;
 use tokio::sync::Mutex;
 
@@ -48,9 +49,10 @@ async fn main() {
         .expect("failed to create a project");
 
     let mut resource_registry = ResourceRegistryOptions::new();
-    sample_data::offline::register_resource_types(&mut resource_registry);
-    generic_data::offline::register_resource_types(&mut resource_registry);
+    lgn_graphics_data::offline::register_resource_types(&mut resource_registry);
     lgn_scripting::offline::register_resource_types(&mut resource_registry);
+    generic_data::offline::register_resource_types(&mut resource_registry);
+    sample_data::offline::register_resource_types(&mut resource_registry);
     let content_store = HddContentStore::open(ContentStoreAddr::from(build_dir.clone())).unwrap();
     let resource_registry = resource_registry.create_async_registry();
 
@@ -59,13 +61,15 @@ async fn main() {
     let mut asset_registry = AssetRegistryOptions::new()
         .add_device_dir(project.resource_dir())
         .add_device_cas(Box::new(content_store), Manifest::default());
-    sample_data::offline::add_loaders(&mut asset_registry);
-    generic_data::offline::add_loaders(&mut asset_registry);
+    lgn_graphics_data::offline::add_loaders(&mut asset_registry);
     lgn_scripting::offline::add_loaders(&mut asset_registry);
+    generic_data::offline::add_loaders(&mut asset_registry);
+    sample_data::offline::add_loaders(&mut asset_registry);
     let asset_registry = asset_registry.create();
 
     let compilers = CompilerRegistryOptions::default()
         .add_compiler(&lgn_compiler_runtime_entity::COMPILER_INFO)
+        .add_compiler(&lgn_compiler_runtime_model::COMPILER_INFO)
         .add_compiler(&lgn_compiler_script2asm::COMPILER_INFO);
 
     let data_build = DataBuildOptions::new(&build_dir, compilers)
@@ -155,10 +159,72 @@ async fn build_script(
     path.push(lgn_scripting::runtime::Script::TYPE)
 }
 
+async fn create_offline_model(
+    project: &mut Project,
+    resource_registry: &Arc<Mutex<ResourceRegistry>>,
+    resource_id: &str,
+    mesh: Mesh,
+    resource_path: &str,
+) -> ResourcePathId {
+    let mut resources = resource_registry.lock().await;
+    let id = ResourceTypeAndId {
+        kind: lgn_graphics_data::offline::Model::TYPE,
+        id: ResourceId::from_str(resource_id).unwrap(),
+    };
+    let handle = resources.new_resource(id.kind).unwrap();
+
+    let model = handle
+        .get_mut::<lgn_graphics_data::offline::Model>(&mut resources)
+        .unwrap();
+    let mesh = lgn_graphics_data::offline::Mesh {
+        positions: mesh.positions.unwrap(),
+        normals: mesh.normals.unwrap(),
+        tangents: mesh.tangents.unwrap(),
+        tex_coords: mesh.tex_coords.unwrap(),
+        indices: mesh.indices.unwrap(),
+        colors: mesh.colors.unwrap(),
+        material: None,
+    };
+    model.meshes.push(mesh);
+
+    project
+        .add_resource_with_id(
+            resource_path.into(),
+            lgn_graphics_data::offline::Model::TYPENAME,
+            id.kind,
+            id.id,
+            handle,
+            &mut resources,
+        )
+        .await
+        .unwrap();
+    let path: ResourcePathId = id.into();
+    path.push(lgn_graphics_data::runtime::Model::TYPE)
+}
+
 async fn create_offline_data(
     project: &mut Project,
     resource_registry: &Arc<Mutex<ResourceRegistry>>,
 ) -> Vec<ResourceTypeAndId> {
+    // visual reference models
+    let cube_model_id = create_offline_model(
+        project,
+        resource_registry,
+        "5474d00b-cc10-491a-ba56-be2f5b5de22d",
+        Mesh::new_cube(0.5),
+        "/scene/models/cube.mod",
+    )
+    .await;
+
+    let sphere_model_id = create_offline_model(
+        project,
+        resource_registry,
+        "a05e4c89-e85b-4e03-add4-8767b21c1e55",
+        Mesh::new_sphere(0.25, 16, 16),
+        "/scene/models/sphere.mod",
+    )
+    .await;
+
     // ground
     let ground_path_id = {
         let mut resources = resource_registry.lock().await;
@@ -181,7 +247,8 @@ async fn create_offline_data(
         entity
             .components
             .push(Box::new(sample_data::offline::Visual {
-                color: (208, 255, 208).into(),
+                renderable_geometry: Some(cube_model_id.clone()),
+                color: (0xD0, 0xFF, 0xD0).into(),
                 ..sample_data::offline::Visual::default()
             }));
 
@@ -243,7 +310,8 @@ pub fn update(entity, events) {
         entity
             .components
             .push(Box::new(sample_data::offline::Visual {
-                color: (0, 255, 255).into(),
+                renderable_geometry: Some(cube_model_id.clone()),
+                color: (0x00, 0xFF, 0xFF).into(),
                 ..sample_data::offline::Visual::default()
             }));
 
@@ -314,7 +382,8 @@ pub fn update(entity, events) {
         entity
             .components
             .push(Box::new(sample_data::offline::Visual {
-                color: (0, 0, 255).into(),
+                renderable_geometry: Some(cube_model_id.clone()),
+                color: (0x00, 0x00, 0xFF).into(),
                 ..sample_data::offline::Visual::default()
             }));
 
@@ -499,7 +568,8 @@ pub fn update(entity, last_result, entities) {
         entity
             .components
             .push(Box::new(sample_data::offline::Visual {
-                color: (255, 16, 64).into(),
+                renderable_geometry: Some(sphere_model_id.clone()),
+                color: (0xFF, 0x10, 0x40).into(),
                 ..sample_data::offline::Visual::default()
             }));
 
