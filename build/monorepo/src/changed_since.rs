@@ -49,7 +49,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     match args.format {
         Format::Text => {
             println!("docs: {}", changed_elements.docs);
-            println!("npm_pkgs: {}", changed_elements.docs);
+            println!("npm_pkgs: {}", changed_elements.npm_pkgs);
             println!("cargo_pkgs:");
             for name in package_names {
                 println!(" - {}", name);
@@ -129,6 +129,7 @@ pub(crate) fn changed_since_impl<'g>(
     let (old_graph, new_graph, files_changed) = (old_graph?, new_graph?, files_changed?);
 
     let npm_pkgs_wild = [
+        WildMatch::new(".github/workflows/reusable_node_ecosystem.yml"),
         WildMatch::new("crates/*/frontend"),
         WildMatch::new("npm-pkgs/*"),
         WildMatch::new("crates/lgn-*-proto"),
