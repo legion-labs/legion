@@ -5180,7 +5180,6 @@ dependencies = [
  "lgn-core",
  "lgn-data-codegen",
  "lgn-data-model",
- "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-ecs",
  "lgn-math",
