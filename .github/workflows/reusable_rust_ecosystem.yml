@@ -101,7 +101,7 @@ jobs:
 
       - name: Build
         if: ${{ !inputs.deploy }}
-        run: monorepo publish --release --force ${{ inputs.pkgs_arg }} --target ${{ matrix.target }} --build-only
+        run: monorepo publish --force ${{ inputs.pkgs_arg }} --target ${{ matrix.target }} --build-only
 
       - name: Build and publish
         if: ${{ inputs.deploy }}
