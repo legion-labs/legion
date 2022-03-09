@@ -1,5 +1,6 @@
-use serde_json::json;
 use std::{path::Path, str::FromStr, sync::Arc};
+
+use serde_json::json;
 use tokio::sync::Mutex;
 use tonic::Request;
 
@@ -8,9 +9,6 @@ use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::{Project, ResourceRegistryOptions};
 use lgn_data_runtime::{manifest::Manifest, AssetRegistryOptions, Resource, ResourceTypeAndId};
-use lgn_graphics_data::DefaultMeshType;
-use lgn_math::Vec3;
-
 use lgn_data_transaction::{
     ArrayOperation, BuildManager, SelectionManager, Transaction, TransactionManager,
 };
@@ -18,6 +16,8 @@ use lgn_editor_proto::resource_browser::{
     resource_browser_server::ResourceBrowser, CloneResourceRequest, CreateResourceRequest,
     DeleteResourceRequest, GetResourceTypeNamesRequest, InitPropertyValue, RenameResourceRequest,
 };
+use lgn_math::Vec3;
+use lgn_renderer::resources::DefaultMeshType;
 
 /*fn add_scripting_component(root_entity_id: &ResourceTypeAndId) -> Transaction {
     let script_id = ResourceTypeAndId {
@@ -127,7 +127,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
             uploads_folder: "".into(),
         };
 
-        // Read all Resoruce Type registered
+        // Read all Resource Type registered
         let response = resource_browser
             .get_resource_type_names(Request::new(GetResourceTypeNamesRequest {}))
             .await?
@@ -174,10 +174,10 @@ async fn test_resource_browser() -> anyhow::Result<()> {
             guard.commit_transaction(transaction).await.unwrap();
         }*/
 
-        // Creat an Hierarchy of Child->SubChild with increment_name
+        // Create an Hierarchy of Child->SubChild with increment_name
         {
             let offsets: Vec<f32> = vec![-1.0, 0.0, 1.0];
-            let mesh_ids: Vec<lgn_graphics_data::DefaultMeshType> = vec![
+            let mesh_ids: Vec<DefaultMeshType> = vec![
                 DefaultMeshType::Cube,
                 DefaultMeshType::Pyramid,
                 DefaultMeshType::Torus,
