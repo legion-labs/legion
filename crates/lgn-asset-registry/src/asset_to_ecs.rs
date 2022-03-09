@@ -137,9 +137,9 @@ impl AssetToECS for runtime_data::Entity {
                         _ => unreachable!("Unrecognized light type"),
                     },
                     color: Vec3::new(
-                        light.color.r as f32 / 255.0,
-                        light.color.g as f32 / 255.0,
-                        light.color.b as f32 / 255.0,
+                        f32::from(light.color.r) / 255.0,
+                        f32::from(light.color.g) / 255.0,
+                        f32::from(light.color.b) / 255.0,
                     ),
                     radiance: light.radiance,
                     enabled: light.enabled,
