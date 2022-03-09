@@ -1,8 +1,0 @@
-{
-  "name": "/world/sample_1/helmet/helmet_leather_parts.ent",
-  "type_name": "offline_entity",
-  "type_id": "1c0ff9e497b0740f",
-  "dependencies": [
-    "(0d4207bbf3a2fd08,4cbc25ba-8743-4f20-9a58-6419770c951f)|44e4b6023fb7a8d3_LeatherParts_low|5c4b1b522bf5dcb0"
-  ]
-}

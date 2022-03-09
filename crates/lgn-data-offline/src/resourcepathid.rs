@@ -74,7 +74,7 @@ impl FromStr for Transform {
 /// # tokio_test::block_on(async {
 /// let resources = ResourceRegistryOptions::new().create_registry();
 /// let mut resources = resources.lock().unwrap();
-/// let mut project = Project::create_new(&PathBuf::new()).await.unwrap();
+/// let mut project = Project::create_with_remote_mock(&PathBuf::new()).await.unwrap();
 /// pub const SOURCE_GEOMETRY: &'static str = "src_geom";
 /// pub const LOD_GEOMETRY: ResourceType = ResourceType::new(b"lod_geom");
 /// pub const BINARY_GEOMETRY: ResourceType = ResourceType::new(b"bin_geom");

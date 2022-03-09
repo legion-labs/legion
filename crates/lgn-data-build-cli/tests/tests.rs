@@ -28,7 +28,9 @@ async fn build_device() {
 
     // create project that contains test resource.
     let source_id = {
-        let mut project = Project::create_new(project_dir).await.expect("new project");
+        let mut project = Project::create_with_remote_mock(project_dir)
+            .await
+            .expect("new project");
         let resources = ResourceRegistryOptions::new()
             .add_type::<refs_resource::TestResource>()
             .create_async_registry();
@@ -183,7 +185,9 @@ async fn no_intermediate_resource() {
     // create project that contains test resource.
     let resource_id = {
         let resource_id = {
-            let mut project = Project::create_new(project_dir).await.expect("new project");
+            let mut project = Project::create_with_remote_mock(project_dir)
+                .await
+                .expect("new project");
             let resources = ResourceRegistryOptions::new()
                 .add_type::<refs_resource::TestResource>()
                 .create_async_registry();
@@ -264,7 +268,9 @@ async fn with_intermediate_resource() {
     // create project that contains test resource.
     let resource_id = {
         let resource_id = {
-            let mut project = Project::create_new(project_dir).await.expect("new project");
+            let mut project = Project::create_with_remote_mock(project_dir)
+                .await
+                .expect("new project");
             let resources = ResourceRegistryOptions::new()
                 .add_type::<text_resource::TextResource>()
                 .create_async_registry();

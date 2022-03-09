@@ -104,6 +104,8 @@ fn main() {
         .scene
         .unwrap_or_else(|| settings.get_or("editor_srv.default_scene", String::new()));
 
+    let source_control_path = settings.get_or("editor_srv.source_control", "../remote".to_string());
+
     let game_manifest_path = args.manifest.map_or_else(PathBuf::new, PathBuf::from);
     let assets_to_load = Vec::<ResourceTypeAndId>::new();
 
@@ -124,7 +126,10 @@ fn main() {
         assets_to_load,
     ))
     .add_plugin(AssetRegistryPlugin::default())
-    .insert_resource(ResourceRegistrySettings::new(project_folder))
+    .insert_resource(ResourceRegistrySettings::new(
+        project_folder,
+        source_control_path,
+    ))
     .add_plugin(ResourceRegistryPlugin::default())
     .insert_resource(GRPCPluginSettings::new(server_addr))
     .add_plugin(GRPCPlugin::default())

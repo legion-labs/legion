@@ -43,7 +43,7 @@ async fn main() {
             project_dir.clone()
         }
     };
-    let mut project = Project::create_new(absolute_project_dir)
+    let mut project = Project::create_with_remote_mock(absolute_project_dir)
         .await
         .expect("failed to create a project");
 

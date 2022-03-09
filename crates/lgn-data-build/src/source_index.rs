@@ -506,7 +506,7 @@ mod tests {
     async fn source_index_cache() {
         let work_dir = tempfile::tempdir().unwrap();
 
-        let mut project = Project::create_new(&work_dir.path())
+        let mut project = Project::create_with_remote_mock(&work_dir.path())
             .await
             .expect("failed to create a project");
 
