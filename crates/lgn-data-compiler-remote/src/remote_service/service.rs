@@ -1,11 +1,12 @@
 use std::collections::{HashMap, VecDeque};
 
 use super::common_types::{NodeData, NodeInitial, NodeType, RemoteExecutionArgs, ServerData};
-use freelist::{FreeList, Idx};
-use lgn_data_compiler_remote::{
-    NCConfiguration, NCError, NCJobStatus, NCServer, NCServerStarter, NodeID,
+use crate::node_crunch::{
+    nc_config::NCConfiguration, nc_error::NCError, nc_node_info::NodeID, nc_server::NCJobStatus,
+    nc_server::NCServer, nc_server::NCServerStarter,
 };
-use lgn_tracing::{debug, error, info};
+use freelist::{FreeList, Idx};
+use lgn_tracing::{debug, error};
 
 #[derive(Debug, Clone)]
 struct Job {
@@ -35,8 +36,9 @@ struct ServerState {
 
 impl ServerState {
     fn process_for_client(&self, node_id: NodeID) -> NCJobStatus<ServerData> {
-        info!("process_for_client...");
+        //info!("process_for_client...");
         let job_id = self.clients_waiting[&node_id];
+        #[allow(unsafe_code)]
         let job = unsafe { self.jobs.get_unchecked(job_id) };
         if job.output_archive.is_empty() {
             NCJobStatus::Waiting // Still waiting for a worker to finish.
@@ -48,13 +50,14 @@ impl ServerState {
         }
     }
     fn process_for_worker(&mut self, node_id: NodeID) -> NCJobStatus<ServerData> {
-        info!("process_for_worker...");
+        //info!("process_for_worker...");
         if let Some(job_id) = self.queue.pop_front() {
             // First ensure that we didn't already dispatch anything to this node.
             assert!(!self.workers_in_progress.contains_key(&node_id));
 
             let node_data = ServerData {
                 request_id: self.request_id_counter,
+                #[allow(unsafe_code)]
                 input_archive: unsafe { self.jobs.get_unchecked(job_id) }
                     .input_archive
                     .clone(),
@@ -132,6 +135,7 @@ impl NCServer for ServerState {
                 error!("Requests mismatch!");
                 return Err(NCError::NodeMsgMismatch);
             }
+            #[allow(unsafe_code)]
             let job = unsafe { self.jobs.get_unchecked_mut(remote_work.job_id) };
             if job.initiating_node_id.is_empty() {
                 // The job was abandoned, since the client disconnected.
@@ -160,6 +164,7 @@ impl NCServer for ServerState {
             }
             if let Some(job_id) = self.clients_waiting.remove(&n) {
                 // If the client has crashed, let the job complete.
+                #[allow(unsafe_code)]
                 unsafe { self.jobs.get_unchecked_mut(job_id) }
                     .initiating_node_id
                     .set_empty();
@@ -168,15 +173,14 @@ impl NCServer for ServerState {
     }
 
     fn finish_job(&mut self) {
-        todo!()
+        //todo!()
     }
 }
 
 /// Starts the server with the given configuration
 pub fn run_server(options: &RemoteExecutionArgs) {
     let configuration = NCConfiguration {
-        address: options.ip.clone(),
-        port: options.port,
+        url: options.url.clone(),
         compress: false,
         encrypt: true,
         // The key should be read from a config file

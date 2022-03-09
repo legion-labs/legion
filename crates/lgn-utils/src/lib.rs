@@ -22,7 +22,7 @@ pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
 fn find_path(mut root_dir: PathBuf) -> Option<String> {
-    const MONOREPO_FILENAME: &str = "monorepo.toml";
+    const MONOREPO_FILENAME: &str = "legion.toml";
     loop {
         let monorepo_file = root_dir.join(MONOREPO_FILENAME);
         if monorepo_file.is_file() {

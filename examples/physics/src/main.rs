@@ -103,9 +103,10 @@ async fn main() {
     let compilers = match args.compilers {
         CompilersSource::InProcess => CompilerRegistryOptions::default().add_compiler(&lgn_compiler_runtime_entity::COMPILER_INFO).add_compiler(&lgn_compiler_runtime_model::COMPILER_INFO),
         CompilersSource::External => CompilerRegistryOptions::local_compilers(compilers_path),
-        CompilersSource::Remote => {
-            CompilerRegistryOptions::remote_compilers(compilers_path, "http://localhost:2020/")
-        }
+        CompilersSource::Remote => lgn_data_compiler_remote::compiler_node::remote_compilers(
+            compilers_path,
+            "http://localhost:2020/",
+        ),
     };
 
     let data_build = DataBuildOptions::new(&build_dir, compilers)

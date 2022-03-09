@@ -3,12 +3,14 @@
 use std::{io, net, sync};
 
 use thiserror::Error;
+use url::ParseError;
 use zip::result::ZipError;
 
-use crate::NodeID;
+use crate::node_crunch::nc_node_info::NodeID;
 
 /// This data structure contains all error codes for the server and the nodes.
 #[derive(Error, Debug)]
+#[allow(dead_code)]
 pub enum NCError {
     /// Parsing the IP address went wrong.
     #[error("IP address parse error: {0}")]
@@ -46,14 +48,10 @@ pub enum NCError {
     /// [`Mutex`](std::sync::Mutex) could not be locked or a thread did panic while holding the lock.
     #[error("Mutex poisson error")]
     MutexPoison,
-    /// An error using the utility data structure [`Array2D`](crate::Array2D).
-    #[error("Array2D dimension mismatch error, expected: {0:?}, got: {1:?}")]
-    Array2DDimensionMismatch((u64, u64), (u64, u64)),
-    /// Custom user defined error. This needs to be replaced in the future with [`Box<dyn Error>`] or s.th. similar.
-    #[error("Custom user defined error: {0}")]
-    Custom(u32),
     #[error("Compression error")]
     Compression(#[from] ZipError),
+    #[error("URL parse error")]
+    Url(#[from] ParseError),
 }
 
 impl<T> From<sync::PoisonError<sync::MutexGuard<'_, T>>> for NCError {

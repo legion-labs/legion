@@ -5,10 +5,8 @@ use std::fmt::{self, Display, Formatter};
 /// This data structure contains the configuration for the server and the node.
 #[derive(Debug, Clone)]
 pub struct NCConfiguration {
-    /// IP address of the server, default: 127.0.0.1
-    pub address: String,
-    /// Port used by the server, default: 9000.
-    pub port: u16,
+    /// URL of the server, default: nc://127.0.0.1:9000
+    pub url: String,
     /// Nodes have to send a heartbeat every n seconds or they will be marked as offline.
     /// (The method [`heartbeat_timeout(node_id)`](crate::nc_server::NCServer::heartbeat_timeout)
     /// with the corresponding node ID is called), default: 5.
@@ -29,11 +27,10 @@ pub struct NCConfiguration {
 
 impl Default for NCConfiguration {
     fn default() -> Self {
-        NCConfiguration {
-            address: "127.0.0.1".to_string(),
-            port: 9000,
+        Self {
+            url: "nc://127.0.0.1:9000".to_string(),
             heartbeat: 10,
-            delay_request_data: 5,
+            delay_request_data: 1,
             retry_counter: 5,
             pool_size: 8,
             compress: true,
@@ -48,11 +45,10 @@ impl Display for NCConfiguration {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "address: '{}', port: '{}', heartbeat: '{}'\n
+            "url: '{}', heartbeat: '{}'\n
                   delay request data: '{}', retry counter: '{}', pool size: '{}'\n
                   compress: '{}', encrypt: '{}'",
-            self.address,
-            self.port,
+            self.url,
             self.heartbeat,
             self.delay_request_data,
             self.retry_counter,

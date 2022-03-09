@@ -11,10 +11,7 @@ use crate::{
     CompiledResource, CompilerHash,
 };
 
-use super::{
-    binary_stub::BinCompilerStub, inproc_stub::InProcessCompilerStub,
-    remote_stub::RemoteCompilerStub,
-};
+use super::{binary_stub::BinCompilerStub, inproc_stub::InProcessCompilerStub};
 
 /// Interface allowing to support multiple types of compilers - in-process,
 /// external executables. By returning multiple `CompilerInfo` via `info` the implementation
@@ -53,7 +50,8 @@ pub struct CompilerRegistryOptions {
 }
 
 impl CompilerRegistryOptions {
-    fn compilers_dirs_internal(
+    /// Create from external compilers, but with a custom callback.
+    pub fn from_external_compilers(
         dirs: &[impl AsRef<Path>],
         creator: impl Fn(CompilerLocation) -> Box<dyn CompilerStub>,
     ) -> Self {
@@ -70,7 +68,7 @@ impl CompilerRegistryOptions {
 
     /// Creates `CompilerRegistry` based on provided compiler directory paths.
     pub fn local_compilers_dirs(dirs: &[impl AsRef<Path>]) -> Self {
-        Self::compilers_dirs_internal(dirs, |info| {
+        Self::from_external_compilers(dirs, |info| {
             Box::new(BinCompilerStub {
                 bin_path: info.path,
             })
@@ -87,16 +85,6 @@ impl CompilerRegistryOptions {
         let compiler = Box::new(InProcessCompilerStub { descriptor });
         self.compilers.push(compiler);
         self
-    }
-
-    /// Register an uber compiler for remote compilation.
-    pub fn remote_compilers(compilers_dir: impl AsRef<Path>, endpoint: &str) -> Self {
-        Self::compilers_dirs_internal(std::slice::from_ref(&compilers_dir), |info| {
-            Box::new(RemoteCompilerStub {
-                server_addr: endpoint.to_string(),
-                bin_path: info.path,
-            })
-        })
     }
 
     /// Creates a new compiler registry based on specified options.

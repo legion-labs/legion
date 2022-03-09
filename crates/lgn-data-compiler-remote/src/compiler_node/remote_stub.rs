@@ -10,10 +10,11 @@ use lgn_data_offline::{ResourcePathId, Transform};
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
 use lgn_utils::find_monorepo_root;
 
-use super::{remote_data_executor::collect_local_resources, CompilerStub};
-use crate::{
+use super::remote_data_executor::collect_local_resources;
+use lgn_data_compiler::{
     compiler_api::{CompilationEnv, CompilationOutput, CompilerError, CompilerInfo},
     compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd, CompilerInfoCmdOutput},
+    compiler_node::CompilerStub,
     CompiledResource, CompilerHash,
 };
 pub struct RemoteCompilerStub {
@@ -83,7 +84,8 @@ impl CompilerStub for RemoteCompilerStub {
             serde_json::to_string_pretty(&cmd)?.as_str(),
         )?;
 
-        let result = crate::remote_service::client::send_receive_workload("127.0.0.1", archive);
+        let result =
+            crate::remote_service::client::send_receive_workload(&self.server_addr, archive);
 
         let local_path = cas_local_path.parent().unwrap();
 

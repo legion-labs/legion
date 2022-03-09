@@ -4,11 +4,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use lgn_data_compiler_remote::NCError;
+use crate::node_crunch::nc_error::NCError;
 use lgn_data_offline::ResourcePathId;
 use zip::result::ZipResult;
 
-use crate::{
+use lgn_data_compiler::{
     compiler_cmd::{CompilerCompileCmd, CompilerCompileCmdOutput},
     CompiledResource,
 };

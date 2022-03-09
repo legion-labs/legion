@@ -1,6 +1,7 @@
 use super::common_types::{NodeData, NodeInitial, NodeType, RemoteExecutionArgs, ServerData};
-use lgn_data_compiler_remote::{
-    nc_node::NCNodeStatus, NCConfiguration, NCError, NCNode, NCNodeStarter,
+use crate::node_crunch::{
+    nc_config::NCConfiguration, nc_error::NCError, nc_node::NCNode, nc_node::NCNodeStarter,
+    nc_node::NCNodeStatus,
 };
 use lgn_tracing::info;
 
@@ -40,14 +41,13 @@ impl NCNode for Worker {
 
 fn config(options: RemoteExecutionArgs) -> NCNodeStarter {
     let configuration = NCConfiguration {
-        port: options.port,
-        address: options.ip,
+        url: options.url,
         compress: false,
         encrypt: true,
-        delay_request_data: 5, // sec
+        delay_request_data: 1, // sec
         // The key should be read from a config file
         key: "ZKS1GQ3MYWEKFILSN6KESXU2GD9015CH".to_string(),
-        ..Default::default()
+        ..NCConfiguration::default()
     };
     NCNodeStarter::new(configuration)
 }

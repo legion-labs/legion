@@ -8,11 +8,8 @@ pub struct RemoteExecutionArgs {
     #[clap(short = 's', long = "server")]
     pub server: bool,
 
-    #[clap(long = "ip", default_value = "127.0.0.1")]
-    pub ip: String,
-
-    #[clap(short = 'p', long = "port", default_value_t = 2020)]
-    pub port: u16,
+    #[clap(long = "url", default_value = "127.0.0.1:2022")]
+    pub url: String,
 }
 
 /// Represents a unit of workload for a "worker" client.

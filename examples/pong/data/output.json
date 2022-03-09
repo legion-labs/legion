@@ -2,26 +2,26 @@
   "compiled_resources": [
     {
       "path": "(1c0ff9e497b0740f,29b8b0d0-ee1e-4792-aca2-3b3a3ce63916)|1d9ddd99aad89045",
-      "checksum": "d58f6ad4d6e1d4cb0e8c603530c02f1a",
-      "size": 113
+      "checksum": "2ba6b57b38020b874e9a4c6f39bab5d37630b4b490db06f2d2c40dc3fa8e56c0",
+      "size": 186
     }
   ],
   "resource_references": [
     [
       "(1c0ff9e497b0740f,29b8b0d0-ee1e-4792-aca2-3b3a3ce63916)|1d9ddd99aad89045",
-      "(09cde0390abe0694,26b7a335-2d28-489d-882b-f7aae1fb2196)|e0d46a6b35b5717e"
+      "(1c0ff9e497b0740f,26b7a335-2d28-489d-882b-f7aae1fb2196)|1d9ddd99aad89045"
     ],
     [
       "(1c0ff9e497b0740f,29b8b0d0-ee1e-4792-aca2-3b3a3ce63916)|1d9ddd99aad89045",
-      "(09cde0390abe0694,63c338c9-0d03-4636-8a17-8f0cba02b618)|e0d46a6b35b5717e"
+      "(1c0ff9e497b0740f,63c338c9-0d03-4636-8a17-8f0cba02b618)|1d9ddd99aad89045"
     ],
     [
       "(1c0ff9e497b0740f,29b8b0d0-ee1e-4792-aca2-3b3a3ce63916)|1d9ddd99aad89045",
-      "(09cde0390abe0694,719c8d5b-d320-4102-a92a-b3fa5240e140)|e0d46a6b35b5717e"
+      "(1c0ff9e497b0740f,719c8d5b-d320-4102-a92a-b3fa5240e140)|1d9ddd99aad89045"
     ],
     [
       "(1c0ff9e497b0740f,29b8b0d0-ee1e-4792-aca2-3b3a3ce63916)|1d9ddd99aad89045",
-      "(09cde0390abe0694,727eef7f-2544-4a46-be99-9aedd44a098e)|e0d46a6b35b5717e"
+      "(1c0ff9e497b0740f,727eef7f-2544-4a46-be99-9aedd44a098e)|1d9ddd99aad89045"
     ]
   ]
 }

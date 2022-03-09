@@ -1,6 +1,6 @@
 //! This module contains the node id and node info data structure.
-//! NodeID is just a new type pattern for a integer number.
-//! NCNodeInfo holds the node id and a time stamp for the heartbeat.
+//! `NodeID` is just a new type pattern for a integer number.
+//! `NCNodeInfo` holds the node id and a time stamp for the heartbeat.
 
 use std::collections::VecDeque;
 use std::fmt::{self, Display, Formatter};
@@ -16,15 +16,15 @@ pub struct NodeID(u64);
 impl NodeID {
     /// Create a new temporary node id that will be set later
     pub(crate) fn unset() -> Self {
-        NodeID(0)
+        Self(0)
     }
 
     /// Create a new random node id.
     pub(crate) fn random() -> Self {
-        NodeID(random())
+        Self(random())
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub fn is_empty(self) -> bool {
         self.0 == 0
     }
     pub fn set_empty(&mut self) {
@@ -52,7 +52,7 @@ pub(crate) struct NCNodeInfo<U> {
 impl<U> NCNodeInfo<U> {
     /// Create a new node info with the given node id and the current time stamp.
     fn new(node_id: NodeID) -> Self {
-        NCNodeInfo {
+        Self {
             node_id,
             instant: Instant::now(),
             message_queue: VecDeque::new(),
@@ -95,12 +95,12 @@ pub(crate) struct NCNodeList<U> {
 impl<U: Clone> NCNodeList<U> {
     /// Creates a new empty node list
     pub(crate) fn new() -> Self {
-        NCNodeList { nodes: Vec::new() }
+        Self { nodes: Vec::new() }
     }
 
     /// All the registered nodes are checked here. If the heartbeat time stamp
     /// is too old (> 2 * heartbeat in [`NCConfiguration`](crate::nc_config::NCConfiguration)) then
-    /// the NCServer trait method [`heartbeat_timeout()`](crate::nc_server::NCServer::heartbeat_timeout)
+    /// the `NCServer` trait method [`heartbeat_timeout()`](crate::nc_server::NCServer::heartbeat_timeout)
     /// is called where the node should be marked as offline.
     pub(crate) fn check_heartbeat(
         &self,
@@ -119,7 +119,7 @@ impl<U: Clone> NCNodeList<U> {
         let mut new_id: NodeID = NodeID::random();
 
         'l1: loop {
-            for node_info in self.nodes.iter() {
+            for node_info in &mut self.nodes {
                 if node_info.node_id == new_id {
                     new_id = NodeID::random();
                     continue 'l1;
@@ -138,7 +138,7 @@ impl<U: Clone> NCNodeList<U> {
     /// This happens when the heartbeat thread in the [`nc_node`](crate::nc_node) module
     /// has send the [`NCNodeMessage::HeartBeat`](crate::nc_node::NCNodeMessage) message to the server.
     pub(crate) fn update_heartbeat(&mut self, node_id: NodeID) {
-        for node in self.nodes.iter_mut() {
+        for node in &mut self.nodes {
             if node.node_id == node_id {
                 node.update_heartbeat();
                 break;
@@ -163,7 +163,7 @@ impl<U: Clone> NCNodeList<U> {
 
     /// Add a new message for the given node.
     pub(crate) fn add_message(&mut self, message: U, node_id: NodeID) {
-        for node in self.nodes.iter_mut() {
+        for node in &mut self.nodes {
             if node.node_id == node_id {
                 node.add_message(message);
                 break;
@@ -173,14 +173,14 @@ impl<U: Clone> NCNodeList<U> {
 
     /// Add a new message for all nodes.
     pub(crate) fn add_message_all(&mut self, message: U) {
-        for node in self.nodes.iter_mut() {
+        for node in &mut self.nodes {
             node.add_message(message.clone());
         }
     }
 
     /// Get first message for the given node id, if any.
     pub(crate) fn get_message(&mut self, node_id: NodeID) -> Option<U> {
-        for node in self.nodes.iter_mut() {
+        for node in &mut self.nodes {
             if node.node_id == node_id {
                 return node.get_message();
             }
@@ -201,7 +201,7 @@ impl<U: Clone> NCNodeList<U> {
 
     /// Migrate node to new server -> register a new node id.
     pub(crate) fn migrate_node(&mut self, node_id: NodeID) {
-        self.nodes.push(NCNodeInfo::new(node_id))
+        self.nodes.push(NCNodeInfo::new(node_id));
     }
 }
 
@@ -266,16 +266,12 @@ mod tests {
         let _ = node_list.register_new_node();
 
         let result = node_list.check_heartbeat(5);
-        let result = result.collect::<Vec<NodeID>>();
-
-        assert_eq!(result.len(), 0);
+        assert_eq!(result.count(), 0);
 
         thread::sleep(Duration::from_secs(5));
 
         let result = node_list.check_heartbeat(3);
-        let result = result.collect::<Vec<NodeID>>();
-
-        assert_eq!(result.len(), 4);
+        assert_eq!(result.count(), 4);
     }
 
     #[test]

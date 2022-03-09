@@ -1,4 +1,4 @@
-//! This module contains the NC_Communicator for serializing, deserializing, sending and receiving data.
+//! This module contains the `NC_Communicator` for serializing, deserializing, sending and receiving data.
 
 use std::io::{Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
@@ -9,8 +9,8 @@ use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce};
 use lz4_flex::{compress_prepend_size, decompress_size_prepended};
 use serde::{de::DeserializeOwned, Serialize};
 
-use crate::nc_config::NCConfiguration;
-use crate::nc_error::NCError;
+use crate::node_crunch::nc_config::NCConfiguration;
+use crate::node_crunch::nc_error::NCError;
 
 pub struct NCCommunicator {
     compress: bool,
@@ -40,7 +40,7 @@ impl NCCommunicator {
         let encrypted_data = self
             .cipher
             .encrypt(nonce, data)
-            .map_err(|_| NCError::Encrypt)?;
+            .map_err(|_e| NCError::Encrypt)?;
         let mut full_data = Vec::with_capacity(nonce_bytes.len() + encrypted_data.len());
         full_data.extend_from_slice(&nonce_bytes);
         full_data.extend_from_slice(&encrypted_data);
@@ -52,7 +52,7 @@ impl NCCommunicator {
         let nonce = Nonce::from_slice(nonce_bytes);
         self.cipher
             .decrypt(nonce, encrypted_data)
-            .map_err(|_| NCError::Encrypt)
+            .map_err(|_e| NCError::Encrypt)
     }
 
     /// Encodes the given data to a [`Vec<u8>`].
@@ -94,7 +94,7 @@ impl NCCommunicator {
         deserialize(&data_out).map_err(NCError::Deserialize)
     }
 
-    /// Open a tcp connection and sends the data using the nc_send_data2() function.
+    /// Open a tcp connection and sends the data using the `nc_send_data2()` function.
     ///
     /// # Errors
     ///
@@ -123,7 +123,7 @@ impl NCCommunicator {
 
         tcp_stream.write_all(&data_len.to_le_bytes())?;
         tcp_stream.write_all(&data)?;
-        tcp_stream.flush().map_err(|e| e.into())
+        tcp_stream.flush().map_err(std::convert::Into::into)
     }
 
     /// Read data from the given Reader (usually a tcp stream) and deserialize it.
@@ -147,7 +147,7 @@ impl NCCommunicator {
         Ok(result)
     }
 
-    /// Open a tcp stream, send the data using the nc_send_data2() function and receive data using the nc_receive_data() function.
+    /// Open a tcp stream, send the data using the `nc_send_data2()` function and receive data using the `nc_receive_data()` function.
     /// Return the deserialized data as a Result.
     ///
     /// # Errors
@@ -174,7 +174,7 @@ mod tests {
         let config = NCConfiguration {
             compress: false,
             encrypt: false,
-            ..Default::default()
+            ..NCConfiguration::default()
         };
         let mut nc_communicator = NCCommunicator::new(&config);
         let data1: (String, u32, bool) = ("Hello World!".to_string(), 123456, false);
@@ -191,7 +191,7 @@ mod tests {
         let config = NCConfiguration {
             compress: true,
             encrypt: false,
-            ..Default::default()
+            ..NCConfiguration::default()
         };
         let mut nc_communicator = NCCommunicator::new(&config);
         let data1: (String, u32, bool) = ("Hello World!".to_string(), 123456, false);
@@ -209,7 +209,7 @@ mod tests {
             compress: false,
             encrypt: true,
             key: "7Fv2YhMzwrQHoXRAirOkB0QQDOjS4qnZ".to_string(),
-            ..Default::default()
+            ..NCConfiguration::default()
         };
         let mut nc_communicator = NCCommunicator::new(&config);
         let data1: (String, u32, bool) = ("Hello World!".to_string(), 123456, false);
@@ -233,7 +233,7 @@ mod tests {
             compress: true,
             encrypt: true,
             key: "VnlUYvqu5S4tNHty0ccA1LAlsgqIXhIs".to_string(),
-            ..Default::default()
+            ..NCConfiguration::default()
         };
         let mut nc_communicator = NCCommunicator::new(&config);
         let data1: (String, u32, bool) = ("Hello World!".to_string(), 123456, false);
@@ -258,7 +258,7 @@ mod tests {
         let config = NCConfiguration {
             compress: false,
             encrypt: false,
-            ..Default::default()
+            ..NCConfiguration::default()
         };
         let mut nc_communicator = NCCommunicator::new(&config);
         let data1: (String, u32, bool) = ("Test send_data2!".to_string(), 121212, false);
@@ -284,7 +284,7 @@ mod tests {
         let config = NCConfiguration {
             compress: false,
             encrypt: false,
-            ..Default::default()
+            ..NCConfiguration::default()
         };
         let mut nc_communicator = NCCommunicator::new(&config);
         let data1: (String, u32, bool) = ("Test receive_data!".to_string(), 998877, true);
@@ -308,7 +308,7 @@ mod tests {
         let config = NCConfiguration {
             compress: false,
             encrypt: false,
-            ..Default::default()
+            ..NCConfiguration::default()
         };
         let mut nc_communicator = NCCommunicator::new(&config);
         let data1: (String, u32, bool) =

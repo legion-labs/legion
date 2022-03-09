@@ -54,7 +54,7 @@
 //! }
 //!
 //! fn main() {
-//!    std::process::exit(match compiler_main(std::env::args(), &COMPILER_INFO) {
+//!    std::process::exit(match compiler_main(&std::env::args(), &COMPILER_INFO) {
 //!        Ok(_) => 0,
 //!        Err(_) => 1,
 //!    });
@@ -81,7 +81,6 @@ use std::{
 
 use clap::{Parser, Subcommand};
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
-use lgn_data_compiler_remote::NCError;
 use lgn_data_model::ReflectionError;
 use lgn_data_offline::{resource::ResourceProcessorError, ResourcePathId, Transform};
 use lgn_data_runtime::{AssetRegistry, AssetRegistryError, AssetRegistryOptions};
@@ -279,8 +278,8 @@ pub enum CompilerError {
     CompilationError(String),
 
     /// Data executor error.
-    #[error(transparent)]
-    RemoteExecution(#[from] NCError),
+    #[error("{0}")]
+    RemoteExecution(String),
 }
 
 impl CompilerDescriptor {
@@ -535,7 +534,7 @@ enum Commands {
 /// > **NOTE**: Data compiler must not write to stdout because this could break
 /// the specific output that is expected.
 pub fn compiler_main(
-    _args: env::Args,
+    _args: &env::Args,
     descriptor: &'static CompilerDescriptor,
 ) -> Result<(), CompilerError> {
     let compilers = CompilerRegistryOptions::default().add_compiler(descriptor);

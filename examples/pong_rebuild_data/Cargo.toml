@@ -13,6 +13,7 @@ lgn-compiler-script2asm = { path = "../../crates/lgn-script2asm-compiler", versi
 lgn-content-store = { path = "../../crates/lgn-content-store", version = "0.1.0" }
 lgn-data-build = { path = "../../crates/lgn-data-build", version = "0.1.0" }
 lgn-data-compiler = { path = "../../crates/lgn-data-compiler", version = "0.1.0" }
+lgn-data-compiler-remote = { path = "../../crates/lgn-data-compiler-remote", version = "0.1.0" }
 lgn-data-offline = { path = "../../crates/lgn-data-offline", version = "0.1.0" }
 lgn-data-runtime = { path = "../../crates/lgn-data-runtime", version = "0.1.0" }
 lgn-data-transaction = { path = "../../crates/lgn-data-transaction", version = "0.1.0" }

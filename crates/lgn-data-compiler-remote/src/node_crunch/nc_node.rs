@@ -1,6 +1,6 @@
 //! This module contains the nc node message, trait and helper methods.
-//! To use the node you have to implement the NCNode trait that has two methods:
-//! set_initial_data() and process_data_from_server()
+//! To use the node you have to implement the `NCNode` trait that has two methods:
+//! `set_initial_data()` and `process_data_from_server()`.
 
 use std::net::{IpAddr, SocketAddr};
 use std::sync::mpsc::{channel, Receiver};
@@ -10,12 +10,15 @@ use std::time::Duration;
 
 use lgn_tracing::{debug, error, info};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use url::Url;
 
-use crate::nc_communicator::NCCommunicator;
-use crate::nc_config::NCConfiguration;
-use crate::nc_error::NCError;
-use crate::nc_node_info::NodeID;
-use crate::nc_server::{NCJobStatus, NCServerMessage};
+use crate::node_crunch::{
+    nc_communicator::NCCommunicator,
+    nc_config::NCConfiguration,
+    nc_error::NCError,
+    nc_node_info::NodeID,
+    nc_server::{NCJobStatus, NCServerMessage},
+};
 
 /// This message is sent from the node to the server in order to register, receive new data and send processed data.
 #[derive(Debug, Serialize, Deserialize)]
@@ -68,7 +71,7 @@ pub trait NCNode {
     /// # Errors
     fn get_node_type(&mut self) -> Result<Self::NodeTypeT, NCError>;
 
-    /// Once this node has sent a NCNodeMessage::Register message the server responds with a NCServerMessage::InitialData message.
+    /// Once this node has sent a `NCNodeMessage::Register` message the server responds with a `NCServerMessage::InitialData` message.
     /// Then this method is called with the data received from the server.
     /// # Errors
     fn set_initial_data(&mut self, _node_id: NodeID, _initial_data: Option<Self::InitialDataT>) {}
@@ -76,7 +79,7 @@ pub trait NCNode {
     /// Whenever the node requests new data from the server, the server will respond with new data that needs to be processed by the node.
     /// This method is then called with the data that was received from the server.
     /// Here you put your code that does the main number crunching on every node.
-    /// Note that you have to use the nc_decode_data() or nc_decode_data2() helper methods from the nc_utils module in order to
+    /// Note that you have to use the `nc_decode_data()` or `nc_decode_data2()` helper methods from the `nc_utils` module in order to
     /// deserialize the data.
     /// # Errors
     fn process_data_from_server(
@@ -114,8 +117,9 @@ impl<'a> NCNodeStarter {
     pub fn start<T: NCNode>(&mut self, nc_node: &'a mut T) -> Result<(), NCError> {
         debug!("NCNodeStarter::start()");
 
-        let ip_addr: IpAddr = self.config.address.parse()?;
-        let server_addr = SocketAddr::new(ip_addr, self.config.port);
+        let url = Url::parse(&self.config.url)?;
+        let ip_addr: IpAddr = url.host().unwrap().to_string().parse()?;
+        let server_addr = SocketAddr::new(ip_addr, url.port().unwrap());
         let server_addr = Arc::new(Mutex::new(server_addr));
 
         let mut node_process = NodeProcess::new(server_addr.clone(), nc_node, &self.config);
@@ -126,7 +130,7 @@ impl<'a> NCNodeStarter {
         let node_heartbeat = NodeHeartbeat::new(server_addr, node_process.node_id, &self.config);
 
         let thread_handle = Self::start_heartbeat_thread(node_heartbeat, rx);
-        self.start_main_loop(&mut node_process);
+        Self::start_main_loop(&mut node_process);
 
         // Notify the heartbeat thread to shutdown.
         tx.send(true).unwrap();
@@ -173,7 +177,7 @@ impl<'a> NCNodeStarter {
                 }
             }
 
-            debug!("Heartbeat loop finished")
+            debug!("Heartbeat loop finished");
         })
     }
 
@@ -184,7 +188,7 @@ impl<'a> NCNodeStarter {
     /// The delay time can be configured in the `NCConfiguration` data structure.
     /// With every error the retry counter is decremented. If it reaches zero the node will give up and exit.
     /// The counter can be configured in the `NCConfiguration`.
-    fn start_main_loop<T: NCNode>(&self, node_process: &mut NodeProcess<T>) {
+    fn start_main_loop<T: NCNode>(node_process: &mut NodeProcess<'_, T>) {
         debug!("NCNodeStarter::start_main_loop()");
 
         loop {
@@ -215,12 +219,12 @@ impl<'a> NCNodeStarter {
                         break;
                     }
                     // Reset the counter if message was sent successfully
-                    node_process.reset_counter()
+                    node_process.reset_counter();
                 }
             }
         }
 
-        debug!("Main loop finished")
+        debug!("Main loop finished");
     }
 }
 
@@ -239,11 +243,11 @@ struct NodeHeartbeat {
 }
 
 impl NodeHeartbeat {
-    /// Creates a new NodeHeartbeat with the given arguments.
+    /// Creates a new `NodeHeartbeat` with the given arguments.
     fn new(server_addr: Arc<Mutex<SocketAddr>>, node_id: NodeID, config: &NCConfiguration) -> Self {
         debug!("NodeHeartbeat::new()");
 
-        NodeHeartbeat {
+        Self {
             server_addr,
             node_id,
             retry_counter: RetryCounter::new(config.retry_counter),
@@ -252,14 +256,7 @@ impl NodeHeartbeat {
         }
     }
 
-    /// The heartbeat thread will sleep for the given duration from the configuration.
-    /*fn sleep(&self) {
-        debug!("NodeHeartbeat::sleep()");
-
-        thread::sleep(self.heartbeat_duration);
-    }*/
-
-    /// Send the NCNodeMessage::HeartBeat message to the server.
+    /// Send the `NCNodeMessage::HeartBeat` message to the server.
     fn send_heartbeat_message(&mut self) -> Result<(), NCError> {
         debug!("NodeHeartbeat::send_heartbeat_message()");
         let message: NCNodeMessage<(), (), ()> = NCNodeMessage::HeartBeat(self.node_id);
@@ -287,7 +284,7 @@ impl NodeHeartbeat {
     fn reset_counter(&mut self) {
         debug!("NodeHeartbeat::reset_counter()");
 
-        self.retry_counter.reset()
+        self.retry_counter.reset();
     }
 }
 
@@ -308,7 +305,7 @@ struct NodeProcess<'a, T> {
 }
 
 impl<'a, T: NCNode> NodeProcess<'a, T> {
-    /// Creates a new NodeProcess with the given arguments.
+    /// Creates a new `NodeProcess` with the given arguments.
     fn new(
         server_addr: Arc<Mutex<SocketAddr>>,
         nc_node: &'a mut T,
@@ -356,6 +353,7 @@ impl<'a, T: NCNode> NodeProcess<'a, T> {
     }
 
     /// Send the `NCNodeMessage::Register` message to the server.
+    #[allow(clippy::type_complexity)]
     fn send_register_message(
         &mut self,
         node_type: T::NodeTypeT,
@@ -372,7 +370,7 @@ impl<'a, T: NCNode> NodeProcess<'a, T> {
     /// This method sends a `NCNodeMessage::NeedsData` message to the server and reacts accordingly to the server response:
     /// Only one message is expected as a response from the server: `NCServerMessage::JobStatus`. This status can have two values
     /// 1. `NCJobStatus::Unfinished`: This means that the job is note done and there is still some more data to be processed.
-    ///      This node will then process the data calling the process_data_from_server() method and sends the data back to the
+    ///      This node will then process the data calling the `process_data_from_server()` method and sends the data back to the
     ///      server using the `NCNodeMessage::HasData` message.
     /// 2. `NCJobStatus::Waiting`: This means that not all nodes are done and the server is still waiting for all nodes to finish.
     /// If the server sends a different message this method will return a `NCError::ServerMsgMismatch` error.
@@ -402,7 +400,7 @@ impl<'a, T: NCNode> NodeProcess<'a, T> {
                         self.sleep();
                         Ok(true)
                     }
-                    _ => {
+                    NCJobStatus::Finished => {
                         // The server does not bother sending the node a NCJobStatus::Finished message.
                         //error!("Error: unexpected message from server");
                         Err(NCError::ServerMsgMismatch)
@@ -415,7 +413,7 @@ impl<'a, T: NCNode> NodeProcess<'a, T> {
                 Ok(true)
             }
             NCServerMessage::NewServer(server, port) => {
-                self.new_server(server, port)?;
+                self.new_server(&server, port)?;
                 self.send_node_migrated()?;
                 Ok(true)
             }
@@ -427,6 +425,7 @@ impl<'a, T: NCNode> NodeProcess<'a, T> {
     }
 
     /// Send the `NCNodeMessage::NeedsData` message to the server.
+    #[allow(clippy::type_complexity)]
     fn send_needs_data_message(
         &mut self,
     ) -> Result<NCServerMessage<T::InitialDataT, T::NewDataT, T::CustomMessageT>, NCError> {
@@ -458,7 +457,7 @@ impl<'a, T: NCNode> NodeProcess<'a, T> {
     }
 
     /// Change settings for a new server
-    fn new_server(&mut self, server: String, port: u16) -> Result<(), NCError> {
+    fn new_server(&mut self, server: &str, port: u16) -> Result<(), NCError> {
         debug!("NodeProcess::new_server()");
         let ip_addr: IpAddr = server.parse()?;
         let mut server_addr = self.server_addr.lock()?;
@@ -510,12 +509,12 @@ impl<'a, T: NCNode> NodeProcess<'a, T> {
     fn reset_counter(&mut self) {
         debug!("NodeProcess::reset_counter()");
 
-        self.retry_counter.reset()
+        self.retry_counter.reset();
     }
 }
 
-/// Counter for nc_node if connection to server is not possible.
-/// The counter will be decreased every time there is an IO error and if it is zero the method dec_and_check
+/// Counter for `nc_node` if connection to server is not possible.
+/// The counter will be decreased every time there is an IO error and if it is zero the method `dec_and_check`
 /// returns true, otherwise false.
 /// When the connection to the server is working again, the counter is reset to its initial value.
 #[derive(Debug, Clone)]
@@ -532,7 +531,7 @@ impl RetryCounter {
     fn new(counter: u64) -> Self {
         debug!("RetryCounter::new()");
 
-        RetryCounter {
+        Self {
             init: counter,
             counter,
         }
@@ -555,7 +554,7 @@ impl RetryCounter {
     fn reset(&mut self) {
         debug!("RetryCounter::reset()");
 
-        self.counter = self.init
+        self.counter = self.init;
     }
 }
 

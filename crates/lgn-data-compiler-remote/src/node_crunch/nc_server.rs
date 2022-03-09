@@ -1,11 +1,11 @@
 //! This module contains the nc server message, trait and helper methods
-//! To use the server you have to implement the NCServer trait that has five methods:
-//! initial_data(): This method is called once for every node when the node registers with the server.
-//! prepare_data_for_node(): This method is called when the node needs new data to process.
-//! process_data_from_node(): This method is called when the node is done with processing the data and has sent the result back to the server.
-//! heartbeat_timeout(): This method is called when the node has missed a heartbeat, usually the node is then marked as offline and the chunk
+//! To use the server you have to implement the `NCServer` trait that has five methods:
+//! `initial_data()`: This method is called once for every node when the node registers with the server.
+//! `prepare_data_for_node()`: This method is called when the node needs new data to process.
+//! `process_data_from_node()`: This method is called when the node is done with processing the data and has sent the result back to the server.
+//! `heartbeat_timeout()`: This method is called when the node has missed a heartbeat, usually the node is then marked as offline and the chunk
 //!     of data for that node is sent to another node.
-//! finish_job(): This method is called when the job is done and all the threads are finished. Usually you want to save the results to disk
+//! `finish_job()`: This method is called when the job is done and all the threads are finished. Usually you want to save the results to disk
 //!     in here.
 
 use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
@@ -17,12 +17,13 @@ use std::time::{Duration, Instant};
 use lgn_tracing::{debug, error, info};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use threadpool::ThreadPool;
+use url::Url;
 
-use crate::nc_communicator::NCCommunicator;
-use crate::nc_config::NCConfiguration;
-use crate::nc_error::NCError;
-use crate::nc_node::NCNodeMessage;
-use crate::nc_node_info::{NCNodeList, NodeID};
+use super::nc_communicator::NCCommunicator;
+use super::nc_config::NCConfiguration;
+use super::nc_error::NCError;
+use super::nc_node::NCNodeMessage;
+use super::nc_node_info::{NCNodeList, NodeID};
 
 /// This message is send from the server to each node.
 #[derive(Debug, Serialize, Deserialize)]
@@ -42,7 +43,7 @@ pub(crate) enum NCServerMessage<InitialDataT, NewDataT, CustomMessageT> {
 }
 
 /// The job status tells the node what to do next: process the new data, wait for other nodes to finish or exit. This is the answer from the server when
-/// a node request new data via the NCNodeMessage::NeedsData message.
+/// a node request new data via the `NCNodeMessage::NeedsData` message.
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum NCJobStatus<NewDataT> {
     /// The job is not done yet and the node has to process the data the server sends to it.
@@ -94,13 +95,13 @@ pub trait NCServer {
         data: &Self::ProcessedDataT,
     ) -> Result<(), NCError>;
 
-    /// Every node has to send a heartbeat message to the server. If it doesn't arrive in time (2 * the heartbeat value in the NCConfiguration)
+    /// Every node has to send a heartbeat message to the server. If it doesn't arrive in time (2 * the heartbeat value in the `NCConfiguration`)
     /// then this method is called with the corresponding node id and the node should be marked as offline in this method.
     fn heartbeat_timeout(&mut self, nodes: Vec<NodeID>);
 
     /// When all the nodes are done with processing and all internal threads are also finished then this method is called.
     /// Usually you want to save all the results to disk and optionally you can write an e-mail to the user that he / she can start
-    /// writing a paper for his / her PhD.
+    /// writing a paper for his / her phd.
     fn finish_job(&mut self);
 }
 
@@ -111,14 +112,14 @@ pub struct NCServerStarter {
 }
 
 impl NCServerStarter {
-    /// Create a new NCServerStarter using the given configuration
+    /// Create a new `NCServerStarter` using the given configuration.
     pub fn new(config: NCConfiguration) -> Self {
         debug!("NCServerStarter::new()");
 
-        NCServerStarter { config }
+        Self { config }
     }
 
-    /// This is the main method that you call when you start the server. It expects your custom data structure that implements the NCServer trait.
+    /// This is the main method that you call when you start the server. It expects your custom data structure that implements the `NCServer` trait.
     pub fn start<T: NCServer + Send + 'static>(&mut self, nc_server: T) {
         debug!("NCServerStarter::new()");
 
@@ -127,8 +128,8 @@ impl NCServerStarter {
         let server_heartbeat = NCServerHeartbeat::new(&self.config);
         let thread_pool = ThreadPool::new((self.config.pool_size + 1) as usize);
 
-        self.start_heartbeat_thread(&thread_pool, server_heartbeat);
-        self.start_main_loop(&thread_pool, server_process.clone());
+        Self::start_heartbeat_thread(&thread_pool, server_heartbeat);
+        Self::start_main_loop(&thread_pool, &server_process);
 
         // let time_taken = (Instant::now() - time_start).as_secs_f64();
         let time_taken = server_process.calc_total_time();
@@ -144,16 +145,12 @@ impl NCServerStarter {
     }
 
     /// The heartbeat check thread is started here in an endless loop.
-    /// It calls the method send_check_heartbeat_message() which sends the NCNodeMessage::CheckHeartbeat message
+    /// It calls the method `send_check_heartbeat_message()` which sends the `NCNodeMessage::CheckHeartbeat` message
     /// to the server. The server then checks all the nodes to see if one of them missed a heartbeat.
     /// If there is an IO error the loop exits because the server also has finished its main loop and
     /// doesn't accept any tcp connections anymore.
     /// The job is done and no more heartbeats will arrive.
-    fn start_heartbeat_thread(
-        &mut self,
-        thread_pool: &ThreadPool,
-        server_heartbeat: NCServerHeartbeat,
-    ) {
+    fn start_heartbeat_thread(thread_pool: &ThreadPool, server_heartbeat: NCServerHeartbeat) {
         debug!("NCServerStarter::start_heartbeat_thread()");
 
         thread_pool.execute(move || {
@@ -170,17 +167,17 @@ impl NCServerStarter {
     }
 
     /// In here the main loop and the tcp server are started.
-    /// For every node connection the method start_node_thread() is called, which handles the node request in a separate thread.
+    /// For every node connection the method `start_node_thread()` is called, which handles the node request in a separate thread.
     /// If the job is done one the main loop will exited
     fn start_main_loop<T: NCServer + Send + 'static>(
-        &self,
         thread_pool: &ThreadPool,
-        server_process: Arc<NCServerProcess<T, T::CustomMessageT>>,
+        server_process: &Arc<NCServerProcess<T, T::CustomMessageT>>,
     ) {
         debug!("NCServerStarter::start_main_loop()");
 
-        let ip_addr: IpAddr = server_process.address.parse().unwrap();
-        let socket_addr = SocketAddr::new(ip_addr, server_process.port);
+        let url = Url::parse(&server_process.url).unwrap();
+        let ip_addr: IpAddr = url.host().unwrap().to_string().parse().unwrap();
+        let socket_addr = SocketAddr::new(ip_addr, url.port().unwrap());
         let listener = TcpListener::bind(socket_addr).unwrap();
 
         loop {
@@ -207,7 +204,7 @@ impl NCServerStarter {
         info!("Job is done, will call NCServer::finish_job()");
         server_process.nc_server.lock().unwrap().finish_job();
     }
-    /// This starts a new thread for each node that sends a message to the server and calls the handle_node() method in that thread.
+    /// This starts a new thread for each node that sends a message to the server and calls the `handle_node()` method in that thread.
     fn start_node_thread<T: NCServer + Send + 'static>(
         thread_pool: &ThreadPool,
         stream: TcpStream,
@@ -234,15 +231,16 @@ struct NCServerHeartbeat {
 }
 
 impl NCServerHeartbeat {
-    /// Creates a new ServerHeartbeat with the given configuration.
+    /// Creates a new `ServerHeartbeat` with the given configuration.
     fn new(config: &NCConfiguration) -> Self {
         debug!("ServerHeartbeat::new()");
 
-        let ip_addr: IpAddr = "127.0.0.1".parse().unwrap();
-        let server_socket = SocketAddr::new(ip_addr, config.port);
+        let url = Url::parse(&config.url).unwrap();
+        let ip_addr: IpAddr = url.host().unwrap().to_string().parse().unwrap();
+        let server_socket = SocketAddr::new(ip_addr, url.port().unwrap());
         let duration = Duration::from_millis(2 * config.heartbeat);
 
-        NCServerHeartbeat {
+        Self {
             server_socket,
             duration,
             nc_communicator: Mutex::new(NCCommunicator::new(config)),
@@ -257,7 +255,7 @@ impl NCServerHeartbeat {
         thread::sleep(self.duration);
     }
 
-    /// Sends the NCNodeMessage::CheckHeartbeat message to itself, so that the server
+    /// Sends the `NCNodeMessage::CheckHeartbeat` message to itself, so that the server
     /// can check all the registered nodes.
     fn send_check_heartbeat_message(&self) -> Result<(), NCError> {
         debug!("ServerHeartbeat::send_check_heartbeat_message()");
@@ -271,7 +269,7 @@ impl NCServerHeartbeat {
 
 /// Some statistics about the server.
 /// This is the data that will be send when a
-/// NCNodeMessage::GetStatistics message arrived.
+/// `NCNodeMessage::GetStatistics` message arrived.
 /// More items may be added in the future.
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct NCServerStatistics {
@@ -285,10 +283,8 @@ pub(crate) struct NCServerStatistics {
 
 /// In here the server handles all the messages and generates appropriate responses.
 struct NCServerProcess<T, U> {
-    /// The address the server will broadcast from.
-    address: String,
-    /// The port the server will listen to.
-    port: u16,
+    /// The URL the server will broadcast from.
+    url: String,
     /// Every n seconds a heartbeat message is sent from the node to the server.
     heartbeat: u64,
     /// Time instance when the server was created
@@ -306,13 +302,12 @@ struct NCServerProcess<T, U> {
 }
 
 impl<T: NCServer> NCServerProcess<T, T::CustomMessageT> {
-    /// Creates a new ServerProcess with the given user defined nc_server that implements the NCServer trait
+    /// Creates a new `ServerProcess` with the given user defined `nc_server` that implements the `NCServer` trait.
     fn new(config: &NCConfiguration, nc_server: T) -> Self {
         debug!("ServerProcess::new()");
 
-        NCServerProcess {
-            address: config.address.clone(),
-            port: config.port,
+        Self {
+            url: config.url.clone(),
             heartbeat: config.heartbeat,
             time_start: Instant::now(),
             nc_server: Mutex::new(nc_server),
@@ -336,22 +331,22 @@ impl<T: NCServer> NCServerProcess<T, T::CustomMessageT> {
     }
 
     /// Shut down the server gracefully when the job is done or
-    /// when it is requested by the message NCNodeMessage::ShotDown
+    /// when it is requested by the message `NCNodeMessage::ShotDown`.
     fn shut_down(&self) {
         self.job_done.store(true, Ordering::Relaxed);
     }
 
     /// All the message that were sent from a node are handled here. It can be on of these types:
-    /// - NCNodeMessage::Register: every new node has to register first, the server then assigns a new node id and sends some optional initial data back to the node with the
-    ///   NCServerMessage::InitialData message. The server trait method initial_data() is called here.
-    /// - NCNodeMessage::NeedsData: the node needs some data to process and depending on the job state the server answers this request with a NCServerMessage::JobStatus message.
-    ///   The server trait method prepare_data_for_node() is called here.
-    /// - NCNodeMessage::HeartBeat: the node sends a heartbeat message and the server updates the internal node list with the corresponding current time stamp.
-    /// - NCNodeMessage::HasData: the node has finished processing the data and has sent the result back to the server.
-    ///   The server trait method process_data_from_node() is called here.
-    /// - NCNodeMessage::CheckHeartbeat: This message is sent from the check heartbeat thread to the server
-    ///   itself. All the nodes will be checked for the heartbeat time stamp and if a node missed it, the NCServer trait
-    ///   method heartbeat_timeout() is called where the node should be marked as offline.
+    /// - `NCNodeMessage::Register`: every new node has to register first, the server then assigns a new node id and sends some optional initial data back to the node with the
+    ///   `NCServerMessage::InitialData` message. The server trait method `initial_data()` is called here.
+    /// - `NCNodeMessage::NeedsData`: the node needs some data to process and depending on the job state the server answers this request with a `NCServerMessage::JobStatus` message.
+    ///   The server trait method `prepare_data_for_node()` is called here.
+    /// - `NCNodeMessage::HeartBeat`: the node sends a heartbeat message and the server updates the internal node list with the corresponding current time stamp.
+    /// - `NCNodeMessage::HasData`: the node has finished processing the data and has sent the result back to the server.
+    ///   The server trait method `process_data_from_node()` is called here.
+    /// - `NCNodeMessage::CheckHeartbeat`: This message is sent from the check heartbeat thread to the server
+    ///   itself. All the nodes will be checked for the heartbeat time stamp and if a node missed it, the `NCServer` trait
+    ///   method `heartbeat_timeout()` is called where the node should be marked as offline.
     fn handle_node(&self, mut stream: TcpStream) -> Result<(), NCError> {
         debug!("ServerProcess::handle_node()");
 
@@ -454,21 +449,20 @@ impl<T: NCServer> NCServerProcess<T, T::CustomMessageT> {
                 debug!("Register migrated node: {}", node_id);
                 self.node_list.lock()?.migrate_node(node_id);
             }
-            NCNodeMessage::CustomMessage(message, destination) => match destination {
-                Some(node_id) => {
+            NCNodeMessage::CustomMessage(message, destination) => {
+                if let Some(node_id) = destination {
                     debug!("Add a custom message to node: {}", node_id);
                     self.node_list.lock()?.add_message(message, node_id);
-                }
-                None => {
+                } else {
                     debug!("Add a custom message to all nodes");
                     self.node_list.lock()?.add_message_all(message);
                 }
-            },
+            }
         }
         Ok(())
     }
 
-    /// Sends the NCServerMessage::InitialData message to the node with the given node_id and optional initial_data
+    /// Sends the `NCServerMessage::InitialData` message to the node with the given `node_id` and optional `initial_data`
     fn send_initial_data_message(
         &self,
         node_id: NodeID,
@@ -484,7 +478,7 @@ impl<T: NCServer> NCServerProcess<T, T::CustomMessageT> {
             .nc_send_data2(&message, &mut stream)
     }
 
-    /// Sends the NCServerMessage::JobStatus Unfinished message with the given data to the node,
+    /// Sends the `NCServerMessage::JobStatus` Unfinished message with the given data to the node,
     fn send_job_status_unfinished(
         &self,
         data: T::NewDataT,
@@ -499,7 +493,7 @@ impl<T: NCServer> NCServerProcess<T, T::CustomMessageT> {
             .nc_send_data2(&message, &mut stream)
     }
 
-    /// Send the NCServerMessage::JobStatus Waiting message to the node.
+    /// Send the `NCServerMessage::JobStatus` Waiting message to the node.
     fn send_job_status_waiting(&self, mut stream: TcpStream) -> Result<(), NCError> {
         debug!("ServerProcess::send_job_status_waiting()");
         let message: NCServerMessage<T::InitialDataT, T::NewDataT, T::CustomMessageT> =
@@ -510,7 +504,7 @@ impl<T: NCServer> NCServerProcess<T, T::CustomMessageT> {
             .nc_send_data2(&message, &mut stream)
     }
 
-    /// Send the NCServerMessage::Statistics to the node.
+    /// Send the `NCServerMessage::Statistics` to the node.
     fn send_server_statistics(
         &self,
         server_statistics: NCServerStatistics,
@@ -525,7 +519,7 @@ impl<T: NCServer> NCServerProcess<T, T::CustomMessageT> {
             .nc_send_data2(&message, &mut stream)
     }
 
-    /// Send the NCServerMessage::NewServer message to the node.
+    /// Send the `NCServerMessage::NewServer` message to the node.
     fn send_new_server_message(
         &self,
         server: String,
@@ -541,7 +535,7 @@ impl<T: NCServer> NCServerProcess<T, T::CustomMessageT> {
             .nc_send_data2(&message, &mut stream)
     }
 
-    /// Send the NCServerMessage::Command message to the node.
+    /// Send the `NCServerMessage::Command` message to the node.
     fn send_custom_message(
         &self,
         custom_message: T::CustomMessageT,
