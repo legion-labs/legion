@@ -3,9 +3,9 @@
 #include "crate://lgn-renderer/gpu/include/mesh.hsh"
 
 struct VertexIn {
-    float4 pos : POSITION;
-    float4 normal : NORMAL;
-    float4 tangent : TANGENT;
+    float3 pos : POSITION;
+    float3 normal : NORMAL;
+    float3 tangent : TANGENT;
     float4 color: COLOR;
     float2 uv_coord : TEXCOORD0;
 };
@@ -22,7 +22,7 @@ VertexOut main_vs(uint vertexId: SV_VertexID) {
     VertexIn vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexId);
     VertexOut vertex_out;
 
-    float4 pos_view_relative = mul(view_data.view, mul(push_constant.world, vertex_in.pos));
+    float4 pos_view_relative = mul(view_data.view, mul(push_constant.world, float4(vertex_in.pos, 1.0)));
     vertex_out.hpos = mul(view_data.projection, pos_view_relative);
     vertex_out.color = vertex_in.color;
     vertex_out.uv_coord = vertex_in.uv_coord;

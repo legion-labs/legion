@@ -4,6 +4,7 @@ use crate::asset_entities::AssetToEntityMap;
 use lgn_core::Name;
 use lgn_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
+use lgn_math::Vec3;
 use lgn_renderer::components::{
     LightComponent, LightType, MaterialComponent, Mesh, ModelComponent, TextureComponent,
     VisualComponent,
@@ -128,14 +129,19 @@ impl AssetToECS for runtime_data::Entity {
             } else if let Some(light) = component.downcast_ref::<runtime_data::Light>() {
                 entity.insert(LightComponent {
                     light_type: match light.light_type {
-                        0 => LightType::Omnidirectional,
-                        1 => LightType::Directional,
-                        _ => LightType::Spotlight {
+                        sample_data::LightType::Omnidirectional => LightType::Omnidirectional,
+                        sample_data::LightType::Directional => LightType::Directional,
+                        sample_data::LightType::Spotlight => LightType::Spotlight {
                             cone_angle: light.cone_angle,
                         },
+                        _ => unreachable!("Unrecognized light type"),
                     },
+                    color: Vec3::new(
+                        f32::from(light.color.r) / 255.0,
+                        f32::from(light.color.g) / 255.0,
+                        f32::from(light.color.b) / 255.0,
+                    ),
                     radiance: light.radiance,
-                    color: light.color,
                     enabled: light.enabled,
                     ..LightComponent::default()
                 });
@@ -320,11 +326,7 @@ impl AssetToECS for lgn_graphics_data::runtime::Model {
         let mut meshes = Vec::new();
         for mesh in &model.meshes {
             meshes.push(Mesh {
-                positions: if !mesh.positions.is_empty() {
-                    Some(mesh.positions.clone())
-                } else {
-                    None
-                },
+                positions: mesh.positions.clone(),
                 normals: if !mesh.normals.is_empty() {
                     Some(mesh.normals.clone())
                 } else {
@@ -346,11 +348,11 @@ impl AssetToECS for lgn_graphics_data::runtime::Model {
                     None
                 },
                 colors: if !mesh.colors.is_empty() {
-                    Some(mesh.colors.clone())
+                    Some(mesh.colors.iter().map(|v| Into::into(*v)).collect())
                 } else {
                     None
                 },
-                material_id: None,
+                material_id: mesh.material.clone(),
                 bounding_sphere: Mesh::calculate_bounding_sphere(&mesh.positions),
             });
         }

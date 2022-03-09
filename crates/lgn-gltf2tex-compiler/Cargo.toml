@@ -1,0 +1,25 @@
+[package]
+name = "lgn-compiler-gltf2tex"
+version = "0.1.0"
+authors = ["Legion Labs <devs@legionlabs.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[lib]
+doc = false
+
+[[bin]]
+name = "compiler-gltf2tex"
+path = "src/main.rs"
+doc = false
+
+[dependencies]
+lgn-data-offline = { path = "../lgn-data-offline", version = "0.1.0" }
+lgn-data-runtime = { path = "../lgn-data-runtime", version = "0.1.0" }
+lgn-graphics-data = { path = "../lgn-graphics-data", version = "0.1.0", features = [
+    "runtime",
+    "offline",
+] }
+lgn-data-compiler = { path = "../lgn-data-compiler", version = "0.1.0" }
+#serde = { version = "1.0", features = ["derive"] }
+#serde_json = "1.0"

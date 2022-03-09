@@ -12,12 +12,12 @@ use crate::{
 };
 
 pub struct Mesh {
-    pub positions: Option<Vec<Vec4>>,
-    pub normals: Option<Vec<Vec4>>,
-    pub tangents: Option<Vec<Vec4>>,
+    pub positions: Vec<Vec3>,
+    pub normals: Option<Vec<Vec3>>,
+    pub tangents: Option<Vec<Vec3>>,
     pub tex_coords: Option<Vec<Vec2>>,
     pub indices: Option<Vec<u16>>,
-    pub colors: Option<Vec<Vec4>>,
+    pub colors: Option<Vec<[u8; 4]>>,
 
     pub material_id: Option<MaterialReferenceType>,
     pub bounding_sphere: Vec4,
@@ -26,9 +26,6 @@ pub struct Mesh {
 impl Mesh {
     pub fn get_mesh_attrib_mask(&self) -> MeshAttribMask {
         let mut format = MeshAttribMask::empty();
-        if self.positions.is_some() {
-            format |= MeshAttribMask::POSITION;
-        }
         if self.normals.is_some() {
             format |= MeshAttribMask::NORMAL;
         }
@@ -48,16 +45,12 @@ impl Mesh {
     }
 
     pub fn size_in_bytes(&self) -> u32 {
-        let mut size = 0;
-
-        if let Some(positions) = &self.positions {
-            size += (std::mem::size_of::<Vec4>() * positions.len()) as u32;
-        }
+        let mut size = (std::mem::size_of::<Vec3>() * self.positions.len()) as u32;
         if let Some(normals) = &self.normals {
-            size += (std::mem::size_of::<Vec4>() * normals.len()) as u32;
+            size += (std::mem::size_of::<Vec3>() * normals.len()) as u32;
         }
         if let Some(tangents) = &self.tangents {
-            size += (std::mem::size_of::<Vec4>() * tangents.len()) as u32;
+            size += (std::mem::size_of::<Vec3>() * tangents.len()) as u32;
         }
         if let Some(tex_coords) = &self.tex_coords {
             size += (std::mem::size_of::<Vec2>() * tex_coords.len()) as u32;
@@ -66,14 +59,14 @@ impl Mesh {
             size += (std::mem::size_of::<u32>() * indices.len()) as u32;
         }
         if let Some(colors) = &self.colors {
-            size += (std::mem::size_of::<Vec4>() * colors.len()) as u32;
+            size += (std::mem::size_of::<[u8; 4]>() * colors.len()) as u32;
         }
         size
     }
 
-    pub fn calculate_bounding_sphere(positions: &[Vec4]) -> Vec4 {
-        let mut min_bound = Vec4::new(f32::MAX, f32::MAX, f32::MAX, 1.0);
-        let mut max_bound = Vec4::new(f32::MIN, f32::MIN, f32::MIN, 1.0);
+    pub fn calculate_bounding_sphere(positions: &[Vec3]) -> Vec4 {
+        let mut min_bound = Vec3::new(f32::MAX, f32::MAX, f32::MAX);
+        let mut max_bound = Vec3::new(f32::MIN, f32::MIN, f32::MIN);
 
         for position in positions {
             min_bound = min_bound.min(*position);
@@ -81,7 +74,7 @@ impl Mesh {
         }
 
         let delta = max_bound - min_bound;
-        let mut mid_point = min_bound + delta * 0.5;
+        let mid_point = min_bound + delta * 0.5;
 
         let mut max_length: f32 = 0.0;
         for position in positions {
@@ -92,8 +85,7 @@ impl Mesh {
                 max_length = length;
             }
         }
-        mid_point.w = max_length;
-        mid_point
+        mid_point.extend(max_length)
     }
 
     pub fn make_gpu_update_job(
@@ -106,20 +98,19 @@ impl Mesh {
         let mut offset = offset;
         let mut index_offset = 0;
 
-        if let Some(positions) = &self.positions {
-            mesh_desc.set_position_offset(offset.into());
-            updater.add_update_jobs(positions, u64::from(offset));
-            offset += (std::mem::size_of::<Vec4>() * positions.len()) as u32;
-        }
+        mesh_desc.set_position_offset(offset.into());
+        updater.add_update_jobs(&self.positions, u64::from(offset));
+        offset += (std::mem::size_of::<Vec3>() * self.positions.len()) as u32;
+
         if let Some(normals) = &self.normals {
             mesh_desc.set_normal_offset(offset.into());
             updater.add_update_jobs(normals, u64::from(offset));
-            offset += (std::mem::size_of::<Vec4>() * normals.len()) as u32;
+            offset += (std::mem::size_of::<Vec3>() * normals.len()) as u32;
         }
         if let Some(tangents) = &self.tangents {
             mesh_desc.set_tangent_offset(offset.into());
             updater.add_update_jobs(tangents, u64::from(offset));
-            offset += (std::mem::size_of::<Vec4>() * tangents.len()) as u32;
+            offset += (std::mem::size_of::<Vec3>() * tangents.len()) as u32;
         }
         if let Some(tex_coords) = &self.tex_coords {
             mesh_desc.set_tex_coord_offset(offset.into());
@@ -137,9 +128,8 @@ impl Mesh {
         if let Some(colors) = &self.colors {
             mesh_desc.set_color_offset(offset.into());
             updater.add_update_jobs(colors, u64::from(offset));
-            offset += (std::mem::size_of::<Vec4>() * colors.len()) as u32;
+            offset += (std::mem::size_of::<[u8; 4]>() * colors.len()) as u32;
         }
-        mesh_desc.set_bounding_sphere(self.bounding_sphere.into());
 
         updater.add_update_jobs(&[mesh_desc], u64::from(offset));
         let mesh_info_offset = offset;
@@ -148,10 +138,7 @@ impl Mesh {
     }
 
     pub fn num_vertices(&self) -> usize {
-        if let Some(positions) = &self.positions {
-            return positions.len();
-        }
-        0
+        self.positions.len()
     }
 
     pub fn num_indices(&self) -> usize {
@@ -173,35 +160,35 @@ impl Mesh {
         #[rustfmt::skip]
         let vertex_data = [
             // +x
-             half_size, -half_size, -half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
-             half_size,  half_size, -half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
-             half_size,  half_size,  half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
-             half_size, -half_size,  half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+             half_size, -half_size, -half_size,  1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
+             half_size,  half_size, -half_size,  1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+             half_size,  half_size,  half_size,  1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+             half_size, -half_size,  half_size,  1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
             // -x
-            -half_size, -half_size,  half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size,  half_size,  half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
-            -half_size,  half_size, -half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
-            -half_size, -half_size, -half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
+            -half_size, -half_size,  half_size, -1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+            -half_size,  half_size,  half_size, -1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+            -half_size,  half_size, -half_size, -1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+            -half_size, -half_size, -half_size, -1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
             // +y
-            -half_size,  half_size,  half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
-            -half_size,  half_size, -half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
-             half_size,  half_size, -half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
-             half_size,  half_size,  half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+            -half_size,  half_size,  half_size, 0.0,  1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
+            -half_size,  half_size, -half_size, 0.0,  1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+             half_size,  half_size, -half_size, 0.0,  1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+             half_size,  half_size,  half_size, 0.0,  1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
             // -y
-            -half_size, -half_size, -half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
-            -half_size, -half_size,  half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-             half_size, -half_size,  half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
-             half_size, -half_size, -half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+            -half_size, -half_size, -half_size, 0.0, -1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+            -half_size, -half_size,  half_size, 0.0, -1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+             half_size, -half_size,  half_size, 0.0, -1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+             half_size, -half_size, -half_size, 0.0, -1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
             // +z
-             half_size, -half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
-             half_size,  half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
-            -half_size,  half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
-            -half_size, -half_size,  half_size, 1.0,  0.0,  0.0,  1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+             half_size, -half_size,  half_size, 0.0,  0.0,  1.0, 0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
+             half_size,  half_size,  half_size, 0.0,  0.0,  1.0, 0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+            -half_size,  half_size,  half_size, 0.0,  0.0,  1.0, 0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+            -half_size, -half_size,  half_size, 0.0,  0.0,  1.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
             // -z
-            -half_size, -half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size,  half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
-             half_size,  half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
-             half_size, -half_size, -half_size, 1.0,  0.0,  0.0, -1.0, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
+            -half_size, -half_size, -half_size, 0.0,  0.0, -1.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+            -half_size,  half_size, -half_size, 0.0,  0.0, -1.0, 0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+             half_size,  half_size, -half_size, 0.0,  0.0, -1.0, 0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+             half_size, -half_size, -half_size, 0.0,  0.0, -1.0, 0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
         ];
 
         let mut index_data: Vec<u16> = vec![];
@@ -232,26 +219,26 @@ impl Mesh {
         #[rustfmt::skip]
         let vertex_data = [
             // base
-             half_size, -half_size, -half_size, 1.0,  0.0, -1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
-             half_size, -half_size,  half_size, 1.0,  0.0, -1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size, -half_size, -half_size, 1.0,  0.0, -1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-            -half_size, -half_size,  half_size, 1.0,  0.0, -1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
+             half_size, -half_size, -half_size, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
+             half_size, -half_size,  half_size, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+            -half_size, -half_size, -half_size, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
+            -half_size, -half_size,  half_size, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
             // 1
-             half_size, -half_size, -half_size, 1.0, normal1.x, normal1.y, normal1.z, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-             half_size, -half_size,  half_size, 1.0, normal1.x, normal1.y, normal1.z, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
-                   0.0,       top_y,       0.0, 1.0, normal1.x, normal1.y, normal1.z, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+             half_size, -half_size, -half_size, normal1.x, normal1.y, normal1.z, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
+             half_size, -half_size,  half_size, normal1.x, normal1.y, normal1.z, 0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
+                   0.0,       top_y,       0.0, normal1.x, normal1.y, normal1.z, 0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
             // 2
-             half_size, -half_size,  half_size, 1.0, normal2.x, normal2.y, normal2.z, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-            -half_size, -half_size,  half_size, 1.0, normal2.x, normal2.y, normal2.z, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
-                   0.0,      top_y,        0.0, 1.0, normal2.x, normal2.y, normal2.z, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
+             half_size, -half_size,  half_size, normal2.x, normal2.y, normal2.z, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
+            -half_size, -half_size,  half_size, normal2.x, normal2.y, normal2.z, 0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
+                   0.0,      top_y,        0.0, normal2.x, normal2.y, normal2.z, 0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
             // 3
-            -half_size, -half_size,  half_size, 1.0, normal3.x, normal3.y, normal3.z, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
-            -half_size, -half_size, -half_size, 1.0, normal3.x, normal3.y, normal3.z, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-                   0.0,      top_y,        0.0, 1.0, normal3.x, normal3.y, normal3.z, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+            -half_size, -half_size,  half_size, normal3.x, normal3.y, normal3.z, 0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
+            -half_size, -half_size, -half_size, normal3.x, normal3.y, normal3.z, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
+                   0.0,      top_y,        0.0, normal3.x, normal3.y, normal3.z, 0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
             // 4
-            -half_size, -half_size, -half_size, 1.0, normal4.x, normal4.y, normal4.z, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-             half_size, -half_size, -half_size, 1.0, normal4.x, normal4.y, normal4.z, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
-                   0.0,       top_y,       0.0, 1.0, normal4.x, normal4.y, normal4.z, 0.0,  0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
+            -half_size, -half_size, -half_size, normal4.x, normal4.y, normal4.z, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
+             half_size, -half_size, -half_size, normal4.x, normal4.y, normal4.z, 0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
+                   0.0,       top_y,       0.0, normal4.x, normal4.y, normal4.z, 0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
         ];
 
         let mut index_data: Vec<u16> = vec![];
@@ -268,10 +255,10 @@ impl Mesh {
         let half_size = size / 2.0;
         #[rustfmt::skip]
         let vertex_data = [
-            -half_size, 0.0, -half_size, 1.0,  0.0, 1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0, -1.0, -1.0,
-            -half_size, 0.0,  half_size, 1.0,  0.0, 1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0, -1.0,  1.0,
-             half_size, 0.0, -half_size, 1.0,  0.0, 1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0,  1.0, -1.0,
-             half_size, 0.0,  half_size, 1.0,  0.0, 1.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0,  1.0,  1.0,
+            -half_size, 0.0, -half_size, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0, -1.0,
+            -half_size, 0.0,  half_size, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0,  1.0,
+             half_size, 0.0, -half_size, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0,  1.0, -1.0,
+             half_size, 0.0,  half_size, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0,  1.0,  1.0,
         ];
 
         let mut index_data: Vec<u16> = vec![];
@@ -482,33 +469,33 @@ impl Mesh {
         #[rustfmt::skip]
         let vertex_data = [
             // +x
-             half_size, -half_size, -half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-             half_size, -half_size,  half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
-             half_size, -half_size, -half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-             half_size,  half_size, -half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-             half_size,  half_size,  half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-             half_size, -half_size,  half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
-             half_size,  half_size,  half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-             half_size,  half_size, -half_size, 1.0,  1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
+             half_size, -half_size, -half_size, 1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
+             half_size, -half_size,  half_size, 1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
+             half_size, -half_size, -half_size, 1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+             half_size,  half_size, -half_size, 1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
+             half_size,  half_size,  half_size, 1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+             half_size, -half_size,  half_size, 1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
+             half_size,  half_size,  half_size, 1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+             half_size,  half_size, -half_size, 1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
             // -x
-            -half_size, -half_size, -half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-            -half_size, -half_size,  half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size, -half_size, -half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
-            -half_size,  half_size, -half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-            -half_size,  half_size,  half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
-            -half_size, -half_size,  half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size,  half_size,  half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
-            -half_size,  half_size, -half_size, 1.0, -1.0,  0.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+            -half_size, -half_size, -half_size, -1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
+            -half_size, -half_size,  half_size, -1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+            -half_size, -half_size, -half_size, -1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
+            -half_size,  half_size, -half_size, -1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
+            -half_size,  half_size,  half_size, -1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
+            -half_size, -half_size,  half_size, -1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+            -half_size,  half_size,  half_size, -1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
+            -half_size,  half_size, -half_size, -1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
             // +y
-             half_size,  half_size, -half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
-            -half_size,  half_size, -half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-             half_size,  half_size,  half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size,  half_size,  half_size, 1.0,  0.0,  1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+             half_size,  half_size, -half_size, 0.0,  1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
+            -half_size,  half_size, -half_size, 0.0,  1.0,  0.0, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
+             half_size,  half_size,  half_size, 0.0,  1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+            -half_size,  half_size,  half_size, 0.0,  1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
             // -y
-            -half_size, -half_size, -half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
-             half_size, -half_size, -half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size, -half_size,  half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-             half_size, -half_size,  half_size, 1.0,  0.0, -1.0,  0.0, 0.0,  0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+            -half_size, -half_size, -half_size, 0.0, -1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
+             half_size, -half_size, -half_size, 0.0, -1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+            -half_size, -half_size,  half_size, 0.0, -1.0,  0.0, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
+             half_size, -half_size,  half_size, 0.0, -1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
         ];
         Self::from_vertex_data(&vertex_data, None)
     }
@@ -530,13 +517,13 @@ impl Mesh {
             grey_scale: f32,
         ) {
             vertex_data.append(&mut vec![
-                *x_value, 0.0, -z_value, 1.0, 0.0, 1.0, 0.0, 0.0, grey_scale, grey_scale,
-                grey_scale, 1.0, 0.0, 1.0,
+                *x_value, 0.0, -z_value, 0.0, 1.0, 0.0, grey_scale, grey_scale, grey_scale, 1.0,
+                0.0, 1.0,
             ]);
 
             vertex_data.append(&mut vec![
-                *x_value, 0.0, z_value, 1.0, 0.0, 1.0, 0.0, 0.0, grey_scale, grey_scale,
-                grey_scale, 1.0, 0.0, 1.0,
+                *x_value, 0.0, z_value, 0.0, 1.0, 0.0, grey_scale, grey_scale, grey_scale, 1.0,
+                0.0, 1.0,
             ]);
             *x_value += x_inc;
         }
@@ -569,12 +556,12 @@ impl Mesh {
             grey_scale: f32,
         ) {
             vertex_data.append(&mut vec![
-                -x_value, 0.0, *z_value, 1.0, 0.0, 1.0, 0.0, 0.0, grey_scale, grey_scale,
-                grey_scale, 1.0, 0.0, 1.0,
+                -x_value, 0.0, *z_value, 0.0, 1.0, 0.0, grey_scale, grey_scale, grey_scale, 1.0,
+                0.0, 1.0,
             ]);
             vertex_data.append(&mut vec![
-                x_value, 0.0, *z_value, 1.0, 0.0, 1.0, 0.0, 0.0, grey_scale, grey_scale,
-                grey_scale, 1.0, 0.0, 1.0,
+                x_value, 0.0, *z_value, 0.0, 1.0, 0.0, grey_scale, grey_scale, grey_scale, 1.0,
+                0.0, 1.0,
             ]);
             *z_value += z_inc;
         }
@@ -604,15 +591,14 @@ impl Mesh {
 
     pub fn new_arrow() -> Self {
         let arrow = Self::new_cylinder(0.01, 0.3, 10);
-        let initial_index = arrow.indices.as_ref().unwrap().len() as u16;
+        let initial_index = arrow.positions.len() as u16;
         let cone = Self::new_cone(0.025, 0.1, 10, initial_index);
-        let mut positions = arrow.positions.unwrap();
+        let mut positions = arrow.positions;
         positions.append(
             &mut cone
                 .positions
-                .unwrap()
                 .into_iter()
-                .map(|v| Vec4::new(v.x, -v.y, v.z, v.w))
+                .map(|v| Vec3::new(v.x, -v.y, v.z))
                 .collect(),
         );
         let mut normals = arrow.normals.unwrap();
@@ -621,7 +607,7 @@ impl Mesh {
                 .normals
                 .unwrap()
                 .into_iter()
-                .map(|v| Vec4::new(v.x, -v.y, v.z, v.w))
+                .map(|v| Vec3::new(v.x, -v.y, v.z))
                 .collect(),
         );
         let mut tex_coords = arrow.tex_coords.unwrap();
@@ -634,7 +620,7 @@ impl Mesh {
         let bounding_sphere = Self::calculate_bounding_sphere(&positions);
 
         Self {
-            positions: Some(positions),
+            positions,
             normals: Some(normals),
             tangents: None,
             tex_coords: Some(tex_coords),
@@ -674,17 +660,14 @@ impl Mesh {
                     let p2 = Vec3::new(lr * langle.cos(), y1, lr * langle.sin());
                     let n2 = p2.normalize();
                     vertex_data.append(&mut pole.to_array().to_vec());
-                    vertex_data.push(1.0);
                     vertex_data.append(&mut vec![0.0, -1.0, 0.0]);
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u0, v0]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 1.0, u0, v0]);
                     vertex_data.append(&mut p2.to_array().to_vec());
-                    vertex_data.push(1.0);
                     vertex_data.append(&mut n2.to_array().to_vec());
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u0, v1]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 1.0, u0, v1]);
                     vertex_data.append(&mut p1.to_array().to_vec());
-                    vertex_data.push(1.0);
                     vertex_data.append(&mut n1.to_array().to_vec());
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u1, v1]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 1.0, u1, v1]);
 
                     index_data.extend_from_slice(&[
                         current_index,
@@ -702,17 +685,14 @@ impl Mesh {
                     let p2 = Vec3::new(lr * langle.cos(), y0, lr * langle.sin());
                     let n2 = p2.normalize();
                     vertex_data.append(&mut p1.to_array().to_vec());
-                    vertex_data.push(1.0);
                     vertex_data.append(&mut n1.to_array().to_vec());
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u0, v0]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 1.0, u0, v0]);
                     vertex_data.append(&mut p2.to_array().to_vec());
-                    vertex_data.push(1.0);
                     vertex_data.append(&mut n2.to_array().to_vec());
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u1, v0]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 1.0, u1, v0]);
                     vertex_data.append(&mut pole.to_array().to_vec());
-                    vertex_data.push(1.0);
                     vertex_data.append(&mut vec![0.0, 1.0, 0.0]);
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u0, v1]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 1.0, u0, v1]);
 
                     index_data.extend_from_slice(&[
                         current_index,
@@ -729,29 +709,25 @@ impl Mesh {
                     let p2 = Vec3::new(lr * langle.cos(), y0, lr * langle.sin());
                     let n2 = p2.normalize();
                     vertex_data.append(&mut p1.to_array().to_vec());
-                    vertex_data.push(1.0);
                     vertex_data.append(&mut n1.to_array().to_vec());
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u0, v0]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 1.0, u0, v0]);
                     vertex_data.append(&mut p2.to_array().to_vec());
-                    vertex_data.push(1.0);
                     vertex_data.append(&mut n2.to_array().to_vec());
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u1, v0]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 1.0, u1, v0]);
                     let lr = (radius * radius - y1 * y1).sqrt();
                     let langle = angle * (sail as f32);
                     let p1 = Vec3::new(lr * langle.cos(), y1, lr * langle.sin());
                     let n1 = p1.normalize();
                     vertex_data.append(&mut p1.to_array().to_vec());
-                    vertex_data.push(1.0);
                     vertex_data.append(&mut n1.to_array().to_vec());
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u0, v1]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 1.0, u0, v1]);
                     let lr = (radius * radius - y1 * y1).sqrt();
                     let langle = angle * ((sail + 1) as f32);
                     let p1 = Vec3::new(lr * langle.cos(), y1, lr * langle.sin());
                     let n1 = p1.normalize();
                     vertex_data.append(&mut p1.to_array().to_vec());
-                    vertex_data.push(1.0);
                     vertex_data.append(&mut n1.to_array().to_vec());
-                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 0.0, 1.0, u1, v1]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 0.0, 1.0, u1, v1]);
 
                     index_data.extend_from_slice(&[
                         current_index,
@@ -774,33 +750,31 @@ impl Mesh {
         let mut normals = Vec::new();
         let mut colors = Vec::new();
         let mut tex_coords = Vec::new();
-        for i in 0..vertex_data.len() / 14 {
-            let idx = i * 14;
-            positions.push(Vec4::new(
+        for i in 0..vertex_data.len() / 12 {
+            let idx = i * 12;
+            positions.push(Vec3::new(
                 vertex_data[idx],
                 vertex_data[idx + 1],
                 vertex_data[idx + 2],
-                vertex_data[idx + 3],
             ));
-            normals.push(Vec4::new(
+            normals.push(Vec3::new(
+                vertex_data[idx + 3],
                 vertex_data[idx + 4],
                 vertex_data[idx + 5],
-                vertex_data[idx + 6],
-                vertex_data[idx + 7],
             ));
-            colors.push(Vec4::new(
-                vertex_data[idx + 8],
-                vertex_data[idx + 9],
-                vertex_data[idx + 10],
-                vertex_data[idx + 11],
-            ));
-            tex_coords.push(Vec2::new(vertex_data[idx + 12], vertex_data[idx + 13]));
+            colors.push([
+                (vertex_data[idx + 6] * 255.0) as u8,
+                (vertex_data[idx + 7] * 255.0) as u8,
+                (vertex_data[idx + 8] * 255.0) as u8,
+                (vertex_data[idx + 9] * 255.0) as u8,
+            ]);
+            tex_coords.push(Vec2::new(vertex_data[idx + 10], vertex_data[idx + 11]));
         }
         let tangents = lgn_math::calculate_tangents(&positions, &tex_coords, &None);
         let bounding_sphere = Self::calculate_bounding_sphere(&positions);
 
         Self {
-            positions: Some(positions),
+            positions,
             normals: Some(normals),
             tangents: Some(tangents),
             tex_coords: Some(tex_coords),
@@ -813,10 +787,9 @@ impl Mesh {
     }
 
     pub fn calculate_tangents(&mut self) {
-        assert!(self.positions.is_some());
         assert!(self.tex_coords.is_some());
         self.tangents = Some(lgn_math::calculate_tangents(
-            self.positions.as_ref().unwrap(),
+            &self.positions,
             self.tex_coords.as_ref().unwrap(),
             &self.indices,
         ));
@@ -829,7 +802,7 @@ fn add_vertex_data(vertex_data: &mut Vec<f32>, pos: Vec3, normal_opt: Option<Vec
         normal = normal_opt;
     }
     vertex_data.append(&mut vec![
-        pos.x, pos.y, pos.z, 1.0, normal.x, normal.y, normal.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        pos.x, pos.y, pos.z, normal.x, normal.y, normal.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
     ]);
 }
 

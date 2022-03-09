@@ -701,6 +701,8 @@ impl DataBuild {
                         size: res.compiled_size,
                     }
                 }));
+                accumulated_dependencies.sort();
+                accumulated_dependencies.dedup();
 
                 assert_eq!(
                     compiled_resources

@@ -103,7 +103,7 @@ impl MeshManager {
                 index_count: mesh.num_indices() as u32,
                 index_offset,
                 mesh_description_offset: mesh_info_offset,
-                positions: mesh.positions.as_ref().unwrap().clone(),
+                positions: mesh.positions.iter().map(|v| v.extend(1.0)).collect(),
                 bounding_sphere: mesh.bounding_sphere,
             });
             offset = u64::from(new_offset);

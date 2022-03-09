@@ -20,6 +20,7 @@ lgn-ecs = { path = "../lgn-ecs", version = "0.1.0" }
 lgn-graphics-data = { path = "../lgn-graphics-data", version = "0.1.0", features = [
     "runtime",
 ] }
+lgn-math = { path = "../lgn-math", version = "0.1.0" }
 lgn-physics = { path = "../lgn-physics", version = "0.1.0", features = [
     "runtime",
 ] }

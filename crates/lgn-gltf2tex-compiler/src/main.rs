@@ -1,6 +1,6 @@
 use std::env;
 
-use lgn_compiler_gltf::COMPILER_INFO;
+use lgn_compiler_gltf2tex::COMPILER_INFO;
 use lgn_data_compiler::compiler_api::{compiler_main, CompilerError};
 
 fn main() -> Result<(), CompilerError> {

@@ -60,11 +60,18 @@ pub struct View {
 
 #[derive(Serialize, Deserialize)]
 pub struct Light {
-    pub light_type: u32, //TODO: change to enum support when it will be supported
+    pub light_type: sample_data::LightType,
     pub color: Vec3,
     pub radiance: f32,
     pub enabled: bool,
     pub cone_angle: f32,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct GltfLoader {
+    pub models: Vec<String>,
+    pub materials: Vec<String>,
+    pub textures: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -75,6 +82,7 @@ pub enum Component {
     Navmesh(NavMesh),
     View(View),
     Light(Light),
+    GltfLoader(GltfLoader),
 }
 
 #[derive(Serialize, Deserialize)]

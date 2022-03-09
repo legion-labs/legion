@@ -137,6 +137,11 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
                 raw_data::Component::Light(raw) => {
                     components.push(Box::new(Into::<offline_data::Light>::into(raw)));
                 }
+                raw_data::Component::GltfLoader(raw) => {
+                    components.push(Box::new(offline_data::GltfLoader::from_raw(
+                        raw, references,
+                    )));
+                }
             }
         }
 
@@ -248,10 +253,41 @@ impl From<raw_data::Light> for offline_data::Light {
     fn from(raw: raw_data::Light) -> Self {
         Self {
             light_type: raw.light_type,
-            color: raw.color,
+            color: lgn_graphics_data::Color::from((
+                raw.color.x as u8,
+                raw.color.y as u8,
+                raw.color.z as u8,
+            )),
             radiance: raw.radiance,
             enabled: raw.enabled,
             cone_angle: raw.cone_angle,
+        }
+    }
+}
+
+impl FromRaw<raw_data::GltfLoader> for offline_data::GltfLoader {
+    fn from_raw(
+        raw: raw_data::GltfLoader,
+        references: &HashMap<ResourcePathName, ResourceTypeAndId>,
+    ) -> Self {
+        Self {
+            models: raw
+                .models
+                .iter()
+                .filter_map(|model| lookup_asset_path(references, model))
+                .collect(),
+
+            materials: raw
+                .materials
+                .iter()
+                .filter_map(|material| lookup_asset_path(references, material))
+                .collect(),
+
+            textures: raw
+                .textures
+                .iter()
+                .filter_map(|texture| lookup_asset_path(references, texture))
+                .collect(),
         }
     }
 }
