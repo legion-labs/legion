@@ -14,5 +14,5 @@ lgn-embedded-fs = { path = "../lgn-embedded-fs", version = "0.1.0" }
 hassle-rs = { git = "https://github.com/legion-labs/hassle-rs", rev = "957746c04479e7df7eb37c70ea733fc18aefcbc5" }
 normpath = "0.3"
 spirv-reflect = "0.2"
-spirv-tools = "0.7"
+spirv-tools = "0.8"
 anyhow = "1"

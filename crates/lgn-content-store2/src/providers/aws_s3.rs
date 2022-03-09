@@ -100,7 +100,7 @@ impl AwsS3Provider {
             .await
         {
             Ok(_) => Ok(true),
-            Err(aws_sdk_s3::SdkError::ServiceError { err, raw: _ }) => {
+            Err(aws_sdk_s3::types::SdkError::ServiceError { err, raw: _ }) => {
                 if let aws_sdk_s3::error::GetObjectAclErrorKind::NoSuchKey(_) = err.kind {
                     Ok(false)
                 } else {
@@ -122,7 +122,7 @@ impl AwsS3Provider {
 
 #[pin_project]
 #[derive(Debug)]
-struct ByteStreamReader(#[pin] aws_sdk_s3::ByteStream);
+struct ByteStreamReader(#[pin] aws_sdk_s3::types::ByteStream);
 
 impl Stream for ByteStreamReader {
     type Item = std::result::Result<Bytes, std::io::Error>;
@@ -151,7 +151,7 @@ type ByteStreamWriterBoxedFuture = Box<
     dyn Future<
             Output = std::result::Result<
                 aws_sdk_s3::output::PutObjectOutput,
-                aws_sdk_s3::SdkError<aws_sdk_s3::error::PutObjectError>,
+                aws_sdk_s3::types::SdkError<aws_sdk_s3::error::PutObjectError>,
             >,
         > + Send
         + 'static,
@@ -204,7 +204,7 @@ impl ByteStreamWriter {
 
         let fut = match &mut *state {
             ByteStreamWriterState::Writing(buffer) => {
-                let body = aws_sdk_s3::ByteStream::from(std::mem::take(buffer));
+                let body = aws_sdk_s3::types::ByteStream::from(std::mem::take(buffer));
 
                 let fut = self
                     .client
@@ -273,7 +273,7 @@ impl ContentReader for AwsS3Provider {
             .await
         {
             Ok(object) => Ok(object),
-            Err(aws_sdk_s3::SdkError::ServiceError { err, raw: _ }) => {
+            Err(aws_sdk_s3::types::SdkError::ServiceError { err, raw: _ }) => {
                 if let aws_sdk_s3::error::GetObjectErrorKind::NoSuchKey(_) = err.kind {
                     Err(Error::NotFound)
                 } else {
@@ -316,7 +316,7 @@ impl ContentWriter for AwsS3Provider {
             .await
         {
             Ok(_) => Err(Error::AlreadyExists {}),
-            Err(aws_sdk_s3::SdkError::ServiceError { err, raw: _ }) => {
+            Err(aws_sdk_s3::types::SdkError::ServiceError { err, raw: _ }) => {
                 if let aws_sdk_s3::error::GetObjectErrorKind::NoSuchKey(_) = err.kind {
                     Ok(())
                 } else {
