@@ -911,18 +911,18 @@ mod tests {
     async fn proj_create_delete() {
         let root = tempfile::tempdir().unwrap();
 
-        let project = Project::create_new(root.path())
+        let project = Project::create_with_remote_mock(root.path())
             .await
             .expect("failed to create project");
-        let same_project = Project::create_new(root.path()).await;
+        let same_project = Project::create_with_remote_mock(root.path()).await;
         assert!(same_project.is_err());
 
         project.delete().await;
 
-        let _project = Project::create_new(root.path())
+        let _project = Project::create_with_remote_mock(root.path())
             .await
             .expect("failed to re-create project");
-        let same_project = Project::create_new(root.path()).await;
+        let same_project = Project::create_with_remote_mock(root.path()).await;
         assert!(same_project.is_err());
     }*/
 
