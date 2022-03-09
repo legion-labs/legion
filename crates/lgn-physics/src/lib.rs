@@ -98,11 +98,11 @@ impl Plugin for PhysicsPlugin {
         .add_system_to_stage(
             PhysicsStage::Update,
             Self::create_rigid_actors::<runtime::PhysicsRigidSphere>,
+        )
+        .add_system_to_stage(
+            PhysicsStage::Update,
+            Self::create_rigid_actors::<runtime::PhysicsRigidTriangleMesh>,
         );
-        // app.add_system_to_stage(
-        //     PhysicsStage::Update,
-        //     Self::create_rigid_actors::<runtime::PhysicsRigidTriangleMesh>,
-        // );
 
         app.add_system_to_stage(PhysicsStage::Update, Self::step_simulation)
             .add_system_to_stage(PhysicsStage::Update, Self::sync_transforms);
