@@ -66,9 +66,18 @@ impl ResourceRegistryPlugin {
         let selection_manager = world.get_resource::<Arc<SelectionManager>>().unwrap();
 
         let transaction_manager = async_rt.block_on(async move {
-            let project = Project::open(&project_dir)
-                .await
-                .expect("unable to open project dir");
+            let project = {
+                if let Ok(project) = Project::open(&project_dir).await {
+                    project
+                } else {
+                    let mut project =
+                        Project::create(&project_dir, settings.source_control_path.clone())
+                            .await
+                            .unwrap();
+                    project.sync_latest().await.unwrap();
+                    project
+                }
+            };
 
             let compilers = lgn_ubercompiler::create();
 

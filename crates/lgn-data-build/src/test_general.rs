@@ -35,7 +35,7 @@ async fn create() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
 
-    let _project = Project::create_new(&project_dir)
+    let _project = Project::create_with_remote_mock(&project_dir)
         .await
         .expect("failed to create a project");
 

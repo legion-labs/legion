@@ -137,7 +137,7 @@ async fn test_transaction_system() -> Result<(), Error> {
     let build_dir = project_dir.path().join("temp");
     std::fs::create_dir(&build_dir).unwrap();
 
-    let project = Project::create_new(&project_dir).await.unwrap();
+    let project = Project::create_with_remote_mock(&project_dir).await.unwrap();
     let resource_dir = project.resource_dir();
 
     let mut registry = ResourceRegistryOptions::new();

@@ -1,5 +1,6 @@
 [editor_srv]
 project_dir = "tests/sample-data"
+source_control = "../remote"
 server_addr = "[::1]:50051"
 default_scene = "/world/sample_1.ent"
 

@@ -104,14 +104,8 @@ impl Project {
         &self.project_dir
     }
 
-    /// Creates a new project index file turning the containing directory into a
-    /// project.
-    pub async fn create_new(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
-        let resource_dir = project_dir.as_ref().join("offline");
-        if !resource_dir.exists() {
-            std::fs::create_dir(&resource_dir).map_err(|e| Error::Io(resource_dir.clone(), e))?;
-        }
-
+    /// Same as [`create`] but it creates an origin source control index at ``project_dir/remote``.
+    pub async fn create_with_remote_mock(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
         let remote = {
             let remote_dir = project_dir.as_ref().join("remote");
             let remote = LocalIndexBackend::new(&remote_dir).map_err(Error::SourceControl)?;
@@ -119,12 +113,22 @@ impl Project {
             remote
         };
 
+        let mut project = Self::create(project_dir, "../remote".to_string()).await?;
+        project.local_remote = Some(remote);
+        Ok(project)
+    }
+
+    /// Creates a new project index file turning the containing directory into a
+    /// project.
+    pub async fn create(project_dir: impl AsRef<Path>, remote_path: String) -> Result<Self, Error> {
+        let resource_dir = project_dir.as_ref().join("offline");
+        if !resource_dir.exists() {
+            std::fs::create_dir(&resource_dir).map_err(|e| Error::Io(resource_dir.clone(), e))?;
+        }
+
         let workspace = Workspace::init(
             &resource_dir,
-            WorkspaceConfig::new(
-                "../remote/".to_string(),
-                WorkspaceRegistration::new_with_current_user(),
-            ),
+            WorkspaceConfig::new(remote_path, WorkspaceRegistration::new_with_current_user()),
         )
         .await
         .map_err(|e| {
@@ -137,7 +141,7 @@ impl Project {
         Ok(Self {
             project_dir: project_dir.as_ref().to_owned(),
             resource_dir,
-            local_remote: Some(remote),
+            local_remote: None,
             workspace,
         })
     }
@@ -602,6 +606,15 @@ impl Project {
             .map(|_| ())
     }
 
+    /// Pulls all changes from the origin.
+    pub async fn sync_latest(&mut self) -> Result<(), Error> {
+        self.workspace
+            .sync()
+            .await
+            .map_err(Error::SourceControl)
+            .map(|_| ())
+    }
+
     /// Returns the current state of the workspace that includes staged changes.
     pub async fn tree(&self) -> Result<Tree, Error> {
         let remote = self
@@ -916,7 +929,9 @@ mod tests {
     #[tokio::test]
     async fn local_changes() {
         let root = tempfile::tempdir().unwrap();
-        let mut project = Project::create_new(root.path()).await.expect("new project");
+        let mut project = Project::create_with_remote_mock(root.path())
+            .await
+            .expect("new project");
         let _resources = create_actor(&mut project).await;
 
         assert_eq!(project.local_resource_list().await.unwrap().len(), 5);
@@ -925,7 +940,9 @@ mod tests {
     #[tokio::test]
     async fn commit() {
         let root = tempfile::tempdir().unwrap();
-        let mut project = Project::create_new(root.path()).await.expect("new project");
+        let mut project = Project::create_with_remote_mock(root.path())
+            .await
+            .expect("new project");
         let resources = create_actor(&mut project).await;
         let mut resources = resources.lock().await;
 
@@ -975,7 +992,9 @@ mod tests {
     #[tokio::test]
     async fn change_to_previous() {
         let root = tempfile::tempdir().unwrap();
-        let mut project = Project::create_new(root.path()).await.expect("new project");
+        let mut project = Project::create_with_remote_mock(root.path())
+            .await
+            .expect("new project");
         let resources = create_actor(&mut project).await;
         let mut resources = resources.lock().await;
 
@@ -1016,7 +1035,9 @@ mod tests {
     #[tokio::test]
     async fn immediate_dependencies() {
         let root = tempfile::tempdir().unwrap();
-        let mut project = Project::create_new(root.path()).await.expect("new project");
+        let mut project = Project::create_with_remote_mock(root.path())
+            .await
+            .expect("new project");
         let _resources = create_actor(&mut project).await;
 
         let top_level_resource = project
@@ -1050,7 +1071,9 @@ mod tests {
     #[tokio::test]
     async fn rename() {
         let root = tempfile::tempdir().unwrap();
-        let mut project = Project::create_new(root.path()).await.expect("new project");
+        let mut project = Project::create_with_remote_mock(root.path())
+            .await
+            .expect("new project");
         let resources = create_actor(&mut project).await;
         assert!(project.commit("rename test").await.is_ok());
         create_sky_material(&mut project, &mut *resources.lock().await).await;

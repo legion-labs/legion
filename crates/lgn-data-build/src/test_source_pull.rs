@@ -33,7 +33,7 @@ async fn no_dependencies() {
     let mut resources = resources.lock().await;
 
     let resource = {
-        let mut project = Project::create_new(&project_dir)
+        let mut project = Project::create_with_remote_mock(&project_dir)
             .await
             .expect("failed to create a project");
         let id = project
@@ -74,7 +74,7 @@ async fn with_dependency() {
     let mut resources = resources.lock().await;
 
     let (child_id, parent_id) = {
-        let mut project = Project::create_new(&project_dir)
+        let mut project = Project::create_with_remote_mock(&project_dir)
             .await
             .expect("failed to create a project");
         let child_id = project

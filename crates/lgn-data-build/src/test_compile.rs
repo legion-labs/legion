@@ -112,7 +112,7 @@ async fn compile_change_no_deps() {
     let mut resources = resources.lock().await;
 
     let (resource_id, resource_handle) = {
-        let mut project = Project::create_new(&project_dir)
+        let mut project = Project::create_with_remote_mock(&project_dir)
             .await
             .expect("failed to create a project");
 
@@ -240,7 +240,7 @@ async fn compile_change_no_deps() {
 //         D -------> t(E) -> E
 //
 async fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceTypeAndId; 5] {
-    let mut project = Project::create_new(project_dir.as_ref())
+    let mut project = Project::create_with_remote_mock(project_dir.as_ref())
         .await
         .expect("failed to create a project");
 
@@ -301,7 +301,7 @@ async fn intermediate_resource() {
     let source_magic_value = String::from("47");
 
     let source_id = {
-        let mut project = Project::create_new(&project_dir)
+        let mut project = Project::create_with_remote_mock(&project_dir)
             .await
             .expect("failed to create a project");
 
@@ -501,7 +501,7 @@ async fn named_path_cache_use() {
     let magic_list = vec![String::from("47"), String::from("198")];
 
     let source_id = {
-        let mut project = Project::create_new(&project_dir)
+        let mut project = Project::create_with_remote_mock(&project_dir)
             .await
             .expect("failed to create a project");
 
@@ -747,7 +747,7 @@ async fn link() {
     let mut resources = resources.lock().await;
 
     let parent_id = {
-        let mut project = Project::create_new(&project_dir)
+        let mut project = Project::create_with_remote_mock(&project_dir)
             .await
             .expect("new project");
 
@@ -850,7 +850,7 @@ async fn verify_manifest() {
 
     // child_id <- test(child_id) <- parent_id = test(parent_id)
     let parent_resource = {
-        let mut project = Project::create_new(&project_dir)
+        let mut project = Project::create_with_remote_mock(&project_dir)
             .await
             .expect("new project");
         let child_id = project

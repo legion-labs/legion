@@ -137,6 +137,8 @@ pub async fn build_offline(root_folder: impl AsRef<Path>) {
 
                 println!("Loaded: {}. id: {}", resource_name, resource_id);
             }
+
+            project.commit("sample data generation").await.unwrap();
         } else {
             eprintln!(
                 "did not find a 'raw' sub-directory in {}",
@@ -153,7 +155,7 @@ async fn setup_project(root_folder: &Path) -> (Project, Arc<Mutex<ResourceRegist
     let project = if let Ok(project) = Project::open(root_folder).await {
         Ok(project)
     } else {
-        Project::create_new(root_folder).await
+        Project::create_with_remote_mock(root_folder).await
     }
     .unwrap();
 

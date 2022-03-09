@@ -62,7 +62,7 @@ pub async fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathNa
                 std::env::current_dir().unwrap().join(root_folder)
             }
         };
-        Project::create_new(project_dir).await
+        Project::create_with_remote_mock(project_dir).await
     }
     .unwrap();
 

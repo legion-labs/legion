@@ -73,7 +73,7 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
     let build_dir = project_dir.as_ref().join("temp");
     std::fs::create_dir_all(&build_dir).unwrap();
 
-    let project = Project::create_new(&project_dir)
+    let project = Project::create_with_remote_mock(&project_dir)
         .await
         .expect("failed to create a project");
 
