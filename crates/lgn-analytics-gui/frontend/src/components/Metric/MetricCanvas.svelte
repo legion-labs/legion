@@ -210,11 +210,11 @@
       metricTooltip.show(e.offsetX, e.offsetY);
     });
 
-    svgGroup.on("mouseover", (e) => {
+    svgGroup.on("mouseover", (_e) => {
       metricTooltip.enable();
     });
 
-    svgGroup.on("mouseout", (e) => {
+    svgGroup.on("mouseout", (_e) => {
       metricTooltip.hide();
     });
 
