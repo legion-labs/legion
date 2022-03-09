@@ -6,13 +6,16 @@
   import contextMenu from "@/actions/contextMenu";
   import {
     cloneResource,
+    commitStagedResources,
     createResource,
     getAllResources,
+    getStagedResources,
     initFileUpload,
     removeResource,
     renameResource,
     reparentResources,
     streamFileUpload,
+    syncLatest,
   } from "@/api";
   import allResources from "@/stores/allResources";
   import { fetchCurrentResourceDescription } from "@/stores/currentResource";
@@ -250,6 +253,19 @@
           },
         });
 
+        return;
+      }
+
+      case "sync_latest": {
+        syncLatest();
+        await allResources.run(getAllResources);
+        return;
+      }
+
+      case "commit": {
+        const result = await getStagedResources();
+        log.error(result.entries);
+        await commitStagedResources();
         return;
       }
 

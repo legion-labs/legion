@@ -272,3 +272,15 @@ export function reparentResources({
     newParent,
   });
 }
+
+export function syncLatest() {
+  return sourceControlClient.syncLatest({});
+}
+
+export function commitStagedResources() {
+  return sourceControlClient.commitStagedResources({});
+}
+
+export function getStagedResources() {
+  return sourceControlClient.getStagedResources({});
+}

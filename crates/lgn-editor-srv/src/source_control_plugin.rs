@@ -10,18 +10,24 @@ use std::{
 
 use bytes::BytesMut;
 use lgn_app::prelude::*;
+use lgn_data_runtime::{Resource, ResourceTypeAndId};
+use lgn_data_transaction::{LockContext, TransactionManager};
 use lgn_ecs::{
     prelude::{IntoExclusiveSystem, Res, ResMut},
     schedule::ExclusiveSystemDescriptorCoercion,
 };
 use lgn_editor_proto::source_control::{
     source_control_server::{SourceControl, SourceControlServer},
-    upload_raw_file_response, CancelUploadRawFileRequest, CancelUploadRawFileResponse,
-    InitUploadRawFileRequest, InitUploadRawFileResponse, UploadRawFileProgress,
-    UploadRawFileRequest, UploadRawFileResponse, UploadStatus,
+    staged_resource, upload_raw_file_response, CancelUploadRawFileRequest,
+    CancelUploadRawFileResponse, CommitStagedResourcesRequest, CommitStagedResourcesResponse,
+    GetStagedResourcesRequest, GetStagedResourcesResponse, InitUploadRawFileRequest,
+    InitUploadRawFileResponse, ResourceDescription, StagedResource, SyncLatestResponse,
+    SyncLatestResquest, UploadRawFileProgress, UploadRawFileRequest, UploadRawFileResponse,
+    UploadStatus,
 };
 use lgn_grpc::{GRPCPluginScheduling, GRPCPluginSettings};
 use lgn_resource_registry::{ResourceRegistryPluginScheduling, ResourceRegistrySettings};
+use lgn_source_control::ChangeType;
 use thiserror::Error;
 use tokio::sync::{mpsc, Mutex};
 use tokio_stream::{wrappers::ReceiverStream, StreamExt};
@@ -400,11 +406,13 @@ pub(crate) struct SourceControlPlugin;
 pub(crate) struct SourceControlRPC {
     streamer: SharedRawFilesStreamer,
     uploads_folder: PathBuf,
+    transaction_manager: Arc<Mutex<TransactionManager>>,
 }
 
 impl SourceControlPlugin {
     #[allow(clippy::needless_pass_by_value)]
     fn setup(
+        transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
         settings: Res<'_, ResourceRegistrySettings>,
         streamer: Res<'_, SharedRawFilesStreamer>,
         mut grpc_settings: ResMut<'_, GRPCPluginSettings>,
@@ -412,6 +420,7 @@ impl SourceControlPlugin {
         let property_inspector = SourceControlServer::new(SourceControlRPC {
             streamer: streamer.clone(),
             uploads_folder: settings.root_folder().join("uploads"),
+            transaction_manager: transaction_manager.clone(),
         });
 
         grpc_settings.register_service(property_inspector);
@@ -533,5 +542,85 @@ impl SourceControl for SourceControlRPC {
         let canceled = self.streamer.cancel(&message.id.into()).await;
 
         Ok(Response::new(CancelUploadRawFileResponse { ok: canceled }))
+    }
+
+    async fn commit_staged_resources(
+        &self,
+        request: Request<CommitStagedResourcesRequest>,
+    ) -> Result<Response<CommitStagedResourcesResponse>, Status> {
+        let request = request.into_inner();
+        let transaction_manager = self.transaction_manager.lock().await;
+        let mut ctx = LockContext::new(&transaction_manager).await;
+        ctx.project
+            .commit(&request.message)
+            .await
+            .map_err(|err| Status::internal(err.to_string()))?;
+        Ok(Response::new(CommitStagedResourcesResponse {}))
+    }
+
+    async fn sync_latest(
+        &self,
+        request: Request<SyncLatestResquest>,
+    ) -> Result<Response<SyncLatestResponse>, Status> {
+        let _request = request.into_inner();
+        let mut transaction_manager = self.transaction_manager.lock().await;
+        {
+            let mut ctx = LockContext::new(&transaction_manager).await;
+            ctx.project
+                .sync_latest()
+                .await
+                .map_err(|err| Status::internal(err.to_string()))?;
+        }
+
+        transaction_manager.load_all_resources().await;
+
+        Ok(Response::new(SyncLatestResponse {}))
+    }
+
+    async fn get_staged_resources(
+        &self,
+        _request: Request<GetStagedResourcesRequest>,
+    ) -> Result<Response<GetStagedResourcesResponse>, Status> {
+        let transaction_manager = self.transaction_manager.lock().await;
+        let ctx = LockContext::new(&transaction_manager).await;
+        let changes = ctx
+            .project
+            .get_staged_changes()
+            .await
+            .map_err(|err| Status::internal(err.to_string()))?;
+
+        let entries: Vec<StagedResource> = changes
+            .into_iter()
+            .map(|(resource_id, change)| {
+                let path: String = ctx
+                    .project
+                    .resource_name(resource_id)
+                    .unwrap_or_else(|_err| "(deleted)".into())
+                    .to_string();
+
+                let kind = ctx
+                    .project
+                    .resource_type(resource_id)
+                    .unwrap_or(sample_data::offline::Entity::TYPE); // Hack, figure out a way to get type for deleted resources
+                StagedResource {
+                    info: Some(ResourceDescription {
+                        id: ResourceTypeAndId::to_string(&ResourceTypeAndId {
+                            kind,
+                            id: resource_id,
+                        }),
+                        path,
+                        r#type: kind.as_pretty().trim_start_matches("offline_").into(),
+                        version: 1,
+                    }),
+                    change_type: match change.change_type() {
+                        ChangeType::Add { .. } => staged_resource::ChangeType::Add as i32,
+                        ChangeType::Edit { .. } => staged_resource::ChangeType::Edit as i32,
+                        ChangeType::Delete { .. } => staged_resource::ChangeType::Delete as i32,
+                    },
+                }
+            })
+            .collect();
+
+        Ok(Response::new(GetStagedResourcesResponse { entries }))
     }
 }

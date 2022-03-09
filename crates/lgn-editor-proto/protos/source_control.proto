@@ -5,6 +5,10 @@ service SourceControl {
   rpc InitUploadRawFile(InitUploadRawFileRequest) returns (InitUploadRawFileResponse);
   rpc UploadRawFile(UploadRawFileRequest) returns (stream UploadRawFileResponse);
   rpc CancelUploadRawFile(CancelUploadRawFileRequest) returns (CancelUploadRawFileResponse);
+
+  rpc GetStagedResources(GetStagedResourcesRequest) returns (GetStagedResourcesResponse);
+  rpc CommitStagedResources(CommitStagedResourcesRequest) returns (CommitStagedResourcesResponse);
+  rpc SyncLatest(SyncLatestResquest) returns (SyncLatestResponse);
 }
 
 message InitUploadRawFileRequest {
@@ -52,4 +56,36 @@ message CancelUploadRawFileRequest {
 
 message CancelUploadRawFileResponse {
   bool ok = 1;
+}
+
+message CommitStagedResourcesRequest {
+  string message = 1;
+}
+
+message CommitStagedResourcesResponse {}
+
+message SyncLatestResquest {}
+
+message SyncLatestResponse {}
+
+message ResourceDescription {
+  string id = 1;
+  string path = 2;
+  uint32 version = 3;
+  string type = 4;
+}
+message StagedResource {
+  ResourceDescription info = 1;
+  enum ChangeType {
+    Add = 0;
+    Edit = 1;
+    Delete = 2;
+  };
+  ChangeType change_type = 2;
+}
+
+message GetStagedResourcesRequest {}
+
+message GetStagedResourcesResponse {
+  repeated StagedResource entries = 1;
 }

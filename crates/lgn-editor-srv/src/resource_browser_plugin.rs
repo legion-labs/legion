@@ -291,22 +291,24 @@ impl ResourceBrowser for ResourceBrowserRPC {
                     .unwrap_or_else(|_err| "".into())
                     .to_string();
 
-                let kind = ctx.project.resource_type(resource_id).unwrap();
-
                 // Basic Filter
                 if !request.search_token.is_empty() {
                     path.find(&request.search_token)?;
                 }
 
-                Some(ResourceDescription {
-                    id: ResourceTypeAndId::to_string(&ResourceTypeAndId {
-                        kind,
-                        id: resource_id,
-                    }),
-                    path,
-                    r#type: kind.as_pretty().trim_start_matches("offline_").into(),
-                    version: 1,
-                })
+                if let Ok(kind) = ctx.project.resource_type(resource_id) {
+                    Some(ResourceDescription {
+                        id: ResourceTypeAndId::to_string(&ResourceTypeAndId {
+                            kind,
+                            id: resource_id,
+                        }),
+                        path,
+                        r#type: kind.as_pretty().trim_start_matches("offline_").into(),
+                        version: 1,
+                    })
+                } else {
+                    None
+                }
             })
             .collect::<Vec<ResourceDescription>>();
 
