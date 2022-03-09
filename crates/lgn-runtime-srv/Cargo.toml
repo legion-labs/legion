@@ -53,8 +53,11 @@ lgn-winit = { path = "../lgn-winit", features = ["x11"] }
 [[package.metadata.monorepo.publish]]
 type = "zip"
 extra-files = [
-    { source = "../../tests/sample-data/*", destination = "tests/sample-data" },
-    { source = "../../examples/physics/data/*", destination = "examples/physics" },
-    { source = "../../examples/pong/data/*", destination = "examples/pong" },
     { source = "../../legion.toml", destination = "" },
+    { source = "../../tests/sample-data/runtime/*", destination = "tests/sample-data/runtime" },
+    { source = "../../tests/sample-data/temp/*", destination = "tests/sample-data/temp" },
+    { source = "../../examples/physics/data/runtime/*", destination = "examples/physics/runtime" },
+    { source = "../../examples/physics/data/temp/*", destination = "examples/physics/temp" },
+    { source = "../../examples/pong/data/runtime/*", destination = "examples/pong/runtime" },
+    { source = "../../examples/pong/data/temp/*", destination = "examples/pong/temp" },
 ]
