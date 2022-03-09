@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use lgn_analytics::prelude::*;
+use lgn_analytics::{prelude::*, time::ConvertTicks};
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::{AsyncSpansReply, BlockAsyncEventsStatReply, ScopeDesc, Span};
 use lgn_tracing::prelude::*;
@@ -87,10 +87,14 @@ fn ranges_overlap(begin_a: f64, end_a: f64, begin_b: f64, end_b: f64) -> bool {
 }
 
 #[derive(Debug)]
-struct BeginSpan {}
+struct BeginSpan {
+    time_ms: f64,
+}
 
 #[derive(Debug)]
-struct EndSpan {}
+struct EndSpan {
+    time_ms: f64,
+}
 
 #[derive(Debug)]
 enum SpanEvent {
@@ -104,16 +108,18 @@ struct AsyncSpanBuilder {
     unmatched_events: HashMap<u64, SpanEvent>,
     complete_spans: Vec<Span>,
     scopes: ScopeHashMap,
+    convert_ticks: ConvertTicks,
 }
 
 impl AsyncSpanBuilder {
-    fn new(begin_section_ms: f64, end_section_ms: f64) -> Self {
+    fn new(begin_section_ms: f64, end_section_ms: f64, convert_ticks: ConvertTicks) -> Self {
         Self {
             begin_section_ms,
             end_section_ms,
             unmatched_events: HashMap::new(),
             complete_spans: Vec::new(),
             scopes: ScopeHashMap::new(),
+            convert_ticks,
         }
     }
 
@@ -156,7 +162,8 @@ impl ThreadBlockProcessor for AsyncSpanBuilder {
         Ok(())
     }
 
-    fn on_begin_async_scope(&mut self, span_id: u64, scope: Arc<Object>, _ts: i64) -> Result<()> {
+    fn on_begin_async_scope(&mut self, span_id: u64, scope: Arc<Object>, ts: i64) -> Result<()> {
+        let time_ms = self.convert_ticks.get_time(ts);
         if let Some(evt) = self.unmatched_events.remove(&span_id) {
             match evt {
                 SpanEvent::Begin(begin_span) => {
@@ -166,18 +173,19 @@ impl ThreadBlockProcessor for AsyncSpanBuilder {
                         begin_span
                     );
                 }
-                SpanEvent::End(_end_event) => {
-                    self.record_span(0.0, 0.0, &scope)?;
+                SpanEvent::End(end_event) => {
+                    self.record_span(time_ms, end_event.time_ms, &scope)?;
                 }
             }
         } else {
             self.unmatched_events
-                .insert(span_id, SpanEvent::Begin(BeginSpan {}));
+                .insert(span_id, SpanEvent::Begin(BeginSpan { time_ms }));
         }
         Ok(())
     }
 
-    fn on_end_async_scope(&mut self, span_id: u64, scope: Arc<Object>, _ts: i64) -> Result<()> {
+    fn on_end_async_scope(&mut self, span_id: u64, scope: Arc<Object>, ts: i64) -> Result<()> {
+        let time_ms = self.convert_ticks.get_time(ts);
         if let Some(evt) = self.unmatched_events.remove(&span_id) {
             match evt {
                 SpanEvent::End(end_span) => {
@@ -187,13 +195,13 @@ impl ThreadBlockProcessor for AsyncSpanBuilder {
                         end_span
                     );
                 }
-                SpanEvent::Begin(_begin_span) => {
-                    self.record_span(0.0, 0.0, &scope)?;
+                SpanEvent::Begin(begin_span) => {
+                    self.record_span(begin_span.time_ms, time_ms, &scope)?;
                 }
             }
         } else {
             self.unmatched_events
-                .insert(span_id, SpanEvent::End(EndSpan {}));
+                .insert(span_id, SpanEvent::End(EndSpan { time_ms }));
         }
         Ok(())
     }
@@ -213,7 +221,20 @@ pub async fn compute_async_spans(
     let section_width_ms = 1000.0;
     let begin_section_ms = section_sequence_number as f64 * section_width_ms;
     let end_section_ms = begin_section_ms + section_width_ms;
-    let mut builder = AsyncSpanBuilder::new(begin_section_ms, end_section_ms);
+    if block_ids.is_empty() {
+        return Ok(AsyncSpansReply {
+            section_sequence_number,
+            section_lod,
+            tracks: vec![],
+            scopes: ScopeHashMap::new(),
+        });
+    }
+    let process = find_block_process(connection, &block_ids[0]).await?;
+    let mut builder = AsyncSpanBuilder::new(
+        begin_section_ms,
+        end_section_ms,
+        ConvertTicks::new(&process),
+    );
     for block_id in &block_ids {
         let stream = find_block_stream(connection, block_id).await?;
         parse_thread_block(

@@ -82,6 +82,23 @@ pub async fn find_process(
     Ok(process_from_row(&row))
 }
 
+pub async fn find_block_process(
+    connection: &mut sqlx::AnyConnection,
+    block_id: &str,
+) -> Result<ProcessInfo> {
+    let row = sqlx::query(
+        "SELECT processes.process_id AS process_id, exe, username, realname, computer, distro, cpu_brand, tsc_frequency, start_time, start_ticks, parent_process_id
+         FROM processes, streams, blocks
+         WHERE blocks.block_id = ?
+         AND blocks.stream_id = streams.stream_id
+         AND processes.process_id = streams.process_id;"
+    )
+    .bind(block_id)
+    .fetch_one(connection)
+    .await?;
+    Ok(process_from_row(&row))
+}
+
 pub async fn fetch_recent_processes(
     connection: &mut sqlx::AnyConnection,
 ) -> Result<Vec<lgn_telemetry_proto::analytics::ProcessInstance>> {
@@ -740,6 +757,7 @@ pub mod prelude {
     pub use crate::fetch_child_processes;
     pub use crate::fetch_recent_processes;
     pub use crate::find_block;
+    pub use crate::find_block_process;
     pub use crate::find_block_stream;
     pub use crate::find_process;
     pub use crate::find_process_blocks;
