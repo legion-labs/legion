@@ -87,7 +87,7 @@
         const offsetMs = factor * (panState.beginMouseX - event.offsetX);
 
         if (event.movementY) {
-          div.scrollBy(0, -event.movementY / 2);
+          div.scrollBy(0, -event.movementY);
         }
 
         stateStore.update((s) => {
