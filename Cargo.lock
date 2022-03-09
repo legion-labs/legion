@@ -467,12 +467,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "atomic-option"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0db678acb667b525ac40a324fc5f7d3390e29239b31c7327bb8157f5b4fff593"
-
-[[package]]
 name = "atomic-waker"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1111,18 +1105,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4a45a46ab1f2412e53d3a0ade76ffad2025804294569aae387231a0cd6e0899"
 
 [[package]]
-name = "bus"
-version = "2.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1e66e1779f5b1440f1a58220ba3b3ded4427175f0a9fb8d7066521f8b4e8f2b"
-dependencies = [
- "atomic-option",
- "crossbeam-channel 0.4.4",
- "num_cpus",
- "parking_lot_core 0.7.2",
-]
-
-[[package]]
 name = "bytemuck"
 version = "1.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1560,7 +1542,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "565a7dfea2d10dd0e5c57cc394d5d441b1910960d8c9211ed14135e0e6ec3a20"
 dependencies = [
  "console-api",
- "crossbeam-channel 0.5.2",
+ "crossbeam-channel",
  "crossbeam-utils 0.8.7",
  "futures",
  "hdrhistogram",
@@ -1765,21 +1747,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ae5588f6b3c3cb05239e90bd110f257254aecd01e4635400391aeae07497845"
 dependencies = [
  "cfg-if 1.0.0",
- "crossbeam-channel 0.5.2",
+ "crossbeam-channel",
  "crossbeam-deque",
  "crossbeam-epoch 0.9.7",
  "crossbeam-queue",
  "crossbeam-utils 0.8.7",
-]
-
-[[package]]
-name = "crossbeam-channel"
-version = "0.4.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b153fe7cbef478c567df0f972e02e6d736db11affe43dfc9c56a9374d1adfb87"
-dependencies = [
- "crossbeam-utils 0.7.2",
- "maybe-uninit",
 ]
 
 [[package]]
@@ -3605,7 +3577,7 @@ checksum = "31672b7011be2c4f7456c4ddbcb40e7e9a4a9fad8efe49a6ebaf5f307d0109c0"
 dependencies = [
  "base64 0.13.0",
  "byteorder",
- "crossbeam-channel 0.5.2",
+ "crossbeam-channel",
  "flate2",
  "nom 7.1.0",
  "num-traits",
@@ -3745,7 +3717,7 @@ checksum = "f6f25cfb6def593d43fae1ead24861f217e93bc70768a45cc149a69b5f049df4"
 dependencies = [
  "bstr",
  "bytes",
- "crossbeam-channel 0.5.2",
+ "crossbeam-channel",
  "form_urlencoded",
  "futures",
  "http",
@@ -4348,7 +4320,7 @@ dependencies = [
 name = "lgn-asset-registry"
 version = "0.1.0"
 dependencies = [
- "crossbeam-channel 0.5.2",
+ "crossbeam-channel",
  "lgn-app",
  "lgn-config",
  "lgn-content-store",
@@ -4851,7 +4823,7 @@ name = "lgn-data-offline"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "crossbeam-channel 0.5.2",
+ "crossbeam-channel",
  "erased-serde",
  "hex",
  "lazy_static",
@@ -4874,7 +4846,7 @@ name = "lgn-data-runtime"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "crossbeam-channel 0.5.2",
+ "crossbeam-channel",
  "erased-serde",
  "flurry",
  "hex",
@@ -4990,10 +4962,8 @@ dependencies = [
 name = "lgn-embedded-fs"
 version = "0.1.0"
 dependencies = [
- "bus",
  "lgn-tracing",
- "linkme",
- "notify",
+ "once_cell",
 ]
 
 [[package]]
@@ -5004,7 +4974,7 @@ dependencies = [
  "backtrace",
  "bitflags",
  "bumpalo",
- "crossbeam-channel 0.5.2",
+ "crossbeam-channel",
  "fnv",
  "lgn-tracing",
  "lgn-utils",
@@ -5229,7 +5199,7 @@ name = "lgn-presenter-snapshot"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "crossbeam-channel 0.5.2",
+ "crossbeam-channel",
  "instant",
  "lgn-app",
  "lgn-ecs",
@@ -5240,7 +5210,6 @@ dependencies = [
  "lgn-renderer",
  "lgn-tasks",
  "lgn-tracing",
- "linkme",
  "png 0.17.4",
 ]
 
@@ -5248,7 +5217,7 @@ dependencies = [
 name = "lgn-presenter-window"
 version = "0.1.0"
 dependencies = [
- "crossbeam-channel 0.5.2",
+ "crossbeam-channel",
  "instant",
  "lgn-app",
  "lgn-core",
@@ -5269,7 +5238,6 @@ dependencies = [
  "lgn-embedded-fs",
  "lgn-graphics-api",
  "lgn-tracing",
- "linkme",
  "normpath",
  "spirv-reflect",
  "spirv-tools",
@@ -5302,7 +5270,6 @@ dependencies = [
  "lgn-transform",
  "lgn-utils",
  "lgn-window",
- "linkme",
  "parking_lot 0.11.2",
  "paste",
  "smallvec",
@@ -5470,7 +5437,6 @@ dependencies = [
  "lgn-tracing",
  "lgn-utils",
  "lgn-window",
- "linkme",
  "serde",
  "serde_json",
  "tokio",
@@ -5755,26 +5721,6 @@ dependencies = [
  "libc",
  "pkg-config",
  "vcpkg",
-]
-
-[[package]]
-name = "linkme"
-version = "0.2.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edd4ad156b9934dc21cad96fd17278a7cb6f30a5657a9d976cd7b71d6d49c02c"
-dependencies = [
- "linkme-impl",
-]
-
-[[package]]
-name = "linkme-impl"
-version = "0.2.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73fd9dc7072de7168cbdaba9125e8f742cd3a965aa12bde994b4611a174488d8"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -7798,7 +7744,7 @@ version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d78120e2c850279833f1dd3582f730c4ab53ed95aeaaaa862a2a5c71b1656d8e"
 dependencies = [
- "crossbeam-channel 0.5.2",
+ "crossbeam-channel",
  "crossbeam-deque",
  "crossbeam-utils 0.8.7",
  "lazy_static",
@@ -9340,7 +9286,7 @@ dependencies = [
  "cocoa",
  "core-foundation 0.9.3",
  "core-graphics 0.22.3",
- "crossbeam-channel 0.5.2",
+ "crossbeam-channel",
  "dispatch",
  "gdk",
  "gdk-pixbuf",

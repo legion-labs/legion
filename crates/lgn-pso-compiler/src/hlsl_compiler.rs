@@ -1,7 +1,8 @@
-use std::sync::Arc;
+use std::{path::Path, sync::Arc};
 
 use anyhow::{anyhow, Result};
 use hassle_rs::Dxc;
+use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{
     PipelineReflection, PushConstant, ShaderResource, ShaderResourceType, ShaderStageFlags,
 };
@@ -10,7 +11,7 @@ use spirv_reflect::types::{
 };
 use spirv_tools::{opt::Optimizer, TargetEnv};
 
-use crate::file_server::{FileServerIncludeHandler, FileSystem};
+use crate::file_server::FileServerIncludeHandler;
 
 pub struct CompileDefine<'a> {
     pub name: &'a str,
@@ -61,7 +62,6 @@ pub struct CompileResult {
 
 struct HlslCompilerInner {
     dxc: Dxc,
-    filesystem: FileSystem,
 }
 
 #[derive(Clone)]
@@ -79,15 +79,9 @@ impl HlslCompiler {
         Ok(Self {
             inner: Arc::new(HlslCompilerInner {
                 dxc: Dxc::new(None)?,
-                filesystem: FileSystem::new(),
             }),
         })
     }
-
-    pub fn filesystem(&self) -> FileSystem {
-        self.inner.filesystem.clone()
-    }
-
     /// Compile an HLSL shader.
     ///
     /// # Errors
@@ -321,17 +315,15 @@ impl HlslCompiler {
         let dxc = &self.inner.dxc;
         let compiler = dxc.create_compiler()?;
         let library = dxc.create_library()?;
-
         let (shader_path, shader_text) = match shader_source {
             ShaderSource::Code(text) => ("_code.hlsl".to_owned(), (*text).to_string()),
             ShaderSource::Path(path) => (
-                self.inner
-                    .filesystem
-                    .translate_path(path)?
-                    .as_path()
+                EMBEDDED_FS
+                    .original_path(path)?
+                    .unwrap_or_else(|| Path::new("invalid"))
                     .display()
                     .to_string(),
-                self.inner.filesystem.read_to_string(path)?,
+                EMBEDDED_FS.read_to_string(path)?,
             ),
         };
 
@@ -350,7 +342,7 @@ impl HlslCompiler {
             entry_point,
             target_profile,
             args,
-            Some(&mut FileServerIncludeHandler(self.inner.filesystem.clone())),
+            Some(&mut FileServerIncludeHandler),
             defines,
         );
 
@@ -385,6 +377,7 @@ mod tests {
 
     #[test]
     fn compile_vs_shader() {
+        EMBEDDED_FS.add_file(&TEST_SHADER);
         let compiler = HlslCompiler::new().expect(
             "dxcompiler dynamic library needs to be available in the default system search paths",
         );
@@ -416,6 +409,7 @@ mod tests {
 
     #[test]
     fn compile_ps_shader() {
+        EMBEDDED_FS.add_file(&TEST_SHADER);
         let compiler = HlslCompiler::new().expect(
             "dxcompiler dynamic library needs to be available in the default system search paths",
         );

@@ -20,7 +20,6 @@ lgn-embedded-fs = { path = "../lgn-embedded-fs", version = "0.1.0" }
 anyhow = "1.0"
 crossbeam-channel = "0.5"
 instant = "0.1"
-linkme = "0.2"
 png = "0.17"
 
 [build-dependencies]

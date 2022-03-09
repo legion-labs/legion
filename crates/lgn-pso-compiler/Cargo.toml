@@ -16,6 +16,3 @@ normpath = "0.3"
 spirv-reflect = "0.2"
 spirv-tools = "0.7"
 anyhow = "1"
-
-[dev-dependencies]
-linkme = "0.2"

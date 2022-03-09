@@ -158,13 +158,9 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
             .collect();
         let mut writer = writer.add_block(&["#[rustfmt::skip]", "mod shader_files {"], &["}"]);
 
-        writer.add_line("pub(super) fn force_export() {} ");
-        writer.new_line();
-
-        for (var_name, rel_path, crate_path) in infos {
+        for (var_name, rel_path, crate_path) in &infos {
             let mut writer = writer.add_block(
                 &[
-                    "#[linkme::distributed_slice(lgn_embedded_fs::EMBEDDED_FILES)]".to_string(),
                     format!("static {}: lgn_embedded_fs::EmbeddedFile = lgn_embedded_fs::EmbeddedFile::new(", var_name),
                 ],
                 &[");"],
@@ -176,6 +172,25 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
             ));
             writer.add_line("None".to_string());
         }
+
+        {
+            let mut writer = writer.add_block(&["pub(super) fn force_export() {"], &["}"]);
+            for (var_name, _, _) in &infos {
+                writer.add_line(format!(
+                    "lgn_embedded_fs::EMBEDDED_FS.add_file(&{});",
+                    var_name
+                ));
+            }
+            let folder = GeneratorContext::object_folder::<Shader>();
+            for shader in ctx.model.object_iter::<Shader>() {
+                let mod_name = shader.object().name().to_snake_case();
+                writer.add_line(format!(
+                    "lgn_embedded_fs::EMBEDDED_FS.add_file(&super::{}::{}::SHADER_PATH);",
+                    folder, mod_name
+                ));
+            }
+        }
+        writer.new_line();
     }
 
     writer.new_line();
@@ -219,10 +234,10 @@ where
         );
 
         for obj_ref in model.object_iter::<T>() {
-            let mod_name = obj_ref.object().name().to_snake_case();
             if obj_ref.object().skip_include() {
                 continue;
             }
+            let mod_name = obj_ref.object().name().to_snake_case();
             {
                 let mut writer = writer.add_block(&[format!("pub mod {} {{", mod_name)], &["}"]);
                 writer.add_line(format!(
