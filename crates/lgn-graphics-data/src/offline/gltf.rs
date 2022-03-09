@@ -1,8 +1,4 @@
-use std::{
-    any::Any,
-    io::{self, Write},
-    path::Path,
-};
+use std::{any::Any, io, path::Path};
 
 use crate::{
     helpers::{read_u32, write_u32},
