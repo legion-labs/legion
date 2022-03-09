@@ -84,7 +84,7 @@
   {/if}
 </div>
 
-<style>
+<style lang="postcss">
   .main {
     @apply shadow-md bg-gray-50;
     position: absolute;

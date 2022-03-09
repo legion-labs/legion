@@ -32,7 +32,7 @@
   </div>
 </div>
 
-<style>
+<style lang="postcss">
   .value {
     @apply text-sm  text-gray-400;
   }

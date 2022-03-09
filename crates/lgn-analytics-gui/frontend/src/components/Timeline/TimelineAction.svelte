@@ -6,12 +6,12 @@
   export let process: Process;
 </script>
 
-<div class="flex flex-row justify-start text-xs gap-x-2">
+<div class="flex flex-row justify-start text-xs gap-x-1">
   {#if process.parentProcessId}
     <div class="action bg-orange-700">
       <a href={`/timeline/${process.parentProcessId}`} target="_blank" use:link>
         <i class="bi bi-arrow-up-right-circle" />
-        Open Parent timeline
+        Open Parent Timeline
       </a>
     </div>
   {/if}
@@ -28,8 +28,9 @@
   {/if}
 </div>
 
-<style>
+<style lang="postcss">
   .action {
     @apply text-gray-100 p-1;
+    min-width: 170px;
   }
 </style>

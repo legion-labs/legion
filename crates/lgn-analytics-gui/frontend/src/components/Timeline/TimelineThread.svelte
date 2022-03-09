@@ -2,25 +2,16 @@
   import { formatExecutionTime } from "@/lib/format";
   import { findBestLod } from "@/lib/time";
   import { Thread } from "@/lib/Timeline/Thread";
-  import { ThreadBlock } from "@/lib/Timeline/ThreadBlock";
   import { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
-  import {
-    DrawSelectedRange,
-    SelectionState,
-  } from "@/lib/time_range_selection";
+  import { spanPixelHeight } from "@/lib/Timeline/TimelineValues";
+  import { DrawSelectedRange } from "@/lib/time_range_selection";
   import { SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
-  import { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
   import binarySearch from "binary-search";
   import { createEventDispatcher, onDestroy, onMount, tick } from "svelte";
   export let rootStartTime: number;
   export let stateStore: TimelineStateStore;
   export let thread: Thread;
   export let width: number;
-  export let range: [number, number];
-  export let blocks: Record<string, ThreadBlock>;
-  export let scopes: Record<number, ScopeDesc>;
-  export let selectionState: SelectionState;
-  export let currentSelection: [number, number] | undefined;
 
   const wheelDispatch = createEventDispatcher<{ zoom: WheelEvent }>();
 
@@ -60,12 +51,16 @@
     }
   });
 
+  $: range = $stateStore?.getViewRange();
+  $: blocks = $stateStore?.blocks;
+  $: scopes = $stateStore?.scopes;
+
   $: if (thread) {
-    height = (thread.maxDepth + 1) * 20;
+    height = (thread.maxDepth + 1) * spanPixelHeight;
     displayable = thread.maxDepth > 0;
   }
 
-  $: if (width || height || scopes || range || currentSelection) {
+  $: if (width || height || scopes || range || $stateStore?.currentSelection) {
     draw();
   }
 
@@ -109,9 +104,9 @@
     const beginThreadPixels = (beginThread - begin) * msToPixelsFactor;
     const endThreadPixels = (endThread - begin) * msToPixelsFactor;
 
-    ctx.fillStyle = "#FCFCFC";
-    ctx.fillRect(0, 0, canvasWidth, height);
     ctx.fillStyle = "#F0F0F0";
+    ctx.fillRect(0, 0, canvasWidth, height);
+    ctx.fillStyle = "#e8e8e8";
     ctx.fillRect(
       beginThreadPixels,
       0,
@@ -135,12 +130,12 @@
         trackIndex += 1
       ) {
         let track = lodToRender.tracks[trackIndex];
-        const offsetY = trackIndex * 20;
+        const offsetY = trackIndex * spanPixelHeight;
         let color = "";
         if (trackIndex % 2 === 0) {
-          color = "#fede99";
-        } else {
           color = "#fea446";
+        } else {
+          color = "#fede99";
         }
 
         drawSpanTrack(
@@ -157,11 +152,11 @@
       }
     });
 
-    if (selectionState) {
+    if ($stateStore.selectionState) {
       DrawSelectedRange(
         canvas,
         ctx,
-        selectionState,
+        $stateStore.selectionState,
         $stateStore.getViewRange()
       );
     }
@@ -225,7 +220,7 @@
       }
       ctx.fillStyle = color;
       ctx.globalAlpha = span.alpha / 255;
-      ctx.fillRect(beginPixels, offsetY, callWidth, 20);
+      ctx.fillRect(beginPixels, offsetY, callWidth, spanPixelHeight);
       ctx.globalAlpha = 1.0;
 
       if (span.scopeHash != 0) {
@@ -235,7 +230,7 @@
 
           ctx.fillStyle = "#000000";
 
-          const extraHeight = 0.5 * (20 - characterHeight);
+          const extraHeight = 0.5 * (spanPixelHeight - characterHeight);
           const caption = name + " " + formatExecutionTime(endSpan - beginSpan);
 
           ctx.fillText(
@@ -251,7 +246,6 @@
 </script>
 
 <canvas
-  title={`${thread.streamInfo.streamId}/${thread.minMs}/${thread.maxMs}/${thread.block_ids.length}`}
   {width}
   {height}
   style={`display:${displayable ? "block" : "none"}`}
@@ -261,7 +255,6 @@
 
 <style>
   canvas {
-    padding-bottom: 4px;
     cursor: grab;
   }
 </style>
