@@ -130,7 +130,7 @@ pub(crate) fn changed_since_impl<'g>(
 
     let npm_pkgs_wild = [
         WildMatch::new(".github/workflows/reusable_node_ecosystem.yml"),
-        WildMatch::new("crates/*/frontend"),
+        WildMatch::new("crates/*/frontend/*"),
         WildMatch::new("npm-pkgs/*"),
         WildMatch::new("crates/lgn-*-proto"),
     ];
