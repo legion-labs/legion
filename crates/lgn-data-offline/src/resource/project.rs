@@ -104,7 +104,7 @@ impl Project {
         &self.project_dir
     }
 
-    /// Same as [`create`] but it creates an origin source control index at ``project_dir/remote``.
+    /// Same as [`Self::create`] but it creates an origin source control index at ``project_dir/remote``.
     pub async fn create_with_remote_mock(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
         let remote = {
             let remote_dir = project_dir.as_ref().join("remote");
