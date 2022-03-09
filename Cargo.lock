@@ -4345,13 +4345,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-stream",
- "clap 3.1.6",
  "futures-util",
- "lgn-cli-utils",
  "lgn-content-store2",
  "lgn-online",
- "lgn-telemetry-sink",
- "lgn-tracing",
  "rmp-serde",
  "serde",
  "thiserror",
