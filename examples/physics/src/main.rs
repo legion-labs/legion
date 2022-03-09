@@ -201,7 +201,7 @@ async fn create_offline_data(
             .components
             .push(Box::new(sample_data::offline::Transform {
                 position: (0_f32, -1_f32, 0_f32).into(),
-                rotation: Quat::IDENTITY,
+                rotation: Quat::from_rotation_x(-0.01_f32),
                 scale: (12_f32, 0.1_f32, 12_f32).into(),
             }));
         entity
