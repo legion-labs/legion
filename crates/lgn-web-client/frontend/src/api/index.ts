@@ -6,23 +6,44 @@ import { bytesToJson, jsonToBytes } from "../lib/api";
 import log from "../lib/log";
 
 // TODO: Move to config
-const editorServerURL = "http://[::1]:50051";
-const runtimeServerURL = "http://[::1]:50052";
+const defaultEditorServerUrl = "http://[::1]:50051";
+const defaultRuntimeServerUrl = "http://[::1]:50052";
 
-export type ServerType = keyof typeof streamerClients;
+export type ServerType = "editor" | "runtime";
 
-const streamerClients = {
-  editor: new StreamerClientImpl(
-    new StreamingGrpcWebImpl(editorServerURL, {
+let editorClient: StreamerClientImpl;
+
+let runtimeClient: StreamerClientImpl;
+
+function getClientFor(type: ServerType): StreamerClientImpl {
+  switch (type) {
+    case "editor":
+      return editorClient;
+
+    case "runtime":
+      return runtimeClient;
+  }
+}
+
+export function initApiClient({
+  editorServerUrl = defaultEditorServerUrl,
+  runtimeServerUrl = defaultRuntimeServerUrl,
+}: {
+  editorServerUrl?: string;
+  runtimeServerUrl?: string;
+} = {}) {
+  editorClient = new StreamerClientImpl(
+    new StreamingGrpcWebImpl(editorServerUrl, {
       debug: false,
     })
-  ),
-  runtime: new StreamerClientImpl(
-    new StreamingGrpcWebImpl(runtimeServerURL, {
+  );
+
+  runtimeClient = new StreamerClientImpl(
+    new StreamingGrpcWebImpl(runtimeServerUrl, {
       debug: false,
     })
-  ),
-};
+  );
+}
 
 /**
  * Initialize the video player stream
@@ -34,7 +55,7 @@ export async function initializeStream(
   serverType: ServerType,
   localSessionDescription: RTCSessionDescription
 ) {
-  const client = streamerClients[serverType];
+  const client = getClientFor(serverType);
 
   const response = await client.initializeStream({
     rtcSessionDescription: jsonToBytes(localSessionDescription.toJSON()),

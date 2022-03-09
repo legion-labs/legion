@@ -27,6 +27,13 @@
   const redirectUri = `${document.location.origin}/`;
 
   export const load: Load = async ({ fetch, url }) => {
+    const editorServerUrl =
+      url.searchParams.get("editor-server-url") || undefined;
+    const runtimeServerUrl =
+      url.searchParams.get("runtime-server-url") || undefined;
+
+    initApiClient({ editorServerUrl });
+
     try {
       const { initAuthStatus } = await headlessRun({
         auth: {
@@ -50,6 +57,8 @@
             scopes,
           },
         },
+        editorServerUrl,
+        runtimeServerUrl,
         logLevel,
         async onPreInit() {
           // await initWasmLogger();
@@ -85,6 +94,7 @@
 
 <script lang="ts">
   import "../assets/index.css";
+  import { initApiClient } from "@/api";
 </script>
 
 <slot />
