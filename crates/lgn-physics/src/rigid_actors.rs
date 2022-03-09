@@ -1,12 +1,15 @@
 use lgn_ecs::prelude::*;
 use lgn_transform::prelude::GlobalTransform;
 use physx::{
-    cooking::{ConvexMeshCookingResult, PxConvexMeshDesc, PxCooking},
+    cooking::{
+        ConvexMeshCookingResult, PxConvexMeshDesc, PxCooking, PxTriangleMeshDesc,
+        TriangleMeshCookingResult,
+    },
     foundation::DefaultAllocator,
     prelude::*,
     traits::Class,
 };
-use physx_sys::{PxConvexFlag, PxConvexMeshGeometryFlags, PxMeshScale};
+use physx_sys::{PxConvexFlag, PxConvexMeshGeometryFlags, PxMeshGeometryFlags, PxMeshScale};
 
 use crate::{mesh_scale::MeshScale, runtime, PxMaterial, PxScene, PxShape};
 
@@ -18,7 +21,7 @@ pub(crate) enum CollisionGeometry {
     //HeightField(PxHeightFieldGeometry),
     Plane(PxPlaneGeometry),
     Sphere(PxSphereGeometry),
-    //TriangleMesh(PxTriangleMeshGeometry),
+    TriangleMesh(PxTriangleMeshGeometry),
 }
 
 // SAFETY: the geometry is created when the physics component are parsed, and then immutable
@@ -118,6 +121,42 @@ impl Convert for runtime::PhysicsRigidSphere {
     }
 }
 
+impl Convert for runtime::PhysicsRigidTriangleMesh {
+    fn convert(
+        &self,
+        physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
+        cooking: &Res<'_, Owner<PxCooking>>,
+    ) -> CollisionGeometry {
+        let vertices: Vec<PxVec3> = self.vertices.iter().map(|v| (*v).into()).collect();
+        let mut mesh_desc = PxTriangleMeshDesc::new();
+        mesh_desc.obj.points.data = vertices.as_ptr().cast::<std::ffi::c_void>();
+        mesh_desc.obj.points.count = vertices.len() as u32;
+        mesh_desc.obj.points.stride = std::mem::size_of::<PxVec3>() as u32;
+
+        assert!(cooking.validate_triangle_mesh(&mesh_desc));
+
+        let cooking_result = cooking.create_triangle_mesh(physics.physics_mut(), &mesh_desc);
+
+        if let TriangleMeshCookingResult::Success(mut triangle_mesh) = cooking_result {
+            let mesh_scale: PxMeshScale = (&self.scale).into();
+            let flags = PxMeshGeometryFlags { mBits: 0 };
+            let geometry = CollisionGeometry::TriangleMesh(PxTriangleMeshGeometry::new(
+                triangle_mesh.as_mut(),
+                &mesh_scale,
+                flags,
+            ));
+
+            // prevent cooked mesh from being dropped immediately
+            #[allow(clippy::mem_forget)]
+            std::mem::forget(triangle_mesh);
+
+            geometry
+        } else {
+            panic!("mesh cooking failed");
+        }
+    }
+}
+
 #[allow(unsafe_code)]
 unsafe impl Class<PxGeometry> for CollisionGeometry {
     fn as_ptr(&self) -> *const PxGeometry {
@@ -128,7 +167,7 @@ unsafe impl Class<PxGeometry> for CollisionGeometry {
             // Self::HeightField(geometry) => geometry.as_ptr(),
             Self::Plane(geometry) => geometry.as_ptr(),
             Self::Sphere(geometry) => geometry.as_ptr(),
-            // Self::TriangleMesh(geometry) => geometry.as_ptr(),
+            Self::TriangleMesh(geometry) => geometry.as_ptr(),
         }
     }
 
@@ -140,7 +179,7 @@ unsafe impl Class<PxGeometry> for CollisionGeometry {
             // Self::HeightField(geometry) => geometry.as_mut_ptr(),
             Self::Plane(geometry) => geometry.as_mut_ptr(),
             Self::Sphere(geometry) => geometry.as_mut_ptr(),
-            // Self::TriangleMesh(geometry) => geometry.as_mut_ptr(),
+            Self::TriangleMesh(geometry) => geometry.as_mut_ptr(),
         }
     }
 }

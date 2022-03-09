@@ -61,6 +61,7 @@ struct PhysicsRigidTriangleMesh {
     #[legion(default = RigidActorType::Dynamic)]
     pub actor_type: RigidActorType,
     // [PhysX triangle mesh geometry](https://gameworksdocs.nvidia.com/PhysX/4.1/documentation/physxguide/Manual/Geometry.html#triangle-meshes)
+    vertices: Vec<Vec3>,
     scale: MeshScale,
 }
 
