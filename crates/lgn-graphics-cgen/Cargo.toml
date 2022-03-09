@@ -26,4 +26,4 @@ strum = { version = "0.23", features = ["derive"] }
 
 [package.metadata.cargo-udeps.ignore]
 # used by binary, but not by library
-development = ["clap", "lgn-telemetry-sink"]
+normal = ["clap", "lgn-telemetry-sink"]
