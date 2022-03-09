@@ -3,11 +3,15 @@ use std::sync::Arc;
 use anyhow::Result;
 use lgn_analytics::{find_block_stream, get_process_tick_length_ms};
 use lgn_blob_storage::BlobStorage;
-use lgn_telemetry_proto::analytics::{AsyncSpansReply, BlockAsyncEventsStatReply, Span};
+use lgn_telemetry_proto::analytics::{AsyncSpansReply, BlockAsyncEventsStatReply, ScopeDesc, Span};
+use lgn_tracing::prelude::*;
 use lgn_tracing_transit::Object;
 use std::collections::HashMap;
 
-use crate::thread_block_processor::{parse_thread_block, ThreadBlockProcessor};
+use crate::{
+    scope::{compute_scope_hash, ScopeHashMap},
+    thread_block_processor::{parse_thread_block, ThreadBlockProcessor},
+};
 
 struct StatsProcessor {
     process_start_ts: i64,
@@ -78,6 +82,10 @@ pub async fn compute_block_async_stats(
     })
 }
 
+fn ranges_overlap(begin_a: f64, end_a: f64, begin_b: f64, end_b: f64) -> bool {
+    begin_a <= end_b && begin_b <= end_a
+}
+
 #[derive(Debug)]
 struct BeginSpan {}
 
@@ -91,16 +99,51 @@ enum SpanEvent {
 }
 
 struct AsyncSpanBuilder {
+    begin_section_ms: f64,
+    end_section_ms: f64,
     unmatched_events: HashMap<u64, SpanEvent>,
     complete_spans: Vec<Span>,
+    scopes: ScopeHashMap,
 }
 
 impl AsyncSpanBuilder {
-    fn new() -> Self {
+    fn new(begin_section_ms: f64, end_section_ms: f64) -> Self {
         Self {
+            begin_section_ms,
+            end_section_ms,
             unmatched_events: HashMap::new(),
             complete_spans: Vec::new(),
+            scopes: ScopeHashMap::new(),
         }
+    }
+
+    fn record_scope_desc(&mut self, hash: u32, name: &str) {
+        self.scopes.entry(hash).or_insert_with(|| ScopeDesc {
+            name: name.to_owned(),
+            filename: "".to_string(),
+            line: 0,
+            hash,
+        });
+    }
+
+    fn record_span(&mut self, begin_ms: f64, end_ms: f64, scope: &Arc<Object>) -> Result<()> {
+        if ranges_overlap(self.begin_section_ms, self.end_section_ms, begin_ms, end_ms) {
+            let scope_name = scope.get::<Arc<String>>("name")?;
+            let scope_hash = compute_scope_hash(&scope_name);
+            self.record_scope_desc(scope_hash, &scope_name);
+            self.complete_spans.push(Span {
+                scope_hash,
+                begin_ms,
+                end_ms,
+                alpha: 255,
+            });
+        }
+        Ok(())
+    }
+
+    #[span_fn]
+    fn finish(self) -> Vec<Span> {
+        self.complete_spans
     }
 }
 
@@ -113,7 +156,7 @@ impl ThreadBlockProcessor for AsyncSpanBuilder {
         Ok(())
     }
 
-    fn on_begin_async_scope(&mut self, span_id: u64, _scope: Arc<Object>, _ts: i64) -> Result<()> {
+    fn on_begin_async_scope(&mut self, span_id: u64, scope: Arc<Object>, _ts: i64) -> Result<()> {
         if let Some(evt) = self.unmatched_events.remove(&span_id) {
             match evt {
                 SpanEvent::Begin(begin_span) => {
@@ -124,12 +167,7 @@ impl ThreadBlockProcessor for AsyncSpanBuilder {
                     );
                 }
                 SpanEvent::End(_end_event) => {
-                    self.complete_spans.push(Span {
-                        scope_hash: 0,
-                        begin_ms: 0.0,
-                        end_ms: 0.0,
-                        alpha: 255,
-                    });
+                    self.record_span(0.0, 0.0, &scope)?;
                 }
             }
         } else {
@@ -139,7 +177,7 @@ impl ThreadBlockProcessor for AsyncSpanBuilder {
         Ok(())
     }
 
-    fn on_end_async_scope(&mut self, span_id: u64, _scope: Arc<Object>, _ts: i64) -> Result<()> {
+    fn on_end_async_scope(&mut self, span_id: u64, scope: Arc<Object>, _ts: i64) -> Result<()> {
         if let Some(evt) = self.unmatched_events.remove(&span_id) {
             match evt {
                 SpanEvent::End(end_span) => {
@@ -150,12 +188,7 @@ impl ThreadBlockProcessor for AsyncSpanBuilder {
                     );
                 }
                 SpanEvent::Begin(_begin_span) => {
-                    self.complete_spans.push(Span {
-                        scope_hash: 0,
-                        begin_ms: 0.0,
-                        end_ms: 0.0,
-                        alpha: 255,
-                    });
+                    self.record_span(0.0, 0.0, &scope)?;
                 }
             }
         } else {
@@ -166,6 +199,7 @@ impl ThreadBlockProcessor for AsyncSpanBuilder {
     }
 }
 
+#[allow(clippy::cast_lossless)]
 pub async fn compute_async_spans(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
@@ -173,8 +207,14 @@ pub async fn compute_async_spans(
     section_lod: u32,
     block_ids: Vec<String>,
 ) -> Result<AsyncSpansReply> {
+    if section_lod != 0 {
+        anyhow::bail!("async lods not implemented");
+    }
+    let section_width_ms = 1000.0;
+    let begin_section_ms = section_sequence_number as f64 * section_width_ms;
+    let end_section_ms = begin_section_ms + section_width_ms;
+    let mut builder = AsyncSpanBuilder::new(begin_section_ms, end_section_ms);
     for block_id in &block_ids {
-        let mut builder = AsyncSpanBuilder::new();
         let stream = find_block_stream(connection, block_id).await?;
         parse_thread_block(
             connection,
@@ -185,6 +225,7 @@ pub async fn compute_async_spans(
         )
         .await?;
     }
+    let _spans = builder.finish();
     let tracks = vec![];
     let reply = AsyncSpansReply {
         section_sequence_number,

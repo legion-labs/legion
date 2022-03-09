@@ -20,6 +20,7 @@ mod call_tree_store;
 mod cumulative_call_graph;
 mod health_check_service;
 mod metrics;
+mod scope;
 mod thread_block_processor;
 
 use std::str::FromStr;

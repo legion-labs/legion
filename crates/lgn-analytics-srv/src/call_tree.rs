@@ -170,17 +170,12 @@ pub(crate) async fn compute_block_call_tree(
     Ok(builder.finish())
 }
 
-pub(crate) type ScopeHashMap = std::collections::HashMap<u32, ScopeDesc>;
 use lgn_tracing_transit::Object;
-use xxhash_rust::const_xxh32::xxh32 as const_xxh32;
 
+use crate::scope::compute_scope_hash;
+use crate::scope::ScopeHashMap;
 use crate::thread_block_processor::parse_thread_block;
 use crate::thread_block_processor::ThreadBlockProcessor;
-
-fn compute_scope_hash(name: &str) -> u32 {
-    //todo: add filename
-    const_xxh32(name.as_bytes(), 0)
-}
 
 fn make_spans_from_tree(tree: &CallTreeNode, depth: u32, lod: &mut SpanBlockLod) {
     let span = Span {
