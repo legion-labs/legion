@@ -8,7 +8,7 @@ pub struct RemoteExecutionArgs {
     #[clap(short = 's', long = "server")]
     pub server: bool,
 
-    #[clap(long = "url", default_value = "127.0.0.1:2022")]
+    #[clap(long = "url", default_value = "lgn://127.0.0.1:2022")]
     pub url: String,
 }
 

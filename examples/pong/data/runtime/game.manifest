@@ -1,8 +1,8 @@
 [
   {
-    "resource_id": "(17bed132bc803773,2ee0de7f-4bb7-55b6-44e1-6834e842d96b)",
-    "checksum": "edc00ca988ec0d0d9c424df6d17d46c2",
-    "size": 214
+    "resource_id": "(17bed132bc803773,7715944e-e078-58a4-bdaa-ab0bce416eb8)",
+    "checksum": "d8522e1d5e0bc380bd0dbf6e207f5629794bee979fd92128640005a3fc171f8f",
+    "size": 327
   },
   {
     "resource_id": "(17bed132bc803773,865c8645-0384-5477-7c48-c44dfa4b0d56)",
@@ -16,8 +16,8 @@
   },
   {
     "resource_id": "(1d9ddd99aad89045,1940748c-72d9-53bb-8f9b-04da4d99fd7e)",
-    "checksum": "c0f6f977cf1a3ee9ca325cb26acf4fcb6129fe78e42e03c59ef981e20e6b13fe",
-    "size": 214
+    "checksum": "b73709beb88a5d75ed354043240b3d2d2f9276916b46f034d174a1d3e9a37326",
+    "size": 262
   },
   {
     "resource_id": "(1d9ddd99aad89045,3add0185-6b77-5e79-8511-e1f6d3fc5bdf)",
@@ -26,13 +26,13 @@
   },
   {
     "resource_id": "(1d9ddd99aad89045,3ecbba67-ee61-5ae4-2e32-d083d26c88ff)",
-    "checksum": "b141173b861b17b04b58fb0313f0a46bb4f055635f9d6d628d328b5e93a59fec",
-    "size": 174
+    "checksum": "7154118948daa5ee4d4ea3056dceb929d8a79c79d84313ede230f85d0d984ff8",
+    "size": 222
   },
   {
     "resource_id": "(1d9ddd99aad89045,468b01a3-8e51-5ac7-09d5-534456811d2d)",
-    "checksum": "6d6751179c0a96a0eaefb4b9e45e8c7d11d33fa9d07ff2eecbe2700fd76623d4",
-    "size": 218
+    "checksum": "1ea974afe0feef736f3acf05113d9d67135ed635ff0ad99c0bf80c5f1eb5a8a1",
+    "size": 266
   },
   {
     "resource_id": "(1d9ddd99aad89045,b3440a7c-ba07-5628-e7f8-bb89ed5de900)",

@@ -4865,7 +4865,7 @@ dependencies = [
  "binary-resource",
  "bincode",
  "chacha20poly1305",
- "clap 3.1.2",
+ "clap 3.1.6",
  "freelist",
  "integer-asset",
  "lgn-content-store",
@@ -7299,7 +7299,7 @@ dependencies = [
 name = "physics-rebuild-data"
 version = "0.1.0"
 dependencies = [
- "clap 3.1.2",
+ "clap 3.1.6",
  "generic-data",
  "lgn-app",
  "lgn-compiler-runtime-entity",
@@ -7538,7 +7538,7 @@ dependencies = [
 name = "pong"
 version = "0.1.0"
 dependencies = [
- "clap 3.1.2",
+ "clap 3.1.6",
  "dolly",
  "generic-data",
  "lgn-app",
@@ -7559,7 +7559,7 @@ dependencies = [
 name = "pong-rebuild-data"
 version = "0.1.0"
 dependencies = [
- "clap 3.1.2",
+ "clap 3.1.6",
  "generic-data",
  "lgn-app",
  "lgn-compiler-runtime-entity",
