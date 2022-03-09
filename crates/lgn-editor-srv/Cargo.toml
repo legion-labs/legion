@@ -82,6 +82,13 @@ lgn-streamer = { path = "../lgn-streamer", version = "0.1.0", features = [
 
 [[package.metadata.monorepo.publish]]
 type = "docker"
+allow-aws-ecr-creation = true
+extra-files = [
+    { source = "../../tests/sample-data/*", destination = "/usr/src/app/tests/sample-data/" },
+    { source = "../../legion.toml", destination = "/usr/src/app/" },
+    { source = "nvidia_icd.json", destination = "/etc/vulkan/icd.d/" },
+]
+target_bin_dir = "/usr/src/app"
 template = '''
 FROM ubuntu:20.04
 
@@ -120,14 +127,8 @@ EXPOSE 50051/udp
 
 WORKDIR /usr/src/app
 
-CMD ["{ binaries.editor-srv }"]
+CMD ["{ binaries.editor-srv }", "--addr=0.0.0.0:50051"]
 '''
-allow-aws-ecr-creation = true
-extra-files = [
-    { source = "../../tests/sample-data/*", destination = "/usr/src/app/tests/sample-data/" },
-    { source = "../../legion.toml", destination = "/usr/src/app/" },
-    { source = "nvidia_icd.json", destination = "/etc/vulkan/icd.d/" },
-]
 
 [[package.metadata.monorepo.publish]]
 type = "zip"
