@@ -144,7 +144,7 @@ export class TimelineStateManager {
     const reply = await loadWrapAsync(
       async () =>
         await this.client!.fetch_async_spans({
-          sectionSequenceNumber: 1,
+          sectionSequenceNumber: 0,
           sectionLod: 0,
           blockIds: blocksOfInterest,
         })

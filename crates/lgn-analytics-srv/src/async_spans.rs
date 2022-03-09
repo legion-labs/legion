@@ -142,8 +142,8 @@ impl AsyncSpanBuilder {
     }
 
     #[span_fn]
-    fn finish(self) -> Vec<Span> {
-        self.complete_spans
+    fn finish(self) -> (Vec<Span>, ScopeHashMap) {
+        (self.complete_spans, self.scopes)
     }
 }
 
@@ -225,12 +225,13 @@ pub async fn compute_async_spans(
         )
         .await?;
     }
-    let _spans = builder.finish();
+    let (_spans, scopes) = builder.finish();
     let tracks = vec![];
     let reply = AsyncSpansReply {
         section_sequence_number,
         section_lod,
         tracks,
+        scopes,
     };
     Ok(reply)
 }
