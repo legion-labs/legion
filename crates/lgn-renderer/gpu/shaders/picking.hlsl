@@ -14,9 +14,9 @@ struct GpuPipelineVertexIn
 };
 
 struct VertexIn {
-    float4 pos : POSITION;
-    float4 normal : NORMAL;
-    float4 tangent : TANGENT;
+    float3 pos : POSITION;
+    float3 normal : NORMAL;
+    float3 tangent : TANGENT;
     float4 color: COLOR;
     float2 uv_coord : TEXCOORD0;
 };
@@ -48,7 +48,7 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
         vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
     }
 
-    float4 world_pos = mul(world, vertex_in.pos);
+    float4 world_pos = mul(world, float4(vertex_in.pos, 1.0));
     vertex_out.hpos = mul(view_data.projection_view, world_pos);
 
     float2 pers_div = vertex_out.hpos.xy / vertex_out.hpos.w;

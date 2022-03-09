@@ -1,11 +1,11 @@
-use crate::{Vec2, Vec3, Vec4};
+use crate::{Vec2, Vec3};
 
 #[allow(unsafe_code, clippy::uninit_vec)]
 pub fn calculate_tangents(
-    positions: &[Vec4],
+    positions: &[Vec3],
     tex_coords: &[Vec2],
     indices: &Option<Vec<u16>>,
-) -> Vec<Vec4> {
+) -> Vec<Vec3> {
     let length = positions.len();
     let mut tangents = Vec::with_capacity(length);
     //let mut bitangents = Vec::with_capacity(length);
@@ -36,9 +36,9 @@ pub fn calculate_tangents(
         } else {
             i * 3 + 2
         };
-        let v0 = positions[idx0].truncate();
-        let v1 = positions[idx1].truncate();
-        let v2 = positions[idx2].truncate();
+        let v0 = positions[idx0];
+        let v1 = positions[idx1];
+        let v2 = positions[idx2];
 
         let uv0 = tex_coords[idx0];
         let uv1 = tex_coords[idx1];
@@ -57,7 +57,6 @@ pub fn calculate_tangents(
         } else {
             Vec3::ZERO
         };
-        let t = t.extend(0.0);
 
         tangents[idx0] = t;
         tangents[idx1] = t;

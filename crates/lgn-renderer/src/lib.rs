@@ -11,19 +11,18 @@
 mod cgen {
     include!(concat!(env!("OUT_DIR"), "/rust/mod.rs"));
 }
-use std::collections::{BTreeMap, HashSet};
+
 use std::sync::Arc;
 
 #[allow(unused_imports)]
 use cgen::*;
 
 mod labels;
-use components::{MaterialComponent, ModelComponent};
-use gpu_renderer::{GpuInstanceEvent, GpuInstanceManager, MeshRenderer, RenderElement};
+use components::MaterialComponent;
+use gpu_renderer::{GpuInstanceEvent, GpuInstanceManager, RenderElement};
 pub use labels::*;
 
 mod renderer;
-use lgn_data_runtime::ResourceTypeAndId;
 use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{AddressMode, CompareOp, FilterType, MipMapMode, ResourceUsage, SamplerDef};
 use lgn_graphics_cgen_runtime::CGenRegistryList;
@@ -36,8 +35,8 @@ pub use render_context::*;
 pub mod resources;
 use resources::{
     BindlessTextureManager, DescriptorHeapManager, GpuDataPlugin, GpuEntityColorManager,
-    GpuEntityTransformManager, GpuMaterialManager, GpuPickingDataManager, ModelManager,
-    PersistentDescriptorSetManager, PipelineManager,
+    GpuEntityTransformManager, GpuMaterialManager, GpuPickingDataManager, MissingVisualTracker,
+    ModelManager, PersistentDescriptorSetManager, PipelineManager,
 };
 
 pub mod components;
@@ -60,7 +59,7 @@ use crate::{
         RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces,
     },
     egui::egui_plugin::{Egui, EguiPlugin},
-    gpu_renderer::{GpuInstanceVas, MeshRendererPlugin},
+    gpu_renderer::{GpuInstanceVas, MeshRenderer, MeshRendererPlugin},
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingIdContext, PickingManager, PickingPlugin},
     render_pass::TmpRenderPass,
@@ -76,7 +75,7 @@ use lgn_transform::components::GlobalTransform;
 use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 
 use crate::debug_display::DebugDisplay;
-use crate::resources::{Mesh, ModelMetaData, UniformGPUDataUpdater};
+use crate::resources::{update_missing_visuals, update_models, UniformGPUDataUpdater};
 
 use crate::{
     components::{
@@ -323,91 +322,6 @@ fn render_pre_update(
     descriptor_heap_manager.begin_frame();
 }
 
-#[span_fn]
-#[allow(clippy::needless_pass_by_value)]
-fn update_models(
-    renderer: Res<'_, Renderer>,
-    mut model_manager: ResMut<'_, ModelManager>,
-    mut mesh_manager: ResMut<'_, MeshManager>,
-    mut updated_models: Query<'_, '_, &mut ModelComponent, Changed<ModelComponent>>,
-    mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
-) {
-    for updated_model in updated_models.iter_mut() {
-        if let Some(mesh_reference) = &updated_model.model_id {
-            missing_visuals_tracker.add_visuals(*mesh_reference);
-            let ids = mesh_manager.add_meshes(&renderer, &updated_model.meshes);
-
-            let mut meshes = Vec::new();
-            for (idx, _meshes) in updated_model.meshes.iter().enumerate() {
-                meshes.push(Mesh {
-                    mesh_id: ids[idx],
-                    material_id: u32::MAX, //TODO
-                });
-            }
-            model_manager.add_model(*mesh_reference, ModelMetaData { meshes });
-        }
-    }
-}
-
-#[derive(Default)]
-struct MissingVisualTracker {
-    entities: BTreeMap<ResourceTypeAndId, HashSet<Entity>>,
-    visuals_added: Vec<ResourceTypeAndId>,
-}
-
-impl MissingVisualTracker {
-    fn add_entity(&mut self, resource_id: ResourceTypeAndId, entity_id: Entity) {
-        if let Some(entry) = self.entities.get_mut(&resource_id) {
-            entry.insert(entity_id);
-        } else {
-            let mut set = HashSet::new();
-            set.insert(entity_id);
-            self.entities.insert(resource_id, set);
-        }
-    }
-
-    fn add_visuals(&mut self, resource_id: ResourceTypeAndId) {
-        self.visuals_added.push(resource_id);
-    }
-
-    fn get_entities_to_update(&mut self) -> HashSet<Entity> {
-        let mut entities = HashSet::new();
-        for visual in &self.visuals_added {
-            if let Some(entry) = self.entities.get(visual) {
-                for entity in entry {
-                    entities.insert(*entity);
-                }
-                self.entities.remove_entry(visual);
-            }
-        }
-        self.visuals_added.clear();
-        entities
-    }
-}
-
-#[span_fn]
-#[allow(
-    clippy::needless_pass_by_value,
-    clippy::type_complexity,
-    clippy::too_many_arguments
-)]
-fn update_missing_visuals(
-    mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
-    mut visuals_query: Query<
-        '_,
-        '_,
-        (Entity, &mut VisualComponent, Option<&MaterialComponent>),
-        Without<ManipulatorComponent>,
-    >,
-) {
-    for entity in missing_visuals_tracker.get_entities_to_update() {
-        if let Ok((_entity, mut visual_component, _mat_component)) = visuals_query.get_mut(entity) {
-            visual_component.as_mut(); // Will trigger 'changed' to the visual component and it will be updated on the next update_gpu_instances()
-        }
-    }
-}
-
-#[span_fn]
 #[allow(
     clippy::needless_pass_by_value,
     clippy::type_complexity,
@@ -453,7 +367,16 @@ fn update_gpu_instances(
         );
         let mut instance_color = cgen::cgen_type::GpuInstanceColor::default();
         instance_color.set_color(Vec4::new(color.0, color.1, color.2, color.3).into());
-        instance_color.set_color_blend(if mat_component.is_none() { 1.0 } else { 0.0 }.into());
+
+        let (model_meta_data, ready) = model_manager.get_model_meta_data(mesh);
+        instance_color.set_color_blend(
+            if ready && model_meta_data.has_material() {
+                0.0
+            } else {
+                1.0
+            }
+            .into(),
+        );
 
         color_manager.update_gpu_data(&entity, 0, &[instance_color], &mut updater);
 
@@ -472,19 +395,23 @@ fn update_gpu_instances(
         picking_data.set_picking_id(picking_context.aquire_picking_id(entity).into());
         picking_data_manager.update_gpu_data(&entity, 0, &[picking_data], &mut updater);
 
-        let (model_meta_data, ready) = model_manager.get_model_meta_data(mesh);
         if !ready {
-            if let Some(reference) = &mesh.model_reference {
-                missing_visuals_tracker.add_entity(*reference, entity);
+            if let Some(model_resource_id) = &mesh.model_resource_id {
+                missing_visuals_tracker.add_entity(*model_resource_id, entity);
             }
         }
 
         let mut added_instances = Vec::with_capacity(model_meta_data.meshes.len());
         for mesh in &model_meta_data.meshes {
             let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
+
             let instance_vas = GpuInstanceVas {
                 submesh_va: mesh_meta_data.mesh_description_offset,
-                material_va: material_manager.va_for_index(material_key, 0) as u32,
+                material_va: if mesh.material_id != u32::MAX {
+                    mesh.material_id
+                } else {
+                    material_manager.va_for_index(material_key, 0) as u32
+                },
                 color_va: color_manager.va_for_index(Some(entity), 0) as u32,
                 transform_va: transform_manager.va_for_index(Some(entity), 0) as u32,
                 picking_data_va: picking_data_manager.va_for_index(Some(entity), 0) as u32,
@@ -498,9 +425,12 @@ fn update_gpu_instances(
                 &instance_vas,
             );
 
-            let material_id = material_manager.id_for_index(material_key, 0);
             added_instances.push((
-                material_id,
+                if mesh.material_id != u32::MAX {
+                    mesh.material_index
+                } else {
+                    material_manager.id_for_index(material_key, 0)
+                },
                 RenderElement::new(gpu_instance_id, mesh.mesh_id as u32, &mesh_manager),
             ));
         }

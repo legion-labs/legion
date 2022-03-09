@@ -11,8 +11,8 @@
             apply_to_children: true,
         )),
         Light((
-            light_type: 1,
-            color: (1, 1, 1),
+            light_type: "Directional",
+            color: (255, 255, 255),
             radiance: 40,
             enabled: true,
             cone_angle: 0,

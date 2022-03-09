@@ -443,10 +443,7 @@ where
         let reader = BufReader::new(f);
         let raw_data: RawType = ron::de::from_reader(reader).unwrap();
 
-        let resource = project
-            .load_resource(resource_id, resources)
-            .unwrap()
-            .typed::<OfflineType>();
+        let resource = resources.new_resource(OfflineType::TYPE).unwrap();
 
         // convert raw to offline
         let offline_data = resource.get_mut(resources).unwrap();
@@ -509,18 +506,12 @@ async fn load_gltf_resource(
     project: &mut Project,
     resources: &mut ResourceRegistry,
 ) -> Option<ResourceTypeAndId> {
-    let loaded_mesh = GltfFile::from_path(file);
-
-    let resource = project
-        .load_resource(resource_id, resources)
-        .unwrap()
-        .typed::<GltfFile>();
-
-    let initial_resource = resource.get_mut(resources).unwrap();
-    *initial_resource = loaded_mesh;
+    let handle = resources.new_resource(GltfFile::TYPE).unwrap();
+    let gltf_file = handle.get_mut::<GltfFile>(resources).unwrap();
+    *gltf_file = GltfFile::from_path(file);
 
     project
-        .save_resource(resource_id, resource, resources)
+        .save_resource(resource_id, handle, resources)
         .await
         .unwrap();
     Some(resource_id)

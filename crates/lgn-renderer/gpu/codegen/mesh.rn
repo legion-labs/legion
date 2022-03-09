@@ -4,7 +4,6 @@ pub fn main() {
             type: "BitField",
             name: "MeshAttribMask",
             values: [
-                "POSITION",
                 "NORMAL",
                 "TANGENT",
                 "TEX_COORD",

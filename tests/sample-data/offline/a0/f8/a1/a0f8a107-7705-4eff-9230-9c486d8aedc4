@@ -27,14 +27,10 @@
     },
     {
       "Light": {
-        "color": [
-          1.0,
-          1.0,
-          1.0
-        ],
+        "color": 4294967295,
         "cone_angle": 0.0,
         "enabled": true,
-        "light_type": 1,
+        "light_type": "Directional",
         "radiance": 40.0
       }
     }

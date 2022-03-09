@@ -4330,6 +4330,7 @@ dependencies = [
  "lgn-data-runtime",
  "lgn-ecs",
  "lgn-graphics-data",
+ "lgn-math",
  "lgn-physics",
  "lgn-renderer",
  "lgn-scripting",
@@ -4427,7 +4428,27 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-compiler-gltf"
+name = "lgn-compiler-gltf2mat"
+version = "0.1.0"
+dependencies = [
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-graphics-data",
+]
+
+[[package]]
+name = "lgn-compiler-gltf2model"
+version = "0.1.0"
+dependencies = [
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-graphics-data",
+]
+
+[[package]]
+name = "lgn-compiler-gltf2tex"
 version = "0.1.0"
 dependencies = [
  "lgn-data-compiler",
@@ -5036,6 +5057,7 @@ dependencies = [
  "serde_json",
  "tbc",
  "typetag",
+ "zip",
 ]
 
 [[package]]
@@ -5587,7 +5609,9 @@ dependencies = [
 name = "lgn-ubercompiler"
 version = "0.1.0"
 dependencies = [
- "lgn-compiler-gltf",
+ "lgn-compiler-gltf2mat",
+ "lgn-compiler-gltf2model",
+ "lgn-compiler-gltf2tex",
  "lgn-compiler-material",
  "lgn-compiler-png2tex",
  "lgn-compiler-psd2tex",

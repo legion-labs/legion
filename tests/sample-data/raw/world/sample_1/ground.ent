@@ -9,7 +9,7 @@
             scale: (1, 1, 1),
         )),
         Visual((
-            renderable_geometry: Some("runtime_model(offline_model(models/cube/cube.gltf, 'Cube'))"),
+            renderable_geometry: None,
             color: (0, 255, 0),
             shadow_receiver: true,
             shadow_caster_sun: true,

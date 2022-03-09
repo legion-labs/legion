@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 pub struct CompilerHash(pub u64);
 
 /// Description of a compiled resource.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone, PartialOrd, Ord)]
 pub struct CompiledResource {
     /// The path of derived resource.
     pub path: ResourcePathId,

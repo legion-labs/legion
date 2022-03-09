@@ -9,7 +9,7 @@ use lgn_data_compiler::{
 use lgn_data_offline::resource::ResourceProcessor;
 use lgn_data_offline::Transform;
 use lgn_data_runtime::{AssetRegistryOptions, Resource};
-use lgn_graphics_data::offline::ModelProcessor;
+use lgn_graphics_data::offline_texture::TextureProcessor;
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -18,7 +18,7 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     data_version: "1",
     transform: &Transform::new(
         lgn_graphics_data::offline_gltf::GltfFile::TYPE,
-        lgn_graphics_data::offline::Model::TYPE,
+        lgn_graphics_data::offline_texture::Texture::TYPE,
     ),
     init_func: init,
     compiler_hash_func: hash_code_and_data,
@@ -37,15 +37,18 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
     let resource = resource.get(&resources).unwrap();
 
     let mut compiled_resources = vec![];
-    let model_proc = ModelProcessor {};
+    let texture_proc = TextureProcessor {};
 
-    let models = resource.gather_models();
-    for model in models {
+    let textures = resource.gather_textures();
+    for texture in textures {
         let mut compiled_asset = vec![];
-        model_proc
-            .write_resource(&model.0, &mut compiled_asset)
+        texture_proc
+            .write_resource(&texture.0, &mut compiled_asset)
             .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
-        let asset = context.store(&compiled_asset, context.target_unnamed.new_named(&model.1))?;
+        let asset = context.store(
+            &compiled_asset,
+            context.target_unnamed.new_named(&texture.1),
+        )?;
         compiled_resources.push(asset);
     }
 

@@ -15,9 +15,9 @@ struct GpuPipelineVertexIn
 };
 
 struct VertexIn {
-    float4 pos : POSITION;
-    float4 normal : NORMAL;
-    float4 tangent : TANGENT;
+    float3 pos : POSITION;
+    float3 normal : NORMAL;
+    float3 tangent : TANGENT;
     float4 color: COLOR;
     float2 uv_coord : TEXCOORD0;
 };
@@ -40,12 +40,12 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
 
     GpuInstanceTransform transform = LoadGpuInstanceTransform(static_buffer, addresses.world_transform_va);
 
-    float4 pos_view_relative = mul(view_data.view, mul(transform.world, vertex_in.pos));
+    float4 pos_view_relative = mul(view_data.view, mul(transform.world, float4(vertex_in.pos, 1.0)));
 
     vertex_out.hpos = mul(view_data.projection, pos_view_relative);
     vertex_out.pos = pos_view_relative.xyz;
-    vertex_out.normal = mul(view_data.view, mul(transform.world, vertex_in.normal)).xyz;
-    vertex_out.tangent = mul(view_data.view, mul(transform.world, vertex_in.tangent)).xyz;
+    vertex_out.normal = mul(view_data.view, mul(transform.world, float4(vertex_in.normal, 0.0))).xyz;
+    vertex_out.tangent = mul(view_data.view, mul(transform.world, float4(vertex_in.tangent, 0.0))).xyz;
     vertex_out.uv_coord = vertex_in.uv_coord;
     vertex_out.va_table_address = vertexIn.va_table_address;
     return vertex_out;
