@@ -88,7 +88,7 @@ extra-files = [
     { source = "../../legion.toml", destination = "/usr/src/app/" },
     { source = "nvidia_icd.json", destination = "/etc/vulkan/icd.d/" },
 ]
-target_bin_dir = "/usr/src/app"
+target-bin-dir = "/usr/src/app"
 template = '''
 FROM ubuntu:20.04
 
