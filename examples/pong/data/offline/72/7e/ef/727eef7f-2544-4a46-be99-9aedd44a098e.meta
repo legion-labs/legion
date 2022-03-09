@@ -3,6 +3,7 @@
   "type_name": "offline_entity",
   "type_id": "1c0ff9e497b0740f",
   "dependencies": [
+    "(44e4b6023fb7a8d3,5474d00b-cc10-491a-ba56-be2f5b5de22d)|5c4b1b522bf5dcb0",
     "(45307156cdfef705,e93151b6-3635-4a30-9f3e-e6052929d85a)|17bed132bc803773"
   ]
 }
