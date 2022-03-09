@@ -177,12 +177,15 @@ async fn create_offline_model(
         .get_mut::<lgn_graphics_data::offline::Model>(&mut resources)
         .unwrap();
     let mesh = lgn_graphics_data::offline::Mesh {
-        positions: mesh.positions.unwrap(),
+        positions: mesh.positions,
         normals: mesh.normals.unwrap(),
         tangents: mesh.tangents.unwrap(),
         tex_coords: mesh.tex_coords.unwrap(),
         indices: mesh.indices.unwrap(),
-        colors: mesh.colors.unwrap(),
+        colors: mesh
+            .colors
+            .map(|colors| colors.iter().map(|color| (*color).into()).collect())
+            .unwrap(),
         material: None,
     };
     model.meshes.push(mesh);

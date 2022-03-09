@@ -56,6 +56,17 @@ impl From<Color> for [u8; 4] {
     }
 }
 
+impl From<[u8; 4]> for Color {
+    fn from(val: [u8; 4]) -> Self {
+        Self {
+            r: val[0],
+            g: val[1],
+            b: val[2],
+            a: val[3],
+        }
+    }
+}
+
 #[allow(clippy::cast_lossless)]
 impl Serialize for Color {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
