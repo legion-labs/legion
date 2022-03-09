@@ -3,7 +3,9 @@ use std::sync::Arc;
 use anyhow::Result;
 use lgn_analytics::{prelude::*, time::ConvertTicks};
 use lgn_blob_storage::BlobStorage;
-use lgn_telemetry_proto::analytics::{AsyncSpansReply, BlockAsyncEventsStatReply, ScopeDesc, Span};
+use lgn_telemetry_proto::analytics::{
+    AsyncSpansReply, BlockAsyncEventsStatReply, ScopeDesc, Span, SpanTrack,
+};
 use lgn_tracing::prelude::*;
 use lgn_tracing_transit::Object;
 use std::collections::HashMap;
@@ -149,6 +151,7 @@ impl AsyncSpanBuilder {
 
     #[span_fn]
     fn finish(self) -> (Vec<Span>, ScopeHashMap) {
+        //todo: complete unmatched events
         (self.complete_spans, self.scopes)
     }
 }
@@ -207,6 +210,33 @@ impl ThreadBlockProcessor for AsyncSpanBuilder {
     }
 }
 
+fn is_track_available(track: &[Span], time: f64) -> bool {
+    if let Some(last) = track.last() {
+        last.end_ms <= time
+    } else {
+        true
+    }
+}
+
+fn get_available_track(tracks: &mut Vec<SpanTrack>, time: f64) -> usize {
+    for (index, track) in tracks.iter().enumerate() {
+        if is_track_available(&track.spans, time) {
+            return index;
+        }
+    }
+    tracks.push(SpanTrack { spans: vec![] });
+    tracks.len() - 1
+}
+
+fn layout_spans(spans: Vec<Span>) -> Vec<SpanTrack> {
+    let mut tracks = vec![];
+    for span in spans {
+        let index = get_available_track(&mut tracks, span.begin_ms);
+        tracks[index].spans.push(span);
+    }
+    tracks
+}
+
 #[allow(clippy::cast_lossless)]
 pub async fn compute_async_spans(
     connection: &mut sqlx::AnyConnection,
@@ -246,8 +276,9 @@ pub async fn compute_async_spans(
         )
         .await?;
     }
-    let (_spans, scopes) = builder.finish();
-    let tracks = vec![];
+    let (mut spans, scopes) = builder.finish();
+    spans.sort_by(|a, b| a.begin_ms.partial_cmp(&b.begin_ms).unwrap());
+    let tracks = layout_spans(spans);
     let reply = AsyncSpansReply {
         section_sequence_number,
         section_lod,
