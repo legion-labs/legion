@@ -4345,13 +4345,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-stream",
- "clap 3.1.6",
  "futures-util",
- "lgn-cli-utils",
  "lgn-content-store2",
  "lgn-online",
- "lgn-telemetry-sink",
- "lgn-tracing",
  "rmp-serde",
  "serde",
  "thiserror",
@@ -4963,7 +4959,6 @@ dependencies = [
 name = "lgn-embedded-fs"
 version = "0.1.0"
 dependencies = [
- "lgn-tracing",
  "once_cell",
 ]
 
@@ -5181,10 +5176,8 @@ dependencies = [
  "lgn-core",
  "lgn-data-codegen",
  "lgn-data-model",
- "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-ecs",
- "lgn-graphics-data",
  "lgn-math",
  "lgn-tracing",
  "lgn-transform",
@@ -5239,7 +5232,6 @@ dependencies = [
  "lgn-embedded-fs",
  "lgn-graphics-api",
  "lgn-tracing",
- "normpath",
  "spirv-reflect",
  "spirv-tools",
 ]
@@ -6422,15 +6414,6 @@ dependencies = [
  "memchr",
  "minimal-lexical",
  "version_check",
-]
-
-[[package]]
-name = "normpath"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04aaf5e9cb0fbf883cc0423159eacdf96a9878022084b35c462c428cab73bcaf"
-dependencies = [
- "winapi 0.3.9",
 ]
 
 [[package]]

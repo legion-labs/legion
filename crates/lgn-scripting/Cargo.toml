@@ -44,6 +44,7 @@ offline = ["lgn-data-offline", "inventory"]
 runtime = []
 
 [package.metadata.cargo-udeps.ignore]
+# dependencies only if "offline" feature is not enabled
 normal = [
     "lgn-core",
     "lgn-input",
