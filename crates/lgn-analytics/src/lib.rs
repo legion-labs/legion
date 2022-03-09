@@ -3,6 +3,8 @@
 // crate-specific lint exceptions:
 #![allow(clippy::missing_errors_doc)]
 
+pub mod time;
+
 use std::path::Path;
 use std::sync::Arc;
 
@@ -732,21 +734,13 @@ where
     Ok(())
 }
 
-pub fn get_process_tick_length_ms(process_info: &lgn_telemetry_proto::telemetry::Process) -> f64 {
-    get_tsc_frequency_inverse_ms(process_info.tsc_frequency)
-}
-
-#[allow(clippy::cast_precision_loss)]
-pub fn get_tsc_frequency_inverse_ms(tsc_frequency: u64) -> f64 {
-    1000.0 / tsc_frequency as f64
-}
-
 pub mod prelude {
     pub use crate::alloc_sql_pool;
     pub use crate::fetch_block_payload;
     pub use crate::fetch_child_processes;
     pub use crate::fetch_recent_processes;
     pub use crate::find_block;
+    pub use crate::find_block_stream;
     pub use crate::find_process;
     pub use crate::find_process_blocks;
     pub use crate::find_process_log_entry;
@@ -760,9 +754,9 @@ pub mod prelude {
     pub use crate::for_each_process_in_tree;
     pub use crate::for_each_process_log_entry;
     pub use crate::for_each_process_metric;
-    pub use crate::get_process_tick_length_ms;
-    pub use crate::get_tsc_frequency_inverse_ms;
     pub use crate::parse_block;
     pub use crate::processes_by_name_substring;
     pub use crate::search_processes;
+    pub use crate::time::get_process_tick_length_ms;
+    pub use crate::time::get_tsc_frequency_inverse_ms;
 }
