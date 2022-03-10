@@ -17,7 +17,7 @@ apt-get update && apt-get install -y --no-install-recommends \
     lsb-release pciutils \
     curl wget \
     tar zip unzip p7zip-full \
-    git \
+    git git-lfs \
     python3 \
     gpg-agent ca-certificates software-properties-common \
     jq

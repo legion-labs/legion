@@ -1,8 +1,10 @@
 # Set the default behavior, in case people don't have core.autocrlf set.
 * text=auto
+
 # Explicitly declare text files you want to always be normalized and converted
 # to native line endings on checkout.
 #*.ext text
+
 # Declare files that will always have LF line endings on checkout.
 *.gitattributes eol=lf
 *.rs text eol=lf
@@ -17,16 +19,21 @@
 *.yaml text eol=lf
 *.sh text eol=lf
 tests/sample-data/**/* eol=lf
+
 # Declare files that will always have CRLF line endings on checkout.
 *.sln text eol=crlf
 *.yml text eol=crlf
 *.ps1 text eol=crlf
 *.bat text eol=crlf
+
 # Denote all files that are truly binary and should not be modified.
 *.png binary
 *.jpg binary
 *.psd binary
 *.blend binary
+
 Cargo.lock linguist-generated=true
 pnpm-lock.yaml linguist-generated=true
+
+# Git LFS files
 tests/sample-data/offline/4c/bc/25/4cbc25ba-8743-4f20-9a58-6419770c951f filter=lfs diff=lfs merge=lfs -text
