@@ -55,6 +55,7 @@
     "rustfmt",
     "sccache",
     "serde",
+    "skippable",
     "sqlx",
     "Swapchain",
     "thiserror",

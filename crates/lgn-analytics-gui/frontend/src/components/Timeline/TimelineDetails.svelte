@@ -4,12 +4,10 @@
 </script>
 
 {#if process}
-  <div class="text-left">
-    <div>
-      <span class="font-semibold inline-block">Process</span>
-      <span>
-        {process.exe.split("\\").pop()?.split("/").pop()}
-      </span>
-    </div>
+  <div class="text-left text-sm">
+    <span class="font-semibold inline-block">Process</span>
+    <span>
+      {process.exe.split("\\").pop()?.split("/").pop()}
+    </span>
   </div>
 {/if}

@@ -57,7 +57,7 @@ export function findBestLod(
     block.beginMs,
     block.endMs
   );
-  if (preferredLod == null) {
+  if (preferredLod == null || block.lods.length === 0) {
     return null;
   }
   return block.lods.reduce((lhs, rhs) => {

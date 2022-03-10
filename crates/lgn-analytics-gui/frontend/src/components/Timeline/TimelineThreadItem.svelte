@@ -1,54 +1,57 @@
 <script lang="ts">
   import { formatExecutionTime } from "@/lib/format";
   import { Thread } from "@/lib/Timeline/Thread";
+  import { getThreadCollapseStyle } from "@/lib/Timeline/TimelineCollapse";
   import { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
-  import { spanPixelHeight } from "@/lib/Timeline/TimelineValues";
   import { createEventDispatcher } from "svelte";
   import TimelineThread from "./TimelineThread.svelte";
   export let rootStartTime: number;
   export let stateStore: TimelineStateStore;
   export let thread: Thread;
   export let width: number;
+  export let parentCollapsed: boolean;
   let collapsed = false;
   const wheelDispatch = createEventDispatcher<{ zoom: WheelEvent }>();
   $: threadName = thread.streamInfo.properties["thread-name"];
+  $: threadLength = formatExecutionTime(thread.maxMs - thread.minMs);
+
+  export function setCollapse(state: boolean) {
+    collapsed = state;
+  }
 </script>
 
-{#if thread.block_ids.length > 0}
+<div
+  class="flex items-start main"
+  style={getThreadCollapseStyle(thread, collapsed)}
+>
   <div
-    class="flex items-start main"
-    style={`${
-      collapsed
-        ? `max-height:${spanPixelHeight}px`
-        : `min-height:${(thread.maxDepth + 1) * spanPixelHeight}px`
-    }`}
+    class="thread px-1"
+    on:click={() => (collapsed = !collapsed)}
+    title={`${threadName}\n${threadLength}\n${thread.block_ids.length} block(s)`}
   >
-    <div
-      class="thread px-1"
-      on:click={() => (collapsed = !collapsed)}
-      title={`${threadName}\n${thread.block_ids.length} block(s)`}
+    <span class="text">
+      <i class={`icon bi bi-${!collapsed ? "eye" : "eye-slash"}-fill`} />
+      <span class="thread-name">{threadName}</span></span
     >
-      <span class="text">
-        <i class={`icon bi bi-arrow-${collapsed ? "up" : "down"}-circle`} />
-        <span class="thread-name">{threadName}</span></span
-      >
-      <span class="text text-xs text-slate-300"
-        >{formatExecutionTime(thread.maxMs - thread.minMs)}
-      </span>
-    </div>
-    <TimelineThread
-      {thread}
-      {stateStore}
-      width={width - 0}
-      {rootStartTime}
-      on:zoom={(e) => wheelDispatch("zoom", e.detail)}
-    />
+    <span class="text text-xs text-slate-300"
+      >{threadLength} ({thread.block_ids.length} block{thread.block_ids.length
+        ? "s"
+        : ""})
+    </span>
   </div>
-{/if}
+  <TimelineThread
+    {stateStore}
+    {thread}
+    {parentCollapsed}
+    {width}
+    {rootStartTime}
+    on:zoom={(e) => wheelDispatch("zoom", e.detail)}
+  />
+</div>
 
 <style lang="postcss">
   .main {
-    overflow-y: hidden;
+    overflow: hidden;
   }
 
   .thread-name {
@@ -68,7 +71,7 @@
 
   .thread {
     @apply text-sm text-slate-400;
-    width: 170px;
+    min-width: 170px;
     overflow: hidden;
     cursor: pointer;
     background-color: #f0f0f0;

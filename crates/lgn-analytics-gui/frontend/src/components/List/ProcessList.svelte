@@ -11,6 +11,7 @@
   import Computer from "./Computer.svelte";
   import Platform from "./Platform.svelte";
   import ProcessTime from "./ProcessTime.svelte";
+  import { formatProcessName } from "@/lib/format";
 
   let client: PerformanceAnalyticsClientImpl | null = null;
   let processList: ProcessInstance[] = [];
@@ -73,7 +74,7 @@
             <td><User user={processInfo?.realname ?? ""} /></td>
             <td
               ><span title={processInfo?.exe}>
-                {processInfo?.exe.split("/").pop()?.split("\\").pop()}
+                {formatProcessName(processInfo)}
               </span>
             </td>
             <td><Computer process={processInfo} /></td>

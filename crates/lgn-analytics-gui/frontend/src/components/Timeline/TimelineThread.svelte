@@ -2,6 +2,7 @@
   import { formatExecutionTime } from "@/lib/format";
   import { findBestLod } from "@/lib/time";
   import { Thread } from "@/lib/Timeline/Thread";
+  import { TimelineCaptionItem } from "@/lib/Timeline/TimelineSpanCaptionItem";
   import { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { spanPixelHeight } from "@/lib/Timeline/TimelineValues";
   import { DrawSelectedRange } from "@/lib/time_range_selection";
@@ -12,6 +13,7 @@
   export let stateStore: TimelineStateStore;
   export let thread: Thread;
   export let width: number;
+  export let parentCollapsed: boolean;
 
   const wheelDispatch = createEventDispatcher<{ zoom: WheelEvent }>();
 
@@ -21,7 +23,6 @@
   let height: number;
   let initialized = false;
   let intersectionObserver: IntersectionObserver;
-  let displayable = false;
 
   onMount(() => {
     const process = stateStore.value.findStreamProcess(
@@ -56,8 +57,7 @@
   $: scopes = $stateStore?.scopes;
 
   $: if (thread) {
-    height = (thread.maxDepth + 1) * spanPixelHeight;
-    displayable = thread.maxDepth > 0;
+    height = Math.max(spanPixelHeight, thread.maxDepth * spanPixelHeight);
   }
 
   $: if (width || height || scopes || range || $stateStore?.currentSelection) {
@@ -77,9 +77,17 @@
   }
 
   async function draw() {
-    if (canvas && ctx && displayable) {
+    if (canvas && ctx && !parentCollapsed) {
       await tick();
       drawThread();
+      if ($stateStore.selectionState) {
+        DrawSelectedRange(
+          canvas,
+          ctx,
+          $stateStore.selectionState,
+          $stateStore.getViewRange()
+        );
+      }
     }
   }
 
@@ -151,15 +159,6 @@
         );
       }
     });
-
-    if ($stateStore.selectionState) {
-      DrawSelectedRange(
-        canvas,
-        ctx,
-        $stateStore.selectionState,
-        $stateStore.getViewRange()
-      );
-    }
   }
 
   function drawSpanTrack(
@@ -224,37 +223,103 @@
       ctx.globalAlpha = 1.0;
 
       if (span.scopeHash != 0) {
-        const { name } = scopes[span.scopeHash];
         if (callWidth > characterWidth * 5) {
           const nbChars = Math.floor(callWidth / characterWidth);
 
           ctx.fillStyle = "#000000";
 
           const extraHeight = 0.5 * (spanPixelHeight - characterHeight);
+          const { name } = scopes[span.scopeHash];
           const caption = name + " " + formatExecutionTime(endSpan - beginSpan);
 
-          ctx.fillText(
-            caption.slice(0, nbChars),
+          // ctx.fillText(
+          //   caption.slice(0, nbChars),
+          //   beginPixels + 5,
+          //   offsetY + characterHeight + extraHeight,
+          //   callWidth
+          // );
+
+          writeText(
+            callWidth,
+            characterWidth,
+            Array.from(getCaptions(name, beginSpan, endSpan)),
             beginPixels + 5,
-            offsetY + characterHeight + extraHeight,
-            callWidth
+            offsetY + characterHeight + extraHeight
           );
         }
       }
     }
   }
+
+  function* getCaptions(
+    caption: string,
+    beginSpan: number,
+    endSpan: number
+  ): Generator<TimelineCaptionItem> {
+    const mainColor = "#000000";
+    const subColor = "#4d4d4d";
+    const defaultFont = "15px arial";
+    const split = caption.split("::");
+    if (split.length > 1) {
+      const first = split.shift();
+      yield { value: first ?? "", font: defaultFont, color: subColor };
+      let current = null;
+      while ((current = split.shift())) {
+        yield {
+          value: `::${current}`,
+          font: defaultFont,
+          color: split.length > 0 ? subColor : mainColor,
+        };
+      }
+    } else {
+      yield { value: caption, color: mainColor };
+    }
+    yield {
+      value: `  (${formatExecutionTime(endSpan - beginSpan)})`,
+      color: subColor,
+      font: "12px arial",
+      skippable: true,
+    };
+  }
+
+  function writeText(
+    width: number,
+    characterWidth: number,
+    items: TimelineCaptionItem[],
+    x: number,
+    y: number
+  ) {
+    let defaultFillStyle = ctx.fillStyle;
+    let defaultFont = ctx.font;
+    ctx.save();
+    for (const { value, font, color, skippable } of items) {
+      ctx.fillStyle = color || defaultFillStyle;
+      ctx.font = font || defaultFont;
+      const budget = Math.floor(width / characterWidth);
+      if (!budget) {
+        break;
+      }
+      if (value.length > budget && skippable) {
+        continue;
+      }
+      const textSlice = value.slice(0, budget);
+      ctx.fillText(textSlice, x, y);
+      const size = ctx.measureText(textSlice).width;
+      x += size;
+      width -= size;
+    }
+    ctx.restore();
+  }
 </script>
 
-<canvas
-  {width}
-  {height}
-  style={`display:${displayable ? "block" : "none"}`}
-  bind:this={canvas}
-  on:wheel|preventDefault={(e) => wheelDispatch("zoom", e)}
-/>
+<div class="drag" on:wheel|preventDefault={(e) => wheelDispatch("zoom", e)}>
+  <canvas {width} {height} bind:this={canvas} />
+</div>
 
 <style>
-  canvas {
+  div {
+    align-self: stretch;
+    background-color: #f0f0f0;
     cursor: grab;
   }
 </style>

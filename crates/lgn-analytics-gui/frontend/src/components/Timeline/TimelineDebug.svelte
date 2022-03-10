@@ -13,7 +13,7 @@
   }
 </script>
 
-<div class="flex gap-2">
+<div class="flex gap-2 select-none">
   <div>
     <span class="label">Pixel Size</span>
     <span class="value">{formatExecutionTime(pixelSize)}</span>

@@ -12,7 +12,7 @@
   } from "@/lib/time_range_selection";
   import TimelineAction from "./TimelineAction.svelte";
   import TimelineDebug from "./TimelineDebug.svelte";
-  import TimelineThreadElement from "./TimelineThreadItem.svelte";
+  import TimelineProcess from "./TimelineProcess.svelte";
   export let processId: string;
 
   type PanState = {
@@ -73,7 +73,11 @@
     if (event.buttons !== 1) {
       panState = undefined;
     } else if (!event.shiftKey) {
-      if (event.target instanceof HTMLCanvasElement) {
+      if (
+        event.target instanceof HTMLCanvasElement ||
+        (event.target instanceof Element &&
+          event.target.classList.contains("drag"))
+      ) {
         if (!panState) {
           panState = {
             beginMouseX: event.offsetX,
@@ -125,30 +129,29 @@
 
 <svelte:window on:keydown={handleKeydown} bind:innerWidth={windowInnerWidth} />
 
-{#if stateStore && !$stateStore.ready}
-  <div class="flex items-center justify-center loader">
-    <BarLoader />
-  </div>
-{/if}
+<div {style} class="main">
+  {#if stateStore && !$stateStore.ready}
+    <div class="flex items-center justify-center loader">
+      <BarLoader />
+    </div>
+  {/if}
 
-{#if stateManager?.process && $stateStore.ready}
-  <div class="flex flex-row justify-between pb-2">
-    <TimelineDetails process={stateManager?.process} />
-    <TimelineDebug {canvasWidth} store={stateStore} />
-  </div>
-{/if}
+  {#if stateManager?.process && $stateStore.ready}
+    <div class="pb-1">
+      <TimelineDetails process={stateManager?.process} />
+    </div>
+  {/if}
 
-<div {style}>
   <div
     bind:this={div}
     class="canvas "
     on:mousedown|preventDefault={(e) => onMouseDown(e)}
     on:mousemove|preventDefault={(e) => onMouseMove(e)}
   >
-    {#if stateManager}
-      {#each Object.entries($stateStore.threads) as [key, thread] (key)}
-        <TimelineThreadElement
-          {thread}
+    {#if stateStore}
+      {#each $stateStore.processes as p}
+        <TimelineProcess
+          process={p}
           {stateStore}
           width={canvasWidth}
           rootStartTime={stateManager.rootStartTime}
@@ -157,30 +160,32 @@
       {/each}
     {/if}
   </div>
+
+  {#if stateManager?.process && $stateStore.ready}
+    <div class="flex flex-row justify-between items-center pt-1 h-7 detail">
+      <TimelineAction
+        {processId}
+        process={stateManager.process}
+        timeRange={$stateStore.currentSelection}
+      />
+      <TimelineDebug {canvasWidth} store={stateStore} />
+    </div>
+  {/if}
 </div>
 
-{#if $stateStore?.ready && stateManager?.process}
-  <div class="action-container">
-    <TimelineAction
-      {processId}
-      process={stateManager.process}
-      timeRange={$stateStore.currentSelection}
-    />
-  </div>
-{/if}
-
 <style lang="postcss">
+  .main {
+    overflow-x: hidden;
+    overflow-y: hidden;
+  }
+
   .canvas {
     max-height: calc(100vh - 150px);
-    overflow-y: visible;
+    /* overflow-y: scroll; */
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
     @apply gap-y-1;
-  }
-
-  .action-container {
-    padding-top: 4px;
   }
 
   .loader {

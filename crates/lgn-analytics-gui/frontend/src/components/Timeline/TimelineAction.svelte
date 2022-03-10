@@ -6,7 +6,7 @@
   export let process: Process;
 </script>
 
-<div class="flex flex-row justify-start text-xs gap-x-1">
+<div class="flex flex-row justify-start text-xs gap-1">
   {#if process.parentProcessId}
     <div class="action bg-orange-700">
       <a href={`/timeline/${process.parentProcessId}`} target="_blank" use:link>

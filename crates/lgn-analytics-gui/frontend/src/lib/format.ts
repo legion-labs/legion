@@ -1,4 +1,9 @@
+import { Process } from "@lgn/proto-telemetry/dist/process";
+
 export function formatExecutionTime(timeMs: number) {
+  if (!isFinite(timeMs)) {
+    return "";
+  }
   let unit = "ns";
   let time = timeMs * 1000000; //If there are problems of numeric stability we could test early for cases >= 1 minute
 
@@ -28,4 +33,8 @@ export function formatExecutionTime(timeMs: number) {
     }
   }
   return sign + time.toFixed(3) + " " + unit;
+}
+
+export function formatProcessName(process: Process) {
+  return process.exe.split("/").pop()?.split("\\").pop();
 }
