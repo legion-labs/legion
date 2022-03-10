@@ -57,6 +57,7 @@ use physx::{
     physics::PhysicsFoundationBuilder,
     prelude::*,
 };
+use physx_sys::{PxPvdInstrumentationFlag, PxPvdInstrumentationFlags};
 
 // type aliases
 
@@ -138,11 +139,30 @@ impl PhysicsPlugin {
             length_tolerance,
             speed_tolerance,
         );
-        if physics.is_none() && settings.enable_visual_debugger {
-            // likely failed to connect to visual debugger, retry without
-            physics = Self::create_physics_foundation(false, length_tolerance, speed_tolerance);
-            if physics.is_some() {
-                error!("failed to connect to physics visual debugger");
+        if settings.enable_visual_debugger {
+            match &mut physics {
+                Some(physics) => {
+                    if let Some(pvd) = physics.pvd_mut() {
+                        if pvd.is_connected(true) {
+                            // reconnect with additional flags
+                            pvd.disconnect();
+                            let flags = PxPvdInstrumentationFlags {
+                                mBits: PxPvdInstrumentationFlag::eDEBUG as u8
+                                    // | PxPvdInstrumentationFlag::ePROFILE as u8
+                                     | PxPvdInstrumentationFlag::eMEMORY as u8,
+                            };
+                            pvd.connect(flags);
+                        }
+                    }
+                }
+                None => {
+                    // likely failed to connect to visual debugger, retry without
+                    physics =
+                        Self::create_physics_foundation(false, length_tolerance, speed_tolerance);
+                    if physics.is_some() {
+                        error!("failed to connect to physics visual debugger");
+                    }
+                }
             }
         }
         let mut physics = physics.unwrap();
