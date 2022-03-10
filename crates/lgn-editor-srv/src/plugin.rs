@@ -12,13 +12,13 @@ use lgn_data_transaction::{
     UpdatePropertyOperation,
 };
 use lgn_ecs::prelude::*;
+use lgn_graphics_renderer::picking::PickingEvent;
+use lgn_graphics_renderer::picking::{ManipulatorManager, PickingManager};
 use lgn_input::{
     keyboard::{KeyCode, KeyboardInput},
     mouse::{MouseButtonInput, MouseMotion},
     Input,
 };
-use lgn_graphics_renderer::picking::PickingEvent;
-use lgn_graphics_renderer::picking::{ManipulatorManager, PickingManager};
 use lgn_tracing::{error, info, warn};
 use lgn_transform::components::Transform;
 use tokio::sync::Mutex;

@@ -22,12 +22,12 @@ use lgn_data_runtime::{
     manifest::Manifest, AssetRegistryOptions, Resource, ResourceId, ResourceTypeAndId,
 };
 use lgn_data_transaction::BuildManager;
+use lgn_graphics_renderer::components::Mesh;
 use lgn_math::prelude::*;
 use lgn_physics::{
     offline::{PhysicsRigidBox, PhysicsRigidConvexMesh, PhysicsRigidSphere},
     RigidActorType,
 };
-use lgn_graphics_renderer::components::Mesh;
 use sample_data::{
     offline::{Light, Transform, Visual},
     LightType,

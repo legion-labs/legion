@@ -4,11 +4,11 @@ use crate::asset_entities::AssetToEntityMap;
 use lgn_core::Name;
 use lgn_data_runtime::{AssetRegistry, HandleUntyped, Resource, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
-use lgn_math::Vec3;
 use lgn_graphics_renderer::components::{
     LightComponent, LightType, MaterialComponent, Mesh, ModelComponent, TextureComponent,
     TextureData, VisualComponent,
 };
+use lgn_math::Vec3;
 
 use lgn_tracing::info;
 use lgn_transform::prelude::*;

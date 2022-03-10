@@ -22,8 +22,8 @@ use lgn_data_runtime::{
     manifest::Manifest, AssetRegistryOptions, Resource, ResourceId, ResourceTypeAndId,
 };
 use lgn_data_transaction::BuildManager;
-use lgn_math::prelude::*;
 use lgn_graphics_renderer::components::Mesh;
+use lgn_math::prelude::*;
 use lgn_scripting::ScriptType;
 use sample_data::{
     offline::{Light, Transform, Visual},
