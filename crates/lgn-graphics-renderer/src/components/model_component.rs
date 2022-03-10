@@ -130,6 +130,7 @@ impl Mesh {
             updater.add_update_jobs(colors, u64::from(offset));
             offset += (std::mem::size_of::<[u8; 4]>() * colors.len()) as u32;
         }
+        mesh_desc.set_bounding_sphere(self.bounding_sphere.into());
 
         updater.add_update_jobs(&[mesh_desc], u64::from(offset));
         let mesh_info_offset = offset;
