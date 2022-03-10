@@ -1,5 +1,6 @@
 use std::{collections::BTreeMap, str::FromStr};
 
+use lgn_app::App;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_ecs::prelude::{Changed, Query, Res, ResMut};
 use lgn_tracing::span_fn;
@@ -7,6 +8,7 @@ use strum::IntoEnumIterator;
 
 use crate::{
     components::{ModelComponent, VisualComponent},
+    labels::RenderStage,
     Renderer,
 };
 
@@ -71,6 +73,10 @@ impl ModelManager {
                 }],
             },
         }
+    }
+
+    pub fn init_ecs(app: &mut App) {
+        app.add_system_to_stage(RenderStage::Prepare, update_models);
     }
 
     pub fn add_model(&mut self, resource_id: ResourceTypeAndId, model: ModelMetaData) {

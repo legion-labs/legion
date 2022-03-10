@@ -194,6 +194,8 @@ impl Plugin for RendererPlugin {
         TextureManager::init_ecs(app);
         TextureResourceManager::init_ecs(app);
         MeshRenderer::init_ecs(app);
+        ModelManager::init_ecs(app);
+        MissingVisualTracker::init_ecs(app);
 
         // todo: convert?
         app.add_plugin(GpuDataPlugin::default());
@@ -231,8 +233,8 @@ impl Plugin for RendererPlugin {
         if self.runs_dynamic_systems {
             app.add_system_to_stage(RenderStage::Prepare, ui_lights);
         }
-        app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
-        app.add_system_to_stage(RenderStage::Prepare, update_gpu_instances);
+        app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);        
+        app.add_system_to_stage(RenderStage::Prepare, update_gpu_instances);        
         app.add_system_to_stage(RenderStage::Prepare, update_lights);
         app.add_system_to_stage(
             RenderStage::Prepare,
