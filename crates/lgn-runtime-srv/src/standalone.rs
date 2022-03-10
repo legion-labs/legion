@@ -1,12 +1,12 @@
 use lgn_app::prelude::*;
 use lgn_ecs::prelude::*;
-use lgn_presenter_window::component::PresenterWindow;
 use lgn_graphics_renderer::{
     components::{
         RenderSurface, RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces,
     },
     Renderer,
 };
+use lgn_presenter_window::component::PresenterWindow;
 use lgn_window::{WindowDescriptor, WindowPlugin, Windows};
 use lgn_winit::{WinitConfig, WinitPlugin, WinitWindows};
 

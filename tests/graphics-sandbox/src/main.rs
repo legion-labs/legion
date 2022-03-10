@@ -9,10 +9,6 @@ use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::GraphicsPlugin;
-use lgn_input::InputPlugin;
-use lgn_math::Vec3;
-use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlugin};
-use lgn_presenter_window::component::PresenterWindow;
 use lgn_graphics_renderer::{
     components::{
         LightComponent, LightType, RenderSurface, RenderSurfaceCreatedForWindow,
@@ -21,6 +17,10 @@ use lgn_graphics_renderer::{
     resources::{DefaultMeshType, PipelineManager},
     {Renderer, RendererPlugin},
 };
+use lgn_input::InputPlugin;
+use lgn_math::Vec3;
+use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlugin};
+use lgn_presenter_window::component::PresenterWindow;
 use lgn_transform::prelude::{Transform, TransformBundle, TransformPlugin};
 use lgn_window::{WindowDescriptor, WindowPlugin, Windows};
 use lgn_winit::{WinitConfig, WinitPlugin, WinitWindows};

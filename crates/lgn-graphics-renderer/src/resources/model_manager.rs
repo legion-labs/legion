@@ -26,17 +26,6 @@ pub struct ModelMetaData {
     pub meshes: Vec<Mesh>,
 }
 
-impl ModelMetaData {
-    pub(crate) fn has_material(&self) -> bool {
-        for mesh in &self.meshes {
-            if mesh.material_id != u32::MAX {
-                return true;
-            }
-        }
-        false
-    }
-}
-
 pub struct ModelManager {
     model_meta_datas: BTreeMap<ResourceTypeAndId, ModelMetaData>,
     default_model: ModelMetaData,
