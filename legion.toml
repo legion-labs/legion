@@ -50,7 +50,7 @@ redirect_uri = "http://localhost:3000/"
 
 [content_store.provider]
 type = "grpc"
-url = "http://localhost:5000"
+url = "https://api.live.playground.legionlabs.com"
 
 [content_store.caching_provider]
 type = "lru"
