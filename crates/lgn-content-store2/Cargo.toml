@@ -88,6 +88,7 @@ testcontainers = "0.12"
 [[package.metadata.monorepo.publish]]
 name = "content-store-srv"
 type = "docker"
+target-bin-dir = "/usr/src/app"
 template = """
 FROM ubuntu:20.04
 
