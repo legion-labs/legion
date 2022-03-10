@@ -35,8 +35,8 @@ use sample_data::{
     LightType,
 };
 use lgn_renderer::components::Mesh;
-use sample_data::offline::{Transform, Visual};
 use lgn_tracing::LevelFilter;
+use sample_data::offline::{Transform, Visual};
 use tokio::sync::Mutex;
 
 #[derive(Debug, Copy, Clone, PartialEq, ArgEnum)]
