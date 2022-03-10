@@ -95,6 +95,9 @@ async fn main() -> anyhow::Result<()> {
     let mut server = Server::builder().accept_http1(true).layer(layer);
 
     // Hardcode AWS providers for now.
+    info!("Using AWS S3 bucket: {}", args.s3_bucket);
+    info!("Using AWS DynamoDB table: {}", args.dynamodb_table_name);
+
     let aws_s3_url = args.s3_bucket.parse().unwrap();
     let aws_s3_provider = AwsS3Provider::new(aws_s3_url).await;
     let aws_dynamo_db_provider = AwsDynamoDbProvider::new(args.dynamodb_table_name).await;
