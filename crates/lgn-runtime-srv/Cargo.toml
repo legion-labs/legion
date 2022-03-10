@@ -20,7 +20,7 @@ lgn-grpc = { path = "../lgn-grpc", version = "0.1.0" }
 lgn-input = { path = "../lgn-input", version = "0.1.0" }
 lgn-physics = { path = "../lgn-physics", version = "0.1.0" }
 lgn-presenter-window = { path = "../lgn-presenter-window", version = "0.1.0" }
-lgn-renderer = { path = "../lgn-renderer", version = "0.1.0" }
+lgn-graphics-renderer = { path = "../lgn-graphics-renderer", version = "0.1.0" }
 lgn-streamer = { path = "../lgn-streamer", version = "0.1.0" }
 lgn-transform = { path = "../lgn-transform", version = "0.1.0" }
 lgn-utils = { path = "../lgn-utils", version = "0.1.0" }

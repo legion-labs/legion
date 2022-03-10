@@ -10,7 +10,7 @@ use lgn_config::config_get_or;
 use lgn_ecs::prelude::*;
 use lgn_graphics_api::DeviceContext;
 use lgn_mp4::{AvcConfig, MediaConfig, Mp4Config, Mp4Stream};
-use lgn_renderer::{
+use lgn_graphics_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
     resources::PipelineManager,
     RenderContext,

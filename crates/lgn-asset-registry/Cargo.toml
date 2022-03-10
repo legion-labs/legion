@@ -24,7 +24,7 @@ lgn-math = { path = "../lgn-math", version = "0.1.0" }
 lgn-physics = { path = "../lgn-physics", version = "0.1.0", features = [
     "runtime",
 ] }
-lgn-renderer = { path = "../lgn-renderer", version = "0.1.0" }
+lgn-graphics-renderer = { path = "../lgn-graphics-renderer", version = "0.1.0" }
 lgn-scripting = { path = "../lgn-scripting", version = "0.1.0", features = [
     "runtime",
 ] }

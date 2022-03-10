@@ -1,7 +1,7 @@
 use lgn_app::prelude::*;
 use lgn_ecs::prelude::*;
 use lgn_presenter_window::component::PresenterWindow;
-use lgn_renderer::{
+use lgn_graphics_renderer::{
     components::{
         RenderSurface, RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces,
     },

@@ -1,7 +1,7 @@
 #ifndef MESH_DESCRIPTION_HSH
 #define MESH_DESCRIPTION_HSH
 
-#include "crate://lgn-renderer/gpu/cgen_type/mesh_description.hlsl"
+#include "crate://lgn-graphics-renderer/gpu/cgen_type/mesh_description.hlsl"
 
 template<typename TVertexIn>
 TVertexIn LoadVertex(MeshDescription mesh_desc, uint vertexId) {

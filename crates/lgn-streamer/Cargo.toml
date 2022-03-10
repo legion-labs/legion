@@ -20,7 +20,7 @@ lgn-input = { path = "../lgn-input", version = "0.1.0", features = [
 lgn-math = { path = "../lgn-math", version = "0.1.0" }
 lgn-mp4 = { path = "../lgn-mp4", version = "0.1.0" }
 lgn-graphics-cgen-runtime = { path = "../lgn-graphics-cgen-runtime", version = "0.1.0" }
-lgn-renderer = { path = "../lgn-renderer", version = "0.1.0" }
+lgn-graphics-renderer = { path = "../lgn-graphics-renderer", version = "0.1.0" }
 lgn-streaming-proto = { path = "../lgn-streaming-proto", version = "0.1.0" }
 lgn-tasks = { path = "../lgn-tasks", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
@@ -46,4 +46,4 @@ lgn-graphics-cgen = { path = "../lgn-graphics-cgen", version = "0.1.0" }
 
 [features]
 default = []
-vulkan = ["lgn-renderer/vulkan"]
+vulkan = ["lgn-graphics-renderer/vulkan"]

@@ -412,6 +412,26 @@ impl NullDescriptorSetLayout {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+pub(crate) struct NullDescriptorSetWriter;
+
+impl<'a> DescriptorSetWriter<'a> {
+    #[allow(clippy::unused_self, clippy::todo)]
+    pub(crate) fn backend_set_descriptors_by_index_and_offset(
+        &mut self,
+        descriptor_index: u32,
+        descriptor_offset: u32,
+        descriptor_refs: &[DescriptorRef<'_>],
+    ) {
+        unimplemented!()
+    }
+
+    pub(crate) fn backend_set_descriptors(&mut self, descriptor_refs: &[DescriptorRef<'_>]) {
+        unimplemented!()
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 pub(crate) struct NullFence;
 
 impl NullFence {

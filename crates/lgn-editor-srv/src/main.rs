@@ -15,7 +15,7 @@ use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::Local;
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_input::InputPlugin;
-use lgn_renderer::RendererPlugin;
+use lgn_graphics_renderer::RendererPlugin;
 use lgn_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
 use lgn_scripting::ScriptingPlugin;
 use lgn_streamer::StreamerPlugin;

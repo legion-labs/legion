@@ -1,7 +1,7 @@
 #ifndef BRDF_HSH
 #define BRDF_HSH
 
-#include "crate://lgn-renderer/gpu/cgen_type/material_data.hlsl"
+#include "crate://lgn-graphics-renderer/gpu/cgen_type/material_data.hlsl"
 
 #define PI 3.14159265358979323846
 

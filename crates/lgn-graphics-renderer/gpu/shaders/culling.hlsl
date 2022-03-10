@@ -1,8 +1,8 @@
-#include "crate://lgn-renderer/gpu/pipeline_layout/culling_pipeline_layout.hlsl"
-#include "crate://lgn-renderer/gpu/cgen_type/gpu_instance_transform.hlsl"
-#include "crate://lgn-renderer/gpu/cgen_type/gpu_instance_va_table.hlsl"
+#include "crate://lgn-graphics-renderer/gpu/pipeline_layout/culling_pipeline_layout.hlsl"
+#include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_transform.hlsl"
+#include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_va_table.hlsl"
 
-#include "crate://lgn-renderer/gpu/include/mesh.hsh"
+#include "crate://lgn-graphics-renderer/gpu/include/mesh.hsh"
 
 [numthreads(256, 1, 1)]
 void main_cs(uint3 dt_id : SV_DispatchThreadID) {

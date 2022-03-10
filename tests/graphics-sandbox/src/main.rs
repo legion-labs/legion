@@ -13,7 +13,7 @@ use lgn_input::InputPlugin;
 use lgn_math::Vec3;
 use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlugin};
 use lgn_presenter_window::component::PresenterWindow;
-use lgn_renderer::{
+use lgn_graphics_renderer::{
     components::{
         LightComponent, LightType, RenderSurface, RenderSurfaceCreatedForWindow,
         RenderSurfaceExtents, VisualComponent,
