@@ -22,7 +22,7 @@ lgn-graphics-data = { path = "../../crates/lgn-graphics-data", version = "0.1.0"
     "runtime",
 ] }
 lgn-math = { path = "../../crates/lgn-math", version = "0.1.0" }
-lgn-renderer = { path = "../../crates/lgn-renderer", version = "0.1.0" }
+lgn-graphics-renderer = { path = "../../crates/lgn-graphics-renderer", version = "0.1.0" }
 lgn-scripting = { path = "../../crates/lgn-scripting", version = "0.1.0", features = [
     "offline",
     "runtime",

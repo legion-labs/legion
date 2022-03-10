@@ -23,7 +23,7 @@ use lgn_graphics_data::GraphicsPlugin;
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_input::InputPlugin;
 use lgn_physics::{PhysicsPlugin, PhysicsSettings};
-use lgn_renderer::RendererPlugin;
+use lgn_graphics_renderer::RendererPlugin;
 use lgn_scripting::ScriptingPlugin;
 use lgn_streamer::StreamerPlugin;
 use lgn_tracing::prelude::*;

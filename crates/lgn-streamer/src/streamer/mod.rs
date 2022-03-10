@@ -9,7 +9,7 @@ use lgn_input::{
     mouse::{MouseButtonInput, MouseMotion, MouseWheel},
     touch::TouchInput,
 };
-use lgn_renderer::{
+use lgn_graphics_renderer::{
     components::{RenderSurface, RenderSurfaceCreatedForWindow},
     resources::PipelineManager,
     Renderer,

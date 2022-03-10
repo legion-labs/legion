@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
 use lgn_graphics_api::prelude::*;
-use lgn_renderer::{
+use lgn_graphics_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
     RenderContext, Renderer,
 };

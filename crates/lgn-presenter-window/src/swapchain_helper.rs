@@ -8,7 +8,7 @@ use lgn_graphics_api::{
     CommandBuffer, DeviceContext, Fence, Format, GfxError, GfxResult, PresentSuccessResult,
     Semaphore, Swapchain, SwapchainDef, SwapchainImage, Texture, TextureView,
 };
-use lgn_renderer::hl_gfx_api::HLQueue;
+use lgn_graphics_renderer::hl_gfx_api::HLQueue;
 use lgn_tracing::{debug, error, info, trace};
 
 /// May be implemented to get callbacks related to the swapchain being
