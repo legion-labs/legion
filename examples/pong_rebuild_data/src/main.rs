@@ -27,11 +27,11 @@ use lgn_data_transaction::BuildManager;
 use lgn_graphics_renderer::components::Mesh;
 use lgn_math::prelude::*;
 use lgn_scripting::ScriptType;
+use lgn_tracing::LevelFilter;
 use sample_data::{
     offline::{Light, Transform, Visual},
     LightType,
 };
-use lgn_tracing::LevelFilter;
 use tokio::sync::Mutex;
 
 #[derive(Debug, Copy, Clone, PartialEq, ArgEnum)]

@@ -30,13 +30,11 @@ use lgn_physics::{
     offline::{PhysicsRigidBox, PhysicsRigidConvexMesh, PhysicsRigidSphere},
     RigidActorType,
 };
+use lgn_tracing::LevelFilter;
 use sample_data::{
     offline::{Light, Transform, Visual},
     LightType,
 };
-use lgn_renderer::components::Mesh;
-use lgn_tracing::LevelFilter;
-use sample_data::offline::{Transform, Visual};
 use tokio::sync::Mutex;
 
 #[derive(Debug, Copy, Clone, PartialEq, ArgEnum)]
