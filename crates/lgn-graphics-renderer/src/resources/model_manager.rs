@@ -3,14 +3,14 @@ use std::{collections::BTreeMap, str::FromStr};
 use lgn_app::App;
 use lgn_core::BumpAllocatorPool;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
-use lgn_ecs::prelude::{Changed, Query, Res, ResMut};
+use lgn_ecs::prelude::{Changed, Query, Res, ResMut, Without};
 use lgn_math::Vec3;
 use lgn_tracing::span_fn;
 use lgn_transform::components::Transform;
 use strum::IntoEnumIterator;
 
 use crate::{
-    components::{ModelComponent, VisualComponent},
+    components::{ManipulatorComponent, ModelComponent, VisualComponent},
     debug_display::DebugDisplay,
     labels::RenderStage,
     Renderer,
@@ -131,7 +131,7 @@ pub fn debug_bounding_spheres(
     bump_allocator_pool: Res<'_, BumpAllocatorPool>,
     model_manager: Res<'_, ModelManager>,
     mesh_manager: Res<'_, MeshManager>,
-    visuals: Query<'_, '_, (&VisualComponent, &Transform)>,
+    visuals: Query<'_, '_, (&VisualComponent, &Transform), Without<ManipulatorComponent>>,
 ) {
     bump_allocator_pool.scoped_bump(|bump| {
         debug_display.create_display_list(bump, |builder| {
@@ -146,7 +146,7 @@ pub fn debug_bounding_spheres(
                                 .with_translation(
                                     transform.translation + mesh_data.bounding_sphere.truncate(),
                                 )
-                                .with_scale(Vec3::new(2.0, 2.0, 2.0) * mesh_data.bounding_sphere.w)
+                                .with_scale(Vec3::new(4.0, 4.0, 4.0) * mesh_data.bounding_sphere.w)
                                 .with_rotation(transform.rotation)
                                 .compute_matrix(),
                             DefaultMeshType::Sphere as u32,
