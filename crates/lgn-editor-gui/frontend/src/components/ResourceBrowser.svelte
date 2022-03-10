@@ -259,13 +259,16 @@
       case "sync_latest": {
         syncLatest();
         await allResources.run(getAllResources);
+
         return;
       }
 
       case "commit": {
         const result = await getStagedResources();
+
         log.error(result.entries);
         await commitStagedResources();
+
         return;
       }
 
