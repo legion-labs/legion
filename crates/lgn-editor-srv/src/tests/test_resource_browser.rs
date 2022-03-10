@@ -17,7 +17,6 @@ use lgn_editor_proto::resource_browser::{
     DeleteResourceRequest, GetResourceTypeNamesRequest, InitPropertyValue, RenameResourceRequest,
 };
 use lgn_math::Vec3;
-use lgn_renderer::resources::DefaultMeshType;
 
 /*fn add_scripting_component(root_entity_id: &ResourceTypeAndId) -> Transaction {
     let script_id = ResourceTypeAndId {

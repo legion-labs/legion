@@ -53,6 +53,7 @@ pub mod hl_gfx_api;
 pub(crate) mod lighting;
 pub(crate) mod render_pass;
 
+use crate::gpu_renderer::MeshRenderer;
 use crate::render_pass::TmpRenderPass;
 use crate::{
     components::{
@@ -76,7 +77,7 @@ use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 
 use crate::debug_display::DebugDisplay;
 use crate::resources::{
-    Mesh, ModelMetaData, SharedResourcesManager, TextureResourceManager, UniformGPUDataUpdater,
+    MissingVisualTracker, SharedResourcesManager, TextureResourceManager, UniformGPUDataUpdater,
 };
 
 use crate::{
@@ -231,9 +232,7 @@ impl Plugin for RendererPlugin {
             app.add_system_to_stage(RenderStage::Prepare, ui_lights);
         }
         app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
-        app.add_system_to_stage(RenderStage::Prepare, update_models);
         app.add_system_to_stage(RenderStage::Prepare, update_gpu_instances);
-        app.add_system_to_stage(RenderStage::Prepare, update_missing_visuals);
         app.add_system_to_stage(RenderStage::Prepare, update_lights);
         app.add_system_to_stage(
             RenderStage::Prepare,
