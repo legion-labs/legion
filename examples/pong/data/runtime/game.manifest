@@ -20,6 +20,11 @@
     "size": 434
   },
   {
+    "resource_id": "(1d9ddd99aad89045,3add0185-6b77-5e79-8511-e1f6d3fc5bdf)",
+    "checksum": "bb713f6695347eae11608aad142060a608d235b006fbbb5dde06beb28c71e14b",
+    "size": 101
+  },
+  {
     "resource_id": "(1d9ddd99aad89045,3ecbba67-ee61-5ae4-2e32-d083d26c88ff)",
     "checksum": "7154118948daa5ee4d4ea3056dceb929d8a79c79d84313ede230f85d0d984ff8",
     "size": 222
@@ -31,8 +36,8 @@
   },
   {
     "resource_id": "(1d9ddd99aad89045,b3440a7c-ba07-5628-e7f8-bb89ed5de900)",
-    "checksum": "394b9e0e4f15d65fb3a7adf1dd10b095ede5549f91224a048fd149d5cae45da4",
-    "size": 320
+    "checksum": "e5474670129596eb2808d637c3bc7d233f81c5f0575b8fb4bda031b51de67214",
+    "size": 368
   },
   {
     "resource_id": "(1d9ddd99aad89045,bb6914df-7c35-51b6-dbd4-5789431d665b)",

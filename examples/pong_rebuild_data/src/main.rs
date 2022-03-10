@@ -18,12 +18,17 @@ use lgn_data_offline::{
     resource::{Project, ResourceRegistry, ResourceRegistryOptions},
     ResourcePathId,
 };
-use lgn_data_runtime::{manifest::Manifest, AssetRegistryOptions};
-use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
+use lgn_data_runtime::{
+    manifest::Manifest, AssetRegistryOptions, Resource, ResourceId, ResourceTypeAndId,
+};
 use lgn_data_transaction::BuildManager;
 use lgn_math::prelude::*;
 use lgn_renderer::components::Mesh;
 use lgn_scripting::ScriptType;
+use sample_data::{
+    offline::{Light, Transform, Visual},
+    LightType,
+};
 use tokio::sync::Mutex;
 
 #[tokio::main]
@@ -240,20 +245,16 @@ async fn create_offline_data(
         let entity = handle
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
-        entity
-            .components
-            .push(Box::new(sample_data::offline::Transform {
-                position: (0_f32, 0_f32, 0.1_f32).into(),
-                rotation: Quat::IDENTITY,
-                scale: (12_f32, 8_f32, 0.01_f32).into(),
-            }));
-        entity
-            .components
-            .push(Box::new(sample_data::offline::Visual {
-                renderable_geometry: Some(cube_model_id.clone()),
-                color: (0xD0, 0xFF, 0xD0).into(),
-                ..sample_data::offline::Visual::default()
-            }));
+        entity.components.push(Box::new(Transform {
+            position: (0_f32, 0_f32, 0.1_f32).into(),
+            scale: (12_f32, 8_f32, 0.01_f32).into(),
+            ..Transform::default()
+        }));
+        entity.components.push(Box::new(Visual {
+            renderable_geometry: Some(cube_model_id.clone()),
+            color: (0xD0, 0xFF, 0xD0).into(),
+            ..Visual::default()
+        }));
 
         project
             .add_resource_with_id(
@@ -303,20 +304,16 @@ pub fn update(entity, events) {
         entity.components.push(Box::new(sample_data::offline::Name {
             name: "Pad Right".to_string(),
         }));
-        entity
-            .components
-            .push(Box::new(sample_data::offline::Transform {
-                position: (-2.4_f32, 0_f32, 0_f32).into(),
-                rotation: Quat::IDENTITY,
-                scale: (0.4_f32, 2_f32, 0.4_f32).into(),
-            }));
-        entity
-            .components
-            .push(Box::new(sample_data::offline::Visual {
-                renderable_geometry: Some(cube_model_id.clone()),
-                color: (0x00, 0xFF, 0xFF).into(),
-                ..sample_data::offline::Visual::default()
-            }));
+        entity.components.push(Box::new(Transform {
+            position: (-2.4_f32, 0_f32, 0_f32).into(),
+            scale: (0.4_f32, 2_f32, 0.4_f32).into(),
+            ..Transform::default()
+        }));
+        entity.components.push(Box::new(Visual {
+            renderable_geometry: Some(cube_model_id.clone()),
+            color: (0x00, 0xFF, 0xFF).into(),
+            ..Visual::default()
+        }));
 
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
             script_type: ScriptType::Rune,
@@ -375,20 +372,16 @@ pub fn update(entity, events) {
         entity.components.push(Box::new(sample_data::offline::Name {
             name: "Pad Left".to_string(),
         }));
-        entity
-            .components
-            .push(Box::new(sample_data::offline::Transform {
-                position: (2.4_f32, 0_f32, 0_f32).into(),
-                rotation: Quat::IDENTITY,
-                scale: (0.4_f32, 2_f32, 0.4_f32).into(),
-            }));
-        entity
-            .components
-            .push(Box::new(sample_data::offline::Visual {
-                renderable_geometry: Some(cube_model_id.clone()),
-                color: (0x00, 0x00, 0xFF).into(),
-                ..sample_data::offline::Visual::default()
-            }));
+        entity.components.push(Box::new(Transform {
+            position: (2.4_f32, 0_f32, 0_f32).into(),
+            scale: (0.4_f32, 2_f32, 0.4_f32).into(),
+            ..Transform::default()
+        }));
+        entity.components.push(Box::new(Visual {
+            renderable_geometry: Some(cube_model_id.clone()),
+            color: (0x00, 0x00, 0xFF).into(),
+            ..Visual::default()
+        }));
 
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
             script_type: ScriptType::Rune,
@@ -561,20 +554,16 @@ pub fn update(entity, last_result, entities) {
         entity.components.push(Box::new(sample_data::offline::Name {
             name: "Ball".to_string(),
         }));
-        entity
-            .components
-            .push(Box::new(sample_data::offline::Transform {
-                position: Vec3::ZERO,
-                rotation: Quat::IDENTITY,
-                scale: (0.4_f32, 0.4_f32, 0.4_f32).into(),
-            }));
-        entity
-            .components
-            .push(Box::new(sample_data::offline::Visual {
-                renderable_geometry: Some(sphere_model_id.clone()),
-                color: (0xFF, 0x10, 0x40).into(),
-                ..sample_data::offline::Visual::default()
-            }));
+        entity.components.push(Box::new(Transform {
+            position: Vec3::ZERO,
+            scale: (0.4_f32, 0.4_f32, 0.4_f32).into(),
+            ..Transform::default()
+        }));
+        entity.components.push(Box::new(Visual {
+            renderable_geometry: Some(sphere_model_id.clone()),
+            color: (0xFF, 0x10, 0x40).into(),
+            ..Visual::default()
+        }));
 
         let script_component = Box::new(lgn_scripting::offline::ScriptComponent {
             script_type: ScriptType::Rune,
@@ -604,6 +593,40 @@ pub fn update(entity, last_result, entities) {
         path.push(sample_data::runtime::Entity::TYPE)
     };
 
+    let light_id = {
+        let mut resources = resource_registry.lock().await;
+        let id = ResourceTypeAndId {
+            kind: sample_data::offline::Entity::TYPE,
+            id: ResourceId::from_str("ba1ffa5a-8a54-451d-8d01-f57afce857d3").unwrap(),
+        };
+        let handle = resources.new_resource(id.kind).unwrap();
+
+        let entity = handle
+            .get_mut::<sample_data::offline::Entity>(&mut resources)
+            .unwrap();
+        entity.components.push(Box::new(Light {
+            light_type: LightType::Omnidirectional,
+            color: (0xFF, 0xFF, 0xEF).into(),
+            radiance: 40_f32,
+            enabled: true,
+            ..Light::default()
+        }));
+
+        project
+            .add_resource_with_id(
+                "/scene/light.ent".into(),
+                sample_data::offline::Entity::TYPENAME,
+                id.kind,
+                id.id,
+                handle,
+                &mut resources,
+            )
+            .await
+            .unwrap();
+        let path: ResourcePathId = id.into();
+        path.push(sample_data::runtime::Entity::TYPE)
+    };
+
     // scene
     let scene_id = {
         let mut resources = resource_registry.lock().await;
@@ -618,18 +641,17 @@ pub fn update(entity, last_result, entities) {
             .unwrap();
 
         // move back scene, and scale down
-        entity
-            .components
-            .push(Box::new(sample_data::offline::Transform {
-                position: (0_f32, 0_f32, 4_f32).into(),
-                rotation: Quat::IDENTITY,
-                scale: (0.5_f32, 0.5_f32, 0.5_f32).into(),
-            }));
+        entity.components.push(Box::new(Transform {
+            position: (0_f32, 0_f32, 4_f32).into(),
+            scale: (0.5_f32, 0.5_f32, 0.5_f32).into(),
+            ..Transform::default()
+        }));
 
         entity.children.push(ground_path_id);
         entity.children.push(pad_right_path_id);
         entity.children.push(pad_left_path_id);
         entity.children.push(ball_path_id);
+        entity.children.push(light_id);
 
         project
             .add_resource_with_id(
