@@ -18,11 +18,17 @@ use lgn_data_offline::{
     resource::{Project, ResourceRegistry, ResourceRegistryOptions},
     ResourcePathId,
 };
-use lgn_data_runtime::{manifest::Manifest, AssetRegistryOptions};
-use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
+use lgn_data_runtime::{
+    manifest::Manifest, AssetRegistryOptions, Resource, ResourceId, ResourceTypeAndId,
+};
 use lgn_data_transaction::BuildManager;
 use lgn_math::prelude::*;
+use lgn_physics::{
+    offline::{PhysicsRigidBox, PhysicsRigidConvexMesh, PhysicsRigidSphere},
+    RigidActorType,
+};
 use lgn_renderer::components::Mesh;
+use sample_data::offline::{Transform, Visual};
 use tokio::sync::Mutex;
 
 #[tokio::main]
@@ -200,26 +206,20 @@ async fn create_offline_data(
         let entity = handle
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
-        entity
-            .components
-            .push(Box::new(sample_data::offline::Transform {
-                position: (0_f32, -1_f32, 0_f32).into(),
-                rotation: Quat::from_rotation_x(-0.01_f32),
-                scale: (12_f32, 0.1_f32, 12_f32).into(),
-            }));
-        entity
-            .components
-            .push(Box::new(sample_data::offline::Visual {
-                renderable_geometry: Some(cube_model_id.clone()),
-                color: (0x10, 0x10, 0x55).into(),
-                ..sample_data::offline::Visual::default()
-            }));
-        entity
-            .components
-            .push(Box::new(lgn_physics::offline::PhysicsRigidBox {
-                actor_type: lgn_physics::RigidActorType::Static,
-                half_extents: (3_f32, 0.25_f32, 3_f32).into(),
-            }));
+        entity.components.push(Box::new(Transform {
+            position: (0_f32, -1_f32, 0_f32).into(),
+            rotation: Quat::from_rotation_x(-0.01_f32),
+            scale: (12_f32, 0.1_f32, 12_f32).into(),
+        }));
+        entity.components.push(Box::new(Visual {
+            renderable_geometry: Some(cube_model_id.clone()),
+            color: (0x10, 0x10, 0x55).into(),
+            ..Visual::default()
+        }));
+        entity.components.push(Box::new(PhysicsRigidBox {
+            actor_type: RigidActorType::Static,
+            half_extents: (3_f32, 0.25_f32, 3_f32).into(),
+        }));
 
         project
             .add_resource_with_id(
@@ -247,26 +247,20 @@ async fn create_offline_data(
         let entity = handle
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
-        entity
-            .components
-            .push(Box::new(sample_data::offline::Transform {
-                position: (-1_f32, 0.1_f32, 1_f32).into(),
-                rotation: Quat::from_rotation_z(0.3_f32),
-                scale: Vec3::ONE,
-            }));
-        entity
-            .components
-            .push(Box::new(sample_data::offline::Visual {
-                renderable_geometry: Some(cube_model_id.clone()),
-                color: (0xFF, 0xFF, 0x20).into(),
-                ..sample_data::offline::Visual::default()
-            }));
-        entity
-            .components
-            .push(Box::new(lgn_physics::offline::PhysicsRigidBox {
-                actor_type: lgn_physics::RigidActorType::Dynamic,
-                half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
-            }));
+        entity.components.push(Box::new(Transform {
+            position: (-1_f32, 0.1_f32, 1_f32).into(),
+            rotation: Quat::from_rotation_z(0.3_f32),
+            ..Transform::default()
+        }));
+        entity.components.push(Box::new(Visual {
+            renderable_geometry: Some(cube_model_id.clone()),
+            color: (0xFF, 0xFF, 0x20).into(),
+            ..Visual::default()
+        }));
+        entity.components.push(Box::new(PhysicsRigidBox {
+            actor_type: RigidActorType::Dynamic,
+            half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
+        }));
 
         project
             .add_resource_with_id(
@@ -294,26 +288,20 @@ async fn create_offline_data(
         let entity = handle
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
-        entity
-            .components
-            .push(Box::new(sample_data::offline::Transform {
-                position: (-1_f32, 1.3_f32, 1.2_f32).into(),
-                rotation: Quat::from_rotation_x(-0.2_f32),
-                scale: Vec3::ONE,
-            }));
-        entity
-            .components
-            .push(Box::new(sample_data::offline::Visual {
-                renderable_geometry: Some(cube_model_id.clone()),
-                color: (0xFF, 0x20, 0xFF).into(),
-                ..sample_data::offline::Visual::default()
-            }));
-        entity
-            .components
-            .push(Box::new(lgn_physics::offline::PhysicsRigidBox {
-                actor_type: lgn_physics::RigidActorType::Dynamic,
-                half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
-            }));
+        entity.components.push(Box::new(Transform {
+            position: (-1_f32, 1.3_f32, 1.2_f32).into(),
+            rotation: Quat::from_rotation_x(-0.2_f32),
+            ..Transform::default()
+        }));
+        entity.components.push(Box::new(Visual {
+            renderable_geometry: Some(cube_model_id.clone()),
+            color: (0xFF, 0x20, 0xFF).into(),
+            ..Visual::default()
+        }));
+        entity.components.push(Box::new(PhysicsRigidBox {
+            actor_type: RigidActorType::Dynamic,
+            half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
+        }));
 
         project
             .add_resource_with_id(
@@ -341,26 +329,20 @@ async fn create_offline_data(
         let entity = handle
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
-        entity
-            .components
-            .push(Box::new(sample_data::offline::Transform {
-                position: (-0.5_f32, 0_f32, 0.5_f32).into(),
-                rotation: Quat::from_rotation_y(1_f32),
-                scale: Vec3::ONE,
-            }));
-        entity
-            .components
-            .push(Box::new(sample_data::offline::Visual {
-                renderable_geometry: Some(cube_model_id.clone()),
-                color: (0x20, 0xFF, 0xFF).into(),
-                ..sample_data::offline::Visual::default()
-            }));
-        entity
-            .components
-            .push(Box::new(lgn_physics::offline::PhysicsRigidBox {
-                actor_type: lgn_physics::RigidActorType::Dynamic,
-                half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
-            }));
+        entity.components.push(Box::new(Transform {
+            position: (-0.5_f32, 0_f32, 0.5_f32).into(),
+            rotation: Quat::from_rotation_y(1_f32),
+            ..Transform::default()
+        }));
+        entity.components.push(Box::new(Visual {
+            renderable_geometry: Some(cube_model_id.clone()),
+            color: (0x20, 0xFF, 0xFF).into(),
+            ..Visual::default()
+        }));
+        entity.components.push(Box::new(PhysicsRigidBox {
+            actor_type: RigidActorType::Dynamic,
+            half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
+        }));
 
         project
             .add_resource_with_id(
@@ -388,26 +370,19 @@ async fn create_offline_data(
         let entity = handle
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
-        entity
-            .components
-            .push(Box::new(sample_data::offline::Transform {
-                position: (1.2_f32, 3.3_f32, 0.5_f32).into(),
-                rotation: Quat::IDENTITY,
-                scale: Vec3::ONE,
-            }));
-        entity
-            .components
-            .push(Box::new(sample_data::offline::Visual {
-                renderable_geometry: Some(sphere_model_id.clone()),
-                color: (0x20, 0x4F, 0xFF).into(),
-                ..sample_data::offline::Visual::default()
-            }));
-        entity
-            .components
-            .push(Box::new(lgn_physics::offline::PhysicsRigidSphere {
-                actor_type: lgn_physics::RigidActorType::Dynamic,
-                radius: 0.25_f32,
-            }));
+        entity.components.push(Box::new(Transform {
+            position: (1.2_f32, 3.3_f32, 0.5_f32).into(),
+            ..Transform::default()
+        }));
+        entity.components.push(Box::new(Visual {
+            renderable_geometry: Some(sphere_model_id.clone()),
+            color: (0x20, 0x4F, 0xFF).into(),
+            ..Visual::default()
+        }));
+        entity.components.push(Box::new(PhysicsRigidSphere {
+            actor_type: RigidActorType::Dynamic,
+            radius: 0.25_f32,
+        }));
 
         project
             .add_resource_with_id(
@@ -435,29 +410,19 @@ async fn create_offline_data(
         let entity = handle
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
-        entity
-            .components
-            .push(Box::new(sample_data::offline::Transform {
-                position: (0_f32, 0_f32, 0_f32).into(),
-                rotation: Quat::IDENTITY,
-                scale: Vec3::ONE,
-            }));
-        entity
-            .components
-            .push(Box::new(sample_data::offline::Visual {
-                color: (0x00, 0x00, 0x00).into(),
-                ..sample_data::offline::Visual::default()
-            }));
-        entity
-            .components
-            .push(Box::new(lgn_physics::offline::PhysicsRigidConvexMesh {
-                actor_type: lgn_physics::RigidActorType::Dynamic,
-                vertices: vec![Vec3::Y, Vec3::X, -Vec3::X, Vec3::Z, -Vec3::Z],
-                scale: lgn_physics::offline::MeshScale {
-                    scale: Vec3::ONE,
-                    rotation: Quat::IDENTITY,
-                },
-            }));
+        entity.components.push(Box::new(Transform {
+            position: (0_f32, 0_f32, 0_f32).into(),
+            ..Transform::default()
+        }));
+        entity.components.push(Box::new(Visual {
+            color: (0x00, 0x00, 0x00).into(),
+            ..Visual::default()
+        }));
+        entity.components.push(Box::new(PhysicsRigidConvexMesh {
+            actor_type: RigidActorType::Dynamic,
+            vertices: vec![Vec3::Y, Vec3::X, -Vec3::X, Vec3::Z, -Vec3::Z],
+            ..PhysicsRigidConvexMesh::default()
+        }));
 
         project
             .add_resource_with_id(

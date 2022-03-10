@@ -41,12 +41,12 @@
   },
   {
     "resource_id": "(5c4b1b522bf5dcb0,48386cfe-940e-5d8d-92b8-abf325ccee49)",
-    "checksum": "01929104331d57085c4bac9b9a92918483ec2416fd5feb83e3dd556cc0f7e029",
-    "size": 1895
+    "checksum": "7883827422c321b8b02ce41604036f00ad8a630d8a165b4d7d9b93c782763ac1",
+    "size": 1319
   },
   {
     "resource_id": "(5c4b1b522bf5dcb0,ac043c3e-74d7-5f53-f3a5-cbc7341e5436)",
-    "checksum": "02f95d93e45e132c8880e6844a3450f5e0cadadd05c41672723ff8e02275912e",
-    "size": 74399
+    "checksum": "0b9adafbccbc685e85c4a91df9e2903ebfa01f7bbac9cbc42667415e59a2ce64",
+    "size": 50591
   }
 ]

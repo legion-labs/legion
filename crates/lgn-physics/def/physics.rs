@@ -66,6 +66,7 @@ struct PhysicsRigidTriangleMesh {
 }
 
 struct MeshScale {
+    #[legion(default = Vec3::ONE)]
     scale: Vec3,
     rotation: Quat,
 }
