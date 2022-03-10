@@ -16,8 +16,8 @@
 //! # use std::slice;
 //! # use std::path::PathBuf;
 //! for compiler in list_compilers(slice::from_ref(&PathBuf::from("./compilers/"))) {
-//!     let command = CompilerInfoCmd::default();
-//!     let info = command.execute(&compiler.path).expect("info output");
+//!     let command = CompilerInfoCmd::new(&compiler.path);
+//!     let info = command.execute().expect("info output");
 //! }
 //! ```
 //!
@@ -26,8 +26,8 @@
 //! ```no_run
 //! # use lgn_data_compiler::compiler_cmd::CompilerHashCmd;
 //! # use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
-//! let command = CompilerHashCmd::new(&CompilationEnv{ target: Target::Game, platform: Platform::Windows, locale: Locale::new("en") }, None);
-//! let info = command.execute("my_compiler.exe").expect("compiler hash info");
+//! let command = CompilerHashCmd::new("my_compiler.exe", &CompilationEnv{ target: Target::Game, platform: Platform::Windows, locale: Locale::new("en") }, None);
+//! let info = command.execute().expect("compiler hash info");
 //! ```
 //!
 //! Or compile the resources:
@@ -41,8 +41,8 @@
 //! fn compile_resource(compile_path: ResourcePathId, dependencies: &[ResourcePathId], env: &CompilationEnv) {
 //!     let content_store = ContentStoreAddr::from("./content_store/");
 //!     let resource_dir = PathBuf::from("./resources/");
-//!     let mut command = CompilerCompileCmd::new(&compile_path, dependencies, &[], &content_store, &resource_dir, &env);
-//!     let output = command.execute("my_compiler.exe").expect("compiled resources");
+//!     let mut command = CompilerCompileCmd::new("my_compiler.exe", &compile_path, dependencies, &[], &content_store, &resource_dir, &env);
+//!     let output = command.execute().expect("compiled resources");
 //! }
 //! ```
 //!
@@ -53,8 +53,8 @@
 
 use std::{
     env,
-    ffi::OsStr,
-    fs, io,
+    ffi::{OsStr, OsString},
+    fmt, fs, io,
     path::{Path, PathBuf},
 };
 
@@ -63,7 +63,7 @@ use lgn_data_offline::{ResourcePathId, Transform};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    compiler_api::{CompilationEnv, CompilerInfo},
+    compiler_api::{CompilationEnv, CompilerError, CompilerInfo},
     compiler_node::CompilerRegistry,
     CompiledResource, CompilerHash,
 };
@@ -132,30 +132,77 @@ fn is_executable<P: AsRef<Path>>(path: P) -> bool {
     path.as_ref().is_file()
 }
 
-struct CommandBuilder {
+/// Represents a command-line call along with its arguments.
+#[derive(Serialize, Deserialize, Default, Clone)]
+pub struct CommandBuilder {
+    command: String,
     args: Vec<String>,
 }
 
 impl CommandBuilder {
-    /// Creates a new [`CommandBuilder`] with the given executable path.
-    fn default() -> Self {
-        Self { args: vec![] }
+    /// Create a command from a .json string.
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, CompilerError> {
+        serde_json::from_slice::<Self>(bytes).map_err(CompilerError::SerdeJson)
+    }
+
+    /// Serialize the command into a .json string.
+    #[allow(clippy::inherent_to_string)]
+    pub fn to_string(&self) -> String {
+        serde_json::to_string_pretty(self).unwrap()
+    }
+
+    /// Convert the command into a `OsString` vector.
+    pub fn to_os_args(&self) -> Vec<OsString> {
+        self.args.iter().map(Into::into).collect()
+    }
+
+    /// Sets the command's executable path.
+    fn set_command(&mut self, compiler_path: impl AsRef<OsStr>) -> &mut Self {
+        self.command = compiler_path.as_ref().to_string_lossy().to_string();
+        self
     }
 
     /// Adds `arg` to the args list.
-    fn arg<T: Into<String>>(&mut self, arg: T) -> &mut Self {
-        self.args.push(arg.into());
+    fn arg(&mut self, arg: &str) -> &mut Self {
+        if !arg.is_empty() {
+            self.args.push(arg.to_string());
+        }
+        self
+    }
+
+    fn arg2<T: fmt::Display>(&mut self, arg: &str, arg2: Option<T>) -> &mut Self {
+        if !arg.is_empty() && arg2.is_some() {
+            self.args.push(format!("--{}={}", arg, &arg2.unwrap()));
+        }
+        self
+    }
+
+    fn many_args<T>(&mut self, arg: &str, vec: T) -> &mut Self
+    where
+        T: IntoIterator,
+        T::Item: fmt::Display,
+    {
+        let mut str_vec: Vec<String> = vec.into_iter().map(|a| a.to_string()).collect();
+        if !str_vec.is_empty() {
+            self.args.push(format!("--{}", arg));
+            self.args.append(&mut str_vec);
+        }
         self
     }
 
     /// Executes the process returning the stdio output or an error on non-zero
     /// exit status.
-    fn exec<T: AsRef<OsStr>>(&self, compiler_path: T) -> io::Result<std::process::Output> {
-        let mut command = std::process::Command::new(compiler_path);
-        command.args(&self.args);
+    fn exec(&self) -> io::Result<std::process::Output> {
+        self.exec_with_cwd(env::current_dir().unwrap().as_path())
+    }
 
-        let output = command.output()?;
-
+    /// Executes the process returning the stdio output or an error on non-zero
+    /// exit status.
+    fn exec_with_cwd(&self, current_dir: impl AsRef<Path>) -> io::Result<std::process::Output> {
+        let output = std::process::Command::new(&self.command)
+            .current_dir(current_dir)
+            .args(&self.args)
+            .output()?;
         if output.status.success() {
             Ok(output)
         } else {
@@ -208,26 +255,40 @@ pub(crate) const COMMAND_ARG_RESOURCE_DIR: &str = "resource_dir";
 pub(crate) const COMMAND_ARG_TRANSFORM: &str = "transform";
 
 /// Helper building a `info` command.
+#[derive(Serialize, Deserialize)]
 pub struct CompilerInfoCmd(CommandBuilder);
 
 impl CompilerInfoCmd {
     /// Creates a new command.
-    pub fn default() -> Self {
-        let mut builder = CommandBuilder::default();
-        builder.arg(COMMAND_NAME_INFO);
-        Self(builder)
+    pub fn new(compiler_path: impl AsRef<OsStr>) -> Self {
+        Self(
+            CommandBuilder::default()
+                .set_command(compiler_path)
+                .arg(COMMAND_NAME_INFO)
+                .clone(),
+        )
+    }
+
+    /// Create a new command from a .json string.
+    pub fn from_slice(s: &str) -> Self {
+        serde_json::from_str(s).unwrap()
     }
 
     /// Runs the command on compiler process located at `compiler_path`, waits
     /// for completion, returns the result.
-    pub fn execute(&self, compiler_path: impl AsRef<OsStr>) -> io::Result<CompilerInfoCmdOutput> {
-        let output = self.0.exec(&compiler_path)?;
+    pub fn execute(&self) -> io::Result<CompilerInfoCmdOutput> {
+        let output = self.0.exec()?;
         CompilerInfoCmdOutput::from_bytes(output.stdout.as_slice()).ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::InvalidData,
                 "Failed to parse CompilerInfoCmdOutput",
             )
         })
+    }
+
+    /// Extracts the command line builder.
+    pub fn builder(&self) -> CommandBuilder {
+        self.0.clone()
     }
 }
 
@@ -249,27 +310,38 @@ impl CompilerHashCmdOutput {
 }
 
 /// Helper building a `compiler_hash` command.
+#[derive(Serialize, Deserialize)]
 pub struct CompilerHashCmd(CommandBuilder);
 
 impl CompilerHashCmd {
     /// Creates a new command for a given compilation context that will return a hash for a specified `transform`.
     /// It returns hashes for all transforms if a `transform` argument is None.
-    pub fn new(env: &CompilationEnv, transform: Option<Transform>) -> Self {
-        let mut builder = CommandBuilder::default();
-        builder.arg(COMMAND_NAME_COMPILER_HASH);
-        builder.arg(format!("--{}={}", COMMAND_ARG_TARGET, env.target));
-        builder.arg(format!("--{}={}", COMMAND_ARG_PLATFORM, env.platform));
-        builder.arg(format!("--{}={}", COMMAND_ARG_LOCALE, env.locale));
-        if let Some(transform) = transform {
-            builder.arg(format!("--{}={}", COMMAND_ARG_TRANSFORM, transform));
-        }
-        Self(builder)
+    pub fn new(
+        compiler_path: impl AsRef<OsStr>,
+        env: &CompilationEnv,
+        transform: Option<Transform>,
+    ) -> Self {
+        Self(
+            CommandBuilder::default()
+                .set_command(compiler_path)
+                .arg(COMMAND_NAME_COMPILER_HASH)
+                .arg2(COMMAND_ARG_TARGET, env.target.into())
+                .arg2(COMMAND_ARG_PLATFORM, env.platform.into())
+                .arg2(COMMAND_ARG_LOCALE, env.locale.clone().into())
+                .arg2(COMMAND_ARG_TRANSFORM, transform)
+                .clone(),
+        )
+    }
+
+    /// Create a new command from a .json string.
+    pub fn from_slice(s: &str) -> Self {
+        serde_json::from_str(s).unwrap()
     }
 
     /// Runs the command on compiler process located at `compiler_path`, waits
     /// for completion, returns the result.
-    pub fn execute(&self, compiler_path: impl AsRef<OsStr>) -> io::Result<CompilerHashCmdOutput> {
-        let output = self.0.exec(compiler_path)?;
+    pub fn execute(&self) -> io::Result<CompilerHashCmdOutput> {
+        let output = self.0.exec()?;
         CompilerHashCmdOutput::from_bytes(output.stdout.as_slice()).ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -293,85 +365,87 @@ pub struct CompilerCompileCmdOutput {
 }
 
 impl CompilerCompileCmdOutput {
-    pub(crate) fn from_bytes(bytes: &[u8]) -> Option<Self> {
-        serde_json::from_slice(bytes).ok()?
+    /// Create the command from a .json string.
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, CompilerError> {
+        serde_json::from_slice::<Self>(bytes).map_err(CompilerError::SerdeJson)
+    }
+
+    /// Serialize the command into a .json string.
+    #[allow(clippy::inherent_to_string)]
+    pub fn to_string(&self) -> String {
+        serde_json::to_string_pretty(self).unwrap()
     }
 }
 
 /// Helper building a `compile` command.
+#[derive(Serialize, Deserialize)]
 pub struct CompilerCompileCmd(CommandBuilder);
 
 impl CompilerCompileCmd {
     /// Creates a new command.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        compile_path: &ResourcePathId,
+        compiler_path: impl AsRef<OsStr>,
+        resource_to_build: &ResourcePathId,
         source_deps: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         cas_addr: &ContentStoreAddr,
         resource_dir: &Path,
         env: &CompilationEnv,
     ) -> Self {
-        let mut builder = CommandBuilder::default();
-        builder.arg(COMMAND_NAME_COMPILE);
-        builder.arg(compile_path.to_string());
-        if !source_deps.is_empty() {
-            builder.arg(format!("--{}", COMMAND_ARG_SRC_DEPS));
-            for res in source_deps {
-                builder.arg(res.to_string());
-            }
-        }
-        if !derived_deps.is_empty() {
-            builder.arg(format!("--{}", COMMAND_ARG_DER_DEPS));
-            for res in derived_deps {
-                builder.arg(res.to_string());
-            }
-        }
-        builder.arg(format!(
-            "--{}={}",
-            COMMAND_ARG_COMPILED_ASSET_STORE, cas_addr
-        ));
-        builder.arg(format!(
-            "--{}={}",
-            COMMAND_ARG_RESOURCE_DIR,
-            resource_dir.display()
-        ));
+        Self(
+            CommandBuilder::default()
+                .set_command(compiler_path)
+                .arg(COMMAND_NAME_COMPILE)
+                .arg(&resource_to_build.to_string())
+                .many_args(COMMAND_ARG_SRC_DEPS, source_deps.iter())
+                .many_args(COMMAND_ARG_DER_DEPS, derived_deps.iter())
+                .arg2(COMMAND_ARG_COMPILED_ASSET_STORE, cas_addr.into())
+                .arg2(COMMAND_ARG_RESOURCE_DIR, resource_dir.display().into())
+                .arg2(COMMAND_ARG_TARGET, env.target.into())
+                .arg2(COMMAND_ARG_PLATFORM, env.platform.into())
+                .arg2(COMMAND_ARG_LOCALE, env.locale.clone().into())
+                .clone(),
+        )
+    }
 
-        builder.arg(format!("--{}={}", COMMAND_ARG_TARGET, env.target));
-        builder.arg(format!("--{}={}", COMMAND_ARG_PLATFORM, env.platform));
-        builder.arg(format!("--{}={}", COMMAND_ARG_LOCALE, env.locale));
-        Self(builder)
+    /// Create a new command from a .json string.
+    pub fn from_slice(s: &str) -> Self {
+        serde_json::from_str(s).unwrap()
     }
 
     /// Runs the command on compiler process located at `compiler_path` setting
     /// the current working directory of the compiler to `cwd`, waits for
     /// completion, returns the result.
-    pub fn execute(
-        &mut self,
-        compiler_path: impl AsRef<OsStr>,
+    pub fn execute(&self) -> io::Result<CompilerCompileCmdOutput> {
+        self.execute_with_cwd(env::current_dir().unwrap())
+    }
+
+    /// Runs the command on compiler process located at `compiler_path` setting
+    /// the current working directory of the compiler to `cwd`, waits for
+    /// completion, returns the result.
+    pub fn execute_with_cwd(
+        &self,
+        current_dir: impl AsRef<Path>,
     ) -> io::Result<CompilerCompileCmdOutput> {
-        match self.0.exec(compiler_path.as_ref().to_owned()) {
-            Ok(output) => CompilerCompileCmdOutput::from_bytes(output.stdout.as_slice())
-                .ok_or_else(|| {
-                    eprintln!(
-                        "Cannot parse compiler output, {:?} {:?}\nError: {:?}",
-                        compiler_path.as_ref(),
-                        self.0.args,
-                        &output.stdout
-                    );
-                    io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        format!(
-                            "Failed to parse CompilerCompileCmdOutput: `{}`",
-                            std::str::from_utf8(output.stdout.as_slice()).unwrap()
-                        ),
-                    )
-                }),
+        match self.0.exec_with_cwd(current_dir) {
+            Ok(output) => CompilerCompileCmdOutput::from_bytes(&output.stdout).map_err(|_e| {
+                eprintln!(
+                    "Cannot parse compiler output, {:?} {:?}\nError: {:?}",
+                    self.0.command, self.0.args, &output.stdout
+                );
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!(
+                        "Failed to parse CompilerCompileCmdOutput: `{}`",
+                        std::str::from_utf8(output.stdout.as_slice()).unwrap()
+                    ),
+                )
+            }),
             Err(e) => {
                 eprintln!(
                     "Compiler command failed: {:?} {:?}",
-                    compiler_path.as_ref(),
-                    self.0.args
+                    self.0.command, self.0.args
                 );
                 Err(e)
             }

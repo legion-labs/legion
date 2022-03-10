@@ -71,7 +71,7 @@ async fn build_device() {
     // create build index.
     let (mut build, project) = DataBuildOptions::new(
         &buildindex_dir,
-        CompilerRegistryOptions::from_dir(target_dir),
+        CompilerRegistryOptions::local_compilers(target_dir),
     )
     .content_store(&ContentStoreAddr::from(cas.clone()))
     .create_with_project(project_dir)

@@ -134,9 +134,11 @@ async fn compile_change_no_deps() {
     };
 
     let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
-    let config =
-        DataBuildOptions::new(&output_dir, CompilerRegistryOptions::from_dir(target_dir()))
-            .content_store(&contentstore_path);
+    let config = DataBuildOptions::new(
+        &output_dir,
+        CompilerRegistryOptions::local_compilers(target_dir()),
+    )
+    .content_store(&contentstore_path);
 
     let source = ResourcePathId::from(resource_id);
     let target = source.push(refs_asset::RefsAsset::TYPE);
@@ -190,9 +192,11 @@ async fn compile_change_no_deps() {
 
     // ..re-compile changed resource..
     let modified_checksum = {
-        let config =
-            DataBuildOptions::new(output_dir, CompilerRegistryOptions::from_dir(target_dir()))
-                .content_store(&contentstore_path);
+        let config = DataBuildOptions::new(
+            output_dir,
+            CompilerRegistryOptions::local_compilers(target_dir()),
+        )
+        .content_store(&contentstore_path);
 
         let project = Project::open(project_dir)
             .await
@@ -324,12 +328,14 @@ async fn intermediate_resource() {
 
     let cas_addr = ContentStoreAddr::from(output_dir.as_path());
 
-    let (mut build, project) =
-        DataBuildOptions::new(output_dir, CompilerRegistryOptions::from_dir(target_dir()))
-            .content_store(&cas_addr)
-            .create_with_project(project_dir)
-            .await
-            .expect("new build index");
+    let (mut build, project) = DataBuildOptions::new(
+        output_dir,
+        CompilerRegistryOptions::local_compilers(target_dir()),
+    )
+    .content_store(&cas_addr)
+    .create_with_project(project_dir)
+    .await
+    .expect("new build index");
 
     build.source_pull(&project).await.expect("successful pull");
 
@@ -398,12 +404,14 @@ async fn unnamed_cache_use() {
     let resource_list = setup_project(&project_dir).await;
     let root_resource = resource_list[0];
 
-    let (mut build, project) =
-        DataBuildOptions::new(&output_dir, CompilerRegistryOptions::from_dir(target_dir()))
-            .content_store(&ContentStoreAddr::from(output_dir))
-            .create_with_project(&project_dir)
-            .await
-            .expect("new build index");
+    let (mut build, project) = DataBuildOptions::new(
+        &output_dir,
+        CompilerRegistryOptions::local_compilers(target_dir()),
+    )
+    .content_store(&ContentStoreAddr::from(output_dir))
+    .create_with_project(&project_dir)
+    .await
+    .expect("new build index");
     build.source_pull(&project).await.expect("successful pull");
 
     //
@@ -524,12 +532,14 @@ async fn named_path_cache_use() {
 
     let cas_addr = ContentStoreAddr::from(output_dir.as_path());
 
-    let (mut build, project) =
-        DataBuildOptions::new(output_dir, CompilerRegistryOptions::from_dir(target_dir()))
-            .content_store(&cas_addr)
-            .create_with_project(&project_dir)
-            .await
-            .expect("new build index");
+    let (mut build, project) = DataBuildOptions::new(
+        output_dir,
+        CompilerRegistryOptions::local_compilers(target_dir()),
+    )
+    .content_store(&cas_addr)
+    .create_with_project(&project_dir)
+    .await
+    .expect("new build index");
 
     build.source_pull(&project).await.expect("successful pull");
 
@@ -792,12 +802,14 @@ async fn link() {
     };
 
     let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
-    let (mut build, project) =
-        DataBuildOptions::new(output_dir, CompilerRegistryOptions::from_dir(target_dir()))
-            .content_store(&contentstore_path)
-            .create_with_project(&project_dir)
-            .await
-            .expect("to create index");
+    let (mut build, project) = DataBuildOptions::new(
+        output_dir,
+        CompilerRegistryOptions::local_compilers(target_dir()),
+    )
+    .content_store(&contentstore_path)
+    .create_with_project(&project_dir)
+    .await
+    .expect("to create index");
 
     build.source_pull(&project).await.unwrap();
 
@@ -889,12 +901,14 @@ async fn verify_manifest() {
     };
 
     let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
-    let (mut build, project) =
-        DataBuildOptions::new(output_dir, CompilerRegistryOptions::from_dir(target_dir()))
-            .content_store(&contentstore_path)
-            .create_with_project(project_dir)
-            .await
-            .expect("to create index");
+    let (mut build, project) = DataBuildOptions::new(
+        output_dir,
+        CompilerRegistryOptions::local_compilers(target_dir()),
+    )
+    .content_store(&contentstore_path)
+    .create_with_project(project_dir)
+    .await
+    .expect("to create index");
 
     build.source_pull(&project).await.unwrap();
 

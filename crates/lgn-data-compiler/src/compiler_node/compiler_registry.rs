@@ -1,14 +1,13 @@
-use std::{fmt, io, path::Path, sync::Arc};
-
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_offline::{ResourcePathId, Transform};
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
+use std::{fmt, io, path::Path, sync::Arc};
 
 use crate::{
     compiler_api::{
         CompilationEnv, CompilationOutput, CompilerDescriptor, CompilerError, CompilerInfo,
     },
-    compiler_cmd::list_compilers,
+    compiler_cmd::{list_compilers, CompilerLocation},
     CompiledResource, CompilerHash,
 };
 
@@ -51,14 +50,15 @@ pub struct CompilerRegistryOptions {
 }
 
 impl CompilerRegistryOptions {
-    /// Creates `CompilerRegistry` based on provided compiler directory paths.
-    pub fn from_dirs(dirs: &[impl AsRef<Path>]) -> Self {
+    /// Create from external compilers, but with a custom callback.
+    pub fn from_external_compilers(
+        dirs: &[impl AsRef<Path>],
+        creator: impl Fn(CompilerLocation) -> Box<dyn CompilerStub>,
+    ) -> Self {
         let compilers = list_compilers(dirs)
             .into_iter()
             .map(|info| {
-                let compiler: Box<dyn CompilerStub> = Box::new(BinCompilerStub {
-                    bin_path: info.path,
-                });
+                let compiler: Box<dyn CompilerStub> = creator(info);
                 compiler
             })
             .collect::<Vec<Box<dyn CompilerStub>>>();
@@ -66,9 +66,18 @@ impl CompilerRegistryOptions {
         Self { compilers }
     }
 
+    /// Creates `CompilerRegistry` based on provided compiler directory paths.
+    pub fn local_compilers_dirs(dirs: &[impl AsRef<Path>]) -> Self {
+        Self::from_external_compilers(dirs, |info| {
+            Box::new(BinCompilerStub {
+                bin_path: info.path,
+            })
+        })
+    }
+
     /// Creates `CompilerRegistry` based on provided compiler directory path.
-    pub fn from_dir(dir: impl AsRef<Path>) -> Self {
-        Self::from_dirs(std::slice::from_ref(&dir))
+    pub fn local_compilers(dir: impl AsRef<Path>) -> Self {
+        Self::local_compilers_dirs(std::slice::from_ref(&dir))
     }
 
     /// Register an in-process compiler.

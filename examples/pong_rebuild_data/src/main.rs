@@ -4,7 +4,9 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
+use clap::{ArgEnum, Parser};
 use std::{
+    env,
     fs::OpenOptions,
     path::{Path, PathBuf},
     str::FromStr,
@@ -25,15 +27,35 @@ use lgn_data_transaction::BuildManager;
 use lgn_graphics_renderer::components::Mesh;
 use lgn_math::prelude::*;
 use lgn_scripting::ScriptType;
+use lgn_tracing::LevelFilter;
 use sample_data::{
     offline::{Light, Transform, Visual},
     LightType,
 };
 use tokio::sync::Mutex;
 
+#[derive(Debug, Copy, Clone, PartialEq, ArgEnum)]
+enum CompilersSource {
+    InProcess,
+    External,
+    Remote,
+}
+
+#[derive(Parser)]
+#[clap(name = "Pong data rebuilder")]
+struct Args {
+    /// Compile resources remotely.
+    #[clap(arg_enum, default_value = "in-process")]
+    compilers: CompilersSource,
+}
+
 #[tokio::main]
 async fn main() {
-    let _telemetry_guard = lgn_telemetry_sink::TelemetryGuard::default().unwrap();
+    let args = Args::parse();
+
+    let _telemetry_guard = lgn_telemetry_sink::TelemetryGuard::default()
+        .unwrap()
+        .with_log_level(LevelFilter::Info);
 
     let project_dir = PathBuf::from("examples/pong/data");
 
@@ -72,10 +94,20 @@ async fn main() {
     sample_data::offline::add_loaders(&mut asset_registry);
     let asset_registry = asset_registry.create();
 
-    let compilers = CompilerRegistryOptions::default()
-        .add_compiler(&lgn_compiler_runtime_entity::COMPILER_INFO)
-        .add_compiler(&lgn_compiler_runtime_model::COMPILER_INFO)
-        .add_compiler(&lgn_compiler_script2asm::COMPILER_INFO);
+    let mut compilers_path = env::current_exe().expect("cannot access current_exe");
+    compilers_path.pop(); // pop the .exe name
+
+    let compilers = match args.compilers {
+        CompilersSource::InProcess => CompilerRegistryOptions::default()
+            .add_compiler(&lgn_compiler_runtime_entity::COMPILER_INFO)
+            .add_compiler(&lgn_compiler_runtime_model::COMPILER_INFO)
+            .add_compiler(&lgn_compiler_script2asm::COMPILER_INFO),
+        CompilersSource::External => CompilerRegistryOptions::local_compilers(compilers_path),
+        CompilersSource::Remote => lgn_data_compiler_remote::compiler_node::remote_compilers(
+            compilers_path,
+            "lgn://127.0.0.1:2022",
+        ),
+    };
 
     let data_build = DataBuildOptions::new(&build_dir, compilers)
         .content_store(&ContentStoreAddr::from(build_dir.as_path()))

@@ -54,7 +54,8 @@ fn compile_atoi() {
         assert!(exe_path.exists());
 
         let compile_path = ResourcePathId::from(source).push(integer_asset::IntegerAsset::TYPE);
-        let mut command = CompilerCompileCmd::new(
+        let command = CompilerCompileCmd::new(
+            &exe_path,
             &compile_path,
             &[],
             &[],
@@ -63,7 +64,7 @@ fn compile_atoi() {
             &common::test_env(),
         );
 
-        let result = command.execute(&exe_path).expect("compile result");
+        let result = command.execute().expect("compile result");
         println!("{:?}", result);
 
         assert_eq!(result.compiled_resources.len(), 1);
@@ -120,7 +121,8 @@ fn compile_intermediate() {
         let exe_path = common::compiler_exe("test-reverse");
         assert!(exe_path.exists());
         let compile_path = ResourcePathId::from(source).push(text_resource::TextResource::TYPE);
-        let mut command = CompilerCompileCmd::new(
+        let command = CompilerCompileCmd::new(
+            &exe_path,
             &compile_path,
             &[],
             &[],
@@ -129,7 +131,7 @@ fn compile_intermediate() {
             &common::test_env(),
         );
 
-        let result = command.execute(&exe_path).expect("compile result");
+        let result = command.execute().expect("compile result");
 
         assert_eq!(result.compiled_resources.len(), 1);
         result.compiled_resources[0].clone()
@@ -141,7 +143,8 @@ fn compile_intermediate() {
         let compile_path = ResourcePathId::from(source)
             .push(text_resource::TextResource::TYPE)
             .push(integer_asset::IntegerAsset::TYPE);
-        let mut command = CompilerCompileCmd::new(
+        let command = CompilerCompileCmd::new(
+            &exe_path,
             &compile_path,
             &[],
             &[intermediate_info],
@@ -150,7 +153,7 @@ fn compile_intermediate() {
             &common::test_env(),
         );
 
-        let result = command.execute(&exe_path).expect("compile result");
+        let result = command.execute().expect("compile result");
 
         assert_eq!(result.compiled_resources.len(), 1);
         result.compiled_resources[0].clone()
@@ -210,7 +213,8 @@ fn compile_multi_resource() {
         let exe_path = common::compiler_exe("test-split");
         assert!(exe_path.exists());
         let compile_path = ResourcePathId::from(source).push(text_resource::TextResource::TYPE);
-        let mut command = CompilerCompileCmd::new(
+        let command = CompilerCompileCmd::new(
+            &exe_path,
             &compile_path,
             &[],
             &[],
@@ -219,7 +223,7 @@ fn compile_multi_resource() {
             &common::test_env(),
         );
 
-        let result = command.execute(&exe_path).expect("compile result");
+        let result = command.execute().expect("compile result");
 
         assert_eq!(result.compiled_resources.len(), source_text_list.len());
         result.compiled_resources
@@ -292,7 +296,8 @@ fn compile_base64() {
         assert!(exe_path.exists());
 
         let compile_path = ResourcePathId::from(source).push(text_resource::TextResource::TYPE);
-        let mut command = CompilerCompileCmd::new(
+        let command = CompilerCompileCmd::new(
+            &exe_path,
             &compile_path,
             &[],
             &[],
@@ -301,7 +306,7 @@ fn compile_base64() {
             &common::test_env(),
         );
 
-        let result = command.execute(&exe_path).expect("compile result");
+        let result = command.execute().expect("compile result");
         println!("{:?}", result);
 
         assert_eq!(result.compiled_resources.len(), 1);

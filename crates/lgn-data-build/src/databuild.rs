@@ -78,7 +78,7 @@ fn compute_context_hash(
 /// # let offline_anim: ResourceTypeAndId = "(type,invalid_id)".parse::<ResourceTypeAndId>().unwrap();
 /// # const RUNTIME_ANIM: ResourceType = ResourceType::new(b"invalid");
 /// # tokio_test::block_on(async {
-/// let (mut build, project) = DataBuildOptions::new(".", CompilerRegistryOptions::from_dir("./compilers/"))
+/// let (mut build, project) = DataBuildOptions::new(".", CompilerRegistryOptions::local_compilers("./compilers/"))
 ///         .content_store(&ContentStoreAddr::from("./content_store/"))
 ///         .create_with_project(".").await.expect("new build index");
 ///

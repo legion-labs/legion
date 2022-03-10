@@ -13,6 +13,7 @@ lgn-compiler-script2asm = { path = "../../crates/lgn-script2asm-compiler", versi
 lgn-content-store = { path = "../../crates/lgn-content-store", version = "0.1.0" }
 lgn-data-build = { path = "../../crates/lgn-data-build", version = "0.1.0" }
 lgn-data-compiler = { path = "../../crates/lgn-data-compiler", version = "0.1.0" }
+lgn-data-compiler-remote = { path = "../../crates/lgn-data-compiler-remote", version = "0.1.0" }
 lgn-data-offline = { path = "../../crates/lgn-data-offline", version = "0.1.0" }
 lgn-data-runtime = { path = "../../crates/lgn-data-runtime", version = "0.1.0" }
 lgn-data-transaction = { path = "../../crates/lgn-data-transaction", version = "0.1.0" }
@@ -28,6 +29,7 @@ lgn-scripting = { path = "../../crates/lgn-scripting", version = "0.1.0", featur
     "runtime",
 ] }
 lgn-telemetry-sink = { path = "../../crates/lgn-telemetry-sink", version = "0.1.0" }
+lgn-tracing = { path = "../../crates/lgn-tracing", version = "0.1.0" }
 
 generic-data = { path = "../../tests/generic-data", version = "0.1.0", features = [
     "offline",
@@ -44,3 +46,4 @@ tokio = { version = "1.13", features = [
     "rt-multi-thread",
     "tracing",
 ] }
+clap = { version = "3.0", features = ["derive"] }

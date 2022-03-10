@@ -99,7 +99,7 @@ mod tests {
             },
         );
 
-        let registry = CompilerRegistryOptions::from_dir(target_dir).create();
+        let registry = CompilerRegistryOptions::local_compilers(target_dir).create();
 
         let env = CompilationEnv {
             target: Target::Game,

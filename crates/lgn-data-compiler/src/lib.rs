@@ -178,6 +178,7 @@ impl FromStr for Platform {
 }
 
 /// Defines user's language/region.
+#[derive(Clone)]
 pub struct Locale(String);
 
 impl Locale {
