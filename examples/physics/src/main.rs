@@ -28,7 +28,10 @@ use lgn_physics::{
     RigidActorType,
 };
 use lgn_renderer::components::Mesh;
-use sample_data::offline::{Transform, Visual};
+use sample_data::{
+    offline::{Light, Transform, Visual},
+    LightType,
+};
 use tokio::sync::Mutex;
 
 #[tokio::main]
@@ -439,6 +442,44 @@ async fn create_offline_data(
         path.push(sample_data::runtime::Entity::TYPE)
     };
 
+    let light_id = {
+        let mut resources = resource_registry.lock().await;
+        let id = ResourceTypeAndId {
+            kind: sample_data::offline::Entity::TYPE,
+            id: ResourceId::from_str("85701c5f-f9f8-4ca0-9111-8243c4ea2cd6").unwrap(),
+        };
+        let handle = resources.new_resource(id.kind).unwrap();
+
+        let entity = handle
+            .get_mut::<sample_data::offline::Entity>(&mut resources)
+            .unwrap();
+        entity.components.push(Box::new(Transform {
+            position: (0_f32, 10_f32, 0_f32).into(),
+            ..Transform::default()
+        }));
+        entity.components.push(Box::new(Light {
+            light_type: LightType::Directional,
+            color: (0xFF, 0xFF, 0xEF).into(),
+            radiance: 40_f32,
+            enabled: true,
+            ..Light::default()
+        }));
+
+        project
+            .add_resource_with_id(
+                "/scene/light.ent".into(),
+                sample_data::offline::Entity::TYPENAME,
+                id.kind,
+                id.id,
+                handle,
+                &mut resources,
+            )
+            .await
+            .unwrap();
+        let path: ResourcePathId = id.into();
+        path.push(sample_data::runtime::Entity::TYPE)
+    };
+
     let scene_id = {
         let mut resources = resource_registry.lock().await;
         let id = ResourceTypeAndId {
@@ -457,6 +498,7 @@ async fn create_offline_data(
         entity.children.push(ball_a_id);
         entity.children.push(pyramid_id);
         entity.children.push(ground_id);
+        entity.children.push(light_id);
 
         project
             .add_resource_with_id(

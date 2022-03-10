@@ -7,7 +7,6 @@
             position: (0, 0.5, 0),
             rotation: (0, 0, 0, 1),
             scale: (1, 1, 1),
-            apply_to_children: true,
         )),
         Visual((
             renderable_geometry: Some("runtime_model(offline_model(models/helmet/FlightHelmet.gltf, 'LeatherParts_low'))"),
