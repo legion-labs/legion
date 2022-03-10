@@ -35,6 +35,12 @@ struct Args {
 
     #[clap(long, default_value = "128KiB")]
     size_treshold: ByteSize,
+
+    #[clap(long, default_value = "s3://legionlabs-content-store/")]
+    s3_bucket: String,
+
+    #[clap(long, default_value = "legionlabs-content-store")]
+    dynamodb_table_name: String,
 }
 
 #[tokio::main]
@@ -89,9 +95,9 @@ async fn main() -> anyhow::Result<()> {
     let mut server = Server::builder().accept_http1(true).layer(layer);
 
     // Hardcode AWS providers for now.
-    let aws_s3_url = "s3://legionlabs-content-store/".parse().unwrap();
+    let aws_s3_url = args.s3_bucket.parse().unwrap();
     let aws_s3_provider = AwsS3Provider::new(aws_s3_url).await;
-    let aws_dynamo_db_provider = AwsDynamoDbProvider::new("legionlabs-content-store").await;
+    let aws_dynamo_db_provider = AwsDynamoDbProvider::new(args.dynamodb_table_name).await;
     let grpc_service = GrpcService::new(
         aws_dynamo_db_provider,
         aws_s3_provider,
