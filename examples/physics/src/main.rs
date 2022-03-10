@@ -198,6 +198,15 @@ async fn create_offline_data(
     )
     .await;
 
+    let pyramid_model_id = create_offline_model(
+        project,
+        resource_registry,
+        "5e0d46c5-78da-4c5e-8204-a2c859ec5c09",
+        Mesh::new_pyramid(1.0, 0.5),
+        "/scene/models/pyramid.mod",
+    )
+    .await;
+
     let ground_id = {
         let mut resources = resource_registry.lock().await;
         let id = ResourceTypeAndId {
@@ -374,7 +383,7 @@ async fn create_offline_data(
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
         entity.components.push(Box::new(Transform {
-            position: (1.2_f32, 3.3_f32, 0.5_f32).into(),
+            position: (0.2_f32, 2.3_f32, 0.5_f32).into(),
             ..Transform::default()
         }));
         entity.components.push(Box::new(Visual {
@@ -414,16 +423,24 @@ async fn create_offline_data(
             .get_mut::<sample_data::offline::Entity>(&mut resources)
             .unwrap();
         entity.components.push(Box::new(Transform {
-            position: (0_f32, 0_f32, 0_f32).into(),
+            position: (0_f32, 0.6_f32, 0_f32).into(),
+            rotation: Quat::from_rotation_z(1_f32),
             ..Transform::default()
         }));
         entity.components.push(Box::new(Visual {
+            renderable_geometry: Some(pyramid_model_id.clone()),
             color: (0x00, 0x00, 0x00).into(),
             ..Visual::default()
         }));
         entity.components.push(Box::new(PhysicsRigidConvexMesh {
             actor_type: RigidActorType::Dynamic,
-            vertices: vec![Vec3::Y, Vec3::X, -Vec3::X, Vec3::Z, -Vec3::Z],
+            vertices: vec![
+                Vec3::new(0.5, -0.5, -0.5),
+                Vec3::new(0.5, -0.5, 0.5),
+                Vec3::new(-0.5, -0.5, -0.5),
+                Vec3::new(-0.5, -0.5, 0.5),
+                Vec3::new(0.0, 0.0, 0.0),
+            ],
             ..PhysicsRigidConvexMesh::default()
         }));
 
@@ -460,7 +477,7 @@ async fn create_offline_data(
         entity.components.push(Box::new(Light {
             light_type: LightType::Directional,
             color: (0xFF, 0xFF, 0xEF).into(),
-            radiance: 40_f32,
+            radiance: 12_f32,
             enabled: true,
             ..Light::default()
         }));

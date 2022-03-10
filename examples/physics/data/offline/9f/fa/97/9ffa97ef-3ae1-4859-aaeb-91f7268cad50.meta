@@ -2,5 +2,7 @@
   "name": "/scene/pyramid.ent",
   "type_name": "offline_entity",
   "type_id": "1c0ff9e497b0740f",
-  "dependencies": []
+  "dependencies": [
+    "(44e4b6023fb7a8d3,5e0d46c5-78da-4c5e-8204-a2c859ec5c09)|5c4b1b522bf5dcb0"
+  ]
 }
