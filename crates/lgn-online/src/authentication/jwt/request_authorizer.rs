@@ -1,7 +1,7 @@
 use std::{marker::PhantomData, sync::Arc};
 
 use hyper::{Request, Response, StatusCode};
-use lgn_tracing::warn;
+use lgn_tracing::debug;
 use tower_http::auth::AuthorizeRequest;
 
 use super::{
@@ -51,14 +51,14 @@ where
                     let parts = authorization.split_whitespace().collect::<Vec<_>>();
 
                     if parts.len() != 2 {
-                        warn!("Invalid authorization header: expected `Bearer <jwt>`");
+                        debug!("Invalid authorization header: expected `Bearer <jwt>`");
 
                         Err(Response::builder()
                             .status(StatusCode::UNAUTHORIZED)
                             .body(ResBody::default())
                             .unwrap())
                     } else if parts[0] != "Bearer" {
-                        warn!("Invalid authorization header: expected `Bearer <jwt>` but got `{} <...>`", parts[0]);
+                        debug!("Invalid authorization header: expected `Bearer <jwt>` but got `{} <...>`", parts[0]);
 
                         Err(Response::builder()
                             .status(StatusCode::UNAUTHORIZED)
@@ -68,7 +68,7 @@ where
                         match Token::try_from(parts[1]) {
                             Ok(token) => Ok(token),
                             Err(err) => {
-                                warn!(
+                                debug!(
                                     "Invalid authorization header: could not parse JWT token: {}",
                                     err
                                 );
@@ -82,7 +82,7 @@ where
                     }
                 }
                 Err(err) => {
-                    warn!("Invalid authorization header: {}", err);
+                    debug!("Invalid authorization header: {}", err);
 
                     Err(Response::builder()
                         .status(StatusCode::UNAUTHORIZED)
@@ -91,7 +91,7 @@ where
                 }
             }
         } else {
-            warn!("No authorization header found");
+            debug!("No authorization header found");
 
             Err(Response::builder()
                 .status(StatusCode::UNAUTHORIZED)
@@ -123,7 +123,7 @@ where
                 Ok(())
             }
             Err(err) => {
-                warn!("Invalid JWT token: {}", err);
+                debug!("Invalid JWT token: {}", err);
 
                 Err(Response::builder()
                     .status(StatusCode::UNAUTHORIZED)
