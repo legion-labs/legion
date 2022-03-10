@@ -191,6 +191,7 @@ impl PickingRenderPass {
         &mut self,
         picking_manager: &PickingManager,
         render_context: &RenderContext<'_>,
+        cmd_buffer: &mut HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
         instance_manager: &GpuInstanceManager,
         manipulator_meshes: &[(&VisualComponent, &GlobalTransform, &ManipulatorComponent)],
@@ -198,7 +199,7 @@ impl PickingRenderPass {
         mesh_manager: &MeshManager,
         model_manager: &ModelManager,
         camera: &CameraComponent,
-        mesh_renerer: &MeshRenderer,
+        mesh_renderer: &MeshRenderer,
     ) {
         self.readback_buffer_pools.begin_frame();
         let mut readback = self.readback_buffer_pools.acquire_or_create(|| {
@@ -208,11 +209,9 @@ impl PickingRenderPass {
         readback.get_gpu_results(picking_manager.frame_no_picked());
 
         if picking_manager.picking_state() == PickingState::Rendering {
-            let mut cmd_buffer = render_context.alloc_command_buffer();
+            render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
 
-            render_surface.transition_to(&cmd_buffer, ResourceState::RENDER_TARGET);
-
-            self.init_picking_results(&cmd_buffer);
+            self.init_picking_results(cmd_buffer);
 
             cmd_buffer.begin_render_pass(
                 &[ColorRenderTargetBinding {
@@ -226,18 +225,12 @@ impl PickingRenderPass {
 
             let pipeline = render_context
                 .pipeline_manager()
-                .get_pipeline(mesh_renerer.get_tmp_pso_handle(DefaultLayers::Picking as usize))
+                .get_pipeline(mesh_renderer.get_tmp_pso_handle(DefaultLayers::Picking as usize))
                 .unwrap();
 
             cmd_buffer.bind_pipeline(pipeline);
-            cmd_buffer.bind_descriptor_set(
-                render_context.frame_descriptor_set().0,
-                render_context.frame_descriptor_set().1,
-            );
-            cmd_buffer.bind_descriptor_set(
-                render_context.view_descriptor_set().0,
-                render_context.view_descriptor_set().1,
-            );
+
+            render_context.bind_default_descriptor_sets(cmd_buffer);
 
             cmd_buffer.bind_index_buffer(
                 &render_context
@@ -265,11 +258,7 @@ impl PickingRenderPass {
 
             cmd_buffer.push_constant(&push_constant_data);
 
-            mesh_renerer.draw(
-                render_context,
-                &mut cmd_buffer,
-                DefaultLayers::Picking as usize,
-            );
+            mesh_renderer.draw(render_context, cmd_buffer, DefaultLayers::Picking as usize);
 
             let (view_matrix, projection_matrix) = camera.build_view_projection(
                 render_surface.extents().width() as f32,
@@ -295,7 +284,7 @@ impl PickingRenderPass {
                             picking_distance,
                             mesh.mesh_id as u32,
                             mesh_manager,
-                            &cmd_buffer,
+                            cmd_buffer,
                         );
                     }
                 }
@@ -310,18 +299,13 @@ impl PickingRenderPass {
                     picking_distance,
                     DefaultMeshType::Sphere as u32,
                     mesh_manager,
-                    &cmd_buffer,
+                    cmd_buffer,
                 );
             }
 
             cmd_buffer.end_render_pass();
 
-            self.copy_picking_results_to_readback(&cmd_buffer, &readback);
-
-            {
-                let graphics_queue = render_context.graphics_queue();
-                graphics_queue.submit(&mut [cmd_buffer.finalize()], &[], &[], None);
-            }
+            self.copy_picking_results_to_readback(cmd_buffer, &readback);
 
             readback.sent_to_gpu(picking_manager.frame_no_for_picking());
         }

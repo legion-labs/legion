@@ -185,14 +185,8 @@ impl DebugRenderPass {
             .get_pipeline(self.wire_pso_depth_handle)
             .unwrap();
         cmd_buffer.bind_pipeline(wire_pso_depth_pipeline);
-        cmd_buffer.bind_descriptor_set(
-            render_context.frame_descriptor_set().0,
-            render_context.frame_descriptor_set().1,
-        );
-        cmd_buffer.bind_descriptor_set(
-            render_context.view_descriptor_set().0,
-            render_context.view_descriptor_set().1,
-        );
+
+        render_context.bind_default_descriptor_sets(cmd_buffer);
 
         render_mesh(
             DefaultMeshType::GroundPlane as u32,
@@ -211,14 +205,7 @@ impl DebugRenderPass {
         mesh_manager: &MeshManager,
         model_manager: &ModelManager,
     ) {
-        cmd_buffer.bind_descriptor_set(
-            render_context.frame_descriptor_set().0,
-            render_context.frame_descriptor_set().1,
-        );
-        cmd_buffer.bind_descriptor_set(
-            render_context.view_descriptor_set().0,
-            render_context.view_descriptor_set().1,
-        );
+        render_context.bind_default_descriptor_sets(cmd_buffer);
 
         let wire_pso_depth_pipeline = render_context
             .pipeline_manager()
@@ -258,14 +245,8 @@ impl DebugRenderPass {
             .get_pipeline(self.wire_pso_depth_handle)
             .unwrap();
         cmd_buffer.bind_pipeline(pipeline);
-        cmd_buffer.bind_descriptor_set(
-            render_context.frame_descriptor_set().0,
-            render_context.frame_descriptor_set().1,
-        );
-        cmd_buffer.bind_descriptor_set(
-            render_context.view_descriptor_set().0,
-            render_context.view_descriptor_set().1,
-        );
+
+        render_context.bind_default_descriptor_sets(cmd_buffer);
 
         debug_display.render_primitives(|primitive| {
             let mesh_id = match primitive.primitive_type {
@@ -326,14 +307,8 @@ impl DebugRenderPass {
                     .get_pipeline(self.solid_pso_nodepth_handle)
                     .unwrap();
                 cmd_buffer.bind_pipeline(pipeline);
-                cmd_buffer.bind_descriptor_set(
-                    render_context.frame_descriptor_set().0,
-                    render_context.frame_descriptor_set().1,
-                );
-                cmd_buffer.bind_descriptor_set(
-                    render_context.view_descriptor_set().0,
-                    render_context.view_descriptor_set().1,
-                );
+
+                render_context.bind_default_descriptor_sets(cmd_buffer);
 
                 let (model_meta_data, _ready) = model_manager.get_model_meta_data(visual);
                 for mesh in &model_meta_data.meshes {

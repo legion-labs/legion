@@ -12,7 +12,7 @@ use crate::{
 };
 
 /// Used to create a `Texture`
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TextureDef {
     pub extents: Extents3D,
     pub array_length: u32,

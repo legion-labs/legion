@@ -49,6 +49,7 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
             image.height,
             TextureFormat::BC4,
             false,
+            false,
             &image.rgba,
             &mut compiled_asset,
         );
@@ -62,33 +63,51 @@ fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, Compil
             context.target_unnamed.new_named("Metalness"),
         )?);
     } else {
-        let mut compiled_asset = vec![];
-        runtime_texture::Texture::compile_from_offline(
-            image.width,
-            image.height,
-            TextureFormat::BC7,
-            false,
-            &image.rgba,
-            &mut compiled_asset,
-        );
-
-        compiled_resources
-            .push(context.store(&compiled_asset, context.target_unnamed.new_named("Albedo"))?);
-        compiled_resources
-            .push(context.store(&compiled_asset, context.target_unnamed.new_named("Normal"))?);
-
-        let mut compiled_asset = vec![];
+        let mut compiled_asset_srgb = vec![];
         runtime_texture::Texture::compile_from_offline(
             image.width,
             image.height,
             TextureFormat::BC7,
             true,
+            false,
             &image.rgba,
-            &mut compiled_asset,
+            &mut compiled_asset_srgb,
         );
 
         compiled_resources.push(context.store(
-            &compiled_asset,
+            &compiled_asset_srgb,
+            context.target_unnamed.new_named("Albedo"),
+        )?);
+
+        // todo: normal compression doest require bc7 (verify and modify)
+        let mut compiled_asset_linear = vec![];
+        runtime_texture::Texture::compile_from_offline(
+            image.width,
+            image.height,
+            TextureFormat::BC7,
+            false,
+            false,
+            &image.rgba,
+            &mut compiled_asset_linear,
+        );
+        compiled_resources.push(context.store(
+            &compiled_asset_linear,
+            context.target_unnamed.new_named("Normal"),
+        )?);
+
+        let mut compiled_asset_blended = vec![];
+        runtime_texture::Texture::compile_from_offline(
+            image.width,
+            image.height,
+            TextureFormat::BC7,
+            true,
+            true,
+            &image.rgba,
+            &mut compiled_asset_blended,
+        );
+
+        compiled_resources.push(context.store(
+            &compiled_asset_blended,
             context.target_unnamed.new_named("AlbedoBlend"),
         )?);
     }

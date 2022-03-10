@@ -210,7 +210,7 @@ impl TextureView {
         &self.inner.definition
     }
 
-    pub(crate) fn texture(&self) -> &Texture {
+    pub fn texture(&self) -> &Texture {
         &self.inner.texture
     }
 

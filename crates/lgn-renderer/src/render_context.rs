@@ -22,6 +22,7 @@ pub struct RenderContext<'frame> {
     descriptor_pool: DescriptorPoolHandle,
     transient_buffer_allocator: TransientBufferAllocatorHandle,
     // tmp
+    persistent_descriptor_set: Option<(&'frame DescriptorSetLayout, DescriptorSetHandle)>,
     frame_descriptor_set: Option<(&'frame DescriptorSetLayout, DescriptorSetHandle)>,
     view_descriptor_set: Option<(&'frame DescriptorSetLayout, DescriptorSetHandle)>,
 }
@@ -47,6 +48,7 @@ impl<'frame> RenderContext<'frame> {
                     1000,
                 ),
             ),
+            persistent_descriptor_set: None,
             frame_descriptor_set: None,
             view_descriptor_set: None,
         }
@@ -89,6 +91,18 @@ impl<'frame> RenderContext<'frame> {
         &self.transient_buffer_allocator
     }
 
+    pub fn persistent_descriptor_set(&self) -> (&DescriptorSetLayout, DescriptorSetHandle) {
+        self.persistent_descriptor_set.unwrap()
+    }
+
+    pub fn set_persistent_descriptor_set(
+        &mut self,
+        layout: &'frame DescriptorSetLayout,
+        handle: DescriptorSetHandle,
+    ) {
+        self.persistent_descriptor_set = Some((layout, handle));
+    }
+
     pub fn frame_descriptor_set(&self) -> (&DescriptorSetLayout, DescriptorSetHandle) {
         self.frame_descriptor_set.unwrap()
     }
@@ -111,6 +125,21 @@ impl<'frame> RenderContext<'frame> {
         handle: DescriptorSetHandle,
     ) {
         self.view_descriptor_set = Some((layout, handle));
+    }
+
+    pub fn bind_default_descriptor_sets(&self, cmd_buffer: &mut HLCommandBuffer<'_>) {
+        cmd_buffer.bind_descriptor_set(
+            self.persistent_descriptor_set.unwrap().0,
+            self.persistent_descriptor_set.unwrap().1,
+        );
+        cmd_buffer.bind_descriptor_set(
+            self.frame_descriptor_set.unwrap().0,
+            self.frame_descriptor_set.unwrap().1,
+        );
+        cmd_buffer.bind_descriptor_set(
+            self.view_descriptor_set.unwrap().0,
+            self.view_descriptor_set.unwrap().1,
+        );
     }
 }
 

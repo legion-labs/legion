@@ -1,4 +1,4 @@
-use lgn_app::{App, CoreStage, EventReader, Plugin};
+use lgn_app::{App, CoreStage, EventReader};
 use lgn_ecs::prelude::{Query, Res, ResMut};
 use lgn_graphics_api::{
     BarrierQueueTransition, BlendState, Buffer, BufferBarrier, BufferDef, BufferView,
@@ -26,16 +26,13 @@ use crate::{
 
 use super::{GpuInstanceEvent, RenderElement, RenderLayer, RenderStateSet};
 
-#[derive(Default)]
-pub struct MeshRendererPlugin {}
-
 pub(crate) enum DefaultLayers {
     Opaque = 0,
     Picking,
 }
 
-impl Plugin for MeshRendererPlugin {
-    fn build(&self, app: &mut App) {
+impl MeshRenderer {
+    pub fn init_ecs(app: &mut App) {
         //
         // Events
         //

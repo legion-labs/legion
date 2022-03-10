@@ -44,6 +44,7 @@ impl CommandPool {
         })
     }
 
+    // todo: should be mut self
     pub fn create_command_buffer(
         &self,
         command_buffer_def: &CommandBufferDef,
@@ -51,7 +52,7 @@ impl CommandPool {
         CommandBuffer::new(self.device_context(), self, command_buffer_def)
     }
 
-    pub fn reset_command_pool(&self) -> GfxResult<()> {
+    pub fn reset_command_pool(&mut self) -> GfxResult<()> {
         self.reset_command_pool_platform()
     }
 

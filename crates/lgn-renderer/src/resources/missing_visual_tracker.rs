@@ -1,10 +1,14 @@
 use std::collections::{BTreeMap, HashSet};
 
+use lgn_app::App;
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::{Entity, Query, ResMut, Without};
 use lgn_tracing::span_fn;
 
-use crate::components::{ManipulatorComponent, MaterialComponent, VisualComponent};
+use crate::{
+    components::{ManipulatorComponent, MaterialComponent, VisualComponent},
+    labels::RenderStage,
+};
 
 #[derive(Default)]
 pub(crate) struct MissingVisualTracker {
@@ -13,6 +17,10 @@ pub(crate) struct MissingVisualTracker {
 }
 
 impl MissingVisualTracker {
+    pub fn init_ecs(app: &mut App) {
+        app.add_system_to_stage(RenderStage::Prepare, update_missing_visuals);
+    }
+
     pub(crate) fn add_entity(&mut self, resource_id: ResourceTypeAndId, entity_id: Entity) {
         if let Some(entry) = self.entities.get_mut(&resource_id) {
             entry.insert(entity_id);

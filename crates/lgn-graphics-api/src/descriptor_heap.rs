@@ -9,8 +9,18 @@ use crate::{
 
 pub struct DescriptorSet {
     pub(crate) _partition: DescriptorHeapPartition,
-    pub(crate) _layout: DescriptorSetLayout,
-    pub(crate) _handle: DescriptorSetHandle,
+    pub(crate) layout: DescriptorSetLayout,
+    pub(crate) handle: DescriptorSetHandle,
+}
+
+impl DescriptorSet {
+    pub fn handle(&self) -> &DescriptorSetHandle {
+        &self.handle
+    }
+
+    pub fn layout(&self) -> &DescriptorSetLayout {
+        &self.layout
+    }
 }
 
 /// Used to create a `DescriptorHeap`

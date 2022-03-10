@@ -412,35 +412,6 @@ impl NullDescriptorSetLayout {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pub struct NullDescriptorSetWriter<'frame> {
-    _phantom: PhantomData<&'frame ()>,
-}
-
-impl<'frame> NullDescriptorSetWriter<'frame> {
-    pub fn new(
-        descriptor_set_layout: &DescriptorSetLayout,
-        bump: &'frame bumpalo::Bump,
-    ) -> GfxResult<Self> {
-        unimplemented!()
-    }
-}
-
-impl<'frame> DescriptorSetWriter<'frame> {
-    #[allow(clippy::unused_self, clippy::todo)]
-    pub fn backend_set_descriptors_by_index(
-        &self,
-        _index: u32,
-        _update_datas: &[DescriptorRef<'_>],
-    ) {
-        unimplemented!();
-    }
-    pub fn backend_set_descriptors(&self, descriptor_refs: &[DescriptorRef<'_>]) {
-        unimplemented!();
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
 pub(crate) struct NullFence;
 
 impl NullFence {
@@ -772,7 +743,6 @@ pub(crate) mod backend_impl {
     pub(crate) type BackendDescriptorHeap = super::NullDescriptorHeap;
     pub(crate) type BackendDescriptorHeapPartition = super::NullDescriptorHeapPartition;
     pub(crate) type BackendDescriptorSetLayout = super::NullDescriptorSetLayout;
-    pub(crate) type BackendDescriptorSetWriter<'frame> = super::NullDescriptorSetWriter<'frame>;
     pub(crate) type BackendFence = super::NullFence;
     pub(crate) type BackendMemoryAllocation = super::NullMemoryAllocation;
     pub(crate) type BackendMemoryPagesAllocation = super::NullMemoryPagesAllocation;

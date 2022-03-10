@@ -26,7 +26,7 @@ impl TmpRenderPass {
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
-        mesh_renerer: &MeshRenderer,
+        mesh_renderer: &MeshRenderer,
     ) {
         render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
 
@@ -50,7 +50,7 @@ impl TmpRenderPass {
             }),
         );
 
-        mesh_renerer.draw(render_context, cmd_buffer, DefaultLayers::Opaque as usize);
+        mesh_renderer.draw(render_context, cmd_buffer, DefaultLayers::Opaque as usize);
 
         cmd_buffer.end_render_pass();
     }

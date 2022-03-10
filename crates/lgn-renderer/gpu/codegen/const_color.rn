@@ -1,4 +1,4 @@
-pub fn main(frame_descriptor_set, view_descriptor_set ) {    
+pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set ) {    
     [        
         #{
             type: "Struct",
@@ -12,7 +12,7 @@ pub fn main(frame_descriptor_set, view_descriptor_set ) {
         #{
             type: "PipelineLayout",
             name: "ConstColorPipelineLayout",
-            descriptor_sets: [ frame_descriptor_set.name, view_descriptor_set.name ],
+            descriptor_sets: [ persistent_descriptor_set.name, frame_descriptor_set.name, view_descriptor_set.name ],
             push_constant: "ConstColorPushConstantData"
         },
         #{            

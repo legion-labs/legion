@@ -34,9 +34,9 @@ pub use render_context::*;
 
 pub mod resources;
 use resources::{
-    BindlessTextureManager, DescriptorHeapManager, GpuDataPlugin, GpuEntityColorManager,
-    GpuEntityTransformManager, GpuMaterialManager, GpuPickingDataManager, MissingVisualTracker,
-    ModelManager, PersistentDescriptorSetManager, PipelineManager,
+    DescriptorHeapManager, GpuDataPlugin, GpuEntityColorManager, GpuEntityTransformManager,
+    GpuMaterialManager, GpuPickingDataManager, ModelManager, PersistentDescriptorSetManager,
+    PipelineManager, TextureManager,
 };
 
 pub mod components;
@@ -53,17 +53,18 @@ pub mod hl_gfx_api;
 pub(crate) mod lighting;
 pub(crate) mod render_pass;
 
+use crate::gpu_renderer::MeshRenderer;
+use crate::render_pass::TmpRenderPass;
 use crate::{
     components::{
         debug_display_lights, ui_lights, update_lights, ManipulatorComponent, PickedComponent,
         RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces,
     },
     egui::egui_plugin::{Egui, EguiPlugin},
-    gpu_renderer::{GpuInstanceVas, MeshRenderer, MeshRendererPlugin},
+    gpu_renderer::GpuInstanceVas,
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingIdContext, PickingManager, PickingPlugin},
-    render_pass::TmpRenderPass,
-    resources::{IndexBlock, MeshManager},
+    resources::MeshManager,
     RenderStage,
 };
 use lgn_app::{App, CoreStage, Events, Plugin};
@@ -75,7 +76,9 @@ use lgn_transform::components::GlobalTransform;
 use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 
 use crate::debug_display::DebugDisplay;
-use crate::resources::{update_missing_visuals, update_models, UniformGPUDataUpdater};
+use crate::resources::{
+    MissingVisualTracker, SharedResourcesManager, TextureResourceManager, UniformGPUDataUpdater,
+};
 
 use crate::{
     components::{
@@ -107,18 +110,45 @@ impl RendererPlugin {
 
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
+        // TODO: Config resource? The renderer could be some kind of state machine reacting on some config changes?
         // TODO: refactor this with data pipeline resources
         EMBEDDED_FS.add_file(&render_pass::INCLUDE_BRDF);
         EMBEDDED_FS.add_file(&render_pass::INCLUDE_MESH);
         EMBEDDED_FS.add_file(&render_pass::SHADER_SHADER);
 
         const NUM_RENDER_FRAMES: usize = 2;
-        let renderer = Renderer::new(NUM_RENDER_FRAMES);
-        let device_context = renderer.device_context().clone();
-        let allocator = renderer.static_buffer_allocator().clone();
+
+        //
+        // Init in dependency order
+        //
+        let mut renderer = Renderer::new(NUM_RENDER_FRAMES);
+        let cgen_registry = Arc::new(cgen::initialize(renderer.device_context()));
+
+        renderer.begin_frame();
+
         let descriptor_heap_manager =
-            DescriptorHeapManager::new(NUM_RENDER_FRAMES, &device_context);
-        let pipeline_manager = PipelineManager::new(&device_context);
+            DescriptorHeapManager::new(NUM_RENDER_FRAMES, renderer.device_context());
+        let mut pipeline_manager = PipelineManager::new(renderer.device_context());
+        pipeline_manager.register_shader_families(&cgen_registry);
+        let mut cgen_registry_list = CGenRegistryList::new();
+        cgen_registry_list.push(cgen_registry);
+        let mut persistent_descriptor_set_manager = PersistentDescriptorSetManager::new(
+            renderer.device_context(),
+            &descriptor_heap_manager,
+        );
+        let mut texture_manager = TextureManager::new(renderer.device_context());
+        let texture_resource_manager = TextureResourceManager::new();
+
+        let shared_resources_manager = SharedResourcesManager::new(
+            &renderer,
+            &mut texture_manager,
+            &mut persistent_descriptor_set_manager,
+        );
+
+        let mesh_renderer = MeshRenderer::new(renderer.static_buffer_allocator());
+
+        renderer.end_frame();
+
         //
         // Add renderer stages first. It is needed for the plugins.
         //
@@ -135,39 +165,52 @@ impl Plugin for RendererPlugin {
         );
 
         //
+        // Stage Startup
+        //
+        app.add_startup_system(init_manipulation_manager);
+        app.add_startup_system(create_camera);
+
+        //
         // Resources
         //
-        app.insert_resource(MeshRenderer::new(&allocator));
         app.insert_resource(pipeline_manager);
         app.insert_resource(ManipulatorManager::new());
-        app.insert_resource(CGenRegistryList::new());
+        app.insert_resource(cgen_registry_list);
         app.insert_resource(RenderSurfaces::new());
         app.insert_resource(ModelManager::new());
         app.insert_resource(MeshManager::new(&renderer));
-        app.insert_resource(BindlessTextureManager::new(renderer.device_context(), 256));
         app.insert_resource(DebugDisplay::default());
         app.insert_resource(LightingManager::default());
-        app.insert_resource(GpuInstanceManager::new(&allocator));
+        app.insert_resource(GpuInstanceManager::new(renderer.static_buffer_allocator()));
         app.insert_resource(MissingVisualTracker::default());
         app.insert_resource(descriptor_heap_manager);
-        app.insert_resource(PersistentDescriptorSetManager::new());
+        app.insert_resource(persistent_descriptor_set_manager);
+        app.insert_resource(shared_resources_manager);
+        app.insert_resource(texture_manager);
+        app.insert_resource(texture_resource_manager);
+        app.insert_resource(mesh_renderer);
+
+        // Init ecs
+        TextureManager::init_ecs(app);
+        TextureResourceManager::init_ecs(app);
+        MeshRenderer::init_ecs(app);
+        ModelManager::init_ecs(app);
+        MissingVisualTracker::init_ecs(app);
+
+        // todo: convert?
+        app.add_plugin(GpuDataPlugin::default());
+
+        // Plugins are optionnal
         app.add_plugin(EguiPlugin::new());
         app.add_plugin(PickingPlugin {});
-        app.add_plugin(GpuDataPlugin::default());
-        app.add_plugin(MeshRendererPlugin {});
+
+        // This resource needs to be shutdown after all other resources
         app.insert_resource(renderer);
 
         //
         // Events
         //
         app.add_event::<RenderSurfaceCreatedForWindow>();
-
-        //
-        // Stage Startup
-        //
-        app.add_startup_system(init_cgen);
-        app.add_startup_system(init_manipulation_manager);
-        app.add_startup_system(create_camera);
 
         //
         // Stage PreUpdate
@@ -191,9 +234,7 @@ impl Plugin for RendererPlugin {
             app.add_system_to_stage(RenderStage::Prepare, ui_lights);
         }
         app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
-        app.add_system_to_stage(RenderStage::Prepare, update_models);
         app.add_system_to_stage(RenderStage::Prepare, update_gpu_instances);
-        app.add_system_to_stage(RenderStage::Prepare, update_missing_visuals);
         app.add_system_to_stage(RenderStage::Prepare, update_lights);
         app.add_system_to_stage(
             RenderStage::Prepare,
@@ -291,20 +332,6 @@ fn on_window_close_requested(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn init_cgen(
-    renderer: Res<'_, Renderer>,
-    mut pipeline_manager: ResMut<'_, PipelineManager>,
-    mut cgen_registries: ResMut<'_, CGenRegistryList>,
-    descriptor_heap_manager: Res<'_, DescriptorHeapManager>,
-    mut persistent_descriptor_set_manager: ResMut<'_, PersistentDescriptorSetManager>,
-) {
-    let cgen_registry = Arc::new(cgen::initialize(renderer.device_context()));
-    pipeline_manager.register_shader_families(&cgen_registry);
-    cgen_registries.push(cgen_registry);
-    persistent_descriptor_set_manager.initialize(&descriptor_heap_manager);
-}
-
-#[allow(clippy::needless_pass_by_value)]
 fn init_manipulation_manager(
     commands: Commands<'_, '_>,
     mut manipulation_manager: ResMut<'_, ManipulatorManager>,
@@ -356,8 +383,6 @@ fn update_gpu_instances(
         }
     }
 
-    let mut picking_block: Option<IndexBlock> = None;
-    let mut instance_block: Option<IndexBlock> = None;
     for (entity, mesh, mat_component) in instance_query.iter() {
         let color: (f32, f32, f32, f32) = (
             f32::from(mesh.color.r) / 255.0f32,
@@ -385,11 +410,7 @@ fn update_gpu_instances(
             material_key = Some(material.material_id);
         }
 
-        picking_data_manager.alloc_gpu_data(
-            entity,
-            renderer.static_buffer_allocator(),
-            &mut picking_block,
-        );
+        picking_data_manager.alloc_gpu_data(entity, renderer.static_buffer_allocator());
 
         let mut picking_data = cgen::cgen_type::GpuInstancePickingData::default();
         picking_data.set_picking_id(picking_context.aquire_picking_id(entity).into());
@@ -420,7 +441,6 @@ fn update_gpu_instances(
             let gpu_instance_id = instance_manager.add_gpu_instance(
                 entity,
                 renderer.static_buffer_allocator(),
-                &mut instance_block,
                 &mut updater,
                 &instance_vas,
             );
@@ -436,8 +456,6 @@ fn update_gpu_instances(
         }
         event_writer.send(GpuInstanceEvent::Added(added_instances));
     }
-    instance_manager.return_index_block(instance_block);
-    picking_data_manager.return_index_block(picking_block);
 
     renderer.add_update_job_block(updater.job_blocks());
 }
@@ -465,7 +483,7 @@ fn render_begin(mut egui_manager: ResMut<'_, Egui>) {
 fn render_update(
     resources: (
         Res<'_, Renderer>,
-        Res<'_, BindlessTextureManager>,
+        Res<'_, TextureManager>, // unused
         Res<'_, PipelineManager>,
         Res<'_, MeshRenderer>,
         Res<'_, MeshManager>,
@@ -475,7 +493,8 @@ fn render_update(
         Res<'_, DebugDisplay>,
         Res<'_, LightingManager>,
         Res<'_, DescriptorHeapManager>,
-        ResMut<'_, ModelManager>,
+        Res<'_, PersistentDescriptorSetManager>,
+        Res<'_, ModelManager>,
     ),
     queries: (
         Query<'_, '_, &mut RenderSurface>,
@@ -492,7 +511,7 @@ fn render_update(
 ) {
     // resources
     let renderer = resources.0;
-    let bindless_textures = resources.1;
+    // let bindless_texture_manager = resources.1;
     let pipeline_manager = resources.2;
     let mesh_renderer = resources.3;
     let mesh_manager = resources.4;
@@ -502,7 +521,8 @@ fn render_update(
     let debug_display = resources.8;
     let lighting_manager = resources.9;
     let descriptor_heap_manager = resources.10;
-    let model_manager = resources.11;
+    let persistent_descriptor_set_manager = resources.11;
+    let model_manager = resources.12;
 
     // queries
     let mut q_render_surfaces = queries.0;
@@ -536,6 +556,13 @@ fn render_update(
 
     renderer.flush_update_jobs(&render_context);
 
+    // Persistent descriptor set
+    {
+        let descriptor_set = persistent_descriptor_set_manager.descriptor_set();
+        render_context
+            .set_persistent_descriptor_set(descriptor_set.layout(), *descriptor_set.handle());
+    }
+
     // Frame descriptor set
     {
         let mut frame_descriptor_set = cgen::descriptor_set::FrameDescriptorSet::default();
@@ -562,15 +589,6 @@ fn render_update(
         let va_table_address_buffer =
             instance_manager.structured_buffer_view(std::mem::size_of::<u32>() as u64, true);
         frame_descriptor_set.set_va_table_address_buffer(&va_table_address_buffer);
-
-        let default_black_texture = bindless_textures.default_black_texture_view();
-        let bindlesss_descriptors = bindless_textures.bindless_texures_for_update();
-
-        let mut desc_refs = [&default_black_texture; 256];
-        for index in 0..bindlesss_descriptors.len() {
-            desc_refs[index] = &bindlesss_descriptors[index];
-        }
-        frame_descriptor_set.set_material_textures(&desc_refs);
 
         let sampler_def = SamplerDef {
             min_filter: FilterType::Linear,
@@ -651,6 +669,7 @@ fn render_update(
         picking_pass.render(
             &picking_manager,
             &render_context,
+            &mut cmd_buffer,
             render_surface.as_mut(),
             &instance_manager,
             q_manipulator_drawables.as_slice(),

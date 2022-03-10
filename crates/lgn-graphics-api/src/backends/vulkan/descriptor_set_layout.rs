@@ -5,8 +5,6 @@ use crate::{Descriptor, DescriptorSetLayout, DeviceContext, GfxResult};
 #[derive(Clone, Debug)]
 pub(crate) struct VulkanDescriptorSetLayout {
     vk_layout: vk::DescriptorSetLayout,
-    vk_image_info_count: u32,
-    vk_buffer_info_count: u32,
     typed_flat_indices: Vec<u32>,
 }
 
@@ -101,8 +99,6 @@ impl VulkanDescriptorSetLayout {
 
         Ok(Self {
             vk_layout,
-            vk_image_info_count: image_info_count,
-            vk_buffer_info_count: buffer_info_count,
             typed_flat_indices,
         })
     }
@@ -119,14 +115,6 @@ impl VulkanDescriptorSetLayout {
 impl DescriptorSetLayout {
     pub(crate) fn vk_layout(&self) -> vk::DescriptorSetLayout {
         self.inner.backend_layout.vk_layout
-    }
-
-    pub(crate) fn vk_image_info_count(&self) -> u32 {
-        self.inner.backend_layout.vk_image_info_count
-    }
-
-    pub(crate) fn vk_buffer_info_count(&self) -> u32 {
-        self.inner.backend_layout.vk_buffer_info_count
     }
 
     pub(crate) fn vk_typed_flat_index(&self, descriptor_index: u32) -> u32 {

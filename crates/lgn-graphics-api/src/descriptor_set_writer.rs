@@ -19,17 +19,40 @@ impl<'a> DescriptorSetWriter<'a> {
         }
     }
 
-    pub fn set_descriptors_by_name(&self, name: &str, update_datas: &[DescriptorRef<'_>]) {
+    pub fn set_descriptors_by_name(&mut self, name: &str, descriptor_refs: &[DescriptorRef<'_>]) {
         let descriptor_index = self
             .descriptor_set_layout
             .find_descriptor_index_by_name(name)
             .ok_or_else(|| GfxError::from("Invalid descriptor name"))
             .unwrap();
-        self.set_descriptors_by_index(descriptor_index, update_datas);
+        self.set_descriptors_by_index(descriptor_index, descriptor_refs);
     }
 
-    pub fn set_descriptors_by_index(&self, index: u32, update_datas: &[DescriptorRef<'_>]) {
-        self.backend_set_descriptors_by_index(index, update_datas);
+    pub fn set_descriptors_by_index(
+        &mut self,
+        descriptor_index: u32,
+        descriptor_refs: &[DescriptorRef<'_>],
+    ) {
+        assert!(descriptor_index < self.descriptor_set_layout.descriptor_count());
+        self.set_descriptors_by_index_and_offset(descriptor_index, 0, descriptor_refs);
+    }
+
+    pub fn set_descriptors_by_index_and_offset(
+        &mut self,
+        descriptor_index: u32,
+        offset: u32,
+        descriptor_refs: &[DescriptorRef<'_>],
+    ) {
+        assert!(descriptor_index < self.descriptor_set_layout.descriptor_count());
+        assert!(
+            offset
+                < self
+                    .descriptor_set_layout
+                    .descriptor(descriptor_index)
+                    .element_count
+                    .get()
+        );
+        self.backend_set_descriptors_by_index_and_offset(descriptor_index, offset, descriptor_refs);
     }
 
     pub fn set_descriptors(&mut self, descriptor_refs: &[DescriptorRef<'_>]) {
