@@ -11,6 +11,7 @@
         Visual((
             renderable_geometry: Some("runtime_model(offline_model(models/helmet/FlightHelmet.gltf, 'Hose_low'))"),
             color: (255, 0, 0),
+            color_blend: 0.0,
             shadow_receiver: true,
             shadow_caster_sun: true,
             shadow_caster_local: true,

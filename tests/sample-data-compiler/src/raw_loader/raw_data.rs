@@ -28,6 +28,7 @@ pub enum GIContribution {
 pub struct Visual {
     pub renderable_geometry: Option<String>,
     pub color: Vec3,
+    pub color_blend: f32,
     pub shadow_receiver: bool,
     pub shadow_caster_sun: bool,
     pub shadow_caster_local: bool,
