@@ -1,6 +1,26 @@
-//! Physics plugin
-//! Interfaces with NVIDIA's `PhysX` library
-//! Reference: [`PhysX` 4.1 SDK Guide](https://gameworksdocs.nvidia.com/PhysX/4.1/documentation/physxguide/Manual/Index.html)
+//! Physics plugin for Legion's ECS
+//!
+//! Provides a high-level interfaces with NVIDIA's `PhysX` library
+//!
+//! To associate a rigid body collision geometry with an entity,
+//! attach one of these components to it (depending on the geometry type):
+//!
+//! | Component | `PhysX` geometry |
+//! | --------- | ---------------- |
+//! | [`PhysicsRigidBox`](runtime::PhysicsRigidBox) | [`PxBoxGeometry`](https://gameworksdocs.nvidia.com/PhysX/4.1/documentation/physxguide/Manual/Geometry.html#boxes) |
+//! | [`PhysicsRigidCapsule`](runtime::PhysicsRigidCapsule) | [`PxCapsuleGeometry`](https://gameworksdocs.nvidia.com/PhysX/4.1/documentation/physxguide/Manual/Geometry.html#capsules) |
+//! | [`PhysicsRigidConvexMesh`](runtime::PhysicsRigidConvexMesh) | [`PxConvexMeshGeometry`](https://gameworksdocs.nvidia.com/PhysX/4.1/documentation/physxguide/Manual/Geometry.html#convex-meshes) |
+//! | [`PhysicsRigidPlane`](runtime::PhysicsRigidPlane) | [`PxPlaneGeometry`](https://gameworksdocs.nvidia.com/PhysX/4.1/documentation/physxguide/Manual/Geometry.html#planes) |
+//! | [`PhysicsRigidSphere`](runtime::PhysicsRigidSphere) | [`PxSphereGeometry`](https://gameworksdocs.nvidia.com/PhysX/4.1/documentation/physxguide/Manual/Geometry.html#spheres) |
+//! | [`PhysicsRigidTriangleMesh`](runtime::PhysicsRigidTriangleMesh) | [`PxTriangleMeshGeometry`](https://gameworksdocs.nvidia.com/PhysX/4.1/documentation/physxguide/Manual/Geometry.html#triangle-meshes) |
+//!
+//! For each of these components, you can also specify if the actor/entity should be static (immovable) or dynamic (subject to physical forces)
+//!
+//! References:
+//! * [NVIDIA `PhysX` overview](https://developer.nvidia.com/physx-sdk)
+//! * [`PhysX` 4.1 SDK Guide](https://gameworksdocs.nvidia.com/PhysX/4.1/documentation/physxguide/Manual/Index.html)
+//! * [`PhysX` Visual Debugger](https://developer.nvidia.com/physx-visual-debugger)
+//! * [physx-rs](https://github.com/EmbarkStudios/physx-rs), a Rust wrapper by Embark Studios
 
 // generated from def\physics.rs
 include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
