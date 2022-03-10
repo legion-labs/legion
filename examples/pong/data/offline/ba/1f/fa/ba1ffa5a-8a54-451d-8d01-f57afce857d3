@@ -1,0 +1,13 @@
+{
+  "components": [
+    {
+      "Light": {
+        "color": 4294963199,
+        "cone_angle": 0.0,
+        "enabled": true,
+        "light_type": "Omnidirectional",
+        "radiance": 40.0
+      }
+    }
+  ]
+}

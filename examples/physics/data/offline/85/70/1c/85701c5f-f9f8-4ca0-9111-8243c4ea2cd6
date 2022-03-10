@@ -1,0 +1,33 @@
+{
+  "components": [
+    {
+      "Transform": {
+        "position": [
+          0.0,
+          10.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "Light": {
+        "color": 4294963199,
+        "cone_angle": 0.0,
+        "enabled": true,
+        "light_type": "Directional",
+        "radiance": 40.0
+      }
+    }
+  ]
+}
