@@ -383,25 +383,17 @@ fn update_gpu_instances(
         }
     }
 
-    for (entity, mesh, mat_component) in instance_query.iter() {
+    for (entity, visual, mat_component) in instance_query.iter() {
         let color: (f32, f32, f32, f32) = (
-            f32::from(mesh.color.r) / 255.0f32,
-            f32::from(mesh.color.g) / 255.0f32,
-            f32::from(mesh.color.b) / 255.0f32,
-            f32::from(mesh.color.a) / 255.0f32,
+            f32::from(visual.color.r) / 255.0f32,
+            f32::from(visual.color.g) / 255.0f32,
+            f32::from(visual.color.b) / 255.0f32,
+            f32::from(visual.color.a) / 255.0f32,
         );
         let mut instance_color = cgen::cgen_type::GpuInstanceColor::default();
         instance_color.set_color(Vec4::new(color.0, color.1, color.2, color.3).into());
 
-        let (model_meta_data, ready) = model_manager.get_model_meta_data(mesh);
-        instance_color.set_color_blend(
-            if ready && model_meta_data.has_material() {
-                0.0
-            } else {
-                1.0
-            }
-            .into(),
-        );
+        instance_color.set_color_blend(visual.color_blend.into());
 
         color_manager.update_gpu_data(&entity, 0, &[instance_color], &mut updater);
 
@@ -416,8 +408,9 @@ fn update_gpu_instances(
         picking_data.set_picking_id(picking_context.aquire_picking_id(entity).into());
         picking_data_manager.update_gpu_data(&entity, 0, &[picking_data], &mut updater);
 
+        let (model_meta_data, ready) = model_manager.get_model_meta_data(visual);
         if !ready {
-            if let Some(model_resource_id) = &mesh.model_resource_id {
+            if let Some(model_resource_id) = &visual.model_resource_id {
                 missing_visuals_tracker.add_entity(*model_resource_id, entity);
             }
         }

@@ -179,6 +179,7 @@ impl FromRaw<raw_data::Visual> for offline_data::Visual {
                 raw.color.y as u8,
                 raw.color.z as u8,
             )),
+            color_blend: raw.color_blend,
             shadow_receiver: raw.shadow_receiver,
             shadow_caster_sun: raw.shadow_caster_sun,
             shadow_caster_local: raw.shadow_caster_local,
