@@ -119,6 +119,7 @@ impl AssetToECS for runtime_data::Entity {
                 entity.insert(VisualComponent::new(
                     &visual.renderable_geometry,
                     visual.color,
+                    visual.color_blend,
                 ));
             } else if let Some(gi) = component.downcast_ref::<runtime_data::GlobalIllumination>() {
                 entity.insert(gi.clone());

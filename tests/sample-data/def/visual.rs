@@ -8,6 +8,9 @@ struct Visual {
     #[legion(default=(255,0,0))]
     pub color: Color,
 
+    #[legion(default = 1.0)]
+    pub color_blend: f32,
+
     pub shadow_receiver: bool,
     pub shadow_caster_sun: bool,
     pub shadow_caster_local: bool,

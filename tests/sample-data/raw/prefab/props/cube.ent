@@ -11,6 +11,7 @@
         Visual((
             renderable_geometry: None,
             color: (255, 0, 0),
+            color_blend: 1.0,
             shadow_receiver: true,
             shadow_caster_sun: true,
             shadow_caster_local: true,
