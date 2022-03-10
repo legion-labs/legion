@@ -28,6 +28,7 @@
     {
       "Visual": {
         "color": 16777215,
+        "color_blend": 1.0,
         "gi_contribution": 0,
         "renderable_geometry": "(44e4b6023fb7a8d3,5474d00b-cc10-491a-ba56-be2f5b5de22d)|5c4b1b522bf5dcb0",
         "shadow_caster_local": false,
