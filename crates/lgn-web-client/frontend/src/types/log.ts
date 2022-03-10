@@ -5,5 +5,5 @@ export type Log = {
   message: string;
   severity: LogLevel;
   target: string;
-  timestamp: Date;
+  datetime: Date;
 };

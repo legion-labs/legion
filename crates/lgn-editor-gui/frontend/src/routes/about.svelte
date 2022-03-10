@@ -1,132 +1,87 @@
 <script lang="ts">
-  import { EMPTY, BehaviorSubject, of, from, iif } from "rxjs";
-  import type { Observable } from "rxjs";
-  import { fromFetch } from "rxjs/fetch";
-  import { webSocket } from "rxjs/webSocket";
-  import {
-    concatAll,
-    map,
-    shareReplay,
-    mergeWith,
-    mergeMap,
-    withLatestFrom,
-    debounceTime,
-    distinctUntilChanged,
-    tap,
-    filter,
-    catchError,
-    startWith,
-    bufferCount,
-    switchMap,
-  } from "rxjs/operators";
-  import type {
-    ListOnItemsRenderedProps,
-    ListOnScrollProps,
-  } from "svelte-window";
+  import type { ScrollStatus } from "@lgn/web-client/src/components/log/Log.svelte";
   import Log from "@lgn/web-client/src/components/log/Log.svelte";
   import type { Log as LogMessage } from "@lgn/web-client/src/types/log";
   import { onMount } from "svelte";
+  import type { Writable } from "svelte/store";
+  import { derived, writable } from "svelte/store";
 
   const buffer = 300;
 
-  const renderedItems = new BehaviorSubject<ListOnItemsRenderedProps | null>(
-    null
+  const totalCount = writable(0);
+
+  const streamedLogs = writable(new Map<number, LogMessage>());
+
+  const staticLogs = writable(new Map<number, LogMessage>());
+
+  const scrollStatus: Writable<ScrollStatus | null> = writable(null);
+
+  const forcePaused = writable(false);
+
+  const paused = derived(
+    [forcePaused, scrollStatus],
+    ([$forcePaused, $scrollStatus]) =>
+      $forcePaused || !!($scrollStatus?.position !== "start")
   );
 
-  const scrollInfo = new BehaviorSubject<ListOnScrollProps | null>(null);
+  const logs = derived(
+    [paused, streamedLogs, staticLogs],
+    ([paused, streamedLogs, staticLogs]) => {
+      let streamedLogsClone = streamedLogs;
 
-  const logs = new BehaviorSubject<Map<number, LogMessage>>(new Map());
+      if (paused) {
+        streamedLogsClone = new Map(streamedLogs.entries());
+      }
 
-  const totalCount = new BehaviorSubject(0);
+      return new Map([...streamedLogsClone, ...staticLogs]);
+    }
+  );
 
-  $: currentTopIndex = $scrollInfo?.scrollOffset || 0;
+  let requestedIndex: number | null = null;
 
-  $: paused = currentTopIndex !== 0;
+  $: if (typeof requestedIndex === "number") {
+    fetchStaticLogs(requestedIndex);
 
-  // TODO: Move to Log.svelte
-  /** Get requested index based on the user interaction with the logs viewport */
-  function getRequestedIndex(): Observable<number> {
-    return scrollInfo.pipe(
-      withLatestFrom(renderedItems),
-      filter(([scrollInfo, renderedItems]) => !!(scrollInfo && renderedItems)),
-      debounceTime(50),
-      distinctUntilChanged(
-        (prev, curr) =>
-          prev[1]?.overscanStartIndex === curr[1]?.overscanStartIndex ||
-          prev[1]?.overscanStopIndex === curr[1]?.overscanStopIndex
-      ),
-      withLatestFrom(logs, totalCount),
-      mergeMap(([[scrollInfo, renderedItems], logs, totalCount]) => {
-        if (!scrollInfo || !renderedItems) {
-          return EMPTY;
-        }
-
-        let index: number | null = null;
-
-        if (scrollInfo.scrollDirection === "backward") {
-          index = renderedItems.overscanStartIndex;
-        }
-
-        if (scrollInfo.scrollDirection === "forward") {
-          index = renderedItems.overscanStopIndex;
-        }
-
-        if (index == null || logs.has(totalCount - index)) {
-          return EMPTY;
-        }
-
-        index = Math.round(index - buffer / 2);
-
-        if (index < 0) {
-          index = 0;
-        }
-
-        if (index > totalCount) {
-          index = totalCount - buffer;
-        }
-
-        return of(index);
-      })
-    );
+    $streamedLogs = new Map();
   }
 
-  function getStaticLogsSource(): Observable<{
-    logs: LogMessage[];
-    totalCount: number;
-  }> {
-    return getRequestedIndex().pipe(
-      startWith(undefined),
-      map((index) => {
-        let path = `/api/logs?size=${buffer}`;
+  onMount(async () => {
+    const initStreamedLogsCleanup = await initStreamedLogs();
 
-        if (index != null) {
-          path += `&after=${index}`;
-        }
+    await fetchStaticLogs(null);
 
-        return path;
-      }),
-      mergeMap((path) =>
-        fromFetch(`http://localhost:4000${path}`).pipe(
-          mergeMap((response) => response.json()),
-          catchError(() => EMPTY)
-        )
-      ),
-      filter(Boolean),
-      mergeMap((json) => {
-        const logs =
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (json.data as any[]).map(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (log: any): LogMessage => ({
+    return () => {
+      // Clears web socket listeners
+      initStreamedLogsCleanup();
+    };
+  });
+
+  async function fetchStaticLogs(index: number | null) {
+    let path = `/api/logs?size=${buffer}`;
+
+    if (index != null) {
+      path += `&after=${index}`;
+    }
+
+    const response = await fetch(`http://localhost:4000${path}`);
+
+    const json = await response.json();
+
+    $totalCount = json.pagination.total_count;
+
+    $staticLogs = new Map(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (json.data as any[]).map(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (log: any) =>
+          [
+            log.id,
+            {
               ...log,
-              timestamp: new Date(log.timestamp),
-            })
-          );
-
-        const totalCount = json.pagination.total_count;
-
-        return of({ logs, totalCount });
-      })
+              datetime: new Date(log.datetime),
+            },
+          ] as [number, LogMessage]
+      )
     );
   }
 
@@ -134,59 +89,59 @@
    * Connects to a web socket that streams logs.
    * Can be run once only
    */
-  function getDynamicLogsSource(): Observable<{
-    logs: LogMessage[];
-    totalCount: number;
-  }> {
-    return webSocket({
-      url: "ws://localhost:4000/ws",
-      binaryType: "blob",
-      deserializer: (event) => (event.data as Blob).text(),
-    }).pipe(
-      catchError(() => EMPTY),
-      // Make it "cold", preventing subscriptions to trigger subsequent connections
-      shareReplay(),
-      // Resolves the promise gotten from turning the Blob into a string
-      concatAll(),
-      // TODO: Remove to stream web socket logs
-      // switchMap(() => EMPTY),
-      // Parse the string as a valid logs/totalCount object
-      map((message) => {
-        const { log, total_count: totalCount } = JSON.parse(message);
+  function initStreamedLogs() {
+    return new Promise<() => void>((resolve) => {
+      function onOpen() {
+        resolve(() => {
+          ws.removeEventListener("open", onOpen);
+          ws.removeEventListener("message", onMessage);
+        });
+      }
 
-        return {
-          totalCount,
-          logs: [{ ...log, timestamp: new Date(log.timestamp) } as LogMessage],
-        };
-      }),
-      switchMap((logs) => iif(() => paused, EMPTY, of(logs)))
-    );
+      async function onMessage(message: MessageEvent<Blob>) {
+        const { log, total_count: newTotalCount } = JSON.parse(
+          await message.data.text()
+        );
+
+        if (!$paused) {
+          $totalCount = newTotalCount;
+        }
+
+        if (!$streamedLogs.has(log.id)) {
+          if ($streamedLogs.size > buffer - 1) {
+            const lastItemIndex = Array.from($streamedLogs.keys())[0];
+
+            $streamedLogs.delete(lastItemIndex);
+          }
+
+          $streamedLogs = $streamedLogs.set(log.id, {
+            ...log,
+            datetime: new Date(log.datetime),
+          } as LogMessage);
+        }
+      }
+
+      const ws = new WebSocket("ws://localhost:4000/ws");
+
+      // Making sure the default is properly set to "blob"
+      ws.binaryType = "blob";
+
+      ws.addEventListener("open", onOpen);
+      ws.addEventListener("message", onMessage);
+    });
   }
-
-  onMount(() => {
-    const subscription = getDynamicLogsSource()
-      .pipe(
-        mergeWith(getStaticLogsSource()),
-        tap(({ totalCount: newTotalCount }) => totalCount.next(newTotalCount)),
-        mergeMap(({ logs }) => from(logs)),
-        map((log) => [log.id, log] as const),
-        bufferCount(buffer, 1),
-        map((logs) => new Map(logs))
-      )
-      .subscribe((value) => logs.next(value));
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  });
 </script>
 
-<div on:click={() => (paused = !paused)}>{paused ? "Unpause" : "Pause"}</div>
+<div on:click={() => ($forcePaused = !$forcePaused)}>
+  {$paused ? "Unpause" : "Pause"}
+</div>
 
 <Log
+  {buffer}
   logs={$logs}
   totalCount={$totalCount}
-  on:onItemsRendered={({ detail: newRenderedItems }) =>
-    renderedItems.next(newRenderedItems)}
-  on:onScroll={({ detail: newScroll }) => scrollInfo.next(newScroll)}
+  on:requestedIndexChange={({ detail: newRequestedIndex }) =>
+    (requestedIndex = newRequestedIndex)}
+  on:scrollStatusChange={({ detail: newsScrollStatus }) =>
+    ($scrollStatus = newsScrollStatus)}
 />

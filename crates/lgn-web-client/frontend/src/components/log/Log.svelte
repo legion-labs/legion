@@ -1,4 +1,17 @@
+<script context="module" lang="ts">
+  export type ScrollPosition = "start" | "middle" | "end";
+
+  export type ScrollStatus = {
+    position: ScrollPosition;
+    firstRenderedIndex: number;
+    lastRenderedIndex: number;
+  };
+</script>
+
 <script lang="ts">
+  import { createEventDispatcher } from "svelte";
+  import { derived, Writable, writable } from "svelte/store";
+  import type { Readable } from "svelte/store";
   import { FixedSizeList, styleString } from "svelte-window";
   import type {
     ListOnItemsRenderedProps,
@@ -6,36 +19,119 @@
   } from "svelte-window";
   import type { Log } from "../../types/log";
   import { remToPx } from "../../lib/html";
-  import { createEventDispatcher } from "svelte";
+  import { debounced, recorded } from "../../lib/store";
 
   const dispatch = createEventDispatcher<{
-    onScroll: ListOnScrollProps;
-    onItemsRendered: ListOnItemsRenderedProps;
+    /**
+     * Dispatched when the component doesn't know what to display anymore.
+     *
+     * The requested index is calculated based on the scroll direction and the total count.
+     */
+    requestedIndexChange: number | null;
+    /** Always dispatched on scroll */
+    scrollStatusChange: ScrollStatus | null;
   }>();
 
   // Should never be unknown
   const elementHeight = remToPx(2) || 0;
 
+  const renderedItems: Writable<ListOnItemsRenderedProps | null> =
+    writable(null);
+
+  const scrollInfo: Writable<ListOnScrollProps | null> = writable(null);
+
+  const scrollStatus = derived(
+    [renderedItems, scrollInfo],
+    ([renderedItems, scrollInfo]) =>
+      renderedItems && scrollInfo ? { renderedItems, scrollInfo } : null
+  );
+
+  const requestedIndex = derived(
+    recorded(debounced(scrollStatus, 50)),
+    ($scrollStatus, set: (value: number | null) => void) => {
+      if (!$scrollStatus.curr || !$scrollStatus.prev) {
+        return;
+      }
+
+      const scrollDirection = $scrollStatus.curr.scrollInfo.scrollDirection;
+
+      const prevOverscanStartIndex =
+        $scrollStatus.prev.renderedItems.overscanStartIndex;
+      const prevOverscanStopIndex =
+        $scrollStatus.prev.renderedItems.overscanStopIndex;
+      const currOverscanStartIndex =
+        $scrollStatus.curr.renderedItems.overscanStartIndex;
+      const currOverscanStopIndex =
+        $scrollStatus.curr.renderedItems.overscanStopIndex;
+
+      if (
+        (prevOverscanStartIndex === currOverscanStartIndex &&
+          scrollDirection === "backward") ||
+        (prevOverscanStopIndex === currOverscanStopIndex &&
+          scrollDirection === "forward")
+      ) {
+        return;
+      }
+
+      let index: number | null = null;
+
+      if (scrollDirection === "backward") {
+        index = currOverscanStartIndex;
+      }
+
+      if (scrollDirection === "forward") {
+        index = currOverscanStopIndex;
+      }
+
+      // Was staticlogs.has()
+      if (index == null || logs.has(totalCount - index)) {
+        return;
+      }
+
+      index = Math.round(index - buffer / 2);
+
+      if (index < 0) {
+        index = 0;
+      }
+
+      if (index > totalCount) {
+        index = totalCount - buffer;
+      }
+
+      set(index);
+    },
+    null
+  );
+
+  export let buffer: number;
+
   export let logs: Map<number, Log> = new Map();
 
   export let totalCount: number;
 
-  export let renderedItems: ListOnItemsRenderedProps | null = null;
-
-  export let scrollInfo: ListOnScrollProps | null = null;
-
   let rootHeight: number | null = null;
 
-  function onScroll(newScroll: ListOnScrollProps) {
-    scrollInfo = newScroll;
+  $: dispatch("requestedIndexChange", $requestedIndex);
 
-    dispatch("onScroll", scrollInfo);
+  function onScroll(newScroll: ListOnScrollProps) {
+    $scrollInfo = newScroll;
+
+    if ($scrollStatus?.renderedItems && $scrollStatus?.scrollInfo) {
+      dispatch("scrollStatusChange", {
+        firstRenderedIndex: $scrollStatus.renderedItems.visibleStartIndex,
+        lastRenderedIndex: $scrollStatus.renderedItems.visibleStopIndex,
+        position:
+          $scrollStatus.renderedItems.visibleStartIndex === 0
+            ? "start"
+            : $scrollStatus.renderedItems.visibleStopIndex === totalCount - 1
+            ? "end"
+            : "middle",
+      });
+    }
   }
 
   function onItemsRendered(newRenderedItems: ListOnItemsRenderedProps) {
-    renderedItems = newRenderedItems;
-
-    dispatch("onItemsRendered", renderedItems);
+    $renderedItems = newRenderedItems;
   }
 </script>
 
@@ -54,14 +150,14 @@
         itemCount={totalCount}
         itemSize={elementHeight}
         width="100%"
-        overscanCount={100}
+        overscanCount={20}
         {onScroll}
         {onItemsRendered}
         let:items
       >
         {#each items as item (item.key)}
           {@const log = logs.get(totalCount - item.index)}
-          {@const date = log?.timestamp?.toLocaleString()}
+          {@const date = log?.datetime?.toLocaleString()}
 
           <div
             class="log"
@@ -69,10 +165,10 @@
             class:bg-gray-800={item.index % 2 === 1}
             style={styleString(item.style)}
           >
-            <div class="w-1/12 log-column">
-              {totalCount - item.index}{log ? `/${log.id}` : ""}
-            </div>
             {#if log}
+              <div class="w-1/12 log-column">
+                {log ? log.id : ""}
+              </div>
               <div class="w-1/6 log-column">{date}</div>
               <div class="w-1/2 log-column" title={log.message}>
                 {log.message}
@@ -93,6 +189,7 @@
                 </div>
               </div>
             {:else}
+              <div class="w-1/12 skeleton-column"><div class="skeleton" /></div>
               <div class="w-1/6 skeleton-column"><div class="skeleton" /></div>
               <div class="w-1/2 skeleton-column"><div class="skeleton" /></div>
               <div class="w-1/6 skeleton-column"><div class="skeleton" /></div>
