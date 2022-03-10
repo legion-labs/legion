@@ -19,7 +19,7 @@ ispc-tex = "0.1.0"
 tbc = "0.3.0"
 psd = { version = "0.3.0", optional = true }
 gltf = { version = "1.0.0", optional = true }
-zip = "0.5.13"
+zip = { version = "0.5.13", optional = true }
 
 # codegen
 lazy_static = "1.4"
@@ -36,5 +36,5 @@ lgn-data-codegen = { path = "../../crates/lgn-data-codegen", version = "0.1.0" }
 
 [features]
 default = ["runtime"]
-offline = ["lgn-data-offline", "gltf", "psd"]
+offline = ["lgn-data-offline", "gltf", "psd", "zip"]
 runtime = []
