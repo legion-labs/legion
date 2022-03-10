@@ -2552,6 +2552,7 @@ dependencies = [
  "lgn-renderer",
  "lgn-resource-registry",
  "lgn-scripting",
+ "lgn-source-control",
  "lgn-streamer",
  "lgn-tasks",
  "lgn-telemetry-sink",

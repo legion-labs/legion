@@ -8,7 +8,8 @@ use std::{
 
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_source_control::{
-    CommitMode, IndexBackend, LocalIndexBackend, Workspace, WorkspaceConfig, WorkspaceRegistration,
+    Change, CommitMode, IndexBackend, LocalIndexBackend, Workspace, WorkspaceConfig,
+    WorkspaceRegistration,
 };
 use thiserror::Error;
 
@@ -174,7 +175,31 @@ impl Project {
         }
     }
 
-    async fn local_resource_list(&self) -> Result<Vec<ResourceId>, Error> {
+    /// Return the list of stages resources
+    pub async fn get_staged_changes(&self) -> Result<Vec<(ResourceId, Change)>, Error> {
+        let local_changes = self
+            .workspace
+            .get_staged_changes()
+            .await
+            .map_err(Error::SourceControl)?;
+
+        let changes = local_changes
+            .iter()
+            .map(|(path, change)| (PathBuf::from(path.to_string()), change))
+            .filter(|(path, _)| path.extension().is_none())
+            .map(|(path, change)| {
+                (
+                    ResourceId::from_str(path.file_name().unwrap().to_str().unwrap()).unwrap(),
+                    change.clone(),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        Ok(changes)
+    }
+
+    /// Return the list of local resources
+    pub async fn local_resource_list(&self) -> Result<Vec<ResourceId>, Error> {
         let local_changes = self
             .workspace
             .get_staged_changes()
