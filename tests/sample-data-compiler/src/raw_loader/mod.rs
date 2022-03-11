@@ -51,8 +51,14 @@ pub async fn build_offline(root_folder: impl AsRef<Path>, incremental: bool) {
         };
 
         let generated_checksum = {
-            std::fs::read_to_string(root_folder.as_ref().join("VERSION"))
-                .map_or(None, |version| version.parse::<u64>().ok())
+            if !root_folder.as_ref().join("offline").exists()
+                || !root_folder.as_ref().join("remote").exists()
+            {
+                None
+            } else {
+                std::fs::read_to_string(root_folder.as_ref().join("VERSION"))
+                    .map_or(None, |version| version.parse::<u64>().ok())
+            }
         };
 
         if let Some(generated_checksum) = generated_checksum {

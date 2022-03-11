@@ -2,3 +2,5 @@ temp/
 !/uploads/.gitkeep
 /uploads/*
 VERSION
+offline/
+remote/
