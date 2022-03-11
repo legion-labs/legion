@@ -238,6 +238,10 @@ impl<'rc> HLCommandBuffer<'rc> {
             .cmd_dispatch(group_count_x, group_count_y, group_count_z);
     }
 
+    pub fn dispatch_indirect(&self, buffer: &Buffer, offset: u64) {
+        self.cmd_buffer.cmd_dispatch_indirect(buffer, offset);
+    }
+
     pub fn resource_barrier(
         &self,
         buffer_barriers: &[BufferBarrier<'_>],

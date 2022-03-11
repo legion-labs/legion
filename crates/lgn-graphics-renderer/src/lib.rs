@@ -112,9 +112,10 @@ impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
         // TODO: Config resource? The renderer could be some kind of state machine reacting on some config changes?
         // TODO: refactor this with data pipeline resources
-        EMBEDDED_FS.add_file(&render_pass::INCLUDE_BRDF);
-        EMBEDDED_FS.add_file(&render_pass::INCLUDE_MESH);
-        EMBEDDED_FS.add_file(&render_pass::SHADER_SHADER);
+        EMBEDDED_FS.add_file(&gpu_renderer::INCLUDE_BRDF);
+        EMBEDDED_FS.add_file(&gpu_renderer::INCLUDE_COMMON);
+        EMBEDDED_FS.add_file(&gpu_renderer::INCLUDE_MESH);
+        EMBEDDED_FS.add_file(&gpu_renderer::SHADER_SHADER);
 
         const NUM_RENDER_FRAMES: usize = 2;
 
@@ -292,6 +293,7 @@ fn on_window_resized(
     renderer: Res<'_, Renderer>,
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
     render_surfaces: Res<'_, RenderSurfaces>,
+    pipeline_manager: Res<'_, PipelineManager>,
 ) {
     for ev in ev_wnd_resized.iter() {
         let render_surface_id = render_surfaces.get_from_window_id(ev.id);
@@ -304,6 +306,7 @@ fn on_window_resized(
                 render_surface.resize(
                     renderer.device_context(),
                     RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height()),
+                    &pipeline_manager,
                 );
             }
         }
@@ -608,8 +611,6 @@ fn render_update(
         );
     }
 
-    mesh_renderer.cull(&render_context);
-
     // For each surface/view, we have to execute the render graph
     for mut render_surface in q_render_surfaces.iter_mut() {
         // View descriptor set
@@ -642,6 +643,8 @@ fn render_update(
             let mut view_descriptor_set = cgen::descriptor_set::ViewDescriptorSet::default();
             view_descriptor_set.set_view_data(&const_buffer_view);
 
+            view_descriptor_set.set_hzb_texture(render_surface.get_hzb_surface().hzb_srv_view());
+
             let view_descriptor_set_handle = render_context.write_descriptor_set(
                 cgen::descriptor_set::ViewDescriptorSet::descriptor_set_layout(),
                 view_descriptor_set.descriptor_refs(),
@@ -652,6 +655,12 @@ fn render_update(
                 view_descriptor_set_handle,
             );
         }
+
+        mesh_renderer.gen_occlusion_and_cull(
+            &render_context,
+            &mut render_surface,
+            &instance_manager,
+        );
 
         let mut cmd_buffer = render_context.alloc_command_buffer();
         cmd_buffer.bind_index_buffer(&renderer.static_buffer().index_buffer_binding());

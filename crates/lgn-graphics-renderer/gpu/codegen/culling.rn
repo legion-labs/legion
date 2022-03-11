@@ -12,18 +12,43 @@ pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set
             type: "Struct",
             name: "RenderPassData",
             fields: [
-                #{ name:"culling_planes", ty:"Float4", array_len:6 },
                 #{ name:"offset_base_va", ty:"Uint1" },
                 #{ name:"padding", ty:"Uint1", array_len:3 },
+            ]
+        },
+        #{
+            type: "BitField",
+            name: "CullingOptions",
+            values: [
+                "OCCLUSION",
+                "OUTPUT_CULLED_INSTANCES",
+            ]
+        },
+                #{
+            type: "Struct",
+            name: "CullingDebugData",
+            fields: [
+                #{ name:"min_view", ty:"Float4" },
+                #{ name:"max_view", ty:"Float4" },
+                #{ name:"min_proj", ty:"Float4" },
+                #{ name:"max_proj", ty:"Float4" },
+                #{ name:"aabb", ty:"Float4" },
+                #{ name:"aabb_vp", ty:"Float4" },
+                #{ name:"iaabb", ty:"Uint4" },
+                #{ name:"lod", ty:"Float1" },
+                #{ name:"depth", ty:"Float1" },
+                #{ name:"max_z", ty:"Float1" },
+                #{ name:"gpu_instance", ty:"Uint1" },
             ]
         },
         #{
             type: "Struct",
             name: "CullingPushConstantData",
             fields: [
-                #{ name:"num_gpu_instances", ty:"Uint1" },
+                #{ name:"first_render_pass", ty:"Uint1" },
                 #{ name:"num_render_passes", ty:"Uint1" },
-                #{ name:"padding", ty:"Uint2" },
+                #{ name:"options", ty:"CullingOptions" },
+                #{ name:"hzb_pixel_extents", ty:"Float2" },
             ]
         },
         #{
@@ -31,10 +56,15 @@ pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set
             name: "CullingDescriptorSet",
             frequency: crate::USER_DESCRIPTOR_SET_FREQUENCY,
             descriptors: [
-                #{ name:"count_buffer", type:"RWStructuredBuffer", content:"Uint1"  },
-                #{ name:"indirect_arg_buffer", type:"RWStructuredBuffer", content:"Uint1" },
+                #{ name:"gpu_instance_count", type:"StructuredBuffer", content:"Uint1" },
                 #{ name:"gpu_instance_data", type:"StructuredBuffer", content:"GpuInstanceData" },
                 #{ name:"render_pass_data", type:"StructuredBuffer", content:"RenderPassData" },
+                #{ name:"draw_count", type:"RWStructuredBuffer", content:"Uint1"  },
+                #{ name:"draw_args", type:"RWStructuredBuffer", content:"Uint1" },
+                #{ name:"culled_count", type:"RWStructuredBuffer", content:"Uint1" },
+                #{ name:"culled_args", type:"RWStructuredBuffer", content:"Uint3" },
+                #{ name:"culled_instances", type:"RWStructuredBuffer", content:"GpuInstanceData" },
+                #{ name:"culling_debug", type:"RWStructuredBuffer", content:"CullingDebugData" },
             ]        
         },
         #{

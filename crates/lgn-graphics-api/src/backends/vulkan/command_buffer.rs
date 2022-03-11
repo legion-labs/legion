@@ -515,6 +515,16 @@ impl CommandBuffer {
         }
     }
 
+    pub(crate) fn backend_cmd_dispatch_indirect(&self, buffer: &Buffer, offset: u64) {
+        unsafe {
+            self.inner.device_context.vk_device().cmd_dispatch_indirect(
+                self.inner.backend_command_buffer.vk_command_buffer,
+                buffer.vk_buffer(),
+                offset,
+            );
+        }
+    }
+
     pub(crate) fn backedn_cmd_resource_barrier(
         &self,
         buffer_barriers: &[BufferBarrier<'_>],

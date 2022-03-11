@@ -352,7 +352,7 @@ impl DebugRenderPass {
                 clear_value: ColorClearValue::default(),
             }],
             &Some(DepthStencilRenderTargetBinding {
-                texture_view: render_surface.depth_stencil_texture_view(),
+                texture_view: render_surface.depth_stencil_rt_view(),
                 depth_load_op: LoadOp::Load,
                 stencil_load_op: LoadOp::DontCare,
                 depth_store_op: StoreOp::Store,

@@ -1,14 +1,7 @@
 #include "crate://lgn-graphics-renderer/gpu/pipeline_layout/const_color_pipeline_layout.hlsl"
 
+#include "crate://lgn-graphics-renderer/gpu/include/common.hsh"
 #include "crate://lgn-graphics-renderer/gpu/include/mesh.hsh"
-
-struct VertexIn {
-    float3 pos : POSITION;
-    float3 normal : NORMAL;
-    float3 tangent : TANGENT;
-    float4 color: COLOR;
-    float2 uv_coord : TEXCOORD0;
-};
 
 struct VertexOut {
     float4 hpos : SV_POSITION;

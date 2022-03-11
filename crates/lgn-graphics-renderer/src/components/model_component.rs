@@ -171,25 +171,25 @@ impl Mesh {
             -half_size,  half_size, -half_size, -1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
             -half_size, -half_size, -half_size, -1.0,  0.0,  0.0, 0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
             // +y
-            -half_size,  half_size,  half_size, 0.0,  1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
-            -half_size,  half_size, -half_size, 0.0,  1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
-             half_size,  half_size, -half_size, 0.0,  1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
-             half_size,  half_size,  half_size, 0.0,  1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+            -half_size,  half_size, -half_size,  0.0,  1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
+            -half_size,  half_size,  half_size,  0.0,  1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+             half_size,  half_size,  half_size,  0.0,  1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+             half_size,  half_size, -half_size,  0.0,  1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
             // -y
-            -half_size, -half_size, -half_size, 0.0, -1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
-            -half_size, -half_size,  half_size, 0.0, -1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-             half_size, -half_size,  half_size, 0.0, -1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
-             half_size, -half_size, -half_size, 0.0, -1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+            -half_size, -half_size,  half_size,  0.0, -1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+            -half_size, -half_size, -half_size,  0.0, -1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+             half_size, -half_size, -half_size,  0.0, -1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+             half_size, -half_size,  half_size,  0.0, -1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
             // +z
-             half_size, -half_size,  half_size, 0.0,  0.0,  1.0, 0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
-             half_size,  half_size,  half_size, 0.0,  0.0,  1.0, 0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
-            -half_size,  half_size,  half_size, 0.0,  0.0,  1.0, 0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
-            -half_size, -half_size,  half_size, 0.0,  0.0,  1.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+             half_size, -half_size,  half_size,  0.0,  0.0,  1.0, 0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
+             half_size,  half_size,  half_size,  0.0,  0.0,  1.0, 0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+            -half_size,  half_size,  half_size,  0.0,  0.0,  1.0, 0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+            -half_size, -half_size,  half_size,  0.0,  0.0,  1.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
             // -z
-            -half_size, -half_size, -half_size, 0.0,  0.0, -1.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size,  half_size, -half_size, 0.0,  0.0, -1.0, 0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
-             half_size,  half_size, -half_size, 0.0,  0.0, -1.0, 0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
-             half_size, -half_size, -half_size, 0.0,  0.0, -1.0, 0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
+            -half_size, -half_size, -half_size,  0.0,  0.0, -1.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
+            -half_size,  half_size, -half_size,  0.0,  0.0, -1.0, 0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
+             half_size,  half_size, -half_size,  0.0,  0.0, -1.0, 0.0, 0.0, 0.0, 1.0,  0.0,  0.0,
+             half_size, -half_size, -half_size,  0.0,  0.0, -1.0, 0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
         ];
 
         let mut index_data: Vec<u16> = vec![];
@@ -222,28 +222,28 @@ impl Mesh {
             // base
              half_size, -half_size, -half_size, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
              half_size, -half_size,  half_size, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
-            -half_size, -half_size, -half_size, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-            -half_size, -half_size,  half_size, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
+            -half_size, -half_size,  half_size, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
+            -half_size, -half_size, -half_size, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
             // 1
-             half_size, -half_size, -half_size, normal1.x, normal1.y, normal1.z, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-             half_size, -half_size,  half_size, normal1.x, normal1.y, normal1.z, 0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
+             half_size, -half_size,  half_size, normal1.x, normal1.y, normal1.z, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
+             half_size, -half_size, -half_size, normal1.x, normal1.y, normal1.z, 0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
                    0.0,       top_y,       0.0, normal1.x, normal1.y, normal1.z, 0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
             // 2
-             half_size, -half_size,  half_size, normal2.x, normal2.y, normal2.z, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-            -half_size, -half_size,  half_size, normal2.x, normal2.y, normal2.z, 0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
+            -half_size, -half_size,  half_size, normal2.x, normal2.y, normal2.z, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
+             half_size, -half_size,  half_size, normal2.x, normal2.y, normal2.z, 0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
                    0.0,      top_y,        0.0, normal2.x, normal2.y, normal2.z, 0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
             // 3
-            -half_size, -half_size,  half_size, normal3.x, normal3.y, normal3.z, 0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
-            -half_size, -half_size, -half_size, normal3.x, normal3.y, normal3.z, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
+            -half_size, -half_size, -half_size, normal3.x, normal3.y, normal3.z, 0.0, 0.0, 0.0, 1.0, -1.0,  1.0,
+            -half_size, -half_size,  half_size, normal3.x, normal3.y, normal3.z, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
                    0.0,      top_y,        0.0, normal3.x, normal3.y, normal3.z, 0.0, 0.0, 0.0, 1.0,  1.0,  0.0,
             // 4
-            -half_size, -half_size, -half_size, normal4.x, normal4.y, normal4.z, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
-             half_size, -half_size, -half_size, normal4.x, normal4.y, normal4.z, 0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
+             half_size, -half_size, -half_size, normal4.x, normal4.y, normal4.z, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
+            -half_size, -half_size, -half_size, normal4.x, normal4.y, normal4.z, 0.0, 0.0, 0.0, 1.0,  1.0, -1.0,
                    0.0,       top_y,       0.0, normal4.x, normal4.y, normal4.z, 0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
         ];
 
         let mut index_data: Vec<u16> = vec![];
-        index_data.extend_from_slice(&[0, 1, 2, 1, 3, 2]);
+        index_data.extend_from_slice(&[0, 1, 2, 0, 2, 3]);
         index_data.extend_from_slice(&[4, 5, 6]);
         index_data.extend_from_slice(&[7, 8, 9]);
         index_data.extend_from_slice(&[10, 11, 12]);
@@ -256,14 +256,14 @@ impl Mesh {
         let half_size = size / 2.0;
         #[rustfmt::skip]
         let vertex_data = [
-            -half_size, 0.0, -half_size, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0, -1.0,
-            -half_size, 0.0,  half_size, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0,  1.0,
-             half_size, 0.0, -half_size, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0,  1.0, -1.0,
-             half_size, 0.0,  half_size, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0,  1.0,  1.0,
+            -half_size, 0.0, -half_size,  0.0, 1.0, 0.0,  0.0, 0.0, 0.0, 0.0, -1.0, -1.0,
+            -half_size, 0.0,  half_size,  0.0, 1.0, 0.0,  0.0, 0.0, 0.0, 0.0, -1.0,  1.0,
+             half_size, 0.0,  half_size,  0.0, 1.0, 0.0,  0.0, 0.0, 0.0, 0.0,  1.0, -1.0,
+             half_size, 0.0, -half_size,  0.0, 1.0, 0.0,  0.0, 0.0, 0.0, 0.0,  1.0,  1.0,
         ];
 
         let mut index_data: Vec<u16> = vec![];
-        index_data.extend_from_slice(&[0, 1, 2, 2, 1, 3]);
+        index_data.extend_from_slice(&[0, 1, 2, 0, 2, 3]);
 
         Self::from_vertex_data(&vertex_data, Some(index_data))
     }

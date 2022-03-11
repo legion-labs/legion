@@ -35,11 +35,35 @@ impl TextureViewDef {
         }
     }
 
+    pub fn as_srv_with_mip_spec(texture_def: &TextureDef, first_mip: u32, mip_count: u32) -> Self {
+        Self {
+            gpu_view_type: GPUViewType::ShaderResource,
+            view_dimension: ViewDimension::_2D,
+            first_mip,
+            mip_count,
+            plane_slice: PlaneSlice::Default,
+            first_array_slice: 0,
+            array_size: texture_def.array_length,
+        }
+    }
+
     pub fn as_render_target_view(_texture: &TextureDef) -> Self {
         Self {
             gpu_view_type: GPUViewType::RenderTarget,
             view_dimension: ViewDimension::_2D,
             first_mip: 0,
+            mip_count: 1,
+            plane_slice: PlaneSlice::Default,
+            first_array_slice: 0,
+            array_size: 1,
+        }
+    }
+
+    pub fn as_rt_for_mip(_texture: &TextureDef, mip_index: u32) -> Self {
+        Self {
+            gpu_view_type: GPUViewType::RenderTarget,
+            view_dimension: ViewDimension::_2D,
+            first_mip: mip_index,
             mip_count: 1,
             plane_slice: PlaneSlice::Default,
             first_array_slice: 0,

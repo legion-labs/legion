@@ -71,7 +71,7 @@ impl RenderLayer {
         updater: &mut UniformGPUDataUpdater,
         count_buffer_offset: &mut u64,
         indirect_arg_buffer_offset: &mut u64,
-    ) -> u32 {
+    ) {
         if !self.cpu_render_set && !self.state_to_batch.is_empty() {
             let mut per_batch_offsets: Vec<(u32, u32)> = Vec::new();
             per_batch_offsets.resize(self.batches.len(), (0, 0));
@@ -94,7 +94,11 @@ impl RenderLayer {
             }
 
             updater.add_update_jobs(&per_state_offsets, self.state_page.offset());
+        }
+    }
 
+    pub fn offsets_va(&self) -> u32 {
+        if !self.cpu_render_set && !self.state_to_batch.is_empty() {
             self.state_page.offset() as u32
         } else {
             0

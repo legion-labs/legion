@@ -257,6 +257,10 @@ impl CommandBuffer {
         self.backend_cmd_dispatch(group_count_x, group_count_y, group_count_z);
     }
 
+    pub fn cmd_dispatch_indirect(&self, buffer: &Buffer, offset: u64) {
+        self.backend_cmd_dispatch_indirect(buffer, offset);
+    }
+
     pub fn cmd_resource_barrier(
         &self,
         buffer_barriers: &[BufferBarrier<'_>],

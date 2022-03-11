@@ -4,22 +4,8 @@
 #include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_picking_data.hlsl"
 #include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_va_table.hlsl"
 
+#include "crate://lgn-graphics-renderer/gpu/include/common.hsh"
 #include "crate://lgn-graphics-renderer/gpu/include/mesh.hsh"
-
-struct GpuPipelineVertexIn
-{
-    uint vertexId: SV_VertexID;
-    uint instanceId: SV_InstanceID;
-    uint va_table_address: INSTANCE0;
-};
-
-struct VertexIn {
-    float3 pos : POSITION;
-    float3 normal : NORMAL;
-    float3 tangent : TANGENT;
-    float4 color: COLOR;
-    float2 uv_coord : TEXCOORD0;
-};
 
 struct VertexOut {  
     float4 hpos : SV_POSITION;

@@ -12,3 +12,6 @@ pub(crate) use mesh_renderer::*;
 
 mod render_layer;
 pub(crate) use render_layer::*;
+
+mod hzb_surface;
+pub(crate) use hzb_surface::*;
