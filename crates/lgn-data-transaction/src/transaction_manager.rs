@@ -172,11 +172,8 @@ impl TransactionManager {
                 );
 
             info!(
-                "Loaded resource {} {:?} in ({:?})",
-                resource_id,
-                resource_registry
-                    .get_resource_type_name(kind)
-                    .unwrap_or("unknown"),
+                "Loaded resource {} {} in ({:?})",
+                resource_id, kind.as_pretty(),
                 start.elapsed(),
             );
         }
