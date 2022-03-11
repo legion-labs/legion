@@ -16,9 +16,9 @@
     ListOnItemsRenderedProps,
     ListOnScrollProps,
   } from "svelte-window";
-  import type { Log } from "../../types/log";
-  import { remToPx } from "../../lib/html";
-  import { debounced, recorded } from "../../lib/store";
+  import type { Log } from "../types/log";
+  import { remToPx } from "../lib/html";
+  import { debounced, recorded } from "../lib/store";
 
   const dispatch = createEventDispatcher<{
     /**

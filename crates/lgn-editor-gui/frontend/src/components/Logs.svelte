@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { ScrollStatus } from "@lgn/web-client/src/components/log/Log.svelte";
-  import Log from "@lgn/web-client/src/components/log/Log.svelte";
+  import type { ScrollStatus } from "@lgn/web-client/src/components/Log.svelte";
+  import Log from "@lgn/web-client/src/components/Log.svelte";
   import type { Log as LogMessage } from "@lgn/web-client/src/types/log";
   import { onMount } from "svelte";
   import type { Writable } from "svelte/store";
