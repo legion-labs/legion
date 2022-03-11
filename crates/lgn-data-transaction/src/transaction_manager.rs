@@ -173,7 +173,8 @@ impl TransactionManager {
 
             info!(
                 "Loaded resource {} {} in ({:?})",
-                resource_id, kind.as_pretty(),
+                resource_id,
+                kind.as_pretty(),
                 start.elapsed(),
             );
         }
