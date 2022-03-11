@@ -1,6 +1,7 @@
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_offline::{ResourcePathId, Transform};
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
+use lgn_tracing::warn;
 use std::{fmt, io, path::Path, sync::Arc};
 
 use crate::{
@@ -105,6 +106,24 @@ impl CompilerRegistryOptions {
         for (index, compiler_stub) in self.compilers.iter().enumerate() {
             match compiler_stub.info() {
                 Ok(compilers) => {
+                    let compilers = compilers
+                        .into_iter()
+                        .filter(|new_compiler| {
+                            let already_exists = infos.iter().any(|existing: &CompilerInfo| {
+                                existing.transform == new_compiler.transform
+                            });
+
+                            if already_exists {
+                                warn!(
+                                    "Multiple Compilers detected for transformation: {}!",
+                                    new_compiler.transform
+                                );
+                            }
+
+                            !already_exists
+                        })
+                        .collect::<Vec<_>>();
+
                     indices.extend(std::iter::repeat(index).take(compilers.len()));
                     infos.extend(compilers);
                 }

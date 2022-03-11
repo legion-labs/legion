@@ -35,6 +35,8 @@ struct Args {
 
 #[tokio::main]
 async fn main() {
+    let _telemetry_guard = lgn_telemetry_sink::TelemetryGuard::default().unwrap();
+
     let args = Args::parse();
 
     if args.clean {

@@ -18,6 +18,7 @@ lgn-graphics-data = { path = "../../crates/lgn-graphics-data", features = [
 ] }
 lgn-math = { path = "../../crates/lgn-math", version = "0.1.0" }
 lgn-utils = { path = "../../crates/lgn-utils", version = "0.1.0" }
+lgn-telemetry-sink = { path = "../../crates/lgn-telemetry-sink", version = "0.1.0" }
 
 generic-data = { path = "../generic-data", version = "0.1.0", features = [
     "offline",

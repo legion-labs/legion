@@ -8488,6 +8488,7 @@ dependencies = [
  "lgn-data-runtime",
  "lgn-graphics-data",
  "lgn-math",
+ "lgn-telemetry-sink",
  "lgn-utils",
  "png 0.17.5",
  "ron",
