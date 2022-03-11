@@ -1,10 +1,14 @@
+import { BehaviorSubject, Observable } from "rxjs";
 import { noop, safe_not_equal as safeNotEqual } from "svelte/internal";
 import type {
   StartStopNotifier,
   Subscriber,
   Unsubscriber,
   Updater,
+  Readable as SvelteReadable,
+  Writable as SvelteWritable,
 } from "svelte/store";
+import { get, derived, writable } from "svelte/store";
 
 /** A store orchestrator is an object that contains and orchestrate/manipulate store(s) but is not a store itself */
 export interface Orchestrator {
@@ -104,4 +108,75 @@ export class Writable<T> extends Readable<T> {
   override update(fn: Updater<T>): void {
     super.update(fn);
   }
+}
+
+/**
+ * Takes a readable/writable store and turns it into a `BehaviorSubject`
+ *
+ * When used with the auto subscribed operator `$` the value _can_ be
+ * `undefined` at runtime if you pipe the returned subject to some
+ * async operators (like `delay` for instance).
+ */
+export function fromStore<Value>(store: SvelteReadable<Value>) {
+  const subject = new BehaviorSubject<Value>(null as unknown as Value);
+
+  store.subscribe((value) => subject.next(value));
+
+  return subject;
+}
+
+/** Takes an Observable and turns into a Svelte's `Writable` store */
+export function toStore<Value>(observable: Observable<Value>) {
+  const store = writable<Value>();
+
+  observable.subscribe((value) => store.set(value));
+
+  return store;
+}
+
+export function debounced<Value>(
+  store: SvelteReadable<Value>,
+  time: number
+): SvelteReadable<Value> {
+  let initialized = false;
+
+  return derived(store, ($value, set) => {
+    if (!initialized) {
+      set($value);
+
+      initialized = true;
+
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      set($value);
+    }, time);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  });
+}
+
+export function recorded<Value>(
+  store: SvelteReadable<Value>
+): SvelteReadable<{ curr: Value; prev: Value | undefined }> {
+  let initialized = false;
+
+  const recorded: SvelteReadable<{ curr: Value; prev: Value | undefined }> =
+    derived(store, ($value, set) => {
+      if (!initialized) {
+        set({ curr: $value, prev: undefined });
+        initialized = true;
+
+        return;
+      }
+
+      const { curr } = get(recorded);
+
+      set({ curr: $value, prev: curr });
+    });
+
+  return recorded;
 }
