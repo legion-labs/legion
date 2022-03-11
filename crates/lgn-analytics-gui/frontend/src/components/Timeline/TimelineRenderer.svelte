@@ -129,13 +129,13 @@
 
 <svelte:window on:keydown={handleKeydown} bind:innerWidth={windowInnerWidth} />
 
-<div {style} class="main">
-  {#if stateStore && !$stateStore.ready}
-    <div class="flex items-center justify-center loader">
-      <BarLoader />
-    </div>
-  {/if}
+{#if stateStore && !$stateStore.ready}
+  <div class="flex items-center justify-center loader">
+    <BarLoader />
+  </div>
+{/if}
 
+<div {style} class="main">
   {#if stateManager?.process && $stateStore.ready}
     <div class="pb-1">
       <TimelineDetails process={stateManager?.process} />
