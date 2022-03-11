@@ -58,7 +58,9 @@ impl FramebufferVulkan {
             if let Some(first_color_rt) = framebuffer_def.color_attachments.first() {
                 let texture_def = first_color_rt.texture_view.texture().definition();
                 let view_def = first_color_rt.texture_view.definition();
-                let extents = texture_def.extents;
+                let mut extents = texture_def.extents;
+                extents.width >>= view_def.first_mip;
+                extents.height >>= view_def.first_mip;
                 (extents, view_def.array_size)
             } else if let Some(depth_rt) = &framebuffer_def.depth_stencil_attachment {
                 let texture_def = depth_rt.texture_view.texture().definition();

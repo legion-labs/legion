@@ -1,6 +1,5 @@
 #![allow(unsafe_code)]
 
-use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::{
     ColorClearValue, ColorRenderTargetBinding, DepthStencilClearValue,
     DepthStencilRenderTargetBinding, LoadOp, ResourceState, StoreOp,
@@ -15,10 +14,6 @@ use crate::{
 };
 
 pub struct TmpRenderPass {}
-
-embedded_watched_file!(INCLUDE_BRDF, "gpu/include/brdf.hsh");
-embedded_watched_file!(INCLUDE_MESH, "gpu/include/mesh.hsh");
-embedded_watched_file!(SHADER_SHADER, "gpu/shaders/shader.hlsl");
 
 impl TmpRenderPass {
     #[span_fn]
@@ -38,8 +33,8 @@ impl TmpRenderPass {
                 clear_value: ColorClearValue([0.2, 0.2, 0.2, 1.0]),
             }],
             &Some(DepthStencilRenderTargetBinding {
-                texture_view: render_surface.depth_stencil_texture_view(),
-                depth_load_op: LoadOp::Clear,
+                texture_view: render_surface.depth_stencil_rt_view(),
+                depth_load_op: LoadOp::Load,
                 stencil_load_op: LoadOp::DontCare,
                 depth_store_op: StoreOp::Store,
                 stencil_store_op: StoreOp::DontCare,

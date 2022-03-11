@@ -257,6 +257,10 @@ impl CommandBuffer {
         unimplemented!()
     }
 
+    pub fn backend_cmd_dispatch_indirect(&self, buffer: &Buffer, offset: u64) {
+        unimplemented!()
+    }
+
     pub(crate) fn backedn_cmd_resource_barrier(
         &self,
         buffer_barriers: &[BufferBarrier<'_>],

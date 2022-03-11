@@ -1,0 +1,29 @@
+pub fn main() {    
+    [
+        #{
+            type: "DescriptorSet",
+            name: "HzbDescriptorSet",
+            frequency: 0,
+            descriptors: [
+                #{name: "depth_texture", type: "Texture2D", content:"Float1" },
+                #{name: "depth_sampler", type: "Sampler" },    
+            ]
+        },
+        #{
+            type: "PipelineLayout",
+            name: "HzbPipelineLayout",
+            descriptor_sets: [ "HzbDescriptorSet" ],
+        },
+        #{            
+            type: "Shader",
+            name: "HzbShader",
+            path: "gpu/shaders/hzb.hlsl",
+            pipeline_layout: "HzbPipelineLayout",
+            instances: [
+                #{                      
+                    stages: [ "VS", "PS" ],
+                },
+            ]            
+        }
+    ]
+}

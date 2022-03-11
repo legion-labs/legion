@@ -106,6 +106,7 @@ impl CameraComponent {
         camera_props.set_inv_projection(projection_matrix.inverse().into());
         camera_props.set_projection_view(view_proj_matrix.into());
         camera_props.set_inv_projection_view(view_proj_matrix.inverse().into());
+        camera_props.set_culling_planes(self.build_culling_planes(output_width / output_height));
         camera_props.set_screen_size(
             Vec4::new(
                 picking_width,

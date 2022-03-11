@@ -586,6 +586,22 @@ impl<'a> TextureBarrier<'a> {
             mip_slice: None,
         }
     }
+
+    pub fn state_transition_for_mip(
+        texture: &'a Texture,
+        src_state: ResourceState,
+        dst_state: ResourceState,
+        mip_slice: Option<u8>,
+    ) -> Self {
+        Self {
+            texture,
+            src_state,
+            dst_state,
+            queue_transition: BarrierQueueTransition::None,
+            array_slice: None,
+            mip_slice,
+        }
+    }
 }
 
 /// Represents an image owned by the swapchain

@@ -1,0 +1,19 @@
+#ifndef COMMON_HSH
+#define COMMON_HSH
+
+struct GpuPipelineVertexIn
+{
+    uint vertexId: SV_VertexID;
+    uint instanceId: SV_InstanceID;
+    uint va_table_address: INSTANCE0;
+};
+
+struct VertexIn {
+    float3 pos : POSITION;
+    float3 normal : NORMAL;
+    float3 tangent : TANGENT;
+    float4 color: COLOR;
+    float2 uv_coord : TEXCOORD0;
+};
+
+#endif

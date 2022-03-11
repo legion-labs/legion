@@ -5,6 +5,8 @@ mod const_color;
 mod picking;
 mod default_shader;
 mod culling;
+mod hzb;
+mod depth_shader;
 
 const PERSISTENT_DESCRIPTOR_SET_FREQUENCY   = 0;
 const FRAME_DESCRIPTOR_SET_FREQUENCY        = 1;
@@ -32,6 +34,7 @@ pub fn main() {
             #{ name:"inv_projection", ty:"Float4x4" },
             #{ name:"projection_view", ty:"Float4x4" },
             #{ name:"inv_projection_view", ty:"Float4x4" },
+            #{ name:"culling_planes", ty:"Float4", array_len:6 },
             #{ name:"screen_size", ty:"Float4" },
             #{ name:"cursor_pos", ty:"Float2" },
         ]
@@ -146,16 +149,19 @@ pub fn main() {
         name: "ViewDescriptorSet",
         frequency: VIEW_DESCRIPTOR_SET_FREQUENCY,
         descriptors: [
-            #{ type:"ConstantBuffer", name:"view_data", content:"ViewData" },            
+            #{name: "view_data", type:"ConstantBuffer", content:"ViewData" },            
+            #{name: "hzb_texture", type: "Texture2D", content:"Float1" },
         ]
     };
     products.push( view_descriptor_set );
 
     products.extend( egui::main() );
+    products.extend( hzb::main() );
     products.extend( const_color::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );    
     products.extend( picking::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );    
     products.extend( default_shader::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );        
-	products.extend( culling::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );
+    products.extend( culling::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );     
+    products.extend( depth_shader::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );        
 
     products
 }

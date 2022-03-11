@@ -2,9 +2,9 @@ use std::{cmp::max, sync::Arc};
 
 use lgn_ecs::prelude::Component;
 use lgn_graphics_api::{
-    DeviceContext, Extents2D, Extents3D, Format, MemoryUsage, ResourceFlags, ResourceState,
-    ResourceUsage, Semaphore, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView,
-    TextureViewDef,
+    DepthStencilClearValue, DepthStencilRenderTargetBinding, DeviceContext, Extents2D, Extents3D,
+    Format, LoadOp, MemoryUsage, ResourceFlags, ResourceState, ResourceUsage, Semaphore, StoreOp,
+    Texture, TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef,
 };
 use lgn_window::WindowId;
 use parking_lot::RwLock;
@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::egui::egui_pass::EguiPass;
+use crate::gpu_renderer::HzbSurface;
 use crate::hl_gfx_api::HLCommandBuffer;
 use crate::render_pass::{DebugRenderPass, PickingRenderPass};
 use crate::resources::PipelineManager;
@@ -95,11 +96,19 @@ struct SizeDependentResources {
     texture_rtv: TextureView,
     texture_state: ResourceState,
     depth_stencil_texture: Texture,
-    depth_stencil_texture_view: TextureView,
+    depth_stencil_rt_view: TextureView,
+    depth_stencil_srv_view: TextureView,
+    depth_stencil_state: ResourceState,
+    hzb_surface: HzbSurface,
+    hzb_init: bool,
 }
 
 impl SizeDependentResources {
-    fn new(device_context: &DeviceContext, extents: RenderSurfaceExtents) -> Self {
+    fn new(
+        device_context: &DeviceContext,
+        extents: RenderSurfaceExtents,
+        pipeline_manager: &PipelineManager,
+    ) -> Self {
         let texture_def = TextureDef {
             extents: Extents3D {
                 width: extents.width(),
@@ -133,17 +142,20 @@ impl SizeDependentResources {
             array_length: 1,
             mip_count: 1,
             format: Format::D32_SFLOAT,
-            usage_flags: ResourceUsage::AS_DEPTH_STENCIL,
+            usage_flags: ResourceUsage::AS_DEPTH_STENCIL | ResourceUsage::AS_SHADER_RESOURCE,
             resource_flags: ResourceFlags::empty(),
             mem_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Optimal,
         };
 
         let depth_stencil_texture = device_context.create_texture(&depth_stencil_def);
-        let depth_stencil_texture_view_def =
-            TextureViewDef::as_depth_stencil_view(&depth_stencil_def);
-        let depth_stencil_texture_view =
-            depth_stencil_texture.create_view(&depth_stencil_texture_view_def);
+
+        let depth_stencil_rt_view_def = TextureViewDef::as_depth_stencil_view(&depth_stencil_def);
+        let depth_stencil_rt_view = depth_stencil_texture.create_view(&depth_stencil_rt_view_def);
+
+        let depth_stencil_srv_view_def =
+            TextureViewDef::as_shader_resource_view(&depth_stencil_def);
+        let depth_stencil_srv_view = depth_stencil_texture.create_view(&depth_stencil_srv_view_def);
 
         Self {
             texture,
@@ -151,7 +163,11 @@ impl SizeDependentResources {
             texture_rtv,
             texture_state: ResourceState::UNDEFINED,
             depth_stencil_texture,
-            depth_stencil_texture_view,
+            depth_stencil_rt_view,
+            depth_stencil_srv_view,
+            depth_stencil_state: ResourceState::UNDEFINED,
+            hzb_surface: HzbSurface::new(device_context, extents, pipeline_manager),
+            hzb_init: false,
         }
     }
 }
@@ -196,9 +212,14 @@ impl RenderSurface {
         self.egui_renderpass.clone()
     }
 
-    pub fn resize(&mut self, device_context: &DeviceContext, extents: RenderSurfaceExtents) {
+    pub fn resize(
+        &mut self,
+        device_context: &DeviceContext,
+        extents: RenderSurfaceExtents,
+        pipeline_manager: &PipelineManager,
+    ) {
         if self.extents != extents {
-            self.resources = SizeDependentResources::new(device_context, extents);
+            self.resources = SizeDependentResources::new(device_context, extents, pipeline_manager);
             for presenter in &mut self.presenters {
                 presenter.resize(device_context, extents);
             }
@@ -227,8 +248,12 @@ impl RenderSurface {
         &self.resources.texture_srv
     }
 
-    pub fn depth_stencil_texture_view(&self) -> &TextureView {
-        &self.resources.depth_stencil_texture_view
+    pub fn depth_stencil_rt_view(&self) -> &TextureView {
+        &self.resources.depth_stencil_rt_view
+    }
+
+    pub fn depth_stencil_srv_view(&self) -> &TextureView {
+        &self.resources.depth_stencil_srv_view
     }
 
     pub fn transition_to(&mut self, cmd_buffer: &HLCommandBuffer<'_>, dst_state: ResourceState) {
@@ -246,6 +271,77 @@ impl RenderSurface {
             );
             self.resources.texture_state = dst_state;
         }
+    }
+
+    pub fn transition_depth_to(
+        &mut self,
+        cmd_buffer: &HLCommandBuffer<'_>,
+        dst_state: ResourceState,
+    ) {
+        let src_state = self.resources.depth_stencil_state;
+        let dst_state = dst_state;
+
+        if src_state != dst_state {
+            cmd_buffer.resource_barrier(
+                &[],
+                &[TextureBarrier::state_transition(
+                    &self.resources.depth_stencil_texture,
+                    src_state,
+                    dst_state,
+                )],
+            );
+            self.resources.depth_stencil_state = dst_state;
+        }
+    }
+
+    pub(crate) fn init_hzb_if_needed(
+        &mut self,
+        render_context: &RenderContext<'_>,
+        cmd_buffer: &mut HLCommandBuffer<'_>,
+    ) {
+        if !self.resources.hzb_init {
+            self.transition_depth_to(cmd_buffer, ResourceState::DEPTH_WRITE);
+
+            cmd_buffer.begin_render_pass(
+                &[],
+                &Some(DepthStencilRenderTargetBinding {
+                    texture_view: self.depth_stencil_rt_view(),
+                    depth_load_op: LoadOp::Clear,
+                    stencil_load_op: LoadOp::DontCare,
+                    depth_store_op: StoreOp::Store,
+                    stencil_store_op: StoreOp::DontCare,
+                    clear_value: DepthStencilClearValue {
+                        depth: 1.0,
+                        stencil: 0,
+                    },
+                }),
+            );
+            cmd_buffer.end_render_pass();
+
+            self.generate_hzb(render_context, cmd_buffer);
+
+            self.resources.hzb_init = true;
+        }
+    }
+
+    pub(crate) fn generate_hzb(
+        &mut self,
+        render_context: &RenderContext<'_>,
+        cmd_buffer: &mut HLCommandBuffer<'_>,
+    ) {
+        self.transition_depth_to(cmd_buffer, ResourceState::PIXEL_SHADER_RESOURCE);
+
+        self.get_hzb_surface().generate_hzb(
+            render_context,
+            cmd_buffer,
+            self.depth_stencil_srv_view(),
+        );
+
+        self.transition_depth_to(cmd_buffer, ResourceState::DEPTH_WRITE);
+    }
+
+    pub(crate) fn get_hzb_surface(&self) -> &HzbSurface {
+        &self.resources.hzb_surface
     }
 
     pub fn present(&mut self, render_context: &RenderContext<'_>) {
@@ -288,7 +384,7 @@ impl RenderSurface {
         Self {
             id,
             extents,
-            resources: SizeDependentResources::new(device_context, extents),
+            resources: SizeDependentResources::new(device_context, extents, pipeline_manager),
             num_render_frames,
             render_frame_idx: 0,
             signal_sems,
