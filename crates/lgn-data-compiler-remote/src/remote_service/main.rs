@@ -1,3 +1,7 @@
+//! Remote Data Compiler
+//!
+//! TODO: write documentation.
+
 use clap::StructOpt;
 use lgn_tracing::LevelFilter;
 
