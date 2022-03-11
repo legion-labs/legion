@@ -21,7 +21,9 @@ use crate::{
 #[derive(thiserror::Error, Debug)]
 pub enum AssetRegistryError {
     /// Error when a resource failed to load
-    #[error("Dependent Resource '{resource}' failed loading because '{parent}': {parent_error}")]
+    #[error(
+        "Dependent Resource '{resource:?}' failed loading because '{parent:?}': {parent_error}"
+    )]
     ResourceDependentLoadFailed {
         /// Resource try to load
         resource: ResourceTypeAndId,
@@ -32,19 +34,19 @@ pub enum AssetRegistryError {
     },
 
     /// Error when a resource is not found
-    #[error("Resource '{0}' was not found")]
+    #[error("Resource '{0:?}' was not found")]
     ResourceNotFound(ResourceTypeAndId),
 
     /// General IO Error when loading a resource
-    #[error("Resource '{0}' IO error: {1}")]
+    #[error("Resource '{0:?}' IO error: {1}")]
     ResourceIOError(ResourceTypeAndId, std::io::Error),
 
     /// Type mismatched
-    #[error("Resource '{0}' type mistmached: {1} expected {2}")]
+    #[error("Resource '{0:?}' type mistmached: {1} expected {2}")]
     ResourceTypeMismatch(ResourceTypeAndId, String, String),
 
     /// Version mismatched
-    #[error("Resource '{0}' type mistmached: {1} expected {2}")]
+    #[error("Resource '{0:?}' type mistmached: {1} expected {2}")]
     ResourceVersionMismatch(ResourceTypeAndId, u16, u16),
 
     /// AssetLoader for a type not present
@@ -52,7 +54,7 @@ pub enum AssetRegistryError {
     AssetLoaderNotFound(ResourceType),
 
     /// AssetLoader for a type not present
-    #[error("Resource '{0}' failed to load. {1}")]
+    #[error("Resource '{0:?}' failed to load. {1}")]
     AssetLoaderFailed(ResourceTypeAndId, AssetLoaderError),
 
     /// General IO Error

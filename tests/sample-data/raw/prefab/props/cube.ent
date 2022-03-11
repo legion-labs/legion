@@ -15,7 +15,7 @@
             shadow_receiver: true,
             shadow_caster_sun: true,
             shadow_caster_local: true,
-            gi_contribution: 0,
+            gi_contribution: Default,
         )),
     ],
 )

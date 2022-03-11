@@ -54,7 +54,7 @@ impl Manifest {
     /// apply the chnages to our manifest and only retain what's changed/new
     pub fn get_delta(&self, other: &Self) -> Vec<ResourceTypeAndId> {
         let guard = self.0.pin();
-        other
+        let mut changed = other
             .0
             .pin()
             .iter()
@@ -69,7 +69,10 @@ impl Manifest {
                     Some(*id)
                 }
             })
-            .collect::<Vec<_>>()
+            .collect::<Vec<_>>();
+
+        changed.sort();
+        changed
     }
 }
 

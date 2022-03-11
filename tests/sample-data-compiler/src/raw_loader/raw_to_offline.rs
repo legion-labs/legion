@@ -183,13 +183,12 @@ impl FromRaw<raw_data::Visual> for offline_data::Visual {
             shadow_receiver: raw.shadow_receiver,
             shadow_caster_sun: raw.shadow_caster_sun,
             shadow_caster_local: raw.shadow_caster_local,
-            gi_contribution: raw.gi_contribution,
+            gi_contribution: raw.gi_contribution.into(),
         }
     }
 }
 
-/*
-impl From<raw_data::GIContribution> for offline_data::GIContribution {
+impl From<raw_data::GIContribution> for sample_data::GIContribution {
     fn from(raw: raw_data::GIContribution) -> Self {
         match raw {
             raw_data::GIContribution::Default => Self::Default,
@@ -197,7 +196,7 @@ impl From<raw_data::GIContribution> for offline_data::GIContribution {
             raw_data::GIContribution::Exclude => Self::Exclude,
         }
     }
-}*/
+}
 
 impl From<raw_data::GlobalIllumination> for offline_data::GlobalIllumination {
     fn from(_raw: raw_data::GlobalIllumination) -> Self {
@@ -236,19 +235,19 @@ impl From<raw_data::View> for offline_data::View {
             fov: raw.fov,
             near: raw.near,
             far: raw.far,
-            projection_type: raw.projection_type as usize,
+            projection_type: raw.projection_type.into(),
         }
     }
 }
 
-/*impl From<raw_data::ProjectionType> for offline_data::ProjectionType {
+impl From<raw_data::ProjectionType> for sample_data::ProjectionType {
     fn from(raw: raw_data::ProjectionType) -> Self {
         match raw {
             raw_data::ProjectionType::Orthogonal => Self::Orthogonal,
             raw_data::ProjectionType::Perspective => Self::Perspective,
         }
     }
-}*/
+}
 
 impl From<raw_data::Light> for offline_data::Light {
     fn from(raw: raw_data::Light) -> Self {
