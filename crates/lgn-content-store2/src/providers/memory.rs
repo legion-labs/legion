@@ -7,14 +7,15 @@ use async_trait::async_trait;
 use tokio::sync::RwLock;
 
 use crate::{
-    ContentAsyncRead, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
-    Uploader, UploaderImpl,
+    AliasRegisterer, AliasResolver, ContentAsyncRead, ContentAsyncWrite, ContentReader,
+    ContentWriter, Error, Identifier, Result, Uploader, UploaderImpl,
 };
 
 /// A `LocalProvider` is a provider that stores content on the local filesystem.
 #[derive(Default, Debug, Clone)]
 pub struct MemoryProvider {
-    map: Arc<RwLock<HashMap<Identifier, Vec<u8>>>>,
+    content_map: Arc<RwLock<HashMap<Identifier, Vec<u8>>>>,
+    alias_map: Arc<RwLock<HashMap<(String, String), Identifier>>>,
 }
 
 impl MemoryProvider {
@@ -26,9 +27,34 @@ impl MemoryProvider {
 }
 
 #[async_trait]
+impl AliasResolver for MemoryProvider {
+    async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
+        let map = self.alias_map.read().await;
+        let k = (key_space.to_string(), key.to_string());
+
+        map.get(&k).cloned().ok_or(Error::NotFound)
+    }
+}
+
+#[async_trait]
+impl AliasRegisterer for MemoryProvider {
+    async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
+        let k = (key_space.to_string(), key.to_string());
+
+        if self.alias_map.read().await.contains_key(&k) {
+            return Err(Error::AlreadyExists);
+        }
+
+        self.alias_map.write().await.insert(k, id.clone());
+
+        Ok(())
+    }
+}
+
+#[async_trait]
 impl ContentReader for MemoryProvider {
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
-        let map = self.map.read().await;
+        let map = self.content_map.read().await;
 
         match map.get(id) {
             Some(content) => Ok(Box::pin(std::io::Cursor::new(content.clone()))),
@@ -40,7 +66,7 @@ impl ContentReader for MemoryProvider {
         &self,
         ids: &'ids BTreeSet<Identifier>,
     ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
-        let map = self.map.read().await;
+        let map = self.content_map.read().await;
 
         let res = ids
             .iter()
@@ -64,13 +90,13 @@ impl ContentReader for MemoryProvider {
 #[async_trait]
 impl ContentWriter for MemoryProvider {
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
-        if self.map.read().await.contains_key(id) {
+        if self.content_map.read().await.contains_key(id) {
             Err(Error::AlreadyExists)
         } else {
             Ok(Box::pin(MemoryUploader::new(
                 id.clone(),
                 MemoryUploaderImpl {
-                    map: Arc::clone(&self.map),
+                    map: Arc::clone(&self.content_map),
                 },
             )))
         }

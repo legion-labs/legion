@@ -8,14 +8,15 @@ use lru::LruCache;
 use tokio::sync::Mutex;
 
 use crate::{
-    ContentAsyncRead, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
-    Uploader, UploaderImpl,
+    AliasRegisterer, AliasResolver, ContentAsyncRead, ContentAsyncWrite, ContentReader,
+    ContentWriter, Error, Identifier, Result, Uploader, UploaderImpl,
 };
 
 /// A `LocalProvider` is a provider that stores content on the local filesystem.
 #[derive(Debug, Clone)]
 pub struct LruProvider {
-    map: Arc<Mutex<LruCache<Identifier, Vec<u8>>>>,
+    content_map: Arc<Mutex<LruCache<Identifier, Vec<u8>>>>,
+    alias_map: Arc<Mutex<LruCache<(String, String), Identifier>>>,
 }
 
 impl LruProvider {
@@ -23,15 +24,42 @@ impl LruProvider {
     /// process memory.
     pub fn new(size: usize) -> Self {
         Self {
-            map: Arc::new(Mutex::new(LruCache::new(size))),
+            content_map: Arc::new(Mutex::new(LruCache::new(size))),
+            alias_map: Arc::new(Mutex::new(LruCache::new(size))),
         }
+    }
+}
+
+#[async_trait]
+impl AliasResolver for LruProvider {
+    async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
+        let mut map = self.alias_map.lock().await;
+        let k = (key_space.to_string(), key.to_string());
+
+        map.get(&k).cloned().ok_or(Error::NotFound)
+    }
+}
+
+#[async_trait]
+impl AliasRegisterer for LruProvider {
+    async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
+        let k = (key_space.to_string(), key.to_string());
+        let mut map = self.alias_map.lock().await;
+
+        if map.contains(&k) {
+            return Err(Error::AlreadyExists);
+        }
+
+        map.put(k, id.clone());
+
+        Ok(())
     }
 }
 
 #[async_trait]
 impl ContentReader for LruProvider {
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
-        let mut map = self.map.lock().await;
+        let mut map = self.content_map.lock().await;
 
         match map.get(id) {
             Some(content) => Ok(Box::pin(std::io::Cursor::new(content.clone()))),
@@ -43,7 +71,7 @@ impl ContentReader for LruProvider {
         &self,
         ids: &'ids BTreeSet<Identifier>,
     ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
-        let mut map = self.map.lock().await;
+        let mut map = self.content_map.lock().await;
 
         let res = ids
             .iter()
@@ -67,13 +95,13 @@ impl ContentReader for LruProvider {
 #[async_trait]
 impl ContentWriter for LruProvider {
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
-        if self.map.lock().await.get(id).is_some() {
+        if self.content_map.lock().await.get(id).is_some() {
             Err(Error::AlreadyExists)
         } else {
             Ok(Box::pin(MemoryUploader::new(
                 id.clone(),
                 MemoryUploaderImpl {
-                    map: Arc::clone(&self.map),
+                    map: Arc::clone(&self.content_map),
                 },
             )))
         }

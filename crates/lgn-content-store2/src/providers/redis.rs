@@ -6,8 +6,8 @@ use std::{
 };
 
 use crate::{
-    traits::get_content_readers_impl, ContentAsyncRead, ContentAsyncWrite, ContentReader,
-    ContentWriter, Error, Identifier, Result,
+    traits::get_content_readers_impl, AliasRegisterer, AliasResolver, ContentAsyncRead,
+    ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
 };
 
 use super::{Uploader, UploaderImpl};
@@ -45,7 +45,7 @@ impl RedisProvider {
             .await
             .map_err(|err| anyhow::anyhow!("failed to get connection to Redis: {}", err))?;
 
-        let key = self.get_key(id);
+        let key = self.get_content_key(id);
 
         match con.del::<_, bool>(&key).await {
             Ok(true) => Ok(()),
@@ -63,15 +63,87 @@ impl RedisProvider {
         }
     }
 
-    pub(crate) fn get_key(&self, id: &Identifier) -> String {
-        Self::get_key_with_prefix(id, &self.key_prefix)
+    pub(crate) fn get_content_key(&self, id: &Identifier) -> String {
+        Self::get_content_key_with_prefix(id, &self.key_prefix)
     }
 
-    pub(crate) fn get_key_with_prefix(id: &Identifier, key_prefix: &str) -> String {
+    pub(crate) fn get_content_key_with_prefix(id: &Identifier, key_prefix: &str) -> String {
         if key_prefix.is_empty() {
-            id.to_string()
+            format!("content:{}", id)
         } else {
-            format!("{}:{}", key_prefix, id)
+            format!("{}:content:{}", key_prefix, id)
+        }
+    }
+
+    pub(crate) fn get_alias_key(&self, key_space: &str, key: &str) -> String {
+        Self::get_alias_key_with_prefix(key_space, key, &self.key_prefix)
+    }
+
+    pub(crate) fn get_alias_key_with_prefix(
+        key_space: &str,
+        key: &str,
+        key_prefix: &str,
+    ) -> String {
+        if key_prefix.is_empty() {
+            format!("alias:{}:{}", key_space, key)
+        } else {
+            format!("{}:alias:{}:{}", key_prefix, key_space, key)
+        }
+    }
+}
+
+#[async_trait]
+impl AliasResolver for RedisProvider {
+    async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
+        let mut con = self
+            .client
+            .get_async_connection()
+            .await
+            .map_err(|err| anyhow::anyhow!("failed to get connection to Redis: {}", err))?;
+
+        let k = self.get_alias_key(key_space, key);
+
+        match con.get::<_, Option<Vec<u8>>>(&k).await {
+            Ok(Some(value)) => Identifier::read_from(std::io::Cursor::new(value)),
+            Ok(None) => Err(Error::NotFound),
+            Err(err) => Err(anyhow::anyhow!(
+                "failed to resolve alias from Redis for key `{}`: {}",
+                k,
+                err
+            )
+            .into()),
+        }
+    }
+}
+
+#[async_trait]
+impl AliasRegisterer for RedisProvider {
+    async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
+        let mut con = self
+            .client
+            .get_async_connection()
+            .await
+            .map_err(|err| anyhow::anyhow!("failed to get connection to Redis: {}", err))?;
+
+        let k = self.get_alias_key(key_space, key);
+
+        match con.exists(&k).await {
+            Ok(true) => Err(Error::AlreadyExists),
+            Ok(false) => match con.set_nx(&k, id.as_vec()).await {
+                Ok(()) => Ok(()),
+                Err(err) => Err(anyhow::anyhow!(
+                    "failed to register alias in Redis for key `{}`: {}",
+                    k,
+                    err
+                )
+                .into()),
+            },
+            Err(err) => {
+                Err(
+                    anyhow::anyhow!("failed to check if alias exists for key `{}`: {}", k, err)
+                        .into(),
+                )
+            }
         }
     }
 }
@@ -85,7 +157,7 @@ impl ContentReader for RedisProvider {
             .await
             .map_err(|err| anyhow::anyhow!("failed to get connection to Redis: {}", err))?;
 
-        let key = self.get_key(id);
+        let key = self.get_content_key(id);
 
         match con.get::<_, Option<Vec<u8>>>(&key).await {
             Ok(Some(value)) => Ok(Box::pin(Cursor::new(value))),
@@ -110,7 +182,7 @@ impl ContentReader for RedisProvider {
 #[async_trait]
 impl ContentWriter for RedisProvider {
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
-        let key = self.get_key(id);
+        let key = self.get_content_key(id);
 
         let mut con = self
             .client
@@ -147,7 +219,7 @@ struct RedisUploaderImpl {
 #[async_trait]
 impl UploaderImpl for RedisUploaderImpl {
     async fn upload(self, data: Vec<u8>, id: Identifier) -> Result<()> {
-        let key = RedisProvider::get_key_with_prefix(&id, &self.key_prefix);
+        let key = RedisProvider::get_content_key_with_prefix(&id, &self.key_prefix);
 
         let mut con = self
             .client

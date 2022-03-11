@@ -1,3 +1,16 @@
+macro_rules! assert_alias_not_found {
+    ($provider:expr, $key_space:expr, $key:expr) => {{
+        match $provider.read_alias($key_space, $key).await {
+            Ok(_) => panic!(
+                "alias was found with the specified key `{}/{}`",
+                $key_space, $key
+            ),
+            Err(Error::NotFound {}) => {}
+            Err(err) => panic!("unexpected error: {}", err),
+        };
+    }};
+}
+
 macro_rules! assert_content_not_found {
     ($provider:expr, $id:expr) => {{
         match $provider.read_content(&$id).await {
@@ -5,6 +18,17 @@ macro_rules! assert_content_not_found {
             Err(Error::NotFound {}) => {}
             Err(err) => panic!("unexpected error: {}", err),
         };
+    }};
+}
+
+macro_rules! assert_read_alias {
+    ($provider:expr, $key_space:expr, $key:expr, $expected_content:expr) => {{
+        let content = $provider
+            .read_alias($key_space, $key)
+            .await
+            .expect("failed to read alias");
+
+        assert_eq!(content, $expected_content);
     }};
 }
 
@@ -63,6 +87,16 @@ macro_rules! assert_read_contents {
     }};
 }
 
+macro_rules! assert_write_alias {
+    ($provider:expr, $key_space:expr, $key:expr, $content:expr) => {{
+        #[allow(clippy::string_lit_as_bytes)]
+        $provider
+            .write_alias($key_space, $key, $content)
+            .await
+            .expect("failed to write alias")
+    }};
+}
+
 macro_rules! assert_write_content {
     ($provider:expr, $content:expr) => {{
         #[allow(clippy::string_lit_as_bytes)]
@@ -88,6 +122,6 @@ macro_rules! assert_write_avoided {
 }
 
 pub(crate) use {
-    assert_content_not_found, assert_read_content, assert_read_contents, assert_write_avoided,
-    assert_write_content,
+    assert_alias_not_found, assert_content_not_found, assert_read_alias, assert_read_content,
+    assert_read_contents, assert_write_alias, assert_write_avoided, assert_write_content,
 };

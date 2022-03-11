@@ -5,9 +5,10 @@ use std::{
 };
 
 use lgn_content_store2::{
-    CachingProvider, ChunkIdentifier, Chunker, ContentAddressReader, ContentAddressWriter,
-    ContentReaderExt, ContentWriter, ContentWriterExt, Error, GrpcProvider, GrpcService,
-    Identifier, LocalProvider, MemoryProvider, SmallContentProvider,
+    AliasContentReaderExt, AliasContentWriterExt, CachingProvider, ChunkIdentifier, Chunker,
+    ContentAddressReader, ContentAddressWriter, ContentReaderExt, ContentWriter, ContentWriterExt,
+    Error, GrpcProvider, GrpcService, Identifier, LocalProvider, MemoryProvider,
+    SmallContentProvider,
 };
 
 #[cfg(feature = "lru")]
@@ -110,6 +111,11 @@ async fn test_memory_provider() {
         [id, fake_id],
         [Ok(&BIG_DATA_A), Err(Error::NotFound)]
     );
+
+    // MemoryProvider also implements AliasProvider.
+    assert_alias_not_found!(provider, "space", "mykey");
+    assert_write_alias!(provider, "space", "mykey", &BIG_DATA_A);
+    assert_read_alias!(provider, "space", "mykey", &BIG_DATA_A);
 }
 
 #[cfg(feature = "lru")]
@@ -147,6 +153,11 @@ async fn test_lru_provider() {
     assert_read_content!(provider, id, &BIG_DATA_A);
     assert_write_content!(provider, &BIGGER_DATA_A);
     assert_read_content!(provider, id, &BIG_DATA_A);
+
+    // LruProvider also implements AliasProvider.
+    assert_alias_not_found!(provider, "space", "mykey");
+    assert_write_alias!(provider, "space", "mykey", &BIG_DATA_A);
+    assert_read_alias!(provider, "space", "mykey", &BIG_DATA_A);
 }
 
 #[tokio::test]
@@ -190,6 +201,12 @@ async fn test_caching_provider() {
         [Ok(&BIGGER_DATA_A), Err(Error::NotFound)]
     );
     assert_read_content!(local_provider, id, &BIGGER_DATA_A);
+
+    // A CachingProvider should also implement AliasProvider is the providers
+    // themselves implement AliasProvider.
+    assert_alias_not_found!(provider, "space", "mykey");
+    assert_write_alias!(provider, "space", "mykey", &BIG_DATA_A);
+    assert_read_alias!(provider, "space", "mykey", &BIG_DATA_A);
 }
 
 #[tokio::test]
@@ -338,10 +355,19 @@ async fn test_aws_dynamodb_provider() {
         [Ok(data), Err(Error::NotFound)]
     );
 
+    // DynamoDbProvider also implements AliasProvider.
+    assert_alias_not_found!(provider, "space", "mykey");
+    assert_write_alias!(provider, "space", "mykey", &BIG_DATA_A);
+    assert_read_alias!(provider, "space", "mykey", &BIG_DATA_A);
+
     provider
         .delete_content(&id)
         .await
         .expect("failed to delete content");
+    provider
+        .delete_alias("space", "mykey")
+        .await
+        .expect("failed to delete alias");
 }
 
 #[cfg(feature = "redis")]
@@ -379,6 +405,11 @@ async fn test_redis_provider() {
         [Ok(data), Err(Error::NotFound)]
     );
 
+    // RedisProvider also implements AliasProvider.
+    assert_alias_not_found!(provider, "space", "mykey");
+    assert_write_alias!(provider, "space", "mykey", &BIG_DATA_A);
+    assert_read_alias!(provider, "space", "mykey", &BIG_DATA_A);
+
     provider
         .delete_content(&id)
         .await
@@ -390,21 +421,14 @@ async fn test_grpc_provider() {
     // To debug this test more easily, you may want to specify: RUST_LOG=httptest=debug
     let _ = pretty_env_logger::try_init();
 
-    let root = tempfile::tempdir().expect("failed to create temp directory");
-    let local_provider = LocalProvider::new(root.path())
-        .await
-        .expect("failed to create local provider");
+    let provider = MemoryProvider::new();
 
     let http_server = httptest::Server::run();
 
     let address_provider = Arc::new(FakeContentAddressProvider::new(
         http_server.url("/").to_string(),
     ));
-    let service = GrpcService::new(
-        local_provider,
-        Arc::clone(&address_provider),
-        BIG_DATA_A.len(),
-    );
+    let service = GrpcService::new(provider, Arc::clone(&address_provider), BIG_DATA_A.len());
     let service = lgn_content_store_proto::content_store_server::ContentStoreServer::new(service);
     let server = tonic::transport::Server::builder().add_service(service);
 
@@ -512,6 +536,11 @@ async fn test_grpc_provider() {
                 Err(Error::NotFound)
             ]
         );
+
+        // GrpcProvider also implements AliasProvider.
+        assert_alias_not_found!(provider, "space", "mykey");
+        assert_write_alias!(provider, "space", "mykey", &BIG_DATA_A);
+        assert_read_alias!(provider, "space", "mykey", &BIG_DATA_A);
     }
 
     loop {

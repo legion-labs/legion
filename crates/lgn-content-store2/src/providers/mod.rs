@@ -1,3 +1,4 @@
+mod aliaser;
 #[cfg(feature = "aws")]
 mod aws_dynamodb;
 #[cfg(feature = "aws")]
@@ -18,6 +19,7 @@ mod uploader;
 pub use self::lru::LruProvider;
 #[cfg(feature = "redis")]
 pub use self::redis::RedisProvider;
+pub use aliaser::Aliaser;
 #[cfg(feature = "aws")]
 pub use aws_dynamodb::AwsDynamoDbProvider;
 #[cfg(feature = "aws")]

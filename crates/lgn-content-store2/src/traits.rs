@@ -16,6 +16,35 @@ pub type ContentAsyncRead = Pin<Box<dyn AsyncRead + Send>>;
 /// A writer as returned by the `ContentWriter` trait.
 pub type ContentAsyncWrite = Pin<Box<dyn AsyncWrite + Send>>;
 
+/// AliasResolver is a trait for resolving aliases from a content-store alias database.
+#[async_trait]
+pub trait AliasResolver {
+    /// Returns the content-store identifier for a given alias.
+    ///
+    /// If no identifier is found for the specified `key` in the specified
+    /// `key_space`, `Error::NotFound` is returned.
+    async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier>;
+}
+
+/// AliasRegisterer is a trait for recording aliases to a content-store alias database.
+#[async_trait]
+pub trait AliasRegisterer {
+    /// Registers a given alias to a content-store identifier.
+    ///
+    /// The caller must guarantee that the `key` is unique within the specified
+    /// `key_space`.
+    ///
+    /// If an alias already exists with that `key` and `key_space`, `Error::AlreadyExists`
+    /// is returned.
+    async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()>;
+}
+
+/// `AliasProvider` is trait for all types that are both alias registerer and resolvers.
+pub trait AliasProvider: AliasRegisterer + AliasResolver {}
+
+/// Blanket implementation of `AliasProvider`.
+impl<T> AliasProvider for T where T: AliasRegisterer + AliasResolver {}
+
 /// ContentReader is a trait for reading content from a content-store.
 #[async_trait]
 pub trait ContentReader {
@@ -51,6 +80,25 @@ pub(crate) async fn get_content_readers_impl<'ids>(
 
     Ok(join_all(futures).await.into_iter().collect())
 }
+
+#[async_trait]
+pub trait AliasContentReaderExt: ContentReaderExt + AliasResolver {
+    /// Read the content referenced by the specified identifier.
+    async fn get_alias_reader(&self, key_space: &str, key: &str) -> Result<ContentAsyncRead> {
+        let id = self.resolve_alias(key_space, key).await?;
+
+        self.get_content_reader(&id).await
+    }
+
+    /// Read the content referenced by the specified identifier.
+    async fn read_alias(&self, key_space: &str, key: &str) -> Result<Vec<u8>> {
+        let id = self.resolve_alias(key_space, key).await?;
+
+        self.read_content(&id).await
+    }
+}
+
+impl<T: ContentReaderExt + AliasResolver> AliasContentReaderExt for T {}
 
 #[async_trait]
 pub trait ContentReaderExt: ContentReader {
@@ -128,6 +176,21 @@ pub trait ContentWriter {
 }
 
 #[async_trait]
+pub trait AliasContentWriterExt: ContentWriterExt + AliasRegisterer {
+    /// Get a write for the content referenced by the specified identifier.
+    async fn write_alias(&self, key_space: &str, key: &str, data: &[u8]) -> Result<Identifier> {
+        let id = self.write_content(data).await?;
+
+        match self.register_alias(key_space, key, &id).await {
+            Ok(_) | Err(Error::AlreadyExists) => Ok(id),
+            Err(err) => Err(err),
+        }
+    }
+}
+
+impl<T: ContentWriterExt + AliasRegisterer> AliasContentWriterExt for T {}
+
+#[async_trait]
 pub trait ContentWriterExt: ContentWriter {
     /// Write the specified content and returns the newly associated identifier.
     ///
@@ -199,6 +262,20 @@ impl<T> ContentAddressProvider for T where T: ContentAddressReader + ContentAddr
 /// Blanket implementations for Arc<T> variants.
 
 #[async_trait]
+impl<T: AliasResolver + Send + Sync> AliasResolver for Arc<T> {
+    async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
+        self.as_ref().resolve_alias(key_space, key).await
+    }
+}
+
+#[async_trait]
+impl<T: AliasRegisterer + Send + Sync> AliasRegisterer for Arc<T> {
+    async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
+        self.as_ref().register_alias(key_space, key, id).await
+    }
+}
+
+#[async_trait]
 impl<T: ContentReader + Send + Sync> ContentReader for Arc<T> {
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
         self.as_ref().get_content_reader(id).await
@@ -236,6 +313,20 @@ impl<T: ContentAddressWriter + Send + Sync> ContentAddressWriter for Arc<T> {
 /// Blanket implementations for Box<T> variants.
 
 #[async_trait]
+impl<T: AliasResolver + Send + Sync> AliasResolver for Box<T> {
+    async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
+        self.as_ref().resolve_alias(key_space, key).await
+    }
+}
+
+#[async_trait]
+impl<T: AliasRegisterer + Send + Sync> AliasRegisterer for Box<T> {
+    async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
+        self.as_ref().register_alias(key_space, key, id).await
+    }
+}
+
+#[async_trait]
 impl<T: ContentReader + Send + Sync + ?Sized> ContentReader for Box<T> {
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
         self.as_ref().get_content_reader(id).await
@@ -271,6 +362,20 @@ impl<T: ContentAddressWriter + Send + Sync + ?Sized> ContentAddressWriter for Bo
 }
 
 /// Blanket implementations for &T variants.
+
+#[async_trait]
+impl<T: AliasResolver + Send + Sync> AliasResolver for &T {
+    async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
+        (**self).resolve_alias(key_space, key).await
+    }
+}
+
+#[async_trait]
+impl<T: AliasRegisterer + Send + Sync> AliasRegisterer for &T {
+    async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
+        (**self).register_alias(key_space, key, id).await
+    }
+}
 
 #[async_trait]
 impl<T: ContentReader + Send + Sync + ?Sized> ContentReader for &T {
