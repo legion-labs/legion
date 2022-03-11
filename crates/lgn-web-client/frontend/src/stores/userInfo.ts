@@ -1,4 +1,4 @@
 import type { UserInfo } from "../lib/auth";
-import { AsyncStoreOrchestrator } from "./asyncStore";
+import { createAsyncStoreOrchestrator } from "../orchestrators/async";
 
-export default new AsyncStoreOrchestrator<UserInfo>();
+export default createAsyncStoreOrchestrator<UserInfo>();

@@ -9,7 +9,7 @@
   import { getAllResources } from "@/api";
   import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
   import currentResource from "@/stores/currentResource";
-  import HierarchyTreeOrchestrator from "@/stores/hierarchyTree";
+  import { createHierarchyTreeOrchestrator } from "@/orchestrators/hierarchyTree";
   import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
   import contextMenu from "@/stores/contextMenu";
   import allResourcesStore from "@/stores/allResources";
@@ -23,6 +23,12 @@
   import modal from "@/stores/modal";
   import type { Entry } from "@/lib/hierarchyTree";
 
+  // notifications.push(Symbol.for("resource-renaming-error"), {
+  //       type: "error",
+  //       title: "Resources",
+  //       message: "An error occured while renaming the resource",
+  //     });
+
   const { data: currentResourceData } = currentResource;
 
   const {
@@ -32,7 +38,7 @@
   } = allResourcesStore;
 
   const resourceEntriesOrchestrator =
-    new HierarchyTreeOrchestrator<ResourceDescription>();
+    createHierarchyTreeOrchestrator<ResourceDescription>();
 
   const {
     currentlyRenameEntry: currentlyRenameResourceEntry,

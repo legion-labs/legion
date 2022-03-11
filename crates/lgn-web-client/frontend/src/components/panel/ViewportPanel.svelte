@@ -3,11 +3,11 @@
   import Panel from "./Panel.svelte";
   import RemoteWindow from "../RemoteWindow.svelte";
   import ScriptEditor from "../ScriptEditor.svelte";
-  import type ViewportOrchestrator from "../../stores/viewport";
+  import type { createViewportOrchestrator } from "../../orchestrators/viewport";
   import type { Resolution } from "../../lib/types";
 
   /** The global viewport orchestrator */
-  export let orchestrator: ViewportOrchestrator;
+  export let orchestrator: ReturnType<typeof createViewportOrchestrator>;
 
   let desiredVideoResolution: Resolution | null;
 

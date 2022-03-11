@@ -1,11 +1,9 @@
-import { Writable } from "../lib/store";
+import { writable } from "svelte/store";
 
 export type Value = {
   currentIndex: number | null;
 };
 
-export default class extends Writable<Value> {
-  constructor() {
-    super({ currentIndex: null });
-  }
+export function createKeyboardNavigationStore() {
+  return writable<Value>({ currentIndex: null });
 }

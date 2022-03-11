@@ -6,7 +6,7 @@
     keyboardNavigationItem,
     keyboardNavigationContainer,
   } from "@lgn/web-client/src/actions/keyboardNavigation";
-  import KeyboardNavigationStore from "@lgn/web-client/src/stores/keyboardNavigation";
+  import { createKeyboardNavigationStore } from "@lgn/web-client/src/stores/keyboardNavigation";
 
   type Item = $$Generic;
 
@@ -16,7 +16,7 @@
 
   type Option = { value: string; item: Item };
 
-  const keyboardNavigationStore = new KeyboardNavigationStore();
+  const keyboardNavigationStore = createKeyboardNavigationStore();
 
   export let status: "default" | "error" = "default";
 

@@ -4,18 +4,18 @@
   import { required } from "svelte-forms/validators";
   import Modal from "@lgn/web-client/src/components/modal/Modal.svelte";
   import Button from "@lgn/web-client/src/components/Button.svelte";
-  import { AsyncStoreOrchestrator } from "@lgn/web-client/src/stores/asyncStore";
+  import { createAsyncStoreOrchestrator } from "@lgn/web-client/src/orchestrators/async";
   import Select from "../inputs/Select.svelte";
   import { getAvailableComponentTypes } from "@/api";
   import type { GetAvailableDynTraitsResponse } from "@lgn/proto-editor/dist/property_inspector";
   import Field from "../Field.svelte";
 
-  const createComponentStore = new AsyncStoreOrchestrator();
+  const createComponentStore = createAsyncStoreOrchestrator();
 
   const { loading } = createComponentStore;
 
   const dynTraitTypesStore =
-    new AsyncStoreOrchestrator<GetAvailableDynTraitsResponse>();
+    createAsyncStoreOrchestrator<GetAvailableDynTraitsResponse>();
 
   const type = field<{ value: string; item: string } | "">("type", "", [
     required(),

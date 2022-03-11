@@ -1,4 +1,4 @@
-import { Writable } from "@lgn/web-client/src/lib/store";
+import { Writable } from "../store";
 import { TimelineState } from "./TimelineState";
 
 export class TimelineStateStore extends Writable<TimelineState> {

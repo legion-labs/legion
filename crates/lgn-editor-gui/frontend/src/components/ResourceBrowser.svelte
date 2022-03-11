@@ -24,7 +24,7 @@
   import notifications from "@/stores/notifications";
   import type { Entries, Entry } from "@/lib/hierarchyTree";
   import log from "@lgn/web-client/src/lib/log";
-  import Files from "@lgn/web-client/src/stores/files";
+  import { createFilesStore } from "@lgn/web-client/src/stores/files";
   import { UploadStatus } from "@lgn/proto-editor/dist/source_control";
   import { readFile } from "@lgn/web-client/src/lib/files";
   import { formatProperties } from "@/lib/propertyGrid";
@@ -41,7 +41,7 @@
 
   const createResourceModalId = Symbol.for("create-resource-modal");
 
-  const files = new Files();
+  const files = createFilesStore();
 
   export let currentResourceDescriptionEntry: Entry<ResourceDescription> | null;
 

@@ -1,4 +1,4 @@
-import { Writable } from "../lib/store";
+import { writable } from "svelte/store";
 import type { Position } from "../lib/types";
 
 export type Value<Item = unknown> = {
@@ -10,8 +10,6 @@ export type Value<Item = unknown> = {
 /**
  * Keep track of all drag and drop changes and events.
  */
-export default class<Item = unknown> extends Writable<Value<Item> | null> {
-  constructor() {
-    super(null);
-  }
+export function createDndStore<Item = unknown>() {
+  return writable<Value<Item> | null>(null);
 }

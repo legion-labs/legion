@@ -1,39 +1,39 @@
-import { Writable } from "../lib/store";
+import { writable } from "svelte/store";
 
-export default class Files extends Writable<File[] | null> {
-  constructor() {
-    super(null);
-  }
+export function createFilesStore() {
+  return {
+    ...writable<File[] | null>(null),
 
-  open({
-    multiple,
-    mimeTypes,
-  }: { multiple?: boolean; mimeTypes?: string[] } = {}) {
-    const fileInput = document.createElement("input");
+    open({
+      multiple,
+      mimeTypes,
+    }: { multiple?: boolean; mimeTypes?: string[] } = {}) {
+      const fileInput = document.createElement("input");
 
-    fileInput.type = "file";
-    fileInput.multiple = !!multiple;
-    fileInput.style.display = "none";
+      fileInput.type = "file";
+      fileInput.multiple = !!multiple;
+      fileInput.style.display = "none";
 
-    const mimes = mimeTypes?.join(",");
+      const mimes = mimeTypes?.join(",");
 
-    if (mimes) {
-      fileInput.accept = mimes;
-    }
-
-    fileInput.addEventListener("change", (event) => {
-      if (event.target instanceof HTMLInputElement) {
-        // TODO: Use the `FileList` type for performance if needed
-        this.set(event.target.files && Array.from(event.target.files));
+      if (mimes) {
+        fileInput.accept = mimes;
       }
-    });
 
-    document.body.appendChild(fileInput);
+      fileInput.addEventListener("change", (event) => {
+        if (event.target instanceof HTMLInputElement) {
+          // TODO: Use the `FileList` type for performance if needed
+          this.set(event.target.files && Array.from(event.target.files));
+        }
+      });
 
-    const event = new MouseEvent("click", {});
+      document.body.appendChild(fileInput);
 
-    fileInput.dispatchEvent(event);
+      const event = new MouseEvent("click", {});
 
-    document.body.removeChild(fileInput);
-  }
+      fileInput.dispatchEvent(event);
+
+      document.body.removeChild(fileInput);
+    },
+  };
 }

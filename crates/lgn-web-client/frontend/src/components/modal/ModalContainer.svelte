@@ -10,9 +10,9 @@ using the `openModal` function provided by the `lib/modal.ts` module) and open u
 -->
 <script lang="ts">
   import { fade } from "svelte/transition";
-  import type ModalStore from "../../stores/modal";
+  import type { createModalStore } from "../../stores/modal";
 
-  export let store: ModalStore;
+  export let store: ReturnType<typeof createModalStore>;
 
   $: ids = Object.getOwnPropertySymbols($store);
 </script>

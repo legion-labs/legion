@@ -1,17 +1,15 @@
-import { Writable } from "../lib/store";
+import { writable } from "svelte/store";
 import type { Entry } from "../types/contextMenu";
 
-export default class<Names extends string> extends Writable<
-  Partial<Record<Names, Entry[]>>
-> {
-  constructor() {
-    super({});
-  }
+export function createContextMenuStore<Names extends string>() {
+  return {
+    ...writable<Partial<Record<Names, Entry[]>>>({}),
 
-  register(name: Names, entries: Entry[]): void {
-    this.update((entrySets) => ({
-      ...entrySets,
-      [name]: entries,
-    }));
-  }
+    register(name: Names, entries: Entry[]): void {
+      this.update((entrySets) => ({
+        ...entrySets,
+        [name]: entries,
+      }));
+    },
+  };
 }

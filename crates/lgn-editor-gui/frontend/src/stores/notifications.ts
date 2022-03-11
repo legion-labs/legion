@@ -1,3 +1,3 @@
-import NotificationsStore from "@lgn/web-client/src/stores/notifications";
+import { createNotificationsStore } from "@lgn/web-client/src/stores/notifications";
 
-export default new NotificationsStore();
+export default createNotificationsStore();

@@ -1,3 +1,3 @@
-import { Writable } from "../lib/store";
+import { writable } from "svelte/store";
 
-export const statusStore = new Writable<string | null>(null);
+export const statusStore = writable<string | null>(null);

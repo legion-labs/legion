@@ -1,5 +1,5 @@
 import { SvelteComponentTyped } from "svelte";
-import { Writable } from "../lib/store";
+import { get, writable } from "svelte/store";
 import Prompt from "../components/modal/Prompt.svelte";
 
 export type Payload = Record<string, unknown>;
@@ -22,46 +22,46 @@ export type Value = Record<
   }
 >;
 
-export default class extends Writable<Value> {
-  constructor() {
-    super({});
-  }
+export function createModalStore() {
+  return {
+    ...writable<Value>({}),
 
-  /** Opens a modal with the provided content and payload */
-  open(id: symbol, content: typeof Content, config?: Config) {
-    if (id in this.value) {
-      return;
-    }
+    /** Opens a modal with the provided content and payload */
+    open(id: symbol, content: typeof Content, config?: Config) {
+      if (id in get(this)) {
+        return;
+      }
 
-    this.update((modals) => ({
-      ...modals,
-      [id]: { content, config, id },
-    }));
-  }
+      this.update((modals) => ({
+        ...modals,
+        [id]: { content, config, id },
+      }));
+    },
 
-  /** Opens a prompt modal */
-  prompt(
-    id: symbol,
-    config?: Config<{
-      title?: string;
-      message?: string;
-      cancelLabel?: string;
-      confirmLabel?: string;
-    }>
-  ) {
-    this.open(id, Prompt, config);
-  }
+    /** Opens a prompt modal */
+    prompt(
+      id: symbol,
+      config?: Config<{
+        title?: string;
+        message?: string;
+        cancelLabel?: string;
+        confirmLabel?: string;
+      }>
+    ) {
+      this.open(id, Prompt, config);
+    },
 
-  /** Closes a modal */
-  close(id: symbol) {
-    if (!(id in this.value)) {
-      return;
-    }
+    /** Closes a modal */
+    close(id: symbol) {
+      if (!(id in get(this))) {
+        return;
+      }
 
-    this.update((modals) => {
-      const { [id]: _, ...restModals } = modals;
+      this.update((modals) => {
+        const { [id]: _, ...restModals } = modals;
 
-      return restModals;
-    });
-  }
+        return restModals;
+      });
+    },
+  };
 }

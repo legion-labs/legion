@@ -1,3 +1,3 @@
-import ViewportStoreOrchestrator from "@lgn/web-client/src/stores/viewport";
+import { createViewportOrchestrator } from "@lgn/web-client/src/orchestrators/viewport";
 
-export default new ViewportStoreOrchestrator();
+export default createViewportOrchestrator();

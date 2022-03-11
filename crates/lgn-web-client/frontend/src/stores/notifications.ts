@@ -1,4 +1,4 @@
-import { Writable } from "../lib/store";
+import { writable } from "svelte/store";
 
 export type Notification = {
   type: "success" | "warning" | "error";
@@ -16,69 +16,67 @@ type Value = Notification & {
 
 const intervalMs = 16;
 
-export default class extends Writable<Record<symbol, Value>> {
-  #timeout: number;
+export function createNotificationsStore(timeout = 5_000) {
+  return {
+    timeout,
 
-  constructor(timeout = 5_000) {
-    super({});
+    ...writable<Record<symbol, Value>>({}),
 
-    this.#timeout = timeout;
-  }
+    push(key: symbol, value: Notification) {
+      const update = this.update;
 
-  push(key: symbol, value: Notification) {
-    this.update((notifications) => {
-      if (key in notifications) {
-        return notifications;
-      }
+      this.update((notifications) => {
+        if (key in notifications) {
+          return notifications;
+        }
 
-      const timeout =
-        typeof value.timeout === "number" ? value.timeout : this.#timeout;
+        const timeout =
+          typeof value.timeout === "number" ? value.timeout : this.timeout;
 
-      const update = this.update.bind(this);
+        const intervalId = setInterval(() => {
+          this.update((notifications) => {
+            const notification = notifications[key];
 
-      const intervalId = setInterval(() => {
-        this.update((notifications) => {
-          const notification = notifications[key];
+            const percentage =
+              100 - (100 * (Date.now() - notification.started)) / timeout;
 
-          const percentage =
-            100 - (100 * (Date.now() - notification.started)) / timeout;
+            return {
+              ...notifications,
+              [key]: { ...notification, percentage },
+            };
+          });
+        }, intervalMs);
 
-          return {
-            ...notifications,
-            [key]: { ...notification, percentage },
-          };
-        });
-      }, intervalMs);
-
-      const timeoutId = setTimeout(() => {
-        this.update((notifications) => {
-          clearInterval(intervalId);
-
-          const { [key]: _, ...restNotifications } = notifications;
-
-          return restNotifications;
-        });
-      }, timeout);
-
-      return {
-        ...notifications,
-        [key]: {
-          ...value,
-          started: Date.now(),
-          timeout,
-          percentage: 100,
-          close() {
-            clearTimeout(timeoutId);
+        const timeoutId = setTimeout(() => {
+          this.update((notifications) => {
             clearInterval(intervalId);
 
-            update((notifications) => {
-              const { [key]: _, ...restNotifications } = notifications;
+            const { [key]: _, ...restNotifications } = notifications;
 
-              return restNotifications;
-            });
+            return restNotifications;
+          });
+        }, timeout);
+
+        return {
+          ...notifications,
+          [key]: {
+            ...value,
+            started: Date.now(),
+            timeout,
+            percentage: 100,
+            close() {
+              clearTimeout(timeoutId);
+              clearInterval(intervalId);
+
+              update((notifications) => {
+                const { [key]: _, ...restNotifications } = notifications;
+
+                return restNotifications;
+              });
+            },
           },
-        },
-      };
-    });
-  }
+        };
+      });
+    },
+  };
 }

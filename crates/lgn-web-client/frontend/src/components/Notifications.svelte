@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type NotificationsStore from "../stores/notifications";
+  import type { createNotificationsStore } from "../stores/notifications";
 
-  export let store: NotificationsStore;
+  export let store: ReturnType<typeof createNotificationsStore>;
 </script>
 
 <div class="root">

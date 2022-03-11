@@ -1,12 +1,12 @@
 import type { ResourceWithProperties } from "@/lib/propertyGrid";
 import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
-import { AsyncStoreOrchestrator } from "@lgn/web-client/src/stores/asyncStore";
+import { createAsyncStoreOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 import notifications from "@/stores/notifications";
 import { getResourceProperties, updateSelection } from "@/api";
 import log from "@lgn/web-client/src/lib/log";
 
 const currentResourceStore =
-  new AsyncStoreOrchestrator<ResourceWithProperties>();
+  createAsyncStoreOrchestrator<ResourceWithProperties>();
 
 export function fetchCurrentResourceDescription(
   currentResourceDescription: ResourceDescription
