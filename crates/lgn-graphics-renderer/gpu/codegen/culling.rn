@@ -24,14 +24,10 @@ pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set
                 "OUTPUT_CULLED_INSTANCES",
             ]
         },
-                #{
+        #{
             type: "Struct",
             name: "CullingDebugData",
             fields: [
-                #{ name:"min_view", ty:"Float4" },
-                #{ name:"max_view", ty:"Float4" },
-                #{ name:"min_proj", ty:"Float4" },
-                #{ name:"max_proj", ty:"Float4" },
                 #{ name:"aabb", ty:"Float4" },
                 #{ name:"aabb_vp", ty:"Float4" },
                 #{ name:"iaabb", ty:"Uint4" },

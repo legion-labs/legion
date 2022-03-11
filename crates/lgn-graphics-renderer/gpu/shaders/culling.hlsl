@@ -48,7 +48,7 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
             MeshDescription mesh_desc = LoadMeshDescription(static_buffer, addresses.mesh_description_va);
             GpuInstanceTransform transform = LoadGpuInstanceTransform(static_buffer, addresses.world_transform_va);
 
-            float4 sphere_world_pos = mul(float4(mesh_desc.bounding_sphere.xyz, 1.0), transform.world);
+            float4 sphere_world_pos = mul(transform.world, float4(mesh_desc.bounding_sphere.xyz, 1.0));
 
             bool none_uniform_scaling = transform.world[0][0] != transform.world[1][1] || transform.world[1][1] != transform.world[2][2];
             float bv_radius = mesh_desc.bounding_sphere.w * transform.world[0][0];
