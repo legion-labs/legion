@@ -5,6 +5,7 @@
   import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { BarLoader } from "svelte-loading-spinners";
   import TimelineDetails from "./TimelineDetails.svelte";
+  import throttle from "just-throttle";
   import {
     NewSelectionState,
     RangeSelectionOnMouseDown,
@@ -146,7 +147,7 @@
     bind:this={div}
     class="canvas "
     on:mousedown|preventDefault={(e) => onMouseDown(e)}
-    on:mousemove|preventDefault={(e) => onMouseMove(e)}
+    on:mousemove|preventDefault={throttle(onMouseMove, 16)}
   >
     {#if stateStore}
       {#each $stateStore.processes as p}

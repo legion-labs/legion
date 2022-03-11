@@ -23,6 +23,7 @@
   let height: number;
   let initialized = false;
   let intersectionObserver: IntersectionObserver;
+  let drawTime: number;
 
   onMount(() => {
     const process = stateStore.value.findStreamProcess(
@@ -78,16 +79,17 @@
 
   async function draw() {
     if (canvas && ctx && !parentCollapsed) {
-      await tick();
-      drawThread();
-      if ($stateStore.selectionState) {
-        DrawSelectedRange(
-          canvas,
-          ctx,
-          $stateStore.selectionState,
-          $stateStore.getViewRange()
-        );
-      }
+      requestAnimationFrame(() => {
+        drawThread();
+        if ($stateStore.selectionState && canvas) {
+          DrawSelectedRange(
+            canvas,
+            ctx,
+            $stateStore.selectionState,
+            $stateStore.getViewRange()
+          );
+        }
+      });
     }
   }
 
@@ -95,6 +97,7 @@
     if (!canvas) {
       return;
     }
+    const startTime = performance.now();
     const [begin, end] = range;
     const invTimeSpan = 1.0 / (end - begin);
     const canvasWidth = canvas.clientWidth;
@@ -159,6 +162,12 @@
         );
       }
     });
+    ctx.save();
+    drawTime = Math.floor(performance.now() - startTime);
+    ctx.fillStyle = "#b8b8b8";
+    ctx.font = "10px arial";
+    ctx.fillText(`${drawTime} ms`, canvas.width - 25, 15, 1000);
+    ctx.restore();
   }
 
   function drawSpanTrack(
