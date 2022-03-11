@@ -15,6 +15,7 @@ use lgn_data_transaction::{
 use lgn_editor_proto::resource_browser::{
     resource_browser_server::ResourceBrowser, CloneResourceRequest, CreateResourceRequest,
     DeleteResourceRequest, GetResourceTypeNamesRequest, InitPropertyValue, RenameResourceRequest,
+    ReparentResourceRequest,
 };
 use lgn_math::Vec3;
 
@@ -275,6 +276,30 @@ async fn test_resource_browser() -> anyhow::Result<()> {
             .unwrap()
             .id;
 
+        // Reparent under entity
+        resource_browser
+            .reparent_resource(Request::new(ReparentResourceRequest {
+                id: clone_id.clone(),
+                new_path: "/root_entity".into(),
+            }))
+            .await?;
+
+        // Reparent under folder entity
+        resource_browser
+            .reparent_resource(Request::new(ReparentResourceRequest {
+                id: clone_id.clone(),
+                new_path: "/root_entity/test_folder".into(),
+            }))
+            .await?;
+
+        // Reparent under root
+        resource_browser
+            .reparent_resource(Request::new(ReparentResourceRequest {
+                id: clone_id.clone(),
+                new_path: "/".into(),
+            }))
+            .await?;
+
         // Delete Clone
         resource_browser
             .delete_resource(Request::new(DeleteResourceRequest { id: clone_id }))
@@ -283,7 +308,6 @@ async fn test_resource_browser() -> anyhow::Result<()> {
         {
             let mut guard = transaction_manager.lock().await;
             guard.undo_transaction().await?; // Undo delete
-            guard.undo_transaction().await?; // Undo clone
         }
     }
     Ok(())

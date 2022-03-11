@@ -5,8 +5,8 @@ use lgn_ecs::prelude::Entity;
 
 #[derive(Default)]
 pub struct AssetToEntityMap {
-    asset_to_entity: BTreeMap<ResourceTypeAndId, Entity>,
-    entity_to_asset: BTreeMap<Entity, ResourceTypeAndId>,
+    pub(crate) asset_to_entity: BTreeMap<ResourceTypeAndId, Entity>,
+    pub(crate) entity_to_asset: BTreeMap<Entity, ResourceTypeAndId>,
 }
 
 impl AssetToEntityMap {

@@ -270,6 +270,11 @@ impl PropertyInspector for PropertyInspectorRPC {
                     .unwrap_or_else(|_err| "".into())
                     .to_string(),
                 version: 1,
+                r#type: resource_id
+                    .kind
+                    .as_pretty()
+                    .trim_start_matches("offline_")
+                    .into(),
             }),
             properties: vec![property_bag],
         }))

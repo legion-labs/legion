@@ -31,6 +31,7 @@ describe("PropertyGrid", () => {
         id: "id",
         path: "",
         version: 1,
+        type: "",
       },
       version: 1,
       properties: formatProperties(properties as unknown as ResourceProperty[]),
