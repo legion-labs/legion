@@ -18,7 +18,9 @@
 </script>
 
 <div
-  style={collapsed ? `max-height:${spanPixelHeight}px;overflow-y:hidden` : ``}
+  style={collapsed
+    ? `min-height:${spanPixelHeight}px;max-height:${spanPixelHeight}px;overflow-y:hidden`
+    : ``}
 >
   <div
     class="process mb-1 flex flex-row place-content-between items-center"
