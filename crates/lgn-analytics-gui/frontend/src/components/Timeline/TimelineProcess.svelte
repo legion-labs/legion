@@ -1,6 +1,6 @@
 <script lang="ts">
   import { formatProcessName } from "@/lib/format";
-  import { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
+  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { spanPixelHeight } from "@/lib/Timeline/TimelineValues";
   import { Process } from "@lgn/proto-telemetry/dist/process";
   import { createEventDispatcher } from "svelte";

@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+import { get } from "svelte/store";
 import {
   BlockSpansReply,
   BlockAsyncEventsStatReply,
@@ -14,7 +15,8 @@ import {
   timestampToMs,
 } from "../time";
 import { Stream } from "@lgn/proto-telemetry/dist/stream";
-import { TimelineStateStore } from "./TimelineStateStore";
+import type { TimelineStateStore } from "./TimelineStateStore";
+import { createTimelineStateStore } from "./TimelineStateStore";
 import { TimelineState } from "./TimelineState";
 import Semaphore from "semaphore-async-await";
 import { loadWrap } from "../Misc/LoadingStore";
@@ -29,7 +31,7 @@ export class TimelineStateManager {
   constructor(processId: string) {
     this.processId = processId;
     this.semaphore = new Semaphore(16);
-    this.state = new TimelineStateStore(
+    this.state = createTimelineStateStore(
       new TimelineState(undefined, undefined)
     );
   }
@@ -130,8 +132,9 @@ export class TimelineStateManager {
     const section = [0.0, 1000.0] as [number, number]; //section is in relative ms
 
     const blocksOfInterest: string[] = [];
-    const processAsyncData =
-      this.state.value.processAsyncData[process.processId];
+    const processAsyncData = get(this.state).processAsyncData[
+      process.processId
+    ];
     processAsyncData.blockStats.forEach((stats) => {
       if (this.rangesOverlap(section, [stats!.beginMs, stats!.endMs])) {
         blocksOfInterest.push(stats.blockId);
@@ -201,13 +204,13 @@ export class TimelineStateManager {
         return s;
       });
     }
-    this.state.value.processAsyncData[process.processId] = asyncData;
+    get(this.state).processAsyncData[process.processId] = asyncData;
   }
 
-  async fetchLods(pixelWidth: number) {
-    const range = this.state.value.getViewRange();
+  async fetchLodsAsync(pixelWidth: number) {
+    const range = get(this.state).getViewRange();
     const promises: Promise<void>[] = [];
-    for (const block of Object.values(this.state.value.blocks)) {
+    for (const block of Object.values(get(this.state).blocks)) {
       const lod = computePreferredBlockLod(pixelWidth, range, block);
       if (lod && !block.lods[lod]) {
         block.lods[lod] = {
@@ -227,7 +230,7 @@ export class TimelineStateManager {
       return;
     }
     const streamId = block.blockDefinition.streamId;
-    const process = this.state.value.findStreamProcess(streamId);
+    const process = get(this.state).findStreamProcess(streamId);
     if (!process) {
       throw new Error(`Process ${streamId} not found`);
     }
@@ -239,7 +242,7 @@ export class TimelineStateManager {
         await this.client!.block_spans({
           blockId: blockId,
           process,
-          stream: this.state.value.threads[streamId].streamInfo,
+          stream: get(this.state).threads[streamId].streamInfo,
           lodId: lodToFetch,
         }).then(
           (o) => this.onLodReceived(o),

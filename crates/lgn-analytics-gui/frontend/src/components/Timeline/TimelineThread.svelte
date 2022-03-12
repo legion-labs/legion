@@ -3,7 +3,7 @@
   import { findBestLod } from "@/lib/time";
   import { Thread } from "@/lib/Timeline/Thread";
   import { TimelineCaptionItem } from "@/lib/Timeline/TimelineSpanCaptionItem";
-  import { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
+  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { spanPixelHeight } from "@/lib/Timeline/TimelineValues";
   import { DrawSelectedRange } from "@/lib/time_range_selection";
   import { SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
@@ -25,9 +25,7 @@
   let intersectionObserver: IntersectionObserver;
 
   onMount(() => {
-    const process = stateStore.value.findStreamProcess(
-      thread.streamInfo.streamId
-    );
+    const process = $stateStore.findStreamProcess(thread.streamInfo.streamId);
     if (!process) {
       return;
     }

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { TimelineStateManager } from "@/lib/Timeline/TimelineStateManager";
   import { onMount } from "svelte";
-  import { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
+  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { BarLoader } from "svelte-loading-spinners";
   import TimelineDetails from "./TimelineDetails.svelte";
@@ -87,7 +87,7 @@
           panState = {
             beginMouseX: event.offsetX,
             beginMouseY: event.offsetY,
-            viewRange: stateStore.value.getViewRange(),
+            viewRange: $stateStore.getViewRange(),
           };
         }
 

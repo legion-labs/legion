@@ -1,8 +1,8 @@
-import { Writable } from "../store";
+import { writable } from "svelte/store";
 import { TimelineState } from "./TimelineState";
 
-export class TimelineStateStore extends Writable<TimelineState> {
-  constructor(state: TimelineState) {
-    super(state);
-  }
+export type TimelineStateStore = ReturnType<typeof createTimelineStateStore>;
+
+export function createTimelineStateStore(state: TimelineState) {
+  return writable(state);
 }
