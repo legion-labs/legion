@@ -18,7 +18,7 @@ use crate::{
 
 use super::{
     mesh_manager, DefaultMeshType, GpuMaterialManager, MeshManager, MissingVisualTracker,
-    DEFAULT_MESH_GUIDS,
+    RendererOptions, DEFAULT_MESH_GUIDS,
 };
 
 pub struct Mesh {
@@ -126,13 +126,17 @@ pub(crate) fn update_models(
 
 #[span_fn]
 #[allow(clippy::needless_pass_by_value)]
-pub fn debug_bounding_spheres(
+pub(crate) fn debug_bounding_spheres(
     debug_display: Res<'_, DebugDisplay>,
     bump_allocator_pool: Res<'_, BumpAllocatorPool>,
     model_manager: Res<'_, ModelManager>,
     mesh_manager: Res<'_, MeshManager>,
+    renderer_options: Res<'_, RendererOptions>,
     visuals: Query<'_, '_, (&VisualComponent, &Transform), Without<ManipulatorComponent>>,
 ) {
+    if !renderer_options.show_bounding_spheres {
+        return;
+    }
     bump_allocator_pool.scoped_bump(|bump| {
         debug_display.create_display_list(bump, |builder| {
             for (visual, transform) in visuals.iter() {

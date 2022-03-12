@@ -77,7 +77,8 @@ use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 
 use crate::debug_display::DebugDisplay;
 use crate::resources::{
-    MissingVisualTracker, SharedResourcesManager, TextureResourceManager, UniformGPUDataUpdater,
+    ui_renderer_options, MissingVisualTracker, RendererOptions, SharedResourcesManager,
+    TextureResourceManager, UniformGPUDataUpdater,
 };
 
 use crate::{
@@ -92,21 +93,7 @@ pub const UP_VECTOR: Vec3 = Vec3::Y;
 pub const DOWN_VECTOR: Vec3 = const_vec3!([0_f32, -1_f32, 0_f32]);
 
 #[derive(Default)]
-pub struct RendererPlugin {
-    // tbd: move in RendererOptions
-    _egui_enabled: bool,
-    // tbd: remove
-    runs_dynamic_systems: bool,
-}
-
-impl RendererPlugin {
-    pub fn new(egui_enabled: bool, runs_dynamic_systems: bool) -> Self {
-        Self {
-            _egui_enabled: egui_enabled,
-            runs_dynamic_systems,
-        }
-    }
-}
+pub struct RendererPlugin {}
 
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
@@ -190,6 +177,7 @@ impl Plugin for RendererPlugin {
         app.insert_resource(texture_manager);
         app.insert_resource(texture_resource_manager);
         app.insert_resource(mesh_renderer);
+        app.init_resource::<RendererOptions>();
 
         // Init ecs
         TextureManager::init_ecs(app);
@@ -231,9 +219,8 @@ impl Plugin for RendererPlugin {
         //
         // Stage Prepare
         //
-        if self.runs_dynamic_systems {
-            app.add_system_to_stage(RenderStage::Prepare, ui_lights);
-        }
+        app.add_system_to_stage(RenderStage::Prepare, ui_renderer_options);
+        app.add_system_to_stage(RenderStage::Prepare, ui_lights);
         app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
         app.add_system_to_stage(RenderStage::Prepare, resources::debug_bounding_spheres);
         app.add_system_to_stage(RenderStage::Prepare, update_gpu_instances);
