@@ -16,6 +16,8 @@
   $: threads = Object.values($stateStore.threads).filter(
     (t) => t.streamInfo.processId === process.processId
   );
+
+  $: processAsyncData = $stateStore.processAsyncData[process.processId];
 </script>
 
 <div
@@ -50,13 +52,17 @@
   </div>
   <div class="thread-container">
     {#if $stateStore}
-      <TasksItem
-        parentCollapsed={collapsed}
-        {stateStore}
-        {width}
-        {rootStartTime}
-        on:zoom={(e) => wheelDispatch("zoom", e.detail)}
-      />
+      {#if processAsyncData}
+        <TasksItem
+          parentCollapsed={collapsed}
+          {stateStore}
+          {process}
+          {processAsyncData}
+          {width}
+          {rootStartTime}
+          on:zoom={(e) => wheelDispatch("zoom", e.detail)}
+        />
+      {/if}
       {#each threads as thread, index (thread.streamInfo.streamId)}
         <TimelineThreadItem
           bind:this={components[index]}

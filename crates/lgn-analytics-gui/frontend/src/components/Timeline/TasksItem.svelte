@@ -1,8 +1,12 @@
 <script lang="ts">
   import { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
+  import { ProcessAsyncData } from "@/lib/Timeline/ProcessAsyncData";
+  import { Process } from "@lgn/proto-telemetry/dist/process";
   import { createEventDispatcher } from "svelte";
   export let rootStartTime: number;
   export let stateStore: TimelineStateStore;
+  export let process: Process;
+  export let processAsyncData: ProcessAsyncData;
   export let width: number;
   export let parentCollapsed: boolean;
   import TasksSpans from "./TasksSpans.svelte";
@@ -29,6 +33,8 @@
   <TasksSpans
     {stateStore}
     {parentCollapsed}
+    {process}
+    {processAsyncData}
     {width}
     {rootStartTime}
     on:zoom={(e) => wheelDispatch("zoom", e.detail)}

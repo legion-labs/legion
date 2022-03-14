@@ -130,12 +130,13 @@ export class TimelineStateManager {
     const section = [0.0, 1000.0] as [number, number]; //section is in relative ms
 
     const blocksOfInterest: string[] = [];
-    const processAsyncData = this.state.value.processAsyncData[process.processId];
-    processAsyncData.blockStats.forEach( stats => {
+    const processAsyncData =
+      this.state.value.processAsyncData[process.processId];
+    processAsyncData.blockStats.forEach((stats) => {
       if (this.rangesOverlap(section, [stats!.beginMs, stats!.endMs])) {
         blocksOfInterest.push(stats.blockId);
       }
-    } );
+    });
 
     const reply = await loadWrapAsync(
       async () =>
@@ -153,12 +154,14 @@ export class TimelineStateManager {
       log.error("no client in fetchBlocks");
       return;
     }
-    let blockStats: BlockAsyncEventsStatReply[] = [];
-    let asyncData = {processId: process.processId,
-                     maxDepth: 0,
-                     minMs: Infinity,
-                     maxMs: -Infinity,
-                     blockStats};
+    const blockStats: BlockAsyncEventsStatReply[] = [];
+    const asyncData = {
+      processId: process.processId,
+      maxDepth: 0,
+      minMs: Infinity,
+      maxMs: -Infinity,
+      blockStats,
+    };
     const processOffset = processMsOffsetToRoot(this.process, process);
     const response = await loadWrapAsync(async () => {
       return await this.client!.list_stream_blocks({
@@ -181,8 +184,8 @@ export class TimelineStateManager {
           blockId: block.blockId,
         });
       });
-      asyncData.minMs = Math.min( asyncData.minMs, asyncStatsReply.beginMs );
-      asyncData.maxMs = Math.max( asyncData.maxMs, asyncStatsReply.endMs );
+      asyncData.minMs = Math.min(asyncData.minMs, asyncStatsReply.beginMs);
+      asyncData.maxMs = Math.max(asyncData.maxMs, asyncStatsReply.endMs);
       blockStats.push(asyncStatsReply);
       this.state.update((s) => {
         s.threads[stream.streamId].block_ids.push(block.blockId);
