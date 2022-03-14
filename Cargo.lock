@@ -5451,6 +5451,7 @@ dependencies = [
  "lgn-ecs",
  "lgn-tasks",
  "lgn-ubercompiler",
+ "sample-data-compiler",
  "tokio",
 ]
 

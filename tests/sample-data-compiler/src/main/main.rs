@@ -20,7 +20,7 @@ use sample_data_compiler::{offline_compiler, raw_loader};
     version,
     author
 )]
-#[clap(arg_required_else_help(true))]
+#[clap(arg_required_else_help(false))]
 struct Args {
     /// Folder containing raw/ directory
     #[clap(long, default_value = "tests/sample-data")]
@@ -53,7 +53,7 @@ async fn main() {
     };
 
     // generate contents of offline folder, from raw RON content
-    raw_loader::build_offline(&absolute_root).await;
+    raw_loader::build_offline(&absolute_root, true).await;
 
     // compile offline resources to runtime assets
     offline_compiler::build(&absolute_root, &ResourcePathName::from(&args.resource)).await;
@@ -61,12 +61,10 @@ async fn main() {
 
 fn clean_folders(project_dir: &str) {
     let mut can_clean = true;
-    let mut path = PathBuf::from(project_dir);
+    let path = PathBuf::from(project_dir);
 
     let mut test = |sub_path| {
-        path.push(sub_path);
-        can_clean &= path.exists();
-        path.pop();
+        can_clean &= path.join(sub_path).exists();
     };
     test("remote");
     test("offline");
@@ -76,16 +74,15 @@ fn clean_folders(project_dir: &str) {
     if !can_clean {
         println!("Cannot clean folders in path {}", project_dir);
     } else {
-        let mut delete = |sub_path, as_dir| {
-            path.push(sub_path);
+        let delete = |sub_path, as_dir| {
             let remove = if as_dir {
                 fs::remove_dir_all
             } else {
                 fs::remove_file
             };
-            remove(path.as_path()).unwrap_or_else(|_| panic!("Cannot delete {:?}", path));
-            path.pop();
+            remove(path.join(sub_path)).unwrap_or_else(|_| panic!("Cannot delete {:?}", path));
         };
+        let _result = fs::remove_file(path.join("VERSION"));
         delete("remote", true);
         delete("offline", true);
         delete("runtime", true);

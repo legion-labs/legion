@@ -5,7 +5,8 @@ use std::{
     collections::HashMap,
     ffi::OsStr,
     fs::{self, File},
-    io::BufReader,
+    hash::{Hash, Hasher},
+    io::{BufReader, Write},
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
@@ -18,135 +19,181 @@ use lgn_data_offline::{
 };
 use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_graphics_data::{offline_gltf::GltfFile, offline_png::PngFile, offline_psd::PsdFile};
+use lgn_utils::DefaultHasher;
 use sample_data::offline as offline_data;
 use serde::de::DeserializeOwned;
 use tokio::sync::Mutex;
 
 use self::raw_to_offline::FromRaw;
 
-pub async fn build_offline(root_folder: impl AsRef<Path>) {
-    let root_folder = root_folder.as_ref();
-    if let Ok(entries) = root_folder.read_dir() {
-        let mut raw_dir = entries
-            .flatten()
-            .filter(|e| e.file_type().unwrap().is_dir() && e.file_name() == "raw");
-        if let Some(raw_dir) = raw_dir.next() {
-            let raw_dir = raw_dir.path();
-            let (mut project, resources) = setup_project(root_folder).await;
-            let mut resources = resources.lock().await;
+pub async fn build_offline(root_folder: impl AsRef<Path>, incremental: bool) {
+    let raw_dir = {
+        if let Ok(entries) = root_folder.as_ref().read_dir() {
+            let mut raw_dir = entries
+                .flatten()
+                .filter(|e| e.file_type().unwrap().is_dir() && e.file_name() == "raw");
+            raw_dir.next().map(|d| d.path())
+        } else {
+            None
+        }
+    };
 
-            let mut file_paths = find_files(&raw_dir, &["ent", "ins", "mat", "psd", "png", "gltf"]);
+    if let Some(raw_dir) = raw_dir {
+        let mut file_paths = find_files(&raw_dir, &["ent", "ins", "mat", "psd", "png", "gltf"]);
 
-            let gltf_folders = file_paths
-                .iter()
-                .filter_map(|v| {
-                    let mut v = v.clone();
-                    if let Some(extension) = v.extension() {
-                        if extension.eq("gltf") && v.pop() {
-                            Some(v)
-                        } else {
-                            None
-                        }
+        let raw_checksum = {
+            let mut hasher = DefaultHasher::new();
+            for file in &file_paths {
+                let meta = std::fs::metadata(file).unwrap();
+                meta.modified().unwrap().hash(&mut hasher);
+            }
+            hasher.finish()
+        };
+
+        let generated_checksum = {
+            if !root_folder.as_ref().join("offline").exists()
+                || !root_folder.as_ref().join("remote").exists()
+            {
+                None
+            } else {
+                std::fs::read_to_string(root_folder.as_ref().join("VERSION"))
+                    .map_or(None, |version| version.parse::<u64>().ok())
+            }
+        };
+
+        if let Some(generated_checksum) = generated_checksum {
+            if generated_checksum == raw_checksum {
+                println!("Skipping Project Generation");
+                return;
+            }
+        }
+
+        if !incremental {
+            std::fs::remove_dir_all(root_folder.as_ref().join("remote"))
+                .unwrap_or_else(|e| println!("failed to delete remote: {}.", e));
+
+            std::fs::remove_dir_all(root_folder.as_ref().join("offline"))
+                .unwrap_or_else(|e| println!("failed to delete offline: {}.", e));
+
+            std::fs::remove_file(root_folder.as_ref().join("VERSION"))
+                .unwrap_or_else(|e| println!("failed to delete VERSION: {}.", e));
+        }
+
+        //
+        let (mut project, resources) = setup_project(root_folder.as_ref()).await;
+        let mut resources = resources.lock().await;
+
+        let gltf_folders = file_paths
+            .iter()
+            .filter_map(|v| {
+                let mut v = v.clone();
+                if let Some(extension) = v.extension() {
+                    if extension.eq("gltf") && v.pop() {
+                        Some(v)
                     } else {
                         None
                     }
-                })
-                .collect::<Vec<PathBuf>>();
-
-            // hack to only load .png unassociated with .gltf
-            file_paths = file_paths
-                .iter()
-                .filter(|v| {
-                    let mut f = (*v).clone();
-                    if let Some(extension) = v.extension() {
-                        if f.pop() && !(extension.eq("png") && gltf_folders.contains(&f)) {
-                            return true;
-                        }
-                    }
-                    false
-                })
-                .cloned()
-                .collect();
-
-            let file_paths_guids = file_paths
-                .iter()
-                .map(|s| {
-                    let mut p = s.clone();
-                    p.set_extension(s.extension().unwrap().to_str().unwrap().to_owned() + ".guid");
-                    ResourceId::from_str(&fs::read_to_string(p).unwrap()).unwrap()
-                })
-                .collect::<Vec<_>>();
-
-            let in_resources = file_paths
-                .iter()
-                .map(|s| path_to_resource_name(s))
-                .zip(file_paths_guids)
-                .collect::<Vec<_>>();
-
-            let resource_ids =
-                create_or_find_default(&file_paths, &in_resources, &mut project, &mut resources)
-                    .await;
-
-            println!("Created resources: {:#?}", project);
-
-            for (i, path) in file_paths.iter().enumerate() {
-                let resource_name = &in_resources[i].0;
-                let resource_id = *resource_ids.get(resource_name).unwrap();
-                match path.extension().unwrap().to_str().unwrap() {
-                    "ent" => {
-                        load_ron_resource::<raw_data::Entity, offline_data::Entity>(
-                            resource_id,
-                            path,
-                            &resource_ids,
-                            &mut project,
-                            &mut resources,
-                        )
-                        .await;
-                    }
-                    "ins" => {
-                        load_ron_resource::<raw_data::Instance, offline_data::Instance>(
-                            resource_id,
-                            path,
-                            &resource_ids,
-                            &mut project,
-                            &mut resources,
-                        )
-                        .await;
-                    }
-                    "mat" => {
-                        load_ron_resource::<raw_data::Material, lgn_graphics_data::offline::Material>(
-                            resource_id,
-                            path,
-                            &resource_ids,
-                            &mut project,
-                            &mut resources,
-                        )
-                        .await;
-                    }
-                    "psd" => {
-                        load_psd_resource(resource_id, path, &mut project, &mut resources).await;
-                    }
-                    "png" => {
-                        load_png_resource(resource_id, path, &mut project, &mut resources).await;
-                    }
-                    "gltf" => {
-                        load_gltf_resource(resource_id, path, &mut project, &mut resources).await;
-                    }
-                    _ => panic!(),
+                } else {
+                    None
                 }
+            })
+            .collect::<Vec<PathBuf>>();
 
-                println!("Loaded: {}. id: {}", resource_name, resource_id);
+        // hack to only load .png unassociated with .gltf
+        file_paths = file_paths
+            .iter()
+            .filter(|v| {
+                let mut f = (*v).clone();
+                if let Some(extension) = v.extension() {
+                    if f.pop() && !(extension.eq("png") && gltf_folders.contains(&f)) {
+                        return true;
+                    }
+                }
+                false
+            })
+            .cloned()
+            .collect();
+
+        let file_paths_guids = file_paths
+            .iter()
+            .map(|s| {
+                let mut p = s.clone();
+                p.set_extension(s.extension().unwrap().to_str().unwrap().to_owned() + ".guid");
+                ResourceId::from_str(&fs::read_to_string(p).unwrap()).unwrap()
+            })
+            .collect::<Vec<_>>();
+
+        let in_resources = file_paths
+            .iter()
+            .map(|s| path_to_resource_name(s))
+            .zip(file_paths_guids)
+            .collect::<Vec<_>>();
+
+        let resource_ids =
+            create_or_find_default(&file_paths, &in_resources, &mut project, &mut resources).await;
+
+        println!("Created resources: {:#?}", project);
+
+        for (i, path) in file_paths.iter().enumerate() {
+            let resource_name = &in_resources[i].0;
+            let resource_id = *resource_ids.get(resource_name).unwrap();
+            match path.extension().unwrap().to_str().unwrap() {
+                "ent" => {
+                    load_ron_resource::<raw_data::Entity, offline_data::Entity>(
+                        resource_id,
+                        path,
+                        &resource_ids,
+                        &mut project,
+                        &mut resources,
+                    )
+                    .await;
+                }
+                "ins" => {
+                    load_ron_resource::<raw_data::Instance, offline_data::Instance>(
+                        resource_id,
+                        path,
+                        &resource_ids,
+                        &mut project,
+                        &mut resources,
+                    )
+                    .await;
+                }
+                "mat" => {
+                    load_ron_resource::<raw_data::Material, lgn_graphics_data::offline::Material>(
+                        resource_id,
+                        path,
+                        &resource_ids,
+                        &mut project,
+                        &mut resources,
+                    )
+                    .await;
+                }
+                "psd" => {
+                    load_psd_resource(resource_id, path, &mut project, &mut resources).await;
+                }
+                "png" => {
+                    load_png_resource(resource_id, path, &mut project, &mut resources).await;
+                }
+                "gltf" => {
+                    load_gltf_resource(resource_id, path, &mut project, &mut resources).await;
+                }
+                _ => panic!(),
             }
 
-            project.commit("sample data generation").await.unwrap();
-        } else {
-            eprintln!(
-                "did not find a 'raw' sub-directory in {}",
-                root_folder.display()
-            );
+            println!("Loaded: {}. id: {}", resource_name, resource_id);
         }
+
+        project.commit("sample data generation").await.unwrap();
+
+        let mut version_file = std::fs::File::create(root_folder.as_ref().join("VERSION")).unwrap();
+        version_file
+            .write_all(raw_checksum.to_string().as_bytes())
+            .unwrap();
     } else {
-        eprintln!("unable to open directory {}", root_folder.display());
+        eprintln!(
+            "did not find a 'raw' sub-directory in {}",
+            root_folder.as_ref().display()
+        );
     }
 }
 

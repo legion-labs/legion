@@ -66,6 +66,8 @@ impl ResourceRegistryPlugin {
         let selection_manager = world.get_resource::<Arc<SelectionManager>>().unwrap();
 
         let transaction_manager = async_rt.block_on(async move {
+            sample_data_compiler::raw_loader::build_offline(&project_dir, false).await;
+
             let project = {
                 if let Ok(project) = Project::open(&project_dir).await {
                     project
