@@ -224,13 +224,13 @@
 
       if (span.scopeHash != 0) {
         if (callWidth > characterWidth * 5) {
-          const nbChars = Math.floor(callWidth / characterWidth);
+          // const nbChars = Math.floor(callWidth / characterWidth);
 
           ctx.fillStyle = "#000000";
 
           const extraHeight = 0.5 * (spanPixelHeight - characterHeight);
           const { name } = scopes[span.scopeHash];
-          const caption = name + " " + formatExecutionTime(endSpan - beginSpan);
+          // const caption = name + " " + formatExecutionTime(endSpan - beginSpan);
 
           // ctx.fillText(
           //   caption.slice(0, nbChars),

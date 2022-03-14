@@ -5,6 +5,7 @@
   import { Process } from "@lgn/proto-telemetry/dist/process";
   import { createEventDispatcher } from "svelte";
   import TimelineThreadItem from "./TimelineThreadItem.svelte";
+  import TasksItem from "./TasksItem.svelte";
   export let process: Process;
   export let stateStore: TimelineStateStore;
   export let rootStartTime: number;
@@ -49,6 +50,7 @@
   </div>
   <div class="thread-container">
     {#if $stateStore}
+      <TasksItem on:zoom={(e) => wheelDispatch("zoom", e.detail)} />
       {#each threads as thread, index (thread.streamInfo.streamId)}
         <TimelineThreadItem
           bind:this={components[index]}
