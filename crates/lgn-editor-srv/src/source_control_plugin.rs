@@ -400,14 +400,14 @@ impl Clone for SharedRawFilesStreamer {
     }
 }
 
-#[derive(Default)]
-pub(crate) struct SourceControlPlugin;
-
 pub(crate) struct SourceControlRPC {
     streamer: SharedRawFilesStreamer,
     uploads_folder: PathBuf,
     transaction_manager: Arc<Mutex<TransactionManager>>,
 }
+
+#[derive(Default)]
+pub(crate) struct SourceControlPlugin;
 
 impl SourceControlPlugin {
     #[allow(clippy::needless_pass_by_value)]

@@ -6,7 +6,7 @@
   import ModalContainer from "@lgn/web-client/src/components/modal/ModalContainer.svelte";
   import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
   import StatusBar from "@lgn/web-client/src/components/StatusBar.svelte";
-  import { getAllResources } from "@/api";
+  import { getAllResources, streamLogs } from "@/api";
   import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
   import currentResource from "@/orchestrators/currentResource";
   import { createHierarchyTreeOrchestrator } from "@/orchestrators/hierarchyTree";
@@ -22,12 +22,8 @@
   import ResourceBrowser from "@/components/ResourceBrowser.svelte";
   import modal from "@/stores/modal";
   import type { Entry } from "@/lib/hierarchyTree";
-
-  // notifications.push(Symbol.for("resource-renaming-error"), {
-  //       type: "error",
-  //       title: "Resources",
-  //       message: "An error occured while renaming the resource",
-  //     });
+  import { tap } from "rxjs/operators";
+  import log from "@lgn/web-client/src/lib/log";
 
   const { data: currentResourceData } = currentResource;
 
@@ -59,6 +55,16 @@
 
   onMount(() => {
     reloadResources();
+
+    streamLogs().then((logs) => {
+      logs
+        .pipe(
+          tap(({ time, target, level, message }) =>
+            log.trace(`${time} - ${target} - ${message}`)
+          )
+        )
+        .subscribe();
+    });
 
     if ($authStatus && $authStatus.type === "error") {
       modal.open(Symbol.for("auth-modal"), AuthModal, {

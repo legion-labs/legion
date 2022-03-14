@@ -8,6 +8,7 @@
   import type { NonEmptyArray } from "@lgn/web-client/src/lib/array";
   import log from "@lgn/web-client/src/lib/log";
   import { goto } from "$app/navigation";
+  import "@/workers/editorWorker";
 
   const logLevel = "warn";
 

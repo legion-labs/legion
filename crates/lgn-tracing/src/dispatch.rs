@@ -307,9 +307,13 @@ impl Dispatch {
             parent_process_id: parent_process,
         };
 
-        self.sinks
-            .iter()
-            .for_each(|sink| sink.on_startup(process_info.clone()));
+        if self.sinks.len() == 1 {
+            self.sinks[0].on_startup(process_info);
+        } else {
+            self.sinks
+                .iter()
+                .for_each(|sink| sink.on_startup(process_info.clone()));
+        }
     }
 
     fn init_log_stream(&mut self) {

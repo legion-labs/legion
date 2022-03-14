@@ -24,7 +24,7 @@
 //!     8 * 1024 * 1024,
 //!     1024 * 1024,
 //!     16 * 1024 * 1024,
-//!     std::sync::Arc::new(event::NullEventSink {})
+//!     std::sync::Arc::new(vec![event::NullEventSink {}])
 //! );
 //! let _thread_guard = guards::TracingThreadGuard::new();
 //!

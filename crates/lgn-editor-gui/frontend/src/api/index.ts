@@ -6,6 +6,10 @@ import {
   ResourceDescription,
 } from "@lgn/proto-editor/dist/resource_browser";
 import {
+  GrpcWebImpl as EditorImpl,
+  EditorClientImpl,
+} from "@lgn/proto-editor/dist/editor";
+import {
   GrpcWebImpl as EditorPropertyInspectorWebImpl,
   PropertyInspectorClientImpl,
 } from "@lgn/proto-editor/dist/property_inspector";
@@ -28,6 +32,8 @@ let propertyInspectorClient: PropertyInspectorClientImpl;
 
 let sourceControlClient: SourceControlClientImpl;
 
+let editorClient: EditorClientImpl;
+
 export function initApiClient({
   editorServerUrl = defaultEditorServerURL,
 }: {
@@ -43,6 +49,12 @@ export function initApiClient({
 
   sourceControlClient = new SourceControlClientImpl(
     new EditorSourceControlWebImpl(editorServerUrl, {
+      debug: false,
+    })
+  );
+
+  editorClient = new EditorClientImpl(
+    new EditorImpl(editorServerUrl, {
       debug: false,
     })
   );
@@ -299,4 +311,8 @@ export function getStagedResources() {
 
 export async function openScene({ id }: { id: string }) {
   return resourceBrowserClient.openScene({ id });
+}
+
+export async function streamLogs() {
+  return editorClient.initLogsStream({});
 }

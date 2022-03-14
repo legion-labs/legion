@@ -98,7 +98,7 @@ impl App {
     }
 
     /// Similar to [`App::new`] but takes a custom [`TelemetryGuard`] instead to allow for
-    /// flexible telemetry setup.
+    /// a more flexible telemetry setup.
     pub fn from_telemetry_guard(telemetry_guard: TelemetryGuard) -> Self {
         let mut app = Self::empty();
 
