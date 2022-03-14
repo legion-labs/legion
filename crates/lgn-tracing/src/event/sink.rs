@@ -7,6 +7,8 @@ use crate::{
     Level, ProcessInfo,
 };
 
+pub type BoxedEventSink = Box<dyn EventSink>;
+
 pub trait EventSink {
     fn on_startup(&self, process_info: ProcessInfo);
     fn on_shutdown(&self);
@@ -24,6 +26,7 @@ pub trait EventSink {
 }
 
 pub struct NullEventSink {}
+
 impl EventSink for NullEventSink {
     fn on_startup(&self, _: ProcessInfo) {}
     fn on_shutdown(&self) {}

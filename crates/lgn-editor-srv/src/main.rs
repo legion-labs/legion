@@ -19,6 +19,7 @@ use lgn_input::InputPlugin;
 use lgn_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
 use lgn_scripting::ScriptingPlugin;
 use lgn_streamer::StreamerPlugin;
+use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::{debug, warn};
 use lgn_transform::TransformPlugin;
 use sample_data::SampleDataPlugin;
@@ -110,7 +111,12 @@ fn main() {
     let mut telemetry_config = lgn_telemetry_sink::Config::default();
     telemetry_config.enable_tokio_console_server = true;
 
-    let mut app = App::new(telemetry_config);
+    let telemetry_guard = TelemetryGuardBuilder::new(telemetry_config)
+        .build()
+        .expect("telemetry guard should be initialized once");
+
+    let mut app = App::from_telemetry_guard(telemetry_guard);
+
     app.insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
         1.0 / 60.0,
     )))
