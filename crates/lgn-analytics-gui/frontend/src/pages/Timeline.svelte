@@ -89,41 +89,6 @@
     fetchProcessInfo().then(updatePixelSize);
   });
 
-  function rangesOverlap(
-    range1: [number, number],
-    range2: [number, number]
-  ): boolean {
-    return range1[0] <= range2[1] && range2[0] <= range1[1];
-  }
-
-  async function fetchAsyncSpans(process: Process) {
-    if (!client) {
-      log.error("no client in fetchAsyncSpans");
-      return;
-    }
-    const section = [0.0, 1000.0] as [number, number]; //section is in relative ms
-
-    let blocksOfInterest: string[] = [];
-    for (const streamId in state.threads) {
-      const thread = state.threads[streamId];
-      if (thread.streamInfo.processId === process.processId) {
-        thread.block_ids.forEach((block_id) => {
-          const stats = state.blocks[block_id].asyncStats;
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          if (rangesOverlap(section, [stats!.beginMs, stats!.endMs])) {
-            blocksOfInterest.push(block_id);
-          }
-        });
-      }
-    }
-    const reply = await client.fetch_async_spans({
-      sectionSequenceNumber: 1,
-      sectionLod: 0,
-      blockIds: blocksOfInterest,
-    });
-    console.log(reply);
-  }
-
   async function fetchProcessInfo() {
     if (!client) {
       log.error("no client in fetchProcessInfo");
@@ -138,7 +103,6 @@
     currentProcess = process;
     await fetchStreams(process);
     await fetchChildren(process);
-    await fetchAsyncSpans(process);
     fetchPreferedLods(loadingProgression);
   }
 
@@ -256,19 +220,12 @@
       state.minMs = Math.min(state.minMs, beginMs);
       state.maxMs = Math.max(state.maxMs, endMs);
       nbEventsRepresented += block.nbObjects;
-      const asyncStatsReply = await client.fetch_block_async_stats({
-        process,
-        stream,
-        blockId: block.blockId,
-      });
       state.threads[stream.streamId].block_ids.push(block.blockId);
-      // console.log(asyncStatsReply);
       state.blocks[block.blockId] = {
         blockDefinition: block,
         beginMs: beginMs,
         endMs: endMs,
         lods: [],
-        asyncStats: asyncStatsReply,
       };
     }
   }

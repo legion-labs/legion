@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
   BlockSpansReply,
+  BlockAsyncEventsStatReply,
   PerformanceAnalyticsClientImpl,
 } from "@lgn/proto-telemetry/dist/analytics";
 import { Process } from "@lgn/proto-telemetry/dist/process";
@@ -84,7 +85,7 @@ export class TimelineStateManager {
         return state;
       });
 
-      promises.push(this.fetchBlocksAsync(process, stream));
+      promises.push(this.fetchBlocks(process, stream));
     });
     await Promise.all(promises);
   }
@@ -129,17 +130,12 @@ export class TimelineStateManager {
     const section = [0.0, 1000.0] as [number, number]; //section is in relative ms
 
     const blocksOfInterest: string[] = [];
-    for (const streamId in this.state.value.threads) {
-      const thread = this.state.value.threads[streamId];
-      if (thread.streamInfo.processId === process.processId) {
-        thread.block_ids.forEach((block_id) => {
-          const stats = this.state.value.blocks[block_id].asyncStats;
-          if (this.rangesOverlap(section, [stats!.beginMs, stats!.endMs])) {
-            blocksOfInterest.push(block_id);
-          }
-        });
+    const processAsyncData = this.state.value.processAsyncData[process.processId];
+    processAsyncData.blockStats.forEach( stats => {
+      if (this.rangesOverlap(section, [stats!.beginMs, stats!.endMs])) {
+        blocksOfInterest.push(stats.blockId);
       }
-    }
+    } );
 
     const reply = await loadWrapAsync(
       async () =>
@@ -152,11 +148,17 @@ export class TimelineStateManager {
     console.log(reply);
   }
 
-  private async fetchBlocksAsync(process: Process, stream: Stream) {
+  private async fetchBlocks(process: Process, stream: Stream) {
     if (!this.client) {
       log.error("no client in fetchBlocks");
       return;
     }
+    let blockStats: BlockAsyncEventsStatReply[] = [];
+    let asyncData = {processId: process.processId,
+                     maxDepth: 0,
+                     minMs: Infinity,
+                     maxMs: -Infinity,
+                     blockStats};
     const processOffset = processMsOffsetToRoot(this.process, process);
     const response = await loadWrapAsync(async () => {
       return await this.client!.list_stream_blocks({
@@ -179,6 +181,9 @@ export class TimelineStateManager {
           blockId: block.blockId,
         });
       });
+      asyncData.minMs = Math.min( asyncData.minMs, asyncStatsReply.beginMs );
+      asyncData.maxMs = Math.max( asyncData.maxMs, asyncStatsReply.endMs );
+      blockStats.push(asyncStatsReply);
       this.state.update((s) => {
         s.threads[stream.streamId].block_ids.push(block.blockId);
         return s;
@@ -189,11 +194,11 @@ export class TimelineStateManager {
           beginMs: beginMs,
           endMs: endMs,
           lods: [],
-          asyncStats: asyncStatsReply,
         };
         return s;
       });
     }
+    this.state.value.processAsyncData[process.processId] = asyncData;
   }
 
   async fetchLodsAsync(pixelWidth: number) {
