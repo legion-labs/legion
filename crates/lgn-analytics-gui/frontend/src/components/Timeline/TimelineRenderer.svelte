@@ -50,8 +50,17 @@
     await stateManager.fetchLodsAsync(windowInnerWidth);
   }
 
+  function isValidEvent(event: MouseEvent) {
+    return (
+      event.target instanceof HTMLCanvasElement ||
+      (event.target instanceof Element &&
+        event.target.classList.contains("timeline-item"))
+    );
+  }
+
   function onMouseMove(event: MouseEvent) {
     if (
+      isValidEvent(event) &&
       RangeSelectionOnMouseMove(
         event,
         $stateStore.selectionState,
@@ -73,11 +82,7 @@
     if (event.buttons !== 1) {
       panState = undefined;
     } else if (!event.shiftKey) {
-      if (
-        event.target instanceof HTMLCanvasElement ||
-        (event.target instanceof Element &&
-          event.target.classList.contains("drag"))
-      ) {
+      if (isValidEvent(event)) {
         if (!panState) {
           panState = {
             beginMouseX: event.offsetX,
