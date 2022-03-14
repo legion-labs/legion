@@ -50,7 +50,13 @@
   </div>
   <div class="thread-container">
     {#if $stateStore}
-      <TasksItem on:zoom={(e) => wheelDispatch("zoom", e.detail)} />
+      <TasksItem
+        parentCollapsed={collapsed}
+        {stateStore}
+        {width}
+        {rootStartTime}
+        on:zoom={(e) => wheelDispatch("zoom", e.detail)}
+      />
       {#each threads as thread, index (thread.streamInfo.streamId)}
         <TimelineThreadItem
           bind:this={components[index]}

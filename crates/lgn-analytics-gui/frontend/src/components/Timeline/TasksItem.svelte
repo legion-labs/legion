@@ -1,12 +1,13 @@
 <script lang="ts">
-  // import { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
-  // import { createEventDispatcher } from "svelte";
-  // export let rootStartTime: number;
-  // export let stateStore: TimelineStateStore;
-  // export let width: number;
-  // export let parentCollapsed: boolean;
+  import { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
+  import { createEventDispatcher } from "svelte";
+  export let rootStartTime: number;
+  export let stateStore: TimelineStateStore;
+  export let width: number;
+  export let parentCollapsed: boolean;
+  import TasksSpans from "./TasksSpans.svelte";
   let collapsed = false;
-  // const wheelDispatch = createEventDispatcher<{ zoom: WheelEvent }>();
+  const wheelDispatch = createEventDispatcher<{ zoom: WheelEvent }>();
   const threadName = "async tasks";
 
   export function setCollapse(state: boolean) {
@@ -25,14 +26,13 @@
       <span class="thread-name">{threadName}</span></span
     >
   </div>
-  <!-- <TimelineThread -->
-  <!--   {stateStore} -->
-  <!--   {thread} -->
-  <!--   {parentCollapsed} -->
-  <!--   {width} -->
-  <!--   {rootStartTime} -->
-  <!--   on:zoom={(e) => wheelDispatch("zoom", e.detail)} -->
-  <!-- /> -->
+  <TasksSpans
+    {stateStore}
+    {parentCollapsed}
+    {width}
+    {rootStartTime}
+    on:zoom={(e) => wheelDispatch("zoom", e.detail)}
+  />
 </div>
 
 <style lang="postcss">
