@@ -17,7 +17,7 @@ import { Stream } from "@lgn/proto-telemetry/dist/stream";
 import { TimelineStateStore } from "./TimelineStateStore";
 import { TimelineState } from "./TimelineState";
 import Semaphore from "semaphore-async-await";
-import { loadWrap as loadWrapAsync } from "../Misc/LoadingStore";
+import { loadWrap } from "../Misc/LoadingStore";
 
 export class TimelineStateManager {
   state: TimelineStateStore;
@@ -34,7 +34,7 @@ export class TimelineStateManager {
     );
   }
 
-  async initAsync(pixelWidth: number) {
+  async init(pixelWidth: number) {
     this.client = await makeGrpcClient();
     this.process = (
       await this.client.find_process({
@@ -51,13 +51,13 @@ export class TimelineStateManager {
       }
       return s;
     });
-    await this.fetchStreamsAsync(this.process);
-    await this.fetchChildrenAsync(this.process);
+    await this.fetchStreams(this.process);
+    await this.fetchChildren(this.process);
     await this.fetchAsyncSpans(this.process);
-    await this.fetchLodsAsync(pixelWidth);
+    await this.fetchLods(pixelWidth);
   }
 
-  async fetchStreamsAsync(process: Process) {
+  async fetchStreams(process: Process) {
     if (!this.client) {
       log.error("no client in fetchStreams");
       return;
@@ -90,7 +90,7 @@ export class TimelineStateManager {
     await Promise.all(promises);
   }
 
-  async fetchChildrenAsync(process: Process) {
+  async fetchChildren(process: Process) {
     if (!this.client) {
       log.error("no client in fetchChildren");
       return;
@@ -110,7 +110,7 @@ export class TimelineStateManager {
         s.processes.push(process);
         return s;
       });
-      return this.fetchStreamsAsync(process);
+      return this.fetchStreams(process);
     });
     await Promise.all(promises);
   }
@@ -138,7 +138,7 @@ export class TimelineStateManager {
       }
     });
 
-    const reply = await loadWrapAsync(
+    const reply = await loadWrap(
       async () =>
         await this.client!.fetch_async_spans({
           sectionSequenceNumber: 0,
@@ -163,7 +163,7 @@ export class TimelineStateManager {
       blockStats,
     };
     const processOffset = processMsOffsetToRoot(this.process, process);
-    const response = await loadWrapAsync(async () => {
+    const response = await loadWrap(async () => {
       return await this.client!.list_stream_blocks({
         streamId: stream.streamId,
       });
@@ -177,7 +177,7 @@ export class TimelineStateManager {
         s.eventCount += block.nbObjects;
         return s;
       });
-      const asyncStatsReply = await loadWrapAsync(async () => {
+      const asyncStatsReply = await loadWrap(async () => {
         return await this.client!.fetch_block_async_stats({
           process,
           stream,
@@ -204,7 +204,7 @@ export class TimelineStateManager {
     this.state.value.processAsyncData[process.processId] = asyncData;
   }
 
-  async fetchLodsAsync(pixelWidth: number) {
+  async fetchLods(pixelWidth: number) {
     const range = this.state.value.getViewRange();
     const promises: Promise<void>[] = [];
     for (const block of Object.values(this.state.value.blocks)) {
@@ -215,13 +215,13 @@ export class TimelineStateManager {
           tracks: [],
           lodId: lod,
         };
-        promises.push(this.fetchBlockSpansAsync(block, lod));
+        promises.push(this.fetchBlockSpans(block, lod));
       }
     }
     await Promise.all(promises);
   }
 
-  async fetchBlockSpansAsync(block: ThreadBlock, lodToFetch: number) {
+  async fetchBlockSpans(block: ThreadBlock, lodToFetch: number) {
     if (!this.client) {
       log.error("no client in fetchBlockSpans");
       return;
@@ -233,7 +233,7 @@ export class TimelineStateManager {
     }
     block.lods[lodToFetch].state = LODState.Requested;
     const blockId = block.blockDefinition.blockId;
-    await loadWrapAsync(async () => {
+    await loadWrap(async () => {
       await this.semaphore.acquire();
       try {
         await this.client!.block_spans({

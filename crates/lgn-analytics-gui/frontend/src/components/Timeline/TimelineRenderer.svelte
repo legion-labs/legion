@@ -38,7 +38,7 @@
     loadingStore.reset();
     stateManager = new TimelineStateManager(processId);
     stateStore = stateManager.state;
-    await stateManager.initAsync(windowInnerWidth);
+    await stateManager.init(windowInnerWidth);
   });
 
   async function onZoom(event: WheelEvent) {
@@ -47,7 +47,7 @@
       return s;
     });
 
-    await stateManager.fetchLodsAsync(windowInnerWidth);
+    await stateManager.fetchLods(windowInnerWidth);
   }
 
   function isValidEvent(event: MouseEvent) {
