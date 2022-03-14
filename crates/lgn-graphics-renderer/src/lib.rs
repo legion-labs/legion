@@ -51,6 +51,8 @@ pub mod egui;
 pub mod hl_gfx_api;
 
 pub(crate) mod lighting;
+pub(crate) mod scene_export;
+
 pub mod render_pass;
 
 pub mod core;
@@ -60,6 +62,7 @@ pub mod shared;
 use crate::core::RendererThreadPlugin;
 use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
 use crate::render_pass::TmpRenderPass;
+use crate::scene_export::SceneExporterPlugin;
 use crate::{
     components::{
         debug_display_lights, ui_lights, update_lights, ManipulatorComponent, PickedComponent,
@@ -216,6 +219,7 @@ impl Plugin for RendererPlugin {
         app.add_plugin(EguiPlugin::default());
         app.add_plugin(PickingPlugin {});
         app.add_plugin(RendererThreadPlugin {});
+	app.add_plugin(SceneExporterPlugin {});
 
         // This resource needs to be shutdown after all other resources
         app.insert_resource(renderer);
