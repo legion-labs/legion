@@ -222,15 +222,15 @@ impl PropertyInspector for PropertyInspectorRPC {
         let resource_id = parse_resource_id(request.id.as_str())?;
 
         let transaction_manager = self.transaction_manager.lock().await;
-        let ctx = LockContext::new(&transaction_manager).await;
+        let mut ctx = LockContext::new(&transaction_manager).await;
         let handle = ctx
-            .loaded_resource_handles
-            .get(resource_id)
-            .ok_or_else(|| Status::internal(format!("Invalid ResourceID: {}", resource_id)))?;
+            .get_or_load(resource_id)
+            .await
+            .map_err(|err| Status::internal(err.to_string()))?;
 
         let mut property_bag = if let Some(reflection) = ctx
             .resource_registry
-            .get_resource_reflection(resource_id.kind, handle)
+            .get_resource_reflection(resource_id.kind, &handle)
         {
             collect_properties::<ResourcePropertyCollector>(reflection)
                 .map_err(|err| Status::internal(err.to_string()))?
@@ -360,15 +360,15 @@ impl PropertyInspector for PropertyInspectorRPC {
             .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
 
         let transaction_manager = self.transaction_manager.lock().await;
-        let ctx = LockContext::new(&transaction_manager).await;
+        let mut ctx = LockContext::new(&transaction_manager).await;
         let handle = ctx
-            .loaded_resource_handles
-            .get(resource_id)
-            .ok_or_else(|| Status::internal(format!("Invalid ResourceID: {}", resource_id)))?;
+            .get_or_load(resource_id)
+            .await
+            .map_err(|err| Status::internal(err.to_string()))?;
 
         let reflection = ctx
             .resource_registry
-            .get_resource_reflection(resource_id.kind, handle)
+            .get_resource_reflection(resource_id.kind, &handle)
             .ok_or_else(|| {
                 Status::internal(format!("Invalid ResourceID format: {}", resource_id))
             })?;

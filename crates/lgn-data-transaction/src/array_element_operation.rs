@@ -90,14 +90,11 @@ impl ArrayOperation {
 impl TransactionOperation for ArrayOperation {
     #[allow(unsafe_code)]
     async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
-        let resource_handle = ctx
-            .loaded_resource_handles
-            .get(self.resource_id)
-            .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
+        let resource_handle = ctx.get_or_load(self.resource_id).await?;
 
         let reflection = ctx
             .resource_registry
-            .get_resource_reflection_mut(self.resource_id.kind, resource_handle)
+            .get_resource_reflection_mut(self.resource_id.kind, &resource_handle)
             .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 
         let array_value = find_property_mut(reflection, self.array_path.as_str())
@@ -222,14 +219,11 @@ impl TransactionOperation for ArrayOperation {
 
     #[allow(unsafe_code)]
     async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
-        let handle = ctx
-            .loaded_resource_handles
-            .get(self.resource_id)
-            .ok_or(Error::InvalidResource(self.resource_id))?;
+        let handle = ctx.get_or_load(self.resource_id).await?;
 
         let reflection = ctx
             .resource_registry
-            .get_resource_reflection_mut(self.resource_id.kind, handle)
+            .get_resource_reflection_mut(self.resource_id.kind, &handle)
             .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 
         let array_value = find_property_mut(reflection, self.array_path.as_str())

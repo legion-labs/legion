@@ -1,4 +1,4 @@
-use std::{path::PathBuf, sync::Arc};
+use std::{collections::btree_map::Entry, path::PathBuf, sync::Arc};
 
 use lgn_data_offline::resource::{
     Project, ResourceHandles, ResourcePathName, ResourceRegistry, ResourceRegistryError,
@@ -124,8 +124,11 @@ impl TransactionManager {
             .await
             .map_err(|err| Error::Databuild(resource_id, err))?;
 
+        // Reload runtime asset
         for asset_id in changed_assets {
-            ctx.asset_registry.load_untyped(asset_id);
+            if asset_id.kind.as_pretty().starts_with("runtime_") {
+                ctx.asset_registry.load_untyped(asset_id);
+            }
         }
         Ok(())
     }
@@ -143,40 +146,41 @@ impl TransactionManager {
     }
 
     /// Load all resources from a `Project`
-    pub async fn load_all_resources(&mut self) {
+    pub async fn load_all_resource_type(&mut self, kinds: &[ResourceType]) {
         let project = self.project.lock().await;
         let mut resource_registry = self.resource_registry.lock().await;
         let mut resource_handles = self.loaded_resource_handles.lock().await;
 
         for resource_id in project.resource_list().await {
             let kind = project.resource_type(resource_id).ok();
-            if kind.is_none() {
-                warn!("Skipping unknown resource type for Id:{}", resource_id);
-                continue;
+
+            if kinds.iter().any(|k| Some(*k) == kind) {
+                let kind = kind.unwrap();
+                let type_id = ResourceTypeAndId {
+                    kind,
+                    id: resource_id,
+                };
+
+                if let Entry::Vacant(entry) = resource_handles.entry(type_id) {
+                    let start = std::time::Instant::now();
+                    project
+                        .load_resource(type_id, &mut resource_registry)
+                        .map_or_else(
+                            |err| {
+                                warn!("Failed to load {}: {}", type_id, err);
+                            },
+                            |handle| {
+                                entry.insert(handle);
+                            },
+                        );
+                    info!(
+                        "Loaded resource {} {} in ({:?})",
+                        resource_id,
+                        kind.as_pretty(),
+                        start.elapsed(),
+                    );
+                };
             }
-            let kind = kind.unwrap();
-
-            let type_id = ResourceTypeAndId {
-                kind,
-                id: resource_id,
-            };
-
-            let start = std::time::Instant::now();
-            project
-                .load_resource(type_id, &mut resource_registry)
-                .map_or_else(
-                    |err| {
-                        warn!("Failed to load {}: {}", type_id, err);
-                    },
-                    |handle| resource_handles.insert(type_id, handle),
-                );
-
-            info!(
-                "Loaded resource {} {} in ({:?})",
-                resource_id,
-                kind.as_pretty(),
-                start.elapsed(),
-            );
         }
         info!(
             "Loaded all Project resources: {} resources loaded",

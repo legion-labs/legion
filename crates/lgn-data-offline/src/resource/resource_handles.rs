@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{btree_map::Entry, BTreeMap};
 
 use lgn_data_runtime::ResourceTypeAndId;
 
@@ -12,6 +12,14 @@ impl ResourceHandles {
     /// Retrieve a `ResourceHandleUntyped` from a `ResourceId`
     pub fn get(&self, resource_id: ResourceTypeAndId) -> Option<&ResourceHandleUntyped> {
         self.0.get(&resource_id)
+    }
+
+    /// Retrieve the internal hashmap entry for a `ResourceId`
+    pub fn entry(
+        &mut self,
+        resource_id: ResourceTypeAndId,
+    ) -> Entry<'_, ResourceTypeAndId, ResourceHandleUntyped> {
+        self.0.entry(resource_id)
     }
 
     /// Insert a `ResourceHandleUntyped`

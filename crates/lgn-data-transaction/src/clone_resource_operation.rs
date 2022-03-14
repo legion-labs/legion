@@ -32,10 +32,7 @@ impl CloneResourceOperation {
 #[async_trait]
 impl TransactionOperation for CloneResourceOperation {
     async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
-        let source_handle = ctx
-            .loaded_resource_handles
-            .get(self.source_resource_id)
-            .ok_or(Error::InvalidResource(self.source_resource_id))?;
+        let source_handle = ctx.get_or_load(self.source_resource_id).await?;
 
         let mut buffer = Vec::<u8>::new();
         ctx.resource_registry
@@ -99,12 +96,11 @@ impl TransactionOperation for CloneResourceOperation {
     }
 
     async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
-        if let Some(_clone_handle) = ctx.loaded_resource_handles.remove(self.clone_resource_id) {
-            ctx.project
-                .delete_resource(self.clone_resource_id.id)
-                .await
-                .map_err(|err| Error::Project(self.clone_resource_id, err))?;
-        }
+        ctx.loaded_resource_handles.remove(self.clone_resource_id);
+        ctx.project
+            .delete_resource(self.clone_resource_id.id)
+            .await
+            .map_err(|err| Error::Project(self.clone_resource_id, err))?;
         Ok(())
     }
 }
