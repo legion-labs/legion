@@ -1,4 +1,5 @@
-import ContextMenuStore from "@lgn/web-client/src/stores/contextMenu";
+import type { Writable } from "svelte/store";
+import { createContextMenuStore } from "@lgn/web-client/src/stores/contextMenu";
 import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
 
 export type ContextMenuEntryRecord = {
@@ -6,4 +7,8 @@ export type ContextMenuEntryRecord = {
   resourcePanel: { item: null; name: string };
 };
 
-export default new ContextMenuStore<keyof ContextMenuEntryRecord>();
+export type ContextMenuValue = keyof ContextMenuEntryRecord;
+
+export type ContextMenuStore = Writable<ContextMenuValue>;
+
+export default createContextMenuStore<keyof ContextMenuEntryRecord>();

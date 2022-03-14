@@ -1,3 +1,8 @@
-import { Writable } from "../lib/store";
+import type { Writable } from "svelte/store";
+import { writable } from "svelte/store";
 
-export const statusStore = new Writable<string | null>(null);
+export type StatusBarDataValue = string | null;
+
+export type StatusBarDataStore = Writable<StatusBarDataValue>;
+
+export default writable<StatusBarDataValue>(null);

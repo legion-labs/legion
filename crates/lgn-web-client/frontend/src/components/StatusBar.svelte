@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { statusStore } from "../stores/statusBarData";
+  import statusStore from "../stores/statusBarData";
 </script>
 
 <div class="root">

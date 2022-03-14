@@ -1,9 +1,9 @@
 <script lang="ts">
-  import topBarMenu, {
+  import topBarMenuStore, {
     Id as TopBarMenuId,
     menus as topBarMenus,
   } from "../stores/topBarMenu";
-  import userInfo from "../stores/userInfo";
+  import userInfo from "../orchestrators/userInfo";
   import log from "../lib/log";
   import clickOutside from "../actions/clickOutside";
   import BrandLogo from "./BrandLogo.svelte";
@@ -61,26 +61,26 @@
       : null;
 
   function onMenuMouseEnter(id: TopBarMenuId) {
-    // We set the topBarMenu value (and therefore open said menu dropdown)
+    // We set the topBarMenuStore value (and therefore open said menu dropdown)
     // only when a menu is open
-    $topBarMenu && ($topBarMenu = id);
+    $topBarMenuStore && ($topBarMenuStore = id);
   }
 
   function onMenuClick(id: TopBarMenuId) {
     // Simple menu dropdown display toggle
-    $topBarMenu ? topBarMenu.close() : ($topBarMenu = id);
+    $topBarMenuStore ? topBarMenuStore.close() : ($topBarMenuStore = id);
   }
 
   function onMenuItemClick(title: string) {
     log.debug("layout:topbar", `Clicked on item ${title}`);
 
     // When a user clicks on a menu dropdown item, we just close the menu for now
-    topBarMenu.close();
+    topBarMenuStore.close();
   }
 
   function closeMenu() {
-    if ($topBarMenu) {
-      topBarMenu.close();
+    if ($topBarMenuStore) {
+      topBarMenuStore.close();
     }
   }
 
@@ -119,7 +119,7 @@
       <div
         data-testid="menu-{menu.id}"
         class="menu"
-        class:bg-gray-400={$topBarMenu === menu.id}
+        class:bg-gray-400={$topBarMenuStore === menu.id}
         on:mouseenter={() => onMenuMouseEnter(menu.id)}
         on:click|capture={() => onMenuClick(menu.id)}
       >
@@ -130,7 +130,7 @@
           data-testid="dropdown-{menu.id}"
           class="menu-dropdown"
           class:tauri={isTauri}
-          class:hidden={$topBarMenu !== menu.id}
+          class:hidden={$topBarMenuStore !== menu.id}
         >
           <div class="menu-dropdown-items">
             {#each [`Foo ${menu.title}`, `Bar ${menu.title}`, `Baz ${menu.title}`] as menuItemTitle}

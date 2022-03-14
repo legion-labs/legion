@@ -10,7 +10,7 @@ using the `openModal` function provided by the `lib/modal.ts` module) and open u
 -->
 <script lang="ts">
   import { fade } from "svelte/transition";
-  import type ModalStore from "../../stores/modal";
+  import type { ModalStore } from "../../stores/modal";
 
   export let store: ModalStore;
 

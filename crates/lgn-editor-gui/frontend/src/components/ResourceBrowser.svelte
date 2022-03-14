@@ -19,12 +19,12 @@
     syncLatest,
   } from "@/api";
   import allResources from "@/stores/allResources";
-  import { fetchCurrentResourceDescription } from "@/stores/currentResource";
+  import { fetchCurrentResourceDescription } from "@/orchestrators/currentResource";
   import { components, join } from "@/lib/path";
   import notifications from "@/stores/notifications";
   import type { Entries, Entry } from "@/lib/hierarchyTree";
   import log from "@lgn/web-client/src/lib/log";
-  import Files from "@lgn/web-client/src/stores/files";
+  import { createFilesStore } from "@lgn/web-client/src/stores/files";
   import { UploadStatus } from "@lgn/proto-editor/dist/source_control";
   import { readFile } from "@lgn/web-client/src/lib/files";
   import { formatProperties } from "@/lib/propertyGrid";
@@ -32,7 +32,7 @@
   import type { BagResourceProperty } from "@/lib/propertyGrid";
   import { autoClose, select } from "@lgn/web-client/src/types/contextMenu";
   import type { Event as ContextMenuActionEvent } from "@lgn/web-client/src/types/contextMenu";
-  import currentResource from "@/stores/currentResource";
+  import currentResource from "@/orchestrators/currentResource";
   import type { ContextMenuEntryRecord } from "@/stores/contextMenu";
   import modal from "@/stores/modal";
   import CreateResourceModal from "./resources/CreateResourceModal.svelte";
@@ -41,7 +41,7 @@
 
   const createResourceModalId = Symbol.for("create-resource-modal");
 
-  const files = new Files();
+  const files = createFilesStore();
 
   export let currentResourceDescriptionEntry: Entry<ResourceDescription> | null;
 

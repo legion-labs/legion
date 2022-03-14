@@ -1,5 +1,5 @@
 import { SvelteComponentTyped } from "svelte";
-import { Writable } from "../lib/store";
+import { get, Writable, writable } from "svelte/store";
 import Prompt from "../components/modal/Prompt.svelte";
 
 export type Payload = Record<string, unknown>;
@@ -13,7 +13,7 @@ export type Config<P = Payload> = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export class Content extends SvelteComponentTyped<any> {}
 
-export type Value = Record<
+export type ModalValue = Record<
   symbol,
   {
     id: symbol;
@@ -22,24 +22,8 @@ export type Value = Record<
   }
 >;
 
-export default class extends Writable<Value> {
-  constructor() {
-    super({});
-  }
-
-  /** Opens a modal with the provided content and payload */
-  open(id: symbol, content: typeof Content, config?: Config) {
-    if (id in this.value) {
-      return;
-    }
-
-    this.update((modals) => ({
-      ...modals,
-      [id]: { content, config, id },
-    }));
-  }
-
-  /** Opens a prompt modal */
+export type ModalStore = Writable<ModalValue> & {
+  open(id: symbol, content: typeof Content, config?: Config): void;
   prompt(
     id: symbol,
     config?: Config<{
@@ -48,20 +32,42 @@ export default class extends Writable<Value> {
       cancelLabel?: string;
       confirmLabel?: string;
     }>
-  ) {
-    this.open(id, Prompt, config);
-  }
+  ): void;
+  close(id: symbol): void;
+};
 
-  /** Closes a modal */
-  close(id: symbol) {
-    if (!(id in this.value)) {
-      return;
-    }
+export function createModalStore(): ModalStore {
+  return {
+    ...writable<ModalValue>({}),
 
-    this.update((modals) => {
-      const { [id]: _, ...restModals } = modals;
+    /** Opens a modal with the provided content and payload */
+    open(id, content, config?) {
+      if (id in get(this)) {
+        return;
+      }
 
-      return restModals;
-    });
-  }
+      this.update((modals) => ({
+        ...modals,
+        [id]: { content, config, id },
+      }));
+    },
+
+    /** Opens a prompt modal */
+    prompt(id, config?) {
+      this.open(id, Prompt, config);
+    },
+
+    /** Closes a modal */
+    close(id) {
+      if (!(id in get(this))) {
+        return;
+      }
+
+      this.update((modals) => {
+        const { [id]: _, ...restModals } = modals;
+
+        return restModals;
+      });
+    },
+  };
 }

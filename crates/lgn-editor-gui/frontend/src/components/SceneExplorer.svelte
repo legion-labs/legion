@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { fetchCurrentResourceDescription } from "@/stores/currentResource";
+  import { fetchCurrentResourceDescription } from "@/orchestrators/currentResource";
   import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
   import Panel from "@lgn/web-client/src/components/panel/Panel.svelte";
   import PanelList from "@lgn/web-client/src/components/panel/PanelList.svelte";

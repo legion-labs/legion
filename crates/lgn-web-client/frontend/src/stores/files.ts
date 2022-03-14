@@ -1,39 +1,43 @@
-import { Writable } from "../lib/store";
+import type { Writable } from "svelte/store";
+import { writable } from "svelte/store";
 
-export default class Files extends Writable<File[] | null> {
-  constructor() {
-    super(null);
-  }
+export type FilesValue = File[] | null;
 
-  open({
-    multiple,
-    mimeTypes,
-  }: { multiple?: boolean; mimeTypes?: string[] } = {}) {
-    const fileInput = document.createElement("input");
+export type FilesStore = Writable<FilesValue> & {
+  open(config?: { multiple?: boolean; mimeTypes?: string[] }): void;
+};
 
-    fileInput.type = "file";
-    fileInput.multiple = !!multiple;
-    fileInput.style.display = "none";
+export function createFilesStore(): FilesStore {
+  return {
+    ...writable(null),
 
-    const mimes = mimeTypes?.join(",");
+    open({ multiple, mimeTypes } = {}) {
+      const fileInput = document.createElement("input");
 
-    if (mimes) {
-      fileInput.accept = mimes;
-    }
+      fileInput.type = "file";
+      fileInput.multiple = !!multiple;
+      fileInput.style.display = "none";
 
-    fileInput.addEventListener("change", (event) => {
-      if (event.target instanceof HTMLInputElement) {
-        // TODO: Use the `FileList` type for performance if needed
-        this.set(event.target.files && Array.from(event.target.files));
+      const mimes = mimeTypes?.join(",");
+
+      if (mimes) {
+        fileInput.accept = mimes;
       }
-    });
 
-    document.body.appendChild(fileInput);
+      fileInput.addEventListener("change", (event) => {
+        if (event.target instanceof HTMLInputElement) {
+          // TODO: Use the `FileList` type for performance if needed
+          this.set(event.target.files && Array.from(event.target.files));
+        }
+      });
 
-    const event = new MouseEvent("click", {});
+      document.body.appendChild(fileInput);
 
-    fileInput.dispatchEvent(event);
+      const event = new MouseEvent("click", {});
 
-    document.body.removeChild(fileInput);
-  }
+      fileInput.dispatchEvent(event);
+
+      document.body.removeChild(fileInput);
+    },
+  };
 }

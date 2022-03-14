@@ -3,7 +3,7 @@
   import keyboardNavigation, {
     keyboardNavigationItem,
   } from "../../actions/keyboardNavigation";
-  import KeyboardNavigationStore from "../../stores/keyboardNavigation";
+  import { createKeyboardNavigationStore } from "../../stores/keyboardNavigation";
 
   type Item = $$Generic;
 
@@ -16,7 +16,7 @@
   const dispatch = createEventDispatcher<{ highlight: Item; select: Item }>();
 
   // Can be extracted if needed
-  const keyboardNavigationStore = new KeyboardNavigationStore();
+  const keyboardNavigationStore = createKeyboardNavigationStore();
 
   /**
    * The key attribute used to index the items during the iteration:

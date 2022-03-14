@@ -3,7 +3,7 @@
   import { Entries, isEntry } from "@/lib/hierarchyTree";
   import type { Entry } from "@/lib/hierarchyTree";
   import keyboardNavigation from "@lgn/web-client/src/actions/keyboardNavigation";
-  import KeyboardNavigationStore from "@lgn/web-client/src/stores/keyboardNavigation";
+  import { createKeyboardNavigationStore } from "@lgn/web-client/src/stores/keyboardNavigation";
   import HierarchyTreeItem from "./HierarchyTreeItem.svelte";
 
   type Item = $$Generic<{ id: string; path: string }>;
@@ -21,7 +21,7 @@
   }>();
 
   // Can be extracted if needed
-  const keyboardNavigationStore = new KeyboardNavigationStore();
+  const keyboardNavigationStore = createKeyboardNavigationStore();
 
   export let entries: Entries<Item>;
 

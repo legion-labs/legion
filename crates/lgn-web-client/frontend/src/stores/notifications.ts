@@ -1,4 +1,5 @@
-import { Writable } from "../lib/store";
+import type { Writable } from "svelte/store";
+import { writable } from "svelte/store";
 
 export type Notification = {
   type: "success" | "warning" | "error";
@@ -7,78 +8,82 @@ export type Notification = {
   timeout?: number;
 };
 
-type Value = Notification & {
+export type NotificationsValue = Notification & {
   close(): void;
   started: number;
   timeout: number;
   percentage: number;
 };
 
+export type NotificationsStore = Writable<
+  Record<symbol, NotificationsValue>
+> & {
+  push(key: symbol, value: Notification): void;
+};
+
 const intervalMs = 16;
 
-export default class extends Writable<Record<symbol, Value>> {
-  #timeout: number;
+export function createNotificationsStore(
+  requestedTimeout = 5_000
+): NotificationsStore {
+  return {
+    ...writable<Record<symbol, NotificationsValue>>({}),
 
-  constructor(timeout = 5_000) {
-    super({});
+    push(key: symbol, value: Notification) {
+      const update = this.update;
 
-    this.#timeout = timeout;
-  }
+      this.update((notifications) => {
+        if (key in notifications) {
+          return notifications;
+        }
 
-  push(key: symbol, value: Notification) {
-    this.update((notifications) => {
-      if (key in notifications) {
-        return notifications;
-      }
+        const timeout =
+          typeof value.timeout === "number" ? value.timeout : requestedTimeout;
 
-      const timeout =
-        typeof value.timeout === "number" ? value.timeout : this.#timeout;
+        const intervalId = setInterval(() => {
+          this.update((notifications) => {
+            const notification = notifications[key];
 
-      const update = this.update.bind(this);
+            const percentage =
+              100 - (100 * (Date.now() - notification.started)) / timeout;
 
-      const intervalId = setInterval(() => {
-        this.update((notifications) => {
-          const notification = notifications[key];
+            return {
+              ...notifications,
+              [key]: { ...notification, percentage },
+            };
+          });
+        }, intervalMs);
 
-          const percentage =
-            100 - (100 * (Date.now() - notification.started)) / timeout;
-
-          return {
-            ...notifications,
-            [key]: { ...notification, percentage },
-          };
-        });
-      }, intervalMs);
-
-      const timeoutId = setTimeout(() => {
-        this.update((notifications) => {
-          clearInterval(intervalId);
-
-          const { [key]: _, ...restNotifications } = notifications;
-
-          return restNotifications;
-        });
-      }, timeout);
-
-      return {
-        ...notifications,
-        [key]: {
-          ...value,
-          started: Date.now(),
-          timeout,
-          percentage: 100,
-          close() {
-            clearTimeout(timeoutId);
+        const timeoutId = setTimeout(() => {
+          this.update((notifications) => {
             clearInterval(intervalId);
 
-            update((notifications) => {
-              const { [key]: _, ...restNotifications } = notifications;
+            const { [key]: _, ...restNotifications } = notifications;
 
-              return restNotifications;
-            });
+            return restNotifications;
+          });
+        }, timeout);
+
+        return {
+          ...notifications,
+          [key]: {
+            ...value,
+            started: Date.now(),
+            timeout,
+            percentage: 100,
+            close() {
+              clearTimeout(timeoutId);
+              clearInterval(intervalId);
+
+              update((notifications) => {
+                const { [key]: _, ...restNotifications } = notifications;
+
+                return restNotifications;
+              });
+            },
           },
-        },
-      };
-    });
-  }
+        };
+      });
+    },
+  };
 }

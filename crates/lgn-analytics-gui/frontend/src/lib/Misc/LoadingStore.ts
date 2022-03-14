@@ -1,4 +1,4 @@
-import { writable } from "svelte/store";
+import { Subscriber, Writable, writable } from "svelte/store";
 
 export const loadingStore = createLoadStore();
 
@@ -7,13 +7,19 @@ type LoadingState = {
   completed: number;
 };
 
-export type LoadingStore = ReturnType<typeof createLoadStore>;
+export type LoadingStore = {
+  subscribe: Writable<LoadingState>["subscribe"];
+  reset(): void;
+  addWork(): void;
+  completeWork(): void;
+};
 
-function createLoadStore() {
+function createLoadStore(): LoadingStore {
   const { subscribe, set, update } = writable<LoadingState>({
     completed: 0,
     requested: 0,
   });
+
   return {
     subscribe,
     reset: () =>
@@ -36,6 +42,7 @@ function createLoadStore() {
 
 export async function loadWrap<T>(action: () => T): Promise<T> {
   const store = loadingStore;
+
   try {
     store.addWork();
     return await action();

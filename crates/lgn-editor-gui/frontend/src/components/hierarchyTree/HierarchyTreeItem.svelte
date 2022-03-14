@@ -27,7 +27,7 @@
     moved: { draggedEntry: Entry<Item>; dropzoneEntry: Entry<Item> };
   }>();
 
-  // DnD type
+  // Dnd type
   // TODO: Will probably have to be shared throughout the whole application
   const type = "RESOURCE";
 

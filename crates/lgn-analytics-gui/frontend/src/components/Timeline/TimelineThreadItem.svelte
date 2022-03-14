@@ -2,7 +2,7 @@
   import { formatExecutionTime } from "@/lib/format";
   import { Thread } from "@/lib/Timeline/Thread";
   import { getThreadCollapseStyle } from "@/lib/Timeline/TimelineCollapse";
-  import { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
+  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { createEventDispatcher } from "svelte";
   import TimelineThread from "./TimelineThread.svelte";
   export let rootStartTime: number;

@@ -3,7 +3,7 @@
   import Panel from "./Panel.svelte";
   import RemoteWindow from "../RemoteWindow.svelte";
   import ScriptEditor from "../ScriptEditor.svelte";
-  import type ViewportOrchestrator from "../../stores/viewport";
+  import type { ViewportOrchestrator } from "../../orchestrators/viewport";
   import type { Resolution } from "../../lib/types";
 
   /** The global viewport orchestrator */
