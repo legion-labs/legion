@@ -1,13 +1,19 @@
 import type { Writable } from "svelte/store";
 import { writable } from "svelte/store";
 
-export type InitAsyncStoreOrchestratorValue<Data> = {
+export type AsyncInitValue<Data> = {
   data?: Data | null;
   loading?: boolean;
   error?: unknown;
 };
 
-// TODO: Add initial value support
+export type AsyncOrchestrator<Data> = {
+  loading: Writable<boolean>;
+  error: Writable<unknown>;
+  data: Writable<Data | null>;
+  run(promise: () => Promise<Data>): Promise<Data>;
+};
+
 /**
  * Simple store for async data (used typically to execute gRPC requests).
  * It will expose several states that can be reused in multiple components
@@ -23,7 +29,7 @@ export type InitAsyncStoreOrchestratorValue<Data> = {
  * ## Example
  *
  * ```
- * const basicStoreOrchestrator = new AsyncStoreOrchestrator<string>();
+ * const basicStoreOrchestrator = createAsyncStoreOrchestrator<string>();
  * const { data, error } = basicStoreOrchestrator;
  *
  * assert($data === null);
@@ -41,24 +47,20 @@ export type InitAsyncStoreOrchestratorValue<Data> = {
  * ```
  */
 export function createAsyncStoreOrchestrator<Data>(
-  initValue: InitAsyncStoreOrchestratorValue<Data> = {}
-) {
+  initValue: AsyncInitValue<Data> = {}
+): AsyncOrchestrator<Data> {
   return {
-    loading: writable<boolean>(
-      ("loading" in initValue && initValue.loading) || false
-    ),
+    loading: writable(("loading" in initValue && initValue.loading) || false),
 
-    error: writable<unknown>("error" in initValue ? initValue.error : null),
+    error: writable("error" in initValue ? initValue.error : null),
 
-    data: writable<Data | null>(
-      ("data" in initValue && initValue.data) || null
-    ),
+    data: writable(("data" in initValue && initValue.data) || null),
 
     /**
      * Run the provided [async thunk](https://en.wikipedia.org/wiki/Thunk)
      * and populate the stores accordingly.
      */
-    async run(promise: () => Promise<Data>) {
+    async run(promise) {
       this.loading.set(true);
 
       let newData: Data;
@@ -84,7 +86,13 @@ export function createAsyncStoreOrchestrator<Data>(
   };
 }
 
-export function createAsyncStoreListOrchestrator<Data extends unknown[]>() {
+export type AsyncListOrchestrator<Data> = AsyncOrchestrator<Data> & {
+  loadMore(promise: () => Promise<Data>): Promise<Data>;
+};
+
+export function createAsyncStoreListOrchestrator<
+  Data extends unknown[]
+>(): AsyncListOrchestrator<Data> {
   return {
     ...createAsyncStoreOrchestrator<Data>(),
 
@@ -96,7 +104,7 @@ export function createAsyncStoreListOrchestrator<Data extends unknown[]>() {
      *
      * On error the data will be preserved.
      */
-    async loadMore(promise: () => Promise<Data>) {
+    async loadMore(promise) {
       this.loading.set(true);
 
       let appendedData: Data;

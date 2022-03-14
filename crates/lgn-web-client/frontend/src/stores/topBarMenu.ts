@@ -1,4 +1,16 @@
-import { Writable, writable } from "svelte/store";
+import type { Writable } from "svelte/store";
+import { writable } from "svelte/store";
+
+// Not meant to be used as is in production
+// as the menu might become dynamic at one point
+export type Id = typeof menus[number]["id"];
+
+export type TopBarMenuValue = Id | null;
+
+export type TopBarMenuStore = Writable<TopBarMenuValue> & {
+  close(): void;
+  set(id: Id): void;
+};
 
 export const menus = [
   { id: 1, title: "File" },
@@ -9,20 +21,20 @@ export const menus = [
   { id: 6, title: "Help" },
 ] as const;
 
-// Not meant to be used as is in production
-// as the menu might become dynamic at one point
-export type Id = typeof menus[number]["id"];
+function createTopBarMenuStore(): TopBarMenuStore {
+  const store = writable<TopBarMenuValue>(null);
 
-const store = writable<Id | null>(null);
+  return {
+    ...store,
 
-export const topBarMenuStore = {
-  ...store,
+    close() {
+      store.set(null);
+    },
 
-  close() {
-    store.set(null);
-  },
+    set(id) {
+      store.set(id);
+    },
+  };
+}
 
-  set(id: Id) {
-    store.set(id);
-  },
-};
+export default createTopBarMenuStore();

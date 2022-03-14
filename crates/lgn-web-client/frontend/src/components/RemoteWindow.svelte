@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
   import { debounce, retry } from "../lib/promises";
-  import { statusStore } from "../stores/statusBarData";
+  import statusStore from "../stores/statusBarData";
   import {
     initializeStream,
     onReceiveControlMessage,

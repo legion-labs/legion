@@ -1,13 +1,17 @@
+import type { Writable } from "svelte/store";
 import { writable } from "svelte/store";
 
-export function createFilesStore() {
-  return {
-    ...writable<File[] | null>(null),
+export type FilesValue = File[] | null;
 
-    open({
-      multiple,
-      mimeTypes,
-    }: { multiple?: boolean; mimeTypes?: string[] } = {}) {
+export type FilesStore = Writable<FilesValue> & {
+  open(config?: { multiple?: boolean; mimeTypes?: string[] }): void;
+};
+
+export function createFilesStore(): FilesStore {
+  return {
+    ...writable(null),
+
+    open({ multiple, mimeTypes } = {}) {
       const fileInput = document.createElement("input");
 
       fileInput.type = "file";

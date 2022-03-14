@@ -19,7 +19,7 @@
     syncLatest,
   } from "@/api";
   import allResources from "@/stores/allResources";
-  import { fetchCurrentResourceDescription } from "@/stores/currentResource";
+  import { fetchCurrentResourceDescription } from "@/orchestrators/currentResource";
   import { components, join } from "@/lib/path";
   import notifications from "@/stores/notifications";
   import type { Entries, Entry } from "@/lib/hierarchyTree";
@@ -32,7 +32,7 @@
   import type { BagResourceProperty } from "@/lib/propertyGrid";
   import { autoClose, select } from "@lgn/web-client/src/types/contextMenu";
   import type { Event as ContextMenuActionEvent } from "@lgn/web-client/src/types/contextMenu";
-  import currentResource from "@/stores/currentResource";
+  import currentResource from "@/orchestrators/currentResource";
   import type { ContextMenuEntryRecord } from "@/stores/contextMenu";
   import modal from "@/stores/modal";
   import CreateResourceModal from "./resources/CreateResourceModal.svelte";

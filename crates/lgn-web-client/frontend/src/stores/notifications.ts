@@ -1,3 +1,4 @@
+import type { Writable } from "svelte/store";
 import { writable } from "svelte/store";
 
 export type Notification = {
@@ -7,20 +8,26 @@ export type Notification = {
   timeout?: number;
 };
 
-type Value = Notification & {
+export type NotificationsValue = Notification & {
   close(): void;
   started: number;
   timeout: number;
   percentage: number;
 };
 
+export type NotificationsStore = Writable<
+  Record<symbol, NotificationsValue>
+> & {
+  push(key: symbol, value: Notification): void;
+};
+
 const intervalMs = 16;
 
-export function createNotificationsStore(timeout = 5_000) {
+export function createNotificationsStore(
+  requestedTimeout = 5_000
+): NotificationsStore {
   return {
-    timeout,
-
-    ...writable<Record<symbol, Value>>({}),
+    ...writable<Record<symbol, NotificationsValue>>({}),
 
     push(key: symbol, value: Notification) {
       const update = this.update;
@@ -31,7 +38,7 @@ export function createNotificationsStore(timeout = 5_000) {
         }
 
         const timeout =
-          typeof value.timeout === "number" ? value.timeout : this.timeout;
+          typeof value.timeout === "number" ? value.timeout : requestedTimeout;
 
         const intervalId = setInterval(() => {
           this.update((notifications) => {

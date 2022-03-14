@@ -1,5 +1,6 @@
 import type { Writable } from "svelte/store";
 import { get, writable } from "svelte/store";
+import type { MapStore } from "../stores/map";
 import { createMapStore } from "../stores/map";
 
 type CommonConfig = {
@@ -25,7 +26,7 @@ export type Video = CommonConfig & {
 
 export type Viewport = Script | Video;
 
-export type ViewportStore = Writable<Map<symbol, Viewport>>;
+// export type ViewportStore = Writable<Map<symbol, Viewport>>;
 
 export type AddViewportConfig = {
   /**
@@ -34,17 +35,23 @@ export type AddViewportConfig = {
   focus?: boolean;
 };
 
-export function createViewportOrchestrator() {
+export type ViewportOrchestrator = {
+  viewportStore: MapStore<Viewport>;
+  activeViewportStore: Writable<Viewport | null>;
+  add(key: symbol, viewport: Viewport, { focus }: AddViewportConfig): void;
+  addAllViewport(...viewportList: [key: symbol, value: Viewport][]): void;
+  activate(key: symbol): void;
+  remove(key: symbol): boolean;
+  removeByValue(viewport: Viewport): boolean;
+};
+
+export function createViewportOrchestrator(): ViewportOrchestrator {
   return {
-    viewportStore: createMapStore<Viewport>(),
+    viewportStore: createMapStore(),
 
-    activeViewportStore: writable<Viewport | null>(null),
+    activeViewportStore: writable(null),
 
-    add(
-      key: symbol,
-      viewport: Viewport,
-      { focus }: AddViewportConfig = { focus: false }
-    ) {
+    add(key, viewport, { focus } = { focus: false }) {
       this.viewportStore.add(key, viewport);
 
       if (focus) {
@@ -52,11 +59,11 @@ export function createViewportOrchestrator() {
       }
     },
 
-    addAllViewport(...viewportList: [key: symbol, value: Viewport][]) {
+    addAllViewport(...viewportList) {
       this.viewportStore.addAll(...viewportList);
     },
 
-    activate(key: symbol) {
+    activate(key) {
       this.activeViewportStore.update((activeViewport) => {
         const viewport = get(this.viewportStore).get(key);
 
@@ -68,7 +75,7 @@ export function createViewportOrchestrator() {
       });
     },
 
-    remove(key: symbol) {
+    remove(key) {
       const removed = this.viewportStore.remove(key);
 
       if (removed) {
@@ -80,7 +87,7 @@ export function createViewportOrchestrator() {
       return removed;
     },
 
-    removeByValue(viewport: Viewport) {
+    removeByValue(viewport) {
       let foundKey: symbol | null = null;
 
       for (const [key, value] of get(this.viewportStore)) {

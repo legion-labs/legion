@@ -3,11 +3,10 @@
 // or implement our own svelte adapter for
 // https://github.com/react-dnd/react-dnd/tree/main/packages/dnd-core
 
-import type { Writable } from "svelte/store";
 import { derived, get } from "svelte/store";
 import type { ActionReturn } from "../lib/action";
+import type { DndStore } from "../stores/dnd";
 import { createDndStore } from "../stores/dnd";
-import type { Value as DnDStoreValue } from "../stores/dnd";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const defaultStore = createDndStore<any>();
@@ -22,7 +21,7 @@ export function dropzone<Item>(
   {
     accept,
     store = defaultStore,
-  }: { accept: string | string[]; store?: Writable<DnDStoreValue<Item> | null> }
+  }: { accept: string | string[]; store?: DndStore<Item> }
 ): ActionReturn {
   const onDragOver = (event: DragEvent) => {
     event.preventDefault();
@@ -147,7 +146,7 @@ export function draggable<Item>(
     item: Item;
     dropEffect?: "none" | "copy" | "link" | "move";
     preview?: "none" | "custom" | "default";
-    store?: Writable<DnDStoreValue<Item> | null>;
+    store?: DndStore<Item>;
   }
 ): ActionReturn {
   let img: HTMLImageElement | null = null;

@@ -207,7 +207,7 @@ export class TimelineStateManager {
     get(this.state).processAsyncData[process.processId] = asyncData;
   }
 
-  async fetchLodsAsync(pixelWidth: number) {
+  async fetchLods(pixelWidth: number) {
     const range = get(this.state).getViewRange();
     const promises: Promise<void>[] = [];
     for (const block of Object.values(get(this.state).blocks)) {

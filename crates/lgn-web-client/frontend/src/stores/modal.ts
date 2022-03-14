@@ -1,5 +1,5 @@
 import { SvelteComponentTyped } from "svelte";
-import { get, writable } from "svelte/store";
+import { get, Writable, writable } from "svelte/store";
 import Prompt from "../components/modal/Prompt.svelte";
 
 export type Payload = Record<string, unknown>;
@@ -13,7 +13,7 @@ export type Config<P = Payload> = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export class Content extends SvelteComponentTyped<any> {}
 
-export type Value = Record<
+export type ModalValue = Record<
   symbol,
   {
     id: symbol;
@@ -22,12 +22,26 @@ export type Value = Record<
   }
 >;
 
-export function createModalStore() {
+export type ModalStore = Writable<ModalValue> & {
+  open(id: symbol, content: typeof Content, config?: Config): void;
+  prompt(
+    id: symbol,
+    config?: Config<{
+      title?: string;
+      message?: string;
+      cancelLabel?: string;
+      confirmLabel?: string;
+    }>
+  ): void;
+  close(id: symbol): void;
+};
+
+export function createModalStore(): ModalStore {
   return {
-    ...writable<Value>({}),
+    ...writable<ModalValue>({}),
 
     /** Opens a modal with the provided content and payload */
-    open(id: symbol, content: typeof Content, config?: Config) {
+    open(id, content, config?) {
       if (id in get(this)) {
         return;
       }
@@ -39,20 +53,12 @@ export function createModalStore() {
     },
 
     /** Opens a prompt modal */
-    prompt(
-      id: symbol,
-      config?: Config<{
-        title?: string;
-        message?: string;
-        cancelLabel?: string;
-        confirmLabel?: string;
-      }>
-    ) {
+    prompt(id, config?) {
       this.open(id, Prompt, config);
     },
 
     /** Closes a modal */
-    close(id: symbol) {
+    close(id) {
       if (!(id in get(this))) {
         return;
       }

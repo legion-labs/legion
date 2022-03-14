@@ -6,7 +6,7 @@
   } from "@/api";
   import type { PropertyUpdate } from "@/api";
   import { propertyIsDynComponent, propertyIsGroup } from "@/lib/propertyGrid";
-  import currentResource from "@/stores/currentResource";
+  import currentResource from "@/orchestrators/currentResource";
   import log from "@lgn/web-client/src/lib/log";
   import PropertyContainer from "./PropertyContainer.svelte";
   import CreateComponentModal from "@/components/resources/CreateComponentModal.svelte";

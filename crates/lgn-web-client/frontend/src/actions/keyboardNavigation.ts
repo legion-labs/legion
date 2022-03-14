@@ -1,9 +1,9 @@
 import { keepElementVisible } from "../lib/html";
-import type { createKeyboardNavigationStore } from "../stores/keyboardNavigation";
+import type { KeyboardNavigationStore } from "../stores/keyboardNavigation";
 
 export type Config = {
   size: number;
-  store: ReturnType<typeof createKeyboardNavigationStore>;
+  store: KeyboardNavigationStore;
 };
 
 /**

@@ -1,10 +1,9 @@
 <script lang="ts">
-  import {
-    topBarMenuStore,
+  import topBarMenuStore, {
     Id as TopBarMenuId,
     menus as topBarMenus,
   } from "../stores/topBarMenu";
-  import userInfo from "../stores/userInfo";
+  import userInfo from "../orchestrators/userInfo";
   import log from "../lib/log";
   import clickOutside from "../actions/clickOutside";
   import BrandLogo from "./BrandLogo.svelte";
