@@ -11,8 +11,8 @@ use lgn_tracing::{debug, info, warn};
 use openidconnect::{
     core::{CoreAuthenticationFlow, CoreClient, CoreProviderMetadata, CoreUserInfoClaims},
     reqwest::async_http_client,
-    AccessToken, AccessTokenHash, AuthType, AuthorizationCode, ClientId, CsrfToken, IssuerUrl,
-    Nonce, OAuth2TokenResponse, PkceCodeChallenge, RedirectUrl, RefreshToken, Scope,
+    AccessToken, AccessTokenHash, AuthType, AuthorizationCode, ClientId, ClientSecret, CsrfToken,
+    IssuerUrl, Nonce, OAuth2TokenResponse, PkceCodeChallenge, RedirectUrl, RefreshToken, Scope,
     SubjectIdentifier, TokenResponse,
 };
 use tokio::sync::{oneshot, Mutex};
@@ -26,6 +26,7 @@ const DEFAULT_REDIRECT_URI: &str = "http://localhost:3000";
 pub struct OAuthClient {
     client: CoreClient,
     client_id: ClientId,
+    client_secret: Option<ClientSecret>,
     provider_metadata: CoreProviderMetadata,
     redirect_uri: RedirectUrl,
 }
@@ -33,7 +34,12 @@ pub struct OAuthClient {
 impl OAuthClient {
     /// Instanciate a new `OAuthClient` from the specified configuration.
     pub async fn new_from_config(config: &OAuthClientConfig) -> Result<Self> {
-        let client = Self::new(config.issuer_url.clone(), config.client_id.clone()).await?;
+        let client = Self::new(
+            config.issuer_url.clone(),
+            config.client_id.clone(),
+            config.client_secret.clone(),
+        )
+        .await?;
 
         if let Some(redirect_uri) = &config.redirect_uri {
             client.set_redirect_uri(redirect_uri)
@@ -42,15 +48,21 @@ impl OAuthClient {
         }
     }
 
-    pub async fn new<'a, IU, ID>(issuer_url: IU, client_id: ID) -> Result<Self>
+    pub async fn new<'a, IU, ID, Secret>(
+        issuer_url: IU,
+        client_id: ID,
+        client_secret: Option<Secret>,
+    ) -> Result<Self>
     where
         IU: Into<String>,
         ID: Into<String>,
+        Secret: Into<String>,
     {
         let issuer_url = IssuerUrl::new(issuer_url.into())
             .map_err(|error| Error::Internal(format!("{}", error)))?;
 
         let client_id = ClientId::new(client_id.into());
+        let client_secret = client_secret.map(|secret| ClientSecret::new(secret.into()));
 
         let provider_metadata = CoreProviderMetadata::discover_async(issuer_url, async_http_client)
             .await
@@ -58,14 +70,18 @@ impl OAuthClient {
 
         let redirect_uri = RedirectUrl::new(DEFAULT_REDIRECT_URI.to_string()).unwrap();
 
-        let client =
-            CoreClient::from_provider_metadata(provider_metadata.clone(), client_id.clone(), None)
-                .set_auth_type(AuthType::RequestBody)
-                .set_redirect_uri(redirect_uri.clone());
+        let client = CoreClient::from_provider_metadata(
+            provider_metadata.clone(),
+            client_id.clone(),
+            client_secret.clone(),
+        )
+        .set_auth_type(AuthType::RequestBody)
+        .set_redirect_uri(redirect_uri.clone());
 
         Ok(Self {
             client,
             client_id,
+            client_secret,
             provider_metadata,
             redirect_uri,
         })
@@ -396,68 +412,83 @@ impl Authenticator for OAuthClient {
         scopes: &[String],
         extra_params: &Option<HashMap<String, String>>,
     ) -> Result<ClientTokenSet> {
-        let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
+        // If we have a client secret, we proceed to a client credentials flow as it is non-interactive.
+        let token_response = match &self.client_secret {
+            Some(_) => self
+                .client
+                .exchange_client_credentials()
+                .add_scopes(scopes.iter().cloned().map(Scope::new).collect::<Vec<_>>())
+                .request_async(async_http_client)
+                .await
+                .map_err(Error::internal)?,
+            None => {
+                let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
-        let mut authorization_url = self.client.authorize_url(
-            CoreAuthenticationFlow::AuthorizationCode,
-            CsrfToken::new_random,
-            Nonce::new_random,
-        );
+                let mut authorization_url = self.client.authorize_url(
+                    CoreAuthenticationFlow::AuthorizationCode,
+                    CsrfToken::new_random,
+                    Nonce::new_random,
+                );
 
-        for scope in scopes {
-            authorization_url = authorization_url.add_scope(Scope::new(scope.into()));
-        }
+                for scope in scopes {
+                    authorization_url = authorization_url.add_scope(Scope::new(scope.into()));
+                }
 
-        if let Some(extra_params) = extra_params {
-            for (name, value) in extra_params {
-                authorization_url = authorization_url.add_extra_param(&*name, &*value);
+                if let Some(extra_params) = extra_params {
+                    for (name, value) in extra_params {
+                        authorization_url = authorization_url.add_extra_param(&*name, &*value);
+                    }
+                }
+
+                let (authorization_url, csrf_token, nonce) =
+                    authorization_url.set_pkce_challenge(pkce_challenge).url();
+
+                info!("Opening web-browser at: {}", authorization_url);
+
+                webbrowser::open(authorization_url.as_str()).map_err(Error::InteractiveProcess)?;
+
+                let (code, state) = self.receive_authorization_code().await?;
+
+                if state != *csrf_token.secret() {
+                    return Err(Error::Internal(
+                        "Received csrf code and expected csrf code don't match".into(),
+                    ));
+                }
+
+                let token_response = self
+                    .client
+                    .exchange_code(AuthorizationCode::new(code))
+                    .set_pkce_verifier(pkce_verifier)
+                    .request_async(async_http_client)
+                    .await
+                    .map_err(Error::internal)?;
+
+                let id_token = token_response
+                    .id_token()
+                    .ok_or_else(|| Error::Internal("Server did not return an ID token".into()))?;
+
+                let claims = id_token
+                    .claims(&self.client.id_token_verifier(), &nonce)
+                    .map_err(Error::internal)?;
+
+                if let Some(expected_access_token_hash) = claims.access_token_hash() {
+                    let actual_access_token_hash = AccessTokenHash::from_token(
+                        token_response.access_token(),
+                        &id_token.signing_alg().map_err(Error::internal)?,
+                    )
+                    .map_err(Error::internal)?;
+
+                    if actual_access_token_hash != *expected_access_token_hash {
+                        return Err(Error::Internal(
+                            "Received access token hash and expected access token hash don't match"
+                                .into(),
+                        ));
+                    }
+                }
+
+                token_response
             }
-        }
-
-        let (authorization_url, csrf_token, nonce) =
-            authorization_url.set_pkce_challenge(pkce_challenge).url();
-
-        info!("Opening web-browser at: {}", authorization_url);
-
-        webbrowser::open(authorization_url.as_str()).map_err(Error::InteractiveProcess)?;
-
-        let (code, state) = self.receive_authorization_code().await?;
-
-        if state != *csrf_token.secret() {
-            return Err(Error::Internal(
-                "Received csrf code and expected csrf code don't match".into(),
-            ));
-        }
-
-        let token_response = self
-            .client
-            .exchange_code(AuthorizationCode::new(code))
-            .set_pkce_verifier(pkce_verifier)
-            .request_async(async_http_client)
-            .await
-            .map_err(Error::internal)?;
-
-        let id_token = token_response
-            .id_token()
-            .ok_or_else(|| Error::Internal("Server did not return an ID token".into()))?;
-
-        let claims = id_token
-            .claims(&self.client.id_token_verifier(), &nonce)
-            .map_err(Error::internal)?;
-
-        if let Some(expected_access_token_hash) = claims.access_token_hash() {
-            let actual_access_token_hash = AccessTokenHash::from_token(
-                token_response.access_token(),
-                &id_token.signing_alg().map_err(Error::internal)?,
-            )
-            .map_err(Error::internal)?;
-
-            if actual_access_token_hash != *expected_access_token_hash {
-                return Err(Error::Internal(
-                    "Received access token hash and expected access token hash don't match".into(),
-                ));
-            }
-        }
+        };
 
         let mut client_token_set: ClientTokenSet = token_response.try_into()?;
 
@@ -499,12 +530,18 @@ impl Authenticator for OAuthClient {
 
     /// Logout by opening an interactive browser window
     async fn logout(&self) -> Result<()> {
-        let logout_url = self.logout_url();
+        // If we have a client secret, we don't need to logout as we expect a
+        // non-interactive process.
+        if self.client_secret.is_none() {
+            let logout_url = self.logout_url();
 
-        info!("Opening web-browser at: {}", logout_url);
+            info!("Opening web-browser at: {}", logout_url);
 
-        webbrowser::open(logout_url.as_str()).map_err(Error::InteractiveProcess)?;
+            webbrowser::open(logout_url.as_str()).map_err(Error::InteractiveProcess)?;
 
-        self.receive_logout_confirmation().await
+            self.receive_logout_confirmation().await
+        } else {
+            Ok(())
+        }
     }
 }

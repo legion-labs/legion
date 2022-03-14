@@ -23,6 +23,7 @@ pub enum AuthenticatorConfig {
 pub struct OAuthClientConfig {
     pub issuer_url: String,
     pub client_id: String,
+    pub client_secret: Option<String>,
     pub redirect_uri: Option<Url>,
 }
 
