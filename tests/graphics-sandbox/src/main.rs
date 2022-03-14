@@ -68,9 +68,6 @@ struct Args {
     /// Use asset registry data instead of a hardcoded scene
     #[clap(long)]
     use_asset_registry: bool,
-    /// Enable egui immediate mode GUI
-    #[clap(long)]
-    egui: bool,
     /// Dimensions of meta cube
     #[clap(long, default_value_t = 0)]
     meta_cube_size: usize,
@@ -82,7 +79,7 @@ fn main() {
     let mut app = App::default();
 
     app.add_plugin(CorePlugin::default())
-        .add_plugin(RendererPlugin::new(args.egui, !args.snapshot))
+        .add_plugin(RendererPlugin::default())
         .insert_resource(WindowDescriptor {
             width: args.width,
             height: args.height,

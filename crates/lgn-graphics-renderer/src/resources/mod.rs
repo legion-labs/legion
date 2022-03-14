@@ -51,3 +51,6 @@ pub use shared_resources_manager::*;
 
 mod missing_visual_tracker;
 pub(crate) use missing_visual_tracker::*;
+
+mod renderer_options;
+pub(crate) use renderer_options::*;

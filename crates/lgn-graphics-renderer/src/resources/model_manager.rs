@@ -1,19 +1,24 @@
 use std::{collections::BTreeMap, str::FromStr};
 
 use lgn_app::App;
+use lgn_core::BumpAllocatorPool;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
-use lgn_ecs::prelude::{Changed, Query, Res, ResMut};
+use lgn_ecs::prelude::{Changed, Query, Res, ResMut, Without};
+use lgn_math::Vec3;
 use lgn_tracing::span_fn;
+use lgn_transform::components::Transform;
 use strum::IntoEnumIterator;
 
 use crate::{
-    components::{ModelComponent, VisualComponent},
+    components::{ManipulatorComponent, ModelComponent, VisualComponent},
+    debug_display::DebugDisplay,
     labels::RenderStage,
     Renderer,
 };
 
 use super::{
-    DefaultMeshType, GpuMaterialManager, MeshManager, MissingVisualTracker, DEFAULT_MESH_GUIDS,
+    DefaultMeshType, GpuMaterialManager, MeshManager, MissingVisualTracker, RendererOptions,
+    DEFAULT_MESH_GUIDS,
 };
 
 pub struct Mesh {
@@ -117,4 +122,43 @@ pub(crate) fn update_models(
             model_manager.add_model(*mesh_reference, ModelMetaData { meshes });
         }
     }
+}
+
+#[span_fn]
+#[allow(clippy::needless_pass_by_value)]
+pub(crate) fn debug_bounding_spheres(
+    debug_display: Res<'_, DebugDisplay>,
+    bump_allocator_pool: Res<'_, BumpAllocatorPool>,
+    model_manager: Res<'_, ModelManager>,
+    mesh_manager: Res<'_, MeshManager>,
+    renderer_options: Res<'_, RendererOptions>,
+    visuals: Query<'_, '_, (&VisualComponent, &Transform), Without<ManipulatorComponent>>,
+) {
+    if !renderer_options.show_bounding_spheres {
+        return;
+    }
+    bump_allocator_pool.scoped_bump(|bump| {
+        debug_display.create_display_list(bump, |builder| {
+            for (visual, transform) in visuals.iter() {
+                let (model_data, ready) = model_manager.get_model_meta_data(visual);
+                if ready {
+                    for mesh in &model_data.meshes {
+                        let mesh_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
+                        //mesh_data.bounding_sphere
+                        builder.add_mesh(
+                            Transform::identity()
+                                .with_translation(
+                                    transform.translation + mesh_data.bounding_sphere.truncate(),
+                                )
+                                .with_scale(Vec3::new(4.0, 4.0, 4.0) * mesh_data.bounding_sphere.w)
+                                .with_rotation(transform.rotation)
+                                .compute_matrix(),
+                            DefaultMeshType::Sphere as u32,
+                            Vec3::new(1.0, 1.0, 1.0),
+                        );
+                    }
+                }
+            }
+        });
+    });
 }

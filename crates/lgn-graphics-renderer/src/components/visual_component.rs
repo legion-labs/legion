@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
+use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::{runtime::ModelReferenceType, Color};
 
@@ -31,7 +31,7 @@ impl VisualComponent {
             color,
             color_blend: 1.0,
             model_resource_id: Some(ResourceTypeAndId {
-                kind: ResourceType::from_raw(1),
+                kind: lgn_graphics_data::runtime::Model::TYPE,
                 id: ResourceId::from_str(DEFAULT_MESH_GUIDS[mesh_type as usize]).unwrap(),
             }),
         }
