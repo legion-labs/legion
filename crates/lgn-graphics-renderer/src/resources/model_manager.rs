@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, str::FromStr};
 
 use lgn_app::App;
 use lgn_core::BumpAllocatorPool;
-use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
+use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 use lgn_ecs::prelude::{Changed, Query, Res, ResMut, Without};
 use lgn_math::Vec3;
 use lgn_tracing::span_fn;
@@ -42,7 +42,7 @@ impl ModelManager {
 
         for (idx, _mesh_type) in DefaultMeshType::iter().enumerate() {
             let id = ResourceTypeAndId {
-                kind: ResourceType::from_raw(1),
+                kind: lgn_graphics_data::runtime::Model::TYPE,
                 id: ResourceId::from_str(DEFAULT_MESH_GUIDS[idx]).unwrap(),
             };
             model_meta_datas.insert(
