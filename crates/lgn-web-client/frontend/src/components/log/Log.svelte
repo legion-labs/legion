@@ -11,7 +11,6 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import { derived, Writable, writable } from "svelte/store";
-  import type { Readable } from "svelte/store";
   import { FixedSizeList, styleString } from "svelte-window";
   import type {
     ListOnItemsRenderedProps,
