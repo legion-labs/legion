@@ -6,12 +6,13 @@ use std::{
 };
 
 use async_trait::async_trait;
+use lgn_tracing::warn;
 use pin_project::pin_project;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 use crate::{
-    ContentAsyncRead, ContentAsyncWrite, ContentProvider, ContentReader, ContentWriter, Error,
-    Identifier, Result,
+    AliasProvider, AliasRegisterer, AliasResolver, ContentAsyncRead, ContentAsyncWrite,
+    ContentProvider, ContentReader, ContentWriter, Error, Identifier, Result,
 };
 
 /// A `LocalProvider` is a provider that stores content on the local filesystem.
@@ -26,6 +27,50 @@ impl<Remote, Local> CachingProvider<Remote, Local> {
     /// backing remote and local providers.
     pub fn new(remote: Remote, local: Local) -> Self {
         Self { remote, local }
+    }
+}
+
+#[async_trait]
+impl<Remote: AliasResolver + Send + Sync, Local: AliasProvider + Send + Sync> AliasResolver
+    for CachingProvider<Remote, Local>
+{
+    async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
+        match self.local.resolve_alias(key_space, key).await {
+            Ok(id) => Ok(id),
+            Err(Error::NotFound) => match self.remote.resolve_alias(key_space, key).await {
+                Ok(id) => {
+                    if let Err(err) = self.local.register_alias(key_space, key, &id).await {
+                        warn!(
+                            "Failed to register alias {}/{} in local cache: {}",
+                            key_space, key, err
+                        );
+                    }
+
+                    Ok(id)
+                }
+                Err(err) => Err(err),
+            },
+            // If the local provider fails, we just fall back to the remote without caching.
+            Err(_) => self.remote.resolve_alias(key_space, key).await,
+        }
+    }
+}
+
+#[async_trait]
+impl<Remote: AliasRegisterer + Send + Sync, Local: AliasRegisterer + Send + Sync> AliasRegisterer
+    for CachingProvider<Remote, Local>
+{
+    async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
+        self.remote.register_alias(key_space, key, id).await?;
+
+        if let Err(err) = self.local.register_alias(key_space, key, id).await {
+            warn!(
+                "Failed to register alias {}/{} in local cache: {}",
+                key_space, key, err
+            );
+        }
+
+        Ok(())
     }
 }
 
