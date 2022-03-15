@@ -121,6 +121,7 @@ impl Plugin for RendererPlugin {
         let mut persistent_descriptor_set_manager = PersistentDescriptorSetManager::new(
             renderer.device_context(),
             &descriptor_heap_manager,
+            NUM_RENDER_FRAMES,
         );
         let texture_manager = TextureManager::new(renderer.device_context());
 
@@ -176,6 +177,7 @@ impl Plugin for RendererPlugin {
         MeshRenderer::init_ecs(app);
         ModelManager::init_ecs(app);
         MissingVisualTracker::init_ecs(app);
+        PersistentDescriptorSetManager::init_ecs(app);
 
         // todo: convert?
         app.add_plugin(GpuDataPlugin::default());
@@ -200,6 +202,9 @@ impl Plugin for RendererPlugin {
         //
         // Stage PostUpdate
         //
+
+        // TODO (vbdd): CoreStage::PostUpdate is probably invalid. Anyway, this will change soon.
+
         app.add_system_to_stage(CoreStage::PostUpdate, on_window_created.exclusive_system());
         app.add_system_to_stage(CoreStage::PostUpdate, on_window_resized.exclusive_system());
         app.add_system_to_stage(

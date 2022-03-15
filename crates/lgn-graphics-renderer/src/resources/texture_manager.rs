@@ -28,14 +28,20 @@ struct UploadTextureJob {
     texture_data: Option<TextureData>,
 }
 
+struct RemoveTextureJob {
+    entity: Entity,
+    texture_id: ResourceTypeAndId,
+}
+
 enum TextureJob {
     Upload(UploadTextureJob),
+    Remove(RemoveTextureJob),
 }
 
 #[derive(Component)]
 struct GPUTextureComponent;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum TextureState {
     Invalid,
     QueuedForUpload,
@@ -44,7 +50,7 @@ enum TextureState {
 
 #[derive(Debug, SystemLabel, PartialEq, Eq, Clone, Copy, Hash)]
 enum TextureManagerLabel {
-    Done,
+    UpdateDone,
 }
 
 #[derive(Clone)]
@@ -82,17 +88,13 @@ impl TextureManager {
                 .with_system(on_texture_added)
                 .with_system(on_texture_modified)
                 .with_system(on_texture_removed)
-                .label(TextureManagerLabel::Done),
+                .label(TextureManagerLabel::UpdateDone),
         );
 
         app.add_system_to_stage(
             RenderStage::Prepare,
-            update_texture_manager.after(TextureManagerLabel::Done),
+            apply_changes.after(TextureManagerLabel::UpdateDone),
         );
-    }
-
-    pub fn is_valid(&self, entity: Entity) -> bool {
-        self.texture_infos.contains_key(&entity)
     }
 
     pub fn allocate_texture(&mut self, entity: Entity, texture_component: &TextureComponent) {
@@ -113,10 +115,19 @@ impl TextureManager {
         self.texture_id_to_entity
             .insert(texture_component.texture_id, entity);
 
-        self.queue_for_upload(entity, &texture_component.texture_data);
+        self.texture_jobs.push(TextureJob::Upload(UploadTextureJob {
+            entity,
+            texture_data: Some(texture_component.texture_data.clone()),
+        }));
+
+        let texture_info = self.texture_info_mut(entity);
+        texture_info.state = TextureState::QueuedForUpload;
     }
 
     pub fn update_texture(&mut self, entity: Entity, texture_component: &TextureComponent) {
+        // TODO(vdbdd): not tested
+        assert_eq!(self.texture_info(entity).state, TextureState::Ready);
+
         let texture_def = Self::texture_def_from_texture_component(texture_component);
 
         let recreate_texture_view = {
@@ -125,18 +136,29 @@ impl TextureManager {
             let current_texture_def = current_texture_handle.definition();
             *current_texture_def != texture_def
         };
+
         if recreate_texture_view {
             let texture_view = self.create_texture_view(&texture_def);
             let texture_info = self.texture_info_mut(entity);
-            // The previous texture/texture_view is being pushed is the deferred delete queue
-            // Should be updated in the persistent descriptor set
             texture_info.texture_view = texture_view;
         }
-        self.queue_for_upload(entity, &texture_component.texture_data);
+
+        self.texture_jobs.push(TextureJob::Upload(UploadTextureJob {
+            entity,
+            texture_data: Some(texture_component.texture_data.clone()),
+        }));
+
+        let texture_info = self.texture_info_mut(entity);
+        texture_info.state = TextureState::QueuedForUpload;
     }
 
     pub fn remove_by_entity(&mut self, entity: Entity) {
-        // todo
+        // TODO(vdbdd): not tested
+        assert_eq!(self.texture_info(entity).state, TextureState::Ready);
+
+        let texture_id = self.texture_info(entity).texture_id;
+        self.texture_jobs
+            .push(TextureJob::Remove(RemoveTextureJob { entity, texture_id }));
 
         self.texture_infos.remove(&entity);
     }
@@ -152,7 +174,7 @@ impl TextureManager {
     }
 
     #[span_fn]
-    pub fn update(
+    pub fn apply_changes(
         &mut self,
         renderer: &Renderer,
         persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
@@ -161,15 +183,22 @@ impl TextureManager {
             return Vec::new();
         }
 
+        // TODO(vdbdd): remove this heap allocation
         let mut state_changed_list = Vec::with_capacity(self.texture_jobs.len());
         let mut texture_jobs = std::mem::take(&mut self.texture_jobs);
 
         for texture_job in &texture_jobs {
             match texture_job {
                 TextureJob::Upload(upload_job) => {
+                    let bindless_index = self.texture_info(upload_job.entity).bindless_index;
+
+                    if let Some(bindless_index) = bindless_index {
+                        persistent_descriptor_set_manager.unset_bindless_texture(bindless_index);
+                    }
+
                     self.upload_texture(renderer, upload_job);
 
-                    let texture_info = self.texture_infos.get_mut(&upload_job.entity).unwrap();
+                    let texture_info = self.texture_info_mut(upload_job.entity);
                     texture_info.state = TextureState::Ready;
                     texture_info.bindless_index = Some(
                         persistent_descriptor_set_manager
@@ -177,6 +206,15 @@ impl TextureManager {
                     );
 
                     state_changed_list.push(texture_info.texture_id);
+                }
+                TextureJob::Remove(remove_job) => {
+                    // TODO(vdbdd): not tested
+                    let texture_info = self.texture_infos.get_mut(&remove_job.entity).unwrap();
+
+                    let bindless_index = texture_info.bindless_index.unwrap();
+                    persistent_descriptor_set_manager.unset_bindless_texture(bindless_index);
+
+                    state_changed_list.push(remove_job.texture_id);
                 }
             }
         }
@@ -186,6 +224,10 @@ impl TextureManager {
         self.texture_jobs = texture_jobs;
 
         state_changed_list
+    }
+
+    fn is_valid(&self, entity: Entity) -> bool {
+        self.texture_infos.contains_key(&entity)
     }
 
     #[span_fn]
@@ -231,38 +273,6 @@ impl TextureManager {
         // todo: bundle all the default views in the resource instead of having them separatly
         let texture = self.device_context.create_texture(texture_def);
         texture.create_view(&TextureViewDef::as_shader_resource_view(texture_def))
-    }
-
-    fn queue_for_upload(&mut self, entity: Entity, texture_data: &TextureData) {
-        assert!(self.is_valid(entity));
-
-        let texture_info = self.texture_info(entity);
-        let current_state = texture_info.state;
-
-        match current_state {
-            TextureState::QueuedForUpload => {
-                // patch the current upload queue as we know it is safe (mut access)
-                for texture_job in &mut self.texture_jobs {
-                    match texture_job {
-                        TextureJob::Upload(upload_job) => {
-                            if upload_job.entity == entity {
-                                upload_job.texture_data = Some(texture_data.clone());
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            TextureState::Invalid | TextureState::Ready => {
-                self.texture_jobs.push(TextureJob::Upload(UploadTextureJob {
-                    entity,
-                    texture_data: Some(texture_data.clone()),
-                }));
-            }
-        }
-
-        let texture_info = self.texture_info_mut(entity);
-        texture_info.state = TextureState::QueuedForUpload;
     }
 
     fn texture_info(&self, entity: Entity) -> &TextureInfo {
@@ -327,7 +337,13 @@ impl TextureManager {
         data: &[u8],
         mip_level: u8,
     ) {
-        // todo: this code must be completly rewritten (-> upload manager)
+        //
+        // TODO(vdbdd): this code shoud be moved (-> upload manager)
+        // Motivations:
+        // - Here the buffer is constantly reallocated
+        // - Almost same code for buffer and texture
+        // - Leverage the Copy queue
+        //
         let staging_buffer = device_context.create_buffer(&BufferDef::for_staging_buffer_data(
             data,
             ResourceUsage::empty(),
@@ -426,7 +442,7 @@ fn on_texture_removed(
 
 #[allow(clippy::needless_pass_by_value)]
 #[span_fn]
-fn update_texture_manager(
+fn apply_changes(
     mut event_writer: EventWriter<'_, '_, TextureEvent>,
     renderer: Res<'_, Renderer>,
     mut texture_manager: ResMut<'_, TextureManager>,
@@ -434,7 +450,7 @@ fn update_texture_manager(
 ) {
     // todo: must be send some events to refresh the material
     let state_changed_list =
-        texture_manager.update(&renderer, &mut persistent_descriptor_set_manager);
+        texture_manager.apply_changes(&renderer, &mut persistent_descriptor_set_manager);
     if !state_changed_list.is_empty() {
         event_writer.send(TextureEvent::StateChanged(state_changed_list));
     }

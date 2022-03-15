@@ -25,19 +25,6 @@ struct SharedTexture {
     bindless_index: u32,
 }
 
-// impl Default for SharedTexture {
-//     fn default() -> Self {
-//         Self {
-//             texture_id: ResourceTypeAndId {
-//                 // kind: ResourceType(NonZeroU64::new(666)),
-//                 kind: lgn_graphics_data::runtime_texture::Texture::TYPE,
-//                 id: ResourceId::new(),
-//             },
-//             // gpu_texture_id: GpuTextureId::default(),
-//             bindless_index: u32::MAX,
-//         }
-//     }
-// }
 
 pub struct SharedResourcesManager {
     textures: [SharedTexture; SharedTextureId::COUNT],
@@ -62,8 +49,7 @@ impl SharedResourcesManager {
 
     fn create_texture(
         renderer: &Renderer,
-        shared_texture_id: SharedTextureId,
-        // persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
+        shared_texture_id: SharedTextureId,        
     ) -> TextureView {
         let (texture_def, texture_data) = match shared_texture_id {
             SharedTextureId::Albedo => Self::create_albedo_texture(),

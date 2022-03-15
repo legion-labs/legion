@@ -24,7 +24,7 @@ use super::{
 
 #[derive(Debug, SystemLabel, PartialEq, Eq, Clone, Copy, Hash)]
 enum GpuDataPluginLabel {
-    Alloc,
+    UpdateDone,
 }
 
 #[derive(Default)]
@@ -221,6 +221,7 @@ impl MaterialManager {
         texture_manager: &TextureManager,
         shared_resources_manager: &SharedResourcesManager,
     ) {
+        // TODO(vdbdd): not tested
         let job = UploadMaterialJob {
             resource_id: material_component.material_id,
             material_data: Self::material_component_to_material_data(
@@ -236,6 +237,7 @@ impl MaterialManager {
     }
 
     pub fn remove_material(&mut self, entity: Entity) {
+        // TODO(vdbdd): not tested
         self.entity_to_texture_ids.remove(&entity);
         let resource_id = self.entity_to_resource_id.remove(&entity).unwrap();
         self.gpu_material_data.remove_gpu_data(&resource_id);
@@ -387,14 +389,14 @@ impl Plugin for GpuDataPlugin {
                 .with_system(on_material_removed)
                 .with_system(on_texture_event)
                 .with_system(upload_default_material)
-                .label(GpuDataPluginLabel::Alloc),
+                .label(GpuDataPluginLabel::UpdateDone),
         );
         app.add_system_set_to_stage(
             RenderStage::Prepare,
             SystemSet::new()
                 .with_system(upload_transform_data)
                 .with_system(upload_material_data)
-                .after(GpuDataPluginLabel::Alloc),
+                .after(GpuDataPluginLabel::UpdateDone),
         );
     }
 }
