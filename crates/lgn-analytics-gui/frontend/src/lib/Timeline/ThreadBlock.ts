@@ -1,5 +1,6 @@
 import { SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
 import { BlockMetadata } from "@lgn/proto-telemetry/dist/block";
+import { LODState } from "./LodState";
 
 export type ThreadBlock = {
   blockDefinition: BlockMetadata; // block metadata stored in data lake
@@ -13,9 +14,3 @@ export type ThreadBlockLOD = {
   tracks: SpanTrack[];
   lodId: number;
 };
-
-export enum LODState {
-  Missing,
-  Requested,
-  Loaded,
-}

@@ -4,11 +4,14 @@ import {
   BlockSpansReply,
   BlockAsyncEventsStatReply,
   PerformanceAnalyticsClientImpl,
+  SpanTrack,
 } from "@lgn/proto-telemetry/dist/analytics";
 import { Process } from "@lgn/proto-telemetry/dist/process";
 import { makeGrpcClient } from "../client";
 import log from "@lgn/web-client/src/lib/log";
-import { LODState, ThreadBlock } from "./ThreadBlock";
+import { ThreadBlock } from "./ThreadBlock";
+import { LODState } from "./LodState";
+import { AsyncSection } from "./AsyncSection";
 import {
   computePreferredBlockLod,
   processMsOffsetToRoot,
@@ -129,27 +132,42 @@ export class TimelineStateManager {
       log.error("no client in fetchAsyncSpans");
       return;
     }
-    const section = [0.0, 1000.0] as [number, number]; //section is in relative ms
-
+    const sectionTimeRange = [0.0, 1000.0] as [number, number]; //section is in relative ms
     const blocksOfInterest: string[] = [];
     const processAsyncData = get(this.state).processAsyncData[
       process.processId
     ];
     processAsyncData.blockStats.forEach((stats) => {
-      if (this.rangesOverlap(section, [stats!.beginMs, stats!.endMs])) {
+      if (
+        this.rangesOverlap(sectionTimeRange, [stats!.beginMs, stats!.endMs])
+      ) {
         blocksOfInterest.push(stats.blockId);
       }
     });
 
+    const sectionSequenceNumber = 0;
+    const sectionLod = 0;
+    const asyncSection = {
+      sectionSequenceNumber,
+      sectionLod,
+      state: LODState.Requested,
+      tracks: [] as SpanTrack[],
+    };
+    processAsyncData.sections.push(asyncSection);
+
     const reply = await loadWrap(
       async () =>
         await this.client!.fetch_async_spans({
-          sectionSequenceNumber: 0,
-          sectionLod: 0,
+          sectionSequenceNumber,
+          sectionLod,
           blockIds: blocksOfInterest,
         })
     );
-    console.log(reply);
+    const nbTracks = reply.tracks.length;
+    processAsyncData.maxDepth = Math.max(processAsyncData.maxDepth, nbTracks);
+    asyncSection.tracks = reply.tracks;
+    asyncSection.state = LODState.Loaded;
+    console.log(reply, nbTracks, reply.scopes);
   }
 
   private async fetchBlocks(process: Process, stream: Stream) {
@@ -158,12 +176,14 @@ export class TimelineStateManager {
       return;
     }
     const blockStats: BlockAsyncEventsStatReply[] = [];
+    const asyncSections: AsyncSection[] = [];
     const asyncData = {
       processId: process.processId,
       maxDepth: 0,
       minMs: Infinity,
       maxMs: -Infinity,
       blockStats,
+      sections: asyncSections,
     };
     const processOffset = processMsOffsetToRoot(this.process, process);
     const response = await loadWrap(async () => {

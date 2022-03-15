@@ -42,7 +42,8 @@
     MergeThresholdForLOD as mergeThresholdForLOD,
   } from "@/lib/lod";
   import { Thread } from "@/lib/Timeline/Thread";
-  import { LODState, ThreadBlock } from "@/lib/Timeline/ThreadBlock";
+  import { ThreadBlock } from "@/lib/Timeline/ThreadBlock";
+  import { LODState } from "@/lib/Timeline/LodState";
   import {
     computePreferredBlockLod,
     findBestLod,
