@@ -1,4 +1,5 @@
-use lgn_ecs::prelude::*;
+use lgn_ecs::prelude::{Component, Entity, Res, ResMut};
+use lgn_math::prelude::Vec3;
 use lgn_transform::prelude::GlobalTransform;
 use physx::{
     cooking::{
@@ -33,6 +34,7 @@ unsafe impl Sync for CollisionGeometry {}
 pub(crate) trait Convert {
     fn convert(
         &self,
+        scale: &Vec3,
         physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         cooking: &Res<'_, Owner<PxCooking>>,
     ) -> CollisionGeometry;
@@ -41,13 +43,14 @@ pub(crate) trait Convert {
 impl Convert for runtime::PhysicsRigidBox {
     fn convert(
         &self,
+        scale: &Vec3,
         _physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         _cooking: &Res<'_, Owner<PxCooking>>,
     ) -> CollisionGeometry {
         CollisionGeometry::Box(PxBoxGeometry::new(
-            self.half_extents.x,
-            self.half_extents.y,
-            self.half_extents.z,
+            self.half_extents.x * scale.x,
+            self.half_extents.y * scale.y,
+            self.half_extents.z * scale.z,
         ))
     }
 }
@@ -55,6 +58,7 @@ impl Convert for runtime::PhysicsRigidBox {
 impl Convert for runtime::PhysicsRigidCapsule {
     fn convert(
         &self,
+        _scale: &Vec3,
         _physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         _cooking: &Res<'_, Owner<PxCooking>>,
     ) -> CollisionGeometry {
@@ -66,6 +70,7 @@ impl Convert for runtime::PhysicsRigidConvexMesh {
     #[allow(clippy::fn_to_numeric_cast_with_truncation)]
     fn convert(
         &self,
+        _scale: &Vec3,
         physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         cooking: &Res<'_, Owner<PxCooking>>,
     ) -> CollisionGeometry {
@@ -104,6 +109,7 @@ impl Convert for runtime::PhysicsRigidConvexMesh {
 impl Convert for runtime::PhysicsRigidPlane {
     fn convert(
         &self,
+        _scale: &Vec3,
         _physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         _cooking: &Res<'_, Owner<PxCooking>>,
     ) -> CollisionGeometry {
@@ -114,6 +120,7 @@ impl Convert for runtime::PhysicsRigidPlane {
 impl Convert for runtime::PhysicsRigidSphere {
     fn convert(
         &self,
+        _scale: &Vec3,
         _physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         _cooking: &Res<'_, Owner<PxCooking>>,
     ) -> CollisionGeometry {
@@ -124,6 +131,7 @@ impl Convert for runtime::PhysicsRigidSphere {
 impl Convert for runtime::PhysicsRigidTriangleMesh {
     fn convert(
         &self,
+        _scale: &Vec3,
         physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         cooking: &Res<'_, Owner<PxCooking>>,
     ) -> CollisionGeometry {

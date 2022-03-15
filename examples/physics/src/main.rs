@@ -211,7 +211,7 @@ async fn create_offline_data(
             }),
             Box::new(PhysicsRigidBox {
                 actor_type: RigidActorType::Static,
-                half_extents: (3_f32, 0.25_f32, 3_f32).into(),
+                half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
             }),
         ],
         vec![],
