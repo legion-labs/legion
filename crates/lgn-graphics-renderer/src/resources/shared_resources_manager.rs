@@ -25,7 +25,6 @@ struct SharedTexture {
     bindless_index: u32,
 }
 
-
 pub struct SharedResourcesManager {
     textures: [SharedTexture; SharedTextureId::COUNT],
 }
@@ -47,10 +46,7 @@ impl SharedResourcesManager {
         self.textures[shared_texture_id as usize].bindless_index
     }
 
-    fn create_texture(
-        renderer: &Renderer,
-        shared_texture_id: SharedTextureId,        
-    ) -> TextureView {
+    fn create_texture(renderer: &Renderer, shared_texture_id: SharedTextureId) -> TextureView {
         let (texture_def, texture_data) = match shared_texture_id {
             SharedTextureId::Albedo => Self::create_albedo_texture(),
             SharedTextureId::Normal => Self::create_normal_texture(),
