@@ -14,13 +14,11 @@ struct Visual {
     pub shadow_receiver: bool,
     pub shadow_caster_sun: bool,
     pub shadow_caster_local: bool,
-    pub gi_contribution: usize,
+    pub gi_contribution: GIContribution,
 }
 
-/*
 pub enum GIContribution {
     Default,
     Blocker,
     Exclude,
 }
-*/

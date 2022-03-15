@@ -147,6 +147,22 @@ pub async fn build_offline(root_folder: impl AsRef<Path>, incremental: bool) {
                         &mut resources,
                     )
                     .await;
+
+                    if let Some(entity) = project
+                        .load_resource(resource_id, &mut resources)
+                        .unwrap()
+                        .typed::<offline_data::Entity>()
+                        .get_mut(&mut resources)
+                    {
+                        if let Some(parent_id) = &entity.parent {
+                            let mut raw_name = project.raw_resource_name(resource_id.id).unwrap();
+                            raw_name.replace_parent_info(Some(parent_id.source_resource()), None);
+                            project
+                                .rename_resource(resource_id, &raw_name)
+                                .await
+                                .unwrap();
+                        }
+                    }
                 }
                 "ins" => {
                     load_ron_resource::<raw_data::Instance, offline_data::Instance>(
@@ -368,7 +384,7 @@ async fn build_debug_cubes(
     if let Ok(parent_id) = project.find_resource(&scene).await {
         // Create DebugCube DataContainer
         for (index, _) in cube_ids.iter().enumerate() {
-            let name: ResourcePathName = format!("/world/sample_1/DebugCube{}", index).into();
+            let name: ResourcePathName = format!("/world/sample_1.ent/DebugCube{}", index).into();
             let id = if let Ok(id) = project.find_resource(&name).await {
                 id
             } else {
@@ -394,9 +410,9 @@ async fn build_debug_cubes(
                     .components
                     .push(Box::new(offline_data::Transform {
                         position: match index {
-                            0 => (0.0f32, 0.0f32, 1.0f32).into(),
-                            1 => (1.0f32, 0.0f32, 0.0f32).into(),
-                            2 => (-1.0f32, 0.0f32, 0.0f32).into(),
+                            0 => (0.0f32, 0.25f32, 1.0f32).into(),
+                            1 => (1.0f32, 0.25f32, 0.0f32).into(),
+                            2 => (-1.0f32, 0.25f32, 0.0f32).into(),
                             3 => (0.0f32, 1.0f32, 0.0f32).into(),
                             _ => (0.0f32, 0.0f32, 0.0f32).into(),
                         },
