@@ -129,7 +129,6 @@ impl Plugin for RendererPlugin {
             SharedResourcesManager::new(&renderer, &mut persistent_descriptor_set_manager);
 
         let mesh_renderer = MeshRenderer::new(renderer.static_buffer_allocator());
-        let debug_display = DebugDisplay::default();
 
         //
         // Add renderer stages first. It is needed for the plugins.
@@ -161,7 +160,7 @@ impl Plugin for RendererPlugin {
         app.insert_resource(RenderSurfaces::new());
         app.insert_resource(ModelManager::new());
         app.insert_resource(MeshManager::new(&renderer));
-        app.insert_resource(debug_display);
+        app.insert_resource(DebugDisplay::default());
         app.insert_resource(LightingManager::default());
         app.insert_resource(GpuInstanceManager::new(renderer.static_buffer_allocator()));
         app.insert_resource(MissingVisualTracker::default());
@@ -217,8 +216,7 @@ impl Plugin for RendererPlugin {
         //
         app.add_system_to_stage(RenderStage::Prepare, ui_renderer_options);
         app.add_system_to_stage(RenderStage::Prepare, ui_lights);
-        app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
-        app.add_system_to_stage(RenderStage::Prepare, resources::debug_bounding_spheres);
+        app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);        
         app.add_system_to_stage(RenderStage::Prepare, update_gpu_instances);
         app.add_system_to_stage(RenderStage::Prepare, update_lights);
         app.add_system_to_stage(

@@ -70,6 +70,7 @@ impl ModelManager {
 
     pub fn init_ecs(app: &mut App) {
         app.add_system_to_stage(RenderStage::Prepare, update_models);
+        app.add_system_to_stage(RenderStage::Prepare, debug_bounding_spheres);
     }
 
     pub fn add_model(&mut self, resource_id: ResourceTypeAndId, model: ModelMetaData) {
@@ -127,7 +128,7 @@ pub(crate) fn update_models(
 
 #[span_fn]
 #[allow(clippy::needless_pass_by_value)]
-pub(crate) fn debug_bounding_spheres(
+fn debug_bounding_spheres(
     debug_display: Res<'_, DebugDisplay>,
     bump_allocator_pool: Res<'_, BumpAllocatorPool>,
     model_manager: Res<'_, ModelManager>,
