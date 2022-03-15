@@ -17,10 +17,9 @@ use crate::{
 };
 
 use super::{
-    DefaultMeshType, GpuMaterialManager, MeshManager, MissingVisualTracker, RendererOptions,
+    DefaultMeshType, MaterialManager, MeshManager, MissingVisualTracker, RendererOptions,
     DEFAULT_MESH_GUIDS,
 };
-
 pub struct Mesh {
     pub mesh_id: u32,
     pub material_id: u32,

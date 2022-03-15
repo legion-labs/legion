@@ -7,4 +7,4 @@ macos = "lldb"
 editor-compound = ["editor-client", "editor-srv"]
 
 [vscode.overrides]
-lgn-graphics-sandbox = { args = ["--egui"] }
+lgn-graphics-sandbox = { args = [] }

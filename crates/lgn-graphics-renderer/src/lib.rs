@@ -76,9 +76,10 @@ use lgn_transform::components::GlobalTransform;
 use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 
 use crate::debug_display::DebugDisplay;
+
 use crate::resources::{
     ui_renderer_options, MissingVisualTracker, RendererOptions, SharedResourcesManager,
-    TextureResourceManager, UniformGPUDataUpdater,
+    UniformGPUDataUpdater,
 };
 
 use crate::{
@@ -210,7 +211,7 @@ impl Plugin for RendererPlugin {
         // Stage Prepare
         //
         app.add_system_to_stage(RenderStage::Prepare, ui_renderer_options);
-            app.add_system_to_stage(RenderStage::Prepare, ui_lights);
+        app.add_system_to_stage(RenderStage::Prepare, ui_lights);
         app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
         app.add_system_to_stage(RenderStage::Prepare, resources::debug_bounding_spheres);
         app.add_system_to_stage(RenderStage::Prepare, update_gpu_instances);
