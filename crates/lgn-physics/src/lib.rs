@@ -27,6 +27,7 @@ include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
 
 mod actor_type;
 mod callbacks;
+mod collision_geometry;
 mod data_def_ext;
 mod debug_display;
 mod labels;
@@ -55,10 +56,9 @@ use physx_sys::{PxPvdInstrumentationFlag, PxPvdInstrumentationFlags};
 use crate::{
     actor_type::WithActorType,
     callbacks::{OnAdvance, OnCollision, OnConstraintBreak, OnTrigger, OnWakeSleep},
+    collision_geometry::{CollisionGeometry, Convert},
     physics_options::PhysicsOptions,
-    rigid_actors::{
-        add_dynamic_actor_to_scene, add_static_actor_to_scene, CollisionGeometry, Convert,
-    },
+    rigid_actors::{add_dynamic_actor_to_scene, add_static_actor_to_scene},
 };
 pub use crate::{labels::PhysicsStage, settings::PhysicsSettings};
 

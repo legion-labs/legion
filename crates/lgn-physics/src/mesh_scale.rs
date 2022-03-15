@@ -6,6 +6,8 @@ use physx::{
 };
 use physx_sys::{PxMeshScale, PxMeshScale_new, PxMeshScale_new_3};
 
+use crate::runtime;
+
 impl<T> MeshScale for T where T: Class<PxMeshScale> {}
 
 pub trait MeshScale: Class<PxMeshScale> {
@@ -22,5 +24,13 @@ pub trait MeshScale: Class<PxMeshScale> {
         unsafe {
             PxMeshScale_new()
         }
+    }
+}
+
+impl From<&runtime::MeshScale> for PxMeshScale {
+    fn from(value: &runtime::MeshScale) -> Self {
+        let scale: PxVec3 = value.scale.into();
+        let rotation: PxQuat = value.rotation.into();
+        Self::new(&scale, &rotation)
     }
 }

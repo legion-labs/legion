@@ -5,7 +5,7 @@ use lgn_math::prelude::Vec3;
 use lgn_transform::prelude::{GlobalTransform, Transform};
 use physx::prelude::PxVec3;
 
-use crate::{physics_options::PhysicsOptions, rigid_actors::CollisionGeometry};
+use crate::{collision_geometry::CollisionGeometry, physics_options::PhysicsOptions};
 
 pub(crate) fn display_collision_geometry(
     debug_display: Res<'_, DebugDisplay>,
@@ -52,9 +52,16 @@ pub(crate) fn display_collision_geometry(
                             Vec3::new(0.8, 0.8, 0.3),
                         );
                     }
-                    CollisionGeometry::Sphere(_sphere_geometry) => {
+                    CollisionGeometry::Sphere(sphere_geometry) => {
+                        // default sphere mesh has radius of 0.25 (diameter of 0.5)
+                        let radius = sphere_geometry.radius;
+                        let scale_factor = radius / 0.25;
                         builder.add_mesh(
-                            transform.compute_matrix(),
+                            Transform::identity()
+                                .with_translation(transform.translation)
+                                .with_scale(Vec3::ONE * scale_factor) // assumes the size of sphere 1.0. Needs to be scaled in order to match picking silhouette
+                                .with_rotation(transform.rotation)
+                                .compute_matrix(),
                             DefaultMeshType::Sphere as u32,
                             Vec3::new(0.8, 0.8, 0.3),
                         );
