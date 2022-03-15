@@ -5215,6 +5215,7 @@ dependencies = [
  "dolly",
  "egui",
  "epaint",
+ "gltf",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-core",

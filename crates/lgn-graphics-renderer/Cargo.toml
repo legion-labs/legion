@@ -37,6 +37,7 @@ paste = "1.0.6"
 strum = { version = "0.23" }
 bitflags = "1.3"
 crossbeam-channel = "0.5"
+gltf = { version = "1.0.0", features = ["KHR_lights_punctual"] }
 
 [build-dependencies]
 lgn-graphics-cgen = { path = "../lgn-graphics-cgen", version = "0.1.0" }
