@@ -809,6 +809,6 @@ fn add_vertex_data(vertex_data: &mut Vec<f32>, pos: Vec3, normal_opt: Option<Vec
 
 #[derive(Component)]
 pub struct ModelComponent {
-    pub model_id: Option<ResourceTypeAndId>,
+    pub model_id: ResourceTypeAndId,
     pub meshes: Vec<Mesh>,
 }

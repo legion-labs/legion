@@ -102,27 +102,27 @@ pub(crate) fn update_models(
     mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
 ) {
     for updated_model in updated_models.iter() {
-        if let Some(mesh_reference) = &updated_model.model_id {
-            missing_visuals_tracker.add_visuals(*mesh_reference);
-            let ids = mesh_manager.add_meshes(&renderer, &updated_model.meshes);
+        let mesh_reference = &updated_model.model_id;
 
-            let mut meshes = Vec::new();
-            // TODO: case when material hasn't been loaded
-            for (idx, mesh) in updated_model.meshes.iter().enumerate() {
-                meshes.push(Mesh {
-                    mesh_id: ids[idx],
-                    material_id: material_manager
-                        .gpu_data()
-                        .va_for_index(mesh.material_id.clone().map(|v| v.id()), 0)
-                        as u32,
-                    material_index: material_manager
-                        .gpu_data()
-                        .id_for_index(mesh.material_id.clone().map(|v| v.id()), 0)
-                        as u32,
-                });
-            }
-            model_manager.add_model(*mesh_reference, ModelMetaData { meshes });
+        missing_visuals_tracker.add_visuals(*mesh_reference);
+        let ids = mesh_manager.add_meshes(&renderer, &updated_model.meshes);
+
+        let mut meshes = Vec::new();
+        // TODO: case when material hasn't been loaded
+        for (idx, mesh) in updated_model.meshes.iter().enumerate() {
+            meshes.push(Mesh {
+                mesh_id: ids[idx],
+                material_id: material_manager
+                    .gpu_data()
+                    .va_for_index(mesh.material_id.clone().map(|v| v.id()), 0)
+                    as u32,
+                material_index: material_manager
+                    .gpu_data()
+                    .id_for_index(mesh.material_id.clone().map(|v| v.id()), 0)
+                    as u32,
+            });
         }
+        model_manager.add_model(*mesh_reference, ModelMetaData { meshes });
     }
 }
 
