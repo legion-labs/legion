@@ -7,7 +7,12 @@ use physx::{
         TriangleMeshCookingResult,
     },
     foundation::DefaultAllocator,
-    prelude::*,
+    prelude::{
+        BoxGeometry, CapsuleGeometry, ConvexMeshGeometry, Geometry, GeometryType, Owner, Physics,
+        PhysicsFoundation, PlaneGeometry, PxBoxGeometry, PxCapsuleGeometry, PxConvexMeshGeometry,
+        PxGeometry, PxPlaneGeometry, PxQuat, PxSphereGeometry, PxTransform, PxTriangleMeshGeometry,
+        PxVec3, RigidBody, Scene, SphereGeometry, TriangleMeshGeometry,
+    },
     traits::Class,
 };
 use physx_sys::{PxConvexFlag, PxConvexMeshGeometryFlags, PxMeshGeometryFlags, PxMeshScale};
