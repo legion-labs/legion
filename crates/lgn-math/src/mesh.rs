@@ -1,6 +1,5 @@
 use crate::{Vec2, Vec3};
 
-#[allow(unsafe_code, clippy::uninit_vec)]
 pub fn calculate_tangents(
     positions: &[Vec3],
     tex_coords: &[Vec2],
@@ -8,11 +7,9 @@ pub fn calculate_tangents(
 ) -> Vec<Vec3> {
     let length = positions.len();
     let mut tangents = Vec::with_capacity(length);
-    //let mut bitangents = Vec::with_capacity(length);
-    unsafe {
-        tangents.set_len(length);
-        //bitangents.set_len(length);
-    }
+    // let mut bitangents = Vec::with_capacity(length);
+    tangents.resize(length, Vec3::default());
+    // bitangents.resize(length, Vec3::default());
 
     let num_triangles = if let Some(indices) = &indices {
         indices.len() / 3
