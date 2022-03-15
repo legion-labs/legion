@@ -1,5 +1,6 @@
 <script lang="ts">
   import { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
+  import { getThreadCollapseStyle } from "@/lib/Timeline/TimelineCollapse";
   import { ProcessAsyncData } from "@/lib/Timeline/ProcessAsyncData";
   import { Process } from "@lgn/proto-telemetry/dist/process";
   import { createEventDispatcher } from "svelte";
@@ -19,7 +20,10 @@
   }
 </script>
 
-<div class="flex items-start main">
+<div
+  class="flex items-start main"
+  style={getThreadCollapseStyle(processAsyncData.maxDepth, collapsed)}
+>
   <div
     class="thread px-1"
     on:click={() => (collapsed = !collapsed)}

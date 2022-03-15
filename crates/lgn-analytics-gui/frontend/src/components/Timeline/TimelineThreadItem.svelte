@@ -22,7 +22,7 @@
 
 <div
   class="flex items-start main"
-  style={getThreadCollapseStyle(thread, collapsed)}
+  style={getThreadCollapseStyle(thread.maxDepth, collapsed)}
 >
   <div
     class="thread px-1"
