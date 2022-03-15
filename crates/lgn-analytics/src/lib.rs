@@ -20,6 +20,7 @@ use prost::Message;
 use sqlx::any::AnyRow;
 use sqlx::Row;
 
+#[span_fn]
 pub async fn alloc_sql_pool(data_folder: &Path) -> Result<sqlx::AnyPool> {
     let db_uri = format!("sqlite://{}/telemetry.db3", data_folder.display());
     let pool = sqlx::any::AnyPoolOptions::new()
@@ -29,6 +30,7 @@ pub async fn alloc_sql_pool(data_folder: &Path) -> Result<sqlx::AnyPool> {
     Ok(pool)
 }
 
+#[span_fn]
 fn process_from_row(row: &sqlx::any::AnyRow) -> ProcessInfo {
     let tsc_frequency: i64 = row.get("tsc_frequency");
     ProcessInfo {
@@ -46,6 +48,7 @@ fn process_from_row(row: &sqlx::any::AnyRow) -> ProcessInfo {
     }
 }
 
+#[span_fn]
 pub async fn processes_by_name_substring(
     connection: &mut sqlx::AnyConnection,
     filter: &str,
@@ -67,6 +70,7 @@ pub async fn processes_by_name_substring(
     Ok(processes)
 }
 
+#[span_fn]
 pub async fn find_process(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
@@ -82,6 +86,7 @@ pub async fn find_process(
     Ok(process_from_row(&row))
 }
 
+#[span_fn]
 pub async fn find_block_process(
     connection: &mut sqlx::AnyConnection,
     block_id: &str,
@@ -99,6 +104,7 @@ pub async fn find_block_process(
     Ok(process_from_row(&row))
 }
 
+#[span_fn]
 pub async fn fetch_recent_processes(
     connection: &mut sqlx::AnyConnection,
 ) -> Result<Vec<lgn_telemetry_proto::analytics::ProcessInstance>> {
@@ -154,6 +160,7 @@ pub async fn fetch_recent_processes(
     Ok(processes)
 }
 
+#[span_fn]
 pub async fn search_processes(
     connection: &mut sqlx::AnyConnection,
     keyword: &str,
@@ -216,6 +223,7 @@ pub async fn search_processes(
     Ok(processes)
 }
 
+#[span_fn]
 pub async fn fetch_child_processes(
     connection: &mut sqlx::AnyConnection,
     parent_process_id: &str,
@@ -237,6 +245,7 @@ pub async fn fetch_child_processes(
     Ok(processes)
 }
 
+#[span_fn]
 pub async fn find_process_streams_tagged(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
@@ -282,6 +291,7 @@ pub async fn find_process_streams_tagged(
     Ok(res)
 }
 
+#[span_fn]
 pub async fn find_process_streams(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
@@ -324,6 +334,7 @@ pub async fn find_process_streams(
     Ok(res)
 }
 
+#[span_fn]
 pub async fn find_process_blocks(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
@@ -350,6 +361,7 @@ pub async fn find_process_blocks(
     Ok(blocks)
 }
 
+#[span_fn]
 pub async fn find_process_log_streams(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
@@ -357,6 +369,7 @@ pub async fn find_process_log_streams(
     find_process_streams_tagged(connection, process_id, "log").await
 }
 
+#[span_fn]
 pub async fn find_process_thread_streams(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
@@ -364,6 +377,7 @@ pub async fn find_process_thread_streams(
     find_process_streams_tagged(connection, process_id, "cpu").await
 }
 
+#[span_fn]
 pub async fn find_process_metrics_streams(
     connection: &mut sqlx::AnyConnection,
     process_id: &str,
@@ -371,6 +385,7 @@ pub async fn find_process_metrics_streams(
     find_process_streams_tagged(connection, process_id, "metrics").await
 }
 
+#[span_fn]
 pub async fn find_stream(
     connection: &mut sqlx::AnyConnection,
     stream_id: &str,
@@ -407,6 +422,7 @@ pub async fn find_stream(
     })
 }
 
+#[span_fn]
 pub async fn find_block_stream(
     connection: &mut sqlx::AnyConnection,
     block_id: &str,
@@ -444,6 +460,7 @@ pub async fn find_block_stream(
     })
 }
 
+#[span_fn]
 fn map_row_block(row: &AnyRow) -> Result<BlockMetadata> {
     let opt_size: Option<i64> = row.try_get("payload_size")?;
     Ok(BlockMetadata {
@@ -458,6 +475,7 @@ fn map_row_block(row: &AnyRow) -> Result<BlockMetadata> {
     })
 }
 
+#[span_fn]
 pub async fn find_block(
     connection: &mut sqlx::AnyConnection,
     block_id: &str,
@@ -475,6 +493,7 @@ pub async fn find_block(
     map_row_block(&row)
 }
 
+#[span_fn]
 pub async fn find_stream_blocks(
     connection: &mut sqlx::AnyConnection,
     stream_id: &str,
@@ -496,6 +515,7 @@ pub async fn find_stream_blocks(
     Ok(blocks)
 }
 
+#[span_fn]
 pub async fn find_stream_blocks_in_range(
     connection: &mut sqlx::AnyConnection,
     stream_id: &str,
@@ -523,6 +543,7 @@ pub async fn find_stream_blocks_in_range(
     Ok(blocks)
 }
 
+#[span_fn]
 pub async fn fetch_block_payload(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
@@ -548,6 +569,7 @@ pub async fn fetch_block_payload(
     Ok(payload)
 }
 
+#[span_fn]
 fn container_metadata_as_transit_udt_vec(
     value: &ContainerMetadata,
 ) -> Vec<lgn_tracing_transit::UserDefinedType> {
@@ -598,6 +620,7 @@ where
     Ok(())
 }
 
+#[span_fn]
 fn format_log_level(level: u32) -> &'static str {
     match level {
         1 => "Error",
@@ -609,6 +632,7 @@ fn format_log_level(level: u32) -> &'static str {
     }
 }
 
+#[span_fn]
 fn log_entry_from_value(val: &Value) -> Option<(i64, String)> {
     if let Value::Object(obj) = val {
         match obj.type_name.as_str() {
@@ -673,6 +697,7 @@ pub async fn find_process_log_entry<Res, Predicate: FnMut(i64, String) -> Option
 
 // for_each_log_entry_in_block calls fun(time_ticks,entry_str) with each log
 // entry until fun returns false mad
+#[span_fn]
 pub async fn for_each_log_entry_in_block<Predicate: FnMut(i64, String) -> bool>(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
@@ -692,6 +717,7 @@ pub async fn for_each_log_entry_in_block<Predicate: FnMut(i64, String) -> bool>(
     Ok(())
 }
 
+#[span_fn]
 pub async fn for_each_process_log_entry<ProcessLogEntry: FnMut(i64, String)>(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
@@ -707,6 +733,7 @@ pub async fn for_each_process_log_entry<ProcessLogEntry: FnMut(i64, String)>(
     Ok(())
 }
 
+#[span_fn]
 pub async fn for_each_process_metric<ProcessMetric: FnMut(Arc<lgn_tracing_transit::Object>)>(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
@@ -730,6 +757,7 @@ pub async fn for_each_process_metric<ProcessMetric: FnMut(Arc<lgn_tracing_transi
 }
 
 #[async_recursion::async_recursion]
+#[span_fn]
 pub async fn for_each_process_in_tree<F>(
     pool: &sqlx::AnyPool,
     root: &ProcessInfo,

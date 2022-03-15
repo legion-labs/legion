@@ -48,12 +48,20 @@ pub fn span_fn(
         (None, Some(_)) => format!("{} (Async)", function.sig.ident),
     };
 
-    function.block.stmts.insert(
-        0,
-        parse_quote! {
-            lgn_tracing::span_scope!(_METADATA_FUNC, concat!(module_path!(), "::", #function_name));
-        },
-    );
+    let statement = match function.sig.asyncness {
+        None => {
+            parse_quote! {
+                lgn_tracing::span_scope!(_METADATA_FUNC, concat!(module_path!(), "::", #function_name));
+            }
+        }
+        Some(_) => {
+            parse_quote! {
+                lgn_tracing::async_span_scope!(_METADATA_FUNC, concat!(module_path!(), "::", #function_name));
+            }
+        }
+    };
+
+    function.block.stmts.insert(0, statement);
     proc_macro::TokenStream::from(quote! {
         #function
     })

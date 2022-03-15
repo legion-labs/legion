@@ -132,6 +132,7 @@ impl ThreadBlockProcessor for CallTreeBuilder {
 }
 
 #[allow(clippy::cast_precision_loss)]
+#[span_fn]
 pub(crate) async fn compute_block_call_tree(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
@@ -163,6 +164,7 @@ use crate::scope::ScopeHashMap;
 use crate::thread_block_processor::parse_thread_block;
 use crate::thread_block_processor::ThreadBlockProcessor;
 
+#[span_fn]
 fn make_spans_from_tree(tree: &CallTreeNode, depth: u32, lod: &mut SpanBlockLod) {
     let span = Span {
         scope_hash: tree.hash,
@@ -214,6 +216,7 @@ pub(crate) fn compute_block_spans(tree: CallTree, block_id: &str) -> Result<Bloc
 }
 
 #[allow(clippy::cast_possible_wrap)]
+#[span_fn]
 pub(crate) fn reduce_lod(lod0: &SpanBlockLod, lod_id: u32) -> SpanBlockLod {
     let merge_threshold = 100.0_f64.powi(lod_id as i32 - 2) / 10.0;
     let mut tracks = vec![];

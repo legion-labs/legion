@@ -81,6 +81,7 @@ pub struct AnalyticsService {
 }
 
 impl AnalyticsService {
+    #[span_fn]
     pub fn new(
         pool: sqlx::AnyPool,
         data_lake_blobs: Arc<dyn BlobStorage>,
@@ -94,6 +95,7 @@ impl AnalyticsService {
         }
     }
 
+    #[span_fn]
     fn get_metric_handler(&self) -> MetricHandler {
         MetricHandler::new(
             Arc::clone(&self.data_lake_blobs),
@@ -102,11 +104,13 @@ impl AnalyticsService {
         )
     }
 
+    #[span_fn]
     async fn find_process_impl(&self, process_id: &str) -> Result<lgn_telemetry_sink::ProcessInfo> {
         let mut connection = self.pool.acquire().await?;
         find_process(&mut connection, process_id).await
     }
 
+    #[span_fn]
     async fn list_recent_processes_impl(
         &self,
     ) -> Result<Vec<lgn_telemetry_proto::analytics::ProcessInstance>> {
@@ -114,6 +118,7 @@ impl AnalyticsService {
         fetch_recent_processes(&mut connection).await
     }
 
+    #[span_fn]
     async fn search_processes_impl(
         &self,
         search: &str,
@@ -122,6 +127,7 @@ impl AnalyticsService {
         search_processes(&mut connection, search).await
     }
 
+    #[span_fn]
     async fn list_process_streams_impl(
         &self,
         process_id: &str,
@@ -130,6 +136,7 @@ impl AnalyticsService {
         find_process_streams(&mut connection, process_id).await
     }
 
+    #[span_fn]
     async fn list_stream_blocks_impl(
         &self,
         stream_id: &str,
@@ -138,6 +145,7 @@ impl AnalyticsService {
         find_stream_blocks(&mut connection, stream_id).await
     }
 
+    #[span_fn]
     async fn compute_spans_lod(
         &self,
         process: &lgn_telemetry_sink::ProcessInfo,
@@ -165,6 +173,7 @@ impl AnalyticsService {
     }
 
     #[async_recursion]
+    #[span_fn]
     async fn block_spans_impl(
         &self,
         process: &lgn_telemetry_sink::ProcessInfo,
@@ -181,6 +190,7 @@ impl AnalyticsService {
             .await
     }
 
+    #[span_fn]
     async fn process_cumulative_call_graph_impl(
         &self,
         process: &lgn_telemetry_sink::ProcessInfo,
@@ -193,6 +203,7 @@ impl AnalyticsService {
     }
 
     #[allow(clippy::cast_precision_loss)]
+    #[span_fn]
     async fn process_log_impl(
         &self,
         process: &lgn_telemetry_sink::ProcessInfo,
@@ -242,6 +253,7 @@ impl AnalyticsService {
         })
     }
 
+    #[span_fn]
     async fn nb_process_log_entries_impl(
         &self,
         process_id: &str,
@@ -256,6 +268,7 @@ impl AnalyticsService {
         Ok(ProcessNbLogEntriesReply { count })
     }
 
+    #[span_fn]
     async fn list_process_children_impl(&self, process_id: &str) -> Result<ProcessChildrenReply> {
         let mut connection = self.pool.acquire().await?;
         let children = fetch_child_processes(&mut connection, process_id).await?;
@@ -264,6 +277,7 @@ impl AnalyticsService {
         })
     }
 
+    #[span_fn]
     async fn fetch_block_metric_impl(
         &self,
         request: MetricBlockRequest,
@@ -272,6 +286,7 @@ impl AnalyticsService {
         Ok(metric_handler.get_block_lod_data(request).await?)
     }
 
+    #[span_fn]
     async fn fetch_block_metric_manifest_impl(
         &self,
         request: MetricBlockManifestRequest,
@@ -282,6 +297,7 @@ impl AnalyticsService {
             .await?)
     }
 
+    #[span_fn]
     async fn list_process_blocks_impl(
         &self,
         request: ListProcessBlocksRequest,
@@ -292,6 +308,7 @@ impl AnalyticsService {
         Ok(ProcessBlocksReply { blocks })
     }
 
+    #[span_fn]
     async fn fetch_block_async_stats_impl(
         &self,
         request: BlockAsyncStatsRequest,
@@ -313,6 +330,7 @@ impl AnalyticsService {
         .await
     }
 
+    #[span_fn]
     async fn fetch_async_spans_impl(&self, request: AsyncSpansRequest) -> Result<AsyncSpansReply> {
         let mut connection = self.pool.acquire().await?;
         compute_async_spans(
@@ -328,6 +346,7 @@ impl AnalyticsService {
 
 #[tonic::async_trait]
 impl PerformanceAnalytics for AnalyticsService {
+    #[span_fn]
     async fn find_process(
         &self,
         request: Request<FindProcessRequest>,
@@ -349,6 +368,7 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
+    #[span_fn]
     async fn list_recent_processes(
         &self,
         _request: Request<RecentProcessesRequest>,
@@ -371,6 +391,7 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
+    #[span_fn]
     async fn search_processes(
         &self,
         request: Request<SearchProcessRequest>,
@@ -395,6 +416,7 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
+    #[span_fn]
     async fn list_process_streams(
         &self,
         request: Request<ListProcessStreamsRequest>,
@@ -421,6 +443,7 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
+    #[span_fn]
     async fn list_stream_blocks(
         &self,
         request: Request<ListStreamBlocksRequest>,
@@ -442,6 +465,7 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
+    #[span_fn]
     async fn block_spans(
         &self,
         request: Request<BlockSpansRequest>,
@@ -478,6 +502,7 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
+    #[span_fn]
     async fn process_cumulative_call_graph(
         &self,
         request: Request<ProcessCumulativeCallGraphRequest>,
@@ -509,6 +534,7 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
+    #[span_fn]
     async fn list_process_log_entries(
         &self,
         request: Request<ProcessLogRequest>,
@@ -540,6 +566,7 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
+    #[span_fn]
     async fn nb_process_log_entries(
         &self,
         request: Request<ProcessNbLogEntriesRequest>,
@@ -567,6 +594,7 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
+    #[span_fn]
     async fn list_process_children(
         &self,
         request: Request<ListProcessChildrenRequest>,
@@ -594,6 +622,7 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
+    #[span_fn]
     async fn list_process_blocks(
         &self,
         request: Request<ListProcessBlocksRequest>,
@@ -611,6 +640,7 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
+    #[span_fn]
     async fn fetch_block_metric(
         &self,
         request: Request<MetricBlockRequest>,
@@ -628,6 +658,7 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
+    #[span_fn]
     async fn fetch_block_metric_manifest(
         &self,
         request: Request<MetricBlockManifestRequest>,
@@ -645,6 +676,7 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
+    #[span_fn]
     async fn fetch_block_async_stats(
         &self,
         request: Request<BlockAsyncStatsRequest>,
@@ -662,6 +694,7 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
+    #[span_fn]
     async fn fetch_async_spans(
         &self,
         request: Request<AsyncSpansRequest>,
