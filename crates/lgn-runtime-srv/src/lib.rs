@@ -149,15 +149,15 @@ pub fn build_runtime(
         .add_plugin(GenericDataPlugin::default())
         .add_plugin(ScriptingPlugin::default())
         .add_plugin(SampleDataPlugin::default())
+        .add_plugin(GraphicsPlugin::default())
+        .add_plugin(InputPlugin::default())
+        .add_plugin(RendererPlugin::default())
         .insert_resource(PhysicsSettings::new(
             enable_visual_debugger,
             length_tolerance,
             speed_tolerance,
         ))
-        .add_plugin(PhysicsPlugin::default())
-        .add_plugin(GraphicsPlugin::default())
-        .add_plugin(InputPlugin::default())
-        .add_plugin(RendererPlugin::default());
+        .add_plugin(PhysicsPlugin::default());
 
     #[cfg(feature = "standalone")]
     if standalone {

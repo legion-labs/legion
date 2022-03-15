@@ -25,30 +25,22 @@
 // generated from def\physics.rs
 include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
 
-mod data_def_ext;
-
 mod actor_type;
-use actor_type::WithActorType;
-
 mod callbacks;
-use callbacks::{OnAdvance, OnCollision, OnConstraintBreak, OnTrigger, OnWakeSleep};
-
+mod data_def_ext;
 mod labels;
-pub use labels::*;
-
 mod mesh_scale;
-
+mod physics_options;
 mod rigid_actors;
-use rigid_actors::{
-    add_dynamic_actor_to_scene, add_static_actor_to_scene, CollisionGeometry, Convert,
-};
-
 mod settings;
-pub use settings::PhysicsSettings;
 
-use lgn_app::prelude::*;
-use lgn_core::prelude::*;
-use lgn_ecs::prelude::*;
+use lgn_app::prelude::{App, CoreStage, Plugin};
+use lgn_core::{prelude::Time, BumpAllocatorPool};
+use lgn_ecs::prelude::{Commands, Component, Entity, Query, Res, ResMut, SystemStage};
+use lgn_graphics_renderer::{
+    debug_display::DebugDisplay, labels::RenderStage, resources::DefaultMeshType,
+};
+use lgn_math::prelude::Vec3;
 use lgn_tracing::prelude::*;
 use lgn_transform::prelude::*;
 use physx::{
@@ -58,6 +50,16 @@ use physx::{
     prelude::*,
 };
 use physx_sys::{PxPvdInstrumentationFlag, PxPvdInstrumentationFlags};
+
+use crate::{
+    actor_type::WithActorType,
+    callbacks::{OnAdvance, OnCollision, OnConstraintBreak, OnTrigger, OnWakeSleep},
+    physics_options::{ui_physics_options, PhysicsOptions},
+    rigid_actors::{
+        add_dynamic_actor_to_scene, add_static_actor_to_scene, CollisionGeometry, Convert,
+    },
+};
+pub use crate::{labels::*, settings::PhysicsSettings};
 
 // type aliases
 
@@ -127,6 +129,10 @@ impl Plugin for PhysicsPlugin {
 
         app.add_system_to_stage(PhysicsStage::Update, Self::step_simulation)
             .add_system_to_stage(PhysicsStage::Update, Self::sync_transforms);
+
+        app.init_resource::<PhysicsOptions>()
+            .add_system_to_stage(RenderStage::Prepare, ui_physics_options)
+            .add_system_to_stage(RenderStage::Prepare, Self::display_collision_geometry);
     }
 }
 
@@ -271,6 +277,41 @@ impl PhysicsPlugin {
                 *transform = global_transform.into();
             }
         }
+    }
+
+    fn display_collision_geometry(
+        debug_display: Res<'_, DebugDisplay>,
+        bump_allocator_pool: Res<'_, BumpAllocatorPool>,
+        physics_options: Res<'_, PhysicsOptions>,
+        query: Query<'_, '_, (&CollisionGeometry, &GlobalTransform)>,
+    ) {
+        if !physics_options.show_collision_geometry {
+            return;
+        }
+
+        bump_allocator_pool.scoped_bump(|bump| {
+            debug_display.create_display_list(bump, |builder| {
+                for (collision_geometry, transform) in query.iter() {
+                    match collision_geometry {
+                        CollisionGeometry::Box(box_geometry) => {}
+                        CollisionGeometry::Capsule(capsule_geometry) => {}
+                        CollisionGeometry::ConvexMesh(convex_mesh_geometry) => {}
+                        CollisionGeometry::Plane(plane_geometry) => {}
+                        CollisionGeometry::Sphere(sphere_geometry) => builder.add_mesh(
+                            transform.compute_matrix(),
+                            DefaultMeshType::Sphere as u32,
+                            Vec3::new(0.8, 0.8, 0.3),
+                        ),
+                        CollisionGeometry::TriangleMesh(triangle_mesh_geometry) => {}
+                    }
+                }
+            });
+        });
+
+        drop(debug_display);
+        drop(bump_allocator_pool);
+        drop(physics_options);
+        drop(query);
     }
 
     fn create_physics_foundation(

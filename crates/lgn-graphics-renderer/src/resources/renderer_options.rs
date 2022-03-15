@@ -1,6 +1,6 @@
 use lgn_ecs::prelude::{Res, ResMut};
 
-use crate::egui::egui_plugin::Egui;
+use crate::egui::Egui;
 
 #[derive(Default)]
 pub(crate) struct RendererOptions {
