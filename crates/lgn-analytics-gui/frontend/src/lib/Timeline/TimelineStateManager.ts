@@ -167,7 +167,11 @@ export class TimelineStateManager {
     processAsyncData.maxDepth = Math.max(processAsyncData.maxDepth, nbTracks);
     asyncSection.tracks = reply.tracks;
     asyncSection.state = LODState.Loaded;
-    console.log(reply, nbTracks, reply.scopes);
+
+    this.state.update((s) => {
+      s.scopes = { ...s.scopes, ...reply.scopes };
+      return s;
+    });
   }
 
   private async fetchBlocks(process: Process, stream: Stream) {

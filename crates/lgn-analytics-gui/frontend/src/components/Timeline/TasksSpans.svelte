@@ -3,6 +3,7 @@
   import { Process } from "@lgn/proto-telemetry/dist/process";
   import { ProcessAsyncData } from "@/lib/Timeline/ProcessAsyncData";
   import { DrawSelectedRange } from "@/lib/time_range_selection";
+  import { drawSpanTrack } from "@/lib/Timeline/SpanRender";
   import { createEventDispatcher, onDestroy, onMount, tick } from "svelte";
   import { spanPixelHeight } from "@/lib/Timeline/TimelineValues";
   export let rootStartTime: number;
@@ -88,10 +89,10 @@
 
     ctx.font = "15px arial";
 
-    // const testString = "<>_w";
-    // const testTextMetrics = ctx.measureText(testString);
-    // const characterWidth = testTextMetrics.width / testString.length;
-    // const characterHeight = testTextMetrics.actualBoundingBoxAscent;
+    const testString = "<>_w";
+    const testTextMetrics = ctx.measureText(testString);
+    const characterWidth = testTextMetrics.width / testString.length;
+    const characterHeight = testTextMetrics.actualBoundingBoxAscent;
 
     const beginTasks = Math.max(
       begin,
@@ -110,6 +111,36 @@
       endTasksPixels - beginTasksPixels,
       height
     );
+
+    processAsyncData.sections.forEach((section) => {
+      for (
+        let trackIndex = 0;
+        trackIndex < section.tracks.length;
+        trackIndex += 1
+      ) {
+        let track = section.tracks[trackIndex];
+        const offsetY = trackIndex * spanPixelHeight;
+        let color = "";
+        if (trackIndex % 2 === 0) {
+          color = "#fea446";
+        } else {
+          color = "#fede99";
+        }
+        drawSpanTrack(
+          ctx,
+          scopes,
+          track,
+          color,
+          offsetY,
+          processOffsetMs,
+          begin,
+          end,
+          characterWidth,
+          characterHeight,
+          msToPixelsFactor
+        );
+      }
+    });
   }
 </script>
 
