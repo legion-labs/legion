@@ -116,8 +116,12 @@ RUN wget -qO /tmp/driver.zip https://s3.amazonaws.com/nvidia-gaming/linux/latest
     chmod u+x /tmp/driver/Linux/NVIDIA-Linux-x86_64-495.50-grid.run && \
     cd /tmp/driver && ./Linux/NVIDIA-Linux-x86_64-495.50-grid.run -s --extract-only && \
     cp -r /tmp/driver/NVIDIA-Linux-x86_64-495.50-grid/lib* /usr/lib/x86_64-linux-gnu/ && \
-    rm -rf /tmp/driver*
-
+    rm -rf /tmp/driver* && \
+    cd /usr/lib/x86_64-linux-gnu && \
+    ln -s libcuda.so.495.50 libcuda.so.1 && ln -s libcuda.so.1 libcuda.so && \
+    ln -s libnvidia-encode.so.495.50 libnvidia-encode.so.1 && ln -s libnvidia-encode.so.1 libnvidia-encode.so && \
+    ln -s libnvcuvid.so.495.50 libnvcuvid.so.1 && ln -s libnvcuvid.so.1 libnvcuvid.so
+    
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,graphics,video,utility
 
