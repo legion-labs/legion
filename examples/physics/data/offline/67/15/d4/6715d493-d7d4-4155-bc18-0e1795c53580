@@ -24,7 +24,7 @@
       "Visual": {
         "color": 553648127,
         "color_blend": 1.0,
-        "gi_contribution": 0,
+        "gi_contribution": "Default",
         "renderable_geometry": "(44e4b6023fb7a8d3,c26b19b2-e80a-4db5-a53c-ba24492d8015)|5c4b1b522bf5dcb0",
         "shadow_caster_local": false,
         "shadow_caster_sun": false,
