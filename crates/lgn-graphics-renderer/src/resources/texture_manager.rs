@@ -24,7 +24,7 @@ pub enum TextureEvent {
 }
 
 struct UploadTextureJob {
-    texture_id: ResourceTypeAndId,
+    entity: Entity,
     texture_data: Option<TextureData>,
 }
 
@@ -50,16 +50,17 @@ enum TextureManagerLabel {
 #[derive(Clone)]
 struct TextureInfo {
     state: TextureState,
+    texture_id: ResourceTypeAndId,
     bindless_index: Option<u32>,
     texture_view: TextureView,
 }
 
 pub struct TextureManager {
     device_context: DeviceContext,
-    texture_infos: BTreeMap<ResourceTypeAndId, TextureInfo>,
+    texture_infos: BTreeMap<Entity, TextureInfo>,
     // todo: use some kind of queue maybe?
     texture_jobs: Vec<TextureJob>,
-    entity_to_texture_id: BTreeMap<Entity, ResourceTypeAndId>,
+    texture_id_to_entity: BTreeMap<ResourceTypeAndId, Entity>,
 }
 
 impl TextureManager {
@@ -68,7 +69,7 @@ impl TextureManager {
             device_context: device_context.clone(),
             texture_infos: BTreeMap::new(),
             texture_jobs: Vec::new(),
-            entity_to_texture_id: BTreeMap::new(),
+            texture_id_to_entity: BTreeMap::new(),
         }
     }
 
@@ -90,8 +91,8 @@ impl TextureManager {
         );
     }
 
-    pub fn is_valid(&self, texture_id: &ResourceTypeAndId) -> bool {
-        self.texture_infos.contains_key(texture_id)
+    pub fn is_valid(&self, entity: Entity) -> bool {
+        self.texture_infos.contains_key(&entity)
     }
 
     pub fn allocate_texture(&mut self, entity: Entity, texture_component: &TextureComponent) {
@@ -100,65 +101,54 @@ impl TextureManager {
         let texture_view = self.create_texture_view(&texture_def);
 
         self.texture_infos.insert(
-            texture_component.texture_id,
+            entity,
             TextureInfo {
                 state: TextureState::Invalid,
+                texture_id: texture_component.texture_id,
                 bindless_index: None,
                 texture_view,
             },
         );
 
-        self.queue_for_upload(
-            &texture_component.texture_id,
-            &texture_component.texture_data,
-        );
+        self.texture_id_to_entity
+            .insert(texture_component.texture_id, entity);
 
-        self.entity_to_texture_id
-            .insert(entity, texture_component.texture_id);
+        self.queue_for_upload(entity, &texture_component.texture_data);
     }
 
-    pub fn update_texture(
-        &mut self,
-        texture_id: &ResourceTypeAndId,
-        texture_def: &TextureDef,
-        texture_data: &TextureData,
-    ) {
-        // todo: untested
-
-        assert!(self.is_valid(texture_id));
+    pub fn update_texture(&mut self, entity: Entity, texture_component: &TextureComponent) {
+        let texture_def = Self::texture_def_from_texture_component(texture_component);
 
         let recreate_texture_view = {
-            let current_texture_handle = self.texture_handle(texture_id);
+            let texture_info = self.texture_info(entity);
+            let current_texture_handle = texture_info.texture_view.texture();
             let current_texture_def = current_texture_handle.definition();
-            current_texture_def != texture_def
+            *current_texture_def != texture_def
         };
         if recreate_texture_view {
-            let texture_view = self.create_texture_view(texture_def);
-            let texture_info = self.texture_info_mut(texture_id);
+            let texture_view = self.create_texture_view(&texture_def);
+            let texture_info = self.texture_info_mut(entity);
             // The previous texture/texture_view is being pushed is the deferred delete queue
             // Should be updated in the persistent descriptor set
             texture_info.texture_view = texture_view;
         }
-        self.queue_for_upload(texture_id, texture_data);
-    }
-
-    pub fn update_by_entity(&mut self, entity: Entity, texture_component: &TextureComponent) {
-        let texture_id = *self.entity_to_texture_id.get(&entity).unwrap();
-
-        let texture_def = Self::texture_def_from_texture_component(texture_component);
-
-        self.update_texture(&texture_id, &texture_def, &texture_component.texture_data);
+        self.queue_for_upload(entity, &texture_component.texture_data);
     }
 
     pub fn remove_by_entity(&mut self, entity: Entity) {
-        let texture_id = *self.entity_to_texture_id.get(&entity).unwrap();
+        // todo
 
-        self.texture_infos.remove(&texture_id);
+        self.texture_infos.remove(&entity);
     }
 
     pub fn bindless_index_for_resource_id(&self, texture_id: &ResourceTypeAndId) -> Option<u32> {
-        let texture_info = self.texture_infos.get(texture_id);
-        texture_info.map(|ti| ti.bindless_index).and_then(|ti| ti)
+        let entity = self.texture_id_to_entity.get(texture_id);
+        if let Some(entity) = entity {
+            let texture_info = self.texture_infos.get(entity);
+            texture_info.map(|ti| ti.bindless_index).and_then(|ti| ti)
+        } else {
+            None
+        }
     }
 
     #[span_fn]
@@ -179,14 +169,14 @@ impl TextureManager {
                 TextureJob::Upload(upload_job) => {
                     self.upload_texture(renderer, upload_job);
 
-                    let texture_info = self.texture_infos.get_mut(&upload_job.texture_id).unwrap();
+                    let texture_info = self.texture_infos.get_mut(&upload_job.entity).unwrap();
                     texture_info.state = TextureState::Ready;
                     texture_info.bindless_index = Some(
                         persistent_descriptor_set_manager
                             .set_bindless_texture(&texture_info.texture_view),
                     );
 
-                    state_changed_list.push(upload_job.texture_id);
+                    state_changed_list.push(texture_info.texture_id);
                 }
             }
         }
@@ -207,8 +197,8 @@ impl TextureManager {
         cmd_buffer.begin().unwrap();
 
         // let gpu_texture_id = upload_job.gpu_texture_id;
-        let texture_id = upload_job.texture_id;
-        let texture_info = self.texture_infos.get(&texture_id).unwrap();
+        let entity = upload_job.entity;
+        let texture_info = self.texture_infos.get(&entity).unwrap();
         {
             let texture = texture_info.texture_view.texture();
             let texture_data = upload_job.texture_data.as_ref().unwrap();
@@ -243,10 +233,11 @@ impl TextureManager {
         texture.create_view(&TextureViewDef::as_shader_resource_view(texture_def))
     }
 
-    fn queue_for_upload(&mut self, texture_id: &ResourceTypeAndId, texture_data: &TextureData) {
-        assert!(self.is_valid(texture_id));
+    fn queue_for_upload(&mut self, entity: Entity, texture_data: &TextureData) {
+        assert!(self.is_valid(entity));
 
-        let current_state = self.texture_state(texture_id);
+        let texture_info = self.texture_info(entity);
+        let current_state = texture_info.state;
 
         match current_state {
             TextureState::QueuedForUpload => {
@@ -254,7 +245,7 @@ impl TextureManager {
                 for texture_job in &mut self.texture_jobs {
                     match texture_job {
                         TextureJob::Upload(upload_job) => {
-                            if upload_job.texture_id == *texture_id {
+                            if upload_job.entity == entity {
                                 upload_job.texture_data = Some(texture_data.clone());
                                 break;
                             }
@@ -264,36 +255,24 @@ impl TextureManager {
             }
             TextureState::Invalid | TextureState::Ready => {
                 self.texture_jobs.push(TextureJob::Upload(UploadTextureJob {
-                    texture_id: *texture_id,
+                    entity,
                     texture_data: Some(texture_data.clone()),
                 }));
             }
         }
 
-        let texture_info = self.texture_info_mut(texture_id);
+        let texture_info = self.texture_info_mut(entity);
         texture_info.state = TextureState::QueuedForUpload;
     }
 
-    fn texture_info(&self, texture_id: &ResourceTypeAndId) -> &TextureInfo {
-        assert!(self.is_valid(texture_id));
-        self.texture_infos.get(texture_id).unwrap()
+    fn texture_info(&self, entity: Entity) -> &TextureInfo {
+        assert!(self.is_valid(entity));
+        self.texture_infos.get(&entity).unwrap()
     }
 
-    fn texture_info_mut(&mut self, texture_id: &ResourceTypeAndId) -> &mut TextureInfo {
-        assert!(self.is_valid(texture_id));
-        self.texture_infos.get_mut(texture_id).unwrap()
-    }
-
-    fn texture_handle(&self, texture_id: &ResourceTypeAndId) -> &Texture {
-        assert!(self.is_valid(texture_id));
-        let texture_info = self.texture_info(texture_id);
-        texture_info.texture_view.texture()
-    }
-
-    fn texture_state(&self, texture_id: &ResourceTypeAndId) -> TextureState {
-        assert!(self.is_valid(texture_id));
-        let texture_info = self.texture_info(texture_id);
-        texture_info.state
+    fn texture_info_mut(&mut self, entity: Entity) -> &mut TextureInfo {
+        assert!(self.is_valid(entity));
+        self.texture_infos.get_mut(&entity).unwrap()
     }
 
     fn texture_def_from_texture_component(texture_component: &TextureComponent) -> TextureDef {
@@ -340,6 +319,7 @@ impl TextureManager {
             tiling: TextureTiling::Optimal,
         }
     }
+
     fn upload_texture_data(
         device_context: &DeviceContext,
         cmd_buffer: &CommandBuffer,
@@ -428,7 +408,7 @@ fn on_texture_modified(
     }
 
     for (entity, texture_component, _) in q_modified_textures.iter() {
-        texture_manager.update_by_entity(entity, texture_component);
+        texture_manager.update_texture(entity, texture_component);
     }
 }
 

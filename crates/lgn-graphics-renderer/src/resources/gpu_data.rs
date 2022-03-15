@@ -199,7 +199,6 @@ impl MaterialManager {
             resource_id: material_component.material_id,
             material_data: Self::material_component_to_material_data(
                 material_component,
-                // texture_resource_manager,
                 texture_manager,
                 shared_resources_manager,
             ),
@@ -209,8 +208,10 @@ impl MaterialManager {
         self.entity_to_resource_id
             .insert(entity, material_component.material_id);
 
-        let texture_ids = Self::collect_texture_dependencies(material_component);
-        self.entity_to_texture_ids.insert(entity, texture_ids);
+        self.entity_to_texture_ids.insert(
+            entity,
+            Self::collect_texture_dependencies(material_component),
+        );
     }
 
     pub fn change_material(
@@ -247,6 +248,7 @@ impl MaterialManager {
         texture_manager: &TextureManager,
         shared_resources_manager: &SharedResourcesManager,
     ) {
+        // todo: can be optimized by having a map ( texture_id -> material )
         for (entity, texture_ids) in &self.entity_to_texture_ids {
             if texture_ids.contains(texture_id) {
                 let material_component = query_material_components
@@ -261,8 +263,6 @@ impl MaterialManager {
                     ),
                 };
                 self.upload_queue.push(job);
-
-                break;
             }
         }
     }
@@ -310,7 +310,6 @@ impl MaterialManager {
             Self::get_bindless_index(
                 material_component.albedo_texture.as_ref(),
                 SharedTextureId::Albedo,
-                // texture_resource_manager,
                 texture_manager,
                 shared_resources_manager,
             )
@@ -320,7 +319,6 @@ impl MaterialManager {
             Self::get_bindless_index(
                 material_component.normal_texture.as_ref(),
                 SharedTextureId::Normal,
-                // texture_resource_manager,
                 texture_manager,
                 shared_resources_manager,
             )
@@ -330,7 +328,6 @@ impl MaterialManager {
             Self::get_bindless_index(
                 material_component.metalness_texture.as_ref(),
                 SharedTextureId::Metalness,
-                // texture_resource_manager,
                 texture_manager,
                 shared_resources_manager,
             )
@@ -340,7 +337,6 @@ impl MaterialManager {
             Self::get_bindless_index(
                 material_component.roughness_texture.as_ref(),
                 SharedTextureId::Roughness,
-                // texture_resource_manager,
                 texture_manager,
                 shared_resources_manager,
             )
