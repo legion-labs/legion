@@ -216,7 +216,7 @@ impl Plugin for RendererPlugin {
         //
         app.add_system_to_stage(RenderStage::Prepare, ui_renderer_options);
         app.add_system_to_stage(RenderStage::Prepare, ui_lights);
-        app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);        
+        app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
         app.add_system_to_stage(RenderStage::Prepare, update_gpu_instances);
         app.add_system_to_stage(RenderStage::Prepare, update_lights);
         app.add_system_to_stage(
