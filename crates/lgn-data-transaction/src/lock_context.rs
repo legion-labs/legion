@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use lgn_data_offline::resource::{Project, ResourceHandles, ResourceRegistry};
+use lgn_data_offline::resource::{
+    Project, ResourceHandleUntyped, ResourceHandles, ResourceRegistry,
+};
 use lgn_data_runtime::{AssetRegistry, ResourceTypeAndId};
 use lgn_tracing::error;
 use tokio::sync::MutexGuard;
@@ -15,7 +17,7 @@ pub struct LockContext<'a> {
     /// Lock on the `ResourceRegistry`
     pub resource_registry: MutexGuard<'a, ResourceRegistry>,
     /// Lock on the LoadedResources
-    pub loaded_resource_handles: MutexGuard<'a, ResourceHandles>,
+    pub(crate) loaded_resource_handles: MutexGuard<'a, ResourceHandles>,
     /// Reference to the Asset Registry
     pub asset_registry: Arc<AssetRegistry>,
     /// Reference to build manager.
@@ -38,6 +40,22 @@ impl<'a> LockContext<'a> {
             loaded_resource_handles: transaction_manager.loaded_resource_handles.lock().await,
             changed_resources: HashSet::new(),
         }
+    }
+
+    /// Get an Handle to a Resource, load it if not in memory yet
+    pub async fn get_or_load(
+        &mut self,
+        resource_id: ResourceTypeAndId,
+    ) -> Result<ResourceHandleUntyped, Error> {
+        Ok(self
+            .loaded_resource_handles
+            .entry(resource_id)
+            .or_insert(
+                self.project
+                    .load_resource(resource_id, &mut self.resource_registry)
+                    .map_err(|err| Error::Project(resource_id, err))?,
+            )
+            .clone())
     }
 
     pub(crate) async fn save_changed_resources(&mut self) -> Result<(), Error> {

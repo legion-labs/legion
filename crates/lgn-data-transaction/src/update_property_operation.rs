@@ -34,14 +34,11 @@ impl UpdatePropertyOperation {
 #[async_trait]
 impl TransactionOperation for UpdatePropertyOperation {
     async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
-        let resource_handle = ctx
-            .loaded_resource_handles
-            .get(self.resource_id)
-            .ok_or(Error::InvalidResource(self.resource_id))?;
+        let resource_handle = ctx.get_or_load(self.resource_id).await?;
 
         let reflection = ctx
             .resource_registry
-            .get_resource_reflection_mut(self.resource_id.kind, resource_handle)
+            .get_resource_reflection_mut(self.resource_id.kind, &resource_handle)
             .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 
         // init old values
@@ -67,14 +64,11 @@ impl TransactionOperation for UpdatePropertyOperation {
 
     async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
         if let Some(old_values) = &self.old_values {
-            let handle = ctx
-                .loaded_resource_handles
-                .get(self.resource_id)
-                .ok_or(Error::InvalidResource(self.resource_id))?;
+            let handle = ctx.get_or_load(self.resource_id).await?;
 
             let reflection = ctx
                 .resource_registry
-                .get_resource_reflection_mut(self.resource_id.kind, handle)
+                .get_resource_reflection_mut(self.resource_id.kind, &handle)
                 .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 
             if self.new_values.len() == old_values.len() {
