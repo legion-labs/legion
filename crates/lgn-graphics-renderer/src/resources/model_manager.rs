@@ -97,7 +97,7 @@ pub(crate) fn update_models(
     renderer: Res<'_, Renderer>,
     mut model_manager: ResMut<'_, ModelManager>,
     mut mesh_manager: ResMut<'_, MeshManager>,
-    material_manager: Res<'_, GpuMaterialManager>,
+    material_manager: Res<'_, MaterialManager>,
     updated_models: Query<'_, '_, &ModelComponent, Changed<ModelComponent>>,
     mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
 ) {
@@ -112,9 +112,11 @@ pub(crate) fn update_models(
                 meshes.push(Mesh {
                     mesh_id: ids[idx],
                     material_id: material_manager
+                        .gpu_data()
                         .va_for_index(mesh.material_id.clone().map(|v| v.id()), 0)
                         as u32,
                     material_index: material_manager
+                        .gpu_data()
                         .id_for_index(mesh.material_id.clone().map(|v| v.id()), 0)
                         as u32,
                 });

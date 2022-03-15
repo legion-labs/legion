@@ -100,7 +100,7 @@ async fn main() {
 
     let compilers = match args.compilers {
         CompilersSource::InProcess => CompilerRegistryOptions::default()
-            .add_compiler(&lgn_compiler_runtime_entity::COMPILER_INFO)
+        .add_compiler(&lgn_compiler_runtime_entity::COMPILER_INFO)
             .add_compiler(&lgn_compiler_runtime_model::COMPILER_INFO),
         CompilersSource::External => CompilerRegistryOptions::local_compilers(compilers_path),
         CompilersSource::Remote => lgn_data_compiler_remote::compiler_node::remote_compilers(
@@ -200,22 +200,22 @@ async fn create_offline_data(
         "/scene/ground.ent",
         vec![
             Box::new(Transform {
-                position: (0_f32, -1_f32, 0_f32).into(),
-                rotation: Quat::from_rotation_x(-0.01_f32),
-                scale: (12_f32, 0.1_f32, 12_f32).into(),
+            position: (0_f32, -1_f32, 0_f32).into(),
+            rotation: Quat::from_rotation_x(-0.01_f32),
+            scale: (12_f32, 0.1_f32, 12_f32).into(),
             }),
             Box::new(Visual {
-                renderable_geometry: Some(cube_model_id.clone()),
-                color: (0x10, 0x10, 0x55).into(),
-                ..Visual::default()
+            renderable_geometry: Some(cube_model_id.clone()),
+            color: (0x10, 0x10, 0x55).into(),
+            ..Visual::default()
             }),
             Box::new(PhysicsRigidBox {
-                actor_type: RigidActorType::Static,
-                half_extents: (3_f32, 0.25_f32, 3_f32).into(),
+            actor_type: RigidActorType::Static,
+            half_extents: (3_f32, 0.25_f32, 3_f32).into(),
             }),
         ],
         vec![],
-    )
+            )
     .await;
 
     let box_a_id = create_offline_entity(
@@ -225,22 +225,22 @@ async fn create_offline_data(
         "/scene/box-a.ent",
         vec![
             Box::new(Transform {
-                position: (-1_f32, 0.1_f32, 1_f32).into(),
-                rotation: Quat::from_rotation_z(0.3_f32),
-                ..Transform::default()
+            position: (-1_f32, 0.1_f32, 1_f32).into(),
+            rotation: Quat::from_rotation_z(0.3_f32),
+            ..Transform::default()
             }),
             Box::new(Visual {
-                renderable_geometry: Some(cube_model_id.clone()),
-                color: (0xFF, 0xFF, 0x20).into(),
-                ..Visual::default()
+            renderable_geometry: Some(cube_model_id.clone()),
+            color: (0xFF, 0xFF, 0x20).into(),
+            ..Visual::default()
             }),
             Box::new(PhysicsRigidBox {
-                actor_type: RigidActorType::Dynamic,
-                half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
+            actor_type: RigidActorType::Dynamic,
+            half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
             }),
         ],
         vec![],
-    )
+            )
     .await;
 
     let box_b_id = create_offline_entity(
@@ -250,22 +250,22 @@ async fn create_offline_data(
         "/scene/box-b.ent",
         vec![
             Box::new(Transform {
-                position: (-1_f32, 1.3_f32, 1.2_f32).into(),
-                rotation: Quat::from_rotation_x(-0.2_f32),
-                ..Transform::default()
+            position: (-1_f32, 1.3_f32, 1.2_f32).into(),
+            rotation: Quat::from_rotation_x(-0.2_f32),
+            ..Transform::default()
             }),
             Box::new(Visual {
-                renderable_geometry: Some(cube_model_id.clone()),
-                color: (0xFF, 0x20, 0xFF).into(),
-                ..Visual::default()
+            renderable_geometry: Some(cube_model_id.clone()),
+            color: (0xFF, 0x20, 0xFF).into(),
+            ..Visual::default()
             }),
             Box::new(PhysicsRigidBox {
-                actor_type: RigidActorType::Dynamic,
-                half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
+            actor_type: RigidActorType::Dynamic,
+            half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
             }),
         ],
         vec![],
-    )
+            )
     .await;
 
     let box_c_id = create_offline_entity(
@@ -275,22 +275,22 @@ async fn create_offline_data(
         "/scene/box-c.ent",
         vec![
             Box::new(Transform {
-                position: (-0.5_f32, 0_f32, 0.5_f32).into(),
-                rotation: Quat::from_rotation_y(1_f32),
-                ..Transform::default()
+            position: (-0.5_f32, 0_f32, 0.5_f32).into(),
+            rotation: Quat::from_rotation_y(1_f32),
+            ..Transform::default()
             }),
             Box::new(Visual {
-                renderable_geometry: Some(cube_model_id.clone()),
-                color: (0x20, 0xFF, 0xFF).into(),
-                ..Visual::default()
+            renderable_geometry: Some(cube_model_id.clone()),
+            color: (0x20, 0xFF, 0xFF).into(),
+            ..Visual::default()
             }),
             Box::new(PhysicsRigidBox {
-                actor_type: RigidActorType::Dynamic,
-                half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
+            actor_type: RigidActorType::Dynamic,
+            half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
             }),
         ],
         vec![],
-    )
+            )
     .await;
 
     let ball_a_id = create_offline_entity(
@@ -301,20 +301,20 @@ async fn create_offline_data(
         vec![
             Box::new(Transform {
                 position: (0.2_f32, 2.3_f32, 0.5_f32).into(),
-                ..Transform::default()
+            ..Transform::default()
             }),
             Box::new(Visual {
-                renderable_geometry: Some(sphere_model_id.clone()),
-                color: (0x20, 0x4F, 0xFF).into(),
-                ..Visual::default()
+            renderable_geometry: Some(sphere_model_id.clone()),
+            color: (0x20, 0x4F, 0xFF).into(),
+            ..Visual::default()
             }),
             Box::new(PhysicsRigidSphere {
-                actor_type: RigidActorType::Dynamic,
-                radius: 0.25_f32,
+            actor_type: RigidActorType::Dynamic,
+            radius: 0.25_f32,
             }),
         ],
         vec![],
-    )
+            )
     .await;
 
     let pyramid_id = create_offline_entity(
@@ -326,15 +326,15 @@ async fn create_offline_data(
             Box::new(Transform {
                 position: (0_f32, 0.6_f32, 0_f32).into(),
                 rotation: Quat::from_rotation_z(1_f32),
-                ..Transform::default()
+            ..Transform::default()
             }),
             Box::new(Visual {
                 renderable_geometry: Some(pyramid_model_id.clone()),
-                color: (0x00, 0x00, 0x00).into(),
-                ..Visual::default()
+            color: (0x00, 0x00, 0x00).into(),
+            ..Visual::default()
             }),
             Box::new(PhysicsRigidConvexMesh {
-                actor_type: RigidActorType::Dynamic,
+            actor_type: RigidActorType::Dynamic,
                 vertices: vec![
                     Vec3::new(0.5, -0.5, -0.5),
                     Vec3::new(0.5, -0.5, 0.5),
@@ -342,7 +342,7 @@ async fn create_offline_data(
                     Vec3::new(-0.5, -0.5, 0.5),
                     Vec3::new(0.0, 0.0, 0.0),
                 ],
-                ..PhysicsRigidConvexMesh::default()
+            ..PhysicsRigidConvexMesh::default()
             }),
         ],
         vec![],
@@ -380,7 +380,7 @@ async fn create_offline_data(
         vec![
             box_a_id, box_b_id, box_c_id, ball_a_id, pyramid_id, ground_id, light_id,
         ],
-    )
+            )
     .await;
 
     vec![scene_id.source_resource()]
@@ -394,32 +394,32 @@ async fn create_offline_entity(
     components: Vec<Box<dyn Component>>,
     children: Vec<ResourcePathId>,
 ) -> ResourcePathId {
-    let mut resources = resource_registry.lock().await;
-    let id = ResourceTypeAndId {
-        kind: sample_data::offline::Entity::TYPE,
+        let mut resources = resource_registry.lock().await;
+        let id = ResourceTypeAndId {
+            kind: sample_data::offline::Entity::TYPE,
         id: ResourceId::from_str(resource_id).unwrap(),
-    };
-    let handle = resources.new_resource(id.kind).unwrap();
+        };
+        let handle = resources.new_resource(id.kind).unwrap();
 
-    let entity = handle
-        .get_mut::<sample_data::offline::Entity>(&mut resources)
-        .unwrap();
+        let entity = handle
+            .get_mut::<sample_data::offline::Entity>(&mut resources)
+            .unwrap();
     entity.components.extend(components.into_iter());
     entity.children.extend(children.into_iter());
 
-    project
-        .add_resource_with_id(
+        project
+            .add_resource_with_id(
             resource_path.into(),
-            sample_data::offline::Entity::TYPENAME,
-            id.kind,
-            id.id,
-            handle,
-            &mut resources,
-        )
-        .await
-        .unwrap();
-    let path: ResourcePathId = id.into();
-    path.push(sample_data::runtime::Entity::TYPE)
+                sample_data::offline::Entity::TYPENAME,
+                id.kind,
+                id.id,
+                handle,
+                &mut resources,
+            )
+            .await
+            .unwrap();
+        let path: ResourcePathId = id.into();
+        path.push(sample_data::runtime::Entity::TYPE)
 }
 
 async fn create_offline_model(
@@ -429,16 +429,16 @@ async fn create_offline_model(
     resource_path: &str,
     mesh: Mesh,
 ) -> ResourcePathId {
-    let mut resources = resource_registry.lock().await;
-    let id = ResourceTypeAndId {
+        let mut resources = resource_registry.lock().await;
+        let id = ResourceTypeAndId {
         kind: lgn_graphics_data::offline::Model::TYPE,
         id: ResourceId::from_str(resource_id).unwrap(),
-    };
-    let handle = resources.new_resource(id.kind).unwrap();
+        };
+        let handle = resources.new_resource(id.kind).unwrap();
 
     let model = handle
         .get_mut::<lgn_graphics_data::offline::Model>(&mut resources)
-        .unwrap();
+            .unwrap();
     let mesh = lgn_graphics_data::offline::Mesh {
         positions: mesh.positions,
         normals: mesh.normals.unwrap(),
@@ -453,17 +453,17 @@ async fn create_offline_model(
     };
     model.meshes.push(mesh);
 
-    project
-        .add_resource_with_id(
+        project
+            .add_resource_with_id(
             resource_path.into(),
             lgn_graphics_data::offline::Model::TYPENAME,
-            id.kind,
-            id.id,
-            handle,
-            &mut resources,
-        )
-        .await
-        .unwrap();
+                id.kind,
+                id.id,
+                handle,
+                &mut resources,
+            )
+            .await
+            .unwrap();
     let path: ResourcePathId = id.into();
     path.push(lgn_graphics_data::runtime::Model::TYPE)
 }

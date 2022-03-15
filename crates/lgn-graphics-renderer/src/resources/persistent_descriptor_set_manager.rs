@@ -3,7 +3,7 @@ use lgn_graphics_api::{
     DeviceContext, TextureView,
 };
 
-use crate::cgen;
+use crate::{cgen, resources::IndexAllocator};
 
 use super::DescriptorHeapManager;
 
@@ -12,6 +12,7 @@ const BINDLESS_TEXTURE_ARRAY_LEN: u32 = 10 * 1024;
 pub struct PersistentDescriptorSetManager {
     device_context: DeviceContext,
     descriptor_set: DescriptorSet,
+    bindless_index_allocator: IndexAllocator,
 }
 
 impl PersistentDescriptorSetManager {
@@ -40,12 +41,13 @@ impl PersistentDescriptorSetManager {
         Self {
             device_context: device_context.clone(),
             descriptor_set: persistent_partition.alloc(layout).unwrap(),
+            bindless_index_allocator: IndexAllocator::new(BINDLESS_TEXTURE_ARRAY_LEN),
         }
     }
 
     // todo: make batched versions (set_bindless_textureS with a slice?)
-    pub fn set_bindless_texture(&mut self, index: u32, texture_view: &TextureView) {
-        assert!(index < BINDLESS_TEXTURE_ARRAY_LEN);
+    pub fn set_bindless_texture(&mut self, texture_view: &TextureView) -> u32 {
+        let index = self.bindless_index_allocator.acquire_index();
 
         let mut writer = DescriptorSetWriter::new(
             &self.device_context,
@@ -65,6 +67,8 @@ impl PersistentDescriptorSetManager {
             index,
             &[DescriptorRef::TextureView(texture_view)],
         );
+
+        index
     }
 
     pub fn descriptor_set(&self) -> &DescriptorSet {
