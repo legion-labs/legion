@@ -361,7 +361,7 @@ impl AssetToECS for lgn_graphics_data::runtime::Model {
             });
         }
         let model_component = ModelComponent {
-            model_id: Some(*asset_id),
+            model_id: *asset_id,
             meshes,
         };
         entity.insert(model_component);
