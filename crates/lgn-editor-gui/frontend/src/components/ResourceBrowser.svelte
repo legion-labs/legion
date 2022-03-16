@@ -20,7 +20,7 @@
   } from "@/api";
   import allResources from "@/stores/allResources";
   import { fetchCurrentResourceDescription } from "@/orchestrators/currentResource";
-  import { components, join } from "@/lib/path";
+  import { components, extension, join } from "@/lib/path";
   import notifications from "@/stores/notifications";
   import type { Entries, Entry } from "@/lib/hierarchyTree";
   import log from "@lgn/web-client/src/lib/log";
@@ -157,13 +157,33 @@
       const names = await Promise.all(promises);
 
       await Promise.all(
-        names.map((name) =>
+        names.map((name) => {
+          let resourceType: string | null = null;
+
+          switch (extension(name)) {
+            case "png": {
+              resourceType = "png";
+
+              break;
+            }
+
+            case "gltf": {
+              resourceType = "offline_model";
+
+              break;
+            }
+          }
+
+          if (!resourceType) {
+            return;
+          }
+
           createResource({
             resourceName: name,
-            resourceType: "png",
+            resourceType,
             parentResourceId: undefined,
-          })
-        )
+          });
+        })
       );
 
       allResources.run(getAllResources);
@@ -231,7 +251,10 @@
       }
 
       case "import": {
-        files.open({ multiple: true, mimeTypes: ["image/png"] });
+        files.open({
+          multiple: true,
+          fileTypeSpecifiers: [".png", ".gltf"],
+        });
 
         return;
       }
