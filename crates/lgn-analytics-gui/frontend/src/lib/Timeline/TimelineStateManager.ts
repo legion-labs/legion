@@ -175,6 +175,10 @@ export class TimelineStateManager {
   }
 
   private async fetchAsyncSpans(process: Process) {
+    if (import.meta.env.VITE_LEGION_ANALYTICS_ENABLE_ASYNC_SPANS != "true") {
+      return;
+    }
+
     if (!this.client) {
       log.error("no client in fetchAsyncSpans");
       return;
@@ -188,7 +192,7 @@ export class TimelineStateManager {
     const lastSection = Math.floor(processAsyncData.maxMs / sectionWidthMs);
     const promises: Promise<void>[] = [];
     for (let iSection = firstSection; iSection <= lastSection; iSection += 1) {
-      promises.push( this.fetchAsyncSpansSection(processAsyncData, iSection, 0) );
+      promises.push(this.fetchAsyncSpansSection(processAsyncData, iSection, 0));
     }
     await Promise.all(promises);
   }
@@ -223,16 +227,20 @@ export class TimelineStateManager {
         s.eventCount += block.nbObjects;
         return s;
       });
-      const asyncStatsReply = await loadWrap(async () => {
-        return await this.client!.fetch_block_async_stats({
-          process,
-          stream,
-          blockId: block.blockId,
+
+      if (import.meta.env.VITE_LEGION_ANALYTICS_ENABLE_ASYNC_SPANS == "true") {
+        const asyncStatsReply = await loadWrap(async () => {
+          return await this.client!.fetch_block_async_stats({
+            process,
+            stream,
+            blockId: block.blockId,
+          });
         });
-      });
-      asyncData.minMs = Math.min(asyncData.minMs, asyncStatsReply.beginMs);
-      asyncData.maxMs = Math.max(asyncData.maxMs, asyncStatsReply.endMs);
-      blockStats.push(asyncStatsReply);
+        asyncData.minMs = Math.min(asyncData.minMs, asyncStatsReply.beginMs);
+        asyncData.maxMs = Math.max(asyncData.maxMs, asyncStatsReply.endMs);
+        blockStats.push(asyncStatsReply);
+      }
+
       this.state.update((s) => {
         s.threads[stream.streamId].block_ids.push(block.blockId);
         return s;
