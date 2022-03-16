@@ -41,11 +41,14 @@ impl Config {
             .map_err(|e| e.to_string())?;
 
         let buildindex = self.buildindex.clone();
-        let build = DataBuildOptions::new(buildindex.clone(), CompilerRegistryOptions::default())
-            .content_store(&ContentStoreAddr::from(buildindex))
-            .open(&project)
-            .await
-            .map_err(|e| e.to_string())?;
+        let build = DataBuildOptions::new(
+            DataBuildOptions::output_db_path("temp/", &self.project, DataBuild::version()),
+            ContentStoreAddr::from(buildindex.as_path()),
+            CompilerRegistryOptions::default(),
+        )
+        .open(&project)
+        .await
+        .map_err(|e| e.to_string())?;
 
         Ok((build, project))
     }

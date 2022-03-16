@@ -80,7 +80,7 @@ impl AssetRegistryPlugin {
                 ContentStoreAddr::from(config.content_store_addr.clone()),
                 manifest.clone(),
                 &databuild_config.build_bin,
-                &databuild_config.buildindex,
+                databuild_config.output_db_addr.clone(),
                 &databuild_config.project,
                 false,
             );

@@ -66,7 +66,7 @@ pub async fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathNa
     }
     .unwrap();
 
-    let mut build = DataBuildOptions::new(
+    let mut build = DataBuildOptions::new_with_sqlite_output(
         build_index_dir,
         CompilerRegistryOptions::local_compilers(exe_path),
     )

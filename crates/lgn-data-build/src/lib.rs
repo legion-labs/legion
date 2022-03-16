@@ -144,8 +144,8 @@ pub enum Error {
     Project(#[from] lgn_data_offline::resource::Error),
 
     /// Not found.
-    #[error("Not found.")]
-    NotFound,
+    #[error("Not found at '{0}'.")]
+    NotFound(String),
     /// Compiler not found.
     #[error("Compiler transform '{0}' not found in path: {1}")]
     CompilerNotFound(Transform, ResourcePathId),
@@ -185,7 +185,7 @@ pub enum Error {
     #[error("Source Index error")]
     SourceIndex,
     /// Output database error.
-    #[error("Database error")]
+    #[error("Database Error: '{0}'")]
     Database(#[source] sqlx::Error),
 }
 

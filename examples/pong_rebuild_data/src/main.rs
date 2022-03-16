@@ -109,7 +109,7 @@ async fn main() {
         ),
     };
 
-    let data_build = DataBuildOptions::new(&build_dir, compilers)
+    let data_build = DataBuildOptions::new_with_sqlite_output(&build_dir, compilers)
         .content_store(&ContentStoreAddr::from(build_dir.as_path()))
         .asset_registry(asset_registry.clone());
 

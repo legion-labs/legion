@@ -1,7 +1,7 @@
 use std::fs;
 
 use lgn_content_store::{ContentStoreAddr, HddContentStore};
-use lgn_data_build::DataBuildOptions;
+use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::{
     compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,
 };
@@ -19,7 +19,7 @@ async fn build_device() {
 
     let cas = work_dir.path().join("content_store");
     let project_dir = work_dir.path();
-    let buildindex_dir = work_dir.path();
+    let output_dir = work_dir.path();
 
     // create output directory
     fs::create_dir(&cas).expect("new directory");
@@ -69,8 +69,8 @@ async fn build_device() {
     };
 
     // create build index.
-    let (mut build, project) = DataBuildOptions::new(
-        &buildindex_dir,
+    let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
+        &output_dir,
         CompilerRegistryOptions::local_compilers(target_dir),
     )
     .content_store(&ContentStoreAddr::from(cas.clone()))
@@ -118,7 +118,7 @@ async fn build_device() {
             cas_addr,
             manifest,
             DATABUILD_EXE,
-            buildindex_dir,
+            DataBuildOptions::output_db_path_dir(output_dir, project_dir, DataBuild::version()),
             project_dir,
             true,
         )
@@ -177,7 +177,7 @@ async fn no_intermediate_resource() {
 
     let cas = work_dir.path().join("content_store");
     let project_dir = work_dir.path();
-    let buildindex_dir = work_dir.path();
+    let output_dir = work_dir.path();
 
     // create output directory
     fs::create_dir(&cas).expect("new directory");
@@ -208,12 +208,14 @@ async fn no_intermediate_resource() {
                 .await
                 .expect("adding the resource")
         };
-        let (mut build, project) =
-            DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
-                .content_store(&ContentStoreAddr::from(cas.clone()))
-                .create_with_project(project_dir)
-                .await
-                .expect("new build index");
+        let (mut build, project) = DataBuildOptions::new(
+            DataBuildOptions::output_db_path_dir(output_dir, &project_dir, DataBuild::version()),
+            ContentStoreAddr::from(cas.clone()),
+            CompilerRegistryOptions::default(),
+        )
+        .create_with_project(project_dir)
+        .await
+        .expect("new build index");
         build.source_pull(&project).await.expect("successful pull");
 
         resource_id
@@ -232,7 +234,7 @@ async fn no_intermediate_resource() {
         command.arg(format!("--target={}", target));
         command.arg(format!("--platform={}", platform));
         command.arg(format!("--locale={}", locale));
-        command.arg(format!("--buildindex={}", buildindex_dir.to_str().unwrap()));
+        command.arg(format!("--output={}", output_dir.to_str().unwrap()));
         command.arg(format!("--project={}", project_dir.to_str().unwrap()));
         command
     };
@@ -260,7 +262,7 @@ async fn with_intermediate_resource() {
 
     let cas = work_dir.path().join("content_store");
     let project_dir = work_dir.path();
-    let buildindex_dir = work_dir.path();
+    let output_dir = work_dir.path();
 
     // create output directory
     fs::create_dir(&cas).expect("new directory");
@@ -291,12 +293,14 @@ async fn with_intermediate_resource() {
                 .await
                 .expect("adding the resource")
         };
-        let (mut build, project) =
-            DataBuildOptions::new(&buildindex_dir, CompilerRegistryOptions::default())
-                .content_store(&ContentStoreAddr::from(cas.clone()))
-                .create_with_project(project_dir)
-                .await
-                .expect("new build index");
+        let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
+            &output_dir,
+            CompilerRegistryOptions::default(),
+        )
+        .content_store(&ContentStoreAddr::from(cas.clone()))
+        .create_with_project(project_dir)
+        .await
+        .expect("new build index");
         build.source_pull(&project).await.expect("successful pull");
 
         resource_id
@@ -317,7 +321,7 @@ async fn with_intermediate_resource() {
         command.arg(format!("--target={}", target));
         command.arg(format!("--platform={}", platform));
         command.arg(format!("--locale={}", locale));
-        command.arg(format!("--buildindex={}", buildindex_dir.to_str().unwrap()));
+        command.arg(format!("--output={}", output_dir.to_str().unwrap()));
         command.arg(format!("--project={}", project_dir.to_str().unwrap()));
         command
     };

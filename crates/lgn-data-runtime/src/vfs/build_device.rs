@@ -18,7 +18,7 @@ pub(crate) struct BuildDevice {
     content_store: Box<dyn ContentStore>,
     databuild_bin: PathBuf,
     cas_addr: ContentStoreAddr,
-    buildindex: PathBuf,
+    output_db_addr: String,
     project: PathBuf,
     force_recompile: bool,
 }
@@ -29,7 +29,7 @@ impl BuildDevice {
         content_store: Box<dyn ContentStore>,
         cas_addr: ContentStoreAddr,
         build_bin: impl AsRef<Path>,
-        buildindex: impl AsRef<Path>,
+        output_db_addr: String,
         project: impl AsRef<Path>,
         force_recompile: bool,
     ) -> Self {
@@ -38,7 +38,7 @@ impl BuildDevice {
             content_store,
             databuild_bin: build_bin.as_ref().to_owned(),
             cas_addr,
-            buildindex: buildindex.as_ref().to_owned(),
+            output_db_addr,
             project: project.as_ref().to_owned(),
             force_recompile,
         }
@@ -74,7 +74,7 @@ impl BuildDevice {
             &self.databuild_bin,
             resource_id,
             &self.cas_addr,
-            &self.buildindex,
+            &self.output_db_addr,
             &self.project,
         );
 
@@ -124,7 +124,7 @@ fn build_command(
     databuild_path: impl AsRef<Path>,
     resource_id: ResourceTypeAndId,
     cas: &ContentStoreAddr,
-    buildindex_dir: impl AsRef<Path>,
+    output_db_addr: &str,
     project: impl AsRef<Path>,
 ) -> std::process::Command {
     let target = "game";
@@ -138,10 +138,7 @@ fn build_command(
     command.arg(format!("--target={}", target));
     command.arg(format!("--platform={}", platform));
     command.arg(format!("--locale={}", locale));
-    command.arg(format!(
-        "--buildindex={}",
-        buildindex_dir.as_ref().to_str().unwrap()
-    ));
+    command.arg(format!("--output={}", output_db_addr));
     command.arg(format!("--project={}", project.as_ref().to_str().unwrap()));
     command
 }

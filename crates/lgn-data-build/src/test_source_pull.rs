@@ -52,7 +52,7 @@ async fn no_dependencies() {
     };
 
     let (mut build, project) =
-        DataBuildOptions::new(&output_dir, CompilerRegistryOptions::default())
+        DataBuildOptions::new_with_sqlite_output(&output_dir, CompilerRegistryOptions::default())
             .content_store(&ContentStoreAddr::from(output_dir))
             .create_with_project(project_dir)
             .await
@@ -117,7 +117,7 @@ async fn with_dependency() {
     };
 
     let (mut build, project) =
-        DataBuildOptions::new(&output_dir, CompilerRegistryOptions::default())
+        DataBuildOptions::new_with_sqlite_output(&output_dir, CompilerRegistryOptions::default())
             .content_store(&ContentStoreAddr::from(output_dir))
             .create_with_project(project_dir)
             .await

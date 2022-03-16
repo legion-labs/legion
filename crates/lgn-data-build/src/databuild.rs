@@ -78,8 +78,7 @@ fn compute_context_hash(
 /// # let offline_anim: ResourceTypeAndId = "(type,invalid_id)".parse::<ResourceTypeAndId>().unwrap();
 /// # const RUNTIME_ANIM: ResourceType = ResourceType::new(b"invalid");
 /// # tokio_test::block_on(async {
-/// let (mut build, project) = DataBuildOptions::new(".", CompilerRegistryOptions::local_compilers("./compilers/"))
-///         .content_store(&ContentStoreAddr::from("./content_store/"))
+/// let (mut build, project) = DataBuildOptions::new("temp/".to_string(), ContentStoreAddr::from("./content_store/"), CompilerRegistryOptions::local_compilers("./compilers/"))
 ///         .create_with_project(".").await.expect("new build index");
 ///
 /// build.source_pull(&project).await.expect("successful source pull");
@@ -126,23 +125,19 @@ impl DataBuild {
     }
 
     pub(crate) async fn new(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
-        let content_store = HddContentStore::open(config.contentstore_path.clone())
+        let content_store = HddContentStore::open(config.contentstore_addr.clone())
             .ok_or(Error::InvalidContentStore)?;
 
         let source_index = SourceIndex::new(Box::new(content_store.clone()));
 
-        let output_index = OutputIndex::create_new(OutputIndex::database_uri(
-            &config.buildindex_dir,
-            Self::version(),
-        ))
-        .await?;
+        let output_index = OutputIndex::create_new(config.output_db_addr).await?;
 
         let compilers = config.compiler_options.create();
         let registry = config.registry.map_or_else(
             || {
                 Self::default_asset_registry(
                     &project.resource_dir(),
-                    config.contentstore_path.clone(),
+                    config.contentstore_addr.clone(),
                     &compilers,
                     config.manifest,
                 )
@@ -160,22 +155,18 @@ impl DataBuild {
     }
 
     pub(crate) async fn open(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
-        let content_store = HddContentStore::open(config.contentstore_path.clone())
+        let content_store = HddContentStore::open(config.contentstore_addr.clone())
             .ok_or(Error::InvalidContentStore)?;
 
         let source_index = SourceIndex::new(Box::new(content_store.clone()));
-        let output_index = OutputIndex::open(OutputIndex::database_uri(
-            &config.buildindex_dir,
-            Self::version(),
-        ))
-        .await?;
+        let output_index = OutputIndex::open(config.output_db_addr).await?;
 
         let compilers = config.compiler_options.create();
         let registry = config.registry.map_or_else(
             || {
                 Self::default_asset_registry(
                     &project.resource_dir(),
-                    config.contentstore_path.clone(),
+                    config.contentstore_addr.clone(),
                     &compilers,
                     config.manifest,
                 )
@@ -196,25 +187,14 @@ impl DataBuild {
         config: DataBuildOptions,
         project: &Project,
     ) -> Result<Self, Error> {
-        let content_store = HddContentStore::open(config.contentstore_path.clone())
+        let content_store = HddContentStore::open(config.contentstore_addr.clone())
             .ok_or(Error::InvalidContentStore)?;
 
         let source_index = SourceIndex::new(Box::new(content_store.clone()));
 
-        let output_index = match OutputIndex::open(OutputIndex::database_uri(
-            &config.buildindex_dir,
-            Self::version(),
-        ))
-        .await
-        {
+        let output_index = match OutputIndex::open(config.output_db_addr.clone()).await {
             Ok(output_index) => Ok(output_index),
-            Err(Error::NotFound) => {
-                OutputIndex::create_new(OutputIndex::database_uri(
-                    &config.buildindex_dir,
-                    Self::version(),
-                ))
-                .await
-            }
+            Err(Error::NotFound(_)) => OutputIndex::create_new(config.output_db_addr.clone()).await,
             Err(e) => Err(e),
         }?;
 
@@ -223,7 +203,7 @@ impl DataBuild {
             || {
                 Self::default_asset_registry(
                     &project.resource_dir(),
-                    config.contentstore_path.clone(),
+                    config.contentstore_addr.clone(),
                     &compilers,
                     config.manifest,
                 )

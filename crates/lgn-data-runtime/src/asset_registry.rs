@@ -135,7 +135,7 @@ impl AssetRegistryOptions {
         cas_addr: ContentStoreAddr,
         manifest: Manifest,
         build_bin: impl AsRef<Path>,
-        buildindex: impl AsRef<Path>,
+        output_db_addr: String,
         project: impl AsRef<Path>,
         force_recompile: bool,
     ) -> Self {
@@ -144,7 +144,7 @@ impl AssetRegistryOptions {
             content_store,
             cas_addr,
             build_bin,
-            buildindex,
+            output_db_addr,
             project,
             force_recompile,
         )));

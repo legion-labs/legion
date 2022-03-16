@@ -26,14 +26,13 @@ use crate::{DataBuild, Error};
 /// # use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 /// # tokio_test::block_on(async {
 /// let project = Project::open("project/").await.unwrap();
-/// let build = DataBuildOptions::new(".", CompilerRegistryOptions::local_compilers("./"))
-///         .content_store(&ContentStoreAddr::from("./content_store/"))
+/// let build = DataBuildOptions::new("temp/".to_string(), ContentStoreAddr::from("./content_store/"), CompilerRegistryOptions::local_compilers("./"))
 ///         .create(&project).await.unwrap();
 /// # })
 /// ```
 pub struct DataBuildOptions {
-    pub(crate) buildindex_dir: PathBuf,
-    pub(crate) contentstore_path: ContentStoreAddr,
+    pub(crate) contentstore_addr: ContentStoreAddr,
+    pub(crate) output_db_addr: String,
     pub(crate) compiler_options: CompilerRegistryOptions,
     pub(crate) registry: Option<Arc<AssetRegistry>>,
     pub(crate) manifest: Option<Manifest>,
@@ -41,22 +40,90 @@ pub struct DataBuildOptions {
 
 impl DataBuildOptions {
     /// Creates a new data build options.
-    pub fn new(
-        buildindex_dir: impl AsRef<Path>,
+    pub fn new_with_sqlite_output(
+        output_dir: impl AsRef<Path>,
         compiler_options: CompilerRegistryOptions,
     ) -> Self {
+        assert!(output_dir.as_ref().is_absolute());
+        let output_db_addr = Self::output_db_path(
+            output_dir.as_ref().to_str().unwrap(),
+            "unused",
+            DataBuild::version(),
+        );
+
         Self {
-            buildindex_dir: buildindex_dir.as_ref().to_owned(),
-            contentstore_path: ContentStoreAddr::from(buildindex_dir.as_ref()),
+            contentstore_addr: ContentStoreAddr::from(output_dir.as_ref()),
+            output_db_addr,
             compiler_options,
             registry: None,
             manifest: None,
         }
     }
 
+    /// Create new instance of `DataBuildOptions` with the mandatory options.
+    pub fn new(
+        output_db_addr: String,
+        contentstore_addr: ContentStoreAddr,
+        compiler_options: CompilerRegistryOptions,
+    ) -> Self {
+        Self {
+            contentstore_addr,
+            output_db_addr,
+            compiler_options,
+            registry: None,
+            manifest: None,
+        }
+    }
+
+    const OUTPUT_NAME_PREFIX: &'static str = "build_output-";
+
+    /// Construct output database path from:
+    /// * a mysql:// path
+    /// * an absolute directory or a directory relative to `project_dir`.
+    ///
+    /// The function return `path` if it already contains database name in it.
+    pub fn output_db_path(path: &str, project_dir: impl AsRef<Path>, version: &str) -> String {
+        if path.contains(Self::OUTPUT_NAME_PREFIX) {
+            return path.to_owned();
+        }
+
+        if path.starts_with("mysql://") {
+            let mut output = path.to_owned();
+            output.push_str(Self::OUTPUT_NAME_PREFIX);
+            output.push_str(version);
+            output
+        } else {
+            Self::output_db_path_dir(PathBuf::from(path), project_dir, version)
+        }
+    }
+
+    /// Construct output database path from an absolute directory or directory relative to `project_dir`.
+    pub fn output_db_path_dir(
+        path: impl AsRef<Path>,
+        project_dir: impl AsRef<Path>,
+        version: &str,
+    ) -> String {
+        let mut output = "sqlite://".to_string();
+        let path = if path.as_ref().is_absolute() {
+            path.as_ref().to_owned()
+        } else {
+            project_dir.as_ref().join(path)
+        };
+        output.push_str(
+            &path
+                .join(Self::OUTPUT_NAME_PREFIX)
+                .to_str()
+                .unwrap()
+                .replace("\\", "/"),
+        );
+        output.push_str(version);
+        output.push_str(".db3");
+        output
+    }
+
     /// Set content store location for derived resources.
     pub fn content_store(mut self, contentstore_path: &ContentStoreAddr) -> Self {
-        self.contentstore_path = contentstore_path.clone();
+        self.contentstore_addr = contentstore_path.clone();
         self
     }
 
@@ -70,6 +137,20 @@ impl DataBuildOptions {
     /// Set manifest used by the asset registry during data compilation.
     pub fn manifest(mut self, manifest: Manifest) -> Self {
         self.manifest = Some(manifest);
+        self
+    }
+
+    /// Set the build output database path.
+    /// `build_output_path` can be:
+    /// * myslq:// path
+    /// * absolute directory path or directory path relative to `project_dir`
+    pub fn output_database(
+        mut self,
+        build_output_path: &str,
+        project_dir: impl AsRef<Path>,
+        version: &str,
+    ) -> Self {
+        self.output_db_addr = Self::output_db_path(build_output_path, project_dir, version);
         self
     }
 
@@ -99,8 +180,6 @@ impl DataBuildOptions {
     /// index:
     /// * [`ContentStore`](`lgn_content_store::ContentStore`) must exist under
     ///   address set by [`DataBuildOptions::content_store()`].
-    /// * Build index must exist and be of a supported version provided by
-    ///   [`DataBuildOptions::new()`].
     pub async fn open(self, project: &Project) -> Result<DataBuild, Error> {
         DataBuild::open(self, project).await
     }
