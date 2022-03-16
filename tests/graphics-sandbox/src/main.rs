@@ -108,7 +108,7 @@ fn main() {
     }
 
     if args.use_asset_registry {
-        app.insert_resource(AssetRegistrySettings::default())
+        app.init_resource::<AssetRegistrySettings>()
             .add_plugin(AssetRegistryPlugin::default())
             .add_plugin(GraphicsPlugin::default())
             .add_plugin(SampleDataPlugin::default());

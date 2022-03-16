@@ -247,7 +247,7 @@ mod test {
         let instance = Instant::now();
         time.update_with_instant(instance);
         world.insert_resource(time);
-        world.insert_resource(FixedTimesteps::default());
+        world.init_resource::<FixedTimesteps>();
         world.insert_resource::<Count>(0);
         let mut schedule = Schedule::default();
 

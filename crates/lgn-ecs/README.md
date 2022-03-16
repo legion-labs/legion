@@ -96,7 +96,7 @@ struct Time {
 
 let mut world = World::new();
 
-world.insert_resource(Time::default());
+world.init_resource::<Time>();
 
 let time = world.get_resource::<Time>().unwrap();
 
@@ -229,8 +229,8 @@ Bevy ECS supports multiple component storage types.
 
 Components can be stored in:
 
-* **Tables**: Fast and cache friendly iteration, but slower adding and removing of components. This is the default storage type.
-* **Sparse Sets**: Fast adding and removing of components, but slower iteration.
+- **Tables**: Fast and cache friendly iteration, but slower adding and removing of components. This is the default storage type.
+- **Sparse Sets**: Fast adding and removing of components, but slower iteration.
 
 Component storage types are configurable, and they default to table storage if the storage is not manually defined.
 

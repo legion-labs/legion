@@ -34,7 +34,7 @@ impl Plugin for EditorPlugin {
     fn build(&self, app: &mut App) {
         app
         .insert_resource(SelectionManager::create())
-        .insert_resource(SharedRawFilesStreamer::default())
+        .init_resource::<SharedRawFilesStreamer>()
         .add_system_to_stage(CoreStage::PostUpdate, Self::process_input)
         .add_system_to_stage(CoreStage::PostUpdate, Self::update_selection)
         .add_startup_system_to_stage(

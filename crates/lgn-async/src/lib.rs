@@ -22,7 +22,7 @@ pub struct AsyncPlugin;
 
 impl Plugin for AsyncPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(TokioAsyncRuntime::default());
+        app.init_resource::<TokioAsyncRuntime>();
         app.add_system(|mut rt: ResMut<'_, TokioAsyncRuntime>| {
             rt.poll();
         });

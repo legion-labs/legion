@@ -160,10 +160,10 @@ impl Plugin for RendererPlugin {
         app.insert_resource(RenderSurfaces::new());
         app.insert_resource(ModelManager::new());
         app.insert_resource(MeshManager::new(&renderer));
-        app.insert_resource(DebugDisplay::default());
-        app.insert_resource(LightingManager::default());
+        app.init_resource::<DebugDisplay>();
+        app.init_resource::<LightingManager>();
         app.insert_resource(GpuInstanceManager::new(renderer.static_buffer_allocator()));
-        app.insert_resource(MissingVisualTracker::default());
+        app.init_resource::<MissingVisualTracker>();
         app.insert_resource(descriptor_heap_manager);
         app.insert_resource(persistent_descriptor_set_manager);
         app.insert_resource(shared_resources_manager);
@@ -181,7 +181,7 @@ impl Plugin for RendererPlugin {
         // todo: convert?
         app.add_plugin(GpuDataPlugin::default());
 
-        // Plugins are optionnal
+        // Plugins are optional
         app.add_plugin(EguiPlugin::new());
         app.add_plugin(PickingPlugin {});
 
@@ -390,7 +390,7 @@ fn update_gpu_instances(
         picking_data_manager.alloc_gpu_data(entity, renderer.static_buffer_allocator());
 
         let mut picking_data = cgen::cgen_type::GpuInstancePickingData::default();
-        picking_data.set_picking_id(picking_context.aquire_picking_id(entity).into());
+        picking_data.set_picking_id(picking_context.acquire_picking_id(entity).into());
         picking_data_manager.update_gpu_data(&entity, 0, &picking_data, &mut updater);
 
         let (model_meta_data, ready) = model_manager.get_model_meta_data(visual);
@@ -685,10 +685,10 @@ fn render_update(
             &debug_display,
         );
 
-        let egui_pass = render_surface.egui_renderpass();
-        let mut egui_pass = egui_pass.write();
-        egui_pass.update_font_texture(&render_context, &cmd_buffer, &egui.ctx);
         if egui.enable {
+            let egui_pass = render_surface.egui_renderpass();
+            let mut egui_pass = egui_pass.write();
+            egui_pass.update_font_texture(&render_context, &cmd_buffer, &egui.ctx);
             egui_pass.render(
                 &render_context,
                 &mut cmd_buffer,

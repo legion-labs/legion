@@ -366,7 +366,7 @@ mod tests {
 
     fn test_for_conflicting_resources<Param, S: IntoSystem<(), (), Param>>(sys: S) {
         let mut world = World::default();
-        world.insert_resource(BufferRes::default());
+        world.init_resource::<BufferRes>();
         world.insert_resource(A);
         world.insert_resource(B);
         run_system(&mut world, sys);
@@ -496,7 +496,7 @@ mod tests {
         // Verify that all the systems actually ran
         #[derive(Default)]
         struct NSystems(usize);
-        world.insert_resource(NSystems::default());
+        world.init_resource::<NSystems>();
 
         // First, check that removal detection is triggered if and only if we despawn an entity with the correct component
         world.entity_mut(entity_to_despawn).despawn();

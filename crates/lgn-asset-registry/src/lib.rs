@@ -32,9 +32,9 @@ pub struct AssetRegistryPlugin {}
 
 impl Plugin for AssetRegistryPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(AssetLoadingStates::default())
-            .insert_resource(AssetHandles::default())
-            .insert_resource(AssetToEntityMap::default())
+        app.init_resource::<AssetLoadingStates>()
+            .init_resource::<AssetHandles>()
+            .init_resource::<AssetToEntityMap>()
             .add_startup_system_to_stage(
                 StartupStage::PreStartup,
                 Self::pre_setup.exclusive_system(),

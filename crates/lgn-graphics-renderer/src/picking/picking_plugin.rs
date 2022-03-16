@@ -112,7 +112,7 @@ fn lights_added(
     let mut picking_context = PickingIdContext::new(&picking_manager);
 
     for (entity, mut light) in query.iter_mut() {
-        light.picking_id = picking_context.aquire_picking_id(entity);
+        light.picking_id = picking_context.acquire_picking_id(entity);
     }
 }
 

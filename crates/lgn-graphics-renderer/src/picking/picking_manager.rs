@@ -447,7 +447,7 @@ impl<'a> PickingIdContext<'a> {
         }
     }
 
-    pub fn aquire_picking_id(&mut self, entity: Entity) -> u32 {
+    pub fn acquire_picking_id(&mut self, entity: Entity) -> u32 {
         let mut new_picking_id = u32::MAX;
         while new_picking_id == u32::MAX {
             if let Some(picking_id) = self.picking_block.acquire_picking_id(entity) {

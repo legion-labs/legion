@@ -80,7 +80,7 @@ impl ManipulatorPart {
             active: false,
             selected: false,
             transparent,
-            picking_id: picking_context.aquire_picking_id(entity),
+            picking_id: picking_context.acquire_picking_id(entity),
         });
 
         Self { _entity: entity }

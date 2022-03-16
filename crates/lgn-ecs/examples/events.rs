@@ -8,7 +8,7 @@ use lgn_ecs::{event::Events, prelude::*};
 fn main() {
     // Create a new empty world and add the event as a resource
     let mut world = World::new();
-    world.insert_resource(Events::<MyEvent>::default());
+    world.init_resource::<Events<MyEvent>>();
 
     // Create a schedule and a stage
     let mut schedule = Schedule::default();
