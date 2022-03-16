@@ -172,6 +172,10 @@ impl AssetToECS for runtime_data::Entity {
                 component.downcast_ref::<lgn_physics::runtime::PhysicsRigidTriangleMesh>()
             {
                 entity.insert(physics.clone());
+            } else if let Some(physics_settings) =
+                component.downcast_ref::<lgn_physics::runtime::PhysicsSceneSettings>()
+            {
+                entity.insert(physics_settings.clone());
             }
         }
 

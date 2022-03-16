@@ -27,7 +27,7 @@ use lgn_data_transaction::BuildManager;
 use lgn_graphics_renderer::components::Mesh;
 use lgn_math::prelude::*;
 use lgn_physics::{
-    offline::{PhysicsRigidBox, PhysicsRigidConvexMesh, PhysicsRigidSphere},
+    offline::{PhysicsRigidBox, PhysicsRigidConvexMesh, PhysicsRigidSphere, PhysicsSceneSettings},
     RigidActorType,
 };
 use lgn_tracing::LevelFilter;
@@ -383,7 +383,9 @@ async fn create_offline_data(
         resource_registry,
         "09f7380d-51b2-4061-9fe4-52ceccce55e7",
         "/scene.ent",
-        vec![],
+        vec![Box::new(PhysicsSceneSettings {
+            gravity: Vec3::new(0.0, -1.0, 0.0),
+        })],
         vec![
             box_a_id, box_b_id, box_c_id, ball_a_id, pyramid_id, ground_id, light_id,
         ],
