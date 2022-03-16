@@ -29,7 +29,7 @@
   <LoadingBar />
   <div class="grid">
     <Header />
-    <div class="pl-5 pr-5 pt-5">
+    <div class="pl-5 pr-5 pt-5 overflow-hidden">
       <Router>
         <div id="app">
           <Route path="/" primary={false}>
