@@ -1,5 +1,5 @@
-//! A generic [`EventSink`] that accepts an [`mpsc::Sender<Log>`]
-//! that will be used to send [`Log`] messages.
+//! A generic [`EventSink`] that accepts an [`mpsc::Sender<TraceEvent>`]
+//! that will be used to send [`TraceEvent`] messages.
 
 use core::fmt;
 use std::sync::Arc;
