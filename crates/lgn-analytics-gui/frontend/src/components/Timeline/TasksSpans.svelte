@@ -144,7 +144,11 @@
   }
 </script>
 
-<div class="drag" on:wheel|preventDefault={(e) => wheelDispatch("zoom", e)}>
+<div
+  style={`width:${width}px`}
+  class="timeline-item"
+  on:wheel|preventDefault={(e) => wheelDispatch("zoom", e)}
+>
   <canvas {width} {height} bind:this={canvas} />
 </div>
 

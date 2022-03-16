@@ -161,6 +161,7 @@
 
 <div
   class="timeline-item"
+  style={`width:${width}px`}
   on:wheel|preventDefault={(e) => wheelDispatch("zoom", e)}
 >
   <canvas {width} {height} bind:this={canvas} />
