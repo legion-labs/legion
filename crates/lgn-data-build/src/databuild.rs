@@ -299,7 +299,7 @@ impl DataBuild {
             }
         }
 
-        info!("Compilation Ended ({}ms)", start.elapsed().as_millis());
+        info!("Compilation Ended ({:?})", start.elapsed());
         Ok(result)
     }
 
@@ -638,11 +638,7 @@ impl DataBuild {
                 )
                 .await?;
 
-                info!(
-                    "Compiling {} Ended ({}ms)",
-                    compile_node,
-                    start.elapsed().as_millis()
-                );
+                info!("Compiling {} Ended ({:?})", compile_node, start.elapsed());
 
                 // update the CAS manifest with new content in order to make new resources
                 // visible to the next compilation node
