@@ -13,6 +13,7 @@
   import TimelineAction from "./TimelineAction.svelte";
   import TimelineDebug from "./TimelineDebug.svelte";
   import TimelineProcess from "./TimelineProcess.svelte";
+  import TimelineRange from "./TimelineRange.svelte";
   export let processId: string;
 
   type PanState = {
@@ -142,8 +143,9 @@
 
 <div {style} class="main">
   {#if stateManager?.process && $stateStore.ready}
-    <div class="pb-1">
+    <div class="pb-1 flex flex-row items-center justify-between">
       <TimelineDetails process={stateManager?.process} />
+      <TimelineDebug {canvasWidth} store={stateStore} />
     </div>
   {/if}
 
@@ -164,19 +166,19 @@
         />
       {/each}
     {/if}
+    <TimelineRange {stateStore} width={canvasWidth} />
   </div>
-
-  {#if stateManager?.process && $stateStore.ready}
-    <div class="flex flex-row justify-between items-center pt-1 h-7 detail">
-      <TimelineAction
-        {processId}
-        process={stateManager.process}
-        timeRange={$stateStore.currentSelection}
-      />
-      <TimelineDebug {canvasWidth} store={stateStore} />
-    </div>
-  {/if}
 </div>
+
+{#if stateManager?.process && $stateStore.ready}
+  <div class="flex flex-row justify-between items-center pt-1 h-7 detail">
+    <TimelineAction
+      {processId}
+      process={stateManager.process}
+      timeRange={$stateStore.currentSelection}
+    />
+  </div>
+{/if}
 
 <style lang="postcss">
   .main {
@@ -186,7 +188,6 @@
 
   .canvas {
     max-height: calc(100vh - 150px);
-    /* overflow-y: scroll; */
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
