@@ -169,10 +169,12 @@ impl Plugin for RendererPlugin {
         app.insert_resource(shared_resources_manager);
         app.insert_resource(texture_manager);
         app.insert_resource(mesh_renderer);
+        app.insert_resource(MaterialManager::new());
         app.init_resource::<RendererOptions>();
 
         // Init ecs
         TextureManager::init_ecs(app);
+        MaterialManager::init_ecs(app);
         MeshRenderer::init_ecs(app);
         ModelManager::init_ecs(app);
         MissingVisualTracker::init_ecs(app);

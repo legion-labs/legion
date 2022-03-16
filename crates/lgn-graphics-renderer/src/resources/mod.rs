@@ -54,3 +54,6 @@ pub(crate) use missing_visual_tracker::*;
 
 mod renderer_options;
 pub(crate) use renderer_options::*;
+
+mod material_manager;
+pub use material_manager::*;
