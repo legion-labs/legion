@@ -1,0 +1,65 @@
+(
+    name: "Helmet Root",
+    children: [
+        "runtime_entity(world/sample_1/helmet/helmet_hose.ent)",
+        "runtime_entity(world/sample_1/helmet/helmet_rubber_wood.ent)",
+        "runtime_entity(world/sample_1/helmet/helmet_glass_plastic.ent)",
+        "runtime_entity(world/sample_1/helmet/helmet_metal_parts.ent)",
+        "runtime_entity(world/sample_1/helmet/helmet_leather_parts.ent)",
+        "runtime_entity(world/sample_1/helmet/helmet_lenses.ent)",
+    ],
+    parent: Some("world/sample_1.ent"),
+    components: [
+        Transform((
+            position: (0, 0.5, 1),
+            rotation: (0, 1, 0, 0),
+            scale: (1, 1, 1),
+        )),
+        GltfLoader((
+            models: [
+                "runtime_model(offline_model(models/helmet/FlightHelmet.gltf, 'Hose_low'))",
+                "runtime_model(offline_model(models/helmet/FlightHelmet.gltf, 'RubberWood_low'))",
+                "runtime_model(offline_model(models/helmet/FlightHelmet.gltf, 'GlassPlastic_low'))",
+                "runtime_model(offline_model(models/helmet/FlightHelmet.gltf, 'MetalParts_low'))",
+                "runtime_model(offline_model(models/helmet/FlightHelmet.gltf, 'LeatherParts_low'))",
+                "runtime_model(offline_model(models/helmet/FlightHelmet.gltf, 'Lenses_low'))",
+            ],
+            materials: [
+                "runtime_material(offline_material(models/helmet/FlightHelmet.gltf, 'HoseMat'))",
+                "runtime_material(offline_material(models/helmet/FlightHelmet.gltf, 'RubberWoodMat'))",
+                "runtime_material(offline_material(models/helmet/FlightHelmet.gltf, 'GlassPlasticMat'))",
+                "runtime_material(offline_material(models/helmet/FlightHelmet.gltf, 'MetalPartsMat'))",
+                "runtime_material(offline_material(models/helmet/FlightHelmet.gltf, 'LensesMat'))",
+                "runtime_material(offline_material(models/helmet/FlightHelmet.gltf, 'LeatherPartsMat'))",
+            ],
+            textures: [
+                "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, 'FlightHelmet_Materials_RubberWoodMat_Normal.png'), 'Normal')",
+                "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, 'FlightHelmet_Materials_RubberWoodMat_OcclusionRoughMetal.png_Roughness'), 'Roughness')",
+                "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, 'FlightHelmet_Materials_RubberWoodMat_OcclusionRoughMetal.png_Metalness'), 'Metalness')",
+                "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, 'FlightHelmet_Materials_RubberWoodMat_BaseColor.png'), 'Albedo')",
+
+                "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, 'FlightHelmet_Materials_GlassPlasticMat_Normal.png'), 'Normal')",
+                "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, 'FlightHelmet_Materials_GlassPlasticMat_OcclusionRoughMetal.png_Roughness'), 'Roughness')",
+                "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, 'FlightHelmet_Materials_GlassPlasticMat_OcclusionRoughMetal.png_Metalness'), 'Metalness')",
+                "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, 'FlightHelmet_Materials_GlassPlasticMat_BaseColor.png'), 'Albedo')",
+
+                "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, 'FlightHelmet_Materials_MetalPartsMat_Normal.png'), 'Normal')",
+                "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, 'FlightHelmet_Materials_MetalPartsMat_OcclusionRoughMetal.png_Roughness'), 'Roughness')",
+                "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, 'FlightHelmet_Materials_MetalPartsMat_OcclusionRoughMetal.png_Metalness'), 'Metalness')",
+                "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, 'FlightHelmet_Materials_MetalPartsMat_BaseColor.png'), 'Albedo')",
+
+                "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, 'FlightHelmet_Materials_LeatherPartsMat_Normal.png'), 'Normal')",
+                "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, 'FlightHelmet_Materials_LeatherPartsMat_OcclusionRoughMetal.png_Roughness'), 'Roughness')",
+                "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, 'FlightHelmet_Materials_LeatherPartsMat_OcclusionRoughMetal.png_Metalness'), 'Metalness')",
+                "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, 'FlightHelmet_Materials_LeatherPartsMat_BaseColor.png'), 'Albedo')",
+                
+                "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, 'FlightHelmet_Materials_LensesMat_BaseColor.png'), 'Albedo')",
+                "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, 'FlightHelmet_Materials_LensesMat_Normal.png'), 'Normal')",
+                "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, 'FlightHelmet_Materials_LensesMat_OcclusionRoughMetal.png_Roughness'), 'Roughness')",
+                "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, 'FlightHelmet_Materials_LensesMat_OcclusionRoughMetal.png_Metalness'), 'Metalness')",
+            ],
+        )),
+         
+    ],
+
+)

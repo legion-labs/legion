@@ -1,7 +1,7 @@
 <script lang="ts" context="module">
   import type { Load } from "@sveltejs/kit";
   import { headlessRun } from "@lgn/web-client";
-  import viewportOrchestrator from "@/stores/viewport";
+  import viewportOrchestrator from "@/orchestrators/viewport";
   import * as contextMenuEntries from "@/data/contextMenu";
   import contextMenu from "@/stores/contextMenu";
   import authStatus from "@/stores/authStatus";

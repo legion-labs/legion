@@ -65,28 +65,26 @@ struct IndexSnapshot {
 }
 
 impl IndexSnapshot {
-    async fn new(
-        project: &Project,
-        asset_handles: &ResourceHandles,
-        resource_registry: &ResourceRegistry,
-    ) -> Self {
+    async fn new(ctx: &mut LockContext<'_>) -> Self {
         let mut entity_to_parent = HashMap::new();
         let mut parent_to_entities = HashMap::new();
         let mut entity_to_names = HashMap::new();
         let mut name_to_entity = HashMap::new();
 
-        for id in project.resource_list().await {
-            if let (Ok(raw_name), Ok(res_name)) =
-                (project.raw_resource_name(id), project.resource_name(id))
-            {
-                let kind = project.resource_type(id).unwrap();
+        for id in ctx.project.resource_list().await {
+            if let (Ok(raw_name), Ok(res_name)) = (
+                ctx.project.raw_resource_name(id),
+                ctx.project.resource_name(id),
+            ) {
+                let kind = ctx.project.resource_type(id).unwrap();
                 let res_id = ResourceTypeAndId { kind, id };
 
                 let mut parent_id = raw_name.extract_parent_info().0;
                 if parent_id.is_none() && kind == sample_data::offline::Entity::TYPE {
-                    if let Some(asset) = asset_handles.get(res_id) {
-                        if let Some(entity) = resource_registry
-                            .get(asset)
+                    if let Ok(handle) = ctx.get_or_load(res_id).await {
+                        if let Some(entity) = ctx
+                            .resource_registry
+                            .get(&handle)
                             .map(|v| v.downcast_ref::<sample_data::offline::Entity>().unwrap())
                         {
                             if let Some(parent) = &entity.parent {
@@ -428,14 +426,13 @@ impl ResourceBrowser for ResourceBrowserRPC {
 
         // Build Entity->Parent mapping table. TODO: This should be cached within a index somewhere at one point
         let index_snapshot = {
-            let transaction_manager = self.transaction_manager.lock().await;
-            let ctx = LockContext::new(&transaction_manager).await;
-            IndexSnapshot::new(
-                &ctx.project,
-                &ctx.loaded_resource_handles,
-                &ctx.resource_registry,
-            )
-            .await
+            let mut transaction_manager = self.transaction_manager.lock().await;
+            transaction_manager
+                .load_all_resource_type(&[sample_data::offline::Entity::TYPE])
+                .await;
+
+            let mut ctx = LockContext::new(&transaction_manager).await;
+            IndexSnapshot::new(&mut ctx).await
         };
 
         // Recursively gather all the children entities as well
@@ -519,13 +516,8 @@ impl ResourceBrowser for ResourceBrowserRPC {
         // Build Entity->Parent mapping table. TODO: This should be cached within a index somewhere at one point
         let index_snapshot = {
             let transaction_manager = self.transaction_manager.lock().await;
-            let ctx = LockContext::new(&transaction_manager).await;
-            IndexSnapshot::new(
-                &ctx.project,
-                &ctx.loaded_resource_handles,
-                &ctx.resource_registry,
-            )
-            .await
+            let mut ctx = LockContext::new(&transaction_manager).await;
+            IndexSnapshot::new(&mut ctx).await
         };
 
         // Are we cloning into another target
@@ -639,13 +631,8 @@ impl ResourceBrowser for ResourceBrowserRPC {
 
         let index_snapshot = {
             let transaction_manager = self.transaction_manager.lock().await;
-            let ctx = LockContext::new(&transaction_manager).await;
-            IndexSnapshot::new(
-                &ctx.project,
-                &ctx.loaded_resource_handles,
-                &ctx.resource_registry,
-            )
-            .await
+            let mut ctx = LockContext::new(&transaction_manager).await;
+            IndexSnapshot::new(&mut ctx).await
         };
         let new_parent = index_snapshot.name_to_entity.get(&new_path).copied();
         if let Some(new_parent) = new_parent {

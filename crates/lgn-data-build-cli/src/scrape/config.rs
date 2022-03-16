@@ -41,8 +41,8 @@ impl Config {
             .map_err(|e| e.to_string())?;
 
         let buildindex = self.buildindex.clone();
-        let build = DataBuildOptions::new(buildindex, CompilerRegistryOptions::default())
-            .content_store(&ContentStoreAddr::from("."))
+        let build = DataBuildOptions::new(buildindex.clone(), CompilerRegistryOptions::default())
+            .content_store(&ContentStoreAddr::from(buildindex))
             .open(&project)
             .await
             .map_err(|e| e.to_string())?;

@@ -1,10 +1,11 @@
 <script lang="ts">
   import { formatProcessName } from "@/lib/format";
-  import { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
+  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { spanPixelHeight } from "@/lib/Timeline/TimelineValues";
   import { Process } from "@lgn/proto-telemetry/dist/process";
   import { createEventDispatcher } from "svelte";
   import TimelineThreadItem from "./TimelineThreadItem.svelte";
+  import TasksItem from "./TasksItem.svelte";
   export let process: Process;
   export let stateStore: TimelineStateStore;
   export let rootStartTime: number;
@@ -15,6 +16,8 @@
   $: threads = Object.values($stateStore.threads).filter(
     (t) => t.streamInfo.processId === process.processId
   );
+
+  $: processAsyncData = $stateStore.processAsyncData[process.processId];
 </script>
 
 <div
@@ -49,6 +52,17 @@
   </div>
   <div class="thread-container">
     {#if $stateStore}
+      {#if processAsyncData}
+        <TasksItem
+          parentCollapsed={collapsed}
+          {stateStore}
+          {process}
+          {processAsyncData}
+          {width}
+          {rootStartTime}
+          on:zoom={(e) => wheelDispatch("zoom", e.detail)}
+        />
+      {/if}
       {#each threads as thread, index (thread.streamInfo.streamId)}
         <TimelineThreadItem
           bind:this={components[index]}

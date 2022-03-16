@@ -177,7 +177,7 @@ impl AssetRegistryPlugin {
                             asset_id.id
                         );
                     } else if handle.is_err(&registry) {
-                        error!("Failed to load runtime asset {}", asset_id);
+                        error!("Failed to load runtime asset {:?}", asset_id);
                         *loading_state = LoadingState::Failed;
                     }
                 }
@@ -209,7 +209,7 @@ impl AssetRegistryPlugin {
                 ResourceLoadEvent::LoadError(asset_id, error_kind) => {
                     if asset_loading_states.get(asset_id).is_none() {
                         error!(
-                            "Failed to load runtime asset {}, error: {:?}",
+                            "Failed to load runtime asset {:?}, error: {:?}",
                             asset_id, error_kind
                         );
                         asset_loading_states.insert(asset_id, LoadingState::Failed);

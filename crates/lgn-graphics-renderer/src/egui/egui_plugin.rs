@@ -35,10 +35,7 @@ impl Plugin for EguiPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(on_window_created);
 
-        let egui = Egui {
-            enable: true,
-            ..Egui::default()
-        };
+        let egui = Egui { ..Egui::default() };
         //egui.ctx.style().visuals.window_shadow.extrusion = 0.0;
         app.insert_resource(egui);
         app.insert_resource(RawInput::default());
@@ -46,6 +43,7 @@ impl Plugin for EguiPlugin {
             CoreStage::PreUpdate,
             gather_input.label(EguiLabels::GatherInput),
         );
+
         app.add_system_to_stage(
             CoreStage::PreUpdate,
             gather_input_window
@@ -59,6 +57,7 @@ impl Plugin for EguiPlugin {
                 .label(EguiLabels::BeginFrame)
                 .after(EguiLabels::GatherInput),
         );
+        app.add_system(update_egui);
     }
 }
 
@@ -87,6 +86,19 @@ fn on_window_created(
     #[allow(unused_must_use)]
     {
         egui.ctx.end_frame();
+    }
+}
+
+fn update_egui(
+    mut egui: ResMut<'_, Egui>,
+    mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
+) {
+    for keyboard_input_event in keyboard_input_events.iter() {
+        if let Some(key_code) = keyboard_input_event.key_code {
+            if key_code == KeyCode::M && keyboard_input_event.state.is_pressed() {
+                egui.enable = !egui.enable;
+            }
+        }
     }
 }
 

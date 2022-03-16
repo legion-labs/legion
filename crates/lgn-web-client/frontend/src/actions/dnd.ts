@@ -3,12 +3,13 @@
 // or implement our own svelte adapter for
 // https://github.com/react-dnd/react-dnd/tree/main/packages/dnd-core
 
-import { derived } from "svelte/store";
+import { derived, get } from "svelte/store";
 import type { ActionReturn } from "../lib/action";
-import DnD from "../stores/dnd";
+import type { DndStore } from "../stores/dnd";
+import { createDndStore } from "../stores/dnd";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const defaultStore = new DnD<any>();
+export const defaultStore = createDndStore<any>();
 
 export const isDragging = derived(
   defaultStore,
@@ -20,26 +21,28 @@ export function dropzone<Item>(
   {
     accept,
     store = defaultStore,
-  }: { accept: string | string[]; store?: DnD<Item> }
+  }: { accept: string | string[]; store?: DndStore<Item> }
 ): ActionReturn {
   const onDragOver = (event: DragEvent) => {
     event.preventDefault();
 
-    if (!store.value) {
+    const dndStoreValue = get(store);
+
+    if (!dndStoreValue) {
       return;
     }
 
     if (
       typeof accept === "string"
-        ? accept !== store.value.type
-        : !accept.includes(store.value.type)
+        ? accept !== dndStoreValue.type
+        : !accept.includes(dndStoreValue.type)
     ) {
       return;
     }
 
     element.dispatchEvent(
       new CustomEvent("dnd-dragover", {
-        detail: { item: store.value.item, originalEvent: event },
+        detail: { item: dndStoreValue.item, originalEvent: event },
       })
     );
   };
@@ -47,21 +50,23 @@ export function dropzone<Item>(
   const onDragEnter = (event: DragEvent) => {
     event.preventDefault();
 
-    if (!store.value) {
+    const dndStoreValue = get(store);
+
+    if (!dndStoreValue) {
       return;
     }
 
     if (
       typeof accept === "string"
-        ? accept !== store.value.type
-        : !accept.includes(store.value.type)
+        ? accept !== dndStoreValue.type
+        : !accept.includes(dndStoreValue.type)
     ) {
       return;
     }
 
     element.dispatchEvent(
       new CustomEvent("dnd-dragenter", {
-        detail: { item: store.value.item, originalEvent: event },
+        detail: { item: dndStoreValue.item, originalEvent: event },
       })
     );
   };
@@ -69,21 +74,23 @@ export function dropzone<Item>(
   const onDragLeave = (event: DragEvent) => {
     event.preventDefault();
 
-    if (!store.value) {
+    const dndStoreValue = get(store);
+
+    if (!dndStoreValue) {
       return;
     }
 
     if (
       typeof accept === "string"
-        ? accept !== store.value.type
-        : !accept.includes(store.value.type)
+        ? accept !== dndStoreValue.type
+        : !accept.includes(dndStoreValue.type)
     ) {
       return;
     }
 
     element.dispatchEvent(
       new CustomEvent("dnd-dragleave", {
-        detail: { item: store.value.item, originalEvent: event },
+        detail: { item: dndStoreValue.item, originalEvent: event },
       })
     );
   };
@@ -139,7 +146,7 @@ export function draggable<Item>(
     item: Item;
     dropEffect?: "none" | "copy" | "link" | "move";
     preview?: "none" | "custom" | "default";
-    store?: DnD<Item>;
+    store?: DndStore<Item>;
   }
 ): ActionReturn {
   let img: HTMLImageElement | null = null;

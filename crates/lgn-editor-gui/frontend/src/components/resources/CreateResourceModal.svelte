@@ -3,7 +3,7 @@
   import { required } from "svelte-forms/validators";
   import Modal from "@lgn/web-client/src/components/modal/Modal.svelte";
   import Button from "@lgn/web-client/src/components/Button.svelte";
-  import { AsyncStoreOrchestrator } from "@lgn/web-client/src/stores/asyncStore";
+  import { createAsyncStoreOrchestrator } from "@lgn/web-client/src/orchestrators/async";
   import Select from "../inputs/Select.svelte";
   import TextInput from "../inputs/TextInput.svelte";
   import {
@@ -19,12 +19,12 @@
   import Field from "../Field.svelte";
   import log from "@lgn/web-client/src/lib/log";
 
-  const createResourceStore = new AsyncStoreOrchestrator();
+  const createResourceStore = createAsyncStoreOrchestrator();
 
   const { loading } = createResourceStore;
 
   const resourceTypesStore =
-    new AsyncStoreOrchestrator<GetResourceTypeNamesResponse>();
+    createAsyncStoreOrchestrator<GetResourceTypeNamesResponse>();
 
   const name = field("name", "", [required()]);
 

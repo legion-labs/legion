@@ -1,0 +1,77 @@
+<script lang="ts">
+  import { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
+  import { getThreadCollapseStyle } from "@/lib/Timeline/TimelineCollapse";
+  import { ProcessAsyncData } from "@/lib/Timeline/ProcessAsyncData";
+  import { Process } from "@lgn/proto-telemetry/dist/process";
+  import { createEventDispatcher } from "svelte";
+  export let rootStartTime: number;
+  export let stateStore: TimelineStateStore;
+  export let process: Process;
+  export let processAsyncData: ProcessAsyncData;
+  export let width: number;
+  export let parentCollapsed: boolean;
+  import TasksSpans from "./TasksSpans.svelte";
+  let collapsed = false;
+  const wheelDispatch = createEventDispatcher<{ zoom: WheelEvent }>();
+  const threadName = "async tasks";
+
+  export function setCollapse(state: boolean) {
+    collapsed = state;
+  }
+</script>
+
+<div
+  class="flex items-start main"
+  style={getThreadCollapseStyle(processAsyncData.maxDepth, collapsed)}
+>
+  <div
+    class="thread px-1"
+    on:click={() => (collapsed = !collapsed)}
+    title={`${threadName}`}
+  >
+    <span class="text">
+      <i class={`icon bi bi-${!collapsed ? "eye" : "eye-slash"}-fill`} />
+      <span class="thread-name">{threadName}</span></span
+    >
+  </div>
+  <TasksSpans
+    {stateStore}
+    {parentCollapsed}
+    {process}
+    {processAsyncData}
+    {width}
+    {rootStartTime}
+    on:zoom={(e) => wheelDispatch("zoom", e.detail)}
+  />
+</div>
+
+<style lang="postcss">
+  .main {
+    overflow: hidden;
+  }
+
+  .thread-name {
+    @apply capitalize;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .text {
+    @apply flex;
+  }
+
+  .icon {
+    @apply pr-1;
+  }
+
+  .thread {
+    @apply text-sm text-slate-400;
+    width: var(--thread-item-length);
+    overflow: hidden;
+    cursor: pointer;
+    background-color: #f0f0f0;
+    margin-right: 4px;
+    align-self: stretch;
+  }
+</style>

@@ -119,7 +119,7 @@ export default buildContextMenu<ContextMenuEntryRecord>();
   import { remToPx } from "../lib/html";
   import { sleep } from "../lib/promises";
   import type { Position } from "../lib/types";
-  import type ContextMenuStore from "../stores/contextMenu";
+  import type { ContextMenuStore } from "../stores/contextMenu";
   import { buildCustomEvent, Entry, ItemEntry } from "../types/contextMenu";
 
   const entryHeightRem = 2.5;
@@ -141,7 +141,6 @@ export default buildContextMenu<ContextMenuEntryRecord>();
     { action: "about", type: "item", label: "About" },
   ];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   export let store: ContextMenuStore<string>;
 
   // Position is null when the context menu is closed

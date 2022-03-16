@@ -73,7 +73,7 @@ use std::{
     convert::Infallible,
     env,
     ffi::OsString,
-    io::{self, stdout, Read, Write},
+    io::{stdout, Write},
     path::{PathBuf, StripPrefixError},
     str::FromStr,
     sync::Arc,
@@ -89,7 +89,7 @@ use zip::result::ZipError;
 
 use crate::{
     compiler_cmd::{
-        CommandBuilder, CompilerCompileCmdOutput, CompilerHashCmdOutput, CompilerInfoCmdOutput,
+        CompilerCompileCmdOutput, CompilerHashCmdOutput, CompilerInfoCmdOutput,
         COMMAND_ARG_COMPILED_ASSET_STORE, COMMAND_ARG_DER_DEPS, COMMAND_ARG_LOCALE,
         COMMAND_ARG_PLATFORM, COMMAND_ARG_RESOURCE_DIR, COMMAND_ARG_SRC_DEPS, COMMAND_ARG_TARGET,
         COMMAND_ARG_TRANSFORM, COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
@@ -468,7 +468,7 @@ fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), CompilerErr
 
 #[derive(Parser, Debug)]
 #[clap(name = "TODO: compiler name")]
-#[clap(about = "CLI to query a local telemetry data lake", version, author)]
+#[clap(about = "Data compiler", version, author)]
 #[clap(arg_required_else_help(true))]
 struct Cli {
     #[clap(subcommand)]
@@ -544,14 +544,17 @@ pub fn compiler_main(
 
 /// Same as `compiler_main` but supports many compilers in a single binary.
 pub fn multi_compiler_main(compilers: CompilerRegistryOptions) -> Result<(), CompilerError> {
-    let mut args = env::args().map(OsString::from).collect();
+    let args: Vec<OsString> = env::args().map(OsString::from).collect();
 
-    let mut input = String::new();
-    if io::stdin().read_to_string(&mut input)? > 0 {
-        if let Ok(stdin_args) = CommandBuilder::from_bytes(input.as_bytes()) {
-            args = stdin_args.to_os_args();
+    // Read the command line as a .json from stdin, if it isn't empty.
+    /*if atty::is(atty::Stream::Stdin) {
+        let mut input = String::new();
+        if io::stdin().lock().read_to_string(&mut input)? > 0 {
+            if let Ok(stdin_args) = CommandBuilder::from_bytes(input.as_bytes()) {
+                args = stdin_args.to_os_args();
+            }
         }
-    }
+    }*/
 
     let args = Cli::try_parse_from(args).map_err(|err| {
         eprintln!("{}", err);

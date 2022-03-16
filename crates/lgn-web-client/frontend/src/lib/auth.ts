@@ -1,4 +1,4 @@
-import userInfo from "../stores/userInfo";
+import userInfo from "../orchestrators/userInfo";
 import { getCookie, setCookie } from "./cookie";
 import log from "./log";
 import type { NonEmptyArray } from "./array";

@@ -2,9 +2,30 @@ syntax = "proto3";
 package content_store;
 
 service ContentStore {
+  rpc ResolveAlias(ResolveAliasRequest) returns (ResolveAliasResponse) {};
+  rpc RegisterAlias(RegisterAliasRequest) returns (RegisterAliasResponse) {};
   rpc ReadContent(ReadContentRequest) returns (ReadContentResponse) {};
   rpc GetContentWriter(GetContentWriterRequest) returns (GetContentWriterResponse) {};
   rpc WriteContent(WriteContentRequest) returns (WriteContentResponse) {};
+}
+
+message ResolveAliasRequest {
+  string key_space = 1;
+  string key = 2;
+}
+
+message ResolveAliasResponse {
+  string id = 1;
+}
+
+message RegisterAliasRequest {
+  string key_space = 1;
+  string key = 2;
+  string id = 3;
+}
+
+message RegisterAliasResponse {
+  bool newly_registered = 1;
 }
 
 message ReadContentRequest {

@@ -572,7 +572,9 @@ impl SourceControl for SourceControlRPC {
                 .map_err(|err| Status::internal(err.to_string()))?;
         }
 
-        transaction_manager.load_all_resources().await;
+        transaction_manager
+            .load_all_resource_type(&[sample_data::offline::Entity::TYPE])
+            .await;
 
         Ok(Response::new(SyncLatestResponse {}))
     }

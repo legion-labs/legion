@@ -42,8 +42,6 @@ where
                         commands.entity(old_entity).despawn();
                     }
                 }
-            } else {
-                info!("Loaded {}: {}", T::TYPENAME, &asset_id.id);
             }
         }
         true
@@ -200,7 +198,7 @@ impl AssetToECS for runtime_data::Entity {
         }
 
         info!(
-            "Loaded {}: {} -> ECS id: {:?}| {}",
+            "Spawned {}: {} -> ECS id: {:?}| {}",
             Self::TYPENAME,
             asset_id.id,
             entity_id,
@@ -226,7 +224,7 @@ impl AssetToECS for runtime_data::Instance {
         };
 
         info!(
-            "Loaded {}: {} -> ECS id: {:?}",
+            "Spawned {}: {} -> ECS id: {:?}",
             Self::TYPENAME,
             asset_id.id,
             entity.id(),
@@ -259,7 +257,7 @@ impl AssetToECS for lgn_graphics_data::runtime::Material {
         ));
 
         info!(
-            "Loaded {}: {} -> ECS id: {:?}",
+            "Spawned {}: {} -> ECS id: {:?}",
             Self::TYPENAME,
             asset_id.id,
             entity.id(),
@@ -302,7 +300,7 @@ impl AssetToECS for lgn_graphics_data::runtime_texture::Texture {
 
         entity.insert(texture_component);
         info!(
-            "Loaded {}: {} -> ECS id: {:?} | width: {}, height: {}, format: {:?}",
+            "Spawned {}: {} -> ECS id: {:?} | width: {}, height: {}, format: {:?}",
             Self::TYPENAME.trim_start_matches("runtime_"),
             asset_id.id,
             entity.id(),
@@ -363,11 +361,17 @@ impl AssetToECS for lgn_graphics_data::runtime::Model {
             });
         }
         let model_component = ModelComponent {
-            model_id: Some(*asset_id),
+            model_id: *asset_id,
             meshes,
         };
         entity.insert(model_component);
 
+        info!(
+            "Spawned {}: {} -> ECS id: {:?}",
+            Self::TYPENAME.trim_start_matches("runtime_"),
+            asset_id.id,
+            entity.id(),
+        );
         Some(entity.id())
     }
 }
@@ -388,7 +392,7 @@ impl AssetToECS for lgn_scripting::runtime::Script {
         };
 
         info!(
-            "Loaded {}: {} -> ECS id: {:?} ({} bytes)",
+            "Spawned {}: {} -> ECS id: {:?} ({} bytes)",
             Self::TYPENAME,
             asset_id.id,
             ecs_entity.id(),

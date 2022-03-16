@@ -28,6 +28,8 @@ impl DeleteResourceOperation {
 #[async_trait]
 impl TransactionOperation for DeleteResourceOperation {
     async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
+        // Force load to retrieve of value
+        ctx.get_or_load(self.resource_id).await?;
         if let Some(old_handle) = ctx.loaded_resource_handles.remove(self.resource_id) {
             // On the first apply, save a copy original resource for redo
             if self.old_resource_name.is_none() {
@@ -43,11 +45,11 @@ impl TransactionOperation for DeleteResourceOperation {
                 );
                 self.old_resource_data = Some(old_resource_data);
             }
-            ctx.project
-                .delete_resource(self.resource_id.id)
-                .await
-                .map_err(|err| Error::Project(self.resource_id, err))?;
         }
+        ctx.project
+            .delete_resource(self.resource_id.id)
+            .await
+            .map_err(|err| Error::Project(self.resource_id, err))?;
         Ok(())
     }
 

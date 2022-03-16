@@ -6,7 +6,7 @@ use lgn_math::Vec2;
 
 use crate::cgen;
 use crate::components::RenderSurface;
-use crate::egui::egui_plugin::Egui;
+use crate::egui::Egui;
 
 use crate::hl_gfx_api::HLCommandBuffer;
 

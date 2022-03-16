@@ -349,21 +349,24 @@ async fn main() -> Result<(), String> {
         }
         Commands::Explain { id } => {
             if let Some(config) = config {
-                let (build, project) = config.open().await?;
+                let (mut build, project) = config.open().await?;
+                build
+                    .source_pull(&project)
+                    .await
+                    .map_err(|e| e.to_string())?;
                 let rid = {
-                    if let Ok(rid) = ResourcePathId::from_str(&id) {
-                        rid
-                    } else if let Ok(resource_id) = id.parse() {
-                        if let Some(rid) = build.lookup_pathid(resource_id).await.unwrap() {
-                            rid
-                        } else {
-                            return Err(format!(
-                                "Failed to find a source ResourcePathId for ResourceId '{}'",
-                                resource_id
-                            ));
-                        }
+                    let build_rid = if let Ok(resource_id) = id.parse() {
+                        build.lookup_pathid(resource_id).await.unwrap()
                     } else {
-                        return Err(format!("Failed to parse id: '{}'", id));
+                        return Err(format!("Failed to parse ResourceTypeAndId: '{}'", id));
+                    };
+
+                    if let Some(rid) = build_rid {
+                        rid
+                    } else if let Ok(rid) = ResourcePathId::from_str(&id) {
+                        rid
+                    } else {
+                        return Err(format!("Failed to parse ResourcePathId: '{}'", id));
                     }
                 };
 

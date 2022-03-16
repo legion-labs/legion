@@ -88,12 +88,11 @@ impl TransactionOperation for CreateResourceOperation {
     }
 
     async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
-        if let Some(_handle) = ctx.loaded_resource_handles.remove(self.resource_id) {
-            ctx.project
-                .delete_resource(self.resource_id.id)
-                .await
-                .map_err(|err| Error::Project(self.resource_id, err))?;
-        }
+        ctx.loaded_resource_handles.remove(self.resource_id);
+        ctx.project
+            .delete_resource(self.resource_id.id)
+            .await
+            .map_err(|err| Error::Project(self.resource_id, err))?;
         Ok(())
     }
 }

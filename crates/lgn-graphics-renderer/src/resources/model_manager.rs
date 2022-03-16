@@ -1,21 +1,25 @@
 use std::{collections::BTreeMap, str::FromStr};
 
 use lgn_app::App;
-use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
-use lgn_ecs::prelude::{Changed, Query, Res, ResMut};
+use lgn_core::BumpAllocatorPool;
+use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
+use lgn_ecs::prelude::{Changed, Query, Res, ResMut, Without};
+use lgn_math::Vec3;
 use lgn_tracing::span_fn;
+use lgn_transform::components::Transform;
 use strum::IntoEnumIterator;
 
 use crate::{
-    components::{ModelComponent, VisualComponent},
+    components::{ManipulatorComponent, ModelComponent, VisualComponent},
+    debug_display::DebugDisplay,
     labels::RenderStage,
     Renderer,
 };
 
 use super::{
-    DefaultMeshType, GpuMaterialManager, MeshManager, MissingVisualTracker, DEFAULT_MESH_GUIDS,
+    DefaultMeshType, MaterialManager, MeshManager, MissingVisualTracker, RendererOptions,
+    DEFAULT_MESH_GUIDS,
 };
-
 pub struct Mesh {
     pub mesh_id: u32,
     pub material_id: u32,
@@ -37,7 +41,7 @@ impl ModelManager {
 
         for (idx, _mesh_type) in DefaultMeshType::iter().enumerate() {
             let id = ResourceTypeAndId {
-                kind: ResourceType::from_raw(1),
+                kind: lgn_graphics_data::runtime::Model::TYPE,
                 id: ResourceId::from_str(DEFAULT_MESH_GUIDS[idx]).unwrap(),
             };
             model_meta_datas.insert(
@@ -66,6 +70,7 @@ impl ModelManager {
 
     pub fn init_ecs(app: &mut App) {
         app.add_system_to_stage(RenderStage::Prepare, update_models);
+        app.add_system_to_stage(RenderStage::Prepare, debug_bounding_spheres);
     }
 
     pub fn add_model(&mut self, resource_id: ResourceTypeAndId, model: ModelMetaData) {
@@ -92,29 +97,70 @@ pub(crate) fn update_models(
     renderer: Res<'_, Renderer>,
     mut model_manager: ResMut<'_, ModelManager>,
     mut mesh_manager: ResMut<'_, MeshManager>,
-    material_manager: Res<'_, GpuMaterialManager>,
+    material_manager: Res<'_, MaterialManager>,
     updated_models: Query<'_, '_, &ModelComponent, Changed<ModelComponent>>,
     mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
 ) {
     for updated_model in updated_models.iter() {
-        if let Some(mesh_reference) = &updated_model.model_id {
-            missing_visuals_tracker.add_visuals(*mesh_reference);
-            let ids = mesh_manager.add_meshes(&renderer, &updated_model.meshes);
+        let mesh_reference = &updated_model.model_id;
 
-            let mut meshes = Vec::new();
-            // TODO: case when material hasn't been loaded
-            for (idx, mesh) in updated_model.meshes.iter().enumerate() {
-                meshes.push(Mesh {
-                    mesh_id: ids[idx],
-                    material_id: material_manager
-                        .va_for_index(mesh.material_id.clone().map(|v| v.id()), 0)
-                        as u32,
-                    material_index: material_manager
-                        .id_for_index(mesh.material_id.clone().map(|v| v.id()), 0)
-                        as u32,
-                });
-            }
-            model_manager.add_model(*mesh_reference, ModelMetaData { meshes });
+        missing_visuals_tracker.add_visuals(*mesh_reference);
+        let ids = mesh_manager.add_meshes(&renderer, &updated_model.meshes);
+
+        let mut meshes = Vec::new();
+        // TODO: case when material hasn't been loaded
+        for (idx, mesh) in updated_model.meshes.iter().enumerate() {
+            meshes.push(Mesh {
+                mesh_id: ids[idx],
+                material_id: material_manager
+                    .gpu_data()
+                    .va_for_index(mesh.material_id.clone().map(|v| v.id()), 0)
+                    as u32,
+                material_index: material_manager
+                    .gpu_data()
+                    .id_for_index(mesh.material_id.clone().map(|v| v.id()), 0)
+                    as u32,
+            });
         }
+        model_manager.add_model(*mesh_reference, ModelMetaData { meshes });
     }
+}
+
+#[span_fn]
+#[allow(clippy::needless_pass_by_value)]
+fn debug_bounding_spheres(
+    debug_display: Res<'_, DebugDisplay>,
+    bump_allocator_pool: Res<'_, BumpAllocatorPool>,
+    model_manager: Res<'_, ModelManager>,
+    mesh_manager: Res<'_, MeshManager>,
+    renderer_options: Res<'_, RendererOptions>,
+    visuals: Query<'_, '_, (&VisualComponent, &Transform), Without<ManipulatorComponent>>,
+) {
+    if !renderer_options.show_bounding_spheres {
+        return;
+    }
+    bump_allocator_pool.scoped_bump(|bump| {
+        debug_display.create_display_list(bump, |builder| {
+            for (visual, transform) in visuals.iter() {
+                let (model_data, ready) = model_manager.get_model_meta_data(visual);
+                if ready {
+                    for mesh in &model_data.meshes {
+                        let mesh_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
+                        //mesh_data.bounding_sphere
+                        builder.add_mesh(
+                            Transform::identity()
+                                .with_translation(
+                                    transform.translation + mesh_data.bounding_sphere.truncate(),
+                                )
+                                .with_scale(Vec3::new(4.0, 4.0, 4.0) * mesh_data.bounding_sphere.w)
+                                .with_rotation(transform.rotation)
+                                .compute_matrix(),
+                            DefaultMeshType::Sphere as u32,
+                            Vec3::new(1.0, 1.0, 1.0),
+                        );
+                    }
+                }
+            }
+        });
+    });
 }

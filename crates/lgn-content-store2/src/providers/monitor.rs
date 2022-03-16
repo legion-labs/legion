@@ -11,7 +11,8 @@ use pin_project::pin_project;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 use crate::{
-    ContentAsyncRead, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
+    AliasRegisterer, AliasResolver, ContentAsyncRead, ContentAsyncWrite, ContentReader,
+    ContentWriter, Error, Identifier, Result,
 };
 
 pub trait TransferCallbacks<Id>: Debug + Send + Sync {
@@ -71,6 +72,20 @@ impl<Inner> MonitorProvider<Inner> {
     ) -> Self {
         self.on_upload_callbacks = Some(Arc::new(Box::new(callbacks)));
         self
+    }
+}
+
+#[async_trait]
+impl<Inner: AliasResolver + Send + Sync> AliasResolver for MonitorProvider<Inner> {
+    async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
+        self.inner.resolve_alias(key_space, key).await
+    }
+}
+
+#[async_trait]
+impl<Inner: AliasRegisterer + Send + Sync> AliasRegisterer for MonitorProvider<Inner> {
+    async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
+        self.inner.register_alias(key_space, key, id).await
     }
 }
 

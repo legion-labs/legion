@@ -64,8 +64,6 @@ struct Args {
     /// Path to the game manifest
     #[clap(long)]
     manifest: Option<String>,
-    #[clap(long)]
-    egui: bool,
     /// Enable a testing code path
     #[clap(long)]
     test: Option<String>,
@@ -134,7 +132,7 @@ fn main() {
     .insert_resource(GRPCPluginSettings::new(server_addr))
     .add_plugin(GRPCPlugin::default())
     .add_plugin(InputPlugin::default())
-    .add_plugin(RendererPlugin::new(args.egui, false))
+    .add_plugin(RendererPlugin::default())
     .add_plugin(StreamerPlugin::default())
     .add_plugin(EditorPlugin::default())
     .insert_resource(ResourceBrowserSettings::new(default_scene))

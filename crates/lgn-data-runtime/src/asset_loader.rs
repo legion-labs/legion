@@ -11,6 +11,7 @@ use std::{
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use flurry::TryInsertError;
+use lgn_tracing::info;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -262,8 +263,15 @@ impl AssetLoaderIO {
     }
 
     fn load_resource(&self, type_id: ResourceTypeAndId) -> Result<Vec<u8>, AssetRegistryError> {
+        let start = std::time::Instant::now();
         for device in &self.devices {
             if let Some(content) = device.load(type_id) {
+                info!(
+                    "Loaded {:?} {} in {:?}",
+                    type_id,
+                    content.len(),
+                    start.elapsed(),
+                );
                 return Ok(content);
             }
         }
@@ -333,6 +341,7 @@ impl AssetLoaderIO {
         load_id: Option<u32>,
     ) -> Result<(), (HandleUntyped, Option<LoadId>, AssetRegistryError)> {
         let primary_id = primary_handle.id();
+
         if self.loaded_resources.contains(&primary_id)
             || self
                 .processing_list

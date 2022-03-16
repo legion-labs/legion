@@ -1,22 +1,28 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+import { get } from "svelte/store";
 import {
   BlockSpansReply,
+  BlockAsyncEventsStatReply,
   PerformanceAnalyticsClientImpl,
+  SpanTrack,
 } from "@lgn/proto-telemetry/dist/analytics";
 import { Process } from "@lgn/proto-telemetry/dist/process";
 import { makeGrpcClient } from "../client";
 import log from "@lgn/web-client/src/lib/log";
-import { LODState, ThreadBlock } from "./ThreadBlock";
+import { ThreadBlock } from "./ThreadBlock";
+import { LODState } from "./LodState";
+import { AsyncSection } from "./AsyncSection";
 import {
   computePreferredBlockLod,
   processMsOffsetToRoot,
   timestampToMs,
 } from "../time";
 import { Stream } from "@lgn/proto-telemetry/dist/stream";
-import { TimelineStateStore } from "./TimelineStateStore";
+import type { TimelineStateStore } from "./TimelineStateStore";
+import { createTimelineStateStore } from "./TimelineStateStore";
 import { TimelineState } from "./TimelineState";
 import Semaphore from "semaphore-async-await";
-import { loadWrap as loadWrapAsync } from "../Misc/LoadingStore";
+import { loadWrap } from "../Misc/LoadingStore";
 
 export class TimelineStateManager {
   state: TimelineStateStore;
@@ -28,12 +34,12 @@ export class TimelineStateManager {
   constructor(processId: string) {
     this.processId = processId;
     this.semaphore = new Semaphore(16);
-    this.state = new TimelineStateStore(
+    this.state = createTimelineStateStore(
       new TimelineState(undefined, undefined)
     );
   }
 
-  async initAsync(pixelWidth: number) {
+  async init(pixelWidth: number) {
     this.client = await makeGrpcClient();
     this.process = (
       await this.client.find_process({
@@ -50,13 +56,13 @@ export class TimelineStateManager {
       }
       return s;
     });
-    await this.fetchStreamsAsync(this.process);
-    await this.fetchChildrenAsync(this.process);
+    await this.fetchStreams(this.process);
+    await this.fetchChildren(this.process);
     await this.fetchAsyncSpans(this.process);
-    await this.fetchLodsAsync(pixelWidth);
+    await this.fetchLods(pixelWidth);
   }
 
-  async fetchStreamsAsync(process: Process) {
+  async fetchStreams(process: Process) {
     if (!this.client) {
       log.error("no client in fetchStreams");
       return;
@@ -84,12 +90,12 @@ export class TimelineStateManager {
         return state;
       });
 
-      promises.push(this.fetchBlocksAsync(process, stream));
+      promises.push(this.fetchBlocks(process, stream));
     });
     await Promise.all(promises);
   }
 
-  async fetchChildrenAsync(process: Process) {
+  async fetchChildren(process: Process) {
     if (!this.client) {
       log.error("no client in fetchChildren");
       return;
@@ -109,7 +115,7 @@ export class TimelineStateManager {
         s.processes.push(process);
         return s;
       });
-      return this.fetchStreamsAsync(process);
+      return this.fetchStreams(process);
     });
     await Promise.all(promises);
   }
@@ -126,39 +132,65 @@ export class TimelineStateManager {
       log.error("no client in fetchAsyncSpans");
       return;
     }
-    const section = [0.0, 1000.0] as [number, number]; //section is in relative ms
-
+    const sectionTimeRange = [0.0, 1000.0] as [number, number]; //section is in relative ms
     const blocksOfInterest: string[] = [];
-    for (const streamId in this.state.value.threads) {
-      const thread = this.state.value.threads[streamId];
-      if (thread.streamInfo.processId === process.processId) {
-        thread.block_ids.forEach((block_id) => {
-          const stats = this.state.value.blocks[block_id].asyncStats;
-          if (this.rangesOverlap(section, [stats!.beginMs, stats!.endMs])) {
-            blocksOfInterest.push(block_id);
-          }
-        });
+    const processAsyncData = get(this.state).processAsyncData[
+      process.processId
+    ];
+    processAsyncData.blockStats.forEach((stats) => {
+      if (
+        this.rangesOverlap(sectionTimeRange, [stats!.beginMs, stats!.endMs])
+      ) {
+        blocksOfInterest.push(stats.blockId);
       }
-    }
+    });
 
-    const reply = await loadWrapAsync(
+    const sectionSequenceNumber = 0;
+    const sectionLod = 0;
+    const asyncSection = {
+      sectionSequenceNumber,
+      sectionLod,
+      state: LODState.Requested,
+      tracks: [] as SpanTrack[],
+    };
+    processAsyncData.sections.push(asyncSection);
+
+    const reply = await loadWrap(
       async () =>
         await this.client!.fetch_async_spans({
-          sectionSequenceNumber: 0,
-          sectionLod: 0,
+          sectionSequenceNumber,
+          sectionLod,
           blockIds: blocksOfInterest,
         })
     );
-    console.log(reply);
+    const nbTracks = reply.tracks.length;
+    processAsyncData.maxDepth = Math.max(processAsyncData.maxDepth, nbTracks);
+    asyncSection.tracks = reply.tracks;
+    asyncSection.state = LODState.Loaded;
+
+    this.state.update((s) => {
+      s.scopes = { ...s.scopes, ...reply.scopes };
+      return s;
+    });
   }
 
-  private async fetchBlocksAsync(process: Process, stream: Stream) {
+  private async fetchBlocks(process: Process, stream: Stream) {
     if (!this.client) {
       log.error("no client in fetchBlocks");
       return;
     }
+    const blockStats: BlockAsyncEventsStatReply[] = [];
+    const asyncSections: AsyncSection[] = [];
+    const asyncData = {
+      processId: process.processId,
+      maxDepth: 0,
+      minMs: Infinity,
+      maxMs: -Infinity,
+      blockStats,
+      sections: asyncSections,
+    };
     const processOffset = processMsOffsetToRoot(this.process, process);
-    const response = await loadWrapAsync(async () => {
+    const response = await loadWrap(async () => {
       return await this.client!.list_stream_blocks({
         streamId: stream.streamId,
       });
@@ -172,13 +204,16 @@ export class TimelineStateManager {
         s.eventCount += block.nbObjects;
         return s;
       });
-      const asyncStatsReply = await loadWrapAsync(async () => {
+      const asyncStatsReply = await loadWrap(async () => {
         return await this.client!.fetch_block_async_stats({
           process,
           stream,
           blockId: block.blockId,
         });
       });
+      asyncData.minMs = Math.min(asyncData.minMs, asyncStatsReply.beginMs);
+      asyncData.maxMs = Math.max(asyncData.maxMs, asyncStatsReply.endMs);
+      blockStats.push(asyncStatsReply);
       this.state.update((s) => {
         s.threads[stream.streamId].block_ids.push(block.blockId);
         return s;
@@ -189,17 +224,17 @@ export class TimelineStateManager {
           beginMs: beginMs,
           endMs: endMs,
           lods: [],
-          asyncStats: asyncStatsReply,
         };
         return s;
       });
     }
+    get(this.state).processAsyncData[process.processId] = asyncData;
   }
 
-  async fetchLodsAsync(pixelWidth: number) {
-    const range = this.state.value.getViewRange();
+  async fetchLods(pixelWidth: number) {
+    const range = get(this.state).getViewRange();
     const promises: Promise<void>[] = [];
-    for (const block of Object.values(this.state.value.blocks)) {
+    for (const block of Object.values(get(this.state).blocks)) {
       const lod = computePreferredBlockLod(pixelWidth, range, block);
       if (lod && !block.lods[lod]) {
         block.lods[lod] = {
@@ -207,31 +242,31 @@ export class TimelineStateManager {
           tracks: [],
           lodId: lod,
         };
-        promises.push(this.fetchBlockSpansAsync(block, lod));
+        promises.push(this.fetchBlockSpans(block, lod));
       }
     }
     await Promise.all(promises);
   }
 
-  async fetchBlockSpansAsync(block: ThreadBlock, lodToFetch: number) {
+  async fetchBlockSpans(block: ThreadBlock, lodToFetch: number) {
     if (!this.client) {
       log.error("no client in fetchBlockSpans");
       return;
     }
     const streamId = block.blockDefinition.streamId;
-    const process = this.state.value.findStreamProcess(streamId);
+    const process = get(this.state).findStreamProcess(streamId);
     if (!process) {
       throw new Error(`Process ${streamId} not found`);
     }
     block.lods[lodToFetch].state = LODState.Requested;
     const blockId = block.blockDefinition.blockId;
-    await loadWrapAsync(async () => {
+    await loadWrap(async () => {
       await this.semaphore.acquire();
       try {
         await this.client!.block_spans({
           blockId: blockId,
           process,
-          stream: this.state.value.threads[streamId].streamInfo,
+          stream: get(this.state).threads[streamId].streamInfo,
           lodId: lodToFetch,
         }).then(
           (o) => this.onLodReceived(o),

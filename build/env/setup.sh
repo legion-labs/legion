@@ -19,7 +19,6 @@ exit_code=0
 if [[ $MONOREPO_DOCKER_REGISTRY ]] ; then
     IMAGE="$MONOREPO_DOCKER_REGISTRY/$IMAGE_NAME:$IMAGE_TAG"
     echo "Using image $IMAGE"
-    aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin $MONOREPO_DOCKER_REGISTRY
     PUSH=0
     if [[ $IMAGE_TAG == "latest" ]]; then
         echo "Building image $IMAGE"
@@ -39,7 +38,6 @@ if [[ $MONOREPO_DOCKER_REGISTRY ]] ; then
     fi
     if [[ $PUSH -eq 1 ]]; then
         # we login again here in case our password expired, since the build step takes around 20min
-        aws ecr get-login-password --region ca-central-1 | docker login --username AWS --password-stdin $MONOREPO_DOCKER_REGISTRY
         docker push "$IMAGE"
         exit_code=$?
     fi

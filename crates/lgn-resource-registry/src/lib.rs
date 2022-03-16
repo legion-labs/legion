@@ -66,6 +66,8 @@ impl ResourceRegistryPlugin {
         let selection_manager = world.get_resource::<Arc<SelectionManager>>().unwrap();
 
         let transaction_manager = async_rt.block_on(async move {
+            sample_data_compiler::raw_loader::build_offline(&project_dir, false).await;
+
             let project = {
                 if let Ok(project) = Project::open(&project_dir).await {
                     project
@@ -102,17 +104,6 @@ impl ResourceRegistryPlugin {
                 selection_manager.clone(),
             )))
         });
-
-        {
-            let async_rt = world
-                .get_resource::<TokioAsyncRuntime>()
-                .expect("async plugin did not provide tokio runtime");
-            let transaction_manager = transaction_manager.clone();
-            async_rt.start_detached(async move {
-                let mut transaction_manager = transaction_manager.lock().await;
-                transaction_manager.load_all_resources().await;
-            });
-        }
 
         world.insert_resource(transaction_manager);
     }

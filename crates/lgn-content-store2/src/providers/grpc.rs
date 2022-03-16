@@ -12,6 +12,7 @@ use http_body::Body;
 use lgn_content_store_proto::{
     content_store_client::ContentStoreClient, read_content_response::Content,
     GetContentWriterRequest, GetContentWriterResponse, ReadContentRequest, ReadContentResponse,
+    RegisterAliasRequest, RegisterAliasResponse, ResolveAliasRequest, ResolveAliasResponse,
     WriteContentRequest, WriteContentResponse,
 };
 use lgn_online::authentication::UserInfo;
@@ -25,8 +26,8 @@ use crate::{
     traits::{
         get_content_readers_impl, ContentAddressProvider, ContentReaderExt, ContentWriterExt,
     },
-    ContentAsyncRead, ContentAsyncWrite, ContentProvider, ContentReader, ContentWriter, Error,
-    Identifier, Result,
+    AliasProvider, AliasRegisterer, AliasResolver, ContentAsyncRead, ContentAsyncWrite,
+    ContentProvider, ContentReader, ContentWriter, Error, Identifier, Result,
 };
 
 use super::{Uploader, UploaderImpl};
@@ -52,6 +53,71 @@ where
         let buf_size = 2 * 1024 * 1024;
 
         Self { client, buf_size }
+    }
+}
+
+#[async_trait]
+impl<C> AliasResolver for GrpcProvider<C>
+where
+    C: tonic::client::GrpcService<tonic::body::BoxBody> + Send,
+    C::ResponseBody: Body + Send + 'static,
+    C::Error: Into<StdError>,
+    C::Future: Send + 'static,
+    <C::ResponseBody as Body>::Error: Into<StdError> + Send,
+{
+    async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
+        let req = lgn_content_store_proto::ResolveAliasRequest {
+            key_space: key_space.to_string(),
+            key: key.to_string(),
+        };
+
+        let resp = self
+            .client
+            .lock()
+            .await
+            .resolve_alias(req)
+            .await
+            .map_err(|err| anyhow::anyhow!("gRPC request failed: {}", err))?
+            .into_inner();
+
+        if resp.id.is_empty() {
+            Err(Error::NotFound)
+        } else {
+            resp.id.parse()
+        }
+    }
+}
+
+#[async_trait]
+impl<C> AliasRegisterer for GrpcProvider<C>
+where
+    C: tonic::client::GrpcService<tonic::body::BoxBody> + Send,
+    C::ResponseBody: Body + Send + 'static,
+    C::Error: Into<StdError>,
+    C::Future: Send + 'static,
+    <C::ResponseBody as Body>::Error: Into<StdError> + Send,
+{
+    async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
+        let req = lgn_content_store_proto::RegisterAliasRequest {
+            key_space: key_space.to_string(),
+            key: key.to_string(),
+            id: id.to_string(),
+        };
+
+        let resp = self
+            .client
+            .lock()
+            .await
+            .register_alias(req)
+            .await
+            .map_err(|err| anyhow::anyhow!("gRPC request failed: {}", err))?
+            .into_inner();
+
+        if resp.newly_registered {
+            Ok(())
+        } else {
+            Err(Error::AlreadyExists)
+        }
     }
 }
 
@@ -372,9 +438,84 @@ impl<Provider, AddressProvider> GrpcService<Provider, AddressProvider> {
 impl<Provider, AddressProvider> lgn_content_store_proto::content_store_server::ContentStore
     for GrpcService<Provider, AddressProvider>
 where
-    Provider: ContentProvider + Send + Sync + 'static,
+    Provider: AliasProvider + ContentProvider + Send + Sync + 'static,
     AddressProvider: ContentAddressProvider + Send + Sync + 'static,
 {
+    async fn resolve_alias(
+        &self,
+        request: Request<ResolveAliasRequest>,
+    ) -> Result<Response<ResolveAliasResponse>, tonic::Status> {
+        let user_info = request.extensions().get::<UserInfo>().cloned();
+
+        let request = request.into_inner();
+
+        let key_space = request.key_space;
+        let key = request.key;
+
+        if let Some(user_info) = user_info {
+            info!(
+                "Received resolve_alias request for {}/{} from user {}",
+                key_space,
+                key,
+                user_info.username()
+            );
+        }
+
+        Ok(Response::new(ResolveAliasResponse {
+            id: match self.provider.resolve_alias(&key_space, &key).await {
+                Ok(id) => id.to_string(),
+                Err(Error::NotFound) => "".to_string(),
+                Err(err) => {
+                    return Err(tonic::Status::new(
+                        tonic::Code::Internal,
+                        format!("failed to resolve alias: {}", err),
+                    ))
+                }
+            },
+        }))
+    }
+
+    async fn register_alias(
+        &self,
+        request: Request<RegisterAliasRequest>,
+    ) -> Result<Response<RegisterAliasResponse>, tonic::Status> {
+        let user_info = request.extensions().get::<UserInfo>().cloned();
+
+        let request = request.into_inner();
+
+        let key_space = request.key_space;
+        let key = request.key;
+        let id: Identifier = request.id.parse().map_err(|err| {
+            tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                format!("failed to parse identifier: {}", err),
+            )
+        })?;
+
+        if let Some(user_info) = user_info {
+            info!(
+                "Received register_alias request for {}/{} as {} from user {}",
+                key_space,
+                key,
+                id,
+                user_info.username()
+            );
+        }
+
+        Ok(Response::new(RegisterAliasResponse {
+            newly_registered: match self.provider.register_alias(&key_space, &key, &id).await {
+                Ok(()) => true,
+                Err(Error::AlreadyExists) => false,
+                Err(err) => {
+                    return Err(tonic::Status::new(
+                        tonic::Code::Internal,
+                        format!("failed to register alias: {}", err),
+                    ))
+                }
+            },
+        }))
+    }
+
     async fn read_content(
         &self,
         request: Request<ReadContentRequest>,

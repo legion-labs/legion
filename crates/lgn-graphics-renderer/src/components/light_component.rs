@@ -6,7 +6,7 @@ use lgn_transform::components::Transform;
 use crate::{
     cgen::cgen_type::{DirectionalLight, OmniDirectionalLight, SpotLight},
     debug_display::DebugDisplay,
-    egui::egui_plugin::Egui,
+    egui::Egui,
     lighting::LightingManager,
     resources::{DefaultMeshType, UniformGPUDataUpdater},
     Renderer, UP_VECTOR,

@@ -8,12 +8,12 @@
   import StatusBar from "@lgn/web-client/src/components/StatusBar.svelte";
   import { getAllResources } from "@/api";
   import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
-  import currentResource from "@/stores/currentResource";
-  import HierarchyTreeOrchestrator from "@/stores/hierarchyTree";
+  import currentResource from "@/orchestrators/currentResource";
+  import { createHierarchyTreeOrchestrator } from "@/orchestrators/hierarchyTree";
   import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
   import contextMenu from "@/stores/contextMenu";
   import allResourcesStore from "@/stores/allResources";
-  import viewportOrchestrator from "@/stores/viewport";
+  import viewportOrchestrator from "@/orchestrators/viewport";
   import { onMount } from "svelte";
   import authStatus from "@/stores/authStatus";
   import AuthModal from "@/components/AuthModal.svelte";
@@ -22,6 +22,12 @@
   import ResourceBrowser from "@/components/ResourceBrowser.svelte";
   import modal from "@/stores/modal";
   import type { Entry } from "@/lib/hierarchyTree";
+
+  // notifications.push(Symbol.for("resource-renaming-error"), {
+  //       type: "error",
+  //       title: "Resources",
+  //       message: "An error occured while renaming the resource",
+  //     });
 
   const { data: currentResourceData } = currentResource;
 
@@ -32,7 +38,7 @@
   } = allResourcesStore;
 
   const resourceEntriesOrchestrator =
-    new HierarchyTreeOrchestrator<ResourceDescription>();
+    createHierarchyTreeOrchestrator<ResourceDescription>();
 
   const {
     currentlyRenameEntry: currentlyRenameResourceEntry,

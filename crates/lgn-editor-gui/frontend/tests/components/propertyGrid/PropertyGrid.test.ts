@@ -1,4 +1,4 @@
-import currentResource from "@/stores/currentResource";
+import currentResource from "@/orchestrators/currentResource";
 import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
 import { cleanup } from "@testing-library/svelte";
 import { render } from "@testing-library/svelte";

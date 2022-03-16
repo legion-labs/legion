@@ -17,7 +17,7 @@ use std::sync::Arc;
 #[allow(unused_imports)]
 use cgen::*;
 
-mod labels;
+pub mod labels;
 use components::MaterialComponent;
 use gpu_renderer::{GpuInstanceEvent, GpuInstanceManager, RenderElement};
 pub use labels::*;
@@ -35,7 +35,7 @@ pub use render_context::*;
 pub mod resources;
 use resources::{
     DescriptorHeapManager, GpuDataPlugin, GpuEntityColorManager, GpuEntityTransformManager,
-    GpuMaterialManager, GpuPickingDataManager, ModelManager, PersistentDescriptorSetManager,
+    GpuPickingDataManager, MaterialManager, ModelManager, PersistentDescriptorSetManager,
     PipelineManager, TextureManager,
 };
 
@@ -60,7 +60,7 @@ use crate::{
         debug_display_lights, ui_lights, update_lights, ManipulatorComponent, PickedComponent,
         RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces,
     },
-    egui::egui_plugin::{Egui, EguiPlugin},
+    egui::{egui_plugin::EguiPlugin, Egui},
     gpu_renderer::GpuInstanceVas,
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingIdContext, PickingManager, PickingPlugin},
@@ -76,8 +76,10 @@ use lgn_transform::components::GlobalTransform;
 use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 
 use crate::debug_display::DebugDisplay;
+
 use crate::resources::{
-    MissingVisualTracker, SharedResourcesManager, TextureResourceManager, UniformGPUDataUpdater,
+    ui_renderer_options, MissingVisualTracker, RendererOptions, SharedResourcesManager,
+    UniformGPUDataUpdater,
 };
 
 use crate::{
@@ -92,21 +94,7 @@ pub const UP_VECTOR: Vec3 = Vec3::Y;
 pub const DOWN_VECTOR: Vec3 = const_vec3!([0_f32, -1_f32, 0_f32]);
 
 #[derive(Default)]
-pub struct RendererPlugin {
-    // tbd: move in RendererOptions
-    _egui_enabled: bool,
-    // tbd: remove
-    runs_dynamic_systems: bool,
-}
-
-impl RendererPlugin {
-    pub fn new(egui_enabled: bool, runs_dynamic_systems: bool) -> Self {
-        Self {
-            _egui_enabled: egui_enabled,
-            runs_dynamic_systems,
-        }
-    }
-}
+pub struct RendererPlugin {}
 
 impl Plugin for RendererPlugin {
     fn build(&self, app: &mut App) {
@@ -122,11 +110,8 @@ impl Plugin for RendererPlugin {
         //
         // Init in dependency order
         //
-        let mut renderer = Renderer::new(NUM_RENDER_FRAMES);
+        let renderer = Renderer::new(NUM_RENDER_FRAMES);
         let cgen_registry = Arc::new(cgen::initialize(renderer.device_context()));
-
-        renderer.begin_frame();
-
         let descriptor_heap_manager =
             DescriptorHeapManager::new(NUM_RENDER_FRAMES, renderer.device_context());
         let mut pipeline_manager = PipelineManager::new(renderer.device_context());
@@ -136,19 +121,14 @@ impl Plugin for RendererPlugin {
         let mut persistent_descriptor_set_manager = PersistentDescriptorSetManager::new(
             renderer.device_context(),
             &descriptor_heap_manager,
+            NUM_RENDER_FRAMES,
         );
-        let mut texture_manager = TextureManager::new(renderer.device_context());
-        let texture_resource_manager = TextureResourceManager::new();
+        let texture_manager = TextureManager::new(renderer.device_context());
 
-        let shared_resources_manager = SharedResourcesManager::new(
-            &renderer,
-            &mut texture_manager,
-            &mut persistent_descriptor_set_manager,
-        );
+        let shared_resources_manager =
+            SharedResourcesManager::new(&renderer, &mut persistent_descriptor_set_manager);
 
         let mesh_renderer = MeshRenderer::new(renderer.static_buffer_allocator());
-
-        renderer.end_frame();
 
         //
         // Add renderer stages first. It is needed for the plugins.
@@ -188,15 +168,15 @@ impl Plugin for RendererPlugin {
         app.insert_resource(persistent_descriptor_set_manager);
         app.insert_resource(shared_resources_manager);
         app.insert_resource(texture_manager);
-        app.insert_resource(texture_resource_manager);
         app.insert_resource(mesh_renderer);
+        app.init_resource::<RendererOptions>();
 
         // Init ecs
         TextureManager::init_ecs(app);
-        TextureResourceManager::init_ecs(app);
         MeshRenderer::init_ecs(app);
         ModelManager::init_ecs(app);
         MissingVisualTracker::init_ecs(app);
+        PersistentDescriptorSetManager::init_ecs(app);
 
         // todo: convert?
         app.add_plugin(GpuDataPlugin::default());
@@ -221,6 +201,9 @@ impl Plugin for RendererPlugin {
         //
         // Stage PostUpdate
         //
+
+        // TODO (vbdd): CoreStage::PostUpdate is probably invalid. Anyway, this will change soon.
+
         app.add_system_to_stage(CoreStage::PostUpdate, on_window_created.exclusive_system());
         app.add_system_to_stage(CoreStage::PostUpdate, on_window_resized.exclusive_system());
         app.add_system_to_stage(
@@ -231,9 +214,8 @@ impl Plugin for RendererPlugin {
         //
         // Stage Prepare
         //
-        if self.runs_dynamic_systems {
-            app.add_system_to_stage(RenderStage::Prepare, ui_lights);
-        }
+        app.add_system_to_stage(RenderStage::Prepare, ui_renderer_options);
+        app.add_system_to_stage(RenderStage::Prepare, ui_lights);
         app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
         app.add_system_to_stage(RenderStage::Prepare, update_gpu_instances);
         app.add_system_to_stage(RenderStage::Prepare, update_lights);
@@ -364,7 +346,7 @@ fn update_gpu_instances(
     mut instance_manager: ResMut<'_, GpuInstanceManager>,
     model_manager: Res<'_, ModelManager>,
     mesh_manager: Res<'_, MeshManager>,
-    material_manager: Res<'_, GpuMaterialManager>,
+    material_manager: Res<'_, MaterialManager>,
     color_manager: Res<'_, GpuEntityColorManager>,
     transform_manager: Res<'_, GpuEntityTransformManager>,
     mut event_writer: EventWriter<'_, '_, GpuInstanceEvent>,
@@ -398,7 +380,7 @@ fn update_gpu_instances(
 
         instance_color.set_color_blend(visual.color_blend.into());
 
-        color_manager.update_gpu_data(&entity, 0, &[instance_color], &mut updater);
+        color_manager.update_gpu_data(&entity, 0, &instance_color, &mut updater);
 
         let mut material_key = None;
         if let Some(material) = mat_component {
@@ -409,7 +391,7 @@ fn update_gpu_instances(
 
         let mut picking_data = cgen::cgen_type::GpuInstancePickingData::default();
         picking_data.set_picking_id(picking_context.aquire_picking_id(entity).into());
-        picking_data_manager.update_gpu_data(&entity, 0, &[picking_data], &mut updater);
+        picking_data_manager.update_gpu_data(&entity, 0, &picking_data, &mut updater);
 
         let (model_meta_data, ready) = model_manager.get_model_meta_data(visual);
         if !ready {
@@ -427,7 +409,7 @@ fn update_gpu_instances(
                 material_va: if mesh.material_id != u32::MAX {
                     mesh.material_id
                 } else {
-                    material_manager.va_for_index(material_key, 0) as u32
+                    material_manager.gpu_data().va_for_index(material_key, 0) as u32
                 },
                 color_va: color_manager.va_for_index(Some(entity), 0) as u32,
                 transform_va: transform_manager.va_for_index(Some(entity), 0) as u32,
@@ -445,7 +427,7 @@ fn update_gpu_instances(
                 if mesh.material_id != u32::MAX {
                     mesh.material_index
                 } else {
-                    material_manager.id_for_index(material_key, 0)
+                    material_manager.gpu_data().id_for_index(material_key, 0)
                 },
                 RenderElement::new(gpu_instance_id, mesh.mesh_id as u32, &mesh_manager),
             ));

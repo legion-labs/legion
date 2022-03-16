@@ -59,9 +59,6 @@ struct Args {
     /// Root object to load, usually a world
     #[clap(long)]
     root: Option<String>,
-    #[clap(long)]
-    egui: bool,
-
     /// If supplied, starts with a window display, and collects input locally
     #[cfg(feature = "standalone")]
     #[clap(long)]
@@ -152,15 +149,15 @@ pub fn build_runtime(
         .add_plugin(GenericDataPlugin::default())
         .add_plugin(ScriptingPlugin::default())
         .add_plugin(SampleDataPlugin::default())
+        .add_plugin(GraphicsPlugin::default())
+        .add_plugin(InputPlugin::default())
+        .add_plugin(RendererPlugin::default())
         .insert_resource(PhysicsSettings::new(
             enable_visual_debugger,
             length_tolerance,
             speed_tolerance,
         ))
-        .add_plugin(PhysicsPlugin::default())
-        .add_plugin(GraphicsPlugin::default())
-        .add_plugin(InputPlugin::default())
-        .add_plugin(RendererPlugin::new(args.egui, true));
+        .add_plugin(PhysicsPlugin::default());
 
     #[cfg(feature = "standalone")]
     if standalone {

@@ -21,7 +21,7 @@ use lgn_data_offline::{
     ResourcePathId,
 };
 use lgn_data_runtime::{
-    manifest::Manifest, AssetRegistryOptions, Resource, ResourceId, ResourceTypeAndId,
+    manifest::Manifest, AssetRegistryOptions, Component, Resource, ResourceId, ResourceTypeAndId,
 };
 use lgn_data_transaction::BuildManager;
 use lgn_graphics_renderer::components::Mesh;
@@ -162,12 +162,272 @@ fn clean_folders(project_dir: impl AsRef<Path>) {
     clean("project.index");
 }
 
+async fn create_offline_data(
+    project: &mut Project,
+    resource_registry: &Arc<Mutex<ResourceRegistry>>,
+) -> Vec<ResourceTypeAndId> {
+    let cube_model_id = create_offline_model(
+        project,
+        resource_registry,
+        "c26b19b2-e80a-4db5-a53c-ba24492d8015",
+        "/scene/models/cube.mod",
+        Mesh::new_cube(0.5),
+    )
+    .await;
+
+    let sphere_model_id = create_offline_model(
+        project,
+        resource_registry,
+        "53db2f32-ce66-4e01-b06f-960aaa7712e4",
+        "/scene/models/sphere.mod",
+        Mesh::new_sphere(0.25, 64, 64),
+    )
+    .await;
+
+    let pyramid_model_id = create_offline_model(
+        project,
+        resource_registry,
+        "5e0d46c5-78da-4c5e-8204-a2c859ec5c09",
+        "/scene/models/pyramid.mod",
+        Mesh::new_pyramid(1.0, 0.5),
+    )
+    .await;
+
+    let ground_id = create_offline_entity(
+        project,
+        resource_registry,
+        "8859bf63-f187-4aa3-afd5-425130c7ba04",
+        "/scene/ground.ent",
+        vec![
+            Box::new(Transform {
+                position: (0_f32, -1_f32, 0_f32).into(),
+                rotation: Quat::from_rotation_x(-0.01_f32),
+                scale: (12_f32, 0.1_f32, 12_f32).into(),
+            }),
+            Box::new(Visual {
+                renderable_geometry: Some(cube_model_id.clone()),
+                color: (0x10, 0x10, 0x55).into(),
+                ..Visual::default()
+            }),
+            Box::new(PhysicsRigidBox {
+                actor_type: RigidActorType::Static,
+                half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
+            }),
+        ],
+        vec![],
+    )
+    .await;
+
+    let box_a_id = create_offline_entity(
+        project,
+        resource_registry,
+        "8e04418d-ca9a-4e4a-a0ea-68e74d8c10d0",
+        "/scene/box-a.ent",
+        vec![
+            Box::new(Transform {
+                position: (-1_f32, 0.1_f32, 1_f32).into(),
+                rotation: Quat::from_rotation_z(0.3_f32),
+                ..Transform::default()
+            }),
+            Box::new(Visual {
+                renderable_geometry: Some(cube_model_id.clone()),
+                color: (0xFF, 0xFF, 0x20).into(),
+                ..Visual::default()
+            }),
+            Box::new(PhysicsRigidBox {
+                actor_type: RigidActorType::Dynamic,
+                half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
+            }),
+        ],
+        vec![],
+    )
+    .await;
+
+    let box_b_id = create_offline_entity(
+        project,
+        resource_registry,
+        "b355fa97-97ee-44f9-afbf-1c2920ce5064",
+        "/scene/box-b.ent",
+        vec![
+            Box::new(Transform {
+                position: (-1_f32, 1.3_f32, 1.2_f32).into(),
+                rotation: Quat::from_rotation_x(-0.2_f32),
+                ..Transform::default()
+            }),
+            Box::new(Visual {
+                renderable_geometry: Some(cube_model_id.clone()),
+                color: (0xFF, 0x20, 0xFF).into(),
+                ..Visual::default()
+            }),
+            Box::new(PhysicsRigidBox {
+                actor_type: RigidActorType::Dynamic,
+                half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
+            }),
+        ],
+        vec![],
+    )
+    .await;
+
+    let box_c_id = create_offline_entity(
+        project,
+        resource_registry,
+        "6715d493-d7d4-4155-bc18-0e1795c53580",
+        "/scene/box-c.ent",
+        vec![
+            Box::new(Transform {
+                position: (-0.5_f32, 0_f32, 0.5_f32).into(),
+                rotation: Quat::from_rotation_y(1_f32),
+                ..Transform::default()
+            }),
+            Box::new(Visual {
+                renderable_geometry: Some(cube_model_id.clone()),
+                color: (0x20, 0xFF, 0xFF).into(),
+                ..Visual::default()
+            }),
+            Box::new(PhysicsRigidBox {
+                actor_type: RigidActorType::Dynamic,
+                half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
+            }),
+        ],
+        vec![],
+    )
+    .await;
+
+    let ball_a_id = create_offline_entity(
+        project,
+        resource_registry,
+        "4dd86281-c3d0-4040-aa59-b3c6cc84eb83",
+        "/scene/ball-a.ent",
+        vec![
+            Box::new(Transform {
+                position: (0.2_f32, 2.3_f32, 0.5_f32).into(),
+                ..Transform::default()
+            }),
+            Box::new(Visual {
+                renderable_geometry: Some(sphere_model_id.clone()),
+                color: (0x20, 0x4F, 0xFF).into(),
+                ..Visual::default()
+            }),
+            Box::new(PhysicsRigidSphere {
+                actor_type: RigidActorType::Dynamic,
+                radius: 0.25_f32,
+            }),
+        ],
+        vec![],
+    )
+    .await;
+
+    let pyramid_id = create_offline_entity(
+        project,
+        resource_registry,
+        "9ffa97ef-3ae1-4859-aaeb-91f7268cad50",
+        "/scene/pyramid.ent",
+        vec![
+            Box::new(Transform {
+                position: (0_f32, 0.6_f32, 0_f32).into(),
+                rotation: Quat::from_rotation_z(1_f32),
+                ..Transform::default()
+            }),
+            Box::new(Visual {
+                renderable_geometry: Some(pyramid_model_id.clone()),
+                color: (0x00, 0x00, 0x00).into(),
+                ..Visual::default()
+            }),
+            Box::new(PhysicsRigidConvexMesh {
+                actor_type: RigidActorType::Dynamic,
+                vertices: vec![
+                    Vec3::new(0.5, -0.5, -0.5),
+                    Vec3::new(0.5, -0.5, 0.5),
+                    Vec3::new(-0.5, -0.5, -0.5),
+                    Vec3::new(-0.5, -0.5, 0.5),
+                    Vec3::new(0.0, 0.0, 0.0),
+                ],
+                ..PhysicsRigidConvexMesh::default()
+            }),
+        ],
+        vec![],
+    )
+    .await;
+
+    let light_id = create_offline_entity(
+        project,
+        resource_registry,
+        "85701c5f-f9f8-4ca0-9111-8243c4ea2cd6",
+        "/scene/light.ent",
+        vec![
+            Box::new(Transform {
+                position: (0_f32, 10_f32, 0_f32).into(),
+                ..Transform::default()
+            }),
+            Box::new(Light {
+                light_type: LightType::Directional,
+                color: (0xFF, 0xFF, 0xEF).into(),
+                radiance: 12_f32,
+                enabled: true,
+                ..Light::default()
+            }),
+        ],
+        vec![],
+    )
+    .await;
+
+    let scene_id = create_offline_entity(
+        project,
+        resource_registry,
+        "09f7380d-51b2-4061-9fe4-52ceccce55e7",
+        "/scene.ent",
+        vec![],
+        vec![
+            box_a_id, box_b_id, box_c_id, ball_a_id, pyramid_id, ground_id, light_id,
+        ],
+    )
+    .await;
+
+    vec![scene_id.source_resource()]
+}
+
+async fn create_offline_entity(
+    project: &mut Project,
+    resource_registry: &Arc<Mutex<ResourceRegistry>>,
+    resource_id: &str,
+    resource_path: &str,
+    components: Vec<Box<dyn Component>>,
+    children: Vec<ResourcePathId>,
+) -> ResourcePathId {
+    let mut resources = resource_registry.lock().await;
+    let id = ResourceTypeAndId {
+        kind: sample_data::offline::Entity::TYPE,
+        id: ResourceId::from_str(resource_id).unwrap(),
+    };
+    let handle = resources.new_resource(id.kind).unwrap();
+
+    let entity = handle
+        .get_mut::<sample_data::offline::Entity>(&mut resources)
+        .unwrap();
+    entity.components.extend(components.into_iter());
+    entity.children.extend(children.into_iter());
+
+    project
+        .add_resource_with_id(
+            resource_path.into(),
+            sample_data::offline::Entity::TYPENAME,
+            id.kind,
+            id.id,
+            handle,
+            &mut resources,
+        )
+        .await
+        .unwrap();
+    let path: ResourcePathId = id.into();
+    path.push(sample_data::runtime::Entity::TYPE)
+}
+
 async fn create_offline_model(
     project: &mut Project,
     resource_registry: &Arc<Mutex<ResourceRegistry>>,
     resource_id: &str,
-    mesh: Mesh,
     resource_path: &str,
+    mesh: Mesh,
 ) -> ResourcePathId {
     let mut resources = resource_registry.lock().await;
     let id = ResourceTypeAndId {
@@ -206,362 +466,4 @@ async fn create_offline_model(
         .unwrap();
     let path: ResourcePathId = id.into();
     path.push(lgn_graphics_data::runtime::Model::TYPE)
-}
-
-async fn create_offline_data(
-    project: &mut Project,
-    resource_registry: &Arc<Mutex<ResourceRegistry>>,
-) -> Vec<ResourceTypeAndId> {
-    let cube_model_id = create_offline_model(
-        project,
-        resource_registry,
-        "c26b19b2-e80a-4db5-a53c-ba24492d8015",
-        Mesh::new_cube(0.5),
-        "/scene/models/cube.mod",
-    )
-    .await;
-
-    let sphere_model_id = create_offline_model(
-        project,
-        resource_registry,
-        "53db2f32-ce66-4e01-b06f-960aaa7712e4",
-        Mesh::new_sphere(0.25, 64, 64),
-        "/scene/models/sphere.mod",
-    )
-    .await;
-
-    let pyramid_model_id = create_offline_model(
-        project,
-        resource_registry,
-        "5e0d46c5-78da-4c5e-8204-a2c859ec5c09",
-        Mesh::new_pyramid(1.0, 0.5),
-        "/scene/models/pyramid.mod",
-    )
-    .await;
-
-    let ground_id = {
-        let mut resources = resource_registry.lock().await;
-        let id = ResourceTypeAndId {
-            kind: sample_data::offline::Entity::TYPE,
-            id: ResourceId::from_str("8859bf63-f187-4aa3-afd5-425130c7ba04").unwrap(),
-        };
-        let handle = resources.new_resource(id.kind).unwrap();
-
-        let entity = handle
-            .get_mut::<sample_data::offline::Entity>(&mut resources)
-            .unwrap();
-        entity.components.push(Box::new(Transform {
-            position: (0_f32, -1_f32, 0_f32).into(),
-            rotation: Quat::from_rotation_x(-0.01_f32),
-            scale: (12_f32, 0.1_f32, 12_f32).into(),
-        }));
-        entity.components.push(Box::new(Visual {
-            renderable_geometry: Some(cube_model_id.clone()),
-            color: (0x10, 0x10, 0x55).into(),
-            ..Visual::default()
-        }));
-        entity.components.push(Box::new(PhysicsRigidBox {
-            actor_type: RigidActorType::Static,
-            half_extents: (3_f32, 0.25_f32, 3_f32).into(),
-        }));
-
-        project
-            .add_resource_with_id(
-                "/scene/ground.ent".into(),
-                sample_data::offline::Entity::TYPENAME,
-                id.kind,
-                id.id,
-                handle,
-                &mut resources,
-            )
-            .await
-            .unwrap();
-        let path: ResourcePathId = id.into();
-        path.push(sample_data::runtime::Entity::TYPE)
-    };
-
-    let box_a_id = {
-        let mut resources = resource_registry.lock().await;
-        let id = ResourceTypeAndId {
-            kind: sample_data::offline::Entity::TYPE,
-            id: ResourceId::from_str("8e04418d-ca9a-4e4a-a0ea-68e74d8c10d0").unwrap(),
-        };
-        let handle = resources.new_resource(id.kind).unwrap();
-
-        let entity = handle
-            .get_mut::<sample_data::offline::Entity>(&mut resources)
-            .unwrap();
-        entity.components.push(Box::new(Transform {
-            position: (-1_f32, 0.1_f32, 1_f32).into(),
-            rotation: Quat::from_rotation_z(0.3_f32),
-            ..Transform::default()
-        }));
-        entity.components.push(Box::new(Visual {
-            renderable_geometry: Some(cube_model_id.clone()),
-            color: (0xFF, 0xFF, 0x20).into(),
-            ..Visual::default()
-        }));
-        entity.components.push(Box::new(PhysicsRigidBox {
-            actor_type: RigidActorType::Dynamic,
-            half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
-        }));
-
-        project
-            .add_resource_with_id(
-                "/scene/box-a.ent".into(),
-                sample_data::offline::Entity::TYPENAME,
-                id.kind,
-                id.id,
-                handle,
-                &mut resources,
-            )
-            .await
-            .unwrap();
-        let path: ResourcePathId = id.into();
-        path.push(sample_data::runtime::Entity::TYPE)
-    };
-
-    let box_b_id = {
-        let mut resources = resource_registry.lock().await;
-        let id = ResourceTypeAndId {
-            kind: sample_data::offline::Entity::TYPE,
-            id: ResourceId::from_str("b355fa97-97ee-44f9-afbf-1c2920ce5064").unwrap(),
-        };
-        let handle = resources.new_resource(id.kind).unwrap();
-
-        let entity = handle
-            .get_mut::<sample_data::offline::Entity>(&mut resources)
-            .unwrap();
-        entity.components.push(Box::new(Transform {
-            position: (-1_f32, 1.3_f32, 1.2_f32).into(),
-            rotation: Quat::from_rotation_x(-0.2_f32),
-            ..Transform::default()
-        }));
-        entity.components.push(Box::new(Visual {
-            renderable_geometry: Some(cube_model_id.clone()),
-            color: (0xFF, 0x20, 0xFF).into(),
-            ..Visual::default()
-        }));
-        entity.components.push(Box::new(PhysicsRigidBox {
-            actor_type: RigidActorType::Dynamic,
-            half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
-        }));
-
-        project
-            .add_resource_with_id(
-                "/scene/box-b.ent".into(),
-                sample_data::offline::Entity::TYPENAME,
-                id.kind,
-                id.id,
-                handle,
-                &mut resources,
-            )
-            .await
-            .unwrap();
-        let path: ResourcePathId = id.into();
-        path.push(sample_data::runtime::Entity::TYPE)
-    };
-
-    let box_c_id = {
-        let mut resources = resource_registry.lock().await;
-        let id = ResourceTypeAndId {
-            kind: sample_data::offline::Entity::TYPE,
-            id: ResourceId::from_str("6715d493-d7d4-4155-bc18-0e1795c53580").unwrap(),
-        };
-        let handle = resources.new_resource(id.kind).unwrap();
-
-        let entity = handle
-            .get_mut::<sample_data::offline::Entity>(&mut resources)
-            .unwrap();
-        entity.components.push(Box::new(Transform {
-            position: (-0.5_f32, 0_f32, 0.5_f32).into(),
-            rotation: Quat::from_rotation_y(1_f32),
-            ..Transform::default()
-        }));
-        entity.components.push(Box::new(Visual {
-            renderable_geometry: Some(cube_model_id.clone()),
-            color: (0x20, 0xFF, 0xFF).into(),
-            ..Visual::default()
-        }));
-        entity.components.push(Box::new(PhysicsRigidBox {
-            actor_type: RigidActorType::Dynamic,
-            half_extents: (0.25_f32, 0.25_f32, 0.25_f32).into(),
-        }));
-
-        project
-            .add_resource_with_id(
-                "/scene/box-c.ent".into(),
-                sample_data::offline::Entity::TYPENAME,
-                id.kind,
-                id.id,
-                handle,
-                &mut resources,
-            )
-            .await
-            .unwrap();
-        let path: ResourcePathId = id.into();
-        path.push(sample_data::runtime::Entity::TYPE)
-    };
-
-    let ball_a_id = {
-        let mut resources = resource_registry.lock().await;
-        let id = ResourceTypeAndId {
-            kind: sample_data::offline::Entity::TYPE,
-            id: ResourceId::from_str("4dd86281-c3d0-4040-aa59-b3c6cc84eb83").unwrap(),
-        };
-        let handle = resources.new_resource(id.kind).unwrap();
-
-        let entity = handle
-            .get_mut::<sample_data::offline::Entity>(&mut resources)
-            .unwrap();
-        entity.components.push(Box::new(Transform {
-            position: (0.2_f32, 2.3_f32, 0.5_f32).into(),
-            ..Transform::default()
-        }));
-        entity.components.push(Box::new(Visual {
-            renderable_geometry: Some(sphere_model_id.clone()),
-            color: (0x20, 0x4F, 0xFF).into(),
-            ..Visual::default()
-        }));
-        entity.components.push(Box::new(PhysicsRigidSphere {
-            actor_type: RigidActorType::Dynamic,
-            radius: 0.25_f32,
-        }));
-
-        project
-            .add_resource_with_id(
-                "/scene/ball-a.ent".into(),
-                sample_data::offline::Entity::TYPENAME,
-                id.kind,
-                id.id,
-                handle,
-                &mut resources,
-            )
-            .await
-            .unwrap();
-        let path: ResourcePathId = id.into();
-        path.push(sample_data::runtime::Entity::TYPE)
-    };
-
-    let pyramid_id = {
-        let mut resources = resource_registry.lock().await;
-        let id = ResourceTypeAndId {
-            kind: sample_data::offline::Entity::TYPE,
-            id: ResourceId::from_str("9ffa97ef-3ae1-4859-aaeb-91f7268cad50").unwrap(),
-        };
-        let handle = resources.new_resource(id.kind).unwrap();
-
-        let entity = handle
-            .get_mut::<sample_data::offline::Entity>(&mut resources)
-            .unwrap();
-        entity.components.push(Box::new(Transform {
-            position: (0_f32, 0.6_f32, 0_f32).into(),
-            rotation: Quat::from_rotation_z(1_f32),
-            ..Transform::default()
-        }));
-        entity.components.push(Box::new(Visual {
-            renderable_geometry: Some(pyramid_model_id.clone()),
-            color: (0x00, 0x00, 0x00).into(),
-            ..Visual::default()
-        }));
-        entity.components.push(Box::new(PhysicsRigidConvexMesh {
-            actor_type: RigidActorType::Dynamic,
-            vertices: vec![
-                Vec3::new(0.5, -0.5, -0.5),
-                Vec3::new(0.5, -0.5, 0.5),
-                Vec3::new(-0.5, -0.5, -0.5),
-                Vec3::new(-0.5, -0.5, 0.5),
-                Vec3::new(0.0, 0.0, 0.0),
-            ],
-            ..PhysicsRigidConvexMesh::default()
-        }));
-
-        project
-            .add_resource_with_id(
-                "/scene/pyramid.ent".into(),
-                sample_data::offline::Entity::TYPENAME,
-                id.kind,
-                id.id,
-                handle,
-                &mut resources,
-            )
-            .await
-            .unwrap();
-        let path: ResourcePathId = id.into();
-        path.push(sample_data::runtime::Entity::TYPE)
-    };
-
-    let light_id = {
-        let mut resources = resource_registry.lock().await;
-        let id = ResourceTypeAndId {
-            kind: sample_data::offline::Entity::TYPE,
-            id: ResourceId::from_str("85701c5f-f9f8-4ca0-9111-8243c4ea2cd6").unwrap(),
-        };
-        let handle = resources.new_resource(id.kind).unwrap();
-
-        let entity = handle
-            .get_mut::<sample_data::offline::Entity>(&mut resources)
-            .unwrap();
-        entity.components.push(Box::new(Transform {
-            position: (0_f32, 10_f32, 0_f32).into(),
-            ..Transform::default()
-        }));
-        entity.components.push(Box::new(Light {
-            light_type: LightType::Directional,
-            color: (0xFF, 0xFF, 0xEF).into(),
-            radiance: 12_f32,
-            enabled: true,
-            ..Light::default()
-        }));
-
-        project
-            .add_resource_with_id(
-                "/scene/light.ent".into(),
-                sample_data::offline::Entity::TYPENAME,
-                id.kind,
-                id.id,
-                handle,
-                &mut resources,
-            )
-            .await
-            .unwrap();
-        let path: ResourcePathId = id.into();
-        path.push(sample_data::runtime::Entity::TYPE)
-    };
-
-    let scene_id = {
-        let mut resources = resource_registry.lock().await;
-        let id = ResourceTypeAndId {
-            kind: sample_data::offline::Entity::TYPE,
-            id: ResourceId::from_str("09f7380d-51b2-4061-9fe4-52ceccce55e7").unwrap(),
-        };
-        let handle = resources.new_resource(id.kind).unwrap();
-
-        let entity = handle
-            .get_mut::<sample_data::offline::Entity>(&mut resources)
-            .unwrap();
-
-        entity.children.push(box_a_id);
-        entity.children.push(box_b_id);
-        entity.children.push(box_c_id);
-        entity.children.push(ball_a_id);
-        entity.children.push(pyramid_id);
-        entity.children.push(ground_id);
-        entity.children.push(light_id);
-
-        project
-            .add_resource_with_id(
-                "/scene.ent".into(),
-                sample_data::offline::Entity::TYPENAME,
-                id.kind,
-                id.id,
-                handle,
-                &mut resources,
-            )
-            .await
-            .unwrap();
-        id
-    };
-
-    vec![scene_id]
 }

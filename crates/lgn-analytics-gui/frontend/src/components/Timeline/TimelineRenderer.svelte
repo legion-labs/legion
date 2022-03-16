@@ -1,7 +1,7 @@
 <script lang="ts">
   import { TimelineStateManager } from "@/lib/Timeline/TimelineStateManager";
   import { onMount } from "svelte";
-  import { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
+  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { BarLoader } from "svelte-loading-spinners";
   import TimelineDetails from "./TimelineDetails.svelte";
@@ -14,6 +14,7 @@
   import TimelineAction from "./TimelineAction.svelte";
   import TimelineDebug from "./TimelineDebug.svelte";
   import TimelineProcess from "./TimelineProcess.svelte";
+  import TimelineRange from "./TimelineRange.svelte";
   export let processId: string;
 
   type PanState = {
@@ -39,7 +40,7 @@
     loadingStore.reset();
     stateManager = new TimelineStateManager(processId);
     stateStore = stateManager.state;
-    await stateManager.initAsync(windowInnerWidth);
+    await stateManager.init(windowInnerWidth);
   });
 
   async function onZoom(event: WheelEvent) {
@@ -48,11 +49,20 @@
       return s;
     });
 
-    await stateManager.fetchLodsAsync(windowInnerWidth);
+    await stateManager.fetchLods(windowInnerWidth);
+  }
+
+  function isValidEvent(event: MouseEvent) {
+    return (
+      event.target instanceof HTMLCanvasElement ||
+      (event.target instanceof Element &&
+        event.target.classList.contains("timeline-item"))
+    );
   }
 
   function onMouseMove(event: MouseEvent) {
     if (
+      isValidEvent(event) &&
       RangeSelectionOnMouseMove(
         event,
         $stateStore.selectionState,
@@ -74,16 +84,12 @@
     if (event.buttons !== 1) {
       panState = undefined;
     } else if (!event.shiftKey) {
-      if (
-        event.target instanceof HTMLCanvasElement ||
-        (event.target instanceof Element &&
-          event.target.classList.contains("drag"))
-      ) {
+      if (isValidEvent(event)) {
         if (!panState) {
           panState = {
             beginMouseX: event.offsetX,
             beginMouseY: event.offsetY,
-            viewRange: stateStore.value.getViewRange(),
+            viewRange: $stateStore.getViewRange(),
           };
         }
 
@@ -138,8 +144,9 @@
 
 <div {style} class="main">
   {#if stateManager?.process && $stateStore.ready}
-    <div class="pb-1">
+    <div class="pb-1 flex flex-row items-center justify-between">
       <TimelineDetails process={stateManager?.process} />
+      <TimelineDebug {canvasWidth} store={stateStore} />
     </div>
   {/if}
 
@@ -160,19 +167,19 @@
         />
       {/each}
     {/if}
+    <TimelineRange {stateStore} width={canvasWidth} />
   </div>
-
-  {#if stateManager?.process && $stateStore.ready}
-    <div class="flex flex-row justify-between items-center pt-1 h-7 detail">
-      <TimelineAction
-        {processId}
-        process={stateManager.process}
-        timeRange={$stateStore.currentSelection}
-      />
-      <TimelineDebug {canvasWidth} store={stateStore} />
-    </div>
-  {/if}
 </div>
+
+{#if stateManager?.process && $stateStore.ready}
+  <div class="flex flex-row justify-between items-center pt-1 h-7 detail">
+    <TimelineAction
+      {processId}
+      process={stateManager.process}
+      timeRange={$stateStore.currentSelection}
+    />
+  </div>
+{/if}
 
 <style lang="postcss">
   .main {
@@ -182,7 +189,6 @@
 
   .canvas {
     max-height: calc(100vh - 150px);
-    /* overflow-y: scroll; */
     overflow-x: hidden;
     display: flex;
     flex-direction: column;

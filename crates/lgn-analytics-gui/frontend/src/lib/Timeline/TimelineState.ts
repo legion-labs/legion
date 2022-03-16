@@ -4,6 +4,7 @@ import { NewSelectionState, SelectionState } from "../time_range_selection";
 import { zoomHorizontalViewRange } from "../zoom";
 import { Thread } from "./Thread";
 import { ThreadBlock } from "./ThreadBlock";
+import { ProcessAsyncData } from "./ProcessAsyncData";
 
 export class TimelineState {
   minMs = Infinity;
@@ -12,6 +13,7 @@ export class TimelineState {
   blocks: Record<string, ThreadBlock> = {};
   eventCount = 0;
   processes: Process[] = [];
+  processAsyncData: Record<string, ProcessAsyncData> = {};
   scopes: Record<number, ScopeDesc> = {};
   ready = false;
   selectionState: SelectionState;

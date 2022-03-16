@@ -1,11 +1,8 @@
 import { Thread } from "./Thread";
 import { spanPixelHeight } from "./TimelineValues";
 
-export function getThreadCollapseStyle(thread: Thread, collapsed: boolean) {
+export function getThreadCollapseStyle(maxDepth: number, collapsed: boolean) {
   return collapsed
     ? `max-height:${spanPixelHeight}px`
-    : `height:${Math.max(
-        spanPixelHeight,
-        thread.maxDepth * spanPixelHeight
-      )}px`;
+    : `height:${Math.max(spanPixelHeight, maxDepth * spanPixelHeight)}px`;
 }

@@ -89,10 +89,11 @@ impl ResourcePathName {
             );
             self.0 = format!("/!{}{}", resource_id, new_path);
         } else if let Some(new_parent_id) = new_parent_id {
+            let relative_name = self.0.as_str().rsplit('/').next().unwrap_or("");
             self.0 = format!(
                 "/!{}{}",
                 new_parent_id,
-                new_path.unwrap_or_else(|| "".into())
+                new_path.unwrap_or_else(|| relative_name.into())
             );
         } else if let Some(new_path) = new_path {
             *self = new_path;

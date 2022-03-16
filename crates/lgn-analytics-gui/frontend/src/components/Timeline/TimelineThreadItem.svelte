@@ -2,7 +2,7 @@
   import { formatExecutionTime } from "@/lib/format";
   import { Thread } from "@/lib/Timeline/Thread";
   import { getThreadCollapseStyle } from "@/lib/Timeline/TimelineCollapse";
-  import { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
+  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { createEventDispatcher } from "svelte";
   import TimelineThread from "./TimelineThread.svelte";
   export let rootStartTime: number;
@@ -22,7 +22,7 @@
 
 <div
   class="flex items-start main"
-  style={getThreadCollapseStyle(thread, collapsed)}
+  style={getThreadCollapseStyle(thread.maxDepth, collapsed)}
 >
   <div
     class="thread px-1"
@@ -71,7 +71,7 @@
 
   .thread {
     @apply text-sm text-slate-400;
-    width: 170px;
+    width: var(--thread-item-length);
     overflow: hidden;
     cursor: pointer;
     background-color: #f0f0f0;

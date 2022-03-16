@@ -18,7 +18,7 @@
     BagResourceProperty,
     ResourceProperty,
   } from "@/lib/propertyGrid";
-  import currentResource from "@/stores/currentResource";
+  import currentResource from "@/orchestrators/currentResource";
   import log from "@lgn/web-client/src/lib/log";
   import { createEventDispatcher } from "svelte";
   import BooleanProperty from "./properties/BooleanProperty.svelte";
