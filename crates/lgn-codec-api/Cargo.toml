@@ -10,9 +10,15 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 ash = { version = ">= 0.33", features = ["linked"] }
+nvenc-sys = { git = "https://github.com/legion-labs/nvenc-sys", rev = "f6a4fe275016e1ffee1e09523463ca09ce9bb4b8", features = [
+    "cuda",
+] }
+libloading = "0.7"
 openh264-sys2 = { version = "0.2", default-features = false, features = [
     "decoder",
     "encoder",
     "asm",
 ] }
 smallvec = "1.7"
+thiserror = "1"
+uuid = { version = "0.8", default-features = false }

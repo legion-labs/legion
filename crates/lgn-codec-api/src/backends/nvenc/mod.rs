@@ -1,6 +1,12 @@
 use super::EncoderConfig;
 use crate::{CpuBuffer, GpuImage, VideoProcessor};
 
+mod cuda;
+mod loader;
+
+pub use cuda::{CuContext, CuDevice};
+pub use loader::{CudaApi, NvEncApi};
+
 /// Nvenc Encoder Config
 #[derive(Debug)]
 pub struct NvEncEncoderConfig {}

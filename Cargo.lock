@@ -4531,8 +4531,12 @@ version = "0.1.0"
 dependencies = [
  "ash",
  "lgn-tracing",
+ "libloading 0.7.3",
+ "nvenc-sys",
  "openh264-sys2",
  "smallvec",
+ "thiserror",
+ "uuid",
 ]
 
 [[package]]
@@ -6866,6 +6870,11 @@ name = "number_prefix"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
+
+[[package]]
+name = "nvenc-sys"
+version = "0.1.0"
+source = "git+https://github.com/legion-labs/nvenc-sys?rev=f6a4fe275016e1ffee1e09523463ca09ce9bb4b8#f6a4fe275016e1ffee1e09523463ca09ce9bb4b8"
 
 [[package]]
 name = "oauth2"

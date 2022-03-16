@@ -48,19 +48,28 @@ pub mod backends;
 pub mod formats;
 
 /// doc
-#[derive(Debug, Clone, Copy)]
+#[derive(thiserror::Error, Debug)]
 pub enum Error {
-    /// doc
+    #[error("Encoder '{encoder}' failed loading because '{reason}'")]
+    Init {
+        /// Encoder name
+        encoder: &'static str,
+        /// Reason for the failure
+        reason: String,
+    },
+    #[error("End of stream")]
     Eof,
-    /// doc
+    #[error("Repeat last frame")]
     Repeat,
-    /// doc
+    #[error("Buffer full")]
     BufferFull,
-    /// doc
+    #[error("Need input")]
     NeedInputs,
-    /// doc
+    #[error("generic failure '{0}'")]
     Failed(&'static str),
 }
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 /// Gpu Image handle either outputted or sent to a video processor
 pub enum GpuImage {
@@ -89,7 +98,7 @@ impl<VP: VideoProcessor> Input<VP> {
 
     /// submit a an input, operation should not be blocking
     /// some errors needs to be handled
-    pub fn submit(&self, a: &VP::Input) -> Result<(), Error> {
+    pub fn submit(&self, a: &VP::Input) -> Result<()> {
         self.video_processor.submit_input(a)
     }
 }
@@ -105,7 +114,7 @@ impl<VP: VideoProcessor> Output<VP> {
     }
 
     /// Query output, can be blocking
-    pub fn query(&self) -> Result<VP::Output, Error> {
+    pub fn query(&self) -> Result<VP::Output> {
         self.video_processor.query_output()
     }
 }
@@ -129,10 +138,10 @@ pub trait VideoProcessor: Sized + Send + Sync {
     /// submit input sends an input to a video processor
     /// function might mutate it's interior state, so calling in another thread
     /// from query output is possible and even recommended
-    fn submit_input(&self, a: &Self::Input) -> Result<(), Error>;
+    fn submit_input(&self, a: &Self::Input) -> Result<()>;
 
     /// Query an output
-    fn query_output(&self) -> Result<Self::Output, Error>;
+    fn query_output(&self) -> Result<Self::Output>;
 
     /// doc
     fn pipeline(config: Self::Config) -> Option<(Input<Self>, Output<Self>)> {
