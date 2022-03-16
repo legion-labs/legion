@@ -316,6 +316,7 @@ impl PickingManager {
             (Entity, &mut PickedComponent, Option<&ManipulatorComponent>),
         >,
         manipulator_entities: Query<'_, '_, (Entity, &ManipulatorComponent)>,
+        entities: Query<'_, '_, (Entity, &Transform)>,
     ) {
         let inner = &mut *self.inner.lock().unwrap();
 
@@ -380,7 +381,7 @@ impl PickingManager {
                 let entity_id = picked_entities[i];
                 let is_manipulator = manipulator_entities.get(entity_id).is_ok();
 
-                if !manipulator_picked || is_manipulator {
+                if entities.contains(entity_id) && (!manipulator_picked || is_manipulator) {
                     if !is_manipulator {
                         event_writer.send(PickingEvent::EntityPicked(entity_id));
                         inner.manipulated_entity = Some(entity_id);

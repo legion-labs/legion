@@ -6,6 +6,7 @@
   import contextMenu from "@/actions/contextMenu";
   import {
     cloneResource,
+    closeScene,
     createResource,
     getAllResources,
     initFileUpload,
@@ -196,7 +197,7 @@
     detail: resourceDescription,
   }: CustomEvent<Entry<ResourceDescription>>) {
     if (resourceDescription) {
-      fetchCurrentResourceDescription(resourceDescription.item);
+      fetchCurrentResourceDescription(resourceDescription.item.id);
     }
   }
 
@@ -214,6 +215,14 @@
       case "open_scene": {
         if (currentResourceDescriptionEntry) {
           await openScene({ id: currentResourceDescriptionEntry?.item.id });
+        }
+
+        return;
+      }
+
+      case "close_scene": {
+        if (currentResourceDescriptionEntry) {
+          await closeScene({ id: currentResourceDescriptionEntry?.item.id });
         }
 
         return;
@@ -241,7 +250,7 @@
 
           currentResourceDescriptionEntry = entry;
 
-          fetchCurrentResourceDescription(newResource);
+          fetchCurrentResourceDescription(newResource.id);
         }
 
         return;

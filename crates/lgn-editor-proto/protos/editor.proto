@@ -7,6 +7,8 @@ service Editor {
   rpc RedoTransaction(RedoTransactionRequest) returns (RedoTransactionResponse);
 
   rpc InitLogStream(InitLogStreamRequest) returns (stream InitLogStreamResponse);
+
+  rpc InitMessageStream(InitMessageStreamRequest) returns (stream InitMessageStreamResponse);
 }
 
 message UndoTransactionRequest {
@@ -37,4 +39,13 @@ message InitLogStreamResponse {
   int64 time = 2;
   string target = 3;
   string message = 4;
+}
+
+message InitMessageStreamRequest {}
+
+enum MessageType { SelectionChanged = 0; }
+
+message InitMessageStreamResponse {
+  MessageType msg_type = 1;
+  string payload = 2;
 }

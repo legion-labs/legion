@@ -16,22 +16,21 @@ export const { data: currentResource, error: currentResourceError } =
   currentResourceOrchestrator;
 
 export function fetchCurrentResourceDescription(
-  currentResourceDescription: ResourceDescription
+  id: string,
+  { notifySelection = true }: { notifySelection?: boolean } = {}
 ) {
   // Ignore folder without id
-  if (!currentResourceDescription.id) {
+  if (!id) {
     return;
   }
 
   try {
     currentResourceOrchestrator.run(() => {
-      if (!currentResourceDescription) {
-        throw new Error("Current resource description not found");
+      if (notifySelection) {
+        updateSelection(id);
       }
 
-      updateSelection(currentResourceDescription.id);
-
-      return getResourceProperties(currentResourceDescription);
+      return getResourceProperties(id);
     });
   } catch (error) {
     notifications.push(Symbol(), {
@@ -41,7 +40,7 @@ export function fetchCurrentResourceDescription(
     });
 
     log.error(
-      log.json`An error occured while loading the resource ${currentResourceDescription}: ${error}`
+      log.json`An error occured while loading the resource ${id}: ${error}`
     );
   }
 }

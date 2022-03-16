@@ -2510,6 +2510,7 @@ dependencies = [
  "anyhow",
  "bytes",
  "clap 3.1.6",
+ "crossbeam-channel",
  "erased-serde",
  "generic-data",
  "inventory",
@@ -2539,6 +2540,7 @@ dependencies = [
  "lgn-mp4",
  "lgn-physics",
  "lgn-resource-registry",
+ "lgn-scene-plugin",
  "lgn-scripting",
  "lgn-source-control",
  "lgn-streamer",
@@ -4339,15 +4341,9 @@ dependencies = [
  "lgn-data-model",
  "lgn-data-runtime",
  "lgn-ecs",
- "lgn-graphics-data",
- "lgn-graphics-renderer",
  "lgn-hierarchy",
  "lgn-math",
- "lgn-physics",
- "lgn-scripting",
  "lgn-tracing",
- "lgn-transform",
- "sample-data",
  "serde_json",
 ]
 
@@ -5163,6 +5159,7 @@ dependencies = [
  "egui",
  "epaint",
  "lgn-app",
+ "lgn-asset-registry",
  "lgn-core",
  "lgn-data-runtime",
  "lgn-ecs",
@@ -5430,6 +5427,31 @@ dependencies = [
  "tokio",
  "tonic",
  "tonic-build",
+]
+
+[[package]]
+name = "lgn-scene-plugin"
+version = "0.1.0"
+dependencies = [
+ "crossbeam-channel",
+ "lgn-app",
+ "lgn-asset-registry",
+ "lgn-config",
+ "lgn-content-store",
+ "lgn-core",
+ "lgn-data-model",
+ "lgn-data-runtime",
+ "lgn-ecs",
+ "lgn-graphics-data",
+ "lgn-graphics-renderer",
+ "lgn-hierarchy",
+ "lgn-math",
+ "lgn-physics",
+ "lgn-scripting",
+ "lgn-tracing",
+ "lgn-transform",
+ "sample-data",
+ "serde_json",
 ]
 
 [[package]]

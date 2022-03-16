@@ -93,10 +93,9 @@ export async function getAllResources(searchToken = "") {
  * @param resource The resource description with the ID and the version
  * @returns The properties of the resource and possibly its description
  */
-export async function getResourceProperties({
-  id,
-  version,
-}: ResourceDescription): Promise<ResourceWithProperties> {
+export async function getResourceProperties(
+  id: string
+): Promise<ResourceWithProperties> {
   const { description, properties } =
     await propertyInspectorClient.getResourceProperties({
       id,
@@ -109,7 +108,7 @@ export async function getResourceProperties({
   return {
     id,
     description,
-    version,
+    version: description.version,
     properties: formatProperties(properties),
   };
 }
@@ -315,6 +314,14 @@ export async function openScene({ id }: { id: string }) {
   return resourceBrowserClient.openScene({ id });
 }
 
+export async function closeScene({ id }: { id: string }) {
+  return resourceBrowserClient.closeScene({ id });
+}
+
 export async function initLogStream() {
   return editorClient.initLogStream({});
+}
+
+export async function initMessageStream() {
+  return editorClient.initMessageStream({});
 }

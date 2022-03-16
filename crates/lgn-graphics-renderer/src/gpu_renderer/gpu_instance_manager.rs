@@ -1,5 +1,5 @@
 use lgn_app::{App, EventWriter};
-use lgn_ecs::prelude::{Changed, Entity, Or, Query, Res, ResMut, Without};
+use lgn_ecs::prelude::{Changed, Entity, Or, Query, RemovedComponents, Res, ResMut, Without};
 use lgn_graphics_api::{BufferView, VertexBufferBinding};
 use lgn_hierarchy::prelude::Parent;
 use lgn_math::Vec4;
@@ -45,6 +45,7 @@ impl GpuInstanceManager {
 
     pub fn init_ecs(app: &mut App) {
         app.add_system_to_stage(RenderStage::Prepare, update_gpu_instances);
+        app.add_system_to_stage(RenderStage::Prepare, remove_gpu_instances);
     }
 
     pub fn add_gpu_instance(
@@ -202,4 +203,19 @@ fn update_gpu_instances(
     }
 
     renderer.add_update_job_block(updater.job_blocks());
+}
+
+#[allow(clippy::needless_pass_by_value)]
+fn remove_gpu_instances(
+    mut picking_data_manager: ResMut<'_, GpuPickingDataManager>,
+    mut instance_manager: ResMut<'_, GpuInstanceManager>,
+    mut event_writer: EventWriter<'_, '_, GpuInstanceEvent>,
+    removed_visual_components: RemovedComponents<'_, VisualComponent>,
+) {
+    for entity in removed_visual_components.iter() {
+        picking_data_manager.remove_gpu_data(&entity);
+        if let Some(removed_ids) = instance_manager.remove_gpu_instance(entity) {
+            event_writer.send(GpuInstanceEvent::Removed(removed_ids));
+        }
+    }
 }
