@@ -104,9 +104,10 @@ function log(
   ) {
     // eslint-disable-next-line no-console
     console.log(
-      `[%c${new Date().toISOString()} %c${level.toUpperCase()}%c${
+      `%c[%c${new Date().toISOString()} %c${level.toUpperCase()}%c${
         !namespace.length ? "" : ` ${namespace}`
       }]`,
+      "color: black",
       "color: purple",
       `color: ${levelColor(level)}`,
       "color: black",

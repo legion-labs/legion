@@ -97,6 +97,25 @@ impl App {
         app
     }
 
+    /// Similar to [`App::new`] but takes a custom [`TelemetryGuard`] instead to allow for
+    /// a more flexible telemetry setup.
+    pub fn from_telemetry_guard(telemetry_guard: TelemetryGuard) -> Self {
+        let mut app = Self::empty();
+
+        app.telemetry_guard = Some(telemetry_guard);
+
+        app.add_default_stages()
+            .add_event::<AppExit>()
+            .add_system_to_stage(CoreStage::Last, World::clear_trackers.exclusive_system());
+
+        #[cfg(feature = "lgn_ci_testing")]
+        {
+            crate::ci_testing::setup_app(&mut app);
+        }
+
+        app
+    }
+
     /// Creates a new empty [`App`] with minimal default configuration.
     ///
     /// This constructor should be used if you wish to provide a custom schedule, exit handling, cleanup, etc.
