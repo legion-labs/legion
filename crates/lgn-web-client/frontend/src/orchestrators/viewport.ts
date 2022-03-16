@@ -36,7 +36,7 @@ export type AddViewportConfig = {
 };
 
 export type ViewportOrchestrator = {
-  viewportStore: MapStore<Viewport>;
+  viewportStore: MapStore<symbol, Viewport>;
   activeViewportStore: Writable<Viewport | null>;
   add(key: symbol, viewport: Viewport, { focus }: AddViewportConfig): void;
   addAllViewport(...viewportList: [key: symbol, value: Viewport][]): void;
