@@ -42,11 +42,9 @@ pub fn span_fn(
     let args = parse_macro_input!(args as TraceArgs);
     let mut function = parse_macro_input!(input as ItemFn);
 
-    let function_name = match (args.alternative_name, function.sig.asyncness) {
-        (Some(alternative_name), _) => alternative_name.to_string(),
-        (None, None) => function.sig.ident.to_string(),
-        (None, Some(_)) => format!("{} (Async)", function.sig.ident),
-    };
+    let function_name = args
+        .alternative_name
+        .map_or(function.sig.ident.to_string(), |n| n.to_string());
 
     let statement = match function.sig.asyncness {
         None => {
