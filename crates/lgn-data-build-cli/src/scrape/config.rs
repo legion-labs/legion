@@ -14,7 +14,8 @@ use serde::{Deserialize, Serialize};
 pub struct Config {
     pub code_paths: Vec<PathBuf>,
     pub project: PathBuf,
-    pub buildindex: PathBuf,
+    pub output_db_addr: String,
+    pub content_store_addr: PathBuf,
     pub type_map: BTreeMap<ResourceType, String>,
 }
 
@@ -40,10 +41,13 @@ impl Config {
             .await
             .map_err(|e| e.to_string())?;
 
-        let buildindex = self.buildindex.clone();
         let build = DataBuildOptions::new(
-            DataBuildOptions::output_db_path("temp/", &self.project, DataBuild::version()),
-            ContentStoreAddr::from(buildindex.as_path()),
+            DataBuildOptions::output_db_path(
+                &self.output_db_addr,
+                &self.project,
+                DataBuild::version(),
+            ),
+            ContentStoreAddr::from(self.content_store_addr.as_path()),
             CompilerRegistryOptions::default(),
         )
         .open(&project)

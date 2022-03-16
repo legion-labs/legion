@@ -200,6 +200,7 @@ use std::{
 use byteorder::{LittleEndian, ReadBytesExt};
 use clap::{Parser, Subcommand};
 use lgn_content_store::Checksum;
+use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_offline::{
     resource::{Project, ResourcePathName},
     ResourcePathId,
@@ -264,8 +265,10 @@ enum Commands {
         #[clap(long)]
         project: Option<PathBuf>,
         /// Path to build index to be able to resolve ResourcePathId
-        #[clap(long = "buildindex")]
-        build_index: Option<PathBuf>,
+        #[clap(long = "output")]
+        build_output: Option<String>,
+        /// Content addressable storage
+        cas: Option<String>,
     },
 }
 
@@ -358,7 +361,7 @@ async fn main() -> Result<(), String> {
                     let build_rid = if let Ok(resource_id) = id.parse() {
                         build.lookup_pathid(resource_id).await.unwrap()
                     } else {
-                        return Err(format!("Failed to parse ResourceTypeAndId: '{}'", id));
+                        None
                     };
 
                     if let Some(rid) = build_rid {
@@ -451,7 +454,8 @@ async fn main() -> Result<(), String> {
         Commands::Configure {
             code_path,
             project,
-            build_index,
+            build_output,
+            cas,
         } => {
             let config_path = Config::default_path();
             let workspace_dir = Config::workspace_dir();
@@ -460,10 +464,34 @@ async fn main() -> Result<(), String> {
                 vec![workspace_dir.join("crates/"), workspace_dir.join("tests/")]
             });
 
-            let build_index =
-                build_index.unwrap_or_else(|| workspace_dir.join("tests/sample-data/temp/"));
+            let project_dir = {
+                let project = project.unwrap_or_else(|| workspace_dir.join("tests/sample-data/"));
+                if project.is_absolute() {
+                    project
+                } else {
+                    workspace_dir.join(project)
+                }
+            };
 
-            let project = project.unwrap_or_else(|| workspace_dir.join("tests/sample-data/"));
+            let build_output = build_output.unwrap_or_else(|| {
+                workspace_dir
+                    .join("tests/sample-data/temp/")
+                    .to_str()
+                    .unwrap()
+                    .to_owned()
+            });
+
+            let cas = {
+                let cas = PathBuf::from(cas.unwrap_or_else(|| build_output.clone()));
+                if cas.is_absolute() {
+                    cas
+                } else {
+                    workspace_dir.join(&project_dir).join(cas)
+                }
+            };
+
+            let output_db_addr =
+                DataBuildOptions::output_db_path(&build_output, &project_dir, DataBuild::version());
 
             let type_map = {
                 let mut t = BTreeMap::<ResourceType, String>::new();
@@ -477,8 +505,9 @@ async fn main() -> Result<(), String> {
 
             let config = Config {
                 code_paths,
-                project,
-                buildindex: build_index,
+                project: project_dir,
+                output_db_addr,
+                content_store_addr: cas,
                 type_map,
             };
 
@@ -489,7 +518,8 @@ async fn main() -> Result<(), String> {
             println!("Configuration '{:?}' created!", config_path);
             println!("\tCode Paths: {:?}.", config.code_paths);
             println!("\tProject: {:?}.", config.project);
-            println!("\tBuild Index: {:?}.", config.buildindex);
+            println!("\tOutput Db Address: {:?}.", config.output_db_addr);
+            println!("\tContent Store: {:?}.", config.content_store_addr);
             println!("\tResource Type Count: {}.", config.type_map.len());
         }
     }
