@@ -5369,6 +5369,7 @@ dependencies = [
 name = "lgn-physics"
 version = "0.1.0"
 dependencies = [
+ "egui",
  "erased-serde",
  "inventory",
  "lazy_static",
@@ -5378,6 +5379,7 @@ dependencies = [
  "lgn-data-model",
  "lgn-data-runtime",
  "lgn-ecs",
+ "lgn-graphics-renderer",
  "lgn-math",
  "lgn-tracing",
  "lgn-transform",

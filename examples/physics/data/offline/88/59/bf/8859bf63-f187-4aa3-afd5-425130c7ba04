@@ -35,9 +35,9 @@
       "PhysicsRigidBox": {
         "actor_type": "Static",
         "half_extents": [
-          3.0,
           0.25,
-          3.0
+          0.25,
+          0.25
         ]
       }
     }

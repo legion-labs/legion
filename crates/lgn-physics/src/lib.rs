@@ -25,39 +25,41 @@
 // generated from def\physics.rs
 include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
 
-mod data_def_ext;
-
 mod actor_type;
-use actor_type::WithActorType;
-
 mod callbacks;
-use callbacks::{OnAdvance, OnCollision, OnConstraintBreak, OnTrigger, OnWakeSleep};
-
+mod collision_geometry;
+mod debug_display;
 mod labels;
-pub use labels::*;
-
 mod mesh_scale;
-
+mod physics_options;
 mod rigid_actors;
-use rigid_actors::{
-    add_dynamic_actor_to_scene, add_static_actor_to_scene, CollisionGeometry, Convert,
-};
-
 mod settings;
-pub use settings::PhysicsSettings;
 
-use lgn_app::prelude::*;
-use lgn_core::prelude::*;
-use lgn_ecs::prelude::*;
-use lgn_tracing::prelude::*;
-use lgn_transform::prelude::*;
+use lgn_app::prelude::{App, CoreStage, Plugin};
+use lgn_core::prelude::Time;
+use lgn_ecs::prelude::{Commands, Component, Entity, Query, Res, ResMut, SystemStage};
+use lgn_graphics_renderer::labels::RenderStage;
+use lgn_tracing::prelude::{error, span_fn};
+use lgn_transform::prelude::{GlobalTransform, Transform};
 use physx::{
     cooking::{PxCooking, PxCookingParams},
     foundation::DefaultAllocator,
     physics::PhysicsFoundationBuilder,
-    prelude::*,
+    prelude::{
+        Owner, Physics, PhysicsFoundation, PxVec3, RigidActor, RigidDynamic, Scene,
+        SceneDescriptor, ScratchBuffer,
+    },
 };
 use physx_sys::{PxPvdInstrumentationFlag, PxPvdInstrumentationFlags};
+
+use crate::{
+    actor_type::WithActorType,
+    callbacks::{OnAdvance, OnCollision, OnConstraintBreak, OnTrigger, OnWakeSleep},
+    collision_geometry::{CollisionGeometry, ConvertToCollisionGeometry},
+    physics_options::PhysicsOptions,
+    rigid_actors::{add_dynamic_actor_to_scene, add_static_actor_to_scene},
+};
+pub use crate::{labels::PhysicsStage, settings::PhysicsSettings};
 
 // type aliases
 
@@ -127,6 +129,13 @@ impl Plugin for PhysicsPlugin {
 
         app.add_system_to_stage(PhysicsStage::Update, Self::step_simulation)
             .add_system_to_stage(PhysicsStage::Update, Self::sync_transforms);
+
+        app.init_resource::<PhysicsOptions>()
+            .add_system_to_stage(RenderStage::Prepare, physics_options::ui_physics_options)
+            .add_system_to_stage(
+                RenderStage::Prepare,
+                debug_display::display_collision_geometry,
+            );
     }
 }
 
@@ -201,10 +210,11 @@ impl PhysicsPlugin {
         mut default_material: ResMut<'_, Owner<PxMaterial>>,
         mut commands: Commands<'_, '_>,
     ) where
-        T: Component + Convert + WithActorType,
+        T: Component + ConvertToCollisionGeometry + WithActorType,
     {
         for (entity, physics_component, transform) in query.iter() {
-            let geometry: CollisionGeometry = physics_component.convert(&mut physics, &cooking);
+            let geometry: CollisionGeometry =
+                physics_component.convert(&transform.scale, &mut physics, &cooking);
 
             match physics_component.get_actor_type() {
                 RigidActorType::Dynamic => {

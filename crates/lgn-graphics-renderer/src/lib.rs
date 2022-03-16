@@ -17,7 +17,7 @@ use std::sync::Arc;
 #[allow(unused_imports)]
 use cgen::*;
 
-mod labels;
+pub mod labels;
 use components::MaterialComponent;
 use gpu_renderer::{GpuInstanceEvent, GpuInstanceManager, RenderElement};
 pub use labels::*;
@@ -60,7 +60,7 @@ use crate::{
         debug_display_lights, ui_lights, update_lights, ManipulatorComponent, PickedComponent,
         RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces,
     },
-    egui::egui_plugin::{Egui, EguiPlugin},
+    egui::{egui_plugin::EguiPlugin, Egui},
     gpu_renderer::GpuInstanceVas,
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingIdContext, PickingManager, PickingPlugin},

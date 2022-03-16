@@ -1,4 +1,7 @@
-use physx::prelude::*;
+use physx::prelude::{
+    AdvanceCallback, CollisionCallback, ConstraintBreakCallback, PxTransform, TriggerCallback,
+    WakeSleepCallback,
+};
 
 use crate::{PxArticulationLink, PxRigidDynamic, PxRigidStatic};
 
