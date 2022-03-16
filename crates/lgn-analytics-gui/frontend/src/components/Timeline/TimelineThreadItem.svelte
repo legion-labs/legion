@@ -71,7 +71,7 @@
 
   .thread {
     @apply text-sm text-slate-400;
-    width: 170px;
+    width: var(--thread-item-length);
     overflow: hidden;
     cursor: pointer;
     background-color: #f0f0f0;

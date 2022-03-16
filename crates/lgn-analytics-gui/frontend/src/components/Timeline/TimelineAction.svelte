@@ -31,6 +31,6 @@
 <style lang="postcss">
   .action {
     @apply text-gray-100 p-1;
-    min-width: 170px;
+    min-width: var(--thread-item-length);
   }
 </style>
