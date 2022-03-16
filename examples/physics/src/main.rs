@@ -109,7 +109,14 @@ async fn main() {
         ),
     };
 
-    let data_build = DataBuildOptions::new_with_sqlite_output(&build_dir, compilers)
+    let absolute_build_dir = {
+        if !build_dir.is_absolute() {
+            std::env::current_dir().unwrap().join(&build_dir)
+        } else {
+            build_dir.clone()
+        }
+    };
+    let data_build = DataBuildOptions::new_with_sqlite_output(&absolute_build_dir, compilers)
         .content_store(&ContentStoreAddr::from(build_dir.as_path()))
         .asset_registry(asset_registry.clone());
 
