@@ -14,6 +14,7 @@ use physx::{
     traits::Class,
 };
 use physx_sys::{PxConvexFlag, PxConvexMeshGeometryFlags, PxMeshGeometryFlags, PxMeshScale};
+use thiserror::Error;
 
 use crate::{runtime, PxShape};
 
@@ -34,13 +35,29 @@ unsafe impl Send for CollisionGeometry {}
 #[allow(unsafe_code)]
 unsafe impl Sync for CollisionGeometry {}
 
+pub(crate) type ConvertResult = Result<CollisionGeometry, ConvertError>;
+
 pub(crate) trait ConvertToCollisionGeometry {
     fn convert(
         &self,
         scale: &Vec3,
         physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         cooking: &Res<'_, Owner<PxCooking>>,
-    ) -> CollisionGeometry;
+    ) -> ConvertResult;
+}
+
+#[derive(Error, Debug)]
+pub(crate) enum ConvertError {
+    #[error("generic conversion failure")]
+    Failure,
+    #[error("invalid convex/triangle mesh descriptor")]
+    InvalidDescriptor,
+    #[error("large triangle")]
+    LargeTriangle,
+    #[error("polygons limit reached")]
+    PolygonsLimitReached,
+    #[error("zero-area test failed, area too small so cannot produce a valid hull")]
+    ZeroAreaTestFailed,
 }
 
 impl ConvertToCollisionGeometry for runtime::PhysicsRigidBox {
@@ -49,12 +66,12 @@ impl ConvertToCollisionGeometry for runtime::PhysicsRigidBox {
         scale: &Vec3,
         _physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         _cooking: &Res<'_, Owner<PxCooking>>,
-    ) -> CollisionGeometry {
-        CollisionGeometry::Box(PxBoxGeometry::new(
+    ) -> ConvertResult {
+        Ok(CollisionGeometry::Box(PxBoxGeometry::new(
             self.half_extents.x * scale.x,
             self.half_extents.y * scale.y,
             self.half_extents.z * scale.z,
-        ))
+        )))
     }
 }
 
@@ -64,9 +81,12 @@ impl ConvertToCollisionGeometry for runtime::PhysicsRigidCapsule {
         _scale: &Vec3,
         _physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         _cooking: &Res<'_, Owner<PxCooking>>,
-    ) -> CollisionGeometry {
+    ) -> ConvertResult {
         // TODO: take scale into account (average?)
-        CollisionGeometry::Capsule(PxCapsuleGeometry::new(self.radius, self.half_height))
+        Ok(CollisionGeometry::Capsule(PxCapsuleGeometry::new(
+            self.radius,
+            self.half_height,
+        )))
     }
 }
 
@@ -77,7 +97,7 @@ impl ConvertToCollisionGeometry for runtime::PhysicsRigidConvexMesh {
         scale: &Vec3,
         physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         cooking: &Res<'_, Owner<PxCooking>>,
-    ) -> CollisionGeometry {
+    ) -> ConvertResult {
         let vertices: Vec<PxVec3> = self.vertices.iter().map(|v| (*v).into()).collect();
         let mut mesh_desc = PxConvexMeshDesc::new();
         mesh_desc.obj.points.data = vertices.as_ptr().cast::<std::ffi::c_void>();
@@ -85,29 +105,30 @@ impl ConvertToCollisionGeometry for runtime::PhysicsRigidConvexMesh {
         mesh_desc.obj.points.stride = std::mem::size_of::<PxVec3>() as u32;
         mesh_desc.obj.flags.mBits = PxConvexFlag::eCOMPUTE_CONVEX as u16;
 
-        // can't validate yet, since convex hull is not computed
-        //assert!(cooking.validate_convex_mesh(&mesh_desc));
+        match cooking.create_convex_mesh(physics.physics_mut(), &mesh_desc) {
+            ConvexMeshCookingResult::Success(mut convex_mesh) => {
+                let mut mesh_scale = self.scale;
+                mesh_scale.scale *= *scale;
+                let mesh_scale: PxMeshScale = mesh_scale.into();
+                let flags = PxConvexMeshGeometryFlags { mBits: 0 };
+                let geometry = CollisionGeometry::ConvexMesh(PxConvexMeshGeometry::new(
+                    convex_mesh.as_mut(),
+                    &mesh_scale,
+                    flags,
+                ));
 
-        let cooking_result = cooking.create_convex_mesh(physics.physics_mut(), &mesh_desc);
+                // prevent cooked mesh from being dropped immediately
+                #[allow(clippy::mem_forget)]
+                std::mem::forget(convex_mesh);
 
-        if let ConvexMeshCookingResult::Success(mut convex_mesh) = cooking_result {
-            let mut mesh_scale = self.scale;
-            mesh_scale.scale *= *scale;
-            let mesh_scale: PxMeshScale = mesh_scale.into();
-            let flags = PxConvexMeshGeometryFlags { mBits: 0 };
-            let geometry = CollisionGeometry::ConvexMesh(PxConvexMeshGeometry::new(
-                convex_mesh.as_mut(),
-                &mesh_scale,
-                flags,
-            ));
-
-            // prevent cooked mesh from being dropped immediately
-            #[allow(clippy::mem_forget)]
-            std::mem::forget(convex_mesh);
-
-            geometry
-        } else {
-            panic!("mesh cooking failed");
+                Ok(geometry)
+            }
+            ConvexMeshCookingResult::Failure => Err(ConvertError::Failure),
+            ConvexMeshCookingResult::InvalidDescriptor => Err(ConvertError::InvalidDescriptor),
+            ConvexMeshCookingResult::PolygonsLimitReached => {
+                Err(ConvertError::PolygonsLimitReached)
+            }
+            ConvexMeshCookingResult::ZeroAreaTestFailed => Err(ConvertError::ZeroAreaTestFailed),
         }
     }
 }
@@ -118,8 +139,8 @@ impl ConvertToCollisionGeometry for runtime::PhysicsRigidPlane {
         _scale: &Vec3,
         _physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         _cooking: &Res<'_, Owner<PxCooking>>,
-    ) -> CollisionGeometry {
-        CollisionGeometry::Plane(PxPlaneGeometry::new())
+    ) -> ConvertResult {
+        Ok(CollisionGeometry::Plane(PxPlaneGeometry::new()))
     }
 }
 
@@ -129,9 +150,11 @@ impl ConvertToCollisionGeometry for runtime::PhysicsRigidSphere {
         _scale: &Vec3,
         _physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         _cooking: &Res<'_, Owner<PxCooking>>,
-    ) -> CollisionGeometry {
+    ) -> ConvertResult {
         // TODO: take scale into account (average?)
-        CollisionGeometry::Sphere(PxSphereGeometry::new(self.radius))
+        Ok(CollisionGeometry::Sphere(PxSphereGeometry::new(
+            self.radius,
+        )))
     }
 }
 
@@ -141,35 +164,38 @@ impl ConvertToCollisionGeometry for runtime::PhysicsRigidTriangleMesh {
         scale: &Vec3,
         physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         cooking: &Res<'_, Owner<PxCooking>>,
-    ) -> CollisionGeometry {
+    ) -> ConvertResult {
         let vertices: Vec<PxVec3> = self.vertices.iter().map(|v| (*v).into()).collect();
         let mut mesh_desc = PxTriangleMeshDesc::new();
         mesh_desc.obj.points.data = vertices.as_ptr().cast::<std::ffi::c_void>();
         mesh_desc.obj.points.count = vertices.len() as u32;
         mesh_desc.obj.points.stride = std::mem::size_of::<PxVec3>() as u32;
 
-        assert!(cooking.validate_triangle_mesh(&mesh_desc));
+        if !cooking.validate_triangle_mesh(&mesh_desc) {
+            return Err(ConvertError::InvalidDescriptor);
+        }
 
-        let cooking_result = cooking.create_triangle_mesh(physics.physics_mut(), &mesh_desc);
+        match cooking.create_triangle_mesh(physics.physics_mut(), &mesh_desc) {
+            TriangleMeshCookingResult::Success(mut triangle_mesh) => {
+                let mut mesh_scale = self.scale;
+                mesh_scale.scale *= *scale;
+                let mesh_scale: PxMeshScale = mesh_scale.into();
+                let flags = PxMeshGeometryFlags { mBits: 0 };
+                let geometry = CollisionGeometry::TriangleMesh(PxTriangleMeshGeometry::new(
+                    triangle_mesh.as_mut(),
+                    &mesh_scale,
+                    flags,
+                ));
 
-        if let TriangleMeshCookingResult::Success(mut triangle_mesh) = cooking_result {
-            let mut mesh_scale = self.scale;
-            mesh_scale.scale *= *scale;
-            let mesh_scale: PxMeshScale = mesh_scale.into();
-            let flags = PxMeshGeometryFlags { mBits: 0 };
-            let geometry = CollisionGeometry::TriangleMesh(PxTriangleMeshGeometry::new(
-                triangle_mesh.as_mut(),
-                &mesh_scale,
-                flags,
-            ));
+                // prevent cooked mesh from being dropped immediately
+                #[allow(clippy::mem_forget)]
+                std::mem::forget(triangle_mesh);
 
-            // prevent cooked mesh from being dropped immediately
-            #[allow(clippy::mem_forget)]
-            std::mem::forget(triangle_mesh);
-
-            geometry
-        } else {
-            panic!("mesh cooking failed");
+                Ok(geometry)
+            }
+            TriangleMeshCookingResult::Failure => Err(ConvertError::Failure),
+            TriangleMeshCookingResult::InvalidDescriptor => Err(ConvertError::InvalidDescriptor),
+            TriangleMeshCookingResult::LargeTriangle => Err(ConvertError::LargeTriangle),
         }
     }
 }

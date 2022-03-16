@@ -39,7 +39,7 @@ use lgn_app::prelude::{App, CoreStage, Plugin};
 use lgn_core::prelude::Time;
 use lgn_ecs::prelude::{Commands, Component, Entity, Query, Res, ResMut, SystemStage};
 use lgn_graphics_renderer::labels::RenderStage;
-use lgn_tracing::prelude::{error, span_fn};
+use lgn_tracing::prelude::{error, span_fn, warn};
 use lgn_transform::prelude::{GlobalTransform, Transform};
 use physx::{
     cooking::{PxCooking, PxCookingParams},
@@ -55,7 +55,7 @@ use physx_sys::{PxPvdInstrumentationFlag, PxPvdInstrumentationFlags};
 use crate::{
     actor_type::WithActorType,
     callbacks::{OnAdvance, OnCollision, OnConstraintBreak, OnTrigger, OnWakeSleep},
-    collision_geometry::{CollisionGeometry, ConvertToCollisionGeometry},
+    collision_geometry::ConvertToCollisionGeometry,
     physics_options::PhysicsOptions,
     rigid_actors::{add_dynamic_actor_to_scene, add_static_actor_to_scene},
 };
@@ -169,16 +169,18 @@ impl PhysicsPlugin {
                     physics =
                         Self::create_physics_foundation(false, length_tolerance, speed_tolerance);
                     if physics.is_some() {
-                        error!("failed to connect to physics visual debugger");
+                        warn!("failed to connect to physics visual debugger");
                     }
                 }
             }
         }
-        let mut physics = physics.unwrap();
+        let mut physics = physics.expect("failed to create physics foundation");
 
         // physics cooking, for runtime mesh creation
-        let cooking_params = PxCookingParams::new(&physics).unwrap();
-        let cooking = PxCooking::new(physics.foundation_mut(), &cooking_params).unwrap();
+        let cooking_params =
+            PxCookingParams::new(&physics).expect("failed to create physics cooking params");
+        let cooking = PxCooking::new(physics.foundation_mut(), &cooking_params)
+            .expect("failed to create physics cooking module");
 
         let scene: Owner<PxScene> = physics
             .create(SceneDescriptor {
@@ -186,13 +188,13 @@ impl PhysicsPlugin {
                 on_advance: Some(OnAdvance),
                 ..SceneDescriptor::new(())
             })
-            .unwrap();
+            .expect("failed to create physics scene");
 
-        let default_material = physics.create_material(0.5, 0.5, 0.6, ()).unwrap();
-        commands.insert_resource(default_material);
+        if let Some(default_material) = physics.create_material(0.5, 0.5, 0.6, ()) {
+            commands.insert_resource(default_material);
+        }
 
         commands.insert_resource(scene);
-
         commands.insert_resource(cooking);
 
         // Note: important to insert physics after scene, for drop order
@@ -213,33 +215,39 @@ impl PhysicsPlugin {
         T: Component + ConvertToCollisionGeometry + WithActorType,
     {
         for (entity, physics_component, transform) in query.iter() {
-            let geometry: CollisionGeometry =
-                physics_component.convert(&transform.scale, &mut physics, &cooking);
+            let mut entity_commands = commands.entity(entity);
+            match physics_component.convert(&transform.scale, &mut physics, &cooking) {
+                Ok(geometry) => {
+                    match physics_component.get_actor_type() {
+                        RigidActorType::Dynamic => {
+                            add_dynamic_actor_to_scene(
+                                &mut physics,
+                                &mut scene,
+                                transform,
+                                &geometry,
+                                entity,
+                                &mut default_material,
+                            );
+                        }
+                        RigidActorType::Static => {
+                            add_static_actor_to_scene(
+                                &mut physics,
+                                &mut scene,
+                                transform,
+                                &geometry,
+                                entity,
+                                &mut default_material,
+                            );
+                        }
+                    }
 
-            match physics_component.get_actor_type() {
-                RigidActorType::Dynamic => {
-                    add_dynamic_actor_to_scene(
-                        &mut physics,
-                        &mut scene,
-                        transform,
-                        &geometry,
-                        entity,
-                        &mut default_material,
-                    );
+                    entity_commands.insert(geometry);
                 }
-                RigidActorType::Static => {
-                    add_static_actor_to_scene(
-                        &mut physics,
-                        &mut scene,
-                        transform,
-                        &geometry,
-                        entity,
-                        &mut default_material,
-                    );
+                Err(error) => {
+                    error!("failed to convert to collision geometry: {}", error);
                 }
             }
-
-            commands.entity(entity).insert(geometry).remove::<T>();
+            entity_commands.remove::<T>();
         }
 
         drop(query);
@@ -255,14 +263,14 @@ impl PhysicsPlugin {
 
         let mut scratch = Self::create_scratch_buffer();
 
-        scene
-            .step(
-                delta_time,
-                None::<&mut physx_sys::PxBaseTask>,
-                Some(&mut scratch),
-                true,
-            )
-            .expect("error occurred during simulation");
+        if let Err(error) = scene.step(
+            delta_time,
+            None::<&mut physx_sys::PxBaseTask>,
+            Some(&mut scratch),
+            true,
+        ) {
+            error!("error occurred during physics step: {}", error);
+        }
 
         drop(scene);
         drop(time);
