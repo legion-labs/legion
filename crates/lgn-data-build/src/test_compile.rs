@@ -134,7 +134,7 @@ async fn compile_change_no_deps() {
     };
 
     let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
-    let config = DataBuildOptions::new(
+    let config = DataBuildOptions::new_with_sqlite_output(
         &output_dir,
         CompilerRegistryOptions::local_compilers(target_dir()),
     )
@@ -192,7 +192,7 @@ async fn compile_change_no_deps() {
 
     // ..re-compile changed resource..
     let modified_checksum = {
-        let config = DataBuildOptions::new(
+        let config = DataBuildOptions::new_with_sqlite_output(
             output_dir,
             CompilerRegistryOptions::local_compilers(target_dir()),
         )
@@ -328,7 +328,7 @@ async fn intermediate_resource() {
 
     let cas_addr = ContentStoreAddr::from(output_dir.as_path());
 
-    let (mut build, project) = DataBuildOptions::new(
+    let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
         output_dir,
         CompilerRegistryOptions::local_compilers(target_dir()),
     )
@@ -404,7 +404,7 @@ async fn unnamed_cache_use() {
     let resource_list = setup_project(&project_dir).await;
     let root_resource = resource_list[0];
 
-    let (mut build, project) = DataBuildOptions::new(
+    let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
         &output_dir,
         CompilerRegistryOptions::local_compilers(target_dir()),
     )
@@ -532,7 +532,7 @@ async fn named_path_cache_use() {
 
     let cas_addr = ContentStoreAddr::from(output_dir.as_path());
 
-    let (mut build, project) = DataBuildOptions::new(
+    let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
         output_dir,
         CompilerRegistryOptions::local_compilers(target_dir()),
     )
@@ -802,7 +802,7 @@ async fn link() {
     };
 
     let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
-    let (mut build, project) = DataBuildOptions::new(
+    let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
         output_dir,
         CompilerRegistryOptions::local_compilers(target_dir()),
     )
@@ -901,7 +901,7 @@ async fn verify_manifest() {
     };
 
     let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
-    let (mut build, project) = DataBuildOptions::new(
+    let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
         output_dir,
         CompilerRegistryOptions::local_compilers(target_dir()),
     )

@@ -5,7 +5,7 @@ use std::{path::PathBuf, str::FromStr};
 
 use clap::{Parser, Subcommand};
 use lgn_content_store::ContentStoreAddr;
-use lgn_data_build::DataBuildOptions;
+use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::{
     compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,
 };
@@ -29,8 +29,9 @@ enum Commands {
     /// Create build index at a specified location
     #[clap(name = "create")]
     Create {
-        /// New build index path.
-        build_index: PathBuf,
+        /// Path to build output database.
+        #[clap(long = "output")]
+        build_output: String,
         /// Source project path.
         #[clap(long)]
         project: PathBuf,
@@ -47,8 +48,8 @@ enum Commands {
         #[clap(long = "project")]
         project: PathBuf,
         /// Build index file.
-        #[clap(long = "buildindex")]
-        build_index: PathBuf,
+        #[clap(long = "output")]
+        build_output: String,
         /// Compiled Asset Store addresses where assets will be output.
         #[clap(long)]
         cas: String,
@@ -74,26 +75,27 @@ async fn main() -> Result<(), String> {
 
     match args.command {
         Commands::Create {
-            build_index,
-            project,
+            build_output,
+            project: project_dir,
             cas,
         } => {
-            let (mut build, project) =
-                DataBuildOptions::new(&build_index, CompilerRegistryOptions::default())
-                    .content_store(&ContentStoreAddr::from(&cas[..]))
-                    .create_with_project(project)
-                    .await
-                    .map_err(|e| format!("failed creating build index {}", e))?;
+            let (mut build, project) = DataBuildOptions::new(
+                DataBuildOptions::output_db_path(&build_output, &project_dir, DataBuild::version()),
+                ContentStoreAddr::from(&cas[..]),
+                CompilerRegistryOptions::default(),
+            )
+            .create_with_project(&project_dir)
+            .await
+            .map_err(|e| format!("failed creating build index {}", e))?;
 
             if let Err(e) = build.source_pull(&project).await {
                 eprintln!("Source Pull failed with '{}'", e);
-                let _res = std::fs::remove_file(build_index);
             }
         }
         Commands::Compile {
             resource,
-            project,
-            build_index,
+            project: project_dir,
+            build_output,
             cas,
             runtime_flag,
             target,
@@ -119,13 +121,18 @@ async fn main() -> Result<(), String> {
                 })
                 .unwrap_or_default();
 
-            let project = Project::open(&project).await.map_err(|e| e.to_string())?;
-
-            let mut build = DataBuildOptions::new(build_index, compilers)
-                .content_store(&content_store_path)
-                .open(&project)
+            let project = Project::open(&project_dir)
                 .await
-                .map_err(|e| format!("Failed to open build index: '{}'", e))?;
+                .map_err(|e| e.to_string())?;
+
+            let mut build = DataBuildOptions::new(
+                DataBuildOptions::output_db_path(&build_output, &project_dir, DataBuild::version()),
+                content_store_path,
+                compilers,
+            )
+            .open(&project)
+            .await
+            .map_err(|e| format!("Failed to open build index: '{}'", e))?;
 
             //
             // for now, each time we build we make sure we have a fresh input data indexed

@@ -28,6 +28,6 @@ cargo m run --bin pong-rebuild-data
 ## Data exploration
 
 ```sh
-cargo m run --bin data-scrape -- configure --project examples/pong/data --buildindex examples/pong/data/temp
+cargo m run --bin data-scrape -- configure --project examples/pong/data --output temp/
 cargo m run --bin data-scrape -- asset examples/pong/data/temp
 ```

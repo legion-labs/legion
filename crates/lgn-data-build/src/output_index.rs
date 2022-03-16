@@ -1,4 +1,4 @@
-use std::{path::Path, str::FromStr};
+use std::str::FromStr;
 
 use lgn_content_store::Checksum;
 use lgn_data_compiler::CompiledResource;
@@ -62,13 +62,6 @@ pub(crate) struct OutputIndex {
 }
 
 impl OutputIndex {
-    pub(crate) fn database_uri(buildindex_dir: impl AsRef<Path>, version: &str) -> String {
-        let db_path = buildindex_dir
-            .as_ref()
-            .join(format!("output-{}.db3", version));
-        format!("sqlite://{}", db_path.to_str().unwrap().replace("\\", "/"))
-    }
-
     pub(crate) async fn create_new(db_uri: String) -> Result<Self, Error> {
         let database = {
             sqlx::Any::create_database(&db_uri)
@@ -129,7 +122,7 @@ impl OutputIndex {
             .await
             .map_err(Error::Database)?
         {
-            return Err(Error::NotFound);
+            return Err(Error::NotFound(db_uri));
         }
 
         let output_index = Self::load(db_uri).await?;
@@ -159,14 +152,13 @@ impl OutputIndex {
         // at the moment.
         {
             for resource in compiled_resources {
-                let query =
-                    sqlx::query("INSERT OR REPLACE into compiled_output VALUES(?, ?, ?, ?, ?, ?);")
-                        .bind(compile_path.to_string())
-                        .bind(context_hash.into_i64())
-                        .bind(source_hash.into_i64())
-                        .bind(resource.path.to_string())
-                        .bind(resource.checksum.to_string())
-                        .bind(resource.size as i64);
+                let query = sqlx::query("INSERT into compiled_output VALUES(?, ?, ?, ?, ?, ?);")
+                    .bind(compile_path.to_string())
+                    .bind(context_hash.into_i64())
+                    .bind(source_hash.into_i64())
+                    .bind(resource.path.to_string())
+                    .bind(resource.checksum.to_string())
+                    .bind(resource.size as i64);
 
                 self.database
                     .execute(query)
@@ -175,13 +167,12 @@ impl OutputIndex {
             }
 
             for (source, dest) in compiled_references {
-                let query =
-                    sqlx::query("INSERT OR REPLACE into compiled_reference VALUES(?, ?, ?, ?, ?);")
-                        .bind(compile_path.to_string())
-                        .bind(context_hash.into_i64())
-                        .bind(source_hash.into_i64())
-                        .bind(source.to_string())
-                        .bind(dest.to_string());
+                let query = sqlx::query("INSERT into compiled_reference VALUES(?, ?, ?, ?, ?);")
+                    .bind(compile_path.to_string())
+                    .bind(context_hash.into_i64())
+                    .bind(source_hash.into_i64())
+                    .bind(source.to_string())
+                    .bind(dest.to_string());
 
                 self.database
                     .execute(query)
@@ -288,7 +279,7 @@ impl OutputIndex {
         checksum: Checksum,
         size: usize,
     ) -> Result<(), Error> {
-        let query = sqlx::query("INSERT OR REPLACE into linked_output VALUES(?, ?, ?, ?, ?);")
+        let query = sqlx::query("INSERT into linked_output VALUES(?, ?, ?, ?, ?);")
             .bind(id.to_string())
             .bind(context_hash.into_i64())
             .bind(source_hash.into_i64())
@@ -304,7 +295,7 @@ impl OutputIndex {
     }
 
     pub async fn record_pathid(&mut self, id: &ResourcePathId) -> Result<(), Error> {
-        let query = sqlx::query("INSERT OR REPLACE into pathid_mapping VALUES(?, ?);")
+        let query = sqlx::query("INSERT into pathid_mapping VALUES(?, ?);")
             .bind(id.resource_id().to_string())
             .bind(id.to_string());
 
@@ -348,6 +339,8 @@ impl OutputIndex {
 #[cfg(test)]
 mod tests {
 
+    use std::path::Path;
+
     use lgn_content_store::Checksum;
     use lgn_data_compiler::CompiledResource;
     use lgn_data_offline::ResourcePathId;
@@ -356,6 +349,13 @@ mod tests {
 
     use crate::output_index::{AssetHash, OutputIndex};
 
+    fn test_database_uri(buildindex_dir: impl AsRef<Path>, version: &str) -> String {
+        let db_path = buildindex_dir
+            .as_ref()
+            .join(format!("output-{}.db3", version));
+        format!("sqlite://{}", db_path.to_str().unwrap().replace("\\", "/"))
+    }
+
     #[tokio::test]
     async fn version_check() {
         let work_dir = tempfile::tempdir().unwrap();
@@ -363,12 +363,12 @@ mod tests {
         let buildindex_dir = work_dir.path();
         {
             let _output_index =
-                OutputIndex::create_new(OutputIndex::database_uri(&buildindex_dir, "0.0.1"))
+                OutputIndex::create_new(test_database_uri(&buildindex_dir, "0.0.1"))
                     .await
                     .unwrap();
         }
         assert!(
-            OutputIndex::open(OutputIndex::database_uri(&buildindex_dir, "0.0.2"))
+            OutputIndex::open(test_database_uri(&buildindex_dir, "0.0.2"))
                 .await
                 .is_err()
         );
@@ -378,7 +378,7 @@ mod tests {
     async fn create_open() {
         let work_dir = tempfile::tempdir().unwrap();
         let index_path = work_dir.path();
-        let index_db = OutputIndex::database_uri(&index_path, "0.0.1");
+        let index_db = test_database_uri(&index_path, "0.0.1");
         {
             let _index = OutputIndex::create_new(index_db.clone()).await.unwrap();
         }
@@ -390,7 +390,7 @@ mod tests {
     async fn outputs() {
         let work_dir = tempfile::tempdir().unwrap();
         let index_path = work_dir.path();
-        let index_db = OutputIndex::database_uri(&index_path, "0.0.1");
+        let index_db = test_database_uri(&index_path, "0.0.1");
         let mut index = OutputIndex::create_new(index_db).await.unwrap();
 
         // no dependencies and no references.

@@ -22,6 +22,6 @@ cargo m run --bin physics-rebuild-data
 ## Data exploration
 
 ```sh
-cargo m run --bin data-scrape -- configure --project examples/physics/data --buildindex examples/physics/data/temp
+cargo m run --bin data-scrape -- configure --project examples/physics/data --output temp/
 cargo m run --bin data-scrape -- asset examples/physics/data/temp
 ```

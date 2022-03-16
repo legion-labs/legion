@@ -1,6 +1,20 @@
 [editor_srv]
 project_dir = "tests/sample-data"
+
+# The address of the source control origin.
+#
+# Two kinds of source control addresses are supported:
+# * Url to a remote source control server
+# * Absolute directory path or path relative to "*project_dir*/offline" for directory-based source control
 source_control = "../remote"
+
+# The address to database hosting build results.
+#
+# Two kinds of paths are supported:
+# * An address to a mysql instance (i.e.: "mysql://user:pass@127.0.0.1:6603/")
+# * Absolute directory path or directory path relative to 'project_dir' for sqlite database. (i.e.: "temp/")
+build_output = "temp/"
+
 server_addr = "[::1]:50051"
 default_scene = "/world/sample_1.ent"
 

@@ -10,7 +10,7 @@ use std::sync::Arc;
 use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
 use lgn_content_store::ContentStoreAddr;
-use lgn_data_build::DataBuildOptions;
+use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_offline::resource::{Project, ResourceRegistryOptions};
 use lgn_data_runtime::{manifest::Manifest, AssetRegistry, AssetRegistryScheduling};
 use lgn_data_transaction::{BuildManager, SelectionManager, TransactionManager};
@@ -83,9 +83,16 @@ impl ResourceRegistryPlugin {
 
             let compilers = lgn_ubercompiler::create();
 
-            let build_options = DataBuildOptions::new(&build_dir, compilers)
-                .content_store(&ContentStoreAddr::from(build_dir.as_path()))
-                .manifest(intermediate_manifest.clone());
+            let build_options = DataBuildOptions::new(
+                DataBuildOptions::output_db_path(
+                    &settings.build_output_path,
+                    project_dir.as_path(),
+                    DataBuild::version(),
+                ),
+                ContentStoreAddr::from(build_dir.as_path()),
+                compilers,
+            )
+            .manifest(intermediate_manifest.clone());
 
             let build_manager = BuildManager::new(
                 build_options,
