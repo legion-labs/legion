@@ -34,9 +34,5 @@ lgn-data-runtime = { path = "../lgn-data-runtime", version = "0.1.0" }
 
 [dev-dependencies]
 tempfile = "3.2.0"
-refs-resource = { path = "../lgn-data-offline/test-refs-resource" }
-multitext-resource = { path = "../lgn-data-offline/test-multitext-resource" }
 text-resource = { path = "../lgn-data-offline/test-text-resource" }
 integer-asset = { path = "../lgn-data-runtime/test-integer-asset" }
-refs-asset = { path = "../lgn-data-runtime/test-refs-asset" }
-binary-resource = { path = "../lgn-data-offline/test-binary-resource" }

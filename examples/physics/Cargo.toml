@@ -27,10 +27,6 @@ lgn-physics = { path = "../../crates/lgn-physics", version = "0.1.0", features =
     "runtime",
 ] }
 lgn-graphics-renderer = { path = "../../crates/lgn-graphics-renderer", version = "0.1.0" }
-lgn-scripting = { path = "../../crates/lgn-scripting", version = "0.1.0", features = [
-    "offline",
-    "runtime",
-] }
 lgn-telemetry-sink = { path = "../../crates/lgn-telemetry-sink", version = "0.1.0" }
 lgn-tracing = { path = "../../crates/lgn-tracing", version = "0.1.0" }
 

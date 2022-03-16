@@ -4919,7 +4919,6 @@ dependencies = [
  "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
- "lgn-telemetry-sink",
  "lgn-tracing",
  "lgn-utils",
  "multitext-resource",
@@ -4938,7 +4937,6 @@ dependencies = [
 name = "lgn-data-compiler-remote"
 version = "0.1.0"
 dependencies = [
- "binary-resource",
  "bincode",
  "chacha20poly1305",
  "clap 3.1.6",
@@ -4952,10 +4950,7 @@ dependencies = [
  "lgn-tracing",
  "lgn-utils",
  "lz4_flex",
- "multitext-resource",
  "rand 0.7.3",
- "refs-asset",
- "refs-resource",
  "serde",
  "serde_json",
  "tempfile",
@@ -7426,7 +7421,6 @@ dependencies = [
  "lgn-graphics-renderer",
  "lgn-math",
  "lgn-physics",
- "lgn-scripting",
  "lgn-telemetry-sink",
  "lgn-tracing",
  "sample-data",
