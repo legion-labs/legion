@@ -8,8 +8,6 @@ service SourceControl {
   rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {};
   rpc DestroyIndex(DestroyIndexRequest) returns (DestroyIndexResponse) {};
 
-  rpc GetBlobStorageUrl(GetBlobStorageUrlRequest) returns (GetBlobStorageUrlResponse) {};
-
   rpc RegisterWorkspace(RegisterWorkspaceRequest) returns (RegisterWorkspaceResponse) {};
 
   rpc GetBranch(GetBranchRequest) returns (GetBranchResponse) {};
@@ -43,8 +41,7 @@ message CreateIndexRequest {
 }
 
 message CreateIndexResponse {
-  string blob_storage_url = 1;
-  bool already_exists = 2;
+  bool already_exists = 1;
 }
 
 message DestroyIndexRequest {
@@ -53,14 +50,6 @@ message DestroyIndexRequest {
 
 message DestroyIndexResponse {
   bool does_not_exist = 1;
-}
-
-message GetBlobStorageUrlRequest {
-  string repository_name = 1;
-}
-
-message GetBlobStorageUrlResponse {
-  string blob_storage_url = 1;
 }
 
 message RegisterWorkspaceRequest {
@@ -125,13 +114,8 @@ message Change {
 }
 
 message ChangeType {
-  FileInfo old_info = 1;
-  FileInfo new_info = 2;
-}
-
-message FileInfo {
-  string hash = 1;
-  uint64 size = 2;
+  string old_chunk_id = 1;
+  string new_chunk_id = 2;
 }
 
 message GetTreeRequest {
@@ -145,7 +129,7 @@ message GetTreeResponse {
 
 message Tree {
   string name = 1;
-  FileInfo info = 2;
+  string chunk_id = 2;
   repeated Tree children = 3;
 }
 

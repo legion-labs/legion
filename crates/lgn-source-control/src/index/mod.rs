@@ -8,7 +8,7 @@ pub use grpc_backend::*;
 pub use local_backend::*;
 pub use sql_backend::*;
 
-use crate::{BlobStorageUrl, Result};
+use crate::Result;
 
 /// Represents a source control index.
 pub struct Index(Box<dyn IndexBackend>);
@@ -20,7 +20,7 @@ impl Index {
         Ok(Self(backend))
     }
 
-    pub async fn create(&self) -> Result<BlobStorageUrl> {
+    pub async fn create(&self) -> Result<()> {
         self.0.create_index().await
     }
 

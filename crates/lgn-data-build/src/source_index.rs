@@ -301,7 +301,7 @@ impl SourceIndex {
                             .into_iter()
                             .filter_map(|(_, tree)| match tree {
                                 Tree::Directory { .. } => None,
-                                Tree::File { name, info } => {
+                                Tree::File { name, chunk_id } => {
                                     Some((PathBuf::from(&name), info.hash))
                                 }
                             })

@@ -3,7 +3,6 @@
 // crate-specific lint exceptions:
 #![allow(clippy::missing_errors_doc)]
 
-pub mod blob_storage_url;
 pub mod data_types;
 //pub mod diff;
 mod error;
@@ -16,7 +15,6 @@ pub mod sql;
 mod utils;
 pub mod workspace;
 
-pub use blob_storage_url::*;
 pub use data_types::*;
 //pub use diff::*;
 pub use error::*;

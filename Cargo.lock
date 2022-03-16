@@ -5513,7 +5513,7 @@ dependencies = [
  "futures",
  "http",
  "itertools 0.10.3",
- "lgn-blob-storage",
+ "lgn-content-store2",
  "lgn-online",
  "lgn-source-control-proto",
  "lgn-telemetry-sink",

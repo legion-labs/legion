@@ -16,6 +16,16 @@ pub struct Chunker<Provider> {
     max_parallel_uploads: usize,
 }
 
+impl<Provider: Clone> Clone for Chunker<Provider> {
+    fn clone(&self) -> Self {
+        Self {
+            provider: self.provider.clone(),
+            chunk_size: self.chunk_size,
+            max_parallel_uploads: self.max_parallel_uploads,
+        }
+    }
+}
+
 impl<Provider> Chunker<Provider> {
     pub const DEFAULT_CHUNK_SIZE: usize = 1024 * 1024 * 32; // 32 MB
     pub const DEFAULT_MAX_PARALLEL_UPLOADS: usize = 8;
@@ -225,6 +235,26 @@ impl<Provider: ContentWriter + Send + Sync> Chunker<Provider> {
             }),
             Err(err) => Err(anyhow::anyhow!("failed to write chunk index: {}", err).into()),
         }
+    }
+
+    /// Chunks the specified content with the current settings and returns the chunk identifier.
+    pub fn get_chunk_identifier(&self, data: &[u8]) -> ChunkIdentifier {
+        let ids = data
+            .chunks(self.chunk_size)
+            .map(Identifier::new)
+            .collect::<Vec<_>>();
+
+        let mut buf = Vec::with_capacity(ids.len() * Identifier::SMALL_IDENTIFIER_SIZE);
+        let chunk_index = ChunkIndex::Linear(ids);
+        chunk_index
+            .write_all_to(&mut buf)
+            .expect("failed to serialize chunk index");
+        let chunk_index_id = Identifier::new(&buf);
+
+        ChunkIdentifier::new(
+            data.len().try_into().expect("data_size too large"),
+            chunk_index_id,
+        )
     }
 }
 

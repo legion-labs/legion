@@ -12,9 +12,9 @@ macro_rules! assert_staged_changes {
 }
 
 macro_rules! assert_unstaged_changes {
-    ($workspace:expr, $expected_changes:expr) => {{
+    ($workspace:expr, $csp:expr, $expected_changes:expr) => {{
         let changes = $workspace
-            .get_unstaged_changes()
+            .get_unstaged_changes($csp)
             .await
             .expect("failed to get unstaged changes")
             .into_values()

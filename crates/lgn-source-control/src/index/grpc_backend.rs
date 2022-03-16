@@ -6,16 +6,15 @@ use url::Url;
 
 use lgn_source_control_proto::{
     source_control_client::SourceControlClient, CommitToBranchRequest, CountLocksRequest,
-    CreateIndexRequest, DestroyIndexRequest, GetBlobStorageUrlRequest, GetBranchRequest,
-    GetLockRequest, GetTreeRequest, IndexExistsRequest, InsertBranchRequest, ListBranchesRequest,
-    ListCommitsRequest, ListLocksRequest, LockRequest, RegisterWorkspaceRequest, SaveTreeRequest,
-    UnlockRequest, UpdateBranchRequest,
+    CreateIndexRequest, DestroyIndexRequest, GetBranchRequest, GetLockRequest, GetTreeRequest,
+    IndexExistsRequest, InsertBranchRequest, ListBranchesRequest, ListCommitsRequest,
+    ListLocksRequest, LockRequest, RegisterWorkspaceRequest, SaveTreeRequest, UnlockRequest,
+    UpdateBranchRequest,
 };
 
 use crate::{
-    BlobStorageUrl, Branch, CanonicalPath, Commit, CommitId, Error, IndexBackend,
-    ListBranchesQuery, ListCommitsQuery, ListLocksQuery, Lock, MapOtherError, Result, Tree,
-    WorkspaceRegistration,
+    Branch, CanonicalPath, Commit, CommitId, Error, IndexBackend, ListBranchesQuery,
+    ListCommitsQuery, ListLocksQuery, Lock, MapOtherError, Result, Tree, WorkspaceRegistration,
 };
 
 // Access to repository metadata through a gRPC server.
@@ -64,7 +63,7 @@ impl IndexBackend for GrpcIndexBackend {
         self.url.as_str()
     }
 
-    async fn create_index(&self) -> Result<BlobStorageUrl> {
+    async fn create_index(&self) -> Result<()> {
         async_span_scope!("GrpcIndexBackend::create_index");
         let resp = self
             .client
@@ -81,9 +80,7 @@ impl IndexBackend for GrpcIndexBackend {
             return Err(Error::index_already_exists(self.url()));
         }
 
-        resp.blob_storage_url
-            .parse()
-            .map_other_err("failed to parse the returned blob storage url")
+        Ok(())
     }
 
     async fn destroy_index(&self) -> Result<()> {
@@ -123,24 +120,6 @@ impl IndexBackend for GrpcIndexBackend {
             .into_inner();
 
         Ok(resp.exists)
-    }
-
-    async fn get_blob_storage_url(&self) -> Result<BlobStorageUrl> {
-        async_span_scope!("GrpcIndexBackend::get_blob_storage_url");
-        let resp = self
-            .client
-            .lock()
-            .await
-            .get_blob_storage_url(GetBlobStorageUrlRequest {
-                repository_name: self.repository_name.clone(),
-            })
-            .await
-            .map_other_err("failed to get blob storage url")?
-            .into_inner();
-
-        resp.blob_storage_url
-            .parse()
-            .map_other_err("failed to parse blob storage url")
     }
 
     async fn register_workspace(

@@ -1,8 +1,8 @@
 use async_recursion::async_recursion;
 use async_trait::async_trait;
 use chrono::DateTime;
+use lgn_content_store2::ChunkIdentifier;
 use lgn_tracing::prelude::*;
-use reqwest::Url;
 use sqlx::{migrate::MigrateDatabase, Acquire, Executor, Row};
 use std::{
     collections::{BTreeMap, BTreeSet, VecDeque},
@@ -11,9 +11,9 @@ use std::{
 use tokio::sync::Mutex;
 
 use crate::{
-    sql::SqlConnectionPool, BlobStorageUrl, Branch, CanonicalPath, Change, ChangeType, Commit,
-    CommitId, Error, FileInfo, IndexBackend, ListBranchesQuery, ListCommitsQuery, ListLocksQuery,
-    Lock, MapOtherError, Result, Tree, WorkspaceRegistration,
+    sql::SqlConnectionPool, Branch, CanonicalPath, Change, ChangeType, Commit, CommitId, Error,
+    IndexBackend, ListBranchesQuery, ListCommitsQuery, ListLocksQuery, Lock, MapOtherError, Result,
+    Tree, WorkspaceRegistration,
 };
 
 #[derive(Debug)]
@@ -87,14 +87,12 @@ impl SqlDatabaseDriver {
 pub struct SqlIndexBackend {
     driver: SqlDatabaseDriver,
     pool: Mutex<Option<Arc<SqlConnectionPool>>>,
-    blob_storage_url: BlobStorageUrl,
 }
 
 impl core::fmt::Debug for SqlIndexBackend {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("SqlIndexBackend")
             .field("driver", &self.driver)
-            .field("blob_storage_url", &self.blob_storage_url)
             .finish()
     }
 }
@@ -110,53 +108,12 @@ impl SqlIndexBackend {
     const TABLE_LOCKS: &'static str = "locks";
 
     /// Instanciate a new SQL index backend.
-    ///
-    /// The url is expected to contain a `blob_storage_url` parameter.
     pub fn new(url: String) -> Result<Self> {
-        let mut sql_url = Url::parse(&url).map_other_err(format!("invalid SQL URL: {}", url))?;
-
-        let blob_storage_url = sql_url
-            .query_pairs()
-            .find(|(k, _)| k == "blob_storage_url")
-            .ok_or_else(|| {
-                Error::invalid_index_url(
-                    url.clone(),
-                    anyhow::anyhow!("missing `blob_storage_url` parameter in SQL index URL"),
-                )
-            })
-            .map(|(_, v)| v.to_string())?;
-
-        let blob_storage_url = blob_storage_url.parse().map_other_err(format!(
-            "failed to parse `blob_storage_url` parameter in SQL index URL: {}",
-            blob_storage_url
-        ))?;
-
-        let old_sql_url = sql_url.clone();
-
-        sql_url.query_pairs_mut().clear().extend_pairs(
-            old_sql_url
-                .query_pairs()
-                .filter(|(k, _)| k != "blob_storage_url"),
-        );
-
-        let url = if let Some(idx) = url.find('?') {
-            format!(
-                "{}?{}",
-                url.split_at(idx).0,
-                sql_url.query().unwrap_or_default(),
-            )
-        } else {
-            url
-        }
-        .trim_end_matches('?')
-        .to_string();
-
         let driver = SqlDatabaseDriver::new(url)?;
 
         Ok(Self {
             driver,
             pool: Mutex::new(None),
-            blob_storage_url,
         })
     }
 
@@ -205,7 +162,7 @@ impl SqlIndexBackend {
         "CREATE TABLE `{}` (id INTEGER NOT NULL PRIMARY KEY, owner VARCHAR(255), message TEXT, root_hash CHAR(64), date_time_utc VARCHAR(255));
          CREATE TABLE `{}` (id INTEGER NOT NULL, parent_id INTEGER NOT NULL);
          CREATE INDEX commit_parents_id on `{}`(id);
-         CREATE TABLE `{}` (commit_id INTEGER NOT NULL, canonical_path TEXT NOT NULL, old_hash VARCHAR(255), new_hash VARCHAR(255), old_size INTEGER, new_size INTEGER);
+         CREATE TABLE `{}` (commit_id INTEGER NOT NULL, canonical_path TEXT NOT NULL, old_chunk_id VARCHAR(255), new_chunk_id VARCHAR(255));
          CREATE INDEX commit_changes_commit on `{}`(commit_id);",
          Self::TABLE_COMMITS,
          Self::TABLE_COMMIT_PARENTS,
@@ -222,7 +179,7 @@ impl SqlIndexBackend {
 
     async fn create_forest_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
         let sql: &str = &format!(
-            "CREATE TABLE `{}` (id VARCHAR(255) PRIMARY KEY, name VARCHAR(255), hash VARCHAR(255), size INTEGER);
+            "CREATE TABLE `{}` (id VARCHAR(255) PRIMARY KEY, name VARCHAR(255), chunk_id VARCHAR(255));
             CREATE TABLE `{}` (id VARCHAR(255), child_id VARCHAR(255) NOT NULL, CONSTRAINT unique_link UNIQUE (id, child_id), FOREIGN KEY (id) REFERENCES `{}`(id), FOREIGN KEY (child_id) REFERENCES `{}`(id));
             CREATE INDEX forest_links_index on `{}`(id);",
             Self::TABLE_FOREST,
@@ -393,7 +350,7 @@ impl SqlIndexBackend {
             }
 
             let changes = sqlx::query(&format!(
-                "SELECT canonical_path, old_hash, new_hash, old_size, new_size
+                "SELECT canonical_path, old_chunk_id, new_chunk_id
              FROM `{}`
              WHERE commit_id = ?;",
                 Self::TABLE_COMMIT_CHANGES,
@@ -408,38 +365,40 @@ impl SqlIndexBackend {
             .into_iter()
             .filter_map(|row| {
                 if let Ok(canonical_path) = CanonicalPath::new(row.get("canonical_path")) {
-                    let old_hash: String = row.get("old_hash");
+                    let old_chunk_id: String = row.get("old_chunk_id");
 
-                    let old_info = if !old_hash.is_empty() {
-                        let old_size: i64 = row.get("old_size");
-
-                        Some(FileInfo {
-                            hash: old_hash,
-                            size: old_size as u64,
-                        })
+                    let old_chunk_id = if !old_chunk_id.is_empty() {
+                        match old_chunk_id
+                            .parse()
+                            .map_other_err("failed to parse the old chunk id")
+                        {
+                            Ok(id) => Some(id),
+                            Err(err) => return Some(Err(err)),
+                        }
                     } else {
                         None
                     };
 
-                    let new_hash: String = row.get("new_hash");
-                    let new_info = if !new_hash.is_empty() {
-                        let new_size: i64 = row.get("new_size");
-
-                        Some(FileInfo {
-                            hash: new_hash,
-                            size: new_size as u64,
-                        })
+                    let new_chunk_id: String = row.get("new_chunk_id");
+                    let new_chunk_id = if !new_chunk_id.is_empty() {
+                        match new_chunk_id
+                            .parse()
+                            .map_other_err("failed to parse the new chunk id")
+                        {
+                            Ok(id) => Some(id),
+                            Err(err) => return Some(Err(err)),
+                        }
                     } else {
                         None
                     };
 
-                    ChangeType::new(old_info, new_info)
-                        .map(|change_type| Change::new(canonical_path, change_type))
+                    ChangeType::new(old_chunk_id, new_chunk_id)
+                        .map(|change_type| Ok(Change::new(canonical_path, change_type)))
                 } else {
                     None
                 }
             })
-            .collect::<BTreeSet<_>>();
+            .collect::<Result<BTreeSet<_>>>()?;
 
             let parents: BTreeSet<i64> = sqlx::query(&format!(
                 "SELECT parent_id
@@ -555,7 +514,7 @@ impl SqlIndexBackend {
 
         for change in &commit.changes {
             sqlx::query(&format!(
-                "INSERT INTO `{}` VALUES(?, ?, ?, ?, ?, ?);",
+                "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
                 Self::TABLE_COMMIT_CHANGES
             ))
             .bind(commit_id)
@@ -563,29 +522,15 @@ impl SqlIndexBackend {
             .bind(
                 change
                     .change_type()
-                    .old_info()
-                    .map(|info| info.hash.as_str())
+                    .old_chunk_id()
+                    .map(std::string::ToString::to_string)
                     .unwrap_or_default(),
             )
             .bind(
                 change
                     .change_type()
-                    .new_info()
-                    .map(|info| info.hash.as_str())
-                    .unwrap_or_default(),
-            )
-            .bind(
-                change
-                    .change_type()
-                    .old_info()
-                    .map(|info| i64::try_from(info.size).unwrap_or(0))
-                    .unwrap_or_default(),
-            )
-            .bind(
-                change
-                    .change_type()
-                    .new_info()
-                    .map(|info| i64::try_from(info.size).unwrap_or(0))
+                    .new_chunk_id()
+                    .map(std::string::ToString::to_string)
                     .unwrap_or_default(),
             )
             .execute(&mut *transaction)
@@ -661,7 +606,7 @@ impl SqlIndexBackend {
         // We only insert the tree node if it doesn't exist already.
         if !Self::tree_node_exists(&mut *transaction, &id).await? {
             let sql = &format!(
-                "INSERT INTO `{}` (id, name, hash, size) VALUES(?, ?, ?, ?);",
+                "INSERT INTO `{}` (id, name, chunk_id) VALUES(?, ?, ?);",
                 Self::TABLE_FOREST,
             );
 
@@ -671,7 +616,6 @@ impl SqlIndexBackend {
                         .bind(&id)
                         .bind(name)
                         .bind(Option::<String>::None)
-                        .bind(Option::<i64>::None)
                         .execute(&mut *transaction)
                         .await
                         .map_other_err(&format!(
@@ -683,12 +627,11 @@ impl SqlIndexBackend {
                         Self::save_tree_node_transactional(transaction, Some(&id), child).await?;
                     }
                 }
-                Tree::File { name, info } => {
+                Tree::File { name, chunk_id } => {
                     sqlx::query(sql)
                         .bind(&id)
                         .bind(name)
-                        .bind(Some(&info.hash))
-                        .bind(Some(i64::try_from(info.size).unwrap_or(0)))
+                        .bind(Some(&chunk_id.to_string()))
                         .execute(&mut *transaction)
                         .await
                         .map_other_err(&format!("failed to insert tree file node `{}`", &id))?;
@@ -720,7 +663,7 @@ impl SqlIndexBackend {
         id: &str,
     ) -> Result<Tree> {
         let row = sqlx::query(&format!(
-            "SELECT name, hash, size
+            "SELECT name, chunk_id
              FROM `{}`
              WHERE id = ?;",
             Self::TABLE_FOREST
@@ -731,20 +674,19 @@ impl SqlIndexBackend {
         .map_other_err(format!("failed to fetch tree node `{}`", id))?;
 
         let name = row.get("name");
-        let hash: String = row.get("hash");
+        let chunk_id: String = row.get("chunk_id");
 
-        let info = if !hash.is_empty() {
-            let size: i64 = row.get("size");
-
-            Some(FileInfo {
-                hash,
-                size: size as u64,
-            })
+        let chunk_id = if !chunk_id.is_empty() {
+            Some(
+                chunk_id
+                    .parse()
+                    .map_other_err(format!("failed to parse chunk id for tree node `{}`", id))?,
+            )
         } else {
             None
         };
 
-        let tree = Self::read_tree_node_transactional(transaction, id, name, info).await?;
+        let tree = Self::read_tree_node_transactional(transaction, id, name, chunk_id).await?;
 
         #[cfg(debug_assertions)]
         assert!(
@@ -761,10 +703,10 @@ impl SqlIndexBackend {
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
         id: &str,
         name: String,
-        info: Option<FileInfo>,
+        chunk_id: Option<ChunkIdentifier>,
     ) -> Result<Tree> {
-        Ok(if let Some(info) = info {
-            Tree::File { info, name }
+        Ok(if let Some(chunk_id) = chunk_id {
+            Tree::File { chunk_id, name }
         } else {
             let child_ids = sqlx::query(&format!(
                 "SELECT child_id
@@ -784,7 +726,7 @@ impl SqlIndexBackend {
 
             for child_id in child_ids {
                 let row = sqlx::query(&format!(
-                    "SELECT name, hash, size
+                    "SELECT name, chunk_id
                     FROM `{}`
                     WHERE id = ?;",
                     Self::TABLE_FOREST
@@ -798,22 +740,24 @@ impl SqlIndexBackend {
                 ))?;
 
                 let name: String = row.get("name");
-                let hash: String = row.get("hash");
+                let chunk_id: String = row.get("chunk_id");
 
-                let info = if !hash.is_empty() {
-                    let size: i64 = row.get("size");
-
-                    Some(FileInfo {
-                        hash,
-                        size: size as u64,
-                    })
+                let chunk_id = if !chunk_id.is_empty() {
+                    Some(chunk_id.parse().map_other_err(format!(
+                        "failed to parse chunk id for tree node `{}`",
+                        &child_id
+                    ))?)
                 } else {
                     None
                 };
 
-                let child =
-                    Self::read_tree_node_transactional(&mut *transaction, &child_id, name, info)
-                        .await?;
+                let child = Self::read_tree_node_transactional(
+                    &mut *transaction,
+                    &child_id,
+                    name,
+                    chunk_id,
+                )
+                .await?;
 
                 children.insert(child.name().to_string(), child);
             }
@@ -869,7 +813,7 @@ impl IndexBackend for SqlIndexBackend {
         self.driver.url()
     }
 
-    async fn create_index(&self) -> Result<BlobStorageUrl> {
+    async fn create_index(&self) -> Result<()> {
         async_span_scope!("SqlIndexBackend::create_index");
         if self.driver.check_if_database_exists().await? {
             return Err(Error::index_already_exists(self.url()));
@@ -893,7 +837,7 @@ impl IndexBackend for SqlIndexBackend {
             .await
             .map_other_err("failed to commit transaction when creating repository")?;
 
-        Ok(self.blob_storage_url.clone())
+        Ok(())
     }
 
     async fn destroy_index(&self) -> Result<()> {
@@ -1275,10 +1219,5 @@ impl IndexBackend for SqlIndexBackend {
             .map_other_err("failed to count locks")
             .map(|row| row.get::<i32, _>("count"))
         }
-    }
-
-    async fn get_blob_storage_url(&self) -> Result<BlobStorageUrl> {
-        async_span_scope!("SqlIndexBackend::get_blob_storage_url");
-        Ok(self.blob_storage_url.clone())
     }
 }

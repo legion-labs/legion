@@ -1,8 +1,9 @@
 use std::{collections::BTreeSet, path::PathBuf};
 
+use lgn_content_store2::ChunkIdentifier;
 use thiserror::Error;
 
-use crate::{Branch, CanonicalPath, Change, CommitId, FileInfo, Lock};
+use crate::{Branch, CanonicalPath, Change, CommitId, Lock};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -59,11 +60,11 @@ pub enum Error {
     PathIsNotAFile { canonical_path: CanonicalPath },
     #[error("`{canonical_path}` is not a directory")]
     PathIsNotADirectory { canonical_path: CanonicalPath },
-    #[error("file content for `{canonical_path}` does not match what was expected: got `{}` but expected `{}`", .info.hash, .expected_info.hash)]
+    #[error("file content for `{canonical_path}` does not match what was expected: got `{}` but expected `{}`", .chunk_id, .expected_chunk_id)]
     FileContentMistmatch {
         canonical_path: CanonicalPath,
-        expected_info: FileInfo,
-        info: FileInfo,
+        expected_chunk_id: ChunkIdentifier,
+        chunk_id: ChunkIdentifier,
     },
     #[error("invalid canonical path `{path}`: {reason}")]
     InvalidCanonicalPath { path: String, reason: String },
@@ -184,13 +185,13 @@ impl Error {
 
     pub fn file_content_mismatch(
         canonical_path: CanonicalPath,
-        expected_info: FileInfo,
-        info: FileInfo,
+        expected_chunk_id: ChunkIdentifier,
+        chunk_id: ChunkIdentifier,
     ) -> Self {
         Self::FileContentMistmatch {
             canonical_path,
-            expected_info,
-            info,
+            expected_chunk_id,
+            chunk_id,
         }
     }
 

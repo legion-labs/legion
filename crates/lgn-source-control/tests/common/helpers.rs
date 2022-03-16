@@ -1,4 +1,5 @@
-use lgn_source_control::{CanonicalPath, Change, ChangeType, FileInfo};
+use lgn_content_store2::{ChunkIdentifier, Chunker, ContentProvider};
+use lgn_source_control::{CanonicalPath, Change, ChangeType};
 
 macro_rules! init_test_workspace_and_index {
     () => {{
@@ -23,11 +24,18 @@ macro_rules! init_test_workspace_and_index {
             WorkspaceRegistration::new_with_current_user(),
         );
 
-        let workspace = Workspace::init(&workspace_root.path(), config)
+        let content_store_provider = Chunker::new(SmallContentProvider::new(MemoryProvider::new()));
+
+        let workspace = Workspace::init(&workspace_root.path(), config, &content_store_provider)
             .await
             .expect("failed to initialize workspace");
 
-        (index, workspace, [index_root, workspace_root])
+        (
+            index,
+            workspace,
+            content_store_provider,
+            [index_root, workspace_root],
+        )
     }};
 }
 
@@ -104,70 +112,70 @@ macro_rules! delete_file {
 }
 
 macro_rules! workspace_add_files {
-    ($workspace:expr, $paths:expr) => {{
+    ($workspace:expr, $csp:expr, $paths:expr) => {{
         $workspace
-            .add_files($paths.into_iter().map(Path::new))
+            .add_files($csp, $paths.into_iter().map(Path::new))
             .await
             .expect("failed to add files")
     }};
 }
 
 macro_rules! workspace_checkout_files {
-    ($workspace:expr, $paths:expr) => {{
+    ($workspace:expr, $csp:expr, $paths:expr) => {{
         $workspace
-            .checkout_files($paths.into_iter().map(Path::new))
+            .checkout_files($csp, $paths.into_iter().map(Path::new))
             .await
             .expect("failed to edit files")
     }};
 }
 
 macro_rules! workspace_delete_files {
-    ($workspace:expr, $paths:expr) => {{
+    ($workspace:expr, $csp:expr, $paths:expr) => {{
         $workspace
-            .delete_files($paths.into_iter().map(Path::new))
+            .delete_files($csp, $paths.into_iter().map(Path::new))
             .await
             .expect("failed to delete files")
     }};
 }
 
 macro_rules! workspace_revert_files {
-    ($workspace:expr, $paths:expr, $staging:expr) => {{
+    ($workspace:expr, $csp:expr, $paths:expr, $staging:expr) => {{
         $workspace
-            .revert_files($paths.into_iter().map(Path::new), $staging)
+            .revert_files($csp, $paths.into_iter().map(Path::new), $staging)
             .await
             .expect("failed to revert files")
     }};
 }
 
 macro_rules! workspace_commit {
-    ($workspace:expr, $message:literal) => {{
+    ($workspace:expr, $csp:expr, $message:literal) => {{
         $workspace
-            .commit($message, lgn_source_control::CommitMode::Strict)
+            .commit($csp, $message, lgn_source_control::CommitMode::Strict)
             .await
             .expect("failed to commit")
     }};
 }
 
 macro_rules! workspace_commit_lenient {
-    ($workspace:expr, $message:literal) => {{
+    ($workspace:expr, $csp:expr, $message:literal) => {{
         $workspace
-            .commit($message, lgn_source_control::CommitMode::Lenient)
+            .commit($csp, $message, lgn_source_control::CommitMode::Lenient)
             .await
             .expect("failed to commit")
     }};
 }
 
 macro_rules! workspace_commit_error {
-    ($workspace:expr, $message:literal) => {{
-        match $workspace.commit($message, lgn_source_control::CommitMode::Strict).await {
+    ($workspace:expr, $csp:expr, $message:literal) => {{
+        match $workspace.commit($csp, $message, lgn_source_control::CommitMode::Strict).await {
             Err(err) => err,
             Ok(_) => {
                 panic!("commit should have failed");
             }
         }
     }};
-    ($workspace:expr, $message:literal, $($err:tt)+) => {{
-        match $workspace.commit($message, lgn_source_control::CommitMode::Strict).await {
+    ($workspace:expr, $csp:expr, $message:literal, $($err:tt)+) => {{
+        match $workspace.commit($csp, $message, lgn_source_control::CommitMode::Strict).await {
             Err($($err)+) => {},
             Err(err) => {
                 panic!("unexpected error `{}`", err);
@@ -198,9 +206,9 @@ macro_rules! workspace_create_branch {
 }
 
 macro_rules! workspace_switch_branch {
-    ($workspace:expr, $branch_name:literal) => {{
+    ($workspace:expr, $csp:expr, $branch_name:literal) => {{
         $workspace
-            .switch_branch($branch_name)
+            .switch_branch($csp, $branch_name)
             .await
             .expect("failed to switch branch")
     }};
@@ -210,50 +218,30 @@ pub(crate) fn cp(s: &str) -> CanonicalPath {
     CanonicalPath::new(s).unwrap()
 }
 
-pub(crate) fn add(s: &str, new_hash: &str, new_size: u64) -> Change {
-    Change::new(
-        cp(s),
-        ChangeType::Add {
-            new_info: FileInfo {
-                hash: new_hash.to_owned(),
-                size: new_size,
-            },
-        },
-    )
+pub(crate) fn id(csp: &Chunker<impl ContentProvider + Send + Sync>, data: &str) -> ChunkIdentifier {
+    csp.get_chunk_identifier(data.as_bytes())
+}
+
+pub(crate) fn add(s: &str, new_chunk_id: ChunkIdentifier) -> Change {
+    Change::new(cp(s), ChangeType::Add { new_chunk_id })
 }
 
 pub(crate) fn edit(
     s: &str,
-    old_hash: &str,
-    new_hash: &str,
-    old_size: u64,
-    new_size: u64,
+    old_chunk_id: ChunkIdentifier,
+    new_chunk_id: ChunkIdentifier,
 ) -> Change {
     Change::new(
         cp(s),
         ChangeType::Edit {
-            old_info: FileInfo {
-                hash: old_hash.to_owned(),
-                size: old_size,
-            },
-            new_info: FileInfo {
-                hash: new_hash.to_owned(),
-                size: new_size,
-            },
+            old_chunk_id,
+            new_chunk_id,
         },
     )
 }
 
-pub(crate) fn delete(s: &str, old_hash: &str, old_size: u64) -> Change {
-    Change::new(
-        cp(s),
-        ChangeType::Delete {
-            old_info: FileInfo {
-                hash: old_hash.to_owned(),
-                size: old_size,
-            },
-        },
-    )
+pub(crate) fn delete(s: &str, old_chunk_id: ChunkIdentifier) -> Change {
+    Change::new(cp(s), ChangeType::Delete { old_chunk_id })
 }
 
 pub(crate) use {
