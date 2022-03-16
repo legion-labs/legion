@@ -16,10 +16,10 @@ TVertexIn LoadVertex(MeshDescription mesh_desc, uint vertexId) {
     if( mesh_desc.attrib_mask.is_set(MeshAttribMask_COLOR)) {
         uint packed_color = static_buffer.Load<uint>(mesh_desc.color_offset + vertexId * 4);       
         vertex_in.color = float4(
-            (packed_color & 0xFF000000) / 255.f,
-            (packed_color & 0x00FF0000) / 255.f,
-            (packed_color & 0x0000FF00) / 255.f,
-            (packed_color & 0x000000FF) / 255.f
+            (packed_color & 0x000000FF) / 255.f,
+            ((packed_color & 0x0000FF00) >> 8) / 255.f,
+            ((packed_color & 0x00FF0000) >> 16) / 255.f,
+            ((packed_color & 0xFF000000) >> 24) / 255.f
         ); 
     }
     if( mesh_desc.attrib_mask.is_set(MeshAttribMask_TEX_COORD)) {   
