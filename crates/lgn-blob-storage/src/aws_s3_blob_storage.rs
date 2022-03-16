@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use bytes::Bytes;
+use lgn_tracing::prelude::*;
 use pin_project::pin_project;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
@@ -20,6 +21,7 @@ pub struct AwsS3BlobStorage {
 }
 
 impl AwsS3BlobStorage {
+    #[span_fn]
     pub async fn new(url: AwsS3Url) -> Self {
         let config = aws_config::load_from_env().await;
         let client = aws_sdk_s3::Client::new(&config);
@@ -31,6 +33,7 @@ impl AwsS3BlobStorage {
         format!("{}/{}", self.url.root, name)
     }
 
+    #[span_fn]
     async fn get_object_size(&self, key: &str) -> Result<Option<u64>> {
         let req = self
             .client
@@ -100,6 +103,7 @@ enum ByteStreamWriterState {
 }
 
 impl ByteStreamWriter {
+    #[span_fn]
     fn new(client: aws_sdk_s3::Client, bucket_name: String, key: String) -> Self {
         Self {
             client,
@@ -109,6 +113,7 @@ impl ByteStreamWriter {
         }
     }
 
+    #[span_fn]
     fn poll_write_impl(&self, buf: &[u8]) -> Poll<std::result::Result<usize, std::io::Error>> {
         match &mut *self.state.lock().unwrap() {
             ByteStreamWriterState::Writing(buffer) => {
@@ -123,6 +128,7 @@ impl ByteStreamWriter {
         }
     }
 
+    #[span_fn]
     fn poll_flush_impl(&self) -> Poll<std::result::Result<(), std::io::Error>> {
         match &*self.state.lock().unwrap() {
             ByteStreamWriterState::Writing(_) => Poll::Ready(Ok(())),
@@ -133,6 +139,7 @@ impl ByteStreamWriter {
         }
     }
 
+    #[span_fn]
     fn poll_shutdown_impl(
         &self,
         cx: &mut Context<'_>,
@@ -198,6 +205,7 @@ impl AsyncWrite for ByteStreamWriter {
 
 #[async_trait]
 impl StreamingBlobStorage for AwsS3BlobStorage {
+    #[span_fn]
     async fn get_blob_info(&self, name: &str) -> super::Result<Option<BlobStats>> {
         let key = self.blob_key(name);
 
@@ -206,6 +214,7 @@ impl StreamingBlobStorage for AwsS3BlobStorage {
         Ok(size.map(|size| BlobStats { size }))
     }
 
+    #[span_fn]
     async fn get_blob_reader(&self, name: &str) -> Result<BoxedAsyncRead> {
         let key = self.blob_key(name);
 
@@ -225,6 +234,7 @@ impl StreamingBlobStorage for AwsS3BlobStorage {
         Ok(Box::pin(stream))
     }
 
+    #[span_fn]
     async fn get_blob_writer(&self, name: &str) -> Result<Option<BoxedAsyncWrite>> {
         let key = self.blob_key(name);
 
@@ -237,6 +247,7 @@ impl StreamingBlobStorage for AwsS3BlobStorage {
         Ok(Some(Box::pin(writer)))
     }
 
+    #[span_fn]
     async fn delete_blob(&self, name: &str) -> Result<()> {
         let key = self.blob_key(name);
 

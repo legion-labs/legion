@@ -3,6 +3,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use lgn_analytics::{fetch_block_payload, parse_block};
 use lgn_blob_storage::BlobStorage;
+use lgn_tracing::prelude::*;
 use lgn_tracing::warn;
 use lgn_tracing_transit::{Object, Value};
 
@@ -32,6 +33,7 @@ where
     fun(span_id, scope, tick)
 }
 
+#[span_fn]
 pub async fn parse_thread_block<Proc: ThreadBlockProcessor>(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,

@@ -1,6 +1,7 @@
 use anyhow::Result;
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::CallTree;
+use lgn_tracing::prelude::*;
 use std::sync::Arc;
 
 use crate::{cache::DiskCache, call_tree::compute_block_call_tree};
@@ -12,6 +13,7 @@ pub struct CallTreeStore {
 }
 
 impl CallTreeStore {
+    #[span_fn]
     pub fn new(
         pool: sqlx::AnyPool,
         blob_storage: Arc<dyn BlobStorage>,
@@ -24,6 +26,7 @@ impl CallTreeStore {
         }
     }
 
+    #[span_fn]
     pub async fn get_call_tree(
         &self,
         process: &lgn_telemetry_sink::ProcessInfo,

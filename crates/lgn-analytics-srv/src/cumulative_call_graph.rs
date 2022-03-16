@@ -87,6 +87,7 @@ fn record_tree_stats(
     }
 }
 
+#[span_fn]
 async fn record_process_call_graph(
     connection: &mut sqlx::AnyConnection,
     call_trees: &CallTreeStore,
@@ -125,6 +126,7 @@ async fn record_process_call_graph(
 }
 
 #[allow(clippy::cast_precision_loss)]
+#[span_fn]
 pub(crate) async fn compute_cumulative_call_graph(
     connection: &mut sqlx::AnyConnection,
     call_trees: &CallTreeStore,

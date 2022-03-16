@@ -4,6 +4,7 @@ use std::{
 };
 
 use async_trait::async_trait;
+use lgn_tracing::prelude::*;
 
 use super::{BlobStats, BlobStorage, Result};
 
@@ -18,6 +19,7 @@ impl<B: BlobStorage> Lz4BlobStorageAdapter<B> {
     }
 
     /// Reads the the full contents of a blob from the storage to the specified writer.
+    #[span_fn]
     async fn decompress_blob_to(&self, hash: &str, w: &mut impl Write) -> Result<()> {
         let compressed_data = self.inner.read_blob(hash).await?;
         let reader = BufReader::new(compressed_data.as_slice());
@@ -49,6 +51,7 @@ impl<B: BlobStorage> BlobStorage for Lz4BlobStorageAdapter<B> {
     }
 
     /// Reads the the full contents of a blob from the storage.
+    #[span_fn]
     async fn read_blob(&self, hash: &str) -> Result<Vec<u8>> {
         let mut data = Vec::new();
 
@@ -62,6 +65,7 @@ impl<B: BlobStorage> BlobStorage for Lz4BlobStorageAdapter<B> {
     }
 
     /// Writes the full contents of a blob to the storage.
+    #[span_fn]
     async fn write_blob(&self, hash: &str, contents: &[u8]) -> Result<()> {
         let mut compressed_data = Vec::new();
         compressed_data.reserve(contents.len());
@@ -98,6 +102,7 @@ impl<B: BlobStorage> BlobStorage for Lz4BlobStorageAdapter<B> {
 
     /// Download a blob from the storage and persist it to disk at the specified
     /// location.
+    #[span_fn]
     async fn download_blob(&self, path: &Path, hash: &str) -> Result<()> {
         let mut output_file = match std::fs::File::create(path) {
             Ok(file) => file,
@@ -114,6 +119,7 @@ impl<B: BlobStorage> BlobStorage for Lz4BlobStorageAdapter<B> {
         Ok(())
     }
 
+    #[span_fn]
     async fn delete_blob(&self, name: &str) -> super::Result<()> {
         self.inner.delete_blob(name).await
     }

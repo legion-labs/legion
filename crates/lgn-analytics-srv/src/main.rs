@@ -69,6 +69,7 @@ enum DataLakeSpec {
 ///
 /// # Errors
 /// block storage must exist and sqlite database must accept connections
+#[span_fn]
 pub async fn connect_to_local_data_lake(
     data_lake_path: PathBuf,
     cache_path: PathBuf,
@@ -91,6 +92,7 @@ pub async fn connect_to_local_data_lake(
 ///
 /// # Errors
 /// block storage must exist and mysql database must accept connections
+#[span_fn]
 pub async fn connect_to_remote_data_lake(
     db_uri: &str,
     s3_url_data_lake: &str,
@@ -111,6 +113,7 @@ pub async fn connect_to_remote_data_lake(
 }
 
 #[tokio::main]
+#[span_fn]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _telemetry_guard = TelemetryGuardBuilder::default()
         .with_ctrlc_handling()

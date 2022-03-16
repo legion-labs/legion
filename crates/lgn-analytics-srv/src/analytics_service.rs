@@ -699,6 +699,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<AsyncSpansRequest>,
     ) -> Result<Response<AsyncSpansReply>, Status> {
+        async_span_scope!("hardcoded fetch_async_spans");
         let inner_request = request.into_inner();
         match self.fetch_async_spans_impl(inner_request).await {
             Ok(reply) => Ok(Response::new(reply)),

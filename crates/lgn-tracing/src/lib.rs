@@ -82,7 +82,8 @@ pub mod prelude {
     pub use crate::levels::*;
     pub use crate::time::*;
     pub use crate::{
-        debug, error, fmetric, imetric, info, log, log_enabled, span_scope, trace, warn,
+        async_span_scope, debug, error, fmetric, imetric, info, log, log_enabled, span_scope,
+        trace, warn,
     };
     pub use lgn_tracing_proc_macros::*;
 }

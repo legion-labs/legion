@@ -59,6 +59,7 @@ impl ThreadBlockProcessor for StatsProcessor {
 }
 
 #[allow(clippy::cast_precision_loss)]
+#[span_fn]
 pub async fn compute_block_async_stats(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
@@ -218,6 +219,7 @@ fn is_track_available(track: &[Span], time: f64) -> bool {
     }
 }
 
+#[span_fn]
 fn get_available_track(tracks: &mut Vec<SpanTrack>, time: f64) -> usize {
     for (index, track) in tracks.iter().enumerate() {
         if is_track_available(&track.spans, time) {
@@ -228,6 +230,7 @@ fn get_available_track(tracks: &mut Vec<SpanTrack>, time: f64) -> usize {
     tracks.len() - 1
 }
 
+#[span_fn]
 fn layout_spans(spans: Vec<Span>) -> Vec<SpanTrack> {
     let mut tracks = vec![];
     for span in spans {
@@ -238,6 +241,7 @@ fn layout_spans(spans: Vec<Span>) -> Vec<SpanTrack> {
 }
 
 #[allow(clippy::cast_lossless)]
+#[span_fn]
 pub async fn compute_async_spans(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,

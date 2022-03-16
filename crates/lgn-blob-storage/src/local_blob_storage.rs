@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
+use lgn_tracing::prelude::*;
 use std::path::PathBuf;
 use tokio::fs;
 
@@ -12,6 +13,7 @@ impl LocalBlobStorage {
     ///
     /// # Errors
     /// Could fail to create the directory if it does not already exist
+    #[span_fn]
     pub async fn new(root: PathBuf) -> Result<Self> {
         fs::create_dir_all(&root)
             .await
@@ -24,6 +26,7 @@ impl LocalBlobStorage {
             .map(|_| Self(root))
     }
 
+    #[span_fn]
     async fn get_blob_reader_file(&self, hash: &str) -> super::Result<fs::File> {
         let blob_path = self.0.join(hash);
 
@@ -45,6 +48,7 @@ impl LocalBlobStorage {
 
 #[async_trait]
 impl StreamingBlobStorage for LocalBlobStorage {
+    #[span_fn]
     async fn get_blob_info(&self, hash: &str) -> super::Result<Option<BlobStats>> {
         match self.get_blob_reader_file(hash).await {
             Ok(file) => match file.metadata().await {
@@ -63,12 +67,14 @@ impl StreamingBlobStorage for LocalBlobStorage {
         }
     }
 
+    #[span_fn]
     async fn get_blob_reader(&self, hash: &str) -> super::Result<BoxedAsyncRead> {
         let file = self.get_blob_reader_file(hash).await?;
 
         Ok(Box::pin(file))
     }
 
+    #[span_fn]
     async fn get_blob_writer(&self, hash: &str) -> super::Result<Option<BoxedAsyncWrite>> {
         let blob_path = self.0.join(hash);
 
@@ -92,6 +98,7 @@ impl StreamingBlobStorage for LocalBlobStorage {
         Ok(Some(Box::pin(file)))
     }
 
+    #[span_fn]
     async fn delete_blob(&self, name: &str) -> super::Result<()> {
         let blob_path = self.0.join(name);
 

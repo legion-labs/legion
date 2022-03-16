@@ -558,15 +558,19 @@ pub async fn fetch_block_payload(
     let buffer: Vec<u8> = if let Some(row) = opt_row {
         row.get("payload")
     } else {
+        async_span_scope!("read_blob");
         blob_storage
             .read_blob(&block_id)
             .await
             .with_context(|| "reading block payload from blob storage")?
     };
 
-    let payload = lgn_telemetry_proto::telemetry::BlockPayload::decode(&*buffer)
-        .with_context(|| format!("reading payload {}", &block_id))?;
-    Ok(payload)
+    {
+        span_scope!("decode");
+        let payload = lgn_telemetry_proto::telemetry::BlockPayload::decode(&*buffer)
+            .with_context(|| format!("reading payload {}", &block_id))?;
+        Ok(payload)
+    }
 }
 
 #[span_fn]
