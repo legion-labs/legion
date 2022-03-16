@@ -378,26 +378,13 @@ impl AssetToECS for lgn_graphics_data::runtime::Model {
 
 impl AssetToECS for lgn_scripting::runtime::Script {
     fn create_in_ecs(
-        commands: &mut Commands<'_, '_>,
-        entity: &Self,
-        asset_id: &ResourceTypeAndId,
+        _commands: &mut Commands<'_, '_>,
+        _entity: &Self,
+        _asset_id: &ResourceTypeAndId,
         _registry: &Res<'_, Arc<AssetRegistry>>,
-        asset_to_entity_map: &mut ResMut<'_, AssetToEntityMap>,
+        _asset_to_entity_map: &mut ResMut<'_, AssetToEntityMap>,
         _existing_children: Option<&Children>,
     ) -> Option<Entity> {
-        let ecs_entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
-            commands.entity(entity)
-        } else {
-            commands.spawn()
-        };
-
-        info!(
-            "Spawned {}: {} -> ECS id: {:?} ({} bytes)",
-            Self::TYPENAME,
-            asset_id.id,
-            ecs_entity.id(),
-            entity.compiled_script.len()
-        );
-        Some(ecs_entity.id())
+        None
     }
 }
