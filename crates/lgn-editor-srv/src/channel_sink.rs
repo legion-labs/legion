@@ -14,7 +14,7 @@ use lgn_tracing::{
 use tokio::sync::mpsc;
 
 #[derive(Debug)]
-pub enum Log {
+pub enum TraceEvent {
     Startup(ProcessInfo),
     Shutdown,
     Message {
@@ -32,36 +32,37 @@ pub enum Log {
 }
 
 pub struct ChannelSink {
-    sender: mpsc::UnboundedSender<Log>,
+    sender: mpsc::UnboundedSender<TraceEvent>,
 }
 
 impl ChannelSink {
-    pub fn new(sender: mpsc::UnboundedSender<Log>) -> Self {
+    pub fn new(sender: mpsc::UnboundedSender<TraceEvent>) -> Self {
         Self { sender }
     }
 
-    fn send(&self, log: Log) {
+    fn send(&self, trace_event: TraceEvent) {
         let sender = self.sender.clone();
 
-        let _send_result = sender.send(log);
+        let _send_result = sender.send(trace_event);
     }
 }
 
 impl EventSink for ChannelSink {
     fn on_startup(&self, process_info: ProcessInfo) {
-        self.send(Log::Startup(process_info));
+        self.send(TraceEvent::Startup(process_info));
     }
 
     fn on_shutdown(&self) {
-        self.send(Log::Shutdown);
+        self.send(TraceEvent::Shutdown);
     }
 
-    fn on_log_enabled(&self, _level: Level, _: &str) -> bool {
+    fn on_log_enabled(&self, _level: Level, _target: &str) -> bool {
+        // TODO: Allow filtering by level/target
         true
     }
 
     fn on_log(&self, desc: &LogMetadata, time: i64, args: fmt::Arguments<'_>) {
-        self.send(Log::Message {
+        self.send(TraceEvent::Message {
             level: desc.level,
             time,
             target: desc.target.to_string(),
@@ -70,26 +71,26 @@ impl EventSink for ChannelSink {
     }
 
     fn on_init_log_stream(&self, _log_stream: &LogStream) {
-        self.send(Log::InitLogStream);
+        self.send(TraceEvent::InitLogStream);
     }
 
     fn on_process_log_block(&self, log_block: Arc<LogBlock>) {
-        self.send(Log::ProcessLogBlock(log_block));
+        self.send(TraceEvent::ProcessLogBlock(log_block));
     }
 
     fn on_init_metrics_stream(&self, _metric_stream: &MetricsStream) {
-        self.send(Log::InitMetricsStream);
+        self.send(TraceEvent::InitMetricsStream);
     }
 
     fn on_process_metrics_block(&self, metrics_block: Arc<MetricsBlock>) {
-        self.send(Log::ProcessMetricsBlock(metrics_block));
+        self.send(TraceEvent::ProcessMetricsBlock(metrics_block));
     }
 
     fn on_init_thread_stream(&self, _thread_stream: &ThreadStream) {
-        self.send(Log::InitThreadStream);
+        self.send(TraceEvent::InitThreadStream);
     }
 
     fn on_process_thread_block(&self, thread_block: Arc<ThreadBlock>) {
-        self.send(Log::ProcessThreadBlock(thread_block));
+        self.send(TraceEvent::ProcessThreadBlock(thread_block));
     }
 }

@@ -22,7 +22,7 @@ pub type ProcessInfo = lgn_telemetry_proto::telemetry::Process;
 pub type StreamInfo = lgn_telemetry_proto::telemetry::Stream;
 pub type EncodedBlock = lgn_telemetry_proto::telemetry::Block;
 pub use lgn_telemetry_proto::telemetry::ContainerMetadata;
-use lgn_tracing::event::{BoxedEventSink, NullEventSink};
+use lgn_tracing::event::BoxedEventSink;
 use lgn_tracing::{
     event::EventSink,
     guards::{TracingSystemGuard, TracingThreadGuard},
@@ -83,36 +83,36 @@ fn alloc_telemetry_system(
     }
     let mut weak_guard = GLOBAL_WEAK_GUARD.lock().unwrap();
     let weak = &mut *weak_guard;
+
     if let Some(arc) = weak.upgrade() {
         return Ok(arc);
     }
-    let sinks: BoxedEventSink = match std::env::var("LEGION_TELEMETRY_URL") {
-        Ok(url) => Box::new(GRPCEventSink::new(&url, config.max_queue_size)),
+
+    let mut sinks: Vec<BoxedEventSink> = match std::env::var("LEGION_TELEMETRY_URL") {
+        Ok(url) => vec![Box::new(GRPCEventSink::new(&url, config.max_queue_size))],
         Err(_no_url_in_env) => {
             if config.enable_console_printer {
-                Box::new(ImmediateEventSink::new(
+                vec![Box::new(ImmediateEventSink::new(
                     config.level_filters,
                     std::env::var("LGN_TRACE_FILE").ok(),
-                )?)
+                )?)]
             } else {
-                Box::new(NullEventSink {})
+                Vec::new()
             }
         }
     };
-
-    let mut sinks = vec![sinks];
 
     if let Some(custom_sinks) = custom_sinks {
         sinks.append(custom_sinks);
     }
 
-    let sinks = Arc::new(sinks);
+    let sink: BoxedEventSink = sinks.into();
 
     let arc = Arc::<TracingSystemGuard>::new(TracingSystemGuard::new(
         config.logs_buffer_size,
         config.metrics_buffer_size,
         config.threads_buffer_size,
-        sinks,
+        sink.into(),
     )?);
     set_max_level(config.max_level);
     set_max_lod(LodFilter::Max);

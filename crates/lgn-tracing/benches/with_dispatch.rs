@@ -13,7 +13,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         10 * 1024 * 1024,
         1024 * 1024,
         10 * 1024 * 1024,
-        Arc::new(vec![Box::new(NullEventSink {})]),
+        Arc::new(NullEventSink {}),
     );
     let _thread_guard = TracingThreadGuard::new();
 

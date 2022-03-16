@@ -1,11 +1,11 @@
 //! Editor server executable
 //!
 
-use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
+use std::{net::SocketAddr, path::PathBuf, time::Duration};
 
 use clap::Parser;
 use generic_data::plugin::GenericDataPlugin;
-use grpc::LogsReceiver;
+use grpc::TraceEventsReceiver;
 use lgn_app::{prelude::*, AppExit, EventWriter, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::AsyncPlugin;
@@ -23,7 +23,7 @@ use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::{debug, warn};
 use lgn_transform::TransformPlugin;
 use sample_data::SampleDataPlugin;
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::mpsc;
 
 mod grpc;
 mod plugin;
@@ -115,16 +115,14 @@ fn main() {
     let mut telemetry_config = lgn_telemetry_sink::Config::default();
     telemetry_config.enable_tokio_console_server = true;
 
-    let (logs_sender, logs_receiver) = mpsc::unbounded_channel();
-
-    let logs_receiver = Arc::new(Mutex::new(LogsReceiver::new(logs_receiver)));
-
-    let channel_sink = ChannelSink::new(logs_sender);
+    let (trace_events_sender, trace_events_receiver) = mpsc::unbounded_channel();
 
     let telemetry_guard = TelemetryGuardBuilder::new(telemetry_config)
-        .add_sink(channel_sink)
+        .add_sink(ChannelSink::new(trace_events_sender))
         .build()
         .expect("telemetry guard should be initialized once");
+
+    let trace_events_receiver: TraceEventsReceiver = trace_events_receiver.into();
 
     let mut app = App::from_telemetry_guard(telemetry_guard);
 
@@ -147,7 +145,7 @@ fn main() {
     ))
     .add_plugin(ResourceRegistryPlugin::default())
     .insert_resource(GRPCPluginSettings::new(server_addr))
-    .insert_resource(logs_receiver)
+    .insert_resource(trace_events_receiver)
     .add_plugin(GRPCPlugin::default())
     .add_plugin(InputPlugin::default())
     .add_plugin(RendererPlugin::default())

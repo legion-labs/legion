@@ -1,7 +1,4 @@
-use std::{
-    ops::{Deref, DerefMut},
-    sync::Arc,
-};
+use std::{ops::Deref, sync::Arc};
 
 use lgn_data_transaction::TransactionManager;
 use lgn_editor_proto::editor::{
@@ -13,44 +10,54 @@ use tokio::sync::{mpsc, Mutex};
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
 
-use crate::channel_sink::Log;
+use crate::channel_sink::TraceEvent;
 
-pub(crate) struct LogsReceiver(pub(crate) mpsc::UnboundedReceiver<Log>);
+/// Easy to share, referenced counted version of Tokio's [`UnboundedReceiver`].
+/// Can be cloned safely and will dereference to the internal [`Mutex`].
+pub(crate) struct SharedUnboundedReceiver<T>(pub(crate) Arc<Mutex<mpsc::UnboundedReceiver<T>>>);
 
-impl LogsReceiver {
-    pub fn new(receiver: mpsc::UnboundedReceiver<Log>) -> Self {
-        Self(receiver)
+impl<T> SharedUnboundedReceiver<T> {
+    pub fn new(receiver: mpsc::UnboundedReceiver<T>) -> Self {
+        Self(Arc::new(Mutex::new(receiver)))
     }
 }
 
-impl Deref for LogsReceiver {
-    type Target = mpsc::UnboundedReceiver<Log>;
+impl<T> Clone for SharedUnboundedReceiver<T> {
+    fn clone(&self) -> Self {
+        Self(Arc::clone(&self.0))
+    }
+}
+
+impl<T> Deref for SharedUnboundedReceiver<T> {
+    type Target = Mutex<mpsc::UnboundedReceiver<T>>;
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &*self.0
     }
 }
 
-impl DerefMut for LogsReceiver {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+impl<T> From<mpsc::UnboundedReceiver<T>> for SharedUnboundedReceiver<T> {
+    fn from(receiver: mpsc::UnboundedReceiver<T>) -> Self {
+        Self::new(receiver)
     }
 }
+
+pub(crate) type TraceEventsReceiver = SharedUnboundedReceiver<TraceEvent>;
 
 pub(crate) struct GRPCServer {
     transaction_manager: Arc<Mutex<TransactionManager>>,
-    log_receiver: Arc<Mutex<LogsReceiver>>,
+    trace_events_receiver: TraceEventsReceiver,
 }
 
 impl GRPCServer {
-    /// Instanciate a new `GRPCServer` using the specified
+    /// Instantiate a new `GRPCServer`
     pub(crate) fn new(
         transaction_manager: Arc<Mutex<TransactionManager>>,
-        log_receiver: Arc<Mutex<LogsReceiver>>,
+        trace_events_receiver: TraceEventsReceiver,
     ) -> Self {
         Self {
             transaction_manager,
-            log_receiver,
+            trace_events_receiver,
         }
     }
 
@@ -95,16 +102,16 @@ impl Editor for GRPCServer {
     ) -> Result<tonic::Response<<Self as Editor>::InitLogsStreamStream>, Status> {
         let (tx, rx) = mpsc::channel(10);
 
-        let receiver = self.log_receiver.clone();
+        let receiver = self.trace_events_receiver.clone();
 
         tokio::spawn(async move {
-            while let Some(log) = receiver.lock().await.recv().await {
-                if let Log::Message {
+            while let Some(trace_event) = receiver.lock().await.recv().await {
+                if let TraceEvent::Message {
                     target,
                     message,
                     level,
                     time,
-                } = log
+                } = trace_event
                 {
                     let _send_result = tx
                         .send(Ok(InitLogsStreamResponse {

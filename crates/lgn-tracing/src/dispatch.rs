@@ -8,7 +8,7 @@ use std::{
 use chrono::Utc;
 
 pub use crate::errors::{Error, Result};
-use crate::event::{BoxedEventSink, TracingBlock};
+use crate::event::{EventSink, NullEventSink, TracingBlock};
 use crate::logs::{
     LogBlock, LogMetadata, LogStaticStrEvent, LogStaticStrInteropEvent, LogStream, LogStringEvent,
     LogStringInteropEvent,
@@ -28,7 +28,7 @@ pub fn init_event_dispatch(
     logs_buffer_size: usize,
     metrics_buffer_size: usize,
     threads_buffer_size: usize,
-    sinks: Arc<Vec<BoxedEventSink>>,
+    sink: Arc<dyn EventSink>,
 ) -> Result<()> {
     lazy_static::lazy_static! {
         static ref INIT_MUTEX: Mutex<()> = Mutex::new(());
@@ -41,7 +41,7 @@ pub fn init_event_dispatch(
                 logs_buffer_size,
                 metrics_buffer_size,
                 threads_buffer_size,
-                sinks,
+                sink,
             ));
             Ok(())
         } else {
@@ -229,7 +229,7 @@ struct Dispatch {
     threads_buffer_size: usize,
     log_stream: Mutex<LogStream>,
     metrics_stream: Mutex<MetricsStream>,
-    sinks: Arc<Vec<BoxedEventSink>>,
+    sink: Arc<dyn EventSink>,
 }
 
 impl Dispatch {
@@ -237,7 +237,7 @@ impl Dispatch {
         logs_buffer_size: usize,
         metrics_buffer_size: usize,
         threads_buffer_size: usize,
-        sinks: Arc<Vec<BoxedEventSink>>,
+        sink: Arc<dyn EventSink>,
     ) -> Self {
         let process_id = uuid::Uuid::new_v4().to_string();
         let mut obj = Self {
@@ -257,7 +257,7 @@ impl Dispatch {
                 &[String::from("metrics")],
                 HashMap::new(),
             )),
-            sinks,
+            sink,
         };
         obj.startup();
         obj.init_log_stream();
@@ -270,9 +270,8 @@ impl Dispatch {
     }
 
     fn shutdown(&mut self) {
-        self.sinks.iter().for_each(|sink| sink.on_shutdown());
-
-        self.sinks = Arc::new(Vec::new());
+        self.sink.on_shutdown();
+        self.sink = Arc::new(NullEventSink {});
     }
 
     fn startup(&mut self) {
@@ -306,30 +305,17 @@ impl Dispatch {
             start_ticks,
             parent_process_id: parent_process,
         };
-
-        if self.sinks.len() == 1 {
-            self.sinks[0].on_startup(process_info);
-        } else {
-            self.sinks
-                .iter()
-                .for_each(|sink| sink.on_startup(process_info.clone()));
-        }
+        self.sink.on_startup(process_info);
     }
 
     fn init_log_stream(&mut self) {
         let log_stream = self.log_stream.lock().unwrap();
-
-        self.sinks
-            .iter()
-            .for_each(|sink| sink.on_init_log_stream(&log_stream));
+        self.sink.on_init_log_stream(&log_stream);
     }
 
     fn init_metrics_stream(&mut self) {
         let metrics_stream = self.metrics_stream.lock().unwrap();
-
-        self.sinks
-            .iter()
-            .for_each(|sink| sink.on_init_metrics_stream(&metrics_stream));
+        self.sink.on_init_metrics_stream(&metrics_stream);
     }
 
     fn init_thread_stream(&mut self, cell: &Cell<Option<ThreadStream>>) {
@@ -346,11 +332,7 @@ impl Dispatch {
         );
         unsafe {
             let opt_ref = &mut *cell.as_ptr();
-
-            self.sinks
-                .iter()
-                .for_each(|sink| sink.on_init_thread_stream(&thread_stream));
-
+            self.sink.on_init_thread_stream(&thread_stream);
             *opt_ref = Some(thread_stream);
         }
     }
@@ -396,27 +378,17 @@ impl Dispatch {
         )));
         assert!(!metrics_stream.is_full());
         Arc::get_mut(&mut old_event_block).unwrap().close();
-
-        self.sinks
-            .iter()
-            .for_each(|sink| sink.on_process_metrics_block(old_event_block.clone()));
+        self.sink.on_process_metrics_block(old_event_block);
     }
 
     fn log_enabled(&mut self, level: Level, target: &str) -> bool {
-        // The log is enabled if _any_ sink has log enabled
-        self.sinks
-            .iter()
-            .any(|sink| sink.on_log_enabled(level, target))
+        self.sink.on_log_enabled(level, target)
     }
 
     #[inline]
     fn log(&mut self, desc: &'static LogMetadata, args: fmt::Arguments<'_>) {
         let time = now();
-
-        self.sinks
-            .iter()
-            .for_each(|sink| sink.on_log(desc, time, args));
-
+        self.sink.on_log(desc, time, args);
         let mut log_stream = self.log_stream.lock().unwrap();
         if args.as_str().is_some() {
             log_stream
@@ -439,11 +411,7 @@ impl Dispatch {
     #[inline]
     fn log_interop(&mut self, desc: &LogMetadata, args: fmt::Arguments<'_>) {
         let time = now();
-
-        self.sinks
-            .iter()
-            .for_each(|sink| sink.on_log(desc, time, args));
-
+        self.sink.on_log(desc, time, args);
         let mut log_stream = self.log_stream.lock().unwrap();
         if let Some(msg) = args.as_str() {
             log_stream.get_events_mut().push(LogStaticStrInteropEvent {
@@ -478,10 +446,7 @@ impl Dispatch {
             log_stream.replace_block(Arc::new(LogBlock::new(self.logs_buffer_size, stream_id)));
         assert!(!log_stream.is_full());
         Arc::get_mut(&mut old_event_block).unwrap().close();
-
-        self.sinks
-            .iter()
-            .for_each(|sink| sink.on_process_log_block(old_event_block.clone()));
+        self.sink.on_process_log_block(old_event_block);
     }
 
     #[inline]
@@ -495,9 +460,6 @@ impl Dispatch {
         )));
         assert!(!stream.is_full());
         Arc::get_mut(&mut old_block).unwrap().close();
-
-        self.sinks
-            .iter()
-            .for_each(|sink| sink.on_process_thread_block(old_block.clone()));
+        self.sink.on_process_thread_block(old_block);
     }
 }

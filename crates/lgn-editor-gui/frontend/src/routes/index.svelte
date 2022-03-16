@@ -59,7 +59,7 @@
     streamLogs().then((logs) => {
       logs
         .pipe(
-          tap(({ time, target, level, message }) =>
+          tap(({ time, target, message }) =>
             log.trace(`${time} - ${target} - ${message}`)
           )
         )
