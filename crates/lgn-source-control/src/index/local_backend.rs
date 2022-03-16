@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use lgn_tracing::info;
+use lgn_tracing::prelude::*;
 use std::path::{Path, PathBuf};
 
 use crate::{
@@ -57,6 +57,7 @@ impl IndexBackend for LocalIndexBackend {
     }
 
     async fn create_index(&self) -> Result<BlobStorageUrl> {
+        async_span_scope!("LocalIndexBackend::create_index");
         match self.directory.read_dir() {
             Ok(mut entries) => {
                 if entries.next().is_some() {
@@ -96,6 +97,7 @@ impl IndexBackend for LocalIndexBackend {
     }
 
     async fn destroy_index(&self) -> Result<()> {
+        async_span_scope!("LocalIndexBackend::destroy_index");
         self.sql_repository_index.destroy_index().await?;
 
         tokio::fs::remove_dir_all(&self.directory)
@@ -107,6 +109,7 @@ impl IndexBackend for LocalIndexBackend {
     }
 
     async fn index_exists(&self) -> Result<bool> {
+        async_span_scope!("LocalIndexBackend::index_exists");
         self.sql_repository_index.index_exists().await
     }
 
@@ -114,70 +117,85 @@ impl IndexBackend for LocalIndexBackend {
         &self,
         workspace_registration: &WorkspaceRegistration,
     ) -> Result<()> {
+        async_span_scope!("LocalIndexBackend::register_workspace");
         self.sql_repository_index
             .register_workspace(workspace_registration)
             .await
     }
 
     async fn get_branch(&self, branch_name: &str) -> Result<Branch> {
+        async_span_scope!("LocalIndexBackend::get_branch");
         self.sql_repository_index.get_branch(branch_name).await
     }
 
     async fn list_branches(&self, query: &ListBranchesQuery<'_>) -> Result<Vec<Branch>> {
+        async_span_scope!("LocalIndexBackend::list_branches");
         self.sql_repository_index.list_branches(query).await
     }
 
     async fn insert_branch(&self, branch: &Branch) -> Result<()> {
+        async_span_scope!("LocalIndexBackend::insert_branch");
         self.sql_repository_index.insert_branch(branch).await
     }
 
     async fn update_branch(&self, branch: &Branch) -> Result<()> {
+        async_span_scope!("LocalIndexBackend::update_branch");
         self.sql_repository_index.update_branch(branch).await
     }
 
     async fn list_commits(&self, query: &ListCommitsQuery) -> Result<Vec<Commit>> {
+        async_span_scope!("LocalIndexBackend::list_commits");
         self.sql_repository_index.list_commits(query).await
     }
 
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<CommitId> {
+        async_span_scope!("LocalIndexBackend::commit_to_branch");
         self.sql_repository_index
             .commit_to_branch(commit, branch)
             .await
     }
 
     async fn get_tree(&self, id: &str) -> Result<Tree> {
+        async_span_scope!("LocalIndexBackend::get_tree");
         self.sql_repository_index.get_tree(id).await
     }
 
     async fn save_tree(&self, tree: &Tree) -> Result<String> {
+        async_span_scope!("LocalIndexBackend::save_tree");
         self.sql_repository_index.save_tree(tree).await
     }
 
     async fn lock(&self, lock: &Lock) -> Result<()> {
+        async_span_scope!("LocalIndexBackend::lock");
         self.sql_repository_index.lock(lock).await
     }
 
     async fn get_lock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<Lock> {
+        async_span_scope!("LocalIndexBackend::get_lock");
         self.sql_repository_index
             .get_lock(lock_domain_id, canonical_path)
             .await
     }
 
     async fn list_locks(&self, query: &ListLocksQuery<'_>) -> Result<Vec<Lock>> {
+        async_span_scope!("LocalIndexBackend::list_locks");
         self.sql_repository_index.list_locks(query).await
     }
 
     async fn unlock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<()> {
+        async_span_scope!("LocalIndexBackend::unlock");
         self.sql_repository_index
             .unlock(lock_domain_id, canonical_path)
             .await
     }
 
     async fn count_locks(&self, query: &ListLocksQuery<'_>) -> Result<i32> {
+        async_span_scope!("LocalIndexBackend::count_locks");
         self.sql_repository_index.count_locks(query).await
     }
 
     async fn get_blob_storage_url(&self) -> Result<BlobStorageUrl> {
+        async_span_scope!("LocalIndexBackend::get_blob_storage_url");
         self.sql_repository_index.get_blob_storage_url().await
     }
 }

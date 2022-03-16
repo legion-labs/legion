@@ -57,8 +57,8 @@ pub trait StreamingBlobStorage: Send + Sync {
     async fn get_blob_writer(&self, name: &str) -> Result<Option<BoxedAsyncWrite>>;
 
     /// Reads the the full contents of a blob from the storage.
-    #[span_fn]
     async fn read_blob(&self, name: &str) -> Result<Vec<u8>> {
+        async_span_scope!("StreamingBlobStorage::read_blob");
         let mut reader = self.get_blob_reader(name).await?;
         let mut contents = Vec::new();
 
@@ -70,8 +70,8 @@ pub trait StreamingBlobStorage: Send + Sync {
     }
 
     /// Writes the full contents of a blob to the storage.
-    #[span_fn]
     async fn write_blob(&self, name: &str, content: &[u8]) -> Result<()> {
+        async_span_scope!("StreamingBlobStorage::write_blob");
         let writer = self.get_blob_writer(name).await?;
         if let Some(mut writer) = writer {
             writer.write_all(content).await.map_err(|e| {
@@ -86,8 +86,8 @@ pub trait StreamingBlobStorage: Send + Sync {
 
     /// Download a blob from the storage and persist it to disk at the specified
     /// location.
-    #[span_fn]
     async fn download_blob(&self, path: &Path, name: &str) -> Result<()> {
+        async_span_scope!("StreamingBlobStorage::download_blob");
         let mut reader = self.get_blob_reader(name).await?;
         let mut writer = tokio::fs::File::create(path).await.map_err(|e| {
             Error::forward_with_context(
@@ -148,25 +148,21 @@ impl<T: StreamingBlobStorage> BlobStorage for T {
     }
 
     /// Reads the the full contents of a blob from the storage.
-    #[span_fn]
     async fn read_blob(&self, name: &str) -> Result<Vec<u8>> {
         StreamingBlobStorage::read_blob(self, name).await
     }
 
     /// Writes the full contents of a blob to the storage.
-    #[span_fn]
     async fn write_blob(&self, name: &str, content: &[u8]) -> Result<()> {
         StreamingBlobStorage::write_blob(self, name, content).await
     }
 
     /// Download a blob from the storage and persist it to disk at the specified
     /// location.
-    #[span_fn]
     async fn download_blob(&self, path: &Path, name: &str) -> Result<()> {
         StreamingBlobStorage::download_blob(self, path, name).await
     }
 
-    #[span_fn]
     async fn delete_blob(&self, name: &str) -> Result<()> {
         StreamingBlobStorage::delete_blob(self, name).await
     }

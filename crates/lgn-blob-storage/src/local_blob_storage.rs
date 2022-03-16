@@ -48,8 +48,8 @@ impl LocalBlobStorage {
 
 #[async_trait]
 impl StreamingBlobStorage for LocalBlobStorage {
-    #[span_fn]
     async fn get_blob_info(&self, hash: &str) -> super::Result<Option<BlobStats>> {
+        async_span_scope!("LocalBlobStorage::get_blob_info");
         match self.get_blob_reader_file(hash).await {
             Ok(file) => match file.metadata().await {
                 Ok(metadata) => Ok(Some(BlobStats {
@@ -67,15 +67,15 @@ impl StreamingBlobStorage for LocalBlobStorage {
         }
     }
 
-    #[span_fn]
     async fn get_blob_reader(&self, hash: &str) -> super::Result<BoxedAsyncRead> {
+        async_span_scope!("LocalBlobStorage::get_blob_reader");
         let file = self.get_blob_reader_file(hash).await?;
 
         Ok(Box::pin(file))
     }
 
-    #[span_fn]
     async fn get_blob_writer(&self, hash: &str) -> super::Result<Option<BoxedAsyncWrite>> {
+        async_span_scope!("LocalBlobStorage::get_blob_writer");
         let blob_path = self.0.join(hash);
 
         if fs::metadata(&blob_path).await.is_ok() {
@@ -98,8 +98,8 @@ impl StreamingBlobStorage for LocalBlobStorage {
         Ok(Some(Box::pin(file)))
     }
 
-    #[span_fn]
     async fn delete_blob(&self, name: &str) -> super::Result<()> {
+        async_span_scope!("LocalBlobStorage::delete_blob");
         let blob_path = self.0.join(name);
 
         match fs::remove_file(&blob_path).await {

@@ -1,6 +1,7 @@
 use async_recursion::async_recursion;
 use async_trait::async_trait;
 use chrono::DateTime;
+use lgn_tracing::prelude::*;
 use reqwest::Url;
 use sqlx::{migrate::MigrateDatabase, Acquire, Executor, Row};
 use std::{
@@ -869,6 +870,7 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn create_index(&self) -> Result<BlobStorageUrl> {
+        async_span_scope!("SqlIndexBackend::create_index");
         if self.driver.check_if_database_exists().await? {
             return Err(Error::index_already_exists(self.url()));
         }
@@ -895,6 +897,7 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn destroy_index(&self) -> Result<()> {
+        async_span_scope!("SqlIndexBackend::destroy_index");
         if !self.driver.check_if_database_exists().await? {
             return Err(Error::index_does_not_exist(self.url()));
         }
@@ -907,6 +910,7 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn index_exists(&self) -> Result<bool> {
+        async_span_scope!("SqlIndexBackend::index_exists");
         if !self.driver.check_if_database_exists().await? {
             return Ok(false);
         }
@@ -918,6 +922,7 @@ impl IndexBackend for SqlIndexBackend {
         &self,
         workspace_registration: &WorkspaceRegistration,
     ) -> Result<()> {
+        async_span_scope!("SqlIndexBackend::register_workspace");
         let mut conn = self.get_conn().await?;
 
         sqlx::query(&format!(
@@ -936,6 +941,7 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn insert_branch(&self, branch: &Branch) -> Result<()> {
+        async_span_scope!("SqlIndexBackend::insert_branch");
         let mut transaction = self.get_transaction().await?;
 
         Self::insert_branch_transactional(&mut transaction, branch).await?;
@@ -951,6 +957,7 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn update_branch(&self, branch: &Branch) -> Result<()> {
+        async_span_scope!("SqlIndexBackend::update_branch");
         let mut transaction = self.get_transaction().await?;
 
         Self::update_branch_transactional(&mut transaction, branch).await?;
@@ -966,6 +973,7 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn get_branch(&self, branch_name: &str) -> Result<Branch> {
+        async_span_scope!("SqlIndexBackend::get_branch");
         let mut conn = self.get_conn().await?;
 
         match sqlx::query(&format!(
@@ -993,6 +1001,7 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn list_branches(&self, query: &ListBranchesQuery<'_>) -> Result<Vec<Branch>> {
+        async_span_scope!("SqlIndexBackend::list_branches");
         let mut conn = self.get_conn().await?;
 
         match query.lock_domain_id {
@@ -1047,6 +1056,7 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn list_commits(&self, query: &ListCommitsQuery) -> Result<Vec<Commit>> {
+        async_span_scope!("SqlIndexBackend::list_commits");
         let mut transaction = self.get_transaction().await?;
 
         let result = Self::list_commits_transactional(&mut transaction, query).await?;
@@ -1060,6 +1070,7 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<CommitId> {
+        async_span_scope!("SqlIndexBackend::commit_to_branch");
         let mut transaction = self.get_transaction().await?;
 
         let stored_branch = self
@@ -1084,12 +1095,14 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn get_tree(&self, id: &str) -> Result<Tree> {
+        async_span_scope!("SqlIndexBackend::get_tree");
         let mut transaction = self.get_transaction().await?;
 
         Self::get_tree_transactional(&mut transaction, id).await
     }
 
     async fn save_tree(&self, tree: &Tree) -> Result<String> {
+        async_span_scope!("SqlIndexBackend::save_tree");
         let mut transaction = self.get_transaction().await?;
 
         let tree_id = Self::save_tree_transactional(&mut transaction, tree).await?;
@@ -1105,6 +1118,7 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn lock(&self, lock: &Lock) -> Result<()> {
+        async_span_scope!("SqlIndexBackend::lock");
         let mut transaction = self.get_transaction().await?;
 
         match Self::get_lock_transactional(
@@ -1142,12 +1156,14 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn get_lock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<Lock> {
+        async_span_scope!("SqlIndexBackend::get_lock");
         let mut conn = self.get_conn().await?;
 
         Self::get_lock_transactional(&mut conn, lock_domain_id, canonical_path).await
     }
 
     async fn list_locks(&self, query: &ListLocksQuery<'_>) -> Result<Vec<Lock>> {
+        async_span_scope!("SqlIndexBackend::list_locks");
         let mut conn = self.get_conn().await?;
 
         if !query.lock_domain_ids.is_empty() {
@@ -1206,6 +1222,7 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn unlock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<()> {
+        async_span_scope!("SqlIndexBackend::unlock");
         let mut conn = self.get_conn().await?;
 
         sqlx::query(&format!(
@@ -1224,6 +1241,7 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn count_locks(&self, query: &ListLocksQuery<'_>) -> Result<i32> {
+        async_span_scope!("SqlIndexBackend::count_locks");
         let mut conn = self.get_conn().await?;
 
         if !query.lock_domain_ids.is_empty() {
@@ -1260,6 +1278,7 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn get_blob_storage_url(&self) -> Result<BlobStorageUrl> {
+        async_span_scope!("SqlIndexBackend::get_blob_storage_url");
         Ok(self.blob_storage_url.clone())
     }
 }

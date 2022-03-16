@@ -51,7 +51,7 @@ impl TelemetryIngestion for IngestionService {
         &self,
         request: Request<Process>,
     ) -> Result<Response<InsertReply>, Status> {
-        async_span_scope!("insert_process");
+        async_span_scope!("IngestionService::insert_process");
         validate_auth(&request)?;
         let process_info = request.into_inner();
         info!(
@@ -102,7 +102,7 @@ impl TelemetryIngestion for IngestionService {
         &self,
         request: Request<Stream>,
     ) -> Result<Response<InsertReply>, Status> {
-        async_span_scope!("insert_stream");
+        async_span_scope!("IngestionService::insert_stream");
         validate_auth(&request)?;
         let stream_info = request.into_inner();
         match self.db_pool.acquire().await {
@@ -147,7 +147,7 @@ impl TelemetryIngestion for IngestionService {
     }
 
     async fn insert_block(&self, request: Request<Block>) -> Result<Response<InsertReply>, Status> {
-        async_span_scope!("insert_block");
+        async_span_scope!("IngestionService::insert_block");
         validate_auth(&request)?;
         let block = request.into_inner();
         info!("new block {}", block.block_id);

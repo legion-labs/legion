@@ -346,11 +346,11 @@ impl AnalyticsService {
 
 #[tonic::async_trait]
 impl PerformanceAnalytics for AnalyticsService {
-    #[span_fn]
     async fn find_process(
         &self,
         request: Request<FindProcessRequest>,
     ) -> Result<Response<FindProcessReply>, Status> {
+        async_span_scope!("AnalyticsService::find_process");
         let _guard = RequestGuard::new();
         info!("find_process");
         let find_request = request.into_inner();
@@ -368,11 +368,11 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
-    #[span_fn]
     async fn list_recent_processes(
         &self,
         _request: Request<RecentProcessesRequest>,
     ) -> Result<Response<ProcessListReply>, Status> {
+        async_span_scope!("AnalyticsService::list_recent_processes");
         let _guard = RequestGuard::new();
         info!("list_recent_processes");
         match self.list_recent_processes_impl().await {
@@ -391,11 +391,11 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
-    #[span_fn]
     async fn search_processes(
         &self,
         request: Request<SearchProcessRequest>,
     ) -> Result<Response<ProcessListReply>, Status> {
+        async_span_scope!("AnalyticsService::search_processes");
         let _guard = RequestGuard::new();
         info!("search_processes");
         let inner = request.into_inner();
@@ -416,11 +416,11 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
-    #[span_fn]
     async fn list_process_streams(
         &self,
         request: Request<ListProcessStreamsRequest>,
     ) -> Result<Response<ListStreamsReply>, Status> {
+        async_span_scope!("AnalyticsService::list_process_streams");
         let _guard = RequestGuard::new();
         info!("list_process_streams");
         let list_request = request.into_inner();
@@ -443,11 +443,11 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
-    #[span_fn]
     async fn list_stream_blocks(
         &self,
         request: Request<ListStreamBlocksRequest>,
     ) -> Result<Response<ListStreamBlocksReply>, Status> {
+        async_span_scope!("AnalyticsService::list_stream_blocks");
         let _guard = RequestGuard::new();
         let list_request = request.into_inner();
         match self.list_stream_blocks_impl(&list_request.stream_id).await {
@@ -465,11 +465,11 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
-    #[span_fn]
     async fn block_spans(
         &self,
         request: Request<BlockSpansRequest>,
     ) -> Result<Response<BlockSpansReply>, Status> {
+        async_span_scope!("AnalyticsService::block_spans");
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
         if inner_request.process.is_none() {
@@ -502,11 +502,11 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
-    #[span_fn]
     async fn process_cumulative_call_graph(
         &self,
         request: Request<ProcessCumulativeCallGraphRequest>,
     ) -> Result<Response<CumulativeCallGraphReply>, Status> {
+        async_span_scope!("AnalyticsService::process_cumulative_call_graph");
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
         if inner_request.process.is_none() {
@@ -534,11 +534,11 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
-    #[span_fn]
     async fn list_process_log_entries(
         &self,
         request: Request<ProcessLogRequest>,
     ) -> Result<Response<ProcessLogReply>, Status> {
+        async_span_scope!("AnalyticsService::list_process_log_entries");
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
         if inner_request.process.is_none() {
@@ -566,11 +566,11 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
-    #[span_fn]
     async fn nb_process_log_entries(
         &self,
         request: Request<ProcessNbLogEntriesRequest>,
     ) -> Result<Response<ProcessNbLogEntriesReply>, Status> {
+        async_span_scope!("AnalyticsService::nb_process_log_entries");
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
         if inner_request.process_id.is_empty() {
@@ -594,11 +594,11 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
-    #[span_fn]
     async fn list_process_children(
         &self,
         request: Request<ListProcessChildrenRequest>,
     ) -> Result<Response<ProcessChildrenReply>, Status> {
+        async_span_scope!("AnalyticsService::list_process_children");
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
         if inner_request.process_id.is_empty() {
@@ -622,11 +622,11 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
-    #[span_fn]
     async fn list_process_blocks(
         &self,
         request: Request<ListProcessBlocksRequest>,
     ) -> Result<Response<ProcessBlocksReply>, Status> {
+        async_span_scope!("AnalyticsService::list_process_blocks");
         let inner_request = request.into_inner();
         match self.list_process_blocks_impl(inner_request).await {
             Ok(reply) => Ok(Response::new(reply)),
@@ -640,11 +640,11 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
-    #[span_fn]
     async fn fetch_block_metric(
         &self,
         request: Request<MetricBlockRequest>,
     ) -> Result<Response<MetricBlockData>, Status> {
+        async_span_scope!("AnalyticsService::fetch_block_metric");
         let inner_request = request.into_inner();
         match self.fetch_block_metric_impl(inner_request).await {
             Ok(reply) => Ok(Response::new(reply)),
@@ -658,11 +658,11 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
-    #[span_fn]
     async fn fetch_block_metric_manifest(
         &self,
         request: Request<MetricBlockManifestRequest>,
     ) -> Result<Response<MetricBlockManifest>, Status> {
+        async_span_scope!("AnalyticsService::fetch_block_metric_manifest");
         let inner_request = request.into_inner();
         match self.fetch_block_metric_manifest_impl(inner_request).await {
             Ok(reply) => Ok(Response::new(reply)),
@@ -676,11 +676,11 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
-    #[span_fn]
     async fn fetch_block_async_stats(
         &self,
         request: Request<BlockAsyncStatsRequest>,
     ) -> Result<Response<BlockAsyncEventsStatReply>, Status> {
+        async_span_scope!("AnalyticsService::fetch_block_async_stats");
         let inner_request = request.into_inner();
         match self.fetch_block_async_stats_impl(inner_request).await {
             Ok(reply) => Ok(Response::new(reply)),
@@ -694,12 +694,11 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
-    #[span_fn]
     async fn fetch_async_spans(
         &self,
         request: Request<AsyncSpansRequest>,
     ) -> Result<Response<AsyncSpansReply>, Status> {
-        async_span_scope!("hardcoded fetch_async_spans");
+        async_span_scope!("AnalyticsService::fetch_async_spans");
         let inner_request = request.into_inner();
         match self.fetch_async_spans_impl(inner_request).await {
             Ok(reply) => Ok(Response::new(reply)),

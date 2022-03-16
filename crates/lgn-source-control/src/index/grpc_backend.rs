@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use lgn_online::grpc::GrpcWebClient;
-use lgn_tracing::debug;
+use lgn_tracing::prelude::*;
 use tokio::sync::Mutex;
 use url::Url;
 
@@ -65,6 +65,7 @@ impl IndexBackend for GrpcIndexBackend {
     }
 
     async fn create_index(&self) -> Result<BlobStorageUrl> {
+        async_span_scope!("GrpcIndexBackend::create_index");
         let resp = self
             .client
             .lock()
@@ -86,6 +87,7 @@ impl IndexBackend for GrpcIndexBackend {
     }
 
     async fn destroy_index(&self) -> Result<()> {
+        async_span_scope!("GrpcIndexBackend::destroy_index");
         let resp = self
             .client
             .lock()
@@ -108,6 +110,7 @@ impl IndexBackend for GrpcIndexBackend {
     }
 
     async fn index_exists(&self) -> Result<bool> {
+        async_span_scope!("GrpcIndexBackend::index_exists");
         let resp = self
             .client
             .lock()
@@ -123,6 +126,7 @@ impl IndexBackend for GrpcIndexBackend {
     }
 
     async fn get_blob_storage_url(&self) -> Result<BlobStorageUrl> {
+        async_span_scope!("GrpcIndexBackend::get_blob_storage_url");
         let resp = self
             .client
             .lock()
@@ -143,6 +147,7 @@ impl IndexBackend for GrpcIndexBackend {
         &self,
         workspace_registration: &WorkspaceRegistration,
     ) -> Result<()> {
+        async_span_scope!("register_workspace");
         self.client
             .lock()
             .await
@@ -159,6 +164,7 @@ impl IndexBackend for GrpcIndexBackend {
     }
 
     async fn get_branch(&self, branch_name: &str) -> Result<Branch> {
+        async_span_scope!("GrpcIndexBackend::get_branch");
         let resp = self
             .client
             .lock()
@@ -178,6 +184,7 @@ impl IndexBackend for GrpcIndexBackend {
     }
 
     async fn list_branches(&self, query: &ListBranchesQuery<'_>) -> Result<Vec<Branch>> {
+        async_span_scope!("GrpcIndexBackend::list_branches");
         let resp = self
             .client
             .lock()
@@ -194,6 +201,7 @@ impl IndexBackend for GrpcIndexBackend {
     }
 
     async fn insert_branch(&self, branch: &Branch) -> Result<()> {
+        async_span_scope!("GrpcIndexBackend::insert_branch");
         self.client
             .lock()
             .await
@@ -207,6 +215,7 @@ impl IndexBackend for GrpcIndexBackend {
     }
 
     async fn update_branch(&self, branch: &Branch) -> Result<()> {
+        async_span_scope!("GrpcIndexBackend::update_branch");
         self.client
             .lock()
             .await
@@ -220,6 +229,7 @@ impl IndexBackend for GrpcIndexBackend {
     }
 
     async fn list_commits(&self, query: &ListCommitsQuery) -> Result<Vec<Commit>> {
+        async_span_scope!("GrpcIndexBackend::list_commits");
         let resp = self
             .client
             .lock()
@@ -245,6 +255,7 @@ impl IndexBackend for GrpcIndexBackend {
     }
 
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<CommitId> {
+        async_span_scope!("GrpcIndexBackend::commit_to_branch");
         let resp = self
             .client
             .lock()
@@ -265,6 +276,7 @@ impl IndexBackend for GrpcIndexBackend {
     }
 
     async fn get_tree(&self, id: &str) -> Result<Tree> {
+        async_span_scope!("GrpcIndexBackend::get_tree");
         let resp = self
             .client
             .lock()
@@ -281,6 +293,7 @@ impl IndexBackend for GrpcIndexBackend {
     }
 
     async fn save_tree(&self, tree: &Tree) -> Result<String> {
+        async_span_scope!("GrpcIndexBackend::save_tree");
         self.client
             .lock()
             .await
@@ -294,6 +307,7 @@ impl IndexBackend for GrpcIndexBackend {
     }
 
     async fn lock(&self, lock: &Lock) -> Result<()> {
+        async_span_scope!("GrpcIndexBackend::lock");
         self.client
             .lock()
             .await
@@ -310,6 +324,7 @@ impl IndexBackend for GrpcIndexBackend {
     }
 
     async fn unlock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<()> {
+        async_span_scope!("GrpcIndexBackend::unlock");
         self.client
             .lock()
             .await
@@ -327,6 +342,7 @@ impl IndexBackend for GrpcIndexBackend {
     }
 
     async fn get_lock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<Lock> {
+        async_span_scope!("GrpcIndexBackend::get_lock");
         let resp = self
             .client
             .lock()
@@ -353,6 +369,7 @@ impl IndexBackend for GrpcIndexBackend {
     }
 
     async fn list_locks(&self, query: &ListLocksQuery<'_>) -> Result<Vec<Lock>> {
+        async_span_scope!("GrpcIndexBackend::list_locks");
         let resp = self
             .client
             .lock()
@@ -374,6 +391,7 @@ impl IndexBackend for GrpcIndexBackend {
     }
 
     async fn count_locks(&self, query: &ListLocksQuery<'_>) -> Result<i32> {
+        async_span_scope!("GrpcIndexBackend::count_locks");
         let resp = self
             .client
             .lock()

@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use lgn_tracing::span_fn;
+use lgn_tracing::prelude::*;
 use sqlx::{Connection, Executor, Row};
 use std::{
     collections::BTreeMap,
@@ -131,8 +131,8 @@ impl LocalWorkspaceBackend {
 
 #[async_trait]
 impl WorkspaceBackend for LocalWorkspaceBackend {
-    #[span_fn]
     async fn get_current_branch(&self) -> Result<Branch> {
+        async_span_scope!("LocalWorkspaceBackend::get_current_branch");
         let sql: &str = &format!("SELECT value FROM `{}` WHERE key = ?;", Self::TABLE_CONFIG);
         let sql = sqlx::query(sql).bind(Self::CONFIG_CURRENT_BRANCH);
 
@@ -148,6 +148,7 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
     }
 
     async fn set_current_branch(&self, branch: &Branch) -> Result<()> {
+        async_span_scope!("LocalWorkspaceBackend::set_current_branch");
         let value = serde_json::to_string(&branch)
             .map_other_err("failed to serialize current branch information")?;
 
@@ -167,8 +168,8 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
             .map(|_| ())
     }
 
-    #[span_fn]
     async fn get_staged_changes(&self) -> Result<BTreeMap<CanonicalPath, Change>> {
+        async_span_scope!("LocalWorkspaceBackend::get_staged_changes");
         let sql: &str = &format!(
             "SELECT canonical_path, old_hash, new_hash, old_size, new_size FROM {}",
             Self::TABLE_CHANGES
@@ -225,8 +226,8 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
         Ok(res)
     }
 
-    #[span_fn]
     async fn save_staged_changes(&self, changes: &[Change]) -> Result<()> {
+        async_span_scope!("LocalWorkspaceBackend::save_staged_changes");
         if changes.is_empty() {
             return Ok(());
         }
@@ -288,8 +289,8 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
         Ok(())
     }
 
-    #[span_fn]
     async fn clear_staged_changes(&self, changes: &[Change]) -> Result<()> {
+        async_span_scope!("LocalWorkspaceBackend::clear_staged_changes");
         let mut conn = self.sql_connection.lock().await;
         let mut transaction = conn
             .begin()
@@ -317,6 +318,7 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
     }
 
     async fn read_pending_branch_merges(&self) -> Result<Vec<PendingBranchMerge>> {
+        async_span_scope!("LocalWorkspaceBackend::read_pending_branch_merges");
         let sql: &str = &format!(
             "SELECT name, head FROM {};",
             Self::TABLE_BRANCH_MERGES_PENDING
@@ -342,6 +344,7 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
     }
 
     async fn clear_pending_branch_merges(&self) -> Result<()> {
+        async_span_scope!("LocalWorkspaceBackend::clear_pending_branch_merges");
         let sql: &str = &format!("DELETE from {};", Self::TABLE_BRANCH_MERGES_PENDING);
 
         let mut conn = self.sql_connection.lock().await;
@@ -353,6 +356,7 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
     }
 
     async fn save_pending_branch_merge(&self, merge_spec: &PendingBranchMerge) -> Result<()> {
+        async_span_scope!("LocalWorkspaceBackend::save_pending_branch_merge");
         let sql: &str = &format!(
             "INSERT OR REPLACE into {} VALUES(?,?);",
             Self::TABLE_BRANCH_MERGES_PENDING
@@ -375,6 +379,7 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
     }
 
     async fn save_resolve_pending(&self, resolve_pending: &ResolvePending) -> Result<()> {
+        async_span_scope!("LocalWorkspaceBackend::save_resolve_pending");
         let sql: &str = &format!(
             "INSERT OR REPLACE into {} VALUES(?,?,?);",
             Self::TABLE_RESOLVES_PENDING
@@ -393,6 +398,7 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
     }
 
     async fn clear_resolve_pending(&self, resolve_pending: &ResolvePending) -> Result<()> {
+        async_span_scope!("LocalWorkspaceBackend::clear_resolve_pending");
         let sql: &str = &format!(
             "DELETE from {}
              WHERE canonical_path=?;",
@@ -408,8 +414,8 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
             .map(|_| ())
     }
 
-    #[span_fn]
     async fn find_resolve_pending(&self, canonical_path: &str) -> Result<Option<ResolvePending>> {
+        async_span_scope!("LocalWorkspaceBackend::find_resolve_pending");
         let sql: &str = &format!(
             "SELECT base_commit_id, theirs_commit_id 
              FROM {}
@@ -434,6 +440,7 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
     }
 
     async fn read_resolves_pending(&self) -> Result<Vec<ResolvePending>> {
+        async_span_scope!("LocalWorkspaceBackend::read_resolves_pending");
         let sql: &str = &format!(
             "SELECT canonical_path, base_commit_id, theirs_commit_id 
              FROM {};",

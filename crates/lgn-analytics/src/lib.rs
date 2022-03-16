@@ -558,7 +558,6 @@ pub async fn fetch_block_payload(
     let buffer: Vec<u8> = if let Some(row) = opt_row {
         row.get("payload")
     } else {
-        async_span_scope!("read_blob");
         blob_storage
             .read_blob(&block_id)
             .await

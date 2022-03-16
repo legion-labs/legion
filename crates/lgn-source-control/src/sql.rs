@@ -1,32 +1,32 @@
-use lgn_tracing::async_span_scope;
+use lgn_tracing::prelude::*;
 use sqlx::migrate::MigrateDatabase;
 use sqlx::Executor;
 
 use crate::{MapOtherError, Result};
 
+#[span_fn]
 pub async fn create_database(uri: &str) -> Result<()> {
-    async_span_scope!("create_database");
     sqlx::Any::create_database(uri)
         .await
         .map_other_err("failed to create database")
 }
 
+#[span_fn]
 pub async fn database_exists(uri: &str) -> Result<bool> {
-    async_span_scope!("database_exists");
     sqlx::Any::database_exists(uri)
         .await
         .map_other_err("failed to check if database exists")
 }
 
+#[span_fn]
 pub async fn drop_database(uri: &str) -> Result<()> {
-    async_span_scope!("drop_database");
     sqlx::Any::drop_database(uri)
         .await
         .map_other_err("failed to drop database")
 }
 
+#[span_fn]
 pub async fn execute_sql(connection: &mut sqlx::AnyConnection, sql: &str) -> Result<()> {
-    async_span_scope!("execute_sql");
     connection
         .execute(sql)
         .await
@@ -40,6 +40,7 @@ pub struct SqlConnectionPool {
 }
 
 impl SqlConnectionPool {
+    #[span_fn]
     pub async fn new(database_uri: &str) -> Result<Self> {
         async_span_scope!("SqlConnectionPool::new");
         let pool = sqlx::any::AnyPoolOptions::new()
@@ -50,24 +51,24 @@ impl SqlConnectionPool {
         Ok(Self { pool })
     }
 
+    #[span_fn]
     pub async fn acquire(&self) -> Result<sqlx::pool::PoolConnection<sqlx::Any>> {
-        async_span_scope!("SqlConnectionPool::acquire");
         self.pool
             .acquire()
             .await
             .map_other_err("failed to acquire connection from pool")
     }
 
+    #[span_fn]
     pub async fn begin(&self) -> Result<sqlx::Transaction<'static, sqlx::Any>> {
-        async_span_scope!("SqlConnectionPool::begin");
         self.pool
             .begin()
             .await
             .map_other_err("failed to start transaction")
     }
 
+    #[span_fn]
     pub async fn close(&self) {
-        async_span_scope!("SqlConnectionPool::close");
         self.pool.close().await;
     }
 }
