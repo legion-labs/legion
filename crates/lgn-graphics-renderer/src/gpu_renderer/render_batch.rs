@@ -15,6 +15,7 @@ pub struct RenderBatch {
     elements: Vec<RenderElement>,
     element_count: u32,
     element_offset: u64,
+    count_offset: u64,
 }
 
 impl RenderBatch {
@@ -24,6 +25,7 @@ impl RenderBatch {
             elements: vec![],
             element_count: 0,
             element_offset: u64::MAX,
+            count_offset: u64::MAX,
         }
     }
 
@@ -52,8 +54,15 @@ impl RenderBatch {
         self.element_count -= 1;
     }
 
-    pub fn calculate_indirect_offsets(&mut self, indirect_arg_buffer_offset: &mut u64) {
+    pub fn calculate_indirect_offsets(
+        &mut self,
+        count_buffer_offset: &mut u64,
+        indirect_arg_buffer_offset: &mut u64,
+    ) {
+        self.count_offset = *count_buffer_offset;
         self.element_offset = *indirect_arg_buffer_offset;
+
+        *count_buffer_offset += 1;
         *indirect_arg_buffer_offset += u64::from(self.element_count);
     }
 
@@ -63,8 +72,8 @@ impl RenderBatch {
         cmd_buffer: &mut HLCommandBuffer<'_>,
         indirect_arg_buffer: Option<&Buffer>,
         count_buffer: Option<&Buffer>,
-        count_offset: u64,
     ) {
+        const COUNT_STRIDE: u64 = 4;
         const INDIRECT_ARG_STRIDE: u64 = 20;
 
         if self.element_count > 0 || !self.elements.is_empty() {
@@ -82,7 +91,7 @@ impl RenderBatch {
                     indirect_arg_buffer.unwrap(),
                     self.element_offset * INDIRECT_ARG_STRIDE,
                     count_buffer.unwrap(),
-                    count_offset,
+                    self.count_offset * COUNT_STRIDE,
                     self.element_count,
                     INDIRECT_ARG_STRIDE as u32,
                 );

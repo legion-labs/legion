@@ -35,7 +35,8 @@ pub fn main() {
             #{ name:"projection_view", ty:"Float4x4" },
             #{ name:"inv_projection_view", ty:"Float4x4" },
             #{ name:"culling_planes", ty:"Float4", array_len:6 },
-            #{ name:"screen_size", ty:"Float4" },
+            #{ name:"pixel_size", ty:"Float4" },
+            #{ name:"logical_size", ty:"Float4" },
             #{ name:"cursor_pos", ty:"Float2" },
         ]
     };
