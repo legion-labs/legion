@@ -27,7 +27,7 @@ pub(crate) fn add_dynamic_actor_to_scene(
             PxTransform::default(),
             entity,
         )
-        .unwrap();
+        .expect("failed to create rigid dynamic actor");
     actor.set_angular_damping(0.5);
     scene.add_dynamic_actor(actor);
 }
@@ -49,6 +49,6 @@ pub(crate) fn add_static_actor_to_scene(
             PxTransform::default(),
             entity,
         )
-        .unwrap();
+        .expect("failed to create rigid static actor");
     scene.add_static_actor(actor);
 }

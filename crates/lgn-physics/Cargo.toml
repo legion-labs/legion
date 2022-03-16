@@ -29,6 +29,7 @@ memoffset = "0.6"
 physx = { version = "0.12.2", features = ["glam"] }
 physx-sys = "0.4.16"
 serde = { version = "1.0", features = ["derive"] }
+thiserror = "1.0"
 typetag = "0.1"
 
 [build-dependencies]

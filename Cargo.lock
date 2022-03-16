@@ -5387,6 +5387,7 @@ dependencies = [
  "physx",
  "physx-sys",
  "serde",
+ "thiserror",
  "typetag",
 ]
 
