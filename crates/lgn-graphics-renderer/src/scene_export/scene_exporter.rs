@@ -7,6 +7,7 @@ use crate::{
         CameraComponent, LightComponent, LightType, ManipulatorComponent, VisualComponent,
     },
     egui::egui_plugin::Egui,
+    resources::{MeshManager, ModelManager},
 };
 
 type KhrLight = gltf::json::extensions::scene::khr_lights_punctual::Light;
@@ -27,65 +28,90 @@ pub(crate) fn on_scene_export_requested(
     visuals: Query<'_, '_, (&VisualComponent, &GlobalTransform), Without<ManipulatorComponent>>,
     lights: Query<'_, '_, (&LightComponent, &GlobalTransform)>,
     cameras: Query<'_, '_, (&CameraComponent, &GlobalTransform)>,
+    model_manager: Res<ModelManager>,
+    mesh_manager: Res<MeshManager>,
 ) {
-    if !event_scene_export_requested.is_empty() {
-        let dir = format!(
-            "{}/scene_export",
-            event_scene_export_requested
-                .iter()
-                .next()
-                .unwrap()
-                .export_path
-        );
-        let _ = std::fs::create_dir_all(&dir).unwrap();
-
-        let mut nodes = Vec::new();
-        let mut scene_node_indices = Vec::new();
-        let writer = std::fs::File::create(format!("{}/scene.gltf", dir)).expect("I/O error");
-        let mut node_idx = 0;
-
-        let extensions = Some(export_extensions(
-            &mut nodes,
-            &lights,
-            &mut node_idx,
-            &mut scene_node_indices,
-        ));
-
-        let scene = gltf::json::Scene {
-            extensions: Default::default(),
-            extras: Default::default(),
-            name: Some("Legion scene".into()),
-            nodes: scene_node_indices,
-        };
-
-        let root = gltf::json::Root {
-            extensions,
-            //accessors: todo!(),
-            //animations: todo!(),
-            //asset: todo!(),
-            //buffers: todo!(),
-            //buffer_views: todo!(),
-            //scene: todo!(),
-            //extras: todo!(),
-            extensions_used: vec!["KHR_lights_punctual".into()],
-            extensions_required: vec!["KHR_lights_punctual".into()],
-            //cameras: todo!(),
-            //images: todo!(),
-            //materials: todo!(),
-            //meshes: todo!(),
-            nodes,
-            //samplers: todo!(),
-            scenes: vec![scene],
-            //skins: todo!(),
-            //textures: todo!(),
-            ..gltf::json::Root::default()
-        };
-        gltf::json::serialize::to_writer_pretty(writer, &root).expect("Serialization error");
-
-        //let bin = to_padded_byte_vector(triangle_vertices);
-        //let mut writer = fs::File::create("triangle/buffer0.bin").expect("I/O error");
-        //writer.write_all(&bin).expect("I/O error");
+    if event_scene_export_requested.is_empty() {
+        return;
     }
+    let dir = format!(
+        "{}/scene_export",
+        event_scene_export_requested
+            .iter()
+            .next()
+            .unwrap()
+            .export_path
+    );
+    let _ = std::fs::create_dir_all(&dir).unwrap();
+
+    let mut nodes = Vec::new();
+    let mut scene_node_indices = Vec::new();
+    let mut node_idx = 0;
+
+    let extensions = Some(export_extensions(
+        &mut nodes,
+        &lights,
+        &mut node_idx,
+        &mut scene_node_indices,
+    ));
+
+    let scene = gltf::json::Scene {
+        extensions: Default::default(),
+        extras: Default::default(),
+        name: Some("Legion scene".into()),
+        nodes: scene_node_indices,
+    };
+
+    for (visual, transform) in visuals.iter() {
+        let (model_meta_data, ready) = model_manager.get_model_meta_data(visual);
+        if !ready {
+            todo!()
+        }
+
+        for mesh in &model_meta_data.meshes {
+            let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
+            mesh_meta_data.source_data.positions
+        }
+    }
+
+    let buffer = gltf::json::Buffer {
+        byte_length: todo!(),
+        name: todo!(),
+        uri: todo!(),
+        extensions: todo!(),
+        extras: todo!(),
+    };
+
+    let buffers = vec![];
+
+    let root = gltf::json::Root {
+        extensions,
+        //accessors: todo!(),
+        //animations: todo!(),
+        //asset: todo!(),
+        //buffers: todo!(),
+        //buffer_views: todo!(),
+        //scene: todo!(),
+        //extras: todo!(),
+        extensions_used: vec!["KHR_lights_punctual".into()],
+        extensions_required: vec!["KHR_lights_punctual".into()],
+        //cameras: todo!(),
+        //images: todo!(),
+        //materials: todo!(),
+        //meshes: todo!(),
+        nodes,
+        //samplers: todo!(),
+        scenes: vec![scene],
+        //skins: todo!(),
+        //textures: todo!(),
+        ..gltf::json::Root::default()
+    };
+    let writer = std::fs::File::create(format!("{}/scene.gltf", dir)).expect("I/O error");
+    gltf::json::serialize::to_writer_pretty(writer, &root).expect("Serialization error");
+
+    //let bin = to_padded_byte_vector(triangle_vertices);
+    //let mut writer = fs::File::create("triangle/buffer0.bin").expect("I/O error");
+    //writer.write_all(&bin).expect("I/O error");
 }
 
 fn export_extensions(

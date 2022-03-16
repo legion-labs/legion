@@ -15,6 +15,7 @@ pub struct MeshMetaData {
     pub positions: Vec<Vec4>, // for AABB calculation
     pub bounding_sphere: Vec4,
     _allocation: StaticBufferAllocation,
+    pub source_data: Mesh,
 }
 
 pub struct MeshManager {
@@ -93,6 +94,7 @@ impl MeshManager {
             positions: mesh.positions.iter().map(|v| v.extend(1.0)).collect(),
             bounding_sphere: mesh.bounding_sphere,
             _allocation: allocation,
+	    source_data: mesh.clone(),
         });
 
         renderer.add_update_job_block(updater.job_blocks());

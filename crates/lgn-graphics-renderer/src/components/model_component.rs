@@ -11,6 +11,7 @@ use crate::{
     DOWN_VECTOR, UP_VECTOR,
 };
 
+#[derive(Clone)]
 pub struct Mesh {
     pub positions: Vec<Vec3>,
     pub normals: Option<Vec<Vec3>>,
