@@ -19,7 +19,7 @@ pub(crate) fn display_collision_geometry(
 
     bump_allocator_pool.scoped_bump(|bump| {
         debug_display.create_display_list(bump, |builder| {
-            let debug_color = Vec3::new(0.5, 0.5, 0.5);
+            let debug_color = Vec3::new(0.0, 1.0, 0.2);
             for (collision_geometry, transform) in query.iter() {
                 match collision_geometry {
                     CollisionGeometry::Box(box_geometry) => {
