@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
 use lgn_data_runtime::ResourceTypeAndId;
-use lgn_ecs::prelude::Entity;
+use lgn_ecs::prelude::{Commands, Entity};
+use lgn_tracing::info;
 
 #[derive(Default)]
 pub struct AssetToEntityMap {
@@ -28,5 +29,14 @@ impl AssetToEntityMap {
     pub fn remove(&mut self, entity: Entity) {
         let old_res_id = self.entity_to_asset.remove(&entity);
         old_res_id.and_then(|old_res_id| self.asset_to_entity.remove(&old_res_id));
+    }
+
+    pub fn clear_all(&mut self, commands: &mut Commands<'_, '_>) {
+        for (entity, res_id) in &self.entity_to_asset {
+            info!("Unspawning {:?} -> ECS id: {}", res_id, entity.id());
+            commands.entity(*entity).despawn();
+        }
+        self.entity_to_asset.clear();
+        self.asset_to_entity.clear();
     }
 }

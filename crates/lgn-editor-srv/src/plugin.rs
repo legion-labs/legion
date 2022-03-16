@@ -19,6 +19,7 @@ use lgn_input::{
     mouse::{MouseButtonInput, MouseMotion},
     Input,
 };
+use lgn_scene_plugin::ActiveScenes;
 use lgn_tracing::{error, info, warn};
 use lgn_transform::components::Transform;
 use tokio::sync::Mutex;
@@ -67,17 +68,22 @@ impl EditorPlugin {
     fn update_selection(
         selection_manager: Res<'_, Arc<SelectionManager>>,
         picking_manager: Res<'_, PickingManager>,
-        asset_to_entity_map: Res<'_, AssetToEntityMap>,
+        active_scenes: Res<'_, ActiveScenes>,
     ) {
         if let Some(selection) = selection_manager.update() {
             // Convert the SelectionManager offlineId to RuntimeId
             let entities_selection = selection
-                .iter()
-                .filter_map(|offline_id| {
-                    let runtime_id = ResourcePathId::from(*offline_id)
+                .into_iter()
+                .map(|offline_id| {
+                    ResourcePathId::from(offline_id)
                         .push(sample_data::runtime::Entity::TYPE)
-                        .resource_id();
-                    asset_to_entity_map.get(runtime_id)
+                        .resource_id()
+                })
+                .flat_map(|runtime_id| {
+                    active_scenes
+                        .iter()
+                        .filter_map(|(_, scene)| scene.asset_to_entity_map.get(runtime_id))
+                        .collect::<Vec<_>>()
                 })
                 .collect();
             picking_manager.set_active_selection(entities_selection);
@@ -88,7 +94,8 @@ impl EditorPlugin {
     fn process_input(
         tokio_runtime: ResMut<'_, TokioAsyncRuntime>,
         transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
-        asset_to_entity_map: Res<'_, AssetToEntityMap>,
+        active_scenes: Res<'_, ActiveScenes>,
+        //asset_to_entity_map: Res<'_, AssetToEntityMap>,
         entities: Query<'_, '_, (Entity, Option<&Name>)>,
         mut event_reader: EventReader<'_, '_, PickingEvent>,
         keys: Res<'_, Input<KeyCode>>,
@@ -114,7 +121,10 @@ impl EditorPlugin {
         for event in event_reader.iter() {
             match event {
                 PickingEvent::EntityPicked(id) => {
-                    if let Some(runtime_id) = asset_to_entity_map.get_resource_id(*id) {
+                    if let Some(runtime_id) = active_scenes
+                        .iter()
+                        .find_map(|(_, scene)| scene.asset_to_entity_map.get_resource_id(*id))
+                    {
                         let shift_pressed = false; //TODO: Support adding to selection keys.pressed(KeyCode::LShift);
 
                         let transaction_manager = transaction_manager.clone();
@@ -143,7 +153,9 @@ impl EditorPlugin {
                 }
                 PickingEvent::ApplyTransaction(id, transform) => {
                     if let Ok((entity, _name)) = entities.get(*id) {
-                        if let Some(runtime_id) = asset_to_entity_map.get_resource_id(entity) {
+                        if let Some(runtime_id) = active_scenes.iter().find_map(|(_, scene)| {
+                            scene.asset_to_entity_map.get_resource_id(entity)
+                        }) {
                             let position_value =
                                 serde_json::json!(transform.translation).to_string();
                             let rotation_value = serde_json::json!(transform.rotation).to_string();

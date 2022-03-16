@@ -41,6 +41,7 @@ log_operation = false
 
 [logging.level_filters]
 #webrtc = "WARN"
+sqlx = "WARN"
 
 [authentication.signature_validation]
 type = "aws_cognito"

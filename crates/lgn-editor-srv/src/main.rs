@@ -17,6 +17,7 @@ use lgn_graphics_renderer::RendererPlugin;
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_input::InputPlugin;
 use lgn_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
+use lgn_scene_plugin::ScenePlugin;
 use lgn_scripting::ScriptingPlugin;
 use lgn_streamer::StreamerPlugin;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
@@ -227,6 +228,7 @@ fn main() {
     .add_plugin(EditorPlugin::default())
     .insert_resource(ResourceBrowserSettings::new(default_scene))
     .add_plugin(ResourceBrowserPlugin::default())
+    .add_plugin(ScenePlugin::default())
     .add_plugin(PropertyInspectorPlugin::default())
     .add_plugin(SourceControlPlugin::default())
     .add_plugin(TransformPlugin::default())

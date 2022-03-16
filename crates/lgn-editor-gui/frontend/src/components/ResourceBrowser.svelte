@@ -6,6 +6,8 @@
   import contextMenu from "@/actions/contextMenu";
   import {
     cloneResource,
+    closeScene,
+    commitStagedResources,
     createResource,
     getAllResources,
     initFileUpload,
@@ -216,6 +218,13 @@
           await openScene({ id: currentResourceDescriptionEntry?.item.id });
         }
 
+        return;
+      }
+
+      case "close_scene": {
+        if (currentResourceDescriptionEntry) {
+          await closeScene({ id: currentResourceDescriptionEntry?.item.id });
+        }
         return;
       }
 

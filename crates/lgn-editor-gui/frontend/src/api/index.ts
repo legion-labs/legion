@@ -315,6 +315,10 @@ export async function openScene({ id }: { id: string }) {
   return resourceBrowserClient.openScene({ id });
 }
 
+export async function closeScene({ id }: { id: string }) {
+  return resourceBrowserClient.closeScene({ id });
+}
+
 export async function initLogStream() {
   return editorClient.initLogStream({});
 }

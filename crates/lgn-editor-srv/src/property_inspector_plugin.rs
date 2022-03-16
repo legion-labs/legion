@@ -2,6 +2,7 @@
 #![allow(unused_imports)]
 #![allow(unused_mut)]
 
+use lgn_scene_plugin::SceneMessage;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::Mutex;
 use tonic::{codegen::http::status, Request, Response, Status};
@@ -66,6 +67,7 @@ impl PropertyInspectorPlugin {
     fn setup(
         transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
         mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
+        //scene_event_writer: Res<'_, Arc<Mutex<EventWriter<'_, '_, SceneMessage>>>>,
     ) {
         let property_inspector = PropertyInspectorServer::new(PropertyInspectorRPC {
             transaction_manager: transaction_manager.clone(),

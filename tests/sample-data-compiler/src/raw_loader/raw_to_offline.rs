@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use lgn_data_offline::{resource::ResourcePathName, ResourcePathId};
-use lgn_data_runtime::{Component, ResourceType, ResourceTypeAndId};
+use lgn_data_runtime::{Component, Resource, ResourceType, ResourceTypeAndId};
 use sample_data::offline as offline_data;
 
 use super::raw_data;
@@ -110,7 +110,8 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
             .filter_map(|path| lookup_asset_path(references, path))
             .collect();
         let parent = match raw.parent {
-            Some(parent) => lookup_asset_path(references, &parent),
+            Some(parent) => lookup_asset_path(references, &parent)
+                .map(|res| res.push(sample_data::runtime::Entity::TYPE)),
             None => None,
         };
         let mut components: Vec<Box<dyn Component>> =
