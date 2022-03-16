@@ -21,6 +21,7 @@ import { Stream } from "@lgn/proto-telemetry/dist/stream";
 import type { TimelineStateStore } from "./TimelineStateStore";
 import { createTimelineStateStore } from "./TimelineStateStore";
 import { TimelineState } from "./TimelineState";
+import { ProcessAsyncData } from "./ProcessAsyncData";
 import Semaphore from "semaphore-async-await";
 import { loadWrap } from "../Misc/LoadingStore";
 
@@ -127,16 +128,17 @@ export class TimelineStateManager {
     return range1[0] <= range2[1] && range2[0] <= range1[1];
   }
 
-  private async fetchAsyncSpans(process: Process) {
-    if (!this.client) {
-      log.error("no client in fetchAsyncSpans");
-      return;
-    }
-    const sectionTimeRange = [0.0, 1000.0] as [number, number]; //section is in relative ms
+  private async fetchAsyncSpansSection(
+    processAsyncData: ProcessAsyncData,
+    sectionSequenceNumber: number,
+    sectionLod: number
+  ) {
+    const sectionWidthMs = 1000.0;
+    const sectionTimeRange = [
+      sectionSequenceNumber * sectionWidthMs,
+      (sectionSequenceNumber + 1) * sectionWidthMs,
+    ] as [number, number]; //section is in relative ms
     const blocksOfInterest: string[] = [];
-    const processAsyncData = get(this.state).processAsyncData[
-      process.processId
-    ];
     processAsyncData.blockStats.forEach((stats) => {
       if (
         this.rangesOverlap(sectionTimeRange, [stats!.beginMs, stats!.endMs])
@@ -145,8 +147,6 @@ export class TimelineStateManager {
       }
     });
 
-    const sectionSequenceNumber = 0;
-    const sectionLod = 0;
     const asyncSection = {
       sectionSequenceNumber,
       sectionLod,
@@ -172,6 +172,25 @@ export class TimelineStateManager {
       s.scopes = { ...s.scopes, ...reply.scopes };
       return s;
     });
+  }
+
+  private async fetchAsyncSpans(process: Process) {
+    if (!this.client) {
+      log.error("no client in fetchAsyncSpans");
+      return;
+    }
+    const processAsyncData = get(this.state).processAsyncData[
+      process.processId
+    ];
+
+    const sectionWidthMs = 1000.0;
+    const firstSection = Math.floor(processAsyncData.minMs / sectionWidthMs);
+    const lastSection = Math.floor(processAsyncData.maxMs / sectionWidthMs);
+    const promises: Promise<void>[] = [];
+    for (let iSection = firstSection; iSection <= lastSection; iSection += 1) {
+      promises.push( this.fetchAsyncSpansSection(processAsyncData, iSection, 0) );
+    }
+    await Promise.all(promises);
   }
 
   private async fetchBlocks(process: Process, stream: Stream) {
