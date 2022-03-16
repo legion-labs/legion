@@ -27,8 +27,21 @@ pub trait MeshScale: Class<PxMeshScale> {
     }
 }
 
-impl From<&runtime::MeshScale> for PxMeshScale {
-    fn from(value: &runtime::MeshScale) -> Self {
+// Copy and Clone are not derived by data-gen for struct used in components
+impl Copy for runtime::MeshScale {}
+
+#[allow(clippy::expl_impl_clone_on_copy)]
+impl Clone for runtime::MeshScale {
+    fn clone(&self) -> Self {
+        Self {
+            scale: self.scale,
+            rotation: self.rotation,
+        }
+    }
+}
+
+impl From<runtime::MeshScale> for PxMeshScale {
+    fn from(value: runtime::MeshScale) -> Self {
         let scale: PxVec3 = value.scale.into();
         let rotation: PxQuat = value.rotation.into();
         Self::new(&scale, &rotation)

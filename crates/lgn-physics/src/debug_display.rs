@@ -19,6 +19,7 @@ pub(crate) fn display_collision_geometry(
 
     bump_allocator_pool.scoped_bump(|bump| {
         debug_display.create_display_list(bump, |builder| {
+            let debug_color = Vec3::new(0.5, 0.5, 0.5);
             for (collision_geometry, transform) in query.iter() {
                 match collision_geometry {
                     CollisionGeometry::Box(box_geometry) => {
@@ -34,14 +35,14 @@ pub(crate) fn display_collision_geometry(
                                 .with_rotation(transform.rotation)
                                 .compute_matrix(),
                             DefaultMeshType::Cube as u32,
-                            Vec3::new(0.8, 0.8, 0.3),
+                            debug_color,
                         );
                     }
                     CollisionGeometry::Capsule(_capsule_geometry) => {
                         builder.add_mesh(
                             transform.compute_matrix(),
                             DefaultMeshType::Cylinder as u32,
-                            Vec3::new(0.8, 0.8, 0.3),
+                            debug_color,
                         );
                     }
                     CollisionGeometry::ConvexMesh(_convex_mesh_geometry) => {}
@@ -49,7 +50,7 @@ pub(crate) fn display_collision_geometry(
                         builder.add_mesh(
                             transform.compute_matrix(),
                             DefaultMeshType::GroundPlane as u32,
-                            Vec3::new(0.8, 0.8, 0.3),
+                            debug_color,
                         );
                     }
                     CollisionGeometry::Sphere(sphere_geometry) => {
@@ -63,7 +64,7 @@ pub(crate) fn display_collision_geometry(
                                 .with_rotation(transform.rotation)
                                 .compute_matrix(),
                             DefaultMeshType::Sphere as u32,
-                            Vec3::new(0.8, 0.8, 0.3),
+                            debug_color,
                         );
                     }
                     CollisionGeometry::TriangleMesh(_triangle_mesh_geometry) => {}

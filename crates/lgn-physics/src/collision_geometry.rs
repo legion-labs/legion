@@ -34,7 +34,7 @@ unsafe impl Send for CollisionGeometry {}
 #[allow(unsafe_code)]
 unsafe impl Sync for CollisionGeometry {}
 
-pub(crate) trait Convert {
+pub(crate) trait ConvertToCollisionGeometry {
     fn convert(
         &self,
         scale: &Vec3,
@@ -43,7 +43,7 @@ pub(crate) trait Convert {
     ) -> CollisionGeometry;
 }
 
-impl Convert for runtime::PhysicsRigidBox {
+impl ConvertToCollisionGeometry for runtime::PhysicsRigidBox {
     fn convert(
         &self,
         scale: &Vec3,
@@ -58,22 +58,23 @@ impl Convert for runtime::PhysicsRigidBox {
     }
 }
 
-impl Convert for runtime::PhysicsRigidCapsule {
+impl ConvertToCollisionGeometry for runtime::PhysicsRigidCapsule {
     fn convert(
         &self,
         _scale: &Vec3,
         _physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         _cooking: &Res<'_, Owner<PxCooking>>,
     ) -> CollisionGeometry {
+        // TODO: take scale into account (average?)
         CollisionGeometry::Capsule(PxCapsuleGeometry::new(self.radius, self.half_height))
     }
 }
 
-impl Convert for runtime::PhysicsRigidConvexMesh {
+impl ConvertToCollisionGeometry for runtime::PhysicsRigidConvexMesh {
     #[allow(clippy::fn_to_numeric_cast_with_truncation)]
     fn convert(
         &self,
-        _scale: &Vec3,
+        scale: &Vec3,
         physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         cooking: &Res<'_, Owner<PxCooking>>,
     ) -> CollisionGeometry {
@@ -90,7 +91,9 @@ impl Convert for runtime::PhysicsRigidConvexMesh {
         let cooking_result = cooking.create_convex_mesh(physics.physics_mut(), &mesh_desc);
 
         if let ConvexMeshCookingResult::Success(mut convex_mesh) = cooking_result {
-            let mesh_scale: PxMeshScale = (&self.scale).into();
+            let mut mesh_scale = self.scale;
+            mesh_scale.scale *= *scale;
+            let mesh_scale: PxMeshScale = mesh_scale.into();
             let flags = PxConvexMeshGeometryFlags { mBits: 0 };
             let geometry = CollisionGeometry::ConvexMesh(PxConvexMeshGeometry::new(
                 convex_mesh.as_mut(),
@@ -109,7 +112,7 @@ impl Convert for runtime::PhysicsRigidConvexMesh {
     }
 }
 
-impl Convert for runtime::PhysicsRigidPlane {
+impl ConvertToCollisionGeometry for runtime::PhysicsRigidPlane {
     fn convert(
         &self,
         _scale: &Vec3,
@@ -120,21 +123,22 @@ impl Convert for runtime::PhysicsRigidPlane {
     }
 }
 
-impl Convert for runtime::PhysicsRigidSphere {
+impl ConvertToCollisionGeometry for runtime::PhysicsRigidSphere {
     fn convert(
         &self,
         _scale: &Vec3,
         _physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         _cooking: &Res<'_, Owner<PxCooking>>,
     ) -> CollisionGeometry {
+        // TODO: take scale into account (average?)
         CollisionGeometry::Sphere(PxSphereGeometry::new(self.radius))
     }
 }
 
-impl Convert for runtime::PhysicsRigidTriangleMesh {
+impl ConvertToCollisionGeometry for runtime::PhysicsRigidTriangleMesh {
     fn convert(
         &self,
-        _scale: &Vec3,
+        scale: &Vec3,
         physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
         cooking: &Res<'_, Owner<PxCooking>>,
     ) -> CollisionGeometry {
@@ -149,7 +153,9 @@ impl Convert for runtime::PhysicsRigidTriangleMesh {
         let cooking_result = cooking.create_triangle_mesh(physics.physics_mut(), &mesh_desc);
 
         if let TriangleMeshCookingResult::Success(mut triangle_mesh) = cooking_result {
-            let mesh_scale: PxMeshScale = (&self.scale).into();
+            let mut mesh_scale = self.scale;
+            mesh_scale.scale *= *scale;
+            let mesh_scale: PxMeshScale = mesh_scale.into();
             let flags = PxMeshGeometryFlags { mBits: 0 };
             let geometry = CollisionGeometry::TriangleMesh(PxTriangleMeshGeometry::new(
                 triangle_mesh.as_mut(),

@@ -28,7 +28,6 @@ include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
 mod actor_type;
 mod callbacks;
 mod collision_geometry;
-mod data_def_ext;
 mod debug_display;
 mod labels;
 mod mesh_scale;
@@ -56,7 +55,7 @@ use physx_sys::{PxPvdInstrumentationFlag, PxPvdInstrumentationFlags};
 use crate::{
     actor_type::WithActorType,
     callbacks::{OnAdvance, OnCollision, OnConstraintBreak, OnTrigger, OnWakeSleep},
-    collision_geometry::{CollisionGeometry, Convert},
+    collision_geometry::{CollisionGeometry, ConvertToCollisionGeometry},
     physics_options::PhysicsOptions,
     rigid_actors::{add_dynamic_actor_to_scene, add_static_actor_to_scene},
 };
@@ -211,7 +210,7 @@ impl PhysicsPlugin {
         mut default_material: ResMut<'_, Owner<PxMaterial>>,
         mut commands: Commands<'_, '_>,
     ) where
-        T: Component + Convert + WithActorType,
+        T: Component + ConvertToCollisionGeometry + WithActorType,
     {
         for (entity, physics_component, transform) in query.iter() {
             let geometry: CollisionGeometry =
