@@ -125,15 +125,15 @@ export function throttled<Value>(
 ): Readable<Value> {
   let lastTime: number | undefined;
 
-  return derived(store, (value, set) => {
+  return derived(store, ($value, set) => {
     const now = Date.now();
 
     if (!lastTime || now - lastTime > time) {
-      set(value);
+      set($value);
       lastTime = now;
     } else {
       const timeoutId = setTimeout(() => {
-        set(value);
+        set($value);
       }, time);
 
       return () => clearTimeout(timeoutId);

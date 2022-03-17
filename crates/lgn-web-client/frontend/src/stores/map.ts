@@ -3,25 +3,25 @@ import { writable } from "svelte/store";
 
 // TODO: Also create a map orchestrator, i.e. a map of store (as opposed to a "store of map")
 
-export type MapValue<Value> = Map<symbol, Value>;
+export type MapValue<Key, Value> = Map<Key, Value>;
 
-export type MapStore<Value> = Writable<MapValue<Value>> & {
-  add(key: symbol, value: Value): void;
-  addAll(...values: [key: symbol, value: Value][]): void;
-  remove(key: symbol): boolean;
-  replace(key: symbol, value: Value): void;
-  updateAt(key: symbol, f: (value: Value) => Value): void;
+export type MapStore<Key, Value> = Writable<MapValue<Key, Value>> & {
+  add(key: Key, value: Value): void;
+  addAll(...values: [key: Key, value: Value][]): void;
+  remove(key: Key): boolean;
+  replace(key: Key, value: Value): void;
+  updateAt(key: Key, f: (value: Value) => Value): void;
   empty(): void;
 };
 
 /**
  * Simple store that contains a map.
  */
-export function createMapStore<Value>(
-  initialValue = new Map<symbol, Value>()
-): MapStore<Value> {
+export function createMapStore<Key, Value>(
+  initialValue = new Map<Key, Value>()
+): MapStore<Key, Value> {
   return {
-    ...writable<Map<symbol, Value>>(initialValue),
+    ...writable<Map<Key, Value>>(initialValue),
 
     /**
      * Adds a new value to the map if the provided key is not present yet.

@@ -54,6 +54,8 @@
     "vitest": "^0.6.3"
   },
   "dependencies": {
+    "@fluent/bundle": "^0.17.1",
+    "@fluent/langneg": "^0.6.1",
     "@iconify/svelte": "^2.1.2",
     "@improbable-eng/grpc-web": "^0.15.0",
     "@lgn/proto-editor": "^0.1.0",
