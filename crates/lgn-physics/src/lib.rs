@@ -34,21 +34,17 @@ mod mesh_scale;
 mod physics_options;
 mod rigid_actors;
 mod settings;
+mod simulation;
 
 use lgn_app::prelude::{App, CoreStage, Plugin};
-use lgn_core::prelude::Time;
-use lgn_ecs::prelude::{Commands, Component, Entity, Query, Res, ResMut, SystemStage};
+use lgn_ecs::prelude::{Commands, Entity, Query, Res, ResMut, SystemStage};
 use lgn_graphics_renderer::labels::RenderStage;
-use lgn_tracing::prelude::{error, span_fn, warn};
-use lgn_transform::prelude::{GlobalTransform, Transform};
+use lgn_tracing::prelude::{error, warn};
 use physx::{
     cooking::{PxCooking, PxCookingParams},
     foundation::DefaultAllocator,
     physics::PhysicsFoundationBuilder,
-    prelude::{
-        Owner, Physics, PhysicsFoundation, PxVec3, RigidActor, RigidDynamic, Scene,
-        SceneDescriptor, ScratchBuffer,
-    },
+    prelude::{Owner, Physics, PhysicsFoundation, PxVec3, Scene, SceneDescriptor},
 };
 use physx_sys::{PxPvdInstrumentationFlag, PxPvdInstrumentationFlags};
 
@@ -56,8 +52,10 @@ use crate::{
     actor_type::WithActorType,
     callbacks::{OnAdvance, OnCollision, OnConstraintBreak, OnTrigger, OnWakeSleep},
     collision_geometry::ConvertToCollisionGeometry,
+    debug_display::display_collision_geometry,
     physics_options::PhysicsOptions,
-    rigid_actors::{add_dynamic_actor_to_scene, add_static_actor_to_scene},
+    rigid_actors::create_rigid_actors,
+    simulation::{step_simulation, sync_transforms},
 };
 pub use crate::{labels::PhysicsStage, settings::PhysicsSettings};
 
@@ -102,42 +100,39 @@ impl Plugin for PhysicsPlugin {
 
         app.add_system_to_stage(
             PhysicsStage::Update,
-            Self::create_rigid_actors::<runtime::PhysicsRigidBox>,
+            create_rigid_actors::<runtime::PhysicsRigidBox>,
         )
         .add_system_to_stage(
             PhysicsStage::Update,
-            Self::create_rigid_actors::<runtime::PhysicsRigidCapsule>,
+            create_rigid_actors::<runtime::PhysicsRigidCapsule>,
         )
         .add_system_to_stage(
             PhysicsStage::Update,
-            Self::create_rigid_actors::<runtime::PhysicsRigidConvexMesh>,
+            create_rigid_actors::<runtime::PhysicsRigidConvexMesh>,
         )
         // app.add_system_to_stage(
         //     PhysicsStage::Update,
-        //     Self::create_rigid_actors::<runtime::PhysicsRigidHeightField>,
+        //     create_rigid_actors::<runtime::PhysicsRigidHeightField>,
         // );
         .add_system_to_stage(
             PhysicsStage::Update,
-            Self::create_rigid_actors::<runtime::PhysicsRigidPlane>,
+            create_rigid_actors::<runtime::PhysicsRigidPlane>,
         )
         .add_system_to_stage(
             PhysicsStage::Update,
-            Self::create_rigid_actors::<runtime::PhysicsRigidSphere>,
+            create_rigid_actors::<runtime::PhysicsRigidSphere>,
         )
         .add_system_to_stage(
             PhysicsStage::Update,
-            Self::create_rigid_actors::<runtime::PhysicsRigidTriangleMesh>,
+            create_rigid_actors::<runtime::PhysicsRigidTriangleMesh>,
         );
 
-        app.add_system_to_stage(PhysicsStage::Update, Self::step_simulation)
-            .add_system_to_stage(PhysicsStage::Update, Self::sync_transforms);
+        app.add_system_to_stage(PhysicsStage::Update, step_simulation)
+            .add_system_to_stage(PhysicsStage::Update, sync_transforms);
 
         app.init_resource::<PhysicsOptions>()
             .add_system_to_stage(RenderStage::Prepare, physics_options::ui_physics_options)
-            .add_system_to_stage(
-                RenderStage::Prepare,
-                debug_display::display_collision_geometry,
-            );
+            .add_system_to_stage(RenderStage::Prepare, display_collision_geometry);
     }
 }
 
@@ -239,93 +234,6 @@ impl PhysicsPlugin {
         drop(query);
     }
 
-    fn create_rigid_actors<T>(
-        query: Query<'_, '_, (Entity, &T, &GlobalTransform)>,
-        mut physics: ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
-        cooking: Res<'_, Owner<PxCooking>>,
-        mut scene: ResMut<'_, Owner<PxScene>>,
-        mut default_material: ResMut<'_, Owner<PxMaterial>>,
-        mut commands: Commands<'_, '_>,
-    ) where
-        T: Component + ConvertToCollisionGeometry + WithActorType,
-    {
-        for (entity, physics_component, transform) in query.iter() {
-            let mut entity_commands = commands.entity(entity);
-            match physics_component.convert(&transform.scale, &mut physics, &cooking) {
-                Ok(geometry) => {
-                    match physics_component.get_actor_type() {
-                        RigidActorType::Dynamic => {
-                            add_dynamic_actor_to_scene(
-                                &mut physics,
-                                &mut scene,
-                                transform,
-                                &geometry,
-                                entity,
-                                &mut default_material,
-                            );
-                        }
-                        RigidActorType::Static => {
-                            add_static_actor_to_scene(
-                                &mut physics,
-                                &mut scene,
-                                transform,
-                                &geometry,
-                                entity,
-                                &mut default_material,
-                            );
-                        }
-                    }
-
-                    entity_commands.insert(geometry);
-                }
-                Err(error) => {
-                    error!("failed to convert to collision geometry: {}", error);
-                }
-            }
-            entity_commands.remove::<T>();
-        }
-
-        drop(query);
-        drop(cooking);
-    }
-
-    #[span_fn]
-    fn step_simulation(mut scene: ResMut<'_, Owner<PxScene>>, time: Res<'_, Time>) {
-        let delta_time = time.delta_seconds();
-        if delta_time <= 0_f32 {
-            return;
-        }
-
-        let mut scratch = Self::create_scratch_buffer();
-
-        if let Err(error) = scene.step(
-            delta_time,
-            None::<&mut physx_sys::PxBaseTask>,
-            Some(&mut scratch),
-            true,
-        ) {
-            error!("error occurred during physics step: {}", error);
-        }
-
-        drop(scene);
-        drop(time);
-    }
-
-    #[span_fn]
-    fn sync_transforms(
-        mut scene: ResMut<'_, Owner<PxScene>>,
-        mut query: Query<'_, '_, &mut Transform>,
-    ) {
-        for actor in scene.get_dynamic_actors() {
-            let entity = actor.get_user_data();
-            if let Ok(mut transform) = query.get_mut(*entity) {
-                let global_transform = GlobalTransform::from_matrix(actor.get_global_pose().into());
-                // TODO: use parent global to determine child local
-                *transform = global_transform.into();
-            }
-        }
-    }
-
     fn create_physics_foundation(
         enable_visual_debugger: bool,
         length_tolerance: f32,
@@ -338,12 +246,5 @@ impl PhysicsPlugin {
             .set_speed_tolerance(speed_tolerance)
             .with_extensions(false);
         physics_builder.build()
-    }
-
-    fn create_scratch_buffer() -> ScratchBuffer {
-        #[allow(unsafe_code)]
-        unsafe {
-            ScratchBuffer::new(4)
-        }
     }
 }
