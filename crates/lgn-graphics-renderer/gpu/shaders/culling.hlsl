@@ -32,70 +32,86 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
     if (dt_id.x < gpu_instance_count[0]) {
         GpuInstanceData instance_data = gpu_instance_data[dt_id.x];
         
-        uint first_pass = push_constant.first_render_pass;
-        uint last_pass = first_pass + push_constant.num_render_passes;
+        uint va_table_address = va_table_address_buffer[instance_data.gpu_instance_id];
+        GpuInstanceVATable addresses = LoadGpuInstanceVATable(static_buffer, va_table_address);
+        MeshDescription mesh_desc = LoadMeshDescription(static_buffer, addresses.mesh_description_va);
+        GpuInstanceTransform transform = LoadGpuInstanceTransform(static_buffer, addresses.world_transform_va);
 
-        for (uint pass_idx = first_pass; pass_idx < last_pass; pass_idx++) {
+        float4 sphere_world_pos = mul(transform.world, float4(mesh_desc.bounding_sphere.xyz, 1.0));
 
-            uint offset_base_va = render_pass_data[pass_idx].offset_base_va;
-            uint offset_va = offset_base_va += (instance_data.state_id * 8);
-            
-            uint count_offset = static_buffer.Load<uint>(offset_va);
-            uint indirect_arg_offset = static_buffer.Load<uint>(offset_va + 4);
+        bool none_uniform_scaling = transform.world[0][0] != transform.world[1][1] || transform.world[1][1] != transform.world[2][2];
+        float bv_radius = mesh_desc.bounding_sphere.w * transform.world[0][0];
 
-            uint va_table_address = va_table_address_buffer[instance_data.gpu_instance_id];
-            GpuInstanceVATable addresses = LoadGpuInstanceVATable(static_buffer, va_table_address);
-            MeshDescription mesh_desc = LoadMeshDescription(static_buffer, addresses.mesh_description_va);
-            GpuInstanceTransform transform = LoadGpuInstanceTransform(static_buffer, addresses.world_transform_va);
+        bool culled = false;
+    #if FIRST_PASS
+        if (push_constant.options.is_set(CullingOptions_GATHER_PERF_STATS)) {
+            InterlockedAdd(culling_efficiency[0].total_elements, 1);
+        }
+        
+        for (uint i = 0; i < 6 && !culled; i++) {
+            float plane_test = dot(view_data.culling_planes[i], sphere_world_pos);
 
-            float4 sphere_world_pos = mul(transform.world, float4(mesh_desc.bounding_sphere.xyz, 1.0));
-
-            bool none_uniform_scaling = transform.world[0][0] != transform.world[1][1] || transform.world[1][1] != transform.world[2][2];
-            float bv_radius = mesh_desc.bounding_sphere.w * transform.world[0][0];
-
-            bool culled = false;
-            for (uint i = 0; i < 6 && !culled; i++) {
-                float plane_test = dot(view_data.culling_planes[i], sphere_world_pos);
-
-                if (plane_test - bv_radius > 0.0) {
-                    culled = true;
-                }
+            if (plane_test - bv_radius > 0.0) {
+                culled = true;
             }
+        }
+        if (!culled && push_constant.options.is_set(CullingOptions_GATHER_PERF_STATS)) {
+            InterlockedAdd(culling_efficiency[0].frustum_visible, 1);
+        }    
+    #endif
 
-            if (push_constant.options.is_set(CullingOptions_OCCLUSION) && !culled && !none_uniform_scaling) {
-                float4 center_pos_view = mul(view_data.view, sphere_world_pos);
+        if (!culled && !none_uniform_scaling) {
+            float4 center_pos_view = mul(view_data.view, sphere_world_pos);
 
-                float4 min_view = center_pos_view + float4(-bv_radius, -bv_radius, 0.0, 0.0);
-                float4 max_view = center_pos_view + float4(bv_radius, bv_radius, 0.0, 0.0);                                                          
-                float4 closest_view = center_pos_view + float4(0.0, 0.0, -bv_radius, 0.0);    
+            float4 min_view = center_pos_view + float4(-bv_radius, -bv_radius, 0.0, 0.0);
+            float4 max_view = center_pos_view + float4(bv_radius, bv_radius, 0.0, 0.0);                                                          
+            float4 closest_view = center_pos_view + float4(0.0, 0.0, -bv_radius, 0.0);    
 
-                float4 min_proj = mul(view_data.projection, min_view);
-                float4 max_proj = mul(view_data.projection, max_view);
-                float4 closest_proj = mul(view_data.projection, closest_view);
+            float4 min_proj = mul(view_data.projection, min_view);
+            float4 max_proj = mul(view_data.projection, max_view);
+            float4 closest_proj = mul(view_data.projection, closest_view);
 
-                float4 aabb = clamp(float4(min_proj.xy / min_proj.w, max_proj.xy / max_proj.w), -1.0, 1.0) * 0.5 + 0.5;
+            float4 aabb = clamp(float4(min_proj.xy / min_proj.w, max_proj.xy / max_proj.w), -1.0, 1.0) * 0.5 + 0.5;
 
-                uint debug_index = dt_id.x;
-                float max_z = aabb_max_z(aabb, push_constant.hzb_pixel_extents, debug_index);
-                float depth = closest_proj.z / closest_proj.w;
+            uint debug_index = dt_id.x;
+            float max_z = aabb_max_z(aabb, push_constant.hzb_pixel_extents, debug_index);
+            float depth = closest_proj.z / closest_proj.w;
 
-                culling_debug[debug_index].gpu_instance = instance_data.gpu_instance_id;
-                culling_debug[debug_index].depth = depth;
-                culling_debug[debug_index].max_z = max_z;
+            culling_debug[debug_index].gpu_instance = instance_data.gpu_instance_id;
+            culling_debug[debug_index].depth = depth;
+            culling_debug[debug_index].max_z = max_z;
 
-                if (depth < 1.0 && depth > max_z) {
-                    culled = true;
-                }
-            }
-            
-            if (culled && push_constant.options.is_set(CullingOptions_OUTPUT_CULLED_INSTANCES)) {
+            if (depth < 1.0 && depth > max_z) {
+                culled = true;
+
+            #if FIRST_PASS
                 uint previous_count = 0;
                 InterlockedAdd(culled_count[0], 1, previous_count);
-                
+    
+                culled_args[0].yz = 1;
                 InterlockedMax(culled_args[0].x, (previous_count + 256) / 256);
 
                 culled_instances[previous_count] = instance_data;
-            } else if (!culled) {
+            #endif
+            }            
+        }
+        
+        if (!culled) {
+            if (push_constant.options.is_set(CullingOptions_GATHER_PERF_STATS)) {
+                InterlockedAdd(culling_efficiency[0].occlusion_visible, 1);
+            }
+            
+            uint first_pass = push_constant.first_render_pass;
+            uint last_pass = first_pass + push_constant.num_render_passes;
+
+            for (uint pass_idx = first_pass; pass_idx < last_pass; pass_idx++) {
+
+                uint offset_base_va = render_pass_data[pass_idx].offset_base_va;
+                uint offset_va = offset_base_va += (instance_data.state_id * 8);
+        
+                uint count_offset = static_buffer.Load<uint>(offset_va);
+                uint indirect_arg_offset = static_buffer.Load<uint>(offset_va + 4);
+
                 uint element_offset = 0;
                 InterlockedAdd(draw_count[count_offset], 1, element_offset);
                 uint inirect_offset = (indirect_arg_offset + element_offset) * 5;

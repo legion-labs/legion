@@ -209,7 +209,9 @@ impl PickingManager {
     pub fn frame_no_for_picking(&self) -> u64 {
         let mut inner = self.inner.lock().unwrap();
 
-        inner.picking_state = PickingState::Waiting;
+        if inner.picking_state != PickingState::Processing {
+            inner.picking_state = PickingState::Waiting;
+        }
         inner.picked_cpu_frame_no
     }
 

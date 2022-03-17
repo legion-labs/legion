@@ -53,7 +53,7 @@ pub mod hl_gfx_api;
 pub(crate) mod lighting;
 pub(crate) mod render_pass;
 
-use crate::gpu_renderer::MeshRenderer;
+use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
 use crate::render_pass::TmpRenderPass;
 use crate::{
     components::{
@@ -128,7 +128,10 @@ impl Plugin for RendererPlugin {
         let shared_resources_manager =
             SharedResourcesManager::new(&renderer, &mut persistent_descriptor_set_manager);
 
-        let mesh_renderer = MeshRenderer::new(renderer.static_buffer_allocator());
+        let mesh_renderer = MeshRenderer::new(
+            renderer.device_context(),
+            renderer.static_buffer_allocator(),
+        );
 
         //
         // Add renderer stages first. It is needed for the plugins.
@@ -216,6 +219,7 @@ impl Plugin for RendererPlugin {
         //
         app.add_system_to_stage(RenderStage::Prepare, ui_renderer_options);
         app.add_system_to_stage(RenderStage::Prepare, ui_lights);
+        app.add_system_to_stage(RenderStage::Prepare, ui_mesh_renderer);
         app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
         app.add_system_to_stage(RenderStage::Prepare, update_gpu_instances);
         app.add_system_to_stage(RenderStage::Prepare, update_lights);
@@ -443,11 +447,7 @@ fn prepare_shaders(mut pipeline_manager: ResMut<'_, PipelineManager>) {
 }
 
 #[span_fn]
-#[allow(
-    clippy::needless_pass_by_value,
-    clippy::too_many_arguments,
-    clippy::type_complexity
-)]
+#[allow(clippy::needless_pass_by_value)]
 fn render_begin(mut egui_manager: ResMut<'_, Egui>) {
     crate::egui::egui_plugin::end_frame(&mut egui_manager);
 }
@@ -713,8 +713,11 @@ fn render_end(
     mut renderer: ResMut<'_, Renderer>,
     mut debug_display: ResMut<'_, DebugDisplay>,
     mut descriptor_heap_manager: ResMut<'_, DescriptorHeapManager>,
+    mut mesh_renderer: ResMut<'_, MeshRenderer>,
 ) {
     descriptor_heap_manager.end_frame();
     debug_display.end_frame();
     renderer.end_frame();
+
+    mesh_renderer.render_end();
 }

@@ -20,8 +20,17 @@ pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set
             type: "BitField",
             name: "CullingOptions",
             values: [
-                "OCCLUSION",
-                "OUTPUT_CULLED_INSTANCES",
+                "GATHER_PERF_STATS",
+            ]
+        },
+        #{
+            type: "Struct",
+            name: "CullingEfficiancyStats",
+            fields: [
+                #{ name:"total_elements", ty:"Uint1" },
+                #{ name:"frustum_visible", ty:"Uint1" },
+                #{ name:"occlusion_visible", ty:"Uint1" },
+                #{ name:"padding", ty:"Uint1" },
             ]
         },
         #{
@@ -60,6 +69,7 @@ pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set
                 #{ name:"culled_count", type:"RWStructuredBuffer", content:"Uint1" },
                 #{ name:"culled_args", type:"RWStructuredBuffer", content:"Uint3" },
                 #{ name:"culled_instances", type:"RWStructuredBuffer", content:"GpuInstanceData" },
+                #{ name:"culling_efficiency", type:"RWStructuredBuffer", content:"CullingEfficiancyStats" },
                 #{ name:"culling_debug", type:"RWStructuredBuffer", content:"CullingDebugData" },
             ]        
         },
@@ -73,11 +83,17 @@ pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set
             type: "Shader",
             name: "CullingShader",
             path: "gpu/shaders/culling.hlsl",
-            pipeline_layout: "CullingPipelineLayout",            
+            pipeline_layout: "CullingPipelineLayout",    
+            options: [ "FIRST_PASS", "SECOND_PASS" ],        
             instances: [
-                #{                      
+                #{    
+                    key: [ "FIRST_PASS" ],
                     stages: [ "CS" ],
-                },                
+                },   
+                #{    
+                    key: [ "SECOND_PASS" ],
+                    stages: [ "CS" ],
+                },               
             ]            
         }
     ]
