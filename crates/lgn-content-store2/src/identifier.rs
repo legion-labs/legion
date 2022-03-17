@@ -296,7 +296,12 @@ impl Serialize for Identifier {
     where
         S: serde::Serializer,
     {
-        serializer.serialize_bytes(&self.as_vec())
+        if serializer.is_human_readable() {
+            let id = self.to_string();
+            serializer.serialize_str(&id)
+        } else {
+            serializer.serialize_bytes(&self.as_vec())
+        }
     }
 }
 
@@ -323,7 +328,12 @@ impl<'de> Deserialize<'de> for Identifier {
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_bytes(IdentifierVisitor)
+        if deserializer.is_human_readable() {
+            let id = String::deserialize(deserializer)?;
+            Ok(Self::from_str(&id).unwrap())
+        } else {
+            deserializer.deserialize_bytes(IdentifierVisitor)
+        }
     }
 }
 
@@ -428,5 +438,23 @@ mod tests {
             id,
             rmp_serde::from_slice(&[0xC4, 0x04, 0x00, 0x01, 0x02, 0x03]).unwrap()
         );
+    }
+
+    #[derive(Serialize, Deserialize, Debug, PartialEq)]
+    pub struct Message {
+        pub id: Identifier,
+        pub cas_files: Vec<(String, Identifier)>,
+    }
+
+    #[test]
+    fn test_identifier_json() {
+        let m = Message {
+            id: "AAECAw".parse().unwrap(),
+            cas_files: vec![("some/path".to_string(), "AAECAw".parse().unwrap())],
+        };
+        let s = serde_json::to_string_pretty(&m).unwrap();
+
+        let m2: Message = serde_json::from_str(&s).unwrap();
+        assert_eq!(m, m2);
     }
 }
