@@ -64,7 +64,9 @@ pub fn main() {
         type: "Struct",
         name: "GpuInstanceTransform",
         fields: [
-            #{ name:"world", ty:"Float4x4" }
+            #{ name:"translation", ty:"Float3" },
+            #{ name:"rotation", ty:"Float4" },
+            #{ name:"scale", ty:"Float3" },
         ]
     };
     products.push( gpu_instance_transform );

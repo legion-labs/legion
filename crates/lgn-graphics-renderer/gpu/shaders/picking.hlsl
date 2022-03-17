@@ -16,7 +16,7 @@ struct VertexOut {
 VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
     VertexIn vertex_in = (VertexIn)0;
     VertexOut vertex_out = (VertexOut)0;
-    float4x4 world = push_constant.world;
+    float4 world_pos = (float4)0;
 
     if (push_constant.use_gpu_pipeline) {
         GpuInstanceVATable addresses = LoadGpuInstanceVATable(static_buffer, vertexIn.va_table_address);
@@ -25,15 +25,15 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
         vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
 
         GpuInstanceTransform transform = LoadGpuInstanceTransform(static_buffer, addresses.world_transform_va);
-        world = transform.world;        
+        world_pos = float4(transform_position(transform, vertex_in.pos), 1.0);
     }
     else
     {
         MeshDescription mesh_desc = LoadMeshDescription(static_buffer, push_constant.mesh_description_offset);
         vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
+         world_pos = mul(push_constant.world, float4(vertex_in.pos, 1.0));
     }
 
-    float4 world_pos = mul(world, float4(vertex_in.pos, 1.0));
     vertex_out.hpos = mul(view_data.projection_view, world_pos);
 
     vertex_out.picked_world_pos = world_pos;

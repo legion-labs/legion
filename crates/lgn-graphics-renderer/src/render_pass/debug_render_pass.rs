@@ -6,7 +6,7 @@ use lgn_graphics_api::{
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_math::{Mat4, Vec3, Vec4, Vec4Swizzles};
 
-use lgn_transform::prelude::GlobalTransform;
+use lgn_transform::{components::Transform, prelude::GlobalTransform};
 
 use crate::{
     cgen,
@@ -192,6 +192,7 @@ impl DebugRenderPass {
             DefaultMeshType::GroundPlane as u32,
             &Mat4::IDENTITY,
             Vec4::ZERO,
+            0.0,
             cmd_buffer,
             mesh_manager,
         );
@@ -219,12 +220,24 @@ impl DebugRenderPass {
             let (model_meta_data, _ready) = model_manager.get_model_meta_data(visual_component);
             for mesh in &model_meta_data.meshes {
                 cmd_buffer.bind_pipeline(wire_pso_depth_pipeline);
+
                 render_aabb_for_mesh(mesh.mesh_id as u32, transform, cmd_buffer, mesh_manager);
+
+                if false {
+                    render_bounding_sphere_for_mesh(
+                        mesh.mesh_id as u32,
+                        transform,
+                        cmd_buffer,
+                        mesh_manager,
+                    );
+                }
+
                 cmd_buffer.bind_pipeline(solid_pso_depth_pipeline);
                 render_mesh(
                     mesh.mesh_id as u32,
                     &transform.compute_matrix(),
-                    Vec4::new(0.0, 0.5, 0.5, 0.75),
+                    Vec4::new(0.0, 0.5, 0.5, 0.5),
+                    1.0,
                     cmd_buffer,
                     mesh_manager,
                 );
@@ -257,6 +270,7 @@ impl DebugRenderPass {
                 mesh_id as u32,
                 &primitive.transform,
                 primitive.color.extend(1.0),
+                1.0,
                 cmd_buffer,
                 mesh_manager,
             );
@@ -316,6 +330,7 @@ impl DebugRenderPass {
                         mesh.mesh_id as u32,
                         &scaled_world_matrix,
                         color,
+                        1.0,
                         cmd_buffer,
                         mesh_manager,
                     );
@@ -390,7 +405,6 @@ impl DebugRenderPass {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 fn render_aabb_for_mesh(
     mesh_id: u32,
     transform: &GlobalTransform,
@@ -420,6 +434,40 @@ fn render_aabb_for_mesh(
         DefaultMeshType::WireframeCube as u32,
         &aabb_transform.compute_matrix(),
         Vec4::new(1.0f32, 1.0f32, 0.0f32, 1.0f32),
+        1.0,
+        cmd_buffer,
+        mesh_manager,
+    );
+}
+
+fn render_bounding_sphere_for_mesh(
+    mesh_id: u32,
+    transform: &GlobalTransform,
+    cmd_buffer: &mut HLCommandBuffer<'_>,
+    mesh_manager: &MeshManager,
+) {
+    let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh_id);
+    let sphere_local_pos = mesh_meta_data.bounding_sphere.truncate();
+    let sphere_global_pos = transform.mul_vec3(sphere_local_pos);
+
+    let bound_sphere_scale = 4.0
+        * mesh_meta_data.bounding_sphere.w
+        * transform
+            .scale
+            .x
+            .max(transform.scale.y.max(transform.scale.z));
+
+    let sphere_transform = Transform::from_translation(sphere_global_pos).with_scale(Vec3::new(
+        bound_sphere_scale,
+        bound_sphere_scale,
+        bound_sphere_scale,
+    ));
+
+    render_mesh(
+        DefaultMeshType::Sphere as u32,
+        &sphere_transform.compute_matrix(),
+        Vec4::new(1.0f32, 1.0f32, 0.0f32, 1.0f32),
+        1.0,
         cmd_buffer,
         mesh_manager,
     );
@@ -429,6 +477,7 @@ fn render_mesh(
     mesh_id: u32,
     world_xform: &Mat4,
     color: Vec4,
+    color_blend: f32,
     cmd_buffer: &HLCommandBuffer<'_>,
     mesh_manager: &MeshManager,
 ) {
@@ -437,6 +486,7 @@ fn render_mesh(
     let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh_id);
     push_constant_data.set_world((*world_xform).into());
     push_constant_data.set_color(color.into());
+    push_constant_data.set_color_blend(color_blend.into());
     push_constant_data.set_mesh_description_offset(mesh_meta_data.mesh_description_offset.into());
 
     cmd_buffer.push_constant(&push_constant_data);

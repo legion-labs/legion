@@ -22,5 +22,5 @@ VertexOut main_vs(uint vertexId: SV_VertexID) {
 }
 
 float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
-    return saturate(vertex_out.color + push_constant.color);
+    return lerp(vertex_out.color, push_constant.color, push_constant.color_blend); 
 }

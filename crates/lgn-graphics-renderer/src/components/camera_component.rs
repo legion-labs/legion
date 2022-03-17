@@ -134,7 +134,7 @@ impl CameraComponent {
 impl Default for CameraComponent {
     fn default() -> Self {
         let eye = Vec3::new(0.0, 1.0, -2.0);
-        let center = Vec3::new(2.0, 2.0, 0.0);
+        let center = Vec3::ZERO;
 
         let forward = (center - eye).normalize();
         let right = forward.cross(UP_VECTOR).normalize();

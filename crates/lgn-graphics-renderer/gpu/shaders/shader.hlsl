@@ -25,13 +25,16 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
     VertexOut vertex_out;
 
     GpuInstanceTransform transform = LoadGpuInstanceTransform(static_buffer, addresses.world_transform_va);
+    float3 world_pos = transform_position(transform, vertex_in.pos);
+    float3 world_normal = transform_normal(transform, vertex_in.normal);
+    float3 world_tangent = transform_normal(transform, vertex_in.tangent);
 
-    float4 pos_view_relative = mul(view_data.view, mul(transform.world, float4(vertex_in.pos, 1.0)));
+    float4 pos_view_relative = mul(view_data.view, float4(world_pos, 1.0));
 
     vertex_out.hpos = mul(view_data.projection, pos_view_relative);
     vertex_out.pos = pos_view_relative.xyz;
-    vertex_out.normal = mul(view_data.view, mul(transform.world, float4(vertex_in.normal, 0.0))).xyz;
-    vertex_out.tangent = mul(view_data.view, mul(transform.world, float4(vertex_in.tangent, 0.0))).xyz;
+    vertex_out.normal = mul(view_data.view, float4(world_normal, 0.0)).xyz;
+    vertex_out.tangent = mul(view_data.view, float4(world_tangent, 0.0)).xyz;
     vertex_out.uv_coord = vertex_in.uv_coord;
     vertex_out.va_table_address = vertexIn.va_table_address;
     return vertex_out;
