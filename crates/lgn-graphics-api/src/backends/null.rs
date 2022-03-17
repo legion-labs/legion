@@ -9,7 +9,6 @@
         clippy::unused_self
     )
 )]
-use std::marker::PhantomData;
 
 use raw_window_handle::HasRawWindowHandle;
 
@@ -54,7 +53,6 @@ impl NullDeviceContext {
     pub(crate) fn new(
         _instance: &NullInstance,
         _windowing_mode: ExtensionMode,
-        _video_mode: ExtensionMode,
     ) -> GfxResult<(Self, DeviceInfo)> {
         unimplemented!()
     }
