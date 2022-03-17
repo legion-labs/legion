@@ -19,14 +19,6 @@ pub enum QueueType {
     /// Transfer queues are generally limited to basic operations like copying
     /// data from buffers to images.
     Transfer,
-
-    /// Decode queues are not available on all device but allow use of dedicated
-    /// hardware to encode videos
-    Decode,
-
-    /// Encode queues are not available on all device but allow use of dedicated
-    /// hardware to encode videos
-    Encode,
 }
 
 pub(crate) struct QueueInner {

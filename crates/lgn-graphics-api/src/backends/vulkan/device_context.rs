@@ -44,8 +44,6 @@ pub(crate) struct VkQueueFamilyIndices {
     pub(crate) graphics_queue_family_index: u32,
     pub(crate) compute_queue_family_index: u32,
     pub(crate) transfer_queue_family_index: u32,
-    pub(crate) decode_queue_family_index: Option<u32>,
-    pub(crate) encode_queue_family_index: Option<u32>,
 }
 
 pub(crate) struct VulkanDeviceContext {
@@ -88,8 +86,6 @@ impl VulkanDeviceContext {
         let queue_requirements = VkQueueRequirements::determine_required_queue_counts(
             &physical_device_info.queue_family_indices,
             &physical_device_info.all_queue_families,
-            VkQueueAllocationStrategy::ShareFirstQueueInFamily,
-            VkQueueAllocationStrategy::ShareFirstQueueInFamily,
             VkQueueAllocationStrategy::ShareFirstQueueInFamily,
             VkQueueAllocationStrategy::ShareFirstQueueInFamily,
             VkQueueAllocationStrategy::ShareFirstQueueInFamily,
@@ -405,8 +401,6 @@ fn find_queue_families(
     let mut graphics_queue_family_index = None;
     let mut compute_queue_family_index = None;
     let mut transfer_queue_family_index = None;
-    let mut decode_queue_family_index = None;
-    let mut encode_queue_family_index = None;
 
     info!("Available queue families:");
     for (queue_family_index, queue_family) in all_queue_families.iter().enumerate() {
@@ -500,67 +494,9 @@ fn find_queue_families(
         transfer_queue_family_index = graphics_queue_family_index;
     }
 
-    //
-    // Find a decode queue family in the following order of preference:
-    // - Doesn't support graphics, compute, encode
-    // - Supports decode
-    //
-    for (queue_family_index, queue_family) in all_queue_families.iter().enumerate() {
-        let queue_family_index = queue_family_index as u32;
-        let supports_graphics = queue_family.queue_flags & ash::vk::QueueFlags::GRAPHICS
-            == ash::vk::QueueFlags::GRAPHICS;
-        let supports_compute =
-            queue_family.queue_flags & ash::vk::QueueFlags::COMPUTE == ash::vk::QueueFlags::COMPUTE;
-        let supports_decode = queue_family.queue_flags & ash::vk::QueueFlags::VIDEO_DECODE_KHR
-            == ash::vk::QueueFlags::VIDEO_DECODE_KHR;
-        let supports_encode = queue_family.queue_flags & ash::vk::QueueFlags::VIDEO_ENCODE_KHR
-            == ash::vk::QueueFlags::VIDEO_ENCODE_KHR;
-
-        if !supports_graphics && !supports_compute && !supports_encode && supports_decode {
-            // Ideally we want to find a dedicated transfer queue
-            decode_queue_family_index = Some(queue_family_index);
-            break;
-        } else if supports_decode && decode_queue_family_index.is_none() {
-            // Otherwise accept the first queue that supports transfers that is NOT the
-            // graphics queue or compute queue
-            decode_queue_family_index = Some(queue_family_index);
-        }
-    }
-
-    //
-    // Find a encode queue family in the following order of preference:
-    // - Doesn't support graphics, compute, decode
-    // - Supports encode
-    //
-    for (queue_family_index, queue_family) in all_queue_families.iter().enumerate() {
-        let queue_family_index = queue_family_index as u32;
-        let supports_graphics = queue_family.queue_flags & ash::vk::QueueFlags::GRAPHICS
-            == ash::vk::QueueFlags::GRAPHICS;
-        let supports_compute =
-            queue_family.queue_flags & ash::vk::QueueFlags::COMPUTE == ash::vk::QueueFlags::COMPUTE;
-        let supports_decode = queue_family.queue_flags & ash::vk::QueueFlags::VIDEO_DECODE_KHR
-            == ash::vk::QueueFlags::VIDEO_DECODE_KHR;
-        let supports_encode = queue_family.queue_flags & ash::vk::QueueFlags::VIDEO_ENCODE_KHR
-            == ash::vk::QueueFlags::VIDEO_ENCODE_KHR;
-
-        if !supports_graphics && !supports_compute && !supports_decode && supports_encode {
-            // Ideally we want to find a dedicated transfer queue
-            encode_queue_family_index = Some(queue_family_index);
-            break;
-        } else if supports_decode && encode_queue_family_index.is_none() {
-            // Otherwise accept the first queue that supports transfers that is NOT the
-            // graphics queue or compute queue
-            encode_queue_family_index = Some(queue_family_index);
-        }
-    }
-
     info!(
-        "Graphics QF: {:?}  Compute QF: {:?}  Transfer QF: {:?}  Decode QF: {:?}  Encode QF: {:?}",
-        graphics_queue_family_index,
-        compute_queue_family_index,
-        transfer_queue_family_index,
-        decode_queue_family_index,
-        encode_queue_family_index,
+        "Graphics QF: {:?}  Compute QF: {:?}  Transfer QF: {:?}",
+        graphics_queue_family_index, compute_queue_family_index, transfer_queue_family_index,
     );
 
     if let (
@@ -576,8 +512,6 @@ fn find_queue_families(
             graphics_queue_family_index,
             compute_queue_family_index,
             transfer_queue_family_index,
-            decode_queue_family_index,
-            encode_queue_family_index,
         })
     } else {
         None

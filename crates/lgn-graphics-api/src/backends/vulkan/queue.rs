@@ -23,12 +23,6 @@ impl VulkanQueue {
             QueueType::Transfer => device_context
                 .queue_allocator()
                 .allocate_transfer_queue(device_context),
-            QueueType::Decode => device_context
-                .queue_allocator()
-                .allocate_decode_queue(device_context),
-            QueueType::Encode => device_context
-                .queue_allocator()
-                .allocate_encode_queue(device_context),
         }
         .ok_or_else(|| format!("All queues of type {:?} already allocated", queue_type))?;
 

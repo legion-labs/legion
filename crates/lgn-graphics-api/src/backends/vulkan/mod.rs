@@ -60,8 +60,6 @@ pub(crate) use texture_view::*;
 mod texture;
 pub(crate) use texture::*;
 
-mod video;
-
 pub(crate) mod backend_impl {
     pub(crate) type BackendApi = super::VulkanApi;
     pub(crate) type BackendInstance = super::VkInstance;

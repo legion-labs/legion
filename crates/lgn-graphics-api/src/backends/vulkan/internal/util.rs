@@ -207,20 +207,6 @@ pub(crate) fn queue_type_to_family_index(
                 .vk_queue_family_indices()
                 .transfer_queue_family_index
         }
-        QueueType::Decode => {
-            device_context
-                .vk_queue_family_indices()
-                .decode_queue_family_index
-                .unwrap() // we just assert if the decode queue is used when not
-                          // available
-        }
-        QueueType::Encode => {
-            device_context
-                .vk_queue_family_indices()
-                .encode_queue_family_index
-                .unwrap() // we just assert if the decode queue is used when not
-                          // available
-        }
     }
 }
 
@@ -293,7 +279,7 @@ pub(crate) fn determine_pipeline_stage_flags(
                 flags |= vk::PipelineStageFlags::COMPUTE_SHADER;
             }
         }
-        QueueType::Transfer | QueueType::Decode | QueueType::Encode => {
+        QueueType::Transfer => {
             return vk::PipelineStageFlags::ALL_COMMANDS;
         }
     }
