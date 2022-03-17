@@ -72,7 +72,7 @@ type PxArticulation = physx::articulation::PxArticulation<(), PxArticulationLink
 type PxArticulationReducedCoordinate =
     physx::articulation_reduced_coordinate::PxArticulationReducedCoordinate<(), PxArticulationLink>;
 type PxScene = physx::scene::PxScene<
-    (),
+    bool,
     PxArticulationLink,
     PxRigidStatic,
     PxRigidDynamic,
@@ -97,6 +97,8 @@ impl Plugin for PhysicsPlugin {
             PhysicsStage::Update,
             SystemStage::parallel(),
         );
+
+        app.add_system_to_stage(PhysicsStage::Update, Self::process_scene_settings);
 
         app.add_system_to_stage(
             PhysicsStage::Update,
@@ -186,7 +188,7 @@ impl PhysicsPlugin {
             .create(SceneDescriptor {
                 gravity: PxVec3::new(0.0, -9.81, 0.0),
                 on_advance: Some(OnAdvance),
-                ..SceneDescriptor::new(())
+                ..SceneDescriptor::new(false)
             })
             .expect("failed to create physics scene");
 
@@ -202,6 +204,39 @@ impl PhysicsPlugin {
 
         commands.remove_resource::<PhysicsSettings>(); // no longer needed
         drop(settings);
+    }
+
+    fn process_scene_settings(
+        query: Query<'_, '_, (Entity, &runtime::PhysicsSceneSettings)>,
+        mut scene: ResMut<'_, Owner<PxScene>>,
+        mut commands: Commands<'_, '_>,
+    ) {
+        let mut are_settings_already_set = *scene.get_user_data();
+
+        for (entity, scene_settings) in query.iter() {
+            if !are_settings_already_set {
+                scene.set_gravity(
+                    scene_settings.gravity.x,
+                    scene_settings.gravity.y,
+                    scene_settings.gravity.z,
+                );
+                are_settings_already_set = true;
+                #[allow(unsafe_code)]
+                unsafe {
+                    *scene.get_user_data_mut() = true;
+                }
+            } else {
+                error!(
+                    "physics scene settings already set, ignoring additional settings in entity {}",
+                    entity.id()
+                );
+            }
+            commands
+                .entity(entity)
+                .remove::<runtime::PhysicsSceneSettings>();
+        }
+
+        drop(query);
     }
 
     fn create_rigid_actors<T>(
