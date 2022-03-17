@@ -73,6 +73,8 @@ enum Commands {
 async fn main() -> Result<(), String> {
     let args = Cli::parse();
 
+    let cwd = std::env::current_dir().unwrap();
+
     match args.command {
         Commands::Create {
             build_output,
@@ -80,7 +82,7 @@ async fn main() -> Result<(), String> {
             cas,
         } => {
             let (mut build, project) = DataBuildOptions::new(
-                DataBuildOptions::output_db_path(&build_output, &project_dir, DataBuild::version()),
+                DataBuildOptions::output_db_path(&build_output, &cwd, DataBuild::version()),
                 ContentStoreAddr::from(&cas[..]),
                 CompilerRegistryOptions::default(),
             )
@@ -126,7 +128,7 @@ async fn main() -> Result<(), String> {
                 .map_err(|e| e.to_string())?;
 
             let mut build = DataBuildOptions::new(
-                DataBuildOptions::output_db_path(&build_output, &project_dir, DataBuild::version()),
+                DataBuildOptions::output_db_path(&build_output, &cwd, DataBuild::version()),
                 content_store_path,
                 compilers,
             )

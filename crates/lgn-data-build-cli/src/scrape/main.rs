@@ -315,6 +315,8 @@ enum SourceCommands {
 async fn main() -> Result<(), String> {
     let args = Cli::parse();
 
+    let cwd = std::env::current_dir().unwrap();
+
     //
     // try opening the configuration file first.
     //
@@ -491,7 +493,7 @@ async fn main() -> Result<(), String> {
             };
 
             let output_db_addr =
-                DataBuildOptions::output_db_path(&build_output, &project_dir, DataBuild::version());
+                DataBuildOptions::output_db_path(&build_output, &cwd, DataBuild::version());
 
             let type_map = {
                 let mut t = BTreeMap::<ResourceType, String>::new();

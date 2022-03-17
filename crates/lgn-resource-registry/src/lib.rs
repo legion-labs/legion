@@ -9,7 +9,6 @@ use std::sync::Arc;
 
 use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
-use lgn_content_store::ContentStoreAddr;
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_offline::resource::{Project, ResourceRegistryOptions};
 use lgn_data_runtime::{manifest::Manifest, AssetRegistry, AssetRegistryScheduling};
@@ -57,7 +56,6 @@ impl ResourceRegistryPlugin {
 
         let settings = world.get_resource::<ResourceRegistrySettings>().unwrap();
         let project_dir = settings.root_folder.clone();
-        let build_dir = project_dir.join("temp");
 
         let async_rt = world.get_resource::<TokioAsyncRuntime>().unwrap();
         let asset_registry = world.get_resource::<Arc<AssetRegistry>>().unwrap();
@@ -98,13 +96,15 @@ impl ResourceRegistryPlugin {
 
             let compilers = lgn_ubercompiler::create();
 
+            println!("==> {}", settings.build_output_db_addr);
+
             let build_options = DataBuildOptions::new(
                 DataBuildOptions::output_db_path(
-                    &settings.build_output_path,
+                    &settings.build_output_db_addr,
                     project_dir.as_path(),
                     DataBuild::version(),
                 ),
-                ContentStoreAddr::from(build_dir.as_path()),
+                settings.content_store_addr.clone(),
                 compilers,
             )
             .manifest(intermediate_manifest.clone());

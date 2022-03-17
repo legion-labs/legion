@@ -12,8 +12,8 @@ source_control = "../remote"
 #
 # Two kinds of paths are supported:
 # * An address to a mysql instance (i.e.: "mysql://user:pass@127.0.0.1:6603/")
-# * Absolute directory path or directory path relative to 'project_dir' for sqlite database. (i.e.: "temp/")
-build_output = "temp/"
+# * Directory path for local sqlite database. (i.e.: "tests/sample-data/temp/")
+build_output = "tests/sample-data/temp/"
 
 server_addr = "[::1]:50051"
 default_scene = "/world/sample_1.ent"

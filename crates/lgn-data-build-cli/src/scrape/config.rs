@@ -44,7 +44,7 @@ impl Config {
         let build = DataBuildOptions::new(
             DataBuildOptions::output_db_path(
                 &self.output_db_addr,
-                &self.project,
+                Self::workspace_dir(),
                 DataBuild::version(),
             ),
             ContentStoreAddr::from(self.content_store_addr.as_path()),
