@@ -23,7 +23,7 @@ use lgn_graphics_data::GraphicsPlugin;
 use lgn_graphics_renderer::RendererPlugin;
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_input::InputPlugin;
-use lgn_physics::{PhysicsPlugin, PhysicsSettings};
+use lgn_physics::{PhysicsPlugin, PhysicsSettingsBuilder};
 use lgn_scripting::ScriptingPlugin;
 use lgn_streamer::StreamerPlugin;
 use lgn_tracing::prelude::*;
@@ -124,10 +124,18 @@ pub fn build_runtime(
     let standalone = false;
 
     // physics settings
-    let enable_visual_debugger =
-        args.physics_debugger || settings.get_or("physics.enable_visual_debugger", false);
-    let length_tolerance = settings.get_or("physics.length_tolerance", 1.0_f32);
-    let speed_tolerance = settings.get_or("physics.speed_tolerance", 1.0_f32);
+    let mut physics_settings = PhysicsSettingsBuilder::default();
+    if args.physics_debugger {
+        physics_settings = physics_settings.enable_visual_debugger(true);
+    } else if let Some(enable_visual_debugger) = settings.get("physics.enable_visual_debugger") {
+        physics_settings = physics_settings.enable_visual_debugger(enable_visual_debugger);
+    }
+    if let Some(length_tolerance) = settings.get("physics.length_tolerance") {
+        physics_settings = physics_settings.length_tolerance(length_tolerance);
+    }
+    if let Some(speed_tolerance) = settings.get("physics.speed_tolerance") {
+        physics_settings = physics_settings.speed_tolerance(speed_tolerance);
+    }
 
     let mut app = App::default();
 
@@ -152,11 +160,7 @@ pub fn build_runtime(
         .add_plugin(GraphicsPlugin::default())
         .add_plugin(InputPlugin::default())
         .add_plugin(RendererPlugin::default())
-        .insert_resource(PhysicsSettings::new(
-            enable_visual_debugger,
-            length_tolerance,
-            speed_tolerance,
-        ))
+        .insert_resource(physics_settings.build())
         .add_plugin(PhysicsPlugin::default());
 
     #[cfg(feature = "standalone")]

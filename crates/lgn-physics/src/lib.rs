@@ -44,7 +44,7 @@ use physx::{
     cooking::{PxCooking, PxCookingParams},
     foundation::DefaultAllocator,
     physics::PhysicsFoundationBuilder,
-    prelude::{Owner, Physics, PhysicsFoundation, PxVec3, Scene, SceneDescriptor},
+    prelude::{Owner, Physics, PhysicsFoundation, Scene, SceneDescriptor},
 };
 use physx_sys::{PxPvdInstrumentationFlag, PxPvdInstrumentationFlags};
 
@@ -57,7 +57,10 @@ use crate::{
     rigid_actors::create_rigid_actors,
     simulation::{step_simulation, sync_transforms},
 };
-pub use crate::{labels::PhysicsStage, settings::PhysicsSettings};
+pub use crate::{
+    labels::PhysicsStage,
+    settings::{PhysicsSettings, PhysicsSettingsBuilder},
+};
 
 // type aliases
 
@@ -138,12 +141,10 @@ impl Plugin for PhysicsPlugin {
 
 impl PhysicsPlugin {
     fn setup(settings: Res<'_, PhysicsSettings>, mut commands: Commands<'_, '_>) {
-        let length_tolerance = settings.length_tolerance;
-        let speed_tolerance = settings.speed_tolerance;
         let mut physics = Self::create_physics_foundation(
             settings.enable_visual_debugger,
-            length_tolerance,
-            speed_tolerance,
+            settings.length_tolerance,
+            settings.speed_tolerance,
         );
         if settings.enable_visual_debugger {
             match &mut physics {
@@ -163,8 +164,11 @@ impl PhysicsPlugin {
                 }
                 None => {
                     // likely failed to connect to visual debugger, retry without
-                    physics =
-                        Self::create_physics_foundation(false, length_tolerance, speed_tolerance);
+                    physics = Self::create_physics_foundation(
+                        false,
+                        settings.length_tolerance,
+                        settings.speed_tolerance,
+                    );
                     if physics.is_some() {
                         warn!("failed to connect to physics visual debugger");
                     }
@@ -181,7 +185,7 @@ impl PhysicsPlugin {
 
         let scene: Owner<PxScene> = physics
             .create(SceneDescriptor {
-                gravity: PxVec3::new(0.0, -9.81, 0.0),
+                gravity: settings.gravity.into(),
                 on_advance: Some(OnAdvance),
                 ..SceneDescriptor::new(false)
             })
