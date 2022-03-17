@@ -505,7 +505,7 @@ pub fn update(entity, last_result, entities) {
         "29b8b0d0-ee1e-4792-aca2-3b3a3ce63916",
         "/scene.ent",
         vec![Box::new(CameraSetup {
-            eye : Vec3::new(0.0, 0.0, -7.0),
+            eye: Vec3::new(0.0, 0.0, -7.0),
             look_at: Vec3::ZERO,
         })],
         vec![

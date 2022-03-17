@@ -82,6 +82,8 @@ use crate::resources::{
     UniformGPUDataUpdater,
 };
 
+#[cfg(not(feature = "offline"))]
+use crate::components::apply_camera_setups;
 use crate::{
     components::{
         camera_control, create_camera, CameraComponent, LightComponent, RenderSurface,
@@ -200,6 +202,8 @@ impl Plugin for RendererPlugin {
         // Stage PreUpdate
         //
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update);
+        #[cfg(not(feature = "offline"))]
+        app.add_system_to_stage(CoreStage::PreUpdate, apply_camera_setups);
 
         //
         // Stage PostUpdate

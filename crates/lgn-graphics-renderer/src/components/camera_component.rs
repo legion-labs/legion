@@ -1,8 +1,9 @@
-use dolly::prelude::{Position, Smooth, YawPitch};
+use dolly::prelude::{LookAt, Position, Smooth, YawPitch};
 use dolly::rig::CameraRig;
 use lgn_core::Time;
 use lgn_ecs::prelude::*;
 use lgn_graphics_cgen_runtime::Float4;
+use lgn_graphics_data::runtime::CameraSetup;
 use lgn_input::Input;
 use lgn_input::{
     keyboard::KeyCode,
@@ -158,6 +159,26 @@ impl Default for CameraComponent {
 
 pub(crate) fn create_camera(mut commands: Commands<'_, '_>) {
     commands.spawn().insert(CameraComponent::default());
+}
+
+#[cfg(not(feature = "offline"))]
+pub(crate) fn apply_camera_setups(
+    camera_setups: Query<'_, '_, (Entity, &CameraSetup)>,
+    mut cameras: Query<'_, '_, &mut CameraComponent>,
+    mut commands: Commands<'_, '_>,
+) {
+    for (entity, setup) in camera_setups.iter() {
+        if let Some(mut camera) = cameras.iter_mut().next() {
+            let camera = camera.as_mut();
+            camera.camera_rig = CameraRig::builder()
+                .with(Position::new(setup.eye))
+                .with(LookAt::new(setup.look_at))
+                .build();
+        }
+        commands.entity(entity).remove::<CameraSetup>();
+    }
+
+    drop(camera_setups);
 }
 
 #[derive(Default)]

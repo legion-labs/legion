@@ -8,9 +8,8 @@ use lgn_graphics_renderer::components::{
     LightComponent, LightType, MaterialComponent, Mesh, ModelComponent, TextureComponent,
     TextureData, VisualComponent,
 };
-use lgn_math::Vec3;
-
-use lgn_tracing::info;
+use lgn_math::prelude::Vec3;
+use lgn_tracing::prelude::{error, info};
 use lgn_transform::prelude::*;
 use sample_data::runtime as runtime_data;
 
@@ -176,6 +175,12 @@ impl AssetToECS for runtime_data::Entity {
                 component.downcast_ref::<lgn_physics::runtime::PhysicsSceneSettings>()
             {
                 entity.insert(physics_settings.clone());
+            } else if let Some(camera_setup) =
+                component.downcast_ref::<lgn_graphics_data::runtime::CameraSetup>()
+            {
+                entity.insert(camera_setup.clone());
+            } else {
+                error!("unknown component type in entity {}", entity.id().id());
             }
         }
 
