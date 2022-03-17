@@ -18,10 +18,10 @@ export class TimelineState {
   ready = false;
   selectionState: SelectionState;
   currentSelection: [number, number] | undefined;
-  private timelineStart: number | undefined;
-  private timelineEnd: number | undefined;
+  private timelineStart: number | null;
+  private timelineEnd: number | null;
   private viewRange: [number, number] | null = null;
-  constructor(start: number | undefined, end: number | undefined) {
+  constructor(start: number | null, end: number | null) {
     this.timelineStart = start;
     this.timelineEnd = end;
     this.selectionState = NewSelectionState();

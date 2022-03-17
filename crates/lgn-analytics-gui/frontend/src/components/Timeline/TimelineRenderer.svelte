@@ -15,6 +15,10 @@
   import TimelineProcess from "./TimelineProcess.svelte";
   import TimelineRange from "./TimelineRange.svelte";
   export let processId: string;
+  import { useLocation } from "svelte-navigator";
+  const location = useLocation();
+  const startParam = "begin";
+  const endParam = "end";
 
   type PanState = {
     beginMouseX: number;
@@ -37,7 +41,14 @@
 
   onMount(async () => {
     loadingStore.reset();
-    stateManager = new TimelineStateManager(processId);
+    const u = new URLSearchParams($location.search);
+    const start = u.has(startParam)
+      ? // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        Number.parseFloat(u.get(startParam)!)
+      : null;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const end = u.has(endParam) ? Number.parseFloat(u.get(endParam)!) : null;
+    stateManager = new TimelineStateManager(processId, start, end);
     stateStore = stateManager.state;
     await stateManager.init(windowInnerWidth);
   });
@@ -122,11 +133,26 @@
     }
   }
 
+  function onMouseUp(e: MouseEvent) {
+    const selection = $stateStore.currentSelection;
+    if (selection) {
+      setRangeUrl(selection);
+    }
+  }
+
+  function setRangeUrl(selection: [number, number]) {
+    const start = Math.max($stateStore.minMs, selection[0]);
+    const end = Math.min($stateStore.maxMs, selection[1]);
+    const params = `?${startParam}=${start}&${endParam}=${end}`;
+    history.replaceState(null, "", params);
+  }
+
   function handleKeydown(event: KeyboardEvent) {
     if (event.code == "Escape" && $stateStore.currentSelection) {
       stateStore.update((s) => {
         s.currentSelection = undefined;
         s.selectionState = NewSelectionState();
+        setRangeUrl([s.minMs, s.maxMs]);
         return s;
       });
     }
@@ -154,6 +180,7 @@
     class="canvas "
     on:mousedown|preventDefault={(e) => onMouseDown(e)}
     on:mousemove|preventDefault={(e) => onMouseMove(e)}
+    on:mouseup|preventDefault={(e) => onMouseUp(e)}
   >
     {#if stateStore}
       {#each $stateStore.processes as p}

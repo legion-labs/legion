@@ -16,7 +16,7 @@
     </div>
   {/if}
   {#if timeRange}
-    <div class="action bg-slate-300">
+    <div class="action bg-slate-400 hover:bg-slate-500">
       <a
         href={`/cumulative-call-graph?process=${processId}&begin=${timeRange[0]}&end=${timeRange[1]}`}
         target="_blank"
@@ -24,6 +24,12 @@
       >
         <i class="bi bi-border-style pr-1" />Cumulative Call Graph
       </a>
+    </div>
+    <div
+      class="action bg-slate-400 cursor-pointer hover:bg-slate-500"
+      on:click={() => navigator.clipboard.writeText(window.location.href)}
+    >
+      <i class="bi bi bi-share-fill pr-1" />Copy Link
     </div>
   {/if}
 </div>
