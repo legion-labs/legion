@@ -40,7 +40,7 @@ export class TimelineStateManager {
     );
   }
 
-  async init(pixelWidth: number) {
+  async init() {
     this.client = await makeGrpcClient();
     this.process = (
       await this.client.find_process({
@@ -58,11 +58,35 @@ export class TimelineStateManager {
       return s;
     });
     await this.fetchStreams(this.process);
+    this.initViewRange(this.process);
     await this.fetchChildren(this.process);
-    await this.fetchAsyncSpans(this.process);
-    await this.fetchLods(pixelWidth);
+    await this.fetchLods();
     await this.fetchAsyncStats(this.process);
     await this.fetchAsyncSpans(this.process);
+  }
+
+  initViewRange(process: Process) {
+    const blocks: ThreadBlock[] = [];
+    const state = get(this.state);
+    for (const block of Object.values(state.blocks)) {
+      const streamId = block.blockDefinition.streamId;
+      const thread = state.threads[streamId];
+      if (thread.streamInfo.processId == process.processId) {
+        blocks.push(block);
+      }
+    }
+    blocks.sort((a, b) => (a.endMs > b.endMs ? -1 : 1));
+    let nbEvents = 0;
+    for (let i = 0; i < blocks.length; i += 1) {
+      nbEvents += blocks[i].blockDefinition.nbObjects;
+      if (nbEvents > 10000) {
+        this.state.update((s) => {
+          s.setViewRange([blocks[i].beginMs, blocks[0].endMs]);
+          return s;
+        });
+        return;
+      }
+    }
   }
 
   async fetchStreams(process: Process) {
@@ -275,11 +299,16 @@ export class TimelineStateManager {
     get(this.state).processAsyncData[process.processId] = asyncData;
   }
 
-  async fetchLods(pixelWidth: number) {
-    const range = get(this.state).getViewRange();
+  async fetchLods() {
+    const state = get(this.state);
+    const range = state.getViewRange();
     const promises: Promise<void>[] = [];
-    for (const block of Object.values(get(this.state).blocks)) {
-      const lod = computePreferredBlockLod(pixelWidth, range, block);
+    for (const block of Object.values(state.blocks)) {
+      const lod = computePreferredBlockLod(
+        state.getPixelWidthMs(),
+        range,
+        block
+      );
       if (lod && !block.lods[lod]) {
         block.lods[lod] = {
           state: LODState.Missing,

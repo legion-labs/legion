@@ -9,6 +9,7 @@ import { ProcessAsyncData } from "./ProcessAsyncData";
 export class TimelineState {
   minMs = Infinity;
   maxMs = -Infinity;
+  canvasWidth = NaN;
   threads: Record<string, Thread> = {};
   blocks: Record<string, ThreadBlock> = {};
   eventCount = 0;
@@ -25,6 +26,12 @@ export class TimelineState {
     this.timelineStart = start;
     this.timelineEnd = end;
     this.selectionState = NewSelectionState();
+  }
+
+  getPixelWidthMs(): number {
+    const range = this.getViewRange();
+    const timeSpan = range[1] - range[0];
+    return this.canvasWidth / timeSpan;
   }
 
   setViewRange(range: [number, number]) {
