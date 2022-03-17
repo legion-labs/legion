@@ -24,8 +24,9 @@ use lgn_data_runtime::{
     manifest::Manifest, AssetRegistryOptions, Component, Resource, ResourceId, ResourceTypeAndId,
 };
 use lgn_data_transaction::BuildManager;
+use lgn_graphics_data::offline::CameraSetup;
 use lgn_graphics_renderer::components::Mesh;
-use lgn_math::prelude::*;
+use lgn_math::prelude::{Quat, Vec3};
 use lgn_physics::{
     offline::{PhysicsRigidBox, PhysicsRigidConvexMesh, PhysicsRigidSphere, PhysicsSceneSettings},
     RigidActorType,
@@ -383,9 +384,15 @@ async fn create_offline_data(
         resource_registry,
         "09f7380d-51b2-4061-9fe4-52ceccce55e7",
         "/scene.ent",
-        vec![Box::new(PhysicsSceneSettings {
-            gravity: Vec3::new(0.0, -1.0, 0.0),
-        })],
+        vec![
+            Box::new(CameraSetup {
+                eye: Vec3::new(0.0, 1.2, -3.0),
+                look_at: Vec3::ZERO,
+            }),
+            Box::new(PhysicsSceneSettings {
+                gravity: Vec3::new(0.0, -1.0, 0.0),
+            }),
+        ],
         vec![
             box_a_id, box_b_id, box_c_id, ball_a_id, pyramid_id, ground_id, light_id,
         ],
