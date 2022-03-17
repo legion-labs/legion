@@ -1,5 +1,7 @@
-import { Writable } from "svelte/store";
+import { writable } from "svelte/store";
 
-export type TimelineContext = {
-  search: Writable<string>;
-};
+export class TimelineContextState {
+  search = writable<string>();
+}
+
+export const TimelineContext = new TimelineContextState();

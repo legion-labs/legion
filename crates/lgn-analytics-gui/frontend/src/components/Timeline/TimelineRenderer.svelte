@@ -15,8 +15,6 @@
   import TimelineProcess from "./TimelineProcess.svelte";
   import TimelineRange from "./TimelineRange.svelte";
   import TimelineSearch from "./TimelineSearch.svelte";
-  import { writable } from "svelte/store";
-  import { TimelineContext } from "@/lib/Timeline/TimelineContext";
   export let processId: string;
 
   type PanState = {
@@ -31,10 +29,6 @@
   let panState: PanState | undefined = undefined;
   let canvasWidth = NaN;
   let div: HTMLElement;
-
-  setContext<TimelineContext>("ctx", {
-    search: writable<string>(),
-  });
 
   $: if (windowInnerWidth) {
     canvasWidth = windowInnerWidth - 230;

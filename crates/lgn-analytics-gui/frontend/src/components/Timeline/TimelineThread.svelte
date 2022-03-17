@@ -29,11 +29,11 @@
   let height: number;
   let initialized = false;
   let intersectionObserver: IntersectionObserver;
-  const searchStore = debounced(getContext<TimelineContext>("ctx").search, 100);
+  const searchStore = debounced(TimelineContext.search, 100);
   let searchSubscription: Unsubscriber;
 
   onMount(() => {
-    searchSubscription = searchStore.subscribe((s) => {
+    searchSubscription = searchStore.subscribe((_) => {
       draw();
     });
     const process = $stateStore.findStreamProcess(thread.streamInfo.streamId);

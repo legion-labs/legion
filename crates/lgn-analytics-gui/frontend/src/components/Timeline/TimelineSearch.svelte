@@ -1,14 +1,13 @@
 <script lang="ts">
   import { TimelineContext } from "@/lib/Timeline/TimelineContext";
-  import { getContext } from "svelte";
-  let store = getContext<TimelineContext>("ctx").search;
+  const store = TimelineContext.search;
 </script>
 
 <div>
   <input
     type="text"
     class="metric-search border-2"
-    placeholder="Highlight..."
+    placeholder="Search..."
     bind:value={$store}
   />
   <button on:click={() => store.set("")}><i class="bi bi-x-circle" /></button>

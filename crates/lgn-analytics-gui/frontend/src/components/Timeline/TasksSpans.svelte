@@ -29,11 +29,11 @@
   let ctx: CanvasRenderingContext2D;
   let height: number;
   let intersectionObserver: IntersectionObserver;
-  const searchStore = debounced(getContext<TimelineContext>("ctx").search, 100);
+  const searchStore = debounced(TimelineContext.search, 100);
   let searchSubscription: Unsubscriber;
 
   onMount(() => {
-    searchSubscription = searchStore.subscribe((s) => {
+    searchSubscription = searchStore.subscribe((_) => {
       draw();
     });
     const childStartTime = Date.parse(process.startTime);
