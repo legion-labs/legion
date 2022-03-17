@@ -9,8 +9,7 @@ use lgn_data_offline::ResourcePathId;
 use zip::result::ZipResult;
 
 use lgn_data_compiler::{
-    compiler_cmd::{CompilerCompileCmd, CompilerCompileCmdOutput},
-    CompiledResource,
+    compiler_api::CompilationOutput, compiler_cmd::CompilerCompileCmd, CompiledResource,
 };
 
 /// Create a .zip archive with the data compiler & its associated input dependencies.
@@ -74,7 +73,7 @@ pub(crate) fn collect_local_resources(
 
 /// Create a .zip archive from the data compiler's output.
 pub(crate) fn create_resulting_archive(
-    stdout: &CompilerCompileCmdOutput,
+    stdout: &CompilationOutput,
     cur_dir: &Path,
 ) -> Result<Vec<u8>, NCError> {
     let mut buff = std::io::Cursor::new(Vec::new());

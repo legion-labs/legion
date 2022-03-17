@@ -89,10 +89,10 @@ use zip::result::ZipError;
 
 use crate::{
     compiler_cmd::{
-        CompilerCompileCmdOutput, CompilerHashCmdOutput, CompilerInfoCmdOutput,
-        COMMAND_ARG_COMPILED_ASSET_STORE, COMMAND_ARG_DER_DEPS, COMMAND_ARG_LOCALE,
-        COMMAND_ARG_PLATFORM, COMMAND_ARG_RESOURCE_DIR, COMMAND_ARG_SRC_DEPS, COMMAND_ARG_TARGET,
-        COMMAND_ARG_TRANSFORM, COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
+        CompilerHashCmdOutput, CompilerInfoCmdOutput, COMMAND_ARG_COMPILED_ASSET_STORE,
+        COMMAND_ARG_DER_DEPS, COMMAND_ARG_LOCALE, COMMAND_ARG_PLATFORM, COMMAND_ARG_RESOURCE_DIR,
+        COMMAND_ARG_SRC_DEPS, COMMAND_ARG_TARGET, COMMAND_ARG_TRANSFORM, COMMAND_NAME_COMPILE,
+        COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
     },
     compiler_node::{CompilerNode, CompilerRegistry, CompilerRegistryOptions},
     CompiledResource, CompiledResources, CompilerHash, Locale, Platform, Target,
@@ -115,12 +115,25 @@ pub const DATA_BUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// references between resources that define load-time dependencies.
 ///
 /// [`ContentStore`]: ../content_store/index.html
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CompilationOutput {
     /// List of compiled resource's metadata.
     pub compiled_resources: Vec<CompiledResource>,
     /// List of references between compiled resources.
     pub resource_references: Vec<(ResourcePathId, ResourcePathId)>,
+}
+
+impl CompilationOutput {
+    /// Create the command from a .json string.
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, CompilerError> {
+        serde_json::from_slice::<Self>(bytes).map_err(CompilerError::SerdeJson)
+    }
+
+    /// Serialize the command into a .json string.
+    #[allow(clippy::inherent_to_string)]
+    pub fn to_string(&self) -> String {
+        serde_json::to_string_pretty(self).unwrap()
+    }
 }
 
 /// The compilation environment - the context in which compilation runs.
@@ -456,7 +469,7 @@ fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), CompilerErr
                 &env,
             )?;
 
-            let output = CompilerCompileCmdOutput {
+            let output = CompilationOutput {
                 compiled_resources: compilation_output.compiled_resources,
                 resource_references: compilation_output.resource_references,
             };

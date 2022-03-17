@@ -63,7 +63,7 @@ use lgn_data_offline::{ResourcePathId, Transform};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    compiler_api::{CompilationEnv, CompilerError, CompilerInfo},
+    compiler_api::{CompilationEnv, CompilationOutput, CompilerError, CompilerInfo},
     compiler_node::CompilerRegistry,
     CompiledResource, CompilerHash,
 };
@@ -355,30 +355,8 @@ impl CompilerHashCmd {
 // Compiler Compile Command
 //
 
-/// Output of `compile` command.
-#[derive(Serialize, Deserialize, Debug)]
-pub struct CompilerCompileCmdOutput {
-    /// Generated resources.
-    pub compiled_resources: Vec<CompiledResource>,
-    /// References between generated resources.
-    pub resource_references: Vec<(ResourcePathId, ResourcePathId)>,
-}
-
-impl CompilerCompileCmdOutput {
-    /// Create the command from a .json string.
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, CompilerError> {
-        serde_json::from_slice::<Self>(bytes).map_err(CompilerError::SerdeJson)
-    }
-
-    /// Serialize the command into a .json string.
-    #[allow(clippy::inherent_to_string)]
-    pub fn to_string(&self) -> String {
-        serde_json::to_string_pretty(self).unwrap()
-    }
-}
-
 /// Helper building a `compile` command.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct CompilerCompileCmd(CommandBuilder);
 
 impl CompilerCompileCmd {
@@ -417,19 +395,16 @@ impl CompilerCompileCmd {
     /// Runs the command on compiler process located at `compiler_path` setting
     /// the current working directory of the compiler to `cwd`, waits for
     /// completion, returns the result.
-    pub fn execute(&self) -> io::Result<CompilerCompileCmdOutput> {
+    pub fn execute(&self) -> io::Result<CompilationOutput> {
         self.execute_with_cwd(env::current_dir().unwrap())
     }
 
     /// Runs the command on compiler process located at `compiler_path` setting
     /// the current working directory of the compiler to `cwd`, waits for
     /// completion, returns the result.
-    pub fn execute_with_cwd(
-        &self,
-        current_dir: impl AsRef<Path>,
-    ) -> io::Result<CompilerCompileCmdOutput> {
+    pub fn execute_with_cwd(&self, current_dir: impl AsRef<Path>) -> io::Result<CompilationOutput> {
         match self.0.exec_with_cwd(current_dir) {
-            Ok(output) => CompilerCompileCmdOutput::from_bytes(&output.stdout).map_err(|_e| {
+            Ok(output) => CompilationOutput::from_bytes(&output.stdout).map_err(|_e| {
                 eprintln!(
                     "Cannot parse compiler output, {:?} {:?}\nError: {:?}",
                     self.0.command, self.0.args, &output.stdout
@@ -437,7 +412,7 @@ impl CompilerCompileCmd {
                 io::Error::new(
                     io::ErrorKind::InvalidData,
                     format!(
-                        "Failed to parse CompilerCompileCmdOutput: `{}`",
+                        "Failed to parse CompilationOutput: `{}`",
                         std::str::from_utf8(output.stdout.as_slice()).unwrap()
                     ),
                 )

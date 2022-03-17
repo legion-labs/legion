@@ -4684,6 +4684,7 @@ dependencies = [
  "reqwest",
  "rmp-serde",
  "serde",
+ "serde_json",
  "smallvec",
  "tempfile",
  "testcontainers",
