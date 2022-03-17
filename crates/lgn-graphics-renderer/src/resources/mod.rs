@@ -54,3 +54,6 @@ pub(crate) use missing_visual_tracker::*;
 
 mod renderer_options;
 pub(crate) use renderer_options::*;
+
+mod readback_buffer;
+pub(crate) use readback_buffer::*;

@@ -6,6 +6,7 @@ pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set
             fields: [
                 #{ name:"world", ty:"Float4x4" },
                 #{ name:"color", ty:"Float4" },
+                #{ name:"color_blend", ty:"Float1" },
                 #{ name:"mesh_description_offset", ty:"Uint1" },                
             ]
         },

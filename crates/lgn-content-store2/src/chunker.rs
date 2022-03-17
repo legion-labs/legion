@@ -1,6 +1,5 @@
 use std::{collections::BTreeMap, io::Write};
 
-use itertools::Itertools;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
 
 use crate::{
@@ -10,24 +9,13 @@ use crate::{
 
 /// A provider-like type that splits data into chunks and stores them in a
 /// content-store.
-pub struct Chunker<Provider> {
-    provider: Provider,
+#[derive(Debug, Clone)]
+pub struct Chunker {
     chunk_size: usize,
-    max_parallel_uploads: usize,
 }
 
-impl<Provider> Chunker<Provider> {
+impl Chunker {
     pub const DEFAULT_CHUNK_SIZE: usize = 1024 * 1024 * 32; // 32 MB
-    pub const DEFAULT_MAX_PARALLEL_UPLOADS: usize = 8;
-
-    /// Create a new chunker instance that uses the default chunk size.
-    pub fn new(provider: Provider) -> Self {
-        Self {
-            provider,
-            chunk_size: Self::DEFAULT_CHUNK_SIZE,
-            max_parallel_uploads: Self::DEFAULT_MAX_PARALLEL_UPLOADS,
-        }
-    }
 
     pub fn with_chunk_size(mut self, chunk_size: usize) -> Self {
         assert!(chunk_size > 0);
@@ -36,23 +24,21 @@ impl<Provider> Chunker<Provider> {
         self
     }
 
-    pub fn with_max_parallel_uploads(mut self, max_parallel_uploads: usize) -> Self {
-        assert!(max_parallel_uploads > 0);
-        self.max_parallel_uploads = max_parallel_uploads;
-
-        self
-    }
-
     pub fn chunk_size(&self) -> usize {
         self.chunk_size
     }
+}
 
-    pub fn max_parallel_uploads(&self) -> usize {
-        self.max_parallel_uploads
+impl Default for Chunker {
+    /// Create a new chunker instance that uses the default chunk size.
+    fn default() -> Self {
+        Self {
+            chunk_size: Self::DEFAULT_CHUNK_SIZE,
+        }
     }
 }
 
-impl<Provider: ContentReader> Chunker<Provider> {
+impl Chunker {
     /// Returns an async reader that assembles and reads the chunk content
     /// referenced by the specified identifier.
     ///
@@ -63,7 +49,11 @@ impl<Provider: ContentReader> Chunker<Provider> {
     ///
     /// If the content referenced by the identifier is not a chunk index,
     /// `Error::InvalidChunkIndex` is returned.
-    pub async fn get_chunk_reader(&self, id: &ChunkIdentifier) -> Result<ContentAsyncRead> {
+    pub async fn get_chunk_reader(
+        &self,
+        content_reader: impl ContentReader + Send + Sync,
+        id: &ChunkIdentifier,
+    ) -> Result<ContentAsyncRead> {
         // TODO: This implementation is actually not great:
         //
         // It fetches all the readers in one go but reads them one at a time.
@@ -82,7 +72,7 @@ impl<Provider: ContentReader> Chunker<Provider> {
         //
         // Anthony D.: a task for you? :D
 
-        let mut reader = self.provider.get_content_reader(id.content_id()).await?;
+        let mut reader = content_reader.get_content_reader(id.content_id()).await?;
         let chunk_index = ChunkIndex::read_from(&mut reader).await?;
         let ids = chunk_index.identifiers();
         let mut ids_iter = ids.iter();
@@ -97,8 +87,7 @@ impl<Provider: ContentReader> Chunker<Provider> {
         // Get all the necessary readers: if at least one is missing, return the failure.
         let ids_set = &ids.iter().cloned().collect();
 
-        let mut reader_stores = self
-            .provider
+        let mut reader_stores = content_reader
             .get_content_readers(ids_set)
             .await?
             .into_iter()
@@ -146,8 +135,12 @@ impl<Provider: ContentReader> Chunker<Provider> {
     ///
     /// If the identifier does not match any content, `Error::NotFound` is
     /// returned.
-    pub async fn read_chunk(&self, id: &ChunkIdentifier) -> Result<Vec<u8>> {
-        let mut reader = self.get_chunk_reader(id).await?;
+    pub async fn read_chunk(
+        &self,
+        content_reader: impl ContentReader + Send + Sync,
+        id: &ChunkIdentifier,
+    ) -> Result<Vec<u8>> {
+        let mut reader = self.get_chunk_reader(content_reader, id).await?;
 
         let mut result = Vec::with_capacity(id.data_size());
 
@@ -157,20 +150,24 @@ impl<Provider: ContentReader> Chunker<Provider> {
             .map_err(|err| anyhow::anyhow!("failed to read chunk: {}", err).into())
             .map(|_| result)
     }
-}
 
-impl<Provider: ContentWriter + Send + Sync> Chunker<Provider> {
     /// Writes the specified content to the content store, splitting it into
     /// chunks.
     ///
     /// # Errors
     ///
     /// If the writing fails, an error is returned.
-    pub async fn write_chunk(&self, data: &[u8]) -> Result<ChunkIdentifier> {
+    pub async fn write_chunk(
+        &self,
+        content_writer: impl ContentWriter + Send + Sync,
+        data: &[u8],
+    ) -> Result<ChunkIdentifier> {
         let chunks = data
             .chunks(self.chunk_size)
             .map(|chunk| (Identifier::new(chunk), chunk))
             .collect::<Vec<_>>();
+
+        let content_writer = &content_writer;
 
         let futures = chunks
             .clone()
@@ -178,7 +175,7 @@ impl<Provider: ContentWriter + Send + Sync> Chunker<Provider> {
             .collect::<BTreeMap<_, _>>()
             .into_iter()
             .map(|(id, chunk)| async move {
-                match self.provider.get_content_writer(&id).await {
+                match content_writer.get_content_writer(&id).await {
                     Ok(mut writer) => {
                         match writer.write_all(chunk).await {
                             Ok(_) => {}
@@ -206,11 +203,9 @@ impl<Provider: ContentWriter + Send + Sync> Chunker<Provider> {
                 }
             });
 
-        for futures_chunk in &futures.chunks(self.max_parallel_uploads) {
-            futures::future::join_all(futures_chunk)
-                .await
-                .into_iter()
-                .collect::<Result<Vec<_>>>()?;
+        // Do not upload in parallel.
+        for f in futures {
+            f.await?;
         }
 
         let ids = chunks.into_iter().map(|(id, _)| id).collect::<Vec<_>>();
@@ -220,11 +215,31 @@ impl<Provider: ContentWriter + Send + Sync> Chunker<Provider> {
 
         let chunk_index = ChunkIndex::Linear(ids);
         match chunk_index.write_all_to(&mut buf) {
-            Ok(()) => self.provider.write_content(&buf).await.map(|id| {
+            Ok(()) => content_writer.write_content(&buf).await.map(|id| {
                 ChunkIdentifier::new(data.len().try_into().expect("data_size too large"), id)
             }),
             Err(err) => Err(anyhow::anyhow!("failed to write chunk index: {}", err).into()),
         }
+    }
+
+    /// Chunks the specified content with the current settings and returns the chunk identifier.
+    pub fn get_chunk_identifier(&self, data: &[u8]) -> ChunkIdentifier {
+        let ids = data
+            .chunks(self.chunk_size)
+            .map(Identifier::new)
+            .collect::<Vec<_>>();
+
+        let mut buf = Vec::with_capacity(ids.len() * Identifier::SMALL_IDENTIFIER_SIZE);
+        let chunk_index = ChunkIndex::Linear(ids);
+        chunk_index
+            .write_all_to(&mut buf)
+            .expect("failed to serialize chunk index");
+        let chunk_index_id = Identifier::new(&buf);
+
+        ChunkIdentifier::new(
+            data.len().try_into().expect("data_size too large"),
+            chunk_index_id,
+        )
     }
 }
 

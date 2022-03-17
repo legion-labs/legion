@@ -77,7 +77,7 @@ impl From<Change> for CanonicalPath {
 
 #[cfg(test)]
 mod tests {
-    use crate::FileInfo;
+    use lgn_content_store2::{ChunkIdentifier, Identifier};
 
     use super::*;
 
@@ -85,23 +85,23 @@ mod tests {
         Change::new(CanonicalPath::new(p).unwrap(), ct)
     }
 
-    fn fi(hash: &str, size: u64) -> FileInfo {
-        FileInfo {
-            hash: hash.to_string(),
-            size,
-        }
+    fn id(data: &str) -> ChunkIdentifier {
+        ChunkIdentifier::new(
+            data.len().try_into().unwrap(),
+            Identifier::new(data.as_bytes()),
+        )
     }
 
     fn add() -> ChangeType {
         ChangeType::Add {
-            new_info: fi("new", 123),
+            new_chunk_id: id("new"),
         }
     }
 
     fn edit() -> ChangeType {
         ChangeType::Edit {
-            old_info: fi("old", 123),
-            new_info: fi("new", 123),
+            old_chunk_id: id("old"),
+            new_chunk_id: id("new"),
         }
     }
 

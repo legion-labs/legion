@@ -12,7 +12,7 @@ use tonic::{Request, Response, Status};
 
 use crate::channel_sink::TraceEvent;
 
-/// Easy to share, referenced counted version of Tokio's `UnboundedReceiver`.
+/// Easy to share, referenced counted version of Tokio's [`mpsc::UnboundedReceiver`].
 /// Can be cloned safely and will dereference to the internal [`Mutex`].
 pub(crate) struct SharedUnboundedReceiver<T>(pub(crate) Arc<Mutex<mpsc::UnboundedReceiver<T>>>);
 

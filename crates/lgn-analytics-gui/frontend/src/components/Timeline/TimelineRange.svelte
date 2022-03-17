@@ -42,7 +42,7 @@
   .block {
     @apply bg-slate-50;
     z-index: 1;
-    width: var(--thread-item-length);
+    min-width: calc(var(--thread-item-length) + 6px);
   }
 
   .range {
@@ -51,6 +51,6 @@
   }
 
   .child {
-    transform: translateX(-50%) translateX(6px);
+    transform: translateX(-50%);
   }
 </style>

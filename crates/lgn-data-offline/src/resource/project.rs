@@ -110,7 +110,7 @@ impl Project {
         let remote = {
             let remote_dir = project_dir.as_ref().join("remote");
             let remote = LocalIndexBackend::new(&remote_dir).map_err(Error::SourceControl)?;
-            let _res = remote.create_index().await.map_err(Error::SourceControl)?;
+            remote.create_index().await.map_err(Error::SourceControl)?;
             remote
         };
 
@@ -127,9 +127,20 @@ impl Project {
             std::fs::create_dir(&resource_dir).map_err(|e| Error::Io(resource_dir.clone(), e))?;
         }
 
+        let content_provider = lgn_content_store2::Config::default()
+            .instanciate_provider()
+            .await
+            .map_err(|e| {
+                Error::SourceControl(lgn_source_control::Error::Other {
+                    source: anyhow::Error::new(e),
+                    context: "failed to instanciate content-store provider".to_string(),
+                })
+            })?;
+
         let workspace = Workspace::init(
             &resource_dir,
             WorkspaceConfig::new(remote_path, WorkspaceRegistration::new_with_current_user()),
+            content_provider,
         )
         .await
         .map_err(|e| {
@@ -391,12 +402,23 @@ impl Project {
         let metadata = Metadata::new_with_dependencies(name, kind_name, kind, &build_dependencies);
         serde_json::to_writer_pretty(meta_file, &metadata).unwrap();
 
-        {
-            self.workspace
-                .add_files([meta_path.as_path(), resource_path.as_path()])
-                .await
-                .map_err(Error::SourceControl)?;
-        }
+        let content_provider = lgn_content_store2::Config::default()
+            .instanciate_provider()
+            .await
+            .map_err(|e| {
+                Error::SourceControl(lgn_source_control::Error::Other {
+                    source: anyhow::Error::new(e),
+                    context: "failed to instanciate content-store provider".to_string(),
+                })
+            })?;
+
+        self.workspace
+            .add_files(
+                content_provider,
+                [meta_path.as_path(), resource_path.as_path()],
+            )
+            .await
+            .map_err(Error::SourceControl)?;
 
         let type_id = ResourceTypeAndId { kind, id };
 
@@ -460,12 +482,23 @@ impl Project {
         meta_file.seek(std::io::SeekFrom::Start(0)).unwrap();
         serde_json::to_writer_pretty(&meta_file, &metadata).unwrap(); // todo(kstasik): same as above.
 
-        {
-            self.workspace
-                .add_files([metadata_path.as_path(), resource_path.as_path()]) // add
-                .await
-                .map_err(Error::SourceControl)?;
-        }
+        let content_provider = lgn_content_store2::Config::default()
+            .instanciate_provider()
+            .await
+            .map_err(|e| {
+                Error::SourceControl(lgn_source_control::Error::Other {
+                    source: anyhow::Error::new(e),
+                    context: "failed to instanciate content-store provider".to_string(),
+                })
+            })?;
+
+        self.workspace
+            .add_files(
+                content_provider,
+                [metadata_path.as_path(), resource_path.as_path()],
+            ) // add
+            .await
+            .map_err(Error::SourceControl)?;
 
         Ok(())
     }
@@ -633,8 +666,18 @@ impl Project {
 
     /// Pulls all changes from the origin.
     pub async fn sync_latest(&mut self) -> Result<(), Error> {
+        let content_provider = lgn_content_store2::Config::default()
+            .instanciate_provider()
+            .await
+            .map_err(|e| {
+                Error::SourceControl(lgn_source_control::Error::Other {
+                    source: anyhow::Error::new(e),
+                    context: "failed to instanciate content-store provider".to_string(),
+                })
+            })?;
+
         self.workspace
-            .sync()
+            .sync(content_provider)
             .await
             .map_err(Error::SourceControl)
             .map(|_| ())

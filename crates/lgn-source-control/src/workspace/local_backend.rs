@@ -8,8 +8,8 @@ use std::{
 use tokio::sync::Mutex;
 
 use crate::{
-    sql::create_database, Branch, CanonicalPath, Change, ChangeType, CommitId, FileInfo,
-    MapOtherError, PendingBranchMerge, ResolvePending, Result,
+    sql::create_database, Branch, CanonicalPath, Change, ChangeType, CommitId, MapOtherError,
+    PendingBranchMerge, ResolvePending, Result,
 };
 
 use super::WorkspaceBackend;
@@ -83,7 +83,7 @@ impl LocalWorkspaceBackend {
     #[span_fn]
     async fn create_changes_table(&mut self) -> Result<()> {
         let sql: &str = &format!(
-            "CREATE TABLE `{}`(canonical_path TEXT NOT NULL PRIMARY KEY, old_hash VARCHAR(255), new_hash VARCHAR(255), old_size INTEGER, new_size INTEGER, unique(canonical_path));",
+            "CREATE TABLE `{}`(canonical_path TEXT NOT NULL PRIMARY KEY, old_chunk_id VARCHAR(255), new_chunk_id VARCHAR(255), unique(canonical_path));",
             Self::TABLE_CHANGES
         );
 
@@ -171,7 +171,7 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
     async fn get_staged_changes(&self) -> Result<BTreeMap<CanonicalPath, Change>> {
         async_span_scope!("LocalWorkspaceBackend::get_staged_changes");
         let sql: &str = &format!(
-            "SELECT canonical_path, old_hash, new_hash, old_size, new_size FROM {}",
+            "SELECT canonical_path, old_chunk_id, new_chunk_id FROM {}",
             Self::TABLE_CHANGES
         );
 
@@ -187,35 +187,33 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
         let mut res = BTreeMap::new();
 
         for row in rows {
-            let old_hash: String = row.get("old_hash");
+            let old_chunk_id: String = row.get("old_chunk_id");
 
-            let old_info = if !old_hash.is_empty() {
-                let old_size: i64 = row.get("old_size");
-
-                Some(FileInfo {
-                    hash: old_hash,
-                    size: old_size as u64,
-                })
+            let old_chunk_id = if !old_chunk_id.is_empty() {
+                Some(
+                    old_chunk_id
+                        .parse()
+                        .map_other_err("failed to parse old chunk id")?,
+                )
             } else {
                 None
             };
 
-            let new_hash: String = row.get("new_hash");
+            let new_chunk_id: String = row.get("new_chunk_id");
 
-            let new_info = if !new_hash.is_empty() {
-                let new_size: i64 = row.get("new_size");
-
-                Some(FileInfo {
-                    hash: new_hash,
-                    size: new_size as u64,
-                })
+            let new_chunk_id = if !new_chunk_id.is_empty() {
+                Some(
+                    new_chunk_id
+                        .parse()
+                        .map_other_err("failed to parse new chunk id")?,
+                )
             } else {
                 None
             };
 
             let canonical_path = CanonicalPath::new(row.get("canonical_path"))?;
 
-            if let Some(change_type) = ChangeType::new(old_info, new_info) {
+            if let Some(change_type) = ChangeType::new(old_chunk_id, new_chunk_id) {
                 res.insert(
                     canonical_path.clone(),
                     Change::new(canonical_path, change_type),
@@ -233,7 +231,7 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
         }
 
         let sql: &str = &format!(
-            "REPLACE INTO `{}` (canonical_path, old_hash, new_hash, old_size, new_size) VALUES(?, ?, ?, ?, ?);",
+            "REPLACE INTO `{}` (canonical_path, old_chunk_id, new_chunk_id) VALUES(?, ?, ?);",
             Self::TABLE_CHANGES
         );
 
@@ -249,29 +247,15 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
                 .bind(
                     change
                         .change_type()
-                        .old_info()
-                        .map(|info| info.hash.as_str())
+                        .old_chunk_id()
+                        .map(std::string::ToString::to_string)
                         .unwrap_or_default(),
                 )
                 .bind(
                     change
                         .change_type()
-                        .new_info()
-                        .map(|info| info.hash.as_str())
-                        .unwrap_or_default(),
-                )
-                .bind(
-                    change
-                        .change_type()
-                        .old_info()
-                        .map(|info| i64::try_from(info.size).unwrap_or_default())
-                        .unwrap_or_default(),
-                )
-                .bind(
-                    change
-                        .change_type()
-                        .new_info()
-                        .map(|info| i64::try_from(info.size).unwrap_or_default())
+                        .new_chunk_id()
+                        .map(std::string::ToString::to_string)
                         .unwrap_or_default(),
                 );
 

@@ -1,4 +1,5 @@
 use lgn_app::{App, CoreStage, EventReader};
+use lgn_core::Handle;
 use lgn_ecs::prelude::{Res, ResMut};
 use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::{
@@ -15,14 +16,19 @@ use lgn_math::Vec2;
 use crate::{
     cgen::{
         self,
-        cgen_type::{CullingDebugData, CullingOptions, GpuInstanceData, RenderPassData},
+        cgen_type::{
+            CullingDebugData, CullingEfficiancyStats, CullingOptions, GpuInstanceData,
+            RenderPassData,
+        },
         shader,
     },
     components::RenderSurface,
+    egui::egui_plugin::Egui,
     hl_gfx_api::HLCommandBuffer,
     labels::RenderStage,
     resources::{
-        PipelineHandle, PipelineManager, UnifiedStaticBufferAllocator, UniformGPUDataUpdater,
+        GpuBufferWithReadback, PipelineHandle, PipelineManager, ReadbackBuffer,
+        UnifiedStaticBufferAllocator, UniformGPUDataUpdater,
     },
     RenderContext, Renderer,
 };
@@ -33,10 +39,8 @@ embedded_watched_file!(INCLUDE_BRDF, "gpu/include/brdf.hsh");
 embedded_watched_file!(INCLUDE_COMMON, "gpu/include/common.hsh");
 embedded_watched_file!(INCLUDE_MESH, "gpu/include/mesh.hsh");
 embedded_watched_file!(SHADER_SHADER, "gpu/shaders/shader.hlsl");
-
-struct EnableOcclusion(bool);
-struct OutputCulledInstances(bool);
 struct IndirectDispatch(bool);
+struct GatherPerfStats(bool);
 
 pub(crate) enum DefaultLayers {
     Depth = 0,
@@ -99,6 +103,24 @@ fn update_render_elements(
 }
 
 #[allow(clippy::needless_pass_by_value)]
+pub(crate) fn ui_mesh_renderer(egui_ctx: Res<'_, Egui>, mesh_renderer: Res<'_, MeshRenderer>) {
+    egui::Window::new("Culling").show(&egui_ctx.ctx, |ui| {
+        ui.label(format!(
+            "Total Elements'{}'",
+            u32::from(mesh_renderer.culling_stats.total_elements())
+        ));
+        ui.label(format!(
+            "Frustum Visible '{}'",
+            u32::from(mesh_renderer.culling_stats.frustum_visible())
+        ));
+        ui.label(format!(
+            "Occlusiion Visible '{}'",
+            u32::from(mesh_renderer.culling_stats.occlusion_visible())
+        ));
+    });
+}
+
+#[allow(clippy::needless_pass_by_value)]
 fn prepare(renderer: Res<'_, Renderer>, mut mesh_renderer: ResMut<'_, MeshRenderer>) {
     mesh_renderer.prepare(&renderer);
 }
@@ -116,6 +138,8 @@ struct CullingArgBuffers {
     culled_count: Option<CullingArgBuffer>,
     culled_args: Option<CullingArgBuffer>,
     culled_instances: Option<CullingArgBuffer>,
+    stats_buffer: GpuBufferWithReadback,
+    stats_buufer_readback: Option<Handle<ReadbackBuffer>>,
     culling_debug: Option<CullingArgBuffer>,
     // TMP until shader variations
     tmp_culled_count: Option<CullingArgBuffer>,
@@ -128,17 +152,22 @@ pub struct MeshRenderer {
 
     instance_data_idxs: Vec<u32>,
     gpu_instance_data: Vec<GpuInstanceData>,
+    depth_count_buffer_count: u64,
 
-    culling_shader: Option<PipelineHandle>,
-
+    culling_shader_first_pass: Option<PipelineHandle>,
+    culling_shader_second_pass: Option<PipelineHandle>,
     culling_buffers: CullingArgBuffers,
+    culling_stats: CullingEfficiancyStats,
 
     tmp_batch_ids: Vec<u32>,
     tmp_pipeline_handles: Vec<PipelineHandle>,
 }
 
 impl MeshRenderer {
-    pub(crate) fn new(allocator: &UnifiedStaticBufferAllocator) -> Self {
+    pub(crate) fn new(
+        device_context: &DeviceContext,
+        allocator: &UnifiedStaticBufferAllocator,
+    ) -> Self {
         Self {
             default_layers: vec![
                 RenderLayer::new(allocator, false),
@@ -152,21 +181,31 @@ impl MeshRenderer {
                 culled_args: None,
                 culled_instances: None,
                 culling_debug: None,
+                stats_buffer: GpuBufferWithReadback::new(
+                    device_context,
+                    std::mem::size_of::<CullingEfficiancyStats>() as u64,
+                ),
+                stats_buufer_readback: None,
                 tmp_culled_count: None,
                 tmp_culled_args: None,
                 tmp_culled_instances: None,
             },
+            culling_stats: CullingEfficiancyStats::default(),
             instance_data_idxs: vec![],
             gpu_instance_data: vec![],
-            culling_shader: None,
+            depth_count_buffer_count: 0,
+            culling_shader_first_pass: None,
+            culling_shader_second_pass: None,
             tmp_batch_ids: vec![],
             tmp_pipeline_handles: vec![],
         }
     }
 
     fn initialize_psos(&mut self, pipeline_manager: &PipelineManager) {
-        if self.culling_shader.is_none() {
-            self.culling_shader = Some(build_culling_pso(pipeline_manager));
+        if self.culling_shader_first_pass.is_none() {
+            let (first_pass, second_pass) = build_culling_psos(pipeline_manager);
+            self.culling_shader_first_pass = Some(first_pass);
+            self.culling_shader_second_pass = Some(second_pass);
 
             let pipeline_handle = build_depth_pso(pipeline_manager);
             self.tmp_batch_ids.push(
@@ -243,11 +282,9 @@ impl MeshRenderer {
     fn prepare(&mut self, renderer: &Renderer) {
         let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
 
-        let mut depth_count_buffer_size: u64 = 0;
-        let mut depth_indirect_arg_buffer_size: u64 = 0;
-
         let mut count_buffer_size: u64 = 0;
         let mut indirect_arg_buffer_size: u64 = 0;
+        self.depth_count_buffer_count = 0;
 
         for (index, layer) in self.default_layers.iter_mut().enumerate() {
             layer.aggregate_offsets(
@@ -256,17 +293,26 @@ impl MeshRenderer {
                 &mut indirect_arg_buffer_size,
             );
             if index == DefaultLayers::Depth as usize {
-                depth_count_buffer_size = count_buffer_size;
-                count_buffer_size = 0;
-
-                depth_indirect_arg_buffer_size = indirect_arg_buffer_size;
-                indirect_arg_buffer_size = 0;
+                self.depth_count_buffer_count = count_buffer_size;
             }
         }
-        count_buffer_size = count_buffer_size.max(depth_count_buffer_size);
-        indirect_arg_buffer_size = indirect_arg_buffer_size.max(depth_indirect_arg_buffer_size);
 
         renderer.add_update_job_block(updater.job_blocks());
+
+        let readback = self
+            .culling_buffers
+            .stats_buffer
+            .begin_readback(renderer.device_context());
+
+        readback.read_gpu_data(
+            0,
+            usize::MAX,
+            u64::MAX,
+            |data: &[CullingEfficiancyStats]| {
+                self.culling_stats = data[0];
+            },
+        );
+        self.culling_buffers.stats_buufer_readback = Some(readback);
 
         if count_buffer_size != 0 {
             create_or_replace_buffer(
@@ -384,13 +430,12 @@ impl MeshRenderer {
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
         culling_buffers: &CullingArgBuffers,
-        culling_options: &(EnableOcclusion, OutputCulledInstances, IndirectDispatch),
+        culling_options: &(IndirectDispatch, GatherPerfStats),
         culling_args: (u32, u32, Vec2),
         input_buffers: (&BufferView, &BufferView, &BufferView),
     ) {
-        let enable_occlusion_culling = culling_options.0 .0;
-        let output_culled_instancs = culling_options.1 .0;
-        let indirect_dispatch = culling_options.2 .0;
+        let indirect_dispatch = culling_options.0 .0;
+        let gather_perf_stats = culling_options.1 .0;
 
         let draw_count = culling_buffers.draw_count.as_ref().unwrap();
         let draw_args = culling_buffers.draw_args.as_ref().unwrap();
@@ -414,9 +459,15 @@ impl MeshRenderer {
             culling_buffers.culled_instances.as_ref().unwrap(),
         );
 
+        let pipeline_handle = if indirect_dispatch {
+            self.culling_shader_second_pass.unwrap()
+        } else {
+            self.culling_shader_first_pass.unwrap()
+        };
+
         let pipeline = render_context
             .pipeline_manager()
-            .get_pipeline(self.culling_shader.unwrap())
+            .get_pipeline(pipeline_handle)
             .unwrap();
         cmd_buffer.bind_pipeline(pipeline);
 
@@ -436,6 +487,8 @@ impl MeshRenderer {
         culling_descriptor_set.set_culled_count(&culled_count.uav_view);
         culling_descriptor_set.set_culled_args(&culled_args.uav_view);
         culling_descriptor_set.set_culled_instances(&culled_instances.uav_view);
+        culling_descriptor_set.set_culling_efficiency(culling_buffers.stats_buffer.rw_view());
+
         culling_descriptor_set
             .set_culling_debug(&culling_buffers.culling_debug.as_ref().unwrap().uav_view);
 
@@ -482,12 +535,15 @@ impl MeshRenderer {
             &[],
         );
 
-        cmd_buffer.fill_buffer(&draw_count.buffer, 0, !0, 0);
-        if output_culled_instancs {
+        if indirect_dispatch {
+            let depth_count_size =
+                self.depth_count_buffer_count * std::mem::size_of::<u32>() as u64;
+            cmd_buffer.fill_buffer(&draw_count.buffer, 0, depth_count_size, 0);
+        } else {
+            cmd_buffer.fill_buffer(&draw_count.buffer, 0, !0, 0);
             cmd_buffer.fill_buffer(&culled_count.buffer, 0, 4, 0);
             cmd_buffer.fill_buffer(&culled_args.buffer, 0, 4, 0);
         }
-
         cmd_buffer.resource_barrier(
             &[
                 BufferBarrier {
@@ -525,11 +581,8 @@ impl MeshRenderer {
         );
 
         let mut options = CullingOptions::empty();
-        if enable_occlusion_culling {
-            options |= CullingOptions::OCCLUSION;
-        }
-        if output_culled_instancs {
-            options |= CullingOptions::OUTPUT_CULLED_INSTANCES;
+        if gather_perf_stats {
+            options |= CullingOptions::GATHER_PERF_STATS;
         }
 
         let mut culling_constant_data = cgen::cgen_type::CullingPushConstantData::default();
@@ -635,17 +688,15 @@ impl MeshRenderer {
         let render_pass_view = render_pass_allocation
             .structured_buffer_view(std::mem::size_of::<RenderPassData>() as u64, true);
 
+        self.culling_buffers.stats_buffer.clear_buffer(&cmd_buffer);
+
         // Cull using previous frame Hzb
         self.cull(
             render_context,
             &mut cmd_buffer,
             &self.culling_buffers,
-            &(
-                EnableOcclusion(true),
-                OutputCulledInstances(true),
-                IndirectDispatch(false),
-            ),
-            (0, 1, hzb_pixel_extents),
+            &(IndirectDispatch(false), GatherPerfStats(true)),
+            (0, render_pass_data.len() as u32, hzb_pixel_extents),
             (&gpu_count_view, &gpu_instance_view, &render_pass_view),
         );
 
@@ -676,17 +727,16 @@ impl MeshRenderer {
         // Initial Hzb for current frame
         render_surface.generate_hzb(render_context, &mut cmd_buffer);
 
+        // Rebind global vertex buffer after gen Hzb changes it
+        cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
+
         // Retest elements culled from first pass against new Hzb
         self.cull(
             render_context,
             &mut cmd_buffer,
             &self.culling_buffers,
-            &(
-                EnableOcclusion(true),
-                OutputCulledInstances(false),
-                IndirectDispatch(true),
-            ),
-            (0, 1, hzb_pixel_extents),
+            &(IndirectDispatch(true), GatherPerfStats(true)),
+            (0, render_pass_data.len() as u32, hzb_pixel_extents),
             (&gpu_count_view, &gpu_instance_view, &render_pass_view),
         );
 
@@ -718,19 +768,11 @@ impl MeshRenderer {
         // Update Hzb from complete depth buffer
         render_surface.generate_hzb(render_context, &mut cmd_buffer);
 
-        // Cull opaque with full Hzb
-        self.cull(
-            render_context,
-            &mut cmd_buffer,
-            &self.culling_buffers,
-            &(
-                EnableOcclusion(true),
-                OutputCulledInstances(false),
-                IndirectDispatch(false),
-            ),
-            (1, (render_pass_data.len() - 1) as u32, hzb_pixel_extents),
-            (&gpu_count_view, &gpu_instance_view, &render_pass_view),
-        );
+        if let Some(readback) = &self.culling_buffers.stats_buufer_readback {
+            self.culling_buffers
+                .stats_buffer
+                .copy_buffer_to_readback(&cmd_buffer, readback);
+        }
 
         render_context
             .graphics_queue()
@@ -755,6 +797,14 @@ impl MeshRenderer {
                 .as_ref()
                 .map(|buffer| &buffer.buffer),
         );
+    }
+
+    pub(crate) fn render_end(&mut self) {
+        let readback = std::mem::take(&mut self.culling_buffers.stats_buufer_readback);
+
+        if let Some(readback) = readback {
+            self.culling_buffers.stats_buffer.end_readback(readback);
+        }
     }
 }
 
@@ -970,7 +1020,7 @@ fn build_picking_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
                     shader,
                     root_signature,
                     vertex_layout: &vertex_layout,
-                    blend_state: &BlendState::default_alpha_enabled(),
+                    blend_state: &BlendState::default_alpha_disabled(),
                     depth_state: &depth_state,
                     rasterizer_state: &RasterizerState::default(),
                     color_formats: &[Format::R16G16B16A16_SFLOAT],
@@ -983,19 +1033,39 @@ fn build_picking_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
     )
 }
 
-fn build_culling_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
+fn build_culling_psos(pipeline_manager: &PipelineManager) -> (PipelineHandle, PipelineHandle) {
     let root_signature = cgen::pipeline_layout::CullingPipelineLayout::root_signature();
 
-    pipeline_manager.register_pipeline(
-        cgen::CRATE_ID,
-        CGenShaderKey::make(shader::culling_shader::ID, shader::culling_shader::NONE),
-        move |device_context, shader| {
-            device_context
-                .create_compute_pipeline(&ComputePipelineDef {
-                    shader,
-                    root_signature,
-                })
-                .unwrap()
-        },
+    (
+        pipeline_manager.register_pipeline(
+            cgen::CRATE_ID,
+            CGenShaderKey::make(
+                shader::culling_shader::ID,
+                shader::culling_shader::FIRST_PASS,
+            ),
+            move |device_context, shader| {
+                device_context
+                    .create_compute_pipeline(&ComputePipelineDef {
+                        shader,
+                        root_signature,
+                    })
+                    .unwrap()
+            },
+        ),
+        pipeline_manager.register_pipeline(
+            cgen::CRATE_ID,
+            CGenShaderKey::make(
+                shader::culling_shader::ID,
+                shader::culling_shader::SECOND_PASS,
+            ),
+            move |device_context, shader| {
+                device_context
+                    .create_compute_pipeline(&ComputePipelineDef {
+                        shader,
+                        root_signature,
+                    })
+                    .unwrap()
+            },
+        ),
     )
 }

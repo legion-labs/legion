@@ -301,17 +301,21 @@ impl SourceIndex {
                             .into_iter()
                             .filter_map(|(_, tree)| match tree {
                                 Tree::Directory { .. } => None,
-                                Tree::File { name, info } => {
-                                    Some((PathBuf::from(&name), info.hash))
+                                Tree::File { name, chunk_id } => {
+                                    Some((PathBuf::from(&name), chunk_id))
                                 }
                             })
                             .filter(|(path, _)| path.extension().is_none());
 
-                        let resource_list = resource_infos.map(|(path, hash)| {
+                        let resource_list = resource_infos.map(|(path, chunk_id)| {
                             (
                                 ResourceId::from_str(path.file_stem().unwrap().to_str().unwrap())
                                     .unwrap(),
-                                Checksum::from_str(&hash).unwrap(),
+                                {
+                                    let mut hasher = DefaultHasher256::new();
+                                    chunk_id.write_to(&mut hasher).unwrap();
+                                    Checksum::from(hasher.finish_256())
+                                },
                             )
                         });
 
