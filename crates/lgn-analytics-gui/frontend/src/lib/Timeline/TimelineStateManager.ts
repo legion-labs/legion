@@ -22,7 +22,6 @@ import type { TimelineStateStore } from "./TimelineStateStore";
 import { createTimelineStateStore } from "./TimelineStateStore";
 import { TimelineState } from "./TimelineState";
 import { ProcessAsyncData } from "./ProcessAsyncData";
-import Semaphore from "semaphore-async-await";
 import { loadPromise, loadWrap } from "../Misc/LoadingStore";
 
 export class TimelineStateManager {
@@ -31,10 +30,10 @@ export class TimelineStateManager {
   rootStartTime = NaN;
   private client: PerformanceAnalyticsClientImpl | null = null;
   private processId: string;
-  private semaphore: Semaphore;
+  private nbRequestsInFlight = 0;
+  private fetchingLods = false;
   constructor(processId: string) {
     this.processId = processId;
-    this.semaphore = new Semaphore(16);
     this.state = createTimelineStateStore(
       new TimelineState(undefined, undefined)
     );
@@ -301,16 +300,12 @@ export class TimelineStateManager {
     get(this.state).processAsyncData[process.processId] = asyncData;
   }
 
-  async fetchLods() {
+  async fetchLodsIteration() {
     const state = get(this.state);
     const range = state.getViewRange();
     const promises: Promise<void>[] = [];
     for (const block of Object.values(state.blocks)) {
-      const lod = computePreferredBlockLod(
-        state.getPixelWidthMs(),
-        range,
-        block
-      );
+      const lod = computePreferredBlockLod(state.canvasWidth, range, block);
       if (lod && !block.lods[lod]) {
         block.lods[lod] = {
           state: LODState.Missing,
@@ -319,8 +314,20 @@ export class TimelineStateManager {
         };
         promises.push(this.fetchBlockSpans(block, lod));
       }
+      if (this.nbRequestsInFlight >= 16) {
+        break;
+      }
     }
     await Promise.all(promises);
+  }
+
+  async fetchLods() {
+    if (this.fetchingLods) {
+      return;
+    }
+    this.fetchingLods = true;
+    this.fetchLodsIteration();
+    this.fetchingLods = false;
   }
 
   async fetchBlockSpans(block: ThreadBlock, lodToFetch: number) {
@@ -335,24 +342,26 @@ export class TimelineStateManager {
     }
     block.lods[lodToFetch].state = LODState.Requested;
     const blockId = block.blockDefinition.blockId;
-    await loadWrap(async () => {
-      await this.semaphore.acquire();
-      try {
-        await this.client!.block_spans({
-          blockId: blockId,
-          process,
-          stream: get(this.state).threads[streamId].streamInfo,
-          lodId: lodToFetch,
-        }).then(
-          (o) => this.onLodReceived(o),
-          (e) => {
-            console.log("Error fetching block spans", e);
-          }
-        );
-      } finally {
-        this.semaphore.release();
-      }
-    });
+    this.nbRequestsInFlight += 1;
+    await loadPromise(
+      this.client!.block_spans({
+        blockId: blockId,
+        process,
+        stream: get(this.state).threads[streamId].streamInfo,
+        lodId: lodToFetch,
+      }).then(
+        (o) => {
+          this.nbRequestsInFlight -= 1;
+          this.onLodReceived(o);
+          this.fetchLods();
+        },
+        (e) => {
+          this.nbRequestsInFlight -= 1;
+          console.log("Error fetching block spans", e);
+          this.fetchLods();
+        }
+      )
+    );
   }
 
   private onLodReceived(response: BlockSpansReply) {
