@@ -51,7 +51,7 @@ where
         metadata: Metadata,
         data: &[u8],
     ) -> Result<Self> {
-        let data_id = Chunker::new(provider).write_chunk(data).await?;
+        let data_id = Chunker::default().write_chunk(provider, data).await?;
 
         Ok(Self::new(metadata, DataIdentifier(data_id)))
     }
@@ -85,8 +85,8 @@ where
         &self,
         provider: impl ContentReader + Send + Sync,
     ) -> Result<ContentAsyncRead> {
-        Chunker::new(provider)
-            .get_chunk_reader(&self.data_id.0)
+        Chunker::default()
+            .get_chunk_reader(provider, &self.data_id.0)
             .await
             .map_err(Error::ContentStore)
     }
@@ -97,8 +97,8 @@ where
     ///
     /// Returns an error if the asset's data could not be read.
     pub async fn get_data(&self, provider: impl ContentReader + Send + Sync) -> Result<Vec<u8>> {
-        Chunker::new(provider)
-            .read_chunk(&self.data_id.0)
+        Chunker::default()
+            .read_chunk(provider, &self.data_id.0)
             .await
             .map_err(Error::ContentStore)
     }

@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use lgn_content_store2::{ChunkIdentifier, Chunker, ContentProvider};
+use lgn_content_store2::{ChunkIdentifier, Chunker, ContentReader, ContentWriter};
 use lgn_tracing::{debug, warn};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -26,6 +26,7 @@ pub struct Workspace {
     pub index_backend: Box<dyn IndexBackend>,
     pub(crate) backend: Box<dyn WorkspaceBackend>,
     pub(crate) registration: WorkspaceRegistration,
+    chunker: Chunker,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -66,10 +67,10 @@ impl Workspace {
     /// given configuration.
     ///
     /// The workspace must not already exist.
-    pub async fn init<CP: ContentProvider + Send + Sync>(
+    pub async fn init(
         root: impl AsRef<Path>,
         config: WorkspaceConfig,
-        content_store_provider: &Chunker<CP>,
+        content_store_provider: impl ContentReader + Send + Sync,
     ) -> Result<Self> {
         let root = make_path_absolute(root).map_other_err("failed to make path absolute")?;
         let lsc_directory = Self::get_lsc_directory(&root);
@@ -226,6 +227,7 @@ impl Workspace {
             index_backend,
             backend,
             registration: config.registration,
+            chunker: Chunker::default(),
         })
     }
 
@@ -274,9 +276,8 @@ impl Workspace {
     }
 
     /// Get the tree of files and directories for the disk.
-    pub async fn get_filesystem_tree<CP: ContentProvider + Send + Sync>(
+    pub async fn get_filesystem_tree(
         &self,
-        content_store_provider: &Chunker<CP>,
         inclusion_rules: BTreeSet<CanonicalPath>,
     ) -> Result<Tree> {
         let tree_filter = TreeFilter {
@@ -284,7 +285,7 @@ impl Workspace {
             exclusion_rules: [CanonicalPath::new(&format!("/{}", Self::LSC_DIR_NAME))?].into(),
         };
 
-        Tree::from_root(content_store_provider, &self.root, &tree_filter).await
+        Tree::from_root(&self.chunker, &self.root, &tree_filter).await
     }
 
     /// Give the current relative path for a given canonical path.
@@ -349,15 +350,13 @@ impl Workspace {
     ///
     /// The list of new files added is returned. If all the files were already
     /// added, an empty list is returned and call still succeeds.
-    pub async fn add_files<CP: ContentProvider + Send + Sync>(
+    pub async fn add_files(
         &self,
-        content_store_provider: &Chunker<CP>,
+        content_writer: impl ContentWriter + Send + Sync,
         paths: impl IntoIterator<Item = &Path> + Clone,
     ) -> Result<BTreeSet<CanonicalPath>> {
         let canonical_paths = self.to_canonical_paths(paths).await?;
-        let fs_tree = self
-            .get_filesystem_tree(content_store_provider, canonical_paths.clone())
-            .await?;
+        let fs_tree = self.get_filesystem_tree(canonical_paths.clone()).await?;
 
         // Also get the current tree to check if the files are already added.
         let tree = self.get_current_tree().await?;
@@ -379,8 +378,7 @@ impl Workspace {
                             continue;
                         }
 
-                        self.upload_file(content_store_provider, &canonical_path)
-                            .await?;
+                        self.upload_file(&content_writer, &canonical_path).await?;
 
                         Change::new(
                             canonical_path,
@@ -400,8 +398,7 @@ impl Workspace {
                             continue;
                         }
 
-                        self.upload_file(content_store_provider, &canonical_path)
-                            .await?;
+                        self.upload_file(&content_writer, &canonical_path).await?;
 
                         Change::new(
                             canonical_path,
@@ -430,8 +427,7 @@ impl Workspace {
                     continue;
                 }
 
-                self.upload_file(content_store_provider, &canonical_path)
-                    .await?;
+                self.upload_file(&content_writer, &canonical_path).await?;
 
                 Change::new(
                     canonical_path,
@@ -458,15 +454,12 @@ impl Workspace {
     ///
     /// Calling this method on newly added files is not an error but does
     /// nothing.
-    pub async fn checkout_files<CP: ContentProvider + Send + Sync>(
+    pub async fn checkout_files(
         &self,
-        content_store_provider: &Chunker<CP>,
         paths: impl IntoIterator<Item = &Path> + Clone,
     ) -> Result<BTreeSet<CanonicalPath>> {
         let canonical_paths = self.to_canonical_paths(paths).await?;
-        let fs_tree = self
-            .get_filesystem_tree(content_store_provider, canonical_paths.clone())
-            .await?;
+        let fs_tree = self.get_filesystem_tree(canonical_paths.clone()).await?;
         let commit = self.get_current_commit().await?;
         let tree = self.get_tree_for_commit(&commit, canonical_paths).await?;
         let staged_changes = self.get_staged_changes().await?;
@@ -522,9 +515,8 @@ impl Workspace {
     ///
     /// The list of new files edited is returned. If all the files were already
     /// edited, an empty list is returned and call still succeeds.
-    pub async fn delete_files<CP: ContentProvider + Send + Sync>(
+    pub async fn delete_files(
         &self,
-        content_store_provider: &Chunker<CP>,
         paths: impl IntoIterator<Item = &Path> + Clone,
     ) -> Result<BTreeSet<CanonicalPath>> {
         debug!(
@@ -538,9 +530,7 @@ impl Workspace {
 
         let canonical_paths = self.to_canonical_paths(paths).await?;
 
-        let fs_tree = self
-            .get_filesystem_tree(content_store_provider, canonical_paths.clone())
-            .await?;
+        let fs_tree = self.get_filesystem_tree(canonical_paths.clone()).await?;
 
         // Also get the current tree to check if the files actually exist in the tree.
         let commit = self.get_current_commit().await?;
@@ -605,9 +595,8 @@ impl Workspace {
 
     /// Returns the status of the workspace, according to the staging
     /// preference.
-    pub async fn status<CP: ContentProvider + Send + Sync>(
+    pub async fn status(
         &self,
-        content_store_provider: &Chunker<CP>,
         staging: Staging,
     ) -> Result<(
         BTreeMap<CanonicalPath, Change>,
@@ -616,13 +605,10 @@ impl Workspace {
         Ok(match staging {
             Staging::StagedAndUnstaged => (
                 self.get_staged_changes().await?,
-                self.get_unstaged_changes(content_store_provider).await?,
+                self.get_unstaged_changes().await?,
             ),
             Staging::StagedOnly => (self.get_staged_changes().await?, BTreeMap::new()),
-            Staging::UnstagedOnly => (
-                BTreeMap::new(),
-                self.get_unstaged_changes(content_store_provider).await?,
-            ),
+            Staging::UnstagedOnly => (BTreeMap::new(), self.get_unstaged_changes().await?),
         })
     }
 
@@ -630,9 +616,9 @@ impl Workspace {
     ///
     /// The list of reverted files is returned. If none of the files had changes
     /// - staged or not - an empty list is returned and call still succeeds.
-    pub async fn revert_files<CP: ContentProvider + Send + Sync>(
+    pub async fn revert_files(
         &self,
-        content_store_provider: &Chunker<CP>,
+        content_reader: impl ContentReader + Send + Sync,
         paths: impl IntoIterator<Item = &Path> + Clone,
         staging: Staging,
     ) -> Result<BTreeSet<CanonicalPath>> {
@@ -647,8 +633,7 @@ impl Workspace {
 
         let canonical_paths = self.to_canonical_paths(paths).await?;
 
-        let (staged_changes, mut unstaged_changes) =
-            self.status(content_store_provider, staging).await?;
+        let (staged_changes, mut unstaged_changes) = self.status(staging).await?;
 
         let mut changes_to_clear = vec![];
         let mut changes_to_ignore = vec![];
@@ -695,7 +680,7 @@ impl Workspace {
                         }
                         Staging::StagedAndUnstaged => {
                             self.download_file(
-                                content_store_provider,
+                                &content_reader,
                                 old_chunk_id,
                                 canonical_path,
                                 Some(true),
@@ -709,13 +694,8 @@ impl Workspace {
                     }
                 }
                 ChangeType::Delete { old_chunk_id } => {
-                    self.download_file(
-                        content_store_provider,
-                        old_chunk_id,
-                        canonical_path,
-                        Some(true),
-                    )
-                    .await?;
+                    self.download_file(&content_reader, old_chunk_id, canonical_path, Some(true))
+                        .await?;
                     changes_to_clear.push(staged_change.clone());
                 }
             }
@@ -734,13 +714,8 @@ impl Workspace {
                         Staging::UnstagedOnly => None,
                     };
 
-                    self.download_file(
-                        content_store_provider,
-                        old_chunk_id,
-                        canonical_path,
-                        read_only,
-                    )
-                    .await?;
+                    self.download_file(&content_reader, old_chunk_id, canonical_path, read_only)
+                        .await?;
                 }
             }
 
@@ -764,15 +739,8 @@ impl Workspace {
     /// # Returns
     ///
     /// The commit id.
-    pub async fn commit<CP: ContentProvider + Send + Sync>(
-        &self,
-        content_store_provider: &Chunker<CP>,
-        message: &str,
-        behavior: CommitMode,
-    ) -> Result<Commit> {
-        let fs_tree = self
-            .get_filesystem_tree(content_store_provider, [].into())
-            .await?;
+    pub async fn commit(&self, message: &str, behavior: CommitMode) -> Result<Commit> {
+        let fs_tree = self.get_filesystem_tree([].into()).await?;
 
         let current_branch = self.backend.get_current_branch().await?;
         let mut branch = self.index_backend.get_branch(&current_branch.name).await?;
@@ -916,19 +884,14 @@ impl Workspace {
     }
 
     /// Get a list of the currently unstaged changes.
-    pub async fn get_unstaged_changes<CP: ContentProvider + Send + Sync>(
-        &self,
-        content_store_provider: &Chunker<CP>,
-    ) -> Result<BTreeMap<CanonicalPath, Change>> {
+    pub async fn get_unstaged_changes(&self) -> Result<BTreeMap<CanonicalPath, Change>> {
         let commit = self.get_current_commit().await?;
         let staged_changes = self.backend.get_staged_changes().await?;
         let tree = self
             .get_tree_for_commit(&commit, [].into())
             .await?
             .with_changes(staged_changes.values())?;
-        let fs_tree = self
-            .get_filesystem_tree(content_store_provider, [].into())
-            .await?;
+        let fs_tree = self.get_filesystem_tree([].into()).await?;
 
         self.get_unstaged_changes_for_trees(&tree, &fs_tree).await
     }
@@ -1054,9 +1017,9 @@ impl Workspace {
     /// Switch to a different branch and updates the current files.
     ///
     /// Returns the commit id of the new branch as well as the changes.
-    pub async fn switch_branch<CP: ContentProvider + Send + Sync>(
+    pub async fn switch_branch(
         &self,
-        content_store_provider: &Chunker<CP>,
+        content_reader: impl ContentReader + Send + Sync,
         branch_name: &str,
     ) -> Result<(Branch, BTreeSet<Change>)> {
         let current_branch = self.backend.get_current_branch().await?;
@@ -1071,7 +1034,7 @@ impl Workspace {
         let to_commit = self.index_backend.get_commit(branch.head).await?;
         let to = self.get_tree_for_commit(&to_commit, [].into()).await?;
 
-        let changes = self.sync_tree(content_store_provider, &from, &to).await?;
+        let changes = self.sync_tree(content_reader, &from, &to).await?;
 
         self.backend.set_current_branch(&branch).await?;
 
@@ -1083,15 +1046,15 @@ impl Workspace {
     /// # Returns
     ///
     /// The commit id that the workspace was synced to as well as the changes.
-    pub async fn sync<CP: ContentProvider + Send + Sync>(
+    pub async fn sync(
         &self,
-        content_store_provider: &Chunker<CP>,
+        content_reader: impl ContentReader + Send + Sync,
     ) -> Result<(Branch, BTreeSet<Change>)> {
         let current_branch = self.backend.get_current_branch().await?;
 
         let branch = self.index_backend.get_branch(&current_branch.name).await?;
 
-        let changes = self.sync_to(content_store_provider, branch.head).await?;
+        let changes = self.sync_to(content_reader, branch.head).await?;
 
         Ok((branch, changes))
     }
@@ -1101,9 +1064,9 @@ impl Workspace {
     /// # Returns
     ///
     /// The changes.
-    pub async fn sync_to<CP: ContentProvider + Send + Sync>(
+    pub async fn sync_to(
         &self,
-        content_store_provider: &Chunker<CP>,
+        content_reader: impl ContentReader + Send + Sync,
         commit_id: CommitId,
     ) -> Result<BTreeSet<Change>> {
         let mut current_branch = self.backend.get_current_branch().await?;
@@ -1117,7 +1080,7 @@ impl Workspace {
         let to_commit = self.index_backend.get_commit(commit_id).await?;
         let to = self.get_tree_for_commit(&to_commit, [].into()).await?;
 
-        let changes = self.sync_tree(content_store_provider, &from, &to).await?;
+        let changes = self.sync_tree(content_reader, &from, &to).await?;
 
         current_branch.head = commit_id;
 
@@ -1151,9 +1114,9 @@ impl Workspace {
     /// # Returns
     ///
     /// The hash of the file.
-    async fn upload_file<CP: ContentProvider + Send + Sync>(
+    async fn upload_file(
         &self,
-        content_store_provider: &Chunker<CP>,
+        content_writer: impl ContentWriter + Send + Sync,
         canonical_path: &CanonicalPath,
     ) -> Result<ChunkIdentifier> {
         debug!("caching blob for: {}", canonical_path);
@@ -1162,22 +1125,22 @@ impl Workspace {
             .await
             .map_other_err(format!("failed to read `{}`", &canonical_path))?;
 
-        content_store_provider
-            .write_chunk(&contents)
+        self.chunker
+            .write_chunk(content_writer, &contents)
             .await
             .map_other_err(format!("failed to cache file `{}`", canonical_path))
     }
 
-    async fn download_file<CP: ContentProvider + Send + Sync>(
+    async fn download_file(
         &self,
-        content_store_provider: &Chunker<CP>,
+        content_reader: impl ContentReader + Send + Sync,
         id: &ChunkIdentifier,
         path: &CanonicalPath,
         read_only: Option<bool>,
     ) -> Result<()> {
         let abs_path = path.to_path_buf(&self.root);
 
-        match content_store_provider.get_chunk_reader(id).await {
+        match self.chunker.get_chunk_reader(content_reader, id).await {
             Ok(mut reader) => {
                 let mut f = tokio::fs::File::create(&abs_path)
                     .await
@@ -1205,9 +1168,9 @@ impl Workspace {
             .await
     }
 
-    async fn initial_checkout<CP: ContentProvider + Send + Sync>(
+    async fn initial_checkout(
         &self,
-        content_store_provider: &Chunker<CP>,
+        content_reader: impl ContentReader + Send + Sync,
         branch_name: &str,
     ) -> Result<BTreeSet<Change>> {
         // 1. Read the branch information.
@@ -1223,13 +1186,12 @@ impl Workspace {
         let tree = self.index_backend.get_tree(&commit.root_tree_id).await?;
 
         // 5. Write the files on disk.
-        self.sync_tree(content_store_provider, &Tree::empty(), &tree)
-            .await
+        self.sync_tree(content_reader, &Tree::empty(), &tree).await
     }
 
-    async fn sync_tree<CP: ContentProvider + Send + Sync>(
+    async fn sync_tree(
         &self,
-        content_store_provider: &Chunker<CP>,
+        content_reader: impl ContentReader + Send + Sync,
         from: &Tree,
         to: &Tree,
     ) -> Result<BTreeSet<Change>> {
@@ -1239,7 +1201,7 @@ impl Workspace {
         // coming from an empty tree.
         if !from.is_empty() {
             let staged_changes = self.get_staged_changes().await?;
-            let unstaged_changes = self.get_unstaged_changes(content_store_provider).await?;
+            let unstaged_changes = self.get_unstaged_changes().await?;
 
             let conflicting_changes = changes_to_apply
                 .iter()
@@ -1283,8 +1245,9 @@ impl Workspace {
 
                     // TODO: If the file is an empty directory, replace it.
 
-                    let mut reader = content_store_provider
-                        .get_chunk_reader(new_chunk_id)
+                    let mut reader = self
+                        .chunker
+                        .get_chunk_reader(&content_reader, new_chunk_id)
                         .await
                         .map_other_err(format!(
                             "failed to download blob `{}` to {}",
@@ -1330,16 +1293,17 @@ impl Workspace {
 
     /// Download a blob from the index backend and write it to the local
     /// temporary folder.
-    pub async fn download_temporary_file<CP: ContentProvider + Send + Sync>(
+    pub async fn download_temporary_file(
         &self,
-        content_store_provider: &Chunker<CP>,
+        content_reader: impl ContentReader + Send + Sync,
         chunk_id: &ChunkIdentifier,
     ) -> Result<tempfile::TempPath> {
         let temp_file_path =
             Self::get_tmp_path(Self::get_lsc_directory(&self.root)).join(chunk_id.to_string());
 
-        let mut reader = content_store_provider
-            .get_chunk_reader(chunk_id)
+        let mut reader = self
+            .chunker
+            .get_chunk_reader(content_reader, chunk_id)
             .await
             .map_other_err("failed to download blob")?;
         let mut f = tokio::fs::File::create(&temp_file_path)

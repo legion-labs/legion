@@ -5,7 +5,7 @@ use common::*;
 
 use std::path::Path;
 
-use lgn_content_store2::{Chunker, MemoryProvider, SmallContentProvider};
+use lgn_content_store2::{MemoryProvider, SmallContentProvider};
 use lgn_source_control::{
     Error, Index, MapOtherError, Staging, Workspace, WorkspaceConfig, WorkspaceRegistration,
 };
@@ -23,11 +23,10 @@ async fn test_add_and_commit() {
 
     assert_unstaged_changes!(
         ws,
-        &csp,
         [
-            add("/apple.txt", id(&csp, "I am an apple")),
-            add("/orange.txt", id(&csp, "I am an orange")),
-            add("/vegetables/carrot.txt", id(&csp, "I am a carrot")),
+            add("/apple.txt", id("I am an apple")),
+            add("/orange.txt", id("I am an orange")),
+            add("/vegetables/carrot.txt", id("I am a carrot")),
         ]
     );
     assert_staged_changes!(ws, []);
@@ -44,13 +43,13 @@ async fn test_add_and_commit() {
         .into(),
     );
 
-    assert_unstaged_changes!(ws, &csp, []);
+    assert_unstaged_changes!(ws, []);
     assert_staged_changes!(
         ws,
         [
-            add("/apple.txt", id(&csp, "I am an apple")),
-            add("/orange.txt", id(&csp, "I am an orange")),
-            add("/vegetables/carrot.txt", id(&csp, "I am a carrot")),
+            add("/apple.txt", id("I am an apple")),
+            add("/orange.txt", id("I am an orange")),
+            add("/vegetables/carrot.txt", id("I am a carrot")),
         ]
     );
 
@@ -62,28 +61,28 @@ async fn test_add_and_commit() {
     assert_staged_changes!(
         ws,
         [
-            add("/apple.txt", id(&csp, "I am an apple")),
-            add("/orange.txt", id(&csp, "I am an orange")),
-            add("/vegetables/carrot.txt", id(&csp, "I am a carrot")),
+            add("/apple.txt", id("I am an apple")),
+            add("/orange.txt", id("I am an orange")),
+            add("/vegetables/carrot.txt", id("I am a carrot")),
         ]
     );
 
     // Editing the same files should be a no-op.
-    let new_edited_files = workspace_checkout_files!(ws, &csp, ["."]);
+    let new_edited_files = workspace_checkout_files!(ws, ["."]);
 
     assert_eq!(new_edited_files, [].into());
 
     assert_staged_changes!(
         ws,
         [
-            add("/apple.txt", id(&csp, "I am an apple")),
-            add("/orange.txt", id(&csp, "I am an orange")),
-            add("/vegetables/carrot.txt", id(&csp, "I am a carrot")),
+            add("/apple.txt", id("I am an apple")),
+            add("/orange.txt", id("I am an orange")),
+            add("/vegetables/carrot.txt", id("I am a carrot")),
         ]
     );
 
     // Commit the files.
-    workspace_commit!(ws, &csp, "Added some fruits");
+    workspace_commit!(ws, "Added some fruits");
 
     assert_staged_changes!(ws, []);
     assert_file_read_only!(ws, "apple.txt");
@@ -94,7 +93,7 @@ async fn test_add_and_commit() {
     assert_file_content!(ws, "vegetables/carrot.txt", "I am a carrot");
 
     // Committing the change should fail, as the commit is empty.
-    workspace_commit_error!(ws, &csp, "Edited the carrot", Error::EmptyCommitNotAllowed);
+    workspace_commit_error!(ws, "Edited the carrot", Error::EmptyCommitNotAllowed);
 
     cleanup_test_workspace_and_index!(ws, index);
 }
@@ -107,39 +106,36 @@ async fn lenient_commit() {
     create_file!(ws, "orange.txt", "I am an orange");
     create_file!(ws, "vegetables/carrot.txt", "I am a carrot");
     workspace_add_files!(ws, &csp, ["."]);
-    workspace_commit!(ws, &csp, "Added some fruits");
+    workspace_commit!(ws, "Added some fruits");
 
     // commit no changes.
     {
-        let new_edited_files = ws
-            .checkout_files(&csp, [Path::new("vegetables")])
-            .await
-            .unwrap();
+        let new_edited_files = ws.checkout_files([Path::new("vegetables")]).await.unwrap();
         assert_eq!(new_edited_files, [cp("/vegetables/carrot.txt")].into());
 
-        assert_unstaged_changes!(ws, &csp, []);
+        assert_unstaged_changes!(ws, []);
         assert_staged_changes!(
             ws,
             [edit(
                 "/vegetables/carrot.txt",
-                id(&csp, "I am a carrot"),
-                id(&csp, "I am a carrot"),
+                id("I am a carrot"),
+                id("I am a carrot"),
             )]
         );
 
         assert_file_read_write!(ws, "vegetables/carrot.txt");
         assert_file_content!(ws, "vegetables/carrot.txt", "I am a carrot");
 
-        workspace_commit_lenient!(ws, &csp, "no commit");
+        workspace_commit_lenient!(ws, "no commit");
 
         assert_staged_changes!(ws, []);
-        assert_unstaged_changes!(ws, &csp, []);
+        assert_unstaged_changes!(ws, []);
 
         assert_file_read_only!(ws, "vegetables/carrot.txt");
     }
 
     // empty commit
-    workspace_commit_lenient!(ws, &csp, "empty");
+    workspace_commit_lenient!(ws, "empty");
 
     cleanup_test_workspace_and_index!(ws, index);
 }
@@ -153,23 +149,20 @@ async fn test_edit_and_commit() {
     create_file!(ws, "orange.txt", "I am an orange");
     create_file!(ws, "vegetables/carrot.txt", "I am a carrot");
     workspace_add_files!(ws, &csp, ["."]);
-    workspace_commit!(ws, &csp, "Added some fruits");
+    workspace_commit!(ws, "Added some fruits");
 
     // Let's now edit one file.
-    let new_edited_files = ws
-        .checkout_files(&csp, [Path::new("vegetables")])
-        .await
-        .unwrap();
+    let new_edited_files = ws.checkout_files([Path::new("vegetables")]).await.unwrap();
 
     assert_eq!(new_edited_files, [cp("/vegetables/carrot.txt")].into());
 
-    assert_unstaged_changes!(ws, &csp, []);
+    assert_unstaged_changes!(ws, []);
     assert_staged_changes!(
         ws,
         [edit(
             "/vegetables/carrot.txt",
-            id(&csp, "I am a carrot"),
-            id(&csp, "I am a carrot"),
+            id("I am a carrot"),
+            id("I am a carrot"),
         )]
     );
 
@@ -180,17 +173,16 @@ async fn test_edit_and_commit() {
 
     assert_unstaged_changes!(
         ws,
-        &csp,
         [edit(
             "/vegetables/carrot.txt",
-            id(&csp, "I am a carrot"),
-            id(&csp, "I am a new carrot"),
+            id("I am a carrot"),
+            id("I am a new carrot"),
         )]
     );
 
     // Committing the change should fail, as we have one edited file whose hash
     // changed but the change was not staged.
-    match workspace_commit_error!(ws, &csp, "Edited the carrot") {
+    match workspace_commit_error!(ws, "Edited the carrot") {
         Error::UnchangedFilesMarkedForEdition { paths } => {
             assert_eq!(paths, [cp("/vegetables/carrot.txt")].into());
         }
@@ -206,13 +198,13 @@ async fn test_edit_and_commit() {
         ws,
         [edit(
             "/vegetables/carrot.txt",
-            id(&csp, "I am a carrot"),
-            id(&csp, "I am a new carrot"),
+            id("I am a carrot"),
+            id("I am a new carrot"),
         )]
     );
 
     // Commit the files.
-    workspace_commit!(ws, &csp, "Edited the carrot");
+    workspace_commit!(ws, "Edited the carrot");
 
     assert_staged_changes!(ws, []);
     assert_file_read_only!(ws, "vegetables/carrot.txt");
@@ -231,26 +223,23 @@ async fn test_delete_and_commit() {
     create_file!(ws, "orange.txt", "I am an orange");
     create_file!(ws, "vegetables/carrot.txt", "I am a new carrot");
     workspace_add_files!(ws, &csp, ["."]);
-    workspace_commit!(ws, &csp, "Added some fruits");
+    workspace_commit!(ws, "Added some fruits");
 
     // Let's delete a file.
-    let new_deleted_files = workspace_delete_files!(ws, &csp, ["vegetables/carrot.txt"]);
+    let new_deleted_files = workspace_delete_files!(ws, ["vegetables/carrot.txt"]);
 
     assert_eq!(new_deleted_files, [cp("/vegetables/carrot.txt")].into());
 
     assert_staged_changes!(
         ws,
-        [delete(
-            "/vegetables/carrot.txt",
-            id(&csp, "I am a new carrot"),
-        )]
+        [delete("/vegetables/carrot.txt", id("I am a new carrot"),)]
     );
 
     assert_path_doesnt_exist!(ws, "vegetables/carrot.txt");
     assert_file_content!(ws, "apple.txt", "I am an apple");
 
     // Commit the files.
-    workspace_commit!(ws, &csp, "Removed the carrot");
+    workspace_commit!(ws, "Removed the carrot");
 
     assert_staged_changes!(ws, []);
     assert_path_doesnt_exist!(ws, "vegetables/carrot.txt");
@@ -265,7 +254,7 @@ async fn test_add_empty_directory() {
 
     create_file!(ws, "apple.txt", "I am an apple");
     workspace_add_files!(ws, &csp, ["."]);
-    workspace_commit!(ws, &csp, "Added some fruits");
+    workspace_commit!(ws, "Added some fruits");
 
     create_dir!(ws, "vegetables");
 
@@ -284,7 +273,7 @@ async fn test_add_non_existing_path() {
 
     create_file!(ws, "apple.txt", "I am an apple");
     workspace_add_files!(ws, &csp, ["."]);
-    workspace_commit!(ws, &csp, "Added some fruits");
+    workspace_commit!(ws, "Added some fruits");
 
     // Adding an non-existing path should fail.
     match ws.add_files(&csp, [Path::new("non/existing/path")]).await {
@@ -308,7 +297,7 @@ async fn test_add_then_delete() {
     create_file!(ws, "apple.txt", "I am an apple");
     create_file!(ws, "orange.txt", "I am an orange");
     workspace_add_files!(ws, &csp, ["."]);
-    workspace_commit!(ws, &csp, "Added some fruits");
+    workspace_commit!(ws, "Added some fruits");
 
     create_file!(ws, "banana.txt", "I am a banana");
 
@@ -316,13 +305,13 @@ async fn test_add_then_delete() {
 
     assert_eq!(new_added_files, [cp("/banana.txt")].into());
 
-    let new_deleted_files = workspace_delete_files!(ws, &csp, ["banana.txt"]);
+    let new_deleted_files = workspace_delete_files!(ws, ["banana.txt"]);
 
     assert_eq!(new_deleted_files, [cp("/banana.txt")].into());
     assert_path_doesnt_exist!(ws, "banana.txt");
 
     // The file was not really in the tree: it was just staged for addition. So its removal is actually a no-op.
-    assert_unstaged_changes!(ws, &csp, []);
+    assert_unstaged_changes!(ws, []);
     assert_staged_changes!(ws, []);
 
     cleanup_test_workspace_and_index!(ws, index);
@@ -336,19 +325,15 @@ async fn test_edit_and_commit_with_extra_unstaged_changes_then_revert() {
     create_file!(ws, "apple.txt", "I am an apple");
     create_file!(ws, "orange.txt", "I am an orange");
     workspace_add_files!(ws, &csp, ["."]);
-    workspace_commit!(ws, &csp, "Added some fruits");
+    workspace_commit!(ws, "Added some fruits");
 
-    let new_edited_files = workspace_checkout_files!(ws, &csp, ["apple.txt"]);
+    let new_edited_files = workspace_checkout_files!(ws, ["apple.txt"]);
 
     assert_eq!(new_edited_files, [cp("/apple.txt")].into());
 
     assert_staged_changes!(
         ws,
-        [edit(
-            "/apple.txt",
-            id(&csp, "I am an apple"),
-            id(&csp, "I am an apple"),
-        )]
+        [edit("/apple.txt", id("I am an apple"), id("I am an apple"),)]
     );
 
     assert_file_read_write!(ws, "apple.txt");
@@ -358,11 +343,7 @@ async fn test_edit_and_commit_with_extra_unstaged_changes_then_revert() {
     // The recent change was not staged and thus should not be listed.
     assert_staged_changes!(
         ws,
-        [edit(
-            "/apple.txt",
-            id(&csp, "I am an apple"),
-            id(&csp, "I am an apple"),
-        )]
+        [edit("/apple.txt", id("I am an apple"), id("I am an apple"),)]
     );
 
     let new_added_files = workspace_add_files!(ws, &csp, ["apple.txt"]);
@@ -373,8 +354,8 @@ async fn test_edit_and_commit_with_extra_unstaged_changes_then_revert() {
         ws,
         [edit(
             "/apple.txt",
-            id(&csp, "I am an apple"),
-            id(&csp, "I am a new apple"),
+            id("I am an apple"),
+            id("I am a new apple"),
         )]
     );
 
@@ -382,7 +363,7 @@ async fn test_edit_and_commit_with_extra_unstaged_changes_then_revert() {
     update_file!(ws, "apple.txt", "I am an even newer apple");
 
     // Commit the files.
-    workspace_commit!(ws, &csp, "Update the apple");
+    workspace_commit!(ws, "Update the apple");
 
     // File should not be read only nor unlocked as it has unstaged changes.
     assert_file_read_write!(ws, "apple.txt");
@@ -394,17 +375,16 @@ async fn test_edit_and_commit_with_extra_unstaged_changes_then_revert() {
         ws,
         [edit(
             "/apple.txt",
-            id(&csp, "I am a new apple"),
-            id(&csp, "I am a new apple"),
+            id("I am a new apple"),
+            id("I am a new apple"),
         )]
     );
     assert_unstaged_changes!(
         ws,
-        &csp,
         [edit(
             "/apple.txt",
-            id(&csp, "I am a new apple"),
-            id(&csp, "I am an even newer apple"),
+            id("I am a new apple"),
+            id("I am an even newer apple"),
         )]
     );
 
@@ -415,7 +395,7 @@ async fn test_edit_and_commit_with_extra_unstaged_changes_then_revert() {
     assert_eq!(new_reverted_files, [cp("/apple.txt")].into());
 
     assert_staged_changes!(ws, []);
-    assert_unstaged_changes!(ws, &csp, []);
+    assert_unstaged_changes!(ws, []);
 
     assert_file_read_only!(ws, "apple.txt");
     assert_file_content!(ws, "apple.txt", "I am a new apple");
@@ -431,10 +411,10 @@ async fn test_revert_after_add_and_edit() {
     create_file!(ws, "apple.txt", "I am a new apple");
     create_file!(ws, "orange.txt", "I am an orange");
     workspace_add_files!(ws, &csp, ["."]);
-    workspace_commit!(ws, &csp, "Added some fruits");
+    workspace_commit!(ws, "Added some fruits");
 
     // Let's make a change but stage it this time.
-    let new_edited_files = workspace_checkout_files!(ws, &csp, ["apple.txt"]);
+    let new_edited_files = workspace_checkout_files!(ws, ["apple.txt"]);
 
     assert_eq!(new_edited_files, [cp("/apple.txt"),].into());
 
@@ -453,13 +433,13 @@ async fn test_revert_after_add_and_edit() {
         [
             edit(
                 "/apple.txt",
-                id(&csp, "I am a new apple"),
-                id(&csp, "I am an even newer apple"),
+                id("I am a new apple"),
+                id("I am an even newer apple"),
             ),
-            add("/strawberry.txt", id(&csp, "I am a strawberry")),
+            add("/strawberry.txt", id("I am a strawberry")),
         ]
     );
-    assert_unstaged_changes!(ws, &csp, []);
+    assert_unstaged_changes!(ws, []);
 
     // Reverting the file with staged changes should work too.
     let new_reverted_files = workspace_revert_files!(ws, &csp, ["."], Staging::StagedAndUnstaged);
@@ -471,11 +451,7 @@ async fn test_revert_after_add_and_edit() {
 
     // Untracked files that are reverted for add are not deleted.
     assert_staged_changes!(ws, []);
-    assert_unstaged_changes!(
-        ws,
-        &csp,
-        [add("/strawberry.txt", id(&csp, "I am a strawberry"))]
-    );
+    assert_unstaged_changes!(ws, [add("/strawberry.txt", id("I am a strawberry"))]);
 
     assert_file_read_only!(ws, "apple.txt");
     assert_file_read_write!(ws, "strawberry.txt");
@@ -486,7 +462,7 @@ async fn test_revert_after_add_and_edit() {
     delete_file!(ws, "strawberry.txt");
 
     assert_staged_changes!(ws, []);
-    assert_unstaged_changes!(ws, &csp, []);
+    assert_unstaged_changes!(ws, []);
 
     cleanup_test_workspace_and_index!(ws, index);
 }
@@ -499,29 +475,28 @@ async fn test_revert_staged_only_with_unstaged_changes() {
     create_file!(ws, "apple.txt", "I am a new apple");
     create_file!(ws, "orange.txt", "I am an orange");
     workspace_add_files!(ws, &csp, ["."]);
-    workspace_commit!(ws, &csp, "Added some fruits");
+    workspace_commit!(ws, "Added some fruits");
 
     // Let's mark a file for edition, change it but do not stage it. Then let's revert it in staging.
-    let new_edited_files = workspace_checkout_files!(ws, &csp, ["apple.txt"]);
+    let new_edited_files = workspace_checkout_files!(ws, ["apple.txt"]);
 
     assert_eq!(new_edited_files, [cp("/apple.txt")].into());
     update_file!(ws, "apple.txt", "I am an even newer apple");
 
     assert_unstaged_changes!(
         ws,
-        &csp,
         [edit(
             "/apple.txt",
-            id(&csp, "I am a new apple"),
-            id(&csp, "I am an even newer apple"),
+            id("I am a new apple"),
+            id("I am an even newer apple"),
         )]
     );
     assert_staged_changes!(
         ws,
         [edit(
             "/apple.txt",
-            id(&csp, "I am a new apple"),
-            id(&csp, "I am a new apple"),
+            id("I am a new apple"),
+            id("I am a new apple"),
         )]
     );
 
@@ -542,9 +517,9 @@ async fn test_revert_staged_only_with_staged_and_unstaged_changes() {
     create_file!(ws, "apple.txt", "I am a new apple");
     create_file!(ws, "orange.txt", "I am an orange");
     workspace_add_files!(ws, &csp, ["."]);
-    workspace_commit!(ws, &csp, "Added some fruits");
+    workspace_commit!(ws, "Added some fruits");
 
-    let new_edited_files = workspace_checkout_files!(ws, &csp, ["apple.txt"]);
+    let new_edited_files = workspace_checkout_files!(ws, ["apple.txt"]);
 
     assert_eq!(new_edited_files, [cp("/apple.txt")].into());
     update_file!(ws, "apple.txt", "I am an even newer apple");
@@ -553,13 +528,13 @@ async fn test_revert_staged_only_with_staged_and_unstaged_changes() {
 
     assert_eq!(new_added_files, [cp("/apple.txt"),].into());
 
-    assert_unstaged_changes!(ws, &csp, []);
+    assert_unstaged_changes!(ws, []);
     assert_staged_changes!(
         ws,
         [edit(
             "/apple.txt",
-            id(&csp, "I am a new apple"),
-            id(&csp, "I am an even newer apple"),
+            id("I am a new apple"),
+            id("I am an even newer apple"),
         )]
     );
 
@@ -574,19 +549,18 @@ async fn test_revert_staged_only_with_staged_and_unstaged_changes() {
 
     assert_unstaged_changes!(
         ws,
-        &csp,
         [edit(
             "/apple.txt",
-            id(&csp, "I am a new apple"),
-            id(&csp, "Unstaged modification"),
+            id("I am a new apple"),
+            id("Unstaged modification"),
         )]
     );
     assert_staged_changes!(
         ws,
         [edit(
             "/apple.txt",
-            id(&csp, "I am a new apple"),
-            id(&csp, "I am a new apple"),
+            id("I am a new apple"),
+            id("I am a new apple"),
         )]
     );
 
@@ -601,9 +575,9 @@ async fn test_revert_unstaged_only_with_unstaged_changes() {
     create_file!(ws, "apple.txt", "I am a new apple");
     create_file!(ws, "orange.txt", "I am an orange");
     workspace_add_files!(ws, &csp, ["."]);
-    workspace_commit!(ws, &csp, "Added some fruits");
+    workspace_commit!(ws, "Added some fruits");
 
-    let new_edited_files = workspace_checkout_files!(ws, &csp, ["apple.txt"]);
+    let new_edited_files = workspace_checkout_files!(ws, ["apple.txt"]);
 
     assert_eq!(new_edited_files, [cp("/apple.txt")].into());
     update_file!(ws, "apple.txt", "Unstaged modification");
@@ -617,13 +591,13 @@ async fn test_revert_unstaged_only_with_unstaged_changes() {
     assert_file_read_write!(ws, "apple.txt");
     assert_file_content!(ws, "apple.txt", "I am a new apple");
 
-    assert_unstaged_changes!(ws, &csp, []);
+    assert_unstaged_changes!(ws, []);
     assert_staged_changes!(
         ws,
         [edit(
             "/apple.txt",
-            id(&csp, "I am a new apple"),
-            id(&csp, "I am a new apple"),
+            id("I am a new apple"),
+            id("I am a new apple"),
         )]
     );
 
@@ -638,10 +612,10 @@ async fn test_sync_forward_and_backward() {
     create_file!(ws, "apple.txt", "apple version 1");
     create_file!(ws, "orange.txt", "orange version 1");
     workspace_add_files!(ws, &csp, ["."]);
-    let commit_1 = workspace_commit!(ws, &csp, "version 1");
+    let commit_1 = workspace_commit!(ws, "version 1");
 
     // Update an existing file.
-    workspace_checkout_files!(ws, &csp, ["apple.txt"]);
+    workspace_checkout_files!(ws, ["apple.txt"]);
     update_file!(ws, "apple.txt", "apple version 2");
 
     // Create a new one.
@@ -649,9 +623,9 @@ async fn test_sync_forward_and_backward() {
     workspace_add_files!(ws, &csp, ["apple.txt", "pear.txt"]);
 
     // And delete an old one.
-    workspace_delete_files!(ws, &csp, ["orange.txt"]);
+    workspace_delete_files!(ws, ["orange.txt"]);
 
-    let commit_2 = workspace_commit!(ws, &csp, "version 2");
+    let commit_2 = workspace_commit!(ws, "version 2");
 
     assert_file_content!(ws, "apple.txt", "apple version 2");
     assert_file_read_only!(ws, "apple.txt");
@@ -665,13 +639,9 @@ async fn test_sync_forward_and_backward() {
     assert_eq!(
         changes,
         [
-            add("/orange.txt", id(&csp, "orange version 1"),),
-            edit(
-                "/apple.txt",
-                id(&csp, "apple version 2"),
-                id(&csp, "apple version 1"),
-            ),
-            delete("/pear.txt", id(&csp, "pear version 1"),),
+            add("/orange.txt", id("orange version 1"),),
+            edit("/apple.txt", id("apple version 2"), id("apple version 1"),),
+            delete("/pear.txt", id("pear version 1"),),
         ]
         .into()
     );
@@ -689,13 +659,9 @@ async fn test_sync_forward_and_backward() {
     assert_eq!(
         changes,
         [
-            delete("/orange.txt", id(&csp, "orange version 1"),),
-            edit(
-                "/apple.txt",
-                id(&csp, "apple version 1"),
-                id(&csp, "apple version 2"),
-            ),
-            add("/pear.txt", id(&csp, "pear version 1"),),
+            delete("/orange.txt", id("orange version 1"),),
+            edit("/apple.txt", id("apple version 1"), id("apple version 2"),),
+            add("/pear.txt", id("pear version 1"),),
         ]
         .into()
     );
@@ -719,10 +685,10 @@ async fn test_sync_forward_with_non_conflicting_changes() {
     create_file!(ws, "apple.txt", "apple version 1");
     create_file!(ws, "orange.txt", "orange version 1");
     workspace_add_files!(ws, &csp, ["."]);
-    let commit_1 = workspace_commit!(ws, &csp, "version 1");
+    let commit_1 = workspace_commit!(ws, "version 1");
 
     // Update an existing file.
-    workspace_checkout_files!(ws, &csp, ["apple.txt"]);
+    workspace_checkout_files!(ws, ["apple.txt"]);
     update_file!(ws, "apple.txt", "apple version 2");
 
     // Create a new one.
@@ -730,12 +696,12 @@ async fn test_sync_forward_with_non_conflicting_changes() {
     workspace_add_files!(ws, &csp, ["apple.txt", "pear.txt"]);
 
     // And delete an old one.
-    workspace_delete_files!(ws, &csp, ["orange.txt"]);
+    workspace_delete_files!(ws, ["orange.txt"]);
 
-    let commit_2 = workspace_commit!(ws, &csp, "version 2");
+    let commit_2 = workspace_commit!(ws, "version 2");
 
     // Make some staged and unstaged changes.
-    workspace_checkout_files!(ws, &csp, ["tangerine.txt", "cantaloupe.txt"]);
+    workspace_checkout_files!(ws, ["tangerine.txt", "cantaloupe.txt"]);
     update_file!(ws, "tangerine.txt", "tangerine version 2");
     update_file!(ws, "cantaloupe.txt", "cantaloupe version 2");
     workspace_add_files!(ws, &csp, ["tangerine.txt"]);
@@ -745,23 +711,22 @@ async fn test_sync_forward_with_non_conflicting_changes() {
         [
             edit(
                 "/cantaloupe.txt",
-                id(&csp, "cantaloupe version 1"),
-                id(&csp, "cantaloupe version 1"),
+                id("cantaloupe version 1"),
+                id("cantaloupe version 1"),
             ),
             edit(
                 "/tangerine.txt",
-                id(&csp, "tangerine version 1"),
-                id(&csp, "tangerine version 2"),
+                id("tangerine version 1"),
+                id("tangerine version 2"),
             ),
         ]
     );
     assert_unstaged_changes!(
         ws,
-        &csp,
         [edit(
             "/cantaloupe.txt",
-            id(&csp, "cantaloupe version 1"),
-            id(&csp, "cantaloupe version 2"),
+            id("cantaloupe version 1"),
+            id("cantaloupe version 2"),
         )]
     );
 
@@ -772,13 +737,9 @@ async fn test_sync_forward_with_non_conflicting_changes() {
     assert_eq!(
         changes,
         [
-            add("/orange.txt", id(&csp, "orange version 1"),),
-            edit(
-                "/apple.txt",
-                id(&csp, "apple version 2"),
-                id(&csp, "apple version 1"),
-            ),
-            delete("/pear.txt", id(&csp, "pear version 1"),),
+            add("/orange.txt", id("orange version 1"),),
+            edit("/apple.txt", id("apple version 2"), id("apple version 1"),),
+            delete("/pear.txt", id("pear version 1"),),
         ]
         .into()
     );
@@ -800,13 +761,9 @@ async fn test_sync_forward_with_non_conflicting_changes() {
     assert_eq!(
         changes,
         [
-            delete("/orange.txt", id(&csp, "orange version 1"),),
-            edit(
-                "/apple.txt",
-                id(&csp, "apple version 1"),
-                id(&csp, "apple version 2"),
-            ),
-            add("/pear.txt", id(&csp, "pear version 1"),),
+            delete("/orange.txt", id("orange version 1"),),
+            edit("/apple.txt", id("apple version 1"), id("apple version 2"),),
+            add("/pear.txt", id("pear version 1"),),
         ]
         .into()
     );
@@ -827,23 +784,22 @@ async fn test_sync_forward_with_non_conflicting_changes() {
         [
             edit(
                 "/cantaloupe.txt",
-                id(&csp, "cantaloupe version 1"),
-                id(&csp, "cantaloupe version 1"),
+                id("cantaloupe version 1"),
+                id("cantaloupe version 1"),
             ),
             edit(
                 "/tangerine.txt",
-                id(&csp, "tangerine version 1"),
-                id(&csp, "tangerine version 2"),
+                id("tangerine version 1"),
+                id("tangerine version 2"),
             ),
         ]
     );
     assert_unstaged_changes!(
         ws,
-        &csp,
         [edit(
             "/cantaloupe.txt",
-            id(&csp, "cantaloupe version 1"),
-            id(&csp, "cantaloupe version 2"),
+            id("cantaloupe version 1"),
+            id("cantaloupe version 2"),
         )]
     );
 
@@ -858,10 +814,10 @@ async fn test_sync_forward_with_conflicting_changes() {
     create_file!(ws, "apple.txt", "apple version 1");
     create_file!(ws, "orange.txt", "orange version 1");
     workspace_add_files!(ws, &csp, ["."]);
-    let commit_id_1 = workspace_commit!(ws, &csp, "version 1").id;
+    let commit_id_1 = workspace_commit!(ws, "version 1").id;
 
     // Update an existing file.
-    workspace_checkout_files!(ws, &csp, ["apple.txt"]);
+    workspace_checkout_files!(ws, ["apple.txt"]);
     update_file!(ws, "apple.txt", "apple version 2");
 
     // Create a new one.
@@ -869,19 +825,15 @@ async fn test_sync_forward_with_conflicting_changes() {
     workspace_add_files!(ws, &csp, ["apple.txt", "pear.txt"]);
 
     // And delete an old one.
-    workspace_delete_files!(ws, &csp, ["orange.txt"]);
+    workspace_delete_files!(ws, ["orange.txt"]);
 
-    workspace_commit!(ws, &csp, "version 2");
+    workspace_commit!(ws, "version 2");
 
     // Make some conflicting change: unstaged first.
     create_file!(ws, "orange.txt", "orange version 2");
 
     assert_staged_changes!(ws, []);
-    assert_unstaged_changes!(
-        ws,
-        &csp,
-        [add("/orange.txt", id(&csp, "orange version 2"),)]
-    );
+    assert_unstaged_changes!(ws, [add("/orange.txt", id("orange version 2"),)]);
 
     // Try to sync back to the previous commit: this should fail as we have
     // unstaged changes about a file that would be restored as part of the sync.
@@ -891,7 +843,7 @@ async fn test_sync_forward_with_conflicting_changes() {
         }) => {
             assert_eq!(
                 conflicting_changes,
-                [add("/orange.txt", id(&csp, "orange version 2"),)].into()
+                [add("/orange.txt", id("orange version 2"),)].into()
             );
         }
         Err(err) => panic!("Unexpected error: {:?}", err),
@@ -902,19 +854,15 @@ async fn test_sync_forward_with_conflicting_changes() {
     delete_file!(ws, "orange.txt");
 
     // Now make some other conflicting change: staged.
-    workspace_checkout_files!(ws, &csp, ["apple.txt"]);
+    workspace_checkout_files!(ws, ["apple.txt"]);
     update_file!(ws, "apple.txt", "some change");
     workspace_add_files!(ws, &csp, ["apple.txt"]);
 
     assert_staged_changes!(
         ws,
-        [edit(
-            "/apple.txt",
-            id(&csp, "apple version 2"),
-            id(&csp, "some change"),
-        ),]
+        [edit("/apple.txt", id("apple version 2"), id("some change"),),]
     );
-    assert_unstaged_changes!(ws, &csp, []);
+    assert_unstaged_changes!(ws, []);
 
     // Try to sync back to the previous commit: this should fail as we have
     // staged changes about a file that would be restored as part of the sync.
@@ -924,12 +872,7 @@ async fn test_sync_forward_with_conflicting_changes() {
         }) => {
             assert_eq!(
                 conflicting_changes,
-                [edit(
-                    "/apple.txt",
-                    id(&csp, "apple version 2"),
-                    id(&csp, "some change"),
-                )]
-                .into()
+                [edit("/apple.txt", id("apple version 2"), id("some change"),)].into()
             );
         }
         Err(err) => panic!("Unexpected error: {:?}", err),
@@ -947,7 +890,7 @@ async fn test_create_branch_switch_detach_attach() {
     create_file!(ws, "apple.txt", "apple version 1");
     create_file!(ws, "orange.txt", "orange version 1");
     workspace_add_files!(ws, &csp, ["."]);
-    workspace_commit!(ws, &csp, "version 1");
+    workspace_commit!(ws, "version 1");
 
     let main = workspace_get_current_branch!(ws);
     let mut branch1 = workspace_create_branch!(ws, "branch1");
@@ -958,11 +901,11 @@ async fn test_create_branch_switch_detach_attach() {
     assert_workspace_current_branch!(ws, branch1);
 
     // Make and edit and commit.
-    workspace_checkout_files!(ws, &csp, ["apple.txt"]);
+    workspace_checkout_files!(ws, ["apple.txt"]);
     update_file!(ws, "apple.txt", "apple version 2");
     workspace_add_files!(ws, &csp, ["apple.txt"]);
 
-    branch1.head = workspace_commit!(ws, &csp, "version 2").id;
+    branch1.head = workspace_commit!(ws, "version 2").id;
 
     // Go back to the main branch.
     workspace_switch_branch!(ws, &csp, "main");

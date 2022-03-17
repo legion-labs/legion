@@ -1,4 +1,4 @@
-use lgn_content_store2::{ChunkIdentifier, Chunker, ContentProvider};
+use lgn_content_store2::{ChunkIdentifier, Chunker};
 use lgn_source_control::{CanonicalPath, Change, ChangeType};
 
 macro_rules! init_test_workspace_and_index {
@@ -24,16 +24,16 @@ macro_rules! init_test_workspace_and_index {
             WorkspaceRegistration::new_with_current_user(),
         );
 
-        let content_store_provider = Chunker::new(SmallContentProvider::new(MemoryProvider::new()));
+        let content_provider = SmallContentProvider::new(MemoryProvider::new());
 
-        let workspace = Workspace::init(&workspace_root.path(), config, &content_store_provider)
+        let workspace = Workspace::init(&workspace_root.path(), config, &content_provider)
             .await
             .expect("failed to initialize workspace");
 
         (
             index,
             workspace,
-            content_store_provider,
+            content_provider,
             [index_root, workspace_root],
         )
     }};
@@ -121,18 +121,18 @@ macro_rules! workspace_add_files {
 }
 
 macro_rules! workspace_checkout_files {
-    ($workspace:expr, $csp:expr, $paths:expr) => {{
+    ($workspace:expr, $paths:expr) => {{
         $workspace
-            .checkout_files($csp, $paths.into_iter().map(Path::new))
+            .checkout_files($paths.into_iter().map(Path::new))
             .await
             .expect("failed to edit files")
     }};
 }
 
 macro_rules! workspace_delete_files {
-    ($workspace:expr, $csp:expr, $paths:expr) => {{
+    ($workspace:expr, $paths:expr) => {{
         $workspace
-            .delete_files($csp, $paths.into_iter().map(Path::new))
+            .delete_files($paths.into_iter().map(Path::new))
             .await
             .expect("failed to delete files")
     }};
@@ -148,34 +148,34 @@ macro_rules! workspace_revert_files {
 }
 
 macro_rules! workspace_commit {
-    ($workspace:expr, $csp:expr, $message:literal) => {{
+    ($workspace:expr, $message:literal) => {{
         $workspace
-            .commit($csp, $message, lgn_source_control::CommitMode::Strict)
+            .commit($message, lgn_source_control::CommitMode::Strict)
             .await
             .expect("failed to commit")
     }};
 }
 
 macro_rules! workspace_commit_lenient {
-    ($workspace:expr, $csp:expr, $message:literal) => {{
+    ($workspace:expr, $message:literal) => {{
         $workspace
-            .commit($csp, $message, lgn_source_control::CommitMode::Lenient)
+            .commit($message, lgn_source_control::CommitMode::Lenient)
             .await
             .expect("failed to commit")
     }};
 }
 
 macro_rules! workspace_commit_error {
-    ($workspace:expr, $csp:expr, $message:literal) => {{
-        match $workspace.commit($csp, $message, lgn_source_control::CommitMode::Strict).await {
+    ($workspace:expr, $message:literal) => {{
+        match $workspace.commit($message, lgn_source_control::CommitMode::Strict).await {
             Err(err) => err,
             Ok(_) => {
                 panic!("commit should have failed");
             }
         }
     }};
-    ($workspace:expr, $csp:expr, $message:literal, $($err:tt)+) => {{
-        match $workspace.commit($csp, $message, lgn_source_control::CommitMode::Strict).await {
+    ($workspace:expr, $message:literal, $($err:tt)+) => {{
+        match $workspace.commit($message, lgn_source_control::CommitMode::Strict).await {
             Err($($err)+) => {},
             Err(err) => {
                 panic!("unexpected error `{}`", err);
@@ -218,8 +218,8 @@ pub(crate) fn cp(s: &str) -> CanonicalPath {
     CanonicalPath::new(s).unwrap()
 }
 
-pub(crate) fn id(csp: &Chunker<impl ContentProvider + Send + Sync>, data: &str) -> ChunkIdentifier {
-    csp.get_chunk_identifier(data.as_bytes())
+pub(crate) fn id(data: &str) -> ChunkIdentifier {
+    Chunker::default().get_chunk_identifier(data.as_bytes())
 }
 
 pub(crate) fn add(s: &str, new_chunk_id: ChunkIdentifier) -> Change {

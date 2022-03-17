@@ -34,10 +34,10 @@ enum Commands {
     Put {
         file_path: Option<PathBuf>,
 
-        #[clap(long, default_value_t = ByteSize::b(Chunker::<u8>::DEFAULT_CHUNK_SIZE.try_into().unwrap()))]
+        #[clap(long, default_value_t = ByteSize::b(Chunker::DEFAULT_CHUNK_SIZE.try_into().unwrap()))]
         chunk_size: ByteSize,
 
-        #[clap(long, default_value_t = Chunker::<u8>::DEFAULT_MAX_PARALLEL_UPLOADS)]
+        #[clap(long, default_value_t = Chunker::DEFAULT_MAX_PARALLEL_UPLOADS)]
         max_parallel_uploads: usize,
     },
 }
@@ -191,7 +191,7 @@ async fn main() -> anyhow::Result<()> {
             file_path,
         } => {
             let provider = provider.on_download_callbacks(transfer_progress);
-            let chunker = Chunker::new(provider);
+            let chunker = Chunker::default();
 
             let output = Box::new(tokio::fs::File::create(&file_path).await.map_err(|err| {
                 anyhow::anyhow!(
@@ -210,7 +210,7 @@ async fn main() -> anyhow::Result<()> {
 
             let copy = async move {
                 let mut input = chunker
-                    .get_chunk_reader(&identifier)
+                    .get_chunk_reader(provider, &identifier)
                     .await
                     .map_err(|err| anyhow::anyhow!("failed to get asset: {}", err))?;
 
@@ -239,7 +239,7 @@ async fn main() -> anyhow::Result<()> {
             max_parallel_uploads,
         } => {
             let provider = provider.on_upload_callbacks(transfer_progress);
-            let chunker = Chunker::new(provider)
+            let chunker = Chunker::default()
                 .with_chunk_size(chunk_size.as_u64().try_into().unwrap())
                 .with_max_parallel_uploads(max_parallel_uploads);
 
@@ -286,7 +286,7 @@ async fn main() -> anyhow::Result<()> {
                 };
 
                 chunker
-                    .write_chunk(&buf)
+                    .write_chunk(provider, &buf)
                     .await
                     .map_err(|err| anyhow::anyhow!("failed to write asset: {}", err))
             };

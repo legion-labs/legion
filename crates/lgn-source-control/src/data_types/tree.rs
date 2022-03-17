@@ -1,5 +1,5 @@
 use async_recursion::async_recursion;
-use lgn_content_store2::{ChunkIdentifier, Chunker, ContentProvider};
+use lgn_content_store2::{ChunkIdentifier, Chunker};
 use std::{
     cmp::Ordering,
     collections::{btree_map::Entry, BTreeMap, BTreeSet},
@@ -126,7 +126,7 @@ impl Tree {
     ///
     /// A complete tree, with the root directory as the root.
     pub async fn from_root(
-        chunker: &Chunker<impl ContentProvider + Send + Sync>,
+        chunker: &Chunker,
         root: impl AsRef<Path>,
         filter: &TreeFilter,
     ) -> Result<Self> {
@@ -140,7 +140,7 @@ impl Tree {
     /// Creates a tree from an existing absolute and canonicalized root directory.
     #[async_recursion]
     async fn from_path(
-        chunker: &Chunker<impl ContentProvider + Send + Sync>,
+        chunker: &Chunker,
         root: &Path,
         path: &Path,
         filter: &TreeFilter,
@@ -181,10 +181,7 @@ impl Tree {
         Ok(Self::directory(name.to_string(), children))
     }
 
-    async fn from_file_path(
-        chunker: &Chunker<impl ContentProvider + Send + Sync>,
-        path: &Path,
-    ) -> Result<Self> {
+    async fn from_file_path(chunker: &Chunker, path: &Path) -> Result<Self> {
         let name = path
             .file_name()
             .ok_or_else(|| Error::Other {
@@ -1061,76 +1058,60 @@ impl TreeFilter {
 
 #[cfg(test)]
 mod tests {
-    use lgn_content_store2::{MemoryProvider, SmallContentProvider};
-
     use super::*;
 
     fn d(name: &str, children: impl IntoIterator<Item = Tree>) -> Tree {
         Tree::directory(name.to_string(), children)
     }
 
-    fn f(csp: &Chunker<impl ContentProvider + Send + Sync>, name: &str, data: &str) -> Tree {
-        Tree::file(name.to_string(), id(csp, data))
+    fn f(name: &str, data: &str) -> Tree {
+        Tree::file(name.to_string(), id(data))
     }
 
-    fn id(csp: &Chunker<impl ContentProvider + Send + Sync>, data: &str) -> ChunkIdentifier {
-        csp.get_chunk_identifier(data.as_bytes())
+    fn id(data: &str) -> ChunkIdentifier {
+        Chunker::default().get_chunk_identifier(data.as_bytes())
     }
 
     fn cp(s: &str) -> CanonicalPath {
         CanonicalPath::new(s).unwrap()
     }
 
-    fn add(csp: &Chunker<impl ContentProvider + Send + Sync>, s: &str, new_data: &str) -> Change {
+    fn add(s: &str, new_data: &str) -> Change {
         Change::new(
             cp(s),
             ChangeType::Add {
-                new_chunk_id: id(csp, new_data),
+                new_chunk_id: id(new_data),
             },
         )
     }
 
-    fn edit(
-        csp: &Chunker<impl ContentProvider + Send + Sync>,
-        s: &str,
-        old_data: &str,
-        new_data: &str,
-    ) -> Change {
+    fn edit(s: &str, old_data: &str, new_data: &str) -> Change {
         Change::new(
             cp(s),
             ChangeType::Edit {
-                old_chunk_id: id(csp, old_data),
-                new_chunk_id: id(csp, new_data),
+                old_chunk_id: id(old_data),
+                new_chunk_id: id(new_data),
             },
         )
     }
 
-    fn delete(
-        csp: &Chunker<impl ContentProvider + Send + Sync>,
-        s: &str,
-        old_data: &str,
-    ) -> Change {
+    fn delete(s: &str, old_data: &str) -> Change {
         Change::new(
             cp(s),
             ChangeType::Delete {
-                old_chunk_id: id(csp, old_data),
+                old_chunk_id: id(old_data),
             },
         )
     }
 
     #[tokio::test]
     async fn test_tree_from_root() {
-        let csp = &Chunker::new(SmallContentProvider::new(MemoryProvider::new()));
         let root = &Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/canonical_path");
 
         // Let's resolve the root.
-        let tree = Tree::from_root(csp, root, &TreeFilter::default())
+        let tree = Tree::from_root(&Chunker::default(), root, &TreeFilter::default())
             .await
             .unwrap();
-
-        fn f(csp: &Chunker<impl ContentProvider + Send + Sync>, name: &str, data: &str) -> Tree {
-            Tree::file(name.to_string(), id(csp, data))
-        }
 
         assert_eq!(
             tree,
@@ -1140,12 +1121,12 @@ mod tests {
                     d(
                         "fruits",
                         [
-                            f(csp, "apple.txt", "I am an apple."),
-                            f(csp, "orange.txt", "I am an orange."),
-                            f(csp, "tomato.txt", "I am a tomato."),
+                            f("apple.txt", "I am an apple."),
+                            f("orange.txt", "I am an orange."),
+                            f("tomato.txt", "I am a tomato."),
                         ]
                     ),
-                    d("vegetables", [f(csp, "carrot.txt", "I am a carot.")]),
+                    d("vegetables", [f("carrot.txt", "I am a carot.")]),
                 ],
             )
         );
@@ -1155,37 +1136,34 @@ mod tests {
             exclusion_rules: BTreeSet::new(),
         };
 
-        let tree = Tree::from_root(csp, root, &tree_filter).await.unwrap();
+        let tree = Tree::from_root(&Chunker::default(), root, &tree_filter)
+            .await
+            .unwrap();
 
         assert_eq!(
             tree,
-            d(
-                "",
-                [d("vegetables", [f(csp, "carrot.txt", "I am a carot.")])],
-            )
+            d("", [d("vegetables", [f("carrot.txt", "I am a carot.")])],)
         );
     }
 
     #[test]
     fn test_tree_find() {
-        let csp = &Chunker::new(SmallContentProvider::new(MemoryProvider::new()));
-
         let mut tree = d(
             "",
             [
-                d("a", [f(csp, "e", "he"), d("f", [f(csp, "g", "hg")])]),
+                d("a", [f("e", "he"), d("f", [f("g", "hg")])]),
                 d("b", []),
-                f(csp, "c", "hc"),
-                f(csp, "d", "hd"),
+                f("c", "hc"),
+                f("d", "hd"),
             ],
         );
 
-        assert_eq!(tree.find(&cp("/a/f/g")).unwrap(), Some(&f(csp, "g", "hg")));
+        assert_eq!(tree.find(&cp("/a/f/g")).unwrap(), Some(&f("g", "hg")));
         assert_eq!(
             tree.find(&cp("/a/f")).unwrap(),
-            Some(&d("f", [f(csp, "g", "hg")]))
+            Some(&d("f", [f("g", "hg")]))
         );
-        assert_eq!(tree.find(&cp("/c")).unwrap(), Some(&f(csp, "c", "hc")));
+        assert_eq!(tree.find(&cp("/c")).unwrap(), Some(&f("c", "hc")));
         assert_eq!(tree.find(&cp("/x")).unwrap(), None);
         assert_eq!(tree.find(&cp("/")).unwrap(), Some(&tree));
 
@@ -1209,16 +1187,13 @@ mod tests {
 
         assert_eq!(
             tree.find_mut(&cp("/a/f/g")).unwrap(),
-            Some(&mut f(csp, "g", "hg"))
+            Some(&mut f("g", "hg"))
         );
         assert_eq!(
             tree.find_mut(&cp("/a/f")).unwrap(),
-            Some(&mut d("f", [f(csp, "g", "hg")]))
+            Some(&mut d("f", [f("g", "hg")]))
         );
-        assert_eq!(
-            tree.find_mut(&cp("/c")).unwrap(),
-            Some(&mut f(csp, "c", "hc"))
-        );
+        assert_eq!(tree.find_mut(&cp("/c")).unwrap(), Some(&mut f("c", "hc")));
         assert_eq!(tree.find_mut(&cp("/x")).unwrap(), None);
 
         let mut tree_copy = tree.clone();
@@ -1243,14 +1218,12 @@ mod tests {
 
     #[test]
     fn test_tree_sort() {
-        let csp = &Chunker::new(SmallContentProvider::new(MemoryProvider::new()));
-
         let tree = d(
             "",
             [
-                d("a", [f(csp, "e", "he"), d("f", [f(csp, "g", "hg")])]),
-                f(csp, "d", "hd"),
-                f(csp, "c", "hc"),
+                d("a", [f("e", "he"), d("f", [f("g", "hg")])]),
+                f("d", "hd"),
+                f("c", "hc"),
                 d("b", []),
             ],
         );
@@ -1260,10 +1233,10 @@ mod tests {
             d(
                 "",
                 [
-                    d("a", [d("f", [f(csp, "g", "hg")]), f(csp, "e", "he")]),
+                    d("a", [d("f", [f("g", "hg")]), f("e", "he")]),
                     d("b", []),
-                    f(csp, "c", "hc"),
-                    f(csp, "d", "hd"),
+                    f("c", "hc"),
+                    f("d", "hd"),
                 ]
             )
         );
@@ -1271,59 +1244,50 @@ mod tests {
 
     #[test]
     fn test_tree_manipulation() {
-        let csp = &Chunker::new(SmallContentProvider::new(MemoryProvider::new()));
-
         let mut tree = d(
             "",
             [
-                d("a", [d("f", [f(csp, "g", "hg")]), f(csp, "e", "he")]),
-                f(csp, "c", "hc"),
-                f(csp, "d", "hd"),
+                d("a", [d("f", [f("g", "hg")]), f("e", "he")]),
+                f("c", "hc"),
+                f("d", "hd"),
             ],
         );
 
-        assert_eq!(tree.remove(&cp("/a/f/g")), Some(f(csp, "g", "hg")));
+        assert_eq!(tree.remove(&cp("/a/f/g")), Some(f("g", "hg")));
 
         assert_eq!(
             tree,
-            d(
-                "",
-                [
-                    d("a", [f(csp, "e", "he")]),
-                    f(csp, "c", "hc"),
-                    f(csp, "d", "hd"),
-                ]
-            )
+            d("", [d("a", [f("e", "he")]), f("c", "hc"), f("d", "hd"),])
         );
 
-        assert_eq!(tree.remove(&cp("/a")), Some(d("a", [f(csp, "e", "he")])));
+        assert_eq!(tree.remove(&cp("/a")), Some(d("a", [f("e", "he")])));
 
-        assert_eq!(tree, d("", [f(csp, "c", "hc"), f(csp, "d", "hd"),]));
+        assert_eq!(tree, d("", [f("c", "hc"), f("d", "hd"),]));
 
         assert_eq!(tree.remove(&cp("/x")), None);
 
-        assert_eq!(tree.set(&cp("/a/b/c/d"), f(csp, "z", "hz")), None);
+        assert_eq!(tree.set(&cp("/a/b/c/d"), f("z", "hz")), None);
 
         assert_eq!(
             tree,
             d(
                 "",
                 [
-                    d("a", [d("b", [d("c", [d("d", [f(csp, "z", "hz")])])])]),
-                    f(csp, "c", "hc"),
-                    f(csp, "d", "hd"),
+                    d("a", [d("b", [d("c", [d("d", [f("z", "hz")])])])]),
+                    f("c", "hc"),
+                    f("d", "hd"),
                 ]
             )
         );
 
         // Adding a file that already exists is fine if the file is identical.
         assert_eq!(
-            *tree.add(&cp("/a/b/c/d"), f(csp, "z", "hz")).unwrap(),
-            f(csp, "z", "hz")
+            *tree.add(&cp("/a/b/c/d"), f("z", "hz")).unwrap(),
+            f("z", "hz")
         );
 
         // Cannot add a file that already exists with a different content.
-        match tree.add(&cp("/a/b/c/d"), f(csp, "z", "hz2")) {
+        match tree.add(&cp("/a/b/c/d"), f("z", "hz2")) {
             Err(Error::FileAlreadyExists { canonical_path }) => {
                 assert_eq!(canonical_path, cp("/a/b/c/d/z"));
             }
@@ -1332,7 +1296,7 @@ mod tests {
         }
 
         // Cannot add a file to a non-directory, direct.
-        match tree.add(&cp("/a/b/c/d/z"), f(csp, "x", "hx")) {
+        match tree.add(&cp("/a/b/c/d/z"), f("x", "hx")) {
             Err(Error::PathIsNotADirectory { canonical_path }) => {
                 assert_eq!(canonical_path, cp("/a/b/c/d/z"));
             }
@@ -1340,7 +1304,7 @@ mod tests {
         }
 
         // Cannot add a file to a non-directory, indirect.
-        match tree.add(&cp("/a/b/c/d/z/z/z/z"), f(csp, "x", "hx")) {
+        match tree.add(&cp("/a/b/c/d/z/z/z/z"), f("x", "hx")) {
             Err(Error::PathIsNotADirectory { canonical_path }) => {
                 assert_eq!(canonical_path, cp("/a/b/c/d/z"));
             }
@@ -1348,8 +1312,8 @@ mod tests {
         }
 
         assert_eq!(
-            *tree.add(&cp("/a/b/c/d"), f(csp, "x", "hx")).unwrap(),
-            f(csp, "x", "hx")
+            *tree.add(&cp("/a/b/c/d"), f("x", "hx")).unwrap(),
+            f("x", "hx")
         );
 
         assert_eq!(
@@ -1359,24 +1323,21 @@ mod tests {
                 [
                     d(
                         "a",
-                        [d(
-                            "b",
-                            [d("c", [d("d", [f(csp, "z", "hz"), f(csp, "x", "hx")])])]
-                        )]
+                        [d("b", [d("c", [d("d", [f("z", "hz"), f("x", "hx")])])])]
                     ),
-                    f(csp, "c", "hc"),
-                    f(csp, "d", "hd"),
+                    f("c", "hc"),
+                    f("d", "hd"),
                 ]
             )
         );
 
         assert_eq!(
-            tree.remove_file(&cp("/a/b/c/d/x"), &id(csp, "hx")).unwrap(),
-            f(csp, "x", "hx")
+            tree.remove_file(&cp("/a/b/c/d/x"), &id("hx")).unwrap(),
+            f("x", "hx")
         );
 
         // File does not exist anymore.
-        match tree.remove_file(&cp("/a/b/c/d/x"), &id(csp, "hx")) {
+        match tree.remove_file(&cp("/a/b/c/d/x"), &id("hx")) {
             Err(Error::FileDoesNotExist { canonical_path }) => {
                 assert_eq!(canonical_path, cp("/a/b/c/d/x"));
             }
@@ -1384,7 +1345,7 @@ mod tests {
         }
 
         // Intermediate path does not exist.
-        match tree.remove_file(&cp("/a/a/a/a/x"), &id(csp, "hx")) {
+        match tree.remove_file(&cp("/a/a/a/a/x"), &id("hx")) {
             Err(Error::FileDoesNotExist { canonical_path }) => {
                 assert_eq!(canonical_path, cp("/a/a/a/a/x"));
             }
@@ -1392,21 +1353,21 @@ mod tests {
         }
 
         // File exists but with a different content.
-        match tree.remove_file(&cp("/a/b/c/d/z"), &id(csp, "hz2")) {
+        match tree.remove_file(&cp("/a/b/c/d/z"), &id("hz2")) {
             Err(Error::FileContentMistmatch {
                 canonical_path,
                 expected_chunk_id,
                 chunk_id,
             }) => {
                 assert_eq!(canonical_path, cp("/a/b/c/d/z"));
-                assert_eq!(expected_chunk_id, id(csp, "hz2"));
-                assert_eq!(chunk_id, id(csp, "hz"));
+                assert_eq!(expected_chunk_id, id("hz2"));
+                assert_eq!(chunk_id, id("hz"));
             }
             _ => panic!("expected FileContentMistmatch"),
         }
 
         // Trying to remove a file on a file.
-        match tree.remove_file(&cp("/a/b/c/d/z/z"), &id(csp, "hz")) {
+        match tree.remove_file(&cp("/a/b/c/d/z/z"), &id("hz")) {
             Err(Error::PathIsNotADirectory { canonical_path }) => {
                 assert_eq!(canonical_path, cp("/a/b/c/d/z"));
             }
@@ -1419,28 +1380,28 @@ mod tests {
             d(
                 "",
                 [
-                    d("a", [d("b", [d("c", [d("d", [f(csp, "z", "hz")])])])]),
-                    f(csp, "c", "hc"),
-                    f(csp, "d", "hd"),
+                    d("a", [d("b", [d("c", [d("d", [f("z", "hz")])])])]),
+                    f("c", "hc"),
+                    f("d", "hd"),
                 ]
             )
         );
 
         // No-op update should be fine.
         assert_eq!(
-            tree.update_file(&cp("/a/b/c/d/z"), &id(csp, "hz"), &id(csp, "hz"))
+            tree.update_file(&cp("/a/b/c/d/z"), &id("hz"), &id("hz"))
                 .unwrap(),
-            &mut f(csp, "z", "hz")
+            &mut f("z", "hz")
         );
 
         assert_eq!(
-            tree.update_file(&cp("/a/b/c/d/z"), &id(csp, "hz"), &id(csp, "hz2"))
+            tree.update_file(&cp("/a/b/c/d/z"), &id("hz"), &id("hz2"))
                 .unwrap(),
-            &mut f(csp, "z", "hz2")
+            &mut f("z", "hz2")
         );
 
         // File does not exist anymore.
-        match tree.update_file(&cp("/a/b/c/d/x"), &id(csp, "hx"), &id(csp, "hx2")) {
+        match tree.update_file(&cp("/a/b/c/d/x"), &id("hx"), &id("hx2")) {
             Err(Error::FileDoesNotExist { canonical_path }) => {
                 assert_eq!(canonical_path, cp("/a/b/c/d/x"));
             }
@@ -1448,7 +1409,7 @@ mod tests {
         }
 
         // Intermediate path does not exist.
-        match tree.update_file(&cp("/a/a/a/a/x"), &id(csp, "hx"), &id(csp, "hx2")) {
+        match tree.update_file(&cp("/a/a/a/a/x"), &id("hx"), &id("hx2")) {
             Err(Error::FileDoesNotExist { canonical_path }) => {
                 assert_eq!(canonical_path, cp("/a/a/a/a/x"));
             }
@@ -1456,7 +1417,7 @@ mod tests {
         }
 
         // Trying to remove a file on a file.
-        match tree.update_file(&cp("/a/b/c/d"), &id(csp, "hz"), &id(csp, "hz2")) {
+        match tree.update_file(&cp("/a/b/c/d"), &id("hz"), &id("hz2")) {
             Err(Error::PathIsNotAFile { canonical_path }) => {
                 assert_eq!(canonical_path, cp("/a/b/c/d"));
             }
@@ -1467,14 +1428,12 @@ mod tests {
 
     #[test]
     fn test_tree_iter() {
-        let csp = &Chunker::new(SmallContentProvider::new(MemoryProvider::new()));
-
         let tree = d(
             "",
             [
-                d("a", [f(csp, "e", "he"), d("f", [f(csp, "g", "hg")])]),
-                f(csp, "d", "hd"),
-                f(csp, "c", "hc"),
+                d("a", [f("e", "he"), d("f", [f("g", "hg")])]),
+                f("d", "hd"),
+                f("c", "hc"),
                 d("b", []),
             ],
         );
@@ -1483,20 +1442,17 @@ mod tests {
             tree.iter().collect::<Vec<(CanonicalPath, &Tree)>>(),
             [
                 (cp("/"), &tree),
-                (
-                    cp("/a"),
-                    &d("a", [f(csp, "e", "he"), d("f", [f(csp, "g", "hg")])])
-                ),
-                (cp("/a/e"), &f(csp, "e", "he")),
-                (cp("/a/f"), &d("f", [f(csp, "g", "hg")])),
-                (cp("/a/f/g"), &f(csp, "g", "hg")),
+                (cp("/a"), &d("a", [f("e", "he"), d("f", [f("g", "hg")])])),
+                (cp("/a/e"), &f("e", "he")),
+                (cp("/a/f"), &d("f", [f("g", "hg")])),
+                (cp("/a/f/g"), &f("g", "hg")),
                 (cp("/b"), &d("b", [])),
-                (cp("/c"), &f(csp, "c", "hc")),
-                (cp("/d"), &f(csp, "d", "hd")),
+                (cp("/c"), &f("c", "hc")),
+                (cp("/d"), &f("d", "hd")),
             ]
         );
 
-        let tree = f(csp, "foo", "hfoo");
+        let tree = f("foo", "hfoo");
 
         assert_eq!(
             tree.files().collect::<Vec<(CanonicalPath, &Tree)>>(),
@@ -1506,14 +1462,12 @@ mod tests {
 
     #[test]
     fn test_tree_files() {
-        let csp = &Chunker::new(SmallContentProvider::new(MemoryProvider::new()));
-
         let tree = d(
             "",
             [
-                d("a", [f(csp, "e", "he"), d("f", [f(csp, "g", "hg")])]),
-                f(csp, "d", "hd"),
-                f(csp, "c", "hc"),
+                d("a", [f("e", "he"), d("f", [f("g", "hg")])]),
+                f("d", "hd"),
+                f("c", "hc"),
                 d("b", []),
             ],
         );
@@ -1521,24 +1475,23 @@ mod tests {
         assert_eq!(
             tree.files().collect::<Vec<(CanonicalPath, &Tree)>>(),
             [
-                (cp("/a/e"), &f(csp, "e", "he")),
-                (cp("/a/f/g"), &f(csp, "g", "hg")),
-                (cp("/c"), &f(csp, "c", "hc")),
-                (cp("/d"), &f(csp, "d", "hd")),
+                (cp("/a/e"), &f("e", "he")),
+                (cp("/a/f/g"), &f("g", "hg")),
+                (cp("/c"), &f("c", "hc")),
+                (cp("/d"), &f("d", "hd")),
             ]
         );
 
-        let tree = f(csp, "foo", "hfoo");
+        let tree = f("foo", "hfoo");
 
         assert_eq!(
             tree.files().collect::<Vec<(CanonicalPath, &Tree)>>(),
-            [(cp("/foo"), &f(csp, "foo", "hfoo")),]
+            [(cp("/foo"), &f("foo", "hfoo")),]
         );
     }
 
     #[test]
     fn test_tree_filter() {
-        let csp = &Chunker::new(SmallContentProvider::new(MemoryProvider::new()));
         let tree_filter = TreeFilter {
             inclusion_rules: [cp("/a/b")].into(),
             exclusion_rules: [cp("/a/b/c")].into(),
@@ -1572,45 +1525,40 @@ mod tests {
             "",
             [d(
                 "a",
-                [
-                    d("b", [d("c", [f(csp, "d", "hd")]), f(csp, "d", "hd")]),
-                    f(csp, "c", "hc"),
-                ],
+                [d("b", [d("c", [f("d", "hd")]), f("d", "hd")]), f("c", "hc")],
             )],
         );
 
         assert_eq!(
             tree.filter(&tree_filter).unwrap(),
-            d("", [d("a", [d("b", [f(csp, "d", "hd")])],)])
+            d("", [d("a", [d("b", [f("d", "hd")])],)])
         );
     }
 
     #[test]
     fn test_tree_with_changes() {
-        let csp = &Chunker::new(SmallContentProvider::new(MemoryProvider::new()));
-
         let tree = d(
             "",
             [
-                d("a", [f(csp, "e", "he"), d("f", [f(csp, "g", "hg")])]),
+                d("a", [f("e", "he"), d("f", [f("g", "hg")])]),
                 d("b", []),
-                f(csp, "c", "hc"),
-                f(csp, "d", "hd"),
+                f("c", "hc"),
+                f("d", "hd"),
                 d("e", []),
-                d("f", [d("g", [f(csp, "h", "hh")])]),
-                d("h", [f(csp, "i", "hi")]),
+                d("f", [d("g", [f("h", "hh")])]),
+                d("h", [f("i", "hi")]),
             ],
         );
 
         let tree_with_changes = tree
             .with_changes(&[
-                add(csp, "/a/f/h", "hh"),
-                add(csp, "/b", "hb"),
-                edit(csp, "/a/e", "he", "he2"),
-                delete(csp, "/c", "hc"),
-                delete(csp, "/f/g/h", "hh"),
-                add(csp, "/f/g", "gh"),
-                delete(csp, "/h/i", "hi"),
+                add("/a/f/h", "hh"),
+                add("/b", "hb"),
+                edit("/a/e", "he", "he2"),
+                delete("/c", "hc"),
+                delete("/f/g/h", "hh"),
+                add("/f/g", "gh"),
+                delete("/h/i", "hi"),
             ])
             .unwrap();
 
@@ -1619,17 +1567,11 @@ mod tests {
             d(
                 "",
                 [
-                    d(
-                        "a",
-                        [
-                            f(csp, "e", "he2"),
-                            d("f", [f(csp, "g", "hg"), f(csp, "h", "hh")])
-                        ]
-                    ),
-                    f(csp, "b", "hb"),
-                    f(csp, "d", "hd"),
+                    d("a", [f("e", "he2"), d("f", [f("g", "hg"), f("h", "hh")])]),
+                    f("b", "hb"),
+                    f("d", "hd"),
                     d("e", []),
-                    d("f", [f(csp, "g", "gh")]),
+                    d("f", [f("g", "gh")]),
                 ]
             )
         );
@@ -1637,28 +1579,26 @@ mod tests {
 
     #[test]
     fn test_tree_as_forward_changes() {
-        let csp = &Chunker::new(SmallContentProvider::new(MemoryProvider::new()));
-
         let tree = d(
             "",
             [
-                d("a", [f(csp, "e", "he"), d("f", [f(csp, "g", "hg")])]),
+                d("a", [f("e", "he"), d("f", [f("g", "hg")])]),
                 d("b", []),
-                f(csp, "c", "hc"),
-                f(csp, "d", "hd"),
+                f("c", "hc"),
+                f("d", "hd"),
                 d("e", []),
-                d("f", [d("g", [f(csp, "h", "hh")])]),
+                d("f", [d("g", [f("h", "hh")])]),
             ],
         );
 
         assert_eq!(
             tree.as_forward_changes(),
             [
-                add(csp, "/a/e", "he"),
-                add(csp, "/a/f/g", "hg"),
-                add(csp, "/c", "hc"),
-                add(csp, "/d", "hd"),
-                add(csp, "/f/g/h", "hh"),
+                add("/a/e", "he"),
+                add("/a/f/g", "hg"),
+                add("/c", "hc"),
+                add("/d", "hd"),
+                add("/f/g/h", "hh"),
             ]
             .into()
         );
@@ -1666,27 +1606,26 @@ mod tests {
 
     #[test]
     fn test_tree_as_backward_changes() {
-        let csp = &Chunker::new(SmallContentProvider::new(MemoryProvider::new()));
         let tree = d(
             "",
             [
-                d("a", [f(csp, "e", "he"), d("f", [f(csp, "g", "hg")])]),
+                d("a", [f("e", "he"), d("f", [f("g", "hg")])]),
                 d("b", []),
-                f(csp, "c", "hc"),
-                f(csp, "d", "hd"),
+                f("c", "hc"),
+                f("d", "hd"),
                 d("e", []),
-                d("f", [d("g", [f(csp, "h", "hh")])]),
+                d("f", [d("g", [f("h", "hh")])]),
             ],
         );
 
         assert_eq!(
             tree.as_backward_changes(),
             [
-                delete(csp, "/a/e", "he"),
-                delete(csp, "/a/f/g", "hg"),
-                delete(csp, "/c", "hc"),
-                delete(csp, "/d", "hd"),
-                delete(csp, "/f/g/h", "hh"),
+                delete("/a/e", "he"),
+                delete("/a/f/g", "hg"),
+                delete("/c", "hc"),
+                delete("/d", "hd"),
+                delete("/f/g/h", "hh"),
             ]
             .into()
         );
@@ -1694,27 +1633,26 @@ mod tests {
 
     #[test]
     fn test_tree_changes_to() {
-        let csp = &Chunker::new(SmallContentProvider::new(MemoryProvider::new()));
         let from_tree = d(
             "",
             [
-                d("a", [f(csp, "e", "he"), d("f", [f(csp, "g", "hg")])]),
+                d("a", [f("e", "he"), d("f", [f("g", "hg")])]),
                 d("b", []),
-                f(csp, "c", "hc"),
-                f(csp, "d", "hd"),
+                f("c", "hc"),
+                f("d", "hd"),
                 d("e", []),
-                d("f", [d("g", [f(csp, "h", "hh")])]),
+                d("f", [d("g", [f("h", "hh")])]),
             ],
         );
         let to_tree = d(
             "",
             [
-                d("a", [f(csp, "z", "hz"), d("f", [f(csp, "g", "hg2")])]),
+                d("a", [f("z", "hz"), d("f", [f("g", "hg2")])]),
                 d("b", []),
                 d("c", []),
-                f(csp, "d", "hd"),
-                f(csp, "e", "he"),
-                d("f", [d("g", [f(csp, "h", "hh")])]),
+                f("d", "hd"),
+                f("e", "he"),
+                d("f", [d("g", [f("h", "hh")])]),
             ],
         );
 
@@ -1723,11 +1661,11 @@ mod tests {
         assert_eq!(
             changes,
             [
-                delete(csp, "/a/e", "he"),
-                add(csp, "/a/z", "hz"),
-                edit(csp, "/a/f/g", "hg", "hg2"),
-                delete(csp, "/c", "hc"),
-                add(csp, "/e", "he"),
+                delete("/a/e", "he"),
+                add("/a/z", "hz"),
+                edit("/a/f/g", "hg", "hg2"),
+                delete("/c", "hc"),
+                add("/e", "he"),
             ]
             .into()
         );
@@ -1738,11 +1676,11 @@ mod tests {
         assert_eq!(
             changes,
             [
-                add(csp, "/a/e", "he"),
-                delete(csp, "/a/z", "hz"),
-                edit(csp, "/a/f/g", "hg2", "hg"),
-                add(csp, "/c", "hc"),
-                delete(csp, "/e", "he"),
+                add("/a/e", "he"),
+                delete("/a/z", "hz"),
+                edit("/a/f/g", "hg2", "hg"),
+                add("/c", "hc"),
+                delete("/e", "he"),
             ]
             .into()
         );

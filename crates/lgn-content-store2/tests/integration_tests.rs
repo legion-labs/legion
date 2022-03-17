@@ -44,13 +44,13 @@ fn test_data_invariants() {
 
 #[tokio::test]
 async fn test_chunker() {
-    let provider = MemoryProvider::new();
     let chunk_size = 2;
-    let chunker = Chunker::new(provider.clone()).with_chunk_size(chunk_size);
+    let chunker = Chunker::default().with_chunk_size(chunk_size);
+    let provider = &MemoryProvider::new();
 
     // The content has a lots of repeats, so we expect to get a lot of identical chunks.
-    let chunk_id = chunker.write_chunk(&BIG_DATA_A).await.unwrap();
-    let data = chunker.read_chunk(&chunk_id).await.unwrap();
+    let chunk_id = chunker.write_chunk(provider, &BIG_DATA_A).await.unwrap();
+    let data = chunker.read_chunk(provider, &chunk_id).await.unwrap();
 
     assert_eq!(data, &BIG_DATA_A);
     assert_eq!(chunk_id.data_size(), BIG_DATA_A.len());
@@ -63,7 +63,7 @@ async fn test_chunker() {
     // chunk.
     let chunk_id = ChunkIdentifier::new(2, id);
 
-    match chunker.read_chunk(&chunk_id).await {
+    match chunker.read_chunk(provider, &chunk_id).await {
         Err(Error::InvalidChunkIndex(_)) => {}
         Err(err) => panic!("unexpected error: {}", err),
         Ok(_) => panic!("expected error"),
@@ -72,7 +72,7 @@ async fn test_chunker() {
     // This chunk should not exist.
     let chunk_id = ChunkIdentifier::new(2, Identifier::new(&BIG_DATA_X));
 
-    match chunker.read_chunk(&chunk_id).await {
+    match chunker.read_chunk(provider, &chunk_id).await {
         Err(Error::NotFound) => {}
         Err(err) => panic!("unexpected error: {}", err),
         Ok(_) => panic!("expected error"),
@@ -86,8 +86,8 @@ async fn test_chunker() {
         *x = rng.gen::<u8>();
     }
 
-    let chunk_id = chunker.write_chunk(&buf).await.unwrap();
-    let data = chunker.read_chunk(&chunk_id).await.unwrap();
+    let chunk_id = chunker.write_chunk(provider, &buf).await.unwrap();
+    let data = chunker.read_chunk(provider, &chunk_id).await.unwrap();
 
     assert_eq!(data, buf);
 }
