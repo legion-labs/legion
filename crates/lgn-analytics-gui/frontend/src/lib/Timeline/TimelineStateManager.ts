@@ -23,7 +23,7 @@ import { createTimelineStateStore } from "./TimelineStateStore";
 import { TimelineState } from "./TimelineState";
 import { ProcessAsyncData } from "./ProcessAsyncData";
 import Semaphore from "semaphore-async-await";
-import { loadWrap } from "../Misc/LoadingStore";
+import { loadPromise, loadWrap } from "../Misc/LoadingStore";
 
 export class TimelineStateManager {
   state: TimelineStateStore;
@@ -157,13 +157,12 @@ export class TimelineStateManager {
     };
     processAsyncData.sections.push(asyncSection);
 
-    const reply = await loadWrap(
-      async () =>
-        await this.client!.fetch_async_spans({
-          sectionSequenceNumber,
-          sectionLod,
-          blockIds: blocksOfInterest,
-        })
+    const reply = await loadPromise(
+      this.client!.fetch_async_spans({
+        sectionSequenceNumber,
+        sectionLod,
+        blockIds: blocksOfInterest,
+      })
     );
     const nbTracks = reply.tracks.length;
     processAsyncData.maxDepth = Math.max(processAsyncData.maxDepth, nbTracks);
@@ -210,11 +209,13 @@ export class TimelineStateManager {
       const thread = state.threads[streamId];
       if (thread.streamInfo.processId == process.processId) {
         promises.push(
-          this.client!.fetch_block_async_stats({
-            process,
-            stream: thread.streamInfo,
-            blockId: block.blockDefinition.blockId,
-          })
+          loadPromise(
+            this.client!.fetch_block_async_stats({
+              process,
+              stream: thread.streamInfo,
+              blockId: block.blockDefinition.blockId,
+            })
+          )
         );
       }
     }

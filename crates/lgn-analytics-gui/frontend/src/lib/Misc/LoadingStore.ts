@@ -50,3 +50,14 @@ export async function loadWrap<T>(action: () => T): Promise<T> {
     store.completeWork();
   }
 }
+
+export function loadPromise<T>(p: Promise<T>): Promise<T> {
+  const store = loadingStore;
+  store.addWork();
+
+  return (async () => {
+    const res = await p;
+    store.completeWork();
+    return res;
+  })();
+}
