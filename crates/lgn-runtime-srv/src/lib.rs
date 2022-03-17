@@ -139,13 +139,16 @@ pub fn build_runtime(
 
     let mut app = App::default();
 
-    app
-        // Start app with 60 fps
-        .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
-            1.0 / 60.0,
-        )))
-        .add_plugin(ScheduleRunnerPlugin::default())
-        .insert_resource(DefaultTaskPoolOptions::new(1..=4))
+    if !standalone {
+        app
+            // Start app with 60 fps
+            .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
+                1.0 / 60.0,
+            )))
+            .add_plugin(ScheduleRunnerPlugin::default());
+    }
+
+    app.insert_resource(DefaultTaskPoolOptions::new(1..=4))
         .add_plugin(CorePlugin::default())
         .add_plugin(TransformPlugin::default())
         .insert_resource(AssetRegistrySettings::new(
