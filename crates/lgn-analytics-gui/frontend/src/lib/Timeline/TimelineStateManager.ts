@@ -61,6 +61,8 @@ export class TimelineStateManager {
     await this.fetchChildren(this.process);
     await this.fetchAsyncSpans(this.process);
     await this.fetchLods(pixelWidth);
+    await this.fetchAsyncStats(this.process);
+    await this.fetchAsyncSpans(this.process);
   }
 
   async fetchStreams(process: Process) {
@@ -197,19 +199,46 @@ export class TimelineStateManager {
     await Promise.all(promises);
   }
 
+  private async fetchAsyncStats(process: Process) {
+    if (import.meta.env.VITE_LEGION_ANALYTICS_ENABLE_ASYNC_SPANS != "true") {
+      return;
+    }
+    const state = get(this.state);
+    const promises: Promise<BlockAsyncEventsStatReply>[] = [];
+    for (const block of Object.values(state.blocks)) {
+      const streamId = block.blockDefinition.streamId;
+      const thread = state.threads[streamId];
+      if (thread.streamInfo.processId == process.processId) {
+        promises.push(
+          this.client!.fetch_block_async_stats({
+            process,
+            stream: thread.streamInfo,
+            blockId: block.blockDefinition.blockId,
+          })
+        );
+      }
+    }
+    const asyncData = state.processAsyncData[process.processId];
+    for (const p of Object.values(promises)) {
+      const reply = await p;
+      asyncData.minMs = Math.min(asyncData.minMs, reply.beginMs);
+      asyncData.maxMs = Math.max(asyncData.maxMs, reply.endMs);
+      asyncData.blockStats.push(reply);
+    }
+  }
+
   private async fetchBlocks(process: Process, stream: Stream) {
     if (!this.client) {
       log.error("no client in fetchBlocks");
       return;
     }
-    const blockStats: BlockAsyncEventsStatReply[] = [];
     const asyncSections: AsyncSection[] = [];
     const asyncData = {
       processId: process.processId,
       maxDepth: 0,
       minMs: Infinity,
       maxMs: -Infinity,
-      blockStats,
+      blockStats: [],
       sections: asyncSections,
     };
     const processOffset = processMsOffsetToRoot(this.process, process);
@@ -227,19 +256,6 @@ export class TimelineStateManager {
         s.eventCount += block.nbObjects;
         return s;
       });
-
-      if (import.meta.env.VITE_LEGION_ANALYTICS_ENABLE_ASYNC_SPANS == "true") {
-        const asyncStatsReply = await loadWrap(async () => {
-          return await this.client!.fetch_block_async_stats({
-            process,
-            stream,
-            blockId: block.blockId,
-          });
-        });
-        asyncData.minMs = Math.min(asyncData.minMs, asyncStatsReply.beginMs);
-        asyncData.maxMs = Math.max(asyncData.maxMs, asyncStatsReply.endMs);
-        blockStats.push(asyncStatsReply);
-      }
 
       this.state.update((s) => {
         s.threads[stream.streamId].block_ids.push(block.blockId);
