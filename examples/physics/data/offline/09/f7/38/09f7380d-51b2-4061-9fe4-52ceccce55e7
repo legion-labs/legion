@@ -7,5 +7,16 @@
     "(1c0ff9e497b0740f,9ffa97ef-3ae1-4859-aaeb-91f7268cad50)|1d9ddd99aad89045",
     "(1c0ff9e497b0740f,8859bf63-f187-4aa3-afd5-425130c7ba04)|1d9ddd99aad89045",
     "(1c0ff9e497b0740f,85701c5f-f9f8-4ca0-9111-8243c4ea2cd6)|1d9ddd99aad89045"
+  ],
+  "components": [
+    {
+      "PhysicsSceneSettings": {
+        "gravity": [
+          0.0,
+          -1.0,
+          0.0
+        ]
+      }
+    }
   ]
 }

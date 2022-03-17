@@ -1,5 +1,11 @@
 use lgn_math::prelude::{Quat, Vec3};
 
+#[component]
+struct PhysicsSceneSettings {
+    #[legion(default = Vec3::new(0.0, -9.81, 0.0))]
+    gravity: Vec3,
+}
+
 enum RigidActorType {
     Static,
     Dynamic,
