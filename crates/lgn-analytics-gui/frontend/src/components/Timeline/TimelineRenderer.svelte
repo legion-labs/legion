@@ -1,6 +1,6 @@
 <script lang="ts">
   import { TimelineStateManager } from "@/lib/Timeline/TimelineStateManager";
-  import { onMount } from "svelte";
+  import { onMount, setContext } from "svelte";
   import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { BarLoader } from "svelte-loading-spinners";
@@ -14,6 +14,9 @@
   import TimelineDebug from "./TimelineDebug.svelte";
   import TimelineProcess from "./TimelineProcess.svelte";
   import TimelineRange from "./TimelineRange.svelte";
+  import TimelineSearch from "./TimelineSearch.svelte";
+  import { writable } from "svelte/store";
+  import { TimelineContext } from "@/lib/Timeline/TimelineContext";
   export let processId: string;
 
   type PanState = {
@@ -28,6 +31,10 @@
   let panState: PanState | undefined = undefined;
   let canvasWidth = NaN;
   let div: HTMLElement;
+
+  setContext<TimelineContext>("ctx", {
+    search: writable<string>(),
+  });
 
   $: if (windowInnerWidth) {
     canvasWidth = windowInnerWidth - 230;
@@ -145,7 +152,7 @@
   {#if stateManager?.process && $stateStore.ready}
     <div class="pb-1 flex flex-row items-center justify-between">
       <TimelineDetails process={stateManager?.process} />
-      <TimelineDebug {canvasWidth} store={stateStore} />
+      <TimelineSearch />
     </div>
   {/if}
 
@@ -177,6 +184,7 @@
       process={stateManager.process}
       timeRange={$stateStore.currentSelection}
     />
+    <TimelineDebug {canvasWidth} store={stateStore} />
   </div>
 {/if}
 

@@ -4,8 +4,17 @@
   import { ProcessAsyncData } from "@/lib/Timeline/ProcessAsyncData";
   import { DrawSelectedRange } from "@/lib/time_range_selection";
   import { drawSpanTrack } from "@/lib/Timeline/SpanRender";
-  import { createEventDispatcher, onDestroy, onMount, tick } from "svelte";
+  import {
+    createEventDispatcher,
+    getContext,
+    onDestroy,
+    onMount,
+    tick,
+  } from "svelte";
   import { spanPixelHeight } from "@/lib/Timeline/TimelineValues";
+  import { TimelineContext } from "@/lib/Timeline/TimelineContext";
+  import { Unsubscriber } from "svelte/store";
+  import { debounced } from "@lgn/web-client/src/lib/store";
   export let rootStartTime: number;
   export let stateStore: TimelineStateStore;
   export let process: Process;
@@ -20,8 +29,13 @@
   let ctx: CanvasRenderingContext2D;
   let height: number;
   let intersectionObserver: IntersectionObserver;
+  let searchStore = debounced(getContext<TimelineContext>("ctx").search, 100);
+  let searchSubscription: Unsubscriber;
 
   onMount(() => {
+    searchSubscription = searchStore.subscribe((s) => {
+      draw();
+    });
     const childStartTime = Date.parse(process.startTime);
     processOffsetMs = childStartTime - rootStartTime;
 
@@ -41,6 +55,9 @@
   onDestroy(() => {
     if (intersectionObserver) {
       intersectionObserver.disconnect();
+    }
+    if (searchSubscription) {
+      searchSubscription();
     }
   });
 
@@ -137,7 +154,8 @@
           end,
           characterWidth,
           characterHeight,
-          msToPixelsFactor
+          msToPixelsFactor,
+          $searchStore
         );
       }
     });

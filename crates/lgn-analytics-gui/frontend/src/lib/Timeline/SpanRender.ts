@@ -1,9 +1,9 @@
-import binarySearch from "binary-search";
-import { spanPixelHeight } from "@/lib/Timeline/TimelineValues";
-import { SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
 import { formatExecutionTime } from "@/lib/format";
 import { TimelineCaptionItem } from "@/lib/Timeline/TimelineSpanCaptionItem";
+import { spanPixelHeight } from "@/lib/Timeline/TimelineValues";
+import { SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
 import { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
+import binarySearch from "binary-search";
 
 export function drawSpanTrack(
   ctx: CanvasRenderingContext2D,
@@ -16,7 +16,8 @@ export function drawSpanTrack(
   endViewRange: number,
   characterWidth: number,
   characterHeight: number,
-  msToPixelsFactor: number
+  msToPixelsFactor: number,
+  search: string
 ) {
   let firstSpan = binarySearch(
     track.spans,
@@ -63,19 +64,20 @@ export function drawSpanTrack(
     if (callWidth < 0.1) {
       continue;
     }
-    ctx.fillStyle = color;
     ctx.globalAlpha = span.alpha / 255;
-    ctx.fillRect(beginPixels, offsetY, callWidth, spanPixelHeight);
-    ctx.globalAlpha = 1.0;
-
     if (span.scopeHash != 0) {
+      const { name } = scopes[span.scopeHash];
+      ctx.fillStyle =
+        search && name.toLowerCase().includes(search.toLowerCase())
+          ? "#ffee59"
+          : color;
+      ctx.fillRect(beginPixels, offsetY, callWidth, spanPixelHeight);
       if (callWidth > characterWidth * 5) {
         // const nbChars = Math.floor(callWidth / characterWidth);
 
         ctx.fillStyle = "#000000";
 
         const extraHeight = 0.5 * (spanPixelHeight - characterHeight);
-        const { name } = scopes[span.scopeHash];
         // const caption = name + " " + formatExecutionTime(endSpan - beginSpan);
 
         // ctx.fillText(
@@ -94,7 +96,11 @@ export function drawSpanTrack(
           offsetY + characterHeight + extraHeight
         );
       }
+    } else {
+      ctx.fillStyle = color;
+      ctx.fillRect(beginPixels, offsetY, callWidth, spanPixelHeight);
     }
+    ctx.globalAlpha = 1.0;
   }
 }
 
