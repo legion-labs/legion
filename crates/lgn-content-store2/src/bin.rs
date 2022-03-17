@@ -36,9 +36,6 @@ enum Commands {
 
         #[clap(long, default_value_t = ByteSize::b(Chunker::DEFAULT_CHUNK_SIZE.try_into().unwrap()))]
         chunk_size: ByteSize,
-
-        #[clap(long, default_value_t = Chunker::DEFAULT_MAX_PARALLEL_UPLOADS)]
-        max_parallel_uploads: usize,
     },
 }
 
@@ -236,12 +233,10 @@ async fn main() -> anyhow::Result<()> {
         Commands::Put {
             file_path,
             chunk_size,
-            max_parallel_uploads,
         } => {
             let provider = provider.on_upload_callbacks(transfer_progress);
-            let chunker = Chunker::default()
-                .with_chunk_size(chunk_size.as_u64().try_into().unwrap())
-                .with_max_parallel_uploads(max_parallel_uploads);
+            let chunker =
+                Chunker::default().with_chunk_size(chunk_size.as_u64().try_into().unwrap());
 
             let copy = async move {
                 let buf = if let Some(file_path) = file_path {

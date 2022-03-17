@@ -6,6 +6,7 @@
 use std::{collections::BTreeSet, path::PathBuf};
 
 use clap::{Parser, Subcommand};
+use lgn_content_store2::Config;
 use lgn_source_control::*;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::*;
@@ -242,6 +243,7 @@ async fn main() -> anyhow::Result<()> {
             .with_local_sink_enabled(false)
             .build()
     };
+    let content_provider = Config::default().instanciate_provider().await?;
 
     span_scope!("lsc::main");
     let choice = if args.no_color {
@@ -298,7 +300,7 @@ async fn main() -> anyhow::Result<()> {
             let config =
                 WorkspaceConfig::new(index_url, WorkspaceRegistration::new_with_current_user());
 
-            Workspace::init(&workspace_directory, config)
+            Workspace::init(&workspace_directory, config, content_provider)
                 .await
                 .map_err(Into::into)
                 .map(|_| ())
@@ -307,7 +309,7 @@ async fn main() -> anyhow::Result<()> {
             let workspace = Workspace::find_in_current_directory().await?;
 
             workspace
-                .add_files(paths.iter().map(PathBuf::as_path))
+                .add_files(content_provider, paths.iter().map(PathBuf::as_path))
                 .await
                 .map_err(Into::into)
                 .map(|_| ())
@@ -379,7 +381,9 @@ async fn main() -> anyhow::Result<()> {
         Commands::Switch { branch_name } => {
             let workspace = Workspace::find_in_current_directory().await?;
 
-            let (branch, changes) = workspace.switch_branch(&branch_name).await?;
+            let (branch, changes) = workspace
+                .switch_branch(content_provider, &branch_name)
+                .await?;
 
             println!("Now on branch {}", branch);
 
@@ -421,7 +425,11 @@ async fn main() -> anyhow::Result<()> {
             let staging = Staging::from_bool(staged, unstaged);
 
             let reverted_files = workspace
-                .revert_files(paths.iter().map(PathBuf::as_path), staging)
+                .revert_files(
+                    content_provider,
+                    paths.iter().map(PathBuf::as_path),
+                    staging,
+                )
                 .await?;
 
             if reverted_files.is_empty() {
@@ -532,11 +540,11 @@ async fn main() -> anyhow::Result<()> {
             let workspace = Workspace::find_in_current_directory().await?;
 
             let (current_commit_id, changes) = if let Some(commit_id) = commit_id {
-                let changes = workspace.sync_to(commit_id).await?;
+                let changes = workspace.sync_to(content_provider, commit_id).await?;
 
                 (commit_id, changes)
             } else {
-                let (branch, changes) = workspace.sync().await?;
+                let (branch, changes) = workspace.sync(content_provider).await?;
 
                 (branch.head, changes)
             };

@@ -11,20 +11,19 @@ use std::sync::Arc;
 
 use clap::Parser;
 use lgn_source_control::{
-    new_index_backend, BlobStorageUrl, CanonicalPath, Commit, CommitId, Error, IndexBackend,
-    ListBranchesQuery, ListCommitsQuery, ListLocksQuery, Lock, Result, Tree,
+    new_index_backend, CanonicalPath, Commit, CommitId, Error, IndexBackend, ListBranchesQuery,
+    ListCommitsQuery, ListLocksQuery, Lock, Result, Tree,
 };
 use lgn_source_control_proto::source_control_server::{SourceControl, SourceControlServer};
 use lgn_source_control_proto::{
     CommitToBranchRequest, CommitToBranchResponse, CountLocksRequest, CountLocksResponse,
     CreateIndexRequest, CreateIndexResponse, DestroyIndexRequest, DestroyIndexResponse,
-    GetBlobStorageUrlRequest, GetBlobStorageUrlResponse, GetBranchRequest, GetBranchResponse,
-    GetLockRequest, GetLockResponse, GetTreeRequest, GetTreeResponse, IndexExistsRequest,
-    IndexExistsResponse, InsertBranchRequest, InsertBranchResponse, ListBranchesRequest,
-    ListBranchesResponse, ListCommitsRequest, ListCommitsResponse, ListLocksRequest,
-    ListLocksResponse, LockRequest, LockResponse, RegisterWorkspaceRequest,
-    RegisterWorkspaceResponse, SaveTreeRequest, SaveTreeResponse, UnlockRequest, UnlockResponse,
-    UpdateBranchRequest, UpdateBranchResponse,
+    GetBranchRequest, GetBranchResponse, GetLockRequest, GetLockResponse, GetTreeRequest,
+    GetTreeResponse, IndexExistsRequest, IndexExistsResponse, InsertBranchRequest,
+    InsertBranchResponse, ListBranchesRequest, ListBranchesResponse, ListCommitsRequest,
+    ListCommitsResponse, ListLocksRequest, ListLocksResponse, LockRequest, LockResponse,
+    RegisterWorkspaceRequest, RegisterWorkspaceResponse, SaveTreeRequest, SaveTreeResponse,
+    UnlockRequest, UnlockResponse, UpdateBranchRequest, UpdateBranchResponse,
 };
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::{debug, info, warn, LevelFilter};
@@ -36,7 +35,6 @@ struct Service {
     database_host: String,
     database_username: Option<String>,
     database_password: Option<String>,
-    blob_storage_url: BlobStorageUrl,
 }
 
 impl Service {
@@ -44,28 +42,23 @@ impl Service {
         database_host: String,
         database_username: Option<String>,
         database_password: Option<String>,
-        blob_storage_url: BlobStorageUrl,
     ) -> Self {
         Self {
             index_backends: Mutex::new(HashMap::new()),
             database_host,
             database_username,
             database_password,
-            blob_storage_url,
         }
     }
 
     fn new_index_backend_for_repository(&self, name: &str) -> Result<Box<dyn IndexBackend>> {
-        let index_url = Url::parse_with_params(
-            &format!(
-                "mysql://{}:{}@{}/{}",
-                self.database_username.as_deref().unwrap_or_default(),
-                self.database_password.as_deref().unwrap_or_default(),
-                self.database_host,
-                name,
-            ),
-            &[("blob_storage_url", self.blob_storage_url.to_string())],
-        )
+        let index_url = Url::parse(&format!(
+            "mysql://{}:{}@{}/{}",
+            self.database_username.as_deref().unwrap_or_default(),
+            self.database_password.as_deref().unwrap_or_default(),
+            self.database_host,
+            name,
+        ))
         .unwrap();
 
         new_index_backend(index_url.as_str()).map_err(Into::into)
@@ -111,7 +104,7 @@ impl SourceControl for Service {
 
         let index_backend = self.get_index_backend_for_repository(&name).await?;
 
-        let blob_storage_url = match index_backend.create_index().await {
+        match index_backend.create_index().await {
             Ok(blob_storage_url) => blob_storage_url,
             Err(Error::IndexAlreadyExists { url: _ }) => {
                 warn!(
@@ -119,7 +112,6 @@ impl SourceControl for Service {
                     origin, &name
                 );
                 return Ok(tonic::Response::new(CreateIndexResponse {
-                    blob_storage_url: "".to_string(),
                     already_exists: true,
                 }));
             }
@@ -129,7 +121,6 @@ impl SourceControl for Service {
         info!("{}: Created index `{}`", origin, &name);
 
         Ok(tonic::Response::new(CreateIndexResponse {
-            blob_storage_url: blob_storage_url.to_string(),
             already_exists: false,
         }))
     }
@@ -196,15 +187,6 @@ impl SourceControl for Service {
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
 
         Ok(tonic::Response::new(IndexExistsResponse { exists }))
-    }
-
-    async fn get_blob_storage_url(
-        &self,
-        _request: tonic::Request<GetBlobStorageUrlRequest>,
-    ) -> Result<tonic::Response<GetBlobStorageUrlResponse>, tonic::Status> {
-        Ok(tonic::Response::new(GetBlobStorageUrlResponse {
-            blob_storage_url: self.blob_storage_url.to_string(),
-        }))
     }
 
     async fn register_workspace(
@@ -521,10 +503,6 @@ struct Args {
     /// The SQL database password.
     #[clap(long)]
     database_password: Option<String>,
-
-    /// The blob storage URL.
-    #[clap(long)]
-    blob_storage_url: BlobStorageUrl,
 }
 
 #[allow(clippy::semicolon_if_nothing_returned)]
@@ -543,7 +521,6 @@ async fn main() -> anyhow::Result<()> {
         args.database_host,
         args.database_username,
         args.database_password,
-        args.blob_storage_url,
     ));
     let server = tonic::transport::Server::builder()
         .accept_http1(true)

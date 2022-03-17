@@ -103,6 +103,17 @@ impl Default for DefaultHasher256 {
     }
 }
 
+impl std::io::Write for DefaultHasher256 {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.0.update(buf);
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
 impl Hasher for DefaultHasher256 {
     fn finish(&self) -> u64 {
         panic!()

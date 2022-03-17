@@ -1,6 +1,5 @@
 use std::{collections::BTreeMap, io::Write};
 
-use itertools::Itertools;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
 
 use crate::{
@@ -13,12 +12,10 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct Chunker {
     chunk_size: usize,
-    max_parallel_uploads: usize,
 }
 
 impl Chunker {
     pub const DEFAULT_CHUNK_SIZE: usize = 1024 * 1024 * 32; // 32 MB
-    pub const DEFAULT_MAX_PARALLEL_UPLOADS: usize = 8;
 
     pub fn with_chunk_size(mut self, chunk_size: usize) -> Self {
         assert!(chunk_size > 0);
@@ -27,19 +24,8 @@ impl Chunker {
         self
     }
 
-    pub fn with_max_parallel_uploads(mut self, max_parallel_uploads: usize) -> Self {
-        assert!(max_parallel_uploads > 0);
-        self.max_parallel_uploads = max_parallel_uploads;
-
-        self
-    }
-
     pub fn chunk_size(&self) -> usize {
         self.chunk_size
-    }
-
-    pub fn max_parallel_uploads(&self) -> usize {
-        self.max_parallel_uploads
     }
 }
 
@@ -48,7 +34,6 @@ impl Default for Chunker {
     fn default() -> Self {
         Self {
             chunk_size: Self::DEFAULT_CHUNK_SIZE,
-            max_parallel_uploads: Self::DEFAULT_MAX_PARALLEL_UPLOADS,
         }
     }
 }
@@ -218,11 +203,9 @@ impl Chunker {
                 }
             });
 
-        for futures_chunk in &futures.chunks(self.max_parallel_uploads) {
-            futures::future::join_all(futures_chunk)
-                .await
-                .into_iter()
-                .collect::<Result<Vec<_>>>()?;
+        // Do not upload in parallel.
+        for f in futures {
+            f.await?;
         }
 
         let ids = chunks.into_iter().map(|(id, _)| id).collect::<Vec<_>>();
