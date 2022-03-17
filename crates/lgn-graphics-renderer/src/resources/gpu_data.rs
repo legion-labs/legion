@@ -521,7 +521,9 @@ fn upload_transform_data(
 
     for (entity, transform) in query.iter() {
         let mut world = cgen::cgen_type::GpuInstanceTransform::default();
-        world.set_world(transform.compute_matrix().into());
+        world.set_translation(transform.translation.into());
+        world.set_rotation(Vec4::from(transform.rotation).into());
+        world.set_scale(transform.scale.into());
 
         transform_manager.update_gpu_data(&entity, 0, &world, &mut updater);
     }

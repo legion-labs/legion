@@ -6,7 +6,7 @@ use lgn_graphics_api::{
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_math::{Mat4, Vec3, Vec4, Vec4Swizzles};
 
-use lgn_transform::prelude::GlobalTransform;
+use lgn_transform::{components::Transform, prelude::GlobalTransform};
 
 use crate::{
     cgen,
@@ -219,7 +219,15 @@ impl DebugRenderPass {
             let (model_meta_data, _ready) = model_manager.get_model_meta_data(visual_component);
             for mesh in &model_meta_data.meshes {
                 cmd_buffer.bind_pipeline(wire_pso_depth_pipeline);
+
                 render_aabb_for_mesh(mesh.mesh_id as u32, transform, cmd_buffer, mesh_manager);
+                render_bounding_sphere_for_mesh(
+                    mesh.mesh_id as u32,
+                    transform,
+                    cmd_buffer,
+                    mesh_manager,
+                );
+
                 cmd_buffer.bind_pipeline(solid_pso_depth_pipeline);
                 render_mesh(
                     mesh.mesh_id as u32,
@@ -390,7 +398,6 @@ impl DebugRenderPass {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 fn render_aabb_for_mesh(
     mesh_id: u32,
     transform: &GlobalTransform,
@@ -419,6 +426,38 @@ fn render_aabb_for_mesh(
     render_mesh(
         DefaultMeshType::WireframeCube as u32,
         &aabb_transform.compute_matrix(),
+        Vec4::new(1.0f32, 1.0f32, 0.0f32, 1.0f32),
+        cmd_buffer,
+        mesh_manager,
+    );
+}
+
+fn render_bounding_sphere_for_mesh(
+    mesh_id: u32,
+    transform: &GlobalTransform,
+    cmd_buffer: &mut HLCommandBuffer<'_>,
+    mesh_manager: &MeshManager,
+) {
+    let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh_id);
+    let sphere_local_pos = mesh_meta_data.bounding_sphere.truncate();
+    let sphere_global_pos = transform.mul_vec3(sphere_local_pos);
+
+    let bound_sphere_scale = 4.0
+        * mesh_meta_data.bounding_sphere.w
+        * transform
+            .scale
+            .x
+            .max(transform.scale.y.max(transform.scale.z));
+
+    let sphere_transform = Transform::from_translation(sphere_global_pos).with_scale(Vec3::new(
+        bound_sphere_scale,
+        bound_sphere_scale,
+        bound_sphere_scale,
+    ));
+
+    render_mesh(
+        DefaultMeshType::Sphere as u32,
+        &sphere_transform.compute_matrix(),
         Vec4::new(1.0f32, 1.0f32, 0.0f32, 1.0f32),
         cmd_buffer,
         mesh_manager,

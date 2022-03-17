@@ -2,6 +2,7 @@
 #include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_transform.hlsl"
 #include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_va_table.hlsl"
 
+#include "crate://lgn-graphics-renderer/gpu/include/common.hsh"
 #include "crate://lgn-graphics-renderer/gpu/include/mesh.hsh"
 
 float aabb_max_z(float4 aabb, float2 view_port, float debug_index) {
@@ -48,10 +49,10 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
             MeshDescription mesh_desc = LoadMeshDescription(static_buffer, addresses.mesh_description_va);
             GpuInstanceTransform transform = LoadGpuInstanceTransform(static_buffer, addresses.world_transform_va);
 
-            float4 sphere_world_pos = mul(transform.world, float4(mesh_desc.bounding_sphere.xyz, 1.0));
+            float4 sphere_world_pos = float4(transform_position(transform, mesh_desc.bounding_sphere.xyz), 1.0);
 
-            bool none_uniform_scaling = transform.world[0][0] != transform.world[1][1] || transform.world[1][1] != transform.world[2][2];
-            float bv_radius = mesh_desc.bounding_sphere.w * transform.world[0][0];
+            float max_scale = max(transform.scale.x, max(transform.scale.y, transform.scale.z));
+            float bv_radius = mesh_desc.bounding_sphere.w * max_scale;
 
             bool culled = false;
             for (uint i = 0; i < 6 && !culled; i++) {
@@ -62,7 +63,7 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
                 }
             }
 
-            if (push_constant.options.is_set(CullingOptions_OCCLUSION) && !culled && !none_uniform_scaling) {
+            if (push_constant.options.is_set(CullingOptions_OCCLUSION) && !culled) {
                 float4 center_pos_view = mul(view_data.view, sphere_world_pos);
 
                 float4 min_view = center_pos_view + float4(-bv_radius, -bv_radius, 0.0, 0.0);
