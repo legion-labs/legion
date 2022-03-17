@@ -38,9 +38,6 @@ pub struct ApiDef {
 
     /// Don't enable Window interop extensions
     pub windowing_mode: ExtensionMode,
-
-    /// Api Mode
-    pub video_mode: ExtensionMode,
 }
 
 impl Default for ApiDef {
@@ -54,7 +51,6 @@ impl Default for ApiDef {
             app_name: "Legion Application".to_string(),
             validation_mode,
             windowing_mode: ExtensionMode::Enabled,
-            video_mode: ExtensionMode::Disabled,
         }
     }
 }

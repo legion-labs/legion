@@ -76,11 +76,10 @@ impl VulkanDeviceContext {
     pub(crate) fn new(
         instance: &VkInstance,
         windowing_mode: ExtensionMode,
-        video_mode: ExtensionMode,
     ) -> GfxResult<(Self, DeviceInfo)> {
         // Pick a physical device
         let (vk_physical_device, physical_device_info) =
-            choose_physical_device(&instance.instance, windowing_mode, video_mode)?;
+            choose_physical_device(&instance.instance, windowing_mode)?;
 
         //TODO: Don't hardcode queue counts
         let queue_requirements = VkQueueRequirements::determine_required_queue_counts(
@@ -241,7 +240,6 @@ impl DeviceContext {
 fn choose_physical_device(
     instance: &ash::Instance,
     windowing_mode: ExtensionMode,
-    video_mode: ExtensionMode,
 ) -> GfxResult<(ash::vk::PhysicalDevice, PhysicalDeviceInfo)> {
     let physical_devices = unsafe { instance.enumerate_physical_devices()? };
 
@@ -255,8 +253,7 @@ fn choose_physical_device(
     let mut best_physical_device_score = -1;
     // let mut best_physical_device_queue_family_indices = None;
     for physical_device in physical_devices {
-        let result =
-            query_physical_device_info(instance, physical_device, windowing_mode, video_mode);
+        let result = query_physical_device_info(instance, physical_device, windowing_mode);
 
         if let Some(physical_device_info) = result? {
             if physical_device_info.score > best_physical_device_score {
@@ -287,7 +284,6 @@ fn query_physical_device_info(
     instance: &ash::Instance,
     device: ash::vk::PhysicalDevice,
     windowing_mode: ExtensionMode,
-    video_mode: ExtensionMode,
 ) -> GfxResult<Option<PhysicalDeviceInfo>> {
     let physical_device_type_priority = [
         PhysicalDeviceType::DiscreteGpu,
@@ -319,25 +315,6 @@ fn query_physical_device_info(
                 info!("Could not find the swapchain extension. Check that the proper drivers are installed.");
             } else {
                 warn!("Could not find the swapchain extension. Check that the proper drivers are installed.");
-                return Ok(None);
-            }
-        }
-    };
-    match video_mode {
-        ExtensionMode::Disabled => {}
-        ExtensionMode::EnabledIfAvailable | ExtensionMode::Enabled => {
-            let video_extensions = [
-                vk::KhrVideoQueueFn::name(),
-                vk::KhrVideoDecodeQueueFn::name(),
-                vk::KhrVideoEncodeQueueFn::name(),
-                khr::Synchronization2::name(),
-            ];
-            if check_extensions_availability(&video_extensions, &extensions) {
-                required_extensions.extend_from_slice(&video_extensions);
-            } else if video_mode == ExtensionMode::EnabledIfAvailable {
-                info!("Could not find the Vulkan video extensions. Check that the proper drivers are installed.");
-            } else {
-                warn!("Could not find the Vulkan video extensions. Check that the proper drivers are installed.");
                 return Ok(None);
             }
         }

@@ -111,11 +111,7 @@ impl Drop for DeviceContextInner {
 }
 
 impl DeviceContextInner {
-    pub fn new(
-        instance: &Instance<'_>,
-        windowing_mode: ExtensionMode,
-        video_mode: ExtensionMode,
-    ) -> GfxResult<Self> {
+    pub fn new(instance: &Instance<'_>, windowing_mode: ExtensionMode) -> GfxResult<Self> {
         #[cfg(debug_assertions)]
         #[cfg(feature = "track-device-contexts")]
         let all_contexts = {
@@ -126,7 +122,7 @@ impl DeviceContextInner {
         };
 
         let (backend_device_context, device_info) =
-            BackendDeviceContext::new(instance.backend_instance, windowing_mode, video_mode)?;
+            BackendDeviceContext::new(instance.backend_instance, windowing_mode)?;
 
         Ok(Self {
             device_info,
@@ -199,11 +195,7 @@ impl Drop for DeviceContext {
 
 impl DeviceContext {
     pub fn new(instance: &Instance<'_>, api_def: &ApiDef) -> GfxResult<Self> {
-        let inner = Arc::new(DeviceContextInner::new(
-            instance,
-            api_def.windowing_mode,
-            api_def.video_mode,
-        )?);
+        let inner = Arc::new(DeviceContextInner::new(instance, api_def.windowing_mode)?);
 
         Ok(Self {
             inner,
