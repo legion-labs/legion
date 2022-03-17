@@ -1,9 +1,39 @@
-export type LogLevel = "debug" | "error" | "info" | "trace" | "warn";
+import { Level } from "@lgn/proto-editor/dist/editor";
+
+export type Severity = "error" | "warn" | "info" | "trace" | "debug";
+
+export function severityFromLevel(level: Level): Severity | null {
+  switch (level) {
+    case Level.DEBUG: {
+      return "debug";
+    }
+
+    case Level.ERROR: {
+      return "error";
+    }
+
+    case Level.INFO: {
+      return "info";
+    }
+
+    case Level.TRACE: {
+      return "trace";
+    }
+
+    case Level.WARN: {
+      return "warn";
+    }
+
+    case Level.UNRECOGNIZED: {
+      return null;
+    }
+  }
+}
 
 export type Log = {
   id: number;
   message: string;
-  severity: LogLevel;
+  severity: Severity;
   target: string;
   datetime: Date;
 };

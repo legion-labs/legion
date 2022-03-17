@@ -17,7 +17,7 @@
   type Item = $$Generic<{ id: string }>;
 
   type $$Slots = {
-    name: { itemName: string };
+    name: { entry: Entry<Item | symbol> };
     icon: { entry: Entry<Item> };
   };
 
@@ -194,7 +194,7 @@
     {/if}
     <div class="name">
       {#if mode === "view"}
-        <slot name="name" itemName={entry.name} />
+        <slot name="name" {entry} />
       {:else}
         <form
           on:submit={renameFile}
@@ -223,11 +223,10 @@
           on:highlight
           on:nameEdited
           on:moved
-          let:itemName
           let:entry
         >
           <slot name="icon" slot="icon" {entry} />
-          <slot name="name" slot="name" {itemName} />
+          <slot name="name" slot="name" {entry} />
         </svelte:self>
       </div>
     {/each}

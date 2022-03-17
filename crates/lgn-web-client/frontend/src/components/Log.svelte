@@ -9,7 +9,12 @@
 </script>
 
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
+  import {
+    createEventDispatcher,
+    afterUpdate,
+    beforeUpdate,
+    onMount,
+  } from "svelte";
   import { derived, Writable, writable } from "svelte/store";
   import { FixedSizeList, styleString } from "svelte-window";
   import type {
@@ -41,8 +46,25 @@
 
   const scrollStatus = derived(
     [renderedItems, scrollInfo],
-    ([renderedItems, scrollInfo]) =>
-      renderedItems && scrollInfo ? { renderedItems, scrollInfo } : null
+    ([$renderedItems, $scrollInfo]) =>
+      $renderedItems && $scrollInfo
+        ? { renderedItems: $renderedItems, scrollInfo: $scrollInfo }
+        : null
+  );
+
+  const scrollPosition = derived(
+    scrollStatus,
+    ($scrollStatus): ScrollPosition | null => {
+      if (!$scrollStatus) {
+        return null;
+      }
+
+      return $scrollStatus.renderedItems.visibleStartIndex === 0
+        ? "start"
+        : $scrollStatus.renderedItems.visibleStopIndex === totalCount - 1
+        ? "end"
+        : "middle";
+    }
   );
 
   const requestedIndex = derived(
@@ -82,7 +104,6 @@
         index = currOverscanStopIndex;
       }
 
-      // Was staticlogs.has()
       if (index == null || logs.has(totalCount - index)) {
         return;
       }
@@ -108,23 +129,62 @@
 
   export let totalCount: number;
 
+  export let overscanCount = 2;
+
+  export let noDate = false;
+
   let rootHeight: number | null = null;
 
+  let headerHeight: number | null = null;
+
+  let fixedSizeList: FixedSizeList | null = null;
+
+  let autoScroll = true;
+
+  $: viewportHeight = (rootHeight || 0) - (headerHeight || 0);
+
   $: dispatch("requestedIndexChange", $requestedIndex);
+
+  onMount(() => {
+    scrollToBottom();
+  });
+
+  beforeUpdate(() => {
+    if (fixedSizeList) {
+      autoScroll =
+        !$scrollStatus?.scrollInfo.scrollUpdateWasRequested &&
+        $scrollStatus?.scrollInfo.scrollDirection === "backward"
+          ? false
+          : autoScroll ||
+            ($scrollStatus?.scrollInfo.scrollOffset || 0) +
+              viewportHeight +
+              elementHeight >=
+              elementHeight * totalCount;
+    }
+  });
+
+  afterUpdate(() => {
+    if (autoScroll) {
+      scrollToBottom();
+    }
+  });
+
+  export function scrollToBottom() {
+    fixedSizeList?.scrollToItem(totalCount);
+  }
 
   function onScroll(newScroll: ListOnScrollProps) {
     $scrollInfo = newScroll;
 
-    if ($scrollStatus?.renderedItems && $scrollStatus?.scrollInfo) {
+    if (
+      $scrollStatus?.renderedItems &&
+      $scrollStatus?.scrollInfo &&
+      $scrollPosition
+    ) {
       dispatch("scrollStatusChange", {
         firstRenderedIndex: $scrollStatus.renderedItems.visibleStartIndex,
         lastRenderedIndex: $scrollStatus.renderedItems.visibleStopIndex,
-        position:
-          $scrollStatus.renderedItems.visibleStartIndex === 0
-            ? "start"
-            : $scrollStatus.renderedItems.visibleStopIndex === totalCount - 1
-            ? "end"
-            : "middle",
+        position: $scrollPosition,
       });
     }
   }
@@ -135,46 +195,38 @@
 </script>
 
 <div class="root" bind:clientHeight={rootHeight}>
-  <div class="header">
-    <div class="header-column w-1/12">#</div>
-    <div class="header-column w-1/6">date</div>
-    <div class="header-column w-1/2">name</div>
-    <div class="header-column w-1/6">target</div>
+  <div class="header" bind:clientHeight={headerHeight}>
     <div class="header-column w-1/12">severity</div>
+    {#if !noDate}
+      <div class="header-column w-2/12">date</div>
+    {/if}
+    <div class="header-column w-3/12">target</div>
+    <div class="header-column w-6/12">message</div>
   </div>
   <div class="body">
     {#if totalCount > 0}
       <FixedSizeList
-        height={rootHeight}
+        bind:this={fixedSizeList}
+        height={viewportHeight}
         itemCount={totalCount}
         itemSize={elementHeight}
         width="100%"
-        overscanCount={20}
+        {overscanCount}
         {onScroll}
         {onItemsRendered}
         let:items
       >
         {#each items as item (item.key)}
-          {@const log = logs.get(totalCount - item.index)}
-          {@const date = log?.datetime?.toLocaleString()}
+          {@const log = logs.get(item.index)}
+          {@const date = noDate ? null : log?.datetime?.toLocaleString()}
 
           <div
-            class="log"
-            class:bg-gray-700={item.index % 2 === 0}
-            class:bg-gray-800={item.index % 2 === 1}
+            class="log bg-gray-800"
+            class:bg-opacity-30={item.index % 2 === 0}
+            class:bg-opacity-50={item.index % 2 === 1}
             style={styleString(item.style)}
           >
             {#if log}
-              <div class="w-1/12 log-column">
-                {log ? log.id : ""}
-              </div>
-              <div class="w-1/6 log-column">{date}</div>
-              <div class="w-1/2 log-column" title={log.message}>
-                {log.message}
-              </div>
-              <div class="w-1/6 log-column" title={log.target}>
-                {log.target}
-              </div>
               <div class="flex w-1/12 log-column justify-center">
                 <div
                   class="severity-pill"
@@ -187,12 +239,24 @@
                   <div class="severity-pill-text">{log.severity}</div>
                 </div>
               </div>
+              {#if !noDate}
+                <div class="w-2/12 log-column">{date}</div>
+              {/if}
+              <div class="w-3/12 log-column" title={log.target}>
+                {log.target}
+              </div>
+              <div class="w-6/12 log-column" title={log.message}>
+                {log.message}
+              </div>
             {:else}
               <div class="w-1/12 skeleton-column"><div class="skeleton" /></div>
-              <div class="w-1/6 skeleton-column"><div class="skeleton" /></div>
-              <div class="w-1/2 skeleton-column"><div class="skeleton" /></div>
-              <div class="w-1/6 skeleton-column"><div class="skeleton" /></div>
-              <div class="w-1/12 skeleton-column"><div class="skeleton" /></div>
+              {#if !noDate}
+                <div class="w-2/12 skeleton-column">
+                  <div class="skeleton" />
+                </div>
+              {/if}
+              <div class="w-3/12 skeleton-column"><div class="skeleton" /></div>
+              <div class="w-6/12 skeleton-column"><div class="skeleton" /></div>
             {/if}
           </div>
         {/each}
@@ -203,11 +267,11 @@
 
 <style lang="postcss">
   .root {
-    @apply h-[800px] w-full;
+    @apply h-full w-full;
   }
 
   .header {
-    @apply uppercase flex flex-row items-center h-8 w-full;
+    @apply uppercase flex flex-row items-center flex-shrink-0 flex-grow-0 h-8 w-full;
   }
 
   .header-column {
@@ -215,11 +279,11 @@
   }
 
   .body {
-    @apply flex flex-col;
+    @apply flex flex-col h-full flex-shrink-0 flex-grow-0;
   }
 
   .log {
-    @apply flex flex-row h-full px-2 items-center w-full hover:bg-gray-500 cursor-pointer;
+    @apply flex flex-row h-full px-2 items-center w-full hover:bg-gray-500;
   }
 
   .log-column {

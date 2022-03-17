@@ -9,6 +9,8 @@
   import log from "@lgn/web-client/src/lib/log";
   import { goto } from "$app/navigation";
   import "@/workers/editorWorker";
+  import { initApiClient } from "@/api";
+  import { initStreamLogs } from "@/stores/logs";
 
   const logLevel = "warn";
 
@@ -65,6 +67,8 @@
           // await initWasmLogger();
           // debug("Hello from the Legion editor");
 
+          initStreamLogs();
+
           contextMenu.register("resource", contextMenuEntries.resourceEntries);
           contextMenu.register(
             "resourcePanel",
@@ -95,7 +99,6 @@
 
 <script lang="ts">
   import "../assets/index.css";
-  import { initApiClient } from "@/api";
 </script>
 
 <slot />

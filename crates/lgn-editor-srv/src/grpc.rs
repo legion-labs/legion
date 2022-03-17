@@ -115,7 +115,10 @@ impl Editor for GRPCServer {
                 {
                     let _send_result = tx
                         .send(Ok(InitLogsStreamResponse {
-                            level: level as i32,
+                            // There must be a default, zero, value for enums but Level is 1-indexed
+                            // (https://developers.google.com/protocol-buffers/docs/proto3#enum)
+                            // So we simply decrement the level to get the proper value at runtime
+                            level: (level as i32 - 1),
                             message,
                             target,
                             time,

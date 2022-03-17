@@ -23,6 +23,7 @@
   import { components, extension, join } from "@/lib/path";
   import notifications from "@/stores/notifications";
   import type { Entries, Entry } from "@/lib/hierarchyTree";
+  import { isEntry } from "@/lib/hierarchyTree";
   import log from "@lgn/web-client/src/lib/log";
   import { createFilesStore } from "@lgn/web-client/src/stores/files";
   import { UploadStatus } from "@lgn/proto-editor/dist/source_control";
@@ -234,11 +235,10 @@
 
         if (newResource) {
           const entry = resourceEntries.find(
-            (entry) =>
-              typeof entry.item !== "symbol" && entry.item.id == newResource.id
+            (entry) => isEntry(entry) && entry.item.id == newResource.id
           );
 
-          if (!entry || typeof entry.item === "symbol") {
+          if (!entry || !isEntry(entry)) {
             return;
           }
 
@@ -406,7 +406,7 @@
       !removePromptId ||
       !resourceHierarchyTree ||
       !currentResourceDescriptionEntry ||
-      typeof currentResourceDescriptionEntry.item === "symbol"
+      !isEntry(currentResourceDescriptionEntry)
     ) {
       return;
     }
@@ -475,8 +475,13 @@
         <div class="w-full h-full" slot="icon" let:entry>
           <Icon class="w-full h-full" icon={iconFor(entry)} />
         </div>
-        <div class="item" slot="name" let:itemName>
-          {itemName}
+        <div
+          class="item"
+          slot="name"
+          let:entry
+          title={isEntry(entry) ? entry.item.path : null}
+        >
+          {entry.name}
         </div>
       </HierarchyTree>
     {/if}
