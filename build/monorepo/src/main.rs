@@ -119,13 +119,9 @@ enum Commands {
 }
 
 fn main() {
-    let telemetry_guard = lgn_telemetry_sink::TelemetryGuard::default()
-        .unwrap()
-        .with_log_level(if std::env::var_os("LEGION_TELEMETRY_URL").is_some() {
-            LevelFilter::Debug
-        } else {
-            LevelFilter::Warn
-        });
+    let telemetry_guard = lgn_telemetry_sink::TelemetryGuardBuilder::default()
+        .with_local_sink_max_level(LevelFilter::Warn)
+        .build();
 
     span_scope!("monorepo::main");
     let args = Cli::parse();

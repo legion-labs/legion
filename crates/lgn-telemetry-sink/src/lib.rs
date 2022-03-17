@@ -9,39 +9,47 @@ use std::any::TypeId;
 use std::sync::{Arc, Mutex, Weak};
 use std::{collections::HashMap, str::FromStr};
 
+mod composite_event_sink;
 mod grpc_event_sink;
-mod immediate_event_sink;
+mod local_event_sink;
 mod stream;
 #[cfg(feature = "tokio-tracing")]
 mod tokio_tracing_sink;
 
-use grpc_event_sink::GRPCEventSink;
-use immediate_event_sink::ImmediateEventSink;
+use lgn_tracing::event::BoxedEventSink;
+use lgn_tracing::info;
+use lgn_tracing::{
+    event::EventSink,
+    guards::{TracingSystemGuard, TracingThreadGuard},
+    LevelFilter,
+};
 
 pub type ProcessInfo = lgn_telemetry_proto::telemetry::Process;
 pub type StreamInfo = lgn_telemetry_proto::telemetry::Stream;
 pub type EncodedBlock = lgn_telemetry_proto::telemetry::Block;
 pub use lgn_telemetry_proto::telemetry::ContainerMetadata;
-use lgn_tracing::event::BoxedEventSink;
-use lgn_tracing::{
-    event::EventSink,
-    guards::{TracingSystemGuard, TracingThreadGuard},
-    set_max_level, LevelFilter,
-};
-use lgn_tracing::{info, set_max_lod, LodFilter};
 
-pub struct Config {
-    pub logs_buffer_size: usize,
-    pub metrics_buffer_size: usize,
-    pub threads_buffer_size: usize,
-    pub max_level: LevelFilter,
-    level_filters: HashMap<String, String>,
-    pub max_queue_size: isize,
-    pub enable_console_printer: bool,
-    pub enable_tokio_console_server: bool,
+use composite_event_sink::CompositeSink;
+use grpc_event_sink::GRPCEventSink;
+use local_event_sink::LocalEventSink;
+
+pub struct TelemetryGuardBuilder {
+    logs_buffer_size: usize,
+    metrics_buffer_size: usize,
+    threads_buffer_size: usize,
+    target_max_levels: HashMap<String, String>,
+    max_queue_size: isize,
+    max_level_override: Option<LevelFilter>,
+    interop_max_level_override: Option<LevelFilter>,
+    local_sink_enabled: bool,
+    local_sink_max_level: LevelFilter,
+    grpc_sink_max_level: LevelFilter,
+    extra_sinks: HashMap<TypeId, (LevelFilter, BoxedEventSink)>,
+    #[cfg(feature = "tokio-tracing")]
+    enable_tokio_console_server: bool,
 }
 
-impl Default for Config {
+impl Default for TelemetryGuardBuilder {
     fn default() -> Self {
         Self {
             logs_buffer_size: lgn_config::config_get_or!(
@@ -56,8 +64,9 @@ impl Default for Config {
                 "threads_buffer_size",
                 10 * 1024 * 1024
             ),
-            max_level: LevelFilter::from_str(
-                &(lgn_config::config_get!("logging.max_level_filter").unwrap_or_else(|| {
+            local_sink_enabled: lgn_config::config_get_or!("logging.local_sink_enabled", true),
+            local_sink_max_level: LevelFilter::from_str(
+                &(lgn_config::config_get!("logging.local_sink_max_level").unwrap_or_else(|| {
                     if cfg!(debug_assertions) {
                         "INFO".to_owned()
                     } else {
@@ -66,158 +75,61 @@ impl Default for Config {
                 }) as String),
             )
             .unwrap_or(LevelFilter::Off),
-            level_filters: lgn_config::config_get_or!("logging.level_filters", HashMap::new()),
+            grpc_sink_max_level: LevelFilter::from_str(
+                &(lgn_config::config_get!("logging.grpc_sink_max_level").unwrap_or_else(|| {
+                    if cfg!(debug_assertions) {
+                        "DEBUG".to_owned()
+                    } else {
+                        "INFO".to_owned()
+                    }
+                }) as String),
+            )
+            .unwrap_or(LevelFilter::Off),
+            target_max_levels: lgn_config::config_get_or!("logging.level_filters", HashMap::new()),
             max_queue_size: 16, //todo: change to nb_threads * 2
-            enable_console_printer: true,
+            max_level_override: None,
+            interop_max_level_override: None,
+            extra_sinks: HashMap::default(),
+
+            #[cfg(feature = "tokio-tracing")]
             enable_tokio_console_server: false,
         }
     }
 }
 
-fn alloc_telemetry_system(
-    config: Config,
-    custom_sinks: &mut Option<Vec<BoxedEventSink>>,
-) -> anyhow::Result<Arc<TracingSystemGuard>> {
-    lazy_static::lazy_static! {
-        static ref GLOBAL_WEAK_GUARD: Mutex<Weak<TracingSystemGuard>> = Mutex::new(Weak::new());
-    }
-    let mut weak_guard = GLOBAL_WEAK_GUARD.lock().unwrap();
-    let weak = &mut *weak_guard;
-
-    if let Some(arc) = weak.upgrade() {
-        return Ok(arc);
-    }
-
-    let mut sinks: Vec<BoxedEventSink> = match std::env::var("LEGION_TELEMETRY_URL") {
-        Ok(url) => vec![Box::new(GRPCEventSink::new(&url, config.max_queue_size))],
-        Err(_no_url_in_env) => {
-            if config.enable_console_printer {
-                vec![Box::new(ImmediateEventSink::new(
-                    config.level_filters,
-                    std::env::var("LGN_TRACE_FILE").ok(),
-                )?)]
-            } else {
-                Vec::new()
-            }
-        }
-    };
-
-    if let Some(custom_sinks) = custom_sinks {
-        sinks.append(custom_sinks);
-    }
-
-    let sink: BoxedEventSink = sinks.into();
-
-    let arc = Arc::<TracingSystemGuard>::new(TracingSystemGuard::new(
-        config.logs_buffer_size,
-        config.metrics_buffer_size,
-        config.threads_buffer_size,
-        sink.into(),
-    )?);
-    set_max_level(config.max_level);
-    set_max_lod(LodFilter::Max);
-    *weak = Arc::<TracingSystemGuard>::downgrade(&arc);
-    Ok(arc)
-}
-
-#[derive(Default)]
-pub struct TelemetryGuardBuilder {
-    config: Config,
-    level_filter: Option<LevelFilter>,
-    ctrcl_handling: bool,
-    sinks: HashMap<TypeId, BoxedEventSink>,
-}
-
 impl TelemetryGuardBuilder {
-    pub fn new(config: Config) -> Self {
-        Self {
-            config,
-            ..Self::default()
-        }
-    }
-
     // Only one sink per type ?
-    pub fn add_sink<Sink>(mut self, sink: Sink) -> Self
+    pub fn add_sink<Sink>(mut self, max_level: LevelFilter, sink: Sink) -> Self
     where
         Sink: EventSink + 'static,
     {
         let type_id = TypeId::of::<Sink>();
 
-        self.sinks.entry(type_id).or_insert_with(|| Box::new(sink));
+        self.extra_sinks
+            .entry(type_id)
+            .or_insert_with(|| (max_level, Box::new(sink)));
 
         self
     }
 
-    pub fn log_level(mut self, level_filter: LevelFilter) -> Self {
-        self.level_filter = Some(level_filter);
-
+    /// Programmatic override
+    pub fn with_max_level_override(mut self, level_filter: LevelFilter) -> Self {
+        self.max_level_override = Some(level_filter);
         self
     }
 
-    pub fn with_ctrlc_handling(mut self) -> Self {
-        self.ctrcl_handling = true;
-
+    pub fn with_local_sink_enabled(mut self, enabled: bool) -> Self {
+        self.local_sink_enabled = enabled;
         self
     }
 
-    pub fn build(self) -> anyhow::Result<TelemetryGuard> {
-        #[cfg(feature = "tokio-tracing")]
-        tokio_tracing_sink::TelemetryLayer::setup(self.config.enable_tokio_console_server);
-
-        // order here is important
-        let mut telemetry_guard = TelemetryGuard {
-            _guard: alloc_telemetry_system(
-                self.config,
-                &mut Some(
-                    self.sinks
-                        .into_iter()
-                        .map(|(_type_id, sink)| sink)
-                        .collect(),
-                ),
-            )?,
-            _thread_guard: TracingThreadGuard::new(),
-        };
-
-        if self.ctrcl_handling {
-            telemetry_guard = telemetry_guard.with_ctrlc_handling();
-        }
-
-        if let Some(level_filter) = self.level_filter {
-            telemetry_guard = telemetry_guard.with_log_level(level_filter);
-        }
-
-        Ok(telemetry_guard)
-    }
-}
-
-pub struct TelemetryGuard {
-    // note we rely here on the drop order being the same as the declaration order
-    _thread_guard: TracingThreadGuard,
-    _guard: Arc<TracingSystemGuard>,
-}
-
-impl TelemetryGuard {
-    pub fn default() -> anyhow::Result<Self> {
-        Self::new(Config::default())
+    pub fn with_interop_max_level_override(mut self, level_filter: LevelFilter) -> Self {
+        self.interop_max_level_override = Some(level_filter);
+        self
     }
 
-    //todo: refac enable_console_printer, put in config?
-    pub fn new(config: Config) -> anyhow::Result<Self> {
-        #[cfg(feature = "tokio-tracing")]
-        tokio_tracing_sink::TelemetryLayer::setup(config.enable_tokio_console_server);
-
-        // order here is important
-        Ok(Self {
-            _guard: alloc_telemetry_system(config, &mut None)?,
-            _thread_guard: TracingThreadGuard::new(),
-        })
-    }
-
-    pub fn with_log_level(self, level_filter: LevelFilter) -> Self {
-        set_max_level(level_filter);
-        log::set_max_level(
-            immediate_event_sink::tracing_level_filter_to_log_level_filter(level_filter),
-        );
+    pub fn with_local_sink_max_level(mut self, level_filter: LevelFilter) -> Self {
+        self.local_sink_max_level = level_filter;
         self
     }
 
@@ -229,5 +141,84 @@ impl TelemetryGuard {
         })
         .expect("Error setting Ctrl+C handler");
         self
+    }
+
+    pub fn build(self) -> anyhow::Result<TelemetryGuard> {
+        #[cfg(feature = "tokio-tracing")]
+        tokio_tracing_sink::TelemetryLayer::setup(self.enable_tokio_console_server);
+
+        let target_max_level: Vec<_> = self
+            .target_max_levels
+            .into_iter()
+            .filter(|(key, _val)| key != "MAX_LEVEL")
+            .map(|(key, val)| {
+                (
+                    key,
+                    LevelFilter::from_str(val.as_str()).unwrap_or(LevelFilter::Off),
+                )
+            })
+            .collect();
+
+        let guard = {
+            lazy_static::lazy_static! {
+                static ref GLOBAL_WEAK_GUARD: Mutex<Weak<TracingSystemGuard>> = Mutex::new(Weak::new());
+            }
+            let mut weak_guard = GLOBAL_WEAK_GUARD.lock().unwrap();
+            let weak = &mut *weak_guard;
+
+            if let Some(arc) = weak.upgrade() {
+                arc
+            } else {
+                let mut sinks: Vec<(LevelFilter, BoxedEventSink)> = vec![];
+                if let Ok(url) = std::env::var("LEGION_TELEMETRY_URL") {
+                    sinks.push((
+                        self.grpc_sink_max_level,
+                        Box::new(GRPCEventSink::new(&url, self.max_queue_size)),
+                    ));
+                }
+                if self.local_sink_enabled {
+                    sinks.push((self.local_sink_max_level, Box::new(LocalEventSink::new())));
+                }
+                let mut extra_sinks = self
+                    .extra_sinks
+                    .into_iter()
+                    .map(|(_type_id, sink)| sink)
+                    .collect();
+                sinks.append(&mut extra_sinks);
+
+                let sink: BoxedEventSink = Box::new(CompositeSink::new(
+                    sinks,
+                    target_max_level,
+                    self.max_level_override,
+                    self.interop_max_level_override,
+                ));
+
+                let arc = Arc::<TracingSystemGuard>::new(TracingSystemGuard::new(
+                    self.logs_buffer_size,
+                    self.metrics_buffer_size,
+                    self.threads_buffer_size,
+                    sink.into(),
+                )?);
+                *weak = Arc::<TracingSystemGuard>::downgrade(&arc);
+                arc
+            }
+        };
+        // order here is important
+        Ok(TelemetryGuard {
+            _guard: guard,
+            _thread_guard: TracingThreadGuard::new(),
+        })
+    }
+}
+
+pub struct TelemetryGuard {
+    // note we rely here on the drop order being the same as the declaration order
+    _thread_guard: TracingThreadGuard,
+    _guard: Arc<TracingSystemGuard>,
+}
+
+impl TelemetryGuard {
+    pub fn default() -> anyhow::Result<Self> {
+        TelemetryGuardBuilder::default().build()
     }
 }

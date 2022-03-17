@@ -22,7 +22,6 @@ use lgn_tracing::{
     logs::{LogBlock, LogMetadata, LogStream},
     metrics::{MetricsBlock, MetricsStream},
     spans::{ThreadBlock, ThreadStream},
-    Level,
 };
 
 use crate::stream::StreamBlock;
@@ -79,6 +78,7 @@ fn connect_grpc_client(uri: Uri) -> AuthClientType {
 
 pub struct GRPCEventSink {
     thread: Option<std::thread::JoinHandle<()>>,
+    // TODO: simplify this?
     sender: Mutex<Option<std::sync::mpsc::Sender<SinkEvent>>>,
     queue_size: Arc<AtomicIsize>,
 }
@@ -220,6 +220,7 @@ impl GRPCEventSink {
         queue_size: Arc<AtomicIsize>,
         max_queue_size: isize,
     ) {
+        // TODO: add runtime as configuration option (or create one only if global don't exist)
         let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
         tokio_runtime.block_on(Self::thread_proc_impl(
             addr,
@@ -251,11 +252,12 @@ impl EventSink for GRPCEventSink {
         // nothing to do
     }
 
-    fn on_log_enabled(&self, _: Level, _: &str) -> bool {
+    fn on_log_enabled(&self, _metadata: &LogMetadata) -> bool {
+        // If all previous filter succeeds this sink always agrees
         true
     }
 
-    fn on_log(&self, _desc: &LogMetadata, _time: i64, _args: fmt::Arguments<'_>) {}
+    fn on_log(&self, _metadata: &LogMetadata, _time: i64, _args: fmt::Arguments<'_>) {}
 
     fn on_init_log_stream(&self, log_stream: &LogStream) {
         self.send(SinkEvent::InitStream(get_stream_info(log_stream)));

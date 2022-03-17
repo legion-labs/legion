@@ -8,7 +8,7 @@ use lgn_cli_utils::termination_handler::AsyncTerminationHandler;
 use lgn_content_store2::{AwsDynamoDbProvider, AwsS3Provider, GrpcService};
 use lgn_content_store_proto::content_store_server::ContentStoreServer;
 use lgn_online::authentication::{jwt::RequestAuthorizer, UserInfo};
-use lgn_telemetry_sink::TelemetryGuard;
+use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::prelude::*;
 use std::{net::SocketAddr, time::Duration};
 use tonic::transport::Server;
@@ -47,13 +47,13 @@ struct Args {
 async fn main() -> anyhow::Result<()> {
     let args: Args = Args::parse();
 
-    let _telemetry_guard = TelemetryGuard::default()
-        .unwrap()
-        .with_log_level(if args.debug {
+    let _telemetry_guard = TelemetryGuardBuilder::default()
+        .with_local_sink_max_level(if args.debug {
             LevelFilter::Debug
         } else {
             LevelFilter::Info
-        });
+        })
+        .build();
 
     span_scope!("lgn-content-store-srv::main");
 

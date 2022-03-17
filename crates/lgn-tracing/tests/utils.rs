@@ -45,8 +45,8 @@ impl EventSink for DebugEventSink {
         *self.0.lock().unwrap() = Some(State::Shutdown);
     }
 
-    fn on_log_enabled(&self, level: Level, _: &str) -> bool {
-        *self.0.lock().unwrap() = Some(State::LogEnabled(level));
+    fn on_log_enabled(&self, metadata: &LogMetadata) -> bool {
+        *self.0.lock().unwrap() = Some(State::LogEnabled(metadata.level));
         true
     }
 
@@ -114,7 +114,16 @@ impl log::Log for LogDispatch {
             log::Level::Debug => Level::Debug,
             log::Level::Trace => Level::Trace,
         };
-        log_enabled(metadata.target(), level)
+        let log_metadata = LogMetadata {
+            level,
+            level_filter: AtomicU32::new(0),
+            fmt_str: "",
+            target: "unknown",
+            module_path: "unknown",
+            file: "unknown",
+            line: 0,
+        };
+        log_enabled(&log_metadata)
     }
 
     fn log(&self, record: &log::Record<'_>) {
@@ -125,7 +134,7 @@ impl log::Log for LogDispatch {
             log::Level::Debug => Level::Debug,
             log::Level::Trace => Level::Trace,
         };
-        let log_desc = LogMetadata {
+        let log_metadata = LogMetadata {
             level,
             level_filter: AtomicU32::new(0),
             fmt_str: record.args().as_str().unwrap_or(""),
@@ -134,7 +143,7 @@ impl log::Log for LogDispatch {
             file: record.file_static().unwrap_or("unknown"),
             line: record.line().unwrap_or(0),
         };
-        log_interop(&log_desc, *record.args());
+        log_interop(&log_metadata, *record.args());
     }
     fn flush(&self) {
         flush_log_buffer();

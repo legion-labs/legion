@@ -7,7 +7,7 @@ use std::{collections::BTreeSet, path::PathBuf};
 
 use clap::{Parser, Subcommand};
 use lgn_source_control::*;
-use lgn_telemetry_sink::{Config, TelemetryGuard};
+use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::*;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
@@ -234,15 +234,13 @@ fn red() -> ColorSpec {
 async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
     let _telemetry_guard = if args.debug {
-        TelemetryGuard::default()
-            .unwrap()
-            .with_log_level(LevelFilter::Debug)
+        TelemetryGuardBuilder::default()
+            .with_local_sink_max_level(LevelFilter::Debug)
+            .build()
     } else {
-        let mut config = Config::default();
-        config.enable_console_printer = false;
-        TelemetryGuard::new(config)
-            .unwrap()
-            .with_log_level(LevelFilter::Info)
+        TelemetryGuardBuilder::default()
+            .with_local_sink_enabled(false)
+            .build()
     };
 
     span_scope!("lsc::main");

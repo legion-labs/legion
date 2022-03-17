@@ -134,7 +134,7 @@ macro_rules! log {
     (target: $target:expr, $lvl:expr, $($arg:tt)+) => ({
         static LOG_DESC: $crate::logs::LogMetadata = $crate::logs::LogMetadata {
             level: $lvl,
-            level_filter: std::sync::atomic::AtomicU32::new(0),
+            level_filter: std::sync::atomic::AtomicU32::new($crate::logs::FILTER_LEVEL_UNSET_VALUE),
             fmt_str: $crate::__first_arg!($($arg)+),
             target: $target,
             module_path: $crate::__log_module_path!(),
@@ -281,7 +281,7 @@ macro_rules! trace {
 ///
 /// # Examples
 ///
-/// ```edition2018
+/// ```
 /// use lgn_tracing::Level::Debug;
 /// use lgn_tracing::{debug, log_enabled};
 ///
@@ -303,9 +303,18 @@ macro_rules! trace {
 macro_rules! log_enabled {
     (target: $target:expr, $lvl:expr) => {{
         let lvl = $lvl;
+        static LOG_ENABLED_METADATA: $crate::logs::LogMetadata = $crate::logs::LogMetadata {
+            level: $lvl,
+            level_filter: std::sync::atomic::AtomicU32::new($crate::logs::FILTER_LEVEL_UNSET_VALUE),
+            fmt_str: "",
+            target: $target,
+            module_path: $crate::__log_module_path!(),
+            file: $crate::__log_file!(),
+            line: $crate::__log_line!(),
+        };
         lvl <= $crate::STATIC_MAX_LEVEL
             && lvl <= $crate::max_level()
-            && $crate::dispatch::log_enabled($target, $lvl)
+            && $crate::dispatch::log_enabled(&LOG_ENABLED_METADATA)
     }};
     ($lvl:expr) => {
         $crate::log_enabled!(target: $crate::__log_module_path!(), $lvl)

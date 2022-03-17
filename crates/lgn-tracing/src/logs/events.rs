@@ -15,6 +15,18 @@ pub struct LogMetadata {
     pub line: u32,
 }
 
+pub const FILTER_LEVEL_UNSET_VALUE: u32 = 0xF;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FilterState {
+    /// The filter needs to be updated.
+    Outdated,
+    /// The filter is up to date but no filter is set.
+    NotSet,
+    /// The filter is up to date a filter level is set.
+    Set(LevelFilter),
+}
+
 impl LogMetadata {
     /// This is a way to efficiency implement finer grade filtering by amortizing its
     /// cost. An atomic is used to store a level filter and a 16 bit generation.
@@ -33,19 +45,23 @@ impl LogMetadata {
     /// }
     /// ```
     ///
-    pub fn level_filter(&self, generation: u16) -> Option<LevelFilter> {
+    pub fn level_filter(&self, generation: u16) -> FilterState {
         let level_filter = self.level_filter.load(Ordering::Relaxed);
         if generation > ((level_filter >> 16) as u16) {
-            None
+            FilterState::Outdated
         } else {
-            Some(LevelFilter::from_u32(level_filter & 0xF).unwrap_or(LevelFilter::Off))
+            LevelFilter::from_u32(level_filter & FILTER_LEVEL_UNSET_VALUE)
+                .map_or(FilterState::NotSet, |level_filter| {
+                    FilterState::Set(level_filter)
+                })
         }
     }
 
     /// Sets the level filter if the generation is greater than the current generation.
     ///
-    pub fn set_level_filter(&self, level_filter: LevelFilter, generation: u16) {
-        let new = level_filter as u32 | u32::from(generation) << 16;
+    pub fn set_level_filter(&self, generation: u16, level_filter: Option<LevelFilter>) {
+        let new = level_filter.map_or(FILTER_LEVEL_UNSET_VALUE, |filter_level| filter_level as u32)
+            | u32::from(generation) << 16;
         let mut current = self.level_filter.load(Ordering::Relaxed);
         if generation <= (current >> 16) as u16 {
             // value was updated form another thread with a newer generation
@@ -223,29 +239,58 @@ impl InProcSerialize for LogMetadataRecord {}
 mod test {
     use std::thread;
 
-    use crate::{logs::LogMetadata, Level, LevelFilter};
+    use crate::{
+        logs::{FilterState, LogMetadata, FILTER_LEVEL_UNSET_VALUE},
+        Level, LevelFilter,
+    };
 
     #[test]
     fn test_filter_levels() {
         static METADATA: LogMetadata = LogMetadata {
             level: Level::Trace,
-            level_filter: std::sync::atomic::AtomicU32::new(0),
+            level_filter: std::sync::atomic::AtomicU32::new(FILTER_LEVEL_UNSET_VALUE),
             fmt_str: "$crate::__first_arg!($($arg)+)",
             target: module_path!(),
             module_path: module_path!(),
             file: file!(),
             line: line!(),
         };
-        assert_eq!(METADATA.level_filter(1), None);
-        METADATA.set_level_filter(LevelFilter::Trace, 1);
-        assert_eq!(METADATA.level_filter(1), Some(LevelFilter::Trace));
-        METADATA.set_level_filter(LevelFilter::Debug, 1);
-        assert_eq!(METADATA.level_filter(1), Some(LevelFilter::Trace));
-        METADATA.set_level_filter(LevelFilter::Debug, 2);
-        assert_eq!(METADATA.level_filter(1), Some(LevelFilter::Debug));
-        assert_eq!(METADATA.level_filter(2), Some(LevelFilter::Debug));
-        METADATA.set_level_filter(LevelFilter::Info, 1);
-        assert_eq!(METADATA.level_filter(1), Some(LevelFilter::Debug));
+        assert_eq!(METADATA.level_filter(1), FilterState::Outdated);
+        METADATA.set_level_filter(1, Some(LevelFilter::Trace));
+        assert_eq!(
+            METADATA.level_filter(1),
+            FilterState::Set(LevelFilter::Trace)
+        );
+        METADATA.set_level_filter(1, Some(LevelFilter::Debug));
+        assert_eq!(
+            METADATA.level_filter(1),
+            FilterState::Set(LevelFilter::Trace)
+        );
+        METADATA.set_level_filter(1, None);
+        assert_eq!(
+            METADATA.level_filter(1),
+            FilterState::Set(LevelFilter::Trace)
+        );
+        METADATA.set_level_filter(2, Some(LevelFilter::Debug));
+        assert_eq!(
+            METADATA.level_filter(1),
+            FilterState::Set(LevelFilter::Debug)
+        );
+        assert_eq!(
+            METADATA.level_filter(2),
+            FilterState::Set(LevelFilter::Debug)
+        );
+        METADATA.set_level_filter(1, Some(LevelFilter::Info));
+        assert_eq!(
+            METADATA.level_filter(2),
+            FilterState::Set(LevelFilter::Debug)
+        );
+        assert_eq!(METADATA.level_filter(3), FilterState::Outdated);
+        METADATA.set_level_filter(3, None);
+        assert_eq!(METADATA.level_filter(3), FilterState::NotSet);
+        METADATA.set_level_filter(3, Some(LevelFilter::Warn));
+        assert_eq!(METADATA.level_filter(3), FilterState::NotSet);
+
         let mut threads = Vec::new();
         for _ in 0..1 {
             threads.push(thread::spawn(move || {
@@ -260,14 +305,17 @@ mod test {
                         _ => unreachable!(),
                     };
 
-                    METADATA.set_level_filter(filter, i);
+                    METADATA.set_level_filter(i, Some(filter));
                 }
             }));
         }
         for t in threads {
             t.join().unwrap();
         }
-        assert_eq!(METADATA.level_filter(1023), Some(LevelFilter::Info));
-        assert_eq!(METADATA.level_filter(1024), None);
+        assert_eq!(
+            METADATA.level_filter(1023),
+            FilterState::Set(LevelFilter::Info)
+        );
+        assert_eq!(METADATA.level_filter(1024), FilterState::Outdated);
     }
 }

@@ -26,7 +26,7 @@ use lgn_source_control_proto::{
     RegisterWorkspaceResponse, SaveTreeRequest, SaveTreeResponse, UnlockRequest, UnlockResponse,
     UpdateBranchRequest, UpdateBranchResponse,
 };
-use lgn_telemetry_sink::TelemetryGuard;
+use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::{debug, info, warn, LevelFilter};
 use tokio::sync::Mutex;
 use url::Url;
@@ -530,14 +530,13 @@ struct Args {
 #[allow(clippy::semicolon_if_nothing_returned)]
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let telemetry_guard = TelemetryGuard::default().unwrap();
-
     let args = Args::parse();
-
     let _telemetry_guard = if args.debug {
-        telemetry_guard.with_log_level(LevelFilter::Debug)
+        TelemetryGuardBuilder::default()
+            .with_local_sink_max_level(LevelFilter::Debug)
+            .build()
     } else {
-        telemetry_guard
+        TelemetryGuardBuilder::default().build()
     };
 
     let service = SourceControlServer::new(Service::new(

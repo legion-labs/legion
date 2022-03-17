@@ -20,7 +20,7 @@ use lgn_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
 use lgn_scripting::ScriptingPlugin;
 use lgn_streamer::StreamerPlugin;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
-use lgn_tracing::{debug, warn};
+use lgn_tracing::{debug, warn, LevelFilter};
 use lgn_transform::TransformPlugin;
 use sample_data::SampleDataPlugin;
 use tokio::sync::mpsc;
@@ -113,13 +113,9 @@ fn main() {
     let game_manifest_path = args.manifest.map_or_else(PathBuf::new, PathBuf::from);
     let assets_to_load = Vec::<ResourceTypeAndId>::new();
 
-    let mut telemetry_config = lgn_telemetry_sink::Config::default();
-    telemetry_config.enable_tokio_console_server = true;
-
     let (trace_events_sender, trace_events_receiver) = mpsc::unbounded_channel();
-
-    let telemetry_guard = TelemetryGuardBuilder::new(telemetry_config)
-        .add_sink(ChannelSink::new(trace_events_sender))
+    let telemetry_guard = TelemetryGuardBuilder::default()
+        .add_sink(LevelFilter::Info, ChannelSink::new(trace_events_sender))
         .build()
         .expect("telemetry guard should be initialized once");
 

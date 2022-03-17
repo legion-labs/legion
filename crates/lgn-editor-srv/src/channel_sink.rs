@@ -56,16 +56,16 @@ impl EventSink for ChannelSink {
         self.send(TraceEvent::Shutdown);
     }
 
-    fn on_log_enabled(&self, _level: Level, _target: &str) -> bool {
-        // TODO: Allow filtering by level/target
+    fn on_log_enabled(&self, _metadata: &LogMetadata) -> bool {
+        // TODO: Do editor specific filtering here
         true
     }
 
-    fn on_log(&self, desc: &LogMetadata, time: i64, args: fmt::Arguments<'_>) {
+    fn on_log(&self, metadata: &LogMetadata, time: i64, args: fmt::Arguments<'_>) {
         self.send(TraceEvent::Message {
-            level: desc.level,
+            level: metadata.level,
             time,
-            target: desc.target.to_string(),
+            target: metadata.target.to_string(),
             message: format!("{}", args),
         });
     }

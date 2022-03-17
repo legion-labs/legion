@@ -53,9 +53,9 @@ struct Args {
 async fn main() {
     let args = Args::parse();
 
-    let _telemetry_guard = lgn_telemetry_sink::TelemetryGuard::default()
-        .unwrap()
-        .with_log_level(LevelFilter::Info);
+    let _telemetry_guard = lgn_telemetry_sink::TelemetryGuardBuilder::default()
+        .with_local_sink_max_level(LevelFilter::Info)
+        .build();
 
     let project_dir = PathBuf::from("examples/pong/data");
 

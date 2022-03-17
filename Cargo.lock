@@ -1502,9 +1502,9 @@ checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
 
 [[package]]
 name = "colored"
-version = "1.9.3"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4ffc801dacf156c5854b9df4f425a626539c3a6ef7893cc0c5084a23f0b6c59"
+checksum = "b3616f750b84d8f0de8a58bda93e08e2a81ad3f523089b05f1dffecab48c6cbd"
 dependencies = [
  "atty",
  "lazy_static",
@@ -5673,7 +5673,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "atty",
  "chrono",
+ "colored",
  "console-subscriber",
  "ctrlc",
  "json",
@@ -5686,12 +5688,13 @@ dependencies = [
  "log",
  "once_cell",
  "prost",
- "simple_logger",
+ "time 0.3.7",
  "tokio",
  "tonic",
  "tracing",
  "tracing-subscriber",
  "uuid",
+ "winapi 0.3.9",
 ]
 
 [[package]]
@@ -9121,19 +9124,6 @@ dependencies = [
  "num-traits",
  "thiserror",
  "time 0.3.7",
-]
-
-[[package]]
-name = "simple_logger"
-version = "1.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45b60258a35dc3cb8a16890b8fd6723349bfa458d7960e25e633f1b1c19d7b5e"
-dependencies = [
- "atty",
- "colored",
- "log",
- "time 0.3.7",
- "winapi 0.3.9",
 ]
 
 [[package]]

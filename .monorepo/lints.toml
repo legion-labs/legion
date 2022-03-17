@@ -37,6 +37,7 @@ exceptions = ["lgn-telemetry-sink"]
 name = "winapi"
 version = "*"
 reason = "use `windows` instead, it's Microsoft supported"
+exceptions = ["lgn-telemetry-sink"]
 
 # crate attributes lints
 [crate-attributes]

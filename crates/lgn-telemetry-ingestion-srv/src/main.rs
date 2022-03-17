@@ -21,8 +21,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use lgn_telemetry_proto::ingestion::telemetry_ingestion_server::TelemetryIngestionServer;
-use lgn_telemetry_sink::TelemetryGuard;
-use lgn_tracing::LevelFilter;
+use lgn_telemetry_sink::TelemetryGuardBuilder;
 use local_data_lake::connect_to_local_data_lake;
 use remote_data_lake::connect_to_remote_data_lake;
 use std::net::SocketAddr;
@@ -48,10 +47,9 @@ enum DataLakeSpec {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let _telemetry_guard = TelemetryGuard::default()
-        .unwrap()
-        .with_log_level(LevelFilter::Info)
-        .with_ctrlc_handling();
+    let _telemetry_guard = TelemetryGuardBuilder::default()
+        .with_ctrlc_handling()
+        .build();
     let args = Cli::parse();
     let service = match args.spec {
         DataLakeSpec::Local { path } => connect_to_local_data_lake(path).await?,

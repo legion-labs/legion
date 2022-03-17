@@ -70,18 +70,19 @@ struct SubApp {
 
 impl Default for App {
     fn default() -> Self {
-        Self::new(lgn_telemetry_sink::Config::default())
+        Self::new(lgn_telemetry_sink::TelemetryGuardBuilder::default())
     }
 }
 
 impl App {
     /// Creates a new [`App`] with some default structure to enable core engine features.
     /// This is the preferred constructor for most use cases.
-    pub fn new(telemetry_config: lgn_telemetry_sink::Config) -> Self {
+    pub fn new(telemetry_builder: lgn_telemetry_sink::TelemetryGuardBuilder) -> Self {
         let mut app = Self::empty();
 
         app.telemetry_guard = Some(
-            TelemetryGuard::new(telemetry_config)
+            telemetry_builder
+                .build()
                 .expect("telemetry guard should be initialized once"),
         );
 

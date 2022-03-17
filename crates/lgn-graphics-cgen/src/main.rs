@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::Parser;
 use lgn_graphics_cgen::run::{run, CGenBuildResult, CGenContextBuilder};
-use lgn_telemetry_sink::TelemetryGuard;
+use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::LevelFilter;
 
 #[derive(Parser, Debug)]
@@ -58,7 +58,9 @@ fn main_internal() -> Result<CGenBuildResult> {
         LevelFilter::Warn
     };
 
-    let _telemety_guard = TelemetryGuard::default().unwrap().with_log_level(log_level);
+    let _telemety_guard = TelemetryGuardBuilder::default()
+        .with_local_sink_max_level(log_level)
+        .build();
 
     // initialize context
     let mut ctx_builder = CGenContextBuilder::new();

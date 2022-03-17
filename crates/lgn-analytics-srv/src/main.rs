@@ -33,7 +33,7 @@ use clap::{Parser, Subcommand};
 use lgn_blob_storage::{AwsS3BlobStorage, AwsS3Url, LocalBlobStorage, Lz4BlobStorageAdapter};
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalyticsServer;
 use lgn_telemetry_proto::health::health_server::HealthServer;
-use lgn_telemetry_sink::TelemetryGuard;
+use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::prelude::*;
 use std::net::SocketAddr;
 use tonic::transport::Server;
@@ -112,10 +112,9 @@ pub async fn connect_to_remote_data_lake(
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let _telemetry_guard = TelemetryGuard::default()
-        .unwrap()
-        .with_log_level(LevelFilter::Info)
-        .with_ctrlc_handling();
+    let _telemetry_guard = TelemetryGuardBuilder::default()
+        .with_ctrlc_handling()
+        .build();
     span_scope!("analytics-srv::main");
     let args = Cli::parse();
     let analytics_service = match args.spec {

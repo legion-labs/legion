@@ -22,7 +22,7 @@ use crate::spans::{
 };
 
 use crate::spans::{BeginAsyncSpanEvent, EndAsyncSpanEvent};
-use crate::{frequency, info, now, warn, Level, ProcessInfo};
+use crate::{frequency, info, now, warn, ProcessInfo};
 
 pub fn init_event_dispatch(
     logs_buffer_size: usize,
@@ -92,19 +92,19 @@ pub fn log(desc: &'static LogMetadata, args: fmt::Arguments<'_>) {
 }
 
 #[inline(always)]
-pub fn log_interop(desc: &LogMetadata, args: fmt::Arguments<'_>) {
+pub fn log_interop(metadata: &LogMetadata, args: fmt::Arguments<'_>) {
     unsafe {
         if let Some(d) = &mut G_DISPATCH {
-            d.log_interop(desc, args);
+            d.log_interop(metadata, args);
         }
     }
 }
 
 #[inline(always)]
-pub fn log_enabled(target: &str, level: Level) -> bool {
+pub fn log_enabled(metadata: &LogMetadata) -> bool {
     unsafe {
-        if let Some(d) = &mut G_DISPATCH {
-            d.log_enabled(level, target)
+        if let Some(d) = &G_DISPATCH {
+            d.log_enabled(metadata)
         } else {
             false
         }
@@ -381,22 +381,26 @@ impl Dispatch {
         self.sink.on_process_metrics_block(old_event_block);
     }
 
-    fn log_enabled(&mut self, level: Level, target: &str) -> bool {
-        self.sink.on_log_enabled(level, target)
+    fn log_enabled(&self, metadata: &LogMetadata) -> bool {
+        self.sink.on_log_enabled(metadata)
     }
 
     #[inline]
-    fn log(&mut self, desc: &'static LogMetadata, args: fmt::Arguments<'_>) {
+    fn log(&mut self, metadata: &'static LogMetadata, args: fmt::Arguments<'_>) {
+        if !self.log_enabled(metadata) {
+            return;
+        }
         let time = now();
-        self.sink.on_log(desc, time, args);
+        self.sink.on_log(metadata, time, args);
         let mut log_stream = self.log_stream.lock().unwrap();
         if args.as_str().is_some() {
-            log_stream
-                .get_events_mut()
-                .push(LogStaticStrEvent { desc, time });
+            log_stream.get_events_mut().push(LogStaticStrEvent {
+                desc: metadata,
+                time,
+            });
         } else {
             log_stream.get_events_mut().push(LogStringEvent {
-                desc,
+                desc: metadata,
                 time,
                 dyn_str: lgn_tracing_transit::DynString(args.to_string()),
             });
