@@ -29,7 +29,7 @@
   let height: number;
   let initialized = false;
   let intersectionObserver: IntersectionObserver;
-  let searchStore = debounced(getContext<TimelineContext>("ctx").search, 100);
+  const searchStore = debounced(getContext<TimelineContext>("ctx").search, 100);
   let searchSubscription: Unsubscriber;
 
   onMount(() => {
