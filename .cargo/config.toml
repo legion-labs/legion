@@ -16,14 +16,10 @@ mclippy = "run -p monorepo -- clippy"
 
 ################################################################################
 
-[build]
-rustflags = [
-    # enable support for tokio's tracing feature (currently unstable)
-    "--cfg",
-    "tokio_unstable",
-    # enable sanitizers
-    # "-C", "link-args=-fsanitize=address"
-]
+
+# To be set if necesseary to enable sanitizers
+#[build]
+#rustflags = ["-C", "link-args=-fsanitize=address"]
 
 [target.x86_64-pc-windows-msvc]
 linker = "rust-lld.exe"

@@ -13,8 +13,6 @@ mod composite_event_sink;
 mod grpc_event_sink;
 mod local_event_sink;
 mod stream;
-#[cfg(feature = "tokio-tracing")]
-mod tokio_tracing_sink;
 
 use lgn_tracing::event::BoxedEventSink;
 use lgn_tracing::info;
@@ -45,8 +43,6 @@ pub struct TelemetryGuardBuilder {
     local_sink_max_level: LevelFilter,
     grpc_sink_max_level: LevelFilter,
     extra_sinks: HashMap<TypeId, (LevelFilter, BoxedEventSink)>,
-    #[cfg(feature = "tokio-tracing")]
-    enable_tokio_console_server: bool,
 }
 
 impl Default for TelemetryGuardBuilder {
@@ -90,9 +86,6 @@ impl Default for TelemetryGuardBuilder {
             max_level_override: None,
             interop_max_level_override: None,
             extra_sinks: HashMap::default(),
-
-            #[cfg(feature = "tokio-tracing")]
-            enable_tokio_console_server: false,
         }
     }
 }
@@ -144,9 +137,6 @@ impl TelemetryGuardBuilder {
     }
 
     pub fn build(self) -> anyhow::Result<TelemetryGuard> {
-        #[cfg(feature = "tokio-tracing")]
-        tokio_tracing_sink::TelemetryLayer::setup(self.enable_tokio_console_server);
-
         let target_max_level: Vec<_> = self
             .target_max_levels
             .into_iter()
