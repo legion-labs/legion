@@ -7,6 +7,6 @@ export type ProcessAsyncData = {
   maxDepth: number;
   minMs: number;
   maxMs: number;
-  blockStats: BlockAsyncEventsStatReply[];
+  blockStats: Record<string, BlockAsyncEventsStatReply>;
   sections: AsyncSection[];
 };

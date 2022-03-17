@@ -165,13 +165,14 @@ export class TimelineStateManager {
       (sectionSequenceNumber + 1) * sectionWidthMs,
     ] as [number, number]; //section is in relative ms
     const blocksOfInterest: string[] = [];
-    processAsyncData.blockStats.forEach((stats) => {
+
+    for (const stats of Object.values(processAsyncData.blockStats)) {
       if (
         this.rangesOverlap(sectionTimeRange, [stats!.beginMs, stats!.endMs])
       ) {
         blocksOfInterest.push(stats.blockId);
       }
-    });
+    }
 
     const asyncSection = {
       sectionSequenceNumber,
@@ -227,6 +228,7 @@ export class TimelineStateManager {
       return;
     }
     const state = get(this.state);
+    const processOffset = processMsOffsetToRoot(this.process, process);
     const promises: Promise<BlockAsyncEventsStatReply>[] = [];
     for (const block of Object.values(state.blocks)) {
       const streamId = block.blockDefinition.streamId;
@@ -248,7 +250,7 @@ export class TimelineStateManager {
       const reply = await p;
       asyncData.minMs = Math.min(asyncData.minMs, reply.beginMs);
       asyncData.maxMs = Math.max(asyncData.maxMs, reply.endMs);
-      asyncData.blockStats.push(reply);
+      asyncData.blockStats[reply.blockId] = reply;
     }
   }
 
@@ -263,7 +265,7 @@ export class TimelineStateManager {
       maxDepth: 0,
       minMs: Infinity,
       maxMs: -Infinity,
-      blockStats: [],
+      blockStats: {},
       sections: asyncSections,
     };
     const processOffset = processMsOffsetToRoot(this.process, process);
