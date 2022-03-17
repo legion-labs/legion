@@ -2,8 +2,8 @@ use async_trait::async_trait;
 
 use crate::{
     utils::{parse_url_or_path, UrlOrPath},
-    BlobStorageUrl, Branch, CanonicalPath, Commit, CommitId, Error, GrpcIndexBackend,
-    LocalIndexBackend, Lock, MapOtherError, Result, SqlIndexBackend, Tree, WorkspaceRegistration,
+    Branch, CanonicalPath, Commit, CommitId, Error, GrpcIndexBackend, LocalIndexBackend, Lock,
+    MapOtherError, Result, SqlIndexBackend, Tree, WorkspaceRegistration,
 };
 
 /// The query options for the `list_branches` method.
@@ -37,11 +37,9 @@ pub struct ListLocksQuery<'q> {
 #[async_trait]
 pub trait IndexBackend: Send + Sync {
     fn url(&self) -> &str;
-    async fn create_index(&self) -> Result<BlobStorageUrl>;
+    async fn create_index(&self) -> Result<()>;
     async fn destroy_index(&self) -> Result<()>;
     async fn index_exists(&self) -> Result<bool>;
-
-    async fn get_blob_storage_url(&self) -> Result<BlobStorageUrl>;
 
     async fn register_workspace(
         &self,
@@ -149,17 +147,6 @@ mod tests {
 
     #[test]
     fn test_index_new_backend_from_str_mysql() {
-        assert_eq!(
-            new_index_backend("mysql://user:pass@localhost:3306/db?blob_storage_url=blobs")
-                .unwrap()
-                .url(),
-            "mysql://user:pass@localhost:3306/db"
-        );
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_index_new_backend_from_str_mysql_missing_blob_storage_url() {
         assert_eq!(
             new_index_backend("mysql://user:pass@localhost:3306/db")
                 .unwrap()

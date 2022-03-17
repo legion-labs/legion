@@ -3,9 +3,9 @@ use lgn_tracing::prelude::*;
 use std::path::{Path, PathBuf};
 
 use crate::{
-    BlobStorageUrl, Branch, CanonicalPath, Commit, CommitId, Error, IndexBackend,
-    ListBranchesQuery, ListCommitsQuery, ListLocksQuery, Lock, MapOtherError, Result,
-    SqlIndexBackend, Tree, WorkspaceRegistration,
+    Branch, CanonicalPath, Commit, CommitId, Error, IndexBackend, ListBranchesQuery,
+    ListCommitsQuery, ListLocksQuery, Lock, MapOtherError, Result, SqlIndexBackend, Tree,
+    WorkspaceRegistration,
 };
 
 #[derive(Debug)]
@@ -23,7 +23,6 @@ impl LocalIndexBackend {
             ));
         }
         let db_path = directory.as_ref().join("repo.db3");
-        let blob_storage_url = &BlobStorageUrl::Local(directory.as_ref().join("blobs"));
 
         // Careful: here be dragons. You may be tempted to store the SQLite url
         // in a `Url` but this will break SQLite on Windows, as attempting to
@@ -33,11 +32,7 @@ impl LocalIndexBackend {
         //
         // Will actually remove the trailing ':' from the disk letter.
 
-        let sqlite_url = format!(
-            "sqlite://{}?blob_storage_url={}",
-            db_path.to_str().unwrap().replace("\\", "/"),
-            urlencoding::encode(&blob_storage_url.to_string())
-        );
+        let sqlite_url = format!("sqlite://{}", db_path.to_str().unwrap().replace("\\", "/"));
 
         Ok(Self {
             directory: directory.as_ref().to_owned(),
@@ -56,7 +51,7 @@ impl IndexBackend for LocalIndexBackend {
         self.directory.to_str().unwrap()
     }
 
-    async fn create_index(&self) -> Result<BlobStorageUrl> {
+    async fn create_index(&self) -> Result<()> {
         async_span_scope!("LocalIndexBackend::create_index");
         match self.directory.read_dir() {
             Ok(mut entries) => {
@@ -192,11 +187,6 @@ impl IndexBackend for LocalIndexBackend {
     async fn count_locks(&self, query: &ListLocksQuery<'_>) -> Result<i32> {
         async_span_scope!("LocalIndexBackend::count_locks");
         self.sql_repository_index.count_locks(query).await
-    }
-
-    async fn get_blob_storage_url(&self) -> Result<BlobStorageUrl> {
-        async_span_scope!("LocalIndexBackend::get_blob_storage_url");
-        self.sql_repository_index.get_blob_storage_url().await
     }
 }
 
