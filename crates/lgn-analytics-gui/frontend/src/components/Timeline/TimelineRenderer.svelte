@@ -166,8 +166,8 @@
         />
       {/each}
     {/if}
-    <TimelineRange {stateStore} width={canvasWidth} />
   </div>
+  <TimelineRange {stateStore} width={canvasWidth} />
 </div>
 
 {#if stateManager?.process && $stateStore.ready}
