@@ -26,6 +26,13 @@ struct Cli {
 
     #[clap(name = "no-color", long, help = "Disable color output")]
     no_color: bool,
+
+    #[clap(
+        name = "lsc-dir",
+        long,
+        help = "Set the path to the repository (\".lsc\" directory)"
+    )]
+    lsc_dir: Option<String>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -234,6 +241,18 @@ fn red() -> ColorSpec {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
+
+    if let Some(lsc_dir) = args.lsc_dir {
+        let lsc_dir = PathBuf::from(lsc_dir);
+        let lsc_dir = if lsc_dir.is_absolute() {
+            lsc_dir
+        } else {
+            std::env::current_dir().unwrap().join(lsc_dir)
+        };
+
+        std::env::set_current_dir(lsc_dir).unwrap();
+    }
+
     let _telemetry_guard = if args.debug {
         TelemetryGuardBuilder::default()
             .with_local_sink_max_level(LevelFilter::Debug)
