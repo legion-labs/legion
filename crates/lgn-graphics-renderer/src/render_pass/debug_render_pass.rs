@@ -290,7 +290,7 @@ impl DebugRenderPass {
                 );
 
                 let mut color = if manipulator.selected {
-                    Vec4::new(1.0, 1.0, 0.0, 1.0)
+                    Vec4::new(1.0, 0.65, 0.0, 1.0)
                 } else {
                     Vec4::new(
                         f32::from(visual.color.r) / 255.0f32,
