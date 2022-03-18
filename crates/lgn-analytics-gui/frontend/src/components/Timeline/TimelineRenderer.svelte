@@ -41,13 +41,11 @@
 
   onMount(async () => {
     loadingStore.reset();
-    const u = new URLSearchParams($location.search);
-    const start = u.has(startParam)
-      ? // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        Number.parseFloat(u.get(startParam)!)
-      : null;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const end = u.has(endParam) ? Number.parseFloat(u.get(endParam)!) : null;
+    const url = new URLSearchParams($location.search);
+    const s = url.get(startParam);
+    const start = s != null ? Number.parseFloat(s) : null;
+    const e = url.get(endParam);
+    const end = e != null ? Number.parseFloat(e) : null;
     stateManager = new TimelineStateManager(processId, start, end);
     stateStore = stateManager.state;
     await stateManager.init(windowInnerWidth);
