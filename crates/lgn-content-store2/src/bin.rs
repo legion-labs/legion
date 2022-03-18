@@ -174,7 +174,7 @@ impl TransferCallbacks<PathBuf> for TransferProgress {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args: Args = Args::parse();
-    let config = Config::from_legion_toml();
+    let config = Config::from_legion_toml(Config::content_store_section().as_deref());
     let provider = config
         .instanciate_provider()
         .await

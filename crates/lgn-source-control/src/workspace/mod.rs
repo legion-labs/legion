@@ -27,6 +27,7 @@ pub struct Workspace {
     backend: Box<dyn WorkspaceBackend>,
     registration: WorkspaceRegistration,
     chunker: Chunker,
+    content_store_config: lgn_content_store2::Config,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -199,14 +200,14 @@ impl Workspace {
         }
     }
 
-    fn try_make_filepath_absolute(url: &str, root: &Path) -> Result<String> {
-        match parse_url_or_path(url)
+    fn try_make_filepath_absolute(url: String, root: &Path) -> Result<String> {
+        match parse_url_or_path(&url)
             .map_other_err(format!("failed to parse index url `{}`", &url))?
         {
-            crate::utils::UrlOrPath::Url(_) => Ok(url.to_owned()),
+            crate::utils::UrlOrPath::Url(_) => Ok(url),
             crate::utils::UrlOrPath::Path(path) => {
                 if path.is_absolute() {
-                    Ok(url.to_owned())
+                    Ok(url)
                 } else {
                     Ok(root.join(path).into_os_string().into_string().unwrap())
                 }
@@ -219,16 +220,33 @@ impl Workspace {
         config: WorkspaceConfig,
         backend: Box<dyn WorkspaceBackend>,
     ) -> Result<Self> {
-        let absolute_url = Self::try_make_filepath_absolute(&config.index_url, &root)?;
+        let (index_url, registration, content_store_config) = config.into_parts();
+        let absolute_url = Self::try_make_filepath_absolute(index_url, &root)?;
         let index_backend = new_index_backend(&absolute_url)?;
 
         Ok(Self {
             root,
             index_backend,
             backend,
-            registration: config.registration,
+            registration,
             chunker: Chunker::default(),
+            content_store_config,
         })
+    }
+
+    /// Get the default content-store configuration of this workspace.
+    pub fn content_store_config(&self) -> &lgn_content_store2::Config {
+        &self.content_store_config
+    }
+
+    /// Instanciate a content-store provider from the configuration.
+    pub async fn instanciate_content_store_provider(
+        &self,
+    ) -> Result<Box<dyn lgn_content_store2::ContentProvider + Send + Sync>> {
+        self.content_store_config
+            .instanciate_provider()
+            .await
+            .map_other_err("failed to instanciate content provider")
     }
 
     /// Find an existing workspace in the current directory.
@@ -1338,13 +1356,50 @@ impl Workspace {
 pub struct WorkspaceConfig {
     index_url: String,
     registration: WorkspaceRegistration,
+    content_store_configuration: Option<lgn_content_store2::Config>,
 }
 
 impl WorkspaceConfig {
+    /// Instanciate a new `WorkspaceConfig`.
+    ///
+    /// The content-store configuration will by default be taken from the
+    /// `legion.toml`.
     pub fn new(index_url: String, registration: WorkspaceRegistration) -> Self {
         Self {
             index_url,
             registration,
+            content_store_configuration: None,
         }
+    }
+
+    /// Overrides the content-store configuration
+    pub fn with_content_store_configuration(
+        self,
+        content_store_configuration: lgn_content_store2::Config,
+    ) -> Self {
+        Self {
+            index_url: self.index_url,
+            registration: self.registration,
+            content_store_configuration: Some(content_store_configuration),
+        }
+    }
+
+    /// Returns the content-store configuration used by this workspace.
+    ///
+    /// If no override was specified with `with_content_store_configuration`,
+    /// the configuration is taken from the `legion.toml` file.
+    fn into_parts(self) -> (String, WorkspaceRegistration, lgn_content_store2::Config) {
+        (
+            self.index_url,
+            self.registration,
+            match self.content_store_configuration {
+                Some(config) => config,
+                None => lgn_content_store2::Config::from_legion_toml(
+                    lgn_content_store2::Config::content_store_section()
+                        .as_deref()
+                        .or(Some("source_control")),
+                ),
+            },
+        )
     }
 }

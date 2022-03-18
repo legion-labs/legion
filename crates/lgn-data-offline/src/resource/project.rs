@@ -127,7 +127,12 @@ impl Project {
             std::fs::create_dir(&resource_dir).map_err(|e| Error::Io(resource_dir.clone(), e))?;
         }
 
-        let content_provider = lgn_content_store2::Config::default()
+        let content_store_configuration = lgn_content_store2::Config::from_legion_toml(
+            lgn_content_store2::Config::content_store_section()
+                .as_deref()
+                .or(Some("source_control")), // TODO: Kris: you may want to specify another default section perhaps? I'm not sure.
+        );
+        let content_provider = content_store_configuration
             .instanciate_provider()
             .await
             .map_err(|e| {
@@ -139,7 +144,8 @@ impl Project {
 
         let workspace = Workspace::init(
             &resource_dir,
-            WorkspaceConfig::new(remote_path, WorkspaceRegistration::new_with_current_user()),
+            WorkspaceConfig::new(remote_path, WorkspaceRegistration::new_with_current_user())
+                .with_content_store_configuration(content_store_configuration),
             content_provider,
         )
         .await
@@ -402,8 +408,9 @@ impl Project {
         let metadata = Metadata::new_with_dependencies(name, kind_name, kind, &build_dependencies);
         serde_json::to_writer_pretty(meta_file, &metadata).unwrap();
 
-        let content_provider = lgn_content_store2::Config::default()
-            .instanciate_provider()
+        let content_provider = self
+            .workspace
+            .instanciate_content_store_provider()
             .await
             .map_err(|e| {
                 Error::SourceControl(lgn_source_control::Error::Other {
@@ -482,8 +489,9 @@ impl Project {
         meta_file.seek(std::io::SeekFrom::Start(0)).unwrap();
         serde_json::to_writer_pretty(&meta_file, &metadata).unwrap(); // todo(kstasik): same as above.
 
-        let content_provider = lgn_content_store2::Config::default()
-            .instanciate_provider()
+        let content_provider = self
+            .workspace
+            .instanciate_content_store_provider()
             .await
             .map_err(|e| {
                 Error::SourceControl(lgn_source_control::Error::Other {
@@ -666,8 +674,9 @@ impl Project {
 
     /// Pulls all changes from the origin.
     pub async fn sync_latest(&mut self) -> Result<(), Error> {
-        let content_provider = lgn_content_store2::Config::default()
-            .instanciate_provider()
+        let content_provider = self
+            .workspace
+            .instanciate_content_store_provider()
             .await
             .map_err(|e| {
                 Error::SourceControl(lgn_source_control::Error::Other {

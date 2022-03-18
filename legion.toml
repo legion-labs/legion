@@ -72,7 +72,7 @@ size = 250
 
 [content_store.data_build.provider]
 type = "local"
-url = ""
+path = "/tmp/content_store" # TODO: Change this to something meaningful. A relative path once this is supported.
 
 [[content_store.data_build.caching_providers]]
 type = "lru"

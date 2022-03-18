@@ -178,6 +178,11 @@ impl Config {
             .and_then(Value::as_str)
             .map(|str| self.config_path.join(str))
     }
+
+    /// Returns the path containing the configuration.
+    pub fn config_path(&self) -> &Path {
+        &self.config_path
+    }
 }
 
 lazy_static::lazy_static! {
