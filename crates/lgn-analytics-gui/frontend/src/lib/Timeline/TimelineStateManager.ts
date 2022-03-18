@@ -33,11 +33,9 @@ export class TimelineStateManager {
   private client: PerformanceAnalyticsClientImpl | null = null;
   private processId: string;
   private nbRequestsInFlight = 0;
-  constructor(processId: string) {
+  constructor(processId: string, start: number | null, end: number | null) {
     this.processId = processId;
-    this.state = createTimelineStateStore(
-      new TimelineState(undefined, undefined)
-    );
+    this.state = createTimelineStateStore(new TimelineState(start, end));
   }
 
   async init() {

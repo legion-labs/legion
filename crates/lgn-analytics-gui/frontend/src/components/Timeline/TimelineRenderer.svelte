@@ -16,6 +16,10 @@
   import TimelineRange from "./TimelineRange.svelte";
   import TimelineSearch from "./TimelineSearch.svelte";
   export let processId: string;
+  import { useLocation } from "svelte-navigator";
+  const location = useLocation();
+  const startParam = "begin";
+  const endParam = "end";
 
   type PanState = {
     beginMouseX: number;
@@ -42,7 +46,12 @@
 
   onMount(async () => {
     loadingStore.reset();
-    stateManager = new TimelineStateManager(processId);
+    const url = new URLSearchParams($location.search);
+    const s = url.get(startParam);
+    const start = s != null ? Number.parseFloat(s) : null;
+    const e = url.get(endParam);
+    const end = e != null ? Number.parseFloat(e) : null;
+    stateManager = new TimelineStateManager(processId, start, end);
     stateStore = stateManager.state;
     await stateManager.init();
   });
@@ -127,11 +136,26 @@
     }
   }
 
+  function onMouseUp(e: MouseEvent) {
+    const selection = $stateStore.currentSelection;
+    if (selection) {
+      setRangeUrl(selection);
+    }
+  }
+
+  function setRangeUrl(selection: [number, number]) {
+    const start = Math.max($stateStore.minMs, selection[0]);
+    const end = Math.min($stateStore.maxMs, selection[1]);
+    const params = `?${startParam}=${start}&${endParam}=${end}`;
+    history.replaceState(null, "", params);
+  }
+
   function handleKeydown(event: KeyboardEvent) {
     if (event.code == "Escape" && $stateStore.currentSelection) {
       stateStore.update((s) => {
         s.currentSelection = undefined;
         s.selectionState = NewSelectionState();
+        setRangeUrl([s.minMs, s.maxMs]);
         return s;
       });
     }
@@ -149,7 +173,11 @@
 <div {style} class="main">
   {#if stateManager?.process && $stateStore.ready}
     <div class="pb-1 flex flex-row items-center justify-between">
-      <TimelineDetails process={stateManager?.process} />
+      <TimelineAction
+        {processId}
+        process={stateManager.process}
+        timeRange={$stateStore.currentSelection}
+      />
       <TimelineSearch />
     </div>
   {/if}
@@ -159,6 +187,7 @@
     class="canvas "
     on:mousedown|preventDefault={(e) => onMouseDown(e)}
     on:mousemove|preventDefault={(e) => onMouseMove(e)}
+    on:mouseup|preventDefault={(e) => onMouseUp(e)}
   >
     {#if stateStore}
       {#each $stateStore.processes as p}
@@ -176,12 +205,9 @@
 </div>
 
 {#if stateManager?.process && $stateStore.ready}
-  <div class="flex flex-row justify-between items-center pt-1 h-7 detail">
-    <TimelineAction
-      {processId}
-      process={stateManager.process}
-      timeRange={$stateStore.currentSelection}
-    />
+  <div
+    class="flex flex-row-reverse justify-between items-center pt-1 h-7 detail"
+  >
     <TimelineDebug {canvasWidth} store={stateStore} />
   </div>
 {/if}
