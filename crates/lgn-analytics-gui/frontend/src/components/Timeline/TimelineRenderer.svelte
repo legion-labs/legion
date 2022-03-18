@@ -52,7 +52,7 @@
       return s;
     });
 
-    await stateManager.fetchLods();
+    await stateManager.fetchDynData();
   }
 
   function isValidEvent(event: MouseEvent) {

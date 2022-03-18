@@ -24,6 +24,8 @@ import { TimelineState } from "./TimelineState";
 import { ProcessAsyncData } from "./ProcessAsyncData";
 import { loadPromise, loadWrap } from "../Misc/LoadingStore";
 
+const MAX_NB_REQUEST_IN_FLIGHT = 16;
+
 export class TimelineStateManager {
   state: TimelineStateStore;
   process: Process | undefined = undefined;
@@ -31,7 +33,6 @@ export class TimelineStateManager {
   private client: PerformanceAnalyticsClientImpl | null = null;
   private processId: string;
   private nbRequestsInFlight = 0;
-  private fetchingLods = false;
   constructor(processId: string) {
     this.processId = processId;
     this.state = createTimelineStateStore(
@@ -59,9 +60,7 @@ export class TimelineStateManager {
     await this.fetchStreams(this.process);
     this.initViewRange(this.process);
     await this.fetchChildren(this.process);
-    await this.fetchLods();
-    await this.fetchAsyncStats(this.process);
-    await this.fetchAsyncSpans(this.process);
+    await this.fetchDynData();
   }
 
   initViewRange(process: Process) {
@@ -224,33 +223,53 @@ export class TimelineStateManager {
 
   private async fetchAsyncStats(process: Process) {
     if (import.meta.env.VITE_LEGION_ANALYTICS_ENABLE_ASYNC_SPANS != "true") {
-      return;
+      return true;
     }
     const state = get(this.state);
+    const asyncData = state.processAsyncData[process.processId];
     const processOffset = processMsOffsetToRoot(this.process, process);
-    const promises: Promise<BlockAsyncEventsStatReply>[] = [];
+    const promises: Promise<void>[] = [];
+    let done = true;
     for (const block of Object.values(state.blocks)) {
       const streamId = block.blockDefinition.streamId;
       const thread = state.threads[streamId];
-      if (thread.streamInfo.processId == process.processId) {
+      const blockStatsMissing = !(
+        block.blockDefinition.blockId in asyncData.blockStats
+      );
+      const blockBelongsToProcess =
+        thread.streamInfo.processId == process.processId;
+      if (blockStatsMissing && blockBelongsToProcess) {
+        done = false;
+        if (this.nbRequestsInFlight >= MAX_NB_REQUEST_IN_FLIGHT) {
+          break;
+        }
+        this.nbRequestsInFlight += 1;
         promises.push(
           loadPromise(
             this.client!.fetch_block_async_stats({
               process,
               stream: thread.streamInfo,
               blockId: block.blockDefinition.blockId,
-            })
+            }).then(
+              (reply) => {
+                this.nbRequestsInFlight -= 1;
+                asyncData.minMs = Math.min(asyncData.minMs, reply.beginMs);
+                asyncData.maxMs = Math.max(asyncData.maxMs, reply.endMs);
+                asyncData.blockStats[reply.blockId] = reply;
+                return this.fetchDynData();
+              },
+              (e) => {
+                this.nbRequestsInFlight -= 1;
+                return this.fetchDynData();
+              }
+            )
           )
         );
       }
     }
-    const asyncData = state.processAsyncData[process.processId];
-    for (const p of Object.values(promises)) {
-      const reply = await p;
-      asyncData.minMs = Math.min(asyncData.minMs, reply.beginMs);
-      asyncData.maxMs = Math.max(asyncData.maxMs, reply.endMs);
-      asyncData.blockStats[reply.blockId] = reply;
-    }
+
+    await Promise.all(promises);
+    return done;
   }
 
   private async fetchBlocks(process: Process, stream: Stream) {
@@ -300,10 +319,11 @@ export class TimelineStateManager {
     get(this.state).processAsyncData[process.processId] = asyncData;
   }
 
-  async fetchLodsIteration() {
+  async fetchThreadData(): Promise<boolean> {
     const state = get(this.state);
     const range = state.getViewRange();
     const promises: Promise<void>[] = [];
+    let done = true;
     for (const block of Object.values(state.blocks)) {
       const lod = computePreferredBlockLod(state.canvasWidth, range, block);
       if (lod && !block.lods[lod]) {
@@ -312,22 +332,25 @@ export class TimelineStateManager {
           tracks: [],
           lodId: lod,
         };
+        done = false;
         promises.push(this.fetchBlockSpans(block, lod));
       }
-      if (this.nbRequestsInFlight >= 16) {
+      if (this.nbRequestsInFlight >= MAX_NB_REQUEST_IN_FLIGHT) {
         break;
       }
     }
     await Promise.all(promises);
+    return done;
   }
 
-  async fetchLods() {
-    if (this.fetchingLods) {
-      return;
+  async fetchDynData() {
+    let done = await this.fetchThreadData();
+    if (done) {
+      done = await this.fetchAsyncStats(this.process!);
     }
-    this.fetchingLods = true;
-    this.fetchLodsIteration();
-    this.fetchingLods = false;
+    if (done) {
+      await this.fetchAsyncSpans(this.process!);
+    }
   }
 
   async fetchBlockSpans(block: ThreadBlock, lodToFetch: number) {
@@ -353,12 +376,12 @@ export class TimelineStateManager {
         (o) => {
           this.nbRequestsInFlight -= 1;
           this.onLodReceived(o);
-          this.fetchLods();
+          return this.fetchDynData();
         },
         (e) => {
           this.nbRequestsInFlight -= 1;
           console.log("Error fetching block spans", e);
-          this.fetchLods();
+          return this.fetchDynData();
         }
       )
     );
