@@ -96,8 +96,6 @@ impl ResourceRegistryPlugin {
 
             let compilers = lgn_ubercompiler::create();
 
-            println!("==> {}", settings.build_output_db_addr);
-
             let build_options = DataBuildOptions::new(
                 DataBuildOptions::output_db_path(
                     &settings.build_output_db_addr,

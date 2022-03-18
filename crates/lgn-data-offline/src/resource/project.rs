@@ -723,12 +723,12 @@ impl Project {
 
                 id.map(|id| {
                     let t = match change.change_type() {
-                        lgn_source_control::ChangeType::Add { new_info: _ } => ChangeType::Add,
+                        lgn_source_control::ChangeType::Add { new_chunk_id: _ } => ChangeType::Add,
                         lgn_source_control::ChangeType::Edit {
-                            old_info: _,
-                            new_info: _,
+                            old_chunk_id: _,
+                            new_chunk_id: _,
                         } => ChangeType::Edit,
-                        lgn_source_control::ChangeType::Delete { old_info: _ } => {
+                        lgn_source_control::ChangeType::Delete { old_chunk_id: _ } => {
                             ChangeType::Delete
                         }
                     };
