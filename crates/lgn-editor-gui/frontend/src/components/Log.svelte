@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { buffer, logs } from "@/stores/logs";
+  import { buffer, logEntries } from "@/stores/log";
   import type { ScrollStatus } from "@lgn/web-client/src/components/Log.svelte";
   import Log from "@lgn/web-client/src/components/Log.svelte";
   import { writable } from "svelte/store";
@@ -10,8 +10,8 @@
 <Log
   {buffer}
   noDate
-  logs={$logs}
-  totalCount={$logs.size}
+  entries={$logEntries}
+  totalCount={$logEntries.size}
   on:scrollStatusChange={({ detail: newsScrollStatus }) =>
     ($scrollStatus = newsScrollStatus)}
 />

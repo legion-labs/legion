@@ -10,7 +10,7 @@
   import { goto } from "$app/navigation";
   import "@/workers/editorWorker";
   import { initApiClient } from "@/api";
-  import { initStreamLogs } from "@/stores/logs";
+  import { initLogStream } from "@/stores/log";
 
   const logLevel = "warn";
 
@@ -67,7 +67,7 @@
           // await initWasmLogger();
           // debug("Hello from the Legion editor");
 
-          initStreamLogs();
+          initLogStream();
 
           contextMenu.register("resource", contextMenuEntries.resourceEntries);
           contextMenu.register(

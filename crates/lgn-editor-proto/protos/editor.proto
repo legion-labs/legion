@@ -6,7 +6,7 @@ service Editor {
 
   rpc RedoTransaction(RedoTransactionRequest) returns (RedoTransactionResponse);
 
-  rpc InitLogsStream(InitLogsStreamRequest) returns (stream InitLogsStreamResponse);
+  rpc InitLogStream(InitLogStreamRequest) returns (stream InitLogStreamResponse);
 }
 
 message UndoTransactionRequest {
@@ -22,7 +22,7 @@ message RedoTransactionResponse {
   int32 id = 1;
 }
 
-message InitLogsStreamRequest {}
+message InitLogStreamRequest {}
 
 enum Level {
   ERROR = 0;
@@ -32,7 +32,7 @@ enum Level {
   TRACE = 4;
 }
 
-message InitLogsStreamResponse {
+message InitLogStreamResponse {
   Level level = 1;
   int64 time = 2;
   string target = 3;

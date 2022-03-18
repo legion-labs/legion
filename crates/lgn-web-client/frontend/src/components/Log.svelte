@@ -21,7 +21,7 @@
     ListOnItemsRenderedProps,
     ListOnScrollProps,
   } from "svelte-window";
-  import type { Log } from "../types/log";
+  import type { LogEntry } from "../types/log";
   import { remToPx } from "../lib/html";
   import { debounced, recorded } from "../lib/store";
 
@@ -104,7 +104,7 @@
         index = currOverscanStopIndex;
       }
 
-      if (index == null || logs.has(totalCount - index)) {
+      if (index == null || entries.has(totalCount - index)) {
         return;
       }
 
@@ -125,7 +125,7 @@
 
   export let buffer: number;
 
-  export let logs: Map<number, Log> = new Map();
+  export let entries: Map<number, LogEntry> = new Map();
 
   export let totalCount: number;
 
@@ -217,36 +217,36 @@
         let:items
       >
         {#each items as item (item.key)}
-          {@const log = logs.get(item.index)}
-          {@const date = noDate ? null : log?.datetime?.toLocaleString()}
+          {@const entry = entries.get(item.index)}
+          {@const date = noDate ? null : entry?.datetime?.toLocaleString()}
 
           <div
-            class="log bg-gray-800"
+            class="entry bg-gray-800"
             class:bg-opacity-30={item.index % 2 === 0}
             class:bg-opacity-50={item.index % 2 === 1}
             style={styleString(item.style)}
           >
-            {#if log}
+            {#if entry}
               <div class="flex w-1/12 log-column justify-center">
                 <div
                   class="severity-pill"
-                  class:bg-red-500={log.severity === "error"}
-                  class:bg-orange-400={log.severity === "warn"}
-                  class:bg-green-600={log.severity === "info"}
-                  class:bg-gray-600={log.severity === "trace"}
-                  class:bg-blue-500={log.severity === "debug"}
+                  class:bg-red-500={entry.severity === "error"}
+                  class:bg-orange-400={entry.severity === "warn"}
+                  class:bg-green-600={entry.severity === "info"}
+                  class:bg-gray-600={entry.severity === "trace"}
+                  class:bg-blue-500={entry.severity === "debug"}
                 >
-                  <div class="severity-pill-text">{log.severity}</div>
+                  <div class="severity-pill-text">{entry.severity}</div>
                 </div>
               </div>
               {#if !noDate}
-                <div class="w-2/12 log-column">{date}</div>
+                <div class="w-2/12 entry-column">{date}</div>
               {/if}
-              <div class="w-3/12 log-column" title={log.target}>
-                {log.target}
+              <div class="w-3/12 entry-column" title={entry.target}>
+                {entry.target}
               </div>
-              <div class="w-6/12 log-column" title={log.message}>
-                {log.message}
+              <div class="w-6/12 entry-column" title={entry.message}>
+                {entry.message}
               </div>
             {:else}
               <div class="w-1/12 skeleton-column"><div class="skeleton" /></div>
@@ -282,11 +282,11 @@
     @apply flex flex-col h-full flex-shrink-0 flex-grow-0;
   }
 
-  .log {
+  .entry {
     @apply flex flex-row h-full px-2 items-center w-full hover:bg-gray-500;
   }
 
-  .log-column {
+  .entry-column {
     @apply px-2 flex-shrink-0 truncate;
   }
 

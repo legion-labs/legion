@@ -30,7 +30,7 @@ export function severityFromLevel(level: Level): Severity | null {
   }
 }
 
-export type Log = {
+export type LogEntry = {
   id: number;
   message: string;
   severity: Severity;

@@ -1,14 +1,14 @@
 <!--
 @Component
-Contains all the "extra" panels like Logs or Source Control.
+Contains all the "extra" panels like Log or Source Control.
 -->
 <script lang="ts">
   import Panel from "@lgn/web-client/src/components/panel/Panel.svelte";
-  import Logs from "./Logs.svelte";
+  import Log from "./Log.svelte";
 
   // TODO: Move Source Control to top
   const tabs = [
-    { type: "logs", title: "Logs" } as const,
+    { type: "log", title: "Log" } as const,
     { type: "sourceControl", title: "My Local Changes" } as const,
   ];
 
@@ -24,8 +24,8 @@ Contains all the "extra" panels like Logs or Source Control.
   <div class="content" slot="content">
     {#if activeTab.type === "sourceControl"}
       <div>Local Changes</div>
-    {:else if activeTab.type === "logs"}
-      <Logs />
+    {:else if activeTab.type === "log"}
+      <Log />
     {/if}
   </div>
 </Panel>
