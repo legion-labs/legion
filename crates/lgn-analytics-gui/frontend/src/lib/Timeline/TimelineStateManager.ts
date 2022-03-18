@@ -152,13 +152,12 @@ export class TimelineStateManager {
 
   private async fetchAsyncSpansSection(
     processAsyncData: ProcessAsyncData,
-    sectionSequenceNumber: number,
-    sectionLod: number
+    section: AsyncSection
   ) {
     const sectionWidthMs = 1000.0;
     const sectionTimeRange = [
-      sectionSequenceNumber * sectionWidthMs,
-      (sectionSequenceNumber + 1) * sectionWidthMs,
+      section.sectionSequenceNumber * sectionWidthMs,
+      (section.sectionSequenceNumber + 1) * sectionWidthMs,
     ] as [number, number]; //section is in relative ms
     const blocksOfInterest: string[] = [];
 
@@ -170,30 +169,35 @@ export class TimelineStateManager {
       }
     }
 
-    const asyncSection = {
-      sectionSequenceNumber,
-      sectionLod,
-      state: LODState.Requested,
-      tracks: [] as SpanTrack[],
-    };
-    processAsyncData.sections.push(asyncSection);
-
-    const reply = await loadPromise(
+    this.nbRequestsInFlight += 1;
+    await loadPromise(
       this.client!.fetch_async_spans({
-        sectionSequenceNumber,
-        sectionLod,
+        sectionSequenceNumber: section.sectionSequenceNumber,
+        sectionLod: section.sectionLod,
         blockIds: blocksOfInterest,
-      })
+      }).then(
+        (reply) => {
+          this.nbRequestsInFlight -= 1;
+          const nbTracks = reply.tracks.length;
+          processAsyncData.maxDepth = Math.max(
+            processAsyncData.maxDepth,
+            nbTracks
+          );
+          section.tracks = reply.tracks;
+          section.state = LODState.Loaded;
+          this.state.update((s) => {
+            s.scopes = { ...s.scopes, ...reply.scopes };
+            return s;
+          });
+          return this.fetchDynData();
+        },
+        (e) => {
+          this.nbRequestsInFlight -= 1;
+          console.log("Error in fetch_block_async_spans", e);
+          return this.fetchDynData();
+        }
+      )
     );
-    const nbTracks = reply.tracks.length;
-    processAsyncData.maxDepth = Math.max(processAsyncData.maxDepth, nbTracks);
-    asyncSection.tracks = reply.tracks;
-    asyncSection.state = LODState.Loaded;
-
-    this.state.update((s) => {
-      s.scopes = { ...s.scopes, ...reply.scopes };
-      return s;
-    });
   }
 
   private async fetchAsyncSpans(process: Process) {
@@ -205,16 +209,28 @@ export class TimelineStateManager {
       log.error("no client in fetchAsyncSpans");
       return;
     }
-    const processAsyncData = get(this.state).processAsyncData[
-      process.processId
-    ];
+    const state = get(this.state);
+    const viewRange = state.getViewRange();
+    const processAsyncData = state.processAsyncData[process.processId];
 
     const sectionWidthMs = 1000.0;
-    const firstSection = Math.floor(processAsyncData.minMs / sectionWidthMs);
-    const lastSection = Math.floor(processAsyncData.maxMs / sectionWidthMs);
+    const firstSection = Math.floor(viewRange[0] / sectionWidthMs);
+    const lastSection = Math.floor(viewRange[1] / sectionWidthMs);
     const promises: Promise<void>[] = [];
     for (let iSection = firstSection; iSection <= lastSection; iSection += 1) {
-      promises.push(this.fetchAsyncSpansSection(processAsyncData, iSection, 0));
+      if (this.nbRequestsInFlight >= MAX_NB_REQUEST_IN_FLIGHT) {
+        break;
+      }
+      if (!(iSection in processAsyncData.sections)) {
+        const section = {
+          sectionSequenceNumber: iSection,
+          sectionLod: 0,
+          state: LODState.Requested,
+          tracks: [],
+        };
+        processAsyncData.sections[iSection] = section;
+        promises.push(this.fetchAsyncSpansSection(processAsyncData, section));
+      }
     }
     await Promise.all(promises);
   }
@@ -225,22 +241,26 @@ export class TimelineStateManager {
     }
     const state = get(this.state);
     const asyncData = state.processAsyncData[process.processId];
-    const processOffset = processMsOffsetToRoot(this.process, process);
     const promises: Promise<void>[] = [];
-    let done = true;
+    let sentRequest = false;
+    const viewRange = state.getViewRange();
     for (const block of Object.values(state.blocks)) {
       const streamId = block.blockDefinition.streamId;
       const thread = state.threads[streamId];
+      const overlaps = this.rangesOverlap(viewRange, [
+        block.beginMs,
+        block.endMs,
+      ]);
       const blockStatsMissing = !(
         block.blockDefinition.blockId in asyncData.blockStats
       );
       const blockBelongsToProcess =
         thread.streamInfo.processId == process.processId;
-      if (blockStatsMissing && blockBelongsToProcess) {
-        done = false;
+      if (overlaps && blockStatsMissing && blockBelongsToProcess) {
         if (this.nbRequestsInFlight >= MAX_NB_REQUEST_IN_FLIGHT) {
           break;
         }
+        sentRequest = true;
         this.nbRequestsInFlight += 1;
         promises.push(
           loadPromise(
@@ -258,6 +278,7 @@ export class TimelineStateManager {
               },
               (e) => {
                 this.nbRequestsInFlight -= 1;
+                console.log("Error in fetch_block_async_stats", e);
                 return this.fetchDynData();
               }
             )
@@ -267,7 +288,7 @@ export class TimelineStateManager {
     }
 
     await Promise.all(promises);
-    return done;
+    return sentRequest;
   }
 
   private async fetchBlocks(process: Process, stream: Stream) {
@@ -321,7 +342,7 @@ export class TimelineStateManager {
     const state = get(this.state);
     const range = state.getViewRange();
     const promises: Promise<void>[] = [];
-    let done = true;
+    let sentRequest = false;
     for (const block of Object.values(state.blocks)) {
       const lod = computePreferredBlockLod(state.canvasWidth, range, block);
       if (lod && !block.lods[lod]) {
@@ -330,7 +351,7 @@ export class TimelineStateManager {
           tracks: [],
           lodId: lod,
         };
-        done = false;
+        sentRequest = true;
         promises.push(this.fetchBlockSpans(block, lod));
       }
       if (this.nbRequestsInFlight >= MAX_NB_REQUEST_IN_FLIGHT) {
@@ -338,15 +359,15 @@ export class TimelineStateManager {
       }
     }
     await Promise.all(promises);
-    return done;
+    return sentRequest;
   }
 
   async fetchDynData() {
-    let done = await this.fetchThreadData();
-    if (done) {
-      done = await this.fetchAsyncStats(this.process!);
+    let sentRequest = await this.fetchThreadData();
+    if (!sentRequest) {
+      sentRequest = await this.fetchAsyncStats(this.process!);
     }
-    if (done) {
+    if (!sentRequest) {
       await this.fetchAsyncSpans(this.process!);
     }
   }

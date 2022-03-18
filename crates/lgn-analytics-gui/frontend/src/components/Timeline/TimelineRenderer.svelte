@@ -73,7 +73,7 @@
     );
   }
 
-  function onMouseMove(event: MouseEvent) {
+  async function onMouseMove(event: MouseEvent) {
     if (
       isValidEvent(event) &&
       RangeSelectionOnMouseMove(
@@ -123,6 +123,7 @@
           }
           return s;
         });
+        await stateManager.fetchDynData();
       }
     }
   }
