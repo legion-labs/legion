@@ -9,7 +9,7 @@
   type Item = $$Generic<{ id: string; path: string }>;
 
   type $$Slots = {
-    name: { itemName: string };
+    name: { entry: Entry<Item | symbol> };
     icon: { entry: Entry<Item> };
   };
 
@@ -136,8 +136,8 @@
       <svelte:fragment slot="icon" let:entry>
         <slot name="icon" {entry} />
       </svelte:fragment>
-      <svelte:fragment slot="name" let:itemName>
-        <slot name="name" {itemName} />
+      <svelte:fragment slot="name" let:entry>
+        <slot name="name" {entry} />
       </svelte:fragment>
     </HierarchyTreeItem>
   {/each}

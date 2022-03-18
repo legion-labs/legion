@@ -313,6 +313,6 @@ export async function openScene({ id }: { id: string }) {
   return resourceBrowserClient.openScene({ id });
 }
 
-export async function streamLogs() {
-  return editorClient.initLogsStream({});
+export async function initLogStream() {
+  return editorClient.initLogStream({});
 }

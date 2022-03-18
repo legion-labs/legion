@@ -433,6 +433,7 @@ importers:
       '@fluent/langneg': ^0.6.1
       '@iconify/svelte': ^2.1.2
       '@improbable-eng/grpc-web': ^0.15.0
+      '@lgn/proto-editor': ^0.1.0
       '@lgn/proto-streaming': ^0.1.0
       '@sveltejs/kit': ^1.0.0-next.291
       '@sveltejs/vite-plugin-svelte': ^1.0.0-next.39
@@ -475,6 +476,7 @@ importers:
       '@fluent/langneg': 0.6.1
       '@iconify/svelte': 2.1.2
       '@improbable-eng/grpc-web': 0.15.0_google-protobuf@3.19.4
+      '@lgn/proto-editor': link:../../lgn-editor-proto
       '@lgn/proto-streaming': link:../../lgn-streaming-proto
       '@tauri-apps/api': 1.0.0-rc.2
       browser-headers: 0.4.1
