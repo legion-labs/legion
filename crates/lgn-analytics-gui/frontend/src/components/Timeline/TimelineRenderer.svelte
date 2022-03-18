@@ -168,7 +168,12 @@
 <div {style} class="main">
   {#if stateManager?.process && $stateStore.ready}
     <div class="pb-1 flex flex-row items-center justify-between">
-      <TimelineDetails process={stateManager?.process} />
+      <TimelineAction
+        {processId}
+        process={stateManager.process}
+        timeRange={$stateStore.currentSelection}
+      />
+      <!-- <TimelineDetails process={stateManager?.process} /> -->
       <TimelineDebug {canvasWidth} store={stateStore} />
     </div>
   {/if}
@@ -196,13 +201,7 @@
 </div>
 
 {#if stateManager?.process && $stateStore.ready}
-  <div class="flex flex-row justify-between items-center pt-1 h-7 detail">
-    <TimelineAction
-      {processId}
-      process={stateManager.process}
-      timeRange={$stateStore.currentSelection}
-    />
-  </div>
+  <div class="flex flex-row justify-between items-center pt-1 h-7 detail" />
 {/if}
 
 <style lang="postcss">

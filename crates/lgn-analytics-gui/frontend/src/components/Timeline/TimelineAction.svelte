@@ -8,7 +8,7 @@
 
 <div class="flex flex-row justify-start text-xs gap-1">
   {#if process.parentProcessId}
-    <div class="action bg-orange-700">
+    <div class="action bg-orange-700 hover:bg-orange-800">
       <a href={`/timeline/${process.parentProcessId}`} target="_blank" use:link>
         <i class="bi bi-arrow-up-right-circle" />
         Open Parent Timeline
