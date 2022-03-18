@@ -15,7 +15,8 @@ use lgn_transform::components::GlobalTransform;
 
 use crate::{
     components::{
-        CameraComponent, LightComponent, LightType, ManipulatorComponent, VisualComponent,
+        CameraComponent, LightComponent, LightType, ManipulatorComponent, RenderSurface,
+        VisualComponent,
     },
     egui::egui_plugin::Egui,
     resources::{MeshManager, ModelManager},
@@ -39,9 +40,10 @@ pub(crate) fn on_scene_export_requested(
     mut event_scene_export_requested: EventReader<'_, '_, SceneExportRequested>,
     visuals: Query<'_, '_, (&VisualComponent, &GlobalTransform), Without<ManipulatorComponent>>,
     lights: Query<'_, '_, (&LightComponent, &GlobalTransform)>,
-    cameras: Query<'_, '_, (&CameraComponent, &GlobalTransform)>,
+    cameras: Query<'_, '_, &CameraComponent>,
     model_manager: Res<ModelManager>,
     mesh_manager: Res<MeshManager>,
+    render_surfaces: Query<'_, '_, &mut RenderSurface>,
 ) {
     if event_scene_export_requested.is_empty() {
         return;
@@ -243,6 +245,55 @@ pub(crate) fn on_scene_export_requested(
         }
     }
 
+    let mut json_cameras = Vec::new();
+    let mut camera_idx = 0;
+    for camera in cameras.iter() {
+        let json_camera = gltf::json::Camera {
+            name: None,
+            orthographic: None,
+            perspective: Some(gltf::json::camera::Perspective {
+                aspect_ratio: {
+                    //TODO: better way to grab ascpect_ratio
+                    let render_surface = render_surfaces.iter().next().unwrap();
+                    Some(
+                        render_surface.extents().width() as f32
+                            / render_surface.extents().height() as f32,
+                    )
+                },
+                yfov: camera.fov_y,
+                zfar: Some(camera.z_far),
+                znear: camera.z_near,
+                extensions: None,
+                extras: Default::default(),
+            }),
+            type_: Checked::Valid(gltf::json::camera::Type::Perspective),
+            extensions: None,
+            extras: Default::default(),
+        };
+        json_cameras.push(json_camera);
+
+        let node = gltf::json::Node {
+            camera: Some(Index::new(camera_idx)),
+            children: None,
+            extensions: None,
+            extras: Default::default(),
+            matrix: None,
+            mesh: None,
+            name: Some(format!("Camera {}", camera_idx)),
+            rotation: Some(gltf::json::scene::UnitQuaternion(
+                camera.camera_rig.final_transform.rotation.into(),
+            )),
+            scale: None,
+            translation: Some(camera.camera_rig.final_transform.position.into()),
+            skin: None,
+            weights: None,
+        };
+        nodes.push(node);
+        scene_node_indices.push(Index::new(node_idx));
+        camera_idx += 1;
+        node_idx += 1;
+    }
+
     let scene = gltf::json::Scene {
         extensions: Default::default(),
         extras: Default::default(),
@@ -261,7 +312,7 @@ pub(crate) fn on_scene_export_requested(
         //extras: todo!(),
         extensions_used: vec!["KHR_lights_punctual".into()],
         extensions_required: vec!["KHR_lights_punctual".into()],
-        //cameras: todo!(),
+        cameras: json_cameras,
         //images: todo!(),
         //materials: todo!(),
         meshes: json_meshes,
