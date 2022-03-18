@@ -21,10 +21,7 @@
   }
 </script>
 
-<form
-  class="flex items-center w-full space-x-1 justify-end py-1 px-2"
-  on:submit={submit}
->
+<form class="root" on:submit={submit}>
   <div class="flex-grow">
     <TextInput
       bind:value={name}
@@ -43,6 +40,10 @@
 </form>
 
 <style lang="postcss">
+  .root {
+    @apply flex items-center h-10 w-full space-x-1 justify-end py-1 px-2;
+  }
+
   .clear {
     @apply flex justify-center items-center h-full w-full cursor-pointer;
   }

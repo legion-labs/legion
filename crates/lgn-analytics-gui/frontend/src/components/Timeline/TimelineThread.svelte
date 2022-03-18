@@ -6,13 +6,7 @@
   import { DrawSelectedRange } from "@/lib/time_range_selection";
   import { drawSpanTrack } from "@/lib/Timeline/SpanRender";
   import { debounced } from "@lgn/web-client/src/lib/store";
-  import {
-    createEventDispatcher,
-    getContext,
-    onDestroy,
-    onMount,
-    tick,
-  } from "svelte";
+  import { createEventDispatcher, onDestroy, onMount, tick } from "svelte";
   import { TimelineContext } from "@/lib/Timeline/TimelineContext";
   import { Unsubscriber } from "svelte/store";
   export let rootStartTime: number;

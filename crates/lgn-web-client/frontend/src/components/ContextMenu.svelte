@@ -255,11 +255,21 @@ export default buildContextMenu<ContextMenuEntryRecord>();
 
     window.dispatchEvent(buildCustomEvent(close, entrySetName, entry.action));
   }
+
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      event.preventDefault();
+
+      close();
+    }
+  }
 </script>
 
 <svelte:window
   on:contextmenu={handleDefaultContextMenu}
   on:custom-contextmenu={handleCustomContextMenu}
+  on:keydown={handleKeydown}
 />
 
 {#if position}

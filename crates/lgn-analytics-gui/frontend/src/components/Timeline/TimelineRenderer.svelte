@@ -4,7 +4,6 @@
   import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { BarLoader } from "svelte-loading-spinners";
-  import TimelineDetails from "./TimelineDetails.svelte";
   import {
     NewSelectionState,
     RangeSelectionOnMouseDown,
@@ -137,7 +136,7 @@
     }
   }
 
-  function onMouseUp(e: MouseEvent) {
+  function onMouseUp(_e: MouseEvent) {
     const selection = $stateStore.currentSelection;
     if (selection) {
       setRangeUrl(selection);

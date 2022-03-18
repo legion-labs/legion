@@ -4,13 +4,7 @@
   import { ProcessAsyncData } from "@/lib/Timeline/ProcessAsyncData";
   import { DrawSelectedRange } from "@/lib/time_range_selection";
   import { drawSpanTrack } from "@/lib/Timeline/SpanRender";
-  import {
-    createEventDispatcher,
-    getContext,
-    onDestroy,
-    onMount,
-    tick,
-  } from "svelte";
+  import { createEventDispatcher, onDestroy, onMount, tick } from "svelte";
   import { spanPixelHeight } from "@/lib/Timeline/TimelineValues";
   import { TimelineContext } from "@/lib/Timeline/TimelineContext";
   import { Unsubscriber } from "svelte/store";

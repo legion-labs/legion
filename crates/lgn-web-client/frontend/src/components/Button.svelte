@@ -1,11 +1,14 @@
 <script lang="ts">
   export let type: "submit" | "button" | "reset" = "button";
 
-  export let variant: "notice" | "warning" | "success" | "danger" = "notice";
+  export let variant: "notice" | "active" | "warning" | "success" | "danger" =
+    "notice";
 
   export let size: "default" | "lg" = "default";
 
   export let disabled = false;
+
+  export let title: string | null = null;
 
   /** Basically an `width: 100%` style so that the parent can control the width */
   export let fluid = false;
@@ -16,19 +19,23 @@
   class:disabled
   class:w-full={fluid}
   class:notice={variant === "notice" && !disabled}
+  class:active={variant === "active" && !disabled}
   class:warning={variant === "warning" && !disabled}
   class:success={variant === "success" && !disabled}
   class:danger={variant === "danger" && !disabled}
-  class:default={size === "default" && !disabled}
+  class:default={size === "default"}
   class:lg={size === "lg"}
   on:click
   {disabled}
-  {type}><slot /></button
+  {type}
+  {title}
 >
+  <slot />
+</button>
 
 <style lang="postcss">
   .button {
-    @apply flex justify-center h-full w-full px-4 outline-none items-center rounded-sm cursor-pointer transition-all duration-150 font-semibold shadow-sm shadow-gray-700 active:shadow-none;
+    @apply flex justify-center h-full px-4 outline-none items-center rounded-sm cursor-pointer transition-all duration-150 font-semibold shadow-sm shadow-gray-700 active:shadow-none;
   }
 
   .button.disabled {
@@ -41,6 +48,10 @@
 
   .button.notice {
     @apply bg-gray-800 hover:bg-opacity-50;
+  }
+
+  .button.active {
+    @apply bg-gray-500 hover:bg-opacity-50 text-gray-800;
   }
 
   .button.warning {
