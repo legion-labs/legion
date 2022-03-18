@@ -1,6 +1,6 @@
 <script lang="ts">
   import { TimelineStateManager } from "@/lib/Timeline/TimelineStateManager";
-  import { onMount, setContext } from "svelte";
+  import { onMount } from "svelte";
   import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { BarLoader } from "svelte-loading-spinners";
