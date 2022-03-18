@@ -11,7 +11,7 @@ mod providers;
 mod traits;
 
 pub use chunk_identifier::ChunkIdentifier;
-pub use chunker::Chunker;
+pub use chunker::{ChunkIndex, Chunker};
 pub use config::{
     Config, GrpcProviderConfig, LocalProviderConfig, ProviderConfig, RedisProviderConfig,
 };

@@ -22,10 +22,10 @@ pub use local_backend::LocalWorkspaceBackend;
 
 /// Represents a workspace.
 pub struct Workspace {
-    pub(crate) root: PathBuf,
-    pub index_backend: Box<dyn IndexBackend>,
-    pub(crate) backend: Box<dyn WorkspaceBackend>,
-    pub(crate) registration: WorkspaceRegistration,
+    root: PathBuf,
+    index_backend: Box<dyn IndexBackend>,
+    backend: Box<dyn WorkspaceBackend>,
+    registration: WorkspaceRegistration,
     chunker: Chunker,
 }
 

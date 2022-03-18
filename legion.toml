@@ -66,6 +66,14 @@ redirect_uri = "http://localhost:3000/"
 type = "grpc"
 url = "https://api.live.playground.legionlabs.com"
 
-[content_store.caching_provider]
+[[content_store.caching_providers]]
+type = "lru"
+size = 250
+
+[content_store.data_build.provider]
+type = "local"
+url = ""
+
+[[content_store.data_build.caching_providers]]
 type = "lru"
 size = 250

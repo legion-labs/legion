@@ -12,7 +12,7 @@ use clap::{Parser, Subcommand};
 use futures::Future;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use lgn_content_store2::{
-    ChunkIdentifier, Chunker, Config, Identifier, MonitorAsyncAdapter, MonitorProvider,
+    ChunkIdentifier, ChunkIndex, Chunker, Config, Identifier, MonitorAsyncAdapter, MonitorProvider,
     TransferCallbacks,
 };
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -36,6 +36,9 @@ enum Commands {
 
         #[clap(long, default_value_t = ByteSize::b(Chunker::DEFAULT_CHUNK_SIZE.try_into().unwrap()))]
         chunk_size: ByteSize,
+    },
+    Explain {
+        identifier: ChunkIdentifier,
     },
 }
 
@@ -171,7 +174,7 @@ impl TransferCallbacks<PathBuf> for TransferProgress {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args: Args = Args::parse();
-    let config = Config::new();
+    let config = Config::from_legion_toml();
     let provider = config
         .instanciate_provider()
         .await
@@ -241,11 +244,7 @@ async fn main() -> anyhow::Result<()> {
             let copy = async move {
                 let buf = if let Some(file_path) = file_path {
                     let f = tokio::fs::File::open(&file_path).await.map_err(|err| {
-                        anyhow::anyhow!(
-                            "failed to create destination file `{}`: {}",
-                            file_path.display(),
-                            err
-                        )
+                        anyhow::anyhow!("failed to open file `{}`: {}", file_path.display(), err)
                     })?;
 
                     let metadata = f.metadata().await.map_err(|err| {
@@ -292,6 +291,53 @@ async fn main() -> anyhow::Result<()> {
             res.1?;
 
             println!("{}", id);
+        }
+        Commands::Explain { identifier } => {
+            println!("# Chunk identifier");
+            println!("Data is {} bytes long", identifier.data_size());
+
+            println!(
+                "Chunk index is {} bytes long",
+                identifier.content_id().data_size()
+            );
+
+            if identifier.content_id().is_data() {
+                println!("Chunk index is inlined in the identifier.");
+            } else {
+                println!(
+                    "Chunk index is stored in the content store at id: {}",
+                    identifier.content_id()
+                );
+            }
+
+            let provider = provider.on_download_callbacks(transfer_progress);
+            let chunker = Chunker::default();
+
+            let chunk_index = chunker
+                .read_chunk_index(provider, &identifier)
+                .await
+                .map_err(|err| anyhow::anyhow!("failed to read chunk index: {}", err))?;
+
+            match chunk_index {
+                ChunkIndex::Linear(identifiers) => {
+                    println!(
+                        "Chunks are linear with {} identifier(s).",
+                        identifiers.len()
+                    );
+
+                    for (i, identifier) in identifiers.iter().enumerate() {
+                        println!("\n# Chunk {}", i);
+                        println!("{}", identifier);
+                        println!("{} byte(s) long", identifier.data_size());
+
+                        if identifier.is_data() {
+                            println!("Data is inlined in the identifier.");
+                        } else {
+                            println!("Data is stored in the content store");
+                        }
+                    }
+                }
+            }
         }
     }
 

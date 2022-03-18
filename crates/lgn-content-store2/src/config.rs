@@ -11,7 +11,7 @@ use crate::{
 #[derive(Deserialize, Debug, Default)]
 pub struct Config {
     pub provider: ProviderConfig,
-    pub caching_provider: Option<ProviderConfig>,
+    pub caching_providers: Vec<ProviderConfig>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -74,15 +74,39 @@ pub struct AwsDynamoDbProviderConfig {
     pub table_name: String,
 }
 
+/// An environment variable that contains the default content-store section to
+/// use.
+pub const ENV_LGN_CONTENT_STORE_SECTION: &str = "LGN_CONTENT_STORE_SECTION";
+
 impl Config {
-    /// Create a new configuration by reading the available configuration files.
-    pub fn new() -> Self {
+    /// Returns a new instance from the `legion.toml`, using the section
+    /// specified in `LGN_CONTENT_STORE_SECTION` variable, or the default
+    /// section otherwise.
+    ///
+    /// If the section is not found, the default section is used.
+    pub fn from_legion_toml() -> Self {
+        match std::env::var(ENV_LGN_CONTENT_STORE_SECTION) {
+            Ok(section) => Self::from_legion_toml_section(&section),
+            Err(_) => Self::from_legion_toml_section(""),
+        }
+    }
+
+    /// Returns a new instance from the `legion.toml`, with the specified section.
+    ///
+    /// If the section is not found, the default section is used.
+    pub fn from_legion_toml_section(section: &str) -> Self {
         let settings = lgn_config::Config::new();
 
-        if let Some(config) = settings.get::<Self>("content_store") {
+        if section.is_empty() {
+            if let Some(config) = settings.get::<Self>("content_store") {
+                config
+            } else {
+                Self::default()
+            }
+        } else if let Some(config) = settings.get::<Self>(&format!("content_store.{}", section)) {
             config
         } else {
-            Self::default()
+            Self::from_legion_toml_section("")
         }
     }
 
@@ -92,14 +116,14 @@ impl Config {
     ///
     /// This function will return an error if the provider cannot be instanciated.
     pub async fn instanciate_provider(&self) -> Result<Box<dyn ContentProvider + Send + Sync>> {
-        let provider = self.provider.instanciate().await?;
+        let mut provider = self.provider.instanciate().await?;
 
-        if let Some(caching_provider) = &self.caching_provider {
+        for caching_provider in &self.caching_providers {
             let caching_provider = caching_provider.instanciate().await?;
-            Ok(Box::new(CachingProvider::new(provider, caching_provider)))
-        } else {
-            Ok(provider)
+            provider = Box::new(CachingProvider::new(provider, caching_provider));
         }
+
+        Ok(provider)
     }
 }
 

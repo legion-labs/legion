@@ -39,6 +39,21 @@ impl Default for Chunker {
 }
 
 impl Chunker {
+    /// Read a chunk index from the given reader.
+    ///
+    /// # Errors
+    ///
+    /// If the reader fails to read the chunk index, an error is returned.
+    pub async fn read_chunk_index(
+        &self,
+        content_reader: impl ContentReader + Send + Sync,
+        id: &ChunkIdentifier,
+    ) -> Result<ChunkIndex> {
+        let mut reader = content_reader.get_content_reader(id.content_id()).await?;
+
+        ChunkIndex::read_from(&mut reader).await
+    }
+
     /// Returns an async reader that assembles and reads the chunk content
     /// referenced by the specified identifier.
     ///
@@ -72,8 +87,7 @@ impl Chunker {
         //
         // Anthony D.: a task for you? :D
 
-        let mut reader = content_reader.get_content_reader(id.content_id()).await?;
-        let chunk_index = ChunkIndex::read_from(&mut reader).await?;
+        let chunk_index = self.read_chunk_index(&content_reader, id).await?;
         let ids = chunk_index.identifiers();
         let mut ids_iter = ids.iter();
 
@@ -337,11 +351,17 @@ impl ChunkFormat {
     }
 }
 
-enum ChunkIndex {
+/// A index of chunks.
+pub enum ChunkIndex {
     Linear(Vec<Identifier>),
 }
 
 impl ChunkIndex {
+    /// Read a chunk index from the specified buffer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer is too small or the format is unknown.
     pub async fn read_from(mut r: impl AsyncRead + Unpin) -> Result<Self> {
         let mut buf = [0u8; 1];
 
@@ -389,6 +409,11 @@ impl ChunkIndex {
         }
     }
 
+    /// Write the chunk index to the specified buffer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the write fails.
     pub fn write_all_to(&self, mut w: impl Write) -> std::io::Result<()> {
         w.write_all(&[self.format() as u8])?;
 
