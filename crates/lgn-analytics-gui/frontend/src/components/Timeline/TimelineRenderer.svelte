@@ -178,7 +178,6 @@
         process={stateManager.process}
         timeRange={$stateStore.currentSelection}
       />
-      <TimelineDebug {canvasWidth} store={stateStore} />
       <TimelineSearch />
     </div>
   {/if}
@@ -206,7 +205,9 @@
 </div>
 
 {#if stateManager?.process && $stateStore.ready}
-  <div class="flex flex-row justify-between items-center pt-1 h-7 detail">
+  <div
+    class="flex flex-row-reverse justify-between items-center pt-1 h-7 detail"
+  >
     <TimelineDebug {canvasWidth} store={stateStore} />
   </div>
 {/if}
