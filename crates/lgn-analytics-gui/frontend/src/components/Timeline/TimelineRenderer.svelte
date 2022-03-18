@@ -14,6 +14,7 @@
   import TimelineDebug from "./TimelineDebug.svelte";
   import TimelineProcess from "./TimelineProcess.svelte";
   import TimelineRange from "./TimelineRange.svelte";
+  import TimelineSearch from "./TimelineSearch.svelte";
   export let processId: string;
 
   type PanState = {
@@ -149,7 +150,7 @@
   {#if stateManager?.process && $stateStore.ready}
     <div class="pb-1 flex flex-row items-center justify-between">
       <TimelineDetails process={stateManager?.process} />
-      <TimelineDebug {canvasWidth} store={stateStore} />
+      <TimelineSearch />
     </div>
   {/if}
 
@@ -181,6 +182,7 @@
       process={stateManager.process}
       timeRange={$stateStore.currentSelection}
     />
+    <TimelineDebug {canvasWidth} store={stateStore} />
   </div>
 {/if}
 
