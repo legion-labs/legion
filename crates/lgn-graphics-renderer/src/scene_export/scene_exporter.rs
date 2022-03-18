@@ -1,5 +1,16 @@
+use std::{
+    collections::{HashMap, HashSet},
+    io::Write,
+};
+
+use gltf::{
+    json::{validation::Checked, Index},
+    Semantic,
+};
 use lgn_app::{App, EventReader, Events, Plugin};
+use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::{IntoExclusiveSystem, Local, Query, Res, ResMut, Without};
+use lgn_math::Vec3;
 use lgn_transform::components::GlobalTransform;
 
 use crate::{
@@ -23,6 +34,7 @@ impl Plugin for SceneExporterPlugin {
     }
 }
 
+#[allow(unsafe_code)]
 pub(crate) fn on_scene_export_requested(
     mut event_scene_export_requested: EventReader<'_, '_, SceneExportRequested>,
     visuals: Query<'_, '_, (&VisualComponent, &GlobalTransform), Without<ManipulatorComponent>>,
@@ -55,6 +67,182 @@ pub(crate) fn on_scene_export_requested(
         &mut scene_node_indices,
     ));
 
+    let mut model_ids = HashSet::new();
+    for (visual, transform) in visuals.iter() {
+        if let Some(model_id) = visual.model_resource_id {
+            model_ids.insert(model_id);
+        }
+    }
+
+    let mut buffers = vec![];
+    let mut buffer_views = vec![];
+    let mut accessors = vec![];
+
+    let mut buffer_idx = 0;
+    let mut buffer_view_idx = 0;
+    let mut accessor_idx = 0;
+    // json_mesh == model, json_primitive == mesh
+    let mut json_meshes = Vec::new();
+    let model_ids = model_ids.into_iter().collect::<Vec<ResourceTypeAndId>>();
+    for model_id in &model_ids {
+        let (model_meta_data, ready) = model_manager.get_model_meta_data(&Some(*model_id));
+        if !ready {
+            todo!()
+        }
+
+        let buffer_file_name = format!("buffer_{}.bin", model_id);
+        let mut writer =
+            std::fs::File::create(format!("{}/{}", dir, buffer_file_name)).expect("I/O error");
+
+        let mut byte_offset = 0;
+
+        let mut json_primitives = Vec::new();
+        for mesh in &model_meta_data.meshes {
+            let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
+            let ptr = mesh_meta_data.source_data.positions.as_ptr() as *const u8;
+            let size_pos = mesh_meta_data.source_data.positions.len() * std::mem::size_of::<Vec3>();
+            writer.write_all(unsafe { core::slice::from_raw_parts(ptr, size_pos) });
+            let buffer_view = gltf::json::buffer::View {
+                buffer: Index::new(buffer_idx),
+                byte_length: size_pos as u32,
+                byte_offset: Some(byte_offset),
+                byte_stride: None,
+                name: Some("Positions".into()),
+                target: None,
+                extensions: None,
+                extras: Default::default(),
+            };
+            byte_offset += size_pos as u32;
+            buffer_views.push(buffer_view);
+
+            let accessor_pos = gltf::json::Accessor {
+                buffer_view: Some(Index::new(buffer_view_idx)),
+                byte_offset: 0,
+                count: mesh_meta_data.source_data.positions.len() as u32,
+                component_type: Checked::Valid(gltf::json::accessor::GenericComponentType(
+                    gltf::json::accessor::ComponentType::F32,
+                )),
+                extensions: None,
+                extras: Default::default(),
+                type_: Checked::Valid(gltf::json::accessor::Type::Vec3),
+                min: None,
+                max: None,
+                name: Some("Positions".into()),
+                normalized: false,
+                sparse: None,
+            };
+            accessors.push(accessor_pos);
+
+            let mut attributes = HashMap::new();
+            attributes.insert(
+                Checked::Valid(Semantic::Positions),
+                Index::new(accessor_idx),
+            );
+
+            buffer_view_idx += 1;
+            accessor_idx += 1;
+
+            let mut indices = None;
+
+            if let Some(source_indices) = &mesh_meta_data.source_data.indices {
+                let ptr = source_indices.as_ptr() as *const u8;
+                let size_indices = source_indices.len() * std::mem::size_of::<u16>();
+                writer.write_all(unsafe { core::slice::from_raw_parts(ptr, size_indices) });
+
+                let buffer_view = gltf::json::buffer::View {
+                    buffer: Index::new(buffer_idx),
+                    byte_length: size_indices as u32,
+                    byte_offset: Some(byte_offset),
+                    byte_stride: None,
+                    name: Some("Indices".into()),
+                    target: None,
+                    extensions: None,
+                    extras: Default::default(),
+                };
+                byte_offset += size_indices as u32;
+                buffer_views.push(buffer_view);
+
+                let accessor_pos = gltf::json::Accessor {
+                    buffer_view: Some(Index::new(buffer_view_idx)),
+                    byte_offset: 0,
+                    count: source_indices.len() as u32,
+                    component_type: Checked::Valid(gltf::json::accessor::GenericComponentType(
+                        gltf::json::accessor::ComponentType::U16,
+                    )),
+                    extensions: None,
+                    extras: Default::default(),
+                    type_: Checked::Valid(gltf::json::accessor::Type::Scalar),
+                    min: None,
+                    max: None,
+                    name: Some("Indices".into()),
+                    normalized: false,
+                    sparse: None,
+                };
+                accessors.push(accessor_pos);
+
+                indices = Some(Index::new(accessor_idx));
+                buffer_view_idx += 1;
+                accessor_idx += 1;
+            }
+
+            let primitive = gltf::json::mesh::Primitive {
+                attributes,
+                extensions: None,
+                extras: Default::default(),
+                indices,
+                material: None,
+                mode: Checked::Valid(gltf::mesh::Mode::Triangles),
+                targets: None,
+            };
+            json_primitives.push(primitive);
+        }
+
+        // buffer file per model
+        let buffer = gltf::json::Buffer {
+            byte_length: byte_offset,
+            name: None,
+            uri: Some(buffer_file_name),
+            extensions: None,
+            extras: Default::default(),
+        };
+        buffers.push(buffer);
+
+        let json_mesh = gltf::json::Mesh {
+            extensions: None,
+            extras: Default::default(),
+            name: None,
+            primitives: json_primitives,
+            weights: None,
+        };
+        json_meshes.push(json_mesh);
+
+        buffer_idx += 1;
+    }
+
+    for (visual, transform) in visuals.iter() {
+        if let Some(model_id) = visual.model_resource_id {
+            let node = gltf::json::Node {
+                camera: None,
+                children: None,
+                extensions: None,
+                extras: Default::default(),
+                matrix: None,
+                mesh: Some(Index::new(
+                    model_ids.iter().position(|v| *v == model_id).unwrap() as u32,
+                )),
+                name: Some("mesh".into()),
+                rotation: Some(gltf::json::scene::UnitQuaternion(transform.rotation.into())),
+                scale: Some(transform.scale.into()),
+                translation: Some(transform.translation.into()),
+                skin: None,
+                weights: None,
+            };
+            nodes.push(node);
+            scene_node_indices.push(Index::new(node_idx));
+            node_idx += 1;
+        }
+    }
+
     let scene = gltf::json::Scene {
         extensions: Default::default(),
         extras: Default::default(),
@@ -62,35 +250,13 @@ pub(crate) fn on_scene_export_requested(
         nodes: scene_node_indices,
     };
 
-    for (visual, transform) in visuals.iter() {
-        let (model_meta_data, ready) = model_manager.get_model_meta_data(visual);
-        if !ready {
-            todo!()
-        }
-
-        for mesh in &model_meta_data.meshes {
-            let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
-            mesh_meta_data.source_data.positions
-        }
-    }
-
-    let buffer = gltf::json::Buffer {
-        byte_length: todo!(),
-        name: todo!(),
-        uri: todo!(),
-        extensions: todo!(),
-        extras: todo!(),
-    };
-
-    let buffers = vec![];
-
     let root = gltf::json::Root {
         extensions,
-        //accessors: todo!(),
+        accessors,
         //animations: todo!(),
         //asset: todo!(),
-        //buffers: todo!(),
-        //buffer_views: todo!(),
+        buffers,
+        buffer_views,
         //scene: todo!(),
         //extras: todo!(),
         extensions_used: vec!["KHR_lights_punctual".into()],
@@ -98,7 +264,7 @@ pub(crate) fn on_scene_export_requested(
         //cameras: todo!(),
         //images: todo!(),
         //materials: todo!(),
-        //meshes: todo!(),
+        meshes: json_meshes,
         nodes,
         //samplers: todo!(),
         scenes: vec![scene],
@@ -108,17 +274,13 @@ pub(crate) fn on_scene_export_requested(
     };
     let writer = std::fs::File::create(format!("{}/scene.gltf", dir)).expect("I/O error");
     gltf::json::serialize::to_writer_pretty(writer, &root).expect("Serialization error");
-
-    //let bin = to_padded_byte_vector(triangle_vertices);
-    //let mut writer = fs::File::create("triangle/buffer0.bin").expect("I/O error");
-    //writer.write_all(&bin).expect("I/O error");
 }
 
 fn export_extensions(
     nodes: &mut Vec<gltf::json::Node>,
     lights: &Query<'_, '_, (&LightComponent, &GlobalTransform)>,
     node_idx: &mut u32,
-    scene_node_indices: &mut Vec<gltf::json::Index<gltf::json::Node>>,
+    scene_node_indices: &mut Vec<Index<gltf::json::Node>>,
 ) -> gltf::json::extensions::root::Root {
     let mut light_idx = 0;
     let mut khr_lights = Vec::new();
@@ -130,7 +292,7 @@ fn export_extensions(
             extensions: Some(gltf::json::extensions::scene::Node {
                 khr_lights_punctual: Some(
                     gltf::json::extensions::scene::khr_lights_punctual::KhrLightsPunctual {
-                        light: gltf::json::Index::new(light_idx),
+                        light: Index::new(light_idx),
                     },
                 ),
             }),
@@ -147,7 +309,7 @@ fn export_extensions(
         nodes.push(node);
         let node = gltf::json::Node {
             camera: None,
-            children: Some(vec![gltf::json::Index::new(*node_idx)]),
+            children: Some(vec![Index::new(*node_idx)]),
             extensions: None,
             extras: Default::default(),
             matrix: None,
@@ -160,7 +322,7 @@ fn export_extensions(
             weights: None,
         };
         nodes.push(node);
-        scene_node_indices.push(gltf::json::Index::new(*node_idx + 1));
+        scene_node_indices.push(Index::new(*node_idx + 1));
         light_idx += 1;
         *node_idx += 2;
     }
