@@ -288,14 +288,17 @@ Could support the interface to get visibility into crates that are already instr
 - Cumulative call graph improvements (Tim)
 
 ---
-## todo
+## Backlog
+- Logs (dual mode)
+  * Paging when not filtering
+  * n-first results when there is a filter
 - GPU profiling
 - Memory profiling
 - Object Graphs
   * Why is this texture loaded?
 - Process dashboards
   * monitoring thousands of processes
-- Task-based timeline
+- Task-based timeline & async span parenting
   * unifying thread-bound and async tasks
 - Heat maps
 - Real-time logs, metrics and timeline
