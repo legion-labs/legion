@@ -205,9 +205,7 @@ impl VideoStreamEncoder {
 
     #[span_fn]
     fn encode(&mut self, frame_id: i32) -> Vec<Bytes> {
-        self.encoder.force_intra_frame(true);
         let stream = self.encoder.encode(&self.yuv_holder).unwrap();
-
         for layer in &stream.layers {
             if !layer.is_video {
                 let mut sps: &[u8] = &[];
