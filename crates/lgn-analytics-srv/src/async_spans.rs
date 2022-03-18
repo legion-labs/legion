@@ -142,8 +142,8 @@ impl AsyncSpanBuilder {
             self.record_scope_desc(scope_hash, &scope_name);
             self.complete_spans.push(Span {
                 scope_hash,
-                begin_ms,
-                end_ms,
+                begin_ms: begin_ms.max(self.begin_section_ms),
+                end_ms: end_ms.min(self.end_section_ms),
                 alpha: 255,
             });
         }
