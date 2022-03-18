@@ -66,13 +66,6 @@ export function drawSpanTrack(
     }
     ctx.globalAlpha = span.alpha / 255;
 
-    if (callWidth >= 16) {
-      ctx.save();
-      ctx.fillStyle = shadeColor(ctx.fillStyle as string, 1.025);
-      ctx.fillRect(beginPixels, offsetY, 2, spanPixelHeight);
-      ctx.restore();
-    }
-
     if (span.scopeHash != 0) {
       const { name } = scopes[span.scopeHash];
       ctx.fillStyle =
@@ -80,6 +73,7 @@ export function drawSpanTrack(
           ? "#ffee59"
           : color;
       ctx.fillRect(beginPixels, offsetY, callWidth, spanPixelHeight);
+      drawSpanLeftMarker(ctx.fillStyle, callWidth, beginPixels);
       if (callWidth > characterWidth * 5) {
         // const nbChars = Math.floor(callWidth / characterWidth);
 
@@ -109,6 +103,19 @@ export function drawSpanTrack(
       ctx.fillRect(beginPixels, offsetY, callWidth, spanPixelHeight);
     }
     ctx.globalAlpha = 1.0;
+  }
+
+  function drawSpanLeftMarker(
+    color: string,
+    callWidth: number,
+    beginPixels: number
+  ) {
+    if (callWidth >= 8) {
+      ctx.save();
+      ctx.fillStyle = shadeColor(color, 1.04);
+      ctx.fillRect(beginPixels, offsetY, 1, spanPixelHeight);
+      ctx.restore();
+    }
   }
 }
 
