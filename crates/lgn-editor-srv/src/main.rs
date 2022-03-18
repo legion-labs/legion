@@ -21,7 +21,7 @@ use lgn_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
 use lgn_scripting::ScriptingPlugin;
 use lgn_streamer::StreamerPlugin;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
-use lgn_tracing::{debug, warn, LevelFilter};
+use lgn_tracing::{debug, info, warn, LevelFilter};
 use lgn_transform::TransformPlugin;
 use sample_data::SampleDataPlugin;
 use tokio::sync::mpsc;
@@ -96,12 +96,18 @@ fn main() {
     };
 
     let project_folder = {
-        if let Some(params) = args.project {
+        let path = if let Some(params) = args.project {
             PathBuf::from(params)
         } else {
             settings
                 .get_absolute_path("editor_srv.project_dir")
                 .unwrap_or_else(|| PathBuf::from("tests/sample-data"))
+        };
+
+        if path.is_absolute() {
+            path
+        } else {
+            cwd.join(path)
         }
     };
 
@@ -165,7 +171,12 @@ fn main() {
             })
         }
     };
-    println!("aaa {}", build_output_db_addr);
+
+    info!("Project: '{:?}'", project_folder);
+    info!("Content Store: '{:?}'", content_store_path);
+    info!("Scene: '{}'", default_scene);
+    info!("LSC Origin: '{}'", source_control_path);
+    info!("Build DB: '{}'", build_output_db_addr);
 
     let game_manifest_path = args.manifest.map_or_else(PathBuf::new, PathBuf::from);
     let assets_to_load = Vec::<ResourceTypeAndId>::new();
