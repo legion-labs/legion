@@ -14,6 +14,7 @@
   import TimelineDebug from "./TimelineDebug.svelte";
   import TimelineProcess from "./TimelineProcess.svelte";
   import TimelineRange from "./TimelineRange.svelte";
+  import TimelineSearch from "./TimelineSearch.svelte";
   export let processId: string;
   import { useLocation } from "svelte-navigator";
   const location = useLocation();
@@ -30,11 +31,15 @@
   let windowInnerWidth: number;
   let stateStore: TimelineStateStore;
   let panState: PanState | undefined = undefined;
-  let canvasWidth = NaN;
+  let canvasWidth = NaN; //todo: retirer
   let div: HTMLElement;
 
   $: if (windowInnerWidth) {
-    canvasWidth = windowInnerWidth - 230;
+    stateStore.update((s) => {
+      canvasWidth = windowInnerWidth - 230;
+      s.canvasWidth = canvasWidth;
+      return s;
+    });
   }
 
   $: style = `display:${$stateStore?.ready ? "block" : "none"}`;
@@ -48,7 +53,7 @@
     const end = e != null ? Number.parseFloat(e) : null;
     stateManager = new TimelineStateManager(processId, start, end);
     stateStore = stateManager.state;
-    await stateManager.init(windowInnerWidth);
+    await stateManager.init();
   });
 
   async function onZoom(event: WheelEvent) {
@@ -57,7 +62,7 @@
       return s;
     });
 
-    await stateManager.fetchLods(windowInnerWidth);
+    await stateManager.fetchDynData();
   }
 
   function isValidEvent(event: MouseEvent) {
@@ -173,8 +178,8 @@
         process={stateManager.process}
         timeRange={$stateStore.currentSelection}
       />
-      <!-- <TimelineDetails process={stateManager?.process} /> -->
       <TimelineDebug {canvasWidth} store={stateStore} />
+      <TimelineSearch />
     </div>
   {/if}
 
@@ -201,7 +206,9 @@
 </div>
 
 {#if stateManager?.process && $stateStore.ready}
-  <div class="flex flex-row justify-between items-center pt-1 h-7 detail" />
+  <div class="flex flex-row justify-between items-center pt-1 h-7 detail">
+    <TimelineDebug {canvasWidth} store={stateStore} />
+  </div>
 {/if}
 
 <style lang="postcss">

@@ -34,9 +34,9 @@ export default function videoPlayer(
 
   let videoSource: SourceBuffer | null = null;
   let mediaSource: MediaSource | null = null;
-  let waitingForKeyFrame = true;
   let listeners: Listener[] = [];
   const queue: Uint8Array[] = [];
+  let lastFrameId = -1;
 
   const addListener = (source: Source, name: string, f: () => void) => {
     source.addEventListener(name, f);
@@ -85,7 +85,8 @@ export default function videoPlayer(
   const destroy = () => {
     onVideoClose();
 
-    waitingForKeyFrame = true;
+    lastFrameId = -1;
+
     videoElement.pause();
 
     for (const { source, name, f } of listeners) {
@@ -108,24 +109,32 @@ export default function videoPlayer(
 
   (videoElement as PushableHTMLVideoElement).push = (data) => {
     const chunk = new Uint8Array(data);
-    const headerPayloadLength = chunk[1] * 256 + chunk[0];
-    const binHeader = chunk.slice(2, 2 + headerPayloadLength);
+    const frameId =
+      (chunk[3] << 24) | (chunk[2] << 16) | (chunk[1] << 8) | chunk[0];
+    const chunkCount =
+      (chunk[7] << 24) | (chunk[6] << 16) | (chunk[5] << 8) | chunk[4];
+    const chunkIdx =
+      (chunk[11] << 24) | (chunk[10] << 16) | (chunk[9] << 8) | chunk[8];
 
-    const chunkHeader = new TextDecoder().decode(binHeader);
+    const frameChunk = chunk.slice(12);
 
-    onVideoChunkReceived(chunkHeader);
-
-    const frame = chunk.slice(2 + headerPayloadLength);
-
-    if (frame[4] === 0x66) {
+    if (chunkIdx === 0 && frameChunk[4] === 0x66) {
       destroy();
       initialize();
-      waitingForKeyFrame = false;
+      lastFrameId = frameId;
     }
 
-    if (!waitingForKeyFrame) {
-      queue.push(frame);
+    if (frameId < lastFrameId) {
+      console.error("video", "Frame out of order");
+      console.error(`Frame Id: ${frameId}`);
+      console.error(`Chunk Count: ${chunkCount}`);
+      console.error(`Chunk Idx: ${chunkIdx}`);
+    }
+
+    if (lastFrameId !== -1) {
+      queue.push(frameChunk);
       submit();
+      lastFrameId = frameId;
     }
   };
 }

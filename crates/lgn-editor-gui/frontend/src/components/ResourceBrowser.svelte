@@ -20,9 +20,10 @@
   } from "@/api";
   import allResources from "@/stores/allResources";
   import { fetchCurrentResourceDescription } from "@/orchestrators/currentResource";
-  import { components, join } from "@/lib/path";
+  import { components, extension, join } from "@/lib/path";
   import notifications from "@/stores/notifications";
   import type { Entries, Entry } from "@/lib/hierarchyTree";
+  import { isEntry } from "@/lib/hierarchyTree";
   import log from "@lgn/web-client/src/lib/log";
   import { createFilesStore } from "@lgn/web-client/src/stores/files";
   import { UploadStatus } from "@lgn/proto-editor/dist/source_control";
@@ -157,13 +158,33 @@
       const names = await Promise.all(promises);
 
       await Promise.all(
-        names.map((name) =>
+        names.map((name) => {
+          let resourceType: string | null = null;
+
+          switch (extension(name)) {
+            case "png": {
+              resourceType = "png";
+
+              break;
+            }
+
+            case "gltf": {
+              resourceType = "offline_model";
+
+              break;
+            }
+          }
+
+          if (!resourceType) {
+            return;
+          }
+
           createResource({
             resourceName: name,
-            resourceType: "png",
+            resourceType,
             parentResourceId: undefined,
-          })
-        )
+          });
+        })
       );
 
       allResources.run(getAllResources);
@@ -214,11 +235,10 @@
 
         if (newResource) {
           const entry = resourceEntries.find(
-            (entry) =>
-              typeof entry.item !== "symbol" && entry.item.id == newResource.id
+            (entry) => isEntry(entry) && entry.item.id == newResource.id
           );
 
-          if (!entry || typeof entry.item === "symbol") {
+          if (!entry || !isEntry(entry)) {
             return;
           }
 
@@ -231,7 +251,10 @@
       }
 
       case "import": {
-        files.open({ multiple: true, mimeTypes: ["image/png"] });
+        files.open({
+          multiple: true,
+          fileTypeSpecifiers: [".png", ".gltf"],
+        });
 
         return;
       }
@@ -383,7 +406,7 @@
       !removePromptId ||
       !resourceHierarchyTree ||
       !currentResourceDescriptionEntry ||
-      typeof currentResourceDescriptionEntry.item === "symbol"
+      !isEntry(currentResourceDescriptionEntry)
     ) {
       return;
     }
@@ -452,8 +475,13 @@
         <div class="w-full h-full" slot="icon" let:entry>
           <Icon class="w-full h-full" icon={iconFor(entry)} />
         </div>
-        <div class="item" slot="name" let:itemName>
-          {itemName}
+        <div
+          class="item"
+          slot="name"
+          let:entry
+          title={isEntry(entry) ? entry.item.path : null}
+        >
+          {entry.name}
         </div>
       </HierarchyTree>
     {/if}

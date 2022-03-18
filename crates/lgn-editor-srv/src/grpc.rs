@@ -3,7 +3,7 @@ use std::{ops::Deref, sync::Arc};
 use lgn_data_transaction::TransactionManager;
 use lgn_editor_proto::editor::{
     editor_server::{Editor, EditorServer},
-    InitLogsStreamRequest, InitLogsStreamResponse, RedoTransactionRequest, RedoTransactionResponse,
+    InitLogStreamRequest, InitLogStreamResponse, RedoTransactionRequest, RedoTransactionResponse,
     UndoTransactionRequest, UndoTransactionResponse,
 };
 use tokio::sync::{mpsc, Mutex};
@@ -12,7 +12,7 @@ use tonic::{Request, Response, Status};
 
 use crate::channel_sink::TraceEvent;
 
-/// Easy to share, referenced counted version of Tokio's `UnboundedReceiver`.
+/// Easy to share, referenced counted version of Tokio's [`mpsc::UnboundedReceiver`].
 /// Can be cloned safely and will dereference to the internal [`Mutex`].
 pub(crate) struct SharedUnboundedReceiver<T>(pub(crate) Arc<Mutex<mpsc::UnboundedReceiver<T>>>);
 
@@ -94,12 +94,12 @@ impl Editor for GRPCServer {
         Ok(Response::new(RedoTransactionResponse { id: 0 }))
     }
 
-    type InitLogsStreamStream = ReceiverStream<Result<InitLogsStreamResponse, Status>>;
+    type InitLogStreamStream = ReceiverStream<Result<InitLogStreamResponse, Status>>;
 
-    async fn init_logs_stream(
+    async fn init_log_stream(
         &self,
-        _: Request<InitLogsStreamRequest>,
-    ) -> Result<tonic::Response<<Self as Editor>::InitLogsStreamStream>, Status> {
+        _: Request<InitLogStreamRequest>,
+    ) -> Result<tonic::Response<<Self as Editor>::InitLogStreamStream>, Status> {
         let (tx, rx) = mpsc::channel(10);
 
         let receiver = self.trace_events_receiver.clone();
@@ -114,8 +114,11 @@ impl Editor for GRPCServer {
                 } = trace_event
                 {
                     let _send_result = tx
-                        .send(Ok(InitLogsStreamResponse {
-                            level: level as i32,
+                        .send(Ok(InitLogStreamResponse {
+                            // There must be a default, zero, value for enums but Level is 1-indexed
+                            // (https://developers.google.com/protocol-buffers/docs/proto3#enum)
+                            // So we simply decrement the level to get the proper value at runtime
+                            level: (level as i32 - 1),
                             message,
                             target,
                             time,

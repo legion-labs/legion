@@ -1,4 +1,4 @@
-//! A generic [`EventSink`] that accepts an [`mpsc::Sender<Log>`]
+//! A generic [`EventSink`] that accepts an [`mpsc::Sender<TraceEvent>`]
 //! that will be used to send [`TraceEvent`] messages.
 
 use core::fmt;

@@ -6,7 +6,7 @@
   import ModalContainer from "@lgn/web-client/src/components/modal/ModalContainer.svelte";
   import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
   import StatusBar from "@lgn/web-client/src/components/StatusBar.svelte";
-  import { getAllResources, streamLogs } from "@/api";
+  import { getAllResources } from "@/api";
   import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
   import currentResource from "@/orchestrators/currentResource";
   import { createHierarchyTreeOrchestrator } from "@/orchestrators/hierarchyTree";
@@ -22,8 +22,7 @@
   import ResourceBrowser from "@/components/ResourceBrowser.svelte";
   import modal from "@/stores/modal";
   import type { Entry } from "@/lib/hierarchyTree";
-  import { tap } from "rxjs/operators";
-  import log from "@lgn/web-client/src/lib/log";
+  import ExtraPanel from "@/components/ExtraPanel.svelte";
 
   const { data: currentResourceData } = currentResource;
 
@@ -55,16 +54,6 @@
 
   onMount(() => {
     reloadResources();
-
-    streamLogs().then((logs) => {
-      logs
-        .pipe(
-          tap(({ time, target, message }) =>
-            log.trace(`${time} - ${target} - ${message}`)
-          )
-        )
-        .subscribe();
-    });
 
     if ($authStatus && $authStatus.type === "error") {
       modal.open(Symbol.for("auth-modal"), AuthModal, {
@@ -125,6 +114,10 @@
       <div class="v-separator" />
       <div class="main-content">
         <ViewportPanel orchestrator={viewportOrchestrator} />
+        <div class="h-separator" />
+        <div class="extra-panel">
+          <ExtraPanel />
+        </div>
       </div>
       <div class="v-separator" />
       <div class="secondary-contents">
@@ -187,5 +180,9 @@
 
   .property-grid-content {
     @apply h-full;
+  }
+
+  .extra-panel {
+    @apply h-80 flex-shrink-0;
   }
 </style>

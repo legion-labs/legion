@@ -1,9 +1,9 @@
-import binarySearch from "binary-search";
-import { spanPixelHeight } from "@/lib/Timeline/TimelineValues";
-import { SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
 import { formatExecutionTime } from "@/lib/format";
 import { TimelineCaptionItem } from "@/lib/Timeline/TimelineSpanCaptionItem";
+import { spanPixelHeight } from "@/lib/Timeline/TimelineValues";
+import { SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
 import { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
+import binarySearch from "binary-search";
 
 export function drawSpanTrack(
   ctx: CanvasRenderingContext2D,
@@ -16,7 +16,8 @@ export function drawSpanTrack(
   endViewRange: number,
   characterWidth: number,
   characterHeight: number,
-  msToPixelsFactor: number
+  msToPixelsFactor: number,
+  search: string
 ) {
   let firstSpan = binarySearch(
     track.spans,
@@ -63,19 +64,22 @@ export function drawSpanTrack(
     if (callWidth < 0.1) {
       continue;
     }
-    ctx.fillStyle = color;
     ctx.globalAlpha = span.alpha / 255;
-    ctx.fillRect(beginPixels, offsetY, callWidth, spanPixelHeight);
-    ctx.globalAlpha = 1.0;
 
     if (span.scopeHash != 0) {
+      const { name } = scopes[span.scopeHash];
+      ctx.fillStyle =
+        search && name.toLowerCase().includes(search.toLowerCase())
+          ? "#ffee59"
+          : color;
+      ctx.fillRect(beginPixels, offsetY, callWidth, spanPixelHeight);
+      drawSpanLeftMarker(ctx.fillStyle, callWidth, beginPixels);
       if (callWidth > characterWidth * 5) {
         // const nbChars = Math.floor(callWidth / characterWidth);
 
         ctx.fillStyle = "#000000";
 
         const extraHeight = 0.5 * (spanPixelHeight - characterHeight);
-        const { name } = scopes[span.scopeHash];
         // const caption = name + " " + formatExecutionTime(endSpan - beginSpan);
 
         // ctx.fillText(
@@ -94,6 +98,23 @@ export function drawSpanTrack(
           offsetY + characterHeight + extraHeight
         );
       }
+    } else {
+      ctx.fillStyle = color;
+      ctx.fillRect(beginPixels, offsetY, callWidth, spanPixelHeight);
+    }
+    ctx.globalAlpha = 1.0;
+  }
+
+  function drawSpanLeftMarker(
+    color: string,
+    callWidth: number,
+    beginPixels: number
+  ) {
+    if (callWidth >= 8) {
+      ctx.save();
+      ctx.fillStyle = shadeColor(color, 1.04);
+      ctx.fillRect(beginPixels, offsetY, 1, spanPixelHeight);
+      ctx.restore();
     }
   }
 }
@@ -157,4 +178,29 @@ function* getCaptions(
     font: "12px arial",
     skippable: true,
   };
+}
+
+function shadeColor(color: string, decimal: number): string {
+  const base = color.startsWith("#") ? 1 : 0;
+
+  let r = parseInt(color.substring(base, 3), 16);
+  let g = parseInt(color.substring(base + 2, 5), 16);
+  let b = parseInt(color.substring(base + 4, 7), 16);
+
+  r = Math.round(r / decimal);
+  g = Math.round(g / decimal);
+  b = Math.round(b / decimal);
+
+  r = r < 255 ? r : 255;
+  g = g < 255 ? g : 255;
+  b = b < 255 ? b : 255;
+
+  const rr =
+    r.toString(16).length === 1 ? `0${r.toString(16)}` : r.toString(16);
+  const gg =
+    g.toString(16).length === 1 ? `0${g.toString(16)}` : g.toString(16);
+  const bb =
+    b.toString(16).length === 1 ? `0${b.toString(16)}` : b.toString(16);
+
+  return `#${rr}${gg}${bb}`;
 }
