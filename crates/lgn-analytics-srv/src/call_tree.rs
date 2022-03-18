@@ -164,7 +164,6 @@ use crate::scope::ScopeHashMap;
 use crate::thread_block_processor::parse_thread_block;
 use crate::thread_block_processor::ThreadBlockProcessor;
 
-#[span_fn]
 fn make_spans_from_tree(tree: &CallTreeNode, depth: u32, lod: &mut SpanBlockLod) {
     let span = Span {
         scope_hash: tree.hash,

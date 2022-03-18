@@ -89,17 +89,19 @@ fn ranges_overlap(begin_a: f64, end_a: f64, begin_b: f64, end_b: f64) -> bool {
     begin_a <= end_b && begin_b <= end_a
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct BeginSpan {
     time_ms: f64,
+    scope: Arc<Object>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct EndSpan {
     time_ms: f64,
+    scope: Arc<Object>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum SpanEvent {
     Begin(BeginSpan),
     End(EndSpan),
@@ -151,9 +153,20 @@ impl AsyncSpanBuilder {
     }
 
     #[span_fn]
-    fn finish(self) -> (Vec<Span>, ScopeHashMap) {
-        //todo: complete unmatched events
-        (self.complete_spans, self.scopes)
+    fn finish(mut self) -> Result<(Vec<Span>, ScopeHashMap)> {
+        let mut events = HashMap::new();
+        std::mem::swap(&mut events, &mut self.unmatched_events);
+        for (_id, evt) in events {
+            match evt {
+                SpanEvent::Begin(begin_span) => {
+                    self.record_span(begin_span.time_ms, self.end_section_ms, &begin_span.scope)?;
+                }
+                SpanEvent::End(end_span) => {
+                    self.record_span(self.begin_section_ms, end_span.time_ms, &end_span.scope)?;
+                }
+            }
+        }
+        Ok((self.complete_spans, self.scopes))
     }
 }
 
@@ -183,7 +196,7 @@ impl ThreadBlockProcessor for AsyncSpanBuilder {
             }
         } else {
             self.unmatched_events
-                .insert(span_id, SpanEvent::Begin(BeginSpan { time_ms }));
+                .insert(span_id, SpanEvent::Begin(BeginSpan { time_ms, scope }));
         }
         Ok(())
     }
@@ -205,7 +218,7 @@ impl ThreadBlockProcessor for AsyncSpanBuilder {
             }
         } else {
             self.unmatched_events
-                .insert(span_id, SpanEvent::End(EndSpan { time_ms }));
+                .insert(span_id, SpanEvent::End(EndSpan { time_ms, scope }));
         }
         Ok(())
     }
@@ -280,7 +293,7 @@ pub async fn compute_async_spans(
         )
         .await?;
     }
-    let (mut spans, scopes) = builder.finish();
+    let (mut spans, scopes) = builder.finish()?;
     spans.sort_by(|a, b| a.begin_ms.partial_cmp(&b.begin_ms).unwrap());
     let tracks = layout_spans(spans);
     let reply = AsyncSpansReply {
