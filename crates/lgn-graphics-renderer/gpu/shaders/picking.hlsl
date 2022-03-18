@@ -9,8 +9,7 @@
 
 struct VertexOut {  
     float4 hpos : SV_POSITION;
-    float3 picking_pos : POSITION;
-    float3 picked_world_pos : COLOR;
+    float4 picked_world_pos : COLOR;
     nointerpolation uint va_table_address: INSTANCE0;
 };
 
@@ -37,11 +36,7 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
     float4 world_pos = mul(world, float4(vertex_in.pos, 1.0));
     vertex_out.hpos = mul(view_data.projection_view, world_pos);
 
-    float2 pers_div = vertex_out.hpos.xy / vertex_out.hpos.w;
-    pers_div.y *= -1.0f;
-
-    vertex_out.picked_world_pos = world_pos.xyz;
-    vertex_out.picking_pos = float3((pers_div + 1.0f) * 0.5f * view_data.screen_size.xy, world_pos.z);
+    vertex_out.picked_world_pos = world_pos;
     vertex_out.va_table_address = vertexIn.va_table_address;
 
     return vertex_out;
@@ -56,16 +51,17 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET
         pickingId = LoadGpuInstancePickingData(static_buffer, addresses.picking_data_va).picking_id;
     }
 
-    float2 proximity = vertex_out.picking_pos.xy - view_data.cursor_pos;
+    float2 picking_pos = vertex_out.hpos * view_data.pixel_size.zw * view_data.logical_size.xy;
+    float2 proximity = picking_pos.xy - view_data.cursor_pos;
 
     if (dot(proximity, proximity) < push_constant.picking_distance)
     {
         uint write_index = 0;
         InterlockedAdd(picked_count[0], 1, write_index);
 
-        picked_objects[write_index].picking_pos = float4(vertex_out.picked_world_pos, vertex_out.hpos.z);
+        picked_objects[write_index].picking_pos = float4(vertex_out.picked_world_pos.xyz, vertex_out.hpos.z);
         picked_objects[write_index].picking_id = pickingId;
     }
 
-    return float4(proximity.xy, dot(proximity, proximity), 1.0f);
+    return float4(proximity.xy, picking_pos.xy);
 }

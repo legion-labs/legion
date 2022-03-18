@@ -3,16 +3,6 @@
 version = 3
 
 [[package]]
-name = "Inflector"
-version = "0.11.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe438c63458706e03479442743baae6c88256498e6431708f6dfc520a26515d3"
-dependencies = [
- "lazy_static",
- "regex",
-]
-
-[[package]]
 name = "ab_glyph"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1548,43 +1538,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "console-api"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc347c19eb5b940f396ac155822caee6662f850d97306890ac3773ed76c90c5a"
-dependencies = [
- "prost",
- "prost-types",
- "tonic",
- "tonic-build",
- "tracing-core",
-]
-
-[[package]]
-name = "console-subscriber"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "565a7dfea2d10dd0e5c57cc394d5d441b1910960d8c9211ed14135e0e6ec3a20"
-dependencies = [
- "console-api",
- "crossbeam-channel",
- "crossbeam-utils 0.8.7",
- "futures",
- "hdrhistogram",
- "humantime 2.1.0",
- "prost-types",
- "serde",
- "serde_json",
- "thread_local",
- "tokio",
- "tokio-stream",
- "tonic",
- "tracing",
- "tracing-core",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "const-oid"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1607,24 +1560,6 @@ name = "convert_case"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6245d59a3e82a7fc217c5828a6692dbc6dfb63a0c8c90495621f7b9d79704a0e"
-
-[[package]]
-name = "cookie"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94d4706de1b0fa5b132270cddffa8585166037822e260a944fe161acd137ca05"
-dependencies = [
- "aes-gcm 0.9.4",
- "base64 0.13.0",
- "hkdf",
- "hmac 0.12.1",
- "percent-encoding",
- "rand 0.8.5",
- "sha2 0.10.2",
- "subtle",
- "time 0.3.7",
- "version_check",
-]
 
 [[package]]
 name = "core-foundation"
@@ -2705,7 +2640,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "44533bbbb3bb3c1fa17d9f2e4e38bbbaf8396ba82193c4cb1b6445d711445d36"
 dependencies = [
  "atty",
- "humantime 1.3.0",
+ "humantime",
  "log",
  "regex",
  "termcolor",
@@ -2739,23 +2674,6 @@ name = "event-listener"
 version = "2.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77f3309417938f28bf8228fcff79a4a37103981e3e186d2ccd19c74b38f4eb71"
-
-[[package]]
-name = "fake-logs-srv"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "clap 3.1.6",
- "futures",
- "lipsum",
- "poem",
- "poem-openapi",
- "rand 0.8.5",
- "serde",
- "serde_json",
- "sqlx",
- "tokio",
-]
 
 [[package]]
 name = "fastrand"
@@ -3651,31 +3569,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "headers"
-version = "0.3.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4cff78e5788be1e0ab65b04d306b2ed5092c815ec97ec70f4ebd5aee158aa55d"
-dependencies = [
- "base64 0.13.0",
- "bitflags",
- "bytes",
- "headers-core",
- "http",
- "httpdate",
- "mime",
- "sha-1 0.10.0",
-]
-
-[[package]]
-name = "headers-core"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7f66481bfee273957b1f20485a4ff3362987f85b2c236580d81b4eb7a326429"
-dependencies = [
- "http",
-]
-
-[[package]]
 name = "heck"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3712,15 +3605,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b07f60793ff0a4d9cef0f18e63b5357e06209987153a64648c972c1e5aff336f"
 
 [[package]]
-name = "hkdf"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "791a029f6b9fc27657f6f188ec6e5e43f6911f6f878e0dc5501396e09809d437"
-dependencies = [
- "hmac 0.12.1",
-]
-
-[[package]]
 name = "hmac"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3738,15 +3622,6 @@ checksum = "2a2a2320eb7ec0ebe8da8f744d7812d9fc4cb4d09344ac01898dbcb6a20ae69b"
 dependencies = [
  "crypto-mac 0.11.1",
  "digest 0.9.0",
-]
-
-[[package]]
-name = "hmac"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c49c37c09c17a53d937dfbb742eb3a961d65a994e6bcdcf37e7399d0cc8ab5e"
-dependencies = [
- "digest 0.10.3",
 ]
 
 [[package]]
@@ -3849,12 +3724,6 @@ checksum = "df004cfca50ef23c36850aaaa59ad52cc70d0e90243c3c7737a4dd32dc7a3c4f"
 dependencies = [
  "quick-error",
 ]
-
-[[package]]
-name = "humantime"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 
 [[package]]
 name = "hyper"
@@ -4990,6 +4859,7 @@ dependencies = [
  "hex",
  "lazy_static",
  "lgn-content-store",
+ "lgn-content-store2",
  "lgn-data-model",
  "lgn-data-runtime",
  "lgn-source-control",
@@ -5513,7 +5383,7 @@ dependencies = [
  "futures",
  "http",
  "itertools 0.10.3",
- "lgn-blob-storage",
+ "lgn-content-store2",
  "lgn-online",
  "lgn-source-control-proto",
  "lgn-telemetry-sink",
@@ -5546,8 +5416,8 @@ dependencies = [
  "anyhow",
  "clap 3.1.6",
  "fuser",
- "lgn-blob-storage",
  "lgn-cli-utils",
+ "lgn-content-store2",
  "lgn-source-control",
  "lgn-telemetry-sink",
  "lgn-tracing",
@@ -5677,7 +5547,6 @@ dependencies = [
  "atty",
  "chrono",
  "colored",
- "console-subscriber",
  "ctrlc",
  "json",
  "lazy_static",
@@ -5692,8 +5561,6 @@ dependencies = [
  "time 0.3.7",
  "tokio",
  "tonic",
- "tracing",
- "tracing-subscriber",
  "uuid",
  "winapi 0.3.9",
 ]
@@ -5891,16 +5758,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lipsum"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42ee7271c76a89032dcc7e595c0a739a9c5514eab483deb0e82981fe2098c56a"
-dependencies = [
- "rand 0.8.5",
- "rand_chacha 0.3.1",
-]
-
-[[package]]
 name = "lock_api"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5959,6 +5816,7 @@ dependencies = [
  "atty",
  "chrono",
  "clap 3.1.6",
+ "lgn-content-store2",
  "lgn-source-control",
  "lgn-telemetry-sink",
  "lgn-tracing",
@@ -6270,25 +6128,6 @@ dependencies = [
  "serde",
  "termcolor",
  "toml",
-]
-
-[[package]]
-name = "multer"
-version = "2.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f8f35e687561d5c1667590911e6698a8cb714a134a7505718a182e7bc9d3836"
-dependencies = [
- "bytes",
- "encoding_rs",
- "futures-util",
- "http",
- "httparse",
- "log",
- "memchr",
- "mime",
- "spin 0.9.2",
- "tokio",
- "version_check",
 ]
 
 [[package]]
@@ -7596,95 +7435,6 @@ dependencies = [
  "crc32fast",
  "deflate 1.0.0",
  "miniz_oxide 0.5.1",
-]
-
-[[package]]
-name = "poem"
-version = "1.3.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0aa47892676c00c3a1c53fd8ddbf469373824f34c4869cce5619d61feab57205"
-dependencies = [
- "async-trait",
- "base64 0.13.0",
- "bytes",
- "chrono",
- "cookie",
- "futures-util",
- "headers",
- "http",
- "hyper",
- "mime",
- "multer",
- "parking_lot 0.12.0",
- "percent-encoding",
- "pin-project-lite",
- "poem-derive",
- "regex",
- "serde",
- "serde_json",
- "serde_urlencoded",
- "smallvec",
- "tempfile",
- "thiserror",
- "time 0.3.7",
- "tokio",
- "tokio-stream",
- "tokio-tungstenite",
- "tokio-util 0.7.0",
- "tracing",
-]
-
-[[package]]
-name = "poem-derive"
-version = "1.3.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c148461bc1308f46fc7feb35fea7f3b950be83a8bd5946c1966136355672c4ed"
-dependencies = [
- "proc-macro-crate 1.1.3",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "poem-openapi"
-version = "1.3.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dedc424e132886e41550c4454064229779d3749ec29bb94dc3608dea83f35434"
-dependencies = [
- "base64 0.13.0",
- "bytes",
- "chrono",
- "derive_more",
- "futures-util",
- "mime",
- "num-traits",
- "poem",
- "poem-openapi-derive",
- "regex",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
-]
-
-[[package]]
-name = "poem-openapi-derive"
-version = "1.3.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e2fcdd09da843daed878b1225248ce4adf1c46ba83c509e3acdaf6244b5c9b6"
-dependencies = [
- "Inflector",
- "darling 0.13.1",
- "http",
- "indexmap",
- "mime",
- "proc-macro-crate 1.1.3",
- "proc-macro2",
- "quote",
- "regex",
- "syn",
- "thiserror",
 ]
 
 [[package]]
@@ -9028,17 +8778,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sha-1"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "028f48d513f9678cda28f6e4064755b3fbb2af6acd672f2c209b62323f7aea0f"
-dependencies = [
- "cfg-if 1.0.0",
- "cpufeatures",
- "digest 0.10.3",
-]
-
-[[package]]
 name = "sha1"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9317,7 +9056,6 @@ dependencies = [
  "bitflags",
  "byteorder",
  "bytes",
- "chrono",
  "crc",
  "crossbeam-queue",
  "digest 0.9.0",
@@ -9343,7 +9081,7 @@ dependencies = [
  "percent-encoding",
  "rand 0.8.5",
  "rsa",
- "sha-1 0.9.8",
+ "sha-1",
  "sha2 0.9.9",
  "smallvec",
  "sqlformat",
@@ -10209,18 +9947,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tokio-tungstenite"
-version = "0.17.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06cda1232a49558c46f8a504d5b93101d42c0bf7f911f12a105ba48168f821ae"
-dependencies = [
- "futures-util",
- "log",
- "tokio",
- "tungstenite",
-]
-
-[[package]]
 name = "tokio-util"
 version = "0.6.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10490,25 +10216,6 @@ name = "ttf-parser"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c74c96594835e10fa545e2a51e8709f30b173a092bfd6036ef2cec53376244f3"
-
-[[package]]
-name = "tungstenite"
-version = "0.17.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d96a2dea40e7570482f28eb57afbe42d97551905da6a9400acc5c328d24004f5"
-dependencies = [
- "base64 0.13.0",
- "byteorder",
- "bytes",
- "http",
- "httparse",
- "log",
- "rand 0.8.5",
- "sha-1 0.10.0",
- "thiserror",
- "url",
- "utf-8",
-]
 
 [[package]]
 name = "turn"
@@ -11113,7 +10820,7 @@ dependencies = [
  "rustls 0.19.1",
  "serde",
  "serde_derive",
- "sha-1 0.9.8",
+ "sha-1",
  "sha2 0.9.9",
  "signature",
  "subtle",
@@ -11208,7 +10915,7 @@ dependencies = [
  "log",
  "rtcp",
  "rtp",
- "sha-1 0.9.8",
+ "sha-1",
  "subtle",
  "thiserror",
  "tokio",

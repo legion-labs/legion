@@ -174,6 +174,6 @@
   div {
     align-self: stretch;
     background-color: #f0f0f0;
-    cursor: grab;
+    cursor: pointer;
   }
 </style>

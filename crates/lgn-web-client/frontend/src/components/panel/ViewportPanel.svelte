@@ -66,14 +66,14 @@
 <style lang="postcss">
   .tab {
     @apply flex flex-row justify-between space-x-4 h-full w-full;
+  }
 
-    .title {
-      @apply flex flex-row items-center;
-    }
+  .title {
+    @apply flex flex-row items-center;
+  }
 
-    .close {
-      @apply flex flex-row justify-center items-center cursor-pointer text-orange-700;
-    }
+  .close {
+    @apply flex flex-row justify-center items-center cursor-pointer text-orange-700;
   }
 
   .content {

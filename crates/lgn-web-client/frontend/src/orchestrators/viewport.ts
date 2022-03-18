@@ -26,8 +26,6 @@ export type Video = CommonConfig & {
 
 export type Viewport = Script | Video;
 
-// export type ViewportStore = Writable<Map<symbol, Viewport>>;
-
 export type AddViewportConfig = {
   /**
    * Focus the newly added viewport.

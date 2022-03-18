@@ -29,7 +29,7 @@ impl CameraComponent {
         let fov_y_radians: f32 = 45.0;
         let aspect_ratio = width / height;
         let z_near: f32 = 0.01;
-        let z_far: f32 = 100.0;
+        let z_far: f32 = 500.0;
         let projection_matrix = Mat4::perspective_lh(fov_y_radians, aspect_ratio, z_near, z_far);
 
         (view_matrix, projection_matrix)
@@ -38,7 +38,7 @@ impl CameraComponent {
     pub fn build_culling_planes(&self, aspect_ratio: f32) -> [Float4; 6] {
         let fov_y_radians: f32 = 45.0;
         let z_near: f32 = 0.01;
-        let z_far: f32 = 100.0;
+        let z_far: f32 = 500.0;
 
         let eye = self.camera_rig.final_transform.position;
         let forward = self.camera_rig.final_transform.forward();
@@ -87,15 +87,15 @@ impl CameraComponent {
 
     pub fn tmp_build_view_data(
         &self,
-        output_width: f32,
-        output_height: f32,
-        picking_width: f32,
-        picking_height: f32,
+        pixel_width: f32,
+        pixel_height: f32,
+        logical_width: f32,
+        logical_height: f32,
         cursor_x: f32,
         cursor_y: f32,
     ) -> cgen::cgen_type::ViewData {
         let (view_matrix, projection_matrix) =
-            self.build_view_projection(output_width, output_height);
+            self.build_view_projection(pixel_width, pixel_height);
         let view_proj_matrix = projection_matrix * view_matrix;
 
         let mut camera_props = cgen::cgen_type::ViewData::default();
@@ -106,13 +106,22 @@ impl CameraComponent {
         camera_props.set_inv_projection(projection_matrix.inverse().into());
         camera_props.set_projection_view(view_proj_matrix.into());
         camera_props.set_inv_projection_view(view_proj_matrix.inverse().into());
-        camera_props.set_culling_planes(self.build_culling_planes(output_width / output_height));
-        camera_props.set_screen_size(
+        camera_props.set_culling_planes(self.build_culling_planes(pixel_width / pixel_height));
+        camera_props.set_pixel_size(
             Vec4::new(
-                picking_width,
-                picking_height,
-                1.0 / picking_width,
-                1.0 / picking_height,
+                pixel_width,
+                pixel_height,
+                1.0 / pixel_width,
+                1.0 / pixel_height,
+            )
+            .into(),
+        );
+        camera_props.set_logical_size(
+            Vec4::new(
+                logical_width,
+                logical_height,
+                1.0 / logical_width,
+                1.0 / logical_height,
             )
             .into(),
         );
@@ -125,7 +134,7 @@ impl CameraComponent {
 impl Default for CameraComponent {
     fn default() -> Self {
         let eye = Vec3::new(0.0, 1.0, -2.0);
-        let center = Vec3::ZERO;
+        let center = Vec3::new(2.0, 2.0, 0.0);
 
         let forward = (center - eye).normalize();
         let right = forward.cross(UP_VECTOR).normalize();

@@ -1,6 +1,6 @@
-use std::{cmp::min, io::Cursor, sync::Arc};
+use std::{io::Cursor, sync::Arc};
 
-use bytes::Bytes;
+use bytes::{BufMut, Bytes};
 use lgn_async::TokioAsyncRuntimeHandle;
 use lgn_codec_api::{
     backends::openh264::encoder::{self, Encoder},
@@ -17,7 +17,6 @@ use lgn_graphics_renderer::{
 use lgn_mp4::{AvcConfig, MediaConfig, Mp4Config, Mp4Stream};
 use lgn_tracing::prelude::*;
 use lgn_tracing::{debug, warn};
-use lgn_utils::memory::write_any;
 use serde::Serialize;
 use webrtc::data_channel::RTCDataChannel;
 
@@ -205,9 +204,7 @@ impl VideoStreamEncoder {
 
     #[span_fn]
     fn encode(&mut self, frame_id: i32) -> Vec<Bytes> {
-        self.encoder.force_intra_frame(true);
         let stream = self.encoder.encode(&self.yuv_holder).unwrap();
-
         for layer in &stream.layers {
             if !layer.is_video {
                 let mut sps: &[u8] = &[];
@@ -269,36 +266,22 @@ struct ChunkHeader {
     pub frame_id: i32,
 }
 
+#[allow(unsafe_code)]
 fn split_frame_in_chunks(data: &[u8], frame_id: i32) -> Vec<Bytes> {
-    let max_chunk_size = 65536;
+    const HEADER_SIZE: usize = 12;
+    const MAX_CHUNK_SIZE: usize = 65536;
+    const CHUNK_SIZE: usize = MAX_CHUNK_SIZE - HEADER_SIZE;
     let mut chunks = vec![];
-    chunks.reserve((data.len() / max_chunk_size) + 2);
+    let chunk_count = ((data.len() - 1) / CHUNK_SIZE) + 1;
+    chunks.reserve(chunk_count);
 
-    let mut current_chunk: Vec<u8> = vec![];
-    current_chunk.reserve(max_chunk_size);
-
-    let mut current_data_index = 0;
-    let mut chunk_index_in_frame: u8 = 0;
-    while current_data_index < data.len() {
-        current_chunk.clear();
-        let header = serde_json::to_string(&ChunkHeader {
-            chunk_index_in_frame,
-            frame_id,
-        })
-        .unwrap();
-        let header_payload_len: u16 = header.len() as u16;
-        let header_size = std::mem::size_of::<u16>() as u16 + header_payload_len;
-        write_any(&mut current_chunk, &header_payload_len);
-        current_chunk.extend_from_slice(header.as_bytes());
-        let end_chunk = min(
-            current_data_index + max_chunk_size - header_size as usize,
-            data.len(),
-        );
-        let chunk_data_slice = &data[current_data_index..end_chunk];
-        current_chunk.extend_from_slice(chunk_data_slice);
-        chunks.push(bytes::Bytes::copy_from_slice(&current_chunk));
-        current_data_index = end_chunk;
-        chunk_index_in_frame += 1;
+    for (chunk_index, data) in data.chunks(CHUNK_SIZE).enumerate() {
+        let mut chunk = bytes::BytesMut::with_capacity(data.len() + HEADER_SIZE);
+        chunk.put_i32_le(frame_id);
+        chunk.put_i32_le(chunk_count.try_into().unwrap());
+        chunk.put_i32_le(chunk_index.try_into().unwrap());
+        chunk.put_slice(data);
+        chunks.push(chunk.into());
     }
 
     chunks

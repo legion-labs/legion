@@ -85,8 +85,7 @@ impl RenderLayer {
                     *indirect_arg_buffer_offset as u32,
                 );
 
-                *count_buffer_offset += 1;
-                batch.calculate_indirect_offsets(indirect_arg_buffer_offset);
+                batch.calculate_indirect_offsets(count_buffer_offset, indirect_arg_buffer_offset);
             }
 
             for (state_id, batch_id) in self.state_to_batch.iter().enumerate() {
@@ -112,16 +111,13 @@ impl RenderLayer {
         indirect_arg_buffer: Option<&Buffer>,
         count_buffer: Option<&Buffer>,
     ) {
-        let mut count_offset = 0;
         for batch in &self.batches {
             batch.draw(
                 render_context,
                 cmd_buffer,
                 indirect_arg_buffer,
                 count_buffer,
-                count_offset,
             );
-            count_offset += 4;
         }
     }
 }

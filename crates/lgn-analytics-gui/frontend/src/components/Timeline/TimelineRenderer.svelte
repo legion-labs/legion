@@ -27,11 +27,15 @@
   let windowInnerWidth: number;
   let stateStore: TimelineStateStore;
   let panState: PanState | undefined = undefined;
-  let canvasWidth = NaN;
+  let canvasWidth = NaN; //todo: retirer
   let div: HTMLElement;
 
   $: if (windowInnerWidth) {
-    canvasWidth = windowInnerWidth - 230;
+    stateStore.update((s) => {
+      canvasWidth = windowInnerWidth - 230;
+      s.canvasWidth = canvasWidth;
+      return s;
+    });
   }
 
   $: style = `display:${$stateStore?.ready ? "block" : "none"}`;
@@ -40,7 +44,7 @@
     loadingStore.reset();
     stateManager = new TimelineStateManager(processId);
     stateStore = stateManager.state;
-    await stateManager.init(windowInnerWidth);
+    await stateManager.init();
   });
 
   async function onZoom(event: WheelEvent) {
@@ -49,7 +53,7 @@
       return s;
     });
 
-    await stateManager.fetchLods(windowInnerWidth);
+    await stateManager.fetchLods();
   }
 
   function isValidEvent(event: MouseEvent) {
