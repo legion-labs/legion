@@ -151,7 +151,7 @@
       {#if documentTitle}
         {documentTitle}
       {:else}
-        Untitled document
+        Legion Sample Project
       {/if}
     </div>
   </div>
