@@ -1,22 +1,19 @@
 <script lang="ts">
   import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
-  import Panel from "@lgn/web-client/src/components/panel/Panel.svelte";
+  import { Panel, PanelHeader } from "@lgn/web-client/src/components/panel";
   import HierarchyTree from "./hierarchyTree/HierarchyTree.svelte";
   import ResourceFilter from "./resources/ResourceFilter.svelte";
   import contextMenu from "@/actions/contextMenu";
   import {
     cloneResource,
-    commitStagedResources,
     createResource,
     getAllResources,
-    getStagedResources,
     initFileUpload,
     openScene,
     removeResource,
     renameResource,
     reparentResources,
     streamFileUpload,
-    syncLatest,
   } from "@/api";
   import allResources from "@/stores/allResources";
   import { fetchCurrentResourceDescription } from "@/orchestrators/currentResource";
@@ -161,7 +158,7 @@
         names.map((name) => {
           let resourceType: string | null = null;
 
-          switch (extension(name)) {
+          switch (extension(name)?.toLowerCase()) {
             case "png": {
               resourceType = "png";
 
@@ -285,26 +282,6 @@
           },
         });
 
-        return;
-      }
-
-      case "sync_latest": {
-        syncLatest();
-        await allResources.run(getAllResources);
-
-        return;
-      }
-
-      case "commit": {
-        const result = await getStagedResources();
-
-        log.error(result.entries);
-        await commitStagedResources();
-
-        return;
-      }
-
-      default: {
         return;
       }
     }
@@ -455,42 +432,49 @@
 
 <Panel {loading} tabs={["Resource Browser"]}>
   <div slot="tab" let:tab>{tab}</div>
-  <div slot="header">
-    <ResourceFilter on:filter={filter} />
-  </div>
+
   <div slot="content" class="content" use:contextMenu={"resourcePanel"}>
-    {#if !resourceEntries.isEmpty()}
-      <HierarchyTree
-        withItemContextMenu="resource"
-        on:select={selectResource}
-        on:nameEdited={saveEditedResourceProperty}
-        on:moved={moveEntry}
-        on:removeRequest={() =>
-          openRemoveResourcePrompt("request-resource-remove-keyboard")}
-        bind:entries={resourceEntries}
-        bind:currentlyRenameEntry={currentlyRenameResourceEntry}
-        bind:highlightedEntry={currentResourceDescriptionEntry}
-        bind:this={resourceHierarchyTree}
-      >
-        <div class="w-full h-full" slot="icon" let:entry>
-          <Icon class="w-full h-full" icon={iconFor(entry)} />
-        </div>
-        <div
-          class="item"
-          slot="name"
-          let:entry
-          title={isEntry(entry) ? entry.item.path : null}
+    <PanelHeader>
+      <ResourceFilter on:filter={filter} />
+    </PanelHeader>
+    <div class="hierarchy-tree">
+      {#if !resourceEntries.isEmpty()}
+        <HierarchyTree
+          withItemContextMenu="resource"
+          on:select={selectResource}
+          on:nameEdited={saveEditedResourceProperty}
+          on:moved={moveEntry}
+          on:removeRequest={() =>
+            openRemoveResourcePrompt("request-resource-remove-keyboard")}
+          bind:entries={resourceEntries}
+          bind:currentlyRenameEntry={currentlyRenameResourceEntry}
+          bind:highlightedEntry={currentResourceDescriptionEntry}
+          bind:this={resourceHierarchyTree}
         >
-          {entry.name}
-        </div>
-      </HierarchyTree>
-    {/if}
+          <div class="w-full h-full" slot="icon" let:entry>
+            <Icon class="w-full h-full" icon={iconFor(entry)} />
+          </div>
+          <div
+            class="item"
+            slot="name"
+            let:entry
+            title={isEntry(entry) ? entry.item.path : null}
+          >
+            {entry.name}
+          </div>
+        </HierarchyTree>
+      {/if}
+    </div>
   </div>
 </Panel>
 
 <style lang="postcss">
   .content {
-    @apply h-full;
+    @apply h-full flex flex-col;
+  }
+
+  .hierarchy-tree {
+    @apply flex-1 overflow-auto;
   }
 
   .item {

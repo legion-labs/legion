@@ -50,10 +50,6 @@
     </div>
   </div>
 
-  {#if $$slots.header}
-    <div class="header"><slot name="header" /></div>
-  {/if}
-
   <div
     class="content"
     on:mousedown={focus}
@@ -100,10 +96,6 @@
 
   .tabs-filler {
     @apply bg-black rounded-tr-sm w-full;
-  }
-
-  .header {
-    @apply w-full bg-gray-500 bg-opacity-50 border-b border-gray-800;
   }
 
   .content {

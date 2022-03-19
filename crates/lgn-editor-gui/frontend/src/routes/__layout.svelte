@@ -9,6 +9,7 @@
   import log from "@lgn/web-client/src/lib/log";
   import { goto } from "$app/navigation";
   import "@/workers/editorWorker";
+  import { initStagedResourcesStream } from "@/stores/stagedResources";
   import { initApiClient } from "@/api";
   import { initLogStream } from "@/stores/log";
 
@@ -67,7 +68,13 @@
           // await initWasmLogger();
           // debug("Hello from the Legion editor");
 
+          // Fire and forget stream init
+          // TODO: When using routing we may want to cancel the returned subscription
           initLogStream();
+
+          // Fire and forget stream init
+          // TODO: When using routing we may want to cancel the returned subscription
+          initStagedResourcesStream();
 
           contextMenu.register("resource", contextMenuEntries.resourceEntries);
           contextMenu.register(
