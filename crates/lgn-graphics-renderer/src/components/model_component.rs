@@ -1,7 +1,5 @@
 use std::ops::Mul;
 
-use lgn_data_runtime::ResourceTypeAndId;
-use lgn_ecs::prelude::Component;
 use lgn_graphics_data::runtime::MaterialReferenceType;
 use lgn_math::{Mat4, Vec2, Vec3, Vec4};
 
@@ -807,8 +805,10 @@ fn add_vertex_data(vertex_data: &mut Vec<f32>, pos: Vec3, normal_opt: Option<Vec
     ]);
 }
 
+/*
 #[derive(Component)]
 pub struct ModelComponent {
     pub model_id: ResourceTypeAndId,
     pub meshes: Vec<Mesh>,
 }
+*/

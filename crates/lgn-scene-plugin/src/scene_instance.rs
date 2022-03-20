@@ -4,7 +4,7 @@ use lgn_data_runtime::{AssetRegistry, Resource, ResourceTypeAndId};
 use lgn_ecs::prelude::{Commands, Query};
 use lgn_graphics_renderer::components::{LightComponent, LightType, VisualComponent};
 use lgn_math::Vec3;
-use lgn_tracing::{info, warn};
+use lgn_tracing::{error, info, warn};
 use lgn_transform::{
     components::{Children, GlobalTransform, Parent, Transform},
     hierarchy::BuildChildren,
@@ -24,16 +24,6 @@ impl SceneInstance {
             root_resource,
             asset_to_entity_map: AssetToEntityMap::default(),
         }
-    }
-
-    pub(crate) fn refresh(
-        &self,
-        _resource_id: ResourceTypeAndId,
-        _asset_registry: &AssetRegistry,
-        _commands: &mut Commands<'_, '_>,
-    ) {
-        //let handle = asset_registry.get_untyped(resource_id)?;
-        //let runtime_entity = handle.get::<sample_data::runtime::Entity>(asset_registry)?;
     }
 
     pub(crate) fn spawn_entity_hierarchy(
@@ -207,14 +197,18 @@ impl SceneInstance {
                     component.downcast_ref::<lgn_physics::runtime::PhysicsSceneSettings>()
                 {
                     entity.insert(physics_settings.clone());
-                }
                 } else if let Some(camera_setup) =
                     component.downcast_ref::<lgn_graphics_data::runtime::CameraSetup>()
                 {
                     entity.insert(camera_setup.clone());
                 } else {
-                    error!("unknown component type in entity {}", entity.id().id());
-                }                
+                    error!(
+                        "Unhandle component type {} in entity {}",
+                        component.get_type().get_type_name(),
+                        resource_id,
+                    );
+                }
+            }
 
             if let Some(parent) = runtime_entity.parent.as_ref() {
                 if let Some(parent_ecs_entity) = self.asset_to_entity_map.get(parent.id()) {

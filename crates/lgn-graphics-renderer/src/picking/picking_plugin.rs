@@ -123,9 +123,16 @@ fn update_picking_components(
     commands: Commands<'_, '_>,
     event_writer: EventWriter<'_, '_, PickingEvent>,
     query: Query<'_, '_, (Entity, &mut PickedComponent, Option<&ManipulatorComponent>)>,
+    entities: Query<'_, '_, (Entity, &Transform)>,
     manipulator_entities: Query<'_, '_, (Entity, &ManipulatorComponent)>,
 ) {
-    picking_manager.update_picking_components(commands, event_writer, query, manipulator_entities);
+    picking_manager.update_picking_components(
+        commands,
+        event_writer,
+        query,
+        manipulator_entities,
+        entities,
+    );
 }
 
 #[span_fn]
