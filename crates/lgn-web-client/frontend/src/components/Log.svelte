@@ -227,7 +227,7 @@
             style={styleString(item.style)}
           >
             {#if entry}
-              <div class="flex w-1/12 log-column justify-center">
+              <div class="flex w-1/12 justify-center entry-column">
                 <div
                   class="severity-pill"
                   class:bg-red-500={entry.severity === "error"}

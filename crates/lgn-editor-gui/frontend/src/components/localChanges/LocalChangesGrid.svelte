@@ -9,30 +9,27 @@
 
 <div class="root">
   {#each stagedResources as resource, index (index)}
-    <div
-      class="resource"
-      title={resource.info?.path}
-      class:border-green-600={resource.changeType === ChangeType.Add}
-      class:border-orange-400={resource.changeType === ChangeType.Edit}
-      class:border-red-500={resource.changeType === ChangeType.Delete}
-    >
-      <div class="resource-card">
-        <div class="resource-icon">
-          <FileIcon
-            class="h-20 w-20 text-white text-opacity-60"
-            textClass="text-gray-800"
-            text={resource.info?.type ?? "unknown"}
-          />
-        </div>
-        <div
-          class="resource-text"
-          class:bg-green-600={resource.changeType === ChangeType.Add}
-          class:bg-orange-400={resource.changeType === ChangeType.Edit}
-          class:bg-red-500={resource.changeType === ChangeType.Delete}
-          title={resource.info?.path}
-        >
-          <div class="truncate">{fileName(resource.info?.path || "")}</div>
-        </div>
+    <div class="resource" title={resource.info?.path || "Unknown path"}>
+      <div
+        class="resource-icon"
+        class:border-green-600={resource.changeType === ChangeType.Add}
+        class:border-orange-400={resource.changeType === ChangeType.Edit}
+        class:border-red-500={resource.changeType === ChangeType.Delete}
+      >
+        <FileIcon
+          class="h-20 w-20 text-white text-opacity-60"
+          textClass="text-gray-800"
+          text={resource.info?.type ?? "unknown"}
+        />
+      </div>
+      <div
+        class="resource-text"
+        class:bg-green-600={resource.changeType === ChangeType.Add}
+        class:bg-orange-400={resource.changeType === ChangeType.Edit}
+        class:bg-red-500={resource.changeType === ChangeType.Delete}
+        title={resource.info?.path}
+      >
+        <div class="truncate">{fileName(resource.info?.path || "")}</div>
       </div>
     </div>
   {/each}
@@ -40,19 +37,15 @@
 
 <style lang="postcss">
   .root {
-    @apply grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 xl:grid-cols-8 gap-4;
+    @apply grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 xl:grid-cols-8 gap-4 px-4 pt-2 pb-4 overflow-y-auto h-full w-full;
   }
 
   .resource {
-    @apply flex items-center justify-center border;
-  }
-
-  .resource-card {
-    @apply w-full bg-gray-800 shadow-xl rounded-sm;
+    @apply w-full shadow-xl rounded-sm;
   }
 
   .resource-icon {
-    @apply flex flex-col items-center p-4;
+    @apply flex flex-col items-center p-4 bg-gray-800 border rounded-t-sm border-b-0;
   }
 
   .resource-text {
