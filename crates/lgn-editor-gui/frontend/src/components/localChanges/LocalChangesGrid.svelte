@@ -41,7 +41,7 @@
   }
 
   .resource {
-    @apply w-full shadow-xl rounded-sm;
+    @apply w-full shadow-xl rounded-sm h-40;
   }
 
   .resource-icon {
