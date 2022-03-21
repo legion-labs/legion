@@ -23,17 +23,15 @@ pub fn main() {
     // Next step:
     // let view_data = Struct::from_json( ... );
     //
-    
+
+  
     let view_data = #{
         type: "Struct",
         name: "ViewData",
         fields: [
-            #{ name:"view", ty:"Float4x4" },
-            #{ name:"inv_view", ty:"Float4x4" },
+            #{ name:"camera_translation", ty:"Float3" },
+            #{ name:"camera_rotation", ty:"Float4" },
             #{ name:"projection", ty:"Float4x4" },
-            #{ name:"inv_projection", ty:"Float4x4" },
-            #{ name:"projection_view", ty:"Float4x4" },
-            #{ name:"inv_projection_view", ty:"Float4x4" },
             #{ name:"culling_planes", ty:"Float4", array_len:6 },
             #{ name:"pixel_size", ty:"Float4" },
             #{ name:"logical_size", ty:"Float4" },
@@ -59,18 +57,18 @@ pub fn main() {
         ]
     };
     products.push( lighting_data );
-
-    let gpu_instance_transform = #{
+    
+    let transform = #{
         type: "Struct",
-        name: "GpuInstanceTransform",
+        name: "Transform",
         fields: [
             #{ name:"translation", ty:"Float3" },
             #{ name:"rotation", ty:"Float4" },
             #{ name:"scale", ty:"Float3" },
         ]
     };
-    products.push( gpu_instance_transform );
-
+    products.push( transform );
+    
     let gpu_instance_color = #{
         type: "Struct",
         name: "GpuInstanceColor",

@@ -1,7 +1,7 @@
 #ifndef COMMON_HSH
 #define COMMON_HSH
 
-#include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_transform.hlsl"
+#include "crate://lgn-graphics-renderer/gpu/cgen_type/transform.hlsl"
 
 struct GpuPipelineVertexIn
 {
@@ -43,15 +43,24 @@ float3x3 quaternion_to_matrix(float4 quat)
     return m;
 }
 
-float3 transform_position(GpuInstanceTransform transform, float3 position) {
+float3 transform_position(Transform transform, float3 position) {
     float3 result = transform.scale * position;
     result = mul(quaternion_to_matrix(transform.rotation), result);
     return result + transform.translation;
 }
 
-float3 transform_normal(GpuInstanceTransform transform, float3 normal) {
+float3 transform_position(ViewData view, float3 position) {
+    float3 result = mul(quaternion_to_matrix(view.camera_rotation), position);
+    return result + view.camera_translation;
+}
+
+float3 transform_normal(Transform transform, float3 normal) {
     float3 result = (1.0 / transform.scale) * normal;
     return normalize(mul(quaternion_to_matrix(transform.rotation), result));
 }
+
+float3 transform_normal(ViewData view, float3 normal) {
+    return normalize(mul(quaternion_to_matrix(view.camera_rotation), normal));
+} 
 
 #endif

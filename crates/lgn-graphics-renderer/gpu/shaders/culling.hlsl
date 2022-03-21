@@ -1,6 +1,6 @@
 #include "crate://lgn-graphics-renderer/gpu/pipeline_layout/culling_pipeline_layout.hlsl"
-#include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_transform.hlsl"
 #include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_va_table.hlsl"
+#include "crate://lgn-graphics-renderer/gpu/cgen_type/transform.hlsl"
 
 #include "crate://lgn-graphics-renderer/gpu/include/common.hsh"
 #include "crate://lgn-graphics-renderer/gpu/include/mesh.hsh"
@@ -37,7 +37,7 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
         GpuInstanceVATable addresses = LoadGpuInstanceVATable(static_buffer, va_table_address);
         MeshDescription mesh_desc = LoadMeshDescription(static_buffer, addresses.mesh_description_va);
 
-        GpuInstanceTransform transform = LoadGpuInstanceTransform(static_buffer, addresses.world_transform_va);
+        Transform transform = LoadTransform(static_buffer, addresses.world_transform_va);
         float3 sphere_world_pos = transform_position(transform, mesh_desc.bounding_sphere.xyz);
        
         float bv_radius = mesh_desc.bounding_sphere.w * max(transform.scale.x, max(transform.scale.y, transform.scale.z));
@@ -61,7 +61,7 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
     #endif
 
         if (!culled) {
-            float4 center_pos_view = mul(view_data.view, sphere_world_pos);
+            float4 center_pos_view = float4(transform_position(view_data, sphere_world_pos), 1.0);
 
             float4 min_view = center_pos_view + float4(-bv_radius, -bv_radius, 0.0, 0.0);
             float4 max_view = center_pos_view + float4(bv_radius, bv_radius, 0.0, 0.0);                                                          

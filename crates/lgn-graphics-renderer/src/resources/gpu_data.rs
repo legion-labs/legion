@@ -146,8 +146,7 @@ impl<K, T> GpuDataManager<K, T> {
 #[derive(Default, Component)]
 struct GPUMaterialComponent;
 
-pub(crate) type GpuEntityTransformManager =
-    GpuDataManager<Entity, cgen::cgen_type::GpuInstanceTransform>;
+pub(crate) type GpuEntityTransformManager = GpuDataManager<Entity, cgen::cgen_type::Transform>;
 pub(crate) type GpuEntityColorManager = GpuDataManager<Entity, cgen::cgen_type::GpuInstanceColor>;
 pub(crate) type GpuPickingDataManager =
     GpuDataManager<Entity, cgen::cgen_type::GpuInstancePickingData>;
@@ -520,7 +519,7 @@ fn upload_transform_data(
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
 
     for (entity, transform) in query.iter() {
-        let mut world = cgen::cgen_type::GpuInstanceTransform::default();
+        let mut world = cgen::cgen_type::Transform::default();
         world.set_translation(transform.translation.into());
         world.set_rotation(Vec4::from(transform.rotation).into());
         world.set_scale(transform.scale.into());
