@@ -1,6 +1,6 @@
 <script lang="ts">
   import { formatExecutionTime } from "@/lib/format";
-  import { Thread } from "@/lib/Timeline/Thread";
+  import type { Thread } from "@/lib/Timeline/Thread";
   import { getThreadCollapseStyle } from "@/lib/Timeline/TimelineCollapse";
   import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { createEventDispatcher } from "svelte";

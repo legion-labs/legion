@@ -1,7 +1,7 @@
 <script lang="ts">
   import { getMetricColor } from "@/lib/Metric/MetricColor";
-  import { Point } from "@/lib/Metric/MetricPoint";
-  import { MetricSelectionState } from "./MetricSelectionState";
+  import type { Point } from "@/lib/Metric/MetricPoint";
+  import type { MetricSelectionState } from "./MetricSelectionState";
   export let metric: MetricSelectionState;
   export let value: Point | null;
 </script>

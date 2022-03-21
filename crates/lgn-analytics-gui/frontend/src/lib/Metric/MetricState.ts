@@ -1,5 +1,5 @@
-import { Point } from "@/lib/Metric/MetricPoint";
-import {
+import type { Point } from "@/lib/Metric/MetricPoint";
+import type {
   MetricBlockData,
   MetricBlockManifest,
   MetricDesc,

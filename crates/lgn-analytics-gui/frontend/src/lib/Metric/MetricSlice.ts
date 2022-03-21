@@ -1,4 +1,4 @@
-import { Point } from "./MetricPoint";
+import type { Point } from "./MetricPoint";
 
 export interface MetricSlice {
   unit: string;

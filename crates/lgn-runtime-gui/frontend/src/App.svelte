@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { InitAuthStatus } from "@lgn/web-client/src/lib/auth";
+  import type { InitAuthStatus } from "@lgn/web-client/src/lib/auth";
   import Home from "@/pages/Home.svelte";
 
   export let initAuthStatus: InitAuthStatus | null;

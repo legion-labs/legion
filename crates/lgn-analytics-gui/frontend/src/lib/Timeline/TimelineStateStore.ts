@@ -1,5 +1,5 @@
 import { writable } from "svelte/store";
-import { TimelineState } from "./TimelineState";
+import type { TimelineState } from "./TimelineState";
 
 export type TimelineStateStore = ReturnType<typeof createTimelineStateStore>;
 

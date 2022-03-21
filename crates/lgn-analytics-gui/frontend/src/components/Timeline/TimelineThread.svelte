@@ -1,6 +1,6 @@
 <script lang="ts">
   import { findBestLod } from "@/lib/time";
-  import { Thread } from "@/lib/Timeline/Thread";
+  import type { Thread } from "@/lib/Timeline/Thread";
   import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { spanPixelHeight } from "@/lib/Timeline/TimelineValues";
   import { DrawSelectedRange } from "@/lib/time_range_selection";
@@ -8,7 +8,7 @@
   import { debounced } from "@lgn/web-client/src/lib/store";
   import { createEventDispatcher, onDestroy, onMount, tick } from "svelte";
   import { TimelineContext } from "@/lib/Timeline/TimelineContext";
-  import { Unsubscriber } from "svelte/store";
+  import type { Unsubscriber } from "svelte/store";
   export let rootStartTime: number;
   export let stateStore: TimelineStateStore;
   export let thread: Thread;

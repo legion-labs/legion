@@ -1,6 +1,6 @@
 import { MetricSelectionState } from "@/components/Metric/MetricSelectionState";
 import { writable } from "svelte/store";
-import { MetricState } from "./MetricState";
+import type { MetricState } from "./MetricState";
 
 const localStorageKey = "last-metric-used";
 const recentCount = 3;

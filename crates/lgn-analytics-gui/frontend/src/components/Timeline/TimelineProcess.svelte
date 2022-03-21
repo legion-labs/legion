@@ -2,7 +2,7 @@
   import { formatProcessName } from "@/lib/format";
   import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { spanPixelHeight } from "@/lib/Timeline/TimelineValues";
-  import { Process } from "@lgn/proto-telemetry/dist/process";
+  import type { Process } from "@lgn/proto-telemetry/dist/process";
   import { createEventDispatcher } from "svelte";
   import TimelineThreadItem from "./TimelineThreadItem.svelte";
   import TasksItem from "./TasksItem.svelte";
