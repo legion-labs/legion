@@ -1,7 +1,7 @@
 import { formatExecutionTime } from "@/lib/format";
 import type { TimelineCaptionItem } from "@/lib/Timeline/TimelineSpanCaptionItem";
 import { spanPixelHeight } from "@/lib/Timeline/TimelineValues";
-import type { SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
+import type { SpanTrack } from "@lgn/proto-telemetry/dist/span";
 import type { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
 import binarySearch from "binary-search";
 

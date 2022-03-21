@@ -1,5 +1,5 @@
 <script context="module" lang="ts">
-  import type { SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
+  import type { SpanTrack } from "@lgn/proto-telemetry/dist/span";
   import { BarLoader } from "svelte-loading-spinners";
 
   type BeginPan = {
