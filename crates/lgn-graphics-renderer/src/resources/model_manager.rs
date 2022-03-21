@@ -6,7 +6,7 @@ use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 use lgn_ecs::prelude::{Changed, Query, Res, ResMut, Without};
 use lgn_math::Vec3;
 use lgn_tracing::span_fn;
-use lgn_transform::components::Transform;
+use lgn_transform::components::{GlobalTransform, Transform};
 use strum::IntoEnumIterator;
 
 use crate::{
@@ -148,13 +148,12 @@ fn debug_bounding_spheres(
                         let mesh_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
                         //mesh_data.bounding_sphere
                         builder.add_mesh(
-                            Transform::identity()
+                            &GlobalTransform::identity()
                                 .with_translation(
                                     transform.translation + mesh_data.bounding_sphere.truncate(),
                                 )
                                 .with_scale(Vec3::new(4.0, 4.0, 4.0) * mesh_data.bounding_sphere.w)
-                                .with_rotation(transform.rotation)
-                                .compute_matrix(),
+                                .with_rotation(transform.rotation),
                             DefaultMeshType::Sphere as u32,
                             Vec3::new(1.0, 1.0, 1.0),
                         );

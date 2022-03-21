@@ -1,7 +1,8 @@
 #include "crate://lgn-graphics-renderer/gpu/pipeline_layout/culling_pipeline_layout.hlsl"
-#include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_transform.hlsl"
 #include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_va_table.hlsl"
+#include "crate://lgn-graphics-renderer/gpu/cgen_type/transform.hlsl"
 
+#include "crate://lgn-graphics-renderer/gpu/include/common.hsh"
 #include "crate://lgn-graphics-renderer/gpu/include/mesh.hsh"
 
 float aabb_max_z(float4 aabb, float2 view_port, float debug_index) {
@@ -35,21 +36,20 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
         uint va_table_address = va_table_address_buffer[instance_data.gpu_instance_id];
         GpuInstanceVATable addresses = LoadGpuInstanceVATable(static_buffer, va_table_address);
         MeshDescription mesh_desc = LoadMeshDescription(static_buffer, addresses.mesh_description_va);
-        GpuInstanceTransform transform = LoadGpuInstanceTransform(static_buffer, addresses.world_transform_va);
 
-        float4 sphere_world_pos = mul(transform.world, float4(mesh_desc.bounding_sphere.xyz, 1.0));
-
-        bool none_uniform_scaling = transform.world[0][0] != transform.world[1][1] || transform.world[1][1] != transform.world[2][2];
-        float bv_radius = mesh_desc.bounding_sphere.w * transform.world[0][0];
-
+        Transform transform = LoadTransform(static_buffer, addresses.world_transform_va);
+        float3 sphere_world_pos = transform_position(transform, mesh_desc.bounding_sphere.xyz);
+       
+        float bv_radius = mesh_desc.bounding_sphere.w * max(transform.scale.x, max(transform.scale.y, transform.scale.z));
         bool culled = false;
+
     #if FIRST_PASS
         if (push_constant.options.is_set(CullingOptions_GATHER_PERF_STATS)) {
             InterlockedAdd(culling_efficiency[0].total_elements, 1);
         }
         
         for (uint i = 0; i < 6 && !culled; i++) {
-            float plane_test = dot(view_data.culling_planes[i], sphere_world_pos);
+            float plane_test = dot(view_data.culling_planes[i], float4(sphere_world_pos, 1.0));
 
             if (plane_test - bv_radius > 0.0) {
                 culled = true;
@@ -60,8 +60,8 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
         }    
     #endif
 
-        if (!culled && !none_uniform_scaling) {
-            float4 center_pos_view = mul(view_data.view, sphere_world_pos);
+        if (!culled) {
+            float4 center_pos_view = float4(transform_position(view_data, sphere_world_pos), 1.0);
 
             float4 min_view = center_pos_view + float4(-bv_radius, -bv_radius, 0.0, 0.0);
             float4 max_view = center_pos_view + float4(bv_radius, bv_radius, 0.0, 0.0);                                                          

@@ -1,5 +1,5 @@
 #include "crate://lgn-graphics-renderer/gpu/pipeline_layout/shader_pipeline_layout.hlsl"
-#include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_transform.hlsl"
+#include "crate://lgn-graphics-renderer/gpu/cgen_type/transform.hlsl"
 #include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_va_table.hlsl"
 
 #include "crate://lgn-graphics-renderer/gpu/include/common.hsh"
@@ -16,11 +16,11 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
     VertexIn vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
     VertexOut vertex_out;
 
-    GpuInstanceTransform transform = LoadGpuInstanceTransform(static_buffer, addresses.world_transform_va);
+    Transform transform = LoadTransform(static_buffer, addresses.world_transform_va);
+    float3 world_pos = transform_position(transform, vertex_in.pos);
+    float3 view_pos = transform_position(view_data, world_pos);
 
-    float4 pos_view_relative = mul(view_data.view, mul(transform.world, float4(vertex_in.pos, 1.0)));
-
-    vertex_out.hpos = mul(view_data.projection, pos_view_relative);
+    vertex_out.hpos = mul(view_data.projection, float4(view_pos, 1.0));
 
     return vertex_out;
 }

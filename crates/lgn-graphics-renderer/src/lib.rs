@@ -72,7 +72,7 @@ use lgn_app::{App, CoreStage, Events, Plugin};
 use lgn_ecs::prelude::*;
 use lgn_math::{const_vec3, Vec3};
 use lgn_tracing::span_fn;
-use lgn_transform::components::GlobalTransform;
+use lgn_transform::components::{GlobalTransform, Parent};
 use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 
 use crate::debug_display::DebugDisplay;
@@ -357,22 +357,30 @@ fn update_gpu_instances(
     instance_query: Query<
         '_,
         '_,
-        (Entity, &VisualComponent, Option<&MaterialComponent>),
-        (Changed<VisualComponent>, Without<ManipulatorComponent>),
+        (
+            Entity,
+            &VisualComponent,
+            Option<&Parent>,
+            Option<&MaterialComponent>,
+        ),
+        (
+            Or<(Changed<VisualComponent>, Changed<Parent>)>,
+            Without<ManipulatorComponent>,
+        ),
     >,
     mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
 ) {
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
     let mut picking_context = PickingIdContext::new(&picking_manager);
 
-    for (entity, _, _) in instance_query.iter() {
+    for (entity, _, _, _) in instance_query.iter() {
         picking_data_manager.remove_gpu_data(&entity);
         if let Some(removed_ids) = instance_manager.remove_gpu_instance(entity) {
             event_writer.send(GpuInstanceEvent::Removed(removed_ids));
         }
     }
 
-    for (entity, visual, mat_component) in instance_query.iter() {
+    for (entity, visual, parent, mat_component) in instance_query.iter() {
         let color: (f32, f32, f32, f32) = (
             f32::from(visual.color.r) / 255.0f32,
             f32::from(visual.color.g) / 255.0f32,
@@ -393,8 +401,13 @@ fn update_gpu_instances(
 
         picking_data_manager.alloc_gpu_data(entity, renderer.static_buffer_allocator());
 
+        let mut picking_entity = entity;
+        if let Some(parent) = parent {
+            picking_entity = parent.0;
+        }
+
         let mut picking_data = cgen::cgen_type::GpuInstancePickingData::default();
-        picking_data.set_picking_id(picking_context.acquire_picking_id(entity).into());
+        picking_data.set_picking_id(picking_context.acquire_picking_id(picking_entity).into());
         picking_data_manager.update_gpu_data(&entity, 0, &picking_data, &mut updater);
 
         let (model_meta_data, ready) = model_manager.get_model_meta_data(visual);

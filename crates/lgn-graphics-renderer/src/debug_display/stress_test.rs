@@ -3,7 +3,7 @@ use lgn_core::BumpAllocatorPool;
 use lgn_ecs::prelude::Res;
 use lgn_math::Vec3;
 use lgn_tracing::span_fn;
-use lgn_transform::components::Transform;
+use lgn_transform::components::GlobalTransform;
 
 use crate::resources::DefaultMeshType;
 
@@ -26,7 +26,7 @@ pub fn add_debug_things(
         debug_display.create_display_list(bump, |builder| {
             for _i in 1..1000 {
                 builder.add_mesh(
-                    Transform::identity().compute_matrix(),
+                    &GlobalTransform::identity(),
                     DefaultMeshType::Sphere as u32,
                     Vec3::ZERO,
                 );

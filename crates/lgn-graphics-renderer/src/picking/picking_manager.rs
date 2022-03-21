@@ -311,12 +311,7 @@ impl PickingManager {
         mut picked_components: Query<
             '_,
             '_,
-            (
-                Entity,
-                &Transform,
-                &mut PickedComponent,
-                Option<&ManipulatorComponent>,
-            ),
+            (Entity, &mut PickedComponent, Option<&ManipulatorComponent>),
         >,
         manipulator_entities: Query<'_, '_, (Entity, &ManipulatorComponent)>,
     ) {
@@ -327,7 +322,7 @@ impl PickingManager {
             inner.active_selection_dirty = false;
 
             // Remove PickedComponent that are no longer in the active selection
-            for (entity, _, _, manipulator_component) in picked_components.iter() {
+            for (entity, _, manipulator_component) in picked_components.iter() {
                 if manipulator_component.is_none() && !inner.active_selection.contains(&entity) {
                     commands.entity(entity).remove::<PickedComponent>();
                 }
@@ -366,7 +361,7 @@ impl PickingManager {
                 .iter()
                 .any(|entity| manipulator_entities.get(*entity).is_ok());
 
-            for (entity, _transform, mut picked_component, manipulator_component) in
+            for (entity, mut picked_component, manipulator_component) in
                 picked_components.iter_mut()
             {
                 if !manipulator_picked || manipulator_component.is_some() {

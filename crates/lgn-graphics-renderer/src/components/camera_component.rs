@@ -8,7 +8,8 @@ use lgn_input::{
     keyboard::KeyCode,
     mouse::{MouseButton, MouseMotion, MouseWheel},
 };
-use lgn_math::{Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
+use lgn_math::{DMat4, Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
+use lgn_transform::components::GlobalTransform;
 
 use crate::{cgen, UP_VECTOR};
 
@@ -20,19 +21,26 @@ pub struct CameraComponent {
 }
 
 impl CameraComponent {
-    pub fn build_view_projection(&self, width: f32, height: f32) -> (Mat4, Mat4) {
-        let eye = self.camera_rig.final_transform.position;
-        let center = eye + self.camera_rig.final_transform.forward();
-        let up = UP_VECTOR; // self.camera_rig.final_transform.up();
-        let view_matrix = Mat4::look_at_lh(eye, center, up);
+    pub fn view_transform(&self) -> GlobalTransform {
+        let eye = self.camera_rig.final_transform.position.as_dvec3();
+        let forward = self.camera_rig.final_transform.forward().as_dvec3();
 
+        let view_matrix = DMat4::look_at_lh(eye, eye + forward, UP_VECTOR.as_dvec3());
+        let (_scale, rotation, translation) = view_matrix.to_scale_rotation_translation();
+
+        let mut view_transform = GlobalTransform::identity();
+        view_transform.translation = translation.as_vec3();
+        view_transform.rotation = rotation.as_f32();
+
+        view_transform
+    }
+
+    pub fn build_projection(width: f32, height: f32) -> Mat4 {
         let fov_y_radians: f32 = 45.0;
         let aspect_ratio = width / height;
         let z_near: f32 = 0.01;
         let z_far: f32 = 500.0;
-        let projection_matrix = Mat4::perspective_lh(fov_y_radians, aspect_ratio, z_near, z_far);
-
-        (view_matrix, projection_matrix)
+        Mat4::perspective_lh(fov_y_radians, aspect_ratio, z_near, z_far)
     }
 
     pub fn build_culling_planes(&self, aspect_ratio: f32) -> [Float4; 6] {
@@ -94,18 +102,11 @@ impl CameraComponent {
         cursor_x: f32,
         cursor_y: f32,
     ) -> cgen::cgen_type::ViewData {
-        let (view_matrix, projection_matrix) =
-            self.build_view_projection(pixel_width, pixel_height);
-        let view_proj_matrix = projection_matrix * view_matrix;
-
         let mut camera_props = cgen::cgen_type::ViewData::default();
 
-        camera_props.set_view(view_matrix.into());
-        camera_props.set_inv_view(view_matrix.inverse().into());
-        camera_props.set_projection(projection_matrix.into());
-        camera_props.set_inv_projection(projection_matrix.inverse().into());
-        camera_props.set_projection_view(view_proj_matrix.into());
-        camera_props.set_inv_projection_view(view_proj_matrix.inverse().into());
+        camera_props.set_camera_translation(self.view_transform().translation.into());
+        camera_props.set_camera_rotation(Vec4::from(self.view_transform().rotation).into());
+        camera_props.set_projection(Self::build_projection(pixel_width, pixel_height).into());
         camera_props.set_culling_planes(self.build_culling_planes(pixel_width / pixel_height));
         camera_props.set_pixel_size(
             Vec4::new(
@@ -134,7 +135,7 @@ impl CameraComponent {
 impl Default for CameraComponent {
     fn default() -> Self {
         let eye = Vec3::new(0.0, 1.0, -2.0);
-        let center = Vec3::new(2.0, 2.0, 0.0);
+        let center = Vec3::ZERO;
 
         let forward = (center - eye).normalize();
         let right = forward.cross(UP_VECTOR).normalize();
