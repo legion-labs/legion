@@ -22,9 +22,10 @@ use lgn_input::{
 use lgn_scene_plugin::ActiveScenes;
 use lgn_tracing::{error, info, warn};
 use lgn_transform::components::Transform;
-use tokio::sync::Mutex;
+use tokio::sync::{mpsc, Mutex};
 
 use crate::grpc::TraceEventsReceiver;
+use crate::grpc::{SelectionEvent, SelectionEventsReceiver};
 use crate::source_control_plugin::{RawFilesStreamerConfig, SharedRawFilesStreamer};
 
 #[derive(Default)]
@@ -34,9 +35,15 @@ pub struct EditorPlugin;
 
 impl Plugin for EditorPlugin {
     fn build(&self, app: &mut App) {
+        let (selection_events_sender, selection_events_receiver) =
+            mpsc::unbounded_channel::<SelectionEvent>();
+        let selection_events_receiver: SelectionEventsReceiver = selection_events_receiver.into();
+
         app
         .insert_resource(SelectionManager::create())
         .init_resource::<SharedRawFilesStreamer>()
+        .insert_resource(selection_events_sender)
+        .insert_resource(selection_events_receiver)
         .add_system_to_stage(CoreStage::PostUpdate, Self::process_input)
         .add_system_to_stage(CoreStage::PostUpdate, Self::update_selection)
         .add_startup_system_to_stage(
@@ -55,10 +62,12 @@ impl EditorPlugin {
         transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
         mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
         trace_events_receiver: Res<'_, TraceEventsReceiver>,
+        select_events_receiver: Res<'_, SelectionEventsReceiver>,
     ) {
         let grpc_server = super::grpc::GRPCServer::new(
             transaction_manager.clone(),
             trace_events_receiver.clone(),
+            select_events_receiver.clone(),
         );
 
         grpc_settings.register_service(grpc_server.service());
@@ -69,13 +78,14 @@ impl EditorPlugin {
         selection_manager: Res<'_, Arc<SelectionManager>>,
         picking_manager: Res<'_, PickingManager>,
         active_scenes: Res<'_, ActiveScenes>,
+        event_sender: Res<'_, mpsc::UnboundedSender<SelectionEvent>>,
     ) {
         if let Some(selection) = selection_manager.update() {
             // Convert the SelectionManager offlineId to RuntimeId
             let entities_selection = selection
-                .into_iter()
+                .iter()
                 .map(|offline_id| {
-                    ResourcePathId::from(offline_id)
+                    ResourcePathId::from(*offline_id)
                         .push(sample_data::runtime::Entity::TYPE)
                         .resource_id()
                 })
@@ -86,6 +96,10 @@ impl EditorPlugin {
                         .collect::<Vec<_>>()
                 })
                 .collect();
+
+            if let Err(err) = event_sender.send(SelectionEvent::SelectionChanged(selection)) {
+                warn!("Failed to send selectionEvent: {}", err);
+            }
             picking_manager.set_active_selection(entities_selection);
         }
     }

@@ -1,3 +1,8 @@
+//! Scene/Entity manager
+
+// crate-specific lint exceptions:
+//#![allow()]
+
 use std::{collections::HashMap, sync::Arc};
 
 use lgn_app::{App, Plugin};

@@ -1,9 +1,11 @@
 use std::{ops::Deref, sync::Arc};
 
+use lgn_data_runtime::ResourceTypeAndId;
 use lgn_data_transaction::TransactionManager;
 use lgn_editor_proto::editor::{
     editor_server::{Editor, EditorServer},
-    InitLogStreamRequest, InitLogStreamResponse, RedoTransactionRequest, RedoTransactionResponse,
+    InitLogStreamRequest, InitLogStreamResponse, InitMessageStreamRequest,
+    InitMessageStreamResponse, RedoTransactionRequest, RedoTransactionResponse,
     UndoTransactionRequest, UndoTransactionResponse,
 };
 use tokio::sync::{mpsc, Mutex};
@@ -42,11 +44,17 @@ impl<T> From<mpsc::UnboundedReceiver<T>> for SharedUnboundedReceiver<T> {
     }
 }
 
+pub(crate) enum SelectionEvent {
+    SelectionChanged(Vec<ResourceTypeAndId>),
+}
+
 pub(crate) type TraceEventsReceiver = SharedUnboundedReceiver<TraceEvent>;
+pub(crate) type SelectionEventsReceiver = SharedUnboundedReceiver<SelectionEvent>;
 
 pub(crate) struct GRPCServer {
     transaction_manager: Arc<Mutex<TransactionManager>>,
     trace_events_receiver: TraceEventsReceiver,
+    selection_events: SelectionEventsReceiver,
 }
 
 impl GRPCServer {
@@ -54,10 +62,12 @@ impl GRPCServer {
     pub(crate) fn new(
         transaction_manager: Arc<Mutex<TransactionManager>>,
         trace_events_receiver: TraceEventsReceiver,
+        selection_events: SelectionEventsReceiver,
     ) -> Self {
         Self {
             transaction_manager,
             trace_events_receiver,
+            selection_events,
         }
     }
 
@@ -125,6 +135,29 @@ impl Editor for GRPCServer {
                         }))
                         .await;
                 }
+            }
+        });
+
+        Ok(Response::new(ReceiverStream::new(rx)))
+    }
+
+    type InitMessageStreamStream = ReceiverStream<Result<InitMessageStreamResponse, Status>>;
+
+    async fn init_message_stream(
+        &self,
+        _: Request<InitMessageStreamRequest>,
+    ) -> Result<tonic::Response<<Self as Editor>::InitMessageStreamStream>, Status> {
+        let (tx, rx) = mpsc::channel(1);
+        let receiver = self.selection_events.clone();
+        tokio::spawn(async move {
+            while let Some(selection_event) = receiver.lock().await.recv().await {
+                let SelectionEvent::SelectionChanged(selections) = selection_event;
+                let _send_result = tx
+                    .send(Ok(InitMessageStreamResponse {
+                        msg_type: 0,
+                        payload: serde_json::json!(selections).to_string(),
+                    }))
+                    .await;
             }
         });
 

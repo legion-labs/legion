@@ -301,7 +301,7 @@ impl Project {
                         None
                     }
                 }
-                Err(e) => Some(Err(e)),
+                Err(_err) => None,
             });
 
         match res {

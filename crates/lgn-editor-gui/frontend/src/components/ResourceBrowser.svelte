@@ -7,7 +7,6 @@
   import {
     cloneResource,
     closeScene,
-    commitStagedResources,
     createResource,
     getAllResources,
     initFileUpload,
@@ -198,7 +197,7 @@
     detail: resourceDescription,
   }: CustomEvent<Entry<ResourceDescription>>) {
     if (resourceDescription) {
-      fetchCurrentResourceDescription(resourceDescription.item);
+      fetchCurrentResourceDescription(resourceDescription.item.id);
     }
   }
 
@@ -225,6 +224,7 @@
         if (currentResourceDescriptionEntry) {
           await closeScene({ id: currentResourceDescriptionEntry?.item.id });
         }
+
         return;
       }
 
@@ -250,7 +250,7 @@
 
           currentResourceDescriptionEntry = entry;
 
-          fetchCurrentResourceDescription(newResource);
+          fetchCurrentResourceDescription(newResource.id);
         }
 
         return;
