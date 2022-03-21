@@ -1,7 +1,14 @@
 import type { Writable } from "svelte/store";
-import { writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 import type { StagedResource } from "@lgn/proto-editor/dist/source_control";
-import { getStagedResources } from "@/api";
+import {
+  commitStagedResources,
+  getAllResources,
+  getStagedResources,
+  syncLatest,
+} from "@/api";
+import allResources from "./allResources";
+import log from "@lgn/web-client/src/lib/log";
 
 export type StagedResourcesValue = StagedResource[] | null;
 
@@ -22,4 +29,26 @@ export async function initStagedResourcesStream(pollInternal = 2_000) {
   }, pollInternal);
 
   return () => clearInterval(intervalId);
+}
+
+export function syncFromMain() {
+  syncLatest();
+
+  return allResources.run(getAllResources);
+}
+
+export async function submitToMain() {
+  const resources = get(stagedResources);
+
+  if (!resources?.length) {
+    log.debug("No local changes to commit");
+
+    return;
+  }
+
+  log.debug(
+    log.json`Committing the following resources ${get(stagedResources)}`
+  );
+
+  await commitStagedResources();
 }

@@ -12,6 +12,9 @@ export type CurrentResourceOrchestrator =
 const currentResourceOrchestrator: CurrentResourceOrchestrator =
   createAsyncStoreOrchestrator();
 
+export const { data: currentResource, error: currentResourceError } =
+  currentResourceOrchestrator;
+
 export function fetchCurrentResourceDescription(
   currentResourceDescription: ResourceDescription
 ) {

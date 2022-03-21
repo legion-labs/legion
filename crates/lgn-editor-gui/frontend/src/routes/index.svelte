@@ -8,8 +8,13 @@
   import StatusBar from "@lgn/web-client/src/components/StatusBar.svelte";
   import { getAllResources } from "@/api";
   import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
-  import currentResource from "@/orchestrators/currentResource";
-  import { createHierarchyTreeOrchestrator } from "@/orchestrators/hierarchyTree";
+  import { currentResource } from "@/orchestrators/currentResource";
+  import {
+    currentResourceDescriptionEntry,
+    currentlyRenameResourceEntry,
+    resourceEntries,
+    resourceBrowserEntriesOrchestrator,
+  } from "@/orchestrators/resourceBrowserEntries";
   import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
   import contextMenu from "@/stores/contextMenu";
   import allResourcesStore from "@/stores/allResources";
@@ -21,10 +26,8 @@
   import SceneExplorer from "@/components/SceneExplorer.svelte";
   import ResourceBrowser from "@/components/ResourceBrowser.svelte";
   import modal from "@/stores/modal";
-  import type { Entry } from "@/lib/hierarchyTree";
   import ExtraPanel from "@/components/ExtraPanel.svelte";
-
-  const { data: currentResourceData } = currentResource;
+  import { stagedResources, syncFromMain } from "@/stores/stagedResources";
 
   const {
     data: allResourcesData,
@@ -32,24 +35,15 @@
     loading: allResourcesLoading,
   } = allResourcesStore;
 
-  const resourceEntriesOrchestrator =
-    createHierarchyTreeOrchestrator<ResourceDescription>();
-
-  const {
-    currentlyRenameEntry: currentlyRenameResourceEntry,
-    entries: resourceEntries,
-  } = resourceEntriesOrchestrator;
-
-  let currentResourceDescriptionEntry: Entry<ResourceDescription> | null = null;
-
-  $: currentResourceDescription = currentResourceDescriptionEntry?.item ?? null;
+  $: currentResourceDescription =
+    $currentResourceDescriptionEntry?.item ?? null;
 
   $: if ($allResourcesError) {
     reloadResources();
   }
 
   $: if ($allResourcesData) {
-    resourceEntriesOrchestrator.load($allResourcesData);
+    resourceBrowserEntriesOrchestrator.load($allResourcesData);
   }
 
   onMount(() => {
@@ -72,12 +66,14 @@
       return;
     }
 
-    currentResourceDescriptionEntry = entry;
+    $currentResourceDescriptionEntry = entry;
   }
 
   async function reloadResources() {
-    $currentResourceData = null;
-    currentResourceDescriptionEntry = null;
+    $currentResource = null;
+
+    $currentResourceDescriptionEntry = null;
+
     await allResourcesStore.run(getAllResources);
   }
 </script>
@@ -105,7 +101,7 @@
         <div class="resource-browser">
           <ResourceBrowser
             allResourcesLoading={$allResourcesLoading}
-            bind:currentResourceDescriptionEntry
+            bind:currentResourceDescriptionEntry={$currentResourceDescriptionEntry}
             bind:currentlyRenameResourceEntry={$currentlyRenameResourceEntry}
             bind:resourceEntries={$resourceEntries}
           />
@@ -134,7 +130,7 @@
       </div>
     </div>
   </div>
-  <StatusBar />
+  <StatusBar stagedResources={$stagedResources || []} {syncFromMain} />
 </div>
 
 <style lang="postcss">
@@ -143,7 +139,7 @@
   }
 
   .root .content-wrapper {
-    @apply h-[calc(100vh-4rem)] w-full overflow-auto;
+    @apply h-[calc(100vh-4.5rem)] w-full overflow-auto;
   }
 
   .content {

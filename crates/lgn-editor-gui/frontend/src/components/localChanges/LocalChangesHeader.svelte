@@ -1,29 +1,20 @@
+<script context="module" lang="ts">
+  export type Mode = "card" | "list";
+</script>
+
 <script lang="ts">
-  import { commitStagedResources, getAllResources, syncLatest } from "@/api";
-  import allResources from "@/stores/allResources";
-  import { stagedResources } from "@/stores/stagedResources";
+  import {
+    stagedResources,
+    submitToMain,
+    syncFromMain,
+  } from "@/stores/stagedResources";
   import Icon from "@iconify/svelte";
   import Button from "@lgn/web-client/src/components/Button.svelte";
-  import log from "@lgn/web-client/src/lib/log";
-
-  type Mode = "card" | "list";
 
   export let mode: Mode = "card";
 
   function setMode(newMode: Mode) {
     mode = newMode;
-  }
-
-  function syncFromMain() {
-    syncLatest();
-
-    return allResources.run(getAllResources);
-  }
-
-  function submitToMain() {
-    log.debug(log.json`Committing the following resources ${$stagedResources}`);
-
-    return commitStagedResources();
   }
 </script>
 
