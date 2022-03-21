@@ -1,8 +1,4 @@
-use std::sync::Arc;
-
 use anyhow::Result;
-use lgn_analytics::prelude::*;
-use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::AsyncSpanEvent;
 use lgn_telemetry_proto::analytics::BlockAsyncData;
 use lgn_telemetry_proto::analytics::SpanEventType;
@@ -10,82 +6,30 @@ use lgn_telemetry_proto::analytics::{
     AsyncSpan, AsyncSpanTrack, AsyncSpansReply, BlockAsyncEventsStatReply,
 };
 use lgn_tracing::prelude::*;
-use lgn_tracing_transit::Object;
 use std::collections::HashMap;
 
-use crate::{
-    call_tree_store::CallTreeStore,
-    scope::ScopeHashMap,
-    thread_block_processor::{parse_thread_block, ThreadBlockProcessor},
-};
-
-struct StatsProcessor {
-    process_start_ts: i64,
-    min_ts: i64,
-    max_ts: i64,
-    nb_events: u64,
-}
-
-impl StatsProcessor {
-    fn new(process_start_ts: i64) -> Self {
-        Self {
-            process_start_ts,
-            min_ts: i64::MAX,
-            max_ts: i64::MIN,
-            nb_events: 0,
-        }
-    }
-}
-
-impl ThreadBlockProcessor for StatsProcessor {
-    fn on_begin_thread_scope(&mut self, _scope: Arc<Object>, _ts: i64) -> Result<()> {
-        Ok(())
-    }
-    fn on_end_thread_scope(&mut self, _scope: Arc<Object>, _ts: i64) -> Result<()> {
-        Ok(())
-    }
-
-    fn on_begin_async_scope(&mut self, _span_id: u64, _scope: Arc<Object>, ts: i64) -> Result<()> {
-        let relative_ts = ts - self.process_start_ts;
-        self.min_ts = self.min_ts.min(relative_ts);
-        self.max_ts = self.max_ts.max(relative_ts);
-        self.nb_events += 1;
-        Ok(())
-    }
-
-    fn on_end_async_scope(&mut self, _span_id: u64, _scope: Arc<Object>, ts: i64) -> Result<()> {
-        let relative_ts = ts - self.process_start_ts;
-        self.min_ts = self.min_ts.min(relative_ts);
-        self.max_ts = self.max_ts.max(relative_ts);
-        self.nb_events += 1;
-        Ok(())
-    }
-}
+use crate::{call_tree_store::CallTreeStore, scope::ScopeHashMap};
 
 #[allow(clippy::cast_precision_loss)]
 #[span_fn]
 pub async fn compute_block_async_stats(
-    connection: &mut sqlx::AnyConnection,
-    blob_storage: Arc<dyn BlobStorage>,
-    process: lgn_telemetry_proto::telemetry::Process,
-    stream: lgn_telemetry_sink::StreamInfo,
+    call_tree_store: &CallTreeStore,
     block_id: String,
 ) -> Result<BlockAsyncEventsStatReply> {
-    let inv_tsc_frequency = get_process_tick_length_ms(&process);
-    let mut processor = StatsProcessor::new(process.start_ticks);
-    parse_thread_block(
-        connection,
-        blob_storage,
-        &stream,
-        block_id.clone(),
-        &mut processor,
-    )
-    .await?;
+    let async_data = call_tree_store.get_block_async_data(&block_id).await?;
+    let (begin_ms, end_ms) = if async_data.events.is_empty() {
+        (f64::MAX, f64::MIN)
+    } else {
+        (
+            async_data.events[0].time_ms,
+            async_data.events[async_data.events.len() - 1].time_ms,
+        )
+    };
     Ok(BlockAsyncEventsStatReply {
         block_id,
-        begin_ms: processor.min_ts as f64 * inv_tsc_frequency,
-        end_ms: processor.max_ts as f64 * inv_tsc_frequency,
-        nb_events: processor.nb_events,
+        begin_ms,
+        end_ms,
+        nb_events: async_data.events.len() as u64,
     })
 }
 
@@ -112,13 +56,7 @@ impl AsyncSpanBuilder {
         }
     }
 
-    fn record_span(
-        &mut self,
-        span_id: u64,
-        begin_ms: f64,
-        end_ms: f64,
-        scope_hash: u32,
-    ) -> Result<()> {
+    fn record_span(&mut self, span_id: u64, begin_ms: f64, end_ms: f64, scope_hash: u32) {
         if ranges_overlap(self.begin_section_ms, self.end_section_ms, begin_ms, end_ms) {
             self.complete_spans.push(AsyncSpan {
                 span_id,
@@ -128,11 +66,10 @@ impl AsyncSpanBuilder {
                 alpha: 255,
             });
         }
-        Ok(())
     }
 
     #[span_fn]
-    fn finish(mut self) -> Result<(Vec<AsyncSpan>, ScopeHashMap)> {
+    fn finish(mut self) -> (Vec<AsyncSpan>, ScopeHashMap) {
         let mut events = HashMap::new();
         std::mem::swap(&mut events, &mut self.unmatched_events);
         for (_id, evt) in events {
@@ -143,7 +80,7 @@ impl AsyncSpanBuilder {
                         evt.time_ms,
                         self.end_section_ms,
                         evt.scope_hash,
-                    )?;
+                    );
                 }
                 Some(SpanEventType::End) => {
                     self.record_span(
@@ -151,14 +88,14 @@ impl AsyncSpanBuilder {
                         self.begin_section_ms,
                         evt.time_ms,
                         evt.scope_hash,
-                    )?;
+                    );
                 }
                 None => {
                     warn!("unknown event type {}", evt.event_type);
                 }
             }
         }
-        Ok((self.complete_spans, self.scopes))
+        (self.complete_spans, self.scopes)
     }
 
     pub fn process(&mut self, data: BlockAsyncData) -> Result<()> {
@@ -183,7 +120,7 @@ impl AsyncSpanBuilder {
                                     evt.time_ms,
                                     matched.time_ms,
                                     evt.scope_hash,
-                                )?;
+                                );
                             }
                             None => {
                                 warn!("unknown event type {}", matched.event_type);
@@ -209,7 +146,7 @@ impl AsyncSpanBuilder {
                                     matched.time_ms,
                                     evt.time_ms,
                                     evt.scope_hash,
-                                )?;
+                                );
                             }
                             None => {
                                 warn!("unknown event type {}", matched.event_type);
@@ -284,7 +221,7 @@ pub async fn compute_async_spans(
         let async_data = call_tree_store.get_block_async_data(block_id).await?;
         builder.process(async_data)?;
     }
-    let (mut spans, scopes) = builder.finish()?;
+    let (mut spans, scopes) = builder.finish();
     spans.sort_by(|a, b| a.span_id.partial_cmp(&b.span_id).unwrap());
     let tracks = layout_spans(spans);
     let reply = AsyncSpansReply {
