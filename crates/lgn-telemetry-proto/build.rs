@@ -8,6 +8,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "./protos/ingestion.proto",
         "./protos/metric.proto",
         "./protos/process.proto",
+        "./protos/span.proto",
         "./protos/stream.proto",
     ];
     tonic_build::configure()

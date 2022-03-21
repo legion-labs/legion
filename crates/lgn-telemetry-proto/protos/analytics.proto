@@ -4,6 +4,7 @@ import public "stream.proto";
 import public "block.proto";
 import public "calltree.proto";
 import public "metric.proto";
+import public "span.proto";
 
 package analytics;
 
@@ -81,31 +82,11 @@ message ListStreamBlocksReply {
   repeated telemetry.BlockMetadata blocks = 1;
 }
 
-// block_spans
-// Span: represents a function call instance
-message Span {
-  uint32 scope_hash = 1;
-  double begin_ms = 2;
-  double end_ms = 3;
-  uint32 alpha = 4;  //[0-255] non-linear transformation of occupancy for spans
-                     // that are a lower level of detail
-}
-
 message BlockSpansRequest {
   telemetry.Process process = 1;
   telemetry.Stream stream = 2;
   string block_id = 3;
   uint32 lod_id = 4;
-}
-
-// one span track contains spans at one height of call stack
-message SpanTrack {
-  repeated Span spans = 1;
-}
-
-message SpanBlockLOD {
-  uint32 lod_id = 1;
-  repeated SpanTrack tracks = 2;
 }
 
 message BlockSpansReply {
