@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -107,6 +107,16 @@ impl Config {
                     Self::from_legion_toml(None)
                 }
             }
+        }
+    }
+
+    /// Returns a configuration of a local, disk-based content store operating at specified path.
+    pub fn local(path: impl AsRef<Path>) -> Self {
+        Self {
+            provider: ProviderConfig::Local(LocalProviderConfig {
+                path: Some(path.as_ref().to_owned()),
+            }),
+            caching_providers: vec![],
         }
     }
 

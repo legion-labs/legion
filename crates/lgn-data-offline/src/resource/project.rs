@@ -105,33 +105,43 @@ impl Project {
         &self.project_dir
     }
 
+    /// Creates a local source control index.
+    pub async fn create_local_origin(path: impl AsRef<Path>) -> Result<LocalIndexBackend, Error> {
+        let remote = LocalIndexBackend::new(&path).map_err(Error::SourceControl)?;
+        if !remote.index_exists().await.map_err(Error::SourceControl)? {
+            remote.create_index().await.map_err(Error::SourceControl)?;
+        }
+        Ok(remote)
+    }
+
     /// Same as [`Self::create`] but it creates an origin source control index at ``project_dir/remote``.
     pub async fn create_with_remote_mock(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
-        let remote = {
-            let remote_dir = project_dir.as_ref().join("remote");
-            let remote = LocalIndexBackend::new(&remote_dir).map_err(Error::SourceControl)?;
-            remote.create_index().await.map_err(Error::SourceControl)?;
-            remote
-        };
+        let remote_dir = project_dir.as_ref().join("remote");
+        let remote = Self::create_local_origin(&remote_dir).await?;
+        let content_store_configuration = lgn_content_store2::Config::local(&remote_dir);
 
-        let mut project = Self::create(project_dir, "../remote".to_string()).await?;
+        let mut project = Self::create(
+            project_dir,
+            "../remote".to_string(),
+            content_store_configuration,
+        )
+        .await?;
         project.local_remote = Some(remote);
         Ok(project)
     }
 
     /// Creates a new project index file turning the containing directory into a
     /// project.
-    pub async fn create(project_dir: impl AsRef<Path>, remote_path: String) -> Result<Self, Error> {
+    pub async fn create(
+        project_dir: impl AsRef<Path>,
+        remote_path: String,
+        content_store_configuration: lgn_content_store2::Config,
+    ) -> Result<Self, Error> {
         let resource_dir = project_dir.as_ref().join("offline");
         if !resource_dir.exists() {
             std::fs::create_dir(&resource_dir).map_err(|e| Error::Io(resource_dir.clone(), e))?;
         }
 
-        let content_store_configuration = lgn_content_store2::Config::from_legion_toml(
-            lgn_content_store2::Config::content_store_section()
-                .as_deref()
-                .or(Some("source_control")), // TODO: Kris: you may want to specify another default section perhaps? I'm not sure.
-        );
         let content_provider = content_store_configuration
             .instanciate_provider()
             .await
