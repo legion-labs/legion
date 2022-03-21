@@ -1526,6 +1526,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "config"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54ad70579325f1a38ea4c13412b82241c5900700a69785d73e2736bd65a33f86"
+dependencies = [
+ "async-trait",
+ "lazy_static",
+ "nom 7.1.0",
+ "pathdiff",
+ "serde",
+ "toml",
+]
+
+[[package]]
 name = "console"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4654,9 +4668,12 @@ dependencies = [
 name = "lgn-config"
 version = "0.1.0"
 dependencies = [
+ "config",
+ "dirs",
  "lazy_static",
  "lgn-tracing",
  "serde",
+ "thiserror",
  "toml",
 ]
 

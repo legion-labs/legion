@@ -1,0 +1,8 @@
+[lgn-config.tests]
+environment = "dev"
+
+[lgn-config.tests.my_config]
+my_bool = true
+my_int = 42
+my_float = 3.14
+my_list = ["a", "b", "c"]
