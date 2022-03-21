@@ -1,4 +1,4 @@
-import { Process } from "@lgn/proto-telemetry/dist/process";
+import type { Process } from "@lgn/proto-telemetry/dist/process";
 
 export function formatExecutionTime(timeMs: number) {
   if (!isFinite(timeMs)) {

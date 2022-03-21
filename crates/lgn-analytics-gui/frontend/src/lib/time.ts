@@ -1,6 +1,6 @@
-import { Process } from "@lgn/proto-telemetry/dist/process";
+import type { Process } from "@lgn/proto-telemetry/dist/process";
 import { getLodFromPixelSizeMs } from "./lod";
-import { ThreadBlock, ThreadBlockLOD } from "./Timeline/ThreadBlock";
+import type { ThreadBlock, ThreadBlockLOD } from "./Timeline/ThreadBlock";
 
 export function timestampToMs(process: Process, timestamp: number): number {
   const nbTicks = timestamp - process.startTicks;

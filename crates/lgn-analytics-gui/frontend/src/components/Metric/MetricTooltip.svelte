@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { Point } from "@/lib/Metric/MetricPoint";
+  import type { Point } from "@/lib/Metric/MetricPoint";
   import { selectionStore } from "@/lib/Metric/MetricSelectionStore";
-  import { MetricStreamer } from "@/lib/Metric/MetricStreamer";
-  import { D3ZoomEvent } from "d3";
+  import type { MetricStreamer } from "@/lib/Metric/MetricStreamer";
+  import type { D3ZoomEvent } from "d3";
   import { get } from "svelte/store";
-  import { MetricSelectionState } from "./MetricSelectionState";
+  import type { MetricSelectionState } from "./MetricSelectionState";
   import MetricTooltipItem from "./MetricTooltipItem.svelte";
   export let xScale: d3.ScaleLinear<number, number, never>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

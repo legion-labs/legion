@@ -1,5 +1,5 @@
-import { BlockAsyncEventsStatReply } from "@lgn/proto-telemetry/dist/analytics";
-import { AsyncSection } from "./AsyncSection";
+import type { BlockAsyncEventsStatReply } from "@lgn/proto-telemetry/dist/analytics";
+import type { AsyncSection } from "./AsyncSection";
 
 // ProcessAsyncData contains the data about the async tasks of one process
 export type ProcessAsyncData = {

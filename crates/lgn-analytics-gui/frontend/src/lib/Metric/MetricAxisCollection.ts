@@ -1,4 +1,4 @@
-import { MetricSlice } from "@/lib/Metric/MetricSlice";
+import type { MetricSlice } from "@/lib/Metric/MetricSlice";
 import { get } from "svelte/store";
 import { MetricAxis } from "./MetricAxis";
 import { selectionStore } from "./MetricSelectionStore";

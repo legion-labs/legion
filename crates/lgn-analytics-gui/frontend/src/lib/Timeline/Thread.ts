@@ -1,4 +1,4 @@
-import { Stream } from "@lgn/proto-telemetry/dist/stream";
+import type { Stream } from "@lgn/proto-telemetry/dist/stream";
 
 export type Thread = {
   streamInfo: Stream;

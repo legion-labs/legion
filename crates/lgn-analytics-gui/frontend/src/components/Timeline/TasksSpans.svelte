@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
-  import { Process } from "@lgn/proto-telemetry/dist/process";
-  import { ProcessAsyncData } from "@/lib/Timeline/ProcessAsyncData";
+  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
+  import type { Process } from "@lgn/proto-telemetry/dist/process";
+  import type { ProcessAsyncData } from "@/lib/Timeline/ProcessAsyncData";
   import { DrawSelectedRange } from "@/lib/time_range_selection";
   import { drawSpanTrack } from "@/lib/Timeline/SpanRender";
   import { createEventDispatcher, onDestroy, onMount, tick } from "svelte";
   import { spanPixelHeight } from "@/lib/Timeline/TimelineValues";
   import { TimelineContext } from "@/lib/Timeline/TimelineContext";
-  import { Unsubscriber } from "svelte/store";
+  import type { Unsubscriber } from "svelte/store";
   import { debounced } from "@lgn/web-client/src/lib/store";
   export let rootStartTime: number;
   export let stateStore: TimelineStateStore;

@@ -1,5 +1,5 @@
-import { LODState } from "./LodState";
-import { SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
+import type { LODState } from "./LodState";
+import type { SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
 
 export type AsyncSection = {
   sectionSequenceNumber: number;

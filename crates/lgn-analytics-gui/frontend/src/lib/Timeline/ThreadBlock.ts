@@ -1,6 +1,6 @@
-import { SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
-import { BlockMetadata } from "@lgn/proto-telemetry/dist/block";
-import { LODState } from "./LodState";
+import type { SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
+import type { BlockMetadata } from "@lgn/proto-telemetry/dist/block";
+import type { LODState } from "./LodState";
 
 export type ThreadBlock = {
   blockDefinition: BlockMetadata; // block metadata stored in data lake

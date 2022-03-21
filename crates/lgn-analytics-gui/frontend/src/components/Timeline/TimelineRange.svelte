@@ -1,6 +1,6 @@
 <script lang="ts">
   import { formatExecutionTime } from "@/lib/format";
-  import { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
+  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   export let stateStore: TimelineStateStore;
   export let width: number;
   let percent: number;

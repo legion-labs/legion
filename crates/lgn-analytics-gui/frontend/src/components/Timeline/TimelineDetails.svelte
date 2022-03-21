@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { Process } from "@lgn/proto-telemetry/dist/process";
+  import type { Process } from "@lgn/proto-telemetry/dist/process";
+
   export let process: Process;
 </script>
 

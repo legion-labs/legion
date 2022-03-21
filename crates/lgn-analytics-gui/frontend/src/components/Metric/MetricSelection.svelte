@@ -8,7 +8,7 @@
   import { onDestroy, onMount } from "svelte";
   import { get, Unsubscriber } from "svelte/store";
   import MetricSelectionItem from "./MetricSelectionItem.svelte";
-  import { MetricSelectionState } from "./MetricSelectionState";
+  import type { MetricSelectionState } from "./MetricSelectionState";
 
   let show = false;
   let searchString: string | undefined;

@@ -1,10 +1,10 @@
 <script lang="ts">
   import { link } from "svelte-navigator";
-  import {
+  import type {
     LogEntry,
     PerformanceAnalyticsClientImpl,
   } from "@lgn/proto-telemetry/dist/analytics";
-  import { Process } from "@lgn/proto-telemetry/dist/process";
+  import type { Process } from "@lgn/proto-telemetry/dist/process";
   import { onMount } from "svelte";
   import { makeGrpcClient } from "@/lib/client";
   import log from "@lgn/web-client/src/lib/log";
