@@ -72,6 +72,7 @@ fn load_config_from(root: impl AsRef<Path>) -> Result<Figment> {
 
 #[cfg(test)]
 mod tests {
+    use figment::{value::magic::RelativePathBuf, Jail};
     use serde::{Deserialize, Serialize};
 
     use super::*;
@@ -101,17 +102,20 @@ mod tests {
 
     #[test]
     fn test_load_config_from_with_environment_variable_override() {
-        // Lets set en environment variable, as an override.
-        std::env::set_var("LGN_LGN-CONFIG.TESTS.ENVIRONMENT", "foo");
-        let config = load_config_from("src/fixtures/prod").unwrap();
-        std::env::remove_var("LGN_LGN-CONFIG.TESTS.ENVIRONMENT");
+        Jail::expect_with(|jail| {
+            // Lets set en environment variable, as an override.
+            jail.set_env("LGN_LGN-CONFIG.TESTS.ENVIRONMENT", "foo");
+            let config = load_config_from("src/fixtures/prod").unwrap();
 
-        assert_eq!(
-            "foo",
-            config
-                .extract_inner::<String>("lgn-config.tests.environment")
-                .unwrap()
-        );
+            assert_eq!(
+                "foo",
+                config
+                    .extract_inner::<String>("lgn-config.tests.environment")
+                    .unwrap()
+            );
+
+            Ok(())
+        });
     }
 
     #[test]
@@ -127,5 +131,19 @@ mod tests {
             vec!["a".to_string(), "b".to_string(), "c".to_string()],
             my_config.my_list
         );
+    }
+
+    #[test]
+    fn test_load_config_from_relative_path_buf() {
+        let config = load_config_from("src/fixtures/prod").unwrap();
+
+        let path = config
+            .extract_inner::<RelativePathBuf>("lgn-config.tests.avatar")
+            .unwrap();
+
+        assert_eq!("../images/avatar.png", path.original().to_str().unwrap());
+
+        let cwd = std::env::current_dir().unwrap().join("src/fixtures/prod");
+        assert_eq!(cwd.join("../images/avatar.png"), path.relative());
     }
 }

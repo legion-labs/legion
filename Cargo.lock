@@ -2722,8 +2722,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "790b4292c72618abbab50f787a477014fe15634f96291de45672ce46afe122df"
 dependencies = [
  "atomic",
+ "parking_lot 0.11.2",
  "pear",
  "serde",
+ "tempfile",
  "toml",
  "uncased",
  "version_check",
