@@ -18,8 +18,8 @@ pub struct ServerData {
     /// Arbitrary number that represents a request to a worker.
     pub request_id: u64,
 
-    /// A .zip archive which contains the job to the executed on the remote worker.
-    pub input_archive: Vec<u8>,
+    /// A message which contains the request job to be the executed on the remote worker.
+    pub input_msg: String,
 }
 
 /// The computed workload returned by the "worker" client.
@@ -28,8 +28,8 @@ pub struct NodeData {
     /// The request number; must match the request sent in `ServerData`.
     pub request_id: u64,
 
-    /// A .zip archive that contains the output of the compilation process which was executed on the remote worker.
-    pub output_archive: Vec<u8>,
+    /// A message that contains the output of the compilation process which was executed on the remote worker.
+    pub output_msg: String,
 }
 
 /// Tells the kind of the remote client.
@@ -39,7 +39,7 @@ pub enum NodeType {
     Worker,
 
     /// A connecting client that sends jobs to the service.
-    InitiatingClient(Vec<u8>),
+    InitiatingClient(String),
 }
 
 /// A structure that is returned by a client on startup.

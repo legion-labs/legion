@@ -4,7 +4,6 @@ use std::{io, net, sync};
 
 use thiserror::Error;
 use url::ParseError;
-use zip::result::ZipError;
 
 use crate::node_crunch::nc_node_info::NodeID;
 
@@ -48,10 +47,14 @@ pub enum NCError {
     /// [`Mutex`](std::sync::Mutex) could not be locked or a thread did panic while holding the lock.
     #[error("Mutex poisson error")]
     MutexPoison,
-    #[error("Compression error")]
-    Compression(#[from] ZipError),
     #[error("URL parse error")]
     Url(#[from] ParseError),
+    #[error("CAS error")]
+    CASError(#[from] lgn_content_store2::Error),
+    #[error("Compiler error")]
+    CompilerError(#[from] lgn_data_compiler::compiler_api::CompilerError),
+    #[error("Json error")]
+    JsonError(#[from] serde_json::error::Error),
 }
 
 impl<T> From<sync::PoisonError<sync::MutexGuard<'_, T>>> for NCError {

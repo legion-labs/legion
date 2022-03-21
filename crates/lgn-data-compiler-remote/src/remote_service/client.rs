@@ -7,8 +7,8 @@ use lgn_tracing::info;
 use super::common_types::{NodeData, NodeInitial, NodeType, RemoteExecutionArgs, ServerData};
 
 struct RemoteExecutionNode {
-    input_archive: Vec<u8>,
-    output_archive: Vec<u8>,
+    input_msg: String,
+    output_msg: String,
 }
 
 impl NCNode for RemoteExecutionNode {
@@ -24,7 +24,7 @@ impl NCNode for RemoteExecutionNode {
     fn get_node_type(&mut self) -> Result<Self::NodeTypeT, NCError> {
         info!("Connected to server...");
         Ok(NodeInitial {
-            node_type: NodeType::InitiatingClient(self.input_archive.clone()),
+            node_type: NodeType::InitiatingClient(self.input_msg.clone()),
         })
     }
 
@@ -33,7 +33,7 @@ impl NCNode for RemoteExecutionNode {
         data: &Self::NewDataT,
     ) -> Result<NCNodeStatus<Self::ProcessedDataT>, NCError> {
         info!("Received data from server...");
-        self.output_archive = data.input_archive.clone();
+        self.output_msg = data.input_msg.clone();
         // Since this is a call from the client app, we're done as soon as the service sends up the resulting data.
         Ok(NCNodeStatus::Exiting)
     }
@@ -53,11 +53,11 @@ fn config(options: RemoteExecutionArgs) -> NCNodeStarter {
 }
 
 /// Send the workload from a client.
-pub fn send_receive_workload(server_addr: &str, input_archive: Vec<u8>) -> Vec<u8> {
+pub fn send_receive_workload(server_addr: &str, input_msg: String) -> String {
     info!("Sending workload...");
     let mut node = RemoteExecutionNode {
-        input_archive,
-        output_archive: vec![],
+        input_msg,
+        output_msg: String::new(),
     };
     let options = RemoteExecutionArgs {
         server: false,
@@ -65,5 +65,5 @@ pub fn send_receive_workload(server_addr: &str, input_archive: Vec<u8>) -> Vec<u
     };
     config(options).start(&mut node).unwrap();
     info!("Received workload...");
-    node.output_archive.clone()
+    node.output_msg.clone()
 }

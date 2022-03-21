@@ -92,7 +92,6 @@ use lgn_data_model::ReflectionError;
 use lgn_data_offline::{resource::ResourceProcessorError, ResourcePathId, Transform};
 use lgn_data_runtime::{AssetRegistry, AssetRegistryError, AssetRegistryOptions};
 use serde::{Deserialize, Serialize};
-use zip::result::ZipError;
 
 use crate::{
     compiler_cmd::{
@@ -300,10 +299,6 @@ pub enum CompilerError {
     #[error(transparent)]
     AssetRegistry(#[from] AssetRegistryError),
 
-    /// Zip crate errors
-    #[error(transparent)]
-    Compression(#[from] ZipError),
-
     /// Infallible
     #[error(transparent)]
     Unreachable(#[from] Infallible),
@@ -319,6 +314,10 @@ pub enum CompilerError {
     /// Data executor error.
     #[error("{0}")]
     RemoteExecution(String),
+
+    /// lgn-content-store2 errors.
+    #[error(transparent)]
+    CASError(#[from] lgn_content_store2::Error),
 }
 
 impl CompilerDescriptor {

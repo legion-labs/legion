@@ -4828,6 +4828,7 @@ dependencies = [
  "erased-serde",
  "integer-asset",
  "lgn-content-store",
+ "lgn-content-store2",
  "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
@@ -4843,20 +4844,23 @@ dependencies = [
  "text-resource",
  "thiserror",
  "tokio",
- "zip",
 ]
 
 [[package]]
 name = "lgn-data-compiler-remote"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-trait",
  "bincode",
  "chacha20poly1305",
  "clap 3.1.6",
  "freelist",
+ "futures",
  "integer-asset",
+ "lgn-async",
  "lgn-content-store",
+ "lgn-content-store2",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
@@ -4873,7 +4877,6 @@ dependencies = [
  "threadpool",
  "tokio",
  "url",
- "zip",
 ]
 
 [[package]]

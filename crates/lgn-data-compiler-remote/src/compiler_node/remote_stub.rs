@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use lgn_content_store2::Config;
 use std::{
     io,
     path::{Path, PathBuf},
@@ -10,9 +11,8 @@ use lgn_content_store::ContentStoreAddr;
 use lgn_data_offline::{ResourcePathId, Transform};
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
 use lgn_utils::find_monorepo_root;
-use tokio::fs;
 
-use super::remote_data_executor::collect_local_resources;
+use super::remote_data_executor::{collect_local_resources, deploy_files, CompileResultMessage};
 use lgn_data_compiler::{
     compiler_api::{CompilationEnv, CompilationOutput, CompilerError, CompilerHash, CompilerInfo},
     compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd, CompilerInfoCmdOutput},
@@ -77,36 +77,35 @@ impl CompilerStub for RemoteCompilerStub {
             env,
         );
 
-        let archive = collect_local_resources(
+        let msg = collect_local_resources(
             &self.bin_path,
             resource_dir,
             &cas_local_path,
             &compile_path,
             dependencies,
             derived_deps,
-            serde_json::to_string_pretty(&cmd)?.as_str(),
-        )?;
+            &cmd,
+        )
+        .await?;
 
-        let result =
-            crate::remote_service::client::send_receive_workload(&self.server_addr, archive);
+        let result = crate::remote_service::client::send_receive_workload(&self.server_addr, msg);
 
-        let local_path = cas_local_path.parent().unwrap();
+        let msg: CompileResultMessage = serde_json::from_str(&result)?;
 
-        // Write the archive to a file for debugging.
-        /*let mut file_archive = PathBuf::from(local_path);
-        file_archive.push(format!("{:#x}.zip", rand::random::<u64>()));
-        fs::write(file_archive, &result)?;*/
+        // Deploy locally the remote outcome.
+        let config = Config::from_legion_toml(None);
+        let provider = config.instanciate_provider().await.map_err(|err| {
+            CompilerError::RemoteExecution(format!("failed to create content provider: {}", err))
+        })?;
 
-        // Uncompress archive.
-        let mut archive = zip::ZipArchive::new(std::io::Cursor::new(&result)).unwrap();
-        archive.extract(local_path).unwrap();
+        deploy_files(
+            &provider,
+            &msg.files_to_package,
+            cas_local_path.parent().unwrap(),
+        )
+        .await?;
 
-        // Return output.
-        let mut output_file = PathBuf::from(local_path);
-        output_file.push("output.json");
-        let output_json = fs::read_to_string(&output_file).await?;
-
-        Ok(serde_json::from_str(&output_json)?)
+        Ok(msg.output)
     }
 
     async fn info(&self) -> io::Result<Vec<CompilerInfo>> {
