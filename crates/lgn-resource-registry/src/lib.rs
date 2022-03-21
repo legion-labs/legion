@@ -66,16 +66,31 @@ impl ResourceRegistryPlugin {
         let selection_manager = world.get_resource::<Arc<SelectionManager>>().unwrap();
 
         let transaction_manager = async_rt.block_on(async move {
-            sample_data_compiler::raw_loader::build_offline(&project_dir, false).await;
+            let source_control_cas = lgn_content_store2::Config::from_legion_toml(
+                lgn_content_store2::Config::content_store_section()
+                    .as_deref()
+                    .or(Some("source_control")),
+            );
+
+            sample_data_compiler::raw_loader::build_offline(
+                &project_dir,
+                settings.source_control_path.clone(),
+                source_control_cas.clone(),
+                false,
+            )
+            .await;
 
             let project = {
                 if let Ok(project) = Project::open(&project_dir).await {
                     project
                 } else {
-                    let mut project =
-                        Project::create(&project_dir, settings.source_control_path.clone())
-                            .await
-                            .unwrap();
+                    let mut project = Project::create(
+                        &project_dir,
+                        settings.source_control_path.clone(),
+                        source_control_cas,
+                    )
+                    .await
+                    .unwrap();
                     project.sync_latest().await.unwrap();
                     project
                 }

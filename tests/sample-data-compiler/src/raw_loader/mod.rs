@@ -26,7 +26,12 @@ use tokio::sync::Mutex;
 
 use self::raw_to_offline::FromRaw;
 
-pub async fn build_offline(root_folder: impl AsRef<Path>, incremental: bool) {
+pub async fn build_offline(
+    root_folder: impl AsRef<Path>,
+    origin: String,
+    source_control_cas: lgn_content_store2::Config,
+    incremental: bool,
+) {
     let raw_dir = {
         if let Ok(entries) = root_folder.as_ref().read_dir() {
             let mut raw_dir = entries
@@ -79,8 +84,13 @@ pub async fn build_offline(root_folder: impl AsRef<Path>, incremental: bool) {
                 .unwrap_or_else(|e| println!("failed to delete VERSION: {}.", e));
         }
 
+        Project::create_local_origin(root_folder.as_ref().join("remote"))
+            .await
+            .unwrap();
+
         //
-        let (mut project, resources) = setup_project(root_folder.as_ref()).await;
+        let (mut project, resources) =
+            setup_project(root_folder.as_ref(), origin, source_control_cas).await;
         let mut resources = resources.lock().await;
 
         let gltf_folders = file_paths
@@ -213,12 +223,16 @@ pub async fn build_offline(root_folder: impl AsRef<Path>, incremental: bool) {
     }
 }
 
-async fn setup_project(root_folder: &Path) -> (Project, Arc<Mutex<ResourceRegistry>>) {
+async fn setup_project(
+    root_folder: &Path,
+    origin: String,
+    source_control_cas: lgn_content_store2::Config,
+) -> (Project, Arc<Mutex<ResourceRegistry>>) {
     // create/load project
     let project = if let Ok(project) = Project::open(root_folder).await {
         Ok(project)
     } else {
-        Project::create_with_remote_mock(root_folder).await
+        Project::create(root_folder, origin, source_control_cas).await
     }
     .unwrap();
 

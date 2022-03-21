@@ -52,19 +52,7 @@ pub async fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathNa
     let mut exe_path = env::current_exe().expect("cannot access current_exe");
     exe_path.pop();
 
-    let project = if let Ok(project) = Project::open(root_folder).await {
-        Ok(project)
-    } else {
-        let project_dir = {
-            if root_folder.is_absolute() {
-                root_folder.to_owned()
-            } else {
-                std::env::current_dir().unwrap().join(root_folder)
-            }
-        };
-        Project::create_with_remote_mock(project_dir).await
-    }
-    .unwrap();
+    let project = Project::open(root_folder).await.unwrap();
 
     let mut build = DataBuildOptions::new_with_sqlite_output(
         build_index_dir,
