@@ -1,8 +1,11 @@
 mod errors;
 
+use figment::{
+    providers::{Env, Format, Toml},
+    Figment,
+};
 use std::path::Path;
 
-use config::Config;
 pub use errors::{Error, Result};
 
 /// The default filename for configuration files.
@@ -23,7 +26,7 @@ pub static DEFAULT_FILENAME: &str = "legion.toml";
 /// - Any `legion.toml` file in the current working directory, or one of its
 /// parent directories, stopping as soon as a file is found.
 /// - Environment variables, starting with `LGN`.
-pub fn load_config() -> Result<Config> {
+pub fn load_config() -> Result<Figment> {
     let root = std::env::current_dir()?;
 
     load_config_from(root)
@@ -36,20 +39,19 @@ pub fn load_config() -> Result<Config> {
 /// If root is a relative path, then the ancestors search will stop at the
 /// relative root. While useful for tests, it's probably safer to invoke that
 /// with an absolute path in any other case, always.
-fn load_config_from(root: impl AsRef<Path>) -> Result<Config> {
-    let mut builder = Config::builder();
+fn load_config_from(root: impl AsRef<Path>) -> Result<Figment> {
+    let mut config = Figment::new();
 
     // On Unix, always read the system-wide configuration file first if it
     // exists.
     if cfg!(unix) {
-        builder = builder
-            .add_source(config::File::with_name("/etc/legion-labs/legion.toml").required(false));
+        config = config.merge(Toml::file("/etc/legion-labs/legion.toml"));
     }
 
     // If we have usr configuration folder, try to read from it.
     if let Some(config_dir) = dirs::config_dir() {
         let config_file_path = config_dir.join("legion-labs").join(DEFAULT_FILENAME);
-        builder = builder.add_source(config::File::from(config_file_path).required(false));
+        config = config.merge(Toml::file(config_file_path));
     }
 
     // Then, try to read the closest file we found.
@@ -57,16 +59,13 @@ fn load_config_from(root: impl AsRef<Path>) -> Result<Config> {
         let config_file_path = dir.join(DEFAULT_FILENAME);
 
         if std::fs::metadata(&config_file_path).is_ok() {
-            builder = builder.add_source(config::File::from(config_file_path).required(false));
+            config = config.merge(Toml::file(config_file_path));
             break;
         }
     }
 
     // Finally, read from environment variables, starting with `LGN`.
-    let config = builder
-        .add_source(config::Environment::with_prefix("LGN").try_parsing(true))
-        .build()
-        .map_err(Error::Config)?;
+    let config = config.merge(Env::prefixed("LGN_"));
 
     Ok(config)
 }
@@ -91,9 +90,13 @@ mod tests {
 
         assert_eq!(
             "prod",
-            config.get_string("lgn-config.tests.environment").unwrap()
+            config
+                .extract_inner::<String>("lgn-config.tests.environment")
+                .unwrap()
         );
-        assert!(config.get_string("lgn-config.tests.non-existing").is_err());
+        assert!(config
+            .extract_inner::<String>("lgn-config.tests.non-existing")
+            .is_err());
     }
 
     #[test]
@@ -105,7 +108,9 @@ mod tests {
 
         assert_eq!(
             "foo",
-            config.get_string("lgn-config.tests.environment").unwrap()
+            config
+                .extract_inner::<String>("lgn-config.tests.environment")
+                .unwrap()
         );
     }
 
@@ -113,7 +118,7 @@ mod tests {
     fn test_load_config_from_with_struct() {
         let config = load_config_from("src/fixtures").unwrap();
 
-        let my_config: MyConfig = config.get("lgn-config.tests.my_config").unwrap();
+        let my_config: MyConfig = config.extract_inner("lgn-config.tests.my_config").unwrap();
 
         assert_eq!(true, my_config.my_bool);
         assert_eq!(42, my_config.my_int);
