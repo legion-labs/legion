@@ -17,6 +17,7 @@ use lgn_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::AsyncPlugin;
 use lgn_config::Config;
+use lgn_content_store::ContentStoreAddr;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_graphics_data::GraphicsPlugin;
@@ -98,9 +99,12 @@ pub fn build_runtime(
         }
     };
 
-    let content_store_addr = args
-        .cas
-        .map_or_else(|| project_dir.join("temp"), PathBuf::from);
+    let content_store_addr = {
+        let cas = args
+            .cas
+            .map_or_else(|| project_dir.join("temp"), PathBuf::from);
+        ContentStoreAddr::from(cas.to_str().unwrap())
+    };
 
     let game_manifest = args.manifest.map_or_else(
         || project_dir.join("runtime").join("game.manifest"),

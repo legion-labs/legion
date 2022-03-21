@@ -79,10 +79,10 @@ impl DataBuildOptions {
 
     /// Construct output database path from:
     /// * a mysql:// path
-    /// * an absolute directory or a directory relative to `project_dir`.
+    /// * an absolute directory or a directory relative to `cwd`.
     ///
     /// The function return `path` if it already contains database name in it.
-    pub fn output_db_path(path: &str, project_dir: impl AsRef<Path>, version: &str) -> String {
+    pub fn output_db_path(path: &str, cwd: impl AsRef<Path>, version: &str) -> String {
         if path.contains(Self::OUTPUT_NAME_PREFIX) {
             return path.to_owned();
         }
@@ -93,21 +93,21 @@ impl DataBuildOptions {
             output.push_str(version);
             output
         } else {
-            Self::output_db_path_dir(PathBuf::from(path), project_dir, version)
+            Self::output_db_path_dir(PathBuf::from(path), cwd, version)
         }
     }
 
-    /// Construct output database path from an absolute directory or directory relative to `project_dir`.
+    /// Construct output database path from an absolute directory or directory relative to `cwd`.
     pub fn output_db_path_dir(
         path: impl AsRef<Path>,
-        project_dir: impl AsRef<Path>,
+        cwd: impl AsRef<Path>,
         version: &str,
     ) -> String {
         let mut output = "sqlite://".to_string();
         let path = if path.as_ref().is_absolute() {
             path.as_ref().to_owned()
         } else {
-            project_dir.as_ref().join(path)
+            cwd.as_ref().join(path)
         };
         output.push_str(
             &path
@@ -141,16 +141,16 @@ impl DataBuildOptions {
     }
 
     /// Set the build output database path.
-    /// `build_output_path` can be:
+    /// `build_output_db_addr` can be:
     /// * myslq:// path
-    /// * absolute directory path or directory path relative to `project_dir`
+    /// * absolute directory path or directory path relative to `cwd`
     pub fn output_database(
         mut self,
-        build_output_path: &str,
-        project_dir: impl AsRef<Path>,
+        build_output_db_addr: &str,
+        cwd: impl AsRef<Path>,
         version: &str,
     ) -> Self {
-        self.output_db_addr = Self::output_db_path(build_output_path, project_dir, version);
+        self.output_db_addr = Self::output_db_path(build_output_db_addr, cwd, version);
         self
     }
 

@@ -16,7 +16,7 @@ use asset_handles::AssetHandles;
 use asset_to_ecs::load_ecs_asset;
 pub use config::{AssetRegistrySettings, DataBuildConfig};
 use lgn_app::prelude::*;
-use lgn_content_store::{ContentStoreAddr, HddContentStore};
+use lgn_content_store::HddContentStore;
 use lgn_data_runtime::{
     manifest::Manifest, AssetRegistry, AssetRegistryOptions, AssetRegistryScheduling,
     ResourceLoadEvent,
@@ -58,7 +58,7 @@ impl AssetRegistryPlugin {
             .get_resource_mut::<AssetRegistrySettings>()
             .expect("Missing AssetRegistrySettings resource, must add to app");
 
-        let content_store_addr = ContentStoreAddr::from(config.content_store_addr.clone());
+        let content_store_addr = config.content_store_addr.clone();
         let content_store = HddContentStore::open(content_store_addr).unwrap_or_else(|| {
             panic!(
                 "Unable to open content storage in {:?}",
@@ -77,7 +77,7 @@ impl AssetRegistryPlugin {
         if let Some(databuild_config) = &config.databuild_config {
             registry_options = registry_options.add_device_build(
                 Box::new(content_store),
-                ContentStoreAddr::from(config.content_store_addr.clone()),
+                config.content_store_addr.clone(),
                 manifest.clone(),
                 &databuild_config.build_bin,
                 databuild_config.output_db_addr.clone(),

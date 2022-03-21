@@ -10,6 +10,7 @@ use lgn_app::{prelude::*, AppExit, EventWriter, ScheduleRunnerPlugin, ScheduleRu
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::AsyncPlugin;
 use lgn_config::Config;
+use lgn_content_store::ContentStoreAddr;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::Local;
@@ -20,7 +21,7 @@ use lgn_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
 use lgn_scripting::ScriptingPlugin;
 use lgn_streamer::StreamerPlugin;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
-use lgn_tracing::{debug, warn, LevelFilter};
+use lgn_tracing::{debug, info, warn, LevelFilter};
 use lgn_transform::TransformPlugin;
 use sample_data::SampleDataPlugin;
 use tokio::sync::mpsc;
@@ -72,10 +73,17 @@ struct Args {
     /// Enable a testing code path
     #[clap(long)]
     test: Option<String>,
+    /// Origin source control address.
+    #[clap(long)]
+    origin: Option<String>,
+    /// Build output database address.
+    #[clap(long)]
+    build_db: Option<String>,
 }
 
 fn main() {
     let args = Args::parse();
+    let cwd = std::env::current_dir().unwrap();
 
     let settings = Config::new();
 
@@ -88,27 +96,87 @@ fn main() {
     };
 
     let project_folder = {
-        if let Some(params) = args.project {
+        let path = if let Some(params) = args.project {
             PathBuf::from(params)
         } else {
             settings
                 .get_absolute_path("editor_srv.project_dir")
                 .unwrap_or_else(|| PathBuf::from("tests/sample-data"))
+        };
+
+        if path.is_absolute() {
+            path
+        } else {
+            cwd.join(path)
         }
     };
 
-    let content_store_path = args
-        .cas
-        .map_or_else(|| project_folder.join("temp"), PathBuf::from);
+    let content_store_path = {
+        let content_store_path = args.cas.map_or_else(
+            || project_folder.join("temp"),
+            |path| {
+                let path = PathBuf::from(path);
+                if path.is_absolute() {
+                    path
+                } else {
+                    cwd.join(path)
+                }
+            },
+        );
 
-    std::mem::drop(std::fs::create_dir(&content_store_path));
+        std::mem::drop(std::fs::create_dir(&content_store_path));
+        ContentStoreAddr::from(content_store_path.to_str().unwrap())
+    };
 
     let default_scene = args
         .scene
         .unwrap_or_else(|| settings.get_or("editor_srv.default_scene", String::new()));
 
-    let source_control_path = settings.get_or("editor_srv.source_control", "../remote".to_string());
-    let build_output_path = settings.get_or("editor_srv.build_output", "temp/".to_string());
+    let source_control_path = args
+        .origin
+        .unwrap_or_else(|| settings.get_or("editor_srv.source_control", "../remote".to_string()));
+
+    let build_output_db_addr = {
+        if let Some(build_db) = args.build_db {
+            let cmd_line = if build_db.starts_with("mysql:") {
+                build_db
+            } else {
+                let path = PathBuf::from(&build_db);
+                if path.is_absolute() {
+                    build_db
+                } else {
+                    cwd.join(path).to_str().unwrap().to_owned()
+                }
+            };
+            cmd_line
+        } else {
+            let mysql_address =
+                settings
+                    .get::<String>("editor_srv.build_output")
+                    .and_then(|address| {
+                        if address.starts_with("mysql:") {
+                            Some(address)
+                        } else {
+                            None
+                        }
+                    });
+
+            mysql_address.unwrap_or_else(|| {
+                settings
+                    .get_absolute_path("editor_srv.build_output")
+                    .unwrap_or_else(|| cwd.join("tests/sample-data/temp"))
+                    .to_str()
+                    .unwrap()
+                    .to_owned()
+            })
+        }
+    };
+
+    info!("Project: '{:?}'", project_folder);
+    info!("Content Store: '{:?}'", content_store_path);
+    info!("Scene: '{}'", default_scene);
+    info!("LSC Origin: '{}'", source_control_path);
+    info!("Build DB: '{}'", build_output_db_addr);
 
     let game_manifest_path = args.manifest.map_or_else(PathBuf::new, PathBuf::from);
     let assets_to_load = Vec::<ResourceTypeAndId>::new();
@@ -131,7 +199,7 @@ fn main() {
     .add_plugin(CorePlugin::default())
     .add_plugin(AsyncPlugin::default())
     .insert_resource(AssetRegistrySettings::new(
-        content_store_path,
+        content_store_path.clone(),
         &game_manifest_path,
         assets_to_load,
     ))
@@ -139,7 +207,8 @@ fn main() {
     .insert_resource(ResourceRegistrySettings::new(
         project_folder,
         source_control_path,
-        build_output_path,
+        build_output_db_addr,
+        content_store_path,
     ))
     .add_plugin(ResourceRegistryPlugin::default())
     .insert_resource(GRPCPluginSettings::new(server_addr))

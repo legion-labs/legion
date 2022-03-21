@@ -99,6 +99,17 @@ pub enum Error {
     ),
 }
 
+/// The type of change done to a resource.
+#[derive(Debug)]
+pub enum ChangeType {
+    /// Resource has been added.
+    Add,
+    /// Resource has been removed.
+    Delete,
+    /// Resource has been modified.
+    Edit,
+}
+
 impl Project {
     /// Returns directory the project is in, relative to CWD.
     pub fn project_dir(&self) -> &Path {
@@ -683,7 +694,7 @@ impl Project {
     }
 
     /// Pulls all changes from the origin.
-    pub async fn sync_latest(&mut self) -> Result<(), Error> {
+    pub async fn sync_latest(&mut self) -> Result<Vec<(ResourceId, ChangeType)>, Error> {
         let content_provider = self
             .workspace
             .instanciate_content_store_provider()
@@ -695,11 +706,37 @@ impl Project {
                 })
             })?;
 
-        self.workspace
+        let (_, changed) = self
+            .workspace
             .sync(content_provider)
             .await
-            .map_err(Error::SourceControl)
-            .map(|_| ())
+            .map_err(Error::SourceControl)?;
+
+        let resources = changed
+            .iter()
+            .filter_map(|change| {
+                let id = change
+                    .canonical_path()
+                    .name()
+                    .filter(|filename| !filename.contains('.')) // skip .meta files
+                    .map(|filename| (ResourceId::from_str(filename).unwrap()));
+
+                id.map(|id| {
+                    let t = match change.change_type() {
+                        lgn_source_control::ChangeType::Add { new_chunk_id: _ } => ChangeType::Add,
+                        lgn_source_control::ChangeType::Edit {
+                            old_chunk_id: _,
+                            new_chunk_id: _,
+                        } => ChangeType::Edit,
+                        lgn_source_control::ChangeType::Delete { old_chunk_id: _ } => {
+                            ChangeType::Delete
+                        }
+                    };
+                    (id, t)
+                })
+            })
+            .collect::<Vec<_>>();
+        Ok(resources)
     }
 
     /// Returns the current state of the workspace that includes staged changes.

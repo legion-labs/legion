@@ -8251,6 +8251,7 @@ dependencies = [
  "lgn-asset-registry",
  "lgn-async",
  "lgn-config",
+ "lgn-content-store",
  "lgn-core",
  "lgn-data-runtime",
  "lgn-ecs",
