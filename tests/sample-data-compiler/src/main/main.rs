@@ -52,10 +52,8 @@ async fn main() {
         }
     };
 
-    let settings = lgn_config::Config::new();
-
     let source_control_path: String =
-        settings.get_or("editor_srv.source_control", "../remote".to_string());
+        lgn_config::get_or("editor_srv.source_control", "../remote".to_string()).unwrap();
     let source_control_cas = lgn_content_store2::Config::from_legion_toml(
         lgn_content_store2::Config::content_store_section()
             .as_deref()

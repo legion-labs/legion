@@ -29,11 +29,11 @@ pub struct OAuthClientConfig {
 
 impl AuthenticatorConfig {
     pub fn new() -> Result<Self> {
-        lgn_config::Config::new()
-            .get("authentication.authenticator")
-            .ok_or_else(|| {
-                Error::Other(anyhow::anyhow!("failed to load authenticator config").into())
-            })
+        lgn_config::get("authentication.authenticator")
+            .map_err(|err| {
+                Error::Other(anyhow::anyhow!("failed to load authenticator config: {}", err).into())
+            })?
+            .ok_or_else(|| Error::Other(anyhow::anyhow!("no authenticator config found").into()))
     }
 
     /// Instanciate an `Authenticator` from the configuration.
@@ -72,10 +72,14 @@ pub struct AwsCognitoSignatureValidationConfig {
 
 impl SignatureValidationConfig {
     pub fn new() -> Result<Self> {
-        lgn_config::Config::new()
-            .get("authentication.signature_validation")
+        lgn_config::get("authentication.signature_validation")
+            .map_err(|err| {
+                Error::Other(
+                    anyhow::anyhow!("failed to load signature validation config: {}", err).into(),
+                )
+            })?
             .ok_or_else(|| {
-                Error::Other(anyhow::anyhow!("failed to load signature validation config").into())
+                Error::Other(anyhow::anyhow!("no signature validation config found").into())
             })
     }
 

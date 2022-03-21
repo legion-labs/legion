@@ -6,7 +6,6 @@ use lgn_codec_api::{
     backends::openh264::encoder::{self, Encoder},
     formats::YUVSource,
 };
-use lgn_config::config_get_or;
 use lgn_ecs::prelude::*;
 use lgn_graphics_api::DeviceContext;
 use lgn_graphics_renderer::{
@@ -35,6 +34,7 @@ pub struct VideoStream {
     frame_id: i32,
     encoder: VideoStreamEncoder,
     rgb_to_yuv: RgbToYuvConverter,
+    max_frame_time: u64,
 }
 
 impl VideoStream {
@@ -48,6 +48,7 @@ impl VideoStream {
     ) -> anyhow::Result<Self> {
         let encoder = VideoStreamEncoder::new(resolution)?;
         let rgb_to_yuv = RgbToYuvConverter::new(pipeline_manager, device_context, resolution);
+        let max_frame_time: u64 = lgn_config::get_or("streamer.max_frame_time", 33_000u64)?;
 
         Ok(Self {
             async_rt,
@@ -55,6 +56,7 @@ impl VideoStream {
             frame_id: 0,
             encoder,
             rgb_to_yuv,
+            max_frame_time,
         })
     }
 
@@ -97,9 +99,8 @@ impl VideoStream {
 
         let elapsed = now.elapsed().as_micros() as u64;
         record_frame_time_metric(elapsed);
-        let max_frame_time: u64 = config_get_or!("streamer.max_frame_time", 33_000u64);
 
-        if elapsed >= max_frame_time {
+        if elapsed >= self.max_frame_time {
             warn!(
                 "stream: frame {:?} took {}ms",
                 self.frame_id,

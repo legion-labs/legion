@@ -9,7 +9,6 @@ use grpc::TraceEventsReceiver;
 use lgn_app::{prelude::*, AppExit, EventWriter, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::AsyncPlugin;
-use lgn_config::Config;
 use lgn_content_store::ContentStoreAddr;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
@@ -85,12 +84,10 @@ fn main() {
     let args = Args::parse();
     let cwd = std::env::current_dir().unwrap();
 
-    let settings = Config::new();
-
     let server_addr = {
-        let url = args
-            .addr
-            .unwrap_or_else(|| settings.get_or("editor_srv.server_addr", "[::1]:50051".to_owned()));
+        let url = args.addr.unwrap_or_else(|| {
+            lgn_config::get_or("editor_srv.server_addr", "[::1]:50051".to_owned()).unwrap()
+        });
         url.parse::<SocketAddr>()
             .unwrap_or_else(|err| panic!("Invalid server_addr '{}': {}", url, err))
     };
@@ -99,9 +96,11 @@ fn main() {
         let path = if let Some(params) = args.project {
             PathBuf::from(params)
         } else {
-            settings
-                .get_absolute_path("editor_srv.project_dir")
-                .unwrap_or_else(|| PathBuf::from("tests/sample-data"))
+            lgn_config::get_absolute_path_or(
+                "editor_srv.project_dir",
+                PathBuf::from("tests/sample-data"),
+            )
+            .unwrap()
         };
 
         if path.is_absolute() {
@@ -130,11 +129,18 @@ fn main() {
 
     let default_scene = args
         .scene
-        .unwrap_or_else(|| settings.get_or("editor_srv.default_scene", String::new()));
+        .unwrap_or_else(|| lgn_config::get_or_default("editor_srv.default_scene").unwrap());
 
-    let source_control_path = args
-        .origin
-        .unwrap_or_else(|| settings.get_or("editor_srv.source_control", "../remote".to_string()));
+    // TODO: This should probably use the `lgn_config::get_absolute_path`
+    // function but I suspect the value can also contain an URL right now, so
+    // I'm not sure how to handle it.
+    //
+    // We should probably avoid configuration values that can be both URLs and
+    // local file paths as they are hard to parse contextually and too limited
+    // in what they can express anyway.
+    let source_control_path = args.origin.unwrap_or_else(|| {
+        lgn_config::get_or("editor_srv.source_control", "../remote".to_string()).unwrap()
+    });
 
     let build_output_db_addr = {
         if let Some(build_db) = args.build_db {
@@ -150,24 +156,25 @@ fn main() {
             };
             cmd_line
         } else {
-            let mysql_address =
-                settings
-                    .get::<String>("editor_srv.build_output")
-                    .and_then(|address| {
-                        if address.starts_with("mysql:") {
-                            Some(address)
-                        } else {
-                            None
-                        }
-                    });
+            let mysql_address = lgn_config::get::<String>("editor_srv.build_output")
+                .unwrap()
+                .and_then(|address| {
+                    if address.starts_with("mysql:") {
+                        Some(address)
+                    } else {
+                        None
+                    }
+                });
 
             mysql_address.unwrap_or_else(|| {
-                settings
-                    .get_absolute_path("editor_srv.build_output")
-                    .unwrap_or_else(|| cwd.join("tests/sample-data/temp"))
-                    .to_str()
-                    .unwrap()
-                    .to_owned()
+                lgn_config::get_absolute_path_or(
+                    "editor_srv.build_output",
+                    cwd.join("tests/sample-data/temp"),
+                )
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_owned()
             })
         }
     };
