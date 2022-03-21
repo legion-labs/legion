@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     AwsDynamoDbProvider, AwsS3Provider, AwsS3Url, CachingProvider, ContentProvider, GrpcProvider,
@@ -8,13 +8,13 @@ use crate::{
 };
 
 /// The configuration of the content-store.
-#[derive(Deserialize, Debug, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub provider: ProviderConfig,
-    pub caching_provider: Option<ProviderConfig>,
+    pub caching_providers: Vec<ProviderConfig>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
 pub enum ProviderConfig {
@@ -27,7 +27,7 @@ pub enum ProviderConfig {
     AwsDynamoDb(AwsDynamoDbProviderConfig),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LocalProviderConfig {
     pub path: Option<PathBuf>,
 }
@@ -36,7 +36,7 @@ fn default_redis_url() -> String {
     "redis://localhost:6379".to_string()
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RedisProviderConfig {
     #[serde(default = "default_redis_url")]
     pub url: String,
@@ -49,19 +49,19 @@ fn default_grpc_url() -> String {
     "://localhost:6379".to_string()
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GrpcProviderConfig {
     #[serde(default = "default_grpc_url")]
     pub url: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LruProviderConfig {
     #[serde(default)]
     pub size: usize,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AwsS3ProviderConfig {
     pub bucket_name: String,
 
@@ -69,20 +69,44 @@ pub struct AwsS3ProviderConfig {
     pub root: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AwsDynamoDbProviderConfig {
     pub table_name: String,
 }
 
+/// An environment variable that contains the default content-store section to
+/// use.
+pub const ENV_LGN_CONTENT_STORE_SECTION: &str = "LGN_CONTENT_STORE_SECTION";
+
 impl Config {
-    /// Create a new configuration by reading the available configuration files.
-    pub fn new() -> Self {
+    pub fn content_store_section() -> Option<String> {
+        std::env::var(ENV_LGN_CONTENT_STORE_SECTION).ok()
+    }
+
+    /// Returns a new instance from the `legion.toml`, with the specified section.
+    ///
+    /// If the section is not found, the default section is used.
+    pub fn from_legion_toml(section: Option<&str>) -> Self {
         let settings = lgn_config::Config::new();
 
-        if let Some(config) = settings.get::<Self>("content_store") {
-            config
-        } else {
-            Self::default()
+        match section {
+            None | Some("") => {
+                if let Some(config) = settings.get::<Self>("content_store") {
+                    config
+                } else {
+                    Self {
+                        provider: ProviderConfig::default(),
+                        caching_providers: vec![],
+                    }
+                }
+            }
+            Some(section) => {
+                if let Some(config) = settings.get::<Self>(&format!("content_store.{}", section)) {
+                    config
+                } else {
+                    Self::from_legion_toml(None)
+                }
+            }
         }
     }
 
@@ -92,14 +116,14 @@ impl Config {
     ///
     /// This function will return an error if the provider cannot be instanciated.
     pub async fn instanciate_provider(&self) -> Result<Box<dyn ContentProvider + Send + Sync>> {
-        let provider = self.provider.instanciate().await?;
+        let mut provider = self.provider.instanciate().await?;
 
-        if let Some(caching_provider) = &self.caching_provider {
+        for caching_provider in &self.caching_providers {
             let caching_provider = caching_provider.instanciate().await?;
-            Ok(Box::new(CachingProvider::new(provider, caching_provider)))
-        } else {
-            Ok(provider)
+            provider = Box::new(CachingProvider::new(provider, caching_provider));
         }
+
+        Ok(provider)
     }
 }
 
@@ -118,7 +142,6 @@ impl ProviderConfig {
                     Some(path) => path.clone(),
                     None => std::env::temp_dir().join("lgn-content-store"),
                 };
-
                 Box::new(SmallContentProvider::new(LocalProvider::new(path).await?))
             }
             Self::Redis(config) => Box::new(SmallContentProvider::new(
