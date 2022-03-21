@@ -4,7 +4,7 @@ use anyhow::Result;
 use lgn_analytics::{prelude::*, time::ConvertTicks};
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::{
-    AsyncSpansReply, BlockAsyncEventsStatReply, ScopeDesc, Span, SpanTrack,
+    AsyncSpan, AsyncSpanTrack, AsyncSpansReply, BlockAsyncEventsStatReply, ScopeDesc,
 };
 use lgn_tracing::prelude::*;
 use lgn_tracing_transit::Object;
@@ -90,28 +90,23 @@ fn ranges_overlap(begin_a: f64, end_a: f64, begin_b: f64, end_b: f64) -> bool {
 }
 
 #[derive(Debug, Clone)]
-struct BeginSpan {
-    time_ms: f64,
-    scope: Arc<Object>,
-}
-
-#[derive(Debug, Clone)]
-struct EndSpan {
+struct SpanEventProperties {
+    span_id: u64,
     time_ms: f64,
     scope: Arc<Object>,
 }
 
 #[derive(Debug, Clone)]
 enum SpanEvent {
-    Begin(BeginSpan),
-    End(EndSpan),
+    Begin(SpanEventProperties),
+    End(SpanEventProperties),
 }
 
 struct AsyncSpanBuilder {
     begin_section_ms: f64,
     end_section_ms: f64,
     unmatched_events: HashMap<u64, SpanEvent>,
-    complete_spans: Vec<Span>,
+    complete_spans: Vec<AsyncSpan>,
     scopes: ScopeHashMap,
     convert_ticks: ConvertTicks,
 }
@@ -137,12 +132,19 @@ impl AsyncSpanBuilder {
         });
     }
 
-    fn record_span(&mut self, begin_ms: f64, end_ms: f64, scope: &Arc<Object>) -> Result<()> {
+    fn record_span(
+        &mut self,
+        span_id: u64,
+        begin_ms: f64,
+        end_ms: f64,
+        scope: &Arc<Object>,
+    ) -> Result<()> {
         if ranges_overlap(self.begin_section_ms, self.end_section_ms, begin_ms, end_ms) {
             let scope_name = scope.get::<Arc<String>>("name")?;
             let scope_hash = compute_scope_hash(&scope_name);
             self.record_scope_desc(scope_hash, &scope_name);
-            self.complete_spans.push(Span {
+            self.complete_spans.push(AsyncSpan {
+                span_id,
                 scope_hash,
                 begin_ms: begin_ms.max(self.begin_section_ms),
                 end_ms: end_ms.min(self.end_section_ms),
@@ -153,16 +155,26 @@ impl AsyncSpanBuilder {
     }
 
     #[span_fn]
-    fn finish(mut self) -> Result<(Vec<Span>, ScopeHashMap)> {
+    fn finish(mut self) -> Result<(Vec<AsyncSpan>, ScopeHashMap)> {
         let mut events = HashMap::new();
         std::mem::swap(&mut events, &mut self.unmatched_events);
         for (_id, evt) in events {
             match evt {
                 SpanEvent::Begin(begin_span) => {
-                    self.record_span(begin_span.time_ms, self.end_section_ms, &begin_span.scope)?;
+                    self.record_span(
+                        begin_span.span_id,
+                        begin_span.time_ms,
+                        self.end_section_ms,
+                        &begin_span.scope,
+                    )?;
                 }
                 SpanEvent::End(end_span) => {
-                    self.record_span(self.begin_section_ms, end_span.time_ms, &end_span.scope)?;
+                    self.record_span(
+                        end_span.span_id,
+                        self.begin_section_ms,
+                        end_span.time_ms,
+                        &end_span.scope,
+                    )?;
                 }
             }
         }
@@ -191,12 +203,18 @@ impl ThreadBlockProcessor for AsyncSpanBuilder {
                     );
                 }
                 SpanEvent::End(end_event) => {
-                    self.record_span(time_ms, end_event.time_ms, &scope)?;
+                    self.record_span(span_id, time_ms, end_event.time_ms, &scope)?;
                 }
             }
         } else {
-            self.unmatched_events
-                .insert(span_id, SpanEvent::Begin(BeginSpan { time_ms, scope }));
+            self.unmatched_events.insert(
+                span_id,
+                SpanEvent::Begin(SpanEventProperties {
+                    span_id,
+                    time_ms,
+                    scope,
+                }),
+            );
         }
         Ok(())
     }
@@ -213,18 +231,24 @@ impl ThreadBlockProcessor for AsyncSpanBuilder {
                     );
                 }
                 SpanEvent::Begin(begin_span) => {
-                    self.record_span(begin_span.time_ms, time_ms, &scope)?;
+                    self.record_span(span_id, begin_span.time_ms, time_ms, &scope)?;
                 }
             }
         } else {
-            self.unmatched_events
-                .insert(span_id, SpanEvent::End(EndSpan { time_ms, scope }));
+            self.unmatched_events.insert(
+                span_id,
+                SpanEvent::End(SpanEventProperties {
+                    span_id,
+                    time_ms,
+                    scope,
+                }),
+            );
         }
         Ok(())
     }
 }
 
-fn is_track_available(track: &[Span], time: f64) -> bool {
+fn is_track_available(track: &[AsyncSpan], time: f64) -> bool {
     if let Some(last) = track.last() {
         last.end_ms <= time
     } else {
@@ -233,18 +257,18 @@ fn is_track_available(track: &[Span], time: f64) -> bool {
 }
 
 #[span_fn]
-fn get_available_track(tracks: &mut Vec<SpanTrack>, time: f64) -> usize {
+fn get_available_track(tracks: &mut Vec<AsyncSpanTrack>, time: f64) -> usize {
     for (index, track) in tracks.iter().enumerate() {
         if is_track_available(&track.spans, time) {
             return index;
         }
     }
-    tracks.push(SpanTrack { spans: vec![] });
+    tracks.push(AsyncSpanTrack { spans: vec![] });
     tracks.len() - 1
 }
 
 #[span_fn]
-fn layout_spans(spans: Vec<Span>) -> Vec<SpanTrack> {
+fn layout_spans(spans: Vec<AsyncSpan>) -> Vec<AsyncSpanTrack> {
     let mut tracks = vec![];
     for span in spans {
         let index = get_available_track(&mut tracks, span.begin_ms);
@@ -294,7 +318,7 @@ pub async fn compute_async_spans(
         .await?;
     }
     let (mut spans, scopes) = builder.finish()?;
-    spans.sort_by(|a, b| a.begin_ms.partial_cmp(&b.begin_ms).unwrap());
+    spans.sort_by(|a, b| a.span_id.partial_cmp(&b.span_id).unwrap());
     let tracks = layout_spans(spans);
     let reply = AsyncSpansReply {
         section_sequence_number,

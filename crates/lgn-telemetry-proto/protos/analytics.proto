@@ -193,6 +193,6 @@ message AsyncSpansRequest {
 message AsyncSpansReply {
   int32 section_sequence_number = 1;
   uint32 section_lod = 2;
-  repeated SpanTrack tracks = 3;
+  repeated AsyncSpanTrack tracks = 3;
   map<uint32, ScopeDesc> scopes = 4;
 }

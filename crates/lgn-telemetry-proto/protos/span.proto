@@ -21,3 +21,16 @@ message SpanBlockLOD {
   uint32 lod_id = 1;
   repeated SpanTrack tracks = 2;
 }
+
+// async spans are identified by a unique u64 monotonically increasing
+message AsyncSpan {
+  uint64 span_id = 1;
+  uint32 scope_hash = 2;
+  double begin_ms = 3;
+  double end_ms = 4;
+  uint32 alpha = 5;
+}
+
+message AsyncSpanTrack {
+  repeated AsyncSpan spans = 1;
+}
