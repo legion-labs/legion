@@ -178,6 +178,7 @@ dependencies = [
  "async-recursion 1.0.0",
  "chrono",
  "clap 3.1.6",
+ "futures",
  "http",
  "lgn-analytics",
  "lgn-blob-storage",

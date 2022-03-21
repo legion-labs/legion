@@ -17,6 +17,7 @@ anyhow = "1.0"
 async-recursion = "1"
 chrono = "0.4"
 clap = { version = "3.0", features = ["derive"] }
+futures = "0.3"
 http = "0.2"
 tonic = "0.6"
 tonic-web = "0.2"

@@ -1,10 +1,11 @@
+use crate::{cache::DiskCache, call_tree::process_thread_block};
 use anyhow::Result;
 use lgn_blob_storage::BlobStorage;
+use lgn_telemetry_proto::analytics::BlockAsyncData;
 use lgn_telemetry_proto::analytics::CallTree;
 use lgn_tracing::prelude::*;
+use prost::Message;
 use std::sync::Arc;
-
-use crate::{cache::DiskCache, call_tree::compute_block_call_tree};
 
 pub struct CallTreeStore {
     pool: sqlx::any::AnyPool,
@@ -33,19 +34,40 @@ impl CallTreeStore {
         stream: &lgn_telemetry_sink::StreamInfo,
         block_id: &str,
     ) -> Result<CallTree> {
-        let cache_item_name = format!("tree_{}", block_id);
-        self.cache
-            .get_or_put(&cache_item_name, async {
-                let mut connection = self.pool.acquire().await?;
-                compute_block_call_tree(
-                    &mut connection,
-                    self.blob_storage.clone(),
-                    process,
-                    stream,
-                    block_id,
-                )
-                .await
-            })
-            .await
+        let cache_tree_name = format!("tree_{}", block_id);
+        if let Some(tree) = self.cache.get_cached_object(&cache_tree_name).await {
+            return Ok(tree);
+        }
+
+        let mut connection = self.pool.acquire().await?;
+        let processed = process_thread_block(
+            &mut connection,
+            self.blob_storage.clone(),
+            process,
+            stream,
+            block_id,
+        )
+        .await?;
+        let tree = CallTree {
+            scopes: processed.scopes.clone(),
+            root: processed.call_tree_root,
+        };
+        let async_data = BlockAsyncData {
+            block_id: block_id.to_owned(),
+            scopes: processed.scopes,
+            events: processed.async_events,
+        };
+        let cache_async_name = format!("asyncblock_{}", block_id);
+        let results = futures::join!(
+            self.cache.put(&cache_tree_name, tree.encode_to_vec()),
+            self.cache
+                .put(&cache_async_name, async_data.encode_to_vec())
+        );
+        for r in [results.0, results.1] {
+            if let Err(e) = r {
+                error!("Error writing to cache: {}", e);
+            }
+        }
+        Ok(tree)
     }
 }

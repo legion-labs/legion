@@ -22,10 +22,10 @@ impl DiskCache {
         Ok(Some(buffer))
     }
 
-    pub async fn put(&self, name: &str, buffer: &[u8]) -> Result<()> {
+    pub async fn put(&self, name: &str, buffer: Vec<u8>) -> Result<()> {
         if !self.storage.blob_exists(name).await? {
             info!("writing {}", name);
-            self.storage.write_blob(name, buffer).await?;
+            self.storage.write_blob(name, &buffer).await?;
             info!("writing {} completed", name);
         }
         Ok(())
@@ -60,7 +60,7 @@ impl DiskCache {
             return Ok(obj);
         }
         let obj = f.await?;
-        if let Err(e) = self.put(name, &obj.encode_to_vec()).await {
+        if let Err(e) = self.put(name, obj.encode_to_vec()).await {
             error!("Error writing {} to cache: {}", name, e);
         }
         Ok(obj)

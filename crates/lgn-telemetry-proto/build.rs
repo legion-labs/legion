@@ -3,6 +3,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let protos = &[
         "./protos/analytics.proto",
         "./protos/block.proto",
+        "./protos/cache.proto",
         "./protos/calltree.proto",
         "./protos/health.proto",
         "./protos/ingestion.proto",
