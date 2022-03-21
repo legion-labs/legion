@@ -7,7 +7,7 @@ use lgn_data_offline::ResourcePathId;
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_utils::DefaultHasher;
 
-use crate::{compiler_api::CompilationEnv, CompilerHash};
+use crate::compiler_api::{CompilationEnv, CompilerHash};
 
 /// Converts `ResourcePathId` to `ResourceId`.
 pub fn path_id_to_asset_id(path: &Option<ResourcePathId>) -> Option<ResourceTypeAndId> {

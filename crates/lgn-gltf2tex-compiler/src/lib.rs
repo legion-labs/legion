@@ -1,8 +1,10 @@
+use async_trait::async_trait;
 use std::env;
 
 use lgn_data_compiler::{
     compiler_api::{
-        CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError, DATA_BUILD_VERSION,
+        CompilationEnv, CompilationOutput, Compiler, CompilerContext, CompilerDescriptor,
+        CompilerError, CompilerHash, DATA_BUILD_VERSION,
     },
     compiler_utils::hash_code_and_data,
 };
@@ -20,40 +22,55 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
         lgn_graphics_data::offline_gltf::GltfFile::TYPE,
         lgn_graphics_data::offline_texture::Texture::TYPE,
     ),
-    init_func: init,
-    compiler_hash_func: hash_code_and_data,
-    compile_func: compile,
+    compiler_creator: || Box::new(Gltf2TexCompiler {}),
 };
 
-fn init(registry: AssetRegistryOptions) -> AssetRegistryOptions {
-    registry.add_loader::<lgn_graphics_data::offline_gltf::GltfFile>()
-}
+struct Gltf2TexCompiler();
 
-fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
-    let resources = context.registry();
-
-    let resource = resources
-        .load_sync::<lgn_graphics_data::offline_gltf::GltfFile>(context.source.resource_id());
-    let resource = resource.get(&resources).unwrap();
-
-    let mut compiled_resources = vec![];
-    let texture_proc = TextureProcessor {};
-
-    let textures = resource.gather_textures();
-    for texture in textures {
-        let mut compiled_asset = vec![];
-        texture_proc
-            .write_resource(&texture.0, &mut compiled_asset)
-            .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
-        let asset = context.store(
-            &compiled_asset,
-            context.target_unnamed.new_named(&texture.1),
-        )?;
-        compiled_resources.push(asset);
+#[async_trait]
+impl Compiler for Gltf2TexCompiler {
+    async fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
+        registry.add_loader::<lgn_graphics_data::offline_gltf::GltfFile>()
     }
 
-    Ok(CompilationOutput {
-        compiled_resources,
-        resource_references: vec![],
-    })
+    async fn hash(
+        &self,
+        code: &'static str,
+        data: &'static str,
+        env: &CompilationEnv,
+    ) -> CompilerHash {
+        hash_code_and_data(code, data, env)
+    }
+
+    async fn compile(
+        &self,
+        mut context: CompilerContext<'_>,
+    ) -> Result<CompilationOutput, CompilerError> {
+        let resources = context.registry();
+
+        let resource = resources
+            .load_sync::<lgn_graphics_data::offline_gltf::GltfFile>(context.source.resource_id());
+        let resource = resource.get(&resources).unwrap();
+
+        let mut compiled_resources = vec![];
+        let texture_proc = TextureProcessor {};
+
+        let textures = resource.gather_textures();
+        for texture in textures {
+            let mut compiled_asset = vec![];
+            texture_proc
+                .write_resource(&texture.0, &mut compiled_asset)
+                .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
+            let asset = context.store(
+                &compiled_asset,
+                context.target_unnamed.new_named(&texture.1),
+            )?;
+            compiled_resources.push(asset);
+        }
+
+        Ok(CompilationOutput {
+            compiled_resources,
+            resource_references: vec![],
+        })
+    }
 }

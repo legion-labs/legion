@@ -1,11 +1,13 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
+use async_trait::async_trait;
 use std::env;
 
 use lgn_data_compiler::{
     compiler_api::{
-        CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError, DATA_BUILD_VERSION,
+        CompilationEnv, CompilationOutput, Compiler, CompilerContext, CompilerDescriptor,
+        CompilerError, CompilerHash, DATA_BUILD_VERSION,
     },
     compiler_utils::hash_code_and_data,
 };
@@ -21,29 +23,45 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
         text_resource::TextResource::TYPE,
         integer_asset::IntegerAsset::TYPE,
     ),
-    init_func: init,
-    compiler_hash_func: hash_code_and_data,
-    compile_func: compile,
+    compiler_creator: || Box::new(AtoiCompiler {}),
 };
 
-fn init(registry: AssetRegistryOptions) -> AssetRegistryOptions {
-    registry.add_loader::<text_resource::TextResource>()
-}
+struct AtoiCompiler();
 
-fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
-    let resources = context.registry();
+#[async_trait]
+impl Compiler for AtoiCompiler {
+    async fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
+        registry.add_loader::<text_resource::TextResource>()
+    }
 
-    let resource = resources.load_sync::<text_resource::TextResource>(context.source.resource_id());
-    let resource = resource.get(&resources).unwrap();
+    async fn hash(
+        &self,
+        code: &'static str,
+        data: &'static str,
+        env: &CompilationEnv,
+    ) -> CompilerHash {
+        hash_code_and_data(code, data, env)
+    }
 
-    let parsed_value = resource.content.parse::<usize>().unwrap_or(0);
-    let compiled_asset = parsed_value.to_ne_bytes();
+    async fn compile(
+        &self,
+        mut context: CompilerContext<'_>,
+    ) -> Result<CompilationOutput, CompilerError> {
+        let resources = context.registry();
 
-    let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;
+        let resource =
+            resources.load_sync::<text_resource::TextResource>(context.source.resource_id());
+        let resource = resource.get(&resources).unwrap();
 
-    // in this mock build dependency are _not_ runtime references.
-    Ok(CompilationOutput {
-        compiled_resources: vec![asset],
-        resource_references: vec![],
-    })
+        let parsed_value = resource.content.parse::<usize>().unwrap_or(0);
+        let compiled_asset = parsed_value.to_ne_bytes();
+
+        let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;
+
+        // in this mock build dependency are _not_ runtime references.
+        Ok(CompilationOutput {
+            compiled_resources: vec![asset],
+            resource_references: vec![],
+        })
+    }
 }

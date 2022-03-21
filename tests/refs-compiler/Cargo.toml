@@ -19,3 +19,6 @@ lgn-data-runtime = { path = "../../crates/lgn-data-runtime", version = "0.1.0" }
 lgn-data-offline = { path = "../../crates/lgn-data-offline", version = "0.1.0" }
 refs-resource = { path = "../../crates/lgn-data-offline/test-refs-resource" }
 refs-asset = { path = "../../crates/lgn-data-runtime/test-refs-asset" }
+
+async-trait = "0.1"
+tokio = { version = "1", features = ["full", "tracing"] }

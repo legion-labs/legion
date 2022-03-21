@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_offline::{ResourcePathId, Transform};
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
@@ -6,10 +7,11 @@ use std::{fmt, io, path::Path, sync::Arc};
 
 use crate::{
     compiler_api::{
-        CompilationEnv, CompilationOutput, CompilerDescriptor, CompilerError, CompilerInfo,
+        CompilationEnv, CompilationOutput, CompilerDescriptor, CompilerError, CompilerHash,
+        CompilerInfo,
     },
     compiler_cmd::{list_compilers, CompilerLocation},
-    CompiledResource, CompilerHash,
+    CompiledResource,
 };
 
 use super::{binary_stub::BinCompilerStub, inproc_stub::InProcessCompilerStub};
@@ -17,21 +19,25 @@ use super::{binary_stub::BinCompilerStub, inproc_stub::InProcessCompilerStub};
 /// Interface allowing to support multiple types of compilers - in-process,
 /// external executables. By returning multiple `CompilerInfo` via `info` the implementation
 /// of `CompilerStub` can expose multiple compilers.
+#[async_trait]
 pub trait CompilerStub: Send + Sync {
     /// Returns information about the compiler.
-    fn info(&self) -> io::Result<Vec<CompilerInfo>>;
+    async fn info(&self) -> io::Result<Vec<CompilerInfo>>;
 
     /// Returns the `CompilerHash` for the given compilation context and transform.
-    fn compiler_hash(&self, transform: Transform, env: &CompilationEnv)
-        -> io::Result<CompilerHash>;
+    async fn compiler_hash(
+        &self,
+        transform: Transform,
+        env: &CompilationEnv,
+    ) -> io::Result<CompilerHash>;
 
     /// Allow the compiler to register its own type loaders.
-    fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions;
+    async fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions;
 
     /// Triggers compilation of provided `compile_path` and returns the
     /// information about compilation output.
     #[allow(clippy::too_many_arguments)]
-    fn compile(
+    async fn compile(
         &self,
         compile_path: ResourcePathId,
         dependencies: &[ResourcePathId],
@@ -83,14 +89,14 @@ impl CompilerRegistryOptions {
 
     /// Register an in-process compiler.
     pub fn add_compiler(mut self, descriptor: &'static CompilerDescriptor) -> Self {
-        let compiler = Box::new(InProcessCompilerStub { descriptor });
+        let compiler = Box::new(InProcessCompilerStub::new(descriptor));
         self.compilers.push(compiler);
         self
     }
 
     /// Creates a new compiler registry based on specified options.
-    pub fn create(self) -> CompilerRegistry {
-        let (infos, indices) = self.collect_info();
+    pub async fn create(self) -> CompilerRegistry {
+        let (infos, indices) = self.collect_info().await;
 
         CompilerRegistry {
             compilers: self.compilers,
@@ -100,11 +106,11 @@ impl CompilerRegistryOptions {
     }
 
     /// Gathers info on all compilers.
-    fn collect_info(&self) -> (Vec<CompilerInfo>, Vec<usize>) {
+    async fn collect_info(&self) -> (Vec<CompilerInfo>, Vec<usize>) {
         let mut infos = vec![];
         let mut indices = vec![];
         for (index, compiler_stub) in self.compilers.iter().enumerate() {
-            match compiler_stub.info() {
+            match compiler_stub.info().await {
                 Ok(compilers) => {
                     let compilers = compilers
                         .into_iter()
@@ -170,9 +176,12 @@ impl CompilerRegistry {
     }
 
     /// Initializes all compilers allowing them to register type loaders with `AssetRegistry`.
-    pub fn init_all(&self, mut registry_options: AssetRegistryOptions) -> AssetRegistryOptions {
+    pub async fn init_all(
+        &self,
+        mut registry_options: AssetRegistryOptions,
+    ) -> AssetRegistryOptions {
         for compiler in &self.compilers {
-            registry_options = compiler.init(registry_options);
+            registry_options = compiler.init(registry_options).await;
         }
         registry_options
     }

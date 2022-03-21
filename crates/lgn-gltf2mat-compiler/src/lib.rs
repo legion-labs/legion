@@ -1,8 +1,10 @@
+use async_trait::async_trait;
 use std::env;
 
 use lgn_data_compiler::{
     compiler_api::{
-        CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError, DATA_BUILD_VERSION,
+        CompilationEnv, CompilationOutput, Compiler, CompilerContext, CompilerDescriptor,
+        CompilerError, CompilerHash, DATA_BUILD_VERSION,
     },
     compiler_utils::hash_code_and_data,
 };
@@ -20,54 +22,69 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
         lgn_graphics_data::offline_gltf::GltfFile::TYPE,
         lgn_graphics_data::offline::Material::TYPE,
     ),
-    init_func: init,
-    compiler_hash_func: hash_code_and_data,
-    compile_func: compile,
+    compiler_creator: || Box::new(Gltf2MatCompiler {}),
 };
 
-fn init(registry: AssetRegistryOptions) -> AssetRegistryOptions {
-    registry.add_loader::<lgn_graphics_data::offline_gltf::GltfFile>()
-}
+struct Gltf2MatCompiler();
 
-fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
-    let resources = context.registry();
-
-    let resource = resources
-        .load_sync::<lgn_graphics_data::offline_gltf::GltfFile>(context.source.resource_id());
-    let resource = resource.get(&resources).unwrap();
-
-    let mut compiled_resources = vec![];
-    let material_proc = MaterialProcessor {};
-
-    let mut resource_references = Vec::new();
-    let materials = resource.gather_materials(context.source.resource_id());
-    for (material, name) in materials {
-        let mut compiled_asset = vec![];
-        material_proc
-            .write_resource(&material, &mut compiled_asset)
-            .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
-        let material_rpid = context.target_unnamed.new_named(&name);
-        let asset = context.store(&compiled_asset, material_rpid.clone())?;
-        compiled_resources.push(asset);
-        if let Some(albedo) = material.albedo {
-            resource_references.push((material_rpid.clone(), albedo));
-        }
-
-        if let Some(normal) = material.normal {
-            resource_references.push((material_rpid.clone(), normal));
-        }
-
-        if let Some(roughness) = material.roughness {
-            resource_references.push((material_rpid.clone(), roughness));
-        }
-
-        if let Some(metalness) = material.metalness {
-            resource_references.push((material_rpid.clone(), metalness));
-        }
+#[async_trait]
+impl Compiler for Gltf2MatCompiler {
+    async fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
+        registry.add_loader::<lgn_graphics_data::offline_gltf::GltfFile>()
     }
 
-    Ok(CompilationOutput {
-        compiled_resources,
-        resource_references,
-    })
+    async fn hash(
+        &self,
+        code: &'static str,
+        data: &'static str,
+        env: &CompilationEnv,
+    ) -> CompilerHash {
+        hash_code_and_data(code, data, env)
+    }
+
+    async fn compile(
+        &self,
+        mut context: CompilerContext<'_>,
+    ) -> Result<CompilationOutput, CompilerError> {
+        let resources = context.registry();
+
+        let resource = resources
+            .load_sync::<lgn_graphics_data::offline_gltf::GltfFile>(context.source.resource_id());
+        let resource = resource.get(&resources).unwrap();
+
+        let mut compiled_resources = vec![];
+        let material_proc = MaterialProcessor {};
+
+        let mut resource_references = Vec::new();
+        let materials = resource.gather_materials(context.source.resource_id());
+        for (material, name) in materials {
+            let mut compiled_asset = vec![];
+            material_proc
+                .write_resource(&material, &mut compiled_asset)
+                .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
+            let material_rpid = context.target_unnamed.new_named(&name);
+            let asset = context.store(&compiled_asset, material_rpid.clone())?;
+            compiled_resources.push(asset);
+            if let Some(albedo) = material.albedo {
+                resource_references.push((material_rpid.clone(), albedo));
+            }
+
+            if let Some(normal) = material.normal {
+                resource_references.push((material_rpid.clone(), normal));
+            }
+
+            if let Some(roughness) = material.roughness {
+                resource_references.push((material_rpid.clone(), roughness));
+            }
+
+            if let Some(metalness) = material.metalness {
+                resource_references.push((material_rpid.clone(), metalness));
+            }
+        }
+
+        Ok(CompilationOutput {
+            compiled_resources,
+            resource_references,
+        })
+    }
 }

@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use std::{
     io,
     path::{Path, PathBuf},
@@ -10,17 +11,18 @@ use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
 
 use super::CompilerStub;
 use crate::{
-    compiler_api::{CompilationEnv, CompilationOutput, CompilerError, CompilerInfo},
+    compiler_api::{CompilationEnv, CompilationOutput, CompilerError, CompilerHash, CompilerInfo},
     compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd, CompilerInfoCmdOutput},
-    CompiledResource, CompilerHash,
+    CompiledResource,
 };
 
 pub(super) struct BinCompilerStub {
     pub(super) bin_path: PathBuf,
 }
 
+#[async_trait]
 impl CompilerStub for BinCompilerStub {
-    fn compiler_hash(
+    async fn compiler_hash(
         &self,
         transform: Transform,
         env: &CompilationEnv,
@@ -38,12 +40,12 @@ impl CompilerStub for BinCompilerStub {
         ))
     }
 
-    fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
+    async fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
         // does nothing as the compiler process is responsible for initialization.
         registry
     }
 
-    fn compile(
+    async fn compile(
         &self,
         compile_path: ResourcePathId,
         dependencies: &[ResourcePathId],
@@ -70,7 +72,7 @@ impl CompilerStub for BinCompilerStub {
         .map_err(CompilerError::StdoutError)
     }
 
-    fn info(&self) -> io::Result<Vec<CompilerInfo>> {
+    async fn info(&self) -> io::Result<Vec<CompilerInfo>> {
         CompilerInfoCmd::new(&self.bin_path)
             .execute()
             .map(CompilerInfoCmdOutput::take)

@@ -37,3 +37,6 @@ lgn-compiler-test-split = { path = "../../tests/split-compiler" }
 lgn-compiler-testentity = { path = "../../tests/testentity-compiler" }
 lgn-compiler-tex2bin = { path = "../../tests/tex2bin-compiler" }
 lgn-compiler-script2asm = { path = "../lgn-script2asm-compiler" }
+
+async-trait = "0.1"
+tokio = { version = "1", features = ["full", "tracing"] }

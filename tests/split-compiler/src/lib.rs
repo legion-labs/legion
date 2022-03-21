@@ -1,11 +1,13 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
+use async_trait::async_trait;
 use std::env;
 
 use lgn_data_compiler::{
     compiler_api::{
-        CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError, DATA_BUILD_VERSION,
+        CompilationEnv, CompilationOutput, Compiler, CompilerContext, CompilerDescriptor,
+        CompilerError, CompilerHash, DATA_BUILD_VERSION,
     },
     compiler_utils::hash_code_and_data,
 };
@@ -21,49 +23,64 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
         multitext_resource::MultiTextResource::TYPE,
         text_resource::TextResource::TYPE,
     ),
-    init_func: init,
-    compiler_hash_func: hash_code_and_data,
-    compile_func: compile,
+    compiler_creator: || Box::new(SplitCompiler {}),
 };
 
-fn init(registry: AssetRegistryOptions) -> AssetRegistryOptions {
-    registry
-        .add_loader::<multitext_resource::MultiTextResource>()
-        .add_loader::<text_resource::TextResource>()
-}
+struct SplitCompiler();
 
-fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
-    let resources = context.registry();
-
-    let resource =
-        resources.load_sync::<multitext_resource::MultiTextResource>(context.source.resource_id());
-    let resource = resource.get(&resources).unwrap();
-
-    let source_text_list = resource.text_list.clone();
-
-    let mut output = CompilationOutput {
-        compiled_resources: vec![],
-        resource_references: vec![],
-    };
-
-    let proc = text_resource::TextResourceProc {};
-
-    for (index, content) in source_text_list.iter().enumerate() {
-        let output_resource = text_resource::TextResource {
-            content: content.clone(),
-        };
-
-        let mut bytes = vec![];
-
-        let _nbytes = proc.write_resource(&output_resource, &mut bytes)?;
-
-        let asset = context.store(
-            &bytes,
-            context.target_unnamed.new_named(&format!("text_{}", index)),
-        )?;
-
-        output.compiled_resources.push(asset);
+#[async_trait]
+impl Compiler for SplitCompiler {
+    async fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
+        registry
+            .add_loader::<multitext_resource::MultiTextResource>()
+            .add_loader::<text_resource::TextResource>()
     }
 
-    Ok(output)
+    async fn hash(
+        &self,
+        code: &'static str,
+        data: &'static str,
+        env: &CompilationEnv,
+    ) -> CompilerHash {
+        hash_code_and_data(code, data, env)
+    }
+
+    async fn compile(
+        &self,
+        mut context: CompilerContext<'_>,
+    ) -> Result<CompilationOutput, CompilerError> {
+        let resources = context.registry();
+
+        let resource = resources
+            .load_sync::<multitext_resource::MultiTextResource>(context.source.resource_id());
+        let resource = resource.get(&resources).unwrap();
+
+        let source_text_list = resource.text_list.clone();
+
+        let mut output = CompilationOutput {
+            compiled_resources: vec![],
+            resource_references: vec![],
+        };
+
+        let proc = text_resource::TextResourceProc {};
+
+        for (index, content) in source_text_list.iter().enumerate() {
+            let output_resource = text_resource::TextResource {
+                content: content.clone(),
+            };
+
+            let mut bytes = vec![];
+
+            let _nbytes = proc.write_resource(&output_resource, &mut bytes)?;
+
+            let asset = context.store(
+                &bytes,
+                context.target_unnamed.new_named(&format!("text_{}", index)),
+            )?;
+
+            output.compiled_resources.push(asset);
+        }
+
+        Ok(output)
+    }
 }

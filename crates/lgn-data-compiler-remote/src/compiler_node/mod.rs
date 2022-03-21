@@ -33,8 +33,8 @@ mod tests {
     use super::CompilerRegistryOptions;
     use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
 
-    #[test]
-    fn remote() {
+    #[tokio::test]
+    async fn remote() {
         let target_dir = std::env::current_exe().ok().map_or_else(
             || panic!("cannot find test directory"),
             |mut path| {
@@ -46,7 +46,9 @@ mod tests {
             },
         );
 
-        let registry = CompilerRegistryOptions::local_compilers(target_dir).create();
+        let registry = CompilerRegistryOptions::local_compilers(target_dir)
+            .create()
+            .await;
 
         let env = CompilationEnv {
             target: Target::Game,
@@ -63,6 +65,9 @@ mod tests {
         let transform = Transform::new(source.kind, destination.content_type());
 
         let (compiler, transform) = registry.find_compiler(transform).expect("valid compiler");
-        let _ = compiler.compiler_hash(transform, &env).expect("valid hash");
+        let _ = compiler
+            .compiler_hash(transform, &env)
+            .await
+            .expect("valid hash");
     }
 }

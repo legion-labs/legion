@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use std::{io, path::Path, sync::Arc};
 
 use lgn_content_store::ContentStoreAddr;
@@ -7,17 +8,28 @@ use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
 use super::CompilerStub;
 use crate::{
     compiler_api::{
-        CompilationEnv, CompilationOutput, CompilerDescriptor, CompilerError, CompilerInfo,
+        CompilationEnv, CompilationOutput, Compiler, CompilerDescriptor, CompilerError,
+        CompilerHash, CompilerInfo,
     },
-    CompiledResource, CompilerHash,
+    CompiledResource,
 };
 
 pub(super) struct InProcessCompilerStub {
     pub(super) descriptor: &'static CompilerDescriptor,
+    pub(super) compiler: Box<dyn Compiler + Send + Sync>,
+}
+impl InProcessCompilerStub {
+    pub(super) fn new(descriptor: &'static CompilerDescriptor) -> Self {
+        Self {
+            descriptor,
+            compiler: descriptor.instantiate_compiler(),
+        }
+    }
 }
 
+#[async_trait]
 impl CompilerStub for InProcessCompilerStub {
-    fn compiler_hash(
+    async fn compiler_hash(
         &self,
         transform: Transform,
         env: &CompilationEnv,
@@ -25,15 +37,18 @@ impl CompilerStub for InProcessCompilerStub {
         if transform != *self.descriptor.transform {
             return Err(io::Error::new(io::ErrorKind::Other, "Transform mismatch"));
         }
-        let hash = self.descriptor.compiler_hash(env);
+        let hash = self
+            .descriptor
+            .compiler_hash(self.compiler.as_ref(), env)
+            .await;
         Ok(hash)
     }
 
-    fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
-        (self.descriptor.init_func)(registry)
+    async fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
+        self.compiler.init(registry).await
     }
 
-    fn compile(
+    async fn compile(
         &self,
         compile_path: ResourcePathId,
         dependencies: &[ResourcePathId],
@@ -43,17 +58,20 @@ impl CompilerStub for InProcessCompilerStub {
         _project_dir: &Path,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
-        self.descriptor.compile(
-            compile_path,
-            dependencies,
-            derived_deps,
-            registry,
-            cas_addr,
-            env,
-        )
+        self.descriptor
+            .compile(
+                self.compiler.as_ref(),
+                compile_path,
+                dependencies,
+                derived_deps,
+                registry,
+                cas_addr,
+                env,
+            )
+            .await
     }
 
-    fn info(&self) -> io::Result<Vec<CompilerInfo>> {
+    async fn info(&self) -> io::Result<Vec<CompilerInfo>> {
         let info = CompilerInfo {
             build_version: self.descriptor.build_version.to_string(),
             code_version: self.descriptor.code_version.to_string(),

@@ -22,5 +22,8 @@ lgn-graphics-data = { path = "../lgn-graphics-data", version = "0.1.0", features
     "offline",
 ] }
 lgn-data-compiler = { path = "../lgn-data-compiler", version = "0.1.0" }
+
+async-trait = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+tokio = { version = "1", features = ["full", "tracing"] }

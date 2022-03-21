@@ -4413,48 +4413,57 @@ dependencies = [
 name = "lgn-compiler-gltf2mat"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-graphics-data",
+ "tokio",
 ]
 
 [[package]]
 name = "lgn-compiler-gltf2model"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-graphics-data",
+ "tokio",
 ]
 
 [[package]]
 name = "lgn-compiler-gltf2tex"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-graphics-data",
+ "tokio",
 ]
 
 [[package]]
 name = "lgn-compiler-material"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "lgn-data-codegen",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-graphics-data",
  "lgn-tracing",
+ "tokio",
 ]
 
 [[package]]
 name = "lgn-compiler-png2tex"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
@@ -4463,12 +4472,14 @@ dependencies = [
  "png 0.17.5",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
 name = "lgn-compiler-psd2tex"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
@@ -4476,12 +4487,14 @@ dependencies = [
  "lgn-tracing",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
 name = "lgn-compiler-runtime-entity"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bincode",
  "lgn-data-codegen",
  "lgn-data-compiler",
@@ -4489,12 +4502,14 @@ dependencies = [
  "lgn-data-runtime",
  "lgn-tracing",
  "sample-data",
+ "tokio",
 ]
 
 [[package]]
 name = "lgn-compiler-runtime-instance"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bincode",
  "lgn-data-codegen",
  "lgn-data-compiler",
@@ -4502,12 +4517,14 @@ dependencies = [
  "lgn-data-runtime",
  "lgn-tracing",
  "sample-data",
+ "tokio",
 ]
 
 [[package]]
 name = "lgn-compiler-runtime-model"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bincode",
  "lgn-data-codegen",
  "lgn-data-compiler",
@@ -4515,12 +4532,14 @@ dependencies = [
  "lgn-data-runtime",
  "lgn-graphics-data",
  "lgn-tracing",
+ "tokio",
 ]
 
 [[package]]
 name = "lgn-compiler-script2asm"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bincode",
  "curl",
  "lgn-data-compiler",
@@ -4530,6 +4549,7 @@ dependencies = [
  "lgn-tracing",
  "serde",
  "serde_json",
+ "tokio",
  "zip",
 ]
 
@@ -4537,61 +4557,72 @@ dependencies = [
 name = "lgn-compiler-test-atoi"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "integer-asset",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
  "text-resource",
+ "tokio",
 ]
 
 [[package]]
 name = "lgn-compiler-test-base64"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "base64 0.13.0",
  "binary-resource",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
  "text-resource",
+ "tokio",
 ]
 
 [[package]]
 name = "lgn-compiler-test-refs"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
  "refs-asset",
  "refs-resource",
+ "tokio",
 ]
 
 [[package]]
 name = "lgn-compiler-test-reverse"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
  "text-resource",
+ "tokio",
 ]
 
 [[package]]
 name = "lgn-compiler-test-split"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
  "multitext-resource",
  "text-resource",
+ "tokio",
 ]
 
 [[package]]
 name = "lgn-compiler-testentity"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bincode",
  "generic-data",
  "lgn-data-codegen",
@@ -4600,12 +4631,14 @@ dependencies = [
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-tracing",
+ "tokio",
 ]
 
 [[package]]
 name = "lgn-compiler-tex2bin"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
@@ -4613,6 +4646,7 @@ dependencies = [
  "lgn-tracing",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -4773,6 +4807,7 @@ dependencies = [
 name = "lgn-data-codegen"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "lgn-build-utils",
  "lgn-utils",
  "proc-macro2",
@@ -4785,6 +4820,7 @@ dependencies = [
 name = "lgn-data-compiler"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "binary-resource",
  "bincode",
  "clap 3.1.6",
@@ -4805,6 +4841,7 @@ dependencies = [
  "tempfile",
  "text-resource",
  "thiserror",
+ "tokio",
  "zip",
 ]
 
@@ -4812,6 +4849,7 @@ dependencies = [
 name = "lgn-data-compiler-remote"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bincode",
  "chacha20poly1305",
  "clap 3.1.6",
@@ -4832,6 +4870,7 @@ dependencies = [
  "text-resource",
  "thiserror",
  "threadpool",
+ "tokio",
  "url",
  "zip",
 ]
@@ -5628,6 +5667,7 @@ dependencies = [
 name = "lgn-ubercompiler"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "lgn-compiler-gltf2mat",
  "lgn-compiler-gltf2model",
  "lgn-compiler-gltf2tex",
@@ -5648,6 +5688,7 @@ dependencies = [
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
+ "tokio",
 ]
 
 [[package]]

@@ -50,6 +50,7 @@ impl fmt::Debug for CompilerNode {
 
 #[cfg(test)]
 mod tests {
+    use async_trait::async_trait;
     use std::path::PathBuf;
 
     use lgn_content_store::{Checksum, ContentStoreAddr};
@@ -60,8 +61,11 @@ mod tests {
 
     use super::CompilerRegistryOptions;
     use crate::{
-        compiler_api::{CompilationEnv, CompilationOutput, CompilerDescriptor},
-        CompiledResource, CompilerHash, Locale, Platform, Target,
+        compiler_api::{
+            CompilationEnv, CompilationOutput, Compiler, CompilerContext, CompilerDescriptor,
+            CompilerError, CompilerHash,
+        },
+        CompiledResource, Locale, Platform, Target,
     };
 
     const TEST_TRANSFORM: Transform =
@@ -72,9 +76,30 @@ mod tests {
         code_version: "code0",
         data_version: "data0",
         transform: &TEST_TRANSFORM,
-        init_func: |options| options,
-        compiler_hash_func: |_code, _data, _env| CompilerHash(7),
-        compile_func: |ctx| {
+        compiler_creator: || Box::new(TestCompiler {}),
+    };
+
+    struct TestCompiler();
+
+    #[async_trait]
+    impl Compiler for TestCompiler {
+        async fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
+            registry
+        }
+
+        async fn hash(
+            &self,
+            _code: &'static str,
+            _data: &'static str,
+            _env: &CompilationEnv,
+        ) -> CompilerHash {
+            CompilerHash(7)
+        }
+
+        async fn compile(
+            &self,
+            ctx: CompilerContext<'_>,
+        ) -> Result<CompilationOutput, CompilerError> {
             Ok(CompilationOutput {
                 compiled_resources: vec![CompiledResource {
                     path: ctx.target_unnamed,
@@ -83,11 +108,11 @@ mod tests {
                 }],
                 resource_references: vec![],
             })
-        },
-    };
+        }
+    }
 
-    #[test]
-    fn binary() {
+    #[tokio::test]
+    async fn binary() {
         let target_dir = std::env::current_exe().ok().map_or_else(
             || panic!("cannot find test directory"),
             |mut path| {
@@ -99,7 +124,9 @@ mod tests {
             },
         );
 
-        let registry = CompilerRegistryOptions::local_compilers(target_dir).create();
+        let registry = CompilerRegistryOptions::local_compilers(target_dir)
+            .create()
+            .await;
 
         let env = CompilationEnv {
             target: Target::Game,
@@ -116,14 +143,18 @@ mod tests {
         let transform = Transform::new(source.kind, destination.content_type());
 
         let (compiler, transform) = registry.find_compiler(transform).expect("valid compiler");
-        let _ = compiler.compiler_hash(transform, &env).expect("valid hash");
+        let _ = compiler
+            .compiler_hash(transform, &env)
+            .await
+            .expect("valid hash");
     }
 
-    #[test]
-    fn in_proc() {
+    #[tokio::test]
+    async fn in_proc() {
         let registry = CompilerRegistryOptions::default()
             .add_compiler(&TEST_COMPILER)
-            .create();
+            .create()
+            .await;
 
         let env = CompilationEnv {
             target: Target::Game,
@@ -132,7 +163,10 @@ mod tests {
         };
 
         let (compiler, transform) = registry.find_compiler(TEST_TRANSFORM).expect("a compiler");
-        let hash = compiler.compiler_hash(transform, &env).expect("valid hash");
+        let hash = compiler
+            .compiler_hash(transform, &env)
+            .await
+            .expect("valid hash");
         assert_eq!(hash, CompilerHash(7));
 
         let source = ResourceTypeAndId {
@@ -156,6 +190,7 @@ mod tests {
                     &proj_dir,
                     &env,
                 )
+                .await
                 .expect("valid output");
 
             assert_eq!(output.compiled_resources.len(), 1);

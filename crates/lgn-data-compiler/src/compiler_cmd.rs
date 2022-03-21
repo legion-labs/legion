@@ -63,9 +63,9 @@ use lgn_data_offline::{ResourcePathId, Transform};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    compiler_api::{CompilationEnv, CompilationOutput, CompilerError, CompilerInfo},
+    compiler_api::{CompilationEnv, CompilationOutput, CompilerError, CompilerHash, CompilerInfo},
     compiler_node::CompilerRegistry,
-    CompiledResource, CompilerHash,
+    CompiledResource,
 };
 
 /// Description of a compiler.

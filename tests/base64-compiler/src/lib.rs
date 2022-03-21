@@ -1,12 +1,14 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
+use async_trait::async_trait;
 use std::env;
 
 use base64::encode;
 use lgn_data_compiler::{
     compiler_api::{
-        CompilationOutput, CompilerContext, CompilerDescriptor, CompilerError, DATA_BUILD_VERSION,
+        CompilationEnv, CompilationOutput, Compiler, CompilerContext, CompilerDescriptor,
+        CompilerError, CompilerHash, DATA_BUILD_VERSION,
     },
     compiler_utils::hash_code_and_data,
 };
@@ -22,30 +24,45 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
         binary_resource::BinaryResource::TYPE,
         text_resource::TextResource::TYPE,
     ),
-    init_func: init,
-    compiler_hash_func: hash_code_and_data,
-    compile_func: compile,
+    compiler_creator: || Box::new(Base64Compiler {}),
 };
 
-fn init(registry: AssetRegistryOptions) -> AssetRegistryOptions {
-    registry.add_loader::<binary_resource::BinaryResource>()
-}
+struct Base64Compiler();
 
-fn compile(mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
-    let resources = context.registry();
+#[async_trait]
+impl Compiler for Base64Compiler {
+    async fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
+        registry.add_loader::<binary_resource::BinaryResource>()
+    }
 
-    let resource =
-        resources.load_sync::<binary_resource::BinaryResource>(context.source.resource_id());
-    let resource = resource.get(&resources).unwrap();
+    async fn hash(
+        &self,
+        code: &'static str,
+        data: &'static str,
+        env: &CompilationEnv,
+    ) -> CompilerHash {
+        hash_code_and_data(code, data, env)
+    }
 
-    let base64string = encode(&resource.content);
-    let compiled_asset = base64string.as_bytes();
+    async fn compile(
+        &self,
+        mut context: CompilerContext<'_>,
+    ) -> Result<CompilationOutput, CompilerError> {
+        let resources = context.registry();
 
-    let asset = context.store(compiled_asset, context.target_unnamed.clone())?;
+        let resource =
+            resources.load_sync::<binary_resource::BinaryResource>(context.source.resource_id());
+        let resource = resource.get(&resources).unwrap();
 
-    // in this mock build dependency are _not_ runtime references.
-    Ok(CompilationOutput {
-        compiled_resources: vec![asset],
-        resource_references: vec![],
-    })
+        let base64string = encode(&resource.content);
+        let compiled_asset = base64string.as_bytes();
+
+        let asset = context.store(compiled_asset, context.target_unnamed.clone())?;
+
+        // in this mock build dependency are _not_ runtime references.
+        Ok(CompilationOutput {
+            compiled_resources: vec![asset],
+            resource_references: vec![],
+        })
+    }
 }

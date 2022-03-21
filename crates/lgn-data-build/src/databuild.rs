@@ -6,9 +6,10 @@ use std::time::SystemTime;
 use std::{env, io};
 
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
-use lgn_data_compiler::compiler_api::{CompilationEnv, CompilationOutput, DATA_BUILD_VERSION};
+use lgn_data_compiler::compiler_api::{
+    CompilationEnv, CompilationOutput, CompilerHash, DATA_BUILD_VERSION,
+};
 use lgn_data_compiler::compiler_node::{CompilerNode, CompilerRegistry, CompilerStub};
-use lgn_data_compiler::CompilerHash;
 use lgn_data_compiler::{CompiledResource, CompiledResources};
 use lgn_data_offline::Transform;
 use lgn_data_offline::{resource::Project, ResourcePathId};
@@ -106,7 +107,7 @@ pub struct DataBuild {
 }
 
 impl DataBuild {
-    fn default_asset_registry(
+    async fn default_asset_registry(
         resource_dir: &Path,
         cas_addr: ContentStoreAddr,
         compilers: &CompilerRegistry,
@@ -119,7 +120,7 @@ impl DataBuild {
             .add_device_cas(Box::new(source_store), manifest)
             .add_device_dir(resource_dir);
 
-        options = compilers.init_all(options);
+        options = compilers.init_all(options).await;
 
         Ok(options.create())
     }
@@ -132,18 +133,19 @@ impl DataBuild {
 
         let output_index = OutputIndex::create_new(config.output_db_addr).await?;
 
-        let compilers = config.compiler_options.create();
-        let registry = config.registry.map_or_else(
-            || {
+        let compilers = config.compiler_options.create().await;
+        let registry = match config.registry {
+            Some(r) => Ok(r),
+            None => {
                 Self::default_asset_registry(
                     &project.resource_dir(),
                     config.contentstore_addr.clone(),
                     &compilers,
                     config.manifest,
                 )
-            },
-            Ok,
-        )?;
+                .await
+            }
+        }?;
 
         Ok(Self {
             source_index,
@@ -161,18 +163,19 @@ impl DataBuild {
         let source_index = SourceIndex::new(Box::new(content_store.clone()));
         let output_index = OutputIndex::open(config.output_db_addr).await?;
 
-        let compilers = config.compiler_options.create();
-        let registry = config.registry.map_or_else(
-            || {
+        let compilers = config.compiler_options.create().await;
+        let registry = match config.registry {
+            Some(t) => Ok(t),
+            None => {
                 Self::default_asset_registry(
                     &project.resource_dir(),
                     config.contentstore_addr.clone(),
                     &compilers,
                     config.manifest,
                 )
-            },
-            Ok,
-        )?;
+                .await
+            }
+        }?;
 
         Ok(Self {
             source_index,
@@ -198,18 +201,19 @@ impl DataBuild {
             Err(e) => Err(e),
         }?;
 
-        let compilers = config.compiler_options.create();
-        let registry = config.registry.map_or_else(
-            || {
+        let compilers = config.compiler_options.create().await;
+        let registry = match config.registry {
+            Some(r) => Ok(r),
+            None => {
                 Self::default_asset_registry(
                     &project.resource_dir(),
                     config.contentstore_addr.clone(),
                     &compilers,
                     config.manifest,
                 )
-            },
-            Ok,
-        )?;
+                .await
+            }
+        }?;
 
         Ok(Self {
             source_index,
@@ -362,6 +366,7 @@ impl DataBuild {
                         project_dir,
                         env,
                     )
+                    .await
                     .map_err(Error::Compiler)?;
 
                 // a resource cannot refer to itself
@@ -490,20 +495,21 @@ impl DataBuild {
                 transforms
             };
 
-            unique_transforms
-                .into_iter()
-                .map(|(transform, res_path_id)| {
-                    let (compiler, transform) = self
-                        .compilers
-                        .compilers()
-                        .find_compiler(transform)
-                        .ok_or(Error::CompilerNotFound(transform, res_path_id))?;
-                    let compiler_hash = compiler
-                        .compiler_hash(transform, env)
-                        .map_err(|e| Error::Io(e.into()))?;
-                    Ok((transform, (compiler, compiler_hash)))
-                })
-                .collect::<Result<HashMap<_, _>, Error>>()?
+            let mut compiler_details = HashMap::new();
+            for t in unique_transforms {
+                let (transform, res_path_id) = t;
+                let (compiler, transform) = self
+                    .compilers
+                    .compilers()
+                    .find_compiler(transform)
+                    .ok_or(Error::CompilerNotFound(transform, res_path_id))?;
+                let compiler_hash = compiler
+                    .compiler_hash(transform, env)
+                    .await
+                    .map_err(|e| Error::Io(e.into()))?;
+                compiler_details.insert(transform, (compiler, compiler_hash));
+            }
+            compiler_details
         };
         let mut compiled_resources = vec![];
         let mut compiled_references = vec![];
