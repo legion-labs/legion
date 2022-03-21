@@ -137,7 +137,7 @@ fn generate_for_directory(
 
     codegen_file.flush()?;
     Command::new("rustfmt")
-        .args(&[codegen_file_path.as_os_str()])
+        .args(&["--edition", "2021", codegen_file_path.to_str().unwrap()])
         .status()?;
 
     Ok(())
@@ -299,7 +299,7 @@ pub fn generate_data_compiler_code(
                 gen_file.flush()?;
 
                 Command::new("rustfmt")
-                    .args(&[gen_path.as_os_str()])
+                    .args(&["--edition", "2021", gen_path.to_str().unwrap()])
                     .status()?;
             }
         }
