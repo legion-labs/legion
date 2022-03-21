@@ -16,7 +16,10 @@
     streamFileUpload,
   } from "@/api";
   import allResources from "@/stores/allResources";
-  import { fetchCurrentResourceDescription } from "@/orchestrators/currentResource";
+  import {
+    currentResource,
+    fetchCurrentResourceDescription,
+  } from "@/orchestrators/currentResource";
   import { components, extension, join } from "@/lib/path";
   import notifications from "@/stores/notifications";
   import type { Entries, Entry } from "@/lib/hierarchyTree";
@@ -30,7 +33,6 @@
   import type { BagResourceProperty } from "@/lib/propertyGrid";
   import { autoClose, select } from "@lgn/web-client/src/types/contextMenu";
   import type { Event as ContextMenuActionEvent } from "@lgn/web-client/src/types/contextMenu";
-  import currentResource from "@/orchestrators/currentResource";
   import type { ContextMenuEntryRecord } from "@/stores/contextMenu";
   import modal from "@/stores/modal";
   import CreateResourceModal from "./resources/CreateResourceModal.svelte";
@@ -60,8 +62,6 @@
   $: if ($files) {
     uploadFiles();
   }
-
-  const { data: currentResourceData } = currentResource;
 
   async function saveEditedResourceProperty({
     detail: { entry, newName },
@@ -293,7 +293,7 @@
       value: unknown;
     }>
   ) {
-    if (!$currentResourceData) {
+    if (!$currentResource) {
       log.error("No resources selected");
 
       return;
@@ -301,7 +301,7 @@
     const resourceProperty = event.detail.value as ResourceProperty;
 
     if (resourceProperty) {
-      for (const property of $currentResourceData.properties) {
+      for (const property of $currentResource.properties) {
         if (internalRefresh(event.detail.path, property, resourceProperty)) {
           break;
         }
@@ -309,7 +309,7 @@
     }
 
     // Force refresh (TODO: try to only refresh what need to be refreshed)
-    $currentResourceData.properties = $currentResourceData.properties;
+    $currentResource.properties = $currentResource.properties;
   }
 
   function internalRefresh(
