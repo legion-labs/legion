@@ -332,10 +332,8 @@ impl AnalyticsService {
 
     #[span_fn]
     async fn fetch_async_spans_impl(&self, request: AsyncSpansRequest) -> Result<AsyncSpansReply> {
-        let mut connection = self.pool.acquire().await?;
         compute_async_spans(
-            &mut connection,
-            self.data_lake_blobs.clone(),
+            &self.call_trees,
             request.section_sequence_number,
             request.section_lod,
             request.block_ids,

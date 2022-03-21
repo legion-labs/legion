@@ -1,17 +1,21 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use lgn_analytics::{prelude::*, time::ConvertTicks};
+use lgn_analytics::prelude::*;
 use lgn_blob_storage::BlobStorage;
+use lgn_telemetry_proto::analytics::AsyncSpanEvent;
+use lgn_telemetry_proto::analytics::BlockAsyncData;
+use lgn_telemetry_proto::analytics::SpanEventType;
 use lgn_telemetry_proto::analytics::{
-    AsyncSpan, AsyncSpanTrack, AsyncSpansReply, BlockAsyncEventsStatReply, ScopeDesc,
+    AsyncSpan, AsyncSpanTrack, AsyncSpansReply, BlockAsyncEventsStatReply,
 };
 use lgn_tracing::prelude::*;
 use lgn_tracing_transit::Object;
 use std::collections::HashMap;
 
 use crate::{
-    scope::{compute_scope_hash, ScopeHashMap},
+    call_tree_store::CallTreeStore,
+    scope::ScopeHashMap,
     thread_block_processor::{parse_thread_block, ThreadBlockProcessor},
 };
 
@@ -89,47 +93,23 @@ fn ranges_overlap(begin_a: f64, end_a: f64, begin_b: f64, end_b: f64) -> bool {
     begin_a <= end_b && begin_b <= end_a
 }
 
-#[derive(Debug, Clone)]
-struct SpanEventProperties {
-    span_id: u64,
-    time_ms: f64,
-    scope: Arc<Object>,
-}
-
-#[derive(Debug, Clone)]
-enum SpanEvent {
-    Begin(SpanEventProperties),
-    End(SpanEventProperties),
-}
-
 struct AsyncSpanBuilder {
     begin_section_ms: f64,
     end_section_ms: f64,
-    unmatched_events: HashMap<u64, SpanEvent>,
+    unmatched_events: HashMap<u64, AsyncSpanEvent>,
     complete_spans: Vec<AsyncSpan>,
     scopes: ScopeHashMap,
-    convert_ticks: ConvertTicks,
 }
 
 impl AsyncSpanBuilder {
-    fn new(begin_section_ms: f64, end_section_ms: f64, convert_ticks: ConvertTicks) -> Self {
+    fn new(begin_section_ms: f64, end_section_ms: f64) -> Self {
         Self {
             begin_section_ms,
             end_section_ms,
             unmatched_events: HashMap::new(),
             complete_spans: Vec::new(),
             scopes: ScopeHashMap::new(),
-            convert_ticks,
         }
-    }
-
-    fn record_scope_desc(&mut self, hash: u32, name: &str) {
-        self.scopes.entry(hash).or_insert_with(|| ScopeDesc {
-            name: name.to_owned(),
-            filename: "".to_string(),
-            line: 0,
-            hash,
-        });
     }
 
     fn record_span(
@@ -137,12 +117,9 @@ impl AsyncSpanBuilder {
         span_id: u64,
         begin_ms: f64,
         end_ms: f64,
-        scope: &Arc<Object>,
+        scope_hash: u32,
     ) -> Result<()> {
         if ranges_overlap(self.begin_section_ms, self.end_section_ms, begin_ms, end_ms) {
-            let scope_name = scope.get::<Arc<String>>("name")?;
-            let scope_hash = compute_scope_hash(&scope_name);
-            self.record_scope_desc(scope_hash, &scope_name);
             self.complete_spans.push(AsyncSpan {
                 span_id,
                 scope_hash,
@@ -159,90 +136,93 @@ impl AsyncSpanBuilder {
         let mut events = HashMap::new();
         std::mem::swap(&mut events, &mut self.unmatched_events);
         for (_id, evt) in events {
-            match evt {
-                SpanEvent::Begin(begin_span) => {
+            match SpanEventType::from_i32(evt.event_type) {
+                Some(SpanEventType::Begin) => {
                     self.record_span(
-                        begin_span.span_id,
-                        begin_span.time_ms,
+                        evt.span_id,
+                        evt.time_ms,
                         self.end_section_ms,
-                        &begin_span.scope,
+                        evt.scope_hash,
                     )?;
                 }
-                SpanEvent::End(end_span) => {
+                Some(SpanEventType::End) => {
                     self.record_span(
-                        end_span.span_id,
+                        evt.span_id,
                         self.begin_section_ms,
-                        end_span.time_ms,
-                        &end_span.scope,
+                        evt.time_ms,
+                        evt.scope_hash,
                     )?;
+                }
+                None => {
+                    warn!("unknown event type {}", evt.event_type);
                 }
             }
         }
         Ok((self.complete_spans, self.scopes))
     }
-}
 
-impl ThreadBlockProcessor for AsyncSpanBuilder {
-    fn on_begin_thread_scope(&mut self, _scope: Arc<Object>, _ts: i64) -> Result<()> {
-        Ok(())
-    }
-
-    fn on_end_thread_scope(&mut self, _scope: Arc<Object>, _ts: i64) -> Result<()> {
-        Ok(())
-    }
-
-    fn on_begin_async_scope(&mut self, span_id: u64, scope: Arc<Object>, ts: i64) -> Result<()> {
-        let time_ms = self.convert_ticks.get_time(ts);
-        if let Some(evt) = self.unmatched_events.remove(&span_id) {
-            match evt {
-                SpanEvent::Begin(begin_span) => {
-                    anyhow::bail!(
-                        "duplicate begin event for span id {}: {:?}",
-                        span_id,
-                        begin_span
-                    );
-                }
-                SpanEvent::End(end_event) => {
-                    self.record_span(span_id, time_ms, end_event.time_ms, &scope)?;
-                }
-            }
-        } else {
-            self.unmatched_events.insert(
-                span_id,
-                SpanEvent::Begin(SpanEventProperties {
-                    span_id,
-                    time_ms,
-                    scope,
-                }),
-            );
+    pub fn process(&mut self, data: BlockAsyncData) -> Result<()> {
+        for (k, v) in data.scopes {
+            self.scopes.insert(k, v);
         }
-        Ok(())
-    }
-
-    fn on_end_async_scope(&mut self, span_id: u64, scope: Arc<Object>, ts: i64) -> Result<()> {
-        let time_ms = self.convert_ticks.get_time(ts);
-        if let Some(evt) = self.unmatched_events.remove(&span_id) {
-            match evt {
-                SpanEvent::End(end_span) => {
-                    anyhow::bail!(
-                        "duplicate end event for span id {}: {:?}",
-                        span_id,
-                        end_span
-                    );
+        for evt in data.events {
+            match SpanEventType::from_i32(evt.event_type) {
+                Some(SpanEventType::Begin) => {
+                    if let Some(matched) = self.unmatched_events.remove(&evt.span_id) {
+                        match SpanEventType::from_i32(matched.event_type) {
+                            Some(SpanEventType::Begin) => {
+                                anyhow::bail!(
+                                    "duplicate begin event for span id {}: {:?}",
+                                    evt.span_id,
+                                    matched
+                                );
+                            }
+                            Some(SpanEventType::End) => {
+                                self.record_span(
+                                    evt.span_id,
+                                    evt.time_ms,
+                                    matched.time_ms,
+                                    evt.scope_hash,
+                                )?;
+                            }
+                            None => {
+                                warn!("unknown event type {}", matched.event_type);
+                            }
+                        }
+                    } else {
+                        self.unmatched_events.insert(evt.span_id, evt);
+                    }
                 }
-                SpanEvent::Begin(begin_span) => {
-                    self.record_span(span_id, begin_span.time_ms, time_ms, &scope)?;
+                Some(SpanEventType::End) => {
+                    if let Some(matched) = self.unmatched_events.remove(&evt.span_id) {
+                        match SpanEventType::from_i32(matched.event_type) {
+                            Some(SpanEventType::End) => {
+                                anyhow::bail!(
+                                    "duplicate end event for span id {}: {:?}",
+                                    evt.span_id,
+                                    matched
+                                );
+                            }
+                            Some(SpanEventType::Begin) => {
+                                self.record_span(
+                                    evt.span_id,
+                                    matched.time_ms,
+                                    evt.time_ms,
+                                    evt.scope_hash,
+                                )?;
+                            }
+                            None => {
+                                warn!("unknown event type {}", matched.event_type);
+                            }
+                        }
+                    } else {
+                        self.unmatched_events.insert(evt.span_id, evt);
+                    }
+                }
+                None => {
+                    warn!("unknown event type {}", evt.event_type);
                 }
             }
-        } else {
-            self.unmatched_events.insert(
-                span_id,
-                SpanEvent::End(SpanEventProperties {
-                    span_id,
-                    time_ms,
-                    scope,
-                }),
-            );
         }
         Ok(())
     }
@@ -280,8 +260,7 @@ fn layout_spans(spans: Vec<AsyncSpan>) -> Vec<AsyncSpanTrack> {
 #[allow(clippy::cast_lossless)]
 #[span_fn]
 pub async fn compute_async_spans(
-    connection: &mut sqlx::AnyConnection,
-    blob_storage: Arc<dyn BlobStorage>,
+    call_tree_store: &CallTreeStore,
     section_sequence_number: i32,
     section_lod: u32,
     block_ids: Vec<String>,
@@ -300,22 +279,10 @@ pub async fn compute_async_spans(
             scopes: ScopeHashMap::new(),
         });
     }
-    let process = find_block_process(connection, &block_ids[0]).await?;
-    let mut builder = AsyncSpanBuilder::new(
-        begin_section_ms,
-        end_section_ms,
-        ConvertTicks::new(&process),
-    );
+    let mut builder = AsyncSpanBuilder::new(begin_section_ms, end_section_ms);
     for block_id in &block_ids {
-        let stream = find_block_stream(connection, block_id).await?;
-        parse_thread_block(
-            connection,
-            blob_storage.clone(),
-            &stream,
-            block_id.clone(),
-            &mut builder,
-        )
-        .await?;
+        let async_data = call_tree_store.get_block_async_data(block_id).await?;
+        builder.process(async_data)?;
     }
     let (mut spans, scopes) = builder.finish()?;
     spans.sort_by(|a, b| a.span_id.partial_cmp(&b.span_id).unwrap());
