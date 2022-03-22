@@ -7,29 +7,23 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
-use std::{net::SocketAddr, path::PathBuf};
+use std::path::PathBuf;
 
 use clap::Parser;
-use instant::Duration;
-
 use generic_data::plugin::GenericDataPlugin;
-use lgn_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use lgn_app::prelude::*;
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
-use lgn_async::AsyncPlugin;
 use lgn_config::Config;
 use lgn_content_store::ContentStoreAddr;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_graphics_data::GraphicsPlugin;
 use lgn_graphics_renderer::RendererPlugin;
-use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_input::InputPlugin;
 use lgn_physics::{PhysicsPlugin, PhysicsSettingsBuilder};
 use lgn_scripting::ScriptingPlugin;
-use lgn_streamer::StreamerPlugin;
 use lgn_tracing::prelude::*;
 use lgn_transform::prelude::*;
-use lgn_window::WindowPlugin;
 use sample_data::SampleDataPlugin;
 
 #[cfg(feature = "standalone")]
@@ -70,15 +64,6 @@ pub fn build_runtime(
 ) -> App {
     let args = Args::parse();
     let settings = Config::new();
-
-    let server_addr = {
-        let url = args
-            .addr
-            .as_deref()
-            .unwrap_or_else(|| settings.get_or("runtime_srv.server_addr", "[::1]:50052"));
-        url.parse::<SocketAddr>()
-            .unwrap_or_else(|err| panic!("Invalid server_addr '{}': {}", url, err))
-    };
 
     let project_dir = {
         if let Some(params) = args.project {
@@ -132,6 +117,9 @@ pub fn build_runtime(
 
     #[cfg(not(feature = "standalone"))]
     {
+        use instant::Duration;
+        use lgn_app::{ScheduleRunnerPlugin, ScheduleRunnerSettings};
+
         app
             // Start app with 60 fps
             .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
@@ -159,10 +147,26 @@ pub fn build_runtime(
         .add_plugin(PhysicsPlugin::default());
 
     #[cfg(feature = "standalone")]
-    build_standalone(&mut app);
+    standalone::build_standalone(&mut app);
 
     #[cfg(not(feature = "standalone"))]
     {
+        use std::net::SocketAddr;
+
+        use lgn_async::AsyncPlugin;
+        use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
+        use lgn_streamer::StreamerPlugin;
+        use lgn_window::WindowPlugin;
+
+        let server_addr = {
+            let url = args
+                .addr
+                .as_deref()
+                .unwrap_or_else(|| settings.get_or("runtime_srv.server_addr", "[::1]:50052"));
+            url.parse::<SocketAddr>()
+                .unwrap_or_else(|err| panic!("Invalid server_addr '{}': {}", url, err))
+        };
+
         app.add_plugin(WindowPlugin {
             add_primary_window: false,
             exit_on_close: false,
