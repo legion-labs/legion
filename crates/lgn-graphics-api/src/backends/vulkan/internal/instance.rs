@@ -179,6 +179,17 @@ impl VkInstance {
                 }
             }
         }
+
+        let streamer_extensions = Self::find_streamer_extensions(&extensions);
+        if let Some(streamer_extensions) = streamer_extensions {
+            extension_names.extend_from_slice(&streamer_extensions);
+        } else if validation_mode == ExtensionMode::EnabledIfAvailable {
+            warn!("Could not find the appropriate streamer extensions layers. Check that the appropriate drivers are installed");
+        } else {
+            error!("Could not find the appropriate streamer extensions layers. Check that the appropriate drivers are installed");
+            return Err(vk::Result::ERROR_EXTENSION_NOT_PRESENT.into());
+        }
+
         Ok((layer_names, extension_names))
     }
 
@@ -242,6 +253,28 @@ impl VkInstance {
 
         #[cfg(any(target_os = "ios"))]
         let platform_extensions = vec![khr::Surface::name(), ext::MetalSurface::name()];
+
+        if check_extensions_availability(&platform_extensions, extensions) {
+            Some(platform_extensions)
+        } else {
+            None
+        }
+    }
+
+    fn find_streamer_extensions(
+        extensions: &[ash::vk::ExtensionProperties],
+    ) -> Option<Vec<&'static CStr>> {
+        #[cfg(target_os = "windows")]
+        let platform_extensions = vec![
+            khr::ExternalMemoryWin32::name(),
+            khr::ExternalSemaphoreWin32::name(),
+        ];
+
+        #[cfg(target_os = "linux")]
+        let platform_extensions = vec![
+            khr::ExternalMemoryFd::name(),
+            khr::ExternalSemaphoreFd::name(),
+        ];
 
         if check_extensions_availability(&platform_extensions, extensions) {
             Some(platform_extensions)
