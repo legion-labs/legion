@@ -45,7 +45,6 @@ clap = { version = "3.0", features = ["derive"] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 
 [features]
-default = ["standalone"]
 standalone = []
 
 [target.'cfg(target_os = "linux")'.dependencies]

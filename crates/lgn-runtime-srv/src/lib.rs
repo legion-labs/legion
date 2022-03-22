@@ -29,13 +29,11 @@ use lgn_scripting::ScriptingPlugin;
 use lgn_streamer::StreamerPlugin;
 use lgn_tracing::prelude::*;
 use lgn_transform::prelude::*;
+use lgn_window::WindowPlugin;
 use sample_data::SampleDataPlugin;
 
 #[cfg(feature = "standalone")]
 mod standalone;
-use lgn_window::WindowPlugin;
-#[cfg(feature = "standalone")]
-use standalone::build_standalone;
 
 #[derive(Parser, Debug)]
 #[clap(name = "Legion Labs runtime engine")]
@@ -60,11 +58,6 @@ struct Args {
     /// Root object to load, usually a world
     #[clap(long)]
     root: Option<String>,
-    /// If supplied, starts with a window display, and collects input locally
-    #[cfg(feature = "standalone")]
-    #[clap(long)]
-    standalone: bool,
-
     /// Enable physics visual debugger
     #[clap(long)]
     physics_debugger: bool,
@@ -121,12 +114,6 @@ pub fn build_runtime(
         assets_to_load.push(asset_id);
     }
 
-    #[cfg(feature = "standalone")]
-    let standalone = args.standalone;
-
-    #[cfg(not(feature = "standalone"))]
-    let standalone = false;
-
     // physics settings
     let mut physics_settings = PhysicsSettingsBuilder::default();
     if args.physics_debugger {
@@ -143,7 +130,8 @@ pub fn build_runtime(
 
     let mut app = App::default();
 
-    if !standalone {
+    #[cfg(not(feature = "standalone"))]
+    {
         app
             // Start app with 60 fps
             .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
@@ -171,11 +159,10 @@ pub fn build_runtime(
         .add_plugin(PhysicsPlugin::default());
 
     #[cfg(feature = "standalone")]
-    if standalone {
-        build_standalone(&mut app);
-    }
+    build_standalone(&mut app);
 
-    if !standalone {
+    #[cfg(not(feature = "standalone"))]
+    {
         app.add_plugin(WindowPlugin {
             add_primary_window: false,
             exit_on_close: false,
