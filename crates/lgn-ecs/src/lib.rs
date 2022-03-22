@@ -40,8 +40,8 @@ pub mod prelude {
             Schedule, Stage, StageLabel, State, SystemLabel, SystemSet, SystemStage,
         },
         system::{
-            Commands, ConfigurableSystem, In, IntoChainSystem, IntoExclusiveSystem, IntoSystem,
-            Local, NonSend, NonSendMut, Query, QuerySet, RemovedComponents, Res, ResMut, System,
+            Commands, In, IntoChainSystem, IntoExclusiveSystem, IntoSystem, Local, NonSend,
+            NonSendMut, Query, QuerySet, RemovedComponents, Res, ResMut, System,
         },
         world::{FromWorld, Mut, World},
     };
@@ -1020,29 +1020,26 @@ mod tests {
             .get_archetype_component_id(resource_id)
             .unwrap();
 
-        assert_eq!(*world.get_resource::<i32>().expect("resource exists"), 123);
+        assert_eq!(*world.resource::<i32>(), 123);
         assert!(world.contains_resource::<i32>());
         assert!(world.is_resource_added::<i32>());
         assert!(world.is_resource_changed::<i32>());
 
         world.insert_resource(456u64);
-        assert_eq!(
-            *world.get_resource::<u64>().expect("resource exists"),
-            456u64
-        );
+        assert_eq!(*world.resource::<u64>(), 456u64);
 
         world.insert_resource(789u64);
-        assert_eq!(*world.get_resource::<u64>().expect("resource exists"), 789);
+        assert_eq!(*world.resource::<u64>(), 789);
 
         {
-            let mut value = world.get_resource_mut::<u64>().expect("resource exists");
+            let mut value = world.resource_mut::<u64>();
             assert_eq!(*value, 789);
             *value = 10;
         }
 
         assert_eq!(
-            world.get_resource::<u64>(),
-            Some(&10),
+            world.resource::<u64>(),
+            &10,
             "resource changes are preserved"
         );
 
@@ -1193,8 +1190,8 @@ mod tests {
         let mut world = World::default();
         world.insert_non_send_resource(123i32);
         world.insert_non_send_resource(456i64);
-        assert_eq!(*world.get_non_send_resource::<i32>().unwrap(), 123);
-        assert_eq!(*world.get_non_send_resource_mut::<i64>().unwrap(), 456);
+        assert_eq!(*world.non_send_resource::<i32>(), 123);
+        assert_eq!(*world.non_send_resource_mut::<i64>(), 456);
     }
 
     #[test]
@@ -1203,7 +1200,7 @@ mod tests {
         let mut world = World::default();
         world.insert_non_send_resource(0i32);
         std::thread::spawn(move || {
-            let _ = world.get_non_send_resource_mut::<i32>();
+            let _ = world.non_send_resource_mut::<i32>();
         })
         .join()
         .unwrap();
@@ -1333,7 +1330,7 @@ mod tests {
             *value += 1;
             assert!(!world.contains_resource::<i32>());
         });
-        assert_eq!(*world.get_resource::<i32>().unwrap(), 1);
+        assert_eq!(*world.resource::<i32>(), 1);
     }
 
     #[test]
@@ -1399,7 +1396,7 @@ mod tests {
             "world should not have any entities"
         );
         assert_eq!(
-            *world.get_resource::<i32>().unwrap(),
+            *world.resource::<i32>(),
             0,
             "world should still contain resources"
         );

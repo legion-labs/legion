@@ -16,6 +16,9 @@ use crate::{
 /// Extension trait for [`Fetch`] containing methods used by query filters.
 /// This trait exists to allow "short circuit" behaviors for relevant query
 /// filter fetches.
+///
+/// This trait is automatically implemented for every type that implements [`Fetch`] trait and
+/// specifies `bool` as the associated type for [`Fetch::Item`].
 pub trait FilterFetch: for<'w, 's> Fetch<'w, 's> {
     /// # Safety
     ///
@@ -82,11 +85,13 @@ impl<T: Component> WorldQuery for With<T> {
 }
 
 /// The [`Fetch`] of [`With`].
+#[doc(hidden)]
 pub struct WithFetch<T> {
     marker: PhantomData<T>,
 }
 
 /// The [`FetchState`] of [`With`].
+#[doc(hidden)]
 pub struct WithState<T> {
     component_id: ComponentId,
     marker: PhantomData<T>,
@@ -205,11 +210,13 @@ impl<T: Component> WorldQuery for Without<T> {
 }
 
 /// The [`Fetch`] of [`Without`].
+#[doc(hidden)]
 pub struct WithoutFetch<T> {
     marker: PhantomData<T>,
 }
 
 /// The [`FetchState`] of [`Without`].
+#[doc(hidden)]
 pub struct WithoutState<T> {
     component_id: ComponentId,
     marker: PhantomData<T>,
@@ -328,6 +335,7 @@ unsafe impl<T> ReadOnlyFetch for WithoutFetch<T> {}
 pub struct Or<T>(pub T);
 
 /// The [`Fetch`] of [`Or`].
+#[doc(hidden)]
 pub struct OrFetch<T: FilterFetch> {
     fetch: T,
     matches: bool,
@@ -461,6 +469,7 @@ macro_rules! impl_tick_filter {
         $(#[$meta])*
         pub struct $name<T>(PhantomData<T>);
 
+        #[doc(hidden)]
         $(#[$fetch_meta])*
         pub struct $fetch_name<T> {
             table_ticks: *const UnsafeCell<ComponentTicks>,
@@ -472,6 +481,7 @@ macro_rules! impl_tick_filter {
             change_tick: u32,
         }
 
+        #[doc(hidden)]
         $(#[$state_meta])*
         pub struct $state_name<T> {
             component_id: ComponentId,
