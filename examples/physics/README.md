@@ -3,7 +3,7 @@
 ## Launching
 
 ```sh
-cargo m run --bin runtime-srv -- --project=examples/physics/data --root="(1d9ddd99aad89045,1fa058cb-5877-5ffe-dcb7-1f364a804a8f)" --standalone --physics-debugger
+cargo m run --bin runtime-srv --features=standalone -- --project=examples/physics/data --root="(1d9ddd99aad89045,1fa058cb-5877-5ffe-dcb7-1f364a804a8f)" --physics-debugger
 ```
 
 ## Editing data
