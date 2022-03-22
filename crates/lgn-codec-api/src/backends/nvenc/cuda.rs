@@ -2,10 +2,9 @@
 
 use std::sync::Arc;
 
-use nvenc_sys::cuda::{cudaError_enum, CUcontext, CUdevice, CUuuid};
+use nvenc_sys::cuda::{cudaError_enum, CUcontext, CUdevice};
 
 use super::loader::CudaApi;
-use crate::{Error, Result};
 
 #[derive(Clone)]
 pub struct CuDevice {
@@ -18,36 +17,27 @@ struct CuDeviceInner {
 }
 
 impl CuDevice {
-    pub fn new(cuda_api: CudaApi, guid: &str) -> Result<Self> {
+    pub fn new(cuda_api: CudaApi) -> Option<Self> {
         let result = unsafe { (cuda_api.init)(0) };
         assert_eq!(result, cudaError_enum::CUDA_SUCCESS);
         let mut num_devices = 0;
         let result = unsafe { (cuda_api.device_get_count)(&mut num_devices) };
         assert_eq!(result, cudaError_enum::CUDA_SUCCESS);
-        let guid = uuid::Uuid::parse_str(guid).unwrap();
-        for i in 0..num_devices {
+
+        if num_devices != 0 {
             let mut dev: CUdevice = CUdevice::default();
-            let result = unsafe { (cuda_api.device_get)(&mut dev, i) };
+            let result = unsafe { (cuda_api.device_get)(&mut dev, 0) };
             assert_eq!(result, cudaError_enum::CUDA_SUCCESS);
-            let mut id = CUuuid::default();
-            let result = unsafe { (cuda_api.device_get_uuid)(&mut id, dev) };
-            assert_eq!(result, cudaError_enum::CUDA_SUCCESS);
-            let id_u8 = unsafe {
-                std::slice::from_raw_parts(id.bytes.as_ptr().cast::<u8>(), id.bytes.len())
-            };
-            if id_u8 == guid.as_bytes() {
-                return Ok(Self {
-                    inner: Arc::new(CuDeviceInner {
-                        device: dev,
-                        cuda_api,
-                    }),
-                });
-            }
+
+            Some(Self {
+                inner: Arc::new(CuDeviceInner {
+                    device: dev,
+                    cuda_api,
+                }),
+            })
+        } else {
+            None
         }
-        Err(Error::Init {
-            encoder: "nvenc",
-            reason: "device not found".to_string(),
-        })
     }
 }
 
@@ -57,22 +47,19 @@ pub struct CuContext {
 }
 
 impl CuContext {
-    pub fn new(device: &CuDevice) -> Result<Self> {
+    pub fn new(device: &CuDevice) -> Option<Self> {
         let mut context: CUcontext = std::ptr::null_mut();
         let result =
             unsafe { (device.inner.cuda_api.ctx_create)(&mut context, 0, device.inner.device) };
         if result == cudaError_enum::CUDA_SUCCESS {
-            Ok(Self {
+            Some(Self {
                 inner: Arc::new(CuContextInner {
                     context,
                     device: device.clone(),
                 }),
             })
         } else {
-            Err(Error::Init {
-                encoder: "nvenc",
-                reason: "coundn't create a cuda context".to_string(),
-            })
+            None
         }
     }
 
@@ -88,6 +75,10 @@ impl CuContext {
         assert_eq!(result, cudaError_enum::CUDA_SUCCESS);
         // we should have one context per thread ? is it thread safe ? to be tested
         assert_eq!(context, std::ptr::null_mut());
+    }
+
+    pub fn cuda_context(&self) -> &CUcontext {
+        &self.inner.context
     }
 }
 

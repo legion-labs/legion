@@ -31,6 +31,8 @@ pub enum GraphicsConfig {
 pub struct EncoderConfig {
     hardware: CodecHardware,
     _gfx_config: GraphicsConfig,
+    width: u32,
+    height: u32,
 }
 
 /// Generic encoder,
