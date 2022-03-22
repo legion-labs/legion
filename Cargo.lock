@@ -4340,6 +4340,7 @@ dependencies = [
  "lgn-ecs",
  "lgn-graphics-data",
  "lgn-graphics-renderer",
+ "lgn-hierarchy",
  "lgn-math",
  "lgn-physics",
  "lgn-scripting",
@@ -5169,6 +5170,7 @@ dependencies = [
  "lgn-graphics-cgen",
  "lgn-graphics-cgen-runtime",
  "lgn-graphics-data",
+ "lgn-hierarchy",
  "lgn-input",
  "lgn-math",
  "lgn-pso-compiler",
@@ -5225,6 +5227,18 @@ dependencies = [
  "lgn-online",
  "lgn-tracing",
  "tonic",
+]
+
+[[package]]
+name = "lgn-hierarchy"
+version = "0.1.0"
+dependencies = [
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-math",
+ "lgn-tracing",
+ "lgn-utils",
+ "smallvec",
 ]
 
 [[package]]
@@ -5693,10 +5707,10 @@ version = "0.1.0"
 dependencies = [
  "lgn-app",
  "lgn-ecs",
+ "lgn-hierarchy",
  "lgn-math",
  "lgn-tracing",
  "lgn-utils",
- "smallvec",
 ]
 
 [[package]]

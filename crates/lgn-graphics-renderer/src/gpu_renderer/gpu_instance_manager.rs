@@ -1,8 +1,8 @@
 use lgn_app::{App, EventWriter};
 use lgn_ecs::prelude::{Changed, Entity, Or, Query, Res, ResMut, Without};
 use lgn_graphics_api::{BufferView, VertexBufferBinding};
+use lgn_hierarchy::prelude::Parent;
 use lgn_math::Vec4;
-use lgn_transform::components::Parent;
 
 use crate::{
     cgen,

@@ -22,8 +22,8 @@ use lgn_data_runtime::{
     ResourceLoadEvent,
 };
 use lgn_ecs::prelude::*;
+use lgn_hierarchy::prelude::Children;
 use lgn_tracing::{error, warn};
-use lgn_transform::components::Children;
 use loading_states::{AssetLoadingStates, LoadingState};
 use sample_data::runtime as runtime_data;
 
