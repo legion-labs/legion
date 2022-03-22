@@ -136,7 +136,7 @@ pub(super) fn new_world_point_for_cursor(
 
 pub(super) fn plane_normal_for_camera_pos(
     component: AxisComponents,
-    base_entity_transform: &Transform,
+    base_entity_transform: &GlobalTransform,
     camera: &CameraComponent,
     rotation: Quat,
 ) -> Vec3 {
@@ -259,7 +259,9 @@ impl ManipulatorManager {
     pub fn manipulate_entity(
         &self,
         part: usize,
-        base_entity_transform: &Transform,
+        base_local_transform: &Transform,
+        base_global_transform: &GlobalTransform,
+        parent_global_transform: &GlobalTransform,
         camera: &CameraComponent,
         picked_pos: Vec2,
         screen_size: Vec2,
@@ -270,7 +272,9 @@ impl ManipulatorManager {
         match inner.current_type {
             ManipulatorType::Position => PositionManipulator::manipulate_entity(
                 AxisComponents::from_component_id(part),
-                base_entity_transform,
+                base_local_transform,
+                base_global_transform,
+                parent_global_transform,
                 camera,
                 picked_pos,
                 screen_size,
@@ -278,7 +282,9 @@ impl ManipulatorManager {
             ),
             ManipulatorType::Rotation => RotationManipulator::manipulate_entity(
                 RotationComponents::from_component_id(part),
-                base_entity_transform,
+                base_local_transform,
+                base_global_transform,
+                parent_global_transform,
                 camera,
                 picked_pos,
                 screen_size,
@@ -286,7 +292,9 @@ impl ManipulatorManager {
             ),
             ManipulatorType::Scale => ScaleManipulator::manipulate_entity(
                 AxisComponents::from_component_id(part),
-                base_entity_transform,
+                base_local_transform,
+                base_global_transform,
+                parent_global_transform,
                 camera,
                 picked_pos,
                 screen_size,
