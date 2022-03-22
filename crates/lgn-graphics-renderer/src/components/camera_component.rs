@@ -163,9 +163,11 @@ pub(crate) fn create_camera(mut commands: Commands<'_, '_>) {
     commands.spawn().insert(CameraComponent::default());
 }
 
-#[cfg(not(feature = "offline"))]
+#[derive(Component, Default)]
+pub(crate) struct CameraSetupApplied(); // marker component
+
 pub(crate) fn apply_camera_setups(
-    camera_setups: Query<'_, '_, (Entity, &CameraSetup)>,
+    camera_setups: Query<'_, '_, (Entity, &CameraSetup), Without<CameraSetupApplied>>,
     mut cameras: Query<'_, '_, &mut CameraComponent>,
     mut commands: Commands<'_, '_>,
 ) {
@@ -174,14 +176,13 @@ pub(crate) fn apply_camera_setups(
             let camera = camera.as_mut();
             camera.camera_rig = CameraComponent::build_rig(setup.eye, setup.look_at);
         }
-        commands.entity(entity).remove::<CameraSetup>();
+        commands
+            .entity(entity)
+            .insert(CameraSetupApplied::default());
     }
 
     drop(camera_setups);
 }
-
-#[derive(Default)]
-pub(crate) struct CameraMoving(bool);
 
 #[allow(clippy::needless_pass_by_value)]
 pub(crate) fn camera_control(
