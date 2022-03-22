@@ -7,7 +7,7 @@ use lgn_editor_proto::editor::{
     UndoTransactionRequest, UndoTransactionResponse,
 };
 use tokio::sync::{mpsc, Mutex};
-use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{Request, Response, Status};
 
 use crate::channel_sink::TraceEvent;
@@ -46,6 +46,7 @@ pub(crate) type TraceEventsReceiver = SharedUnboundedReceiver<TraceEvent>;
 
 pub(crate) struct GRPCServer {
     transaction_manager: Arc<Mutex<TransactionManager>>,
+    /// A globally share trace events, unbounded, receiver
     trace_events_receiver: TraceEventsReceiver,
 }
 
@@ -94,13 +95,13 @@ impl Editor for GRPCServer {
         Ok(Response::new(RedoTransactionResponse { id: 0 }))
     }
 
-    type InitLogStreamStream = ReceiverStream<Result<InitLogStreamResponse, Status>>;
+    type InitLogStreamStream = UnboundedReceiverStream<Result<InitLogStreamResponse, Status>>;
 
     async fn init_log_stream(
         &self,
         _: Request<InitLogStreamRequest>,
     ) -> Result<tonic::Response<<Self as Editor>::InitLogStreamStream>, Status> {
-        let (tx, rx) = mpsc::channel(10);
+        let (tx, rx) = mpsc::unbounded_channel();
 
         let receiver = self.trace_events_receiver.clone();
 
@@ -113,21 +114,24 @@ impl Editor for GRPCServer {
                     time,
                 } = trace_event
                 {
-                    let _send_result = tx
-                        .send(Ok(InitLogStreamResponse {
-                            // There must be a default, zero, value for enums but Level is 1-indexed
-                            // (https://developers.google.com/protocol-buffers/docs/proto3#enum)
-                            // So we simply decrement the level to get the proper value at runtime
-                            level: (level as i32 - 1),
-                            message,
-                            target,
-                            time,
-                        }))
-                        .await;
+                    if let Err(_error) = tx.send(Ok(InitLogStreamResponse {
+                        // There must be a default, zero, value for enums but Level is 1-indexed
+                        // (https://developers.google.com/protocol-buffers/docs/proto3#enum)
+                        // So we simply decrement the level to get the proper value at runtime
+                        level: (level as i32 - 1),
+                        message,
+                        target,
+                        time,
+                    })) {
+                        // Send errors are always related to closed connection:
+                        // https://github.com/tokio-rs/tokio/blob/b1afd95994be0d46ea70ba784439a684a787f50e/tokio/src/sync/mpsc/error.rs#L12
+                        // So we can stop the task
+                        return;
+                    }
                 }
             }
         });
 
-        Ok(Response::new(ReceiverStream::new(rx)))
+        Ok(Response::new(UnboundedReceiverStream::new(rx)))
     }
 }
