@@ -35,13 +35,13 @@ use lgn_utils::HashSet;
 /// * Call the [`Input::clear`] method at each frame start, before processing
 ///   events.
 #[derive(Debug)]
-pub struct Input<T> {
+pub struct Input<T: Eq + Hash> {
     pressed: HashSet<T>,
     just_pressed: HashSet<T>,
     just_released: HashSet<T>,
 }
 
-impl<T> Default for Input<T> {
+impl<T: Eq + Hash> Default for Input<T> {
     fn default() -> Self {
         Self {
             pressed: HashSet::default(),
@@ -76,8 +76,11 @@ where
 
     /// Register a release for input `input`.
     pub fn release(&mut self, input: T) {
+        if self.pressed(input) {
+            self.just_released.insert(input);
+        }
+
         self.pressed.remove(&input);
-        self.just_released.insert(input);
     }
 
     /// Check if `input` has been just pressed.

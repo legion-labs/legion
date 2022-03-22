@@ -5733,6 +5733,7 @@ version = "0.1.0"
 dependencies = [
  "ahash 0.7.6",
  "getrandom 0.2.5",
+ "hashbrown",
  "sha2 0.10.2",
  "siphasher",
 ]

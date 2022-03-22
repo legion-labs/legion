@@ -103,7 +103,7 @@ where
 {
     pub fn on_update(pred: T) -> RunCriteriaDescriptor {
         let pred_clone = pred.clone();
-        (move |state: Res<'_, State<T>>| {
+        (move |state: Res<'_, Self>| {
             state.stack.last().unwrap() == &pred && state.transition.is_none()
         })
         .chain(should_run_adapter::<T>)
@@ -113,7 +113,7 @@ where
 
     pub fn on_inactive_update(pred: T) -> RunCriteriaDescriptor {
         let pred_clone = pred.clone();
-        (move |state: Res<'_, State<T>>, mut is_inactive: Local<'_, bool>| match &state.transition {
+        (move |state: Res<'_, Self>, mut is_inactive: Local<'_, bool>| match &state.transition {
             Some(
                 StateTransition::Pausing(ref relevant, _)
                 | StateTransition::Resuming(_, ref relevant),
@@ -133,17 +133,12 @@ where
 
     pub fn on_in_stack_update(pred: T) -> RunCriteriaDescriptor {
         let pred_clone = pred.clone();
-        (move |state: Res<'_, State<T>>, mut is_in_stack: Local<'_, bool>| match &state.transition {
+        (move |state: Res<'_, Self>, mut is_in_stack: Local<'_, bool>| match &state.transition {
             Some(
                 StateTransition::Entering(ref relevant, _)
-                | StateTransition::ExitingToResume(_, ref relevant),
+                | StateTransition::ExitingToResume(_, ref relevant)
+                | StateTransition::ExitingFull(_, ref relevant),
             ) => {
-                if relevant == &pred {
-                    *is_in_stack = !*is_in_stack;
-                }
-                false
-            }
-            Some(StateTransition::ExitingFull(_, ref relevant)) => {
                 if relevant == &pred {
                     *is_in_stack = !*is_in_stack;
                 }
@@ -165,7 +160,7 @@ where
 
     pub fn on_enter(pred: T) -> RunCriteriaDescriptor {
         let pred_clone = pred.clone();
-        (move |state: Res<'_, State<T>>| {
+        (move |state: Res<'_, Self>| {
             state
                 .transition
                 .as_ref()
@@ -182,7 +177,7 @@ where
 
     pub fn on_exit(pred: T) -> RunCriteriaDescriptor {
         let pred_clone = pred.clone();
-        (move |state: Res<'_, State<T>>| {
+        (move |state: Res<'_, Self>| {
             state
                 .transition
                 .as_ref()
@@ -199,7 +194,7 @@ where
 
     pub fn on_pause(pred: T) -> RunCriteriaDescriptor {
         let pred_clone = pred.clone();
-        (move |state: Res<'_, State<T>>| {
+        (move |state: Res<'_, Self>| {
             state
                 .transition
                 .as_ref()
@@ -215,7 +210,7 @@ where
 
     pub fn on_resume(pred: T) -> RunCriteriaDescriptor {
         let pred_clone = pred.clone();
-        (move |state: Res<'_, State<T>>| {
+        (move |state: Res<'_, Self>| {
             state
                 .transition
                 .as_ref()

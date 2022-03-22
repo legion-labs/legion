@@ -1380,10 +1380,10 @@ impl<'world, 'state, P: SystemParam + 'static> SystemParam
     type Fetch = StaticSystemParamState<P::Fetch, P>;
 }
 
-impl<'world, 'state, S: SystemParamFetch<'world, 'state>, P: SystemParam + 'static>
-    SystemParamFetch<'world, 'state> for StaticSystemParamState<S, P>
+impl<'world, 'state, S: SystemParamFetch<'world, 'state>, P> SystemParamFetch<'world, 'state>
+    for StaticSystemParamState<S, P>
 where
-    P: SystemParam<Fetch = S>,
+    P: SystemParam<Fetch = S> + 'static,
 {
     type Item = StaticSystemParam<'world, 'state, P>;
 
@@ -1406,11 +1406,11 @@ unsafe impl<'w, 's, S: SystemParamState, P: SystemParam + 'static> SystemParamSt
     }
 
     fn new_archetype(&mut self, archetype: &Archetype, system_meta: &mut SystemMeta) {
-        self.0.new_archetype(archetype, system_meta)
+        self.0.new_archetype(archetype, system_meta);
     }
 
     fn apply(&mut self, world: &mut World) {
-        self.0.apply(world)
+        self.0.apply(world);
     }
 }
 
