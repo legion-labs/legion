@@ -7,6 +7,7 @@ use std::{
 };
 
 use lgn_ecs_macros::all_tuples;
+pub use lgn_ecs_macros::WorldQuery;
 
 use crate::{
     archetype::{Archetype, ArchetypeComponentId},
