@@ -18,15 +18,15 @@ use std::sync::Arc;
 use cgen::*;
 
 pub mod labels;
-use components::MaterialComponent;
-use gpu_renderer::{GpuInstanceEvent, GpuInstanceManager, RenderElement};
+
+use gpu_renderer::GpuInstanceManager;
 pub use labels::*;
 
 mod renderer;
 use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{AddressMode, CompareOp, FilterType, MipMapMode, ResourceUsage, SamplerDef};
 use lgn_graphics_cgen_runtime::CGenRegistryList;
-use lgn_math::{Vec2, Vec4};
+use lgn_math::Vec2;
 pub use renderer::*;
 
 mod render_context;
@@ -34,8 +34,7 @@ pub use render_context::*;
 
 pub mod resources;
 use resources::{
-    DescriptorHeapManager, GpuDataPlugin, GpuEntityColorManager, GpuEntityTransformManager,
-    GpuPickingDataManager, MaterialManager, ModelManager, PersistentDescriptorSetManager,
+    DescriptorHeapManager, GpuDataPlugin, ModelManager, PersistentDescriptorSetManager,
     PipelineManager, TextureManager,
 };
 
@@ -61,9 +60,8 @@ use crate::{
         RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces,
     },
     egui::{egui_plugin::EguiPlugin, Egui},
-    gpu_renderer::GpuInstanceVas,
     lighting::LightingManager,
-    picking::{ManipulatorManager, PickingIdContext, PickingManager, PickingPlugin},
+    picking::{ManipulatorManager, PickingManager, PickingPlugin},
     resources::MeshManager,
     RenderStage,
 };
@@ -72,14 +70,13 @@ use lgn_app::{App, CoreStage, Events, Plugin};
 use lgn_ecs::prelude::*;
 use lgn_math::{const_vec3, Vec3};
 use lgn_tracing::span_fn;
-use lgn_transform::components::{GlobalTransform, Parent};
+use lgn_transform::components::GlobalTransform;
 use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 
 use crate::debug_display::DebugDisplay;
 
 use crate::resources::{
     ui_renderer_options, MissingVisualTracker, RendererOptions, SharedResourcesManager,
-    UniformGPUDataUpdater,
 };
 
 use crate::{
@@ -180,6 +177,7 @@ impl Plugin for RendererPlugin {
         ModelManager::init_ecs(app);
         MissingVisualTracker::init_ecs(app);
         PersistentDescriptorSetManager::init_ecs(app);
+        GpuInstanceManager::init_ecs(app);
 
         // todo: convert?
         app.add_plugin(GpuDataPlugin::default());
@@ -222,7 +220,6 @@ impl Plugin for RendererPlugin {
         app.add_system_to_stage(RenderStage::Prepare, ui_lights);
         app.add_system_to_stage(RenderStage::Prepare, ui_mesh_renderer);
         app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
-        app.add_system_to_stage(RenderStage::Prepare, update_gpu_instances);
         app.add_system_to_stage(RenderStage::Prepare, update_lights);
         app.add_system_to_stage(
             RenderStage::Prepare,
@@ -337,123 +334,6 @@ fn render_pre_update(
 ) {
     renderer.begin_frame();
     descriptor_heap_manager.begin_frame();
-}
-
-#[allow(
-    clippy::needless_pass_by_value,
-    clippy::type_complexity,
-    clippy::too_many_arguments
-)]
-fn update_gpu_instances(
-    renderer: Res<'_, Renderer>,
-    picking_manager: Res<'_, PickingManager>,
-    mut picking_data_manager: ResMut<'_, GpuPickingDataManager>,
-    mut instance_manager: ResMut<'_, GpuInstanceManager>,
-    model_manager: Res<'_, ModelManager>,
-    mesh_manager: Res<'_, MeshManager>,
-    material_manager: Res<'_, MaterialManager>,
-    color_manager: Res<'_, GpuEntityColorManager>,
-    transform_manager: Res<'_, GpuEntityTransformManager>,
-    mut event_writer: EventWriter<'_, '_, GpuInstanceEvent>,
-    instance_query: Query<
-        '_,
-        '_,
-        (
-            Entity,
-            &VisualComponent,
-            Option<&Parent>,
-            Option<&MaterialComponent>,
-        ),
-        (
-            Or<(Changed<VisualComponent>, Changed<Parent>)>,
-            Without<ManipulatorComponent>,
-        ),
-    >,
-    mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
-) {
-    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
-    let mut picking_context = PickingIdContext::new(&picking_manager);
-
-    for (entity, _, _, _) in instance_query.iter() {
-        picking_data_manager.remove_gpu_data(&entity);
-        if let Some(removed_ids) = instance_manager.remove_gpu_instance(entity) {
-            event_writer.send(GpuInstanceEvent::Removed(removed_ids));
-        }
-    }
-
-    for (entity, visual, parent, mat_component) in instance_query.iter() {
-        let color: (f32, f32, f32, f32) = (
-            f32::from(visual.color.r) / 255.0f32,
-            f32::from(visual.color.g) / 255.0f32,
-            f32::from(visual.color.b) / 255.0f32,
-            f32::from(visual.color.a) / 255.0f32,
-        );
-        let mut instance_color = cgen::cgen_type::GpuInstanceColor::default();
-        instance_color.set_color(Vec4::new(color.0, color.1, color.2, color.3).into());
-
-        instance_color.set_color_blend(visual.color_blend.into());
-
-        color_manager.update_gpu_data(&entity, 0, &instance_color, &mut updater);
-
-        let mut material_key = None;
-        if let Some(material) = mat_component {
-            material_key = Some(material.material_id);
-        }
-
-        picking_data_manager.alloc_gpu_data(entity, renderer.static_buffer_allocator());
-
-        let mut picking_entity = entity;
-        if let Some(parent) = parent {
-            picking_entity = parent.0;
-        }
-
-        let mut picking_data = cgen::cgen_type::GpuInstancePickingData::default();
-        picking_data.set_picking_id(picking_context.acquire_picking_id(picking_entity).into());
-        picking_data_manager.update_gpu_data(&entity, 0, &picking_data, &mut updater);
-
-        let (model_meta_data, ready) = model_manager.get_model_meta_data(visual);
-        if !ready {
-            if let Some(model_resource_id) = &visual.model_resource_id {
-                missing_visuals_tracker.add_entity(*model_resource_id, entity);
-            }
-        }
-
-        let mut added_instances = Vec::with_capacity(model_meta_data.meshes.len());
-        for mesh in &model_meta_data.meshes {
-            let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
-
-            let instance_vas = GpuInstanceVas {
-                submesh_va: mesh_meta_data.mesh_description_offset,
-                material_va: if mesh.material_id != u32::MAX {
-                    mesh.material_id
-                } else {
-                    material_manager.gpu_data().va_for_index(material_key, 0) as u32
-                },
-                color_va: color_manager.va_for_index(Some(entity), 0) as u32,
-                transform_va: transform_manager.va_for_index(Some(entity), 0) as u32,
-                picking_data_va: picking_data_manager.va_for_index(Some(entity), 0) as u32,
-            };
-
-            let gpu_instance_id = instance_manager.add_gpu_instance(
-                entity,
-                renderer.static_buffer_allocator(),
-                &mut updater,
-                &instance_vas,
-            );
-
-            added_instances.push((
-                if mesh.material_id != u32::MAX {
-                    mesh.material_index
-                } else {
-                    material_manager.gpu_data().id_for_index(material_key, 0)
-                },
-                RenderElement::new(gpu_instance_id, mesh.mesh_id as u32, &mesh_manager),
-            ));
-        }
-        event_writer.send(GpuInstanceEvent::Added(added_instances));
-    }
-
-    renderer.add_update_job_block(updater.job_blocks());
 }
 
 fn prepare_shaders(mut pipeline_manager: ResMut<'_, PipelineManager>) {
