@@ -1,3 +1,7 @@
+//! Configuration.
+//!
+//! This crate provides a simple configuration system.
+
 mod errors;
 
 use figment::{
