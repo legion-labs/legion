@@ -5235,7 +5235,6 @@ version = "0.1.0"
 dependencies = [
  "lgn-app",
  "lgn-ecs",
- "lgn-math",
  "lgn-tracing",
  "lgn-utils",
  "smallvec",
