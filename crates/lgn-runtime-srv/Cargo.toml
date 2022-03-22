@@ -58,3 +58,7 @@ extra-files = [
     { source = "../../examples/physics/data/runtime/*", destination = "examples/physics/runtime" },
     { source = "../../examples/pong/data/runtime/*", destination = "examples/pong/runtime" },
 ]
+
+[package.metadata.cargo-udeps.ignore]
+# used only when standalone feature is not enabled
+normal = ["lgn-async", "lgn-grpc", "lgn-streamer"]
