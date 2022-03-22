@@ -362,28 +362,32 @@ mod tests {
 
     #[test]
     fn test_load_config_from() {
-        let config = Config::load_with_current_directory(
-            &Path::new(env!("CARGO_MANIFEST_DIR")).join("src/fixtures/prod"),
-        )
-        .unwrap();
+        Jail::expect_with(|_| {
+            let config = Config::load_with_current_directory(
+                &Path::new(env!("CARGO_MANIFEST_DIR")).join("src/fixtures/prod"),
+            )
+            .unwrap();
 
-        assert_eq!(
-            Some("prod"),
-            config
-                .get::<String>("lgn-config.tests.environment")
+            assert_eq!(
+                Some("prod"),
+                config
+                    .get::<String>("lgn-config.tests.environment")
+                    .unwrap()
+                    .as_deref()
+            );
+            assert!(config
+                .get::<String>("lgn-config.tests.non-existing")
                 .unwrap()
-                .as_deref()
-        );
-        assert!(config
-            .get::<String>("lgn-config.tests.non-existing")
-            .unwrap()
-            .is_none());
-        assert_eq!(
-            "",
-            config
-                .get_or_default::<String>("lgn-config.tests.non-existing")
-                .unwrap()
-        );
+                .is_none());
+            assert_eq!(
+                "",
+                config
+                    .get_or_default::<String>("lgn-config.tests.non-existing")
+                    .unwrap()
+            );
+
+            Ok(())
+        });
     }
 
     #[test]
@@ -410,37 +414,41 @@ mod tests {
 
     #[test]
     fn test_load_config_from_with_struct() {
-        let config = Config::load_with_current_directory(
-            &Path::new(env!("CARGO_MANIFEST_DIR")).join("src/fixtures"),
-        )
-        .unwrap();
+        Jail::expect_with(|_| {
+            let config = Config::load_with_current_directory(
+                &Path::new(env!("CARGO_MANIFEST_DIR")).join("src/fixtures"),
+            )
+            .unwrap();
 
-        let my_config: MyConfig = config.get("lgn-config.tests.my_config").unwrap().unwrap();
+            let my_config: MyConfig = config.get("lgn-config.tests.my_config").unwrap().unwrap();
 
-        assert!(my_config.my_bool);
-        assert_eq!(42, my_config.my_int);
-        //assert_eq!(1.23, my_config.my_float);
-        assert_eq!(
-            vec!["a".to_string(), "b".to_string(), "c".to_string()],
-            my_config.my_list
-        );
+            assert!(my_config.my_bool);
+            assert_eq!(42, my_config.my_int);
+            //assert_eq!(1.23, my_config.my_float);
+            assert_eq!(
+                vec!["a".to_string(), "b".to_string(), "c".to_string()],
+                my_config.my_list
+            );
+            Ok(())
+        });
     }
 
     #[test]
     fn test_load_config_from_relative_path_buf() {
-        let config = Config::load_with_current_directory(
-            &Path::new(env!("CARGO_MANIFEST_DIR")).join("src/fixtures/prod"),
-        )
-        .unwrap();
+        Jail::expect_with(|_| {
+            let base = &Path::new(env!("CARGO_MANIFEST_DIR")).join("src/fixtures/prod");
+            let config = Config::load_with_current_directory(&base).unwrap();
 
-        let path = config
-            .get::<RelativePathBuf>("lgn-config.tests.avatar")
-            .unwrap()
-            .unwrap();
+            let path = config
+                .get::<RelativePathBuf>("lgn-config.tests.avatar")
+                .unwrap()
+                .unwrap();
 
-        assert_eq!("../images/avatar.png", path.original().to_str().unwrap());
+            assert_eq!("../images/avatar.png", path.original().to_str().unwrap());
 
-        let cwd = std::env::current_dir().unwrap().join("src/fixtures/prod");
-        assert_eq!(cwd.join("../images/avatar.png"), path.relative());
+            assert_eq!(base.join("../images/avatar.png"), path.relative());
+
+            Ok(())
+        });
     }
 }
