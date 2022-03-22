@@ -1,4 +1,5 @@
-use lgn_app::{AppExit, EventReader, EventWriter};
+use lgn_app::AppExit;
+use lgn_ecs::event::{EventReader, EventWriter};
 
 use crate::WindowCloseRequested;
 

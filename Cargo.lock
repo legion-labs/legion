@@ -5770,6 +5770,7 @@ name = "lgn-window"
 version = "0.1.0"
 dependencies = [
  "lgn-app",
+ "lgn-ecs",
  "lgn-math",
  "lgn-tracing",
  "lgn-utils",
@@ -5783,6 +5784,7 @@ name = "lgn-winit"
 version = "0.1.0"
 dependencies = [
  "approx",
+ "instant",
  "lgn-app",
  "lgn-ecs",
  "lgn-input",

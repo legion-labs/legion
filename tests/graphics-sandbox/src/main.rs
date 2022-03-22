@@ -23,7 +23,7 @@ use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlug
 use lgn_presenter_window::component::PresenterWindow;
 use lgn_transform::prelude::{Transform, TransformBundle, TransformPlugin};
 use lgn_window::{WindowDescriptor, WindowPlugin, Windows};
-use lgn_winit::{WinitConfig, WinitPlugin, WinitWindows};
+use lgn_winit::{WinitPlugin, WinitSettings, WinitWindows};
 use sample_data::SampleDataPlugin;
 
 mod meta_cube_test;
@@ -100,8 +100,9 @@ fn main() {
         .add_system(presenter_snapshot_system)
         .add_system_to_stage(CoreStage::Last, on_snapshot_app_exit);
     } else {
-        app.insert_resource(WinitConfig {
+        app.insert_resource(WinitSettings {
             return_from_run: true,
+            ..WinitSettings::default()
         })
         .add_plugin(WinitPlugin::default())
         .add_system(on_render_surface_created_for_window.exclusive_system());
@@ -127,7 +128,7 @@ fn on_render_surface_created_for_window(
     mut event_render_surface_created: EventReader<'_, '_, RenderSurfaceCreatedForWindow>,
     wnd_list: Res<'_, Windows>,
     renderer: Res<'_, Renderer>,
-    winit_wnd_list: Res<'_, WinitWindows>,
+    winit_wnd_list: NonSend<'_, WinitWindows>,
     mut render_surfaces: Query<'_, '_, &mut RenderSurface>,
 ) {
     for event in event_render_surface_created.iter() {
