@@ -665,7 +665,7 @@ impl App {
         T: Resource,
     {
         if !self.world.contains_resource::<Events<T>>() {
-        self.init_resource::<Events<T>>()
+            self.init_resource::<Events<T>>()
                 .add_system_to_stage(CoreStage::First, Events::<T>::update_system);
         }
         self

@@ -1071,6 +1071,7 @@ pub enum QuerySingleError {
     MultipleEntities(&'static str),
 }
 
+#[allow(clippy::type_repetition_in_bounds)]
 impl<'w, 's, Q: WorldQuery, F: WorldQuery> Query<'w, 's, Q, F>
 where
     F::Fetch: FilterFetch,
