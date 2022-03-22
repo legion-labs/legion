@@ -86,7 +86,7 @@
 
 <div class="root">
   <TopBar />
-  <div class="content-wrapper">
+  <div class="content-wrapper" class:tauri={window.__TAURI_METADATA__}>
     <div class="content">
       <div class="secondary-contents">
         <div class="scene-explorer">
@@ -140,6 +140,10 @@
 
   .root .content-wrapper {
     @apply h-[calc(100vh-4.5rem)] w-full overflow-auto;
+  }
+
+  .root .content-wrapper.tauri {
+    @apply h-[calc(100vh-5rem)];
   }
 
   .content {

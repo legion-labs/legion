@@ -301,8 +301,10 @@ export function syncLatest() {
   return sourceControlClient.syncLatest({});
 }
 
-export function commitStagedResources() {
-  return sourceControlClient.commitStagedResources({});
+export function commitStagedResources({ message }: { message: string }) {
+  return sourceControlClient.commitStagedResources({
+    message,
+  });
 }
 
 export function getStagedResources() {

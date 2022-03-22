@@ -24,8 +24,8 @@
 
 <div class="root">
   <div class="header">
-    <div class="header-column w-1/12">change type</div>
-    <div class="header-column w-2/12">file type</div>
+    <div class="header-column w-1/12">change</div>
+    <div class="header-column w-2/12">type</div>
     <div class="header-column w-9/12">path</div>
   </div>
   <div class="body">

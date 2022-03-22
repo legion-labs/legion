@@ -1,24 +1,24 @@
 <script lang="ts">
-  import { stagedResources } from "@/stores/stagedResources";
+  import {
+    stagedResources,
+    stagedResourcesMode,
+  } from "@/stores/stagedResources";
   import { PanelHeader } from "@lgn/web-client/src/components/panel";
   import LocalChangesGrid from "./LocalChangesGrid.svelte";
-  import type { Mode } from "./LocalChangesHeader.svelte";
   import LocalChangesHeader from "./LocalChangesHeader.svelte";
   import LocalChangesList from "./LocalChangesList.svelte";
-
-  let mode: Mode | undefined;
 </script>
 
 <div class="root">
   <PanelHeader>
-    <LocalChangesHeader bind:mode />
+    <LocalChangesHeader />
   </PanelHeader>
 
   <div class="content">
-    {#if $stagedResources && $stagedResources.length && mode}
-      {#if mode === "card"}
+    {#if $stagedResources && $stagedResources.length}
+      {#if $stagedResourcesMode === "card"}
         <LocalChangesGrid stagedResources={$stagedResources} />
-      {:else if mode === "list"}
+      {:else if $stagedResourcesMode === "list"}
         <LocalChangesList stagedResources={$stagedResources} />
       {/if}
     {:else}
