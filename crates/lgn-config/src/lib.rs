@@ -358,7 +358,10 @@ mod tests {
 
     #[test]
     fn test_load_config_from() {
-        let config = Config::load_with_current_directory("src/fixtures/prod").unwrap();
+        let config = Config::load_with_current_directory(
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("src/fixtures/prod"),
+        )
+        .unwrap();
 
         assert_eq!(
             Some("prod"),
@@ -384,7 +387,10 @@ mod tests {
         Jail::expect_with(|jail| {
             // Lets set en environment variable, as an override.
             jail.set_env("LGN_LGN-CONFIG.TESTS.ENVIRONMENT", "foo");
-            let config = Config::load_with_current_directory("src/fixtures/prod").unwrap();
+            let config = Config::load_with_current_directory(
+                &Path::new(env!("CARGO_MANIFEST_DIR")).join("src/fixtures/prod"),
+            )
+            .unwrap();
 
             assert_eq!(
                 Some("foo"),
@@ -400,7 +406,10 @@ mod tests {
 
     #[test]
     fn test_load_config_from_with_struct() {
-        let config = Config::load_with_current_directory("src/fixtures").unwrap();
+        let config = Config::load_with_current_directory(
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("src/fixtures"),
+        )
+        .unwrap();
 
         let my_config: MyConfig = config.get("lgn-config.tests.my_config").unwrap().unwrap();
 
@@ -415,7 +424,10 @@ mod tests {
 
     #[test]
     fn test_load_config_from_relative_path_buf() {
-        let config = Config::load_with_current_directory("src/fixtures/prod").unwrap();
+        let config = Config::load_with_current_directory(
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("src/fixtures/prod"),
+        )
+        .unwrap();
 
         let path = config
             .get::<RelativePathBuf>("lgn-config.tests.avatar")
