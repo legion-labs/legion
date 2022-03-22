@@ -1,270 +1,454 @@
-//! config create exposes the legion config file to applications
+//! Configuration.
+//!
+//! This crate provides a simple configuration system.
 
-// crate-specific lint exceptions:
-#![allow(clippy::missing_errors_doc)]
+mod errors;
 
-use std::env;
-use std::mem::discriminant;
+use figment::{
+    providers::{Env, Format, Toml},
+    Figment,
+};
 use std::path::{Path, PathBuf};
-use std::sync::RwLock;
 
-use lgn_tracing::warn;
-use toml::value::{Table, Value};
+pub use errors::{Error, Result};
 
-const DEFAULT_CONFIG_FILENAME: &str = "legion.toml";
-const LOCAL_CONFIG_FILENAME: &str = "legion_local.toml";
+/// The type to use for relative paths in configurations.
+pub use figment::value::magic::RelativePathBuf;
+
+/// The default filename for configuration files.
+pub static DEFAULT_FILENAME: &str = "legion.toml";
 
 pub struct Config {
-    config_path: PathBuf,
-    entries: Table,
+    pub(crate) figment: Figment,
+}
+
+/// Get the value specified by the key.
+///
+/// If the value does not exist, None is returned.
+///
+/// # Efficiency
+///
+/// This method is provided for convenience. If you intend to read several
+/// configuration values, it is more efficient to either read a struct or
+/// instanciate a `Config` and use the `get` method on the struct.
+///
+/// # Errors
+///
+/// If any error occurs, including the specified key not existing in the
+/// configuration, it is returned.
+pub fn get<'de, T>(key: &str) -> Result<Option<T>>
+where
+    T: serde::Deserialize<'de>,
+{
+    Config::load()?.get(key)
+}
+
+/// Get the value specified by the key or a specified default value if it is
+/// not found.
+///
+/// If the value does not exist, the specified default value is returned.
+///
+/// # Efficiency
+///
+/// This method is provided for convenience. If you intend to read several
+/// configuration values, it is more efficient to either read a struct or
+/// instanciate a `Config` and use the `get_or` method on the struct.
+///
+/// # Errors
+///
+/// If any other error occurs, it is returned.
+pub fn get_or<'de, T>(key: &str, default: T) -> Result<T>
+where
+    T: serde::Deserialize<'de>,
+{
+    Config::load()?.get_or(key, default)
+}
+
+/// Get the value specified by the key or builds a default value by calling
+/// the specified function if the key is not found.
+///
+/// # Efficiency
+///
+/// This method is provided for convenience. If you intend to read several
+/// configuration values, it is more efficient to either read a struct or
+/// instanciate a `Config` and use the `get_or_else` method on the struct.
+///
+/// # Errors
+///
+/// If any other error occurs, it is returned.
+pub fn get_or_else<'de, T, F: FnOnce() -> T>(key: &str, f: F) -> Result<T>
+where
+    T: serde::Deserialize<'de>,
+{
+    Config::load()?.get_or_else(key, f)
+}
+
+/// Get the value specified by the key or a default value if it is not
+/// found.
+///
+/// If the value does not exist, the default value is returned.
+///
+/// # Efficiency
+///
+/// This method is provided for convenience. If you intend to read several
+/// configuration values, it is more efficient to either read a struct or
+/// instanciate a `Config` and use the `get_or_default` method on the
+/// struct.
+///
+/// # Errors
+///
+/// If any other error occurs, it is returned.
+pub fn get_or_default<'de, T>(key: &str) -> Result<T>
+where
+    T: serde::Deserialize<'de> + Default,
+{
+    Config::load()?.get_or_default(key)
+}
+
+/// Get the absolute path at the specified key.
+///
+/// If the specified path is relative, it will be resolved relative to its
+/// containing configuration file, or the current working directory if the
+/// value does not come from a file.
+///
+/// # Efficiency
+///
+/// This method is provided for convenience. If you intend to read several
+/// configuration values, it is more efficient to either read a struct or
+/// instanciate a `Config` and use the `get_absolute_path` method on the
+/// struct.
+///
+/// # Errors
+///
+/// If any error occurs, including the specified key not existing in the
+/// configuration, it is returned.
+pub fn get_absolute_path(key: &str) -> Result<Option<PathBuf>> {
+    Config::load()?.get_absolute_path(key)
+}
+
+/// Get the absolute path at the specified key or the specified default.
+///
+/// If the specified path is relative, it will be resolved relative to its
+/// containing configuration file, or the current working directory if the
+/// value does not come from a file.
+///
+/// # Efficiency
+///
+/// This method is provided for convenience. If you intend to read several
+/// configuration values, it is more efficient to either read a struct or
+/// instanciate a `Config` and use the `get_absolute_path` method on the
+/// struct.
+///
+/// # Errors
+///
+/// If any error occurs, including the specified key not existing in the
+/// configuration, it is returned.
+pub fn get_absolute_path_or(key: &str, default: PathBuf) -> Result<PathBuf> {
+    Config::load()?.get_absolute_path_or(key, default)
 }
 
 impl Config {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
-        // Search for the CONFIG file from the current exec direction,
-        // walking up to the parents directory
-        let mut config_dir = env::current_exe().unwrap();
-        config_dir.pop();
+    /// Load the configuration from all its various sources.
+    ///
+    /// If a configuration value is set in different sources, the value from the
+    /// last read source will be used.
+    ///
+    /// Namely, the configuration will be loaded from the following locations, in
+    /// order:
+    ///
+    /// - `/etc/legion-labs/config.toml` on UNIX.
+    /// - Any `legion.toml` file in the current binary directory, or one of its
+    /// parent directories, stopping as soon as a file is found.
+    /// - `$XDG_CONFIG_HOME/legion-labs/config.toml` on UNIX.
+    /// - `$HOME/.config/legion-labs/config.toml` on UNIX.
+    /// - {FOLDERID_RoamingAppData}/legion-labs/legion.toml on Windows.
+    /// - Any `legion.toml` file in the current working directory, or one of its
+    /// parent directories, stopping as soon as a file is found.
+    /// - Environment variables, starting with `LGN`.
+    ///
+    /// # Errors
+    ///
+    /// If the configuration cannot be loaded, an error is returned.
+    pub fn load() -> Result<Self> {
+        let path = std::env::current_dir()?;
 
-        let mut global_table: Option<Table> = None;
+        Self::load_with_current_directory(path)
+    }
 
-        loop {
-            let default_config = config_dir.join(DEFAULT_CONFIG_FILENAME);
-            if default_config.is_file() {
-                if let Some(mut default_table) = Self::load_toml_table(default_config.as_path()) {
-                    let local_config = config_dir.join(LOCAL_CONFIG_FILENAME);
-                    if local_config.is_file() {
-                        // apply local override
-                        if let Some(overrides) = Self::load_toml_table(local_config.as_path()) {
-                            Self::merge_entries(overrides, &mut default_table);
-                        };
-                    }
-                    global_table = Some(default_table);
-                }
-            }
+    /// Load a configuration, using the specified root as the current directory.
+    ///
+    /// See `load()` for more information.
+    ///
+    /// # Note
+    ///
+    /// If root is a relative path, then the ancestors search will stop at the
+    /// relative root. While useful for tests, it's probably safer to invoke that
+    /// with an absolute path in any other case, always.
+    ///
+    /// # Errors
+    ///
+    /// If the configuration cannot be loaded, an error is returned.
+    pub fn load_with_current_directory(path: impl AsRef<Path>) -> Result<Self> {
+        let mut figment = Figment::new();
 
-            if global_table.is_some() || !config_dir.pop() {
+        // On Unix, always read the system-wide configuration file first if it
+        // exists.
+        if cfg!(unix) {
+            figment = figment.merge(Toml::file(format!("/etc/legion-labs/{}", DEFAULT_FILENAME)));
+        }
+
+        // Starting with the current binary directory, walk up to the root,
+        // stopping as soon as we find a configuration file.
+        let binary_path = std::env::current_exe()?;
+
+        for dir in binary_path.parent().unwrap().ancestors() {
+            let config_file_path = dir.join(DEFAULT_FILENAME);
+
+            if std::fs::metadata(&config_file_path).is_ok() {
+                figment = figment.merge(Toml::file(config_file_path));
                 break;
             }
         }
 
-        if global_table.is_none() {
-            warn!("Config file {:?} not found", DEFAULT_CONFIG_FILENAME);
+        // If we have an user configuration folder, try to read from it.
+        if let Some(config_dir) = dirs::config_dir() {
+            let config_file_path = config_dir.join("legion-labs").join(DEFAULT_FILENAME);
+            figment = figment.merge(Toml::file(config_file_path));
         }
 
-        Self {
-            config_path: config_dir,
-            entries: global_table.unwrap_or_default(),
-        }
-    }
+        // Then, try to read the closest file we found.
+        for dir in path.as_ref().ancestors() {
+            let config_file_path = dir.join(DEFAULT_FILENAME);
 
-    fn merge_entries(apply: Table, dest: &mut Table) {
-        apply.into_iter().for_each(|(section_name, section_table)| {
-            if let Value::Table(section_table) = section_table {
-                if let Some(dest_section) = dest
-                    .entry(section_name)
-                    .or_insert(Value::Table(Table::default()))
-                    .as_table_mut()
-                {
-                    section_table.into_iter().for_each(|(key_name, value)| {
-                        dest_section.insert(key_name, value); // override value in global table
-                    });
-                }
+            if std::fs::metadata(&config_file_path).is_ok() {
+                figment = figment.merge(Toml::file(config_file_path));
+                break;
             }
-        });
-    }
-
-    fn load_toml_table(filename: &Path) -> Option<Table> {
-        std::fs::read_to_string(&filename)
-            .map_err(|err| format!("Failed to read TOML file {:?}: {}", &filename, err))
-            .and_then(|config_toml| {
-                config_toml
-                    .parse::<Value>()
-                    .map_err(|err| format!("Failed to parse TOML file {:?}: {}", &filename, err))
-                    .and_then(|table| {
-                        table
-                            .try_into::<Table>()
-                            .map_err(|err| format!("Invalid TOML format {:?}: {}", &filename, err))
-                    })
-            })
-            .map_err(|err| {
-                warn!("{}", err);
-                err
-            })
-            .ok()
-    }
-
-    fn find_table_entry<'a>(&'a self, property_name: &str) -> Option<&'a Value> {
-        let mut parts = property_name.split('.');
-
-        if let Some(first_part) = parts.next() {
-            let mut node: &toml::Value = self.entries.get(first_part)?;
-
-            for part in parts {
-                if let toml::Value::Table(table) = node {
-                    if let Some(value) = table.get(part) {
-                        node = value;
-                    } else {
-                        warn!("Configs entry not found: {}", property_name);
-                        return None;
-                    }
-                }
-            }
-
-            Some(node)
-        } else {
-            warn!("Configs entry not found: {}", property_name);
-            None
         }
+
+        // Finally, read from environment variables, starting with `LGN`.
+        let figment = figment.merge(Env::prefixed("LGN_"));
+
+        Ok(Self { figment })
     }
 
-    fn find_table_entry_mut<'a>(&'a mut self, property_name: &str) -> Option<&'a mut Value> {
-        let mut parts = property_name.split('.');
-
-        if let Some(first_part) = parts.next() {
-            let mut node: &mut toml::Value = self.entries.get_mut(first_part)?;
-
-            for part in parts {
-                if let toml::Value::Table(table) = node {
-                    if let Some(value) = table.get_mut(part) {
-                        node = value;
-                    } else {
-                        warn!("Configs entry not found: {}", property_name);
-                        return None;
-                    }
-                }
-            }
-
-            Some(node)
-        } else {
-            warn!("Configs entry not found: {}", property_name);
-            None
-        }
-    }
-
-    pub fn get<'de, T>(&self, key: &str) -> Option<T>
+    /// Get the value specified by the key.
+    ///
+    /// If the value does not exist, None is returned.
+    ///
+    /// # Errors
+    ///
+    /// If any error occurs, including the specified key not existing in the
+    /// configuration, it is returned.
+    pub fn get<'de, T>(&self, key: &str) -> Result<Option<T>>
     where
         T: serde::Deserialize<'de>,
     {
-        self.find_table_entry(key)
-            .and_then(|value_entry| value_entry.clone().try_into::<T>().ok())
+        match self.figment.extract_inner(key).map_err(Into::into) {
+            Ok(value) => Ok(Some(value)),
+            Err(figment::Error {
+                kind: figment::error::Kind::MissingField(_),
+                ..
+            }) => Ok(None),
+            Err(err) => Err(err).map_err(Box::new)?,
+        }
     }
 
-    pub fn get_or<'a, T>(&'a self, key: &str, default_value: T) -> T
+    /// Get the value specified by the key or a specified default value if it is
+    /// not found.
+    ///
+    /// If the value does not exist, the specified default value is returned.
+    ///
+    /// # Errors
+    ///
+    /// If any other error occurs, it is returned.
+    pub fn get_or<'de, T>(&self, key: &str, default: T) -> Result<T>
     where
-        T: serde::Deserialize<'a>,
+        T: serde::Deserialize<'de>,
     {
-        self.get(key).unwrap_or(default_value)
+        self.get(key).map(|value| value.unwrap_or(default))
     }
 
-    pub fn set<T>(&mut self, key: &str, value: T) -> bool
+    /// Get the value specified by the key or builds a default value by calling
+    /// the specified function if the key is not found.
+    ///
+    /// # Errors
+    ///
+    /// If any other error occurs, it is returned.
+    pub fn get_or_else<'de, T, F>(&self, key: &str, f: F) -> Result<T>
     where
-        T: serde::Serialize,
+        T: serde::Deserialize<'de>,
+        F: FnOnce() -> T,
     {
-        self.find_table_entry_mut(key)
-            .map(|entry_value| match Value::try_from(value) {
-                Ok(new_value) if discriminant(&new_value) == discriminant(entry_value) => {
-                    *entry_value = new_value;
-                    Some(entry_value)
-                }
-                _ => None,
-            })
-            .is_some()
+        self.get(key).map(|value| value.unwrap_or_else(f))
     }
 
-    pub fn get_absolute_path(&self, key: &str) -> Option<PathBuf> {
-        self.find_table_entry(key)
-            .and_then(Value::as_str)
-            .map(|str| self.config_path.join(str))
+    /// Get the value specified by the key or a default value if it is not
+    /// found.
+    ///
+    /// If the value does not exist, the default value is returned.
+    ///
+    /// # Errors
+    ///
+    /// If any other error occurs, it is returned.
+    pub fn get_or_default<'de, T>(&self, key: &str) -> Result<T>
+    where
+        T: serde::Deserialize<'de> + Default,
+    {
+        self.get(key).map(Option::unwrap_or_default)
     }
 
-    /// Returns the path containing the configuration.
-    pub fn config_path(&self) -> &Path {
-        &self.config_path
+    /// Get the absolute path at the specified key.
+    ///
+    /// If the specified path is relative, it will be resolved relative to its
+    /// containing configuration file, or the current working directory if the
+    /// value does not come from a file.
+    ///
+    /// # Errors
+    ///
+    /// If any error occurs, including the specified key not existing in the
+    /// configuration, it is returned.
+    pub fn get_absolute_path(&self, key: &str) -> Result<Option<PathBuf>> {
+        if let Some(path) = self.get::<RelativePathBuf>(key)? {
+            let path = path.relative();
+
+            Ok(Some(if path.is_absolute() {
+                path
+            } else {
+                std::env::current_dir()?.join(path)
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Get the absolute path at the specified key or the specified default.
+    ///
+    /// If the specified path is relative, it will be resolved relative to its
+    /// containing configuration file, or the current working directory if the
+    /// value does not come from a file.
+    ///
+    /// # Errors
+    ///
+    /// If any error occurs, including the specified key not existing in the
+    /// configuration, it is returned.
+    pub fn get_absolute_path_or(&self, key: &str, default: PathBuf) -> Result<PathBuf> {
+        let path = self
+            .get_or_else::<RelativePathBuf, _>(key, || RelativePathBuf::from(default))?
+            .relative();
+
+        Ok(if path.is_absolute() {
+            path
+        } else {
+            std::env::current_dir()?.join(path)
+        })
     }
 }
 
-lazy_static::lazy_static! {
-    pub static ref CONFIGS : RwLock<Config> = RwLock::new(Config::new());
-}
+#[cfg(test)]
+mod tests {
+    use figment::{value::magic::RelativePathBuf, Jail};
+    use serde::{Deserialize, Serialize};
 
-#[macro_export]
-macro_rules! config_set {
-    ($param:literal, $val:expr ) => {
-        $crate::CONFIGS.write().unwrap().set($param, $val)
-    };
-}
+    use super::*;
 
-#[macro_export]
-macro_rules! config_get {
-    ($param:literal) => {
-        $crate::CONFIGS.read().unwrap().get($param)
-    };
-}
+    #[derive(Serialize, Deserialize, Debug)]
+    struct MyConfig {
+        my_bool: bool,
+        my_int: i64,
+        my_float: f64,
+        my_list: Vec<String>,
+    }
 
-#[macro_export]
-macro_rules! config_get_or {
-    ($param:literal, $def:expr) => {
-        $crate::CONFIGS.read().unwrap().get_or($param, $def)
-    };
-}
+    #[test]
+    fn test_load_config_from() {
+        Jail::expect_with(|_| {
+            let config = Config::load_with_current_directory(
+                &Path::new(env!("CARGO_MANIFEST_DIR")).join("src/fixtures/prod"),
+            )
+            .unwrap();
 
-#[test]
-fn test_config() {
-    use std::collections::HashMap;
+            assert_eq!(
+                Some("prod"),
+                config
+                    .get::<String>("lgn-config.tests.environment")
+                    .unwrap()
+                    .as_deref()
+            );
+            assert!(config
+                .get::<String>("lgn-config.tests.non-existing")
+                .unwrap()
+                .is_none());
+            assert_eq!(
+                "",
+                config
+                    .get_or_default::<String>("lgn-config.tests.non-existing")
+                    .unwrap()
+            );
 
-    let configs = Config::new();
+            Ok(())
+        });
+    }
 
-    configs.get_absolute_path("editor_srv.project_dir").unwrap();
+    #[test]
+    fn test_load_config_from_with_environment_variable_override() {
+        Jail::expect_with(|jail| {
+            // Lets set en environment variable, as an override.
+            jail.set_env("LGN_LGN-CONFIG.TESTS.ENVIRONMENT", "foo");
+            let config = Config::load_with_current_directory(
+                &Path::new(env!("CARGO_MANIFEST_DIR")).join("src/fixtures/prod"),
+            )
+            .unwrap();
 
-    let test_string: String = configs.get("test_config.test_string").unwrap();
-    assert_eq!(test_string, "TestString");
+            assert_eq!(
+                Some("foo"),
+                config
+                    .get::<String>("lgn-config.tests.environment")
+                    .unwrap()
+                    .as_deref()
+            );
 
-    let test_bool: bool = configs.get("test_config.test_bool").unwrap();
-    assert!(!test_bool);
+            Ok(())
+        });
+    }
 
-    let test_int: i32 = configs.get("test_config.test_int").unwrap();
-    assert_eq!(test_int, 1337);
+    #[test]
+    fn test_load_config_from_with_struct() {
+        Jail::expect_with(|_| {
+            let config = Config::load_with_current_directory(
+                &Path::new(env!("CARGO_MANIFEST_DIR")).join("src/fixtures"),
+            )
+            .unwrap();
 
-    let test_float: f32 = configs.get("test_config.test_float").unwrap();
-    assert!((test_float - 1337.1337f32).abs() < f32::EPSILON);
+            let my_config: MyConfig = config.get("lgn-config.tests.my_config").unwrap().unwrap();
 
-    let test_sub_config: i32 = configs.get("test_config.sub_config.test_nested").unwrap();
-    assert_eq!(test_sub_config, 42);
+            assert!(my_config.my_bool);
+            assert_eq!(42, my_config.my_int);
+            //assert_eq!(1.23, my_config.my_float);
+            assert_eq!(
+                vec!["a".to_string(), "b".to_string(), "c".to_string()],
+                my_config.my_list
+            );
+            Ok(())
+        });
+    }
 
-    let test_config: HashMap<String, toml::Value> = configs.get("test_config").unwrap();
-    assert_eq!(
-        test_config,
-        [
-            (
-                "test_string".to_string(),
-                toml::Value::String("TestString".to_string())
-            ),
-            ("test_bool".to_string(), toml::Value::Boolean(false)),
-            ("test_int".to_string(), toml::Value::Integer(1337)),
-            ("test_float".to_string(), toml::Value::Float(1337.1337f64)),
-            (
-                "sub_config".to_string(),
-                toml::Value::Table(
-                    [("test_nested".to_string(), toml::Value::Integer(42),)]
-                        .into_iter()
-                        .collect()
-                )
-            ),
-        ]
-        .into_iter()
-        .collect(),
-    );
-}
+    #[test]
+    fn test_load_config_from_relative_path_buf() {
+        Jail::expect_with(|_| {
+            let base = &Path::new(env!("CARGO_MANIFEST_DIR")).join("src/fixtures/prod");
+            let config = Config::load_with_current_directory(&base).unwrap();
 
-#[test]
-fn test_singleton_configs() {
-    let mut test_int: i32 = config_get!("test_config.test_int").unwrap();
-    assert_eq!(test_int, 1337);
+            let path = config
+                .get::<RelativePathBuf>("lgn-config.tests.avatar")
+                .unwrap()
+                .unwrap();
 
-    assert!(config_set!("test_config.test_int", 1));
+            assert_eq!("../images/avatar.png", path.original().to_str().unwrap());
 
-    test_int = config_get!("test_config.test_int").unwrap();
-    assert_eq!(test_int, 1);
+            assert_eq!(base.join("../images/avatar.png"), path.relative());
+
+            Ok(())
+        });
+    }
 }

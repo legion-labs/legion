@@ -59,11 +59,13 @@ impl Transaction {
                 &self.id,
                 self.operations.len()
             );
-            if lgn_config::config_get_or!("data_transaction.log_operation", false) {
+
+            if lgn_config::get_or("data_transaction.log_operation", false).unwrap() {
                 for op in &self.operations {
                     log.push_str(&format!("\n\t{:?}", op));
                 }
             }
+
             info!("{}", &log);
             Ok(())
         }

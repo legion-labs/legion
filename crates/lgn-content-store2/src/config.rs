@@ -8,7 +8,7 @@ use crate::{
 };
 
 /// The configuration of the content-store.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Config {
     pub provider: ProviderConfig,
     pub caching_providers: Vec<ProviderConfig>,
@@ -87,26 +87,12 @@ impl Config {
     ///
     /// If the section is not found, the default section is used.
     pub fn from_legion_toml(section: Option<&str>) -> Self {
-        let settings = lgn_config::Config::new();
-
         match section {
-            None | Some("") => {
-                if let Some(config) = settings.get::<Self>("content_store") {
-                    config
-                } else {
-                    Self {
-                        provider: ProviderConfig::default(),
-                        caching_providers: vec![],
-                    }
-                }
-            }
-            Some(section) => {
-                if let Some(config) = settings.get::<Self>(&format!("content_store.{}", section)) {
-                    config
-                } else {
-                    Self::from_legion_toml(None)
-                }
-            }
+            None | Some("") => lgn_config::get_or_default("content_store").unwrap(),
+            Some(section) => lgn_config::get_or_else(&format!("content_store.{}", section), || {
+                Self::from_legion_toml(None)
+            })
+            .unwrap(),
         }
     }
 

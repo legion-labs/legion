@@ -13,7 +13,6 @@ use clap::Parser;
 use generic_data::plugin::GenericDataPlugin;
 use lgn_app::prelude::*;
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
-use lgn_config::Config;
 use lgn_content_store::ContentStoreAddr;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
@@ -63,15 +62,12 @@ pub fn build_runtime(
     fallback_root_asset: &str,
 ) -> App {
     let args = Args::parse();
-    let settings = Config::new();
 
     let project_dir = {
         if let Some(params) = args.project {
             PathBuf::from(params)
         } else if let Some(key) = project_dir_setting {
-            settings
-                .get_absolute_path(key)
-                .unwrap_or_else(|| PathBuf::from(fallback_project_dir))
+            lgn_config::get_absolute_path_or(key, PathBuf::from(fallback_project_dir)).unwrap()
         } else {
             PathBuf::from(fallback_project_dir)
         }
@@ -103,13 +99,15 @@ pub fn build_runtime(
     let mut physics_settings = PhysicsSettingsBuilder::default();
     if args.physics_debugger {
         physics_settings = physics_settings.enable_visual_debugger(true);
-    } else if let Some(enable_visual_debugger) = settings.get("physics.enable_visual_debugger") {
+    } else if let Some(enable_visual_debugger) =
+        lgn_config::get("physics.enable_visual_debugger").unwrap()
+    {
         physics_settings = physics_settings.enable_visual_debugger(enable_visual_debugger);
     }
-    if let Some(length_tolerance) = settings.get("physics.length_tolerance") {
+    if let Some(length_tolerance) = lgn_config::get("physics.length_tolerance").unwrap() {
         physics_settings = physics_settings.length_tolerance(length_tolerance);
     }
-    if let Some(speed_tolerance) = settings.get("physics.speed_tolerance") {
+    if let Some(speed_tolerance) = lgn_config::get("physics.speed_tolerance").unwrap() {
         physics_settings = physics_settings.speed_tolerance(speed_tolerance);
     }
 
@@ -159,10 +157,9 @@ pub fn build_runtime(
         use lgn_window::WindowPlugin;
 
         let server_addr = {
-            let url = args
-                .addr
-                .as_deref()
-                .unwrap_or_else(|| settings.get_or("runtime_srv.server_addr", "[::1]:50052"));
+            let url = args.addr.as_deref().unwrap_or_else(|| {
+                lgn_config::get_or("runtime_srv.server_addr", "[::1]:50052").unwrap()
+            });
             url.parse::<SocketAddr>()
                 .unwrap_or_else(|err| panic!("Invalid server_addr '{}': {}", url, err))
         };

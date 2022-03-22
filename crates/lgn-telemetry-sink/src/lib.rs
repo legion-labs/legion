@@ -48,40 +48,36 @@ pub struct TelemetryGuardBuilder {
 impl Default for TelemetryGuardBuilder {
     fn default() -> Self {
         Self {
-            logs_buffer_size: lgn_config::config_get_or!(
-                "logging.logs_buffer_size",
-                10 * 1024 * 1024
-            ),
-            metrics_buffer_size: lgn_config::config_get_or!(
-                "logging.metrics_buffer_size",
-                1024 * 1024
-            ),
-            threads_buffer_size: lgn_config::config_get_or!(
-                "threads_buffer_size",
-                10 * 1024 * 1024
-            ),
-            local_sink_enabled: lgn_config::config_get_or!("logging.local_sink_enabled", true),
+            logs_buffer_size: lgn_config::get_or("logging.logs_buffer_size", 10 * 1024 * 1024)
+                .unwrap(),
+            metrics_buffer_size: lgn_config::get_or("logging.metrics_buffer_size", 1024 * 1024)
+                .unwrap(),
+            threads_buffer_size: lgn_config::get_or("threads_buffer_size", 10 * 1024 * 1024)
+                .unwrap(),
+            local_sink_enabled: lgn_config::get_or("logging.local_sink_enabled", true).unwrap(),
             local_sink_max_level: LevelFilter::from_str(
-                &(lgn_config::config_get!("logging.local_sink_max_level").unwrap_or_else(|| {
+                &(lgn_config::get_or_else("logging.local_sink_max_level", || {
                     if cfg!(debug_assertions) {
                         "INFO".to_owned()
                     } else {
                         "WARN".to_owned()
                     }
-                }) as String),
+                })
+                .unwrap()),
             )
             .unwrap_or(LevelFilter::Off),
             grpc_sink_max_level: LevelFilter::from_str(
-                &(lgn_config::config_get!("logging.grpc_sink_max_level").unwrap_or_else(|| {
+                &(lgn_config::get_or_else("logging.grpc_sink_max_level", || {
                     if cfg!(debug_assertions) {
                         "DEBUG".to_owned()
                     } else {
                         "INFO".to_owned()
                     }
-                }) as String),
+                })
+                .unwrap()),
             )
             .unwrap_or(LevelFilter::Off),
-            target_max_levels: lgn_config::config_get_or!("logging.level_filters", HashMap::new()),
+            target_max_levels: lgn_config::get_or_default("logging.level_filters").unwrap(),
             max_queue_size: 16, //todo: change to nb_threads * 2
             max_level_override: None,
             interop_max_level_override: None,
