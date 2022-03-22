@@ -7,7 +7,7 @@ use lgn_input::{
     ElementState,
 };
 use lgn_math::Vec2;
-use lgn_transform::prelude::Transform;
+use lgn_transform::{components::GlobalTransform, prelude::Transform};
 
 use crate::{
     cgen::cgen_type::PickingData,
@@ -104,7 +104,8 @@ pub struct PickingManagerInner {
     picking_blocks: Vec<Option<PickingIdBlock>>,
     mouse_input: MouseButtonInput,
     screen_rect: Vec2,
-    manip_entity_base_transform: Transform,
+    manip_entity_base_local_transform: Transform,
+    manip_entity_base_global_transform: GlobalTransform,
     picking_state: PickingState,
     current_cpu_frame_no: u64,
     picked_cpu_frame_no: u64,
@@ -133,7 +134,8 @@ impl PickingManager {
                     state: ElementState::Released,
                     pos: Vec2::NAN,
                 },
-                manip_entity_base_transform: Transform::default(),
+                manip_entity_base_local_transform: Transform::default(),
+                manip_entity_base_global_transform: GlobalTransform::default(),
                 screen_rect: Vec2::ZERO,
                 picking_state: PickingState::Ready,
                 current_cpu_frame_no: 0,
@@ -412,15 +414,23 @@ impl PickingManager {
         inner.manipulated_entity
     }
 
-    pub fn set_base_picking_transform(&self, base_transform: &Transform) {
+    pub fn set_base_picking_transforms(
+        &self,
+        local_transform: &Transform,
+        global_transform: &GlobalTransform,
+    ) {
         let mut inner = self.inner.lock().unwrap();
-        inner.manip_entity_base_transform = *base_transform;
+        inner.manip_entity_base_local_transform = *local_transform;
+        inner.manip_entity_base_global_transform = *global_transform;
     }
 
-    pub fn base_picking_transform(&self) -> Transform {
+    pub fn base_picking_transforms(&self) -> (Transform, GlobalTransform) {
         let inner = self.inner.lock().unwrap();
 
-        inner.manip_entity_base_transform
+        (
+            inner.manip_entity_base_local_transform,
+            inner.manip_entity_base_global_transform,
+        )
     }
 }
 

@@ -6,7 +6,10 @@ use lgn_input::{
 };
 use lgn_math::Vec2;
 use lgn_tracing::span_fn;
-use lgn_transform::{components::GlobalTransform, prelude::Transform};
+use lgn_transform::{
+    components::{GlobalTransform, Parent},
+    prelude::Transform,
+};
 use lgn_window::WindowResized;
 
 use super::{picking_event::PickingEvent, ManipulatorManager, PickingIdContext, PickingManager};
@@ -136,13 +139,13 @@ fn update_picked_entity(
     newly_picked_query: Query<
         '_,
         '_,
-        (Entity, &Transform),
+        (Entity, &Transform, &GlobalTransform),
         (Added<PickedComponent>, Without<ManipulatorComponent>),
     >,
 ) {
-    for (entity, transform) in newly_picked_query.iter() {
+    for (entity, local_transform, global_transform) in newly_picked_query.iter() {
         if Some(entity) == picking_manager.manipulated_entity() {
-            picking_manager.set_base_picking_transform(transform);
+            picking_manager.set_base_picking_transforms(local_transform, global_transform);
         }
     }
 }
@@ -171,6 +174,7 @@ fn update_manipulator_component(
             &mut Transform,
             &GlobalTransform,
             &mut PickedComponent,
+            Option<&Parent>,
         ),
         Without<ManipulatorComponent>,
     >,
@@ -184,6 +188,7 @@ fn update_manipulator_component(
             Option<&mut PickedComponent>,
         ),
     >,
+    parent_query: Query<'_, '_, &GlobalTransform>,
 ) {
     let mut selected_part = usize::MAX;
     for (_entity, _transform, manipulator, picked_component) in manipulator_query.iter() {
@@ -212,10 +217,11 @@ fn update_manipulator_component(
     }
 
     let mut select_entity_transform = None;
-    for (entity, mut transform, global_transform, picked) in picked_query.iter_mut() {
+    for (entity, mut transform, global_transform, picked, parent) in picked_query.iter_mut() {
         if picking_manager.manipulated_entity() == Some(entity) {
             if active_manipulator_part {
-                let base_transform = picking_manager.base_picking_transform();
+                let (base_local_transform, base_global_transform) =
+                    picking_manager.base_picking_transforms();
 
                 let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
                 if !q_cameras.is_empty() {
@@ -228,9 +234,18 @@ fn update_manipulator_component(
                             );
                         }
 
+                        let parent_global_transform =
+                            parent.map_or(GlobalTransform::identity(), |parent| {
+                                *parent_query
+                                    .get(parent.0)
+                                    .unwrap_or(&GlobalTransform::identity())
+                            });
+
                         *transform = manipulator_manager.manipulate_entity(
                             selected_part,
-                            &base_transform,
+                            &base_local_transform,
+                            &base_global_transform,
+                            &parent_global_transform,
                             q_cameras[0],
                             picking_manager.picked_pos(),
                             screen_rect,
@@ -240,11 +255,11 @@ fn update_manipulator_component(
                 }
             } else if update_manip_entity {
                 if !picking_manager.mouse_button_down()
-                    && (*transform) != picking_manager.base_picking_transform()
+                    && (*transform) != picking_manager.base_picking_transforms().0
                 {
                     event_writer.send(PickingEvent::ApplyTransaction(entity, *transform));
                 }
-                picking_manager.set_base_picking_transform(&transform);
+                picking_manager.set_base_picking_transforms(&transform, global_transform);
                 // Notify the transform
             }
             select_entity_transform = Some(*global_transform);
