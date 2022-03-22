@@ -37,7 +37,7 @@ export function syncFromMain() {
   return allResources.run(getAllResources);
 }
 
-export async function submitToMain() {
+export async function submitToMain(message: string) {
   const resources = get(stagedResources);
 
   if (!resources?.length) {
@@ -50,5 +50,11 @@ export async function submitToMain() {
     log.json`Committing the following resources ${get(stagedResources)}`
   );
 
-  await commitStagedResources();
+  await commitStagedResources({ message });
 }
+
+export type StagedResourcesModeValue = "card" | "list";
+
+export type StagedResourcesModeStore = Writable<StagedResourcesModeValue>;
+
+export const stagedResourcesMode: StagedResourcesModeStore = writable("card");
