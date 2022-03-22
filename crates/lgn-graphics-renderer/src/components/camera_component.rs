@@ -3,6 +3,7 @@ use dolly::rig::CameraRig;
 use lgn_core::Time;
 use lgn_ecs::prelude::*;
 use lgn_graphics_cgen_runtime::Float4;
+use lgn_graphics_data::runtime::CameraSetup;
 use lgn_input::Input;
 use lgn_input::{
     keyboard::KeyCode,
@@ -130,6 +131,19 @@ impl CameraComponent {
 
         camera_props
     }
+
+    fn build_rig(eye: Vec3, center: Vec3) -> CameraRig {
+        let forward = (center - eye).normalize();
+        let right = forward.cross(UP_VECTOR).normalize();
+        let up = right.cross(forward);
+        let rotation = Quat::from_mat3(&Mat3::from_cols(right, up, -forward));
+
+        CameraRig::builder()
+            .with(Position::new(eye))
+            .with(YawPitch::new().rotation_quat(rotation))
+            .with(Smooth::new_position_rotation(0.2, 0.2))
+            .build()
+    }
 }
 
 impl Default for CameraComponent {
@@ -137,19 +151,8 @@ impl Default for CameraComponent {
         let eye = Vec3::new(0.0, 1.0, -2.0);
         let center = Vec3::ZERO;
 
-        let forward = (center - eye).normalize();
-        let right = forward.cross(UP_VECTOR).normalize();
-        let up = right.cross(forward);
-        let rotation = Quat::from_mat3(&Mat3::from_cols(right, up, -forward));
-
-        let camera_rig = CameraRig::builder()
-            .with(Position::new(eye))
-            .with(YawPitch::new().rotation_quat(rotation))
-            .with(Smooth::new_position_rotation(0.2, 0.2))
-            .build();
-
         Self {
-            camera_rig,
+            camera_rig: Self::build_rig(eye, center),
             speed: 2.5,
             rotation_speed: 40.0,
         }
@@ -160,8 +163,26 @@ pub(crate) fn create_camera(mut commands: Commands<'_, '_>) {
     commands.spawn().insert(CameraComponent::default());
 }
 
-#[derive(Default)]
-pub(crate) struct CameraMoving(bool);
+#[derive(Component, Default)]
+pub(crate) struct CameraSetupApplied(); // marker component
+
+pub(crate) fn apply_camera_setups(
+    camera_setups: Query<'_, '_, (Entity, &CameraSetup), Without<CameraSetupApplied>>,
+    mut cameras: Query<'_, '_, &mut CameraComponent>,
+    mut commands: Commands<'_, '_>,
+) {
+    for (entity, setup) in camera_setups.iter() {
+        if let Some(mut camera) = cameras.iter_mut().next() {
+            let camera = camera.as_mut();
+            camera.camera_rig = CameraComponent::build_rig(setup.eye, setup.look_at);
+        }
+        commands
+            .entity(entity)
+            .insert(CameraSetupApplied::default());
+    }
+
+    drop(camera_setups);
+}
 
 #[allow(clippy::needless_pass_by_value)]
 pub(crate) fn camera_control(

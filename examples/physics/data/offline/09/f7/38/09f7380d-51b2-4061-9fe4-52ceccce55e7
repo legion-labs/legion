@@ -10,6 +10,20 @@
   ],
   "components": [
     {
+      "CameraSetup": {
+        "eye": [
+          0.0,
+          1.2000000476837158,
+          -3.0
+        ],
+        "look_at": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
       "PhysicsSceneSettings": {
         "gravity": [
           0.0,

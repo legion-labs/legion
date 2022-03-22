@@ -8,22 +8,16 @@
   ],
   "components": [
     {
-      "Transform": {
-        "position": [
+      "CameraSetup": {
+        "eye": [
           0.0,
           0.0,
-          4.0
+          -7.0
         ],
-        "rotation": [
+        "look_at": [
           0.0,
           0.0,
-          0.0,
-          1.0
-        ],
-        "scale": [
-          0.5,
-          0.5,
-          0.5
+          0.0
         ]
       }
     }

@@ -5097,6 +5097,7 @@ dependencies = [
  "bincode",
  "erased-serde",
  "gltf",
+ "inventory",
  "ispc-tex",
  "lazy_static",
  "lgn-app",
@@ -7535,27 +7536,6 @@ dependencies = [
  "cpufeatures",
  "opaque-debug",
  "universal-hash",
-]
-
-[[package]]
-name = "pong"
-version = "0.1.0"
-dependencies = [
- "clap 3.1.6",
- "dolly",
- "generic-data",
- "lgn-app",
- "lgn-core",
- "lgn-ecs",
- "lgn-graphics-data",
- "lgn-graphics-renderer",
- "lgn-input",
- "lgn-math",
- "lgn-telemetry-sink",
- "lgn-tracing",
- "lgn-transform",
- "rand 0.8.5",
- "runtime-srv",
 ]
 
 [[package]]

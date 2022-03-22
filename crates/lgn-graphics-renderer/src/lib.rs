@@ -84,8 +84,8 @@ use crate::resources::{
 
 use crate::{
     components::{
-        camera_control, create_camera, CameraComponent, LightComponent, RenderSurface,
-        VisualComponent,
+        apply_camera_setups, camera_control, create_camera, CameraComponent, LightComponent,
+        RenderSurface, VisualComponent,
     },
     labels::CommandBufferLabel,
 };
@@ -200,6 +200,7 @@ impl Plugin for RendererPlugin {
         // Stage PreUpdate
         //
         app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update);
+        app.add_system_to_stage(CoreStage::PreUpdate, apply_camera_setups);
 
         //
         // Stage PostUpdate
