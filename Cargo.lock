@@ -4688,7 +4688,6 @@ version = "0.1.0"
 dependencies = [
  "dirs",
  "figment",
- "lgn-tracing",
  "serde",
  "thiserror",
  "toml",
