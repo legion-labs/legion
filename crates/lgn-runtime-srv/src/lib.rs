@@ -157,8 +157,8 @@ pub fn build_runtime(
         use lgn_window::WindowPlugin;
 
         let server_addr = {
-            let url = args.addr.as_deref().unwrap_or_else(|| {
-                lgn_config::get_or("runtime_srv.server_addr", "[::1]:50052").unwrap()
+            let url = args.addr.unwrap_or_else(|| {
+                lgn_config::get_or("runtime_srv.server_addr", "[::1]:50052".to_owned()).unwrap()
             });
             url.parse::<SocketAddr>()
                 .unwrap_or_else(|err| panic!("Invalid server_addr '{}': {}", url, err))
