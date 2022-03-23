@@ -27,8 +27,7 @@ macro_rules! init_test_workspace_and_index {
             provider: lgn_content_store2::ProviderConfig::Memory {},
             caching_providers: vec![],
         };
-        let content_provider = content_store_config.instanciate_provider().await.unwrap();
-        let config = config.with_content_store_configuration(content_store_config);
+        let content_provider = content_store_config.instantiate_provider().await.unwrap();
 
         let workspace = Workspace::init(&workspace_root.path(), config, &content_provider)
             .await
