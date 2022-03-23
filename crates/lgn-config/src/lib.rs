@@ -22,6 +22,10 @@ pub struct Config {
     pub(crate) figment: Figment,
 }
 
+lazy_static::lazy_static! {
+    pub static ref CONFIG : Config = Config::load().expect("failed to the load the configuration");
+}
+
 /// Get the value specified by the key.
 ///
 /// If the value does not exist, None is returned.
@@ -40,7 +44,7 @@ pub fn get<'de, T>(key: &str) -> Result<Option<T>>
 where
     T: serde::Deserialize<'de>,
 {
-    Config::load()?.get(key)
+    (*CONFIG).get(key)
 }
 
 /// Get the value specified by the key or a specified default value if it is
@@ -61,7 +65,7 @@ pub fn get_or<'de, T>(key: &str, default: T) -> Result<T>
 where
     T: serde::Deserialize<'de>,
 {
-    Config::load()?.get_or(key, default)
+    (*CONFIG).get_or(key, default)
 }
 
 /// Get the value specified by the key or builds a default value by calling
@@ -80,7 +84,7 @@ pub fn get_or_else<'de, T, F: FnOnce() -> T>(key: &str, f: F) -> Result<T>
 where
     T: serde::Deserialize<'de>,
 {
-    Config::load()?.get_or_else(key, f)
+    (*CONFIG).get_or_else(key, f)
 }
 
 /// Get the value specified by the key or a default value if it is not
@@ -102,7 +106,7 @@ pub fn get_or_default<'de, T>(key: &str) -> Result<T>
 where
     T: serde::Deserialize<'de> + Default,
 {
-    Config::load()?.get_or_default(key)
+    (*CONFIG).get_or_default(key)
 }
 
 /// Get the absolute path at the specified key.
@@ -123,7 +127,7 @@ where
 /// If any error occurs, including the specified key not existing in the
 /// configuration, it is returned.
 pub fn get_absolute_path(key: &str) -> Result<Option<PathBuf>> {
-    Config::load()?.get_absolute_path(key)
+    (*CONFIG).get_absolute_path(key)
 }
 
 /// Get the absolute path at the specified key or the specified default.
@@ -144,7 +148,7 @@ pub fn get_absolute_path(key: &str) -> Result<Option<PathBuf>> {
 /// If any error occurs, including the specified key not existing in the
 /// configuration, it is returned.
 pub fn get_absolute_path_or(key: &str, default: PathBuf) -> Result<PathBuf> {
-    Config::load()?.get_absolute_path_or(key, default)
+    (*CONFIG).get_absolute_path_or(key, default)
 }
 
 impl Config {

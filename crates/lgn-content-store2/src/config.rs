@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
@@ -29,7 +29,7 @@ pub enum ProviderConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LocalProviderConfig {
-    pub path: Option<PathBuf>,
+    pub path: Option<lgn_config::RelativePathBuf>,
 }
 
 fn default_redis_url() -> String {
@@ -100,7 +100,7 @@ impl Config {
     pub fn local(path: impl AsRef<Path>) -> Self {
         Self {
             provider: ProviderConfig::Local(LocalProviderConfig {
-                path: Some(path.as_ref().to_owned()),
+                path: Some(path.as_ref().into()),
             }),
             caching_providers: vec![],
         }
@@ -136,9 +136,11 @@ impl ProviderConfig {
             Self::Local(config) => {
                 let path = match &config.path {
                     Some(path) => path.clone(),
-                    None => std::env::temp_dir().join("lgn-content-store"),
+                    None => std::env::temp_dir().join("lgn-content-store").into(),
                 };
-                Box::new(SmallContentProvider::new(LocalProvider::new(path).await?))
+                Box::new(SmallContentProvider::new(
+                    LocalProvider::new(path.relative()).await?,
+                ))
             }
             Self::Redis(config) => Box::new(SmallContentProvider::new(
                 RedisProvider::new(config.url.clone(), config.key_prefix.clone()).await?,
