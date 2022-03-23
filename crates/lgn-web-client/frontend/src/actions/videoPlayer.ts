@@ -1,4 +1,4 @@
-import { onVideoChunkReceived, onVideoClose } from "../api";
+import { onVideoClose } from "../api";
 import log from "../lib/log";
 
 type Source = MediaSource | SourceBuffer | HTMLVideoElement;
@@ -8,6 +8,8 @@ type Listener = {
   name: string;
   f: () => void;
 };
+
+const sourceBufferType = 'video/mp4; codecs="avc1.640C34";';
 
 /**
  * An augmented HTMLVideoElement videoElement.
@@ -30,23 +32,25 @@ export default function videoPlayer(
   options?: { onFatal?: () => void }
 ) {
   videoElement.muted = true;
-  videoElement.autoplay = true;
+
+  const queue: Uint8Array[] = [];
 
   let videoSource: SourceBuffer | null = null;
   let mediaSource: MediaSource | null = null;
   let listeners: Listener[] = [];
-  const queue: Uint8Array[] = [];
   let lastFrameId = -1;
 
-  const addListener = (source: Source, name: string, f: () => void) => {
+  function addListener(source: Source, name: string, f: () => void) {
     source.addEventListener(name, f);
 
     listeners.push({ source, name, f });
-  };
+  }
 
-  const initialize = () => {
+  function initialize() {
     mediaSource = new MediaSource();
+
     videoElement.src = URL.createObjectURL(mediaSource);
+
     videoElement.load();
 
     addListener(videoElement, "error", () => {
@@ -54,19 +58,22 @@ export default function videoPlayer(
     });
 
     addListener(mediaSource, "sourceopen", () => {
-      videoSource =
-        mediaSource?.addSourceBuffer('video/mp4; codecs="avc1.640C34";') ??
-        null;
+      videoSource = mediaSource?.addSourceBuffer(sourceBufferType) ?? null;
 
       if (videoSource) {
         addListener(videoSource, "update", submit);
       }
 
-      videoElement.play();
+      videoElement.play().catch(() => {
+        log.warn(
+          "video",
+          "Video player's pause method was called while the play method was running"
+        );
+      });
     });
-  };
+  }
 
-  const submit = () => {
+  function submit() {
     if (queue.length > 0 && videoSource && !videoSource.updating) {
       try {
         const frame = queue.shift();
@@ -76,13 +83,15 @@ export default function videoPlayer(
         }
       } catch (error) {
         log.error("video", error);
-        destroy();
+
         options?.onFatal && options.onFatal();
+
+        destroy();
       }
     }
-  };
+  }
 
-  const destroy = () => {
+  function destroy() {
     onVideoClose();
 
     lastFrameId = -1;
@@ -98,14 +107,17 @@ export default function videoPlayer(
     if (mediaSource) {
       if (videoSource) {
         mediaSource.removeSourceBuffer(videoSource);
+
         videoSource = null;
       }
 
       mediaSource.endOfStream();
+
       URL.revokeObjectURL(videoElement.src);
+
       mediaSource = null;
     }
-  };
+  }
 
   (videoElement as PushableHTMLVideoElement).push = (data) => {
     const chunk = new Uint8Array(data);
@@ -120,7 +132,9 @@ export default function videoPlayer(
 
     if (chunkIdx === 0 && frameChunk[4] === 0x66) {
       destroy();
+
       initialize();
+
       lastFrameId = frameId;
     }
 
@@ -133,7 +147,9 @@ export default function videoPlayer(
 
     if (lastFrameId !== -1) {
       queue.push(frameChunk);
+
       submit();
+
       lastFrameId = frameId;
     }
   };

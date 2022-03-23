@@ -16,11 +16,16 @@
   } from "../actions/remoteWindowInputs";
   import type { Resolution } from "../lib/types";
 
-  const reconnectionTimeout = 600;
+  const reconnectionTimeout = 1_000;
 
   const resizeVideoTimeout = 300;
 
-  const connectionRetry = 1000;
+  const connectionRetry = 1_000;
+
+  const backgroundColors = {
+    editor: "#000066",
+    runtime: "#112211",
+  };
 
   export let desiredResolution: Resolution | null = null;
 
@@ -38,14 +43,11 @@
 
   let videoAlreadyRendered = false;
 
-  let loading = false;
+  let reconnectionIntervalId: ReturnType<typeof setInterval> | null = null;
 
   $statusStore = "Connecting...";
 
-  const backgroundColors = {
-    editor: "#000066",
-    runtime: "#112211",
-  };
+  $: loading = !!$statusStore;
 
   onMount(() => {
     initialize();
@@ -56,7 +58,7 @@
   });
 
   // Destroys all peer connection related resources when possible
-  const destroyResources = () => {
+  function destroyResources() {
     if (videoChannel) {
       videoChannel.close();
       videoChannel = null;
@@ -71,9 +73,13 @@
       peerConnection.close();
       peerConnection = null;
     }
-  };
 
-  function initialize() {
+    if (reconnectionIntervalId) {
+      clearInterval(reconnectionIntervalId);
+    }
+  }
+
+  async function initialize() {
     if (!videoElement) {
       log.error("video", "Video element couldn't be found");
 
@@ -86,34 +92,46 @@
       iceServers: [{ urls: ["stun:stun.l.google.com:19302"] }],
     });
 
+    videoChannel = peerConnection.createDataChannel("video");
+
+    videoChannel.binaryType = "arraybuffer";
+
+    controlChannel = peerConnection.createDataChannel("control");
+
+    videoChannel.binaryType = "arraybuffer";
+
     peerConnection.onnegotiationneeded = async () => {
-      if (peerConnection) {
-        peerConnection.setLocalDescription(await peerConnection.createOffer());
+      if (!peerConnection) {
+        return;
+      }
+
+      peerConnection.setLocalDescription(await peerConnection.createOffer());
+
+      const remoteDescription = await retry(
+        debounce(() => {
+          if (peerConnection && peerConnection.localDescription) {
+            return initializeStream(
+              serverType,
+              peerConnection.localDescription
+            );
+          }
+
+          return Promise.resolve(null);
+        }, 1_000),
+        connectionRetry
+      );
+
+      if (remoteDescription) {
+        peerConnection.setRemoteDescription(remoteDescription);
+      } else {
+        log.error("video", "Server didn't return any SDP description");
       }
     };
 
     peerConnection.onicecandidate = async (iceEvent) => {
+      // TODO: Handle proper ice candidates exchange:
+      // https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Signaling_and_video_calling/webrtc_-_ice_candidate_exchange.svg
       log.debug("video", iceEvent);
-
-      if (peerConnection && iceEvent.candidate === null) {
-        const remoteDescription = await retry(
-          debounce(() => {
-            if (peerConnection && peerConnection.localDescription) {
-              return initializeStream(
-                serverType,
-                peerConnection.localDescription
-              );
-            }
-
-            return Promise.resolve(null);
-          }, 1_000),
-          connectionRetry
-        );
-
-        if (remoteDescription) {
-          peerConnection.setRemoteDescription(remoteDescription);
-        }
-      }
     };
 
     peerConnection.oniceconnectionstatechange = () => {
@@ -123,11 +141,10 @@
       ) {
         log.debug("video", "Disconnected");
 
-        window.setTimeout(() => {
-          if (videoElement) {
-            videoElement.pause();
-          }
+        reconnectionIntervalId = setInterval(() => {
           $statusStore = "Reconnecting...";
+
+          loading = true;
 
           destroyResources();
 
@@ -135,14 +152,6 @@
         }, reconnectionTimeout);
       }
     };
-
-    videoChannel = peerConnection.createDataChannel("video");
-
-    videoChannel.binaryType = "arraybuffer";
-
-    controlChannel = peerConnection.createDataChannel("control");
-
-    videoChannel.binaryType = "arraybuffer";
 
     videoElement.addEventListener("loadedmetadata", (event) => {
       if (videoElement && event.target instanceof HTMLVideoElement) {
@@ -157,8 +166,8 @@
           `Video resolution is now: ${videoWidth}x${videoHeight}.`
         );
 
-        loading = false;
         $statusStore = null;
+
         resolution = desiredResolution;
       }
     });
@@ -308,9 +317,9 @@
     (resolution.height !== desiredResolution.height ||
       resolution.width !== desiredResolution.width)
   ) {
-    resizeVideo(desiredResolution);
     $statusStore = "Resizing...";
-    loading = true;
+
+    resizeVideo(desiredResolution);
   }
 </script>
 
@@ -319,20 +328,21 @@
   use:resize={onVideoResize}
   use:remoteWindowInputs={onRemoteWindowInput}
 >
-  <video
-    class="video"
-    class:opacity-0={loading}
-    class:opacity-100={!loading}
-    use:videoPlayer
-    bind:this={videoElement}
-  >
+  <video class="video" use:videoPlayer bind:this={videoElement}>
     <track kind="captions" />
   </video>
-  {#if $statusStore}
-    <h3 class="status">
-      <span>{$statusStore}</span>
-    </h3>
-  {/if}
+  <!-- TODO: Set opacity to 70 or so to still see the video player, blinks for the moment -->
+  <div
+    class="loading-overlay"
+    class:opacity-0={!loading}
+    class:opacity-100={loading}
+  >
+    {#if $statusStore}
+      <div class="status">
+        {$statusStore}
+      </div>
+    {/if}
+  </div>
 </div>
 
 <style lang="postcss">
@@ -344,9 +354,12 @@
     @apply absolute object-cover inset-0 w-full h-full m-auto transition duration-200;
   }
 
+  .loading-overlay {
+    @apply absolute w-full h-full bg-gray-800;
+  }
+
   .status {
-    @apply absolute left-0 right-0 top-1/2 text-center;
-    animation: glow 1s infinite alternate;
+    @apply flex flex-row items-center justify-center h-full animate-pulse text-xl;
   }
 
   @keyframes glow {

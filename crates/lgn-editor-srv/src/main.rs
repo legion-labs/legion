@@ -190,6 +190,7 @@ fn main() {
     let assets_to_load = Vec::<ResourceTypeAndId>::new();
 
     let (trace_events_sender, trace_events_receiver) = mpsc::unbounded_channel();
+
     let telemetry_guard = TelemetryGuardBuilder::default()
         .add_sink(LevelFilter::Info, ChannelSink::new(trace_events_sender))
         .build()
