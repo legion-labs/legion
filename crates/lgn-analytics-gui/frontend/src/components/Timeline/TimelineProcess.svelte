@@ -20,6 +20,7 @@
 </script>
 
 <div
+  on:wheel|preventDefault={(e) => wheelDispatch("zoom", e)}
   style={collapsed
     ? `min-height:${spanPixelHeight}px;max-height:${spanPixelHeight}px;overflow-y:hidden`
     : ``}
@@ -58,7 +59,6 @@
           {process}
           {processAsyncData}
           {rootStartTime}
-          on:zoom={(e) => wheelDispatch("zoom", e.detail)}
         />
       {/if}
       {#each threads as thread, index (thread.streamInfo.streamId)}
@@ -68,7 +68,6 @@
           {thread}
           {stateStore}
           {rootStartTime}
-          on:zoom={(e) => wheelDispatch("zoom", e.detail)}
         />
       {/each}
     {/if}
