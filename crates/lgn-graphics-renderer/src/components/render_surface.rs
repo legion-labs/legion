@@ -120,7 +120,8 @@ impl SizeDependentResources {
             format: Format::R16G16B16A16_SFLOAT,
             usage_flags: ResourceUsage::AS_RENDER_TARGET
                 | ResourceUsage::AS_SHADER_RESOURCE
-                | ResourceUsage::AS_TRANSFERABLE,
+                | ResourceUsage::AS_TRANSFERABLE
+                | ResourceUsage::AS_EXPORT_CAPABLE,
             resource_flags: ResourceFlags::empty(),
             mem_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Optimal,
@@ -378,7 +379,7 @@ impl RenderSurface {
         let num_render_frames = renderer.num_render_frames();
         let device_context = renderer.device_context();
         let signal_sems = (0..num_render_frames)
-            .map(|_| device_context.create_semaphore())
+            .map(|_| device_context.create_semaphore(true))
             .collect();
 
         Self {

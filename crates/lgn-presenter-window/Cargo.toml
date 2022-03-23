@@ -8,6 +8,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 lgn-graphics-api = { path = "../lgn-graphics-api", version = "0.1.0" }
+lgn-codec-api = { path = "../lgn-codec-api", version = "0.1.0" }
 lgn-app = { path = "../lgn-app", version = "0.1.0" }
 lgn-ecs = { path = "../lgn-ecs", version = "0.1.0" }
 lgn-core = { path = "../lgn-core", version = "0.1.0" }

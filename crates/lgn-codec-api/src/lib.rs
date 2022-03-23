@@ -41,6 +41,8 @@
 
 use std::sync::Arc;
 
+use lgn_graphics_api::{Buffer, Texture};
+
 /// Contains the hardware implementation of multiple encoding/decoding
 /// algorithms
 pub mod backends;
@@ -74,7 +76,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// Gpu Image handle either outputted or sent to a video processor
 pub enum GpuImage {
     /// Vulkan image
-    Vulkan(ash::vk::Image),
+    Vulkan(Texture),
 }
 
 /// Cpu buffer handle either outputted or sent to a video processor
@@ -83,7 +85,7 @@ pub struct CpuBuffer(Vec<u8>);
 /// Gpu buffer handle either outputted or sent to a video processor
 pub enum GpuBuffer {
     /// doc
-    Vulkan(ash::vk::Buffer),
+    Vulkan(Buffer),
 }
 
 /// Input end of the pipe allowing you
