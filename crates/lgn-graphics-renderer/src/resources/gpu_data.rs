@@ -85,7 +85,7 @@ impl<K: Ord + Copy, T> GpuDataManager<K, T> {
             for data in gpu_data {
                 instance_ids.push(data.0);
             }
-            self.index_allocator.release_index_ids(&instance_ids);
+            self.index_allocator.release_indexes(&instance_ids);
 
             Some(instance_ids)
         } else {

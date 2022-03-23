@@ -1,22 +1,26 @@
 use std::collections::BTreeMap;
 
 use lgn_app::App;
-use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
+use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::runtime_texture::TextureReferenceType;
 use lgn_math::Vec4;
 use lgn_tracing::span_fn;
+use lgn_utils::{memory::round_size_up_to_alignment_u32, HashSet};
 
 use crate::{
-    cgen, components::MaterialComponent, labels::RenderStage, resources::SharedTextureId, Renderer,
+    components::{MaterialComponent, MaterialData},
+    labels::RenderStage,
+    resources::SharedTextureId,
+    Renderer,
 };
 
 use super::{
-    GpuDataManager, SharedResourcesManager, TextureEvent, TextureManager,
+    GpuDataManager, IndexAllocator, SharedResourcesManager, TextureEvent, TextureManager,
     UnifiedStaticBufferAllocator, UniformGPUDataUpdater,
 };
 
-pub(crate) type GpuMaterialData = GpuDataManager<ResourceTypeAndId, cgen::cgen_type::MaterialData>;
+type GpuMaterialData = GpuDataManager<MaterialId, crate::cgen::cgen_type::MaterialData>;
 
 #[derive(Default, Component)]
 struct GPUMaterialComponent;
@@ -26,33 +30,63 @@ enum MaterialManagerLabel {
     UpdateDone,
 }
 
-struct UploadMaterialJob {
-    resource_id: ResourceTypeAndId,
-    material_data: cgen::cgen_type::MaterialData,
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct MaterialId(u32);
+
+impl MaterialId {
+    pub fn index(self) -> u32 {
+        self.0
+    }
 }
 
+impl From<u32> for MaterialId {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+#[derive(Default, Clone)]
+pub struct Material {
+    material_data: MaterialData,
+    va: Option<u64>,
+}
+
+impl Material {
+    // let material_va = material_manager.gpu_data().va_for_index(material_id, 0);
+    pub fn va(&self) -> u64 {
+        self.va.unwrap()
+    }
+}
+
+const MATERIAL_BLOCK_SIZE: u32 = 2048;
+
 pub struct MaterialManager {
-    entity_to_resource_id: BTreeMap<Entity, ResourceTypeAndId>,
-    entity_to_texture_ids: BTreeMap<Entity, Vec<ResourceTypeAndId>>,
-    upload_queue: Vec<UploadMaterialJob>,
+    allocator: IndexAllocator,
+    materials: Vec<Material>,
+    resource_id_to_material_id: BTreeMap<ResourceTypeAndId, MaterialId>,
+    entity_to_material_id: BTreeMap<Entity, MaterialId>,
+    material_id_to_texture_ids: BTreeMap<MaterialId, Vec<ResourceTypeAndId>>,
+    upload_queue: HashSet<MaterialId>,
     gpu_material_data: GpuMaterialData,
-    default_material_id: ResourceTypeAndId,
+    default_material_id: MaterialId,
     default_uploaded: bool,
 }
 
 impl MaterialManager {
     pub fn new() -> Self {
-        let default_material_id = ResourceTypeAndId {
-            kind: lgn_graphics_data::runtime::Material::TYPE,
-            id: ResourceId::new(),
-        };
+        let mut allocator = IndexAllocator::new(MATERIAL_BLOCK_SIZE);
+
+        let default_material_id = allocator.acquire_index();
 
         Self {
-            entity_to_resource_id: BTreeMap::new(),
-            entity_to_texture_ids: BTreeMap::new(),
-            upload_queue: Vec::new(),
-            gpu_material_data: GpuMaterialData::new(64 * 1024, 256),
-            default_material_id,
+            allocator,
+            materials: Vec::new(),
+            resource_id_to_material_id: BTreeMap::new(),
+            entity_to_material_id: BTreeMap::new(),
+            material_id_to_texture_ids: BTreeMap::new(),
+            upload_queue: HashSet::new(),
+            gpu_material_data: GpuMaterialData::new(64 * 1024, MATERIAL_BLOCK_SIZE),
+            default_material_id: default_material_id.into(),
             default_uploaded: false,
         }
     }
@@ -79,17 +113,21 @@ impl MaterialManager {
         );
     }
 
-    // todo: no real reason to not make that public
-    pub(crate) fn gpu_data(&self) -> &GpuMaterialData {
-        &self.gpu_material_data
+    pub fn get_default_material_id(&self) -> MaterialId {
+        self.default_material_id
     }
 
-    pub fn get_default_material(&self) -> &ResourceTypeAndId {
-        &self.default_material_id
+    pub fn get_material_id_from_resource_id(&self, resource_id: &ResourceTypeAndId) -> MaterialId {
+        *self.resource_id_to_material_id.get(resource_id).unwrap()
     }
 
-    pub fn is_material_ready(&self, material_id: &ResourceTypeAndId) -> bool {
-        false
+    pub fn is_material_ready(&self, material_id: MaterialId) -> bool {
+        let material = &self.materials[material_id.index() as usize];
+        material.va.is_some()
+    }
+
+    pub fn get_material(&self, material_id: MaterialId) -> &Material {
+        &self.materials[material_id.0 as usize]
     }
 
     fn add_material(
@@ -97,114 +135,83 @@ impl MaterialManager {
         entity: Entity,
         material_component: &MaterialComponent,
         allocator: &UnifiedStaticBufferAllocator,
-        texture_manager: &TextureManager,
-        shared_resources_manager: &SharedResourcesManager,
     ) {
-        self.gpu_material_data
-            .alloc_gpu_data(&material_component.material_id, allocator);
+        let material_id: MaterialId = self.allocator.acquire_index().into();
 
-        let job = UploadMaterialJob {
-            resource_id: material_component.material_id,
-            material_data: Self::material_component_to_material_data(
-                material_component,
-                texture_manager,
-                shared_resources_manager,
-            ),
-        };
-        self.upload_queue.push(job);
+        let mut material = self.alloc_material(material_id, allocator);
 
-        self.entity_to_resource_id
-            .insert(entity, material_component.material_id);
+        material.material_data = material_component.material_data.clone();
 
-        self.entity_to_texture_ids.insert(
-            entity,
-            Self::collect_texture_dependencies(material_component),
+        self.upload_queue.insert(material_id);
+
+        self.resource_id_to_material_id
+            .insert(material_component.material_id, material_id);
+
+        self.entity_to_material_id.insert(entity, material_id);
+
+        self.material_id_to_texture_ids.insert(
+            material_id,
+            Self::collect_texture_dependencies(&material_component.material_data),
         );
     }
 
-    fn change_material(
-        &mut self,
-        entity: Entity,
-        material_component: &MaterialComponent,
-        texture_manager: &TextureManager,
-        shared_resources_manager: &SharedResourcesManager,
-    ) {
-        // TODO(vdbdd): not tested
-        let job = UploadMaterialJob {
-            resource_id: material_component.material_id,
-            material_data: Self::material_component_to_material_data(
-                material_component,
-                texture_manager,
-                shared_resources_manager,
-            ),
-        };
-        self.upload_queue.push(job);
+    fn change_material(&mut self, entity: Entity, material_component: &MaterialComponent) {
+        let material_id = *self.entity_to_material_id.get(&entity).unwrap();
 
-        let texture_ids = Self::collect_texture_dependencies(material_component);
-        self.entity_to_texture_ids.insert(entity, texture_ids);
+        let mut material = &mut self.materials[material_id.index() as usize];
+
+        material.material_data = material_component.material_data.clone();
+
+        self.upload_queue.insert(material_id);
+
+        let texture_ids = Self::collect_texture_dependencies(&material_component.material_data);
+
+        self.material_id_to_texture_ids
+            .insert(material_id, texture_ids);
     }
 
     fn remove_material(&mut self, entity: Entity) {
         // TODO(vdbdd): not tested
-        self.entity_to_texture_ids.remove(&entity);
-        let resource_id = self.entity_to_resource_id.remove(&entity).unwrap();
-        self.gpu_material_data.remove_gpu_data(&resource_id);
+        let material_id = self.entity_to_material_id.remove(&entity).unwrap();
+        self.material_id_to_texture_ids.remove(&material_id);
+        self.gpu_material_data.remove_gpu_data(&material_id);
+        self.allocator.release_index(material_id.index());
     }
 
-    fn on_texture_state_changed(
-        &mut self,
-        texture_id: &ResourceTypeAndId,
-        query_material_components: &Query<'_, '_, &MaterialComponent>,
-        texture_manager: &TextureManager,
-        shared_resources_manager: &SharedResourcesManager,
-    ) {
-        // todo: can be optimized by having a map ( texture_id -> material )
-        for (entity, texture_ids) in &self.entity_to_texture_ids {
+    fn on_texture_state_changed(&mut self, texture_id: &ResourceTypeAndId) {
+        // TODO(vdbdd): can be optimized by having a map ( texture_id -> material )
+        for (material_id, texture_ids) in &self.material_id_to_texture_ids {
             if texture_ids.contains(texture_id) {
-                let material_component = query_material_components
-                    .get_component::<MaterialComponent>(*entity)
-                    .unwrap();
-                let job = UploadMaterialJob {
-                    resource_id: material_component.material_id,
-                    material_data: Self::material_component_to_material_data(
-                        material_component,
-                        texture_manager,
-                        shared_resources_manager,
-                    ),
-                };
-                self.upload_queue.push(job);
+                self.upload_queue.insert(*material_id);
             }
         }
     }
 
-    fn collect_texture_dependencies(
-        material_component: &MaterialComponent,
-    ) -> Vec<ResourceTypeAndId> {
+    fn collect_texture_dependencies(material_data: &MaterialData) -> Vec<ResourceTypeAndId> {
         let mut result = Vec::new();
 
-        if material_component.albedo_texture.is_some() {
-            result.push(material_component.albedo_texture.as_ref().unwrap().id());
+        if material_data.albedo_texture.is_some() {
+            result.push(material_data.albedo_texture.as_ref().unwrap().id());
         }
-        if material_component.normal_texture.is_some() {
-            result.push(material_component.normal_texture.as_ref().unwrap().id());
+        if material_data.normal_texture.is_some() {
+            result.push(material_data.normal_texture.as_ref().unwrap().id());
         }
-        if material_component.metalness_texture.is_some() {
-            result.push(material_component.metalness_texture.as_ref().unwrap().id());
+        if material_data.metalness_texture.is_some() {
+            result.push(material_data.metalness_texture.as_ref().unwrap().id());
         }
-        if material_component.roughness_texture.is_some() {
-            result.push(material_component.roughness_texture.as_ref().unwrap().id());
+        if material_data.roughness_texture.is_some() {
+            result.push(material_data.roughness_texture.as_ref().unwrap().id());
         }
 
         result
     }
 
     fn material_component_to_material_data(
-        material_component: &MaterialComponent,
-
+        material_component: &MaterialData,
         texture_manager: &TextureManager,
         shared_resources_manager: &SharedResourcesManager,
-    ) -> cgen::cgen_type::MaterialData {
-        let mut material_data = cgen::cgen_type::MaterialData::default();
+    ) -> crate::cgen::cgen_type::MaterialData {
+        let mut material_data = crate::cgen::cgen_type::MaterialData::default();
 
         let color = Vec4::new(
             f32::from(material_component.base_albedo.r) / 255.0f32,
@@ -273,19 +280,29 @@ impl MaterialManager {
         }
     }
 
-    fn upload_material_data(&self, renderer: &Renderer) {
+    fn upload_material_data(
+        &mut self,
+        renderer: &Renderer,
+        texture_manager: &TextureManager,
+        shared_resources_manager: &SharedResourcesManager,
+    ) {
         let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
 
-        for upload_item in &self.upload_queue {
-            let material_data = &upload_item.material_data;
-
+        for material_id in &self.upload_queue {
+            let gpu_material_data = Self::material_component_to_material_data(
+                &self.materials[material_id.index() as usize].material_data,
+                texture_manager,
+                shared_resources_manager,
+            );
             self.gpu_material_data.update_gpu_data(
-                &upload_item.resource_id,
+                material_id,
                 0,
-                material_data,
+                &gpu_material_data,
                 &mut updater,
             );
         }
+
+        self.upload_queue.clear();
 
         renderer.add_update_job_block(updater.job_blocks());
     }
@@ -298,7 +315,7 @@ impl MaterialManager {
         if !self.default_uploaded {
             let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
 
-            let mut default_material_data = cgen::cgen_type::MaterialData::default();
+            let mut default_material_data = crate::cgen::cgen_type::MaterialData::default();
             default_material_data.set_base_albedo(Vec4::new(0.8, 0.8, 0.8, 1.0).into());
             default_material_data.set_base_metalness(0.0.into());
             default_material_data.set_reflectance(0.5.into());
@@ -324,10 +341,7 @@ impl MaterialManager {
                     .into(),
             );
 
-            self.gpu_material_data.alloc_gpu_data(
-                &self.default_material_id,
-                renderer.static_buffer_allocator(),
-            );
+            self.alloc_material(self.default_material_id, renderer.static_buffer_allocator());
 
             self.gpu_material_data.update_gpu_data(
                 &self.default_material_id,
@@ -341,6 +355,30 @@ impl MaterialManager {
             self.default_uploaded = true;
         }
     }
+
+    fn alloc_material(
+        &mut self,
+        material_id: MaterialId,
+        gpu_allocator: &UnifiedStaticBufferAllocator,
+    ) -> &mut Material {
+        // TODO(vdbdd): check that this MaterialIs is not allocator
+
+        if self.materials.len() < material_id.index() as usize {
+            let next_size =
+                round_size_up_to_alignment_u32(material_id.index(), MATERIAL_BLOCK_SIZE);
+            self.materials
+                .resize(next_size as usize, Material::default());
+        }
+
+        self.gpu_material_data
+            .alloc_gpu_data(&material_id, gpu_allocator);
+
+        let mut material = &mut self.materials[material_id.index() as usize];
+
+        material.va = Some(self.gpu_material_data.va_for_index(&material_id, 0));
+
+        material
+    }
 }
 
 #[span_fn]
@@ -349,8 +387,6 @@ fn on_material_added(
     mut commands: Commands<'_, '_>,
     renderer: Res<'_, Renderer>,
     mut material_manager: ResMut<'_, MaterialManager>,
-    texture_manager: Res<'_, TextureManager>,
-    shared_resources_manager: Res<'_, SharedResourcesManager>,
     query: Query<'_, '_, (Entity, &MaterialComponent), Added<MaterialComponent>>,
 ) {
     for (entity, material_component) in query.iter() {
@@ -358,8 +394,6 @@ fn on_material_added(
             entity,
             material_component,
             renderer.static_buffer_allocator(),
-            &texture_manager,
-            &shared_resources_manager,
         );
 
         commands
@@ -372,8 +406,6 @@ fn on_material_added(
 #[allow(clippy::needless_pass_by_value)]
 fn on_material_changed(
     mut material_manager: ResMut<'_, MaterialManager>,
-    texture_manager: Res<'_, TextureManager>,
-    shared_resources_manager: Res<'_, SharedResourcesManager>,
     query: Query<
         '_,
         '_,
@@ -382,12 +414,7 @@ fn on_material_changed(
     >,
 ) {
     for (entity, material_component, _) in query.iter() {
-        material_manager.change_material(
-            entity,
-            material_component,
-            &texture_manager,
-            &shared_resources_manager,
-        );
+        material_manager.change_material(entity, material_component);
     }
 }
 
@@ -408,20 +435,12 @@ fn on_material_removed(
 fn on_texture_event(
     mut event_reader: EventReader<'_, '_, TextureEvent>,
     mut material_manager: ResMut<'_, MaterialManager>,
-    texture_manager: Res<'_, TextureManager>,
-    shared_resources_manager: Res<'_, SharedResourcesManager>,
-    query: Query<'_, '_, &MaterialComponent>,
 ) {
     for event in event_reader.iter() {
         match event {
             TextureEvent::StateChanged(texture_id_list) => {
                 for texture_id in texture_id_list {
-                    material_manager.on_texture_state_changed(
-                        texture_id,
-                        &query,
-                        &texture_manager,
-                        &shared_resources_manager,
-                    );
+                    material_manager.on_texture_state_changed(texture_id);
                 }
             }
         }
@@ -441,10 +460,9 @@ fn upload_default_material(
 #[allow(clippy::needless_pass_by_value)]
 fn upload_material_data(
     renderer: Res<'_, Renderer>,
-    material_manager: Res<'_, MaterialManager>,
-    _texture_manager: Res<'_, TextureManager>,
-    _shared_resources_manager: Res<'_, SharedResourcesManager>,
-    _query: Query<'_, '_, &MaterialComponent>,
+    mut material_manager: ResMut<'_, MaterialManager>,
+    texture_manager: Res<'_, TextureManager>,
+    shared_resources_manager: Res<'_, SharedResourcesManager>,
 ) {
-    material_manager.upload_material_data(&renderer);
+    material_manager.upload_material_data(&renderer, &texture_manager, &shared_resources_manager);
 }

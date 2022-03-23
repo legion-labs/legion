@@ -4,7 +4,6 @@ use lgn_app::App;
 use lgn_core::BumpAllocatorPool;
 use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 use lgn_ecs::prelude::{Changed, Query, Res, ResMut, Without};
-use lgn_graphics_data::runtime::MaterialReferenceType;
 use lgn_math::Vec3;
 use lgn_tracing::span_fn;
 use lgn_transform::components::{GlobalTransform, Transform};
@@ -18,12 +17,12 @@ use crate::{
 };
 
 use super::{
-    DefaultMeshType, MaterialManager, MeshManager, MissingVisualTracker, RendererOptions,
-    DEFAULT_MESH_GUIDS,
+    DefaultMeshType, MaterialId, MaterialManager, MeshManager, MissingVisualTracker,
+    RendererOptions, DEFAULT_MESH_GUIDS,
 };
 pub struct Mesh {
     pub mesh_id: u32,
-    pub material_id: ResourceTypeAndId,
+    pub material_id: MaterialId,
 }
 
 pub struct ModelMetaData {
@@ -37,7 +36,7 @@ pub struct ModelManager {
 
 impl ModelManager {
     pub fn new(material_manager: &MaterialManager) -> Self {
-        let default_material_id = material_manager.get_default_material();
+        let default_material_id = material_manager.get_default_material_id();
 
         let mut model_meta_datas = BTreeMap::new();
 
@@ -51,7 +50,7 @@ impl ModelManager {
                 ModelMetaData {
                     meshes: vec![Mesh {
                         mesh_id: idx as u32,
-                        material_id: *default_material_id,
+                        material_id: default_material_id,
                     }],
                 },
             );
@@ -62,7 +61,7 @@ impl ModelManager {
             default_model: ModelMetaData {
                 meshes: vec![Mesh {
                     mesh_id: 1, // cube
-                    material_id: *default_material_id,
+                    material_id: default_material_id,
                 }],
             },
         }
@@ -112,10 +111,12 @@ pub(crate) fn update_models(
         for (idx, mesh) in updated_model.meshes.iter().enumerate() {
             // If there is no material set on the mesh (should not be the case until we fix that),
             // we assign the default material
-            let material_id = mesh.material_id.as_ref().map_or(
-                *material_manager.get_default_material(),
-                MaterialReferenceType::id,
-            );
+            let material_id = mesh
+                .material_id
+                .as_ref()
+                .map_or(material_manager.get_default_material_id(), |x| {
+                    material_manager.get_material_id_from_resource_id(&x.id())
+                });
 
             meshes.push(Mesh {
                 mesh_id: ids[idx],

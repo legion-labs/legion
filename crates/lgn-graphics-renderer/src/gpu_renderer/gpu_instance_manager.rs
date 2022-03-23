@@ -163,11 +163,11 @@ fn update_gpu_instances(
         }
 
         let mut added_instances = Vec::with_capacity(model_meta_data.meshes.len());
-        let default_material_id = material_manager.get_default_material();
+        let default_material_id = material_manager.get_default_material_id();
 
         for mesh in &model_meta_data.meshes {
             let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
-            let material_id = &mesh.material_id;
+            let material_id = mesh.material_id;
 
             // material_va: material_manager.gpu_data().va_for_index(&material_id, 0) as u32,
             // material_index: material_manager.gpu_data().id_for_index(&material_id, 0) as u32,
@@ -178,7 +178,7 @@ fn update_gpu_instances(
                 default_material_id
             };
 
-            let material_va = material_manager.gpu_data().va_for_index(material_id, 0);
+            let material_va = material_manager.get_material(material_id).va();
 
             let instance_vas = GpuInstanceVas {
                 submesh_va: mesh_meta_data.mesh_description_offset,
@@ -196,7 +196,7 @@ fn update_gpu_instances(
             );
 
             added_instances.push((
-                *material_id,
+                material_id,
                 RenderElement::new(gpu_instance_id, mesh.mesh_id as u32, &mesh_manager),
             ));
         }
