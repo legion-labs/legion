@@ -1,6 +1,6 @@
 mod command_queue;
 
-use std::marker::PhantomData;
+use std::{any, marker::PhantomData};
 
 pub use command_queue::CommandQueue;
 use lgn_tracing::{error, warn};
@@ -736,7 +736,9 @@ where
 {
     fn write(self, world: &mut World) {
         if let Some(mut entity_mut) = world.get_entity_mut(self.entity) {
-            entity_mut.remove::<T>();
+            if entity_mut.remove::<T>().is_none() {
+                warn!("{} couldn't be removed from world, this might cause some tasks to be unnecessarily spawned", any::type_name::<T>());
+            }
         }
     }
 }

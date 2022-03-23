@@ -16,6 +16,7 @@ use lgn_input::{
 };
 use lgn_tracing::{error, info, trace, warn};
 use lgn_window::{WindowCreated, WindowResized, Windows};
+use serde_json::json;
 use webrtc::{
     data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
     peer_connection::RTCPeerConnection,
@@ -322,7 +323,8 @@ pub(crate) fn on_render_surface_created_for_window(
             .unwrap();
             render_surface.register_presenter(|| video_stream);
 
-            let _ = video_data_channel.send(&Bytes::from(r#"{"type": "initialized"}"#));
+            let _ =
+                video_data_channel.send(&Bytes::from(json!({ "type": "initialized"}).to_string()));
         }
     }
 }

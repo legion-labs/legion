@@ -17,7 +17,7 @@ use lgn_mp4::{AvcConfig, MediaConfig, Mp4Config, Mp4Stream};
 use lgn_tracing::prelude::*;
 use lgn_tracing::{debug, warn};
 use serde::Serialize;
-use webrtc::data_channel::RTCDataChannel;
+use webrtc::data_channel::{data_channel_state::RTCDataChannelState, RTCDataChannel};
 
 use super::{Resolution, RgbToYuvConverter};
 
@@ -113,6 +113,15 @@ impl VideoStream {
 
         let video_data_channel = Arc::clone(&self.video_data_channel);
         self.async_rt.start_detached(async move {
+            // TODO: Temporarily shuts the warning about the closed data channel.
+            // We need to understand why the render surface is not removed on connection close
+            if matches!(
+                video_data_channel.ready_state(),
+                RTCDataChannelState::Closing | RTCDataChannelState::Closed
+            ) {
+                return;
+            }
+
             for (i, data) in chunks.iter().enumerate() {
                 #[allow(clippy::redundant_else)]
                 if let Err(err) = video_data_channel.send(data).await {
