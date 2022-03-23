@@ -72,6 +72,7 @@ pub mod logs;
 pub mod metrics;
 pub mod panic_hook;
 pub mod spans;
+pub mod string_id;
 
 #[macro_use]
 mod macros;

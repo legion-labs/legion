@@ -71,6 +71,7 @@ pub fn derive_reflect_impl(input: TokenStream) -> TokenStream {
                     name: String::from(#udt_name),
                     size: std::mem::size_of::<#udt_identifier>(),
                     members: vec![#(#members_toks)*],
+                    is_reference: false,
                 }
             }
         }
