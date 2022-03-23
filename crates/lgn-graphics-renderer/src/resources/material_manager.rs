@@ -88,7 +88,11 @@ impl MaterialManager {
         &self.default_material_id
     }
 
-    pub fn add_material(
+    pub fn is_material_ready(&self, material_id: &ResourceTypeAndId) -> bool {
+        false
+    }
+
+    fn add_material(
         &mut self,
         entity: Entity,
         material_component: &MaterialComponent,
@@ -118,7 +122,7 @@ impl MaterialManager {
         );
     }
 
-    pub fn change_material(
+    fn change_material(
         &mut self,
         entity: Entity,
         material_component: &MaterialComponent,
@@ -140,15 +144,11 @@ impl MaterialManager {
         self.entity_to_texture_ids.insert(entity, texture_ids);
     }
 
-    pub fn remove_material(&mut self, entity: Entity) {
+    fn remove_material(&mut self, entity: Entity) {
         // TODO(vdbdd): not tested
         self.entity_to_texture_ids.remove(&entity);
         let resource_id = self.entity_to_resource_id.remove(&entity).unwrap();
         self.gpu_material_data.remove_gpu_data(&resource_id);
-    }
-
-    pub fn is_material_ready(&self, material_id: &ResourceTypeAndId) -> bool {
-        false
     }
 
     fn on_texture_state_changed(
@@ -271,6 +271,23 @@ impl MaterialManager {
         } else {
             shared_resources_manager.default_texture_bindless_index(default_shared_id)
         }
+    }
+
+    fn upload_material_data(&self, renderer: &Renderer) {
+        let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
+
+        for upload_item in &self.upload_queue {
+            let material_data = &upload_item.material_data;
+
+            self.gpu_material_data.update_gpu_data(
+                &upload_item.resource_id,
+                0,
+                material_data,
+                &mut updater,
+            );
+        }
+
+        renderer.add_update_job_block(updater.job_blocks());
     }
 
     fn upload_default_material(
@@ -429,27 +446,5 @@ fn upload_material_data(
     _shared_resources_manager: Res<'_, SharedResourcesManager>,
     _query: Query<'_, '_, &MaterialComponent>,
 ) {
-    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
-
-    for upload_item in &material_manager.upload_queue {
-        let material_data = &upload_item.material_data;
-
-        material_manager.gpu_data().update_gpu_data(
-            &upload_item.resource_id,
-            0,
-            material_data,
-            &mut updater,
-        );
-    }
-
-    renderer.add_update_job_block(updater.job_blocks());
+    material_manager.upload_material_data(&renderer);
 }
-
-// pub fn upload_default(
-//     &mut self,
-//     default: T,
-//     allocator: &UnifiedStaticBufferAllocator,
-//     updater: &mut UniformGPUDataUpdater,
-// ) {
-//
-// }
