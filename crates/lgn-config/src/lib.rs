@@ -18,6 +18,7 @@ pub use figment::value::magic::RelativePathBuf;
 /// The default filename for configuration files.
 pub static DEFAULT_FILENAME: &str = "legion.toml";
 
+#[derive(Debug, Clone)]
 pub struct Config {
     pub(crate) figment: Figment,
 }
@@ -152,6 +153,14 @@ pub fn get_absolute_path_or(key: &str, default: PathBuf) -> Result<PathBuf> {
 }
 
 impl Config {
+    /// Create a configuration from a TOML string.
+    ///
+    /// Useful for tests mostly.
+    pub fn from_toml(toml: &str) -> Self {
+        let figment = Figment::new().merge(Toml::string(toml));
+        Self { figment }
+    }
+
     /// Load the configuration from all its various sources.
     ///
     /// If a configuration value is set in different sources, the value from the
@@ -461,8 +470,21 @@ mod tests {
                 .unwrap();
 
             assert_eq!("../images/avatar.png", path.original().to_str().unwrap());
-
             assert_eq!(base.join("../images/avatar.png"), path.relative());
+
+            // Test reading a relative path buf nested in a configuration.
+            #[derive(Deserialize, Serialize, Debug)]
+            struct MyConfig {
+                avatar: RelativePathBuf,
+            }
+
+            let cfg = config.get::<MyConfig>("lgn-config.tests").unwrap().unwrap();
+
+            assert_eq!(
+                "../images/avatar.png",
+                cfg.avatar.original().to_str().unwrap()
+            );
+            assert_eq!(base.join("../images/avatar.png"), cfg.avatar.relative());
 
             Ok(())
         });

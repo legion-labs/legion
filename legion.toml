@@ -53,20 +53,18 @@ issuer_url = "https://cognito-idp.ca-central-1.amazonaws.com/ca-central-1_SkZKDi
 client_id = "5m58nrjfv6kr144prif9jk62di"
 redirect_uri = "http://localhost:3000/"
 
-[content_store.provider]
-#type = "grpc"
+[content_store.provider.local]
+#Change the type to "grpc" and uncomment below:
 #url = "https://api.live.playground.legionlabs.com"
-type = "local"
-#path = "tests/sample-data/remote" # Should probably be reverted back to the commented lines once the data-build uses the dedicated section below.
+path = "tests/sample-data/remote" # Should probably be reverted back to the commented lines once the data-build uses the dedicated section below.
 
 [[content_store.caching_providers]]
-type = "lru"
+[content_store.caching_providers.lru]
 size = 250
 
-[content_store.data_build.provider]
-type = "local"
+[content_store.data_build.provider.local]
 path = "tests/sample-data/remote"
 
 [[content_store.data_build.caching_providers]]
-type = "lru"
+[content_store.data_build.caching_providers.lru]
 size = 250

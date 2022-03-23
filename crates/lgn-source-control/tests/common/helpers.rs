@@ -23,8 +23,12 @@ macro_rules! init_test_workspace_and_index {
             index_root.path().display().to_string(),
             WorkspaceRegistration::new_with_current_user(),
         );
-
-        let content_provider = SmallContentProvider::new(MemoryProvider::new());
+        let content_store_config = lgn_content_store2::Config {
+            provider: lgn_content_store2::ProviderConfig::Memory {},
+            caching_providers: vec![],
+        };
+        let content_provider = content_store_config.instanciate_provider().await.unwrap();
+        let config = config.with_content_store_configuration(content_store_config);
 
         let workspace = Workspace::init(&workspace_root.path(), config, &content_provider)
             .await
