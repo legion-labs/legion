@@ -54,14 +54,14 @@ impl ResourceRegistryPlugin {
         let registry_options = world.remove_resource::<ResourceRegistryOptions>().unwrap();
         let registry = registry_options.create_async_registry();
 
-        let settings = world.get_resource::<ResourceRegistrySettings>().unwrap();
+        let settings = world.resource::<ResourceRegistrySettings>();
         let project_dir = settings.root_folder.clone();
 
-        let async_rt = world.get_resource::<TokioAsyncRuntime>().unwrap();
-        let asset_registry = world.get_resource::<Arc<AssetRegistry>>().unwrap();
+        let async_rt = world.resource::<TokioAsyncRuntime>();
+        let asset_registry = world.resource::<Arc<AssetRegistry>>();
         let intermediate_manifest = Manifest::default();
-        let runtime_manifest = world.get_resource::<Manifest>().unwrap();
-        let selection_manager = world.get_resource::<Arc<SelectionManager>>().unwrap();
+        let runtime_manifest = world.resource::<Manifest>();
+        let selection_manager = world.resource::<Arc<SelectionManager>>();
 
         let transaction_manager = async_rt.block_on(async move {
             let source_control_cas = lgn_content_store2::Config::from_legion_toml(

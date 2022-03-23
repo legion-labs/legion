@@ -456,7 +456,7 @@ impl<'w> EntityMut<'w> {
     /// Caller must not modify the world in a way that changes the current
     /// entity's location If the caller _does_ do something that could
     /// change the location, `self.update_location()` must be called before
-    /// using any other methods in `EntityMut`
+    /// using any other methods in [`EntityMut`]
     #[inline]
     pub unsafe fn world_mut(&mut self) -> &mut World {
         self.world

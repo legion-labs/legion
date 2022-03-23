@@ -22,8 +22,8 @@ use lgn_data_runtime::{
     ResourceLoadEvent,
 };
 use lgn_ecs::prelude::*;
+use lgn_hierarchy::prelude::Children;
 use lgn_tracing::{error, warn};
-use lgn_transform::components::Children;
 use loading_states::{AssetLoadingStates, LoadingState};
 use sample_data::runtime as runtime_data;
 
@@ -54,9 +54,7 @@ impl Plugin for AssetRegistryPlugin {
 
 impl AssetRegistryPlugin {
     fn pre_setup(world: &mut World) {
-        let mut config = world
-            .get_resource_mut::<AssetRegistrySettings>()
-            .expect("Missing AssetRegistrySettings resource, must add to app");
+        let mut config = world.resource_mut::<AssetRegistrySettings>();
 
         let content_store_addr = config.content_store_addr.clone();
         let content_store = HddContentStore::open(content_store_addr).unwrap_or_else(|| {

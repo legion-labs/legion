@@ -4340,6 +4340,7 @@ dependencies = [
  "lgn-ecs",
  "lgn-graphics-data",
  "lgn-graphics-renderer",
+ "lgn-hierarchy",
  "lgn-math",
  "lgn-physics",
  "lgn-scripting",
@@ -5169,6 +5170,7 @@ dependencies = [
  "lgn-graphics-cgen",
  "lgn-graphics-cgen-runtime",
  "lgn-graphics-data",
+ "lgn-hierarchy",
  "lgn-input",
  "lgn-math",
  "lgn-pso-compiler",
@@ -5225,6 +5227,17 @@ dependencies = [
  "lgn-online",
  "lgn-tracing",
  "tonic",
+]
+
+[[package]]
+name = "lgn-hierarchy"
+version = "0.1.0"
+dependencies = [
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-tracing",
+ "lgn-utils",
+ "smallvec",
 ]
 
 [[package]]
@@ -5693,10 +5706,10 @@ version = "0.1.0"
 dependencies = [
  "lgn-app",
  "lgn-ecs",
+ "lgn-hierarchy",
  "lgn-math",
  "lgn-tracing",
  "lgn-utils",
- "smallvec",
 ]
 
 [[package]]
@@ -5733,6 +5746,7 @@ version = "0.1.0"
 dependencies = [
  "ahash 0.7.6",
  "getrandom 0.2.5",
+ "hashbrown",
  "sha2 0.10.2",
  "siphasher",
 ]
@@ -5755,6 +5769,7 @@ name = "lgn-window"
 version = "0.1.0"
 dependencies = [
  "lgn-app",
+ "lgn-ecs",
  "lgn-math",
  "lgn-tracing",
  "lgn-utils",
@@ -5768,6 +5783,7 @@ name = "lgn-winit"
 version = "0.1.0"
 dependencies = [
  "approx",
+ "instant",
  "lgn-app",
  "lgn-ecs",
  "lgn-input",

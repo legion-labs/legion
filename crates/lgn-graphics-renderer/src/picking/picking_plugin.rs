@@ -1,15 +1,13 @@
 use lgn_app::prelude::*;
 use lgn_ecs::prelude::*;
+use lgn_hierarchy::prelude::Parent;
 use lgn_input::{
     keyboard::KeyboardInput,
     mouse::{MouseButtonInput, MouseMotion},
 };
 use lgn_math::Vec2;
 use lgn_tracing::span_fn;
-use lgn_transform::{
-    components::{GlobalTransform, Parent},
-    prelude::Transform,
-};
+use lgn_transform::{components::GlobalTransform, prelude::Transform};
 use lgn_window::WindowResized;
 
 use super::{picking_event::PickingEvent, ManipulatorManager, PickingIdContext, PickingManager};

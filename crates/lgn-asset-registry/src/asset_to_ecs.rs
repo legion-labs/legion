@@ -8,6 +8,7 @@ use lgn_graphics_renderer::components::{
     LightComponent, LightType, MaterialComponent, Mesh, ModelComponent, TextureComponent,
     TextureData, VisualComponent,
 };
+use lgn_hierarchy::prelude::{BuildChildren, Children, Parent};
 use lgn_math::prelude::Vec3;
 use lgn_tracing::prelude::{error, info};
 use lgn_transform::prelude::*;

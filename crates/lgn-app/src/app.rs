@@ -664,8 +664,11 @@ impl App {
     where
         T: Resource,
     {
-        self.init_resource::<Events<T>>()
-            .add_system_to_stage(CoreStage::First, Events::<T>::update_system)
+        if !self.world.contains_resource::<Events<T>>() {
+            self.init_resource::<Events<T>>()
+                .add_system_to_stage(CoreStage::First, Events::<T>::update_system);
+        }
+        self
     }
 
     /// Inserts a resource to the current [App] and overwrites any resource

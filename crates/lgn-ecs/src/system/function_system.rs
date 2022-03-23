@@ -10,7 +10,7 @@ use crate::{
     query::{Access, FilteredAccessSet},
     system::{
         check_system_change_tick, ReadOnlySystemParamFetch, System, SystemParam, SystemParamFetch,
-        SystemParamItem, SystemParamState,
+        SystemParamState,
     },
     world::{World, WorldId},
 };
@@ -49,11 +49,6 @@ impl SystemMeta {
     #[inline]
     pub fn set_non_send(&mut self) {
         self.is_send = false;
-    }
-
-    #[inline]
-    pub(crate) fn check_change_tick(&mut self, change_tick: u32) {
-        check_system_change_tick(&mut self.last_change_tick, change_tick, self.name.as_ref());
     }
 }
 
@@ -145,16 +140,8 @@ pub struct SystemState<Param: SystemParam> {
 
 impl<Param: SystemParam> SystemState<Param> {
     pub fn new(world: &mut World) -> Self {
-        let config = <Param::Fetch as SystemParamState>::default_config();
-        Self::with_config(world, config)
-    }
-
-    pub fn with_config(
-        world: &mut World,
-        config: <Param::Fetch as SystemParamState>::Config,
-    ) -> Self {
         let mut meta = SystemMeta::new::<Param>();
-        let param_state = <Param::Fetch as SystemParamState>::init(world, &mut meta, config);
+        let param_state = <Param::Fetch as SystemParamState>::init(world, &mut meta);
         Self {
             meta,
             param_state,
@@ -210,10 +197,6 @@ impl<Param: SystemParam> SystemState<Param> {
         self.world_id == world.id()
     }
 
-    pub(crate) fn new_archetype(&mut self, archetype: &Archetype) {
-        self.param_state.new_archetype(archetype, &mut self.meta);
-    }
-
     fn validate_world_and_update_archetypes(&mut self, world: &World) {
         assert!(self.matches_world(world), "Encountered a mismatched World. A SystemState cannot be used with Worlds other than the one it was created with.");
         let archetypes = world.archetypes();
@@ -251,74 +234,6 @@ impl<Param: SystemParam> SystemState<Param> {
         );
         self.meta.last_change_tick = change_tick;
         param
-    }
-}
-
-/// A trait for defining systems with a [`SystemParam`] associated type.
-///
-/// This facilitates the creation of systems that are generic over some trait
-/// and that use that trait's associated types as `SystemParam`s.
-pub trait RunSystem: Send + Sync + 'static {
-    /// The `SystemParam` type passed to the system when it runs.
-    type Param: SystemParam;
-
-    /// Runs the system.
-    fn run(param: SystemParamItem<'_, '_, Self::Param>);
-
-    /// Creates a concrete instance of the system for the specified `World`.
-    fn system(world: &mut World) -> ParamSystem<Self::Param> {
-        ParamSystem {
-            run: Self::run,
-            state: SystemState::new(world),
-        }
-    }
-}
-
-pub struct ParamSystem<P: SystemParam> {
-    state: SystemState<P>,
-    run: fn(SystemParamItem<'_, '_, P>),
-}
-
-impl<P: SystemParam + 'static> System for ParamSystem<P> {
-    type In = ();
-
-    type Out = ();
-
-    fn name(&self) -> Cow<'static, str> {
-        self.state.meta().name.clone()
-    }
-
-    fn new_archetype(&mut self, archetype: &Archetype) {
-        self.state.new_archetype(archetype);
-    }
-
-    fn component_access(&self) -> &Access<ComponentId> {
-        self.state.meta().component_access_set.combined_access()
-    }
-
-    fn archetype_component_access(&self) -> &Access<ArchetypeComponentId> {
-        &self.state.meta().archetype_component_access
-    }
-
-    fn is_send(&self) -> bool {
-        self.state.meta().is_send()
-    }
-
-    unsafe fn run_unsafe(&mut self, _input: Self::In, world: &World) -> Self::Out {
-        let param = self.state.get_unchecked_manual(world);
-        (self.run)(param);
-    }
-
-    fn apply_buffers(&mut self, world: &mut World) {
-        self.state.apply(world);
-    }
-
-    fn initialize(&mut self, _world: &mut World) {
-        // already initialized by nature of the SystemState being constructed
-    }
-
-    fn check_change_tick(&mut self, change_tick: u32) {
-        self.state.meta.check_change_tick(change_tick);
     }
 }
 
@@ -405,6 +320,7 @@ impl<In, Out, Sys: System<In = In, Out = Out>> IntoSystem<In, Out, AlreadyWasSys
 /// }
 /// ```
 pub struct In<In>(pub In);
+#[doc(hidden)]
 pub struct InputMarker;
 
 /// The [`System`] counter part of an ordinary function.
@@ -420,71 +336,9 @@ where
     func: F,
     param_state: Option<Param::Fetch>,
     system_meta: SystemMeta,
-    config: Option<<Param::Fetch as SystemParamState>::Config>,
     // NOTE: PhantomData<fn()-> T> gives this safe Send/Sync impls
     #[allow(clippy::type_complexity)]
     marker: PhantomData<fn() -> (In, Out, Marker)>,
-}
-
-impl<In, Out, Param: SystemParam, Marker, F> FunctionSystem<In, Out, Param, Marker, F> {
-    /// Gives mutable access to the systems config via a callback. This is
-    /// useful to set up system [`Local`](crate::system::Local)s.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use lgn_ecs::prelude::*;
-    /// # let world = &mut World::default();
-    /// fn local_is_42(local: Local<usize>) {
-    ///     assert_eq!(*local, 42);
-    /// }
-    /// let mut system = local_is_42.config(|config| config.0 = Some(42));
-    /// system.initialize(world);
-    /// system.run((), world);
-    /// ```
-    #[must_use]
-    pub fn config(
-        mut self,
-        f: impl FnOnce(&mut <Param::Fetch as SystemParamState>::Config),
-    ) -> Self {
-        f(self.config.as_mut().unwrap());
-        self
-    }
-}
-
-/// Provides `my_system.config(...)` API.
-pub trait ConfigurableSystem<In, Out, Param: SystemParam, Marker>:
-    IntoSystem<In, Out, (IsFunctionSystem, Param, Marker)>
-{
-    /// See [`FunctionSystem::config()`](crate::system::FunctionSystem::config).
-    fn config(
-        self,
-        f: impl FnOnce(&mut <Param::Fetch as SystemParamState>::Config),
-    ) -> Self::System;
-}
-
-impl<In, Out, Param, Marker, F> ConfigurableSystem<In, Out, Param, Marker> for F
-where
-    In: 'static,
-    Out: 'static,
-    Param: SystemParam + 'static,
-    Marker: 'static,
-    F: SystemParamFunction<In, Out, Param, Marker>
-        + IntoSystem<
-            In,
-            Out,
-            (IsFunctionSystem, Param, Marker),
-            System = FunctionSystem<In, Out, Param, Marker, Self>,
-        > + Send
-        + Sync
-        + 'static,
-{
-    fn config(
-        self,
-        f: impl FnOnce(&mut <<Param as SystemParam>::Fetch as SystemParamState>::Config),
-    ) -> Self::System {
-        IntoSystem::into_system(self).config(f)
-    }
 }
 
 pub struct IsFunctionSystem;
@@ -502,7 +356,6 @@ where
         FunctionSystem {
             func,
             param_state: None,
-            config: Some(<Param::Fetch as SystemParamState>::default_config()),
             system_meta: SystemMeta::new::<Self>(),
             marker: PhantomData,
         }
@@ -571,7 +424,6 @@ where
         self.param_state = Some(<Param::Fetch as SystemParamState>::init(
             world,
             &mut self.system_meta,
-            self.config.take().unwrap(),
         ));
     }
 

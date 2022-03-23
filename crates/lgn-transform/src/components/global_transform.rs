@@ -15,13 +15,13 @@ use super::Transform;
 /// ## [`Transform`] and [`GlobalTransform`]
 ///
 /// [`Transform`] is the position of an entity relative to its parent position,
-/// or the reference frame if it doesn't have a [`Parent`](super::Parent).
+/// or the reference frame if it doesn't have a [`Parent`](lgn_hierarchy::Parent).
 ///
 /// [`GlobalTransform`] is the position of an entity relative to the reference
 /// frame.
 ///
 /// [`GlobalTransform`] is updated from [`Transform`] in the system
-/// [`transform_propagate_system`](crate::transform_propagate_system::transform_propagate_system).
+/// [`transform_propagate_system`](crate::transform_propagate_system).
 ///
 /// This system runs in stage
 /// [`CoreStage::PostUpdate`](crate::CoreStage::PostUpdate). If you

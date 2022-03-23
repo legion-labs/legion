@@ -2,7 +2,7 @@ use std::{borrow::Cow, fmt::Debug, hash::Hash};
 
 use fixedbitset::FixedBitSet;
 use lgn_tracing::warn;
-use lgn_utils::{AHashExt, HashMap, HashSet};
+use lgn_utils::{HashMap, HashSet};
 
 pub enum DependencyGraphError<Labels> {
     GraphCycles(Vec<(usize, Labels)>),

@@ -51,8 +51,7 @@ impl Plugin for StreamerPlugin {
         let grpc_server = grpc::GRPCServer::new(webrtc_server, stream_events_sender);
 
         app.world
-            .get_resource_mut::<lgn_grpc::GRPCPluginSettings>()
-            .expect("the streamer plugin requires the gRPC plugin")
+            .resource_mut::<lgn_grpc::GRPCPluginSettings>()
             .into_inner()
             .register_service(grpc_server.service());
     }

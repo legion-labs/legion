@@ -101,8 +101,7 @@ fn tick(world: &mut World) {
         .collect::<Vec<_>>();
 
     let world_ptr = world as *mut World;
-    let event_cache =
-        world.get_resource::<ScriptingEventCache>().unwrap() as *const ScriptingEventCache;
+    let event_cache = world.resource::<ScriptingEventCache>() as *const ScriptingEventCache;
 
     for entity in scripted_entities {
         let mut args: Vec<Value> = Vec::new();
@@ -124,7 +123,7 @@ fn tick(world: &mut World) {
                     let entity_lookup = EntityLookupByName::new(world_ptr);
                     args.push(entity_lookup.to_value().unwrap());
                 } else if input == "{result}" {
-                    let rune_vms = world.get_non_send_resource::<VMCollection>().unwrap();
+                    let rune_vms = world.non_send_resource::<VMCollection>();
                     let vm_context = rune_vms.get(script.vm_index).as_ref().unwrap();
                     args.push(vm_context.last_result.clone());
                 } else {
@@ -138,7 +137,7 @@ fn tick(world: &mut World) {
         };
 
         {
-            let mut rune_vms = world.get_non_send_resource_mut::<VMCollection>().unwrap();
+            let mut rune_vms = world.non_send_resource_mut::<VMCollection>();
             let vm_context = rune_vms.get_mut(script_vm_index).as_mut().unwrap();
             let mut vm_exec = vm_context.vm.execute(script_entry_fn, args).unwrap();
             vm_context.last_result = vm_exec.complete().unwrap();

@@ -81,7 +81,7 @@ impl<'w, 's> Commands<'w, 's> {
     ///         // adds a single component to the entity
     ///         .insert(Label("hello world"));
     /// }
-    /// # example_system.system();
+    /// # lgn_ecs::system::assert_is_system(example_system);
     /// ```
     pub fn spawn<'a>(&'a mut self) -> EntityCommands<'w, 's, 'a> {
         let entity = self.entities.reserve_entity();
@@ -308,6 +308,8 @@ impl<'w, 's> Commands<'w, 's> {
     /// the same type.
     ///
     /// See [`World::insert_resource`] for more details.
+    /// Note that commands do not take effect immediately.
+    /// When possible, prefer the equivalent methods on `App` or `World`.
     ///
     /// # Example
     ///
@@ -327,7 +329,7 @@ impl<'w, 's> Commands<'w, 's> {
     /// # }
     /// # lgn_ecs::system::assert_is_system(system);
     /// ```
-    pub fn insert_resource<T: Resource>(&mut self, resource: T) {
+    pub fn insert_resource<R: Resource>(&mut self, resource: R) {
         self.queue.push(InsertResource { resource });
     }
 

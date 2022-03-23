@@ -7,6 +7,7 @@ use std::{
 };
 
 use lgn_ecs_macros::all_tuples;
+pub use lgn_ecs_macros::WorldQuery;
 
 use crate::{
     archetype::{Archetype, ArchetypeComponentId},
@@ -48,6 +49,267 @@ use crate::{
 /// consult the item's corresponding documentation.
 ///
 /// [`Or`]: crate::query::Or
+///
+/// # Derive
+///
+/// This trait can be derived with the [`derive@super::WorldQuery`] macro.
+///
+/// You may want to implement a custom query with the derive macro for the following reasons:
+/// - Named structs can be clearer and easier to use than complex query tuples. Access via struct
+///   fields is more convenient than destructuring tuples or accessing them via `q.0, q.1, ...`
+///   pattern and saves a lot of maintenance burden when adding or removing components.
+/// - Nested queries enable the composition pattern and makes query types easier to re-use.
+/// - You can bypass the limit of 15 components that exists for query tuples.
+///
+/// Implementing the trait manually can allow for a fundamentally new type of behaviour.
+///
+/// The derive macro implements [`WorldQuery`] for your type and declares an additional struct
+/// which will be used as an item for query iterators. The implementation also generates two other
+/// structs that implement [`Fetch`] and [`FetchState`] and are used as [`WorldQuery::Fetch`] and
+/// [`WorldQuery::State`] associated types respectively.
+///
+/// The derive macro requires every struct field to implement the `WorldQuery` trait.
+///
+/// **Note:** currently, the macro only supports named structs.
+///
+/// ```
+/// # use lgn_ecs::prelude::*;
+/// use lgn_ecs::query::WorldQuery;
+///
+/// #[derive(Component)]
+/// struct Foo;
+/// #[derive(Component)]
+/// struct Bar;
+///
+/// #[derive(WorldQuery)]
+/// struct MyQuery<'w> {
+///     entity: Entity,
+///     foo: &'w Foo,
+///     bar: Option<&'w Bar>,
+/// }
+///
+/// fn my_system(query: Query<MyQuery>) {
+///     for q in query.iter() {
+///         // Note the type of the returned item.
+///         let q: MyQueryItem<'_> = q;
+///         q.foo;
+///     }
+/// }
+///
+/// # lgn_ecs::system::assert_is_system(my_system);
+/// ```
+///
+/// ## Mutable queries
+///
+/// All queries that are derived with the `WorldQuery` macro provide only an immutable access by default.
+/// If you need a mutable access to components, you can mark a struct with the `mutable` attribute.
+///
+/// ```
+/// # use lgn_ecs::prelude::*;
+/// use lgn_ecs::query::WorldQuery;
+///
+/// #[derive(Component)]
+/// struct Health(f32);
+/// #[derive(Component)]
+/// struct Buff(f32);
+///
+/// #[derive(WorldQuery)]
+/// #[world_query(mutable)]
+/// struct HealthQuery<'w> {
+///     health: &'w mut Health,
+///     buff: Option<&'w mut Buff>,
+/// }
+///
+/// // This implementation is only available when iterating with `iter_mut`.
+/// impl<'w> HealthQueryItem<'w> {
+///     fn damage(&mut self, value: f32) {
+///         self.health.0 -= value;
+///     }
+///
+///     fn total(&self) -> f32 {
+///         self.health.0 + self.buff.as_deref().map_or(0.0, |Buff(buff)| *buff)
+///     }
+/// }
+///
+/// // If you want to use it with `iter`, you'll need to write an additional implementation.
+/// impl<'w> HealthQueryReadOnlyItem<'w> {
+///     fn total(&self) -> f32 {
+///         self.health.0 + self.buff.map_or(0.0, |Buff(buff)| *buff)
+///     }
+/// }
+///
+/// fn my_system(mut health_query: Query<HealthQuery>) {
+///     // Iterator's item is `HealthQueryReadOnlyItem`.
+///     for health in health_query.iter() {
+///         println!("Total: {}", health.total());
+///     }
+///     // Iterator's item is `HealthQueryItem`.
+///     for mut health in health_query.iter_mut() {
+///         health.damage(1.0);
+///         println!("Total (mut): {}", health.total());
+///     }
+/// }
+///
+/// # lgn_ecs::system::assert_is_system(my_system);
+/// ```
+///
+/// **Note:** if you omit the `mutable` attribute for a query that doesn't implement
+/// `ReadOnlyFetch`, compilation will fail. We insert static checks as in the example above for
+/// every query component and a nested query.
+/// (The checks neither affect the runtime, nor pollute your local namespace.)
+///
+/// ```compile_fail
+/// # use lgn_ecs::prelude::*;
+/// use lgn_ecs::query::WorldQuery;
+///
+/// #[derive(Component)]
+/// struct Foo;
+/// #[derive(Component)]
+/// struct Bar;
+///
+/// #[derive(WorldQuery)]
+/// struct FooQuery<'w> {
+///     foo: &'w Foo,
+///     bar_query: BarQuery<'w>,
+/// }
+///
+/// #[derive(WorldQuery)]
+/// #[world_query(mutable)]
+/// struct BarQuery<'w> {
+///     bar: &'w mut Bar,
+/// }
+/// ```
+///
+/// ## Derives for items
+///
+/// If you want query items to have derivable traits, you can pass them with using
+/// the `world_query(derive)` attribute. When the `WorldQuery` macro generates the structs
+/// for query items, it doesn't automatically inherit derives of a query itself. Since derive macros
+/// can't access information about other derives, they need to be passed manually with the
+/// `world_query(derive)` attribute.
+///
+/// ```
+/// # use lgn_ecs::prelude::*;
+/// use lgn_ecs::query::WorldQuery;
+///
+/// #[derive(Component, Debug)]
+/// struct Foo;
+///
+/// #[derive(WorldQuery)]
+/// #[world_query(mutable, derive(Debug))]
+/// struct FooQuery<'w> {
+///     foo: &'w Foo,
+/// }
+///
+/// fn assert_debug<T: std::fmt::Debug>() {}
+///
+/// assert_debug::<FooQueryItem>();
+/// assert_debug::<FooQueryReadOnlyItem>();
+/// ```
+///
+/// ## Nested queries
+///
+/// Using nested queries enable the composition pattern, which makes it possible to re-use other
+/// query types. All types that implement [`WorldQuery`] (including the ones that use this derive
+/// macro) are supported.
+///
+/// ```
+/// # use lgn_ecs::prelude::*;
+/// use lgn_ecs::query::WorldQuery;
+///
+/// #[derive(Component)]
+/// struct Foo;
+/// #[derive(Component)]
+/// struct Bar;
+/// #[derive(Component)]
+/// struct OptionalFoo;
+/// #[derive(Component)]
+/// struct OptionalBar;
+///
+/// #[derive(WorldQuery)]
+/// struct MyQuery<'w> {
+///     foo: FooQuery<'w>,
+///     bar: (&'w Bar, Option<&'w OptionalBar>)
+/// }
+///
+/// #[derive(WorldQuery)]
+/// struct FooQuery<'w> {
+///     foo: &'w Foo,
+///     optional_foo: Option<&'w OptionalFoo>,
+/// }
+///
+/// // You can also compose derived queries with regular ones in tuples.
+/// fn my_system(query: Query<(&Foo, MyQuery, FooQuery)>) {
+///     for (foo, my_query, foo_query) in query.iter() {
+///         foo; my_query; foo_query;
+///     }
+/// }
+///
+/// # lgn_ecs::system::assert_is_system(my_system);
+/// ```
+///
+/// ## Ignored fields
+///
+/// The macro also supports `ignore` attribute for struct members. Fields marked with this attribute
+/// must implement the `Default` trait.
+///
+/// This example demonstrates a query that would iterate over every entity.
+///
+/// ```
+/// # use lgn_ecs::prelude::*;
+/// use lgn_ecs::query::WorldQuery;
+///
+/// #[derive(WorldQuery, Debug)]
+/// struct EmptyQuery<'w> {
+///     #[world_query(ignore)]
+///     _w: std::marker::PhantomData<&'w ()>,
+/// }
+///
+/// fn my_system(query: Query<EmptyQuery>) {
+///     for _ in query.iter() {}
+/// }
+///
+/// # lgn_ecs::system::assert_is_system(my_system);
+/// ```
+///
+/// ## Filters
+///
+/// Using [`derive@super::WorldQuery`] macro in conjunctions with the `#[world_query(filter)]`
+/// attribute allows creating custom query filters.
+///
+/// To do so, all fields in the struct must be filters themselves (their [`WorldQuery::Fetch`]
+/// associated types should implement [`super::FilterFetch`]).
+///
+/// ```
+/// # use lgn_ecs::prelude::*;
+/// use lgn_ecs::{query::WorldQuery, component::Component};
+///
+/// #[derive(Component)]
+/// struct Foo;
+/// #[derive(Component)]
+/// struct Bar;
+/// #[derive(Component)]
+/// struct Baz;
+/// #[derive(Component)]
+/// struct Qux;
+///
+/// #[derive(WorldQuery)]
+/// #[world_query(filter)]
+/// struct MyFilter<T: Component, P: Component> {
+///     _foo: With<Foo>,
+///     _bar: With<Bar>,
+///     _or: Or<(With<Baz>, Changed<Foo>, Added<Bar>)>,
+///     _generic_tuple: (With<T>, Without<P>),
+///     #[world_query(ignore)]
+///     _tp: std::marker::PhantomData<(T, P)>,
+/// }
+///
+/// fn my_system(query: Query<Entity, MyFilter<Foo, Qux>>) {
+///     for _ in query.iter() {}
+/// }
+///
+/// # lgn_ecs::system::assert_is_system(my_system);
+/// ```
 pub trait WorldQuery {
     type Fetch: for<'world, 'state> Fetch<'world, 'state, State = Self::State>;
     type State: FetchState;
@@ -57,6 +319,11 @@ pub trait WorldQuery {
 
 pub type QueryItem<'w, 's, Q> = <<Q as WorldQuery>::Fetch as Fetch<'w, 's>>::Item;
 
+/// Types that implement this trait are responsible for fetching query items from tables or
+/// archetypes.
+///
+/// Every type that implements [`WorldQuery`] have their associated [`WorldQuery::Fetch`] and
+/// [`WorldQuery::State`] types that are essential for fetching component data.
 pub trait Fetch<'world, 'state>: Sized {
     type Item;
     type State: FetchState;
@@ -160,6 +427,7 @@ impl WorldQuery for Entity {
 }
 
 /// The [`Fetch`] of [`Entity`].
+#[doc(hidden)]
 #[derive(Clone)]
 pub struct EntityFetch {
     entities: *const Entity,
@@ -169,6 +437,7 @@ pub struct EntityFetch {
 unsafe impl ReadOnlyFetch for EntityFetch {}
 
 /// The [`FetchState`] of [`Entity`].
+#[doc(hidden)]
 pub struct EntityState;
 
 // SAFETY: no component or archetype access
@@ -247,6 +516,7 @@ impl<T: Component> WorldQuery for &T {
 }
 
 /// The [`FetchState`] of `&T`.
+#[doc(hidden)]
 pub struct ReadState<T> {
     component_id: ComponentId,
     marker: PhantomData<T>,
@@ -294,6 +564,7 @@ unsafe impl<T: Component> FetchState for ReadState<T> {
 }
 
 /// The [`Fetch`] of `&T`.
+#[doc(hidden)]
 pub struct ReadFetch<T> {
     table_components: NonNull<T>,
     entity_table_rows: *const usize,
@@ -403,6 +674,7 @@ impl<T: Component> WorldQuery for &mut T {
 }
 
 /// The [`Fetch`] of `&mut T`.
+#[doc(hidden)]
 pub struct WriteFetch<T> {
     table_components: NonNull<T>,
     table_ticks: *const UnsafeCell<ComponentTicks>,
@@ -428,6 +700,7 @@ impl<T> Clone for WriteFetch<T> {
 }
 
 /// The [`ReadOnlyFetch`] of `&mut T`.
+#[doc(hidden)]
 pub struct ReadOnlyWriteFetch<T> {
     table_components: NonNull<T>,
     entities: *const Entity,
@@ -450,6 +723,7 @@ impl<T> Clone for ReadOnlyWriteFetch<T> {
 }
 
 /// The [`FetchState`] of `&mut T`.
+#[doc(hidden)]
 pub struct WriteState<T> {
     component_id: ComponentId,
     marker: PhantomData<T>,
@@ -687,6 +961,7 @@ impl<T: WorldQuery> WorldQuery for Option<T> {
 }
 
 /// The [`Fetch`] of `Option<T>`.
+#[doc(hidden)]
 #[derive(Clone)]
 pub struct OptionFetch<T> {
     fetch: T,
@@ -697,6 +972,7 @@ pub struct OptionFetch<T> {
 unsafe impl<T: ReadOnlyFetch> ReadOnlyFetch for OptionFetch<T> {}
 
 /// The [`FetchState`] of `Option<T>`.
+#[doc(hidden)]
 pub struct OptionState<T: FetchState> {
     state: T,
 }
@@ -867,6 +1143,7 @@ impl<T: Component> WorldQuery for ChangeTrackers<T> {
 }
 
 /// The [`FetchState`] of [`ChangeTrackers`].
+#[doc(hidden)]
 pub struct ChangeTrackersState<T> {
     component_id: ComponentId,
     marker: PhantomData<T>,
@@ -914,6 +1191,7 @@ unsafe impl<T: Component> FetchState for ChangeTrackersState<T> {
 }
 
 /// The [`Fetch`] of [`ChangeTrackers`].
+#[doc(hidden)]
 pub struct ChangeTrackersFetch<T> {
     table_ticks: *const ComponentTicks,
     entity_table_rows: *const usize,

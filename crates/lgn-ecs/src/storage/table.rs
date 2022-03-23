@@ -6,7 +6,7 @@ use std::{
     ptr::NonNull,
 };
 
-use lgn_utils::{DefaultHash, HashMap};
+use lgn_utils::HashMap;
 
 use crate::{
     component::{ComponentId, ComponentInfo, ComponentTicks, Components},
@@ -427,7 +427,7 @@ impl Table {
 /// Can be accessed via [`Storages`](crate::storage::Storages)
 pub struct Tables {
     tables: Vec<Table>,
-    table_ids: HashMap<u64, TableId>,
+    table_ids: HashMap<Vec<ComponentId>, TableId>,
 }
 
 impl Default for Tables {
@@ -484,16 +484,21 @@ impl Tables {
         component_ids: &[ComponentId],
         components: &Components,
     ) -> TableId {
-        let hash = component_ids.default_hash();
         let tables = &mut self.tables;
-        *self.table_ids.entry(hash).or_insert_with(move || {
-            let mut table = Table::with_capacity(0, component_ids.len());
-            for component_id in component_ids.iter() {
-                table.add_column(components.get_info_unchecked(*component_id));
-            }
-            tables.push(table);
-            TableId(tables.len() - 1)
-        })
+        let (_key, value) = self
+            .table_ids
+            .raw_entry_mut()
+            .from_key(component_ids)
+            .or_insert_with(|| {
+                let mut table = Table::with_capacity(0, component_ids.len());
+                for component_id in component_ids.iter() {
+                    table.add_column(components.get_info_unchecked(*component_id));
+                }
+                tables.push(table);
+                (component_ids.to_vec(), TableId(tables.len() - 1))
+            });
+
+        *value
     }
 
     pub fn iter(&self) -> std::slice::Iter<'_, Table> {
