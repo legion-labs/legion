@@ -3,13 +3,12 @@
   import { getLodFromPixelSizeMs, MergeThresholdForLOD } from "@/lib/lod";
   import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   export let store: TimelineStateStore;
-  export let canvasWidth: number;
   let pixelSize: number;
   $: lod = getLodFromPixelSizeMs(pixelSize);
   $: mergeThreshold = MergeThresholdForLOD(lod);
   $: {
     const vr = $store.getViewRange();
-    pixelSize = (vr[1] - vr[0]) / canvasWidth;
+    pixelSize = (vr[1] - vr[0]) / $store.canvasWidth;
   }
 </script>
 

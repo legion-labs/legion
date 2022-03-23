@@ -2,13 +2,13 @@
   import { formatExecutionTime } from "@/lib/format";
   import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   export let stateStore: TimelineStateStore;
-  export let width: number;
   let percent: number;
 
   $: if (
     $stateStore?.currentSelection &&
     $stateStore.selectionState.selectedRange
   ) {
+    const width = $stateStore?.canvasWidth;
     const [begin, end] = $stateStore.getViewRange();
     const invTimeSpan = 1.0 / (end - begin);
     const msToPixelsFactor = invTimeSpan * width;
@@ -24,7 +24,7 @@
 {#if $stateStore?.currentSelection}
   <div class="flex flex-row">
     <div class="block" />
-    <div class="parent" style={`width:${width}px`}>
+    <div class="parent" style={`width:${$stateStore?.canvasWidth}px`}>
       <div class="range" style={`left:${percent}%`}>
         <div class="child">
           <i class="bi bi-arrow-left-short" />

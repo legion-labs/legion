@@ -12,7 +12,6 @@
   export let rootStartTime: number;
   export let stateStore: TimelineStateStore;
   export let thread: Thread;
-  export let width: number;
   export let parentCollapsed: boolean;
 
   const wheelDispatch = createEventDispatcher<{ zoom: WheelEvent }>();
@@ -66,7 +65,13 @@
     height = Math.max(spanPixelHeight, thread.maxDepth * spanPixelHeight);
   }
 
-  $: if (width || height || scopes || range || $stateStore?.currentSelection) {
+  $: if (
+    $stateStore?.canvasWidth ||
+    height ||
+    scopes ||
+    range ||
+    $stateStore?.currentSelection
+  ) {
     draw();
   }
 
@@ -83,16 +88,18 @@
   }
 
   async function draw() {
-    if (canvas && ctx && !parentCollapsed) {
-      await tick();
-      drawThread();
-      if ($stateStore.selectionState) {
-        DrawSelectedRange(
-          canvas,
-          ctx,
-          $stateStore.selectionState,
-          $stateStore.getViewRange()
-        );
+    if (ctx && !parentCollapsed) {
+      if (canvas) {
+        await tick();
+        drawThread();
+        if ($stateStore.selectionState) {
+          DrawSelectedRange(
+            canvas,
+            ctx,
+            $stateStore.selectionState,
+            $stateStore.getViewRange()
+          );
+        }
       }
     }
   }
@@ -173,10 +180,10 @@
 
 <div
   class="timeline-item"
-  style={`width:${width}px`}
+  style={`width:${$stateStore.canvasWidth}px`}
   on:wheel|preventDefault={(e) => wheelDispatch("zoom", e)}
 >
-  <canvas {width} {height} bind:this={canvas} />
+  <canvas width={$stateStore.canvasWidth} {height} bind:this={canvas} />
 </div>
 
 <style>

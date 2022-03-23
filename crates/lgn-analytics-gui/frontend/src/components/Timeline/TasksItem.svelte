@@ -10,7 +10,6 @@
   export let stateStore: TimelineStateStore;
   export let process: Process;
   export let processAsyncData: ProcessAsyncData;
-  export let width: number;
   export let parentCollapsed: boolean;
   let collapsed = false;
   const wheelDispatch = createEventDispatcher<{ zoom: WheelEvent }>();
@@ -40,7 +39,6 @@
     {parentCollapsed}
     {process}
     {processAsyncData}
-    {width}
     {rootStartTime}
     on:zoom={(e) => wheelDispatch("zoom", e.detail)}
   />

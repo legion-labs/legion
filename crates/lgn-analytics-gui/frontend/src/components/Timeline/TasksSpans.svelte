@@ -13,7 +13,6 @@
   export let stateStore: TimelineStateStore;
   export let process: Process;
   export let processAsyncData: ProcessAsyncData;
-  export let width: number;
   export let parentCollapsed: boolean;
 
   const wheelDispatch = createEventDispatcher<{ zoom: WheelEvent }>();
@@ -63,7 +62,13 @@
     processAsyncData.maxDepth * spanPixelHeight
   );
 
-  $: if (width || height || scopes || range || $stateStore?.currentSelection) {
+  $: if (
+    height ||
+    scopes ||
+    range ||
+    $stateStore?.canvasWidth ||
+    $stateStore?.currentSelection
+  ) {
     draw();
   }
 
@@ -157,11 +162,11 @@
 </script>
 
 <div
-  style={`width:${width}px`}
+  style={`width:${$stateStore.canvasWidth}px`}
   class="timeline-item"
   on:wheel|preventDefault={(e) => wheelDispatch("zoom", e)}
 >
-  <canvas {width} {height} bind:this={canvas} />
+  <canvas width={$stateStore.canvasWidth} {height} bind:this={canvas} />
 </div>
 
 <style>

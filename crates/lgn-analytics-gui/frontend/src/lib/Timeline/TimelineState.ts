@@ -10,7 +10,7 @@ import type { ProcessAsyncData } from "./ProcessAsyncData";
 export class TimelineState {
   minMs = Infinity;
   maxMs = -Infinity;
-  canvasWidth = NaN;
+  canvasWidth: number;
   threads: Record<string, Thread> = {};
   blocks: Record<string, ThreadBlock> = {};
   eventCount = 0;
@@ -23,7 +23,8 @@ export class TimelineState {
   private timelineStart: number | null;
   private timelineEnd: number | null;
   private viewRange: [number, number] | null = null;
-  constructor(start: number | null, end: number | null) {
+  constructor(canvasWidth: number, start: number | null, end: number | null) {
+    this.canvasWidth = canvasWidth;
     this.timelineStart = start;
     this.timelineEnd = end;
     this.selectionState = NewSelectionState();
@@ -39,13 +40,18 @@ export class TimelineState {
     this.viewRange = range;
   }
 
-  setViewRangeFromWheel(
-    viewRange: [number, number],
-    canvasWidth: number,
-    wheelEvent: WheelEvent
-  ) {
+  setViewRangeFromWheel(viewRange: [number, number], wheelEvent: WheelEvent) {
     this.setViewRange(
-      zoomHorizontalViewRange(viewRange, canvasWidth, wheelEvent)
+      zoomHorizontalViewRange(viewRange, this.canvasWidth, wheelEvent)
+    );
+  }
+
+  isFullyVisible() {
+    if (!this.viewRange) {
+      return false;
+    }
+    return !(
+      this.viewRange[0] <= this.minMs && this.viewRange[1] >= this.maxMs
     );
   }
 
@@ -62,6 +68,10 @@ export class TimelineState {
       end = this.timelineEnd;
     }
     return [start, end];
+  }
+
+  getMaxRange() {
+    return this.maxMs - this.minMs;
   }
 
   findStreamProcess(streamId: string) {

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { TimelineStateManager } from "@/lib/Timeline/TimelineStateManager";
-  import { onMount } from "svelte";
+  import { afterUpdate, onMount, tick } from "svelte";
   import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { BarLoader } from "svelte-loading-spinners";
@@ -16,6 +16,10 @@
   import TimelineSearch from "./TimelineSearch.svelte";
   export let processId: string;
   import { useLocation } from "svelte-navigator";
+  import TimelineMinimap from "./TimelineMinimap.svelte";
+  import { threadItemLength } from "@/lib/Timeline/TimelineValues";
+
+  const gap = 4;
   const location = useLocation();
   const startParam = "begin";
   const endParam = "end";
@@ -30,13 +34,15 @@
   let windowInnerWidth: number;
   let stateStore: TimelineStateStore;
   let panState: PanState | undefined = undefined;
-  let canvasWidth = NaN; //todo: retirer
+  let canvasHeight: number;
+  let scrollHeight: number;
+  let scrollTop: number;
   let div: HTMLElement;
+  let mainWidth: number;
 
-  $: if (windowInnerWidth) {
+  $: if (mainWidth && stateStore) {
     stateStore.update((s) => {
-      canvasWidth = windowInnerWidth - 230;
-      s.canvasWidth = canvasWidth;
+      s.canvasWidth = mainWidth - threadItemLength - gap;
       return s;
     });
   }
@@ -50,14 +56,15 @@
     const start = s != null ? Number.parseFloat(s) : null;
     const e = url.get(endParam);
     const end = e != null ? Number.parseFloat(e) : null;
-    stateManager = new TimelineStateManager(processId, start, end);
+    const canvasWidth = windowInnerWidth - threadItemLength;
+    stateManager = new TimelineStateManager(processId, canvasWidth, start, end);
     stateStore = stateManager.state;
     await stateManager.init();
   });
 
   async function onZoom(event: WheelEvent) {
     stateStore.update((s) => {
-      s.setViewRangeFromWheel(s.getViewRange(), canvasWidth, event);
+      s.setViewRangeFromWheel(s.getViewRange(), event);
       return s;
     });
 
@@ -78,7 +85,7 @@
       RangeSelectionOnMouseMove(
         event,
         $stateStore.selectionState,
-        canvasWidth,
+        $stateStore.canvasWidth,
         $stateStore.getViewRange()
       )
     ) {
@@ -97,34 +104,42 @@
       panState = undefined;
     } else if (!event.shiftKey) {
       if (isValidEvent(event)) {
-        if (!panState) {
-          panState = {
-            beginMouseX: event.offsetX,
-            beginMouseY: event.offsetY,
-            viewRange: $stateStore.getViewRange(),
-          };
-        }
-
-        const factor =
-          (panState.viewRange[1] - panState.viewRange[0]) / canvasWidth;
-        const offsetMs = factor * (panState.beginMouseX - event.offsetX);
-
-        if (event.movementY) {
-          div.scrollBy(0, -event.movementY);
-        }
-
-        stateStore.update((s) => {
-          if (panState) {
-            s.setViewRange([
-              panState.viewRange[0] + offsetMs,
-              panState.viewRange[1] + offsetMs,
-            ]);
-          }
-          return s;
-        });
-        await stateManager.fetchDynData();
+        await applyDrag(event.offsetX, event.offsetY, event.movementY);
       }
     }
+  }
+
+  async function applyDrag(
+    offsetX: number,
+    offsetY: number,
+    movementY: number
+  ) {
+    if (!panState) {
+      panState = {
+        beginMouseX: offsetX,
+        beginMouseY: offsetY,
+        viewRange: $stateStore.getViewRange(),
+      };
+    }
+
+    const factor =
+      (panState.viewRange[1] - panState.viewRange[0]) / $stateStore.canvasWidth;
+    const offsetMs = factor * (panState.beginMouseX - offsetX);
+
+    if (movementY) {
+      div.scrollBy(0, -movementY);
+    }
+
+    stateStore.update((s) => {
+      if (panState) {
+        s.setViewRange([
+          panState.viewRange[0] + offsetMs,
+          panState.viewRange[1] + offsetMs,
+        ]);
+      }
+      return s;
+    });
+    await stateManager.fetchDynData();
   }
 
   function onMouseDown(event: MouseEvent) {
@@ -136,7 +151,7 @@
     }
   }
 
-  function onMouseUp(_e: MouseEvent) {
+  function onMouseUp(_: MouseEvent) {
     const selection = $stateStore.currentSelection;
     if (selection) {
       setRangeUrl(selection);
@@ -159,6 +174,29 @@
         return s;
       });
     }
+  }
+
+  afterUpdate(() => {
+    onScroll(undefined);
+  });
+
+  function onScroll(_: UIEvent | undefined) {
+    scrollHeight = div.scrollHeight;
+    scrollTop = div.scrollTop;
+  }
+
+  async function onMinimapTick(detail: {
+    xBegin: number;
+    xEnd: number;
+    yRatio: number;
+  }) {
+    panState = undefined;
+    div.scrollTo({ top: detail.yRatio * scrollHeight });
+    stateStore.update((s) => {
+      s.setViewRange([detail.xBegin, detail.xEnd]);
+      return s;
+    });
+    await stateManager.fetchDynData();
   }
 </script>
 
@@ -183,8 +221,11 @@
   {/if}
 
   <div
+    class="canvas"
     bind:this={div}
-    class="canvas "
+    bind:clientHeight={canvasHeight}
+    bind:clientWidth={mainWidth}
+    on:scroll={(e) => onScroll(e)}
     on:mousedown|preventDefault={(e) => onMouseDown(e)}
     on:mousemove|preventDefault={(e) => onMouseMove(e)}
     on:mouseup|preventDefault={(e) => onMouseUp(e)}
@@ -194,21 +235,28 @@
         <TimelineProcess
           process={p}
           {stateStore}
-          width={canvasWidth}
           rootStartTime={stateManager.rootStartTime}
           on:zoom={(e) => onZoom(e.detail)}
         />
       {/each}
     {/if}
   </div>
-  <TimelineRange {stateStore} width={canvasWidth} />
+  <TimelineMinimap
+    {stateStore}
+    {canvasHeight}
+    {scrollHeight}
+    {scrollTop}
+    on:zoom={(e) => onZoom(e.detail)}
+    on:tick={(e) => onMinimapTick(e.detail)}
+  />
+  <TimelineRange {stateStore} />
 </div>
 
 {#if stateManager?.process && $stateStore.ready}
   <div
     class="flex flex-row-reverse justify-between items-center pt-1 h-7 detail"
   >
-    <TimelineDebug {canvasWidth} store={stateStore} />
+    <TimelineDebug store={stateStore} />
   </div>
 {/if}
 
@@ -216,6 +264,7 @@
   .main {
     overflow-x: hidden;
     overflow-y: hidden;
+    position: relative;
   }
 
   .canvas {
