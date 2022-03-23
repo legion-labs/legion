@@ -163,12 +163,14 @@ impl Config {
     /// - `/etc/legion-labs/config.toml` on UNIX.
     /// - Any `legion.toml` file in the current binary directory, or one of its
     /// parent directories, stopping as soon as a file is found.
+    /// - Any `legion.toml` file in the current working directory, or one of its
+    /// parent directories, stopping as soon as a file is found. If the first
+    /// found file was already read as part of the previous lookup, it is not
+    /// read again.
     /// - `$XDG_CONFIG_HOME/legion-labs/config.toml` on UNIX.
     /// - `$HOME/.config/legion-labs/config.toml` on UNIX.
-    /// - {FOLDERID_RoamingAppData}/legion-labs/legion.toml on Windows.
-    /// - Any `legion.toml` file in the current working directory, or one of its
-    /// parent directories, stopping as soon as a file is found.
-    /// - Environment variables, starting with `LGN`.
+    /// - %APPDATA%/legion-labs/legion.toml on Windows.
+    /// - Environment variables, starting with `LGN_`.
     ///
     /// # Errors
     ///
@@ -205,10 +207,30 @@ impl Config {
         // stopping as soon as we find a configuration file.
         let binary_path = std::env::current_exe()?;
 
+        let mut known_path = None;
+
         for dir in binary_path.parent().unwrap().ancestors() {
             let config_file_path = dir.join(DEFAULT_FILENAME);
 
             if std::fs::metadata(&config_file_path).is_ok() {
+                figment = figment.merge(Toml::file(&config_file_path));
+                known_path = Some(config_file_path);
+                break;
+            }
+        }
+
+        // Then, try to read the closest file we found.
+        for dir in path.as_ref().ancestors() {
+            let config_file_path = dir.join(DEFAULT_FILENAME);
+
+            if std::fs::metadata(&config_file_path).is_ok() {
+                // If we already loaded that file, do not reload it.
+                if let Some(known_path) = known_path {
+                    if config_file_path == known_path {
+                        break;
+                    }
+                }
+
                 figment = figment.merge(Toml::file(config_file_path));
                 break;
             }
@@ -218,16 +240,6 @@ impl Config {
         if let Some(config_dir) = dirs::config_dir() {
             let config_file_path = config_dir.join("legion-labs").join(DEFAULT_FILENAME);
             figment = figment.merge(Toml::file(config_file_path));
-        }
-
-        // Then, try to read the closest file we found.
-        for dir in path.as_ref().ancestors() {
-            let config_file_path = dir.join(DEFAULT_FILENAME);
-
-            if std::fs::metadata(&config_file_path).is_ok() {
-                figment = figment.merge(Toml::file(config_file_path));
-                break;
-            }
         }
 
         // Finally, read from environment variables, starting with `LGN`.
