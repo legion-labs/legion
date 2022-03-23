@@ -57,3 +57,6 @@ pub(crate) use renderer_options::*;
 
 mod readback_buffer;
 pub(crate) use readback_buffer::*;
+
+mod material_manager;
+pub(crate) use material_manager::*;

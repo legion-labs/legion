@@ -77,7 +77,8 @@ use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 use crate::debug_display::DebugDisplay;
 
 use crate::resources::{
-    ui_renderer_options, MissingVisualTracker, RendererOptions, SharedResourcesManager,
+    ui_renderer_options, MaterialManager, MissingVisualTracker, RendererOptions,
+    SharedResourcesManager,
 };
 
 use crate::{
@@ -109,19 +110,27 @@ impl Plugin for RendererPlugin {
         // Init in dependency order
         //
         let renderer = Renderer::new(NUM_RENDER_FRAMES);
+
         let cgen_registry = Arc::new(cgen::initialize(renderer.device_context()));
+
         let descriptor_heap_manager =
             DescriptorHeapManager::new(NUM_RENDER_FRAMES, renderer.device_context());
+
         let mut pipeline_manager = PipelineManager::new(renderer.device_context());
         pipeline_manager.register_shader_families(&cgen_registry);
+
         let mut cgen_registry_list = CGenRegistryList::new();
         cgen_registry_list.push(cgen_registry);
+
         let mut persistent_descriptor_set_manager = PersistentDescriptorSetManager::new(
             renderer.device_context(),
             &descriptor_heap_manager,
             NUM_RENDER_FRAMES,
         );
+
         let texture_manager = TextureManager::new(renderer.device_context());
+
+        let material_manager = MaterialManager::new();
 
         let shared_resources_manager =
             SharedResourcesManager::new(&renderer, &mut persistent_descriptor_set_manager);
@@ -161,19 +170,21 @@ impl Plugin for RendererPlugin {
         app.insert_resource(RenderSurfaces::new());
         app.insert_resource(ModelManager::new());
         app.insert_resource(MeshManager::new(&renderer));
-        app.init_resource::<DebugDisplay>();
-        app.init_resource::<LightingManager>();
+        app.insert_resource(DebugDisplay::default());
+        app.insert_resource(LightingManager::default());
         app.insert_resource(GpuInstanceManager::new(renderer.static_buffer_allocator()));
-        app.init_resource::<MissingVisualTracker>();
+        app.insert_resource(MissingVisualTracker::default());
         app.insert_resource(descriptor_heap_manager);
         app.insert_resource(persistent_descriptor_set_manager);
         app.insert_resource(shared_resources_manager);
         app.insert_resource(texture_manager);
+        app.insert_resource(material_manager);
         app.insert_resource(mesh_renderer);
-        app.init_resource::<RendererOptions>();
+        app.insert_resource(RendererOptions::default());
 
         // Init ecs
         TextureManager::init_ecs(app);
+        MaterialManager::init_ecs(app);
         MeshRenderer::init_ecs(app);
         ModelManager::init_ecs(app);
         MissingVisualTracker::init_ecs(app);
