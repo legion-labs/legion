@@ -144,6 +144,9 @@ impl AssetToECS for runtime_data::Entity {
                     enabled: light.enabled,
                     ..LightComponent::default()
                 });
+            } else if let Some(_gltf_loader) = component.downcast_ref::<runtime_data::GltfLoader>()
+            {
+                // nothing to do
             } else if let Some(physics) =
                 component.downcast_ref::<lgn_physics::runtime::PhysicsRigidBox>()
             {
