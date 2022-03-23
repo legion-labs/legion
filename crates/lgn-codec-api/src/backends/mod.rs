@@ -1,3 +1,5 @@
+use lgn_graphics_api::DeviceContext;
+
 use self::nvenc::NvEncEncoder;
 use crate::{CpuBuffer, GpuBuffer, VideoProcessor};
 
@@ -22,17 +24,17 @@ pub enum CodecHardware {
 /// Graphics Context for initialization
 pub enum GraphicsConfig {
     /// Vulkan config, not all values are used by all HW encoders
-    Vulkan(ash::vk::Instance, ash::vk::PhysicalDevice, ash::vk::Device),
+    Vulkan(DeviceContext),
 }
 
 /// Generic configuration that applies to all encoders
 /// All supported Encoder implement a conversion from the generic
 /// config to the hardware specific one
 pub struct EncoderConfig {
-    hardware: CodecHardware,
-    _gfx_config: GraphicsConfig,
-    width: u32,
-    height: u32,
+    pub hardware: CodecHardware,
+    pub gfx_config: DeviceContext,
+    pub width: u32,
+    pub height: u32,
 }
 
 /// Generic encoder,

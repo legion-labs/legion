@@ -73,12 +73,14 @@ impl CuContext {
         let mut context: CUcontext = std::ptr::null_mut();
         let result = unsafe { (self.inner.device.inner.cuda_api.ctx_pop_current)(&mut context) };
         assert_eq!(result, cudaError_enum::CUDA_SUCCESS);
-        // we should have one context per thread ? is it thread safe ? to be tested
-        assert_eq!(context, std::ptr::null_mut());
     }
 
-    pub fn cuda_context(&self) -> &CUcontext {
+    pub(crate) fn cuda_context(&self) -> &CUcontext {
         &self.inner.context
+    }
+
+    pub(crate) fn cuda_api(&self) -> &CudaApi {
+        &self.inner.device.inner.cuda_api
     }
 }
 

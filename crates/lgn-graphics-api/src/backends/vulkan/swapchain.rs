@@ -407,6 +407,8 @@ impl SwapchainVulkanInstance {
             let raw_image = VulkanRawImage {
                 vk_image: *image,
                 vk_allocation: None,
+                vk_device_memory: None,
+                vk_alloc_size: 0,
             };
 
             let format: Format = self.swapchain_info.surface_format.format.into();

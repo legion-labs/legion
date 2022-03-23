@@ -22,8 +22,8 @@ impl Drop for SemaphoreInner {
 }
 
 impl Semaphore {
-    pub fn new(device_context: &DeviceContext) -> Self {
-        let platform_semaphore = BackendSemaphore::new(device_context);
+    pub fn new(device_context: &DeviceContext, export_capable: bool) -> Self {
+        let platform_semaphore = BackendSemaphore::new(device_context, export_capable);
 
         Self {
             inner: device_context.deferred_dropper().new_drc(SemaphoreInner {

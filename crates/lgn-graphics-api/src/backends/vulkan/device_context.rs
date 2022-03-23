@@ -181,11 +181,11 @@ impl DeviceContext {
         &*self.inner.backend_device_context.entry
     }
 
-    pub(crate) fn vk_instance(&self) -> &ash::Instance {
+    pub fn vk_instance(&self) -> &ash::Instance {
         &self.inner.backend_device_context.instance
     }
 
-    pub(crate) fn vk_device(&self) -> &ash::Device {
+    pub fn vk_device(&self) -> &ash::Device {
         &self.inner.backend_device_context.vk_device
     }
 
@@ -234,6 +234,19 @@ impl DeviceContext {
         renderpass_def: &VulkanRenderpassDef,
     ) -> GfxResult<VulkanRenderpass> {
         VulkanRenderpass::new(device_context, renderpass_def)
+    }
+
+    pub(crate) fn get_physical_device_memory_properties(
+        &self,
+    ) -> vk::PhysicalDeviceMemoryProperties {
+        unsafe {
+            self.inner
+                .backend_device_context
+                .instance
+                .get_physical_device_memory_properties(
+                    self.inner.backend_device_context.vk_physical_device,
+                )
+        }
     }
 }
 
@@ -302,15 +315,30 @@ fn query_physical_device_info(
             .to_string()
     };
 
-    let extensions: Vec<ash::vk::ExtensionProperties> =
+    #[cfg(target_os = "windows")]
+    let requested_extensions = [
+        khr::Swapchain::name(),
+        khr::ExternalMemoryWin32::name(),
+        khr::ExternalSemaphoreWin32::name(),
+    ];
+
+    #[cfg(target_os = "linux")]
+    let requested_extensions = [
+        khr::Swapchain::name(),
+        khr::ExternalMemoryFd::name(),
+        khr::ExternalSemaphoreFd::name(),
+    ];
+
+    let available_extensions: Vec<ash::vk::ExtensionProperties> =
         unsafe { instance.enumerate_device_extension_properties(device)? };
-    debug!("Available device extensions: {:#?}", extensions);
+    debug!("Available device extensions: {:#?}", available_extensions);
+
     let mut required_extensions = vec![];
     match windowing_mode {
         ExtensionMode::Disabled => {}
         ExtensionMode::EnabledIfAvailable | ExtensionMode::Enabled => {
-            if check_extensions_availability(&[khr::Swapchain::name()], &extensions) {
-                required_extensions.push(khr::Swapchain::name());
+            if check_extensions_availability(&requested_extensions, &available_extensions) {
+                required_extensions.extend_from_slice(&requested_extensions);
             } else if windowing_mode == ExtensionMode::EnabledIfAvailable {
                 info!("Could not find the swapchain extension. Check that the proper drivers are installed.");
             } else {
@@ -350,7 +378,7 @@ fn query_physical_device_info(
             score,
             queue_family_indices,
             properties,
-            extension_properties: extensions,
+            extension_properties: available_extensions,
             all_queue_families,
             required_extensions,
         };

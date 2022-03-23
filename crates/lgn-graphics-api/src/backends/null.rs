@@ -734,6 +734,10 @@ impl NullTexture {
         unimplemented!()
     }
 
+    pub fn export_capable(device_context: &DeviceContext, texture_def: &TextureDef) -> (Self, u32) {
+        unimplemented!()
+    }
+
     pub fn destroy(&mut self, device_context: &DeviceContext) {
         unimplemented!()
     }

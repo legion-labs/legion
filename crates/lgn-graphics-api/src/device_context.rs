@@ -213,8 +213,8 @@ impl DeviceContext {
         Fence::new(self)
     }
 
-    pub fn create_semaphore(&self) -> Semaphore {
-        Semaphore::new(self)
+    pub fn create_semaphore(&self, export_capable: bool) -> Semaphore {
+        Semaphore::new(self, export_capable)
     }
 
     pub fn create_swapchain(

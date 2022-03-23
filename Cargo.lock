@@ -4438,6 +4438,7 @@ name = "lgn-codec-api"
 version = "0.1.0"
 dependencies = [
  "ash",
+ "lgn-graphics-api",
  "lgn-tracing",
  "libloading 0.7.3",
  "nvenc-sys",
@@ -5390,6 +5391,7 @@ dependencies = [
  "crossbeam-channel",
  "instant",
  "lgn-app",
+ "lgn-codec-api",
  "lgn-core",
  "lgn-ecs",
  "lgn-graphics-api",

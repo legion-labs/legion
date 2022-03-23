@@ -1,3 +1,5 @@
+use ash::vk::{ExportSemaphoreCreateInfo, ExternalSemaphoreHandleTypeFlags};
+
 use crate::{DeviceContext, Semaphore};
 
 pub(crate) struct VulkanSemaphore {
@@ -5,9 +7,22 @@ pub(crate) struct VulkanSemaphore {
 }
 
 impl VulkanSemaphore {
-    pub fn new(device_context: &DeviceContext) -> Self {
-        let create_info =
+    pub fn new(device_context: &DeviceContext, export_capable: bool) -> Self {
+        let mut create_info =
             ash::vk::SemaphoreCreateInfo::builder().flags(ash::vk::SemaphoreCreateFlags::empty());
+
+        #[cfg(target_os = "windows")]
+        let handle_type = ExternalSemaphoreHandleTypeFlags::OPAQUE_WIN32;
+
+        #[cfg(target_os = "linux")]
+        let handle_type = ExternalSemaphoreHandleTypeFlags::OPAQUE_FD;
+
+        let mut export_create_info = ExportSemaphoreCreateInfo::default();
+        if export_capable {
+            export_create_info.handle_types |= handle_type;
+
+            create_info.p_next = std::ptr::addr_of!(export_create_info).cast::<std::ffi::c_void>();
+        };
 
         let vk_semaphore = unsafe {
             device_context

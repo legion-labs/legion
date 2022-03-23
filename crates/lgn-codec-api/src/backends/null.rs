@@ -1,6 +1,6 @@
 use std::{sync::atomic::AtomicU32, u32};
 
-use crate::{CpuBuffer, Error, GpuImage, VideoProcessor};
+use crate::{CpuBuffer, Error, VideoProcessor};
 
 /// Null Encoder Config
 #[derive(Debug)]
@@ -8,6 +8,8 @@ pub struct NullEncoderConfig {
     /// queue size used to simulate a hw encoder queue
     pub queue_size: u32,
 }
+
+pub struct NullImage {}
 
 /// Null Encoder, used in testing or as as dropping
 /// replacement of a hw encoder in case you want to keep
@@ -20,7 +22,7 @@ pub struct NullEncoder {
 }
 
 impl VideoProcessor for NullEncoder {
-    type Input = GpuImage;
+    type Input = NullImage;
     type Output = CpuBuffer;
     type Config = NullEncoderConfig;
 
@@ -65,7 +67,7 @@ mod tests {
     use std::{sync::Arc, thread};
 
     use super::{NullEncoder, NullEncoderConfig};
-    use crate::{GpuImage, VideoProcessor};
+    use crate::{backends::null::NullImage, VideoProcessor};
 
     #[test]
     fn null_encoder() {
@@ -86,7 +88,7 @@ mod tests {
 
         for _ in 0..count {
             encoder
-                .submit_input(&GpuImage::Vulkan(ash::vk::Image::null()))
+                .submit_input(&NullImage {})
                 .expect("Submit should never fail since queue size is higher than submitted input");
         }
 

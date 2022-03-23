@@ -153,8 +153,14 @@ impl Texture {
         existing_image: Option<BackendRawImage>,
         texture_def: &TextureDef,
     ) -> Self {
-        let (backend_texture, texture_id) =
-            BackendTexture::from_existing(device_context, existing_image, texture_def);
+        let (backend_texture, texture_id) = if texture_def
+            .usage_flags
+            .intersects(ResourceUsage::AS_EXPORT_CAPABLE)
+        {
+            BackendTexture::export_capable(device_context, texture_def)
+        } else {
+            BackendTexture::from_existing(device_context, existing_image, texture_def)
+        };
 
         Self {
             inner: device_context.deferred_dropper().new_drc(TextureInner {

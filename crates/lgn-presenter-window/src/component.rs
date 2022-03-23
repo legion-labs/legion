@@ -1,17 +1,27 @@
-use std::convert::TryFrom;
-
+use lgn_codec_api::backends::CodecHardware::Nvidia;
+use lgn_codec_api::{
+    backends::{
+        nvenc::{NvEncEncoder, NvEncEncoderConfig},
+        EncoderConfig,
+    },
+    VideoProcessor,
+};
 use lgn_graphics_api::prelude::*;
 use lgn_graphics_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
     RenderContext, Renderer,
 };
 use raw_window_handle::HasRawWindowHandle;
+use std::convert::TryFrom;
 
 use crate::SwapchainHelper;
 
 pub struct PresenterWindow {
     swapchain_helper: SwapchainHelper,
     extents: RenderSurfaceExtents,
+
+    // TMP - test code for Cuda encoder
+    cuda_encoder: Option<NvEncEncoder>,
 }
 
 impl std::fmt::Debug for PresenterWindow {
@@ -38,9 +48,17 @@ impl PresenterWindow {
             )
             .unwrap();
 
+        let encoder_cofig = EncoderConfig {
+            hardware: Nvidia,
+            gfx_config: device_context.clone(),
+            width: extents.width(),
+            height: extents.height(),
+        };
+
         Self {
             swapchain_helper: SwapchainHelper::new(device_context, swapchain, None).unwrap(),
             extents,
+            cuda_encoder: NvEncEncoder::new(NvEncEncoderConfig::from(encoder_cofig)),
         }
     }
 
@@ -49,6 +67,13 @@ impl PresenterWindow {
         render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
     ) {
+        // TMP - test encoder
+        if let Some(encoder) = &self.cuda_encoder {
+            encoder.cuda_image_from_vulkan(render_surface.texture());
+            encoder.cuda_semaphore_from_vulkan(render_surface.sema());
+            encoder.encode_frame();
+        }
+
         //
         // Acquire backbuffer
         //
