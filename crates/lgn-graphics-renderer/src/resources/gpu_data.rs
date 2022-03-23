@@ -58,13 +58,6 @@ impl<K: Ord + Copy, T> GpuDataManager<K, T> {
         (gpu_data_id, gpu_data_va)
     }
 
-    pub fn id_for_index(&self, key: &K, index: usize) -> u32 {
-        assert!(self.data_map.contains_key(key));
-
-        let values = self.data_map.get(key).unwrap();
-        values[index].0
-    }
-
     pub fn va_for_index(&self, key: &K, index: usize) -> u64 {
         assert!(self.data_map.contains_key(key));
 
@@ -79,10 +72,11 @@ impl<K: Ord + Copy, T> GpuDataManager<K, T> {
         data: &T,
         updater: &mut UniformGPUDataUpdater,
     ) {
-        if let Some(gpu_data) = self.data_map.get(key) {
-            let data_slice = std::slice::from_ref(data);
-            updater.add_update_jobs(data_slice, gpu_data[dest_idx].1);
-        }
+        assert!(self.data_map.contains_key(key));
+
+        let gpu_data = self.data_map.get(key).unwrap();
+        let data_slice = std::slice::from_ref(data);
+        updater.add_update_jobs(data_slice, gpu_data[dest_idx].1);
     }
 
     pub fn remove_gpu_data(&mut self, key: &K) -> Option<Vec<u32>> {

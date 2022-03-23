@@ -147,7 +147,11 @@ impl MaterialManager {
         self.gpu_material_data.remove_gpu_data(&resource_id);
     }
 
-    pub fn on_texture_state_changed(
+    pub fn is_material_ready(&self, material_id: &ResourceTypeAndId) -> bool {
+        false
+    }
+
+    fn on_texture_state_changed(
         &mut self,
         texture_id: &ResourceTypeAndId,
         query_material_components: &Query<'_, '_, &MaterialComponent>,
@@ -301,6 +305,11 @@ impl MaterialManager {
                 shared_resources_manager
                     .default_texture_bindless_index(SharedTextureId::Roughness)
                     .into(),
+            );
+
+            self.gpu_material_data.alloc_gpu_data(
+                &self.default_material_id,
+                renderer.static_buffer_allocator(),
             );
 
             self.gpu_material_data.update_gpu_data(

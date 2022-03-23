@@ -11,7 +11,7 @@ use crate::{
     picking::{PickingIdContext, PickingManager},
     resources::{
         GpuDataManager, GpuEntityColorManager, GpuEntityTransformManager, GpuPickingDataManager,
-        GpuVaTableForGpuInstance, MeshManager, MissingVisualTracker, ModelManager,
+        GpuVaTableForGpuInstance, MaterialManager, MeshManager, MissingVisualTracker, ModelManager,
         UnifiedStaticBufferAllocator, UniformGPUDataUpdater,
     },
     Renderer,
@@ -110,6 +110,7 @@ fn update_gpu_instances(
     mut instance_manager: ResMut<'_, GpuInstanceManager>,
     model_manager: Res<'_, ModelManager>,
     mesh_manager: Res<'_, MeshManager>,
+    material_manager: Res<'_, MaterialManager>,
     color_manager: Res<'_, GpuEntityColorManager>,
     transform_manager: Res<'_, GpuEntityTransformManager>,
     mut event_writer: EventWriter<'_, '_, GpuInstanceEvent>,
@@ -162,12 +163,26 @@ fn update_gpu_instances(
         }
 
         let mut added_instances = Vec::with_capacity(model_meta_data.meshes.len());
+        let default_material_id = material_manager.get_default_material();
+
         for mesh in &model_meta_data.meshes {
             let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
+            let material_id = &mesh.material_id;
+
+            // material_va: material_manager.gpu_data().va_for_index(&material_id, 0) as u32,
+            // material_index: material_manager.gpu_data().id_for_index(&material_id, 0) as u32,
+
+            let material_id = if material_manager.is_material_ready(material_id) {
+                material_id
+            } else {
+                default_material_id
+            };
+
+            let material_va = material_manager.gpu_data().va_for_index(material_id, 0);
 
             let instance_vas = GpuInstanceVas {
                 submesh_va: mesh_meta_data.mesh_description_offset,
-                material_va: mesh.material_va,
+                material_va: material_va as u32,
                 color_va: color_manager.va_for_index(&entity, 0) as u32,
                 transform_va: transform_manager.va_for_index(&entity, 0) as u32,
                 picking_data_va: picking_data_manager.va_for_index(&entity, 0) as u32,
@@ -181,7 +196,7 @@ fn update_gpu_instances(
             );
 
             added_instances.push((
-                mesh.material_index,
+                *material_id,
                 RenderElement::new(gpu_instance_id, mesh.mesh_id as u32, &mesh_manager),
             ));
         }

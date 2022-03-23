@@ -23,8 +23,7 @@ use super::{
 };
 pub struct Mesh {
     pub mesh_id: u32,
-    pub material_va: u32,
-    pub material_index: u32,
+    pub material_id: ResourceTypeAndId,
 }
 
 pub struct ModelMetaData {
@@ -37,7 +36,9 @@ pub struct ModelManager {
 }
 
 impl ModelManager {
-    pub fn new() -> Self {
+    pub fn new(material_manager: &MaterialManager) -> Self {
+        let default_material_id = material_manager.get_default_material();
+
         let mut model_meta_datas = BTreeMap::new();
 
         for (idx, _mesh_type) in DefaultMeshType::iter().enumerate() {
@@ -50,8 +51,7 @@ impl ModelManager {
                 ModelMetaData {
                     meshes: vec![Mesh {
                         mesh_id: idx as u32,
-                        material_va: u32::MAX,
-                        material_index: u32::MAX,
+                        material_id: *default_material_id,
                     }],
                 },
             );
@@ -62,8 +62,7 @@ impl ModelManager {
             default_model: ModelMetaData {
                 meshes: vec![Mesh {
                     mesh_id: 1, // cube
-                    material_va: u32::MAX,
-                    material_index: u32::MAX,
+                    material_id: *default_material_id,
                 }],
             },
         }
@@ -109,8 +108,10 @@ pub(crate) fn update_models(
         let ids = mesh_manager.add_meshes(&renderer, &updated_model.meshes);
 
         let mut meshes = Vec::new();
-        // TODO: case when material hasn't been loaded
+
         for (idx, mesh) in updated_model.meshes.iter().enumerate() {
+            // If there is no material set on the mesh (should not be the case until we fix that),
+            // we assign the default material
             let material_id = mesh.material_id.as_ref().map_or(
                 *material_manager.get_default_material(),
                 MaterialReferenceType::id,
@@ -118,8 +119,7 @@ pub(crate) fn update_models(
 
             meshes.push(Mesh {
                 mesh_id: ids[idx],
-                material_va: material_manager.gpu_data().va_for_index(&material_id, 0) as u32,
-                material_index: material_manager.gpu_data().id_for_index(&material_id, 0) as u32,
+                material_id,
             });
         }
         model_manager.add_model(*mesh_reference, ModelMetaData { meshes });

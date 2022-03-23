@@ -1,3 +1,5 @@
+use lgn_data_runtime::ResourceTypeAndId;
+
 use crate::{hl_gfx_api::HLCommandBuffer, resources::MeshManager};
 
 #[derive(Clone, Copy)]
@@ -36,6 +38,6 @@ impl RenderElement {
 }
 
 pub enum GpuInstanceEvent {
-    Added(Vec<(u32, RenderElement)>),
+    Added(Vec<(ResourceTypeAndId, RenderElement)>),
     Removed(Vec<u32>),
 }

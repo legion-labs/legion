@@ -1,5 +1,6 @@
 use lgn_app::{App, CoreStage, EventReader};
 use lgn_core::Handle;
+use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::{Res, ResMut};
 use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::{
@@ -234,13 +235,13 @@ impl MeshRenderer {
         self.tmp_pipeline_handles[layer_id]
     }
 
-    fn register_material(&mut self, _material_id: u32) {
+    fn register_material(&mut self, _material_id: ResourceTypeAndId) {
         for (index, layer) in &mut self.default_layers.iter_mut().enumerate() {
             layer.register_state(0, self.tmp_batch_ids[index]);
         }
     }
 
-    fn register_element(&mut self, _material_id: u32, element: &RenderElement) {
+    fn register_element(&mut self, _material_id: ResourceTypeAndId, element: &RenderElement) {
         let new_index = self.gpu_instance_data.len() as u32;
         if element.gpu_instance_id > self.instance_data_idxs.len() as u32 {
             self.instance_data_idxs

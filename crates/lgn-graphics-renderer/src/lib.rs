@@ -168,7 +168,7 @@ impl Plugin for RendererPlugin {
         app.insert_resource(ManipulatorManager::new());
         app.insert_resource(cgen_registry_list);
         app.insert_resource(RenderSurfaces::new());
-        app.insert_resource(ModelManager::new());
+        app.insert_resource(ModelManager::new(&material_manager));
         app.insert_resource(MeshManager::new(&renderer));
         app.insert_resource(DebugDisplay::default());
         app.insert_resource(LightingManager::default());
