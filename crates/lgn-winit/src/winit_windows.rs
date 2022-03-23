@@ -10,7 +10,7 @@ pub struct WinitWindows {
     pub winit_to_window_id: HashMap<winit::window::WindowId, WindowId>,
     // Some winit functions, such as `set_window_icon` can only be used from the main thread. If
     // they are used in another thread, the app will hang. This marker ensures `WinitWindows` is
-    // only ever accessed with bevy's non-send functions and in NonSend systems.
+    // only ever accessed with Legion's non-send functions and in NonSend systems.
     _not_send_sync: core::marker::PhantomData<*const ()>,
 }
 

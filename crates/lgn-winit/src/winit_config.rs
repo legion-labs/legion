@@ -4,14 +4,14 @@ use instant::Duration;
 #[derive(Debug)]
 pub struct WinitSettings {
     /// Configures the winit library to return control to the main thread after the
-    /// [run](bevy_app::App::run) loop is exited. Winit strongly recommends avoiding this when
+    /// [run](lgn_app::App::run) loop is exited. Winit strongly recommends avoiding this when
     /// possible. Before using this please read and understand the
     /// [caveats](winit::platform::run_return::EventLoopExtRunReturn::run_return) in the winit
     /// documentation.
     ///
     /// This feature is only available on desktop `target_os` configurations. Namely `windows`,
     /// `macos`, `linux`, `dragonfly`, `freebsd`, `netbsd`, and `openbsd`. If set to true on an
-    /// unsupported platform [run](bevy_app::App::run) will panic.
+    /// unsupported platform [run](lgn_app::App::run) will panic.
     pub return_from_run: bool,
     /// Configures how the winit event loop updates while the window is focused.
     pub focused_mode: UpdateMode,
@@ -66,7 +66,7 @@ pub enum UpdateMode {
     ///
     /// ## Note
     ///
-    /// Once the app has executed all bevy systems and reaches the end of the event loop, there is
+    /// Once the app has executed all Legion systems and reaches the end of the event loop, there is
     /// no way to force the app to wake and update again, unless a `winit` event (such as user
     /// input, or the window being resized) is received or the time limit is reached.
     Reactive { max_wait: Duration },
@@ -75,7 +75,7 @@ pub enum UpdateMode {
     ///
     /// ## Note
     ///
-    /// Once the app has executed all bevy systems and reaches the end of the event loop, there is
+    /// Once the app has executed all Legion systems and reaches the end of the event loop, there is
     /// no way to force the app to wake and update again, unless a `winit` event (such as user
     /// input, or the window being resized) is received or the time limit is reached.
     ///
@@ -83,7 +83,7 @@ pub enum UpdateMode {
     ///
     /// Unlike [`UpdateMode::Reactive`], this mode will ignore winit events that aren't directly
     /// caused by interaction with the window. For example, you might want to use this mode when the
-    /// window is not focused, to only re-draw your bevy app when the cursor is over the window, but
+    /// window is not focused, to only re-draw your Legion app when the cursor is over the window, but
     /// not when the mouse moves somewhere else on the screen. This helps to significantly reduce
     /// power consumption by only updated the app when absolutely necessary.
     ReactiveLowPower { max_wait: Duration },
