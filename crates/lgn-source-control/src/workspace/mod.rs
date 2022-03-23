@@ -244,9 +244,9 @@ impl Workspace {
         &self,
     ) -> Result<Box<dyn lgn_content_store2::ContentProvider + Send + Sync>> {
         self.content_store_config
-            .instanciate_provider()
+            .instantiate_provider()
             .await
-            .map_other_err("failed to instanciate content provider")
+            .map_other_err("failed to instantiate content provider")
     }
 
     /// Find an existing workspace in the current directory.

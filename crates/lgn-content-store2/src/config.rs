@@ -106,16 +106,16 @@ impl Config {
         }
     }
 
-    /// Instanciate the provider for the configuration.
+    /// Instantiate the provider for the configuration.
     ///
     /// # Errors
     ///
-    /// This function will return an error if the provider cannot be instanciated.
-    pub async fn instanciate_provider(&self) -> Result<Box<dyn ContentProvider + Send + Sync>> {
-        let mut provider = self.provider.instanciate().await?;
+    /// This function will return an error if the provider cannot be instantiated.
+    pub async fn instantiate_provider(&self) -> Result<Box<dyn ContentProvider + Send + Sync>> {
+        let mut provider = self.provider.instantiate().await?;
 
         for caching_provider in &self.caching_providers {
-            let caching_provider = caching_provider.instanciate().await?;
+            let caching_provider = caching_provider.instantiate().await?;
             provider = Box::new(CachingProvider::new(provider, caching_provider));
         }
 
@@ -124,12 +124,12 @@ impl Config {
 }
 
 impl ProviderConfig {
-    /// Instanciate the provider for the configuration.
+    /// Instantiate the provider for the configuration.
     ///
     /// # Errors
     ///
     /// This function will return an error if the provider cannot be instanciated.
-    pub async fn instanciate(&self) -> Result<Box<dyn ContentProvider + Send + Sync>> {
+    pub async fn instantiate(&self) -> Result<Box<dyn ContentProvider + Send + Sync>> {
         Ok(match self {
             Self::Memory {} => Box::new(SmallContentProvider::new(MemoryProvider::new())),
             Self::Lru(config) => Box::new(SmallContentProvider::new(LruProvider::new(config.size))),
@@ -166,7 +166,7 @@ impl ProviderConfig {
                     anyhow::anyhow!("failed to create authenticator config: {}", err)
                 })?;
                 let authenticator = authenticator_config.authenticator().await.map_err(|err| {
-                    anyhow::anyhow!("failed to instanciate an authenticator: {}", err)
+                    anyhow::anyhow!("failed to instantiate an authenticator: {}", err)
                 })?;
 
                 let client = lgn_online::grpc::AuthenticatedClient::new(client, authenticator, &[]);

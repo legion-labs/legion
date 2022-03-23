@@ -321,7 +321,7 @@ async fn main() -> anyhow::Result<()> {
                     .or(Some("source_control")),
             );
 
-            let content_provider = content_store_config.instanciate_provider().await?;
+            let content_provider = content_store_config.instantiate_provider().await?;
 
             let config =
                 WorkspaceConfig::new(index_url, WorkspaceRegistration::new_with_current_user())

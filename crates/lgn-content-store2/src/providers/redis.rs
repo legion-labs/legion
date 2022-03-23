@@ -27,7 +27,7 @@ impl RedisProvider {
     /// If the specified Redis URL is invalid, an error is returned.
     pub async fn new(redis_url: impl Into<String>, key_prefix: impl Into<String>) -> Result<Self> {
         let client = redis::Client::open(redis_url.into())
-            .map_err(|err| anyhow::anyhow!("failed to instanciate a Redis client: {}", err))?;
+            .map_err(|err| anyhow::anyhow!("failed to instantiate a Redis client: {}", err))?;
         let key_prefix = key_prefix.into();
 
         Ok(Self { key_prefix, client })

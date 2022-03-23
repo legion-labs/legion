@@ -37,7 +37,7 @@ impl SourceControlFilesystem {
                 .as_deref()
                 .or(Some("source_control")),
         )
-        .instanciate_provider()
+        .instantiate_provider()
         .await
         .map_other_err("failed to create blob storage")?;
 

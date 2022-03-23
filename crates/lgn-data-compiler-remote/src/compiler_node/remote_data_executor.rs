@@ -67,7 +67,7 @@ pub(crate) async fn collect_local_resources(
     build_script: &CompilerCompileCmd,
 ) -> Result<String, CompilerError> {
     let config = Config::from_legion_toml(None);
-    let provider = config.instanciate_provider().await.map_err(|err| {
+    let provider = config.instantiate_provider().await.map_err(|err| {
         CompilerError::RemoteExecution(format!("failed to create content provider: {}", err))
     })?;
 
@@ -149,7 +149,7 @@ pub(crate) async fn execute_sandbox_compiler(input_msg: &str) -> Result<String, 
     let msg: CompileMessage = serde_json::from_str(input_msg)?;
 
     let config = Config::from_legion_toml(None);
-    let provider = config.instanciate_provider().await.map_err(|err| {
+    let provider = config.instantiate_provider().await.map_err(|err| {
         CompilerError::RemoteExecution(format!("failed to create content provider: {}", err))
     })?;
 
@@ -186,7 +186,7 @@ pub(crate) async fn create_resulting_archive(
     cur_dir: &Path,
 ) -> Result<String, NCError> {
     let config = Config::from_legion_toml(None);
-    let provider = config.instanciate_provider().await.map_err(|err| {
+    let provider = config.instantiate_provider().await.map_err(|err| {
         CompilerError::RemoteExecution(format!("failed to create content provider: {}", err))
     })?;
 

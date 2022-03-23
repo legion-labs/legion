@@ -94,7 +94,7 @@ impl CompilerStub for RemoteCompilerStub {
 
         // Deploy locally the remote outcome.
         let config = Config::from_legion_toml(None);
-        let provider = config.instanciate_provider().await.map_err(|err| {
+        let provider = config.instantiate_provider().await.map_err(|err| {
             CompilerError::RemoteExecution(format!("failed to create content provider: {}", err))
         })?;
 

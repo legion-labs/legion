@@ -34,7 +34,7 @@ lazy_static::lazy_static! {
 ///
 /// This method is provided for convenience. If you intend to read several
 /// configuration values, it is more efficient to either read a struct or
-/// instanciate a `Config` and use the `get` method on the struct.
+/// instantiate a `Config` and use the `get` method on the struct.
 ///
 /// # Errors
 ///
@@ -56,7 +56,7 @@ where
 ///
 /// This method is provided for convenience. If you intend to read several
 /// configuration values, it is more efficient to either read a struct or
-/// instanciate a `Config` and use the `get_or` method on the struct.
+/// instantiate a `Config` and use the `get_or` method on the struct.
 ///
 /// # Errors
 ///
@@ -75,7 +75,7 @@ where
 ///
 /// This method is provided for convenience. If you intend to read several
 /// configuration values, it is more efficient to either read a struct or
-/// instanciate a `Config` and use the `get_or_else` method on the struct.
+/// instantiate a `Config` and use the `get_or_else` method on the struct.
 ///
 /// # Errors
 ///
@@ -96,7 +96,7 @@ where
 ///
 /// This method is provided for convenience. If you intend to read several
 /// configuration values, it is more efficient to either read a struct or
-/// instanciate a `Config` and use the `get_or_default` method on the
+/// instantiate a `Config` and use the `get_or_default` method on the
 /// struct.
 ///
 /// # Errors
@@ -119,7 +119,7 @@ where
 ///
 /// This method is provided for convenience. If you intend to read several
 /// configuration values, it is more efficient to either read a struct or
-/// instanciate a `Config` and use the `get_absolute_path` method on the
+/// instantiate a `Config` and use the `get_absolute_path` method on the
 /// struct.
 ///
 /// # Errors
@@ -140,7 +140,7 @@ pub fn get_absolute_path(key: &str) -> Result<Option<PathBuf>> {
 ///
 /// This method is provided for convenience. If you intend to read several
 /// configuration values, it is more efficient to either read a struct or
-/// instanciate a `Config` and use the `get_absolute_path` method on the
+/// instantiate a `Config` and use the `get_absolute_path` method on the
 /// struct.
 ///
 /// # Errors

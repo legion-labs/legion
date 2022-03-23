@@ -47,7 +47,7 @@ impl Plugin for StreamerPlugin {
             .add_startup_system(init_cgen);
 
         let webrtc_server =
-            webrtc::WebRTCServer::new().expect("failed to instanciate a WebRTC server");
+            webrtc::WebRTCServer::new().expect("failed to instantiate a WebRTC server");
         let grpc_server = grpc::GRPCServer::new(webrtc_server, stream_events_sender);
 
         app.world

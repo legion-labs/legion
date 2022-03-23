@@ -154,12 +154,12 @@ impl Project {
         }
 
         let content_provider = content_store_configuration
-            .instanciate_provider()
+            .instantiate_provider()
             .await
             .map_err(|e| {
                 Error::SourceControl(lgn_source_control::Error::Other {
                     source: anyhow::Error::new(e),
-                    context: "failed to instanciate content-store provider".to_string(),
+                    context: "failed to instantiate content-store provider".to_string(),
                 })
             })?;
 
@@ -436,7 +436,7 @@ impl Project {
             .map_err(|e| {
                 Error::SourceControl(lgn_source_control::Error::Other {
                     source: anyhow::Error::new(e),
-                    context: "failed to instanciate content-store provider".to_string(),
+                    context: "failed to instantiate content-store provider".to_string(),
                 })
             })?;
 
@@ -517,7 +517,7 @@ impl Project {
             .map_err(|e| {
                 Error::SourceControl(lgn_source_control::Error::Other {
                     source: anyhow::Error::new(e),
-                    context: "failed to instanciate content-store provider".to_string(),
+                    context: "failed to instantiate content-store provider".to_string(),
                 })
             })?;
 
@@ -702,7 +702,7 @@ impl Project {
             .map_err(|e| {
                 Error::SourceControl(lgn_source_control::Error::Other {
                     source: anyhow::Error::new(e),
-                    context: "failed to instanciate content-store provider".to_string(),
+                    context: "failed to instantiate content-store provider".to_string(),
                 })
             })?;
 
