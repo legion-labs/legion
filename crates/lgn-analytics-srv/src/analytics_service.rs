@@ -34,6 +34,7 @@ use lgn_telemetry_proto::analytics::{
     BlockSpansRequest, ListProcessBlocksRequest, ProcessBlocksReply,
 };
 use lgn_tracing::dispatch::init_thread_stream;
+use lgn_tracing::flush_monitor::FlushMonitor;
 use lgn_tracing::prelude::*;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -78,6 +79,7 @@ pub struct AnalyticsService {
     data_lake_blobs: Arc<dyn BlobStorage>,
     cache: Arc<DiskCache>,
     call_trees: CallTreeStore,
+    flush_monitor: FlushMonitor,
 }
 
 impl AnalyticsService {
@@ -92,6 +94,7 @@ impl AnalyticsService {
             data_lake_blobs: data_lake_blobs.clone(),
             cache: Arc::new(DiskCache::new(cache_blobs.clone())),
             call_trees: CallTreeStore::new(pool, data_lake_blobs, cache_blobs),
+            flush_monitor: FlushMonitor::new(),
         }
     }
 
@@ -173,7 +176,6 @@ impl AnalyticsService {
     }
 
     #[async_recursion]
-    #[span_fn]
     async fn block_spans_impl(
         &self,
         process: &lgn_telemetry_sink::ProcessInfo,
@@ -181,6 +183,7 @@ impl AnalyticsService {
         block_id: &str,
         lod_id: u32,
     ) -> Result<BlockSpansReply> {
+        async_span_scope!("AnalyticsService::block_spans_impl");
         let cache_item_name = format!("spans_{}_{}", block_id, lod_id);
         self.cache
             .get_or_put(&cache_item_name, async {
@@ -340,6 +343,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<FindProcessRequest>,
     ) -> Result<Response<FindProcessReply>, Status> {
+        self.flush_monitor.tick();
         async_span_scope!("AnalyticsService::find_process");
         let _guard = RequestGuard::new();
         info!("find_process");
@@ -362,6 +366,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         _request: Request<RecentProcessesRequest>,
     ) -> Result<Response<ProcessListReply>, Status> {
+        self.flush_monitor.tick();
         async_span_scope!("AnalyticsService::list_recent_processes");
         let _guard = RequestGuard::new();
         info!("list_recent_processes");
@@ -385,6 +390,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<SearchProcessRequest>,
     ) -> Result<Response<ProcessListReply>, Status> {
+        self.flush_monitor.tick();
         async_span_scope!("AnalyticsService::search_processes");
         let _guard = RequestGuard::new();
         info!("search_processes");
@@ -410,6 +416,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<ListProcessStreamsRequest>,
     ) -> Result<Response<ListStreamsReply>, Status> {
+        self.flush_monitor.tick();
         async_span_scope!("AnalyticsService::list_process_streams");
         let _guard = RequestGuard::new();
         info!("list_process_streams");
@@ -437,6 +444,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<ListStreamBlocksRequest>,
     ) -> Result<Response<ListStreamBlocksReply>, Status> {
+        self.flush_monitor.tick();
         async_span_scope!("AnalyticsService::list_stream_blocks");
         let _guard = RequestGuard::new();
         let list_request = request.into_inner();
@@ -459,6 +467,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<BlockSpansRequest>,
     ) -> Result<Response<BlockSpansReply>, Status> {
+        self.flush_monitor.tick();
         async_span_scope!("AnalyticsService::block_spans");
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
@@ -496,6 +505,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<ProcessCumulativeCallGraphRequest>,
     ) -> Result<Response<CumulativeCallGraphReply>, Status> {
+        self.flush_monitor.tick();
         async_span_scope!("AnalyticsService::process_cumulative_call_graph");
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
@@ -528,6 +538,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<ProcessLogRequest>,
     ) -> Result<Response<ProcessLogReply>, Status> {
+        self.flush_monitor.tick();
         async_span_scope!("AnalyticsService::list_process_log_entries");
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
@@ -560,6 +571,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<ProcessNbLogEntriesRequest>,
     ) -> Result<Response<ProcessNbLogEntriesReply>, Status> {
+        self.flush_monitor.tick();
         async_span_scope!("AnalyticsService::nb_process_log_entries");
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
@@ -588,6 +600,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<ListProcessChildrenRequest>,
     ) -> Result<Response<ProcessChildrenReply>, Status> {
+        self.flush_monitor.tick();
         async_span_scope!("AnalyticsService::list_process_children");
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
@@ -616,6 +629,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<ListProcessBlocksRequest>,
     ) -> Result<Response<ProcessBlocksReply>, Status> {
+        self.flush_monitor.tick();
         async_span_scope!("AnalyticsService::list_process_blocks");
         let inner_request = request.into_inner();
         match self.list_process_blocks_impl(inner_request).await {
@@ -634,6 +648,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<MetricBlockRequest>,
     ) -> Result<Response<MetricBlockData>, Status> {
+        self.flush_monitor.tick();
         async_span_scope!("AnalyticsService::fetch_block_metric");
         let inner_request = request.into_inner();
         match self.fetch_block_metric_impl(inner_request).await {
@@ -652,6 +667,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<MetricBlockManifestRequest>,
     ) -> Result<Response<MetricBlockManifest>, Status> {
+        self.flush_monitor.tick();
         async_span_scope!("AnalyticsService::fetch_block_metric_manifest");
         let inner_request = request.into_inner();
         match self.fetch_block_metric_manifest_impl(inner_request).await {
@@ -670,6 +686,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<BlockAsyncStatsRequest>,
     ) -> Result<Response<BlockAsyncEventsStatReply>, Status> {
+        self.flush_monitor.tick();
         async_span_scope!("AnalyticsService::fetch_block_async_stats");
         let inner_request = request.into_inner();
         match self.fetch_block_async_stats_impl(inner_request).await {
@@ -688,6 +705,7 @@ impl PerformanceAnalytics for AnalyticsService {
         &self,
         request: Request<AsyncSpansRequest>,
     ) -> Result<Response<AsyncSpansReply>, Status> {
+        self.flush_monitor.tick();
         async_span_scope!("AnalyticsService::fetch_async_spans");
         let inner_request = request.into_inner();
         match self.fetch_async_spans_impl(inner_request).await {

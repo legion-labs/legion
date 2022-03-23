@@ -101,6 +101,10 @@ impl EventSink for DebugEventSink {
         }
         *self.0.lock().unwrap() = Some(State::ProcessThreadBlock(thread_block.events.nb_objects()));
     }
+
+    fn is_busy(&self) -> bool {
+        false
+    }
 }
 
 pub struct LogDispatch;

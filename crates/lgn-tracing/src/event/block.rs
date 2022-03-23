@@ -27,8 +27,13 @@ pub trait TracingBlock {
 
     fn new(buffer_size: usize, stream_id: String) -> Self;
     fn len_bytes(&self) -> usize;
+    fn capacity_bytes(&self) -> usize;
     fn nb_objects(&self) -> usize;
     fn events_mut(&mut self) -> &mut Self::Queue;
+    fn hint_max_obj_size(&self) -> usize {
+        // blocks with less than this amount of available memory will be considered full
+        128
+    }
 }
 
 impl<Q> TracingBlock for EventBlock<Q>
@@ -47,6 +52,10 @@ where
 
     fn len_bytes(&self) -> usize {
         self.events.len_bytes()
+    }
+
+    fn capacity_bytes(&self) -> usize {
+        self.events.capacity_bytes()
     }
 
     fn nb_objects(&self) -> usize {
