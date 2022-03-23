@@ -4688,6 +4688,7 @@ version = "0.1.0"
 dependencies = [
  "dirs",
  "figment",
+ "lazy_static",
  "serde",
  "thiserror",
  "toml",
