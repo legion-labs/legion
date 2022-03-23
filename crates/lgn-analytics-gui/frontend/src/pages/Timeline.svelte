@@ -74,7 +74,7 @@
     const urlParams = new URLSearchParams(window.location.search);
     const start = Number.parseFloat(urlParams.get("timelineStart") ?? "");
     const end = Number.parseFloat(urlParams.get("timelineEnd") ?? "");
-    state = new TimelineState(start, end);
+    state = new TimelineState(0, start, end);
 
     const canvas = document.getElementById("canvas_timeline");
     if (!canvas || !(canvas instanceof HTMLCanvasElement)) {

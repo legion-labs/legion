@@ -1,6 +1,6 @@
 <script lang="ts">
   import { TimelineStateManager } from "@/lib/Timeline/TimelineStateManager";
-  import { afterUpdate, onMount, tick } from "svelte";
+  import { afterUpdate, onMount } from "svelte";
   import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { BarLoader } from "svelte-loading-spinners";

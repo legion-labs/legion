@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
+  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { threadItemLength } from "@/lib/Timeline/TimelineValues";
   import { TimelineMinimapViewport } from "@/lib/Timeline/TimelineViewport";
   import { createEventDispatcher, onMount } from "svelte";
