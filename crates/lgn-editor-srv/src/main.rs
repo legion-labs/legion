@@ -15,6 +15,7 @@ use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::Local;
 use lgn_graphics_renderer::RendererPlugin;
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
+use lgn_hierarchy::HierarchyPlugin;
 use lgn_input::InputPlugin;
 use lgn_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
 use lgn_scripting::ScriptingPlugin;
@@ -230,6 +231,7 @@ fn main() {
     .add_plugin(PropertyInspectorPlugin::default())
     .add_plugin(SourceControlPlugin::default())
     .add_plugin(TransformPlugin::default())
+    .add_plugin(HierarchyPlugin::default())
     .add_plugin(GenericDataPlugin::default())
     .add_plugin(ScriptingPlugin::default())
     .add_plugin(SampleDataPlugin::default())

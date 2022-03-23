@@ -11,18 +11,19 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use generic_data::plugin::GenericDataPlugin;
-use lgn_app::prelude::*;
+use lgn_app::prelude::App;
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_content_store::ContentStoreAddr;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_graphics_data::GraphicsPlugin;
 use lgn_graphics_renderer::RendererPlugin;
+use lgn_hierarchy::prelude::HierarchyPlugin;
 use lgn_input::InputPlugin;
 use lgn_physics::{PhysicsPlugin, PhysicsSettingsBuilder};
 use lgn_scripting::ScriptingPlugin;
-use lgn_tracing::prelude::*;
-use lgn_transform::prelude::*;
+use lgn_tracing::prelude::span_fn;
+use lgn_transform::prelude::TransformPlugin;
 use sample_data::SampleDataPlugin;
 
 #[cfg(feature = "standalone")]
@@ -129,6 +130,7 @@ pub fn build_runtime(
     app.insert_resource(DefaultTaskPoolOptions::new(1..=4))
         .add_plugin(CorePlugin::default())
         .add_plugin(TransformPlugin::default())
+        .add_plugin(HierarchyPlugin::default())
         .insert_resource(AssetRegistrySettings::new(
             content_store_addr,
             game_manifest,

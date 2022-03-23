@@ -17,6 +17,7 @@ use lgn_graphics_renderer::{
     resources::{DefaultMeshType, PipelineManager},
     {Renderer, RendererPlugin},
 };
+use lgn_hierarchy::HierarchyPlugin;
 use lgn_input::InputPlugin;
 use lgn_math::Vec3;
 use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlugin};
@@ -87,6 +88,7 @@ fn main() {
         })
         .add_plugin(WindowPlugin::default())
         .add_plugin(TransformPlugin::default())
+        .add_plugin(HierarchyPlugin::default())
         .add_plugin(InputPlugin::default());
 
     if args.snapshot {

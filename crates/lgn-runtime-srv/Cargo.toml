@@ -18,6 +18,7 @@ lgn-graphics-data = { path = "../lgn-graphics-data", version = "0.1.0", features
     "runtime",
 ] }
 lgn-grpc = { path = "../lgn-grpc", version = "0.1.0" }
+lgn-hierarchy = { path = "../lgn-hierarchy", version = "0.1.0" }
 lgn-input = { path = "../lgn-input", version = "0.1.0" }
 lgn-physics = { path = "../lgn-physics", version = "0.1.0" }
 lgn-presenter-window = { path = "../lgn-presenter-window", version = "0.1.0", optional = true }
