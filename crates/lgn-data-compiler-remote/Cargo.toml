@@ -6,7 +6,7 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [[bin]]
-name = "data-remote-executor-service"
+name = "data-remote-executor-srv"
 path = "src/remote_service/main.rs"
 
 [dependencies]
@@ -41,3 +41,18 @@ lgn-content-store2 = { path = "../lgn-content-store2", version = "0.1.0" }
 tempfile = "3.2.0"
 text-resource = { path = "../lgn-data-offline/test-text-resource" }
 integer-asset = { path = "../lgn-data-runtime/test-integer-asset" }
+
+[[package.metadata.monorepo.publish]]
+name = "data-remote-executor-srv"
+type = "docker"
+target-bin-dir = "/usr/src/app"
+template = """
+FROM ubuntu:20.04
+
+RUN apt-get update && apt-get install -y libssl-dev ca-certificates
+
+{ copy_all }
+
+ENTRYPOINT ["{ binaries.data-remote-executor-srv }"]
+"""
+allow-aws-ecr-creation = true
