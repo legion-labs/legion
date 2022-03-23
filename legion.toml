@@ -57,7 +57,7 @@ redirect_uri = "http://localhost:3000/"
 #type = "grpc"
 #url = "https://api.live.playground.legionlabs.com"
 type = "local"
-path = "tests/sample-data/remote" # Should probably be reverted back to the commented lines once the data-build uses the dedicated section below.
+#path = "tests/sample-data/remote" # Should probably be reverted back to the commented lines once the data-build uses the dedicated section below.
 
 [[content_store.caching_providers]]
 type = "lru"
