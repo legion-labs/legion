@@ -327,6 +327,7 @@ fn make_queue_metedata<Queue: lgn_tracing_transit::HeterogeneousQueue>() -> Cont
                         is_reference: member.is_reference,
                     })
                     .collect(),
+                is_reference: udt.is_reference,
             })
             .collect(),
     }
