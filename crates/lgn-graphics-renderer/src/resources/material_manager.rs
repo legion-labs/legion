@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use lgn_app::App;
-use lgn_data_runtime::ResourceTypeAndId;
+use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::runtime_texture::TextureReferenceType;
 use lgn_math::Vec4;
@@ -36,15 +36,24 @@ pub struct MaterialManager {
     entity_to_texture_ids: BTreeMap<Entity, Vec<ResourceTypeAndId>>,
     upload_queue: Vec<UploadMaterialJob>,
     gpu_material_data: GpuMaterialData,
+    default_material_id: ResourceTypeAndId,
+    default_uploaded: bool,
 }
 
 impl MaterialManager {
     pub fn new() -> Self {
+        let default_material_id = ResourceTypeAndId {
+            kind: lgn_graphics_data::runtime::Material::TYPE,
+            id: ResourceId::new(),
+        };
+
         Self {
             entity_to_resource_id: BTreeMap::new(),
             entity_to_texture_ids: BTreeMap::new(),
             upload_queue: Vec::new(),
             gpu_material_data: GpuMaterialData::new(64 * 1024, 256),
+            default_material_id,
+            default_uploaded: false,
         }
     }
 
@@ -75,8 +84,8 @@ impl MaterialManager {
         &self.gpu_material_data
     }
 
-    pub(crate) fn gpu_data_mut(&mut self) -> &mut GpuMaterialData {
-        &mut self.gpu_material_data
+    pub fn get_default_material(&self) -> &ResourceTypeAndId {
+        &self.default_material_id
     }
 
     pub fn add_material(
@@ -88,7 +97,7 @@ impl MaterialManager {
         shared_resources_manager: &SharedResourcesManager,
     ) {
         self.gpu_material_data
-            .alloc_gpu_data(material_component.material_id, allocator);
+            .alloc_gpu_data(&material_component.material_id, allocator);
 
         let job = UploadMaterialJob {
             resource_id: material_component.material_id,
@@ -259,6 +268,53 @@ impl MaterialManager {
             shared_resources_manager.default_texture_bindless_index(default_shared_id)
         }
     }
+
+    fn upload_default_material(
+        &mut self,
+        renderer: &Renderer,
+        shared_resources_manager: &SharedResourcesManager,
+    ) {
+        if !self.default_uploaded {
+            let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
+
+            let mut default_material_data = cgen::cgen_type::MaterialData::default();
+            default_material_data.set_base_albedo(Vec4::new(0.8, 0.8, 0.8, 1.0).into());
+            default_material_data.set_base_metalness(0.0.into());
+            default_material_data.set_reflectance(0.5.into());
+            default_material_data.set_base_roughness(0.4.into());
+            default_material_data.set_albedo_texture(
+                shared_resources_manager
+                    .default_texture_bindless_index(SharedTextureId::Albedo)
+                    .into(),
+            );
+            default_material_data.set_normal_texture(
+                shared_resources_manager
+                    .default_texture_bindless_index(SharedTextureId::Normal)
+                    .into(),
+            );
+            default_material_data.set_metalness_texture(
+                shared_resources_manager
+                    .default_texture_bindless_index(SharedTextureId::Metalness)
+                    .into(),
+            );
+            default_material_data.set_roughness_texture(
+                shared_resources_manager
+                    .default_texture_bindless_index(SharedTextureId::Roughness)
+                    .into(),
+            );
+
+            self.gpu_material_data.update_gpu_data(
+                &self.default_material_id,
+                0,
+                &default_material_data,
+                &mut updater,
+            );
+
+            renderer.add_update_job_block(updater.job_blocks());
+
+            self.default_uploaded = true;
+        }
+    }
 }
 
 #[span_fn]
@@ -348,28 +404,11 @@ fn on_texture_event(
 
 #[allow(clippy::needless_pass_by_value)]
 fn upload_default_material(
-    renderer: Res<'_, Renderer>,
     mut material_manager: ResMut<'_, MaterialManager>,
+    renderer: Res<'_, Renderer>,
+    shared_resources_manager: Res<'_, SharedResourcesManager>,
 ) {
-    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
-
-    let mut default_material = cgen::cgen_type::MaterialData::default();
-    default_material.set_base_albedo(Vec4::new(0.8, 0.8, 0.8, 1.0).into());
-    default_material.set_base_metalness(0.0.into());
-    default_material.set_reflectance(0.5.into());
-    default_material.set_base_roughness(0.4.into());
-    default_material.set_albedo_texture(u32::MAX.into());
-    default_material.set_normal_texture(u32::MAX.into());
-    default_material.set_metalness_texture(u32::MAX.into());
-    default_material.set_roughness_texture(u32::MAX.into());
-
-    material_manager.gpu_data_mut().upload_default(
-        default_material,
-        renderer.static_buffer_allocator(),
-        &mut updater,
-    );
-
-    renderer.add_update_job_block(updater.job_blocks());
+    material_manager.upload_default_material(&renderer, &shared_resources_manager);
 }
 
 #[span_fn]
@@ -396,3 +435,12 @@ fn upload_material_data(
 
     renderer.add_update_job_block(updater.job_blocks());
 }
+
+// pub fn upload_default(
+//     &mut self,
+//     default: T,
+//     allocator: &UnifiedStaticBufferAllocator,
+//     updater: &mut UniformGPUDataUpdater,
+// ) {
+//
+// }

@@ -4,6 +4,7 @@ use lgn_app::App;
 use lgn_core::BumpAllocatorPool;
 use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 use lgn_ecs::prelude::{Changed, Query, Res, ResMut, Without};
+use lgn_graphics_data::runtime::MaterialReferenceType;
 use lgn_math::Vec3;
 use lgn_tracing::span_fn;
 use lgn_transform::components::{GlobalTransform, Transform};
@@ -22,7 +23,7 @@ use super::{
 };
 pub struct Mesh {
     pub mesh_id: u32,
-    pub material_id: u32,
+    pub material_va: u32,
     pub material_index: u32,
 }
 
@@ -49,7 +50,7 @@ impl ModelManager {
                 ModelMetaData {
                     meshes: vec![Mesh {
                         mesh_id: idx as u32,
-                        material_id: u32::MAX,
+                        material_va: u32::MAX,
                         material_index: u32::MAX,
                     }],
                 },
@@ -61,7 +62,7 @@ impl ModelManager {
             default_model: ModelMetaData {
                 meshes: vec![Mesh {
                     mesh_id: 1, // cube
-                    material_id: u32::MAX,
+                    material_va: u32::MAX,
                     material_index: u32::MAX,
                 }],
             },
@@ -110,16 +111,15 @@ pub(crate) fn update_models(
         let mut meshes = Vec::new();
         // TODO: case when material hasn't been loaded
         for (idx, mesh) in updated_model.meshes.iter().enumerate() {
+            let material_id = mesh.material_id.as_ref().map_or(
+                *material_manager.get_default_material(),
+                MaterialReferenceType::id,
+            );
+
             meshes.push(Mesh {
                 mesh_id: ids[idx],
-                material_id: material_manager
-                    .gpu_data()
-                    .va_for_index(mesh.material_id.clone().map(|v| v.id()), 0)
-                    as u32,
-                material_index: material_manager
-                    .gpu_data()
-                    .id_for_index(mesh.material_id.clone().map(|v| v.id()), 0)
-                    as u32,
+                material_va: material_manager.gpu_data().va_for_index(&material_id, 0) as u32,
+                material_index: material_manager.gpu_data().id_for_index(&material_id, 0) as u32,
             });
         }
         model_manager.add_model(*mesh_reference, ModelMetaData { meshes });

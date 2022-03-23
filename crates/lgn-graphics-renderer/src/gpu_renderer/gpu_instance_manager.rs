@@ -6,12 +6,12 @@ use lgn_math::Vec4;
 
 use crate::{
     cgen,
-    components::{ManipulatorComponent, MaterialComponent, VisualComponent},
+    components::{ManipulatorComponent, VisualComponent},
     labels::RenderStage,
     picking::{PickingIdContext, PickingManager},
     resources::{
         GpuDataManager, GpuEntityColorManager, GpuEntityTransformManager, GpuPickingDataManager,
-        GpuVaTableForGpuInstance, MaterialManager, MeshManager, MissingVisualTracker, ModelManager,
+        GpuVaTableForGpuInstance, MeshManager, MissingVisualTracker, ModelManager,
         UnifiedStaticBufferAllocator, UniformGPUDataUpdater,
     },
     Renderer,
@@ -56,7 +56,7 @@ impl GpuInstanceManager {
         instance_vas: &GpuInstanceVas,
     ) -> u32 {
         let (gpu_instance_id, va_table_address) =
-            self.va_table_manager.alloc_gpu_data(entity, allocator);
+            self.va_table_manager.alloc_gpu_data(&entity, allocator);
 
         self.va_table_adresses
             .set_va_table_address_for_gpu_instance(
@@ -110,14 +110,13 @@ fn update_gpu_instances(
     mut instance_manager: ResMut<'_, GpuInstanceManager>,
     model_manager: Res<'_, ModelManager>,
     mesh_manager: Res<'_, MeshManager>,
-    material_manager: Res<'_, MaterialManager>,
     color_manager: Res<'_, GpuEntityColorManager>,
     transform_manager: Res<'_, GpuEntityTransformManager>,
     mut event_writer: EventWriter<'_, '_, GpuInstanceEvent>,
     instance_query: Query<
         '_,
         '_,
-        (Entity, &VisualComponent, Option<&MaterialComponent>),
+        (Entity, &VisualComponent),
         (
             Or<(Changed<VisualComponent>, Changed<Parent>)>,
             Without<ManipulatorComponent>,
@@ -128,14 +127,14 @@ fn update_gpu_instances(
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
     let mut picking_context = PickingIdContext::new(&picking_manager);
 
-    for (entity, _, _) in instance_query.iter() {
+    for (entity, _) in instance_query.iter() {
         picking_data_manager.remove_gpu_data(&entity);
         if let Some(removed_ids) = instance_manager.remove_gpu_instance(entity) {
             event_writer.send(GpuInstanceEvent::Removed(removed_ids));
         }
     }
 
-    for (entity, visual, mat_component) in instance_query.iter() {
+    for (entity, visual) in instance_query.iter() {
         let color: (f32, f32, f32, f32) = (
             f32::from(visual.color.r) / 255.0f32,
             f32::from(visual.color.g) / 255.0f32,
@@ -149,12 +148,7 @@ fn update_gpu_instances(
 
         color_manager.update_gpu_data(&entity, 0, &instance_color, &mut updater);
 
-        let mut material_key = None;
-        if let Some(material) = mat_component {
-            material_key = Some(material.material_id);
-        }
-
-        picking_data_manager.alloc_gpu_data(entity, renderer.static_buffer_allocator());
+        picking_data_manager.alloc_gpu_data(&entity, renderer.static_buffer_allocator());
 
         let mut picking_data = cgen::cgen_type::GpuInstancePickingData::default();
         picking_data.set_picking_id(picking_context.acquire_picking_id(entity).into());
@@ -173,14 +167,10 @@ fn update_gpu_instances(
 
             let instance_vas = GpuInstanceVas {
                 submesh_va: mesh_meta_data.mesh_description_offset,
-                material_va: if mesh.material_id != u32::MAX {
-                    mesh.material_id
-                } else {
-                    material_manager.gpu_data().va_for_index(material_key, 0) as u32
-                },
-                color_va: color_manager.va_for_index(Some(entity), 0) as u32,
-                transform_va: transform_manager.va_for_index(Some(entity), 0) as u32,
-                picking_data_va: picking_data_manager.va_for_index(Some(entity), 0) as u32,
+                material_va: mesh.material_va,
+                color_va: color_manager.va_for_index(&entity, 0) as u32,
+                transform_va: transform_manager.va_for_index(&entity, 0) as u32,
+                picking_data_va: picking_data_manager.va_for_index(&entity, 0) as u32,
             };
 
             let gpu_instance_id = instance_manager.add_gpu_instance(
@@ -191,11 +181,7 @@ fn update_gpu_instances(
             );
 
             added_instances.push((
-                if mesh.material_id != u32::MAX {
-                    mesh.material_index
-                } else {
-                    material_manager.gpu_data().id_for_index(material_key, 0)
-                },
+                mesh.material_index,
                 RenderElement::new(gpu_instance_id, mesh.mesh_id as u32, &mesh_manager),
             ));
         }

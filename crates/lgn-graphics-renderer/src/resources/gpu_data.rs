@@ -28,12 +28,9 @@ pub(crate) struct GpuDataManager<K, T> {
     gpu_data: UniformGPUData<T>,
     index_allocator: IndexAllocator,
     data_map: BTreeMap<K, Vec<(u32, u64)>>,
-    default_uploaded: bool,
-    default_id: u32,
-    default_va: u64,
 }
 
-impl<K, T> GpuDataManager<K, T> {
+impl<K: Ord + Copy, T> GpuDataManager<K, T> {
     pub fn new(page_size: u64, block_size: u32) -> Self {
         let index_allocator = IndexAllocator::new(block_size);
         let gpu_data = UniformGPUData::<T>::new(None, page_size);
@@ -42,49 +39,37 @@ impl<K, T> GpuDataManager<K, T> {
             gpu_data,
             index_allocator,
             data_map: BTreeMap::new(),
-            default_uploaded: false,
-            default_id: u32::MAX,
-            default_va: u64::MAX,
         }
     }
 
-    pub fn alloc_gpu_data(&mut self, key: K, allocator: &UnifiedStaticBufferAllocator) -> (u32, u64)
-    where
-        K: Ord,
-    {
+    pub fn alloc_gpu_data(
+        &mut self,
+        key: &K,
+        allocator: &UnifiedStaticBufferAllocator,
+    ) -> (u32, u64) {
         let gpu_data_id = self.index_allocator.acquire_index();
         let gpu_data_va = self.gpu_data.ensure_index_allocated(allocator, gpu_data_id);
 
-        if let Some(gpu_data) = self.data_map.get_mut(&key) {
+        if let Some(gpu_data) = self.data_map.get_mut(key) {
             gpu_data.push((gpu_data_id, gpu_data_va));
         } else {
-            self.data_map.insert(key, vec![(gpu_data_id, gpu_data_va)]);
+            self.data_map.insert(*key, vec![(gpu_data_id, gpu_data_va)]);
         }
         (gpu_data_id, gpu_data_va)
     }
 
-    pub fn id_for_index(&self, optional: Option<K>, index: usize) -> u32
-    where
-        K: Ord,
-    {
-        if let Some(key) = optional {
-            if let Some(value) = self.data_map.get(&key) {
-                return value[index].0;
-            }
-        }
-        self.default_id
+    pub fn id_for_index(&self, key: &K, index: usize) -> u32 {
+        assert!(self.data_map.contains_key(key));
+
+        let values = self.data_map.get(key).unwrap();
+        values[index].0
     }
 
-    pub fn va_for_index(&self, optional: Option<K>, index: usize) -> u64
-    where
-        K: Ord,
-    {
-        if let Some(key) = optional {
-            if let Some(value) = self.data_map.get(&key) {
-                return value[index].1;
-            }
-        }
-        self.default_va
+    pub fn va_for_index(&self, key: &K, index: usize) -> u64 {
+        assert!(self.data_map.contains_key(key));
+
+        let values = self.data_map.get(key).unwrap();
+        values[index].1
     }
 
     pub fn update_gpu_data(
@@ -93,19 +78,14 @@ impl<K, T> GpuDataManager<K, T> {
         dest_idx: usize,
         data: &T,
         updater: &mut UniformGPUDataUpdater,
-    ) where
-        K: Ord,
-    {
+    ) {
         if let Some(gpu_data) = self.data_map.get(key) {
             let data_slice = std::slice::from_ref(data);
             updater.add_update_jobs(data_slice, gpu_data[dest_idx].1);
         }
     }
 
-    pub fn remove_gpu_data(&mut self, key: &K) -> Option<Vec<u32>>
-    where
-        K: Ord,
-    {
+    pub fn remove_gpu_data(&mut self, key: &K) -> Option<Vec<u32>> {
         if let Some(gpu_data) = self.data_map.remove(key) {
             let mut instance_ids = Vec::with_capacity(gpu_data.len());
             for data in gpu_data {
@@ -116,23 +96,6 @@ impl<K, T> GpuDataManager<K, T> {
             Some(instance_ids)
         } else {
             None
-        }
-    }
-
-    pub fn upload_default(
-        &mut self,
-        default: T,
-        allocator: &UnifiedStaticBufferAllocator,
-        updater: &mut UniformGPUDataUpdater,
-    ) {
-        if !self.default_uploaded {
-            self.default_id = self.index_allocator.acquire_index();
-            self.default_va = self
-                .gpu_data
-                .ensure_index_allocated(allocator, self.default_id);
-
-            updater.add_update_jobs(&[default], self.default_va);
-            self.default_uploaded = true;
         }
     }
 }
@@ -178,7 +141,7 @@ fn alloc_color_address(
     query: Query<'_, '_, Entity, Added<VisualComponent>>,
 ) {
     for entity in query.iter() {
-        color_manager.alloc_gpu_data(entity, renderer.static_buffer_allocator());
+        color_manager.alloc_gpu_data(&entity, renderer.static_buffer_allocator());
     }
 }
 
@@ -190,7 +153,7 @@ fn alloc_transform_address(
     query: Query<'_, '_, Entity, Added<GlobalTransform>>,
 ) {
     for entity in query.iter() {
-        transform_manager.alloc_gpu_data(entity, renderer.static_buffer_allocator());
+        transform_manager.alloc_gpu_data(&entity, renderer.static_buffer_allocator());
     }
 }
 
