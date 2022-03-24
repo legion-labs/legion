@@ -186,6 +186,7 @@ dependencies = [
  "lgn-telemetry-sink",
  "lgn-tracing",
  "lgn-tracing-transit",
+ "log",
  "prost",
  "reqwest",
  "serde_json",
@@ -5745,6 +5746,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "lgn-derive-tracing-transit",
+ "log",
  "memoffset 0.6.5",
  "serde",
 ]
