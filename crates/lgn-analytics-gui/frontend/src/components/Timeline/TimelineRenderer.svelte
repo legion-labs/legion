@@ -167,13 +167,50 @@
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    if (event.code == "Escape" && $stateStore.currentSelection) {
+    switch (event.code) {
+      case "Escape":
+        onEscape();
+        break;
+      case "ArrowRight":
+      case "ArrowLeft":
+        onHorizontalArrow(event);
+        break;
+      case "ArrowUp":
+      case "ArrowDown":
+        onVerticalArrow(event);
+        break;
+    }
+  }
+
+  function onEscape() {
+    if ($stateStore.currentSelection) {
       stateStore.update((s) => {
         s.currentSelection = undefined;
         s.selectionState = NewSelectionState();
         setRangeUrl([s.minMs, s.maxMs]);
         return s;
       });
+    }
+  }
+
+  function onHorizontalArrow(event: KeyboardEvent) {
+    event.preventDefault();
+    if ($stateStore) {
+      const sign = event.code.includes("Right") ? 1 : -1;
+      const range = $stateStore.getViewRange();
+      const delta = (sign * (range[1] - range[0])) / 4;
+      stateStore.update((s) => {
+        s.setViewRange([range[0] + delta, range[1] + delta]);
+        return s;
+      });
+    }
+  }
+
+  async function onVerticalArrow(event: KeyboardEvent) {
+    event.preventDefault();
+    if ($stateStore && canvasHeight < scrollHeight) {
+      const sign = event.code.includes("Down") ? 1 : -1;
+      div.scrollBy({ top: (sign * (scrollHeight - canvasHeight)) / 10 });
     }
   }
 
