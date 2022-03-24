@@ -329,9 +329,8 @@ where
         // reference objects need a member called 'id' which is the key to the dependency
         if let Some(id_index) = members.iter().position(|m| m.0 == "id") {
             return members[id_index].1.clone();
-        } else {
-            log::error!("reference object has no 'id' member");
         }
+        log::error!("reference object has no 'id' member");
     }
 
     Value::Object(Arc::new(Object {
