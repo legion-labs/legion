@@ -1,6 +1,6 @@
 import type { Process } from "@lgn/proto-telemetry/dist/process";
 
-export function formatExecutionTime(timeMs: number) {
+export function formatExecutionTime(timeMs: number, fractionDigits = 3) {
   if (!isFinite(timeMs)) {
     return "";
   }
@@ -32,7 +32,7 @@ export function formatExecutionTime(timeMs: number) {
       return `${sign}${hours}:${minutes}:${secondsWhole}`;
     }
   }
-  return sign + time.toFixed(3) + " " + unit;
+  return sign + time.toFixed(fractionDigits) + " " + unit;
 }
 
 export function formatProcessName(process: Process) {

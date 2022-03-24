@@ -18,6 +18,7 @@
   import { useLocation } from "svelte-navigator";
   import TimelineMinimap from "./TimelineMinimap.svelte";
   import { threadItemLength } from "@/lib/Timeline/TimelineValues";
+  import TimelineAxis from "./TimelineAxis.svelte";
 
   const gap = 4;
   const location = useLocation();
@@ -249,7 +250,10 @@
     on:zoom={(e) => onZoom(e.detail)}
     on:tick={(e) => onMinimapTick(e.detail)}
   />
-  <TimelineRange {stateStore} />
+  <TimelineAxis {stateStore} />
+  <div class="range">
+    <TimelineRange {stateStore} />
+  </div>
 </div>
 
 {#if stateManager?.process && $stateStore.ready}
@@ -277,6 +281,10 @@
 
   .loader {
     height: 90vh;
+  }
+
+  .range {
+    margin-top: 12px;
   }
 
   ::-webkit-scrollbar {
