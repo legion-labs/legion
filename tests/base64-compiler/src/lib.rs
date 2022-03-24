@@ -50,14 +50,17 @@ impl Compiler for Base64Compiler {
     ) -> Result<CompilationOutput, CompilerError> {
         let resources = context.registry();
 
-        let resource =
-            resources.load_sync::<binary_resource::BinaryResource>(context.source.resource_id());
-        let resource = resource.get(&resources).unwrap();
+        let output = {
+            let resource = resources
+                .load_sync::<binary_resource::BinaryResource>(context.source.resource_id());
+            let resource = resource.get(&resources).unwrap();
 
-        let base64string = encode(&resource.content);
-        let compiled_asset = base64string.as_bytes();
+            encode(&resource.content)
+        };
 
-        let asset = context.store(compiled_asset, context.target_unnamed.clone())?;
+        let asset = context
+            .store(output.as_bytes(), context.target_unnamed.clone())
+            .await?;
 
         // in this mock build dependency are _not_ runtime references.
         Ok(CompilationOutput {

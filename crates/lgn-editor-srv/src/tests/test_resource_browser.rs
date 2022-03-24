@@ -88,7 +88,7 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
         .add_device_cas(Box::new(content_store), Manifest::default());
     sample_data::offline::add_loaders(&mut asset_registry);
     lgn_scripting::offline::add_loaders(&mut asset_registry);
-    let asset_registry = asset_registry.create();
+    let asset_registry = asset_registry.create().await;
 
     let compilers = CompilerRegistryOptions::default()
         .add_compiler(&lgn_compiler_runtime_entity::COMPILER_INFO)

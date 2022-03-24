@@ -4,6 +4,8 @@ use std::{
     path::PathBuf,
 };
 
+use async_trait::async_trait;
+
 use crate::{Checksum, ContentStore, ContentStoreAddr};
 
 /// Disk-based [`ContentStore`] implementation.
@@ -36,8 +38,9 @@ impl HddContentStore {
     }
 }
 
+#[async_trait]
 impl ContentStore for HddContentStore {
-    fn write(&mut self, id: Checksum, data: &[u8]) -> Option<()> {
+    async fn write(&mut self, id: Checksum, data: &[u8]) -> Option<()> {
         let path = self.content_path(id);
 
         if path.exists() {
@@ -53,12 +56,12 @@ impl ContentStore for HddContentStore {
         }
     }
 
-    fn read(&self, id: Checksum) -> Option<Vec<u8>> {
+    async fn read(&self, id: Checksum) -> Option<Vec<u8>> {
         let path = self.content_path(id);
         fs::read(path).ok()
     }
 
-    fn remove(&mut self, id: Checksum) {
+    async fn remove(&mut self, id: Checksum) {
         let path = self.content_path(id);
         let _res = fs::remove_file(path);
     }

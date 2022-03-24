@@ -49,11 +49,11 @@ impl Compiler for ReverseCompiler {
     ) -> Result<CompilationOutput, CompilerError> {
         let resources = context.registry();
 
-        let resource =
-            resources.load_sync::<text_resource::TextResource>(context.source.resource_id());
-        let resource = resource.get(&resources).unwrap();
-
         let bytes = {
+            let resource =
+                resources.load_sync::<text_resource::TextResource>(context.source.resource_id());
+            let resource = resource.get(&resources).unwrap();
+
             let mut bytes = vec![];
             let output = text_resource::TextResource {
                 content: resource.content.chars().rev().collect(),
@@ -64,7 +64,9 @@ impl Compiler for ReverseCompiler {
             bytes
         };
 
-        let asset = context.store(&bytes, context.target_unnamed.clone())?;
+        let asset = context
+            .store(&bytes, context.target_unnamed.clone())
+            .await?;
 
         // in this mock build dependency are _not_ runtime references.
         Ok(CompilationOutput {

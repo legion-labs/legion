@@ -106,7 +106,7 @@ async fn main() {
     lgn_scripting::offline::add_loaders(&mut asset_registry);
     generic_data::offline::add_loaders(&mut asset_registry);
     sample_data::offline::add_loaders(&mut asset_registry);
-    let asset_registry = asset_registry.create();
+    let asset_registry = asset_registry.create().await;
 
     let mut compilers_path = env::current_exe().expect("cannot access current_exe");
     compilers_path.pop(); // pop the .exe name

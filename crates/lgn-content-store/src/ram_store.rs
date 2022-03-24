@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use async_trait::async_trait;
+
 use crate::{Checksum, ContentStore};
 
 /// In-memory [`ContentStore`] implementation.
@@ -18,8 +20,9 @@ impl RamContentStore {
     }
 }
 
+#[async_trait]
 impl ContentStore for RamContentStore {
-    fn write(&mut self, id: Checksum, data: &[u8]) -> Option<()> {
+    async fn write(&mut self, id: Checksum, data: &[u8]) -> Option<()> {
         if self.storage.contains_key(&id) {
             return None;
         }
@@ -28,11 +31,11 @@ impl ContentStore for RamContentStore {
         Some(())
     }
 
-    fn read(&self, id: Checksum) -> Option<Vec<u8>> {
+    async fn read(&self, id: Checksum) -> Option<Vec<u8>> {
         self.storage.get(&id).cloned()
     }
 
-    fn remove(&mut self, id: Checksum) {
+    async fn remove(&mut self, id: Checksum) {
         self.storage.remove(&id);
     }
 }

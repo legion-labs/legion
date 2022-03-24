@@ -48,38 +48,48 @@ impl Compiler for Gltf2MatCompiler {
     ) -> Result<CompilationOutput, CompilerError> {
         let resources = context.registry();
 
-        let resource = resources
-            .load_sync::<lgn_graphics_data::offline_gltf::GltfFile>(context.source.resource_id());
-        let resource = resource.get(&resources).unwrap();
+        let mut resource_references = vec![];
+
+        let outputs = {
+            let resource = resources.load_sync::<lgn_graphics_data::offline_gltf::GltfFile>(
+                context.source.resource_id(),
+            );
+            let resource = resource.get(&resources).unwrap();
+
+            let mut compiled_resources = vec![];
+            let material_proc = MaterialProcessor {};
+
+            let materials = resource.gather_materials(context.source.resource_id());
+            for (material, name) in materials {
+                let mut compiled_asset = vec![];
+                material_proc
+                    .write_resource(&material, &mut compiled_asset)
+                    .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
+                let material_rpid = context.target_unnamed.new_named(&name);
+
+                compiled_resources.push((material_rpid.clone(), compiled_asset));
+                if let Some(albedo) = material.albedo {
+                    resource_references.push((material_rpid.clone(), albedo));
+                }
+
+                if let Some(normal) = material.normal {
+                    resource_references.push((material_rpid.clone(), normal));
+                }
+
+                if let Some(roughness) = material.roughness {
+                    resource_references.push((material_rpid.clone(), roughness));
+                }
+
+                if let Some(metalness) = material.metalness {
+                    resource_references.push((material_rpid.clone(), metalness));
+                }
+            }
+            compiled_resources
+        };
 
         let mut compiled_resources = vec![];
-        let material_proc = MaterialProcessor {};
-
-        let mut resource_references = Vec::new();
-        let materials = resource.gather_materials(context.source.resource_id());
-        for (material, name) in materials {
-            let mut compiled_asset = vec![];
-            material_proc
-                .write_resource(&material, &mut compiled_asset)
-                .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
-            let material_rpid = context.target_unnamed.new_named(&name);
-            let asset = context.store(&compiled_asset, material_rpid.clone())?;
-            compiled_resources.push(asset);
-            if let Some(albedo) = material.albedo {
-                resource_references.push((material_rpid.clone(), albedo));
-            }
-
-            if let Some(normal) = material.normal {
-                resource_references.push((material_rpid.clone(), normal));
-            }
-
-            if let Some(roughness) = material.roughness {
-                resource_references.push((material_rpid.clone(), roughness));
-            }
-
-            if let Some(metalness) = material.metalness {
-                resource_references.push((material_rpid.clone(), metalness));
-            }
+        for (id, content) in outputs {
+            compiled_resources.push(context.store(&content, id.clone()).await?);
         }
 
         Ok(CompilationOutput {

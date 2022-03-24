@@ -16,6 +16,7 @@ use asset_handles::AssetHandles;
 use asset_to_ecs::load_ecs_asset;
 pub use config::{AssetRegistrySettings, DataBuildConfig};
 use lgn_app::prelude::*;
+use lgn_async::TokioAsyncRuntime;
 use lgn_content_store::HddContentStore;
 use lgn_data_runtime::{
     manifest::Manifest, AssetRegistry, AssetRegistryOptions, AssetRegistryScheduling,
@@ -95,7 +96,9 @@ impl AssetRegistryPlugin {
         let registry_options = world
             .remove_non_send_resource::<AssetRegistryOptions>()
             .unwrap();
-        let registry = registry_options.create();
+
+        let async_rt = world.get_resource::<TokioAsyncRuntime>().unwrap();
+        let registry = async_rt.block_on(async { registry_options.create().await });
 
         let load_events = registry.subscribe_to_load_events();
         world.insert_resource(load_events);

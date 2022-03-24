@@ -49,13 +49,13 @@ impl Compiler for RefCompiler {
     ) -> Result<CompilationOutput, CompilerError> {
         let resources = context.registry();
 
-        let resource =
-            resources.load_sync::<refs_resource::TestResource>(context.source.resource_id());
-        assert!(!resource.is_err(&resources));
-        assert!(resource.is_loaded(&resources));
-        let resource = resource.get(&resources).unwrap();
-
         let compiled_asset = {
+            let resource =
+                resources.load_sync::<refs_resource::TestResource>(context.source.resource_id());
+            assert!(!resource.is_err(&resources));
+            assert!(resource.is_loaded(&resources));
+            let resource = resource.get(&resources).unwrap();
+
             let mut text = resource.content.as_bytes().to_owned();
             text.reverse();
             let mut content = text.len().to_le_bytes().to_vec();
@@ -67,7 +67,9 @@ impl Compiler for RefCompiler {
             content
         };
 
-        let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;
+        let asset = context
+            .store(&compiled_asset, context.target_unnamed.clone())
+            .await?;
 
         // in this test example every build dependency becomes a reference/load-time
         // dependency.

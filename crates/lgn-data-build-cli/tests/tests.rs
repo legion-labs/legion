@@ -122,7 +122,8 @@ async fn build_device() {
             project_dir,
             true,
         )
-        .create();
+        .create()
+        .await;
 
     // build needs to be dropped to flush recorded ResourcePathIds to disk
     std::mem::drop(build);

@@ -1,6 +1,6 @@
 use lgn_content_store::{Checksum, ContentStore};
 use lgn_data_runtime::{ResourceType, ResourceTypeAndId};
-use lgn_tracing::span_scope;
+use lgn_tracing::async_span_scope;
 use serde::{Deserialize, Serialize};
 
 use crate::Error;
@@ -18,13 +18,13 @@ const ASSET_FILE_VERSION: u16 = 1;
 const ASSET_FILE_TYPENAME: &[u8; 4] = b"asft";
 
 // todo: no asset ids are written because we assume 1 asset in asset_file now.
-pub fn write_assetfile(
+pub async fn write_assetfile(
     asset_list: impl Iterator<Item = (ResourceTypeAndId, Checksum)> + Clone,
     reference_list: impl Iterator<Item = (ResourceTypeAndId, (ResourceTypeAndId, ResourceTypeAndId))>
         + Clone,
     content_store: &impl ContentStore,
 ) -> Result<Vec<u8>, Error> {
-    span_scope!("write_assetfile");
+    async_span_scope!("write_assetfile");
 
     // Prepare dependencies
     let mut primary_dependencies: Vec<ResourceTypeAndId> = reference_list.map(|r| r.1 .0).collect();
@@ -34,12 +34,12 @@ pub fn write_assetfile(
     let mut asset_contents = vec![];
     let mut kind: Option<ResourceType> = None;
     {
-        span_scope!("content_store_read");
+        async_span_scope!("content_store_read");
         for content in asset_list {
             if asset_contents.is_empty() {
                 kind = Some(content.0.kind);
             }
-            asset_contents.push(content_store.read(content.1).unwrap());
+            asset_contents.push(content_store.read(content.1).await.unwrap());
         }
     }
 
@@ -55,7 +55,7 @@ pub fn write_assetfile(
     };
 
     {
-        span_scope!("bincode::serialize");
+        async_span_scope!("bincode::serialize");
         bincode::serialize(&asset).map_err(|_e| Error::LinkFailed)
     }
 }
@@ -91,8 +91,8 @@ mod tests {
             .unwrap()
     }
 
-    #[test]
-    fn one_asset_no_references() {
+    #[tokio::test]
+    async fn one_asset_no_references() {
         let mut content_store = RamContentStore::default();
 
         let asset_id = ResourceTypeAndId {
@@ -100,14 +100,21 @@ mod tests {
             id: ResourceId::new_explicit(1),
         };
         let asset_content = create_ref_asset("test_content", ResourceId::new_explicit(9));
-        let asset_checksum = content_store.store(&asset_content).expect("to store asset");
-        assert_eq!(content_store.read(asset_checksum).unwrap(), asset_content);
+        let asset_checksum = content_store
+            .store(&asset_content)
+            .await
+            .expect("to store asset");
+        assert_eq!(
+            content_store.read(asset_checksum).await.unwrap(),
+            asset_content
+        );
 
         let binary_assetfile = write_assetfile(
             std::iter::once((asset_id, asset_checksum)),
             std::iter::empty(),
             &content_store,
         )
+        .await
         .expect("asset file");
 
         {
@@ -121,8 +128,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn two_dependent_assets() {
+    #[tokio::test]
+    async fn two_dependent_assets() {
         let mut content_store = RamContentStore::default();
 
         let child_id = ResourceTypeAndId {
@@ -130,8 +137,14 @@ mod tests {
             id: ResourceId::new_explicit(1),
         };
         let child_content = create_ref_asset("child", ResourceId::new_explicit(9));
-        let child_checksum = content_store.store(&child_content).expect("to store asset");
-        assert_eq!(content_store.read(child_checksum).unwrap(), child_content);
+        let child_checksum = content_store
+            .store(&child_content)
+            .await
+            .expect("to store asset");
+        assert_eq!(
+            content_store.read(child_checksum).await.unwrap(),
+            child_content
+        );
 
         let parent_id = ResourceTypeAndId {
             kind: refs_asset::RefsAsset::TYPE,
@@ -140,8 +153,12 @@ mod tests {
         let parent_content = create_ref_asset("parent", ResourceId::new_explicit(1));
         let parent_checksum = content_store
             .store(&parent_content)
+            .await
             .expect("to store asset");
-        assert_eq!(content_store.read(parent_checksum).unwrap(), parent_content);
+        assert_eq!(
+            content_store.read(parent_checksum).await.unwrap(),
+            parent_content
+        );
 
         let reference_list = vec![(parent_id, (child_id, child_id))];
 
@@ -150,6 +167,7 @@ mod tests {
             reference_list.iter().copied(),
             &content_store,
         )
+        .await
         .expect("asset file");
 
         let _child_assetfile = write_assetfile(
@@ -157,6 +175,7 @@ mod tests {
             std::iter::empty(),
             &content_store,
         )
+        .await
         .expect("asset file");
 
         //println!("{:?} : {:?}", parent_id, parent_assetfile);

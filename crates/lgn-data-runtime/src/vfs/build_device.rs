@@ -1,10 +1,10 @@
 use std::time::Instant;
 use std::{
-    cell::RefCell,
     io,
     path::{Path, PathBuf},
 };
 
+use async_trait::async_trait;
 use lgn_content_store::{ContentStore, ContentStoreAddr};
 use lgn_tracing::info;
 
@@ -14,7 +14,7 @@ use crate::{manifest::Manifest, ResourceTypeAndId};
 /// Storage device that builds resources on demand. Resources are accessed
 /// through a manifest access table.
 pub(crate) struct BuildDevice {
-    manifest: RefCell<Manifest>,
+    manifest: Manifest,
     content_store: Box<dyn ContentStore>,
     databuild_bin: PathBuf,
     cas_addr: ContentStoreAddr,
@@ -34,7 +34,7 @@ impl BuildDevice {
         force_recompile: bool,
     ) -> Self {
         Self {
-            manifest: RefCell::new(manifest),
+            manifest,
             content_store,
             databuild_bin: build_bin.as_ref().to_owned(),
             cas_addr,
@@ -45,24 +45,25 @@ impl BuildDevice {
     }
 }
 
+#[async_trait]
 impl Device for BuildDevice {
-    fn load(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
+    async fn load(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
         if self.force_recompile {
-            self.reload(type_id)
+            self.reload(type_id).await
         } else {
-            let (checksum, size) = self.manifest.borrow().find(type_id)?;
-            let content = self.content_store.read(checksum)?;
+            let (checksum, size) = self.manifest.find(type_id)?;
+            let content = self.content_store.read(checksum).await?;
             assert_eq!(content.len(), size);
             Some(content)
         }
     }
 
-    fn reload(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
+    async fn reload(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
         let output = self.build_resource(type_id).ok()?;
-        self.manifest.borrow_mut().extend(output);
+        self.manifest.extend(output);
 
-        let (checksum, size) = self.manifest.borrow().find(type_id)?;
-        let content = self.content_store.read(checksum)?;
+        let (checksum, size) = self.manifest.find(type_id)?;
+        let content = self.content_store.read(checksum).await?;
         assert_eq!(content.len(), size);
         Some(content)
     }

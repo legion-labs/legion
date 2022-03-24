@@ -48,43 +48,48 @@ impl Compiler for Psd2TextCompiler {
     ) -> Result<CompilationOutput, CompilerError> {
         let resources = context.registry();
 
-        let resource = resources
-            .load_sync::<lgn_graphics_data::offline_psd::PsdFile>(context.source.resource_id());
+        let outputs = {
+            let resource = resources
+                .load_sync::<lgn_graphics_data::offline_psd::PsdFile>(context.source.resource_id());
 
-        let resource = resource.get(&resources).unwrap();
+            let resource = resource.get(&resources).unwrap();
+
+            let mut compiled_resources = vec![];
+            let texture_proc = TextureProcessor {};
+
+            let compiled_content = {
+                let final_image = resource.final_texture().ok_or_else(|| {
+                    CompilerError::CompilationError("Failed to generate texture".into())
+                })?;
+                let mut content = vec![];
+                texture_proc
+                    .write_resource(&final_image, &mut content)
+                    .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
+                content
+            };
+            compiled_resources.push((context.target_unnamed.clone(), compiled_content));
+
+            let compile_layer = |psd: &PsdFile, layer_name| -> Vec<u8> {
+                let image = psd.layer_texture(layer_name).unwrap();
+                let mut layer_content = vec![];
+                texture_proc
+                    .write_resource(&image, &mut layer_content)
+                    .unwrap_or_else(|_| panic!("writing to file, from layer {}", layer_name));
+                layer_content
+            };
+
+            for layer_name in resource.layer_list().ok_or_else(|| {
+                CompilerError::CompilationError("Failed to extract layer names".into())
+            })? {
+                let pixels = compile_layer(&resource, layer_name);
+                compiled_resources.push((context.target_unnamed.new_named(layer_name), pixels));
+            }
+            compiled_resources
+        };
 
         let mut compiled_resources = vec![];
-        let texture_proc = TextureProcessor {};
-
-        let compiled_content = {
-            let final_image = resource.final_texture().ok_or_else(|| {
-                CompilerError::CompilationError("Failed to generate texture".into())
-            })?;
-            let mut content = vec![];
-            texture_proc
-                .write_resource(&final_image, &mut content)
-                .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
-            content
-        };
-
-        let output = context.store(&compiled_content, context.target_unnamed.clone())?;
-        compiled_resources.push(output);
-
-        let compile_layer = |psd: &PsdFile, layer_name| -> Vec<u8> {
-            let image = psd.layer_texture(layer_name).unwrap();
-            let mut layer_content = vec![];
-            texture_proc
-                .write_resource(&image, &mut layer_content)
-                .unwrap_or_else(|_| panic!("writing to file, from layer {}", layer_name));
-            layer_content
-        };
-
-        for layer_name in resource.layer_list().ok_or_else(|| {
-            CompilerError::CompilationError("Failed to extract layer names".into())
-        })? {
-            let pixels = compile_layer(&resource, layer_name);
-            let output = context.store(&pixels, context.target_unnamed.new_named(layer_name))?;
-            compiled_resources.push(output);
+        for (id, content) in outputs {
+            compiled_resources.push(context.store(&content, id).await?);
         }
 
         Ok(CompilationOutput {

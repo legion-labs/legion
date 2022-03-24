@@ -48,28 +48,37 @@ impl Compiler for Gltf2ModelCompiler {
     ) -> Result<CompilationOutput, CompilerError> {
         let resources = context.registry();
 
-        let resource = resources
-            .load_sync::<lgn_graphics_data::offline_gltf::GltfFile>(context.source.resource_id());
-        let resource = resource.get(&resources).unwrap();
-
-        let mut compiled_resources = vec![];
-        let model_proc = ModelProcessor {};
-
         let mut resource_references = Vec::new();
-        let models = resource.gather_models(context.source.resource_id());
-        for (model, name) in models {
-            let mut compiled_asset = vec![];
-            model_proc
-                .write_resource(&model, &mut compiled_asset)
-                .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
-            let model_rpid = context.target_unnamed.new_named(&name);
-            let asset = context.store(&compiled_asset, model_rpid.clone())?;
-            compiled_resources.push(asset);
-            for mesh in model.meshes {
-                if let Some(material_rpid) = mesh.material {
-                    resource_references.push((model_rpid.clone(), material_rpid));
+
+        let outputs = {
+            let resource = resources.load_sync::<lgn_graphics_data::offline_gltf::GltfFile>(
+                context.source.resource_id(),
+            );
+            let resource = resource.get(&resources).unwrap();
+
+            let mut compiled_resources = vec![];
+            let model_proc = ModelProcessor {};
+
+            let models = resource.gather_models(context.source.resource_id());
+            for (model, name) in models {
+                let mut compiled_asset = vec![];
+                model_proc
+                    .write_resource(&model, &mut compiled_asset)
+                    .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
+                let model_rpid = context.target_unnamed.new_named(&name);
+                compiled_resources.push((model_rpid.clone(), compiled_asset));
+                for mesh in model.meshes {
+                    if let Some(material_rpid) = mesh.material {
+                        resource_references.push((model_rpid.clone(), material_rpid));
+                    }
                 }
             }
+            compiled_resources
+        };
+
+        let mut compiled_resources = vec![];
+        for (id, content) in outputs {
+            compiled_resources.push(context.store(&content, id).await?);
         }
 
         Ok(CompilationOutput {

@@ -5,7 +5,7 @@ use crate::{AssetRegistry, Resource};
 /// Trait describing the resource loadable at runtime.
 pub trait Asset: Resource {
     /// Loader of the asset.
-    type Loader: AssetLoader + Send + Default + 'static;
+    type Loader: AssetLoader + Send + Sync + Default + 'static;
 }
 
 /// Error for `AssetLoader` implementation

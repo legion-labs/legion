@@ -43,6 +43,7 @@ pub(crate) enum LoaderResult {
     Reloaded(HandleUntyped, Box<dyn Any + Send + Sync>),
 }
 
+#[derive(Debug)]
 pub(crate) enum LoaderRequest {
     Load(HandleUntyped, Option<LoadId>),
     Reload(HandleUntyped),
@@ -106,10 +107,10 @@ impl Deref for HandleMap {
 }
 
 pub(crate) fn create_loader(
-    devices: Vec<Box<dyn vfs::Device>>,
+    devices: Vec<Box<(dyn vfs::Device + Send)>>,
 ) -> (AssetLoaderStub, AssetLoaderIO) {
     let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
-    let (request_tx, request_rx) = crossbeam_channel::unbounded::<LoaderRequest>();
+    let (request_tx, request_rx) = tokio::sync::mpsc::unbounded_channel::<LoaderRequest>(); //crossbeam_channel::unbounded::<LoaderRequest>();
 
     let unload_channel = crossbeam_channel::unbounded();
     let handles = HandleMap::new(unload_channel.0);
@@ -128,7 +129,7 @@ pub(crate) fn create_loader(
 pub(crate) struct AssetLoaderStub {
     unload_channel_rx: crossbeam_channel::Receiver<ResourceTypeAndId>,
     handles: Arc<HandleMap>,
-    request_tx: crossbeam_channel::Sender<LoaderRequest>,
+    request_tx: tokio::sync::mpsc::UnboundedSender<LoaderRequest>,
     result_rx: crossbeam_channel::Receiver<LoaderResult>,
 }
 
@@ -136,7 +137,7 @@ type LoadId = u32;
 
 impl AssetLoaderStub {
     fn new(
-        request_tx: crossbeam_channel::Sender<LoaderRequest>,
+        request_tx: tokio::sync::mpsc::UnboundedSender<LoaderRequest>,
         result_rx: crossbeam_channel::Receiver<LoaderResult>,
         unload_channel_rx: crossbeam_channel::Receiver<ResourceTypeAndId>,
         handles: Arc<HandleMap>,
@@ -213,7 +214,7 @@ impl AssetLoaderStub {
 const ASSET_FILE_TYPENAME: &[u8; 4] = b"asft";
 
 pub(crate) struct AssetLoaderIO {
-    loaders: HashMap<ResourceType, Box<dyn AssetLoader + Send>>,
+    loaders: HashMap<ResourceType, Box<dyn AssetLoader + Send + Sync>>,
 
     handles: Arc<HandleMap>,
 
@@ -222,13 +223,13 @@ pub(crate) struct AssetLoaderIO {
 
     loaded_resources: HashSet<ResourceTypeAndId>,
 
-    devices: Vec<Box<dyn vfs::Device>>,
+    devices: Vec<Box<(dyn vfs::Device + Send)>>,
 
     /// Loopback for load requests.
-    request_tx: crossbeam_channel::Sender<LoaderRequest>,
+    request_tx: tokio::sync::mpsc::UnboundedSender<LoaderRequest>,
 
     /// Entry point for load requests.
-    request_rx: Option<crossbeam_channel::Receiver<LoaderRequest>>,
+    request_rx: Option<tokio::sync::mpsc::UnboundedReceiver<LoaderRequest>>,
 
     /// Output of loader results.
     result_tx: crossbeam_channel::Sender<LoaderResult>,
@@ -236,9 +237,9 @@ pub(crate) struct AssetLoaderIO {
 
 impl AssetLoaderIO {
     fn new(
-        devices: Vec<Box<dyn vfs::Device>>,
-        request_tx: crossbeam_channel::Sender<LoaderRequest>,
-        request_rx: crossbeam_channel::Receiver<LoaderRequest>,
+        devices: Vec<Box<(dyn vfs::Device + Send)>>,
+        request_tx: tokio::sync::mpsc::UnboundedSender<LoaderRequest>,
+        request_rx: tokio::sync::mpsc::UnboundedReceiver<LoaderRequest>,
         result_tx: crossbeam_channel::Sender<LoaderResult>,
         handles: Arc<HandleMap>,
     ) -> Self {
@@ -257,15 +258,20 @@ impl AssetLoaderIO {
     pub(crate) fn register_loader(
         &mut self,
         kind: ResourceType,
-        loader: Box<dyn AssetLoader + Send>,
+        loader: Box<dyn AssetLoader + Send + Sync>,
     ) {
         self.loaders.insert(kind, loader);
     }
 
-    fn load_resource(&self, type_id: ResourceTypeAndId) -> Result<Vec<u8>, AssetRegistryError> {
+    async fn load_resource(
+        &self,
+        type_id: ResourceTypeAndId,
+    ) -> Result<Vec<u8>, AssetRegistryError> {
         let start = std::time::Instant::now();
+
         for device in &self.devices {
-            if let Some(content) = device.load(type_id) {
+            let res = device.load(type_id).await;
+            if let Some(content) = res {
                 info!(
                     "Loaded {:?} {} in {:?}",
                     type_id,
@@ -278,20 +284,26 @@ impl AssetLoaderIO {
         Err(AssetRegistryError::ResourceNotFound(type_id))
     }
 
-    fn reload_resource(&self, type_id: ResourceTypeAndId) -> Result<Vec<u8>, AssetRegistryError> {
+    async fn reload_resource(
+        &self,
+        type_id: ResourceTypeAndId,
+    ) -> Result<Vec<u8>, AssetRegistryError> {
         for device in &self.devices {
-            if let Some(content) = device.reload(type_id) {
+            if let Some(content) = device.reload(type_id).await {
                 return Ok(content);
             }
         }
 
         // fallback to loading existing resources.
-        self.load_resource(type_id)
+        self.load_resource(type_id).await
     }
 
-    fn process_reload(&mut self, primary_handle: &HandleUntyped) -> Result<(), AssetRegistryError> {
+    async fn process_reload(
+        &mut self,
+        primary_handle: &HandleUntyped,
+    ) -> Result<(), AssetRegistryError> {
         let primary_id = primary_handle.id();
-        let asset_data = self.reload_resource(primary_id)?;
+        let asset_data = self.reload_resource(primary_id).await?;
 
         let load_func = {
             if asset_data.len() < 4 || &asset_data[0..4] != ASSET_FILE_TYPENAME {
@@ -335,7 +347,7 @@ impl AssetLoaderIO {
         Ok(())
     }
 
-    fn process_load(
+    async fn process_load(
         &mut self,
         primary_handle: HandleUntyped,
         load_id: Option<u32>,
@@ -355,6 +367,7 @@ impl AssetLoaderIO {
         }
         let asset_data = self
             .load_resource(primary_id)
+            .await
             .map_err(|e| (primary_handle.clone(), load_id, e))?;
 
         let load_func = {
@@ -404,16 +417,17 @@ impl AssetLoaderIO {
     }
 
     #[allow(clippy::needless_pass_by_value)]
-    fn process_request(
+    async fn process_request(
         &mut self,
         request: LoaderRequest,
     ) -> Result<(), (HandleUntyped, Option<LoadId>, AssetRegistryError)> {
         match request {
             LoaderRequest::Load(primary_handle, load_id) => {
-                self.process_load(primary_handle, load_id)
+                self.process_load(primary_handle, load_id).await
             }
             LoaderRequest::Reload(primary_handle) => self
                 .process_reload(&primary_handle)
+                .await
                 .map_err(|e| (primary_handle, None, e)),
             LoaderRequest::Unload(resource_id) => {
                 self.process_unload(resource_id);
@@ -426,20 +440,20 @@ impl AssetLoaderIO {
         }
     }
 
-    pub(crate) fn wait(&mut self, timeout: Duration) -> Option<usize> {
+    pub(crate) async fn wait(&mut self, timeout: Duration) -> Option<usize> {
         // process new pending requests
         let mut errors = vec![];
         loop {
-            match &self.request_rx {
+            match &mut self.request_rx {
                 None => return None,
-                Some(request_rx) => match request_rx.recv_timeout(timeout) {
-                    Err(crossbeam_channel::RecvTimeoutError::Disconnected) => return None,
-                    Err(crossbeam_channel::RecvTimeoutError::Timeout) => break,
-                    Ok(request) => {
-                        if let Err(error) = self.process_request(request) {
+                Some(request_rx) => match tokio::time::timeout(timeout, request_rx.recv()).await {
+                    Ok(None) => return None, // disconnected
+                    Ok(Some(request)) => {
+                        if let Err(error) = self.process_request(request).await {
                             errors.push(error);
                         }
                     }
+                    Err(_) => break,
                 },
             }
         }
@@ -530,7 +544,7 @@ impl AssetLoaderIO {
     fn load_raw(
         handle: &HandleUntyped,
         reader: &mut dyn io::Read,
-        loaders: &mut HashMap<ResourceType, Box<dyn AssetLoader + Send>>,
+        loaders: &mut HashMap<ResourceType, Box<dyn AssetLoader + Send + Sync>>,
     ) -> Result<LoadOutput, AssetRegistryError> {
         let type_id = handle.id();
         let mut content = Vec::new();
@@ -556,7 +570,7 @@ impl AssetLoaderIO {
     fn load_asset_file(
         primary_handle: &HandleUntyped,
         reader: &mut dyn io::Read,
-        loaders: &mut HashMap<ResourceType, Box<dyn AssetLoader + Send>>,
+        loaders: &mut HashMap<ResourceType, Box<dyn AssetLoader + Send + Sync>>,
     ) -> Result<LoadOutput, AssetRegistryError> {
         let primary_id = primary_handle.id();
         const ASSET_FILE_VERSION: u16 = 1;
@@ -673,7 +687,7 @@ mod tests {
         test_asset, vfs, Handle, Resource, ResourceId, ResourceTypeAndId,
     };
 
-    fn setup_test() -> (ResourceTypeAndId, AssetLoaderStub, AssetLoaderIO) {
+    async fn setup_test() -> (ResourceTypeAndId, AssetLoaderStub, AssetLoaderIO) {
         let mut content_store = Box::new(RamContentStore::default());
         let manifest = Manifest::default();
 
@@ -684,6 +698,7 @@ mod tests {
             };
             let checksum = content_store
                 .store(&test_asset::tests::BINARY_ASSETFILE)
+                .await
                 .unwrap();
             manifest.insert(id, checksum, test_asset::tests::BINARY_ASSETFILE.len());
             id
@@ -699,9 +714,9 @@ mod tests {
         (asset_id, loader, io)
     }
 
-    #[test]
-    fn typed_ref() {
-        let (asset_id, loader, mut io) = setup_test();
+    #[tokio::test]
+    async fn typed_ref() {
+        let (asset_id, loader, mut io) = setup_test().await;
 
         {
             let untyped = loader.load(asset_id);
@@ -710,7 +725,7 @@ mod tests {
 
             let typed: Handle<test_asset::TestAsset> = untyped.into();
 
-            io.wait(Duration::from_millis(500));
+            io.wait(Duration::from_millis(500)).await;
             assert!(loader.handles.pin().get(&typed.id()).is_some());
 
             match loader.try_result() {
@@ -726,14 +741,14 @@ mod tests {
         assert!(!loader.handles.pin().contains_key(&asset_id));
 
         let typed: Handle<test_asset::TestAsset> = loader.load(asset_id).into();
-        io.wait(Duration::from_millis(500));
+        io.wait(Duration::from_millis(500)).await;
 
         assert!(loader.handles.pin().get(&typed.id()).is_some());
     }
 
-    #[test]
-    fn call_load_twice() {
-        let (asset_id, loader, _io) = setup_test();
+    #[tokio::test]
+    async fn call_load_twice() {
+        let (asset_id, loader, _io) = setup_test().await;
 
         let a = loader.load(asset_id);
         {
@@ -746,8 +761,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn load_no_dependencies() {
+    #[tokio::test]
+    async fn load_no_dependencies() {
         let mut content_store = Box::new(RamContentStore::default());
         let manifest = Manifest::default();
 
@@ -758,6 +773,7 @@ mod tests {
             };
             let checksum = content_store
                 .store(&test_asset::tests::BINARY_ASSETFILE)
+                .await
                 .unwrap();
             manifest.insert(id, checksum, test_asset::tests::BINARY_ASSETFILE.len());
             id
@@ -768,7 +784,7 @@ mod tests {
         let handles = HandleMap::new(unload_tx);
         let asset_handle = handles.create_handle(asset_id);
 
-        let (request_tx, request_rx) = crossbeam_channel::unbounded::<LoaderRequest>();
+        let (request_tx, request_rx) = tokio::sync::mpsc::unbounded_channel::<LoaderRequest>();
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
             vec![Box::new(vfs::CasDevice::new(manifest, content_store))],
@@ -790,7 +806,7 @@ mod tests {
         assert!(!loader.loaded_resources.contains(&asset_id));
 
         let mut result = None;
-        loader.wait(Duration::from_millis(1));
+        loader.wait(Duration::from_millis(1)).await;
         if let Ok(res) = result_rx.try_recv() {
             result = Some(res);
         }
@@ -804,13 +820,13 @@ mod tests {
             .send(LoaderRequest::Unload(asset_id))
             .expect("valid tx");
 
-        while loader.wait(Duration::from_millis(1)).unwrap() > 0 {}
+        while loader.wait(Duration::from_millis(1)).await.unwrap() > 0 {}
 
         assert!(!loader.loaded_resources.contains(&asset_id));
     }
 
-    #[test]
-    fn load_failed_dependency() {
+    #[tokio::test]
+    async fn load_failed_dependency() {
         let mut content_store = Box::new(RamContentStore::default());
         let manifest = Manifest::default();
 
@@ -822,6 +838,7 @@ mod tests {
         let asset_id = {
             let checksum = content_store
                 .store(&test_asset::tests::BINARY_PARENT_ASSETFILE)
+                .await
                 .unwrap();
             manifest.insert(
                 parent_id,
@@ -834,7 +851,7 @@ mod tests {
         let handles = HandleMap::new(crossbeam_channel::unbounded::<_>().0);
         let asset_handle = handles.create_handle(asset_id);
 
-        let (request_tx, request_rx) = crossbeam_channel::unbounded::<LoaderRequest>();
+        let (request_tx, request_rx) = tokio::sync::mpsc::unbounded_channel::<LoaderRequest>();
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
             vec![Box::new(vfs::CasDevice::new(manifest, content_store))],
@@ -856,7 +873,7 @@ mod tests {
         assert!(!loader.loaded_resources.contains(&asset_id));
 
         let mut result = None;
-        loader.wait(Duration::from_millis(1));
+        loader.wait(Duration::from_millis(1)).await;
         if let Ok(res) = result_rx.try_recv() {
             result = Some(res);
         }
@@ -865,8 +882,8 @@ mod tests {
         assert!(matches!(result.unwrap(), LoaderResult::LoadError(_, _, _)));
     }
 
-    #[test]
-    fn load_with_dependency() {
+    #[tokio::test]
+    async fn load_with_dependency() {
         let mut content_store = Box::new(RamContentStore::default());
         let manifest = Manifest::default();
 
@@ -886,11 +903,13 @@ mod tests {
                 child_id,
                 content_store
                     .store(&test_asset::tests::BINARY_ASSETFILE)
+                    .await
                     .unwrap(),
                 test_asset::tests::BINARY_ASSETFILE.len(),
             );
             let checksum = content_store
                 .store(&test_asset::tests::BINARY_PARENT_ASSETFILE)
+                .await
                 .unwrap();
             manifest.insert(
                 parent_id,
@@ -904,7 +923,7 @@ mod tests {
         let handles = HandleMap::new(crossbeam_channel::unbounded::<_>().0);
         let asset_handle = handles.create_handle(asset_id);
 
-        let (request_tx, request_rx) = crossbeam_channel::unbounded::<LoaderRequest>();
+        let (request_tx, request_rx) = tokio::sync::mpsc::unbounded_channel::<LoaderRequest>();
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
             vec![Box::new(vfs::CasDevice::new(manifest, content_store))],
@@ -926,7 +945,7 @@ mod tests {
         assert!(!loader.loaded_resources.contains(&parent_id));
 
         let mut result = None;
-        while loader.wait(Duration::from_millis(1)).unwrap() > 0 {}
+        while loader.wait(Duration::from_millis(1)).await.unwrap() > 0 {}
 
         if let Ok(res) = result_rx.try_recv() {
             // child load result comes first with no load_id..
@@ -958,7 +977,7 @@ mod tests {
             .send(LoaderRequest::Unload(parent_id))
             .expect("to send request");
 
-        while loader.wait(Duration::from_millis(1)).unwrap() > 0 {}
+        while loader.wait(Duration::from_millis(1)).await.unwrap() > 0 {}
 
         assert!(!loader.loaded_resources.contains(&parent_id));
 
@@ -974,8 +993,8 @@ mod tests {
         */
     }
 
-    #[test]
-    fn reload_no_dependencies() {
+    #[tokio::test]
+    async fn reload_no_dependencies() {
         let mut content_store = Box::new(RamContentStore::default());
         let manifest = Manifest::default();
 
@@ -986,6 +1005,7 @@ mod tests {
             };
             let checksum = content_store
                 .store(&test_asset::tests::BINARY_ASSETFILE)
+                .await
                 .unwrap();
             manifest.insert(id, checksum, test_asset::tests::BINARY_ASSETFILE.len());
             id
@@ -994,7 +1014,7 @@ mod tests {
         let handles = HandleMap::new(crossbeam_channel::unbounded::<_>().0);
         let asset_handle = handles.create_handle(asset_id);
 
-        let (request_tx, request_rx) = crossbeam_channel::unbounded::<LoaderRequest>();
+        let (request_tx, request_rx) = tokio::sync::mpsc::unbounded_channel::<LoaderRequest>();
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
             vec![Box::new(vfs::CasDevice::new(manifest, content_store))],
@@ -1015,7 +1035,7 @@ mod tests {
         assert!(!loader.loaded_resources.contains(&asset_id));
 
         let mut result = None;
-        loader.wait(Duration::from_millis(1));
+        loader.wait(Duration::from_millis(1)).await;
         if let Ok(res) = result_rx.try_recv() {
             result = Some(res);
         }
@@ -1030,7 +1050,7 @@ mod tests {
             .unwrap();
 
         let mut result = None;
-        loader.wait(Duration::from_millis(10));
+        loader.wait(Duration::from_millis(10)).await;
         if let Ok(res) = result_rx.try_recv() {
             result = Some(res);
         }
@@ -1042,7 +1062,7 @@ mod tests {
             .send(LoaderRequest::Unload(asset_id))
             .expect("valid tx");
 
-        while loader.wait(Duration::from_millis(1)).unwrap() > 0 {}
+        while loader.wait(Duration::from_millis(1)).await.unwrap() > 0 {}
 
         assert!(!loader.loaded_resources.contains(&asset_id));
     }

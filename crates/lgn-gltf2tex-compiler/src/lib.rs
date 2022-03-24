@@ -48,24 +48,31 @@ impl Compiler for Gltf2TexCompiler {
     ) -> Result<CompilationOutput, CompilerError> {
         let resources = context.registry();
 
-        let resource = resources
-            .load_sync::<lgn_graphics_data::offline_gltf::GltfFile>(context.source.resource_id());
-        let resource = resource.get(&resources).unwrap();
+        let outputs = {
+            let resource = resources.load_sync::<lgn_graphics_data::offline_gltf::GltfFile>(
+                context.source.resource_id(),
+            );
+            let resource = resource.get(&resources).unwrap();
+
+            let mut compiled_resources = vec![];
+            let texture_proc = TextureProcessor {};
+
+            let textures = resource.gather_textures();
+            for texture in textures {
+                let mut compiled_asset = vec![];
+                texture_proc
+                    .write_resource(&texture.0, &mut compiled_asset)
+                    .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
+
+                compiled_resources
+                    .push((context.target_unnamed.new_named(&texture.1), compiled_asset));
+            }
+            compiled_resources
+        };
 
         let mut compiled_resources = vec![];
-        let texture_proc = TextureProcessor {};
-
-        let textures = resource.gather_textures();
-        for texture in textures {
-            let mut compiled_asset = vec![];
-            texture_proc
-                .write_resource(&texture.0, &mut compiled_asset)
-                .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
-            let asset = context.store(
-                &compiled_asset,
-                context.target_unnamed.new_named(&texture.1),
-            )?;
-            compiled_resources.push(asset);
+        for (id, content) in outputs {
+            compiled_resources.push(context.store(&content, id).await?);
         }
 
         Ok(CompilationOutput {
