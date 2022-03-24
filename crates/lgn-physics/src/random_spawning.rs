@@ -63,3 +63,9 @@ fn tick(
 
     drop(time);
 }
+
+impl Drop for Timebomb {
+    fn drop(&mut self) {
+        info!("dropping Timebomb component");
+    }
+}
