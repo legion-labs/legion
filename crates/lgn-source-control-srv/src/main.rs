@@ -551,7 +551,7 @@ async fn main() -> anyhow::Result<()> {
         TelemetryGuardBuilder::default().build()
     };
 
-    let config: Config = lgn_config::get("source-control.server")?
+    let config: Config = lgn_config::get("source_control.server")?
         .ok_or_else(|| anyhow::anyhow!("no configuration was found for `source-control.server`"))?;
 
     info!("Using database at {}", config.database);

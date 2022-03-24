@@ -5557,6 +5557,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-source-control-srv"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "clap 3.1.6",
+ "http",
+ "hyper",
+ "lgn-config",
+ "lgn-source-control",
+ "lgn-source-control-proto",
+ "lgn-telemetry-sink",
+ "lgn-tracing",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tonic",
+ "url",
+]
+
+[[package]]
 name = "lgn-streamer"
 version = "0.1.0"
 dependencies = [
@@ -9081,27 +9102,6 @@ dependencies = [
  "gobject-sys 0.14.0",
  "libc",
  "system-deps 5.0.0",
-]
-
-[[package]]
-name = "source-control-srv"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytes",
- "clap 3.1.6",
- "http",
- "hyper",
- "lgn-config",
- "lgn-source-control",
- "lgn-source-control-proto",
- "lgn-telemetry-sink",
- "lgn-tracing",
- "serde",
- "serde_json",
- "tokio",
- "tonic",
- "url",
 ]
 
 [[package]]
