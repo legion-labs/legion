@@ -38,7 +38,6 @@ mod settings;
 mod simulation;
 
 use lgn_app::prelude::{App, CoreStage, Plugin};
-use lgn_core::FixedTimestep;
 use lgn_ecs::prelude::{
     Commands, Entity, ParallelSystemDescriptorCoercion, Query, Res, ResMut, SystemStage,
 };
@@ -57,7 +56,6 @@ use crate::{
     callbacks::{OnAdvance, OnCollision, OnConstraintBreak, OnTrigger, OnWakeSleep},
     debug_display::display_collision_geometry,
     physics_options::PhysicsOptions,
-    random_spawning::spawn_random_sphere,
     rigid_actors::create_rigid_actors,
     simulation::{step_simulation, sync_transforms},
 };
@@ -141,13 +139,7 @@ impl Plugin for PhysicsPlugin {
             .add_system_to_stage(RenderStage::Prepare, physics_options::ui_physics_options)
             .add_system_to_stage(RenderStage::Prepare, display_collision_geometry);
 
-        app.add_stage_after(
-            CoreStage::PreUpdate,
-            "random_spawning",
-            SystemStage::parallel()
-                .with_run_criteria(FixedTimestep::step(1.0))
-                .with_system(spawn_random_sphere),
-        );
+        random_spawning::build(app);
     }
 }
 
