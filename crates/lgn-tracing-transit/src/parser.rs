@@ -215,7 +215,7 @@ where
             if let Some(found_desc) = dependencies.get(&desc_id) {
                 desc = found_desc.clone();
             } else {
-                println!("desc member {} of LogStringEvent not found", desc_id);
+                log::warn!("desc member {} of LogStringEvent not found", desc_id);
             }
             vec![
                 (String::from("time"), Value::I64(time)),
@@ -224,7 +224,7 @@ where
             ]
         },
         other => {
-            println!("unknown custom object {}", other);
+            log::warn!("unknown custom object {}", other);
             Vec::new()
         }
     };
@@ -256,7 +256,7 @@ where
                 if let Some(v) = dependencies.get(&key) {
                     v.clone()
                 } else {
-                    println!("dependency not found: {}", key);
+                    log::warn!("dependency not found: {}", key);
                     Value::None
                 }
             } else {
@@ -302,7 +302,7 @@ where
                         }
                     }
                     unknown_member_type => {
-                        println!("unknown member type {}", unknown_member_type);
+                        log::warn!("unknown member type {}", unknown_member_type);
                         Value::None
                     }
                 }
