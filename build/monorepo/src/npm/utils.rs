@@ -30,6 +30,8 @@ const BUILD_SCRIPT: &str = "build";
 
 const CHECK_SCRIPT: &str = "check";
 
+const QUICK_CHECK_SCRIPT: &str = "quickcheck";
+
 const CLEAN_SCRIPT: &str = "clean";
 
 const FORMAT_SCRIPT: &str = "fmt";
@@ -141,8 +143,12 @@ impl NpmPackage {
     }
 
     /// Runs the check script
-    pub fn check<P: AsRef<Path>>(&self, package_manager_path: P) {
-        if !self.package_json.scripts.contains_key(CHECK_SCRIPT) {
+    /// The quick argument will run the "quickcheck" command which is faster
+    /// but also less reliable
+    pub fn check<P: AsRef<Path>>(&self, package_manager_path: P, quick: bool) {
+        if (quick && !self.package_json.scripts.contains_key(QUICK_CHECK_SCRIPT))
+            || !self.package_json.scripts.contains_key(CHECK_SCRIPT)
+        {
             return;
         }
 
@@ -150,10 +156,16 @@ impl NpmPackage {
 
         self.print_action_step(cmd_name);
 
+        let npm_cmd_name = if quick {
+            QUICK_CHECK_SCRIPT
+        } else {
+            CHECK_SCRIPT
+        };
+
         self.run_cmd(
             cmd_name,
             package_manager_path.as_ref(),
-            &["run", CHECK_SCRIPT],
+            &["run", npm_cmd_name],
         );
     }
 
@@ -443,18 +455,18 @@ impl<'a> NpmWorkspace<'a> {
         }
     }
 
-    pub fn check(&self, package_name: &Option<String>) -> Result<()> {
+    pub fn check(&self, package_name: &Option<String>, quick: bool) -> Result<()> {
         match package_name {
             None => {
                 self.packages
                     .par_iter()
-                    .for_each(|(_, package)| package.check(&self.package_manager_path));
+                    .for_each(|(_, package)| package.check(&self.package_manager_path, quick));
 
                 Ok(())
             }
             Some(package_name) => match self.packages.get(package_name) {
                 Some(package) => {
-                    package.check(&self.package_manager_path);
+                    package.check(&self.package_manager_path, quick);
 
                     Ok(())
                 }

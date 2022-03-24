@@ -10,7 +10,7 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
-    "check": "pnpm build && pnpm quickcheck",
+    "check": "pnpm quickcheck",
     "quickcheck": "pnpm lint && pnpm fmt:check && pnpm svelte:check",
     "lint": "eslint --ext .ts,.svelte .",
     "lint:fix": "eslint --ext .ts,.svelte --fix .",

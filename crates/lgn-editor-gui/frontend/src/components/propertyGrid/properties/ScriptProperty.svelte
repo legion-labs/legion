@@ -5,7 +5,7 @@
 
   const dispatch = createEventDispatcher<{ input: string }>();
 
-  const key = Symbol();
+  let key = Symbol();
 
   export let name: string;
 

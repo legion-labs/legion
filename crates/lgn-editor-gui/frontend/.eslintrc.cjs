@@ -7,6 +7,10 @@ module.exports = {
     node: true,
   },
   parser: "@typescript-eslint/parser",
+  ignorePatterns: ["node_modules"],
+  parserOptions: {
+    extraFileExtensions: [".svelte"],
+  },
   plugins: ["svelte3", "@typescript-eslint"],
   extends: ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
   overrides: [
@@ -16,7 +20,7 @@ module.exports = {
     },
   ],
   settings: {
-    "svelte3/typescript": true,
+    "svelte3/typescript": require("typescript"),
     "svelte3/ignore-styles": () => true,
   },
   rules: {
