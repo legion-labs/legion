@@ -7,7 +7,7 @@ use std::{
     process::Command,
 };
 
-use camino::{Utf8Path, Utf8PathBuf};
+use camino::Utf8PathBuf;
 use monorepo_base::{action_step, error_step, skip_step};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::Deserialize;
@@ -105,13 +105,6 @@ impl NpmPackage {
     }
 
     pub fn install<P: AsRef<Path>>(&self, package_manager_path: P) {
-        action_step!(
-            "Npm Install",
-            "{} ({})",
-            self.package_json.name,
-            self.path.to_string_lossy()
-        );
-
         let cmd_name = "Install";
 
         self.print_action_step(cmd_name);
@@ -565,8 +558,10 @@ impl<'a> NpmWorkspace<'a> {
         self.packages.is_empty()
     }
 
-    fn root(&self) -> &Utf8Path {
-        self.ctx.workspace_root()
+    fn root(&self) -> Utf8PathBuf {
+        let canonalized_root_path = dunce::canonicalize(self.ctx.workspace_root()).unwrap();
+
+        canonalized_root_path.to_string_lossy().as_ref().into()
     }
 
     fn config(&self) -> &MonorepoConfig {
