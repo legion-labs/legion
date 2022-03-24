@@ -52,7 +52,7 @@ impl GpuInstanceManager {
         app.add_system_to_stage(RenderStage::Prepare, remove_gpu_instances);
     }
 
-    pub fn add_gpu_instance(
+    fn add_gpu_instance(
         &mut self,
         entity: Entity,
         allocator: &UnifiedStaticBufferAllocator,
@@ -72,14 +72,7 @@ impl GpuInstanceManager {
         let mut gpu_instance_va_table = cgen::cgen_type::GpuInstanceVATable::default();
         gpu_instance_va_table.set_mesh_description_va(instance_vas.submesh_va.into());
         gpu_instance_va_table.set_world_transform_va(instance_vas.transform_va.into());
-
-        // Fallback to default material if we do not have a specific material set
-        if instance_vas.material_va == u32::MAX {
-            // gpu_instance_va_table
-            //     .set_material_data_va(uniform_data.default_material_gpu_offset.into());
-        } else {
-            gpu_instance_va_table.set_material_data_va(instance_vas.material_va.into());
-        }
+        gpu_instance_va_table.set_material_data_va(instance_vas.material_va.into());
         gpu_instance_va_table.set_instance_color_va(instance_vas.color_va.into());
         gpu_instance_va_table.set_picking_data_va(instance_vas.picking_data_va.into());
 
@@ -132,7 +125,9 @@ fn update_gpu_instances(
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
     let mut picking_context = PickingIdContext::new(&picking_manager);
 
+    // First remove any registered data
     for (entity, _) in instance_query.iter() {
+        color_manager.remove_gpu_data(&entity);
         picking_data_manager.remove_gpu_data(&entity);
         if let Some(removed_ids) = instance_manager.remove_gpu_instance(entity) {
             event_writer.send(GpuInstanceEvent::Removed(removed_ids));
@@ -140,6 +135,9 @@ fn update_gpu_instances(
     }
 
     for (entity, visual) in instance_query.iter() {
+        //
+        // Color part
+        //
         let color: (f32, f32, f32, f32) = (
             f32::from(visual.color.r) / 255.0f32,
             f32::from(visual.color.g) / 255.0f32,
@@ -148,46 +146,59 @@ fn update_gpu_instances(
         );
         let mut instance_color = cgen::cgen_type::GpuInstanceColor::default();
         instance_color.set_color(Vec4::new(color.0, color.1, color.2, color.3).into());
-
         instance_color.set_color_blend(visual.color_blend.into());
 
         color_manager.alloc_gpu_data(&entity, renderer.static_buffer_allocator());
         color_manager.update_gpu_data(&entity, 0, &instance_color, &mut updater);
 
-        picking_data_manager.alloc_gpu_data(&entity, renderer.static_buffer_allocator());
-
+        //
+        // Picking part
+        //
         let mut picking_data = cgen::cgen_type::GpuInstancePickingData::default();
         picking_data.set_picking_id(picking_context.acquire_picking_id(entity).into());
+
+        picking_data_manager.alloc_gpu_data(&entity, renderer.static_buffer_allocator());
         picking_data_manager.update_gpu_data(&entity, 0, &picking_data, &mut updater);
 
-        let (model_meta_data, ready) = model_manager.get_model_meta_data(visual);
+        //
+        // Model (might no be ready)
+        //
+        let (model_meta_data, ready) =
+            model_manager.get_model_meta_data(visual.model_resource_id.as_ref());
         if !ready {
             if let Some(model_resource_id) = &visual.model_resource_id {
-                missing_visuals_tracker.add_entity(*model_resource_id, entity);
+                missing_visuals_tracker.add_model_entity_dependency(*model_resource_id, entity);
             }
         }
 
+        //
+        // Gpu instances
+        //
         let mut added_instances = Vec::with_capacity(model_meta_data.meshes.len());
         let default_material_id = material_manager.get_default_material_id();
 
         for mesh in &model_meta_data.meshes {
+            //
+            // Mesh
+            //
             let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
-            let material_id = mesh.material_id;
 
-            // material_va: material_manager.gpu_data().va_for_index(&material_id, 0) as u32,
-            // material_index: material_manager.gpu_data().id_for_index(&material_id, 0) as u32,
-
-            let material_id = if material_manager.is_material_ready(material_id) {
-                material_id
+            //
+            // Material (might not be valid)
+            //
+            let material_id = if material_manager.is_material_ready(mesh.material_id) {
+                mesh.material_id
             } else {
                 default_material_id
             };
 
-            let material_va = material_manager.get_material(material_id).va();
+            //
+            // Gpu instance
+            //
 
             let instance_vas = GpuInstanceVas {
                 submesh_va: mesh_meta_data.mesh_description_offset,
-                material_va: material_va as u32,
+                material_va: material_manager.get_material(material_id).va() as u32,
                 color_va: color_manager.va_for_index(&entity, 0) as u32,
                 transform_va: transform_manager.va_for_index(&entity, 0) as u32,
                 picking_data_va: picking_data_manager.va_for_index(&entity, 0) as u32,

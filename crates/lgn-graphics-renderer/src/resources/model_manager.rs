@@ -78,9 +78,9 @@ impl ModelManager {
 
     pub fn get_model_meta_data(
         &self,
-        visual_component: &VisualComponent,
+        model_resource_id: Option<&ResourceTypeAndId>,
     ) -> (&ModelMetaData, bool) {
-        if let Some(reference) = &visual_component.model_resource_id {
+        if let Some(reference) = model_resource_id {
             if let Some(model_meta_data) = self.model_meta_datas.get(reference) {
                 return (model_meta_data, true);
             }
@@ -101,29 +101,44 @@ pub(crate) fn update_models(
     mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
 ) {
     for updated_model in updated_models.iter() {
-        let mesh_reference = &updated_model.model_id;
+        let model_resource_id = &updated_model.model_id;
 
-        missing_visuals_tracker.add_visuals(*mesh_reference);
+        missing_visuals_tracker.add_changed_model(*model_resource_id);
         let ids = mesh_manager.add_meshes(&renderer, &updated_model.meshes);
 
         let mut meshes = Vec::new();
 
         for (idx, mesh) in updated_model.meshes.iter().enumerate() {
-            // If there is no material set on the mesh (should not be the case until we fix that),
-            // we assign the default material
-            let material_id = mesh
-                .material_id
-                .as_ref()
-                .map_or(material_manager.get_default_material_id(), |x| {
-                    material_manager.get_material_id_from_resource_id(&x.id())
-                });
+            /*
+               UNCOMMENT WHEN THE RESOURCE SYSTEM IS WORKING
+               A RUNTIME DEPENDENCY MUST BE LOADED AND THEN, THE MATERIAL ID MUST BE VALID
+
+               // If there is no material set on the mesh (should not be the case until we fix that),
+               // we assign the default material
+
+               let material_id = mesh
+               .material_id
+               .as_ref()
+               .map_or(material_manager.get_default_material_id(), |x| {
+                   material_manager.get_material_id_from_resource_id(&x.id())
+               });
+            */
+
+            let material_id =
+                mesh.material_id
+                    .as_ref()
+                    .map_or(material_manager.get_default_material_id(), |x| {
+                        material_manager
+                            .get_material_id_from_resource_id(&x.id())
+                            .unwrap_or_else(|| material_manager.get_default_material_id())
+                    });
 
             meshes.push(Mesh {
                 mesh_id: ids[idx],
                 material_id,
             });
         }
-        model_manager.add_model(*mesh_reference, ModelMetaData { meshes });
+        model_manager.add_model(*model_resource_id, ModelMetaData { meshes });
     }
 }
 
@@ -143,7 +158,8 @@ fn debug_bounding_spheres(
     bump_allocator_pool.scoped_bump(|bump| {
         debug_display.create_display_list(bump, |builder| {
             for (visual, transform) in visuals.iter() {
-                let (model_data, ready) = model_manager.get_model_meta_data(visual);
+                let (model_data, ready) =
+                    model_manager.get_model_meta_data(visual.model_resource_id.as_ref());
                 if ready {
                     for mesh in &model_data.meshes {
                         let mesh_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);

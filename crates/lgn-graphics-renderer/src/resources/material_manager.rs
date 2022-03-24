@@ -117,7 +117,17 @@ impl MaterialManager {
         self.default_material_id
     }
 
-    pub fn get_material_id_from_resource_id(&self, resource_id: &ResourceTypeAndId) -> MaterialId {
+    pub fn get_material_id_from_resource_id(
+        &self,
+        resource_id: &ResourceTypeAndId,
+    ) -> Option<MaterialId> {
+        self.resource_id_to_material_id.get(resource_id).copied()
+    }
+
+    pub fn get_material_id_from_resource_id_unchecked(
+        &self,
+        resource_id: &ResourceTypeAndId,
+    ) -> MaterialId {
         *self.resource_id_to_material_id.get(resource_id).unwrap()
     }
 

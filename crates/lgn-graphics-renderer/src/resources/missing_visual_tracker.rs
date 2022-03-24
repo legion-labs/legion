@@ -12,8 +12,8 @@ use crate::{
 
 #[derive(Default)]
 pub(crate) struct MissingVisualTracker {
-    entities: BTreeMap<ResourceTypeAndId, HashSet<Entity>>,
-    visuals_added: Vec<ResourceTypeAndId>,
+    model_to_entity_set: BTreeMap<ResourceTypeAndId, HashSet<Entity>>,
+    models_added: Vec<ResourceTypeAndId>,
 }
 
 impl MissingVisualTracker {
@@ -21,31 +21,35 @@ impl MissingVisualTracker {
         app.add_system_to_stage(RenderStage::Prepare, update_missing_visuals);
     }
 
-    pub(crate) fn add_entity(&mut self, resource_id: ResourceTypeAndId, entity_id: Entity) {
-        if let Some(entry) = self.entities.get_mut(&resource_id) {
-            entry.insert(entity_id);
+    pub(crate) fn add_model_entity_dependency(
+        &mut self,
+        model_resource_id: ResourceTypeAndId,
+        entity: Entity,
+    ) {
+        if let Some(entry) = self.model_to_entity_set.get_mut(&model_resource_id) {
+            entry.insert(entity);
         } else {
             let mut set = HashSet::new();
-            set.insert(entity_id);
-            self.entities.insert(resource_id, set);
+            set.insert(entity);
+            self.model_to_entity_set.insert(model_resource_id, set);
         }
     }
 
-    pub(crate) fn add_visuals(&mut self, resource_id: ResourceTypeAndId) {
-        self.visuals_added.push(resource_id);
+    pub(crate) fn add_changed_model(&mut self, resource_id: ResourceTypeAndId) {
+        self.models_added.push(resource_id);
     }
 
     pub(crate) fn get_entities_to_update(&mut self) -> HashSet<Entity> {
         let mut entities = HashSet::new();
-        for visual in &self.visuals_added {
-            if let Some(entry) = self.entities.get(visual) {
+        for model_resource_id in &self.models_added {
+            if let Some(entry) = self.model_to_entity_set.get(model_resource_id) {
                 for entity in entry {
                     entities.insert(*entity);
                 }
-                self.entities.remove_entry(visual);
+                self.model_to_entity_set.remove_entry(model_resource_id);
             }
         }
-        self.visuals_added.clear();
+        self.models_added.clear();
         entities
     }
 }

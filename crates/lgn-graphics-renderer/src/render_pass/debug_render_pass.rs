@@ -217,7 +217,8 @@ impl DebugRenderPass {
             .get_pipeline(self.solid_pso_depth_handle)
             .unwrap();
         for (_index, (visual_component, transform)) in picked_meshes.iter().enumerate() {
-            let (model_meta_data, _ready) = model_manager.get_model_meta_data(visual_component);
+            let (model_meta_data, _ready) =
+                model_manager.get_model_meta_data(visual_component.model_resource_id.as_ref());
             for mesh in &model_meta_data.meshes {
                 cmd_buffer.bind_pipeline(wire_pso_depth_pipeline);
 
@@ -319,7 +320,8 @@ impl DebugRenderPass {
 
                 render_context.bind_default_descriptor_sets(cmd_buffer);
 
-                let (model_meta_data, _ready) = model_manager.get_model_meta_data(visual);
+                let (model_meta_data, _ready) =
+                    model_manager.get_model_meta_data(visual.model_resource_id.as_ref());
                 for mesh in &model_meta_data.meshes {
                     render_mesh(
                         mesh.mesh_id as u32,
