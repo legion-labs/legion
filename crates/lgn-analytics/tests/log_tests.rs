@@ -40,8 +40,8 @@ fn test_log_encode() {
     stream.get_events_mut().push(LogStaticStrInteropEvent {
         time: 1,
         level: 2,
-        target: "target".into(),
-        msg: "msg".into(),
+        target: "target_name".into(),
+        msg: "my message".into(),
     });
     let mut block = stream.replace_block(Arc::new(LogBlock::new(1024, stream_id)));
     Arc::get_mut(&mut block).unwrap().close();
@@ -53,7 +53,8 @@ fn test_log_encode() {
             assert_eq!(obj.type_name.as_str(), "LogStaticStrInteropEvent");
             assert_eq!(obj.get::<i64>("time").unwrap(), 1);
             assert_eq!(obj.get::<u32>("level").unwrap(), 2);
-            dbg!(obj);
+            assert_eq!(&*obj.get::<Arc<String>>("target").unwrap(), "target_name");
+            assert_eq!(&*obj.get::<Arc<String>>("msg").unwrap(), "my message");
         } else {
             panic!("log entry not an object");
         }
