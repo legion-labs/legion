@@ -5192,6 +5192,8 @@ dependencies = [
  "clap 3.1.6",
  "lgn-app",
  "lgn-asset-registry",
+ "lgn-config",
+ "lgn-content-store",
  "lgn-core",
  "lgn-data-runtime",
  "lgn-ecs",
