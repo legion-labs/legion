@@ -11,7 +11,8 @@
   "scripts": {
     "start": "svelte-kit dev",
     "build": "svelte-kit build",
-    "check": "pnpm lint && pnpm fmt:check && pnpm svelte:check",
+    "check": "pnpm build && pnpm quickcheck",
+    "quickcheck": "pnpm lint && pnpm fmt:check && pnpm svelte:check",
     "lint": "eslint --ext .ts,.svelte .",
     "lint:fix": "eslint --ext .ts,.svelte --fix .",
     "fmt": "prettier --write . --plugin-search-dir=. ./**/*.svelte",

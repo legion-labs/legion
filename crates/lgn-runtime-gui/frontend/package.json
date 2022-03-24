@@ -11,7 +11,8 @@
   "scripts": {
     "start": "vite",
     "build": "vite build",
-    "check": "pnpm lint && pnpm fmt:check && pnpm svelte:check",
+    "check": "pnpm build && pnpm quickcheck",
+    "quickcheck": "pnpm lint && pnpm fmt:check && pnpm svelte:check",
     "lint": "eslint --ext .ts,.svelte .",
     "lint:fix": "eslint --ext .ts,.svelte --fix .",
     "fmt:check": "prettier --check . --plugin-search-dir=. ./**/*.svelte",
