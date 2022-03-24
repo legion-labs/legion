@@ -110,7 +110,7 @@ pub(crate) fn create_loader(
     devices: Vec<Box<(dyn vfs::Device + Send)>>,
 ) -> (AssetLoaderStub, AssetLoaderIO) {
     let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
-    let (request_tx, request_rx) = tokio::sync::mpsc::unbounded_channel::<LoaderRequest>(); //crossbeam_channel::unbounded::<LoaderRequest>();
+    let (request_tx, request_rx) = tokio::sync::mpsc::unbounded_channel::<LoaderRequest>();
 
     let unload_channel = crossbeam_channel::unbounded();
     let handles = HandleMap::new(unload_channel.0);
