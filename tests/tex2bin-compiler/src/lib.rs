@@ -51,9 +51,11 @@ impl Compiler for Tex2BinCompiler {
         let resources = context.registry();
 
         let output = {
-            let resource = resources.load_sync::<lgn_graphics_data::offline_texture::Texture>(
-                context.source.resource_id(),
-            );
+            let resource = resources
+                .load_async::<lgn_graphics_data::offline_texture::Texture>(
+                    context.source.resource_id(),
+                )
+                .await;
             let image = resource.get(&resources).unwrap();
 
             let mut compiled_resources = vec![];

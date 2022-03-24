@@ -52,7 +52,8 @@ impl Compiler for Base64Compiler {
 
         let output = {
             let resource = resources
-                .load_sync::<binary_resource::BinaryResource>(context.source.resource_id());
+                .load_async::<binary_resource::BinaryResource>(context.source.resource_id())
+                .await;
             let resource = resource.get(&resources).unwrap();
 
             encode(&resource.content)

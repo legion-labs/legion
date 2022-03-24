@@ -52,7 +52,8 @@ impl Compiler for SplitCompiler {
         let resources = context.registry();
 
         let resource = resources
-            .load_sync::<multitext_resource::MultiTextResource>(context.source.resource_id());
+            .load_async::<multitext_resource::MultiTextResource>(context.source.resource_id())
+            .await;
 
         let content_list = {
             let resource = resource.get(&resources).unwrap();

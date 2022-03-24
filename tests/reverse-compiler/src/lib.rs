@@ -50,8 +50,9 @@ impl Compiler for ReverseCompiler {
         let resources = context.registry();
 
         let bytes = {
-            let resource =
-                resources.load_sync::<text_resource::TextResource>(context.source.resource_id());
+            let resource = resources
+                .load_async::<text_resource::TextResource>(context.source.resource_id())
+                .await;
             let resource = resource.get(&resources).unwrap();
 
             let mut bytes = vec![];

@@ -49,9 +49,11 @@ impl Compiler for Gltf2TexCompiler {
         let resources = context.registry();
 
         let outputs = {
-            let resource = resources.load_sync::<lgn_graphics_data::offline_gltf::GltfFile>(
-                context.source.resource_id(),
-            );
+            let resource = resources
+                .load_async::<lgn_graphics_data::offline_gltf::GltfFile>(
+                    context.source.resource_id(),
+                )
+                .await;
             let resource = resource.get(&resources).unwrap();
 
             let mut compiled_resources = vec![];

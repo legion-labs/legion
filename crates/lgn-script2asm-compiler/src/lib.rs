@@ -160,8 +160,9 @@ impl Compiler for Script2AsmCompiler {
         let resources = context.registry();
 
         let result_buffer = {
-            let resource =
-                resources.load_sync::<offline_data::Script>(context.source.resource_id());
+            let resource = resources
+                .load_async::<offline_data::Script>(context.source.resource_id())
+                .await;
             let resource = resource.get(&resources).unwrap();
 
             let runtime_script = match resource.script_type {

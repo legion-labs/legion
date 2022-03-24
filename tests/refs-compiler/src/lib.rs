@@ -50,8 +50,9 @@ impl Compiler for RefCompiler {
         let resources = context.registry();
 
         let compiled_asset = {
-            let resource =
-                resources.load_sync::<refs_resource::TestResource>(context.source.resource_id());
+            let resource = resources
+                .load_async::<refs_resource::TestResource>(context.source.resource_id())
+                .await;
             assert!(!resource.is_err(&resources));
             assert!(resource.is_loaded(&resources));
             let resource = resource.get(&resources).unwrap();

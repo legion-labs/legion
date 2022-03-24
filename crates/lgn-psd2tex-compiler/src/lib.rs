@@ -50,7 +50,8 @@ impl Compiler for Psd2TextCompiler {
 
         let outputs = {
             let resource = resources
-                .load_sync::<lgn_graphics_data::offline_psd::PsdFile>(context.source.resource_id());
+                .load_async::<lgn_graphics_data::offline_psd::PsdFile>(context.source.resource_id())
+                .await;
 
             let resource = resource.get(&resources).unwrap();
 

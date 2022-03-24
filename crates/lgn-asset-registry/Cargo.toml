@@ -41,3 +41,4 @@ sample-data = { path = "../../tests/sample-data", version = "0.1.0", features = 
 # other
 crossbeam-channel = "0.5.1"
 serde_json = "1.0"
+tokio = { version = "1", features = ["full", "tracing"] }

@@ -50,8 +50,9 @@ impl Compiler for AtoiCompiler {
         let resources = context.registry();
 
         let compiled_output = {
-            let resource =
-                resources.load_sync::<text_resource::TextResource>(context.source.resource_id());
+            let resource = resources
+                .load_async::<text_resource::TextResource>(context.source.resource_id())
+                .await;
             let resource = resource.get(&resources).unwrap();
 
             let parsed_value = resource.content.parse::<usize>().unwrap_or(0);

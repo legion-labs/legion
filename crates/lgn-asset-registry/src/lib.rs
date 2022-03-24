@@ -191,7 +191,7 @@ impl AssetRegistryPlugin {
     }
 
     fn handle_load_events(
-        load_events_rx: ResMut<'_, crossbeam_channel::Receiver<ResourceLoadEvent>>,
+        mut load_events_rx: ResMut<'_, tokio::sync::mpsc::UnboundedReceiver<ResourceLoadEvent>>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         mut asset_handles: ResMut<'_, AssetHandles>,
     ) {

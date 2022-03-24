@@ -49,7 +49,8 @@ impl Compiler for Png2TexCompiler {
         let asset_registry = context.registry();
 
         let resource_handle = asset_registry
-            .load_sync::<lgn_graphics_data::offline_png::PngFile>(context.source.resource_id());
+            .load_async::<lgn_graphics_data::offline_png::PngFile>(context.source.resource_id())
+            .await;
 
         if let Some(err) = asset_registry.retrieve_err(resource_handle.id()) {
             return Err(CompilerError::CompilationError(err.to_string()));

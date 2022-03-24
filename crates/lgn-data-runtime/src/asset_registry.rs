@@ -202,7 +202,7 @@ struct Inner {
     assets: HashMap<ResourceTypeAndId, Box<dyn Any + Send + Sync>>,
     loader: AssetLoaderStub,
     load_errors: HashMap<ResourceTypeAndId, AssetRegistryError>,
-    load_event_senders: Vec<crossbeam_channel::Sender<ResourceLoadEvent>>,
+    load_event_senders: Vec<tokio::sync::mpsc::UnboundedSender<ResourceLoadEvent>>,
 }
 
 /// Registry of all loaded [`Resource`]s.
@@ -232,7 +232,7 @@ pub enum AssetRegistryScheduling {
 
 /// A resource loading event is emitted when a resource is loaded, unloaded, or
 /// loading fails
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum ResourceLoadEvent {
     /// Successful resource load, resulting from either a handle load, or the
     /// loading of a dependency
@@ -269,6 +269,9 @@ impl AssetRegistry {
     ///
     /// The asset will be unloaded after all instances of [`HandleUntyped`] and
     /// [`Handle`] that refer to that asset go out of scope.
+    ///
+    /// This is a non-blocking call.
+    /// For a blocking version see [`Self::load_untyped_sync`] and [`Self::load_untyped_async`].
     pub fn load_untyped(&self, type_id: ResourceTypeAndId) -> HandleUntyped {
         self.write_inner().loader.load(type_id)
     }
@@ -285,13 +288,26 @@ impl AssetRegistry {
     }
 
     /// Same as [`Self::load_untyped`] but blocks until the resource load
-    /// completes or returns an error.
+    /// completes or a load error occurs.
     pub fn load_untyped_sync(&self, type_id: ResourceTypeAndId) -> HandleUntyped {
         let handle = self.write_inner().loader.load(type_id);
-        // todo: this will be improved with async/await
+        // todo: instead of polling this could use 'condvar' or similar.
         while !handle.is_loaded(self) && !handle.is_err(self) {
             self.update();
             std::thread::sleep(Duration::from_micros(100));
+        }
+
+        handle
+    }
+
+    /// Same as [`Self::load_untyped`] but waits until the resource load
+    /// completes or a load error occurs.
+    pub async fn load_untyped_async(&self, type_id: ResourceTypeAndId) -> HandleUntyped {
+        let handle = self.write_inner().loader.load(type_id);
+        while !handle.is_loaded(self) && !handle.is_err(self) {
+            self.update();
+            // todo: instead of sleeping a better solution would be to use something like 'waitmap'.
+            tokio::time::sleep(Duration::from_micros(100)).await;
         }
 
         handle
@@ -308,6 +324,13 @@ impl AssetRegistry {
     /// returns an error.
     pub fn load_sync<T: Any + Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
         let handle = self.load_untyped_sync(id);
+        Handle::<T>::from(handle)
+    }
+
+    /// Same as [`Self::load`] but waits until the resource load completes or
+    /// returns an error.
+    pub async fn load_async<T: Any + Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
+        let handle = self.load_untyped_async(id).await;
         Handle::<T>::from(handle)
     }
 
@@ -393,8 +416,10 @@ impl AssetRegistry {
     /// Subscribe to load events, to know when resources are loaded and
     /// unloaded. Returns a channel receiver that will receive
     /// `ResourceLoadEvent`s.
-    pub fn subscribe_to_load_events(&self) -> crossbeam_channel::Receiver<ResourceLoadEvent> {
-        let (sender, receiver) = crossbeam_channel::unbounded();
+    pub fn subscribe_to_load_events(
+        &self,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<ResourceLoadEvent> {
+        let (sender, receiver) = tokio::sync::mpsc::unbounded_channel::<ResourceLoadEvent>();
         self.write_inner().load_event_senders.push(sender);
         receiver
     }
@@ -593,7 +618,7 @@ mod tests {
             let mut test_timeout = Duration::from_millis(500);
             while test_timeout > Duration::ZERO && !a.is_loaded(&reg) {
                 let sleep_time = Duration::from_millis(10);
-                std::thread::sleep(sleep_time);
+                tokio::time::sleep(sleep_time).await;
                 test_timeout -= sleep_time;
                 reg.update();
             }
@@ -627,7 +652,7 @@ mod tests {
             let mut test_timeout = Duration::from_millis(500);
             while test_timeout > Duration::ZERO && !a.is_loaded(&reg) {
                 let sleep_time = Duration::from_millis(10);
-                std::thread::sleep(sleep_time);
+                tokio::time::sleep(sleep_time).await;
                 test_timeout -= sleep_time;
                 reg.update();
             }
@@ -664,7 +689,7 @@ mod tests {
             let mut test_timeout = Duration::from_millis(500);
             while test_timeout > Duration::ZERO && !a.is_err(&reg) {
                 let sleep_time = Duration::from_millis(10);
-                std::thread::sleep(sleep_time);
+                tokio::time::sleep(sleep_time).await;
                 test_timeout -= sleep_time;
                 reg.update();
             }
@@ -683,10 +708,12 @@ mod tests {
 
         let internal_id;
         {
-            let a = reg.load_untyped_sync(ResourceTypeAndId {
-                kind: test_asset::TestAsset::TYPE,
-                id: ResourceId::new_explicit(7),
-            });
+            let a = reg
+                .load_untyped_async(ResourceTypeAndId {
+                    kind: test_asset::TestAsset::TYPE,
+                    id: ResourceId::new_explicit(7),
+                })
+                .await;
             internal_id = a.id();
 
             assert!(!a.is_loaded(&reg));
@@ -701,7 +728,7 @@ mod tests {
     async fn load_dependency() {
         let (parent_id, child_id, reg) = setup_dependency_test().await;
 
-        let parent = reg.load_untyped_sync(parent_id);
+        let parent = reg.load_untyped_async(parent_id).await;
         assert!(parent.is_loaded(&reg));
 
         let child = reg.get_untyped(child_id).expect("be loaded indirectly");
@@ -730,9 +757,9 @@ mod tests {
         let (asset_id, reg) =
             setup_singular_asset_test(&crate::test_asset::tests::BINARY_ASSETFILE).await;
 
-        let notif = reg.subscribe_to_load_events();
+        let mut notif = reg.subscribe_to_load_events();
         {
-            let _handle = reg.load_untyped_sync(asset_id);
+            let _handle = reg.load_untyped_async(asset_id).await;
             reg.update();
         } // user handle drops here..
 
@@ -757,13 +784,13 @@ mod tests {
 
         let internal_id;
         {
-            let a = reg.load_untyped_sync(asset_id);
+            let a = reg.load_untyped_async(asset_id).await;
             internal_id = a.id();
 
             assert!(a.is_loaded(&reg));
             assert!(!a.is_err(&reg));
 
-            let notif = reg.subscribe_to_load_events();
+            let mut notif = reg.subscribe_to_load_events();
             assert!(reg.reload(a.id()));
 
             let mut test_timeout = Duration::from_millis(500);
@@ -771,7 +798,9 @@ mod tests {
 
             while test_timeout > Duration::ZERO {
                 reg.update();
-                if let Ok(ResourceLoadEvent::Reloaded(reloaded)) = notif.recv_timeout(dt) {
+                if let Ok(Some(ResourceLoadEvent::Reloaded(reloaded))) =
+                    tokio::time::timeout(dt, notif.recv()).await
+                {
                     assert_eq!(a, reloaded);
                     break;
                 }

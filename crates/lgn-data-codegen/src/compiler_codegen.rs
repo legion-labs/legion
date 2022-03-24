@@ -54,7 +54,7 @@ pub(crate) fn generate(
                 let resources = context.registry();
 
                 let (compiled_asset, resource_references) = {
-                    let offline_resource = resources.load_sync::<OfflineType>(context.source.resource_id());
+                    let offline_resource = resources.load_async::<OfflineType>(context.source.resource_id()).await;
                     if let Some(err) = resources.retrieve_err(offline_resource.id()) {
                         return Err(CompilerError::CompilationError(err.to_string()));
                     }
