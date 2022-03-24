@@ -49,6 +49,6 @@
 <style lang="postcss">
   .axis {
     user-select: none;
-    color: gray;
+    color: #bababa;
   }
 </style>
