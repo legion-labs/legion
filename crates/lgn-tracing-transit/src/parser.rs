@@ -174,12 +174,11 @@ pub fn read_dependencies(udts: &[UserDefinedType], buffer: &[u8]) -> Result<Hash
             }
         } else {
             assert!(udt.size > 0);
-            let instance = parse_pod_instance(udt, &hash, offset, buffer);
-            let insert_res = hash.insert(
-                instance.get::<u64>("id")?,
-                Value::Object(Arc::new(instance)),
-            );
-            assert!(insert_res.is_none());
+            let instance = parse_pod_instance(udt, udts, &hash, offset, buffer);
+            if let Value::Object(obj) = instance {
+                let insert_res = hash.insert(obj.get::<u64>("id")?, Value::Object(obj));
+                assert!(insert_res.is_none());
+            }
         }
         offset += object_size;
     }
@@ -193,7 +192,7 @@ fn parse_custom_instance<S>(
     offset: usize,
     object_size: usize,
     buffer: &[u8],
-) -> Object
+) -> Value
 where
     S: BuildHasher,
 {
@@ -228,22 +227,23 @@ where
             Vec::new()
         }
     };
-    Object {
+    Value::Object(Arc::new(Object {
         type_name: udt.name.clone(),
         members,
-    }
+    }))
 }
 
 fn parse_pod_instance<S>(
     udt: &UserDefinedType,
+    udts: &[UserDefinedType],
     dependencies: &HashMap<u64, Value, S>,
     offset: usize,
     buffer: &[u8],
-) -> Object
+) -> Value
 where
     S: BuildHasher,
 {
-    let members = udt
+    let members: Vec<(String, Value)> = udt
         .members
         .iter()
         .map(|member_meta| {
@@ -301,19 +301,43 @@ where
                             ))
                         }
                     }
-                    unknown_member_type => {
-                        log::warn!("unknown member type {}", unknown_member_type);
-                        Value::None
+                    non_intrinsic_member_type_name => {
+                        if let Some(index) = udts
+                            .iter()
+                            .position(|t| t.name == non_intrinsic_member_type_name)
+                        {
+                            let member_udt = &udts[index];
+                            parse_pod_instance(
+                                member_udt,
+                                udts,
+                                dependencies,
+                                offset + member_meta.offset,
+                                buffer,
+                            )
+                        } else {
+                            log::warn!("unknown member type {}", non_intrinsic_member_type_name);
+                            Value::None
+                        }
                     }
                 }
             };
             (name, value)
         })
         .collect();
-    Object {
+
+    if udt.is_reference {
+        // reference objects need a member called 'id' which is the key to the dependency
+        if let Some(id_index) = members.iter().position(|m| m.0 == "id") {
+            return members[id_index].1.clone();
+        } else {
+            log::error!("reference object has no 'id' member");
+        }
+    }
+
+    Value::Object(Arc::new(Object {
         type_name: udt.name.clone(),
         members,
-    }
+    }))
 }
 
 // parse_object_buffer calls fun for each object in the buffer until fun returns
@@ -351,9 +375,9 @@ where
         let instance = if is_size_dynamic {
             parse_custom_instance(udt, dependencies, offset, object_size, buffer)
         } else {
-            parse_pod_instance(udt, dependencies, offset, buffer)
+            parse_pod_instance(udt, udts, dependencies, offset, buffer)
         };
-        if !fun(Value::Object(Arc::new(instance)))? {
+        if !fun(instance)? {
             return Ok(());
         }
         offset += object_size;
