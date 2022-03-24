@@ -5,7 +5,6 @@ use common::*;
 
 use std::path::Path;
 
-use lgn_content_store2::{MemoryProvider, SmallContentProvider};
 use lgn_source_control::{
     Error, Index, MapOtherError, Staging, Workspace, WorkspaceConfig, WorkspaceRegistration,
 };

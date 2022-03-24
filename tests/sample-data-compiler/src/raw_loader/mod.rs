@@ -29,7 +29,7 @@ use self::raw_to_offline::FromRaw;
 pub async fn build_offline(
     root_folder: impl AsRef<Path>,
     origin: String,
-    source_control_cas: lgn_content_store2::Config,
+    content_store_section: &str,
     incremental: bool,
 ) {
     let raw_dir = {
@@ -90,7 +90,7 @@ pub async fn build_offline(
 
         //
         let (mut project, resources) =
-            setup_project(root_folder.as_ref(), origin, source_control_cas).await;
+            setup_project(root_folder.as_ref(), origin, content_store_section).await;
         let mut resources = resources.lock().await;
 
         let gltf_folders = file_paths
@@ -226,13 +226,13 @@ pub async fn build_offline(
 async fn setup_project(
     root_folder: &Path,
     origin: String,
-    source_control_cas: lgn_content_store2::Config,
+    content_store_section: &str,
 ) -> (Project, Arc<Mutex<ResourceRegistry>>) {
     // create/load project
     let project = if let Ok(project) = Project::open(root_folder).await {
         Ok(project)
     } else {
-        Project::create(root_folder, origin, source_control_cas).await
+        Project::create(root_folder, origin, content_store_section).await
     }
     .unwrap();
 

@@ -64,16 +64,12 @@ impl ResourceRegistryPlugin {
         let selection_manager = world.resource::<Arc<SelectionManager>>();
 
         let transaction_manager = async_rt.block_on(async move {
-            let source_control_cas = lgn_content_store2::Config::from_legion_toml(
-                lgn_content_store2::Config::content_store_section()
-                    .as_deref()
-                    .or(Some("source_control")),
-            );
+            let content_store_section = "data_build";
 
             sample_data_compiler::raw_loader::build_offline(
                 &project_dir,
                 settings.source_control_path.clone(),
-                source_control_cas.clone(),
+                content_store_section,
                 false,
             )
             .await;
@@ -85,7 +81,7 @@ impl ResourceRegistryPlugin {
                     let mut project = Project::create(
                         &project_dir,
                         settings.source_control_path.clone(),
-                        source_control_cas,
+                        content_store_section,
                     )
                     .await
                     .unwrap();

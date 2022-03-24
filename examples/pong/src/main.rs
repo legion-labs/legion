@@ -65,11 +65,7 @@ async fn main() {
     let build_dir = project_dir.join("temp");
     std::fs::create_dir_all(&build_dir).unwrap();
 
-    let source_control_cas = lgn_content_store2::Config::from_legion_toml(
-        lgn_content_store2::Config::content_store_section()
-            .as_deref()
-            .or(Some("source_control")),
-    );
+    let content_store_section = "data_build";
 
     let absolute_project_dir = {
         if !project_dir.is_absolute() {
@@ -84,7 +80,7 @@ async fn main() {
     let mut project = Project::create(
         absolute_project_dir,
         "../remote".to_owned(),
-        source_control_cas,
+        content_store_section,
     )
     .await
     .expect("failed to create a project");
