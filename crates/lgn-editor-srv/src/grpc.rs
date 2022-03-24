@@ -1,9 +1,11 @@
 use std::{ops::Deref, sync::Arc};
 
+use lgn_data_runtime::ResourceTypeAndId;
 use lgn_data_transaction::TransactionManager;
 use lgn_editor_proto::editor::{
     editor_server::{Editor, EditorServer},
-    InitLogStreamRequest, InitLogStreamResponse, RedoTransactionRequest, RedoTransactionResponse,
+    InitLogStreamRequest, InitLogStreamResponse, InitMessageStreamRequest,
+    InitMessageStreamResponse, RedoTransactionRequest, RedoTransactionResponse,
     UndoTransactionRequest, UndoTransactionResponse,
 };
 use tokio::sync::{mpsc, Mutex};
@@ -42,12 +44,18 @@ impl<T> From<mpsc::UnboundedReceiver<T>> for SharedUnboundedReceiver<T> {
     }
 }
 
+pub(crate) enum SelectionEvent {
+    SelectionChanged(Vec<ResourceTypeAndId>),
+}
+
 pub(crate) type TraceEventsReceiver = SharedUnboundedReceiver<TraceEvent>;
+pub(crate) type SelectionEventsReceiver = SharedUnboundedReceiver<SelectionEvent>;
 
 pub(crate) struct GRPCServer {
     transaction_manager: Arc<Mutex<TransactionManager>>,
     /// A globally share trace events, unbounded, receiver
     trace_events_receiver: TraceEventsReceiver,
+    selection_events_receiver: SelectionEventsReceiver,
 }
 
 impl GRPCServer {
@@ -55,10 +63,12 @@ impl GRPCServer {
     pub(crate) fn new(
         transaction_manager: Arc<Mutex<TransactionManager>>,
         trace_events_receiver: TraceEventsReceiver,
+        selection_events_receiver: SelectionEventsReceiver,
     ) -> Self {
         Self {
             transaction_manager,
             trace_events_receiver,
+            selection_events_receiver,
         }
     }
 
@@ -128,6 +138,33 @@ impl Editor for GRPCServer {
                         // So we can stop the task
                         return;
                     }
+                }
+            }
+        });
+
+        Ok(Response::new(UnboundedReceiverStream::new(rx)))
+    }
+
+    type InitMessageStreamStream =
+        UnboundedReceiverStream<Result<InitMessageStreamResponse, Status>>;
+
+    async fn init_message_stream(
+        &self,
+        _: Request<InitMessageStreamRequest>,
+    ) -> Result<tonic::Response<<Self as Editor>::InitMessageStreamStream>, Status> {
+        let (tx, rx) = mpsc::unbounded_channel();
+        let receiver = self.selection_events_receiver.clone();
+        tokio::spawn(async move {
+            while let Some(selection_event) = receiver.lock().await.recv().await {
+                let SelectionEvent::SelectionChanged(selections) = selection_event;
+                if let Err(_error) = tx.send(Ok(InitMessageStreamResponse {
+                    msg_type: 0,
+                    payload: serde_json::json!(selections).to_string(),
+                })) {
+                    // Send errors are always related to closed connection:
+                    // https://github.com/tokio-rs/tokio/blob/b1afd95994be0d46ea70ba784439a684a787f50e/tokio/src/sync/mpsc/error.rs#L12
+                    // So we can stop the task
+                    return;
                 }
             }
         });

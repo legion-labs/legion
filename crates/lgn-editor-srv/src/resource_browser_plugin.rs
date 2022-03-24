@@ -16,15 +16,16 @@ use lgn_data_transaction::{
 use lgn_ecs::prelude::*;
 use lgn_editor_proto::property_inspector::UpdateResourcePropertiesRequest;
 use lgn_editor_proto::resource_browser::{
-    CloneResourceRequest, CloneResourceResponse, DeleteResourceRequest, DeleteResourceResponse,
-    GetResourceTypeNamesRequest, GetResourceTypeNamesResponse, ImportResourceRequest,
-    ImportResourceResponse, OpenSceneRequest, OpenSceneResponse, RenameResourceRequest,
-    RenameResourceResponse, ReparentResourceRequest, ReparentResourceResponse,
-    SearchResourcesRequest,
+    CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
+    DeleteResourceRequest, DeleteResourceResponse, GetResourceTypeNamesRequest,
+    GetResourceTypeNamesResponse, ImportResourceRequest, ImportResourceResponse, OpenSceneRequest,
+    OpenSceneResponse, RenameResourceRequest, RenameResourceResponse, ReparentResourceRequest,
+    ReparentResourceResponse, SearchResourcesRequest,
 };
 
 use lgn_resource_registry::ResourceRegistrySettings;
-use lgn_tracing::span_scope;
+use lgn_scene_plugin::SceneMessage;
+use lgn_tracing::{span_scope, warn};
 use serde_json::json;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -35,6 +36,7 @@ use tonic::{codegen::http::status, Request, Response, Status};
 pub(crate) struct ResourceBrowserRPC {
     pub(crate) transaction_manager: Arc<Mutex<TransactionManager>>,
     pub(crate) uploads_folder: PathBuf,
+    pub(crate) scene_events_tx: crossbeam_channel::Sender<SceneMessage>,
 }
 
 pub(crate) struct ResourceBrowserSettings {
@@ -123,11 +125,12 @@ impl Plugin for ResourceBrowserPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system_to_stage(
             StartupStage::PostStartup,
-            Self::setup
+            Self::post_setup
                 .exclusive_system()
                 .after(lgn_resource_registry::ResourceRegistryPluginScheduling::ResourceRegistryCreated)
                 .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer)
         );
+        app.add_system(Self::handle_events);
         app.add_startup_system_to_stage(
             StartupStage::PostStartup,
             Self::load_default_scene
@@ -147,23 +150,44 @@ pub enum SelectionOperation {
 
 impl ResourceBrowserPlugin {
     #[allow(clippy::needless_pass_by_value)]
-    fn setup(
-        settings: Res<'_, ResourceRegistrySettings>,
-        transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
-        mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
-    ) {
-        span_scope!("resource_browser::setup");
+    fn post_setup(world: &mut World) {
+        let (scene_events_tx, scene_events_rx) = crossbeam_channel::unbounded::<SceneMessage>();
+        world.insert_resource(scene_events_rx);
+
+        let transaction_manager = world
+            .get_resource::<Arc<Mutex<TransactionManager>>>()
+            .unwrap();
+        let settings = world.get_resource::<ResourceRegistrySettings>().unwrap();
+
         let resource_browser_service = ResourceBrowserServer::new(ResourceBrowserRPC {
             transaction_manager: transaction_manager.clone(),
             uploads_folder: settings.root_folder().join("uploads"),
+            scene_events_tx,
         });
-        grpc_settings.register_service(resource_browser_service);
+
+        {
+            let mut grpc_settings = world
+                .get_resource_mut::<lgn_grpc::GRPCPluginSettings>()
+                .unwrap();
+            grpc_settings.register_service(resource_browser_service);
+        }
+    }
+
+    #[allow(clippy::needless_pass_by_value)]
+    fn handle_events(
+        scene_events_rx: ResMut<'_, crossbeam_channel::Receiver<SceneMessage>>,
+        mut scene_event_writer: EventWriter<'_, '_, SceneMessage>,
+    ) {
+        while let Ok(event) = scene_events_rx.try_recv() {
+            scene_event_writer.send(event);
+        }
     }
 
     #[allow(clippy::needless_pass_by_value)]
     fn load_default_scene(
         settings: Res<'_, ResourceBrowserSettings>,
         tokio_runtime: ResMut<'_, TokioAsyncRuntime>,
+        mut event_writer: EventWriter<'_, '_, SceneMessage>,
         transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
     ) {
         span_scope!("resource_browser::opening_default_scene");
@@ -174,15 +198,24 @@ impl ResourceBrowserPlugin {
                 let transaction_manager = transaction_manager.lock().await;
 
                 for scene in settings.default_scene.split_terminator(';') {
-                    if let Err(err) = transaction_manager
-                        .build_by_name(&ResourcePathName::from(scene))
-                        .await
-                    {
-                        lgn_tracing::warn!(
+                    let resource_path = ResourcePathName::from(scene);
+                    match transaction_manager.build_by_name(&resource_path).await {
+                        Ok(()) => {
+                            if let Ok(resource_id) = {
+                                let ctx = LockContext::new(&transaction_manager).await;
+                                ctx.project.find_resource(&resource_path).await
+                            } {
+                                let runtime_id = ResourcePathId::from(resource_id)
+                                    .push(sample_data::runtime::Entity::TYPE)
+                                    .resource_id();
+                                event_writer.send(SceneMessage::OpenScene(runtime_id));
+                            }
+                        }
+                        Err(err) => lgn_tracing::warn!(
                             "Failed to build scene '{}': {}",
                             scene,
                             err.to_string()
-                        );
+                        ),
                     }
                 }
             });
@@ -678,7 +711,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
         request: Request<OpenSceneRequest>,
     ) -> Result<Response<OpenSceneResponse>, Status> {
         let request = request.get_ref();
-        let resource_id = parse_resource_id(request.id.as_str())?;
+        let mut resource_id = parse_resource_id(request.id.as_str())?;
 
         lgn_tracing::info!("Opening scene: {}", resource_id);
         let transaction_manager = self.transaction_manager.lock().await;
@@ -687,6 +720,41 @@ impl ResourceBrowser for ResourceBrowserRPC {
             .await
             .map_err(|err| Status::internal(err.to_string()))?;
 
+        // Get runtime entity id
+        if resource_id.kind == sample_data::offline::Entity::TYPE {
+            resource_id = ResourcePathId::from(resource_id)
+                .push(sample_data::runtime::Entity::TYPE)
+                .resource_id();
+        }
+        if let Err(err) = self
+            .scene_events_tx
+            .send(SceneMessage::OpenScene(resource_id))
+        {
+            warn!("Failed to OpenScene for {}: {}", resource_id, err);
+        }
         Ok(Response::new(OpenSceneResponse {}))
+    }
+
+    /// Close a Scene
+    async fn close_scene(
+        &self,
+        request: Request<CloseSceneRequest>,
+    ) -> Result<Response<CloseSceneResponse>, Status> {
+        let request = request.get_ref();
+        let mut resource_id = parse_resource_id(request.id.as_str())?;
+        // Get runtime entity id
+        if resource_id.kind == sample_data::offline::Entity::TYPE {
+            resource_id = ResourcePathId::from(resource_id)
+                .push(sample_data::runtime::Entity::TYPE)
+                .resource_id();
+        }
+        lgn_tracing::info!("Closing scene: {:?}", resource_id);
+        if let Err(err) = self
+            .scene_events_tx
+            .send(SceneMessage::CloseScene(resource_id))
+        {
+            warn!("Failed to Close Scene for {}: {}", resource_id, err);
+        }
+        Ok(Response::new(CloseSceneResponse {}))
     }
 }

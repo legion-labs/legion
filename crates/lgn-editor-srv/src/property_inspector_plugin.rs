@@ -2,6 +2,7 @@
 #![allow(unused_imports)]
 #![allow(unused_mut)]
 
+use lgn_scene_plugin::SceneMessage;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::Mutex;
 use tonic::{codegen::http::status, Request, Response, Status};

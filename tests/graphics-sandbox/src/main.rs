@@ -2,11 +2,15 @@
 
 #![allow(clippy::needless_pass_by_value)]
 
+use std::path::PathBuf;
+
 use clap::Parser;
 
 use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
+use lgn_content_store::ContentStoreAddr;
 use lgn_core::CorePlugin;
+use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::GraphicsPlugin;
 use lgn_graphics_renderer::{
@@ -22,6 +26,7 @@ use lgn_input::InputPlugin;
 use lgn_math::Vec3;
 use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlugin};
 use lgn_presenter_window::component::PresenterWindow;
+use lgn_scene_plugin::ScenePlugin;
 use lgn_transform::prelude::{Transform, TransformBundle, TransformPlugin};
 use lgn_window::{WindowDescriptor, WindowPlugin, Windows};
 use lgn_winit::{WinitPlugin, WinitSettings, WinitWindows};
@@ -69,6 +74,9 @@ struct Args {
     /// Use asset registry data instead of a hardcoded scene
     #[clap(long)]
     use_asset_registry: bool,
+    /// Root object to load, usually a world
+    #[clap(long)]
+    root: Option<String>,
     /// Dimensions of meta cube
     #[clap(long, default_value_t = 0)]
     meta_cube_size: usize,
@@ -111,10 +119,31 @@ fn main() {
     }
 
     if args.use_asset_registry {
-        app.init_resource::<AssetRegistrySettings>()
+        let root_asset = args
+            .root
+            .as_deref()
+            .unwrap_or("(1d9ddd99aad89045,af7e6ef0-c271-565b-c27a-b8cd93c3546a)")
+            .parse::<ResourceTypeAndId>()
+            .ok();
+
+        let project_folder = lgn_config::get_absolute_path_or(
+            "editor_srv.project_dir",
+            PathBuf::from("tests/sample-data"),
+        )
+        .unwrap();
+
+        let content_store_path = project_folder.join("temp");
+        let asset_registry_settings = AssetRegistrySettings::new(
+            ContentStoreAddr::from(content_store_path.to_str().unwrap()),
+            project_folder.join("runtime").join("game.manifest"),
+            root_asset.into_iter().collect::<Vec<_>>(),
+        );
+
+        app.insert_resource(asset_registry_settings)
             .add_plugin(AssetRegistryPlugin::default())
             .add_plugin(GraphicsPlugin::default())
-            .add_plugin(SampleDataPlugin::default());
+            .add_plugin(SampleDataPlugin::default())
+            .add_plugin(ScenePlugin::new(root_asset));
     } else if args.setup_name.eq("light_test") {
         app.add_startup_system(init_light_test);
     } else if args.meta_cube_size != 0 {

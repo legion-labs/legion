@@ -22,7 +22,10 @@ pub mod labels;
 use gpu_renderer::GpuInstanceManager;
 pub use labels::*;
 
+mod asset_to_ecs;
 mod renderer;
+use lgn_asset_registry::AssetToEntityMap;
+use lgn_data_runtime::{AssetRegistry, AssetRegistryEvent, Resource};
 use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{AddressMode, CompareOp, FilterType, MipMapMode, ResourceUsage, SamplerDef};
 use lgn_graphics_cgen_runtime::CGenRegistryList;
@@ -186,6 +189,7 @@ impl Plugin for RendererPlugin {
         app.add_plugin(EguiPlugin::new());
         app.add_plugin(PickingPlugin {});
 
+        app.add_system(process_load_events);
         // This resource needs to be shutdown after all other resources
         app.insert_resource(renderer);
 
@@ -315,6 +319,50 @@ fn on_window_close_requested(
             }
         }
         render_surfaces.remove(ev.id);
+    }
+}
+
+#[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)]
+fn process_load_events(
+    asset_registry: Res<'_, Arc<AssetRegistry>>,
+    mut asset_to_entity_map: ResMut<'_, AssetToEntityMap>,
+    mut asset_loaded_events: EventReader<'_, '_, AssetRegistryEvent>,
+    mut commands: Commands<'_, '_>,
+) {
+    for asset_loaded_event in asset_loaded_events.iter() {
+        match asset_loaded_event {
+            AssetRegistryEvent::AssetLoaded(resource_id)
+                if resource_id.kind == lgn_graphics_data::runtime_texture::Texture::TYPE =>
+            {
+                crate::asset_to_ecs::create_texture(
+                    resource_id,
+                    &asset_registry,
+                    &mut asset_to_entity_map,
+                    &mut commands,
+                );
+            }
+            AssetRegistryEvent::AssetLoaded(resource_id)
+                if resource_id.kind == lgn_graphics_data::runtime::Material::TYPE =>
+            {
+                crate::asset_to_ecs::create_material(
+                    resource_id,
+                    &asset_registry,
+                    &mut asset_to_entity_map,
+                    &mut commands,
+                );
+            }
+            AssetRegistryEvent::AssetLoaded(resource_id)
+                if resource_id.kind == lgn_graphics_data::runtime::Model::TYPE =>
+            {
+                crate::asset_to_ecs::create_model(
+                    resource_id,
+                    &asset_registry,
+                    &mut asset_to_entity_map,
+                    &mut commands,
+                );
+            }
+            _ => (),
+        }
     }
 }
 
