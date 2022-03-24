@@ -96,16 +96,12 @@ impl<K: Ord + Copy, T> GpuDataManager<K, T> {
 
 pub(crate) type GpuEntityTransformManager = GpuDataManager<Entity, cgen::cgen_type::Transform>;
 
-pub(crate) type GpuPickingDataManager =
-    GpuDataManager<Entity, cgen::cgen_type::GpuInstancePickingData>;
-
 impl Plugin for GpuDataPlugin {
     fn build(&self, app: &mut App) {
         //
         // Resources
         //
         app.insert_resource(GpuEntityTransformManager::new(64 * 1024, 1024));
-        app.insert_resource(GpuPickingDataManager::new(64 * 1024, 1024));
 
         //
         // Stage Prepare

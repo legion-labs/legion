@@ -10,15 +10,16 @@ use crate::{
     labels::RenderStage,
     picking::{PickingIdContext, PickingManager},
     resources::{
-        GpuDataManager, GpuEntityTransformManager, GpuPickingDataManager, GpuVaTableForGpuInstance,
-        MaterialManager, MeshManager, MissingVisualTracker, ModelManager,
-        UnifiedStaticBufferAllocator, UniformGPUDataUpdater,
+        GpuDataManager, GpuEntityTransformManager, GpuVaTableForGpuInstance, MaterialManager,
+        MeshManager, MissingVisualTracker, ModelManager, UnifiedStaticBufferAllocator,
+        UniformGPUDataUpdater,
     },
     Renderer,
 };
 
 use super::{GpuInstanceEvent, RenderElement};
 
+type GpuPickingDataManager = GpuDataManager<Entity, cgen::cgen_type::GpuInstancePickingData>;
 type GpuEntityColorManager = GpuDataManager<Entity, cgen::cgen_type::GpuInstanceColor>;
 pub(crate) type GpuVaTableManager = GpuDataManager<Entity, cgen::cgen_type::GpuInstanceVATable>;
 
@@ -46,6 +47,7 @@ impl GpuInstanceManager {
 
     pub fn init_ecs(app: &mut App) {
         app.insert_resource(GpuEntityColorManager::new(64 * 1024, 256));
+        app.insert_resource(GpuPickingDataManager::new(64 * 1024, 1024));
         app.add_system_to_stage(RenderStage::Prepare, update_gpu_instances);
         app.add_system_to_stage(RenderStage::Prepare, remove_gpu_instances);
     }
