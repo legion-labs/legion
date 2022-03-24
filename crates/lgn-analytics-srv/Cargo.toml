@@ -40,10 +40,6 @@ xxhash-rust = { version = "0.8.2", features = ["xxh32", "const_xxh32"] }
 reqwest = "0.11"
 serde_json = "1.0"
 
-# todo: remove
-log = { version = "0.4", features = ["std"] }
-
-
 [build-dependencies]
 tonic-build = "0.6"
 
