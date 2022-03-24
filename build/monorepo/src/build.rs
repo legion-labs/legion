@@ -27,6 +27,10 @@ pub struct Args {
     /// even if the --npm-install flag is present
     #[clap(long)]
     pub(crate) skip_npm_build: bool,
+    /// Forces the associated npm package build
+    /// Doesn't work if `--skip-npm-build` is used
+    #[clap(long, short)]
+    pub(crate) force_npm_build: bool,
     /// First install npm packages
     #[clap(long)]
     pub(crate) npm_install: bool,
@@ -79,7 +83,7 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
                 npm_workspace.install();
             }
 
-            npm_workspace.build(&None)?;
+            npm_workspace.build(&None, args.force_npm_build)?;
         }
     }
 
