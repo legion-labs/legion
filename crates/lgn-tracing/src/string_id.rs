@@ -40,6 +40,7 @@ impl Reflect for StringId {
                 is_reference: true,
             }],
             is_reference: true,
+            secondary_udts: vec![],
         }
     }
 }
