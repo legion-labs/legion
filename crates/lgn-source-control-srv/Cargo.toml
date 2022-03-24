@@ -10,10 +10,12 @@ bytes = "1.1"
 clap = { version = "3.0", features = ["derive"] }
 http = "0.2"
 hyper = "0.14"
+lgn-config = { path = "../lgn-config", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
 lgn-source-control = { path = "../lgn-source-control", version = "0.1.0" }
 lgn-source-control-proto = { path = "../lgn-source-control-proto", version = "0.1.0" }
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.13", features = ["full", "tracing"] }
 tonic = "0.6"

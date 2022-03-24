@@ -68,3 +68,8 @@ path = "tests/sample-data/remote"
 [[content_store.data_build.caching_providers]]
 [content_store.data_build.caching_providers.lru]
 size = 250
+
+[source-control.server.database]
+host = "localhost"
+username = "root"
+password = "pwd"

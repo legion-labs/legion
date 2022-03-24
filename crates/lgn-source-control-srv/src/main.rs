@@ -6,6 +6,7 @@
 //#![allow()]
 
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -27,37 +28,37 @@ use lgn_source_control_proto::{
 };
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::{debug, info, warn, LevelFilter};
+use serde::Deserialize;
 use tokio::sync::Mutex;
 use url::Url;
 
 struct Service {
     index_backends: Mutex<HashMap<String, Arc<Box<dyn IndexBackend>>>>,
-    database_host: String,
-    database_username: Option<String>,
-    database_password: Option<String>,
+    config: Config,
 }
 
 impl Service {
-    pub fn new(
-        database_host: String,
-        database_username: Option<String>,
-        database_password: Option<String>,
-    ) -> Self {
+    pub fn new(config: Config) -> Self {
         Self {
             index_backends: Mutex::new(HashMap::new()),
-            database_host,
-            database_username,
-            database_password,
+            config,
         }
     }
 
-    fn new_index_backend_for_repository(&self, name: &str) -> Result<Box<dyn IndexBackend>> {
+    fn database_name(&self, repository_name: &str) -> String {
+        format!("{}-{}", self.config.database.name_prefix, repository_name)
+    }
+
+    fn new_index_backend_for_repository(
+        &self,
+        repository_name: &str,
+    ) -> Result<Box<dyn IndexBackend>> {
         let index_url = Url::parse(&format!(
             "mysql://{}:{}@{}/{}",
-            self.database_username.as_deref().unwrap_or_default(),
-            self.database_password.as_deref().unwrap_or_default(),
-            self.database_host,
-            name,
+            self.config.database.username.as_deref().unwrap_or_default(),
+            self.config.database.password.as_deref().unwrap_or_default(),
+            self.config.database.host,
+            self.database_name(repository_name),
         ))
         .unwrap();
 
@@ -66,19 +67,19 @@ impl Service {
 
     async fn get_index_backend_for_repository(
         &self,
-        name: &str,
+        repository_name: &str,
     ) -> Result<Arc<Box<dyn IndexBackend>>, tonic::Status> {
         let mut index_backends = self.index_backends.lock().await;
 
-        if let Some(index_backend) = index_backends.get(name) {
+        if let Some(index_backend) = index_backends.get(repository_name) {
             Ok(Arc::clone(index_backend))
         } else {
             let backend = Arc::new(
-                self.new_index_backend_for_repository(name)
+                self.new_index_backend_for_repository(repository_name)
                     .map_err(|e| tonic::Status::unknown(e.to_string()))?,
             );
 
-            index_backends.insert(name.to_string(), backend.clone());
+            index_backends.insert(repository_name.to_string(), backend.clone());
 
             Ok(backend)
         }
@@ -491,18 +492,51 @@ struct Args {
     /// The address to listen on.
     #[clap(long, default_value = "[::1]:50051")]
     listen_endpoint: SocketAddr,
+}
 
-    /// The SQL database host.
-    #[clap(long)]
-    database_host: String,
+#[derive(Debug, Clone, Deserialize)]
+struct Config {
+    database: DatabaseConfig,
+}
 
-    /// The SQL database username.
-    #[clap(long)]
-    database_username: Option<String>,
+#[derive(Debug, Clone, Deserialize)]
+struct DatabaseConfig {
+    /// The database host.
+    host: String,
 
-    /// The SQL database password.
-    #[clap(long)]
-    database_password: Option<String>,
+    /// The database name prefix.
+    #[serde(default = "DatabaseConfig::default_name_prefix")]
+    name_prefix: String,
+
+    // The database username.
+    username: Option<String>,
+
+    /// The database password.
+    password: Option<String>,
+}
+
+impl DatabaseConfig {
+    fn default_name_prefix() -> String {
+        "source_control".to_string()
+    }
+}
+
+impl Display for DatabaseConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(username) = &self.username {
+            write!(
+                f,
+                "mysql://{}:**secret**@{}/{}_<repository_name>",
+                username, self.host, self.name_prefix,
+            )
+        } else {
+            write!(
+                f,
+                "mysql://{}/{}_<repository_name>",
+                self.host, self.name_prefix,
+            )
+        }
+    }
 }
 
 #[allow(clippy::semicolon_if_nothing_returned)]
@@ -517,14 +551,17 @@ async fn main() -> anyhow::Result<()> {
         TelemetryGuardBuilder::default().build()
     };
 
-    let service = SourceControlServer::new(Service::new(
-        args.database_host,
-        args.database_username,
-        args.database_password,
-    ));
+    let config: Config = lgn_config::get("source-control.server")?
+        .ok_or_else(|| anyhow::anyhow!("no configuration was found for `source-control.server`"))?;
+
+    info!("Using database at {}", config.database);
+
+    let service = SourceControlServer::new(Service::new(config));
     let server = tonic::transport::Server::builder()
         .accept_http1(true)
         .add_service(service);
+
+    info!("Listening on {}", args.listen_endpoint);
 
     server.serve(args.listen_endpoint).await.map_err(Into::into)
 }
