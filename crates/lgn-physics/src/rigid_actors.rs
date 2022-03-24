@@ -67,11 +67,11 @@ pub(crate) fn add_dynamic_actor_to_scene(
     physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
     scene: &mut ResMut<'_, Owner<PxScene>>,
     transform: &GlobalTransform,
-    geometry: &impl Geometry,
+    geometry: &CollisionGeometry,
     entity: Entity,
     material: &mut ResMut<'_, Owner<PxMaterial>>,
 ) {
-    debug_assert!(geometry.get_type() != GeometryType::Plane);
+    debug_assert!(geometry.get_type() != GeometryType::Plane); // plane can only be used for static actors
     let transform: PxTransform = transform.compute_matrix().into();
     let mut actor = physics
         .create_rigid_dynamic(
@@ -91,7 +91,7 @@ pub(crate) fn add_static_actor_to_scene(
     physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
     scene: &mut ResMut<'_, Owner<PxScene>>,
     transform: &GlobalTransform,
-    geometry: &impl Geometry,
+    geometry: &CollisionGeometry,
     entity: Entity,
     material: &mut ResMut<'_, Owner<PxMaterial>>,
 ) {
