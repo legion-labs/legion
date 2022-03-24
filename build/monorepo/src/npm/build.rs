@@ -13,6 +13,9 @@ pub struct Args {
     /// If this flag is present the dependencies will be installed
     #[clap(long, short)]
     pub(crate) install: bool,
+    /// Forces the build
+    #[clap(long, short)]
+    pub(crate) force: bool,
 }
 
 #[span_fn]
@@ -25,7 +28,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
         npm_workspace.install();
     }
 
-    npm_workspace.build(&args.package)?;
+    npm_workspace.build(&args.package, args.force)?;
 
     Ok(())
 }
