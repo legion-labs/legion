@@ -22,6 +22,7 @@ use lgn_input::InputPlugin;
 use lgn_math::Vec3;
 use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlugin};
 use lgn_presenter_window::component::PresenterWindow;
+use lgn_scene_plugin::ScenePlugin;
 use lgn_transform::prelude::{Transform, TransformBundle, TransformPlugin};
 use lgn_window::{WindowDescriptor, WindowPlugin, Windows};
 use lgn_winit::{WinitPlugin, WinitSettings, WinitWindows};
@@ -114,7 +115,8 @@ fn main() {
         app.init_resource::<AssetRegistrySettings>()
             .add_plugin(AssetRegistryPlugin::default())
             .add_plugin(GraphicsPlugin::default())
-            .add_plugin(SampleDataPlugin::default());
+            .add_plugin(SampleDataPlugin::default())
+            .add_plugin(ScenePlugin::new(None));
     } else if args.setup_name.eq("light_test") {
         app.add_startup_system(init_light_test);
     } else if args.meta_cube_size != 0 {

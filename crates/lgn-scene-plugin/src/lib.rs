@@ -22,19 +22,30 @@ pub enum SceneMessage {
 
 pub type ActiveScenes = HashMap<ResourceTypeAndId, SceneInstance>;
 
-#[derive(Default)]
-pub struct ScenePlugin {}
+pub struct ScenePlugin {
+    startup_scene: Option<ResourceTypeAndId>,
+}
 
 impl Plugin for ScenePlugin {
     fn build(&self, app: &mut App) {
+        let mut active_scenes = ActiveScenes::default();
+        if let Some(startup_scene) = self.startup_scene {
+            active_scenes.insert(startup_scene, SceneInstance::new(startup_scene));
+        }
+
         app.add_system(Self::process_load_events)
             .add_system(Self::handle_scene_messages)
-            .insert_resource(ActiveScenes::default())
+            .insert_resource(active_scenes)
             .add_event::<SceneMessage>();
     }
 }
 
 impl ScenePlugin {
+    /// Init a new `ScenePlugin`
+    pub fn new(startup_scene: Option<ResourceTypeAndId>) -> Self {
+        Self { startup_scene }
+    }
+
     #[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)]
     fn handle_scene_messages(
         asset_registry: Res<'_, Arc<AssetRegistry>>,

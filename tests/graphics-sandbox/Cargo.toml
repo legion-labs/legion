@@ -20,6 +20,7 @@ lgn-input = { path = "../../crates/lgn-input", version = "0.1.0" }
 lgn-math = { path = "../../crates/lgn-math", version = "0.1.0" }
 lgn-presenter-snapshot = { path = "../../crates/lgn-presenter-snapshot", version = "0.1.0" }
 lgn-presenter-window = { path = "../../crates/lgn-presenter-window", version = "0.1.0" }
+lgn-scene-plugin = { path = "../../crates/lgn-scene-plugin", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../../crates/lgn-telemetry-sink", version = "0.1.0" }
 lgn-tracing = { path = "../../crates/lgn-tracing", version = "0.1.0" }
 lgn-transform = { path = "../../crates/lgn-transform", version = "0.1.0" }

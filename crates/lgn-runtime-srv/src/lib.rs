@@ -21,6 +21,7 @@ use lgn_graphics_renderer::RendererPlugin;
 use lgn_hierarchy::prelude::HierarchyPlugin;
 use lgn_input::InputPlugin;
 use lgn_physics::{PhysicsPlugin, PhysicsSettingsBuilder};
+use lgn_scene_plugin::ScenePlugin;
 use lgn_scripting::ScriptingPlugin;
 use lgn_tracing::prelude::span_fn;
 use lgn_transform::prelude::TransformPlugin;
@@ -91,9 +92,14 @@ pub fn build_runtime(
     // default root object is in sample data
     // /world/sample_1.ent
 
-    let root_asset = args.root.as_deref().unwrap_or(fallback_root_asset);
-    if let Ok(asset_id) = root_asset.parse::<ResourceTypeAndId>() {
-        assets_to_load.push(asset_id);
+    let root_asset = args
+        .root
+        .as_deref()
+        .unwrap_or(fallback_root_asset)
+        .parse::<ResourceTypeAndId>()
+        .ok();
+    if let Some(root_asset) = root_asset {
+        assets_to_load.push(root_asset);
     }
 
     // physics settings
@@ -137,6 +143,7 @@ pub fn build_runtime(
             assets_to_load,
         ))
         .add_plugin(AssetRegistryPlugin::default())
+        .add_plugin(ScenePlugin::new(root_asset))
         .add_plugin(GenericDataPlugin::default())
         .add_plugin(ScriptingPlugin::default())
         .add_plugin(SampleDataPlugin::default())

@@ -229,7 +229,7 @@ fn main() {
     .add_plugin(EditorPlugin::default())
     .insert_resource(ResourceBrowserSettings::new(default_scene))
     .add_plugin(ResourceBrowserPlugin::default())
-    .add_plugin(ScenePlugin::default())
+    .add_plugin(ScenePlugin::new(None))
     .add_plugin(PropertyInspectorPlugin::default())
     .add_plugin(SourceControlPlugin::default())
     .add_plugin(TransformPlugin::default())
