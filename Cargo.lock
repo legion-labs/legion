@@ -4305,6 +4305,7 @@ dependencies = [
  "async-recursion 1.0.0",
  "lgn-blob-storage",
  "lgn-telemetry-proto",
+ "lgn-telemetry-sink",
  "lgn-tracing",
  "lgn-tracing-transit",
  "prost",
