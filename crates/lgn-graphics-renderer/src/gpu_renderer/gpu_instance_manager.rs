@@ -10,8 +10,8 @@ use crate::{
     labels::RenderStage,
     picking::{PickingIdContext, PickingManager},
     resources::{
-        GpuDataManager, GpuEntityColorManager, GpuEntityTransformManager, GpuPickingDataManager,
-        GpuVaTableForGpuInstance, MaterialManager, MeshManager, MissingVisualTracker, ModelManager,
+        GpuDataManager, GpuEntityTransformManager, GpuPickingDataManager, GpuVaTableForGpuInstance,
+        MaterialManager, MeshManager, MissingVisualTracker, ModelManager,
         UnifiedStaticBufferAllocator, UniformGPUDataUpdater,
     },
     Renderer,
@@ -19,6 +19,7 @@ use crate::{
 
 use super::{GpuInstanceEvent, RenderElement};
 
+type GpuEntityColorManager = GpuDataManager<Entity, cgen::cgen_type::GpuInstanceColor>;
 pub(crate) type GpuVaTableManager = GpuDataManager<Entity, cgen::cgen_type::GpuInstanceVATable>;
 
 pub(crate) struct GpuInstanceVas {
@@ -44,6 +45,7 @@ impl GpuInstanceManager {
     }
 
     pub fn init_ecs(app: &mut App) {
+        app.insert_resource(GpuEntityColorManager::new(64 * 1024, 256));
         app.add_system_to_stage(RenderStage::Prepare, update_gpu_instances);
         app.add_system_to_stage(RenderStage::Prepare, remove_gpu_instances);
     }
@@ -108,10 +110,10 @@ fn update_gpu_instances(
     picking_manager: Res<'_, PickingManager>,
     mut picking_data_manager: ResMut<'_, GpuPickingDataManager>,
     mut instance_manager: ResMut<'_, GpuInstanceManager>,
+    mut color_manager: ResMut<'_, GpuEntityColorManager>,
     model_manager: Res<'_, ModelManager>,
     mesh_manager: Res<'_, MeshManager>,
     material_manager: Res<'_, MaterialManager>,
-    color_manager: Res<'_, GpuEntityColorManager>,
     transform_manager: Res<'_, GpuEntityTransformManager>,
     mut event_writer: EventWriter<'_, '_, GpuInstanceEvent>,
     instance_query: Query<
@@ -147,6 +149,7 @@ fn update_gpu_instances(
 
         instance_color.set_color_blend(visual.color_blend.into());
 
+        color_manager.alloc_gpu_data(&entity, renderer.static_buffer_allocator());
         color_manager.update_gpu_data(&entity, 0, &instance_color, &mut updater);
 
         picking_data_manager.alloc_gpu_data(&entity, renderer.static_buffer_allocator());

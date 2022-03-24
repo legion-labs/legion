@@ -9,7 +9,7 @@ use lgn_math::Vec4;
 use lgn_tracing::span_fn;
 use lgn_transform::components::GlobalTransform;
 
-use crate::{cgen, components::VisualComponent, labels::RenderStage, Renderer};
+use crate::{cgen, labels::RenderStage, Renderer};
 
 use super::{
     IndexAllocator, StaticBufferAllocation, UnifiedStaticBufferAllocator, UniformGPUData,
@@ -95,7 +95,7 @@ impl<K: Ord + Copy, T> GpuDataManager<K, T> {
 }
 
 pub(crate) type GpuEntityTransformManager = GpuDataManager<Entity, cgen::cgen_type::Transform>;
-pub(crate) type GpuEntityColorManager = GpuDataManager<Entity, cgen::cgen_type::GpuInstanceColor>;
+
 pub(crate) type GpuPickingDataManager =
     GpuDataManager<Entity, cgen::cgen_type::GpuInstancePickingData>;
 
@@ -105,7 +105,6 @@ impl Plugin for GpuDataPlugin {
         // Resources
         //
         app.insert_resource(GpuEntityTransformManager::new(64 * 1024, 1024));
-        app.insert_resource(GpuEntityColorManager::new(64 * 1024, 256));
         app.insert_resource(GpuPickingDataManager::new(64 * 1024, 1024));
 
         //
@@ -114,7 +113,6 @@ impl Plugin for GpuDataPlugin {
         app.add_system_set_to_stage(
             RenderStage::Prepare,
             SystemSet::new()
-                .with_system(alloc_color_address)
                 .with_system(alloc_transform_address)
                 .label(GpuDataPluginLabel::UpdateDone),
         );
@@ -124,18 +122,6 @@ impl Plugin for GpuDataPlugin {
                 .with_system(upload_transform_data)
                 .after(GpuDataPluginLabel::UpdateDone),
         );
-    }
-}
-
-#[span_fn]
-#[allow(clippy::needless_pass_by_value)]
-fn alloc_color_address(
-    renderer: Res<'_, Renderer>,
-    mut color_manager: ResMut<'_, GpuEntityColorManager>,
-    query: Query<'_, '_, Entity, Added<VisualComponent>>,
-) {
-    for entity in query.iter() {
-        color_manager.alloc_gpu_data(&entity, renderer.static_buffer_allocator());
     }
 }
 
