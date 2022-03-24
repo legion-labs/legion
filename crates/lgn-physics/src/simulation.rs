@@ -37,6 +37,12 @@ pub(crate) fn sync_transforms(
             let global_transform = GlobalTransform::from_matrix(actor.get_global_pose().into());
             // TODO: use parent global to determine child local
             *transform = global_transform.into();
+        } else {
+            error!(
+                "dynamic actor without a Transform component, entity {}",
+                entity.id()
+            );
+            //scene.remove_actor(actor, false);
         }
     }
 }
