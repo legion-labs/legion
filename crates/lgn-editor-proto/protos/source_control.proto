@@ -27,8 +27,6 @@ message InitUploadRawFileResponse {
   UploadStatus status = 1;
   // Not set if status is REJECTED
   optional string id = 2;
-  // Not set if status is REJECTED
-  optional string name = 3;
 }
 
 message UploadRawFileRequest {
