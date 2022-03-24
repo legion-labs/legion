@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use lgn_app::App;
-use lgn_data_runtime::ResourceTypeAndId;
+use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::runtime_texture::TextureReferenceType;
 use lgn_math::Vec4;
@@ -16,8 +16,8 @@ use crate::{
 };
 
 use super::{
-    GpuDataManager, IndexAllocator, SharedResourcesManager, TextureEvent, TextureManager,
-    UnifiedStaticBufferAllocator, UniformGPUDataUpdater,
+    GpuDataManager, IndexAllocator, MissingVisualTracker, SharedResourcesManager, TextureEvent,
+    TextureManager, UnifiedStaticBufferAllocator, UniformGPUDataUpdater,
 };
 
 type GpuMaterialData = GpuDataManager<MaterialId, crate::cgen::cgen_type::MaterialData>;
@@ -45,16 +45,26 @@ impl From<u32> for MaterialId {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct Material {
+    resource_id: ResourceTypeAndId,
     material_data: MaterialData,
-    va: Option<u64>,
+    va: u64,
+}
+
+#[derive(Clone)]
+enum MaterialSlot {
+    Empty,
+    Occupied(Material),
 }
 
 impl Material {
-    // let material_va = material_manager.gpu_data().va_for_index(material_id, 0);
+    pub fn resource_id(&self) -> &ResourceTypeAndId {
+        &self.resource_id
+    }
+
     pub fn va(&self) -> u64 {
-        self.va.unwrap()
+        self.va
     }
 }
 
@@ -62,12 +72,13 @@ const MATERIAL_BLOCK_SIZE: u32 = 2048;
 
 pub struct MaterialManager {
     allocator: IndexAllocator,
-    materials: Vec<Material>,
+    materials: Vec<MaterialSlot>,
     resource_id_to_material_id: BTreeMap<ResourceTypeAndId, MaterialId>,
     entity_to_material_id: BTreeMap<Entity, MaterialId>,
     material_id_to_texture_ids: BTreeMap<MaterialId, Vec<ResourceTypeAndId>>,
     upload_queue: HashSet<MaterialId>,
     gpu_material_data: GpuMaterialData,
+    default_resource_id: ResourceTypeAndId,
     default_material_id: MaterialId,
     default_uploaded: bool,
 }
@@ -75,6 +86,12 @@ pub struct MaterialManager {
 impl MaterialManager {
     pub fn new() -> Self {
         let mut allocator = IndexAllocator::new(MATERIAL_BLOCK_SIZE);
+
+        // TODO(vdbdd): redundant and useless. remove asap.
+        let default_resource_id = ResourceTypeAndId {
+            kind: lgn_graphics_data::runtime::Material::TYPE,
+            id: ResourceId::new(),
+        };
 
         let default_material_id = allocator.acquire_index();
 
@@ -86,6 +103,7 @@ impl MaterialManager {
             material_id_to_texture_ids: BTreeMap::new(),
             upload_queue: HashSet::new(),
             gpu_material_data: GpuMaterialData::new(64 * 1024, MATERIAL_BLOCK_SIZE),
+            default_resource_id,
             default_material_id: default_material_id.into(),
             default_uploaded: false,
         }
@@ -132,12 +150,27 @@ impl MaterialManager {
     }
 
     pub fn is_material_ready(&self, material_id: MaterialId) -> bool {
-        let material = &self.materials[material_id.index() as usize];
-        material.va.is_some()
+        let slot = &self.materials[material_id.index() as usize];
+        match slot {
+            MaterialSlot::Empty => panic!("Invalid material id"),
+            MaterialSlot::Occupied(_) => true,
+        }
     }
 
     pub fn get_material(&self, material_id: MaterialId) -> &Material {
-        &self.materials[material_id.0 as usize]
+        let slot = &self.materials[material_id.index() as usize];
+        match slot {
+            MaterialSlot::Empty => panic!("Invalid material id"),
+            MaterialSlot::Occupied(material) => material,
+        }
+    }
+
+    fn get_material_mut(&mut self, material_id: MaterialId) -> &mut Material {
+        let slot = &mut self.materials[material_id.index() as usize];
+        match slot {
+            MaterialSlot::Empty => panic!("Invalid material id"),
+            MaterialSlot::Occupied(material) => material,
+        }
     }
 
     fn add_material(
@@ -146,16 +179,16 @@ impl MaterialManager {
         material_component: &MaterialComponent,
         allocator: &UnifiedStaticBufferAllocator,
     ) {
+        let material_resource_id = material_component.material_id;
         let material_id: MaterialId = self.allocator.acquire_index().into();
+        let material_data = material_component.material_data.clone();
 
-        let mut material = self.alloc_material(material_id, allocator);
-
-        material.material_data = material_component.material_data.clone();
+        self.alloc_material(material_id, material_resource_id, material_data, allocator);
 
         self.upload_queue.insert(material_id);
 
         self.resource_id_to_material_id
-            .insert(material_component.material_id, material_id);
+            .insert(material_resource_id, material_id);
 
         self.entity_to_material_id.insert(entity, material_id);
 
@@ -168,7 +201,7 @@ impl MaterialManager {
     fn change_material(&mut self, entity: Entity, material_component: &MaterialComponent) {
         let material_id = *self.entity_to_material_id.get(&entity).unwrap();
 
-        let mut material = &mut self.materials[material_id.index() as usize];
+        let mut material = self.get_material_mut(material_id);
 
         material.material_data = material_component.material_data.clone();
 
@@ -216,7 +249,7 @@ impl MaterialManager {
         result
     }
 
-    fn material_component_to_material_data(
+    fn build_gpu_material_data(
         material_component: &MaterialData,
         texture_manager: &TextureManager,
         shared_resources_manager: &SharedResourcesManager,
@@ -295,12 +328,16 @@ impl MaterialManager {
         renderer: &Renderer,
         texture_manager: &TextureManager,
         shared_resources_manager: &SharedResourcesManager,
+        missing_visuals_tracker: &mut MissingVisualTracker,
     ) {
         let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
 
         for material_id in &self.upload_queue {
-            let gpu_material_data = Self::material_component_to_material_data(
-                &self.materials[material_id.index() as usize].material_data,
+            let material = &self.get_material(*material_id);
+            let material_data = &material.material_data;
+
+            let gpu_material_data = Self::build_gpu_material_data(
+                material_data,
                 texture_manager,
                 shared_resources_manager,
             );
@@ -310,6 +347,9 @@ impl MaterialManager {
                 &gpu_material_data,
                 &mut updater,
             );
+
+            // TODO(vdbdd): remove asap
+            missing_visuals_tracker.add_changed_resource(material.resource_id);
         }
 
         self.upload_queue.clear();
@@ -324,6 +364,8 @@ impl MaterialManager {
     ) {
         if !self.default_uploaded {
             let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
+
+            let material_data = MaterialData::default();
 
             let mut default_material_data = crate::cgen::cgen_type::MaterialData::default();
             default_material_data.set_base_albedo(Vec4::new(0.8, 0.8, 0.8, 1.0).into());
@@ -351,7 +393,12 @@ impl MaterialManager {
                     .into(),
             );
 
-            self.alloc_material(self.default_material_id, renderer.static_buffer_allocator());
+            self.alloc_material(
+                self.default_material_id,
+                self.default_resource_id,
+                material_data, // TODO(vdbdd): default data not in sync with default_material_data
+                renderer.static_buffer_allocator(),
+            );
 
             self.gpu_material_data.update_gpu_data(
                 &self.default_material_id,
@@ -369,25 +416,25 @@ impl MaterialManager {
     fn alloc_material(
         &mut self,
         material_id: MaterialId,
+        resource_id: ResourceTypeAndId,
+        material_data: MaterialData,
         gpu_allocator: &UnifiedStaticBufferAllocator,
-    ) -> &mut Material {
-        // TODO(vdbdd): check that this MaterialIs is not allocator
-
+    ) {
         if self.materials.len() < material_id.index() as usize {
             let next_size =
                 round_size_up_to_alignment_u32(material_id.index(), MATERIAL_BLOCK_SIZE);
             self.materials
-                .resize(next_size as usize, Material::default());
+                .resize(next_size as usize, MaterialSlot::Empty);
         }
 
         self.gpu_material_data
             .alloc_gpu_data(&material_id, gpu_allocator);
 
-        let mut material = &mut self.materials[material_id.index() as usize];
-
-        material.va = Some(self.gpu_material_data.va_for_index(&material_id, 0));
-
-        material
+        self.materials[material_id.index() as usize] = MaterialSlot::Occupied(Material {
+            va: self.gpu_material_data.va_for_index(&material_id, 0),
+            resource_id,
+            material_data,
+        });
     }
 }
 
@@ -473,6 +520,12 @@ fn upload_material_data(
     mut material_manager: ResMut<'_, MaterialManager>,
     texture_manager: Res<'_, TextureManager>,
     shared_resources_manager: Res<'_, SharedResourcesManager>,
+    mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
 ) {
-    material_manager.upload_material_data(&renderer, &texture_manager, &shared_resources_manager);
+    material_manager.upload_material_data(
+        &renderer,
+        &texture_manager,
+        &shared_resources_manager,
+        &mut missing_visuals_tracker,
+    );
 }

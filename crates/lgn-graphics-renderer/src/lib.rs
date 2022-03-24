@@ -35,8 +35,8 @@ pub use render_context::*;
 
 pub mod resources;
 use resources::{
-    DescriptorHeapManager, GpuDataPlugin, ModelManager, PersistentDescriptorSetManager,
-    PipelineManager, TextureManager,
+    DescriptorHeapManager, ModelManager, PersistentDescriptorSetManager, PipelineManager,
+    TextureManager,
 };
 
 pub mod components;
@@ -197,10 +197,7 @@ impl Plugin for RendererPlugin {
             .contains_resource::<Events<lgn_data_runtime::AssetRegistryEvent>>()
         {
             app.add_system(asset_to_ecs::process_load_events);
-        }
-
-        // todo: convert?
-        app.add_plugin(GpuDataPlugin::default());
+        }       
 
         // Plugins are optional
         app.add_plugin(EguiPlugin::new());

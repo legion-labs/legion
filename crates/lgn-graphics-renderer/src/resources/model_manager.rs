@@ -5,7 +5,7 @@ use lgn_core::BumpAllocatorPool;
 use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 use lgn_ecs::prelude::{Changed, Query, Res, ResMut, Without};
 use lgn_math::Vec3;
-use lgn_tracing::span_fn;
+use lgn_tracing::{span_fn, warn};
 use lgn_transform::components::{GlobalTransform, Transform};
 use strum::IntoEnumIterator;
 
@@ -103,7 +103,7 @@ pub(crate) fn update_models(
     for updated_model in updated_models.iter() {
         let model_resource_id = &updated_model.model_id;
 
-        missing_visuals_tracker.add_changed_model(*model_resource_id);
+        missing_visuals_tracker.add_changed_resource(*model_resource_id);
         let ids = mesh_manager.add_meshes(&renderer, &updated_model.meshes);
 
         let mut meshes = Vec::new();
@@ -123,6 +123,18 @@ pub(crate) fn update_models(
                    material_manager.get_material_id_from_resource_id(&x.id())
                });
             */
+
+            if let Some(material_resource_id) = &mesh.material_id {
+                let material_id_opt =
+                    material_manager.get_material_id_from_resource_id(&material_resource_id.id());
+                if material_id_opt.is_none() {
+                    warn!(
+                        "Dependency issue. Material {} not loaded for model {}",
+                        material_resource_id.id(),
+                        model_resource_id
+                    );
+                }
+            }
 
             let material_id =
                 mesh.material_id

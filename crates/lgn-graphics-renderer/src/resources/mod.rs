@@ -11,7 +11,7 @@ mod descriptor_pool;
 pub(crate) use descriptor_pool::*;
 
 mod gpu_data;
-pub use gpu_data::*;
+pub(crate) use gpu_data::*;
 
 mod gpu_pool;
 pub(crate) use gpu_pool::*;

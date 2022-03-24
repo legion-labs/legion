@@ -1,28 +1,11 @@
 use std::collections::BTreeMap;
 
-use lgn_app::{App, Plugin};
-
-use lgn_ecs::prelude::*;
 use lgn_graphics_api::{BufferView, VertexBufferBinding};
-
-use lgn_math::Vec4;
-use lgn_tracing::span_fn;
-use lgn_transform::components::GlobalTransform;
-
-use crate::{cgen, labels::RenderStage, Renderer};
 
 use super::{
     IndexAllocator, StaticBufferAllocation, UnifiedStaticBufferAllocator, UniformGPUData,
     UniformGPUDataUpdater,
 };
-
-#[derive(Debug, SystemLabel, PartialEq, Eq, Clone, Copy, Hash)]
-enum GpuDataPluginLabel {
-    UpdateDone,
-}
-
-#[derive(Default)]
-pub struct GpuDataPlugin {}
 
 pub(crate) struct GpuDataManager<K, T> {
     gpu_data: UniformGPUData<T>,
@@ -94,65 +77,6 @@ impl<K: Ord + Copy, T> GpuDataManager<K, T> {
     }
 }
 
-pub(crate) type GpuEntityTransformManager = GpuDataManager<Entity, cgen::cgen_type::Transform>;
-
-impl Plugin for GpuDataPlugin {
-    fn build(&self, app: &mut App) {
-        //
-        // Resources
-        //
-        app.insert_resource(GpuEntityTransformManager::new(64 * 1024, 1024));
-
-        //
-        // Stage Prepare
-        //
-        app.add_system_set_to_stage(
-            RenderStage::Prepare,
-            SystemSet::new()
-                .with_system(alloc_transform_address)
-                .label(GpuDataPluginLabel::UpdateDone),
-        );
-        app.add_system_set_to_stage(
-            RenderStage::Prepare,
-            SystemSet::new()
-                .with_system(upload_transform_data)
-                .after(GpuDataPluginLabel::UpdateDone),
-        );
-    }
-}
-
-#[span_fn]
-#[allow(clippy::needless_pass_by_value)]
-fn alloc_transform_address(
-    renderer: Res<'_, Renderer>,
-    mut transform_manager: ResMut<'_, GpuEntityTransformManager>,
-    query: Query<'_, '_, Entity, Added<GlobalTransform>>,
-) {
-    for entity in query.iter() {
-        transform_manager.alloc_gpu_data(&entity, renderer.static_buffer_allocator());
-    }
-}
-
-#[span_fn]
-#[allow(clippy::needless_pass_by_value)]
-fn upload_transform_data(
-    renderer: Res<'_, Renderer>,
-    transform_manager: Res<'_, GpuEntityTransformManager>,
-    query: Query<'_, '_, (Entity, &GlobalTransform), Changed<GlobalTransform>>,
-) {
-    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
-
-    for (entity, transform) in query.iter() {
-        let mut world = cgen::cgen_type::Transform::default();
-        world.set_translation(transform.translation.into());
-        world.set_rotation(Vec4::from(transform.rotation).into());
-        world.set_scale(transform.scale.into());
-
-        transform_manager.update_gpu_data(&entity, 0, &world, &mut updater);
-    }
-
-    renderer.add_update_job_block(updater.job_blocks());
-}
 pub(crate) struct GpuVaTableForGpuInstance {
     static_allocation: StaticBufferAllocation,
 }
