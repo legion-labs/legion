@@ -5574,6 +5574,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tonic",
+ "tonic-web",
  "url",
 ]
 

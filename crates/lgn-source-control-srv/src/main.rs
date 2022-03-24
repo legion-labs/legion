@@ -559,7 +559,7 @@ async fn main() -> anyhow::Result<()> {
     let service = SourceControlServer::new(Service::new(config));
     let server = tonic::transport::Server::builder()
         .accept_http1(true)
-        .add_service(service);
+        .add_service(tonic_web::enable(service));
 
     info!("Listening on {}", args.listen_endpoint);
 
