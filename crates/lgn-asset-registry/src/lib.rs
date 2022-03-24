@@ -97,7 +97,7 @@ impl AssetRegistryPlugin {
             .remove_non_send_resource::<AssetRegistryOptions>()
             .unwrap();
 
-        let async_rt = world.get_resource::<TokioAsyncRuntime>().unwrap();
+        let async_rt = world.resource::<TokioAsyncRuntime>();
         let registry = async_rt.block_on(async { registry_options.create().await });
 
         let load_events = registry.subscribe_to_load_events();

@@ -290,7 +290,7 @@ impl AssetRegistry {
     /// Same as [`Self::load_untyped`] but blocks until the resource load
     /// completes or a load error occurs.
     pub fn load_untyped_sync(&self, type_id: ResourceTypeAndId) -> HandleUntyped {
-        let handle = self.write_inner().loader.load(type_id);
+        let handle = self.load_untyped(type_id);
         // todo: instead of polling this could use 'condvar' or similar.
         while !handle.is_loaded(self) && !handle.is_err(self) {
             self.update();
@@ -303,7 +303,7 @@ impl AssetRegistry {
     /// Same as [`Self::load_untyped`] but waits until the resource load
     /// completes or a load error occurs.
     pub async fn load_untyped_async(&self, type_id: ResourceTypeAndId) -> HandleUntyped {
-        let handle = self.write_inner().loader.load(type_id);
+        let handle = self.load_untyped(type_id);
         while !handle.is_loaded(self) && !handle.is_err(self) {
             self.update();
             // todo: instead of sleeping a better solution would be to use something like 'waitmap'.
