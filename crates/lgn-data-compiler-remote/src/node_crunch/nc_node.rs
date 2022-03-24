@@ -2,7 +2,7 @@
 //! To use the node you have to implement the `NCNode` trait that has two methods:
 //! `set_initial_data()` and `process_data_from_server()`.
 
-use std::net::{IpAddr, SocketAddr};
+use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
 use std::sync::mpsc::{channel, Receiver};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, spawn, JoinHandle};
@@ -118,8 +118,10 @@ impl<'a> NCNodeStarter {
         debug!("NCNodeStarter::start()");
 
         let url = Url::parse(&self.config.url)?;
-        let ip_addr: IpAddr = url.host().unwrap().to_string().parse()?;
-        let server_addr = SocketAddr::new(ip_addr, url.port().unwrap());
+        let server_addr = format!("{}:{}", url.host().unwrap(), url.port().unwrap())
+            .to_socket_addrs()?
+            .next()
+            .unwrap();
         let server_addr = Arc::new(Mutex::new(server_addr));
 
         let mut node_process = NodeProcess::new(server_addr.clone(), nc_node, &self.config);
