@@ -190,7 +190,7 @@ impl CompilerContext<'_> {
     /// Stores `compiled_content` in the content store.
     ///
     /// Returned [`CompiledResource`] contains details about stored content.
-    pub fn store(
+    pub async fn store(
         &mut self,
         compiled_content: &[u8],
         path: ResourcePathId,
@@ -198,6 +198,7 @@ impl CompilerContext<'_> {
         let checksum = self
             .output_store
             .store(compiled_content)
+            .await
             .ok_or(CompilerError::AssetStoreError)?;
         Ok(CompiledResource {
             path,
@@ -490,7 +491,7 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                     .add_device_cas(Box::new(source_store), manifest)
                     .add_device_dir(&resource_dir); // todo: filter dependencies only
 
-                compiler.init(registry).await.create()
+                compiler.init(registry).await.create().await
             };
 
             let shell = CompilerNode::new(compilers, registry);

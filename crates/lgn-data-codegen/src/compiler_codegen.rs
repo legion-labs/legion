@@ -53,24 +53,27 @@ pub(crate) fn generate(
             async fn compile(&self, mut context: CompilerContext<'_>) -> Result<CompilationOutput, CompilerError> {
                 let resources = context.registry();
 
-                let offline_resource = resources.load_sync::<OfflineType>(context.source.resource_id());
-                if let Some(err) = resources.retrieve_err(offline_resource.id()) {
-                    return Err(CompilerError::CompilationError(err.to_string()));
-                }
-                let offline_resource = offline_resource
-                    .get(&resources)
-                    .ok_or_else(|| CompilerError::CompilationError(format!("Failed to retrieve resource '{}'", context.source.resource_id())))?;
+                let (compiled_asset, resource_references) = {
+                    let offline_resource = resources.load_async::<OfflineType>(context.source.resource_id()).await;
+                    if let Some(err) = resources.retrieve_err(offline_resource.id()) {
+                        return Err(CompilerError::CompilationError(err.to_string()));
+                    }
+                    let offline_resource = offline_resource
+                        .get(&resources)
+                        .ok_or_else(|| CompilerError::CompilationError(format!("Failed to retrieve resource '{}'", context.source.resource_id())))?;
 
-                let offline_resource : &OfflineType = &offline_resource;
-                let mut runtime_resource = RuntimeType::default();
-                let (compiled_asset, resource_references) = reflection_compile(offline_resource, &mut runtime_resource)?;
+                    let offline_resource : &OfflineType = &offline_resource;
+                    let mut runtime_resource = RuntimeType::default();
+                    reflection_compile(offline_resource, &mut runtime_resource)?
+                };
+
                 let resource_references: Vec<(ResourcePathId, ResourcePathId)> = resource_references
                     .unwrap_or_default()
                     .into_iter()
                     .map(|res| (context.target_unnamed.clone(), res))
                     .collect();
 
-                let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;
+                let asset = context.store(&compiled_asset, context.target_unnamed.clone()).await?;
                 Ok(CompilationOutput {
                     compiled_resources: vec![asset],
                     resource_references,

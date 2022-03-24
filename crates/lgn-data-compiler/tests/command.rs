@@ -62,8 +62,8 @@ fn command_compiler_hash() {
     assert_eq!(hashes.compiler_hash_list[0], (transform, hash));
 }
 
-#[test]
-fn command_compile() {
+#[tokio::test]
+async fn command_compile() {
     let work_dir = tempfile::tempdir().unwrap();
     let (resource_dir, output_dir) = common::setup_dir(&work_dir);
 
@@ -98,11 +98,11 @@ fn command_compile() {
     let checksum = result.compiled_resources[0].checksum;
 
     let cas = HddContentStore::open(cas_addr).expect("valid cas");
-    assert!(cas.exists(checksum));
+    assert!(cas.exists(checksum).await);
 
     let resource_content = {
         let mut loader = refs_asset::RefsAssetLoader::default();
-        let content = cas.read(checksum).expect("asset content");
+        let content = cas.read(checksum).await.expect("asset content");
         let loaded_resource = loader.load(&mut &content[..]).expect("valid data");
         loaded_resource
             .as_ref()

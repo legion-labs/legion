@@ -15,7 +15,7 @@ use lgn_data_offline::Transform;
 use lgn_data_offline::{resource::Project, ResourcePathId};
 use lgn_data_runtime::manifest::Manifest;
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions, ResourceTypeAndId};
-use lgn_tracing::{info, span_scope};
+use lgn_tracing::{async_span_scope, info};
 use lgn_utils::{DefaultHash, DefaultHasher};
 use petgraph::{algo, Graph};
 
@@ -122,7 +122,7 @@ impl DataBuild {
 
         options = compilers.init_all(options).await;
 
-        Ok(options.create())
+        Ok(options.create().await)
     }
 
     pub(crate) async fn new(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
@@ -749,12 +749,14 @@ impl DataBuild {
                         )
                     });
 
-                let output = write_assetfile(resource_list, reference_list, &self.content_store)?;
+                let output =
+                    write_assetfile(resource_list, reference_list, &self.content_store).await?;
 
                 let checksum = {
-                    span_scope!("content_store");
+                    async_span_scope!("content_store");
                     self.content_store
                         .store(&output)
+                        .await
                         .ok_or(Error::InvalidContentStore)?
                 };
                 self.output_index

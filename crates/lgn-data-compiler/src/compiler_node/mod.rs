@@ -179,7 +179,7 @@ mod tests {
 
         // testing successful compilation
         {
-            let registry = AssetRegistryOptions::new().create();
+            let registry = AssetRegistryOptions::new().create().await;
             let output = compiler
                 .compile(
                     compile_path.clone(),

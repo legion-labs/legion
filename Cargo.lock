@@ -4335,6 +4335,7 @@ version = "0.1.0"
 dependencies = [
  "crossbeam-channel",
  "lgn-app",
+ "lgn-async",
  "lgn-config",
  "lgn-content-store",
  "lgn-core",
@@ -4345,6 +4346,7 @@ dependencies = [
  "lgn-math",
  "lgn-tracing",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -4695,6 +4697,7 @@ dependencies = [
 name = "lgn-content-store"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "hex",
  "hex_fmt",
  "lgn-utils",
@@ -4951,6 +4954,7 @@ dependencies = [
 name = "lgn-data-runtime"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "byteorder",
  "crossbeam-channel",
  "erased-serde",
@@ -4968,6 +4972,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+ "tokio",
  "typetag",
  "uuid",
  "xxhash-rust",

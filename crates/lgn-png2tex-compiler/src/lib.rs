@@ -49,63 +49,69 @@ impl Compiler for Png2TexCompiler {
         let asset_registry = context.registry();
 
         let resource_handle = asset_registry
-            .load_sync::<lgn_graphics_data::offline_png::PngFile>(context.source.resource_id());
+            .load_async::<lgn_graphics_data::offline_png::PngFile>(context.source.resource_id())
+            .await;
 
         if let Some(err) = asset_registry.retrieve_err(resource_handle.id()) {
             return Err(CompilerError::CompilationError(err.to_string()));
         }
 
-        let png_file = resource_handle.get(&asset_registry).ok_or_else(|| {
-            CompilerError::CompilationError(format!(
-                "Failed to retrieve resource '{}'",
-                context.source.resource_id()
-            ))
-        })?;
+        let content = {
+            let png_file = resource_handle.get(&asset_registry).ok_or_else(|| {
+                CompilerError::CompilationError(format!(
+                    "Failed to retrieve resource '{}'",
+                    context.source.resource_id()
+                ))
+            })?;
 
-        let decoder = png::Decoder::new(png_file.content.as_slice());
-        let mut reader = decoder.read_info().map_err(|err| {
-            CompilerError::CompilationError(format!(
-                "Failed to read png info for resource {} ({})",
-                context.source.resource_id(),
-                err
-            ))
-        })?;
-        let mut img_data = vec![0; reader.output_buffer_size()];
-        let info = reader.next_frame(&mut img_data).map_err(|err| {
-            CompilerError::CompilationError(format!(
-                "Failed to read png next frame for resource '{}' ({})",
-                context.source.resource_id(),
-                err
-            ))
-        })?;
+            let decoder = png::Decoder::new(png_file.content.as_slice());
+            let mut reader = decoder.read_info().map_err(|err| {
+                CompilerError::CompilationError(format!(
+                    "Failed to read png info for resource {} ({})",
+                    context.source.resource_id(),
+                    err
+                ))
+            })?;
+            let mut img_data = vec![0; reader.output_buffer_size()];
+            let info = reader.next_frame(&mut img_data).map_err(|err| {
+                CompilerError::CompilationError(format!(
+                    "Failed to read png next frame for resource '{}' ({})",
+                    context.source.resource_id(),
+                    err
+                ))
+            })?;
 
-        let texture = if info.color_type != png::ColorType::Indexed {
-            let color_channels = match info.color_type {
-                png::ColorType::Grayscale => ColorChannels::R,
-                png::ColorType::Rgb | png::ColorType::Indexed => ColorChannels::Rgb,
-                png::ColorType::GrayscaleAlpha => ColorChannels::Ra,
-                png::ColorType::Rgba => ColorChannels::Rgba,
-            };
-            Ok(lgn_graphics_data::offline_texture::Texture {
-                kind: lgn_graphics_data::offline_texture::TextureType::_2D,
-                width: info.width,
-                height: info.height,
-                rgba: rgba_from_source(info.width, info.height, color_channels, &img_data),
-            })
-        } else {
-            Err(CompilerError::CompilationError(format!(
-                "Unsupported indexed png format for resource '{}'",
-                context.source.resource_id(),
-            )))
-        }?;
+            let texture = if info.color_type != png::ColorType::Indexed {
+                let color_channels = match info.color_type {
+                    png::ColorType::Grayscale => ColorChannels::R,
+                    png::ColorType::Rgb | png::ColorType::Indexed => ColorChannels::Rgb,
+                    png::ColorType::GrayscaleAlpha => ColorChannels::Ra,
+                    png::ColorType::Rgba => ColorChannels::Rgba,
+                };
+                Ok(lgn_graphics_data::offline_texture::Texture {
+                    kind: lgn_graphics_data::offline_texture::TextureType::_2D,
+                    width: info.width,
+                    height: info.height,
+                    rgba: rgba_from_source(info.width, info.height, color_channels, &img_data),
+                })
+            } else {
+                Err(CompilerError::CompilationError(format!(
+                    "Unsupported indexed png format for resource '{}'",
+                    context.source.resource_id(),
+                )))
+            }?;
 
-        let mut content = vec![];
-        let texture_proc = TextureProcessor {};
-        texture_proc
-            .write_resource(&texture, &mut content)
-            .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
+            let mut content = vec![];
+            let texture_proc = TextureProcessor {};
+            texture_proc
+                .write_resource(&texture, &mut content)
+                .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
+            content
+        };
 
-        let output = context.store(&content, context.target_unnamed.clone())?;
+        let output = context
+            .store(&content, context.target_unnamed.clone())
+            .await?;
 
         Ok(CompilationOutput {
             compiled_resources: vec![output],
