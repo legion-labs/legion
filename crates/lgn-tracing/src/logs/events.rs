@@ -150,6 +150,7 @@ impl Reflect for LogStringEvent {
             size: 0,
             members: vec![],
             is_reference: false,
+            secondary_udts: vec![],
         }
     }
 }
@@ -221,6 +222,7 @@ impl Reflect for LogStringInteropEvent {
             size: 0,
             members: vec![],
             is_reference: false,
+            secondary_udts: vec![],
         }
     }
 }

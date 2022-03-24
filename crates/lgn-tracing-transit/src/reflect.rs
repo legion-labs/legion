@@ -15,6 +15,7 @@ pub struct UserDefinedType {
     pub size: usize,
     pub members: Vec<Member>,
     pub is_reference: bool,
+    pub secondary_udts: Vec<UserDefinedType>, // udts of members
 }
 
 pub trait Reflect {

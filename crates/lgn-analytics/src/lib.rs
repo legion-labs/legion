@@ -594,6 +594,7 @@ fn container_metadata_as_transit_udt_vec(
                 })
                 .collect(),
             is_reference: t.is_reference,
+            secondary_udts: vec![],
         })
         .collect()
 }

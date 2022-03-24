@@ -25,6 +25,7 @@ impl Reflect for StaticString {
             size: 0,
             members: vec![],
             is_reference: false,
+            secondary_udts: vec![],
         }
     }
 }

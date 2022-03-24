@@ -12,24 +12,23 @@ use tonic::codegen::http::Uri;
 
 use lgn_telemetry_proto::{
     ingestion::telemetry_ingestion_client::TelemetryIngestionClient,
-    telemetry::{
-        ContainerMetadata, Process as ProcessInfo, Stream as StreamInfo, UdtMember, UserDefinedType,
-    },
+    telemetry::{Process as ProcessInfo, Stream as StreamProto},
 };
 use lgn_tracing::{
     error,
-    event::{EventSink, EventStream, ExtractDeps, TracingBlock},
+    event::EventSink,
     logs::{LogBlock, LogMetadata, LogStream},
     metrics::{MetricsBlock, MetricsStream},
     spans::{ThreadBlock, ThreadStream},
 };
 
-use crate::stream::StreamBlock;
+use crate::stream_block::StreamBlock;
+use crate::stream_info::get_stream_info;
 
 #[derive(Debug)]
 enum SinkEvent {
     Startup(ProcessInfo),
-    InitStream(StreamInfo),
+    InitStream(StreamProto),
     ProcessLogBlock(Arc<LogBlock>),
     ProcessMetricsBlock(Arc<MetricsBlock>),
     ProcessThreadBlock(Arc<ThreadBlock>),
@@ -285,50 +284,5 @@ impl EventSink for GRPCEventSink {
 
     fn is_busy(&self) -> bool {
         self.queue_size.load(Ordering::Relaxed) > 0
-    }
-}
-
-fn get_stream_info<Block>(stream: &EventStream<Block>) -> StreamInfo
-where
-    Block: TracingBlock,
-    <Block as TracingBlock>::Queue: lgn_tracing_transit::HeterogeneousQueue,
-    <<Block as TracingBlock>::Queue as ExtractDeps>::DepsQueue:
-        lgn_tracing_transit::HeterogeneousQueue,
-{
-    let dependencies_meta =
-        make_queue_metedata::<<<Block as TracingBlock>::Queue as ExtractDeps>::DepsQueue>();
-    let obj_meta = make_queue_metedata::<Block::Queue>();
-    StreamInfo {
-        process_id: stream.process_id().to_owned(),
-        stream_id: stream.stream_id().to_owned(),
-        dependencies_metadata: Some(dependencies_meta),
-        objects_metadata: Some(obj_meta),
-        tags: stream.tags().to_owned(),
-        properties: stream.properties().clone(),
-    }
-}
-
-fn make_queue_metedata<Queue: lgn_tracing_transit::HeterogeneousQueue>() -> ContainerMetadata {
-    let udts = Queue::reflect_contained();
-    ContainerMetadata {
-        types: udts
-            .iter()
-            .map(|udt| UserDefinedType {
-                name: udt.name.clone(),
-                size: udt.size as u32,
-                members: udt
-                    .members
-                    .iter()
-                    .map(|member| UdtMember {
-                        name: member.name.clone(),
-                        type_name: member.type_name.clone(),
-                        offset: member.offset as u32,
-                        size: member.size as u32,
-                        is_reference: member.is_reference,
-                    })
-                    .collect(),
-                is_reference: udt.is_reference,
-            })
-            .collect(),
     }
 }
