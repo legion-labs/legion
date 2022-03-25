@@ -667,9 +667,9 @@ pub fn log_entry_from_value(val: &Value) -> Result<Option<(i64, String)>> {
                 let level = desc
                     .get::<u32>("level")
                     .with_context(|| "reading level from LogStringEvent")?;
-                let msg = desc
+                let msg = obj
                     .get::<Arc<String>>("msg")
-                    .with_context(|| "reading fmt_str from LogStringEvent")?;
+                    .with_context(|| "reading msg from LogStringEvent")?;
                 let entry = format!("[{}] {}", format_log_level(level), *msg);
                 Ok(Some((time, entry)))
             }
