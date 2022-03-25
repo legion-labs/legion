@@ -1,6 +1,6 @@
 use lgn_app::{App, EventWriter};
 use lgn_ecs::{
-    prelude::{Changed, Entity, Or, Query, Res, ResMut, Without},
+    prelude::{Changed, Entity, Or, Query, RemovedComponents, Res, ResMut, Without},
     schedule::{SystemLabel, SystemSet},
 };
 use lgn_graphics_api::{BufferView, VertexBufferBinding};
@@ -64,7 +64,7 @@ impl GpuInstanceManager {
             RenderStage::Prepare,
             SystemSet::new()
                 .with_system(update_gpu_instances)
-				.with_system(remove_gpu_instances)
+                .with_system(remove_gpu_instances)
                 .label(GpuInstanceManagerLabel::UpdateDone),
         );
         app.add_system_set_to_stage(
@@ -280,7 +280,6 @@ fn update_gpu_instances(
 fn upload_transform_data(
     renderer: Res<'_, Renderer>,
     transform_manager: Res<'_, GpuEntityTransformManager>,
-    // query: Query<'_, '_, (Entity, &GlobalTransform, &VisualComponent), Changed<GlobalTransform>>,
     query: Query<
         '_,
         '_,
@@ -301,14 +300,19 @@ fn upload_transform_data(
 
     renderer.add_update_job_block(updater.job_blocks());
 }
+
 #[allow(clippy::needless_pass_by_value)]
 fn remove_gpu_instances(
+    mut transform_manager: ResMut<'_, GpuEntityTransformManager>,
+    mut color_manager: ResMut<'_, GpuEntityColorManager>,
     mut picking_data_manager: ResMut<'_, GpuPickingDataManager>,
     mut instance_manager: ResMut<'_, GpuInstanceManager>,
     mut event_writer: EventWriter<'_, '_, GpuInstanceEvent>,
     removed_visual_components: RemovedComponents<'_, VisualComponent>,
 ) {
     for entity in removed_visual_components.iter() {
+        transform_manager.remove_gpu_data(&entity);
+        color_manager.remove_gpu_data(&entity);
         picking_data_manager.remove_gpu_data(&entity);
         if let Some(removed_ids) = instance_manager.remove_gpu_instance(entity) {
             event_writer.send(GpuInstanceEvent::Removed(removed_ids));

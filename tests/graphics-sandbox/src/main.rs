@@ -8,6 +8,7 @@ use clap::Parser;
 
 use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
+use lgn_async::AsyncPlugin;
 use lgn_content_store::ContentStoreAddr;
 use lgn_core::CorePlugin;
 use lgn_data_runtime::ResourceTypeAndId;
