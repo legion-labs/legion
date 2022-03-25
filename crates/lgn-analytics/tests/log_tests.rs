@@ -6,6 +6,7 @@ use lgn_tracing::event::TracingBlock;
 use lgn_tracing::logs::LogBlock;
 use lgn_tracing::logs::LogStaticStrInteropEvent;
 use lgn_tracing::logs::LogStream;
+use lgn_tracing::logs::LogStringInteropEvent;
 use lgn_tracing_transit::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -18,7 +19,7 @@ fn test_log_interop_metadata() {
     obj_meta
         .types
         .iter()
-        .position(|udt| udt.name == "LogStringInteropEvent")
+        .position(|udt| udt.name == "LogStringInteropEventV2")
         .unwrap();
     obj_meta
         .types
@@ -33,7 +34,7 @@ fn test_log_interop_metadata() {
 }
 
 #[test]
-fn test_log_encode() {
+fn test_log_encode_static() {
     let _telemetry_guard = TelemetryGuard::default();
     let mut stream = LogStream::new(1024, String::from("bogus_process_id"), &[], HashMap::new());
     let stream_id = stream.stream_id().to_string();
@@ -51,6 +52,37 @@ fn test_log_encode() {
     parse_block(&stream_info, &encoded.payload.unwrap(), |val| {
         if let Value::Object(obj) = val {
             assert_eq!(obj.type_name.as_str(), "LogStaticStrInteropEvent");
+            assert_eq!(obj.get::<i64>("time").unwrap(), 1);
+            assert_eq!(obj.get::<u32>("level").unwrap(), 2);
+            assert_eq!(&*obj.get::<Arc<String>>("target").unwrap(), "target_name");
+            assert_eq!(&*obj.get::<Arc<String>>("msg").unwrap(), "my message");
+        } else {
+            panic!("log entry not an object");
+        }
+        Ok(true)
+    })
+    .unwrap();
+}
+
+#[test]
+fn test_log_encode_dynamic() {
+    let _telemetry_guard = TelemetryGuard::default();
+    let mut stream = LogStream::new(1024, String::from("bogus_process_id"), &[], HashMap::new());
+    let stream_id = stream.stream_id().to_string();
+    stream.get_events_mut().push(LogStringInteropEvent {
+        time: 1,
+        level: 2,
+        target: "target_name".into(),
+        msg: lgn_tracing_transit::DynString(String::from("my message")),
+    });
+    let mut block = stream.replace_block(Arc::new(LogBlock::new(1024, stream_id)));
+    Arc::get_mut(&mut block).unwrap().close();
+    let encoded = block.encode().unwrap();
+    assert_eq!(encoded.nb_objects, 1);
+    let stream_info = get_stream_info(&stream);
+    parse_block(&stream_info, &encoded.payload.unwrap(), |val| {
+        if let Value::Object(obj) = val {
+            assert_eq!(obj.type_name.as_str(), "LogStringInteropEventV2");
             assert_eq!(obj.get::<i64>("time").unwrap(), 1);
             assert_eq!(obj.get::<u32>("level").unwrap(), 2);
             assert_eq!(&*obj.get::<Arc<String>>("target").unwrap(), "target_name");

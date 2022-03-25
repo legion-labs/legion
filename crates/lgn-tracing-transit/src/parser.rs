@@ -186,8 +186,81 @@ pub fn read_dependencies(udts: &[UserDefinedType], buffer: &[u8]) -> Result<Hash
     Ok(hash)
 }
 
+fn parse_log_string_event<S>(
+    dependencies: &HashMap<u64, Value, S>,
+    offset: usize,
+    object_size: usize,
+    buffer: &[u8],
+) -> Vec<(String, Value)>
+where
+    S: BuildHasher,
+{
+    unsafe {
+        let begin_obj_ptr = buffer.as_ptr().add(offset);
+        let desc_id = read_any::<u64>(begin_obj_ptr);
+        let time_ptr = buffer.as_ptr().add(offset + 8);
+        let time = read_any::<i64>(time_ptr);
+        let msg_offset = 8 * 2;
+        let msg = <DynString as InProcSerialize>::read_value(
+            buffer.as_ptr().add(offset + msg_offset),
+            Some((object_size - msg_offset) as u32),
+        );
+        let mut desc: Value = Value::None;
+        if let Some(found_desc) = dependencies.get(&desc_id) {
+            desc = found_desc.clone();
+        } else {
+            log::warn!("desc member {} of LogStringEvent not found", desc_id);
+        }
+        vec![
+            (String::from("time"), Value::I64(time)),
+            (String::from("msg"), Value::String(Arc::new(msg.0))),
+            (String::from("desc"), desc),
+        ]
+    }
+}
+
+fn parse_log_string_interop_event<S>(
+    udts: &[UserDefinedType],
+    dependencies: &HashMap<u64, Value, S>,
+    offset: usize,
+    object_size: usize,
+    buffer: &[u8],
+) -> Vec<(String, Value)>
+where
+    S: BuildHasher,
+{
+    if let Some(index) = udts.iter().position(|t| t.name == "StringId") {
+        let stringid_metadata = &udts[index];
+        unsafe {
+            let buffer_ptr = buffer.as_ptr();
+            let time = read_any::<i64>(buffer_ptr.add(offset));
+            let level_offset = offset + std::mem::size_of::<i64>();
+            let level = read_any::<u32>(buffer_ptr.add(level_offset));
+            let target_offset = level_offset + std::mem::size_of::<u32>();
+            let target =
+                parse_pod_instance(stringid_metadata, udts, dependencies, target_offset, buffer);
+            let message_offset = target_offset + stringid_metadata.size;
+            let msg = <DynString as InProcSerialize>::read_value(
+                buffer.as_ptr().add(message_offset),
+                Some((object_size - (message_offset - offset)) as u32),
+            );
+
+            vec![
+                (String::from("time"), Value::I64(time)),
+                (String::from("level"), Value::U32(level)),
+                (String::from("target"), target),
+                (String::from("msg"), Value::String(Arc::new(msg.0))),
+            ]
+        }
+    } else {
+        log::warn!("Can't parse log string interop event with no metadata for StringId");
+        vec![]
+    }
+}
+
 fn parse_custom_instance<S>(
     udt: &UserDefinedType,
+    udts: &[UserDefinedType],
     dependencies: &HashMap<u64, Value, S>,
     offset: usize,
     object_size: usize,
@@ -200,28 +273,10 @@ where
         // todo: move out of transit lib.
         // LogStringEvent belongs to the tracing lib
         // we need to inject the serialization logic of custom objects
-        "LogStringEvent" => unsafe {
-            let begin_obj_ptr = buffer.as_ptr().add(offset);
-            let desc_id = read_any::<u64>(begin_obj_ptr);
-            let time_ptr = buffer.as_ptr().add(offset + 8);
-            let time = read_any::<i64>(time_ptr);
-            let msg_offset = 8 * 2;
-            let msg = <DynString as InProcSerialize>::read_value(
-                buffer.as_ptr().add(offset + msg_offset),
-                Some((object_size - msg_offset) as u32),
-            );
-            let mut desc: Value = Value::None;
-            if let Some(found_desc) = dependencies.get(&desc_id) {
-                desc = found_desc.clone();
-            } else {
-                log::warn!("desc member {} of LogStringEvent not found", desc_id);
-            }
-            vec![
-                (String::from("time"), Value::I64(time)),
-                (String::from("msg"), Value::String(Arc::new(msg.0))),
-                (String::from("desc"), desc),
-            ]
-        },
+        "LogStringEvent" => parse_log_string_event(dependencies, offset, object_size, buffer),
+        "LogStringInteropEventV2" => {
+            parse_log_string_interop_event(udts, dependencies, offset, object_size, buffer)
+        }
         other => {
             log::warn!("unknown custom object {}", other);
             Vec::new()
@@ -372,7 +427,7 @@ where
             static_size => (static_size, false),
         };
         let instance = if is_size_dynamic {
-            parse_custom_instance(udt, dependencies, offset, object_size, buffer)
+            parse_custom_instance(udt, udts, dependencies, offset, object_size, buffer)
         } else {
             parse_pod_instance(udt, udts, dependencies, offset, buffer)
         };

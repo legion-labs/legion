@@ -108,9 +108,9 @@ impl InProcSerialize for LogStringEvent {
 
     fn get_value_size(&self) -> Option<u32> {
         Some(
-            std::mem::size_of::<usize>() as u32
-                + self.dyn_str.get_value_size().unwrap()
-                + std::mem::size_of::<u64>() as u32,
+            std::mem::size_of::<usize>() as u32 //desc reference
+                + std::mem::size_of::<i64>() as u32 //time
+                + self.dyn_str.get_value_size().unwrap(), //dyn string
         )
     }
 
@@ -178,9 +178,10 @@ impl InProcSerialize for LogStringInteropEvent {
 
     fn get_value_size(&self) -> Option<u32> {
         Some(
-            self.msg.get_value_size().unwrap()
-                + std::mem::size_of::<StringId>() as u32
-                + (std::mem::size_of::<u32>() + std::mem::size_of::<u64>()) as u32,
+            std::mem::size_of::<i64>() as u32 //time
+                + std::mem::size_of::<u32>() as u32 //level
+                + std::mem::size_of::<StringId>() as u32 //target
+                + self.msg.get_value_size().unwrap(), //message
         )
     }
 
@@ -218,7 +219,7 @@ impl InProcSerialize for LogStringInteropEvent {
 impl Reflect for LogStringInteropEvent {
     fn reflect() -> UserDefinedType {
         UserDefinedType {
-            name: String::from("LogStringInteropEvent"),
+            name: String::from("LogStringInteropEventV2"),
             size: 0,
             members: vec![],
             is_reference: false,
