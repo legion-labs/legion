@@ -7,6 +7,7 @@
 use std::sync::Arc;
 
 use lgn_app::prelude::*;
+use lgn_codec_api::encoder_work_queue::EncoderWorkQueue;
 use lgn_core::Time;
 
 mod cgen {
@@ -39,6 +40,7 @@ impl Plugin for StreamerPlugin {
         app.insert_resource(streamer)
             .init_resource::<Time>()
             .init_resource::<streamer::streamer_windows::StreamerWindows>()
+            .insert_resource(EncoderWorkQueue::new())
             .add_event::<streamer::VideoStreamEvent>()
             .add_system(streamer::handle_stream_events)
             .add_system(streamer::update_streams)

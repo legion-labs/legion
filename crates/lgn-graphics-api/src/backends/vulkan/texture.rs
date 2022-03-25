@@ -1,5 +1,5 @@
-use std::ptr::slice_from_raw_parts;
 use std::sync::atomic::Ordering;
+use std::{ffi::c_void, ptr::slice_from_raw_parts};
 
 use ash::vk::{
     self, DeviceMemory, DeviceSize, ExportMemoryAllocateInfo, ExternalMemoryHandleTypeFlags,
@@ -37,6 +37,13 @@ impl VulkanRawImage {
                 .destroy_image(self.vk_image, &allocation);
             self.vk_image = vk::Image::null();
             trace!("destroyed ImageVulkan");
+        } else if let Some(device_memory) = self.vk_device_memory.take() {
+            unsafe {
+                device_context.vk_device().free_memory(device_memory, None);
+                device_context
+                    .vk_device()
+                    .destroy_image(self.vk_image, None);
+            };
         } else {
             trace!("ImageVulkan has no allocation associated with it, not destroying image");
             self.vk_image = vk::Image::null();
@@ -311,7 +318,10 @@ impl VulkanTexture {
         (Self { image, aspect_mask }, texture_id)
     }
 
-    pub fn export_capable(device_context: &DeviceContext, texture_def: &TextureDef) -> (Self, u32) {
+    pub fn new_export_capable(
+        device_context: &DeviceContext,
+        texture_def: &TextureDef,
+    ) -> (Self, u32) {
         let extent = vk::Extent3D {
             width: texture_def.extents.width,
             height: texture_def.extents.height,
@@ -428,6 +438,10 @@ impl VulkanTexture {
     pub fn destroy(&mut self, device_context: &DeviceContext) {
         self.image.destroy_image(device_context);
     }
+
+    pub fn external_memory_handle(&self, device_context: &DeviceContext) -> *mut c_void {
+        device_context.vk_external_memory(self.image.vk_device_memory.unwrap())
+    }
 }
 
 fn image_type_from_texture_def(texture_def: &TextureDef) -> ImageType {
@@ -484,16 +498,6 @@ impl Texture {
 
     pub(crate) fn vk_allocation(&self) -> Option<vk_mem::Allocation> {
         self.inner.backend_texture.image.vk_allocation
-    }
-
-    pub fn vk_device_memory(&self) -> DeviceMemory {
-        *self
-            .inner
-            .backend_texture
-            .image
-            .vk_device_memory
-            .as_ref()
-            .unwrap_or(&DeviceMemory::null())
     }
 
     pub fn vk_alloc_size(&self) -> DeviceSize {

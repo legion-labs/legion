@@ -1,9 +1,12 @@
+use std::ffi::c_void;
+
 use ash::vk::{ExportSemaphoreCreateInfo, ExternalSemaphoreHandleTypeFlags};
 
 use crate::{DeviceContext, Semaphore};
 
 pub(crate) struct VulkanSemaphore {
     vk_semaphore: ash::vk::Semaphore,
+    export_capable: bool,
 }
 
 impl VulkanSemaphore {
@@ -31,7 +34,10 @@ impl VulkanSemaphore {
                 .unwrap()
         };
 
-        Self { vk_semaphore }
+        Self {
+            vk_semaphore,
+            export_capable,
+        }
     }
 
     pub fn destroy(&self, device_context: &DeviceContext) {
@@ -40,6 +46,11 @@ impl VulkanSemaphore {
                 .vk_device()
                 .destroy_semaphore(self.vk_semaphore, None);
         }
+    }
+
+    pub fn external_semaphore_handle(&self, device_context: &DeviceContext) -> *mut c_void {
+        assert!(self.export_capable);
+        device_context.vk_external_semaphore(self.vk_semaphore)
     }
 }
 

@@ -218,7 +218,7 @@ impl OffscreenHelper {
         // Present the image
         //
 
-        let wait_sem = render_surface.sema();
+        let wait_sem = render_surface.presenter_sem();
         let graphics_queue = render_context.graphics_queue();
 
         graphics_queue.submit(&mut [cmd_buffer.finalize()], &[wait_sem], &[], None);

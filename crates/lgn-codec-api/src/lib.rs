@@ -46,8 +46,10 @@ use lgn_graphics_api::{Buffer, Texture};
 /// Contains the hardware implementation of multiple encoding/decoding
 /// algorithms
 pub mod backends;
-
 pub mod formats;
+
+pub mod encoder_resource;
+pub mod encoder_work_queue;
 
 /// doc
 #[derive(thiserror::Error, Debug)]

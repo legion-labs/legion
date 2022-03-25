@@ -1,11 +1,7 @@
-use lgn_codec_api::backends::CodecHardware::Nvidia;
-use lgn_codec_api::{
-    backends::{
-        nvenc::{NvEncEncoder, NvEncEncoderConfig},
-        EncoderConfig,
-    },
-    VideoProcessor,
-};
+use lgn_codec_api::backends::EncoderConfig;
+use lgn_codec_api::backends::{nvenc::NvEncEncoderWrapper, CodecHardware::Nvidia};
+use lgn_codec_api::encoder_work_queue::{EncoderWorkItem, EncoderWorkQueue};
+use lgn_codec_api::VideoProcessor;
 use lgn_graphics_api::prelude::*;
 use lgn_graphics_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
@@ -21,7 +17,7 @@ pub struct PresenterWindow {
     extents: RenderSurfaceExtents,
 
     // TMP - test code for Cuda encoder
-    cuda_encoder: Option<NvEncEncoder>,
+    cuda_encoder: Option<NvEncEncoderWrapper>,
 }
 
 impl std::fmt::Debug for PresenterWindow {
@@ -33,6 +29,7 @@ impl std::fmt::Debug for PresenterWindow {
 impl PresenterWindow {
     pub fn from_window(
         renderer: &Renderer,
+        encoder_work_queue: &EncoderWorkQueue,
         hwnd: &dyn HasRawWindowHandle,
         extents: RenderSurfaceExtents,
     ) -> Self {
@@ -51,6 +48,7 @@ impl PresenterWindow {
         let encoder_cofig = EncoderConfig {
             hardware: Nvidia,
             gfx_config: device_context.clone(),
+            work_queue: encoder_work_queue.clone(),
             width: extents.width(),
             height: extents.height(),
         };
@@ -58,7 +56,7 @@ impl PresenterWindow {
         Self {
             swapchain_helper: SwapchainHelper::new(device_context, swapchain, None).unwrap(),
             extents,
-            cuda_encoder: NvEncEncoder::new(NvEncEncoderConfig::from(encoder_cofig)),
+            cuda_encoder: NvEncEncoderWrapper::new(encoder_cofig),
         }
     }
 
@@ -69,9 +67,12 @@ impl PresenterWindow {
     ) {
         // TMP - test encoder
         if let Some(encoder) = &self.cuda_encoder {
-            encoder.cuda_image_from_vulkan(render_surface.texture());
-            encoder.cuda_semaphore_from_vulkan(render_surface.sema());
-            encoder.encode_frame();
+            encoder
+                .submit_input(&EncoderWorkItem {
+                    image: render_surface.texture().clone(),
+                    semaphore: render_surface.encoder_sem().clone(),
+                })
+                .unwrap();
         }
 
         //
@@ -101,7 +102,7 @@ impl PresenterWindow {
                 )],
             );
 
-            let src_texture = render_surface.texture();
+            let src_texture = render_surface.texture().external_resource();
             let src_texture_def = src_texture.definition();
             let dst_texture = swapchain_texture;
             let dst_texture_def = dst_texture.definition();
@@ -129,7 +130,7 @@ impl PresenterWindow {
                 array_slices: Some([0, 0]),
                 filtering: FilterType::Linear,
             };
-            cmd_buffer.blit_texture(src_texture, dst_texture, &blit_params);
+            cmd_buffer.blit_texture(&src_texture, dst_texture, &blit_params);
 
             cmd_buffer.resource_barrier(
                 &[],
@@ -146,7 +147,7 @@ impl PresenterWindow {
         //
         {
             let present_queue = render_context.graphics_queue();
-            let wait_sem = render_surface.sema();
+            let wait_sem = render_surface.presenter_sem();
             presentable_frame
                 .present(&present_queue, wait_sem, &mut [cmd_buffer.finalize()])
                 .unwrap();

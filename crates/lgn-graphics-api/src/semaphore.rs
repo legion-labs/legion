@@ -1,6 +1,9 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::{backends::BackendSemaphore, deferred_drop::Drc, DeviceContext};
+use crate::{
+    backends::BackendSemaphore, deferred_drop::Drc, DeviceContext, ExternalResource,
+    ExternalResourceType,
+};
 
 pub(crate) struct SemaphoreInner {
     device_context: DeviceContext,
@@ -11,6 +14,7 @@ pub(crate) struct SemaphoreInner {
     pub(crate) backend_semaphore: BackendSemaphore,
 }
 
+#[derive(Clone)]
 pub struct Semaphore {
     pub(crate) inner: Drc<SemaphoreInner>,
 }
@@ -42,5 +46,21 @@ impl Semaphore {
         self.inner
             .signal_available
             .store(available, Ordering::Relaxed);
+    }
+}
+
+impl ExternalResource<Self> for Semaphore {
+    fn clone_resource(&self) -> Self {
+        self.clone()
+    }
+
+    fn external_resource_type() -> ExternalResourceType {
+        ExternalResourceType::Semaphore
+    }
+
+    fn external_resource_handle(&self, device_context: &DeviceContext) -> ash::vk::HANDLE {
+        self.inner
+            .backend_semaphore
+            .external_semaphore_handle(device_context)
     }
 }

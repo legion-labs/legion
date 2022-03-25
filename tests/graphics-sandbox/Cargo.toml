@@ -8,6 +8,7 @@ license = "MIT OR Apache-2.0"
 lgn-app = { path = "../../crates/lgn-app", version = "0.1.0" }
 lgn-asset-registry = { path = "../../crates/lgn-asset-registry", version = "0.1.0" }
 lgn-core = { path = "../../crates/lgn-core", version = "0.1.0" }
+lgn-codec-api = { path = "../../crates/lgn-codec-api", version = "0.1.0" }
 lgn-data-runtime = { path = "../../crates/lgn-data-runtime", version = "0.1.0" }
 lgn-ecs = { path = "../../crates/lgn-ecs", version = "0.1.0" }
 lgn-graphics-api = { path = "../../crates/lgn-graphics-api", version = "0.1.0" }
