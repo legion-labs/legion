@@ -10,7 +10,6 @@ mod parser;
 mod reflect;
 mod serialize;
 mod static_string;
-mod string_id;
 
 pub use dyn_string::*;
 pub use heterogeneous_queue::*;
@@ -18,7 +17,6 @@ pub use parser::*;
 pub use reflect::*;
 pub use serialize::*;
 pub use static_string::*;
-pub use string_id::*;
 
 #[allow(unused_imports)]
 #[macro_use]

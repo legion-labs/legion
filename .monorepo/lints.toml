@@ -20,7 +20,7 @@ exceptions = ["lgn-math"]
 name = "log"
 version = "*"
 reason = "use `lgn-tracing` instead, our logging solution"
-exceptions = ["lgn-tracing", "lgn-telemetry-sink"]
+exceptions = ["lgn-tracing", "lgn-telemetry-sink", "lgn-tracing-transit"]
 
 [[direct-dependencies.bans]]
 name = "structopts"

@@ -13,6 +13,7 @@ message UserDefinedType {
   string name = 1;
   uint32 size = 2;
   repeated UDTMember members = 3;
+  bool is_reference = 4;
 }
 
 message ContainerMetadata {

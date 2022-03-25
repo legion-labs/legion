@@ -1,8 +1,8 @@
 use std::sync::atomic::{AtomicU32, Ordering};
 
-use lgn_tracing_transit::{prelude::*, StringId};
+use lgn_tracing_transit::prelude::*;
 
-use crate::{Level, LevelFilter};
+use crate::{string_id::StringId, Level, LevelFilter};
 
 #[derive(Debug)]
 pub struct LogMetadata {
@@ -108,9 +108,9 @@ impl InProcSerialize for LogStringEvent {
 
     fn get_value_size(&self) -> Option<u32> {
         Some(
-            std::mem::size_of::<usize>() as u32
-                + self.dyn_str.get_value_size().unwrap()
-                + std::mem::size_of::<u64>() as u32,
+            std::mem::size_of::<usize>() as u32 //desc reference
+                + std::mem::size_of::<i64>() as u32 //time
+                + self.dyn_str.get_value_size().unwrap(), //dyn string
         )
     }
 
@@ -149,6 +149,8 @@ impl Reflect for LogStringEvent {
             name: String::from("LogStringEvent"),
             size: 0,
             members: vec![],
+            is_reference: false,
+            secondary_udts: vec![],
         }
     }
 }
@@ -176,15 +178,17 @@ impl InProcSerialize for LogStringInteropEvent {
 
     fn get_value_size(&self) -> Option<u32> {
         Some(
-            self.msg.get_value_size().unwrap()
-                + 2 * (std::mem::size_of::<u32>() + std::mem::size_of::<u64>()) as u32,
+            std::mem::size_of::<i64>() as u32 //time
+                + std::mem::size_of::<u32>() as u32 //level
+                + std::mem::size_of::<StringId>() as u32 //target
+                + self.msg.get_value_size().unwrap(), //message
         )
     }
 
     fn write_value(&self, buffer: &mut Vec<u8>) {
         write_any(buffer, &self.time);
         write_any(buffer, &self.level);
-        self.target.write_value(buffer);
+        write_any(buffer, &self.target);
         self.msg.write_value(buffer);
     }
 
@@ -193,9 +197,9 @@ impl InProcSerialize for LogStringInteropEvent {
         let level_offset = std::mem::size_of::<i64>();
         let level = read_any::<u32>(ptr.add(level_offset));
         let target_offset = level_offset + std::mem::size_of::<u32>();
-        let target = StringId::read_value(ptr.add(target_offset), None);
+        let target = read_any::<StringId>(ptr.add(target_offset));
         let buffer_size = value_size.unwrap();
-        let msg_offset = target_offset + StringId::rw_size();
+        let msg_offset = target_offset + std::mem::size_of::<StringId>();
         let msg_ptr = ptr.add(msg_offset);
         let msg = <DynString as InProcSerialize>::read_value(
             msg_ptr,
@@ -215,9 +219,11 @@ impl InProcSerialize for LogStringInteropEvent {
 impl Reflect for LogStringInteropEvent {
     fn reflect() -> UserDefinedType {
         UserDefinedType {
-            name: String::from("LogStringInteropEvent"),
+            name: String::from("LogStringInteropEventV2"),
             size: 0,
             members: vec![],
+            is_reference: false,
+            secondary_udts: vec![],
         }
     }
 }
