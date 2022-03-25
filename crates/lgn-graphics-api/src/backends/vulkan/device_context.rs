@@ -4,7 +4,11 @@ use std::ffi::CStr;
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 
+#[cfg(target_os = "linux")]
+use ash::extensions::khr::{self, ExternalMemoryFd, ExternalSemaphoreFd};
+#[cfg(target_os = "windows")]
 use ash::extensions::khr::{self, ExternalMemoryWin32, ExternalSemaphoreWin32};
+
 use ash::vk::{self, DeviceMemory};
 use fnv::FnvHashMap;
 use lgn_tracing::{debug, info, trace, warn};
