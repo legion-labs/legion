@@ -1,3 +1,4 @@
+use lgn_analytics::log_entry_from_value;
 use lgn_analytics::parse_block;
 use lgn_telemetry_sink::stream_block::StreamBlock;
 use lgn_telemetry_sink::stream_info::get_stream_info;
@@ -93,4 +94,37 @@ fn test_log_encode_dynamic() {
         Ok(true)
     })
     .unwrap();
+}
+
+#[test]
+fn test_parse_log_interops() {
+    let _telemetry_guard = TelemetryGuard::default();
+    let mut stream = LogStream::new(1024, String::from("bogus_process_id"), &[], HashMap::new());
+    let stream_id = stream.stream_id().to_string();
+    stream.get_events_mut().push(LogStaticStrInteropEvent {
+        time: 1,
+        level: 2,
+        target: "target_name".into(),
+        msg: "my message".into(),
+    });
+    stream.get_events_mut().push(LogStringInteropEvent {
+        time: 1,
+        level: 2,
+        target: "target_name".into(),
+        msg: lgn_tracing_transit::DynString(String::from("my message")),
+    });
+    let mut block = stream.replace_block(Arc::new(LogBlock::new(1024, stream_id)));
+    Arc::get_mut(&mut block).unwrap().close();
+    let encoded = block.encode().unwrap();
+    assert_eq!(encoded.nb_objects, 2);
+    let stream_info = get_stream_info(&stream);
+    let mut nb_log_entries = 0;
+    parse_block(&stream_info, &encoded.payload.unwrap(), |val| {
+        if let Some((_time, _msg)) = log_entry_from_value(&val).unwrap() {
+            nb_log_entries += 1;
+        }
+        Ok(true)
+    })
+    .unwrap();
+    assert_eq!(nb_log_entries, 2);
 }
