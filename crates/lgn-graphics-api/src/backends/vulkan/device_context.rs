@@ -244,7 +244,7 @@ impl DeviceContext {
         #[cfg(target_os = "windows")]
         type MemoryGetHandleInfo = ash::vk::MemoryGetWin32HandleInfoKHR;
         #[cfg(target_os = "linux")]
-        type MemoryGetHandleInfo = ash::vk::MemoryGetFdHandleInfoKHR;
+        type MemoryGetHandleInfo = ash::vk::MemoryGetFdInfoKHR;
 
         let create_info = MemoryGetHandleInfo {
             #[cfg(target_os = "windows")]
@@ -269,7 +269,7 @@ impl DeviceContext {
             self.inner
                 .backend_device_context
                 .external_memory
-                .get_memory_fd_handle(&create_info)
+                .get_memory_fd(&create_info)
                 .unwrap()
         }
     }
@@ -278,7 +278,7 @@ impl DeviceContext {
         #[cfg(target_os = "windows")]
         type SemaphoreGetHandleInfo = ash::vk::SemaphoreGetWin32HandleInfoKHR;
         #[cfg(target_os = "linux")]
-        type SemaphoreGetHandleInfo = ash::vk::SemaphoreGetFdHandleInfoKHR;
+        type SemaphoreGetHandleInfo = ash::vk::SemaphoreGetFdInfoKHR;
 
         let create_info = SemaphoreGetHandleInfo {
             #[cfg(target_os = "windows")]
@@ -303,7 +303,7 @@ impl DeviceContext {
             self.inner
                 .backend_device_context
                 .external_semaphore
-                .get_semaphore_fd_handle(&create_info)
+                .get_semaphore_fd(&create_info)
                 .unwrap()
         }
     }
