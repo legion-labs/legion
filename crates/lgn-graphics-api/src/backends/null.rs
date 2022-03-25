@@ -18,8 +18,8 @@ use crate::{
     CommandBufferDef, CommandPool, CommandPoolDef, ComputePipelineDef,
     DepthStencilRenderTargetBinding, Descriptor, DescriptorHeapDef, DescriptorHeapPartition,
     DescriptorRef, DescriptorSet, DescriptorSetHandle, DescriptorSetLayout, DescriptorSetWriter,
-    DeviceContext, DeviceInfo, ExtensionMode, Fence, FenceStatus, Format, GfxResult,
-    GraphicsPipelineDef, IndexBufferBinding, MemoryAllocation, MemoryAllocationDef,
+    DeviceContext, DeviceInfo, ExtensionMode, ExternalResourceHandle, Fence, FenceStatus, Format,
+    GfxResult, GraphicsPipelineDef, IndexBufferBinding, MemoryAllocation, MemoryAllocationDef,
     PagedBufferAllocation, Pipeline, PipelineType, PlaneSlice, PresentSuccessResult, Queue,
     QueueType, RootSignature, RootSignatureDef, SamplerDef, Semaphore, ShaderModuleDef, Swapchain,
     SwapchainDef, SwapchainImage, Texture, TextureBarrier, TextureDef, TextureSubResource,
@@ -752,13 +752,7 @@ impl NullTexture {
         unimplemented!()
     }
 
-    #[cfg(target_os = "windows")]
-    pub fn external_memory_handle(&self, device_context: &DeviceContext) -> *mut c_void {
-        unimplemented!()
-    }
-
-    #[cfg(target_os = "linux")]
-    pub fn external_memory_fd(&self, device_context: &DeviceContext) -> i32 {
+    pub fn external_memory_handle(&self, device_context: &DeviceContext) -> ExternalResourceHandle {
         unimplemented!()
     }
 }
