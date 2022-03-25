@@ -58,12 +58,16 @@ impl IndexAllocator {
         block.acquire_index()
     }
 
-    pub fn release_index_ids(&mut self, indexes: &[u32]) {
+    pub fn release_indexes(&mut self, indexes: &[u32]) {
         for index in indexes {
-            let block_id = index / self.block_size;
-            let block = &mut self.index_blocks[block_id as usize];
-            block.release_index(*index);
+            self.release_index(*index);
         }
+    }
+
+    pub fn release_index(&mut self, index: u32) {
+        let block_id = index / self.block_size;
+        let block = &mut self.index_blocks[block_id as usize];
+        block.release_index(index);
     }
 
     fn acquire_index_block_mut(&mut self) -> &mut IndexBlock {

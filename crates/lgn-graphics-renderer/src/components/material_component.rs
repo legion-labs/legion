@@ -17,9 +17,8 @@ impl Default for AlphaMode {
     }
 }
 
-#[derive(Component)]
-pub struct MaterialComponent {
-    pub material_id: ResourceTypeAndId,
+#[derive(Default, Clone)]
+pub struct MaterialData {
     pub albedo_texture: Option<TextureReferenceType>,
     pub base_albedo: Color,
     pub normal_texture: Option<TextureReferenceType>,
@@ -29,6 +28,12 @@ pub struct MaterialComponent {
     pub roughness_texture: Option<TextureReferenceType>,
     pub base_roughness: f32,
     pub alpha_mode: AlphaMode,
+}
+
+#[derive(Component)]
+pub struct MaterialComponent {
+    pub material_id: ResourceTypeAndId,
+    pub material_data: MaterialData,
 }
 
 impl MaterialComponent {
@@ -41,15 +46,17 @@ impl MaterialComponent {
     ) -> Self {
         Self {
             material_id,
-            albedo_texture,
-            base_albedo: Color::from((204, 204, 204)),
-            normal_texture,
-            metalness_texture,
-            base_metalness: 0.0,
-            reflectance: 0.5,
-            roughness_texture,
-            base_roughness: 0.4,
-            alpha_mode: AlphaMode::Opaque,
+            material_data: MaterialData {
+                albedo_texture,
+                base_albedo: Color::from((204, 204, 204)),
+                normal_texture,
+                metalness_texture,
+                base_metalness: 0.0,
+                reflectance: 0.5,
+                roughness_texture,
+                base_roughness: 0.4,
+                alpha_mode: AlphaMode::Opaque,
+            },
         }
     }
 }

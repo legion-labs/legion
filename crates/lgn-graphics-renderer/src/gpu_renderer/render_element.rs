@@ -1,4 +1,7 @@
-use crate::{hl_gfx_api::HLCommandBuffer, resources::MeshManager};
+use crate::{
+    hl_gfx_api::HLCommandBuffer,
+    resources::{MaterialId, MeshManager},
+};
 
 #[derive(Clone, Copy)]
 pub struct RenderElement {
@@ -36,6 +39,6 @@ impl RenderElement {
 }
 
 pub enum GpuInstanceEvent {
-    Added(Vec<(u32, RenderElement)>),
+    Added(Vec<(MaterialId, RenderElement)>),
     Removed(Vec<u32>),
 }
