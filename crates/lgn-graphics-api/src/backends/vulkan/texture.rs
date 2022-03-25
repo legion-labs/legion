@@ -1,5 +1,5 @@
+use std::ptr::slice_from_raw_parts;
 use std::sync::atomic::Ordering;
-use std::{ffi::c_void, ptr::slice_from_raw_parts};
 
 use ash::vk::{
     self, DeviceMemory, DeviceSize, ExportMemoryAllocateInfo, ExternalMemoryHandleTypeFlags,
@@ -9,8 +9,8 @@ use ash::vk::{
 use lgn_tracing::trace;
 
 use crate::{
-    DeviceContext, GfxResult, MemoryUsage, PlaneSlice, ResourceFlags, ResourceUsage, Texture,
-    TextureDef, TextureSubResource,
+    DeviceContext, ExternalResourceHandle, GfxResult, MemoryUsage, PlaneSlice, ResourceFlags,
+    ResourceUsage, Texture, TextureDef, TextureSubResource,
 };
 
 static NEXT_TEXTURE_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
@@ -439,8 +439,8 @@ impl VulkanTexture {
         self.image.destroy_image(device_context);
     }
 
-    pub fn external_memory_handle(&self, device_context: &DeviceContext) -> *mut c_void {
-        device_context.vk_external_memory(self.image.vk_device_memory.unwrap())
+    pub fn external_memory_handle(&self, device_context: &DeviceContext) -> ExternalResourceHandle {
+        device_context.vk_external_memory_handle(self.image.vk_device_memory.unwrap())
     }
 }
 

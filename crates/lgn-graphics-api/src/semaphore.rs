@@ -1,6 +1,6 @@
-use std::ffi::c_void;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use crate::ExternalResourceHandle;
 use crate::{
     backends::BackendSemaphore, deferred_drop::Drc, DeviceContext, ExternalResource,
     ExternalResourceType,
@@ -59,7 +59,7 @@ impl ExternalResource<Self> for Semaphore {
         ExternalResourceType::Semaphore
     }
 
-    fn external_resource_handle(&self, device_context: &DeviceContext) -> *mut c_void {
+    fn external_resource_handle(&self, device_context: &DeviceContext) -> ExternalResourceHandle {
         self.inner
             .backend_semaphore
             .external_semaphore_handle(device_context)

@@ -1,9 +1,6 @@
-use std::{
-    ffi::c_void,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
-use lgn_graphics_api::{DeviceContext, ExternalResource};
+use lgn_graphics_api::{DeviceContext, ExternalResource, ExternalResourceHandle};
 
 use crate::encoder_work_queue::EncoderWorkQueue;
 
@@ -49,7 +46,7 @@ impl<T: ExternalResource<T>> EncoderResource<T> {
         inner.external_resource.clone_resource()
     }
 
-    pub(crate) fn external_resource_handle(&self) -> *mut c_void {
+    pub(crate) fn external_resource_handle(&self) -> ExternalResourceHandle {
         let inner = &mut *self.inner.lock().unwrap();
         inner
             .external_resource

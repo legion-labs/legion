@@ -1,4 +1,3 @@
-use std::ffi::c_void;
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
@@ -8,9 +7,9 @@ use lgn_tracing::span_fn;
 use crate::backends::{BackendRawImage, BackendTexture};
 use crate::deferred_drop::Drc;
 use crate::{
-    DeviceContext, Extents3D, ExternalResource, ExternalResourceType, Format, GfxResult,
-    MemoryUsage, PlaneSlice, ResourceFlags, ResourceUsage, TextureSubResource, TextureTiling,
-    TextureView, TextureViewDef,
+    DeviceContext, Extents3D, ExternalResource, ExternalResourceHandle, ExternalResourceType,
+    Format, GfxResult, MemoryUsage, PlaneSlice, ResourceFlags, ResourceUsage, TextureSubResource,
+    TextureTiling, TextureView, TextureViewDef,
 };
 
 /// Used to create a `Texture`
@@ -202,7 +201,7 @@ impl ExternalResource<Self> for Texture {
         ExternalResourceType::Image
     }
 
-    fn external_resource_handle(&self, device_context: &DeviceContext) -> *mut c_void {
+    fn external_resource_handle(&self, device_context: &DeviceContext) -> ExternalResourceHandle {
         assert!(self
             .definition()
             .usage_flags

@@ -299,10 +299,15 @@ pub enum ExternalResourceType {
     Semaphore,
 }
 
+#[cfg(target_os = "windows")]
+pub type ExternalResourceHandle = *mut c_void;
+#[cfg(target_os = "linux")]
+pub type ExternalResourceHandle = i32;
+
 pub trait ExternalResource<T> {
     fn clone_resource(&self) -> T;
 
     fn external_resource_type() -> ExternalResourceType;
 
-    fn external_resource_handle(&self, device_context: &DeviceContext) -> *mut c_void;
+    fn external_resource_handle(&self, device_context: &DeviceContext) -> ExternalResourceHandle;
 }

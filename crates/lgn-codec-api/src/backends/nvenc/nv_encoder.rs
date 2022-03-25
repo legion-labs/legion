@@ -293,10 +293,13 @@ impl NvEncEncoder {
 
         if image.internal_resource() == u64::MAX {
             let handle = CUDA_EXTERNAL_MEMORY_HANDLE_DESC_st__bindgen_ty_1 {
+                #[cfg(target_os = "windows")]
                 win32: CUDA_EXTERNAL_MEMORY_HANDLE_DESC_st__bindgen_ty_1__bindgen_ty_1 {
                     handle: image.external_resource_handle(),
                     name: std::ptr::null_mut(),
                 },
+                #[cfg(target_os = "linux")]
+                fd: image.ExternalResourceHandle(),
             };
 
             let memory_handle_desc = CUDA_EXTERNAL_MEMORY_HANDLE_DESC {
@@ -423,10 +426,13 @@ impl NvEncEncoder {
 
         if semaphore.internal_resource() == u64::MAX {
             let handle = CUDA_EXTERNAL_SEMAPHORE_HANDLE_DESC_st__bindgen_ty_1 {
+                #[cfg(target_os = "windows")]
                 win32: CUDA_EXTERNAL_SEMAPHORE_HANDLE_DESC_st__bindgen_ty_1__bindgen_ty_1 {
                     handle: semaphore.external_resource_handle(),
                     name: std::ptr::null_mut(),
                 },
+                #[cfg(target_os = "linux")]
+                fd: semaphore.ExternalResourceHandle(),
             };
 
             let sema_desc = CUDA_EXTERNAL_SEMAPHORE_HANDLE_DESC {
