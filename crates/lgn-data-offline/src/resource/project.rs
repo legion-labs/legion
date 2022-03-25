@@ -74,7 +74,6 @@ pub struct Project {
     resource_dir: PathBuf,
     local_remote: Option<LocalIndexBackend>,
     workspace: Workspace,
-    content_provider: Box<dyn lgn_content_store2::ContentProvider + Send + Sync>,
 }
 
 #[derive(Error, Debug)]
@@ -130,15 +129,14 @@ impl Project {
     pub async fn create_with_remote_mock(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
         let remote_dir = project_dir.as_ref().join("remote");
         let remote = Self::create_local_origin(&remote_dir).await?;
+        let content_store_configuration = lgn_content_store2::Config::local(&remote_dir);
 
-        // The section of the legion.toml content-store configuration to use.
-        //
-        // Several project using the same content-store configuration section
-        // will use the same storage space, which is actually desirable.
-        let content_store_section = "data_build";
-
-        let mut project =
-            Self::create(project_dir, "../remote".to_string(), content_store_section).await?;
+        let mut project = Self::create(
+            project_dir,
+            "../remote".to_string(),
+            content_store_configuration,
+        )
+        .await?;
         project.local_remote = Some(remote);
         Ok(project)
     }
@@ -148,22 +146,13 @@ impl Project {
     pub async fn create(
         project_dir: impl AsRef<Path>,
         remote_path: String,
-        content_store_section: &str,
+        content_store_configuration: lgn_content_store2::Config,
     ) -> Result<Self, Error> {
         let resource_dir = project_dir.as_ref().join("offline");
         if !resource_dir.exists() {
             std::fs::create_dir(&resource_dir).map_err(|e| Error::Io(resource_dir.clone(), e))?;
         }
 
-        let content_store_section_path = resource_dir.join(".lcs-section");
-        std::fs::write(
-            &content_store_section_path,
-            content_store_section.as_bytes(),
-        )
-        .map_err(|e| Error::Io(content_store_section_path, e))?;
-
-        let content_store_configuration =
-            lgn_content_store2::Config::from_legion_toml(Some(content_store_section));
         let content_provider = content_store_configuration
             .instantiate_provider()
             .await
@@ -176,8 +165,9 @@ impl Project {
 
         let workspace = Workspace::init(
             &resource_dir,
-            WorkspaceConfig::new(remote_path, WorkspaceRegistration::new_with_current_user()),
-            &content_provider,
+            WorkspaceConfig::new(remote_path, WorkspaceRegistration::new_with_current_user())
+                .with_content_store_configuration(content_store_configuration),
+            content_provider,
         )
         .await
         .map_err(|e| {
@@ -192,28 +182,12 @@ impl Project {
             resource_dir,
             local_remote: None,
             workspace,
-            content_provider,
         })
     }
 
     /// Opens the project index specified
     pub async fn open(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
         let resource_dir = project_dir.as_ref().join("offline");
-
-        let content_store_section_path = resource_dir.join(".lcs-section");
-        let content_store_section = std::fs::read_to_string(&content_store_section_path)
-            .map_err(|e| Error::Io(content_store_section_path, e))?;
-        let content_store_configuration =
-            lgn_content_store2::Config::from_legion_toml(Some(&content_store_section));
-        let content_provider = content_store_configuration
-            .instantiate_provider()
-            .await
-            .map_err(|e| {
-                Error::SourceControl(lgn_source_control::Error::Other {
-                    source: anyhow::Error::new(e),
-                    context: "failed to instanciate content-store provider".to_string(),
-                })
-            })?;
 
         let workspace = Workspace::load(&resource_dir).await.map_err(|e| {
             Error::SourceControl(lgn_source_control::Error::Other {
@@ -227,7 +201,6 @@ impl Project {
             resource_dir,
             local_remote: None,
             workspace,
-            content_provider,
         })
     }
 
@@ -456,9 +429,20 @@ impl Project {
         let metadata = Metadata::new_with_dependencies(name, kind_name, kind, &build_dependencies);
         serde_json::to_writer_pretty(meta_file, &metadata).unwrap();
 
+        let content_provider = self
+            .workspace
+            .instanciate_content_store_provider()
+            .await
+            .map_err(|e| {
+                Error::SourceControl(lgn_source_control::Error::Other {
+                    source: anyhow::Error::new(e),
+                    context: "failed to instantiate content-store provider".to_string(),
+                })
+            })?;
+
         self.workspace
             .add_files(
-                &self.content_provider,
+                content_provider,
                 [meta_path.as_path(), resource_path.as_path()],
             )
             .await
@@ -526,9 +510,20 @@ impl Project {
         meta_file.seek(std::io::SeekFrom::Start(0)).unwrap();
         serde_json::to_writer_pretty(&meta_file, &metadata).unwrap(); // todo(kstasik): same as above.
 
+        let content_provider = self
+            .workspace
+            .instanciate_content_store_provider()
+            .await
+            .map_err(|e| {
+                Error::SourceControl(lgn_source_control::Error::Other {
+                    source: anyhow::Error::new(e),
+                    context: "failed to instantiate content-store provider".to_string(),
+                })
+            })?;
+
         self.workspace
             .add_files(
-                &self.content_provider,
+                content_provider,
                 [metadata_path.as_path(), resource_path.as_path()],
             ) // add
             .await
@@ -700,9 +695,20 @@ impl Project {
 
     /// Pulls all changes from the origin.
     pub async fn sync_latest(&mut self) -> Result<Vec<(ResourceId, ChangeType)>, Error> {
+        let content_provider = self
+            .workspace
+            .instanciate_content_store_provider()
+            .await
+            .map_err(|e| {
+                Error::SourceControl(lgn_source_control::Error::Other {
+                    source: anyhow::Error::new(e),
+                    context: "failed to instantiate content-store provider".to_string(),
+                })
+            })?;
+
         let (_, changed) = self
             .workspace
-            .sync(&self.content_provider)
+            .sync(content_provider)
             .await
             .map_err(Error::SourceControl)?;
 

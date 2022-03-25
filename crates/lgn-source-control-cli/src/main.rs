@@ -272,14 +272,6 @@ async fn main() -> anyhow::Result<()> {
         ColorChoice::Never
     };
 
-    let content_store_config = Config::from_legion_toml(
-        Config::content_store_section()
-            .as_deref()
-            .or(Some("source_control")),
-    );
-
-    let content_provider = content_store_config.instantiate_provider().await?;
-
     let mut stdout = StandardStream::stdout(choice);
 
     match args.command {
@@ -323,8 +315,17 @@ async fn main() -> anyhow::Result<()> {
         } => {
             info!("init-workspace");
 
+            let content_store_config = Config::from_legion_toml(
+                Config::content_store_section()
+                    .as_deref()
+                    .or(Some("source_control")),
+            );
+
+            let content_provider = content_store_config.instantiate_provider().await?;
+
             let config =
-                WorkspaceConfig::new(index_url, WorkspaceRegistration::new_with_current_user());
+                WorkspaceConfig::new(index_url, WorkspaceRegistration::new_with_current_user())
+                    .with_content_store_configuration(content_store_config);
 
             Workspace::init(&workspace_directory, config, content_provider)
                 .await
@@ -335,7 +336,10 @@ async fn main() -> anyhow::Result<()> {
             let workspace = Workspace::find_in_current_directory().await?;
 
             workspace
-                .add_files(content_provider, paths.iter().map(PathBuf::as_path))
+                .add_files(
+                    workspace.instanciate_content_store_provider().await?,
+                    paths.iter().map(PathBuf::as_path),
+                )
                 .await
                 .map_err(Into::into)
                 .map(|_| ())
@@ -408,7 +412,10 @@ async fn main() -> anyhow::Result<()> {
             let workspace = Workspace::find_in_current_directory().await?;
 
             let (branch, changes) = workspace
-                .switch_branch(content_provider, &branch_name)
+                .switch_branch(
+                    workspace.instanciate_content_store_provider().await?,
+                    &branch_name,
+                )
                 .await?;
 
             println!("Now on branch {}", branch);
@@ -452,7 +459,7 @@ async fn main() -> anyhow::Result<()> {
 
             let reverted_files = workspace
                 .revert_files(
-                    content_provider,
+                    workspace.instanciate_content_store_provider().await?,
                     paths.iter().map(PathBuf::as_path),
                     staging,
                 )
@@ -566,11 +573,18 @@ async fn main() -> anyhow::Result<()> {
             let workspace = Workspace::find_in_current_directory().await?;
 
             let (current_commit_id, changes) = if let Some(commit_id) = commit_id {
-                let changes = workspace.sync_to(content_provider, commit_id).await?;
+                let changes = workspace
+                    .sync_to(
+                        workspace.instanciate_content_store_provider().await?,
+                        commit_id,
+                    )
+                    .await?;
 
                 (commit_id, changes)
             } else {
-                let (branch, changes) = workspace.sync(content_provider).await?;
+                let (branch, changes) = workspace
+                    .sync(workspace.instanciate_content_store_provider().await?)
+                    .await?;
 
                 (branch.head, changes)
             };
