@@ -8,17 +8,22 @@ use std::{
 
 use lgn_graphics_api::{Extents3D, Semaphore, Texture};
 use lgn_tracing::{span_fn, span_scope};
+
+#[cfg(target_os = "windows")]
+use nvenc_sys::cuda::{
+    CUDA_EXTERNAL_MEMORY_HANDLE_DESC_st__bindgen_ty_1__bindgen_ty_1,
+    CUDA_EXTERNAL_SEMAPHORE_HANDLE_DESC_st__bindgen_ty_1__bindgen_ty_1,
+};
+
 use nvenc_sys::{
     cuda::{
         CUDA_EXTERNAL_MEMORY_HANDLE_DESC_st__bindgen_ty_1,
-        CUDA_EXTERNAL_MEMORY_HANDLE_DESC_st__bindgen_ty_1__bindgen_ty_1,
-        CUDA_EXTERNAL_SEMAPHORE_HANDLE_DESC_st__bindgen_ty_1,
-        CUDA_EXTERNAL_SEMAPHORE_HANDLE_DESC_st__bindgen_ty_1__bindgen_ty_1, CUarray,
-        CUarray_format_enum, CUexternalMemory, CUexternalMemoryHandleType_enum,
-        CUexternalSemaphore, CUexternalSemaphoreHandleType_enum, CUmipmappedArray, CUresult,
-        CUDA_ARRAY3D_DESCRIPTOR, CUDA_EXTERNAL_MEMORY_HANDLE_DESC,
-        CUDA_EXTERNAL_MEMORY_MIPMAPPED_ARRAY_DESC, CUDA_EXTERNAL_SEMAPHORE_HANDLE_DESC,
-        CUDA_EXTERNAL_SEMAPHORE_SIGNAL_PARAMS, CUDA_EXTERNAL_SEMAPHORE_WAIT_PARAMS,
+        CUDA_EXTERNAL_SEMAPHORE_HANDLE_DESC_st__bindgen_ty_1, CUarray, CUarray_format_enum,
+        CUexternalMemory, CUexternalMemoryHandleType_enum, CUexternalSemaphore,
+        CUexternalSemaphoreHandleType_enum, CUmipmappedArray, CUresult, CUDA_ARRAY3D_DESCRIPTOR,
+        CUDA_EXTERNAL_MEMORY_HANDLE_DESC, CUDA_EXTERNAL_MEMORY_MIPMAPPED_ARRAY_DESC,
+        CUDA_EXTERNAL_SEMAPHORE_HANDLE_DESC, CUDA_EXTERNAL_SEMAPHORE_SIGNAL_PARAMS,
+        CUDA_EXTERNAL_SEMAPHORE_WAIT_PARAMS,
     },
     NVENCSTATUS, NVENC_INFINITE_GOPLENGTH, NV_ENCODE_API_FUNCTION_LIST,
     NV_ENCODE_API_FUNCTION_LIST_VER, NV_ENC_CODEC_H264_GUID, NV_ENC_CONFIG, NV_ENC_CONFIG_VER,
@@ -299,7 +304,7 @@ impl NvEncEncoder {
                     name: std::ptr::null_mut(),
                 },
                 #[cfg(target_os = "linux")]
-                fd: image.ExternalResourceHandle(),
+                fd: image.external_resource_handle(),
             };
 
             let memory_handle_desc = CUDA_EXTERNAL_MEMORY_HANDLE_DESC {
@@ -432,7 +437,7 @@ impl NvEncEncoder {
                     name: std::ptr::null_mut(),
                 },
                 #[cfg(target_os = "linux")]
-                fd: semaphore.ExternalResourceHandle(),
+                fd: semaphore.external_resource_handle(),
             };
 
             let sema_desc = CUDA_EXTERNAL_SEMAPHORE_HANDLE_DESC {
