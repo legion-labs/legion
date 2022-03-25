@@ -240,22 +240,14 @@ impl DeviceContext {
         &self.inner.backend_device_context.vk_allocator
     }
 
+    #[cfg(target_os = "windows")]
     pub(crate) fn vk_external_memory(&self, device_memory: DeviceMemory) -> vk::HANDLE {
-        #[cfg(target_os = "windows")]
-        type MemoryGetHandleInfo = ash::vk::MemoryGetWin32HandleInfoKHR;
-        #[cfg(target_os = "linux")]
-        type MemoryGetHandleInfo = ash::vk::MemoryGetFdInfoKHR;
-
-        let create_info = MemoryGetHandleInfo {
-            #[cfg(target_os = "windows")]
+        let create_info = ash::vk::MemoryGetWin32HandleInfoKHR {
             handle_type: ash::vk::ExternalMemoryHandleTypeFlags::OPAQUE_WIN32,
-            #[cfg(target_os = "linux")]
-            handle_type: ash::vk::ExternalMemoryHandleTypeFlags::OPAQUE_FD,
             memory: device_memory,
-            ..MemoryGetHandleInfo::default()
+            ..ash::vk::MemoryGetWin32HandleInfoKHR::default()
         };
 
-        #[cfg(target_os = "windows")]
         unsafe {
             self.inner
                 .backend_device_context
@@ -263,8 +255,33 @@ impl DeviceContext {
                 .get_memory_win32_handle(&create_info)
                 .unwrap()
         }
+    }
 
-        #[cfg(target_os = "linux")]
+    #[cfg(target_os = "windows")]
+    pub(crate) fn vk_external_semaphore(&self, vk_semaphore: vk::Semaphore) -> vk::HANDLE {
+        let create_info = ash::vk::SemaphoreGetWin32HandleInfoKHR {
+            handle_type: ash::vk::ExternalSemaphoreHandleTypeFlags::OPAQUE_WIN32,
+            semaphore: vk_semaphore,
+            ..ash::vk::SemaphoreGetWin32HandleInfoKHR::default()
+        };
+
+        unsafe {
+            self.inner
+                .backend_device_context
+                .external_semaphore
+                .get_semaphore_win32_handle(&create_info)
+                .unwrap()
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    pub(crate) fn vk_external_memory(&self, device_memory: DeviceMemory) -> vk::HANDLE {
+        let create_info = ash::vk::MemoryGetFdInfoKHR {
+            handle_type: ash::vk::ExternalMemoryHandleTypeFlags::OPAQUE_FD,
+            memory: device_memory,
+            ..ash::vk::MemoryGetFdInfoKHR::default()
+        };
+
         unsafe {
             self.inner
                 .backend_device_context
@@ -274,31 +291,14 @@ impl DeviceContext {
         }
     }
 
+    #[cfg(target_os = "linux")]
     pub(crate) fn vk_external_semaphore(&self, vk_semaphore: vk::Semaphore) -> vk::HANDLE {
-        #[cfg(target_os = "windows")]
-        type SemaphoreGetHandleInfo = ash::vk::SemaphoreGetWin32HandleInfoKHR;
-        #[cfg(target_os = "linux")]
-        type SemaphoreGetHandleInfo = ash::vk::SemaphoreGetFdInfoKHR;
-
-        let create_info = SemaphoreGetHandleInfo {
-            #[cfg(target_os = "windows")]
-            handle_type: ash::vk::ExternalSemaphoreHandleTypeFlags::OPAQUE_WIN32,
-            #[cfg(target_os = "linux")]
+        let create_info = ash::vk::SemaphoreGetFdInfoKHR {
             handle_type: ash::vk::ExternalSemaphoreHandleTypeFlags::OPAQUE_FD,
             semaphore: vk_semaphore,
-            ..SemaphoreGetHandleInfo::default()
+            ..ash::vk::SemaphoreGetFdInfoKHR::default()
         };
 
-        #[cfg(target_os = "windows")]
-        unsafe {
-            self.inner
-                .backend_device_context
-                .external_semaphore
-                .get_semaphore_win32_handle(&create_info)
-                .unwrap()
-        }
-
-        #[cfg(target_os = "linux")]
         unsafe {
             self.inner
                 .backend_device_context
