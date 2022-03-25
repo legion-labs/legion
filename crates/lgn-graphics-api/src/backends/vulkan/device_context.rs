@@ -241,15 +241,21 @@ impl DeviceContext {
     }
 
     pub(crate) fn vk_external_memory(&self, device_memory: DeviceMemory) -> vk::HANDLE {
-        let create_info = ash::vk::MemoryGetWin32HandleInfoKHR {
+        #[cfg(target_os = "windows")]
+        type MemoryGetHandleInfo = ash::vk::MemoryGetWin32HandleInfoKHR;
+        #[cfg(target_os = "linux")]
+        type MemoryGetHandleInfo = ash::vk::MemoryGetFdHandleInfoKHR;
+
+        let create_info = MemoryGetHandleInfo {
             #[cfg(target_os = "windows")]
             handle_type: ash::vk::ExternalMemoryHandleTypeFlags::OPAQUE_WIN32,
             #[cfg(target_os = "linux")]
             handle_type: ash::vk::ExternalMemoryHandleTypeFlags::OPAQUE_FD,
             memory: device_memory,
-            ..ash::vk::MemoryGetWin32HandleInfoKHR::default()
+            ..MemoryGetHandleInfo::default()
         };
 
+        #[cfg(target_os = "windows")]
         unsafe {
             self.inner
                 .backend_device_context
@@ -257,23 +263,47 @@ impl DeviceContext {
                 .get_memory_win32_handle(&create_info)
                 .unwrap()
         }
+
+        #[cfg(target_os = "linux")]
+        unsafe {
+            self.inner
+                .backend_device_context
+                .external_memory
+                .get_memory_fd_handle(&create_info)
+                .unwrap()
+        }
     }
 
     pub(crate) fn vk_external_semaphore(&self, vk_semaphore: vk::Semaphore) -> vk::HANDLE {
-        let create_info = ash::vk::SemaphoreGetWin32HandleInfoKHR {
+        #[cfg(target_os = "windows")]
+        type SemaphoreGetHandleInfo = ash::vk::SemaphoreGetWin32HandleInfoKHR;
+        #[cfg(target_os = "linux")]
+        type SemaphoreGetHandleInfo = ash::vk::SemaphoreGetFdHandleInfoKHR;
+
+        let create_info = SemaphoreGetHandleInfo {
             #[cfg(target_os = "windows")]
             handle_type: ash::vk::ExternalSemaphoreHandleTypeFlags::OPAQUE_WIN32,
             #[cfg(target_os = "linux")]
             handle_type: ash::vk::ExternalSemaphoreHandleTypeFlags::OPAQUE_FD,
             semaphore: vk_semaphore,
-            ..ash::vk::SemaphoreGetWin32HandleInfoKHR::default()
+            ..SemaphoreGetHandleInfo::default()
         };
 
+        #[cfg(target_os = "windows")]
         unsafe {
             self.inner
                 .backend_device_context
                 .external_semaphore
                 .get_semaphore_win32_handle(&create_info)
+                .unwrap()
+        }
+
+        #[cfg(target_os = "linux")]
+        unsafe {
+            self.inner
+                .backend_device_context
+                .external_semaphore
+                .get_semaphore_fd_handle(&create_info)
                 .unwrap()
         }
     }
