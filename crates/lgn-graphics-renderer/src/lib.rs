@@ -203,7 +203,7 @@ impl Plugin for RendererPlugin {
             .contains_resource::<Events<lgn_data_runtime::AssetRegistryEvent>>()
         {
             app.add_system(asset_to_ecs::process_load_events);
-        }       
+        }
 
         // Plugins are optional
         app.add_plugin(EguiPlugin::new());
