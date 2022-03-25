@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use crate::{
     AwsDynamoDbProvider, AwsS3Provider, AwsS3Url, CachingProvider, ContentProvider, GrpcProvider,
     LocalProvider, LruProvider, MemoryProvider, RedisProvider, Result, SmallContentProvider,
@@ -97,6 +99,16 @@ impl Config {
         }
     }
 
+    /// Returns a configuration of a local, disk-based content store operating at specified path.
+    pub fn local(path: impl AsRef<Path>) -> Self {
+        Self {
+            provider: ProviderConfig::Local(LocalProviderConfig {
+                path: path.as_ref().into(),
+            }),
+            caching_providers: vec![],
+        }
+    }
+
     /// Instantiate the provider for the configuration.
     ///
     /// # Errors
@@ -170,8 +182,6 @@ impl Default for ProviderConfig {
 
 #[cfg(test)]
 mod tests {
-    use std::path::Path;
-
     use super::*;
 
     #[test]
