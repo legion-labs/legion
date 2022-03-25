@@ -6,6 +6,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 lgn-app = { path = "../../crates/lgn-app", version = "0.1.0" }
+lgn-async = { path = "../../crates/lgn-async", version = "0.1.0" }
 lgn-asset-registry = { path = "../../crates/lgn-asset-registry", version = "0.1.0" }
 lgn-content-store = { path = "../../crates/lgn-content-store", version = "0.1.0" }
 lgn-config = { path = "../../crates/lgn-config", version = "0.1.0" }

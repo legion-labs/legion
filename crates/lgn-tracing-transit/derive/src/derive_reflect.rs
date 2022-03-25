@@ -48,6 +48,29 @@ pub fn derive_reflect_impl(input: TokenStream) -> TokenStream {
         syn::Data::Union(_) => panic!("bunions not supported"),
     }
 
+    let mut secondary_types = vec![];
+    for m in &members {
+        let member_type = &m.1;
+        let is_reference = &m.2;
+        let type_name = member_type.to_string();
+        if *is_reference
+            || type_name == "i64"
+            || type_name == "u64"
+            || type_name == "u32"
+            || type_name == "i32"
+            || type_name == "f64"
+        {
+            continue;
+        }
+        secondary_types.push(member_type.clone());
+    }
+
+    let secondary_types_toks = secondary_types.iter().map(|t| {
+        quote! {
+            #t::reflect(),
+        }
+    });
+
     let members_toks = members.iter().map(|m| {
         let member_name = &m.0;
         let member_ident = format_ident!("{}", &m.0);
@@ -71,6 +94,8 @@ pub fn derive_reflect_impl(input: TokenStream) -> TokenStream {
                     name: String::from(#udt_name),
                     size: std::mem::size_of::<#udt_identifier>(),
                     members: vec![#(#members_toks)*],
+                    is_reference: false,
+                    secondary_udts: vec![#(#secondary_types_toks)*],
                 }
             }
         }

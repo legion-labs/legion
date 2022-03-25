@@ -88,6 +88,35 @@ fn main() {
 
     let mut app = App::default();
 
+    if args.use_asset_registry {
+        let root_asset = args
+            .root
+            .as_deref()
+            .unwrap_or("(1d9ddd99aad89045,af7e6ef0-c271-565b-c27a-b8cd93c3546a)")
+            .parse::<ResourceTypeAndId>()
+            .ok();
+
+        let project_folder = lgn_config::get_absolute_path_or(
+            "editor_srv.project_dir",
+            PathBuf::from("tests/sample-data"),
+        )
+        .unwrap();
+
+        let content_store_path = project_folder.join("temp");
+        let asset_registry_settings = AssetRegistrySettings::new(
+            ContentStoreAddr::from(content_store_path.to_str().unwrap()),
+            project_folder.join("runtime").join("game.manifest"),
+            root_asset.into_iter().collect::<Vec<_>>(),
+        );
+
+        app.insert_resource(asset_registry_settings)
+            .add_plugin(lgn_async::AsyncPlugin::default())
+            .add_plugin(AssetRegistryPlugin::default())
+            .add_plugin(GraphicsPlugin::default())
+            .add_plugin(SampleDataPlugin::default())
+            .add_plugin(ScenePlugin::new(root_asset));
+    }
+
     app.add_plugin(CorePlugin::default())
         .add_plugin(RendererPlugin::default())
         .insert_resource(WindowDescriptor {
@@ -120,31 +149,6 @@ fn main() {
     }
 
     if args.use_asset_registry {
-        let root_asset = args
-            .root
-            .as_deref()
-            .unwrap_or("(1d9ddd99aad89045,af7e6ef0-c271-565b-c27a-b8cd93c3546a)")
-            .parse::<ResourceTypeAndId>()
-            .ok();
-
-        let project_folder = lgn_config::get_absolute_path_or(
-            "editor_srv.project_dir",
-            PathBuf::from("tests/sample-data"),
-        )
-        .unwrap();
-
-        let content_store_path = project_folder.join("temp");
-        let asset_registry_settings = AssetRegistrySettings::new(
-            ContentStoreAddr::from(content_store_path.to_str().unwrap()),
-            project_folder.join("runtime").join("game.manifest"),
-            root_asset.into_iter().collect::<Vec<_>>(),
-        );
-
-        app.insert_resource(asset_registry_settings)
-            .add_plugin(AssetRegistryPlugin::default())
-            .add_plugin(GraphicsPlugin::default())
-            .add_plugin(SampleDataPlugin::default())
-            .add_plugin(ScenePlugin::new(root_asset));
     } else if args.setup_name.eq("light_test") {
         app.add_startup_system(init_light_test);
     } else if args.meta_cube_size != 0 {

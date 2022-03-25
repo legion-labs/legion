@@ -110,8 +110,8 @@
           initFileUpload({
             name: file.name,
             size: file.size,
-          }).then(({ id, name, status }) => {
-            if (!id || !name || status === UploadStatus.REJECTED) {
+          }).then(({ id, status }) => {
+            if (!id || status === UploadStatus.REJECTED) {
               notifications.push(Symbol.for("file-upload"), {
                 title: "File Upload",
                 message: `File ${file.name} couldn't be uploaded`,
@@ -121,7 +121,7 @@
               return null;
             }
 
-            return { id, name, file };
+            return { id, name: file.name, file };
           })
         )
       );
@@ -157,31 +157,24 @@
 
       await Promise.all(
         names.map((name) => {
-          let resourceType: string | null = null;
+          const lowerCasedName = name.toLowerCase().trim();
 
-          switch (extension(name)?.toLowerCase()) {
-            case "png": {
-              resourceType = "png";
-
-              break;
-            }
-
-            case "gltf": {
-              resourceType = "offline_model";
-
-              break;
-            }
+          if (lowerCasedName.endsWith(".png")) {
+            createResource({
+              resourceName: name,
+              resourceType: "png",
+              parentResourceId: undefined,
+            });
           }
 
-          if (!resourceType) {
-            return;
+          if (lowerCasedName.endsWith(".gltf.zip")) {
+            // FIXME: Incorrect, should be an import
+            createResource({
+              resourceName: name.slice(0, -4),
+              resourceType: "offline_model",
+              parentResourceId: undefined,
+            });
           }
-
-          createResource({
-            resourceName: name,
-            resourceType,
-            parentResourceId: undefined,
-          });
         })
       );
 
@@ -258,8 +251,8 @@
 
       case "import": {
         files.open({
-          multiple: true,
-          fileTypeSpecifiers: [".png", ".gltf"],
+          multiple: false,
+          fileTypeSpecifiers: [".png", ".gltf.zip"],
         });
 
         return;

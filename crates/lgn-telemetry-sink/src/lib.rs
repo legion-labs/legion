@@ -12,7 +12,8 @@ use std::{collections::HashMap, str::FromStr};
 mod composite_event_sink;
 mod grpc_event_sink;
 mod local_event_sink;
-mod stream;
+pub mod stream_block;
+pub mod stream_info;
 
 use lgn_tracing::event::BoxedEventSink;
 use lgn_tracing::info;

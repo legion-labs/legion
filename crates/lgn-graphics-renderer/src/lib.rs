@@ -38,8 +38,8 @@ pub use render_context::*;
 
 pub mod resources;
 use resources::{
-    DescriptorHeapManager, GpuDataPlugin, ModelManager, PersistentDescriptorSetManager,
-    PipelineManager, TextureManager,
+    DescriptorHeapManager, ModelManager, PersistentDescriptorSetManager, PipelineManager,
+    TextureManager,
 };
 
 pub mod components;
@@ -80,7 +80,8 @@ use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 use crate::debug_display::DebugDisplay;
 
 use crate::resources::{
-    ui_renderer_options, MissingVisualTracker, RendererOptions, SharedResourcesManager,
+    ui_renderer_options, MaterialManager, MissingVisualTracker, RendererOptions,
+    SharedResourcesManager,
 };
 
 use crate::{
@@ -112,19 +113,27 @@ impl Plugin for RendererPlugin {
         // Init in dependency order
         //
         let renderer = Renderer::new(NUM_RENDER_FRAMES);
+
         let cgen_registry = Arc::new(cgen::initialize(renderer.device_context()));
+
         let descriptor_heap_manager =
             DescriptorHeapManager::new(NUM_RENDER_FRAMES, renderer.device_context());
+
         let mut pipeline_manager = PipelineManager::new(renderer.device_context());
         pipeline_manager.register_shader_families(&cgen_registry);
+
         let mut cgen_registry_list = CGenRegistryList::new();
         cgen_registry_list.push(cgen_registry);
+
         let mut persistent_descriptor_set_manager = PersistentDescriptorSetManager::new(
             renderer.device_context(),
             &descriptor_heap_manager,
             NUM_RENDER_FRAMES,
         );
+
         let texture_manager = TextureManager::new(renderer.device_context());
+
+        let material_manager = MaterialManager::new();
 
         let shared_resources_manager =
             SharedResourcesManager::new(&renderer, &mut persistent_descriptor_set_manager);
@@ -139,6 +148,12 @@ impl Plugin for RendererPlugin {
         //
         app.add_stage_after(
             CoreStage::PostUpdate,
+            RenderStage::Resource,
+            SystemStage::parallel(),
+        );
+
+        app.add_stage_after(
+            RenderStage::Resource,
             RenderStage::Prepare,
             SystemStage::parallel(),
         );
@@ -162,35 +177,41 @@ impl Plugin for RendererPlugin {
         app.insert_resource(ManipulatorManager::new());
         app.insert_resource(cgen_registry_list);
         app.insert_resource(RenderSurfaces::new());
-        app.insert_resource(ModelManager::new());
+        app.insert_resource(ModelManager::new(&material_manager));
         app.insert_resource(MeshManager::new(&renderer));
-        app.init_resource::<DebugDisplay>();
-        app.init_resource::<LightingManager>();
+        app.insert_resource(DebugDisplay::default());
+        app.insert_resource(LightingManager::default());
         app.insert_resource(GpuInstanceManager::new(renderer.static_buffer_allocator()));
-        app.init_resource::<MissingVisualTracker>();
+        app.insert_resource(MissingVisualTracker::default());
         app.insert_resource(descriptor_heap_manager);
         app.insert_resource(persistent_descriptor_set_manager);
         app.insert_resource(shared_resources_manager);
         app.insert_resource(texture_manager);
+        app.insert_resource(material_manager);
         app.insert_resource(mesh_renderer);
-        app.init_resource::<RendererOptions>();
+        app.insert_resource(RendererOptions::default());
 
         // Init ecs
         TextureManager::init_ecs(app);
+        MaterialManager::init_ecs(app);
         MeshRenderer::init_ecs(app);
         ModelManager::init_ecs(app);
         MissingVisualTracker::init_ecs(app);
         PersistentDescriptorSetManager::init_ecs(app);
         GpuInstanceManager::init_ecs(app);
 
-        // todo: convert?
-        app.add_plugin(GpuDataPlugin::default());
+        // Only Init AssetRegistry event handler if there's AssetRegistryEvent already registered
+        if app
+            .world
+            .contains_resource::<Events<lgn_data_runtime::AssetRegistryEvent>>()
+        {
+            app.add_system(asset_to_ecs::process_load_events);
+        }
 
         // Plugins are optional
         app.add_plugin(EguiPlugin::new());
         app.add_plugin(PickingPlugin {});
 
-        app.add_system(process_load_events);
         // This resource needs to be shutdown after all other resources
         app.insert_resource(renderer);
 
@@ -324,50 +345,6 @@ fn on_window_close_requested(
             }
         }
         render_surfaces.remove(ev.id);
-    }
-}
-
-#[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)]
-fn process_load_events(
-    asset_registry: Res<'_, Arc<AssetRegistry>>,
-    mut asset_to_entity_map: ResMut<'_, AssetToEntityMap>,
-    mut asset_loaded_events: EventReader<'_, '_, AssetRegistryEvent>,
-    mut commands: Commands<'_, '_>,
-) {
-    for asset_loaded_event in asset_loaded_events.iter() {
-        match asset_loaded_event {
-            AssetRegistryEvent::AssetLoaded(resource_id)
-                if resource_id.kind == lgn_graphics_data::runtime_texture::Texture::TYPE =>
-            {
-                crate::asset_to_ecs::create_texture(
-                    resource_id,
-                    &asset_registry,
-                    &mut asset_to_entity_map,
-                    &mut commands,
-                );
-            }
-            AssetRegistryEvent::AssetLoaded(resource_id)
-                if resource_id.kind == lgn_graphics_data::runtime::Material::TYPE =>
-            {
-                crate::asset_to_ecs::create_material(
-                    resource_id,
-                    &asset_registry,
-                    &mut asset_to_entity_map,
-                    &mut commands,
-                );
-            }
-            AssetRegistryEvent::AssetLoaded(resource_id)
-                if resource_id.kind == lgn_graphics_data::runtime::Model::TYPE =>
-            {
-                crate::asset_to_ecs::create_model(
-                    resource_id,
-                    &asset_registry,
-                    &mut asset_to_entity_map,
-                    &mut commands,
-                );
-            }
-            _ => (),
-        }
     }
 }
 

@@ -593,6 +593,8 @@ fn container_metadata_as_transit_udt_vec(
                     is_reference: m.is_reference,
                 })
                 .collect(),
+            is_reference: t.is_reference,
+            secondary_udts: vec![],
         })
         .collect()
 }
@@ -636,35 +638,61 @@ fn format_log_level(level: u32) -> &'static str {
 }
 
 #[span_fn]
-fn log_entry_from_value(val: &Value) -> Option<(i64, String)> {
+pub fn log_entry_from_value(val: &Value) -> Result<Option<(i64, String)>> {
     if let Value::Object(obj) = val {
         match obj.type_name.as_str() {
             "LogStaticStrEvent" => {
-                let time = obj.get::<i64>("time").unwrap();
-                let desc = obj.get::<Arc<lgn_tracing_transit::Object>>("desc").unwrap();
-                let level = desc.get::<u32>("level").unwrap();
-                let entry = format!(
-                    "[{}] {}",
-                    format_log_level(level),
-                    desc.get::<Arc<String>>("fmt_str").unwrap()
-                );
-                Some((time, entry))
+                let time = obj
+                    .get::<i64>("time")
+                    .with_context(|| "reading time from LogStaticStrEvent")?;
+                let desc = obj
+                    .get::<Arc<lgn_tracing_transit::Object>>("desc")
+                    .with_context(|| "reading desc from LogStaticStrEvent")?;
+                let level = desc
+                    .get::<u32>("level")
+                    .with_context(|| "reading level from LogStaticStrEvent")?;
+                let msg = desc
+                    .get::<Arc<String>>("fmt_str")
+                    .with_context(|| "reading fmt_str from LogStaticStrEvent")?;
+                let entry = format!("[{}] {}", format_log_level(level), msg);
+                Ok(Some((time, entry)))
             }
             "LogStringEvent" => {
-                let time = obj.get::<i64>("time").unwrap();
-                let desc = obj.get::<Arc<lgn_tracing_transit::Object>>("desc").unwrap();
-                let level = desc.get::<u32>("level").unwrap();
-                let entry = format!(
-                    "[{}] {}",
-                    format_log_level(level),
-                    obj.get::<Arc<String>>("msg").unwrap()
-                );
-                Some((time, entry))
+                let time = obj
+                    .get::<i64>("time")
+                    .with_context(|| "reading time from LogStringEvent")?;
+                let desc = obj
+                    .get::<Arc<lgn_tracing_transit::Object>>("desc")
+                    .with_context(|| "reading desc from LogStringEvent")?;
+                let level = desc
+                    .get::<u32>("level")
+                    .with_context(|| "reading level from LogStringEvent")?;
+                let msg = obj
+                    .get::<Arc<String>>("msg")
+                    .with_context(|| "reading msg from LogStringEvent")?;
+                let entry = format!("[{}] {}", format_log_level(level), *msg);
+                Ok(Some((time, entry)))
             }
-            _ => None,
+            "LogStaticStrInteropEvent" | "LogStringInteropEventV2" => {
+                let time = obj
+                    .get::<i64>("time")
+                    .with_context(|| format!("reading time from {}", obj.type_name.as_str()))?;
+                let level = obj
+                    .get::<u32>("level")
+                    .with_context(|| format!("reading level from {}", obj.type_name.as_str()))?;
+                let _target = obj
+                    .get::<Arc<String>>("target")
+                    .with_context(|| format!("reading target from {}", obj.type_name.as_str()))?;
+                let msg = obj
+                    .get::<Arc<String>>("msg")
+                    .with_context(|| format!("reading msg from {}", obj.type_name.as_str()))?;
+                let entry = format!("[{}] {}", format_log_level(level), *msg);
+                Ok(Some((time, entry)))
+            }
+            _ => Ok(None),
         }
     } else {
-        None
+        Ok(None)
     }
 }
 
@@ -682,7 +710,7 @@ pub async fn find_process_log_entry<Res, Predicate: FnMut(i64, String) -> Option
             let payload =
                 fetch_block_payload(connection, blob_storage.clone(), b.block_id.clone()).await?;
             parse_block(&stream, &payload, |val| {
-                if let Some((time, msg)) = log_entry_from_value(&val) {
+                if let Some((time, msg)) = log_entry_from_value(&val)? {
                     if let Some(x) = pred(time, msg) {
                         found_entry = Some(x);
                         return Ok(false); //do not continue
@@ -710,7 +738,7 @@ pub async fn for_each_log_entry_in_block<Predicate: FnMut(i64, String) -> bool>(
 ) -> Result<()> {
     let payload = fetch_block_payload(connection, blob_storage, block.block_id.clone()).await?;
     parse_block(stream, &payload, |val| {
-        if let Some((time, msg)) = log_entry_from_value(&val) {
+        if let Some((time, msg)) = log_entry_from_value(&val)? {
             if !fun(time, msg) {
                 return Ok(false); //do not continue
             }
