@@ -127,6 +127,11 @@ impl SizeDependentResources {
     }
 }
 
+pub enum RenderSurfacePresentingStatus {
+    Presenting,
+    Paused,
+}
+
 #[derive(Component)]
 pub struct RenderSurface {
     id: RenderSurfaceId,
@@ -141,6 +146,7 @@ pub struct RenderSurface {
     debug_renderpass: Arc<RwLock<DebugRenderPass>>,
     egui_renderpass: Arc<RwLock<EguiPass>>,
     final_resolve_render_pass: Arc<RwLock<FinalResolveRenderPass>>,
+    presenting_status: RenderSurfacePresentingStatus,
 }
 
 impl RenderSurface {
@@ -263,7 +269,17 @@ impl RenderSurface {
         &self.resources.hzb_surface
     }
 
+    /// Call the `present` method of all the registered presenters.
+    /// No op if the render surface is "paused", i.e., it's `presenting`
+    /// attribute is `false`.
     pub fn present(&mut self, render_context: &RenderContext<'_>) {
+        if matches!(
+            self.presenting_status,
+            RenderSurfacePresentingStatus::Paused
+        ) {
+            return;
+        }
+
         let mut presenters = std::mem::take(&mut self.presenters);
 
         for presenter in &mut presenters {
@@ -287,6 +303,17 @@ impl RenderSurface {
     pub fn presenter_sem(&self) -> &Semaphore {
         &self.presenter_sems[self.render_frame_idx]
     }
+
+    pub fn pause(&mut self) -> &mut Self {
+        self.presenting_status = RenderSurfacePresentingStatus::Paused;
+        self
+    }
+
+    pub fn resume(&mut self) -> &mut Self {
+        self.presenting_status = RenderSurfacePresentingStatus::Presenting;
+        self
+    }
+
     fn new_with_id(
         id: RenderSurfaceId,
         renderer: &Renderer,
@@ -313,6 +340,7 @@ impl RenderSurface {
                 pipeline_manager,
             ))),
             presenters: Vec::new(),
+            presenting_status: RenderSurfacePresentingStatus::Presenting,
         }
     }
 }
