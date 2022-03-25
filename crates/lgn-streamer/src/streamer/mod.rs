@@ -3,6 +3,7 @@ use std::{fmt::Display, sync::Arc};
 use bytes::Bytes;
 use lgn_app::{AppExit, Events};
 use lgn_async::TokioAsyncRuntime;
+use lgn_codec_api::encoder_work_queue::EncoderWorkQueue;
 use lgn_ecs::prelude::*;
 use lgn_graphics_renderer::{
     components::{RenderSurface, RenderSurfaceCreatedForWindow},
@@ -293,12 +294,14 @@ pub(crate) fn on_app_exit(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn on_render_surface_created_for_window(
     mut event_render_surface_created: EventReader<'_, '_, RenderSurfaceCreatedForWindow>,
     wnd_list: Res<'_, Windows>,
     streamer_windows: Res<'_, StreamerWindows>,
     renderer: Res<'_, Renderer>,
     pipeline_manager: Res<'_, PipelineManager>,
+    encoder_work_queue: Res<'_, EncoderWorkQueue>,
     mut render_surfaces: Query<'_, '_, &mut RenderSurface>,
     async_rt: Res<'_, TokioAsyncRuntime>,
 ) {
@@ -317,6 +320,7 @@ pub(crate) fn on_render_surface_created_for_window(
                 renderer.device_context(),
                 &pipeline_manager,
                 Resolution::new(wnd.physical_width(), wnd.physical_height()),
+                &encoder_work_queue,
                 video_data_channel.clone(),
                 async_rt.handle(),
             )

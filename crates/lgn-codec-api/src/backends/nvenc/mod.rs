@@ -1,6 +1,6 @@
 use self::nv_encoder::NvEncEncoder;
 
-use crate::{encoder_work_queue::EncoderWorkItem, CpuBuffer, VideoProcessor};
+use crate::{encoder_work_queue::EncoderWorkItem, VideoProcessor};
 
 mod cuda;
 pub mod nv_encoder;
@@ -19,7 +19,7 @@ pub struct NvEncEncoderWrapper {
 
 impl VideoProcessor for NvEncEncoderWrapper {
     type Input = EncoderWorkItem;
-    type Output = CpuBuffer;
+    type Output = Vec<u8>;
     type Config = EncoderConfig;
 
     fn submit_input(&self, input: &Self::Input) -> Result<(), crate::Error> {
@@ -28,7 +28,7 @@ impl VideoProcessor for NvEncEncoderWrapper {
     }
 
     fn query_output(&self) -> Result<Self::Output, crate::Error> {
-        Ok(CpuBuffer(Vec::new()))
+        Ok(self.encoder.process_encoded_data())
     }
 
     fn new(mut config: Self::Config) -> Option<Self> {

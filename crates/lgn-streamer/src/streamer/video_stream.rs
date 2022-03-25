@@ -1,10 +1,20 @@
-use std::{io::Cursor, sync::Arc};
+use std::{
+    io::{Cursor, Write},
+    sync::Arc,
+};
 
 use bytes::{BufMut, Bytes};
 use lgn_async::TokioAsyncRuntimeHandle;
 use lgn_codec_api::{
-    backends::openh264::encoder::{self, Encoder},
+    backends::{
+        nvenc::NvEncEncoderWrapper,
+        openh264::encoder::{self, Encoder},
+        CodecHardware::Nvidia,
+        EncoderConfig,
+    },
+    encoder_work_queue::{EncoderWorkItem, EncoderWorkQueue},
     formats::YUVSource,
+    VideoProcessor,
 };
 use lgn_ecs::prelude::*;
 use lgn_graphics_api::DeviceContext;
@@ -33,6 +43,7 @@ pub struct VideoStream {
     video_data_channel: Arc<RTCDataChannel>,
     frame_id: i32,
     encoder: VideoStreamEncoder,
+    cuda_encoder: Option<NvEncEncoderWrapper>,
     rgb_to_yuv: RgbToYuvConverter,
     max_frame_time: u64,
 }
@@ -43,6 +54,7 @@ impl VideoStream {
         device_context: &DeviceContext,
         pipeline_manager: &PipelineManager,
         resolution: Resolution,
+        encoder_work_queue: &EncoderWorkQueue,
         video_data_channel: Arc<RTCDataChannel>,
         async_rt: TokioAsyncRuntimeHandle,
     ) -> anyhow::Result<Self> {
@@ -50,11 +62,20 @@ impl VideoStream {
         let rgb_to_yuv = RgbToYuvConverter::new(pipeline_manager, device_context, resolution);
         let max_frame_time: u64 = lgn_config::get_or("streamer.max_frame_time", 33_000u64)?;
 
+        let encoder_cofig = EncoderConfig {
+            hardware: Nvidia,
+            gfx_config: device_context.clone(),
+            work_queue: encoder_work_queue.clone(),
+            width: resolution.width,
+            height: resolution.height,
+        };
+
         Ok(Self {
             async_rt,
             video_data_channel,
             frame_id: 0,
             encoder,
+            cuda_encoder: NvEncEncoderWrapper::new(encoder_cofig),
             rgb_to_yuv,
             max_frame_time,
         })
@@ -87,15 +108,25 @@ impl VideoStream {
         self.record_frame_id_metric();
         let now = tokio::time::Instant::now();
 
-        self.rgb_to_yuv
-            .convert(
-                render_context,
-                render_surface,
-                self.encoder.yuv_holder.yuv.as_mut_slice(),
-            )
-            .unwrap();
+        let chunks = if let Some(encoder) = &self.cuda_encoder {
+            encoder
+                .submit_input(&EncoderWorkItem {
+                    image: render_surface.texture().clone(),
+                    semaphore: render_surface.encoder_sem().clone(),
+                })
+                .unwrap();
+            split_frame_in_chunks(&encoder.query_output().unwrap(), self.frame_id)
+        } else {
+            self.rgb_to_yuv
+                .convert(
+                    render_context,
+                    render_surface,
+                    self.encoder.yuv_holder.yuv.as_mut_slice(),
+                )
+                .unwrap();
 
-        let chunks = self.encoder.encode(self.frame_id);
+            self.encoder.encode(self.frame_id)
+        };
 
         let elapsed = now.elapsed().as_micros() as u64;
         record_frame_time_metric(elapsed);
@@ -278,6 +309,14 @@ struct ChunkHeader {
 
 #[allow(unsafe_code)]
 fn split_frame_in_chunks(data: &[u8], frame_id: i32) -> Vec<Bytes> {
+    // let mut file = std::fs::File::options()
+    //     .write(true)
+    //     .create(true)
+    //     .append(true)
+    //     .open("d:\\gpu_test.h264")
+    //     .unwrap();
+    // file.write_all(data).unwrap();
+
     const HEADER_SIZE: usize = 12;
     const MAX_CHUNK_SIZE: usize = 65536;
     const CHUNK_SIZE: usize = MAX_CHUNK_SIZE - HEADER_SIZE;

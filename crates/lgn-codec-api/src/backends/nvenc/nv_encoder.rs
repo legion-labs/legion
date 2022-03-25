@@ -102,8 +102,6 @@ unsafe impl Sync for NvEncEncoder {}
 impl NvEncEncoder {
     pub(crate) fn encoder_loop(work_queue: &mut EncoderWorkQueue, encoder: &Self) {
         while !work_queue.shutting_down() {
-            encoder.process_encoded_data();
-
             if let Some(semaphore_key) = work_queue.internal_semaphore_for_cleanup() {
                 encoder.destroy_cuda_semaphore(semaphore_key);
             }
@@ -515,63 +513,48 @@ impl NvEncEncoder {
         }
     }
 
-    fn has_frame_to_process(&self) -> bool {
-        let inner = self.inner.lock().unwrap();
-        inner.received_frame < inner.sent_frame
-    }
-
     #[span_fn]
-    pub fn process_encoded_data(&self) {
-        if self.has_frame_to_process() {
-            let lock_bitstream_data = {
-                let inner = self.inner.lock().unwrap();
-                let mut lock_bitstream_data = NV_ENC_LOCK_BITSTREAM {
-                    version: NV_ENC_LOCK_BITSTREAM_VER,
-                    outputBitstream: inner.cuda_bitstream_buffers[inner.received_frame % 5],
-                    ..NV_ENC_LOCK_BITSTREAM::default()
-                };
-                lock_bitstream_data.set_doNotWait(0);
-
-                let result = unsafe {
-                    (inner.function_list.nvEncLockBitstream.unwrap())(
-                        inner.encoder,
-                        std::ptr::addr_of_mut!(lock_bitstream_data),
-                    )
-                };
-                assert!(result == NVENCSTATUS::NV_ENC_SUCCESS);
-                lock_bitstream_data
+    pub fn process_encoded_data(&self) -> Vec<u8> {
+        let lock_bitstream_data = {
+            let inner = self.inner.lock().unwrap();
+            let mut lock_bitstream_data = NV_ENC_LOCK_BITSTREAM {
+                version: NV_ENC_LOCK_BITSTREAM_VER,
+                outputBitstream: inner.cuda_bitstream_buffers[inner.received_frame % 5],
+                ..NV_ENC_LOCK_BITSTREAM::default()
             };
+            lock_bitstream_data.set_doNotWait(0);
 
-            {
-                span_scope!("writing_data_to_disk");
-                let data = unsafe {
-                    std::slice::from_raw_parts(
-                        lock_bitstream_data.bitstreamBufferPtr.cast::<u8>(),
-                        lock_bitstream_data.bitstreamSizeInBytes as usize,
-                    )
-                };
+            let result = unsafe {
+                (inner.function_list.nvEncLockBitstream.unwrap())(
+                    inner.encoder,
+                    std::ptr::addr_of_mut!(lock_bitstream_data),
+                )
+            };
+            assert!(result == NVENCSTATUS::NV_ENC_SUCCESS);
+            lock_bitstream_data
+        };
 
-                let mut file = std::fs::File::options()
-                    .write(true)
-                    .create(true)
-                    .append(true)
-                    .open("d:\\encoder_test.h264")
-                    .unwrap();
-                file.write_all(data).unwrap();
-            }
+        let data = unsafe {
+            std::slice::from_raw_parts(
+                lock_bitstream_data.bitstreamBufferPtr.cast::<u8>(),
+                lock_bitstream_data.bitstreamSizeInBytes as usize,
+            )
+        };
 
-            {
-                let inner = &mut *self.inner.lock().unwrap();
-                let result = unsafe {
-                    (inner.function_list.nvEncUnlockBitstream.unwrap())(
-                        inner.encoder,
-                        lock_bitstream_data.outputBitstream,
-                    )
-                };
-                assert!(result == NVENCSTATUS::NV_ENC_SUCCESS);
-                inner.received_frame += 1;
-            }
+        let output = Vec::<u8>::from(data);
+
+        {
+            let inner = &mut *self.inner.lock().unwrap();
+            let result = unsafe {
+                (inner.function_list.nvEncUnlockBitstream.unwrap())(
+                    inner.encoder,
+                    lock_bitstream_data.outputBitstream,
+                )
+            };
+            assert!(result == NVENCSTATUS::NV_ENC_SUCCESS);
+            inner.received_frame += 1;
         }
+        output
     }
 
     #[span_fn]
