@@ -1,5 +1,7 @@
 use std::{cmp::max, sync::Arc};
 
+use lgn_codec_api::encoder_resource::EncoderResource;
+use lgn_codec_api::encoder_work_queue::EncoderWorkQueue;
 use lgn_ecs::prelude::Component;
 use lgn_graphics_api::{
     DepthStencilClearValue, DepthStencilRenderTargetBinding, DeviceContext, Extents2D, Extents3D,
@@ -91,7 +93,7 @@ pub struct RenderSurfaceCreatedForWindow {
 
 #[allow(dead_code)]
 struct SizeDependentResources {
-    texture: Texture,
+    texture: EncoderResource<Texture>,
     texture_srv: TextureView,
     texture_rtv: TextureView,
     texture_state: ResourceState,
@@ -108,6 +110,7 @@ impl SizeDependentResources {
         device_context: &DeviceContext,
         extents: RenderSurfaceExtents,
         pipeline_manager: &PipelineManager,
+        encoder_work_queue: &EncoderWorkQueue,
     ) -> Self {
         let texture_def = TextureDef {
             extents: Extents3D {
@@ -117,7 +120,7 @@ impl SizeDependentResources {
             },
             array_length: 1,
             mip_count: 1,
-            format: Format::R16G16B16A16_SFLOAT,
+            format: Format::R8G8B8A8_UNORM,
             usage_flags: ResourceUsage::AS_RENDER_TARGET
                 | ResourceUsage::AS_SHADER_RESOURCE
                 | ResourceUsage::AS_TRANSFERABLE
@@ -159,7 +162,7 @@ impl SizeDependentResources {
         let depth_stencil_srv_view = depth_stencil_texture.create_view(&depth_stencil_srv_view_def);
 
         Self {
-            texture,
+            texture: encoder_work_queue.new_external_image(&texture, device_context),
             texture_srv,
             texture_rtv,
             texture_state: ResourceState::UNDEFINED,
@@ -182,7 +185,8 @@ pub struct RenderSurface {
     // tmp
     num_render_frames: usize,
     render_frame_idx: usize,
-    signal_sems: Vec<Semaphore>,
+    presenter_sems: Vec<Semaphore>,
+    encoder_sems: Vec<EncoderResource<Semaphore>>,
     picking_renderpass: Arc<RwLock<PickingRenderPass>>,
     debug_renderpass: Arc<RwLock<DebugRenderPass>>,
     egui_renderpass: Arc<RwLock<EguiPass>>,
@@ -193,8 +197,15 @@ impl RenderSurface {
         renderer: &Renderer,
         pipeline_manager: &PipelineManager,
         extents: RenderSurfaceExtents,
+        encoder_work_queue: &EncoderWorkQueue,
     ) -> Self {
-        Self::new_with_id(RenderSurfaceId::new(), renderer, pipeline_manager, extents)
+        Self::new_with_id(
+            RenderSurfaceId::new(),
+            renderer,
+            pipeline_manager,
+            extents,
+            encoder_work_queue,
+        )
     }
 
     pub fn extents(&self) -> RenderSurfaceExtents {
@@ -218,9 +229,15 @@ impl RenderSurface {
         device_context: &DeviceContext,
         extents: RenderSurfaceExtents,
         pipeline_manager: &PipelineManager,
+        encoder_work_queue: &EncoderWorkQueue,
     ) {
         if self.extents != extents {
-            self.resources = SizeDependentResources::new(device_context, extents, pipeline_manager);
+            self.resources = SizeDependentResources::new(
+                device_context,
+                extents,
+                pipeline_manager,
+                encoder_work_queue,
+            );
             for presenter in &mut self.presenters {
                 presenter.resize(device_context, extents);
             }
@@ -237,7 +254,7 @@ impl RenderSurface {
         self.id
     }
 
-    pub fn texture(&self) -> &Texture {
+    pub fn texture(&self) -> &EncoderResource<Texture> {
         &self.resources.texture
     }
 
@@ -265,7 +282,7 @@ impl RenderSurface {
             cmd_buffer.resource_barrier(
                 &[],
                 &[TextureBarrier::state_transition(
-                    &self.resources.texture,
+                    &self.resources.texture.external_resource(),
                     src_state,
                     dst_state,
                 )],
@@ -359,15 +376,21 @@ impl RenderSurface {
     // TODO: change that asap. Acquire can't be called more than once per frame.
     // This would result in a crash.
     //
-    pub fn acquire(&mut self) -> &Semaphore {
+    pub fn acquire(&mut self) -> (&Semaphore, &EncoderResource<Semaphore>) {
         let render_frame_idx = (self.render_frame_idx + 1) % self.num_render_frames;
-        let sem = &self.signal_sems[render_frame_idx];
+        let presenter_sem = &self.presenter_sems[render_frame_idx];
+        let encoder_sem = &self.encoder_sems[render_frame_idx];
         self.render_frame_idx = render_frame_idx;
-        sem
+
+        (presenter_sem, encoder_sem)
     }
 
-    pub fn sema(&self) -> &Semaphore {
-        &self.signal_sems[self.render_frame_idx]
+    pub fn presenter_sem(&self) -> &Semaphore {
+        &self.presenter_sems[self.render_frame_idx]
+    }
+
+    pub fn encoder_sem(&self) -> &EncoderResource<Semaphore> {
+        &self.encoder_sems[self.render_frame_idx]
     }
 
     fn new_with_id(
@@ -375,20 +398,30 @@ impl RenderSurface {
         renderer: &Renderer,
         pipeline_manager: &PipelineManager,
         extents: RenderSurfaceExtents,
+        encoder_work_queue: &EncoderWorkQueue,
     ) -> Self {
         let num_render_frames = renderer.num_render_frames();
         let device_context = renderer.device_context();
-        let signal_sems = (0..num_render_frames)
-            .map(|_| device_context.create_semaphore(true))
+        let presenter_sems = (0..num_render_frames)
+            .map(|_| device_context.create_semaphore(false))
+            .collect();
+        let encoder_sems = (0..num_render_frames)
+            .map(|_| encoder_work_queue.new_external_semaphore(device_context))
             .collect();
 
         Self {
             id,
             extents,
-            resources: SizeDependentResources::new(device_context, extents, pipeline_manager),
+            resources: SizeDependentResources::new(
+                device_context,
+                extents,
+                pipeline_manager,
+                encoder_work_queue,
+            ),
             num_render_frames,
             render_frame_idx: 0,
-            signal_sems,
+            presenter_sems,
+            encoder_sems,
             picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(device_context))),
             debug_renderpass: Arc::new(RwLock::new(DebugRenderPass::new(pipeline_manager))),
             egui_renderpass: Arc::new(RwLock::new(EguiPass::new(device_context, pipeline_manager))),

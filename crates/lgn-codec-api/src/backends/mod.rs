@@ -1,7 +1,6 @@
 use lgn_graphics_api::DeviceContext;
 
-use self::nvenc::NvEncEncoder;
-use crate::{CpuBuffer, GpuBuffer, VideoProcessor};
+use crate::{encoder_work_queue::EncoderWorkQueue, CpuBuffer, GpuBuffer, VideoProcessor};
 
 /// Null Encoder/Decoder
 pub mod null;
@@ -33,15 +32,13 @@ pub enum GraphicsConfig {
 pub struct EncoderConfig {
     pub hardware: CodecHardware,
     pub gfx_config: DeviceContext,
+    pub work_queue: EncoderWorkQueue,
     pub width: u32,
     pub height: u32,
 }
 
 /// Generic encoder,
-pub enum Encoder {
-    /// `NvEnc` Encoder
-    NvEnc(NvEncEncoder),
-}
+pub enum Encoder {}
 
 impl VideoProcessor for Encoder {
     type Input = GpuBuffer;
@@ -56,11 +53,7 @@ impl VideoProcessor for Encoder {
         Ok(CpuBuffer(Vec::new()))
     }
 
-    fn new(config: Self::Config) -> Option<Self> {
-        if config.hardware == CodecHardware::Nvidia {
-            NvEncEncoder::new(config.into()).map(Encoder::NvEnc)
-        } else {
-            None
-        }
+    fn new(_config: Self::Config) -> Option<Self> {
+        None
     }
 }

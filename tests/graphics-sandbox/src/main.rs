@@ -8,6 +8,7 @@ use clap::Parser;
 
 use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
+use lgn_codec_api::encoder_work_queue::EncoderWorkQueue;
 use lgn_content_store::ContentStoreAddr;
 use lgn_core::CorePlugin;
 use lgn_data_runtime::ResourceTypeAndId;
@@ -159,7 +160,8 @@ fn on_render_surface_created_for_window(
     mut event_render_surface_created: EventReader<'_, '_, RenderSurfaceCreatedForWindow>,
     wnd_list: Res<'_, Windows>,
     renderer: Res<'_, Renderer>,
-    winit_wnd_list: NonSend<'_, WinitWindows>,
+    winit_wnd_list: Res<'_, WinitWindows>,
+    encoder_work_queue: Res<'_, EncoderWorkQueue>,
     mut render_surfaces: Query<'_, '_, &mut RenderSurface>,
 ) {
     for event in event_render_surface_created.iter() {
@@ -171,8 +173,9 @@ fn on_render_surface_created_for_window(
             let extents = RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height());
 
             let winit_wnd = winit_wnd_list.get_window(event.window_id).unwrap();
-            render_surface
-                .register_presenter(|| PresenterWindow::from_window(&renderer, winit_wnd, extents));
+            render_surface.register_presenter(|| {
+                PresenterWindow::from_window(&renderer, &encoder_work_queue, winit_wnd, extents)
+            });
         }
     }
 }
@@ -182,6 +185,7 @@ fn presenter_snapshot_system(
     snapshot_descriptor: Res<'_, SnapshotDescriptor>,
     renderer: Res<'_, Renderer>,
     pipeline_manager: Res<'_, PipelineManager>,
+    encoder_work_queue: Res<'_, EncoderWorkQueue>,
     mut app_exit_events: EventWriter<'_, '_, AppExit>,
     mut frame_counter: Local<'_, SnapshotFrameCounter>,
 ) {
@@ -193,6 +197,7 @@ fn presenter_snapshot_system(
                 snapshot_descriptor.width as u32,
                 snapshot_descriptor.height as u32,
             ),
+            &encoder_work_queue,
         );
         let render_surface_id = render_surface.id();
 

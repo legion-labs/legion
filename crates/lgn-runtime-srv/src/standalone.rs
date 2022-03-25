@@ -1,4 +1,5 @@
 use lgn_app::prelude::*;
+use lgn_codec_api::encoder_work_queue::EncoderWorkQueue;
 use lgn_ecs::prelude::*;
 use lgn_graphics_renderer::{
     components::{
@@ -34,6 +35,7 @@ fn on_render_surface_created_for_window(
     wnd_list: Res<'_, Windows>,
     winit_wnd_list: NonSend<'_, WinitWindows>,
     renderer: Res<'_, Renderer>,
+    encoder_work_queue: Res<'_, EncoderWorkQueue>,
     mut render_surfaces: Query<'_, '_, &mut RenderSurface>,
 ) {
     for event in event_render_surface_created.iter() {
@@ -45,8 +47,9 @@ fn on_render_surface_created_for_window(
             let extents = RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height());
 
             let winit_wnd = winit_wnd_list.get_window(event.window_id).unwrap();
-            render_surface
-                .register_presenter(|| PresenterWindow::from_window(&renderer, winit_wnd, extents));
+            render_surface.register_presenter(|| {
+                PresenterWindow::from_window(&renderer, &encoder_work_queue, winit_wnd, extents)
+            });
         }
     }
 }

@@ -4,8 +4,8 @@ use std::ffi::CStr;
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 
-use ash::extensions::khr;
-use ash::vk;
+use ash::extensions::khr::{self, ExternalMemoryWin32, ExternalSemaphoreWin32};
+use ash::vk::{self, DeviceMemory};
 use fnv::FnvHashMap;
 use lgn_tracing::{debug, info, trace, warn};
 
@@ -70,6 +70,16 @@ pub(crate) struct VulkanDeviceContext {
     #[cfg(feature = "track-device-contexts")]
     #[allow(dead_code)]
     all_contexts: Mutex<fnv::FnvHashMap<u64, backtrace::Backtrace>>,
+
+    #[cfg(target_os = "windows")]
+    external_memory: ExternalMemoryWin32,
+    #[cfg(target_os = "linux")]
+    external_memory: ExternalMemoryFd,
+
+    #[cfg(target_os = "windows")]
+    external_semaphore: ExternalSemaphoreWin32,
+    #[cfg(target_os = "linux")]
+    external_semaphore: ExternalSemaphoreFd,
 }
 
 impl VulkanDeviceContext {
@@ -149,7 +159,7 @@ impl VulkanDeviceContext {
                 instance: instance.instance.clone(),
                 vk_physical_device,
                 physical_device_info,
-                vk_device: vk_logical_device,
+                vk_device: vk_logical_device.clone(),
                 vk_allocator,
 
                 #[cfg(debug_assertions)]
@@ -159,6 +169,22 @@ impl VulkanDeviceContext {
                 #[cfg(debug_assertions)]
                 #[cfg(feature = "track-device-contexts")]
                 next_create_index: AtomicU64::new(1),
+
+                #[cfg(target_os = "windows")]
+                external_memory: ExternalMemoryWin32::new(&instance.instance, &vk_logical_device),
+                #[cfg(target_os = "linux")]
+                external_memory: ExternalMemoryFd::new(&instance.instance, &vk_logical_device),
+
+                #[cfg(target_os = "windows")]
+                external_semaphore: ExternalSemaphoreWin32::new(
+                    &instance.instance,
+                    &vk_logical_device,
+                ),
+                #[cfg(target_os = "linux")]
+                external_semaphore: ExternalSemaphoreFd::new(
+                    &instance.instance,
+                    &vk_logical_device,
+                ),
             },
             device_info,
         ))
@@ -208,6 +234,44 @@ impl DeviceContext {
 
     pub(crate) fn vk_allocator(&self) -> &vk_mem::Allocator {
         &self.inner.backend_device_context.vk_allocator
+    }
+
+    pub(crate) fn vk_external_memory(&self, device_memory: DeviceMemory) -> vk::HANDLE {
+        let create_info = ash::vk::MemoryGetWin32HandleInfoKHR {
+            #[cfg(target_os = "windows")]
+            handle_type: ash::vk::ExternalMemoryHandleTypeFlags::OPAQUE_WIN32,
+            #[cfg(target_os = "linux")]
+            handle_type: ash::vk::ExternalMemoryHandleTypeFlags::OPAQUE_FD,
+            memory: device_memory,
+            ..ash::vk::MemoryGetWin32HandleInfoKHR::default()
+        };
+
+        unsafe {
+            self.inner
+                .backend_device_context
+                .external_memory
+                .get_memory_win32_handle(&create_info)
+                .unwrap()
+        }
+    }
+
+    pub(crate) fn vk_external_semaphore(&self, vk_semaphore: vk::Semaphore) -> vk::HANDLE {
+        let create_info = ash::vk::SemaphoreGetWin32HandleInfoKHR {
+            #[cfg(target_os = "windows")]
+            handle_type: ash::vk::ExternalSemaphoreHandleTypeFlags::OPAQUE_WIN32,
+            #[cfg(target_os = "linux")]
+            handle_type: ash::vk::ExternalSemaphoreHandleTypeFlags::OPAQUE_FD,
+            semaphore: vk_semaphore,
+            ..ash::vk::SemaphoreGetWin32HandleInfoKHR::default()
+        };
+
+        unsafe {
+            self.inner
+                .backend_device_context
+                .external_semaphore
+                .get_semaphore_win32_handle(&create_info)
+                .unwrap()
+        }
     }
 
     pub(crate) fn queue_allocator(&self) -> &VkQueueAllocatorSet {

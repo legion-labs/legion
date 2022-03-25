@@ -1,3 +1,4 @@
+use std::ffi::c_void;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 #[cfg(debug_assertions)]
@@ -291,4 +292,17 @@ impl DeviceContext {
     pub fn device_info(&self) -> &DeviceInfo {
         &self.inner.device_info
     }
+}
+
+pub enum ExternalResourceType {
+    Image,
+    Semaphore,
+}
+
+pub trait ExternalResource<T> {
+    fn clone_resource(&self) -> T;
+
+    fn external_resource_type() -> ExternalResourceType;
+
+    fn external_resource_handle(&self, device_context: &DeviceContext) -> *mut c_void;
 }

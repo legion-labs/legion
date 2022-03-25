@@ -24,6 +24,7 @@ pub use labels::*;
 
 mod asset_to_ecs;
 mod renderer;
+use lgn_codec_api::encoder_work_queue::EncoderWorkQueue;
 use lgn_asset_registry::AssetToEntityMap;
 use lgn_data_runtime::{AssetRegistry, AssetRegistryEvent, Resource};
 use lgn_embedded_fs::EMBEDDED_FS;
@@ -248,20 +249,22 @@ impl Plugin for RendererPlugin {
     }
 }
 
-#[allow(clippy::needless_pass_by_value)]
+#[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)]
 fn on_window_created(
     mut commands: Commands<'_, '_>,
     mut event_window_created: EventReader<'_, '_, WindowCreated>,
     window_list: Res<'_, Windows>,
     renderer: Res<'_, Renderer>,
     pipeline_manager: Res<'_, PipelineManager>,
+    encoder_work_queue: Res<'_, EncoderWorkQueue>,
     mut render_surfaces: ResMut<'_, RenderSurfaces>,
     mut event_render_surface_created: ResMut<'_, Events<RenderSurfaceCreatedForWindow>>,
 ) {
     for ev in event_window_created.iter() {
         let wnd = window_list.get(ev.id).unwrap();
         let extents = RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height());
-        let render_surface = RenderSurface::new(&renderer, &pipeline_manager, extents);
+        let render_surface =
+            RenderSurface::new(&renderer, &pipeline_manager, extents, &encoder_work_queue);
 
         render_surfaces.insert(ev.id, render_surface.id());
 
@@ -282,6 +285,7 @@ fn on_window_resized(
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
     render_surfaces: Res<'_, RenderSurfaces>,
     pipeline_manager: Res<'_, PipelineManager>,
+    encoder_work_queue: Res<'_, EncoderWorkQueue>,
 ) {
     for ev in ev_wnd_resized.iter() {
         let render_surface_id = render_surfaces.get_from_window_id(ev.id);
@@ -295,6 +299,7 @@ fn on_window_resized(
                     renderer.device_context(),
                     RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height()),
                     &pipeline_manager,
+                    &encoder_work_queue,
                 );
             }
         }
@@ -640,10 +645,11 @@ fn render_update(
         }
 
         // queue
-        let sem = render_surface.acquire();
+        let sems = render_surface.acquire();
+        let sems_array = [sems.0, &sems.1.external_resource()];
         {
             let graphics_queue = render_context.graphics_queue();
-            graphics_queue.submit(&mut [cmd_buffer.finalize()], &[], &[sem], None);
+            graphics_queue.submit(&mut [cmd_buffer.finalize()], &[], &sems_array, None);
 
             render_surface.present(&render_context);
         }

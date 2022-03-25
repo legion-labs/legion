@@ -11,6 +11,7 @@
 )]
 
 use raw_window_handle::HasRawWindowHandle;
+use std::ffi::c_void;
 
 use crate::{
     ApiDef, Buffer, BufferBarrier, BufferCopy, BufferDef, BufferMappingInfo, CmdBlitParams,
@@ -629,11 +630,15 @@ impl NullSampler {
 pub(crate) struct NullSemaphore;
 
 impl NullSemaphore {
-    pub fn new(device_context: &DeviceContext) -> Self {
+    pub fn new(device_context: &DeviceContext, export_capable: bool) -> Self {
         unimplemented!()
     }
 
     pub fn destroy(&self, device_context: &DeviceContext) {
+        unimplemented!()
+    }
+
+    pub fn external_semaphore_handle(&self, device_context: &DeviceContext) -> *mut c_void {
         unimplemented!()
     }
 }
@@ -734,11 +739,18 @@ impl NullTexture {
         unimplemented!()
     }
 
-    pub fn export_capable(device_context: &DeviceContext, texture_def: &TextureDef) -> (Self, u32) {
+    pub fn new_export_capable(
+        device_context: &DeviceContext,
+        texture_def: &TextureDef,
+    ) -> (Self, u32) {
         unimplemented!()
     }
 
     pub fn destroy(&mut self, device_context: &DeviceContext) {
+        unimplemented!()
+    }
+
+    pub fn external_memory_handle(&self, device_context: &DeviceContext) -> *mut c_void {
         unimplemented!()
     }
 }
