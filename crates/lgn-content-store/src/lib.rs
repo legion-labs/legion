@@ -3,6 +3,7 @@
 // crate-specific lint exceptions:
 #![warn(missing_docs)]
 
+use async_trait::async_trait;
 use std::{
     fmt,
     hash::Hasher,
@@ -75,36 +76,37 @@ impl fmt::Display for ContentStoreAddr {
 /// [`crate::content_checksum`] function to calculate the checksum of stored
 /// content.
 // todo: change Option to Error
-pub trait ContentStore: Send {
+#[async_trait]
+pub trait ContentStore: Send + Sync {
     /// Write content to the backing storage.
-    fn write(&mut self, id: Checksum, data: &[u8]) -> Option<()>;
+    async fn write(&mut self, id: Checksum, data: &[u8]) -> Option<()>;
 
     /// Read content from the backing storage.
-    fn read(&self, id: Checksum) -> Option<Vec<u8>>;
+    async fn read(&self, id: Checksum) -> Option<Vec<u8>>;
 
     /// Remove content from the backing storage.
-    fn remove(&mut self, id: Checksum);
+    async fn remove(&mut self, id: Checksum);
 
     /// Returns the description of the content if it exists.
     ///
     /// This default implementation is quite inefficient as it involves reading
     /// the content's content to calculate its checksum.
-    fn exists(&self, id: Checksum) -> bool {
-        self.read(id).is_some()
+    async fn exists(&self, id: Checksum) -> bool {
+        self.read(id).await.is_some()
     }
 
     /// Stores the content and validates its validity afterwards.
     ///
     /// This method calls [`write`](#method.write) to store the content and
     /// [`read`](#method.read) afterwards to perform the validation.
-    fn store(&mut self, data: &[u8]) -> Option<Checksum> {
+    async fn store(&mut self, data: &[u8]) -> Option<Checksum> {
         let id = content_checksum(data);
-        self.write(id, data)?;
+        self.write(id, data).await?;
 
-        let read = self.read(id)?;
+        let read = self.read(id).await?;
 
         if id != content_checksum(&read) {
-            self.remove(id);
+            self.remove(id).await;
             return None;
         }
 

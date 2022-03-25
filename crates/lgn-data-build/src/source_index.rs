@@ -284,7 +284,7 @@ impl SourceIndex {
             Checksum::from(hasher.finish_256())
         };
 
-        if let Some(cached_data) = self.content_store.read(dir_checksum) {
+        if let Some(cached_data) = self.content_store.read(dir_checksum).await {
             let source_index = SourceContent::read(&cached_data)?;
             Ok((source_index, uploads))
         } else {
@@ -386,6 +386,7 @@ impl SourceIndex {
             for (dir_checksum, buffer) in uploads {
                 self.content_store
                     .write(dir_checksum, &buffer)
+                    .await
                     .ok_or(Error::InvalidContentStore)?;
             }
 

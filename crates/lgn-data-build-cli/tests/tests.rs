@@ -122,7 +122,8 @@ async fn build_device() {
             project_dir,
             true,
         )
-        .create();
+        .create()
+        .await;
 
     // build needs to be dropped to flush recorded ResourcePathIds to disk
     std::mem::drop(build);
@@ -130,7 +131,9 @@ async fn build_device() {
     // load (and build/fetch from cache) derived resource
     let derived_id = derived.resource_id();
     {
-        let handle = registry.load_sync::<refs_asset::RefsAsset>(derived_id);
+        let handle = registry
+            .load_async::<refs_asset::RefsAsset>(derived_id)
+            .await;
         assert!(handle.is_loaded(&registry));
 
         let resource = handle.get(&registry).expect("loaded asset");
@@ -164,7 +167,9 @@ async fn build_device() {
     registry.update();
 
     // load (and recompile) the changed resource
-    let handle = registry.load_sync::<refs_asset::RefsAsset>(derived_id);
+    let handle = registry
+        .load_async::<refs_asset::RefsAsset>(derived_id)
+        .await;
     assert!(handle.is_loaded(&registry));
 
     let resource = handle.get(&registry).expect("loaded asset");

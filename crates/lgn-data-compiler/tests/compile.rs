@@ -18,8 +18,8 @@ fn find_compiler() {
     assert_ne!(compilers.len(), 0);
 }
 
-#[test]
-fn compile_atoi() {
+#[tokio::test]
+async fn compile_atoi() {
     let work_dir = tempfile::tempdir().unwrap();
     let (resource_dir, output_dir) = common::setup_dir(&work_dir);
 
@@ -74,9 +74,9 @@ fn compile_atoi() {
     let checksum = asset_info.checksum;
 
     let cas = HddContentStore::open(cas_addr).expect("valid cas");
-    assert!(cas.exists(checksum));
+    assert!(cas.exists(checksum).await);
 
-    let resource_content = cas.read(checksum).expect("asset content");
+    let resource_content = cas.read(checksum).await.expect("asset content");
 
     let mut loader = IntegerAssetLoader {};
     let asset = loader
@@ -88,8 +88,8 @@ fn compile_atoi() {
     assert_eq!(source_magic_value, stringified);
 }
 
-#[test]
-fn compile_intermediate() {
+#[tokio::test]
+async fn compile_intermediate() {
     let work_dir = tempfile::tempdir().unwrap();
     let (resource_dir, output_dir) = common::setup_dir(&work_dir);
 
@@ -162,9 +162,9 @@ fn compile_intermediate() {
     let checksum = derived_info.checksum;
 
     let cas = HddContentStore::open(cas_addr).expect("valid cas");
-    assert!(cas.exists(checksum));
+    assert!(cas.exists(checksum).await);
 
-    let resource_content = cas.read(checksum).expect("asset content");
+    let resource_content = cas.read(checksum).await.expect("asset content");
 
     let mut loader = IntegerAssetLoader {};
     let asset = loader
@@ -179,8 +179,8 @@ fn compile_intermediate() {
     );
 }
 
-#[test]
-fn compile_multi_resource() {
+#[tokio::test]
+async fn compile_multi_resource() {
     let work_dir = tempfile::tempdir().unwrap();
     let (resource_dir, output_dir) = common::setup_dir(&work_dir);
 
@@ -246,9 +246,10 @@ fn compile_multi_resource() {
     let content_store = HddContentStore::open(cas_addr).expect("valid cas");
 
     for (resource, source_text) in compiled_resources.iter().zip(source_text_list.iter()) {
-        assert!(content_store.exists(resource.checksum));
+        assert!(content_store.exists(resource.checksum).await);
         let resource_content = content_store
             .read(resource.checksum)
+            .await
             .expect("asset content");
         let mut proc = text_resource::TextResourceProc {};
         let resource = proc
@@ -259,8 +260,8 @@ fn compile_multi_resource() {
     }
 }
 
-#[test]
-fn compile_base64() {
+#[tokio::test]
+async fn compile_base64() {
     let work_dir = tempfile::tempdir().unwrap();
     let (resource_dir, output_dir) = common::setup_dir(&work_dir);
 
@@ -316,9 +317,9 @@ fn compile_base64() {
     let checksum = asset_info.checksum;
 
     let cas = HddContentStore::open(cas_addr).expect("valid cas");
-    assert!(cas.exists(checksum));
+    assert!(cas.exists(checksum).await);
 
-    let resource_content = cas.read(checksum).expect("asset content");
+    let resource_content = cas.read(checksum).await.expect("asset content");
 
     let base64str = String::from_utf8_lossy(&resource_content);
     assert_eq!(base64str, expected_base64_value);

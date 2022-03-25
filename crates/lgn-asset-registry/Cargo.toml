@@ -11,6 +11,7 @@ keywords = ["legion"]
 [dependencies]
 # Legion engine
 lgn-app = { path = "../lgn-app", version = "0.1.0" }
+lgn-async = { path = "../lgn-async", version = "0.1.0" }
 lgn-config = { path = "../lgn-config", version = "0.1.0" }
 lgn-content-store = { path = "../lgn-content-store", version = "0.1.0" }
 lgn-core = { path = "../lgn-core", version = "0.1.0" }
@@ -24,3 +25,4 @@ lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 # other
 crossbeam-channel = "0.5.1"
 serde_json = "1.0"
+tokio = { version = "1", features = ["full", "tracing"] }

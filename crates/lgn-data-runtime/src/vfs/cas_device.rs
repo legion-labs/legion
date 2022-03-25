@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use lgn_content_store::ContentStore;
 
 use super::Device;
@@ -19,10 +20,11 @@ impl CasDevice {
     }
 }
 
+#[async_trait]
 impl Device for CasDevice {
-    fn load(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
+    async fn load(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
         let (checksum, size) = self.manifest.find(type_id)?;
-        let content = self.content_store.read(checksum)?;
+        let content = self.content_store.read(checksum).await?;
         assert_eq!(
             content.len(),
             size,
@@ -33,5 +35,9 @@ impl Device for CasDevice {
             content.len()
         );
         Some(content)
+    }
+
+    async fn reload(&self, _: ResourceTypeAndId) -> Option<Vec<u8>> {
+        None
     }
 }

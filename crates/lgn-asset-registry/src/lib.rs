@@ -14,6 +14,7 @@ pub use asset_entities::AssetToEntityMap;
 use asset_handles::AssetHandles;
 pub use config::{AssetRegistrySettings, DataBuildConfig};
 use lgn_app::prelude::*;
+use lgn_async::TokioAsyncRuntime;
 use lgn_content_store::HddContentStore;
 use lgn_data_runtime::{
     manifest::Manifest, AssetRegistry, AssetRegistryEvent, AssetRegistryOptions,
@@ -92,7 +93,9 @@ impl AssetRegistryPlugin {
         let registry_options = world
             .remove_non_send_resource::<AssetRegistryOptions>()
             .unwrap();
-        let registry = registry_options.create();
+
+        let async_rt = world.resource::<TokioAsyncRuntime>();
+        let registry = async_rt.block_on(async { registry_options.create().await });
 
         let load_events = registry.subscribe_to_load_events();
         world.insert_resource(load_events);
@@ -147,7 +150,7 @@ impl AssetRegistryPlugin {
     }
 
     fn handle_load_events(
-        load_events_rx: ResMut<'_, crossbeam_channel::Receiver<ResourceLoadEvent>>,
+        mut load_events_rx: ResMut<'_, tokio::sync::mpsc::UnboundedReceiver<ResourceLoadEvent>>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         mut asset_handles: ResMut<'_, AssetHandles>,
     ) {

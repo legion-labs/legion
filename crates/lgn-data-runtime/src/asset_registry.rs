@@ -6,7 +6,6 @@ use std::{
     collections::HashMap,
     path::Path,
     sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
-    thread::{self, JoinHandle},
     time::Duration,
 };
 
@@ -82,8 +81,8 @@ impl<'a, T: ?Sized + 'a> std::ops::Deref for AssetRegistryGuard<'a, T> {
 
 /// Options which can be used to configure the creation of [`AssetRegistry`].
 pub struct AssetRegistryOptions {
-    loaders: HashMap<ResourceType, Box<dyn AssetLoader + Send>>,
-    devices: Vec<Box<dyn vfs::Device>>,
+    loaders: HashMap<ResourceType, Box<dyn AssetLoader + Send + Sync>>,
+    devices: Vec<Box<(dyn vfs::Device + Send)>>,
 }
 
 impl AssetRegistryOptions {
@@ -168,7 +167,7 @@ impl AssetRegistryOptions {
     }
 
     /// Creates [`AssetRegistry`] based on `AssetRegistryOptions`.
-    pub fn create(self) -> Arc<AssetRegistry> {
+    pub async fn create(self) -> Arc<AssetRegistry> {
         let (loader, mut io) = create_loader(self.devices);
 
         let registry = Arc::new(AssetRegistry {
@@ -186,9 +185,11 @@ impl AssetRegistryOptions {
             io.register_loader(kind, loader);
         }
 
-        let load_thread = thread::spawn(move || {
+        let rt = tokio::runtime::Handle::current();
+
+        let load_thread = rt.spawn(async move {
             let mut loader = io;
-            while loader.wait(Duration::from_millis(100)).is_some() {}
+            while loader.wait(Duration::from_millis(100)).await.is_some() {}
         });
 
         registry.load_thread.set(Some(load_thread));
@@ -201,7 +202,7 @@ struct Inner {
     assets: HashMap<ResourceTypeAndId, Box<dyn Any + Send + Sync>>,
     loader: AssetLoaderStub,
     load_errors: HashMap<ResourceTypeAndId, AssetRegistryError>,
-    load_event_senders: Vec<crossbeam_channel::Sender<ResourceLoadEvent>>,
+    load_event_senders: Vec<tokio::sync::mpsc::UnboundedSender<ResourceLoadEvent>>,
 }
 
 /// Registry of all loaded [`Resource`]s.
@@ -219,7 +220,7 @@ struct Inner {
 /// [`Handle`]: [`crate::Handle`]
 pub struct AssetRegistry {
     inner: RwLock<Inner>,
-    load_thread: Cell<Option<JoinHandle<()>>>,
+    load_thread: Cell<Option<tokio::task::JoinHandle<()>>>,
 }
 
 /// Label to use for scheduling systems that require the `AssetRegistry`
@@ -244,7 +245,7 @@ pub enum AssetRegistryEvent {
 
 /// A resource loading event is emitted when a resource is loaded, unloaded, or
 /// loading fails
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum ResourceLoadEvent {
     /// Successful resource load, resulting from either a handle load, or the
     /// loading of a dependency
@@ -260,7 +261,7 @@ pub enum ResourceLoadEvent {
 impl Drop for AssetRegistry {
     fn drop(&mut self) {
         self.write_inner().loader.terminate();
-        self.load_thread.take().unwrap().join().unwrap();
+        self.load_thread.take().unwrap().abort();
     }
 }
 
@@ -281,6 +282,9 @@ impl AssetRegistry {
     ///
     /// The asset will be unloaded after all instances of [`HandleUntyped`] and
     /// [`Handle`] that refer to that asset go out of scope.
+    ///
+    /// This is a non-blocking call.
+    /// For a blocking version see [`Self::load_untyped_sync`] and [`Self::load_untyped_async`].
     pub fn load_untyped(&self, type_id: ResourceTypeAndId) -> HandleUntyped {
         self.write_inner().loader.load(type_id)
     }
@@ -297,13 +301,26 @@ impl AssetRegistry {
     }
 
     /// Same as [`Self::load_untyped`] but blocks until the resource load
-    /// completes or returns an error.
+    /// completes or a load error occurs.
     pub fn load_untyped_sync(&self, type_id: ResourceTypeAndId) -> HandleUntyped {
-        let handle = self.write_inner().loader.load(type_id);
-        // todo: this will be improved with async/await
+        let handle = self.load_untyped(type_id);
+        // todo: instead of polling this could use 'condvar' or similar.
         while !handle.is_loaded(self) && !handle.is_err(self) {
             self.update();
             std::thread::sleep(Duration::from_micros(100));
+        }
+
+        handle
+    }
+
+    /// Same as [`Self::load_untyped`] but waits until the resource load
+    /// completes or a load error occurs.
+    pub async fn load_untyped_async(&self, type_id: ResourceTypeAndId) -> HandleUntyped {
+        let handle = self.load_untyped(type_id);
+        while !handle.is_loaded(self) && !handle.is_err(self) {
+            self.update();
+            // todo: instead of sleeping a better solution would be to use something like 'waitmap'.
+            tokio::time::sleep(Duration::from_micros(100)).await;
         }
 
         handle
@@ -320,6 +337,13 @@ impl AssetRegistry {
     /// returns an error.
     pub fn load_sync<T: Any + Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
         let handle = self.load_untyped_sync(id);
+        Handle::<T>::from(handle)
+    }
+
+    /// Same as [`Self::load`] but waits until the resource load completes or
+    /// returns an error.
+    pub async fn load_async<T: Any + Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
+        let handle = self.load_untyped_async(id).await;
         Handle::<T>::from(handle)
     }
 
@@ -405,8 +429,10 @@ impl AssetRegistry {
     /// Subscribe to load events, to know when resources are loaded and
     /// unloaded. Returns a channel receiver that will receive
     /// `ResourceLoadEvent`s.
-    pub fn subscribe_to_load_events(&self) -> crossbeam_channel::Receiver<ResourceLoadEvent> {
-        let (sender, receiver) = crossbeam_channel::unbounded();
+    pub fn subscribe_to_load_events(
+        &self,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<ResourceLoadEvent> {
+        let (sender, receiver) = tokio::sync::mpsc::unbounded_channel::<ResourceLoadEvent>();
         self.write_inner().load_event_senders.push(sender);
         receiver
     }
@@ -509,7 +535,7 @@ mod tests {
     use super::*;
     use crate::test_asset;
 
-    fn setup_singular_asset_test(content: &[u8]) -> (ResourceTypeAndId, Arc<AssetRegistry>) {
+    async fn setup_singular_asset_test(content: &[u8]) -> (ResourceTypeAndId, Arc<AssetRegistry>) {
         let mut content_store = Box::new(RamContentStore::default());
         let manifest = Manifest::default();
 
@@ -518,7 +544,7 @@ mod tests {
                 kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(1),
             };
-            let checksum = content_store.store(content).unwrap();
+            let checksum = content_store.store(content).await.unwrap();
             manifest.insert(type_id, checksum, content.len());
             type_id
         };
@@ -526,12 +552,13 @@ mod tests {
         let reg = AssetRegistryOptions::new()
             .add_device_cas(content_store, manifest)
             .add_loader::<test_asset::TestAsset>()
-            .create();
+            .create()
+            .await;
 
         (asset_id, reg)
     }
 
-    fn setup_dependency_test() -> (ResourceTypeAndId, ResourceTypeAndId, Arc<AssetRegistry>) {
+    async fn setup_dependency_test() -> (ResourceTypeAndId, ResourceTypeAndId, Arc<AssetRegistry>) {
         let mut content_store = Box::new(RamContentStore::default());
         let manifest = Manifest::default();
 
@@ -568,10 +595,10 @@ mod tests {
         let parent_id = {
             manifest.insert(
                 child_id,
-                content_store.store(&BINARY_CHILD_ASSETFILE).unwrap(),
+                content_store.store(&BINARY_CHILD_ASSETFILE).await.unwrap(),
                 BINARY_CHILD_ASSETFILE.len(),
             );
-            let checksum = content_store.store(&BINARY_PARENT_ASSETFILE).unwrap();
+            let checksum = content_store.store(&BINARY_PARENT_ASSETFILE).await.unwrap();
             let id = ResourceTypeAndId {
                 kind: refs_asset::RefsAsset::TYPE,
                 id: ResourceId::new_explicit(2),
@@ -583,17 +610,18 @@ mod tests {
         let reg = AssetRegistryOptions::new()
             .add_device_cas(content_store, manifest)
             .add_loader::<refs_asset::RefsAsset>()
-            .create();
+            .create()
+            .await;
 
         (parent_id, child_id, reg)
     }
 
     const BINARY_RAWFILE: [u8; 5] = [99, 104, 105, 108, 100];
 
-    #[test]
-    fn load_assetfile() {
+    #[tokio::test]
+    async fn load_assetfile() {
         let (asset_id, reg) =
-            setup_singular_asset_test(&crate::test_asset::tests::BINARY_ASSETFILE);
+            setup_singular_asset_test(&crate::test_asset::tests::BINARY_ASSETFILE).await;
 
         let internal_id;
         {
@@ -603,7 +631,7 @@ mod tests {
             let mut test_timeout = Duration::from_millis(500);
             while test_timeout > Duration::ZERO && !a.is_loaded(&reg) {
                 let sleep_time = Duration::from_millis(10);
-                thread::sleep(sleep_time);
+                tokio::time::sleep(sleep_time).await;
                 test_timeout -= sleep_time;
                 reg.update();
             }
@@ -625,9 +653,9 @@ mod tests {
         assert!(!reg.is_loaded(internal_id));
     }
 
-    #[test]
-    fn load_rawfile() {
-        let (asset_id, reg) = setup_singular_asset_test(&BINARY_RAWFILE);
+    #[tokio::test]
+    async fn load_rawfile() {
+        let (asset_id, reg) = setup_singular_asset_test(&BINARY_RAWFILE).await;
 
         let internal_id;
         {
@@ -637,7 +665,7 @@ mod tests {
             let mut test_timeout = Duration::from_millis(500);
             while test_timeout > Duration::ZERO && !a.is_loaded(&reg) {
                 let sleep_time = Duration::from_millis(10);
-                thread::sleep(sleep_time);
+                tokio::time::sleep(sleep_time).await;
                 test_timeout -= sleep_time;
                 reg.update();
             }
@@ -659,9 +687,9 @@ mod tests {
         assert!(!reg.is_loaded(internal_id));
     }
 
-    #[test]
-    fn load_error() {
-        let (_, reg) = setup_singular_asset_test(&crate::test_asset::tests::BINARY_ASSETFILE);
+    #[tokio::test]
+    async fn load_error() {
+        let (_, reg) = setup_singular_asset_test(&crate::test_asset::tests::BINARY_ASSETFILE).await;
 
         let internal_id;
         {
@@ -674,7 +702,7 @@ mod tests {
             let mut test_timeout = Duration::from_millis(500);
             while test_timeout > Duration::ZERO && !a.is_err(&reg) {
                 let sleep_time = Duration::from_millis(10);
-                thread::sleep(sleep_time);
+                tokio::time::sleep(sleep_time).await;
                 test_timeout -= sleep_time;
                 reg.update();
             }
@@ -687,16 +715,18 @@ mod tests {
         assert!(!reg.is_loaded(internal_id));
     }
 
-    #[test]
-    fn load_error_sync() {
-        let (_, reg) = setup_singular_asset_test(&crate::test_asset::tests::BINARY_ASSETFILE);
+    #[tokio::test]
+    async fn load_error_sync() {
+        let (_, reg) = setup_singular_asset_test(&crate::test_asset::tests::BINARY_ASSETFILE).await;
 
         let internal_id;
         {
-            let a = reg.load_untyped_sync(ResourceTypeAndId {
-                kind: test_asset::TestAsset::TYPE,
-                id: ResourceId::new_explicit(7),
-            });
+            let a = reg
+                .load_untyped_async(ResourceTypeAndId {
+                    kind: test_asset::TestAsset::TYPE,
+                    id: ResourceId::new_explicit(7),
+                })
+                .await;
             internal_id = a.id();
 
             assert!(!a.is_loaded(&reg));
@@ -707,11 +737,11 @@ mod tests {
         assert!(!reg.is_loaded(internal_id));
     }
 
-    #[test]
-    fn load_dependency() {
-        let (parent_id, child_id, reg) = setup_dependency_test();
+    #[tokio::test]
+    async fn load_dependency() {
+        let (parent_id, child_id, reg) = setup_dependency_test().await;
 
-        let parent = reg.load_untyped_sync(parent_id);
+        let parent = reg.load_untyped_async(parent_id).await;
         assert!(parent.is_loaded(&reg));
 
         let child = reg.get_untyped(child_id).expect("be loaded indirectly");
@@ -735,14 +765,14 @@ mod tests {
         assert!(reg.get_untyped(child_id).is_none());
     }
 
-    #[test]
-    fn loaded_notification() {
+    #[tokio::test]
+    async fn loaded_notification() {
         let (asset_id, reg) =
-            setup_singular_asset_test(&crate::test_asset::tests::BINARY_ASSETFILE);
+            setup_singular_asset_test(&crate::test_asset::tests::BINARY_ASSETFILE).await;
 
-        let notif = reg.subscribe_to_load_events();
+        let mut notif = reg.subscribe_to_load_events();
         {
-            let _handle = reg.load_untyped_sync(asset_id);
+            let _handle = reg.load_untyped_async(asset_id).await;
             reg.update();
         } // user handle drops here..
 
@@ -760,20 +790,20 @@ mod tests {
         assert!(!reg.is_loaded(asset_id));
     }
 
-    #[test]
-    fn reload_no_change() {
+    #[tokio::test]
+    async fn reload_no_change() {
         let (asset_id, reg) =
-            setup_singular_asset_test(&crate::test_asset::tests::BINARY_ASSETFILE);
+            setup_singular_asset_test(&crate::test_asset::tests::BINARY_ASSETFILE).await;
 
         let internal_id;
         {
-            let a = reg.load_untyped_sync(asset_id);
+            let a = reg.load_untyped_async(asset_id).await;
             internal_id = a.id();
 
             assert!(a.is_loaded(&reg));
             assert!(!a.is_err(&reg));
 
-            let notif = reg.subscribe_to_load_events();
+            let mut notif = reg.subscribe_to_load_events();
             assert!(reg.reload(a.id()));
 
             let mut test_timeout = Duration::from_millis(500);
@@ -781,7 +811,9 @@ mod tests {
 
             while test_timeout > Duration::ZERO {
                 reg.update();
-                if let Ok(ResourceLoadEvent::Reloaded(reloaded)) = notif.recv_timeout(dt) {
+                if let Ok(Some(ResourceLoadEvent::Reloaded(reloaded))) =
+                    tokio::time::timeout(dt, notif.recv()).await
+                {
                     assert_eq!(a, reloaded);
                     break;
                 }
