@@ -3,7 +3,10 @@ use std::{collections::BTreeMap, str::FromStr};
 use lgn_app::App;
 use lgn_core::BumpAllocatorPool;
 use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
-use lgn_ecs::prelude::{Changed, Query, Res, ResMut, Without};
+use lgn_ecs::{
+    prelude::{Changed, Query, Res, ResMut, Without},
+    schedule::SystemSet,
+};
 use lgn_math::Vec3;
 use lgn_tracing::{span_fn, warn};
 use lgn_transform::components::{GlobalTransform, Transform};
@@ -13,7 +16,7 @@ use crate::{
     components::{ManipulatorComponent, ModelComponent, VisualComponent},
     debug_display::DebugDisplay,
     labels::RenderStage,
-    Renderer,
+    Renderer, ResourceLoadingLabel,
 };
 
 use super::{
@@ -68,8 +71,14 @@ impl ModelManager {
     }
 
     pub fn init_ecs(app: &mut App) {
-        app.add_system_to_stage(RenderStage::Prepare, update_models);
-        app.add_system_to_stage(RenderStage::Prepare, debug_bounding_spheres);
+        app.add_system_set_to_stage(
+            RenderStage::Resource,
+            SystemSet::new()
+                .with_system(update_models)
+                .with_system(debug_bounding_spheres)
+                .label(ResourceLoadingLabel::Model)
+                .after(ResourceLoadingLabel::Material),
+        );
     }
 
     pub fn add_model(&mut self, resource_id: ResourceTypeAndId, model: ModelMetaData) {

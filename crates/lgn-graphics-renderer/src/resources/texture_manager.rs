@@ -14,7 +14,7 @@ use lgn_tracing::span_fn;
 use crate::{
     components::{TextureComponent, TextureData},
     labels::RenderStage,
-    Renderer,
+    Renderer, ResourceLoadingLabel,
 };
 
 use super::PersistentDescriptorSetManager;
@@ -83,7 +83,7 @@ impl TextureManager {
         app.add_event::<TextureEvent>();
 
         app.add_system_set_to_stage(
-            RenderStage::Prepare,
+            RenderStage::Resource,
             SystemSet::new()
                 .with_system(on_texture_added)
                 .with_system(on_texture_modified)
@@ -92,8 +92,10 @@ impl TextureManager {
         );
 
         app.add_system_to_stage(
-            RenderStage::Prepare,
-            apply_changes.after(TextureManagerLabel::UpdateDone),
+            RenderStage::Resource,
+            apply_changes
+                .label(ResourceLoadingLabel::Texture)
+                .after(TextureManagerLabel::UpdateDone),
         );
     }
 

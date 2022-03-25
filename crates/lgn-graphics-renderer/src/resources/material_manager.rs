@@ -12,7 +12,7 @@ use crate::{
     components::{MaterialComponent, MaterialData},
     labels::RenderStage,
     resources::SharedTextureId,
-    Renderer,
+    Renderer, ResourceLoadingLabel,
 };
 
 use super::{
@@ -114,19 +114,21 @@ impl MaterialManager {
         // Stage Prepare
         //
         app.add_system_set_to_stage(
-            RenderStage::Prepare,
+            RenderStage::Resource,
             SystemSet::new()
                 .with_system(on_material_added)
                 .with_system(on_material_changed)
                 .with_system(on_material_removed)
                 .with_system(on_texture_event)
                 .with_system(upload_default_material)
-                .label(MaterialManagerLabel::UpdateDone),
+                .label(MaterialManagerLabel::UpdateDone)
+                .after(ResourceLoadingLabel::Texture),
         );
         app.add_system_set_to_stage(
-            RenderStage::Prepare,
+            RenderStage::Resource,
             SystemSet::new()
                 .with_system(upload_material_data)
+                .label(ResourceLoadingLabel::Material)
                 .after(MaterialManagerLabel::UpdateDone),
         );
     }

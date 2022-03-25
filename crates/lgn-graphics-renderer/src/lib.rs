@@ -145,6 +145,12 @@ impl Plugin for RendererPlugin {
         //
         app.add_stage_after(
             CoreStage::PostUpdate,
+            RenderStage::Resource,
+            SystemStage::parallel(),
+        );
+
+        app.add_stage_after(
+            RenderStage::Resource,
             RenderStage::Prepare,
             SystemStage::parallel(),
         );
