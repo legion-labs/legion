@@ -118,7 +118,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _telemetry_guard = TelemetryGuardBuilder::default()
         .with_ctrlc_handling()
         .build();
-    log::info!("starting up");
     span_scope!("analytics-srv::main");
     let args = Cli::parse();
     let analytics_service = match args.spec {
