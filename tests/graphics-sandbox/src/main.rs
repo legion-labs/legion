@@ -160,7 +160,7 @@ fn on_render_surface_created_for_window(
     mut event_render_surface_created: EventReader<'_, '_, RenderSurfaceCreatedForWindow>,
     wnd_list: Res<'_, Windows>,
     renderer: Res<'_, Renderer>,
-    winit_wnd_list: NonSend<<'_, WinitWindows>,
+    winit_wnd_list: NonSend<'_, WinitWindows>,
     encoder_work_queue: Res<'_, EncoderWorkQueue>,
     mut render_surfaces: Query<'_, '_, &mut RenderSurface>,
 ) {

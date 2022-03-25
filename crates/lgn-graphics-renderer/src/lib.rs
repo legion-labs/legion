@@ -24,8 +24,8 @@ pub use labels::*;
 
 mod asset_to_ecs;
 mod renderer;
-use lgn_codec_api::encoder_work_queue::EncoderWorkQueue;
 use lgn_asset_registry::AssetToEntityMap;
+use lgn_codec_api::encoder_work_queue::EncoderWorkQueue;
 use lgn_data_runtime::{AssetRegistry, AssetRegistryEvent, Resource};
 use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{AddressMode, CompareOp, FilterType, MipMapMode, ResourceUsage, SamplerDef};
