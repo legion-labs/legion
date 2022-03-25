@@ -28,7 +28,8 @@ pub mod prelude {
     };
 }
 
-use lgn_app::{prelude::*, Events};
+use lgn_app::prelude::*;
+use lgn_ecs::event::Events;
 
 pub struct WindowPlugin {
     pub add_primary_window: bool,
@@ -50,6 +51,7 @@ impl Plugin for WindowPlugin {
             .add_event::<CreateWindow>()
             .add_event::<WindowCreated>()
             .add_event::<WindowCloseRequested>()
+            .add_event::<RequestRedraw>()
             .add_event::<CloseWindow>()
             .add_event::<CursorMoved>()
             .add_event::<CursorEntered>()
@@ -69,10 +71,7 @@ impl Plugin for WindowPlugin {
                 .get_resource::<WindowDescriptor>()
                 .map(|descriptor| (*descriptor).clone())
                 .unwrap_or_default();
-            let mut create_window_event = app
-                .world
-                .get_resource_mut::<Events<CreateWindow>>()
-                .unwrap();
+            let mut create_window_event = app.world.resource_mut::<Events<CreateWindow>>();
             create_window_event.send(CreateWindow {
                 id: WindowId::primary(),
                 descriptor: window_descriptor,

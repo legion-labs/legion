@@ -4,7 +4,7 @@
   import Log from "@/pages/Log.svelte";
   import Graph from "@/pages/Graph.svelte";
   import MetricsCanvas from "./components/Metric/MetricCanvas.svelte";
-  import { InitAuthStatus } from "@lgn/web-client/src/lib/auth";
+  import type { InitAuthStatus } from "@lgn/web-client/src/lib/auth";
   import { onMount } from "svelte";
   import Header from "./components/Misc/Header.svelte";
   import ProcessList from "./components/List/ProcessList.svelte";

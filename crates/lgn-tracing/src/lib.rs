@@ -75,6 +75,7 @@ pub mod spans;
 
 #[macro_use]
 mod macros;
+pub mod flush_monitor;
 mod levels;
 mod time;
 

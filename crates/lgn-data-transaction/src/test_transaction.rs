@@ -150,7 +150,8 @@ async fn test_transaction_system() -> Result<(), Error> {
         .add_device_dir(&resource_dir)
         .add_device_cas(Box::new(content_store), Manifest::default())
         .add_loader::<TestEntity>()
-        .create();
+        .create()
+        .await;
 
     let compilers =
         CompilerRegistryOptions::default().add_compiler(&lgn_compiler_testentity::COMPILER_INFO);

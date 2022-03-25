@@ -158,6 +158,15 @@ impl EventSink for CompositeSink {
             .iter()
             .for_each(|(_, sink)| sink.on_process_thread_block(old_event_block.clone()));
     }
+
+    fn is_busy(&self) -> bool {
+        for (_, sink) in &self.sinks {
+            if sink.is_busy() {
+                return true;
+            }
+        }
+        false
+    }
 }
 
 struct LogDispatch;

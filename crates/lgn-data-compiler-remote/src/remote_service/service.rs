@@ -11,8 +11,8 @@ use lgn_tracing::{debug, error};
 #[derive(Debug, Clone)]
 struct Job {
     initiating_node_id: NodeID,
-    input_archive: Vec<u8>,
-    output_archive: Vec<u8>,
+    input_msg: String,
+    output_msg: String,
 }
 
 #[derive(Debug, Clone)]
@@ -40,12 +40,12 @@ impl ServerState {
         let job_id = self.clients_waiting[&node_id];
         #[allow(unsafe_code)]
         let job = unsafe { self.jobs.get_unchecked(job_id) };
-        if job.output_archive.is_empty() {
+        if job.output_msg.is_empty() {
             NCJobStatus::Waiting // Still waiting for a worker to finish.
         } else {
             NCJobStatus::Unfinished(ServerData {
                 request_id: 0,
-                input_archive: job.output_archive.clone(),
+                input_msg: job.output_msg.clone(),
             })
         }
     }
@@ -58,9 +58,7 @@ impl ServerState {
             let node_data = ServerData {
                 request_id: self.request_id_counter,
                 #[allow(unsafe_code)]
-                input_archive: unsafe { self.jobs.get_unchecked(job_id) }
-                    .input_archive
-                    .clone(),
+                input_msg: unsafe { self.jobs.get_unchecked(job_id) }.input_msg.clone(),
             };
             self.workers_in_progress.insert(
                 node_id,
@@ -93,11 +91,11 @@ impl NCServer for ServerState {
     ) -> Result<Option<Self::InitialDataT>, NCError> {
         match &register_data.node_type {
             NodeType::Worker => Ok(None),
-            NodeType::InitiatingClient(archive) => {
+            NodeType::InitiatingClient(msg) => {
                 let job_id = self.jobs.add(Job {
                     initiating_node_id: node_id,
-                    input_archive: archive.clone(),
-                    output_archive: vec![],
+                    input_msg: msg.clone(),
+                    output_msg: String::new(),
                 });
                 self.clients_waiting.insert(node_id, job_id);
                 self.queue.push_back(job_id);
@@ -141,7 +139,7 @@ impl NCServer for ServerState {
                 // The job was abandoned, since the client disconnected.
                 self.jobs.remove(remote_work.job_id);
             } else {
-                job.output_archive = node_data.output_archive.clone();
+                job.output_msg = node_data.output_msg.clone();
             }
 
             self.workers_in_progress.remove(&node_id);

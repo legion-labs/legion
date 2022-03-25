@@ -2,14 +2,13 @@
   import { formatProcessName } from "@/lib/format";
   import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { spanPixelHeight } from "@/lib/Timeline/TimelineValues";
-  import { Process } from "@lgn/proto-telemetry/dist/process";
+  import type { Process } from "@lgn/proto-telemetry/dist/process";
   import { createEventDispatcher } from "svelte";
   import TimelineThreadItem from "./TimelineThreadItem.svelte";
   import TasksItem from "./TasksItem.svelte";
   export let process: Process;
   export let stateStore: TimelineStateStore;
   export let rootStartTime: number;
-  export let width: number;
   const wheelDispatch = createEventDispatcher<{ zoom: WheelEvent }>();
   let collapsed = false;
   let components: TimelineThreadItem[] = [];
@@ -21,6 +20,7 @@
 </script>
 
 <div
+  on:wheel|preventDefault={(e) => wheelDispatch("zoom", e)}
   style={collapsed
     ? `min-height:${spanPixelHeight}px;max-height:${spanPixelHeight}px;overflow-y:hidden`
     : ``}
@@ -58,9 +58,7 @@
           {stateStore}
           {process}
           {processAsyncData}
-          {width}
           {rootStartTime}
-          on:zoom={(e) => wheelDispatch("zoom", e.detail)}
         />
       {/if}
       {#each threads as thread, index (thread.streamInfo.streamId)}
@@ -69,9 +67,7 @@
           parentCollapsed={collapsed}
           {thread}
           {stateStore}
-          {width}
           {rootStartTime}
-          on:zoom={(e) => wheelDispatch("zoom", e.detail)}
         />
       {/each}
     {/if}

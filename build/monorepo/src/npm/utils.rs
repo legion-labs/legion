@@ -7,7 +7,7 @@ use std::{
     process::Command,
 };
 
-use camino::{Utf8Path, Utf8PathBuf};
+use camino::Utf8PathBuf;
 use monorepo_base::{action_step, error_step, skip_step};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::Deserialize;
@@ -105,13 +105,6 @@ impl NpmPackage {
     }
 
     pub fn install<P: AsRef<Path>>(&self, package_manager_path: P) {
-        action_step!(
-            "Npm Install",
-            "{} ({})",
-            self.package_json.name,
-            self.path.to_string_lossy()
-        );
-
         let cmd_name = "Install";
 
         self.print_action_step(cmd_name);
@@ -120,26 +113,24 @@ impl NpmPackage {
     }
 
     /// Runs the build script
-    pub fn build<P: AsRef<Path>>(&self, package_manager_path: P) {
+    pub fn build<P: AsRef<Path>>(&self, package_manager_path: P, force: bool) {
         if !self.package_json.scripts.contains_key(BUILD_SCRIPT) {
             return;
         }
 
         let cmd_name = "Build";
 
-        if !self.should_build() {
+        if force || self.should_build() {
+            self.print_action_step(cmd_name);
+
+            self.run_cmd(
+                cmd_name,
+                package_manager_path.as_ref(),
+                &["run", BUILD_SCRIPT],
+            );
+        } else {
             self.print_skip_step(cmd_name);
-
-            return;
         }
-
-        self.print_action_step(cmd_name);
-
-        self.run_cmd(
-            cmd_name,
-            package_manager_path.as_ref(),
-            &["run", BUILD_SCRIPT],
-        );
     }
 
     /// Runs the check script
@@ -422,18 +413,18 @@ impl<'a> NpmWorkspace<'a> {
         self.root_package.install(&self.package_manager_path);
     }
 
-    pub fn build(&self, package_name: &Option<String>) -> Result<()> {
+    pub fn build(&self, package_name: &Option<String>, force: bool) -> Result<()> {
         match package_name {
             None => {
                 self.packages
                     .par_iter()
-                    .for_each(|(_, package)| package.build(&self.package_manager_path));
+                    .for_each(|(_, package)| package.build(&self.package_manager_path, force));
 
                 Ok(())
             }
             Some(package_name) => match self.packages.get(package_name) {
                 Some(package) => {
-                    package.build(&self.package_manager_path);
+                    package.build(&self.package_manager_path, force);
 
                     Ok(())
                 }
@@ -567,8 +558,10 @@ impl<'a> NpmWorkspace<'a> {
         self.packages.is_empty()
     }
 
-    fn root(&self) -> &Utf8Path {
-        self.ctx.workspace_root()
+    fn root(&self) -> Utf8PathBuf {
+        let canonalized_root_path = dunce::canonicalize(self.ctx.workspace_root()).unwrap();
+
+        canonalized_root_path.to_string_lossy().as_ref().into()
     }
 
     fn config(&self) -> &MonorepoConfig {

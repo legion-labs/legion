@@ -1,11 +1,11 @@
 use lgn_ecs::prelude::{Commands, Entity, Res};
 use lgn_graphics_data::Color;
 use lgn_input::keyboard::KeyCode;
-use lgn_math::{Mat4, Quat, Vec2, Vec3, Vec4, Vec4Swizzles};
+use lgn_math::{Quat, Vec2, Vec3, Vec4, Vec4Swizzles};
 use lgn_transform::prelude::{GlobalTransform, Transform};
 
 use crate::{
-    components::{CameraComponent, ManipulatorComponent, VisualComponent},
+    components::{CameraComponent, ManipulatorComponent, RenderSurface, VisualComponent},
     resources::DefaultMeshType,
 };
 
@@ -119,17 +119,16 @@ pub(super) fn new_world_point_for_cursor(
     let camera_pos = camera.camera_rig.final_transform.position;
     let ray_point = camera_pos;
     let screen_offset = 2.0 * (cursor_pos / screen_size) - 1.0;
+    let screen_pos = Vec4::new(screen_offset.x, screen_offset.y, 0.5, 1.0);
 
-    let (view_matrix, projection_matrix) =
-        camera.build_view_projection(screen_size.x as f32, screen_size.y as f32);
+    let projection_matrix =
+        CameraComponent::build_projection(screen_size.x as f32, screen_size.y as f32);
+    let mut view_pos = projection_matrix.inverse().mul_vec4(screen_pos);
+    view_pos /= view_pos.w;
 
-    let view_proj_matrix = projection_matrix * view_matrix;
-    let inv_view_proj_matrix = view_proj_matrix.inverse();
+    let view_matrix = camera.view_transform().compute_matrix();
+    let world_pos = view_matrix.inverse().mul_vec4(view_pos);
 
-    let screen_pos = Vec4::new(screen_offset.x, screen_offset.y, 0.1, 1.0);
-
-    let mut world_pos = inv_view_proj_matrix.mul_vec4(screen_pos);
-    world_pos = world_pos / world_pos.w;
     let ray_dir = (world_pos.xyz() - camera_pos).normalize();
 
     intersect_ray_with_plane(ray_point, ray_dir, plane_point, plane_normal)
@@ -137,7 +136,7 @@ pub(super) fn new_world_point_for_cursor(
 
 pub(super) fn plane_normal_for_camera_pos(
     component: AxisComponents,
-    base_entity_transform: &Transform,
+    base_entity_transform: &GlobalTransform,
     camera: &CameraComponent,
     rotation: Quat,
 ) -> Vec3 {
@@ -260,7 +259,9 @@ impl ManipulatorManager {
     pub fn manipulate_entity(
         &self,
         part: usize,
-        base_entity_transform: &Transform,
+        base_local_transform: &Transform,
+        base_global_transform: &GlobalTransform,
+        parent_global_transform: &GlobalTransform,
         camera: &CameraComponent,
         picked_pos: Vec2,
         screen_size: Vec2,
@@ -271,7 +272,9 @@ impl ManipulatorManager {
         match inner.current_type {
             ManipulatorType::Position => PositionManipulator::manipulate_entity(
                 AxisComponents::from_component_id(part),
-                base_entity_transform,
+                base_local_transform,
+                base_global_transform,
+                parent_global_transform,
                 camera,
                 picked_pos,
                 screen_size,
@@ -279,7 +282,9 @@ impl ManipulatorManager {
             ),
             ManipulatorType::Rotation => RotationManipulator::manipulate_entity(
                 RotationComponents::from_component_id(part),
-                base_entity_transform,
+                base_local_transform,
+                base_global_transform,
+                parent_global_transform,
                 camera,
                 picked_pos,
                 screen_size,
@@ -287,7 +292,9 @@ impl ManipulatorManager {
             ),
             ManipulatorType::Scale => ScaleManipulator::manipulate_entity(
                 AxisComponents::from_component_id(part),
-                base_entity_transform,
+                base_local_transform,
+                base_global_transform,
+                parent_global_transform,
                 camera,
                 picked_pos,
                 screen_size,
@@ -324,32 +331,32 @@ impl ManipulatorManager {
     pub fn scale_manipulator_for_viewport(
         entity_transform: &GlobalTransform,
         manipulator_transform: &Transform,
-        view_matrix: &Mat4,
-        projection_matrix: &Mat4,
-    ) -> Mat4 {
-        let world_pos = Vec4::new(
-            entity_transform.translation.x,
-            entity_transform.translation.y,
-            entity_transform.translation.z,
-            1.0,
+        render_surface: &RenderSurface,
+        camera: &CameraComponent,
+    ) -> GlobalTransform {
+        let projection_matrix = CameraComponent::build_projection(
+            render_surface.extents().width() as f32,
+            render_surface.extents().height() as f32,
         );
-        let view_pos = view_matrix.mul_vec4(world_pos);
-        let x_offset = view_pos + Vec4::new(0.5, 0.0, 0.0, 0.0);
-        let y_offset = view_pos + Vec4::new(0.0, 0.5, 0.0, 0.0);
 
-        let proj_pos = projection_matrix.mul_vec4(view_pos);
-        let x_proj = projection_matrix.mul_vec4(x_offset);
-        let y_proj = projection_matrix.mul_vec4(y_offset);
+        let view_pos = camera
+            .view_transform()
+            .mul_vec3(entity_transform.translation);
+        let x_offset = view_pos + Vec3::new(0.5, 0.0, 0.0);
+        let y_offset = view_pos + Vec3::new(0.0, 0.5, 0.0);
+
+        let proj_pos = projection_matrix.mul_vec4(view_pos.extend(1.0));
+        let x_proj = projection_matrix.mul_vec4(x_offset.extend(1.0));
+        let y_proj = projection_matrix.mul_vec4(y_offset.extend(1.0));
 
         let x_scale = 0.2 / ((x_proj.x / x_proj.w) - (proj_pos.x / proj_pos.w));
         let y_scale = 0.2 / ((y_proj.y / y_proj.w) - (proj_pos.y / proj_pos.w));
 
         let manip_scale = x_scale + y_scale * 0.5;
 
-        let local_matrix = manipulator_transform.compute_matrix();
-        let world_matrix = entity_transform.compute_matrix();
-        let scale_matrix = Mat4::from_scale(Vec3::new(manip_scale, manip_scale, manip_scale));
+        let scale_transform =
+            Transform::from_scale(Vec3::new(manip_scale, manip_scale, manip_scale));
 
-        world_matrix * scale_matrix * local_matrix
+        entity_transform.mul_transform(scale_transform.mul_transform(*manipulator_transform))
     }
 }

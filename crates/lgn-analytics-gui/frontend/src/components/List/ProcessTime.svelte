@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Process } from "@lgn/proto-telemetry/dist/process";
+  import type { Process } from "@lgn/proto-telemetry/dist/process";
   import { formatDistance } from "date-fns";
   export let process: Process | undefined;
 

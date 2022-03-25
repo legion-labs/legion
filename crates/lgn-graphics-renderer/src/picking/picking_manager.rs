@@ -7,7 +7,7 @@ use lgn_input::{
     ElementState,
 };
 use lgn_math::Vec2;
-use lgn_transform::prelude::Transform;
+use lgn_transform::{components::GlobalTransform, prelude::Transform};
 
 use crate::{
     cgen::cgen_type::PickingData,
@@ -104,7 +104,8 @@ pub struct PickingManagerInner {
     picking_blocks: Vec<Option<PickingIdBlock>>,
     mouse_input: MouseButtonInput,
     screen_rect: Vec2,
-    manip_entity_base_transform: Transform,
+    manip_entity_base_local_transform: Transform,
+    manip_entity_base_global_transform: GlobalTransform,
     picking_state: PickingState,
     current_cpu_frame_no: u64,
     picked_cpu_frame_no: u64,
@@ -133,7 +134,8 @@ impl PickingManager {
                     state: ElementState::Released,
                     pos: Vec2::NAN,
                 },
-                manip_entity_base_transform: Transform::default(),
+                manip_entity_base_local_transform: Transform::default(),
+                manip_entity_base_global_transform: GlobalTransform::default(),
                 screen_rect: Vec2::ZERO,
                 picking_state: PickingState::Ready,
                 current_cpu_frame_no: 0,
@@ -311,14 +313,10 @@ impl PickingManager {
         mut picked_components: Query<
             '_,
             '_,
-            (
-                Entity,
-                &Transform,
-                &mut PickedComponent,
-                Option<&ManipulatorComponent>,
-            ),
+            (Entity, &mut PickedComponent, Option<&ManipulatorComponent>),
         >,
         manipulator_entities: Query<'_, '_, (Entity, &ManipulatorComponent)>,
+        entities: Query<'_, '_, (Entity, &Transform)>,
     ) {
         let inner = &mut *self.inner.lock().unwrap();
 
@@ -327,7 +325,7 @@ impl PickingManager {
             inner.active_selection_dirty = false;
 
             // Remove PickedComponent that are no longer in the active selection
-            for (entity, _, _, manipulator_component) in picked_components.iter() {
+            for (entity, _, manipulator_component) in picked_components.iter() {
                 if manipulator_component.is_none() && !inner.active_selection.contains(&entity) {
                     commands.entity(entity).remove::<PickedComponent>();
                 }
@@ -366,7 +364,7 @@ impl PickingManager {
                 .iter()
                 .any(|entity| manipulator_entities.get(*entity).is_ok());
 
-            for (entity, _transform, mut picked_component, manipulator_component) in
+            for (entity, mut picked_component, manipulator_component) in
                 picked_components.iter_mut()
             {
                 if !manipulator_picked || manipulator_component.is_some() {
@@ -383,7 +381,7 @@ impl PickingManager {
                 let entity_id = picked_entities[i];
                 let is_manipulator = manipulator_entities.get(entity_id).is_ok();
 
-                if !manipulator_picked || is_manipulator {
+                if entities.contains(entity_id) && (!manipulator_picked || is_manipulator) {
                     if !is_manipulator {
                         event_writer.send(PickingEvent::EntityPicked(entity_id));
                         inner.manipulated_entity = Some(entity_id);
@@ -417,15 +415,23 @@ impl PickingManager {
         inner.manipulated_entity
     }
 
-    pub fn set_base_picking_transform(&self, base_transform: &Transform) {
+    pub fn set_base_picking_transforms(
+        &self,
+        local_transform: &Transform,
+        global_transform: &GlobalTransform,
+    ) {
         let mut inner = self.inner.lock().unwrap();
-        inner.manip_entity_base_transform = *base_transform;
+        inner.manip_entity_base_local_transform = *local_transform;
+        inner.manip_entity_base_global_transform = *global_transform;
     }
 
-    pub fn base_picking_transform(&self) -> Transform {
+    pub fn base_picking_transforms(&self) -> (Transform, GlobalTransform) {
         let inner = self.inner.lock().unwrap();
 
-        inner.manip_entity_base_transform
+        (
+            inner.manip_entity_base_local_transform,
+            inner.manip_entity_base_global_transform,
+        )
     }
 }
 

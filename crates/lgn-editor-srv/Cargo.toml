@@ -21,7 +21,9 @@ lgn-editor-proto = { path = "../lgn-editor-proto", version = "0.1.0" }
 lgn-grpc = { path = "../lgn-grpc", version = "0.1.0" }
 lgn-mp4 = { path = "../lgn-mp4", version = "0.1.0" }
 lgn-graphics-renderer = { path = "../lgn-graphics-renderer", version = "0.1.0" }
+lgn-hierarchy = { path = "../lgn-hierarchy", version = "0.1.0" }
 lgn-resource-registry = { path = "../lgn-resource-registry", version = "0.1.0" }
+lgn-scene-plugin = { path = "../lgn-scene-plugin", version = "0.1.0" }
 lgn-source-control = { path = "../lgn-source-control", version = "0.1.0" }
 lgn-streamer = { path = "../lgn-streamer", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
@@ -42,6 +44,7 @@ inventory = "0.2"
 uuid = { version = "0.8", features = ["v4"] }
 bytes = "1.1.0"
 thiserror = "1.0.30"
+crossbeam-channel = "0.5.1"
 
 # PlugIn
 generic-data = { path = "../../tests/generic-data", version = "0.1.0", features = [

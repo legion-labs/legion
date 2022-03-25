@@ -93,4 +93,8 @@ impl EventSink for ChannelSink {
     fn on_process_thread_block(&self, thread_block: Arc<ThreadBlock>) {
         self.send(TraceEvent::ProcessThreadBlock(thread_block));
     }
+
+    fn is_busy(&self) -> bool {
+        false
+    }
 }

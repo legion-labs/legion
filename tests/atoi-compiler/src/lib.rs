@@ -49,14 +49,19 @@ impl Compiler for AtoiCompiler {
     ) -> Result<CompilationOutput, CompilerError> {
         let resources = context.registry();
 
-        let resource =
-            resources.load_sync::<text_resource::TextResource>(context.source.resource_id());
-        let resource = resource.get(&resources).unwrap();
+        let compiled_output = {
+            let resource = resources
+                .load_async::<text_resource::TextResource>(context.source.resource_id())
+                .await;
+            let resource = resource.get(&resources).unwrap();
 
-        let parsed_value = resource.content.parse::<usize>().unwrap_or(0);
-        let compiled_asset = parsed_value.to_ne_bytes();
+            let parsed_value = resource.content.parse::<usize>().unwrap_or(0);
+            parsed_value.to_ne_bytes()
+        };
 
-        let asset = context.store(&compiled_asset, context.target_unnamed.clone())?;
+        let asset = context
+            .store(&compiled_output, context.target_unnamed.clone())
+            .await?;
 
         // in this mock build dependency are _not_ runtime references.
         Ok(CompilationOutput {

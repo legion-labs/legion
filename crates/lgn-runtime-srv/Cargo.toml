@@ -19,15 +19,17 @@ lgn-graphics-data = { path = "../lgn-graphics-data", version = "0.1.0", features
 ] }
 lgn-codec-api = { path = "../lgn-codec-api", version = "0.1.0" }
 lgn-grpc = { path = "../lgn-grpc", version = "0.1.0" }
+lgn-hierarchy = { path = "../lgn-hierarchy", version = "0.1.0" }
 lgn-input = { path = "../lgn-input", version = "0.1.0" }
 lgn-physics = { path = "../lgn-physics", version = "0.1.0" }
-lgn-presenter-window = { path = "../lgn-presenter-window", version = "0.1.0" }
+lgn-presenter-window = { path = "../lgn-presenter-window", version = "0.1.0", optional = true }
 lgn-graphics-renderer = { path = "../lgn-graphics-renderer", version = "0.1.0" }
+lgn-scene-plugin = { path = "../lgn-scene-plugin", version = "0.1.0" }
 lgn-streamer = { path = "../lgn-streamer", version = "0.1.0" }
 lgn-transform = { path = "../lgn-transform", version = "0.1.0" }
 lgn-utils = { path = "../lgn-utils", version = "0.1.0" }
 lgn-config = { path = "../lgn-config", version = "0.1.0" }
-lgn-winit = { path = "../lgn-winit", version = "0.1.0" }
+lgn-winit = { path = "../lgn-winit", version = "0.1.0", optional = true }
 lgn-window = { path = "../lgn-window", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-scripting = { path = "../../crates/lgn-scripting", version = "0.1.0", features = [
@@ -46,8 +48,7 @@ clap = { version = "3.0", features = ["derive"] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 
 [features]
-default = ["standalone"]
-standalone = []
+standalone = ["lgn-presenter-window", "lgn-winit"]
 
 [target.'cfg(target_os = "linux")'.dependencies]
 lgn-winit = { path = "../lgn-winit", features = ["x11"] }
@@ -60,3 +61,7 @@ extra-files = [
     { source = "../../examples/physics/data/runtime/*", destination = "examples/physics/runtime" },
     { source = "../../examples/pong/data/runtime/*", destination = "examples/pong/runtime" },
 ]
+
+[package.metadata.cargo-udeps.ignore]
+# used only when standalone feature is not enabled
+normal = ["lgn-async", "lgn-grpc", "lgn-streamer"]

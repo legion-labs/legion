@@ -9,7 +9,7 @@ use lgn_graphics_renderer::{
 };
 use lgn_presenter_window::component::PresenterWindow;
 use lgn_window::{WindowDescriptor, WindowPlugin, Windows};
-use lgn_winit::{WinitConfig, WinitPlugin, WinitWindows};
+use lgn_winit::{WinitPlugin, WinitSettings, WinitWindows};
 
 pub(crate) fn build_standalone(app: &mut App) -> &mut App {
     let width = 1280_f32;
@@ -19,8 +19,9 @@ pub(crate) fn build_standalone(app: &mut App) -> &mut App {
         height,
         ..WindowDescriptor::default()
     })
-    .insert_resource(WinitConfig {
+    .insert_resource(WinitSettings {
         return_from_run: true,
+        ..WinitSettings::default()
     })
     .add_plugin(WindowPlugin::default())
     .add_plugin(WinitPlugin::default())
@@ -32,7 +33,7 @@ pub(crate) fn build_standalone(app: &mut App) -> &mut App {
 fn on_render_surface_created_for_window(
     mut event_render_surface_created: EventReader<'_, '_, RenderSurfaceCreatedForWindow>,
     wnd_list: Res<'_, Windows>,
-    winit_wnd_list: Res<'_, WinitWindows>,
+    winit_wnd_list: NonSend<'_, WinitWindows>,
     renderer: Res<'_, Renderer>,
     encoder_work_queue: Res<'_, EncoderWorkQueue>,
     mut render_surfaces: Query<'_, '_, &mut RenderSurface>,

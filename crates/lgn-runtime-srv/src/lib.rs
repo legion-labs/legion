@@ -7,35 +7,28 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
-use std::{net::SocketAddr, path::PathBuf};
+use std::path::PathBuf;
 
 use clap::Parser;
-use instant::Duration;
-
 use generic_data::plugin::GenericDataPlugin;
-use lgn_app::{prelude::*, ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use lgn_app::prelude::App;
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
-use lgn_async::AsyncPlugin;
-use lgn_config::Config;
 use lgn_content_store::ContentStoreAddr;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_graphics_data::GraphicsPlugin;
 use lgn_graphics_renderer::RendererPlugin;
-use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
+use lgn_hierarchy::prelude::HierarchyPlugin;
 use lgn_input::InputPlugin;
 use lgn_physics::{PhysicsPlugin, PhysicsSettingsBuilder};
+use lgn_scene_plugin::ScenePlugin;
 use lgn_scripting::ScriptingPlugin;
-use lgn_streamer::StreamerPlugin;
-use lgn_tracing::prelude::*;
-use lgn_transform::prelude::*;
+use lgn_tracing::prelude::span_fn;
+use lgn_transform::prelude::TransformPlugin;
 use sample_data::SampleDataPlugin;
 
 #[cfg(feature = "standalone")]
 mod standalone;
-use lgn_window::WindowPlugin;
-#[cfg(feature = "standalone")]
-use standalone::build_standalone;
 
 #[derive(Parser, Debug)]
 #[clap(name = "Legion Labs runtime engine")]
@@ -60,11 +53,6 @@ struct Args {
     /// Root object to load, usually a world
     #[clap(long)]
     root: Option<String>,
-    /// If supplied, starts with a window display, and collects input locally
-    #[cfg(feature = "standalone")]
-    #[clap(long)]
-    standalone: bool,
-
     /// Enable physics visual debugger
     #[clap(long)]
     physics_debugger: bool,
@@ -76,24 +64,12 @@ pub fn build_runtime(
     fallback_root_asset: &str,
 ) -> App {
     let args = Args::parse();
-    let settings = Config::new();
-
-    let server_addr = {
-        let url = args
-            .addr
-            .as_deref()
-            .unwrap_or_else(|| settings.get_or("runtime_srv.server_addr", "[::1]:50052"));
-        url.parse::<SocketAddr>()
-            .unwrap_or_else(|err| panic!("Invalid server_addr '{}': {}", url, err))
-    };
 
     let project_dir = {
         if let Some(params) = args.project {
             PathBuf::from(params)
         } else if let Some(key) = project_dir_setting {
-            settings
-                .get_absolute_path(key)
-                .unwrap_or_else(|| PathBuf::from(fallback_project_dir))
+            lgn_config::get_absolute_path_or(key, PathBuf::from(fallback_project_dir)).unwrap()
         } else {
             PathBuf::from(fallback_project_dir)
         }
@@ -116,34 +92,39 @@ pub fn build_runtime(
     // default root object is in sample data
     // /world/sample_1.ent
 
-    let root_asset = args.root.as_deref().unwrap_or(fallback_root_asset);
-    if let Ok(asset_id) = root_asset.parse::<ResourceTypeAndId>() {
-        assets_to_load.push(asset_id);
+    let root_asset = args
+        .root
+        .as_deref()
+        .unwrap_or(fallback_root_asset)
+        .parse::<ResourceTypeAndId>()
+        .ok();
+    if let Some(root_asset) = root_asset {
+        assets_to_load.push(root_asset);
     }
-
-    #[cfg(feature = "standalone")]
-    let standalone = args.standalone;
-
-    #[cfg(not(feature = "standalone"))]
-    let standalone = false;
 
     // physics settings
     let mut physics_settings = PhysicsSettingsBuilder::default();
     if args.physics_debugger {
         physics_settings = physics_settings.enable_visual_debugger(true);
-    } else if let Some(enable_visual_debugger) = settings.get("physics.enable_visual_debugger") {
+    } else if let Some(enable_visual_debugger) =
+        lgn_config::get("physics.enable_visual_debugger").unwrap()
+    {
         physics_settings = physics_settings.enable_visual_debugger(enable_visual_debugger);
     }
-    if let Some(length_tolerance) = settings.get("physics.length_tolerance") {
+    if let Some(length_tolerance) = lgn_config::get("physics.length_tolerance").unwrap() {
         physics_settings = physics_settings.length_tolerance(length_tolerance);
     }
-    if let Some(speed_tolerance) = settings.get("physics.speed_tolerance") {
+    if let Some(speed_tolerance) = lgn_config::get("physics.speed_tolerance").unwrap() {
         physics_settings = physics_settings.speed_tolerance(speed_tolerance);
     }
 
     let mut app = App::default();
 
-    if !standalone {
+    #[cfg(not(feature = "standalone"))]
+    {
+        use instant::Duration;
+        use lgn_app::{ScheduleRunnerPlugin, ScheduleRunnerSettings};
+
         app
             // Start app with 60 fps
             .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
@@ -155,12 +136,14 @@ pub fn build_runtime(
     app.insert_resource(DefaultTaskPoolOptions::new(1..=4))
         .add_plugin(CorePlugin::default())
         .add_plugin(TransformPlugin::default())
+        .add_plugin(HierarchyPlugin::default())
         .insert_resource(AssetRegistrySettings::new(
             content_store_addr,
             game_manifest,
             assets_to_load,
         ))
         .add_plugin(AssetRegistryPlugin::default())
+        .add_plugin(ScenePlugin::new(root_asset))
         .add_plugin(GenericDataPlugin::default())
         .add_plugin(ScriptingPlugin::default())
         .add_plugin(SampleDataPlugin::default())
@@ -171,11 +154,25 @@ pub fn build_runtime(
         .add_plugin(PhysicsPlugin::default());
 
     #[cfg(feature = "standalone")]
-    if standalone {
-        build_standalone(&mut app);
-    }
+    standalone::build_standalone(&mut app);
 
-    if !standalone {
+    #[cfg(not(feature = "standalone"))]
+    {
+        use std::net::SocketAddr;
+
+        use lgn_async::AsyncPlugin;
+        use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
+        use lgn_streamer::StreamerPlugin;
+        use lgn_window::WindowPlugin;
+
+        let server_addr = {
+            let url = args.addr.unwrap_or_else(|| {
+                lgn_config::get_or("runtime_srv.server_addr", "[::1]:50052".to_owned()).unwrap()
+            });
+            url.parse::<SocketAddr>()
+                .unwrap_or_else(|err| panic!("Invalid server_addr '{}': {}", url, err))
+        };
+
         app.add_plugin(WindowPlugin {
             add_primary_window: false,
             exit_on_close: false,

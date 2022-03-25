@@ -2,7 +2,7 @@ use lgn_core::BumpAllocatorPool;
 use lgn_ecs::prelude::{Query, Res};
 use lgn_graphics_renderer::{debug_display::DebugDisplay, resources::DefaultMeshType};
 use lgn_math::prelude::Vec3;
-use lgn_transform::prelude::{GlobalTransform, Transform};
+use lgn_transform::prelude::GlobalTransform;
 use physx::prelude::PxVec3;
 
 use crate::{collision_geometry::CollisionGeometry, physics_options::PhysicsOptions};
@@ -29,26 +29,21 @@ pub(crate) fn display_collision_geometry(
                         let mut scale: Vec3 = half_extents.into();
                         scale /= 0.25;
                         builder.add_mesh(
-                            Transform::identity()
+                            &GlobalTransform::identity()
                                 .with_translation(transform.translation)
                                 .with_scale(scale) // assumes the size of sphere 1.0. Needs to be scaled in order to match picking silhouette
-                                .with_rotation(transform.rotation)
-                                .compute_matrix(),
+                                .with_rotation(transform.rotation),
                             DefaultMeshType::Cube as u32,
                             debug_color,
                         );
                     }
                     CollisionGeometry::Capsule(_capsule_geometry) => {
-                        builder.add_mesh(
-                            transform.compute_matrix(),
-                            DefaultMeshType::Cylinder as u32,
-                            debug_color,
-                        );
+                        builder.add_mesh(transform, DefaultMeshType::Cylinder as u32, debug_color);
                     }
                     CollisionGeometry::ConvexMesh(_convex_mesh_geometry) => {}
                     CollisionGeometry::Plane(_plane_geometry) => {
                         builder.add_mesh(
-                            transform.compute_matrix(),
+                            transform,
                             DefaultMeshType::GroundPlane as u32,
                             debug_color,
                         );
@@ -58,11 +53,10 @@ pub(crate) fn display_collision_geometry(
                         let radius = sphere_geometry.radius;
                         let scale_factor = radius / 0.25;
                         builder.add_mesh(
-                            Transform::identity()
+                            &GlobalTransform::identity()
                                 .with_translation(transform.translation)
                                 .with_scale(Vec3::ONE * scale_factor) // assumes the size of sphere 1.0. Needs to be scaled in order to match picking silhouette
-                                .with_rotation(transform.rotation)
-                                .compute_matrix(),
+                                .with_rotation(transform.rotation),
                             DefaultMeshType::Sphere as u32,
                             debug_color,
                         );

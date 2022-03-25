@@ -263,7 +263,7 @@ impl BundleInfo {
     /// # Safety
     /// `table` must be the "new" table for `entity`. `table_row` must have
     /// space allocated for the `entity`, `bundle` must match this
-    /// `BundleInfo`'s type
+    /// [`BundleInfo`]'s type
     #[inline]
     #[allow(clippy::too_many_arguments)]
     unsafe fn write_components<T: Bundle>(

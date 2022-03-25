@@ -33,15 +33,6 @@ max_frame_time = 33_000 #microsec
 [data_transaction]
 log_operation = false
 
-[test_config]
-test_bool = false
-test_int = 1337
-test_float = 1337.1337
-test_string = "TestString"
-
-[test_config.sub_config]
-test_nested = 42
-
 [logging]
 #logs_buffer_size = 10485760
 #metrics_buffer_size = 1048576
@@ -62,20 +53,23 @@ issuer_url = "https://cognito-idp.ca-central-1.amazonaws.com/ca-central-1_SkZKDi
 client_id = "5m58nrjfv6kr144prif9jk62di"
 redirect_uri = "http://localhost:3000/"
 
-[content_store.provider]
-#type = "grpc"
+[content_store.provider.local]
+#Change the type to "grpc" and uncomment below:
 #url = "https://api.live.playground.legionlabs.com"
-type = "local"
-data = "tests/sample-data/remote"
+path = "tests/sample-data/remote" # Should probably be reverted back to the commented lines once the data-build uses the dedicated section below.
 
 [[content_store.caching_providers]]
-type = "lru"
+[content_store.caching_providers.lru]
 size = 250
 
-[content_store.data_build.provider]
-type = "local"
-path = "/tmp/content_store" # TODO: Change this to something meaningful. A relative path once this is supported.
+[content_store.data_build.provider.local]
+path = "tests/sample-data/remote"
 
 [[content_store.data_build.caching_providers]]
-type = "lru"
+[content_store.data_build.caching_providers.lru]
 size = 250
+
+[source_control.server.database]
+host = "localhost"
+username = "root"
+password = "pwd"

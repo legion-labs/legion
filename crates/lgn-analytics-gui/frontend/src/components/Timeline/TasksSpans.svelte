@@ -1,19 +1,18 @@
 <script lang="ts">
-  import { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
-  import { Process } from "@lgn/proto-telemetry/dist/process";
-  import { ProcessAsyncData } from "@/lib/Timeline/ProcessAsyncData";
+  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
+  import type { Process } from "@lgn/proto-telemetry/dist/process";
+  import type { ProcessAsyncData } from "@/lib/Timeline/ProcessAsyncData";
   import { DrawSelectedRange } from "@/lib/time_range_selection";
   import { drawSpanTrack } from "@/lib/Timeline/SpanRender";
   import { createEventDispatcher, onDestroy, onMount, tick } from "svelte";
   import { spanPixelHeight } from "@/lib/Timeline/TimelineValues";
   import { TimelineContext } from "@/lib/Timeline/TimelineContext";
-  import { Unsubscriber } from "svelte/store";
+  import type { Unsubscriber } from "svelte/store";
   import { debounced } from "@lgn/web-client/src/lib/store";
   export let rootStartTime: number;
   export let stateStore: TimelineStateStore;
   export let process: Process;
   export let processAsyncData: ProcessAsyncData;
-  export let width: number;
   export let parentCollapsed: boolean;
 
   const wheelDispatch = createEventDispatcher<{ zoom: WheelEvent }>();
@@ -63,7 +62,13 @@
     processAsyncData.maxDepth * spanPixelHeight
   );
 
-  $: if (width || height || scopes || range || $stateStore?.currentSelection) {
+  $: if (
+    height ||
+    scopes ||
+    range ||
+    $stateStore?.canvasWidth ||
+    $stateStore?.currentSelection
+  ) {
     draw();
   }
 
@@ -157,11 +162,11 @@
 </script>
 
 <div
-  style={`width:${width}px`}
+  style={`width:${$stateStore.canvasWidth}px`}
   class="timeline-item"
   on:wheel|preventDefault={(e) => wheelDispatch("zoom", e)}
 >
-  <canvas {width} {height} bind:this={canvas} />
+  <canvas width={$stateStore.canvasWidth} {height} bind:this={canvas} />
 </div>
 
 <style>

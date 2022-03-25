@@ -1,5 +1,5 @@
 [package]
-name = "source-control-srv"
+name = "lgn-source-control-srv"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -10,25 +10,29 @@ bytes = "1.1"
 clap = { version = "3.0", features = ["derive"] }
 http = "0.2"
 hyper = "0.14"
+lgn-config = { path = "../lgn-config", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
 lgn-source-control = { path = "../lgn-source-control", version = "0.1.0" }
 lgn-source-control-proto = { path = "../lgn-source-control-proto", version = "0.1.0" }
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.13", features = ["full", "tracing"] }
 tonic = "0.6"
+tonic-web = "0.2"
 url = "2.2"
 
 [[package.metadata.monorepo.publish]]
 name = "source-control-srv"
 type = "docker"
+target-bin-dir = "/usr/src/app"
 template = """
 FROM ubuntu:20.04
 
-RUN apt-get update && apt-get install -y --no-install-recommends libssl-dev ca-certificates
+RUN apt-get update && apt-get install -y libssl-dev ca-certificates
 
 { copy_all }
 
-ENTRYPOINT ["{ binaries.source-control-srv }"]
+ENTRYPOINT ["{ binaries.lgn-source-control-srv }"]
 """
 allow-aws-ecr-creation = true

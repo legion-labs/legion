@@ -1,5 +1,5 @@
-import { Point } from "@/lib/Metric/MetricPoint";
-import { MetricBlockDesc } from "@lgn/proto-telemetry/dist/metric";
+import type { Point } from "@/lib/Metric/MetricPoint";
+import type { MetricBlockDesc } from "@lgn/proto-telemetry/dist/metric";
 
 export class MetricBlockState {
   blockId: string;

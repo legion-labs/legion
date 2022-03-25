@@ -1,7 +1,7 @@
 use lgn_core::BumpAllocatorPool;
 use lgn_ecs::prelude::*;
 use lgn_math::Vec3;
-use lgn_transform::components::Transform;
+use lgn_transform::components::{GlobalTransform, Transform};
 
 use crate::{
     cgen::cgen_type::{DirectionalLight, OmniDirectionalLight, SpotLight},
@@ -106,24 +106,22 @@ pub(crate) fn debug_display_lights(
         debug_display.create_display_list(bump, |builder| {
             for (light, transform) in lights.iter() {
                 builder.add_mesh(
-                    Transform::identity()
+                    &GlobalTransform::identity()
                         .with_translation(transform.translation)
                         .with_scale(Vec3::new(0.2, 0.2, 0.2)) // assumes the size of sphere 1.0. Needs to be scaled in order to match picking silhouette
-                        .with_rotation(transform.rotation)
-                        .compute_matrix(),
+                        .with_rotation(transform.rotation),
                     DefaultMeshType::Sphere as u32,
                     light.color,
                 );
                 match light.light_type {
                     LightType::Directional => {
                         builder.add_mesh(
-                            Transform::identity()
+                            &GlobalTransform::identity()
                                 .with_translation(
                                     transform.translation
                                         - transform.rotation.mul_vec3(Vec3::new(0.0, 0.3, 0.0)), // assumes arrow length to be 0.3
                                 )
-                                .with_rotation(transform.rotation)
-                                .compute_matrix(),
+                                .with_rotation(transform.rotation),
                             DefaultMeshType::Arrow as u32,
                             light.color,
                         );
@@ -131,13 +129,12 @@ pub(crate) fn debug_display_lights(
                     LightType::Spotlight { cone_angle, .. } => {
                         let factor = 4.0 * (cone_angle / 2.0).tan(); // assumes that default cone mesh has 1 to 4 ratio between radius and height
                         builder.add_mesh(
-                            Transform::identity()
+                            &GlobalTransform::identity()
                                 .with_translation(
                                     transform.translation - transform.rotation.mul_vec3(Vec3::Y), // assumes cone height to be 1.0
                                 )
                                 .with_scale(Vec3::new(factor, 1.0, factor))
-                                .with_rotation(transform.rotation)
-                                .compute_matrix(),
+                                .with_rotation(transform.rotation),
                             DefaultMeshType::Cone as u32,
                             light.color,
                         );

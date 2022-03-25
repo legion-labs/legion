@@ -1,6 +1,6 @@
 use lgn_ecs::prelude::Commands;
 use lgn_math::{Mat3, Mat4, Quat, Vec2, Vec3};
-use lgn_transform::components::Transform;
+use lgn_transform::components::{GlobalTransform, Transform};
 
 use crate::{components::CameraComponent, resources::DefaultMeshType};
 
@@ -81,15 +81,18 @@ impl RotationManipulator {
         ];
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn manipulate_entity(
         component: RotationComponents,
-        base_entity_transform: &Transform,
+        base_local_transform: &Transform,
+        base_global_transform: &GlobalTransform,
+        parent_global_transform: &GlobalTransform,
         camera: &CameraComponent,
         picked_pos: Vec2,
         screen_size: Vec2,
         cursor_pos: Vec2,
     ) -> Transform {
-        let plane_point = base_entity_transform.translation;
+        let plane_point = base_global_transform.translation;
         let plane_normal = match component {
             RotationComponents::XAxis => Vec3::X,
             RotationComponents::YAxis => Vec3::Y,
@@ -99,13 +102,13 @@ impl RotationManipulator {
         let picked_world_point =
             new_world_point_for_cursor(camera, screen_size, picked_pos, plane_point, plane_normal);
         let dir_to_picked_point =
-            (picked_world_point - base_entity_transform.translation).normalize();
+            (picked_world_point - base_global_transform.translation).normalize();
 
         let new_world_point =
             new_world_point_for_cursor(camera, screen_size, cursor_pos, plane_point, plane_normal);
-        let dir_to_new_point = (new_world_point - base_entity_transform.translation).normalize();
+        let dir_to_new_point = (new_world_point - base_global_transform.translation).normalize();
 
-        let initial_rotation = Mat3::from_quat(base_entity_transform.rotation);
+        let initial_rotation = Mat3::from_quat(base_global_transform.rotation);
         let new_rotation_angle = dir_to_picked_point.dot(dir_to_new_point).acos();
 
         let rotation_one = Mat3::from_axis_angle(plane_normal, new_rotation_angle);
@@ -125,9 +128,11 @@ impl RotationManipulator {
         } * initial_rotation;
 
         if !new_rotation.is_nan() {
-            base_entity_transform.with_rotation(Quat::from_mat3(&new_rotation))
+            let new_local_rotation =
+                parent_global_transform.rotation.inverse() * Quat::from_mat3(&new_rotation);
+            base_local_transform.with_rotation(new_local_rotation)
         } else {
-            *base_entity_transform
+            *base_local_transform
         }
     }
 }

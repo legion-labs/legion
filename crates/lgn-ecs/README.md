@@ -98,7 +98,7 @@ let mut world = World::new();
 
 world.init_resource::<Time>();
 
-let time = world.get_resource::<Time>().unwrap();
+let time = world.resource::<Time>();
 
 // You can also access resources from Systems
 fn print_time(time: Res<Time>) {

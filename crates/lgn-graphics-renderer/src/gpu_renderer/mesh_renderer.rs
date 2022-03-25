@@ -642,7 +642,32 @@ impl MeshRenderer {
         render_surface: &mut RenderSurface,
         instance_manager: &GpuInstanceManager,
     ) {
-        if self.culling_buffers.draw_count.is_none() {
+        if self.culling_buffers.draw_count.is_none() || self.gpu_instance_data.is_empty() {
+            // TODO(vdbdd):  Remove this hack
+
+            let cmd_buffer = render_context.alloc_command_buffer();
+
+            cmd_buffer.begin_render_pass(
+                &[],
+                &Some(DepthStencilRenderTargetBinding {
+                    texture_view: render_surface.depth_stencil_rt_view(),
+                    depth_load_op: LoadOp::Clear,
+                    stencil_load_op: LoadOp::DontCare,
+                    depth_store_op: StoreOp::Store,
+                    stencil_store_op: StoreOp::DontCare,
+                    clear_value: DepthStencilClearValue {
+                        depth: 1.0,
+                        stencil: 0,
+                    },
+                }),
+            );
+
+            cmd_buffer.end_render_pass();
+
+            render_context
+                .graphics_queue()
+                .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
+
             return;
         }
 

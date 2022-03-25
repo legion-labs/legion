@@ -121,6 +121,10 @@ impl EventSink for LocalEventSink {
 
     #[allow(clippy::cast_precision_loss)]
     fn on_process_thread_block(&self, _block: Arc<ThreadBlock>) {}
+
+    fn is_busy(&self) -> bool {
+        false
+    }
 }
 
 #[cfg(all(windows, feature = "colored"))]

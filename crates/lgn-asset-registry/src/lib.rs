@@ -2,10 +2,9 @@
 
 // crate-specific lint exceptions:
 //#![allow()]
-
 mod asset_entities;
+
 mod asset_handles;
-mod asset_to_ecs;
 mod config;
 mod loading_states;
 
@@ -13,19 +12,17 @@ use std::{fs::File, path::Path, sync::Arc};
 
 pub use asset_entities::AssetToEntityMap;
 use asset_handles::AssetHandles;
-use asset_to_ecs::load_ecs_asset;
 pub use config::{AssetRegistrySettings, DataBuildConfig};
 use lgn_app::prelude::*;
+use lgn_async::TokioAsyncRuntime;
 use lgn_content_store::HddContentStore;
 use lgn_data_runtime::{
-    manifest::Manifest, AssetRegistry, AssetRegistryOptions, AssetRegistryScheduling,
-    ResourceLoadEvent,
+    manifest::Manifest, AssetRegistry, AssetRegistryEvent, AssetRegistryOptions,
+    AssetRegistryScheduling, ResourceLoadEvent,
 };
 use lgn_ecs::prelude::*;
-use lgn_tracing::{error, warn};
-use lgn_transform::components::Children;
+use lgn_tracing::error;
 use loading_states::{AssetLoadingStates, LoadingState};
-use sample_data::runtime as runtime_data;
 
 #[derive(Default)]
 pub struct AssetRegistryPlugin {}
@@ -48,15 +45,14 @@ impl Plugin for AssetRegistryPlugin {
             .add_startup_system_to_stage(StartupStage::PostStartup, Self::preload_assets)
             .add_system(Self::update_registry)
             .add_system(Self::update_assets)
-            .add_system(Self::handle_load_events);
+            .add_system(Self::handle_load_events)
+            .add_event::<AssetRegistryEvent>();
     }
 }
 
 impl AssetRegistryPlugin {
     fn pre_setup(world: &mut World) {
-        let mut config = world
-            .get_resource_mut::<AssetRegistrySettings>()
-            .expect("Missing AssetRegistrySettings resource, must add to app");
+        let mut config = world.resource_mut::<AssetRegistrySettings>();
 
         let content_store_addr = config.content_store_addr.clone();
         let content_store = HddContentStore::open(content_store_addr).unwrap_or_else(|| {
@@ -97,7 +93,9 @@ impl AssetRegistryPlugin {
         let registry_options = world
             .remove_non_send_resource::<AssetRegistryOptions>()
             .unwrap();
-        let registry = registry_options.create();
+
+        let async_rt = world.resource::<TokioAsyncRuntime>();
+        let registry = async_rt.block_on(async { registry_options.create().await });
 
         let load_events = registry.subscribe_to_load_events();
         world.insert_resource(load_events);
@@ -129,53 +127,15 @@ impl AssetRegistryPlugin {
         registry: Res<'_, Arc<AssetRegistry>>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         asset_handles: ResMut<'_, AssetHandles>,
-        mut asset_to_entity_map: ResMut<'_, AssetToEntityMap>,
-        mut commands: Commands<'_, '_>,
-        entity_with_children_query: Query<'_, '_, &Children>,
+        mut event_writer: EventWriter<'_, '_, AssetRegistryEvent>,
     ) {
         for (asset_id, loading_state) in asset_loading_states.iter_mut() {
             match loading_state {
                 LoadingState::Pending => {
                     let handle = asset_handles.get(*asset_id).unwrap();
                     if handle.is_loaded(&registry) {
-                        // Find existing children
-                        let children =
-                            asset_to_entity_map.get(*asset_id).and_then(|existing_ecs| {
-                                entity_with_children_query.get(existing_ecs).ok()
-                            });
-
                         *loading_state = LoadingState::Loaded;
-
-                        macro_rules! load_ecs_asset {
-                            ($($runtime_type:ty),*) => {
-                                $(
-                                if load_ecs_asset::<$runtime_type>(
-                                    handle,
-                                    &registry,
-                                    &mut commands,
-                                    &mut asset_to_entity_map,
-                                    children,
-                                ) {
-                                    continue
-                                }
-                                )*
-                            };
-                        }
-
-                        load_ecs_asset!(
-                            runtime_data::Entity,
-                            runtime_data::Instance,
-                            lgn_graphics_data::runtime::Material,
-                            lgn_graphics_data::runtime_texture::Texture,
-                            lgn_graphics_data::runtime::Model,
-                            lgn_scripting::runtime::Script
-                        );
-
-                        warn!(
-                            "Ignoring unhandled asset {}:{}",
-                            asset_id.kind.as_pretty(),
-                            asset_id.id
-                        );
+                        event_writer.send(AssetRegistryEvent::AssetLoaded(handle.id()));
                     } else if handle.is_err(&registry) {
                         error!("Failed to load runtime asset {:?}", asset_id);
                         *loading_state = LoadingState::Failed;
@@ -190,7 +150,7 @@ impl AssetRegistryPlugin {
     }
 
     fn handle_load_events(
-        load_events_rx: ResMut<'_, crossbeam_channel::Receiver<ResourceLoadEvent>>,
+        mut load_events_rx: ResMut<'_, tokio::sync::mpsc::UnboundedReceiver<ResourceLoadEvent>>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         mut asset_handles: ResMut<'_, AssetHandles>,
     ) {

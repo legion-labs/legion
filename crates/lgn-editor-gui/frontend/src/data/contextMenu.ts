@@ -8,6 +8,7 @@ export const resourceEntries: Entry[] = [
   { type: "item", action: "new", label: "Create new..." },
   { type: "item", action: "import", label: "Import..." },
   { type: "item", action: "open_scene", label: "Open Scene..." },
+  { type: "item", action: "close_scene", label: "Close Scene..." },
   { type: "separator" },
   { type: "item", action: "help", label: "Help" },
 ];

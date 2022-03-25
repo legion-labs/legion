@@ -4,12 +4,12 @@ use lgn_graphics_api::{
     LoadOp, PrimitiveTopology, RasterizerState, SampleCount, StencilOp, StoreOp, VertexLayout,
 };
 use lgn_graphics_cgen_runtime::CGenShaderKey;
-use lgn_math::{Mat4, Vec3, Vec4, Vec4Swizzles};
+use lgn_math::{Vec3, Vec4};
 
 use lgn_transform::prelude::GlobalTransform;
 
 use crate::{
-    cgen,
+    cgen::{self, cgen_type::Transform},
     components::{CameraComponent, ManipulatorComponent, RenderSurface, VisualComponent},
     debug_display::{DebugDisplay, DebugPrimitiveType},
     hl_gfx_api::HLCommandBuffer,
@@ -190,8 +190,9 @@ impl DebugRenderPass {
 
         render_mesh(
             DefaultMeshType::GroundPlane as u32,
-            &Mat4::IDENTITY,
+            &GlobalTransform::identity(),
             Vec4::ZERO,
+            0.0,
             cmd_buffer,
             mesh_manager,
         );
@@ -219,12 +220,24 @@ impl DebugRenderPass {
             let (model_meta_data, _ready) = model_manager.get_model_meta_data(visual_component);
             for mesh in &model_meta_data.meshes {
                 cmd_buffer.bind_pipeline(wire_pso_depth_pipeline);
+
                 render_aabb_for_mesh(mesh.mesh_id as u32, transform, cmd_buffer, mesh_manager);
+
+                if false {
+                    render_bounding_sphere_for_mesh(
+                        mesh.mesh_id as u32,
+                        transform,
+                        cmd_buffer,
+                        mesh_manager,
+                    );
+                }
+
                 cmd_buffer.bind_pipeline(solid_pso_depth_pipeline);
                 render_mesh(
                     mesh.mesh_id as u32,
-                    &transform.compute_matrix(),
-                    Vec4::new(0.0, 0.5, 0.5, 0.75),
+                    transform,
+                    Vec4::new(0.0, 0.5, 0.5, 0.5),
+                    1.0,
                     cmd_buffer,
                     mesh_manager,
                 );
@@ -257,6 +270,7 @@ impl DebugRenderPass {
                 mesh_id as u32,
                 &primitive.transform,
                 primitive.color.extend(1.0),
+                1.0,
                 cmd_buffer,
                 mesh_manager,
             );
@@ -275,18 +289,13 @@ impl DebugRenderPass {
         model_manager: &ModelManager,
         camera: &CameraComponent,
     ) {
-        let (view_matrix, projection_matrix) = camera.build_view_projection(
-            render_surface.extents().width() as f32,
-            render_surface.extents().height() as f32,
-        );
-
         for (_index, (visual, transform, manipulator)) in manipulator_meshes.iter().enumerate() {
             if manipulator.active {
-                let scaled_world_matrix = ManipulatorManager::scale_manipulator_for_viewport(
+                let scaled_xform = ManipulatorManager::scale_manipulator_for_viewport(
                     transform,
                     &manipulator.local_transform,
-                    &view_matrix,
-                    &projection_matrix,
+                    render_surface,
+                    camera,
                 );
 
                 let mut color = if manipulator.selected {
@@ -314,8 +323,9 @@ impl DebugRenderPass {
                 for mesh in &model_meta_data.meshes {
                     render_mesh(
                         mesh.mesh_id as u32,
-                        &scaled_world_matrix,
+                        &scaled_xform,
                         color,
+                        1.0,
                         cmd_buffer,
                         mesh_manager,
                     );
@@ -390,7 +400,6 @@ impl DebugRenderPass {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 fn render_aabb_for_mesh(
     mesh_id: u32,
     transform: &GlobalTransform,
@@ -403,7 +412,7 @@ fn render_aabb_for_mesh(
     let mut max_bound = Vec3::new(f32::MIN, f32::MIN, f32::MIN);
 
     for position in &mesh.positions {
-        let world_pos = transform.compute_matrix().mul_vec4(*position).xyz();
+        let world_pos = transform.mul_vec3(position.truncate());
 
         min_bound = min_bound.min(world_pos);
         max_bound = max_bound.max(world_pos);
@@ -418,8 +427,40 @@ fn render_aabb_for_mesh(
 
     render_mesh(
         DefaultMeshType::WireframeCube as u32,
-        &aabb_transform.compute_matrix(),
+        &aabb_transform,
         Vec4::new(1.0f32, 1.0f32, 0.0f32, 1.0f32),
+        1.0,
+        cmd_buffer,
+        mesh_manager,
+    );
+}
+
+fn render_bounding_sphere_for_mesh(
+    mesh_id: u32,
+    transform: &GlobalTransform,
+    cmd_buffer: &mut HLCommandBuffer<'_>,
+    mesh_manager: &MeshManager,
+) {
+    let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh_id);
+    let sphere_local_pos = mesh_meta_data.bounding_sphere.truncate();
+    let sphere_global_pos = transform.mul_vec3(sphere_local_pos);
+
+    let bound_sphere_scale = 4.0
+        * mesh_meta_data.bounding_sphere.w
+        * transform
+            .scale
+            .x
+            .max(transform.scale.y.max(transform.scale.z));
+
+    let sphere_transform = GlobalTransform::from_translation(sphere_global_pos).with_scale(
+        Vec3::new(bound_sphere_scale, bound_sphere_scale, bound_sphere_scale),
+    );
+
+    render_mesh(
+        DefaultMeshType::Sphere as u32,
+        &sphere_transform,
+        Vec4::new(1.0f32, 1.0f32, 0.0f32, 1.0f32),
+        1.0,
         cmd_buffer,
         mesh_manager,
     );
@@ -427,16 +468,24 @@ fn render_aabb_for_mesh(
 
 fn render_mesh(
     mesh_id: u32,
-    world_xform: &Mat4,
+    world_xform: &GlobalTransform,
     color: Vec4,
+    color_blend: f32,
     cmd_buffer: &HLCommandBuffer<'_>,
     mesh_manager: &MeshManager,
 ) {
     let mut push_constant_data = cgen::cgen_type::ConstColorPushConstantData::default();
 
     let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh_id);
-    push_constant_data.set_world((*world_xform).into());
+
+    let mut transform = Transform::default();
+    transform.set_translation(world_xform.translation.into());
+    transform.set_rotation(Vec4::from(world_xform.rotation).into());
+    transform.set_scale(world_xform.scale.into());
+
+    push_constant_data.set_transform(transform);
     push_constant_data.set_color(color.into());
+    push_constant_data.set_color_blend(color_blend.into());
     push_constant_data.set_mesh_description_offset(mesh_meta_data.mesh_description_offset.into());
 
     cmd_buffer.push_constant(&push_constant_data);

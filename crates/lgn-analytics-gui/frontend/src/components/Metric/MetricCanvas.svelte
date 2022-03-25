@@ -5,13 +5,13 @@
   import { MetricAxisCollection } from "@/lib/Metric/MetricAxisCollection";
   import { getMetricColor } from "@/lib/Metric/MetricColor";
   import { selectionStore } from "@/lib/Metric/MetricSelectionStore";
-  import { MetricSlice } from "@/lib/Metric/MetricSlice";
-  import { MetricState } from "@/lib/Metric/MetricState";
+  import type { MetricSlice } from "@/lib/Metric/MetricSlice";
+  import type { MetricState } from "@/lib/Metric/MetricState";
   import { MetricStreamer } from "@/lib/Metric/MetricStreamer";
-  import { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
+  import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
   import log from "@lgn/web-client/src/lib/log";
   import * as d3 from "d3";
-  import { D3ZoomEvent } from "d3";
+  import type { D3ZoomEvent } from "d3";
   import { onDestroy, onMount } from "svelte";
   import { get, Unsubscriber, Writable } from "svelte/store";
   import MetricDebugDisplay from "./MetricDebugDisplay.svelte";

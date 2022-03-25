@@ -176,7 +176,7 @@ async fn main() -> anyhow::Result<()> {
     let args: Args = Args::parse();
     let config = Config::from_legion_toml(Config::content_store_section().as_deref());
     let provider = config
-        .instanciate_provider()
+        .instantiate_provider()
         .await
         .map_err(|err| anyhow::anyhow!("failed to create content provider: {}", err))?;
     let provider = MonitorProvider::new(provider);

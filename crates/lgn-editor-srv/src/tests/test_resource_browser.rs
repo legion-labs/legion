@@ -1,5 +1,6 @@
 use std::{path::Path, str::FromStr, sync::Arc};
 
+use lgn_scene_plugin::SceneMessage;
 use serde_json::json;
 use tokio::sync::Mutex;
 use tonic::Request;
@@ -88,7 +89,7 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
         .add_device_cas(Box::new(content_store), Manifest::default());
     sample_data::offline::add_loaders(&mut asset_registry);
     lgn_scripting::offline::add_loaders(&mut asset_registry);
-    let asset_registry = asset_registry.create();
+    let asset_registry = asset_registry.create().await;
 
     let compilers = CompilerRegistryOptions::default()
         .add_compiler(&lgn_compiler_runtime_entity::COMPILER_INFO)
@@ -121,10 +122,12 @@ async fn test_resource_browser() -> anyhow::Result<()> {
     let project_dir = tempfile::tempdir().unwrap();
 
     {
+        let (scene_events_tx, _rx) = crossbeam_channel::unbounded::<SceneMessage>();
         let transaction_manager = setup_project(&project_dir).await;
         let resource_browser = crate::resource_browser_plugin::ResourceBrowserRPC {
             transaction_manager: transaction_manager.clone(),
             uploads_folder: "".into(),
+            scene_events_tx,
         };
 
         // Read all Resource Type registered

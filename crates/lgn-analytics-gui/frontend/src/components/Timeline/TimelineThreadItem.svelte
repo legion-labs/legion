@@ -1,6 +1,6 @@
 <script lang="ts">
   import { formatExecutionTime } from "@/lib/format";
-  import { Thread } from "@/lib/Timeline/Thread";
+  import type { Thread } from "@/lib/Timeline/Thread";
   import { getThreadCollapseStyle } from "@/lib/Timeline/TimelineCollapse";
   import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { createEventDispatcher } from "svelte";
@@ -8,7 +8,6 @@
   export let rootStartTime: number;
   export let stateStore: TimelineStateStore;
   export let thread: Thread;
-  export let width: number;
   export let parentCollapsed: boolean;
   let collapsed = false;
   const wheelDispatch = createEventDispatcher<{ zoom: WheelEvent }>();
@@ -43,7 +42,6 @@
     {stateStore}
     {thread}
     {parentCollapsed}
-    {width}
     {rootStartTime}
     on:zoom={(e) => wheelDispatch("zoom", e.detail)}
   />

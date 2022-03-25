@@ -1,8 +1,8 @@
 #include "crate://lgn-graphics-renderer/gpu/pipeline_layout/shader_pipeline_layout.hlsl"
-#include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_transform.hlsl"
 #include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_color.hlsl"
 #include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_picking_data.hlsl"
 #include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_va_table.hlsl"
+#include "crate://lgn-graphics-renderer/gpu/cgen_type/transform.hlsl"
 
 #include "crate://lgn-graphics-renderer/gpu/include/common.hsh"
 #include "crate://lgn-graphics-renderer/gpu/include/brdf.hsh"
@@ -24,21 +24,21 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
     VertexIn vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
     VertexOut vertex_out;
 
-    GpuInstanceTransform transform = LoadGpuInstanceTransform(static_buffer, addresses.world_transform_va);
+    Transform transform = LoadTransform(static_buffer, addresses.world_transform_va);
+    float3 world_pos = transform_position(transform, vertex_in.pos);
+    float3 view_pos = transform_position(view_data, world_pos);
 
-    float4 pos_view_relative = mul(view_data.view, mul(transform.world, float4(vertex_in.pos, 1.0)));
-
-    vertex_out.hpos = mul(view_data.projection, pos_view_relative);
-    vertex_out.pos = pos_view_relative.xyz;
-    vertex_out.normal = mul(view_data.view, mul(transform.world, float4(vertex_in.normal, 0.0))).xyz;
-    vertex_out.tangent = mul(view_data.view, mul(transform.world, float4(vertex_in.tangent, 0.0))).xyz;
+    vertex_out.hpos = mul(view_data.projection, float4(view_pos, 1.0));
+    vertex_out.pos = view_pos;
+    vertex_out.normal = transform_normal(view_data, transform_normal(transform, vertex_in.normal));
+    vertex_out.tangent = transform_normal(view_data, transform_normal(transform, vertex_in.tangent));
     vertex_out.uv_coord = vertex_in.uv_coord;
     vertex_out.va_table_address = vertexIn.va_table_address;
     return vertex_out;
 }
 
 Lighting CalculateIncidentDirectionalLight(DirectionalLight light, float3 pos, float3 normal, LightingMaterial material) {
-    float3 light_dir = normalize(mul(view_data.view, float4(light.dir, 0.0)).xyz);
+    float3 light_dir = transform_normal(view_data, light.dir);
 
     Lighting lighting = (Lighting)0;
     float NoL = saturate(dot(normal, light_dir));
@@ -54,7 +54,7 @@ Lighting CalculateIncidentDirectionalLight(DirectionalLight light, float3 pos, f
 }
 
 Lighting CalculateIncidentOmniDirectionalLight(OmniDirectionalLight light, float3 pos, float3 normal, LightingMaterial material) {
-    float3 light_dir = mul(view_data.view, float4(light.pos, 1.0)).xyz - pos;
+    float3 light_dir = transform_position(view_data, light.pos) - pos;
     float distance = length(light_dir);
     distance = distance * distance;
     light_dir = normalize(light_dir);
@@ -73,7 +73,7 @@ Lighting CalculateIncidentOmniDirectionalLight(OmniDirectionalLight light, float
 }
 
 Lighting CalculateIncidentSpotLight(SpotLight light, float3 pos, float3 normal, LightingMaterial material) {
-    float3 light_dir = mul(view_data.view, float4(light.pos, 1.0)).xyz - pos;
+    float3 light_dir = transform_position(view_data, light.pos) - pos;
     float distance = length(light_dir);
     distance = distance * distance;
     light_dir = normalize(light_dir);
@@ -85,7 +85,7 @@ Lighting CalculateIncidentSpotLight(SpotLight light, float3 pos, float3 normal, 
         lighting = DefaultBRDF(normal, normalize(-pos), light_dir, NoL, material);
     }
 
-    float cos_between_dir = dot(normalize(mul(view_data.view, float4(light.dir, 0.0)).xyz), light_dir);
+    float cos_between_dir = dot(transform_normal(view_data, light.dir), light_dir);
     float cos_half_angle = cos(light.cone_angle/2.0);
     float diff = 1.0 - cos_half_angle;
     float factor = saturate((cos_between_dir - cos_half_angle)/diff);
@@ -174,8 +174,6 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
         color += diffuse_color * lighting.diffuse;
         color += spec_color * lighting.specular;
     }
-
-    //float3 result = mul(transpose(view_data.view), float4(lighting_normal, 0.0)).rgb;
 
     return float4(color, 1.0);
 }

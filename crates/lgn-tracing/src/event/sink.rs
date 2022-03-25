@@ -23,6 +23,8 @@ pub trait EventSink {
 
     fn on_init_thread_stream(&self, thread_stream: &ThreadStream);
     fn on_process_thread_block(&self, thread_block: Arc<ThreadBlock>);
+
+    fn is_busy(&self) -> bool; // sink is busy writing to disk or network, avoid extra flushing
 }
 
 pub struct NullEventSink {}
@@ -43,4 +45,8 @@ impl EventSink for NullEventSink {
 
     fn on_init_thread_stream(&self, _: &ThreadStream) {}
     fn on_process_thread_block(&self, _: Arc<ThreadBlock>) {}
+
+    fn is_busy(&self) -> bool {
+        false
+    }
 }

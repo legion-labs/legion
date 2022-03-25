@@ -24,6 +24,7 @@ lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 
 # other
 approx = { version = "0.5.0", default-features = false }
+instant = { version = "0.1", features = ["wasm-bindgen"] }
 raw-window-handle = "0.4.2"
 winit = { version = "0.26.0", default-features = false }
 

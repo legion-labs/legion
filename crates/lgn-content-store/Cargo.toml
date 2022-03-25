@@ -6,6 +6,7 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+async-trait = "0.1"
 lgn-utils = { path = "../lgn-utils" }
 hex = "0.4.3"
 hex_fmt = "0.3.0"

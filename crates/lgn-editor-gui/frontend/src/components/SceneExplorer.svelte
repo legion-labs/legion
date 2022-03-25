@@ -29,7 +29,7 @@
         panelIsFocused={isFocused}
         on:select={({ detail: resourceDescription }) =>
           resourceDescription &&
-          fetchCurrentResourceDescription(resourceDescription)}
+          fetchCurrentResourceDescription(resourceDescription.id)}
         on:highlight={({ detail: item }) =>
           dispatch("currentResourceDescriptionChange", item)}
         bind:highlightedItem={currentResourceDescription}

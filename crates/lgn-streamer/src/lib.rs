@@ -49,12 +49,11 @@ impl Plugin for StreamerPlugin {
             .add_startup_system(init_cgen);
 
         let webrtc_server =
-            webrtc::WebRTCServer::new().expect("failed to instanciate a WebRTC server");
+            webrtc::WebRTCServer::new().expect("failed to instantiate a WebRTC server");
         let grpc_server = grpc::GRPCServer::new(webrtc_server, stream_events_sender);
 
         app.world
-            .get_resource_mut::<lgn_grpc::GRPCPluginSettings>()
-            .expect("the streamer plugin requires the gRPC plugin")
+            .resource_mut::<lgn_grpc::GRPCPluginSettings>()
             .into_inner()
             .register_service(grpc_server.service());
     }

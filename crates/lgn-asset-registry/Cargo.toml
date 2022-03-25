@@ -11,31 +11,18 @@ keywords = ["legion"]
 [dependencies]
 # Legion engine
 lgn-app = { path = "../lgn-app", version = "0.1.0" }
+lgn-async = { path = "../lgn-async", version = "0.1.0" }
 lgn-config = { path = "../lgn-config", version = "0.1.0" }
 lgn-content-store = { path = "../lgn-content-store", version = "0.1.0" }
 lgn-core = { path = "../lgn-core", version = "0.1.0" }
 lgn-data-runtime = { path = "../lgn-data-runtime", version = "0.1.0" }
 lgn-data-model = { path = "../lgn-data-model", version = "0.1.0" }
 lgn-ecs = { path = "../lgn-ecs", version = "0.1.0" }
-lgn-graphics-data = { path = "../lgn-graphics-data", version = "0.1.0", features = [
-    "runtime",
-] }
+lgn-hierarchy = { path = "../lgn-hierarchy", version = "0.1.0" }
 lgn-math = { path = "../lgn-math", version = "0.1.0" }
-lgn-physics = { path = "../lgn-physics", version = "0.1.0", features = [
-    "runtime",
-] }
-lgn-graphics-renderer = { path = "../lgn-graphics-renderer", version = "0.1.0" }
-lgn-scripting = { path = "../lgn-scripting", version = "0.1.0", features = [
-    "runtime",
-] }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
-lgn-transform = { path = "../lgn-transform", version = "0.1.0" }
-
-# temp dependency on sample-data, until runtime data moved to plugins
-sample-data = { path = "../../tests/sample-data", version = "0.1.0", features = [
-    "runtime",
-] }
 
 # other
 crossbeam-channel = "0.5.1"
 serde_json = "1.0"
+tokio = { version = "1", features = ["full", "tracing"] }

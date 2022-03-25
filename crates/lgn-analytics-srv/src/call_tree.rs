@@ -4,14 +4,22 @@ use anyhow::Result;
 use lgn_analytics::prelude::*;
 use lgn_analytics::time::ConvertTicks;
 use lgn_blob_storage::BlobStorage;
+use lgn_telemetry_proto::analytics::AsyncSpanEvent;
 use lgn_telemetry_proto::analytics::BlockSpansReply;
 use lgn_telemetry_proto::analytics::CallTree;
 use lgn_telemetry_proto::analytics::CallTreeNode;
 use lgn_telemetry_proto::analytics::ScopeDesc;
 use lgn_telemetry_proto::analytics::Span;
 use lgn_telemetry_proto::analytics::SpanBlockLod;
+use lgn_telemetry_proto::analytics::SpanEventType;
 use lgn_telemetry_proto::analytics::SpanTrack;
 use lgn_tracing::prelude::*;
+
+pub struct ProcessedThreadBlock {
+    pub scopes: ScopeHashMap,
+    pub call_tree_root: Option<CallTreeNode>,
+    pub async_events: Vec<AsyncSpanEvent>,
+}
 
 struct CallTreeBuilder {
     ts_begin_block: i64,
@@ -19,6 +27,7 @@ struct CallTreeBuilder {
     stack: Vec<CallTreeNode>,
     scopes: ScopeHashMap,
     convert_ticks: ConvertTicks,
+    async_events: Vec<AsyncSpanEvent>,
 }
 
 impl CallTreeBuilder {
@@ -29,15 +38,17 @@ impl CallTreeBuilder {
             stack: Vec::new(),
             scopes: ScopeHashMap::new(),
             convert_ticks,
+            async_events: Vec::new(),
         }
     }
 
     #[span_fn]
-    pub fn finish(mut self) -> CallTree {
+    pub fn finish(mut self) -> ProcessedThreadBlock {
         if self.stack.is_empty() {
-            return CallTree {
+            return ProcessedThreadBlock {
                 scopes: ScopeHashMap::new(),
-                root: None,
+                call_tree_root: None,
+                async_events: self.async_events,
             };
         }
         while self.stack.len() > 1 {
@@ -47,9 +58,10 @@ impl CallTreeBuilder {
             parent.children.push(top);
         }
         assert_eq!(1, self.stack.len());
-        CallTree {
+        ProcessedThreadBlock {
             scopes: self.scopes,
-            root: self.stack.pop(),
+            call_tree_root: self.stack.pop(),
+            async_events: self.async_events,
         }
     }
 
@@ -123,23 +135,44 @@ impl ThreadBlockProcessor for CallTreeBuilder {
         Ok(())
     }
 
-    fn on_begin_async_scope(&mut self, _span_id: u64, _scope: Arc<Object>, _ts: i64) -> Result<()> {
+    fn on_begin_async_scope(&mut self, span_id: u64, scope: Arc<Object>, ts: i64) -> Result<()> {
+        let time_ms = self.convert_ticks.get_time(ts);
+        let scope_name = scope.get::<Arc<String>>("name")?;
+        let scope_hash = compute_scope_hash(&scope_name);
+        self.record_scope_desc(scope_hash, &scope_name);
+        self.async_events.push(AsyncSpanEvent {
+            event_type: SpanEventType::Begin as i32,
+            span_id,
+            scope_hash,
+            time_ms,
+        });
         Ok(())
     }
-    fn on_end_async_scope(&mut self, _span_id: u64, _scope: Arc<Object>, _ts: i64) -> Result<()> {
+
+    fn on_end_async_scope(&mut self, span_id: u64, scope: Arc<Object>, ts: i64) -> Result<()> {
+        let time_ms = self.convert_ticks.get_time(ts);
+        let scope_name = scope.get::<Arc<String>>("name")?;
+        let scope_hash = compute_scope_hash(&scope_name);
+        self.record_scope_desc(scope_hash, &scope_name);
+        self.async_events.push(AsyncSpanEvent {
+            event_type: SpanEventType::End as i32,
+            span_id,
+            scope_hash,
+            time_ms,
+        });
         Ok(())
     }
 }
 
 #[allow(clippy::cast_precision_loss)]
 #[span_fn]
-pub(crate) async fn compute_block_call_tree(
+pub(crate) async fn process_thread_block(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
     process: &lgn_telemetry_sink::ProcessInfo,
     stream: &lgn_telemetry_sink::StreamInfo,
     block_id: &str,
-) -> Result<CallTree> {
+) -> Result<ProcessedThreadBlock> {
     let block = find_block(connection, block_id).await?;
     let mut builder = CallTreeBuilder::new(
         block.begin_ticks,

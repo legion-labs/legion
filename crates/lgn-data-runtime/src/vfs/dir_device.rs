@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use async_trait::async_trait;
+
 use super::Device;
 use crate::ResourceTypeAndId;
 
@@ -16,9 +18,14 @@ impl DirDevice {
     }
 }
 
+#[async_trait]
 impl Device for DirDevice {
-    fn load(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
+    async fn load(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
         let path = self.dir.join(type_id.id.resource_path());
         std::fs::read(path).ok()
+    }
+
+    async fn reload(&self, _: ResourceTypeAndId) -> Option<Vec<u8>> {
+        None
     }
 }

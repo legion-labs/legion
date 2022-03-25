@@ -1,11 +1,14 @@
 use lgn_graphics_api::{
     ColorClearValue, ColorRenderTargetBinding, DeviceContext, LoadOp, ResourceState, StoreOp,
 };
-use lgn_math::Mat4;
+use lgn_math::Vec4;
 use lgn_transform::components::GlobalTransform;
 
 use crate::{
-    cgen::{self, cgen_type::PickingData},
+    cgen::{
+        self,
+        cgen_type::{PickingData, Transform},
+    },
     components::{
         CameraComponent, LightComponent, ManipulatorComponent, RenderSurface, VisualComponent,
     },
@@ -123,11 +126,6 @@ impl PickingRenderPass {
 
             mesh_renderer.draw(render_context, cmd_buffer, DefaultLayers::Picking as usize);
 
-            let (view_matrix, projection_matrix) = camera.build_view_projection(
-                render_surface.extents().width() as f32,
-                render_surface.extents().height() as f32,
-            );
-
             for (_index, (visual, transform, manipulator)) in manipulator_meshes.iter().enumerate()
             {
                 let (model_meta_data, _ready) = model_manager.get_model_meta_data(visual);
@@ -137,8 +135,8 @@ impl PickingRenderPass {
                         let custom_world = ManipulatorManager::scale_manipulator_for_viewport(
                             transform,
                             &manipulator.local_transform,
-                            &view_matrix,
-                            &projection_matrix,
+                            render_surface,
+                            camera,
                         );
 
                         render_mesh(
@@ -155,7 +153,7 @@ impl PickingRenderPass {
 
             for (light, transform) in lights {
                 let picking_distance = 1.0;
-                let custom_world = transform.with_scale(transform.scale * 0.2).compute_matrix();
+                let custom_world = transform.with_scale(transform.scale * 0.2);
                 render_mesh(
                     &custom_world,
                     light.picking_id,
@@ -183,7 +181,7 @@ impl PickingRenderPass {
 }
 
 fn render_mesh(
-    custom_world: &Mat4,
+    custom_world: &GlobalTransform,
     picking_id: u32,
     picking_distance: f32,
     mesh_id: u32,
@@ -192,7 +190,14 @@ fn render_mesh(
 ) {
     let mut push_constant_data = cgen::cgen_type::PickingPushConstantData::default();
     let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh_id);
-    push_constant_data.set_world((*custom_world).into());
+
+    //push_constant_data.set_world((*custom_world).into());
+    let mut transform = Transform::default();
+    transform.set_translation(custom_world.translation.into());
+    transform.set_rotation(Vec4::from(custom_world.rotation).into());
+    transform.set_scale(custom_world.scale.into());
+
+    push_constant_data.set_transform(transform);
     push_constant_data.set_mesh_description_offset(mesh_meta_data.mesh_description_offset.into());
     push_constant_data.set_picking_id(picking_id.into());
     push_constant_data.set_picking_distance(picking_distance.into());

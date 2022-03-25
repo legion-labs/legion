@@ -1,27 +1,23 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { get } from "svelte/store";
-import {
-  BlockSpansReply,
-  BlockAsyncEventsStatReply,
-  PerformanceAnalyticsClientImpl,
-  SpanTrack,
-} from "@lgn/proto-telemetry/dist/analytics";
-import { Process } from "@lgn/proto-telemetry/dist/process";
+import type { BlockSpansReply } from "@lgn/proto-telemetry/dist/analytics";
+import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
+import type { Process } from "@lgn/proto-telemetry/dist/process";
 import { makeGrpcClient } from "../client";
 import log from "@lgn/web-client/src/lib/log";
-import { ThreadBlock } from "./ThreadBlock";
+import type { ThreadBlock } from "./ThreadBlock";
 import { LODState } from "./LodState";
-import { AsyncSection } from "./AsyncSection";
+import type { AsyncSection } from "./AsyncSection";
 import {
   computePreferredBlockLod,
   processMsOffsetToRoot,
   timestampToMs,
 } from "../time";
-import { Stream } from "@lgn/proto-telemetry/dist/stream";
+import type { Stream } from "@lgn/proto-telemetry/dist/stream";
 import type { TimelineStateStore } from "./TimelineStateStore";
 import { createTimelineStateStore } from "./TimelineStateStore";
 import { TimelineState } from "./TimelineState";
-import { ProcessAsyncData } from "./ProcessAsyncData";
+import type { ProcessAsyncData } from "./ProcessAsyncData";
 import { loadPromise, loadWrap } from "../Misc/LoadingStore";
 
 const MAX_NB_REQUEST_IN_FLIGHT = 16;
@@ -33,9 +29,16 @@ export class TimelineStateManager {
   private client: PerformanceAnalyticsClientImpl | null = null;
   private processId: string;
   private nbRequestsInFlight = 0;
-  constructor(processId: string, start: number | null, end: number | null) {
+  constructor(
+    processId: string,
+    canvasWidth: number,
+    start: number | null,
+    end: number | null
+  ) {
     this.processId = processId;
-    this.state = createTimelineStateStore(new TimelineState(start, end));
+    this.state = createTimelineStateStore(
+      new TimelineState(canvasWidth, start, end)
+    );
   }
 
   async init() {

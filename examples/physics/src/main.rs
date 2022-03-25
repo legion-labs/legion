@@ -24,8 +24,9 @@ use lgn_data_runtime::{
     manifest::Manifest, AssetRegistryOptions, Component, Resource, ResourceId, ResourceTypeAndId,
 };
 use lgn_data_transaction::BuildManager;
+use lgn_graphics_data::offline::CameraSetup;
 use lgn_graphics_renderer::components::Mesh;
-use lgn_math::prelude::*;
+use lgn_math::prelude::{Quat, Vec3};
 use lgn_physics::{
     offline::{PhysicsRigidBox, PhysicsRigidConvexMesh, PhysicsRigidSphere, PhysicsSceneSettings},
     RigidActorType,
@@ -67,6 +68,8 @@ async fn main() {
     let build_dir = project_dir.join("temp");
     std::fs::create_dir_all(&build_dir).unwrap();
 
+    let content_store_section = "data_build";
+
     let absolute_project_dir = {
         if !project_dir.is_absolute() {
             std::env::current_dir().unwrap().join(&project_dir)
@@ -74,9 +77,16 @@ async fn main() {
             project_dir.clone()
         }
     };
-    let mut project = Project::create_with_remote_mock(absolute_project_dir)
+    Project::create_local_origin(absolute_project_dir.join("remote"))
         .await
-        .expect("failed to create a project");
+        .expect("failed to create remote database");
+    let mut project = Project::create(
+        absolute_project_dir,
+        "../remote".to_owned(),
+        content_store_section,
+    )
+    .await
+    .expect("failed to create a project");
 
     let mut resource_registry = ResourceRegistryOptions::new();
     lgn_graphics_data::offline::register_resource_types(&mut resource_registry);
@@ -86,6 +96,10 @@ async fn main() {
     let resource_registry = resource_registry.create_async_registry();
 
     let resource_ids = create_offline_data(&mut project, &resource_registry).await;
+    project
+        .commit("initial commit")
+        .await
+        .expect("failed to commit");
 
     let mut asset_registry = AssetRegistryOptions::new()
         .add_device_dir(project.resource_dir())
@@ -93,7 +107,7 @@ async fn main() {
     lgn_graphics_data::offline::add_loaders(&mut asset_registry);
     generic_data::offline::add_loaders(&mut asset_registry);
     sample_data::offline::add_loaders(&mut asset_registry);
-    let asset_registry = asset_registry.create();
+    let asset_registry = asset_registry.create().await;
 
     let mut compilers_path = env::current_exe().expect("cannot access current_exe");
     compilers_path.pop(); // pop the .exe name
@@ -383,9 +397,15 @@ async fn create_offline_data(
         resource_registry,
         "09f7380d-51b2-4061-9fe4-52ceccce55e7",
         "/scene.ent",
-        vec![Box::new(PhysicsSceneSettings {
-            gravity: Vec3::new(0.0, -1.0, 0.0),
-        })],
+        vec![
+            Box::new(CameraSetup {
+                eye: Vec3::new(0.0, 1.2, -3.0),
+                look_at: Vec3::ZERO,
+            }),
+            Box::new(PhysicsSceneSettings {
+                gravity: Vec3::new(0.0, -1.0, 0.0),
+            }),
+        ],
         vec![
             box_a_id, box_b_id, box_c_id, ball_a_id, pyramid_id, ground_id, light_id,
         ],

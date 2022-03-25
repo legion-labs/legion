@@ -11,6 +11,8 @@ Some helpers, like `close`, will be passed down to the slots.
   import Icon from "@iconify/svelte";
   import { createEventDispatcher } from "svelte";
 
+  type Size = "sm" | "lg";
+
   const dispatch = createEventDispatcher<{ close: undefined }>();
 
   /**
@@ -19,9 +21,11 @@ Some helpers, like `close`, will be passed down to the slots.
    * _Use with care._
    */
   export let noClose = false;
+
+  export let size: Size = "sm";
 </script>
 
-<div class="root">
+<div class="root" class:sm={size === "sm"} class:lg={size === "lg"}>
   <div class="header">
     <div><slot name="title" /></div>
     {#if !noClose}
@@ -40,7 +44,15 @@ Some helpers, like `close`, will be passed down to the slots.
 
 <style lang="postcss">
   .root {
-    @apply w-96 bg-gray-700 rounded-sm shadow-lg shadow-black;
+    @apply flex flex-col bg-gray-700 rounded-sm shadow-lg shadow-black max-h-[calc(100vh-5rem)];
+  }
+
+  .root.sm {
+    @apply w-96;
+  }
+
+  .root.lg {
+    @apply w-2/3;
   }
 
   .header {
@@ -52,7 +64,7 @@ Some helpers, like `close`, will be passed down to the slots.
   }
 
   .body {
-    @apply shadow-lg shadow-gray-800;
+    @apply flex h-full w-full shadow-lg shadow-gray-800 overflow-hidden;
   }
 
   .footer {

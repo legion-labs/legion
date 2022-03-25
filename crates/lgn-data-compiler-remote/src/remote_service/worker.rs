@@ -3,6 +3,7 @@ use crate::node_crunch::{
     nc_config::NCConfiguration, nc_error::NCError, nc_node::NCNode, nc_node::NCNodeStarter,
     nc_node::NCNodeStatus,
 };
+use lgn_async::TokioAsyncRuntime;
 use lgn_tracing::info;
 
 struct Worker {}
@@ -27,12 +28,14 @@ impl NCNode for Worker {
         data: &Self::NewDataT,
     ) -> Result<NCNodeStatus<Self::ProcessedDataT>, NCError> {
         info!("Received & executing workload...");
-        let output_archive = crate::compiler_node::remote_data_executor::execute_sandbox_compiler(
-            &data.input_archive,
-        )?;
+        let output_msg =
+            crate::compiler_node::remote_data_executor::execute_sandbox_compiler(&data.input_msg);
+        // FIXME: temporarily sync until we switch the data-executor to async
+        let output_msg = TokioAsyncRuntime::default().block_on(output_msg)?;
+
         let result = NodeData {
             request_id: data.request_id,
-            output_archive,
+            output_msg,
         };
         info!("Workload executed...");
         Ok(NCNodeStatus::Ready(result))

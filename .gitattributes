@@ -5,20 +5,21 @@
 #*.ext text
 
 # Declare files that will always have LF line endings on checkout.
+*.cjs text eol=lf
 *.gitattributes eol=lf
-*.rs text eol=lf
-*.toml text eol=lf
 *.hlsl text eol=lf
-*.proto text eol=lf
-*.ts text eol=lf
+*.lock text eol=lf
 *.js text eol=lf
 *.json text eol=lf
-*.svelte text eol=lf
-*.lock text eol=lf
-*.yaml text eol=lf
-*.sh text eol=lf
-*.cjs text eol=lf
+*.manifest text eol=lf
 *.prettierrc text eol=lf
+*.proto text eol=lf
+*.rs text eol=lf
+*.sh text eol=lf
+*.svelte text eol=lf
+*.toml text eol=lf
+*.ts text eol=lf
+*.yaml text eol=lf
 tests/sample-data/**/* eol=lf
 
 # Declare files that will always have CRLF line endings on checkout.

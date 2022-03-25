@@ -3,19 +3,13 @@
 ## Launching
 
 ```sh
-cargo mrun --bin pong -- --standalone
-```
-
-or
-
-```sh
-cargo m run --bin runtime-srv -- --project=examples/pong/data --root="(1d9ddd99aad89045,b3440a7c-ba07-5628-e7f8-bb89ed5de900)" --standalone
+cargo m run --bin runtime-srv --features=standalone -- --project=examples/pong/data --root="(1d9ddd99aad89045,b3440a7c-ba07-5628-e7f8-bb89ed5de900)"
 ```
 
 ## Editing data
 
 ```sh
-cargo m run --bin editor-srv -- --project=examples/pong/data --scene "/scene.ent"
+cargo m run --bin editor-srv -- --project=./target/data/workspaces/pong/ --origin=../../../../../examples/pong/data/remote/ --cas=./target/data/content-store/ --build-db=./target/data/build-db/ --scene "/scene.ent"
 cargo m run --bin editor-client
 ```
 

@@ -7,6 +7,7 @@ pub trait HeterogeneousQueue {
         Self: Sized;
     fn len_bytes(&self) -> usize;
     fn nb_objects(&self) -> usize;
+    fn capacity_bytes(&self) -> usize;
     fn read_value_at_offset(&self, offset: usize) -> (Self::Item, usize);
     fn new(buffer_size: usize) -> Self;
     fn reflect_contained() -> Vec<UserDefinedType>;

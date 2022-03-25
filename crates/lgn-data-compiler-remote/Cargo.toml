@@ -6,26 +6,28 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [[bin]]
-name = "data-remote-executor-service"
+name = "data-remote-executor-srv"
 path = "src/remote_service/main.rs"
 
 [dependencies]
 async-trait = "0.1"
-serde = { version = "1.0", features = ["derive"] }
+anyhow = "1.0"
 bincode = "1.3.1"
+chacha20poly1305 = "0.9.0"
+clap = { version = "3.0", features = ["derive"] }
+freelist = "0.1.0"
+futures = "0.3"
+lz4_flex = "0.8.2"
 rand = "0.7"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tempfile = "3.3.0"
 thiserror = "1.0"
 threadpool = "1.0"
-lz4_flex = "0.8.2"
-chacha20poly1305 = "0.9.0"
-tempfile = "3.3.0"
-zip = "0.5"
-clap = { version = "3.0", features = ["derive"] }
-serde_json = "1.0"
-url = "2.2.2"
-freelist = "0.1.0"
 tokio = { version = "1", features = ["full", "tracing"] }
+url = "2.2.2"
 
+lgn-async = { path = "../lgn-async", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-data-compiler = { path = "../lgn-data-compiler", version = "0.1.0" }
@@ -33,8 +35,24 @@ lgn-data-offline = { path = "../lgn-data-offline", version = "0.1.0" }
 lgn-utils = { path = "../lgn-utils", version = "0.1.0" }
 lgn-content-store = { path = "../lgn-content-store", version = "0.1.0" }
 lgn-data-runtime = { path = "../lgn-data-runtime", version = "0.1.0" }
+lgn-content-store2 = { path = "../lgn-content-store2", version = "0.1.0" }
 
 [dev-dependencies]
 tempfile = "3.2.0"
 text-resource = { path = "../lgn-data-offline/test-text-resource" }
 integer-asset = { path = "../lgn-data-runtime/test-integer-asset" }
+
+[[package.metadata.monorepo.publish]]
+name = "data-remote-executor-srv"
+type = "docker"
+target-bin-dir = "/usr/src/app"
+template = """
+FROM ubuntu:20.04
+
+RUN apt-get update && apt-get install -y libssl-dev ca-certificates
+
+{ copy_all }
+
+ENTRYPOINT ["{ binaries.data-remote-executor-srv }"]
+"""
+allow-aws-ecr-creation = true

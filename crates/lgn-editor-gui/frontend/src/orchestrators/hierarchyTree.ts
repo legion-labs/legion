@@ -12,6 +12,7 @@ import { Entries } from "@/lib/hierarchyTree";
 
 export type HierarchyTreeOrchestrator<Item extends { path: string }> = {
   currentlyRenameEntry: Writable<Entry<Item> | null>;
+  currentEntry: Writable<Entry<Item> | null>;
   entries: Writable<Entries<Item>>;
 
   load(resources: Item[]): void;
@@ -21,9 +22,11 @@ export function createHierarchyTreeOrchestrator<Item extends { path: string }>(
   resources: Item[] = []
 ): HierarchyTreeOrchestrator<Item> {
   return {
-    currentlyRenameEntry: writable<Entry<Item> | null>(null),
+    currentlyRenameEntry: writable(null),
 
-    entries: writable<Entries<Item>>(Entries.fromArray(resources)),
+    currentEntry: writable(null),
+
+    entries: writable(Entries.fromArray(resources)),
 
     /** Loads an array of element as hierarchy tree entries in the store */
     load(resources) {

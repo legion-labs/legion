@@ -18,7 +18,7 @@
     BagResourceProperty,
     ResourceProperty,
   } from "@/lib/propertyGrid";
-  import currentResource from "@/orchestrators/currentResource";
+  import { currentResource } from "@/orchestrators/currentResource";
   import log from "@lgn/web-client/src/lib/log";
   import { createEventDispatcher } from "svelte";
   import BooleanProperty from "./properties/BooleanProperty.svelte";
@@ -38,8 +38,6 @@
     input: PropertyUpdate;
     removeVectorSubProperty: RemoveVectorSubPropertyEvent;
   }>();
-
-  const { data: currentResourceData } = currentResource;
 
   export let property: ResourceProperty;
 
@@ -72,7 +70,7 @@
       return;
     }
 
-    if (!$currentResourceData) {
+    if (!$currentResource) {
       log.error(
         "A vector sub property was removed while no resources were selected"
       );

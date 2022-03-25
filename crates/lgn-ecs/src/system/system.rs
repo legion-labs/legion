@@ -9,7 +9,7 @@ use crate::{
     world::World,
 };
 
-/// An ECS system that can be added to a [Schedule](crate::schedule::Schedule)
+/// An ECS system that can be added to a [`Schedule`](crate::schedule::Schedule)
 ///
 /// Systems are functions with all arguments implementing
 /// [`SystemParam`](crate::system::SystemParam).

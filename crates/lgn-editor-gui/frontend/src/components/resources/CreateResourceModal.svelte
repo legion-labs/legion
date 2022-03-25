@@ -146,7 +146,7 @@
 
 <style lang="postcss">
   .body {
-    @apply flex flex-col space-y-4 px-2 py-4;
+    @apply flex flex-col space-y-4 px-2 py-4 w-full;
   }
 
   .footer {

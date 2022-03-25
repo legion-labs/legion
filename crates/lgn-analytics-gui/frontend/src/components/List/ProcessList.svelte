@@ -1,6 +1,6 @@
 <script lang="ts">
   import { link } from "svelte-navigator";
-  import {
+  import type {
     PerformanceAnalyticsClientImpl,
     ProcessInstance,
   } from "@lgn/proto-telemetry/dist/analytics";

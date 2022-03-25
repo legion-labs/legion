@@ -7,6 +7,8 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 lgn-app = { path = "../../crates/lgn-app", version = "0.1.0" }
 lgn-asset-registry = { path = "../../crates/lgn-asset-registry", version = "0.1.0" }
+lgn-content-store = { path = "../../crates/lgn-content-store", version = "0.1.0" }
+lgn-config = { path = "../../crates/lgn-config", version = "0.1.0" }
 lgn-core = { path = "../../crates/lgn-core", version = "0.1.0" }
 lgn-codec-api = { path = "../../crates/lgn-codec-api", version = "0.1.0" }
 lgn-data-runtime = { path = "../../crates/lgn-data-runtime", version = "0.1.0" }
@@ -15,13 +17,15 @@ lgn-graphics-api = { path = "../../crates/lgn-graphics-api", version = "0.1.0" }
 lgn-graphics-data = { path = "../../crates/lgn-graphics-data", version = "0.1.0", features = [
     "runtime",
 ] }
+lgn-graphics-renderer = { path = "../../crates/lgn-graphics-renderer", version = "0.1.0" }
+lgn-hierarchy = { path = "../../crates/lgn-hierarchy", version = "0.1.0" }
 lgn-input = { path = "../../crates/lgn-input", version = "0.1.0" }
-lgn-tracing = { path = "../../crates/lgn-tracing", version = "0.1.0" }
-lgn-telemetry-sink = { path = "../../crates/lgn-telemetry-sink", version = "0.1.0" }
 lgn-math = { path = "../../crates/lgn-math", version = "0.1.0" }
 lgn-presenter-snapshot = { path = "../../crates/lgn-presenter-snapshot", version = "0.1.0" }
 lgn-presenter-window = { path = "../../crates/lgn-presenter-window", version = "0.1.0" }
-lgn-graphics-renderer = { path = "../../crates/lgn-graphics-renderer", version = "0.1.0" }
+lgn-scene-plugin = { path = "../../crates/lgn-scene-plugin", version = "0.1.0" }
+lgn-telemetry-sink = { path = "../../crates/lgn-telemetry-sink", version = "0.1.0" }
+lgn-tracing = { path = "../../crates/lgn-tracing", version = "0.1.0" }
 lgn-transform = { path = "../../crates/lgn-transform", version = "0.1.0" }
 lgn-window = { path = "../../crates/lgn-window", version = "0.1.0" }
 lgn-winit = { path = "../../crates/lgn-winit", version = "0.1.0" }

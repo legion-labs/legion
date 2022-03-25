@@ -14,13 +14,14 @@ VertexOut main_vs(uint vertexId: SV_VertexID) {
     VertexIn vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexId);
     VertexOut vertex_out;
 
-    float4 pos_view_relative = mul(view_data.view, mul(push_constant.world, float4(vertex_in.pos, 1.0)));
-    vertex_out.hpos = mul(view_data.projection, pos_view_relative);
+    float3 view_pos = transform_position(view_data, transform_position(push_constant.transform, vertex_in.pos));
+
+    vertex_out.hpos = mul(view_data.projection, float4(view_pos, 1.0));
     vertex_out.color = vertex_in.color;
 
     return vertex_out;
 }
 
 float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
-    return saturate(vertex_out.color + push_constant.color);
+    return lerp(vertex_out.color, push_constant.color, push_constant.color_blend); 
 }

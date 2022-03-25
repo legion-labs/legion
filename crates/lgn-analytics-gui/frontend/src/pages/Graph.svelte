@@ -9,12 +9,12 @@
 
   import { useLocation } from "svelte-navigator";
   import { onMount } from "svelte";
-  import {
+  import type {
     CumulativeCallGraphNode,
     PerformanceAnalyticsClientImpl,
   } from "@lgn/proto-telemetry/dist/analytics";
-  import { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
-  import { Process } from "@lgn/proto-telemetry/dist/process";
+  import type { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
+  import type { Process } from "@lgn/proto-telemetry/dist/process";
   import { formatExecutionTime } from "@/lib/format";
   import { makeGrpcClient } from "@/lib/client";
   import log from "@lgn/web-client/src/lib/log";

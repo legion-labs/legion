@@ -1,6 +1,6 @@
 mod command_queue;
 
-use std::marker::PhantomData;
+use std::{any, marker::PhantomData};
 
 pub use command_queue::CommandQueue;
 use lgn_tracing::{error, warn};
@@ -81,7 +81,7 @@ impl<'w, 's> Commands<'w, 's> {
     ///         // adds a single component to the entity
     ///         .insert(Label("hello world"));
     /// }
-    /// # example_system.system();
+    /// # lgn_ecs::system::assert_is_system(example_system);
     /// ```
     pub fn spawn<'a>(&'a mut self) -> EntityCommands<'w, 's, 'a> {
         let entity = self.entities.reserve_entity();
@@ -308,6 +308,8 @@ impl<'w, 's> Commands<'w, 's> {
     /// the same type.
     ///
     /// See [`World::insert_resource`] for more details.
+    /// Note that commands do not take effect immediately.
+    /// When possible, prefer the equivalent methods on `App` or `World`.
     ///
     /// # Example
     ///
@@ -327,7 +329,7 @@ impl<'w, 's> Commands<'w, 's> {
     /// # }
     /// # lgn_ecs::system::assert_is_system(system);
     /// ```
-    pub fn insert_resource<T: Resource>(&mut self, resource: T) {
+    pub fn insert_resource<R: Resource>(&mut self, resource: R) {
         self.queue.push(InsertResource { resource });
     }
 
@@ -734,7 +736,9 @@ where
 {
     fn write(self, world: &mut World) {
         if let Some(mut entity_mut) = world.get_entity_mut(self.entity) {
-            entity_mut.remove::<T>();
+            if entity_mut.remove::<T>().is_none() {
+                warn!("{} couldn't be removed from world, this might cause some tasks to be unnecessarily spawned", any::type_name::<T>());
+            }
         }
     }
 }

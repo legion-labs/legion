@@ -282,6 +282,10 @@ impl EventSink for GRPCEventSink {
     fn on_process_thread_block(&self, thread_block: Arc<ThreadBlock>) {
         self.send(SinkEvent::ProcessThreadBlock(thread_block));
     }
+
+    fn is_busy(&self) -> bool {
+        self.queue_size.load(Ordering::Relaxed) > 0
+    }
 }
 
 fn get_stream_info<Block>(stream: &EventStream<Block>) -> StreamInfo

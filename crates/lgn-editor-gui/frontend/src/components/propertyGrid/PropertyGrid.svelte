@@ -6,7 +6,10 @@
   } from "@/api";
   import type { PropertyUpdate } from "@/api";
   import { propertyIsDynComponent, propertyIsGroup } from "@/lib/propertyGrid";
-  import currentResource from "@/orchestrators/currentResource";
+  import {
+    currentResource,
+    currentResourceError,
+  } from "@/orchestrators/currentResource";
   import log from "@lgn/web-client/src/lib/log";
   import PropertyContainer from "./PropertyContainer.svelte";
   import CreateComponentModal from "@/components/resources/CreateComponentModal.svelte";
@@ -15,9 +18,6 @@
     AddVectorSubPropertyEvent,
     RemoveVectorSubPropertyEvent,
   } from "./types";
-
-  const { data: currentResourceData, error: currentResourceError } =
-    currentResource;
 
   const createComponentModalId = Symbol();
 
@@ -53,13 +53,13 @@
     updateTimeout = setTimeout(() => {
       updateTimeout = null;
 
-      if (!$currentResourceData) {
+      if (!$currentResource) {
         return;
       }
 
       updateResourceProperties(
-        $currentResourceData.id,
-        $currentResourceData.version,
+        $currentResource.id,
+        $currentResource.version,
         propertyUpdates
       );
 
@@ -71,7 +71,7 @@
   function addVectorSubProperty({
     detail: { path, property, index },
   }: CustomEvent<AddVectorSubPropertyEvent>) {
-    if (!$currentResourceData) {
+    if (!$currentResource) {
       log.error("No resources selected");
 
       return;
@@ -80,13 +80,13 @@
     if (propertyIsDynComponent(property)) {
       modal.open(createComponentModalId, CreateComponentModal, {
         payload: {
-          resourceId: $currentResourceData.id,
+          resourceId: $currentResource.id,
           path: path,
           index: index,
         },
       });
     } else {
-      addPropertyInPropertyVectorApi($currentResourceData.id, {
+      addPropertyInPropertyVectorApi($currentResource.id, {
         path,
         index,
         jsonValue: undefined,
@@ -98,14 +98,14 @@
   function removeVectorSubProperty({
     detail: { path, index },
   }: CustomEvent<RemoveVectorSubPropertyEvent>) {
-    if (!$currentResourceData) {
+    if (!$currentResource) {
       log.error("No resources selected");
 
       return;
     }
 
     // TODO: Batch remove?
-    removeVectorSubPropertyApi($currentResourceData.id, {
+    removeVectorSubPropertyApi($currentResource.id, {
       path,
       indices: [index],
     });
@@ -115,12 +115,12 @@
 <div class="root">
   {#if $currentResourceError}
     <div class="italic">An error occured</div>
-  {:else if !$currentResourceData}
+  {:else if !$currentResource}
     <div class="italic">No resource selected</div>
-  {:else if !$currentResourceData.properties.length}
+  {:else if !$currentResource.properties.length}
     <div class="italic">Resource has no properties</div>
   {:else}
-    {#each $currentResourceData.properties as property, index (property.name)}
+    {#each $currentResource.properties as property, index (property.name)}
       {#if !property.attributes.hidden}
         <PropertyContainer
           on:input={onInput}

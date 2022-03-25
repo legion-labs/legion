@@ -1,5 +1,5 @@
 <script context="module" lang="ts">
-  import { SpanTrack } from "@lgn/proto-telemetry/dist/analytics";
+  import type { SpanTrack } from "@lgn/proto-telemetry/dist/span";
   import { BarLoader } from "svelte-loading-spinners";
 
   type BeginPan = {
@@ -17,12 +17,12 @@
 
 <script lang="ts">
   import { link } from "svelte-navigator";
-  import {
+  import type {
     BlockSpansReply,
     PerformanceAnalyticsClientImpl,
   } from "@lgn/proto-telemetry/dist/analytics";
-  import { Process } from "@lgn/proto-telemetry/dist/process";
-  import { Stream } from "@lgn/proto-telemetry/dist/stream";
+  import type { Process } from "@lgn/proto-telemetry/dist/process";
+  import type { Stream } from "@lgn/proto-telemetry/dist/stream";
   import { onMount, tick } from "svelte";
   import { formatExecutionTime } from "@/lib/format";
   import { zoomHorizontalViewRange } from "@/lib/zoom";
@@ -41,8 +41,8 @@
     getLodFromPixelSizeMs,
     MergeThresholdForLOD as mergeThresholdForLOD,
   } from "@/lib/lod";
-  import { Thread } from "@/lib/Timeline/Thread";
-  import { ThreadBlock } from "@/lib/Timeline/ThreadBlock";
+  import type { Thread } from "@/lib/Timeline/Thread";
+  import type { ThreadBlock } from "@/lib/Timeline/ThreadBlock";
   import { LODState } from "@/lib/Timeline/LodState";
   import {
     computePreferredBlockLod,
@@ -74,7 +74,7 @@
     const urlParams = new URLSearchParams(window.location.search);
     const start = Number.parseFloat(urlParams.get("timelineStart") ?? "");
     const end = Number.parseFloat(urlParams.get("timelineEnd") ?? "");
-    state = new TimelineState(start, end);
+    state = new TimelineState(0, start, end);
 
     const canvas = document.getElementById("canvas_timeline");
     if (!canvas || !(canvas instanceof HTMLCanvasElement)) {

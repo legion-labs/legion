@@ -5,8 +5,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use chrono::Utc;
-
 pub use crate::errors::{Error, Result};
 use crate::event::{EventSink, NullEventSink, TracingBlock};
 use crate::logs::{
@@ -20,6 +18,7 @@ use crate::spans::{
     BeginThreadSpanEvent, EndThreadSpanEvent, SpanMetadata, ThreadBlock, ThreadEventQueueTypeIndex,
     ThreadStream,
 };
+use chrono::Utc;
 
 use crate::spans::{BeginAsyncSpanEvent, EndAsyncSpanEvent};
 use crate::{frequency, info, now, warn, ProcessInfo};
@@ -54,6 +53,10 @@ pub fn init_event_dispatch(
 #[inline]
 pub fn process_id() -> Option<String> {
     unsafe { G_DISPATCH.as_ref().map(Dispatch::get_process_id) }
+}
+
+pub fn get_sink() -> Option<Arc<dyn EventSink>> {
+    unsafe { G_DISPATCH.as_ref().map(Dispatch::get_sink) }
 }
 
 pub fn shutdown_dispatch() {
@@ -145,6 +148,14 @@ pub fn init_thread_stream() {
     });
 }
 
+pub fn for_each_thread_stream(fun: &mut dyn FnMut(*mut ThreadStream)) {
+    unsafe {
+        if let Some(d) = &mut G_DISPATCH {
+            d.for_each_thread_stream(fun);
+        }
+    }
+}
+
 #[inline(always)]
 pub fn flush_thread_buffer() {
     LOCAL_THREAD_STREAM.with(|cell| unsafe {
@@ -229,6 +240,7 @@ struct Dispatch {
     threads_buffer_size: usize,
     log_stream: Mutex<LogStream>,
     metrics_stream: Mutex<MetricsStream>,
+    thread_streams: Mutex<Vec<*mut ThreadStream>>, // very very unsafe - threads would need to be unregistered before they are destroyed
     sink: Arc<dyn EventSink>,
 }
 
@@ -257,6 +269,7 @@ impl Dispatch {
                 &[String::from("metrics")],
                 HashMap::new(),
             )),
+            thread_streams: Mutex::new(vec![]),
             sink,
         };
         obj.startup();
@@ -267,6 +280,10 @@ impl Dispatch {
 
     pub fn get_process_id(&self) -> String {
         self.process_id.clone()
+    }
+
+    pub fn get_sink(&self) -> Arc<dyn EventSink> {
+        self.sink.clone()
     }
 
     fn shutdown(&mut self) {
@@ -334,6 +351,15 @@ impl Dispatch {
             let opt_ref = &mut *cell.as_ptr();
             self.sink.on_init_thread_stream(&thread_stream);
             *opt_ref = Some(thread_stream);
+            let mut vec_guard = self.thread_streams.lock().unwrap();
+            vec_guard.push(opt_ref.as_mut().unwrap());
+        }
+    }
+
+    fn for_each_thread_stream(&mut self, fun: &mut dyn FnMut(*mut ThreadStream)) {
+        let mut vec_guard = self.thread_streams.lock().unwrap();
+        for stream in &mut *vec_guard {
+            fun(*stream);
         }
     }
 

@@ -93,6 +93,10 @@ fn gen_hetero_queue_impl(
                 self.obj_counter
             }
 
+            fn capacity_bytes(&self) -> usize{
+                self.buffer.capacity()
+            }
+
             fn iter(&self) -> QueueIterator<'_, Self, #any_ident> {
                 QueueIterator::begin(self)
             }

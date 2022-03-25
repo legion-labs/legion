@@ -1,16 +1,16 @@
 <script lang="ts">
-  import { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
+  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { getThreadCollapseStyle } from "@/lib/Timeline/TimelineCollapse";
-  import { ProcessAsyncData } from "@/lib/Timeline/ProcessAsyncData";
-  import { Process } from "@lgn/proto-telemetry/dist/process";
+  import type { ProcessAsyncData } from "@/lib/Timeline/ProcessAsyncData";
+  import type { Process } from "@lgn/proto-telemetry/dist/process";
   import { createEventDispatcher } from "svelte";
+  import TasksSpans from "./TasksSpans.svelte";
+
   export let rootStartTime: number;
   export let stateStore: TimelineStateStore;
   export let process: Process;
   export let processAsyncData: ProcessAsyncData;
-  export let width: number;
   export let parentCollapsed: boolean;
-  import TasksSpans from "./TasksSpans.svelte";
   let collapsed = false;
   const wheelDispatch = createEventDispatcher<{ zoom: WheelEvent }>();
   const threadName = "async tasks";
@@ -39,7 +39,6 @@
     {parentCollapsed}
     {process}
     {processAsyncData}
-    {width}
     {rootStartTime}
     on:zoom={(e) => wheelDispatch("zoom", e.detail)}
   />

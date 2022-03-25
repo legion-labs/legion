@@ -8,7 +8,7 @@
   } from "@/lib/propertyGrid";
   import type { BagResourceProperty } from "@/lib/propertyGrid";
   import modal from "@/stores/modal";
-  import currentResource from "@/orchestrators/currentResource";
+  import { currentResource } from "@/orchestrators/currentResource";
   import { createEventDispatcher } from "svelte";
   import log from "@lgn/web-client/src/lib/log";
   import Checkbox from "../inputs/Checkbox.svelte";
@@ -23,7 +23,6 @@
     addVectorSubProperty: AddVectorSubPropertyEvent;
     removeVectorSubProperty: RemoveVectorSubPropertyEvent;
   }>();
-  const { data: currentResourceData } = currentResource;
 
   // TODO: Optional property bags are disabled until they're properly supported
   const disabledOptionalProperty = true;
@@ -77,7 +76,7 @@
       return;
     }
 
-    if (!$currentResourceData) {
+    if (!$currentResource) {
       log.error(
         "A vector sub property was removed while no resources were selected"
       );

@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use lgn_config::Config;
 use lgn_content_store::ContentStoreAddr;
 use lgn_data_runtime::ResourceTypeAndId;
 
@@ -68,10 +67,11 @@ impl AssetRegistrySettings {
 
 impl Default for AssetRegistrySettings {
     fn default() -> Self {
-        let config = Config::new();
-        let project_folder = config
-            .get_absolute_path("editor_srv.project_dir")
-            .unwrap_or_else(|| PathBuf::from("tests/sample-data"));
+        let project_folder = lgn_config::get_absolute_path_or(
+            "editor_srv.project_dir",
+            PathBuf::from("tests/sample-data"),
+        )
+        .unwrap();
 
         let content_store_path = project_folder.join("temp");
 

@@ -1,21 +1,20 @@
-use std::path::{Path, PathBuf};
-
-use serde::{Deserialize, Serialize};
-
 use crate::{
     AwsDynamoDbProvider, AwsS3Provider, AwsS3Url, CachingProvider, ContentProvider, GrpcProvider,
     LocalProvider, LruProvider, MemoryProvider, RedisProvider, Result, SmallContentProvider,
 };
+use lgn_config::RelativePathBuf;
+use serde::{Deserialize, Serialize};
 
 /// The configuration of the content-store.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct Config {
     pub provider: ProviderConfig,
+
+    #[serde(default)]
     pub caching_providers: Vec<ProviderConfig>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type")]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ProviderConfig {
     Memory {},
@@ -27,16 +26,17 @@ pub enum ProviderConfig {
     AwsDynamoDb(AwsDynamoDbProviderConfig),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct LocalProviderConfig {
-    pub path: Option<PathBuf>,
+    #[serde(serialize_with = "RelativePathBuf::serialize_relative")]
+    pub path: RelativePathBuf,
 }
 
 fn default_redis_url() -> String {
     "redis://localhost:6379".to_string()
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RedisProviderConfig {
     #[serde(default = "default_redis_url")]
     pub url: String,
@@ -49,19 +49,19 @@ fn default_grpc_url() -> String {
     "://localhost:6379".to_string()
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GrpcProviderConfig {
     #[serde(default = "default_grpc_url")]
     pub url: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct LruProviderConfig {
     #[serde(default)]
     pub size: usize,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct AwsS3ProviderConfig {
     pub bucket_name: String,
 
@@ -69,7 +69,7 @@ pub struct AwsS3ProviderConfig {
     pub root: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct AwsDynamoDbProviderConfig {
     pub table_name: String,
 }
@@ -87,49 +87,26 @@ impl Config {
     ///
     /// If the section is not found, the default section is used.
     pub fn from_legion_toml(section: Option<&str>) -> Self {
-        let settings = lgn_config::Config::new();
-
         match section {
-            None | Some("") => {
-                if let Some(config) = settings.get::<Self>("content_store") {
-                    config
-                } else {
-                    Self {
-                        provider: ProviderConfig::default(),
-                        caching_providers: vec![],
-                    }
-                }
-            }
-            Some(section) => {
-                if let Some(config) = settings.get::<Self>(&format!("content_store.{}", section)) {
-                    config
-                } else {
-                    Self::from_legion_toml(None)
-                }
-            }
+            None | Some("") => lgn_config::get_or_default("content_store")
+                .expect("failed to load content_store config"),
+            Some(section) => lgn_config::get_or_else(&format!("content_store.{}", section), || {
+                Self::from_legion_toml(None)
+            })
+            .unwrap(),
         }
     }
 
-    /// Returns a configuration of a local, disk-based content store operating at specified path.
-    pub fn local(path: impl AsRef<Path>) -> Self {
-        Self {
-            provider: ProviderConfig::Local(LocalProviderConfig {
-                path: Some(path.as_ref().to_owned()),
-            }),
-            caching_providers: vec![],
-        }
-    }
-
-    /// Instanciate the provider for the configuration.
+    /// Instantiate the provider for the configuration.
     ///
     /// # Errors
     ///
-    /// This function will return an error if the provider cannot be instanciated.
-    pub async fn instanciate_provider(&self) -> Result<Box<dyn ContentProvider + Send + Sync>> {
-        let mut provider = self.provider.instanciate().await?;
+    /// This function will return an error if the provider cannot be instantiated.
+    pub async fn instantiate_provider(&self) -> Result<Box<dyn ContentProvider + Send + Sync>> {
+        let mut provider = self.provider.instantiate().await?;
 
         for caching_provider in &self.caching_providers {
-            let caching_provider = caching_provider.instanciate().await?;
+            let caching_provider = caching_provider.instantiate().await?;
             provider = Box::new(CachingProvider::new(provider, caching_provider));
         }
 
@@ -138,22 +115,18 @@ impl Config {
 }
 
 impl ProviderConfig {
-    /// Instanciate the provider for the configuration.
+    /// Instantiate the provider for the configuration.
     ///
     /// # Errors
     ///
     /// This function will return an error if the provider cannot be instanciated.
-    pub async fn instanciate(&self) -> Result<Box<dyn ContentProvider + Send + Sync>> {
+    pub async fn instantiate(&self) -> Result<Box<dyn ContentProvider + Send + Sync>> {
         Ok(match self {
             Self::Memory {} => Box::new(SmallContentProvider::new(MemoryProvider::new())),
             Self::Lru(config) => Box::new(SmallContentProvider::new(LruProvider::new(config.size))),
-            Self::Local(config) => {
-                let path = match &config.path {
-                    Some(path) => path.clone(),
-                    None => std::env::temp_dir().join("lgn-content-store"),
-                };
-                Box::new(SmallContentProvider::new(LocalProvider::new(path).await?))
-            }
+            Self::Local(config) => Box::new(SmallContentProvider::new(
+                LocalProvider::new(config.path.relative()).await?,
+            )),
             Self::Redis(config) => Box::new(SmallContentProvider::new(
                 RedisProvider::new(config.url.clone(), config.key_prefix.clone()).await?,
             )),
@@ -178,7 +151,7 @@ impl ProviderConfig {
                     anyhow::anyhow!("failed to create authenticator config: {}", err)
                 })?;
                 let authenticator = authenticator_config.authenticator().await.map_err(|err| {
-                    anyhow::anyhow!("failed to instanciate an authenticator: {}", err)
+                    anyhow::anyhow!("failed to instantiate an authenticator: {}", err)
                 })?;
 
                 let client = lgn_online::grpc::AuthenticatedClient::new(client, authenticator, &[]);
@@ -192,5 +165,115 @@ impl ProviderConfig {
 impl Default for ProviderConfig {
     fn default() -> Self {
         Self::Memory {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use super::*;
+
+    #[test]
+    fn test_parse_config_without_caching() {
+        let config = lgn_config::Config::from_toml(
+            r#"
+            [content_store.provider.local]
+            path = "./test"
+            "#,
+        );
+
+        let config: Config = config
+            .get("content_store")
+            .expect("failed to read configuration")
+            .expect("option was none");
+
+        assert_eq!(
+            config,
+            Config {
+                provider: ProviderConfig::Local(LocalProviderConfig {
+                    path: Path::new("./test").into(),
+                }),
+                caching_providers: vec![],
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_config_with_caching() {
+        let config = lgn_config::Config::from_toml(
+            r#"
+            [content_store.provider.local]
+            path = "./test"
+
+            [[content_store.caching_providers]]
+            [content_store.caching_providers.lru]
+            size = 100
+
+            [[content_store.caching_providers]]
+            [content_store.caching_providers.memory]
+            "#,
+        );
+
+        let config: Config = config
+            .get("content_store")
+            .expect("failed to read configuration")
+            .expect("option was none");
+
+        assert_eq!(
+            config,
+            Config {
+                provider: ProviderConfig::Local(LocalProviderConfig {
+                    path: Path::new("./test").into(),
+                }),
+                caching_providers: vec![
+                    ProviderConfig::Lru(LruProviderConfig { size: 100 }),
+                    ProviderConfig::Memory {}
+                ],
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_provider_config() {
+        let config = lgn_config::Config::from_toml(
+            r#"
+            [provider1.local]
+            path = "./test"
+
+            [provider2.memory]
+            "#,
+        );
+
+        assert_eq!(
+            ProviderConfig::Local(LocalProviderConfig {
+                path: Path::new("./test").into(),
+            }),
+            config.get("provider1").unwrap().unwrap(),
+        );
+        assert_eq!(
+            ProviderConfig::Memory {},
+            config.get("provider2").unwrap().unwrap(),
+        );
+    }
+
+    #[test]
+    fn test_parse_local_provider_config() {
+        let config = lgn_config::Config::from_toml(
+            r#"
+            [content_store.provider.local]
+            path = "./test"
+            "#,
+        );
+
+        let config: LocalProviderConfig =
+            config.get("content_store.provider.local").unwrap().unwrap();
+
+        assert_eq!(
+            config,
+            LocalProviderConfig {
+                path: Path::new("./test").into(),
+            }
+        );
     }
 }

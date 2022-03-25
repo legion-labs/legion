@@ -1,0 +1,22 @@
+
+(
+    name: "DebugCube0",
+    children: [],
+    parent: Some("world/sample_1.ent"),
+    components: [
+        Transform((
+            position: (0, 0.25, 1),
+            rotation: (0, 0, 0, 1),
+            scale: (1, 1, 1),
+        )),
+        Visual((
+            renderable_geometry: None,
+            color: (255, 0, 0),
+            color_blend: 1.0,
+            shadow_receiver: true,
+            shadow_caster_sun: true,
+            shadow_caster_local: true,
+            gi_contribution: Default,
+        )),
+    ],
+)

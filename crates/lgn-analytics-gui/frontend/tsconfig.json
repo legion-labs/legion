@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "importsNotUsedAsValues": "error",
     "checkJs": true,
     "target": "esnext",
     "module": "esnext",

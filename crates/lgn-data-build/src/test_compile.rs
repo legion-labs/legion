@@ -171,7 +171,7 @@ async fn compile_change_no_deps() {
 
         let content_store =
             HddContentStore::open(contentstore_path.clone()).expect("valid content store");
-        assert!(content_store.exists(original_checksum));
+        assert!(content_store.exists(original_checksum).await);
 
         original_checksum
     };
@@ -222,8 +222,8 @@ async fn compile_change_no_deps() {
         let modified_checksum = compile_output.resources[0].compiled_checksum;
 
         let content_store = HddContentStore::open(contentstore_path).expect("valid content store");
-        assert!(content_store.exists(original_checksum));
-        assert!(content_store.exists(modified_checksum));
+        assert!(content_store.exists(original_checksum).await);
+        assert!(content_store.exists(modified_checksum).await);
 
         modified_checksum
     };
@@ -361,8 +361,11 @@ async fn intermediate_resource() {
     // validate reversed
     {
         let checksum = compile_output.resources[0].compiled_checksum;
-        assert!(content_store.exists(checksum));
-        let resource_content = content_store.read(checksum).expect("resource content");
+        assert!(content_store.exists(checksum).await);
+        let resource_content = content_store
+            .read(checksum)
+            .await
+            .expect("resource content");
 
         let mut creator = TextResourceProc {};
         let resource = creator
@@ -379,8 +382,8 @@ async fn intermediate_resource() {
     // validate integer
     {
         let checksum = compile_output.resources[1].compiled_checksum;
-        assert!(content_store.exists(checksum));
-        let resource_content = content_store.read(checksum).expect("asset content");
+        assert!(content_store.exists(checksum).await);
+        let resource_content = content_store.read(checksum).await.expect("asset content");
 
         let mut loader = IntegerAssetLoader {};
         let resource = loader
@@ -590,8 +593,8 @@ async fn named_path_cache_use() {
     // validate integer
     {
         let checksum = compiled_integer.compiled_checksum;
-        assert!(content_store.exists(checksum));
-        let resource_content = content_store.read(checksum).expect("asset content");
+        assert!(content_store.exists(checksum).await);
+        let resource_content = content_store.read(checksum).await.expect("asset content");
 
         let mut loader = IntegerAssetLoader {};
         let resource = loader
@@ -920,6 +923,6 @@ async fn verify_manifest() {
 
     let content_store = HddContentStore::open(contentstore_path).expect("valid content store");
     for checksum in manifest.compiled_resources.iter().map(|a| a.checksum) {
-        assert!(content_store.exists(checksum));
+        assert!(content_store.exists(checksum).await);
     }
 }

@@ -44,7 +44,7 @@
       <div />
     {:else if activeTab.type === "video"}
       {#if activeTab.name === "editor" || activeTab.name === "runtime"}
-        {#key activeTab}
+        {#key activeTab.name}
           <RemoteWindow
             serverType={activeTab.name}
             bind:desiredResolution={desiredVideoResolution}
