@@ -1,8 +1,55 @@
+use std::sync::Arc;
+
 use crate::components::{MaterialComponent, Mesh, ModelComponent, TextureComponent, TextureData};
+use lgn_app::EventReader;
 use lgn_asset_registry::AssetToEntityMap;
-use lgn_data_runtime::{AssetRegistry, ResourceTypeAndId};
-use lgn_ecs::prelude::{Commands, Entity};
+use lgn_data_runtime::{AssetRegistry, AssetRegistryEvent, Resource, ResourceTypeAndId};
+use lgn_ecs::prelude::{Commands, Entity, Res, ResMut};
 use lgn_tracing::info;
+
+#[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)]
+pub(crate) fn process_load_events(
+    asset_registry: Res<'_, Arc<AssetRegistry>>,
+    mut asset_to_entity_map: ResMut<'_, AssetToEntityMap>,
+    mut asset_loaded_events: EventReader<'_, '_, AssetRegistryEvent>,
+    mut commands: Commands<'_, '_>,
+) {
+    for asset_loaded_event in asset_loaded_events.iter() {
+        match asset_loaded_event {
+            AssetRegistryEvent::AssetLoaded(resource_id)
+                if resource_id.kind == lgn_graphics_data::runtime_texture::Texture::TYPE =>
+            {
+                crate::asset_to_ecs::create_texture(
+                    resource_id,
+                    &asset_registry,
+                    &mut asset_to_entity_map,
+                    &mut commands,
+                );
+            }
+            AssetRegistryEvent::AssetLoaded(resource_id)
+                if resource_id.kind == lgn_graphics_data::runtime::Material::TYPE =>
+            {
+                crate::asset_to_ecs::create_material(
+                    resource_id,
+                    &asset_registry,
+                    &mut asset_to_entity_map,
+                    &mut commands,
+                );
+            }
+            AssetRegistryEvent::AssetLoaded(resource_id)
+                if resource_id.kind == lgn_graphics_data::runtime::Model::TYPE =>
+            {
+                crate::asset_to_ecs::create_model(
+                    resource_id,
+                    &asset_registry,
+                    &mut asset_to_entity_map,
+                    &mut commands,
+                );
+            }
+            _ => (),
+        }
+    }
+}
 
 pub(crate) fn create_material(
     asset_id: &ResourceTypeAndId,
