@@ -147,8 +147,11 @@ impl SqlIndexBackend {
         }
     }
 
-    async fn initialize_database(conn: &mut sqlx::AnyConnection) -> Result<()> {
-        Self::create_commits_table(conn).await?;
+    async fn initialize_database(
+        conn: &mut sqlx::AnyConnection,
+        driver: &SqlDatabaseDriver,
+    ) -> Result<()> {
+        Self::create_commits_table(conn, driver).await?;
         Self::create_forest_table(conn).await?;
         Self::create_branches_table(conn).await?;
         Self::create_workspace_registrations_table(conn).await?;
@@ -157,14 +160,23 @@ impl SqlIndexBackend {
         Ok(())
     }
 
-    async fn create_commits_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
+    async fn create_commits_table(
+        conn: &mut sqlx::AnyConnection,
+        driver: &SqlDatabaseDriver,
+    ) -> Result<()> {
+        let auto_increment = match driver {
+            SqlDatabaseDriver::Sqlite(_) => "",
+            SqlDatabaseDriver::Mysql(_) => "AUTO_INCREMENT",
+        };
+
         let sql: &str = &format!(
-        "CREATE TABLE `{}` (id INTEGER NOT NULL PRIMARY KEY, owner VARCHAR(255), message TEXT, root_hash CHAR(64), date_time_utc VARCHAR(255));
+        "CREATE TABLE `{}` (id INTEGER NOT NULL {} PRIMARY KEY, owner VARCHAR(255), message TEXT, root_hash CHAR(64), date_time_utc VARCHAR(255));
          CREATE TABLE `{}` (id INTEGER NOT NULL, parent_id INTEGER NOT NULL);
          CREATE INDEX commit_parents_id on `{}`(id);
          CREATE TABLE `{}` (commit_id INTEGER NOT NULL, canonical_path TEXT NOT NULL, old_chunk_id VARCHAR(255), new_chunk_id VARCHAR(255));
          CREATE INDEX commit_changes_commit on `{}`(commit_id);",
          Self::TABLE_COMMITS,
+         auto_increment,
          Self::TABLE_COMMIT_PARENTS,
          Self::TABLE_COMMIT_PARENTS,
          Self::TABLE_COMMIT_CHANGES,
@@ -674,16 +686,15 @@ impl SqlIndexBackend {
         .map_other_err(format!("failed to fetch tree node `{}`", id))?;
 
         let name = row.get("name");
-        let chunk_id: String = row.get("chunk_id");
+        let chunk_id: Option<String> = row.get("chunk_id");
 
-        let chunk_id = if !chunk_id.is_empty() {
-            Some(
+        let chunk_id = match chunk_id.as_deref() {
+            None | Some("") => None,
+            Some(chunk_id) => Some(
                 chunk_id
                     .parse()
                     .map_other_err(format!("failed to parse chunk id for tree node `{}`", id))?,
-            )
-        } else {
-            None
+            ),
         };
 
         let tree = Self::read_tree_node_transactional(transaction, id, name, chunk_id).await?;
@@ -823,7 +834,7 @@ impl IndexBackend for SqlIndexBackend {
 
         let mut conn = self.get_conn().await?;
 
-        Self::initialize_database(&mut conn).await?;
+        Self::initialize_database(&mut conn, &self.driver).await?;
 
         let mut transaction = conn
             .begin()
