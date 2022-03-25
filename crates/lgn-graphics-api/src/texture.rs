@@ -1,3 +1,4 @@
+use std::ffi::c_void;
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
@@ -201,7 +202,7 @@ impl ExternalResource<Self> for Texture {
         ExternalResourceType::Image
     }
 
-    fn external_resource_handle(&self, device_context: &DeviceContext) -> ash::vk::HANDLE {
+    fn external_resource_handle(&self, device_context: &DeviceContext) -> *mut c_void {
         assert!(self
             .definition()
             .usage_flags

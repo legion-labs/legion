@@ -1,3 +1,4 @@
+use std::ffi::c_void;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::{
@@ -58,7 +59,7 @@ impl ExternalResource<Self> for Semaphore {
         ExternalResourceType::Semaphore
     }
 
-    fn external_resource_handle(&self, device_context: &DeviceContext) -> ash::vk::HANDLE {
+    fn external_resource_handle(&self, device_context: &DeviceContext) -> *mut c_void {
         self.inner
             .backend_semaphore
             .external_semaphore_handle(device_context)
