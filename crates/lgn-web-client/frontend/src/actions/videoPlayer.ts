@@ -32,6 +32,7 @@ export default function videoPlayer(
   options?: { onFatal?: () => void }
 ) {
   videoElement.muted = true;
+  videoElement.disablePictureInPicture = true;
 
   const queue: Uint8Array[] = [];
 

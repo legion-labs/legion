@@ -1,8 +1,7 @@
 use std::{
-    borrow::Cow,
     collections::HashMap,
     fmt::{self, Display, Formatter},
-    fs::File,
+    fs::{self, File},
     io::Write,
     path::PathBuf,
     sync::Arc,
@@ -63,9 +62,15 @@ impl FileId {
     }
 }
 
-impl<S: Into<String>> From<S> for FileId {
-    fn from(s: S) -> Self {
-        Self(s.into())
+impl From<String> for FileId {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
+
+impl From<FileId> for String {
+    fn from(file_id: FileId) -> Self {
+        file_id.0
     }
 }
 
@@ -82,8 +87,11 @@ pub(crate) struct RawFile {
     file_size: usize,
 }
 
+/// A `RawFile` is actually a folder under the hood, which name is the file id
+/// The uploaded file will be created inside the folder
 impl RawFile {
     pub fn new(
+        file_id: &FileId,
         path: impl Into<PathBuf>,
         name: impl Into<String>,
         file_size: usize,
@@ -91,10 +99,17 @@ impl RawFile {
     ) -> SourceControlResult<Self> {
         let name = name.into();
 
-        let path = path.into().join(&name);
+        let path: PathBuf = path.into();
 
-        let file = File::create(&path)
-            .map_err(|error| SourceControlError::FileCreation(path, Box::new(error)))?;
+        let dir_path = path.join(file_id.to_string());
+
+        fs::create_dir(&dir_path)
+            .map_err(|error| SourceControlError::FileCreation(dir_path.clone(), Box::new(error)))?;
+
+        let file_path = dir_path.join(&name);
+
+        let file = File::create(&file_path)
+            .map_err(|error| SourceControlError::FileCreation(file_path, Box::new(error)))?;
 
         Ok(Self {
             file,
@@ -242,6 +257,7 @@ impl RawFilesStreamer {
         self.storage.insert(
             file_id.clone(),
             RawFile::new(
+                &file_id,
                 path,
                 file_name,
                 size as usize,
@@ -449,32 +465,24 @@ impl SourceControl for SourceControlRPC {
 
         let size = message.size;
 
-        let valid_name: Cow<'_, str> = if message.name.contains(' ') {
-            message.name.replace(" ", "_").into()
-        } else {
-            message.name.into()
-        };
-
         if size > self.streamer.max_size().await {
             return Ok(Response::new(InitUploadRawFileResponse {
                 status: UploadStatus::Rejected as i32,
                 id: None,
-                name: None,
             }));
         }
 
         let file_id = self
             .streamer
-            .insert(self.uploads_folder.as_path(), &*valid_name, size)
+            .insert(self.uploads_folder.as_path(), &message.name, size)
             .await
             .map_err(|_error| {
-                Status::internal(format!("Couldn't not create file for {}", valid_name))
+                Status::internal(format!("Couldn't create file for {}", message.name))
             })?;
 
         Ok(Response::new(InitUploadRawFileResponse {
             status: UploadStatus::Queued as i32,
-            id: Some(file_id.to_string()),
-            name: Some(valid_name.into_owned()),
+            id: Some(file_id.into()),
         }))
     }
 
