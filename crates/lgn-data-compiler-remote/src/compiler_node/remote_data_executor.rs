@@ -66,10 +66,11 @@ pub(crate) async fn collect_local_resources(
     derived_deps: &[CompiledResource],
     build_script: &CompilerCompileCmd,
 ) -> Result<String, CompilerError> {
-    let config = Config::from_legion_toml(None);
-    let provider = config.instantiate_provider().await.map_err(|err| {
-        CompilerError::RemoteExecution(format!("failed to create content provider: {}", err))
-    })?;
+    let provider = Config::load_and_instantiate_volatile_provider()
+        .await
+        .map_err(|err| {
+            CompilerError::RemoteExecution(format!("failed to create content provider: {}", err))
+        })?;
 
     let files_to_package: Arc<RwLock<Vec<(String, Identifier)>>> =
         Arc::new(RwLock::new(Vec::new()));
@@ -148,10 +149,11 @@ pub(crate) async fn execute_sandbox_compiler(input_msg: &str) -> Result<String, 
     let out_folder = tempfile::tempdir()?;
     let msg: CompileMessage = serde_json::from_str(input_msg)?;
 
-    let config = Config::from_legion_toml(None);
-    let provider = config.instantiate_provider().await.map_err(|err| {
-        CompilerError::RemoteExecution(format!("failed to create content provider: {}", err))
-    })?;
+    let provider = Config::load_and_instantiate_volatile_provider()
+        .await
+        .map_err(|err| {
+            CompilerError::RemoteExecution(format!("failed to create content provider: {}", err))
+        })?;
 
     // Retrieve all inputs from the CAS.
     deploy_files(&provider, &msg.files_to_package, out_folder.path()).await?;
@@ -185,10 +187,11 @@ pub(crate) async fn create_resulting_archive(
     output: &CompilationOutput,
     cur_dir: &Path,
 ) -> Result<String, NCError> {
-    let config = Config::from_legion_toml(None);
-    let provider = config.instantiate_provider().await.map_err(|err| {
-        CompilerError::RemoteExecution(format!("failed to create content provider: {}", err))
-    })?;
+    let provider = Config::load_and_instantiate_volatile_provider()
+        .await
+        .map_err(|err| {
+            CompilerError::RemoteExecution(format!("failed to create content provider: {}", err))
+        })?;
 
     let files_to_package: Arc<RwLock<Vec<(String, Identifier)>>> =
         Arc::new(RwLock::new(Vec::new()));

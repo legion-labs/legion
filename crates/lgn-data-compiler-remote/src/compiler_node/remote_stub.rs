@@ -92,11 +92,14 @@ impl CompilerStub for RemoteCompilerStub {
 
         let msg: CompileResultMessage = serde_json::from_str(&result)?;
 
-        // Deploy locally the remote outcome.
-        let config = Config::from_legion_toml(None);
-        let provider = config.instantiate_provider().await.map_err(|err| {
-            CompilerError::RemoteExecution(format!("failed to create content provider: {}", err))
-        })?;
+        let provider = Config::load_and_instantiate_volatile_provider()
+            .await
+            .map_err(|err| {
+                CompilerError::RemoteExecution(format!(
+                    "failed to create content provider: {}",
+                    err
+                ))
+            })?;
 
         deploy_files(
             &provider,

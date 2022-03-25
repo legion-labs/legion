@@ -32,14 +32,9 @@ impl SourceControlFilesystem {
         let tree = Self::read_tree(index_backend.as_ref(), &branch_name).await?;
         let chunker = Chunker::default();
 
-        let content_provider = Config::from_legion_toml(
-            Config::content_store_section()
-                .as_deref()
-                .or(Some("source_control")),
-        )
-        .instantiate_provider()
-        .await
-        .map_other_err("failed to create blob storage")?;
+        let content_provider = Config::load_and_instantiate_persistent_provider()
+            .await
+            .map_other_err("failed to create blob storage")?;
 
         Ok(Self {
             handle,

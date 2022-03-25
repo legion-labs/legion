@@ -54,8 +54,8 @@ async fn main() {
 
     let source_control_path: String =
         lgn_config::get_or("editor_srv.source_control", "../remote".to_string()).unwrap();
-    // Not sure whether this should be `data_build` or something else. We can always change it later.
-    let content_store_section = "data_build";
+
+    let content_store_section = lgn_content_store2::Config::SECTION_PERSISTENT;
 
     // generate contents of offline folder, from raw RON content
     raw_loader::build_offline(
