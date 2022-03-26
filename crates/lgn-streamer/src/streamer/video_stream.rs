@@ -123,7 +123,8 @@ impl VideoStream {
             )
             .unwrap();
 
-        let chunks = self.encoder.encode(self.frame_id);
+            self.encoder.encode(self.frame_id)
+        };
 
         let elapsed = now.elapsed().as_micros() as u64;
         record_frame_time_metric(elapsed);

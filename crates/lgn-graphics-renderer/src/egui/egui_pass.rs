@@ -63,7 +63,7 @@ impl EguiPass {
                         blend_state: &BlendState::default_alpha_enabled(),
                         depth_state: &DepthState::default(),
                         rasterizer_state: &RasterizerState::default(),
-                        color_formats: &[Format::R16G16B16A16_SFLOAT],
+                        color_formats: &[Format::R8G8B8A8_UNORM],
                         sample_count: SampleCount::SampleCount1,
                         depth_stencil_format: None,
                         primitive_topology: PrimitiveTopology::TriangleList,
