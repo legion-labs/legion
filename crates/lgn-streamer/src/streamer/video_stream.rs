@@ -105,25 +105,25 @@ impl VideoStream {
         self.record_frame_id_metric();
         let now = tokio::time::Instant::now();
 
-        let chunks = if let Some(encoder) = &self.cuda_encoder {
+        if let Some(encoder) = &self.cuda_encoder {
             encoder
                 .submit_input(&EncoderWorkItem {
                     image: render_surface.texture().clone(),
                     semaphore: render_surface.encoder_sem().clone(),
                 })
                 .unwrap();
-            split_frame_in_chunks(&encoder.query_output().unwrap(), self.frame_id)
-        } else {
-            self.rgb_to_yuv
-                .convert(
-                    render_context,
-                    render_surface,
-                    self.encoder.yuv_holder.yuv.as_mut_slice(),
-                )
-                .unwrap();
-
-            self.encoder.encode(self.frame_id)
+            split_frame_in_chunks(&encoder.query_output().unwrap(), self.frame_id);
         };
+
+        self.rgb_to_yuv
+            .convert(
+                render_context,
+                render_surface,
+                self.encoder.yuv_holder.yuv.as_mut_slice(),
+            )
+            .unwrap();
+
+        let chunks = self.encoder.encode(self.frame_id);
 
         let elapsed = now.elapsed().as_micros() as u64;
         record_frame_time_metric(elapsed);
