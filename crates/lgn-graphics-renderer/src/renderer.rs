@@ -86,13 +86,13 @@ impl Renderer {
             render_frame_idx: 0,
             num_render_frames,
             prev_frame_sems: (0..num_render_frames)
-                .map(|_| device_context.create_semaphore())
+                .map(|_| device_context.create_semaphore(false))
                 .collect(),
             sparse_unbind_sems: (0..num_render_frames)
-                .map(|_| device_context.create_semaphore())
+                .map(|_| device_context.create_semaphore(false))
                 .collect(),
             sparse_bind_sems: (0..num_render_frames)
-                .map(|_| device_context.create_semaphore())
+                .map(|_| device_context.create_semaphore(false))
                 .collect(),
             frame_fences: (0..num_render_frames)
                 .map(|_| device_context.create_fence().unwrap())

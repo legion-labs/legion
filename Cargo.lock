@@ -4439,6 +4439,7 @@ name = "lgn-codec-api"
 version = "0.1.0"
 dependencies = [
  "ash",
+ "lgn-graphics-api",
  "lgn-tracing",
  "libloading 0.7.3",
  "nvenc-sys",
@@ -5172,6 +5173,7 @@ dependencies = [
  "epaint",
  "lgn-app",
  "lgn-asset-registry",
+ "lgn-codec-api",
  "lgn-core",
  "lgn-data-runtime",
  "lgn-ecs",
@@ -5205,6 +5207,7 @@ dependencies = [
  "lgn-app",
  "lgn-asset-registry",
  "lgn-async",
+ "lgn-codec-api",
  "lgn-config",
  "lgn-content-store",
  "lgn-core",
@@ -5832,6 +5835,7 @@ name = "lgn-window"
 version = "0.1.0"
 dependencies = [
  "lgn-app",
+ "lgn-codec-api",
  "lgn-ecs",
  "lgn-math",
  "lgn-tracing",

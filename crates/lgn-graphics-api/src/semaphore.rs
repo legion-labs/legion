@@ -1,6 +1,10 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::{backends::BackendSemaphore, deferred_drop::Drc, DeviceContext};
+use crate::ExternalResourceHandle;
+use crate::{
+    backends::BackendSemaphore, deferred_drop::Drc, DeviceContext, ExternalResource,
+    ExternalResourceType,
+};
 
 pub(crate) struct SemaphoreInner {
     device_context: DeviceContext,
@@ -11,6 +15,7 @@ pub(crate) struct SemaphoreInner {
     pub(crate) backend_semaphore: BackendSemaphore,
 }
 
+#[derive(Clone)]
 pub struct Semaphore {
     pub(crate) inner: Drc<SemaphoreInner>,
 }
@@ -22,8 +27,8 @@ impl Drop for SemaphoreInner {
 }
 
 impl Semaphore {
-    pub fn new(device_context: &DeviceContext) -> Self {
-        let platform_semaphore = BackendSemaphore::new(device_context);
+    pub fn new(device_context: &DeviceContext, export_capable: bool) -> Self {
+        let platform_semaphore = BackendSemaphore::new(device_context, export_capable);
 
         Self {
             inner: device_context.deferred_dropper().new_drc(SemaphoreInner {
@@ -42,5 +47,21 @@ impl Semaphore {
         self.inner
             .signal_available
             .store(available, Ordering::Relaxed);
+    }
+}
+
+impl ExternalResource<Self> for Semaphore {
+    fn clone_resource(&self) -> Self {
+        self.clone()
+    }
+
+    fn external_resource_type() -> ExternalResourceType {
+        ExternalResourceType::Semaphore
+    }
+
+    fn external_resource_handle(&self, device_context: &DeviceContext) -> ExternalResourceHandle {
+        self.inner
+            .backend_semaphore
+            .external_semaphore_handle(device_context)
     }
 }

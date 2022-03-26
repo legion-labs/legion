@@ -1,40 +1,49 @@
-use super::EncoderConfig;
-use crate::{CpuBuffer, GpuImage, VideoProcessor};
+use self::nv_encoder::NvEncEncoder;
+
+use crate::{encoder_work_queue::EncoderWorkItem, VideoProcessor};
 
 mod cuda;
+pub mod nv_encoder;
+
 mod loader;
 
 pub use cuda::{CuContext, CuDevice};
 pub use loader::{CudaApi, NvEncApi};
 
-/// Nvenc Encoder Config
-#[derive(Debug)]
-pub struct NvEncEncoderConfig {}
+use super::EncoderConfig;
 
-/// Nvenc Encoder
-#[derive(Default, Debug)]
-pub struct NvEncEncoder {}
+pub struct NvEncEncoderWrapper {
+    _thread: Option<std::thread::JoinHandle<()>>,
+    encoder: NvEncEncoder,
+}
 
-impl VideoProcessor for NvEncEncoder {
-    type Input = GpuImage;
-    type Output = CpuBuffer;
-    type Config = NvEncEncoderConfig;
+impl VideoProcessor for NvEncEncoderWrapper {
+    type Input = EncoderWorkItem;
+    type Output = Vec<u8>;
+    type Config = EncoderConfig;
 
-    fn submit_input(&self, _input: &Self::Input) -> Result<(), crate::Error> {
+    fn submit_input(&self, input: &Self::Input) -> Result<(), crate::Error> {
+        self.encoder.encode_frame(input);
         Ok(())
     }
 
     fn query_output(&self) -> Result<Self::Output, crate::Error> {
-        Ok(CpuBuffer(Vec::new()))
+        Ok(self.encoder.process_encoded_data())
     }
 
-    fn new(_config: Self::Config) -> Option<Self> {
-        Some(Self {})
-    }
-}
+    fn new(mut config: Self::Config) -> Option<Self> {
+        if let Some(encoder) = NvEncEncoder::new() {
+            encoder.initialize_encoder();
 
-impl From<EncoderConfig> for NvEncEncoderConfig {
-    fn from(_: EncoderConfig) -> Self {
-        Self {}
+            let encoder_for_closure = encoder.clone();
+            Some(Self {
+                _thread: Some(std::thread::spawn(move || {
+                    NvEncEncoder::encoder_loop(&mut config.work_queue, &encoder_for_closure);
+                })),
+                encoder,
+            })
+        } else {
+            None
+        }
     }
 }

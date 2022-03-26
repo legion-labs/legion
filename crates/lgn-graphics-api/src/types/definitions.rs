@@ -21,6 +21,8 @@ bitflags::bitflags! {
         const AS_INDIRECT_BUFFER  = 0x0080;
         // buffer/texture
         const AS_TRANSFERABLE = 0x0100;
+        // export capable
+        const AS_EXPORT_CAPABLE = 0x0200;
         // meta
         const BUFFER_ONLY_USAGE_FLAGS =
             Self::AS_CONST_BUFFER.bits|
