@@ -5,35 +5,6 @@
 //! to the context where they will be used, for example when encoding,
 //! the renderer will own the input end of the pipeline, and the the streamer
 //! will own the output end.
-//!
-//! ```
-//! # use lgn_codec_api::{
-//! #    backends::null::{NullEncoder, NullEncoderConfig},
-//! #    Error, GpuImage, VideoProcessor,
-//! # };
-//! # use std::thread;
-//! let mut frame_count = 100;
-//! let (input, output) =
-//!     NullEncoder::pipeline(NullEncoderConfig { queue_size: 10 })
-//!         .expect("NullEncoder should be valid");
-//! let thread_handle = thread::spawn(move || {
-//!     while frame_count > 0 {
-//!         if output.query().is_ok() {
-//!             frame_count -= 1;
-//!         };
-//!     }
-//! });
-//! while frame_count > 0 {
-//!     match input.submit(&GpuImage::Vulkan(ash::vk::Image::null())) {
-//!         Ok(_) => frame_count -= 1,
-//!         Err(Error::BufferFull) => {}
-//!         Err(_) => panic!("Unexpected error from the NullEncoder"),
-//!     };
-//! }
-//! thread_handle
-//!     .join()
-//!     .expect("the receiver thread should exit properly");
-//! ```
 
 // crate-specific lint exceptions:
 #![allow(clippy::missing_errors_doc)]
@@ -41,11 +12,15 @@
 
 use std::sync::Arc;
 
+use lgn_graphics_api::{Buffer, Texture};
+
 /// Contains the hardware implementation of multiple encoding/decoding
 /// algorithms
 pub mod backends;
-
 pub mod formats;
+
+pub mod encoder_resource;
+pub mod encoder_work_queue;
 
 /// doc
 #[derive(thiserror::Error, Debug)]
@@ -74,7 +49,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// Gpu Image handle either outputted or sent to a video processor
 pub enum GpuImage {
     /// Vulkan image
-    Vulkan(ash::vk::Image),
+    Vulkan(Texture),
 }
 
 /// Cpu buffer handle either outputted or sent to a video processor
@@ -83,7 +58,7 @@ pub struct CpuBuffer(Vec<u8>);
 /// Gpu buffer handle either outputted or sent to a video processor
 pub enum GpuBuffer {
     /// doc
-    Vulkan(ash::vk::Buffer),
+    Vulkan(Buffer),
 }
 
 /// Input end of the pipe allowing you

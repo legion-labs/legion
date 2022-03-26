@@ -1,3 +1,5 @@
+#[cfg(target_os = "windows")]
+use std::ffi::c_void;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 #[cfg(debug_assertions)]
@@ -213,8 +215,8 @@ impl DeviceContext {
         Fence::new(self)
     }
 
-    pub fn create_semaphore(&self) -> Semaphore {
-        Semaphore::new(self)
+    pub fn create_semaphore(&self, export_capable: bool) -> Semaphore {
+        Semaphore::new(self, export_capable)
     }
 
     pub fn create_swapchain(
@@ -291,4 +293,22 @@ impl DeviceContext {
     pub fn device_info(&self) -> &DeviceInfo {
         &self.inner.device_info
     }
+}
+
+pub enum ExternalResourceType {
+    Image,
+    Semaphore,
+}
+
+#[cfg(target_os = "windows")]
+pub type ExternalResourceHandle = *mut c_void;
+#[cfg(target_os = "linux")]
+pub type ExternalResourceHandle = i32;
+
+pub trait ExternalResource<T> {
+    fn clone_resource(&self) -> T;
+
+    fn external_resource_type() -> ExternalResourceType;
+
+    fn external_resource_handle(&self, device_context: &DeviceContext) -> ExternalResourceHandle;
 }

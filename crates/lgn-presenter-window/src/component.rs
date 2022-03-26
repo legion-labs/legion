@@ -1,11 +1,10 @@
-use std::convert::TryFrom;
-
 use lgn_graphics_api::prelude::*;
 use lgn_graphics_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
     RenderContext, Renderer,
 };
 use raw_window_handle::HasRawWindowHandle;
+use std::convert::TryFrom;
 
 use crate::SwapchainHelper;
 
@@ -76,7 +75,7 @@ impl PresenterWindow {
                 )],
             );
 
-            let src_texture = render_surface.texture();
+            let src_texture = render_surface.texture().external_resource();
             let src_texture_def = src_texture.definition();
             let dst_texture = swapchain_texture;
             let dst_texture_def = dst_texture.definition();
@@ -104,7 +103,7 @@ impl PresenterWindow {
                 array_slices: Some([0, 0]),
                 filtering: FilterType::Linear,
             };
-            cmd_buffer.blit_texture(src_texture, dst_texture, &blit_params);
+            cmd_buffer.blit_texture(&src_texture, dst_texture, &blit_params);
 
             cmd_buffer.resource_barrier(
                 &[],
@@ -121,7 +120,7 @@ impl PresenterWindow {
         //
         {
             let present_queue = render_context.graphics_queue();
-            let wait_sem = render_surface.sema();
+            let wait_sem = render_surface.presenter_sem();
             presentable_frame
                 .present(&present_queue, wait_sem, &mut [cmd_buffer.finalize()])
                 .unwrap();

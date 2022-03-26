@@ -18,8 +18,8 @@ use crate::{
     CommandBufferDef, CommandPool, CommandPoolDef, ComputePipelineDef,
     DepthStencilRenderTargetBinding, Descriptor, DescriptorHeapDef, DescriptorHeapPartition,
     DescriptorRef, DescriptorSet, DescriptorSetHandle, DescriptorSetLayout, DescriptorSetWriter,
-    DeviceContext, DeviceInfo, ExtensionMode, Fence, FenceStatus, Format, GfxResult,
-    GraphicsPipelineDef, IndexBufferBinding, MemoryAllocation, MemoryAllocationDef,
+    DeviceContext, DeviceInfo, ExtensionMode, ExternalResourceHandle, Fence, FenceStatus, Format,
+    GfxResult, GraphicsPipelineDef, IndexBufferBinding, MemoryAllocation, MemoryAllocationDef,
     PagedBufferAllocation, Pipeline, PipelineType, PlaneSlice, PresentSuccessResult, Queue,
     QueueType, RootSignature, RootSignatureDef, SamplerDef, Semaphore, ShaderModuleDef, Swapchain,
     SwapchainDef, SwapchainImage, Texture, TextureBarrier, TextureDef, TextureSubResource,
@@ -629,11 +629,18 @@ impl NullSampler {
 pub(crate) struct NullSemaphore;
 
 impl NullSemaphore {
-    pub fn new(device_context: &DeviceContext) -> Self {
+    pub fn new(device_context: &DeviceContext, export_capable: bool) -> Self {
         unimplemented!()
     }
 
     pub fn destroy(&self, device_context: &DeviceContext) {
+        unimplemented!()
+    }
+
+    pub fn external_semaphore_handle(
+        &self,
+        device_context: &DeviceContext,
+    ) -> ExternalResourceHandle {
         unimplemented!()
     }
 }
@@ -734,7 +741,18 @@ impl NullTexture {
         unimplemented!()
     }
 
+    pub fn new_export_capable(
+        device_context: &DeviceContext,
+        texture_def: &TextureDef,
+    ) -> (Self, u32) {
+        unimplemented!()
+    }
+
     pub fn destroy(&mut self, device_context: &DeviceContext) {
+        unimplemented!()
+    }
+
+    pub fn external_memory_handle(&self, device_context: &DeviceContext) -> ExternalResourceHandle {
         unimplemented!()
     }
 }

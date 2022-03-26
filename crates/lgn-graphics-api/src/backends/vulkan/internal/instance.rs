@@ -179,6 +179,7 @@ impl VkInstance {
                 }
             }
         }
+
         Ok((layer_names, extension_names))
     }
 
@@ -217,8 +218,26 @@ impl VkInstance {
     fn find_window_extensions(
         extensions: &[ash::vk::ExtensionProperties],
     ) -> Option<Vec<&'static CStr>> {
+        fn external_memory_caps_layer_name() -> &'static CStr {
+            CStr::from_bytes_with_nul(b"VK_KHR_external_memory_capabilities\0")
+                .expect("Wrong extension string")
+        }
+
+        fn external_semaphore_caps_layer_name() -> &'static CStr {
+            CStr::from_bytes_with_nul(b"VK_KHR_external_semaphore_capabilities\0")
+                .expect("Wrong extension string")
+        }
+
+        let external_memory_caps_layer_name = external_memory_caps_layer_name();
+        let external_semaphore_caps_layer_name = external_semaphore_caps_layer_name();
+
         #[cfg(target_os = "windows")]
-        let platform_extensions = vec![khr::Surface::name(), khr::Win32Surface::name()];
+        let platform_extensions = vec![
+            khr::Surface::name(),
+            khr::Win32Surface::name(),
+            external_memory_caps_layer_name,
+            external_semaphore_caps_layer_name,
+        ];
 
         #[cfg(any(
             target_os = "linux",
@@ -232,6 +251,8 @@ impl VkInstance {
             khr::WaylandSurface::name(),
             khr::XlibSurface::name(),
             khr::XcbSurface::name(),
+            external_memory_caps_layer_name,
+            external_semaphore_caps_layer_name,
         ];
 
         #[cfg(any(target_os = "android"))]

@@ -223,6 +223,8 @@ impl NvEncApi {
 
 #[cfg(test)]
 mod tests {
+    use crate::backends::nvenc::CuDevice;
+
     use super::*;
 
     #[test]
@@ -230,12 +232,16 @@ mod tests {
     fn test_nvidia_cuda_api() {
         let cuda = CudaApi::load();
         assert!(cuda.is_some());
+
+        if let Some(cuda) = cuda {
+            CuDevice::new(cuda);
+        }
     }
 
     #[test]
     #[ignore]
     fn test_nvidia_nvenc_api() {
-        let nvenc = NvEncApi::load();
-        assert!(nvenc.is_some());
+        let cuda = CudaApi::load();
+        assert!(cuda.is_some());
     }
 }

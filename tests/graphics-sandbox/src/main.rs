@@ -8,6 +8,7 @@ use clap::Parser;
 
 use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
+use lgn_codec_api::encoder_work_queue::EncoderWorkQueue;
 use lgn_content_store::ContentStoreAddr;
 use lgn_core::CorePlugin;
 use lgn_data_runtime::ResourceTypeAndId;
@@ -186,6 +187,7 @@ fn presenter_snapshot_system(
     snapshot_descriptor: Res<'_, SnapshotDescriptor>,
     renderer: Res<'_, Renderer>,
     pipeline_manager: Res<'_, PipelineManager>,
+    encoder_work_queue: Res<'_, EncoderWorkQueue>,
     mut app_exit_events: EventWriter<'_, '_, AppExit>,
     mut frame_counter: Local<'_, SnapshotFrameCounter>,
 ) {
@@ -197,6 +199,7 @@ fn presenter_snapshot_system(
                 snapshot_descriptor.width as u32,
                 snapshot_descriptor.height as u32,
             ),
+            &encoder_work_queue,
         );
         let render_surface_id = render_surface.id();
 

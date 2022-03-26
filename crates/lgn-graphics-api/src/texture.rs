@@ -7,8 +7,9 @@ use lgn_tracing::span_fn;
 use crate::backends::{BackendRawImage, BackendTexture};
 use crate::deferred_drop::Drc;
 use crate::{
-    DeviceContext, Extents3D, Format, GfxResult, MemoryUsage, PlaneSlice, ResourceFlags,
-    ResourceUsage, TextureSubResource, TextureTiling, TextureView, TextureViewDef,
+    DeviceContext, Extents3D, ExternalResource, ExternalResourceHandle, ExternalResourceType,
+    Format, GfxResult, MemoryUsage, PlaneSlice, ResourceFlags, ResourceUsage, TextureSubResource,
+    TextureTiling, TextureView, TextureViewDef,
 };
 
 /// Used to create a `Texture`
@@ -153,8 +154,14 @@ impl Texture {
         existing_image: Option<BackendRawImage>,
         texture_def: &TextureDef,
     ) -> Self {
-        let (backend_texture, texture_id) =
-            BackendTexture::from_existing(device_context, existing_image, texture_def);
+        let (backend_texture, texture_id) = if texture_def
+            .usage_flags
+            .intersects(ResourceUsage::AS_EXPORT_CAPABLE)
+        {
+            BackendTexture::new_export_capable(device_context, texture_def)
+        } else {
+            BackendTexture::from_existing(device_context, existing_image, texture_def)
+        };
 
         Self {
             inner: device_context.deferred_dropper().new_drc(TextureInner {
@@ -182,5 +189,25 @@ impl Texture {
 
     pub fn create_view(&self, view_def: &TextureViewDef) -> TextureView {
         TextureView::new(self, view_def)
+    }
+}
+
+impl ExternalResource<Self> for Texture {
+    fn clone_resource(&self) -> Self {
+        self.clone()
+    }
+
+    fn external_resource_type() -> ExternalResourceType {
+        ExternalResourceType::Image
+    }
+
+    fn external_resource_handle(&self, device_context: &DeviceContext) -> ExternalResourceHandle {
+        assert!(self
+            .definition()
+            .usage_flags
+            .intersects(ResourceUsage::AS_EXPORT_CAPABLE));
+        self.inner
+            .backend_texture
+            .external_memory_handle(device_context)
     }
 }
