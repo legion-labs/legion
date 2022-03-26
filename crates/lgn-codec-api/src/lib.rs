@@ -1,3 +1,11 @@
+//! hw-codec create exposes the different hw codecs with the same interface
+//!
+//! The easiest way to the use the encoder is to create a pipeline
+//! where you will get an input and output object, these object can be moved
+//! to the context where they will be used, for example when encoding,
+//! the renderer will own the input end of the pipeline, and the the streamer
+//! will own the output end.
+
 // crate-specific lint exceptions:
 #![allow(clippy::missing_errors_doc)]
 //#![warn(missing_docs)]
