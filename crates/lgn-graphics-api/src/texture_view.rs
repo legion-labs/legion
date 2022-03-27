@@ -47,9 +47,9 @@ impl TextureViewDef {
         }
     }
 
-    pub fn as_render_target_view(_texture: &TextureDef) -> Self {
+    pub fn as_render_view(_texture: &TextureDef, view_type: GPUViewType) -> Self {
         Self {
-            gpu_view_type: GPUViewType::RenderTarget,
+            gpu_view_type: view_type,
             view_dimension: ViewDimension::_2D,
             first_mip: 0,
             mip_count: 1,
@@ -64,18 +64,6 @@ impl TextureViewDef {
             gpu_view_type: GPUViewType::RenderTarget,
             view_dimension: ViewDimension::_2D,
             first_mip: mip_index,
-            mip_count: 1,
-            plane_slice: PlaneSlice::Default,
-            first_array_slice: 0,
-            array_size: 1,
-        }
-    }
-
-    pub fn as_depth_stencil_view(_texture: &TextureDef) -> Self {
-        Self {
-            gpu_view_type: GPUViewType::DepthStencil,
-            view_dimension: ViewDimension::_2D,
-            first_mip: 0,
             mip_count: 1,
             plane_slice: PlaneSlice::Default,
             first_array_slice: 0,

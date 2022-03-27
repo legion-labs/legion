@@ -7,6 +7,7 @@ mod default_shader;
 mod culling;
 mod hzb;
 mod depth_shader;
+mod final_resolve;
 
 const PERSISTENT_DESCRIPTOR_SET_FREQUENCY   = 0;
 const FRAME_DESCRIPTOR_SET_FREQUENCY        = 1;
@@ -158,6 +159,7 @@ pub fn main() {
 
     products.extend( egui::main() );
     products.extend( hzb::main() );
+    products.extend( final_resolve::main() );
     products.extend( const_color::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );    
     products.extend( picking::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );    
     products.extend( default_shader::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );        

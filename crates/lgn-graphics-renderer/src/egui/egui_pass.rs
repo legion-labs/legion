@@ -63,7 +63,7 @@ impl EguiPass {
                         blend_state: &BlendState::default_alpha_enabled(),
                         depth_state: &DepthState::default(),
                         rasterizer_state: &RasterizerState::default(),
-                        color_formats: &[Format::R8G8B8A8_UNORM],
+                        color_formats: &[Format::R16G16B16A16_SFLOAT],
                         sample_count: SampleCount::SampleCount1,
                         depth_stencil_format: None,
                         primitive_topology: PrimitiveTopology::TriangleList,
@@ -190,7 +190,7 @@ impl EguiPass {
     ) {
         cmd_buffer.begin_render_pass(
             &[ColorRenderTargetBinding {
-                texture_view: render_surface.render_target_view(),
+                texture_view: render_surface.lighting_rt().rtv(),
                 load_op: LoadOp::Load,
                 store_op: StoreOp::Store,
                 clear_value: ColorClearValue([0.0; 4]),

@@ -25,48 +25,6 @@ float3 rgb2yuv(float3 rgb) {
     return mul(rgb2yuv_bt709, float4(rgb, 1)).xyz;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// https://en.wikipedia.org/wiki/SRGB
-float linear2srgb_std(float value) {
-    return (value <= 0.0031308f) ? (12.92f * value) : (1.055f * pow(value, 1.0f / 2.4f) - 0.055f);
-}
-
-float3 linear2srgb(float3 value)
-{
-#if 0
-    return pow(value, 1.0f/2.2f);
-#else
-    return float3(linear2srgb_std(value.r), linear2srgb_std(value.g), linear2srgb_std(value.b));
-#endif
-}
-
-// https://en.wikipedia.org/wiki/SRGB
-// putting the reciprocal here for now until we move color utilities to a header
-float srgb2linear_std(float value) {
-    return (value <= 0.04045f) ? (value / 12.92f) : pow((value + 0.055f) / 1.055f, 2.4f);
-}
-
-float3 srgb2linear(float3 value)
-{
-#if 0
-    return pow(value, 2.2f);
-#else
-    return float3(srgb2linear_std(value.r), srgb2linear_std(value.g), srgb2linear_std(value.b));
-#endif
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-float3 tonemap(float3 value) {
-    // place holder
-    return saturate(value);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
 #define UV_TILE_SIZE 8
 
 groupshared float2 gs_uv[UV_TILE_SIZE][UV_TILE_SIZE];
@@ -79,7 +37,7 @@ void main_cs(uint3 dispatchThreadId : SV_DispatchThreadID,
     uint2 screenPos = dispatchThreadId.xy;   
     uint2 tilePos   = groupThreadId.xy; 
 
-    float3 rgb = linear2srgb(tonemap(hdr_image[screenPos].rgb));
+    float3 rgb = hdr_image[screenPos].rgb;
     float3 yuv = rgb2yuv(rgb);
 
     y_image[screenPos] = yuv.x;

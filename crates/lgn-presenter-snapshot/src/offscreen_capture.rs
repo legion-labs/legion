@@ -79,8 +79,9 @@ impl OffscreenHelper {
             tiling: TextureTiling::Optimal,
         });
 
-        let render_image_rtv = render_image.create_view(&TextureViewDef::as_render_target_view(
+        let render_image_rtv = render_image.create_view(&TextureViewDef::as_render_view(
             render_image.definition(),
+            GPUViewType::RenderTarget,
         ));
 
         let copy_image = device_context.create_texture(&TextureDef {
@@ -119,7 +120,9 @@ impl OffscreenHelper {
         let render_texture_rtv = &self.render_image_rtv;
         let copy_texture = &self.copy_image;
 
-        render_surface.transition_to(&cmd_buffer, ResourceState::SHADER_RESOURCE);
+        render_surface
+            .resolve_rt_mut()
+            .transition_to(&cmd_buffer, ResourceState::SHADER_RESOURCE);
 
         cmd_buffer.resource_barrier(
             &[],
@@ -147,7 +150,7 @@ impl OffscreenHelper {
         cmd_buffer.bind_pipeline(pipeline);
 
         let mut descriptor_set = cgen::descriptor_set::DisplayMapperDescriptorSet::default();
-        descriptor_set.set_hdr_image(render_surface.shader_resource_view());
+        descriptor_set.set_hdr_image(render_surface.resolve_rt().srv());
         descriptor_set.set_hdr_sampler(&self.bilinear_sampler);
         let descriptor_set_handle = render_context.write_descriptor_set(
             cgen::descriptor_set::DisplayMapperDescriptorSet::descriptor_set_layout(),

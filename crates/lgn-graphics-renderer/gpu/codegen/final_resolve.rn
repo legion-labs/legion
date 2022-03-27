@@ -1,0 +1,29 @@
+pub fn main() {    
+    [
+        #{
+            type: "DescriptorSet",
+            name: "FinalResolveDescriptorSet",
+            frequency: 0,
+            descriptors: [
+                #{name: "linear_texture", type: "Texture2D", content:"Float4" },
+                #{name: "linear_sampler", type: "Sampler" },    
+            ]
+        },
+        #{
+            type: "PipelineLayout",
+            name: "FinalResolvePipelineLayout",
+            descriptor_sets: [ "FinalResolveDescriptorSet" ],
+        },
+        #{            
+            type: "Shader",
+            name: "FinalResolveShader",
+            path: "gpu/shaders/final_resolve.hlsl",
+            pipeline_layout: "FinalResolvePipelineLayout",
+            instances: [
+                #{                      
+                    stages: [ "VS", "PS" ],
+                },
+            ]            
+        }
+    ]
+}

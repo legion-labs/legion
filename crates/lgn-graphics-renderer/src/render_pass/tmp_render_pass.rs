@@ -23,17 +23,19 @@ impl TmpRenderPass {
         render_surface: &mut RenderSurface,
         mesh_renderer: &MeshRenderer,
     ) {
-        render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
+        render_surface
+            .lighting_rt_mut()
+            .transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
 
         cmd_buffer.begin_render_pass(
             &[ColorRenderTargetBinding {
-                texture_view: render_surface.render_target_view(),
+                texture_view: render_surface.lighting_rt().rtv(),
                 load_op: LoadOp::Clear,
                 store_op: StoreOp::Store,
                 clear_value: ColorClearValue([0.2, 0.2, 0.2, 1.0]),
             }],
             &Some(DepthStencilRenderTargetBinding {
-                texture_view: render_surface.depth_stencil_rt_view(),
+                texture_view: render_surface.depth_rt().rtv(),
                 depth_load_op: LoadOp::Load,
                 stencil_load_op: LoadOp::DontCare,
                 depth_store_op: StoreOp::Store,

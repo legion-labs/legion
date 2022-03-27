@@ -650,7 +650,7 @@ impl MeshRenderer {
             cmd_buffer.begin_render_pass(
                 &[],
                 &Some(DepthStencilRenderTargetBinding {
-                    texture_view: render_surface.depth_stencil_rt_view(),
+                    texture_view: render_surface.depth_rt().rtv(),
                     depth_load_op: LoadOp::Clear,
                     stencil_load_op: LoadOp::DontCare,
                     depth_store_op: StoreOp::Store,
@@ -728,7 +728,7 @@ impl MeshRenderer {
         cmd_buffer.begin_render_pass(
             &[],
             &Some(DepthStencilRenderTargetBinding {
-                texture_view: render_surface.depth_stencil_rt_view(),
+                texture_view: render_surface.depth_rt().rtv(),
                 depth_load_op: LoadOp::Clear,
                 stencil_load_op: LoadOp::DontCare,
                 depth_store_op: StoreOp::Store,
@@ -769,7 +769,7 @@ impl MeshRenderer {
         cmd_buffer.begin_render_pass(
             &[],
             &Some(DepthStencilRenderTargetBinding {
-                texture_view: render_surface.depth_stencil_rt_view(),
+                texture_view: render_surface.depth_rt().rtv(),
                 depth_load_op: LoadOp::Load,
                 stencil_load_op: LoadOp::DontCare,
                 depth_store_op: StoreOp::Store,
@@ -995,7 +995,7 @@ fn build_temp_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
                     blend_state: &BlendState::default_alpha_disabled(),
                     depth_state: &depth_state,
                     rasterizer_state: &resterizer_state,
-                    color_formats: &[Format::R8G8B8A8_UNORM],
+                    color_formats: &[Format::R16G16B16A16_SFLOAT],
                     sample_count: SampleCount::SampleCount1,
                     depth_stencil_format: Some(Format::D32_SFLOAT),
                     primitive_topology: PrimitiveTopology::TriangleList,
@@ -1048,7 +1048,7 @@ fn build_picking_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
                     blend_state: &BlendState::default_alpha_disabled(),
                     depth_state: &depth_state,
                     rasterizer_state: &RasterizerState::default(),
-                    color_formats: &[Format::R8G8B8A8_UNORM],
+                    color_formats: &[Format::R16G16B16A16_SFLOAT],
                     sample_count: SampleCount::SampleCount1,
                     depth_stencil_format: None,
                     primitive_topology: PrimitiveTopology::TriangleList,
