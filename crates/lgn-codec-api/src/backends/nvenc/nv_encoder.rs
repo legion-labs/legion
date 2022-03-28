@@ -2,11 +2,12 @@
 
 use std::{
     collections::HashMap,
+    ffi::CStr,
     sync::{Arc, Mutex},
 };
 
 use lgn_graphics_api::{Extents3D, Semaphore, Texture};
-use lgn_tracing::{span_fn, span_scope};
+use lgn_tracing::{error, span_fn, span_scope};
 
 #[cfg(target_os = "windows")]
 use nvenc_sys::cuda::{
@@ -147,7 +148,16 @@ impl NvEncEncoder {
 
         let mut result =
             unsafe { (inner.nvenc.create_instance)(std::ptr::addr_of_mut!(inner.function_list)) };
-        assert!(result == NVENCSTATUS::NV_ENC_SUCCESS);
+        if result != NVENCSTATUS::NV_ENC_SUCCESS {
+            unsafe {
+                error!(
+                    "Error creating encoder instance {:?}",
+                    CStr::from_ptr((inner.function_list.nvEncGetLastErrorString.unwrap())(
+                        inner.encoder
+                    ))
+                );
+            }
+        }
 
         let mut open_session_ex_params = NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS {
             version: nvenc_sys::NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS_VER,
@@ -163,7 +173,16 @@ impl NvEncEncoder {
                 std::ptr::addr_of_mut!(inner.encoder),
             )
         };
-        assert!(result == NVENCSTATUS::NV_ENC_SUCCESS);
+        if result != NVENCSTATUS::NV_ENC_SUCCESS {
+            unsafe {
+                error!(
+                    "Error opening encoder session {:?}",
+                    CStr::from_ptr((inner.function_list.nvEncGetLastErrorString.unwrap())(
+                        inner.encoder
+                    ))
+                );
+            }
+        }
     }
 
     fn get_encode_params(
@@ -254,7 +273,16 @@ impl NvEncEncoder {
                     std::ptr::addr_of_mut!(create_encode_params),
                 )
             };
-            assert!(result == NVENCSTATUS::NV_ENC_SUCCESS);
+            if result != NVENCSTATUS::NV_ENC_SUCCESS {
+                unsafe {
+                    error!(
+                        "Error initializing encoder {:?}",
+                        CStr::from_ptr((inner.function_list.nvEncGetLastErrorString.unwrap())(
+                            inner.encoder
+                        ))
+                    );
+                }
+            }
 
             for bit_stream_buffer in &mut inner.cuda_bitstream_buffers {
                 let mut create_bitstream_buffer = NV_ENC_CREATE_BITSTREAM_BUFFER {
@@ -268,8 +296,16 @@ impl NvEncEncoder {
                         std::ptr::addr_of_mut!(create_bitstream_buffer),
                     )
                 };
-                assert!(result == NVENCSTATUS::NV_ENC_SUCCESS);
-
+                if result != NVENCSTATUS::NV_ENC_SUCCESS {
+                    unsafe {
+                        error!(
+                            "Error creating output bit streams encoder {:?}",
+                            CStr::from_ptr((inner.function_list.nvEncGetLastErrorString.unwrap())(
+                                inner.encoder
+                            ))
+                        );
+                    }
+                }
                 *bit_stream_buffer = create_bitstream_buffer.bitstreamBuffer;
             }
         } else if inner.encoder_width != external_image.extents().width
@@ -287,7 +323,18 @@ impl NvEncEncoder {
                     std::ptr::addr_of_mut!(reconfig_encode_params),
                 )
             };
-            assert!(result == NVENCSTATUS::NV_ENC_SUCCESS);
+            if result != NVENCSTATUS::NV_ENC_SUCCESS {
+                unsafe {
+                    error!(
+                        "Error resizing stream {:?}. Width {}, Height {}",
+                        CStr::from_ptr((inner.function_list.nvEncGetLastErrorString.unwrap())(
+                            inner.encoder
+                        )),
+                        external_image.extents().width,
+                        external_image.extents().height
+                    );
+                }
+            }
 
             inner.encoder_width = external_image.extents().width;
             inner.encoder_height = external_image.extents().height;
@@ -381,7 +428,17 @@ impl NvEncEncoder {
                     std::ptr::addr_of_mut!(register_resource),
                 )
             };
-            assert!(result == NVENCSTATUS::NV_ENC_SUCCESS);
+            if result != NVENCSTATUS::NV_ENC_SUCCESS {
+                unsafe {
+                    error!(
+                        "Error registering encoder resource {:?}",
+                        CStr::from_ptr((inner.function_list.nvEncGetLastErrorString.unwrap())(
+                            inner.encoder
+                        ))
+                    );
+                }
+            }
+
             inner.cuda_context.pop();
 
             let mut map_input_resource = NV_ENC_MAP_INPUT_RESOURCE {
@@ -396,7 +453,16 @@ impl NvEncEncoder {
                     std::ptr::addr_of_mut!(map_input_resource),
                 )
             };
-            assert!(result == NVENCSTATUS::NV_ENC_SUCCESS);
+            if result != NVENCSTATUS::NV_ENC_SUCCESS {
+                unsafe {
+                    error!(
+                        "Error mapping encoder input buffer {:?}",
+                        CStr::from_ptr((inner.function_list.nvEncGetLastErrorString.unwrap())(
+                            inner.encoder
+                        ))
+                    );
+                }
+            }
 
             let new_image_data = (
                 cuda_image_memory,
@@ -508,7 +574,16 @@ impl NvEncEncoder {
                     std::ptr::addr_of_mut!(pic_params),
                 )
             };
-            assert!(result == NVENCSTATUS::NV_ENC_SUCCESS);
+            if result != NVENCSTATUS::NV_ENC_SUCCESS {
+                unsafe {
+                    error!(
+                        "Error encoding picture {:?}",
+                        CStr::from_ptr((inner.function_list.nvEncGetLastErrorString.unwrap())(
+                            inner.encoder
+                        ))
+                    );
+                }
+            }
         }
     }
 
@@ -529,7 +604,16 @@ impl NvEncEncoder {
                     std::ptr::addr_of_mut!(lock_bitstream_data),
                 )
             };
-            assert!(result == NVENCSTATUS::NV_ENC_SUCCESS);
+            if result != NVENCSTATUS::NV_ENC_SUCCESS {
+                unsafe {
+                    error!(
+                        "Error locking bitstream buffer {:?}",
+                        CStr::from_ptr((inner.function_list.nvEncGetLastErrorString.unwrap())(
+                            inner.encoder
+                        ))
+                    );
+                }
+            }
             lock_bitstream_data
         };
 
@@ -550,7 +634,16 @@ impl NvEncEncoder {
                     lock_bitstream_data.outputBitstream,
                 )
             };
-            assert!(result == NVENCSTATUS::NV_ENC_SUCCESS);
+            if result != NVENCSTATUS::NV_ENC_SUCCESS {
+                unsafe {
+                    error!(
+                        "Error unlocking bitstream buffer {:?}",
+                        CStr::from_ptr((inner.function_list.nvEncGetLastErrorString.unwrap())(
+                            inner.encoder
+                        ))
+                    );
+                }
+            }
             inner.received_frame += 1;
         }
         output
