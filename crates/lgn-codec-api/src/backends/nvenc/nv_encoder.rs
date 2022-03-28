@@ -216,7 +216,16 @@ impl NvEncEncoder {
                         )
                     })
             };
-            assert!(result.unwrap() == NVENCSTATUS::NV_ENC_SUCCESS);
+            if result.unwrap() == NVENCSTATUS::NV_ENC_SUCCESS {
+                unsafe {
+                    error!(
+                        "Error retreving encoder config {:?}",
+                        CStr::from_ptr((inner.function_list.nvEncGetLastErrorString.unwrap())(
+                            inner.encoder
+                        ))
+                    );
+                }
+            }
 
             present_config
                 .presetCfg
