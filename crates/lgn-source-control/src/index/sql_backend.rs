@@ -107,7 +107,7 @@ impl SqlIndexBackend {
     const TABLE_WORKSPACE_REGISTRATIONS: &'static str = "workspace_registrations";
     const TABLE_LOCKS: &'static str = "locks";
 
-    /// Instanciate a new SQL index backend.
+    /// Instantiate a new SQL index backend.
     pub fn new(url: String) -> Result<Self> {
         let driver = SqlDatabaseDriver::new(url)?;
 

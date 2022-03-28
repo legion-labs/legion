@@ -182,7 +182,7 @@ impl ProviderConfig {
     ///
     /// # Errors
     ///
-    /// This function will return an error if the provider cannot be instanciated.
+    /// This function will return an error if the provider cannot be instantiated.
     pub async fn instantiate(&self) -> Result<Box<dyn ContentProvider + Send + Sync>> {
         Ok(match self {
             Self::Memory {} => Box::new(SmallContentProvider::new(MemoryProvider::new())),

@@ -23,7 +23,7 @@ impl<A> TokenCache<A>
 where
     A: Authenticator,
 {
-    /// Instanciate a new `TokenCache`
+    /// Instantiate a new `TokenCache`
     pub fn new(authenticator: A, project_dirs: ProjectDirs) -> Self {
         Self {
             project_dirs,
@@ -32,7 +32,7 @@ where
         }
     }
 
-    /// Instanciate a new `TokenCache`
+    /// Instantiate a new `TokenCache`
     pub fn new_with_application_name(authenticator: A, application: &str) -> Self {
         let project_dirs = ProjectDirs::from("com", "legionlabs", application)
             .expect("failed to determine project dirs");

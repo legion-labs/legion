@@ -25,7 +25,7 @@ impl<Inner: Clone> Clone for SmallContentProvider<Inner> {
 }
 
 impl<Inner> SmallContentProvider<Inner> {
-    /// Instanciate a new small content provider that wraps the specified
+    /// Instantiate a new small content provider that wraps the specified
     /// provider using the default identifier size threshold.
     pub fn new(inner: Inner) -> Self {
         Self { inner }

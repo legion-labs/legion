@@ -20,7 +20,7 @@ pub struct GenericGrpcClient<C> {
 pub type GrpcClient = GenericGrpcClient<hyper::Client<HttpsConnector<HttpConnector>, BoxBody>>;
 
 impl GrpcClient {
-    /// Instanciate a new `gRPC` client that operates over a HTTP 2 connection.
+    /// Instantiate a new `gRPC` client that operates over a HTTP 2 connection.
     ///
     /// Such a client cannot call `gRPC` servers that operate over HTTP 1 or are
     /// behind a non-HTTP 2 compatible proxy.
@@ -44,7 +44,7 @@ pub type GrpcWebClient =
     GenericGrpcClient<GrpcWebClientImpl<hyper::Client<HttpsConnector<HttpConnector>, BoxBody>>>;
 
 impl GrpcWebClient {
-    /// Instanciate a new `gRPC` client that operates over a HTTP 1.1 connection
+    /// Instantiate a new `gRPC` client that operates over a HTTP 1.1 connection
     /// using `gRPC-Web`.
     ///
     /// The client expects the remote server to understand the `gRPC-Web`

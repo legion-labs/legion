@@ -413,7 +413,7 @@ pub struct GrpcService<Provider, AddressProvider> {
 }
 
 impl<Provider, AddressProvider> GrpcService<Provider, AddressProvider> {
-    /// Instanciate a new `GrpcService` with the given `Provider` and
+    /// Instantiate a new `GrpcService` with the given `Provider` and
     /// `AddressProvider`.
     ///
     /// Read and write requests are routed to the `Provider` if the size is

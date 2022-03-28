@@ -1346,7 +1346,7 @@ pub struct WorkspaceConfig {
 }
 
 impl WorkspaceConfig {
-    /// Instanciate a new `WorkspaceConfig`.
+    /// Instantiate a new `WorkspaceConfig`.
     ///
     /// The content-store configuration will by default be taken from the
     /// `legion.toml`.

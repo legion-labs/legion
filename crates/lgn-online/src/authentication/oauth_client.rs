@@ -33,7 +33,7 @@ pub struct OAuthClient {
 }
 
 impl OAuthClient {
-    /// Instanciate a new `OAuthClient` from the specified configuration.
+    /// Instantiate a new `OAuthClient` from the specified configuration.
     pub async fn new_from_config(config: &OAuthClientConfig) -> Result<Self> {
         let client = Self::new(
             config.issuer_url.clone(),
