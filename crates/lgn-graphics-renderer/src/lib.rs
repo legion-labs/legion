@@ -619,6 +619,12 @@ fn render_update(
             );
         }
 
+        // final resolve
+        let final_resolve_render_pass = render_surface.final_resolve_render_pass();
+        let final_resolve_render_pass = final_resolve_render_pass.write();
+
+        final_resolve_render_pass.render(&render_context, &mut render_surface, &mut cmd_buffer);
+
         // queue
         let sems = render_surface.acquire();
         let sems_array = [sems.0, &sems.1.external_resource()];

@@ -108,7 +108,7 @@ impl VideoStream {
         if let Some(encoder) = &self.cuda_encoder {
             encoder
                 .submit_input(&EncoderWorkItem {
-                    image: render_surface.texture().clone(),
+                    image: render_surface.export_texture().clone(),
                     semaphore: render_surface.encoder_sem().clone(),
                 })
                 .unwrap();

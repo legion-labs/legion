@@ -75,13 +75,15 @@ impl PickingRenderPass {
         );
 
         if picking_manager.picking_state() == PickingState::Rendering {
-            render_surface.transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
+            render_surface
+                .lighting_rt_mut()
+                .transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
 
             self.count_buffer.clear_buffer(cmd_buffer);
 
             cmd_buffer.begin_render_pass(
                 &[ColorRenderTargetBinding {
-                    texture_view: render_surface.render_target_view(),
+                    texture_view: render_surface.lighting_rt().rtv(),
                     load_op: LoadOp::Clear,
                     store_op: StoreOp::Store,
                     clear_value: ColorClearValue::default(),

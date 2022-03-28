@@ -64,7 +64,9 @@ impl PresenterWindow {
         let swapchain_texture = presentable_frame.swapchain_texture();
 
         {
-            render_surface.transition_to(&cmd_buffer, ResourceState::COPY_SRC);
+            render_surface
+                .resolve_rt_mut()
+                .transition_to(&cmd_buffer, ResourceState::COPY_SRC);
 
             cmd_buffer.resource_barrier(
                 &[],
@@ -75,7 +77,7 @@ impl PresenterWindow {
                 )],
             );
 
-            let src_texture = render_surface.texture().external_resource();
+            let src_texture = render_surface.export_texture().external_resource();
             let src_texture_def = src_texture.definition();
             let dst_texture = swapchain_texture;
             let dst_texture_def = dst_texture.definition();

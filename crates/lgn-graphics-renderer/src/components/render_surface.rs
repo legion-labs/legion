@@ -4,9 +4,8 @@ use lgn_codec_api::encoder_resource::EncoderResource;
 use lgn_codec_api::encoder_work_queue::EncoderWorkQueue;
 use lgn_ecs::prelude::Component;
 use lgn_graphics_api::{
-    DepthStencilClearValue, DepthStencilRenderTargetBinding, DeviceContext, Extents2D, Extents3D,
-    Format, LoadOp, MemoryUsage, ResourceFlags, ResourceState, ResourceUsage, Semaphore, StoreOp,
-    Texture, TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef,
+    DepthStencilClearValue, DepthStencilRenderTargetBinding, DeviceContext, Extents2D, Format,
+    GPUViewType, LoadOp, ResourceState, ResourceUsage, Semaphore, StoreOp, Texture,
 };
 use lgn_window::WindowId;
 use parking_lot::RwLock;
@@ -16,7 +15,9 @@ use uuid::Uuid;
 use crate::egui::egui_pass::EguiPass;
 use crate::gpu_renderer::HzbSurface;
 use crate::hl_gfx_api::HLCommandBuffer;
-use crate::render_pass::{DebugRenderPass, PickingRenderPass};
+use crate::render_pass::{
+    DebugRenderPass, FinalResolveRenderPass, PickingRenderPass, RenderTarget,
+};
 use crate::resources::PipelineManager;
 use crate::{RenderContext, Renderer};
 
@@ -93,14 +94,10 @@ pub struct RenderSurfaceCreatedForWindow {
 
 #[allow(dead_code)]
 struct SizeDependentResources {
-    texture: EncoderResource<Texture>,
-    texture_srv: TextureView,
-    texture_rtv: TextureView,
-    texture_state: ResourceState,
-    depth_stencil_texture: Texture,
-    depth_stencil_rt_view: TextureView,
-    depth_stencil_srv_view: TextureView,
-    depth_stencil_state: ResourceState,
+    resolve_rt: RenderTarget,
+    export_texture: EncoderResource<Texture>,
+    lighting_rt: RenderTarget,
+    depth_rt: RenderTarget,
     hzb_surface: HzbSurface,
     hzb_init: bool,
 }
@@ -112,64 +109,36 @@ impl SizeDependentResources {
         pipeline_manager: &PipelineManager,
         encoder_work_queue: &EncoderWorkQueue,
     ) -> Self {
-        let texture_def = TextureDef {
-            extents: Extents3D {
-                width: extents.width(),
-                height: extents.height(),
-                depth: 1,
-            },
-            array_length: 1,
-            mip_count: 1,
-            format: Format::R8G8B8A8_UNORM,
-            usage_flags: ResourceUsage::AS_RENDER_TARGET
+        let resolve_rt = RenderTarget::new(
+            device_context,
+            extents,
+            Format::R8G8B8A8_SRGB,
+            ResourceUsage::AS_RENDER_TARGET
                 | ResourceUsage::AS_SHADER_RESOURCE
                 | ResourceUsage::AS_TRANSFERABLE
                 | ResourceUsage::AS_EXPORT_CAPABLE,
-            resource_flags: ResourceFlags::empty(),
-            mem_usage: MemoryUsage::GpuOnly,
-            tiling: TextureTiling::Optimal,
-        };
-        let texture = device_context.create_texture(&texture_def);
-
-        let srv_def = TextureViewDef::as_shader_resource_view(&texture_def);
-        let texture_srv = texture.create_view(&srv_def);
-
-        let rtv_def = TextureViewDef::as_render_target_view(&texture_def);
-        let texture_rtv = texture.create_view(&rtv_def);
-
-        let depth_stencil_def = TextureDef {
-            extents: Extents3D {
-                width: extents.width(),
-                height: extents.height(),
-                depth: 1,
-            },
-            array_length: 1,
-            mip_count: 1,
-            format: Format::D32_SFLOAT,
-            usage_flags: ResourceUsage::AS_DEPTH_STENCIL | ResourceUsage::AS_SHADER_RESOURCE,
-            resource_flags: ResourceFlags::empty(),
-            mem_usage: MemoryUsage::GpuOnly,
-            tiling: TextureTiling::Optimal,
-        };
-
-        let depth_stencil_texture = device_context.create_texture(&depth_stencil_def);
-
-        let depth_stencil_rt_view_def = TextureViewDef::as_depth_stencil_view(&depth_stencil_def);
-        let depth_stencil_rt_view = depth_stencil_texture.create_view(&depth_stencil_rt_view_def);
-
-        let depth_stencil_srv_view_def =
-            TextureViewDef::as_shader_resource_view(&depth_stencil_def);
-        let depth_stencil_srv_view = depth_stencil_texture.create_view(&depth_stencil_srv_view_def);
+            GPUViewType::RenderTarget,
+        );
+        let export_texture =
+            encoder_work_queue.new_external_image(resolve_rt.texture(), device_context);
 
         Self {
-            texture: encoder_work_queue.new_external_image(&texture, device_context),
-            texture_srv,
-            texture_rtv,
-            texture_state: ResourceState::UNDEFINED,
-            depth_stencil_texture,
-            depth_stencil_rt_view,
-            depth_stencil_srv_view,
-            depth_stencil_state: ResourceState::UNDEFINED,
+            resolve_rt,
+            export_texture,
+            lighting_rt: RenderTarget::new(
+                device_context,
+                extents,
+                Format::R16G16B16A16_SFLOAT,
+                ResourceUsage::AS_RENDER_TARGET | ResourceUsage::AS_SHADER_RESOURCE,
+                GPUViewType::RenderTarget,
+            ),
+            depth_rt: RenderTarget::new(
+                device_context,
+                extents,
+                Format::D32_SFLOAT,
+                ResourceUsage::AS_DEPTH_STENCIL | ResourceUsage::AS_SHADER_RESOURCE,
+                GPUViewType::DepthStencil,
+            ),
             hzb_surface: HzbSurface::new(device_context, extents, pipeline_manager),
             hzb_init: false,
         }
@@ -190,6 +159,7 @@ pub struct RenderSurface {
     picking_renderpass: Arc<RwLock<PickingRenderPass>>,
     debug_renderpass: Arc<RwLock<DebugRenderPass>>,
     egui_renderpass: Arc<RwLock<EguiPass>>,
+    final_resolve_render_pass: Arc<RwLock<FinalResolveRenderPass>>,
 }
 
 impl RenderSurface {
@@ -224,6 +194,10 @@ impl RenderSurface {
         self.egui_renderpass.clone()
     }
 
+    pub fn final_resolve_render_pass(&self) -> Arc<RwLock<FinalResolveRenderPass>> {
+        self.final_resolve_render_pass.clone()
+    }
+
     pub fn resize(
         &mut self,
         device_context: &DeviceContext,
@@ -254,62 +228,32 @@ impl RenderSurface {
         self.id
     }
 
-    pub fn texture(&self) -> &EncoderResource<Texture> {
-        &self.resources.texture
+    pub fn export_texture(&self) -> &EncoderResource<Texture> {
+        &self.resources.export_texture
     }
 
-    pub fn render_target_view(&self) -> &TextureView {
-        &self.resources.texture_rtv
+    pub fn resolve_rt(&self) -> &RenderTarget {
+        &self.resources.resolve_rt
     }
 
-    pub fn shader_resource_view(&self) -> &TextureView {
-        &self.resources.texture_srv
+    pub fn resolve_rt_mut(&mut self) -> &mut RenderTarget {
+        &mut self.resources.resolve_rt
     }
 
-    pub fn depth_stencil_rt_view(&self) -> &TextureView {
-        &self.resources.depth_stencil_rt_view
+    pub fn lighting_rt(&self) -> &RenderTarget {
+        &self.resources.lighting_rt
     }
 
-    pub fn depth_stencil_srv_view(&self) -> &TextureView {
-        &self.resources.depth_stencil_srv_view
+    pub fn lighting_rt_mut(&mut self) -> &mut RenderTarget {
+        &mut self.resources.lighting_rt
     }
 
-    pub fn transition_to(&mut self, cmd_buffer: &HLCommandBuffer<'_>, dst_state: ResourceState) {
-        let src_state = self.resources.texture_state;
-        let dst_state = dst_state;
-
-        if src_state != dst_state {
-            cmd_buffer.resource_barrier(
-                &[],
-                &[TextureBarrier::state_transition(
-                    &self.resources.texture.external_resource(),
-                    src_state,
-                    dst_state,
-                )],
-            );
-            self.resources.texture_state = dst_state;
-        }
+    pub fn depth_rt(&self) -> &RenderTarget {
+        &self.resources.depth_rt
     }
 
-    pub fn transition_depth_to(
-        &mut self,
-        cmd_buffer: &HLCommandBuffer<'_>,
-        dst_state: ResourceState,
-    ) {
-        let src_state = self.resources.depth_stencil_state;
-        let dst_state = dst_state;
-
-        if src_state != dst_state {
-            cmd_buffer.resource_barrier(
-                &[],
-                &[TextureBarrier::state_transition(
-                    &self.resources.depth_stencil_texture,
-                    src_state,
-                    dst_state,
-                )],
-            );
-            self.resources.depth_stencil_state = dst_state;
-        }
+    pub fn depth_rt_mut(&mut self) -> &mut RenderTarget {
+        &mut self.resources.depth_rt
     }
 
     pub(crate) fn init_hzb_if_needed(
@@ -318,12 +262,14 @@ impl RenderSurface {
         cmd_buffer: &mut HLCommandBuffer<'_>,
     ) {
         if !self.resources.hzb_init {
-            self.transition_depth_to(cmd_buffer, ResourceState::DEPTH_WRITE);
+            self.resources
+                .depth_rt
+                .transition_to(cmd_buffer, ResourceState::DEPTH_WRITE);
 
             cmd_buffer.begin_render_pass(
                 &[],
                 &Some(DepthStencilRenderTargetBinding {
-                    texture_view: self.depth_stencil_rt_view(),
+                    texture_view: self.resources.depth_rt.rtv(),
                     depth_load_op: LoadOp::Clear,
                     stencil_load_op: LoadOp::DontCare,
                     depth_store_op: StoreOp::Store,
@@ -347,15 +293,14 @@ impl RenderSurface {
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
     ) {
-        self.transition_depth_to(cmd_buffer, ResourceState::PIXEL_SHADER_RESOURCE);
+        self.depth_rt_mut()
+            .transition_to(cmd_buffer, ResourceState::PIXEL_SHADER_RESOURCE);
 
-        self.get_hzb_surface().generate_hzb(
-            render_context,
-            cmd_buffer,
-            self.depth_stencil_srv_view(),
-        );
+        self.get_hzb_surface()
+            .generate_hzb(render_context, cmd_buffer, self.depth_rt().srv());
 
-        self.transition_depth_to(cmd_buffer, ResourceState::DEPTH_WRITE);
+        self.depth_rt_mut()
+            .transition_to(cmd_buffer, ResourceState::DEPTH_WRITE);
     }
 
     pub(crate) fn get_hzb_surface(&self) -> &HzbSurface {
@@ -425,6 +370,10 @@ impl RenderSurface {
             picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(device_context))),
             debug_renderpass: Arc::new(RwLock::new(DebugRenderPass::new(pipeline_manager))),
             egui_renderpass: Arc::new(RwLock::new(EguiPass::new(device_context, pipeline_manager))),
+            final_resolve_render_pass: Arc::new(RwLock::new(FinalResolveRenderPass::new(
+                device_context,
+                pipeline_manager,
+            ))),
             presenters: Vec::new(),
         }
     }
