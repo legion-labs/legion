@@ -1,4 +1,4 @@
-//! A generic [`EventSink`] that accepts an [`mpsc::Sender<TraceEvent>`]
+//! A generic [`EventSink`] that accepts an [`broadcast::Sender<TraceEvent>`]
 //! that will be used to send [`TraceEvent`] messages.
 
 use core::fmt;
@@ -11,9 +11,9 @@ use lgn_tracing::{
     spans::{ThreadBlock, ThreadStream},
     Level, ProcessInfo,
 };
-use tokio::sync::mpsc;
+use tokio::sync::broadcast;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TraceEvent {
     Startup(ProcessInfo),
     Shutdown,
@@ -31,12 +31,12 @@ pub enum TraceEvent {
     ProcessThreadBlock(Arc<ThreadBlock>),
 }
 
-pub struct ChannelSink {
-    sender: mpsc::UnboundedSender<TraceEvent>,
+pub struct BroadcastSink {
+    sender: broadcast::Sender<TraceEvent>,
 }
 
-impl ChannelSink {
-    pub fn new(sender: mpsc::UnboundedSender<TraceEvent>) -> Self {
+impl BroadcastSink {
+    pub fn new(sender: broadcast::Sender<TraceEvent>) -> Self {
         Self { sender }
     }
 
@@ -47,7 +47,7 @@ impl ChannelSink {
     }
 }
 
-impl EventSink for ChannelSink {
+impl EventSink for BroadcastSink {
     fn on_startup(&self, process_info: ProcessInfo) {
         self.send(TraceEvent::Startup(process_info));
     }

@@ -15,19 +15,19 @@ const currentResourceOrchestrator: CurrentResourceOrchestrator =
 export const { data: currentResource, error: currentResourceError } =
   currentResourceOrchestrator;
 
-export function fetchCurrentResourceDescription(
+export async function fetchCurrentResourceDescription(
   id: string,
   { notifySelection = true }: { notifySelection?: boolean } = {}
-) {
+): Promise<void> {
   // Ignore folder without id
   if (!id) {
     return;
   }
 
   try {
-    currentResourceOrchestrator.run(() => {
+    await currentResourceOrchestrator.run(async () => {
       if (notifySelection) {
-        updateSelection(id);
+        await updateSelection(id);
       }
 
       return getResourceProperties(id);

@@ -25,7 +25,7 @@ use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::{debug, info, warn, LevelFilter};
 use lgn_transform::TransformPlugin;
 use sample_data::SampleDataPlugin;
-use tokio::sync::mpsc;
+use tokio::sync::broadcast;
 
 mod grpc;
 mod plugin;
@@ -39,8 +39,8 @@ use resource_browser_plugin::{ResourceBrowserPlugin, ResourceBrowserSettings};
 mod source_control_plugin;
 use source_control_plugin::SourceControlPlugin;
 
-mod channel_sink;
-use channel_sink::ChannelSink;
+mod broadcast_sink;
+use broadcast_sink::BroadcastSink;
 
 #[cfg(test)]
 #[path = "tests/test_resource_browser.rs"]
@@ -190,10 +190,10 @@ fn main() {
     let game_manifest_path = args.manifest.map_or_else(PathBuf::new, PathBuf::from);
     let assets_to_load = Vec::<ResourceTypeAndId>::new();
 
-    let (trace_events_sender, trace_events_receiver) = mpsc::unbounded_channel();
+    let (trace_events_sender, trace_events_receiver) = broadcast::channel(1_000);
 
     let telemetry_guard = TelemetryGuardBuilder::default()
-        .add_sink(LevelFilter::Info, ChannelSink::new(trace_events_sender))
+        .add_sink(LevelFilter::Info, BroadcastSink::new(trace_events_sender))
         .build()
         .expect("telemetry guard should be initialized once");
 

@@ -10,13 +10,9 @@
   import { goto } from "$app/navigation";
   import "@/workers/editorWorker";
   import { initStagedResourcesStream } from "@/stores/stagedResources";
-  import { get } from "svelte/store";
-  import { initApiClient, initMessageStream } from "@/api";
+  import { initApiClient } from "@/api";
   import { initLogStream } from "@/stores/log";
-  import {
-    resourceEntries,
-    currentResourceDescriptionEntry,
-  } from "@/orchestrators/resourceBrowserEntries";
+  import { initMessageStream } from "@/orchestrators/selection";
 
   const logLevel = "warn";
 
@@ -77,31 +73,9 @@
           // TODO: When using routing we may want to cancel the returned subscription
           initLogStream();
 
-          const messageStream = await initMessageStream();
-
-          messageStream.subscribe((logEntry) => {
-            if (logEntry.msgType == MessageType.SelectionChanged) {
-              const resourceIds: string[] = JSON.parse(logEntry.payload);
-
-              // TODO: Catch error
-              // TODO: Support multi-select (remove slice)
-              if (!resourceIds.length) {
-                currentResourceDescriptionEntry.set(null);
-              } else {
-                fetchCurrentResourceDescription(resourceIds[0], {
-                  notifySelection: false,
-                });
-                const selectedEntry = get(resourceEntries).find(
-                  (entry) =>
-                    isEntry(entry) && resourceIds.includes(entry.item.id)
-                );
-
-                currentResourceDescriptionEntry.set(selectedEntry);
-              }
-            }
-          });
-
-          // Defaulting to "trace" if the severity cannot be converted from the level
+          // Fire and forget stream init
+          // TODO: When using routing we may want to cancel the returned subscription
+          initMessageStream();
 
           // Fire and forget stream init
           // TODO: When using routing we may want to cancel the returned subscription
@@ -137,9 +111,6 @@
 
 <script lang="ts">
   import "../assets/index.css";
-  import { MessageType } from "@lgn/proto-editor/dist/editor";
-  import { fetchCurrentResourceDescription } from "@/orchestrators/currentResource";
-  import { isEntry } from "@/lib/hierarchyTree";
 </script>
 
 <slot />

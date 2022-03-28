@@ -22,22 +22,30 @@ export const logEntries = throttled(
 export async function initLogStream() {
   const logStream = await initLogStreamApi();
 
-  return logStream.subscribe((logEntry) => {
+  return logStream.subscribe(({ lagging, traceEvent }) => {
     if (get(streamedLogEntries).length > buffer - 1) {
       get(streamedLogEntries).shift();
     }
 
-    // Defaulting to "trace" if the severity cannot be converted from the level
-    const severity = severityFromLevel(logEntry.level) ?? "trace";
+    if (typeof lagging === "number") {
+      // TODO: Handle lagging messages
 
-    streamedLogEntries.update((streamedLogEntries) => [
-      ...streamedLogEntries,
-      {
-        severity,
-        message: logEntry.message,
-        target: logEntry.target,
-        datetime: new Date(logEntry.time),
-      },
-    ]);
+      return;
+    }
+
+    if (traceEvent) {
+      // Defaulting to "trace" if the severity cannot be converted from the level
+      const severity = severityFromLevel(traceEvent.level) ?? "trace";
+
+      streamedLogEntries.update((streamedLogEntries) => [
+        ...streamedLogEntries,
+        {
+          severity,
+          message: traceEvent.message,
+          target: traceEvent.target,
+          datetime: new Date(traceEvent.time),
+        },
+      ]);
+    }
   });
 }

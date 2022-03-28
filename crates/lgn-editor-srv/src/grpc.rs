@@ -4,22 +4,26 @@ use lgn_data_runtime::ResourceTypeAndId;
 use lgn_data_transaction::TransactionManager;
 use lgn_editor_proto::editor::{
     editor_server::{Editor, EditorServer},
-    InitLogStreamRequest, InitLogStreamResponse, InitMessageStreamRequest,
-    InitMessageStreamResponse, RedoTransactionRequest, RedoTransactionResponse,
-    UndoTransactionRequest, UndoTransactionResponse,
+    init_log_stream_response, init_message_stream_response, InitLogStreamRequest,
+    InitLogStreamResponse, InitMessageStreamRequest, InitMessageStreamResponse,
+    RedoTransactionRequest, RedoTransactionResponse, UndoTransactionRequest,
+    UndoTransactionResponse,
 };
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{
+    broadcast::{self, error::RecvError},
+    mpsc, Mutex,
+};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{Request, Response, Status};
 
-use crate::channel_sink::TraceEvent;
+use crate::broadcast_sink::TraceEvent;
 
-/// Easy to share, referenced counted version of Tokio's [`mpsc::UnboundedReceiver`].
+/// Easy to share, referenced counted version of Tokio's [`broadcast::Receiver`].
 /// Can be cloned safely and will dereference to the internal [`Mutex`].
-pub(crate) struct SharedUnboundedReceiver<T>(pub(crate) Arc<Mutex<mpsc::UnboundedReceiver<T>>>);
+pub(crate) struct SharedUnboundedReceiver<T>(pub(crate) Arc<Mutex<broadcast::Receiver<T>>>);
 
 impl<T> SharedUnboundedReceiver<T> {
-    pub fn new(receiver: mpsc::UnboundedReceiver<T>) -> Self {
+    pub fn new(receiver: broadcast::Receiver<T>) -> Self {
         Self(Arc::new(Mutex::new(receiver)))
     }
 }
@@ -31,19 +35,20 @@ impl<T> Clone for SharedUnboundedReceiver<T> {
 }
 
 impl<T> Deref for SharedUnboundedReceiver<T> {
-    type Target = Mutex<mpsc::UnboundedReceiver<T>>;
+    type Target = Mutex<broadcast::Receiver<T>>;
 
     fn deref(&self) -> &Self::Target {
         &*self.0
     }
 }
 
-impl<T> From<mpsc::UnboundedReceiver<T>> for SharedUnboundedReceiver<T> {
-    fn from(receiver: mpsc::UnboundedReceiver<T>) -> Self {
+impl<T> From<broadcast::Receiver<T>> for SharedUnboundedReceiver<T> {
+    fn from(receiver: broadcast::Receiver<T>) -> Self {
         Self::new(receiver)
     }
 }
 
+#[derive(Debug, Clone)]
 pub(crate) enum SelectionEvent {
     SelectionChanged(Vec<ResourceTypeAndId>),
 }
@@ -112,32 +117,52 @@ impl Editor for GRPCServer {
         _: Request<InitLogStreamRequest>,
     ) -> Result<tonic::Response<<Self as Editor>::InitLogStreamStream>, Status> {
         let (tx, rx) = mpsc::unbounded_channel();
-
         let receiver = self.trace_events_receiver.clone();
 
         tokio::spawn(async move {
-            while let Some(trace_event) = receiver.lock().await.recv().await {
-                if let TraceEvent::Message {
-                    target,
-                    message,
-                    level,
-                    time,
-                } = trace_event
-                {
-                    if let Err(_error) = tx.send(Ok(InitLogStreamResponse {
-                        // There must be a default, zero, value for enums but Level is 1-indexed
-                        // (https://developers.google.com/protocol-buffers/docs/proto3#enum)
-                        // So we simply decrement the level to get the proper value at runtime
-                        level: (level as i32 - 1),
-                        message,
+            loop {
+                match receiver.lock().await.recv().await {
+                    Ok(TraceEvent::Message {
                         target,
+                        message,
+                        level,
                         time,
-                    })) {
-                        // Send errors are always related to closed connection:
-                        // https://github.com/tokio-rs/tokio/blob/b1afd95994be0d46ea70ba784439a684a787f50e/tokio/src/sync/mpsc/error.rs#L12
-                        // So we can stop the task
-                        return;
+                    }) => {
+                        if let Err(_error) = tx.send(Ok(InitLogStreamResponse {
+                            response: Some(init_log_stream_response::Response::TraceEvent(
+                                lgn_editor_proto::editor::TraceEvent {
+                                    // There must be a default, zero, value for enums but Level is 1-indexed
+                                    // (https://developers.google.com/protocol-buffers/docs/proto3#enum)
+                                    // So we simply decrement the level to get the proper value at runtime
+                                    level: (level as i32 - 1),
+                                    message,
+                                    target,
+                                    time,
+                                },
+                            )),
+                        })) {
+                            // Sent errors are always related to closed connection:
+                            // https://github.com/tokio-rs/tokio/blob/b1afd95994be0d46ea70ba784439a684a787f50e/tokio/src/sync/mpsc/error.rs#L12
+                            // So we can stop the task
+                            return;
+                        }
                     }
+                    Ok(_trace_event) => {
+                        // Ignoring other events for now
+                    }
+                    Err(RecvError::Lagged(skipped_messages)) => {
+                        if let Err(_error) = tx.send(Ok(InitLogStreamResponse {
+                            response: Some(init_log_stream_response::Response::Lagging(
+                                skipped_messages,
+                            )),
+                        })) {
+                            // Sent errors are always related to closed connection:
+                            // https://github.com/tokio-rs/tokio/blob/b1afd95994be0d46ea70ba784439a684a787f50e/tokio/src/sync/mpsc/error.rs#L12
+                            // So we can stop the task
+                            return;
+                        }
+                    }
+                    Err(RecvError::Closed) => return,
                 }
             }
         });
@@ -154,17 +179,40 @@ impl Editor for GRPCServer {
     ) -> Result<tonic::Response<<Self as Editor>::InitMessageStreamStream>, Status> {
         let (tx, rx) = mpsc::unbounded_channel();
         let receiver = self.selection_events_receiver.clone();
+
         tokio::spawn(async move {
-            while let Some(selection_event) = receiver.lock().await.recv().await {
-                let SelectionEvent::SelectionChanged(selections) = selection_event;
-                if let Err(_error) = tx.send(Ok(InitMessageStreamResponse {
-                    msg_type: 0,
-                    payload: serde_json::json!(selections).to_string(),
-                })) {
-                    // Send errors are always related to closed connection:
-                    // https://github.com/tokio-rs/tokio/blob/b1afd95994be0d46ea70ba784439a684a787f50e/tokio/src/sync/mpsc/error.rs#L12
-                    // So we can stop the task
-                    return;
+            loop {
+                match receiver.lock().await.recv().await {
+                    Ok(selection_event) => {
+                        let SelectionEvent::SelectionChanged(selections) = selection_event;
+
+                        if let Err(_error) = tx.send(Ok(InitMessageStreamResponse {
+                            response: Some(init_message_stream_response::Response::Message(
+                                lgn_editor_proto::editor::Message {
+                                    msg_type: 0,
+                                    payload: serde_json::json!(selections).to_string(),
+                                },
+                            )),
+                        })) {
+                            // Sent errors are always related to closed connection:
+                            // https://github.com/tokio-rs/tokio/blob/b1afd95994be0d46ea70ba784439a684a787f50e/tokio/src/sync/mpsc/error.rs#L12
+                            // So we can stop the task
+                            return;
+                        }
+                    }
+                    Err(RecvError::Lagged(skipped_messages)) => {
+                        if let Err(_error) = tx.send(Ok(InitMessageStreamResponse {
+                            response: Some(init_message_stream_response::Response::Lagging(
+                                skipped_messages,
+                            )),
+                        })) {
+                            // Sent errors are always related to closed connection:
+                            // https://github.com/tokio-rs/tokio/blob/b1afd95994be0d46ea70ba784439a684a787f50e/tokio/src/sync/mpsc/error.rs#L12
+                            // So we can stop the task
+                            return;
+                        }
+                    }
+                    Err(RecvError::Closed) => return,
                 }
             }
         });

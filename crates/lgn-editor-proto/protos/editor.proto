@@ -34,18 +34,32 @@ enum Level {
   TRACE = 4;
 }
 
-message InitLogStreamResponse {
+message TraceEvent {
   Level level = 1;
   int64 time = 2;
   string target = 3;
   string message = 4;
 }
 
+message InitLogStreamResponse {
+  oneof response {
+    TraceEvent trace_event = 1;
+    uint64 lagging = 2;
+  }
+}
+
 message InitMessageStreamRequest {}
 
 enum MessageType { SelectionChanged = 0; }
 
-message InitMessageStreamResponse {
+message Message {
   MessageType msg_type = 1;
   string payload = 2;
+}
+
+message InitMessageStreamResponse {
+  oneof response {
+    Message message = 1;
+    uint64 lagging = 2;
+  }
 }
