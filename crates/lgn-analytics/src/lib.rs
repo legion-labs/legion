@@ -651,10 +651,13 @@ pub fn log_entry_from_value(val: &Value) -> Result<Option<(i64, String)>> {
                 let level = desc
                     .get::<u32>("level")
                     .with_context(|| "reading level from LogStaticStrEvent")?;
+                let target = desc
+                    .get::<Arc<String>>("target")
+                    .with_context(|| "reading target from LogStaticStrEvent")?;
                 let msg = desc
                     .get::<Arc<String>>("fmt_str")
                     .with_context(|| "reading fmt_str from LogStaticStrEvent")?;
-                let entry = format!("[{}] {}", format_log_level(level), msg);
+                let entry = format!("{} [{}] {}", format_log_level(level), *target, *msg);
                 Ok(Some((time, entry)))
             }
             "LogStringEvent" => {
@@ -667,10 +670,13 @@ pub fn log_entry_from_value(val: &Value) -> Result<Option<(i64, String)>> {
                 let level = desc
                     .get::<u32>("level")
                     .with_context(|| "reading level from LogStringEvent")?;
+                let target = desc
+                    .get::<Arc<String>>("target")
+                    .with_context(|| "reading target from LogStringEvent")?;
                 let msg = obj
                     .get::<Arc<String>>("msg")
                     .with_context(|| "reading msg from LogStringEvent")?;
-                let entry = format!("[{}] {}", format_log_level(level), *msg);
+                let entry = format!("{} [{}] {}", format_log_level(level), *target, *msg);
                 Ok(Some((time, entry)))
             }
             "LogStaticStrInteropEvent" | "LogStringInteropEventV2" => {
@@ -680,16 +686,13 @@ pub fn log_entry_from_value(val: &Value) -> Result<Option<(i64, String)>> {
                 let level = obj
                     .get::<u32>("level")
                     .with_context(|| format!("reading level from {}", obj.type_name.as_str()))?;
-                // let _target = obj
-                //     .get::<Arc<String>>("target")
-                //     .with_context(|| format!("reading target from {}", obj.type_name.as_str()))?;
-                if let Err(e) = obj.get::<Arc<String>>("target") {
-                    error!("Error reading target for obj {:?}: {}", &obj, e);
-                }
+                let target = obj
+                    .get::<Arc<String>>("target")
+                    .with_context(|| format!("reading target from {}", obj.type_name.as_str()))?;
                 let msg = obj
                     .get::<Arc<String>>("msg")
                     .with_context(|| format!("reading msg from {}", obj.type_name.as_str()))?;
-                let entry = format!("[{}] {}", format_log_level(level), *msg);
+                let entry = format!("{} [{}] {}", format_log_level(level), *target, *msg);
                 Ok(Some((time, entry)))
             }
             _ => Ok(None),
