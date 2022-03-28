@@ -11,9 +11,9 @@ use std::{
 use tokio::sync::Mutex;
 
 use crate::{
-    sql::SqlConnectionPool, Branch, CanonicalPath, Change, ChangeType, Commit, CommitId, Error,
-    IndexBackend, ListBranchesQuery, ListCommitsQuery, ListLocksQuery, Lock, MapOtherError, Result,
-    Tree, WorkspaceRegistration,
+    sql::SqlConnectionPool, Branch, CanonicalPath, Change, ChangeType, Commit, CommitId,
+    ContentStoreAddr, Error, IndexBackend, ListBranchesQuery, ListCommitsQuery, ListLocksQuery,
+    Lock, MapOtherError, Result, Tree, WorkspaceRegistration,
 };
 
 #[derive(Debug)]
@@ -106,6 +106,7 @@ impl SqlIndexBackend {
     const TABLE_BRANCHES: &'static str = "branches";
     const TABLE_WORKSPACE_REGISTRATIONS: &'static str = "workspace_registrations";
     const TABLE_LOCKS: &'static str = "locks";
+    const TABLE_CONFIG: &'static str = "config";
 
     /// Instanciate a new SQL index backend.
     pub fn new(url: String) -> Result<Self> {
@@ -156,6 +157,7 @@ impl SqlIndexBackend {
         Self::create_branches_table(conn).await?;
         Self::create_workspace_registrations_table(conn).await?;
         Self::create_locks_table(conn).await?;
+        Self::create_config_table(conn).await?;
 
         Ok(())
     }
@@ -246,8 +248,21 @@ impl SqlIndexBackend {
             .map(|_| ())
     }
 
+    async fn create_config_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
+        let sql: &str = &format!(
+            "CREATE TABLE `{}` (name VARCHAR(64), value VARCHAR(255), UNIQUE (name));",
+            Self::TABLE_CONFIG
+        );
+
+        conn.execute(sql)
+            .await
+            .map_other_err("failed to create config table")
+            .map(|_| ())
+    }
+
     async fn initialize_repository_data(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
+        cas_address: ContentStoreAddr,
     ) -> Result<()> {
         let tree = Tree::empty();
         let tree_id = Self::save_tree_transactional(transaction, &tree).await?;
@@ -265,6 +280,9 @@ impl SqlIndexBackend {
         let main_branch = Branch::new(String::from("main"), commit_id);
 
         Self::insert_branch_transactional(transaction, &main_branch).await?;
+
+        let cas_address: String = cas_address.into();
+        Self::set_config_value(transaction, "cas_address", &cas_address).await?;
 
         Ok(())
     }
@@ -811,6 +829,40 @@ impl SqlIndexBackend {
         }
     }
 
+    async fn set_config_value<'e, E: sqlx::Executor<'e, Database = sqlx::Any>>(
+        executor: E,
+        name: &str,
+        value: &str,
+    ) -> Result<()> {
+        sqlx::query(&format!(
+            "REPLACE INTO `{}` VALUES(?, ?);",
+            Self::TABLE_CONFIG
+        ))
+        .bind(name)
+        .bind(value)
+        .execute(executor)
+        .await
+        .map_other_err(&format!("failed to update config value `{}`", name))
+        .map(|_| ())
+    }
+
+    async fn get_config_value<'e, E: sqlx::Executor<'e, Database = sqlx::Any>>(
+        executor: E,
+        name: &str,
+    ) -> Result<String> {
+        sqlx::query(&format!(
+            "SELECT value
+             FROM `{}`
+             WHERE name = ?;",
+            Self::TABLE_CONFIG
+        ))
+        .bind(name)
+        .fetch_one(executor)
+        .await
+        .map_other_err(&format!("failed to fetch config value: `{}`", name))
+        .map(|row| row.get::<String, _>(0))
+    }
+
     pub async fn close(&mut self) {
         if let Some(pool) = self.pool.lock().await.take() {
             pool.close().await;
@@ -824,7 +876,7 @@ impl IndexBackend for SqlIndexBackend {
         self.driver.url()
     }
 
-    async fn create_index(&self) -> Result<()> {
+    async fn create_index(&self, cas_address: ContentStoreAddr) -> Result<()> {
         async_span_scope!("SqlIndexBackend::create_index");
         if self.driver.check_if_database_exists().await? {
             return Err(Error::index_already_exists(self.url()));
@@ -841,7 +893,7 @@ impl IndexBackend for SqlIndexBackend {
             .await
             .map_other_err("failed to acquire SQL transaction")?;
 
-        Self::initialize_repository_data(&mut transaction).await?;
+        Self::initialize_repository_data(&mut transaction, cas_address).await?;
 
         transaction
             .commit()
@@ -876,7 +928,7 @@ impl IndexBackend for SqlIndexBackend {
     async fn register_workspace(
         &self,
         workspace_registration: &WorkspaceRegistration,
-    ) -> Result<()> {
+    ) -> Result<ContentStoreAddr> {
         async_span_scope!("SqlIndexBackend::register_workspace");
         let mut conn = self.get_conn().await?;
 
@@ -892,7 +944,11 @@ impl IndexBackend for SqlIndexBackend {
             "failed to register the workspace `{}` for user `{}`",
             &workspace_registration.id, &workspace_registration.owner,
         ))
-        .map(|_| ())
+        .map(|_| ())?;
+
+        let cas_address = Self::get_config_value(&mut conn, "cas_address").await?;
+
+        Ok(ContentStoreAddr::from(cas_address))
     }
 
     async fn insert_branch(&self, branch: &Branch) -> Result<()> {

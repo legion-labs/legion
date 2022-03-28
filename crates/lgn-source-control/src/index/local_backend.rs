@@ -3,9 +3,9 @@ use lgn_tracing::prelude::*;
 use std::path::{Path, PathBuf};
 
 use crate::{
-    Branch, CanonicalPath, Commit, CommitId, Error, IndexBackend, ListBranchesQuery,
-    ListCommitsQuery, ListLocksQuery, Lock, MapOtherError, Result, SqlIndexBackend, Tree,
-    WorkspaceRegistration,
+    Branch, CanonicalPath, Commit, CommitId, ContentStoreAddr, Error, IndexBackend,
+    ListBranchesQuery, ListCommitsQuery, ListLocksQuery, Lock, MapOtherError, Result,
+    SqlIndexBackend, Tree, WorkspaceRegistration,
 };
 
 #[derive(Debug)]
@@ -51,7 +51,7 @@ impl IndexBackend for LocalIndexBackend {
         self.directory.to_str().unwrap()
     }
 
-    async fn create_index(&self) -> Result<()> {
+    async fn create_index(&self, cas_address: ContentStoreAddr) -> Result<()> {
         async_span_scope!("LocalIndexBackend::create_index");
         match self.directory.read_dir() {
             Ok(mut entries) => {
@@ -88,7 +88,7 @@ impl IndexBackend for LocalIndexBackend {
             self.sql_repository_index.url()
         );
 
-        self.sql_repository_index.create_index().await
+        self.sql_repository_index.create_index(cas_address).await
     }
 
     async fn destroy_index(&self) -> Result<()> {
@@ -111,7 +111,7 @@ impl IndexBackend for LocalIndexBackend {
     async fn register_workspace(
         &self,
         workspace_registration: &WorkspaceRegistration,
-    ) -> Result<()> {
+    ) -> Result<ContentStoreAddr> {
         async_span_scope!("LocalIndexBackend::register_workspace");
         self.sql_repository_index
             .register_workspace(workspace_registration)

@@ -13,8 +13,9 @@ use lgn_source_control_proto::{
 };
 
 use crate::{
-    Branch, CanonicalPath, Commit, CommitId, Error, IndexBackend, ListBranchesQuery,
-    ListCommitsQuery, ListLocksQuery, Lock, MapOtherError, Result, Tree, WorkspaceRegistration,
+    Branch, CanonicalPath, Commit, CommitId, ContentStoreAddr, Error, IndexBackend,
+    ListBranchesQuery, ListCommitsQuery, ListLocksQuery, Lock, MapOtherError, Result, Tree,
+    WorkspaceRegistration,
 };
 
 // Access to repository metadata through a gRPC server.
@@ -63,7 +64,7 @@ impl IndexBackend for GrpcIndexBackend {
         self.url.as_str()
     }
 
-    async fn create_index(&self) -> Result<()> {
+    async fn create_index(&self, cas_address: ContentStoreAddr) -> Result<()> {
         async_span_scope!("GrpcIndexBackend::create_index");
         let resp = self
             .client
@@ -71,6 +72,7 @@ impl IndexBackend for GrpcIndexBackend {
             .await
             .create_index(CreateIndexRequest {
                 repository_name: self.repository_name.clone(),
+                cas_address: cas_address.into(),
             })
             .await
             .map_other_err(format!("failed to create index `{}`", self.repository_name))?
@@ -125,7 +127,7 @@ impl IndexBackend for GrpcIndexBackend {
     async fn register_workspace(
         &self,
         workspace_registration: &WorkspaceRegistration,
-    ) -> Result<()> {
+    ) -> Result<ContentStoreAddr> {
         async_span_scope!("register_workspace");
         self.client
             .lock()
@@ -139,7 +141,8 @@ impl IndexBackend for GrpcIndexBackend {
                 "failed to register workspace `{}`",
                 workspace_registration.id
             ))
-            .map(|_| ())
+            .map(|response| response.into_inner().content_store_addr)
+            .map(ContentStoreAddr::from)
     }
 
     async fn get_branch(&self, branch_name: &str) -> Result<Branch> {

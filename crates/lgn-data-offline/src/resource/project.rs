@@ -8,7 +8,7 @@ use std::{
 
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_source_control::{
-    Change, CommitMode, IndexBackend, LocalIndexBackend, Workspace, WorkspaceConfig,
+    Change, CommitMode, ContentStoreAddr, IndexBackend, LocalIndexBackend, Workspace,
     WorkspaceRegistration,
 };
 use thiserror::Error;
@@ -118,9 +118,21 @@ impl Project {
 
     /// Creates a local source control index.
     pub async fn create_local_origin(path: impl AsRef<Path>) -> Result<LocalIndexBackend, Error> {
+        let cas_address = path.as_ref().to_str().unwrap().to_owned();
+        let cas_address = ContentStoreAddr::from(cas_address);
+        Self::create_local_origin_with_cas(path, cas_address).await
+    }
+
+    async fn create_local_origin_with_cas(
+        path: impl AsRef<Path>,
+        cas_address: ContentStoreAddr,
+    ) -> Result<LocalIndexBackend, Error> {
         let remote = LocalIndexBackend::new(&path).map_err(Error::SourceControl)?;
         if !remote.index_exists().await.map_err(Error::SourceControl)? {
-            remote.create_index().await.map_err(Error::SourceControl)?;
+            remote
+                .create_index(cas_address)
+                .await
+                .map_err(Error::SourceControl)?;
         }
         Ok(remote)
     }
@@ -129,45 +141,24 @@ impl Project {
     pub async fn create_with_remote_mock(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
         let remote_dir = project_dir.as_ref().join("remote");
         let remote = Self::create_local_origin(&remote_dir).await?;
-        let content_store_configuration = lgn_content_store2::Config::local(&remote_dir);
 
-        let mut project = Self::create(
-            project_dir,
-            "../remote".to_string(),
-            content_store_configuration,
-        )
-        .await?;
+        let mut project = Self::create(project_dir, "../remote".to_string()).await?;
         project.local_remote = Some(remote);
         Ok(project)
     }
 
     /// Creates a new project index file turning the containing directory into a
     /// project.
-    pub async fn create(
-        project_dir: impl AsRef<Path>,
-        remote_path: String,
-        content_store_configuration: lgn_content_store2::Config,
-    ) -> Result<Self, Error> {
+    pub async fn create(project_dir: impl AsRef<Path>, remote_path: String) -> Result<Self, Error> {
         let resource_dir = project_dir.as_ref().join("offline");
         if !resource_dir.exists() {
             std::fs::create_dir(&resource_dir).map_err(|e| Error::Io(resource_dir.clone(), e))?;
         }
 
-        let content_provider = content_store_configuration
-            .instantiate_provider()
-            .await
-            .map_err(|e| {
-                Error::SourceControl(lgn_source_control::Error::Other {
-                    source: anyhow::Error::new(e),
-                    context: "failed to instantiate content-store provider".to_string(),
-                })
-            })?;
-
         let workspace = Workspace::init(
             &resource_dir,
-            WorkspaceConfig::new(remote_path, WorkspaceRegistration::new_with_current_user())
-                .with_content_store_configuration(content_store_configuration),
-            content_provider,
+            remote_path,
+            WorkspaceRegistration::new_with_current_user(),
         )
         .await
         .map_err(|e| {

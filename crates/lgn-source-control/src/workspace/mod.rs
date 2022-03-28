@@ -20,14 +20,42 @@ mod local_backend;
 pub use backend::WorkspaceBackend;
 pub use local_backend::LocalWorkspaceBackend;
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ContentStoreAddr(String);
+
+impl ContentStoreAddr {
+    pub fn create_provider(&self) -> lgn_content_store2::ProviderConfig {
+        if self.0.starts_with("http:") || self.0.starts_with("https:") {
+            lgn_content_store2::ProviderConfig::Grpc(lgn_content_store2::GrpcProviderConfig {
+                url: self.0.clone(),
+            })
+        } else {
+            lgn_content_store2::ProviderConfig::Local(
+                lgn_content_store2::LocalProviderConfig::from_absolute_path(&self.0),
+            )
+        }
+    }
+}
+
+impl From<String> for ContentStoreAddr {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
+
+impl From<ContentStoreAddr> for String {
+    fn from(addr: ContentStoreAddr) -> Self {
+        addr.0
+    }
+}
+
 /// Represents a workspace.
 pub struct Workspace {
     root: PathBuf,
     index_backend: Box<dyn IndexBackend>,
     backend: Box<dyn WorkspaceBackend>,
-    registration: WorkspaceRegistration,
     chunker: Chunker,
-    content_store_config: lgn_content_store2::Config,
+    content_store_addr: ContentStoreAddr,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -70,8 +98,8 @@ impl Workspace {
     /// The workspace must not already exist.
     pub async fn init(
         root: impl AsRef<Path>,
-        config: WorkspaceConfig,
-        content_store_provider: impl ContentReader + Send + Sync,
+        index_url: String,
+        registration: WorkspaceRegistration,
     ) -> Result<Self> {
         let root = make_path_absolute(root).map_other_err("failed to make path absolute")?;
         let lsc_directory = Self::get_lsc_directory(&root);
@@ -89,20 +117,38 @@ impl Workspace {
             .await
             .map_other_err("failed to create tmp directory")?;
 
-        let workspace_config_path = Self::get_workspace_config_path(&lsc_directory);
+        let backend = Box::new(LocalWorkspaceBackend::create(lsc_directory.clone()).await?);
 
-        let config_data = serde_json::to_string(&config)
-            .map_other_err("failed to serialize workspace configuration")?;
+        let absolute_url = Self::try_make_filepath_absolute(index_url.clone(), &root)?;
+        let index_backend = new_index_backend(&absolute_url)?;
 
-        tokio::fs::write(workspace_config_path, config_data)
-            .await
-            .map_other_err("failed to write workspace configuration")?;
+        let cas_address = index_backend.register_workspace(&registration).await?;
 
-        let backend = Box::new(LocalWorkspaceBackend::create(lsc_directory).await?);
+        {
+            let config = WorkspaceConfig {
+                index_url,
+                registration: registration.clone(),
+                cas_address: cas_address.clone(),
+            };
 
-        let workspace = Self::new(root, config, backend).await?;
+            let workspace_config_path = Self::get_workspace_config_path(&lsc_directory);
 
-        workspace.register().await?;
+            let config_data = serde_json::to_string(&config)
+                .map_other_err("failed to serialize workspace configuration")?;
+
+            tokio::fs::write(workspace_config_path, config_data)
+                .await
+                .map_other_err("failed to write workspace configuration")?;
+        }
+
+        let workspace = Self {
+            root,
+            index_backend,
+            backend,
+            chunker: Chunker::default(),
+            content_store_addr: cas_address,
+        };
+        let content_store_provider = workspace.instanciate_content_store_provider().await?;
         workspace
             .initial_checkout(content_store_provider, "main")
             .await?;
@@ -142,7 +188,17 @@ impl Workspace {
         let lsc_directory = Self::get_lsc_directory(&root);
         let backend = Box::new(LocalWorkspaceBackend::connect(lsc_directory).await?);
 
-        Self::new(root, config, backend).await
+        let (index_url, _, content_store_config) = config.into_parts();
+        let absolute_url = Self::try_make_filepath_absolute(index_url, &root)?;
+        let index_backend = new_index_backend(&absolute_url)?;
+
+        Ok(Self {
+            root,
+            index_backend,
+            backend,
+            chunker: Chunker::default(),
+            content_store_addr: content_store_config,
+        })
     }
 
     /// Find an existing workspace in the specified folder or one of its
@@ -215,35 +271,16 @@ impl Workspace {
         }
     }
 
-    async fn new(
-        root: PathBuf,
-        config: WorkspaceConfig,
-        backend: Box<dyn WorkspaceBackend>,
-    ) -> Result<Self> {
-        let (index_url, registration, content_store_config) = config.into_parts();
-        let absolute_url = Self::try_make_filepath_absolute(index_url, &root)?;
-        let index_backend = new_index_backend(&absolute_url)?;
-
-        Ok(Self {
-            root,
-            index_backend,
-            backend,
-            registration,
-            chunker: Chunker::default(),
-            content_store_config,
-        })
-    }
-
-    /// Get the default content-store configuration of this workspace.
-    pub fn content_store_config(&self) -> &lgn_content_store2::Config {
-        &self.content_store_config
-    }
-
     /// Instanciate a content-store provider from the configuration.
     pub async fn instanciate_content_store_provider(
         &self,
     ) -> Result<Box<dyn lgn_content_store2::ContentProvider + Send + Sync>> {
-        self.content_store_config
+        let provider = self.content_store_addr.create_provider();
+        let content_store_config = lgn_content_store2::Config {
+            provider,
+            caching_providers: vec![],
+        };
+        content_store_config
             .instantiate_provider()
             .await
             .map_other_err("failed to instantiate content provider")
@@ -1180,12 +1217,6 @@ impl Workspace {
         }
     }
 
-    async fn register(&self) -> Result<()> {
-        self.index_backend
-            .register_workspace(&self.registration)
-            .await
-    }
-
     async fn initial_checkout(
         &self,
         content_reader: impl ContentReader + Send + Sync,
@@ -1356,7 +1387,7 @@ impl Workspace {
 pub struct WorkspaceConfig {
     index_url: String,
     registration: WorkspaceRegistration,
-    content_store_configuration: Option<lgn_content_store2::Config>,
+    cas_address: ContentStoreAddr,
 }
 
 impl WorkspaceConfig {
@@ -1364,42 +1395,35 @@ impl WorkspaceConfig {
     ///
     /// The content-store configuration will by default be taken from the
     /// `legion.toml`.
-    pub fn new(index_url: String, registration: WorkspaceRegistration) -> Self {
+    pub fn new(
+        index_url: String,
+        registration: WorkspaceRegistration,
+        cas_address: ContentStoreAddr,
+    ) -> Self {
         Self {
             index_url,
             registration,
-            content_store_configuration: None,
+            cas_address,
         }
     }
 
-    /// Overrides the content-store configuration
-    pub fn with_content_store_configuration(
-        self,
-        content_store_configuration: lgn_content_store2::Config,
-    ) -> Self {
-        Self {
-            index_url: self.index_url,
-            registration: self.registration,
-            content_store_configuration: Some(content_store_configuration),
-        }
-    }
+    // /// Overrides the content-store configuration
+    // pub fn with_content_store_configuration(
+    //     self,
+    //     content_store_configuration: lgn_content_store2::Config,
+    // ) -> Self {
+    //     Self {
+    //         index_url: self.index_url,
+    //         registration: self.registration,
+    //         content_store_configuration: Some(content_store_configuration),
+    //     }
+    // }
 
     /// Returns the content-store configuration used by this workspace.
     ///
     /// If no override was specified with `with_content_store_configuration`,
     /// the configuration is taken from the `legion.toml` file.
-    fn into_parts(self) -> (String, WorkspaceRegistration, lgn_content_store2::Config) {
-        (
-            self.index_url,
-            self.registration,
-            match self.content_store_configuration {
-                Some(config) => config,
-                None => lgn_content_store2::Config::from_legion_toml(
-                    lgn_content_store2::Config::content_store_section()
-                        .as_deref()
-                        .or(Some("source_control")),
-                ),
-            },
-        )
+    fn into_parts(self) -> (String, WorkspaceRegistration, ContentStoreAddr) {
+        (self.index_url, self.registration, self.cas_address)
     }
 }

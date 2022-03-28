@@ -13,7 +13,8 @@ mod traits;
 pub use chunk_identifier::ChunkIdentifier;
 pub use chunker::{ChunkIndex, Chunker};
 pub use config::{
-    Config, GrpcProviderConfig, LocalProviderConfig, ProviderConfig, RedisProviderConfig,
+    AwsS3ProviderConfig, Config, GrpcProviderConfig, LocalProviderConfig, ProviderConfig,
+    RedisProviderConfig,
 };
 pub use errors::{Error, Result};
 pub use identifier::{HashAlgorithm, Identifier};

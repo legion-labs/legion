@@ -34,6 +34,15 @@ pub struct LocalProviderConfig {
     pub path: RelativePathBuf,
 }
 
+impl LocalProviderConfig {
+    pub fn from_absolute_path(path: impl AsRef<Path>) -> Self {
+        assert!(path.as_ref().is_absolute());
+        Self {
+            path: RelativePathBuf::from(path),
+        }
+    }
+}
+
 fn default_redis_url() -> String {
     "redis://localhost:6379".to_string()
 }

@@ -13,33 +13,31 @@ macro_rules! init_test_workspace_and_index {
         )
         .unwrap();
 
+        let cas_address = index_root.path().to_str().unwrap().to_owned();
+
         // Create the index.
-        index.create().await.expect("failed to create index");
+        index
+            .create(ContentStoreAddr::from(cas_address))
+            .await
+            .expect("failed to create index");
 
         let workspace_root = tempfile::tempdir().expect("failed to create temp dir");
 
         // Initialize the workspace.
-        let config = WorkspaceConfig::new(
+        let workspace = Workspace::init(
+            &workspace_root.path(),
             index_root.path().display().to_string(),
             WorkspaceRegistration::new_with_current_user(),
-        );
-        let content_store_config = lgn_content_store2::Config {
-            provider: lgn_content_store2::ProviderConfig::Memory {},
-            caching_providers: vec![],
-        };
-        let content_provider = content_store_config.instanciate_provider().await.unwrap();
-        let config = config.with_content_store_configuration(content_store_config);
-
-        let workspace = Workspace::init(&workspace_root.path(), config, &content_provider)
-            .await
-            .expect("failed to initialize workspace");
-
-        (
-            index,
-            workspace,
-            content_provider,
-            [index_root, workspace_root],
         )
+        .await
+        .expect("failed to initialize workspace");
+
+        let csp = workspace
+            .instanciate_content_store_provider()
+            .await
+            .unwrap();
+
+        (index, workspace, csp, [index_root, workspace_root])
     }};
 }
 

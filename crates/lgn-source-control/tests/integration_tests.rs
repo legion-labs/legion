@@ -6,9 +6,67 @@ use common::*;
 use std::path::Path;
 
 use lgn_source_control::{
-    Error, Index, MapOtherError, Staging, Workspace, WorkspaceConfig, WorkspaceRegistration,
+    ContentStoreAddr, Error, Index, MapOtherError, Staging, Workspace, WorkspaceRegistration,
 };
 use lgn_telemetry_sink::TelemetryGuard;
+
+#[tokio::test]
+async fn workspace_sync() {
+    let temp_dir = tempfile::tempdir().expect("failed to create temp dir");
+
+    let remote_dir = temp_dir.path().join("remote");
+    let primary_dir = temp_dir.path().join("primary");
+    let secondary_dir = temp_dir.path().join("secondary");
+    let cas_dir = temp_dir.path().join("content-store");
+
+    std::fs::create_dir(&remote_dir).expect("failed to create remote dir");
+    std::fs::create_dir(&cas_dir).expect("failed to create cas dir");
+    std::fs::create_dir(&primary_dir).expect("failed to create workspace dir");
+
+    let index = Index::new(remote_dir.to_str().expect("failed to create origin index")).unwrap();
+
+    let cas_address = cas_dir.to_str().unwrap().to_owned();
+
+    // Create the index.
+    index
+        .create(ContentStoreAddr::from(cas_address))
+        .await
+        .expect("failed to create index");
+
+    let origin = "../remote";
+
+    // Initialize 'primary' workspace.
+    {
+        let ws = Workspace::init(
+            &primary_dir,
+            origin.to_owned(),
+            WorkspaceRegistration::new_with_current_user(),
+        )
+        .await
+        .expect("failed to initialize workspace");
+        let csp = ws.instanciate_content_store_provider().await.unwrap();
+
+        create_file!(ws, "apple.txt", "I am an apple");
+        let _added = workspace_add_files!(ws, csp, ["."]);
+        workspace_commit!(ws, "Added an apple");
+    }
+
+    // Sync to 'secondary' workspace.
+    {
+        let ws = Workspace::init(
+            &secondary_dir,
+            origin.to_owned(),
+            WorkspaceRegistration::new_with_current_user(),
+        )
+        .await
+        .expect("failed to initialize workspace");
+        let csp = ws.instanciate_content_store_provider().await.unwrap();
+
+        let _res = ws.sync(csp).await.expect("sync failed");
+
+        assert!(secondary_dir.join("apple.txt").exists());
+    }
+}
 
 #[tokio::test]
 async fn test_add_and_commit() {

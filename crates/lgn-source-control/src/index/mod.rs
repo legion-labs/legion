@@ -8,7 +8,7 @@ pub use grpc_backend::*;
 pub use local_backend::*;
 pub use sql_backend::*;
 
-use crate::Result;
+use crate::{ContentStoreAddr, Result};
 
 /// Represents a source control index.
 pub struct Index(Box<dyn IndexBackend>);
@@ -20,8 +20,8 @@ impl Index {
         Ok(Self(backend))
     }
 
-    pub async fn create(&self) -> Result<()> {
-        self.0.create_index().await
+    pub async fn create(&self, cas_address: ContentStoreAddr) -> Result<()> {
+        self.0.create_index(cas_address).await
     }
 
     pub async fn destroy(&self) -> Result<()> {

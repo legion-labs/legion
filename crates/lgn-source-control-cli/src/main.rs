@@ -6,7 +6,6 @@
 use std::{collections::BTreeSet, path::PathBuf};
 
 use clap::{Parser, Subcommand};
-use lgn_content_store2::Config;
 use lgn_source_control::*;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::*;
@@ -42,6 +41,8 @@ enum Commands {
     CreateIndex {
         /// The index URL.
         index_url: String,
+        /// Address to content addressable storage used by this source control.
+        cas_address: String,
     },
     /// Destroys all index data permanently
     #[clap(name = "destroy-index")]
@@ -275,13 +276,16 @@ async fn main() -> anyhow::Result<()> {
     let mut stdout = StandardStream::stdout(choice);
 
     match args.command {
-        Commands::CreateIndex { index_url } => {
+        Commands::CreateIndex {
+            index_url,
+            cas_address,
+        } => {
             println!("Creating index at: {}", &index_url);
 
             let index = Index::new(&index_url)?;
 
             index
-                .create()
+                .create(ContentStoreAddr::from(cas_address))
                 .await
                 .map_err::<anyhow::Error, _>(Into::into)?;
 
@@ -315,22 +319,14 @@ async fn main() -> anyhow::Result<()> {
         } => {
             info!("init-workspace");
 
-            let content_store_config = Config::from_legion_toml(
-                Config::content_store_section()
-                    .as_deref()
-                    .or(Some("source_control")),
-            );
-
-            let content_provider = content_store_config.instantiate_provider().await?;
-
-            let config =
-                WorkspaceConfig::new(index_url, WorkspaceRegistration::new_with_current_user())
-                    .with_content_store_configuration(content_store_config);
-
-            Workspace::init(&workspace_directory, config, content_provider)
-                .await
-                .map_err(Into::into)
-                .map(|_| ())
+            Workspace::init(
+                &workspace_directory,
+                index_url,
+                WorkspaceRegistration::new_with_current_user(),
+            )
+            .await
+            .map_err(Into::into)
+            .map(|_| ())
         }
         Commands::Add { paths } => {
             let workspace = Workspace::find_in_current_directory().await?;

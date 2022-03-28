@@ -12,8 +12,8 @@ use std::sync::Arc;
 
 use clap::Parser;
 use lgn_source_control::{
-    new_index_backend, CanonicalPath, Commit, CommitId, Error, IndexBackend, ListBranchesQuery,
-    ListCommitsQuery, ListLocksQuery, Lock, Result, Tree,
+    new_index_backend, CanonicalPath, Commit, CommitId, ContentStoreAddr, Error, IndexBackend,
+    ListBranchesQuery, ListCommitsQuery, ListLocksQuery, Lock, Result, Tree,
 };
 use lgn_source_control_proto::source_control_server::{SourceControl, SourceControlServer};
 use lgn_source_control_proto::{
@@ -99,13 +99,22 @@ impl SourceControl for Service {
         request: tonic::Request<CreateIndexRequest>,
     ) -> Result<tonic::Response<CreateIndexResponse>, tonic::Status> {
         let origin = Self::get_request_origin(&request);
-        let name = request.into_inner().repository_name;
+        let (name, cas_address) = {
+            let msg = request.into_inner();
+            (msg.repository_name, msg.cas_address)
+        };
 
-        debug!("{}: Creating index `{}`...", origin, &name);
+        debug!(
+            "{}: Creating index `{}` with `{}` cas...",
+            origin, &name, &cas_address
+        );
 
         let index_backend = self.get_index_backend_for_repository(&name).await?;
 
-        match index_backend.create_index().await {
+        match index_backend
+            .create_index(ContentStoreAddr::from(cas_address))
+            .await
+        {
             Ok(blob_storage_url) => blob_storage_url,
             Err(Error::IndexAlreadyExists { url: _ }) => {
                 warn!(
@@ -200,12 +209,14 @@ impl SourceControl for Service {
             .get_index_backend_for_repository(&request.repository_name)
             .await?;
 
-        index_backend
+        let content_store_addr = index_backend
             .register_workspace(&workspace_registration)
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))?;
 
-        Ok(tonic::Response::new(RegisterWorkspaceResponse {}))
+        Ok(tonic::Response::new(RegisterWorkspaceResponse {
+            content_store_addr: content_store_addr.into(),
+        }))
     }
 
     async fn get_branch(

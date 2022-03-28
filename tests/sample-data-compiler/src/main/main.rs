@@ -54,20 +54,9 @@ async fn main() {
 
     let source_control_path: String =
         lgn_config::get_or("editor_srv.source_control", "../remote".to_string()).unwrap();
-    let source_control_cas = lgn_content_store2::Config::from_legion_toml(
-        lgn_content_store2::Config::content_store_section()
-            .as_deref()
-            .or(Some("source_control")),
-    );
 
     // generate contents of offline folder, from raw RON content
-    raw_loader::build_offline(
-        &absolute_root,
-        source_control_path,
-        source_control_cas,
-        true,
-    )
-    .await;
+    raw_loader::build_offline(&absolute_root, source_control_path, true).await;
 
     // compile offline resources to runtime assets
     offline_compiler::build(&absolute_root, &ResourcePathName::from(&args.resource)).await;

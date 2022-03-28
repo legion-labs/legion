@@ -2,8 +2,8 @@ use async_trait::async_trait;
 
 use crate::{
     utils::{parse_url_or_path, UrlOrPath},
-    Branch, CanonicalPath, Commit, CommitId, Error, GrpcIndexBackend, LocalIndexBackend, Lock,
-    MapOtherError, Result, SqlIndexBackend, Tree, WorkspaceRegistration,
+    Branch, CanonicalPath, Commit, CommitId, ContentStoreAddr, Error, GrpcIndexBackend,
+    LocalIndexBackend, Lock, MapOtherError, Result, SqlIndexBackend, Tree, WorkspaceRegistration,
 };
 
 /// The query options for the `list_branches` method.
@@ -37,14 +37,14 @@ pub struct ListLocksQuery<'q> {
 #[async_trait]
 pub trait IndexBackend: Send + Sync {
     fn url(&self) -> &str;
-    async fn create_index(&self) -> Result<()>;
+    async fn create_index(&self, cas_address: ContentStoreAddr) -> Result<()>;
     async fn destroy_index(&self) -> Result<()>;
     async fn index_exists(&self) -> Result<bool>;
 
     async fn register_workspace(
         &self,
         workspace_registration: &WorkspaceRegistration,
-    ) -> Result<()>;
+    ) -> Result<ContentStoreAddr>;
 
     async fn insert_branch(&self, branch: &Branch) -> Result<()>;
     async fn update_branch(&self, branch: &Branch) -> Result<()>;

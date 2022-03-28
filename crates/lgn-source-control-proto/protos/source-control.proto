@@ -38,6 +38,7 @@ message IndexExistsResponse {
 
 message CreateIndexRequest {
   string repository_name = 1;
+  string cas_address = 2;
 }
 
 message CreateIndexResponse {
@@ -57,7 +58,9 @@ message RegisterWorkspaceRequest {
   WorkspaceRegistration workspace_registration = 2;
 }
 
-message RegisterWorkspaceResponse {}
+message RegisterWorkspaceResponse {
+  string content_store_addr = 1;
+}
 
 message WorkspaceRegistration {
   string id = 1;

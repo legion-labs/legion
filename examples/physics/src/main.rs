@@ -68,12 +68,6 @@ async fn main() {
     let build_dir = project_dir.join("temp");
     std::fs::create_dir_all(&build_dir).unwrap();
 
-    let source_control_cas = lgn_content_store2::Config::from_legion_toml(
-        lgn_content_store2::Config::content_store_section()
-            .as_deref()
-            .or(Some("source_control")),
-    );
-
     let absolute_project_dir = {
         if !project_dir.is_absolute() {
             std::env::current_dir().unwrap().join(&project_dir)
@@ -84,13 +78,9 @@ async fn main() {
     Project::create_local_origin(absolute_project_dir.join("remote"))
         .await
         .expect("failed to create remote database");
-    let mut project = Project::create(
-        absolute_project_dir,
-        "../remote".to_owned(),
-        source_control_cas,
-    )
-    .await
-    .expect("failed to create a project");
+    let mut project = Project::create(absolute_project_dir, "../remote".to_owned())
+        .await
+        .expect("failed to create a project");
 
     let mut resource_registry = ResourceRegistryOptions::new();
     lgn_graphics_data::offline::register_resource_types(&mut resource_registry);

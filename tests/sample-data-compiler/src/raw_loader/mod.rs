@@ -25,12 +25,7 @@ use tokio::sync::Mutex;
 
 use self::raw_to_offline::FromRaw;
 
-pub async fn build_offline(
-    root_folder: impl AsRef<Path>,
-    origin: String,
-    source_control_cas: lgn_content_store2::Config,
-    incremental: bool,
-) {
+pub async fn build_offline(root_folder: impl AsRef<Path>, origin: String, incremental: bool) {
     let raw_dir = {
         if let Ok(entries) = root_folder.as_ref().read_dir() {
             let mut raw_dir = entries
@@ -88,8 +83,7 @@ pub async fn build_offline(
             .unwrap();
 
         //
-        let (mut project, resources) =
-            setup_project(root_folder.as_ref(), origin, source_control_cas).await;
+        let (mut project, resources) = setup_project(root_folder.as_ref(), origin).await;
         let mut resources = resources.lock().await;
 
         let gltf_folders = file_paths
@@ -225,13 +219,12 @@ pub async fn build_offline(
 async fn setup_project(
     root_folder: &Path,
     origin: String,
-    source_control_cas: lgn_content_store2::Config,
 ) -> (Project, Arc<Mutex<ResourceRegistry>>) {
     // create/load project
     let project = if let Ok(project) = Project::open(root_folder).await {
         Ok(project)
     } else {
-        Project::create(root_folder, origin, source_control_cas).await
+        Project::create(root_folder, origin).await
     }
     .unwrap();
 
