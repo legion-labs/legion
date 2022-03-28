@@ -254,7 +254,7 @@ export async function cloneResource({
  * @param jsonCommand
  * @returns
  */
-export async function onSendEditionCommand(jsonCommand: string) {
+export function onSendEditionCommand(jsonCommand: string) {
   log.info("video", `Sending edition_command=${jsonCommand}`);
 }
 
@@ -318,10 +318,10 @@ export async function closeScene({ id }: { id: string }) {
   return resourceBrowserClient.closeScene({ id });
 }
 
-export async function initLogStream() {
+export function initLogStream() {
   return editorClient.initLogStream({});
 }
 
-export async function initMessageStream() {
+export function initMessageStream() {
   return editorClient.initMessageStream({});
 }

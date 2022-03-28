@@ -13,10 +13,8 @@ import { MessageType } from "@lgn/proto-editor/dist/editor";
 import { fetchCurrentResourceDescription } from "@/orchestrators/currentResource";
 import { isEntry } from "@/lib/hierarchyTree";
 
-export async function initMessageStream() {
-  const messageStream = await initMessageStreamApi();
-
-  messageStream.subscribe(({ lagging, message }) => {
+export function initMessageStream() {
+  initMessageStreamApi().subscribe(({ lagging, message }) => {
     if (typeof lagging === "number") {
       // TODO: Handle lagging messages
 
@@ -26,6 +24,7 @@ export async function initMessageStream() {
     if (message) {
       switch (message.msgType) {
         case MessageType.SelectionChanged: {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           const resourceIds: string[] = JSON.parse(message.payload);
 
           // TODO: Catch error
@@ -38,7 +37,9 @@ export async function initMessageStream() {
 
           fetchCurrentResourceDescription(resourceIds[0], {
             notifySelection: false,
-          });
+          })
+            // TODO: Handle errors
+            .catch(() => undefined);
 
           const selectedEntry = get(resourceEntries).find(
             (entry) => isEntry(entry) && resourceIds.includes(entry.item.id)

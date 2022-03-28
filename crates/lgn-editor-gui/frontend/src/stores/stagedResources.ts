@@ -22,19 +22,18 @@ export async function initStagedResourcesStream(pollInternal = 2_000) {
   stagedResources.set(entries);
 
   // TODO: Have a stream on the backend?
-  const intervalId = setInterval(async () => {
-    const { entries } = await getStagedResources();
-
-    stagedResources.set(entries);
+  const intervalId = setInterval(() => {
+    getStagedResources()
+      .then(({ entries }) => stagedResources.set(entries))
+      // TODO: Handle errors
+      .catch(() => undefined);
   }, pollInternal);
 
   return () => clearInterval(intervalId);
 }
 
 export function syncFromMain() {
-  syncLatest();
-
-  return allResources.run(getAllResources);
+  return Promise.all([syncLatest(), allResources.run(getAllResources)]);
 }
 
 export async function submitToMain(message: string) {

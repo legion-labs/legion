@@ -58,6 +58,7 @@ export async function initializeStream(
   const client = getClientFor(serverType);
 
   const response = await client.initializeStream({
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     rtcSessionDescription: jsonToBytes(localSessionDescription.toJSON()),
   });
 
@@ -69,7 +70,7 @@ export async function initializeStream(
  * @param jsonMsg
  * @returns
  */
-export async function onReceiveControlMessage(jsonMsg: string) {
+export function onReceiveControlMessage(jsonMsg: string) {
   log.info("video", `Received control message. msg=${jsonMsg}`);
 }
 
@@ -79,7 +80,7 @@ export async function onReceiveControlMessage(jsonMsg: string) {
  * @param _chunkHeader
  * @returns
  */
-export async function onVideoChunkReceived(_chunkHeader: string) {
+export function onVideoChunkReceived(_chunkHeader: string) {
   return;
 }
 
@@ -88,6 +89,6 @@ export async function onVideoChunkReceived(_chunkHeader: string) {
  * Used for logging and telemetry purpose
  * @returns
  */
-export async function onVideoClose() {
+export function onVideoClose() {
   return;
 }

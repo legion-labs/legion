@@ -249,7 +249,7 @@ export function propertyIsComponent(
 export function propertyIsDynComponent(
   property: ResourceProperty
 ): property is ComponentResourceProperty {
-  return property.ptype.indexOf("<dyn Component>") != -1;
+  return property.ptype.indexOf("<dyn Component>") !== -1;
 }
 
 export function propertyIsGroup(
@@ -560,6 +560,7 @@ function formatProperty(
 
   return {
     name: property.name,
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     value: JSON.parse(property.jsonValue),
     ptype: property.ptype as PrimitiveResourceProperty["ptype"],
     attributes: property.attributes,

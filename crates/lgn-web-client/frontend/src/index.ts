@@ -101,13 +101,13 @@ export async function run({
 
       const token = authClient.accessToken;
 
-      if (!token) {
+      if (token) {
+        metadata.set("Authorization", `Bearer ${token}`);
+      } else {
         log.warn(
           "Couldn't build the grpc metadata object with auth, access token was not found"
         );
       }
-
-      metadata.set("Authorization", `Bearer ${token}`);
 
       grpcMetadata = metadata;
     }
@@ -187,13 +187,13 @@ export async function headlessRun({
 
       const token = authClient.accessToken;
 
-      if (!token) {
+      if (token) {
+        metadata.set("Authorization", `Bearer ${token}`);
+      } else {
         log.warn(
           "Couldn't build the grpc metadata object with auth, access token was not found"
         );
       }
-
-      metadata.set("Authorization", `Bearer ${token}`);
 
       grpcMetadata = metadata;
     }

@@ -367,7 +367,7 @@ describe("extractOptionPType", () => {
     expect(
       extractOptionPType({
         attributes: {},
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
         ptype: "Vec<String>" as any,
         name: "My resource property",
         subProperties: [],
@@ -379,7 +379,7 @@ describe("extractOptionPType", () => {
     expect(
       extractOptionPType({
         attributes: {},
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
         ptype: "Option<String" as any,
         name: "My resource property",
         subProperties: [],
@@ -404,7 +404,7 @@ describe("extractVecPType", () => {
     expect(
       extractVecPType({
         attributes: {},
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
         ptype: "Option<String>" as any,
         name: "My resource property",
         subProperties: [],
@@ -416,7 +416,7 @@ describe("extractVecPType", () => {
     expect(
       extractVecPType({
         attributes: {},
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
         ptype: "Vec<String" as any,
         name: "My resource property",
         subProperties: [],

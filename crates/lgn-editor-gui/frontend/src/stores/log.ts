@@ -19,10 +19,8 @@ export const logEntries = throttled(
   500
 );
 
-export async function initLogStream() {
-  const logStream = await initLogStreamApi();
-
-  return logStream.subscribe(({ lagging, traceEvent }) => {
+export function initLogStream() {
+  return initLogStreamApi().subscribe(({ lagging, traceEvent }) => {
     if (get(streamedLogEntries).length > buffer - 1) {
       get(streamedLogEntries).shift();
     }

@@ -65,7 +65,8 @@ class IssuerConfiguration {
     fetch = globalThis.fetch.bind(globalThis)
   ) {
     const configResponse = await fetch(url + suffix);
-    const config = await configResponse.json();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const config: IssuerConfiguration["config"] = await configResponse.json();
 
     return new IssuerConfiguration(config);
   }
@@ -238,6 +239,7 @@ class Client<UserInfo> {
       throw new Error(await response.text());
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return response.json();
   }
 
@@ -311,6 +313,7 @@ class Client<UserInfo> {
       throw new Error(await response.text());
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return response.json();
   }
 }
@@ -447,9 +450,13 @@ export class LegionClient extends Client<UserInfo> {
       throw new Error("Couldn't find verifier in storage");
     }
 
-    const clientTokenSet = await authClient.exchangeCode(code, {
-      pkceVerifier: verifier,
-    });
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const clientTokenSet: ClientTokenSet | null = await authClient.exchangeCode(
+      code,
+      {
+        pkceVerifier: verifier,
+      }
+    );
 
     if (!clientTokenSet) {
       throw new Error("No client token set returned by the provider");
@@ -551,10 +558,10 @@ export async function initAuth({
       await userInfo.run(async () => {
         const { invoke } = await import("@tauri-apps/api");
 
-        const userInfo = (await invoke("plugin:browser|authenticate", {
+        const userInfo = await invoke("plugin:browser|authenticate", {
           scopes: authClient.loginConfig.scopes,
           extraParams: authClient.loginConfig.extraParams,
-        })) as UserInfo;
+        });
 
         log.debug("auth", userInfo);
 

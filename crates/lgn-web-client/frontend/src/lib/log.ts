@@ -56,6 +56,7 @@ function init() {
   if (typeof localStorage !== "undefined") {
     const log = localStorage.getItem(localStorageKey);
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     globalThis.__LOG__ = log ? JSON.parse(log) : null;
   } else {
     globalThis.__LOG__ = null;
