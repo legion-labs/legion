@@ -21,7 +21,7 @@
     currentResource,
     fetchCurrentResourceDescription,
   } from "@/orchestrators/currentResource";
-  import { components, extension, join } from "@/lib/path";
+  import { components, join } from "@/lib/path";
   import notifications from "@/stores/notifications";
   import type { Entries, Entry } from "@/lib/hierarchyTree";
   import { isEntry } from "@/lib/hierarchyTree";

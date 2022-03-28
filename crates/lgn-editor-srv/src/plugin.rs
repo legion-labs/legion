@@ -22,7 +22,7 @@ use lgn_input::{
 use lgn_scene_plugin::ActiveScenes;
 use lgn_tracing::{error, info, warn};
 use lgn_transform::components::Transform;
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{broadcast, Mutex};
 
 use crate::grpc::TraceEventsReceiver;
 use crate::grpc::{SelectionEvent, SelectionEventsReceiver};
@@ -35,8 +35,7 @@ pub struct EditorPlugin;
 
 impl Plugin for EditorPlugin {
     fn build(&self, app: &mut App) {
-        let (selection_events_sender, selection_events_receiver) =
-            mpsc::unbounded_channel::<SelectionEvent>();
+        let (selection_events_sender, selection_events_receiver) = broadcast::channel(1_000);
         let selection_events_receiver: SelectionEventsReceiver = selection_events_receiver.into();
 
         app
@@ -78,7 +77,7 @@ impl EditorPlugin {
         selection_manager: Res<'_, Arc<SelectionManager>>,
         picking_manager: Res<'_, PickingManager>,
         active_scenes: Res<'_, ActiveScenes>,
-        event_sender: Res<'_, mpsc::UnboundedSender<SelectionEvent>>,
+        event_sender: Res<'_, broadcast::Sender<SelectionEvent>>,
     ) {
         if let Some(selection) = selection_manager.update() {
             // Convert the SelectionManager offlineId to RuntimeId
