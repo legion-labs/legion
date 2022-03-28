@@ -58,6 +58,22 @@ impl<'a> LockContext<'a> {
             .clone())
     }
 
+    /// Load or reload a Resource from its id
+    pub async fn reload(&mut self, resource_id: ResourceTypeAndId) -> Result<(), Error> {
+        let handle = self
+            .project
+            .load_resource(resource_id, &mut self.resource_registry)
+            .map_err(|err| Error::Project(resource_id, err))?;
+
+        self.loaded_resource_handles.insert(resource_id, handle);
+        Ok(())
+    }
+
+    /// Unload a Resource from its id
+    pub async fn unload(&mut self, resource_id: ResourceTypeAndId) {
+        self.loaded_resource_handles.remove(resource_id);
+    }
+
     pub(crate) async fn save_changed_resources(&mut self) -> Result<(), Error> {
         for resource_id in &self.changed_resources {
             if let Some(handle) = self.loaded_resource_handles.get(*resource_id) {

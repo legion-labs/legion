@@ -124,9 +124,12 @@ impl TransactionManager {
             .await
             .map_err(|err| Error::Databuild(resource_id, err))?;
 
-        // Reload runtime asset
+        // Reload runtime asset (just entity for now)
         for asset_id in changed_assets {
-            if asset_id.kind.as_pretty().starts_with("runtime_") {
+            // Try to reload, if it doesn't exist, load normally
+            if asset_id.kind.as_pretty().starts_with("runtime_")
+                && !ctx.asset_registry.reload(asset_id)
+            {
                 ctx.asset_registry.load_untyped(asset_id);
             }
         }
