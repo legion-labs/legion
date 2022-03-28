@@ -10,7 +10,7 @@ use gltf::{
 use lgn_app::{App, EventReader, Events, Plugin};
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::{IntoExclusiveSystem, Local, Query, Res, ResMut, Without};
-use lgn_math::Vec3;
+use lgn_math::{EulerRot, Mat3, Vec3};
 use lgn_transform::components::GlobalTransform;
 
 use crate::{
@@ -48,14 +48,8 @@ pub(crate) fn on_scene_export_requested(
     if event_scene_export_requested.is_empty() {
         return;
     }
-    let dir = format!(
-        "{}/scene_export",
-        event_scene_export_requested
-            .iter()
-            .next()
-            .unwrap()
-            .export_path
-    );
+    let event = event_scene_export_requested.iter().next().unwrap();
+    let dir = format!("{}/scene_export", event.export_path);
     let _ = std::fs::create_dir_all(&dir).unwrap();
 
     let mut nodes = Vec::new();
@@ -73,6 +67,7 @@ pub(crate) fn on_scene_export_requested(
     for (visual, transform) in visuals.iter() {
         if let Some(model_id) = visual.model_resource_id {
             model_ids.insert(model_id);
+        } else {
         }
     }
 
@@ -101,7 +96,13 @@ pub(crate) fn on_scene_export_requested(
         let mut json_primitives = Vec::new();
         for mesh in &model_meta_data.meshes {
             let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
-            let ptr = mesh_meta_data.source_data.positions.as_ptr() as *const u8;
+            let positions: Vec<Vec3> = mesh_meta_data
+                .source_data
+                .positions
+                .iter()
+                .map(|pos| Vec3::new(pos.x, pos.y, -pos.z))
+                .collect();
+            let ptr = positions.as_ptr() as *const u8;
             let size_pos = mesh_meta_data.source_data.positions.len() * std::mem::size_of::<Vec3>();
             writer.write_all(unsafe { core::slice::from_raw_parts(ptr, size_pos) });
             let buffer_view = gltf::json::buffer::View {
@@ -147,6 +148,10 @@ pub(crate) fn on_scene_export_requested(
             let mut indices = None;
 
             if let Some(source_indices) = &mesh_meta_data.source_data.indices {
+                let mut source_indices = source_indices.clone();
+                for i in 0..source_indices.len() / 3 {
+                    source_indices.swap(i * 3 + 1, i * 3 + 2);
+                }
                 let ptr = source_indices.as_ptr() as *const u8;
                 let size_indices = source_indices.len() * std::mem::size_of::<u16>();
                 writer.write_all(unsafe { core::slice::from_raw_parts(ptr, size_indices) });
@@ -233,9 +238,23 @@ pub(crate) fn on_scene_export_requested(
                     model_ids.iter().position(|v| *v == model_id).unwrap() as u32,
                 )),
                 name: Some("mesh".into()),
-                rotation: Some(gltf::json::scene::UnitQuaternion(transform.rotation.into())),
+                rotation: Some(gltf::json::scene::UnitQuaternion({
+                    let (axis, angle) = transform.rotation.to_axis_angle();
+                    lgn_math::Quat::from_axis_angle(Vec3::new(axis.x, axis.y, -axis.z), -angle)
+                        .into()
+                    //[
+                    //transform.rotation.x,
+                    //transform.rotation.y,
+                    //-transform.rotation.z,
+                    //-transform.rotation.w,
+                    //]
+                })),
                 scale: Some(transform.scale.into()),
-                translation: Some(transform.translation.into()),
+                translation: Some([
+                    transform.translation.x,
+                    transform.translation.y,
+                    -transform.translation.z,
+                ]),
                 skin: None,
                 weights: None,
             };
@@ -280,11 +299,20 @@ pub(crate) fn on_scene_export_requested(
             matrix: None,
             mesh: None,
             name: Some(format!("Camera {}", camera_idx)),
-            rotation: Some(gltf::json::scene::UnitQuaternion(
-                camera.camera_rig.final_transform.rotation.into(),
-            )),
+            rotation: Some(gltf::json::scene::UnitQuaternion({
+                let (yaw, pitch, roll) = camera
+                    .camera_rig
+                    .final_transform
+                    .rotation
+                    .to_euler(EulerRot::YXZ);
+                lgn_math::Quat::from_euler(EulerRot::YXZ, -yaw + event.add_angle, pitch, 0.0).into()
+            })),
             scale: None,
-            translation: Some(camera.camera_rig.final_transform.position.into()),
+            translation: Some([
+                camera.camera_rig.final_transform.position.x,
+                camera.camera_rig.final_transform.position.y,
+                -camera.camera_rig.final_transform.position.z,
+            ]),
             skin: None,
             weights: None,
         };
@@ -351,31 +379,40 @@ fn export_extensions(
             matrix: None,
             mesh: None,
             name: Some(format!("Light {} orientation", light_idx)),
-            rotation: Some(gltf::json::scene::UnitQuaternion(transform.rotation.into())),
+            rotation: Some(gltf::json::scene::UnitQuaternion([
+                -transform.rotation.x,
+                -transform.rotation.y,
+                transform.rotation.z,
+                transform.rotation.w,
+            ])),
             scale: None,
-            translation: None,
+            translation: Some([
+                transform.translation.x,
+                transform.translation.y,
+                transform.translation.z,
+            ]),
             skin: None,
             weights: None,
         };
         nodes.push(node);
-        let node = gltf::json::Node {
-            camera: None,
-            children: Some(vec![Index::new(*node_idx)]),
-            extensions: None,
-            extras: Default::default(),
-            matrix: None,
-            mesh: None,
-            name: Some(format!("Light {}", light_idx)),
-            rotation: Some(gltf::json::scene::UnitQuaternion(transform.rotation.into())),
-            scale: None,
-            translation: Some(transform.translation.into()),
-            skin: None,
-            weights: None,
-        };
-        nodes.push(node);
-        scene_node_indices.push(Index::new(*node_idx + 1));
+        //let node = gltf::json::Node {
+        //    camera: None,
+        //    children: Some(vec![Index::new(*node_idx)]),
+        //    extensions: None,
+        //    extras: Default::default(),
+        //    matrix: None,
+        //    mesh: None,
+        //    name: Some(format!("Light {}", light_idx)),
+        //    rotation: Some(gltf::json::scene::UnitQuaternion(transform.rotation.into())),
+        //    scale: None,
+        //    translation: Some(transform.translation.into()),
+        //    skin: None,
+        //    weights: None,
+        //};
+        //nodes.push(node);
+        scene_node_indices.push(Index::new(*node_idx));
         light_idx += 1;
-        *node_idx += 2;
+        *node_idx += 1;
     }
     let extensions = gltf::json::extensions::root::Root {
         khr_lights_punctual: Some(gltf::json::extensions::root::KhrLightsPunctual {
@@ -412,12 +449,20 @@ fn export_light(light: &LightComponent) -> KhrLight {
 
 pub(crate) struct UiData {
     path: String,
+    mul_x: f32,
+    mul_y: f32,
+    mul_z: f32,
+    add_angle: f32,
 }
 
 impl Default for UiData {
     fn default() -> Self {
         UiData {
             path: String::from("C:/scene_export"),
+            mul_x: 1.0,
+            mul_y: 1.0,
+            mul_z: 1.0,
+            add_angle: 0.0,
         }
     }
 }
@@ -426,12 +471,32 @@ pub(crate) fn ui_scene_exporter(
     egui: Res<'_, Egui>,
     mut event_scene_export_requested: ResMut<'_, Events<SceneExportRequested>>,
     mut ui_data: Local<'_, UiData>,
+    cameras: Query<'_, '_, &CameraComponent>,
 ) {
     egui::Window::new("Scene export").show(&egui.ctx, |ui| {
         ui.text_edit_singleline(&mut ui_data.path);
+        ui.add(egui::Slider::new(&mut ui_data.mul_x, -1.0..=1.0).text("mul_x"));
+        ui.add(egui::Slider::new(&mut ui_data.mul_y, -1.0..=1.0).text("mul_y"));
+        ui.add(egui::Slider::new(&mut ui_data.mul_z, -1.0..=1.0).text("mul_z"));
+        ui.add(egui::Slider::new(&mut ui_data.add_angle, -3.1415..=3.1415).text("add_angle"));
+
+        let (axis, angle) = cameras
+            .iter()
+            .next()
+            .unwrap()
+            .camera_rig
+            .final_transform
+            .rotation
+            .to_axis_angle();
+        ui.label(format!("Axis: {:?}, angle: {}", axis, angle));
+
         if ui.button("Export").clicked() {
             event_scene_export_requested.send(SceneExportRequested {
                 export_path: ui_data.path.clone(),
+                mul_x: ui_data.mul_x,
+                mul_y: ui_data.mul_y,
+                mul_z: ui_data.mul_z,
+                add_angle: ui_data.add_angle,
             });
         }
     });
@@ -439,4 +504,8 @@ pub(crate) fn ui_scene_exporter(
 
 pub(crate) struct SceneExportRequested {
     export_path: String,
+    mul_x: f32,
+    mul_y: f32,
+    mul_z: f32,
+    add_angle: f32,
 }
