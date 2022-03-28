@@ -15,12 +15,12 @@ use crate::{
     RenderContext,
 };
 
-pub struct FinalResolve {
+pub struct FinalResolveRenderPass {
     pipeline_handle: PipelineHandle,
     linear_sampler: Sampler,
 }
 
-impl FinalResolve {
+impl FinalResolveRenderPass {
     pub fn new(device_context: &DeviceContext, pipeline_manager: &PipelineManager) -> Self {
         let linear_sampler_def = SamplerDef {
             min_filter: FilterType::Nearest,

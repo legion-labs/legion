@@ -15,7 +15,9 @@ use uuid::Uuid;
 use crate::egui::egui_pass::EguiPass;
 use crate::gpu_renderer::HzbSurface;
 use crate::hl_gfx_api::HLCommandBuffer;
-use crate::render_pass::{DebugRenderPass, FinalResolve, PickingRenderPass, RenderTarget};
+use crate::render_pass::{
+    DebugRenderPass, FinalResolveRenderPass, PickingRenderPass, RenderTarget,
+};
 use crate::resources::PipelineManager;
 use crate::{RenderContext, Renderer};
 
@@ -157,7 +159,7 @@ pub struct RenderSurface {
     picking_renderpass: Arc<RwLock<PickingRenderPass>>,
     debug_renderpass: Arc<RwLock<DebugRenderPass>>,
     egui_renderpass: Arc<RwLock<EguiPass>>,
-    final_resolve: Arc<RwLock<FinalResolve>>,
+    final_resolve_render_pass: Arc<RwLock<FinalResolveRenderPass>>,
 }
 
 impl RenderSurface {
@@ -192,8 +194,8 @@ impl RenderSurface {
         self.egui_renderpass.clone()
     }
 
-    pub fn final_resolve(&self) -> Arc<RwLock<FinalResolve>> {
-        self.final_resolve.clone()
+    pub fn final_resolve_render_pass(&self) -> Arc<RwLock<FinalResolveRenderPass>> {
+        self.final_resolve_render_pass.clone()
     }
 
     pub fn resize(
@@ -368,7 +370,7 @@ impl RenderSurface {
             picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(device_context))),
             debug_renderpass: Arc::new(RwLock::new(DebugRenderPass::new(pipeline_manager))),
             egui_renderpass: Arc::new(RwLock::new(EguiPass::new(device_context, pipeline_manager))),
-            final_resolve: Arc::new(RwLock::new(FinalResolve::new(
+            final_resolve_render_pass: Arc::new(RwLock::new(FinalResolveRenderPass::new(
                 device_context,
                 pipeline_manager,
             ))),

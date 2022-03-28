@@ -620,10 +620,10 @@ fn render_update(
         }
 
         // final resolve
-        let final_resolve = render_surface.final_resolve();
-        let final_resolve = final_resolve.write();
+        let final_resolve_render_pass = render_surface.final_resolve_render_pass();
+        let final_resolve_render_pass = final_resolve_render_pass.write();
 
-        final_resolve.render(&render_context, &mut render_surface, &mut cmd_buffer);
+        final_resolve_render_pass.render(&render_context, &mut render_surface, &mut cmd_buffer);
 
         // queue
         let sems = render_surface.acquire();
