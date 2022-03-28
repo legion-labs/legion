@@ -680,9 +680,12 @@ pub fn log_entry_from_value(val: &Value) -> Result<Option<(i64, String)>> {
                 let level = obj
                     .get::<u32>("level")
                     .with_context(|| format!("reading level from {}", obj.type_name.as_str()))?;
-                let _target = obj
-                    .get::<Arc<String>>("target")
-                    .with_context(|| format!("reading target from {}", obj.type_name.as_str()))?;
+                // let _target = obj
+                //     .get::<Arc<String>>("target")
+                //     .with_context(|| format!("reading target from {}", obj.type_name.as_str()))?;
+                if let Err(e) = obj.get::<Arc<String>>("target") {
+                    error!("Error reading target for obj {:?}: {}", &obj, e);
+                }
                 let msg = obj
                     .get::<Arc<String>>("msg")
                     .with_context(|| format!("reading msg from {}", obj.type_name.as_str()))?;
