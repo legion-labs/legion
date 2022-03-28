@@ -157,7 +157,7 @@ impl TelemetryGuardBuilder {
                 arc
             } else {
                 let mut sinks: Vec<(LevelFilter, BoxedEventSink)> = vec![];
-                if let Ok(url) = std::env::var("LEGION_TELEMETRY_URL") {
+                if let Ok(url) = std::env::var("LGN_TELEMETRY_URL") {
                     sinks.push((
                         self.grpc_sink_max_level,
                         Box::new(GRPCEventSink::new(&url, self.max_queue_size)),

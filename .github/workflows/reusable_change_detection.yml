@@ -30,7 +30,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  LEGION_TELEMETRY_URL: https://api.live.playground.legionlabs.com
+  LGN_TELEMETRY_URL: https://api.live.playground.legionlabs.com
 
 jobs:
   change_detection:

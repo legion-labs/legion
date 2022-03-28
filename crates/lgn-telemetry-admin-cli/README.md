@@ -14,10 +14,10 @@
  
  - open a new console
  
- - enable telemetry by specifying the url in the environment variable LEGION_TELEMETRY_URL
+ - enable telemetry by specifying the url in the environment variable LGN_TELEMETRY_URL
  
 ```
-> SET LEGION_TELEMETRY_URL=http://localhost:8080
+> SET LGN_TELEMETRY_URL=http://localhost:8080
 ```
 
  - generate data by running instrumented unit tests in this shell
