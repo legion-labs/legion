@@ -4,8 +4,8 @@ use std::{
 };
 
 use gltf::{
-    json::{validation::Checked, Index},
-    Semantic,
+    json::{validation::Checked, Index, Node},
+    Scene, Semantic,
 };
 use lgn_app::{App, EventReader, Events, Plugin};
 use lgn_data_runtime::ResourceTypeAndId;
@@ -35,14 +35,102 @@ impl Plugin for SceneExporterPlugin {
     }
 }
 
-#[allow(unsafe_code)]
+struct SceneExportContext {
+    nodes: Vec<Node>,
+    scene_nodes: Vec<Index<Node>>,
+}
+
+impl SceneExportContext {
+    fn new() -> SceneExportContext {
+        SceneExportContext {
+            nodes: Vec::new(),
+            scene_nodes: Vec::new(),
+        }
+    }
+
+    fn export_extensions(
+        &mut self,
+        lights: &Query<'_, '_, (&LightComponent, &GlobalTransform)>,
+    ) -> gltf::json::extensions::root::Root {
+        let mut khr_lights = Vec::new();
+        for (light, transform) in lights.iter() {
+            let light_idx = khr_lights.len() as u32;
+            khr_lights.push(Self::export_light(light));
+            let node = gltf::json::Node {
+                camera: None,
+                children: None,
+                extensions: Some(gltf::json::extensions::scene::Node {
+                    khr_lights_punctual: Some(
+                        gltf::json::extensions::scene::khr_lights_punctual::KhrLightsPunctual {
+                            light: Index::new(light_idx),
+                        },
+                    ),
+                }),
+                extras: Default::default(),
+                matrix: None,
+                mesh: None,
+                name: Some(format!("Light {} orientation", light_idx)),
+                // TODO: check transforms
+                rotation: Some(gltf::json::scene::UnitQuaternion([
+                    -transform.rotation.x,
+                    -transform.rotation.y,
+                    transform.rotation.z,
+                    transform.rotation.w,
+                ])),
+                scale: None,
+                translation: Some([
+                    transform.translation.x,
+                    transform.translation.y,
+                    transform.translation.z,
+                ]),
+                skin: None,
+                weights: None,
+            };
+            let node_id = self.nodes.len() as u32;
+            self.scene_nodes.push(Index::new(node_id));
+            self.nodes.push(node);
+        }
+        gltf::json::extensions::root::Root {
+            khr_lights_punctual: Some(gltf::json::extensions::root::KhrLightsPunctual {
+                lights: khr_lights,
+            }),
+        }
+    }
+
+    fn export_light(light: &LightComponent) -> KhrLight {
+        KhrLight {
+            color: light.color.to_array(),
+            extensions: None,
+            extras: gltf::json::Extras::default(),
+            intensity: light.radiance,
+            name: None,
+            range: None,
+            spot: match light.light_type {
+                LightType::Spotlight { cone_angle } => {
+                    Some(gltf::json::extensions::scene::khr_lights_punctual::Spot {
+                        inner_cone_angle: cone_angle * 0.9,
+                        outer_cone_angle: cone_angle,
+                    })
+                }
+                _ => None,
+            },
+            type_: gltf::json::validation::Checked::Valid(match light.light_type {
+                LightType::Directional => KhrLightType::Directional,
+                LightType::Omnidirectional => KhrLightType::Point,
+                LightType::Spotlight { cone_angle } => KhrLightType::Spot,
+            }),
+        }
+    }
+}
+
+#[allow(unsafe_code, clippy::needless_pass_by_value)]
 pub(crate) fn on_scene_export_requested(
     mut event_scene_export_requested: EventReader<'_, '_, SceneExportRequested>,
     visuals: Query<'_, '_, (&VisualComponent, &GlobalTransform), Without<ManipulatorComponent>>,
     lights: Query<'_, '_, (&LightComponent, &GlobalTransform)>,
     cameras: Query<'_, '_, &CameraComponent>,
-    model_manager: Res<ModelManager>,
-    mesh_manager: Res<MeshManager>,
+    model_manager: Res<'_, ModelManager>,
+    mesh_manager: Res<'_, MeshManager>,
     render_surfaces: Query<'_, '_, &mut RenderSurface>,
 ) {
     if event_scene_export_requested.is_empty() {
@@ -52,16 +140,9 @@ pub(crate) fn on_scene_export_requested(
     let dir = format!("{}/scene_export", event.export_path);
     let _ = std::fs::create_dir_all(&dir).unwrap();
 
-    let mut nodes = Vec::new();
-    let mut scene_node_indices = Vec::new();
-    let mut node_idx = 0;
+    let mut ctx = SceneExportContext::new();
 
-    let extensions = Some(export_extensions(
-        &mut nodes,
-        &lights,
-        &mut node_idx,
-        &mut scene_node_indices,
-    ));
+    let extensions = Some(ctx.export_extensions(&lights));
 
     let mut model_ids = HashSet::new();
     for (visual, transform) in visuals.iter() {
@@ -238,17 +319,12 @@ pub(crate) fn on_scene_export_requested(
                     model_ids.iter().position(|v| *v == model_id).unwrap() as u32,
                 )),
                 name: Some("mesh".into()),
-                rotation: Some(gltf::json::scene::UnitQuaternion({
-                    let (axis, angle) = transform.rotation.to_axis_angle();
-                    lgn_math::Quat::from_axis_angle(Vec3::new(axis.x, axis.y, -axis.z), -angle)
-                        .into()
-                    //[
-                    //transform.rotation.x,
-                    //transform.rotation.y,
-                    //-transform.rotation.z,
-                    //-transform.rotation.w,
-                    //]
-                })),
+                rotation: Some(gltf::json::scene::UnitQuaternion([
+                    -transform.rotation.x,
+                    -transform.rotation.y,
+                    transform.rotation.z,
+                    transform.rotation.w,
+                ])),
                 scale: Some(transform.scale.into()),
                 translation: Some([
                     transform.translation.x,
@@ -258,9 +334,9 @@ pub(crate) fn on_scene_export_requested(
                 skin: None,
                 weights: None,
             };
-            nodes.push(node);
-            scene_node_indices.push(Index::new(node_idx));
-            node_idx += 1;
+            let node_idx = ctx.nodes.len() as u32;
+            ctx.scene_nodes.push(Index::new(node_idx));
+            ctx.nodes.push(node);
         }
     }
 
@@ -272,7 +348,7 @@ pub(crate) fn on_scene_export_requested(
             orthographic: None,
             perspective: Some(gltf::json::camera::Perspective {
                 aspect_ratio: {
-                    //TODO: better way to grab ascpect_ratio
+                    //TODO: better way to grab aspect_ratio
                     let render_surface = render_surfaces.iter().next().unwrap();
                     Some(
                         render_surface.extents().width() as f32
@@ -305,7 +381,7 @@ pub(crate) fn on_scene_export_requested(
                     .final_transform
                     .rotation
                     .to_euler(EulerRot::YXZ);
-                lgn_math::Quat::from_euler(EulerRot::YXZ, -yaw + event.add_angle, pitch, 0.0).into()
+                lgn_math::Quat::from_euler(EulerRot::YXZ, -yaw + 3.1415, pitch, 0.0).into()
             })),
             scale: None,
             translation: Some([
@@ -316,17 +392,17 @@ pub(crate) fn on_scene_export_requested(
             skin: None,
             weights: None,
         };
-        nodes.push(node);
-        scene_node_indices.push(Index::new(node_idx));
+        let node_idx = ctx.nodes.len() as u32;
+        ctx.scene_nodes.push(Index::new(node_idx));
+        ctx.nodes.push(node);
         camera_idx += 1;
-        node_idx += 1;
     }
 
     let scene = gltf::json::Scene {
         extensions: Default::default(),
         extras: Default::default(),
         name: Some("Legion scene".into()),
-        nodes: scene_node_indices,
+        nodes: ctx.scene_nodes,
     };
 
     let root = gltf::json::Root {
@@ -344,7 +420,7 @@ pub(crate) fn on_scene_export_requested(
         //images: todo!(),
         //materials: todo!(),
         meshes: json_meshes,
-        nodes,
+        nodes: ctx.nodes,
         //samplers: todo!(),
         scenes: vec![scene],
         //skins: todo!(),
@@ -353,98 +429,6 @@ pub(crate) fn on_scene_export_requested(
     };
     let writer = std::fs::File::create(format!("{}/scene.gltf", dir)).expect("I/O error");
     gltf::json::serialize::to_writer_pretty(writer, &root).expect("Serialization error");
-}
-
-fn export_extensions(
-    nodes: &mut Vec<gltf::json::Node>,
-    lights: &Query<'_, '_, (&LightComponent, &GlobalTransform)>,
-    node_idx: &mut u32,
-    scene_node_indices: &mut Vec<Index<gltf::json::Node>>,
-) -> gltf::json::extensions::root::Root {
-    let mut light_idx = 0;
-    let mut khr_lights = Vec::new();
-    for (light, transform) in lights.iter() {
-        khr_lights.push(export_light(light));
-        let node = gltf::json::Node {
-            camera: None,
-            children: None,
-            extensions: Some(gltf::json::extensions::scene::Node {
-                khr_lights_punctual: Some(
-                    gltf::json::extensions::scene::khr_lights_punctual::KhrLightsPunctual {
-                        light: Index::new(light_idx),
-                    },
-                ),
-            }),
-            extras: Default::default(),
-            matrix: None,
-            mesh: None,
-            name: Some(format!("Light {} orientation", light_idx)),
-            rotation: Some(gltf::json::scene::UnitQuaternion([
-                -transform.rotation.x,
-                -transform.rotation.y,
-                transform.rotation.z,
-                transform.rotation.w,
-            ])),
-            scale: None,
-            translation: Some([
-                transform.translation.x,
-                transform.translation.y,
-                transform.translation.z,
-            ]),
-            skin: None,
-            weights: None,
-        };
-        nodes.push(node);
-        //let node = gltf::json::Node {
-        //    camera: None,
-        //    children: Some(vec![Index::new(*node_idx)]),
-        //    extensions: None,
-        //    extras: Default::default(),
-        //    matrix: None,
-        //    mesh: None,
-        //    name: Some(format!("Light {}", light_idx)),
-        //    rotation: Some(gltf::json::scene::UnitQuaternion(transform.rotation.into())),
-        //    scale: None,
-        //    translation: Some(transform.translation.into()),
-        //    skin: None,
-        //    weights: None,
-        //};
-        //nodes.push(node);
-        scene_node_indices.push(Index::new(*node_idx));
-        light_idx += 1;
-        *node_idx += 1;
-    }
-    let extensions = gltf::json::extensions::root::Root {
-        khr_lights_punctual: Some(gltf::json::extensions::root::KhrLightsPunctual {
-            lights: khr_lights,
-        }),
-    };
-    extensions
-}
-
-fn export_light(light: &LightComponent) -> KhrLight {
-    KhrLight {
-        color: light.color.to_array(),
-        extensions: None,
-        extras: gltf::json::Extras::default(),
-        intensity: light.radiance,
-        name: None,
-        range: None,
-        spot: match light.light_type {
-            LightType::Spotlight { cone_angle } => {
-                Some(gltf::json::extensions::scene::khr_lights_punctual::Spot {
-                    inner_cone_angle: cone_angle * 0.9,
-                    outer_cone_angle: cone_angle,
-                })
-            }
-            _ => None,
-        },
-        type_: gltf::json::validation::Checked::Valid(match light.light_type {
-            LightType::Directional => KhrLightType::Directional,
-            LightType::Omnidirectional => KhrLightType::Point,
-            LightType::Spotlight { cone_angle } => KhrLightType::Spot,
-        }),
-    }
 }
 
 pub(crate) struct UiData {
