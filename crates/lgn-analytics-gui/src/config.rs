@@ -1,5 +1,5 @@
 use clap::Parser;
-use url::Url;
+use http::Uri;
 
 const DEFAULT_ISSUER_URL: &str =
     "https://cognito-idp.ca-central-1.amazonaws.com/ca-central-1_SkZKDimWz";
@@ -20,7 +20,7 @@ pub struct Config {
 
     /// The issuer (i.e. oauth provider) URL
     #[clap(long, default_value = DEFAULT_ISSUER_URL)]
-    pub issuer_url: Url,
+    pub issuer_url: Uri,
 
     /// The client id as registered in the issuer
     #[clap(long, default_value = DEFAULT_CLIENT_ID)]
@@ -28,7 +28,7 @@ pub struct Config {
 
     /// The redirect uri (must be registered in the issuer)
     #[clap(long, default_value = DEFAULT_REDIRECT_URI)]
-    pub redirect_uri: Url,
+    pub redirect_uri: Uri,
 }
 
 impl Config {

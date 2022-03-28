@@ -79,10 +79,10 @@ async fn main() -> anyhow::Result<()> {
         ])
         .expose_headers(tower_http::cors::Any {});
 
-    let signature_validation_config = lgn_online::authentication::SignatureValidationConfig::new()
-        .map_err(|err| anyhow::anyhow!("failed to load signature validation config: {}", err))?;
-
-    let validation = signature_validation_config.validation().await?;
+    let validation = lgn_online::Config::load()?
+        .signature_validation
+        .instantiate_validation()
+        .await?;
 
     let auth_layer =
         RequireAuthorizationLayer::custom(RequestAuthorizer::<UserInfo, _, _>::new(validation));

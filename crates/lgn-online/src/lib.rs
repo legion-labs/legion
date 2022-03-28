@@ -7,3 +7,9 @@ pub mod authentication;
 #[cfg(feature = "aws")]
 pub mod aws;
 pub mod grpc;
+
+mod config;
+mod errors;
+
+pub use config::{AuthenticationConfig, Config, OAuthClientConfig, SignatureValidationConfig};
+pub use errors::{Error, Result};

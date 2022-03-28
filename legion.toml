@@ -42,19 +42,22 @@ log_operation = false
 [logging.level_filters]
 #webrtc = "WARN"
 
-[authentication.signature_validation]
-type = "aws_cognito"
-region = "ca-central-1"
-user_pool_id = "ca-central-1_SkZKDimWz"
+[online]
+api_base_url = "https://api.live.playground.legionlabs.com"
+web_api_base_url = "https://web-api.live.playground.legionlabs.com"
 
-[authentication.authenticator]
-type = "oauth"
+# This section is used by clients.
+[online.authentication.oauth]
 issuer_url = "https://cognito-idp.ca-central-1.amazonaws.com/ca-central-1_SkZKDimWz"
 client_id = "5m58nrjfv6kr144prif9jk62di"
 redirect_uri = "http://localhost:3000/"
 
+# This section is used by servers.
+[online.signature_validation.aws_cognito]
+region = "ca-central-1"
+user_pool_id = "ca-central-1_SkZKDimWz"
+
 [content_store.persistent.provider.grpc]
-url = "https://api.live.playground.legionlabs.com"
 
 [[content_store.persistent.caching_providers]]
 [content_store.persistent.caching_providers.lru]

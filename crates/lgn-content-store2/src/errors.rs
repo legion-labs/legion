@@ -7,6 +7,8 @@ pub enum Error {
     MissingConfigurationSection { section: String },
     #[error("configuration error: {0}")]
     Configuration(#[from] lgn_config::Error),
+    #[error("online error: {0}")]
+    Online(#[from] lgn_online::Error),
     #[error("invalid identifier: {0}")]
     InvalidIdentifier(#[source] anyhow::Error),
     #[error("data mismatch: {reason}")]

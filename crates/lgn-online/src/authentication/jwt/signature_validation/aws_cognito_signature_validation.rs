@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use anyhow::{bail, Context};
 use lgn_tracing::debug;
 use serde::{Deserialize, Serialize};
 
@@ -8,7 +7,7 @@ use super::{
     BoxedSignatureValidation, SignatureValidation,
     ValidationResult::{self, Unsupported},
 };
-use crate::authentication::jwt::signature_validation::RsaSignatureValidation;
+use crate::authentication::{jwt::signature_validation::RsaSignatureValidation, Error, Result};
 
 pub struct AwsCognitoSignatureValidation {
     keys: HashMap<String, BoxedSignatureValidation>,
@@ -17,7 +16,7 @@ pub struct AwsCognitoSignatureValidation {
 impl AwsCognitoSignatureValidation {
     /// Create a new AWS cognito signature validation by fetching the signing
     /// key from the given region and user pool id.
-    pub async fn new(region: &str, aws_cognito_user_pool_id: &str) -> anyhow::Result<Self> {
+    pub async fn new(region: &str, aws_cognito_user_pool_id: &str) -> Result<Self> {
         let url = format!(
             "https://cognito-idp.{}.amazonaws.com/{}/.well-known/jwks.json",
             region, aws_cognito_user_pool_id,
@@ -25,14 +24,20 @@ impl AwsCognitoSignatureValidation {
 
         debug!("Loading JWKS from {}...", url);
 
-        let resp = reqwest::get(url).await.context("failed to fetch JWKS")?;
-        let data = resp.text().await.context("failed to read response body")?;
+        let resp = reqwest::get(url)
+            .await
+            .map_err(|err| Error::Internal(format!("failed to fetch JWKS: {}", err)))?;
+        let data = resp
+            .text()
+            .await
+            .map_err(|err| Error::Internal(format!("failed to read response body: {}", err)))?;
 
         Self::new_from_jwks(&data)
     }
 
-    fn new_from_jwks(data: &str) -> anyhow::Result<Self> {
-        let jwks: Jwks = serde_json::from_str(data).context("failed to parse JWKS")?;
+    fn new_from_jwks(data: &str) -> Result<Self> {
+        let jwks: Jwks = serde_json::from_str(data)
+            .map_err(|err| Error::Internal(format!("failed to parse JWKS: {}", err)))?;
         let keys = jwks
             .keys
             .into_iter()
@@ -45,9 +50,9 @@ impl AwsCognitoSignatureValidation {
         Self::new_from_keys(keys)
     }
 
-    fn new_from_keys(keys: HashMap<String, BoxedSignatureValidation>) -> anyhow::Result<Self> {
+    fn new_from_keys(keys: HashMap<String, BoxedSignatureValidation>) -> Result<Self> {
         if keys.is_empty() {
-            bail!("no valid keys found in JWKS");
+            return Err(Error::Internal("no valid keys found in JWKS".to_string()));
         }
 
         Ok(Self { keys })
@@ -89,22 +94,18 @@ struct Jwk {
 }
 
 impl Jwk {
-    fn to_rsa_signature_validation(&self) -> anyhow::Result<BoxedSignatureValidation> {
+    fn to_rsa_signature_validation(&self) -> Result<BoxedSignatureValidation> {
         match self.kty.as_str() {
             "RSA" => match &self.n {
-                None => {
-                    bail!(
-                        "Ignoring key {} as it does not contain the expected `n` value",
-                        self.kid
-                    );
-                }
+                None => Err(Error::Internal(format!(
+                    "Ignoring key {} as it does not contain the expected `n` value",
+                    self.kid
+                ))),
                 Some(n) => match &self.e {
-                    None => {
-                        bail!(
-                            "Ignoring key {} as it does not contain the expected `e` value",
-                            self.kid
-                        );
-                    }
+                    None => Err(Error::Internal(format!(
+                        "Ignoring key {} as it does not contain the expected `e` value",
+                        self.kid
+                    ))),
                     Some(e) => {
                         let rsa_signature_validation =
                             RsaSignatureValidation::new_from_components(n, e)?;
@@ -113,7 +114,10 @@ impl Jwk {
                     }
                 },
             },
-            _ => bail!("Unsupported key type {}", self.kty),
+            _ => Err(Error::Internal(format!(
+                "Unsupported key type {}",
+                self.kty
+            ))),
         }
     }
 }

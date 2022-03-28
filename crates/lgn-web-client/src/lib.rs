@@ -6,13 +6,13 @@
 //! ## Example
 //!
 //! ```no_run
-//! # use url::Url;
+//! # use http::Uri;
 //! #
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! # let issuer_url = Url::parse("https://something.auth-provider.com").unwrap();
+//! # let issuer_url = "https://something.auth-provider.com".parse().unwrap();
 //! # let client_id = "foobar";
-//! # let redirect_uri = Url::parse("http://whatever").unwrap();
+//! # let redirect_uri = "http://whatever".parse().unwrap();
 //! #
 //! // First you need the plugin itself:
 //! let browser_plugin = lgn_web_client::BrowserPlugin::new(
@@ -39,11 +39,11 @@
 use std::{collections::HashMap, sync::Arc};
 
 use anyhow::anyhow;
+use http::Uri;
 use lgn_online::authentication::{
     Authenticator, OAuthClient, TokenCache as OnlineTokenCache, UserInfo,
 };
 use tauri::{plugin::Plugin, Invoke, Manager, Runtime};
-use url::Url;
 
 type OAuthClientTokenCache = OnlineTokenCache<OAuthClient>;
 
@@ -85,7 +85,7 @@ pub struct BrowserPlugin<R: Runtime> {
 }
 
 impl<R: Runtime> BrowserPlugin<R> {
-    /// Creates a [`BrowserPlugin`] from an [`url::Url`] and an application
+    /// Creates a [`BrowserPlugin`] from an [`http::Uri`] and an application
     /// name. The application name will be used to lookup the
     /// `directories::ProjectDirs`.
     ///
@@ -95,9 +95,9 @@ impl<R: Runtime> BrowserPlugin<R> {
     /// Cognito) or if the project directories can't be found.
     pub async fn new(
         application: &str,
-        issuer_url: &Url,
+        issuer_url: &Uri,
         client_id: &str,
-        redirect_uri: &Url,
+        redirect_uri: &Uri,
     ) -> anyhow::Result<Self> {
         let projects_dir = directories::ProjectDirs::from("com", "legionlabs", application)
             .ok_or_else(|| anyhow!("Failed to get project directory"))?;

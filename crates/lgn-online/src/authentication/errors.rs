@@ -11,6 +11,8 @@ pub enum Error {
     InteractiveProcess(std::io::Error),
     #[error("internal error: {0}")]
     Internal(String),
+    #[error("configuration error: {0}")]
+    Config(#[from] lgn_config::Error),
     #[error(transparent)]
     Other(#[from] StdError),
 }

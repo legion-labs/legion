@@ -6,13 +6,15 @@ use std::ops::Deref;
 pub use aws_cognito_signature_validation::AwsCognitoSignatureValidation;
 pub use rsa_signature_validation::RsaSignatureValidation;
 
+use crate::authentication::{Error, Result};
+
 /// `ValidationResult` represents the result of a validation.
 #[derive(Debug)]
 pub enum ValidationResult<'a> {
     /// The signature is valid.
     Valid,
     /// The signature is invalid.
-    Invalid(anyhow::Error),
+    Invalid(Error),
     /// The signature has an unsupported format.
     Unsupported(&'a str, Option<&'a str>),
 }
@@ -24,11 +26,14 @@ impl ValidationResult<'_> {
     /// # Example
     ///
     /// ```rust
-    /// use lgn_online::authentication::jwt::signature_validation::ValidationResult::{Valid, Invalid, Unsupported};
+    /// use lgn_online::authentication::{
+    ///     Error,
+    ///     jwt::signature_validation::ValidationResult::{Valid, Invalid, Unsupported},
+    /// };
     ///
     /// assert!(Unsupported("", None).or_else(|| Valid).is_valid());
-    /// assert!(Invalid(anyhow::anyhow!("error")).or_else(|| Valid).is_invalid());
-    /// assert!(Valid.or_else(|| Invalid(anyhow::anyhow!("error"))).is_valid());
+    /// assert!(Invalid(Error::Internal("error".to_string())).or_else(|| Valid).is_invalid());
+    /// assert!(Valid.or_else(|| Invalid(Error::Internal("error".to_string()))).is_valid());
     /// ```
     pub fn or_else<F>(self, f: F) -> Self
     where
@@ -58,23 +63,28 @@ impl ValidationResult<'_> {
     /// # Example
     ///
     /// ```rust
-    /// use lgn_online::authentication::jwt::signature_validation::ValidationResult::{Valid, Invalid, Unsupported};
+    /// use lgn_online::authentication::{
+    ///     Error,
+    ///     jwt::signature_validation::ValidationResult::{Valid, Invalid, Unsupported},
+    /// };
     ///
     /// assert!(Valid.ok().is_ok());
-    /// assert!(Invalid(anyhow::anyhow!("error")).ok().is_err());
+    /// assert!(Invalid(Error::Internal("error".to_string())).ok().is_err());
     /// assert!(Unsupported("", None).ok().is_err());
     /// ```
-    pub fn ok(self) -> Result<(), anyhow::Error> {
+    pub fn ok(self) -> Result<()> {
         match self {
             Self::Valid => Ok(()),
             Self::Invalid(e) => Err(e),
             Self::Unsupported(alg, kid) => match kid {
-                Some(kid) => Err(anyhow::anyhow!(
+                Some(kid) => Err(Error::Internal(format!(
                     "unsupported signature algorithm '{}' with kid '{}'",
-                    alg,
-                    kid
-                )),
-                None => Err(anyhow::anyhow!("unsupported signature algorithm '{}'", alg)),
+                    alg, kid
+                ))),
+                None => Err(Error::Internal(format!(
+                    "unsupported signature algorithm '{}'",
+                    alg
+                ))),
             },
         }
     }

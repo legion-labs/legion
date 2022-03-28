@@ -207,6 +207,7 @@ dependencies = [
  "anyhow",
  "clap 3.1.6",
  "directories",
+ "http",
  "lgn-app",
  "lgn-async",
  "lgn-build-utils",
@@ -217,7 +218,6 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tokio",
- "url",
 ]
 
 [[package]]
@@ -2483,6 +2483,7 @@ dependencies = [
  "base64 0.13.0",
  "clap 3.1.6",
  "directories",
+ "http",
  "json",
  "lgn-analytics",
  "lgn-app",
@@ -2506,7 +2507,6 @@ dependencies = [
  "tauri-build",
  "tokio",
  "tonic",
- "url",
 ]
 
 [[package]]
@@ -5313,6 +5313,7 @@ dependencies = [
  "dyn-clone",
  "http",
  "http-body",
+ "http-serde",
  "hyper",
  "hyper-rustls 0.23.0",
  "lambda_http",
@@ -5823,11 +5824,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "directories",
+ "http",
  "lgn-online",
  "serde_json",
  "tauri",
  "tokio",
- "url",
 ]
 
 [[package]]
@@ -8404,6 +8405,7 @@ dependencies = [
  "anyhow",
  "clap 3.1.6",
  "directories",
+ "http",
  "lgn-app",
  "lgn-async",
  "lgn-build-utils",
@@ -8416,7 +8418,6 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tokio",
- "url",
 ]
 
 [[package]]

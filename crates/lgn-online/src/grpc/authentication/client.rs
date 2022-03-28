@@ -16,7 +16,7 @@ use crate::authentication::Authenticator;
 #[derive(Debug)]
 pub struct AuthenticatedClient<C, A> {
     client: C,
-    authenticator: Arc<A>,
+    authenticator: Option<Arc<A>>,
     scopes: Vec<String>,
     /// Typically the identity provider
     extra_params: Option<HashMap<String, String>>,
@@ -29,7 +29,7 @@ where
     fn clone(&self) -> Self {
         Self {
             client: self.client.clone(),
-            authenticator: Arc::clone(&self.authenticator),
+            authenticator: self.authenticator.clone(),
             scopes: self.scopes.clone(),
             extra_params: self.extra_params.clone(),
         }
@@ -40,10 +40,10 @@ impl<C, A> AuthenticatedClient<C, A>
 where
     A: Authenticator,
 {
-    pub fn new(client: C, authenticator: A, scopes: &[String]) -> Self {
+    pub fn new(client: C, authenticator: Option<A>, scopes: &[String]) -> Self {
         Self {
             client,
-            authenticator: Arc::new(authenticator),
+            authenticator: authenticator.map(Arc::new),
             scopes: scopes.to_vec(),
             extra_params: None,
         }
@@ -64,22 +64,21 @@ where
         A: 'a,
         'r: 'a,
     {
-        let authenticator = Arc::clone(&self.authenticator);
+        let authenticator = self.authenticator.clone();
         let scopes = self.scopes.clone();
         let extra_params = self.extra_params.clone();
 
         async move {
-            let token_set = authenticator
-                .login(&scopes, &extra_params)
-                .await
-                .map_err(Error::AuthenticationError)?;
+            if let Some(authenticator) = authenticator {
+                let token_set = authenticator.login(&scopes, &extra_params).await?;
 
-            req.headers_mut().insert(
-                "Authorization",
-                format!("Bearer {}", token_set.access_token)
-                    .parse()
-                    .unwrap(),
-            );
+                req.headers_mut().insert(
+                    "Authorization",
+                    format!("Bearer {}", token_set.access_token)
+                        .parse()
+                        .unwrap(),
+                );
+            }
 
             Ok(req)
         }

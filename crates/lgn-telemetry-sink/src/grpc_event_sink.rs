@@ -71,7 +71,7 @@ type AuthClientType = TelemetryIngestionClient<
 fn connect_grpc_client(uri: Uri) -> AuthClientType {
     let grpc_client = lgn_online::grpc::GrpcClient::new(uri);
     let auth_client =
-        lgn_online::grpc::AuthenticatedClient::new(grpc_client, StaticApiKey {}, &Vec::new());
+        lgn_online::grpc::AuthenticatedClient::new(grpc_client, Some(StaticApiKey {}), &Vec::new());
     TelemetryIngestionClient::new(auth_client)
 }
 

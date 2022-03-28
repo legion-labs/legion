@@ -1,6 +1,6 @@
-use anyhow::{anyhow, Context};
-
 use super::{signature_validation::SignatureValidation, Header, Validation};
+
+use crate::authentication::{Error, Result};
 
 /// A JWT.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -16,23 +16,25 @@ impl<'a> Token<'a> {
     /// Get the header of the JWT.
     ///
     /// This may fail if the header is not valid.
-    pub fn header(&self) -> anyhow::Result<Header> {
-        self.header.parse()
+    pub fn header(&self) -> Result<Header> {
+        self.header
+            .parse()
+            .map_err(|err| Error::Internal(format!("failed to parse header: {}", err)))
     }
 
     // Get the signature of the JWT.
     //
     // This may fail if the signature is not valid.
-    pub fn signature(&self) -> anyhow::Result<Vec<u8>> {
+    pub fn signature(&self) -> Result<Vec<u8>> {
         base64::decode_config(self.signature, base64::URL_SAFE_NO_PAD)
-            .context("invalid base64 JWT signature")
+            .map_err(|err| Error::Internal(format!("invalid base64 JWT signature: {}", err)))
     }
 
     /// Convert the token into its claims.
     ///
     /// This method does not validate the token and should **NOT** be used most
     /// of the time.
-    pub fn into_claims_unsafe<C>(self) -> anyhow::Result<C>
+    pub fn into_claims_unsafe<C>(self) -> Result<C>
     where
         C: serde::de::DeserializeOwned,
     {
@@ -43,22 +45,27 @@ impl<'a> Token<'a> {
     ///
     /// This method does not validate the token and should **NOT** be used most
     /// of the time.
-    pub(crate) fn to_claims_unsafe<C>(&self) -> anyhow::Result<C>
+    pub(crate) fn to_claims_unsafe<C>(&self) -> Result<C>
     where
         C: serde::de::DeserializeOwned,
     {
-        let payload = base64::decode_config(self.payload, base64::URL_SAFE_NO_PAD)
-            .context("failed to decode base64 JWT payload")?;
+        let payload =
+            base64::decode_config(self.payload, base64::URL_SAFE_NO_PAD).map_err(|err| {
+                Error::Internal(format!("failed to decode base64 JWT payload: {}", err))
+            })?;
 
-        serde_json::from_slice(payload.as_slice())
-            .context("failed to convert JWT payload into claims")
-            .map_err(Into::into)
+        serde_json::from_slice(payload.as_slice()).map_err(|err| {
+            Error::Internal(format!(
+                "failed to convert JWT payload into claims: {}",
+                err
+            ))
+        })
     }
 
     /// Convert the token into its claims.
     ///
     /// This method validates the token and is recommended.
-    pub fn into_claims<C, T>(self, validation: &Validation<T>) -> anyhow::Result<C>
+    pub fn into_claims<C, T>(self, validation: &Validation<T>) -> Result<C>
     where
         C: serde::de::DeserializeOwned,
         T: SignatureValidation,
@@ -67,7 +74,7 @@ impl<'a> Token<'a> {
     }
 
     /// Validate the token.
-    pub fn validate<T>(self, validation: &Validation<T>) -> anyhow::Result<Self>
+    pub fn validate<T>(self, validation: &Validation<T>) -> Result<Self>
     where
         T: SignatureValidation,
     {
@@ -78,7 +85,7 @@ impl<'a> Token<'a> {
     }
 
     /// Validate the signature on the token without consuming it.
-    pub fn validate_signature<T>(&self, signature_validation: &T) -> anyhow::Result<()>
+    pub fn validate_signature<T>(&self, signature_validation: &T) -> Result<()>
     where
         T: SignatureValidation,
     {
@@ -96,7 +103,7 @@ impl<'a> Token<'a> {
 }
 
 impl<'a> TryFrom<&'a str> for Token<'a> {
-    type Error = anyhow::Error;
+    type Error = Error;
 
     /// Parses a JWT from a string.
     ///
@@ -119,10 +126,16 @@ impl<'a> TryFrom<&'a str> for Token<'a> {
     /// );
     /// ```
     fn try_from(raw: &'a str) -> Result<Self, Self::Error> {
-        let (signed, signature) = raw.rsplit_once('.').ok_or_else(|| anyhow!("invalid JWT"))?;
+        let (signed, signature) = raw
+            .rsplit_once('.')
+            .ok_or_else(|| Error::Internal("invalid JWT".to_string()))?;
         let mut parts = signed.splitn(2, '.');
-        let header = parts.next().ok_or_else(|| anyhow!("missing header"))?;
-        let payload = parts.next().ok_or_else(|| anyhow!("missing payload"))?;
+        let header = parts
+            .next()
+            .ok_or_else(|| Error::Internal("missing header".to_string()))?;
+        let payload = parts
+            .next()
+            .ok_or_else(|| Error::Internal("missing payload".to_string()))?;
 
         Ok(Self {
             raw,

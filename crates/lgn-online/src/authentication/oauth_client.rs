@@ -1,7 +1,7 @@
 use std::{collections::HashMap, convert::Infallible, net::SocketAddr, sync::Arc};
 
 use async_trait::async_trait;
-use http::{Request, Response, StatusCode};
+use http::{Request, Response, StatusCode, Uri};
 use hyper::{
     server::conn::AddrStream,
     service::{make_service_fn, service_fn},
@@ -16,9 +16,10 @@ use openidconnect::{
     SubjectIdentifier, TokenResponse,
 };
 use tokio::sync::{oneshot, Mutex};
-use url::Url;
 
-use super::{Authenticator, ClientTokenSet, Error, OAuthClientConfig, Result, UserInfo};
+use crate::OAuthClientConfig;
+
+use super::{Authenticator, ClientTokenSet, Error, Result, UserInfo};
 
 const DEFAULT_REDIRECT_URI: &str = "http://localhost:3000";
 
@@ -41,8 +42,8 @@ impl OAuthClient {
         )
         .await?;
 
-        if let Some(redirect_uri) = &config.redirect_uri {
-            client.set_redirect_uri(redirect_uri)
+        if config.redirect_uri != Uri::default() {
+            client.set_redirect_uri(&config.redirect_uri)
         } else {
             Ok(client)
         }
@@ -87,8 +88,8 @@ impl OAuthClient {
         })
     }
 
-    pub fn set_redirect_uri(mut self, redirect_uri: &Url) -> Result<Self> {
-        let redirect_uri = RedirectUrl::new(redirect_uri.clone().into())
+    pub fn set_redirect_uri(mut self, redirect_uri: &Uri) -> Result<Self> {
+        let redirect_uri = RedirectUrl::new(redirect_uri.to_string())
             .map_err(|error| Error::Internal(format!("{}", error)))?;
 
         self.client = self.client.set_redirect_uri(redirect_uri.clone());

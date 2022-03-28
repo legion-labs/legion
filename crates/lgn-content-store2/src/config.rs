@@ -22,7 +22,7 @@ pub enum ProviderConfig {
     Lru(LruProviderConfig),
     Local(LocalProviderConfig),
     Redis(RedisProviderConfig),
-    Grpc(GrpcProviderConfig),
+    Grpc {},
     AwsS3(AwsS3ProviderConfig),
     AwsDynamoDb(AwsDynamoDbProviderConfig),
 }
@@ -44,16 +44,6 @@ pub struct RedisProviderConfig {
 
     #[serde(default)]
     pub key_prefix: String,
-}
-
-fn default_grpc_url() -> String {
-    "://localhost:6379".to_string()
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct GrpcProviderConfig {
-    #[serde(default = "default_grpc_url")]
-    pub url: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -213,21 +203,10 @@ impl ProviderConfig {
             Self::AwsDynamoDb(config) => Box::new(SmallContentProvider::new(
                 AwsDynamoDbProvider::new(config.table_name.clone()).await,
             )),
-            Self::Grpc(config) => {
-                let uri = config
-                    .url
-                    .parse()
-                    .map_err(|err| anyhow::anyhow!("failed to parse gRPC url: {}", err))?;
-                let client = lgn_online::grpc::GrpcClient::new(uri);
-                let authenticator_config = lgn_online::authentication::AuthenticatorConfig::new()
-                    .map_err(|err| {
-                    anyhow::anyhow!("failed to create authenticator config: {}", err)
-                })?;
-                let authenticator = authenticator_config.authenticator().await.map_err(|err| {
-                    anyhow::anyhow!("failed to instantiate an authenticator: {}", err)
-                })?;
-
-                let client = lgn_online::grpc::AuthenticatedClient::new(client, authenticator, &[]);
+            Self::Grpc {} => {
+                let client = lgn_online::Config::load()?
+                    .instantiate_api_client(&[])
+                    .await?;
 
                 Box::new(SmallContentProvider::new(GrpcProvider::new(client).await))
             }

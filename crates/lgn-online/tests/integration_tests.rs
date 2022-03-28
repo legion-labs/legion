@@ -146,7 +146,7 @@ async fn test_service_multiplexer() -> anyhow::Result<()> {
     async fn f(addr_str: &str) -> anyhow::Result<()> {
         let client = GrpcClient::new(format!("http://{}", addr_str).parse()?);
 
-        let authenticator = MockAuthenticator::default();
+        let authenticator = Some(MockAuthenticator::default());
         let client = AuthenticatedClient::new(client, authenticator, &[]);
 
         {
@@ -232,7 +232,7 @@ async fn test_service_authentication() -> anyhow::Result<()> {
     async fn f(addr_str: &str) -> anyhow::Result<()> {
         let client = GrpcClient::new(format!("http://{}", addr_str).parse()?);
 
-        let authenticator = MockAuthenticator::default();
+        let authenticator = Some(MockAuthenticator::default());
         let client = AuthenticatedClient::new(client, authenticator, &[]);
 
         {

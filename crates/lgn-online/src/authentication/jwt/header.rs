@@ -1,7 +1,8 @@
 use std::str::FromStr;
 
-use anyhow::Context;
 use serde::{Deserialize, Serialize};
+
+use crate::authentication::{Error, Result};
 
 /// A JWT 'JOSE' header, as defined by RFC 7519.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -14,7 +15,7 @@ pub struct Header {
 }
 
 impl FromStr for Header {
-    type Err = anyhow::Error;
+    type Err = Error;
 
     /// Creates a new JWT header from its base64 representation.
     ///
@@ -44,10 +45,12 @@ impl FromStr for Header {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         serde_json::from_slice(
             base64::decode_config(s, base64::URL_SAFE_NO_PAD)
-                .context("failed to decode base64 JWT header")?
+                .map_err(|err| {
+                    Error::Internal(format!("failed to decode base64 JWT header: {}", err))
+                })?
                 .as_slice(),
         )
-        .context("failed to parse JSON JWT header")
+        .map_err(|err| Error::Internal(format!("failed to parse JSON JWT header: {}", err)))
     }
 }
 
