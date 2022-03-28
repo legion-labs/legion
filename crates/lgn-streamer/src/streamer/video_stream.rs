@@ -122,6 +122,8 @@ impl VideoStream {
                     self.encoder.yuv_holder.yuv.as_mut_slice(),
                 )
                 .unwrap();
+        };
+
 
             self.encoder.encode(self.frame_id)
         };
@@ -349,6 +351,14 @@ struct ChunkHeader {
 
 #[allow(unsafe_code)]
 fn split_frame_in_chunks(data: &[u8], frame_id: i32) -> Vec<Bytes> {
+    // let mut file = std::fs::File::options()
+    //     .write(true)
+    //     .create(true)
+    //     .append(true)
+    //     .open("d:\\gpu_test.h264")
+    //     .unwrap();
+    // file.write_all(data).unwrap();
+
     const HEADER_SIZE: usize = 12;
     const MAX_CHUNK_SIZE: usize = 65536;
     const CHUNK_SIZE: usize = MAX_CHUNK_SIZE - HEADER_SIZE;
