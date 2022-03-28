@@ -177,7 +177,9 @@ impl AssetLoaderStub {
     }
 
     pub(crate) fn terminate(&self) {
-        self.request_tx.send(LoaderRequest::Terminate).unwrap();
+        if let Err(err) = self.request_tx.send(LoaderRequest::Terminate) {
+            lgn_tracing::warn!("Failed to terminate AssetLoader: {}", err);
+        }
     }
 
     pub(crate) fn load(&self, resource_id: ResourceTypeAndId) -> HandleUntyped {
