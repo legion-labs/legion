@@ -13,7 +13,7 @@ export function getUrl(): string {
   return import.meta.env.VITE_LEGION_ANALYTICS_API_URL as string;
 }
 
-export async function makeGrpcClient() {
+export function makeGrpcClient() {
   const metadata = new grpc.Metadata();
   const token = authClient.accessToken;
 

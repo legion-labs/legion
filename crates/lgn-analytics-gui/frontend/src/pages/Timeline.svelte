@@ -70,7 +70,7 @@
   let windowInnerWidth: number;
 
   onMount(async () => {
-    client = await makeGrpcClient();
+    client = makeGrpcClient();
     const urlParams = new URLSearchParams(window.location.search);
     const start = Number.parseFloat(urlParams.get("timelineStart") ?? "");
     const end = Number.parseFloat(urlParams.get("timelineEnd") ?? "");

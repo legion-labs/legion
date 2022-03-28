@@ -40,7 +40,7 @@
   }
 
   onMount(async () => {
-    client = await makeGrpcClient();
+    client = makeGrpcClient();
     await getRecentProcesses();
   });
 </script>
@@ -72,10 +72,12 @@
         {#each processList as { nbCpuBlocks, nbMetricBlocks, nbLogBlocks, processInfo } (processInfo?.processId)}
           <tr>
             <td><User user={processInfo?.realname ?? ""} /></td>
-            <td
-              ><span title={processInfo?.exe}>
-                {formatProcessName(processInfo)}
-              </span>
+            <td>
+              {#if processInfo}
+                <span title={processInfo?.exe}>
+                  {formatProcessName(processInfo)}
+                </span>
+              {/if}
             </td>
             <td><Computer process={processInfo} /></td>
             <td><Platform process={processInfo} /></td>
