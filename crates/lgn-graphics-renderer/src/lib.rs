@@ -470,7 +470,7 @@ fn render_update(
         let lighting_manager_view = render_context
             .transient_buffer_allocator()
             .copy_data(&lighting_manager.gpu_data(), ResourceUsage::AS_CONST_BUFFER)
-            .const_buffer_view();
+            .create_const_buffer_view();
         frame_descriptor_set.set_lighting_data(&lighting_manager_view);
 
         let omni_lights_buffer_view = renderer.omnidirectional_lights_data_structured_buffer_view();
@@ -542,7 +542,7 @@ fn render_update(
                 .transient_buffer_allocator()
                 .copy_data(&view_data, ResourceUsage::AS_CONST_BUFFER);
 
-            let const_buffer_view = sub_allocation.const_buffer_view();
+            let const_buffer_view = sub_allocation.create_const_buffer_view();
 
             let mut view_descriptor_set = cgen::descriptor_set::ViewDescriptorSet::default();
             view_descriptor_set.set_view_data(&const_buffer_view);

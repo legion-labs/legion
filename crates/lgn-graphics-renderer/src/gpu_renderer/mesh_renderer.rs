@@ -698,20 +698,20 @@ impl MeshRenderer {
             &(self.gpu_instance_data.len() as u32),
             ResourceUsage::AS_SHADER_RESOURCE,
         );
-        let gpu_count_view =
-            gpu_count_allocation.structured_buffer_view(std::mem::size_of::<u32>() as u64, true);
+        let gpu_count_view = gpu_count_allocation
+            .create_structured_buffer_view(std::mem::size_of::<u32>() as u64, true);
 
         let gpu_instance_allocation = render_context
             .transient_buffer_allocator()
             .copy_data_slice(&self.gpu_instance_data, ResourceUsage::AS_SHADER_RESOURCE);
         let gpu_instance_view = gpu_instance_allocation
-            .structured_buffer_view(std::mem::size_of::<GpuInstanceData>() as u64, true);
+            .create_structured_buffer_view(std::mem::size_of::<GpuInstanceData>() as u64, true);
 
         let render_pass_allocation = render_context
             .transient_buffer_allocator()
             .copy_data_slice(&render_pass_data, ResourceUsage::AS_SHADER_RESOURCE);
         let render_pass_view = render_pass_allocation
-            .structured_buffer_view(std::mem::size_of::<RenderPassData>() as u64, true);
+            .create_structured_buffer_view(std::mem::size_of::<RenderPassData>() as u64, true);
 
         self.culling_buffers.stats_buffer.clear_buffer(&cmd_buffer);
 

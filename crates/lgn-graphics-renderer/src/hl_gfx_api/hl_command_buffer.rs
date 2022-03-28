@@ -59,7 +59,7 @@ impl<'rc> HLCommandBuffer<'rc> {
             binding,
             &[VertexBufferBinding {
                 buffer: &buffer_suballoc.buffer,
-                byte_offset: buffer_suballoc.offset(),
+                byte_offset: buffer_suballoc.byte_offset(),
             }],
         );
     }
@@ -75,7 +75,7 @@ impl<'rc> HLCommandBuffer<'rc> {
     ) {
         self.bind_index_buffer(&IndexBufferBinding {
             buffer: &buffer_suballoc.buffer,
-            byte_offset: buffer_suballoc.offset(),
+            byte_offset: buffer_suballoc.byte_offset(),
             index_type,
         });
     }
