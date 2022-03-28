@@ -88,7 +88,7 @@
   const getPixelSizeNs = () => (getDeltaMs() * 1_000_000) / width;
 
   onMount(async () => {
-    client = await makeGrpcClient();
+    client = makeGrpcClient();
     axisCollection = new MetricAxisCollection();
     await fetchMetricsAsync().then(() => {
       createChart();

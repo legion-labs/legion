@@ -13,7 +13,8 @@ export const recentlyUsed = writable(getRecentlyUsedMetrics());
 
 export function getRecentlyUsedMetrics(): MetricSelectionState[] {
   const jsonData = localStorage.getItem(localStorageKey);
-  const result = jsonData ? JSON.parse(jsonData) : [];
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  const result: MetricSelectionState[] = jsonData ? JSON.parse(jsonData) : [];
   return result;
 }
 

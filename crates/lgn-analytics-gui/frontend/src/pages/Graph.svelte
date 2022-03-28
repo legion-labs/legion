@@ -139,7 +139,7 @@
   }
 
   onMount(async () => {
-    client = await makeGrpcClient();
+    client = makeGrpcClient();
     await fetchData();
   });
 </script>

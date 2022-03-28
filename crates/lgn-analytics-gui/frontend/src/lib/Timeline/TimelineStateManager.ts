@@ -42,7 +42,7 @@ export class TimelineStateManager {
   }
 
   async init() {
-    this.client = await makeGrpcClient();
+    this.client = makeGrpcClient();
     this.process = (
       await this.client.find_process({
         processId: this.processId,
@@ -165,9 +165,7 @@ export class TimelineStateManager {
     const blocksOfInterest: string[] = [];
 
     for (const stats of Object.values(processAsyncData.blockStats)) {
-      if (
-        this.rangesOverlap(sectionTimeRange, [stats!.beginMs, stats!.endMs])
-      ) {
+      if (this.rangesOverlap(sectionTimeRange, [stats.beginMs, stats.endMs])) {
         blocksOfInterest.push(stats.blockId);
       }
     }
@@ -389,23 +387,25 @@ export class TimelineStateManager {
     const blockId = block.blockDefinition.blockId;
     this.nbRequestsInFlight += 1;
     await loadPromise(
-      this.client!.block_spans({
-        blockId: blockId,
-        process,
-        stream: get(this.state).threads[streamId].streamInfo,
-        lodId: lodToFetch,
-      }).then(
-        (o) => {
-          this.nbRequestsInFlight -= 1;
-          this.onLodReceived(o);
-          return this.fetchDynData();
-        },
-        (e) => {
-          this.nbRequestsInFlight -= 1;
-          console.log("Error fetching block spans", e);
-          return this.fetchDynData();
-        }
-      )
+      this.client
+        .block_spans({
+          blockId: blockId,
+          process,
+          stream: get(this.state).threads[streamId].streamInfo,
+          lodId: lodToFetch,
+        })
+        .then(
+          (o) => {
+            this.nbRequestsInFlight -= 1;
+            this.onLodReceived(o);
+            return this.fetchDynData();
+          },
+          (e) => {
+            this.nbRequestsInFlight -= 1;
+            console.log("Error fetching block spans", e);
+            return this.fetchDynData();
+          }
+        )
     );
   }
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Router, Route } from "svelte-navigator";
+  import { Router, Route } from "@/lib/navigator";
   import Health from "@/pages/Health.svelte";
   import Log from "@/pages/Log.svelte";
   import Graph from "@/pages/Graph.svelte";

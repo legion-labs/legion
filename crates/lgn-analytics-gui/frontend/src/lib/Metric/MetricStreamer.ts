@@ -18,7 +18,7 @@ export class MetricStreamer {
   }
 
   async initializeAsync() {
-    this.client = await makeGrpcClient();
+    this.client = makeGrpcClient();
     const blocks = (
       await this.client.list_process_blocks({
         processId: this.processId,
@@ -41,7 +41,7 @@ export class MetricStreamer {
 
     for (const blockManifest of blockManifests) {
       if (blockManifest) {
-        for (const metricDesc of blockManifest?.metrics) {
+        for (const metricDesc of blockManifest.metrics) {
           if (!metricStates.get(metricDesc.name)) {
             metricStates.set(metricDesc.name, new MetricState(metricDesc));
           }
@@ -79,6 +79,7 @@ export class MetricStreamer {
     }
 
     missingBlocks.forEach((metric) => {
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises
       metric.blocks.forEach(async (block) => {
         await this.semaphore.acquire();
         try {

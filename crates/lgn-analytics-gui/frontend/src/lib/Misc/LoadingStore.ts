@@ -40,12 +40,12 @@ function createLoadStore(): LoadingStore {
   };
 }
 
-export async function loadWrap<T>(action: () => T): Promise<T> {
+export function loadWrap<T>(action: () => Promise<T>): Promise<T> {
   const store = loadingStore;
 
   try {
     store.addWork();
-    return await action();
+    return action();
   } finally {
     store.completeWork();
   }
