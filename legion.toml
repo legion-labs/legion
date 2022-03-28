@@ -57,7 +57,9 @@ redirect_uri = "http://localhost:3000/"
 region = "ca-central-1"
 user_pool_id = "ca-central-1_SkZKDimWz"
 
-[content_store.persistent.provider.grpc]
+#[content_store.persistent.provider.grpc]
+[content_store.persistent.provider.local]
+path = "tests/sample-data/temp"
 
 [[content_store.persistent.caching_providers]]
 [content_store.persistent.caching_providers.lru]
