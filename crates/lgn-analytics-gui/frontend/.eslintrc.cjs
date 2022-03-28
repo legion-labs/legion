@@ -6,8 +6,16 @@ module.exports = {
     es2021: true,
   },
   parser: "@typescript-eslint/parser",
+  parserOptions: {
+    tsconfigRootDir: __dirname,
+    project: "tsconfig.json",
+  },
   plugins: ["svelte3"],
-  extends: ["plugin:@typescript-eslint/recommended"],
+  extends: [
+    // "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    // "plugin:@typescript-eslint/recommended-requiring-type-checking",
+  ],
   overrides: [
     {
       files: ["*.svelte"],
@@ -22,5 +30,6 @@ module.exports = {
     "no-console": process.env.NODE_ENV === "production" ? "error" : "off",
     "no-debugger": process.env.NODE_ENV === "production" ? "error" : "off",
     "@typescript-eslint/no-unused-vars": "off",
+    eqeqeq: "error",
   },
 };

@@ -5,7 +5,9 @@ import type { Entry } from "@/lib/hierarchyTree";
 import resources from "../resources/resourcesResponse.json";
 
 // Dumb polyfill for `getRandomValues`
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 global.crypto = {
+  ...(global.crypto || {}),
   getRandomValues: (buf: ArrayBufferView) => {
     return buf;
   },

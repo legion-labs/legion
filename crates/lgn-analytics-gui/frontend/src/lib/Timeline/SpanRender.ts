@@ -66,7 +66,7 @@ export function drawSpanTrack(
     }
     ctx.globalAlpha = span.alpha / 255;
 
-    if (span.scopeHash != 0) {
+    if (span.scopeHash !== 0) {
       const { name } = scopes[span.scopeHash];
       ctx.fillStyle =
         search && name.toLowerCase().includes(search.toLowerCase())

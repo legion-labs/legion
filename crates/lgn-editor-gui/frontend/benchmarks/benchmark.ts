@@ -119,7 +119,7 @@ export function suite(
   };
 }
 
-export async function run(suites: (() => Promise<void>)[]): Promise<void> {
+export function run(suites: (() => Promise<void>)[]): Promise<void> {
   return (
     Promise.all(suites.map((suite) => suite()))
       // Ignores results

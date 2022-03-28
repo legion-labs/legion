@@ -70,7 +70,7 @@ export class TimelineStateManager {
     for (const block of Object.values(state.blocks)) {
       const streamId = block.blockDefinition.streamId;
       const thread = state.threads[streamId];
-      if (thread.streamInfo.processId == process.processId) {
+      if (thread.streamInfo.processId === process.processId) {
         blocks.push(block);
       }
     }
@@ -204,7 +204,7 @@ export class TimelineStateManager {
   }
 
   private async fetchAsyncSpans(process: Process) {
-    if (import.meta.env.VITE_LEGION_ANALYTICS_ENABLE_ASYNC_SPANS != "true") {
+    if (import.meta.env.VITE_LEGION_ANALYTICS_ENABLE_ASYNC_SPANS !== "true") {
       return;
     }
 
@@ -239,7 +239,7 @@ export class TimelineStateManager {
   }
 
   private async fetchAsyncStats(process: Process) {
-    if (import.meta.env.VITE_LEGION_ANALYTICS_ENABLE_ASYNC_SPANS != "true") {
+    if (import.meta.env.VITE_LEGION_ANALYTICS_ENABLE_ASYNC_SPANS !== "true") {
       return true;
     }
     const state = get(this.state);
@@ -258,7 +258,7 @@ export class TimelineStateManager {
         block.blockDefinition.blockId in asyncData.blockStats
       );
       const blockBelongsToProcess =
-        thread.streamInfo.processId == process.processId;
+        thread.streamInfo.processId === process.processId;
       if (overlaps && blockStatsMissing && blockBelongsToProcess) {
         if (this.nbRequestsInFlight >= MAX_NB_REQUEST_IN_FLIGHT) {
           break;

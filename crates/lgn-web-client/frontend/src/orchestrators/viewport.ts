@@ -77,9 +77,11 @@ export function createViewportOrchestrator(): ViewportOrchestrator {
       const removed = this.viewportStore.remove(key);
 
       if (removed) {
-        this.activeViewportStore.set(
-          get(this.viewportStore).entries().next().value?.[1] || null
-        );
+        const viewport = get(this.viewportStore).values().next();
+
+        // If the viewport store contains no value (and is therefore empty)
+        // we can just set the active viewport to "null"
+        this.activeViewportStore.set(viewport.done ? null : viewport.value);
       }
 
       return removed;

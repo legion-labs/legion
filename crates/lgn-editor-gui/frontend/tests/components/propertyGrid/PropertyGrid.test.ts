@@ -8,7 +8,7 @@ import { formatProperties, ResourceProperty } from "@/lib/propertyGrid";
 describe("PropertyGrid", () => {
   afterEach(() => cleanup());
 
-  test("renders properly without resources", async () => {
+  test("renders properly without resources", () => {
     const { container } = render(PropertyGrid);
 
     expect(container).toMatchSnapshot();

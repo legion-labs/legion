@@ -7,8 +7,16 @@ module.exports = {
     node: true,
   },
   parser: "@typescript-eslint/parser",
+  parserOptions: {
+    tsconfigRootDir: __dirname,
+    project: "tsconfig.json",
+  },
   plugins: ["svelte3", "@typescript-eslint"],
-  extends: ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
+  extends: [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:@typescript-eslint/recommended-requiring-type-checking",
+  ],
   overrides: [
     {
       files: ["*.svelte"],
@@ -36,6 +44,7 @@ module.exports = {
         next: ["const", "let", "var"],
       },
     ],
+    eqeqeq: "error",
     "prefer-const": [
       "error",
       {

@@ -30,5 +30,11 @@ export function setCookie(
 ) {
   const cookieDomain = window.location.hostname;
 
-  document.cookie = `${name}=${value.toString()};domain=${cookieDomain};path=/;max-age=${maxAge};samesite=strict;secure;`;
+  let cookie = `${name}=${value.toString()};domain=${cookieDomain};path=/;samesite=strict;secure;`;
+
+  if (typeof maxAge === "number") {
+    cookie += `max-age=${maxAge}`;
+  }
+
+  document.cookie = cookie;
 }

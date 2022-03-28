@@ -107,7 +107,8 @@ export function dropzone<Item>(
       return;
     }
 
-    const { item, type } = JSON.parse(payload);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const { item, type }: { item: Item; type: string } = JSON.parse(payload);
 
     if (typeof accept === "string" ? accept !== type : !accept.includes(type)) {
       return;

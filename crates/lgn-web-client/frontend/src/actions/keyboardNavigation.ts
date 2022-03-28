@@ -79,7 +79,7 @@ export default function keyboardNavigation(
         }
       }
 
-      if (newIndex == null) {
+      if (newIndex === null) {
         return { currentIndex };
       }
 
