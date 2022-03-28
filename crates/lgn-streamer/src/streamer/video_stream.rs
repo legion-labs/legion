@@ -41,6 +41,7 @@ pub struct VideoStream {
     frame_id: i32,
     encoder: VideoStreamEncoder,
     cuda_encoder: Option<NvEncEncoderWrapper>,
+    write_index: bool,
     rgb_to_yuv: RgbToYuvConverter,
     max_frame_time: u64,
 }
@@ -75,6 +76,7 @@ impl VideoStream {
             cuda_encoder: NvEncEncoderWrapper::new(encoder_cofig),
             rgb_to_yuv,
             max_frame_time,
+            write_index: true,
         })
     }
 
@@ -112,7 +114,42 @@ impl VideoStream {
                     semaphore: render_surface.encoder_sem().clone(),
                 })
                 .unwrap();
-            split_frame_in_chunks(&encoder.query_output().unwrap(), self.frame_id);
+            let output = encoder.query_output().unwrap();
+            let mut data = &output[..];
+            if self.write_index {
+                let sps = next_nalu(&mut data);
+                assert_eq!(sps[4], 0x67);
+                let pps = next_nalu(&mut data);
+                assert_eq!(pps[4], 0x68);
+                //self.mp4
+                //    .write_index(
+                //        &MediaConfig::Avc(AvcConfig {
+                //            width: self.resolution.width().try_into().unwrap(),
+                //            height: self.resolution.height().try_into().unwrap(),
+                //            seq_param_set: sps[4..].into(),
+                //            pic_param_set: pps[4..].into(),
+                //        })
+                //        .into(),
+                //        &mut self.writer,
+                //    )
+                //    .unwrap();
+                self.write_index = false;
+            }
+            while !data.is_empty() {
+                let nalu = next_nalu(&mut data);
+                let size = nalu.len() - 4;
+                let mut vec = vec![];
+                vec.extend_from_slice(nalu);
+                vec[0] = (size >> 24) as u8;
+                vec[1] = ((size >> 16) & 0xFF) as u8;
+                vec[2] = ((size >> 8) & 0xFF) as u8;
+                vec[3] = (size & 0xFF) as u8;
+                assert!(nalu[4] == 0x65 || nalu[4] == 0x61);
+                //self.mp4
+                //    .write_sample(nalu[4] == 0x65, &vec, &mut self.writer)
+                //    .unwrap();
+            }
+            //split_frame_in_chunks(&output, self.frame_id);
         };
 
         self.rgb_to_yuv
@@ -331,6 +368,24 @@ fn split_frame_in_chunks(data: &[u8], frame_id: i32) -> Vec<Bytes> {
     }
 
     chunks
+}
+
+fn next_nalu<'a, 'b>(data: &'a mut &'b [u8]) -> &'b [u8] {
+    if data.len() < 4 || data[0] != 0 || data[1] != 0 || data[2] != 0 || data[3] != 1 {
+        return &[];
+    }
+    let mut i = 4;
+    while data.len() - i > 4 {
+        if data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 0 && data[i + 3] == 1 {
+            let output = &data[0..i];
+            *data = &data[i..];
+            return output;
+        }
+        i += 1;
+    }
+    let output = *data;
+    *data = &[];
+    output
 }
 
 #[allow(clippy::cast_possible_wrap)]
