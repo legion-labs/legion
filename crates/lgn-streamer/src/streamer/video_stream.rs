@@ -41,7 +41,6 @@ pub struct VideoStream {
     frame_id: i32,
     encoder: VideoStreamEncoder,
     cuda_encoder: Option<NvEncEncoderWrapper>,
-    write_index: bool,
     rgb_to_yuv: RgbToYuvConverter,
     max_frame_time: u64,
 }
@@ -76,7 +75,6 @@ impl VideoStream {
             cuda_encoder: NvEncEncoderWrapper::new(encoder_cofig),
             rgb_to_yuv,
             max_frame_time,
-            write_index: true,
         })
     }
 
@@ -107,7 +105,7 @@ impl VideoStream {
         self.record_frame_id_metric();
         let now = tokio::time::Instant::now();
 
-        if let Some(encoder) = &self.cuda_encoder {
+        let chunks = if let Some(encoder) = &self.cuda_encoder {
             encoder
                 .submit_input(&EncoderWorkItem {
                     image: render_surface.export_texture().clone(),
@@ -115,52 +113,18 @@ impl VideoStream {
                 })
                 .unwrap();
             let output = encoder.query_output().unwrap();
-            let mut data = &output[..];
-            if self.write_index {
-                let sps = next_nalu(&mut data);
-                assert_eq!(sps[4], 0x67);
-                let pps = next_nalu(&mut data);
-                assert_eq!(pps[4], 0x68);
-                //self.mp4
-                //    .write_index(
-                //        &MediaConfig::Avc(AvcConfig {
-                //            width: self.resolution.width().try_into().unwrap(),
-                //            height: self.resolution.height().try_into().unwrap(),
-                //            seq_param_set: sps[4..].into(),
-                //            pic_param_set: pps[4..].into(),
-                //        })
-                //        .into(),
-                //        &mut self.writer,
-                //    )
-                //    .unwrap();
-                self.write_index = false;
-            }
-            while !data.is_empty() {
-                let nalu = next_nalu(&mut data);
-                let size = nalu.len() - 4;
-                let mut vec = vec![];
-                vec.extend_from_slice(nalu);
-                vec[0] = (size >> 24) as u8;
-                vec[1] = ((size >> 16) & 0xFF) as u8;
-                vec[2] = ((size >> 8) & 0xFF) as u8;
-                vec[3] = (size & 0xFF) as u8;
-                assert!(nalu[4] == 0x65 || nalu[4] == 0x61);
-                //self.mp4
-                //    .write_sample(nalu[4] == 0x65, &vec, &mut self.writer)
-                //    .unwrap();
-            }
-            //split_frame_in_chunks(&output, self.frame_id);
+            self.encoder.encode_cuda(&output[..], self.frame_id)
+        } else {
+            self.rgb_to_yuv
+                .convert(
+                    render_context,
+                    render_surface,
+                    self.encoder.yuv_holder.yuv.as_mut_slice(),
+                )
+                .unwrap();
+
+            self.encoder.encode(self.frame_id)
         };
-
-        self.rgb_to_yuv
-            .convert(
-                render_context,
-                render_surface,
-                self.encoder.yuv_holder.yuv.as_mut_slice(),
-            )
-            .unwrap();
-
-        let chunks = self.encoder.encode(self.frame_id);
 
         let elapsed = now.elapsed().as_micros() as u64;
         record_frame_time_metric(elapsed);
@@ -278,6 +242,48 @@ impl VideoStreamEncoder {
     }
 
     #[span_fn]
+    fn encode_cuda(&mut self, mut data: &[u8], frame_id: i32) -> Vec<Bytes> {
+        if self.write_index {
+            let sps = next_nalu(&mut data);
+            assert_eq!(sps[4], 0x67);
+            let pps = next_nalu(&mut data);
+            assert_eq!(pps[4], 0x68);
+            self.mp4
+                .write_index(
+                    &MediaConfig::Avc(AvcConfig {
+                        width: self.resolution.width().try_into().unwrap(),
+                        height: self.resolution.height().try_into().unwrap(),
+                        seq_param_set: sps[4..].into(),
+                        pic_param_set: pps[4..].into(),
+                    })
+                    .into(),
+                    &mut self.writer,
+                )
+                .unwrap();
+            self.write_index = false;
+        }
+        while !data.is_empty() {
+            let nalu = next_nalu(&mut data);
+            let size = nalu.len() - 4;
+            let mut vec = vec![];
+            vec.extend_from_slice(nalu);
+            vec[0] = (size >> 24) as u8;
+            vec[1] = ((size >> 16) & 0xFF) as u8;
+            vec[2] = ((size >> 8) & 0xFF) as u8;
+            vec[3] = (size & 0xFF) as u8;
+            assert!(nalu[4] == 0x65 || nalu[4] == 0x61);
+            self.mp4
+                .write_sample(nalu[4] == 0x65, &vec, &mut self.writer)
+                .unwrap();
+        }
+
+        let chunks = split_frame_in_chunks(self.writer.get_ref(), frame_id);
+        self.writer.get_mut().clear();
+        self.writer.set_position(0);
+        chunks
+    }
+
+    #[span_fn]
     fn encode(&mut self, frame_id: i32) -> Vec<Bytes> {
         let stream = self.encoder.encode(&self.yuv_holder).unwrap();
         for layer in &stream.layers {
@@ -343,14 +349,6 @@ struct ChunkHeader {
 
 #[allow(unsafe_code)]
 fn split_frame_in_chunks(data: &[u8], frame_id: i32) -> Vec<Bytes> {
-    // let mut file = std::fs::File::options()
-    //     .write(true)
-    //     .create(true)
-    //     .append(true)
-    //     .open("d:\\gpu_test.h264")
-    //     .unwrap();
-    // file.write_all(data).unwrap();
-
     const HEADER_SIZE: usize = 12;
     const MAX_CHUNK_SIZE: usize = 65536;
     const CHUNK_SIZE: usize = MAX_CHUNK_SIZE - HEADER_SIZE;
