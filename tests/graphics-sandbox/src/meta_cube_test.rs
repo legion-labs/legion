@@ -1,9 +1,11 @@
 use std::{fs::File, io, path::Path};
 
-use lgn_app::{App, Plugin};
-use lgn_ecs::prelude::{Commands, Res};
+use lgn_app::{App, CoreStage, Plugin};
+use lgn_ecs::prelude::{Commands, Entity, Query, Res};
 use lgn_graphics_renderer::components::VisualComponent;
-use lgn_transform::prelude::{Transform, TransformBundle};
+use lgn_math::{Quat, Vec3};
+use lgn_tracing::span_fn;
+use lgn_transform::prelude::{GlobalTransform, Transform, TransformBundle};
 use png::OutputInfo;
 
 use super::DefaultMeshType;
@@ -24,6 +26,8 @@ impl Plugin for MetaCubePlugin {
         if self.meta_cube_size != 0 {
             app.insert_resource(MetaCubeResource::new(self.meta_cube_size));
 
+            app.add_system_to_stage(CoreStage::PostUpdate, modify_transform_data);
+
             app.add_startup_system(init_stress_test);
         }
     }
@@ -32,6 +36,20 @@ impl Plugin for MetaCubePlugin {
 #[allow(clippy::needless_pass_by_value)]
 fn init_stress_test(commands: Commands<'_, '_>, meta_cube: Res<'_, MetaCubeResource>) {
     meta_cube.initialize(commands);
+}
+
+#[span_fn]
+#[allow(
+    clippy::needless_pass_by_value,
+    clippy::type_complexity,
+    clippy::too_many_arguments
+)]
+fn modify_transform_data(
+    mut query: Query<'_, '_, (Entity, &mut GlobalTransform, &VisualComponent)>,
+) {
+    for (_, mut transform, _) in query.iter_mut() {
+        transform.rotate(Quat::from_axis_angle(Vec3::Y, 0.2));
+    }
 }
 
 #[derive(Debug, PartialEq)]
