@@ -6,10 +6,10 @@ use std::{
 
 use lgn_graphics_api::{
     Buffer, BufferAllocation, BufferDef, DeviceContext, DeviceInfo, MemoryAllocation,
-    MemoryAllocationDef, MemoryUsage, Range, ResourceCreation, ResourceUsage,
+    MemoryAllocationDef, MemoryUsage, ResourceCreation, ResourceUsage,
 };
 
-use super::RangeAllocator;
+use super::{Range, RangeAllocator};
 
 #[derive(Clone)]
 struct PageAllocationsForFrame {
@@ -72,7 +72,8 @@ impl PageHeap {
                 Some(BufferAllocation {
                     buffer: self.buffer.clone(),
                     memory: self.buffer_memory.clone(),
-                    range,
+                    byte_offset: range.begin(),
+                    size: range.size(),
                 })
             }
         }
@@ -184,7 +185,7 @@ impl TransientBufferAllocator {
     ) -> Self {
         let allocation = paged_buffer
             .allocate_page(Layout::from_size_align(min_alloc_size as usize, 64 * 1024).unwrap());
-        let offset = allocation.offset();
+        let offset = allocation.byte_offset();
         Self {
             paged_buffer: paged_buffer.clone(),
             allocation: RefCell::new(allocation),
@@ -211,7 +212,7 @@ impl TransientBufferAllocator {
         if new_offset > allocation.size() {
             *allocation = self.paged_buffer.allocate_page(data_layout);
 
-            aligned_offset = allocation.offset();
+            aligned_offset = allocation.byte_offset();
             new_offset = aligned_offset + aligned_size;
 
             assert!(
@@ -225,10 +226,8 @@ impl TransientBufferAllocator {
         BufferAllocation {
             buffer: allocation.buffer.clone(),
             memory: allocation.memory.clone(),
-            range: Range {
-                first: aligned_offset,
-                last: new_offset,
-            },
+            byte_offset: aligned_offset,
+            size: aligned_size,
         }
     }
 
@@ -244,7 +243,7 @@ impl TransientBufferAllocator {
                 allocation
                     .memory
                     .mapped_ptr()
-                    .add(allocation.offset() as usize),
+                    .add(allocation.byte_offset() as usize),
                 data_layout.size(),
             );
         }
@@ -267,7 +266,7 @@ impl TransientBufferAllocator {
                 allocation
                     .memory
                     .mapped_ptr()
-                    .add(allocation.offset() as usize),
+                    .add(allocation.byte_offset() as usize),
                 data_layout.size(),
             );
         }

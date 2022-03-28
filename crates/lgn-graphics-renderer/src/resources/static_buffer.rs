@@ -11,7 +11,7 @@ use lgn_graphics_api::{
 };
 use lgn_tracing::span_fn;
 
-use super::{RangeAllocator, SparseBindingManager, TransientPagedBuffer};
+use super::{Range, RangeAllocator, SparseBindingManager, TransientPagedBuffer};
 use crate::RenderContext;
 
 pub struct UnifiedStaticBuffer {
@@ -110,7 +110,7 @@ impl Drop for StaticBufferAllocation {
 
 impl StaticBufferAllocation {
     pub fn offset(&self) -> u64 {
-        self.allocation.as_ref().unwrap().offset()
+        self.allocation.as_ref().unwrap().byte_offset()
     }
 
     pub fn size(&self) -> u64 {
@@ -125,7 +125,7 @@ impl StaticBufferAllocation {
         self.allocation
             .as_ref()
             .unwrap()
-            .structured_buffer_view(struct_size, read_only)
+            .create_structured_buffer_view(struct_size, read_only)
     }
 }
 
@@ -186,7 +186,8 @@ impl UnifiedStaticBufferAllocator {
         let allocation = PagedBufferAllocation {
             buffer: inner.buffer.clone(),
             memory: allocation,
-            range: location,
+            byte_offset: location.begin(),
+            size: location.size(),
         };
 
         if let Some(binding_manager) = &mut inner.binding_manager {
@@ -202,7 +203,9 @@ impl UnifiedStaticBufferAllocator {
     fn free_segment(&self, segment: PagedBufferAllocation) {
         let inner = &mut *self.inner.lock().unwrap();
 
-        inner.segment_allocator.free(segment.range);
+        inner
+            .segment_allocator
+            .free(Range::from_begin_size(segment.byte_offset, segment.size));
 
         if let Some(binding_manager) = &mut inner.binding_manager {
             binding_manager.add_sparse_unbinding(segment);
@@ -365,7 +368,7 @@ impl UniformGPUDataUploadJobBlock {
         let upload_size_in_bytes = lgn_utils::memory::slice_size_in_bytes(data) as u64;
         if self.offset + upload_size_in_bytes <= self.upload_allocation.size() {
             let src = data.as_ptr().cast::<u8>();
-            let upload_offset = self.upload_allocation.offset() + self.offset;
+            let upload_offset = self.upload_allocation.byte_offset() + self.offset;
             {
                 #[allow(unsafe_code)]
                 unsafe {

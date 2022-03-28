@@ -224,7 +224,7 @@ impl Queue {
             for page in unbind_pages {
                 let mut binding_info = SparseBindingInfo {
                     sparse_bindings: Vec::new(),
-                    buffer_offset: page.offset(),
+                    buffer_offset: page.byte_offset(),
                     buffer: &page.buffer,
                     bind: false,
                 };
@@ -255,7 +255,7 @@ impl Queue {
             for page in bind_pages {
                 let mut binding_info = SparseBindingInfo {
                     sparse_bindings: Vec::new(),
-                    buffer_offset: page.offset(),
+                    buffer_offset: page.byte_offset(),
                     buffer: &page.buffer,
                     bind: true,
                 };

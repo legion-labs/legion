@@ -1,6 +1,29 @@
-use lgn_graphics_api::Range;
+#[derive(Clone, Copy)]
+pub struct Range {
+    begin: u64,
+    end: u64,
+}
 
-pub(crate) struct RangeAllocator {
+impl Range {
+    pub fn from_begin_end(begin: u64, end: u64) -> Self {
+        assert!(begin <= end);
+        Self { begin, end }
+    }
+
+    pub fn from_begin_size(begin: u64, size: u64) -> Self {
+        Self::from_begin_end(begin, begin + size)
+    }
+
+    pub fn begin(&self) -> u64 {
+        self.begin
+    }
+
+    pub fn size(&self) -> u64 {
+        self.end - self.begin
+    }
+}
+
+pub struct RangeAllocator {
     free_list: Vec<Range>,
     available: u64,
 }
@@ -8,7 +31,7 @@ pub(crate) struct RangeAllocator {
 impl RangeAllocator {
     pub fn new(size: u64) -> Self {
         Self {
-            free_list: vec![Range::new(0, size)],
+            free_list: vec![Range::from_begin_size(0, size)],
             available: size,
         }
     }
@@ -19,12 +42,12 @@ impl RangeAllocator {
             let mut remove_index = self.free_list.len();
             for index in 0..self.free_list.len() {
                 let mut range = &mut self.free_list[index];
-                let range_size = range.last - range.first;
+                let range_size = range.end - range.begin;
                 if range_size >= size {
                     self.available -= size;
-                    result = Some(Range::new(range.first, range.first + size));
+                    result = Some(Range::from_begin_size(range.begin, size));
                     if range_size != size {
-                        range.first += size;
+                        range.begin += size;
                     } else {
                         remove_index = index;
                     }
@@ -40,27 +63,27 @@ impl RangeAllocator {
     }
 
     pub fn free(&mut self, free_range: Range) {
-        assert!(free_range.first < free_range.last);
+        assert!(free_range.begin < free_range.end);
 
         let mut insert_index = self.free_list.len();
         for index in 0..self.free_list.len() {
             let mut next_range = &mut self.free_list[index];
 
             // Sanity check for overlapped bounds
-            assert!(free_range.last <= next_range.first || free_range.first >= next_range.last);
+            assert!(free_range.end <= next_range.begin || free_range.begin >= next_range.end);
 
-            if free_range.last == next_range.first {
-                next_range.first = free_range.first;
+            if free_range.end == next_range.begin {
+                next_range.begin = free_range.begin;
                 break;
-            } else if free_range.first == next_range.last {
-                next_range.last = free_range.last;
+            } else if free_range.begin == next_range.end {
+                next_range.end = free_range.end;
                 break;
-            } else if free_range.last < next_range.first {
+            } else if free_range.end < next_range.begin {
                 insert_index = index;
                 break;
             }
         }
-        self.available += free_range.last - free_range.first;
+        self.available += free_range.end - free_range.begin;
         if self.free_list.is_empty() {
             self.free_list.push(free_range);
         } else if insert_index != self.free_list.len() {
