@@ -122,8 +122,6 @@ impl VideoStream {
                     self.encoder.yuv_holder.yuv.as_mut_slice(),
                 )
                 .unwrap();
-        };
-
 
             self.encoder.encode(self.frame_id)
         };
