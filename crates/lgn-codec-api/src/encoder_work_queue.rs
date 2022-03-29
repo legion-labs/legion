@@ -14,6 +14,7 @@ pub struct EncoderWorkItem {
 pub(crate) struct EncoderWorkQueueInner {
     image_cleanup: Vec<u64>,
     semaphore_cleanup: Vec<u64>,
+    enable_hw_encoding: bool,
     shutting_down: bool,
 }
 
@@ -23,9 +24,14 @@ pub struct EncoderWorkQueue {
 }
 
 impl EncoderWorkQueue {
-    pub fn new() -> Self {
+    pub fn new(enable_hw_encoding: bool) -> Self {
         Self {
-            inner: Arc::new(Mutex::new(EncoderWorkQueueInner::default())),
+            inner: Arc::new(Mutex::new(EncoderWorkQueueInner {
+                image_cleanup: vec![],
+                semaphore_cleanup: vec![],
+                enable_hw_encoding,
+                shutting_down: false,
+            })),
         }
     }
 
@@ -73,6 +79,12 @@ impl EncoderWorkQueue {
         inner.semaphore_cleanup.pop()
     }
 
+    pub fn hw_encoding_enabled(&self) -> bool {
+        let inner = self.inner.lock().unwrap();
+
+        inner.enable_hw_encoding
+    }
+
     pub(crate) fn shutting_down(&self) -> bool {
         let inner = self.inner.lock().unwrap();
 
@@ -82,6 +94,6 @@ impl EncoderWorkQueue {
 
 impl Default for EncoderWorkQueue {
     fn default() -> Self {
-        Self::new()
+        Self::new(false)
     }
 }

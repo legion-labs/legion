@@ -59,12 +59,17 @@ impl VideoStream {
         let rgb_to_yuv = RgbToYuvConverter::new(pipeline_manager, device_context, resolution);
         let max_frame_time: u64 = lgn_config::get_or("streamer.max_frame_time", 33_000u64)?;
 
-        let encoder_cofig = EncoderConfig {
-            hardware: Nvidia,
-            gfx_config: device_context.clone(),
-            work_queue: encoder_work_queue.clone(),
-            width: resolution.width,
-            height: resolution.height,
+        let hw_encoder = if encoder_work_queue.hw_encoding_enabled() {
+            let encoder_cofig = EncoderConfig {
+                hardware: Nvidia,
+                gfx_config: device_context.clone(),
+                work_queue: encoder_work_queue.clone(),
+                width: resolution.width,
+                height: resolution.height,
+            };
+            NvEncEncoderWrapper::new(encoder_cofig)
+        } else {
+            None
         };
 
         Ok(Self {
@@ -72,7 +77,7 @@ impl VideoStream {
             video_data_channel,
             frame_id: 0,
             encoder,
-            cuda_encoder: NvEncEncoderWrapper::new(encoder_cofig),
+            cuda_encoder: hw_encoder,
             rgb_to_yuv,
             max_frame_time,
         })
