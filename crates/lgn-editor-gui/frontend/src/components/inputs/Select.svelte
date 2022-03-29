@@ -32,6 +32,8 @@
 
   let highlightedOptionIndex: number | null = null;
 
+  let selectWidth: number | null = null;
+
   function toggle() {
     if (disabled) {
       return;
@@ -102,6 +104,7 @@
       size: options.length + ($$slots.unselect ? 1 : 0),
       store: keyboardNavigationStore,
     }}
+    bind:clientWidth={selectWidth}
   >
     <div class="selected-label" on:click={toggle}>
       <div>
@@ -119,33 +122,40 @@
         <Icon icon="ic:baseline-keyboard-arrow-down" />
       </div>
     </div>
-    <div class="options" class:hidden={!isOpen} use:keyboardNavigationContainer>
-      {#if $$slots.unselect}
-        <div
-          class="option"
-          class:bg-gray-500={highlightedOptionIndex === 0}
-          on:mousemove={() => setHighlightedItem(0)}
-          on:click={() => select("")}
-          use:keyboardNavigationItem={0}
-        >
-          <slot name="unselect" />
-        </div>
-      {/if}
-      {#each options as option, index (option.value)}
-        {@const actualIndex = $$slots.unselect ? index + 1 : index}
-
-        <div
-          class="option"
-          class:bg-gray-500={highlightedOptionIndex === actualIndex}
-          on:mousemove={() => setHighlightedItem(actualIndex)}
-          on:click={() => select(option)}
-          use:keyboardNavigationItem={actualIndex}
-        >
-          <slot name="option" {option} />
-        </div>
-      {/each}
-    </div>
   </div>
+</div>
+
+<!-- TODO: Display the dropdown above the input if the select is displayed at the bottom of the screen -->
+<div
+  class="options"
+  class:hidden={!isOpen}
+  use:keyboardNavigationContainer
+  style="width: {selectWidth}px"
+>
+  {#if $$slots.unselect}
+    <div
+      class="option"
+      class:bg-gray-500={highlightedOptionIndex === 0}
+      on:mousemove={() => setHighlightedItem(0)}
+      on:click={() => select("")}
+      use:keyboardNavigationItem={0}
+    >
+      <slot name="unselect" />
+    </div>
+  {/if}
+  {#each options as option, index (option.value)}
+    {@const actualIndex = $$slots.unselect ? index + 1 : index}
+
+    <div
+      class="option"
+      class:bg-gray-500={highlightedOptionIndex === actualIndex}
+      on:mousemove={() => setHighlightedItem(actualIndex)}
+      on:click={() => select(option)}
+      use:keyboardNavigationItem={actualIndex}
+    >
+      <slot name="option" {option} />
+    </div>
+  {/each}
 </div>
 
 <select class="hidden" {disabled} value>
@@ -183,7 +193,7 @@
   }
 
   .select {
-    @apply relative w-full h-full bg-gray-800 rounded-sm outline-none appearance-none;
+    @apply w-full h-full bg-gray-800 rounded-sm outline-none appearance-none;
   }
 
   .selected-label {
