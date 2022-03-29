@@ -10,20 +10,21 @@
 
 <script lang="ts">
   import {
-    createEventDispatcher,
     afterUpdate,
     beforeUpdate,
+    createEventDispatcher,
     onMount,
   } from "svelte";
-  import { derived, Writable, writable } from "svelte/store";
   import { FixedSizeList, styleString } from "svelte-window";
   import type {
     ListOnItemsRenderedProps,
     ListOnScrollProps,
   } from "svelte-window";
-  import type { LogEntry } from "../types/log";
+  import { Writable, derived, writable } from "svelte/store";
+
   import { remToPx } from "../lib/html";
   import { debounced, recorded } from "../lib/store";
+  import type { LogEntry } from "../types/log";
 
   const dispatch = createEventDispatcher<{
     /**

@@ -1,23 +1,26 @@
 <script lang="ts">
   import { form as createForm, field } from "svelte-forms";
   import { required } from "svelte-forms/validators";
-  import Modal from "@lgn/web-client/src/components/modal/Modal.svelte";
-  import Button from "@lgn/web-client/src/components/Button.svelte";
-  import { createAsyncStoreOrchestrator } from "@lgn/web-client/src/orchestrators/async";
-  import Select from "../inputs/Select.svelte";
-  import TextInput from "../inputs/TextInput.svelte";
-  import {
-    getResourceTypes,
-    createResource as createResourceApi,
-    getAllResources,
-  } from "@/api";
+
   import type {
     GetResourceTypeNamesResponse,
     ResourceDescription,
   } from "@lgn/proto-editor/dist/resource_browser";
-  import allResourcesStore from "@/stores/allResources";
-  import Field from "../Field.svelte";
+  import Button from "@lgn/web-client/src/components/Button.svelte";
+  import Modal from "@lgn/web-client/src/components/modal/Modal.svelte";
   import log from "@lgn/web-client/src/lib/log";
+  import { createAsyncStoreOrchestrator } from "@lgn/web-client/src/orchestrators/async";
+
+  import {
+    createResource as createResourceApi,
+    getAllResources,
+    getResourceTypes,
+  } from "@/api";
+  import allResourcesStore from "@/stores/allResources";
+
+  import Field from "../Field.svelte";
+  import Select from "../inputs/Select.svelte";
+  import TextInput from "../inputs/TextInput.svelte";
 
   const createResourceStore = createAsyncStoreOrchestrator();
 

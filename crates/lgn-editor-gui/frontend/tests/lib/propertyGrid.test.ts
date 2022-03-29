@@ -10,21 +10,20 @@ import {
   propertyIsBoolean,
   propertyIsColor,
   propertyIsComponent,
+  propertyIsEnum,
   propertyIsGroup,
   propertyIsNumber,
   propertyIsOption,
   propertyIsPrimitive,
   propertyIsQuat,
+  propertyIsResourcePathId,
   propertyIsSpeed,
   propertyIsString,
-  propertyIsResourcePathId,
-  propertyIsEnum,
   propertyIsVec,
   propertyIsVec3,
   ptypeBelongsToPrimitive,
 } from "@/lib/propertyGrid";
 import type { ResourceProperty } from "@/lib/propertyGrid";
-
 import propertiesResponse from "@/resources/propertiesResponse.json";
 
 describe("formatProperties", () => {

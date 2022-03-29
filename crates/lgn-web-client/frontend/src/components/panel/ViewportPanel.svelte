@@ -1,10 +1,11 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
-  import Panel from "./Panel.svelte";
+
+  import type { Resolution } from "../../lib/types";
+  import type { ViewportOrchestrator } from "../../orchestrators/viewport";
   import RemoteWindow from "../RemoteWindow.svelte";
   import ScriptEditor from "../ScriptEditor.svelte";
-  import type { ViewportOrchestrator } from "../../orchestrators/viewport";
-  import type { Resolution } from "../../lib/types";
+  import Panel from "./Panel.svelte";
 
   /** The global viewport orchestrator */
   export let orchestrator: ViewportOrchestrator;

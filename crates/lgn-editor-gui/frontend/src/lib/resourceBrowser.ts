@@ -1,4 +1,5 @@
 import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
+
 import type { Entry } from "./hierarchyTree";
 
 export function iconFor(entry: Entry<ResourceDescription>) {

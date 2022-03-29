@@ -1,10 +1,11 @@
-import type { ResourceWithProperties } from "@/lib/propertyGrid";
 import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
+import log from "@lgn/web-client/src/lib/log";
 import type { AsyncOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 import { createAsyncStoreOrchestrator } from "@lgn/web-client/src/orchestrators/async";
-import notifications from "@/stores/notifications";
+
 import { getResourceProperties, updateSelection } from "@/api";
-import log from "@lgn/web-client/src/lib/log";
+import type { ResourceWithProperties } from "@/lib/propertyGrid";
+import notifications from "@/stores/notifications";
 
 export type CurrentResourceOrchestrator =
   AsyncOrchestrator<ResourceWithProperties>;

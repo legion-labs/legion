@@ -1,8 +1,15 @@
 <script lang="ts">
+  import Icon from "@iconify/svelte";
+
   import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
+  import { UploadStatus } from "@lgn/proto-editor/dist/source_control";
   import { Panel, PanelHeader } from "@lgn/web-client/src/components/panel";
-  import HierarchyTree from "./hierarchyTree/HierarchyTree.svelte";
-  import ResourceFilter from "./resources/ResourceFilter.svelte";
+  import { readFile } from "@lgn/web-client/src/lib/files";
+  import log from "@lgn/web-client/src/lib/log";
+  import { createFilesStore } from "@lgn/web-client/src/stores/files";
+  import { autoClose, select } from "@lgn/web-client/src/types/contextMenu";
+  import type { Event as ContextMenuActionEvent } from "@lgn/web-client/src/types/contextMenu";
+
   import contextMenu from "@/actions/contextMenu";
   import {
     cloneResource,
@@ -16,29 +23,25 @@
     reparentResources,
     streamFileUpload,
   } from "@/api";
-  import allResources from "@/stores/allResources";
+  import type { Entries, Entry } from "@/lib/hierarchyTree";
+  import { isEntry } from "@/lib/hierarchyTree";
+  import { components, join } from "@/lib/path";
+  import { formatProperties } from "@/lib/propertyGrid";
+  import type { ResourceProperty } from "@/lib/propertyGrid";
+  import type { BagResourceProperty } from "@/lib/propertyGrid";
+  import { iconFor } from "@/lib/resourceBrowser";
   import {
     currentResource,
     fetchCurrentResourceDescription,
   } from "@/orchestrators/currentResource";
-  import { components, join } from "@/lib/path";
-  import notifications from "@/stores/notifications";
-  import type { Entries, Entry } from "@/lib/hierarchyTree";
-  import { isEntry } from "@/lib/hierarchyTree";
-  import log from "@lgn/web-client/src/lib/log";
-  import { createFilesStore } from "@lgn/web-client/src/stores/files";
-  import { UploadStatus } from "@lgn/proto-editor/dist/source_control";
-  import { readFile } from "@lgn/web-client/src/lib/files";
-  import { formatProperties } from "@/lib/propertyGrid";
-  import type { ResourceProperty } from "@/lib/propertyGrid";
-  import type { BagResourceProperty } from "@/lib/propertyGrid";
-  import { autoClose, select } from "@lgn/web-client/src/types/contextMenu";
-  import type { Event as ContextMenuActionEvent } from "@lgn/web-client/src/types/contextMenu";
+  import allResources from "@/stores/allResources";
   import type { ContextMenuEntryRecord } from "@/stores/contextMenu";
   import modal from "@/stores/modal";
+  import notifications from "@/stores/notifications";
+
+  import HierarchyTree from "./hierarchyTree/HierarchyTree.svelte";
   import CreateResourceModal from "./resources/CreateResourceModal.svelte";
-  import Icon from "@iconify/svelte";
-  import { iconFor } from "@/lib/resourceBrowser";
+  import ResourceFilter from "./resources/ResourceFilter.svelte";
 
   const createResourceModalId = Symbol.for("create-resource-modal");
 

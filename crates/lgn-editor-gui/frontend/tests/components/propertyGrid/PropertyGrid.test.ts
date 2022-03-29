@@ -1,9 +1,10 @@
-import currentResource from "@/orchestrators/currentResource";
-import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
 import { cleanup } from "@testing-library/svelte";
 import { render } from "@testing-library/svelte";
+
+import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
+import { ResourceProperty, formatProperties } from "@/lib/propertyGrid";
+import currentResource from "@/orchestrators/currentResource";
 import properties from "@/resources/propertiesResponse.json";
-import { formatProperties, ResourceProperty } from "@/lib/propertyGrid";
 
 describe("PropertyGrid", () => {
   afterEach(() => cleanup());

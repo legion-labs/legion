@@ -1,14 +1,17 @@
 import type { Writable } from "svelte/store";
 import { get, writable } from "svelte/store";
+
 import type { StagedResource } from "@lgn/proto-editor/dist/source_control";
+import log from "@lgn/web-client/src/lib/log";
+
 import {
   commitStagedResources,
   getAllResources,
   getStagedResources,
   syncLatest,
 } from "@/api";
+
 import allResources from "./allResources";
-import log from "@lgn/web-client/src/lib/log";
 
 export type StagedResourcesValue = StagedResource[] | null;
 

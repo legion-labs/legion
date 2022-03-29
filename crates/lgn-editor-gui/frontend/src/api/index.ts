@@ -1,23 +1,25 @@
 import type { Observable } from "rxjs";
-import log from "@lgn/web-client/src/lib/log";
+
 import {
-  GrpcWebImpl as EditorResourceBrowserWebImpl,
-  ResourceBrowserClientImpl,
-  ResourceDescription,
-} from "@lgn/proto-editor/dist/resource_browser";
-import {
-  GrpcWebImpl as EditorImpl,
   EditorClientImpl,
+  GrpcWebImpl as EditorImpl,
 } from "@lgn/proto-editor/dist/editor";
 import {
   GrpcWebImpl as EditorPropertyInspectorWebImpl,
   PropertyInspectorClientImpl,
 } from "@lgn/proto-editor/dist/property_inspector";
 import {
+  GrpcWebImpl as EditorResourceBrowserWebImpl,
+  ResourceBrowserClientImpl,
+  ResourceDescription,
+} from "@lgn/proto-editor/dist/resource_browser";
+import {
   GrpcWebImpl as EditorSourceControlWebImpl,
   SourceControlClientImpl,
   UploadRawFileResponse,
 } from "@lgn/proto-editor/dist/source_control";
+import log from "@lgn/web-client/src/lib/log";
+
 import { formatProperties } from "../lib/propertyGrid";
 import type {
   ResourcePropertyWithValue,

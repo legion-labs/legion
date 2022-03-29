@@ -1,15 +1,16 @@
 <script lang="ts">
+  import Icon from "@iconify/svelte";
+  import { onMount } from "svelte";
+
+  import clickOutside from "../actions/clickOutside";
+  import { UserInfo, authClient } from "../lib/auth";
+  import log from "../lib/log";
+  import userInfo from "../orchestrators/userInfo";
   import topBarMenuStore, {
     Id as TopBarMenuId,
     menus as topBarMenus,
   } from "../stores/topBarMenu";
-  import userInfo from "../orchestrators/userInfo";
-  import log from "../lib/log";
-  import clickOutside from "../actions/clickOutside";
   import BrandLogo from "./BrandLogo.svelte";
-  import { onMount } from "svelte";
-  import Icon from "@iconify/svelte";
-  import { authClient, UserInfo } from "../lib/auth";
 
   const { data: userInfoData } = userInfo;
 

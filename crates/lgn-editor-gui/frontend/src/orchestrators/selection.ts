@@ -2,16 +2,18 @@
 // that is, the element(s) selected in the viewport/resource browser/scene explorer.
 //
 // This orchestrator doesn't own any stores.
-
 import { get } from "svelte/store";
-import { initMessageStream as initMessageStreamApi } from "@/api";
-import {
-  resourceEntries,
-  currentResourceDescriptionEntry,
-} from "./resourceBrowserEntries";
+
 import { MessageType } from "@lgn/proto-editor/dist/editor";
-import { fetchCurrentResourceDescription } from "@/orchestrators/currentResource";
+
+import { initMessageStream as initMessageStreamApi } from "@/api";
 import { isEntry } from "@/lib/hierarchyTree";
+import { fetchCurrentResourceDescription } from "@/orchestrators/currentResource";
+
+import {
+  currentResourceDescriptionEntry,
+  resourceEntries,
+} from "./resourceBrowserEntries";
 
 export function initMessageStream() {
   initMessageStreamApi().subscribe(({ lagging, message }) => {

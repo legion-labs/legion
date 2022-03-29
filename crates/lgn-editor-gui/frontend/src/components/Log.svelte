@@ -1,8 +1,10 @@
 <script lang="ts">
-  import { buffer, logEntries } from "@/stores/log";
+  import { writable } from "svelte/store";
+
   import type { ScrollStatus } from "@lgn/web-client/src/components/Log.svelte";
   import Log from "@lgn/web-client/src/components/Log.svelte";
-  import { writable } from "svelte/store";
+
+  import { buffer, logEntries } from "@/stores/log";
 
   const scrollStatus = writable<ScrollStatus | null>(null);
 </script>

@@ -1,18 +1,20 @@
 <script lang="ts" context="module">
+  import { goto } from "$app/navigation";
   import type { Load } from "@sveltejs/kit";
+
   import { headlessRun } from "@lgn/web-client";
-  import viewportOrchestrator from "@/orchestrators/viewport";
-  import * as contextMenuEntries from "@/data/contextMenu";
-  import contextMenu from "@/stores/contextMenu";
-  import authStatus from "@/stores/authStatus";
   import type { NonEmptyArray } from "@lgn/web-client/src/lib/array";
   import log from "@lgn/web-client/src/lib/log";
-  import { goto } from "$app/navigation";
-  import "@/workers/editorWorker";
-  import { initStagedResourcesStream } from "@/stores/stagedResources";
+
   import { initApiClient } from "@/api";
-  import { initLogStream } from "@/stores/log";
+  import * as contextMenuEntries from "@/data/contextMenu";
   import { initMessageStream } from "@/orchestrators/selection";
+  import viewportOrchestrator from "@/orchestrators/viewport";
+  import authStatus from "@/stores/authStatus";
+  import contextMenu from "@/stores/contextMenu";
+  import { initLogStream } from "@/stores/log";
+  import { initStagedResourcesStream } from "@/stores/stagedResources";
+  import "@/workers/editorWorker";
 
   const logLevel = "warn";
 

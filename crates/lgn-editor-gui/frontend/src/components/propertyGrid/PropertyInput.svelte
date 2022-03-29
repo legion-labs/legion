@@ -1,16 +1,20 @@
 <script lang="ts">
+  import { createEventDispatcher } from "svelte";
+
+  import log from "@lgn/web-client/src/lib/log";
+
   import type { PropertyUpdate } from "@/api";
   import {
     propertyIsBoolean,
     propertyIsColor,
+    propertyIsEnum,
     propertyIsNumber,
     propertyIsOption,
     propertyIsQuat,
-    propertyIsSpeed,
-    propertyIsScript,
-    propertyIsString,
     propertyIsResourcePathId,
-    propertyIsEnum,
+    propertyIsScript,
+    propertyIsSpeed,
+    propertyIsString,
     propertyIsVec,
     propertyIsVec3,
   } from "@/lib/propertyGrid";
@@ -19,19 +23,18 @@
     ResourceProperty,
   } from "@/lib/propertyGrid";
   import { currentResource } from "@/orchestrators/currentResource";
-  import log from "@lgn/web-client/src/lib/log";
-  import { createEventDispatcher } from "svelte";
+
+  import PropertyInputOption from "./PropertyInputOption.svelte";
   import BooleanProperty from "./properties/BooleanProperty.svelte";
   import ColorProperty from "./properties/ColorProperty.svelte";
+  import EnumProperty from "./properties/EnumProperty.svelte";
   import NumberProperty from "./properties/NumberProperty.svelte";
   import QuatProperty from "./properties/QuatProperty.svelte";
+  import ResourcePathIdProperty from "./properties/ResourcePathIdProperty.svelte";
   import ScriptProperty from "./properties/ScriptProperty.svelte";
   import SpeedProperty from "./properties/SpeedProperty.svelte";
   import StringProperty from "./properties/StringProperty.svelte";
   import Vec3Property from "./properties/Vec3Property.svelte";
-  import ResourcePathIdProperty from "./properties/ResourcePathIdProperty.svelte";
-  import EnumProperty from "./properties/EnumProperty.svelte";
-  import PropertyInputOption from "./PropertyInputOption.svelte";
   import type { RemoveVectorSubPropertyEvent } from "./types";
 
   const dispatch = createEventDispatcher<{

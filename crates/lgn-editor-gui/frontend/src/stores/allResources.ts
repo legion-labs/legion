@@ -1,6 +1,7 @@
 import type { Writable } from "svelte/store";
-import { createAsyncStoreListOrchestrator } from "@lgn/web-client/src/orchestrators/async";
+
 import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
+import { createAsyncStoreListOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 
 export type AllResourcesValue = ResourceDescription[];
 

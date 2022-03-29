@@ -1,7 +1,8 @@
-import { derived, Readable } from "svelte/store";
 import type { FluentBundle, FluentVariable } from "@fluent/bundle";
-import type { LocaleStore } from "./locale";
+import { Readable, derived } from "svelte/store";
+
 import type { BundlesStore } from "./bundles";
+import type { LocaleStore } from "./locale";
 
 export type TranslateValue = (
   id: string,

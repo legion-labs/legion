@@ -1,7 +1,9 @@
 import { derived, get, writable } from "svelte/store";
-import type { LogEntry } from "@lgn/web-client/src/types/log";
+
 import { throttled } from "@lgn/web-client/src/lib/store";
+import type { LogEntry } from "@lgn/web-client/src/types/log";
 import { severityFromLevel } from "@lgn/web-client/src/types/log";
+
 import { initLogStream as initLogStreamApi } from "@/api";
 
 export const buffer = 1_000;

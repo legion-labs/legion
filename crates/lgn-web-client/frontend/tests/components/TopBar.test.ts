@@ -1,5 +1,6 @@
+import { cleanup, fireEvent, render } from "@testing-library/svelte";
+
 import TopBar from "../../src/components/TopBar.svelte";
-import { render, fireEvent, cleanup } from "@testing-library/svelte";
 
 describe("TopBar", () => {
   afterEach(() => cleanup());

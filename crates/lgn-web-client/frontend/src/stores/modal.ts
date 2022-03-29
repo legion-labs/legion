@@ -1,5 +1,6 @@
 import { SvelteComponentTyped } from "svelte";
-import { get, Writable, writable } from "svelte/store";
+import { Writable, get, writable } from "svelte/store";
+
 import Prompt from "../components/modal/Prompt.svelte";
 
 export type Payload = Record<string, unknown>;

@@ -1,4 +1,8 @@
 <script lang="ts">
+  import { createEventDispatcher } from "svelte";
+
+  import log from "@lgn/web-client/src/lib/log";
+
   import type { PropertyUpdate } from "@/api";
   import {
     propertyIsDynComponent,
@@ -7,10 +11,9 @@
     propertyIsVec,
   } from "@/lib/propertyGrid";
   import type { BagResourceProperty } from "@/lib/propertyGrid";
-  import modal from "@/stores/modal";
   import { currentResource } from "@/orchestrators/currentResource";
-  import { createEventDispatcher } from "svelte";
-  import log from "@lgn/web-client/src/lib/log";
+  import modal from "@/stores/modal";
+
   import Checkbox from "../inputs/Checkbox.svelte";
   import PropertyContainer from "./PropertyContainer.svelte";
   import type {

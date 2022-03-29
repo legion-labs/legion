@@ -1,5 +1,5 @@
 import type { Readable } from "svelte/store";
-import { get, derived } from "svelte/store";
+import { derived, get } from "svelte/store";
 
 /**
  * Creates a new store from an existing store, which value is debounced:

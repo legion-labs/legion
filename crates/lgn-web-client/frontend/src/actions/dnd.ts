@@ -2,8 +2,8 @@
 // In the future we could use a bigger library
 // or implement our own svelte adapter for
 // https://github.com/react-dnd/react-dnd/tree/main/packages/dnd-core
-
 import { derived, get } from "svelte/store";
+
 import type { ActionReturn } from "../lib/action";
 import type { DndStore } from "../stores/dnd";
 import { createDndStore } from "../stores/dnd";

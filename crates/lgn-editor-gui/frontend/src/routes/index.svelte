@@ -1,32 +1,34 @@
 <script lang="ts">
-  import { Panel } from "@lgn/web-client/src/components/panel";
+  import { onMount } from "svelte";
+
+  import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
   import ContextMenu from "@lgn/web-client/src/components/ContextMenu.svelte";
   import Notifications from "@lgn/web-client/src/components/Notifications.svelte";
-  import ViewportPanel from "@lgn/web-client/src/components/panel/ViewportPanel.svelte";
-  import ModalContainer from "@lgn/web-client/src/components/modal/ModalContainer.svelte";
-  import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
   import StatusBar from "@lgn/web-client/src/components/StatusBar.svelte";
+  import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
+  import ModalContainer from "@lgn/web-client/src/components/modal/ModalContainer.svelte";
+  import { Panel } from "@lgn/web-client/src/components/panel";
+  import ViewportPanel from "@lgn/web-client/src/components/panel/ViewportPanel.svelte";
+
   import { getAllResources } from "@/api";
+  import AuthModal from "@/components/AuthModal.svelte";
+  import ExtraPanel from "@/components/ExtraPanel.svelte";
+  import ResourceBrowser from "@/components/ResourceBrowser.svelte";
+  import SceneExplorer from "@/components/SceneExplorer.svelte";
   import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
   import { currentResource } from "@/orchestrators/currentResource";
   import {
     currentResourceDescriptionEntry,
     currentlyRenameResourceEntry,
-    resourceEntries,
     resourceBrowserEntriesOrchestrator,
+    resourceEntries,
   } from "@/orchestrators/resourceBrowserEntries";
-  import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
-  import contextMenu from "@/stores/contextMenu";
-  import allResourcesStore from "@/stores/allResources";
   import viewportOrchestrator from "@/orchestrators/viewport";
-  import { onMount } from "svelte";
+  import allResourcesStore from "@/stores/allResources";
   import authStatus from "@/stores/authStatus";
-  import AuthModal from "@/components/AuthModal.svelte";
-  import notifications from "@/stores/notifications";
-  import SceneExplorer from "@/components/SceneExplorer.svelte";
-  import ResourceBrowser from "@/components/ResourceBrowser.svelte";
+  import contextMenu from "@/stores/contextMenu";
   import modal from "@/stores/modal";
-  import ExtraPanel from "@/components/ExtraPanel.svelte";
+  import notifications from "@/stores/notifications";
   import { stagedResources, syncFromMain } from "@/stores/stagedResources";
 
   const {

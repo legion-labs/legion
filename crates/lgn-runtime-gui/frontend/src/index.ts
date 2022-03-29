@@ -1,7 +1,8 @@
-import "./assets/index.css";
-
 import { AppComponent, run } from "@lgn/web-client";
+
 import App from "@/App.svelte";
+
+import "./assets/index.css";
 
 const redirectUri = document.location.origin + "/";
 

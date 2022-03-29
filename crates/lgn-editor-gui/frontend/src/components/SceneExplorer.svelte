@@ -1,10 +1,12 @@
 <script lang="ts">
-  import { fetchCurrentResourceDescription } from "@/orchestrators/currentResource";
+  import { createEventDispatcher } from "svelte";
+
   import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
   import Panel from "@lgn/web-client/src/components/panel/Panel.svelte";
   import PanelList from "@lgn/web-client/src/components/panel/PanelList.svelte";
+
   import type { Entries } from "@/lib/hierarchyTree";
-  import { createEventDispatcher } from "svelte";
+  import { fetchCurrentResourceDescription } from "@/orchestrators/currentResource";
 
   const dispatch = createEventDispatcher<{
     currentResourceDescriptionChange: ResourceDescription;

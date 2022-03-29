@@ -1,7 +1,7 @@
 // TODO: Use the `ResourceDescription` from resource_property.proto instead (?)
 import type {
-  ResourceDescription,
   ResourceProperty as RawResourceProperty,
+  ResourceDescription,
 } from "@lgn/proto-editor/dist/property_inspector";
 import type { NonEmptyArray } from "@lgn/web-client/src/lib/array";
 import { filterMap } from "@lgn/web-client/src/lib/array";

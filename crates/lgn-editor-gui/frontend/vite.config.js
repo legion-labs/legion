@@ -1,9 +1,10 @@
 // @ts-check
-
-import tsconfigPaths from "vite-tsconfig-paths";
-import viteTsProto from "@lgn/vite-plugin-ts-proto";
-import path from "path";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import path from "path";
+import tsconfigPaths from "vite-tsconfig-paths";
+
+import viteTsProto from "@lgn/vite-plugin-ts-proto";
+
 // import viteWasmPack from "@lgn/vite-plugin-wasm";
 
 /** @type {"jsdom"} */

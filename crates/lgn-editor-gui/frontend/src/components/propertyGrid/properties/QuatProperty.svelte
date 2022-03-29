@@ -1,6 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
+
   import type { Quat } from "@/lib/propertyGrid";
+
   import NumberInput from "../../inputs/NumberInput.svelte";
 
   const dispatch = createEventDispatcher<{ input: Quat }>();

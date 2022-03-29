@@ -1,16 +1,19 @@
 <script lang="ts">
-  import Modal from "@lgn/web-client/src/components/modal/Modal.svelte";
+  import Icon from "@iconify/svelte";
+
   import Button from "@lgn/web-client/src/components/Button.svelte";
+  import Modal from "@lgn/web-client/src/components/modal/Modal.svelte";
+
   import {
     stagedResources,
+    stagedResourcesMode,
     submitToMain,
     syncFromMain,
-    stagedResourcesMode,
   } from "@/stores/stagedResources";
-  import LocalChangesGrid from "./LocalChangesGrid.svelte";
-  import Icon from "@iconify/svelte";
-  import LocalChangesList from "./LocalChangesList.svelte";
+
   import TextArea from "../inputs/TextArea.svelte";
+  import LocalChangesGrid from "./LocalChangesGrid.svelte";
+  import LocalChangesList from "./LocalChangesList.svelte";
 
   export let close: () => void;
 

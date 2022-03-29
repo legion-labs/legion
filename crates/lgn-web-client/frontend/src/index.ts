@@ -1,11 +1,12 @@
-import { authClient, initAuth, InitAuthUserConfig } from "./lib/auth";
+import grpcWeb from "@improbable-eng/grpc-web";
+import { SvelteComponentTyped } from "svelte";
+
+import { initApiClient } from "./api";
+import { InitAuthUserConfig, authClient, initAuth } from "./lib/auth";
 import type { InitAuthStatus } from "./lib/auth";
 import log from "./lib/log";
 import type { Level as LogLevel } from "./lib/log";
 import userInfo from "./orchestrators/userInfo";
-import { SvelteComponentTyped } from "svelte";
-import grpcWeb from "@improbable-eng/grpc-web";
-import { initApiClient } from "./api";
 
 export class AppComponent extends SvelteComponentTyped<{
   initAuthStatus: InitAuthStatus | null;

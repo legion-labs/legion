@@ -1,18 +1,21 @@
 <script lang="ts">
+  import Icon from "@iconify/svelte";
+  import { createEventDispatcher } from "svelte";
+
+  import {
+    draggable as draggableAction,
+    dropzone as dropzoneAction,
+    isDragging,
+  } from "@lgn/web-client/src/actions/dnd";
+  import { keyboardNavigationItem as keyboardNavigationItemAction } from "@lgn/web-client/src/actions/keyboardNavigation";
+  import { nullable as nullableAction } from "@lgn/web-client/src/lib/action";
+
+  import contextMenuAction from "@/actions/contextMenu";
   import { isEntry } from "@/lib/hierarchyTree";
   import type { Entry } from "@/lib/hierarchyTree";
-  import { createEventDispatcher } from "svelte";
   import { extension } from "@/lib/path";
-  import Icon from "@iconify/svelte";
-  import { keyboardNavigationItem as keyboardNavigationItemAction } from "@lgn/web-client/src/actions/keyboardNavigation";
-  import contextMenuAction from "@/actions/contextMenu";
+
   import TextInput from "../inputs/TextInput.svelte";
-  import {
-    isDragging,
-    dropzone as dropzoneAction,
-    draggable as draggableAction,
-  } from "@lgn/web-client/src/actions/dnd";
-  import { nullable as nullableAction } from "@lgn/web-client/src/lib/action";
 
   type Item = $$Generic<{ id: string }>;
 

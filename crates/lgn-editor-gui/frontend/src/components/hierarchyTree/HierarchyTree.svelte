@@ -1,9 +1,12 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import { Entries, isEntry } from "@/lib/hierarchyTree";
-  import type { Entry } from "@/lib/hierarchyTree";
+
   import keyboardNavigation from "@lgn/web-client/src/actions/keyboardNavigation";
   import { createKeyboardNavigationStore } from "@lgn/web-client/src/stores/keyboardNavigation";
+
+  import { Entries, isEntry } from "@/lib/hierarchyTree";
+  import type { Entry } from "@/lib/hierarchyTree";
+
   import HierarchyTreeItem from "./HierarchyTreeItem.svelte";
 
   type Item = $$Generic<{ id: string; path: string }>;

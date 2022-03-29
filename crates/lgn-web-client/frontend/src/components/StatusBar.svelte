@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { StagedResource } from "@lgn/proto-editor/dist/source_control";
+
   import statusStore from "../stores/statusBarData";
   import Button from "./Button.svelte";
   import PingPoint from "./PingPoint.svelte";

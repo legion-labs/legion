@@ -148,6 +148,7 @@ importers:
       '@tauri-apps/api': ^1.0.0-rc.2
       '@testing-library/jest-dom': ^5.16.3
       '@testing-library/svelte': ^3.1.0
+      '@trivago/prettier-plugin-sort-imports': ^3.2.0
       '@types/color-convert': ^2.0.0
       '@types/uuid': ^8.3.4
       '@typescript-eslint/eslint-plugin': ^5.16.0
@@ -214,6 +215,7 @@ importers:
       '@swc/core': 1.2.161
       '@testing-library/jest-dom': 5.16.3
       '@testing-library/svelte': 3.1.0_svelte@3.46.4
+      '@trivago/prettier-plugin-sort-imports': 3.2.0_prettier@2.6.1
       '@types/color-convert': 2.0.0
       '@types/uuid': 8.3.4
       '@typescript-eslint/eslint-plugin': 5.16.0_4df62b6e125e6f18efee2d013b4a9d80
@@ -272,6 +274,7 @@ importers:
       '@tauri-apps/api': ^1.0.0-rc.2
       '@testing-library/jest-dom': ^5.16.3
       '@testing-library/svelte': ^3.1.0
+      '@trivago/prettier-plugin-sort-imports': ^3.2.0
       '@types/color-convert': ^2.0.0
       '@typescript-eslint/eslint-plugin': ^5.16.0
       '@typescript-eslint/parser': ^5.16.0
@@ -321,6 +324,7 @@ importers:
       '@swc/core': 1.2.161
       '@testing-library/jest-dom': 5.16.3
       '@testing-library/svelte': 3.1.0_svelte@3.46.4
+      '@trivago/prettier-plugin-sort-imports': 3.2.0_prettier@2.6.1
       '@types/color-convert': 2.0.0
       '@typescript-eslint/eslint-plugin': 5.16.0_4df62b6e125e6f18efee2d013b4a9d80
       '@typescript-eslint/parser': 5.16.0_eslint@8.12.0+typescript@4.6.3
@@ -441,6 +445,7 @@ importers:
       '@tauri-apps/api': ^1.0.0-rc.2
       '@testing-library/jest-dom': ^5.16.3
       '@testing-library/svelte': ^3.1.0
+      '@trivago/prettier-plugin-sort-imports': ^3.2.0
       '@types/color-convert': ^2.0.0
       '@types/estree': ^0.0.51
       '@typescript-eslint/eslint-plugin': ^5.16.0
@@ -495,6 +500,7 @@ importers:
       '@swc/core': 1.2.161
       '@testing-library/jest-dom': 5.16.3
       '@testing-library/svelte': 3.1.0_svelte@3.46.4
+      '@trivago/prettier-plugin-sort-imports': 3.2.0_prettier@2.6.1
       '@types/color-convert': 2.0.0
       '@types/estree': 0.0.51
       '@typescript-eslint/eslint-plugin': 5.16.0_4df62b6e125e6f18efee2d013b4a9d80
@@ -561,6 +567,30 @@ packages:
     engines: {node: '>=6.9.0'}
     dev: true
 
+  /@babel/core/7.13.10:
+    resolution: {integrity: sha512-bfIYcT0BdKeAZrovpMqX2Mx5NrgAckGbwT982AkdS5GNfn3KMGiprlBAtmBcFZRUmpaufS6WZFP8trvx8ptFDw==}
+    engines: {node: '>=6.9.0'}
+    dependencies:
+      '@babel/code-frame': 7.16.7
+      '@babel/generator': 7.17.3
+      '@babel/helper-compilation-targets': 7.16.7_@babel+core@7.13.10
+      '@babel/helper-module-transforms': 7.16.7
+      '@babel/helpers': 7.17.2
+      '@babel/parser': 7.17.3
+      '@babel/template': 7.16.7
+      '@babel/traverse': 7.17.3
+      '@babel/types': 7.17.0
+      convert-source-map: 1.8.0
+      debug: 4.3.4
+      gensync: 1.0.0-beta.2
+      json5: 2.2.0
+      lodash: 4.17.21
+      semver: 6.3.0
+      source-map: 0.5.7
+    transitivePeerDependencies:
+      - supports-color
+    dev: true
+
   /@babel/core/7.17.5:
     resolution: {integrity: sha512-/BBMw4EvjmyquN5O+t5eh0+YqB3XXJkYD2cjKpYtWOfFy4lQ4UozNSmxAcWT8r2XtZs0ewG+zrfsqeR15i1ajA==}
     engines: {node: '>=6.9.0'}
@@ -584,6 +614,14 @@ packages:
       - supports-color
     dev: true
 
+  /@babel/generator/7.13.9:
+    resolution: {integrity: sha512-mHOOmY0Axl/JCTkxTU6Lf5sWOg/v8nUa+Xkt4zMTftX0wqmb6Sh7J8gvcehBw7q0AhrhAR+FDacKjCZ2X8K+Sw==}
+    dependencies:
+      '@babel/types': 7.17.0
+      jsesc: 2.5.2
+      source-map: 0.5.7
+    dev: true
+
   /@babel/generator/7.17.3:
     resolution: {integrity: sha512-+R6Dctil/MgUsZsZAkYgK+ADNSZzJRRy0TvY65T71z/CR854xHQ1EweBYXdfT+HNeN7w0cSJJEzgxZMv40pxsg==}
     engines: {node: '>=6.9.0'}
@@ -591,6 +629,19 @@ packages:
       '@babel/types': 7.17.0
       jsesc: 2.5.2
       source-map: 0.5.7
+    dev: true
+
+  /@babel/helper-compilation-targets/7.16.7_@babel+core@7.13.10:
+    resolution: {integrity: sha512-mGojBwIWcwGD6rfqgRXVlVYmPAv7eOpIemUG3dGnDdCY4Pae70ROij3XmfrH6Fa1h1aiDylpglbZyktfzyo/hA==}
+    engines: {node: '>=6.9.0'}
+    peerDependencies:
+      '@babel/core': ^7.0.0
+    dependencies:
+      '@babel/compat-data': 7.17.0
+      '@babel/core': 7.13.10
+      '@babel/helper-validator-option': 7.16.7
+      browserslist: 4.20.2
+      semver: 6.3.0
     dev: true
 
   /@babel/helper-compilation-targets/7.16.7_@babel+core@7.17.5:
@@ -708,9 +759,16 @@ packages:
       js-tokens: 4.0.0
     dev: true
 
+  /@babel/parser/7.14.6:
+    resolution: {integrity: sha512-oG0ej7efjEXxb4UgE+klVx+3j4MVo+A2vCzm7OUN4CLo6WhQ+vSOD2yJ8m7B+DghObxtLxt3EfgMWpq+AsWehQ==}
+    engines: {node: '>=6.0.0'}
+    hasBin: true
+    dev: true
+
   /@babel/parser/7.17.3:
     resolution: {integrity: sha512-7yJPvPV+ESz2IUTPbOL+YkIGyCqOyNIzdguKQuJGnH7bg1WTIifuM21YqokFt/THWh1AkCRn9IgoykTRCBVpzA==}
     engines: {node: '>=6.0.0'}
+    hasBin: true
     dev: true
 
   /@babel/plugin-syntax-async-generators/7.8.4_@babel+core@7.17.5:
@@ -856,6 +914,22 @@ packages:
       '@babel/types': 7.17.0
     dev: true
 
+  /@babel/traverse/7.13.0:
+    resolution: {integrity: sha512-xys5xi5JEhzC3RzEmSGrs/b3pJW/o87SypZ+G/PhaE7uqVQNv/jlmVIBXuoh5atqQ434LfXV+sf23Oxj0bchJQ==}
+    dependencies:
+      '@babel/code-frame': 7.16.7
+      '@babel/generator': 7.17.3
+      '@babel/helper-function-name': 7.16.7
+      '@babel/helper-split-export-declaration': 7.16.7
+      '@babel/parser': 7.17.3
+      '@babel/types': 7.17.0
+      debug: 4.3.4
+      globals: 11.12.0
+      lodash: 4.17.21
+    transitivePeerDependencies:
+      - supports-color
+    dev: true
+
   /@babel/traverse/7.17.3:
     resolution: {integrity: sha512-5irClVky7TxRWIRtxlh2WPUUOLhcPN06AGgaQSB8AEwuyEBgJVuJ5imdHm5zxk8w0QS5T+tDfnDxAlhWjpb7cw==}
     engines: {node: '>=6.9.0'}
@@ -868,10 +942,18 @@ packages:
       '@babel/helper-split-export-declaration': 7.16.7
       '@babel/parser': 7.17.3
       '@babel/types': 7.17.0
-      debug: 4.3.3
+      debug: 4.3.4
       globals: 11.12.0
     transitivePeerDependencies:
       - supports-color
+    dev: true
+
+  /@babel/types/7.13.0:
+    resolution: {integrity: sha512-hE+HE8rnG1Z6Wzo+MhaKE5lM5eMx71T4EHJgku2E3xIfaULhDcxiiRxUYgwX8qwP1BBSlag+TdGOt6JAidIZTA==}
+    dependencies:
+      '@babel/helper-validator-identifier': 7.16.7
+      lodash: 4.17.21
+      to-fast-properties: 2.0.0
     dev: true
 
   /@babel/types/7.17.0:
@@ -1522,6 +1604,23 @@ packages:
   /@tootallnate/once/1.1.2:
     resolution: {integrity: sha512-RbzJvlNzmRq5c3O09UipeuXno4tA1FE6ikOjxZK0tuxVv3412l64l5t1W5pj4+rJq9vpkm/kwiR07aZXnsKPxw==}
     engines: {node: '>= 6'}
+    dev: true
+
+  /@trivago/prettier-plugin-sort-imports/3.2.0_prettier@2.6.1:
+    resolution: {integrity: sha512-DnwLe+z8t/dZX5xBbYZV1+C5STkyK/P6SSq3Nk6NXlJZsgvDZX2eN4ND7bMFgGV/NL/YChWzcNf6ziGba1ktQQ==}
+    peerDependencies:
+      prettier: 2.x
+    dependencies:
+      '@babel/core': 7.13.10
+      '@babel/generator': 7.13.9
+      '@babel/parser': 7.14.6
+      '@babel/traverse': 7.13.0
+      '@babel/types': 7.13.0
+      javascript-natural-sort: 0.7.1
+      lodash: 4.17.21
+      prettier: 2.6.1
+    transitivePeerDependencies:
+      - supports-color
     dev: true
 
   /@types/aria-query/4.2.2:
@@ -3955,6 +4054,10 @@ packages:
       istanbul-lib-report: 3.0.0
     dev: true
 
+  /javascript-natural-sort/0.7.1:
+    resolution: {integrity: sha1-+eIwPUUH9tdDVac2ZNFED7Wg71k=}
+    dev: true
+
   /jest-changed-files/27.5.1:
     resolution: {integrity: sha512-buBLMiByfWGCoMsLLzGUUSpAmIAGnbR2KJoMN10ziLhOLvP4e0SlypHnAel8iqQXTrcbmfEY9sSqae5sgUsTvw==}
     engines: {node: ^10.13.0 || ^12.13.0 || ^14.15.0 || >=15.0.0}
@@ -4482,6 +4585,7 @@ packages:
   /jsesc/2.5.2:
     resolution: {integrity: sha512-OYu7XEzjkCQ3C5Ps3QIZsQfNpqoJyZZA99wd9aWd05NCtC5pWOkShK2mkL6HXQR6/Cy2lbNdPlZBpuQHXE63gA==}
     engines: {node: '>=4'}
+    hasBin: true
     dev: true
 
   /json-parse-even-better-errors/2.3.1:
@@ -4506,6 +4610,7 @@ packages:
   /json5/2.2.0:
     resolution: {integrity: sha512-f+8cldu7X/y7RAJurMEJmdoKXGB/X550w2Nr3tTbezL6RwEE/iMcm+tZnXeoZtKuOq6ft8+CqzEkrIgx1fPoQA==}
     engines: {node: '>=6'}
+    hasBin: true
     dependencies:
       minimist: 1.2.5
     dev: true
