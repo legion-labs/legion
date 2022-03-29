@@ -1,6 +1,7 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use lgn_content_store::ContentStoreAddr;
+use lgn_content_store2::{ContentProvider, MemoryProvider};
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;
 use tempfile::TempDir;
@@ -18,13 +19,15 @@ fn setup_dir(work_dir: &TempDir) -> (PathBuf, PathBuf) {
 async fn invalid_project() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
+    let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
 
     let cas_addr = ContentStoreAddr::from(output_dir.clone());
 
     let build =
         DataBuildOptions::new_with_sqlite_output(&output_dir, CompilerRegistryOptions::default())
             .content_store(&cas_addr)
-            .create_with_project(&project_dir)
+            .create_with_project(&project_dir, content_provider)
             .await;
 
     assert!(matches!(build, Err(Error::Project(_))), "{:?}", build);
@@ -34,8 +37,10 @@ async fn invalid_project() {
 async fn create() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
+    let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
 
-    let _project = Project::create_with_remote_mock(&project_dir)
+    let _project = Project::create_with_remote_mock(&project_dir, Arc::clone(&content_provider))
         .await
         .expect("failed to create a project");
 
@@ -47,7 +52,7 @@ async fn create() {
     {
         let _build =
             DataBuildOptions::new(db_uri.clone(), cas_addr, CompilerRegistryOptions::default())
-                .create_with_project(project_dir)
+                .create_with_project(project_dir, content_provider)
                 .await
                 .expect("valid data build index");
     }

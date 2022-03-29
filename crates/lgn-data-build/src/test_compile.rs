@@ -4,6 +4,7 @@ use std::{env, vec};
 
 use integer_asset::{IntegerAsset, IntegerAssetLoader};
 use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
+use lgn_content_store2::{ContentProvider, MemoryProvider};
 use lgn_data_compiler::compiler_api::CompilationEnv;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_compiler::{Locale, Platform, Target};
@@ -69,8 +70,12 @@ async fn create_resource(
         .unwrap()
 }
 
-async fn change_resource(resource_id: ResourceTypeAndId, project_dir: &Path) {
-    let mut project = Project::open(project_dir)
+async fn change_resource(
+    resource_id: ResourceTypeAndId,
+    project_dir: &Path,
+    content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+) {
+    let mut project = Project::open(project_dir, content_provider)
         .await
         .expect("failed to open project");
     let resources = setup_registry();
@@ -109,12 +114,15 @@ async fn compile_change_no_deps() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
     let resources = setup_registry();
+    let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
     let mut resources = resources.lock().await;
 
     let (resource_id, resource_handle) = {
-        let mut project = Project::create_with_remote_mock(&project_dir)
-            .await
-            .expect("failed to create a project");
+        let mut project =
+            Project::create_with_remote_mock(&project_dir, Arc::clone(&content_provider))
+                .await
+                .expect("failed to create a project");
 
         let resource_handle = resources
             .new_resource(refs_resource::TestResource::TYPE)
@@ -146,7 +154,7 @@ async fn compile_change_no_deps() {
     // compile the resource..
     let original_checksum = {
         let (mut build, project) = config
-            .create_with_project(&project_dir)
+            .create_with_project(&project_dir, Arc::clone(&content_provider))
             .await
             .expect("to create index");
         build
@@ -178,7 +186,7 @@ async fn compile_change_no_deps() {
 
     // ..change resource..
     {
-        let mut project = Project::open(&project_dir)
+        let mut project = Project::open(&project_dir, Arc::clone(&content_provider))
             .await
             .expect("failed to open project");
 
@@ -198,7 +206,7 @@ async fn compile_change_no_deps() {
         )
         .content_store(&contentstore_path);
 
-        let project = Project::open(project_dir)
+        let project = Project::open(project_dir, Arc::clone(&content_provider))
             .await
             .expect("failed to open project");
 
@@ -243,8 +251,11 @@ async fn compile_change_no_deps() {
 //         V            V
 //         D -------> t(E) -> E
 //
-async fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceTypeAndId; 5] {
-    let mut project = Project::create_with_remote_mock(project_dir.as_ref())
+async fn setup_project(
+    project_dir: impl AsRef<Path>,
+    content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+) -> [ResourceTypeAndId; 5] {
+    let mut project = Project::create_with_remote_mock(project_dir.as_ref(), content_provider)
         .await
         .expect("failed to create a project");
 
@@ -299,15 +310,18 @@ async fn setup_project(project_dir: impl AsRef<Path>) -> [ResourceTypeAndId; 5] 
 async fn intermediate_resource() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
+    let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
     let resources = setup_registry();
     let mut resources = resources.lock().await;
 
     let source_magic_value = String::from("47");
 
     let source_id = {
-        let mut project = Project::create_with_remote_mock(&project_dir)
-            .await
-            .expect("failed to create a project");
+        let mut project =
+            Project::create_with_remote_mock(&project_dir, Arc::clone(&content_provider))
+                .await
+                .expect("failed to create a project");
 
         let resource_handle = resources
             .new_resource(text_resource::TextResource::TYPE)
@@ -333,7 +347,7 @@ async fn intermediate_resource() {
         CompilerRegistryOptions::local_compilers(target_dir()),
     )
     .content_store(&cas_addr)
-    .create_with_project(project_dir)
+    .create_with_project(project_dir, content_provider)
     .await
     .expect("new build index");
 
@@ -403,8 +417,10 @@ async fn intermediate_resource() {
 async fn unnamed_cache_use() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
+    let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
 
-    let resource_list = setup_project(&project_dir).await;
+    let resource_list = setup_project(&project_dir, Arc::clone(&content_provider)).await;
     let root_resource = resource_list[0];
 
     let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
@@ -412,7 +428,7 @@ async fn unnamed_cache_use() {
         CompilerRegistryOptions::local_compilers(target_dir()),
     )
     .content_store(&ContentStoreAddr::from(output_dir))
-    .create_with_project(&project_dir)
+    .create_with_project(&project_dir, Arc::clone(&content_provider))
     .await
     .expect("new build index");
     build.source_pull(&project).await.expect("successful pull");
@@ -463,7 +479,7 @@ async fn unnamed_cache_use() {
 
     // change root resource, one resource re-compiled.
     {
-        change_resource(root_resource, &project_dir).await;
+        change_resource(root_resource, &project_dir, Arc::clone(&content_provider)).await;
         build.source_pull(&project).await.expect("to pull changes");
 
         let CompileOutput {
@@ -483,7 +499,7 @@ async fn unnamed_cache_use() {
     // change resource E - which invalides 4 resources in total (E included).
     {
         let resource_e = resource_list[4];
-        change_resource(resource_e, &project_dir).await;
+        change_resource(resource_e, &project_dir, content_provider).await;
         build.source_pull(&project).await.expect("to pull changes");
 
         let CompileOutput {
@@ -506,15 +522,18 @@ async fn unnamed_cache_use() {
 async fn named_path_cache_use() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
+    let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
     let resources = setup_registry();
     let mut resources = resources.lock().await;
 
     let magic_list = vec![String::from("47"), String::from("198")];
 
     let source_id = {
-        let mut project = Project::create_with_remote_mock(&project_dir)
-            .await
-            .expect("failed to create a project");
+        let mut project =
+            Project::create_with_remote_mock(&project_dir, Arc::clone(&content_provider))
+                .await
+                .expect("failed to create a project");
 
         let resource_handle = resources
             .new_resource(multitext_resource::MultiTextResource::TYPE)
@@ -540,7 +559,7 @@ async fn named_path_cache_use() {
         CompilerRegistryOptions::local_compilers(target_dir()),
     )
     .content_store(&cas_addr)
-    .create_with_project(&project_dir)
+    .create_with_project(&project_dir, Arc::clone(&content_provider))
     .await
     .expect("new build index");
 
@@ -641,7 +660,7 @@ async fn named_path_cache_use() {
 
     // change "text_1" of source resource multitext resource..
     {
-        let mut project = Project::open(&project_dir)
+        let mut project = Project::open(&project_dir, Arc::clone(&content_provider))
             .await
             .expect("failed to open project");
         let resources = setup_registry();
@@ -685,7 +704,7 @@ async fn named_path_cache_use() {
 
     // change "text_0" and "text_1" of source resource multitext resource..
     {
-        let mut project = Project::open(project_dir)
+        let mut project = Project::open(project_dir, Arc::clone(&content_provider))
             .await
             .expect("failed to open project");
         let resources = setup_registry();
@@ -756,13 +775,16 @@ async fn named_path_cache_use() {
 async fn link() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
+    let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
     let resources = setup_registry();
     let mut resources = resources.lock().await;
 
     let parent_id = {
-        let mut project = Project::create_with_remote_mock(&project_dir)
-            .await
-            .expect("new project");
+        let mut project =
+            Project::create_with_remote_mock(&project_dir, Arc::clone(&content_provider))
+                .await
+                .expect("new project");
 
         let child_handle = resources
             .new_resource(refs_resource::TestResource::TYPE)
@@ -810,7 +832,7 @@ async fn link() {
         CompilerRegistryOptions::local_compilers(target_dir()),
     )
     .content_store(&contentstore_path)
-    .create_with_project(&project_dir)
+    .create_with_project(&project_dir, content_provider)
     .await
     .expect("to create index");
 
@@ -860,14 +882,17 @@ async fn link() {
 async fn verify_manifest() {
     let work_dir = tempfile::tempdir().unwrap();
     let (project_dir, output_dir) = setup_dir(&work_dir);
+    let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
     let resources = setup_registry();
     let mut resources = resources.lock().await;
 
     // child_id <- test(child_id) <- parent_id = test(parent_id)
     let parent_resource = {
-        let mut project = Project::create_with_remote_mock(&project_dir)
-            .await
-            .expect("new project");
+        let mut project =
+            Project::create_with_remote_mock(&project_dir, Arc::clone(&content_provider))
+                .await
+                .expect("new project");
         let child_id = project
             .add_resource(
                 ResourcePathName::new("child"),
@@ -909,7 +934,7 @@ async fn verify_manifest() {
         CompilerRegistryOptions::local_compilers(target_dir()),
     )
     .content_store(&contentstore_path)
-    .create_with_project(project_dir)
+    .create_with_project(project_dir, content_provider)
     .await
     .expect("to create index");
 

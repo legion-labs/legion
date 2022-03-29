@@ -1,7 +1,7 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
-use std::{path::PathBuf, str::FromStr};
+use std::{path::PathBuf, str::FromStr, sync::Arc};
 
 use clap::{Parser, Subcommand};
 use lgn_content_store::ContentStoreAddr;
@@ -74,6 +74,11 @@ async fn main() -> Result<(), String> {
     let args = Cli::parse();
 
     let cwd = std::env::current_dir().unwrap();
+    let content_provider = Arc::new(
+        lgn_content_store2::Config::load_and_instantiate_persistent_provider()
+            .await
+            .map_err(|err| format!("{:?}", err))?,
+    );
 
     match args.command {
         Commands::Create {
@@ -86,7 +91,7 @@ async fn main() -> Result<(), String> {
                 ContentStoreAddr::from(&cas[..]),
                 CompilerRegistryOptions::default(),
             )
-            .create_with_project(&project_dir)
+            .create_with_project(&project_dir, content_provider)
             .await
             .map_err(|e| format!("failed creating build index {}", e))?;
 
@@ -123,7 +128,7 @@ async fn main() -> Result<(), String> {
                 })
                 .unwrap_or_default();
 
-            let project = Project::open(&project_dir)
+            let project = Project::open(&project_dir, content_provider)
                 .await
                 .map_err(|e| e.to_string())?;
 

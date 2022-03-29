@@ -1,6 +1,7 @@
-use std::fs;
+use std::{fs, sync::Arc};
 
 use lgn_content_store::{ContentStoreAddr, HddContentStore};
+use lgn_content_store2::{ContentProvider, MemoryProvider};
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::{
     compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,
@@ -20,6 +21,8 @@ async fn build_device() {
     let cas = work_dir.path().join("content_store");
     let project_dir = work_dir.path();
     let output_dir = work_dir.path();
+    let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
 
     // create output directory
     fs::create_dir(&cas).expect("new directory");
@@ -28,9 +31,10 @@ async fn build_device() {
 
     // create project that contains test resource.
     let source_id = {
-        let mut project = Project::create_with_remote_mock(project_dir)
-            .await
-            .expect("new project");
+        let mut project =
+            Project::create_with_remote_mock(project_dir, Arc::clone(&content_provider))
+                .await
+                .expect("new project");
         let resources = ResourceRegistryOptions::new()
             .add_type::<refs_resource::TestResource>()
             .create_async_registry();
@@ -74,7 +78,7 @@ async fn build_device() {
         CompilerRegistryOptions::local_compilers(target_dir),
     )
     .content_store(&ContentStoreAddr::from(cas.clone()))
-    .create_with_project(project_dir)
+    .create_with_project(project_dir, Arc::clone(&content_provider))
     .await
     .expect("new build index");
     build.source_pull(&project).await.expect("successful pull");
@@ -144,7 +148,9 @@ async fn build_device() {
     let changed_content = "bar";
     let changed_derived_content = changed_content.chars().rev().collect::<String>();
     {
-        let mut project = Project::open(project_dir).await.expect("new project");
+        let mut project = Project::open(project_dir, content_provider)
+            .await
+            .expect("new project");
         let resources = ResourceRegistryOptions::new()
             .add_type::<refs_resource::TestResource>()
             .create_async_registry();
@@ -183,6 +189,8 @@ async fn no_intermediate_resource() {
     let cas = work_dir.path().join("content_store");
     let project_dir = work_dir.path();
     let output_dir = work_dir.path();
+    let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
 
     // create output directory
     fs::create_dir(&cas).expect("new directory");
@@ -190,9 +198,10 @@ async fn no_intermediate_resource() {
     // create project that contains test resource.
     let resource_id = {
         let resource_id = {
-            let mut project = Project::create_with_remote_mock(project_dir)
-                .await
-                .expect("new project");
+            let mut project =
+                Project::create_with_remote_mock(project_dir, Arc::clone(&content_provider))
+                    .await
+                    .expect("new project");
             let resources = ResourceRegistryOptions::new()
                 .add_type::<refs_resource::TestResource>()
                 .create_async_registry();
@@ -218,7 +227,7 @@ async fn no_intermediate_resource() {
             ContentStoreAddr::from(cas.clone()),
             CompilerRegistryOptions::default(),
         )
-        .create_with_project(project_dir)
+        .create_with_project(project_dir, content_provider)
         .await
         .expect("new build index");
         build.source_pull(&project).await.expect("successful pull");
@@ -264,6 +273,8 @@ async fn no_intermediate_resource() {
 #[tokio::test]
 async fn with_intermediate_resource() {
     let work_dir = tempfile::tempdir().unwrap();
+    let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
 
     let cas = work_dir.path().join("content_store");
     let project_dir = work_dir.path();
@@ -275,9 +286,10 @@ async fn with_intermediate_resource() {
     // create project that contains test resource.
     let resource_id = {
         let resource_id = {
-            let mut project = Project::create_with_remote_mock(project_dir)
-                .await
-                .expect("new project");
+            let mut project =
+                Project::create_with_remote_mock(project_dir, Arc::clone(&content_provider))
+                    .await
+                    .expect("new project");
             let resources = ResourceRegistryOptions::new()
                 .add_type::<text_resource::TextResource>()
                 .create_async_registry();
@@ -303,7 +315,7 @@ async fn with_intermediate_resource() {
             CompilerRegistryOptions::default(),
         )
         .content_store(&ContentStoreAddr::from(cas.clone()))
-        .create_with_project(project_dir)
+        .create_with_project(project_dir, content_provider)
         .await
         .expect("new build index");
         build.source_pull(&project).await.expect("successful pull");

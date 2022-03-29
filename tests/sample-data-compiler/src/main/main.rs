@@ -7,7 +7,7 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, sync::Arc};
 
 use clap::Parser;
 use lgn_data_offline::resource::ResourcePathName;
@@ -55,19 +55,28 @@ async fn main() {
     let source_control_path: String =
         lgn_config::get_or("editor_srv.source_control", "../remote".to_string()).unwrap();
 
-    let content_store_section = lgn_content_store2::Config::SECTION_PERSISTENT;
+    let content_provider = Arc::new(
+        lgn_content_store2::Config::load_and_instantiate_persistent_provider()
+            .await
+            .unwrap(),
+    );
 
     // generate contents of offline folder, from raw RON content
     raw_loader::build_offline(
         &absolute_root,
         source_control_path,
-        content_store_section,
+        Arc::clone(&content_provider),
         true,
     )
     .await;
 
     // compile offline resources to runtime assets
-    offline_compiler::build(&absolute_root, &ResourcePathName::from(&args.resource)).await;
+    offline_compiler::build(
+        &absolute_root,
+        &ResourcePathName::from(&args.resource),
+        content_provider,
+    )
+    .await;
 }
 
 fn clean_folders(project_dir: &str) {

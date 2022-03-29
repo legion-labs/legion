@@ -70,8 +70,10 @@ fn compute_context_hash(
 /// # Example Usage
 ///
 /// ```no_run
+/// # use std::sync::Arc;
 /// # use lgn_data_build::{DataBuild, DataBuildOptions};
 /// # use lgn_content_store::ContentStoreAddr;
+/// # use lgn_content_store2::{ContentProvider, MemoryProvider};
 /// # use lgn_data_compiler::{compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target};
 /// # use lgn_data_offline::ResourcePathId;
 /// # use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
@@ -79,8 +81,9 @@ fn compute_context_hash(
 /// # let offline_anim: ResourceTypeAndId = "(type,invalid_id)".parse::<ResourceTypeAndId>().unwrap();
 /// # const RUNTIME_ANIM: ResourceType = ResourceType::new(b"invalid");
 /// # tokio_test::block_on(async {
+/// let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
 /// let (mut build, project) = DataBuildOptions::new("temp/".to_string(), ContentStoreAddr::from("./content_store/"), CompilerRegistryOptions::local_compilers("./compilers/"))
-///         .create_with_project(".").await.expect("new build index");
+///         .create_with_project(".", content_provider).await.expect("new build index");
 ///
 /// build.source_pull(&project).await.expect("successful source pull");
 /// let compile_path = ResourcePathId::from(offline_anim).push(RUNTIME_ANIM);

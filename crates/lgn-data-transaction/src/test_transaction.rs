@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use generic_data::offline::TestEntity;
 use lgn_content_store::{ContentStoreAddr, HddContentStore};
+use lgn_content_store2::{ContentProvider, MemoryProvider};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
@@ -135,9 +136,11 @@ async fn test_array_reorder_operation(
 async fn test_transaction_system() -> Result<(), Error> {
     let project_dir = tempfile::tempdir().unwrap();
     let build_dir = project_dir.path().join("temp");
+    let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
     std::fs::create_dir(&build_dir).unwrap();
 
-    let project = Project::create_with_remote_mock(&project_dir)
+    let project = Project::create_with_remote_mock(&project_dir, content_provider)
         .await
         .unwrap();
     let resource_dir = project.resource_dir();
@@ -166,6 +169,7 @@ async fn test_transaction_system() -> Result<(), Error> {
             .unwrap();
 
     let project = Arc::new(Mutex::new(project));
+
     {
         let mut transaction_manager = TransactionManager::new(
             project.clone(),

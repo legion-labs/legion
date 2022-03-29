@@ -65,24 +65,30 @@ impl ResourceRegistryPlugin {
         let selection_manager = world.resource::<Arc<SelectionManager>>();
 
         let transaction_manager = async_rt.block_on(async move {
-            let content_store_section = lgn_content_store2::Config::SECTION_PERSISTENT;
+            let content_provider = Arc::new(
+                lgn_content_store2::Config::load_and_instantiate_persistent_provider()
+                    .await
+                    .unwrap(),
+            );
 
             sample_data_compiler::raw_loader::build_offline(
                 &project_dir,
                 settings.source_control_path.clone(),
-                content_store_section,
+                Arc::clone(&content_provider),
                 false,
             )
             .await;
 
             let project = {
-                if let Ok(project) = Project::open(&project_dir).await {
+                if let Ok(project) =
+                    Project::open(&project_dir, Arc::clone(&content_provider)).await
+                {
                     project
                 } else {
                     let mut project = Project::create(
                         &project_dir,
                         settings.source_control_path.clone(),
-                        content_store_section,
+                        content_provider,
                     )
                     .await
                     .unwrap();

@@ -67,14 +67,18 @@ impl FromStr for Transform {
 /// runtime geometry data after LOD-generation process.
 ///
 /// ```no_run
+/// use std::sync::Arc;
 /// use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
 /// use lgn_data_runtime::ResourceType;
 /// use lgn_data_offline::ResourcePathId;
+/// use lgn_content_store2::{ContentProvider, MemoryProvider};
 /// use std::path::PathBuf;
 /// # tokio_test::block_on(async {
 /// let resources = ResourceRegistryOptions::new().create_registry();
 /// let mut resources = resources.lock().unwrap();
-/// let mut project = Project::create_with_remote_mock(&PathBuf::new()).await.unwrap();
+/// let content_provider: Arc<Box<dyn ContentProvider + Send +
+///  Sync>> = Arc::new(Box::new(MemoryProvider::new()));
+/// let mut project = Project::create_with_remote_mock(&PathBuf::new(), content_provider).await.unwrap();
 /// pub const SOURCE_GEOMETRY: &'static str = "src_geom";
 /// pub const LOD_GEOMETRY: ResourceType = ResourceType::new(b"lod_geom");
 /// pub const BINARY_GEOMETRY: ResourceType = ResourceType::new(b"bin_geom");
