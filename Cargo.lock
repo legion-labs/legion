@@ -8429,6 +8429,7 @@ dependencies = [
  "lgn-app",
  "lgn-asset-registry",
  "lgn-async",
+ "lgn-codec-api",
  "lgn-config",
  "lgn-content-store",
  "lgn-core",

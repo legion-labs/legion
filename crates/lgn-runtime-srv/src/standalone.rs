@@ -1,4 +1,5 @@
 use lgn_app::prelude::*;
+use lgn_codec_api::encoder_work_queue::EncoderWorkQueue;
 use lgn_ecs::prelude::*;
 use lgn_graphics_renderer::{
     components::{

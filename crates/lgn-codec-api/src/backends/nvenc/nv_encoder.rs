@@ -216,7 +216,7 @@ impl NvEncEncoder {
                         )
                     })
             };
-            if result.unwrap() == NVENCSTATUS::NV_ENC_SUCCESS {
+            if result.unwrap() != NVENCSTATUS::NV_ENC_SUCCESS {
                 unsafe {
                     error!(
                         "Error retreving encoder config {:?}",
