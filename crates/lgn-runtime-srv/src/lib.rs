@@ -13,6 +13,7 @@ use clap::Parser;
 use generic_data::plugin::GenericDataPlugin;
 use lgn_app::prelude::App;
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
+use lgn_async::AsyncPlugin;
 use lgn_content_store::ContentStoreAddr;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
@@ -135,6 +136,7 @@ pub fn build_runtime(
 
     app.insert_resource(DefaultTaskPoolOptions::new(1..=4))
         .add_plugin(CorePlugin::default())
+        .add_plugin(AsyncPlugin::default())
         .add_plugin(TransformPlugin::default())
         .add_plugin(HierarchyPlugin::default())
         .insert_resource(AssetRegistrySettings::new(
@@ -160,7 +162,6 @@ pub fn build_runtime(
     {
         use std::net::SocketAddr;
 
-        use lgn_async::AsyncPlugin;
         use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
         use lgn_streamer::StreamerPlugin;
         use lgn_window::WindowPlugin;
@@ -177,7 +178,6 @@ pub fn build_runtime(
             add_primary_window: false,
             exit_on_close: false,
         })
-        .add_plugin(AsyncPlugin::default())
         .insert_resource(GRPCPluginSettings::new(server_addr))
         .add_plugin(GRPCPlugin::default())
         .add_plugin(StreamerPlugin::default());
