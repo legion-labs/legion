@@ -17,7 +17,9 @@ use lgn_graphics_renderer::RendererPlugin;
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_hierarchy::HierarchyPlugin;
 use lgn_input::InputPlugin;
-use lgn_resource_registry::{ResourceRegistryPlugin, ResourceRegistrySettings};
+use lgn_resource_registry::{
+    settings::CompilationMode, ResourceRegistryPlugin, ResourceRegistrySettings,
+};
 use lgn_scene_plugin::ScenePlugin;
 use lgn_scripting::ScriptingPlugin;
 use lgn_streamer::StreamerPlugin;
@@ -83,6 +85,9 @@ struct Args {
     /// Enable hardware encoding.
     #[clap(long)]
     enable_hw_encoding: bool,
+    /// The compilation mode of the editor.
+    #[clap(long, default_value = "in-process")] 
+    compilers: CompilationMode,
 }
 
 fn main() {
@@ -227,6 +232,7 @@ fn main() {
         source_control_path,
         build_output_db_addr,
         content_store_path,
+        args.compilers,
     ))
     .add_plugin(ResourceRegistryPlugin::default())
     .insert_resource(GRPCPluginSettings::new(server_addr))
