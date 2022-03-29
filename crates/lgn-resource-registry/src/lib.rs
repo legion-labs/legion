@@ -3,13 +3,14 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
-mod settings;
+pub mod settings;
 
 use std::sync::Arc;
 
 use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
 use lgn_data_build::{DataBuild, DataBuildOptions};
+use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::{Project, ResourceRegistryOptions};
 use lgn_data_runtime::{manifest::Manifest, AssetRegistry, AssetRegistryScheduling};
 use lgn_data_transaction::{BuildManager, SelectionManager, TransactionManager};
@@ -90,7 +91,17 @@ impl ResourceRegistryPlugin {
                 }
             };
 
-            let compilers = lgn_ubercompiler::create();
+            let mut compiler_dir = std::env::current_exe().expect("cannot access current_exe");
+            compiler_dir.pop(); // pop the .exe name
+            let compilers = match &settings.compilation_mode {
+                settings::CompilationMode::InProcess => lgn_ubercompiler::create(),
+                settings::CompilationMode::External => {
+                    CompilerRegistryOptions::local_compilers(compiler_dir)
+                }
+                settings::CompilationMode::Remote { url } => {
+                    lgn_data_compiler_remote::compiler_node::remote_compilers(compiler_dir, url)
+                }
+            };
 
             let build_options = DataBuildOptions::new(
                 DataBuildOptions::output_db_path(

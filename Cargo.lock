@@ -5428,6 +5428,7 @@ dependencies = [
  "lgn-content-store2",
  "lgn-data-build",
  "lgn-data-compiler",
+ "lgn-data-compiler-remote",
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-data-transaction",
