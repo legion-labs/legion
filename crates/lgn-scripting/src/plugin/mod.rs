@@ -6,7 +6,7 @@ use lgn_app::prelude::*;
 use lgn_data_offline::resource::ResourceRegistryOptions;
 use lgn_data_runtime::AssetRegistryOptions;
 #[cfg(not(feature = "offline"))]
-use lgn_data_runtime::{AssetRegistry, AssetRegistryGuard, ResourceTypeAndId};
+use lgn_data_runtime::{AssetRegistry, AssetRegistryGuard};
 use lgn_ecs::prelude::*;
 #[cfg(not(feature = "offline"))]
 use lgn_input::mouse::MouseMotion;
@@ -114,14 +114,6 @@ fn get_script<'registry>(
     registry: &'registry Res<'_, Arc<AssetRegistry>>,
 ) -> AssetRegistryGuard<'registry, Script> {
     let script_id = script.script_id.as_ref().unwrap().id();
-    get_script_by_id(script_id, registry)
-}
-
-#[cfg(not(feature = "offline"))]
-fn get_script_by_id<'registry>(
-    script_id: ResourceTypeAndId,
-    registry: &'registry Res<'_, Arc<AssetRegistry>>,
-) -> AssetRegistryGuard<'registry, Script> {
     let script_untyped = registry.get_untyped(script_id).unwrap();
     script_untyped.get::<Script>(registry).unwrap()
 }

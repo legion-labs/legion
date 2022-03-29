@@ -266,7 +266,6 @@ pub fn update(entity, events) {
                 ..Visual::default()
             }),
             Box::new(lgn_scripting::offline::ScriptComponent {
-                script_type: ScriptType::Rune,
                 input_values: vec!["{entity}".to_string(), "{events}".to_string()],
                 entry_fn: "update".to_string(),
                 script_id: Some(pad_right_script),
@@ -316,7 +315,6 @@ pub fn update(entity, events) {
                 ..Visual::default()
             }),
             Box::new(lgn_scripting::offline::ScriptComponent {
-                script_type: ScriptType::Rune,
                 input_values: vec!["{entity}".to_string(), "{events}".to_string()],
                 entry_fn: "update".to_string(),
                 script_id: Some(pad_left_script),
@@ -480,7 +478,6 @@ pub fn update(entity, last_result, entities) {
                 ..Visual::default()
             }),
             Box::new(lgn_scripting::offline::ScriptComponent {
-                script_type: ScriptType::Rune,
                 input_values: vec![
                     "{entity}".to_string(),
                     "{result}".to_string(),
