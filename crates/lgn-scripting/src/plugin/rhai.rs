@@ -24,12 +24,13 @@ fn compile(
     registry: Res<'_, Arc<AssetRegistry>>,
     mut commands: Commands<'_, '_>,
 ) {
-    let rhai_scripts = scripts
-        .iter()
-        .filter(|(_entity, s)| s.script_type == ScriptType::Rhai);
+    for (entity, script) in scripts.iter() {
+        let script_resource = get_script(script, &registry);
+        if script_resource.script_type != ScriptType::Rhai {
+            continue;
+        }
 
-    for (entity, script) in rhai_scripts {
-        let source_payload = &get_script(script, &registry).compiled_script;
+        let source_payload = &script_resource.compiled_script;
         let source_payload = std::str::from_utf8(source_payload).unwrap();
         println!("{}", &source_payload);
 

@@ -4,7 +4,7 @@ use lgn_app::prelude::*;
 use lgn_data_runtime::AssetRegistry;
 use lgn_ecs::prelude::*;
 
-use crate::{plugin::get_script_by_id, runtime::ScriptComponent, ScriptType, ScriptingStage};
+use crate::{plugin::get_script, runtime::ScriptComponent, ScriptType, ScriptingStage};
 
 pub(crate) fn build(app: &mut App) {
     app.init_non_send_resource::<RuntimeCollection>()
@@ -18,16 +18,17 @@ fn compile(
     registry: Res<'_, Arc<AssetRegistry>>,
     mut commands: Commands<'_, '_>,
 ) {
-    let mun_scripts = scripts
-        .iter()
-        .filter(|(_entity, s)| s.script_type == ScriptType::Mun);
+    for (entity, script) in scripts.iter() {
+        let script_resource = get_script(script, &registry);
+        if script_resource.script_type != ScriptType::Mun {
+            continue;
+        }
 
-    for (entity, script) in mun_scripts {
-        let script_id = script.script_id.as_ref().unwrap().id();
-        let source_payload = &get_script_by_id(script_id, &registry).compiled_script;
+        let source_payload = &script_resource.compiled_script;
 
         let lib_path = {
             let mut temp_crate = std::env::temp_dir();
+            let script_id = script.script_id.as_ref().unwrap().id();
             temp_crate.push(script_id.id.to_string());
             fs::remove_dir_all(&temp_crate).unwrap_or_default();
             fs::create_dir_all(&temp_crate).unwrap();
