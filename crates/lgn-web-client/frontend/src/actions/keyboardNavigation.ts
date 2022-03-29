@@ -29,7 +29,34 @@ export default function keyboardNavigation(
   htmlElement.tabIndex = -1;
   htmlElement.style.outline = "none";
 
+  store.subscribe(({ currentIndex }) => {
+    if (typeof currentIndex !== "number") {
+      return;
+    }
+
+    const element = htmlElement.querySelector(
+      `[data-keyboard-navigation-item-index="${currentIndex}"]`
+    );
+
+    if (!element) {
+      return;
+    }
+
+    const container = htmlElement.querySelector(
+      `[data-keyboard-navigation-container]`
+    );
+
+    // Auto scroll to "follow" the user focus when using the arrow keys
+    keepElementVisible(container || htmlElement, element);
+
+    htmlElement.dispatchEvent(
+      new CustomEvent("navigation-change", { detail: currentIndex })
+    );
+  });
+
   function handleKeyboard(event: KeyboardEvent) {
+    event.preventDefault();
+
     store.update(({ currentIndex }) => {
       let newIndex: number | null = null;
 
@@ -82,27 +109,6 @@ export default function keyboardNavigation(
       if (newIndex === null) {
         return { currentIndex };
       }
-
-      event.preventDefault();
-
-      const element = htmlElement.querySelector(
-        `[data-keyboard-navigation-item-index="${newIndex}"]`
-      );
-
-      if (!element) {
-        return { currentIndex };
-      }
-
-      const container = htmlElement.querySelector(
-        `[data-keyboard-navigation-container]`
-      );
-
-      // Auto scroll to "follow" the user focus when using the arrow keys
-      keepElementVisible(container || htmlElement, element);
-
-      htmlElement.dispatchEvent(
-        new CustomEvent("navigation-change", { detail: newIndex })
-      );
 
       return { currentIndex: newIndex };
     });
