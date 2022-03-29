@@ -1,5 +1,6 @@
 use lgn_ecs::prelude::{Component, Res, ResMut};
 use lgn_math::prelude::Vec3;
+use lgn_tracing::info;
 use physx::{
     cooking::{
         ConvexMeshCookingResult, PxConvexMeshDesc, PxCooking, PxTriangleMeshDesc,
@@ -34,6 +35,12 @@ pub(crate) enum CollisionGeometry {
 unsafe impl Send for CollisionGeometry {}
 #[allow(unsafe_code)]
 unsafe impl Sync for CollisionGeometry {}
+
+impl Drop for CollisionGeometry {
+    fn drop(&mut self) {
+        info!("drop CollisionGeometry");
+    }
+}
 
 pub(crate) type ConvertResult = Result<CollisionGeometry, ConvertError>;
 

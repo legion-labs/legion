@@ -166,11 +166,6 @@ struct VMCollection {
     vms: Vec<Option<VMContext>>,
 }
 
-struct VMContext {
-    vm: Vm,
-    last_result: Value,
-}
-
 impl VMCollection {
     fn append(&mut self, context: &Context, unit: Unit) -> usize {
         let vm = Vm::new(Arc::new(context.runtime()), Arc::new(unit));
@@ -181,6 +176,10 @@ impl VMCollection {
         self.vms.len() - 1
     }
 
+    fn remove(&mut self, index: usize) {
+        self.vms[index].take();
+    }
+
     fn get(&self, index: usize) -> &Option<VMContext> {
         &self.vms[index]
     }
@@ -188,4 +187,9 @@ impl VMCollection {
     fn get_mut(&mut self, index: usize) -> &mut Option<VMContext> {
         &mut self.vms[index]
     }
+}
+
+struct VMContext {
+    vm: Vm,
+    last_result: Value,
 }
