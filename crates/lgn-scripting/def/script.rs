@@ -17,7 +17,6 @@ struct Script {
 
 #[component]
 struct ScriptComponent {
-    pub script_type: ScriptType,
     pub input_values: Vec<String>,
     pub entry_fn: String,
 
