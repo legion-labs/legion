@@ -1,4 +1,4 @@
-import type { Writable } from "svelte/store";
+import type { Readable, Writable } from "svelte/store";
 import { get, writable } from "svelte/store";
 
 import type { MapStore } from "../stores/map";
@@ -15,8 +15,8 @@ type CommonConfig = {
 
 export type Script = CommonConfig & {
   type: "script";
+  getValue(): string;
   onChange(newValue: string): void;
-  value: string;
   readonly?: boolean;
   lang: string;
 };

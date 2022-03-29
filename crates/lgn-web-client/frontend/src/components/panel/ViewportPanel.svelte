@@ -57,7 +57,7 @@
         theme="vs-dark"
         on:change={({ detail: newValue }) =>
           activeTab.type === "script" && activeTab.onChange(newValue)}
-        value={activeTab.value}
+        value={activeTab.getValue()}
         readonly={activeTab.readonly}
       />
     {/if}

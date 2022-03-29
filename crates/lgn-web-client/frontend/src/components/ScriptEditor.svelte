@@ -1,6 +1,7 @@
 <script lang="ts">
   import type * as monaco from "monaco-editor/esm/vs/editor/editor.api";
   import { createEventDispatcher, onDestroy, onMount } from "svelte";
+  import type { Writable } from "svelte/store";
 
   import { debounce } from "../lib/promises";
 
@@ -37,7 +38,9 @@
 
     editor.onDidChangeModelContent(
       debounce(() => {
-        dispatch("change", getValue());
+        const newValue = getValue();
+
+        dispatch("change", newValue);
       }, debounceTime)
     );
   });
