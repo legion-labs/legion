@@ -156,6 +156,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                     property_path: "components[Transform].position".into(),
                     json_value: json!(Vec3::ZERO).to_string(),
                 }],
+                upload_id: None,
             }))
             .await?
             .into_inner()
@@ -203,6 +204,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                             json_value: json!(Vec3::new(offsets[i as usize], 0.0, 0.0,))
                                 .to_string(),
                         }],
+                        upload_id: None,
                     }))
                     .await
                     .unwrap()
@@ -225,6 +227,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                         resource_name: Some("subchild".into()),
                         parent_resource_id: Some(child_id.clone()),
                         init_values: Vec::new(),
+                        upload_id: None,
                     }))
                     .await
                     .unwrap()

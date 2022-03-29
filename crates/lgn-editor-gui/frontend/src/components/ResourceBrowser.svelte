@@ -135,7 +135,7 @@
 
         const promise = readFile(file).then(
           (content) =>
-            new Promise<string>((resolve, reject) => {
+            new Promise<{ name: string; id: string }>((resolve, reject) => {
               streamFileUpload({
                 id,
                 content: new Uint8Array(content),
@@ -144,26 +144,27 @@
                   reject(error);
                 },
                 complete() {
-                  resolve(name);
+                  resolve({ name, id });
                 },
               });
             })
         );
 
         return [...acc, promise];
-      }, [] as Promise<string>[]);
+      }, [] as Promise<{ name: string; id: string }>[]);
 
       const names = await Promise.all(promises);
 
       await Promise.all(
-        names.map((name) => {
+        names.map(({ name, id }) => {
           const lowerCasedName = name.toLowerCase().trim();
 
           if (lowerCasedName.endsWith(".png")) {
             createResource({
               resourceName: name,
               resourceType: "png",
-              parentResourceId: undefined,
+              parentResourceId: currentResourceDescriptionEntry?.item.id,
+              uploadId: id,
             });
           }
 
@@ -172,7 +173,8 @@
             createResource({
               resourceName: name.slice(0, -4),
               resourceType: "offline_model",
-              parentResourceId: undefined,
+              parentResourceId: currentResourceDescriptionEntry?.item.id,
+              uploadId: id,
             });
           }
         })
