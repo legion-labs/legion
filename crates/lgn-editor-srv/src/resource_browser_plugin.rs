@@ -311,6 +311,40 @@ fn update_entity_parenting(
     transaction
 }
 
+fn create_gltf_resource(zip_path: &PathBuf) -> Result<PathBuf, Status> {
+    let mut folder = zip_path.clone();
+    folder.pop();
+    let temp_folder = folder.join("temp");
+
+    info!("Temp folder: {:?}", temp_folder);
+
+    info!("Zip: {:?}", zip_path);
+    let mut buffer = std::fs::read(zip_path.with_extension("gltf.zip"))
+        .map_err(|err| Status::internal(err.to_string()))?;
+    let mut zip = zip::ZipArchive::new(std::io::Cursor::new(&mut buffer))
+        .map_err(|err| Status::internal(err.to_string()))?;
+    zip.extract(&temp_folder);
+    info!("Extraction successful");
+
+    // find .gltf in the unzipped folder
+    let paths = std::fs::read_dir(temp_folder).unwrap();
+    for path in paths {
+        let mut path = path.unwrap().path();
+        if let Some(extension) = path.extension() {
+            if extension == "gltf" {
+                info!("Found .gltf");
+                let gltf_file = GltfFile::from_path(&path);
+                let path = path.with_extension("temp");
+                info!("Creating a file {path:?}");
+                let mut file = std::fs::File::create(&path).unwrap();
+                gltf_file.write(&mut file);
+                return Ok(path);
+            }
+        }
+    }
+    Err(Status::internal(".zip file doesn't contain .gltf file"))
+}
+
 #[tonic::async_trait]
 impl ResourceBrowser for ResourceBrowserRPC {
     /// Search for all resources
@@ -390,68 +424,16 @@ impl ResourceBrowser for ResourceBrowserRPC {
             ResourcePathName::new(name)
         };
 
-        // We use the resource path as the content path for now as it's a temporary implementation
-        let content_path = if resource_type == "png" {
-            Some(self.uploads_folder.join(&resource_path.as_ref()[1..]))
-        } else if resource_type == "gltf" {
-            let temp_folder = self.uploads_folder.join("temp");
-            fn find_zip_folder(folder: &PathBuf) -> Result<PathBuf, Status> {
-                let paths = std::fs::read_dir(folder).unwrap();
-                for path in paths {
-                    let path = path.unwrap().path();
-                    let metadata = std::fs::metadata(&path).unwrap();
-                    info!("Searching for .gltf.zip... {path:?}, {metadata:?}");
+        let mut content_path = request.upload_id.as_ref().map(|upload_id| {
+            self.uploads_folder
+                .join(upload_id)
+                .join(&resource_path.as_ref()[1..])
+        });
 
-                    if metadata.is_file() {
-                        info!("It's a file");
-                        if let Some(extension) = path.extension() {
-                            info!("Extension {extension:?}");
-                            if extension == ("zip") {
-                                return Ok(path);
-                            }
-                        }
-                    } else if metadata.is_dir() {
-                        if let Ok(res) = find_zip_folder(&path) {
-                            info!("Found {path:?}");
-                            return Ok(res);
-                        }
-                    }
-                }
-                error!("Couldn't find .gltf.zip");
-                Err(Status::internal(".gltf.zip not found"))
+        if resource_type == "gltf" {
+            if let Some(tmp_content_path) = content_path {
+                content_path = Some(create_gltf_resource(&tmp_content_path)?);
             }
-            info!("Temp folder: {:?}", temp_folder);
-
-            let path = find_zip_folder(&self.uploads_folder)?;
-            info!("Zip folder: {:?}", path);
-            let mut buffer =
-                std::fs::read(path).map_err(|err| Status::internal(err.to_string()))?;
-            let mut zip = zip::ZipArchive::new(std::io::Cursor::new(&mut buffer))
-                .map_err(|err| Status::internal(err.to_string()))?;
-            zip.extract(&temp_folder);
-            info!("Extraction successful");
-
-            // find .gltf in the unzipped folder
-            let mut content_path = PathBuf::default();
-            let paths = std::fs::read_dir(temp_folder).unwrap();
-            for path in paths {
-                let mut path = path.unwrap().path();
-                if let Some(extension) = path.extension() {
-                    if extension == "gltf" {
-                        info!("Found .gltf");
-                        let gltf_file = GltfFile::from_path(&path);
-                        let path = path.with_extension("temp");
-                        info!("Creating a file {path:?}");
-                        let mut file = std::fs::File::create(&path).unwrap();
-                        gltf_file.write(&mut file);
-                        content_path = path;
-                        break;
-                    }
-                }
-            }
-            Some(content_path)
-        } else {
-            None
         };
 
         let mut transaction = Transaction::new().add_operation(CreateResourceOperation::new(
