@@ -424,11 +424,10 @@ impl ResourceBrowser for ResourceBrowserRPC {
             ResourcePathName::new(name)
         };
 
-        let mut content_path = request.upload_id.as_ref().map(|upload_id| {
-            self.uploads_folder
-                .join(upload_id)
-                .join(&resource_path.as_ref()[1..])
-        });
+        let mut content_path = request
+            .upload_id
+            .as_ref()
+            .map(|upload_id| self.uploads_folder.join(upload_id).join(name));
 
         if resource_type == "gltf" {
             if let Some(tmp_content_path) = content_path {

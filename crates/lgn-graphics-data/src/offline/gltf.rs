@@ -426,6 +426,11 @@ impl ResourceProcessor for GltfFileProcessor {
         Vec::new()
     }
 
+    /// Return the name of the Resource type that the processor can process.
+    fn get_resource_type_name(&self) -> Option<&'static str> {
+        Some("gltf")
+    }
+
     fn write_resource(
         &self,
         resource: &dyn Any,
