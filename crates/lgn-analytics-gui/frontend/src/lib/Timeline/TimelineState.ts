@@ -1,11 +1,12 @@
 import type { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
 import type { Process } from "@lgn/proto-telemetry/dist/process";
+
 import type { SelectionState } from "../time_range_selection";
 import { NewSelectionState } from "../time_range_selection";
 import { zoomHorizontalViewRange } from "../zoom";
+import type { ProcessAsyncData } from "./ProcessAsyncData";
 import type { Thread } from "./Thread";
 import type { ThreadBlock } from "./ThreadBlock";
-import type { ProcessAsyncData } from "./ProcessAsyncData";
 
 export class TimelineState {
   minMs = Infinity;

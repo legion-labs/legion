@@ -1,7 +1,9 @@
 <script lang="ts">
   import { getMetricColor } from "@/lib/Metric/MetricColor";
   import { updateMetricSelection } from "@/lib/Metric/MetricSelectionStore";
+
   import type { MetricSelectionState } from "./MetricSelectionState";
+
   export let metric: MetricSelectionState;
   const iconMap = new Map<string, string>([
     ["us", "bi bi-hourglass-split"],

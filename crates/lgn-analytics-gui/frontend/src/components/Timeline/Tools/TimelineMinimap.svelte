@@ -1,8 +1,11 @@
 <script lang="ts">
+  import { createEventDispatcher, onMount } from "svelte";
+
   import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { TimelineMinimapViewport } from "@/lib/Timeline/TimelineViewport";
-  import { createEventDispatcher, onMount } from "svelte";
+
   import { threadItemLength } from "../Values/TimelineValues";
+
   export let stateStore: TimelineStateStore;
   export let canvasHeight: number;
   export let scrollHeight: number;

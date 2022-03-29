@@ -1,6 +1,7 @@
 <script lang="ts">
-  import type { Process } from "@lgn/proto-telemetry/dist/process";
   import { link } from "svelte-navigator";
+
+  import type { Process } from "@lgn/proto-telemetry/dist/process";
 
   export let timeRange: [number, number] | undefined;
   export let processId: string;

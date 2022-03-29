@@ -1,17 +1,20 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { link } from "svelte-navigator";
+
   import type {
     PerformanceAnalyticsClientImpl,
     ProcessInstance,
   } from "@lgn/proto-telemetry/dist/analytics";
-  import { onMount } from "svelte";
   import log from "@lgn/web-client/src/lib/log";
+
   import { makeGrpcClient } from "@/lib/client";
-  import User from "./User.svelte";
+  import { formatProcessName } from "@/lib/format";
+
   import Computer from "./Computer.svelte";
   import Platform from "./Platform.svelte";
   import ProcessTime from "./ProcessTime.svelte";
-  import { formatProcessName } from "@/lib/format";
+  import User from "./User.svelte";
 
   let client: PerformanceAnalyticsClientImpl | null = null;
   let processList: ProcessInstance[] = [];

@@ -1,8 +1,9 @@
+import { grpc } from "@improbable-eng/grpc-web";
+
 import {
   GrpcWebImpl,
   PerformanceAnalyticsClientImpl,
 } from "@lgn/proto-telemetry/dist/analytics";
-import { grpc } from "@improbable-eng/grpc-web";
 import { authClient } from "@lgn/web-client/src/lib/auth";
 
 export function getRemoteHost(): string {

@@ -1,11 +1,14 @@
 <script lang="ts">
+  import type { D3ZoomEvent } from "d3";
+  import { get } from "svelte/store";
+
   import type { Point } from "@/lib/Metric/MetricPoint";
   import { selectionStore } from "@/lib/Metric/MetricSelectionStore";
   import type { MetricStreamer } from "@/lib/Metric/MetricStreamer";
-  import type { D3ZoomEvent } from "d3";
-  import { get } from "svelte/store";
+
   import type { MetricSelectionState } from "./MetricSelectionState";
   import MetricTooltipItem from "./MetricTooltipItem.svelte";
+
   export let xScale: d3.ScaleLinear<number, number, never>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   export let zoomEvent: D3ZoomEvent<HTMLCanvasElement, any>;

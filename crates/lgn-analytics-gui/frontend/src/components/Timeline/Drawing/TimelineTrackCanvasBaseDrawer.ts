@@ -1,10 +1,13 @@
-import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
-import { get } from "svelte/store";
-import { formatExecutionTime } from "@/lib/format";
-import type { TimelineCaptionItem } from "@/lib/Timeline/TimelineSpanCaptionItem";
-import { spanPixelHeight } from "@/components/Timeline/Values/TimelineValues";
-import type { SpanTrack } from "@lgn/proto-telemetry/dist/span";
 import binarySearch from "binary-search";
+import { get } from "svelte/store";
+
+import type { SpanTrack } from "@lgn/proto-telemetry/dist/span";
+
+import { spanPixelHeight } from "@/components/Timeline/Values/TimelineValues";
+import type { TimelineCaptionItem } from "@/lib/Timeline/TimelineSpanCaptionItem";
+import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
+import { formatExecutionTime } from "@/lib/format";
+
 import type { TimelineTrackContext } from "./TimelineTrackContext";
 
 export abstract class TimelineTrackCanvasBaseDrawer {

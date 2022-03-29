@@ -1,12 +1,15 @@
 <script lang="ts">
-  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
-  import { DrawSelectedRange } from "@/lib/time_range_selection";
   import { createEventDispatcher, onDestroy, onMount, tick } from "svelte";
   import type { Unsubscriber } from "svelte/store";
+
   import { debounced } from "@lgn/web-client/src/lib/store";
+
+  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
+  import { DrawSelectedRange } from "@/lib/time_range_selection";
+
   import type { TimelineTrackCanvasBaseDrawer } from "./Drawing/TimelineTrackCanvasBaseDrawer";
-  import { spanPixelHeight } from "./Values/TimelineValues";
   import { TimelineContext } from "./Stores/TimelineContext";
+  import { spanPixelHeight } from "./Values/TimelineValues";
 
   export let stateStore: TimelineStateStore;
   export let processCollapsed: boolean;

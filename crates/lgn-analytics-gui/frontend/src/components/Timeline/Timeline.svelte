@@ -1,22 +1,24 @@
 <script lang="ts">
-  import { TimelineStateManager } from "@/lib/Timeline/TimelineStateManager";
   import { afterUpdate, onMount, tick } from "svelte";
-  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
-  import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { BarLoader } from "svelte-loading-spinners";
+  import { useLocation } from "svelte-navigator";
+
+  import { loadingStore } from "@/lib/Misc/LoadingStore";
+  import { TimelineStateManager } from "@/lib/Timeline/TimelineStateManager";
+  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import {
     NewSelectionState,
     RangeSelectionOnMouseDown,
     RangeSelectionOnMouseMove,
   } from "@/lib/time_range_selection";
-  import TimelineAction from "./Tools/TimelineAction.svelte";
+
   import TimelineProcess from "./TimelineProcess.svelte";
+  import TimelineAction from "./Tools/TimelineAction.svelte";
+  import TimelineAxis from "./Tools/TimelineAxis.svelte";
+  import TimelineMinimap from "./Tools/TimelineMinimap.svelte";
   import TimelineRange from "./Tools/TimelineRange.svelte";
   import TimelineSearch from "./Tools/TimelineSearch.svelte";
-  import { useLocation } from "svelte-navigator";
-  import TimelineAxis from "./Tools/TimelineAxis.svelte";
   import { pixelMargin, threadItemLength } from "./Values/TimelineValues";
-  import TimelineMinimap from "./Tools/TimelineMinimap.svelte";
 
   export let processId: string;
 

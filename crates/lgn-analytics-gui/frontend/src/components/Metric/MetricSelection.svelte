@@ -1,12 +1,15 @@
 <script lang="ts">
+  import { onDestroy, onMount } from "svelte";
+  import { Unsubscriber, get } from "svelte/store";
+
+  import clickOutside from "@lgn/web-client/src/actions/clickOutside";
+
   import {
     getRecentlyUsedMetrics,
     selectionStore,
     updateMetricSelection,
   } from "@/lib/Metric/MetricSelectionStore";
-  import clickOutside from "@lgn/web-client/src/actions/clickOutside";
-  import { onDestroy, onMount } from "svelte";
-  import { get, Unsubscriber } from "svelte/store";
+
   import MetricSelectionItem from "./MetricSelectionItem.svelte";
   import type { MetricSelectionState } from "./MetricSelectionState";
 

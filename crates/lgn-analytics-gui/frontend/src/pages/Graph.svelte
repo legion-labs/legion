@@ -1,4 +1,18 @@
 <script lang="ts">
+  import { onMount } from "svelte";
+  import { useLocation } from "svelte-navigator";
+
+  import type {
+    CumulativeCallGraphNode,
+    PerformanceAnalyticsClientImpl,
+  } from "@lgn/proto-telemetry/dist/analytics";
+  import type { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
+  import type { Process } from "@lgn/proto-telemetry/dist/process";
+  import log from "@lgn/web-client/src/lib/log";
+
+  import { makeGrpcClient } from "@/lib/client";
+  import { formatExecutionTime } from "@/lib/format";
+
   /* eslint-disable @typescript-eslint/no-non-null-assertion */
 
   type GraphParams = {
@@ -6,18 +20,6 @@
     beginMs: number;
     endMs: number;
   };
-
-  import { useLocation } from "svelte-navigator";
-  import { onMount } from "svelte";
-  import type {
-    CumulativeCallGraphNode,
-    PerformanceAnalyticsClientImpl,
-  } from "@lgn/proto-telemetry/dist/analytics";
-  import type { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
-  import type { Process } from "@lgn/proto-telemetry/dist/process";
-  import { formatExecutionTime } from "@/lib/format";
-  import { makeGrpcClient } from "@/lib/client";
-  import log from "@lgn/web-client/src/lib/log";
 
   const locationStore = useLocation();
   let client: PerformanceAnalyticsClientImpl | null = null;

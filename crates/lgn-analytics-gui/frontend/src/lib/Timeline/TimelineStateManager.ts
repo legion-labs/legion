@@ -1,24 +1,26 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { get } from "svelte/store";
+
 import type { BlockSpansReply } from "@lgn/proto-telemetry/dist/analytics";
 import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
 import type { Process } from "@lgn/proto-telemetry/dist/process";
-import { makeGrpcClient } from "../client";
+import type { Stream } from "@lgn/proto-telemetry/dist/stream";
 import log from "@lgn/web-client/src/lib/log";
-import type { ThreadBlock } from "./ThreadBlock";
-import { LODState } from "./LodState";
-import type { AsyncSection } from "./AsyncSection";
+
+import { loadPromise, loadWrap } from "../Misc/LoadingStore";
+import { makeGrpcClient } from "../client";
 import {
   computePreferredBlockLod,
   processMsOffsetToRoot,
   timestampToMs,
 } from "../time";
-import type { Stream } from "@lgn/proto-telemetry/dist/stream";
+import type { AsyncSection } from "./AsyncSection";
+import { LODState } from "./LodState";
+import type { ProcessAsyncData } from "./ProcessAsyncData";
+import type { ThreadBlock } from "./ThreadBlock";
+import { TimelineState } from "./TimelineState";
 import type { TimelineStateStore } from "./TimelineStateStore";
 import { createTimelineStateStore } from "./TimelineStateStore";
-import { TimelineState } from "./TimelineState";
-import type { ProcessAsyncData } from "./ProcessAsyncData";
-import { loadPromise, loadWrap } from "../Misc/LoadingStore";
 
 const MAX_NB_REQUEST_IN_FLIGHT = 16;
 

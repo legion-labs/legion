@@ -1,5 +1,6 @@
-import type { SpanTrack } from "@lgn/proto-telemetry/dist/span";
 import type { BlockMetadata } from "@lgn/proto-telemetry/dist/block";
+import type { SpanTrack } from "@lgn/proto-telemetry/dist/span";
+
 import type { LODState } from "./LodState";
 
 export type ThreadBlock = {

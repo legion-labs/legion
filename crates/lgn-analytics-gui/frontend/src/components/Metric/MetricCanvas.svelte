@@ -1,23 +1,27 @@
 <script lang="ts">
-  import { makeGrpcClient } from "@/lib/client";
-  import { formatExecutionTime } from "@/lib/format";
-  import { getLodFromPixelSizeNs } from "@/lib/lod";
+  import * as d3 from "d3";
+  import type { D3ZoomEvent } from "d3";
+  import { onDestroy, onMount } from "svelte";
+  import { Unsubscriber, Writable, get } from "svelte/store";
+
+  import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
+  import log from "@lgn/web-client/src/lib/log";
+
   import { MetricAxisCollection } from "@/lib/Metric/MetricAxisCollection";
   import { getMetricColor } from "@/lib/Metric/MetricColor";
   import { selectionStore } from "@/lib/Metric/MetricSelectionStore";
   import type { MetricSlice } from "@/lib/Metric/MetricSlice";
   import type { MetricState } from "@/lib/Metric/MetricState";
   import { MetricStreamer } from "@/lib/Metric/MetricStreamer";
-  import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
-  import log from "@lgn/web-client/src/lib/log";
-  import * as d3 from "d3";
-  import type { D3ZoomEvent } from "d3";
-  import { onDestroy, onMount } from "svelte";
-  import { get, Unsubscriber, Writable } from "svelte/store";
+  import { makeGrpcClient } from "@/lib/client";
+  import { formatExecutionTime } from "@/lib/format";
+  import { getLodFromPixelSizeNs } from "@/lib/lod";
+
   import MetricDebugDisplay from "./MetricDebugDisplay.svelte";
   import MetricLegendGroup from "./MetricLegendGroup.svelte";
   import MetricSelection from "./MetricSelection.svelte";
   import MetricTooltip from "./MetricTooltip.svelte";
+
   export let id: string;
 
   let metricStreamer: MetricStreamer;

@@ -1,13 +1,11 @@
 // Reexports svelte-navigator's components with a proper type
-
-import type { RouterProps } from "svelte-navigator/types/Router";
-import type { RouteProps } from "svelte-navigator/types/Route";
-import {
-  Router as NavigatorRouter,
-  Route as NavigatorRoute,
-} from "svelte-navigator";
-
 import type { SvelteComponentTyped } from "svelte";
+import {
+  Route as NavigatorRoute,
+  Router as NavigatorRouter,
+} from "svelte-navigator";
+import type { RouteProps } from "svelte-navigator/types/Route";
+import type { RouterProps } from "svelte-navigator/types/Router";
 
 declare class InnerRouterProxy extends SvelteComponentTyped<RouterProps> {}
 

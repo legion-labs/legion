@@ -1,10 +1,13 @@
-import type { Point } from "@/lib/Metric/MetricPoint";
+import { get } from "svelte/store";
+
 import type {
   MetricBlockData,
   MetricBlockManifest,
   MetricDesc,
 } from "@lgn/proto-telemetry/dist/metric";
-import { get } from "svelte/store";
+
+import type { Point } from "@/lib/Metric/MetricPoint";
+
 import { MetricBlockState } from "./MetricBlockState";
 import { addToSelectionStore, selectionStore } from "./MetricSelectionStore";
 
@@ -94,10 +97,10 @@ export class MetricState {
 
   private mapToPoints(blockData: MetricBlockData): Point[] {
     return blockData.points.map((p) => {
-      return <Point>{
+      return {
         time: p.timeMs + this.min,
         value: p.value,
-      };
+      } as Point;
     });
   }
 

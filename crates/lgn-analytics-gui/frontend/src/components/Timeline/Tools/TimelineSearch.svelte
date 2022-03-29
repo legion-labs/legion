@@ -1,5 +1,6 @@
 <script lang="ts">
   import { TimelineContext } from "../Stores/TimelineContext";
+
   const searchStore = TimelineContext.search;
 </script>
 

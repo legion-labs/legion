@@ -1,8 +1,10 @@
 <script lang="ts">
-  import { onDestroy, onMount } from "svelte";
   import ProgressBar from "progressbar.js";
-  import { loadingStore } from "@/lib/Misc/LoadingStore";
+  import { onDestroy, onMount } from "svelte";
   import type { Unsubscriber } from "svelte/store";
+
+  import { loadingStore } from "@/lib/Misc/LoadingStore";
+
   let subscription: Unsubscriber;
   let ratio: number;
   onMount(() => {

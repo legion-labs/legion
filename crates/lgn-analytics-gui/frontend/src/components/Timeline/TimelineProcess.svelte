@@ -1,17 +1,20 @@
 <script lang="ts">
-  import { formatExecutionTime, formatProcessName } from "@/lib/format";
-  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { createEventDispatcher, onMount } from "svelte";
-  import TimelineTrack from "./TimelineTrack.svelte";
-  import { TimelineTrackCanvasSyncDrawer } from "./Drawing/TimelineTrackCanvasSyncDrawer";
-  import { TimelineTrackCanvasAsyncDrawer } from "./Drawing/TimelineTrackCanvasAsyncDrawer";
-  import TimelineDebug from "./Tools/TimelineDebug.svelte";
+
   import type { Process } from "@lgn/proto-telemetry/dist/process";
+
+  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
+  import { formatExecutionTime, formatProcessName } from "@/lib/format";
+
+  import { TimelineTrackCanvasAsyncDrawer } from "./Drawing/TimelineTrackCanvasAsyncDrawer";
+  import { TimelineTrackCanvasSyncDrawer } from "./Drawing/TimelineTrackCanvasSyncDrawer";
+  import TimelineRow from "./TimelineRow.svelte";
+  import TimelineTrack from "./TimelineTrack.svelte";
+  import TimelineDebug from "./Tools/TimelineDebug.svelte";
   import {
     asyncTaskName,
     spanPixelHeight as sph,
   } from "./Values/TimelineValues";
-  import TimelineRow from "./TimelineRow.svelte";
 
   export let process: Process;
   export let stateStore: TimelineStateStore;

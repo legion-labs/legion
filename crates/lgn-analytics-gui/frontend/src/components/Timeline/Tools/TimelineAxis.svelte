@@ -1,10 +1,13 @@
 <script lang="ts">
-  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
-  import { onMount } from "svelte";
-  export let stateStore: TimelineStateStore;
   import * as d3 from "d3";
+  import { onMount } from "svelte";
+
+  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { formatExecutionTime } from "@/lib/format";
+
   import { threadItemLength } from "../Values/TimelineValues";
+
+  export let stateStore: TimelineStateStore;
 
   const height = 20;
   const padding = 4;

@@ -1,8 +1,10 @@
-import type { MetricSlice } from "@/lib/Metric/MetricSlice";
+import * as d3 from "d3";
 import { get } from "svelte/store";
+
+import type { MetricSlice } from "@/lib/Metric/MetricSlice";
+
 import { MetricAxis } from "./MetricAxis";
 import { selectionStore } from "./MetricSelectionStore";
-import * as d3 from "d3";
 
 export class MetricAxisCollection {
   private data: Map<string, MetricAxis>;

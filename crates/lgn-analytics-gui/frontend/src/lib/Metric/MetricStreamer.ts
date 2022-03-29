@@ -1,7 +1,10 @@
-import { makeGrpcClient } from "@/lib/client";
-import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
 import Semaphore from "semaphore-async-await";
-import { get, Writable, writable } from "svelte/store";
+import { Writable, get, writable } from "svelte/store";
+
+import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
+
+import { makeGrpcClient } from "@/lib/client";
+
 import { MetricState } from "./MetricState";
 
 export class MetricStreamer {

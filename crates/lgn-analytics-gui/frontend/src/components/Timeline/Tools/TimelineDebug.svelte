@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { formatExecutionTime } from "@/lib/format";
-  import { getLodFromPixelSizeMs, MergeThresholdForLOD } from "@/lib/lod";
   import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
+  import { formatExecutionTime } from "@/lib/format";
+  import { MergeThresholdForLOD, getLodFromPixelSizeMs } from "@/lib/lod";
+
   export let store: TimelineStateStore;
   let pixelSize: number;
   $: lod = getLodFromPixelSizeMs(pixelSize);

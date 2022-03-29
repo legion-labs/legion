@@ -1,9 +1,11 @@
 <script lang="ts">
+  import { onMount } from "svelte";
+
   import {
     GrpcWebImpl,
     HealthClientImpl,
   } from "@lgn/proto-telemetry/dist/health";
-  import { onMount } from "svelte";
+
   import { getRemoteHost } from "@/lib/client";
 
   onMount(async () => {

@@ -1,6 +1,8 @@
 <script lang="ts">
-  import type { Process } from "@lgn/proto-telemetry/dist/process";
   import { formatDistance } from "date-fns";
+
+  import type { Process } from "@lgn/proto-telemetry/dist/process";
+
   export let process: Process | undefined;
 
   function formatLocalTime(timeStr: string): string {

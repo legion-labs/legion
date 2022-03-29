@@ -1,5 +1,6 @@
-import type { MetricSlice } from "./MetricSlice";
 import * as d3 from "d3";
+
+import type { MetricSlice } from "./MetricSlice";
 
 export class MetricAxis {
   scale: d3.ScaleLinear<number, number, never>;

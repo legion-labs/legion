@@ -1,13 +1,15 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { link } from "svelte-navigator";
+
   import type {
     LogEntry,
     PerformanceAnalyticsClientImpl,
   } from "@lgn/proto-telemetry/dist/analytics";
   import type { Process } from "@lgn/proto-telemetry/dist/process";
-  import { onMount } from "svelte";
-  import { makeGrpcClient } from "@/lib/client";
   import log from "@lgn/web-client/src/lib/log";
+
+  import { makeGrpcClient } from "@/lib/client";
 
   let client: PerformanceAnalyticsClientImpl | null = null;
 

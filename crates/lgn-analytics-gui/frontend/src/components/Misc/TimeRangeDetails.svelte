@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { formatExecutionTime } from "@/lib/format";
   import { link } from "svelte-navigator";
+
+  import { formatExecutionTime } from "@/lib/format";
 
   export let timeRange: [number, number] | undefined;
   export let processId: string;
