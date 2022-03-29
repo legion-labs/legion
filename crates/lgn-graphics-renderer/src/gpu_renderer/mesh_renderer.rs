@@ -431,7 +431,7 @@ impl MeshRenderer {
         cmd_buffer: &mut HLCommandBuffer<'_>,
         culling_buffers: &CullingArgBuffers,
         culling_options: &(IndirectDispatch, GatherPerfStats),
-        culling_args: (u32, u32, Vec2),
+        culling_args: (u32, u32, u32, Vec2),
         input_buffers: (&BufferView, &BufferView, &BufferView),
     ) {
         let indirect_dispatch = culling_options.0 .0;
@@ -588,7 +588,8 @@ impl MeshRenderer {
         let mut culling_constant_data = cgen::cgen_type::CullingPushConstantData::default();
         culling_constant_data.set_first_render_pass(culling_args.0.into());
         culling_constant_data.set_num_render_passes(culling_args.1.into());
-        culling_constant_data.set_hzb_pixel_extents(culling_args.2.into());
+        culling_constant_data.set_hzb_max_lod(culling_args.2.into());
+        culling_constant_data.set_hzb_pixel_extents(culling_args.3.into());
         culling_constant_data.set_options(options);
 
         cmd_buffer.push_constant(&culling_constant_data);
@@ -691,6 +692,7 @@ impl MeshRenderer {
         cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
 
         let hzb_pixel_extents = render_surface.get_hzb_surface().hzb_pixel_extents();
+        let hzb_max_lod = render_surface.get_hzb_surface().hzb_max_lod();
 
         render_surface.init_hzb_if_needed(render_context, &mut cmd_buffer);
 
@@ -721,7 +723,12 @@ impl MeshRenderer {
             &mut cmd_buffer,
             &self.culling_buffers,
             &(IndirectDispatch(false), GatherPerfStats(true)),
-            (0, render_pass_data.len() as u32, hzb_pixel_extents),
+            (
+                0,
+                render_pass_data.len() as u32,
+                hzb_max_lod,
+                hzb_pixel_extents,
+            ),
             (&gpu_count_view, &gpu_instance_view, &render_pass_view),
         );
 
@@ -761,7 +768,12 @@ impl MeshRenderer {
             &mut cmd_buffer,
             &self.culling_buffers,
             &(IndirectDispatch(true), GatherPerfStats(true)),
-            (0, render_pass_data.len() as u32, hzb_pixel_extents),
+            (
+                0,
+                render_pass_data.len() as u32,
+                hzb_max_lod,
+                hzb_pixel_extents,
+            ),
             (&gpu_count_view, &gpu_instance_view, &render_pass_view),
         );
 

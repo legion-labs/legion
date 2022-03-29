@@ -8,7 +8,7 @@
 float aabb_max_z(float4 aabb, float2 view_port, float debug_index) {
     float4 aabb_vp = min(aabb * view_port.xyxy, view_port.xyxy);
     float2 size = aabb_vp.zw - aabb_vp.xy;
-    float lod = max(ceil(log2(max(size.x, size.y))) - 1, 0);
+    float lod = clamp(ceil(log2(max(size.x, size.y))) - 1, 0, push_constant.hzb_max_lod);
    
     float4 aabb_ts = float4(aabb_vp.x, view_port.y - aabb_vp.w, aabb_vp.z, view_port.y - aabb_vp.y);
     uint4 iaabb = (uint4)(aabb_ts * exp2(-lod));

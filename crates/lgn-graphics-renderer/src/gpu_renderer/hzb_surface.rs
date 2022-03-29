@@ -43,6 +43,9 @@ impl HzbSurface {
             hzb_height /= 2.0;
         }
 
+        hzb_width = hzb_width.max(4.0);
+        hzb_height = hzb_height.max(4.0);
+
         let mut min_extent = hzb_width.min(hzb_height) as u32;
         let mut mip_count = 1;
         while min_extent != 1 {
@@ -111,6 +114,10 @@ impl HzbSurface {
             self.texture.definition().extents.width as f32,
             self.texture.definition().extents.height as f32,
         )
+    }
+
+    pub fn hzb_max_lod(&self) -> u32 {
+        self.texture.definition().mip_count - 1
     }
 
     pub fn generate_hzb(
