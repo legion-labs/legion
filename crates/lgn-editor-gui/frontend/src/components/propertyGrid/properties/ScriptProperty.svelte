@@ -1,10 +1,9 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import { writable } from "svelte/store";
 
   import Button from "@lgn/web-client/src/components/Button.svelte";
 
-  import viewportOrchestrator from "@/orchestrators/viewport";
+  import workspace, { viewportPanelKey } from "@/stores/workspace";
 
   const dispatch = createEventDispatcher<{ input: string }>();
 
@@ -19,7 +18,8 @@
   $: dispatch("input", value);
 
   function openViewport() {
-    viewportOrchestrator.add(
+    workspace.addTab(
+      viewportPanelKey,
       key,
       {
         type: "script",

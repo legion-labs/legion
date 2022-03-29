@@ -36,6 +36,8 @@ export function createMapStore<Key, Value>(
         for (const [key, value] of values) {
           if (!map.has(key)) {
             map.set(key, value);
+
+            break;
           }
         }
 
