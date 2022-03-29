@@ -148,7 +148,7 @@ impl FromStr for ResourcePathId {
 
     fn from_str(mut s: &str) -> Result<Self, Self::Err> {
         let end = s.find('|').unwrap_or(s.len());
-        let source = s[0..end].parse::<ResourceTypeAndId>().unwrap();
+        let source = s[0..end].parse::<ResourceTypeAndId>()?;
         s = &s[end..];
 
         let mut transforms = vec![];
