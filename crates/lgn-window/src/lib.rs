@@ -13,7 +13,6 @@ mod windows;
 
 pub use cursor::*;
 pub use event::*;
-use lgn_codec_api::encoder_work_queue::EncoderWorkQueue;
 pub use system::*;
 pub use window::*;
 pub use windows::*;
@@ -62,8 +61,7 @@ impl Plugin for WindowPlugin {
             .add_event::<WindowBackendScaleFactorChanged>()
             .add_event::<FileDragAndDrop>()
             .add_event::<WindowMoved>()
-            .init_resource::<Windows>()
-            .insert_resource(EncoderWorkQueue::new());
+            .init_resource::<Windows>();
 
         if self.add_primary_window {
             let window_descriptor = app

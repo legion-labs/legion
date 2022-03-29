@@ -124,6 +124,7 @@ fn main() {
             height: args.height,
             ..WindowDescriptor::default()
         })
+        .insert_resource(EncoderWorkQueue::new(false))
         .add_plugin(WindowPlugin::default())
         .add_plugin(TransformPlugin::default())
         .add_plugin(HierarchyPlugin::default())

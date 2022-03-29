@@ -26,6 +26,7 @@ pub(crate) fn build_standalone(app: &mut App) -> &mut App {
     .add_plugin(WinitPlugin::default())
     .add_system(on_render_surface_created_for_window.exclusive_system())
     .insert_resource(RenderSurfaces::new())
+    .insert_resource(EncoderWorkQueue::new(false))
 }
 
 #[allow(clippy::needless_pass_by_value)]

@@ -80,6 +80,9 @@ struct Args {
     /// Build output database address.
     #[clap(long)]
     build_db: Option<String>,
+    /// Enable hardware encoding.
+    #[clap(long)]
+    enable_hw_encoding: bool,
 }
 
 fn main() {
@@ -201,6 +204,11 @@ fn main() {
 
     let mut app = App::from_telemetry_guard(telemetry_guard);
 
+    let mut streamer_plugin = StreamerPlugin::default();
+    if args.enable_hw_encoding {
+        streamer_plugin.enable_hw_encoding = true;
+    }
+
     app.insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
         1.0 / 60.0,
     )))
@@ -226,7 +234,7 @@ fn main() {
     .add_plugin(GRPCPlugin::default())
     .add_plugin(InputPlugin::default())
     .add_plugin(RendererPlugin::default())
-    .add_plugin(StreamerPlugin::default())
+    .add_plugin(streamer_plugin)
     .add_plugin(EditorPlugin::default())
     .insert_resource(ResourceBrowserSettings::new(default_scene))
     .add_plugin(ResourceBrowserPlugin::default())
