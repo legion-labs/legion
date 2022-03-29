@@ -16,7 +16,7 @@ use lgn_input::{
     touch::TouchInput,
 };
 use lgn_tracing::{error, info, trace, warn};
-use lgn_window::{WindowCreated, WindowResized, Windows};
+use lgn_window::{CursorMoved, WindowCreated, WindowId, WindowResized, Windows};
 use serde_json::json;
 use webrtc::{
     data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
@@ -215,6 +215,7 @@ pub(crate) fn update_streams(
     mut input_mouse_wheel: EventWriter<'_, '_, MouseWheel>,
     mut input_touch_input: EventWriter<'_, '_, TouchInput>,
     mut input_keyboard_input: EventWriter<'_, '_, KeyboardInput>,
+    mut input_cursor_moved: EventWriter<'_, '_, CursorMoved>,
     mut streamer_windows: ResMut<'_, StreamerWindows>,
     mut window_list: ResMut<'_, Windows>,
     mut created_events: ResMut<'_, Events<WindowCreated>>,
@@ -261,7 +262,13 @@ pub(crate) fn update_streams(
                         input_mouse_button_input.send(mouse_button_input.clone());
                     }
                     Input::MouseMotion(mouse_motion) => {
-                        input_mouse_motion.send(mouse_motion.clone());
+                        input_mouse_motion.send(MouseMotion {
+                            delta: mouse_motion.delta,
+                        });
+                        input_cursor_moved.send(CursorMoved {
+                            id: WindowId::primary(),
+                            position: mouse_motion.current,
+                        });
                     }
                     Input::MouseWheel(mouse_wheel) => {
                         input_mouse_wheel.send(mouse_wheel.clone());
