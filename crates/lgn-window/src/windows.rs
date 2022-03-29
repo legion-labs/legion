@@ -14,6 +14,11 @@ impl Windows {
         self.windows.insert(window.id(), window);
     }
 
+    /// Remove the provided [`Window`] to the [`Windows`] resource.
+    pub fn remove(&mut self, id: &WindowId) -> Option<Window> {
+        self.windows.remove(id)
+    }
+
     /// Get a reference to the [`Window`] of `id`
     pub fn get(&self, id: WindowId) -> Option<&Window> {
         self.windows.get(&id)

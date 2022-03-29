@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use interceptor::registry::Registry;
 use lgn_tracing::{debug, info, warn};
+use lgn_window::WindowId;
 use webrtc::{
     api::{media_engine::MediaEngine, APIBuilder, API},
     data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
@@ -13,7 +14,7 @@ use webrtc::{
     },
 };
 
-use super::streamer::{StreamEvent, StreamID};
+use super::streamer::StreamEvent;
 
 /// `WebRTCServer` implements a fully-compliant `WebRTC` server that can
 /// establish peer-to-peer connections with several hosts for streaming
@@ -188,7 +189,7 @@ impl WebRTCServer {
 
     async fn handle_control_data_channel(
         data_channel: Arc<RTCDataChannel>,
-        stream_id: StreamID,
+        window_id: WindowId,
         stream_events_sender: Arc<crossbeam::channel::Sender<StreamEvent>>,
     ) -> anyhow::Result<()> {
         let on_open_stream_events_sender = Arc::clone(&stream_events_sender);
@@ -199,7 +200,7 @@ impl WebRTCServer {
                 info!("Control data channel opened.");
 
                 let _ = on_open_stream_events_sender.send(StreamEvent::ControlChannelOpened(
-                    stream_id,
+                    window_id,
                     on_open_data_channel,
                 ));
                 Box::pin(async {})
@@ -214,7 +215,7 @@ impl WebRTCServer {
                 info!("Control data channel closed.");
 
                 let _ = on_close_stream_events_sender.send(StreamEvent::ControlChannelClosed(
-                    stream_id,
+                    window_id,
                     Arc::clone(&on_close_data_channel),
                 ));
 
@@ -234,7 +235,7 @@ impl WebRTCServer {
 
                 let _ = on_message_stream_events_sender.send(
                     StreamEvent::ControlChannelMessageReceived(
-                        stream_id,
+                        window_id,
                         Arc::clone(&on_message_data_channel),
                         msg,
                     ),
@@ -249,7 +250,7 @@ impl WebRTCServer {
 
     async fn handle_video_data_channel(
         data_channel: Arc<RTCDataChannel>,
-        stream_id: StreamID,
+        window_id: WindowId,
         stream_events_sender: Arc<crossbeam::channel::Sender<StreamEvent>>,
     ) -> anyhow::Result<()> {
         let on_error_name = data_channel.name();
@@ -270,7 +271,7 @@ impl WebRTCServer {
                 info!("Video data channel opened.");
 
                 let _ = on_open_stream_events_sender.send(StreamEvent::VideoChannelOpened(
-                    stream_id,
+                    window_id,
                     on_open_data_channel,
                 ));
 
@@ -286,7 +287,7 @@ impl WebRTCServer {
                 info!("Video data channel closed.");
 
                 let _ = on_close_stream_events_sender.send(StreamEvent::VideoChannelClosed(
-                    stream_id,
+                    window_id,
                     Arc::clone(&on_close_data_channel),
                 ));
 
@@ -306,7 +307,7 @@ impl WebRTCServer {
 
                 let _ =
                     on_message_stream_events_sender.send(StreamEvent::VideoChannelMessageReceived(
-                        stream_id,
+                        window_id,
                         Arc::clone(&on_message_data_channel),
                         msg,
                     ));

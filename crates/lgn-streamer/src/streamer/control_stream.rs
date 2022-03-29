@@ -1,8 +1,9 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::{bail, Context, Result};
-use lgn_ecs::prelude::*;
 use lgn_tracing::{dispatch::process_id, error};
+use lgn_window::WindowId;
 use serde::Serialize;
 use webrtc::data_channel::RTCDataChannel;
 
@@ -13,10 +14,10 @@ enum ControlStreamMessage {
     Hello { process_id: String },
 }
 
-#[derive(Component)]
-#[component(storage = "Table")]
+#[derive(Default)]
+pub(crate) struct ControlStreams(pub(crate) HashMap<WindowId, ControlStream>);
+
 pub(crate) struct ControlStream {
-    #[allow(dead_code)]
     control_data_channel: Arc<RTCDataChannel>,
 }
 

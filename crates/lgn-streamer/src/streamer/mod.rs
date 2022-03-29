@@ -1,4 +1,4 @@
-use std::{fmt::Display, sync::Arc};
+use std::sync::Arc;
 
 use bytes::Bytes;
 use lgn_app::{AppExit, Events};
@@ -16,15 +16,17 @@ use lgn_input::{
     touch::TouchInput,
 };
 use lgn_tracing::{error, info, trace, warn};
-use lgn_window::{CursorMoved, WindowCreated, WindowId, WindowResized, Windows};
+use lgn_window::{
+    CursorMoved, Window, WindowCloseRequested, WindowCreated, WindowDescriptor, WindowId, WindowResized, Windows,
+};
 use serde_json::json;
 use webrtc::{
     data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
     peer_connection::RTCPeerConnection,
 };
 
-mod control_stream;
-use control_stream::ControlStream;
+pub(crate) mod control_stream;
+use control_stream::{ControlStream, ControlStreams};
 
 mod events;
 pub(crate) use events::*;
@@ -77,37 +79,19 @@ pub(crate) struct Streamer {
     stream_events_receiver: crossbeam::channel::Receiver<StreamEvent>,
 }
 
-// StreamID represents a stream unique identifier.
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) struct StreamID {
-    entity: Entity,
-}
-
 // Stream-related events.
 pub(crate) enum StreamEvent {
     ConnectionEstablished(
         Arc<RTCPeerConnection>,
-        tokio::sync::oneshot::Sender<StreamID>,
+        tokio::sync::oneshot::Sender<WindowId>,
     ),
-    ConnectionClosed(StreamID, Arc<RTCPeerConnection>),
-    VideoChannelOpened(StreamID, Arc<RTCDataChannel>),
-    VideoChannelClosed(StreamID, Arc<RTCDataChannel>),
-    VideoChannelMessageReceived(StreamID, Arc<RTCDataChannel>, DataChannelMessage),
-    ControlChannelOpened(StreamID, Arc<RTCDataChannel>),
-    ControlChannelClosed(StreamID, Arc<RTCDataChannel>),
-    ControlChannelMessageReceived(StreamID, Arc<RTCDataChannel>, DataChannelMessage),
-}
-
-impl StreamID {
-    fn new(entity: Entity) -> Self {
-        Self { entity }
-    }
-}
-
-impl Display for StreamID {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.entity)
-    }
+    ConnectionClosed(WindowId, Arc<RTCPeerConnection>),
+    VideoChannelOpened(WindowId, Arc<RTCDataChannel>),
+    VideoChannelClosed(WindowId, Arc<RTCDataChannel>),
+    VideoChannelMessageReceived(WindowId, Arc<RTCDataChannel>, DataChannelMessage),
+    ControlChannelOpened(WindowId, Arc<RTCDataChannel>),
+    ControlChannelClosed(WindowId, Arc<RTCDataChannel>),
+    ControlChannelMessageReceived(WindowId, Arc<RTCDataChannel>, DataChannelMessage),
 }
 
 impl Streamer {
@@ -121,48 +105,48 @@ impl Streamer {
 pub(crate) fn handle_stream_events(
     async_rt: Res<'_, TokioAsyncRuntime>,
     streamer: Res<'_, Streamer>,
-    mut commands: Commands<'_, '_>,
     mut video_stream_events: EventWriter<'_, '_, VideoStreamEvent>,
+    mut window_list: ResMut<'_, Windows>,
+    mut streamer_windows: ResMut<'_, StreamerWindows>,
+    mut control_streams: ResMut<'_, ControlStreams>,
+    mut window_close_requested_events: ResMut<'_, Events<WindowCloseRequested>>,
 ) {
     for event in streamer.stream_events_receiver.try_iter() {
         match event {
             StreamEvent::ConnectionEstablished(_, sender) => {
-                let stream_id = StreamID::new(commands.spawn().id());
+                let window_id = WindowId::new();
 
-                info!(
-                    "Connection is now established for stream {}: spawning entity",
-                    stream_id,
-                );
+                info!("Connection is now established for WindowId {}", window_id,);
 
-                if let Err(e) = sender.send(stream_id) {
-                    warn!("Failed to send back stream id ({}): despawning entity to avoid it being orphaned: {}", stream_id, e);
-                    commands.entity(stream_id.entity).despawn();
+                if let Err(e) = sender.send(window_id) {
+                    warn!("Failed to send back window id ({}): {}", window_id, e);
                 }
             }
-            StreamEvent::ConnectionClosed(stream_id, _) => {
-                //commands.entity(stream_id.entity).despawn();
-
+            StreamEvent::ConnectionClosed(window_id, _) => {
+                window_close_requested_events.send(WindowCloseRequested { id: window_id });
+                streamer_windows.remove_mapping(&window_id);
+                window_list.remove(&window_id);
                 info!(
-                    "Connection was closed for stream {}: despawning entity",
-                    stream_id,
+                    "Connection was closed for WindowId {}: closing window",
+                    window_id,
                 );
             }
-            StreamEvent::VideoChannelOpened(stream_id, _data_channel) => {
+            StreamEvent::VideoChannelOpened(window_id, data_channel) => {
+                streamer_windows.add_mapping(window_id, data_channel.clone());
                 info!(
-                    "Video channel is now opened for stream {}: adding a video-stream component",
-                    stream_id,
+                    "Video channel is now opened for WindowId {}: adding a video-stream mapping",
+                    window_id,
                 );
             }
-            StreamEvent::VideoChannelClosed(stream_id, _) => {
-                commands.entity(stream_id.entity).remove::<RenderSurface>();
-
+            StreamEvent::VideoChannelClosed(window_id, _) => {
+                streamer_windows.remove_mapping(&window_id);
                 info!(
-                    "Video channel is now closed for stream {}: removing video-stream component",
-                    stream_id,
+                    "Video channel is now closed for stream {}: removing video-stream mapping",
+                    window_id,
                 );
             }
-            StreamEvent::VideoChannelMessageReceived(stream_id, data_channel, msg) => {
-                match VideoStreamEvent::parse(stream_id, data_channel, &msg.data) {
+            StreamEvent::VideoChannelMessageReceived(window_id, _data_channel, msg) => {
+                match VideoStreamEvent::parse(window_id, &msg.data) {
                     Ok(event) => {
                         video_stream_events.send(event);
                     }
@@ -171,7 +155,7 @@ pub(crate) fn handle_stream_events(
                     }
                 }
             }
-            StreamEvent::ControlChannelOpened(stream_id, data_channel) => {
+            StreamEvent::ControlChannelOpened(window_id, data_channel) => {
                 let mut control_stream = ControlStream::new(data_channel);
                 match control_stream.say_hello() {
                     Ok(future) => {
@@ -181,19 +165,19 @@ pub(crate) fn handle_stream_events(
                         error!("say_hello failed: {}", e);
                     }
                 }
-                commands.entity(stream_id.entity).insert(control_stream);
+                control_streams.0.insert(window_id, control_stream);
 
                 info!(
-                    "Control channel is now opened for stream {}: adding a control-stream component",
-                    stream_id,
+                    "Control channel is now opened for WindowId {}: adding a control-stream",
+                    window_id,
                 );
             }
-            StreamEvent::ControlChannelClosed(stream_id, _) => {
-                commands.entity(stream_id.entity).remove::<ControlStream>();
+            StreamEvent::ControlChannelClosed(window_id, _) => {
+                control_streams.0.remove(&window_id);
 
                 info!(
-                    "Control channel is now closed for stream {}: removing control-stream component",
-                    stream_id,
+                    "Control channel is now closed for WindowId {}: removing control-stream",
+                    window_id,
                 );
             }
             StreamEvent::ControlChannelMessageReceived(_, _, _) => {
@@ -216,7 +200,6 @@ pub(crate) fn update_streams(
     mut input_touch_input: EventWriter<'_, '_, TouchInput>,
     mut input_keyboard_input: EventWriter<'_, '_, KeyboardInput>,
     mut input_cursor_moved: EventWriter<'_, '_, CursorMoved>,
-    mut streamer_windows: ResMut<'_, StreamerWindows>,
     mut window_list: ResMut<'_, Windows>,
     mut created_events: ResMut<'_, Events<WindowCreated>>,
     mut resize_events: ResMut<'_, Events<WindowResized>>,
@@ -230,22 +213,33 @@ pub(crate) fn update_streams(
             } => {
                 trace!("received initialize command");
 
-                window_list.add(streamer_windows.create_window(
-                    event.stream_id,
-                    Resolution::new(*width, *height),
-                    Arc::clone(&event.video_data_channel),
-                    &mut created_events,
+                #[allow(clippy::cast_precision_loss)]
+                let window_descriptor = WindowDescriptor {
+                    width: *width as f32,
+                    height: *height as f32,
+                    ..WindowDescriptor::default()
+                };
+
+                window_list.add(Window::new(
+                    event.window_id,
+                    &window_descriptor,
+                    *width,
+                    *height,
+                    1.0,
+                    None,
                 ));
+
+                created_events.send(WindowCreated {
+                    id: event.window_id,
+                });
             }
             VideoStreamEventInfo::Resize { width, height } => {
-                if let Some(window_id) = streamer_windows.get_window_id(event.stream_id) {
-                    let window = window_list.get_mut(window_id).unwrap();
-
+                if let Some(window) = window_list.get_mut(event.window_id) {
                     window.update_actual_size_from_backend(*width, *height);
 
                     #[allow(clippy::cast_precision_loss)]
                     resize_events.send(WindowResized {
-                        id: window_id,
+                        id: event.window_id,
                         width: *width as f32,
                         height: *height as f32,
                     });

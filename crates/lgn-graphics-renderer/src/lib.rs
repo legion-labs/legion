@@ -341,8 +341,8 @@ fn on_window_close_requested(
             if let Some(query_result) = query_result {
                 commands.entity(query_result.0).despawn();
             }
+            render_surfaces.remove(ev.id);
         }
-        render_surfaces.remove(ev.id);
     }
 }
 
