@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
+  import { writable } from "svelte/store";
 
   import Button from "@lgn/web-client/src/components/Button.svelte";
 
@@ -13,7 +14,6 @@
 
   export let value: string;
 
-  // TODO: Handle readonly mode in scripts
   export let readonly = false;
 
   $: dispatch("input", value);
@@ -27,7 +27,7 @@
         onChange(newValue: string) {
           value = newValue;
         },
-        value,
+        getValue: () => value,
         readonly,
         lang: "rune",
         removable: true,
