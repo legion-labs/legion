@@ -25,7 +25,7 @@ use lgn_editor_proto::resource_browser::{
 
 use lgn_resource_registry::ResourceRegistrySettings;
 use lgn_scene_plugin::SceneMessage;
-use lgn_tracing::{span_scope, warn};
+use lgn_tracing::{error, span_scope, warn};
 use serde_json::json;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -389,9 +389,14 @@ impl ResourceBrowser for ResourceBrowserRPC {
             ResourcePathName::new(name)
         };
 
-        // We use the resource path as the content path for now as it's a temporary implementation
-        let content_path = (resource_type == "png")
-            .then(|| self.uploads_folder.join(&resource_path.as_ref()[1..]));
+        let content_path = request
+            .upload_id
+            .as_ref()
+            .map(|upload_id| self.uploads_folder.join(upload_id).join(name));
+
+        if content_path.is_some() && resource_type == "offline_model" {
+            // TODO: Upload .gltf.zip
+        }
 
         let mut transaction = Transaction::new().add_operation(CreateResourceOperation::new(
             new_resource_id,
@@ -418,7 +423,23 @@ impl ResourceBrowser for ResourceBrowserRPC {
         transaction_manager
             .commit_transaction(transaction)
             .await
-            .map_err(|err| Status::internal(err.to_string()))?;
+            .map_err(|err| {
+                error!(
+                    "Failed to create new resource type '{}': {}",
+                    resource_type, err
+                );
+                Status::internal(err.to_string())
+            })?;
+
+        // Remove uploads folder after successful upload
+        if let Some(upload_id) = &request.upload_id {
+            if let Err(err) = std::fs::remove_dir_all(self.uploads_folder.join(upload_id)) {
+                error!(
+                    "Failed to clean-up folder for upload_id '{}': {}",
+                    upload_id, err
+                );
+            }
+        }
 
         Ok(Response::new(CreateResourceResponse {
             new_id: new_resource_id.to_string(),

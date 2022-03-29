@@ -212,15 +212,18 @@ export async function createResource({
   resourceName,
   resourceType,
   parentResourceId,
+  uploadId,
 }: {
   resourceName: string;
   resourceType: string;
   parentResourceId: string | undefined;
+  uploadId: string | undefined;
 }) {
   return resourceBrowserClient.createResource({
     resourceName,
     resourceType,
     parentResourceId,
+    uploadId,
   });
 }
 

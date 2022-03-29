@@ -69,6 +69,7 @@
             resourceName,
             resourceType,
             parentResourceId,
+            uploadId: undefined,
           })
         );
       } catch (error) {
