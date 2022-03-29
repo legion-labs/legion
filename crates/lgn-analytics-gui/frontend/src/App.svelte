@@ -3,8 +3,8 @@
 
   import type { InitAuthStatus } from "@lgn/web-client/src/lib/auth";
 
+  import Graph from "@/components/Graph/Graph.svelte";
   import { Route, Router } from "@/lib/navigator";
-  import Graph from "@/pages/Graph.svelte";
   import Health from "@/pages/Health.svelte";
   import Log from "@/pages/Log.svelte";
 

@@ -27,6 +27,7 @@
     "@swc/jest": "^0.2.20",
     "@testing-library/jest-dom": "^5.16.3",
     "@testing-library/svelte": "^3.1.0",
+    "@trivago/prettier-plugin-sort-imports": "^3.2.0",
     "@types/d3": "^7.1.0",
     "@types/jest": "^27.4.1",
     "@typescript-eslint/eslint-plugin": "^5.16.0",

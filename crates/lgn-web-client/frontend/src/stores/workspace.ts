@@ -1,9 +1,7 @@
 // This module contains and orchestrator all the panels, their status, and their content.
 // In the future it will also handle their size and position.
-import { Readable, Writable, writable } from "svelte/store";
-
-import type { MapStore } from "./map";
-import { createMapStore } from "./map";
+import type { Readable } from "svelte/store";
+import { writable } from "svelte/store";
 
 export type TabTypeBase = {
   name: string;

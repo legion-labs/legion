@@ -1,5 +1,6 @@
 <script lang="ts">
   import { BarLoader } from "svelte-loading-spinners";
+
   export let loading: boolean;
 </script>
 

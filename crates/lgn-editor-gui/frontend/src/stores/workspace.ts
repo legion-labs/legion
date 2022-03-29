@@ -1,4 +1,4 @@
-import { createWorkspace } from "@lgn/web-client/src/stores/Workspace";
+import { createWorkspace } from "@lgn/web-client/src/stores/workspace";
 
 export type {
   WorkspaceValue,

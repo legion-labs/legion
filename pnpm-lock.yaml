@@ -21,6 +21,7 @@ importers:
       '@swc/jest': ^0.2.20
       '@testing-library/jest-dom': ^5.16.3
       '@testing-library/svelte': ^3.1.0
+      '@trivago/prettier-plugin-sort-imports': ^3.2.0
       '@types/d3': ^7.1.0
       '@types/jest': ^27.4.1
       '@types/progressbar.js': ^1.1.2
@@ -84,6 +85,7 @@ importers:
       '@swc/jest': 0.2.20_@swc+core@1.2.161
       '@testing-library/jest-dom': 5.16.3
       '@testing-library/svelte': 3.1.0_svelte@3.46.4
+      '@trivago/prettier-plugin-sort-imports': 3.2.0_prettier@2.6.1
       '@types/d3': 7.1.0
       '@types/jest': 27.4.1
       '@typescript-eslint/eslint-plugin': 5.16.0_4df62b6e125e6f18efee2d013b4a9d80
@@ -3548,7 +3550,7 @@ packages:
     engines: {node: '>= 10.17.0'}
     hasBin: true
     dependencies:
-      debug: 4.3.3
+      debug: 4.3.4
       get-stream: 5.2.0
       yauzl: 2.10.0
     optionalDependencies:
@@ -3849,7 +3851,7 @@ packages:
     engines: {node: '>= 6'}
     dependencies:
       agent-base: 6.0.2
-      debug: 4.3.3
+      debug: 4.3.4
     transitivePeerDependencies:
       - supports-color
     dev: true

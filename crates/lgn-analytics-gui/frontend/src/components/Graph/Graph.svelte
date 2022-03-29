@@ -13,8 +13,8 @@
   import { makeGrpcClient } from "@/lib/client";
   import { formatExecutionTime } from "@/lib/format";
 
-  import { GraphParameters } from "./GraphParameters";
   import Loader from "../Misc/Loader.svelte";
+  import { GraphParameters } from "./GraphParameters";
 
   /* eslint-disable @typescript-eslint/no-non-null-assertion */
   const locationStore = useLocation();
