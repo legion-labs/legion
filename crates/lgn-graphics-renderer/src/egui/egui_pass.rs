@@ -268,5 +268,6 @@ impl EguiPass {
             cmd_buffer.push_constant(&push_constant_data);
             cmd_buffer.draw_indexed(mesh.indices.len() as u32, 0, 0);
         }
+        cmd_buffer.end_render_pass();
     }
 }

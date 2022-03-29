@@ -52,8 +52,9 @@ pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set
             fields: [
                 #{ name:"first_render_pass", ty:"Uint1" },
                 #{ name:"num_render_passes", ty:"Uint1" },
-                #{ name:"options", ty:"CullingOptions" },
+                #{ name:"hzb_max_lod", ty:"Uint1" },                
                 #{ name:"hzb_pixel_extents", ty:"Float2" },
+                #{ name:"options", ty:"CullingOptions" },
             ]
         },
         #{
