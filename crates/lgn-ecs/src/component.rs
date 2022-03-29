@@ -180,7 +180,8 @@ impl ComponentDescriptor {
     // SAFETY: The pointer points to a valid value of type `T` and it is safe to
     // drop this value.
     unsafe fn drop_ptr<T>(x: *mut u8) {
-        x.cast::<T>().drop_in_place();
+        let component = x.cast::<T>();
+        component.drop_in_place();
     }
 
     pub fn new<T: Component>() -> Self {
@@ -234,6 +235,10 @@ impl ComponentDescriptor {
     #[inline]
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn set_drop(&mut self, drop: unsafe fn(*mut u8)) {
+        self.drop = drop;
     }
 }
 
