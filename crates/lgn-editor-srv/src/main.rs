@@ -86,7 +86,7 @@ struct Args {
     #[clap(long)]
     enable_hw_encoding: bool,
     /// The compilation mode of the editor.
-    #[clap(long, default_value = "in-process")] 
+    #[clap(long, default_value = "in-process")]
     compilers: CompilationMode,
 }
 
