@@ -297,6 +297,48 @@ impl GltfFile {
         }
         textures
     }
+
+    pub fn write(&self, writer: &mut dyn std::io::Write) -> Result<usize, ResourceProcessorError> {
+        if self.document.is_none() {
+            return Ok(0);
+        }
+        let mut buffer = Vec::new();
+        let mut zip = zip::ZipWriter::new(std::io::Cursor::new(&mut buffer));
+        let options =
+            zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+        zip.start_file("GltfFile.zip", options).map_err(|err| {
+            ResourceProcessorError::ResourceSerializationFailed(
+                "GLTF",
+                format!("Couldn't start zip: {}", err),
+            )
+        })?;
+        let document_bytes =
+            gltf::json::serialize::to_vec(&self.document.clone().unwrap().into_json()).unwrap();
+        let mut written = write_usize_and_buffer(&mut zip, &document_bytes)?;
+        let buffer_length = self.buffers.len();
+        written += write_usize(&mut zip, buffer_length)?;
+        for buffer in &self.buffers {
+            written += write_usize_and_buffer(&mut zip, &buffer.0)?;
+        }
+
+        let image_length = self.images.len();
+        written += write_usize(&mut zip, image_length)?;
+        for image in &self.images {
+            written += write_u32(&mut zip, &image.width)?;
+            written += write_u32(&mut zip, &image.height)?;
+            //TODO: written += format
+            written += write_usize_and_buffer(&mut zip, &image.pixels)?;
+        }
+        zip.finish().map_err(|err| {
+            ResourceProcessorError::ResourceSerializationFailed(
+                "GLTF",
+                format!("Couldn't finish zip: {}", err),
+            )
+        })?;
+        drop(zip);
+        written = writer.write(&buffer)?;
+        Ok(written)
+    }
 }
 
 impl Asset for GltfFile {
@@ -390,45 +432,7 @@ impl ResourceProcessor for GltfFileProcessor {
         writer: &mut dyn std::io::Write,
     ) -> Result<usize, ResourceProcessorError> {
         let gltf = resource.downcast_ref::<GltfFile>().unwrap();
-        if gltf.document.is_none() {
-            return Ok(0);
-        }
-        let mut buffer = Vec::new();
-        let mut zip = zip::ZipWriter::new(std::io::Cursor::new(&mut buffer));
-        let options =
-            zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
-        zip.start_file("GltfFile.zip", options).map_err(|err| {
-            ResourceProcessorError::ResourceSerializationFailed(
-                "GLTF",
-                format!("Couldn't start zip: {}", err),
-            )
-        })?;
-        let document_bytes =
-            gltf::json::serialize::to_vec(&gltf.document.clone().unwrap().into_json()).unwrap();
-        let mut written = write_usize_and_buffer(&mut zip, &document_bytes)?;
-        let buffer_length = gltf.buffers.len();
-        written += write_usize(&mut zip, buffer_length)?;
-        for buffer in &gltf.buffers {
-            written += write_usize_and_buffer(&mut zip, &buffer.0)?;
-        }
-
-        let image_length = gltf.images.len();
-        written += write_usize(&mut zip, image_length)?;
-        for image in &gltf.images {
-            written += write_u32(&mut zip, &image.width)?;
-            written += write_u32(&mut zip, &image.height)?;
-            //TODO: written += format
-            written += write_usize_and_buffer(&mut zip, &image.pixels)?;
-        }
-        zip.finish().map_err(|err| {
-            ResourceProcessorError::ResourceSerializationFailed(
-                "GLTF",
-                format!("Couldn't finish zip: {}", err),
-            )
-        })?;
-        drop(zip);
-        written = writer.write(&buffer)?;
-        Ok(written)
+        gltf.write(writer)
     }
 
     fn read_resource(

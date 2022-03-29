@@ -175,7 +175,7 @@
             // FIXME: Incorrect, should be an import
             createResource({
               resourceName: name.slice(0, -4),
-              resourceType: "offline_model",
+              resourceType: "gltf",
               parentResourceId: currentResourceDescriptionEntry?.item.id,
               uploadId: id,
             });
