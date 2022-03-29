@@ -13,15 +13,11 @@
   import { makeGrpcClient } from "@/lib/client";
   import { formatExecutionTime } from "@/lib/format";
 
+  import { GraphParameters } from "./GraphParameters";
+
   /* eslint-disable @typescript-eslint/no-non-null-assertion */
-
-  type GraphParams = {
-    processId: string;
-    beginMs: number;
-    endMs: number;
-  };
-
   const locationStore = useLocation();
+
   let client: PerformanceAnalyticsClientImpl | null = null;
   let processInfo: Process | null = null;
   let scopes: Record<number, ScopeDesc> = {};
@@ -29,33 +25,12 @@
   let maxSum: number | null = null;
   let selectedNode: CumulativeCallGraphNode | null = null;
 
-  function getUrlParams(): GraphParams {
-    const params = new URLSearchParams($locationStore.search);
-    const processId = params.get("process");
-    if (!processId) {
-      throw new Error("missing param process");
-    }
-    const beginStr = params.get("begin");
-    if (!beginStr) {
-      throw new Error("missing param begin");
-    }
-    const endStr = params.get("end");
-    if (!endStr) {
-      throw new Error("missing param end");
-    }
-    return {
-      processId: processId,
-      beginMs: parseFloat(beginStr),
-      endMs: parseFloat(endStr),
-    };
-  }
-
   async function fetchData() {
     if (!client) {
       log.error("no client in fetchData");
       return;
     }
-    const params = getUrlParams();
+    const params = GraphParameters.getGraphParameter($locationStore.search);
     const { process } = await client.find_process({
       processId: params.processId,
     });
