@@ -55,6 +55,10 @@ export class TimelineState {
     );
   }
 
+  createdWithParameters() {
+    return this.timelineStart && this.timelineEnd;
+  }
+
   getViewRange(): [number, number] {
     if (this.viewRange) {
       return this.viewRange;

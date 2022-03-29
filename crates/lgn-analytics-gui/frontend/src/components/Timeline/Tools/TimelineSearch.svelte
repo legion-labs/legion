@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { TimelineContext } from "@/lib/Timeline/TimelineContext";
-  const store = TimelineContext.search;
+  import { TimelineContext } from "../Stores/TimelineContext";
+  const searchStore = TimelineContext.search;
 </script>
 
 <div>
@@ -8,9 +8,11 @@
     type="text"
     class="metric-search border-2"
     placeholder="Search..."
-    bind:value={$store}
+    bind:value={$searchStore}
   />
-  <button on:click={() => store.set("")}><i class="bi bi-x-circle" /></button>
+  <button on:click={() => searchStore.set("")}
+    ><i class="bi bi-x-circle" /></button
+  >
 </div>
 
 <style lang="postcss">

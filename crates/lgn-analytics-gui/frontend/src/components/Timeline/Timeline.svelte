@@ -1,6 +1,6 @@
 <script lang="ts">
   import { TimelineStateManager } from "@/lib/Timeline/TimelineStateManager";
-  import { afterUpdate, onMount } from "svelte";
+  import { afterUpdate, onMount, tick } from "svelte";
   import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { BarLoader } from "svelte-loading-spinners";
@@ -9,18 +9,17 @@
     RangeSelectionOnMouseDown,
     RangeSelectionOnMouseMove,
   } from "@/lib/time_range_selection";
-  import TimelineAction from "./TimelineAction.svelte";
-  import TimelineDebug from "./TimelineDebug.svelte";
+  import TimelineAction from "./Tools/TimelineAction.svelte";
   import TimelineProcess from "./TimelineProcess.svelte";
-  import TimelineRange from "./TimelineRange.svelte";
-  import TimelineSearch from "./TimelineSearch.svelte";
-  export let processId: string;
+  import TimelineRange from "./Tools/TimelineRange.svelte";
+  import TimelineSearch from "./Tools/TimelineSearch.svelte";
   import { useLocation } from "svelte-navigator";
-  import TimelineMinimap from "./TimelineMinimap.svelte";
-  import { threadItemLength } from "@/lib/Timeline/TimelineValues";
-  import TimelineAxis from "./TimelineAxis.svelte";
+  import TimelineAxis from "./Tools/TimelineAxis.svelte";
+  import { pixelMargin, threadItemLength } from "./Values/TimelineValues";
+  import TimelineMinimap from "./Tools/TimelineMinimap.svelte";
 
-  const gap = 4;
+  export let processId: string;
+
   const location = useLocation();
   const startParam = "begin";
   const endParam = "end";
@@ -43,12 +42,13 @@
 
   $: if (mainWidth && stateStore) {
     stateStore.update((s) => {
-      s.canvasWidth = mainWidth - threadItemLength - gap;
+      s.canvasWidth = mainWidth - threadItemLength - pixelMargin;
       return s;
     });
   }
 
-  $: style = `display:${$stateStore?.ready ? "block" : "none"}`;
+  $: display = $stateStore?.ready ? "block" : "none";
+  $: style = `display:${display}`;
 
   onMount(async () => {
     loadingStore.reset();
@@ -129,6 +129,7 @@
 
     if (movementY) {
       div.scrollBy(0, -movementY);
+      await tick();
     }
 
     stateStore.update((s) => {
@@ -229,12 +230,16 @@
     yRatio: number;
   }) {
     panState = undefined;
-    div.scrollTo({ top: detail.yRatio * scrollHeight });
+    internalScrollTop(detail.yRatio * scrollHeight);
     stateStore.update((s) => {
       s.setViewRange([detail.xBegin, detail.xEnd]);
       return s;
     });
     await stateManager.fetchDynData();
+  }
+
+  function internalScrollTop(value: number) {
+    div.scrollTo({ top: value });
   }
 </script>
 
@@ -257,7 +262,6 @@
       <TimelineSearch />
     </div>
   {/if}
-
   <div
     class="canvas"
     bind:this={div}
@@ -269,13 +273,15 @@
     on:mouseup|preventDefault={(e) => onMouseUp(e)}
   >
     {#if stateStore}
-      {#each $stateStore.processes as p}
-        <TimelineProcess
-          process={p}
-          {stateStore}
-          rootStartTime={stateManager.rootStartTime}
-          on:zoom={(e) => onZoom(e.detail)}
-        />
+      {#each $stateStore.processes as p (p.processId)}
+        <div>
+          <TimelineProcess
+            process={p}
+            {stateStore}
+            rootStartTime={stateManager.rootStartTime}
+            on:zoom={(e) => onZoom(e.detail)}
+          />
+        </div>
       {/each}
     {/if}
   </div>
@@ -293,14 +299,6 @@
   </div>
 </div>
 
-{#if stateManager?.process && $stateStore.ready}
-  <div
-    class="flex flex-row-reverse justify-between items-center pt-1 h-7 detail"
-  >
-    <TimelineDebug store={stateStore} />
-  </div>
-{/if}
-
 <style lang="postcss">
   .main {
     overflow-x: hidden;
@@ -310,6 +308,7 @@
 
   .canvas {
     max-height: calc(100vh - 150px);
+    background-color: #fcfcfc;
     overflow-x: hidden;
     display: flex;
     flex-direction: column;

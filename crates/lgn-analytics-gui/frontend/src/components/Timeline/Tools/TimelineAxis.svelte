@@ -3,8 +3,8 @@
   import { onMount } from "svelte";
   export let stateStore: TimelineStateStore;
   import * as d3 from "d3";
-  import { threadItemLength } from "@/lib/Timeline/TimelineValues";
   import { formatExecutionTime } from "@/lib/format";
+  import { threadItemLength } from "../Values/TimelineValues";
 
   const height = 20;
   const padding = 4;

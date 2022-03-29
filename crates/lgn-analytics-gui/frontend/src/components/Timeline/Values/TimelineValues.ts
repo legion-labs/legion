@@ -2,6 +2,10 @@ export const spanPixelHeight = 20;
 
 export const threadItemLength = getThreadItemLength();
 
+export const pixelMargin = 4;
+
+export const asyncTaskName = "async tasks";
+
 function getThreadItemLength() {
   const style = getComputedStyle(document.body);
   const item = style.getPropertyValue("--thread-item-length");

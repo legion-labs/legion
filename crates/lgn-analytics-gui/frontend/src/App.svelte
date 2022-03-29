@@ -8,7 +8,7 @@
   import { onMount } from "svelte";
   import Header from "./components/Misc/Header.svelte";
   import ProcessList from "./components/List/ProcessList.svelte";
-  import TimelineRenderer from "./components/Timeline/TimelineRenderer.svelte";
+  import TimelineRenderer from "./components/Timeline/Timeline.svelte";
   import LoadingBar from "./components/Misc/LoadingBar.svelte";
 
   export let initAuthStatus: InitAuthStatus | null;

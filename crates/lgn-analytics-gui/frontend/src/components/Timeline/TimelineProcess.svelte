@@ -1,40 +1,50 @@
 <script lang="ts">
-  import { formatProcessName } from "@/lib/format";
+  import { formatExecutionTime, formatProcessName } from "@/lib/format";
   import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
-  import { spanPixelHeight } from "@/lib/Timeline/TimelineValues";
+  import { createEventDispatcher, onMount } from "svelte";
+  import TimelineTrack from "./TimelineTrack.svelte";
+  import { TimelineTrackCanvasSyncDrawer } from "./Drawing/TimelineTrackCanvasSyncDrawer";
+  import { TimelineTrackCanvasAsyncDrawer } from "./Drawing/TimelineTrackCanvasAsyncDrawer";
+  import TimelineDebug from "./Tools/TimelineDebug.svelte";
   import type { Process } from "@lgn/proto-telemetry/dist/process";
-  import { createEventDispatcher } from "svelte";
-  import TimelineThreadItem from "./TimelineThreadItem.svelte";
-  import TasksItem from "./TasksItem.svelte";
+  import {
+    asyncTaskName,
+    spanPixelHeight as sph,
+  } from "./Values/TimelineValues";
+  import TimelineRow from "./TimelineRow.svelte";
+
   export let process: Process;
   export let stateStore: TimelineStateStore;
   export let rootStartTime: number;
-  const wheelDispatch = createEventDispatcher<{ zoom: WheelEvent }>();
-  let collapsed = false;
-  let components: TimelineThreadItem[] = [];
+
+  const wheelDispatcher = createEventDispatcher<{ zoom: WheelEvent }>();
+  const processOffsetMs = Date.parse(process.startTime) - rootStartTime;
+
+  let processCollapsed = false;
+  let components: TimelineRow[] = [];
+
   $: threads = Object.values($stateStore.threads).filter(
     (t) => t.streamInfo.processId === process.processId
   );
 
   $: processAsyncData = $stateStore.processAsyncData[process.processId];
+
+  $: style = processCollapsed
+    ? `min-height:${sph}px;max-height:${sph}px;overflow-y:hidden`
+    : ``;
 </script>
 
-<div
-  on:wheel|preventDefault={(e) => wheelDispatch("zoom", e)}
-  style={collapsed
-    ? `min-height:${spanPixelHeight}px;max-height:${spanPixelHeight}px;overflow-y:hidden`
-    : ``}
->
+<div on:wheel|preventDefault={(e) => wheelDispatcher("zoom", e)} {style}>
   <div
     class="process mb-1 flex flex-row place-content-between items-center"
-    on:click|preventDefault={() => (collapsed = !collapsed)}
+    on:click|preventDefault={() => (processCollapsed = !processCollapsed)}
   >
     <span>
       <i class="bi bi-activity" />
       {formatProcessName(process)}
     </span>
-    {#if !collapsed}
-      <div>
+    {#if !processCollapsed}
+      <div class="flex flex-row gap-1">
         <i
           title="Collapse"
           class="bi-arrows-angle-contract"
@@ -47,28 +57,66 @@
           on:click|stopPropagation={() =>
             components.forEach((c) => c.setCollapse(false))}
         />
+        <TimelineDebug store={stateStore} />
       </div>
     {/if}
   </div>
   <div class="thread-container">
     {#if $stateStore}
       {#if processAsyncData}
-        <TasksItem
-          parentCollapsed={collapsed}
-          {stateStore}
-          {process}
-          {processAsyncData}
-          {rootStartTime}
-        />
+        <TimelineRow
+          bind:this={components[0]}
+          {processCollapsed}
+          threadName={asyncTaskName}
+          maxDepth={processAsyncData.maxDepth}
+        >
+          <TimelineTrack
+            slot="canvas"
+            {stateStore}
+            dataObject={processAsyncData}
+            {processCollapsed}
+            maxDepth={processAsyncData.maxDepth}
+            on:zoom={(e) => wheelDispatcher("zoom", e.detail)}
+            drawerBuilder={() =>
+              new TimelineTrackCanvasAsyncDrawer(
+                stateStore,
+                processOffsetMs,
+                processAsyncData
+              )}
+          />
+        </TimelineRow>
       {/if}
       {#each threads as thread, index (thread.streamInfo.streamId)}
-        <TimelineThreadItem
-          bind:this={components[index]}
-          parentCollapsed={collapsed}
-          {thread}
-          {stateStore}
-          {rootStartTime}
-        />
+        {@const threadName = thread.streamInfo.properties["thread-name"]}
+        {@const threadLength = formatExecutionTime(thread.maxMs - thread.minMs)}
+        <TimelineRow
+          bind:this={components[index + 1]}
+          {processCollapsed}
+          threadTitle={`${threadName}\n${threadLength}\n${thread.block_ids.length} block(s)`}
+          {threadName}
+          maxDepth={thread.maxDepth}
+        >
+          <span class="text text-xs text-slate-300" slot="details"
+            >{threadLength} ({thread.block_ids.length} block{thread.block_ids
+              .length
+              ? "s"
+              : ""})
+          </span>
+          <TimelineTrack
+            slot="canvas"
+            dataObject={thread}
+            {stateStore}
+            {processCollapsed}
+            maxDepth={thread.maxDepth}
+            on:zoom={(e) => wheelDispatcher("zoom", e.detail)}
+            drawerBuilder={() =>
+              new TimelineTrackCanvasSyncDrawer(
+                stateStore,
+                processOffsetMs,
+                thread
+              )}
+          />
+        </TimelineRow>
       {/each}
     {/if}
   </div>

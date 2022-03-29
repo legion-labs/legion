@@ -79,10 +79,12 @@ export class TimelineStateManager {
     for (let i = 0; i < blocks.length; i += 1) {
       nbEvents += blocks[i].blockDefinition.nbObjects;
       if (nbEvents > 10000) {
-        this.state.update((s) => {
-          s.setViewRange([blocks[i].beginMs, blocks[0].endMs]);
-          return s;
-        });
+        if (!get(this.state).createdWithParameters()) {
+          this.state.update((s) => {
+            s.setViewRange([blocks[i].beginMs, blocks[0].endMs]);
+            return s;
+          });
+        }
         return;
       }
     }
