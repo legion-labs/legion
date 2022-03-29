@@ -12,20 +12,26 @@ use lgn_app::prelude::*;
 use lgn_async::AsyncPlugin;
 use lgn_tauri::{TauriPlugin, TauriPluginSettings};
 use lgn_web_client::BrowserPlugin;
+use tokio::runtime::Runtime;
 
 mod config;
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
     let config = Config::new_from_environment()?;
 
-    let browser_plugin = BrowserPlugin::new(
-        &config.application_name,
-        &config.issuer_url,
-        &config.client_id,
-        &config.redirect_uri,
-    )
-    .await?;
+    let browser_plugin = {
+        let rt = Runtime::new()?;
+
+        rt.block_on(async {
+            BrowserPlugin::new(
+                &config.application_name,
+                &config.issuer_url,
+                &config.client_id,
+                &config.redirect_uri,
+            )
+            .await
+        })?
+    };
 
     let builder = tauri::Builder::default()
         .plugin(browser_plugin)
