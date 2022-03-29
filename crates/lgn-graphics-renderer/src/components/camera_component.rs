@@ -19,6 +19,7 @@ pub struct CameraComponent {
     pub camera_rig: CameraRig,
     pub speed: f32,
     pub rotation_speed: f32,
+    setup: CameraSetup,
 }
 
 impl CameraComponent {
@@ -132,29 +133,36 @@ impl CameraComponent {
         camera_props
     }
 
-    fn build_rig(eye: Vec3, center: Vec3) -> CameraRig {
-        let forward = (center - eye).normalize();
+    fn build_rig(setup: &CameraSetup) -> CameraRig {
+        let forward = (setup.look_at - setup.eye).normalize();
         let right = forward.cross(UP_VECTOR).normalize();
         let up = right.cross(forward);
         let rotation = Quat::from_mat3(&Mat3::from_cols(right, up, -forward));
 
         CameraRig::builder()
-            .with(Position::new(eye))
+            .with(Position::new(setup.eye))
             .with(YawPitch::new().rotation_quat(rotation))
             .with(Smooth::new_position_rotation(0.2, 0.2))
             .build()
+    }
+
+    fn reset(&mut self) {
+        self.camera_rig = Self::build_rig(&self.setup);
     }
 }
 
 impl Default for CameraComponent {
     fn default() -> Self {
-        let eye = Vec3::new(0.0, 1.0, -2.0);
-        let center = Vec3::ZERO;
+        let setup = CameraSetup {
+            eye: Vec3::new(0.0, 1.0, -2.0),
+            look_at: Vec3::ZERO,
+        };
 
         Self {
-            camera_rig: Self::build_rig(eye, center),
+            camera_rig: Self::build_rig(&setup),
             speed: 2.5,
             rotation_speed: 40.0,
+            setup,
         }
     }
 }
@@ -174,7 +182,8 @@ pub(crate) fn apply_camera_setups(
     for (entity, setup) in camera_setups.iter() {
         if let Some(mut camera) = cameras.iter_mut().next() {
             let camera = camera.as_mut();
-            camera.camera_rig = CameraComponent::build_rig(setup.eye, setup.look_at);
+            camera.setup = setup.clone();
+            camera.reset();
         }
         commands
             .entity(entity)
@@ -199,6 +208,12 @@ pub(crate) fn camera_control(
     // Need to associate inputs with window/camera... we don''t have that for now
     for mut camera in cameras_query.iter_mut() {
         let camera = camera.as_mut();
+
+        if keys.pressed(KeyCode::Z) {
+            camera.reset();
+            continue;
+        }
+
         if !mouse_buttons.pressed(MouseButton::Right) {
             camera.camera_rig.update(time.delta_seconds());
             continue;
