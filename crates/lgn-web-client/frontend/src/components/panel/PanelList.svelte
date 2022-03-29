@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
+
   import keyboardNavigation, {
     keyboardNavigationItem,
   } from "../../actions/keyboardNavigation";

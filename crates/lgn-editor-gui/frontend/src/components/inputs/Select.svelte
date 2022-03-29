@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
   import Icon from "@iconify/svelte";
+  import { createEventDispatcher } from "svelte";
+
   import clickOutside from "@lgn/web-client/src/actions/clickOutside";
   import keyboardNavigation, {
-    keyboardNavigationItem,
     keyboardNavigationContainer,
+    keyboardNavigationItem,
   } from "@lgn/web-client/src/actions/keyboardNavigation";
   import { createKeyboardNavigationStore } from "@lgn/web-client/src/stores/keyboardNavigation";
 

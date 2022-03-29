@@ -1,26 +1,31 @@
 import { FluentBundle, FluentResource } from "@fluent/bundle";
+
+import {
+  createAvailableLocalesStore,
+  createBundlesStore,
+} from "@lgn/web-client/src/stores/bundles";
+import { createLocaleStore } from "@lgn/web-client/src/stores/locale";
+import { createTranslateStore } from "@lgn/web-client/src/stores/translate";
+
+import en from "@/assets/locales/en-US/example.ftl?raw";
+import fr from "@/assets/locales/fr-CA/example.ftl?raw";
+
 export type {
   TranslateValue,
   TranslateStore,
 } from "@lgn/web-client/src/stores/translate";
-import { createTranslateStore } from "@lgn/web-client/src/stores/translate";
+
 export type {
   BundlesValue,
   BundlesStore,
   AvailableLocalesValue,
   AvailableLocalesStore,
 } from "@lgn/web-client/src/stores/bundles";
-import {
-  createAvailableLocalesStore,
-  createBundlesStore,
-} from "@lgn/web-client/src/stores/bundles";
+
 export type {
   LocaleValue,
   LocaleStore,
 } from "@lgn/web-client/src/stores/locale";
-import { createLocaleStore } from "@lgn/web-client/src/stores/locale";
-import en from "@/assets/locales/en-US/example.ftl?raw";
-import fr from "@/assets/locales/fr-CA/example.ftl?raw";
 
 export const bundles = createBundlesStore();
 

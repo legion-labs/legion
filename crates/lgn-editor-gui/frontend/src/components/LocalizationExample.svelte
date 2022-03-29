@@ -1,8 +1,9 @@
 <script lang="ts">
+  import { availableLocales, locale, t } from "@/stores/l10n";
+
+  import NumberInput from "./inputs/NumberInput.svelte";
   import Select from "./inputs/Select.svelte";
   import TextInput from "./inputs/TextInput.svelte";
-  import NumberInput from "./inputs/NumberInput.svelte";
-  import { availableLocales, locale, t } from "@/stores/l10n";
 
   let userName = "Foo";
 

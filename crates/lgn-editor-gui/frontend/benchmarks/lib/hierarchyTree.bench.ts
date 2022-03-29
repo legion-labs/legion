@@ -1,7 +1,7 @@
-import { suite } from "../benchmark";
-
 import { Entries, isEntry } from "@/lib/hierarchyTree";
 import type { Entry } from "@/lib/hierarchyTree";
+
+import { suite } from "../benchmark";
 import resources from "../resources/resourcesResponse.json";
 
 // Dumb polyfill for `getRandomValues`

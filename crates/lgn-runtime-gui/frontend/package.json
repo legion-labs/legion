@@ -26,6 +26,7 @@
     "@swc/core": "^1.2.161",
     "@testing-library/jest-dom": "^5.16.3",
     "@testing-library/svelte": "^3.1.0",
+    "@trivago/prettier-plugin-sort-imports": "^3.2.0",
     "@types/color-convert": "^2.0.0",
     "@typescript-eslint/eslint-plugin": "^5.16.0",
     "@typescript-eslint/parser": "^5.16.0",

@@ -115,12 +115,13 @@ export default buildContextMenu<ContextMenuEntryRecord>();
 -->
 <script lang="ts">
   import { fade } from "svelte/transition";
+
   import clickOutside from "../actions/clickOutside";
   import { remToPx } from "../lib/html";
   import { sleep } from "../lib/promises";
   import type { Position } from "../lib/types";
   import type { ContextMenuStore } from "../stores/contextMenu";
-  import { buildCustomEvent, Entry, ItemEntry } from "../types/contextMenu";
+  import { Entry, ItemEntry, buildCustomEvent } from "../types/contextMenu";
 
   const entryHeightRem = 2.5;
 

@@ -4,9 +4,9 @@
  *
  * It could also contain an array of id pointing to the currently expanded entries in the tree.
  */
-
 import type { Writable } from "svelte/store";
 import { writable } from "svelte/store";
+
 import type { Entry } from "@/lib/hierarchyTree";
 import { Entries } from "@/lib/hierarchyTree";
 

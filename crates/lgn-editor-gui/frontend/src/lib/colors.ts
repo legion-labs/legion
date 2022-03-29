@@ -1,6 +1,5 @@
 // TODO: We could add value validations even though
 // `color-convert` seems to handle invalid values very well
-
 import colorConvert from "color-convert";
 
 // r: 0 ~ 255, g: 0 ~ 255, b: 0 ~ 255, a: 0 ~ 255

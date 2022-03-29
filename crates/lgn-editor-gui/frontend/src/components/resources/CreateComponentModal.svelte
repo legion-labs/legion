@@ -1,14 +1,17 @@
 <script lang="ts">
-  import { addPropertyInPropertyVector as addPropertyInPropertyVectorApi } from "@/api";
   import { form as createForm, field } from "svelte-forms";
   import { required } from "svelte-forms/validators";
-  import Modal from "@lgn/web-client/src/components/modal/Modal.svelte";
-  import Button from "@lgn/web-client/src/components/Button.svelte";
-  import { createAsyncStoreOrchestrator } from "@lgn/web-client/src/orchestrators/async";
-  import Select from "../inputs/Select.svelte";
-  import { getAvailableComponentTypes } from "@/api";
+
   import type { GetAvailableDynTraitsResponse } from "@lgn/proto-editor/dist/property_inspector";
+  import Button from "@lgn/web-client/src/components/Button.svelte";
+  import Modal from "@lgn/web-client/src/components/modal/Modal.svelte";
+  import { createAsyncStoreOrchestrator } from "@lgn/web-client/src/orchestrators/async";
+
+  import { addPropertyInPropertyVector as addPropertyInPropertyVectorApi } from "@/api";
+  import { getAvailableComponentTypes } from "@/api";
+
   import Field from "../Field.svelte";
+  import Select from "../inputs/Select.svelte";
 
   const createComponentStore = createAsyncStoreOrchestrator();
 

@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { createEventDispatcher, onDestroy, onMount } from "svelte";
   import type * as monaco from "monaco-editor/esm/vs/editor/editor.api";
+  import { createEventDispatcher, onDestroy, onMount } from "svelte";
+
   import { debounce } from "../lib/promises";
 
   const dispatch = createEventDispatcher<{

@@ -1,1 +1,5 @@
-{}
+{
+  "importOrderSeparation": true,
+  "importOrderSortSpecifiers": true,
+  "importOrder": ["^@lgn\\/", "^@\\/", "^\\."]
+}

@@ -4,8 +4,9 @@ Contains all the "extra" panels like Log or Source Control.
 -->
 <script lang="ts">
   import { Panel } from "@lgn/web-client/src/components/panel";
-  import LocalChanges from "./localChanges/LocalChanges.svelte";
+
   import Log from "./Log.svelte";
+  import LocalChanges from "./localChanges/LocalChanges.svelte";
 
   const tabs = [
     { type: "sourceControl", title: "My Local Changes" } as const,

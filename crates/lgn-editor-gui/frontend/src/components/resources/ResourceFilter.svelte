@@ -1,8 +1,10 @@
 <script lang="ts">
-  import TextInput from "@/components/inputs/TextInput.svelte";
-  import Button from "@lgn/web-client/src/components/Button.svelte";
-  import { createEventDispatcher } from "svelte";
   import Icon from "@iconify/svelte";
+  import { createEventDispatcher } from "svelte";
+
+  import Button from "@lgn/web-client/src/components/Button.svelte";
+
+  import TextInput from "@/components/inputs/TextInput.svelte";
 
   const dispatch = createEventDispatcher<{ filter: { name: string } }>();
 

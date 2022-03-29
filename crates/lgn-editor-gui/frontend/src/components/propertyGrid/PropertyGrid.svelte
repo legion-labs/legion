@@ -1,19 +1,21 @@
 <script lang="ts">
+  import log from "@lgn/web-client/src/lib/log";
+
   import {
-    updateResourceProperties,
-    removeVectorSubProperty as removeVectorSubPropertyApi,
     addPropertyInPropertyVector as addPropertyInPropertyVectorApi,
+    removeVectorSubProperty as removeVectorSubPropertyApi,
+    updateResourceProperties,
   } from "@/api";
   import type { PropertyUpdate } from "@/api";
+  import CreateComponentModal from "@/components/resources/CreateComponentModal.svelte";
   import { propertyIsDynComponent, propertyIsGroup } from "@/lib/propertyGrid";
   import {
     currentResource,
     currentResourceError,
   } from "@/orchestrators/currentResource";
-  import log from "@lgn/web-client/src/lib/log";
-  import PropertyContainer from "./PropertyContainer.svelte";
-  import CreateComponentModal from "@/components/resources/CreateComponentModal.svelte";
   import modal from "@/stores/modal";
+
+  import PropertyContainer from "./PropertyContainer.svelte";
   import type {
     AddVectorSubPropertyEvent,
     RemoveVectorSubPropertyEvent,

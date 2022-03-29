@@ -1,6 +1,6 @@
 <script lang="ts">
-  import Modal from "@lgn/web-client/src/components/modal/Modal.svelte";
   import Button from "@lgn/web-client/src/components/Button.svelte";
+  import Modal from "@lgn/web-client/src/components/modal/Modal.svelte";
 
   export let authorizationUrl: string;
 

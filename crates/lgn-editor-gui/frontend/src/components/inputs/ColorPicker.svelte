@@ -12,8 +12,9 @@ It also supports manual RGBA edition with 4 different inputs.
 -->
 <script lang="ts">
   // TODO: We could split this component into several components (Hue, SaturationValue, RGBA, etc...)
-
   import colorConvert from "color-convert";
+  import { createEventDispatcher } from "svelte";
+
   import {
     colorSetFromHsv,
     colorSetFromRgba,
@@ -22,8 +23,8 @@ It also supports manual RGBA edition with 4 different inputs.
     rgbaToColorString,
   } from "@/lib/colors";
   import type { ColorSet, Rgba } from "@/lib/colors";
+
   import NumberInput from "./NumberInput.svelte";
-  import { createEventDispatcher } from "svelte";
 
   const dispatch = createEventDispatcher<{ change: ColorSet }>();
 

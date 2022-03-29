@@ -1,5 +1,4 @@
 import "monaco-editor/esm/vs/basic-languages/monaco.contribution";
-
 import type { Environment } from "monaco-editor/esm/vs/editor/editor.api";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 

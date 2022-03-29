@@ -1,7 +1,9 @@
 <script lang="ts">
-  import { fileName } from "@/lib/path";
   import { StagedResource_ChangeType as ChangeType } from "@lgn/proto-editor/dist/source_control";
   import type { StagedResource } from "@lgn/proto-editor/dist/source_control";
+
+  import { fileName } from "@/lib/path";
+
   import FileIcon from "../FileIcon.svelte";
 
   export let stagedResources: StagedResource[];

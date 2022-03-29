@@ -1,20 +1,21 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
-  import { debounce, retry } from "../lib/promises";
-  import statusStore from "../stores/statusBarData";
-  import {
-    initializeStream,
-    onReceiveControlMessage,
-    ServerType,
-  } from "../api";
-  import log from "../lib/log";
-  import type { PushableHTMLVideoElement } from "../actions/videoPlayer";
-  import resize from "../actions/resize";
-  import videoPlayer from "../actions/videoPlayer";
+
   import remoteWindowInputs, {
     RemoteWindowInput,
   } from "../actions/remoteWindowInputs";
+  import resize from "../actions/resize";
+  import type { PushableHTMLVideoElement } from "../actions/videoPlayer";
+  import videoPlayer from "../actions/videoPlayer";
+  import {
+    ServerType,
+    initializeStream,
+    onReceiveControlMessage,
+  } from "../api";
+  import log from "../lib/log";
+  import { debounce, retry } from "../lib/promises";
   import type { Resolution } from "../lib/types";
+  import statusStore from "../stores/statusBarData";
 
   const reconnectionTimeout = 1_000;
 

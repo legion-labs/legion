@@ -1,7 +1,9 @@
 <script lang="ts">
-  import Button from "@lgn/web-client/src/components/Button.svelte";
-  import viewportOrchestrator from "@/orchestrators/viewport";
   import { createEventDispatcher } from "svelte";
+
+  import Button from "@lgn/web-client/src/components/Button.svelte";
+
+  import viewportOrchestrator from "@/orchestrators/viewport";
 
   const dispatch = createEventDispatcher<{ input: string }>();
 

@@ -1,12 +1,15 @@
 <script lang="ts">
+  import Icon from "@iconify/svelte";
+
+  import Button from "@lgn/web-client/src/components/Button.svelte";
+
   import modal from "@/stores/modal";
   import {
     stagedResources,
-    syncFromMain,
     stagedResourcesMode,
+    syncFromMain,
   } from "@/stores/stagedResources";
-  import Icon from "@iconify/svelte";
-  import Button from "@lgn/web-client/src/components/Button.svelte";
+
   import LocalChangesModal from "./LocalChangesModal.svelte";
 
   function openLocalChangesModal() {

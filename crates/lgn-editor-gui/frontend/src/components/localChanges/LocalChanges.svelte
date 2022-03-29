@@ -1,9 +1,11 @@
 <script lang="ts">
+  import { PanelHeader } from "@lgn/web-client/src/components/panel";
+
   import {
     stagedResources,
     stagedResourcesMode,
   } from "@/stores/stagedResources";
-  import { PanelHeader } from "@lgn/web-client/src/components/panel";
+
   import LocalChangesGrid from "./LocalChangesGrid.svelte";
   import LocalChangesHeader from "./LocalChangesHeader.svelte";
   import LocalChangesList from "./LocalChangesList.svelte";
