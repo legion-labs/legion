@@ -169,6 +169,11 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
         },
         "eslint.validate": ["javascript", "typescript", "svelte"],
         "files.eol": "\n",
+        "files.exclude": {
+            "**/node_modules": true,
+            "**/dist": true,
+            "**/.pnpm-debug.log": true
+        },
         "protoc": {
             "options": [
                 "--proto_path=${workspaceRoot}/crates/*.proto",
