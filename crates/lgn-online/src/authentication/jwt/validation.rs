@@ -1,12 +1,13 @@
 use std::time;
 
-use anyhow::{bail, Context};
 use serde::{Deserialize, Serialize};
 
 use super::{
     signature_validation::{NoSignatureValidation, SignatureValidation},
     Token,
 };
+
+use crate::authentication::{Error, Result};
 
 pub type UnsecureValidation = Validation<NoSignatureValidation>;
 
@@ -124,24 +125,27 @@ where
     }
 
     /// Validate the specified token's signature.
-    pub(crate) fn validate_signature(&self, token: &Token<'_>) -> anyhow::Result<()> {
+    pub(crate) fn validate_signature(&self, token: &Token<'_>) -> Result<()> {
         token.validate_signature(&self.signature_validation)
     }
 
     /// Validate the specified token's claims.
-    pub(crate) fn validate_claims(&self, token: &Token<'_>) -> anyhow::Result<()> {
+    pub(crate) fn validate_claims(&self, token: &Token<'_>) -> Result<()> {
         let now = (self.time_fn)();
         let claims: Claims = token
             .to_claims_unsafe()
-            .context("failed to read common claims")?;
+            .map_err(|err| Error::Internal(format!("failed to read common claims: {}", err)))?;
 
         if self.validate_exp {
             let exp = time::UNIX_EPOCH
                 .checked_add(time::Duration::from_secs(claims.exp))
-                .ok_or_else(|| anyhow::anyhow!("invalid exp"))?;
+                .ok_or_else(|| Error::Internal("invalid exp".to_string()))?;
 
             if exp + self.leeway < now {
-                bail!("the token has already expired: {:#?} < {:#?}", exp, now);
+                return Err(Error::Internal(format!(
+                    "the token has already expired: {:#?} < {:#?}",
+                    exp, now
+                )));
             }
         }
 
@@ -149,10 +153,13 @@ where
             if let Some(nbf) = claims.nbf {
                 let nbf = time::UNIX_EPOCH
                     .checked_add(time::Duration::from_secs(nbf))
-                    .ok_or_else(|| anyhow::anyhow!("invalid nbf"))?;
+                    .ok_or_else(|| Error::Internal("invalid nbf".to_string()))?;
 
                 if nbf > now + self.leeway {
-                    bail!("the token is not yet valid: {:#?} > {:#?}", nbf, now);
+                    return Err(Error::Internal(format!(
+                        "the token is not yet valid: {:#?} > {:#?}",
+                        nbf, now
+                    )));
                 }
             }
         }
@@ -161,14 +168,18 @@ where
             match &claims.iss {
                 Some(claims_iss) => {
                     if iss != claims_iss {
-                        bail!(
+                        return Err(Error::Internal(format!(
                             "the token's issuer is invalid: got `{}` when `{}` was expected",
-                            claims_iss,
-                            iss,
-                        );
+                            claims_iss, iss,
+                        )));
                     }
                 }
-                _ => bail!("the token has no issuer but `{}` was expected", iss),
+                _ => {
+                    return Err(Error::Internal(format!(
+                        "the token has no issuer but `{}` was expected",
+                        iss
+                    )))
+                }
             }
         }
 
@@ -176,17 +187,19 @@ where
             match &claims.sub {
                 Some(claims_sub) => {
                     if sub != claims_sub {
-                        bail!(
+                        return Err(Error::Internal(format!(
                             "the token's subject identifier is invalid: got `{}` when `{}` was expected",
                             claims_sub,
                             sub,
-                        );
+                        )));
                     }
                 }
-                _ => bail!(
-                    "the token has no subject identifier but `{}` was expected",
-                    sub
-                ),
+                _ => {
+                    return Err(Error::Internal(format!(
+                        "the token has no subject identifier but `{}` was expected",
+                        sub
+                    )))
+                }
             }
         }
 
@@ -194,14 +207,18 @@ where
             match &claims.aud {
                 Some(claims_aud) => {
                     if aud != claims_aud {
-                        bail!(
+                        return Err(Error::Internal(format!(
                             "the token's audience is invalid: got `{}` when `{}` was expected",
-                            claims_aud,
-                            aud,
-                        );
+                            claims_aud, aud,
+                        )));
                     }
                 }
-                _ => bail!("the token has no audience but `{}` was expected", aud),
+                _ => {
+                    return Err(Error::Internal(format!(
+                        "the token has no audience but `{}` was expected",
+                        aud
+                    )))
+                }
             }
         }
 

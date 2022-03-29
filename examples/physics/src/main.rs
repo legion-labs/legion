@@ -68,7 +68,7 @@ async fn main() {
     let build_dir = project_dir.join("temp");
     std::fs::create_dir_all(&build_dir).unwrap();
 
-    let content_store_section = "data_build";
+    let content_store_section = lgn_content_store2::Config::SECTION_PERSISTENT;
 
     let absolute_project_dir = {
         if !project_dir.is_absolute() {

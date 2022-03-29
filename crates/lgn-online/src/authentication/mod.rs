@@ -3,7 +3,6 @@ use std::{collections::HashMap, ops::Deref, sync::Arc};
 use async_trait::async_trait;
 
 mod client_token_set;
-mod config;
 mod errors;
 mod oauth_client;
 mod token_cache;
@@ -12,7 +11,6 @@ mod user_info;
 pub mod jwt;
 
 pub use client_token_set::ClientTokenSet;
-pub use config::{AuthenticatorConfig, OAuthClientConfig, SignatureValidationConfig};
 pub use errors::{Error, Result};
 pub use oauth_client::OAuthClient;
 pub use token_cache::TokenCache;

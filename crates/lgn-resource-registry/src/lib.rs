@@ -64,7 +64,7 @@ impl ResourceRegistryPlugin {
         let selection_manager = world.resource::<Arc<SelectionManager>>();
 
         let transaction_manager = async_rt.block_on(async move {
-            let content_store_section = "data_build";
+            let content_store_section = lgn_content_store2::Config::SECTION_PERSISTENT;
 
             sample_data_compiler::raw_loader::build_offline(
                 &project_dir,

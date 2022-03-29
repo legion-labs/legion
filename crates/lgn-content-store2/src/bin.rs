@@ -22,6 +22,9 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 struct Args {
     #[clap(subcommand)]
     command: Commands,
+
+    #[clap(long="section", short='s', default_value=Config::SECTION_PERSISTENT)]
+    section: String,
 }
 
 #[derive(Subcommand, Debug)]
@@ -174,7 +177,7 @@ impl TransferCallbacks<PathBuf> for TransferProgress {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args: Args = Args::parse();
-    let config = Config::from_legion_toml(Config::content_store_section().as_deref());
+    let config = Config::load(&args.section)?;
     let provider = config
         .instantiate_provider()
         .await

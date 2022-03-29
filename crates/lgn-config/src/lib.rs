@@ -269,13 +269,18 @@ impl Config {
     where
         T: serde::Deserialize<'de>,
     {
-        match self.figment.extract_inner(key).map_err(Into::into) {
+        match self.figment.extract_inner(key) {
             Ok(value) => Ok(Some(value)),
-            Err(figment::Error {
-                kind: figment::error::Kind::MissingField(_),
-                ..
-            }) => Ok(None),
-            Err(err) => Err(err).map_err(Box::new)?,
+            Err(err) => match &err.kind {
+                figment::error::Kind::MissingField(missing_key) => {
+                    if key == missing_key {
+                        Ok(None)
+                    } else {
+                        Err(Box::new(err).into())
+                    }
+                }
+                _ => Err(Box::new(err).into()),
+            },
         }
     }
 

@@ -1,5 +1,6 @@
-use anyhow::{anyhow, bail, Context};
 use simple_asn1::BigUint;
+
+use crate::authentication::{Error, Result};
 
 use super::{SignatureValidation, ValidationResult};
 
@@ -14,15 +15,15 @@ impl RsaSignatureValidation {
 
     /// Create a new `RsaSignatureValidation` from the RSA key public components
     /// in their base64 representation.
-    pub fn new_from_components(n: &str, e: &str) -> anyhow::Result<Self> {
+    pub fn new_from_components(n: &str, e: &str) -> Result<Self> {
         let n = BigUint::from_bytes_be(
             &base64::decode_config(n, base64::URL_SAFE_NO_PAD)
-                .context("failed to decode n component")?,
+                .map_err(|err| Error::Internal(format!("failed to decode n component: {}", err)))?,
         )
         .to_bytes_be();
         let e = BigUint::from_bytes_be(
             &base64::decode_config(e, base64::URL_SAFE_NO_PAD)
-                .context("failed to decode e component")?,
+                .map_err(|err| Error::Internal(format!("failed to decode e component: {}", err)))?,
         )
         .to_bytes_be();
         let key = ring::signature::RsaPublicKeyComponents { n, e };
@@ -30,7 +31,7 @@ impl RsaSignatureValidation {
         Ok(Self::new(key))
     }
 
-    fn alg_to_rsa_parameters(alg: &str) -> anyhow::Result<&'static ring::signature::RsaParameters> {
+    fn alg_to_rsa_parameters(alg: &str) -> Result<&'static ring::signature::RsaParameters> {
         Ok(match alg {
             "RS256" => &ring::signature::RSA_PKCS1_2048_8192_SHA256,
             "RS384" => &ring::signature::RSA_PKCS1_2048_8192_SHA384,
@@ -38,7 +39,7 @@ impl RsaSignatureValidation {
             "PS256" => &ring::signature::RSA_PSS_2048_8192_SHA256,
             "PS384" => &ring::signature::RSA_PSS_2048_8192_SHA384,
             "PS512" => &ring::signature::RSA_PSS_2048_8192_SHA512,
-            _ => bail!("unsupported algorithm: {}", alg),
+            _ => return Err(Error::Internal(format!("unsupported algorithm: {}", alg))),
         })
     }
 }
@@ -75,7 +76,9 @@ impl SignatureValidation for RsaSignatureValidation {
         match Self::alg_to_rsa_parameters(alg) {
             Ok(parameters) => match self.key.verify(parameters, message.as_bytes(), signature) {
                 Ok(()) => ValidationResult::Valid,
-                Err(_) => ValidationResult::Invalid(anyhow!("the signature does not match")),
+                Err(_) => ValidationResult::Invalid(Error::Internal(
+                    "the signature does not match".to_string(),
+                )),
             },
             Err(_) => ValidationResult::Unsupported(alg, kid),
         }

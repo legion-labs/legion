@@ -1,6 +1,7 @@
 use crate::{
-    AwsDynamoDbProvider, AwsS3Provider, AwsS3Url, CachingProvider, ContentProvider, GrpcProvider,
-    LocalProvider, LruProvider, MemoryProvider, RedisProvider, Result, SmallContentProvider,
+    AwsDynamoDbProvider, AwsS3Provider, AwsS3Url, CachingProvider, ContentProvider, Error,
+    GrpcProvider, LocalProvider, LruProvider, MemoryProvider, RedisProvider, Result,
+    SmallContentProvider,
 };
 use lgn_config::RelativePathBuf;
 use serde::{Deserialize, Serialize};
@@ -21,7 +22,7 @@ pub enum ProviderConfig {
     Lru(LruProviderConfig),
     Local(LocalProviderConfig),
     Redis(RedisProviderConfig),
-    Grpc(GrpcProviderConfig),
+    Grpc {},
     AwsS3(AwsS3ProviderConfig),
     AwsDynamoDb(AwsDynamoDbProviderConfig),
 }
@@ -45,16 +46,6 @@ pub struct RedisProviderConfig {
     pub key_prefix: String,
 }
 
-fn default_grpc_url() -> String {
-    "://localhost:6379".to_string()
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct GrpcProviderConfig {
-    #[serde(default = "default_grpc_url")]
-    pub url: String,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct LruProviderConfig {
     #[serde(default)]
@@ -74,26 +65,55 @@ pub struct AwsDynamoDbProviderConfig {
     pub table_name: String,
 }
 
-/// An environment variable that contains the default content-store section to
-/// use.
-pub const ENV_LGN_CONTENT_STORE_SECTION: &str = "LGN_CONTENT_STORE_SECTION";
-
 impl Config {
-    pub fn content_store_section() -> Option<String> {
-        std::env::var(ENV_LGN_CONTENT_STORE_SECTION).ok()
+    /// The default name for the persistent content-store configuration.
+    pub const SECTION_PERSISTENT: &'static str = "persistent";
+    /// The default name for the volatile content-store configuration.
+    pub const SECTION_VOLATILE: &'static str = "volatile";
+
+    /// Returns the default configuration for the persistent content-store.
+    ///
+    /// # Errors
+    ///
+    /// If the specified configuration section does not exist,
+    /// `Error::MissingConfigurationSection` is returned.
+    ///
+    /// If the configuration section is invalid, `Error::Configuration` is
+    /// returned.
+    pub fn load_persistent() -> Result<Self> {
+        Self::load(Self::SECTION_PERSISTENT)
+    }
+
+    /// Returns the default configuration for the volatile content-store.
+    ///
+    /// # Errors
+    ///
+    /// If the specified configuration section does not exist,
+    /// `Error::MissingConfigurationSection` is returned.
+    ///
+    /// If the configuration section is invalid, `Error::Configuration` is
+    /// returned.
+    pub fn load_volatile() -> Result<Self> {
+        Self::load(Self::SECTION_VOLATILE)
     }
 
     /// Returns a new instance from the `legion.toml`, with the specified section.
     ///
-    /// If the section is not found, the default section is used.
-    pub fn from_legion_toml(section: Option<&str>) -> Self {
-        match section {
-            None | Some("") => lgn_config::get_or_default("content_store")
-                .expect("failed to load content_store config"),
-            Some(section) => lgn_config::get_or_else(&format!("content_store.{}", section), || {
-                Self::from_legion_toml(None)
-            })
-            .unwrap(),
+    /// # Errors
+    ///
+    /// If the specified configuration section does not exist,
+    /// `Error::MissingConfigurationSection` is returned.
+    ///
+    /// If the configuration section is invalid, `Error::Configuration` is
+    /// returned.
+    pub fn load(section: &str) -> Result<Self> {
+        match lgn_config::get(&format!("content_store.{}", section))
+            .map_err(Error::Configuration)?
+        {
+            Some(config) => Ok(config),
+            None => Err(Error::MissingConfigurationSection {
+                section: section.to_string(),
+            }),
         }
     }
 
@@ -111,6 +131,49 @@ impl Config {
         }
 
         Ok(provider)
+    }
+
+    /// Load the configuration from the specified section and immediately instantiate the provider.
+    ///
+    /// This is a convenience method.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the configuration cannot be read
+    /// or the provider cannot be instantiated.
+    pub async fn load_and_instantiate_provider(
+        section: &str,
+    ) -> Result<Box<dyn ContentProvider + Send + Sync>> {
+        let config = Self::load(section)?;
+        config.instantiate_provider().await
+    }
+
+    /// Load the persistent configuration and immediately instantiate the provider.
+    ///
+    /// This is a convenience method.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the configuration cannot be read
+    /// or the provider cannot be instantiated.
+    pub async fn load_and_instantiate_persistent_provider(
+    ) -> Result<Box<dyn ContentProvider + Send + Sync>> {
+        let config = Self::load_persistent()?;
+        config.instantiate_provider().await
+    }
+
+    /// Load the volatile configuration and immediately instantiate the provider.
+    ///
+    /// This is a convenience method.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the configuration cannot be read
+    /// or the provider cannot be instantiated.
+    pub async fn load_and_instantiate_volatile_provider(
+    ) -> Result<Box<dyn ContentProvider + Send + Sync>> {
+        let config = Self::load_volatile()?;
+        config.instantiate_provider().await
     }
 }
 
@@ -140,21 +203,10 @@ impl ProviderConfig {
             Self::AwsDynamoDb(config) => Box::new(SmallContentProvider::new(
                 AwsDynamoDbProvider::new(config.table_name.clone()).await,
             )),
-            Self::Grpc(config) => {
-                let uri = config
-                    .url
-                    .parse()
-                    .map_err(|err| anyhow::anyhow!("failed to parse gRPC url: {}", err))?;
-                let client = lgn_online::grpc::GrpcClient::new(uri);
-                let authenticator_config = lgn_online::authentication::AuthenticatorConfig::new()
-                    .map_err(|err| {
-                    anyhow::anyhow!("failed to create authenticator config: {}", err)
-                })?;
-                let authenticator = authenticator_config.authenticator().await.map_err(|err| {
-                    anyhow::anyhow!("failed to instantiate an authenticator: {}", err)
-                })?;
-
-                let client = lgn_online::grpc::AuthenticatedClient::new(client, authenticator, &[]);
+            Self::Grpc {} => {
+                let client = lgn_online::Config::load()?
+                    .instantiate_api_client(&[])
+                    .await?;
 
                 Box::new(SmallContentProvider::new(GrpcProvider::new(client).await))
             }

@@ -23,6 +23,7 @@ lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
 anyhow = "1.0.44"
 clap = { version = "3.0", features = ["derive"] }
+http = "0.2"
 tonic = "0.6"
 prost = "0.9"
 tokio = { version = "1.13", features = [
@@ -36,7 +37,6 @@ serde = { version = "1.0", features = ["derive"] }
 tauri = { version = "1.0.0-rc.3", features = ["api-all"] }
 json = "0.12.4"
 regex = "1.5"
-url = "2.2.2"
 sqlx = { version = "0.5.10", features = [
     "sqlite",
     "any",

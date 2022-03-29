@@ -272,13 +272,7 @@ async fn main() -> anyhow::Result<()> {
         ColorChoice::Never
     };
 
-    let content_store_config = Config::from_legion_toml(
-        Config::content_store_section()
-            .as_deref()
-            .or(Some("source_control")),
-    );
-
-    let content_provider = content_store_config.instantiate_provider().await?;
+    let content_provider = Config::load_and_instantiate_persistent_provider().await?;
 
     let mut stdout = StandardStream::stdout(choice);
 

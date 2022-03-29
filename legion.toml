@@ -42,31 +42,34 @@ log_operation = false
 [logging.level_filters]
 #webrtc = "WARN"
 
-[authentication.signature_validation]
-type = "aws_cognito"
-region = "ca-central-1"
-user_pool_id = "ca-central-1_SkZKDimWz"
+[online]
+api_base_url = "https://api.live.playground.legionlabs.com"
+web_api_base_url = "https://web-api.live.playground.legionlabs.com"
 
-[authentication.authenticator]
-type = "oauth"
+# This section is used by clients.
+[online.authentication.oauth]
 issuer_url = "https://cognito-idp.ca-central-1.amazonaws.com/ca-central-1_SkZKDimWz"
 client_id = "5m58nrjfv6kr144prif9jk62di"
 redirect_uri = "http://localhost:3000/"
 
-[content_store.provider.local]
-#Change the type to "grpc" and uncomment below:
-#url = "https://api.live.playground.legionlabs.com"
-path = "tests/sample-data/remote" # Should probably be reverted back to the commented lines once the data-build uses the dedicated section below.
+# This section is used by servers.
+[online.signature_validation.aws_cognito]
+region = "ca-central-1"
+user_pool_id = "ca-central-1_SkZKDimWz"
 
-[[content_store.caching_providers]]
-[content_store.caching_providers.lru]
+#[content_store.persistent.provider.grpc]
+[content_store.persistent.provider.local]
+path = "tests/sample-data/temp"
+
+[[content_store.persistent.caching_providers]]
+[content_store.persistent.caching_providers.lru]
 size = 250
 
-[content_store.data_build.provider.local]
-path = "tests/sample-data/remote"
+[content_store.volatile.provider.local]
+path = "tests/sample-data/temp"
 
-[[content_store.data_build.caching_providers]]
-[content_store.data_build.caching_providers.lru]
+[[content_store.volatile.caching_providers]]
+[content_store.volatile.caching_providers.lru]
 size = 250
 
 [source_control.server.database]

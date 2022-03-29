@@ -91,6 +91,9 @@ pub enum Error {
     /// Source Control related error.
     #[error("Source Control Error: '{0}'")]
     SourceControl(#[source] lgn_source_control::Error),
+    /// Content-store related error.
+    #[error("Content Store Error: '{0}'")]
+    ContentStore(#[source] lgn_content_store2::Error),
     /// RegistryRegistry Error
     #[error("ResourceRegistry Error: '{1}' on resource '{0}'")]
     ResourceRegistry(
@@ -146,7 +149,7 @@ impl Project {
         //
         // Several project using the same content-store configuration section
         // will use the same storage space, which is actually desirable.
-        let content_store_section = "data_build";
+        let content_store_section = lgn_content_store2::Config::SECTION_PERSISTENT;
 
         let mut project =
             Self::create(project_dir, "../remote".to_string(), content_store_section).await?;
@@ -173,17 +176,15 @@ impl Project {
         )
         .map_err(|e| Error::Io(content_store_section_path, e))?;
 
-        let content_store_configuration =
-            lgn_content_store2::Config::from_legion_toml(Some(content_store_section));
-        let content_provider = content_store_configuration
-            .instantiate_provider()
-            .await
-            .map_err(|e| {
-                Error::SourceControl(lgn_source_control::Error::Other {
-                    source: anyhow::Error::new(e),
-                    context: "failed to instantiate content-store provider".to_string(),
-                })
-            })?;
+        let content_provider =
+            lgn_content_store2::Config::load_and_instantiate_provider(content_store_section)
+                .await
+                .map_err(|e| {
+                    Error::SourceControl(lgn_source_control::Error::Other {
+                        source: anyhow::Error::new(e),
+                        context: "failed to instantiate content-store provider".to_string(),
+                    })
+                })?;
 
         let workspace = Workspace::init(
             &resource_dir,
@@ -214,8 +215,8 @@ impl Project {
         let content_store_section_path = resource_dir.join(".lcs-section");
         let content_store_section = std::fs::read_to_string(&content_store_section_path)
             .map_err(|e| Error::Io(content_store_section_path, e))?;
-        let content_store_configuration =
-            lgn_content_store2::Config::from_legion_toml(Some(&content_store_section));
+        let content_store_configuration = lgn_content_store2::Config::load(&content_store_section)
+            .map_err(Error::ContentStore)?;
         let content_provider = content_store_configuration
             .instantiate_provider()
             .await
