@@ -5,15 +5,16 @@
   import { headlessRun } from "@lgn/web-client";
   import type { NonEmptyArray } from "@lgn/web-client/src/lib/array";
   import log from "@lgn/web-client/src/lib/log";
+  import { createPanel } from "@lgn/web-client/src/stores/workspace";
 
   import { initApiClient } from "@/api";
   import * as contextMenuEntries from "@/data/contextMenu";
   import { initMessageStream } from "@/orchestrators/selection";
-  import viewportOrchestrator from "@/orchestrators/viewport";
   import authStatus from "@/stores/authStatus";
   import contextMenu from "@/stores/contextMenu";
   import { initLogStream } from "@/stores/log";
   import { initStagedResourcesStream } from "@/stores/stagedResources";
+  import workspace, { viewportPanelKey } from "@/stores/workspace";
   import "@/workers/editorWorker";
 
   const logLevel = "warn";
@@ -89,14 +90,18 @@
             contextMenuEntries.resourcePanelEntries
           );
 
-          const editorViewportKey = Symbol();
+          const editorTabKey = Symbol();
 
-          viewportOrchestrator.addAllViewport(
-            [editorViewportKey, { type: "video", name: "editor" }],
-            [Symbol(), { type: "video", name: "runtime" }]
+          const viewportPanel = createPanel(
+            new Map([
+              [editorTabKey, { type: "video", name: "editor" }],
+              [Symbol(), { type: "video", name: "runtime" }],
+            ])
           );
 
-          viewportOrchestrator.activate(editorViewportKey);
+          workspace.addAllPanels({ [viewportPanelKey]: viewportPanel });
+
+          workspace.activateTab(viewportPanelKey, editorTabKey);
         },
       });
 

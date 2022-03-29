@@ -7,8 +7,7 @@
   import StatusBar from "@lgn/web-client/src/components/StatusBar.svelte";
   import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
   import ModalContainer from "@lgn/web-client/src/components/modal/ModalContainer.svelte";
-  import { Panel } from "@lgn/web-client/src/components/panel";
-  import ViewportPanel from "@lgn/web-client/src/components/panel/ViewportPanel.svelte";
+  import { DynamicPanel, Panel } from "@lgn/web-client/src/components/panel";
 
   import { getAllResources } from "@/api";
   import AuthModal from "@/components/AuthModal.svelte";
@@ -23,13 +22,13 @@
     resourceBrowserEntriesOrchestrator,
     resourceEntries,
   } from "@/orchestrators/resourceBrowserEntries";
-  import viewportOrchestrator from "@/orchestrators/viewport";
   import allResourcesStore from "@/stores/allResources";
   import authStatus from "@/stores/authStatus";
   import contextMenu from "@/stores/contextMenu";
   import modal from "@/stores/modal";
   import notifications from "@/stores/notifications";
   import { stagedResources, syncFromMain } from "@/stores/stagedResources";
+  import workspace, { viewportPanelKey } from "@/stores/workspace";
 
   const {
     data: allResourcesData,
@@ -111,7 +110,7 @@
       </div>
       <div class="v-separator" />
       <div class="main-content">
-        <ViewportPanel orchestrator={viewportOrchestrator} />
+        <DynamicPanel panelKey={viewportPanelKey} {workspace} />
         <div class="h-separator" />
         <div class="extra-panel">
           <ExtraPanel />
