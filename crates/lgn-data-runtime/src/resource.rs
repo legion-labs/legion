@@ -256,12 +256,9 @@ impl FromStr for ResourceTypeAndId {
     type Err = Box<dyn std::error::Error>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let pair: Vec<&str> = s
-            .trim_matches(|p| p == '(' || p == ')')
-            .split(',')
-            .collect();
-        let kind = pair[0].parse::<ResourceType>()?;
-        let id = pair[1].parse::<ResourceId>()?;
+        let mut pair = s.trim_matches(|p| p == '(' || p == ')').split(',');
+        let kind = pair.next().ok_or("missing kind")?.parse::<ResourceType>()?;
+        let id = pair.next().ok_or("missing id")?.parse::<ResourceId>()?;
         Ok(Self { kind, id })
     }
 }
