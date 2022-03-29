@@ -14,6 +14,7 @@
   import { formatExecutionTime } from "@/lib/format";
 
   import { GraphParameters } from "./GraphParameters";
+  import Loader from "../Misc/Loader.svelte";
 
   /* eslint-disable @typescript-eslint/no-non-null-assertion */
   const locationStore = useLocation();
@@ -24,6 +25,7 @@
   let nodes: CumulativeCallGraphNode[] | null = null;
   let maxSum: number | null = null;
   let selectedNode: CumulativeCallGraphNode | null = null;
+  let loading = true;
 
   async function fetchData() {
     if (!client) {
@@ -49,6 +51,7 @@
     nodes = reply.nodes.filter((item) => item.stats && item.hash != 0); //todo: fix this on server side
     nodes = nodes.sort((lhs, rhs) => rhs.stats!.sum - lhs.stats!.sum);
     maxSum = nodes[0].stats!.sum;
+    loading = false;
   }
 
   function formatFunDivWidth(node: CumulativeCallGraphNode): string {
@@ -121,92 +124,94 @@
   });
 </script>
 
-<div>
-  <h1>Graph</h1>
-  {#if nodes}
-    <h2>Function List</h2>
-    <div id="funlist">
-      {#each nodes as node (node.hash)}
+<Loader {loading}>
+  <div slot="body">
+    <h1>Graph</h1>
+    {#if nodes}
+      <h2>Function List</h2>
+      <div id="funlist">
+        {#each nodes as node (node.hash)}
+          <div
+            class="fundiv"
+            style={formatFunDivWidth(node)}
+            on:click={function () {
+              onFunClick(node);
+            }}
+          >
+            <span>
+              {formatFunLabel(node)}
+            </span>
+          </div>
+        {/each}
+      </div>
+    {/if}
+    {#if selectedNode}
+      <h2>Selected Function</h2>
+      <div class="selecteddiv">
+        <div>
+          <span class="selectedproperty">name </span>
+          <span>{scopes[selectedNode.hash].name}</span>
+        </div>
+        <div>
+          <span class="selectedproperty">sum </span>
+          <span>{formatSum(selectedNode)}</span>
+        </div>
+        <div>
+          <span class="selectedproperty">min </span>
+          <span>{formatMin(selectedNode)}</span>
+        </div>
+        <div>
+          <span class="selectedproperty">max </span>
+          <span>{formatMax(selectedNode)}</span>
+        </div>
+        <div>
+          <span class="selectedproperty">average </span>
+          <span>{formatAvg(selectedNode)}</span>
+        </div>
+        <div>
+          <span class="selectedproperty">median </span>
+          <span>{formatMedian(selectedNode)}</span>
+        </div>
+        <div>
+          <span class="selectedproperty">count </span>
+          <span>{formatCount(selectedNode)}</span>
+        </div>
+      </div>
+
+      <h3>Callees</h3>
+
+      {#each selectedNode.callees as edge (edge.hash)}
         <div
           class="fundiv"
-          style={formatFunDivWidth(node)}
+          style={formatEdgeDivWidth(selectedNode, edge.weight)}
           on:click={function () {
-            onFunClick(node);
+            onEdgeClick(edge.hash);
           }}
         >
           <span>
-            {formatFunLabel(node)}
+            {scopes[edge.hash].name}
           </span>
         </div>
       {/each}
-    </div>
-  {/if}
-  {#if selectedNode}
-    <h2>Selected Function</h2>
-    <div class="selecteddiv">
-      <div>
-        <span class="selectedproperty">name </span>
-        <span>{scopes[selectedNode.hash].name}</span>
-      </div>
-      <div>
-        <span class="selectedproperty">sum </span>
-        <span>{formatSum(selectedNode)}</span>
-      </div>
-      <div>
-        <span class="selectedproperty">min </span>
-        <span>{formatMin(selectedNode)}</span>
-      </div>
-      <div>
-        <span class="selectedproperty">max </span>
-        <span>{formatMax(selectedNode)}</span>
-      </div>
-      <div>
-        <span class="selectedproperty">average </span>
-        <span>{formatAvg(selectedNode)}</span>
-      </div>
-      <div>
-        <span class="selectedproperty">median </span>
-        <span>{formatMedian(selectedNode)}</span>
-      </div>
-      <div>
-        <span class="selectedproperty">count </span>
-        <span>{formatCount(selectedNode)}</span>
-      </div>
-    </div>
 
-    <h3>Callees</h3>
+      <h3>Callers</h3>
 
-    {#each selectedNode.callees as edge (edge.hash)}
-      <div
-        class="fundiv"
-        style={formatEdgeDivWidth(selectedNode, edge.weight)}
-        on:click={function () {
-          onEdgeClick(edge.hash);
-        }}
-      >
-        <span>
-          {scopes[edge.hash].name}
-        </span>
-      </div>
-    {/each}
-
-    <h3>Callers</h3>
-
-    {#each selectedNode.callers as edge (edge.hash)}
-      <div
-        class="fundiv"
-        style={formatEdgeDivWidth(selectedNode, edge.weight)}
-        on:click={function () {
-          onEdgeClick(edge.hash);
-        }}
-      >
-        <span>
-          {scopes[edge.hash].name}
-        </span>
-      </div>
-    {/each}
-  {/if}
-</div>
+      {#each selectedNode.callers as edge (edge.hash)}
+        <div
+          class="fundiv"
+          style={formatEdgeDivWidth(selectedNode, edge.weight)}
+          on:click={function () {
+            onEdgeClick(edge.hash);
+          }}
+        >
+          <span>
+            {scopes[edge.hash].name}
+          </span>
+        </div>
+      {/each}
+    {/if}
+  </div>
+</Loader>
 
 <style lang="postcss">
   h1 {
