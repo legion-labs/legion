@@ -291,6 +291,7 @@ impl PickingManager {
     pub(crate) fn set_picked(&self, picked_data_set: &[PickingData]) {
         let inner = &mut *self.inner.lock().unwrap();
 
+        inner.current_picking_data.clear();
         for picking_data in picked_data_set {
             if !inner
                 .current_picking_data
