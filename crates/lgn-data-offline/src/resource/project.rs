@@ -8,8 +8,7 @@ use std::{
 
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_source_control::{
-    Change, CommitMode, IndexBackend, LocalIndexBackend, Workspace, WorkspaceConfig,
-    WorkspaceRegistration,
+    CommitMode, IndexBackend, LocalIndexBackend, Workspace, WorkspaceConfig, WorkspaceRegistration,
 };
 use thiserror::Error;
 
@@ -109,6 +108,18 @@ pub enum ChangeType {
     Delete,
     /// Resource has been modified.
     Edit,
+}
+impl<'a> From<&'a lgn_source_control::ChangeType> for ChangeType {
+    fn from(change_type: &lgn_source_control::ChangeType) -> Self {
+        match change_type {
+            lgn_source_control::ChangeType::Add { new_chunk_id: _ } => Self::Add,
+            lgn_source_control::ChangeType::Edit {
+                old_chunk_id: _,
+                new_chunk_id: _,
+            } => Self::Edit,
+            lgn_source_control::ChangeType::Delete { old_chunk_id: _ } => Self::Delete,
+        }
+    }
 }
 
 impl Project {
@@ -241,7 +252,7 @@ impl Project {
     }
 
     /// Return the list of stages resources
-    pub async fn get_staged_changes(&self) -> Result<Vec<(ResourceId, Change)>, Error> {
+    pub async fn get_staged_changes(&self) -> Result<Vec<(ResourceId, ChangeType)>, Error> {
         let local_changes = self
             .workspace
             .get_staged_changes()
@@ -249,13 +260,13 @@ impl Project {
             .map_err(Error::SourceControl)?;
 
         let changes = local_changes
-            .iter()
+            .into_iter()
             .map(|(path, change)| (PathBuf::from(path.to_string()), change))
             .filter(|(path, _)| path.extension().is_none())
             .map(|(path, change)| {
                 (
                     ResourceId::from_str(path.file_name().unwrap().to_str().unwrap()).unwrap(),
-                    change.clone(),
+                    change.change_type().into(),
                 )
             })
             .collect::<Vec<_>>();
@@ -686,6 +697,17 @@ impl Project {
             old_name = Some(data.rename(new_name));
         })
         .await;
+
+        let metadata_path = self.metadata_path(type_id.id);
+        let resource_path = self.resource_path(type_id.id);
+        self.workspace
+            .add_files(
+                &self.content_provider,
+                [metadata_path.as_path(), resource_path.as_path()],
+            ) // add
+            .await
+            .map_err(Error::SourceControl)?;
+
         Ok(old_name.unwrap())
     }
 
@@ -715,19 +737,7 @@ impl Project {
                     .filter(|filename| !filename.contains('.')) // skip .meta files
                     .map(|filename| (ResourceId::from_str(filename).unwrap()));
 
-                id.map(|id| {
-                    let t = match change.change_type() {
-                        lgn_source_control::ChangeType::Add { new_chunk_id: _ } => ChangeType::Add,
-                        lgn_source_control::ChangeType::Edit {
-                            old_chunk_id: _,
-                            new_chunk_id: _,
-                        } => ChangeType::Edit,
-                        lgn_source_control::ChangeType::Delete { old_chunk_id: _ } => {
-                            ChangeType::Delete
-                        }
-                    };
-                    (id, t)
-                })
+                id.map(|id| (id, change.change_type().into()))
             })
             .collect::<Vec<_>>();
         Ok(resources)

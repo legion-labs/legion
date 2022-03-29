@@ -9,6 +9,7 @@ use std::{
 
 use bytes::BytesMut;
 use lgn_app::prelude::*;
+use lgn_data_offline::resource::ChangeType;
 use lgn_data_runtime::{Resource, ResourceTypeAndId};
 use lgn_data_transaction::{LockContext, TransactionManager};
 use lgn_ecs::{
@@ -26,7 +27,7 @@ use lgn_editor_proto::source_control::{
 };
 use lgn_grpc::{GRPCPluginScheduling, GRPCPluginSettings};
 use lgn_resource_registry::{ResourceRegistryPluginScheduling, ResourceRegistrySettings};
-use lgn_source_control::ChangeType;
+use lgn_tracing::error;
 use thiserror::Error;
 use tokio::sync::{mpsc, Mutex};
 use tokio_stream::{wrappers::ReceiverStream, StreamExt};
@@ -571,18 +572,55 @@ impl SourceControl for SourceControlRPC {
         request: Request<SyncLatestResquest>,
     ) -> Result<Response<SyncLatestResponse>, Status> {
         let _request = request.into_inner();
-        let mut transaction_manager = self.transaction_manager.lock().await;
-        {
+
+        let (resource_to_build, resource_to_unload) = {
+            let mut resource_to_build = Vec::new();
+            let mut resource_to_unload = Vec::new();
+
+            let transaction_manager = self.transaction_manager.lock().await;
             let mut ctx = LockContext::new(&transaction_manager).await;
-            ctx.project
-                .sync_latest()
-                .await
-                .map_err(|err| Status::internal(err.to_string()))?;
+            let changes = ctx.project.sync_latest().await.map_err(|err| {
+                error!("Failed to get changes: {}", err);
+                Status::internal(err.to_string())
+            })?;
+
+            for (id, change_type) in changes {
+                if let Ok(kind) = ctx.project.resource_type(id) {
+                    let resource_id = ResourceTypeAndId { kind, id };
+                    match change_type {
+                        ChangeType::Add | ChangeType::Edit => {
+                            resource_to_build.push(resource_id);
+                        }
+                        ChangeType::Delete => {
+                            resource_to_unload.push(resource_id);
+                        }
+                    }
+                } else {
+                    error!("Failed to retrieve resource type for {}", id);
+                }
+            }
+            (resource_to_build, resource_to_unload)
+        };
+
+        let transaction_manager = self.transaction_manager.lock().await;
+        for resource_id in resource_to_build {
+            if resource_id.kind == sample_data::offline::Entity::TYPE {
+                {
+                    let mut ctx = LockContext::new(&transaction_manager).await;
+                    if let Err(err) = ctx.reload(resource_id).await {
+                        error!("Failed to reload resource {}: {}", resource_id, err);
+                    }
+                }
+                if let Err(err) = transaction_manager.build_by_id(resource_id).await {
+                    error!("Failed to compile resource {}: {}", resource_id, err);
+                }
+            }
         }
 
-        transaction_manager
-            .load_all_resource_type(&[sample_data::offline::Entity::TYPE])
-            .await;
+        for resource_id in resource_to_unload {
+            let mut ctx = LockContext::new(&transaction_manager).await;
+            ctx.unload(resource_id).await;
+        }
 
         Ok(Response::new(SyncLatestResponse {}))
     }
@@ -601,7 +639,7 @@ impl SourceControl for SourceControlRPC {
 
         let entries: Vec<StagedResource> = changes
             .into_iter()
-            .map(|(resource_id, change)| {
+            .map(|(resource_id, change_type)| {
                 let path: String = ctx
                     .project
                     .resource_name(resource_id)
@@ -622,10 +660,10 @@ impl SourceControl for SourceControlRPC {
                         r#type: kind.as_pretty().trim_start_matches("offline_").into(),
                         version: 1,
                     }),
-                    change_type: match change.change_type() {
-                        ChangeType::Add { .. } => staged_resource::ChangeType::Add as i32,
-                        ChangeType::Edit { .. } => staged_resource::ChangeType::Edit as i32,
-                        ChangeType::Delete { .. } => staged_resource::ChangeType::Delete as i32,
+                    change_type: match change_type {
+                        ChangeType::Add => staged_resource::ChangeType::Add as i32,
+                        ChangeType::Edit => staged_resource::ChangeType::Edit as i32,
+                        ChangeType::Delete => staged_resource::ChangeType::Delete as i32,
                     },
                 }
             })
