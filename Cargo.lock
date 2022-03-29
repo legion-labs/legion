@@ -3546,7 +3546,7 @@ dependencies = [
  "pathdiff",
  "rayon",
  "target-spec",
- "toml_edit",
+ "toml_edit 0.10.1",
  "twox-hash",
 ]
 
@@ -4211,6 +4211,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b310ccceade8121d7d77fee406160e457c2f4e7c7982d589da3499bc7ea4526"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "kstring"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec3066350882a1cd6d950d055997f379ac37fd39f81cd4d8ed186032eb3c5747"
+dependencies = [
+ "static_assertions",
 ]
 
 [[package]]
@@ -5428,6 +5437,7 @@ dependencies = [
  "lgn-content-store2",
  "lgn-data-build",
  "lgn-data-compiler",
+ "lgn-data-compiler-remote",
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-data-transaction",
@@ -6275,7 +6285,7 @@ dependencies = [
  "thiserror",
  "tinytemplate",
  "toml",
- "toml_edit",
+ "toml_edit 0.14.0",
  "walkdir",
  "which",
  "wildmatch",
@@ -10163,7 +10173,19 @@ dependencies = [
  "combine",
  "indexmap",
  "itertools 0.10.3",
- "kstring",
+ "kstring 1.0.6",
+]
+
+[[package]]
+name = "toml_edit"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aadc6847c9501c2093c0ab0b6f082accf9fc1b5566f9ea9d05bfcc5adb6f462a"
+dependencies = [
+ "combine",
+ "indexmap",
+ "itertools 0.10.3",
+ "kstring 2.0.0",
 ]
 
 [[package]]
