@@ -56,9 +56,7 @@ struct NvEncEncoderInner {
     sent_frame: usize,
     received_frame: usize,
 
-    current_cuda_semaphore_key: u64,
     cuda_semaphore_map: HashMap<u64, CUexternalSemaphore>,
-
     cuda_image_map: HashMap<
         u64,
         (
@@ -99,6 +97,7 @@ unsafe impl Send for NvEncEncoder {}
 unsafe impl Sync for NvEncEncoder {}
 
 static NEXT_IMAGE_KEY: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+static NEXT_SEMAPHORE_KEY: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 
 impl NvEncEncoder {
     pub(crate) fn encoder_loop(work_queue: &mut EncoderWorkQueue, encoder: &Self) {
@@ -133,7 +132,6 @@ impl NvEncEncoder {
                         cuda_bitstream_buffers: [std::ptr::null_mut(); 5],
                         sent_frame: 0,
                         received_frame: 0,
-                        current_cuda_semaphore_key: 0,
                         cuda_semaphore_map: HashMap::new(),
                         cuda_image_map: HashMap::new(),
                     })),
@@ -532,8 +530,7 @@ impl NvEncEncoder {
             assert!(result == CUresult::CUDA_SUCCESS);
             inner.cuda_context.pop();
 
-            let new_key: u64 = inner.current_cuda_semaphore_key;
-            inner.current_cuda_semaphore_key += 1;
+            let new_key: u64 = NEXT_SEMAPHORE_KEY.fetch_add(1, Ordering::Relaxed);
 
             semaphore.update_internal_resource(new_key);
             inner.cuda_semaphore_map.insert(new_key, cuda_semaphore);
