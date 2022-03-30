@@ -89,7 +89,7 @@ impl NvEncoder {
                 name: std::ptr::null_mut(),
             },
             #[cfg(target_os = "linux")]
-            fd: image.external_resource_handle(device_context),
+            fd: external_image.external_resource_handle(device_context),
         };
 
         let memory_handle_desc = CUDA_EXTERNAL_MEMORY_HANDLE_DESC {
@@ -198,7 +198,7 @@ impl NvEncoder {
                 name: std::ptr::null_mut(),
             },
             #[cfg(target_os = "linux")]
-            fd: semaphore.external_resource_handle(device_context),
+            fd: external_semaphore.external_resource_handle(device_context),
         };
 
         let sema_desc = CUDA_EXTERNAL_SEMAPHORE_HANDLE_DESC {
