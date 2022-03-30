@@ -17,7 +17,8 @@ use lgn_input::{
 };
 use lgn_tracing::{error, info, trace, warn};
 use lgn_window::{
-    CursorMoved, Window, WindowCloseRequested, WindowCreated, WindowDescriptor, WindowId, WindowResized, Windows,
+    CursorMoved, Window, WindowCloseRequested, WindowCreated, WindowDescriptor, WindowId,
+    WindowResized, Windows,
 };
 use serde_json::json;
 use webrtc::{
