@@ -6,7 +6,9 @@ use lgn_input::{
     mouse::{MouseButton, MouseButtonInput, MouseWheel},
 };
 use lgn_tracing::span_fn;
-use lgn_window::{CursorMoved, WindowCreated, WindowResized, WindowScaleFactorChanged, Windows};
+use lgn_window::{
+    CursorMoved, ReceivedCharacter, WindowCreated, WindowResized, WindowScaleFactorChanged, Windows,
+};
 
 #[derive(Default)]
 pub struct Egui {
@@ -107,6 +109,7 @@ fn gather_input(
     mut cursor_button: EventReader<'_, '_, MouseButtonInput>,
     mut mouse_wheel_events: EventReader<'_, '_, MouseWheel>,
     mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
+    mut received_characters: EventReader<'_, '_, ReceivedCharacter>,
 ) {
     // TODO: zoom_delta
     // TODO: time
@@ -151,13 +154,15 @@ fn gather_input(
                     modifiers: egui::Modifiers::default(), // TODO
                 });
             }
-            if keyboard_input_event.state.is_pressed() {
-                let ch: char = key_code.into();
-                if ch != 0 as char {
-                    events.push(Event::Text(String::from(ch)));
-                }
-            }
         }
+    }
+
+    if !received_characters.is_empty() {
+        let mut text = String::new();
+        for received_character in received_characters.iter() {
+            text.push(received_character.char);
+        }
+        events.push(Event::Text(text));
     }
 
     let raw_input = raw_input.into_inner();

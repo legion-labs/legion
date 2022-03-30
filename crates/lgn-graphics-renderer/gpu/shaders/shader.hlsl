@@ -136,7 +136,6 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
         material_normal = material_textures[material.normal_texture].Sample(material_sampler, vertex_out.uv_coord).rgb;
 
         material_normal = (material_normal * 2.0 - 1);
-        material_normal.y *= -1.0;
 
         lighting_normal = mul(tangent_to_view_space, material_normal);
     }

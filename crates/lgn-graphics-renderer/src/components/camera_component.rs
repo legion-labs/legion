@@ -20,6 +20,9 @@ pub struct CameraComponent {
     pub speed: f32,
     pub rotation_speed: f32,
     setup: CameraSetup,
+    pub fov_y: f32,
+    pub z_near: f32,
+    pub z_far: f32,
 }
 
 impl CameraComponent {
@@ -37,37 +40,30 @@ impl CameraComponent {
         view_transform
     }
 
-    pub fn build_projection(width: f32, height: f32) -> Mat4 {
-        let fov_y_radians: f32 = 45.0;
+    pub fn build_projection(&self, width: f32, height: f32) -> Mat4 {
         let aspect_ratio = width / height;
-        let z_near: f32 = 0.01;
-        let z_far: f32 = 500.0;
-        Mat4::perspective_lh(fov_y_radians, aspect_ratio, z_near, z_far)
+        Mat4::perspective_lh(self.fov_y, aspect_ratio, self.z_near, self.z_far)
     }
 
     pub fn build_culling_planes(&self, aspect_ratio: f32) -> [Float4; 6] {
-        let fov_y_radians: f32 = 45.0;
-        let z_near: f32 = 0.01;
-        let z_far: f32 = 500.0;
-
         let eye = self.camera_rig.final_transform.position;
         let forward = self.camera_rig.final_transform.forward();
         let up = self.camera_rig.final_transform.up();
         let right = self.camera_rig.final_transform.right();
 
-        let half_v_side = z_far * (fov_y_radians * 0.5).tan();
+        let half_v_side = self.z_far * (self.fov_y * 0.5).tan();
         let half_h_side = half_v_side * aspect_ratio;
 
-        let near_face_point = eye + forward * z_near;
+        let near_face_point = eye + forward * self.z_near;
         let near_normal = -forward;
         let near_plane: Float4 =
             Vec4::from((near_normal, -near_normal.dot(near_face_point))).into();
 
-        let far_face_point = eye + forward * z_far;
+        let far_face_point = eye + forward * self.z_far;
         let far_normal = forward;
         let far_plane: Float4 = Vec4::from((far_normal, -far_normal.dot(far_face_point))).into();
 
-        let front_mult_far = z_far * forward;
+        let front_mult_far = self.z_far * forward;
 
         let right_side = front_mult_far - right * half_h_side;
         let right_normal = up.cross(right_side).normalize();
@@ -108,7 +104,7 @@ impl CameraComponent {
 
         camera_props.set_camera_translation(self.view_transform().translation.into());
         camera_props.set_camera_rotation(Vec4::from(self.view_transform().rotation).into());
-        camera_props.set_projection(Self::build_projection(pixel_width, pixel_height).into());
+        camera_props.set_projection(self.build_projection(pixel_width, pixel_height).into());
         camera_props.set_culling_planes(self.build_culling_planes(pixel_width / pixel_height));
         camera_props.set_pixel_size(
             Vec4::new(
@@ -163,6 +159,9 @@ impl Default for CameraComponent {
             speed: 2.5,
             rotation_speed: 40.0,
             setup,
+            fov_y: 45.0,
+            z_near: 0.01,
+            z_far: 100.0,
         }
     }
 }

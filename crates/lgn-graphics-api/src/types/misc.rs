@@ -425,7 +425,7 @@ pub enum FrontFace {
 
 impl Default for FrontFace {
     fn default() -> Self {
-        Self::CounterClockwise
+        Self::Clockwise
     }
 }
 

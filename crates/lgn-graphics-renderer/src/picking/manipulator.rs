@@ -122,8 +122,7 @@ pub(super) fn new_world_point_for_cursor(
     let screen_offset = 2.0 * (cursor_pos / screen_size) - 1.0;
     let screen_pos = Vec4::new(screen_offset.x, screen_offset.y, 0.5, 1.0);
 
-    let projection_matrix =
-        CameraComponent::build_projection(screen_size.x as f32, screen_size.y as f32);
+    let projection_matrix = camera.build_projection(screen_size.x as f32, screen_size.y as f32);
     let mut view_pos = projection_matrix.inverse().mul_vec4(screen_pos);
     view_pos /= view_pos.w;
 
@@ -335,7 +334,7 @@ impl ManipulatorManager {
         render_surface: &RenderSurface,
         camera: &CameraComponent,
     ) -> GlobalTransform {
-        let projection_matrix = CameraComponent::build_projection(
+        let projection_matrix = camera.build_projection(
             render_surface.extents().width() as f32,
             render_surface.extents().height() as f32,
         );
