@@ -63,7 +63,7 @@ impl<K: Ord + Copy, T> GpuDataManager<K, T> {
         gpu_data_allocation
     }
 
-    pub fn va_for_index(&self, key: &K) -> u64 {
+    pub fn va_for_key(&self, key: &K) -> u64 {
         assert!(self.data_map.contains_key(key));
 
         let values = self.data_map.get(key).unwrap();

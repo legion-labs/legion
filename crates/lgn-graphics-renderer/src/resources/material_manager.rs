@@ -428,7 +428,7 @@ impl MaterialManager {
             .alloc_gpu_data(&material_id, gpu_allocator);
 
         self.materials[material_id.index() as usize] = MaterialSlot::Occupied(Material {
-            va: self.gpu_material_data.va_for_index(&material_id),
+            va: self.gpu_material_data.va_for_key(&material_id),
             resource_id,
             material_data,
         });

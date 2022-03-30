@@ -318,9 +318,9 @@ fn update_gpu_instances(
             let instance_vas = GpuInstanceVas {
                 submesh_va: mesh_meta_data.mesh_description_offset,
                 material_va: material_manager.get_material(material_id).va() as u32,
-                color_va: color_manager.va_for_index(&entity) as u32,
-                transform_va: transform_manager.va_for_index(&entity) as u32,
-                picking_data_va: picking_data_manager.va_for_index(&entity) as u32,
+                color_va: color_manager.va_for_key(&entity) as u32,
+                transform_va: transform_manager.va_for_key(&entity) as u32,
+                picking_data_va: picking_data_manager.va_for_key(&entity) as u32,
             };
 
             let (gpu_instance_key, gpu_instance_id) = instance_manager.add_gpu_instance(
