@@ -630,44 +630,50 @@ impl SourceControl for SourceControlRPC {
         _request: Request<GetStagedResourcesRequest>,
     ) -> Result<Response<GetStagedResourcesResponse>, Status> {
         let transaction_manager = self.transaction_manager.lock().await;
-        let ctx = LockContext::new(&transaction_manager).await;
+        let mut ctx = LockContext::new(&transaction_manager).await;
         let changes = ctx
             .project
             .get_staged_changes()
             .await
             .map_err(|err| Status::internal(err.to_string()))?;
 
-        let entries: Vec<StagedResource> = changes
-            .into_iter()
-            .map(|(resource_id, change_type)| {
-                let path: String = ctx
+        let mut entries = Vec::<StagedResource>::new();
+        for (resource_id, change_type) in changes {
+            let (path, kind) = if let ChangeType::Delete = change_type {
+                ctx.project
+                    .deleted_resource_info(resource_id)
+                    .await
+                    .unwrap_or_else(|_err| ("(error)".into(), sample_data::offline::Entity::TYPE))
+            } else {
+                let path = ctx
                     .project
                     .resource_name(resource_id)
-                    .unwrap_or_else(|_err| "(deleted)".into())
-                    .to_string();
+                    .unwrap_or_else(|_err| "(error)".into());
 
                 let kind = ctx
                     .project
                     .resource_type(resource_id)
                     .unwrap_or(sample_data::offline::Entity::TYPE); // Hack, figure out a way to get type for deleted resources
-                StagedResource {
-                    info: Some(ResourceDescription {
-                        id: ResourceTypeAndId::to_string(&ResourceTypeAndId {
-                            kind,
-                            id: resource_id,
-                        }),
-                        path,
-                        r#type: kind.as_pretty().trim_start_matches("offline_").into(),
-                        version: 1,
+                (path, kind)
+            };
+
+            entries.push(StagedResource {
+                info: Some(ResourceDescription {
+                    id: ResourceTypeAndId::to_string(&ResourceTypeAndId {
+                        kind,
+                        id: resource_id,
                     }),
-                    change_type: match change_type {
-                        ChangeType::Add => staged_resource::ChangeType::Add as i32,
-                        ChangeType::Edit => staged_resource::ChangeType::Edit as i32,
-                        ChangeType::Delete => staged_resource::ChangeType::Delete as i32,
-                    },
-                }
-            })
-            .collect();
+                    path: path.to_string(),
+                    r#type: kind.as_pretty().trim_start_matches("offline_").into(),
+                    version: 1,
+                }),
+                change_type: match change_type {
+                    ChangeType::Add => staged_resource::ChangeType::Add as i32,
+                    ChangeType::Edit => staged_resource::ChangeType::Edit as i32,
+                    ChangeType::Delete => staged_resource::ChangeType::Delete as i32,
+                },
+            });
+        }
 
         Ok(Response::new(GetStagedResourcesResponse { entries }))
     }

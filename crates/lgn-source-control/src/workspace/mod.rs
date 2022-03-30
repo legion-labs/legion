@@ -199,6 +199,11 @@ impl Workspace {
         }
     }
 
+    /// Return the `Chunker` use by the source control
+    pub fn get_chunker(&self) -> &Chunker {
+        &self.chunker
+    }
+
     fn try_make_filepath_absolute(url: String, root: &Path) -> Result<String> {
         match parse_url_or_path(&url)
             .map_other_err(format!("failed to parse index url `{}`", &url))?
