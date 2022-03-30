@@ -33,7 +33,9 @@ use crate::{
     RenderContext, Renderer,
 };
 
-use super::{GpuInstanceEvent, GpuInstanceManager, RenderElement, RenderLayer, RenderStateSet};
+use super::{
+    GpuInstanceEvent, GpuInstanceId, GpuInstanceManager, RenderElement, RenderLayer, RenderStateSet,
+};
 
 embedded_watched_file!(INCLUDE_BRDF, "gpu/include/brdf.hsh");
 embedded_watched_file!(INCLUDE_COMMON, "gpu/include/common.hsh");
@@ -242,15 +244,16 @@ impl MeshRenderer {
 
     fn register_element(&mut self, _material_id: MaterialId, element: &RenderElement) {
         let new_index = self.gpu_instance_data.len() as u32;
-        if element.gpu_instance_id > self.instance_data_idxs.len() as u32 {
+        let gpu_instance_index = element.gpu_instance_id.index();
+        if gpu_instance_index > self.instance_data_idxs.len() as u32 {
             self.instance_data_idxs
-                .resize(element.gpu_instance_id as usize + 1, u32::MAX);
+                .resize(gpu_instance_index as usize + 1, u32::MAX);
         }
-        assert!(self.instance_data_idxs[element.gpu_instance_id as usize] == u32::MAX);
-        self.instance_data_idxs[element.gpu_instance_id as usize] = new_index;
+        assert!(self.instance_data_idxs[gpu_instance_index as usize] == u32::MAX);
+        self.instance_data_idxs[gpu_instance_index as usize] = new_index;
 
         let mut instance_data = GpuInstanceData::default();
-        instance_data.set_gpu_instance_id(element.gpu_instance_id.into());
+        instance_data.set_gpu_instance_id(gpu_instance_index.into());
 
         for layer in &mut self.default_layers {
             instance_data.set_state_id(0.into());
@@ -259,13 +262,14 @@ impl MeshRenderer {
         self.gpu_instance_data.push(instance_data);
     }
 
-    fn unregister_element(&mut self, gpu_instance_id: u32) {
-        let removed_index = self.instance_data_idxs[gpu_instance_id as usize] as usize;
-        self.instance_data_idxs[gpu_instance_id as usize] = u32::MAX;
+    fn unregister_element(&mut self, gpu_instance_id: GpuInstanceId) {
+        let gpu_instance_index = gpu_instance_id.index();
+        let removed_index = self.instance_data_idxs[gpu_instance_index as usize] as usize;
+        self.instance_data_idxs[gpu_instance_index as usize] = u32::MAX;
 
         let removed_instance = self.gpu_instance_data.swap_remove(removed_index as usize);
         let removed_instance_id: u32 = removed_instance.gpu_instance_id().into();
-        assert!(gpu_instance_id == removed_instance_id);
+        assert!(gpu_instance_index == removed_instance_id);
 
         if removed_index < self.gpu_instance_data.len() {
             let moved_instance_id: u32 = self.gpu_instance_data[removed_index as usize]

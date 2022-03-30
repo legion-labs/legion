@@ -113,15 +113,11 @@ impl StaticBufferAllocation {
         self.allocation.as_ref().unwrap().byte_offset()
     }
 
-    pub fn size(&self) -> u64 {
-        self.allocation.as_ref().unwrap().size()
-    }
-
     pub fn vertex_buffer_binding(&self) -> VertexBufferBinding<'_> {
         self.allocation.as_ref().unwrap().vertex_buffer_binding()
     }
 
-    pub fn structured_buffer_view(&self, struct_size: u64, read_only: bool) -> BufferView {
+    pub fn create_structured_buffer_view(&self, struct_size: u64, read_only: bool) -> BufferView {
         self.allocation
             .as_ref()
             .unwrap()
@@ -167,9 +163,13 @@ impl UnifiedStaticBufferAllocator {
         let inner = &mut *self.inner.lock().unwrap();
 
         let page_size = inner.page_size;
-        let page_count =
-            lgn_utils::memory::round_size_up_to_alignment_u64(segment_size, page_size) / page_size;
-        let alloc_size = page_count * page_size;
+        let alloc_size = lgn_utils::memory::round_size_up_to_alignment_u64(segment_size, page_size);
+        let page_count = alloc_size / page_size;
+
+        if segment_size != alloc_size {
+            // TODO(vdbdd): use warn instead
+            println!( "UnifiedStaticBufferAllocator: the segment required size ({}) is less than the allocated size ({}). {} of memory will be wasted", segment_size, alloc_size, alloc_size-segment_size  );
+        }
 
         let location = inner.segment_allocator.allocate(alloc_size).unwrap();
 
@@ -284,23 +284,21 @@ impl UnifiedStaticBufferAllocator {
 
 pub struct UniformGPUData<T> {
     allocated_pages: RwLock<Vec<StaticBufferAllocation>>,
-    page_size: u64,
-    element_size: u64,
+    elements_per_page: u64,
     marker: std::marker::PhantomData<T>,
 }
 
 impl<T> UniformGPUData<T> {
-    pub fn new(allocator: Option<&UnifiedStaticBufferAllocator>, mut page_size: u64) -> Self {
+    pub fn new(allocator: Option<&UnifiedStaticBufferAllocator>, elements_per_page: u64) -> Self {
         let mut allocated_pages = Vec::new();
         if let Some(allocator) = allocator {
+            let page_size = elements_per_page * std::mem::size_of::<T>() as u64;
             let page = allocator.allocate_segment(page_size);
-            page_size = page.size();
             allocated_pages.push(page);
         }
         Self {
             allocated_pages: RwLock::new(allocated_pages),
-            page_size,
-            element_size: std::mem::size_of::<T>() as u64,
+            elements_per_page,
             marker: ::std::marker::PhantomData,
         }
     }
@@ -311,7 +309,8 @@ impl<T> UniformGPUData<T> {
         index: u32,
     ) -> u64 {
         let index_64 = u64::from(index);
-        let elements_per_page = self.page_size / self.element_size;
+        let element_size = std::mem::size_of::<T>() as u64;
+        let elements_per_page = self.elements_per_page;
         let required_pages = (index_64 / elements_per_page) + 1;
 
         let index_of_page = index_64 / elements_per_page;
@@ -321,24 +320,25 @@ impl<T> UniformGPUData<T> {
             let page_read_access = self.allocated_pages.read().unwrap();
             if page_read_access.len() >= required_pages as usize {
                 return page_read_access[index_of_page as usize].offset()
-                    + (index_in_page * self.element_size);
+                    + (index_in_page * element_size);
             }
         }
 
         let mut page_write_access = self.allocated_pages.write().unwrap();
 
         while (page_write_access.len() as u64) < required_pages {
-            page_write_access.push(allocator.allocate_segment(self.page_size));
+            let segment_size = elements_per_page * std::mem::size_of::<T>() as u64;
+            page_write_access.push(allocator.allocate_segment(segment_size));
         }
 
-        page_write_access[index_of_page as usize].offset() + (index_in_page * self.element_size)
+        page_write_access[index_of_page as usize].offset() + (index_in_page * element_size)
     }
 
-    pub fn structured_buffer_view(&self, struct_size: u64) -> BufferView {
+    pub fn create_structured_buffer_view(&self, struct_size: u64) -> BufferView {
         let page_read_access = self.allocated_pages.read().unwrap();
 
         assert!(!page_read_access.is_empty());
-        page_read_access[0].structured_buffer_view(struct_size, true)
+        page_read_access[0].create_structured_buffer_view(struct_size, true)
     }
 
     pub fn offset(&self) -> u64 {

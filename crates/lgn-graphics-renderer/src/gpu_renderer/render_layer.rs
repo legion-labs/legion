@@ -6,7 +6,7 @@ use crate::{
     RenderContext,
 };
 
-use super::{RenderBatch, RenderElement, RenderStateSet};
+use super::{GpuInstanceId, RenderBatch, RenderElement, RenderStateSet};
 
 pub struct RenderLayer {
     state_page: StaticBufferAllocation,
@@ -56,7 +56,7 @@ impl RenderLayer {
         self.element_count += 1;
     }
 
-    pub fn unregister_element(&mut self, state_id: u32, gpu_instance_id: u32) {
+    pub fn unregister_element(&mut self, state_id: u32, gpu_instance_id: GpuInstanceId) {
         let batch_id = self.state_to_batch[state_id as usize] as usize;
         if self.cpu_render_set {
             self.batches[batch_id].remove_cpu_element(gpu_instance_id);

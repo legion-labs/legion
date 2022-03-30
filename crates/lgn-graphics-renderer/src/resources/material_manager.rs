@@ -102,7 +102,7 @@ impl MaterialManager {
             entity_to_material_id: BTreeMap::new(),
             material_id_to_texture_ids: BTreeMap::new(),
             upload_queue: HashSet::new(),
-            gpu_material_data: GpuMaterialData::new(64 * 1024, MATERIAL_BLOCK_SIZE),
+            gpu_material_data: GpuMaterialData::new(MATERIAL_BLOCK_SIZE),
             default_resource_id,
             default_material_id: default_material_id.into(),
             default_uploaded: false,
@@ -343,12 +343,8 @@ impl MaterialManager {
                 texture_manager,
                 shared_resources_manager,
             );
-            self.gpu_material_data.update_gpu_data(
-                material_id,
-                0,
-                &gpu_material_data,
-                &mut updater,
-            );
+            self.gpu_material_data
+                .update_gpu_data(material_id, &gpu_material_data, &mut updater);
 
             // TODO(vdbdd): remove asap
             missing_visuals_tracker.add_changed_resource(material.resource_id);
@@ -404,7 +400,6 @@ impl MaterialManager {
 
             self.gpu_material_data.update_gpu_data(
                 &self.default_material_id,
-                0,
                 &default_material_data,
                 &mut updater,
             );
@@ -433,7 +428,7 @@ impl MaterialManager {
             .alloc_gpu_data(&material_id, gpu_allocator);
 
         self.materials[material_id.index() as usize] = MaterialSlot::Occupied(Material {
-            va: self.gpu_material_data.va_for_index(&material_id, 0),
+            va: self.gpu_material_data.va_for_index(&material_id),
             resource_id,
             material_data,
         });

@@ -50,8 +50,8 @@ macro_rules! impl_static_buffer_accessor {
             pub fn [<release_ $name>](&mut self, $name: $buffer_type) {
                 self.$name = $name;
             }
-            pub fn [<$name _structured_buffer_view>](&self) -> BufferView{
-                self.$name.structured_buffer_view($type::SIZE as u64)
+            pub fn [<$name _create_structured_buffer_view>](&self) -> BufferView{
+                self.$name.create_structured_buffer_view($type::NUM)
             }
         }
     };
@@ -67,18 +67,18 @@ impl Renderer {
         let omnidirectional_lights_data =
             OmniDirectionalLightsStaticBuffer::new(UniformGPUData::<OmniDirectionalLight>::new(
                 Some(static_buffer.allocator()),
-                OmniDirectionalLight::PAGE_SIZE,
+                OmniDirectionalLight::NUM,
             ));
 
         let directional_lights_data =
             DirectionalLightsStaticBuffer::new(UniformGPUData::<DirectionalLight>::new(
                 Some(static_buffer.allocator()),
-                DirectionalLight::PAGE_SIZE,
+                DirectionalLight::NUM,
             ));
 
         let spotlights_data = SpotLightsStaticBuffer::new(UniformGPUData::<SpotLight>::new(
             Some(static_buffer.allocator()),
-            SpotLight::PAGE_SIZE,
+            SpotLight::NUM,
         ));
 
         Self {

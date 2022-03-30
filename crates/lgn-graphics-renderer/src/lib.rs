@@ -466,21 +466,23 @@ fn render_update(
             .create_const_buffer_view();
         frame_descriptor_set.set_lighting_data(&lighting_manager_view);
 
-        let omni_lights_buffer_view = renderer.omnidirectional_lights_data_structured_buffer_view();
+        // TODO(vdbdd): we need a light manager that stores those views instead of creating them ono each update
+        let omni_lights_buffer_view =
+            renderer.omnidirectional_lights_data_create_structured_buffer_view();
         frame_descriptor_set.set_omni_directional_lights(&omni_lights_buffer_view);
 
         let directionnal_lights_buffer_view =
-            renderer.directional_lights_data_structured_buffer_view();
+            renderer.directional_lights_data_create_structured_buffer_view();
         frame_descriptor_set.set_directional_lights(&directionnal_lights_buffer_view);
 
-        let spot_lights_buffer_view = renderer.spotlights_data_structured_buffer_view();
+        let spot_lights_buffer_view = renderer.spotlights_data_create_structured_buffer_view();
         frame_descriptor_set.set_spot_lights(&spot_lights_buffer_view);
 
         let static_buffer_ro_view = renderer.static_buffer_ro_view();
         frame_descriptor_set.set_static_buffer(&static_buffer_ro_view);
 
         let va_table_address_buffer =
-            instance_manager.structured_buffer_view(std::mem::size_of::<u32>() as u64, true);
+            instance_manager.create_structured_buffer_view(std::mem::size_of::<u32>() as u64, true);
         frame_descriptor_set.set_va_table_address_buffer(&va_table_address_buffer);
 
         let sampler_def = SamplerDef {

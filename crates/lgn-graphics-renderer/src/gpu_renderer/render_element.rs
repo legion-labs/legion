@@ -3,16 +3,18 @@ use crate::{
     resources::{MaterialId, MeshManager},
 };
 
+use super::GpuInstanceId;
+
 #[derive(Clone, Copy)]
 pub struct RenderElement {
-    pub(super) gpu_instance_id: u32,
+    pub(super) gpu_instance_id: GpuInstanceId,
     vertex_count: u32,
     index_count: u32,
     index_offset: u32,
 }
 
 impl RenderElement {
-    pub fn new(gpu_instance_id: u32, mesh_id: u32, mesh_manager: &MeshManager) -> Self {
+    pub fn new(gpu_instance_id: GpuInstanceId, mesh_id: u32, mesh_manager: &MeshManager) -> Self {
         let mesh = mesh_manager.get_mesh_meta_data(mesh_id);
 
         Self {
@@ -29,16 +31,16 @@ impl RenderElement {
                 self.index_count,
                 self.index_offset,
                 1,
-                self.gpu_instance_id,
+                self.gpu_instance_id.index(),
                 0,
             );
         } else {
-            cmd_buffer.draw_instanced(self.vertex_count, 0, 1, self.gpu_instance_id);
+            cmd_buffer.draw_instanced(self.vertex_count, 0, 1, self.gpu_instance_id.index());
         }
     }
 }
 
 pub enum GpuInstanceEvent {
     Added(Vec<(MaterialId, RenderElement)>),
-    Removed(Vec<u32>),
+    Removed(Vec<GpuInstanceId>),
 }
