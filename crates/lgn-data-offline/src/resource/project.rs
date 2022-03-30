@@ -1,5 +1,6 @@
 use core::fmt;
 use std::{
+    collections::{hash_map::Entry, HashMap},
     fs::{self, File, OpenOptions},
     io::Seek,
     path::{Path, PathBuf},
@@ -8,8 +9,10 @@ use std::{
 
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_source_control::{
-    CommitMode, IndexBackend, LocalIndexBackend, Workspace, WorkspaceConfig, WorkspaceRegistration,
+    CanonicalPath, CommitMode, IndexBackend, LocalIndexBackend, Workspace, WorkspaceConfig,
+    WorkspaceRegistration,
 };
+use lgn_tracing::error;
 use thiserror::Error;
 
 use crate::resource::{
@@ -74,6 +77,7 @@ pub struct Project {
     local_remote: Option<LocalIndexBackend>,
     workspace: Workspace,
     content_provider: Box<dyn lgn_content_store2::ContentProvider + Send + Sync>,
+    deleted_pending: HashMap<ResourceId, (ResourcePathName, ResourceType)>,
 }
 
 #[derive(Error, Debug)]
@@ -205,6 +209,7 @@ impl Project {
             local_remote: None,
             workspace,
             content_provider,
+            deleted_pending: HashMap::new(),
         })
     }
 
@@ -240,6 +245,7 @@ impl Project {
             local_remote: None,
             workspace,
             content_provider,
+            deleted_pending: HashMap::new(),
         })
     }
 
@@ -605,6 +611,63 @@ impl Project {
         Ok(meta.name)
     }
 
+    /// Returns the name of the resource from its `.meta` file.
+    pub async fn deleted_resource_info(
+        &mut self,
+        id: ResourceId,
+    ) -> Result<(ResourcePathName, ResourceType), Error> {
+        let metadata_path = self.metadata_path(id);
+
+        match self.deleted_pending.entry(id) {
+            Entry::Vacant(entry) => {
+                let tree = self
+                    .workspace
+                    .get_staged_changes()
+                    .await
+                    .map_err(Error::SourceControl)?;
+
+                let meta_lsc_path =
+                    CanonicalPath::new_from_canonical_paths(self.workspace.root(), &metadata_path)
+                        .map_err(|err| {
+                            error!(
+                                "Failed to retrieve delete info for Resource {}: {}",
+                                id, err
+                            );
+                            Error::SourceControl(err)
+                        })?;
+
+                if let Some(lgn_source_control::ChangeType::Delete { old_chunk_id }) = tree
+                    .get(&meta_lsc_path)
+                    .map(lgn_source_control::Change::change_type)
+                {
+                    match self
+                        .workspace
+                        .get_chunker()
+                        .read_chunk(&self.content_provider, old_chunk_id)
+                        .await
+                    {
+                        Ok(data) => {
+                            if let Ok(meta) = serde_json::from_slice::<Metadata>(&data) {
+                                let value = (meta.name, meta.type_id);
+                                entry.insert(value.clone());
+                                return Ok(value);
+                            }
+                        }
+                        Err(err) => {
+                            error!(
+                                "Failed to retrieve delete info for Resource {}: {}",
+                                id, err
+                            );
+                        }
+                    }
+                }
+
+                Err(Error::FileNotFound(meta_lsc_path.to_string()))
+            }
+            Entry::Occupied(entry) => Ok(entry.get().clone()),
+        }
+    }
+
     /// Returns the raw name of the resource from its `.meta` file.
     pub fn raw_resource_name(&self, type_id: ResourceId) -> Result<ResourcePathName, Error> {
         let meta = self.read_meta(type_id)?;
@@ -714,6 +777,7 @@ impl Project {
 
     /// Moves `local` resources to `remote` resource list.
     pub async fn commit(&mut self, message: &str) -> Result<(), Error> {
+        self.deleted_pending.clear();
         self.workspace
             .commit(message, CommitMode::Lenient)
             .await
