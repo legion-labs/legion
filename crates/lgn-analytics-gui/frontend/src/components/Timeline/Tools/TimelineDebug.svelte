@@ -4,12 +4,18 @@
   import { MergeThresholdForLOD, getLodFromPixelSizeMs } from "@/lib/lod";
 
   export let store: TimelineStateStore;
+
   let pixelSize: number;
-  $: lod = getLodFromPixelSizeMs(pixelSize);
-  $: mergeThreshold = MergeThresholdForLOD(lod);
+  let lod: number;
+  let mergeThreshold: number;
+  let title: string;
+
   $: {
     const vr = $store.getViewRange();
     pixelSize = (vr[1] - vr[0]) / $store.canvasWidth;
+    lod = getLodFromPixelSizeMs(pixelSize);
+    mergeThreshold = MergeThresholdForLOD(lod);
+    title = Array.from(getDebugEntries()).join("\n");
   }
 
   function* getDebugEntries() {
@@ -20,7 +26,7 @@
   }
 </script>
 
-<div title={Array.from(getDebugEntries()).join("\n")}>
+<div {title}>
   <i class="bi bi-question-circle-fill" />
 </div>
 
