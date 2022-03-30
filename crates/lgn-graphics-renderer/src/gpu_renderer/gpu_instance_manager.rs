@@ -8,7 +8,6 @@ use lgn_ecs::{
 use lgn_graphics_api::{BufferView, VertexBufferBinding};
 use lgn_hierarchy::prelude::Parent;
 use lgn_math::Vec4;
-use lgn_tasks::ComputeTaskPool;
 use lgn_tracing::warn;
 use lgn_transform::prelude::GlobalTransform;
 
@@ -176,10 +175,6 @@ impl GpuInstanceManager {
             .insert(entity, gpu_instance_block);
     }
 
-    fn get_gpu_instance_block(&self, entity: Entity) -> Option<&GpuInstanceBlock> {
-        self.entity_to_gpu_instance_block.get(&entity)
-    }
-
     fn remove_gpu_instance_block(&mut self, entity: Entity) -> Option<GpuInstanceBlock> {
         self.entity_to_gpu_instance_block.remove(&entity)
     }
@@ -287,7 +282,6 @@ fn update_gpu_instances(
         // Gpu instances
         //
 
-        
         let mut added_instances = Vec::with_capacity(model_meta_data.meshes.len());
         let mut gpu_instance_ids = Vec::new();
         let mut gpu_instance_keys = Vec::new();
@@ -345,7 +339,7 @@ fn update_gpu_instances(
                 RenderElement::new(gpu_instance_id, mesh.mesh_id as u32, &mesh_manager),
             ));
         }
-        
+
         event_writer.send(GpuInstanceEvent::Added(added_instances));
 
         instance_manager.add_gpu_instance_block(
@@ -367,39 +361,24 @@ fn update_gpu_instances(
     clippy::too_many_arguments
 )]
 fn upload_transform_data(
-    task_pool: Res<'_, ComputeTaskPool>,
     renderer: Res<'_, Renderer>,
     transform_manager: Res<'_, GpuEntityTransformManager>,
     query: Query<'_, '_, (Entity, &GlobalTransform, &VisualComponent), Changed<GlobalTransform>>,
 ) {
-    // let transform_count = query.iter().len();
-    // let block_size = transform_count * std::mem::size_of::<cgen::cgen_type::Transform>();
+    let transform_count = query.iter().count();
+    let block_size = transform_count * std::mem::size_of::<cgen::cgen_type::Transform>();
+    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), block_size as u64);
 
-    // let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), block_size);
-
-    // query.par_for_each(&task_pool, 256, |(entity, transform, _)| {
-    //     let mut world = cgen::cgen_type::Transform::default();
-    //     world.set_translation(transform.translation.into());
-    //     world.set_rotation(Vec4::from(transform.rotation).into());
-    //     world.set_scale(transform.scale.into());
-
-    //     transform_manager.update_gpu_data(&entity, 0, &world, &mut updater);
-    // });
-
-    // renderer.add_update_job_block(updater.job_blocks());
-
-    query.par_for_each(&task_pool, 256, |(entity, transform, _)| {
-        let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
-
+    for (entity, transform, _) in query.iter() {
         let mut world = cgen::cgen_type::Transform::default();
         world.set_translation(transform.translation.into());
         world.set_rotation(Vec4::from(transform.rotation).into());
         world.set_scale(transform.scale.into());
 
         transform_manager.update_gpu_data(&entity, &world, &mut updater);
+    }
 
-        renderer.add_update_job_block(updater.job_blocks());
-    });
+    renderer.add_update_job_block(updater.job_blocks());
 }
 
 #[allow(clippy::needless_pass_by_value)]
