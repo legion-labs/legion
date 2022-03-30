@@ -1,7 +1,7 @@
 use std::{cmp::max, sync::Arc};
 
 use lgn_codec_api::encoder_resource::EncoderResource;
-use lgn_codec_api::encoder_work_queue::EncoderWorkQueue;
+use lgn_codec_api::stream_encoder::StreamEncoder;
 use lgn_ecs::prelude::Component;
 use lgn_graphics_api::{
     DepthStencilClearValue, DepthStencilRenderTargetBinding, DeviceContext, Extents2D, Format,
@@ -107,7 +107,7 @@ impl SizeDependentResources {
         device_context: &DeviceContext,
         extents: RenderSurfaceExtents,
         pipeline_manager: &PipelineManager,
-        encoder_work_queue: &EncoderWorkQueue,
+        stream_encoder: &StreamEncoder,
     ) -> Self {
         let resolve_rt = RenderTarget::new(
             device_context,
@@ -120,7 +120,7 @@ impl SizeDependentResources {
             GPUViewType::RenderTarget,
         );
         let export_texture =
-            encoder_work_queue.new_external_image(resolve_rt.texture(), device_context);
+            stream_encoder.new_external_image(resolve_rt.texture(), device_context);
 
         Self {
             resolve_rt,
@@ -167,14 +167,14 @@ impl RenderSurface {
         renderer: &Renderer,
         pipeline_manager: &PipelineManager,
         extents: RenderSurfaceExtents,
-        encoder_work_queue: &EncoderWorkQueue,
+        stream_encoder: &StreamEncoder,
     ) -> Self {
         Self::new_with_id(
             RenderSurfaceId::new(),
             renderer,
             pipeline_manager,
             extents,
-            encoder_work_queue,
+            stream_encoder,
         )
     }
 
@@ -203,14 +203,14 @@ impl RenderSurface {
         device_context: &DeviceContext,
         extents: RenderSurfaceExtents,
         pipeline_manager: &PipelineManager,
-        encoder_work_queue: &EncoderWorkQueue,
+        stream_encoder: &StreamEncoder,
     ) {
         if self.extents != extents {
             self.resources = SizeDependentResources::new(
                 device_context,
                 extents,
                 pipeline_manager,
-                encoder_work_queue,
+                stream_encoder,
             );
             for presenter in &mut self.presenters {
                 presenter.resize(device_context, extents);
@@ -343,7 +343,7 @@ impl RenderSurface {
         renderer: &Renderer,
         pipeline_manager: &PipelineManager,
         extents: RenderSurfaceExtents,
-        encoder_work_queue: &EncoderWorkQueue,
+        stream_encoder: &StreamEncoder,
     ) -> Self {
         let num_render_frames = renderer.num_render_frames();
         let device_context = renderer.device_context();
@@ -351,7 +351,7 @@ impl RenderSurface {
             .map(|_| device_context.create_semaphore(false))
             .collect();
         let encoder_sems = (0..num_render_frames)
-            .map(|_| encoder_work_queue.new_external_semaphore(device_context))
+            .map(|_| stream_encoder.new_external_semaphore(device_context))
             .collect();
 
         Self {
@@ -361,7 +361,7 @@ impl RenderSurface {
                 device_context,
                 extents,
                 pipeline_manager,
-                encoder_work_queue,
+                stream_encoder,
             ),
             num_render_frames,
             render_frame_idx: 0,

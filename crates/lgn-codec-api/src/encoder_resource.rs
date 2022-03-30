@@ -1,14 +1,13 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
-use lgn_graphics_api::{DeviceContext, ExternalResource, ExternalResourceHandle};
+use lgn_graphics_api::ExternalResource;
 
-use crate::encoder_work_queue::EncoderWorkQueue;
+use crate::stream_encoder::StreamEncoder;
 
 pub struct EncoderResourceInner<T: ExternalResource<T>> {
-    device_context: DeviceContext,
     external_resource: T,
     internal_resource: u64,
-    work_queue: EncoderWorkQueue,
+    work_queue: StreamEncoder,
 }
 
 impl<T: ExternalResource<T>> Drop for EncoderResourceInner<T> {
@@ -22,44 +21,29 @@ impl<T: ExternalResource<T>> Drop for EncoderResourceInner<T> {
 
 #[derive(Clone)]
 pub struct EncoderResource<T: ExternalResource<T>> {
-    inner: Arc<Mutex<EncoderResourceInner<T>>>,
+    inner: Arc<EncoderResourceInner<T>>,
 }
 
 impl<T: ExternalResource<T>> EncoderResource<T> {
     pub(crate) fn new(
-        work_queue: &EncoderWorkQueue,
+        work_queue: &StreamEncoder,
         external_resource: &T,
-        device_context: &DeviceContext,
+        internal_resource: u64,
     ) -> Self {
         Self {
-            inner: Arc::new(Mutex::new(EncoderResourceInner {
-                device_context: device_context.clone(),
+            inner: Arc::new(EncoderResourceInner {
                 external_resource: external_resource.clone_resource(),
-                internal_resource: u64::MAX,
+                internal_resource,
                 work_queue: work_queue.clone(),
-            })),
+            }),
         }
     }
 
     pub fn external_resource(&self) -> T {
-        let inner = &mut *self.inner.lock().unwrap();
-        inner.external_resource.clone_resource()
-    }
-
-    pub(crate) fn external_resource_handle(&self) -> ExternalResourceHandle {
-        let inner = &mut *self.inner.lock().unwrap();
-        inner
-            .external_resource
-            .external_resource_handle(&inner.device_context)
+        self.inner.external_resource.clone_resource()
     }
 
     pub(crate) fn internal_resource(&self) -> u64 {
-        let inner = self.inner.lock().unwrap();
-        inner.internal_resource
-    }
-
-    pub(crate) fn update_internal_resource(&self, internal_resource: u64) {
-        let inner = &mut *self.inner.lock().unwrap();
-        inner.internal_resource = internal_resource;
+        self.inner.internal_resource
     }
 }
