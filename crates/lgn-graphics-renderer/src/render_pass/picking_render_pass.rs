@@ -125,7 +125,7 @@ impl PickingRenderPass {
 
             mesh_renderer.draw(render_context, cmd_buffer, DefaultLayers::Picking as usize);
 
-            for (_index, (transform, manipulator)) in manipulator_meshes.iter().enumerate() {
+            for (transform, manipulator) in manipulator_meshes.iter() {
                 if manipulator.active {
                     let picking_distance = 50.0;
                     let custom_world = ManipulatorManager::scale_manipulator_for_viewport(
