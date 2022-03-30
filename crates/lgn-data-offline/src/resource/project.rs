@@ -5,8 +5,10 @@ use std::{
     io::Seek,
     path::{Path, PathBuf},
     str::FromStr,
+    sync::Arc,
 };
 
+use lgn_content_store2::ContentProvider;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_source_control::{
     CanonicalPath, CommitMode, IndexBackend, LocalIndexBackend, Workspace, WorkspaceConfig,
@@ -76,7 +78,7 @@ pub struct Project {
     resource_dir: PathBuf,
     local_remote: Option<LocalIndexBackend>,
     workspace: Workspace,
-    content_provider: Box<dyn lgn_content_store2::ContentProvider + Send + Sync>,
+    content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     deleted_pending: HashMap<ResourceId, (ResourcePathName, ResourceType)>,
 }
 
@@ -145,18 +147,15 @@ impl Project {
     }
 
     /// Same as [`Self::create`] but it creates an origin source control index at ``project_dir/remote``.
-    pub async fn create_with_remote_mock(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
+    pub async fn create_with_remote_mock(
+        project_dir: impl AsRef<Path>,
+        content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+    ) -> Result<Self, Error> {
         let remote_dir = project_dir.as_ref().join("remote");
         let remote = Self::create_local_origin(&remote_dir).await?;
 
-        // The section of the legion.toml content-store configuration to use.
-        //
-        // Several project using the same content-store configuration section
-        // will use the same storage space, which is actually desirable.
-        let content_store_section = lgn_content_store2::Config::SECTION_PERSISTENT;
-
         let mut project =
-            Self::create(project_dir, "../remote".to_string(), content_store_section).await?;
+            Self::create(project_dir, "../remote".to_string(), content_provider).await?;
         project.local_remote = Some(remote);
         Ok(project)
     }
@@ -166,29 +165,12 @@ impl Project {
     pub async fn create(
         project_dir: impl AsRef<Path>,
         remote_path: String,
-        content_store_section: &str,
+        content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     ) -> Result<Self, Error> {
         let resource_dir = project_dir.as_ref().join("offline");
         if !resource_dir.exists() {
             std::fs::create_dir(&resource_dir).map_err(|e| Error::Io(resource_dir.clone(), e))?;
         }
-
-        let content_store_section_path = resource_dir.join(".lcs-section");
-        std::fs::write(
-            &content_store_section_path,
-            content_store_section.as_bytes(),
-        )
-        .map_err(|e| Error::Io(content_store_section_path, e))?;
-
-        let content_provider =
-            lgn_content_store2::Config::load_and_instantiate_provider(content_store_section)
-                .await
-                .map_err(|e| {
-                    Error::SourceControl(lgn_source_control::Error::Other {
-                        source: anyhow::Error::new(e),
-                        context: "failed to instantiate content-store provider".to_string(),
-                    })
-                })?;
 
         let workspace = Workspace::init(
             &resource_dir,
@@ -214,23 +196,11 @@ impl Project {
     }
 
     /// Opens the project index specified
-    pub async fn open(project_dir: impl AsRef<Path>) -> Result<Self, Error> {
+    pub async fn open(
+        project_dir: impl AsRef<Path>,
+        content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+    ) -> Result<Self, Error> {
         let resource_dir = project_dir.as_ref().join("offline");
-
-        let content_store_section_path = resource_dir.join(".lcs-section");
-        let content_store_section = std::fs::read_to_string(&content_store_section_path)
-            .map_err(|e| Error::Io(content_store_section_path, e))?;
-        let content_store_configuration = lgn_content_store2::Config::load(&content_store_section)
-            .map_err(Error::ContentStore)?;
-        let content_provider = content_store_configuration
-            .instantiate_provider()
-            .await
-            .map_err(|e| {
-                Error::SourceControl(lgn_source_control::Error::Other {
-                    source: anyhow::Error::new(e),
-                    context: "failed to instanciate content-store provider".to_string(),
-                })
-            })?;
 
         let workspace = Workspace::load(&resource_dir).await.map_err(|e| {
             Error::SourceControl(lgn_source_control::Error::Other {
@@ -436,6 +406,7 @@ impl Project {
     ///
     /// Both resource file and its corresponding `.meta` file are `staged`.
     /// Use [`Self::commit()`] to push changes to remote.
+    #[allow(clippy::too_many_arguments)]
     pub async fn add_resource_with_id(
         &mut self,
         name: ResourcePathName,
@@ -848,6 +819,7 @@ mod tests {
     use std::str::FromStr;
     use std::sync::Arc;
 
+    use lgn_content_store2::{ContentProvider, MemoryProvider};
     use lgn_data_runtime::{resource, Resource, ResourceType};
     use tokio::sync::Mutex;
 
@@ -1122,7 +1094,9 @@ mod tests {
     #[tokio::test]
     async fn local_changes() {
         let root = tempfile::tempdir().unwrap();
-        let mut project = Project::create_with_remote_mock(root.path())
+        let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+            Arc::new(Box::new(MemoryProvider::new()));
+        let mut project = Project::create_with_remote_mock(root.path(), content_provider)
             .await
             .expect("new project");
         let _resources = create_actor(&mut project).await;
@@ -1133,7 +1107,9 @@ mod tests {
     #[tokio::test]
     async fn commit() {
         let root = tempfile::tempdir().unwrap();
-        let mut project = Project::create_with_remote_mock(root.path())
+        let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+            Arc::new(Box::new(MemoryProvider::new()));
+        let mut project = Project::create_with_remote_mock(root.path(), content_provider)
             .await
             .expect("new project");
         let resources = create_actor(&mut project).await;
@@ -1185,7 +1161,9 @@ mod tests {
     #[tokio::test]
     async fn change_to_previous() {
         let root = tempfile::tempdir().unwrap();
-        let mut project = Project::create_with_remote_mock(root.path())
+        let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+            Arc::new(Box::new(MemoryProvider::new()));
+        let mut project = Project::create_with_remote_mock(root.path(), content_provider)
             .await
             .expect("new project");
         let resources = create_actor(&mut project).await;
@@ -1228,7 +1206,9 @@ mod tests {
     #[tokio::test]
     async fn immediate_dependencies() {
         let root = tempfile::tempdir().unwrap();
-        let mut project = Project::create_with_remote_mock(root.path())
+        let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+            Arc::new(Box::new(MemoryProvider::new()));
+        let mut project = Project::create_with_remote_mock(root.path(), content_provider)
             .await
             .expect("new project");
         let _resources = create_actor(&mut project).await;
@@ -1264,7 +1244,9 @@ mod tests {
     #[tokio::test]
     async fn rename() {
         let root = tempfile::tempdir().unwrap();
-        let mut project = Project::create_with_remote_mock(root.path())
+        let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+            Arc::new(Box::new(MemoryProvider::new()));
+        let mut project = Project::create_with_remote_mock(root.path(), content_provider)
             .await
             .expect("new project");
         let resources = create_actor(&mut project).await;

@@ -1,5 +1,6 @@
 use std::{path::Path, str::FromStr, sync::Arc};
 
+use lgn_content_store2::{ContentProvider, MemoryProvider};
 use lgn_scene_plugin::SceneMessage;
 use serde_json::json;
 use tokio::sync::Mutex;
@@ -74,7 +75,9 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
     let build_dir = project_dir.as_ref().join("temp");
     std::fs::create_dir_all(&build_dir).unwrap();
 
-    let project = Project::create_with_remote_mock(&project_dir)
+    let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
+    let project = Project::create_with_remote_mock(&project_dir, content_provider)
         .await
         .expect("failed to create a project");
 

@@ -65,7 +65,11 @@ async fn main() {
     let build_dir = project_dir.join("temp");
     std::fs::create_dir_all(&build_dir).unwrap();
 
-    let content_store_section = lgn_content_store2::Config::SECTION_PERSISTENT;
+    let content_provider = Arc::new(
+        lgn_content_store2::Config::load_and_instantiate_persistent_provider()
+            .await
+            .unwrap(),
+    );
 
     let absolute_project_dir = {
         if !project_dir.is_absolute() {
@@ -80,7 +84,7 @@ async fn main() {
     let mut project = Project::create(
         absolute_project_dir,
         "../remote".to_owned(),
-        content_store_section,
+        content_provider,
     )
     .await
     .expect("failed to create a project");

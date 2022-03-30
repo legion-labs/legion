@@ -2,9 +2,11 @@ use std::{
     env,
     fs::{self, OpenOptions},
     path::Path,
+    sync::Arc,
 };
 
 use lgn_content_store::ContentStoreAddr;
+use lgn_content_store2::ContentProvider;
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::{
     compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,
@@ -39,7 +41,11 @@ pub fn find_derived_path(path: &ResourcePathId) -> ResourcePathId {
     }
 }
 
-pub async fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathName) {
+pub async fn build(
+    root_folder: impl AsRef<Path>,
+    resource_name: &ResourcePathName,
+    content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+) {
     let root_folder = root_folder.as_ref();
 
     let temp_dir = root_folder.join("temp");
@@ -52,7 +58,7 @@ pub async fn build(root_folder: impl AsRef<Path>, resource_name: &ResourcePathNa
     let mut exe_path = env::current_exe().expect("cannot access current_exe");
     exe_path.pop();
 
-    let project = Project::open(root_folder).await.unwrap();
+    let project = Project::open(root_folder, content_provider).await.unwrap();
 
     let mut build = DataBuildOptions::new_with_sqlite_output(
         build_index_dir,

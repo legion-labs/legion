@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use lgn_content_store::ContentStoreAddr;
+use lgn_content_store2::{ContentProvider, MemoryProvider};
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::{
     resource::{Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions},
@@ -31,11 +32,14 @@ async fn no_dependencies() {
     let (project_dir, output_dir) = setup_dir(&work_dir);
     let resources = setup_registry();
     let mut resources = resources.lock().await;
+    let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
 
     let resource = {
-        let mut project = Project::create_with_remote_mock(&project_dir)
-            .await
-            .expect("failed to create a project");
+        let mut project =
+            Project::create_with_remote_mock(&project_dir, Arc::clone(&content_provider))
+                .await
+                .expect("failed to create a project");
         let id = project
             .add_resource(
                 ResourcePathName::new("resource"),
@@ -54,7 +58,7 @@ async fn no_dependencies() {
     let (mut build, project) =
         DataBuildOptions::new_with_sqlite_output(&output_dir, CompilerRegistryOptions::default())
             .content_store(&ContentStoreAddr::from(output_dir))
-            .create_with_project(project_dir)
+            .create_with_project(project_dir, content_provider)
             .await
             .expect("data build");
 
@@ -72,11 +76,14 @@ async fn with_dependency() {
     let (project_dir, output_dir) = setup_dir(&work_dir);
     let resources = setup_registry();
     let mut resources = resources.lock().await;
+    let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
 
     let (child_id, parent_id) = {
-        let mut project = Project::create_with_remote_mock(&project_dir)
-            .await
-            .expect("failed to create a project");
+        let mut project =
+            Project::create_with_remote_mock(&project_dir, Arc::clone(&content_provider))
+                .await
+                .expect("failed to create a project");
         let child_id = project
             .add_resource(
                 ResourcePathName::new("child"),
@@ -119,7 +126,7 @@ async fn with_dependency() {
     let (mut build, project) =
         DataBuildOptions::new_with_sqlite_output(&output_dir, CompilerRegistryOptions::default())
             .content_store(&ContentStoreAddr::from(output_dir))
-            .create_with_project(project_dir)
+            .create_with_project(project_dir, content_provider)
             .await
             .expect("data build");
 

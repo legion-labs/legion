@@ -13,6 +13,7 @@ use std::{
 };
 
 use generic_data::offline::{TestComponent, TestEntity};
+use lgn_content_store2::ContentProvider;
 use lgn_data_offline::resource::{
     Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
 };
@@ -28,7 +29,7 @@ use self::raw_to_offline::FromRaw;
 pub async fn build_offline(
     root_folder: impl AsRef<Path>,
     origin: String,
-    content_store_section: &str,
+    content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     incremental: bool,
 ) {
     let raw_dir = {
@@ -89,7 +90,7 @@ pub async fn build_offline(
 
         //
         let (mut project, resources) =
-            setup_project(root_folder.as_ref(), origin, content_store_section).await;
+            setup_project(root_folder.as_ref(), origin, content_provider).await;
         let mut resources = resources.lock().await;
 
         let gltf_folders = file_paths
@@ -225,15 +226,16 @@ pub async fn build_offline(
 async fn setup_project(
     root_folder: &Path,
     origin: String,
-    content_store_section: &str,
+    content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
 ) -> (Project, Arc<Mutex<ResourceRegistry>>) {
     // create/load project
-    let project = if let Ok(project) = Project::open(root_folder).await {
-        Ok(project)
-    } else {
-        Project::create(root_folder, origin, content_store_section).await
-    }
-    .unwrap();
+    let project =
+        if let Ok(project) = Project::open(root_folder, Arc::clone(&content_provider)).await {
+            Ok(project)
+        } else {
+            Project::create(root_folder, origin, content_provider).await
+        }
+        .unwrap();
 
     let mut registry = ResourceRegistryOptions::new();
     offline_data::register_resource_types(&mut registry);

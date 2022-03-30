@@ -1,9 +1,11 @@
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use lgn_content_store::ContentStoreAddr;
+use lgn_content_store2::ContentProvider;
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;
@@ -36,8 +38,11 @@ impl Config {
         Ok(config)
     }
 
-    pub async fn open(&self) -> Result<(DataBuild, Project), String> {
-        let project = Project::open(&self.project)
+    pub async fn open(
+        &self,
+        content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+    ) -> Result<(DataBuild, Project), String> {
+        let project = Project::open(&self.project, content_provider)
             .await
             .map_err(|e| e.to_string())?;
 

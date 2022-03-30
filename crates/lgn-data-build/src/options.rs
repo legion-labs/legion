@@ -4,6 +4,7 @@ use std::{
 };
 
 use lgn_content_store::ContentStoreAddr;
+use lgn_content_store2::ContentProvider;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;
 use lgn_data_runtime::{manifest::Manifest, AssetRegistry};
@@ -20,12 +21,15 @@ use crate::{DataBuild, Error};
 /// # Example Usage
 ///
 /// ```no_run
+/// # use std::sync::Arc;
 /// # use lgn_data_build::DataBuildOptions;
 /// # use lgn_content_store::ContentStoreAddr;
+/// # use lgn_content_store2::{ContentProvider, MemoryProvider};
 /// # use lgn_data_offline::resource::Project;
 /// # use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 /// # tokio_test::block_on(async {
-/// let project = Project::open("project/").await.unwrap();
+/// let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
+/// let project = Project::open("project/", content_provider).await.unwrap();
 /// let build = DataBuildOptions::new("temp/".to_string(), ContentStoreAddr::from("./content_store/"), CompilerRegistryOptions::local_compilers("./"))
 ///         .create(&project).await.unwrap();
 /// # })
@@ -161,8 +165,11 @@ impl DataBuildOptions {
     pub async fn create_with_project(
         self,
         project_dir: impl AsRef<Path>,
+        content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     ) -> Result<(DataBuild, Project), Error> {
-        let project = Project::open(project_dir).await.map_err(Error::from)?;
+        let project = Project::open(project_dir, content_provider)
+            .await
+            .map_err(Error::from)?;
         let build = DataBuild::new(self, &project).await?;
         Ok((build, project))
     }
