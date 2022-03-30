@@ -52,6 +52,8 @@ export type MouseButtonInput = Type<"MouseButtonInput"> & {
 
 /** Represents a cursor move input, the last known cursor position and the current cursor position are included */
 export type MouseMotion = Type<"MouseMotion"> & {
+  /** The current cursor position */
+  current: Vec2;
   /** The difference between the last known position and the current one */
   delta: Vec2;
 };
@@ -189,6 +191,7 @@ function createEvents(state: State, element: HTMLElement, onInput: Listener) {
 
     const mouseMotion: MouseMotion = {
       type: "MouseMotion",
+      current: currentMousePosition,
       delta: [
         currentMousePosition[0] - previousMousePosition[0],
         currentMousePosition[1] - previousMousePosition[1],

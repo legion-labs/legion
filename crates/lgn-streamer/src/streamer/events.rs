@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::bail;
 use lgn_input::{
     keyboard::KeyboardInput,
-    mouse::{MouseButton, MouseButtonInput, MouseMotion, MouseWheel},
+    mouse::{MouseButton, MouseButtonInput, MouseWheel},
     touch::TouchInput,
     ElementState,
 };
@@ -91,6 +91,13 @@ impl From<&MouseButtonInputPayload> for MouseButtonInput {
             pos: *pos,
         }
     }
+}
+
+/// A mouse motion event
+#[derive(Debug, Deserialize)]
+pub struct MouseMotion {
+    pub current: Vec2,
+    pub delta: Vec2,
 }
 
 #[derive(Debug, Deserialize)]
