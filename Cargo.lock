@@ -2563,6 +2563,7 @@ dependencies = [
  "tokio-stream",
  "tonic",
  "uuid",
+ "zip",
 ]
 
 [[package]]

@@ -23,12 +23,13 @@ use lgn_editor_proto::resource_browser::{
     ReparentResourceResponse, SearchResourcesRequest,
 };
 
+use lgn_graphics_data::offline_gltf::GltfFile;
 use lgn_resource_registry::ResourceRegistrySettings;
 use lgn_scene_plugin::SceneMessage;
-use lgn_tracing::{error, span_scope, warn};
+use lgn_tracing::{error, info, span_scope, warn};
 use serde_json::json;
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{str::FromStr, sync::Arc};
 use tokio::sync::Mutex;
 use tonic::{codegen::http::status, Request, Response, Status};
@@ -310,6 +311,45 @@ fn update_entity_parenting(
     transaction
 }
 
+/// At the moment the logic is:
+/// - Receive a .zip of a .gltf and it's dependencies.
+/// - Unpack the zip into the temp folder.
+/// - Load unpacked data into `GltfFile` object.
+fn create_gltf_resource(zip_path: &Path) -> Result<PathBuf, Status> {
+    let mut folder = zip_path.to_owned();
+    folder.pop();
+    let temp_folder = folder.join("temp");
+
+    let mut buffer = std::fs::read(zip_path.with_extension("gltf.zip"))
+        .map_err(|err| Status::internal(err.to_string()))?;
+    let mut zip = zip::ZipArchive::new(std::io::Cursor::new(&mut buffer))
+        .map_err(|err| Status::internal(err.to_string()))?;
+    zip.extract(&temp_folder)
+        .map_err(|err| Status::internal(err.to_string()))?;
+
+    let paths = std::fs::read_dir(temp_folder).map_err(|err| Status::internal(err.to_string()))?;
+    for path in paths {
+        let path = path
+            .map_err(|err| Status::internal(err.to_string()))?
+            .path();
+        if let Some(extension) = path.extension() {
+            if extension == "gltf" {
+                info!("Found .gltf");
+                let gltf_file = GltfFile::from_path(&path);
+                let path = path.with_extension("temp");
+                info!("Creating a file {path:?}");
+                let mut file = std::fs::File::create(&path)
+                    .map_err(|err| Status::internal(err.to_string()))?;
+                gltf_file
+                    .write(&mut file)
+                    .map_err(|err| Status::internal(err.to_string()))?;
+                return Ok(path);
+            }
+        }
+    }
+    Err(Status::internal(".zip file doesn't contain .gltf file"))
+}
+
 #[tonic::async_trait]
 impl ResourceBrowser for ResourceBrowserRPC {
     /// Search for all resources
@@ -389,14 +429,16 @@ impl ResourceBrowser for ResourceBrowserRPC {
             ResourcePathName::new(name)
         };
 
-        let content_path = request
+        let mut content_path = request
             .upload_id
             .as_ref()
             .map(|upload_id| self.uploads_folder.join(upload_id).join(name));
 
-        if content_path.is_some() && resource_type == "offline_model" {
-            // TODO: Upload .gltf.zip
-        }
+        if resource_type == "gltf" {
+            if let Some(tmp_content_path) = content_path {
+                content_path = Some(create_gltf_resource(&tmp_content_path)?);
+            }
+        };
 
         let mut transaction = Transaction::new().add_operation(CreateResourceOperation::new(
             new_resource_id,
