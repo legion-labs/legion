@@ -3,15 +3,12 @@ use std::collections::{BTreeMap, HashSet};
 use lgn_app::App;
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::{
-    prelude::{Entity, IntoExclusiveSystem, Query, ResMut, Without},
+    prelude::{Entity, IntoExclusiveSystem, Query, ResMut},
     schedule::ExclusiveSystemDescriptorCoercion,
 };
 use lgn_tracing::span_fn;
 
-use crate::{
-    components::{ManipulatorComponent, VisualComponent},
-    labels::RenderStage,
-};
+use crate::{components::VisualComponent, labels::RenderStage};
 
 #[derive(Default)]
 pub(crate) struct MissingVisualTracker {
@@ -61,14 +58,10 @@ impl MissingVisualTracker {
 }
 
 #[span_fn]
-#[allow(
-    clippy::needless_pass_by_value,
-    clippy::type_complexity,
-    clippy::too_many_arguments
-)]
+#[allow(clippy::needless_pass_by_value)]
 fn update_missing_visuals(
     mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
-    mut visuals_query: Query<'_, '_, (Entity, &mut VisualComponent), Without<ManipulatorComponent>>,
+    mut visuals_query: Query<'_, '_, (Entity, &mut VisualComponent)>,
 ) {
     for entity in missing_visuals_tracker.get_entities_to_update() {
         if let Ok((_entity, mut visual_component)) = visuals_query.get_mut(entity) {

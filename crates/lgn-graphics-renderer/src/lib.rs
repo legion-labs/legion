@@ -398,13 +398,8 @@ fn render_update(
     ),
     queries: (
         Query<'_, '_, &mut RenderSurface>,
-        Query<
-            '_,
-            '_,
-            (&VisualComponent, &GlobalTransform),
-            (With<PickedComponent>, Without<ManipulatorComponent>),
-        >,
-        Query<'_, '_, (&VisualComponent, &GlobalTransform, &ManipulatorComponent)>,
+        Query<'_, '_, (&VisualComponent, &GlobalTransform), With<PickedComponent>>,
+        Query<'_, '_, (&GlobalTransform, &ManipulatorComponent)>,
         Query<'_, '_, (&LightComponent, &GlobalTransform)>,
         Query<'_, '_, &CameraComponent>,
     ),
@@ -437,11 +432,9 @@ fn render_update(
     let q_picked_drawables = q_picked_drawables
         .iter()
         .collect::<Vec<(&VisualComponent, &GlobalTransform)>>();
-    let q_manipulator_drawables = q_manipulator_drawables.iter().collect::<Vec<(
-        &VisualComponent,
-        &GlobalTransform,
-        &ManipulatorComponent,
-    )>>();
+    let q_manipulator_drawables = q_manipulator_drawables
+        .iter()
+        .collect::<Vec<(&GlobalTransform, &ManipulatorComponent)>>();
     let q_lights = q_lights
         .iter()
         .collect::<Vec<(&LightComponent, &GlobalTransform)>>();
@@ -581,7 +574,6 @@ fn render_update(
             q_manipulator_drawables.as_slice(),
             q_lights.as_slice(),
             &mesh_manager,
-            &model_manager,
             camera_component,
             &mesh_renderer,
         );

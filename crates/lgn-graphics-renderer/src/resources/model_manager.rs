@@ -4,7 +4,7 @@ use lgn_app::App;
 use lgn_core::BumpAllocatorPool;
 use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 use lgn_ecs::{
-    prelude::{Changed, Query, Res, ResMut, Without},
+    prelude::{Changed, Query, Res, ResMut},
     schedule::SystemSet,
 };
 use lgn_math::Vec3;
@@ -13,7 +13,7 @@ use lgn_transform::components::{GlobalTransform, Transform};
 use strum::IntoEnumIterator;
 
 use crate::{
-    components::{ManipulatorComponent, ModelComponent, VisualComponent},
+    components::{ModelComponent, VisualComponent},
     debug_display::DebugDisplay,
     labels::RenderStage,
     Renderer, ResourceLoadingLabel,
@@ -171,7 +171,7 @@ fn debug_bounding_spheres(
     model_manager: Res<'_, ModelManager>,
     mesh_manager: Res<'_, MeshManager>,
     renderer_options: Res<'_, RendererOptions>,
-    visuals: Query<'_, '_, (&VisualComponent, &Transform), Without<ManipulatorComponent>>,
+    visuals: Query<'_, '_, (&VisualComponent, &Transform)>,
 ) {
     if !renderer_options.show_bounding_spheres {
         return;

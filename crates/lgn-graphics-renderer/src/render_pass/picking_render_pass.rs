@@ -9,13 +9,11 @@ use crate::{
         self,
         cgen_type::{PickingData, Transform},
     },
-    components::{
-        CameraComponent, LightComponent, ManipulatorComponent, RenderSurface, VisualComponent,
-    },
+    components::{CameraComponent, LightComponent, ManipulatorComponent, RenderSurface},
     gpu_renderer::{DefaultLayers, GpuInstanceManager, MeshRenderer},
     hl_gfx_api::HLCommandBuffer,
     picking::{ManipulatorManager, PickingManager, PickingState},
-    resources::{DefaultMeshType, GpuBufferWithReadback, MeshManager, ModelManager},
+    resources::{DefaultMeshType, GpuBufferWithReadback, MeshManager},
     RenderContext,
 };
 
@@ -43,10 +41,9 @@ impl PickingRenderPass {
         cmd_buffer: &mut HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
         instance_manager: &GpuInstanceManager,
-        manipulator_meshes: &[(&VisualComponent, &GlobalTransform, &ManipulatorComponent)],
+        manipulator_meshes: &[(&GlobalTransform, &ManipulatorComponent)],
         lights: &[(&LightComponent, &GlobalTransform)],
         mesh_manager: &MeshManager,
-        model_manager: &ModelManager,
         camera: &CameraComponent,
         mesh_renderer: &MeshRenderer,
     ) {
@@ -128,29 +125,24 @@ impl PickingRenderPass {
 
             mesh_renderer.draw(render_context, cmd_buffer, DefaultLayers::Picking as usize);
 
-            for (_index, (visual, transform, manipulator)) in manipulator_meshes.iter().enumerate()
-            {
-                let (model_meta_data, _ready) =
-                    model_manager.get_model_meta_data(visual.model_resource_id.as_ref());
-                for mesh in &model_meta_data.meshes {
-                    if manipulator.active {
-                        let picking_distance = 50.0;
-                        let custom_world = ManipulatorManager::scale_manipulator_for_viewport(
-                            transform,
-                            &manipulator.local_transform,
-                            render_surface,
-                            camera,
-                        );
+            for (transform, manipulator) in manipulator_meshes.iter() {
+                if manipulator.active {
+                    let picking_distance = 50.0;
+                    let custom_world = ManipulatorManager::scale_manipulator_for_viewport(
+                        transform,
+                        &manipulator.local_transform,
+                        render_surface,
+                        camera,
+                    );
 
-                        render_mesh(
-                            &custom_world,
-                            manipulator.picking_id,
-                            picking_distance,
-                            mesh.mesh_id as u32,
-                            mesh_manager,
-                            cmd_buffer,
-                        );
-                    }
+                    render_mesh(
+                        &custom_world,
+                        manipulator.picking_id,
+                        picking_distance,
+                        manipulator.mesh_id as u32,
+                        mesh_manager,
+                        cmd_buffer,
+                    );
                 }
             }
 

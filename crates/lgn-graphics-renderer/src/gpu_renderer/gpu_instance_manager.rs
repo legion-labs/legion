@@ -1,6 +1,6 @@
 use lgn_app::{App, EventWriter};
 use lgn_ecs::{
-    prelude::{Changed, Entity, Or, Query, RemovedComponents, Res, ResMut, Without},
+    prelude::{Changed, Entity, Or, Query, RemovedComponents, Res, ResMut},
     schedule::{SystemLabel, SystemSet},
 };
 use lgn_graphics_api::{BufferView, VertexBufferBinding};
@@ -12,7 +12,7 @@ use lgn_transform::prelude::GlobalTransform;
 
 use crate::{
     cgen,
-    components::{ManipulatorComponent, VisualComponent},
+    components::VisualComponent,
     labels::RenderStage,
     picking::{PickingIdContext, PickingManager},
     resources::{
@@ -140,10 +140,7 @@ fn update_gpu_instances(
         '_,
         '_,
         (Entity, &GlobalTransform, &VisualComponent),
-        (
-            Or<(Changed<VisualComponent>, Changed<Parent>)>,
-            Without<ManipulatorComponent>,
-        ),
+        Or<(Changed<VisualComponent>, Changed<Parent>)>,
     >,
 ) {
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
@@ -282,12 +279,7 @@ fn upload_transform_data(
     task_pool: Res<'_, ComputeTaskPool>,
     renderer: Res<'_, Renderer>,
     transform_manager: Res<'_, GpuEntityTransformManager>,
-    query: Query<
-        '_,
-        '_,
-        (Entity, &GlobalTransform, &VisualComponent),
-        (Changed<GlobalTransform>, Without<ManipulatorComponent>),
-    >,
+    query: Query<'_, '_, (Entity, &GlobalTransform, &VisualComponent), Changed<GlobalTransform>>,
 ) {
     query.par_for_each(&task_pool, 256, |(entity, transform, _)| {
         let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);

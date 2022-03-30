@@ -103,12 +103,7 @@ fn gather_window_resize(
 #[allow(clippy::needless_pass_by_value)]
 fn lights_added(
     picking_manager: Res<'_, PickingManager>,
-    mut query: Query<
-        '_,
-        '_,
-        (Entity, &mut LightComponent),
-        (Added<LightComponent>, Without<ManipulatorComponent>),
-    >,
+    mut query: Query<'_, '_, (Entity, &mut LightComponent), Added<LightComponent>>,
 ) {
     let mut picking_context = PickingIdContext::new(&picking_manager);
 
@@ -145,7 +140,7 @@ fn update_picked_entity(
         '_,
         '_,
         (Entity, &Transform, &GlobalTransform),
-        (Added<PickedComponent>, Without<ManipulatorComponent>),
+        Added<PickedComponent>,
     >,
 ) {
     for (entity, local_transform, global_transform) in newly_picked_query.iter() {
