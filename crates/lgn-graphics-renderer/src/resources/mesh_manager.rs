@@ -19,7 +19,7 @@ pub struct MeshManager {
     allocations: Vec<StaticBufferAllocation>,
 }
 
-#[derive(EnumIter)]
+#[derive(EnumIter, Clone, Copy)]
 pub enum DefaultMeshType {
     Plane = 0,
     Cube,

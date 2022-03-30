@@ -5,7 +5,7 @@ use lgn_math::{Quat, Vec2, Vec3, Vec4, Vec4Swizzles};
 use lgn_transform::prelude::{GlobalTransform, Transform};
 
 use crate::{
-    components::{CameraComponent, ManipulatorComponent, RenderSurface, VisualComponent},
+    components::{CameraComponent, ManipulatorComponent, RenderSurface},
     resources::DefaultMeshType,
 };
 
@@ -70,7 +70,6 @@ impl ManipulatorPart {
         let entity = entity_commands
             .insert(transform)
             .insert(GlobalTransform::identity())
-            .insert(VisualComponent::new_default_mesh(mesh_id, color))
             .id();
 
         entity_commands.insert(ManipulatorComponent {
@@ -81,6 +80,8 @@ impl ManipulatorPart {
             selected: false,
             transparent,
             picking_id: picking_context.acquire_picking_id(entity),
+            mesh_id,
+            color,
         });
 
         Self { _entity: entity }

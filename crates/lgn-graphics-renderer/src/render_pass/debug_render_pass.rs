@@ -285,12 +285,11 @@ impl DebugRenderPass {
 
         cmd_buffer: &mut HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
-        manipulator_meshes: &[(&VisualComponent, &GlobalTransform, &ManipulatorComponent)],
+        manipulator_meshes: &[(&GlobalTransform, &ManipulatorComponent)],
         mesh_manager: &MeshManager,
-        model_manager: &ModelManager,
         camera: &CameraComponent,
     ) {
-        for (_index, (visual, transform, manipulator)) in manipulator_meshes.iter().enumerate() {
+        for (_index, (transform, manipulator)) in manipulator_meshes.iter().enumerate() {
             if manipulator.active {
                 let scaled_xform = ManipulatorManager::scale_manipulator_for_viewport(
                     transform,
@@ -303,10 +302,10 @@ impl DebugRenderPass {
                     Vec4::new(1.0, 0.65, 0.0, 1.0)
                 } else {
                     Vec4::new(
-                        f32::from(visual.color.r) / 255.0f32,
-                        f32::from(visual.color.g) / 255.0f32,
-                        f32::from(visual.color.b) / 255.0f32,
-                        f32::from(visual.color.a) / 255.0f32,
+                        f32::from(manipulator.color.r) / 255.0f32,
+                        f32::from(manipulator.color.g) / 255.0f32,
+                        f32::from(manipulator.color.b) / 255.0f32,
+                        f32::from(manipulator.color.a) / 255.0f32,
                     )
                 };
 
@@ -320,18 +319,14 @@ impl DebugRenderPass {
 
                 render_context.bind_default_descriptor_sets(cmd_buffer);
 
-                let (model_meta_data, _ready) =
-                    model_manager.get_model_meta_data(visual.model_resource_id.as_ref());
-                for mesh in &model_meta_data.meshes {
-                    render_mesh(
-                        mesh.mesh_id as u32,
-                        &scaled_xform,
-                        color,
-                        1.0,
-                        cmd_buffer,
-                        mesh_manager,
-                    );
-                }
+                render_mesh(
+                    manipulator.mesh_id as u32,
+                    &scaled_xform,
+                    color,
+                    1.0,
+                    cmd_buffer,
+                    mesh_manager,
+                );
             }
         }
     }
@@ -343,7 +338,7 @@ impl DebugRenderPass {
         cmd_buffer: &mut HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
         picked_meshes: &[(&VisualComponent, &GlobalTransform)],
-        manipulator_meshes: &[(&VisualComponent, &GlobalTransform, &ManipulatorComponent)],
+        manipulator_meshes: &[(&GlobalTransform, &ManipulatorComponent)],
         camera: &CameraComponent,
         mesh_manager: &MeshManager,
         model_manager: &ModelManager,
@@ -394,7 +389,6 @@ impl DebugRenderPass {
             render_surface,
             manipulator_meshes,
             mesh_manager,
-            model_manager,
             camera,
         );
 
