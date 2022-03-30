@@ -16,17 +16,21 @@
 
 ### Mouse and keyboard shortcuts
 
-| Input               | Action                                   |
-| ------------------- | ---------------------------------------- |
-| Ctrl-Y              | Redo                                     |
-| Ctrl-Z              | Undo                                     |
-| 'W' + RMB\*         | Move camera forward                      |
-| 'S' + RMB\*         | Move camera backwards                    |
-| 'A' + RMB\*         | Move camera left                         |
-| 'D' + RMB\*         | Move camera right                        |
-| Left-shift + RMB\*  | Double camera movement speed             |
-| Mouse move + RMB\*  | Rotate camera (pitch and yaw)            |
-| Mouse wheel + RMB\* | Set camera rotation speed                |
-| 'Z'                 | Reset camera setup (position and target) |
+| Input               | Action                                                                     |
+| ------------------- | -------------------------------------------------------------------------- |
+| '1' or Num-1        | Select position manipulator                                                |
+| '2' or Num-2        | Select rotation manipulator                                                |
+| '3' or Num-3        | Select scale manipulator                                                   |
+| 'A' + RMB\*         | Move camera left                                                           |
+| 'D' + RMB\*         | Move camera right                                                          |
+| 'M'                 | Toggle display of [egui](https://github.com/emilk/egui#readme) info-panels |
+| 'S' + RMB\*         | Move camera backwards                                                      |
+| 'W' + RMB\*         | Move camera forward                                                        |
+| 'Z'                 | Reset camera setup (position and target)                                   |
+| Ctrl-Y              | Redo                                                                       |
+| Ctrl-Z              | Undo                                                                       |
+| Left-shift + RMB\*  | Double camera movement speed                                               |
+| Mouse move + RMB\*  | Rotate camera (pitch and yaw)                                              |
+| Mouse wheel + RMB\* | Set camera rotation speed                                                  |
 
 \* RMB: right mouse button pressed
