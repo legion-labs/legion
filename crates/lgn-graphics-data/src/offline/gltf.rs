@@ -298,6 +298,12 @@ impl GltfFile {
         textures
     }
 
+    /// # Errors
+    ///
+    /// Will return error if:
+    /// - If zip failed to start or finish a zip file inside of the archive.
+    /// - One of the write functions fails.
+    /// - JSON fails to serialize.
     pub fn write(&self, writer: &mut dyn std::io::Write) -> Result<usize, ResourceProcessorError> {
         if self.document.is_none() {
             return Ok(0);
@@ -312,8 +318,15 @@ impl GltfFile {
                 format!("Couldn't start zip: {}", err),
             )
         })?;
-        let document_bytes =
-            gltf::json::serialize::to_vec(&self.document.clone().unwrap().into_json()).unwrap();
+        let document_bytes = gltf::json::serialize::to_vec(
+            &self.document.clone().unwrap().into_json(),
+        )
+        .map_err(|err| {
+            ResourceProcessorError::ResourceSerializationFailed(
+                "GLTF",
+                format!("Couldn't serialize JSON: {}", err),
+            )
+        })?;
         let mut written = write_usize_and_buffer(&mut zip, &document_bytes)?;
         let buffer_length = self.buffers.len();
         written += write_usize(&mut zip, buffer_length)?;
