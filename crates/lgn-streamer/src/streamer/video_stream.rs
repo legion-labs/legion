@@ -4,14 +4,11 @@ use bytes::{BufMut, Bytes};
 use lgn_async::TokioAsyncRuntimeHandle;
 use lgn_codec_api::{
     backends::{
-        nvenc::NvEncEncoderWrapper,
+        nvenc::StreamEncoderSesssion,
         openh264::encoder::{self, Encoder},
-        CodecHardware::Nvidia,
-        EncoderConfig,
     },
-    encoder_work_queue::{EncoderWorkItem, EncoderWorkQueue},
     formats::YUVSource,
-    VideoProcessor,
+    stream_encoder::{EncoderWorkItem, StreamEncoder},
 };
 use lgn_ecs::prelude::*;
 use lgn_graphics_api::DeviceContext;
@@ -40,7 +37,7 @@ pub struct VideoStream {
     video_data_channel: Arc<RTCDataChannel>,
     frame_id: i32,
     encoder: VideoStreamEncoder,
-    cuda_encoder: Option<NvEncEncoderWrapper>,
+    encoder_seesion: Option<StreamEncoderSesssion>,
     rgb_to_yuv: RgbToYuvConverter,
     max_frame_time: u64,
 }
@@ -51,7 +48,7 @@ impl VideoStream {
         device_context: &DeviceContext,
         pipeline_manager: &PipelineManager,
         resolution: Resolution,
-        encoder_work_queue: &EncoderWorkQueue,
+        stream_encoder: &StreamEncoder,
         video_data_channel: Arc<RTCDataChannel>,
         async_rt: TokioAsyncRuntimeHandle,
     ) -> anyhow::Result<Self> {
@@ -59,25 +56,12 @@ impl VideoStream {
         let rgb_to_yuv = RgbToYuvConverter::new(pipeline_manager, device_context, resolution);
         let max_frame_time: u64 = lgn_config::get_or("streamer.max_frame_time", 33_000u64)?;
 
-        let hw_encoder = if encoder_work_queue.hw_encoding_enabled() {
-            let encoder_cofig = EncoderConfig {
-                hardware: Nvidia,
-                gfx_config: device_context.clone(),
-                work_queue: encoder_work_queue.clone(),
-                width: resolution.width,
-                height: resolution.height,
-            };
-            NvEncEncoderWrapper::new(encoder_cofig)
-        } else {
-            None
-        };
-
         Ok(Self {
             async_rt,
             video_data_channel,
             frame_id: 0,
             encoder,
-            cuda_encoder: hw_encoder,
+            encoder_seesion: StreamEncoderSesssion::new(stream_encoder),
             rgb_to_yuv,
             max_frame_time,
         })
@@ -110,14 +94,12 @@ impl VideoStream {
         self.record_frame_id_metric();
         let now = tokio::time::Instant::now();
 
-        let chunks = if let Some(encoder) = &self.cuda_encoder {
-            encoder
-                .submit_input(&EncoderWorkItem {
-                    image: render_surface.export_texture().clone(),
-                    semaphore: render_surface.encoder_sem().clone(),
-                })
-                .unwrap();
-            let output = encoder.query_output().unwrap();
+        let chunks = if let Some(encoder) = self.encoder_seesion.as_mut() {
+            encoder.submit_input(&EncoderWorkItem {
+                image: render_surface.export_texture().clone(),
+                semaphore: render_surface.encoder_sem().clone(),
+            });
+            let output = encoder.query_output();
             self.encoder.encode_cuda(&output[..], self.frame_id)
         } else {
             self.rgb_to_yuv

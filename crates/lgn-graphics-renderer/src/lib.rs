@@ -24,7 +24,7 @@ pub use labels::*;
 
 mod asset_to_ecs;
 mod renderer;
-use lgn_codec_api::encoder_work_queue::EncoderWorkQueue;
+use lgn_codec_api::stream_encoder::StreamEncoder;
 use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{AddressMode, CompareOp, FilterType, MipMapMode, ResourceUsage, SamplerDef};
 use lgn_graphics_cgen_runtime::CGenRegistryList;
@@ -275,7 +275,7 @@ fn on_window_created(
     window_list: Res<'_, Windows>,
     renderer: Res<'_, Renderer>,
     pipeline_manager: Res<'_, PipelineManager>,
-    encoder_work_queue: Res<'_, EncoderWorkQueue>,
+    stream_encoder: Res<'_, StreamEncoder>,
     mut render_surfaces: ResMut<'_, RenderSurfaces>,
     mut event_render_surface_created: ResMut<'_, Events<RenderSurfaceCreatedForWindow>>,
 ) {
@@ -283,7 +283,7 @@ fn on_window_created(
         let wnd = window_list.get(ev.id).unwrap();
         let extents = RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height());
         let render_surface =
-            RenderSurface::new(&renderer, &pipeline_manager, extents, &encoder_work_queue);
+            RenderSurface::new(&renderer, &pipeline_manager, extents, &stream_encoder);
 
         render_surfaces.insert(ev.id, render_surface.id());
 
@@ -304,7 +304,7 @@ fn on_window_resized(
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
     render_surfaces: Res<'_, RenderSurfaces>,
     pipeline_manager: Res<'_, PipelineManager>,
-    encoder_work_queue: Res<'_, EncoderWorkQueue>,
+    stream_encoder: Res<'_, StreamEncoder>,
 ) {
     for ev in ev_wnd_resized.iter() {
         let render_surface_id = render_surfaces.get_from_window_id(ev.id);
@@ -318,7 +318,7 @@ fn on_window_resized(
                     renderer.device_context(),
                     RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height()),
                     &pipeline_manager,
-                    &encoder_work_queue,
+                    &stream_encoder,
                 );
             }
         }

@@ -3,7 +3,7 @@ use std::{fmt::Display, sync::Arc};
 use bytes::Bytes;
 use lgn_app::{AppExit, Events};
 use lgn_async::TokioAsyncRuntime;
-use lgn_codec_api::encoder_work_queue::EncoderWorkQueue;
+use lgn_codec_api::stream_encoder::StreamEncoder;
 use lgn_ecs::prelude::*;
 use lgn_graphics_renderer::{
     components::{RenderSurface, RenderSurfaceCreatedForWindow},
@@ -301,7 +301,7 @@ pub(crate) fn on_render_surface_created_for_window(
     streamer_windows: Res<'_, StreamerWindows>,
     renderer: Res<'_, Renderer>,
     pipeline_manager: Res<'_, PipelineManager>,
-    encoder_work_queue: Res<'_, EncoderWorkQueue>,
+    stream_encoder: Res<'_, StreamEncoder>,
     mut render_surfaces: Query<'_, '_, &mut RenderSurface>,
     async_rt: Res<'_, TokioAsyncRuntime>,
 ) {
@@ -320,7 +320,7 @@ pub(crate) fn on_render_surface_created_for_window(
                 renderer.device_context(),
                 &pipeline_manager,
                 Resolution::new(wnd.physical_width(), wnd.physical_height()),
-                &encoder_work_queue,
+                &stream_encoder,
                 video_data_channel.clone(),
                 async_rt.handle(),
             )

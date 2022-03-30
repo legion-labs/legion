@@ -1,9 +1,7 @@
 use lgn_graphics_api::DeviceContext;
 
-use crate::{encoder_work_queue::EncoderWorkQueue, CpuBuffer, GpuBuffer, VideoProcessor};
+use crate::stream_encoder::StreamEncoder;
 
-/// Null Encoder/Decoder
-pub mod null;
 /// `NvEnc` Encoder/Decoder
 pub mod nvenc;
 /// `NvEnc` Encoder/Decoder
@@ -32,28 +30,7 @@ pub enum GraphicsConfig {
 pub struct EncoderConfig {
     pub hardware: CodecHardware,
     pub gfx_config: DeviceContext,
-    pub work_queue: EncoderWorkQueue,
+    pub work_queue: StreamEncoder,
     pub width: u32,
     pub height: u32,
-}
-
-/// Generic encoder,
-pub enum Encoder {}
-
-impl VideoProcessor for Encoder {
-    type Input = GpuBuffer;
-    type Output = CpuBuffer;
-    type Config = EncoderConfig;
-
-    fn submit_input(&self, _input: &Self::Input) -> Result<(), crate::Error> {
-        Ok(())
-    }
-
-    fn query_output(&self) -> Result<Self::Output, crate::Error> {
-        Ok(CpuBuffer(Vec::new()))
-    }
-
-    fn new(_config: Self::Config) -> Option<Self> {
-        None
-    }
 }

@@ -1,49 +1,32 @@
-use self::nv_encoder::NvEncEncoder;
+use self::nv_encoder_session::NvEncoderSession;
 
-use crate::{encoder_work_queue::EncoderWorkItem, VideoProcessor};
+use crate::stream_encoder::{EncoderWorkItem, StreamEncoder};
 
 mod cuda;
 pub mod nv_encoder;
+pub mod nv_encoder_session;
 
 mod loader;
 
 pub use cuda::{CuContext, CuDevice};
 pub use loader::{CudaApi, NvEncApi};
 
-use super::EncoderConfig;
-
-pub struct NvEncEncoderWrapper {
-    _thread: Option<std::thread::JoinHandle<()>>,
-    encoder: NvEncEncoder,
+pub struct StreamEncoderSesssion {
+    session: NvEncoderSession,
 }
 
-impl VideoProcessor for NvEncEncoderWrapper {
-    type Input = EncoderWorkItem;
-    type Output = Vec<u8>;
-    type Config = EncoderConfig;
-
-    fn submit_input(&self, input: &Self::Input) -> Result<(), crate::Error> {
-        self.encoder.encode_frame(input);
-        Ok(())
+impl StreamEncoderSesssion {
+    pub fn submit_input(&mut self, input: &EncoderWorkItem) {
+        self.session.encode_frame(input);
     }
 
-    fn query_output(&self) -> Result<Self::Output, crate::Error> {
-        Ok(self.encoder.process_encoded_data())
+    pub fn query_output(&mut self) -> Vec<u8> {
+        self.session.process_encoded_data()
     }
 
-    fn new(mut config: Self::Config) -> Option<Self> {
-        if let Some(encoder) = NvEncEncoder::new() {
-            encoder.initialize_encoder();
-
-            let encoder_for_closure = encoder.clone();
-            Some(Self {
-                _thread: Some(std::thread::spawn(move || {
-                    NvEncEncoder::encoder_loop(&mut config.work_queue, &encoder_for_closure);
-                })),
-                encoder,
-            })
-        } else {
-            None
-        }
+    pub fn new(stream_encoder: &StreamEncoder) -> Option<Self> {
+        stream_encoder.hw_encoder().and_then(|hw_encoder| {
+            NvEncoderSession::new(&hw_encoder).map(|session| Self { session })
+        })
     }
 }
