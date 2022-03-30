@@ -238,7 +238,7 @@ impl NCServerHeartbeat {
         let url = Url::parse(&config.url).unwrap();
         let ip_addr: IpAddr = url.host().unwrap().to_string().parse().unwrap();
         let server_socket = SocketAddr::new(ip_addr, url.port().unwrap());
-        let duration = Duration::from_millis(2 * config.heartbeat);
+        let duration = Duration::from_secs(2 * config.heartbeat);
 
         Self {
             server_socket,

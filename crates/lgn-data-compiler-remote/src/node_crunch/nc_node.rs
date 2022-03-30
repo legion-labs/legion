@@ -154,7 +154,7 @@ impl<'a> NCNodeStarter {
 
         spawn(move || {
             loop {
-                //node_heartbeat.sleep();
+                node_heartbeat.sleep();
 
                 if let Ok(b) = rx.recv_timeout(node_heartbeat.heartbeat_duration) {
                     if b {
@@ -253,9 +253,16 @@ impl NodeHeartbeat {
             server_addr,
             node_id,
             retry_counter: RetryCounter::new(config.retry_counter),
-            heartbeat_duration: Duration::from_millis(config.heartbeat),
+            heartbeat_duration: Duration::from_secs(config.heartbeat),
             nc_communicator: NCCommunicator::new(config),
         }
+    }
+
+    /// The heartbeat thread will sleep for the given duration from the configuration.
+    fn sleep(&self) {
+        debug!("NodeHeartbeat::sleep()");
+
+        thread::sleep(self.heartbeat_duration);
     }
 
     /// Send the `NCNodeMessage::HeartBeat` message to the server.
