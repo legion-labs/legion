@@ -1,316 +1,336 @@
-// This module contains and orchestrator all the panels, their status, and their content.
+// This module contains and orchestrator all the tiles and panels, their content and status.
 // In the future it will also handle their size and position.
 import type { Readable } from "svelte/store";
 import { writable } from "svelte/store";
 
+import { NonEmptyArray, isNonEmpty } from "../lib/array";
+import type { Size } from "../lib/types";
+
+/**
+ * Defining the tab behavior and content is up to the developer and will differ depending
+ * on the application, though, a set of common attributes is expected to be present in all tabs.
+ */
 export type TabTypeBase = {
-  name: string;
   /**
-   * Whether or not the added tab can be "removed" from the store.
-   * This config might get removed later on as all tab will be "removable" to an extent.
+   * An arbitrary id, random or not, that will help identifying the tab or linking it
+   * with external resources
    */
-  removable?: boolean;
-};
-
-/** Monaco script tabs */
-export type ScriptTabType = {
-  type: "script";
-  getValue(): string;
-  onChange(newValue: string): void;
-  readonly?: boolean;
-  lang: string;
-};
-
-/** The video/player viewport */
-export type VideoTabType = {
-  type: "video";
-};
-
-/** The resource control */
-export type ResourceControlTabType = {
-  type: "resourceControl";
-};
-
-/** The log */
-export type LogTabType = {
-  type: "log";
-};
-
-/** The property grid */
-export type PropertyGridTabType = {
-  type: "propertyGrid";
-};
-
-/** The scene explorer */
-export type SceneExplorerTabType = {
-  type: "ceneExplorer";
-};
-
-/** The resource browser */
-export type ResourceBrowserTabType = {
-  type: "resourceBrowser";
-};
-
-export type TabType = TabTypeBase &
-  (
-    | ScriptTabType
-    | VideoTabType
-    | ResourceControlTabType
-    | LogTabType
-    | PropertyGridTabType
-    | SceneExplorerTabType
-    | ResourceBrowserTabType
-  );
-
-/** Used when adding a new tab to a panel */
-export type AddTabConfig = {
+  id: string;
+  /** The displayed label of the tab */
+  label: string;
   /**
-   * Focus the newly added tab.
+   * Whether or not the pushed tab can be "removed" from the store.
+   * This config might get removed later on as all tab will be disposable.
    */
-  focus?: boolean;
+  disposable?: boolean;
+  payloadId?: string;
 };
 
-// TODO: Add size and position to the panel
-export type Panel<Tab extends TabType = TabType> = {
-  tabs: Map<symbol, Tab>;
-  activeTab: Tab | null;
-};
+// TODO: push size and position to the panel
+/**
+ * A Panel is responsible for its own tabs and contents.
+ */
+export type Panel<Tab extends TabTypeBase> =
+  | { type: "emptyPanel"; id: string }
+  | {
+      type: "populatedPanel";
+      id: string;
+      tabs: NonEmptyArray<Tab>;
+      activeTabIndex: number;
+    };
 
-export function createPanel<Tab extends TabType = TabType>(
-  initialTabs: Map<symbol, Tab> = new Map(),
-  activeTab: Tab | null = null
+export function createEmptyPanel<Tab extends TabTypeBase>(
+  id: string
 ): Panel<Tab> {
-  return { tabs: initialTabs, activeTab };
+  return { type: "emptyPanel", id };
 }
 
-export type WorkspaceValue<Tab extends TabType = TabType> = Record<
-  string,
-  Panel<Tab> | undefined
->;
-
-export type WorkspaceStore<Tab extends TabType = TabType> =
-  Readable<WorkspaceValue> & {
-    // Workspace related
-    addPanel(key: string, panel: Panel<Tab>): void;
-    addAllPanels(newPanels: Record<string, Panel<Tab>>): void;
-    removePanel(key: string): void;
-    removePanelByValue(panel: Panel<Tab>): void;
-
-    // Panel related
-    addTab(
-      panelKey: string,
-      key: symbol,
-      tab: Tab,
-      config?: AddTabConfig
-    ): void;
-    addAllTabs(panelKey: string, tabs: Map<symbol, Tab>): void;
-    removeTab(panelKey: string, key: symbol): void;
-    removeTabByValue(panelKey: string, tab: Tab): void;
-    activateTab(panelKey: string, key: symbol): void;
-    activateTabByValue(panelKey: string, tab: Tab): void;
+export function createPanel<Tab extends TabTypeBase>(
+  id: string,
+  tabs: NonEmptyArray<Tab>,
+  { activeTabIndex = 0 }: { activeTabIndex?: number } = {}
+): Panel<Tab> {
+  return {
+    type: "populatedPanel",
+    id,
+    tabs,
+    activeTabIndex,
   };
+}
 
-export function createWorkspace<Tab extends TabType = TabType>(
-  initialPanels: Record<string, Panel<Tab>> = {}
+export type TileSize =
+  | { type: "tracked"; value: Size | null }
+  | { type: "untracked" };
+
+/**
+ * A Tile is a basic UI element that doesn't handle anything but its size and position.
+ * Typically a Tile contains one Panel.
+ */
+export type Tile<Tab extends TabTypeBase> = {
+  id: string;
+  panel: Panel<Tab> | null;
+  size: TileSize;
+};
+
+export function createTile<Tab extends TabTypeBase>(
+  id: string,
+  panel: Panel<Tab>,
+  { trackSize = false }: { trackSize?: boolean } = {}
+): Tile<Tab> {
+  return {
+    id,
+    panel,
+    size: trackSize ? { type: "tracked", value: null } : { type: "untracked" },
+  };
+}
+
+export type Workspace<Tab extends TabTypeBase> = {
+  tiles: Tile<Tab>[];
+};
+
+export type WorkspaceValue<Tab extends TabTypeBase> = Workspace<Tab>;
+
+export type WorkspaceStore<Tab extends TabTypeBase> = Readable<
+  WorkspaceValue<Tab>
+> & {
+  // Tile
+  pushTile(tile: Tile<Tab>): void;
+  appendAllTiles(tiles: NonEmptyArray<Tile<Tab>>): void;
+  removeTile(tileId: string): void;
+  removeTileByValue(tile: Tile<Tab>): void;
+  setPanelToTile(tileId: string, panel: Panel<Tab>): void;
+
+  // Panel
+  /** To remove a panel will _not_ remove the tile it belongs to, use `removeTile` for that */
+  removePanel(panelId: string): void;
+  /** To remove a panel will _not_ remove the tile it belongs to, use `removeTileByValue` for that */
+  removePanelByValue(panel: Panel<Tab>): void;
+
+  // Tab
+  pushTabToPanel(
+    panelId: string,
+    tab: Tab,
+    config?: {
+      /**
+       * Focus the newly pushed tab.
+       */
+      focus?: boolean;
+    }
+  ): void;
+  pushAllTabsToPanel(panelId: string, tabs: NonEmptyArray<Tab>): void;
+  removeTabFromPanel(panelId: string, tabId: string): void;
+  removeTabFromPanelByValue(panelId: string, tab: Tab): void;
+  activateTabInPanel(panelId: string, tabId: string): void;
+  activateTabInPanelByValue(panelId: string, tab: Tab): void;
+};
+
+export function createWorkspace<Tab extends TabTypeBase>(
+  initialTiles: Tile<Tab>[] = []
 ): WorkspaceStore<Tab> {
-  const panels = writable(initialPanels);
+  const workspace = writable<Workspace<Tab>>({ tiles: initialTiles });
 
   function updatePanel(
-    panelKey: string,
+    panelId: string,
     update: (panel: Panel<Tab>) => Panel<Tab>
   ) {
-    panels.update((panels) => {
-      const panel = panels[panelKey];
+    workspace.update((workspace) => ({
+      ...workspace,
+      tiles: workspace.tiles.map((tile) => {
+        if (tile.panel?.id !== panelId) {
+          return tile;
+        }
 
-      if (!panel) {
-        return panels;
-      }
-
-      const newPanel = update(panel);
-
-      if (newPanel === panel) {
-        return panels;
-      }
-
-      return {
-        ...panels,
-        [panelKey]: newPanel,
-      };
-    });
+        return { ...tile, panel: update(tile.panel) };
+      }),
+    }));
   }
 
   return {
-    ...panels,
+    ...workspace,
 
-    addPanel(key, panel) {
-      panels.update((panels) => ({ ...panels, [key]: panel }));
+    pushTile(tile) {
+      workspace.update((workspace) =>
+        workspace.tiles.some(({ id }) => id === tile.id)
+          ? workspace
+          : {
+              ...workspace,
+              tiles: [...workspace.tiles, tile],
+            }
+      );
     },
 
-    addAllPanels(newPanels) {
-      panels.update((panels) => ({ ...panels, ...newPanels }));
+    appendAllTiles(newTiles) {
+      workspace.update((workspace) => ({
+        ...workspace,
+        tiles: [
+          ...workspace.tiles,
+          ...newTiles.filter(
+            (newTile) => !workspace.tiles.some((tile) => tile.id === newTile.id)
+          ),
+        ],
+      }));
     },
 
-    removePanel(key: string) {
-      panels.update((panels) => {
-        const { [key]: removedTab, ...remainingPanels } = panels;
+    removeTile(tileId) {
+      workspace.update((workspace) => ({
+        ...workspace,
+        tiles: workspace.tiles.filter((tile) => tile.id !== tileId),
+      }));
+    },
 
-        if (!removedTab) {
-          return panels;
-        }
+    removeTileByValue(tile) {
+      workspace.update((workspace) => ({
+        ...workspace,
+        tiles: workspace.tiles.filter((value) => value !== tile),
+      }));
+    },
 
-        return remainingPanels;
-      });
+    setPanelToTile(tileId, panel) {
+      workspace.update((workspace) => ({
+        ...workspace,
+        tiles: workspace.tiles.map((tile) =>
+          tile.id === tileId ? { ...tile, panel } : tile
+        ),
+      }));
+    },
+
+    removePanel(panelId) {
+      workspace.update((workspace) => ({
+        ...workspace,
+        tiles: workspace.tiles.map((tile) =>
+          tile.panel?.id === panelId ? { ...tile, panel: null } : tile
+        ),
+      }));
     },
 
     removePanelByValue(panel) {
-      panels.update((panels) => {
-        let foundKey: string | null = null;
-
-        for (const [key, value] of Object.entries(panels)) {
-          if (value === panel) {
-            foundKey = key;
-
-            break;
-          }
-        }
-
-        if (!foundKey) {
-          return panels;
-        }
-
-        const { [foundKey]: removedTab, ...remainingPanels } = panels;
-
-        if (!removedTab) {
-          return panels;
-        }
-
-        return remainingPanels;
-      });
+      workspace.update((workspace) => ({
+        ...workspace,
+        tiles: workspace.tiles.map((tile) =>
+          tile.panel === panel ? { ...tile, panel: null } : tile
+        ),
+      }));
     },
 
-    addTab(panelKey, key, tab, { focus } = { focus: false }) {
-      updatePanel(panelKey, (panel) => {
-        panel.tabs.set(key, tab);
-
-        if (focus) {
-          panel.activeTab = tab;
-        }
-
-        return panel;
-      });
+    pushTabToPanel(panelId, tab, { focus } = { focus: false }) {
+      updatePanel(panelId, (panel) =>
+        panel.type === "emptyPanel"
+          ? {
+              ...panel,
+              type: "populatedPanel",
+              tabs: [tab],
+              activeTabIndex: 0,
+            }
+          : panel.tabs.some(({ id }) => id === tab.id)
+          ? panel
+          : {
+              ...panel,
+              tabs: [...panel.tabs, tab],
+              activeTabIndex: focus ? panel.tabs.length : panel.activeTabIndex,
+            }
+      );
     },
 
-    addAllTabs(panelKey, tabs) {
-      updatePanel(panelKey, (panel) => {
-        panel.tabs = new Map([...panel.tabs, ...tabs]);
-
-        return panel;
-      });
+    pushAllTabsToPanel(panelId, tabs) {
+      updatePanel(panelId, (panel) =>
+        panel.type === "emptyPanel"
+          ? {
+              ...panel,
+              type: "populatedPanel",
+              tabs,
+              activeTabIndex: 0,
+            }
+          : {
+              ...panel,
+              tabs: [
+                ...panel.tabs,
+                ...tabs.filter(
+                  (tab) => !panel.tabs.some(({ id }) => id === tab.id)
+                ),
+              ],
+            }
+      );
     },
 
-    removeTab(panelKey, key) {
-      updatePanel(panelKey, (panel) => {
-        if (!panel.tabs.has(key)) {
+    removeTabFromPanel(panelId, tabId) {
+      updatePanel(panelId, (panel) => {
+        if (panel.type === "emptyPanel") {
           return panel;
         }
 
-        const tabToRemove = panel.tabs.get(key);
+        const updatedPanelTabs = panel.tabs.filter((tab) => tab.id !== tabId);
 
-        const tabToRemoveIsActive = tabToRemove === panel.activeTab;
-
-        const removed = panel.tabs.delete(key);
-
-        // We select the first tab (if possible) if the removed tab was active
-        if (removed && tabToRemoveIsActive) {
-          const tab = panel.tabs.values().next();
-
-          // If the tab map contains no value (and is therefore empty)
-          // we can just set the active tab to "null"
-          panel.activeTab = tab.done ? null : tab.value;
+        if (updatedPanelTabs.length === panel.tabs.length) {
+          return panel;
         }
 
-        return panel;
+        if (!isNonEmpty(updatedPanelTabs)) {
+          return { id: panel.id, type: "emptyPanel" };
+        }
+
+        const activeTabIndex =
+          panel.activeTabIndex in updatedPanelTabs ? panel.activeTabIndex : 0;
+
+        return { ...panel, activeTabIndex, tabs: updatedPanelTabs };
       });
     },
 
-    removeTabByValue(panelKey, tab) {
-      updatePanel(panelKey, (panel) => {
-        let foundKey: symbol | null = null;
-
-        for (const [key, value] of panel.tabs) {
-          if (value === tab) {
-            foundKey = key;
-
-            break;
-          }
-        }
-
-        if (!foundKey) {
+    removeTabFromPanelByValue(panelId, tab) {
+      updatePanel(panelId, (panel) => {
+        if (panel.type === "emptyPanel") {
           return panel;
         }
 
-        if (!panel.tabs.has(foundKey)) {
+        const updatedPanelTabs = panel.tabs.filter(
+          (panelTab) => panelTab !== tab
+        );
+
+        if (updatedPanelTabs.length === panel.tabs.length) {
           return panel;
         }
 
-        const tabToRemove = panel.tabs.get(foundKey);
-
-        const tabToRemoveIsActive = tabToRemove === panel.activeTab;
-
-        const removed = panel.tabs.delete(foundKey);
-
-        // We select the first tab (if possible) if the removed tab was active
-        if (removed && tabToRemoveIsActive) {
-          const tab = panel.tabs.values().next();
-
-          // If the tab map contains no value (and is therefore empty)
-          // we can just set the active tab to "null"
-          panel.activeTab = tab.done ? null : tab.value;
+        if (!isNonEmpty(updatedPanelTabs)) {
+          return { id: panel.id, type: "emptyPanel" };
         }
 
-        return panel;
+        const activeTabIndex =
+          panel.activeTabIndex in updatedPanelTabs ? panel.activeTabIndex : 0;
+
+        return { ...panel, activeTabIndex, tabs: updatedPanelTabs };
       });
     },
 
-    activateTab(panelKey, key) {
-      updatePanel(panelKey, (panel) => {
-        const activeTab = panel.tabs.get(key);
-
-        if (!activeTab) {
+    activateTabInPanel(panelId, tabId) {
+      updatePanel(panelId, (panel) => {
+        if (panel.type === "emptyPanel") {
           return panel;
         }
 
-        panel.activeTab = activeTab;
+        const activeTabIndex = panel.tabs.findIndex((tab) => tab.id === tabId);
 
-        return panel;
+        return {
+          ...panel,
+          activeTabIndex:
+            activeTabIndex >= 0 ? activeTabIndex : panel.activeTabIndex,
+        };
       });
     },
 
-    activateTabByValue(panelKey, tab) {
-      updatePanel(panelKey, (panel) => {
-        let foundKey: symbol | null = null;
-
-        for (const [key, value] of panel.tabs) {
-          if (value === tab) {
-            foundKey = key;
-
-            break;
-          }
-        }
-
-        if (!foundKey) {
+    activateTabInPanelByValue(panelId, tab) {
+      updatePanel(panelId, (panel) => {
+        if (panel.type === "emptyPanel") {
           return panel;
         }
 
-        const activeTab = panel.tabs.get(foundKey);
+        const activeTabIndex = panel.tabs.findIndex(
+          (panelTab) => panelTab === tab
+        );
 
-        if (!activeTab) {
-          return panel;
-        }
-
-        panel.activeTab = activeTab;
-
-        return panel;
+        return {
+          ...panel,
+          activeTabIndex:
+            activeTabIndex >= 0 ? activeTabIndex : panel.activeTabIndex,
+        };
       });
     },
   };

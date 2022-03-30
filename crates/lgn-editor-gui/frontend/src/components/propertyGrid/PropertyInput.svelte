@@ -108,6 +108,7 @@
     <ScriptProperty
       readonly={isReadonly()}
       name={property.name}
+      path={pathParts.join(".")}
       on:input={({ detail }) => onInput({ value: detail })}
       bind:value={property.value}
     />
