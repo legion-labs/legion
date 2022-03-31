@@ -5,7 +5,10 @@
   import { headlessRun } from "@lgn/web-client";
   import type { NonEmptyArray } from "@lgn/web-client/src/lib/array";
   import log from "@lgn/web-client/src/lib/log";
-  import { createPanel } from "@lgn/web-client/src/stores/workspace";
+  import {
+    createPanel,
+    createTile,
+  } from "@lgn/web-client/src/stores/workspace";
 
   import { initApiClient } from "@/api";
   import * as contextMenuEntries from "@/data/contextMenu";
@@ -14,7 +17,12 @@
   import contextMenu from "@/stores/contextMenu";
   import { initLogStream } from "@/stores/log";
   import { initStagedResourcesStream } from "@/stores/stagedResources";
-  import workspace, { viewportPanelKey } from "@/stores/workspace";
+  import tabPayloads from "@/stores/tabPayloads";
+  import workspace, {
+    viewportPanelId,
+    viewportTileId,
+  } from "@/stores/workspace";
+  import type { TabType } from "@/stores/workspace";
   import "@/workers/editorWorker";
 
   const logLevel = "warn";
@@ -90,18 +98,46 @@
             contextMenuEntries.resourcePanelEntries
           );
 
-          const editorTabKey = Symbol();
+          const videoEditorTabPayloadId = "video-editor-payload";
 
-          const viewportPanel = createPanel(
-            new Map([
-              [editorTabKey, { type: "video", name: "editor" }],
-              [Symbol(), { type: "video", name: "runtime" }],
-            ])
+          const videoRuntimeTabPayloadId = "video-runtime-payload";
+
+          tabPayloads.update((tabPayloads) => ({
+            ...tabPayloads,
+            [videoEditorTabPayloadId]: {
+              type: "video",
+              serverType: "editor",
+            },
+          }));
+
+          tabPayloads.update((tabPayloads) => ({
+            ...tabPayloads,
+            [videoRuntimeTabPayloadId]: {
+              type: "video",
+              serverType: "runtime",
+            },
+          }));
+
+          const viewportTile = createTile<TabType>(
+            viewportTileId,
+            createPanel<TabType>(viewportPanelId, [
+              {
+                id: "editor-main",
+                type: "video",
+                label: "Editor",
+                payloadId: videoEditorTabPayloadId,
+              },
+              {
+                id: "runtime-main",
+                type: "video",
+                label: "Runtime",
+                payloadId: videoRuntimeTabPayloadId,
+              },
+            ]),
+            { trackSize: false }
           );
 
-          workspace.addAllPanels({ [viewportPanelKey]: viewportPanel });
-
-          workspace.activateTab(viewportPanelKey, editorTabKey);
+          workspace.pushTile(viewportTile);
         },
       });
 

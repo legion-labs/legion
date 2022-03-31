@@ -16,6 +16,8 @@
 
   export let readonly = false;
 
+  export let lang: string;
+
   let editorContainer: HTMLDivElement | undefined;
 
   let editor: monaco.editor.IStandaloneCodeEditor | undefined;
@@ -29,7 +31,7 @@
 
     editor = monaco.editor.create(editorContainer, {
       value,
-      language: "rust",
+      language: lang,
       automaticLayout: true,
       theme,
       readOnly: readonly,
@@ -38,6 +40,8 @@
     editor.onDidChangeModelContent(
       debounce(() => {
         const newValue = getValue();
+
+        value = newValue;
 
         dispatch("change", newValue);
       }, debounceTime)

@@ -3,34 +3,58 @@
 
   import Button from "@lgn/web-client/src/components/Button.svelte";
 
-  import workspace, { viewportPanelKey } from "@/stores/workspace";
+  import {
+    currentResource,
+    currentResourceName,
+  } from "@/orchestrators/currentResource";
+  import tabPayloads from "@/stores/tabPayloads";
+  import workspace, { viewportPanelId } from "@/stores/workspace";
 
   const dispatch = createEventDispatcher<{ input: string }>();
 
-  const key = Symbol();
-
   export let name: string;
+
+  export let path: string;
 
   export let value: string;
 
   export let readonly = false;
 
+  $: id = `script-${$currentResource?.id || ""}-${path}`;
+
+  $: payloadId = `${id}-payload`;
+
+  $: {
+    // As soon as a payload exists it means the property is in "write" mode,
+    // at that point the value is not owned by the property itself but rather by the tab
+    // so we need to source the value from the payload instead of the property
+    const payload = $tabPayloads[payloadId];
+
+    if (payload?.type === "script") {
+      value = payload.value;
+    }
+  }
+
   $: dispatch("input", value);
 
-  function openViewport() {
-    workspace.addTab(
-      viewportPanelKey,
-      key,
+  function openTab() {
+    $tabPayloads[payloadId] = {
+      type: "script",
+      lang: "rust",
+      readonly,
+      value,
+    };
+
+    workspace.pushTabToPanel(
+      viewportPanelId,
       {
+        id,
         type: "script",
-        name: `Script - ${name}`,
-        onChange(newValue: string) {
-          value = newValue;
-        },
-        getValue: () => value,
-        readonly,
-        lang: "rune",
-        removable: true,
+        label: `Script - ${
+          $currentResourceName || "unknown resource"
+        } - ${name}`,
+        disposable: true,
+        payloadId,
       },
       { focus: true }
     );
@@ -38,7 +62,7 @@
 </script>
 
 <div class="root">
-  <Button fluid on:click={openViewport}>
+  <Button fluid on:click={openTab}>
     <i>Edit...</i>
   </Button>
 </div>

@@ -5,13 +5,15 @@
   import ContextMenu from "@lgn/web-client/src/components/ContextMenu.svelte";
   import Notifications from "@lgn/web-client/src/components/Notifications.svelte";
   import StatusBar from "@lgn/web-client/src/components/StatusBar.svelte";
+  import Tile from "@lgn/web-client/src/components/Tile.svelte";
   import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
   import ModalContainer from "@lgn/web-client/src/components/modal/ModalContainer.svelte";
-  import { DynamicPanel, Panel } from "@lgn/web-client/src/components/panel";
+  import { Panel } from "@lgn/web-client/src/components/panel";
   import log from "@lgn/web-client/src/lib/log";
 
   import { getActiveScenes, getAllResources } from "@/api";
   import AuthModal from "@/components/AuthModal.svelte";
+  import DynamicPanel from "@/components/DynamicPanel.svelte";
   import ExtraPanel from "@/components/ExtraPanel.svelte";
   import ResourceBrowser from "@/components/ResourceBrowser.svelte";
   import SceneExplorer from "@/components/SceneExplorer.svelte";
@@ -29,7 +31,8 @@
   import modal from "@/stores/modal";
   import notifications from "@/stores/notifications";
   import { stagedResources, syncFromMain } from "@/stores/stagedResources";
-  import workspace, { viewportPanelKey } from "@/stores/workspace";
+  import workspace from "@/stores/workspace";
+  import { viewportTileId } from "@/stores/workspace";
 
   const {
     data: allResourcesData,
@@ -114,7 +117,13 @@
       </div>
       <div class="v-separator" />
       <div class="main-content">
-        <DynamicPanel panelKey={viewportPanelKey} {workspace} />
+        <Tile id={viewportTileId} {workspace}>
+          <div class="h-full w-full" slot="default" let:tile>
+            {#if tile?.panel?.type === "populatedPanel"}
+              <DynamicPanel panel={tile.panel} />
+            {/if}
+          </div>
+        </Tile>
         <div class="h-separator" />
         <div class="extra-panel">
           <ExtraPanel />

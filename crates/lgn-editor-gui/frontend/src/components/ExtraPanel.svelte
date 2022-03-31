@@ -12,17 +12,15 @@ Contains all the "extra" panels like Log or Source Control.
     { type: "sourceControl", title: "My Local Changes" } as const,
     { type: "log", title: "Log" } as const,
   ];
-
-  let activeTab = tabs[0];
 </script>
 
-<Panel {tabs} bind:activeTab>
+<Panel {tabs}>
   <div class="tab" slot="tab" let:tab>
     <div class="title">
       <span>{tab.title}</span>
     </div>
   </div>
-  <div class="content" slot="content">
+  <div class="content" slot="content" let:activeTab>
     {#if activeTab.type === "sourceControl"}
       <LocalChanges />
     {:else if activeTab.type === "log"}

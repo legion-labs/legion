@@ -1,9 +1,12 @@
+import { derived } from "svelte/store";
+
 import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
 import log from "@lgn/web-client/src/lib/log";
 import type { AsyncOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 import { createAsyncStoreOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 
 import { getResourceProperties, updateSelection } from "@/api";
+import { fileName } from "@/lib/path";
 import type { ResourceWithProperties } from "@/lib/propertyGrid";
 import notifications from "@/stores/notifications";
 
@@ -15,6 +18,10 @@ const currentResourceOrchestrator: CurrentResourceOrchestrator =
 
 export const { data: currentResource, error: currentResourceError } =
   currentResourceOrchestrator;
+
+export const currentResourceName = derived(currentResource, (currentResource) =>
+  currentResource ? fileName(currentResource.description.path) : null
+);
 
 export async function fetchCurrentResourceDescription(
   id: string,

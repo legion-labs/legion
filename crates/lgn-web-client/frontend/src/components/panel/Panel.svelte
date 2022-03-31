@@ -10,7 +10,7 @@
   /** Optionally change the value used as key during the iteration */
   export let key: (tab: Tab, index: number) => Tab = (tab) => tab;
 
-  export let activeTab: Tab | null | undefined = tabs[0];
+  export let activeTabIndex: number = 0;
 
   export let loading = false;
 
@@ -31,11 +31,19 @@
       {#each tabs as tab, index (key(tab, index))}
         <div
           class="tab"
-          class:tab-inactive={activeTab !== tab}
-          class:tab-active={activeTab === tab}
-          on:click={() => (activeTab = tab)}
+          class:tab-inactive={activeTabIndex !== index}
+          class:tab-active={activeTabIndex === index}
+          on:click={() => (activeTabIndex = index)}
         >
-          <div><slot name="tab" {tab} {isFocused} {activeTab} /></div>
+          <div>
+            <slot
+              name="tab"
+              {tab}
+              {isFocused}
+              activeTab={tabs[activeTabIndex]}
+              {activeTabIndex}
+            />
+          </div>
           {#if loading}
             <div><Loader /></div>
           {/if}
@@ -44,7 +52,7 @@
     </div>
     <div
       class="tabs-filler-bg"
-      class:last-tabs-filler-bg={activeTab === tabs[tabs.length - 1]}
+      class:last-tabs-filler-bg={activeTabIndex === tabs.length - 1}
     >
       <div class="tabs-filler" />
     </div>
@@ -56,7 +64,12 @@
     on:click-outside={blur}
     use:clickOutside
   >
-    <slot name="content" {isFocused} {activeTab} />
+    <slot
+      name="content"
+      {isFocused}
+      activeTab={tabs[activeTabIndex]}
+      {activeTabIndex}
+    />
   </div>
 </div>
 
