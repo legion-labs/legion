@@ -37,7 +37,9 @@ mod settings;
 mod simulation;
 
 use lgn_app::prelude::{App, CoreStage, Plugin};
-use lgn_ecs::prelude::{Commands, Entity, Query, Res, ResMut, SystemStage};
+use lgn_ecs::prelude::{
+    Commands, Entity, ParallelSystemDescriptorCoercion, Query, Res, ResMut, SystemStage,
+};
 use lgn_graphics_renderer::labels::RenderStage;
 use lgn_tracing::prelude::{error, warn};
 use physx::{
@@ -131,7 +133,7 @@ impl Plugin for PhysicsPlugin {
         );
 
         app.add_system_to_stage(PhysicsStage::Update, step_simulation)
-            .add_system_to_stage(PhysicsStage::Update, sync_transforms);
+            .add_system_to_stage(PhysicsStage::Update, sync_transforms.after(step_simulation));
 
         app.init_resource::<PhysicsOptions>()
             .add_system_to_stage(RenderStage::Prepare, physics_options::ui_physics_options)
