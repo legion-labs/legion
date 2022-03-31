@@ -8,7 +8,7 @@ mod asset_handles;
 mod config;
 mod loading_states;
 
-use std::{fs::File, path::Path, sync::Arc};
+use std::{path::Path, str::FromStr, sync::Arc};
 
 pub use asset_entities::AssetToEntityMap;
 use asset_handles::AssetHandles;
@@ -16,6 +16,7 @@ pub use config::{AssetRegistrySettings, DataBuildConfig};
 use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
 use lgn_content_store::HddContentStore;
+use lgn_content_store2::{ChunkIdentifier, Chunker, ContentProvider};
 use lgn_data_runtime::{
     manifest::Manifest, AssetRegistry, AssetRegistryEvent, AssetRegistryOptions,
     AssetRegistryScheduling, ResourceLoadEvent,
@@ -52,7 +53,7 @@ impl Plugin for AssetRegistryPlugin {
 
 impl AssetRegistryPlugin {
     fn pre_setup(world: &mut World) {
-        let mut config = world.resource_mut::<AssetRegistrySettings>();
+        let config = world.resource::<AssetRegistrySettings>();
 
         let content_store_addr = config.content_store_addr.clone();
         let content_store = HddContentStore::open(content_store_addr).unwrap_or_else(|| {
@@ -62,11 +63,16 @@ impl AssetRegistryPlugin {
             )
         });
 
-        let manifest = Self::read_or_default(&config.game_manifest);
-
-        if config.assets_to_load.is_empty() {
-            config.assets_to_load = manifest.resources();
-        }
+        let manifest = {
+            let async_rt = world.resource::<TokioAsyncRuntime>();
+            async_rt.block_on(async {
+                let content_provider =
+                    lgn_content_store2::Config::load_and_instantiate_persistent_provider()
+                        .await
+                        .unwrap();
+                Self::read_or_default(&config.game_manifest, &content_provider).await
+            })
+        };
 
         let mut registry_options = AssetRegistryOptions::new();
 
@@ -109,11 +115,17 @@ impl AssetRegistryPlugin {
         config: ResMut<'_, AssetRegistrySettings>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         mut asset_handles: ResMut<'_, AssetHandles>,
+        manifest: Res<'_, Manifest>,
         registry: Res<'_, Arc<AssetRegistry>>,
     ) {
-        for asset_id in &config.assets_to_load {
-            asset_loading_states.insert(*asset_id, LoadingState::Pending);
-            asset_handles.insert(*asset_id, registry.load_untyped(*asset_id));
+        let mut assets_to_load = config.assets_to_load.clone();
+        if assets_to_load.is_empty() {
+            assets_to_load.extend(manifest.resources());
+        };
+
+        for asset_id in assets_to_load {
+            asset_loading_states.insert(asset_id, LoadingState::Pending);
+            asset_handles.insert(asset_id, registry.load_untyped(asset_id));
         }
     }
 
@@ -190,10 +202,19 @@ impl AssetRegistryPlugin {
         drop(load_events_rx);
     }
 
-    fn read_or_default(manifest_path: impl AsRef<Path>) -> Manifest {
-        match File::open(manifest_path) {
-            Ok(file) => serde_json::from_reader(file).unwrap_or_default(),
-            Err(_e) => Manifest::default(),
+    async fn read_or_default(
+        manifest_path: impl AsRef<Path>,
+        content_provider: impl ContentProvider + Send + Sync + Copy,
+    ) -> Manifest {
+        if let Ok(chunk_id) = std::fs::read_to_string(manifest_path) {
+            if let Ok(chunk_id) = ChunkIdentifier::from_str(&chunk_id) {
+                let chunker = Chunker::default();
+                if let Ok(content) = chunker.read_chunk(content_provider, &chunk_id).await {
+                    return serde_json::from_reader(content.as_slice()).unwrap_or_default();
+                }
+            }
         }
+
+        Manifest::default()
     }
 }
