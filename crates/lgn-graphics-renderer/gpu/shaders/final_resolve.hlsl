@@ -15,12 +15,12 @@ VertexOut main_vs(in uint vertexId : SV_VertexID) {
         vertex_out.uv = float2(0.0, 2.0);
     }
     if (vertexId == 1) {
-        vertex_out.hpos = float4(-1.0, 1.0, 0.0, 1.0);
-        vertex_out.uv = float2(0.0, 0.0);
-    }
-    if (vertexId == 2) {
         vertex_out.hpos = float4(3.0, 1.0, 0.0, 1.0);
         vertex_out.uv = float2(2.0, 0.0);
+    }
+    if (vertexId == 2) {
+        vertex_out.hpos = float4(-1.0, 1.0, 0.0, 1.0);
+        vertex_out.uv = float2(0.0, 0.0);
     }
 
     return vertex_out;

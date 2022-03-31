@@ -290,7 +290,7 @@ impl DebugRenderPass {
         mesh_manager: &MeshManager,
         camera: &CameraComponent,
     ) {
-        for (visual, transform, manipulator) in manipulator_meshes.iter() {
+        for (transform, manipulator) in manipulator_meshes.iter() {
             if manipulator.active {
                 let scaled_xform = ManipulatorManager::scale_manipulator_for_viewport(
                     transform,
@@ -302,7 +302,7 @@ impl DebugRenderPass {
                 let mut color = if manipulator.selected {
                     Color::YELLOW
                 } else {
-                    visual.color
+                    manipulator.color
                 };
                 color.a = if manipulator.transparent { 225 } else { 255 };
 
