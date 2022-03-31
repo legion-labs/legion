@@ -363,7 +363,7 @@ impl AssetRegistry {
     }
 
     /// Tests if an asset is loaded.
-    pub(crate) fn is_loaded(&self, id: ResourceTypeAndId) -> bool {
+    pub fn is_loaded(&self, id: ResourceTypeAndId) -> bool {
         self.read_inner().assets.get(&id).is_some()
     }
 

@@ -8,8 +8,9 @@
   import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
   import ModalContainer from "@lgn/web-client/src/components/modal/ModalContainer.svelte";
   import { DynamicPanel, Panel } from "@lgn/web-client/src/components/panel";
+  import log from "@lgn/web-client/src/lib/log";
 
-  import { getAllResources } from "@/api";
+  import { getActiveScenes, getAllResources } from "@/api";
   import AuthModal from "@/components/AuthModal.svelte";
   import ExtraPanel from "@/components/ExtraPanel.svelte";
   import ResourceBrowser from "@/components/ResourceBrowser.svelte";
@@ -76,6 +77,9 @@
     $currentResourceDescriptionEntry = null;
 
     await allResourcesStore.run(getAllResources);
+
+    let active_scenes = await getActiveScenes();
+    log.info("Active Scenes: ", active_scenes.sceneIds);
   }
 </script>
 

@@ -61,12 +61,15 @@ impl ScenePlugin {
                         .entry(*resource_id)
                         .or_insert_with(|| SceneInstance::new(*resource_id));
 
-                    scene.spawn_entity_hierarchy(
-                        *resource_id,
-                        &asset_registry,
-                        &mut commands,
-                        &entity_with_children_query,
-                    );
+                    // Spawn the Scene if it's already loaded
+                    if asset_registry.is_loaded(*resource_id) {
+                        scene.spawn_entity_hierarchy(
+                            *resource_id,
+                            &asset_registry,
+                            &mut commands,
+                            &entity_with_children_query,
+                        );
+                    }
                 }
                 SceneMessage::CloseScene(resource_id) => {
                     if let Some(mut scene) = active_scenes.remove(resource_id) {

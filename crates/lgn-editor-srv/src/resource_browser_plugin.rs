@@ -17,10 +17,11 @@ use lgn_ecs::prelude::*;
 use lgn_editor_proto::property_inspector::UpdateResourcePropertiesRequest;
 use lgn_editor_proto::resource_browser::{
     CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
-    DeleteResourceRequest, DeleteResourceResponse, GetResourceTypeNamesRequest,
-    GetResourceTypeNamesResponse, ImportResourceRequest, ImportResourceResponse, OpenSceneRequest,
-    OpenSceneResponse, RenameResourceRequest, RenameResourceResponse, ReparentResourceRequest,
-    ReparentResourceResponse, SearchResourcesRequest,
+    DeleteResourceRequest, DeleteResourceResponse, GetActiveScenesRequest, GetActiveScenesResponse,
+    GetResourceTypeNamesRequest, GetResourceTypeNamesResponse, ImportResourceRequest,
+    ImportResourceResponse, OpenSceneRequest, OpenSceneResponse, RenameResourceRequest,
+    RenameResourceResponse, ReparentResourceRequest, ReparentResourceResponse,
+    SearchResourcesRequest,
 };
 
 use lgn_graphics_data::offline_gltf::GltfFile;
@@ -51,7 +52,9 @@ impl ResourceBrowserSettings {
 }
 
 #[derive(Default)]
-pub(crate) struct ResourceBrowserPlugin {}
+pub(crate) struct ResourceBrowserPlugin {
+    active_scenes: HashSet<ResourceTypeAndId>,
+}
 
 fn parse_resource_id(value: &str) -> Result<ResourceTypeAndId, Status> {
     value
@@ -196,27 +199,31 @@ impl ResourceBrowserPlugin {
             lgn_tracing::info!("Opening default scene: {}", settings.default_scene);
             let transaction_manager = transaction_manager.clone();
             tokio_runtime.block_on(async move {
-                let transaction_manager = transaction_manager.lock().await;
+                let mut transaction_manager = transaction_manager.lock().await;
 
                 for scene in settings.default_scene.split_terminator(';') {
                     let resource_path = ResourcePathName::from(scene);
-                    match transaction_manager.build_by_name(&resource_path).await {
-                        Ok(()) => {
-                            if let Ok(resource_id) = {
-                                let ctx = LockContext::new(&transaction_manager).await;
-                                ctx.project.find_resource(&resource_path).await
-                            } {
+
+                    let resource_id = LockContext::new(&transaction_manager)
+                        .await
+                        .project
+                        .find_resource(&resource_path)
+                        .await;
+
+                    if let Ok(resource_id) = resource_id {
+                        match transaction_manager.add_scene(resource_id).await {
+                            Ok(()) => {
                                 let runtime_id = ResourcePathId::from(resource_id)
                                     .push(sample_data::runtime::Entity::TYPE)
                                     .resource_id();
                                 event_writer.send(SceneMessage::OpenScene(runtime_id));
                             }
+                            Err(err) => lgn_tracing::warn!(
+                                "Failed to build scene '{}': {}",
+                                scene,
+                                err.to_string()
+                            ),
                         }
-                        Err(err) => lgn_tracing::warn!(
-                            "Failed to build scene '{}': {}",
-                            scene,
-                            err.to_string()
-                        ),
                     }
                 }
             });
@@ -776,10 +783,18 @@ impl ResourceBrowser for ResourceBrowserRPC {
         let request = request.get_ref();
         let mut resource_id = parse_resource_id(request.id.as_str())?;
 
+        if resource_id.kind != sample_data::offline::Entity::TYPE {
+            return Err(Status::internal(format!(
+                "Expected Entity in OpenScene. Resource {} is a {}",
+                resource_id,
+                resource_id.kind.as_pretty()
+            )));
+        }
+
         lgn_tracing::info!("Opening scene: {}", resource_id);
-        let transaction_manager = self.transaction_manager.lock().await;
+        let mut transaction_manager = self.transaction_manager.lock().await;
         transaction_manager
-            .build_by_id(resource_id)
+            .add_scene(resource_id)
             .await
             .map_err(|err| Status::internal(err.to_string()))?;
 
@@ -805,6 +820,10 @@ impl ResourceBrowser for ResourceBrowserRPC {
     ) -> Result<Response<CloseSceneResponse>, Status> {
         let request = request.get_ref();
         let mut resource_id = parse_resource_id(request.id.as_str())?;
+
+        let mut transaction_manager = self.transaction_manager.lock().await;
+        transaction_manager.remove_scene(resource_id).await;
+
         // Get runtime entity id
         if resource_id.kind == sample_data::offline::Entity::TYPE {
             resource_id = ResourcePathId::from(resource_id)
@@ -819,5 +838,21 @@ impl ResourceBrowser for ResourceBrowserRPC {
             warn!("Failed to Close Scene for {}: {}", resource_id, err);
         }
         Ok(Response::new(CloseSceneResponse {}))
+    }
+
+    /// Get active scenes
+    async fn get_active_scenes(
+        &self,
+        _request: Request<GetActiveScenesRequest>,
+    ) -> Result<Response<GetActiveScenesResponse>, Status> {
+        let transaction_manager = self.transaction_manager.lock().await;
+
+        Ok(Response::new(GetActiveScenesResponse {
+            scene_ids: transaction_manager
+                .get_active_scenes()
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect(),
+        }))
     }
 }
