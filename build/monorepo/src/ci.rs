@@ -308,15 +308,15 @@ fn test_run(
             //all_features: changed_since.is_some(),
             ..BuildArgs::default()
         },
-        args: if machine_has_discreet_gpu()? {
-            vec![]
-        } else {
-            action_step!("-- CI --", "Skipping Gpu tests");
-            vec!["--skip".into(), "gpu_".into()]
-        },
         ..test::Args::default()
     };
-    test::run(args, ctx)
+    test::run(args.clone(), ctx)?;
+    if machine_has_discreet_gpu()? {
+        let mut args = args;
+        args.ignored.push("gpu".into());
+        test::run(args, ctx)?;
+    }
+    Ok(())
 }
 
 #[span_fn]

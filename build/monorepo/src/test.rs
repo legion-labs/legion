@@ -19,22 +19,25 @@ use std::{
 pub struct Args {
     #[clap(flatten)]
     pub(crate) package_args: SelectedPackageArgs,
-    #[clap(long, short)]
     /// Skip running expensive diem testsuite integration tests
-    pub(crate) unit: bool,
     #[clap(long)]
+    pub(crate) legacy_runner: bool,
     /// Only run doctests
+    #[clap(long)]
     pub(crate) doc: bool,
     #[clap(flatten)]
     pub(crate) build_args: BuildArgs,
-    #[clap(long)]
     /// Do not fast fail the run if tests (or test executables) fail
-    pub(crate) no_fail_fast: bool,
     #[clap(long)]
+    pub(crate) no_fail_fast: bool,
     /// Do not run tests, only compile the test executables
+    #[clap(long)]
     pub(crate) no_run: bool,
-    #[clap(long, parse(from_os_str))]
+    /// Run ignored tests with filter
+    #[clap(long)]
+    pub(crate) ignored: Vec<String>,
     /// Directory to output HTML coverage report (using grcov)
+    #[clap(long, parse(from_os_str))]
     pub(crate) html_cov_dir: Option<PathBuf>,
     #[clap(name = "TESTNAME", parse(from_os_str))]
     pub(crate) testname: Option<OsString>,
@@ -45,9 +48,6 @@ pub struct Args {
 #[span_fn]
 pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
     let packages = args.package_args.to_selected_packages(ctx)?;
-    //if args.unit {
-    //    packages.add_excludes(ctx.config().system_tests().iter().map(|(p, _)| p.as_str()));
-    //}
 
     args.args.extend(args.testname.clone());
 
@@ -99,23 +99,50 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
         vec![]
     };
 
-    let mut direct_args = Vec::new();
-    args.build_args.add_args(&mut direct_args);
-    if args.no_run {
-        direct_args.push(OsString::from("--no-run"));
-    };
-    if args.no_fail_fast {
-        direct_args.push(OsString::from("--no-fail-fast"));
-    };
-    if args.doc {
-        direct_args.push(OsString::from("--doc"));
-    }
-
-    let cmd = CargoCommand::Test {
-        direct_args: direct_args.as_slice(),
-        args: &args.args,
-        env: &env_vars,
-        skip_sccache: generate_coverage,
+    let mut direct_args = vec![];
+    let cmd = if args.legacy_runner {
+        args.build_args.add_args(&mut direct_args);
+        if args.no_run {
+            direct_args.push(OsString::from("--no-run"));
+        };
+        if args.no_fail_fast {
+            direct_args.push(OsString::from("--no-fail-fast"));
+        };
+        if args.doc {
+            direct_args.push(OsString::from("--doc"));
+        }
+        CargoCommand::Test {
+            direct_args: direct_args.as_slice(),
+            args: &args.args,
+            env: &env_vars,
+            skip_sccache: generate_coverage,
+        }
+    } else {
+        if !ctx.installer().install_via_cargo_if_needed("cargo-nextest") {
+            return Err(Error::new("Could not install cargo-nextest"));
+        }
+        if args.no_run {
+            direct_args.push(OsString::from("list"));
+        } else {
+            direct_args.push(OsString::from("run"));
+        }
+        args.build_args.add_args(&mut direct_args);
+        if !args.ignored.is_empty() {
+            for ignored in args.ignored {
+                direct_args.push(OsString::from(ignored));
+            }
+            direct_args.push("--run-ignored".into());
+            direct_args.push("ignored-only".into());
+        }
+        if args.no_fail_fast {
+            direct_args.push(OsString::from("--no-fail-fast"));
+        };
+        CargoCommand::Nextest {
+            direct_args: direct_args.as_slice(),
+            args: &args.args,
+            env: &env_vars,
+            skip_sccache: generate_coverage,
+        }
     };
 
     let cmd_result = cmd.run_on_packages(ctx, &packages);

@@ -25,7 +25,7 @@ fn create_test_resource(id: ResourceTypeAndId, dir: &Path, content: &str) {
 #[test]
 fn command_info() {
     let exe_path = common::compiler_exe("test-refs");
-    assert!(exe_path.exists());
+    assert!(exe_path.exists(), "{}", exe_path.display());
 
     let command = CompilerInfoCmd::new(&exe_path);
     let _info = command.execute().expect("info output");
@@ -34,7 +34,7 @@ fn command_info() {
 #[test]
 fn command_info_json() {
     let exe_path = common::compiler_exe("test-refs");
-    assert!(exe_path.exists());
+    assert!(exe_path.exists(), "{}", exe_path.display());
 
     let command = CompilerInfoCmd::new(&exe_path);
     let command_as_json = command.builder().to_string();
