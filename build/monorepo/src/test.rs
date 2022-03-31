@@ -126,6 +126,7 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
         } else {
             direct_args.push(OsString::from("run"));
         }
+        args.build_args.add_args(&mut direct_args);
         if !args.ignored.is_empty() {
             for ignored in args.ignored {
                 direct_args.push(OsString::from(ignored));
