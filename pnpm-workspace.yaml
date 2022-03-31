@@ -1,4 +1,5 @@
 packages:
   - "crates/*/frontend"
+  - "crates/lgn-web-client-config"
   - "npm-pkgs/*"
   - "crates/lgn-*-proto"

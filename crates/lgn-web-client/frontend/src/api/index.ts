@@ -6,9 +6,8 @@ import {
 import { bytesToJson, jsonToBytes } from "../lib/api";
 import log from "../lib/log";
 
-// TODO: Move to config
-const defaultEditorServerUrl = "http://[::1]:50051";
-const defaultRuntimeServerUrl = "http://[::1]:50052";
+const defaultEditorServerUrl = "[::1]:50001";
+const defaultRuntimeServerUrl = "[::1]:50002";
 
 export type ServerType = "editor" | "runtime";
 

@@ -144,6 +144,7 @@ importers:
       '@lgn/vite-plugin-ts-proto': workspace:^0.1.0
       '@lgn/vite-plugin-wasm': workspace:^0.1.0
       '@lgn/web-client': ^0.1.0
+      '@lgn/web-client-config': ^0.1.0
       '@sveltejs/adapter-static': ^1.0.0-next.28
       '@sveltejs/kit': ^1.0.0-next.290
       '@sveltejs/vite-plugin-svelte': ^1.0.0-next.40
@@ -213,6 +214,7 @@ importers:
     devDependencies:
       '@lgn/vite-plugin-ts-proto': link:../../../npm-pkgs/vite-plugin-ts-proto
       '@lgn/vite-plugin-wasm': link:../../../npm-pkgs/vite-plugin-wasm
+      '@lgn/web-client-config': link:../../lgn-web-client-config
       '@sveltejs/adapter-static': 1.0.0-next.28
       '@sveltejs/kit': 1.0.0-next.290_svelte@3.46.4
       '@sveltejs/vite-plugin-svelte': 1.0.0-next.40_svelte@3.46.4+vite@2.8.6
@@ -434,6 +436,12 @@ importers:
     devDependencies:
       ts-proto: 1.110.2
       typescript: 4.6.3
+
+  crates/lgn-web-client-config:
+    specifiers:
+      '@napi-rs/cli': ^2.5.0
+    devDependencies:
+      '@napi-rs/cli': 2.5.0
 
   crates/lgn-web-client/frontend:
     specifiers:
@@ -1274,6 +1282,12 @@ packages:
     dependencies:
       '@jridgewell/resolve-uri': 3.0.5
       '@jridgewell/sourcemap-codec': 1.4.11
+    dev: true
+
+  /@napi-rs/cli/2.5.0:
+    resolution: {integrity: sha512-OstHFxgQaGFgir0XfvHLstpxhYY+YLafUKQSyAAAIW8QerlgmijDnZa0Oka7QkdYbVEPw6mFCuxu7JiPYF+SYw==}
+    engines: {node: '>= 10'}
+    hasBin: true
     dev: true
 
   /@nodelib/fs.scandir/2.1.5:

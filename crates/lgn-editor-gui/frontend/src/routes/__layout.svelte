@@ -40,16 +40,17 @@
     "profile",
   ];
 
-  const issuerUrl =
-    "https://cognito-idp.ca-central-1.amazonaws.com/ca-central-1_SkZKDimWz";
+  const issuerUrl = import.meta.env
+    .VITE_ONLINE_AUTHENTICATION_OAUTH_ISSUER_URL as string;
 
-  const clientId = "5m58nrjfv6kr144prif9jk62di";
+  const clientId = import.meta.env
+    .VITE_ONLINE_AUTHENTICATION_OAUTH_CLIENT_ID as string;
 
   const redirectUri = `${document.location.origin}/`;
 
   export const load: Load = async ({ fetch, url }) => {
     const editorServerUrlKey = "editor-server-url";
-    const runtimeServerUrlKey = "editor-runtime-url";
+    const runtimeServerUrlKey = "runtime-server-url";
 
     devSettings.update((devSettings) => ({
       ...devSettings,
@@ -90,7 +91,7 @@
         editorServerUrl,
         runtimeServerUrl,
         logLevel,
-        async onPreInit() {
+        onPreInit() {
           // await initWasmLogger();
           // debug("Hello from the Legion editor");
 
