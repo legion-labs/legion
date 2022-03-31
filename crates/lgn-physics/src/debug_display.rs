@@ -1,5 +1,6 @@
 use lgn_core::BumpAllocatorPool;
 use lgn_ecs::prelude::{Query, Res};
+use lgn_graphics_data::Color;
 use lgn_graphics_renderer::{debug_display::DebugDisplay, resources::DefaultMeshType};
 use lgn_math::prelude::Vec3;
 use lgn_transform::prelude::GlobalTransform;
@@ -19,7 +20,7 @@ pub(crate) fn display_collision_geometry(
 
     bump_allocator_pool.scoped_bump(|bump| {
         debug_display.create_display_list(bump, |builder| {
-            let debug_color = Vec3::new(0.0, 1.0, 0.2);
+            let debug_color = Color::new(0, 255, 51, 255);
             for (collision_geometry, transform) in query.iter() {
                 match collision_geometry {
                     CollisionGeometry::Box(box_geometry) => {

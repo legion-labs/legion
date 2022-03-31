@@ -4,6 +4,7 @@ use lgn_graphics_api::{
     ColorClearValue, ColorRenderTargetBinding, DepthStencilClearValue,
     DepthStencilRenderTargetBinding, LoadOp, ResourceState, StoreOp,
 };
+use lgn_graphics_data::Color;
 use lgn_tracing::span_fn;
 
 use crate::{
@@ -24,15 +25,15 @@ impl TmpRenderPass {
         mesh_renderer: &MeshRenderer,
     ) {
         render_surface
-            .lighting_rt_mut()
+            .hdr_rt_mut()
             .transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
 
         cmd_buffer.begin_render_pass(
             &[ColorRenderTargetBinding {
-                texture_view: render_surface.lighting_rt().rtv(),
+                texture_view: render_surface.hdr_rt().rtv(),
                 load_op: LoadOp::Clear,
                 store_op: StoreOp::Store,
-                clear_value: ColorClearValue([0.2, 0.2, 0.2, 1.0]),
+                clear_value: ColorClearValue(Color::new(180, 180, 180, 255).as_linear().into()),
             }],
             &Some(DepthStencilRenderTargetBinding {
                 texture_view: render_surface.depth_rt().rtv(),

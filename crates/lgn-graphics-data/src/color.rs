@@ -2,6 +2,7 @@
 
 use std::ops::{Shl, Shr};
 
+use lgn_math::Vec4;
 use serde::{Deserialize, Deserializer, Serialize};
 
 /// Structure definining a RGBA colors
@@ -34,6 +35,23 @@ impl Color {
     pub const WHITE: Self = Self::new(255, 255, 255, 255);
     pub const BLACK: Self = Self::new(0, 0, 0, 255);
     pub const ORANGE: Self = Self::new(255, 165, 0, 255);
+
+    pub fn as_linear(self) -> Vec4 {
+        Vec4::new(
+            linear_from_srgb(f32::from(self.r)),
+            linear_from_srgb(f32::from(self.g)),
+            linear_from_srgb(f32::from(self.b)),
+            f32::from(self.a) / 255.0,
+        )
+    }
+}
+
+fn linear_from_srgb(srgb: f32) -> f32 {
+    if srgb < 10.31475 {
+        srgb / 3294.6
+    } else {
+        ((srgb + 14.025) / 269.025).powf(2.4)
+    }
 }
 
 impl Default for Color {
@@ -82,6 +100,26 @@ impl From<[u8; 4]> for Color {
             g: val[1],
             b: val[2],
             a: val[3],
+        }
+    }
+}
+
+impl From<Color> for u32 {
+    fn from(val: Color) -> Self {
+        Self::from(val.r)
+            | Self::from(val.g) << 8
+            | Self::from(val.b) << 16
+            | Self::from(val.a) << 24
+    }
+}
+
+impl From<u32> for Color {
+    fn from(val: u32) -> Self {
+        Self {
+            r: (val & 0xFF) as u8,
+            g: (val >> 8 & 0xFF) as u8,
+            b: (val >> 16 & 0xFF) as u8,
+            a: (val >> 24 & 0xFF) as u8,
         }
     }
 }

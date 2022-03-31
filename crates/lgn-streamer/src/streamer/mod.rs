@@ -41,6 +41,8 @@ use video_stream::VideoStream;
 mod rgb2yuv;
 use rgb2yuv::RgbToYuvConverter;
 
+mod hdr2rgb;
+
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Resolution {
     width: u32,

@@ -9,7 +9,6 @@ license = "MIT OR Apache-2.0"
 lgn-app = { path = "../lgn-app", version = "0.1.0" }
 lgn-asset-registry = { path = "../lgn-asset-registry", version = "0.1.0" }
 lgn-async = { path = "../lgn-async", version = "0.1.0" }
-lgn-codec-api = { path = "../lgn-codec-api", version = "0.1.0" }
 lgn-content-store = { path = "../lgn-content-store", version = "0.1.0" }
 lgn-content-store2 = { path = "../lgn-content-store2", version = "0.1.0" }
 lgn-ecs = { path = "../lgn-ecs", version = "0.1.0" }

@@ -7,6 +7,7 @@ use lgn_ecs::{
     prelude::{Changed, Query, Res, ResMut},
     schedule::SystemSet,
 };
+use lgn_graphics_data::Color;
 use lgn_math::Vec3;
 use lgn_tracing::{span_fn, warn};
 use lgn_transform::components::{GlobalTransform, Transform};
@@ -193,7 +194,7 @@ fn debug_bounding_spheres(
                                 .with_scale(Vec3::new(4.0, 4.0, 4.0) * mesh_data.bounding_sphere.w)
                                 .with_rotation(transform.rotation),
                             DefaultMeshType::Sphere as u32,
-                            Vec3::new(1.0, 1.0, 1.0),
+                            Color::WHITE,
                         );
                     }
                 }

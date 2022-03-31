@@ -2,8 +2,7 @@ use lgn_graphics_api::{
     AddressMode, BlendState, ColorClearValue, ColorRenderTargetBinding, CompareOp, CullMode,
     DepthState, DeviceContext, FilterType, Format, GraphicsPipelineDef, LoadOp, MipMapMode,
     PrimitiveTopology, RasterizerState, ResourceState, ResourceUsage, SampleCount, Sampler,
-    SamplerDef, StencilOp, StoreOp, VertexAttributeRate, VertexLayout, VertexLayoutAttribute,
-    VertexLayoutBuffer,
+    SamplerDef, StencilOp, StoreOp, TextureView, VertexLayout,
 };
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 
@@ -45,6 +44,7 @@ impl FinalResolveRenderPass {
         render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
         cmd_buffer: &mut HLCommandBuffer<'_>,
+        resolve_rtv: &TextureView,
     ) {
         let pipeline = render_context
             .pipeline_manager()
@@ -54,15 +54,11 @@ impl FinalResolveRenderPass {
         cmd_buffer.bind_pipeline(pipeline);
 
         render_surface
-            .lighting_rt_mut()
+            .hdr_rt_mut()
             .transition_to(cmd_buffer, ResourceState::SHADER_RESOURCE);
 
-        render_surface
-            .resolve_rt_mut()
-            .transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
-
         let mut descriptor_set = cgen::descriptor_set::FinalResolveDescriptorSet::default();
-        descriptor_set.set_linear_texture(render_surface.lighting_rt().srv());
+        descriptor_set.set_linear_texture(render_surface.hdr_rt().srv());
         descriptor_set.set_linear_sampler(&self.linear_sampler);
 
         let descriptor_set_handle = render_context.write_descriptor_set(
@@ -87,7 +83,7 @@ impl FinalResolveRenderPass {
 
         cmd_buffer.begin_render_pass(
             &[ColorRenderTargetBinding {
-                texture_view: render_surface.resolve_rt().rtv(),
+                texture_view: resolve_rtv,
                 load_op: LoadOp::DontCare,
                 store_op: StoreOp::Store,
                 clear_value: ColorClearValue([0.0; 4]),
@@ -103,24 +99,6 @@ impl FinalResolveRenderPass {
 
 fn build_final_resolve_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
     let root_signature = cgen::pipeline_layout::FinalResolvePipelineLayout::root_signature();
-
-    let mut vertex_layout = VertexLayout::default();
-    vertex_layout.attributes[0] = Some(VertexLayoutAttribute {
-        format: Format::R32G32_SFLOAT,
-        buffer_index: 0,
-        location: 0,
-        byte_offset: 0,
-    });
-    vertex_layout.attributes[1] = Some(VertexLayoutAttribute {
-        format: Format::R32G32_SFLOAT,
-        buffer_index: 0,
-        location: 1,
-        byte_offset: 8,
-    });
-    vertex_layout.buffers[0] = Some(VertexLayoutBuffer {
-        stride: 16,
-        rate: VertexAttributeRate::Vertex,
-    });
 
     let depth_state = DepthState {
         depth_test_enable: false,
@@ -155,11 +133,11 @@ fn build_final_resolve_pso(pipeline_manager: &PipelineManager) -> PipelineHandle
                 .create_graphics_pipeline(&GraphicsPipelineDef {
                     shader,
                     root_signature,
-                    vertex_layout: &vertex_layout,
+                    vertex_layout: &VertexLayout::default(),
                     blend_state: &BlendState::default_alpha_disabled(),
                     depth_state: &depth_state,
                     rasterizer_state: &resterizer_state,
-                    color_formats: &[Format::R8G8B8A8_SRGB],
+                    color_formats: &[Format::B8G8R8A8_UNORM],
                     sample_count: SampleCount::SampleCount1,
                     depth_stencil_format: None,
                     primitive_topology: PrimitiveTopology::TriangleList,
