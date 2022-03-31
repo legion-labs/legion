@@ -11,4 +11,4 @@ mod final_resolve_render_pass;
 pub(crate) use final_resolve_render_pass::*;
 
 mod render_target;
-pub(crate) use render_target::*;
+pub use render_target::*;

@@ -61,7 +61,7 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
     #endif
 
         if (!culled) {
-            float4 center_pos_view = float4(transform_position(view_data, sphere_world_pos), 1.0);
+            float4 center_pos_view = float4(transform_position(view_data.camera_rotation, view_data.camera_translation, sphere_world_pos), 1.0);
 
             float4 min_view = center_pos_view + float4(-bv_radius, -bv_radius, 0.0, 0.0);
             float4 max_view = center_pos_view + float4(bv_radius, bv_radius, 0.0, 0.0);                                                          

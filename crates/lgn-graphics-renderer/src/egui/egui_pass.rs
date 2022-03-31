@@ -190,7 +190,7 @@ impl EguiPass {
     ) {
         cmd_buffer.begin_render_pass(
             &[ColorRenderTargetBinding {
-                texture_view: render_surface.lighting_rt().rtv(),
+                texture_view: render_surface.hdr_rt().rtv(),
                 load_op: LoadOp::Load,
                 store_op: StoreOp::Store,
                 clear_value: ColorClearValue([0.0; 4]),
