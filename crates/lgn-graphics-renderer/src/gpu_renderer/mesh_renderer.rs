@@ -62,11 +62,6 @@ enum MeshRendererLabel {
 impl MeshRenderer {
     pub fn init_ecs(app: &mut App) {
         //
-        // Events
-        //
-        // app.add_event::<GpuInstanceEvent>();
-
-        //
         // Stage PreUpdate
         //
         // TODO(vdbdd): remove asap
@@ -103,7 +98,6 @@ fn initialize_psos(
 #[allow(clippy::needless_pass_by_value)]
 fn update_render_elements(
     mut mesh_renderer: ResMut<'_, MeshRenderer>,
-    // mut event_reader: EventReader<'_, '_, GpuInstanceEvent>,
     instance_manager: Res<'_, GpuInstanceManager>,
 ) {
     instance_manager.for_each_removed_gpu_instance_id(|gpu_instance_id| {
@@ -114,22 +108,6 @@ fn update_render_elements(
         mesh_renderer.register_material(render_element.material_id());
         mesh_renderer.register_element(render_element);
     });
-
-    // for event in event_reader.iter() {
-    //     match event {
-    //         GpuInstanceEvent::Added(added_instances) => {
-    //             for instance in added_instances {
-    //                 mesh_renderer.register_material(instance.0);
-    //                 mesh_renderer.register_element(instance.0, &instance.1);
-    //             }
-    //         }
-    //         GpuInstanceEvent::Removed(removed_instances) => {
-    //             for instance in removed_instances {
-    //                 mesh_renderer.unregister_element(*instance);
-    //             }
-    //         }
-    //     }
-    // }
 }
 
 #[allow(clippy::needless_pass_by_value)]

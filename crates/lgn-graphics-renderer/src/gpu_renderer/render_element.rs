@@ -51,8 +51,3 @@ impl RenderElement {
         }
     }
 }
-
-// pub enum GpuInstanceEvent {
-//     Added(Vec<(MaterialId, RenderElement)>),
-//     Removed(Vec<GpuInstanceId>),
-// }
