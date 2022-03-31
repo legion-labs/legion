@@ -108,7 +108,7 @@ impl<U: Clone> NCNodeList<U> {
     ) -> impl Iterator<Item = NodeID> + '_ {
         self.nodes
             .iter()
-            .filter(move |node| node.heartbeat_invalid(heartbeat_duration))
+            .filter(move |node| node.heartbeat_invalid(2 * heartbeat_duration))
             .map(|node| node.node_id)
     }
 
@@ -268,9 +268,9 @@ mod tests {
         let result = node_list.check_heartbeat(5);
         assert_eq!(result.count(), 0);
 
-        thread::sleep(Duration::from_secs(5));
+        thread::sleep(Duration::from_secs(5 * 2));
 
-        let result = node_list.check_heartbeat(3);
+        let result = node_list.check_heartbeat(5 - 2);
         assert_eq!(result.count(), 4);
     }
 
@@ -287,7 +287,7 @@ mod tests {
 
         node_list.update_heartbeat(node_id);
 
-        let result = node_list.check_heartbeat(3);
+        let result = node_list.check_heartbeat(1);
         let result = result.collect::<Vec<NodeID>>();
 
         assert_eq!(result.len(), 3);

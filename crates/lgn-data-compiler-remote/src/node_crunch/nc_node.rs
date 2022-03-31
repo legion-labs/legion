@@ -328,7 +328,7 @@ impl<'a, T: NCNode> NodeProcess<'a, T> {
             // This will be set in the method get_initial_data()
             node_id: NodeID::unset(),
             retry_counter: RetryCounter::new(config.retry_counter),
-            delay_duration: Duration::from_millis(config.delay_request_data),
+            delay_duration: Duration::from_secs(config.delay_request_data),
             nc_communicator: NCCommunicator::new(config),
         }
     }
