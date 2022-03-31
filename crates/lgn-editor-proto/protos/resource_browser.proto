@@ -21,6 +21,8 @@ service ResourceBrowser {
   rpc OpenScene(OpenSceneRequest) returns (OpenSceneResponse);
 
   rpc CloseScene(CloseSceneRequest) returns (CloseSceneResponse);
+
+  rpc GetActiveScenes(GetActiveScenesRequest) returns (GetActiveScenesResponse);
 }
 
 message SearchResourcesRequest {
@@ -106,3 +108,9 @@ message CloseSceneRequest {
 }
 
 message CloseSceneResponse {}
+
+message GetActiveScenesRequest {}
+
+message GetActiveScenesResponse {
+  repeated string scene_ids = 1;
+}

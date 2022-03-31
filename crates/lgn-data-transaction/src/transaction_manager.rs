@@ -1,4 +1,8 @@
-use std::{collections::btree_map::Entry, path::PathBuf, sync::Arc};
+use std::{
+    collections::{btree_map::Entry, HashSet},
+    path::PathBuf,
+    sync::Arc,
+};
 
 use lgn_data_offline::resource::{
     Project, ResourceHandles, ResourcePathName, ResourceRegistry, ResourceRegistryError,
@@ -91,6 +95,7 @@ pub struct TransactionManager {
     pub(crate) asset_registry: Arc<AssetRegistry>,
     pub(crate) build_manager: Arc<Mutex<BuildManager>>,
     pub(crate) selection_manager: Arc<SelectionManager>,
+    pub(crate) active_scenes: std::collections::HashSet<ResourceTypeAndId>,
 }
 
 impl TransactionManager {
@@ -111,7 +116,27 @@ impl TransactionManager {
             loaded_resource_handles: Arc::new(Mutex::new(ResourceHandles::default())),
             build_manager: Arc::new(Mutex::new(build_manager)),
             selection_manager,
+            active_scenes: HashSet::new(),
         }
+    }
+
+    /// Add a scene and build it
+    pub async fn add_scene(&mut self, resource_id: ResourceTypeAndId) -> Result<(), Error> {
+        self.active_scenes.insert(resource_id);
+        lgn_tracing::info!("Adding scene: {}", resource_id);
+        self.build_by_id(resource_id).await
+    }
+
+    /// Remove a scene
+    pub async fn remove_scene(&mut self, resource_id: ResourceTypeAndId) {
+        self.active_scenes.remove(&resource_id);
+        lgn_tracing::info!("Removing scene: {}", resource_id);
+        //TODO: additional clean, unload from registry?
+    }
+
+    /// Get the list of active scene
+    pub fn get_active_scenes(&self) -> Vec<ResourceTypeAndId> {
+        self.active_scenes.iter().copied().collect()
     }
 
     /// Build a resource by id
@@ -134,18 +159,6 @@ impl TransactionManager {
             }
         }
         Ok(())
-    }
-
-    /// Build a resource by name
-    pub async fn build_by_name(&self, resource_path: &ResourcePathName) -> Result<(), Error> {
-        let resource_id = {
-            let ctx = LockContext::new(self).await;
-            ctx.project
-                .find_resource(resource_path)
-                .await
-                .map_err(|_err| Error::ResourceNameNotFound(resource_path.clone()))?
-        };
-        self.build_by_id(resource_id).await
     }
 
     /// Load all resources from a `Project`
