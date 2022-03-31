@@ -926,7 +926,7 @@ fn build_depth_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
     };
 
     let resterizer_state = RasterizerState {
-        cull_mode: CullMode::Front,
+        cull_mode: CullMode::Back,
         ..RasterizerState::default()
     };
 
@@ -988,7 +988,7 @@ fn build_temp_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
     };
 
     let resterizer_state = RasterizerState {
-        cull_mode: CullMode::Front,
+        cull_mode: CullMode::Back,
         ..RasterizerState::default()
     };
 

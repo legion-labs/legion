@@ -1,4 +1,4 @@
-use std::{any::Any, io, path::Path};
+use std::{any::Any, io, path::Path, str::FromStr};
 
 use crate::{
     helpers::{read_u32, write_u32},
@@ -8,8 +8,9 @@ use crate::{
 };
 use gltf::{
     image::Format,
+    material::NormalTexture,
     mesh::util::{ReadIndices, ReadTexCoords},
-    Document,
+    texture, Document,
 };
 use lgn_math::{Vec2, Vec3};
 
@@ -54,18 +55,18 @@ impl GltfFile {
 
                 let reader = primitive.reader(|buffer| Some(&self.buffers[buffer.index()]));
                 if let Some(iter) = reader.read_positions() {
-                    for vertex_position in iter {
-                        positions.push(vertex_position.into());
+                    for position in iter {
+                        positions.push(Vec3::new(position[0], position[1], -position[2]));
                     }
                 }
                 if let Some(iter) = reader.read_normals() {
                     for normal in iter {
-                        normals.push(normal.into());
+                        normals.push(Vec3::new(normal[0], normal[1], -normal[2]));
                     }
                 }
                 if let Some(iter) = reader.read_tangents() {
                     for tangent in iter {
-                        tangents.push(Vec3::new(tangent[0], tangent[1], tangent[2]));
+                        tangents.push(Vec3::new(tangent[0], tangent[1], -tangent[2]));
                     }
                 }
                 if let Some(tex_coords_option) = reader.read_tex_coords(0) {
@@ -96,6 +97,9 @@ impl GltfFile {
                                 indices.push(idx as u16);
                             }
                         }
+                    }
+                    for i in 0..indices.len() / 3 {
+                        indices.swap(i * 3 + 1, i * 3 + 2);
                     }
                 }
 
@@ -155,68 +159,46 @@ impl GltfFile {
                 .pbr_metallic_roughness()
                 .base_color_texture()
                 .map(|info| {
-                    info.texture().name().map(|texture_name| {
-                        ResourcePathId::from(resource_id)
-                            .push_named(crate::offline_texture::Texture::TYPE, texture_name)
-                            .push_named(crate::runtime_texture::Texture::TYPE, "Albedo")
-                    })
+                    ResourcePathId::from(resource_id)
+                        .push_named(
+                            crate::offline_texture::Texture::TYPE,
+                            texture_name(&info).unwrap().as_str(),
+                        )
+                        .push_named(crate::runtime_texture::Texture::TYPE, "Albedo")
                 });
-            let albedo = if let Some(albedo) = albedo {
-                albedo
-            } else {
-                None
-            };
 
             let normal = material.normal_texture().map(|info| {
-                info.texture().name().map(|texture_name| {
-                    ResourcePathId::from(resource_id)
-                        .push_named(crate::offline_texture::Texture::TYPE, texture_name)
-                        .push_named(crate::runtime_texture::Texture::TYPE, "Normal")
-                })
+                ResourcePathId::from(resource_id)
+                    .push_named(
+                        crate::offline_texture::Texture::TYPE,
+                        normal_texture_name(&info).unwrap().as_str(),
+                    )
+                    .push_named(crate::runtime_texture::Texture::TYPE, "Normal")
             });
-            let normal = if let Some(normal) = normal {
-                normal
-            } else {
-                None
-            };
             let base_roughness = material.pbr_metallic_roughness().roughness_factor();
             let base_metalness = material.pbr_metallic_roughness().metallic_factor();
             let roughness = material
                 .pbr_metallic_roughness()
                 .metallic_roughness_texture()
                 .map(|info| {
-                    info.texture().name().map(|texture_name| {
-                        ResourcePathId::from(resource_id)
-                            .push_named(
-                                crate::offline_texture::Texture::TYPE,
-                                format!("{}_Roughness", texture_name).as_str(),
-                            )
-                            .push_named(crate::runtime_texture::Texture::TYPE, "Roughness")
-                    })
+                    ResourcePathId::from(resource_id)
+                        .push_named(
+                            crate::offline_texture::Texture::TYPE,
+                            format!("{}_Roughness", texture_name(&info).unwrap()).as_str(),
+                        )
+                        .push_named(crate::runtime_texture::Texture::TYPE, "Roughness")
                 });
-            let roughness = if let Some(roughness) = roughness {
-                roughness
-            } else {
-                None
-            };
             let metalness = material
                 .pbr_metallic_roughness()
                 .metallic_roughness_texture()
                 .map(|info| {
-                    info.texture().name().map(|texture_name| {
-                        ResourcePathId::from(resource_id)
-                            .push_named(
-                                crate::offline_texture::Texture::TYPE,
-                                format!("{}_Metalness", texture_name).as_str(),
-                            )
-                            .push_named(crate::runtime_texture::Texture::TYPE, "Metalness")
-                    })
+                    ResourcePathId::from(resource_id)
+                        .push_named(
+                            crate::offline_texture::Texture::TYPE,
+                            format!("{}_Metalness", texture_name(&info).unwrap()).as_str(),
+                        )
+                        .push_named(crate::runtime_texture::Texture::TYPE, "Metalness")
                 });
-            let metalness = if let Some(metalness) = metalness {
-                metalness
-            } else {
-                None
-            };
             materials.push((
                 Material {
                     albedo,
@@ -237,7 +219,9 @@ impl GltfFile {
     pub fn gather_textures(&self) -> Vec<(Texture, String)> {
         let mut textures = Vec::new();
         for texture in self.document.as_ref().unwrap().textures() {
-            let name = texture.name().unwrap();
+            let name = texture.name().map_or(texture.index().to_string(), |name| {
+                String::from_str(name).unwrap()
+            });
             let image = &self.images[texture.source().index()];
             if name.contains("OcclusionRoughMetal") {
                 let mut roughness = Vec::new();
@@ -291,7 +275,7 @@ impl GltfFile {
                             _ => unreachable!(),
                         },
                     },
-                    String::from(name),
+                    name,
                 ));
             }
         }
@@ -459,4 +443,20 @@ impl ResourceProcessor for GltfFileProcessor {
     ) -> Result<Box<dyn Any + Send + Sync>, ResourceProcessorError> {
         Ok(self.load(reader)?)
     }
+}
+
+fn texture_name(info: &texture::Info<'_>) -> Result<String, <String as FromStr>::Err> {
+    info.texture()
+        .name()
+        .map_or(Ok(info.texture().index().to_string()), |texture_name| {
+            String::from_str(texture_name)
+        })
+}
+
+fn normal_texture_name(info: &NormalTexture<'_>) -> Result<String, <String as FromStr>::Err> {
+    info.texture()
+        .name()
+        .map_or(Ok(info.texture().index().to_string()), |texture_name| {
+            String::from_str(texture_name)
+        })
 }

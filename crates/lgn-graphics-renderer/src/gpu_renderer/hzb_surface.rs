@@ -238,7 +238,7 @@ fn build_hzb_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
     };
 
     let resterizer_state = RasterizerState {
-        cull_mode: CullMode::Front,
+        cull_mode: CullMode::Back,
         ..RasterizerState::default()
     };
 

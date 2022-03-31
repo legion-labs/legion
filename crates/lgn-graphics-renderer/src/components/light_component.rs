@@ -41,11 +41,11 @@ impl Default for LightComponent {
 
 #[allow(clippy::needless_pass_by_value)]
 pub(crate) fn ui_lights(
-    egui_ctx: Res<'_, Egui>,
+    egui: Res<'_, Egui>,
     mut lights: Query<'_, '_, &mut LightComponent>,
     mut lighting_manager: ResMut<'_, LightingManager>,
 ) {
-    egui::Window::new("Lights").show(&egui_ctx.ctx, |ui| {
+    egui::Window::new("Lights").show(&egui.ctx, |ui| {
         ui.checkbox(&mut lighting_manager.diffuse, "Diffuse");
         ui.checkbox(&mut lighting_manager.specular, "Specular");
         ui.add(
