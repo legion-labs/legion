@@ -1,13 +1,6 @@
 use std::collections::BTreeMap;
 
-use lgn_graphics_api::{BufferView, VertexBufferBinding};
-
-use crate::gpu_renderer::GpuInstanceId;
-
-use super::{
-    IndexAllocator, StaticBufferAllocation, UnifiedStaticBufferAllocator, UniformGPUData,
-    UniformGPUDataUpdater,
-};
+use super::{IndexAllocator, UnifiedStaticBufferAllocator, UniformGPUData, UniformGPUDataUpdater};
 
 #[derive(Clone, Copy)]
 pub(crate) struct GpuDataAllocation {
@@ -84,41 +77,5 @@ impl<K: Ord + Copy, T> GpuDataManager<K, T> {
         let gpu_data_allocation = self.data_map.remove(key).unwrap();
         let index_slice = std::slice::from_ref(&gpu_data_allocation.index);
         self.index_allocator.release_indexes(index_slice);
-    }
-}
-
-pub(crate) struct GpuVaTableForGpuInstance {
-    static_allocation: StaticBufferAllocation,
-}
-
-impl GpuVaTableForGpuInstance {
-    pub fn new(allocator: &UnifiedStaticBufferAllocator) -> Self {
-        Self {
-            static_allocation: allocator.allocate_segment(4 * 1024 * 1024),
-        }
-    }
-
-    pub fn set_va_table_address_for_gpu_instance(
-        &self,
-        updater: &mut UniformGPUDataUpdater,
-        gpu_instance_id: GpuInstanceId,
-        va_table_address: u64,
-    ) {
-        let offset_for_gpu_instance =
-            self.static_allocation.offset() + u64::from(gpu_instance_id.index()) * 4;
-
-        updater.add_update_jobs(
-            std::slice::from_ref(&u32::try_from(va_table_address).unwrap()),
-            offset_for_gpu_instance,
-        );
-    }
-
-    pub fn vertex_buffer_binding(&self) -> VertexBufferBinding<'_> {
-        self.static_allocation.vertex_buffer_binding()
-    }
-
-    pub fn create_structured_buffer_view(&self, struct_size: u64, read_only: bool) -> BufferView {
-        self.static_allocation
-            .create_structured_buffer_view(struct_size, read_only)
     }
 }

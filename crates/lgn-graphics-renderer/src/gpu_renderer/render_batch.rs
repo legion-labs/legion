@@ -35,7 +35,7 @@ impl RenderBatch {
 
     pub fn remove_cpu_element(&mut self, gpu_instance_id: GpuInstanceId) {
         for (index, matching) in self.elements.iter().enumerate() {
-            if gpu_instance_id == matching.gpu_instance_id {
+            if gpu_instance_id == matching.gpu_instance_id() {
                 self.elements.swap_remove(index);
                 return;
             }

@@ -1,6 +1,9 @@
-use lgn_app::{App, CoreStage, EventReader};
+use lgn_app::{App, CoreStage};
 use lgn_core::Handle;
-use lgn_ecs::prelude::{Res, ResMut};
+use lgn_ecs::{
+    prelude::{Res, ResMut},
+    schedule::{ParallelSystemDescriptorCoercion, SystemLabel},
+};
 use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::{
     BarrierQueueTransition, BlendState, Buffer, BufferBarrier, BufferDef, BufferView,
@@ -34,7 +37,8 @@ use crate::{
 };
 
 use super::{
-    GpuInstanceEvent, GpuInstanceId, GpuInstanceManager, RenderElement, RenderLayer, RenderStateSet,
+    GpuInstanceId, GpuInstanceManager, GpuInstanceManagerLabel, RenderElement, RenderLayer,
+    RenderStateSet,
 };
 
 embedded_watched_file!(INCLUDE_BRDF, "gpu/include/brdf.hsh");
@@ -50,27 +54,41 @@ pub(crate) enum DefaultLayers {
     Picking,
 }
 
+#[derive(Debug, SystemLabel, PartialEq, Eq, Clone, Copy, Hash)]
+enum MeshRendererLabel {
+    UpdateDone,
+}
+
 impl MeshRenderer {
     pub fn init_ecs(app: &mut App) {
         //
         // Events
         //
-        app.add_event::<GpuInstanceEvent>();
+        // app.add_event::<GpuInstanceEvent>();
 
         //
         // Stage PreUpdate
         //
+        // TODO(vdbdd): remove asap
         app.add_system_to_stage(CoreStage::PreUpdate, initialize_psos);
-
-        //
-        // Stage Update
-        //
-        app.add_system_to_stage(CoreStage::Update, update_render_elements);
 
         //
         // Stage Prepare
         //
-        app.add_system_to_stage(RenderStage::Prepare, prepare);
+
+        // TODO(vdbdd): merge those systems
+
+        app.add_system_to_stage(
+            RenderStage::Prepare,
+            update_render_elements
+                .after(GpuInstanceManagerLabel::UpdateDone)
+                .label(MeshRendererLabel::UpdateDone),
+        );
+
+        app.add_system_to_stage(
+            RenderStage::Prepare,
+            prepare.after(MeshRendererLabel::UpdateDone),
+        );
     }
 }
 
@@ -85,23 +103,33 @@ fn initialize_psos(
 #[allow(clippy::needless_pass_by_value)]
 fn update_render_elements(
     mut mesh_renderer: ResMut<'_, MeshRenderer>,
-    mut event_reader: EventReader<'_, '_, GpuInstanceEvent>,
+    // mut event_reader: EventReader<'_, '_, GpuInstanceEvent>,
+    instance_manager: Res<'_, GpuInstanceManager>,
 ) {
-    for event in event_reader.iter() {
-        match event {
-            GpuInstanceEvent::Added(added_instances) => {
-                for instance in added_instances {
-                    mesh_renderer.register_material(instance.0);
-                    mesh_renderer.register_element(instance.0, &instance.1);
-                }
-            }
-            GpuInstanceEvent::Removed(removed_instances) => {
-                for instance in removed_instances {
-                    mesh_renderer.unregister_element(*instance);
-                }
-            }
-        }
-    }
+    instance_manager.for_each_removed_gpu_instance_id(|gpu_instance_id| {
+        mesh_renderer.unregister_element(*gpu_instance_id);
+    });
+
+    instance_manager.for_each_render_element_added(|render_element| {
+        mesh_renderer.register_material(render_element.material_id());
+        mesh_renderer.register_element(render_element);
+    });
+
+    // for event in event_reader.iter() {
+    //     match event {
+    //         GpuInstanceEvent::Added(added_instances) => {
+    //             for instance in added_instances {
+    //                 mesh_renderer.register_material(instance.0);
+    //                 mesh_renderer.register_element(instance.0, &instance.1);
+    //             }
+    //         }
+    //         GpuInstanceEvent::Removed(removed_instances) => {
+    //             for instance in removed_instances {
+    //                 mesh_renderer.unregister_element(*instance);
+    //             }
+    //         }
+    //     }
+    // }
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -242,9 +270,9 @@ impl MeshRenderer {
         }
     }
 
-    fn register_element(&mut self, _material_id: MaterialId, element: &RenderElement) {
+    fn register_element(&mut self, element: &RenderElement) {
         let new_index = self.gpu_instance_data.len() as u32;
-        let gpu_instance_index = element.gpu_instance_id.index();
+        let gpu_instance_index = element.gpu_instance_id().index();
         if gpu_instance_index > self.instance_data_idxs.len() as u32 {
             self.instance_data_idxs
                 .resize(gpu_instance_index as usize + 1, u32::MAX);

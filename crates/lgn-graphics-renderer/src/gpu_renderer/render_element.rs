@@ -1,28 +1,40 @@
 use crate::{
     hl_gfx_api::HLCommandBuffer,
-    resources::{MaterialId, MeshManager},
+    resources::{MaterialId, MeshMetaData},
 };
 
 use super::GpuInstanceId;
 
 #[derive(Clone, Copy)]
 pub struct RenderElement {
-    pub(super) gpu_instance_id: GpuInstanceId,
+    gpu_instance_id: GpuInstanceId,
+    material_id: MaterialId,
     vertex_count: u32,
     index_count: u32,
     index_offset: u32,
 }
 
 impl RenderElement {
-    pub fn new(gpu_instance_id: GpuInstanceId, mesh_id: u32, mesh_manager: &MeshManager) -> Self {
-        let mesh = mesh_manager.get_mesh_meta_data(mesh_id);
-
+    pub fn new(
+        gpu_instance_id: GpuInstanceId,
+        material_id: MaterialId,
+        mesh: &MeshMetaData,
+    ) -> Self {
         Self {
             gpu_instance_id,
+            material_id,
             vertex_count: mesh.vertex_count,
             index_count: mesh.index_count,
             index_offset: mesh.index_offset,
         }
+    }
+
+    pub fn gpu_instance_id(&self) -> GpuInstanceId {
+        self.gpu_instance_id
+    }
+
+    pub fn material_id(&self) -> MaterialId {
+        self.material_id
     }
 
     pub fn draw(&self, cmd_buffer: &mut HLCommandBuffer<'_>) {
@@ -40,7 +52,7 @@ impl RenderElement {
     }
 }
 
-pub enum GpuInstanceEvent {
-    Added(Vec<(MaterialId, RenderElement)>),
-    Removed(Vec<GpuInstanceId>),
-}
+// pub enum GpuInstanceEvent {
+//     Added(Vec<(MaterialId, RenderElement)>),
+//     Removed(Vec<GpuInstanceId>),
+// }

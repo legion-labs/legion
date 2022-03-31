@@ -16,7 +16,7 @@ use crate::{
     components::{ModelComponent, VisualComponent},
     debug_display::DebugDisplay,
     labels::RenderStage,
-    Renderer, ResourceLoadingLabel,
+    Renderer, ResourceStageLabel,
 };
 
 use super::{
@@ -76,8 +76,8 @@ impl ModelManager {
             SystemSet::new()
                 .with_system(update_models)
                 .with_system(debug_bounding_spheres)
-                .label(ResourceLoadingLabel::Model)
-                .after(ResourceLoadingLabel::Material),
+                .label(ResourceStageLabel::Model)
+                .after(ResourceStageLabel::Material),
         );
     }
 
