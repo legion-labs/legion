@@ -295,10 +295,10 @@ impl Dispatch {
         use raw_cpuid::CpuId;
 
         let mut parent_process = String::new();
-        if let Ok(parent_process_guid) = std::env::var("LEGION_TELEMETRY_PARENT_PROCESS") {
+        if let Ok(parent_process_guid) = std::env::var("LGN_TELEMETRY_PARENT_PROCESS") {
             parent_process = parent_process_guid;
         }
-        std::env::set_var("LEGION_TELEMETRY_PARENT_PROCESS", &self.process_id);
+        std::env::set_var("LGN_TELEMETRY_PARENT_PROCESS", &self.process_id);
 
         let start_ticks = now();
         let start_time = Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Nanos, false);

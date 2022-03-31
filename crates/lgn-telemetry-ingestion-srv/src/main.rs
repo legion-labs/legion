@@ -33,7 +33,10 @@ use tonic::transport::Server;
 #[clap(arg_required_else_help(true))]
 struct Cli {
     #[clap(long, default_value = "[::1]:8080")]
-    listen_endpoint: SocketAddr,
+    listen_endpoint: SocketAddr, //grpc
+
+    #[clap(long, default_value = "[::1]:8081")]
+    listen_endpoint_http: SocketAddr,
 
     #[clap(subcommand)]
     spec: DataLakeSpec,
@@ -45,21 +48,26 @@ enum DataLakeSpec {
     Remote { db_uri: String, s3_url: String },
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let _telemetry_guard = TelemetryGuardBuilder::default()
-        .with_ctrlc_handling()
-        .build();
-    let args = Cli::parse();
-    let service = match args.spec {
-        DataLakeSpec::Local { path } => connect_to_local_data_lake(path).await?,
+async fn serve_grpc(args: &Cli) -> Result<(), Box<dyn std::error::Error>> {
+    let service = match &args.spec {
+        DataLakeSpec::Local { path } => connect_to_local_data_lake(path.clone()).await?,
         DataLakeSpec::Remote { db_uri, s3_url } => {
-            connect_to_remote_data_lake(&db_uri, &s3_url).await?
+            connect_to_remote_data_lake(db_uri, s3_url).await?
         }
     };
     Server::builder()
         .add_service(TelemetryIngestionServer::new(service))
         .serve(args.listen_endpoint)
         .await?;
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let _telemetry_guard = TelemetryGuardBuilder::default()
+        .with_ctrlc_handling()
+        .build();
+    let args = Cli::parse();
+    serve_grpc(&args).await?;
     Ok(())
 }
