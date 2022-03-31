@@ -121,7 +121,7 @@ impl OffscreenHelper {
         let copy_texture = &self.copy_image;
 
         render_surface
-            .resolve_rt_mut()
+            .hdr_rt_mut()
             .transition_to(&cmd_buffer, ResourceState::SHADER_RESOURCE);
 
         cmd_buffer.resource_barrier(
@@ -150,7 +150,7 @@ impl OffscreenHelper {
         cmd_buffer.bind_pipeline(pipeline);
 
         let mut descriptor_set = cgen::descriptor_set::DisplayMapperDescriptorSet::default();
-        descriptor_set.set_hdr_image(render_surface.resolve_rt().srv());
+        descriptor_set.set_hdr_image(render_surface.hdr_rt().srv());
         descriptor_set.set_hdr_sampler(&self.bilinear_sampler);
         let descriptor_set_handle = render_context.write_descriptor_set(
             cgen::descriptor_set::DisplayMapperDescriptorSet::descriptor_set_layout(),

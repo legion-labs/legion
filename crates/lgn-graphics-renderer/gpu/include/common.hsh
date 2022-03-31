@@ -49,9 +49,9 @@ float3 transform_position(Transform transform, float3 position) {
     return result + transform.translation;
 }
 
-float3 transform_position(ViewData view, float3 position) {
-    float3 result = mul(quaternion_to_matrix(view.camera_rotation), position);
-    return result + view.camera_translation;
+float3 transform_position(float4 rotation, float3 translation, float3 position) {
+    float3 result = mul(quaternion_to_matrix(rotation), position);
+    return result + translation;
 }
 
 float3 transform_normal(Transform transform, float3 normal) {
@@ -59,8 +59,79 @@ float3 transform_normal(Transform transform, float3 normal) {
     return normalize(mul(quaternion_to_matrix(transform.rotation), result));
 }
 
-float3 transform_normal(ViewData view, float3 normal) {
-    return normalize(mul(quaternion_to_matrix(view.camera_rotation), normal));
+float3 transform_normal(float4 rotation, float3 normal) {
+    return normalize(mul(quaternion_to_matrix(rotation), normal));
 } 
+
+// See https://github.com/emilk/egui/blob/26d576f5101dfa1219f79bf9c99e29c577487cd3/egui_glium/src/painter.rs#L19.
+float3 linear_from_srgb(float3 srgb) {
+    bool3 cutoff = srgb < float3(10.31475, 10.31475, 10.31475);
+    float3 lower = srgb / float3(3294.6, 3294.6, 3294.6);
+    float3 higher = pow((srgb + float3(14.025, 14.025, 14.025)) / float3(269.025, 269.025, 269.025), float3(2.4, 2.4, 2.4));
+    return lerp(higher, lower, cutoff);
+}
+
+float4 linear_from_srgba(float4 srgba) {
+    return float4(linear_from_srgb(srgba.rgb), srgba.a / 255.0);
+}
+
+float4 unpack_srgb(uint packed_color) {
+    return float4(
+        (packed_color & 0x000000FF) / 255.0,
+        ((packed_color & 0x0000FF00) >> 8) / 255.0,
+        ((packed_color & 0x00FF0000) >> 16) / 255.0,
+        ((packed_color & 0xFF000000) >> 24) / 255.0
+    );
+}
+
+float4 unpack_linear(uint packed_color) {
+    float4 srgba = float4(
+        (packed_color & 0x000000FF),
+        ((packed_color & 0x0000FF00) >> 8),
+        ((packed_color & 0x00FF0000) >> 16),
+        ((packed_color & 0xFF000000) >> 24)
+    );
+    return linear_from_srgba(srgba);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// https://en.wikipedia.org/wiki/SRGB
+float linear2srgb_std(float value) {
+    return (value <= 0.0031308f) ? (12.92f * value) : (1.055f * pow(value, 1.0f / 2.4f) - 0.055f);
+}
+
+float3 linear2srgb(float3 value)
+{
+#if 0
+    return pow(value, 1.0f/2.2f);
+#else
+    return float3(linear2srgb_std(value.r), linear2srgb_std(value.g), linear2srgb_std(value.b));
+#endif
+}
+
+// https://en.wikipedia.org/wiki/SRGB
+// putting the reciprocal here for now until we move color utilities to a header
+float srgb2linear_std(float value) {
+    return (value <= 0.04045f) ? (value / 12.92f) : pow((value + 0.055f) / 1.055f, 2.4f);
+}
+
+float3 srgb2linear(float3 value)
+{
+#if 0
+    return pow(value, 2.2f);
+#else
+    return float3(srgb2linear_std(value.r), srgb2linear_std(value.g), srgb2linear_std(value.b));
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+float3 tonemap(float3 value) {
+    // place holder
+    return saturate(value);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #endif

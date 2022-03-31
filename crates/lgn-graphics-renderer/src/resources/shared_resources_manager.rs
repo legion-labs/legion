@@ -178,10 +178,10 @@ impl SharedResourcesManager {
 
         let mut texture_data = [Color::default(); 4];
 
-        texture_data[0] = Color::new(0, 0, 127, 255);
-        texture_data[1] = Color::new(0, 0, 127, 255);
-        texture_data[2] = Color::new(0, 0, 127, 255);
-        texture_data[3] = Color::new(0, 0, 127, 255);
+        texture_data[0] = Color::new(127, 127, 255, 255);
+        texture_data[1] = Color::new(127, 127, 255, 255);
+        texture_data[2] = Color::new(127, 127, 255, 255);
+        texture_data[3] = Color::new(127, 127, 255, 255);
 
         (texture_def, TextureData::from_slice(&texture_data))
     }

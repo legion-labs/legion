@@ -101,7 +101,7 @@ impl GltfFile {
 
                 let mut indices = Some(indices);
                 if tangents.is_empty() && !normals.is_empty() {
-                    tangents = lgn_math::calculate_tangents(&positions, &tex_coords, &indices);
+                    tangents = lgn_math::calculate_tangents(&positions, &tex_coords, &indices, 0);
                 }
 
                 let mut material = primitive.material().name().map(|material_name| {

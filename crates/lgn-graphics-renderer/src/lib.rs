@@ -24,7 +24,6 @@ pub use labels::*;
 
 mod asset_to_ecs;
 mod renderer;
-use lgn_codec_api::stream_encoder::StreamEncoder;
 use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{AddressMode, CompareOp, FilterType, MipMapMode, ResourceUsage, SamplerDef};
 use lgn_graphics_cgen_runtime::CGenRegistryList;
@@ -52,7 +51,7 @@ pub mod egui;
 pub mod hl_gfx_api;
 
 pub(crate) mod lighting;
-pub(crate) mod render_pass;
+pub mod render_pass;
 
 use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
 use crate::render_pass::TmpRenderPass;
@@ -275,15 +274,13 @@ fn on_window_created(
     window_list: Res<'_, Windows>,
     renderer: Res<'_, Renderer>,
     pipeline_manager: Res<'_, PipelineManager>,
-    stream_encoder: Res<'_, StreamEncoder>,
     mut render_surfaces: ResMut<'_, RenderSurfaces>,
     mut event_render_surface_created: ResMut<'_, Events<RenderSurfaceCreatedForWindow>>,
 ) {
     for ev in event_window_created.iter() {
         let wnd = window_list.get(ev.id).unwrap();
         let extents = RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height());
-        let render_surface =
-            RenderSurface::new(&renderer, &pipeline_manager, extents, &stream_encoder);
+        let render_surface = RenderSurface::new(&renderer, &pipeline_manager, extents);
 
         render_surfaces.insert(ev.id, render_surface.id());
 
@@ -304,7 +301,6 @@ fn on_window_resized(
     mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
     render_surfaces: Res<'_, RenderSurfaces>,
     pipeline_manager: Res<'_, PipelineManager>,
-    stream_encoder: Res<'_, StreamEncoder>,
 ) {
     for ev in ev_wnd_resized.iter() {
         let render_surface_id = render_surfaces.get_from_window_id(ev.id);
@@ -318,7 +314,6 @@ fn on_window_resized(
                     renderer.device_context(),
                     RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height()),
                     &pipeline_manager,
-                    &stream_encoder,
                 );
             }
         }
@@ -619,18 +614,11 @@ fn render_update(
             );
         }
 
-        // final resolve
-        let final_resolve_render_pass = render_surface.final_resolve_render_pass();
-        let final_resolve_render_pass = final_resolve_render_pass.write();
-
-        final_resolve_render_pass.render(&render_context, &mut render_surface, &mut cmd_buffer);
-
         // queue
-        let sems = render_surface.acquire();
-        let sems_array = [sems.0, &sems.1.external_resource()];
+        let present_sema = render_surface.acquire();
         {
             let graphics_queue = render_context.graphics_queue();
-            graphics_queue.submit(&mut [cmd_buffer.finalize()], &[], &sems_array, None);
+            graphics_queue.submit(&mut [cmd_buffer.finalize()], &[present_sema], &[], None);
 
             render_surface.present(&render_context);
         }

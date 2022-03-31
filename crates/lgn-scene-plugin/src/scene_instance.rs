@@ -4,7 +4,6 @@ use lgn_data_runtime::{AssetRegistry, Resource, ResourceTypeAndId};
 use lgn_ecs::prelude::{Commands, Query};
 use lgn_graphics_renderer::components::{LightComponent, LightType, VisualComponent};
 use lgn_hierarchy::prelude::{BuildChildren, Children, Parent};
-use lgn_math::Vec3;
 use lgn_tracing::{error, info, warn};
 use lgn_transform::components::{GlobalTransform, Transform};
 use sample_data::runtime as runtime_data;
@@ -154,11 +153,7 @@ impl SceneInstance {
                             },
                             _ => unreachable!("Unrecognized light type"),
                         },
-                        color: Vec3::new(
-                            f32::from(light.color.r) / 255.0,
-                            f32::from(light.color.g) / 255.0,
-                            f32::from(light.color.b) / 255.0,
-                        ),
+                        color: light.color,
                         radiance: light.radiance,
                         enabled: light.enabled,
                         ..LightComponent::default()

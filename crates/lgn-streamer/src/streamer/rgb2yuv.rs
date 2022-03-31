@@ -159,7 +159,7 @@ impl RgbToYuvConverter {
         let render_frame_idx = 0;
         let mut cmd_buffer = render_context.alloc_command_buffer();
         render_surface
-            .resolve_rt_mut()
+            .hdr_rt_mut()
             .transition_to(&cmd_buffer, ResourceState::SHADER_RESOURCE);
         {
             let yuv_images = &self.resolution_dependent_resources.yuv_images[render_frame_idx];
@@ -198,7 +198,7 @@ impl RgbToYuvConverter {
                 &self.resolution_dependent_resources.yuv_image_uavs[render_frame_idx];
 
             let mut descriptor_set = cgen::descriptor_set::RGB2YUVDescriptorSet::default();
-            descriptor_set.set_hdr_image(render_surface.resolve_rt().srv());
+            descriptor_set.set_hdr_image(render_surface.hdr_rt().srv());
             descriptor_set.set_y_image(&yuv_images_views.0);
             descriptor_set.set_u_image(&yuv_images_views.1);
             descriptor_set.set_v_image(&yuv_images_views.2);
@@ -330,7 +330,6 @@ impl RgbToYuvConverter {
 
         let wait_sem = render_surface.presenter_sem();
         let graphics_queue = render_context.graphics_queue();
-
         graphics_queue.submit(&mut [cmd_buffer.finalize()], &[wait_sem], &[], None);
 
         graphics_queue.wait_for_queue_idle()?;
