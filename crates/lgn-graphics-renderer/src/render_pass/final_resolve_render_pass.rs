@@ -76,8 +76,8 @@ impl FinalResolveRenderPass {
 
         #[rustfmt::skip]
             let vertex_data: [f32; 12] = [0.0, 2.0, 0.0, 2.0,
-                                          0.0, 0.0, 0.0, 0.0,
-                                          2.0, 0.0, 2.0, 0.0];
+                                          2.0, 0.0, 2.0, 0.0,
+                                          0.0, 0.0, 0.0, 0.0];
 
         let sub_allocation = render_context
             .transient_buffer_allocator()
