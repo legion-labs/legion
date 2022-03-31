@@ -132,12 +132,9 @@ ENV NVIDIA_DRIVER_CAPABILITIES compute,graphics,video,utility
 
 { copy_all }
 
-EXPOSE 50051/tcp
-EXPOSE 50051/udp
-
 WORKDIR /usr/src/app
 
-CMD ["{ binaries.editor-srv }", "--addr=0.0.0.0:50051"]
+ENTRYPOINT ["{ binaries.editor-srv }"]
 '''
 
 [[package.metadata.monorepo.publish]]
