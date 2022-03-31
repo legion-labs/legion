@@ -117,6 +117,7 @@ impl AssetRegistryPlugin {
         mut asset_handles: ResMut<'_, AssetHandles>,
         manifest: Res<'_, Manifest>,
         registry: Res<'_, Arc<AssetRegistry>>,
+        mut commands: Commands<'_, '_>,
     ) {
         let mut assets_to_load = config.assets_to_load.clone();
         if assets_to_load.is_empty() {
@@ -127,6 +128,9 @@ impl AssetRegistryPlugin {
             asset_loading_states.insert(asset_id, LoadingState::Pending);
             asset_handles.insert(asset_id, registry.load_untyped(asset_id));
         }
+
+        // Can clean up AssetRegistrySettings, no longer needed
+        commands.remove_resource::<AssetRegistrySettings>();
     }
 
     #[allow(clippy::needless_pass_by_value)]
