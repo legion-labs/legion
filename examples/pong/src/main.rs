@@ -8,12 +8,14 @@ use clap::{ArgEnum, Parser};
 use std::{
     env,
     fs::OpenOptions,
+    io::Write,
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
 };
 
 use lgn_content_store::{ContentStoreAddr, HddContentStore};
+use lgn_content_store2::Chunker;
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::{
@@ -84,7 +86,7 @@ async fn main() {
     let mut project = Project::create(
         absolute_project_dir,
         "../remote".to_owned(),
-        content_provider,
+        Arc::clone(&content_provider),
     )
     .await
     .expect("failed to create a project");
@@ -151,17 +153,27 @@ async fn main() {
         build_manager.build_all_derived(id, &project).await.unwrap();
     }
 
+    let mut buffer = vec![];
+    serde_json::to_writer_pretty(&mut buffer, &build_manager.get_manifest())
+        .expect("to write manifest");
+
+    let chunker = Chunker::default();
+    let chunk_id = chunker
+        .write_chunk(content_provider, &buffer)
+        .await
+        .expect("failed to write manifest to cas");
+
     let runtime_dir = project_dir.join("runtime");
     std::fs::create_dir(&runtime_dir).unwrap();
     let runtime_manifest_path = runtime_dir.join("game.manifest");
-    let file = OpenOptions::new()
+
+    let mut file = OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(true)
         .open(runtime_manifest_path)
         .expect("open file");
-
-    serde_json::to_writer_pretty(file, &build_manager.get_manifest()).expect("to write manifest");
+    write!(file, "{}", chunk_id).expect("failed to write manifest id to file");
 }
 
 fn clean_folders(project_dir: impl AsRef<Path>) {
