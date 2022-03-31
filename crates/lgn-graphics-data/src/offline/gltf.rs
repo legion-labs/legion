@@ -108,28 +108,32 @@ impl GltfFile {
                     tangents = lgn_math::calculate_tangents(&positions, &tex_coords, &indices, 0);
                 }
 
-                let mut material = primitive.material().name().map(|material_name| {
-                    ResourcePathId::from(resource_id)
-                        .push_named(crate::offline::Material::TYPE, material_name)
-                        .push(crate::runtime::Material::TYPE)
-                });
-                if material.is_none() {
-                    material = primitive.material().index().map(|idx| {
-                        ResourcePathId::from(resource_id)
-                            .push_named(
-                                crate::offline::Material::TYPE,
-                                self.document
-                                    .as_ref()
-                                    .unwrap()
-                                    .materials()
-                                    .nth(idx)
-                                    .unwrap()
-                                    .name()
-                                    .unwrap(),
-                            )
-                            .push(crate::runtime::Material::TYPE)
-                    });
-                }
+                let material = primitive.material().name().map_or_else(
+                    || {
+                        primitive.material().index().map(|idx| {
+                            ResourcePathId::from(resource_id)
+                                .push_named(
+                                    crate::offline::Material::TYPE,
+                                    self.document
+                                        .as_ref()
+                                        .unwrap()
+                                        .materials()
+                                        .nth(idx)
+                                        .unwrap()
+                                        .name()
+                                        .unwrap(),
+                                )
+                                .push(crate::runtime::Material::TYPE)
+                        })
+                    },
+                    |material_name| {
+                        Some(
+                            ResourcePathId::from(resource_id)
+                                .push_named(crate::offline::Material::TYPE, material_name)
+                                .push(crate::runtime::Material::TYPE),
+                        )
+                    },
+                );
                 meshes.push(Mesh {
                     positions,
                     normals,
