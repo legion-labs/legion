@@ -43,10 +43,28 @@
   const redirectUri = `${document.location.origin}/`;
 
   export const load: Load = async ({ fetch, url }) => {
+    const editorServerUrlKey = "editor-server-url";
+    const editorRuntimerUrlKey = "editor-runtime-url";
+
+    if (url.searchParams.has(editorServerUrlKey)) {
+      sessionStorage.setItem(
+        editorServerUrlKey,
+        url.searchParams.get(editorServerUrlKey) as string
+      );
+    }
+
+    if (url.searchParams.has(editorRuntimerUrlKey)) {
+      sessionStorage.setItem(
+        editorRuntimerUrlKey,
+        url.searchParams.get(editorRuntimerUrlKey) as string
+      );
+    }
+
     const editorServerUrl =
-      url.searchParams.get("editor-server-url") || undefined;
+      sessionStorage.getItem(editorServerUrlKey) || undefined;
+
     const runtimeServerUrl =
-      url.searchParams.get("runtime-server-url") || undefined;
+      sessionStorage.getItem(editorRuntimerUrlKey) || undefined;
 
     initApiClient({ editorServerUrl });
 
