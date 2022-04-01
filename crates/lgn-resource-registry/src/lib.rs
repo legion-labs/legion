@@ -73,7 +73,7 @@ impl ResourceRegistryPlugin {
 
             sample_data_compiler::raw_loader::build_offline(
                 &project_dir,
-                settings.source_control_path.clone(),
+                settings.source_control_index,
                 Arc::clone(&content_provider),
                 false,
             )
@@ -87,7 +87,7 @@ impl ResourceRegistryPlugin {
                 } else {
                     let mut project = Project::create(
                         &project_dir,
-                        settings.source_control_path.clone(),
+                        settings.source_control_index,
                         content_provider,
                     )
                     .await

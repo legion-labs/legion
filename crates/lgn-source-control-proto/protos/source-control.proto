@@ -4,10 +4,12 @@ package source_control;
 import "google/protobuf/timestamp.proto";
 
 service SourceControl {
-  rpc IndexExists(IndexExistsRequest) returns (IndexExistsResponse) {};
-  rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {};
-  rpc DestroyIndex(DestroyIndexRequest) returns (DestroyIndexResponse) {};
+  // RepositoryIndex operations.
+  rpc RepositoryExists(RepositoryExistsRequest) returns (RepositoryExistsResponse) {};
+  rpc CreateRepository(CreateRepositoryRequest) returns (CreateRepositoryResponse) {};
+  rpc DestroyRepository(DestroyRepositoryRequest) returns (DestroyRepositoryResponse) {};
 
+  // Index operations.
   rpc RegisterWorkspace(RegisterWorkspaceRequest) returns (RegisterWorkspaceResponse) {};
 
   rpc GetBranch(GetBranchRequest) returns (GetBranchResponse) {};
@@ -28,27 +30,27 @@ service SourceControl {
   rpc CountLocks(CountLocksRequest) returns (CountLocksResponse) {};
 }
 
-message IndexExistsRequest {
+message RepositoryExistsRequest {
   string repository_name = 1;
 }
 
-message IndexExistsResponse {
+message RepositoryExistsResponse {
   bool exists = 1;
 }
 
-message CreateIndexRequest {
+message CreateRepositoryRequest {
   string repository_name = 1;
 }
 
-message CreateIndexResponse {
+message CreateRepositoryResponse {
   bool already_exists = 1;
 }
 
-message DestroyIndexRequest {
+message DestroyRepositoryRequest {
   string repository_name = 1;
 }
 
-message DestroyIndexResponse {
+message DestroyRepositoryResponse {
   bool does_not_exist = 1;
 }
 

@@ -58,7 +58,22 @@ impl Config {
         &self,
         scopes: &[String],
     ) -> Result<AuthenticatedClient<GrpcClient, BoxedAuthenticator>> {
-        let client = GrpcClient::new(self.api_base_url.clone());
+        self.instantiate_api_client_with_url(None, scopes).await
+    }
+
+    /// Instantiate a API client.
+    ///
+    /// If an URL is specified, is it used instead of the default.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the authentication settings are invalid.
+    pub async fn instantiate_api_client_with_url(
+        &self,
+        url: Option<&Uri>,
+        scopes: &[String],
+    ) -> Result<AuthenticatedClient<GrpcClient, BoxedAuthenticator>> {
+        let client = GrpcClient::new(url.unwrap_or(&self.api_base_url).clone());
 
         let authenticator = match &self.authentication {
             Some(config) => Some(config.instantiate_authenticator().await?),
@@ -79,7 +94,22 @@ impl Config {
         &self,
         scopes: &[String],
     ) -> Result<AuthenticatedClient<GrpcWebClient, BoxedAuthenticator>> {
-        let client = GrpcWebClient::new(self.web_api_base_url.clone());
+        self.instantiate_web_api_client_with_url(None, scopes).await
+    }
+
+    /// Instantiate a Web API client.
+    ///
+    /// If an URL is specified, is it used instead of the default.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the authentication settings are invalid.
+    pub async fn instantiate_web_api_client_with_url(
+        &self,
+        url: Option<&Uri>,
+        scopes: &[String],
+    ) -> Result<AuthenticatedClient<GrpcWebClient, BoxedAuthenticator>> {
+        let client = GrpcWebClient::new(url.unwrap_or(&self.api_base_url).clone());
 
         let authenticator = match &self.authentication {
             Some(config) => Some(config.instantiate_authenticator().await?),

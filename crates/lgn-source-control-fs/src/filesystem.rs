@@ -2,7 +2,7 @@ use fuser::{
     FileAttr, FileType, Filesystem, ReplyAttr, ReplyData, ReplyDirectory, ReplyEntry, Request,
 };
 use lgn_content_store2::{ChunkIdentifier, Chunker, Config, ContentProvider};
-use lgn_source_control::{IndexBackend, MapOtherError, Result, Tree};
+use lgn_source_control::{Index, MapOtherError, Result, Tree};
 use lgn_tracing::{debug, error};
 use libc::{EISDIR, ENOENT, ENOTDIR};
 use std::{
@@ -17,7 +17,7 @@ const TTL: Duration = Duration::from_secs(1); // 1 second
 
 pub struct SourceControlFilesystem {
     handle: tokio::runtime::Handle,
-    index_backend: Box<dyn IndexBackend>,
+    index: Box<dyn Index>,
     chunker: Chunker,
     content_provider: Box<dyn ContentProvider + Send + Sync>,
     branch_name: String,
@@ -27,9 +27,9 @@ pub struct SourceControlFilesystem {
 }
 
 impl SourceControlFilesystem {
-    pub async fn new(index_backend: Box<dyn IndexBackend>, branch_name: String) -> Result<Self> {
+    pub async fn new(index: Box<dyn Index>, branch_name: String) -> Result<Self> {
         let handle = tokio::runtime::Handle::current();
-        let tree = Self::read_tree(index_backend.as_ref(), &branch_name).await?;
+        let tree = Self::read_tree(&index, &branch_name).await?;
         let chunker = Chunker::default();
 
         let content_provider = Config::load_and_instantiate_persistent_provider()
@@ -38,7 +38,7 @@ impl SourceControlFilesystem {
 
         Ok(Self {
             handle,
-            index_backend,
+            index,
             chunker,
             content_provider,
             branch_name,
@@ -50,19 +50,19 @@ impl SourceControlFilesystem {
 
     /// Synchronize the filesystem to the latest state.
     fn sync(&self) -> Result<()> {
-        let tree = self.handle.block_on(async move {
-            Self::read_tree(self.index_backend.as_ref(), &self.branch_name).await
-        })?;
+        let tree = self
+            .handle
+            .block_on(async move { Self::read_tree(&self.index, &self.branch_name).await })?;
 
         self.inode_index.lock().unwrap().update_tree(tree);
 
         Ok(())
     }
 
-    async fn read_tree(index_backend: &dyn IndexBackend, branch_name: &str) -> Result<Tree> {
-        let branch = index_backend.get_branch(branch_name).await?;
-        let commit = index_backend.get_commit(branch.head).await?;
-        index_backend.get_tree(&commit.root_tree_id).await
+    async fn read_tree(index: &Box<dyn Index>, branch_name: &str) -> Result<Tree> {
+        let branch = index.get_branch(branch_name).await?;
+        let commit = index.get_commit(branch.head).await?;
+        index.get_tree(&commit.root_tree_id).await
     }
 
     fn get_data(&self, chunk_id: &ChunkIdentifier) -> Result<Vec<u8>> {

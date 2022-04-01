@@ -6,6 +6,7 @@
 use std::path::PathBuf;
 
 use clap::Parser;
+use lgn_source_control::RepositoryName;
 use lgn_source_control_fs::run;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::*;
@@ -29,6 +30,13 @@ struct Cli {
     #[clap(name = "mountpoint", help = "The filesystem mount point")]
     mountpoint: PathBuf,
 
+    #[clap(
+        name = "repository-name",
+        default_value = "default",
+        help = "The repository name"
+    )]
+    repository_name: RepositoryName,
+
     #[clap(name = "branch", default_value = "main", help = "The branch to mount")]
     branch: String,
 }
@@ -48,10 +56,15 @@ async fn main() -> anyhow::Result<()> {
 
     span_scope!("lgn_source_control_fs::main");
 
-    let index_backend = lgn_source_control::new_index_backend(&args.index_url)?;
+    let repository_index =
+        lgn_source_control::Config::load_and_instantiate_repository_index().await?;
+
+    let index = repository_index
+        .load_repository(args.repository_name)
+        .await?;
 
     tokio::select! {
         r = lgn_cli_utils::wait_for_termination() => r,
-        r = run(index_backend, args.branch, args.mountpoint) => r,
+        r = run(index, args.branch, args.mountpoint) => r,
     }
 }

@@ -11,7 +11,7 @@ use std::{
 use lgn_content_store2::ContentProvider;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_source_control::{
-    CanonicalPath, CommitMode, IndexBackend, LocalIndexBackend, Workspace, WorkspaceConfig,
+    CanonicalPath, CommitMode, LocalIndex, RepositoryIndex, Workspace, WorkspaceConfig,
     WorkspaceRegistration,
 };
 use lgn_tracing::error;
@@ -76,7 +76,7 @@ pub use lgn_source_control::data_types::Tree;
 pub struct Project {
     project_dir: PathBuf,
     resource_dir: PathBuf,
-    local_remote: Option<LocalIndexBackend>,
+    local_remote: Option<LocalIndex>,
     workspace: Workspace,
     content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     deleted_pending: HashMap<ResourceId, (ResourcePathName, ResourceType)>,
@@ -138,8 +138,8 @@ impl Project {
     }
 
     /// Creates a local source control index.
-    pub async fn create_local_origin(path: impl AsRef<Path>) -> Result<LocalIndexBackend, Error> {
-        let remote = LocalIndexBackend::new(&path).map_err(Error::SourceControl)?;
+    pub async fn create_local_origin(path: impl AsRef<Path>) -> Result<LocalIndex, Error> {
+        let remote = LocalIndex::new(&path).map_err(Error::SourceControl)?;
         if !remote.index_exists().await.map_err(Error::SourceControl)? {
             remote.create_index().await.map_err(Error::SourceControl)?;
         }

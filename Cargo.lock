@@ -2556,6 +2556,7 @@ dependencies = [
  "lgn-transform",
  "lgn-window",
  "sample-data",
+ "serde",
  "serde_json",
  "tempfile",
  "thiserror",
@@ -5438,6 +5439,7 @@ dependencies = [
  "lgn-data-runtime",
  "lgn-data-transaction",
  "lgn-ecs",
+ "lgn-source-control",
  "lgn-tasks",
  "lgn-ubercompiler",
  "sample-data-compiler",
@@ -5517,13 +5519,16 @@ dependencies = [
  "anyhow",
  "async-recursion 1.0.0",
  "async-trait",
+ "atty",
  "aws-config",
  "aws-sdk-s3",
  "bytes",
  "chrono",
+ "clap 3.1.6",
  "futures",
  "http",
  "itertools 0.10.3",
+ "lgn-config",
  "lgn-content-store2",
  "lgn-online",
  "lgn-source-control-proto",
@@ -5540,11 +5545,15 @@ dependencies = [
  "sha2 0.10.2",
  "sqlx",
  "tempfile",
+ "termcolor",
  "thiserror",
  "tokio",
  "tokio-stream",
  "tokio-util 0.6.9",
- "url",
+ "tonic",
+ "tonic-web",
+ "tower",
+ "tower-http",
  "urlencoding",
  "uuid",
  "whoami",
@@ -5577,28 +5586,6 @@ dependencies = [
  "tokio",
  "tonic",
  "tonic-build",
-]
-
-[[package]]
-name = "lgn-source-control-srv"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytes",
- "clap 3.1.6",
- "http",
- "hyper",
- "lgn-config",
- "lgn-source-control",
- "lgn-source-control-proto",
- "lgn-telemetry-sink",
- "lgn-tracing",
- "serde",
- "serde_json",
- "tokio",
- "tonic",
- "tonic-web",
- "url",
 ]
 
 [[package]]
@@ -5974,22 +5961,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fcb87f3080f6d1d69e8c564c0fcfde1d7aa8cc451ce40cae89479111f03bc0eb"
 dependencies = [
  "hashbrown",
-]
-
-[[package]]
-name = "lsc"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "atty",
- "chrono",
- "clap 3.1.6",
- "lgn-content-store2",
- "lgn-source-control",
- "lgn-telemetry-sink",
- "lgn-tracing",
- "termcolor",
- "tokio",
 ]
 
 [[package]]
@@ -8636,6 +8607,7 @@ dependencies = [
  "lgn-data-runtime",
  "lgn-graphics-data",
  "lgn-math",
+ "lgn-source-control",
  "lgn-telemetry-sink",
  "lgn-utils",
  "png 0.17.5",

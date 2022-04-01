@@ -5,7 +5,7 @@ use std::path::Path;
 
 use anyhow::Result;
 
-use lgn_source_control::IndexBackend;
+use lgn_source_control::Index;
 
 #[cfg(not(target_os = "windows"))]
 mod filesystem;
@@ -29,7 +29,7 @@ mod inode_index;
     )
 )]
 pub async fn run(
-    index_backend: Box<dyn IndexBackend>,
+    index: Box<dyn Index>,
     branch: String,
     mountpoint: impl AsRef<Path>,
 ) -> Result<()> {
@@ -43,7 +43,7 @@ pub async fn run(
         use fuser::MountOption;
         use tokio::sync::Semaphore;
 
-        let fs = SourceControlFilesystem::new(index_backend, branch).await?;
+        let fs = SourceControlFilesystem::new(index, branch).await?;
         let options = vec![MountOption::RO, MountOption::FSName("hello".to_string())];
 
         let session = fuser::Session::new(fs, mountpoint.as_ref(), &options)
