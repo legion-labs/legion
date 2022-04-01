@@ -23,7 +23,7 @@ use lgn_tracing::{debug, warn};
 use serde::Serialize;
 use webrtc::data_channel::{data_channel_state::RTCDataChannelState, RTCDataChannel};
 
-use super::{Resolution, RgbToYuvConverter};
+use super::{Hdr2Rgb, Resolution, RgbToYuvConverter};
 #[derive(Component)]
 #[component(storage = "Table")]
 pub struct VideoStream {
