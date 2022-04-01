@@ -14,7 +14,7 @@ use lgn_tracing::span_fn;
 use crate::{
     components::{TextureComponent, TextureData},
     labels::RenderStage,
-    Renderer, ResourceLoadingLabel,
+    Renderer, ResourceStageLabel,
 };
 
 use super::PersistentDescriptorSetManager;
@@ -94,7 +94,7 @@ impl TextureManager {
         app.add_system_to_stage(
             RenderStage::Resource,
             apply_changes
-                .label(ResourceLoadingLabel::Texture)
+                .label(ResourceStageLabel::Texture)
                 .after(TextureManagerLabel::UpdateDone),
         );
     }
@@ -433,11 +433,15 @@ fn on_texture_modified(
 #[allow(clippy::needless_pass_by_value)]
 #[span_fn]
 fn on_texture_removed(
+    mut commands: Commands<'_, '_>,
     removed_entities: RemovedComponents<'_, TextureComponent>,
     mut texture_manager: ResMut<'_, TextureManager>,
 ) {
     // todo: must be send some events to refresh the material
     for removed_entity in removed_entities.iter() {
+        commands
+            .entity(removed_entity)
+            .remove::<GPUTextureComponent>();
         texture_manager.remove_by_entity(removed_entity);
     }
 }

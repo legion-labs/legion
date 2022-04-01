@@ -2,7 +2,7 @@ use lgn_graphics_api::Buffer;
 
 use crate::{hl_gfx_api::HLCommandBuffer, resources::PipelineHandle, RenderContext};
 
-use super::RenderElement;
+use super::{GpuInstanceId, RenderElement};
 
 #[derive(Clone)]
 pub struct RenderStateSet {
@@ -33,9 +33,9 @@ impl RenderBatch {
         self.elements.push(*element);
     }
 
-    pub fn remove_cpu_element(&mut self, gpu_instance_id: u32) {
+    pub fn remove_cpu_element(&mut self, gpu_instance_id: GpuInstanceId) {
         for (index, matching) in self.elements.iter().enumerate() {
-            if gpu_instance_id == matching.gpu_instance_id {
+            if gpu_instance_id == matching.gpu_instance_id() {
                 self.elements.swap_remove(index);
                 return;
             }

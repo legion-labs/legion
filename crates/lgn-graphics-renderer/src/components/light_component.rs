@@ -157,6 +157,8 @@ pub(crate) fn update_lights(
     if q_change.is_empty() && removals.iter().count() == 0 {
         return;
     }
+
+    // TODO(vdbdd): use a stack array
     let mut omnidirectional_lights_data =
         Vec::<OmniDirectionalLight>::with_capacity(OmniDirectionalLight::NUM as usize);
     let mut directional_lights_data =
