@@ -4,7 +4,7 @@ use lgn_tracing::trace;
 use super::{internal::VkQueue, SparseBindingInfo};
 use crate::{
     CommandBuffer, DeviceContext, Fence, GfxResult, PagedBufferAllocation, PresentSuccessResult,
-    Queue, QueueType, Semaphore, Swapchain,
+    Queue, QueueType, Semaphore, SemaphoreUsage, Swapchain,
 };
 
 pub(crate) struct VulkanQueue {
@@ -84,6 +84,7 @@ impl Queue {
         wait_semaphores: &[&Semaphore],
         signal_semaphores: &[&Semaphore],
         signal_fence: Option<&Fence>,
+        current_cpu_frame: u64,
     ) -> GfxResult<()> {
         let mut command_buffer_list = Vec::with_capacity(command_buffers.len());
         for command_buffer in command_buffers {
@@ -91,11 +92,20 @@ impl Queue {
         }
 
         let mut wait_semaphore_list = Vec::with_capacity(wait_semaphores.len());
+        let mut timeline_submit_list = Vec::with_capacity(wait_semaphores.len());
         let mut wait_dst_stage_mask = Vec::with_capacity(wait_semaphores.len());
+
         for wait_semaphore in wait_semaphores {
+            let timeline = wait_semaphore
+                .definition()
+                .usage_flags
+                .intersects(SemaphoreUsage::TIMELINE);
+
             // Don't wait on a semaphore that will never signal
             //TODO: Assert or fail here?
-            if wait_semaphore.signal_available() {
+            if timeline || wait_semaphore.signal_available() {
+                timeline_submit_list.push(current_cpu_frame);
+
                 wait_semaphore_list.push(wait_semaphore.vk_semaphore());
                 wait_dst_stage_mask.push(vk::PipelineStageFlags::ALL_COMMANDS);
 
@@ -104,20 +114,34 @@ impl Queue {
         }
 
         let mut signal_semaphore_list = Vec::with_capacity(signal_semaphores.len());
+        let mut signal_submit_list = Vec::with_capacity(signal_semaphores.len());
+
         for signal_semaphore in signal_semaphores {
+            let timeline = signal_semaphore
+                .definition()
+                .usage_flags
+                .intersects(SemaphoreUsage::TIMELINE);
+
             // Don't signal a semaphore if something is already going to signal it
             //TODO: Assert or fail here?
-            if !signal_semaphore.signal_available() {
+            if timeline || !signal_semaphore.signal_available() {
+                signal_submit_list.push(current_cpu_frame);
+
                 signal_semaphore_list.push(signal_semaphore.vk_semaphore());
                 signal_semaphore.set_signal_available(true);
             }
         }
 
+        let mut timeline_submit_info = vk::TimelineSemaphoreSubmitInfo::builder()
+            .wait_semaphore_values(&timeline_submit_list)
+            .signal_semaphore_values(&signal_submit_list);
+
         let submit_info = vk::SubmitInfo::builder()
             .wait_semaphores(&wait_semaphore_list)
             .wait_dst_stage_mask(&wait_dst_stage_mask)
             .signal_semaphores(&signal_semaphore_list)
-            .command_buffers(&command_buffer_list);
+            .command_buffers(&command_buffer_list)
+            .push_next(&mut timeline_submit_info);
 
         let fence = signal_fence.map_or(vk::Fence::null(), Fence::vk_fence);
         unsafe {

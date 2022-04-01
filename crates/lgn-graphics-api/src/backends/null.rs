@@ -561,6 +561,7 @@ impl Queue {
         wait_semaphores: &[&Semaphore],
         signal_semaphores: &[&Semaphore],
         signal_fence: Option<&Fence>,
+        current_cpu_frame: u64,
     ) -> GfxResult<()> {
         unimplemented!()
     }

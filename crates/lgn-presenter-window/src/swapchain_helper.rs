@@ -6,7 +6,7 @@ use crossbeam_channel::{Receiver, Sender};
 use lgn_core::Handle;
 use lgn_graphics_api::{
     CommandBuffer, DeviceContext, Fence, Format, GfxError, GfxResult, PresentSuccessResult,
-    Semaphore, Swapchain, SwapchainDef, SwapchainImage, Texture, TextureView,
+    Semaphore, SemaphoreDef, Swapchain, SwapchainDef, SwapchainImage, Texture, TextureView,
 };
 use lgn_graphics_renderer::hl_gfx_api::HLQueue;
 use lgn_tracing::{debug, error, info, trace};
@@ -55,8 +55,10 @@ impl SwapchainHelperSharedState {
         let mut in_flight_fences = Vec::with_capacity(image_count);
 
         for _ in 0..image_count {
-            image_available_semaphores.push(device_context.create_semaphore(false));
-            render_finished_semaphores.push(device_context.create_semaphore(false));
+            image_available_semaphores
+                .push(device_context.create_semaphore(SemaphoreDef::default()));
+            render_finished_semaphores
+                .push(device_context.create_semaphore(SemaphoreDef::default()));
             in_flight_fences.push(device_context.create_fence()?);
         }
 

@@ -1,7 +1,7 @@
 use lgn_codec_api::{encoder_resource::EncoderResource, stream_encoder::StreamEncoder};
 use lgn_graphics_api::{
-    DeviceContext, Format, GPUViewType, ResourceState, ResourceUsage, Semaphore, Texture,
-    TextureBarrier,
+    DeviceContext, Format, GPUViewType, ResourceState, ResourceUsage, Semaphore, SemaphoreDef,
+    SemaphoreUsage, Texture, TextureBarrier,
 };
 use lgn_graphics_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
@@ -40,7 +40,13 @@ impl Hdr2Rgb {
         Self {
             resolve_rt,
             export_texture,
-            export_semaphore: stream_encoder.new_external_semaphore(device_context),
+            export_semaphore: stream_encoder.new_external_semaphore(
+                device_context,
+                SemaphoreDef {
+                    usage_flags: SemaphoreUsage::TIMELINE,
+                    initial_value: 0,
+                },
+            ),
             stream_encoder: stream_encoder.clone(),
         }
     }

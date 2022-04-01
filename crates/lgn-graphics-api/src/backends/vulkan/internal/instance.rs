@@ -46,7 +46,7 @@ impl VkInstance {
         // Only need 1.1 for negative y viewport support, which is also possible to get
         // out of an extension, but at this point I think 1.1 is a reasonable
         // minimum expectation
-        if vulkan_version < vk::API_VERSION_1_1 {
+        if vulkan_version < vk::API_VERSION_1_2 {
             return Err(GfxError::from(vk::Result::ERROR_INCOMPATIBLE_DRIVER));
         }
 

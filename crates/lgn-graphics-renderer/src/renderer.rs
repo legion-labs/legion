@@ -1,10 +1,10 @@
 #![allow(unsafe_code)]
 
 use lgn_core::Handle;
-use lgn_graphics_api::Queue;
 use lgn_graphics_api::{
     ApiDef, BufferView, DeviceContext, Fence, FenceStatus, GfxApi, QueueType, Semaphore,
 };
+use lgn_graphics_api::{Queue, SemaphoreDef};
 
 use lgn_tracing::span_fn;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
@@ -86,13 +86,13 @@ impl Renderer {
             render_frame_idx: 0,
             num_render_frames,
             prev_frame_sems: (0..num_render_frames)
-                .map(|_| device_context.create_semaphore(false))
+                .map(|_| device_context.create_semaphore(SemaphoreDef::default()))
                 .collect(),
             sparse_unbind_sems: (0..num_render_frames)
-                .map(|_| device_context.create_semaphore(false))
+                .map(|_| device_context.create_semaphore(SemaphoreDef::default()))
                 .collect(),
             sparse_bind_sems: (0..num_render_frames)
-                .map(|_| device_context.create_semaphore(false))
+                .map(|_| device_context.create_semaphore(SemaphoreDef::default()))
                 .collect(),
             frame_fences: (0..num_render_frames)
                 .map(|_| device_context.create_fence().unwrap())
@@ -224,6 +224,11 @@ impl Renderer {
             let mut pool = self.command_buffer_pools.lock();
             pool.begin_frame();
         }
+
+        //
+        // Update the current frame used for timeline semaphores
+        //
+        self.api.device_context_mut().inc_current_cpu_frame();
 
         // TMP: todo
         self.transient_buffer.begin_frame();

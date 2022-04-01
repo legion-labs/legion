@@ -131,4 +131,8 @@ impl GfxApi {
     pub fn device_context(&self) -> &DeviceContext {
         self.device_context.as_ref().unwrap()
     }
+
+    pub fn device_context_mut(&mut self) -> &mut DeviceContext {
+        self.device_context.as_mut().unwrap()
+    }
 }

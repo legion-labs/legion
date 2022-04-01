@@ -244,7 +244,7 @@ impl NvEncoderSession {
         self.configure_cuda_encoder(&input.image);
 
         self.nv_encoder
-            .wait_on_external_semaphore(input.semaphore.internal_resource());
+            .wait_on_external_semaphore(input.semaphore.internal_resource(), input.cpu_frame);
 
         // we need to mark the semaphore as being waited on since the wait is not done through
         // a queue submission that handles this for us.

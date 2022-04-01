@@ -203,9 +203,9 @@ impl NvEncoder {
         let sema_desc = CUDA_EXTERNAL_SEMAPHORE_HANDLE_DESC {
             #[cfg(target_os = "windows")]
             type_:
-                CUexternalSemaphoreHandleType_enum::CU_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32,
+                CUexternalSemaphoreHandleType_enum::CU_EXTERNAL_SEMAPHORE_HANDLE_TYPE_TIMELINE_SEMAPHORE_WIN32,
             #[cfg(target_os = "linux")]
-            type_: CUexternalSemaphoreHandleType_enum::CU_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD,
+            type_: CUexternalSemaphoreHandleType_enum::CU_EXTERNAL_SEMAPHORE_HANDLE_TYPE_TIMELINE_SEMAPHORE_FD,
             handle,
             ..CUDA_EXTERNAL_SEMAPHORE_HANDLE_DESC::default()
         };
@@ -228,12 +228,13 @@ impl NvEncoder {
         new_key
     }
 
-    pub(crate) fn wait_on_external_semaphore(&self, semaphore_key: u64) {
+    pub(crate) fn wait_on_external_semaphore(&self, semaphore_key: u64, cpu_frame: u64) {
         let inner = &mut *self.inner.lock().unwrap();
 
         let cuda_semaphore = *inner.cuda_semaphore_map.get(&semaphore_key).unwrap();
 
-        let wait_params = CUDA_EXTERNAL_SEMAPHORE_WAIT_PARAMS::default();
+        let mut wait_params = CUDA_EXTERNAL_SEMAPHORE_WAIT_PARAMS::default();
+        wait_params.params.fence.value = cpu_frame;
 
         inner.context.push();
         let result = unsafe {
