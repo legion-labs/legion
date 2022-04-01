@@ -253,9 +253,8 @@ impl NvEncoder {
 
         inner.context.push();
         if let Some(cuda_semaphore) = inner.cuda_semaphore_map.remove(&semaphore_key) {
-            let result = unsafe {
-                (inner.context.cuda_api().destroy_external_semaphore)(cuda_semaphore)
-            };
+            let result =
+                unsafe { (inner.context.cuda_api().destroy_external_semaphore)(cuda_semaphore) };
             assert_eq!(result, CUresult::CUDA_SUCCESS);
         }
         inner.context.pop();
