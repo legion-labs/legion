@@ -8,11 +8,11 @@ use lru::LruCache;
 use tokio::sync::Mutex;
 
 use crate::{
-    AliasRegisterer, AliasResolver, ContentAsyncRead, ContentAsyncWrite, ContentReader,
-    ContentWriter, Error, Identifier, Result, Uploader, UploaderImpl,
+    ContentAsyncRead, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
+    Uploader, UploaderImpl,
 };
 
-/// A `LocalProvider` is a provider that stores content on the local filesystem.
+/// A `LruProvider` is a provider that stores content in RAM, but only keeps a certain amount of content, by evicting older content our of RAM.
 #[derive(Debug, Clone)]
 pub struct LruProvider {
     content_map: Arc<Mutex<LruCache<Identifier, Vec<u8>>>>,
@@ -27,32 +27,6 @@ impl LruProvider {
             content_map: Arc::new(Mutex::new(LruCache::new(size))),
             alias_map: Arc::new(Mutex::new(LruCache::new(size))),
         }
-    }
-}
-
-#[async_trait]
-impl AliasResolver for LruProvider {
-    async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
-        let mut map = self.alias_map.lock().await;
-        let k = (key_space.to_string(), key.to_string());
-
-        map.get(&k).cloned().ok_or(Error::NotFound)
-    }
-}
-
-#[async_trait]
-impl AliasRegisterer for LruProvider {
-    async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
-        let k = (key_space.to_string(), key.to_string());
-        let mut map = self.alias_map.lock().await;
-
-        if map.contains(&k) {
-            return Err(Error::AlreadyExists);
-        }
-
-        map.put(k, id.clone());
-
-        Ok(())
     }
 }
 
@@ -90,6 +64,13 @@ impl ContentReader for LruProvider {
 
         Ok(res)
     }
+
+    async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
+        let mut map = self.alias_map.lock().await;
+        let k = (key_space.to_string(), key.to_string());
+
+        map.get(&k).cloned().ok_or(Error::NotFound)
+    }
 }
 
 #[async_trait]
@@ -105,6 +86,19 @@ impl ContentWriter for LruProvider {
                 },
             )))
         }
+    }
+
+    async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
+        let k = (key_space.to_string(), key.to_string());
+        let mut map = self.alias_map.lock().await;
+
+        if map.contains(&k) {
+            return Err(Error::AlreadyExists);
+        }
+
+        map.put(k, id.clone());
+
+        Ok(())
     }
 }
 

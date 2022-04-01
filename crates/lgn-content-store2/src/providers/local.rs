@@ -2,8 +2,10 @@ use anyhow::Context;
 use async_trait::async_trait;
 use std::{
     collections::{BTreeMap, BTreeSet},
+    io::Write,
     path::PathBuf,
 };
+use tokio::io::AsyncReadExt;
 
 use crate::{
     traits::get_content_readers_impl, ContentAsyncRead, ContentAsyncWrite, ContentReader,
@@ -30,6 +32,12 @@ impl LocalProvider {
             .with_context(|| format!("could not create local provider in: {}", root.display()))
             .map(|_| Self(root))
             .map_err(Into::into)
+    }
+
+    fn mangled_file_path(key: &str) -> Result<String> {
+        let mut enc = base64::write::EncoderStringWriter::new(base64::URL_SAFE_NO_PAD);
+        enc.write_all(key.as_bytes())?;
+        Ok(enc.into_inner())
     }
 }
 
@@ -78,6 +86,17 @@ impl ContentReader for LocalProvider {
     ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
         get_content_readers_impl(self, ids).await
     }
+
+    async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
+        let mut alias_path = self.0.clone();
+        alias_path.push(key_space);
+        alias_path.push(Self::mangled_file_path(key)?);
+
+        let mut file = tokio::fs::File::open(&alias_path).await?;
+        let mut data = vec![];
+        file.read_to_end(&mut data).await?;
+        Ok(Identifier::new(&data))
+    }
 }
 
 #[async_trait]
@@ -107,5 +126,17 @@ impl ContentWriter for LocalProvider {
                 Err(anyhow::anyhow!("could not open file at `{}`: {}", path.display(), err).into())
             }
         }
+    }
+
+    async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
+        let mut alias_path = self.0.clone();
+        alias_path.push(key_space);
+
+        tokio::fs::create_dir_all(&alias_path).await?;
+
+        alias_path.push(Self::mangled_file_path(key)?);
+
+        tokio::fs::write(alias_path, format!("{}", id)).await?;
+        Ok(())
     }
 }

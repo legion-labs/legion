@@ -23,6 +23,8 @@ pub enum Error {
     AlreadyExists,
     #[error("the content is corrupted")]
     Corrupt,
+    #[error("io error: {0}")]
+    IO(#[from] std::io::Error),
     #[error("unknown error: {0}")]
     Unknown(#[from] anyhow::Error),
 }
