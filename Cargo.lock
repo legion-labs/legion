@@ -2523,7 +2523,6 @@ dependencies = [
  "lgn-app",
  "lgn-asset-registry",
  "lgn-async",
- "lgn-codec-api",
  "lgn-compiler-runtime-entity",
  "lgn-compiler-script2asm",
  "lgn-config",
@@ -5178,7 +5177,6 @@ dependencies = [
  "epaint",
  "lgn-app",
  "lgn-asset-registry",
- "lgn-codec-api",
  "lgn-core",
  "lgn-data-runtime",
  "lgn-ecs",
@@ -5363,6 +5361,7 @@ dependencies = [
  "lgn-data-model",
  "lgn-data-runtime",
  "lgn-ecs",
+ "lgn-graphics-data",
  "lgn-graphics-renderer",
  "lgn-math",
  "lgn-tracing",
@@ -5842,7 +5841,6 @@ name = "lgn-window"
 version = "0.1.0"
 dependencies = [
  "lgn-app",
- "lgn-codec-api",
  "lgn-ecs",
  "lgn-math",
  "lgn-tracing",

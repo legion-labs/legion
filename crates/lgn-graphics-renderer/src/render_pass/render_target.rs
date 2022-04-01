@@ -13,7 +13,7 @@ pub struct RenderTarget {
 }
 
 impl RenderTarget {
-    pub(crate) fn new(
+    pub fn new(
         device_context: &DeviceContext,
         extents: RenderSurfaceExtents,
         format: Format,
@@ -67,7 +67,7 @@ impl RenderTarget {
         }
     }
 
-    pub(crate) fn texture(&self) -> &Texture {
+    pub fn texture(&self) -> &Texture {
         &self.texture
     }
 
@@ -75,7 +75,7 @@ impl RenderTarget {
         &self.srv
     }
 
-    pub(crate) fn rtv(&self) -> &TextureView {
+    pub fn rtv(&self) -> &TextureView {
         &self.rtv
     }
 }

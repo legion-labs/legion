@@ -7,7 +7,7 @@ pub fn main() {
             fields: [
                 #{ name:"pos", ty:"Float3" },
                 #{ name:"radiance", ty:"Float1" },
-                #{ name:"color", ty:"Float3" },
+                #{ name:"color", ty:"Uint1" },
                 #{ name:"pad", ty:"Uint1" },            
             ]
         },
@@ -17,7 +17,7 @@ pub fn main() {
             fields: [
                 #{ name:"dir", ty:"Float3" },
                 #{ name:"radiance", ty:"Float1" },
-                #{ name:"color", ty:"Float3" },
+                #{ name:"color", ty:"Uint1" },
                 #{ name:"pad", ty:"Uint1" },            
             ]
         },                  
@@ -29,7 +29,7 @@ pub fn main() {
                 #{ name:"radiance", ty:"Float1" },
                 #{ name:"dir", ty:"Float3" },
                 #{ name:"cone_angle", ty:"Float1" },
-                #{ name:"color", ty:"Float3" },
+                #{ name:"color", ty:"Uint1" },
                 #{ name:"pad", ty:"Uint1", array_len:5 },            
             ]
         },    

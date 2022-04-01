@@ -1,7 +1,7 @@
 #![allow(unsafe_code)]
 
 use lgn_core::BumpAllocatorHandle;
-use lgn_math::Vec3;
+use lgn_graphics_data::Color;
 use lgn_tracing::span_fn;
 use lgn_transform::components::GlobalTransform;
 use std::sync::Mutex;
@@ -70,7 +70,7 @@ pub struct DisplayListBuilder<'system> {
 }
 
 impl<'system> DisplayListBuilder<'system> {
-    pub fn add_mesh(&mut self, transform: &GlobalTransform, mesh_id: u32, color: Vec3) {
+    pub fn add_mesh(&mut self, transform: &GlobalTransform, mesh_id: u32, color: Color) {
         let primitive = self.bump.alloc(DebugPrimitive {
             primitive_type: DebugPrimitiveType::Mesh { mesh_id },
             transform: *transform,
@@ -93,6 +93,6 @@ pub enum DebugPrimitiveType {
 pub struct DebugPrimitive {
     pub primitive_type: DebugPrimitiveType,
     pub transform: GlobalTransform,
-    pub color: Vec3,
+    pub color: Color,
     next: *const DebugPrimitive,
 }

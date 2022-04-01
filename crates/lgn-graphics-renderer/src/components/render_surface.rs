@@ -1,11 +1,9 @@
 use std::{cmp::max, sync::Arc};
 
-use lgn_codec_api::encoder_resource::EncoderResource;
-use lgn_codec_api::stream_encoder::StreamEncoder;
 use lgn_ecs::prelude::Component;
 use lgn_graphics_api::{
     DepthStencilClearValue, DepthStencilRenderTargetBinding, DeviceContext, Extents2D, Format,
-    GPUViewType, LoadOp, ResourceState, ResourceUsage, Semaphore, StoreOp, Texture,
+    GPUViewType, LoadOp, ResourceState, ResourceUsage, Semaphore, StoreOp,
 };
 use lgn_window::WindowId;
 use parking_lot::RwLock;
@@ -94,9 +92,7 @@ pub struct RenderSurfaceCreatedForWindow {
 
 #[allow(dead_code)]
 struct SizeDependentResources {
-    resolve_rt: RenderTarget,
-    export_texture: EncoderResource<Texture>,
-    lighting_rt: RenderTarget,
+    hdr_rt: RenderTarget,
     depth_rt: RenderTarget,
     hzb_surface: HzbSurface,
     hzb_init: bool,
@@ -107,29 +103,15 @@ impl SizeDependentResources {
         device_context: &DeviceContext,
         extents: RenderSurfaceExtents,
         pipeline_manager: &PipelineManager,
-        stream_encoder: &StreamEncoder,
     ) -> Self {
-        let resolve_rt = RenderTarget::new(
-            device_context,
-            extents,
-            Format::R8G8B8A8_SRGB,
-            ResourceUsage::AS_RENDER_TARGET
-                | ResourceUsage::AS_SHADER_RESOURCE
-                | ResourceUsage::AS_TRANSFERABLE
-                | ResourceUsage::AS_EXPORT_CAPABLE,
-            GPUViewType::RenderTarget,
-        );
-        let export_texture =
-            stream_encoder.new_external_image(resolve_rt.texture(), device_context);
-
         Self {
-            resolve_rt,
-            export_texture,
-            lighting_rt: RenderTarget::new(
+            hdr_rt: RenderTarget::new(
                 device_context,
                 extents,
                 Format::R16G16B16A16_SFLOAT,
-                ResourceUsage::AS_RENDER_TARGET | ResourceUsage::AS_SHADER_RESOURCE,
+                ResourceUsage::AS_RENDER_TARGET
+                    | ResourceUsage::AS_SHADER_RESOURCE
+                    | ResourceUsage::AS_TRANSFERABLE,
                 GPUViewType::RenderTarget,
             ),
             depth_rt: RenderTarget::new(
@@ -155,7 +137,6 @@ pub struct RenderSurface {
     num_render_frames: usize,
     render_frame_idx: usize,
     presenter_sems: Vec<Semaphore>,
-    encoder_sems: Vec<EncoderResource<Semaphore>>,
     picking_renderpass: Arc<RwLock<PickingRenderPass>>,
     debug_renderpass: Arc<RwLock<DebugRenderPass>>,
     egui_renderpass: Arc<RwLock<EguiPass>>,
@@ -167,15 +148,8 @@ impl RenderSurface {
         renderer: &Renderer,
         pipeline_manager: &PipelineManager,
         extents: RenderSurfaceExtents,
-        stream_encoder: &StreamEncoder,
     ) -> Self {
-        Self::new_with_id(
-            RenderSurfaceId::new(),
-            renderer,
-            pipeline_manager,
-            extents,
-            stream_encoder,
-        )
+        Self::new_with_id(RenderSurfaceId::new(), renderer, pipeline_manager, extents)
     }
 
     pub fn extents(&self) -> RenderSurfaceExtents {
@@ -203,15 +177,9 @@ impl RenderSurface {
         device_context: &DeviceContext,
         extents: RenderSurfaceExtents,
         pipeline_manager: &PipelineManager,
-        stream_encoder: &StreamEncoder,
     ) {
         if self.extents != extents {
-            self.resources = SizeDependentResources::new(
-                device_context,
-                extents,
-                pipeline_manager,
-                stream_encoder,
-            );
+            self.resources = SizeDependentResources::new(device_context, extents, pipeline_manager);
             for presenter in &mut self.presenters {
                 presenter.resize(device_context, extents);
             }
@@ -228,24 +196,12 @@ impl RenderSurface {
         self.id
     }
 
-    pub fn export_texture(&self) -> &EncoderResource<Texture> {
-        &self.resources.export_texture
+    pub fn hdr_rt(&self) -> &RenderTarget {
+        &self.resources.hdr_rt
     }
 
-    pub fn resolve_rt(&self) -> &RenderTarget {
-        &self.resources.resolve_rt
-    }
-
-    pub fn resolve_rt_mut(&mut self) -> &mut RenderTarget {
-        &mut self.resources.resolve_rt
-    }
-
-    pub fn lighting_rt(&self) -> &RenderTarget {
-        &self.resources.lighting_rt
-    }
-
-    pub fn lighting_rt_mut(&mut self) -> &mut RenderTarget {
-        &mut self.resources.lighting_rt
+    pub fn hdr_rt_mut(&mut self) -> &mut RenderTarget {
+        &mut self.resources.hdr_rt
     }
 
     pub fn depth_rt(&self) -> &RenderTarget {
@@ -316,57 +272,39 @@ impl RenderSurface {
 
         self.presenters = presenters;
     }
-
     //
     // TODO: change that asap. Acquire can't be called more than once per frame.
     // This would result in a crash.
     //
-    pub fn acquire(&mut self) -> (&Semaphore, &EncoderResource<Semaphore>) {
+    pub fn acquire(&mut self) -> &Semaphore {
         let render_frame_idx = (self.render_frame_idx + 1) % self.num_render_frames;
         let presenter_sem = &self.presenter_sems[render_frame_idx];
-        let encoder_sem = &self.encoder_sems[render_frame_idx];
         self.render_frame_idx = render_frame_idx;
 
-        (presenter_sem, encoder_sem)
+        presenter_sem
     }
 
     pub fn presenter_sem(&self) -> &Semaphore {
         &self.presenter_sems[self.render_frame_idx]
     }
-
-    pub fn encoder_sem(&self) -> &EncoderResource<Semaphore> {
-        &self.encoder_sems[self.render_frame_idx]
-    }
-
     fn new_with_id(
         id: RenderSurfaceId,
         renderer: &Renderer,
         pipeline_manager: &PipelineManager,
         extents: RenderSurfaceExtents,
-        stream_encoder: &StreamEncoder,
     ) -> Self {
         let num_render_frames = renderer.num_render_frames();
         let device_context = renderer.device_context();
         let presenter_sems = (0..num_render_frames)
             .map(|_| device_context.create_semaphore(false))
             .collect();
-        let encoder_sems = (0..num_render_frames)
-            .map(|_| stream_encoder.new_external_semaphore(device_context))
-            .collect();
-
         Self {
             id,
             extents,
-            resources: SizeDependentResources::new(
-                device_context,
-                extents,
-                pipeline_manager,
-                stream_encoder,
-            ),
+            resources: SizeDependentResources::new(device_context, extents, pipeline_manager),
             num_render_frames,
             render_frame_idx: 0,
             presenter_sems,
-            encoder_sems,
             picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(device_context))),
             debug_renderpass: Arc::new(RwLock::new(DebugRenderPass::new(pipeline_manager))),
             egui_renderpass: Arc::new(RwLock::new(EguiPass::new(device_context, pipeline_manager))),

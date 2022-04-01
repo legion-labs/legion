@@ -4,7 +4,6 @@ use lgn_graphics_renderer::{
     RenderContext, Renderer,
 };
 use raw_window_handle::HasRawWindowHandle;
-use std::convert::TryFrom;
 
 use crate::SwapchainHelper;
 
@@ -57,65 +56,37 @@ impl PresenterWindow {
             .acquire_next_image(extents.width(), extents.height(), None)
             .unwrap();
 
-        //
-        // Blit render surface
-        //
-        let cmd_buffer = render_context.alloc_command_buffer();
         let swapchain_texture = presentable_frame.swapchain_texture();
 
-        {
-            render_surface
-                .resolve_rt_mut()
-                .transition_to(&cmd_buffer, ResourceState::COPY_SRC);
+        let mut cmd_buffer = render_context.alloc_command_buffer();
+        cmd_buffer.resource_barrier(
+            &[],
+            &[TextureBarrier::state_transition(
+                swapchain_texture,
+                ResourceState::PRESENT,
+                ResourceState::RENDER_TARGET,
+            )],
+        );
 
-            cmd_buffer.resource_barrier(
-                &[],
-                &[TextureBarrier::state_transition(
-                    swapchain_texture,
-                    ResourceState::PRESENT,
-                    ResourceState::COPY_DST,
-                )],
-            );
+        // final resolve
+        let final_resolve_render_pass = render_surface.final_resolve_render_pass();
+        let final_resolve_render_pass = final_resolve_render_pass.write();
 
-            let src_texture = render_surface.export_texture().external_resource();
-            let src_texture_def = src_texture.definition();
-            let dst_texture = swapchain_texture;
-            let dst_texture_def = dst_texture.definition();
-            let blit_params = CmdBlitParams {
-                src_state: ResourceState::COPY_SRC,
-                dst_state: ResourceState::COPY_DST,
-                src_offsets: [
-                    Offset3D { x: 0, y: 0, z: 0 },
-                    Offset3D {
-                        x: i32::try_from(src_texture_def.extents.width).unwrap(),
-                        y: i32::try_from(src_texture_def.extents.height).unwrap(),
-                        z: 1,
-                    },
-                ],
-                dst_offsets: [
-                    Offset3D { x: 0, y: 0, z: 0 },
-                    Offset3D {
-                        x: i32::try_from(dst_texture_def.extents.width).unwrap(),
-                        y: i32::try_from(dst_texture_def.extents.height).unwrap(),
-                        z: 1,
-                    },
-                ],
-                src_mip_level: 0,
-                dst_mip_level: 0,
-                array_slices: Some([0, 0]),
-                filtering: FilterType::Linear,
-            };
-            cmd_buffer.blit_texture(&src_texture, dst_texture, &blit_params);
+        final_resolve_render_pass.render(
+            render_context,
+            render_surface,
+            &mut cmd_buffer,
+            presentable_frame.swapchain_rtv(),
+        );
 
-            cmd_buffer.resource_barrier(
-                &[],
-                &[TextureBarrier::state_transition(
-                    swapchain_texture,
-                    ResourceState::COPY_DST,
-                    ResourceState::PRESENT,
-                )],
-            );
-        }
+        cmd_buffer.resource_barrier(
+            &[],
+            &[TextureBarrier::state_transition(
+                swapchain_texture,
+                ResourceState::RENDER_TARGET,
+                ResourceState::PRESENT,
+            )],
+        );
 
         //
         // Present

@@ -1,5 +1,6 @@
 #include "crate://lgn-streamer/gpu/pipeline_layout/rgb2yuv_pipeline_layout.hlsl"
 
+#include "crate://lgn-graphics-renderer/gpu/include/common.hsh"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -37,7 +38,7 @@ void main_cs(uint3 dispatchThreadId : SV_DispatchThreadID,
     uint2 screenPos = dispatchThreadId.xy;   
     uint2 tilePos   = groupThreadId.xy; 
 
-    float3 rgb = hdr_image[screenPos].rgb;
+    float3 rgb = linear2srgb(tonemap(hdr_image[screenPos].rgb));
     float3 yuv = rgb2yuv(rgb);
 
     y_image[screenPos] = yuv.x;

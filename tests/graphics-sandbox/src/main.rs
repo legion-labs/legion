@@ -8,12 +8,11 @@ use clap::Parser;
 
 use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
-use lgn_codec_api::stream_encoder::StreamEncoder;
 use lgn_content_store::ContentStoreAddr;
 use lgn_core::CorePlugin;
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::*;
-use lgn_graphics_data::GraphicsPlugin;
+use lgn_graphics_data::{Color, GraphicsPlugin};
 use lgn_graphics_renderer::{
     components::{
         LightComponent, LightType, RenderSurface, RenderSurfaceCreatedForWindow,
@@ -24,7 +23,6 @@ use lgn_graphics_renderer::{
 };
 use lgn_hierarchy::HierarchyPlugin;
 use lgn_input::InputPlugin;
-use lgn_math::Vec3;
 use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlugin};
 use lgn_presenter_window::component::PresenterWindow;
 use lgn_scene_plugin::ScenePlugin;
@@ -124,7 +122,6 @@ fn main() {
             height: args.height,
             ..WindowDescriptor::default()
         })
-        .insert_resource(StreamEncoder::new(false))
         .add_plugin(WindowPlugin::default())
         .add_plugin(TransformPlugin::default())
         .add_plugin(HierarchyPlugin::default())
@@ -188,7 +185,6 @@ fn presenter_snapshot_system(
     snapshot_descriptor: Res<'_, SnapshotDescriptor>,
     renderer: Res<'_, Renderer>,
     pipeline_manager: Res<'_, PipelineManager>,
-    stream_encoder: Res<'_, StreamEncoder>,
     mut app_exit_events: EventWriter<'_, '_, AppExit>,
     mut frame_counter: Local<'_, SnapshotFrameCounter>,
 ) {
@@ -200,7 +196,6 @@ fn presenter_snapshot_system(
                 snapshot_descriptor.width as u32,
                 snapshot_descriptor.height as u32,
             ),
-            &stream_encoder,
         );
         let render_surface_id = render_surface.id();
 
@@ -268,7 +263,7 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
         .insert(LightComponent {
             light_type: LightType::Directional,
             radiance: 40.0,
-            color: Vec3::ONE,
+            color: Color::WHITE,
             enabled: false,
             ..LightComponent::default()
         });
@@ -282,7 +277,7 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
         .insert(LightComponent {
             light_type: LightType::Omnidirectional,
             radiance: 40.0,
-            color: Vec3::ONE,
+            color: Color::WHITE,
             enabled: false,
             ..LightComponent::default()
         });
@@ -296,7 +291,7 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
         .insert(LightComponent {
             light_type: LightType::Omnidirectional,
             radiance: 40.0,
-            color: Vec3::ONE,
+            color: Color::WHITE,
             enabled: false,
             ..LightComponent::default()
         });
@@ -312,7 +307,7 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
                 cone_angle: std::f32::consts::PI / 4.0,
             },
             radiance: 40.0,
-            color: Vec3::ONE,
+            color: Color::WHITE,
             enabled: true,
             ..LightComponent::default()
         });
@@ -358,7 +353,7 @@ fn init_scene(mut commands: Commands<'_, '_>) {
         .insert(LightComponent {
             light_type: LightType::Omnidirectional,
             radiance: 10.0,
-            color: Vec3::new(0.5, 0.5, 0.5),
+            color: Color::new(127, 127, 127, 255),
             enabled: true,
             ..LightComponent::default()
         });

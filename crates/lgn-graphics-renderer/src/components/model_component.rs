@@ -200,7 +200,7 @@ impl Mesh {
         index_data.extend_from_slice(&[16, 17, 18, 16, 18, 19]);
         index_data.extend_from_slice(&[20, 21, 22, 20, 22, 23]);
 
-        Self::from_vertex_data(&vertex_data, Some(index_data))
+        Self::from_vertex_data(&vertex_data, Some(index_data), 0)
     }
 
     pub fn new_pyramid(base_size: f32, height: f32) -> Self {
@@ -249,7 +249,7 @@ impl Mesh {
         index_data.extend_from_slice(&[10, 11, 12]);
         index_data.extend_from_slice(&[13, 14, 15]);
 
-        Self::from_vertex_data(&vertex_data, Some(index_data))
+        Self::from_vertex_data(&vertex_data, Some(index_data), 0)
     }
 
     pub fn new_plane(size: f32) -> Self {
@@ -265,7 +265,7 @@ impl Mesh {
         let mut index_data: Vec<u16> = vec![];
         index_data.extend_from_slice(&[0, 1, 2, 0, 2, 3]);
 
-        Self::from_vertex_data(&vertex_data, Some(index_data))
+        Self::from_vertex_data(&vertex_data, Some(index_data), 0)
     }
 
     pub fn new_cylinder(radius: f32, length: f32, steps: u32) -> Self {
@@ -323,7 +323,7 @@ impl Mesh {
             current_index += 3;
         }
 
-        Self::from_vertex_data(&vertex_data, Some(index_data))
+        Self::from_vertex_data(&vertex_data, Some(index_data), 0)
     }
 
     pub fn new_cone(radius: f32, length: f32, steps: u32, initial_index: u16) -> Self {
@@ -361,7 +361,7 @@ impl Mesh {
             current_index += 3;
         }
 
-        Self::from_vertex_data(&vertex_data, Some(index_data))
+        Self::from_vertex_data(&vertex_data, Some(index_data), initial_index)
     }
 
     pub fn new_torus(
@@ -462,7 +462,7 @@ impl Mesh {
             }
         }
 
-        Self::from_vertex_data(&vertex_data, Some(index_data))
+        Self::from_vertex_data(&vertex_data, Some(index_data), 0)
     }
 
     pub fn new_wireframe_cube(size: f32) -> Self {
@@ -498,7 +498,7 @@ impl Mesh {
             -half_size, -half_size,  half_size, 0.0, -1.0,  0.0, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
              half_size, -half_size,  half_size, 0.0, -1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
         ];
-        Self::from_vertex_data(&vertex_data, None)
+        Self::from_vertex_data(&vertex_data, None, 0)
     }
 
     pub fn new_ground_plane(num_squares: u32, num_sub_squares: u32, minor_spacing: f32) -> Self {
@@ -587,7 +587,7 @@ impl Mesh {
             0.05,
         );
 
-        Self::from_vertex_data(&vertex_data, None)
+        Self::from_vertex_data(&vertex_data, None, 0)
     }
 
     pub fn new_arrow() -> Self {
@@ -743,10 +743,14 @@ impl Mesh {
             }
         }
 
-        Self::from_vertex_data(&vertex_data, Some(index_data))
+        Self::from_vertex_data(&vertex_data, Some(index_data), 0)
     }
 
-    fn from_vertex_data(vertex_data: &[f32], index_data: Option<Vec<u16>>) -> Self {
+    fn from_vertex_data(
+        vertex_data: &[f32],
+        index_data: Option<Vec<u16>>,
+        initial_index: u16,
+    ) -> Self {
         let mut positions = Vec::new();
         let mut normals = Vec::new();
         let mut colors = Vec::new();
@@ -771,7 +775,8 @@ impl Mesh {
             ]);
             tex_coords.push(Vec2::new(vertex_data[idx + 10], vertex_data[idx + 11]));
         }
-        let tangents = lgn_math::calculate_tangents(&positions, &tex_coords, &None);
+        let tangents =
+            lgn_math::calculate_tangents(&positions, &tex_coords, &index_data, initial_index);
         let bounding_sphere = Self::calculate_bounding_sphere(&positions);
 
         Self {
@@ -793,6 +798,7 @@ impl Mesh {
             &self.positions,
             self.tex_coords.as_ref().unwrap(),
             &self.indices,
+            0,
         ));
     }
 }

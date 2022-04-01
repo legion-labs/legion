@@ -26,19 +26,19 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
 
     Transform transform = LoadTransform(static_buffer, addresses.world_transform_va);
     float3 world_pos = transform_position(transform, vertex_in.pos);
-    float3 view_pos = transform_position(view_data, world_pos);
+    float3 view_pos = transform_position(view_data.camera_rotation, view_data.camera_translation, world_pos);
 
     vertex_out.hpos = mul(view_data.projection, float4(view_pos, 1.0));
     vertex_out.pos = view_pos;
-    vertex_out.normal = transform_normal(view_data, transform_normal(transform, vertex_in.normal));
-    vertex_out.tangent = transform_normal(view_data, transform_normal(transform, vertex_in.tangent));
+    vertex_out.normal = transform_normal(view_data.camera_rotation, transform_normal(transform, vertex_in.normal));
+    vertex_out.tangent = transform_normal(view_data.camera_rotation, transform_normal(transform, vertex_in.tangent));
     vertex_out.uv_coord = vertex_in.uv_coord;
     vertex_out.va_table_address = vertexIn.va_table_address;
     return vertex_out;
 }
 
 Lighting CalculateIncidentDirectionalLight(DirectionalLight light, float3 pos, float3 normal, LightingMaterial material) {
-    float3 light_dir = transform_normal(view_data, light.dir);
+    float3 light_dir = transform_normal(view_data.camera_rotation, light.dir);
 
     Lighting lighting = (Lighting)0;
     float NoL = saturate(dot(normal, light_dir));
@@ -47,14 +47,14 @@ Lighting CalculateIncidentDirectionalLight(DirectionalLight light, float3 pos, f
         lighting = DefaultBRDF(normal, normalize(-pos), light_dir, NoL, material);
     }
 
-    lighting.diffuse *= light.color * light.radiance;
-    lighting.specular *= light.color * light.radiance;
+    lighting.diffuse *= unpack_linear(light.color).rgb * light.radiance;
+    lighting.specular *= unpack_linear(light.color).rgb * light.radiance;
 
     return lighting;
 }
 
 Lighting CalculateIncidentOmniDirectionalLight(OmniDirectionalLight light, float3 pos, float3 normal, LightingMaterial material) {
-    float3 light_dir = transform_position(view_data, light.pos) - pos;
+    float3 light_dir = transform_position(view_data.camera_rotation, view_data.camera_translation, light.pos) - pos;
     float distance = length(light_dir);
     distance = distance * distance;
     light_dir = normalize(light_dir);
@@ -66,14 +66,14 @@ Lighting CalculateIncidentOmniDirectionalLight(OmniDirectionalLight light, float
         lighting = DefaultBRDF(normal, normalize(-pos), light_dir, NoL, material);
     }
 
-    lighting.diffuse *= light.color * light.radiance / distance;
-    lighting.specular *= light.color * light.radiance / distance;
+    lighting.diffuse *= unpack_linear(light.color).rgb * light.radiance / distance;
+    lighting.specular *= unpack_linear(light.color).rgb * light.radiance / distance;
 
     return lighting;
 }
 
 Lighting CalculateIncidentSpotLight(SpotLight light, float3 pos, float3 normal, LightingMaterial material) {
-    float3 light_dir = transform_position(view_data, light.pos) - pos;
+    float3 light_dir = transform_position(view_data.camera_rotation, view_data.camera_translation, light.pos) - pos;
     float distance = length(light_dir);
     distance = distance * distance;
     light_dir = normalize(light_dir);
@@ -85,13 +85,13 @@ Lighting CalculateIncidentSpotLight(SpotLight light, float3 pos, float3 normal, 
         lighting = DefaultBRDF(normal, normalize(-pos), light_dir, NoL, material);
     }
 
-    float cos_between_dir = dot(transform_normal(view_data, light.dir), light_dir);
+    float cos_between_dir = dot(transform_normal(view_data.camera_rotation, light.dir), light_dir);
     float cos_half_angle = cos(light.cone_angle/2.0);
     float diff = 1.0 - cos_half_angle;
     float factor = saturate((cos_between_dir - cos_half_angle)/diff);
 
-    lighting.diffuse *= factor * light.color * light.radiance / distance;
-    lighting.specular *= factor * light.color * light.radiance / distance;
+    lighting.diffuse *= factor * unpack_linear(light.color).rgb * light.radiance / distance;
+    lighting.specular *= factor * unpack_linear(light.color).rgb * light.radiance / distance;
 
     return lighting;
 }
@@ -140,10 +140,10 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
         lighting_normal = mul(tangent_to_view_space, material_normal);
     }
 
-    lightingMaterial.albedo = lerp(lightingMaterial.albedo.rgb, instance_color.color.rgb, instance_color.color_blend); 
+    lightingMaterial.albedo = lerp(lightingMaterial.albedo.rgb, unpack_linear(instance_color.color).rgb, instance_color.color_blend); 
 
     float3 ambient_color = lightingMaterial.albedo * lighting_data.ambient_reflection;
-    float3 diffuse_color = lighting_data.diffuse_reflection.xxx;
+    float3 diffuse_color = lighting_data.diffuse_reflection.xxx * 0.25;
     float3 spec_color = lighting_data.specular_reflection.xxx;
 
     float3 color = ambient_color;
