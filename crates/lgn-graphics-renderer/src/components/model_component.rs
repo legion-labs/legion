@@ -23,6 +23,8 @@ pub struct Mesh {
     pub bounding_sphere: Vec4,
 }
 
+const DEFAULT_MESH_VERTEX_SIZE: usize = 12; // pos + normal + color + tex_coord = 3 + 3 + 4 + 2
+
 impl Mesh {
     pub fn get_mesh_attrib_mask(&self) -> MeshAttribMask {
         let mut format = MeshAttribMask::empty();
@@ -268,7 +270,7 @@ impl Mesh {
         Self::from_vertex_data(&vertex_data, Some(index_data), 0)
     }
 
-    pub fn new_cylinder(radius: f32, length: f32, steps: u32) -> Self {
+    fn new_cylinder_inner(radius: f32, length: f32, steps: u32) -> (Vec<f32>, Vec<u16>) {
         let mut vertex_data = Vec::<f32>::new();
 
         let inc_angle = (2.0 * std::f32::consts::PI) / steps as f32;
@@ -322,11 +324,15 @@ impl Mesh {
             index_data.extend_from_slice(&[current_index, current_index + 1, current_index + 2]);
             current_index += 3;
         }
+        (vertex_data, index_data)
+    }
 
+    pub fn new_cylinder(radius: f32, length: f32, steps: u32) -> Self {
+        let (vertex_data, index_data) = Self::new_cylinder_inner(radius, length, steps);
         Self::from_vertex_data(&vertex_data, Some(index_data), 0)
     }
 
-    pub fn new_cone(radius: f32, length: f32, steps: u32, initial_index: u16) -> Self {
+    fn new_cone_inner(radius: f32, length: f32, steps: u32) -> (Vec<f32>, Vec<u16>) {
         let mut vertex_data = Vec::<f32>::new();
 
         let inc_angle = (2.0 * std::f32::consts::PI) / steps as f32;
@@ -337,7 +343,7 @@ impl Mesh {
 
         let base_normal = DOWN_VECTOR;
 
-        let mut current_index = initial_index;
+        let mut current_index = 0;
         let mut index_data: Vec<u16> = vec![];
         for _i in 0..steps {
             let last_base_point = Vec3::new(cur_angle.cos(), 0.0, cur_angle.sin()).mul(radius);
@@ -360,7 +366,11 @@ impl Mesh {
             index_data.extend_from_slice(&[current_index, current_index + 1, current_index + 2]);
             current_index += 3;
         }
+        (vertex_data, index_data)
+    }
 
+    pub fn new_cone(radius: f32, length: f32, steps: u32) -> Self {
+        let (vertex_data, index_data) = Self::new_cone_inner(radius, length, steps);
         Self::from_vertex_data(&vertex_data, Some(index_data), initial_index)
     }
 
@@ -591,46 +601,22 @@ impl Mesh {
     }
 
     pub fn new_arrow() -> Self {
-        let arrow = Self::new_cylinder(0.01, 0.3, 10);
-        let initial_index = arrow.positions.len() as u16;
-        let cone = Self::new_cone(0.025, 0.1, 10, initial_index);
-        let mut positions = arrow.positions;
-        positions.append(
-            &mut cone
-                .positions
-                .into_iter()
-                .map(|v| Vec3::new(v.x, -v.y, v.z))
-                .collect(),
-        );
-        let mut normals = arrow.normals.unwrap();
-        normals.append(
-            &mut cone
-                .normals
-                .unwrap()
-                .into_iter()
-                .map(|v| Vec3::new(v.x, -v.y, v.z))
-                .collect(),
-        );
-        let mut tex_coords = arrow.tex_coords.unwrap();
-        tex_coords.append(&mut cone.tex_coords.unwrap());
-        let mut colors = arrow.colors.unwrap();
-        colors.append(&mut cone.colors.unwrap());
-        let mut indices = arrow.indices.unwrap();
-        indices.append(&mut cone.indices.unwrap());
-
-        let bounding_sphere = Self::calculate_bounding_sphere(&positions);
-
-        Self {
-            positions,
-            normals: Some(normals),
-            tangents: None,
-            tex_coords: Some(tex_coords),
-            colors: Some(colors),
-            indices: Some(indices),
-
-            material_id: None,
-            bounding_sphere,
+        let (mut arrow_vertex_data, mut arrow_index_data) = Self::new_cylinder_inner(0.01, 0.3, 10);
+        let (mut cone_vertex_data, cone_index_data) = Self::new_cone_inner(0.025, 0.1, 10);
+        for vertex_idx in 0..arrow_vertex_data.len() / DEFAULT_MESH_VERTEX_SIZE {
+            let array_idx = vertex_idx * DEFAULT_MESH_VERTEX_SIZE;
+            // flip position and normals Y-coordinate
+            arrow_vertex_data[array_idx + 1] = -arrow_vertex_data[array_idx + 1];
+            arrow_vertex_data[array_idx + 4] = -arrow_vertex_data[array_idx + 4];
         }
+        let mut cone_index_data = cone_index_data
+            .iter()
+            .map(|i| i + (arrow_vertex_data.len() / DEFAULT_MESH_VERTEX_SIZE) as u16)
+            .collect();
+        arrow_vertex_data.append(&mut cone_vertex_data);
+        arrow_index_data.append(&mut cone_index_data);
+
+        Self::from_vertex_data(&arrow_vertex_data, Some(arrow_index_data))
     }
 
     pub fn new_sphere(radius: f32, slices: u32, sails: u32) -> Self {
@@ -755,8 +741,8 @@ impl Mesh {
         let mut normals = Vec::new();
         let mut colors = Vec::new();
         let mut tex_coords = Vec::new();
-        for i in 0..vertex_data.len() / 12 {
-            let idx = i * 12;
+        for i in 0..vertex_data.len() / DEFAULT_MESH_VERTEX_SIZE {
+            let idx = i * DEFAULT_MESH_VERTEX_SIZE;
             positions.push(Vec3::new(
                 vertex_data[idx],
                 vertex_data[idx + 1],
@@ -775,8 +761,7 @@ impl Mesh {
             ]);
             tex_coords.push(Vec2::new(vertex_data[idx + 10], vertex_data[idx + 11]));
         }
-        let tangents =
-            lgn_math::calculate_tangents(&positions, &tex_coords, &index_data, initial_index);
+        let tangents = lgn_math::calculate_tangents(&positions, &tex_coords, &index_data, initial_index);
         let bounding_sphere = Self::calculate_bounding_sphere(&positions);
 
         Self {

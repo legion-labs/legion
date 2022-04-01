@@ -22,7 +22,7 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
     MeshDescription mesh_desc = LoadMeshDescription(static_buffer, addresses.mesh_description_va);
 
     VertexIn vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
-    VertexOut vertex_out;
+    VertexOut vertex_out = (VertexOut)0;
 
     Transform transform = LoadTransform(static_buffer, addresses.world_transform_va);
     float3 world_pos = transform_position(transform, vertex_in.pos);

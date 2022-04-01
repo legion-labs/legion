@@ -5,10 +5,12 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
+mod angle;
 mod face_toward;
 mod geometry;
 mod mesh;
 
+pub use angle::*;
 pub use face_toward::*;
 pub use geometry::*;
 pub use glam::*;

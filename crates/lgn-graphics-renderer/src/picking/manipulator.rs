@@ -117,7 +117,7 @@ pub(super) fn new_world_point_for_cursor(
     plane_normal: Vec3,
 ) -> Vec3 {
     cursor_pos.y = screen_size.y - cursor_pos.y;
-    let camera_pos = camera.camera_rig.final_transform.position;
+    let camera_pos = camera.position();
     let ray_point = camera_pos;
     let screen_offset = 2.0 * (cursor_pos / screen_size) - 1.0;
     let screen_pos = Vec4::new(screen_offset.x, screen_offset.y, 0.5, 1.0);
@@ -140,7 +140,7 @@ pub(super) fn plane_normal_for_camera_pos(
     camera: &CameraComponent,
     rotation: Quat,
 ) -> Vec3 {
-    let camera_pos = camera.camera_rig.final_transform.position;
+    let camera_pos = camera.position();
     let dir_to_camera = (camera_pos - base_entity_transform.translation).normalize();
 
     let xy_plane_normal = rotation.mul_vec3(Vec3::Z);

@@ -50,7 +50,7 @@ pub fn calculate_tangents(
 
         let f = delta_uv1.y * delta_uv2.x - delta_uv1.x * delta_uv2.y;
         //let b = (delta_uv2.x * edge1 - delta_uv1.x * edge2) / f;
-        let t = if f != 0_f32 {
+        let t = if f.abs() > f32::EPSILON {
             (delta_uv1.y * edge2 - delta_uv2.y * edge1) / f
         } else {
             Vec3::ZERO
