@@ -63,6 +63,24 @@
     return "readonly" in property.attributes;
   }
 
+  function getResourceType(): string | null {
+    let resourceType = property.attributes.resource_type;
+    if (
+      resourceType == null &&
+      parentProperty &&
+      (propertyIsVec(parentProperty) || propertyIsOption(parentProperty))
+    ) {
+      resourceType = parentProperty.attributes.resource_type;
+    }
+    if (resourceType) {
+      const index = resourceType.lastIndexOf(":");
+      if (index != -1) {
+        resourceType = resourceType.slice(index + 1);
+      }
+    }
+    return resourceType;
+  }
+
   // Vector related code
   // TODO: Extract this to a vector sub properties component?
 
@@ -122,6 +140,7 @@
       readonly={isReadonly()}
       on:input={({ detail }) => onInput({ value: detail })}
       bind:value={property.value}
+      resource_type={getResourceType()}
     />
   {:else if propertyIsEnum(property)}
     <EnumProperty
