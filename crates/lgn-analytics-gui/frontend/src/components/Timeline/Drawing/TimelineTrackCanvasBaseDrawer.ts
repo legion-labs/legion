@@ -144,7 +144,7 @@ export abstract class TimelineTrackCanvasBaseDrawer {
             ? "#ffee59"
             : color;
         ctx.fillRect(beginPixels, offsetY, callWidth, spanPixelHeight);
-        this.drawSpanLeftMarker(ctx.fillStyle, callWidth, beginPixels, offsetY);
+        this.drawSpanLeftMarker(ctx.fillStyle, beginPixels, offsetY);
         if (callWidth > characterWidth * 5) {
           ctx.fillStyle = "#000000";
           const extraHeight = 0.5 * (spanPixelHeight - characterHeight);
@@ -167,15 +167,14 @@ export abstract class TimelineTrackCanvasBaseDrawer {
 
   private drawSpanLeftMarker(
     color: string,
-    callWidth: number,
     beginPixels: number,
     offsetY: number
   ) {
-    if (callWidth >= 8 && this.ctx) {
+    if (this.ctx) {
       const ctx = this.ctx;
       ctx.save();
-      ctx.fillStyle = this.shadeColor(color, 1.04);
-      ctx.fillRect(beginPixels, offsetY, 1, spanPixelHeight);
+      ctx.fillStyle = this.shadeColor(color, 1.08);
+      ctx.fillRect(beginPixels, offsetY, 2, spanPixelHeight);
       ctx.restore();
     }
   }
