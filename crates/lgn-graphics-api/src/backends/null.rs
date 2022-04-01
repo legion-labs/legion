@@ -630,7 +630,7 @@ impl NullSampler {
 pub(crate) struct NullSemaphore;
 
 impl NullSemaphore {
-    pub fn new(device_context: &DeviceContext, export_capable: bool) -> Self {
+    pub fn new(device_context: &DeviceContext, semaphore_def: SemaphoreDef) -> Self {
         unimplemented!()
     }
 
