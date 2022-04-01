@@ -2,7 +2,7 @@ import { negotiateLanguages } from "@fluent/langneg";
 import { Updater, Writable, derived, get } from "svelte/store";
 import { writable } from "svelte/store";
 
-import type { AvailableLocalesStore, BundlesStore } from "./bundles";
+import type { AvailableLocalesStore } from "./bundles";
 
 export type LocaleValue = string;
 

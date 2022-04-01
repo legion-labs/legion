@@ -1,45 +1,56 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
+  import Icon from "@iconify/svelte";
 
   import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
   import Panel from "@lgn/web-client/src/components/panel/Panel.svelte";
-  import PanelList from "@lgn/web-client/src/components/panel/PanelList.svelte";
 
-  import type { Entries } from "@/lib/hierarchyTree";
+  import { resourceDragAndDropType } from "@/constants";
+  import type { Entries, Entry } from "@/lib/hierarchyTree";
+  import { isEntry } from "@/lib/hierarchyTree";
+  import { iconFor } from "@/lib/resourceBrowser";
   import { fetchCurrentResourceDescription } from "@/orchestrators/currentResource";
 
-  const dispatch = createEventDispatcher<{
-    currentResourceDescriptionChange: ResourceDescription;
-  }>();
+  import HierarchyTree from "./hierarchyTree/HierarchyTree.svelte";
 
-  export let currentResourceDescription: ResourceDescription | null;
+  export let currentResourceDescriptionEntry: Entry<ResourceDescription> | null;
 
   export let resourceEntries: Entries<ResourceDescription>;
 
   export let allResourcesLoading: boolean;
 
-  $: allResources = resourceEntries.intoItems();
+  function selectResource({
+    detail: resourceDescription,
+  }: CustomEvent<Entry<ResourceDescription>>) {
+    if (resourceDescription) {
+      fetchCurrentResourceDescription(resourceDescription.item.id);
+    }
+  }
 </script>
 
 <Panel loading={allResourcesLoading} tabs={["Scene Explorer"]}>
   <div slot="tab" let:tab>{tab}</div>
-  <div slot="content" class="content" let:isFocused>
-    {#if allResources.length > 0}
-      <PanelList
-        key="id"
-        items={allResources}
-        panelIsFocused={isFocused}
-        on:select={({ detail: resourceDescription }) =>
-          resourceDescription &&
-          fetchCurrentResourceDescription(resourceDescription.id)}
-        on:highlight={({ detail: item }) =>
-          dispatch("currentResourceDescriptionChange", item)}
-        bind:highlightedItem={currentResourceDescription}
+  <div slot="content" class="content">
+    {#if !resourceEntries.isEmpty()}
+      <HierarchyTree
+        id="scene-explorer"
+        itemContextMenu="scene"
+        draggable={resourceDragAndDropType}
+        on:select={selectResource}
+        bind:entries={resourceEntries}
+        bind:highlightedEntry={currentResourceDescriptionEntry}
       >
-        <div slot="default" let:item={resource}>
-          {resource.path}
+        <div class="w-full h-full" slot="icon" let:entry>
+          <Icon class="w-full h-full" icon={iconFor(entry)} />
         </div>
-      </PanelList>
+        <div
+          class="item"
+          slot="name"
+          let:entry
+          title={isEntry(entry) ? entry.item.path : null}
+        >
+          {entry.name}
+        </div>
+      </HierarchyTree>
     {/if}
   </div>
 </Panel>

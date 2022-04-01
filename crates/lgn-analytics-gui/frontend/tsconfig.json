@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
     "importsNotUsedAsValues": "error",
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noEmit": true,
     "checkJs": true,
     "target": "esnext",

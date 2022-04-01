@@ -3,9 +3,9 @@
   import { createEventDispatcher } from "svelte";
 
   import {
-    draggable as draggableAction,
     dropzone as dropzoneAction,
     isDragging,
+    draggable as rawDraggableAction,
   } from "@lgn/web-client/src/actions/dnd";
   import { keyboardNavigationItem as keyboardNavigationItemAction } from "@lgn/web-client/src/actions/keyboardNavigation";
   import { nullable as nullableAction } from "@lgn/web-client/src/lib/action";
@@ -30,9 +30,7 @@
     moved: { draggedEntry: Entry<Item>; dropzoneEntry: Entry<Item> };
   }>();
 
-  // Dnd type
-  // TODO: Will probably have to be shared throughout the whole application
-  const type = "RESOURCE";
+  export let id: string;
 
   export let index: number | null;
 
@@ -42,7 +40,11 @@
 
   export let currentlyRenameEntry: Entry<Item> | null = null;
 
-  export let withItemContextMenu: string | null = null;
+  export let itemContextMenu: string | null = null;
+
+  export let reorderable: boolean;
+
+  export let draggable: string | null = null;
 
   /**
    * Currently highlighted entry _in the drag and drop context_
@@ -54,6 +56,9 @@
   let mode: "view" | "edit";
 
   let isExpanded = true;
+
+  /** Related to the inner drag and drop feature */
+  $: moveInnerEntryType = `hierarchy-tree-entry-${id}`;
 
   // TODO: Use a filter instead
   $: isDisabled = !isEntry(entry);
@@ -73,7 +78,7 @@
     cancelNameEdit();
   }
 
-  const draggable = nullableAction(draggableAction);
+  const draggableAction = nullableAction(rawDraggableAction);
 
   const dropzone = nullableAction(dropzoneAction);
 
@@ -102,9 +107,7 @@
     dispatch("highlight", entry);
   }
 
-  function renameFile(event: Event) {
-    event.preventDefault();
-
+  function renameEntry() {
     if (isDisabled || !isEntry(entry)) {
       return;
     }
@@ -128,7 +131,7 @@
     isExpanded = !isExpanded;
   }
 
-  function onDragOver({
+  function onDragEnter({
     detail: { originalEvent },
   }: CustomEvent<{ originalEvent: DragEvent }>) {
     originalEvent.stopPropagation();
@@ -152,6 +155,12 @@
       dropzoneEntry: entry,
     });
   }
+
+  function onFormKeydown(event: KeyboardEvent) {
+    if (event.key === "Escape") {
+      cancelNameEdit();
+    }
+  }
 </script>
 
 <div
@@ -159,9 +168,11 @@
   class:bg-gray-800={dndHighlightedEntry === entry}
   on:dblclick
   use:keyboardNavigationItem={isDisabled ? null : index}
-  use:dropzone={{ accept: type }}
+  use:dropzone={!isDisabled && reorderable
+    ? { accept: moveInnerEntryType }
+    : null}
   on:dnd-drop={onDrop}
-  on:dnd-dragenter={onDragOver}
+  on:dnd-dragenter={onDragEnter}
 >
   <div
     class="name"
@@ -170,8 +181,13 @@
     class:lg-space={mode === "view"}
     class:highlighted-view={isHighlighted && mode === "view"}
     on:mousedown={highlight}
-    use:contextMenu={isDisabled ? null : withItemContextMenu}
-    use:draggable={isDisabled ? null : { item: entry, type }}
+    use:contextMenu={isDisabled ? null : itemContextMenu}
+    use:draggableAction={!isDisabled && reorderable
+      ? { item: entry, type: moveInnerEntryType }
+      : null}
+    use:draggableAction={!isDisabled && draggable
+      ? { item: entry, type: draggable }
+      : null}
   >
     {#if entry.subEntries.length > 0}
       <div class="icon-container" on:click={toggleExpanded}>
@@ -200,8 +216,8 @@
         <slot name="name" {entry} />
       {:else}
         <form
-          on:submit={renameFile}
-          on:keydown={(event) => event.key === "Escape" && cancelNameEdit()}
+          on:submit|stopPropagation|preventDefault={renameEntry}
+          on:keydown|stopPropagation={onFormKeydown}
         >
           <TextInput
             autoFocus
@@ -217,10 +233,13 @@
     {#each entry.subEntries as subEntry (isEntry(subEntry) ? subEntry.item.id : subEntry.item)}
       <div class="sub-entries">
         <svelte:self
+          {id}
+          {highlightedEntry}
+          {itemContextMenu}
+          {reorderable}
+          {draggable}
           index={subEntry.index}
           entry={subEntry}
-          {highlightedEntry}
-          {withItemContextMenu}
           bind:currentlyRenameEntry
           bind:dndHighlightedEntry
           on:highlight

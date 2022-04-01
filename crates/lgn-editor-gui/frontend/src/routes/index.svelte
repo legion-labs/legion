@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
 
-  import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
   import ContextMenu from "@lgn/web-client/src/components/ContextMenu.svelte";
   import Notifications from "@lgn/web-client/src/components/Notifications.svelte";
   import StatusBar from "@lgn/web-client/src/components/StatusBar.svelte";
@@ -40,9 +39,6 @@
     loading: allResourcesLoading,
   } = allResourcesStore;
 
-  $: currentResourceDescription =
-    $currentResourceDescriptionEntry?.item ?? null;
-
   $: if ($allResourcesError) {
     reloadResources();
   }
@@ -62,18 +58,6 @@
     }
   });
 
-  function setCurrentDescriptionEntry({
-    detail: resource,
-  }: CustomEvent<ResourceDescription>) {
-    const entry = $resourceEntries.find((entry) => entry.item === resource);
-
-    if (!entry) {
-      return;
-    }
-
-    $currentResourceDescriptionEntry = entry;
-  }
-
   async function reloadResources() {
     $currentResource = null;
 
@@ -81,8 +65,9 @@
 
     await allResourcesStore.run(getAllResources);
 
-    let active_scenes = await getActiveScenes();
-    log.info("Active Scenes: ", active_scenes.sceneIds);
+    const activeScenes = await getActiveScenes();
+
+    log.info(log.json`Active Scenes: ${activeScenes.sceneIds}`);
   }
 </script>
 
@@ -100,18 +85,17 @@
         <div class="scene-explorer">
           <SceneExplorer
             allResourcesLoading={$allResourcesLoading}
-            resourceEntries={$resourceEntries}
-            {currentResourceDescription}
-            on:currentResourceDescriptionChange={setCurrentDescriptionEntry}
+            bind:resourceEntries={$resourceEntries}
+            bind:currentResourceDescriptionEntry={$currentResourceDescriptionEntry}
           />
         </div>
         <div class="h-separator" />
         <div class="resource-browser">
           <ResourceBrowser
             allResourcesLoading={$allResourcesLoading}
+            bind:resourceEntries={$resourceEntries}
             bind:currentResourceDescriptionEntry={$currentResourceDescriptionEntry}
             bind:currentlyRenameResourceEntry={$currentlyRenameResourceEntry}
-            bind:resourceEntries={$resourceEntries}
           />
         </div>
       </div>

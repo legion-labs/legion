@@ -3,6 +3,7 @@
 
   import { dropzone } from "@lgn/web-client/src/actions/dnd";
 
+  import { resourceDragAndDropType } from "@/constants";
   import { createResourcePathId } from "@/lib/resourceBrowser";
   import { resourceEntries } from "@/orchestrators/resourceBrowserEntries";
 
@@ -10,7 +11,7 @@
 
   export let value: string;
 
-  export let resource_type: string | null;
+  export let resourceType: string | null;
 
   export let readonly = false;
 
@@ -18,13 +19,17 @@
     input: string;
   }>();
 
-  async function onDrop({
+  function onDrop({
     detail: { item: draggedEntry },
   }: CustomEvent<{ item: any; originalEvent: DragEvent }>) {
-    if (resource_type) {
-      let new_value = createResourcePathId(resource_type, draggedEntry);
-      if (new_value) {
-        value = new_value;
+    if (resourceType) {
+      console.log("dropped ", draggedEntry);
+
+      const newValue = createResourcePathId(resourceType, draggedEntry);
+
+      if (newValue) {
+        value = newValue;
+
         dispatch("input", value);
       }
     }
@@ -34,16 +39,21 @@
     const entry = $resourceEntries.find((entry) =>
       value.startsWith(entry.item.id)
     );
+
     let result = "";
 
     if (entry) {
       result = entry.name;
+
       let index = value.indexOf("_");
+
       if (index != -1) {
-        let sub_value = value.slice(index + 1);
-        index = sub_value.indexOf("|");
+        const subValue = value.slice(index + 1);
+
+        index = subValue.indexOf("|");
+
         if (index != -1) {
-          result += "/" + sub_value.slice(undefined, index);
+          result += "/" + subValue.slice(undefined, index);
         }
       }
     }
@@ -51,9 +61,8 @@
   }
 </script>
 
-<!-- For now the string property is only a TextInput but it might change -->
 <div
-  use:dropzone={{ accept: "RESOURCE" }}
+  use:dropzone={{ accept: resourceDragAndDropType }}
   on:dnd-drop={onDrop}
   title={getName()}
 >

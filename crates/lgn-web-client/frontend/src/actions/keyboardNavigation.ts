@@ -56,6 +56,7 @@ export default function keyboardNavigation(
 
   function handleKeyboard(event: KeyboardEvent) {
     event.preventDefault();
+    event.stopPropagation();
 
     store.update(({ currentIndex }) => {
       let newIndex: number | null = null;
