@@ -21,9 +21,9 @@ use crate::{
     DeviceContext, DeviceInfo, ExtensionMode, ExternalResourceHandle, Fence, FenceStatus, Format,
     GfxResult, GraphicsPipelineDef, IndexBufferBinding, MemoryAllocation, MemoryAllocationDef,
     PagedBufferAllocation, Pipeline, PipelineType, PlaneSlice, PresentSuccessResult, Queue,
-    QueueType, RootSignature, RootSignatureDef, SamplerDef, Semaphore, ShaderModuleDef, Swapchain,
-    SwapchainDef, SwapchainImage, Texture, TextureBarrier, TextureDef, TextureSubResource,
-    TextureViewDef, VertexBufferBinding,
+    QueueType, RootSignature, RootSignatureDef, SamplerDef, Semaphore, SemaphoreDef,
+    ShaderModuleDef, Swapchain, SwapchainDef, SwapchainImage, Texture, TextureBarrier, TextureDef,
+    TextureSubResource, TextureViewDef, VertexBufferBinding,
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
