@@ -112,7 +112,7 @@ impl NvEncoderSession {
                         self.hw_encoder,
                         NV_ENC_CODEC_H264_GUID,
                         NV_ENC_PRESET_P3_GUID,
-                        NV_ENC_TUNING_INFO::NV_ENC_TUNING_INFO_LOW_LATENCY,
+                        NV_ENC_TUNING_INFO::NV_ENC_TUNING_INFO_ULTRA_LOW_LATENCY,
                         std::ptr::addr_of_mut!(present_config),
                     )
                 })
@@ -155,7 +155,7 @@ impl NvEncoderSession {
             encodeConfig: encode_config,
             maxEncodeWidth: 3840,
             maxEncodeHeight: 2160,
-            tuningInfo: NV_ENC_TUNING_INFO::NV_ENC_TUNING_INFO_LOW_LATENCY,
+            tuningInfo: NV_ENC_TUNING_INFO::NV_ENC_TUNING_INFO_ULTRA_LOW_LATENCY,
             ..NV_ENC_INITIALIZE_PARAMS::default()
         }
     }
@@ -245,6 +245,13 @@ impl NvEncoderSession {
 
         self.nv_encoder
             .wait_on_external_semaphore(input.semaphore.internal_resource());
+
+        // we need to mark the semaphore as being waited on since the wait is not done through
+        // a queue submission that handles this for us.
+        input
+            .semaphore
+            .external_resource()
+            .set_signal_available(false);
 
         let array = self
             .nv_encoder
@@ -385,23 +392,23 @@ impl NvEncoderSession {
                 }
             }
 
-            let mut result = unsafe {
+            let result = unsafe {
                 (self.function_list.nvEncUnmapInputResource.unwrap())(
                     self.hw_encoder,
                     self.mapped_resource,
                 )
             };
             self.mapped_resource = std::ptr::null_mut();
-            assert!(result == NVENCSTATUS::NV_ENC_SUCCESS);
+            assert_eq!(result, NVENCSTATUS::NV_ENC_SUCCESS);
 
-            result = unsafe {
+            let result = unsafe {
                 (self.function_list.nvEncUnregisterResource.unwrap())(
                     self.hw_encoder,
                     self.registered_resource,
                 )
             };
             self.registered_resource = std::ptr::null_mut();
-            assert!(result == NVENCSTATUS::NV_ENC_SUCCESS);
+            assert_eq!(result, NVENCSTATUS::NV_ENC_SUCCESS);
         }
         output
     }

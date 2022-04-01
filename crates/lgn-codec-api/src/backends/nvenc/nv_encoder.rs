@@ -106,7 +106,7 @@ impl NvEncoder {
         inner.context.push();
 
         let mut cuda_image_memory = std::ptr::null_mut();
-        let mut result = unsafe {
+        let result = unsafe {
             (inner.context.cuda_api().import_external_memory)(
                 std::ptr::addr_of_mut!(cuda_image_memory),
                 std::ptr::addr_of!(memory_handle_desc),
@@ -130,7 +130,7 @@ impl NvEncoder {
         };
 
         let mut cuda_mip_map_array = std::ptr::null_mut();
-        result = unsafe {
+        let result = unsafe {
             (inner
                 .context
                 .cuda_api()
@@ -140,17 +140,17 @@ impl NvEncoder {
                 std::ptr::addr_of!(mipmap_array_desc),
             )
         };
-        assert!(result == CUresult::CUDA_SUCCESS);
+        assert_eq!(result, CUresult::CUDA_SUCCESS);
 
         let mut array: CUarray = std::ptr::null_mut();
-        result = unsafe {
+        let result = unsafe {
             (inner.context.cuda_api().mipmapped_array_get_level)(
                 std::ptr::addr_of_mut!(array),
                 cuda_mip_map_array,
                 0,
             )
         };
-        assert!(result == CUresult::CUDA_SUCCESS);
+        assert_eq!(result, CUresult::CUDA_SUCCESS);
         inner.context.pop();
 
         let new_image_data = (cuda_image_memory, cuda_mip_map_array, array);
@@ -175,12 +175,11 @@ impl NvEncoder {
         {
             inner.context.push();
             unsafe {
-                let mut result =
-                    (inner.context.cuda_api().mipmapped_array_destroy)(cuda_mip_map_array);
-                assert!(result == CUresult::CUDA_SUCCESS);
+                let result = (inner.context.cuda_api().mipmapped_array_destroy)(cuda_mip_map_array);
+                assert_eq!(result, CUresult::CUDA_SUCCESS);
 
-                result = (inner.context.cuda_api().destroy_external_memory)(cuda_image_memory);
-                assert!(result == CUresult::CUDA_SUCCESS);
+                let result = (inner.context.cuda_api().destroy_external_memory)(cuda_image_memory);
+                assert_eq!(result, CUresult::CUDA_SUCCESS);
             }
             inner.context.pop();
         }
@@ -220,7 +219,7 @@ impl NvEncoder {
                 std::ptr::addr_of!(sema_desc),
             )
         };
-        assert!(result == CUresult::CUDA_SUCCESS);
+        assert_eq!(result, CUresult::CUDA_SUCCESS);
         inner.context.pop();
 
         let new_key: u64 = NEXT_SEMAPHORE_KEY.fetch_add(1, Ordering::Relaxed);
@@ -237,14 +236,15 @@ impl NvEncoder {
         let wait_params = CUDA_EXTERNAL_SEMAPHORE_WAIT_PARAMS::default();
 
         inner.context.push();
-        unsafe {
+        let result = unsafe {
             (inner.context.cuda_api().wait_external_semaphores_async)(
                 std::ptr::addr_of!(cuda_semaphore),
                 std::ptr::addr_of!(wait_params),
                 1,
                 std::ptr::null_mut(),
-            );
-        }
+            )
+        };
+        assert_eq!(result, CUresult::CUDA_SUCCESS);
         inner.context.pop();
     }
 
@@ -253,9 +253,10 @@ impl NvEncoder {
 
         inner.context.push();
         if let Some(cuda_semaphore) = inner.cuda_semaphore_map.remove(&semaphore_key) {
-            unsafe {
-                (inner.context.cuda_api().destroy_external_semaphore)(cuda_semaphore);
-            }
+            let result = unsafe {
+                (inner.context.cuda_api().destroy_external_semaphore)(cuda_semaphore)
+            };
+            assert_eq!(result, CUresult::CUDA_SUCCESS);
         }
         inner.context.pop();
     }
