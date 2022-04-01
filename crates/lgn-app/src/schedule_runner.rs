@@ -4,7 +4,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use instant::{Duration, Instant};
 use lgn_ecs::event::Events;
-use lgn_tracing::{info, span_scope};
+use lgn_tracing::{imetric, info, span_scope};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{prelude::*, JsCast};
@@ -143,12 +143,15 @@ impl Plugin for ScheduleRunnerPlugin {
                             }
                         }
 
-                        let end_time = Instant::now();
-
+                        let elapsed = Instant::now() - start_time;
+                        imetric!(
+                            "Schedule Runner Tick Time",
+                            "us",
+                            elapsed.as_micros() as u64
+                        );
                         if let Some(wait) = wait {
-                            let exe_time = end_time - start_time;
-                            if exe_time < wait {
-                                return Ok(Some(wait - exe_time));
+                            if elapsed < wait {
+                                return Ok(Some(wait - elapsed));
                             }
                         }
 

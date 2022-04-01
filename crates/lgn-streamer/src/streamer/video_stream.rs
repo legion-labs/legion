@@ -24,12 +24,6 @@ use serde::Serialize;
 use webrtc::data_channel::{data_channel_state::RTCDataChannelState, RTCDataChannel};
 
 use super::{Resolution, RgbToYuvConverter};
-
-#[span_fn]
-fn record_frame_time_metric(microseconds: u64) {
-    imetric!("Video Stream Frame Time", "us", microseconds);
-}
-
 #[derive(Component)]
 #[component(storage = "Table")]
 pub struct VideoStream {
@@ -80,10 +74,6 @@ impl VideoStream {
         Ok(())
     }
 
-    fn record_frame_id_metric(&self) {
-        imetric!("Frame ID begin present", "frame_id", self.frame_id as u64);
-    }
-
     #[span_fn]
     pub(crate) fn present(
         &mut self,
@@ -91,7 +81,8 @@ impl VideoStream {
 
         render_surface: &mut RenderSurface,
     ) {
-        self.record_frame_id_metric();
+        imetric!("Frame ID begin present", "frame_id", self.frame_id as u64);
+
         let now = tokio::time::Instant::now();
 
         let chunks = if let Some(encoder) = self.encoder_seesion.as_mut() {
@@ -114,7 +105,7 @@ impl VideoStream {
         };
 
         let elapsed = now.elapsed().as_micros() as u64;
-        record_frame_time_metric(elapsed);
+        imetric!("Encoding Time", "us", elapsed);
 
         if elapsed >= self.max_frame_time {
             warn!(
