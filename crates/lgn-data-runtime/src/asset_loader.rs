@@ -461,31 +461,17 @@ impl AssetLoaderIO {
         }
 
         // todo: propagate errors to dependent assets before sending results.
-        for (load_failed, _, err) in errors {
-            let (failed, pending): (Vec<_>, Vec<_>) = std::mem::take(&mut self.processing_list)
-                .into_iter()
-                .partition(|pending| pending.references.iter().any(|reff| reff == &load_failed));
-
-            for failed_pending in failed {
-                let dependent_error = AssetRegistryError::ResourceDependentLoadFailed {
-                    parent: load_failed.id(),
-                    resource: failed_pending.primary_handle.id(),
-                    parent_error: err.to_string(),
-                };
-
-                self.result_tx
-                    .send(LoaderResult::LoadError(
-                        failed_pending.primary_handle,
-                        failed_pending.load_id,
-                        dependent_error,
-                    ))
-                    .unwrap();
-            }
+        for (load_failed, load_id, err) in errors {
+            let resource_id = load_failed.id();
             self.result_tx
-                .send(LoaderResult::LoadError(load_failed, None, err))
+                .send(LoaderResult::LoadError(load_failed, load_id, err))
                 .unwrap();
 
-            self.processing_list = pending;
+            self.processing_list.iter_mut().for_each(|load_state| {
+                load_state
+                    .references
+                    .retain(|handle| handle.id() != resource_id);
+            });
         }
 
         // check for completion.
