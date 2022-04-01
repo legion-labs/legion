@@ -3,6 +3,7 @@
 //! This crate provides a simple configuration system.
 
 mod errors;
+mod rich_pathbuf;
 
 use figment::{
     providers::{Env, Format, Toml},
@@ -11,6 +12,7 @@ use figment::{
 use std::path::{Path, PathBuf};
 
 pub use errors::{Error, Result};
+pub use rich_pathbuf::RichPathBuf;
 
 /// The type to use for relative paths in configurations.
 pub use figment::value::magic::RelativePathBuf;
@@ -179,6 +181,7 @@ impl Config {
     /// - `$XDG_CONFIG_HOME/legion-labs/config.toml` on UNIX.
     /// - `$HOME/.config/legion-labs/config.toml` on UNIX.
     /// - %APPDATA%/legion-labs/legion.toml on Windows.
+    /// - Any file specified in the `LGN_CONFIG` environment variable.
     /// - Environment variables, starting with `LGN_`.
     ///
     /// # Errors
@@ -251,10 +254,21 @@ impl Config {
             figment = figment.merge(Toml::file(config_file_path));
         }
 
+        // If a specific configuration file was specified, try to read it.
+        if let Some(config_file_path) = std::env::var_os("LGN_CONFIG") {
+            figment = figment.merge(Toml::file(config_file_path));
+        }
+
         // Finally, read from environment variables, starting with `LGN`.
         let figment = figment.merge(Env::prefixed("LGN_"));
 
         Ok(Self { figment })
+    }
+
+    /// Override this configuration with another one.
+    pub fn override_with(&mut self, other: Self) {
+        let figment = std::mem::take(&mut self.figment);
+        self.figment = figment.merge(other.figment);
     }
 
     /// Get the value specified by the key.

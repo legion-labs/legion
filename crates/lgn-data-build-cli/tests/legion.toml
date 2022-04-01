@@ -1,0 +1,3 @@
+[source_control.repository_index]
+type = "local"
+path = "${WORK_DIR}/my-source-control"

@@ -11,8 +11,8 @@ use std::{
 use lgn_content_store2::ContentProvider;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_source_control::{
-    CanonicalPath, CommitMode, LocalIndex, RepositoryIndex, Workspace, WorkspaceConfig,
-    WorkspaceRegistration,
+    CanonicalPath, CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Workspace,
+    WorkspaceConfig, WorkspaceRegistration,
 };
 use lgn_tracing::error;
 use thiserror::Error;
@@ -76,7 +76,6 @@ pub use lgn_source_control::data_types::Tree;
 pub struct Project {
     project_dir: PathBuf,
     resource_dir: PathBuf,
-    local_remote: Option<LocalIndex>,
     workspace: Workspace,
     content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     deleted_pending: HashMap<ResourceId, (ResourcePathName, ResourceType)>,
@@ -95,11 +94,11 @@ pub enum Error {
     #[error("IO on '{0}' failed with {1}")]
     Io(PathBuf, #[source] std::io::Error),
     /// Source Control related error.
-    #[error("Source Control Error: '{0}'")]
-    SourceControl(#[source] lgn_source_control::Error),
+    #[error("source-control: '{0}'")]
+    SourceControl(#[from] lgn_source_control::Error),
     /// Content-store related error.
-    #[error("Content Store Error: '{0}'")]
-    ContentStore(#[source] lgn_content_store2::Error),
+    #[error("content store: '{0}'")]
+    ContentStore(#[from] lgn_content_store2::Error),
     /// RegistryRegistry Error
     #[error("ResourceRegistry Error: '{1}' on resource '{0}'")]
     ResourceRegistry(
@@ -137,34 +136,34 @@ impl Project {
         &self.project_dir
     }
 
-    /// Creates a local source control index.
-    pub async fn create_local_origin(path: impl AsRef<Path>) -> Result<LocalIndex, Error> {
-        let remote = LocalIndex::new(&path).map_err(Error::SourceControl)?;
-        if !remote.index_exists().await.map_err(Error::SourceControl)? {
-            remote.create_index().await.map_err(Error::SourceControl)?;
-        }
-        Ok(remote)
-    }
-
     /// Same as [`Self::create`] but it creates an origin source control index at ``project_dir/remote``.
     pub async fn create_with_remote_mock(
         project_dir: impl AsRef<Path>,
         content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     ) -> Result<Self, Error> {
         let remote_dir = project_dir.as_ref().join("remote");
-        let remote = Self::create_local_origin(&remote_dir).await?;
+        let repository_index = LocalRepositoryIndex::new(remote_dir).await?;
+        let repository_name: RepositoryName = "default".parse().unwrap();
 
-        let mut project =
-            Self::create(project_dir, "../remote".to_string(), content_provider).await?;
-        project.local_remote = Some(remote);
-        Ok(project)
+        repository_index
+            .create_repository(repository_name.clone())
+            .await?;
+
+        Self::create(
+            project_dir,
+            repository_index,
+            repository_name,
+            content_provider,
+        )
+        .await
     }
 
     /// Creates a new project index file turning the containing directory into a
     /// project.
     pub async fn create(
         project_dir: impl AsRef<Path>,
-        remote_path: String,
+        repository_index: impl RepositoryIndex,
+        repository_name: RepositoryName,
         content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     ) -> Result<Self, Error> {
         let resource_dir = project_dir.as_ref().join("offline");
@@ -174,21 +173,18 @@ impl Project {
 
         let workspace = Workspace::init(
             &resource_dir,
-            WorkspaceConfig::new(remote_path, WorkspaceRegistration::new_with_current_user()),
+            repository_index,
+            WorkspaceConfig::new(
+                repository_name,
+                WorkspaceRegistration::new_with_current_user(),
+            ),
             &content_provider,
         )
-        .await
-        .map_err(|e| {
-            Error::SourceControl(lgn_source_control::Error::Other {
-                source: anyhow::Error::new(e),
-                context: "Workspace::init".to_string(),
-            })
-        })?;
+        .await?;
 
         Ok(Self {
             project_dir: project_dir.as_ref().to_owned(),
             resource_dir,
-            local_remote: None,
             workspace,
             content_provider,
             deleted_pending: HashMap::new(),
@@ -198,21 +194,16 @@ impl Project {
     /// Opens the project index specified
     pub async fn open(
         project_dir: impl AsRef<Path>,
+        repository_index: impl RepositoryIndex,
         content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     ) -> Result<Self, Error> {
         let resource_dir = project_dir.as_ref().join("offline");
 
-        let workspace = Workspace::load(&resource_dir).await.map_err(|e| {
-            Error::SourceControl(lgn_source_control::Error::Other {
-                source: anyhow::Error::new(e),
-                context: "Workspace::load".to_string(),
-            })
-        })?;
+        let workspace = Workspace::load(&resource_dir, repository_index).await?;
 
         Ok(Self {
             project_dir: project_dir.as_ref().to_owned(),
             resource_dir,
-            local_remote: None,
             workspace,
             content_provider,
             deleted_pending: HashMap::new(),
@@ -222,19 +213,11 @@ impl Project {
     /// Deletes the project by deleting the index file.
     pub async fn delete(self) {
         std::fs::remove_dir_all(self.resource_dir()).unwrap_or(());
-
-        if let Some(remote) = &self.local_remote {
-            remote.destroy_index().await.unwrap();
-        }
     }
 
     /// Return the list of stages resources
     pub async fn get_staged_changes(&self) -> Result<Vec<(ResourceId, ChangeType)>, Error> {
-        let local_changes = self
-            .workspace
-            .get_staged_changes()
-            .await
-            .map_err(Error::SourceControl)?;
+        let local_changes = self.workspace.get_staged_changes().await?;
 
         let changes = local_changes
             .into_iter()
@@ -253,11 +236,7 @@ impl Project {
 
     /// Return the list of local resources
     pub async fn local_resource_list(&self) -> Result<Vec<ResourceId>, Error> {
-        let local_changes = self
-            .workspace
-            .get_staged_changes()
-            .await
-            .map_err(Error::SourceControl)?;
+        let local_changes = self.workspace.get_staged_changes().await?;
 
         let changes = local_changes
             .iter()
@@ -270,11 +249,7 @@ impl Project {
     }
 
     async fn remote_resource_list(&self) -> Result<Vec<ResourceId>, Error> {
-        let tree = self
-            .workspace
-            .get_current_tree()
-            .await
-            .map_err(Error::SourceControl)?;
+        let tree = self.workspace.get_current_tree().await?;
 
         let files = tree
             .files()
@@ -450,8 +425,7 @@ impl Project {
                 &self.content_provider,
                 [meta_path.as_path(), resource_path.as_path()],
             )
-            .await
-            .map_err(Error::SourceControl)?;
+            .await?;
 
         let type_id = ResourceTypeAndId { kind, id };
 
@@ -466,10 +440,7 @@ impl Project {
         {
             let files = [metadata_path.as_path(), resource_path.as_path()];
 
-            self.workspace
-                .delete_files(files)
-                .await
-                .map_err(Error::SourceControl)?;
+            self.workspace.delete_files(files).await?;
         }
 
         Ok(())
@@ -520,8 +491,7 @@ impl Project {
                 &self.content_provider,
                 [metadata_path.as_path(), resource_path.as_path()],
             ) // add
-            .await
-            .map_err(Error::SourceControl)?;
+            .await?;
 
         Ok(())
     }
@@ -591,11 +561,7 @@ impl Project {
 
         match self.deleted_pending.entry(id) {
             Entry::Vacant(entry) => {
-                let tree = self
-                    .workspace
-                    .get_staged_changes()
-                    .await
-                    .map_err(Error::SourceControl)?;
+                let tree = self.workspace.get_staged_changes().await?;
 
                 let meta_lsc_path =
                     CanonicalPath::new_from_canonical_paths(self.workspace.root(), &metadata_path)

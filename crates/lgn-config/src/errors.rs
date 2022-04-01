@@ -6,7 +6,9 @@ pub enum Error {
     #[error("config error: {0}")]
     Config(#[from] Box<figment::Error>),
     #[error("I/O error: {0}")]
-    IoError(#[from] std::io::Error),
+    Io(#[from] std::io::Error),
+    #[error("{0}")]
+    Other(String),
 }
 
 /// A result type.

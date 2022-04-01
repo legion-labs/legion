@@ -3,11 +3,11 @@ use crate::{
     ContentProvider, Error, GrpcProvider, LocalProvider, LruProvider, MemoryProvider,
     RedisProvider, Result, SmallContentProvider,
 };
-use lgn_config::RelativePathBuf;
-use serde::{Deserialize, Serialize};
+use lgn_config::RichPathBuf;
+use serde::Deserialize;
 
 /// The configuration of the content-store.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Deserialize, PartialEq)]
 pub struct Config {
     pub provider: ProviderConfig,
 
@@ -15,8 +15,8 @@ pub struct Config {
     pub caching_providers: Vec<ProviderConfig>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "snake_case")]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum ProviderConfig {
     Memory {},
     Lru(LruProviderConfig),
@@ -27,17 +27,16 @@ pub enum ProviderConfig {
     AwsDynamoDb(AwsDynamoDbProviderConfig),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct LocalProviderConfig {
-    #[serde(serialize_with = "RelativePathBuf::serialize_relative")]
-    pub path: RelativePathBuf,
+    pub path: RichPathBuf,
 }
 
 fn default_redis_url() -> String {
     "redis://localhost:6379".to_string()
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct RedisProviderConfig {
     #[serde(default = "default_redis_url")]
     pub url: String,
@@ -46,13 +45,13 @@ pub struct RedisProviderConfig {
     pub key_prefix: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct LruProviderConfig {
     #[serde(default)]
     pub size: usize,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct AwsS3ProviderConfig {
     pub bucket_name: String,
 
@@ -63,7 +62,7 @@ pub struct AwsS3ProviderConfig {
     pub dynamodb: AwsDynamoDbProviderConfig,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct AwsDynamoDbProviderConfig {
     pub table_name: String,
 }
@@ -191,7 +190,7 @@ impl ProviderConfig {
             Self::Memory {} => Box::new(SmallContentProvider::new(MemoryProvider::new())),
             Self::Lru(config) => Box::new(SmallContentProvider::new(LruProvider::new(config.size))),
             Self::Local(config) => Box::new(SmallContentProvider::new(
-                LocalProvider::new(config.path.relative()).await?,
+                LocalProvider::new(config.path.as_ref()).await?,
             )),
             Self::Redis(config) => Box::new(SmallContentProvider::new(
                 RedisProvider::new(config.url.clone(), config.key_prefix.clone()).await?,
@@ -226,7 +225,7 @@ impl Default for ProviderConfig {
 
 #[cfg(test)]
 mod tests {
-    use std::path::Path;
+    use std::{path::PathBuf, str::FromStr};
 
     use super::*;
 
@@ -234,7 +233,8 @@ mod tests {
     fn test_parse_config_without_caching() {
         let config = lgn_config::Config::from_toml(
             r#"
-            [content_store.provider.local]
+            [content_store.provider]
+            type = "local"
             path = "./test"
             "#,
         );
@@ -248,7 +248,7 @@ mod tests {
             config,
             Config {
                 provider: ProviderConfig::Local(LocalProviderConfig {
-                    path: Path::new("./test").into(),
+                    path: PathBuf::from_str("./test").unwrap().into(),
                 }),
                 caching_providers: vec![],
             }
@@ -259,15 +259,16 @@ mod tests {
     fn test_parse_config_with_caching() {
         let config = lgn_config::Config::from_toml(
             r#"
-            [content_store.provider.local]
+            [content_store.provider]
+            type = "local"
             path = "./test"
 
             [[content_store.caching_providers]]
-            [content_store.caching_providers.lru]
+            type = "lru"
             size = 100
 
             [[content_store.caching_providers]]
-            [content_store.caching_providers.memory]
+            type = "memory"
             "#,
         );
 
@@ -280,7 +281,7 @@ mod tests {
             config,
             Config {
                 provider: ProviderConfig::Local(LocalProviderConfig {
-                    path: Path::new("./test").into(),
+                    path: PathBuf::from_str("./test").unwrap().into(),
                 }),
                 caching_providers: vec![
                     ProviderConfig::Lru(LruProviderConfig { size: 100 }),
@@ -294,16 +295,18 @@ mod tests {
     fn test_parse_provider_config() {
         let config = lgn_config::Config::from_toml(
             r#"
-            [provider1.local]
+            [provider1]
+            type = "local"
             path = "./test"
 
-            [provider2.memory]
+            [provider2]
+            type = "memory"
             "#,
         );
 
         assert_eq!(
             ProviderConfig::Local(LocalProviderConfig {
-                path: Path::new("./test").into(),
+                path: PathBuf::from_str("./test").unwrap().into(),
             }),
             config.get("provider1").unwrap().unwrap(),
         );
@@ -317,18 +320,18 @@ mod tests {
     fn test_parse_local_provider_config() {
         let config = lgn_config::Config::from_toml(
             r#"
-            [content_store.provider.local]
+            [content_store.provider]
+            type = "local"
             path = "./test"
             "#,
         );
 
-        let config: LocalProviderConfig =
-            config.get("content_store.provider.local").unwrap().unwrap();
+        let config: LocalProviderConfig = config.get("content_store.provider").unwrap().unwrap();
 
         assert_eq!(
             config,
             LocalProviderConfig {
-                path: Path::new("./test").into(),
+                path: PathBuf::from_str("./test").unwrap().into(),
             }
         );
     }

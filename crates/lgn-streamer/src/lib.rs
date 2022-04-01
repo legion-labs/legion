@@ -20,15 +20,18 @@ use lgn_ecs::prelude::{Res, ResMut};
 use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_graphics_renderer::{resources::PipelineManager, Renderer};
 
+mod config;
 mod grpc;
 mod streamer;
 mod webrtc;
 
+pub use config::{Config, WebRTCConfig};
+
 /// Provides streaming capabilities to the engine.
 #[derive(Default)]
 pub struct StreamerPlugin {
-    /// Enable hardware encoding.
-    pub enable_hw_encoding: bool,
+    /// The configuration for the plugin.
+    pub config: Config,
 }
 
 impl Plugin for StreamerPlugin {
@@ -44,7 +47,7 @@ impl Plugin for StreamerPlugin {
             .init_resource::<Time>()
             .init_resource::<streamer::streamer_windows::StreamerWindows>()
             .init_resource::<streamer::control_stream::ControlStreams>()
-            .insert_resource(StreamEncoder::new(self.enable_hw_encoding))
+            .insert_resource(StreamEncoder::new(self.config.enable_hw_encoding))
             .add_event::<streamer::VideoStreamEvent>()
             .add_system(streamer::handle_stream_events)
             .add_system(streamer::update_streams)
@@ -52,8 +55,8 @@ impl Plugin for StreamerPlugin {
             .add_system(streamer::on_render_surface_created_for_window)
             .add_startup_system(init_cgen);
 
-        let webrtc_server =
-            webrtc::WebRTCServer::new().expect("failed to instantiate a WebRTC server");
+        let webrtc_server = webrtc::WebRTCServer::new(self.config.webrtc.clone())
+            .expect("failed to instantiate a WebRTC server");
         let grpc_server = grpc::GRPCServer::new(webrtc_server, stream_events_sender);
 
         app.world

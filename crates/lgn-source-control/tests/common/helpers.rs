@@ -7,7 +7,7 @@ macro_rules! init_test_workspace_and_index {
 
         let repository_name: RepositoryName = "default".parse().unwrap();
         let repository_index = LocalRepositoryIndex::new(index_root.path()).await.unwrap();
-        let _ = repository_index
+        let _repository = repository_index
             .create_repository(repository_name.clone())
             .await
             .unwrap();

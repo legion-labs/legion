@@ -20,7 +20,10 @@ impl LocalRepositoryIndex {
 
         let root = root.as_ref();
         if !root.is_absolute() {
-            return Err(Error::Unspecified("expected absolute path".to_string()));
+            return Err(Error::Unspecified(format!(
+                "expected absolute path, got: {}",
+                root.display()
+            )));
         }
 
         tokio::fs::create_dir_all(root)

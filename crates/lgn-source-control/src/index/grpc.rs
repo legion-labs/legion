@@ -114,11 +114,11 @@ where
             .into_inner();
 
         if !resp.exists {
-            return Err(Error::repository_does_not_exist(repository_name.to_owned()));
+            return Err(Error::repository_does_not_exist(repository_name.clone()));
         }
 
         Ok(Box::new(GrpcIndex::new(
-            repository_name.to_owned(),
+            repository_name.clone(),
             self.client.clone(),
         )))
     }

@@ -12,15 +12,15 @@ use crate::{
     RepositoryIndex, RepositoryName, Result, Tree, WorkspaceRegistration,
 };
 
-const TABLE_REPOSITORIES: &'static str = "repositories";
-const TABLE_COMMITS: &'static str = "commits";
-const TABLE_COMMIT_PARENTS: &'static str = "commit_parents";
-const TABLE_COMMIT_CHANGES: &'static str = "commit_changes";
-const TABLE_FOREST: &'static str = "forest";
-const TABLE_FOREST_LINKS: &'static str = "forest_links";
-const TABLE_BRANCHES: &'static str = "branches";
-const TABLE_WORKSPACE_REGISTRATIONS: &'static str = "workspace_registrations";
-const TABLE_LOCKS: &'static str = "locks";
+const TABLE_REPOSITORIES: &str = "repositories";
+const TABLE_COMMITS: &str = "commits";
+const TABLE_COMMIT_PARENTS: &str = "commit_parents";
+const TABLE_COMMIT_CHANGES: &str = "commit_changes";
+const TABLE_FOREST: &str = "forest";
+const TABLE_FOREST_LINKS: &str = "forest_links";
+const TABLE_BRANCHES: &str = "branches";
+const TABLE_WORKSPACE_REGISTRATIONS: &str = "workspace_registrations";
+const TABLE_LOCKS: &str = "locks";
 
 #[derive(Debug, Clone)]
 enum SqlDatabaseDriver {
@@ -49,6 +49,7 @@ impl SqlDatabaseDriver {
         }
     }
 
+    #[allow(clippy::borrowed_box)]
     fn is_unique_constraint_error(&self, db_err: &Box<dyn DatabaseError>) -> bool {
         match &self {
             Self::Sqlite(_) => db_err.code() == Some("2067".into()),
@@ -453,14 +454,14 @@ impl SqlIndex {
         {
             Ok(result) => result,
             Err(sqlx::Error::Database(db_err)) => {
-                if driver.is_unique_constraint_error(&db_err) {
-                    return Err(Error::RepositoryAlreadyExists { repository_name });
+                return if driver.is_unique_constraint_error(&db_err) {
+                    Err(Error::RepositoryAlreadyExists { repository_name })
                 } else {
-                    return Err(Error::Unspecified(format!(
+                    Err(Error::Unspecified(format!(
                         "failed to insert the repository `{}`: {}",
                         repository_name, db_err,
-                    )));
-                }
+                    )))
+                };
             }
             Err(err) => {
                 return Err(err).map_other_err(&format!(

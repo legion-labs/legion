@@ -1,7 +1,7 @@
 //! Editor server executable
 //!
 
-use std::{net::SocketAddr, path::PathBuf, time::Duration};
+use std::{net::SocketAddr, path::PathBuf, str::FromStr, time::Duration};
 
 use clap::Parser;
 use generic_data::plugin::GenericDataPlugin;
@@ -83,10 +83,7 @@ struct Args {
     test: Option<String>,
     /// Build output database address.
     #[clap(long)]
-    build_db: Option<String>,
-    /// Enable hardware encoding.
-    #[clap(long)]
-    enable_hw_encoding: bool,
+    build_output_database_address: Option<String>,
     /// The compilation mode of the editor.
     #[clap(long, default_value = "in-process")]
     compilers: CompilationMode,
@@ -105,6 +102,13 @@ struct Config {
     /// The scene.
     #[serde(default)]
     scene: String,
+
+    #[serde(default = "Config::default_build_output_database_address")]
+    build_output_database_address: String,
+
+    /// The streamer configuration.
+    #[serde(default)]
+    streamer: lgn_streamer::Config,
 }
 
 impl Config {
@@ -115,6 +119,10 @@ impl Config {
     fn default_project_root() -> PathBuf {
         PathBuf::from("tests/sample-data")
     }
+
+    fn default_build_output_database_address() -> String {
+        "temp".to_string()
+    }
 }
 
 impl Default for Config {
@@ -123,6 +131,8 @@ impl Default for Config {
             listen_endpoint: Self::default_listen_endpoint(),
             project_root: Self::default_project_root(),
             scene: "".to_string(),
+            build_output_database_address: Self::default_build_output_database_address(),
+            streamer: lgn_streamer::Config::default(),
         }
     }
 }
@@ -165,57 +175,49 @@ async fn main() {
         ContentStoreAddr::from(content_store_path.to_str().unwrap())
     };
 
+    info!("Legacy content-store path: {}", content_store_path);
+
     let scene = args.scene.unwrap_or(config.scene);
 
     info!("Scene: {}", scene);
 
     let source_control_repository_index =
         lgn_source_control::Config::load_and_instantiate_repository_index()
+            .await
             .expect("failed to load and instantiate a source control repository index");
 
     let repository_name = args.repository_name;
 
     info!("Repository name: {}", repository_name);
 
-    let build_output_db_addr = {
-        if let Some(build_db) = args.build_db {
-            let cmd_line = if build_db.starts_with("mysql:") {
-                build_db
-            } else {
-                let path = PathBuf::from(&build_db);
-                if path.is_absolute() {
-                    build_db
-                } else {
-                    cwd.join(path).to_str().unwrap().to_owned()
-                }
-            };
-            cmd_line
-        } else {
-            let mysql_address = lgn_config::get::<String>("editor_srv.build_output")
-                .unwrap()
-                .and_then(|address| {
-                    if address.starts_with("mysql:") {
-                        Some(address)
-                    } else {
-                        None
-                    }
-                });
+    let build_output_database_address = args
+        .build_output_database_address
+        .unwrap_or(config.build_output_database_address);
 
-            mysql_address.unwrap_or_else(|| {
-                lgn_config::get_absolute_path_or(
-                    "editor_srv.build_output",
-                    cwd.join("tests/sample-data/temp"),
-                )
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .to_owned()
-            })
+    let build_output_database_address = if build_output_database_address.starts_with("mysql:") {
+        info!("Using MySQL database for build output.");
+
+        build_output_database_address
+    } else {
+        info!("Using SQLite database for build output.");
+
+        let path = PathBuf::from_str(&build_output_database_address)
+            .expect("unable to parse build output database address as path");
+
+        if path.is_relative() {
+            project_root.join(path)
+        } else {
+            path
         }
+        .to_str()
+        .expect("unable to convert build output database address to string")
+        .to_owned()
     };
 
-    info!("Content Store: '{:?}'", content_store_path);
-    info!("Build DB: '{}'", build_output_db_addr);
+    info!(
+        "Build output database address: {}",
+        build_output_database_address
+    );
 
     let game_manifest_path = args.manifest.map_or_else(PathBuf::new, PathBuf::from);
     let assets_to_load = Vec::<ResourceTypeAndId>::new();
@@ -231,10 +233,11 @@ async fn main() {
 
     let mut app = App::from_telemetry_guard(telemetry_guard);
 
-    let mut streamer_plugin = StreamerPlugin::default();
-    if args.enable_hw_encoding {
-        streamer_plugin.enable_hw_encoding = true;
-    }
+    info!("Streamer plugin config: {:#?}", config.streamer);
+
+    let streamer_plugin = StreamerPlugin {
+        config: config.streamer,
+    };
 
     app.insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
         1.0 / 60.0,
@@ -253,7 +256,7 @@ async fn main() {
         project_root,
         source_control_repository_index,
         repository_name,
-        build_output_db_addr,
+        build_output_database_address,
         content_store_path,
         args.compilers,
     ))

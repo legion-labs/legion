@@ -19,6 +19,7 @@ use lgn_data_offline::resource::{
 };
 use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_graphics_data::{offline_gltf::GltfFile, offline_png::PngFile, offline_psd::PsdFile};
+use lgn_source_control::{RepositoryIndex, RepositoryName};
 use lgn_utils::DefaultHasher;
 use sample_data::offline as offline_data;
 use serde::de::DeserializeOwned;
@@ -28,7 +29,8 @@ use self::raw_to_offline::FromRaw;
 
 pub async fn build_offline(
     root_folder: impl AsRef<Path>,
-    source_control_index: lgn_source_control::Index,
+    repository_index: impl RepositoryIndex,
+    repository_name: RepositoryName,
     content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     incremental: bool,
 ) {
@@ -84,13 +86,13 @@ pub async fn build_offline(
                 .unwrap_or_else(|e| println!("failed to delete VERSION: {}.", e));
         }
 
-        Project::create_local_origin(root_folder.as_ref().join("remote"))
-            .await
-            .unwrap();
-
-        //
-        let (mut project, resources) =
-            setup_project(root_folder.as_ref(), source_control_index, content_provider).await;
+        let (mut project, resources) = setup_project(
+            root_folder.as_ref(),
+            repository_index,
+            repository_name,
+            content_provider,
+        )
+        .await;
         let mut resources = resources.lock().await;
 
         let gltf_folders = file_paths
@@ -225,17 +227,29 @@ pub async fn build_offline(
 
 async fn setup_project(
     root_folder: &Path,
-    source_control_index: lgn_source_control::Index,
+    repository_index: impl RepositoryIndex,
+    repository_name: RepositoryName,
     content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
 ) -> (Project, Arc<Mutex<ResourceRegistry>>) {
     // create/load project
-    let project =
-        if let Ok(project) = Project::open(root_folder, Arc::clone(&content_provider)).await {
-            Ok(project)
-        } else {
-            Project::create(root_folder, source_control_index, content_provider).await
-        }
-        .unwrap();
+    let project = if let Ok(project) = Project::open(
+        root_folder,
+        &repository_index,
+        Arc::clone(&content_provider),
+    )
+    .await
+    {
+        Ok(project)
+    } else {
+        Project::create(
+            root_folder,
+            repository_index,
+            repository_name,
+            content_provider,
+        )
+        .await
+    }
+    .unwrap();
 
     let mut registry = ResourceRegistryOptions::new();
     offline_data::register_resource_types(&mut registry);

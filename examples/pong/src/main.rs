@@ -5,6 +5,7 @@
 //#![allow()]
 
 use clap::{ArgEnum, Parser};
+use lgn_source_control::RepositoryName;
 use std::{
     env,
     fs::OpenOptions,
@@ -67,6 +68,16 @@ async fn main() {
     let build_dir = project_dir.join("temp");
     std::fs::create_dir_all(&build_dir).unwrap();
 
+    let repository_index = lgn_source_control::Config::load_and_instantiate_repository_index()
+        .await
+        .unwrap();
+    let repository_name: RepositoryName = "examples-pong".parse().unwrap();
+
+    // Always re-create the repository, even if it doesn't exist.
+    let _index = repository_index
+        .recreate_repository(repository_name.clone())
+        .await;
+
     let content_provider = Arc::new(
         lgn_content_store2::Config::load_and_instantiate_persistent_provider()
             .await
@@ -80,12 +91,10 @@ async fn main() {
             project_dir.clone()
         }
     };
-    Project::create_local_origin(absolute_project_dir.join("remote"))
-        .await
-        .expect("failed to create remote database");
     let mut project = Project::create(
         absolute_project_dir,
-        "../remote".to_owned(),
+        &repository_index,
+        repository_name,
         Arc::clone(&content_provider),
     )
     .await

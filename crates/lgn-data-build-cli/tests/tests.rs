@@ -11,16 +11,35 @@ use lgn_data_offline::{
     ResourcePathId,
 };
 use lgn_data_runtime::{AssetRegistryOptions, Resource};
+use lgn_source_control::{RepositoryIndex, RepositoryName};
+use serial_test::serial;
 
 static DATABUILD_EXE: &str = env!("CARGO_BIN_EXE_data-build");
 
 #[tokio::test]
+#[serial]
 async fn build_device() {
     let work_dir = tempfile::tempdir().unwrap();
+    std::env::set_var("WORK_DIR", work_dir.path().to_str().unwrap());
+
+    let legion_toml = include_str!("legion.toml");
+    fs::write(work_dir.path().join("legion.toml"), legion_toml).unwrap();
+    std::env::set_var(
+        "LGN_CONFIG",
+        work_dir.path().join("legion.toml").to_str().unwrap(),
+    );
 
     let cas = work_dir.path().join("content_store");
     let project_dir = work_dir.path();
     let output_dir = work_dir.path();
+    let repository_index = lgn_source_control::Config::load_and_instantiate_repository_index()
+        .await
+        .unwrap();
+    let repository_name: RepositoryName = "default".parse().unwrap();
+    repository_index
+        .create_repository(repository_name.clone())
+        .await
+        .unwrap();
     let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
         Arc::new(Box::new(MemoryProvider::new()));
 
@@ -31,10 +50,14 @@ async fn build_device() {
 
     // create project that contains test resource.
     let source_id = {
-        let mut project =
-            Project::create_with_remote_mock(project_dir, Arc::clone(&content_provider))
-                .await
-                .expect("new project");
+        let mut project = Project::create(
+            project_dir,
+            &repository_index,
+            repository_name,
+            Arc::clone(&content_provider),
+        )
+        .await
+        .expect("new project");
         let resources = ResourceRegistryOptions::new()
             .add_type::<refs_resource::TestResource>()
             .create_async_registry();
@@ -78,7 +101,11 @@ async fn build_device() {
         CompilerRegistryOptions::local_compilers(target_dir),
     )
     .content_store(&ContentStoreAddr::from(cas.clone()))
-    .create_with_project(project_dir, Arc::clone(&content_provider))
+    .create_with_project(
+        project_dir,
+        &repository_index,
+        Arc::clone(&content_provider),
+    )
     .await
     .expect("new build index");
     build.source_pull(&project).await.expect("successful pull");
@@ -148,7 +175,7 @@ async fn build_device() {
     let changed_content = "bar";
     let changed_derived_content = changed_content.chars().rev().collect::<String>();
     {
-        let mut project = Project::open(project_dir, content_provider)
+        let mut project = Project::open(project_dir, &repository_index, content_provider)
             .await
             .expect("new project");
         let resources = ResourceRegistryOptions::new()
@@ -183,12 +210,29 @@ async fn build_device() {
 }
 
 #[tokio::test]
+#[serial]
 async fn no_intermediate_resource() {
     let work_dir = tempfile::tempdir().unwrap();
+    std::env::set_var("WORK_DIR", work_dir.path().to_str().unwrap());
+
+    let legion_toml = include_str!("legion.toml");
+    fs::write(work_dir.path().join("legion.toml"), legion_toml).unwrap();
+    std::env::set_var(
+        "LGN_CONFIG",
+        work_dir.path().join("legion.toml").to_str().unwrap(),
+    );
 
     let cas = work_dir.path().join("content_store");
     let project_dir = work_dir.path();
     let output_dir = work_dir.path();
+    let repository_index = lgn_source_control::Config::load_and_instantiate_repository_index()
+        .await
+        .unwrap();
+    let repository_name: RepositoryName = "default".parse().unwrap();
+    repository_index
+        .create_repository(repository_name.clone())
+        .await
+        .unwrap();
     let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
         Arc::new(Box::new(MemoryProvider::new()));
 
@@ -198,10 +242,14 @@ async fn no_intermediate_resource() {
     // create project that contains test resource.
     let resource_id = {
         let resource_id = {
-            let mut project =
-                Project::create_with_remote_mock(project_dir, Arc::clone(&content_provider))
-                    .await
-                    .expect("new project");
+            let mut project = Project::create(
+                project_dir,
+                &repository_index,
+                repository_name,
+                Arc::clone(&content_provider),
+            )
+            .await
+            .expect("new project");
             let resources = ResourceRegistryOptions::new()
                 .add_type::<refs_resource::TestResource>()
                 .create_async_registry();
@@ -227,7 +275,7 @@ async fn no_intermediate_resource() {
             ContentStoreAddr::from(cas.clone()),
             CompilerRegistryOptions::default(),
         )
-        .create_with_project(project_dir, content_provider)
+        .create_with_project(project_dir, &repository_index, content_provider)
         .await
         .expect("new build index");
         build.source_pull(&project).await.expect("successful pull");
@@ -271,14 +319,33 @@ async fn no_intermediate_resource() {
 }
 
 #[tokio::test]
+#[serial]
 async fn with_intermediate_resource() {
     let work_dir = tempfile::tempdir().unwrap();
+    std::env::set_var("WORK_DIR", work_dir.path().to_str().unwrap());
+
+    let legion_toml = include_str!("legion.toml");
+    fs::write(work_dir.path().join("legion.toml"), legion_toml).unwrap();
+    std::env::set_var(
+        "LGN_CONFIG",
+        work_dir.path().join("legion.toml").to_str().unwrap(),
+    );
+
+    let project_dir = work_dir.path();
+    let output_dir = work_dir.path();
+    let repository_index = lgn_source_control::Config::load_and_instantiate_repository_index()
+        .await
+        .unwrap();
+    let repository_name: RepositoryName = "default".parse().unwrap();
+    repository_index
+        .create_repository(repository_name.clone())
+        .await
+        .unwrap();
+
     let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
         Arc::new(Box::new(MemoryProvider::new()));
 
     let cas = work_dir.path().join("content_store");
-    let project_dir = work_dir.path();
-    let output_dir = work_dir.path();
 
     // create output directory
     fs::create_dir(&cas).expect("new directory");
@@ -286,10 +353,14 @@ async fn with_intermediate_resource() {
     // create project that contains test resource.
     let resource_id = {
         let resource_id = {
-            let mut project =
-                Project::create_with_remote_mock(project_dir, Arc::clone(&content_provider))
-                    .await
-                    .expect("new project");
+            let mut project = Project::create(
+                project_dir,
+                &repository_index,
+                repository_name,
+                Arc::clone(&content_provider),
+            )
+            .await
+            .expect("new project");
             let resources = ResourceRegistryOptions::new()
                 .add_type::<text_resource::TextResource>()
                 .create_async_registry();
@@ -315,7 +386,7 @@ async fn with_intermediate_resource() {
             CompilerRegistryOptions::default(),
         )
         .content_store(&ContentStoreAddr::from(cas.clone()))
-        .create_with_project(project_dir, content_provider)
+        .create_with_project(project_dir, &repository_index, content_provider)
         .await
         .expect("new build index");
         build.source_pull(&project).await.expect("successful pull");
@@ -332,6 +403,7 @@ async fn with_intermediate_resource() {
         let platform = "windows";
         let locale = "en";
         let mut command = std::process::Command::new(DATABUILD_EXE);
+        //command.env("LGN_CONFIG", legion_toml);
         command.arg("compile");
         command.arg(compile_path.to_string());
         command.arg(format!("--cas={}", cas.to_str().unwrap()));

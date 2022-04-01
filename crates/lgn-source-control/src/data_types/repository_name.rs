@@ -24,7 +24,7 @@ impl FromStr for RepositoryName {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.chars().all(RepositoryName::is_valid_char) {
+        if s.chars().all(Self::is_valid_char) {
             Ok(Self(s.to_owned()))
         } else {
             Err(Error::InvalidRepositoryName {

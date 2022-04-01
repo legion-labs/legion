@@ -1,6 +1,5 @@
-use std::path::PathBuf;
-
 use http::Uri;
+use lgn_config::RichPathBuf;
 use serde::{Deserialize, Deserializer};
 
 use crate::{GrpcRepositoryIndex, LocalRepositoryIndex, RepositoryIndex, Result};
@@ -29,7 +28,7 @@ pub struct GrpcConfig {
 
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct LocalConfig {
-    pub path: PathBuf,
+    pub path: RichPathBuf,
 }
 
 impl Config {
@@ -81,7 +80,7 @@ impl RepositoryIndexConfig {
                 Ok(Box::new(index))
             }
             Self::Local(local_config) => {
-                let index = LocalRepositoryIndex::new(&local_config.path).await?;
+                let index = LocalRepositoryIndex::new(&local_config.path.as_ref()).await?;
                 Ok(Box::new(index))
             }
         }
