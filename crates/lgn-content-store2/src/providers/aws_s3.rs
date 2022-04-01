@@ -300,6 +300,10 @@ impl ContentReader for AwsS3Provider {
     ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
         get_content_readers_impl(self, ids).await
     }
+
+    async fn resolve_alias(&self, _key_space: &str, _key: &str) -> Result<Identifier> {
+        panic!("AwsS3Provider doesn't support aliasing, you must aggregate it along with another provider!")
+    }
 }
 
 #[async_trait]
@@ -334,6 +338,10 @@ impl ContentWriter for AwsS3Provider {
         let writer = ByteStreamWriter::new(self.client.clone(), self.url.bucket_name.clone(), key);
 
         Ok(Box::pin(writer))
+    }
+
+    async fn register_alias(&self, _key_space: &str, _key: &str, _id: &Identifier) -> Result<()> {
+        panic!("AwsS3Provider doesn't support aliasing, you must aggregate it along with another provider!")
     }
 }
 

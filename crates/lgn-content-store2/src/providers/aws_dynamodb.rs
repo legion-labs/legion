@@ -7,8 +7,8 @@ use std::{
 };
 
 use crate::{
-    traits::get_content_readers_impl, AliasRegisterer, AliasResolver, ContentAsyncRead,
-    ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
+    traits::get_content_readers_impl, ContentAsyncRead, ContentAsyncWrite, ContentReader,
+    ContentWriter, Error, Identifier, Result,
 };
 
 use super::{Uploader, UploaderImpl};
@@ -142,7 +142,18 @@ impl AwsDynamoDbProvider {
 }
 
 #[async_trait]
-impl AliasResolver for AwsDynamoDbProvider {
+impl ContentReader for AwsDynamoDbProvider {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
+        Ok(Box::pin(Cursor::new(self.get_content(id).await?)))
+    }
+
+    async fn get_content_readers<'ids>(
+        &self,
+        ids: &'ids BTreeSet<Identifier>,
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+        get_content_readers_impl(self, ids).await
+    }
+
     async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
         let id_attr = Self::get_alias_id_attr(key_space, key);
 
@@ -185,7 +196,21 @@ impl AliasResolver for AwsDynamoDbProvider {
 }
 
 #[async_trait]
-impl AliasRegisterer for AwsDynamoDbProvider {
+impl ContentWriter for AwsDynamoDbProvider {
+    async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
+        match self.get_content(id).await {
+            Ok(_) => Err(Error::AlreadyExists),
+            Err(Error::NotFound) => Ok(Box::pin(DynamoDbUploader::new(
+                id.clone(),
+                DynamoDbUploaderImpl {
+                    client: self.client.clone(),
+                    table_name: self.table_name.clone(),
+                },
+            ))),
+            Err(err) => Err(err),
+        }
+    }
+
     async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
         let id_attr = Self::get_alias_id_attr(key_space, key);
         let data_attr = AttributeValue::B(Blob::new(id.as_vec()));
@@ -208,37 +233,6 @@ impl AliasRegisterer for AwsDynamoDbProvider {
                 err
             )
             .into()),
-        }
-    }
-}
-
-#[async_trait]
-impl ContentReader for AwsDynamoDbProvider {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
-        Ok(Box::pin(Cursor::new(self.get_content(id).await?)))
-    }
-
-    async fn get_content_readers<'ids>(
-        &self,
-        ids: &'ids BTreeSet<Identifier>,
-    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
-        get_content_readers_impl(self, ids).await
-    }
-}
-
-#[async_trait]
-impl ContentWriter for AwsDynamoDbProvider {
-    async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
-        match self.get_content(id).await {
-            Ok(_) => Err(Error::AlreadyExists),
-            Err(Error::NotFound) => Ok(Box::pin(DynamoDbUploader::new(
-                id.clone(),
-                DynamoDbUploaderImpl {
-                    client: self.client.clone(),
-                    table_name: self.table_name.clone(),
-                },
-            ))),
-            Err(err) => Err(err),
         }
     }
 }

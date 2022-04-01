@@ -26,8 +26,8 @@ use crate::{
     traits::{
         get_content_readers_impl, ContentAddressProvider, ContentReaderExt, ContentWriterExt,
     },
-    AliasProvider, AliasRegisterer, AliasResolver, ContentAsyncRead, ContentAsyncWrite,
-    ContentProvider, ContentReader, ContentWriter, Error, Identifier, Result,
+    ContentAsyncRead, ContentAsyncWrite, ContentProvider, ContentReader, ContentWriter, Error,
+    Identifier, Result,
 };
 
 use super::{Uploader, UploaderImpl};
@@ -53,71 +53,6 @@ where
         let buf_size = 2 * 1024 * 1024;
 
         Self { client, buf_size }
-    }
-}
-
-#[async_trait]
-impl<C> AliasResolver for GrpcProvider<C>
-where
-    C: tonic::client::GrpcService<tonic::body::BoxBody> + Send,
-    C::ResponseBody: Body + Send + 'static,
-    C::Error: Into<StdError>,
-    C::Future: Send + 'static,
-    <C::ResponseBody as Body>::Error: Into<StdError> + Send,
-{
-    async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
-        let req = lgn_content_store_proto::ResolveAliasRequest {
-            key_space: key_space.to_string(),
-            key: key.to_string(),
-        };
-
-        let resp = self
-            .client
-            .lock()
-            .await
-            .resolve_alias(req)
-            .await
-            .map_err(|err| anyhow::anyhow!("gRPC request failed: {}", err))?
-            .into_inner();
-
-        if resp.id.is_empty() {
-            Err(Error::NotFound)
-        } else {
-            resp.id.parse()
-        }
-    }
-}
-
-#[async_trait]
-impl<C> AliasRegisterer for GrpcProvider<C>
-where
-    C: tonic::client::GrpcService<tonic::body::BoxBody> + Send,
-    C::ResponseBody: Body + Send + 'static,
-    C::Error: Into<StdError>,
-    C::Future: Send + 'static,
-    <C::ResponseBody as Body>::Error: Into<StdError> + Send,
-{
-    async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
-        let req = lgn_content_store_proto::RegisterAliasRequest {
-            key_space: key_space.to_string(),
-            key: key.to_string(),
-            id: id.to_string(),
-        };
-
-        let resp = self
-            .client
-            .lock()
-            .await
-            .register_alias(req)
-            .await
-            .map_err(|err| anyhow::anyhow!("gRPC request failed: {}", err))?
-            .into_inner();
-
-        if resp.newly_registered {
-            Ok(())
-        } else {
-            Err(Error::AlreadyExists)
-        }
     }
 }
 
@@ -177,6 +112,28 @@ where
     ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
         get_content_readers_impl(self, ids).await
     }
+
+    async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
+        let req = lgn_content_store_proto::ResolveAliasRequest {
+            key_space: key_space.to_string(),
+            key: key.to_string(),
+        };
+
+        let resp = self
+            .client
+            .lock()
+            .await
+            .resolve_alias(req)
+            .await
+            .map_err(|err| anyhow::anyhow!("gRPC request failed: {}", err))?
+            .into_inner();
+
+        if resp.id.is_empty() {
+            Err(Error::NotFound)
+        } else {
+            resp.id.parse()
+        }
+    }
 }
 
 #[async_trait]
@@ -216,6 +173,29 @@ where
                 }
             }
             None => Err(Error::AlreadyExists),
+        }
+    }
+
+    async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
+        let req = lgn_content_store_proto::RegisterAliasRequest {
+            key_space: key_space.to_string(),
+            key: key.to_string(),
+            id: id.to_string(),
+        };
+
+        let resp = self
+            .client
+            .lock()
+            .await
+            .register_alias(req)
+            .await
+            .map_err(|err| anyhow::anyhow!("gRPC request failed: {}", err))?
+            .into_inner();
+
+        if resp.newly_registered {
+            Ok(())
+        } else {
+            Err(Error::AlreadyExists)
         }
     }
 }
@@ -438,7 +418,7 @@ impl<Provider, AddressProvider> GrpcService<Provider, AddressProvider> {
 impl<Provider, AddressProvider> lgn_content_store_proto::content_store_server::ContentStore
     for GrpcService<Provider, AddressProvider>
 where
-    Provider: AliasProvider + ContentProvider + Send + Sync + 'static,
+    Provider: ContentProvider + Send + Sync + 'static,
     AddressProvider: ContentAddressProvider + Send + Sync + 'static,
 {
     async fn resolve_alias(

@@ -1,7 +1,7 @@
 use crate::{
-    AwsDynamoDbProvider, AwsS3Provider, AwsS3Url, CachingProvider, ContentProvider, Error,
-    GrpcProvider, LocalProvider, LruProvider, MemoryProvider, RedisProvider, Result,
-    SmallContentProvider,
+    AwsAggregatorProvider, AwsDynamoDbProvider, AwsS3Provider, AwsS3Url, CachingProvider,
+    ContentProvider, Error, GrpcProvider, LocalProvider, LruProvider, MemoryProvider,
+    RedisProvider, Result, SmallContentProvider,
 };
 use lgn_config::RelativePathBuf;
 use serde::{Deserialize, Serialize};
@@ -58,6 +58,9 @@ pub struct AwsS3ProviderConfig {
 
     #[serde(default)]
     pub root: String,
+
+    // When using S3, we must provide a DynamoDb table along to handle aliases.
+    pub dynamodb: AwsDynamoDbProviderConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -193,13 +196,14 @@ impl ProviderConfig {
             Self::Redis(config) => Box::new(SmallContentProvider::new(
                 RedisProvider::new(config.url.clone(), config.key_prefix.clone()).await?,
             )),
-            Self::AwsS3(config) => Box::new(SmallContentProvider::new(
+            Self::AwsS3(config) => Box::new(SmallContentProvider::new(AwsAggregatorProvider::new(
                 AwsS3Provider::new(AwsS3Url {
                     bucket_name: config.bucket_name.clone(),
                     root: config.root.clone(),
                 })
                 .await,
-            )),
+                AwsDynamoDbProvider::new(config.dynamodb.table_name.clone()).await,
+            ))),
             Self::AwsDynamoDb(config) => Box::new(SmallContentProvider::new(
                 AwsDynamoDbProvider::new(config.table_name.clone()).await,
             )),

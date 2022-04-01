@@ -5,10 +5,9 @@ use std::{
 };
 
 use lgn_content_store2::{
-    AliasContentReaderExt, AliasContentWriterExt, CachingProvider, ChunkIdentifier, Chunker,
-    ContentAddressReader, ContentAddressWriter, ContentReaderExt, ContentWriter, ContentWriterExt,
-    Error, GrpcProvider, GrpcService, Identifier, LocalProvider, MemoryProvider,
-    SmallContentProvider,
+    CachingProvider, ChunkIdentifier, Chunker, ContentAddressReader, ContentAddressWriter,
+    ContentReaderExt, ContentWriter, ContentWriterExt, Error, GrpcProvider, GrpcService,
+    Identifier, LocalProvider, MemoryProvider, SmallContentProvider,
 };
 
 #[cfg(feature = "lru")]

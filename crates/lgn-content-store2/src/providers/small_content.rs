@@ -48,6 +48,11 @@ impl<Inner: ContentReader + Send + Sync> ContentReader for SmallContentProvider<
     ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
         get_content_readers_impl(self, ids).await
     }
+
+    async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
+        // Always forward to the inner provider.
+        self.inner.resolve_alias(key_space, key).await
+    }
 }
 
 #[async_trait]
@@ -58,5 +63,10 @@ impl<Inner: ContentWriter + Send + Sync> ContentWriter for SmallContentProvider<
         }
 
         self.inner.get_content_writer(id).await
+    }
+
+    async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
+        // Always forward to the inner provider.
+        self.inner.register_alias(key_space, key, id).await
     }
 }

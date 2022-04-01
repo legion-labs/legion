@@ -11,8 +11,7 @@ use pin_project::pin_project;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 use crate::{
-    AliasRegisterer, AliasResolver, ContentAsyncRead, ContentAsyncWrite, ContentReader,
-    ContentWriter, Error, Identifier, Result,
+    ContentAsyncRead, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
 };
 
 pub trait TransferCallbacks<Id>: Debug + Send + Sync {
@@ -76,20 +75,6 @@ impl<Inner> MonitorProvider<Inner> {
 }
 
 #[async_trait]
-impl<Inner: AliasResolver + Send + Sync> AliasResolver for MonitorProvider<Inner> {
-    async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
-        self.inner.resolve_alias(key_space, key).await
-    }
-}
-
-#[async_trait]
-impl<Inner: AliasRegisterer + Send + Sync> AliasRegisterer for MonitorProvider<Inner> {
-    async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
-        self.inner.register_alias(key_space, key, id).await
-    }
-}
-
-#[async_trait]
 impl<Inner: ContentReader + Send + Sync> ContentReader for MonitorProvider<Inner> {
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
         let reader = self.inner.get_content_reader(id).await?;
@@ -134,6 +119,10 @@ impl<Inner: ContentReader + Send + Sync> ContentReader for MonitorProvider<Inner
             readers
         })
     }
+
+    async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
+        self.inner.resolve_alias(key_space, key).await
+    }
 }
 
 #[async_trait]
@@ -161,6 +150,10 @@ impl<Inner: ContentWriter + Send + Sync> ContentWriter for MonitorProvider<Inner
         } else {
             writer
         })
+    }
+
+    async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
+        self.inner.register_alias(key_space, key, id).await
     }
 }
 

@@ -7,11 +7,11 @@ use async_trait::async_trait;
 use tokio::sync::RwLock;
 
 use crate::{
-    AliasRegisterer, AliasResolver, ContentAsyncRead, ContentAsyncWrite, ContentReader,
-    ContentWriter, Error, Identifier, Result, Uploader, UploaderImpl,
+    ContentAsyncRead, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
+    Uploader, UploaderImpl,
 };
 
-/// A `LocalProvider` is a provider that stores content on the local filesystem.
+/// A `MemoryProvider` is a provider that stores content in RAM.
 #[derive(Default, Debug, Clone)]
 pub struct MemoryProvider {
     content_map: Arc<RwLock<HashMap<Identifier, Vec<u8>>>>,
@@ -23,31 +23,6 @@ impl MemoryProvider {
     /// process memory.
     pub fn new() -> Self {
         Self::default()
-    }
-}
-
-#[async_trait]
-impl AliasResolver for MemoryProvider {
-    async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
-        let map = self.alias_map.read().await;
-        let k = (key_space.to_string(), key.to_string());
-
-        map.get(&k).cloned().ok_or(Error::NotFound)
-    }
-}
-
-#[async_trait]
-impl AliasRegisterer for MemoryProvider {
-    async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
-        let k = (key_space.to_string(), key.to_string());
-
-        if self.alias_map.read().await.contains_key(&k) {
-            return Err(Error::AlreadyExists);
-        }
-
-        self.alias_map.write().await.insert(k, id.clone());
-
-        Ok(())
     }
 }
 
@@ -85,6 +60,13 @@ impl ContentReader for MemoryProvider {
 
         Ok(res)
     }
+
+    async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
+        let map = self.alias_map.read().await;
+        let k = (key_space.to_string(), key.to_string());
+
+        map.get(&k).cloned().ok_or(Error::NotFound)
+    }
 }
 
 #[async_trait]
@@ -100,6 +82,18 @@ impl ContentWriter for MemoryProvider {
                 },
             )))
         }
+    }
+
+    async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
+        let k = (key_space.to_string(), key.to_string());
+
+        if self.alias_map.read().await.contains_key(&k) {
+            return Err(Error::AlreadyExists);
+        }
+
+        self.alias_map.write().await.insert(k, id.clone());
+
+        Ok(())
     }
 }
 
