@@ -5,7 +5,7 @@ pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set
             name: "ConstColorPushConstantData",
             fields: [
                 #{ name:"transform", ty:"Transform" },
-                #{ name:"color", ty:"Float4" },
+                #{ name:"color", ty:"Uint1" },
                 #{ name:"color_blend", ty:"Float1" },
                 #{ name:"mesh_description_offset", ty:"Uint1" },                
             ]

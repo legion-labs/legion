@@ -4,6 +4,7 @@ use lgn_graphics_api::{
     LoadOp, PrimitiveTopology, RasterizerState, SampleCount, StencilOp, StoreOp, VertexLayout,
 };
 use lgn_graphics_cgen_runtime::CGenShaderKey;
+use lgn_graphics_data::Color;
 use lgn_math::{Vec3, Vec4};
 
 use lgn_transform::prelude::GlobalTransform;
@@ -191,7 +192,7 @@ impl DebugRenderPass {
         render_mesh(
             DefaultMeshType::GroundPlane as u32,
             &GlobalTransform::identity(),
-            Vec4::ZERO,
+            Color::BLACK,
             0.0,
             cmd_buffer,
             mesh_manager,
@@ -216,7 +217,7 @@ impl DebugRenderPass {
             .pipeline_manager()
             .get_pipeline(self.solid_pso_depth_handle)
             .unwrap();
-        for (_index, (visual_component, transform)) in picked_meshes.iter().enumerate() {
+        for (visual_component, transform) in picked_meshes.iter() {
             let (model_meta_data, _ready) =
                 model_manager.get_model_meta_data(visual_component.model_resource_id.as_ref());
             for mesh in &model_meta_data.meshes {
@@ -237,7 +238,7 @@ impl DebugRenderPass {
                 render_mesh(
                     mesh.mesh_id as u32,
                     transform,
-                    Vec4::new(0.0, 0.5, 0.5, 0.5),
+                    Color::new(0, 127, 127, 127),
                     1.0,
                     cmd_buffer,
                     mesh_manager,
@@ -270,7 +271,7 @@ impl DebugRenderPass {
             render_mesh(
                 mesh_id as u32,
                 &primitive.transform,
-                primitive.color.extend(1.0),
+                primitive.color,
                 1.0,
                 cmd_buffer,
                 mesh_manager,
@@ -289,7 +290,7 @@ impl DebugRenderPass {
         mesh_manager: &MeshManager,
         camera: &CameraComponent,
     ) {
-        for (_index, (transform, manipulator)) in manipulator_meshes.iter().enumerate() {
+        for (transform, manipulator) in manipulator_meshes.iter() {
             if manipulator.active {
                 let scaled_xform = ManipulatorManager::scale_manipulator_for_viewport(
                     transform,
@@ -299,17 +300,11 @@ impl DebugRenderPass {
                 );
 
                 let mut color = if manipulator.selected {
-                    Vec4::new(1.0, 0.65, 0.0, 1.0)
+                    Color::YELLOW
                 } else {
-                    Vec4::new(
-                        f32::from(manipulator.color.r) / 255.0f32,
-                        f32::from(manipulator.color.g) / 255.0f32,
-                        f32::from(manipulator.color.b) / 255.0f32,
-                        f32::from(manipulator.color.a) / 255.0f32,
-                    )
+                    manipulator.color
                 };
-
-                color.w = if manipulator.transparent { 0.9 } else { 1.0 };
+                color.a = if manipulator.transparent { 225 } else { 255 };
 
                 let pipeline = render_context
                     .pipeline_manager()
@@ -353,7 +348,7 @@ impl DebugRenderPass {
 
         cmd_buffer.begin_render_pass(
             &[ColorRenderTargetBinding {
-                texture_view: render_surface.lighting_rt().rtv(),
+                texture_view: render_surface.hdr_rt().rtv(),
                 load_op: LoadOp::Load,
                 store_op: StoreOp::Store,
                 clear_value: ColorClearValue::default(),
@@ -424,7 +419,7 @@ fn render_aabb_for_mesh(
     render_mesh(
         DefaultMeshType::WireframeCube as u32,
         &aabb_transform,
-        Vec4::new(1.0f32, 1.0f32, 0.0f32, 1.0f32),
+        Color::WHITE,
         1.0,
         cmd_buffer,
         mesh_manager,
@@ -455,7 +450,7 @@ fn render_bounding_sphere_for_mesh(
     render_mesh(
         DefaultMeshType::Sphere as u32,
         &sphere_transform,
-        Vec4::new(1.0f32, 1.0f32, 0.0f32, 1.0f32),
+        Color::WHITE,
         1.0,
         cmd_buffer,
         mesh_manager,
@@ -465,7 +460,7 @@ fn render_bounding_sphere_for_mesh(
 fn render_mesh(
     mesh_id: u32,
     world_xform: &GlobalTransform,
-    color: Vec4,
+    color: Color,
     color_blend: f32,
     cmd_buffer: &HLCommandBuffer<'_>,
     mesh_manager: &MeshManager,
@@ -480,7 +475,7 @@ fn render_mesh(
     transform.set_scale(world_xform.scale.into());
 
     push_constant_data.set_transform(transform);
-    push_constant_data.set_color(color.into());
+    push_constant_data.set_color(u32::from(color).into());
     push_constant_data.set_color_blend(color_blend.into());
     push_constant_data.set_mesh_description_offset(mesh_meta_data.mesh_description_offset.into());
 

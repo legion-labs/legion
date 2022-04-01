@@ -264,7 +264,7 @@ impl NvEncoderSession {
             height: self.encoder_height,
             pitch: self.encoder_width * 4,
             resourceToRegister: array.cast::<std::ffi::c_void>(),
-            bufferFormat: _NV_ENC_BUFFER_FORMAT::NV_ENC_BUFFER_FORMAT_ABGR,
+            bufferFormat: _NV_ENC_BUFFER_FORMAT::NV_ENC_BUFFER_FORMAT_ARGB,
             bufferUsage: _NV_ENC_BUFFER_USAGE::NV_ENC_INPUT_IMAGE,
             ..NV_ENC_REGISTER_RESOURCE::default()
         };
@@ -311,7 +311,7 @@ impl NvEncoderSession {
             version: NV_ENC_PIC_PARAMS_VER,
             pictureStruct: _NV_ENC_PIC_STRUCT::NV_ENC_PIC_STRUCT_FRAME,
             inputBuffer: self.mapped_resource,
-            bufferFmt: _NV_ENC_BUFFER_FORMAT::NV_ENC_BUFFER_FORMAT_ABGR,
+            bufferFmt: _NV_ENC_BUFFER_FORMAT::NV_ENC_BUFFER_FORMAT_ARGB,
             inputWidth: self.encoder_width,
             inputHeight: self.encoder_height,
             outputBitstream: self.cuda_bitstream_buffer,

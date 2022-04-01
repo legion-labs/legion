@@ -23,7 +23,7 @@ use lgn_tracing::{debug, warn};
 use serde::Serialize;
 use webrtc::data_channel::{data_channel_state::RTCDataChannelState, RTCDataChannel};
 
-use super::{Resolution, RgbToYuvConverter};
+use super::{Hdr2Rgb, Resolution, RgbToYuvConverter};
 #[derive(Component)]
 #[component(storage = "Table")]
 pub struct VideoStream {
@@ -33,6 +33,7 @@ pub struct VideoStream {
     encoder: VideoStreamEncoder,
     encoder_seesion: Option<StreamEncoderSesssion>,
     rgb_to_yuv: RgbToYuvConverter,
+    hdr2rgb: Hdr2Rgb,
     max_frame_time: u64,
 }
 
@@ -57,6 +58,7 @@ impl VideoStream {
             encoder,
             encoder_seesion: StreamEncoderSesssion::new(stream_encoder),
             rgb_to_yuv,
+            hdr2rgb: Hdr2Rgb::new(device_context, stream_encoder, resolution),
             max_frame_time,
         })
     }
@@ -68,7 +70,11 @@ impl VideoStream {
         extents: RenderSurfaceExtents,
     ) -> anyhow::Result<()> {
         let resolution = Resolution::new(extents.width(), extents.height());
-        if self.rgb_to_yuv.resize(device_context, resolution) {
+        if self.encoder_seesion.is_some() {
+            if self.hdr2rgb.resize(device_context, resolution) {
+                self.encoder = VideoStreamEncoder::new(resolution)?;
+            }
+        } else if self.rgb_to_yuv.resize(device_context, resolution) {
             self.encoder = VideoStreamEncoder::new(resolution)?;
         }
         Ok(())
@@ -78,7 +84,6 @@ impl VideoStream {
     pub(crate) fn present(
         &mut self,
         render_context: &RenderContext<'_>,
-
         render_surface: &mut RenderSurface,
     ) {
         imetric!("Frame ID begin present", "frame_id", self.frame_id as u64);
@@ -86,9 +91,11 @@ impl VideoStream {
         let now = tokio::time::Instant::now();
 
         let chunks = if let Some(encoder) = self.encoder_seesion.as_mut() {
+            self.hdr2rgb.present(render_context, render_surface);
+
             encoder.submit_input(&EncoderWorkItem {
-                image: render_surface.export_texture().clone(),
-                semaphore: render_surface.encoder_sem().clone(),
+                image: self.hdr2rgb.export_texture(),
+                semaphore: self.hdr2rgb.export_semaphore(),
             });
             let output = encoder.query_output();
             self.encoder.encode_cuda(&output[..], self.frame_id)

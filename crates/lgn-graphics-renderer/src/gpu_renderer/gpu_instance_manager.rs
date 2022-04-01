@@ -306,15 +306,8 @@ impl GpuInstanceManager {
         visual: &VisualComponent,
         updater: &mut UniformGPUDataUpdater,
     ) {
-        // Color
-        let color: (f32, f32, f32, f32) = (
-            f32::from(visual.color.r) / 255.0f32,
-            f32::from(visual.color.g) / 255.0f32,
-            f32::from(visual.color.b) / 255.0f32,
-            f32::from(visual.color.a) / 255.0f32,
-        );
         let mut instance_color = cgen::cgen_type::GpuInstanceColor::default();
-        instance_color.set_color(Vec4::new(color.0, color.1, color.2, color.3).into());
+        instance_color.set_color((u32::from(visual.color)).into());
         instance_color.set_color_blend(visual.color_blend.into());
         self.color_manager
             .update_gpu_data(&entity, &instance_color, updater);
