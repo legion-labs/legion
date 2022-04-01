@@ -614,16 +614,20 @@ impl DataBuild {
                             .0;
                         // can we assume there is a result of a requested name?
                         // probably no, this should return a compile error.
-                        let source = compiled
+                        if let Some(source) = compiled
                             .iter()
                             .find(|&compiled| compiled.compiled_path == direct_dependency)
-                            .unwrap_or_else(|| {
-                                panic!("compilation output of: {}", direct_dependency)
-                            });
-
-                        // this is how we truncate the 128 bit long checksum
-                        // and convert it to a 64 bit source_hash.
-                        AssetHash::from(source.compiled_checksum.default_hash())
+                        {
+                            // this is how we truncate the 128 bit long checksum
+                            // and convert it to a 64 bit source_hash.
+                            AssetHash::from(source.compiled_checksum.default_hash())
+                        } else {
+                            lgn_tracing::error!(
+                                "Failed to find compilation output for: {}",
+                                direct_dependency
+                            );
+                            continue;
+                        }
                     }
                 };
 
