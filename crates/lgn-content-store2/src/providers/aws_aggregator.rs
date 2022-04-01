@@ -12,7 +12,7 @@ use crate::{
 };
 
 /// An global that contains the default size above which S3 has a digressive cost for storing data.
-pub const AWS_S3_THRESHOLD: ByteSize = ByteSize::kib(128);
+pub const AWS_S3_MINIMAL_SIZE_THRESHOLD: ByteSize = ByteSize::kib(128);
 
 /// A `AwsAggregator` is a provider that multiplexes S3 & `DynamoDB` together to handle the different requirements.
 /// For one, we use `DynamoDB` to store payloads smaller than 128KiB.
@@ -34,7 +34,7 @@ impl AwsAggregatorProvider {
 #[async_trait]
 impl ContentReader for AwsAggregatorProvider {
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
-        if id.data_size() <= AWS_S3_THRESHOLD.as_u64() as usize {
+        if id.data_size() <= AWS_S3_MINIMAL_SIZE_THRESHOLD.as_u64() as usize {
             self.dynamo.get_content_reader(id).await
         } else {
             self.s3.get_content_reader(id).await
@@ -57,7 +57,7 @@ impl ContentReader for AwsAggregatorProvider {
 #[async_trait]
 impl ContentWriter for AwsAggregatorProvider {
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
-        if id.data_size() <= AWS_S3_THRESHOLD.as_u64() as usize {
+        if id.data_size() <= AWS_S3_MINIMAL_SIZE_THRESHOLD.as_u64() as usize {
             self.dynamo.get_content_writer(id).await
         } else {
             self.s3.get_content_writer(id).await

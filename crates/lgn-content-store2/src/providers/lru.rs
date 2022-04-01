@@ -12,7 +12,7 @@ use crate::{
     Uploader, UploaderImpl,
 };
 
-/// A `LruProvider` is a provider that stores content in RAM, but only keeps a certain amount of content, by evicting older content our of RAM.
+/// A `LruProvider` is a provider that stores content in RAM, but only keeps a certain amount of content, by evicting older, less recently accessed, data.
 #[derive(Debug, Clone)]
 pub struct LruProvider {
     content_map: Arc<Mutex<LruCache<Identifier, Vec<u8>>>>,

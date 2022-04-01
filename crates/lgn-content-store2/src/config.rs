@@ -60,7 +60,7 @@ pub struct AwsS3ProviderConfig {
     pub root: String,
 
     // When using S3, we must provide a DynamoDb table along to handle aliases.
-    pub dynamo_table_name: String,
+    pub dynamodb: AwsDynamoDbProviderConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -202,7 +202,7 @@ impl ProviderConfig {
                     root: config.root.clone(),
                 })
                 .await,
-                AwsDynamoDbProvider::new(config.dynamo_table_name.clone()).await,
+                AwsDynamoDbProvider::new(config.dynamodb.table_name.clone()).await,
             ))),
             Self::AwsDynamoDb(config) => Box::new(SmallContentProvider::new(
                 AwsDynamoDbProvider::new(config.table_name.clone()).await,
