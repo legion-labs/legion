@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use lgn_content_store2::ChunkIdentifier;
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_runtime_proto::runtime::{
@@ -39,7 +37,7 @@ impl Runtime for GRPCServer {
         request: Request<LoadManifestRequest>,
     ) -> Result<Response<LoadManifestResponse>, Status> {
         let request = request.into_inner();
-        if let Ok(manifest_id) = ChunkIdentifier::from_str(&request.manifest_id) {
+        if let Ok(manifest_id) = request.manifest_id.parse::<ChunkIdentifier>() {
             if let Err(_error) = self
                 .command_sender
                 .send(RuntimeServerCommand::LoadManifest(manifest_id))
@@ -55,7 +53,7 @@ impl Runtime for GRPCServer {
         request: Request<LoadRootAssetRequest>,
     ) -> Result<Response<LoadRootAssetResponse>, Status> {
         let request = request.into_inner();
-        if let Ok(root_asset_id) = ResourceTypeAndId::from_str(&request.root_asset_id) {
+        if let Ok(root_asset_id) = request.root_asset_id.parse::<ResourceTypeAndId>() {
             if let Err(_error) = self
                 .command_sender
                 .send(RuntimeServerCommand::LoadRootAsset(root_asset_id))
