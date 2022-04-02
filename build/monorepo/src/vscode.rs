@@ -110,34 +110,41 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
             } else {
                 label.as_str()
             };
-            configurations.push(json!({
+            let mut config = json!({
                 "name": display_name,
                 "type": debugger_type,
                 "request": "launch",
-                "program": format!("${{workspaceFolder}}/target/debug{}/{}.exe",
+                "program": format!("${{workspaceFolder}}/target/debug{}/{}{}",
                     if let BuildTargetId::Example(_name) = target.id() {
                         "/examples"
                     } else {
                         ""
                     },
-                    name
+                    name,
+                    if cfg!(windows) {".exe"} else {""}
                 ),
                 "args": vscode_config.overrides.get(package.name()).map_or_else(
                     std::vec::Vec::new,
                     |dict| dict.get("args").unwrap_or(&vec![]).clone()
                 ),
-                "stopAtEntry": false,
                 "cwd": "${workspaceFolder}",
                 "environment": [],
-                "console": "integratedTerminal",
-                "sourceFileMap": {
-                    "/rustc/db9d1b20bba1968c1ec1fc49616d4742c1725b4b": toolchain
-                },
-                "symbolSearchPath": "https://msdl.microsoft.com/download/symbols",
                 "preLaunchTask":  prelaunch_task,
-                "visualizerFile": "${workspaceFolder}/.vscode/legionlabs.natvis",
                 "showDisplayString": true
-            }));
+            });
+            if debugger_type == "lldb" {
+                config["sourceLanguages"] = json!(["rust"]);
+                config["stopOnEntry"] = json!(false);
+                config["terminal"] = json!("integrated");
+            } else {
+                config["sourceFileMap"] =
+                    json!({ "/rustc/db9d1b20bba1968c1ec1fc49616d4742c1725b4b": toolchain });
+                config["symbolSearchPath"] = json!("https://msdl.microsoft.com/download/symbols");
+                config["visualizerFile"] = json!("${workspaceFolder}/.vscode/legionlabs.natvis");
+                config["stopAtEntry"] = json!(false);
+                config["console"] = json!("integratedTerminal");
+            }
+            configurations.push(config);
         }
     }
 
