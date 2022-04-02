@@ -1,12 +1,13 @@
 use std::{
     env,
     fs::{self, OpenOptions},
+    io::Write,
     path::Path,
     sync::Arc,
 };
 
 use lgn_content_store::ContentStoreAddr;
-use lgn_content_store2::ContentProvider;
+use lgn_content_store2::{Chunker, ContentProvider};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::{
     compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,
@@ -58,7 +59,9 @@ pub async fn build(
     let mut exe_path = env::current_exe().expect("cannot access current_exe");
     exe_path.pop();
 
-    let project = Project::open(root_folder, content_provider).await.unwrap();
+    let project = Project::open(root_folder, Arc::clone(&content_provider))
+        .await
+        .unwrap();
 
     let mut build = DataBuildOptions::new_with_sqlite_output(
         build_index_dir,
@@ -105,12 +108,6 @@ pub async fn build(
         // as data build process does not implement *packaging* yet.
         //
         let runtime_manifest_path = runtime_dir.join("game.manifest");
-        let file = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(runtime_manifest_path)
-            .expect("open file");
 
         let filter = |p: &ResourcePathId| {
             matches!(
@@ -124,6 +121,23 @@ pub async fn build(
         };
 
         let rt_manifest = manifest.into_rt_manifest(filter);
-        serde_json::to_writer_pretty(file, &rt_manifest).expect("to write manifest");
+
+        let mut buffer = vec![];
+        serde_json::to_writer_pretty(&mut buffer, &rt_manifest).expect("to write manifest");
+
+        let chunker = Chunker::default();
+        let chunk_id = chunker
+            .write_chunk(content_provider, &buffer)
+            .await
+            .expect("failed to write manifest to cas");
+
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(runtime_manifest_path)
+            .expect("open file");
+
+        write!(file, "{}", chunk_id).expect("failed to write manifest id to file");
     }
 }
