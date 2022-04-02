@@ -1,125 +1,162 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
-use lgn_online::grpc::GrpcWebClient;
 use lgn_tracing::prelude::*;
 use tokio::sync::Mutex;
-use url::Url;
+use tonic::codegen::{Body, StdError};
 
 use lgn_source_control_proto::{
     source_control_client::SourceControlClient, CommitToBranchRequest, CountLocksRequest,
-    CreateIndexRequest, DestroyIndexRequest, GetBranchRequest, GetLockRequest, GetTreeRequest,
-    IndexExistsRequest, InsertBranchRequest, ListBranchesRequest, ListCommitsRequest,
-    ListLocksRequest, LockRequest, RegisterWorkspaceRequest, SaveTreeRequest, UnlockRequest,
+    CreateRepositoryRequest, DestroyRepositoryRequest, GetBranchRequest, GetLockRequest,
+    GetTreeRequest, InsertBranchRequest, ListBranchesRequest, ListCommitsRequest, ListLocksRequest,
+    LockRequest, RegisterWorkspaceRequest, RepositoryExistsRequest, SaveTreeRequest, UnlockRequest,
     UpdateBranchRequest,
 };
 
 use crate::{
-    Branch, CanonicalPath, Commit, CommitId, Error, IndexBackend, ListBranchesQuery,
-    ListCommitsQuery, ListLocksQuery, Lock, MapOtherError, Result, Tree, WorkspaceRegistration,
+    Branch, CanonicalPath, Commit, CommitId, Error, Index, ListBranchesQuery, ListCommitsQuery,
+    ListLocksQuery, Lock, MapOtherError, RepositoryIndex, RepositoryName, Result, Tree,
+    WorkspaceRegistration,
 };
 
-// Access to repository metadata through a gRPC server.
-pub struct GrpcIndexBackend {
-    url: Url,
-    repository_name: String,
-    client: Mutex<SourceControlClient<GrpcWebClient>>,
+// Access to a source-control repository index through a gRPC server.
+pub struct GrpcRepositoryIndex<C> {
+    client: Arc<Mutex<SourceControlClient<C>>>,
 }
 
-impl GrpcIndexBackend {
-    pub fn new(url: Url) -> Result<Self> {
-        let repository_name = url.path().trim_start_matches('/').to_string();
-        let mut grpc_url = url.clone();
-        grpc_url.set_path("");
-
-        if repository_name.is_empty() {
-            return Err(Error::invalid_index_url(
-                url,
-                anyhow::anyhow!("invalid empty repository name"),
-            ));
+impl<C> GrpcRepositoryIndex<C>
+where
+    C: tonic::client::GrpcService<tonic::body::BoxBody> + Send,
+    C::ResponseBody: Body + Send + 'static,
+    C::Error: Into<StdError>,
+    C::Future: Send + 'static,
+    <C::ResponseBody as Body>::Error: Into<StdError> + Send,
+{
+    pub fn new(client: C) -> Self {
+        Self {
+            client: Arc::new(Mutex::new(SourceControlClient::new(client))),
         }
-
-        debug!(
-            "gRPC index backend instance targets repository `{}` at: {}",
-            repository_name, grpc_url
-        );
-
-        // The `to_string` hereafter is hardly optimal but this should not live
-        // in a critical path anyway so it probably does not matter.
-        //
-        // If the conversion bothers you, feel free to change it.
-        let client = GrpcWebClient::new(grpc_url.to_string().parse().unwrap());
-        let client = Mutex::new(SourceControlClient::new(client));
-
-        Ok(Self {
-            url,
-            repository_name,
-            client,
-        })
     }
 }
 
 #[async_trait]
-impl IndexBackend for GrpcIndexBackend {
-    fn url(&self) -> &str {
-        self.url.as_str()
-    }
+impl<C> RepositoryIndex for GrpcRepositoryIndex<C>
+where
+    C: tonic::client::GrpcService<tonic::body::BoxBody> + Send + 'static,
+    C::ResponseBody: Body + Send + 'static,
+    C::Error: Into<StdError>,
+    C::Future: Send + 'static,
+    <C::ResponseBody as Body>::Error: Into<StdError> + Send,
+{
+    async fn create_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
+        async_span_scope!("GrpcRepositoryIndex::create_repository");
 
-    async fn create_index(&self) -> Result<()> {
-        async_span_scope!("GrpcIndexBackend::create_index");
         let resp = self
             .client
             .lock()
             .await
-            .create_index(CreateIndexRequest {
-                repository_name: self.repository_name.clone(),
-            })
-            .await
-            .map_other_err(format!("failed to create index `{}`", self.repository_name))?
-            .into_inner();
-
-        if resp.already_exists {
-            return Err(Error::index_already_exists(self.url()));
-        }
-
-        Ok(())
-    }
-
-    async fn destroy_index(&self) -> Result<()> {
-        async_span_scope!("GrpcIndexBackend::destroy_index");
-        let resp = self
-            .client
-            .lock()
-            .await
-            .destroy_index(DestroyIndexRequest {
-                repository_name: self.repository_name.clone(),
+            .create_repository(CreateRepositoryRequest {
+                repository_name: repository_name.to_string(),
             })
             .await
             .map_other_err(format!(
-                "failed to destroy index `{}`",
-                self.repository_name
+                "failed to create repository `{}`",
+                &repository_name
+            ))?
+            .into_inner();
+
+        if resp.already_exists {
+            return Err(Error::repository_already_exists(repository_name));
+        }
+
+        Ok(Box::new(GrpcIndex::new(
+            repository_name,
+            self.client.clone(),
+        )))
+    }
+
+    async fn destroy_repository(&self, repository_name: RepositoryName) -> Result<()> {
+        async_span_scope!("GrpcRepositoryIndex::destroy_repository");
+
+        let resp = self
+            .client
+            .lock()
+            .await
+            .destroy_repository(DestroyRepositoryRequest {
+                repository_name: repository_name.to_string(),
+            })
+            .await
+            .map_other_err(format!(
+                "failed to destroy repository `{}`",
+                repository_name
             ))?
             .into_inner();
 
         if resp.does_not_exist {
-            return Err(Error::index_does_not_exist(self.url()));
+            return Err(Error::repository_does_not_exist(repository_name));
         }
 
         Ok(())
     }
 
-    async fn index_exists(&self) -> Result<bool> {
-        async_span_scope!("GrpcIndexBackend::index_exists");
+    async fn load_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
+        async_span_scope!("GrpcRepositoryIndex::load_repository");
+
         let resp = self
             .client
             .lock()
             .await
-            .index_exists(IndexExistsRequest {
-                repository_name: self.repository_name.clone(),
+            .repository_exists(RepositoryExistsRequest {
+                repository_name: repository_name.to_string(),
             })
             .await
-            .map_other_err("failed to check if index exists")?
+            .map_other_err(format!("failed to open repository `{}`", repository_name))?
             .into_inner();
 
-        Ok(resp.exists)
+        if !resp.exists {
+            return Err(Error::repository_does_not_exist(repository_name.clone()));
+        }
+
+        Ok(Box::new(GrpcIndex::new(
+            repository_name.clone(),
+            self.client.clone(),
+        )))
+    }
+}
+
+// Access to a source-control repository through a gRPC server.
+pub struct GrpcIndex<C> {
+    repository_name: RepositoryName,
+    client: Arc<Mutex<SourceControlClient<C>>>,
+}
+
+impl<C> GrpcIndex<C>
+where
+    C: tonic::client::GrpcService<tonic::body::BoxBody> + Send,
+    C::ResponseBody: Body + Send + 'static,
+    C::Error: Into<StdError>,
+    C::Future: Send + 'static,
+    <C::ResponseBody as Body>::Error: Into<StdError> + Send,
+{
+    fn new(repository_name: RepositoryName, client: Arc<Mutex<SourceControlClient<C>>>) -> Self {
+        Self {
+            repository_name,
+            client,
+        }
+    }
+}
+
+#[async_trait]
+impl<C> Index for GrpcIndex<C>
+where
+    C: tonic::client::GrpcService<tonic::body::BoxBody> + Send,
+    C::ResponseBody: Body + Send + 'static,
+    C::Error: Into<StdError>,
+    C::Future: Send + 'static,
+    <C::ResponseBody as Body>::Error: Into<StdError> + Send,
+{
+    fn repository_name(&self) -> &RepositoryName {
+        &self.repository_name
     }
 
     async fn register_workspace(
@@ -131,7 +168,7 @@ impl IndexBackend for GrpcIndexBackend {
             .lock()
             .await
             .register_workspace(RegisterWorkspaceRequest {
-                repository_name: self.repository_name.clone(),
+                repository_name: self.repository_name.to_string(),
                 workspace_registration: Some(workspace_registration.clone().into()),
             })
             .await
@@ -149,7 +186,7 @@ impl IndexBackend for GrpcIndexBackend {
             .lock()
             .await
             .get_branch(GetBranchRequest {
-                repository_name: self.repository_name.clone(),
+                repository_name: self.repository_name.to_string(),
                 branch_name: branch_name.into(),
             })
             .await
@@ -169,7 +206,7 @@ impl IndexBackend for GrpcIndexBackend {
             .lock()
             .await
             .list_branches(ListBranchesRequest {
-                repository_name: self.repository_name.clone(),
+                repository_name: self.repository_name.to_string(),
                 lock_domain_id: query.lock_domain_id.unwrap_or_default().into(),
             })
             .await
@@ -185,7 +222,7 @@ impl IndexBackend for GrpcIndexBackend {
             .lock()
             .await
             .insert_branch(InsertBranchRequest {
-                repository_name: self.repository_name.clone(),
+                repository_name: self.repository_name.to_string(),
                 branch: Some(branch.clone().into()),
             })
             .await
@@ -199,7 +236,7 @@ impl IndexBackend for GrpcIndexBackend {
             .lock()
             .await
             .update_branch(UpdateBranchRequest {
-                repository_name: self.repository_name.clone(),
+                repository_name: self.repository_name.to_string(),
                 branch: Some(branch.clone().into()),
             })
             .await
@@ -214,7 +251,7 @@ impl IndexBackend for GrpcIndexBackend {
             .lock()
             .await
             .list_commits(ListCommitsRequest {
-                repository_name: self.repository_name.clone(),
+                repository_name: self.repository_name.to_string(),
                 commit_ids: query
                     .commit_ids
                     .iter()
@@ -240,7 +277,7 @@ impl IndexBackend for GrpcIndexBackend {
             .lock()
             .await
             .commit_to_branch(CommitToBranchRequest {
-                repository_name: self.repository_name.clone(),
+                repository_name: self.repository_name.to_string(),
                 commit: Some(commit.clone().into()),
                 branch: Some(branch.clone().into()),
             })
@@ -261,7 +298,7 @@ impl IndexBackend for GrpcIndexBackend {
             .lock()
             .await
             .get_tree(GetTreeRequest {
-                repository_name: self.repository_name.clone(),
+                repository_name: self.repository_name.to_string(),
                 tree_id: id.into(),
             })
             .await
@@ -277,7 +314,7 @@ impl IndexBackend for GrpcIndexBackend {
             .lock()
             .await
             .save_tree(SaveTreeRequest {
-                repository_name: self.repository_name.clone(),
+                repository_name: self.repository_name.to_string(),
                 tree: Some(tree.clone().into()),
             })
             .await
@@ -291,7 +328,7 @@ impl IndexBackend for GrpcIndexBackend {
             .lock()
             .await
             .lock(LockRequest {
-                repository_name: self.repository_name.clone(),
+                repository_name: self.repository_name.to_string(),
                 lock: Some(lock.clone().into()),
             })
             .await
@@ -308,7 +345,7 @@ impl IndexBackend for GrpcIndexBackend {
             .lock()
             .await
             .unlock(UnlockRequest {
-                repository_name: self.repository_name.clone(),
+                repository_name: self.repository_name.to_string(),
                 lock_domain_id: lock_domain_id.into(),
                 canonical_path: canonical_path.to_string(),
             })
@@ -327,7 +364,7 @@ impl IndexBackend for GrpcIndexBackend {
             .lock()
             .await
             .get_lock(GetLockRequest {
-                repository_name: self.repository_name.clone(),
+                repository_name: self.repository_name.to_string(),
                 lock_domain_id: lock_domain_id.into(),
                 canonical_path: canonical_path.to_string(),
             })
@@ -354,7 +391,7 @@ impl IndexBackend for GrpcIndexBackend {
             .lock()
             .await
             .list_locks(ListLocksRequest {
-                repository_name: self.repository_name.clone(),
+                repository_name: self.repository_name.to_string(),
                 lock_domain_ids: query
                     .lock_domain_ids
                     .iter()
@@ -376,7 +413,7 @@ impl IndexBackend for GrpcIndexBackend {
             .lock()
             .await
             .count_locks(CountLocksRequest {
-                repository_name: self.repository_name.clone(),
+                repository_name: self.repository_name.to_string(),
                 lock_domain_ids: query
                     .lock_domain_ids
                     .iter()

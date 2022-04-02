@@ -3,20 +3,26 @@ use async_trait::async_trait;
 use chrono::DateTime;
 use lgn_content_store2::ChunkIdentifier;
 use lgn_tracing::prelude::*;
-use sqlx::{migrate::MigrateDatabase, Acquire, Executor, Row};
-use std::{
-    collections::{BTreeMap, BTreeSet, VecDeque},
-    sync::Arc,
-};
-use tokio::sync::Mutex;
+use sqlx::{error::DatabaseError, migrate::MigrateDatabase, Acquire, Executor, Row};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use crate::{
     sql::SqlConnectionPool, Branch, CanonicalPath, Change, ChangeType, Commit, CommitId, Error,
-    IndexBackend, ListBranchesQuery, ListCommitsQuery, ListLocksQuery, Lock, MapOtherError, Result,
-    Tree, WorkspaceRegistration,
+    Index, ListBranchesQuery, ListCommitsQuery, ListLocksQuery, Lock, MapOtherError,
+    RepositoryIndex, RepositoryName, Result, Tree, WorkspaceRegistration,
 };
 
-#[derive(Debug)]
+const TABLE_REPOSITORIES: &str = "repositories";
+const TABLE_COMMITS: &str = "commits";
+const TABLE_COMMIT_PARENTS: &str = "commit_parents";
+const TABLE_COMMIT_CHANGES: &str = "commit_changes";
+const TABLE_FOREST: &str = "forest";
+const TABLE_FOREST_LINKS: &str = "forest_links";
+const TABLE_BRANCHES: &str = "branches";
+const TABLE_WORKSPACE_REGISTRATIONS: &str = "workspace_registrations";
+const TABLE_LOCKS: &str = "locks";
+
+#[derive(Debug, Clone)]
 enum SqlDatabaseDriver {
     Sqlite(String),
     Mysql(String),
@@ -29,19 +35,25 @@ impl SqlDatabaseDriver {
         } else if url.starts_with("sqlite://") {
             Ok(Self::Sqlite(url))
         } else {
-            Err(Error::invalid_index_url(
-                url.clone(),
-                anyhow::anyhow!(
-                    "unsupported SQL database driver: {}",
-                    url.split(':').next().unwrap_or_default()
-                ),
-            ))
+            Err(Error::Unspecified(format!(
+                "unsupported SQL database driver: {}",
+                url.split(':').next().unwrap_or_default()
+            )))
         }
     }
 
-    fn url(&self) -> &str {
-        match self {
-            Self::Sqlite(url) | Self::Mysql(url) => url,
+    fn auto_increment(&self) -> &'static str {
+        match &self {
+            SqlDatabaseDriver::Sqlite(_) => "",
+            SqlDatabaseDriver::Mysql(_) => "AUTO_INCREMENT",
+        }
+    }
+
+    #[allow(clippy::borrowed_box)]
+    fn is_unique_constraint_error(&self, db_err: &Box<dyn DatabaseError>) -> bool {
+        match &self {
+            Self::Sqlite(_) => db_err.code() == Some("2067".into()),
+            Self::Mysql(_) => db_err.code() == Some("1062".into()),
         }
     }
 
@@ -66,14 +78,6 @@ impl SqlDatabaseDriver {
         }
     }
 
-    async fn drop_database(&self) -> Result<()> {
-        match &self {
-            Self::Sqlite(uri) | Self::Mysql(uri) => sqlx::Any::drop_database(uri)
-                .await
-                .map_other_err("failed to drop database"),
-        }
-    }
-
     async fn check_if_database_exists(&self) -> Result<bool> {
         match &self {
             Self::Sqlite(uri) | Self::Mysql(uri) => sqlx::Any::database_exists(uri)
@@ -84,73 +88,37 @@ impl SqlDatabaseDriver {
 }
 
 // access to repository metadata inside a mysql or sqlite database
-pub struct SqlIndexBackend {
+#[derive(Debug, Clone)]
+pub struct SqlRepositoryIndex {
     driver: SqlDatabaseDriver,
-    pool: Mutex<Option<Arc<SqlConnectionPool>>>,
 }
 
-impl core::fmt::Debug for SqlIndexBackend {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("SqlIndexBackend")
-            .field("driver", &self.driver)
-            .finish()
-    }
-}
-
-impl SqlIndexBackend {
-    const TABLE_COMMITS: &'static str = "commits";
-    const TABLE_COMMIT_PARENTS: &'static str = "commit_parents";
-    const TABLE_COMMIT_CHANGES: &'static str = "commit_changes";
-    const TABLE_FOREST: &'static str = "forest";
-    const TABLE_FOREST_LINKS: &'static str = "forest_links";
-    const TABLE_BRANCHES: &'static str = "branches";
-    const TABLE_WORKSPACE_REGISTRATIONS: &'static str = "workspace_registrations";
-    const TABLE_LOCKS: &'static str = "locks";
-
-    /// Instantiate a new SQL index backend.
-    pub fn new(url: String) -> Result<Self> {
+impl SqlRepositoryIndex {
+    pub async fn new(url: String) -> Result<Self> {
+        async_span_scope!("SqlRepositoryIndex::new");
         let driver = SqlDatabaseDriver::new(url)?;
 
-        Ok(Self {
-            driver,
-            pool: Mutex::new(None),
-        })
-    }
+        // This should not be done in production, but it is useful for testing.
+        if !driver.check_if_database_exists().await? {
+            driver.create_database().await?;
 
-    async fn get_conn(&self) -> Result<sqlx::pool::PoolConnection<sqlx::Any>> {
-        self.get_pool()
-            .await?
-            .acquire()
-            .await
-            .map_other_err("failed to acquire SQL connection")
-    }
+            let pool = driver.new_pool().await?;
+            let mut conn = pool
+                .acquire()
+                .await
+                .map_other_err("failed to acquire SQL connection")?;
 
-    async fn get_transaction(&self) -> Result<sqlx::Transaction<'_, sqlx::Any>> {
-        self.get_pool()
-            .await?
-            .begin()
-            .await
-            .map_other_err("failed to acquire SQL transaction")
-    }
-
-    async fn get_pool(&self) -> Result<Arc<SqlConnectionPool>> {
-        let mut pool = self.pool.lock().await;
-
-        if let Some(pool) = pool.as_ref() {
-            Ok(Arc::clone(pool))
-        } else {
-            let new_pool = Arc::new(self.driver.new_pool().await?);
-
-            *pool = Some(Arc::clone(&new_pool));
-
-            Ok(new_pool)
+            Self::initialize_database(&mut conn, &driver).await?;
         }
+
+        Ok(Self { driver })
     }
 
     async fn initialize_database(
         conn: &mut sqlx::AnyConnection,
         driver: &SqlDatabaseDriver,
     ) -> Result<()> {
+        Self::create_repositories_table(conn, driver).await?;
         Self::create_commits_table(conn, driver).await?;
         Self::create_forest_table(conn).await?;
         Self::create_branches_table(conn).await?;
@@ -160,27 +128,42 @@ impl SqlIndexBackend {
         Ok(())
     }
 
+    async fn create_repositories_table(
+        conn: &mut sqlx::AnyConnection,
+        driver: &SqlDatabaseDriver,
+    ) -> Result<()> {
+        let sql: &str = &format!(
+            "CREATE TABLE `{}` (id INTEGER NOT NULL {} PRIMARY KEY, name VARCHAR(255), CONSTRAINT unique_repository_name UNIQUE (name));",
+            TABLE_REPOSITORIES,
+            driver.auto_increment(),
+        );
+
+        conn.execute(sql)
+            .await
+            .map_other_err("failed to create the commits table")
+            .map(|_| ())
+    }
+
     async fn create_commits_table(
         conn: &mut sqlx::AnyConnection,
         driver: &SqlDatabaseDriver,
     ) -> Result<()> {
-        let auto_increment = match driver {
-            SqlDatabaseDriver::Sqlite(_) => "",
-            SqlDatabaseDriver::Mysql(_) => "AUTO_INCREMENT",
-        };
-
         let sql: &str = &format!(
-        "CREATE TABLE `{}` (id INTEGER NOT NULL {} PRIMARY KEY, owner VARCHAR(255), message TEXT, root_hash CHAR(64), date_time_utc VARCHAR(255));
+        "CREATE TABLE `{}` (repository_id INTEGER NOT NULL, id INTEGER NOT NULL {} PRIMARY KEY, owner VARCHAR(255), message TEXT, root_hash CHAR(64), date_time_utc VARCHAR(255), FOREIGN KEY (repository_id) REFERENCES `{}`(id) ON DELETE CASCADE);
+         CREATE INDEX repository_id_commit on `{}`(repository_id, id);
          CREATE TABLE `{}` (id INTEGER NOT NULL, parent_id INTEGER NOT NULL);
          CREATE INDEX commit_parents_id on `{}`(id);
-         CREATE TABLE `{}` (commit_id INTEGER NOT NULL, canonical_path TEXT NOT NULL, old_chunk_id VARCHAR(255), new_chunk_id VARCHAR(255));
+         CREATE TABLE `{}` (commit_id INTEGER NOT NULL, canonical_path TEXT NOT NULL, old_chunk_id VARCHAR(255), new_chunk_id VARCHAR(255), FOREIGN KEY (commit_id) REFERENCES `{}`(id) ON DELETE CASCADE);
          CREATE INDEX commit_changes_commit on `{}`(commit_id);",
-         Self::TABLE_COMMITS,
-         auto_increment,
-         Self::TABLE_COMMIT_PARENTS,
-         Self::TABLE_COMMIT_PARENTS,
-         Self::TABLE_COMMIT_CHANGES,
-         Self::TABLE_COMMIT_CHANGES
+         TABLE_COMMITS,
+         driver.auto_increment(),
+         TABLE_REPOSITORIES,
+         TABLE_COMMITS,
+         TABLE_COMMIT_PARENTS,
+         TABLE_COMMIT_PARENTS,
+         TABLE_COMMIT_CHANGES,
+         TABLE_COMMITS,
+         TABLE_COMMIT_CHANGES
         );
 
         conn.execute(sql)
@@ -192,13 +175,13 @@ impl SqlIndexBackend {
     async fn create_forest_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
         let sql: &str = &format!(
             "CREATE TABLE `{}` (id VARCHAR(255) PRIMARY KEY, name VARCHAR(255), chunk_id VARCHAR(255));
-            CREATE TABLE `{}` (id VARCHAR(255), child_id VARCHAR(255) NOT NULL, CONSTRAINT unique_link UNIQUE (id, child_id), FOREIGN KEY (id) REFERENCES `{}`(id), FOREIGN KEY (child_id) REFERENCES `{}`(id));
+            CREATE TABLE `{}` (id VARCHAR(255), child_id VARCHAR(255) NOT NULL, CONSTRAINT unique_link UNIQUE (id, child_id), FOREIGN KEY (id) REFERENCES `{}`(id) ON DELETE CASCADE, FOREIGN KEY (child_id) REFERENCES `{}`(id) ON DELETE CASCADE);
             CREATE INDEX forest_links_index on `{}`(id);",
-            Self::TABLE_FOREST,
-            Self::TABLE_FOREST_LINKS,
-            Self::TABLE_FOREST,
-            Self::TABLE_FOREST,
-            Self::TABLE_FOREST_LINKS,
+            TABLE_FOREST,
+            TABLE_FOREST_LINKS,
+            TABLE_FOREST,
+            TABLE_FOREST,
+            TABLE_FOREST_LINKS,
         );
 
         conn.execute(sql)
@@ -209,10 +192,12 @@ impl SqlIndexBackend {
 
     async fn create_branches_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
         let sql: &str = &format!(
-        "CREATE TABLE `{}` (name VARCHAR(255) PRIMARY KEY, head INTEGER NOT NULL, lock_domain_id VARCHAR(64));
+        "CREATE TABLE `{}` (repository_id INTEGER NOT NULL, name VARCHAR(255), head INTEGER NOT NULL, lock_domain_id VARCHAR(64), PRIMARY KEY (repository_id, name), FOREIGN KEY (repository_id) REFERENCES `{}`(id) ON DELETE CASCADE, FOREIGN KEY (head) REFERENCES `{}`(id));
         CREATE INDEX branches_lock_domain_ids_index on `{}`(lock_domain_id);",
-        Self::TABLE_BRANCHES,
-        Self::TABLE_BRANCHES
+        TABLE_BRANCHES,
+        TABLE_REPOSITORIES,
+        TABLE_COMMITS,
+        TABLE_BRANCHES
         );
 
         conn.execute(sql)
@@ -224,7 +209,7 @@ impl SqlIndexBackend {
     async fn create_workspace_registrations_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
         let sql: &str = &format!(
             "CREATE TABLE `{}` (id VARCHAR(255), owner VARCHAR(255), UNIQUE (id));",
-            Self::TABLE_WORKSPACE_REGISTRATIONS,
+            TABLE_WORKSPACE_REGISTRATIONS,
         );
 
         conn.execute(sql)
@@ -235,9 +220,10 @@ impl SqlIndexBackend {
 
     async fn create_locks_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
         let sql: &str = &format!(
-        "CREATE TABLE `{}` (lock_domain_id VARCHAR(64), canonical_path VARCHAR(512), workspace_id VARCHAR(255), branch_name VARCHAR(255), UNIQUE (lock_domain_id, canonical_path));
+        "CREATE TABLE `{}` (repository_id INTEGER NOT NULL, lock_domain_id VARCHAR(64), canonical_path VARCHAR(512), workspace_id VARCHAR(255), branch_name VARCHAR(255), UNIQUE (repository_id, lock_domain_id, canonical_path), FOREIGN KEY (repository_id) REFERENCES `{}`(id) ON DELETE CASCADE);
         ",
-        Self::TABLE_LOCKS
+        TABLE_LOCKS,
+        TABLE_REPOSITORIES,
         );
 
         conn.execute(sql)
@@ -245,12 +231,128 @@ impl SqlIndexBackend {
             .map_other_err("failed to create the locks table and index")
             .map(|_| ())
     }
+}
+
+#[async_trait]
+impl RepositoryIndex for SqlRepositoryIndex {
+    async fn create_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
+        async_span_scope!("SqlRepositoryIndex::create_repository");
+
+        let pool = self.driver.new_pool().await?;
+        let index = SqlIndex::init(self.driver.clone(), pool, repository_name).await?;
+
+        Ok(Box::new(index))
+    }
+
+    async fn destroy_repository(&self, repository_name: RepositoryName) -> Result<()> {
+        async_span_scope!("SqlRepositoryIndex::destroy_repository");
+
+        let pool = self.driver.new_pool().await?;
+        let index = SqlIndex::load(self.driver.clone(), pool, repository_name).await?;
+
+        index.cleanup_repository_data().await
+    }
+
+    async fn load_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
+        async_span_scope!("SqlRepositoryIndex::load_repository");
+
+        let pool = self.driver.new_pool().await?;
+        let index = SqlIndex::load(self.driver.clone(), pool, repository_name).await?;
+
+        Ok(Box::new(index))
+    }
+}
+
+pub struct SqlIndex {
+    driver: SqlDatabaseDriver,
+    pool: SqlConnectionPool,
+    repository_name: RepositoryName,
+    repository_id: i64,
+}
+
+impl core::fmt::Debug for SqlIndex {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("SqlIndex")
+            .field("driver", &self.driver)
+            .finish()
+    }
+}
+
+impl SqlIndex {
+    async fn init(
+        driver: SqlDatabaseDriver,
+        pool: SqlConnectionPool,
+        repository_name: RepositoryName,
+    ) -> Result<Self> {
+        let conn = pool
+            .acquire()
+            .await
+            .map_other_err("failed to acquire SQL connection")?;
+
+        let repository_id =
+            Self::initialize_repository_data(conn, &repository_name, &driver).await?;
+
+        Ok(Self {
+            driver,
+            pool,
+            repository_name,
+            repository_id,
+        })
+    }
+
+    async fn load(
+        driver: SqlDatabaseDriver,
+        pool: SqlConnectionPool,
+        repository_name: RepositoryName,
+    ) -> Result<Self> {
+        let mut conn = pool
+            .acquire()
+            .await
+            .map_other_err("failed to acquire SQL connection")?;
+
+        let repository_id = Self::get_repository_id(&mut conn, repository_name.clone()).await?;
+
+        Ok(Self {
+            driver,
+            pool,
+            repository_name,
+            repository_id,
+        })
+    }
+
+    async fn get_conn(&self) -> Result<sqlx::pool::PoolConnection<sqlx::Any>> {
+        self.pool
+            .acquire()
+            .await
+            .map_other_err("failed to acquire SQL connection")
+    }
+
+    async fn get_transaction(&self) -> Result<sqlx::Transaction<'_, sqlx::Any>> {
+        self.pool
+            .begin()
+            .await
+            .map_other_err("failed to acquire SQL transaction")
+    }
 
     async fn initialize_repository_data(
-        transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
-    ) -> Result<()> {
+        mut conn: sqlx::pool::PoolConnection<sqlx::Any>,
+        repository_name: &RepositoryName,
+        driver: &SqlDatabaseDriver,
+    ) -> Result<i64> {
+        let mut transaction = conn
+            .begin()
+            .await
+            .map_other_err("failed to acquire SQL transaction")?;
+
+        let repository_id = Self::insert_repository_transactional(
+            &mut transaction,
+            repository_name.clone(),
+            driver,
+        )
+        .await?;
+
         let tree = Tree::empty();
-        let tree_id = Self::save_tree_transactional(transaction, &tree).await?;
+        let tree_id = Self::save_tree_transactional(&mut transaction, &tree).await?;
 
         let initial_commit = Commit::new_unique_now(
             whoami::username(),
@@ -260,11 +362,31 @@ impl SqlIndexBackend {
             BTreeSet::new(),
         );
 
-        let commit_id = Self::insert_commit_transactional(transaction, &initial_commit).await?;
+        let commit_id =
+            Self::insert_commit_transactional(&mut transaction, repository_id, &initial_commit)
+                .await?;
 
         let main_branch = Branch::new(String::from("main"), commit_id);
 
-        Self::insert_branch_transactional(transaction, &main_branch).await?;
+        Self::insert_branch_transactional(&mut transaction, repository_id, &main_branch).await?;
+
+        transaction.commit().await.map_other_err(format!(
+            "failed to commit transaction when creating repository `{}`",
+            repository_name,
+        ))?;
+
+        Ok(repository_id)
+    }
+
+    async fn cleanup_repository_data(self) -> Result<()> {
+        let mut transaction = self.get_transaction().await?;
+
+        Self::delete_repository_transactional(&mut transaction, self.repository_id).await?;
+
+        transaction.commit().await.map_other_err(format!(
+            "failed to commit transaction when delete repository `{}`",
+            self.repository_name,
+        ))?;
 
         Ok(())
     }
@@ -274,27 +396,35 @@ impl SqlIndexBackend {
         executor: E,
         name: &str,
     ) -> Result<Branch> {
+        async_span_scope!("SqlIndex::read_branch_for_update");
+
         let query = match &self.driver {
             SqlDatabaseDriver::Sqlite(_) => format!(
                 "SELECT head, lock_domain_id
                      FROM `{}`
-                     WHERE name = ?;",
-                Self::TABLE_BRANCHES
+                     WHERE repository_id=?
+                     AND name=?;",
+                TABLE_BRANCHES
             ),
             SqlDatabaseDriver::Mysql(_) => format!(
                 "SELECT head, lock_domain_id
                      FROM `{}`
-                     WHERE name = ?
+                     WHERE repository_id=?
+                     AND name = ?
                      FOR UPDATE;",
-                Self::TABLE_BRANCHES
+                TABLE_BRANCHES
             ),
         };
 
         let row = sqlx::query(&query)
+            .bind(self.repository_id)
             .bind(name)
             .fetch_one(executor)
             .await
-            .map_other_err("failed to read the branch from MySQL")?;
+            .map_other_err(format!(
+                "failed to read the branch for repository {}",
+                self.repository_id
+            ))?;
 
         Ok(Branch {
             name: name.to_string(),
@@ -307,10 +437,96 @@ impl SqlIndexBackend {
         })
     }
 
+    async fn insert_repository_transactional(
+        transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
+        repository_name: RepositoryName,
+        driver: &SqlDatabaseDriver,
+    ) -> Result<i64> {
+        async_span_scope!("SqlIndex::insert_repository_transactional");
+
+        let result = match sqlx::query(&format!(
+            "INSERT INTO `{}` VALUES(NULL, ?);",
+            TABLE_REPOSITORIES
+        ))
+        .bind(repository_name.to_string())
+        .execute(transaction)
+        .await
+        {
+            Ok(result) => result,
+            Err(sqlx::Error::Database(db_err)) => {
+                return if driver.is_unique_constraint_error(&db_err) {
+                    Err(Error::RepositoryAlreadyExists { repository_name })
+                } else {
+                    Err(Error::Unspecified(format!(
+                        "failed to insert the repository `{}`: {}",
+                        repository_name, db_err,
+                    )))
+                };
+            }
+            Err(err) => {
+                return Err(err).map_other_err(&format!(
+                    "failed to insert the repository `{}`",
+                    repository_name,
+                ))
+            }
+        };
+
+        result.last_insert_id().ok_or_else(|| {
+            Error::Unspecified(format!(
+                "failed to get the last insert id when inserting repository `{}`",
+                repository_name
+            ))
+        })
+    }
+
+    async fn delete_repository_transactional(
+        transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
+        repository_id: i64,
+    ) -> Result<()> {
+        async_span_scope!("SqlIndex::delete_repository_transactional");
+
+        sqlx::query(&format!("DELETE FROM `{}` WHERE id=?;", TABLE_REPOSITORIES))
+            .bind(repository_id)
+            .execute(transaction)
+            .await
+            .map_other_err(&format!(
+                "failed to delete the repository {}",
+                repository_id,
+            ))
+            .map(|_| ())
+    }
+
+    async fn get_repository_id(
+        conn: &mut sqlx::pool::PoolConnection<sqlx::Any>,
+        repository_name: RepositoryName,
+    ) -> Result<i64> {
+        async_span_scope!("SqlIndex::get_repository_id");
+
+        match sqlx::query(&format!(
+            "SELECT id
+             FROM `{}`
+             WHERE name = ?;",
+            TABLE_REPOSITORIES,
+        ))
+        .bind(repository_name.to_string())
+        .fetch_one(conn)
+        .await
+        {
+            Ok(row) => Ok(row.get::<i64, _>("id")),
+            Err(sqlx::Error::RowNotFound) => Err(Error::repository_does_not_exist(repository_name)),
+            Err(err) => {
+                Err(err).map_other_err(format!("failed to fetch repository `{}`", repository_name))
+            }
+        }
+    }
+
     async fn insert_branch_transactional(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
+        repository_id: i64,
         branch: &Branch,
     ) -> Result<()> {
+        async_span_scope!("SqlIndex::insert_branch_transactional");
+
         let head: i64 = branch
             .head
             .0
@@ -318,22 +534,29 @@ impl SqlIndexBackend {
             .map_other_err("failed to convert the head")?;
 
         sqlx::query(&format!(
-            "INSERT INTO `{}` VALUES(?, ?, ?);",
-            Self::TABLE_BRANCHES
+            "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
+            TABLE_BRANCHES
         ))
+        .bind(repository_id)
         .bind(&branch.name)
         .bind(head)
         .bind(&branch.lock_domain_id)
         .execute(transaction)
         .await
-        .map_other_err(&format!("failed to insert the branch `{}`", &branch.name))
+        .map_other_err(&format!(
+            "failed to insert the branch `{}` in repository {}",
+            &branch.name, repository_id
+        ))
         .map(|_| ())
     }
 
     async fn list_commits_transactional(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
+        repository_id: i64,
         query: &ListCommitsQuery,
     ) -> Result<Vec<Commit>> {
+        async_span_scope!("SqlIndex::list_commits_transactional");
+
         let mut result = Vec::new();
         result.reserve(1024);
 
@@ -364,8 +587,8 @@ impl SqlIndexBackend {
             let changes = sqlx::query(&format!(
                 "SELECT canonical_path, old_chunk_id, new_chunk_id
              FROM `{}`
-             WHERE commit_id = ?;",
-                Self::TABLE_COMMIT_CHANGES,
+             WHERE commit_id=?;",
+                TABLE_COMMIT_CHANGES,
             ))
             .bind(&commit_id)
             .fetch_all(&mut *transaction)
@@ -416,7 +639,7 @@ impl SqlIndexBackend {
                 "SELECT parent_id
                 FROM `{}`
                 WHERE id = ?;",
-                Self::TABLE_COMMIT_PARENTS,
+                TABLE_COMMIT_PARENTS,
             ))
             .bind(&commit_id)
             .fetch_all(&mut *transaction)
@@ -435,9 +658,11 @@ impl SqlIndexBackend {
                 match sqlx::query(&format!(
                     "SELECT owner, message, root_hash, date_time_utc 
              FROM `{}`
-             WHERE id = ?;",
-                    Self::TABLE_COMMITS
+             WHERE repository_id=?
+             AND id=?;",
+                    TABLE_COMMITS
                 ))
+                .bind(repository_id)
                 .bind(&commit_id)
                 .fetch_one(&mut *transaction)
                 .await
@@ -488,19 +713,26 @@ impl SqlIndexBackend {
 
     async fn insert_commit_transactional(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
+        repository_id: i64,
         commit: &Commit,
     ) -> Result<CommitId> {
+        async_span_scope!("SqlIndex::insert_commit_transactional");
+
         let result = sqlx::query(&format!(
-            "INSERT INTO `{}` VALUES(NULL, ?, ?, ?, ?);",
-            Self::TABLE_COMMITS
+            "INSERT INTO `{}` VALUES(?, NULL, ?, ?, ?, ?);",
+            TABLE_COMMITS
         ))
+        .bind(repository_id)
         .bind(commit.owner.clone())
         .bind(commit.message.clone())
         .bind(commit.root_tree_id.clone())
         .bind(commit.timestamp.to_rfc3339())
         .execute(&mut *transaction)
         .await
-        .map_other_err("failed to insert the commit")?;
+        .map_other_err(format!(
+            "failed to insert the commit in repository {}",
+            repository_id
+        ))?;
 
         let commit_id = result.last_insert_id().unwrap();
 
@@ -512,7 +744,7 @@ impl SqlIndexBackend {
 
             sqlx::query(&format!(
                 "INSERT INTO `{}` VALUES(?, ?);",
-                Self::TABLE_COMMIT_PARENTS
+                TABLE_COMMIT_PARENTS
             ))
             .bind(commit_id)
             .bind(parent_id)
@@ -527,7 +759,7 @@ impl SqlIndexBackend {
         for change in &commit.changes {
             sqlx::query(&format!(
                 "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
-                Self::TABLE_COMMIT_CHANGES
+                TABLE_COMMIT_CHANGES
             ))
             .bind(commit_id)
             .bind(change.canonical_path().to_string())
@@ -562,6 +794,7 @@ impl SqlIndexBackend {
 
     async fn update_branch_transactional<'e, E: sqlx::Executor<'e, Database = sqlx::Any>>(
         executor: E,
+        repository_id: i64,
         branch: &Branch,
     ) -> Result<()> {
         let head: i64 = branch
@@ -571,15 +804,19 @@ impl SqlIndexBackend {
             .map_other_err("failed to convert commit id")?;
         sqlx::query(&format!(
             "UPDATE `{}` SET head=?, lock_domain_id=?
-             WHERE name=?;",
-            Self::TABLE_BRANCHES
+             WHERE repository_id=? AND name=?;",
+            TABLE_BRANCHES
         ))
         .bind(head)
         .bind(branch.lock_domain_id.clone())
+        .bind(repository_id)
         .bind(branch.name.clone())
         .execute(executor)
         .await
-        .map_other_err(format!("failed to update the `{}` branch", &branch.name))?;
+        .map_other_err(format!(
+            "failed to update the `{}` branch in repository {}",
+            &branch.name, repository_id
+        ))?;
 
         Ok(())
     }
@@ -597,7 +834,7 @@ impl SqlIndexBackend {
     ) -> Result<bool> {
         Ok(sqlx::query(&format!(
             "SELECT COUNT(1) FROM `{}` WHERE id = ?",
-            Self::TABLE_FOREST
+            TABLE_FOREST
         ))
         .bind(&id)
         .fetch_one(&mut *transaction)
@@ -619,7 +856,7 @@ impl SqlIndexBackend {
         if !Self::tree_node_exists(&mut *transaction, &id).await? {
             let sql = &format!(
                 "INSERT INTO `{}` (id, name, chunk_id) VALUES(?, ?, ?);",
-                Self::TABLE_FOREST,
+                TABLE_FOREST,
             );
 
             match tree {
@@ -655,7 +892,7 @@ impl SqlIndexBackend {
         if let Some(parent_id) = parent_id {
             sqlx::query(&format!(
                 "INSERT INTO `{}` (id, child_id) VALUES(?, ?);",
-                Self::TABLE_FOREST_LINKS,
+                TABLE_FOREST_LINKS,
             ))
             .bind(parent_id)
             .bind(&id)
@@ -678,7 +915,7 @@ impl SqlIndexBackend {
             "SELECT name, chunk_id
              FROM `{}`
              WHERE id = ?;",
-            Self::TABLE_FOREST
+            TABLE_FOREST
         ))
         .bind(id)
         .fetch_one(&mut *transaction)
@@ -723,7 +960,7 @@ impl SqlIndexBackend {
                 "SELECT child_id
                  FROM `{}`
                  WHERE id = ?;",
-                Self::TABLE_FOREST_LINKS
+                TABLE_FOREST_LINKS
             ))
             .bind(&id)
             .fetch_all(&mut *transaction)
@@ -740,7 +977,7 @@ impl SqlIndexBackend {
                     "SELECT name, chunk_id
                     FROM `{}`
                     WHERE id = ?;",
-                    Self::TABLE_FOREST
+                    TABLE_FOREST
                 ))
                 .bind(&child_id)
                 .fetch_one(&mut *transaction)
@@ -779,16 +1016,19 @@ impl SqlIndexBackend {
 
     async fn get_lock_transactional<'e, E: sqlx::Executor<'e, Database = sqlx::Any>>(
         executor: E,
+        repository_id: i64,
         lock_domain_id: &str,
         canonical_path: &CanonicalPath,
     ) -> Result<Lock> {
         match sqlx::query(&format!(
             "SELECT workspace_id, branch_name
              FROM `{}`
-             WHERE lock_domain_id=?
+             WHERE repository_id=?
+             AND lock_domain_id=?
              AND canonical_path=?;",
-            Self::TABLE_LOCKS,
+            TABLE_LOCKS,
         ))
+        .bind(repository_id)
         .bind(lock_domain_id)
         .bind(canonical_path.to_string())
         .fetch_optional(executor)
@@ -812,77 +1052,26 @@ impl SqlIndexBackend {
     }
 
     pub async fn close(&mut self) {
-        if let Some(pool) = self.pool.lock().await.take() {
-            pool.close().await;
-        }
+        self.pool.close().await;
     }
 }
 
 #[async_trait]
-impl IndexBackend for SqlIndexBackend {
-    fn url(&self) -> &str {
-        self.driver.url()
-    }
-
-    async fn create_index(&self) -> Result<()> {
-        async_span_scope!("SqlIndexBackend::create_index");
-        if self.driver.check_if_database_exists().await? {
-            return Err(Error::index_already_exists(self.url()));
-        }
-
-        self.driver.create_database().await?;
-
-        let mut conn = self.get_conn().await?;
-
-        Self::initialize_database(&mut conn, &self.driver).await?;
-
-        let mut transaction = conn
-            .begin()
-            .await
-            .map_other_err("failed to acquire SQL transaction")?;
-
-        Self::initialize_repository_data(&mut transaction).await?;
-
-        transaction
-            .commit()
-            .await
-            .map_other_err("failed to commit transaction when creating repository")?;
-
-        Ok(())
-    }
-
-    async fn destroy_index(&self) -> Result<()> {
-        async_span_scope!("SqlIndexBackend::destroy_index");
-        if !self.driver.check_if_database_exists().await? {
-            return Err(Error::index_does_not_exist(self.url()));
-        }
-
-        if let Some(pool) = self.pool.lock().await.take() {
-            pool.close().await;
-        }
-
-        self.driver.drop_database().await
-    }
-
-    async fn index_exists(&self) -> Result<bool> {
-        async_span_scope!("SqlIndexBackend::index_exists");
-        if !self.driver.check_if_database_exists().await? {
-            return Ok(false);
-        }
-
-        Ok(self.get_conn().await.is_ok())
+impl Index for SqlIndex {
+    fn repository_name(&self) -> &RepositoryName {
+        &self.repository_name
     }
 
     async fn register_workspace(
         &self,
         workspace_registration: &WorkspaceRegistration,
     ) -> Result<()> {
-        async_span_scope!("SqlIndexBackend::register_workspace");
+        async_span_scope!("SqlIndex::register_workspace");
         let mut conn = self.get_conn().await?;
 
         sqlx::query(&format!(
             "INSERT INTO `{}` VALUES(?, ?);",
-            Self::TABLE_WORKSPACE_REGISTRATIONS
+            TABLE_WORKSPACE_REGISTRATIONS
         ))
         .bind(workspace_registration.id.clone())
         .bind(workspace_registration.owner.clone())
@@ -896,10 +1085,10 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn insert_branch(&self, branch: &Branch) -> Result<()> {
-        async_span_scope!("SqlIndexBackend::insert_branch");
+        async_span_scope!("SqlIndex::insert_branch");
         let mut transaction = self.get_transaction().await?;
 
-        Self::insert_branch_transactional(&mut transaction, branch).await?;
+        Self::insert_branch_transactional(&mut transaction, self.repository_id, branch).await?;
 
         transaction
             .commit()
@@ -912,10 +1101,10 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn update_branch(&self, branch: &Branch) -> Result<()> {
-        async_span_scope!("SqlIndexBackend::update_branch");
+        async_span_scope!("SqlIndex::update_branch");
         let mut transaction = self.get_transaction().await?;
 
-        Self::update_branch_transactional(&mut transaction, branch).await?;
+        Self::update_branch_transactional(&mut transaction, self.repository_id, branch).await?;
 
         transaction
             .commit()
@@ -928,15 +1117,17 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn get_branch(&self, branch_name: &str) -> Result<Branch> {
-        async_span_scope!("SqlIndexBackend::get_branch");
+        async_span_scope!("SqlIndex::get_branch");
         let mut conn = self.get_conn().await?;
 
         match sqlx::query(&format!(
             "SELECT head, lock_domain_id 
              FROM `{}`
-             WHERE name = ?;",
-            Self::TABLE_BRANCHES
+             WHERE repository_id=?
+             AND name = ?;",
+            TABLE_BRANCHES
         ))
+        .bind(self.repository_id)
         .bind(branch_name)
         .fetch_optional(&mut conn)
         .await
@@ -956,16 +1147,18 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn list_branches(&self, query: &ListBranchesQuery<'_>) -> Result<Vec<Branch>> {
-        async_span_scope!("SqlIndexBackend::list_branches");
+        async_span_scope!("SqlIndex::list_branches");
         let mut conn = self.get_conn().await?;
 
         match query.lock_domain_id {
             Some(lock_domain_id) => sqlx::query(&format!(
                 "SELECT name, head 
              FROM `{}`
-             WHERE lock_domain_id = ?;",
-                Self::TABLE_BRANCHES
+             WHERE repository_id=?
+             AND lock_domain_id=?;",
+                TABLE_BRANCHES
             ))
+            .bind(self.repository_id)
             .bind(lock_domain_id)
             .fetch_all(&mut conn)
             .await
@@ -988,9 +1181,11 @@ impl IndexBackend for SqlIndexBackend {
             .collect(),
             None => sqlx::query(&format!(
                 "SELECT name, head, lock_domain_id 
-             FROM `{}`;",
-                Self::TABLE_BRANCHES
+             FROM `{}`
+             WHERE repository_id=?;",
+                TABLE_BRANCHES
             ))
+            .bind(self.repository_id)
             .fetch_all(&mut conn)
             .await
             .map_other_err("error fetching branches")?
@@ -1011,10 +1206,11 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn list_commits(&self, query: &ListCommitsQuery) -> Result<Vec<Commit>> {
-        async_span_scope!("SqlIndexBackend::list_commits");
+        async_span_scope!("SqlIndex::list_commits");
         let mut transaction = self.get_transaction().await?;
 
-        let result = Self::list_commits_transactional(&mut transaction, query).await?;
+        let result =
+            Self::list_commits_transactional(&mut transaction, self.repository_id, query).await?;
 
         transaction
             .commit()
@@ -1025,7 +1221,7 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<CommitId> {
-        async_span_scope!("SqlIndexBackend::commit_to_branch");
+        async_span_scope!("SqlIndex::commit_to_branch");
         let mut transaction = self.get_transaction().await?;
 
         let stored_branch = self
@@ -1036,10 +1232,12 @@ impl IndexBackend for SqlIndexBackend {
             return Err(Error::stale_branch(stored_branch));
         }
 
-        let new_branch =
-            branch.advance(Self::insert_commit_transactional(&mut transaction, commit).await?);
+        let new_branch = branch.advance(
+            Self::insert_commit_transactional(&mut transaction, self.repository_id, commit).await?,
+        );
 
-        Self::update_branch_transactional(&mut transaction, &new_branch).await?;
+        Self::update_branch_transactional(&mut transaction, self.repository_id, &new_branch)
+            .await?;
 
         transaction.commit().await.map_other_err(&format!(
             "failed to commit transaction while committing commit `{}` to branch `{}`",
@@ -1050,14 +1248,14 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn get_tree(&self, id: &str) -> Result<Tree> {
-        async_span_scope!("SqlIndexBackend::get_tree");
+        async_span_scope!("SqlIndex::get_tree");
         let mut transaction = self.get_transaction().await?;
 
         Self::get_tree_transactional(&mut transaction, id).await
     }
 
     async fn save_tree(&self, tree: &Tree) -> Result<String> {
-        async_span_scope!("SqlIndexBackend::save_tree");
+        async_span_scope!("SqlIndex::save_tree");
         let mut transaction = self.get_transaction().await?;
 
         let tree_id = Self::save_tree_transactional(&mut transaction, tree).await?;
@@ -1073,11 +1271,12 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn lock(&self, lock: &Lock) -> Result<()> {
-        async_span_scope!("SqlIndexBackend::lock");
+        async_span_scope!("SqlIndex::lock");
         let mut transaction = self.get_transaction().await?;
 
         match Self::get_lock_transactional(
             &mut transaction,
+            self.repository_id,
             &lock.lock_domain_id,
             &lock.canonical_path,
         )
@@ -1086,9 +1285,10 @@ impl IndexBackend for SqlIndexBackend {
             Ok(lock) => Err(Error::lock_already_exists(lock)),
             Err(Error::LockNotFound { .. }) => {
                 sqlx::query(&format!(
-                    "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
-                    Self::TABLE_LOCKS
+                    "INSERT INTO `{}` VALUES(?, ?, ?, ?, ?);",
+                    TABLE_LOCKS
                 ))
+                .bind(self.repository_id)
                 .bind(lock.canonical_path.to_string())
                 .bind(lock.lock_domain_id.clone())
                 .bind(lock.workspace_id.clone())
@@ -1111,14 +1311,20 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn get_lock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<Lock> {
-        async_span_scope!("SqlIndexBackend::get_lock");
+        async_span_scope!("SqlIndex::get_lock");
         let mut conn = self.get_conn().await?;
 
-        Self::get_lock_transactional(&mut conn, lock_domain_id, canonical_path).await
+        Self::get_lock_transactional(
+            &mut conn,
+            self.repository_id,
+            lock_domain_id,
+            canonical_path,
+        )
+        .await
     }
 
     async fn list_locks(&self, query: &ListLocksQuery<'_>) -> Result<Vec<Lock>> {
-        async_span_scope!("SqlIndexBackend::list_locks");
+        async_span_scope!("SqlIndex::list_locks");
         let mut conn = self.get_conn().await?;
 
         if !query.lock_domain_ids.is_empty() {
@@ -1129,9 +1335,11 @@ impl IndexBackend for SqlIndexBackend {
                     sqlx::query(&format!(
                         "SELECT canonical_path, workspace_id, branch_name
                         FROM `{}`
-                        WHERE lock_domain_id=?;",
-                        Self::TABLE_LOCKS,
+                        WHERE repository_id=?
+                        AND lock_domain_id=?;",
+                        TABLE_LOCKS,
                     ))
+                    .bind(self.repository_id)
                     .bind(*lock_domain_id)
                     .fetch_all(&mut conn)
                     .await
@@ -1157,9 +1365,11 @@ impl IndexBackend for SqlIndexBackend {
         } else {
             sqlx::query(&format!(
                 "SELECT lock_domain_id, canonical_path, workspace_id, branch_name
-                FROM `{}`;",
-                Self::TABLE_LOCKS,
+                FROM `{}`
+                WHERE repository_id=?;",
+                TABLE_LOCKS,
             ))
+            .bind(self.repository_id)
             .fetch_all(&mut conn)
             .await
             .map_other_err("failed to list locks")?
@@ -1177,13 +1387,17 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn unlock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<()> {
-        async_span_scope!("SqlIndexBackend::unlock");
+        async_span_scope!("SqlIndex::unlock");
         let mut conn = self.get_conn().await?;
 
         sqlx::query(&format!(
-            "DELETE from `{}` WHERE canonical_path=? AND lock_domain_id=?;",
-            Self::TABLE_LOCKS
+            "DELETE FROM `{}`
+            WHERE repository_id=?
+            AND canonical_path=?
+            AND lock_domain_id=?;",
+            TABLE_LOCKS
         ))
+        .bind(self.repository_id)
         .bind(canonical_path.to_string())
         .bind(lock_domain_id)
         .execute(&mut conn)
@@ -1196,7 +1410,7 @@ impl IndexBackend for SqlIndexBackend {
     }
 
     async fn count_locks(&self, query: &ListLocksQuery<'_>) -> Result<i32> {
-        async_span_scope!("SqlIndexBackend::count_locks");
+        async_span_scope!("SqlIndex::count_locks");
         let mut conn = self.get_conn().await?;
 
         if !query.lock_domain_ids.is_empty() {
@@ -1205,9 +1419,11 @@ impl IndexBackend for SqlIndexBackend {
                 result += sqlx::query(&format!(
                     "SELECT count(*) as count
                     FROM `{}`
-                    WHERE lock_domain_id = ?;",
-                    Self::TABLE_LOCKS,
+                    WHERE repository_id=?
+                    AND lock_domain_id = ?;",
+                    TABLE_LOCKS,
                 ))
+                .bind(self.repository_id)
                 .bind(*lock_domain_id)
                 .fetch_one(&mut conn)
                 .await
@@ -1222,9 +1438,11 @@ impl IndexBackend for SqlIndexBackend {
         } else {
             sqlx::query(&format!(
                 "SELECT count(*) as count
-                FROM `{}`;",
-                Self::TABLE_LOCKS,
+                FROM `{}`
+                WHERE repository_id=?;",
+                TABLE_LOCKS,
             ))
+            .bind(self.repository_id)
             .fetch_one(&mut conn)
             .await
             .map_other_err("failed to count locks")

@@ -5,36 +5,37 @@ macro_rules! init_test_workspace_and_index {
     () => {{
         let index_root = tempfile::tempdir().expect("failed to create temp dir");
 
-        let index = Index::new(
-            index_root
-                .path()
-                .to_str()
-                .expect("failed to convert index_root"),
-        )
-        .unwrap();
-
-        // Create the index.
-        index.create().await.expect("failed to create index");
-
+        let repository_name: RepositoryName = "default".parse().unwrap();
+        let repository_index = LocalRepositoryIndex::new(index_root.path()).await.unwrap();
+        let _repository = repository_index
+            .create_repository(repository_name.clone())
+            .await
+            .unwrap();
         let workspace_root = tempfile::tempdir().expect("failed to create temp dir");
 
         // Initialize the workspace.
         let config = WorkspaceConfig::new(
-            index_root.path().display().to_string(),
+            repository_name,
             WorkspaceRegistration::new_with_current_user(),
         );
+
         let content_store_config = lgn_content_store2::Config {
             provider: lgn_content_store2::ProviderConfig::Memory {},
             caching_providers: vec![],
         };
         let content_provider = content_store_config.instantiate_provider().await.unwrap();
 
-        let workspace = Workspace::init(&workspace_root.path(), config, &content_provider)
-            .await
-            .expect("failed to initialize workspace");
+        let workspace = Workspace::init(
+            &workspace_root.path(),
+            &repository_index,
+            config,
+            &content_provider,
+        )
+        .await
+        .expect("failed to initialize workspace");
 
         (
-            index,
+            repository_index,
             workspace,
             content_provider,
             [index_root, workspace_root],
@@ -43,13 +44,16 @@ macro_rules! init_test_workspace_and_index {
 }
 
 macro_rules! cleanup_test_workspace_and_index {
-    ($workspace:expr, $index:expr) => {{
+    ($repository_index:expr, $workspace:expr) => {{
         // On Windows SQLite doesn't support deleting a directory with open
         // files.
 
         // Destroy the index.
         if cfg!(not(target_os = "windows")) {
-            $index.destroy().await.unwrap();
+            $repository_index
+                .destroy_repository($workspace.repository_name().clone())
+                .await
+                .unwrap();
         }
 
         // Destroy the workspace.

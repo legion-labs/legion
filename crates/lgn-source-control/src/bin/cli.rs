@@ -6,7 +6,6 @@
 use std::{collections::BTreeSet, path::PathBuf};
 
 use clap::{Parser, Subcommand};
-use lgn_content_store2::Config;
 use lgn_source_control::*;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::*;
@@ -38,22 +37,22 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Commands {
     /// Initializes an index stored on a local or remote system
-    #[clap(name = "create-index")]
-    CreateIndex {
+    #[clap(name = "create-repository")]
+    CreateRepository {
         /// The index URL.
-        index_url: String,
+        repository_name: RepositoryName,
     },
     /// Destroys all index data permanently
-    #[clap(name = "destroy-index")]
-    DestroyIndex {
+    #[clap(name = "destroy-repository")]
+    DestroyRepository {
         /// The index URL.
-        index_url: String,
+        repository_name: RepositoryName,
     },
     /// Checks if an index exists.
-    #[clap(name = "index-exists")]
-    IndexExists {
+    #[clap(name = "repository-exists")]
+    RepositoryExists {
         /// The index URL.
-        index_url: String,
+        repository_name: RepositoryName,
     },
     /// Initializes a workspace and populates it with the latest version of the main branch
     #[clap(name = "init-workspace", alias = "init")]
@@ -61,7 +60,7 @@ enum Commands {
         /// lsc workspace directory
         workspace_directory: PathBuf,
         /// uri printed at the creation of the repository
-        index_url: String,
+        repository_name: RepositoryName,
     },
     /// Adds local file to the set of pending changes
     #[clap(name = "add", alias = "a")]
@@ -272,61 +271,65 @@ async fn main() -> anyhow::Result<()> {
         ColorChoice::Never
     };
 
-    let content_provider = Config::load_and_instantiate_persistent_provider().await?;
+    let content_provider =
+        lgn_content_store2::Config::load_and_instantiate_persistent_provider().await?;
+    let repository_index = Config::load_and_instantiate_repository_index().await?;
 
     let mut stdout = StandardStream::stdout(choice);
 
     match args.command {
-        Commands::CreateIndex { index_url } => {
-            println!("Creating index at: {}", &index_url);
+        Commands::CreateRepository { repository_name } => {
+            println!("Creating repository: {}", &repository_name);
 
-            let index = Index::new(&index_url)?;
-
-            index
-                .create()
-                .await
-                .map_err::<anyhow::Error, _>(Into::into)?;
+            repository_index.create_repository(repository_name).await?;
 
             Ok(())
         }
-        Commands::DestroyIndex { index_url } => {
-            println!("Destroying index at: {}", &index_url);
+        Commands::DestroyRepository { repository_name } => {
+            println!("Destroying index at: {}", &repository_name);
 
-            let index = Index::new(&index_url)?;
+            repository_index.destroy_repository(repository_name).await?;
 
-            index.destroy().await.map_err(Into::into)
+            Ok(())
         }
-        Commands::IndexExists { index_url } => {
-            let index = Index::new(&index_url)?;
-
-            if index
-                .exists()
-                .await
-                .map_err::<anyhow::Error, _>(Into::into)?
-            {
-                println!("The index exists");
-            } else {
-                println!("The index does not exist");
+        Commands::RepositoryExists { repository_name } => {
+            match repository_index.load_repository(repository_name).await {
+                Ok(_) => {
+                    println!("The repository exists");
+                }
+                Err(Error::RepositoryDoesNotExist { repository_name }) => {
+                    println!("The repository `{}` does not exist", repository_name);
+                }
+                Err(e) => {
+                    return Err(e.into());
+                }
             }
 
             Ok(())
         }
         Commands::InitWorkspace {
             workspace_directory,
-            index_url,
+            repository_name,
         } => {
             info!("init-workspace");
 
-            let config =
-                WorkspaceConfig::new(index_url, WorkspaceRegistration::new_with_current_user());
+            let config = WorkspaceConfig::new(
+                repository_name,
+                WorkspaceRegistration::new_with_current_user(),
+            );
 
-            Workspace::init(&workspace_directory, config, content_provider)
-                .await
-                .map_err(Into::into)
-                .map(|_| ())
+            Workspace::init(
+                &workspace_directory,
+                repository_index,
+                config,
+                content_provider,
+            )
+            .await
+            .map_err(Into::into)
+            .map(|_| ())
         }
         Commands::Add { paths } => {
-            let workspace = Workspace::find_in_current_directory().await?;
+            let workspace = Workspace::find_in_current_directory(repository_index).await?;
 
             workspace
                 .add_files(content_provider, paths.iter().map(PathBuf::as_path))
@@ -335,7 +338,7 @@ async fn main() -> anyhow::Result<()> {
                 .map(|_| ())
         }
         Commands::Checkout { paths } => {
-            let workspace = Workspace::find_in_current_directory().await?;
+            let workspace = Workspace::find_in_current_directory(repository_index).await?;
 
             workspace
                 .checkout_files(paths.iter().map(PathBuf::as_path))
@@ -344,7 +347,7 @@ async fn main() -> anyhow::Result<()> {
                 .map(|_| ())
         }
         Commands::Delete { paths } => {
-            let workspace = Workspace::find_in_current_directory().await?;
+            let workspace = Workspace::find_in_current_directory(repository_index).await?;
 
             workspace
                 .delete_files(paths.iter().map(PathBuf::as_path))
@@ -385,7 +388,7 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Commands::CreateBranch { branch_name } => {
-            let workspace = Workspace::find_in_current_directory().await?;
+            let workspace = Workspace::find_in_current_directory(repository_index).await?;
 
             let branch = workspace.create_branch(&branch_name).await?;
 
@@ -399,7 +402,7 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Commands::Switch { branch_name } => {
-            let workspace = Workspace::find_in_current_directory().await?;
+            let workspace = Workspace::find_in_current_directory(repository_index).await?;
 
             let (branch, changes) = workspace
                 .switch_branch(content_provider, &branch_name)
@@ -420,7 +423,7 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Commands::Branches { full } => {
-            let workspace = Workspace::find_in_current_directory().await?;
+            let workspace = Workspace::find_in_current_directory(repository_index).await?;
 
             let branches = workspace.get_branches().await?;
 
@@ -441,7 +444,7 @@ async fn main() -> anyhow::Result<()> {
             staged,
             unstaged,
         } => {
-            let workspace = Workspace::find_in_current_directory().await?;
+            let workspace = Workspace::find_in_current_directory(repository_index).await?;
             let staging = Staging::from_bool(staged, unstaged);
 
             let reverted_files = workspace
@@ -470,7 +473,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Status { staged, unstaged } => {
             let current_dir =
                 std::env::current_dir().map_other_err("failed to determine current directory")?;
-            let workspace = Workspace::find_in_current_directory().await?;
+            let workspace = Workspace::find_in_current_directory(repository_index).await?;
             let current_branch = workspace.get_current_branch().await?;
             let staging = Staging::from_bool(staged, unstaged);
             let (staged_changes, unstaged_changes) = workspace.status(staging).await?;
@@ -527,7 +530,7 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Commands::Log { short } => {
-            let workspace = Workspace::find_in_current_directory().await?;
+            let workspace = Workspace::find_in_current_directory(repository_index).await?;
             let current_branch = workspace.get_current_branch().await?;
             let commits = workspace
                 .list_commits(&ListCommitsQuery::single(current_branch.head))
@@ -557,7 +560,7 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Commands::Sync { commit_id } => {
-            let workspace = Workspace::find_in_current_directory().await?;
+            let workspace = Workspace::find_in_current_directory(repository_index).await?;
 
             let (current_commit_id, changes) = if let Some(commit_id) = commit_id {
                 let changes = workspace.sync_to(content_provider, commit_id).await?;
@@ -579,7 +582,7 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Commands::Commit { message } => {
-            let workspace = Workspace::find_in_current_directory().await?;
+            let workspace = Workspace::find_in_current_directory(repository_index).await?;
 
             match workspace.commit(&message, CommitMode::Strict).await {
                 Ok(_) => Ok(()),

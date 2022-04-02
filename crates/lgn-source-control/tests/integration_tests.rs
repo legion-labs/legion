@@ -6,14 +6,15 @@ use common::*;
 use std::path::Path;
 
 use lgn_source_control::{
-    Error, Index, MapOtherError, Staging, Workspace, WorkspaceConfig, WorkspaceRegistration,
+    Error, LocalRepositoryIndex, MapOtherError, RepositoryIndex, RepositoryName, Staging,
+    Workspace, WorkspaceConfig, WorkspaceRegistration,
 };
 use lgn_telemetry_sink::TelemetryGuard;
 
 #[tokio::test]
 async fn test_add_and_commit() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
 
     // Add some files.
     create_file!(ws, "apple.txt", "I am an apple");
@@ -94,13 +95,13 @@ async fn test_add_and_commit() {
     // Committing the change should fail, as the commit is empty.
     workspace_commit_error!(ws, "Edited the carrot", Error::EmptyCommitNotAllowed);
 
-    cleanup_test_workspace_and_index!(ws, index);
+    cleanup_test_workspace_and_index!(repository_index, ws);
 }
 
 #[tokio::test]
 async fn lenient_commit() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
     create_file!(ws, "apple.txt", "I am an apple");
     create_file!(ws, "orange.txt", "I am an orange");
     create_file!(ws, "vegetables/carrot.txt", "I am a carrot");
@@ -136,13 +137,13 @@ async fn lenient_commit() {
     // empty commit
     workspace_commit_lenient!(ws, "empty");
 
-    cleanup_test_workspace_and_index!(ws, index);
+    cleanup_test_workspace_and_index!(repository_index, ws);
 }
 
 #[tokio::test]
 async fn test_edit_and_commit() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
     create_file!(ws, "orange.txt", "I am an orange");
@@ -210,13 +211,13 @@ async fn test_edit_and_commit() {
     assert_file_content!(ws, "vegetables/carrot.txt", "I am a new carrot");
     assert_file_content!(ws, "apple.txt", "I am an apple");
 
-    cleanup_test_workspace_and_index!(ws, index);
+    cleanup_test_workspace_and_index!(repository_index, ws);
 }
 
 #[tokio::test]
 async fn test_delete_and_commit() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
     create_file!(ws, "orange.txt", "I am an orange");
@@ -243,13 +244,13 @@ async fn test_delete_and_commit() {
     assert_staged_changes!(ws, []);
     assert_path_doesnt_exist!(ws, "vegetables/carrot.txt");
 
-    cleanup_test_workspace_and_index!(ws, index);
+    cleanup_test_workspace_and_index!(repository_index, ws);
 }
 
 #[tokio::test]
 async fn test_add_empty_directory() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
     workspace_add_files!(ws, &csp, ["."]);
@@ -262,13 +263,13 @@ async fn test_add_empty_directory() {
 
     assert_eq!(new_added_files, [].into(),);
 
-    cleanup_test_workspace_and_index!(ws, index);
+    cleanup_test_workspace_and_index!(repository_index, ws);
 }
 
 #[tokio::test]
 async fn test_add_non_existing_path() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
     workspace_add_files!(ws, &csp, ["."]);
@@ -285,13 +286,13 @@ async fn test_add_non_existing_path() {
         }
     };
 
-    cleanup_test_workspace_and_index!(ws, index);
+    cleanup_test_workspace_and_index!(repository_index, ws);
 }
 
 #[tokio::test]
 async fn test_add_then_delete() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
     create_file!(ws, "orange.txt", "I am an orange");
@@ -313,13 +314,13 @@ async fn test_add_then_delete() {
     assert_unstaged_changes!(ws, []);
     assert_staged_changes!(ws, []);
 
-    cleanup_test_workspace_and_index!(ws, index);
+    cleanup_test_workspace_and_index!(repository_index, ws);
 }
 
 #[tokio::test]
 async fn test_edit_and_commit_with_extra_unstaged_changes_then_revert() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
     create_file!(ws, "orange.txt", "I am an orange");
@@ -399,13 +400,13 @@ async fn test_edit_and_commit_with_extra_unstaged_changes_then_revert() {
     assert_file_read_only!(ws, "apple.txt");
     assert_file_content!(ws, "apple.txt", "I am a new apple");
 
-    cleanup_test_workspace_and_index!(ws, index);
+    cleanup_test_workspace_and_index!(repository_index, ws);
 }
 
 #[tokio::test]
 async fn test_revert_after_add_and_edit() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am a new apple");
     create_file!(ws, "orange.txt", "I am an orange");
@@ -463,13 +464,13 @@ async fn test_revert_after_add_and_edit() {
     assert_staged_changes!(ws, []);
     assert_unstaged_changes!(ws, []);
 
-    cleanup_test_workspace_and_index!(ws, index);
+    cleanup_test_workspace_and_index!(repository_index, ws);
 }
 
 #[tokio::test]
 async fn test_revert_staged_only_with_unstaged_changes() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am a new apple");
     create_file!(ws, "orange.txt", "I am an orange");
@@ -505,13 +506,13 @@ async fn test_revert_staged_only_with_unstaged_changes() {
 
     assert_eq!(new_reverted_files, [].into());
 
-    cleanup_test_workspace_and_index!(ws, index);
+    cleanup_test_workspace_and_index!(repository_index, ws);
 }
 
 #[tokio::test]
 async fn test_revert_staged_only_with_staged_and_unstaged_changes() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am a new apple");
     create_file!(ws, "orange.txt", "I am an orange");
@@ -563,13 +564,13 @@ async fn test_revert_staged_only_with_staged_and_unstaged_changes() {
         )]
     );
 
-    cleanup_test_workspace_and_index!(ws, index);
+    cleanup_test_workspace_and_index!(repository_index, ws);
 }
 
 #[tokio::test]
 async fn test_revert_unstaged_only_with_unstaged_changes() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am a new apple");
     create_file!(ws, "orange.txt", "I am an orange");
@@ -600,13 +601,13 @@ async fn test_revert_unstaged_only_with_unstaged_changes() {
         )]
     );
 
-    cleanup_test_workspace_and_index!(ws, index);
+    cleanup_test_workspace_and_index!(repository_index, ws);
 }
 
 #[tokio::test]
 async fn test_sync_forward_and_backward() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "apple version 1");
     create_file!(ws, "orange.txt", "orange version 1");
@@ -671,13 +672,13 @@ async fn test_sync_forward_and_backward() {
     assert_file_content!(ws, "pear.txt", "pear version 1");
     assert_file_read_only!(ws, "pear.txt");
 
-    cleanup_test_workspace_and_index!(ws, index);
+    cleanup_test_workspace_and_index!(repository_index, ws);
 }
 
 #[tokio::test]
 async fn test_sync_forward_with_non_conflicting_changes() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "tangerine.txt", "tangerine version 1");
     create_file!(ws, "cantaloupe.txt", "cantaloupe version 1");
@@ -802,13 +803,13 @@ async fn test_sync_forward_with_non_conflicting_changes() {
         )]
     );
 
-    cleanup_test_workspace_and_index!(ws, index);
+    cleanup_test_workspace_and_index!(repository_index, ws);
 }
 
 #[tokio::test]
 async fn test_sync_forward_with_conflicting_changes() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "apple version 1");
     create_file!(ws, "orange.txt", "orange version 1");
@@ -878,13 +879,13 @@ async fn test_sync_forward_with_conflicting_changes() {
         Ok(_) => panic!("Expected error, but got success"),
     }
 
-    cleanup_test_workspace_and_index!(ws, index);
+    cleanup_test_workspace_and_index!(repository_index, ws);
 }
 
 #[tokio::test]
 async fn test_create_branch_switch_detach_attach() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "apple version 1");
     create_file!(ws, "orange.txt", "orange version 1");
@@ -924,5 +925,42 @@ async fn test_create_branch_switch_detach_attach() {
     assert_file_content!(ws, "apple.txt", "apple version 2");
     assert_file_read_only!(ws, "apple.txt");
 
-    cleanup_test_workspace_and_index!(ws, index);
+    cleanup_test_workspace_and_index!(repository_index, ws);
+}
+
+#[tokio::test]
+async fn test_multiple_repositories() {
+    let _telemetry_guard = TelemetryGuard::default();
+    let (repository_index, ws1, csp, _paths) = init_test_workspace_and_index!();
+
+    // Create a second repository.
+    let repository_name: RepositoryName = "second-repository".parse().unwrap();
+
+    repository_index
+        .create_repository(repository_name.clone())
+        .await
+        .unwrap();
+
+    let workspace_root2 = tempfile::tempdir().expect("failed to create temp dir");
+    let config = WorkspaceConfig::new(
+        repository_name,
+        WorkspaceRegistration::new_with_current_user(),
+    );
+
+    let ws2 = Workspace::init(&workspace_root2.path(), &repository_index, config, &csp)
+        .await
+        .expect("failed to initialize second workspace");
+
+    // Add some files.
+    create_file!(ws1, "apple.txt", "I am an apple");
+    create_file!(ws2, "orange.txt", "I am an orange");
+
+    workspace_add_files!(ws1, &csp, ["."]);
+    workspace_add_files!(ws2, &csp, ["."]);
+
+    workspace_commit!(ws1, "Added some fruits");
+    workspace_commit!(ws2, "Added some fruits");
+
+    cleanup_test_workspace_and_index!(repository_index, ws2);
+    cleanup_test_workspace_and_index!(repository_index, ws1);
 }

@@ -17,6 +17,7 @@ use lgn_data_offline::{
     ResourcePathId,
 };
 use lgn_data_runtime::Resource;
+use lgn_source_control::RepositoryIndex;
 use sample_data::offline as offline_data;
 use sample_data::runtime as runtime_data;
 
@@ -45,6 +46,7 @@ pub fn find_derived_path(path: &ResourcePathId) -> ResourcePathId {
 pub async fn build(
     root_folder: impl AsRef<Path>,
     resource_name: &ResourcePathName,
+    repository_index: impl RepositoryIndex,
     content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
 ) {
     let root_folder = root_folder.as_ref();
@@ -59,7 +61,7 @@ pub async fn build(
     let mut exe_path = env::current_exe().expect("cannot access current_exe");
     exe_path.pop();
 
-    let project = Project::open(root_folder, Arc::clone(&content_provider))
+    let project = Project::open(root_folder, repository_index, Arc::clone(&content_provider))
         .await
         .unwrap();
 

@@ -11,6 +11,7 @@ use std::{fs, path::PathBuf, sync::Arc};
 
 use clap::Parser;
 use lgn_data_offline::resource::ResourcePathName;
+use lgn_source_control::RepositoryName;
 use sample_data_compiler::{offline_compiler, raw_loader};
 
 #[derive(Parser, Default)]
@@ -52,8 +53,15 @@ async fn main() {
         }
     };
 
-    let source_control_path: String =
-        lgn_config::get_or("editor_srv.source_control", "../remote".to_string()).unwrap();
+    let repository_index = lgn_source_control::Config::load_and_instantiate_repository_index()
+        .await
+        .unwrap();
+    let repository_name: RepositoryName = "tests-sample-data".parse().unwrap();
+
+    // Always re-create the repository, even if it doesn't exist.
+    let _index = repository_index
+        .recreate_repository(repository_name.clone())
+        .await;
 
     let content_provider = Arc::new(
         lgn_content_store2::Config::load_and_instantiate_persistent_provider()
@@ -64,7 +72,8 @@ async fn main() {
     // generate contents of offline folder, from raw RON content
     raw_loader::build_offline(
         &absolute_root,
-        source_control_path,
+        &repository_index,
+        repository_name,
         Arc::clone(&content_provider),
         true,
     )
@@ -74,6 +83,7 @@ async fn main() {
     offline_compiler::build(
         &absolute_root,
         &ResourcePathName::from(&args.resource),
+        repository_index,
         content_provider,
     )
     .await;
@@ -86,7 +96,6 @@ fn clean_folders(project_dir: &str) {
     let mut test = |sub_path| {
         can_clean &= path.join(sub_path).exists();
     };
-    test("remote");
     test("offline");
     test("runtime");
     test("temp");
@@ -102,8 +111,8 @@ fn clean_folders(project_dir: &str) {
             };
             remove(path.join(sub_path)).unwrap_or_else(|_| panic!("Cannot delete {:?}", path));
         };
+
         let _result = fs::remove_file(path.join("VERSION"));
-        delete("remote", true);
         delete("offline", true);
         delete("runtime", true);
         delete("temp", true);

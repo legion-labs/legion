@@ -1,7 +1,7 @@
 //! Editor server executable
 //!
 
-use std::{net::SocketAddr, path::PathBuf, time::Duration};
+use std::{net::SocketAddr, path::PathBuf, str::FromStr, time::Duration};
 
 use clap::Parser;
 use generic_data::plugin::GenericDataPlugin;
@@ -22,11 +22,13 @@ use lgn_resource_registry::{
 };
 use lgn_scene_plugin::ScenePlugin;
 use lgn_scripting::ScriptingPlugin;
+use lgn_source_control::RepositoryName;
 use lgn_streamer::StreamerPlugin;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::{debug, info, warn, LevelFilter};
 use lgn_transform::TransformPlugin;
 use sample_data::SampleDataPlugin;
+use serde::Deserialize;
 use tokio::sync::broadcast;
 
 mod grpc;
@@ -60,10 +62,13 @@ use plugin::EditorPlugin;
 struct Args {
     /// The address to listen on
     #[clap(long)]
-    addr: Option<String>,
+    listen_endpoint: Option<SocketAddr>,
     /// Path to folder containing the project index
     #[clap(long)]
-    project: Option<String>,
+    project_root: Option<PathBuf>,
+    /// The name of the repository to load.
+    #[clap(long, default_value = "default")]
+    repository_name: RepositoryName,
     /// Path to folder containing the content storage files
     #[clap(long)]
     cas: Option<String>,
@@ -76,53 +81,86 @@ struct Args {
     /// Enable a testing code path
     #[clap(long)]
     test: Option<String>,
-    /// Origin source control address.
-    #[clap(long)]
-    origin: Option<String>,
     /// Build output database address.
     #[clap(long)]
-    build_db: Option<String>,
-    /// Enable hardware encoding.
-    #[clap(long)]
-    enable_hw_encoding: bool,
+    build_output_database_address: Option<String>,
     /// The compilation mode of the editor.
     #[clap(long, default_value = "in-process")]
     compilers: CompilationMode,
 }
 
-fn main() {
+#[derive(Debug, Clone, Deserialize)]
+struct Config {
+    /// The endpoint to listen on.
+    #[serde(default = "Config::default_listen_endpoint")]
+    listen_endpoint: SocketAddr,
+
+    /// The project root.
+    #[serde(default = "Config::default_project_root")]
+    project_root: PathBuf,
+
+    /// The scene.
+    #[serde(default)]
+    scene: String,
+
+    #[serde(default = "Config::default_build_output_database_address")]
+    build_output_database_address: String,
+
+    /// The streamer configuration.
+    #[serde(default)]
+    streamer: lgn_streamer::Config,
+}
+
+impl Config {
+    fn default_listen_endpoint() -> SocketAddr {
+        "[::1]:50051".parse().unwrap()
+    }
+
+    fn default_project_root() -> PathBuf {
+        PathBuf::from("tests/sample-data")
+    }
+
+    fn default_build_output_database_address() -> String {
+        "temp".to_string()
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            listen_endpoint: Self::default_listen_endpoint(),
+            project_root: Self::default_project_root(),
+            scene: "".to_string(),
+            build_output_database_address: Self::default_build_output_database_address(),
+            streamer: lgn_streamer::Config::default(),
+        }
+    }
+}
+
+#[tokio::main]
+async fn main() {
     let args = Args::parse();
     let cwd = std::env::current_dir().unwrap();
+    let config: Config = lgn_config::get("editor_server")
+        .expect("failed to load config")
+        .unwrap_or_default();
 
-    let server_addr = {
-        let url = args.addr.unwrap_or_else(|| {
-            lgn_config::get_or("editor_srv.server_addr", "[::1]:50051".to_owned()).unwrap()
-        });
-        url.parse::<SocketAddr>()
-            .unwrap_or_else(|err| panic!("Invalid server_addr '{}': {}", url, err))
+    let listen_endpoint = args.listen_endpoint.unwrap_or(config.listen_endpoint);
+
+    info!("Listening on {}", listen_endpoint);
+
+    let project_root = args.project_root.unwrap_or(config.project_root);
+    let project_root = if project_root.is_absolute() {
+        project_root
+    } else {
+        cwd.join(project_root)
     };
 
-    let project_folder = {
-        let path = if let Some(params) = args.project {
-            PathBuf::from(params)
-        } else {
-            lgn_config::get_absolute_path_or(
-                "editor_srv.project_dir",
-                PathBuf::from("tests/sample-data"),
-            )
-            .unwrap()
-        };
-
-        if path.is_absolute() {
-            path
-        } else {
-            cwd.join(path)
-        }
-    };
+    info!("Project root: {}", project_root.display());
 
     let content_store_path = {
         let content_store_path = args.cas.map_or_else(
-            || project_folder.join("temp"),
+            || project_root.join("temp"),
             |path| {
                 let path = PathBuf::from(path);
                 if path.is_absolute() {
@@ -137,63 +175,49 @@ fn main() {
         ContentStoreAddr::from(content_store_path.to_str().unwrap())
     };
 
-    let default_scene = args
-        .scene
-        .unwrap_or_else(|| lgn_config::get_or_default("editor_srv.default_scene").unwrap());
+    info!("Legacy content-store path: {}", content_store_path);
 
-    // TODO: This should probably use the `lgn_config::get_absolute_path`
-    // function but I suspect the value can also contain an URL right now, so
-    // I'm not sure how to handle it.
-    //
-    // We should probably avoid configuration values that can be both URLs and
-    // local file paths as they are hard to parse contextually and too limited
-    // in what they can express anyway.
-    let source_control_path = args.origin.unwrap_or_else(|| {
-        lgn_config::get_or("editor_srv.source_control", "../remote".to_string()).unwrap()
-    });
+    let scene = args.scene.unwrap_or(config.scene);
 
-    let build_output_db_addr = {
-        if let Some(build_db) = args.build_db {
-            let cmd_line = if build_db.starts_with("mysql:") {
-                build_db
-            } else {
-                let path = PathBuf::from(&build_db);
-                if path.is_absolute() {
-                    build_db
-                } else {
-                    cwd.join(path).to_str().unwrap().to_owned()
-                }
-            };
-            cmd_line
+    info!("Scene: {}", scene);
+
+    let source_control_repository_index =
+        lgn_source_control::Config::load_and_instantiate_repository_index()
+            .await
+            .expect("failed to load and instantiate a source control repository index");
+
+    let repository_name = args.repository_name;
+
+    info!("Repository name: {}", repository_name);
+
+    let build_output_database_address = args
+        .build_output_database_address
+        .unwrap_or(config.build_output_database_address);
+
+    let build_output_database_address = if build_output_database_address.starts_with("mysql:") {
+        info!("Using MySQL database for build output.");
+
+        build_output_database_address
+    } else {
+        info!("Using SQLite database for build output.");
+
+        let path = PathBuf::from_str(&build_output_database_address)
+            .expect("unable to parse build output database address as path");
+
+        if path.is_relative() {
+            project_root.join(path)
         } else {
-            let mysql_address = lgn_config::get::<String>("editor_srv.build_output")
-                .unwrap()
-                .and_then(|address| {
-                    if address.starts_with("mysql:") {
-                        Some(address)
-                    } else {
-                        None
-                    }
-                });
-
-            mysql_address.unwrap_or_else(|| {
-                lgn_config::get_absolute_path_or(
-                    "editor_srv.build_output",
-                    cwd.join("tests/sample-data/temp"),
-                )
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .to_owned()
-            })
+            path
         }
+        .to_str()
+        .expect("unable to convert build output database address to string")
+        .to_owned()
     };
 
-    info!("Project: '{:?}'", project_folder);
-    info!("Content Store: '{:?}'", content_store_path);
-    info!("Scene: '{}'", default_scene);
-    info!("LSC Origin: '{}'", source_control_path);
-    info!("Build DB: '{}'", build_output_db_addr);
+    info!(
+        "Build output database address: {}",
+        build_output_database_address
+    );
 
     let game_manifest_path = args.manifest.map_or_else(PathBuf::new, PathBuf::from);
     let assets_to_load = Vec::<ResourceTypeAndId>::new();
@@ -209,10 +233,11 @@ fn main() {
 
     let mut app = App::from_telemetry_guard(telemetry_guard);
 
-    let mut streamer_plugin = StreamerPlugin::default();
-    if args.enable_hw_encoding {
-        streamer_plugin.enable_hw_encoding = true;
-    }
+    info!("Streamer plugin config: {:#?}", config.streamer);
+
+    let streamer_plugin = StreamerPlugin {
+        config: config.streamer,
+    };
 
     app.insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
         1.0 / 60.0,
@@ -228,21 +253,22 @@ fn main() {
     ))
     .add_plugin(AssetRegistryPlugin::default())
     .insert_resource(ResourceRegistrySettings::new(
-        project_folder,
-        source_control_path,
-        build_output_db_addr,
+        project_root,
+        source_control_repository_index,
+        repository_name,
+        build_output_database_address,
         content_store_path,
         args.compilers,
     ))
     .add_plugin(ResourceRegistryPlugin::default())
-    .insert_resource(GRPCPluginSettings::new(server_addr))
+    .insert_resource(GRPCPluginSettings::new(listen_endpoint))
     .insert_resource(trace_events_receiver)
     .add_plugin(GRPCPlugin::default())
     .add_plugin(InputPlugin::default())
     .add_plugin(RendererPlugin::default())
     .add_plugin(streamer_plugin)
     .add_plugin(EditorPlugin::default())
-    .insert_resource(ResourceBrowserSettings::new(default_scene))
+    .insert_resource(ResourceBrowserSettings::new(scene))
     .add_plugin(ResourceBrowserPlugin::default())
     .add_plugin(ScenePlugin::new(None))
     .add_plugin(PropertyInspectorPlugin::default())

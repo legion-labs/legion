@@ -392,8 +392,13 @@ async fn main() -> Result<(), String> {
             }
         }
         Commands::Source { path, command } => {
+            let repository_index =
+                lgn_source_control::Config::load_and_instantiate_repository_index()
+                    .await
+                    .map_err(|e| format!("failed creating repository index {}", e))?;
+
             let proj_file = path.unwrap_or_else(|| std::env::current_dir().unwrap());
-            let project = Project::open(proj_file, content_provider)
+            let project = Project::open(proj_file, repository_index, content_provider)
                 .await
                 .map_err(|e| e.to_string())?;
             match command {

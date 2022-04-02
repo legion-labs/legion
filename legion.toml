@@ -1,22 +1,53 @@
-[editor_srv]
-project_dir = "tests/sample-data"
+[editor_server]
+# Configuration for the editor server (editor-srv)
 
-# The address of the source control origin.
+# The project root directory.
 #
-# Two kinds of source control addresses are supported:
-# * Url to a remote source control server
-# * Absolute directory path or path relative to "*project_dir*/offline" for directory-based source control
-source_control = "../remote"
+# If relative, it is relative to the current working directory.
+#
+# Default:
+#project_root = "tests/sample-data"
+
+# The endpoint to listen on.
+#
+# Default:
+#listen_endpoint = "[::1]:50001"
+
+# The scene to load.
+scene = "/world/sample_1.ent"
 
 # The address to database hosting build results.
 #
 # Two kinds of paths are supported:
-# * An address to a mysql instance (i.e.: "mysql://user:pass@127.0.0.1:6603/")
-# * Directory path for local sqlite database. (i.e.: "tests/sample-data/temp/")
-build_output = "tests/sample-data/temp/"
+# - An address to a mysql instance (i.e.: "mysql://user:pass@127.0.0.1:6603/")
+# - Directory path for local sqlite database. (i.e.: "tests/sample-data/temp/")
+#
+# If a relative directory path is given, it is relative to the project root.
+#
+# Default:
+#build_output_database_address = "temp"
 
-server_addr = "[::1]:50051"
-default_scene = "/world/sample_1.ent"
+# Streamer configuration.
+[editor_server.streamer]
+
+# Enable hardware encoding
+#
+# Default:
+#enable_hardware_encoding = false
+
+# WebRTC configuration.
+
+# The NAT 1:1 mapping addresses.
+#
+# Default:
+#[editor_server.streamer.webrtc]
+#nat_1to1_ips = []
+
+# The ICE servers to use.
+#
+# Default:
+#[[editor_server.streamer.webrtc.ice_servers]]
+#urls = ["stun:stun.l.google.com:19302"]
 
 [runtime_srv]
 project_dir = "tests/sample-data"
@@ -57,19 +88,24 @@ redirect_uri = "http://localhost:3000/"
 region = "ca-central-1"
 user_pool_id = "ca-central-1_SkZKDimWz"
 
-#[content_store.persistent.provider.grpc]
-[content_store.persistent.provider.local]
-path = "tests/sample-data/temp"
+[source_control.repository_index]
+type = "local"
+path = "$(git-root)/target/source-control"
+
+[content_store.persistent.provider]
+#type = "grpc"
+type = "local"
+path = "$(git-root)/target/content-store"
 
 [[content_store.persistent.caching_providers]]
-[content_store.persistent.caching_providers.lru]
+type = "lru"
 size = 250
 
 [content_store.volatile.provider.local]
 path = "tests/sample-data/temp"
 
 [[content_store.volatile.caching_providers]]
-[content_store.volatile.caching_providers.lru]
+type = "lru"
 size = 250
 
 [source_control.server.database]

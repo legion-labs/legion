@@ -9,9 +9,9 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    make_path_absolute, new_index_backend, utils::parse_url_or_path, Branch, CanonicalPath, Change,
-    ChangeType, Commit, CommitId, Error, IndexBackend, ListBranchesQuery, ListCommitsQuery,
-    MapOtherError, Result, Tree, TreeFilter, WorkspaceRegistration,
+    make_path_absolute, Branch, CanonicalPath, Change, ChangeType, Commit, CommitId, Error, Index,
+    ListBranchesQuery, ListCommitsQuery, MapOtherError, RepositoryIndex, RepositoryName, Result,
+    Tree, TreeFilter, WorkspaceRegistration,
 };
 
 mod backend;
@@ -23,7 +23,7 @@ pub use local_backend::LocalWorkspaceBackend;
 /// Represents a workspace.
 pub struct Workspace {
     root: PathBuf,
-    index_backend: Box<dyn IndexBackend>,
+    index: Box<dyn Index>,
     backend: Box<dyn WorkspaceBackend>,
     registration: WorkspaceRegistration,
     chunker: Chunker,
@@ -69,6 +69,7 @@ impl Workspace {
     /// The workspace must not already exist.
     pub async fn init(
         root: impl AsRef<Path>,
+        repository_index: impl RepositoryIndex,
         config: WorkspaceConfig,
         content_store_provider: impl ContentReader + Send + Sync,
     ) -> Result<Self> {
@@ -99,7 +100,11 @@ impl Workspace {
 
         let backend = Box::new(LocalWorkspaceBackend::create(lsc_directory).await?);
 
-        let workspace = Self::new(root, config, backend).await?;
+        let index = repository_index
+            .load_repository(config.repository_name.clone())
+            .await?;
+
+        let workspace = Self::new(root, index, config, backend).await?;
 
         workspace.register().await?;
         workspace
@@ -114,7 +119,10 @@ impl Workspace {
     /// This method expect the target folder to be the root of an existing workspace.
     ///
     /// To load a workspace from a possible subfolder, use `Workspace::find`.
-    pub async fn load(root: impl AsRef<Path>) -> Result<Self> {
+    pub async fn load(
+        root: impl AsRef<Path>,
+        repository_index: impl RepositoryIndex,
+    ) -> Result<Self> {
         let root = make_path_absolute(root).map_other_err("failed to make path absolute")?;
         let lsc_directory = Self::get_lsc_directory(&root);
         let workspace_config_path = Self::get_workspace_config_path(lsc_directory);
@@ -141,7 +149,11 @@ impl Workspace {
         let lsc_directory = Self::get_lsc_directory(&root);
         let backend = Box::new(LocalWorkspaceBackend::connect(lsc_directory).await?);
 
-        Self::new(root, config, backend).await
+        let index = repository_index
+            .load_repository(config.repository_name.clone())
+            .await?;
+
+        Self::new(root, index, config, backend).await
     }
 
     /// Find an existing workspace in the specified folder or one of its
@@ -152,7 +164,10 @@ impl Workspace {
     ///
     /// The method stops whenever a workspace is found or when it reaches the
     /// root folder, whichever comes first.
-    pub async fn find(path: impl AsRef<Path>) -> Result<Self> {
+    pub async fn find(
+        path: impl AsRef<Path>,
+        repository_index: impl RepositoryIndex,
+    ) -> Result<Self> {
         let initial_path: &Path =
             &make_path_absolute(path).map_other_err("failed to make path absolute")?;
 
@@ -183,7 +198,7 @@ impl Workspace {
         };
 
         loop {
-            match Self::load(path).await {
+            match Self::load(path, &repository_index).await {
                 Ok(workspace) => return Ok(workspace),
                 Err(err) => match err {
                     Error::NotAWorkspace { path: _ } => {
@@ -199,37 +214,25 @@ impl Workspace {
         }
     }
 
-    /// Return the `Chunker` use by the source control
+    /// Return the `Chunker` used internally by the source control.
     pub fn get_chunker(&self) -> &Chunker {
         &self.chunker
     }
 
-    fn try_make_filepath_absolute(url: String, root: &Path) -> Result<String> {
-        match parse_url_or_path(&url)
-            .map_other_err(format!("failed to parse index url `{}`", &url))?
-        {
-            crate::utils::UrlOrPath::Url(_) => Ok(url),
-            crate::utils::UrlOrPath::Path(path) => {
-                if path.is_absolute() {
-                    Ok(url)
-                } else {
-                    Ok(root.join(path).into_os_string().into_string().unwrap())
-                }
-            }
-        }
+    /// Return the repository name of the workspace.
+    pub fn repository_name(&self) -> &RepositoryName {
+        self.index.repository_name()
     }
 
     async fn new(
         root: PathBuf,
+        index: Box<dyn Index>,
         config: WorkspaceConfig,
         backend: Box<dyn WorkspaceBackend>,
     ) -> Result<Self> {
-        let absolute_url = Self::try_make_filepath_absolute(config.index_url, &root)?;
-        let index_backend = new_index_backend(&absolute_url)?;
-
         Ok(Self {
             root,
-            index_backend,
+            index,
             backend,
             registration: config.registration,
             chunker: Chunker::default(),
@@ -240,9 +243,12 @@ impl Workspace {
     ///
     /// This is a convenience method that calls `Workspace::find` with the
     /// current working directory.
-    pub async fn find_in_current_directory() -> Result<Self> {
-        Self::find(std::env::current_dir().map_other_err("failed to determine current directory")?)
-            .await
+    pub async fn find_in_current_directory(repository_index: impl RepositoryIndex) -> Result<Self> {
+        Self::find(
+            std::env::current_dir().map_other_err("failed to determine current directory")?,
+            repository_index,
+        )
+        .await
     }
 
     pub fn root(&self) -> &Path {
@@ -307,14 +313,14 @@ impl Workspace {
 
     /// Get the commits chain, starting from the specified commit.
     pub async fn list_commits<'q>(&self, query: &ListCommitsQuery) -> Result<Vec<Commit>> {
-        self.index_backend.list_commits(query).await
+        self.index.list_commits(query).await
     }
 
     /// Get the current commit.
     pub async fn get_current_commit(&self) -> Result<Commit> {
         let current_branch = self.backend.get_current_branch().await?;
 
-        self.index_backend.get_commit(current_branch.head).await
+        self.index.get_commit(current_branch.head).await
     }
 
     /// Get the tree of files and directories for the current branch and commit.
@@ -335,7 +341,7 @@ impl Workspace {
             exclusion_rules: BTreeSet::new(),
         };
 
-        self.index_backend
+        self.index
             .get_tree(&commit.root_tree_id)
             .await
             .map_other_err(format!(
@@ -748,8 +754,8 @@ impl Workspace {
         let fs_tree = self.get_filesystem_tree([].into()).await?;
 
         let current_branch = self.backend.get_current_branch().await?;
-        let mut branch = self.index_backend.get_branch(&current_branch.name).await?;
-        let commit = self.index_backend.get_commit(current_branch.head).await?;
+        let mut branch = self.index.get_branch(&current_branch.name).await?;
+        let commit = self.index.get_commit(current_branch.head).await?;
 
         // Early check in case we are out-of-date long before making the commit.
         if branch.head != current_branch.head {
@@ -794,7 +800,7 @@ impl Workspace {
         }
 
         // Let's update the new tree already.
-        self.index_backend
+        self.index
             .save_tree(&tree)
             .await
             .map_other_err("failed to save tree")?;
@@ -816,10 +822,7 @@ impl Workspace {
                 parent_commits,
             );
 
-            commit.id = self
-                .index_backend
-                .commit_to_branch(&commit, &branch)
-                .await?;
+            commit.id = self.index.commit_to_branch(&commit, &branch).await?;
 
             branch.head = commit.id;
 
@@ -966,10 +969,10 @@ impl Workspace {
             return Err(Error::already_on_branch(current_branch.name));
         }
 
-        let old_branch = self.index_backend.get_branch(&current_branch.name).await?;
+        let old_branch = self.index.get_branch(&current_branch.name).await?;
         let new_branch = old_branch.branch_out(branch_name.to_string());
 
-        self.index_backend.insert_branch(&new_branch).await?;
+        self.index.insert_branch(&new_branch).await?;
         self.backend.set_current_branch(&new_branch).await?;
 
         Ok(new_branch)
@@ -985,7 +988,7 @@ impl Workspace {
 
         current_branch.detach();
 
-        self.index_backend.insert_branch(&current_branch).await?;
+        self.index.insert_branch(&current_branch).await?;
         self.backend.set_current_branch(&current_branch).await?;
 
         Ok(current_branch)
@@ -999,11 +1002,11 @@ impl Workspace {
     /// its parent.
     pub async fn attach_branch(&self, branch_name: &str) -> Result<Branch> {
         let mut current_branch = self.backend.get_current_branch().await?;
-        let parent_branch = self.index_backend.get_branch(branch_name).await?;
+        let parent_branch = self.index.get_branch(branch_name).await?;
 
         current_branch.attach(&parent_branch);
 
-        self.index_backend.insert_branch(&current_branch).await?;
+        self.index.insert_branch(&current_branch).await?;
         self.backend.set_current_branch(&current_branch).await?;
 
         Ok(current_branch)
@@ -1012,7 +1015,7 @@ impl Workspace {
     /// Get the branches in the repository.
     pub async fn get_branches(&self) -> Result<BTreeSet<Branch>> {
         Ok(self
-            .index_backend
+            .index
             .list_branches(&ListBranchesQuery::default())
             .await?
             .into_iter()
@@ -1033,10 +1036,10 @@ impl Workspace {
             return Err(Error::already_on_branch(branch_name.to_string()));
         }
 
-        let from_commit = self.index_backend.get_commit(current_branch.head).await?;
+        let from_commit = self.index.get_commit(current_branch.head).await?;
         let from = self.get_tree_for_commit(&from_commit, [].into()).await?;
-        let branch = self.index_backend.get_branch(branch_name).await?;
-        let to_commit = self.index_backend.get_commit(branch.head).await?;
+        let branch = self.index.get_branch(branch_name).await?;
+        let to_commit = self.index.get_commit(branch.head).await?;
         let to = self.get_tree_for_commit(&to_commit, [].into()).await?;
 
         let changes = self.sync_tree(content_reader, &from, &to).await?;
@@ -1057,7 +1060,7 @@ impl Workspace {
     ) -> Result<(Branch, BTreeSet<Change>)> {
         let current_branch = self.backend.get_current_branch().await?;
 
-        let branch = self.index_backend.get_branch(&current_branch.name).await?;
+        let branch = self.index.get_branch(&current_branch.name).await?;
 
         let changes = self.sync_to(content_reader, branch.head).await?;
 
@@ -1080,9 +1083,9 @@ impl Workspace {
             return Ok([].into());
         }
 
-        let from_commit = self.index_backend.get_commit(current_branch.head).await?;
+        let from_commit = self.index.get_commit(current_branch.head).await?;
         let from = self.get_tree_for_commit(&from_commit, [].into()).await?;
-        let to_commit = self.index_backend.get_commit(commit_id).await?;
+        let to_commit = self.index.get_commit(commit_id).await?;
         let to = self.get_tree_for_commit(&to_commit, [].into()).await?;
 
         let changes = self.sync_tree(content_reader, &from, &to).await?;
@@ -1168,9 +1171,7 @@ impl Workspace {
     }
 
     async fn register(&self) -> Result<()> {
-        self.index_backend
-            .register_workspace(&self.registration)
-            .await
+        self.index.register_workspace(&self.registration).await
     }
 
     async fn initial_checkout(
@@ -1179,16 +1180,16 @@ impl Workspace {
         branch_name: &str,
     ) -> Result<BTreeSet<Change>> {
         // 1. Read the branch information.
-        let branch = self.index_backend.get_branch(branch_name).await?;
+        let branch = self.index.get_branch(branch_name).await?;
 
         // 2. Mark the branch as the current branch in the workspace backend.
         self.backend.set_current_branch(&branch).await?;
 
         // 3. Read the head commit information.
-        let commit = self.index_backend.get_commit(branch.head).await?;
+        let commit = self.index.get_commit(branch.head).await?;
 
         // 4. Read the tree.
-        let tree = self.index_backend.get_tree(&commit.root_tree_id).await?;
+        let tree = self.index.get_tree(&commit.root_tree_id).await?;
 
         // 5. Write the files on disk.
         self.sync_tree(content_reader, &Tree::empty(), &tree).await
@@ -1341,7 +1342,7 @@ impl Workspace {
 /// Contains the configuration for a workspace.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WorkspaceConfig {
-    pub index_url: String,
+    pub repository_name: RepositoryName,
     pub registration: WorkspaceRegistration,
 }
 
@@ -1350,9 +1351,9 @@ impl WorkspaceConfig {
     ///
     /// The content-store configuration will by default be taken from the
     /// `legion.toml`.
-    pub fn new(index_url: String, registration: WorkspaceRegistration) -> Self {
+    pub fn new(repository_name: RepositoryName, registration: WorkspaceRegistration) -> Self {
         Self {
-            index_url,
+            repository_name,
             registration,
         }
     }

@@ -2556,6 +2556,7 @@ dependencies = [
  "lgn-transform",
  "lgn-window",
  "sample-data",
+ "serde",
  "serde_json",
  "tempfile",
  "thiserror",
@@ -4696,7 +4697,9 @@ dependencies = [
  "dirs",
  "figment",
  "lazy_static",
+ "regex",
  "serde",
+ "serde_json",
  "thiserror",
  "toml",
 ]
@@ -4806,6 +4809,7 @@ dependencies = [
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
+ "lgn-source-control",
  "lgn-tracing",
  "lgn-utils",
  "multitext-resource",
@@ -4837,11 +4841,13 @@ dependencies = [
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
+ "lgn-source-control",
  "proc-macro2",
  "refs-asset",
  "refs-resource",
  "serde",
  "serde_json",
+ "serial_test",
  "syn",
  "tempfile",
  "text-resource",
@@ -5434,6 +5440,7 @@ dependencies = [
  "lgn-data-runtime",
  "lgn-data-transaction",
  "lgn-ecs",
+ "lgn-source-control",
  "lgn-tasks",
  "lgn-ubercompiler",
  "sample-data-compiler",
@@ -5513,13 +5520,16 @@ dependencies = [
  "anyhow",
  "async-recursion 1.0.0",
  "async-trait",
+ "atty",
  "aws-config",
  "aws-sdk-s3",
  "bytes",
  "chrono",
+ "clap 3.1.6",
  "futures",
  "http",
  "itertools 0.10.3",
+ "lgn-config",
  "lgn-content-store2",
  "lgn-online",
  "lgn-source-control-proto",
@@ -5536,11 +5546,15 @@ dependencies = [
  "sha2 0.10.2",
  "sqlx",
  "tempfile",
+ "termcolor",
  "thiserror",
  "tokio",
  "tokio-stream",
  "tokio-util 0.6.9",
- "url",
+ "tonic",
+ "tonic-web",
+ "tower",
+ "tower-http",
  "urlencoding",
  "uuid",
  "whoami",
@@ -5573,28 +5587,6 @@ dependencies = [
  "tokio",
  "tonic",
  "tonic-build",
-]
-
-[[package]]
-name = "lgn-source-control-srv"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytes",
- "clap 3.1.6",
- "http",
- "hyper",
- "lgn-config",
- "lgn-source-control",
- "lgn-source-control-proto",
- "lgn-telemetry-sink",
- "lgn-tracing",
- "serde",
- "serde_json",
- "tokio",
- "tonic",
- "tonic-web",
- "url",
 ]
 
 [[package]]
@@ -5970,22 +5962,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fcb87f3080f6d1d69e8c564c0fcfde1d7aa8cc451ce40cae89479111f03bc0eb"
 dependencies = [
  "hashbrown",
-]
-
-[[package]]
-name = "lsc"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "atty",
- "chrono",
- "clap 3.1.6",
- "lgn-content-store2",
- "lgn-source-control",
- "lgn-telemetry-sink",
- "lgn-tracing",
- "termcolor",
- "tokio",
 ]
 
 [[package]]
@@ -7462,6 +7438,7 @@ dependencies = [
  "lgn-graphics-renderer",
  "lgn-math",
  "lgn-physics",
+ "lgn-source-control",
  "lgn-telemetry-sink",
  "lgn-tracing",
  "sample-data",
@@ -7702,6 +7679,7 @@ dependencies = [
  "lgn-graphics-renderer",
  "lgn-math",
  "lgn-scripting",
+ "lgn-source-control",
  "lgn-telemetry-sink",
  "lgn-tracing",
  "sample-data",
@@ -8631,6 +8609,7 @@ dependencies = [
  "lgn-data-runtime",
  "lgn-graphics-data",
  "lgn-math",
+ "lgn-source-control",
  "lgn-telemetry-sink",
  "lgn-utils",
  "png 0.17.5",
@@ -8899,9 +8878,9 @@ dependencies = [
 
 [[package]]
 name = "serial_test"
-version = "0.5.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0bccbcf40c8938196944a3da0e133e031a33f4d6b72db3bda3cc556e361905d"
+checksum = "e5bcc41d18f7a1d50525d080fd3e953be87c4f9f1a974f3c21798ca00d54ec15"
 dependencies = [
  "lazy_static",
  "parking_lot 0.11.2",
@@ -8910,12 +8889,14 @@ dependencies = [
 
 [[package]]
 name = "serial_test_derive"
-version = "0.5.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2acd6defeddb41eb60bb468f8825d0cfd0c2a76bc03bfd235b6a1dc4f6a1ad5"
+checksum = "2881bccd7d60fb32dfa3d7b3136385312f8ad75e2674aab2852867a09790cae8"
 dependencies = [
+ "proc-macro-error",
  "proc-macro2",
  "quote",
+ "rustversion",
  "syn",
 ]
 

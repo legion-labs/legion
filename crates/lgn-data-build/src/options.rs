@@ -8,6 +8,7 @@ use lgn_content_store2::ContentProvider;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;
 use lgn_data_runtime::{manifest::Manifest, AssetRegistry};
+use lgn_source_control::RepositoryIndex;
 
 use crate::{DataBuild, Error};
 
@@ -165,9 +166,10 @@ impl DataBuildOptions {
     pub async fn create_with_project(
         self,
         project_dir: impl AsRef<Path>,
+        repository_index: impl RepositoryIndex,
         content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     ) -> Result<(DataBuild, Project), Error> {
-        let project = Project::open(project_dir, content_provider)
+        let project = Project::open(project_dir, repository_index, content_provider)
             .await
             .map_err(Error::from)?;
         let build = DataBuild::new(self, &project).await?;

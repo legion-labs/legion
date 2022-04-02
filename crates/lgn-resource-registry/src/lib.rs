@@ -73,21 +73,27 @@ impl ResourceRegistryPlugin {
 
             sample_data_compiler::raw_loader::build_offline(
                 &project_dir,
-                settings.source_control_path.clone(),
+                &settings.source_control_repository_index,
+                settings.source_control_repository_name.clone(),
                 Arc::clone(&content_provider),
                 false,
             )
             .await;
 
             let project = {
-                if let Ok(project) =
-                    Project::open(&project_dir, Arc::clone(&content_provider)).await
+                if let Ok(project) = Project::open(
+                    &project_dir,
+                    &settings.source_control_repository_index,
+                    Arc::clone(&content_provider),
+                )
+                .await
                 {
                     project
                 } else {
                     let mut project = Project::create(
                         &project_dir,
-                        settings.source_control_path.clone(),
+                        &settings.source_control_repository_index,
+                        settings.source_control_repository_name.clone(),
                         content_provider,
                     )
                     .await

@@ -74,6 +74,9 @@ async fn main() -> Result<(), String> {
     let args = Cli::parse();
 
     let cwd = std::env::current_dir().unwrap();
+    let repository_index = lgn_source_control::Config::load_and_instantiate_repository_index()
+        .await
+        .map_err(|e| format!("failed creating repository index {}", e))?;
     let content_provider = Arc::new(
         lgn_content_store2::Config::load_and_instantiate_persistent_provider()
             .await
@@ -91,7 +94,7 @@ async fn main() -> Result<(), String> {
                 ContentStoreAddr::from(&cas[..]),
                 CompilerRegistryOptions::default(),
             )
-            .create_with_project(&project_dir, content_provider)
+            .create_with_project(&project_dir, repository_index, content_provider)
             .await
             .map_err(|e| format!("failed creating build index {}", e))?;
 
@@ -128,7 +131,7 @@ async fn main() -> Result<(), String> {
                 })
                 .unwrap_or_default();
 
-            let project = Project::open(&project_dir, content_provider)
+            let project = Project::open(&project_dir, repository_index, content_provider)
                 .await
                 .map_err(|e| e.to_string())?;
 

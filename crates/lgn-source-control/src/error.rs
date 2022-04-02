@@ -3,20 +3,19 @@ use std::{collections::BTreeSet, path::PathBuf};
 use lgn_content_store2::ChunkIdentifier;
 use thiserror::Error;
 
-use crate::{Branch, CanonicalPath, Change, CommitId, Lock};
+use crate::{Branch, CanonicalPath, Change, CommitId, Lock, RepositoryName};
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("the specified index does not exist")]
-    IndexDoesNotExist { url: String },
-    #[error("the specified index already exists")]
-    IndexAlreadyExists { url: String },
-    #[error("invalid index URL `{url}`: {source}")]
-    InvalidIndexUrl {
-        url: String,
-        #[source]
-        source: anyhow::Error,
+    #[error("invalid repository name `{repository_name}`: {reason}")]
+    InvalidRepositoryName {
+        repository_name: String,
+        reason: String,
     },
+    #[error("the specified repository `{repository_name}` does not exist")]
+    RepositoryDoesNotExist { repository_name: RepositoryName },
+    #[error("the specified repository `{repository_name}` already exists")]
+    RepositoryAlreadyExists { repository_name: RepositoryName },
     #[error("commit `{commit_id}` was not found")]
     CommitNotFound { commit_id: CommitId },
     #[error("the folder `{path}` is not a workspace")]
@@ -79,28 +78,27 @@ pub enum Error {
         path: CanonicalPath,
         exclusion_rule: CanonicalPath,
     },
+    #[error("online error: {0}")]
+    Online(#[from] lgn_online::Error),
+    #[error("configuration error: {0}")]
+    Config(#[from] lgn_config::Error),
     #[error("{context}: {source}")]
     Other {
         #[source]
         source: anyhow::Error,
         context: String,
     },
+    #[error("{0}")]
+    Unspecified(String),
 }
 
 impl Error {
-    pub fn index_does_not_exist(url: impl Into<String>) -> Self {
-        Self::IndexDoesNotExist { url: url.into() }
+    pub fn repository_does_not_exist(repository_name: RepositoryName) -> Self {
+        Self::RepositoryDoesNotExist { repository_name }
     }
 
-    pub fn index_already_exists(url: impl Into<String>) -> Self {
-        Self::IndexAlreadyExists { url: url.into() }
-    }
-
-    pub fn invalid_index_url(url: impl Into<String>, source: impl Into<anyhow::Error>) -> Self {
-        Self::InvalidIndexUrl {
-            url: url.into(),
-            source: source.into(),
-        }
+    pub fn repository_already_exists(repository_name: RepositoryName) -> Self {
+        Self::RepositoryAlreadyExists { repository_name }
     }
 
     pub fn commit_not_found(commit_id: CommitId) -> Self {

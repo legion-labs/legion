@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use lgn_content_store::ContentStoreAddr;
+use lgn_source_control::RepositoryName;
 
 #[derive(Debug, Clone)]
 pub enum CompilationMode {
@@ -41,7 +42,8 @@ impl std::str::FromStr for CompilationMode {
 
 pub struct ResourceRegistrySettings {
     pub(crate) root_folder: PathBuf,
-    pub(crate) source_control_path: String,
+    pub(crate) source_control_repository_index: Box<dyn lgn_source_control::RepositoryIndex>,
+    pub(crate) source_control_repository_name: RepositoryName,
     pub(crate) build_output_db_addr: String,
     pub(crate) content_store_addr: ContentStoreAddr,
     pub(crate) compilation_mode: CompilationMode,
@@ -50,14 +52,16 @@ pub struct ResourceRegistrySettings {
 impl ResourceRegistrySettings {
     pub fn new(
         root_folder: impl AsRef<Path>,
-        source_control_path: String,
+        source_control_repository_index: Box<dyn lgn_source_control::RepositoryIndex>,
+        source_control_repository_name: RepositoryName,
         build_output_db_addr: String,
         content_store_addr: ContentStoreAddr,
         compilation_mode: CompilationMode,
     ) -> Self {
         Self {
             root_folder: root_folder.as_ref().to_owned(),
-            source_control_path,
+            source_control_repository_index,
+            source_control_repository_name,
             build_output_db_addr,
             content_store_addr,
             compilation_mode,

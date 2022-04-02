@@ -4,15 +4,17 @@ use interceptor::registry::Registry;
 use lgn_tracing::{debug, info, warn};
 use lgn_window::WindowId;
 use webrtc::{
-    api::{media_engine::MediaEngine, APIBuilder, API},
+    api::{media_engine::MediaEngine, setting_engine::SettingEngine, APIBuilder, API},
     data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
-    ice_transport::ice_server::RTCIceServer,
+    ice_transport::ice_candidate_type::RTCIceCandidateType,
     peer_connection::{
         configuration::RTCConfiguration, peer_connection_state::RTCPeerConnectionState,
         sdp::session_description::RTCSessionDescription, signaling_state::RTCSignalingState,
         RTCPeerConnection,
     },
 };
+
+use crate::{config::WebRTCIceServer, WebRTCConfig};
 
 use super::streamer::StreamEvent;
 
@@ -21,6 +23,7 @@ use super::streamer::StreamEvent;
 /// purposes.
 pub(crate) struct WebRTCServer {
     api: API,
+    ice_servers: Vec<WebRTCIceServer>,
 }
 
 impl WebRTCServer {
@@ -28,7 +31,15 @@ impl WebRTCServer {
     /// interceptors registry.
     ///
     /// Typically, a single `WebRTCServer` is enough for any given application.
-    pub(crate) fn new() -> Result<Self, anyhow::Error> {
+    pub(crate) fn new(config: WebRTCConfig) -> Result<Self, anyhow::Error> {
+        let mut setting_engine = SettingEngine::default();
+
+        if !config.nat_1to1_ips.is_empty() {
+            setting_engine.set_nat_1to1_ips(config.nat_1to1_ips, RTCIceCandidateType::Host);
+        }
+
+        let ice_servers = config.ice_servers;
+
         // Create a MediaEngine object to configure the supported codec
         let mut media_engine = MediaEngine::default();
 
@@ -52,11 +63,12 @@ impl WebRTCServer {
 
         // Create the API object with the MediaEngine
         let api = APIBuilder::new()
+            .with_setting_engine(setting_engine)
             .with_media_engine(media_engine)
             .with_interceptor_registry(registry)
             .build();
 
-        Ok(Self { api })
+        Ok(Self { api, ice_servers })
     }
 
     pub(crate) async fn initialize_stream_connection(
@@ -99,10 +111,12 @@ impl WebRTCServer {
     ) -> anyhow::Result<Arc<RTCPeerConnection>> {
         // Prepare the configuration
         let config = RTCConfiguration {
-            ice_servers: vec![RTCIceServer {
-                urls: vec!["stun:stun.l.google.com:19302".to_owned()],
-                ..RTCIceServer::default()
-            }],
+            ice_servers: self
+                .ice_servers
+                .clone()
+                .into_iter()
+                .map(Into::into)
+                .collect(),
             ..RTCConfiguration::default()
         };
 
