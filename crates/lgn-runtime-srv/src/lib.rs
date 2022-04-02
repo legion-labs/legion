@@ -11,12 +11,13 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use generic_data::plugin::GenericDataPlugin;
-use lgn_app::prelude::App;
+use lgn_app::prelude::{App, StartupStage};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::AsyncPlugin;
 use lgn_content_store::ContentStoreAddr;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
+use lgn_ecs::prelude::{ExclusiveSystemDescriptorCoercion, IntoExclusiveSystem, Res, ResMut};
 use lgn_graphics_data::GraphicsPlugin;
 use lgn_graphics_renderer::RendererPlugin;
 use lgn_hierarchy::prelude::HierarchyPlugin;
@@ -28,8 +29,11 @@ use lgn_tracing::prelude::span_fn;
 use lgn_transform::prelude::TransformPlugin;
 use sample_data::SampleDataPlugin;
 
+mod grpc;
 #[cfg(feature = "standalone")]
 mod standalone;
+
+use crate::grpc::{GRPCServer, ManifestEventsReceiver};
 
 #[derive(Parser, Debug)]
 #[clap(name = "Legion Labs runtime engine")]
@@ -181,6 +185,19 @@ pub fn build_runtime(
         .insert_resource(GRPCPluginSettings::new(server_addr))
         .add_plugin(GRPCPlugin::default())
         .add_plugin(StreamerPlugin::default());
+
+        let (manifest_events_sender, manifest_events_receiver) =
+            tokio::sync::broadcast::channel(1_000);
+        let manifest_events_receiver: ManifestEventsReceiver = manifest_events_receiver.into();
+
+        app.insert_resource(manifest_events_sender)
+            .insert_resource(manifest_events_receiver)
+            .add_startup_system_to_stage(
+                StartupStage::PostStartup,
+                setup_runtime_grpc
+                    .exclusive_system()
+                    .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
+            );
     }
 
     app
@@ -189,4 +206,13 @@ pub fn build_runtime(
 #[span_fn]
 pub fn start_runtime(app: &mut App) {
     app.run();
+}
+
+fn setup_runtime_grpc(
+    mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
+    manifest_events_receiver: Res<'_, ManifestEventsReceiver>,
+) {
+    let grpc_server = GRPCServer::new(manifest_events_receiver.clone());
+
+    grpc_settings.register_service(grpc_server.service());
 }
