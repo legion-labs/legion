@@ -11,12 +11,15 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use generic_data::plugin::GenericDataPlugin;
-use lgn_app::prelude::{App, StartupStage};
+use lgn_app::prelude::App;
+#[cfg(not(feature = "standalone"))]
+use lgn_app::prelude::StartupStage;
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::AsyncPlugin;
 use lgn_content_store::ContentStoreAddr;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
+#[cfg(not(feature = "standalone"))]
 use lgn_ecs::prelude::{ExclusiveSystemDescriptorCoercion, IntoExclusiveSystem, Res, ResMut};
 use lgn_graphics_data::GraphicsPlugin;
 use lgn_graphics_renderer::RendererPlugin;
@@ -28,12 +31,15 @@ use lgn_scripting::ScriptingPlugin;
 use lgn_tracing::prelude::span_fn;
 use lgn_transform::prelude::TransformPlugin;
 use sample_data::SampleDataPlugin;
+#[cfg(not(feature = "standalone"))]
 use tokio::sync::broadcast;
 
+#[cfg(not(feature = "standalone"))]
 mod grpc;
 #[cfg(feature = "standalone")]
 mod standalone;
 
+#[cfg(not(feature = "standalone"))]
 use crate::grpc::{GRPCServer, RuntimeServerCommand};
 
 #[derive(Parser, Debug)]
@@ -207,6 +213,7 @@ pub fn start_runtime(app: &mut App) {
     app.run();
 }
 
+#[cfg(not(feature = "standalone"))]
 fn setup_runtime_grpc(
     mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
     command_sender: Res<'_, broadcast::Sender<RuntimeServerCommand>>,

@@ -37,14 +37,24 @@ impl Runtime for GRPCServer {
         request: Request<LoadManifestRequest>,
     ) -> Result<Response<LoadManifestResponse>, Status> {
         let request = request.into_inner();
-        if let Ok(manifest_id) = request.manifest_id.parse::<ChunkIdentifier>() {
-            if let Err(_error) = self
-                .command_sender
-                .send(RuntimeServerCommand::LoadManifest(manifest_id))
-            {
-                warn!("internal error sending runtime server command on channel");
-            }
+
+        let manifest_id = request
+            .manifest_id
+            .parse::<ChunkIdentifier>()
+            .map_err(|error| {
+                Status::internal(format!(
+                    "Invalid manifest id format \"{}\": {}",
+                    request.manifest_id, error
+                ))
+            })?;
+
+        if let Err(_error) = self
+            .command_sender
+            .send(RuntimeServerCommand::LoadManifest(manifest_id))
+        {
+            warn!("internal error sending runtime server command on channel");
         }
+
         Ok(Response::new(LoadManifestResponse {}))
     }
 
