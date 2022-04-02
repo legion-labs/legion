@@ -28,12 +28,13 @@ use lgn_scripting::ScriptingPlugin;
 use lgn_tracing::prelude::span_fn;
 use lgn_transform::prelude::TransformPlugin;
 use sample_data::SampleDataPlugin;
+use tokio::sync::broadcast;
 
 mod grpc;
 #[cfg(feature = "standalone")]
 mod standalone;
 
-use crate::grpc::{GRPCServer, ManifestEventsReceiver};
+use crate::grpc::{GRPCServer, RuntimeServerCommand};
 
 #[derive(Parser, Debug)]
 #[clap(name = "Legion Labs runtime engine")]
@@ -186,12 +187,10 @@ pub fn build_runtime(
         .add_plugin(GRPCPlugin::default())
         .add_plugin(StreamerPlugin::default());
 
-        let (manifest_events_sender, manifest_events_receiver) =
-            tokio::sync::broadcast::channel(1_000);
-        let manifest_events_receiver: ManifestEventsReceiver = manifest_events_receiver.into();
+        let (command_sender, command_receiver) = broadcast::channel::<RuntimeServerCommand>(1_000);
 
-        app.insert_resource(manifest_events_sender)
-            .insert_resource(manifest_events_receiver)
+        app.insert_resource(command_sender)
+            .insert_resource(command_receiver)
             .add_startup_system_to_stage(
                 StartupStage::PostStartup,
                 setup_runtime_grpc
@@ -210,9 +209,11 @@ pub fn start_runtime(app: &mut App) {
 
 fn setup_runtime_grpc(
     mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
-    manifest_events_receiver: Res<'_, ManifestEventsReceiver>,
+    command_sender: Res<'_, broadcast::Sender<RuntimeServerCommand>>,
 ) {
-    let grpc_server = GRPCServer::new(manifest_events_receiver.clone());
+    let grpc_server = GRPCServer::new(command_sender.clone());
 
     grpc_settings.register_service(grpc_server.service());
+
+    drop(command_sender);
 }

@@ -1,28 +1,30 @@
-use lgn_async::receiver::SharedUnboundedReceiver;
+use std::str::FromStr;
+
 use lgn_content_store2::ChunkIdentifier;
+use lgn_data_runtime::ResourceTypeAndId;
 use lgn_runtime_proto::runtime::{
     runtime_server::{Runtime, RuntimeServer},
     LoadManifestRequest, LoadManifestResponse, LoadRootAssetRequest, LoadRootAssetResponse,
     PauseRequest, PauseResponse,
 };
+use lgn_tracing::warn;
+use tokio::sync::broadcast;
 use tonic::{Request, Response, Status};
 
 #[derive(Debug, Clone)]
-pub(crate) enum ManifestEvent {
+pub(crate) enum RuntimeServerCommand {
     LoadManifest(ChunkIdentifier),
+    LoadRootAsset(ResourceTypeAndId),
+    Pause,
 }
 
-pub(crate) type ManifestEventsReceiver = SharedUnboundedReceiver<ManifestEvent>;
-
 pub(crate) struct GRPCServer {
-    manifest_events_receiver: ManifestEventsReceiver,
+    command_sender: broadcast::Sender<RuntimeServerCommand>,
 }
 
 impl GRPCServer {
-    pub(crate) fn new(manifest_events_receiver: ManifestEventsReceiver) -> Self {
-        Self {
-            manifest_events_receiver,
-        }
+    pub(crate) fn new(command_sender: broadcast::Sender<RuntimeServerCommand>) -> Self {
+        Self { command_sender }
     }
 
     pub(crate) fn service(self) -> RuntimeServer<Self> {
@@ -36,20 +38,42 @@ impl Runtime for GRPCServer {
         &self,
         request: Request<LoadManifestRequest>,
     ) -> Result<Response<LoadManifestResponse>, Status> {
-        todo!()
+        let request = request.into_inner();
+        if let Ok(manifest_id) = ChunkIdentifier::from_str(&request.manifest_id) {
+            if let Err(_error) = self
+                .command_sender
+                .send(RuntimeServerCommand::LoadManifest(manifest_id))
+            {
+                warn!("internal error sending runtime server command on channel");
+            }
+        }
+        Ok(Response::new(LoadManifestResponse {}))
     }
 
     async fn load_root_asset(
         &self,
         request: Request<LoadRootAssetRequest>,
     ) -> Result<Response<LoadRootAssetResponse>, Status> {
-        todo!()
+        let request = request.into_inner();
+        if let Ok(root_asset_id) = ResourceTypeAndId::from_str(&request.root_asset_id) {
+            if let Err(_error) = self
+                .command_sender
+                .send(RuntimeServerCommand::LoadRootAsset(root_asset_id))
+            {
+                warn!("internal error sending runtime server command on channel");
+            }
+        }
+        Ok(Response::new(LoadRootAssetResponse {}))
     }
 
     async fn pause(
         &self,
         request: Request<PauseRequest>,
     ) -> Result<Response<PauseResponse>, Status> {
-        todo!()
+        let _request = request.into_inner();
+        if let Err(_error) = self.command_sender.send(RuntimeServerCommand::Pause {}) {
+            warn!("internal error sending runtime server command on channel");
+        }
+        Ok(Response::new(PauseResponse {}))
     }
 }
