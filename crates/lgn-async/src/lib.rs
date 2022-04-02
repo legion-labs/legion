@@ -10,6 +10,7 @@ use lgn_app::prelude::*;
 use lgn_ecs::prelude::*;
 
 pub mod operation;
+pub mod receiver;
 pub mod runtime;
 pub mod sync;
 
