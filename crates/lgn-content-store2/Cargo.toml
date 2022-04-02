@@ -21,7 +21,7 @@ path = "src/server.rs"
 required-features = ["server"]
 
 [features]
-default = ["aws", "redis", "lru"]
+default = ["aws", "redis", "lru", "cli", "server"]
 aws = ["aws-config", "aws-sdk-s3", "aws-sdk-dynamodb"]
 cli = ["clap", "indicatif"]
 server = [
