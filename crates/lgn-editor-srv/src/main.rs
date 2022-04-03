@@ -8,7 +8,7 @@ use generic_data::plugin::GenericDataPlugin;
 use grpc::TraceEventsReceiver;
 use lgn_app::{prelude::*, AppExit, EventWriter, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
-use lgn_async::AsyncPlugin;
+use lgn_async::{AsyncPlugin, TokioAsyncRuntime};
 use lgn_content_store::ContentStoreAddr;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
@@ -137,8 +137,7 @@ impl Default for Config {
     }
 }
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let args = Args::parse();
     let cwd = std::env::current_dir().unwrap();
     let config: Config = lgn_config::get("editor_server")
@@ -181,10 +180,12 @@ async fn main() {
 
     info!("Scene: {}", scene);
 
-    let source_control_repository_index =
+    let tokio_rt = TokioAsyncRuntime::default();
+    let source_control_repository_index = tokio_rt.block_on(async {
         lgn_source_control::Config::load_and_instantiate_repository_index()
             .await
-            .expect("failed to load and instantiate a source control repository index");
+            .expect("failed to load and instantiate a source control repository index")
+    });
 
     let repository_name = args.repository_name;
 
@@ -239,50 +240,51 @@ async fn main() {
         config: config.streamer,
     };
 
-    app.insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
-        1.0 / 60.0,
-    )))
-    .add_plugin(ScheduleRunnerPlugin::default())
-    .insert_resource(DefaultTaskPoolOptions::new(1..=4))
-    .add_plugin(CorePlugin::default())
-    .add_plugin(AsyncPlugin::default())
-    .insert_resource(AssetRegistrySettings::new(
-        content_store_path.clone(),
-        &game_manifest_path,
-        assets_to_load,
-    ))
-    .add_plugin(AssetRegistryPlugin::default())
-    .insert_resource(ResourceRegistrySettings::new(
-        project_root,
-        source_control_repository_index,
-        repository_name,
-        build_output_database_address,
-        content_store_path,
-        args.compilers,
-    ))
-    .add_plugin(ResourceRegistryPlugin::default())
-    .insert_resource(GRPCPluginSettings::new(listen_endpoint))
-    .insert_resource(trace_events_receiver)
-    .add_plugin(GRPCPlugin::default())
-    .add_plugin(InputPlugin::default())
-    .add_plugin(RendererPlugin::default())
-    .add_plugin(streamer_plugin)
-    .add_plugin(EditorPlugin::default())
-    .insert_resource(ResourceBrowserSettings::new(scene))
-    .add_plugin(ResourceBrowserPlugin::default())
-    .add_plugin(ScenePlugin::new(None))
-    .add_plugin(PropertyInspectorPlugin::default())
-    .add_plugin(SourceControlPlugin::default())
-    .add_plugin(TransformPlugin::default())
-    .add_plugin(HierarchyPlugin::default())
-    .add_plugin(GenericDataPlugin::default())
-    .add_plugin(ScriptingPlugin::default())
-    .add_plugin(SampleDataPlugin::default())
-    .add_plugin(lgn_graphics_data::GraphicsPlugin::default())
-    .add_plugin(WindowPlugin {
-        add_primary_window: false,
-        exit_on_close: false,
-    });
+    app.insert_resource(tokio_rt)
+        .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
+            1.0 / 60.0,
+        )))
+        .add_plugin(ScheduleRunnerPlugin::default())
+        .insert_resource(DefaultTaskPoolOptions::new(1..=4))
+        .add_plugin(CorePlugin::default())
+        .add_plugin(AsyncPlugin::default())
+        .insert_resource(AssetRegistrySettings::new(
+            content_store_path.clone(),
+            &game_manifest_path,
+            assets_to_load,
+        ))
+        .add_plugin(AssetRegistryPlugin::default())
+        .insert_resource(ResourceRegistrySettings::new(
+            project_root,
+            source_control_repository_index,
+            repository_name,
+            build_output_database_address,
+            content_store_path,
+            args.compilers,
+        ))
+        .add_plugin(ResourceRegistryPlugin::default())
+        .insert_resource(GRPCPluginSettings::new(listen_endpoint))
+        .insert_resource(trace_events_receiver)
+        .add_plugin(GRPCPlugin::default())
+        .add_plugin(InputPlugin::default())
+        .add_plugin(RendererPlugin::default())
+        .add_plugin(streamer_plugin)
+        .add_plugin(EditorPlugin::default())
+        .insert_resource(ResourceBrowserSettings::new(scene))
+        .add_plugin(ResourceBrowserPlugin::default())
+        .add_plugin(ScenePlugin::new(None))
+        .add_plugin(PropertyInspectorPlugin::default())
+        .add_plugin(SourceControlPlugin::default())
+        .add_plugin(TransformPlugin::default())
+        .add_plugin(HierarchyPlugin::default())
+        .add_plugin(GenericDataPlugin::default())
+        .add_plugin(ScriptingPlugin::default())
+        .add_plugin(SampleDataPlugin::default())
+        .add_plugin(lgn_graphics_data::GraphicsPlugin::default())
+        .add_plugin(WindowPlugin {
+            add_primary_window: false,
+            exit_on_close: false,
+        });
 
     if let Some(test_name) = args.test {
         match test_name.as_str() {
