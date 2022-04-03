@@ -30,6 +30,7 @@ pub struct Config {
     pub authentication: Option<AuthenticationConfig>,
 
     /// The signature validation settings.
+    #[serde(default)]
     pub signature_validation: SignatureValidationConfig,
 }
 
@@ -123,7 +124,7 @@ impl Config {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum AuthenticationConfig {
     #[serde(rename = "oauth")]
     OAuth(OAuthClientConfig),
@@ -175,16 +176,16 @@ impl OAuthClientConfig {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum SignatureValidationConfig {
-    Disabled,
+    Disabled {},
     Rsa(RsaSignatureValidationConfig),
     AwsCognito(AwsCognitoSignatureValidationConfig),
 }
 
 impl Default for SignatureValidationConfig {
     fn default() -> Self {
-        Self::Disabled
+        Self::Disabled {}
     }
 }
 
