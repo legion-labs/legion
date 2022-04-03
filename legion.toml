@@ -6,7 +6,8 @@
 # If relative, it is relative to the current working directory.
 #
 # Default:
-#project_root = "tests/sample-data"
+#project_root = "tests/sample-data" # On *NIX.
+#project_root = "tests\\sample-data" # On Windows.
 
 # The endpoint to listen on.
 #

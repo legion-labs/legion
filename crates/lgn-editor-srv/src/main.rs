@@ -9,6 +9,7 @@ use grpc::TraceEventsReceiver;
 use lgn_app::{prelude::*, AppExit, EventWriter, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::{AsyncPlugin, TokioAsyncRuntime};
+use lgn_config::RichPathBuf;
 use lgn_content_store::ContentStoreAddr;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
@@ -65,7 +66,7 @@ struct Args {
     listen_endpoint: Option<SocketAddr>,
     /// Path to folder containing the project index
     #[clap(long)]
-    project_root: Option<PathBuf>,
+    project_root: Option<RichPathBuf>,
     /// The name of the repository to load.
     #[clap(long, default_value = "default")]
     repository_name: RepositoryName,
@@ -97,7 +98,7 @@ struct Config {
 
     /// The project root.
     #[serde(default = "Config::default_project_root")]
-    project_root: PathBuf,
+    project_root: RichPathBuf,
 
     /// The scene.
     #[serde(default)]
@@ -116,8 +117,14 @@ impl Config {
         "[::1]:50051".parse().unwrap()
     }
 
-    fn default_project_root() -> PathBuf {
-        PathBuf::from("tests/sample-data")
+    fn default_project_root() -> RichPathBuf {
+        if cfg!(windows) {
+            "$(git-root)/tests\\sample-data"
+        } else {
+            "$(git-root)/tests/sample-data"
+        }
+        .parse()
+        .unwrap()
     }
 
     fn default_build_output_database_address() -> String {
@@ -138,6 +145,17 @@ impl Default for Config {
 }
 
 fn main() {
+    let (trace_events_sender, trace_events_receiver) = broadcast::channel(1_000);
+
+    let telemetry_guard = TelemetryGuardBuilder::default()
+        .add_sink(LevelFilter::Info, BroadcastSink::new(trace_events_sender))
+        .build()
+        .expect("telemetry guard should be initialized once");
+
+    let trace_events_receiver: TraceEventsReceiver = trace_events_receiver.into();
+
+    let mut app = App::from_telemetry_guard(telemetry_guard);
+
     let args = Args::parse();
     let cwd = std::env::current_dir().unwrap();
     let config: Config = lgn_config::get("editor_server")
@@ -150,9 +168,9 @@ fn main() {
 
     let project_root = args.project_root.unwrap_or(config.project_root);
     let project_root = if project_root.is_absolute() {
-        project_root
+        project_root.to_path_buf()
     } else {
-        cwd.join(project_root)
+        cwd.join(project_root.as_ref())
     };
 
     info!("Project root: {}", project_root.display());
@@ -222,17 +240,6 @@ fn main() {
 
     let game_manifest_path = args.manifest.map_or_else(PathBuf::new, PathBuf::from);
     let assets_to_load = Vec::<ResourceTypeAndId>::new();
-
-    let (trace_events_sender, trace_events_receiver) = broadcast::channel(1_000);
-
-    let telemetry_guard = TelemetryGuardBuilder::default()
-        .add_sink(LevelFilter::Info, BroadcastSink::new(trace_events_sender))
-        .build()
-        .expect("telemetry guard should be initialized once");
-
-    let trace_events_receiver: TraceEventsReceiver = trace_events_receiver.into();
-
-    let mut app = App::from_telemetry_guard(telemetry_guard);
 
     info!("Streamer plugin config: {:#?}", config.streamer);
 
