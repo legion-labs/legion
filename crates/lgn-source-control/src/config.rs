@@ -22,7 +22,7 @@ pub struct GrpcConfig {
     /// The Web API URL to use for requests.
     ///
     /// If not specified, the global `online.web_api_base_url` will be used.
-    #[serde(deserialize_with = "GrpcConfig::deserialize_web_api_url")]
+    #[serde(default, deserialize_with = "GrpcConfig::deserialize_web_api_url")]
     pub web_api_url: Option<Uri>,
 }
 

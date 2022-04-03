@@ -110,7 +110,7 @@ impl Config {
         url: Option<&Uri>,
         scopes: &[String],
     ) -> Result<AuthenticatedClient<GrpcWebClient, BoxedAuthenticator>> {
-        let client = GrpcWebClient::new(url.unwrap_or(&self.api_base_url).clone());
+        let client = GrpcWebClient::new(url.unwrap_or(&self.web_api_base_url).clone());
 
         let authenticator = match &self.authentication {
             Some(config) => Some(config.instantiate_authenticator().await?),

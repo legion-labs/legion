@@ -171,7 +171,7 @@ impl Config {
     /// Namely, the configuration will be loaded from the following locations, in
     /// order:
     ///
-    /// - `/etc/legion-labs/config.toml` on UNIX.
+    /// - `/etc/legion-labs/legion.toml` on UNIX.
     /// - Any `legion.toml` file in the current binary directory, or one of its
     /// parent directories, stopping as soon as a file is found.
     /// - Any `legion.toml` file in the current working directory, or one of its
