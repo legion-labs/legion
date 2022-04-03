@@ -97,8 +97,7 @@ struct Config {
     listen_endpoint: SocketAddr,
 
     /// The project root.
-    #[serde(default = "Config::default_project_root")]
-    project_root: RichPathBuf,
+    project_root: Option<RichPathBuf>,
 
     /// The scene.
     #[serde(default)]
@@ -117,16 +116,6 @@ impl Config {
         "[::1]:50051".parse().unwrap()
     }
 
-    fn default_project_root() -> RichPathBuf {
-        if cfg!(windows) {
-            "$(git-root)/tests\\sample-data"
-        } else {
-            "$(git-root)/tests/sample-data"
-        }
-        .parse()
-        .unwrap()
-    }
-
     fn default_build_output_database_address() -> String {
         "temp".to_string()
     }
@@ -136,7 +125,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             listen_endpoint: Self::default_listen_endpoint(),
-            project_root: Self::default_project_root(),
+            project_root: None,
             scene: "".to_string(),
             build_output_database_address: Self::default_build_output_database_address(),
             streamer: lgn_streamer::Config::default(),
@@ -166,11 +155,22 @@ fn main() {
 
     info!("Listening on {}", listen_endpoint);
 
-    let project_root = args.project_root.unwrap_or(config.project_root);
+    let project_root = args
+        .project_root
+        .or(config.project_root)
+        .expect("no `project_root` was specified");
+
     let project_root = if project_root.is_absolute() {
         project_root.to_path_buf()
     } else {
         cwd.join(project_root.as_ref())
+    };
+
+    // TODO: Figure out why this is needed.
+    let project_root = if cfg!(windows) {
+        PathBuf::from_str(&project_root.to_str().unwrap().replace("/", "\\")).unwrap()
+    } else {
+        project_root
     };
 
     info!("Project root: {}", project_root.display());

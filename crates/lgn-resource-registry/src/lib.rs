@@ -97,7 +97,7 @@ impl ResourceRegistryPlugin {
                         content_provider,
                     )
                     .await
-                    .unwrap();
+                    .expect("cannot create project");
                     project.sync_latest().await.unwrap();
                     project
                 }
