@@ -22,10 +22,12 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 use lgn_telemetry_proto::ingestion::telemetry_ingestion_server::TelemetryIngestionServer;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
+use lgn_tracing::prelude::*;
 use local_data_lake::connect_to_local_data_lake;
 use remote_data_lake::connect_to_remote_data_lake;
 use std::net::SocketAddr;
 use tonic::transport::Server;
+use warp::Filter;
 
 #[derive(Parser, Debug)]
 #[clap(name = "Legion Telemetry Ingestion Server")]
@@ -62,12 +64,39 @@ async fn serve_grpc(args: &Cli) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+async fn insert_process_request(
+    body: serde_json::value::Value,
+) -> Result<warp::reply::Response, warp::Rejection> {
+    info!("insert_process {}", body);
+    Ok(http::response::Response::builder()
+        .status(500)
+        .body(hyper::body::Body::from("allô"))
+        .unwrap())
+}
+
+async fn serve_http(args: &Cli) -> Result<(), Box<dyn std::error::Error>> {
+    let command_filter = warp::path("telemetryingestion")
+        .and(warp::path("insertprocess"))
+        // .and(warp::body::bytes())
+        .and(warp::body::json())
+        .and_then(insert_process_request);
+    warp::serve(command_filter)
+        .run(args.listen_endpoint_http)
+        .await;
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _telemetry_guard = TelemetryGuardBuilder::default()
         .with_ctrlc_handling()
         .build();
     let args = Cli::parse();
-    serve_grpc(&args).await?;
+    tokio::select! {
+        _ = serve_grpc(&args) => {
+        },
+        _ = serve_http(&args) => {
+        }
+    }
     Ok(())
 }
