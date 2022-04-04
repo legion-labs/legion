@@ -1,4 +1,3 @@
-use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::ingestion::telemetry_ingestion_server::TelemetryIngestion;
 use lgn_telemetry_proto::ingestion::InsertReply;
 use lgn_telemetry_proto::telemetry::{Block, Process, Stream};
@@ -6,17 +5,15 @@ use lgn_tracing::{async_span_scope, error, info};
 use prost::Message;
 use tonic::{Request, Response, Status};
 
+use crate::data_lake_connection::DataLakeConnection;
+
 pub struct GRPCIngestionService {
-    db_pool: sqlx::any::AnyPool,
-    blob_storage: Box<dyn BlobStorage>,
+    lake: DataLakeConnection,
 }
 
 impl GRPCIngestionService {
-    pub fn new(db_pool: sqlx::AnyPool, blob_storage: Box<dyn BlobStorage>) -> Self {
-        Self {
-            db_pool,
-            blob_storage,
-        }
+    pub fn new(lake: DataLakeConnection) -> Self {
+        Self { lake }
     }
 }
 
@@ -58,7 +55,7 @@ impl TelemetryIngestion for GRPCIngestionService {
             "new process [{}] {}",
             process_info.exe, process_info.process_id
         );
-        match self.db_pool.acquire().await {
+        match self.lake.db_pool.acquire().await {
             Ok(mut connection) => {
                 let current_date: chrono::DateTime<chrono::Utc> = chrono::Utc::now();
                 #[allow(clippy::cast_possible_wrap)]
@@ -105,7 +102,7 @@ impl TelemetryIngestion for GRPCIngestionService {
         async_span_scope!("IngestionService::insert_stream");
         validate_auth(&request)?;
         let stream_info = request.into_inner();
-        match self.db_pool.acquire().await {
+        match self.lake.db_pool.acquire().await {
             Ok(mut connection) => {
                 let dependencies_metadata = match stream_info.dependencies_metadata {
                     Some(metadata) => metadata.encode_to_vec(),
@@ -158,7 +155,7 @@ impl TelemetryIngestion for GRPCIngestionService {
             }
         };
 
-        let mut connection = match self.db_pool.acquire().await {
+        let mut connection = match self.lake.db_pool.acquire().await {
             Ok(c) => c,
             Err(e) => {
                 return Err(Status::internal(format!("Error connecting to db: {}", e)));
@@ -169,6 +166,7 @@ impl TelemetryIngestion for GRPCIngestionService {
         let payload_size = encoded_payload.len();
         if payload_size >= 128 * 1024 {
             if let Err(e) = self
+                .lake
                 .blob_storage
                 .write_blob(&block.block_id, &encoded_payload)
                 .await

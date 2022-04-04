@@ -1,4 +1,4 @@
-use crate::grpc_ingestion_service::GRPCIngestionService;
+use crate::data_lake_connection::DataLakeConnection;
 use crate::sql_migration::execute_migration;
 use crate::sql_migration::read_schema_version;
 use crate::sql_migration::LATEST_SCHEMA_VERSION;
@@ -8,6 +8,7 @@ use lgn_tracing::prelude::*;
 use sqlx::migrate::MigrateDatabase;
 use sqlx::Row;
 use std::str::FromStr;
+use std::sync::Arc;
 
 async fn acquire_lock(connection: &mut sqlx::AnyConnection, name: &str) -> Result<()> {
     let row = sqlx::query("SELECT GET_LOCK(?, -1) as result;")
@@ -55,7 +56,7 @@ async fn migrate_db(connection: &mut sqlx::AnyConnection) -> Result<()> {
     Ok(())
 }
 
-pub async fn connect_to_remote_data_lake(db_uri: &str, s3_url: &str) -> Result<GRPCIngestionService> {
+pub async fn connect_to_remote_data_lake(db_uri: &str, s3_url: &str) -> Result<DataLakeConnection> {
     info!("connecting to blob storage");
     let blob_storage = AwsS3BlobStorage::new(AwsS3Url::from_str(s3_url)?).await;
     if !sqlx::Any::database_exists(db_uri)
@@ -72,5 +73,5 @@ pub async fn connect_to_remote_data_lake(db_uri: &str, s3_url: &str) -> Result<G
         .with_context(|| String::from("Connecting to telemetry database"))?;
     let mut connection = pool.acquire().await?;
     migrate_db(&mut connection).await?;
-    Ok(GRPCIngestionService::new(pool, Box::new(blob_storage)))
+    Ok(DataLakeConnection::new(pool, Arc::new(blob_storage)))
 }
