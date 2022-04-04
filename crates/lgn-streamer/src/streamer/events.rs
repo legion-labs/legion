@@ -1,3 +1,7 @@
+#![allow(clippy::use_self)]
+
+use std::sync::Arc;
+
 use anyhow::bail;
 use lgn_input::{
     keyboard::KeyboardInput,
@@ -8,6 +12,29 @@ use lgn_input::{
 use lgn_math::Vec2;
 use lgn_window::WindowId;
 use serde::Deserialize;
+use webrtc::data_channel::RTCDataChannel;
+
+pub(crate) struct ControlEvent {
+    #[allow(unused)]
+    pub(crate) window_id: WindowId,
+    pub(crate) info: ControlEventInfo,
+    #[allow(unused)]
+    pub(crate) control_data_channel: Arc<RTCDataChannel>,
+}
+
+impl ControlEvent {
+    pub(crate) fn parse(
+        window_id: WindowId,
+        control_data_channel: Arc<RTCDataChannel>,
+        data: &[u8],
+    ) -> anyhow::Result<Self> {
+        Ok(Self {
+            window_id,
+            info: serde_json::from_slice(data)?,
+            control_data_channel,
+        })
+    }
+}
 
 pub(crate) struct VideoStreamEvent {
     pub(crate) window_id: WindowId,
@@ -103,12 +130,21 @@ pub(crate) enum Input {
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "event")]
+pub(crate) enum ControlEventInfo {
+    #[serde(rename = "pause")]
+    Pause,
+    #[serde(rename = "resume")]
+    Resume,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "event")]
 pub(crate) enum VideoStreamEventInfo {
     #[serde(rename = "resize")]
     Resize { width: u32, height: u32 },
     #[serde(rename = "initialize")]
-    #[allow(dead_code)]
     Initialize {
+        #[allow(dead_code)]
         color: Color,
         width: u32,
         height: u32,

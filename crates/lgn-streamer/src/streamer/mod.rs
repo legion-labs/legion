@@ -106,9 +106,11 @@ impl Streamer {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn handle_stream_events(
     async_rt: Res<'_, TokioAsyncRuntime>,
     streamer: Res<'_, Streamer>,
+    mut control_events: EventWriter<'_, '_, ControlEvent>,
     mut video_stream_events: EventWriter<'_, '_, VideoStreamEvent>,
     mut window_list: ResMut<'_, Windows>,
     mut streamer_windows: ResMut<'_, StreamerWindows>,
@@ -184,12 +186,39 @@ pub(crate) fn handle_stream_events(
                     window_id,
                 );
             }
-            StreamEvent::ControlChannelMessageReceived(_, _, _) => {
-                //commands
-                //    .entity(stream_id.entity)
-                //    .get_components(|stream: &mut ControlStream| {});
+            StreamEvent::ControlChannelMessageReceived(stream_id, data_channel, msg) => {
+                match ControlEvent::parse(stream_id, data_channel, &msg.data) {
+                    Ok(event) => {
+                        control_events.send(event);
+                    }
+                    Err(e) => {
+                        warn!("Ignoring unknown video data channel message: {}", e);
+                    }
+                }
+            }
+        }
+    }
+}
 
-                //control_stream.parse_and_append(msg);
+pub(crate) fn handle_control_events(
+    mut control_events: EventReader<'_, '_, ControlEvent>,
+    mut render_surfaces: Query<'_, '_, &mut RenderSurface>,
+) {
+    for event in control_events.iter() {
+        match &event.info {
+            ControlEventInfo::Pause => {
+                trace!("Received control Pause event, pausing stream");
+
+                render_surfaces.for_each_mut(|mut render_surface| {
+                    render_surface.pause();
+                });
+            }
+            ControlEventInfo::Resume => {
+                trace!("Received control Resume event, resuming stream");
+
+                render_surfaces.for_each_mut(|mut render_surface| {
+                    render_surface.resume();
+                });
             }
         }
     }

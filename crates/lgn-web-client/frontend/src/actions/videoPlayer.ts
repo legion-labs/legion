@@ -19,6 +19,11 @@ export type PushableHTMLVideoElement = HTMLVideoElement & {
   push(data: ArrayBuffer): void;
 };
 
+export type Options = {
+  controlChannel: RTCDataChannel | null;
+  onFatal?: () => void;
+};
+
 /**
  * Takes an `HTMLVideoElement` and attach a `push` method to it.
  *
@@ -29,7 +34,7 @@ export type PushableHTMLVideoElement = HTMLVideoElement & {
  */
 export default function videoPlayer(
   videoElement: HTMLVideoElement,
-  options?: { onFatal?: () => void }
+  options: Options
 ) {
   videoElement.muted = true;
   videoElement.disablePictureInPicture = true;
@@ -40,6 +45,39 @@ export default function videoPlayer(
   let mediaSource: MediaSource | null = null;
   let listeners: Listener[] = [];
   let lastFrameId = -1;
+
+  function onVisibilityChange() {
+    switch (document.visibilityState) {
+      case "hidden": {
+        videoElement.pause();
+
+        options.controlChannel?.send(
+          JSON.stringify({
+            event: "pause",
+          })
+        );
+
+        break;
+      }
+
+      case "visible": {
+        videoElement.play().catch(() => {
+          log.warn(
+            "video",
+            "Video player's pause method was called while the play method was running"
+          );
+        });
+
+        options.controlChannel?.send(
+          JSON.stringify({
+            event: "resume",
+          })
+        );
+
+        break;
+      }
+    }
+  }
 
   function addListener(source: Source, name: string, f: () => void) {
     source.addEventListener(name, f);
@@ -85,7 +123,7 @@ export default function videoPlayer(
       } catch (error) {
         log.error("video", error);
 
-        options?.onFatal && options.onFatal();
+        options.onFatal && options.onFatal();
 
         destroy();
       }
@@ -120,6 +158,8 @@ export default function videoPlayer(
     }
   }
 
+  document.addEventListener("visibilitychange", onVisibilityChange);
+
   (videoElement as PushableHTMLVideoElement).push = (data) => {
     const chunk = new Uint8Array(data);
     const frameId =
@@ -153,5 +193,16 @@ export default function videoPlayer(
 
       lastFrameId = frameId;
     }
+  };
+
+  return {
+    destroy() {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+
+      destroy();
+    },
+    update({ controlChannel: newControlChannel }: Options) {
+      options.controlChannel = newControlChannel;
+    },
   };
 }

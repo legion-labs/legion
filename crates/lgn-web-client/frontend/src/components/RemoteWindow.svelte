@@ -99,7 +99,7 @@
 
     controlChannel = peerConnection.createDataChannel("control");
 
-    videoChannel.binaryType = "arraybuffer";
+    controlChannel.binaryType = "arraybuffer";
 
     peerConnection.onnegotiationneeded = async () => {
       if (!peerConnection) {
@@ -329,7 +329,11 @@
   use:resize={onVideoResize}
   use:remoteWindowInputs={onRemoteWindowInput}
 >
-  <video class="video" use:videoPlayer bind:this={videoElement}>
+  <video
+    class="video"
+    use:videoPlayer={{ controlChannel }}
+    bind:this={videoElement}
+  >
     <track kind="captions" />
   </video>
   <!-- TODO: Set opacity to 70 or so to still see the video player, blinks for the moment -->
