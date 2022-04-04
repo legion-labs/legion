@@ -23,13 +23,14 @@ use crate::{DataBuild, Error};
 /// ```no_run
 /// # use std::sync::Arc;
 /// # use lgn_data_build::DataBuildOptions;
-/// # use lgn_content_store2::{ContentProvider, MemoryProvider};
+/// # use lgn_content_store2::{ContentProvider, ProviderConfig};
 /// # use lgn_data_offline::resource::Project;
 /// # use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 /// # tokio_test::block_on(async {
-/// let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
-/// let project = Project::open("project/", content_provider).await.unwrap();
-/// let build = DataBuildOptions::new("temp/".to_string(), CompilerRegistryOptions::local_compilers("./"))
+/// let source_control_content_provider = Arc::new(ProviderConfig::default().instantiate().await.unwrap());
+/// let data_content_provider = Arc::new(ProviderConfig::default().instantiate().await.unwrap());
+/// let project = Project::open("project/", source_control_content_provider).await.unwrap();
+/// let build = DataBuildOptions::new("temp/".to_string(), data_content_provider, CompilerRegistryOptions::local_compilers("./"))
 ///         .create(&project).await.unwrap();
 /// # })
 /// ```

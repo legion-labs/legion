@@ -150,7 +150,7 @@ impl OutputIndex {
         // at the moment.
         {
             for resource in compiled_resources {
-                let query = sqlx::query("INSERT into compiled_output VALUES(?, ?, ?, ?, ?, ?);")
+                let query = sqlx::query("INSERT into compiled_output VALUES(?, ?, ?, ?, ?);")
                     .bind(compile_path.to_string())
                     .bind(context_hash.into_i64())
                     .bind(source_hash.into_i64())
