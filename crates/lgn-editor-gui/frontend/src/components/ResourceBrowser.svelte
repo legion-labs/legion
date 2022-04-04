@@ -158,7 +158,7 @@
 
       const names = await Promise.all(promises);
 
-      await Promise.all(
+      let response = await Promise.all(
         names.map(({ name, id }) => {
           const lowerCasedName = name.toLowerCase().trim();
 
@@ -183,7 +183,23 @@
         })
       );
 
-      allResources.run(getAllResources);
+      if (response && response[0]) {
+        await allResources.run(getAllResources);
+        let newId = response[0].newId;
+
+        if (newId) {
+          const entry = resourceEntries.find(
+            (entry) => isEntry(entry) && entry.item.id == newId
+          );
+
+          if (!entry || !isEntry(entry)) {
+            return;
+          }
+
+          currentResourceDescriptionEntry = entry;
+          fetchCurrentResourceDescription(newId);
+        }
+      }
     } catch (error) {
       log.error(log.json`File upload failed: ${error}`);
     } finally {
