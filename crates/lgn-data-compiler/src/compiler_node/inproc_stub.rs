@@ -54,7 +54,7 @@ impl CompilerStub for InProcessCompilerStub {
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         registry: Arc<AssetRegistry>,
-        data_content_store: &(dyn ContentProvider + Send + Sync),
+        data_content_provider: &(dyn ContentProvider + Send + Sync),
         _project_dir: &Path,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
@@ -65,7 +65,7 @@ impl CompilerStub for InProcessCompilerStub {
                 dependencies,
                 derived_deps,
                 registry,
-                data_content_store,
+                data_content_provider,
                 env,
             )
             .await

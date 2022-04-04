@@ -666,7 +666,7 @@ impl AssetLoaderIO {
 mod tests {
     use std::{sync::Arc, time::Duration};
 
-    use lgn_content_store2::{ContentWriterExt, ProviderConfig};
+    use lgn_content_store2::{ContentProvider, ContentWriterExt, MemoryProvider};
 
     use super::{create_loader, AssetLoaderIO, AssetLoaderStub};
     use crate::{
@@ -676,7 +676,8 @@ mod tests {
     };
 
     async fn setup_test() -> (ResourceTypeAndId, AssetLoaderStub, AssetLoaderIO) {
-        let data_content_store = Arc::new(Box::new(MemoryProvider::new()));
+        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+            Arc::new(Box::new(MemoryProvider::new()));
         let manifest = Manifest::default();
 
         let asset_id = {
@@ -684,7 +685,7 @@ mod tests {
                 kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(1),
             };
-            let checksum = data_content_store
+            let checksum = data_content_provider
                 .write_content(&test_asset::tests::BINARY_ASSETFILE)
                 .await
                 .unwrap();
@@ -694,7 +695,7 @@ mod tests {
 
         let (loader, mut io) = create_loader(vec![Box::new(vfs::CasDevice::new(
             manifest,
-            data_content_store,
+            Arc::clone(&data_content_provider),
         ))]);
         io.register_loader(
             test_asset::TestAsset::TYPE,
@@ -753,7 +754,7 @@ mod tests {
 
     #[tokio::test]
     async fn load_no_dependencies() {
-        let data_content_store = Arc::new(Box::new(MemoryProvider::new()));
+        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
         let manifest = Manifest::default();
 
         let asset_id = {
@@ -761,7 +762,7 @@ mod tests {
                 kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(1),
             };
-            let checksum = data_content_store
+            let checksum = data_content_provider
                 .write_content(&test_asset::tests::BINARY_ASSETFILE)
                 .await
                 .unwrap();
@@ -777,7 +778,10 @@ mod tests {
         let (request_tx, request_rx) = tokio::sync::mpsc::unbounded_channel::<LoaderRequest>();
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
-            vec![Box::new(vfs::CasDevice::new(manifest, data_content_store))],
+            vec![Box::new(vfs::CasDevice::new(
+                manifest,
+                data_content_provider,
+            ))],
             request_tx.clone(),
             request_rx,
             result_tx,
@@ -817,7 +821,7 @@ mod tests {
 
     #[tokio::test]
     async fn load_failed_dependency() {
-        let data_content_store = Arc::new(Box::new(MemoryProvider::new()));
+        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
         let manifest = Manifest::default();
 
         let parent_id = ResourceTypeAndId {
@@ -826,7 +830,7 @@ mod tests {
         };
 
         let asset_id = {
-            let checksum = data_content_store
+            let checksum = data_content_provider
                 .write_content(&test_asset::tests::BINARY_PARENT_ASSETFILE)
                 .await
                 .unwrap();
@@ -840,7 +844,10 @@ mod tests {
         let (request_tx, request_rx) = tokio::sync::mpsc::unbounded_channel::<LoaderRequest>();
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
-            vec![Box::new(vfs::CasDevice::new(manifest, data_content_store))],
+            vec![Box::new(vfs::CasDevice::new(
+                manifest,
+                data_content_provider,
+            ))],
             request_tx.clone(),
             request_rx,
             result_tx,
@@ -870,7 +877,7 @@ mod tests {
 
     #[tokio::test]
     async fn load_with_dependency() {
-        let data_content_store = Arc::new(Box::new(MemoryProvider::new()));
+        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
         let manifest = Manifest::default();
 
         let parent_content = "parent";
@@ -887,12 +894,12 @@ mod tests {
         let asset_id = {
             manifest.insert(
                 child_id,
-                data_content_store
+                data_content_provider
                     .write_content(&test_asset::tests::BINARY_ASSETFILE)
                     .await
                     .unwrap(),
             );
-            let checksum = data_content_store
+            let checksum = data_content_provider
                 .write_content(&test_asset::tests::BINARY_PARENT_ASSETFILE)
                 .await
                 .unwrap();
@@ -907,7 +914,10 @@ mod tests {
         let (request_tx, request_rx) = tokio::sync::mpsc::unbounded_channel::<LoaderRequest>();
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
-            vec![Box::new(vfs::CasDevice::new(manifest, data_content_store))],
+            vec![Box::new(vfs::CasDevice::new(
+                manifest,
+                data_content_provider,
+            ))],
             request_tx.clone(),
             request_rx,
             result_tx,
@@ -976,7 +986,7 @@ mod tests {
 
     #[tokio::test]
     async fn reload_no_dependencies() {
-        let data_content_store = Arc::new(Box::new(MemoryProvider::new()));
+        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
         let manifest = Manifest::default();
 
         let asset_id = {
@@ -984,7 +994,7 @@ mod tests {
                 kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(1),
             };
-            let checksum = data_content_store
+            let checksum = data_content_provider
                 .write_content(&test_asset::tests::BINARY_ASSETFILE)
                 .await
                 .unwrap();
@@ -998,7 +1008,10 @@ mod tests {
         let (request_tx, request_rx) = tokio::sync::mpsc::unbounded_channel::<LoaderRequest>();
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
-            vec![Box::new(vfs::CasDevice::new(manifest, data_content_store))],
+            vec![Box::new(vfs::CasDevice::new(
+                manifest,
+                Arc::clone(&data_content_provider),
+            ))],
             request_tx.clone(),
             request_rx,
             result_tx,

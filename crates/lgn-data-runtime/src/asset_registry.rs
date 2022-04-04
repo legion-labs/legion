@@ -438,7 +438,7 @@ impl AssetRegistry {
 
 #[cfg(test)]
 mod tests {
-    use lgn_content_store2::{ContentWriterExt, ProviderConfig};
+    use lgn_content_store2::{MemoryProvider, ContentWriterExt};
 
     use crate::ResourceId;
 
@@ -534,7 +534,7 @@ mod tests {
     use crate::test_asset;
 
     async fn setup_singular_asset_test(content: &[u8]) -> (ResourceTypeAndId, Arc<AssetRegistry>) {
-        let data_content_store = Arc::new(Box::new(MemoryProvider::new()));
+        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
         let manifest = Manifest::default();
 
         let asset_id = {
@@ -542,13 +542,13 @@ mod tests {
                 kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(1),
             };
-            let checksum = data_content_store.write_content(content).await.unwrap();
+            let checksum = data_content_provider.write_content(content).await.unwrap();
             manifest.insert(type_id, checksum);
             type_id
         };
 
         let reg = AssetRegistryOptions::new()
-            .add_device_cas(data_content_store, manifest)
+            .add_device_cas(data_content_provider, manifest)
             .add_loader::<test_asset::TestAsset>()
             .create()
             .await;
@@ -557,7 +557,7 @@ mod tests {
     }
 
     async fn setup_dependency_test() -> (ResourceTypeAndId, ResourceTypeAndId, Arc<AssetRegistry>) {
-        let data_content_store = Arc::new(Box::new(MemoryProvider::new()));
+        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
         let manifest = Manifest::default();
 
         const BINARY_PARENT_ASSETFILE: [u8; 100] = [
@@ -593,12 +593,12 @@ mod tests {
         let parent_id = {
             manifest.insert(
                 child_id,
-                data_content_store
+                data_content_provider
                     .write_content(&BINARY_CHILD_ASSETFILE)
                     .await
                     .unwrap(),
             );
-            let checksum = data_content_store
+            let checksum = data_content_provider
                 .write_content(&BINARY_PARENT_ASSETFILE)
                 .await
                 .unwrap();
@@ -611,7 +611,7 @@ mod tests {
         };
 
         let reg = AssetRegistryOptions::new()
-            .add_device_cas(data_content_store, manifest)
+            .add_device_cas(data_content_provider, manifest)
             .add_loader::<refs_asset::RefsAsset>()
             .create()
             .await;

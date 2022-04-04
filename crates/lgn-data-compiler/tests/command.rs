@@ -1,6 +1,6 @@
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
-use lgn_content_store2::{ContentReaderExt, ProviderConfig};
+use lgn_content_store2::{ContentReaderExt, MemoryProvider, ContentProvider};
 use lgn_data_compiler::compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd};
 use lgn_data_offline::{resource::ResourceProcessor, ResourcePathId};
 use lgn_data_runtime::{AssetLoader, Resource, ResourceId, ResourceTypeAndId};
@@ -94,7 +94,7 @@ async fn command_compile() {
 
     let content_id = &result.compiled_resources[0].content_id;
 
-    let volatile_content_provider = Arc::new(Box::new(MemoryProvider::new()));
+    let volatile_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
 
     assert!(volatile_content_provider
         .get_content_reader(&content_id)

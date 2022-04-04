@@ -1,6 +1,8 @@
+use std::sync::Arc;
+
 use binary_resource::BinaryResource;
 use integer_asset::{IntegerAsset, IntegerAssetLoader};
-use lgn_content_store2::{ContentReaderExt, ProviderConfig};
+use lgn_content_store2::{ContentReaderExt, MemoryProvider, ContentProvider, ContentReader};
 use lgn_data_compiler::compiler_cmd::{list_compilers, CompilerCompileCmd};
 use lgn_data_offline::{resource::ResourceProcessor, ResourcePathId};
 use lgn_data_runtime::{AssetLoader, Resource, ResourceId, ResourceTypeAndId};
@@ -70,7 +72,7 @@ async fn compile_atoi() {
 
     let content_id = asset_info.content_id.clone();
 
-    let volatile_content_provider = Arc::new(Box::new(MemoryProvider::new()));
+    let volatile_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
 
     assert!(volatile_content_provider
         .get_content_reader(&content_id)

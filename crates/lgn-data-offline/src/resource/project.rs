@@ -422,7 +422,7 @@ impl Project {
 
         self.workspace
             .add_files(
-                &self.content_provider,
+                &self.source_control_content_provider,
                 [meta_path.as_path(), resource_path.as_path()],
             )
             .await?;
@@ -488,7 +488,7 @@ impl Project {
 
         self.workspace
             .add_files(
-                &self.content_provider,
+                &self.source_control_content_provider,
                 [metadata_path.as_path(), resource_path.as_path()],
             ) // add
             .await?;
@@ -580,7 +580,7 @@ impl Project {
                     match self
                         .workspace
                         .get_chunker()
-                        .read_chunk(&self.content_provider, old_chunk_id)
+                        .read_chunk(&self.source_control_content_provider, old_chunk_id)
                         .await
                     {
                         Ok(data) => {
@@ -703,7 +703,7 @@ impl Project {
         let resource_path = self.resource_path(type_id.id);
         self.workspace
             .add_files(
-                &self.content_provider,
+                &self.source_control_content_provider,
                 [metadata_path.as_path(), resource_path.as_path()],
             ) // add
             .await
@@ -726,7 +726,7 @@ impl Project {
     pub async fn sync_latest(&mut self) -> Result<Vec<(ResourceId, ChangeType)>, Error> {
         let (_, changed) = self
             .workspace
-            .sync(&self.content_provider)
+            .sync(&self.source_control_content_provider)
             .await
             .map_err(Error::SourceControl)?;
 

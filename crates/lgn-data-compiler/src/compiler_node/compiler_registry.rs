@@ -43,7 +43,7 @@ pub trait CompilerStub: Send + Sync {
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         registry: Arc<AssetRegistry>,
-        data_content_store: &(dyn ContentProvider + Send + Sync),
+        data_content_provider: &(dyn ContentProvider + Send + Sync),
         project_dir: &Path,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError>;

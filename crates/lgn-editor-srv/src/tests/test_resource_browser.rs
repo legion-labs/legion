@@ -1,6 +1,6 @@
 use std::{path::Path, str::FromStr, sync::Arc};
 
-use lgn_content_store2::{ContentProvider, MemoryProvider, ProviderConfig};
+use lgn_content_store2::{ContentProvider, MemoryProvider};
 use lgn_scene_plugin::SceneMessage;
 use serde_json::json;
 use tokio::sync::Mutex;
@@ -74,9 +74,9 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
     let build_dir = project_dir.as_ref().join("temp");
     std::fs::create_dir_all(&build_dir).unwrap();
 
-    let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+    let source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
         Arc::new(Box::new(MemoryProvider::new()));
-    let project = Project::create_with_remote_mock(&project_dir, content_provider)
+    let project = Project::create_with_remote_mock(&project_dir, source_control_content_provider)
         .await
         .expect("failed to create a project");
 
@@ -84,7 +84,8 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
     sample_data::offline::register_resource_types(&mut resource_registry);
     lgn_scripting::offline::register_resource_types(&mut resource_registry);
 
-    let data_content_provider = Arc::new(Box::new(MemoryProvider::new()));
+    let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
 
     let resource_registry = resource_registry.create_async_registry();
 

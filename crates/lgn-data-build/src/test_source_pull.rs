@@ -2,7 +2,6 @@
 mod tests {
     use std::{path::PathBuf, sync::Arc};
 
-    use lgn_content_store::ContentStoreAddr;
     use lgn_content_store2::{ContentProvider, MemoryProvider};
     use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
     use lgn_data_offline::{
@@ -22,6 +21,7 @@ mod tests {
         PathBuf,
         LocalRepositoryIndex,
         Arc<Box<dyn ContentProvider + Send + Sync>>,
+        Arc<Box<dyn ContentProvider + Send + Sync>>,
     ) {
         let project_dir = work_dir.path();
         let output_dir = project_dir.join("temp");
@@ -30,14 +30,17 @@ mod tests {
         let repository_index = LocalRepositoryIndex::new(project_dir.join("remote"))
             .await
             .unwrap();
-        let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        let source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+            Arc::new(Box::new(MemoryProvider::new()));
+        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
             Arc::new(Box::new(MemoryProvider::new()));
 
         (
             project_dir.to_owned(),
             output_dir,
             repository_index,
-            content_provider,
+            source_control_content_provider,
+            data_content_provider,
         )
     }
 
@@ -50,14 +53,19 @@ mod tests {
     #[tokio::test]
     async fn no_dependencies() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (project_dir, output_dir, repository_index, content_provider) =
-            setup_dir(&work_dir).await;
+        let (
+            project_dir,
+            output_dir,
+            repository_index,
+            source_control_content_provider,
+            data_content_provider,
+        ) = setup_dir(&work_dir).await;
         let resources = setup_registry();
         let mut resources = resources.lock().await;
 
         let resource = {
             let mut project =
-                Project::create_with_remote_mock(&project_dir, Arc::clone(&content_provider))
+                Project::create_with_remote_mock(&project_dir, Arc::clone(&source_control_content_provider))
                     .await
                     .expect("failed to create a project");
             let id = project
@@ -78,9 +86,13 @@ mod tests {
         let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
             &output_dir,
             CompilerRegistryOptions::default(),
+            data_content_provider,
         )
-        .content_store(&ContentStoreAddr::from(output_dir))
-        .create_with_project(project_dir, repository_index, content_provider)
+        .create_with_project(
+            project_dir,
+            repository_index,
+            source_control_content_provider,
+        )
         .await
         .expect("data build");
 
@@ -95,14 +107,14 @@ mod tests {
     #[tokio::test]
     async fn with_dependency() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (project_dir, output_dir, repository_index, content_provider) =
+        let (project_dir, output_dir, repository_index, source_control_content_provider, data_content_provider) =
             setup_dir(&work_dir).await;
         let resources = setup_registry();
         let mut resources = resources.lock().await;
 
         let (child_id, parent_id) = {
             let mut project =
-                Project::create_with_remote_mock(&project_dir, Arc::clone(&content_provider))
+                Project::create_with_remote_mock(&project_dir, Arc::clone(&source_control_content_provider))
                     .await
                     .expect("failed to create a project");
             let child_id = project
@@ -147,9 +159,9 @@ mod tests {
         let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
             &output_dir,
             CompilerRegistryOptions::default(),
+            data_content_provider,
         )
-        .content_store(&ContentStoreAddr::from(output_dir))
-        .create_with_project(project_dir, repository_index, content_provider)
+        .create_with_project(project_dir, repository_index, source_control_content_provider)
         .await
         .expect("data build");
 

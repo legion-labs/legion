@@ -55,9 +55,6 @@ struct Args {
     /// Path to folder containing the project index
     #[clap(long)]
     project: Option<String>,
-    /// Path to folder containing the content storage files
-    #[clap(long)]
-    cas: Option<String>,
     /// Path to the game manifest
     #[clap(long)]
     manifest: Option<String>,

@@ -237,7 +237,6 @@ fn main() {
         .add_plugin(CorePlugin::default())
         .add_plugin(AsyncPlugin::default())
         .insert_resource(AssetRegistrySettings::new(
-            content_store_path.clone(),
             &game_manifest_path,
             assets_to_load,
         ))
@@ -247,7 +246,6 @@ fn main() {
             source_control_repository_index,
             repository_name,
             build_output_database_address,
-            content_store_path,
             args.compilers,
         ))
         .add_plugin(ResourceRegistryPlugin::default())

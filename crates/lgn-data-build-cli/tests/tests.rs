@@ -1,6 +1,6 @@
 use std::{fs, sync::Arc};
 
-use lgn_content_store2::ProviderConfig;
+use lgn_content_store2::{MemoryProvider, ContentProvider};
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::{
     compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,
@@ -28,7 +28,6 @@ async fn build_device() {
         work_dir.path().join("legion.toml").to_str().unwrap(),
     );
 
-    let cas = work_dir.path().join("content_store");
     let project_dir = work_dir.path();
     let output_dir = work_dir.path();
     let repository_index = lgn_source_control::Config::load_and_instantiate_repository_index()
@@ -39,11 +38,8 @@ async fn build_device() {
         .create_repository(repository_name.clone())
         .await
         .unwrap();
-    let source_control_content_provider = Arc::new(Box::new(MemoryProvider::new()));
-    let data_content_provider = Arc::new(Box::new(MemoryProvider::new()));
-
-    // create output directory
-    fs::create_dir(&cas).expect("new directory");
+    let source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
+    let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
 
     let initial_content = "foo";
 
@@ -233,11 +229,8 @@ async fn no_intermediate_resource() {
         .create_repository(repository_name.clone())
         .await
         .unwrap();
-    let source_control_content_provider = Arc::new(Box::new(MemoryProvider::new()));
-    let data_content_provider = Arc::new(Box::new(MemoryProvider::new()));
-
-    // create output directory
-    fs::create_dir(&cas).expect("new directory");
+    let source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
+    let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
 
     // create project that contains test resource.
     let resource_id = {
@@ -345,13 +338,8 @@ async fn with_intermediate_resource() {
         .await
         .unwrap();
 
-    let source_control_content_provider = Arc::new(Box::new(MemoryProvider::new()));
-    let data_content_provider = Arc::new(Box::new(MemoryProvider::new()));
-
-    let cas = work_dir.path().join("content_store");
-
-    // create output directory
-    fs::create_dir(&cas).expect("new directory");
+    let source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
+    let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
 
     // create project that contains test resource.
     let resource_id = {
@@ -389,7 +377,6 @@ async fn with_intermediate_resource() {
             CompilerRegistryOptions::default(),
             Arc::clone(&data_content_provider),
         )
-        .content_store(&ContentStoreAddr::from(cas.clone()))
         .create_with_project(
             project_dir,
             &repository_index,
@@ -414,7 +401,6 @@ async fn with_intermediate_resource() {
         //command.env("LGN_CONFIG", legion_toml);
         command.arg("compile");
         command.arg(compile_path.to_string());
-        command.arg(format!("--cas={}", cas.to_str().unwrap()));
         command.arg(format!("--target={}", target));
         command.arg(format!("--platform={}", platform));
         command.arg(format!("--locale={}", locale));

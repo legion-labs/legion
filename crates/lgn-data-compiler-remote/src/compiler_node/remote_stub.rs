@@ -55,7 +55,7 @@ impl CompilerStub for RemoteCompilerStub {
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         _registry: Arc<AssetRegistry>,
-        data_content_store: &(dyn ContentProvider + Send + Sync),
+        data_content_provider: &(dyn ContentProvider + Send + Sync),
         resource_dir: &Path,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
@@ -75,7 +75,7 @@ impl CompilerStub for RemoteCompilerStub {
             dependencies,
             derived_deps,
             &cmd,
-            &data_content_store,
+            &data_content_provider,
         )
         .await?;
 

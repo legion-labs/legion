@@ -105,21 +105,21 @@ pub struct DataBuild {
     source_index: SourceIndex,
     output_index: OutputIndex,
     resource_dir: PathBuf,
-    data_content_store: Arc<Box<dyn ContentProvider + Send + Sync>>,
+    data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     compilers: CompilerNode,
 }
 
 impl DataBuild {
     async fn default_asset_registry(
         resource_dir: &Path,
-        data_content_store: Arc<Box<dyn ContentProvider + Send + Sync>>,
+        data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
         compilers: &CompilerRegistry,
         manifest: Option<Manifest>,
     ) -> Result<Arc<AssetRegistry>, Error> {
         let manifest = manifest.unwrap_or_default();
 
         let mut options = AssetRegistryOptions::new()
-            .add_device_cas(data_content_store, manifest)
+            .add_device_cas(data_content_provider, manifest)
             .add_device_dir(resource_dir);
 
         options = compilers.init_all(options).await;
@@ -128,7 +128,7 @@ impl DataBuild {
     }
 
     pub(crate) async fn new(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
-        let source_index = SourceIndex::new(Arc::clone(&config.data_content_store));
+        let source_index = SourceIndex::new(Arc::clone(&config.data_content_provider));
 
         let output_index = OutputIndex::create_new(config.output_db_addr).await?;
 
@@ -138,7 +138,7 @@ impl DataBuild {
             None => {
                 Self::default_asset_registry(
                     &project.resource_dir(),
-                    Arc::clone(&config.data_content_store),
+                    Arc::clone(&config.data_content_provider),
                     &compilers,
                     config.manifest,
                 )
@@ -150,13 +150,13 @@ impl DataBuild {
             source_index,
             output_index,
             resource_dir: project.resource_dir(),
-            data_content_store: Arc::clone(&config.data_content_store),
+            data_content_provider: Arc::clone(&config.data_content_provider),
             compilers: CompilerNode::new(compilers, registry),
         })
     }
 
     pub(crate) async fn open(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
-        let source_index = SourceIndex::new(Arc::clone(&config.data_content_store));
+        let source_index = SourceIndex::new(Arc::clone(&config.data_content_provider));
         let output_index = OutputIndex::open(config.output_db_addr).await?;
 
         let compilers = config.compiler_options.create().await;
@@ -165,7 +165,7 @@ impl DataBuild {
             None => {
                 Self::default_asset_registry(
                     &project.resource_dir(),
-                    Arc::clone(&config.data_content_store),
+                    Arc::clone(&config.data_content_provider),
                     &compilers,
                     config.manifest,
                 )
@@ -177,7 +177,7 @@ impl DataBuild {
             source_index,
             output_index,
             resource_dir: project.resource_dir(),
-            data_content_store: Arc::clone(&config.data_content_store),
+            data_content_provider: Arc::clone(&config.data_content_provider),
             compilers: CompilerNode::new(compilers, registry),
         })
     }
@@ -186,7 +186,7 @@ impl DataBuild {
         config: DataBuildOptions,
         project: &Project,
     ) -> Result<Self, Error> {
-        let source_index = SourceIndex::new(Arc::clone(&config.data_content_store));
+        let source_index = SourceIndex::new(Arc::clone(&config.data_content_provider));
 
         let output_index = match OutputIndex::open(config.output_db_addr.clone()).await {
             Ok(output_index) => Ok(output_index),
@@ -200,7 +200,7 @@ impl DataBuild {
             None => {
                 Self::default_asset_registry(
                     &project.resource_dir(),
-                    Arc::clone(&config.data_content_store),
+                    Arc::clone(&config.data_content_provider),
                     &compilers,
                     config.manifest,
                 )
@@ -212,7 +212,7 @@ impl DataBuild {
             source_index,
             output_index,
             resource_dir: project.resource_dir(),
-            data_content_store: Arc::clone(&config.data_content_store),
+            data_content_provider: Arc::clone(&config.data_content_provider),
             compilers: CompilerNode::new(compilers, registry),
         })
     }
@@ -306,7 +306,7 @@ impl DataBuild {
     #[allow(clippy::type_complexity)]
     async fn compile_node(
         output_index: &mut OutputIndex,
-        data_content_store: &(dyn ContentProvider + Send + Sync),
+        data_content_provider: &(dyn ContentProvider + Send + Sync),
         project_dir: &Path,
         compile_node: &ResourcePathId,
         context_hash: AssetHash,
@@ -355,7 +355,7 @@ impl DataBuild {
                         dependencies,
                         derived_deps,
                         resources,
-                        &data_content_store,
+                        &data_content_provider,
                         project_dir,
                         env,
                     )
@@ -627,7 +627,7 @@ impl DataBuild {
 
                 let (resource_infos, resource_references, stats) = Self::compile_node(
                     &mut self.output_index,
-                    &self.data_content_store,
+                    &self.data_content_provider,
                     &self.resource_dir,
                     &compile_node,
                     context_hash,

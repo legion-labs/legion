@@ -66,13 +66,7 @@ impl AssetRegistryPlugin {
                 .unwrap(),
         );
 
-        let mut config = world.resource_mut::<AssetRegistrySettings>();
-        let manifest = Self::read_or_default(&config.game_manifest);
-
-        if config.assets_to_load.is_empty() {
-            config.assets_to_load = manifest.resources();
-        }
-
+        let config = world.resource::<AssetRegistrySettings>();
         let manifest = {
             let async_rt = world.resource::<TokioAsyncRuntime>();
             let manifest = async_rt.block_on(async {
@@ -90,6 +84,11 @@ impl AssetRegistryPlugin {
                 }
             }
         };
+
+        let mut config = world.resource_mut::<AssetRegistrySettings>();
+        if config.assets_to_load.is_empty() {
+            config.assets_to_load = manifest.resources();
+        }
 
         let mut registry_options = AssetRegistryOptions::new();
 

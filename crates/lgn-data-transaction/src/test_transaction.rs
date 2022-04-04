@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use generic_data::offline::TestEntity;
-use lgn_content_store2::{ContentProvider, MemoryProvider, ProviderConfig};
+use lgn_content_store2::{ContentProvider, MemoryProvider};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
@@ -135,11 +135,14 @@ async fn test_array_reorder_operation(
 async fn test_transaction_system() -> Result<(), Error> {
     let project_dir = tempfile::tempdir().unwrap();
     let build_dir = project_dir.path().join("temp");
-    let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-        Arc::new(Box::new(MemoryProvider::new()));
     std::fs::create_dir(&build_dir).unwrap();
 
-    let project = Project::create_with_remote_mock(&project_dir, content_provider)
+    let source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
+    let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
+
+    let project = Project::create_with_remote_mock(&project_dir, source_control_content_provider)
         .await
         .unwrap();
     let resource_dir = project.resource_dir();
@@ -147,8 +150,6 @@ async fn test_transaction_system() -> Result<(), Error> {
     let mut registry = ResourceRegistryOptions::new();
     generic_data::offline::register_resource_types(&mut registry);
     let resource_registry = registry.create_async_registry();
-
-    let data_content_provider = Arc::new(Box::new(MemoryProvider::new()));
 
     let asset_registry = AssetRegistryOptions::new()
         .add_device_dir(&resource_dir)

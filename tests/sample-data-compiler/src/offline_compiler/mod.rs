@@ -134,7 +134,7 @@ pub async fn build(
 
         let chunker = Chunker::default();
         let chunk_id = chunker
-            .write_chunk(content_provider, &buffer)
+            .write_chunk(data_content_provider, &buffer)
             .await
             .expect("failed to write manifest to cas");
 

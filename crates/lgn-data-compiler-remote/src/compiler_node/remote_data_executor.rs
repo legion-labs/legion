@@ -62,14 +62,14 @@ pub(crate) async fn collect_local_resources(
     dependencies: &[ResourcePathId],
     _derived_deps: &[CompiledResource],
     build_script: &CompilerCompileCmd,
-    data_content_store: impl ContentProvider + Send + Sync,
+    data_content_provider: impl ContentProvider + Send + Sync,
 ) -> Result<String, CompilerError> {
     let files_to_package: Arc<RwLock<Vec<(String, Identifier)>>> =
         Arc::new(RwLock::new(Vec::new()));
 
     // Write the compiler .exe
     deploy_remotely(
-        &data_content_store,
+        &data_content_provider,
         executable,
         executable.parent().unwrap(),
         files_to_package.clone(),
@@ -78,7 +78,7 @@ pub(crate) async fn collect_local_resources(
 
     // Write the main resource.
     write_res(
-        &data_content_store,
+        &data_content_provider,
         compile_path,
         resource_dir,
         files_to_package.clone(),
@@ -88,7 +88,7 @@ pub(crate) async fn collect_local_resources(
     // Write the direct offline dependencies
     for dep in dependencies {
         write_res(
-            &data_content_store,
+            &data_content_provider,
             dep,
             resource_dir,
             files_to_package.clone(),

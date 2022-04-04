@@ -175,7 +175,7 @@ async fn main() -> anyhow::Result<()> {
 
     let chunker = Chunker::default();
     let chunk_id = chunker
-        .write_chunk(content_provider, &buffer)
+        .write_chunk(data_content_provider, &buffer)
         .await
         .expect("failed to write manifest to cas");
 
@@ -190,6 +190,7 @@ async fn main() -> anyhow::Result<()> {
         .open(runtime_manifest_path)
         .expect("open file");
     write!(file, "{}", chunk_id).expect("failed to write manifest id to file");
+    Ok(())
 }
 
 fn clean_folders(project_dir: impl AsRef<Path>) {

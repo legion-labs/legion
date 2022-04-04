@@ -335,7 +335,7 @@ impl CompilerDescriptor {
         dependencies: &[ResourcePathId],
         _derived_deps: &[CompiledResource],
         registry: Arc<AssetRegistry>,
-        data_content_store: &(dyn ContentProvider + Send + Sync),
+        data_content_provider: &(dyn ContentProvider + Send + Sync),
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
         let transform = compile_path
@@ -352,7 +352,7 @@ impl CompilerDescriptor {
             dependencies,
             registry,
             env,
-            content_store: &data_content_store,
+            content_store: &data_content_provider,
         };
 
         compiler.compile(context).await
@@ -459,7 +459,7 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                 .last_transform()
                 .ok_or_else(|| CompilerError::InvalidResource(derived.clone()))?;
 
-            let data_content_store =
+            let data_content_provider =
                 Arc::new(Config::load_and_instantiate_volatile_provider().await?);
 
             let registry = {
@@ -474,7 +474,7 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                 let manifest = manifest.into_rt_manifest(|_rpid| true);
 
                 let registry = AssetRegistryOptions::new()
-                    .add_device_cas(Arc::clone(&data_content_store), manifest)
+                    .add_device_cas(Arc::clone(&data_content_provider), manifest)
                     .add_device_dir(&resource_dir); // todo: filter dependencies only
 
                 compiler.init(registry).await.create().await
@@ -493,7 +493,7 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                     &dependencies,
                     &derived_deps,
                     shell.registry(),
-                    &data_content_store,
+                    &data_content_provider,
                     &resource_dir,
                     &env,
                 )

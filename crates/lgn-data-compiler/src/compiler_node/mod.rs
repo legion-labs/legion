@@ -51,8 +51,8 @@ impl fmt::Debug for CompilerNode {
 #[cfg(test)]
 mod tests {
     use async_trait::async_trait;
-    use lgn_content_store2::{Identifier, ProviderConfig};
-    use std::{path::PathBuf, str::FromStr};
+    use lgn_content_store2::{Identifier, MemoryProvider, ContentProvider};
+    use std::{path::PathBuf, str::FromStr, sync::Arc};
 
     use lgn_data_offline::{ResourcePathId, Transform};
     use lgn_data_runtime::{
@@ -175,7 +175,7 @@ mod tests {
         let proj_dir = PathBuf::from(".");
         let compile_path = ResourcePathId::from(source).push(ResourceType::new(b"output"));
 
-        let data_content_provider = Arc::new(Box::new(MemoryProvider::new()));
+        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
 
         // testing successful compilation
         {
