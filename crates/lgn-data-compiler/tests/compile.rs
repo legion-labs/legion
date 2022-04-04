@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use binary_resource::BinaryResource;
 use integer_asset::{IntegerAsset, IntegerAssetLoader};
-use lgn_content_store2::{ContentProvider, ContentReader, ContentReaderExt, MemoryProvider};
+use lgn_content_store2::{Config, ContentReader, ContentReaderExt};
 use lgn_data_compiler::compiler_cmd::{list_compilers, CompilerCompileCmd};
 use lgn_data_offline::{resource::ResourceProcessor, ResourcePathId};
 use lgn_data_runtime::{AssetLoader, Resource, ResourceId, ResourceTypeAndId};
@@ -72,8 +72,11 @@ async fn compile_atoi() {
 
     let content_id = asset_info.content_id.clone();
 
-    let volatile_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-        Arc::new(Box::new(MemoryProvider::new()));
+    let volatile_content_provider = Arc::new(
+        Config::load_and_instantiate_volatile_provider()
+            .await
+            .expect("failed to read config"),
+    );
 
     assert!(volatile_content_provider
         .get_content_reader(&content_id)
@@ -164,7 +167,11 @@ async fn compile_intermediate() {
 
     let content_id = &derived_info.content_id;
 
-    let volatile_content_provider = Arc::new(Box::new(MemoryProvider::new()));
+    let volatile_content_provider = Arc::new(
+        Config::load_and_instantiate_volatile_provider()
+            .await
+            .expect("failed to read config"),
+    );
 
     assert!(volatile_content_provider
         .get_content_reader(content_id)
@@ -252,7 +259,11 @@ async fn compile_multi_resource() {
 
     assert_eq!(compiled_resources.len(), source_text_list.len());
 
-    let volatile_content_provider = Arc::new(Box::new(MemoryProvider::new()));
+    let volatile_content_provider = Arc::new(
+        Config::load_and_instantiate_volatile_provider()
+            .await
+            .expect("failed to read config"),
+    );
 
     for (resource, source_text) in compiled_resources.iter().zip(source_text_list.iter()) {
         assert!(volatile_content_provider
@@ -325,7 +336,11 @@ async fn compile_base64() {
 
     let content_id = asset_info.content_id.clone();
 
-    let volatile_content_provider = Arc::new(Box::new(MemoryProvider::new()));
+    let volatile_content_provider = Arc::new(
+        Config::load_and_instantiate_volatile_provider()
+            .await
+            .expect("failed to read config"),
+    );
 
     assert!(volatile_content_provider
         .get_content_reader(&content_id)
