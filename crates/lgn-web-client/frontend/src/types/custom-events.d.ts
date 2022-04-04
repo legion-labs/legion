@@ -1,3 +1,5 @@
+type Position = { height: number; width: number };
+
 declare type ContextMenuActionDetail<
   EntryRecord extends Record<string, unknown>
 > = {
@@ -72,23 +74,43 @@ declare namespace svelte.JSX {
     ) => void;
 
     "ondnd-drop"?: (
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      event: CustomEvent<{ item: any; originalEvent: DragEvent }>
+      event: CustomEvent<{
+        mousePosition: Position;
+        type: string;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        item: any;
+        originalEvent: DragEvent;
+      }>
     ) => void;
 
     "ondnd-dragover"?: (
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      event: CustomEvent<{ item: any; originalEvent: DragEvent }>
+      event: CustomEvent<{
+        mousePosition: Position;
+        type: string;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        item: any;
+        originalEvent: DragEvent;
+      }>
     ) => void;
 
     "ondnd-dragenter"?: (
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      event: CustomEvent<{ item: any; originalEvent: DragEvent }>
+      event: CustomEvent<{
+        mousePosition: Position;
+        type: string;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        item: any;
+        originalEvent: DragEvent;
+      }>
     ) => void;
 
     "ondnd-dragleave"?: (
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      event: CustomEvent<{ item: any; originalEvent: DragEvent }>
+      event: CustomEvent<{
+        mousePosition: Position;
+        type: string;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        item: any;
+        originalEvent: DragEvent;
+      }>
     ) => void;
 
     "onprompt-answer"?: (

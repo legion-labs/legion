@@ -32,17 +32,17 @@ export function dropzone<Item>(
       return;
     }
 
-    if (
-      typeof accept === "string"
-        ? accept !== dndStoreValue.type
-        : !accept.includes(dndStoreValue.type)
-    ) {
+    const value = dndStoreValue.find(({ type }) =>
+      typeof accept === "string" ? accept !== type : accept.includes(type)
+    );
+
+    if (!value) {
       return;
     }
 
     element.dispatchEvent(
       new CustomEvent("dnd-dragover", {
-        detail: { item: dndStoreValue.item, originalEvent: event },
+        detail: { ...value, originalEvent: event },
       })
     );
   };
@@ -56,17 +56,17 @@ export function dropzone<Item>(
       return;
     }
 
-    if (
-      typeof accept === "string"
-        ? accept !== dndStoreValue.type
-        : !accept.includes(dndStoreValue.type)
-    ) {
+    const value = dndStoreValue.find(({ type }) =>
+      typeof accept === "string" ? accept !== type : accept.includes(type)
+    );
+
+    if (!value) {
       return;
     }
 
     element.dispatchEvent(
       new CustomEvent("dnd-dragenter", {
-        detail: { item: dndStoreValue.item, originalEvent: event },
+        detail: { ...value, originalEvent: event },
       })
     );
   };
@@ -80,17 +80,17 @@ export function dropzone<Item>(
       return;
     }
 
-    if (
-      typeof accept === "string"
-        ? accept !== dndStoreValue.type
-        : !accept.includes(dndStoreValue.type)
-    ) {
+    const value = dndStoreValue.find(({ type }) =>
+      typeof accept === "string" ? accept !== type : accept.includes(type)
+    );
+
+    if (!value) {
       return;
     }
 
     element.dispatchEvent(
       new CustomEvent("dnd-dragleave", {
-        detail: { item: dndStoreValue.item, originalEvent: event },
+        detail: { ...value, originalEvent: event },
       })
     );
   };
@@ -99,23 +99,26 @@ export function dropzone<Item>(
     event.preventDefault();
     event.stopPropagation();
 
+    const dndStoreValue = get(store);
+
     store.set(null);
 
-    const payload = event.dataTransfer?.getData("text/plain");
-
-    if (!payload) {
+    if (!dndStoreValue) {
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const { item, type }: { item: Item; type: string } = JSON.parse(payload);
+    const value = dndStoreValue.find(({ type }) =>
+      typeof accept === "string" ? accept !== type : accept.includes(type)
+    );
 
-    if (typeof accept === "string" ? accept !== type : !accept.includes(type)) {
+    if (!value) {
       return;
     }
 
     element.dispatchEvent(
-      new CustomEvent("dnd-drop", { detail: { item, originalEvent: event } })
+      new CustomEvent("dnd-drop", {
+        detail: { ...value, originalEvent: event },
+      })
     );
   };
 
@@ -167,15 +170,20 @@ export function draggable<Item>(
       event.dataTransfer?.setDragImage(img, 0, 0);
     }
 
+    // TODO: This is not used anymore, should we drop it entirely or still keep some payload just in case?
     event.dataTransfer?.setData("text/plain", JSON.stringify({ type, item }));
-    store.set({
+
+    const value = {
       mousePosition: { x: event.clientX, y: event.clientY },
       item,
       type,
-    });
+    };
+
+    store.update((values) => (values ? [...values, value] : [value]));
   };
 
   const onDragEnd = (_event: DragEvent) => {
+    // TODO: Remove only one value at a time?
     store.set(null);
   };
 

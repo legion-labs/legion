@@ -141,7 +141,7 @@
       readonly={isReadonly()}
       on:input={({ detail }) => onInput({ value: detail })}
       bind:value={property.value}
-      resource_type={getResourceType()}
+      resourceType={getResourceType()}
     />
   {:else if propertyIsEnum(property)}
     <EnumProperty

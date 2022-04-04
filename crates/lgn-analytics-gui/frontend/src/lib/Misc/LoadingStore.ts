@@ -1,4 +1,4 @@
-import { Subscriber, Writable, writable } from "svelte/store";
+import { Writable, writable } from "svelte/store";
 
 export const loadingStore = createLoadStore();
 

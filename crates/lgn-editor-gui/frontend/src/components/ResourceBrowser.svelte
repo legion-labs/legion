@@ -23,6 +23,7 @@
     reparentResources,
     streamFileUpload,
   } from "@/api";
+  import { resourceDragAndDropType } from "@/constants";
   import type { Entries, Entry } from "@/lib/hierarchyTree";
   import { isEntry } from "@/lib/hierarchyTree";
   import { components, join } from "@/lib/path";
@@ -463,7 +464,12 @@
     <div class="hierarchy-tree">
       {#if !resourceEntries.isEmpty()}
         <HierarchyTree
-          withItemContextMenu="resource"
+          id="resource-browser"
+          itemContextMenu="resource"
+          renamable
+          reorderable
+          deletable
+          draggable={resourceDragAndDropType}
           on:select={selectResource}
           on:nameEdited={saveEditedResourceProperty}
           on:moved={moveEntry}

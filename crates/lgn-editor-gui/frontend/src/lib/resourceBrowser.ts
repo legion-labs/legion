@@ -1,18 +1,17 @@
 import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
-import log from "@lgn/web-client/src/lib/log";
 
 import type { Entry } from "./hierarchyTree";
 
-const offlineEntity = "|1c0ff9e497b0740f";
+// const offlineEntity = "|1c0ff9e497b0740f";
 const runtimeEntity = "|1d9ddd99aad89045";
-const offlineScript = "|45307156cdfef705";
+// const offlineScript = "|45307156cdfef705";
 const runtimeScript = "|17bed132bc803773";
 const offlineMaterial = "|07dd9f5d1793ed64";
 const runtimeMaterial = "|738a5b850f6f8b3a";
-const offlineMesh = "|80b97dd7e2e9edca";
-const runtimeMesh = "|9c9a840b84935d1f";
-const offlinePsd = "|4976b194d8a1e0c2";
-const png = "|1a377760c95e361c";
+// const offlineMesh = "|80b97dd7e2e9edca";
+// const runtimeMesh = "|9c9a840b84935d1f";
+// const offlinePsd = "|4976b194d8a1e0c2";
+// const png = "|1a377760c95e361c";
 const offlineTexture = "|648242a8cf00bfee";
 const runtimeTexture = "|0659c0b6c23b950d";
 const offlineModel = "|44e4b6023fb7a8d3";

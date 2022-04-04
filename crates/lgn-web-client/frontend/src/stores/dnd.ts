@@ -1,6 +1,7 @@
 import type { Writable } from "svelte/store";
 import { writable } from "svelte/store";
 
+import type { NonEmptyArray } from "../lib/array";
 import type { Position } from "../lib/types";
 
 export type DndValue<Item = unknown> = {
@@ -9,7 +10,9 @@ export type DndValue<Item = unknown> = {
   type: string;
 };
 
-export type DndStore<Item = unknown> = Writable<DndValue<Item> | null>;
+export type DndStore<Item = unknown> = Writable<NonEmptyArray<
+  DndValue<Item>
+> | null>;
 
 /**
  * Keep track of all drag and drop changes and events.

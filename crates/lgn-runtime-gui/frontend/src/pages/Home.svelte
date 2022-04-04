@@ -3,7 +3,7 @@
   import StatusBar from "@lgn/web-client/src/components/StatusBar.svelte";
   import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
   import { Panel } from "@lgn/web-client/src/components/panel";
-  import { Resolution } from "@lgn/web-client/src/lib/types";
+  import type { Resolution } from "@lgn/web-client/src/lib/types";
 
   let desiredVideoResolution: Resolution | null;
 </script>

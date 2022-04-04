@@ -1,6 +1,5 @@
 import { derived } from "svelte/store";
 
-import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
 import log from "@lgn/web-client/src/lib/log";
 import type { AsyncOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 import { createAsyncStoreOrchestrator } from "@lgn/web-client/src/orchestrators/async";

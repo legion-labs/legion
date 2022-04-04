@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
+  import { v4 as uuid } from "uuid";
 
   import keyboardNavigation from "@lgn/web-client/src/actions/keyboardNavigation";
   import { createKeyboardNavigationStore } from "@lgn/web-client/src/stores/keyboardNavigation";
@@ -26,13 +27,34 @@
   // Can be extracted if needed
   const keyboardNavigationStore = createKeyboardNavigationStore();
 
+  /** Unique identifier used internally, random uuid by default */
+  export let id = uuid();
+
   export let entries: Entries<Item>;
 
   export let highlightedEntry: Entry<Item> | null = null;
 
   export let currentlyRenameEntry: Entry<Item> | null = null;
 
-  export let withItemContextMenu: string | null = null;
+  export let itemContextMenu: string | null = null;
+
+  /** Enables entry renaming */
+  export let renamable = false;
+
+  /** Enables deletion */
+  export let deletable = false;
+
+  /**
+   * Enables entry reordering using drag and drop
+   * (not be mistaken with `draggable` that allows for external drag and drop)
+   */
+  export let reorderable = false;
+
+  /**
+   * Allows entries to be drag and droppable
+   * (not be mistaken with `reorderable` that allows the entries to be reordered internally)
+   */
+  export let draggable: string | null = null;
 
   let hierarchyTree: HTMLElement | null;
 
@@ -114,9 +136,9 @@
   on:navigation-change={setHighlightedEntryWithIndex}
   on:navigation-select={select}
   on:navigation-rename={() =>
-    highlightedEntry && startNameEdit(highlightedEntry)}
+    renamable && highlightedEntry && startNameEdit(highlightedEntry)}
   on:navigation-remove={() =>
-    highlightedEntry && removeRequest(highlightedEntry)}
+    deletable && highlightedEntry && removeRequest(highlightedEntry)}
   use:keyboardNavigation={{
     size: entries.size(),
     store: keyboardNavigationStore,
@@ -125,10 +147,13 @@
 >
   {#each entries.entries as entry (isEntry(entry) ? entry.item.id : entry.item)}
     <HierarchyTreeItem
-      index={entry.index}
+      {id}
       {entry}
       {highlightedEntry}
-      {withItemContextMenu}
+      {itemContextMenu}
+      {reorderable}
+      {draggable}
+      index={entry.index}
       bind:currentlyRenameEntry
       bind:dndHighlightedEntry
       on:dblclick={select}
