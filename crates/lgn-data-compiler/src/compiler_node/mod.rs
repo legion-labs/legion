@@ -175,7 +175,7 @@ mod tests {
         let proj_dir = PathBuf::from(".");
         let compile_path = ResourcePathId::from(source).push(ResourceType::new(b"output"));
 
-        let data_content_provider = ProviderConfig::default().instantiate().await.unwrap();
+        let data_content_provider = Arc::new(Box::new(MemoryProvider::new()));
 
         // testing successful compilation
         {

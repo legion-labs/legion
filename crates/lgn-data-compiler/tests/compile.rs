@@ -70,7 +70,7 @@ async fn compile_atoi() {
 
     let content_id = asset_info.content_id.clone();
 
-    let volatile_content_provider = ProviderConfig::default().instantiate().await.unwrap();
+    let volatile_content_provider = Arc::new(Box::new(MemoryProvider::new()));
 
     assert!(volatile_content_provider
         .get_content_reader(&content_id)
@@ -161,7 +161,7 @@ async fn compile_intermediate() {
 
     let content_id = &derived_info.content_id;
 
-    let volatile_content_provider = ProviderConfig::default().instantiate().await.unwrap();
+    let volatile_content_provider = Arc::new(Box::new(MemoryProvider::new()));
 
     assert!(volatile_content_provider
         .get_content_reader(content_id)
@@ -249,7 +249,7 @@ async fn compile_multi_resource() {
 
     assert_eq!(compiled_resources.len(), source_text_list.len());
 
-    let volatile_content_provider = ProviderConfig::default().instantiate().await.unwrap();
+    let volatile_content_provider = Arc::new(Box::new(MemoryProvider::new()));
 
     for (resource, source_text) in compiled_resources.iter().zip(source_text_list.iter()) {
         assert!(volatile_content_provider
@@ -322,7 +322,7 @@ async fn compile_base64() {
 
     let content_id = asset_info.content_id.clone();
 
-    let volatile_content_provider = ProviderConfig::default().instantiate().await.unwrap();
+    let volatile_content_provider = Arc::new(Box::new(MemoryProvider::new()));
 
     assert!(volatile_content_provider
         .get_content_reader(&content_id)

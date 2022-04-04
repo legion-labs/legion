@@ -534,7 +534,7 @@ mod tests {
     use crate::test_asset;
 
     async fn setup_singular_asset_test(content: &[u8]) -> (ResourceTypeAndId, Arc<AssetRegistry>) {
-        let data_content_store = Arc::new(ProviderConfig::default().instantiate().await.unwrap());
+        let data_content_store = Arc::new(Box::new(MemoryProvider::new()));
         let manifest = Manifest::default();
 
         let asset_id = {
@@ -557,7 +557,7 @@ mod tests {
     }
 
     async fn setup_dependency_test() -> (ResourceTypeAndId, ResourceTypeAndId, Arc<AssetRegistry>) {
-        let data_content_store = Arc::new(ProviderConfig::default().instantiate().await.unwrap());
+        let data_content_store = Arc::new(Box::new(MemoryProvider::new()));
         let manifest = Manifest::default();
 
         const BINARY_PARENT_ASSETFILE: [u8; 100] = [

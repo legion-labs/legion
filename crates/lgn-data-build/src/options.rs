@@ -27,8 +27,8 @@ use crate::{DataBuild, Error};
 /// # use lgn_data_offline::resource::Project;
 /// # use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 /// # tokio_test::block_on(async {
-/// let source_control_content_provider = Arc::new(ProviderConfig::default().instantiate().await.unwrap());
-/// let data_content_provider = Arc::new(ProviderConfig::default().instantiate().await.unwrap());
+/// let source_control_content_provider = Arc::new(Box::new(MemoryProvider::new()));
+/// let data_content_provider = Arc::new(Box::new(MemoryProvider::new()));
 /// let project = Project::open("project/", source_control_content_provider).await.unwrap();
 /// let build = DataBuildOptions::new("temp/".to_string(), data_content_provider, CompilerRegistryOptions::local_compilers("./"))
 ///         .create(&project).await.unwrap();

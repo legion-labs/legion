@@ -39,14 +39,13 @@ mod tests {
         let repository_index = LocalRepositoryIndex::new(project_dir.join("remote"))
             .await
             .unwrap();
-        let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-            Arc::new(Box::new(MemoryProvider::new()));
+        let source_control_content_provider = Arc::new(Box::new(MemoryProvider::new()));
 
         (
             project_dir.to_owned(),
             output_dir,
             repository_index,
-            content_provider,
+            source_control_content_provider,
         )
     }
 
@@ -135,14 +134,14 @@ mod tests {
     #[tokio::test]
     async fn compile_change_no_deps() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (project_dir, output_dir, repository_index, content_provider) =
+        let (project_dir, output_dir, repository_index, source_control_content_provider) =
             setup_dir(&work_dir).await;
         let resources = setup_registry();
         let mut resources = resources.lock().await;
 
         let (resource_id, resource_handle) = {
             let mut project =
-                Project::create_with_remote_mock(&project_dir, Arc::clone(&content_provider))
+                Project::create_with_remote_mock(&project_dir, Arc::clone(&source_control_content_provider))
                     .await
                     .expect("failed to create a project");
 

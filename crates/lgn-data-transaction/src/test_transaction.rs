@@ -148,7 +148,7 @@ async fn test_transaction_system() -> Result<(), Error> {
     generic_data::offline::register_resource_types(&mut registry);
     let resource_registry = registry.create_async_registry();
 
-    let data_content_provider = Arc::new(ProviderConfig::default().instantiate().await.unwrap());
+    let data_content_provider = Arc::new(Box::new(MemoryProvider::new()));
 
     let asset_registry = AssetRegistryOptions::new()
         .add_device_dir(&resource_dir)

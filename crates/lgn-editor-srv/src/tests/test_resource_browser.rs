@@ -84,7 +84,7 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
     sample_data::offline::register_resource_types(&mut resource_registry);
     lgn_scripting::offline::register_resource_types(&mut resource_registry);
 
-    let data_content_provider = Arc::new(ProviderConfig::default().instantiate().await.unwrap());
+    let data_content_provider = Arc::new(Box::new(MemoryProvider::new()));
 
     let resource_registry = resource_registry.create_async_registry();
 

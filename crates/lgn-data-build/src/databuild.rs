@@ -80,8 +80,8 @@ fn compute_context_hash(
 /// # let offline_anim: ResourceTypeAndId = "(type,invalid_id)".parse::<ResourceTypeAndId>().unwrap();
 /// # const RUNTIME_ANIM: ResourceType = ResourceType::new(b"invalid");
 /// # tokio_test::block_on(async {
-/// let source_control_content_provider = Arc::new(ProviderConfig::default().instantiate().await.unwrap());
-/// let data_content_provider = Arc::new(ProviderConfig::default().instantiate().await.unwrap());
+/// let source_control_content_provider = Arc::new(Box::new(MemoryProvider::new()));
+/// let data_content_provider = Arc::new(Box::new(MemoryProvider::new()));
 /// let (mut build, project) = DataBuildOptions::new("temp/".to_string(), data_content_provider, CompilerRegistryOptions::local_compilers("./compilers/"))
 ///         .create_with_project(".", source_control_content_provider).await.expect("new build index");
 ///

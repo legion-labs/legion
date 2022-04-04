@@ -93,7 +93,7 @@ mod tests {
 
     #[tokio::test]
     async fn one_asset_no_references() {
-        let content_store = ProviderConfig::default().instantiate().await.unwrap();
+        let content_store = Arc::new(Box::new(MemoryProvider::new()));
 
         let asset_id = ResourceTypeAndId {
             kind: refs_asset::RefsAsset::TYPE,
@@ -130,7 +130,7 @@ mod tests {
 
     #[tokio::test]
     async fn two_dependent_assets() {
-        let content_store = ProviderConfig::default().instantiate().await.unwrap();
+        let content_store = Arc::new(Box::new(MemoryProvider::new()));
 
         let child_id = ResourceTypeAndId {
             kind: refs_asset::RefsAsset::TYPE,

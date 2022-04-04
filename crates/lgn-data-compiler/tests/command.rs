@@ -94,7 +94,7 @@ async fn command_compile() {
 
     let content_id = &result.compiled_resources[0].content_id;
 
-    let volatile_content_provider = ProviderConfig::default().instantiate().await.unwrap();
+    let volatile_content_provider = Arc::new(Box::new(MemoryProvider::new()));
 
     assert!(volatile_content_provider
         .get_content_reader(&content_id)
