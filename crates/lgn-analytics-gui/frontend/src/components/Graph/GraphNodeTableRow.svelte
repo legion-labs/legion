@@ -20,6 +20,7 @@
   }>();
 
   $: name = $scopeStore[edge.hash].name;
+  // @ts-ignore
   $: fill = (edge.weight * 100) / parent.stats!.sum;
 
   function onClick(_: MouseEvent) {

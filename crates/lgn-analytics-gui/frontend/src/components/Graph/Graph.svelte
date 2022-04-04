@@ -69,32 +69,12 @@
     });
   }
 
-  function formatFunDivWidth(node: CumulativeCallGraphNode): string {
-    if (!maxSum) {
-      return "";
-    }
-    const pct = (node.stats!.sum * 95) / maxSum;
-    return `width:${pct}%`;
-  }
-
   function formatEdgeDivWidth(
     selectedNode: CumulativeCallGraphNode,
     edgeWeight: number
   ): string {
     const pct = (edgeWeight * 95) / selectedNode.stats!.sum;
     return `width:${pct}%`;
-  }
-
-  function formatFunLabel(node: CumulativeCallGraphNode): string {
-    return scopes[node.hash].name + " " + formatExecutionTime(node.stats!.sum);
-  }
-
-  function onFunClick(node: CumulativeCallGraphNode) {
-    const funlist = document.getElementById("funlist");
-    if (funlist) {
-      funlist.style.height = window.innerHeight * 0.4 + "px";
-    }
-    selectedNode = node;
   }
 
   function onEdgeClick(hash: number) {

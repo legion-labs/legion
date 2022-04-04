@@ -16,6 +16,7 @@
   let div: HTMLElement;
 
   $: desc = $scopeStore[node.hash];
+  // @ts-ignore
   $: fill = (node.stats?.sum ?? 0) / $graphStateStore.MaxSum;
 
   export async function setCollapse(value: boolean) {
