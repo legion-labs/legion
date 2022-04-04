@@ -58,9 +58,7 @@ pub async fn build_offline(
         };
 
         let generated_checksum = {
-            if !root_folder.as_ref().join("offline").exists()
-                || !root_folder.as_ref().join("remote").exists()
-            {
+            if !root_folder.as_ref().join("offline").exists() {
                 None
             } else {
                 std::fs::read_to_string(root_folder.as_ref().join("VERSION"))
@@ -76,9 +74,6 @@ pub async fn build_offline(
         }
 
         if !incremental {
-            std::fs::remove_dir_all(root_folder.as_ref().join("remote"))
-                .unwrap_or_else(|e| println!("failed to delete remote: {}.", e));
-
             std::fs::remove_dir_all(root_folder.as_ref().join("offline"))
                 .unwrap_or_else(|e| println!("failed to delete offline: {}.", e));
 
