@@ -2,17 +2,15 @@
 
 // crate-specific lint exceptions:
 //#![allow()]
-mod asset_entities;
 
+mod asset_entities;
 mod asset_handles;
 mod config;
+mod errors;
 mod loading_states;
 
 use std::{path::Path, str::FromStr, sync::Arc};
 
-pub use asset_entities::AssetToEntityMap;
-use asset_handles::AssetHandles;
-pub use config::{AssetRegistrySettings, DataBuildConfig};
 use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
 use lgn_content_store::HddContentStore;
@@ -23,7 +21,16 @@ use lgn_data_runtime::{
 };
 use lgn_ecs::prelude::*;
 use lgn_tracing::error;
-use loading_states::{AssetLoadingStates, LoadingState};
+
+pub use crate::{
+    asset_entities::AssetToEntityMap,
+    config::{AssetRegistrySettings, DataBuildConfig},
+    errors::{Error, Result},
+};
+use crate::{
+    asset_handles::AssetHandles,
+    loading_states::{AssetLoadingStates, LoadingState},
+};
 
 #[derive(Default)]
 pub struct AssetRegistryPlugin {}
@@ -65,13 +72,20 @@ impl AssetRegistryPlugin {
 
         let manifest = {
             let async_rt = world.resource::<TokioAsyncRuntime>();
-            async_rt.block_on(async {
+            let manifest = async_rt.block_on(async {
                 let content_provider =
                     lgn_content_store2::Config::load_and_instantiate_persistent_provider()
                         .await
                         .unwrap();
-                Self::read_or_default(&config.game_manifest, &content_provider).await
-            })
+                Self::load_manifest_from_path(&config.game_manifest, &content_provider).await
+            });
+            match manifest {
+                Ok(manifest) => manifest,
+                Err(error) => {
+                    error!("error reading manifest: {}", error);
+                    Manifest::default()
+                }
+            }
         };
 
         let mut registry_options = AssetRegistryOptions::new();
@@ -206,19 +220,24 @@ impl AssetRegistryPlugin {
         drop(load_events_rx);
     }
 
-    async fn read_or_default(
+    async fn load_manifest_from_path(
         manifest_path: impl AsRef<Path>,
         content_provider: impl ContentProvider + Send + Sync + Copy,
-    ) -> Manifest {
-        if let Ok(chunk_id) = std::fs::read_to_string(manifest_path) {
-            if let Ok(chunk_id) = ChunkIdentifier::from_str(&chunk_id) {
-                let chunker = Chunker::default();
-                if let Ok(content) = chunker.read_chunk(content_provider, &chunk_id).await {
-                    return serde_json::from_reader(content.as_slice()).unwrap_or_default();
-                }
-            }
-        }
+    ) -> Result<Manifest> {
+        let manifest_id = std::fs::read_to_string(manifest_path).map_err(Error::IO)?;
+        let manifest_id = ChunkIdentifier::from_str(&manifest_id).map_err(Error::ContentStore)?;
+        Self::load_manifest_by_id(manifest_id, content_provider).await
+    }
 
-        Manifest::default()
+    async fn load_manifest_by_id(
+        manifest_id: ChunkIdentifier,
+        content_provider: impl ContentProvider + Send + Sync + Copy,
+    ) -> Result<Manifest> {
+        let chunker = Chunker::default();
+        let content = chunker
+            .read_chunk(content_provider, &manifest_id)
+            .await
+            .map_err(Error::ContentStore)?;
+        serde_json::from_reader(content.as_slice()).map_err(Error::SerdeJSON)
     }
 }

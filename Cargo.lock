@@ -4389,6 +4389,7 @@ dependencies = [
  "lgn-math",
  "lgn-tracing",
  "serde_json",
+ "thiserror",
  "tokio",
 ]
 

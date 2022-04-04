@@ -24,4 +24,5 @@ lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 # other
 crossbeam-channel = "0.5.1"
 serde_json = "1.0"
+thiserror = "1.0"
 tokio = { version = "1", features = ["full", "tracing"] }
