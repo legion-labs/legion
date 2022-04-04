@@ -6,11 +6,11 @@
   import { createKeyboardNavigationStore } from "@lgn/web-client/src/stores/keyboardNavigation";
 
   import { Entries, isEntry } from "@/lib/hierarchyTree";
-  import type { Entry } from "@/lib/hierarchyTree";
+  import type { Entry, ItemBase } from "@/lib/hierarchyTree";
 
   import HierarchyTreeItem from "./HierarchyTreeItem.svelte";
 
-  type Item = $$Generic<{ id: string; path: string }>;
+  type Item = $$Generic<ItemBase>;
 
   type $$Slots = {
     name: { entry: Entry<Item | symbol> };
@@ -66,11 +66,12 @@
   let dndHighlightedEntry: Entry<Item> | null = null;
 
   $: highlightedEntry =
-    entries.find((entry) => entry === highlightedEntry) || null;
+    entries.find((entry) => entry.item.id === highlightedEntry?.item.id) ||
+    null;
 
   $: $keyboardNavigationStore.currentIndex = highlightedEntry
     ? entries.findIndex((entry) =>
-        highlightedEntry ? entry === highlightedEntry : false
+        highlightedEntry ? entry.item.id === highlightedEntry.item.id : false
       )
     : null;
 
@@ -98,7 +99,9 @@
     detail: { entry: updatedEntry, newName },
   }: CustomEvent<{ entry: Entry<Item>; newName: string }>) {
     entries = entries.update((entry) =>
-      updatedEntry === entry ? { ...entry, name: newName } : null
+      updatedEntry.item.id === entry.item.id
+        ? { ...entry, name: newName }
+        : null
     );
 
     dispatch("nameEdited", { entry: updatedEntry, newName });

@@ -4,14 +4,9 @@ import { get, writable } from "svelte/store";
 import type { StagedResource } from "@lgn/proto-editor/dist/source_control";
 import log from "@lgn/web-client/src/lib/log";
 
-import {
-  commitStagedResources,
-  getAllResources,
-  getStagedResources,
-  syncLatest,
-} from "@/api";
+import { commitStagedResources, getStagedResources, syncLatest } from "@/api";
 
-import allResources from "./allResources";
+import { fetchAllResources } from "../orchestrators/allResources";
 
 export type StagedResourcesValue = StagedResource[] | null;
 
@@ -36,7 +31,7 @@ export async function initStagedResourcesStream(pollInternal = 2_000) {
 }
 
 export function syncFromMain() {
-  return Promise.all([syncLatest(), allResources.run(getAllResources)]);
+  return Promise.all([syncLatest(), fetchAllResources]);
 }
 
 export async function submitToMain(message: string) {

@@ -1,4 +1,4 @@
-import { Entries, isEntry } from "@/lib/hierarchyTree";
+import { Entries, ItemBase, isEntry } from "@/lib/hierarchyTree";
 import type { Entry } from "@/lib/hierarchyTree";
 
 import { suite } from "../benchmark";
@@ -99,7 +99,7 @@ export const resourcesSuite = suite("Entries.fromArray", (bench) => {
 
   bench.add("Insert item early in entries", { iter: 10_000 }, () => {
     const entries = Entries.fromArray(resources);
-    const entry = entries.getFromIndex(2) as Entry<{ path: string }>;
+    const entry = entries.getFromIndex(2) as Entry<ItemBase>;
 
     return () => {
       entries.insert({
@@ -113,9 +113,7 @@ export const resourcesSuite = suite("Entries.fromArray", (bench) => {
 
   bench.add("Insert item late in entries", { iter: 10_000 }, () => {
     const entries = Entries.fromArray(resources);
-    const entry = entries.getFromIndex(entries.size() - 2) as Entry<{
-      path: string;
-    }>;
+    const entry = entries.getFromIndex(entries.size() - 2) as Entry<ItemBase>;
 
     return () => {
       entries.insert({
@@ -256,7 +254,7 @@ export const bigResourcesSuite = suite(
       { iter: 100 },
       () => {
         const entries = Entries.fromArray(bigResources);
-        const entry = entries.getFromIndex(2) as Entry<{ path: string }>;
+        const entry = entries.getFromIndex(2) as Entry<ItemBase>;
 
         return () => {
           entries.insert({
@@ -274,9 +272,9 @@ export const bigResourcesSuite = suite(
       { iter: 100 },
       () => {
         const entries = Entries.fromArray(bigResources);
-        const entry = entries.getFromIndex(entries.size() - 2) as Entry<{
-          path: string;
-        }>;
+        const entry = entries.getFromIndex(
+          entries.size() - 2
+        ) as Entry<ItemBase>;
 
         return () => {
           entries.insert({

@@ -8,24 +8,18 @@
   import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
   import ModalContainer from "@lgn/web-client/src/components/modal/ModalContainer.svelte";
   import { Panel } from "@lgn/web-client/src/components/panel";
-  import log from "@lgn/web-client/src/lib/log";
 
-  import { getActiveScenes, getAllResources } from "@/api";
-  import AuthModal from "@/components/AuthModal.svelte";
   import DynamicPanel from "@/components/DynamicPanel.svelte";
   import ExtraPanel from "@/components/ExtraPanel.svelte";
   import ResourceBrowser from "@/components/ResourceBrowser.svelte";
   import SceneExplorer from "@/components/SceneExplorer.svelte";
   import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
-  import { currentResource } from "@/orchestrators/currentResource";
   import {
-    currentResourceDescriptionEntry,
-    currentlyRenameResourceEntry,
-    resourceBrowserEntriesOrchestrator,
-    resourceEntries,
-  } from "@/orchestrators/resourceBrowserEntries";
-  import allResourcesStore from "@/stores/allResources";
-  import authStatus from "@/stores/authStatus";
+    allResourcesError,
+    fetchAllResources,
+  } from "@/orchestrators/allResources";
+  import { currentResource } from "@/orchestrators/currentResource";
+  import { currentResourceDescriptionEntry } from "@/orchestrators/resourceBrowserEntries";
   import contextMenu from "@/stores/contextMenu";
   import modal from "@/stores/modal";
   import notifications from "@/stores/notifications";
@@ -33,41 +27,20 @@
   import workspace from "@/stores/workspace";
   import { viewportTileId } from "@/stores/workspace";
 
-  const {
-    data: allResourcesData,
-    error: allResourcesError,
-    loading: allResourcesLoading,
-  } = allResourcesStore;
-
   $: if ($allResourcesError) {
-    reloadResources();
-  }
-
-  $: if ($allResourcesData) {
-    resourceBrowserEntriesOrchestrator.load($allResourcesData);
+    refetchResources();
   }
 
   onMount(() => {
-    reloadResources();
-
-    if ($authStatus && $authStatus.type === "error") {
-      modal.open(Symbol.for("auth-modal"), AuthModal, {
-        payload: { authorizationUrl: $authStatus.authorizationUrl },
-        noTransition: true,
-      });
-    }
+    refetchResources();
   });
 
-  async function reloadResources() {
+  function refetchResources() {
     $currentResource = null;
 
     $currentResourceDescriptionEntry = null;
 
-    await allResourcesStore.run(getAllResources);
-
-    const activeScenes = await getActiveScenes();
-
-    log.info(log.json`Active Scenes: ${activeScenes.sceneIds}`);
+    return fetchAllResources();
   }
 </script>
 
@@ -83,20 +56,11 @@
     <div class="content">
       <div class="secondary-contents">
         <div class="scene-explorer">
-          <SceneExplorer
-            allResourcesLoading={$allResourcesLoading}
-            bind:resourceEntries={$resourceEntries}
-            bind:currentResourceDescriptionEntry={$currentResourceDescriptionEntry}
-          />
+          <SceneExplorer />
         </div>
         <div class="h-separator" />
         <div class="resource-browser">
-          <ResourceBrowser
-            allResourcesLoading={$allResourcesLoading}
-            bind:resourceEntries={$resourceEntries}
-            bind:currentResourceDescriptionEntry={$currentResourceDescriptionEntry}
-            bind:currentlyRenameResourceEntry={$currentlyRenameResourceEntry}
-          />
+          <ResourceBrowser />
         </div>
       </div>
       <div class="v-separator" />

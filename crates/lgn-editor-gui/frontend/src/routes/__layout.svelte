@@ -11,10 +11,15 @@
   } from "@lgn/web-client/src/stores/workspace";
 
   import { initApiClient } from "@/api";
-  import * as contextMenuEntries from "@/data/contextMenu";
   import { initMessageStream } from "@/orchestrators/selection";
-  import authStatus from "@/stores/authStatus";
-  import contextMenu from "@/stores/contextMenu";
+  import contextMenu, {
+    resourceBrowserItemContextMenuId,
+    resourceBrowserItemEntries,
+    resourceBrowserPanelContextMenuId,
+    resourceBrowserPanelEntries,
+    sceneExplorerItemContextMenuId,
+    sceneExplorerItemEntries,
+  } from "@/stores/contextMenu";
   import { initLogStream } from "@/stores/log";
   import { initStagedResourcesStream } from "@/stores/stagedResources";
   import tabPayloads from "@/stores/tabPayloads";
@@ -110,10 +115,23 @@
           // TODO: When using routing we may want to cancel the returned subscription
           initStagedResourcesStream();
 
-          contextMenu.register("resource", contextMenuEntries.resourceEntries);
+          // Fire and forget stream init
+          // TODO: When using routing we may want to cancel the returned subscription
+          initAllActiveScenesStream();
+
           contextMenu.register(
-            "resourcePanel",
-            contextMenuEntries.resourcePanelEntries
+            resourceBrowserItemContextMenuId,
+            resourceBrowserItemEntries
+          );
+
+          contextMenu.register(
+            resourceBrowserPanelContextMenuId,
+            resourceBrowserPanelEntries
+          );
+
+          contextMenu.register(
+            sceneExplorerItemContextMenuId,
+            sceneExplorerItemEntries
           );
 
           const videoEditorTabPayloadId = "video-editor-payload";
@@ -171,7 +189,23 @@
 </script>
 
 <script lang="ts">
+  import { onMount } from "svelte";
+
+  import AuthModal from "@/components/AuthModal.svelte";
+  import { initAllActiveScenesStream } from "@/orchestrators/allActiveScenes";
+  import authStatus from "@/stores/authStatus";
+  import modal from "@/stores/modal";
+
   import "../assets/index.css";
+
+  onMount(() => {
+    if ($authStatus && $authStatus.type === "error") {
+      modal.open(Symbol.for("auth-modal"), AuthModal, {
+        payload: { authorizationUrl: $authStatus.authorizationUrl },
+        noTransition: true,
+      });
+    }
+  });
 </script>
 
 <slot />

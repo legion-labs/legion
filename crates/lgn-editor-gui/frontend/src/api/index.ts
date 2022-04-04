@@ -90,6 +90,24 @@ export async function getAllResources(searchToken = "") {
   );
 }
 
+export async function getRootResource(
+  id: string
+): Promise<ResourceDescription | null> {
+  const {
+    resourceDescriptions: [resourceDescription],
+  } = await resourceBrowserClient.searchResources({ rootResourceId: id });
+
+  return resourceDescription || null;
+}
+
+export async function getAllRootResources(ids: string[]) {
+  const resources = await Promise.all(ids.map(getRootResource));
+
+  return resources.filter(
+    (resource): resource is ResourceDescription => !!resource
+  );
+}
+
 /**
  * Fetch a resource's properties using its ID
  * @param resource The resource description with the ID and the version
@@ -323,8 +341,10 @@ export async function closeScene({ id }: { id: string }) {
   return resourceBrowserClient.closeScene({ id });
 }
 
-export function getActiveScenes() {
-  return resourceBrowserClient.getActiveScenes({});
+export async function getActiveScenes() {
+  const { sceneIds } = await resourceBrowserClient.getActiveScenes({});
+
+  return getAllRootResources(sceneIds);
 }
 
 export function initLogStream() {

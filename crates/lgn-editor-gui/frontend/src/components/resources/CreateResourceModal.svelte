@@ -11,12 +11,8 @@
   import log from "@lgn/web-client/src/lib/log";
   import { createAsyncStoreOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 
-  import {
-    createResource as createResourceApi,
-    getAllResources,
-    getResourceTypes,
-  } from "@/api";
-  import allResourcesStore from "@/stores/allResources";
+  import { createResource as createResourceApi, getResourceTypes } from "@/api";
+  import { fetchAllResources } from "@/orchestrators/allResources";
 
   import Field from "../Field.svelte";
   import Select from "../inputs/Select.svelte";
@@ -78,7 +74,7 @@
 
       close();
 
-      allResourcesStore.run(getAllResources);
+      await fetchAllResources();
     });
   }
 </script>

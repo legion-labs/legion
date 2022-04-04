@@ -12,12 +12,12 @@
 
   import contextMenuAction from "@/actions/contextMenu";
   import { isEntry } from "@/lib/hierarchyTree";
-  import type { Entry } from "@/lib/hierarchyTree";
+  import type { Entry, ItemBase } from "@/lib/hierarchyTree";
   import { extension } from "@/lib/path";
 
   import TextInput from "../inputs/TextInput.svelte";
 
-  type Item = $$Generic<{ id: string }>;
+  type Item = $$Generic<ItemBase>;
 
   type $$Slots = {
     name: { entry: Entry<Item | symbol> };
@@ -63,10 +63,17 @@
   // TODO: Use a filter instead
   $: isDisabled = !isEntry(entry);
 
-  $: isHighlighted = highlightedEntry ? entry === highlightedEntry : false;
+  $: isHighlighted =
+    highlightedEntry && isEntry(entry)
+      ? entry.item.id === highlightedEntry.item.id
+      : false;
 
   $: mode =
-    currentlyRenameEntry && currentlyRenameEntry === entry ? "edit" : "view";
+    currentlyRenameEntry &&
+    isEntry(entry) &&
+    currentlyRenameEntry.item.id === entry.item.id
+      ? "edit"
+      : "view";
 
   $: nameValue = mode === "edit" ? entryName() : "";
 
@@ -165,7 +172,9 @@
 
 <div
   class="root"
-  class:bg-gray-800={dndHighlightedEntry === entry}
+  class:bg-gray-800={dndHighlightedEntry && isEntry(entry)
+    ? dndHighlightedEntry.item.id === entry.item.id
+    : false}
   on:dblclick
   use:keyboardNavigationItem={isDisabled ? null : index}
   use:dropzone={!isDisabled && reorderable
