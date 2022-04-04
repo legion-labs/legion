@@ -62,13 +62,13 @@ use crate::{MediaConfig, Mp4Config, Result, TrackConfig};
 #[derive(Debug)]
 pub struct Mp4Stream {
     timescale: u32,
-    fps: u32,
+    fps: u64,
     moof: MoofAtom,
 }
 
 impl Mp4Stream {
     /// # Errors
-    pub fn write_start<W: Write>(mp4_config: &Mp4Config, fps: u32, writer: &mut W) -> Result<Self> {
+    pub fn write_start<W: Write>(mp4_config: &Mp4Config, fps: u64, writer: &mut W) -> Result<Self> {
         let ftyp = FtypAtom {
             major_brand: mp4_config.major_brand,
             minor_version: mp4_config.minor_version,
@@ -205,7 +205,7 @@ impl Mp4Stream {
         writer: &mut W,
     ) -> Result<()> {
         let duration = 90000 / self.fps;
-        let timestamp = self.moof.mfhd.sequence_number * duration;
+        let timestamp = u64::from(self.moof.mfhd.sequence_number) * duration;
         self.moof.mfhd.sequence_number += 1;
         self.moof.trafs[0]
             .trun
@@ -230,8 +230,8 @@ impl Mp4Stream {
             .unwrap()
             .sample_durations
             .as_mut()
-            .unwrap()[0] = duration;
-        self.moof.trafs[0].tfdt.as_mut().unwrap().decode_time = u64::from(timestamp);
+            .unwrap()[0] = duration as u32;
+        self.moof.trafs[0].tfdt.as_mut().unwrap().decode_time = timestamp;
 
         self.moof.write_atom(writer)?;
         let mdat = MdatAtom::Borrowed(content);
