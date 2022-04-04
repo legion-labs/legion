@@ -8,7 +8,7 @@ use webrtc::ice_transport::{ice_credential_type::RTCIceCredentialType, ice_serve
 pub struct Config {
     /// Whether to enable hardward encoding.
     #[serde(default)]
-    pub enable_hw_encoding: bool,
+    pub force_software_encoding: bool,
 
     /// The `WebRTC` configuration.
     #[serde(default)]
@@ -21,11 +21,11 @@ impl Display for Config {
             f,
             r#"
 Encoding:
-- enable_hw_encoding: {}
+- force_software_encoding: {}
 
 WebRTC:
 {}"#,
-            self.enable_hw_encoding, self.webrtc,
+            self.force_software_encoding, self.webrtc,
         )
     }
 }
