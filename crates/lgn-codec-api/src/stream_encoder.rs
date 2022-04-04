@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use lgn_graphics_api::{DeviceContext, ExternalResourceType, Semaphore, Texture};
+use lgn_graphics_api::{
+    DeviceContext, ExternalResourceType, Semaphore, SemaphoreDef, SemaphoreUsage, Texture,
+};
 
 use crate::{backends::nvenc::nv_encoder::NvEncoder, encoder_resource::EncoderResource};
 
@@ -8,6 +10,7 @@ use crate::{backends::nvenc::nv_encoder::NvEncoder, encoder_resource::EncoderRes
 pub struct EncoderWorkItem {
     pub image: EncoderResource<Texture>,
     pub semaphore: EncoderResource<Semaphore>,
+    pub cpu_frame: u64,
 }
 
 pub(crate) struct StreamEncoderInner {
@@ -50,8 +53,10 @@ impl StreamEncoder {
     pub fn new_external_semaphore(
         &self,
         device_context: &DeviceContext,
+        mut semaphore_def: SemaphoreDef,
     ) -> EncoderResource<Semaphore> {
-        let semaphore = device_context.create_semaphore(true);
+        semaphore_def.usage_flags |= SemaphoreUsage::EXPORT;
+        let semaphore = device_context.create_semaphore(semaphore_def);
         let key = if let Some(encoder) = &self.inner.hw_encoder {
             encoder.register_external_semaphore(device_context, &semaphore)
         } else {

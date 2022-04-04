@@ -6,7 +6,30 @@ use crate::{
     ExternalResourceType,
 };
 
+bitflags::bitflags! {
+    pub struct SemaphoreUsage: u16 {
+        const TIMELINE = 0x0001;
+        const EXPORT = 0x0002;
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct SemaphoreDef {
+    pub usage_flags: SemaphoreUsage,
+    pub initial_value: u64,
+}
+
+impl Default for SemaphoreDef {
+    fn default() -> Self {
+        Self {
+            usage_flags: SemaphoreUsage::empty(),
+            initial_value: 0,
+        }
+    }
+}
+
 pub(crate) struct SemaphoreInner {
+    semaphore_def: SemaphoreDef,
     device_context: DeviceContext,
 
     // Set to true when an operation is scheduled to signal this semaphore
@@ -27,11 +50,12 @@ impl Drop for SemaphoreInner {
 }
 
 impl Semaphore {
-    pub fn new(device_context: &DeviceContext, export_capable: bool) -> Self {
-        let platform_semaphore = BackendSemaphore::new(device_context, export_capable);
+    pub fn new(device_context: &DeviceContext, semaphore_def: SemaphoreDef) -> Self {
+        let platform_semaphore = BackendSemaphore::new(device_context, semaphore_def);
 
         Self {
             inner: device_context.deferred_dropper().new_drc(SemaphoreInner {
+                semaphore_def,
                 device_context: device_context.clone(),
                 signal_available: AtomicBool::new(false),
                 backend_semaphore: platform_semaphore,
@@ -47,6 +71,10 @@ impl Semaphore {
         self.inner
             .signal_available
             .store(available, Ordering::Relaxed);
+    }
+
+    pub fn definition(&self) -> SemaphoreDef {
+        self.inner.semaphore_def
     }
 }
 

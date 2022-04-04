@@ -3,7 +3,7 @@ use std::{cmp::max, sync::Arc};
 use lgn_ecs::prelude::Component;
 use lgn_graphics_api::{
     DepthStencilClearValue, DepthStencilRenderTargetBinding, DeviceContext, Extents2D, Format,
-    GPUViewType, LoadOp, ResourceState, ResourceUsage, Semaphore, StoreOp,
+    GPUViewType, LoadOp, ResourceState, ResourceUsage, Semaphore, SemaphoreDef, StoreOp,
 };
 use lgn_window::WindowId;
 use parking_lot::RwLock;
@@ -272,6 +272,7 @@ impl RenderSurface {
 
         self.presenters = presenters;
     }
+
     //
     // TODO: change that asap. Acquire can't be called more than once per frame.
     // This would result in a crash.
@@ -296,7 +297,7 @@ impl RenderSurface {
         let num_render_frames = renderer.num_render_frames();
         let device_context = renderer.device_context();
         let presenter_sems = (0..num_render_frames)
-            .map(|_| device_context.create_semaphore(false))
+            .map(|_| device_context.create_semaphore(SemaphoreDef::default()))
             .collect();
         Self {
             id,

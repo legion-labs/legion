@@ -1,10 +1,10 @@
 #[cfg(target_os = "windows")]
 use std::ffi::c_void;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 #[cfg(debug_assertions)]
 #[cfg(feature = "track-device-contexts")]
-use std::{sync::atomic::AtomicU64, sync::Mutex};
+use std::sync::Mutex;
 
 use lgn_tracing::trace;
 use raw_window_handle::HasRawWindowHandle;
@@ -15,8 +15,8 @@ use crate::{
     ApiDef, Buffer, BufferDef, ComputePipelineDef, DescriptorHeap, DescriptorHeapDef,
     DescriptorSetLayout, DescriptorSetLayoutDef, ExtensionMode, Fence, GfxResult,
     GraphicsPipelineDef, Instance, Pipeline, Queue, QueueType, RootSignature, RootSignatureDef,
-    Sampler, SamplerDef, Semaphore, Shader, ShaderModule, ShaderModuleDef, ShaderStageDef,
-    Swapchain, SwapchainDef, Texture, TextureDef,
+    Sampler, SamplerDef, Semaphore, SemaphoreDef, Shader, ShaderModule, ShaderModuleDef,
+    ShaderStageDef, Swapchain, SwapchainDef, Texture, TextureDef,
 };
 
 /// Used to specify which type of physical device is preferred. It's recommended
@@ -72,6 +72,7 @@ pub(crate) struct DeviceContextInner {
     device_info: DeviceInfo,
     deferred_dropper: DeferredDropper,
     destroyed: AtomicBool,
+    current_cpu_frame: AtomicU64,
 
     #[cfg(debug_assertions)]
     #[cfg(feature = "track-device-contexts")]
@@ -130,6 +131,7 @@ impl DeviceContextInner {
             device_info,
             deferred_dropper: DeferredDropper::new(3),
             destroyed: AtomicBool::new(false),
+            current_cpu_frame: AtomicU64::new(0),
 
             backend_device_context,
 
@@ -215,8 +217,8 @@ impl DeviceContext {
         Fence::new(self)
     }
 
-    pub fn create_semaphore(&self, export_capable: bool) -> Semaphore {
-        Semaphore::new(self, export_capable)
+    pub fn create_semaphore(&self, semaphore_def: SemaphoreDef) -> Semaphore {
+        Semaphore::new(self, semaphore_def)
     }
 
     pub fn create_swapchain(
@@ -292,6 +294,14 @@ impl DeviceContext {
 
     pub fn device_info(&self) -> &DeviceInfo {
         &self.inner.device_info
+    }
+
+    pub fn inc_current_cpu_frame(&mut self) {
+        self.inner.current_cpu_frame.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn current_cpu_frame(&self) -> u64 {
+        self.inner.current_cpu_frame.load(Ordering::Relaxed)
     }
 }
 

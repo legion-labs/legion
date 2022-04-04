@@ -1,29 +1,39 @@
 use ash::vk::{ExportSemaphoreCreateInfo, ExternalSemaphoreHandleTypeFlags};
 
-use crate::{DeviceContext, ExternalResourceHandle, Semaphore};
+use crate::{DeviceContext, ExternalResourceHandle, Semaphore, SemaphoreDef, SemaphoreUsage};
 
 pub(crate) struct VulkanSemaphore {
     vk_semaphore: ash::vk::Semaphore,
-    export_capable: bool,
 }
 
 impl VulkanSemaphore {
-    pub fn new(device_context: &DeviceContext, export_capable: bool) -> Self {
+    pub fn new(device_context: &DeviceContext, semaphore_def: SemaphoreDef) -> Self {
         let mut create_info =
             ash::vk::SemaphoreCreateInfo::builder().flags(ash::vk::SemaphoreCreateFlags::empty());
 
-        #[cfg(target_os = "windows")]
-        let handle_type = ExternalSemaphoreHandleTypeFlags::OPAQUE_WIN32;
+        let mut export_create_info = ExportSemaphoreCreateInfo::builder();
+        if semaphore_def.usage_flags.intersects(SemaphoreUsage::EXPORT) {
+            #[cfg(target_os = "windows")]
+            let handle_type = ExternalSemaphoreHandleTypeFlags::OPAQUE_WIN32;
 
-        #[cfg(target_os = "linux")]
-        let handle_type = ExternalSemaphoreHandleTypeFlags::OPAQUE_FD;
+            #[cfg(target_os = "linux")]
+            let handle_type = ExternalSemaphoreHandleTypeFlags::OPAQUE_FD;
 
-        let mut export_create_info = ExportSemaphoreCreateInfo::default();
-        if export_capable {
-            export_create_info.handle_types |= handle_type;
-
-            create_info.p_next = std::ptr::addr_of!(export_create_info).cast::<std::ffi::c_void>();
+            export_create_info = export_create_info.handle_types(handle_type);
+            create_info = create_info.push_next(&mut export_create_info);
         };
+
+        let mut type_create_info = ash::vk::SemaphoreTypeCreateInfo::builder();
+        if semaphore_def
+            .usage_flags
+            .intersects(SemaphoreUsage::TIMELINE)
+        {
+            type_create_info = type_create_info
+                .semaphore_type(ash::vk::SemaphoreType::TIMELINE)
+                .initial_value(semaphore_def.initial_value);
+
+            create_info = create_info.push_next(&mut type_create_info);
+        }
 
         let vk_semaphore = unsafe {
             device_context
@@ -32,10 +42,7 @@ impl VulkanSemaphore {
                 .unwrap()
         };
 
-        Self {
-            vk_semaphore,
-            export_capable,
-        }
+        Self { vk_semaphore }
     }
 
     pub fn destroy(&self, device_context: &DeviceContext) {
@@ -50,7 +57,6 @@ impl VulkanSemaphore {
         &self,
         device_context: &DeviceContext,
     ) -> ExternalResourceHandle {
-        assert!(self.export_capable);
         device_context.vk_external_semaphore_handle(self.vk_semaphore)
     }
 }

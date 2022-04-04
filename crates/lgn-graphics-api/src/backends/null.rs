@@ -21,9 +21,9 @@ use crate::{
     DeviceContext, DeviceInfo, ExtensionMode, ExternalResourceHandle, Fence, FenceStatus, Format,
     GfxResult, GraphicsPipelineDef, IndexBufferBinding, MemoryAllocation, MemoryAllocationDef,
     PagedBufferAllocation, Pipeline, PipelineType, PlaneSlice, PresentSuccessResult, Queue,
-    QueueType, RootSignature, RootSignatureDef, SamplerDef, Semaphore, ShaderModuleDef, Swapchain,
-    SwapchainDef, SwapchainImage, Texture, TextureBarrier, TextureDef, TextureSubResource,
-    TextureViewDef, VertexBufferBinding,
+    QueueType, RootSignature, RootSignatureDef, SamplerDef, Semaphore, SemaphoreDef,
+    ShaderModuleDef, Swapchain, SwapchainDef, SwapchainImage, Texture, TextureBarrier, TextureDef,
+    TextureSubResource, TextureViewDef, VertexBufferBinding,
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -561,6 +561,7 @@ impl Queue {
         wait_semaphores: &[&Semaphore],
         signal_semaphores: &[&Semaphore],
         signal_fence: Option<&Fence>,
+        current_cpu_frame: u64,
     ) -> GfxResult<()> {
         unimplemented!()
     }
@@ -629,7 +630,7 @@ impl NullSampler {
 pub(crate) struct NullSemaphore;
 
 impl NullSemaphore {
-    pub fn new(device_context: &DeviceContext, export_capable: bool) -> Self {
+    pub fn new(device_context: &DeviceContext, semaphore_def: SemaphoreDef) -> Self {
         unimplemented!()
     }
 
