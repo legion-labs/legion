@@ -60,6 +60,7 @@
     "@iconify/svelte": "^2.2.0",
     "@improbable-eng/grpc-web": "^0.15.0",
     "@lgn/proto-editor": "^0.1.0",
+    "@lgn/proto-runtime": "^0.1.0",
     "@lgn/proto-streaming": "^0.1.0",
     "@lgn/web-client": "^0.1.0",
     "@tauri-apps/api": "^1.0.0-rc.2",

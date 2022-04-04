@@ -18,6 +18,11 @@ import {
   SourceControlClientImpl,
   UploadRawFileResponse,
 } from "@lgn/proto-editor/dist/source_control";
+import {
+  RuntimeClientImpl,
+  GrpcWebImpl as RuntimeImpl,
+} from "@lgn/proto-runtime/dist/runtime";
+
 import log from "@lgn/web-client/src/lib/log";
 
 import { formatProperties } from "../lib/propertyGrid";
@@ -27,6 +32,7 @@ import type {
 } from "../lib/propertyGrid";
 
 const defaultEditorServerURL = "http://[::1]:50051";
+const defaultRuntimeServerURL = "http://[::1]:50052";
 
 let resourceBrowserClient: ResourceBrowserClientImpl;
 
@@ -36,10 +42,14 @@ let sourceControlClient: SourceControlClientImpl;
 
 let editorClient: EditorClientImpl;
 
+let runtimeClient: RuntimeClientImpl;
+
 export function initApiClient({
   editorServerUrl = defaultEditorServerURL,
+  runtimeServerUrl = defaultRuntimeServerURL,
 }: {
   editorServerUrl?: string;
+  runtimeServerUrl?: string;
 }) {
   resourceBrowserClient = new ResourceBrowserClientImpl(
     new EditorResourceBrowserWebImpl(editorServerUrl, { debug: false })
@@ -57,6 +67,12 @@ export function initApiClient({
 
   editorClient = new EditorClientImpl(
     new EditorImpl(editorServerUrl, {
+      debug: false,
+    })
+  );
+
+  runtimeClient = new RuntimeClientImpl(
+    new RuntimeImpl(runtimeServerUrl, {
       debug: false,
     })
   );
@@ -353,4 +369,16 @@ export function initLogStream() {
 
 export function initMessageStream() {
   return editorClient.initMessageStream({});
+}
+
+export function loadRuntimeManifest({ id }: { id: string }) {
+  return runtimeClient.loadManifest({ id });
+}
+
+export function loadRuntimeRootAsset({ id }: { id: string }) {
+  return runtimeClient.loadRootAsset({ id });
+}
+
+export function pauseRuntime() {
+  return runtimeClient.pause({});
 }
