@@ -18,6 +18,7 @@ use lgn_data_offline::{
 };
 use lgn_data_runtime::Resource;
 use lgn_source_control::RepositoryIndex;
+use lgn_tracing::info;
 use sample_data::offline as offline_data;
 use sample_data::runtime as runtime_data;
 
@@ -91,7 +92,7 @@ pub async fn build(
             .ok()
             .unwrap();
 
-        println!("Compiling: {} from {}...", asset_path, source_name);
+        info!("Compiling: {} from {}...", asset_path, source_name);
 
         let manifest = build
             .compile(

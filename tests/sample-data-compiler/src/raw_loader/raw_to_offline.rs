@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use lgn_data_offline::{resource::ResourcePathName, ResourcePathId};
 use lgn_data_runtime::{Component, Resource, ResourceType, ResourceTypeAndId};
+use lgn_tracing::{error, info};
 use sample_data::offline as offline_data;
 
 use super::raw_data;
@@ -88,10 +89,10 @@ fn lookup_asset_path(
         .map(|id| push_transforms(id, path));
     match &output {
         Some(resolved_path) => {
-            println!("Path Resolved: {} -> {}", path, resolved_path);
+            info!("Path Resolved: {} -> {}", path, resolved_path);
         }
         None => {
-            eprintln!("Failed to resolve path: {}", path);
+            error!("Failed to resolve path: {}", path);
         }
     }
     output

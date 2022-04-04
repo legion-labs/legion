@@ -20,6 +20,7 @@ use lgn_data_offline::resource::{
 use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_graphics_data::{offline_gltf::GltfFile, offline_png::PngFile, offline_psd::PsdFile};
 use lgn_source_control::{RepositoryIndex, RepositoryName};
+use lgn_tracing::{error, info, warn};
 use lgn_utils::DefaultHasher;
 use sample_data::offline as offline_data;
 use serde::de::DeserializeOwned;
@@ -68,17 +69,17 @@ pub async fn build_offline(
 
         if let Some(generated_checksum) = generated_checksum {
             if generated_checksum == raw_checksum {
-                println!("Skipping Project Generation");
+                info!("Skipping Project Generation");
                 return;
             }
         }
 
         if !incremental {
             std::fs::remove_dir_all(root_folder.as_ref().join("offline"))
-                .unwrap_or_else(|e| println!("failed to delete offline: {}.", e));
+                .unwrap_or_else(|e| warn!("failed to delete offline: {}.", e));
 
             std::fs::remove_file(root_folder.as_ref().join("VERSION"))
-                .unwrap_or_else(|e| println!("failed to delete VERSION: {}.", e));
+                .unwrap_or_else(|e| warn!("failed to delete VERSION: {}.", e));
         }
 
         let (mut project, resources) = setup_project(
@@ -139,7 +140,7 @@ pub async fn build_offline(
         let resource_ids =
             create_or_find_default(&file_paths, &in_resources, &mut project, &mut resources).await;
 
-        println!("Created resources: {:#?}", project);
+        info!("Created resources: {:#?}", project);
 
         for (i, path) in file_paths.iter().enumerate() {
             let resource_name = &in_resources[i].0;
@@ -203,7 +204,7 @@ pub async fn build_offline(
                 _ => panic!(),
             }
 
-            println!("Loaded: {}. id: {}", resource_name, resource_id);
+            info!("Loaded: {}. id: {}", resource_name, resource_id);
         }
 
         project.commit("sample data generation").await.unwrap();
@@ -213,7 +214,7 @@ pub async fn build_offline(
             .write_all(raw_checksum.to_string().as_bytes())
             .unwrap();
     } else {
-        eprintln!(
+        error!(
             "did not find a 'raw' sub-directory in {}",
             root_folder.as_ref().display()
         );
