@@ -3,13 +3,16 @@ use async_trait::async_trait;
 use chrono::DateTime;
 use lgn_content_store2::ChunkIdentifier;
 use lgn_tracing::prelude::*;
-use sqlx::{error::DatabaseError, migrate::MigrateDatabase, Acquire, Executor, Row};
+use sqlx::{
+    any::AnyPoolOptions, error::DatabaseError, migrate::MigrateDatabase, Acquire, Executor, Pool,
+    Row,
+};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use crate::{
-    sql::SqlConnectionPool, Branch, CanonicalPath, Change, ChangeType, Commit, CommitId, Error,
-    Index, ListBranchesQuery, ListCommitsQuery, ListLocksQuery, Lock, MapOtherError,
-    RepositoryIndex, RepositoryName, Result, Tree, WorkspaceRegistration,
+    Branch, CanonicalPath, Change, ChangeType, Commit, CommitId, Error, Index, ListBranchesQuery,
+    ListCommitsQuery, ListLocksQuery, Lock, MapOtherError, RepositoryIndex, RepositoryName, Result,
+    Tree, WorkspaceRegistration,
 };
 
 const TABLE_REPOSITORIES: &str = "repositories";
@@ -57,16 +60,17 @@ impl SqlDatabaseDriver {
         }
     }
 
-    async fn new_pool(&self) -> Result<SqlConnectionPool> {
+    async fn new_pool(&self) -> Result<Pool<sqlx::Any>> {
         Ok(match &self {
-            Self::Sqlite(uri) => SqlConnectionPool::new(uri).await.map_other_err(format!(
-                "failed to establish a SQLite connection pool to `{}`",
-                uri
-            ))?,
-            Self::Mysql(uri) => SqlConnectionPool::new(uri).await.map_other_err(format!(
-                "failed to establish a MySQL connection pool to `{}`",
-                uri
-            ))?,
+            Self::Sqlite(uri) => AnyPoolOptions::new()
+                .connect(uri)
+                .await
+                .map_other_err("failed to establish a SQLite connection pool".to_string())?,
+            Self::Mysql(uri) => AnyPoolOptions::new()
+                .max_connections(10)
+                .connect(uri)
+                .await
+                .map_other_err("failed to establish a MySQL connection pool".to_string())?,
         })
     }
 
@@ -265,7 +269,7 @@ impl RepositoryIndex for SqlRepositoryIndex {
 
 pub struct SqlIndex {
     driver: SqlDatabaseDriver,
-    pool: SqlConnectionPool,
+    pool: Pool<sqlx::Any>,
     repository_name: RepositoryName,
     repository_id: i64,
 }
@@ -281,7 +285,7 @@ impl core::fmt::Debug for SqlIndex {
 impl SqlIndex {
     async fn init(
         driver: SqlDatabaseDriver,
-        pool: SqlConnectionPool,
+        pool: Pool<sqlx::Any>,
         repository_name: RepositoryName,
     ) -> Result<Self> {
         let conn = pool
@@ -302,7 +306,7 @@ impl SqlIndex {
 
     async fn load(
         driver: SqlDatabaseDriver,
-        pool: SqlConnectionPool,
+        pool: Pool<sqlx::Any>,
         repository_name: RepositoryName,
     ) -> Result<Self> {
         let mut conn = pool
