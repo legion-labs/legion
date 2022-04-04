@@ -14,10 +14,12 @@
   import { formatExecutionTime } from "@/lib/format";
 
   import Loader from "../Misc/Loader.svelte";
-  import { GraphParameters } from "./GraphParameters";
+  import GraphNode from "./GraphNode.svelte";
+  import { GraphParameters } from "./Lib/GraphParameters";
+  import { graphStateStore, scopeStore } from "./Store/GraphStore";
 
-  /* eslint-disable @typescript-eslint/no-non-null-assertion */
   const locationStore = useLocation();
+  const store = scopeStore;
 
   let client: PerformanceAnalyticsClientImpl | null = null;
   let processInfo: Process | null = null;
@@ -26,6 +28,7 @@
   let maxSum: number | null = null;
   let selectedNode: CumulativeCallGraphNode | null = null;
   let loading = true;
+  const components: Record<number, GraphNode> = {};
 
   async function fetchData() {
     if (!client) {
@@ -52,6 +55,18 @@
     nodes = nodes.sort((lhs, rhs) => rhs.stats!.sum - lhs.stats!.sum);
     maxSum = nodes[0].stats!.sum;
     loading = false;
+
+    graphStateStore.update((s) => {
+      if (maxSum) {
+        s.MaxSum = maxSum;
+      }
+      return s;
+    });
+
+    store.update((s) => {
+      s = { ...s, ...reply.scopes };
+      return s;
+    });
   }
 
   function formatFunDivWidth(node: CumulativeCallGraphNode): string {
@@ -122,26 +137,24 @@
     client = makeGrpcClient();
     await fetchData();
   });
+
+  function onEdgeClicked(e: CustomEvent<{ hash: number }>) {
+    components[e.detail.hash]?.setCollapse(false);
+  }
 </script>
 
 <Loader {loading}>
   <div slot="body">
-    <h1>Graph</h1>
     {#if nodes}
-      <h2>Function List</h2>
       <div id="funlist">
-        {#each nodes as node (node.hash)}
-          <div
-            class="fundiv"
-            style={formatFunDivWidth(node)}
-            on:click={function () {
-              onFunClick(node);
-            }}
-          >
-            <span>
-              {formatFunLabel(node)}
-            </span>
-          </div>
+        {#each nodes as node, index (node.hash)}
+          {@const first = index === 0}
+          <GraphNode
+            {node}
+            collapsed={!first}
+            on:clicked={(e) => onEdgeClicked(e)}
+            bind:this={components[node.hash]}
+          />
         {/each}
       </div>
     {/if}
@@ -214,8 +227,8 @@
 </Loader>
 
 <style lang="postcss">
-  h1 {
-    @apply text-2xl;
+  div {
+    font-family: "Inter", sans-serif;
   }
 
   h2 {
@@ -223,6 +236,7 @@
   }
 
   #funlist {
+    @apply flex flex-col gap-y-1;
     overflow-y: auto;
   }
 

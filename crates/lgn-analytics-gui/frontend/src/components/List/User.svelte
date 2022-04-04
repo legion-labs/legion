@@ -2,11 +2,11 @@
   export let user: string;
 </script>
 
-<div class="flex gap-2 items-center">
+<div class="flex gap-2 items-center select-none">
   <div
-    class="w-6 h-6 flex justify-center items-center rounded-full text-xs text-white-100 bg-orange-700"
+    class="w-6 h-6 flex justify-center items-center rounded-full text-xs text-white-87 bg-orange-700"
   >
     <span class="capitalize">{user.charAt(0)}</span>
   </div>
-  <span class="capitalize">{user}</span>
+  <span class="capitalize text-content-100">{user}</span>
 </div>

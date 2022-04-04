@@ -9,6 +9,7 @@
     "bincode",
     "bitflags",
     "Blit",
+    "Callees",
     "calltree",
     "chrono",
     "chunker",

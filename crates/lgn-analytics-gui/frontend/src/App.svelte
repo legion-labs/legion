@@ -6,12 +6,11 @@
   import Graph from "@/components/Graph/Graph.svelte";
   import { Route, Router } from "@/lib/navigator";
   import Health from "@/pages/Health.svelte";
-  import Log from "@/pages/Log.svelte";
 
   import ProcessList from "./components/List/ProcessList.svelte";
+  import Log from "./components/Log/Log.svelte";
   import MetricsCanvas from "./components/Metric/MetricCanvas.svelte";
   import Header from "./components/Misc/Header.svelte";
-  import LoadingBar from "./components/Misc/LoadingBar.svelte";
   import TimelineRenderer from "./components/Timeline/Timeline.svelte";
 
   export let initAuthStatus: InitAuthStatus | null;
@@ -28,45 +27,40 @@
   });
 </script>
 
-<div class="w-full h-screen p-2">
-  <LoadingBar />
-  <div class="grid">
-    <Header />
-    <div class="pl-5 pr-5 pt-5 overflow-hidden">
-      <Router>
-        <div id="app">
-          <Route path="/" primary={false}>
-            <ProcessList />
-          </Route>
-          <Route path="/health"><Health /></Route>
-          <Route path="/log/:id" let:params let:location primary={false}>
-            {#key params.id + location.search}
-              <Log id={params.id} />
-            {/key}
-          </Route>
-          <Route path="/timeline/:id" let:params let:location primary={false}>
-            {#key params.id + location.search}
-              <TimelineRenderer processId={params.id} />
-            {/key}
-          </Route>
-          <Route path="/metrics/:id" let:params primary={false}>
-            {#key params.id}
-              <MetricsCanvas id={params.id} />
-            {/key}
-          </Route>
-          <Route path="/cumulative-call-graph" primary={false}>
-            <Graph />
-          </Route>
-        </div>
-      </Router>
-    </div>
+<svelte:head>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+  </style>
+</svelte:head>
+
+<div class="pt-2 pb-4 antialiased">
+  <Header />
+  <div class="pl-5 pr-5 pt-5 overflow-hidden">
+    <Router>
+      <Route path="/" primary={false}>
+        <ProcessList />
+      </Route>
+      <Route path="/health">
+        <Health />
+      </Route>
+      <Route path="/log/:id" let:params let:location primary={false}>
+        {#key params.id + location.search}
+          <Log id={params.id} />
+        {/key}
+      </Route>
+      <Route path="/timeline/:id" let:params let:location primary={false}>
+        {#key params.id + location.search}
+          <TimelineRenderer processId={params.id} />
+        {/key}
+      </Route>
+      <Route path="/metrics/:id" let:params primary={false}>
+        {#key params.id}
+          <MetricsCanvas id={params.id} />
+        {/key}
+      </Route>
+      <Route path="/cumulative-call-graph" primary={false}>
+        <Graph />
+      </Route>
+    </Router>
   </div>
 </div>
-
-<style lang="postcss">
-  #app {
-    @apply text-center text-[#2c3e50];
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-</style>

@@ -81,14 +81,11 @@
   }
 </script>
 
-<div>
-  <h1>Legion Performance Analytics</h1>
-  <h2>Process Log</h2>
+<div class="text-content-100">
   {#if processInfo}
-    <div class="process-details-div">
-      <div>process_id: {processInfo.processId}</div>
-      <div>exe: {processInfo.exe}</div>
-
+    <div class="text-left">
+      <div>Process Id: {processInfo.processId}</div>
+      <div>Executable: {processInfo.exe}</div>
       {#if processInfo.parentProcessId}
         <div class="nav-link">
           <a href={`/log/${processInfo.parentProcessId}`} use:link>
@@ -99,14 +96,16 @@
     </div>
   {/if}
   {#each logEntries as entry, index (index)}
-    <div class="logentry">
-      <span class="logentrytime">{formatTime(entry.timeMs)}</span>
-      <span>{entry.msg}</span>
+    <div class="text-left bg-skin-900 flex flex-row gap-x-4">
+      <div class="font-bold basis-28 shrink-0">
+        {formatTime(entry.timeMs)}
+      </div>
+      <div>{entry.msg}</div>
     </div>
   {/each}
 
   {#if nbEntries > MAX_NB_ENTRIES_IN_PAGE}
-    <div class="page-nav">
+    <div class="text-left">
       {#if viewRange[0] > 0}
         <span class="nav-link">
           <a
@@ -158,34 +157,7 @@
 </div>
 
 <style lang="postcss">
-  h1 {
-    @apply text-2xl;
-  }
-
-  h2 {
-    @apply text-xl;
-  }
-
-  .process-details-div {
-    text-align: left;
-    margin: 0px 0px 5px 5px;
-  }
-
-  .logentry {
-    @apply text-left bg-[#f0f0f0];
-    margin: 0px 0px 0px 5px;
-  }
-
-  .logentrytime {
-    @apply font-bold pr-5;
-  }
-
   .nav-link {
-    @apply text-[#ca2f0f] underline;
-  }
-
-  .page-nav {
-    text-align: left;
-    margin: 0px 0px 5px 5px;
+    @apply text-primary-900;
   }
 </style>

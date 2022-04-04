@@ -15,9 +15,9 @@
 </script>
 
 <div
-  title={[process?.distro, process?.cpuBrand, process?.computer].join("\n")}
+  title={[process?.distro, process?.cpuBrand].join("\n")}
   class="flex gap-2 items-center"
 >
-  <i class="bi bi-pc text-gray-400" />
+  <i class="bi bi-pc text-content-38" />
   <span>{getComputer()}</span>
 </div>

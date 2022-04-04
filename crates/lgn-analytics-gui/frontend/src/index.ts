@@ -2,6 +2,7 @@ import { AppComponent, run } from "@lgn/web-client";
 
 import App from "./App.svelte";
 import "./assets/index.css";
+import "./assets/theme.css";
 
 const redirectUri = document.location.origin + "/";
 

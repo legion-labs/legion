@@ -38,7 +38,11 @@
 
 <style lang="postcss">
   .action {
-    @apply text-gray-100 p-1;
+    @apply text-white-100 p-1;
     min-width: var(--thread-item-length);
+  }
+
+  i {
+    @apply px-1;
   }
 </style>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { link } from "svelte-navigator";
 
   import type {
@@ -11,6 +11,7 @@
   import { makeGrpcClient } from "@/lib/client";
   import { formatProcessName } from "@/lib/format";
 
+  import Loader from "../Misc/Loader.svelte";
   import Computer from "./Computer.svelte";
   import Platform from "./Platform.svelte";
   import ProcessTime from "./ProcessTime.svelte";
@@ -18,6 +19,7 @@
 
   let client: PerformanceAnalyticsClientImpl | null = null;
   let processList: ProcessInstance[] = [];
+  let loading = true;
 
   async function getRecentProcesses() {
     if (!client) {
@@ -45,23 +47,23 @@
   onMount(async () => {
     client = makeGrpcClient();
     await getRecentProcesses();
+    loading = false;
   });
 </script>
 
-<div>
-  <center>
-    <div class="search-div">
+<Loader {loading}>
+  <div slot="body" class="text-content-87 text-sm">
+    <div class="py-3 text-right">
       <!-- svelte-ignore a11y-autofocus -->
       <input
-        autofocus
         type="text"
-        class="search-input"
+        class="search-input text-content-100 bg-skin-700 placeholder-content-100"
         placeholder="Search process..."
         on:input={onSearchChange}
       />
     </div>
-    <table>
-      <thead>
+    <table class="w-full">
+      <thead class="select-none bg-skin-600">
         <th>User</th>
         <th>Executable</th>
         <th>Computer</th>
@@ -111,7 +113,7 @@
                 <div>
                   <a href={`/timeline/${processInfo?.processId}`} use:link>
                     <i
-                      title="Timeline ({nbCpuBlocks})"
+                      title="Timeline ({nbCpuBlocks}"
                       class="bi bi-body-text"
                     />
                   </a>
@@ -122,61 +124,29 @@
         {/each}
       </tbody>
     </table>
-  </center>
-</div>
+  </div>
+</Loader>
 
 <style lang="postcss">
-  table {
-    @apply border-collapse;
-    width: 100%;
-  }
-
-  table tbody {
-    @apply overflow-auto;
-  }
-
-  table thead {
-    @apply bg-[rgb(230,230,230)];
-  }
-
   table th {
-    @apply py-1 pl-1 text-center border border-[rgb(153,153,153)];
+    @apply py-1 pl-1 border text-left;
     border-style: none;
-    text-align: left;
   }
 
   table tr:nth-child(even) {
-    background-color: #f2f2f2;
+    @apply bg-skin-600;
   }
 
   table td {
-    @apply p-1 text-left border border-[rgb(153,153,153)];
-    border-style: none;
-    @apply text-sm;
+    @apply p-1;
+    @apply border-none;
   }
 
   table th {
-    text-transform: capitalize;
-    @apply text-sm;
+    @apply text-sm capitalize;
   }
 
   table td div {
     @apply p-0;
-  }
-
-  a {
-    @apply text-[#000000] underline;
-  }
-
-  .search-div {
-    margin: 10px 0px 10px 0px;
-  }
-
-  .search-input {
-    border-style: solid;
-    border-width: 2px;
-    padding-left: 4px;
-    border-color: rgb(175, 175, 175);
-    min-width: 400px;
   }
 </style>
