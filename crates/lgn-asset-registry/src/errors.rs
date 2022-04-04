@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-/// An error type for the content-store crate.
+/// An error type for the asset registry crate.
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("io error: {0}")]
