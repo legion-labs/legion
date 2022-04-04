@@ -603,11 +603,11 @@ impl Mesh {
     pub fn new_arrow() -> Self {
         let (mut arrow_vertex_data, mut arrow_index_data) = Self::new_cylinder_inner(0.01, 0.3, 10);
         let (mut cone_vertex_data, cone_index_data) = Self::new_cone_inner(0.025, 0.1, 10);
-        for vertex_idx in 0..arrow_vertex_data.len() / DEFAULT_MESH_VERTEX_SIZE {
+        for vertex_idx in 0..cone_vertex_data.len() / DEFAULT_MESH_VERTEX_SIZE {
             let array_idx = vertex_idx * DEFAULT_MESH_VERTEX_SIZE;
             // flip position and normals Y-coordinate
-            arrow_vertex_data[array_idx + 1] = -arrow_vertex_data[array_idx + 1];
-            arrow_vertex_data[array_idx + 4] = -arrow_vertex_data[array_idx + 4];
+            cone_vertex_data[array_idx + 1] = -cone_vertex_data[array_idx + 1];
+            cone_vertex_data[array_idx + 4] = -cone_vertex_data[array_idx + 4];
         }
         let mut cone_index_data = cone_index_data
             .iter()
