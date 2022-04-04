@@ -1,9 +1,12 @@
-import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
+import { derived } from "svelte/store";
 
-import { createHierarchyTreeOrchestrator } from "./hierarchyTree";
+import { allResources } from "./allResources";
+import { deriveHierarchyTreeOrchestrator } from "./hierarchyTree";
 
 export const resourceBrowserEntriesOrchestrator =
-  createHierarchyTreeOrchestrator<ResourceDescription>();
+  deriveHierarchyTreeOrchestrator(
+    derived(allResources, (allResources) => allResources || [])
+  );
 
 export const {
   currentlyRenameEntry: currentlyRenameResourceEntry,

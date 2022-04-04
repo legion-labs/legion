@@ -2,14 +2,22 @@ import { v4 as uuid } from "uuid";
 
 import { components } from "./path";
 
-export type Entry<Item> = {
+/**
+ * Common attributes an entry's item is expected to have.
+ *
+ * The `path` should look like a unix path seperated by `/`
+ * and the `id` must be unique.
+ */
+export type ItemBase = { id: string; path: string };
+
+export type Entry<Item extends ItemBase | symbol> = {
   name: string;
   index: number | null;
   item: Item;
   subEntries: Entry<Item>[];
 };
 
-export function isEntry<Item>(
+export function isEntry<Item extends ItemBase>(
   entry: Entry<Item | symbol>
 ): entry is Entry<Item> {
   return typeof entry.item !== "symbol";
@@ -17,14 +25,21 @@ export function isEntry<Item>(
 
 // TODO: Improve performance if needed, and stop using recursion
 /** A wrapper class around the `Entry<Item>[]` type. */
-export class Entries<Item extends { path: string }> {
+export class Entries<Item extends ItemBase> {
   entries: Entry<Item | symbol>[];
 
   #size!: number;
 
   /**
+   * Returns an empty `Entries` object.
+   */
+  static empty<Item extends ItemBase>(): Entries<Item> {
+    return new Entries([]);
+  }
+
+  /**
    * Build an `Entries` object from any flat arrays of object.
-   * Objects must contain a `path` attribute.
+   * Objects must contain both an `id` and a `path` attributes.
    *
    * ## Example
    *
@@ -44,11 +59,9 @@ export class Entries<Item extends { path: string }> {
    * assert(deepEqual(entries.entries, expectedEntries));
    * ```
    */
-  static fromArray<Item extends { path: string }>(
-    items: Item[]
-  ): Entries<Item> {
+  static fromArray<Item extends ItemBase>(items: Item[]): Entries<Item> {
     if (!items.length) {
-      return new Entries([]);
+      return Entries.empty<Item>();
     }
 
     type Ref = {
@@ -300,7 +313,9 @@ export class Entries<Item extends { path: string }> {
   }
 
   remove(removedEntry: Entry<Item>): this {
-    return this.filter((entry) => entry !== removedEntry);
+    return this.filter((entry) =>
+      isEntry(entry) ? entry.item.id !== removedEntry.item.id : true
+    );
   }
 
   isEmpty() {

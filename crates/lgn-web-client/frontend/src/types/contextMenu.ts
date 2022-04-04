@@ -9,14 +9,11 @@ export type SeparatorEntry = { type: "separator" };
 
 export type Entry = ItemEntry | SeparatorEntry;
 
-// The `as const` casting is not necessary in this case
-// but it prevents the type to be inferred as `string`
-// in some older versions of TS
-export const eventName = "contextmenu-action" as const;
+export const contextMenuEventName = "contextmenu-action";
 
-export type EventName = typeof eventName;
+export type ContextMenuEventName = typeof contextMenuEventName;
 
-export type Event<
+export type ContextMenuEvent<
   Name extends string,
   EntryRecord extends Record<Name, unknown>
 > = CustomEvent<ContextMenuActionDetail<EntryRecord>>;
@@ -28,31 +25,22 @@ export function buildCustomEvent<
   close: () => void,
   entrySetName: Name,
   action: string
-): Event<Name, EntryRecord> {
-  return new CustomEvent<ContextMenuActionDetail<EntryRecord>>(eventName, {
-    detail: { close, entrySetName, action },
-  });
+): ContextMenuEvent<Name, EntryRecord> {
+  return new CustomEvent<ContextMenuActionDetail<EntryRecord>>(
+    contextMenuEventName,
+    {
+      detail: { close, entrySetName, action },
+    }
+  );
 }
 
 export type EventHandler<
   Name extends string,
   EntryRecord extends Record<Name, unknown>
-> = (event: Event<Name, EntryRecord>) => Promise<void> | void;
-
-/** Auto close the context menu before action is triggered */
-export function autoClose<
-  Name extends string,
-  EntryRecord extends Record<Name, unknown>
->(handler: EventHandler<Name, EntryRecord>): EventHandler<Name, EntryRecord> {
-  return function innerHandler(event) {
-    event.detail.close();
-
-    return handler(event);
-  };
-}
+> = (event: ContextMenuEvent<Name, EntryRecord>) => Promise<void> | void;
 
 /** Allows to "subscribe" to a specific entry set */
-export function select<
+export function filterContextMenuEvents<
   Name extends string,
   EntryRecord extends Record<Name, unknown>
 >(
@@ -64,6 +52,6 @@ export function select<
       return;
     }
 
-    return handler(event as Event<Name, Pick<EntryRecord, Name>>);
+    return handler(event as ContextMenuEvent<Name, Pick<EntryRecord, Name>>);
   };
 }

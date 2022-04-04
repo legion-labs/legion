@@ -4,18 +4,17 @@
   import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
   import { UploadStatus } from "@lgn/proto-editor/dist/source_control";
   import { Panel, PanelHeader } from "@lgn/web-client/src/components/panel";
+  import { displayError } from "@lgn/web-client/src/lib/errors";
   import { readFile } from "@lgn/web-client/src/lib/files";
   import log from "@lgn/web-client/src/lib/log";
   import { createFilesStore } from "@lgn/web-client/src/stores/files";
-  import { autoClose, select } from "@lgn/web-client/src/types/contextMenu";
-  import type { Event as ContextMenuActionEvent } from "@lgn/web-client/src/types/contextMenu";
+  import { filterContextMenuEvents } from "@lgn/web-client/src/types/contextMenu";
+  import type { ContextMenuEvent } from "@lgn/web-client/src/types/contextMenu";
 
   import contextMenu from "@/actions/contextMenu";
   import {
     cloneResource,
-    closeScene,
     createResource,
-    getAllResources,
     initFileUpload,
     openScene,
     removeResource,
@@ -24,7 +23,7 @@
     streamFileUpload,
   } from "@/api";
   import { resourceDragAndDropType } from "@/constants";
-  import type { Entries, Entry } from "@/lib/hierarchyTree";
+  import type { Entry } from "@/lib/hierarchyTree";
   import { isEntry } from "@/lib/hierarchyTree";
   import { components, join } from "@/lib/path";
   import { formatProperties } from "@/lib/propertyGrid";
@@ -32,11 +31,23 @@
   import type { BagResourceProperty } from "@/lib/propertyGrid";
   import { iconFor } from "@/lib/resourceBrowser";
   import {
+    allResourcesLoading,
+    fetchAllResources,
+  } from "@/orchestrators/allResources";
+  import {
     currentResource,
     fetchCurrentResourceDescription,
   } from "@/orchestrators/currentResource";
-  import allResources from "@/stores/allResources";
+  import {
+    currentResourceDescriptionEntry,
+    currentlyRenameResourceEntry,
+    resourceEntries,
+  } from "@/orchestrators/resourceBrowserEntries";
   import type { ContextMenuEntryRecord } from "@/stores/contextMenu";
+  import {
+    resourceBrowserItemContextMenuId,
+    resourceBrowserPanelContextMenuId,
+  } from "@/stores/contextMenu";
   import modal from "@/stores/modal";
   import notifications from "@/stores/notifications";
 
@@ -48,21 +59,13 @@
 
   const files = createFilesStore();
 
-  export let currentResourceDescriptionEntry: Entry<ResourceDescription> | null;
-
-  export let resourceEntries: Entries<ResourceDescription>;
-
-  export let currentlyRenameResourceEntry: Entry<ResourceDescription> | null;
-
-  export let allResourcesLoading: boolean;
-
   let uploadingFiles = false;
 
   let resourceHierarchyTree: HierarchyTree<ResourceDescription> | null = null;
 
   let removePromptId: symbol | null = null;
 
-  $: loading = uploadingFiles || allResourcesLoading;
+  $: loading = uploadingFiles || $allResourcesLoading;
 
   $: if ($files) {
     uploadFiles();
@@ -87,7 +90,7 @@
     try {
       await renameResource({ id: entry.item.id, newPath });
 
-      allResources.run(getAllResources);
+      await fetchAllResources();
     } catch (error) {
       notifications.push(Symbol.for("resource-renaming-error"), {
         type: "error",
@@ -159,7 +162,7 @@
 
       const names = await Promise.all(promises);
 
-      let response = await Promise.all(
+      let [newResource] = await Promise.all(
         names.map(({ name, id }) => {
           const lowerCasedName = name.toLowerCase().trim();
 
@@ -167,7 +170,7 @@
             return createResource({
               resourceName: name,
               resourceType: "png",
-              parentResourceId: currentResourceDescriptionEntry?.item.id,
+              parentResourceId: $currentResourceDescriptionEntry?.item.id,
               uploadId: id,
             });
           }
@@ -177,19 +180,20 @@
             return createResource({
               resourceName: name.slice(0, -4),
               resourceType: "gltf",
-              parentResourceId: currentResourceDescriptionEntry?.item.id,
+              parentResourceId: $currentResourceDescriptionEntry?.item.id,
               uploadId: id,
             });
           }
         })
       );
 
-      if (response && response[0]) {
-        await allResources.run(getAllResources);
-        let newId = response[0].newId;
+      if (newResource) {
+        await fetchAllResources();
+
+        const newId = newResource.newId;
 
         if (newId) {
-          const entry = resourceEntries.find(
+          const entry = $resourceEntries.find(
             (entry) => isEntry(entry) && entry.item.id == newId
           );
 
@@ -197,7 +201,8 @@
             return;
           }
 
-          currentResourceDescriptionEntry = entry;
+          $currentResourceDescriptionEntry = entry;
+
           await fetchCurrentResourceDescription(newId);
         }
       }
@@ -217,58 +222,65 @@
   }
 
   function filter({ detail: { name } }: CustomEvent<{ name: string }>) {
-    allResources.run(() => getAllResources(name));
+    return fetchAllResources(name);
   }
 
-  async function handleResourceActions({
-    detail: { action, entrySetName },
-  }: ContextMenuActionEvent<
-    "resource" | "resourcePanel",
-    Pick<ContextMenuEntryRecord, "resource" | "resourcePanel">
+  async function handleContextMenuEvents({
+    detail: { action, close, entrySetName },
+  }: ContextMenuEvent<
+    | typeof resourceBrowserItemContextMenuId
+    | typeof resourceBrowserPanelContextMenuId,
+    Pick<
+      ContextMenuEntryRecord,
+      | typeof resourceBrowserItemContextMenuId
+      | typeof resourceBrowserPanelContextMenuId
+    >
   >) {
+    close();
+
     switch (action) {
-      case "open_scene": {
-        if (currentResourceDescriptionEntry) {
-          await openScene({ id: currentResourceDescriptionEntry?.item.id });
+      case "openScene": {
+        if ($currentResourceDescriptionEntry) {
+          try {
+            await openScene({ id: $currentResourceDescriptionEntry?.item.id });
+          } catch (error) {
+            notifications.push(Symbol(), {
+              title: "Scene Explorer",
+              message: displayError(error),
+              type: "error",
+            });
+          }
         }
 
-        return;
-      }
-
-      case "close_scene": {
-        if (currentResourceDescriptionEntry) {
-          await closeScene({ id: currentResourceDescriptionEntry?.item.id });
-        }
-
-        return;
+        break;
       }
 
       case "clone": {
-        if (!resourceHierarchyTree || !currentResourceDescriptionEntry) {
-          return;
+        if (!resourceHierarchyTree || !$currentResourceDescriptionEntry) {
+          break;
         }
 
         const { newResource } = await cloneResource({
-          sourceId: currentResourceDescriptionEntry.item.id,
+          sourceId: $currentResourceDescriptionEntry.item.id,
         });
 
-        await allResources.run(getAllResources);
+        await fetchAllResources();
 
         if (newResource) {
-          const entry = resourceEntries.find(
+          const entry = $resourceEntries.find(
             (entry) => isEntry(entry) && entry.item.id == newResource.id
           );
 
           if (!entry || !isEntry(entry)) {
-            return;
+            break;
           }
 
-          currentResourceDescriptionEntry = entry;
+          $currentResourceDescriptionEntry = entry;
 
           fetchCurrentResourceDescription(newResource.id);
         }
 
-        return;
+        break;
       }
 
       case "import": {
@@ -277,36 +289,36 @@
           fileTypeSpecifiers: [".png", ".gltf.zip"],
         });
 
-        return;
+        break;
       }
 
       case "rename": {
-        if (!resourceHierarchyTree || !currentResourceDescriptionEntry) {
-          return;
+        if (!resourceHierarchyTree || !$currentResourceDescriptionEntry) {
+          break;
         }
 
-        currentlyRenameResourceEntry = currentResourceDescriptionEntry;
+        $currentlyRenameResourceEntry = $currentResourceDescriptionEntry;
 
-        return;
+        break;
       }
 
       case "remove": {
         openRemoveResourcePrompt("request-resource-remove-context-menu");
 
-        return;
+        break;
       }
 
       case "new": {
         modal.open(createResourceModalId, CreateResourceModal, {
           payload: {
             resourceDescription:
-              entrySetName === "resource"
-                ? currentResourceDescriptionEntry?.item
+              entrySetName === "resourceBrowserItemContextMenu"
+                ? $currentResourceDescriptionEntry?.item
                 : null,
           },
         });
 
-        return;
+        break;
       }
     }
   }
@@ -322,6 +334,7 @@
 
       return;
     }
+
     const resourceProperty = event.detail.value as ResourceProperty;
 
     if (resourceProperty) {
@@ -391,7 +404,7 @@
       newPath,
     });
 
-    await allResources.run(getAllResources);
+    await fetchAllResources();
   }
 
   function openRemoveResourcePrompt(symbolKey: string) {
@@ -406,8 +419,8 @@
     if (
       !removePromptId ||
       !resourceHierarchyTree ||
-      !currentResourceDescriptionEntry ||
-      !isEntry(currentResourceDescriptionEntry)
+      !$currentResourceDescriptionEntry ||
+      !isEntry($currentResourceDescriptionEntry)
     ) {
       return;
     }
@@ -420,18 +433,18 @@
       return;
     }
 
-    const entry = resourceEntries.find(
-      (entry) => entry === currentResourceDescriptionEntry
+    const entry = $resourceEntries.find(
+      (entry) => entry.item.id === $currentResourceDescriptionEntry?.item.id
     );
 
     if (!entry) {
       return;
     }
 
-    resourceEntries = resourceEntries.remove(entry);
+    $resourceEntries = $resourceEntries.remove(entry);
 
     try {
-      await removeResource({ id: currentResourceDescriptionEntry.item.id });
+      await removeResource({ id: $currentResourceDescriptionEntry.item.id });
     } catch (error) {
       notifications.push(Symbol.for("resource-creation-error"), {
         type: "error",
@@ -440,7 +453,7 @@
       });
 
       log.error(
-        log.json`An error occured while removing the resource ${currentResourceDescriptionEntry.item}: ${error}`
+        log.json`An error occured while removing the resource ${$currentResourceDescriptionEntry.item}: ${error}`
       );
     }
   }
@@ -448,8 +461,10 @@
 
 <svelte:window
   on:refresh-property={refreshProperty}
-  on:contextmenu-action={autoClose(
-    select(handleResourceActions, "resource", "resourcePanel")
+  on:contextmenu-action={filterContextMenuEvents(
+    handleContextMenuEvents,
+    resourceBrowserItemContextMenuId,
+    resourceBrowserPanelContextMenuId
   )}
   on:prompt-answer={removeResourceProperty}
 />
@@ -457,15 +472,19 @@
 <Panel {loading} tabs={["Resource Browser"]}>
   <div slot="tab" let:tab>{tab}</div>
 
-  <div slot="content" class="content" use:contextMenu={"resourcePanel"}>
+  <div
+    slot="content"
+    class="content"
+    use:contextMenu={resourceBrowserPanelContextMenuId}
+  >
     <PanelHeader>
       <ResourceFilter on:filter={filter} />
     </PanelHeader>
     <div class="hierarchy-tree">
-      {#if !resourceEntries.isEmpty()}
+      {#if !$resourceEntries.isEmpty()}
         <HierarchyTree
           id="resource-browser"
-          itemContextMenu="resource"
+          itemContextMenu={resourceBrowserItemContextMenuId}
           renamable
           reorderable
           deletable
@@ -475,9 +494,9 @@
           on:moved={moveEntry}
           on:removeRequest={() =>
             openRemoveResourcePrompt("request-resource-remove-keyboard")}
-          bind:entries={resourceEntries}
-          bind:currentlyRenameEntry={currentlyRenameResourceEntry}
-          bind:highlightedEntry={currentResourceDescriptionEntry}
+          bind:entries={$resourceEntries}
+          bind:currentlyRenameEntry={$currentlyRenameResourceEntry}
+          bind:highlightedEntry={$currentResourceDescriptionEntry}
           bind:this={resourceHierarchyTree}
         >
           <div class="w-full h-full" slot="icon" let:entry>

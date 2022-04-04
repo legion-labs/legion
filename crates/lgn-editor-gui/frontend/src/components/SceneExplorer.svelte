@@ -3,20 +3,24 @@
 
   import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
   import Panel from "@lgn/web-client/src/components/panel/Panel.svelte";
+  import type { ContextMenuEvent } from "@lgn/web-client/src/types/contextMenu";
+  import { filterContextMenuEvents } from "@lgn/web-client/src/types/contextMenu";
 
+  import { closeScene } from "@/api";
   import { resourceDragAndDropType } from "@/constants";
-  import type { Entries, Entry } from "@/lib/hierarchyTree";
+  import type { Entry } from "@/lib/hierarchyTree";
   import { isEntry } from "@/lib/hierarchyTree";
   import { iconFor } from "@/lib/resourceBrowser";
+  import { allActiveScenesLoading } from "@/orchestrators/allActiveScenes";
   import { fetchCurrentResourceDescription } from "@/orchestrators/currentResource";
+  import {
+    currentSceneDescriptionEntry,
+    sceneEntries,
+  } from "@/orchestrators/sceneExplorerEntries";
+  import type { ContextMenuEntryRecord } from "@/stores/contextMenu";
+  import { sceneExplorerItemContextMenuId } from "@/stores/contextMenu";
 
   import HierarchyTree from "./hierarchyTree/HierarchyTree.svelte";
-
-  export let currentResourceDescriptionEntry: Entry<ResourceDescription> | null;
-
-  export let resourceEntries: Entries<ResourceDescription>;
-
-  export let allResourcesLoading: boolean;
 
   function selectResource({
     detail: resourceDescription,
@@ -25,19 +29,45 @@
       fetchCurrentResourceDescription(resourceDescription.item.id);
     }
   }
+
+  async function handleContextMenuEvents({
+    detail: { action, close },
+  }: ContextMenuEvent<
+    typeof sceneExplorerItemContextMenuId,
+    Pick<ContextMenuEntryRecord, typeof sceneExplorerItemContextMenuId>
+  >) {
+    close();
+
+    switch (action) {
+      case "closeScene": {
+        if ($currentSceneDescriptionEntry) {
+          await closeScene({ id: $currentSceneDescriptionEntry?.item.id });
+        }
+
+        return;
+      }
+    }
+  }
 </script>
 
-<Panel loading={allResourcesLoading} tabs={["Scene Explorer"]}>
+<svelte:window
+  on:contextmenu-action={filterContextMenuEvents(
+    handleContextMenuEvents,
+    sceneExplorerItemContextMenuId
+  )}
+/>
+
+<Panel loading={$allActiveScenesLoading} tabs={["Scene Explorer"]}>
   <div slot="tab" let:tab>{tab}</div>
   <div slot="content" class="content">
-    {#if !resourceEntries.isEmpty()}
+    {#if !$sceneEntries.isEmpty()}
       <HierarchyTree
         id="scene-explorer"
-        itemContextMenu="scene"
+        itemContextMenu={sceneExplorerItemContextMenuId}
         draggable={resourceDragAndDropType}
         on:select={selectResource}
-        bind:entries={resourceEntries}
-        bind:highlightedEntry={currentResourceDescriptionEntry}
+        bind:entries={$sceneEntries}
+        bind:highlightedEntry={$currentSceneDescriptionEntry}
       >
         <div class="w-full h-full" slot="icon" let:entry>
           <Icon class="w-full h-full" icon={iconFor(entry)} />
