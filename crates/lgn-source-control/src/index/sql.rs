@@ -137,20 +137,17 @@ impl SqlRepositoryIndex {
     ) -> Result<()> {
         let sql: &str = &format!("SELECT 1 from `{}` LIMIT 1;", TABLE_REPOSITORIES);
 
-        match conn.execute(sql).await {
-            Ok(_) => {
-                info!("Database already initialized");
-            }
-            Err(_) => {
-                info!("Database not initialized yet.");
+        if conn.execute(sql).await.is_ok() {
+            info!("Database already initialized");
+        } else {
+            info!("Database not initialized yet.");
 
-                Self::create_repositories_table(conn, driver).await?;
-                Self::create_commits_table(conn, driver).await?;
-                Self::create_forest_table(conn).await?;
-                Self::create_branches_table(conn).await?;
-                Self::create_workspace_registrations_table(conn).await?;
-                Self::create_locks_table(conn).await?;
-            }
+            Self::create_repositories_table(conn, driver).await?;
+            Self::create_commits_table(conn, driver).await?;
+            Self::create_forest_table(conn).await?;
+            Self::create_branches_table(conn).await?;
+            Self::create_workspace_registrations_table(conn).await?;
+            Self::create_locks_table(conn).await?;
         }
 
         Ok(())
