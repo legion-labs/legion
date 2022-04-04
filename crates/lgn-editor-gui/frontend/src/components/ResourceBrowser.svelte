@@ -163,7 +163,7 @@
           const lowerCasedName = name.toLowerCase().trim();
 
           if (lowerCasedName.endsWith(".png")) {
-            createResource({
+            return createResource({
               resourceName: name,
               resourceType: "png",
               parentResourceId: currentResourceDescriptionEntry?.item.id,
@@ -173,7 +173,7 @@
 
           if (lowerCasedName.endsWith(".gltf.zip")) {
             // FIXME: Incorrect, should be an import
-            createResource({
+            return createResource({
               resourceName: name.slice(0, -4),
               resourceType: "gltf",
               parentResourceId: currentResourceDescriptionEntry?.item.id,
