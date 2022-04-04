@@ -11,13 +11,13 @@ name = "lgn_content_store2"
 path = "src/lib.rs"
 
 [[bin]]
-name = "lgn-content-store-cli"
-path = "src/bin.rs"
+name = "content-store-cli"
+path = "src/bin/cli.rs"
 required-features = ["cli"]
 
 [[bin]]
-name = "lgn-content-store-srv"
-path = "src/server.rs"
+name = "content-store-srv"
+path = "src/bin/server.rs"
 required-features = ["server"]
 
 [features]
@@ -95,6 +95,6 @@ RUN apt-get update && apt-get install -y libssl-dev ca-certificates
 
 { copy_all }
 
-ENTRYPOINT ["{ binaries.lgn-content-store-srv }"]
+ENTRYPOINT ["{ binaries.content-store-srv }"]
 """
 allow-aws-ecr-creation = true

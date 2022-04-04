@@ -47,13 +47,13 @@ pub struct WebRTCConfig {
 impl Display for WebRTCConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.nat_1to1_ips.is_empty() {
-            write!(f, "- NAT 1-to-1 IPs: none\n")
+            writeln!(f, "- NAT 1-to-1 IPs: none")
         } else {
-            write!(f, "- NAT 1-to-1 IPs: {}\n", self.nat_1to1_ips.join(", "))
+            writeln!(f, "- NAT 1-to-1 IPs: {}", self.nat_1to1_ips.join(", "))
         }?;
 
         if self.ice_servers.is_empty() {
-            write!(f, "- ICE servers: none\n")
+            writeln!(f, "- ICE servers: none")
         } else {
             write!(
                 f,

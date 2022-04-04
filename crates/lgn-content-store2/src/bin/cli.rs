@@ -15,6 +15,8 @@ use lgn_content_store2::{
     ChunkIdentifier, ChunkIndex, Chunker, Config, Identifier, MonitorAsyncAdapter, MonitorProvider,
     TransferCallbacks,
 };
+use lgn_telemetry_sink::TelemetryGuardBuilder;
+use lgn_tracing::{async_span_scope, LevelFilter};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[derive(Parser, Debug)]
@@ -177,6 +179,13 @@ impl TransferCallbacks<PathBuf> for TransferProgress {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args: Args = Args::parse();
+
+    let _telemetry_guard = TelemetryGuardBuilder::default()
+        .with_local_sink_max_level(LevelFilter::Info)
+        .build();
+
+    async_span_scope!("lgn-content-store-srv::main");
+
     let config = Config::load(&args.section)?;
     let provider = config
         .instantiate_provider()

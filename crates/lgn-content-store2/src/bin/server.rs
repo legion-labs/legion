@@ -55,7 +55,7 @@ async fn main() -> anyhow::Result<()> {
         })
         .build();
 
-    span_scope!("lgn-content-store-srv::main");
+    async_span_scope!("lgn-content-store-srv::main");
 
     let cors = CorsLayer::new()
         .allow_origin(Origin::list(args.origins))
