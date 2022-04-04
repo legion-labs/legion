@@ -4,8 +4,6 @@
 # The project root directory.
 #
 # If relative, it is relative to the current working directory.
-#
-# Default:
 project_root = "$(git-root)/tests/sample-data"
 
 # The endpoint to listen on.

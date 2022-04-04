@@ -100,8 +100,7 @@ struct Config {
     project_root: Option<RichPathBuf>,
 
     /// The scene.
-    #[serde(default)]
-    scene: String,
+    scene: Option<String>,
 
     #[serde(default = "Config::default_build_output_database_address")]
     build_output_database_address: String,
@@ -126,7 +125,7 @@ impl Default for Config {
         Self {
             listen_endpoint: Self::default_listen_endpoint(),
             project_root: None,
-            scene: "".to_string(),
+            scene: None,
             build_output_database_address: Self::default_build_output_database_address(),
             streamer: lgn_streamer::Config::default(),
         }
@@ -142,6 +141,8 @@ fn main() {
         .expect("telemetry guard should be initialized once");
 
     let trace_events_receiver: TraceEventsReceiver = trace_events_receiver.into();
+
+    info!("Starting editor server...");
 
     let mut app = App::from_telemetry_guard(telemetry_guard);
 
@@ -194,7 +195,10 @@ fn main() {
 
     info!("Legacy content-store path: {}", content_store_path);
 
-    let scene = args.scene.unwrap_or(config.scene);
+    let scene = args
+        .scene
+        .or(config.scene)
+        .expect("no `scene` was specified");
 
     info!("Scene: {}", scene);
 
@@ -241,7 +245,7 @@ fn main() {
     let game_manifest_path = args.manifest.map_or_else(PathBuf::new, PathBuf::from);
     let assets_to_load = Vec::<ResourceTypeAndId>::new();
 
-    info!("Streamer plugin config: {:#?}", config.streamer);
+    info!("Streamer plugin config:\n{}", config.streamer);
 
     let streamer_plugin = StreamerPlugin {
         config: config.streamer,
