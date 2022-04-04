@@ -2,7 +2,8 @@
   import * as d3 from "d3";
   import type { D3ZoomEvent } from "d3";
   import { onDestroy, onMount } from "svelte";
-  import { Unsubscriber, Writable, get } from "svelte/store";
+  import type { Unsubscriber, Writable } from "svelte/store";
+  import { get } from "svelte/store";
 
   import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
   import log from "@lgn/web-client/src/lib/log";

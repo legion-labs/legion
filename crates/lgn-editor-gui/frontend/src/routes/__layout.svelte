@@ -1,6 +1,7 @@
 <script lang="ts" context="module">
   import { goto } from "$app/navigation";
   import type { Load } from "@sveltejs/kit";
+  import { get } from "svelte/store";
 
   import { headlessRun } from "@lgn/web-client";
   import type { NonEmptyArray } from "@lgn/web-client/src/lib/array";
@@ -11,6 +12,7 @@
   } from "@lgn/web-client/src/stores/workspace";
 
   import { initApiClient } from "@/api";
+  import { initAllActiveScenesStream } from "@/orchestrators/allActiveScenes";
   import { initMessageStream } from "@/orchestrators/selection";
   import contextMenu, {
     resourceBrowserItemContextMenuId,
@@ -20,6 +22,7 @@
     sceneExplorerItemContextMenuId,
     sceneExplorerItemEntries,
   } from "@/stores/contextMenu";
+  import devSettings from "@/stores/devSettings";
   import { initLogStream } from "@/stores/log";
   import { initStagedResourcesStream } from "@/stores/stagedResources";
   import tabPayloads from "@/stores/tabPayloads";
@@ -49,27 +52,18 @@
 
   export const load: Load = async ({ fetch, url }) => {
     const editorServerUrlKey = "editor-server-url";
-    const editorRuntimerUrlKey = "editor-runtime-url";
+    const runtimeServerUrlKey = "editor-runtime-url";
 
-    if (url.searchParams.has(editorServerUrlKey)) {
-      sessionStorage.setItem(
-        editorServerUrlKey,
-        url.searchParams.get(editorServerUrlKey) as string
-      );
-    }
+    devSettings.update((devSettings) => ({
+      ...devSettings,
+      editorServerUrl:
+        url.searchParams.get(editorServerUrlKey) || devSettings.editorServerUrl,
+      runtimeServerUrl:
+        url.searchParams.get(runtimeServerUrlKey) ||
+        devSettings.runtimeServerUrl,
+    }));
 
-    if (url.searchParams.has(editorRuntimerUrlKey)) {
-      sessionStorage.setItem(
-        editorRuntimerUrlKey,
-        url.searchParams.get(editorRuntimerUrlKey) as string
-      );
-    }
-
-    const editorServerUrl =
-      sessionStorage.getItem(editorServerUrlKey) || undefined;
-
-    const runtimeServerUrl =
-      sessionStorage.getItem(editorRuntimerUrlKey) || undefined;
+    const { editorServerUrl, runtimeServerUrl } = get(devSettings);
 
     initApiClient({ editorServerUrl, runtimeServerUrl });
 
@@ -192,7 +186,6 @@
   import { onMount } from "svelte";
 
   import AuthModal from "@/components/AuthModal.svelte";
-  import { initAllActiveScenesStream } from "@/orchestrators/allActiveScenes";
   import authStatus from "@/stores/authStatus";
   import modal from "@/stores/modal";
 

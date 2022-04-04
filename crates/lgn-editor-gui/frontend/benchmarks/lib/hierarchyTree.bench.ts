@@ -1,4 +1,5 @@
-import { Entries, ItemBase, isEntry } from "@/lib/hierarchyTree";
+import type { ItemBase } from "@/lib/hierarchyTree";
+import { Entries, isEntry } from "@/lib/hierarchyTree";
 import type { Entry } from "@/lib/hierarchyTree";
 
 import { suite } from "../benchmark";

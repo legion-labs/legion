@@ -1,5 +1,6 @@
 import log from "../../lib/log";
-import { KeyCode, fromBrowserKey as keyCodeFromBrowserKey } from "./keys";
+import type { KeyCode } from "./keys";
+import { fromBrowserKey as keyCodeFromBrowserKey } from "./keys";
 
 const logLabel = "remote window inputs";
 

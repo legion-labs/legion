@@ -1,5 +1,6 @@
 import type { FluentBundle } from "@fluent/bundle";
-import { Readable, derived } from "svelte/store";
+import type { Readable } from "svelte/store";
+import { derived } from "svelte/store";
 
 import type { MapStore, MapValue } from "./map";
 import { createMapStore } from "./map";

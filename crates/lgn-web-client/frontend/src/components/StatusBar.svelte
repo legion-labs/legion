@@ -16,9 +16,11 @@
 
 <div class="root">
   <div class="status">
-    {#if $statusStore}
-      {$statusStore}
-    {/if}
+    <div class="status-message">
+      {#if $statusStore}
+        {$statusStore}
+      {/if}
+    </div>
   </div>
   {#if stagedResources}
     <div class="local-changes">
@@ -50,6 +52,10 @@
   }
 
   .status {
+    @apply flex flex-row items-center h-full;
+  }
+
+  .status-message {
     @apply flex flex-row items-center h-full animate-pulse;
   }
 

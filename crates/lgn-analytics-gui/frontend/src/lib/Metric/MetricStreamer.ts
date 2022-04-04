@@ -1,5 +1,6 @@
 import Semaphore from "semaphore-async-await";
-import { Writable, get, writable } from "svelte/store";
+import type { Writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 
 import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
 
