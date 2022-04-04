@@ -12,6 +12,7 @@ use std::{fs, path::PathBuf, sync::Arc};
 use clap::Parser;
 use lgn_data_offline::resource::ResourcePathName;
 use lgn_source_control::RepositoryName;
+use lgn_tracing::info;
 use sample_data_compiler::{offline_compiler, raw_loader};
 
 #[derive(Parser, Default)]
@@ -101,7 +102,7 @@ fn clean_folders(project_dir: &str) {
     test("temp");
 
     if !can_clean {
-        println!("Cannot clean folders in path {}", project_dir);
+        info!("Cannot clean folders in path {}", project_dir);
     } else {
         let delete = |sub_path, as_dir| {
             let remove = if as_dir {

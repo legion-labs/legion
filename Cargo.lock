@@ -8611,6 +8611,7 @@ dependencies = [
  "lgn-math",
  "lgn-source-control",
  "lgn-telemetry-sink",
+ "lgn-tracing",
  "lgn-utils",
  "png 0.17.5",
  "ron",
