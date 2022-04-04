@@ -68,6 +68,7 @@ impl OutputIndex {
                 .await
                 .map_err(Error::Database)?;
             let connection = sqlx::any::AnyPoolOptions::new()
+                .max_connections(10)
                 .connect(&db_uri)
                 .await
                 .map_err(Error::Database)?;
@@ -109,6 +110,7 @@ impl OutputIndex {
     async fn load(db_uri: String) -> Result<Self, Error> {
         let database = {
             sqlx::any::AnyPoolOptions::new()
+                .max_connections(10)
                 .connect(&db_uri)
                 .await
                 .map_err(Error::Database)?
