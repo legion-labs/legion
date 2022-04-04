@@ -1,6 +1,6 @@
 use std::{fs, sync::Arc};
 
-use lgn_content_store2::{MemoryProvider, ContentProvider};
+use lgn_content_store2::{ContentProvider, MemoryProvider};
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::{
     compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,
@@ -38,8 +38,10 @@ async fn build_device() {
         .create_repository(repository_name.clone())
         .await
         .unwrap();
-    let source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
-    let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
+    let source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
+    let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
 
     let initial_content = "foo";
 
@@ -229,8 +231,10 @@ async fn no_intermediate_resource() {
         .create_repository(repository_name.clone())
         .await
         .unwrap();
-    let source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
-    let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
+    let source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
+    let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
 
     // create project that contains test resource.
     let resource_id = {
@@ -338,8 +342,10 @@ async fn with_intermediate_resource() {
         .await
         .unwrap();
 
-    let source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
-    let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
+    let source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
+    let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
 
     // create project that contains test resource.
     let resource_id = {

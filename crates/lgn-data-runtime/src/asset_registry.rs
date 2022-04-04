@@ -438,7 +438,7 @@ impl AssetRegistry {
 
 #[cfg(test)]
 mod tests {
-    use lgn_content_store2::{MemoryProvider, ContentWriterExt};
+    use lgn_content_store2::{ContentWriterExt, MemoryProvider};
 
     use crate::ResourceId;
 
@@ -534,7 +534,8 @@ mod tests {
     use crate::test_asset;
 
     async fn setup_singular_asset_test(content: &[u8]) -> (ResourceTypeAndId, Arc<AssetRegistry>) {
-        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
+        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+            Arc::new(Box::new(MemoryProvider::new()));
         let manifest = Manifest::default();
 
         let asset_id = {
@@ -557,7 +558,8 @@ mod tests {
     }
 
     async fn setup_dependency_test() -> (ResourceTypeAndId, ResourceTypeAndId, Arc<AssetRegistry>) {
-        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
+        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+            Arc::new(Box::new(MemoryProvider::new()));
         let manifest = Manifest::default();
 
         const BINARY_PARENT_ASSETFILE: [u8; 100] = [

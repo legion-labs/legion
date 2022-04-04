@@ -538,7 +538,8 @@ mod tests {
                 .await
                 .expect("failed to create a project");
 
-        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
+        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+            Arc::new(Box::new(MemoryProvider::new()));
 
         let version = "0.0.1";
 

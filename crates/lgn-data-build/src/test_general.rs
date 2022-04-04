@@ -93,7 +93,11 @@ mod tests {
                 data_content_provider,
                 CompilerRegistryOptions::default(),
             )
-            .create_with_project(project_dir, repository_index, source_control_content_provider)
+            .create_with_project(
+                project_dir,
+                repository_index,
+                source_control_content_provider,
+            )
             .await
             .expect("valid data build index");
         }

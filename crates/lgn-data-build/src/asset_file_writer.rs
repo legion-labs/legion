@@ -95,7 +95,8 @@ mod tests {
 
     #[tokio::test]
     async fn one_asset_no_references() {
-        let content_store: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
+        let content_store: Arc<Box<dyn ContentProvider + Send + Sync>> =
+            Arc::new(Box::new(MemoryProvider::new()));
 
         let asset_id = ResourceTypeAndId {
             kind: refs_asset::RefsAsset::TYPE,

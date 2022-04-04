@@ -754,7 +754,8 @@ mod tests {
 
     #[tokio::test]
     async fn load_no_dependencies() {
-        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
+        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+            Arc::new(Box::new(MemoryProvider::new()));
         let manifest = Manifest::default();
 
         let asset_id = {
@@ -821,7 +822,8 @@ mod tests {
 
     #[tokio::test]
     async fn load_failed_dependency() {
-        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
+        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+            Arc::new(Box::new(MemoryProvider::new()));
         let manifest = Manifest::default();
 
         let parent_id = ResourceTypeAndId {
@@ -877,7 +879,8 @@ mod tests {
 
     #[tokio::test]
     async fn load_with_dependency() {
-        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
+        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+            Arc::new(Box::new(MemoryProvider::new()));
         let manifest = Manifest::default();
 
         let parent_content = "parent";
@@ -986,7 +989,8 @@ mod tests {
 
     #[tokio::test]
     async fn reload_no_dependencies() {
-        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
+        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+            Arc::new(Box::new(MemoryProvider::new()));
         let manifest = Manifest::default();
 
         let asset_id = {
