@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
 use generic_data::offline::TestEntity;
-use lgn_content_store::{ContentStoreAddr, HddContentStore};
-use lgn_content_store2::{ContentProvider, MemoryProvider};
+use lgn_content_store2::{ContentProvider, MemoryProvider, ProviderConfig};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
@@ -148,10 +147,12 @@ async fn test_transaction_system() -> Result<(), Error> {
     let mut registry = ResourceRegistryOptions::new();
     generic_data::offline::register_resource_types(&mut registry);
     let resource_registry = registry.create_async_registry();
-    let content_store = HddContentStore::open(ContentStoreAddr::from(build_dir.clone())).unwrap();
+
+    let data_content_provider = Arc::new(ProviderConfig::default().instantiate().await.unwrap());
+
     let asset_registry = AssetRegistryOptions::new()
         .add_device_dir(&resource_dir)
-        .add_device_cas(Box::new(content_store), Manifest::default())
+        .add_device_cas(Arc::clone(&data_content_provider), Manifest::default())
         .add_loader::<TestEntity>()
         .create()
         .await;
@@ -159,9 +160,12 @@ async fn test_transaction_system() -> Result<(), Error> {
     let compilers =
         CompilerRegistryOptions::default().add_compiler(&lgn_compiler_testentity::COMPILER_INFO);
 
-    let options = DataBuildOptions::new_with_sqlite_output(&build_dir, compilers)
-        .content_store(&ContentStoreAddr::from(build_dir.as_path()))
-        .asset_registry(asset_registry.clone());
+    let options = DataBuildOptions::new_with_sqlite_output(
+        &build_dir,
+        compilers,
+        Arc::clone(&data_content_provider),
+    )
+    .asset_registry(asset_registry.clone());
 
     let build_manager =
         BuildManager::new(options, &project, Manifest::default(), Manifest::default())

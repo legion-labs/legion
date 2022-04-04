@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use lgn_content_store::ContentStoreAddr;
 use lgn_source_control::RepositoryName;
 
 #[derive(Debug, Clone)]
@@ -45,7 +44,6 @@ pub struct ResourceRegistrySettings {
     pub(crate) source_control_repository_index: Box<dyn lgn_source_control::RepositoryIndex>,
     pub(crate) source_control_repository_name: RepositoryName,
     pub(crate) build_output_db_addr: String,
-    pub(crate) content_store_addr: ContentStoreAddr,
     pub(crate) compilation_mode: CompilationMode,
 }
 
@@ -55,7 +53,6 @@ impl ResourceRegistrySettings {
         source_control_repository_index: Box<dyn lgn_source_control::RepositoryIndex>,
         source_control_repository_name: RepositoryName,
         build_output_db_addr: String,
-        content_store_addr: ContentStoreAddr,
         compilation_mode: CompilationMode,
     ) -> Self {
         Self {
@@ -63,7 +60,6 @@ impl ResourceRegistrySettings {
             source_control_repository_index,
             source_control_repository_name,
             build_output_db_addr,
-            content_store_addr,
             compilation_mode,
         }
     }

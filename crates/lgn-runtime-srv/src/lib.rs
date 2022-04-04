@@ -16,7 +16,6 @@ use lgn_app::prelude::App;
 use lgn_app::prelude::StartupStage;
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::AsyncPlugin;
-use lgn_content_store::ContentStoreAddr;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
 #[cfg(not(feature = "standalone"))]
@@ -87,13 +86,6 @@ pub fn build_runtime(
         }
     };
 
-    let content_store_addr = {
-        let cas = args
-            .cas
-            .map_or_else(|| project_dir.join("temp"), PathBuf::from);
-        ContentStoreAddr::from(cas.to_str().unwrap())
-    };
-
     let game_manifest = args.manifest.map_or_else(
         || project_dir.join("runtime").join("game.manifest"),
         PathBuf::from,
@@ -150,11 +142,7 @@ pub fn build_runtime(
         .add_plugin(AsyncPlugin::default())
         .add_plugin(TransformPlugin::default())
         .add_plugin(HierarchyPlugin::default())
-        .insert_resource(AssetRegistrySettings::new(
-            content_store_addr,
-            game_manifest,
-            assets_to_load,
-        ))
+        .insert_resource(AssetRegistrySettings::new(game_manifest, assets_to_load))
         .add_plugin(AssetRegistryPlugin::default())
         .add_plugin(ScenePlugin::new(root_asset))
         .add_plugin(GenericDataPlugin::default())

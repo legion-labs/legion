@@ -1,7 +1,6 @@
 use std::{fs, sync::Arc};
 
-use lgn_content_store::{ContentStoreAddr, HddContentStore};
-use lgn_content_store2::{ContentProvider, MemoryProvider};
+use lgn_content_store2::ProviderConfig;
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::{
     compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,
@@ -40,8 +39,8 @@ async fn build_device() {
         .create_repository(repository_name.clone())
         .await
         .unwrap();
-    let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-        Arc::new(Box::new(MemoryProvider::new()));
+    let source_control_content_provider = Arc::new(Box::new(MemoryProvider::new()));
+    let data_content_provider = Arc::new(Box::new(MemoryProvider::new()));
 
     // create output directory
     fs::create_dir(&cas).expect("new directory");
@@ -54,7 +53,7 @@ async fn build_device() {
             project_dir,
             &repository_index,
             repository_name,
-            Arc::clone(&content_provider),
+            Arc::clone(&source_control_content_provider),
         )
         .await
         .expect("new project");
@@ -99,12 +98,12 @@ async fn build_device() {
     let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
         &output_dir,
         CompilerRegistryOptions::local_compilers(target_dir),
+        Arc::clone(&data_content_provider),
     )
-    .content_store(&ContentStoreAddr::from(cas.clone()))
     .create_with_project(
         project_dir,
         &repository_index,
-        Arc::clone(&content_provider),
+        Arc::clone(&source_control_content_provider),
     )
     .await
     .expect("new build index");
@@ -138,15 +137,13 @@ async fn build_device() {
     );
 
     // create resource registry that uses the 'build device'
-    let cas_addr = ContentStoreAddr::from(cas);
-    let content_store = HddContentStore::open(cas_addr.clone()).expect("valid cas");
+
     let manifest = lgn_data_runtime::manifest::Manifest::default();
     let registry = AssetRegistryOptions::new()
         .add_loader::<refs_resource::TestResource>()
         .add_loader::<refs_asset::RefsAsset>()
         .add_device_build(
-            Box::new(content_store),
-            cas_addr,
+            Arc::clone(&data_content_provider),
             manifest,
             DATABUILD_EXE,
             DataBuildOptions::output_db_path_dir(output_dir, project_dir, DataBuild::version()),
@@ -175,7 +172,7 @@ async fn build_device() {
     let changed_content = "bar";
     let changed_derived_content = changed_content.chars().rev().collect::<String>();
     {
-        let mut project = Project::open(project_dir, &repository_index, content_provider)
+        let mut project = Project::open(project_dir, &repository_index, Arc::clone(&source_control_content_provider))
             .await
             .expect("new project");
         let resources = ResourceRegistryOptions::new()
@@ -222,7 +219,6 @@ async fn no_intermediate_resource() {
         work_dir.path().join("legion.toml").to_str().unwrap(),
     );
 
-    let cas = work_dir.path().join("content_store");
     let project_dir = work_dir.path();
     let output_dir = work_dir.path();
     let repository_index = lgn_source_control::Config::load_and_instantiate_repository_index()
@@ -233,8 +229,8 @@ async fn no_intermediate_resource() {
         .create_repository(repository_name.clone())
         .await
         .unwrap();
-    let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-        Arc::new(Box::new(MemoryProvider::new()));
+    let source_control_content_provider = Arc::new(Box::new(MemoryProvider::new()));
+    let data_content_provider = Arc::new(Box::new(MemoryProvider::new()));
 
     // create output directory
     fs::create_dir(&cas).expect("new directory");
@@ -246,7 +242,7 @@ async fn no_intermediate_resource() {
                 project_dir,
                 &repository_index,
                 repository_name,
-                Arc::clone(&content_provider),
+                Arc::clone(&source_control_content_provider),
             )
             .await
             .expect("new project");
@@ -272,10 +268,10 @@ async fn no_intermediate_resource() {
         };
         let (mut build, project) = DataBuildOptions::new(
             DataBuildOptions::output_db_path_dir(output_dir, &project_dir, DataBuild::version()),
-            ContentStoreAddr::from(cas.clone()),
+            Arc::clone(&data_content_provider),
             CompilerRegistryOptions::default(),
         )
-        .create_with_project(project_dir, &repository_index, content_provider)
+        .create_with_project(project_dir, &repository_index, Arc::clone(&source_control_content_provider))
         .await
         .expect("new build index");
         build.source_pull(&project).await.expect("successful pull");
@@ -292,7 +288,6 @@ async fn no_intermediate_resource() {
         let mut command = std::process::Command::new(DATABUILD_EXE);
         command.arg("compile");
         command.arg(compile_path.to_string());
-        command.arg(format!("--cas={}", cas.to_str().unwrap()));
         command.arg(format!("--target={}", target));
         command.arg(format!("--platform={}", platform));
         command.arg(format!("--locale={}", locale));
@@ -342,8 +337,8 @@ async fn with_intermediate_resource() {
         .await
         .unwrap();
 
-    let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-        Arc::new(Box::new(MemoryProvider::new()));
+    let source_control_content_provider = Arc::new(Box::new(MemoryProvider::new()));
+    let data_content_provider = Arc::new(Box::new(MemoryProvider::new()));
 
     let cas = work_dir.path().join("content_store");
 
@@ -357,7 +352,7 @@ async fn with_intermediate_resource() {
                 project_dir,
                 &repository_index,
                 repository_name,
-                Arc::clone(&content_provider),
+                Arc::clone(&source_control_content_provider),
             )
             .await
             .expect("new project");
@@ -384,9 +379,10 @@ async fn with_intermediate_resource() {
         let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
             &output_dir,
             CompilerRegistryOptions::default(),
+            Arc::clone(&data_content_provider),
         )
         .content_store(&ContentStoreAddr::from(cas.clone()))
-        .create_with_project(project_dir, &repository_index, content_provider)
+        .create_with_project(project_dir, &repository_index, Arc::clone(&source_control_content_provider))
         .await
         .expect("new build index");
         build.source_pull(&project).await.expect("successful pull");

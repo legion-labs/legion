@@ -167,8 +167,8 @@ mod tests {
         let config = DataBuildOptions::new_with_sqlite_output(
             &output_dir,
             CompilerRegistryOptions::local_compilers(target_dir()),
-        )
-        .content_store(&contentstore_path);
+            Arc::clone(&data_content_provider),
+        );
 
         let source = ResourcePathId::from(resource_id);
         let target = source.push(refs_asset::RefsAsset::TYPE);

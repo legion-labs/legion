@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 use std::{env, io};
 
-use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
+use lgn_content_store2::{ContentProvider, ContentWriterExt};
 use lgn_data_compiler::compiler_api::{
     CompilationEnv, CompilationOutput, CompilerHash, DATA_BUILD_VERSION,
 };
@@ -72,7 +72,6 @@ fn compute_context_hash(
 /// ```no_run
 /// # use std::sync::Arc;
 /// # use lgn_data_build::{DataBuild, DataBuildOptions};
-/// # use lgn_content_store::ContentStoreAddr;
 /// # use lgn_content_store2::{ContentProvider, MemoryProvider};
 /// # use lgn_data_compiler::{compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target};
 /// # use lgn_data_offline::ResourcePathId;
@@ -82,7 +81,7 @@ fn compute_context_hash(
 /// # const RUNTIME_ANIM: ResourceType = ResourceType::new(b"invalid");
 /// # tokio_test::block_on(async {
 /// let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
-/// let (mut build, project) = DataBuildOptions::new("temp/".to_string(), ContentStoreAddr::from("./content_store/"), CompilerRegistryOptions::local_compilers("./compilers/"))
+/// let (mut build, project) = DataBuildOptions::new("temp/".to_string(), CompilerRegistryOptions::local_compilers("./compilers/"))
 ///         .create_with_project(".", content_provider).await.expect("new build index");
 ///
 /// build.source_pull(&project).await.expect("successful source pull");
@@ -100,27 +99,26 @@ fn compute_context_hash(
 ///                      ).await.expect("compilation output");
 /// # })
 /// ```
-#[derive(Debug)]
+//#[derive(Debug)]
 pub struct DataBuild {
     source_index: SourceIndex,
     output_index: OutputIndex,
     resource_dir: PathBuf,
-    content_store: HddContentStore,
+    data_content_store: Arc<Box<dyn ContentProvider + Send + Sync>>,
     compilers: CompilerNode,
 }
 
 impl DataBuild {
     async fn default_asset_registry(
         resource_dir: &Path,
-        cas_addr: ContentStoreAddr,
+        data_content_store: Arc<Box<dyn ContentProvider + Send + Sync>>,
         compilers: &CompilerRegistry,
         manifest: Option<Manifest>,
     ) -> Result<Arc<AssetRegistry>, Error> {
-        let source_store = HddContentStore::open(cas_addr).ok_or(Error::InvalidContentStore)?;
         let manifest = manifest.unwrap_or_default();
 
         let mut options = AssetRegistryOptions::new()
-            .add_device_cas(Box::new(source_store), manifest)
+            .add_device_cas(data_content_store, manifest)
             .add_device_dir(resource_dir);
 
         options = compilers.init_all(options).await;
@@ -129,10 +127,7 @@ impl DataBuild {
     }
 
     pub(crate) async fn new(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
-        let content_store = HddContentStore::open(config.contentstore_addr.clone())
-            .ok_or(Error::InvalidContentStore)?;
-
-        let source_index = SourceIndex::new(Box::new(content_store.clone()));
+        let source_index = SourceIndex::new(Arc::clone(&config.data_content_store));
 
         let output_index = OutputIndex::create_new(config.output_db_addr).await?;
 
@@ -142,7 +137,7 @@ impl DataBuild {
             None => {
                 Self::default_asset_registry(
                     &project.resource_dir(),
-                    config.contentstore_addr.clone(),
+                    Arc::clone(&config.data_content_store),
                     &compilers,
                     config.manifest,
                 )
@@ -154,16 +149,13 @@ impl DataBuild {
             source_index,
             output_index,
             resource_dir: project.resource_dir(),
-            content_store,
+            data_content_store: Arc::clone(&config.data_content_store),
             compilers: CompilerNode::new(compilers, registry),
         })
     }
 
     pub(crate) async fn open(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
-        let content_store = HddContentStore::open(config.contentstore_addr.clone())
-            .ok_or(Error::InvalidContentStore)?;
-
-        let source_index = SourceIndex::new(Box::new(content_store.clone()));
+        let source_index = SourceIndex::new(Arc::clone(&config.data_content_store));
         let output_index = OutputIndex::open(config.output_db_addr).await?;
 
         let compilers = config.compiler_options.create().await;
@@ -172,7 +164,7 @@ impl DataBuild {
             None => {
                 Self::default_asset_registry(
                     &project.resource_dir(),
-                    config.contentstore_addr.clone(),
+                    Arc::clone(&config.data_content_store),
                     &compilers,
                     config.manifest,
                 )
@@ -184,7 +176,7 @@ impl DataBuild {
             source_index,
             output_index,
             resource_dir: project.resource_dir(),
-            content_store,
+            data_content_store: Arc::clone(&config.data_content_store),
             compilers: CompilerNode::new(compilers, registry),
         })
     }
@@ -193,10 +185,7 @@ impl DataBuild {
         config: DataBuildOptions,
         project: &Project,
     ) -> Result<Self, Error> {
-        let content_store = HddContentStore::open(config.contentstore_addr.clone())
-            .ok_or(Error::InvalidContentStore)?;
-
-        let source_index = SourceIndex::new(Box::new(content_store.clone()));
+        let source_index = SourceIndex::new(Arc::clone(&config.data_content_store));
 
         let output_index = match OutputIndex::open(config.output_db_addr.clone()).await {
             Ok(output_index) => Ok(output_index),
@@ -210,7 +199,7 @@ impl DataBuild {
             None => {
                 Self::default_asset_registry(
                     &project.resource_dir(),
-                    config.contentstore_addr.clone(),
+                    Arc::clone(&config.data_content_store),
                     &compilers,
                     config.manifest,
                 )
@@ -222,7 +211,7 @@ impl DataBuild {
             source_index,
             output_index,
             resource_dir: project.resource_dir(),
-            content_store,
+            data_content_store: Arc::clone(&config.data_content_store),
             compilers: CompilerNode::new(compilers, registry),
         })
     }
@@ -258,7 +247,7 @@ impl DataBuild {
     /// information about changed assets.
     ///
     /// Compilation results are stored in
-    /// [`ContentStore`](`lgn_content_store::ContentStore`) specified in
+    /// [`ContentStore`] specified in
     /// [`DataBuildOptions`] used to create this `DataBuild`.
     ///
     /// Provided `target`, `platform` and `locale` define the compilation
@@ -316,7 +305,7 @@ impl DataBuild {
     #[allow(clippy::type_complexity)]
     async fn compile_node(
         output_index: &mut OutputIndex,
-        cas_addr: ContentStoreAddr,
+        data_content_store: &(dyn ContentProvider + Send + Sync),
         project_dir: &Path,
         compile_node: &ResourcePathId,
         context_hash: AssetHash,
@@ -365,7 +354,7 @@ impl DataBuild {
                         dependencies,
                         derived_deps,
                         resources,
-                        cas_addr,
+                        &data_content_store,
                         project_dir,
                         env,
                     )
@@ -396,8 +385,7 @@ impl DataBuild {
                             compile_path: compile_node.clone(),
                             source_hash,
                             compiled_path: resource.path.clone(),
-                            compiled_checksum: resource.checksum,
-                            compiled_size: resource.size,
+                            compiled_content_id: resource.content_id.clone(),
                         })
                         .collect(),
                     resource_references
@@ -456,9 +444,9 @@ impl DataBuild {
 
     /// Compile a resource identified by [`ResourcePathId`] and all its
     /// dependencies and update the *build index* with compilation results.
-    /// Returns a list of (id, checksum, size) of created resources and
+    /// Returns a list of (id, checksum) of created resources and
     /// information about their dependencies. The returned results can be
-    /// accessed by  [`lgn_content_store::ContentStore`] specified in
+    /// accessed by  [`ContentStore`] specified in
     /// [`DataBuildOptions`] used to create this `DataBuild`.
     // TODO: The list might contain many versions of the same [`ResourceId`] compiled for many
     // contexts (platform, target, locale, etc).
@@ -620,7 +608,7 @@ impl DataBuild {
                         {
                             // this is how we truncate the 128 bit long checksum
                             // and convert it to a 64 bit source_hash.
-                            AssetHash::from(source.compiled_checksum.default_hash())
+                            AssetHash::from(source.compiled_content_id.default_hash())
                         } else {
                             lgn_tracing::error!(
                                 "Failed to find compilation output for: {}",
@@ -638,7 +626,7 @@ impl DataBuild {
 
                 let (resource_infos, resource_references, stats) = Self::compile_node(
                     &mut self.output_index,
-                    self.content_store.address(),
+                    &self.data_content_store,
                     &self.resource_dir,
                     &compile_node,
                     context_hash,
@@ -658,11 +646,8 @@ impl DataBuild {
                 // NOTE: right now all the resources are visible to all compilation nodes.
                 if let Some(manifest) = &intermediate_output {
                     for r in &resource_infos {
-                        manifest.insert(
-                            r.compiled_path.resource_id(),
-                            r.compiled_checksum,
-                            r.compiled_size,
-                        );
+                        manifest
+                            .insert(r.compiled_path.resource_id(), r.compiled_content_id.clone());
                     }
                 }
 
@@ -686,8 +671,7 @@ impl DataBuild {
                 accumulated_dependencies.extend(resource_infos.iter().map(|res| {
                     CompiledResource {
                         path: res.compiled_path.clone(),
-                        checksum: res.compiled_checksum,
-                        size: res.compiled_size,
+                        content_id: res.compiled_content_id.clone(),
                     }
                 }));
                 accumulated_dependencies.sort();
@@ -726,7 +710,7 @@ impl DataBuild {
         let mut resource_files = Vec::with_capacity(resources.len());
         for resource in resources {
             info!("Linking {:?} ...", resource);
-            let (checksum, size) = if let Some((checksum, size)) = self
+            let checksum = if let Some(checksum) = self
                 .output_index
                 .find_linked(
                     resource.compiled_path.clone(),
@@ -735,14 +719,15 @@ impl DataBuild {
                 )
                 .await?
             {
-                (checksum, size)
+                checksum
             } else {
                 //
                 // for now, every derived resource gets an `assetfile` representation.
                 //
                 let asset_id = resource.compiled_path.resource_id();
 
-                let resource_list = std::iter::once((asset_id, resource.compiled_checksum));
+                let resource_list =
+                    std::iter::once((asset_id, resource.compiled_content_id.clone()));
                 let reference_list = references
                     .iter()
                     .filter(|r| r.is_reference_of(resource))
@@ -756,32 +741,34 @@ impl DataBuild {
                         )
                     });
 
-                let output =
-                    write_assetfile(resource_list, reference_list, &self.content_store).await?;
+                let output = write_assetfile(
+                    resource_list,
+                    reference_list,
+                    &self.source_index.content_store,
+                )
+                .await?;
 
                 let checksum = {
                     async_span_scope!("content_store");
-                    self.content_store
-                        .store(&output)
-                        .await
-                        .ok_or(Error::InvalidContentStore)?
+                    self.source_index
+                        .content_store
+                        .write_content(&output)
+                        .await?
                 };
                 self.output_index
                     .insert_linked(
                         resource.compiled_path.clone(),
                         resource.context_hash,
                         resource.source_hash,
-                        checksum,
-                        output.len(),
+                        checksum.clone(),
                     )
                     .await?;
-                (checksum, output.len())
+                checksum
             };
 
             let asset_file = CompiledResource {
                 path: resource.compiled_path.clone(),
-                checksum,
-                size,
+                content_id: checksum.clone(),
             };
 
             info!("Linked {} into: {}", resource.compiled_path, checksum);

@@ -10,7 +10,7 @@
 use core::fmt;
 use std::str::FromStr;
 
-use lgn_content_store::Checksum;
+use lgn_content_store2::Identifier;
 use lgn_data_offline::ResourcePathId;
 use serde::{Deserialize, Serialize};
 
@@ -20,16 +20,16 @@ pub struct CompiledResource {
     /// The path of derived resource.
     pub path: ResourcePathId,
     /// The checksum of the resource.
-    pub checksum: Checksum,
-    /// The size of the resource.
-    pub size: usize,
+    pub content_id: Identifier,
 }
 
 impl fmt::Display for CompiledResource {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!(
             "{}-{}-{}",
-            self.checksum, self.size, self.path
+            self.content_id,
+            self.content_id.data_size(),
+            self.path
         ))
     }
 }
@@ -41,16 +41,11 @@ impl FromStr for CompiledResource {
         let err = "Z".parse::<i32>().expect_err("ParseIntError");
         let mut iter = s.split(|c| c == '-');
 
-        let checksum = Checksum::from_str(iter.next().ok_or_else(|| err.clone())?)?;
-        let size = usize::from_str(iter.next().ok_or_else(|| err.clone())?)?;
+        let content_id = Identifier::from_str(iter.next().ok_or_else(|| err.clone())?)?;
         let data_iter = iter.next().unwrap();
         let data_idx = unsafe { data_iter.as_ptr().offset_from(s.as_ptr()) } as usize;
         let path = ResourcePathId::from_str(&s[data_idx..])?;
-        Ok(Self {
-            path,
-            checksum,
-            size,
-        })
+        Ok(Self { path, content_id })
     }
 }
 
@@ -93,11 +88,7 @@ impl CompiledResources {
             .collect::<Vec<_>>();
 
         for resource in runtime_resources {
-            output.insert(
-                resource.path.resource_id(),
-                resource.checksum,
-                resource.size,
-            );
+            output.insert(resource.path.resource_id(), resource.content_id);
         }
         output
     }

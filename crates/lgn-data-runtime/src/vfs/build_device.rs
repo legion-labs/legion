@@ -1,11 +1,12 @@
+use async_trait::async_trait;
+use std::sync::Arc;
 use std::time::Instant;
 use std::{
     io,
     path::{Path, PathBuf},
 };
 
-use async_trait::async_trait;
-use lgn_content_store::{ContentStore, ContentStoreAddr};
+use lgn_content_store2::{ContentProvider, ContentReaderExt};
 use lgn_tracing::info;
 
 use super::Device;
@@ -15,9 +16,8 @@ use crate::{manifest::Manifest, ResourceTypeAndId};
 /// through a manifest access table.
 pub(crate) struct BuildDevice {
     manifest: Manifest,
-    content_store: Box<dyn ContentStore>,
+    content_store: Arc<Box<dyn ContentProvider + Send + Sync>>,
     databuild_bin: PathBuf,
-    cas_addr: ContentStoreAddr,
     output_db_addr: String,
     project: PathBuf,
     force_recompile: bool,
@@ -26,8 +26,7 @@ pub(crate) struct BuildDevice {
 impl BuildDevice {
     pub(crate) fn new(
         manifest: Manifest,
-        content_store: Box<dyn ContentStore>,
-        cas_addr: ContentStoreAddr,
+        content_store: Arc<Box<dyn ContentProvider + Send + Sync>>,
         build_bin: impl AsRef<Path>,
         output_db_addr: String,
         project: impl AsRef<Path>,
@@ -37,7 +36,6 @@ impl BuildDevice {
             manifest,
             content_store,
             databuild_bin: build_bin.as_ref().to_owned(),
-            cas_addr,
             output_db_addr,
             project: project.as_ref().to_owned(),
             force_recompile,
@@ -51,9 +49,9 @@ impl Device for BuildDevice {
         if self.force_recompile {
             self.reload(type_id).await
         } else {
-            let (checksum, size) = self.manifest.find(type_id)?;
-            let content = self.content_store.read(checksum).await?;
-            assert_eq!(content.len(), size);
+            let checksum = self.manifest.find(type_id)?;
+            let content = self.content_store.read_content(&checksum).await.ok()?;
+            assert_eq!(content.len(), checksum.data_size());
             Some(content)
         }
     }
@@ -62,9 +60,9 @@ impl Device for BuildDevice {
         let output = self.build_resource(type_id).ok()?;
         self.manifest.extend(output);
 
-        let (checksum, size) = self.manifest.find(type_id)?;
-        let content = self.content_store.read(checksum).await?;
-        assert_eq!(content.len(), size);
+        let checksum = self.manifest.find(type_id)?;
+        let content = self.content_store.read_content(&checksum).await.ok()?;
+        assert_eq!(content.len(), checksum.data_size());
         Some(content)
     }
 }
@@ -74,7 +72,6 @@ impl BuildDevice {
         let mut command = build_command(
             &self.databuild_bin,
             resource_id,
-            &self.cas_addr,
             &self.output_db_addr,
             &self.project,
         );
@@ -124,7 +121,6 @@ impl BuildDevice {
 fn build_command(
     databuild_path: impl AsRef<Path>,
     resource_id: ResourceTypeAndId,
-    cas: &ContentStoreAddr,
     output_db_addr: &str,
     project: impl AsRef<Path>,
 ) -> std::process::Command {
@@ -135,7 +131,6 @@ fn build_command(
     command.arg("compile");
     command.arg(resource_id.to_string());
     command.arg("--rt");
-    command.arg(format!("--cas={}", cas));
     command.arg(format!("--target={}", target));
     command.arg(format!("--platform={}", platform));
     command.arg(format!("--locale={}", locale));

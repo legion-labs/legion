@@ -51,9 +51,9 @@ impl fmt::Debug for CompilerNode {
 #[cfg(test)]
 mod tests {
     use async_trait::async_trait;
-    use std::path::PathBuf;
+    use lgn_content_store2::{Identifier, ProviderConfig};
+    use std::{path::PathBuf, str::FromStr};
 
-    use lgn_content_store::{Checksum, ContentStoreAddr};
     use lgn_data_offline::{ResourcePathId, Transform};
     use lgn_data_runtime::{
         AssetRegistryOptions, Resource, ResourceId, ResourceType, ResourceTypeAndId,
@@ -103,8 +103,7 @@ mod tests {
             Ok(CompilationOutput {
                 compiled_resources: vec![CompiledResource {
                     path: ctx.target_unnamed,
-                    checksum: Checksum::from([7u8; 32]),
-                    size: 7,
+                    content_id: Identifier::new(b"AAAAAAA"),
                 }],
                 resource_references: vec![],
             })
@@ -173,9 +172,10 @@ mod tests {
             kind: ResourceType::new(b"input"),
             id: ResourceId::new(),
         };
-        let cas = ContentStoreAddr::from(".");
         let proj_dir = PathBuf::from(".");
         let compile_path = ResourcePathId::from(source).push(ResourceType::new(b"output"));
+
+        let data_content_provider = ProviderConfig::default().instantiate().await.unwrap();
 
         // testing successful compilation
         {
@@ -186,7 +186,7 @@ mod tests {
                     &[],
                     &[],
                     registry,
-                    cas,
+                    &data_content_provider,
                     &proj_dir,
                     &env,
                 )
@@ -196,10 +196,10 @@ mod tests {
             assert_eq!(output.compiled_resources.len(), 1);
             assert_eq!(output.compiled_resources[0].path, compile_path);
             assert_eq!(
-                output.compiled_resources[0].checksum,
-                Checksum::from([7u8; 32])
+                output.compiled_resources[0].content_id,
+                Identifier::from_str("AAAAAAA").unwrap()
             );
-            assert_eq!(output.compiled_resources[0].size, 7);
+            assert_eq!(output.compiled_resources[0].content_id.data_size(), 7);
         }
     }
 }

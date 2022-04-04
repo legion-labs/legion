@@ -10,7 +10,6 @@ use lgn_app::{prelude::*, AppExit, EventWriter, ScheduleRunnerPlugin, ScheduleRu
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::{AsyncPlugin, TokioAsyncRuntime};
 use lgn_config::RichPathBuf;
-use lgn_content_store::ContentStoreAddr;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::Local;
@@ -70,9 +69,6 @@ struct Args {
     /// The name of the repository to load.
     #[clap(long, default_value = "default")]
     repository_name: RepositoryName,
-    /// Path to folder containing the content storage files
-    #[clap(long)]
-    cas: Option<String>,
     /// Path to default scene (root asset) to load
     #[clap(long)]
     scene: Option<String>,
@@ -175,25 +171,6 @@ fn main() {
     };
 
     info!("Project root: {}", project_root.display());
-
-    let content_store_path = {
-        let content_store_path = args.cas.map_or_else(
-            || project_root.join("temp"),
-            |path| {
-                let path = PathBuf::from(path);
-                if path.is_absolute() {
-                    path
-                } else {
-                    cwd.join(path)
-                }
-            },
-        );
-
-        std::mem::drop(std::fs::create_dir(&content_store_path));
-        ContentStoreAddr::from(content_store_path.to_str().unwrap())
-    };
-
-    info!("Legacy content-store path: {}", content_store_path);
 
     let scene = args
         .scene

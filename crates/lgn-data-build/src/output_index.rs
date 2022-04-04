@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use lgn_content_store::Checksum;
+use lgn_content_store2::Identifier;
 use lgn_data_compiler::CompiledResource;
 use lgn_data_offline::ResourcePathId;
 use lgn_data_runtime::ResourceTypeAndId;
@@ -19,8 +19,7 @@ pub(crate) struct CompiledResourceInfo {
     /// The path the resource was compiled into, i.e.:
     /// "ResourcePathId("anim.fbx").push("anim.offline")["idle"]
     pub(crate) compiled_path: ResourcePathId,
-    pub(crate) compiled_checksum: Checksum,
-    pub(crate) compiled_size: usize,
+    pub(crate) compiled_content_id: Identifier,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -52,8 +51,7 @@ struct LinkedResource {
     id: ResourcePathId,
     context_hash: AssetHash,
     source_hash: AssetHash,
-    checksum: Checksum,
-    size: usize,
+    content_id: Identifier,
 }
 
 #[derive(Debug)]
@@ -79,8 +77,7 @@ impl OutputIndex {
                     context_hash BIGINT,
                     source_hash BIGINT,
                     compiled_path VARCHAR(255),
-                    compiled_checksum CHAR(64),
-                    compiled_size BIGINT);
+                    compiled_checksum VARCHAR(255));
                 CREATE TABLE compiled_reference(
                     compile_path VARCHAR(255),
                     context_hash BIGINT,
@@ -91,8 +88,7 @@ impl OutputIndex {
                     id VARCHAR(255),
                     context_hash BIGINT,
                     source_hash BIGINT,
-                    checksum CHAR(64),
-                    size BIGINT);
+                    checksum VARCHAR(255));
                 CREATE TABLE pathid_mapping(
                     resource_id VARCHAR(255), 
                     resource_path_id VARCHAR(255));";
@@ -159,8 +155,7 @@ impl OutputIndex {
                     .bind(context_hash.into_i64())
                     .bind(source_hash.into_i64())
                     .bind(resource.path.to_string())
-                    .bind(resource.checksum.to_string())
-                    .bind(resource.size as i64);
+                    .bind(resource.content_id.to_string());
 
                 self.database
                     .execute(query)
@@ -193,7 +188,7 @@ impl OutputIndex {
         source_hash: AssetHash,
     ) -> Option<(Vec<CompiledResourceInfo>, Vec<CompiledResourceReference>)> {
         let statement = sqlx::query_as(
-            "SELECT compiled_path, compiled_checksum, compiled_size 
+            "SELECT compiled_path, compiled_checksum 
             FROM compiled_output
             WHERE compile_path = ? AND context_hash = ? AND source_hash = ?",
         )
@@ -201,16 +196,15 @@ impl OutputIndex {
         .bind(context_hash.into_i64())
         .bind(source_hash.into_i64());
 
-        let result: Vec<(String, String, i64)> = statement.fetch_all(&self.database).await.unwrap();
+        let result: Vec<(String, String)> = statement.fetch_all(&self.database).await.unwrap();
         let compiled = result
             .into_iter()
-            .map(|(id, checksum, size)| CompiledResourceInfo {
+            .map(|(id, checksum)| CompiledResourceInfo {
                 compile_path: compile_path.clone(),
                 context_hash,
                 source_hash,
                 compiled_path: ResourcePathId::from_str(&id).unwrap(),
-                compiled_checksum: Checksum::from_str(&checksum).unwrap(),
-                compiled_size: size as usize,
+                compiled_content_id: Identifier::from_str(&checksum).unwrap(),
             })
             .collect::<Vec<_>>();
 
@@ -251,10 +245,10 @@ impl OutputIndex {
         id: ResourcePathId,
         context_hash: AssetHash,
         source_hash: AssetHash,
-    ) -> Result<Option<(Checksum, usize)>, Error> {
+    ) -> Result<Option<Identifier>, Error> {
         let output = {
             let statement = sqlx::query_as(
-                "SELECT checksum, size
+                "SELECT checksum
                     FROM linked_output
                     WHERE id = ? AND context_hash = ? AND source_hash = ?",
             )
@@ -262,12 +256,12 @@ impl OutputIndex {
             .bind(context_hash.into_i64())
             .bind(source_hash.into_i64());
 
-            let result: Option<(String, i64)> = statement
+            let result: Option<(String,)> = statement
                 .fetch_optional(&self.database)
                 .await
                 .map_err(Error::Database)?;
 
-            result.map(|(checksum, size)| (Checksum::from_str(&checksum).unwrap(), size as usize))
+            result.map(|(checksum,)| Identifier::from_str(&checksum).unwrap())
         };
 
         Ok(output)
@@ -278,15 +272,13 @@ impl OutputIndex {
         id: ResourcePathId,
         context_hash: AssetHash,
         source_hash: AssetHash,
-        checksum: Checksum,
-        size: usize,
+        content_id: Identifier,
     ) -> Result<(), Error> {
         let query = sqlx::query("INSERT into linked_output VALUES(?, ?, ?, ?, ?);")
             .bind(id.to_string())
             .bind(context_hash.into_i64())
             .bind(source_hash.into_i64())
-            .bind(checksum.to_string())
-            .bind(size as i64);
+            .bind(content_id.to_string());
 
         self.database
             .execute(query)
@@ -341,9 +333,9 @@ impl OutputIndex {
 #[cfg(test)]
 mod tests {
 
-    use std::path::Path;
+    use std::{path::Path, str::FromStr};
 
-    use lgn_content_store::Checksum;
+    use lgn_content_store2::Identifier;
     use lgn_data_compiler::CompiledResource;
     use lgn_data_offline::ResourcePathId;
     use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
@@ -408,8 +400,7 @@ mod tests {
         let source_hash = AssetHash::from(4);
         let in_resources = vec![CompiledResource {
             path: compile_path.clone(),
-            checksum: Checksum::from([7u8; 32]),
-            size: 9,
+            content_id: Identifier::from_str("AAAA").unwrap(),
         }];
         let references = vec![(compile_path.clone(), reference)];
         index
@@ -435,8 +426,14 @@ mod tests {
             assert_eq!(source_hash, out_resources[i].source_hash);
             assert_eq!(context_hash, out_resources[i].context_hash);
             assert_eq!(in_resources[i].path, out_resources[i].compiled_path);
-            assert_eq!(in_resources[i].checksum, out_resources[i].compiled_checksum);
-            assert_eq!(in_resources[i].size, out_resources[i].compiled_size);
+            assert_eq!(
+                in_resources[i].content_id,
+                out_resources[i].compiled_content_id
+            );
+            assert_eq!(
+                in_resources[i].content_id.data_size(),
+                out_resources[i].compiled_content_id.data_size()
+            );
         }
     }
 }

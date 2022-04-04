@@ -200,8 +200,7 @@ use std::{
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use clap::{Parser, Subcommand};
-use lgn_content_store::Checksum;
-use lgn_content_store2::ContentProvider;
+use lgn_content_store2::{ContentProvider, Identifier};
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_offline::{
     resource::{Project, ResourcePathName},
@@ -269,8 +268,6 @@ enum Commands {
         /// Path to build index to be able to resolve ResourcePathId
         #[clap(long = "output")]
         build_output: Option<String>,
-        /// Content addressable storage
-        cas: Option<String>,
     },
 }
 
@@ -323,8 +320,13 @@ async fn main() -> Result<(), String> {
     // try opening the configuration file first.
     //
     let config = Config::read(Config::default_path()).ok();
-    let content_provider = Arc::new(
+    let source_control_content_provider = Arc::new(
         lgn_content_store2::Config::load_and_instantiate_persistent_provider()
+            .await
+            .map_err(|e| e.to_string())?,
+    );
+    let data_content_provider = Arc::new(
+        lgn_content_store2::Config::load_and_instantiate_volatile_provider()
             .await
             .map_err(|e| e.to_string())?,
     );
@@ -361,7 +363,12 @@ async fn main() -> Result<(), String> {
         }
         Commands::Explain { id } => {
             if let Some(config) = config {
-                let (mut build, project) = config.open(content_provider).await?;
+                let (mut build, project) = config
+                    .open(
+                        Arc::clone(&source_control_content_provider),
+                        Arc::clone(&data_content_provider),
+                    )
+                    .await?;
                 build
                     .source_pull(&project)
                     .await
@@ -398,7 +405,7 @@ async fn main() -> Result<(), String> {
                     .map_err(|e| format!("failed creating repository index {}", e))?;
 
             let proj_file = path.unwrap_or_else(|| std::env::current_dir().unwrap());
-            let project = Project::open(proj_file, repository_index, content_provider)
+            let project = Project::open(proj_file, repository_index, Arc::clone(&source_control_content_provider))
                 .await
                 .map_err(|e| e.to_string())?;
             match command {
@@ -428,19 +435,36 @@ async fn main() -> Result<(), String> {
         }
         Commands::Asset { path } => {
             if path.is_file() {
-                parse_asset_file(path, &config, content_provider).await;
+                parse_asset_file(
+                    path,
+                    &config,
+                    Arc::clone(&source_control_content_provider),
+                    Arc::clone(&data_content_provider),
+                )
+                .await;
             } else if path.is_dir() {
                 for entry in path.read_dir().unwrap().flatten() {
                     let path = entry.path();
                     if path.is_file() {
-                        parse_asset_file(path, &config, Arc::clone(&content_provider)).await;
+                        parse_asset_file(
+                            path,
+                            &config,
+                            Arc::clone(&source_control_content_provider),
+                            Arc::clone(&data_content_provider),
+                        )
+                        .await;
                     }
                 }
             }
         }
         Commands::Graph { id } => {
             if let Some(config) = config {
-                let (mut build, project) = config.open(content_provider).await?;
+                let (mut build, project) = config
+                    .open(
+                        Arc::clone(&source_control_content_provider),
+                        Arc::clone(&data_content_provider),
+                    )
+                    .await?;
                 build
                     .source_pull(&project)
                     .await
@@ -471,7 +495,6 @@ async fn main() -> Result<(), String> {
             code_path,
             project,
             build_output,
-            cas,
         } => {
             let config_path = Config::default_path();
             let workspace_dir = Config::workspace_dir();
@@ -497,15 +520,6 @@ async fn main() -> Result<(), String> {
                     .to_owned()
             });
 
-            let cas = {
-                let cas = PathBuf::from(cas.unwrap_or_else(|| build_output.clone()));
-                if cas.is_absolute() {
-                    cas
-                } else {
-                    workspace_dir.join(&project_dir).join(cas)
-                }
-            };
-
             let output_db_addr =
                 DataBuildOptions::output_db_path(&build_output, &cwd, DataBuild::version());
 
@@ -523,7 +537,6 @@ async fn main() -> Result<(), String> {
                 code_paths,
                 project: project_dir,
                 output_db_addr,
-                content_store_addr: cas,
                 type_map,
             };
 
@@ -535,7 +548,6 @@ async fn main() -> Result<(), String> {
             println!("\tCode Paths: {:?}.", config.code_paths);
             println!("\tProject: {:?}.", config.project);
             println!("\tOutput Db Address: {:?}.", config.output_db_addr);
-            println!("\tContent Store: {:?}.", config.content_store_addr);
             println!("\tResource Type Count: {}.", config.type_map.len());
         }
     }
@@ -648,13 +660,14 @@ fn all_declared_resources(source: &Path) -> Vec<(String, ResourceType)> {
 async fn parse_asset_file(
     path: impl AsRef<Path>,
     config: &Option<Config>,
-    content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+    source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+    data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
 ) {
     let path = path.as_ref();
     let mut f = File::open(path).expect("unable to open asset file");
 
     let file_name = path.file_name().unwrap().to_string_lossy();
-    let checksum = file_name.parse::<Checksum>();
+    let checksum = file_name.parse::<Identifier>();
     if let Err(_e) = checksum {
         // not an asset file, just ignore it
         return;
@@ -691,7 +704,10 @@ async fn parse_asset_file(
                 ResourceId::from_raw(f.read_u128::<LittleEndian>().expect("valid data"));
             if let Some(config) = config {
                 let (_build, project) = config
-                    .open(Arc::clone(&content_provider))
+                    .open(
+                        Arc::clone(&source_control_content_provider),
+                        Arc::clone(&data_content_provider),
+                    )
                     .await
                     .expect("open config");
                 let path_id = ResourcePathId::from(ResourceTypeAndId {

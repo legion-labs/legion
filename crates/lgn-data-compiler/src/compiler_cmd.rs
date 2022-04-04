@@ -34,14 +34,12 @@
 //!
 //! ```no_run
 //! # use lgn_data_compiler::compiler_cmd::CompilerCompileCmd;
-//! # use lgn_content_store::ContentStoreAddr;
 //! # use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
 //! # use lgn_data_offline::ResourcePathId;
 //! # use std::path::PathBuf;
 //! fn compile_resource(compile_path: ResourcePathId, dependencies: &[ResourcePathId], env: &CompilationEnv) {
-//!     let content_store = ContentStoreAddr::from("./content_store/");
 //!     let resource_dir = PathBuf::from("./resources/");
-//!     let mut command = CompilerCompileCmd::new("my_compiler.exe", &compile_path, dependencies, &[], &content_store, &resource_dir, &env);
+//!     let mut command = CompilerCompileCmd::new("my_compiler.exe", &compile_path, dependencies, &[], &resource_dir, &env);
 //!     let output = command.execute().expect("compiled resources");
 //! }
 //! ```
@@ -58,7 +56,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use lgn_content_store::ContentStoreAddr;
 use lgn_data_offline::{ResourcePathId, Transform};
 use serde::{Deserialize, Serialize};
 
@@ -250,7 +247,6 @@ pub(crate) const COMMAND_ARG_TARGET: &str = "target";
 pub(crate) const COMMAND_ARG_LOCALE: &str = "locale";
 pub(crate) const COMMAND_ARG_SRC_DEPS: &str = "deps";
 pub(crate) const COMMAND_ARG_DER_DEPS: &str = "derdeps";
-pub(crate) const COMMAND_ARG_COMPILED_ASSET_STORE: &str = "cas";
 pub(crate) const COMMAND_ARG_RESOURCE_DIR: &str = "resource_dir";
 pub(crate) const COMMAND_ARG_TRANSFORM: &str = "transform";
 
@@ -367,7 +363,6 @@ impl CompilerCompileCmd {
         resource_to_build: &ResourcePathId,
         source_deps: &[ResourcePathId],
         derived_deps: &[CompiledResource],
-        cas_addr: &ContentStoreAddr,
         resource_dir: &Path,
         env: &CompilationEnv,
     ) -> Self {
@@ -378,7 +373,6 @@ impl CompilerCompileCmd {
                 .arg(&resource_to_build.to_string())
                 .many_args(COMMAND_ARG_SRC_DEPS, source_deps.iter())
                 .many_args(COMMAND_ARG_DER_DEPS, derived_deps.iter())
-                .arg2(COMMAND_ARG_COMPILED_ASSET_STORE, cas_addr.into())
                 .arg2(COMMAND_ARG_RESOURCE_DIR, resource_dir.display().into())
                 .arg2(COMMAND_ARG_TARGET, env.target.into())
                 .arg2(COMMAND_ARG_PLATFORM, env.platform.into())

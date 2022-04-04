@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
+use lgn_content_store2::{ContentReaderExt, ProviderConfig};
 use lgn_data_compiler::compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd};
 use lgn_data_offline::{resource::ResourceProcessor, ResourcePathId};
 use lgn_data_runtime::{AssetLoader, Resource, ResourceId, ResourceTypeAndId};
@@ -65,7 +65,7 @@ fn command_compiler_hash() {
 #[tokio::test]
 async fn command_compile() {
     let work_dir = tempfile::tempdir().unwrap();
-    let (resource_dir, output_dir) = common::setup_dir(&work_dir);
+    let (resource_dir, _output_dir) = common::setup_dir(&work_dir);
 
     let content = "test content";
 
@@ -78,15 +78,12 @@ async fn command_compile() {
     let exe_path = common::compiler_exe("test-refs");
     assert!(exe_path.exists());
 
-    let cas_addr = ContentStoreAddr::from(output_dir);
-
     let compile_path = ResourcePathId::from(source).push(refs_asset::RefsAsset::TYPE);
     let command = CompilerCompileCmd::new(
         &exe_path,
         &compile_path,
         &[],
         &[],
-        &cas_addr,
         &resource_dir,
         &common::test_env(),
     );
@@ -95,14 +92,21 @@ async fn command_compile() {
 
     assert_eq!(result.compiled_resources.len(), 1);
 
-    let checksum = result.compiled_resources[0].checksum;
+    let content_id = &result.compiled_resources[0].content_id;
 
-    let cas = HddContentStore::open(cas_addr).expect("valid cas");
-    assert!(cas.exists(checksum).await);
+    let volatile_content_provider = ProviderConfig::default().instantiate().await.unwrap();
+
+    assert!(volatile_content_provider
+        .get_content_reader(&content_id)
+        .await
+        .is_ok());
 
     let resource_content = {
         let mut loader = refs_asset::RefsAssetLoader::default();
-        let content = cas.read(checksum).await.expect("asset content");
+        let content = volatile_content_provider
+            .read_content(&content_id)
+            .await
+            .expect("asset content");
         let loaded_resource = loader.load(&mut &content[..]).expect("valid data");
         loaded_resource
             .as_ref()

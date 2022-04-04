@@ -66,7 +66,7 @@ pub use lgn_source_control::data_types::Tree;
 /// The information in `.meta` file includes:
 /// - List of [`ResourceId`]s of resource's build dependencies.
 /// - Resource's name - [`ResourcePathName`].
-/// - Checksum of resource's content file.
+/// - Identifier of resource's content file.
 ///
 /// Note: Resource's [`ResourcePathName`] is only used for display purposes and
 /// can be changed freely.
@@ -77,7 +77,7 @@ pub struct Project {
     project_dir: PathBuf,
     resource_dir: PathBuf,
     workspace: Workspace,
-    content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+    source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     deleted_pending: HashMap<ResourceId, (ResourcePathName, ResourceType)>,
 }
 
@@ -139,7 +139,7 @@ impl Project {
     /// Same as [`Self::create`] but it creates an origin source control index at ``project_dir/remote``.
     pub async fn create_with_remote_mock(
         project_dir: impl AsRef<Path>,
-        content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+        source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     ) -> Result<Self, Error> {
         let remote_dir = project_dir.as_ref().join("remote");
         let repository_index = LocalRepositoryIndex::new(remote_dir).await?;
@@ -153,7 +153,7 @@ impl Project {
             project_dir,
             repository_index,
             repository_name,
-            content_provider,
+            source_control_content_provider,
         )
         .await
     }
@@ -164,7 +164,7 @@ impl Project {
         project_dir: impl AsRef<Path>,
         repository_index: impl RepositoryIndex,
         repository_name: RepositoryName,
-        content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+        source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     ) -> Result<Self, Error> {
         let resource_dir = project_dir.as_ref().join("offline");
         if !resource_dir.exists() {
@@ -178,7 +178,7 @@ impl Project {
                 repository_name,
                 WorkspaceRegistration::new_with_current_user(),
             ),
-            &content_provider,
+            &source_control_content_provider,
         )
         .await?;
 
@@ -186,7 +186,7 @@ impl Project {
             project_dir: project_dir.as_ref().to_owned(),
             resource_dir,
             workspace,
-            content_provider,
+            source_control_content_provider,
             deleted_pending: HashMap::new(),
         })
     }
@@ -195,7 +195,7 @@ impl Project {
     pub async fn open(
         project_dir: impl AsRef<Path>,
         repository_index: impl RepositoryIndex,
-        content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+        source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     ) -> Result<Self, Error> {
         let resource_dir = project_dir.as_ref().join("offline");
 
@@ -205,7 +205,7 @@ impl Project {
             project_dir: project_dir.as_ref().to_owned(),
             resource_dir,
             workspace,
-            content_provider,
+            source_control_content_provider,
             deleted_pending: HashMap::new(),
         })
     }

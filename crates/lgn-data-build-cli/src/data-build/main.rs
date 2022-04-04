@@ -4,7 +4,6 @@
 use std::{path::PathBuf, str::FromStr, sync::Arc};
 
 use clap::{Parser, Subcommand};
-use lgn_content_store::ContentStoreAddr;
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::{
     compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,
@@ -35,9 +34,6 @@ enum Commands {
         /// Source project path.
         #[clap(long)]
         project: PathBuf,
-        /// Compiled Asset Store addresses where generated source index will be stored.
-        #[clap(long)]
-        cas: String,
     },
     /// Compile input resource
     #[clap(name = "compile")]
@@ -50,9 +46,6 @@ enum Commands {
         /// Build index file.
         #[clap(long = "output")]
         build_output: String,
-        /// Compiled Asset Store addresses where assets will be output.
-        #[clap(long)]
-        cas: String,
         /// Accept ResourceId as the compilation input and output a runtime manifest.
         #[clap(long = "rt")]
         runtime_flag: bool,
@@ -77,8 +70,13 @@ async fn main() -> Result<(), String> {
     let repository_index = lgn_source_control::Config::load_and_instantiate_repository_index()
         .await
         .map_err(|e| format!("failed creating repository index {}", e))?;
-    let content_provider = Arc::new(
+    let source_control_content_provider = Arc::new(
         lgn_content_store2::Config::load_and_instantiate_persistent_provider()
+            .await
+            .map_err(|err| format!("{:?}", err))?,
+    );
+    let data_content_provider = Arc::new(
+        lgn_content_store2::Config::load_and_instantiate_volatile_provider()
             .await
             .map_err(|err| format!("{:?}", err))?,
     );
@@ -87,14 +85,13 @@ async fn main() -> Result<(), String> {
         Commands::Create {
             build_output,
             project: project_dir,
-            cas,
         } => {
             let (mut build, project) = DataBuildOptions::new(
                 DataBuildOptions::output_db_path(&build_output, &cwd, DataBuild::version()),
-                ContentStoreAddr::from(&cas[..]),
+                Arc::clone(&data_content_provider),
                 CompilerRegistryOptions::default(),
             )
-            .create_with_project(&project_dir, repository_index, content_provider)
+            .create_with_project(&project_dir, repository_index, Arc::clone(&source_control_content_provider))
             .await
             .map_err(|e| format!("failed creating build index {}", e))?;
 
@@ -106,7 +103,6 @@ async fn main() -> Result<(), String> {
             resource,
             project: project_dir,
             build_output,
-            cas,
             runtime_flag,
             target,
             platform,
@@ -117,7 +113,6 @@ async fn main() -> Result<(), String> {
             let platform = Platform::from_str(&platform)
                 .map_err(|_e| format!("Invalid Platform '{}'", platform))?;
             let locale = Locale::new(&locale);
-            let content_store_path = ContentStoreAddr::from(cas.as_str());
 
             let compilers = std::env::args()
                 .next()
@@ -131,13 +126,13 @@ async fn main() -> Result<(), String> {
                 })
                 .unwrap_or_default();
 
-            let project = Project::open(&project_dir, repository_index, content_provider)
+            let project = Project::open(&project_dir, repository_index, Arc::clone(&source_control_content_provider))
                 .await
                 .map_err(|e| e.to_string())?;
 
             let mut build = DataBuildOptions::new(
                 DataBuildOptions::output_db_path(&build_output, &cwd, DataBuild::version()),
-                content_store_path,
+                Arc::clone(&data_content_provider),
                 compilers,
             )
             .open(&project)

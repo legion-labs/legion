@@ -1,4 +1,4 @@
-use lgn_content_store::{ContentStore, ContentStoreAddr};
+use lgn_content_store2::ContentProvider;
 use lgn_ecs::schedule::SystemLabel;
 use std::{
     any::Any,
@@ -114,7 +114,7 @@ impl AssetRegistryOptions {
     /// provided manifest.
     pub fn add_device_cas(
         mut self,
-        content_store: Box<dyn ContentStore>,
+        content_store: Arc<Box<dyn ContentProvider + Send + Sync>>,
         manifest: Manifest,
     ) -> Self {
         self.devices
@@ -130,8 +130,7 @@ impl AssetRegistryOptions {
     #[allow(clippy::too_many_arguments)]
     pub fn add_device_build(
         mut self,
-        content_store: Box<dyn ContentStore>,
-        cas_addr: ContentStoreAddr,
+        content_store: Arc<Box<dyn ContentProvider + Send + Sync>>,
         manifest: Manifest,
         build_bin: impl AsRef<Path>,
         output_db_addr: String,
@@ -141,7 +140,6 @@ impl AssetRegistryOptions {
         self.devices.push(Box::new(vfs::BuildDevice::new(
             manifest,
             content_store,
-            cas_addr,
             build_bin,
             output_db_addr,
             project,
@@ -440,6 +438,8 @@ impl AssetRegistry {
 
 #[cfg(test)]
 mod tests {
+    use lgn_content_store2::{ContentWriterExt, ProviderConfig};
+
     use crate::ResourceId;
 
     mod refs_asset {
@@ -530,13 +530,11 @@ mod tests {
 
     use std::panic;
 
-    use lgn_content_store::RamContentStore;
-
     use super::*;
     use crate::test_asset;
 
     async fn setup_singular_asset_test(content: &[u8]) -> (ResourceTypeAndId, Arc<AssetRegistry>) {
-        let mut content_store = Box::new(RamContentStore::default());
+        let data_content_store = Arc::new(ProviderConfig::default().instantiate().await.unwrap());
         let manifest = Manifest::default();
 
         let asset_id = {
@@ -544,13 +542,13 @@ mod tests {
                 kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(1),
             };
-            let checksum = content_store.store(content).await.unwrap();
-            manifest.insert(type_id, checksum, content.len());
+            let checksum = data_content_store.write_content(content).await.unwrap();
+            manifest.insert(type_id, checksum);
             type_id
         };
 
         let reg = AssetRegistryOptions::new()
-            .add_device_cas(content_store, manifest)
+            .add_device_cas(data_content_store, manifest)
             .add_loader::<test_asset::TestAsset>()
             .create()
             .await;
@@ -559,7 +557,7 @@ mod tests {
     }
 
     async fn setup_dependency_test() -> (ResourceTypeAndId, ResourceTypeAndId, Arc<AssetRegistry>) {
-        let mut content_store = Box::new(RamContentStore::default());
+        let data_content_store = Arc::new(ProviderConfig::default().instantiate().await.unwrap());
         let manifest = Manifest::default();
 
         const BINARY_PARENT_ASSETFILE: [u8; 100] = [
@@ -595,20 +593,25 @@ mod tests {
         let parent_id = {
             manifest.insert(
                 child_id,
-                content_store.store(&BINARY_CHILD_ASSETFILE).await.unwrap(),
-                BINARY_CHILD_ASSETFILE.len(),
+                data_content_store
+                    .write_content(&BINARY_CHILD_ASSETFILE)
+                    .await
+                    .unwrap(),
             );
-            let checksum = content_store.store(&BINARY_PARENT_ASSETFILE).await.unwrap();
+            let checksum = data_content_store
+                .write_content(&BINARY_PARENT_ASSETFILE)
+                .await
+                .unwrap();
             let id = ResourceTypeAndId {
                 kind: refs_asset::RefsAsset::TYPE,
                 id: ResourceId::new_explicit(2),
             };
-            manifest.insert(id, checksum, BINARY_PARENT_ASSETFILE.len());
+            manifest.insert(id, checksum);
             id
         };
 
         let reg = AssetRegistryOptions::new()
-            .add_device_cas(content_store, manifest)
+            .add_device_cas(data_content_store, manifest)
             .add_loader::<refs_asset::RefsAsset>()
             .create()
             .await;

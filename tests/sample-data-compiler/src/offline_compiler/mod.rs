@@ -6,7 +6,6 @@ use std::{
     sync::Arc,
 };
 
-use lgn_content_store::ContentStoreAddr;
 use lgn_content_store2::{Chunker, ContentProvider};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::{
@@ -48,7 +47,8 @@ pub async fn build(
     root_folder: impl AsRef<Path>,
     resource_name: &ResourcePathName,
     repository_index: impl RepositoryIndex,
-    content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+    source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+    data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
 ) {
     let root_folder = root_folder.as_ref();
 
@@ -58,19 +58,19 @@ pub async fn build(
     }
 
     let build_index_dir = temp_dir.clone();
-    let asset_store_path = ContentStoreAddr::from(temp_dir.clone());
+
     let mut exe_path = env::current_exe().expect("cannot access current_exe");
     exe_path.pop();
 
-    let project = Project::open(root_folder, repository_index, Arc::clone(&content_provider))
+    let project = Project::open(root_folder, repository_index, Arc::clone(&source_control_content_provider))
         .await
         .unwrap();
 
     let mut build = DataBuildOptions::new_with_sqlite_output(
         build_index_dir,
         CompilerRegistryOptions::local_compilers(exe_path),
+        Arc::clone(&data_content_provider),
     )
-    .content_store(&asset_store_path)
     .open_or_create(&project)
     .await
     .expect("new build index");

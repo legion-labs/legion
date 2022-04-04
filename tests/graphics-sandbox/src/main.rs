@@ -8,7 +8,6 @@ use clap::Parser;
 
 use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
-use lgn_content_store::ContentStoreAddr;
 use lgn_core::CorePlugin;
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::*;
@@ -100,9 +99,7 @@ fn main() {
         )
         .unwrap();
 
-        let content_store_path = project_folder.join("temp");
         let asset_registry_settings = AssetRegistrySettings::new(
-            ContentStoreAddr::from(content_store_path.to_str().unwrap()),
             project_folder.join("runtime").join("game.manifest"),
             root_asset.into_iter().collect::<Vec<_>>(),
         );

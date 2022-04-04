@@ -3,9 +3,11 @@ use std::{
     hash::{Hash, Hasher},
     path::PathBuf,
     str::FromStr,
+    sync::Arc,
 };
 
-use lgn_content_store::{Checksum, ContentStore};
+use hex::ToHex;
+use lgn_content_store2::{ContentProvider, ContentReaderExt, ContentWriterExt};
 use lgn_data_offline::{
     resource::{Project, Tree},
     ResourcePathId,
@@ -20,12 +22,14 @@ use serde_with::DisplayFromStr;
 
 use crate::{output_index::AssetHash, Error};
 
+pub const LGN_DATA_BUILD: &str = "data-build";
+
 #[derive(Serialize, Deserialize, Debug)]
 struct ResourceInfo {
     id: ResourcePathId,
     dependencies: Vec<ResourcePathId>,
     // hash of the content of this resource, None for derived resources.
-    resource_hash: Option<Checksum>,
+    resource_hash: Option<String>,
 }
 
 impl ResourceInfo {
@@ -84,7 +88,7 @@ impl SourceContent {
     /// * content of all `id`'s dependencies.
     /// todo: at one point dependency filtering here will be useful.
     pub(crate) fn compute_source_hash(&self, id: ResourcePathId) -> AssetHash {
-        let sorted_unique_resource_hashes: Vec<Checksum> = {
+        let sorted_unique_resource_hashes: Vec<String> = {
             let mut unique_resources = HashMap::new();
             let mut queue: VecDeque<_> = VecDeque::new();
 
@@ -92,7 +96,7 @@ impl SourceContent {
 
             while let Some(resource) = queue.pop_front() {
                 if let Some(resource_info) = self.resources.iter().find(|r| r.id == resource) {
-                    unique_resources.insert(resource, resource_info.resource_hash);
+                    unique_resources.insert(resource, resource_info.resource_hash.clone());
 
                     let newly_discovered_deps: Vec<_> = resource_info
                         .dependencies
@@ -112,8 +116,10 @@ impl SourceContent {
                 }
             }
 
-            let mut hashes: Vec<Checksum> =
-                unique_resources.into_iter().filter_map(|t| t.1).collect();
+            let mut hashes = unique_resources
+                .into_iter()
+                .filter_map(|t| t.1)
+                .collect::<Vec<String>>();
             hashes.sort_unstable();
             hashes
         };
@@ -128,7 +134,7 @@ impl SourceContent {
     pub(crate) fn update_resource(
         &mut self,
         id: ResourcePathId,
-        resource_hash: Option<Checksum>,
+        resource_hash: Option<String>,
         mut deps: Vec<ResourcePathId>,
     ) -> bool {
         self.record_pathid(&id);
@@ -247,10 +253,10 @@ impl Extend<Self> for SourceContent {
 
 pub(crate) struct SourceIndex {
     current: Option<(String, SourceContent)>,
-    content_store: Box<dyn ContentStore + Send + Sync>,
+    pub(super) content_store: Arc<Box<dyn ContentProvider + Send + Sync>>,
 }
 
-impl std::fmt::Debug for SourceIndex {
+impl<'a> std::fmt::Debug for SourceIndex {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SourceIndex")
             .field("current", &self.current)
@@ -259,7 +265,7 @@ impl std::fmt::Debug for SourceIndex {
 }
 
 impl SourceIndex {
-    pub(crate) fn new(content_store: Box<dyn ContentStore + Send + Sync>) -> Self {
+    pub(crate) fn new(content_store: Arc<Box<dyn ContentProvider + Send + Sync>>) -> Self {
         Self {
             content_store,
             current: None,
@@ -275,16 +281,21 @@ impl SourceIndex {
         directory: Tree,
         project: &Project,
         version: &str,
-        mut uploads: Vec<(Checksum, Vec<u8>)>,
-    ) -> Result<(SourceContent, Vec<(Checksum, Vec<u8>)>), Error> {
+        mut uploads: Vec<(String, Vec<u8>)>,
+    ) -> Result<(SourceContent, Vec<(String, Vec<u8>)>), Error> {
         let dir_checksum = {
             let mut hasher = DefaultHasher256::new();
             hasher.write(directory.id().as_bytes());
             hasher.write(version.as_bytes());
-            Checksum::from(hasher.finish_256())
+            hasher.finish_256().encode_hex::<String>()
         };
 
-        if let Some(cached_data) = self.content_store.read(dir_checksum).await {
+        let content = self
+            .content_store
+            .read_alias(LGN_DATA_BUILD, &dir_checksum)
+            .await;
+
+        if let Ok(cached_data) = content {
             let source_index = SourceContent::read(&cached_data)?;
             Ok((source_index, uploads))
         } else {
@@ -314,7 +325,7 @@ impl SourceIndex {
                                 {
                                     let mut hasher = DefaultHasher256::new();
                                     chunk_id.write_to(&mut hasher).unwrap();
-                                    Checksum::from(hasher.finish_256())
+                                    hasher.finish_256().encode_hex::<String>()
                                 },
                             )
                         });
@@ -385,9 +396,8 @@ impl SourceIndex {
 
             for (dir_checksum, buffer) in uploads {
                 self.content_store
-                    .write(dir_checksum, &buffer)
-                    .await
-                    .ok_or(Error::InvalidContentStore)?;
+                    .write_alias(LGN_DATA_BUILD, &dir_checksum, &buffer)
+                    .await?;
             }
 
             source_index = final_content;
@@ -403,8 +413,7 @@ mod tests {
 
     use std::sync::Arc;
 
-    use lgn_content_store::{ContentStoreAddr, HddContentStore};
-    use lgn_content_store2::{ContentProvider, MemoryProvider};
+    use lgn_content_store2::ProviderConfig;
     use lgn_data_offline::{
         resource::{Project, ResourcePathName, ResourceRegistryOptions},
         ResourcePathId,
@@ -431,20 +440,24 @@ mod tests {
             let intermediate_deps = vec![source_resource.clone()];
             let output_deps = vec![intermediate_resource.clone()];
 
-            let resource_hash = Some([0u8; 32].into()); // this is irrelevant to the test
+            let resource_hash = Some("Blah".to_string()); // this is irrelevant to the test
 
             source_index.update_resource(
                 intermediate_resource.clone(),
-                resource_hash,
+                resource_hash.clone(),
                 intermediate_deps.clone(),
             );
-            source_index.update_resource(source_resource.clone(), resource_hash, vec![]);
+            source_index.update_resource(source_resource.clone(), resource_hash.clone(), vec![]);
             source_index.update_resource(
                 intermediate_resource.clone(),
-                resource_hash,
+                resource_hash.clone(),
                 intermediate_deps,
             );
-            source_index.update_resource(output_resource.clone(), resource_hash, output_deps);
+            source_index.update_resource(
+                output_resource.clone(),
+                resource_hash.clone(),
+                output_deps,
+            );
             source_index
         };
 
@@ -483,25 +496,29 @@ mod tests {
         let intermediate_deps = vec![source_resource.clone()];
         let output_deps = vec![intermediate_resource.clone()];
 
-        let resource_hash = Some([0u8; 32].into()); // this is irrelevant to the test
+        let resource_hash = Some("Blah".to_string()); // this is irrelevant to the test
 
         source_index.update_resource(
             intermediate_resource.clone(),
-            resource_hash,
+            resource_hash.clone(),
             intermediate_deps.clone(),
         );
         assert_eq!(source_index.resources.len(), 1);
         assert_eq!(source_index.resources[0].dependencies.len(), 1);
 
-        source_index.update_resource(source_resource, resource_hash, vec![]);
+        source_index.update_resource(source_resource, resource_hash.clone(), vec![]);
         assert_eq!(source_index.resources.len(), 2);
         assert_eq!(source_index.resources[1].dependencies.len(), 0);
 
-        source_index.update_resource(intermediate_resource, resource_hash, intermediate_deps);
+        source_index.update_resource(
+            intermediate_resource,
+            resource_hash.clone(),
+            intermediate_deps,
+        );
         assert_eq!(source_index.resources.len(), 2);
         assert_eq!(source_index.resources[0].dependencies.len(), 1);
 
-        source_index.update_resource(output_resources, resource_hash, output_deps);
+        source_index.update_resource(output_resources, resource_hash.clone(), output_deps);
         assert_eq!(source_index.resources.len(), 3);
         assert_eq!(source_index.resources[2].dependencies.len(), 1);
     }
@@ -513,22 +530,20 @@ mod tests {
     #[tokio::test]
     async fn source_index_cache() {
         let work_dir = tempfile::tempdir().unwrap();
-        let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-            Arc::new(Box::new(MemoryProvider::new()));
+        let source_control_content_provider =
+            Arc::new(ProviderConfig::default().instantiate().await.unwrap());
 
-        let mut project = Project::create_with_remote_mock(&work_dir.path(), content_provider)
-            .await
-            .expect("failed to create a project");
+        let mut project =
+            Project::create_with_remote_mock(&work_dir.path(), source_control_content_provider)
+                .await
+                .expect("failed to create a project");
 
-        let temp_dir = work_dir.path().join("temp");
-        std::fs::create_dir(&temp_dir).expect("new directory");
-
-        let content_store =
-            HddContentStore::open(ContentStoreAddr::from(temp_dir.clone())).unwrap();
+        let data_content_provider =
+            Arc::new(ProviderConfig::default().instantiate().await.unwrap());
 
         let version = "0.0.1";
 
-        let mut source_index = SourceIndex::new(Box::new(content_store));
+        let mut source_index = SourceIndex::new(data_content_provider);
 
         let first_entry_checksum = {
             source_index.source_pull(&project, version).await.unwrap();

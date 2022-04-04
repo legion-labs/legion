@@ -1,5 +1,7 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
-use lgn_content_store::ContentStore;
+use lgn_content_store2::{ContentProvider, ContentReaderExt};
 
 use super::Device;
 use crate::{manifest::Manifest, ResourceTypeAndId};
@@ -8,11 +10,14 @@ use crate::{manifest::Manifest, ResourceTypeAndId};
 /// manifest access table.
 pub(crate) struct CasDevice {
     manifest: Manifest,
-    content_store: Box<dyn ContentStore>,
+    content_store: Arc<Box<dyn ContentProvider + Send + Sync>>,
 }
 
 impl CasDevice {
-    pub(crate) fn new(manifest: Manifest, content_store: Box<dyn ContentStore>) -> Self {
+    pub(crate) fn new(
+        manifest: Manifest,
+        content_store: Arc<Box<dyn ContentProvider + Send + Sync>>,
+    ) -> Self {
         Self {
             manifest,
             content_store,
@@ -23,15 +28,15 @@ impl CasDevice {
 #[async_trait]
 impl Device for CasDevice {
     async fn load(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
-        let (checksum, size) = self.manifest.find(type_id)?;
-        let content = self.content_store.read(checksum).await?;
+        let checksum = self.manifest.find(type_id)?;
+        let content = self.content_store.read_content(&checksum).await.ok()?;
         assert_eq!(
             content.len(),
-            size,
-            "content size mismatch for asset {}, checksum: {}, expected size: {}, actual: {}",
+            checksum.data_size(),
+            "content size mismatch for asset {}, content_id: {}, expected size: {}, actual: {}",
             type_id,
             checksum,
-            size,
+            checksum.data_size(),
             content.len()
         );
         Some(content)

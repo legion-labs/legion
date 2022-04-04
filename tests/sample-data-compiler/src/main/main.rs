@@ -64,8 +64,13 @@ async fn main() {
         .recreate_repository(repository_name.clone())
         .await;
 
-    let content_provider = Arc::new(
+    let source_control_content_provider = Arc::new(
         lgn_content_store2::Config::load_and_instantiate_persistent_provider()
+            .await
+            .unwrap(),
+    );
+    let data_content_provider = Arc::new(
+        lgn_content_store2::Config::load_and_instantiate_volatile_provider()
             .await
             .unwrap(),
     );
@@ -75,7 +80,7 @@ async fn main() {
         &absolute_root,
         &repository_index,
         repository_name,
-        Arc::clone(&content_provider),
+        Arc::clone(&source_control_content_provider),
         true,
     )
     .await;
@@ -85,7 +90,8 @@ async fn main() {
         &absolute_root,
         &ResourcePathName::from(&args.resource),
         repository_index,
-        content_provider,
+        Arc::clone(&source_control_content_provider),
+        Arc::clone(&data_content_provider),
     )
     .await;
 }

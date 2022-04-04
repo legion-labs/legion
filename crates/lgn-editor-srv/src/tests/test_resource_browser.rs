@@ -1,12 +1,11 @@
 use std::{path::Path, str::FromStr, sync::Arc};
 
-use lgn_content_store2::{ContentProvider, MemoryProvider};
+use lgn_content_store2::{ContentProvider, MemoryProvider, ProviderConfig};
 use lgn_scene_plugin::SceneMessage;
 use serde_json::json;
 use tokio::sync::Mutex;
 use tonic::Request;
 
-use lgn_content_store::{ContentStoreAddr, HddContentStore};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::{Project, ResourceRegistryOptions};
@@ -84,12 +83,14 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
     let mut resource_registry = ResourceRegistryOptions::new();
     sample_data::offline::register_resource_types(&mut resource_registry);
     lgn_scripting::offline::register_resource_types(&mut resource_registry);
-    let content_store = HddContentStore::open(ContentStoreAddr::from(build_dir.clone())).unwrap();
+
+    let data_content_provider = Arc::new(ProviderConfig::default().instantiate().await.unwrap());
+
     let resource_registry = resource_registry.create_async_registry();
 
     let mut asset_registry = AssetRegistryOptions::new()
         .add_device_dir(project.resource_dir())
-        .add_device_cas(Box::new(content_store), Manifest::default());
+        .add_device_cas(Arc::clone(&data_content_provider), Manifest::default());
     sample_data::offline::add_loaders(&mut asset_registry);
     lgn_scripting::offline::add_loaders(&mut asset_registry);
     let asset_registry = asset_registry.create().await;
@@ -98,9 +99,12 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
         .add_compiler(&lgn_compiler_runtime_entity::COMPILER_INFO)
         .add_compiler(&lgn_compiler_script2asm::COMPILER_INFO);
 
-    let options = DataBuildOptions::new_with_sqlite_output(&build_dir, compilers)
-        .content_store(&ContentStoreAddr::from(build_dir.as_path()))
-        .asset_registry(asset_registry.clone());
+    let options = DataBuildOptions::new_with_sqlite_output(
+        &build_dir,
+        compilers,
+        Arc::clone(&data_content_provider),
+    )
+    .asset_registry(asset_registry.clone());
 
     let build_manager =
         BuildManager::new(options, &project, Manifest::default(), Manifest::default())

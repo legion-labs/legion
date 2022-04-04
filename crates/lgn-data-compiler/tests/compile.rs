@@ -1,6 +1,6 @@
 use binary_resource::BinaryResource;
 use integer_asset::{IntegerAsset, IntegerAssetLoader};
-use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
+use lgn_content_store2::{ContentReaderExt, ProviderConfig};
 use lgn_data_compiler::compiler_cmd::{list_compilers, CompilerCompileCmd};
 use lgn_data_offline::{resource::ResourceProcessor, ResourcePathId};
 use lgn_data_runtime::{AssetLoader, Resource, ResourceId, ResourceTypeAndId};
@@ -21,7 +21,7 @@ fn find_compiler() {
 #[tokio::test]
 async fn compile_atoi() {
     let work_dir = tempfile::tempdir().unwrap();
-    let (resource_dir, output_dir) = common::setup_dir(&work_dir);
+    let (resource_dir, _output_dir) = common::setup_dir(&work_dir);
 
     let source_magic_value = String::from("47");
 
@@ -47,8 +47,6 @@ async fn compile_atoi() {
         source
     };
 
-    let cas_addr = ContentStoreAddr::from(output_dir);
-
     let asset_info = {
         let exe_path = common::compiler_exe("test-atoi");
         assert!(exe_path.exists());
@@ -59,7 +57,6 @@ async fn compile_atoi() {
             &compile_path,
             &[],
             &[],
-            &cas_addr,
             &resource_dir,
             &common::test_env(),
         );
@@ -71,12 +68,19 @@ async fn compile_atoi() {
         result.compiled_resources[0].clone()
     };
 
-    let checksum = asset_info.checksum;
+    let content_id = asset_info.content_id.clone();
 
-    let cas = HddContentStore::open(cas_addr).expect("valid cas");
-    assert!(cas.exists(checksum).await);
+    let volatile_content_provider = ProviderConfig::default().instantiate().await.unwrap();
 
-    let resource_content = cas.read(checksum).await.expect("asset content");
+    assert!(volatile_content_provider
+        .get_content_reader(&content_id)
+        .await
+        .is_ok());
+
+    let resource_content = volatile_content_provider
+        .read_content(&content_id)
+        .await
+        .expect("asset content");
 
     let mut loader = IntegerAssetLoader {};
     let asset = loader
@@ -91,7 +95,7 @@ async fn compile_atoi() {
 #[tokio::test]
 async fn compile_intermediate() {
     let work_dir = tempfile::tempdir().unwrap();
-    let (resource_dir, output_dir) = common::setup_dir(&work_dir);
+    let (resource_dir, _output_dir) = common::setup_dir(&work_dir);
 
     let source_magic_value = String::from("47");
 
@@ -115,8 +119,6 @@ async fn compile_intermediate() {
         source
     };
 
-    let cas_addr = ContentStoreAddr::from(output_dir);
-
     let intermediate_info = {
         let exe_path = common::compiler_exe("test-reverse");
         assert!(exe_path.exists());
@@ -126,7 +128,6 @@ async fn compile_intermediate() {
             &compile_path,
             &[],
             &[],
-            &cas_addr,
             &resource_dir,
             &common::test_env(),
         );
@@ -148,7 +149,6 @@ async fn compile_intermediate() {
             &compile_path,
             &[],
             &[intermediate_info],
-            &cas_addr,
             &resource_dir,
             &common::test_env(),
         );
@@ -159,12 +159,19 @@ async fn compile_intermediate() {
         result.compiled_resources[0].clone()
     };
 
-    let checksum = derived_info.checksum;
+    let content_id = &derived_info.content_id;
 
-    let cas = HddContentStore::open(cas_addr).expect("valid cas");
-    assert!(cas.exists(checksum).await);
+    let volatile_content_provider = ProviderConfig::default().instantiate().await.unwrap();
 
-    let resource_content = cas.read(checksum).await.expect("asset content");
+    assert!(volatile_content_provider
+        .get_content_reader(content_id)
+        .await
+        .is_ok());
+
+    let resource_content = volatile_content_provider
+        .read_content(content_id)
+        .await
+        .expect("asset content");
 
     let mut loader = IntegerAssetLoader {};
     let asset = loader
@@ -182,7 +189,7 @@ async fn compile_intermediate() {
 #[tokio::test]
 async fn compile_multi_resource() {
     let work_dir = tempfile::tempdir().unwrap();
-    let (resource_dir, output_dir) = common::setup_dir(&work_dir);
+    let (resource_dir, _output_dir) = common::setup_dir(&work_dir);
 
     let source_text_list = vec![String::from("hello"), String::from("world")];
 
@@ -206,7 +213,6 @@ async fn compile_multi_resource() {
         source
     };
 
-    let cas_addr = ContentStoreAddr::from(output_dir);
     let compile_path = ResourcePathId::from(source).push(text_resource::TextResource::TYPE);
 
     let compiled_resources = {
@@ -218,7 +224,6 @@ async fn compile_multi_resource() {
             &compile_path,
             &[],
             &[],
-            &cas_addr,
             &resource_dir,
             &common::test_env(),
         );
@@ -243,12 +248,16 @@ async fn compile_multi_resource() {
     }
 
     assert_eq!(compiled_resources.len(), source_text_list.len());
-    let content_store = HddContentStore::open(cas_addr).expect("valid cas");
+
+    let volatile_content_provider = ProviderConfig::default().instantiate().await.unwrap();
 
     for (resource, source_text) in compiled_resources.iter().zip(source_text_list.iter()) {
-        assert!(content_store.exists(resource.checksum).await);
-        let resource_content = content_store
-            .read(resource.checksum)
+        assert!(volatile_content_provider
+            .get_content_reader(&resource.content_id)
+            .await
+            .is_ok());
+        let resource_content = volatile_content_provider
+            .read_content(&resource.content_id)
             .await
             .expect("asset content");
         let mut proc = text_resource::TextResourceProc {};
@@ -263,7 +272,7 @@ async fn compile_multi_resource() {
 #[tokio::test]
 async fn compile_base64() {
     let work_dir = tempfile::tempdir().unwrap();
-    let (resource_dir, output_dir) = common::setup_dir(&work_dir);
+    let (resource_dir, _output_dir) = common::setup_dir(&work_dir);
 
     let source_binary_value = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
     let expected_base64_value = String::from("AQIDBAUGBwgJ");
@@ -290,8 +299,6 @@ async fn compile_base64() {
         source
     };
 
-    let cas_addr = ContentStoreAddr::from(output_dir);
-
     let asset_info = {
         let exe_path = common::compiler_exe("test-base64");
         assert!(exe_path.exists());
@@ -302,7 +309,6 @@ async fn compile_base64() {
             &compile_path,
             &[],
             &[],
-            &cas_addr,
             &resource_dir,
             &common::test_env(),
         );
@@ -314,12 +320,19 @@ async fn compile_base64() {
         result.compiled_resources[0].clone()
     };
 
-    let checksum = asset_info.checksum;
+    let content_id = asset_info.content_id.clone();
 
-    let cas = HddContentStore::open(cas_addr).expect("valid cas");
-    assert!(cas.exists(checksum).await);
+    let volatile_content_provider = ProviderConfig::default().instantiate().await.unwrap();
 
-    let resource_content = cas.read(checksum).await.expect("asset content");
+    assert!(volatile_content_provider
+        .get_content_reader(&content_id)
+        .await
+        .is_ok());
+
+    let resource_content = volatile_content_provider
+        .read_content(&content_id)
+        .await
+        .expect("asset content");
 
     let base64str = String::from_utf8_lossy(&resource_content);
     assert_eq!(base64str, expected_base64_value);

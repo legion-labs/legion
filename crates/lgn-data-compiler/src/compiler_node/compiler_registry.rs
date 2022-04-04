@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use lgn_content_store::ContentStoreAddr;
+use lgn_content_store2::ContentProvider;
 use lgn_data_offline::{ResourcePathId, Transform};
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
 use lgn_tracing::warn;
@@ -43,7 +43,7 @@ pub trait CompilerStub: Send + Sync {
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         registry: Arc<AssetRegistry>,
-        cas_addr: ContentStoreAddr,
+        data_content_store: &(dyn ContentProvider + Send + Sync),
         project_dir: &Path,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError>;
