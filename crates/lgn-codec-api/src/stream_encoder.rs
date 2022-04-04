@@ -14,7 +14,6 @@ pub struct EncoderWorkItem {
 }
 
 pub(crate) struct StreamEncoderInner {
-    enable_hw_encoding: bool,
     hw_encoder: Option<NvEncoder>,
 }
 
@@ -24,14 +23,13 @@ pub struct StreamEncoder {
 }
 
 impl StreamEncoder {
-    pub fn new(enable_hw_encoding: bool) -> Self {
+    pub fn new(force_software_encoding: bool) -> Self {
         Self {
             inner: Arc::new(StreamEncoderInner {
-                enable_hw_encoding,
-                hw_encoder: if enable_hw_encoding {
-                    NvEncoder::new()
-                } else {
+                hw_encoder: if force_software_encoding {
                     None
+                } else {
+                    NvEncoder::new()
                 },
             }),
         }
@@ -81,11 +79,7 @@ impl StreamEncoder {
     }
 
     pub fn hw_encoder(&self) -> Option<NvEncoder> {
-        if self.inner.enable_hw_encoding {
-            self.inner.hw_encoder.clone()
-        } else {
-            None
-        }
+        self.inner.hw_encoder.clone()
     }
 }
 

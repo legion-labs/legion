@@ -28,10 +28,10 @@ scene = "/world/sample_1.ent"
 # Streamer configuration.
 [editor_server.streamer]
 
-# Enable hardware encoding
+# Force software encoding
 #
 # Default:
-#enable_hardware_encoding = false
+# force_software_encoding = false
 
 # WebRTC configuration.
 

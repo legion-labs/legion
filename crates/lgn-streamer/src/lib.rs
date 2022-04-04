@@ -47,7 +47,7 @@ impl Plugin for StreamerPlugin {
             .init_resource::<Time>()
             .init_resource::<streamer::streamer_windows::StreamerWindows>()
             .init_resource::<streamer::control_stream::ControlStreams>()
-            .insert_resource(StreamEncoder::new(self.config.enable_hw_encoding))
+            .insert_resource(StreamEncoder::new(self.config.force_software_encoding))
             .add_event::<streamer::VideoStreamEvent>()
             .add_event::<streamer::ControlEvent>()
             .add_system(streamer::handle_stream_events)
