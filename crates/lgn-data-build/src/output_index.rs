@@ -274,7 +274,7 @@ impl OutputIndex {
         source_hash: AssetHash,
         content_id: Identifier,
     ) -> Result<(), Error> {
-        let query = sqlx::query("INSERT into linked_output VALUES(?, ?, ?, ?, ?);")
+        let query = sqlx::query("INSERT into linked_output VALUES(?, ?, ?, ?);")
             .bind(id.to_string())
             .bind(context_hash.into_i64())
             .bind(source_hash.into_i64())
