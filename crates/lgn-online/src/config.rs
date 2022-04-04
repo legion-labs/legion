@@ -19,11 +19,11 @@ use crate::{
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
     /// The base URL for api requests.
-    #[serde(with = "http_serde::uri")]
+    #[serde(default, with = "http_serde::uri")]
     pub api_base_url: Uri,
 
     /// The base URL for web-api requests.
-    #[serde(with = "http_serde::uri")]
+    #[serde(default, with = "http_serde::uri")]
     pub web_api_base_url: Uri,
 
     /// The authentication settings.
