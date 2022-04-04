@@ -10,7 +10,7 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
-mod ingestion_service;
+mod grpc_ingestion_service;
 mod local_data_lake;
 mod remote_data_lake;
 mod sql_migration;

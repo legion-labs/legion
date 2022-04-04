@@ -45,7 +45,7 @@ impl Authenticator for StaticApiKey {
         _extra_params: &Option<HashMap<String, String>>,
     ) -> lgn_online::authentication::Result<ClientTokenSet> {
         Ok(ClientTokenSet {
-            access_token: env!("LEGION_TELEMETRY_GRPC_API_KEY").to_owned(),
+            access_token: env!("LGN_TELEMETRY_GRPC_API_KEY").to_owned(),
             refresh_token: None,
             id_token: None,
             token_type: String::from("Legion API Key"),

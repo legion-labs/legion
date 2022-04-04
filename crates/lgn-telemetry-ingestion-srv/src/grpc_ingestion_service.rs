@@ -6,12 +6,12 @@ use lgn_tracing::{async_span_scope, error, info};
 use prost::Message;
 use tonic::{Request, Response, Status};
 
-pub struct IngestionService {
+pub struct GRPCIngestionService {
     db_pool: sqlx::any::AnyPool,
     blob_storage: Box<dyn BlobStorage>,
 }
 
-impl IngestionService {
+impl GRPCIngestionService {
     pub fn new(db_pool: sqlx::AnyPool, blob_storage: Box<dyn BlobStorage>) -> Self {
         Self {
             db_pool,
@@ -35,7 +35,7 @@ fn validate_auth<T>(request: &Request<T>) -> Result<(), Status> {
             Err(Status::unauthenticated(String::from("Access denied")))
         }
         Some(Ok(auth)) => {
-            if auth != format!("Bearer {}", env!("LEGION_TELEMETRY_GRPC_API_KEY")) {
+            if auth != format!("Bearer {}", env!("LGN_TELEMETRY_GRPC_API_KEY")) {
                 error!("Auth: wrong token");
                 Err(Status::unauthenticated(String::from("Access denied")))
             } else {
@@ -46,7 +46,7 @@ fn validate_auth<T>(request: &Request<T>) -> Result<(), Status> {
 }
 
 #[tonic::async_trait]
-impl TelemetryIngestion for IngestionService {
+impl TelemetryIngestion for GRPCIngestionService {
     async fn insert_process(
         &self,
         request: Request<Process>,

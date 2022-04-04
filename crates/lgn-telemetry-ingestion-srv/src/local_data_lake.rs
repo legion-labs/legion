@@ -3,9 +3,9 @@ use lgn_blob_storage::LocalBlobStorage;
 use sqlx::migrate::MigrateDatabase;
 use std::path::PathBuf;
 
-use crate::{ingestion_service::IngestionService, sql_migration::execute_migration};
+use crate::{grpc_ingestion_service::GRPCIngestionService, sql_migration::execute_migration};
 
-pub async fn connect_to_local_data_lake(path: PathBuf) -> Result<IngestionService> {
+pub async fn connect_to_local_data_lake(path: PathBuf) -> Result<GRPCIngestionService> {
     let blocks_folder = path.join("blobs");
     let blob_storage = LocalBlobStorage::new(blocks_folder).await?;
     let db_path = path.join("telemetry.db3");
@@ -24,5 +24,5 @@ pub async fn connect_to_local_data_lake(path: PathBuf) -> Result<IngestionServic
         .with_context(|| String::from("Connecting to telemetry database"))?;
     let mut connection = pool.acquire().await?;
     execute_migration(&mut connection).await?;
-    Ok(IngestionService::new(pool, Box::new(blob_storage)))
+    Ok(GRPCIngestionService::new(pool, Box::new(blob_storage)))
 }
