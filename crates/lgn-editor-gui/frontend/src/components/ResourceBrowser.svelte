@@ -158,12 +158,12 @@
 
       const names = await Promise.all(promises);
 
-      await Promise.all(
+      let response = await Promise.all(
         names.map(({ name, id }) => {
           const lowerCasedName = name.toLowerCase().trim();
 
           if (lowerCasedName.endsWith(".png")) {
-            createResource({
+            return createResource({
               resourceName: name,
               resourceType: "png",
               parentResourceId: currentResourceDescriptionEntry?.item.id,
@@ -173,7 +173,7 @@
 
           if (lowerCasedName.endsWith(".gltf.zip")) {
             // FIXME: Incorrect, should be an import
-            createResource({
+            return createResource({
               resourceName: name.slice(0, -4),
               resourceType: "gltf",
               parentResourceId: currentResourceDescriptionEntry?.item.id,
@@ -183,7 +183,23 @@
         })
       );
 
-      allResources.run(getAllResources);
+      if (response && response[0]) {
+        await allResources.run(getAllResources);
+        let newId = response[0].newId;
+
+        if (newId) {
+          const entry = resourceEntries.find(
+            (entry) => isEntry(entry) && entry.item.id == newId
+          );
+
+          if (!entry || !isEntry(entry)) {
+            return;
+          }
+
+          currentResourceDescriptionEntry = entry;
+          await fetchCurrentResourceDescription(newId);
+        }
+      }
     } catch (error) {
       log.error(log.json`File upload failed: ${error}`);
     } finally {

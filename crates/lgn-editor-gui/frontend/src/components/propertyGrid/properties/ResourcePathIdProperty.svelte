@@ -22,7 +22,7 @@
     detail: { item: draggedEntry },
   }: CustomEvent<{ item: any; originalEvent: DragEvent }>) {
     if (resource_type) {
-      let new_value = await createResourcePathId(resource_type, draggedEntry);
+      let new_value = createResourcePathId(resource_type, draggedEntry);
       if (new_value) {
         value = new_value;
         dispatch("input", value);
