@@ -197,7 +197,7 @@
           }
 
           currentResourceDescriptionEntry = entry;
-          fetchCurrentResourceDescription(newId);
+          await fetchCurrentResourceDescription(newId);
         }
       }
     } catch (error) {
