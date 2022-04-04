@@ -140,10 +140,12 @@ mod tests {
         let mut resources = resources.lock().await;
 
         let (resource_id, resource_handle) = {
-            let mut project =
-                Project::create_with_remote_mock(&project_dir, Arc::clone(&source_control_content_provider))
-                    .await
-                    .expect("failed to create a project");
+            let mut project = Project::create_with_remote_mock(
+                &project_dir,
+                Arc::clone(&source_control_content_provider),
+            )
+            .await
+            .expect("failed to create a project");
 
             let resource_handle = resources
                 .new_resource(refs_resource::TestResource::TYPE)

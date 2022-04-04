@@ -91,7 +91,11 @@ async fn main() -> Result<(), String> {
                 Arc::clone(&data_content_provider),
                 CompilerRegistryOptions::default(),
             )
-            .create_with_project(&project_dir, repository_index, Arc::clone(&source_control_content_provider))
+            .create_with_project(
+                &project_dir,
+                repository_index,
+                Arc::clone(&source_control_content_provider),
+            )
             .await
             .map_err(|e| format!("failed creating build index {}", e))?;
 
@@ -126,9 +130,13 @@ async fn main() -> Result<(), String> {
                 })
                 .unwrap_or_default();
 
-            let project = Project::open(&project_dir, repository_index, Arc::clone(&source_control_content_provider))
-                .await
-                .map_err(|e| e.to_string())?;
+            let project = Project::open(
+                &project_dir,
+                repository_index,
+                Arc::clone(&source_control_content_provider),
+            )
+            .await
+            .map_err(|e| e.to_string())?;
 
             let mut build = DataBuildOptions::new(
                 DataBuildOptions::output_db_path(&build_output, &cwd, DataBuild::version()),

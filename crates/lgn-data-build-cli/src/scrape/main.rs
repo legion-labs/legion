@@ -405,9 +405,13 @@ async fn main() -> Result<(), String> {
                     .map_err(|e| format!("failed creating repository index {}", e))?;
 
             let proj_file = path.unwrap_or_else(|| std::env::current_dir().unwrap());
-            let project = Project::open(proj_file, repository_index, Arc::clone(&source_control_content_provider))
-                .await
-                .map_err(|e| e.to_string())?;
+            let project = Project::open(
+                proj_file,
+                repository_index,
+                Arc::clone(&source_control_content_provider),
+            )
+            .await
+            .map_err(|e| e.to_string())?;
             match command {
                 SourceCommands::List => {
                     for id in project.resource_list().await {

@@ -163,9 +163,13 @@ impl DataBuildOptions {
         repository_index: impl RepositoryIndex,
         source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     ) -> Result<(DataBuild, Project), Error> {
-        let project = Project::open(project_dir, repository_index, source_control_content_provider)
-            .await
-            .map_err(Error::from)?;
+        let project = Project::open(
+            project_dir,
+            repository_index,
+            source_control_content_provider,
+        )
+        .await
+        .map_err(Error::from)?;
         let build = DataBuild::new(self, &project).await?;
         Ok((build, project))
     }

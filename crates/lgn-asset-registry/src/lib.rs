@@ -13,7 +13,7 @@ use std::{path::Path, str::FromStr, sync::Arc};
 
 use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
-use lgn_content_store2::{ChunkIdentifier, Chunker, ContentProvider, Config};
+use lgn_content_store2::{ChunkIdentifier, Chunker, Config, ContentProvider};
 use lgn_data_runtime::{
     manifest::Manifest, AssetRegistry, AssetRegistryEvent, AssetRegistryOptions,
     AssetRegistryScheduling, ResourceLoadEvent,

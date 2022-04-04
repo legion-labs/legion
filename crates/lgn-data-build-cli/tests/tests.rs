@@ -172,9 +172,13 @@ async fn build_device() {
     let changed_content = "bar";
     let changed_derived_content = changed_content.chars().rev().collect::<String>();
     {
-        let mut project = Project::open(project_dir, &repository_index, Arc::clone(&source_control_content_provider))
-            .await
-            .expect("new project");
+        let mut project = Project::open(
+            project_dir,
+            &repository_index,
+            Arc::clone(&source_control_content_provider),
+        )
+        .await
+        .expect("new project");
         let resources = ResourceRegistryOptions::new()
             .add_type::<refs_resource::TestResource>()
             .create_async_registry();
@@ -271,7 +275,11 @@ async fn no_intermediate_resource() {
             Arc::clone(&data_content_provider),
             CompilerRegistryOptions::default(),
         )
-        .create_with_project(project_dir, &repository_index, Arc::clone(&source_control_content_provider))
+        .create_with_project(
+            project_dir,
+            &repository_index,
+            Arc::clone(&source_control_content_provider),
+        )
         .await
         .expect("new build index");
         build.source_pull(&project).await.expect("successful pull");
@@ -382,7 +390,11 @@ async fn with_intermediate_resource() {
             Arc::clone(&data_content_provider),
         )
         .content_store(&ContentStoreAddr::from(cas.clone()))
-        .create_with_project(project_dir, &repository_index, Arc::clone(&source_control_content_provider))
+        .create_with_project(
+            project_dir,
+            &repository_index,
+            Arc::clone(&source_control_content_provider),
+        )
         .await
         .expect("new build index");
         build.source_pull(&project).await.expect("successful pull");

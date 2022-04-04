@@ -62,9 +62,13 @@ pub async fn build(
     let mut exe_path = env::current_exe().expect("cannot access current_exe");
     exe_path.pop();
 
-    let project = Project::open(root_folder, repository_index, Arc::clone(&source_control_content_provider))
-        .await
-        .unwrap();
+    let project = Project::open(
+        root_folder,
+        repository_index,
+        Arc::clone(&source_control_content_provider),
+    )
+    .await
+    .unwrap();
 
     let mut build = DataBuildOptions::new_with_sqlite_output(
         build_index_dir,

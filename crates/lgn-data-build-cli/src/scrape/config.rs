@@ -45,9 +45,13 @@ impl Config {
         let repository_index = LocalRepositoryIndex::new(self.project.join("remote"))
             .await
             .map_err(|e| e.to_string())?;
-        let project = Project::open(&self.project, repository_index, Arc::clone(&source_control_content_provider))
-            .await
-            .map_err(|e| e.to_string())?;
+        let project = Project::open(
+            &self.project,
+            repository_index,
+            Arc::clone(&source_control_content_provider),
+        )
+        .await
+        .map_err(|e| e.to_string())?;
 
         let build = DataBuildOptions::new(
             DataBuildOptions::output_db_path(

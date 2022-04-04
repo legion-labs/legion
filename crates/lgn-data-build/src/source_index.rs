@@ -530,16 +530,14 @@ mod tests {
     #[tokio::test]
     async fn source_index_cache() {
         let work_dir = tempfile::tempdir().unwrap();
-        let source_control_content_provider =
-        Arc::new(Box::new(MemoryProvider::new()));
+        let source_control_content_provider = Arc::new(Box::new(MemoryProvider::new()));
 
         let mut project =
             Project::create_with_remote_mock(&work_dir.path(), source_control_content_provider)
                 .await
                 .expect("failed to create a project");
 
-        let data_content_provider =
-        Arc::new(Box::new(MemoryProvider::new()));
+        let data_content_provider = Arc::new(Box::new(MemoryProvider::new()));
 
         let version = "0.0.1";
 
