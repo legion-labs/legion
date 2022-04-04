@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use lgn_tracing::prelude::*;
-use sqlx::{Connection, Executor, Row};
+use sqlx::{migrate::MigrateDatabase, Connection, Executor, Row};
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
@@ -8,8 +8,8 @@ use std::{
 use tokio::sync::Mutex;
 
 use crate::{
-    sql::create_database, Branch, CanonicalPath, Change, ChangeType, CommitId, MapOtherError,
-    PendingBranchMerge, ResolvePending, Result,
+    Branch, CanonicalPath, Change, ChangeType, CommitId, MapOtherError, PendingBranchMerge,
+    ResolvePending, Result,
 };
 
 use super::WorkspaceBackend;
@@ -30,7 +30,7 @@ impl LocalWorkspaceBackend {
     pub async fn create(lsc_root: PathBuf) -> Result<Self> {
         let db_uri = Self::db_uri(&lsc_root);
 
-        create_database(&db_uri)
+        sqlx::Any::create_database(&db_uri)
             .await
             .map_other_err("failed to create workspace database")?;
 

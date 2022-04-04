@@ -5,7 +5,6 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
-use std::fmt::Display;
 use std::net::SocketAddr;
 use std::time::Duration;
 
@@ -504,55 +503,7 @@ struct Args {
 
 #[derive(Debug, Clone, Deserialize)]
 struct Config {
-    database: DatabaseConfig,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct DatabaseConfig {
-    /// The database host.
-    host: String,
-
-    /// The database name prefix.
-    #[serde(default = "DatabaseConfig::default_name")]
-    name: String,
-
-    // The database username.
-    username: Option<String>,
-
-    /// The database password.
-    password: Option<String>,
-}
-
-impl DatabaseConfig {
-    fn default_name() -> String {
-        "source_control".to_string()
-    }
-
-    async fn instantiate_repository_index(&self) -> Result<SqlRepositoryIndex> {
-        let index_url = format!(
-            "mysql://{}:{}@{}/{}",
-            self.username.as_deref().unwrap_or_default(),
-            self.password.as_deref().unwrap_or_default(),
-            self.host,
-            self.name,
-        );
-
-        SqlRepositoryIndex::new(index_url).await
-    }
-}
-
-impl Display for DatabaseConfig {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(username) = &self.username {
-            write!(
-                f,
-                "mysql://{}:**secret**@{}/{}",
-                username, self.host, self.name,
-            )
-        } else {
-            write!(f, "mysql://{}/{}", self.host, self.name,)
-        }
-    }
+    database: lgn_source_control::SqlConfig,
 }
 
 #[allow(clippy::semicolon_if_nothing_returned)]
@@ -569,8 +520,6 @@ async fn main() -> anyhow::Result<()> {
 
     let config: Config = lgn_config::get("source_control.server")?
         .ok_or_else(|| anyhow::anyhow!("no configuration was found for `source-control.server`"))?;
-
-    info!("Using database at {}", config.database);
 
     let cors = CorsLayer::new()
         .allow_origin(Origin::list(args.origins))
@@ -609,7 +558,7 @@ async fn main() -> anyhow::Result<()> {
 
     let mut server = Server::builder().accept_http1(true).layer(layer);
 
-    let repository_index = config.database.instantiate_repository_index().await?;
+    let repository_index = config.database.instantiate().await?;
     let service = SourceControlServer::new(Service::new(repository_index));
     let server = server.add_service(tonic_web::enable(service));
 

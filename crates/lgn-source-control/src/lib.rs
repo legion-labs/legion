@@ -12,7 +12,6 @@ pub mod index;
 //pub mod resolve;
 //pub mod revert;
 mod config;
-pub mod sql;
 mod utils;
 pub mod workspace;
 
@@ -24,6 +23,6 @@ pub use index::*;
 //pub use merge_branch::*;
 //pub use resolve::*;
 //pub use revert::*;
-pub use config::Config;
+pub use config::{Config, GrpcConfig, LocalConfig, RepositoryIndexConfig, SqlConfig};
 pub(crate) use utils::*;
 pub use workspace::*;

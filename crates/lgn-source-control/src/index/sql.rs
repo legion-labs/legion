@@ -62,10 +62,15 @@ impl SqlDatabaseDriver {
 
     async fn new_pool(&self) -> Result<Pool<sqlx::Any>> {
         Ok(match &self {
-            Self::Sqlite(uri) => AnyPoolOptions::new()
-                .connect(uri)
-                .await
-                .map_other_err("failed to establish a SQLite connection pool".to_string())?,
+            Self::Sqlite(uri) => {
+                AnyPoolOptions::new()
+                    .connect(uri)
+                    .await
+                    .map_other_err(format!(
+                        "failed to establish a SQLite connection pool to `{}`",
+                        uri
+                    ))?
+            }
             Self::Mysql(uri) => AnyPoolOptions::new()
                 .max_connections(10)
                 .connect(uri)
@@ -95,6 +100,7 @@ impl SqlDatabaseDriver {
 #[derive(Debug, Clone)]
 pub struct SqlRepositoryIndex {
     driver: SqlDatabaseDriver,
+    pool: Pool<sqlx::Any>,
 }
 
 impl SqlRepositoryIndex {
@@ -102,32 +108,50 @@ impl SqlRepositoryIndex {
         async_span_scope!("SqlRepositoryIndex::new");
         let driver = SqlDatabaseDriver::new(url)?;
 
+        info!("Connecting to SQL database...");
+
         // This should not be done in production, but it is useful for testing.
         if !driver.check_if_database_exists().await? {
+            info!("Database does not exist: creating...");
+
             driver.create_database().await?;
-
-            let pool = driver.new_pool().await?;
-            let mut conn = pool
-                .acquire()
-                .await
-                .map_other_err("failed to acquire SQL connection")?;
-
-            Self::initialize_database(&mut conn, &driver).await?;
+        } else {
+            info!("Database already exists: moving on...");
         }
 
-        Ok(Self { driver })
+        let pool = driver.new_pool().await?;
+
+        let mut conn = pool
+            .acquire()
+            .await
+            .map_other_err("failed to acquire SQL connection")?;
+
+        Self::initialize_database(&mut conn, &driver).await?;
+
+        Ok(Self { driver, pool })
     }
 
     async fn initialize_database(
         conn: &mut sqlx::AnyConnection,
         driver: &SqlDatabaseDriver,
     ) -> Result<()> {
-        Self::create_repositories_table(conn, driver).await?;
-        Self::create_commits_table(conn, driver).await?;
-        Self::create_forest_table(conn).await?;
-        Self::create_branches_table(conn).await?;
-        Self::create_workspace_registrations_table(conn).await?;
-        Self::create_locks_table(conn).await?;
+        let sql: &str = &format!("SELECT 1 from `{}` LIMIT 1;", TABLE_REPOSITORIES);
+
+        match conn.execute(sql).await {
+            Ok(_) => {
+                info!("Database already initialized");
+            }
+            Err(_) => {
+                info!("Database not initialized yet.");
+
+                Self::create_repositories_table(conn, driver).await?;
+                Self::create_commits_table(conn, driver).await?;
+                Self::create_forest_table(conn).await?;
+                Self::create_branches_table(conn).await?;
+                Self::create_workspace_registrations_table(conn).await?;
+                Self::create_locks_table(conn).await?;
+            }
+        }
 
         Ok(())
     }
@@ -242,8 +266,9 @@ impl RepositoryIndex for SqlRepositoryIndex {
     async fn create_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
         async_span_scope!("SqlRepositoryIndex::create_repository");
 
-        let pool = self.driver.new_pool().await?;
-        let index = SqlIndex::init(self.driver.clone(), pool, repository_name).await?;
+        info!("Creating repository `{}` in SQL index", repository_name);
+
+        let index = SqlIndex::init(self.driver.clone(), self.pool.clone(), repository_name).await?;
 
         Ok(Box::new(index))
     }
@@ -251,8 +276,9 @@ impl RepositoryIndex for SqlRepositoryIndex {
     async fn destroy_repository(&self, repository_name: RepositoryName) -> Result<()> {
         async_span_scope!("SqlRepositoryIndex::destroy_repository");
 
-        let pool = self.driver.new_pool().await?;
-        let index = SqlIndex::load(self.driver.clone(), pool, repository_name).await?;
+        info!("Destroying repository `{}` in SQL index", repository_name);
+
+        let index = SqlIndex::load(self.driver.clone(), self.pool.clone(), repository_name).await?;
 
         index.cleanup_repository_data().await
     }
@@ -260,8 +286,9 @@ impl RepositoryIndex for SqlRepositoryIndex {
     async fn load_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
         async_span_scope!("SqlRepositoryIndex::load_repository");
 
-        let pool = self.driver.new_pool().await?;
-        let index = SqlIndex::load(self.driver.clone(), pool, repository_name).await?;
+        info!("Loading repository `{}` in SQL index", repository_name);
+
+        let index = SqlIndex::load(self.driver.clone(), self.pool.clone(), repository_name).await?;
 
         Ok(Box::new(index))
     }
@@ -325,6 +352,11 @@ impl SqlIndex {
     }
 
     async fn get_conn(&self) -> Result<sqlx::pool::PoolConnection<sqlx::Any>> {
+        info!(
+            "Acquiring SQL connections: pool currently has {} connections",
+            self.pool.size()
+        );
+
         self.pool
             .acquire()
             .await
@@ -332,6 +364,11 @@ impl SqlIndex {
     }
 
     async fn get_transaction(&self) -> Result<sqlx::Transaction<'_, sqlx::Any>> {
+        info!(
+            "Acquiring SQL transaction: pool currently has {} connections",
+            self.pool.size()
+        );
+
         self.pool
             .begin()
             .await
@@ -1255,7 +1292,14 @@ impl Index for SqlIndex {
         async_span_scope!("SqlIndex::get_tree");
         let mut transaction = self.get_transaction().await?;
 
-        Self::get_tree_transactional(&mut transaction, id).await
+        let tree = Self::get_tree_transactional(&mut transaction, id).await?;
+
+        transaction.commit().await.map_other_err(&format!(
+            "failed to commit transaction while getting tree `{}`",
+            &id,
+        ))?;
+
+        Ok(tree)
     }
 
     async fn save_tree(&self, tree: &Tree) -> Result<String> {

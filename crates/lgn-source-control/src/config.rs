@@ -2,7 +2,9 @@ use http::Uri;
 use lgn_config::RichPathBuf;
 use serde::{Deserialize, Deserializer};
 
-use crate::{GrpcRepositoryIndex, LocalRepositoryIndex, RepositoryIndex, Result};
+use crate::{
+    GrpcRepositoryIndex, LocalRepositoryIndex, RepositoryIndex, Result, SqlRepositoryIndex,
+};
 
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct Config {
@@ -14,6 +16,7 @@ pub struct Config {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RepositoryIndexConfig {
     Grpc(GrpcConfig),
+    Sql(SqlConfig),
     Local(LocalConfig),
 }
 
@@ -24,6 +27,11 @@ pub struct GrpcConfig {
     /// If not specified, the global `online.web_api_base_url` will be used.
     #[serde(default, deserialize_with = "GrpcConfig::deserialize_web_api_url")]
     pub web_api_url: Option<Uri>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct SqlConfig {
+    pub connection_string: String,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -71,19 +79,41 @@ impl RepositoryIndexConfig {
     /// If no default repository name is specified, "default" will be used.
     pub async fn instantiate(&self) -> Result<Box<dyn RepositoryIndex>> {
         match self {
-            Self::Grpc(grpc_config) => {
-                let online_config = lgn_online::Config::load()?;
-                let client = online_config
-                    .instantiate_web_api_client_with_url(grpc_config.web_api_url.as_ref(), &[])
-                    .await?;
-                let index = GrpcRepositoryIndex::new(client);
+            Self::Grpc(grpc_config) => grpc_config.instantiate().await,
+            Self::Sql(sql_config) => {
+                let index = sql_config.instantiate().await?;
                 Ok(Box::new(index))
             }
             Self::Local(local_config) => {
-                let index = LocalRepositoryIndex::new(&local_config.path.as_ref()).await?;
+                let index = local_config.instantiate().await?;
                 Ok(Box::new(index))
             }
         }
+    }
+}
+
+impl GrpcConfig {
+    pub async fn instantiate(&self) -> Result<Box<dyn RepositoryIndex>> {
+        let online_config = lgn_online::Config::load()?;
+        let client = online_config
+            .instantiate_web_api_client_with_url(self.web_api_url.as_ref(), &[])
+            .await?;
+
+        let index = GrpcRepositoryIndex::new(client);
+
+        Ok(Box::new(index))
+    }
+}
+
+impl SqlConfig {
+    pub async fn instantiate(&self) -> Result<SqlRepositoryIndex> {
+        SqlRepositoryIndex::new(self.connection_string.clone()).await
+    }
+}
+
+impl LocalConfig {
+    pub async fn instantiate(&self) -> Result<LocalRepositoryIndex> {
+        LocalRepositoryIndex::new(&self.path.as_ref()).await
     }
 }
 
