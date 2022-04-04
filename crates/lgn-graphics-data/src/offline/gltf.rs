@@ -56,17 +56,21 @@ impl GltfFile {
                 let reader = primitive.reader(|buffer| Some(&self.buffers[buffer.index()]));
                 if let Some(iter) = reader.read_positions() {
                     for position in iter {
-                        positions.push(Vec3::new(position[0], position[1], -position[2]));
+                        // GLTF is right handed, Legion Engine is left handed. Hence X -> Z, Y -> Y, Z -> X. Same for normals.
+                        positions.push(Vec3::new(position[2], position[1], position[0]));
                     }
                 }
                 if let Some(iter) = reader.read_normals() {
                     for normal in iter {
-                        normals.push(Vec3::new(normal[0], normal[1], -normal[2]));
+                        normals.push(Vec3::new(normal[2], normal[1], normal[0]));
                     }
                 }
                 if let Some(iter) = reader.read_tangents() {
                     for tangent in iter {
-                        tangents.push(Vec3::new(tangent[0], tangent[1], -tangent[2]));
+                        // Tangent handedness is governed by its W coordinate in GLTF: 1.0 if system is RH, -1.0 if it's LH
+                        // Since LE uses LH we negate W
+                        tangents
+                            .push(Vec3::new(tangent[2], tangent[1], tangent[0]) * (-tangent[3]));
                     }
                 }
                 if let Some(tex_coords_option) = reader.read_tex_coords(0) {
