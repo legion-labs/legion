@@ -22,7 +22,6 @@ import {
   RuntimeClientImpl,
   GrpcWebImpl as RuntimeImpl,
 } from "@lgn/proto-runtime/dist/runtime";
-
 import log from "@lgn/web-client/src/lib/log";
 
 import { formatProperties } from "../lib/propertyGrid";
