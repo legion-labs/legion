@@ -289,9 +289,18 @@ Could support the interface to get visibility into crates that are already instr
 
 ---
 ## Backlog
+- Support for Google Cloud Storage
+- i18n
+- Review regulatory requirements
+- Landing page
 - Logs (dual mode)
   * Paging when not filtering
   * n-first results when there is a filter
+  
+---
+## More Backlog
+ 
+- Async spans stitching/LOD
 - GPU profiling
 - Memory profiling
 - Object Graphs
