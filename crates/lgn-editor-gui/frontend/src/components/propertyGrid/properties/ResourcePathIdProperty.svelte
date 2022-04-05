@@ -23,8 +23,6 @@
     detail: { item: draggedEntry },
   }: CustomEvent<{ item: any; originalEvent: DragEvent }>) {
     if (resourceType) {
-      console.log("dropped ", draggedEntry);
-
       const newValue = createResourcePathId(resourceType, draggedEntry);
 
       if (newValue) {

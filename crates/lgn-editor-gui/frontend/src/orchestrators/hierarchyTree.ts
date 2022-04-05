@@ -4,7 +4,7 @@
  *
  * It could also contain an array of id pointing to the currently expanded entries in the tree.
  */
-import type { Readable, Writable } from "svelte/store";
+import type { Readable, Unsubscriber, Writable } from "svelte/store";
 import { get, readable, writable } from "svelte/store";
 
 import type { Entry, ItemBase } from "@/lib/hierarchyTree";
@@ -14,6 +14,7 @@ export type HierarchyTreeOrchestrator<Item extends ItemBase> = {
   currentlyRenameEntry: Writable<Entry<Item> | null>;
   currentEntry: Writable<Entry<Item> | null>;
   entries: Writable<Entries<Item>>;
+  unsubscriber: Unsubscriber;
 };
 
 export function createHierarchyTreeOrchestrator<Item extends ItemBase>(
@@ -31,7 +32,7 @@ export function deriveHierarchyTreeOrchestrator<Item extends ItemBase>(
 
   const currentEntry = writable<Entry<Item> | null>(null);
 
-  itemsStore.subscribe((items) => {
+  const unsubscriber = itemsStore.subscribe((items) => {
     const currentEntryValue = get(currentEntry);
     const currentRenameEntryValue = get(currentlyRenameEntry);
 
@@ -54,5 +55,5 @@ export function deriveHierarchyTreeOrchestrator<Item extends ItemBase>(
     entries.set(Entries.fromArray(items));
   });
 
-  return { currentlyRenameEntry, currentEntry, entries };
+  return { currentlyRenameEntry, currentEntry, entries, unsubscriber };
 }

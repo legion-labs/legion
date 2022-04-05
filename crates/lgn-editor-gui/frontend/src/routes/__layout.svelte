@@ -7,13 +7,13 @@
   import type { NonEmptyArray } from "@lgn/web-client/src/lib/array";
   import log from "@lgn/web-client/src/lib/log";
   import {
+    createEmptyPanel,
     createPanel,
     createTile,
   } from "@lgn/web-client/src/stores/workspace";
 
   import { initApiClient } from "@/api";
   import { fetchAllActiveScenes } from "@/orchestrators/allActiveScenes";
-  import { initMessageStream } from "@/orchestrators/selection";
   import contextMenu, {
     resourceBrowserItemContextMenuId,
     resourceBrowserItemEntries,
@@ -22,11 +22,10 @@
     sceneExplorerItemContextMenuId,
     sceneExplorerItemEntries,
   } from "@/stores/contextMenu";
-  import devSettings from "@/stores/devSettings";
-  import { initLogStream } from "@/stores/log";
-  import { initStagedResourcesStream } from "@/stores/stagedResources";
   import tabPayloads from "@/stores/tabPayloads";
   import workspace, {
+    sceneExplorerPanelId,
+    sceneExplorerTileId,
     viewportPanelId,
     viewportTileId,
   } from "@/stores/workspace";
@@ -97,25 +96,6 @@
           // await initWasmLogger();
           // debug("Hello from the Legion editor");
 
-          // Fire and forget stream init
-          // TODO: When using routing we may want to cancel the returned subscription
-          initLogStream();
-
-          // Fire and forget stream init
-          // TODO: When using routing we may want to cancel the returned subscription
-          initMessageStream();
-
-          // Fire and forget stream init
-          // TODO: When using routing we may want to cancel the returned subscription
-          initStagedResourcesStream();
-
-          // Fire and forget stream init
-          // TODO: When using routing we may want to cancel the returned subscription
-          // TODO: Reactivate when the streaming is ready server-side
-          // initAllActiveScenesStream();
-
-          await fetchAllActiveScenes();
-
           contextMenu.register(
             resourceBrowserItemContextMenuId,
             resourceBrowserItemEntries
@@ -170,7 +150,13 @@
             { trackSize: false }
           );
 
-          workspace.pushTile(viewportTile);
+          const sceneExplorerTile = createTile<TabType>(
+            sceneExplorerTileId,
+            createEmptyPanel<TabType>(sceneExplorerPanelId),
+            { trackSize: false }
+          );
+
+          workspace.appendAllTiles([viewportTile, sceneExplorerTile]);
         },
       });
 
@@ -189,19 +175,87 @@
   import { onMount } from "svelte";
 
   import AuthModal from "@/components/AuthModal.svelte";
+  import { fileName } from "@/lib/path";
+  import { allActiveScenes } from "@/orchestrators/allActiveScenes";
+  import { initMessageStream } from "@/orchestrators/selection";
   import authStatus from "@/stores/authStatus";
+  import devSettings from "@/stores/devSettings";
+  import { initLogStream } from "@/stores/log";
   import modal from "@/stores/modal";
 
   import "../assets/index.css";
 
-  onMount(() => {
+  onMount(async () => {
     if ($authStatus && $authStatus.type === "error") {
       modal.open(Symbol.for("auth-modal"), AuthModal, {
         payload: { authorizationUrl: $authStatus.authorizationUrl },
         noTransition: true,
       });
     }
+
+    const initLogStreamSubscription = initLogStream();
+    const initMessageStreamSubscription = initMessageStream();
+    // const initStagedResourcesStreamSubscription = await initStagedResourcesStream();
+
+    // TODO: Reactivate when the streaming is ready server-side
+    // initAllActiveScenesStream();
+    await fetchAllActiveScenes();
+
+    const allActiveScenesSubscription = allActiveScenes.subscribe(
+      (allActiveScenes) => {
+        if (!allActiveScenes) {
+          tabPayloads.update((tabPayloads) =>
+            Object.fromEntries(
+              Object.entries(tabPayloads).filter(
+                ([_id, payload]) => payload.type !== "sceneExplorer"
+              )
+            )
+          );
+        } else {
+          tabPayloads.update((tabPayloads) => {
+            const cleanedTabPayloads = Object.fromEntries(
+              Object.entries(tabPayloads).filter(
+                ([_id, payload]) => payload.type !== "sceneExplorer"
+              )
+            );
+
+            allActiveScenes.forEach(({ rootScene }) => {
+              cleanedTabPayloads[rootScene.id] = {
+                type: "sceneExplorer",
+                rootSceneId: rootScene.id,
+              };
+            });
+
+            return cleanedTabPayloads;
+          });
+        }
+
+        workspace.setPanelTabs(
+          sceneExplorerPanelId,
+          allActiveScenes?.map(({ rootScene }) => ({
+            id: rootScene.id,
+            payloadId: rootScene.id,
+            label: fileName(rootScene.path),
+            type: "sceneExplorer",
+            // TODO: Support close scene on close
+            // disposable: true,
+          })) as NonEmptyArray<TabType>
+        );
+      }
+    );
+
+    return () => {
+      initLogStreamSubscription();
+      initMessageStreamSubscription();
+      // initStagedResourcesStreamSubscription();
+      // TODO: Uncomment when the streaming is ready server-side
+      // initAllActiveScenesStream();
+      allActiveScenesSubscription();
+    };
   });
+
+  $: console.log($tabPayloads);
+  $: console.log($workspace);
 </script>
 
 <slot />

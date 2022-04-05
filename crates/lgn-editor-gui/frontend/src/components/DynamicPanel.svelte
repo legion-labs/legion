@@ -11,6 +11,7 @@
   import type { TabType } from "@/stores/workspace";
   import workspace from "@/stores/workspace";
 
+  import SceneExplorerTab from "./tabs/SceneExplorerTab.svelte";
   import ScriptTab from "./tabs/ScriptTab.svelte";
 
   export let panel: Exclude<WorkspacePanel<TabType>, { type: "emptyPanel" }>;
@@ -43,6 +44,8 @@
           </span>
         {/if}
       {:else if tab.type === "script"}
+        {tab.label}
+      {:else if tab.type === "sceneExplorer"}
         {tab.label}
       {/if}
     </div>
@@ -81,6 +84,8 @@
       {/if}
     {:else if activeTab.type === "script" && payload?.type === "script"}
       <ScriptTab payloadId={activeTab.id} {payload} on:change={updatePayload} />
+    {:else if activeTab.type === "sceneExplorer" && payload?.type === "sceneExplorer"}
+      <SceneExplorerTab payloadId={activeTab.id} {payload} />
     {/if}
   </div>
 </Panel>

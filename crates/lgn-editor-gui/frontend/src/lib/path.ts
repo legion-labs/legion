@@ -30,6 +30,30 @@ export function components(path: Path): string[] {
   return path.split(pathSeparator).filter(Boolean);
 }
 
+/**
+ * Returns the base path.
+ * `null` is returned if the path has not parents or if the main seperator couldn't be detected.
+ */
+export function basePath(path: Path): string | null {
+  const mainSeparator = detectMainPathSeparator(path);
+
+  if (!mainSeparator) {
+    return null;
+  }
+
+  const parts = components(path).slice(0, -1);
+
+  if (!parts.length) {
+    return null;
+  }
+
+  const basePath = join(parts, mainSeparator);
+
+  return path.startsWith(mainSeparator)
+    ? `${mainSeparator}${basePath}`
+    : basePath;
+}
+
 /** Extract the file name from a path */
 export function fileName(path: Path): string | null {
   const parts = components(path);

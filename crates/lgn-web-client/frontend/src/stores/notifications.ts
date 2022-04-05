@@ -9,15 +9,19 @@ export type Notification = {
 };
 
 export type NotificationsValue = Notification & {
-  close(): void;
   started: number;
   timeout: number;
-  percentage: number;
+  percentage: number | null;
+  paused: boolean;
+  intervalId: ReturnType<typeof setInterval>;
 };
 
 export type NotificationsStore = Writable<
   Record<symbol, NotificationsValue>
 > & {
+  close(key: symbol): void;
+  pause(key: symbol): void;
+  resume(key: symbol): void;
   push(key: symbol, value: Notification): void;
 };
 
@@ -26,13 +30,58 @@ const intervalMs = 16;
 export function createNotificationsStore(
   requestedTimeout = 5_000
 ): NotificationsStore {
+  const notificationsStore = writable<Record<symbol, NotificationsValue>>({});
+
   return {
-    ...writable<Record<symbol, NotificationsValue>>({}),
+    ...notificationsStore,
+
+    pause(key: symbol) {
+      notificationsStore.update((notifications) => {
+        const notification = notifications[key];
+
+        if (!notification) {
+          return notifications;
+        }
+
+        return {
+          ...notifications,
+          [key]: { ...notification, paused: true, percentage: null },
+        };
+      });
+    },
+
+    resume(key: symbol) {
+      notificationsStore.update((notifications) => {
+        const notification = notifications[key];
+
+        if (!notification) {
+          return notifications;
+        }
+
+        return {
+          ...notifications,
+          [key]: { ...notification, paused: false, started: Date.now() },
+        };
+      });
+    },
+
+    close(key: symbol) {
+      notificationsStore.update((notifications) => {
+        const { [key]: notification, ...remainingNotifications } =
+          notifications;
+
+        if (!notification) {
+          return notifications;
+        }
+
+        clearInterval(notification.intervalId);
+
+        return remainingNotifications;
+      });
+    },
 
     push(key: symbol, value: Notification) {
-      const update = this.update;
-
-      this.update((notifications) => {
+      notificationsStore.update((notifications) => {
         if (key in notifications) {
           return notifications;
         }
@@ -41,11 +90,24 @@ export function createNotificationsStore(
           typeof value.timeout === "number" ? value.timeout : requestedTimeout;
 
         const intervalId = setInterval(() => {
-          this.update((notifications) => {
-            const notification = notifications[key];
+          notificationsStore.update((notifications) => {
+            const { [key]: notification, ...remainingNotifications } =
+              notifications;
+
+            if (!notification || notification.paused) {
+              return notifications;
+            }
 
             const percentage =
-              100 - (100 * (Date.now() - notification.started)) / timeout;
+              100 -
+              (100 * (Date.now() - notification.started)) /
+                notification.timeout;
+
+            if (Math.floor(percentage) === 0) {
+              clearInterval(notification.intervalId);
+
+              return remainingNotifications;
+            }
 
             return {
               ...notifications,
@@ -54,16 +116,6 @@ export function createNotificationsStore(
           });
         }, intervalMs);
 
-        const timeoutId = setTimeout(() => {
-          this.update((notifications) => {
-            clearInterval(intervalId);
-
-            const { [key]: _, ...restNotifications } = notifications;
-
-            return restNotifications;
-          });
-        }, timeout);
-
         return {
           ...notifications,
           [key]: {
@@ -71,16 +123,8 @@ export function createNotificationsStore(
             started: Date.now(),
             timeout,
             percentage: 100,
-            close() {
-              clearTimeout(timeoutId);
-              clearInterval(intervalId);
-
-              update((notifications) => {
-                const { [key]: _, ...restNotifications } = notifications;
-
-                return restNotifications;
-              });
-            },
+            paused: false,
+            intervalId,
           },
         };
       });

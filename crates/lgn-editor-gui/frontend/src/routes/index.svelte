@@ -7,12 +7,11 @@
   import Tile from "@lgn/web-client/src/components/Tile.svelte";
   import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
   import ModalContainer from "@lgn/web-client/src/components/modal/ModalContainer.svelte";
-  import { Panel } from "@lgn/web-client/src/components/panel";
+  import { EmptyPanel, Panel } from "@lgn/web-client/src/components/panel";
 
   import DynamicPanel from "@/components/DynamicPanel.svelte";
   import ExtraPanel from "@/components/ExtraPanel.svelte";
   import ResourceBrowser from "@/components/ResourceBrowser.svelte";
-  import SceneExplorer from "@/components/SceneExplorer.svelte";
   import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
   import {
     allResourcesError,
@@ -25,7 +24,7 @@
   import modal from "@/stores/modal";
   import notifications from "@/stores/notifications";
   import { stagedResources, syncFromMain } from "@/stores/stagedResources";
-  import workspace from "@/stores/workspace";
+  import workspace, { sceneExplorerTileId } from "@/stores/workspace";
   import { viewportTileId } from "@/stores/workspace";
 
   $: if ($allResourcesError) {
@@ -57,7 +56,20 @@
     <div class="content">
       <div class="secondary-contents">
         <div class="scene-explorer">
-          <SceneExplorer />
+          <!-- TODO: Move this into a dedicated component DynamicTile -->
+          <Tile id={sceneExplorerTileId} {workspace}>
+            <div class="h-full w-full" slot="default" let:tile>
+              {#if tile?.panel?.type === "populatedPanel"}
+                <DynamicPanel panel={tile.panel} />
+              {:else}
+                <EmptyPanel>
+                  <div class="empty-panel">
+                    <em>No open scenes</em>
+                  </div>
+                </EmptyPanel>
+              {/if}
+            </div>
+          </Tile>
         </div>
         <div class="h-separator" />
         <div class="resource-browser">
@@ -66,10 +78,17 @@
       </div>
       <div class="v-separator" />
       <div class="main-content">
+        <!-- TODO: Move this into a dedicated component DynamicTile -->
         <Tile id={viewportTileId} {workspace}>
           <div class="h-full w-full" slot="default" let:tile>
             {#if tile?.panel?.type === "populatedPanel"}
               <DynamicPanel panel={tile.panel} />
+            {:else}
+              <EmptyPanel>
+                <div class="empty-panel">
+                  <em>No open videos</em>
+                </div>
+              </EmptyPanel>
             {/if}
           </div>
         </Tile>
@@ -147,5 +166,9 @@
 
   .extra-panel {
     @apply h-80 flex-shrink-0;
+  }
+
+  .empty-panel {
+    @apply flex items-center justify-center h-full w-full text-xl font-bold;
   }
 </style>

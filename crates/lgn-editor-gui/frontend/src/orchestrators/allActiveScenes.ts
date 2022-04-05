@@ -1,6 +1,7 @@
 import { derived } from "svelte/store";
 
 import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
+import type { NonEmptyArray } from "@lgn/web-client/src/lib/array";
 import type { AsyncOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 import { createAsyncStoreListOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 
@@ -49,16 +50,39 @@ const allActiveScenesOrchestrator =
 const allActiveSceneIdsOrchestrator =
   createAsyncStoreListOrchestrator<string[]>();
 
+export type AllActiveScenesValue =
+  | {
+      rootScene: ResourceDescription;
+      scenes: NonEmptyArray<ResourceDescription>;
+    }[]
+  | null;
+
 export const allActiveScenes = derived(
   [allResources, allActiveSceneIdsOrchestrator.data],
   ([allResources, allActiveSceneIds]) => {
     if (!allResources || !allActiveSceneIds || !allActiveSceneIds.length) {
-      return allResources;
+      return null;
     }
 
-    return allResources.filter((resource) =>
-      allActiveSceneIds.includes(resource.id)
-    );
+    return allActiveSceneIds.reduce((activeScenes, activeSceneId) => {
+      const rootScene = allResources.find(
+        (resource) => activeSceneId === resource.id
+      );
+
+      if (!rootScene) {
+        return activeScenes;
+      }
+
+      return [
+        ...activeScenes,
+        {
+          rootScene,
+          scenes: allResources.filter((resource) =>
+            resource.path.startsWith(rootScene.path)
+          ) as NonEmptyArray<ResourceDescription>,
+        },
+      ];
+    }, [] as Exclude<AllActiveScenesValue, null>);
   }
 );
 

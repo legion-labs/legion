@@ -8,7 +8,12 @@
   {#each Object.getOwnPropertySymbols($store) as key}
     {@const notification = $store[key]}
 
-    <div class="notification" on:click={() => notification.close()}>
+    <div
+      class="notification"
+      on:click={() => store.close(key)}
+      on:mouseenter={() => store.pause(key)}
+      on:mouseleave={() => store.resume(key)}
+    >
       <div
         class="title"
         class:success={notification.type === "success"}
@@ -21,10 +26,12 @@
         {notification.message}
       </div>
       <div class="progress">
-        <div
-          class="progress-inner"
-          style="width: {notification.percentage}%;"
-        />
+        {#if typeof notification.percentage === "number"}
+          <div
+            class="progress-inner"
+            style="width: {notification.percentage}%;"
+          />
+        {/if}
       </div>
     </div>
   {/each}
