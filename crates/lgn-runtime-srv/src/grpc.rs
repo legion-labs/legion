@@ -48,11 +48,14 @@ impl Runtime for GRPCServer {
                 ))
             })?;
 
-        if let Err(_error) = self
+        if let Err(error) = self
             .command_sender
             .send(RuntimeServerCommand::LoadManifest(manifest_id))
         {
-            warn!("internal error sending runtime server command on channel");
+            warn!(
+                "internal error sending runtime server command on channel: {}",
+                error
+            );
         }
 
         Ok(Response::new(LoadManifestResponse {}))
@@ -63,14 +66,28 @@ impl Runtime for GRPCServer {
         request: Request<LoadRootAssetRequest>,
     ) -> Result<Response<LoadRootAssetResponse>, Status> {
         let request = request.into_inner();
-        if let Ok(root_asset_id) = request.root_asset_id.parse::<ResourceTypeAndId>() {
-            if let Err(_error) = self
-                .command_sender
-                .send(RuntimeServerCommand::LoadRootAsset(root_asset_id))
-            {
-                warn!("internal error sending runtime server command on channel");
-            }
+
+        let root_asset_id =
+            request
+                .root_asset_id
+                .parse::<ResourceTypeAndId>()
+                .map_err(|error| {
+                    Status::internal(format!(
+                        "Invalid asset id format \"{}\": {}",
+                        request.root_asset_id, error
+                    ))
+                })?;
+
+        if let Err(error) = self
+            .command_sender
+            .send(RuntimeServerCommand::LoadRootAsset(root_asset_id))
+        {
+            warn!(
+                "internal error sending runtime server command on channel: {}",
+                error
+            );
         }
+
         Ok(Response::new(LoadRootAssetResponse {}))
     }
 
@@ -79,9 +96,14 @@ impl Runtime for GRPCServer {
         request: Request<PauseRequest>,
     ) -> Result<Response<PauseResponse>, Status> {
         let _request = request.into_inner();
-        if let Err(_error) = self.command_sender.send(RuntimeServerCommand::Pause {}) {
-            warn!("internal error sending runtime server command on channel");
+
+        if let Err(error) = self.command_sender.send(RuntimeServerCommand::Pause {}) {
+            warn!(
+                "internal error sending runtime server command on channel: {}",
+                error
+            );
         }
+
         Ok(Response::new(PauseResponse {}))
     }
 }
