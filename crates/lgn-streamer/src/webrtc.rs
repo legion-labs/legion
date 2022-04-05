@@ -6,6 +6,7 @@ use lgn_window::WindowId;
 use webrtc::{
     api::{media_engine::MediaEngine, setting_engine::SettingEngine, APIBuilder, API},
     data_channel::{data_channel_message::DataChannelMessage, RTCDataChannel},
+    ice::udp_network::{EphemeralUDP, UDPNetwork},
     ice_transport::ice_candidate_type::RTCIceCandidateType,
     peer_connection::{
         configuration::RTCConfiguration, peer_connection_state::RTCPeerConnectionState,
@@ -36,6 +37,12 @@ impl WebRTCServer {
 
         if !config.nat_1to1_ips.is_empty() {
             setting_engine.set_nat_1to1_ips(config.nat_1to1_ips, RTCIceCandidateType::Host);
+        }
+
+        if let Some(ports) = config.ports {
+            let params = EphemeralUDP::new(ports.min, ports.max)?;
+            let udp_network = UDPNetwork::Ephemeral(params);
+            setting_engine.set_udp_network(udp_network);
         }
 
         let ice_servers = config.ice_servers;

@@ -42,6 +42,9 @@ pub struct WebRTCConfig {
     /// The ICE servers.
     #[serde(default)]
     pub ice_servers: Vec<WebRTCIceServer>,
+
+    /// The ports.
+    pub ports: Option<WebRTCPortsConfig>,
 }
 
 impl Display for WebRTCConfig {
@@ -84,8 +87,15 @@ impl Default for WebRTCConfig {
         Self {
             nat_1to1_ips: Vec::default(),
             ice_servers: Self::default_ice_servers(),
+            ports: None,
         }
     }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct WebRTCPortsConfig {
+    pub min: u16,
+    pub max: u16,
 }
 
 /// The `WebRTC` ICE servers.

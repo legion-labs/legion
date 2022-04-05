@@ -8,6 +8,7 @@ pub mod authentication;
 pub mod aws;
 pub mod grpc;
 
+pub mod cloud;
 mod config;
 mod errors;
 

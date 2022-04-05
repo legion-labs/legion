@@ -104,6 +104,10 @@ struct Config {
     /// The streamer configuration.
     #[serde(default)]
     streamer: lgn_streamer::Config,
+
+    /// Whether the program runs in AWS EC2 behind a NAT.
+    #[serde(default)]
+    enable_aws_ec2_nat_public_ipv4_auto_discovery: bool,
 }
 
 impl Config {
@@ -124,6 +128,7 @@ impl Default for Config {
             scene: None,
             build_output_database_address: Self::default_build_output_database_address(),
             streamer: lgn_streamer::Config::default(),
+            enable_aws_ec2_nat_public_ipv4_auto_discovery: false,
         }
     }
 }
@@ -222,11 +227,29 @@ fn main() {
     let game_manifest_path = args.manifest.map_or_else(PathBuf::new, PathBuf::from);
     let assets_to_load = Vec::<ResourceTypeAndId>::new();
 
-    info!("Streamer plugin config:\n{}", config.streamer);
-
     let streamer_plugin = StreamerPlugin {
-        config: config.streamer,
+        config: if config.enable_aws_ec2_nat_public_ipv4_auto_discovery {
+            info!("Using AWS EC2 NAT public IPv4 auto-discovery.");
+
+            let ipv4 = tokio_rt
+                .block_on(lgn_online::cloud::get_aws_ec2_metadata_public_ipv4())
+                .expect("failed to get AWS EC2 public IPv4");
+
+            info!("AWS EC2 public IPv4: {}", ipv4);
+
+            let mut streamer_config = config.streamer;
+
+            info!("Adding NAT 1:1 public IPv4 to streamer configuration.");
+
+            streamer_config.webrtc.nat_1to1_ips.push(ipv4.to_string());
+
+            streamer_config
+        } else {
+            config.streamer
+        },
     };
+
+    info!("Streamer plugin config:\n{}", streamer_plugin.config);
 
     app.insert_resource(tokio_rt)
         .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
