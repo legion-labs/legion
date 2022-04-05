@@ -38,10 +38,10 @@ use web_ingestion_service::WebIngestionService;
 #[clap(about = "Legion Telemetry Ingestion Server", version, author)]
 #[clap(arg_required_else_help(true))]
 struct Cli {
-    #[clap(long, default_value = "[::1]:8080")]
+    #[clap(long, default_value = "0.0.0.0:8080")]
     listen_endpoint: SocketAddr, //grpc
 
-    #[clap(long, default_value = "[::1]:8081")]
+    #[clap(long, default_value = "0.0.0.0:8081")]
     listen_endpoint_http: SocketAddr,
 
     #[clap(subcommand)]
