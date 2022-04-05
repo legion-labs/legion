@@ -2563,6 +2563,7 @@ dependencies = [
  "lgn-input",
  "lgn-math",
  "lgn-mp4",
+ "lgn-online",
  "lgn-physics",
  "lgn-resource-registry",
  "lgn-scene-plugin",

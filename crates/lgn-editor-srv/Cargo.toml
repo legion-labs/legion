@@ -20,6 +20,7 @@ lgn-data-model = { path = "../lgn-data-model", version = "0.1.0" }
 lgn-editor-proto = { path = "../lgn-editor-proto", version = "0.1.0" }
 lgn-grpc = { path = "../lgn-grpc", version = "0.1.0" }
 lgn-mp4 = { path = "../lgn-mp4", version = "0.1.0" }
+lgn-online = { path = "../lgn-online", version = "0.1.0" }
 lgn-graphics-renderer = { path = "../lgn-graphics-renderer", version = "0.1.0" }
 lgn-hierarchy = { path = "../lgn-hierarchy", version = "0.1.0" }
 lgn-resource-registry = { path = "../lgn-resource-registry", version = "0.1.0" }
