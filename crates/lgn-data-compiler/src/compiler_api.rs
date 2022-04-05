@@ -247,6 +247,9 @@ pub enum CompilerError {
     StdoutError(#[from] std::io::Error),
 
     /// Invalid command line arguments.
+    #[error("Invalid string while parsing")]
+    Parse,
+    /// Invalid command line arguments.
     #[error("Invalid Arguments")]
     InvalidArgs,
     /// Invalid resource id.

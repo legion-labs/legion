@@ -60,6 +60,14 @@ pub(crate) async fn get_content_readers_impl<'ids>(
 
 #[async_trait]
 pub trait ContentReaderExt: ContentReader {
+    /// Check whether the identifier exists in the store.
+    async fn exists(&self, id: &Identifier) -> bool {
+        if let Identifier::Data(_) = id {
+            return true;
+        }
+        self.get_content_reader(id).await.is_ok()
+    }
+
     /// Read the content referenced by the specified identifier.
     async fn read_content(&self, id: &Identifier) -> Result<Vec<u8>> {
         if let Identifier::Data(data) = id {

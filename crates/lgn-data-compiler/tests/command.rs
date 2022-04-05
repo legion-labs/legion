@@ -1,6 +1,6 @@
 use std::{path::Path, sync::Arc};
 
-use lgn_content_store2::{ContentProvider, ContentReaderExt, MemoryProvider};
+use lgn_content_store2::{Config, ContentReaderExt};
 use lgn_data_compiler::compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd};
 use lgn_data_offline::{resource::ResourceProcessor, ResourcePathId};
 use lgn_data_runtime::{AssetLoader, Resource, ResourceId, ResourceTypeAndId};
@@ -94,18 +94,18 @@ async fn command_compile() {
 
     let content_id = &result.compiled_resources[0].content_id;
 
-    let volatile_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-        Arc::new(Box::new(MemoryProvider::new()));
+    let volatile_content_provider = Arc::new(
+        Config::load_and_instantiate_volatile_provider()
+            .await
+            .unwrap(),
+    );
 
-    assert!(volatile_content_provider
-        .get_content_reader(&content_id)
-        .await
-        .is_ok());
+    assert!(volatile_content_provider.exists(content_id).await);
 
     let resource_content = {
         let mut loader = refs_asset::RefsAssetLoader::default();
         let content = volatile_content_provider
-            .read_content(&content_id)
+            .read_content(content_id)
             .await
             .expect("asset content");
         let loaded_resource = loader.load(&mut &content[..]).expect("valid data");

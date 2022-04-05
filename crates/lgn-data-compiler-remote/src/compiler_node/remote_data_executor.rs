@@ -7,11 +7,11 @@ use crate::node_crunch::nc_error::NCError;
 use lgn_data_offline::ResourcePathId;
 use serde::{Deserialize, Serialize};
 
-use lgn_content_store2::{Config, ContentProvider, ContentWriterExt, Identifier};
+use lgn_content_store2::{Config, ContentProvider, ContentReaderExt, ContentWriterExt, Identifier};
 use lgn_data_compiler::{
     compiler_api::CompilerError, compiler_cmd::CompilerCompileCmd, CompiledResource,
 };
-use tokio::fs;
+use tokio::{fs, io::AsyncWriteExt};
 
 /// The outgoing message for the Data-Executor server, requesting a compilation.
 #[derive(Serialize, Deserialize)]
@@ -116,14 +116,9 @@ pub(crate) async fn deploy_files(
 
         fs::create_dir_all(file_name.parent().unwrap()).await?;
 
-        let mut input = provider.get_content_reader(&file.1).await?;
+        let data = provider.read_content(&file.1).await?;
         let mut output = fs::File::create(&file_name).await?;
-
-        tokio::io::copy_buf(
-            &mut tokio::io::BufReader::with_capacity(10 * 1024 * 1024, &mut input),
-            &mut output,
-        )
-        .await?;
+        output.write_all(&data).await?;
     }
     Ok(())
 }

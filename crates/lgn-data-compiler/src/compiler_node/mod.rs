@@ -52,7 +52,7 @@ impl fmt::Debug for CompilerNode {
 mod tests {
     use async_trait::async_trait;
     use lgn_content_store2::{ContentProvider, Identifier, MemoryProvider};
-    use std::{path::PathBuf, str::FromStr, sync::Arc};
+    use std::{path::PathBuf, sync::Arc};
 
     use lgn_data_offline::{ResourcePathId, Transform};
     use lgn_data_runtime::{
@@ -198,7 +198,7 @@ mod tests {
             assert_eq!(output.compiled_resources[0].path, compile_path);
             assert_eq!(
                 output.compiled_resources[0].content_id,
-                Identifier::from_str("AAAAAAA").unwrap()
+                Identifier::new(b"AAAAAAA")
             );
             assert_eq!(output.compiled_resources[0].content_id.data_size(), 7);
         }

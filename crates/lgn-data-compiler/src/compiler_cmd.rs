@@ -57,6 +57,7 @@ use std::{
 };
 
 use lgn_data_offline::{ResourcePathId, Transform};
+use lgn_tracing::info;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -196,10 +197,12 @@ impl CommandBuilder {
     /// Executes the process returning the stdio output or an error on non-zero
     /// exit status.
     fn exec_with_cwd(&self, current_dir: impl AsRef<Path>) -> io::Result<std::process::Output> {
+        info!("Executing: {} {:?}", self.command, self.args);
         let output = std::process::Command::new(&self.command)
             .current_dir(current_dir)
             .args(&self.args)
             .output()?;
+        info!("Output: {:?}", output);
         if output.status.success() {
             Ok(output)
         } else {

@@ -214,14 +214,11 @@ mod tests {
                 compile_output.resources[0].compiled_path
             );
 
-            let original_checksum = compile_output.resources[0].compiled_content_id.clone();
+            let original_checksum = &compile_output.resources[0].compiled_content_id;
 
-            assert!(data_content_provider
-                .get_content_reader(&original_checksum)
-                .await
-                .is_ok());
+            assert!(data_content_provider.exists(original_checksum).await);
 
-            original_checksum
+            original_checksum.clone()
         };
 
         // ..change resource..
@@ -275,18 +272,12 @@ mod tests {
                 compile_output.resources[0].compiled_path
             );
 
-            let modified_checksum = compile_output.resources[0].compiled_content_id.clone();
+            let modified_checksum = &compile_output.resources[0].compiled_content_id;
 
-            assert!(data_content_provider
-                .get_content_reader(&original_checksum)
-                .await
-                .is_ok());
-            assert!(data_content_provider
-                .get_content_reader(&modified_checksum)
-                .await
-                .is_ok());
+            assert!(data_content_provider.exists(&original_checksum).await);
+            assert!(data_content_provider.exists(modified_checksum).await);
 
-            modified_checksum
+            modified_checksum.clone()
         };
 
         assert_ne!(original_checksum, modified_checksum);
@@ -435,10 +426,7 @@ mod tests {
         // validate reversed
         {
             let checksum = compile_output.resources[0].compiled_content_id.clone();
-            assert!(data_content_provider
-                .get_content_reader(&checksum)
-                .await
-                .is_ok());
+            assert!(data_content_provider.exists(&checksum).await);
             let resource_content = data_content_provider
                 .read_content(&checksum)
                 .await
@@ -459,10 +447,7 @@ mod tests {
         // validate integer
         {
             let checksum = compile_output.resources[1].compiled_content_id.clone();
-            assert!(data_content_provider
-                .get_content_reader(&checksum)
-                .await
-                .is_ok());
+            assert!(data_content_provider.exists(&checksum).await);
             let resource_content = data_content_provider
                 .read_content(&checksum)
                 .await
@@ -708,10 +693,7 @@ mod tests {
         // validate integer
         {
             let checksum = compiled_integer.compiled_content_id.clone();
-            assert!(data_content_provider
-                .get_content_reader(&checksum)
-                .await
-                .is_ok());
+            assert!(data_content_provider.exists(&checksum).await);
             let resource_content = data_content_provider
                 .read_content(&checksum)
                 .await
@@ -1076,10 +1058,7 @@ mod tests {
         assert_eq!(manifest.compiled_resources.len(), 2);
 
         for checksum in manifest.compiled_resources.iter().map(|a| &a.content_id) {
-            assert!(data_content_provider
-                .get_content_reader(checksum)
-                .await
-                .is_ok());
+            assert!(data_content_provider.exists(checksum).await);
         }
     }
 }

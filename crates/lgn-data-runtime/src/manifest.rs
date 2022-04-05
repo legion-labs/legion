@@ -49,7 +49,7 @@ impl Manifest {
         }
     }
 
-    /// apply the chnages to our manifest and only retain what's changed/new
+    /// apply the changes to our manifest and only retain what's changed/new
     pub fn get_delta(&self, other: &Self) -> Vec<ResourceTypeAndId> {
         let guard = self.0.pin();
         let mut changed = other

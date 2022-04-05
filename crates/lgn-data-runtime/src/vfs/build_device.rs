@@ -77,8 +77,10 @@ impl BuildDevice {
         );
 
         info!("Running DataBuild for ResourceId: {}", resource_id);
+        info!("{:?}", command);
         let start = Instant::now();
         let output = command.output()?;
+        info!("{:?}", output);
 
         info!(
             "{} DataBuild for Resource: {} processed in {:?}",

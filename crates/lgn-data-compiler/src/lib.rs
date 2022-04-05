@@ -10,6 +10,7 @@
 use core::fmt;
 use std::str::FromStr;
 
+use compiler_api::CompilerError;
 use lgn_content_store2::Identifier;
 use lgn_data_offline::ResourcePathId;
 use serde::{Deserialize, Serialize};
@@ -25,26 +26,22 @@ pub struct CompiledResource {
 
 impl fmt::Display for CompiledResource {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!(
-            "{}-{}-{}",
-            self.content_id,
-            self.content_id.data_size(),
-            self.path
-        ))
+        f.write_fmt(format_args!("{}^{}", self.content_id, self.path))
     }
 }
 
+fn from_str_internal(s: &str) -> Result<(Identifier, ResourcePathId), Box<dyn std::error::Error>> {
+    let mut iter = s.split('^');
+    let content_id = Identifier::from_str(iter.next().unwrap())?;
+    let path = ResourcePathId::from_str(iter.next().unwrap())?;
+    Ok((content_id, path))
+}
+
 impl FromStr for CompiledResource {
-    type Err = Box<dyn std::error::Error>;
+    type Err = CompilerError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let err = "Z".parse::<i32>().expect_err("ParseIntError");
-        let mut iter = s.split(|c| c == '-');
-
-        let content_id = Identifier::from_str(iter.next().ok_or_else(|| err.clone())?)?;
-        let data_iter = iter.next().unwrap();
-        let data_idx = unsafe { data_iter.as_ptr().offset_from(s.as_ptr()) } as usize;
-        let path = ResourcePathId::from_str(&s[data_idx..])?;
+        let (content_id, path) = from_str_internal(s).map_err(|_e| CompilerError::Parse)?;
         Ok(Self { path, content_id })
     }
 }
