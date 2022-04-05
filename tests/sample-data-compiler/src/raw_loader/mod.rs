@@ -338,6 +338,11 @@ async fn build_resource_from_raw(
                     kind: kind.1,
                     id: in_resources[i].1,
                 };
+
+                if project.exists(id.id).await {
+                    project.delete_resource(id.id).await.unwrap();
+                }
+
                 project
                     .add_resource_with_id(
                         name.clone(),
