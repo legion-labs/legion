@@ -75,9 +75,9 @@ async fn main() -> anyhow::Result<()> {
         .unwrap();
     let repository_name: RepositoryName = "examples-physics".parse().unwrap();
 
-    // Always re-create the repository, even if it doesn't exist.
+    // Ensure the repository exists.
     let _index = repository_index
-        .recreate_repository(repository_name.clone())
+        .ensure_repository(repository_name.clone())
         .await;
 
     let source_control_content_provider = Arc::new(

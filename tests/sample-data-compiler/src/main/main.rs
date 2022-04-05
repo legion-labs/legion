@@ -57,11 +57,11 @@ async fn main() {
     let repository_index = lgn_source_control::Config::load_and_instantiate_repository_index()
         .await
         .unwrap();
-    let repository_name: RepositoryName = "tests-sample-data".parse().unwrap();
+    let repository_name: RepositoryName = "sample-data".parse().unwrap();
 
-    // Always re-create the repository, even if it doesn't exist.
+    // Ensure the repository exists.
     let _index = repository_index
-        .recreate_repository(repository_name.clone())
+        .ensure_repository(repository_name.clone())
         .await;
 
     let source_control_content_provider = Arc::new(

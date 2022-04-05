@@ -67,7 +67,7 @@ struct Args {
     #[clap(long)]
     project_root: Option<RichPathBuf>,
     /// The name of the repository to load.
-    #[clap(long, default_value = "default")]
+    #[clap(long, default_value = "sample-data")]
     repository_name: RepositoryName,
     /// Path to default scene (root asset) to load
     #[clap(long)]
