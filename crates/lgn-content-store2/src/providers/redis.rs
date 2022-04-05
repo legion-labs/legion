@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use redis::AsyncCommands;
 use std::{
     collections::{BTreeMap, BTreeSet},
+    fmt::Display,
     io::Cursor,
 };
 
@@ -17,6 +18,7 @@ use super::{Uploader, UploaderImpl};
 pub struct RedisProvider {
     key_prefix: String,
     client: redis::Client,
+    url: String,
 }
 
 impl RedisProvider {
@@ -26,11 +28,16 @@ impl RedisProvider {
     ///
     /// If the specified Redis URL is invalid, an error is returned.
     pub async fn new(redis_url: impl Into<String>, key_prefix: impl Into<String>) -> Result<Self> {
-        let client = redis::Client::open(redis_url.into())
+        let url = redis_url.into();
+        let client = redis::Client::open(url.clone())
             .map_err(|err| anyhow::anyhow!("failed to instantiate a Redis client: {}", err))?;
         let key_prefix = key_prefix.into();
 
-        Ok(Self { key_prefix, client })
+        Ok(Self {
+            key_prefix,
+            client,
+            url,
+        })
     }
 
     /// Delete the content with the specified identifier.
@@ -89,6 +96,16 @@ impl RedisProvider {
         } else {
             format!("{}:alias:{}:{}", key_prefix, key_space, key)
         }
+    }
+}
+
+impl Display for RedisProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Redis (url: {}, key prefix: {})",
+            self.url, self.key_prefix
+        )
     }
 }
 

@@ -1,6 +1,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
-    fmt::Debug,
+    fmt::{Debug, Display},
 };
 
 use async_trait::async_trait;
@@ -29,6 +29,12 @@ impl<Inner> SmallContentProvider<Inner> {
     /// provider using the default identifier size threshold.
     pub fn new(inner: Inner) -> Self {
         Self { inner }
+    }
+}
+
+impl<Inner: Display> Display for SmallContentProvider<Inner> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} + small-content optimization", self.inner)
     }
 }
 

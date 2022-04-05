@@ -1,8 +1,9 @@
 use crate::{
     AwsAggregatorProvider, AwsDynamoDbProvider, AwsS3Provider, AwsS3Url, CachingProvider,
-    ContentProvider, Error, GrpcProvider, LocalProvider, LruProvider, MemoryProvider,
-    RedisProvider, Result, SmallContentProvider,
+    ContentAddressProvider, ContentProvider, DataSpace, Error, GrpcProvider, LocalProvider,
+    LruProvider, MemoryProvider, RedisProvider, Result, SmallContentProvider,
 };
+use http::Uri;
 use lgn_config::RichPathBuf;
 use serde::Deserialize;
 
@@ -22,29 +23,60 @@ pub enum ProviderConfig {
     Lru(LruProviderConfig),
     Local(LocalProviderConfig),
     Redis(RedisProviderConfig),
-    Grpc {},
+    Grpc(GrpcProviderConfig),
     AwsS3(AwsS3ProviderConfig),
     AwsDynamoDb(AwsDynamoDbProviderConfig),
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum AddressProviderConfig {
+    AwsS3(AwsS3AddressProviderConfig),
+}
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct LocalProviderConfig {
     pub path: RichPathBuf,
 }
 
-fn default_redis_url() -> String {
-    "redis://localhost:6379".to_string()
+fn default_redis_url() -> Uri {
+    "redis://localhost:6379".parse().unwrap()
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct RedisProviderConfig {
-    #[serde(default = "default_redis_url")]
-    pub url: String,
+    #[serde(default = "default_redis_url", with = "http_serde::uri")]
+    pub url: Uri,
 
     #[serde(default)]
     pub key_prefix: String,
 }
 
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct GrpcProviderConfig {
+    #[serde(with = "option_uri")]
+    pub api_url: Option<Uri>,
+    pub data_space: DataSpace,
+}
+
+mod option_uri {
+    use http::Uri;
+    use serde::{Deserialize, Deserializer};
+
+    pub fn deserialize<'de, D>(de: D) -> Result<Option<Uri>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let v: Option<serde_json::Value> = Deserialize::deserialize(de)?;
+
+        Ok(match v {
+            Some(v) => Some(
+                http_serde::uri::deserialize(v)
+                    .map_err(|e| serde::de::Error::custom(e.to_string()))?,
+            ),
+            None => None,
+        })
+    }
+}
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct LruProviderConfig {
     #[serde(default)]
@@ -60,6 +92,14 @@ pub struct AwsS3ProviderConfig {
 
     // When using S3, we must provide a DynamoDb table along to handle aliases.
     pub dynamodb: AwsDynamoDbProviderConfig,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct AwsS3AddressProviderConfig {
+    pub bucket_name: String,
+
+    #[serde(default)]
+    pub root: String,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
@@ -193,7 +233,7 @@ impl ProviderConfig {
                 LocalProvider::new(config.path.as_ref()).await?,
             )),
             Self::Redis(config) => Box::new(SmallContentProvider::new(
-                RedisProvider::new(config.url.clone(), config.key_prefix.clone()).await?,
+                RedisProvider::new(config.url.to_string(), config.key_prefix.clone()).await?,
             )),
             Self::AwsS3(config) => Box::new(SmallContentProvider::new(AwsAggregatorProvider::new(
                 AwsS3Provider::new(AwsS3Url {
@@ -206,12 +246,14 @@ impl ProviderConfig {
             Self::AwsDynamoDb(config) => Box::new(SmallContentProvider::new(
                 AwsDynamoDbProvider::new(config.table_name.clone()).await,
             )),
-            Self::Grpc {} => {
+            Self::Grpc(config) => {
                 let client = lgn_online::Config::load()?
-                    .instantiate_api_client(&[])
+                    .instantiate_api_client_with_url(config.api_url.as_ref(), &[])
                     .await?;
 
-                Box::new(SmallContentProvider::new(GrpcProvider::new(client).await))
+                Box::new(SmallContentProvider::new(
+                    GrpcProvider::new(client, config.data_space.clone()).await,
+                ))
             }
         })
     }
@@ -220,6 +262,25 @@ impl ProviderConfig {
 impl Default for ProviderConfig {
     fn default() -> Self {
         Self::Memory {}
+    }
+}
+
+impl AddressProviderConfig {
+    /// Instantiate the address provider for the configuration.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the provider cannot be instantiated.
+    pub async fn instantiate(&self) -> Result<Box<dyn ContentAddressProvider + Send + Sync>> {
+        Ok(match self {
+            Self::AwsS3(config) => Box::new(
+                AwsS3Provider::new(AwsS3Url {
+                    bucket_name: config.bucket_name.clone(),
+                    root: config.root.clone(),
+                })
+                .await,
+            ),
+        })
     }
 }
 

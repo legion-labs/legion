@@ -1,6 +1,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
-    fmt::Debug,
+    fmt::{Debug, Display},
     pin::Pin,
     sync::Arc,
     task::{Context, Poll},
@@ -34,6 +34,12 @@ pub struct MonitorProvider<Inner> {
     inner: Inner,
     on_download_callbacks: Option<Arc<Box<dyn TransferCallbacks<Identifier>>>>,
     on_upload_callbacks: Option<Arc<Box<dyn TransferCallbacks<Identifier>>>>,
+}
+
+impl<Inner: Display> Display for MonitorProvider<Inner> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "monitoring for {}", self.inner)
+    }
 }
 
 impl<Inner: Clone> Clone for MonitorProvider<Inner> {

@@ -17,6 +17,8 @@ pub enum Error {
     InvalidHashAlgorithm,
     #[error("invalid chunk index")]
     InvalidChunkIndex(#[source] anyhow::Error),
+    #[error("invalid data space: {0}")]
+    InvalidDataSpace(String),
     #[error("the content was not found")]
     NotFound,
     #[error("the content already exists")]

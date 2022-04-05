@@ -1,5 +1,6 @@
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, HashMap},
+    fmt::Display,
     pin::Pin,
     sync::Arc,
     task::{Context, Poll},
@@ -26,8 +27,8 @@ use crate::{
     traits::{
         get_content_readers_impl, ContentAddressProvider, ContentReaderExt, ContentWriterExt,
     },
-    ContentAsyncRead, ContentAsyncWrite, ContentProvider, ContentReader, ContentWriter, Error,
-    Identifier, Result,
+    ContentAsyncRead, ContentAsyncWrite, ContentProvider, ContentReader, ContentWriter, DataSpace,
+    Error, Identifier, Result,
 };
 
 use super::{Uploader, UploaderImpl};
@@ -36,6 +37,7 @@ use super::{Uploader, UploaderImpl};
 #[derive(Debug, Clone)]
 pub struct GrpcProvider<C> {
     client: Arc<Mutex<ContentStoreClient<C>>>,
+    data_space: DataSpace,
     buf_size: usize,
 }
 
@@ -47,12 +49,22 @@ where
     C::Future: Send + 'static,
     <C::ResponseBody as Body>::Error: Into<StdError> + Send,
 {
-    pub async fn new(grpc_client: C) -> Self {
+    pub async fn new(grpc_client: C, data_space: DataSpace) -> Self {
         let client = Arc::new(Mutex::new(ContentStoreClient::new(grpc_client)));
         // The buffer for HTTP uploaders is set to 2MB.
         let buf_size = 2 * 1024 * 1024;
 
-        Self { client, buf_size }
+        Self {
+            client,
+            data_space,
+            buf_size,
+        }
+    }
+}
+
+impl<C> Display for GrpcProvider<C> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "gRPC client (data space: {})", self.data_space)
     }
 }
 
@@ -66,7 +78,10 @@ where
     <C::ResponseBody as Body>::Error: Into<StdError> + Send,
 {
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
-        let req = lgn_content_store_proto::ReadContentRequest { id: id.to_string() };
+        let req = lgn_content_store_proto::ReadContentRequest {
+            data_space: self.data_space.to_string(),
+            id: id.to_string(),
+        };
 
         let resp = self
             .client
@@ -115,6 +130,7 @@ where
 
     async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
         let req = lgn_content_store_proto::ResolveAliasRequest {
+            data_space: self.data_space.to_string(),
             key_space: key_space.to_string(),
             key: key.to_string(),
         };
@@ -146,7 +162,10 @@ where
     <C::ResponseBody as Body>::Error: Into<StdError> + Send,
 {
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
-        let req = lgn_content_store_proto::GetContentWriterRequest { id: id.to_string() };
+        let req = lgn_content_store_proto::GetContentWriterRequest {
+            data_space: self.data_space.to_string(),
+            id: id.to_string(),
+        };
 
         let resp = self
             .client
@@ -164,6 +183,7 @@ where
                         id.clone(),
                         GrpcUploaderImpl {
                             client: Arc::clone(&self.client),
+                            data_space: self.data_space.clone(),
                         },
                     )))
                 } else {
@@ -178,6 +198,7 @@ where
 
     async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
         let req = lgn_content_store_proto::RegisterAliasRequest {
+            data_space: self.data_space.to_string(),
             key_space: key_space.to_string(),
             key: key.to_string(),
             id: id.to_string(),
@@ -204,6 +225,7 @@ type GrpcUploader<C> = Uploader<GrpcUploaderImpl<C>>;
 
 struct GrpcUploaderImpl<C> {
     client: Arc<Mutex<ContentStoreClient<C>>>,
+    data_space: DataSpace,
 }
 
 #[async_trait]
@@ -216,7 +238,10 @@ where
     <C::ResponseBody as Body>::Error: Into<StdError> + Send,
 {
     async fn upload(self, data: Vec<u8>, id: Identifier) -> Result<()> {
-        let req = lgn_content_store_proto::WriteContentRequest { data };
+        let req = lgn_content_store_proto::WriteContentRequest {
+            data_space: self.data_space.to_string(),
+            data,
+        };
 
         let res_id: Identifier = self
             .client
@@ -386,13 +411,17 @@ impl AsyncWrite for HttpUploader {
     }
 }
 
-pub struct GrpcService<Provider, AddressProvider> {
-    provider: Provider,
-    address_provider: AddressProvider,
-    size_threshold: usize,
+pub struct GrpcProviderSet {
+    pub provider: Box<dyn ContentProvider + Send + Sync>,
+    pub address_provider: Box<dyn ContentAddressProvider + Send + Sync>,
+    pub size_threshold: usize,
 }
 
-impl<Provider, AddressProvider> GrpcService<Provider, AddressProvider> {
+pub struct GrpcService {
+    providers: HashMap<DataSpace, GrpcProviderSet>,
+}
+
+impl GrpcService {
     /// Instantiate a new `GrpcService` with the given `Provider` and
     /// `AddressProvider`.
     ///
@@ -401,26 +430,13 @@ impl<Provider, AddressProvider> GrpcService<Provider, AddressProvider> {
     ///
     /// Otherwise, the request is routed to the `AddressProvider` to get the
     /// address of the downloader/uploader.
-    pub fn new(
-        provider: Provider,
-        address_provider: AddressProvider,
-        size_threshold: usize,
-    ) -> Self {
-        Self {
-            provider,
-            address_provider,
-            size_threshold,
-        }
+    pub fn new(providers: HashMap<DataSpace, GrpcProviderSet>) -> Self {
+        Self { providers }
     }
 }
 
 #[async_trait]
-impl<Provider, AddressProvider> lgn_content_store_proto::content_store_server::ContentStore
-    for GrpcService<Provider, AddressProvider>
-where
-    Provider: ContentProvider + Send + Sync + 'static,
-    AddressProvider: ContentAddressProvider + Send + Sync + 'static,
-{
+impl lgn_content_store_proto::content_store_server::ContentStore for GrpcService {
     async fn resolve_alias(
         &self,
         request: Request<ResolveAliasRequest>,
@@ -429,20 +445,34 @@ where
 
         let request = request.into_inner();
 
+        let data_space = request.data_space.parse().map_err(|err| {
+            tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                format!("failed to parse data space: {}", err),
+            )
+        })?;
         let key_space = request.key_space;
         let key = request.key;
 
         if let Some(user_info) = user_info {
             info!(
-                "Received resolve_alias request for {}/{} from user {}",
+                "Received resolve_alias request for {}/{}/{} from user {}",
+                data_space,
                 key_space,
                 key,
                 user_info.username()
             );
         }
 
+        let provider_set = self.providers.get(&data_space).ok_or_else(|| {
+            tonic::Status::new(
+                tonic::Code::Internal,
+                format!("no provider set for data space `{}`", data_space),
+            )
+        })?;
+
         Ok(Response::new(ResolveAliasResponse {
-            id: match self.provider.resolve_alias(&key_space, &key).await {
+            id: match provider_set.provider.resolve_alias(&key_space, &key).await {
                 Ok(id) => id.to_string(),
                 Err(Error::NotFound) => "".to_string(),
                 Err(err) => {
@@ -463,6 +493,12 @@ where
 
         let request = request.into_inner();
 
+        let data_space = request.data_space.parse().map_err(|err| {
+            tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                format!("failed to parse data space: {}", err),
+            )
+        })?;
         let key_space = request.key_space;
         let key = request.key;
         let id: Identifier = request.id.parse().map_err(|err| {
@@ -482,8 +518,19 @@ where
             );
         }
 
+        let provider_set = self.providers.get(&data_space).ok_or_else(|| {
+            tonic::Status::new(
+                tonic::Code::Internal,
+                format!("no provider set for data space `{}`", data_space),
+            )
+        })?;
+
         Ok(Response::new(RegisterAliasResponse {
-            newly_registered: match self.provider.register_alias(&key_space, &key, &id).await {
+            newly_registered: match provider_set
+                .provider
+                .register_alias(&key_space, &key, &id)
+                .await
+            {
                 Ok(()) => true,
                 Err(Error::AlreadyExists) => false,
                 Err(err) => {
@@ -502,7 +549,15 @@ where
     ) -> Result<Response<ReadContentResponse>, tonic::Status> {
         let user_info = request.extensions().get::<UserInfo>().cloned();
 
-        let id: Identifier = request.into_inner().id.parse().map_err(|err| {
+        let request = request.into_inner();
+
+        let data_space = request.data_space.parse().map_err(|err| {
+            tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                format!("failed to parse data space: {}", err),
+            )
+        })?;
+        let id: Identifier = request.id.parse().map_err(|err| {
             tonic::Status::new(
                 tonic::Code::InvalidArgument,
                 format!("failed to parse identifier: {}", err),
@@ -517,9 +572,16 @@ where
             );
         }
 
+        let provider_set = self.providers.get(&data_space).ok_or_else(|| {
+            tonic::Status::new(
+                tonic::Code::Internal,
+                format!("no provider set for data space `{}`", data_space),
+            )
+        })?;
+
         Ok(Response::new(ReadContentResponse {
-            content: if id.data_size() <= self.size_threshold {
-                match self.provider.read_content(&id).await {
+            content: if id.data_size() <= provider_set.size_threshold {
+                match provider_set.provider.read_content(&id).await {
                     Ok(data) => Some(Content::Data(data)),
                     Err(Error::NotFound) => None,
                     Err(err) => {
@@ -530,7 +592,11 @@ where
                     }
                 }
             } else {
-                match self.address_provider.get_content_read_address(&id).await {
+                match provider_set
+                    .address_provider
+                    .get_content_read_address(&id)
+                    .await
+                {
                     Ok(url) => Some(Content::Url(url)),
                     Err(Error::NotFound) => None,
                     Err(err) => {
@@ -550,7 +616,14 @@ where
     ) -> Result<Response<GetContentWriterResponse>, tonic::Status> {
         let user_info = request.extensions().get::<UserInfo>().cloned();
 
-        let id: Identifier = request.into_inner().id.parse().map_err(|err| {
+        let request = request.into_inner();
+        let data_space = request.data_space.parse().map_err(|err| {
+            tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                format!("failed to parse data space: {}", err),
+            )
+        })?;
+        let id: Identifier = request.id.parse().map_err(|err| {
             tonic::Status::new(
                 tonic::Code::InvalidArgument,
                 format!("failed to parse identifier: {}", err),
@@ -565,8 +638,15 @@ where
             );
         }
 
+        let provider_set = self.providers.get(&data_space).ok_or_else(|| {
+            tonic::Status::new(
+                tonic::Code::Internal,
+                format!("no provider set for data space `{}`", data_space),
+            )
+        })?;
+
         Ok(Response::new(GetContentWriterResponse {
-            content_writer: if id.data_size() <= self.size_threshold {
+            content_writer: if id.data_size() <= provider_set.size_threshold {
                 // An empty URL means that the content is small enough to be
                 // fetched directly from the provider and passed through the
                 // gRPC stream.
@@ -576,7 +656,11 @@ where
                     ),
                 )
             } else {
-                match self.address_provider.get_content_write_address(&id).await {
+                match provider_set
+                    .address_provider
+                    .get_content_write_address(&id)
+                    .await
+                {
                     Ok(url) => Some(
                         lgn_content_store_proto::get_content_writer_response::ContentWriter::Url(
                             url,
@@ -600,6 +684,14 @@ where
     ) -> Result<Response<WriteContentResponse>, tonic::Status> {
         let user_info = request.extensions().get::<UserInfo>().cloned();
 
+        let request = request.into_inner();
+        let data_space = request.data_space.parse().map_err(|err| {
+            tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                format!("failed to parse data space: {}", err),
+            )
+        })?;
+
         if let Some(user_info) = user_info {
             info!(
                 "Received write_content request from user {}",
@@ -607,25 +699,36 @@ where
             );
         }
 
-        let data = request.into_inner().data;
+        let provider_set = self.providers.get(&data_space).ok_or_else(|| {
+            tonic::Status::new(
+                tonic::Code::Internal,
+                format!("no provider set for data space `{}`", data_space),
+            )
+        })?;
 
-        if data.len() > self.size_threshold as usize {
+        let data = request.data;
+
+        if data.len() > provider_set.size_threshold as usize {
             return Err(tonic::Status::new(
                 tonic::Code::InvalidArgument,
                 format!(
                     "refusing to write content of size {} that exceeds the size threshold of {}",
                     data.len(),
-                    self.size_threshold
+                    provider_set.size_threshold
                 ),
             ));
         }
 
-        let id = self.provider.write_content(&data).await.map_err(|err| {
-            tonic::Status::new(
-                tonic::Code::Internal,
-                format!("failed to write content: {}", err),
-            )
-        })?;
+        let id = provider_set
+            .provider
+            .write_content(&data)
+            .await
+            .map_err(|err| {
+                tonic::Status::new(
+                    tonic::Code::Internal,
+                    format!("failed to write content: {}", err),
+                )
+            })?;
 
         Ok(Response::new(WriteContentResponse { id: id.to_string() }))
     }

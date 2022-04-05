@@ -1,5 +1,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
+    fmt::Display,
     pin::Pin,
     sync::Arc,
 };
@@ -18,7 +19,7 @@ pub type ContentAsyncWrite = Pin<Box<dyn AsyncWrite + Send>>;
 
 /// ContentReader is a trait for reading content from a content-store.
 #[async_trait]
-pub trait ContentReader {
+pub trait ContentReader: Display {
     /// Returns an async reader that reads the content referenced by the
     /// specified identifier.
     ///
@@ -128,7 +129,7 @@ impl<T: ContentReader> ContentReaderExt for T {}
 
 /// ContentWriter is a trait for writing content to a content-store.
 #[async_trait]
-pub trait ContentWriter {
+pub trait ContentWriter: Display {
     /// Returns an async write to which the content referenced by the specified
     /// specified identifier can be written.
     ///
@@ -208,7 +209,7 @@ impl<T> ContentProvider for T where T: ContentReader + ContentWriter {}
 
 /// Provides addresses for content.
 #[async_trait]
-pub trait ContentAddressReader {
+pub trait ContentAddressReader: Display {
     /// Returns the address of the content referenced by the specified identifier.
     ///
     /// # Errors
@@ -220,7 +221,7 @@ pub trait ContentAddressReader {
 
 /// Provides addresses for content.
 #[async_trait]
-pub trait ContentAddressWriter {
+pub trait ContentAddressWriter: Display {
     /// Returns the address of the content referenced by the specified identifier.
     ///
     /// # Errors

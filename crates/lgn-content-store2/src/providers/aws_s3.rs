@@ -120,6 +120,18 @@ impl AwsS3Provider {
     }
 }
 
+impl Display for AwsS3Provider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "AWS S3 (bucket: {}, root: {}, signed URLs validity duration: {})",
+            self.url.bucket_name,
+            self.url.root,
+            duration_string::DurationString::from(self.validity_duration)
+        )
+    }
+}
+
 #[pin_project]
 #[derive(Debug)]
 struct ByteStreamReader(#[pin] aws_sdk_s3::types::ByteStream);

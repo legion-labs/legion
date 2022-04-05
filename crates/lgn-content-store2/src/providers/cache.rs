@@ -1,6 +1,7 @@
 use std::{
     cmp::min,
     collections::{BTreeMap, BTreeSet},
+    fmt::Display,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -27,6 +28,12 @@ impl<Remote, Local> CachingProvider<Remote, Local> {
     /// backing remote and local providers.
     pub fn new(remote: Remote, local: Local) -> Self {
         Self { remote, local }
+    }
+}
+
+impl<Remote: Display, Local: Display> Display for CachingProvider<Remote, Local> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} cached by {}", self.remote, self.local)
     }
 }
 

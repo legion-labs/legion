@@ -1,6 +1,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
-    fmt::Debug,
+    fmt::{Debug, Display},
 };
 
 use async_trait::async_trait;
@@ -20,14 +20,27 @@ pub const AWS_S3_MINIMAL_SIZE_THRESHOLD: ByteSize = ByteSize::kib(128);
 #[derive(Debug, Clone)]
 pub struct AwsAggregatorProvider {
     s3: AwsS3Provider,
-    dynamo: AwsDynamoDbProvider,
+    dynamodb: AwsDynamoDbProvider,
 }
 
 impl AwsAggregatorProvider {
     /// Instantiate a new small content provider that wraps the specified
     /// provider using the default identifier size threshold.
     pub fn new(s3: AwsS3Provider, dynamo: AwsDynamoDbProvider) -> Self {
-        Self { s3, dynamo }
+        Self {
+            s3,
+            dynamodb: dynamo,
+        }
+    }
+}
+
+impl Display for AwsAggregatorProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} (with alias support provided by {})",
+            self.s3, self.dynamodb
+        )
     }
 }
 
@@ -35,7 +48,7 @@ impl AwsAggregatorProvider {
 impl ContentReader for AwsAggregatorProvider {
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
         if id.data_size() <= AWS_S3_MINIMAL_SIZE_THRESHOLD.as_u64() as usize {
-            self.dynamo.get_content_reader(id).await
+            self.dynamodb.get_content_reader(id).await
         } else {
             self.s3.get_content_reader(id).await
         }
@@ -50,7 +63,7 @@ impl ContentReader for AwsAggregatorProvider {
 
     async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
         // Always forward to DynamoDB since S3 can't implement aliases.
-        self.dynamo.resolve_alias(key_space, key).await
+        self.dynamodb.resolve_alias(key_space, key).await
     }
 }
 
@@ -58,7 +71,7 @@ impl ContentReader for AwsAggregatorProvider {
 impl ContentWriter for AwsAggregatorProvider {
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
         if id.data_size() <= AWS_S3_MINIMAL_SIZE_THRESHOLD.as_u64() as usize {
-            self.dynamo.get_content_writer(id).await
+            self.dynamodb.get_content_writer(id).await
         } else {
             self.s3.get_content_writer(id).await
         }
@@ -66,6 +79,6 @@ impl ContentWriter for AwsAggregatorProvider {
 
     async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
         // Always forward to DynamoDB since S3 can't implement aliases.
-        self.dynamo.register_alias(key_space, key, id).await
+        self.dynamodb.register_alias(key_space, key, id).await
     }
 }

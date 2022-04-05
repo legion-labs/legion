@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fmt::Display, sync::Arc};
 
 use async_trait::async_trait;
 use lgn_content_store2::{ContentAddressReader, ContentAddressWriter, Error, Identifier, Result};
@@ -7,6 +7,12 @@ use tokio::sync::Mutex;
 pub struct FakeContentAddressProvider {
     base_url: String,
     already_exists: Arc<Mutex<bool>>,
+}
+
+impl Display for FakeContentAddressProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "fake provider (base_url: {})", self.base_url)
+    }
 }
 
 impl FakeContentAddressProvider {

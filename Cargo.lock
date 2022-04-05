@@ -1150,6 +1150,9 @@ name = "bytesize"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c58ec36aac5066d5ca17df51b3e70279f5670a72102f5752cb7e7c856adfc70"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "bzip2"
@@ -2461,6 +2464,12 @@ name = "dunce"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "453440c271cf5577fd2a40e4942540cb7d0d2f85e27c8d07dd0023c925a67541"
+
+[[package]]
+name = "duration-string"
+version = "0.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b65bd8fceb01387287b3502b845588b9bf60e50e0d27392f724e6669385d6ac7"
 
 [[package]]
 name = "dyn-clone"
@@ -4778,10 +4787,12 @@ dependencies = [
  "bytes",
  "bytesize",
  "clap 3.1.6",
+ "duration-string",
  "futures",
  "hex",
  "http",
  "http-body",
+ "http-serde",
  "httptest",
  "hyper",
  "indicatif",
