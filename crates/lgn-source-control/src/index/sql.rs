@@ -4,8 +4,8 @@ use chrono::DateTime;
 use lgn_content_store2::ChunkIdentifier;
 use lgn_tracing::prelude::*;
 use sqlx::{
-    any::AnyPoolOptions, error::DatabaseError, migrate::MigrateDatabase, Acquire, Executor, Pool,
-    Row,
+    any::AnyPoolOptions, error::DatabaseError, migrate::MigrateDatabase, mysql::MySqlDatabaseError,
+    Acquire, Executor, Pool, Row,
 };
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
@@ -56,7 +56,13 @@ impl SqlDatabaseDriver {
     fn is_unique_constraint_error(&self, db_err: &Box<dyn DatabaseError>) -> bool {
         match &self {
             Self::Sqlite(_) => db_err.code() == Some("2067".into()),
-            Self::Mysql(_) => db_err.code() == Some("1062".into()),
+            Self::Mysql(_) => {
+                db_err.code() == Some("23000".into())
+                    && db_err
+                        .try_downcast_ref::<MySqlDatabaseError>()
+                        .filter(|e| e.number() == 1062)
+                        .is_some()
+            }
         }
     }
 
@@ -1026,7 +1032,8 @@ impl SqlIndex {
                 ))?;
 
                 let name: String = row.get("name");
-                let chunk_id: String = row.get("chunk_id");
+                let chunk_id: Option<String> = row.get("chunk_id");
+                let chunk_id = chunk_id.unwrap_or_default();
 
                 let chunk_id = if !chunk_id.is_empty() {
                     Some(chunk_id.parse().map_other_err(format!(
