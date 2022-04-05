@@ -15,7 +15,6 @@ use std::{
     sync::Arc,
 };
 
-use lgn_content_store2::Chunker;
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::{
@@ -169,13 +168,8 @@ async fn main() -> anyhow::Result<()> {
         build_manager.build_all_derived(id, &project).await.unwrap();
     }
 
-    let mut buffer = vec![];
-    serde_json::to_writer_pretty(&mut buffer, &build_manager.get_manifest())
-        .expect("to write manifest");
-
-    let chunker = Chunker::default();
-    let chunk_id = chunker
-        .write_chunk(data_content_provider, &buffer)
+    let manifest_id = build_manager
+        .write_runtime_manifest()
         .await
         .expect("failed to write manifest to cas");
 
@@ -189,7 +183,7 @@ async fn main() -> anyhow::Result<()> {
         .truncate(true)
         .open(runtime_manifest_path)
         .expect("open file");
-    write!(file, "{}", chunk_id).expect("failed to write manifest id to file");
+    write!(file, "{}", manifest_id).expect("failed to write manifest id to file");
     Ok(())
 }
 

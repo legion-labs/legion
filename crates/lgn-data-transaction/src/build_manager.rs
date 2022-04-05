@@ -1,3 +1,4 @@
+use lgn_content_store2::ChunkIdentifier;
 use lgn_data_build::{DataBuild, DataBuildOptions, Error};
 use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
 use lgn_data_offline::{resource::Project, ResourcePathId};
@@ -109,5 +110,10 @@ impl BuildManager {
             .await
             .unwrap()
             .map(|path| path.source_resource())
+    }
+
+    /// Write contents of runtime manifest to data content provider, and return its identifier
+    pub async fn write_runtime_manifest(&self) -> Result<ChunkIdentifier, Error> {
+        self.build.write_manifest(&self.runtime_manifest).await
     }
 }

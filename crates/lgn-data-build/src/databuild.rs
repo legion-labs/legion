@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 use std::{env, io};
 
-use lgn_content_store2::{ContentProvider, ContentWriterExt};
+use lgn_content_store2::{ChunkIdentifier, Chunker, ContentProvider, ContentWriterExt};
 use lgn_data_compiler::compiler_api::{
     CompilationEnv, CompilationOutput, CompilerHash, DATA_BUILD_VERSION,
 };
@@ -793,6 +793,19 @@ impl DataBuild {
         Ok(env::current_dir()?
             .join(build_name)
             .with_extension("manifest"))
+    }
+
+    /// Writes a manifest to the data content provider, and returns its identifier
+    pub async fn write_manifest(&self, manifest: &Manifest) -> Result<ChunkIdentifier, Error> {
+        let mut buffer = vec![];
+        serde_json::to_writer_pretty(&mut buffer, manifest)
+            .expect("failed to convert manifest to JSON");
+
+        let chunker = Chunker::default();
+        chunker
+            .write_chunk(&self.data_content_provider, &buffer)
+            .await
+            .map_err(Error::InvalidContentStore)
     }
 }
 
