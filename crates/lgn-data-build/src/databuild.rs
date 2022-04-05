@@ -247,8 +247,7 @@ impl DataBuild {
     /// derived resources. The specified `manifest_file` is updated with
     /// information about changed assets.
     ///
-    /// Compilation results are stored in
-    /// [`ContentStore`] specified in
+    /// Compilation results are stored in content store specified in
     /// [`DataBuildOptions`] used to create this `DataBuild`.
     ///
     /// Provided `target`, `platform` and `locale` define the compilation
