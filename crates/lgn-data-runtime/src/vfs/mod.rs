@@ -1,8 +1,7 @@
 use crate::ResourceTypeAndId;
-
 use async_trait::async_trait;
 
-// todo: this should return `Box<dyn io::Read>` instead of `Vec<u8>`.
+// FIXME: this should return `Box<dyn io::Read>` instead of `Vec<u8>`.
 #[async_trait]
 pub(crate) trait Device: Send + Sync {
     async fn load(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>>;

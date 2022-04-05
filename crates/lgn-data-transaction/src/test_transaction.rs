@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use generic_data::offline::TestEntity;
-use lgn_content_store::{ContentStoreAddr, HddContentStore};
 use lgn_content_store2::{ContentProvider, MemoryProvider};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
@@ -136,11 +135,14 @@ async fn test_array_reorder_operation(
 async fn test_transaction_system() -> Result<(), Error> {
     let project_dir = tempfile::tempdir().unwrap();
     let build_dir = project_dir.path().join("temp");
-    let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-        Arc::new(Box::new(MemoryProvider::new()));
     std::fs::create_dir(&build_dir).unwrap();
 
-    let project = Project::create_with_remote_mock(&project_dir, content_provider)
+    let source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
+    let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        Arc::new(Box::new(MemoryProvider::new()));
+
+    let project = Project::create_with_remote_mock(&project_dir, source_control_content_provider)
         .await
         .unwrap();
     let resource_dir = project.resource_dir();
@@ -148,10 +150,10 @@ async fn test_transaction_system() -> Result<(), Error> {
     let mut registry = ResourceRegistryOptions::new();
     generic_data::offline::register_resource_types(&mut registry);
     let resource_registry = registry.create_async_registry();
-    let content_store = HddContentStore::open(ContentStoreAddr::from(build_dir.clone())).unwrap();
+
     let asset_registry = AssetRegistryOptions::new()
         .add_device_dir(&resource_dir)
-        .add_device_cas(Box::new(content_store), Manifest::default())
+        .add_device_cas(Arc::clone(&data_content_provider), Manifest::default())
         .add_loader::<TestEntity>()
         .create()
         .await;
@@ -159,9 +161,12 @@ async fn test_transaction_system() -> Result<(), Error> {
     let compilers =
         CompilerRegistryOptions::default().add_compiler(&lgn_compiler_testentity::COMPILER_INFO);
 
-    let options = DataBuildOptions::new_with_sqlite_output(&build_dir, compilers)
-        .content_store(&ContentStoreAddr::from(build_dir.as_path()))
-        .asset_registry(asset_registry.clone());
+    let options = DataBuildOptions::new_with_sqlite_output(
+        &build_dir,
+        compilers,
+        Arc::clone(&data_content_provider),
+    )
+    .asset_registry(asset_registry.clone());
 
     let build_manager =
         BuildManager::new(options, &project, Manifest::default(), Manifest::default())

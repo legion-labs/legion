@@ -7,12 +7,15 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
-use std::{fs, path::PathBuf, sync::Arc};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use clap::Parser;
 use lgn_data_offline::resource::ResourcePathName;
 use lgn_source_control::RepositoryName;
-use lgn_tracing::info;
 use sample_data_compiler::{offline_compiler, raw_loader};
 
 #[derive(Parser, Default)]
@@ -57,15 +60,20 @@ async fn main() {
     let repository_index = lgn_source_control::Config::load_and_instantiate_repository_index()
         .await
         .unwrap();
-    let repository_name: RepositoryName = "tests-sample-data".parse().unwrap();
+    let repository_name: RepositoryName = "sample-data".parse().unwrap();
 
-    // Always re-create the repository, even if it doesn't exist.
+    // Ensure the repository exists.
     let _index = repository_index
-        .recreate_repository(repository_name.clone())
+        .ensure_repository(repository_name.clone())
         .await;
 
-    let content_provider = Arc::new(
+    let source_control_content_provider = Arc::new(
         lgn_content_store2::Config::load_and_instantiate_persistent_provider()
+            .await
+            .unwrap(),
+    );
+    let data_content_provider = Arc::new(
+        lgn_content_store2::Config::load_and_instantiate_volatile_provider()
             .await
             .unwrap(),
     );
@@ -75,7 +83,7 @@ async fn main() {
         &absolute_root,
         &repository_index,
         repository_name,
-        Arc::clone(&content_provider),
+        Arc::clone(&source_control_content_provider),
         true,
     )
     .await;
@@ -85,37 +93,33 @@ async fn main() {
         &absolute_root,
         &ResourcePathName::from(&args.resource),
         repository_index,
-        content_provider,
+        Arc::clone(&source_control_content_provider),
+        Arc::clone(&data_content_provider),
     )
     .await;
 }
 
 fn clean_folders(project_dir: &str) {
-    let mut can_clean = true;
-    let path = PathBuf::from(project_dir);
-
-    let mut test = |sub_path| {
-        can_clean &= path.join(sub_path).exists();
-    };
-    test("offline");
-    test("runtime");
-    test("temp");
-
-    if !can_clean {
-        info!("Cannot clean folders in path {}", project_dir);
-    } else {
-        let delete = |sub_path, as_dir| {
-            let remove = if as_dir {
-                fs::remove_dir_all
-            } else {
-                fs::remove_file
-            };
-            remove(path.join(sub_path)).unwrap_or_else(|_| panic!("Cannot delete {:?}", path));
+    let delete = |sub_path: &str, as_dir| {
+        let mut path = if Path::new(project_dir).is_relative() {
+            env::current_dir().unwrap().join(project_dir)
+        } else {
+            PathBuf::from(project_dir)
         };
+        path.push(sub_path);
+        if !path.exists() {
+            return;
+        }
+        let remove = if as_dir {
+            fs::remove_dir_all
+        } else {
+            fs::remove_file
+        };
+        remove(&path).unwrap_or_else(|_| panic!("Cannot delete {:?}", path));
+    };
 
-        let _result = fs::remove_file(path.join("VERSION"));
-        delete("offline", true);
-        delete("runtime", true);
-        delete("temp", true);
-    }
+    delete("VERSION", false);
+    delete("offline", true);
+    delete("runtime", true);
+    delete("temp", true);
 }

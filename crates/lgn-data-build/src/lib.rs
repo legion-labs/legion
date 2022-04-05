@@ -20,7 +20,7 @@
 //!   set of inputs.
 //!
 //! All the results of data-compilation are stored in a
-//! [`ContentStore`](`lgn_content_store::ContentStore`) and a manifest
+//! `ContentStore` and a manifest
 //! file containing the metadata about the results is returned.
 //!
 //! To support incremental building the data build is persisted on disk in
@@ -28,7 +28,7 @@
 //! - **source.index** - The build-oriented data structure describing resources
 //!   and build dependencies in the [`project`] that is being built.
 //! - **output.index** - Records of derived resources that are stored in a
-//!   [`ContentStore`](`lgn_content_store::ContentStore`).
+//!  `ContentStore`.
 //!
 //! For other parts of the data pipeline see [`lgn_data_offline`],
 //! [`lgn_data_runtime`] and [`lgn_data_compiler`] modules.
@@ -82,7 +82,7 @@
 //! 6. Check the `build index` if there is already existing output for given
 //! (**Context Hash**, **Source Hash**) tuple. 7. If not, compile the resource:
 //!     - Store the resulting resource in
-//!       [`ContentStore`](`lgn_content_store::ContentStore`) and a record an
+//!       `ContentStore` and a record an
 //!       entry in `build index`.
 //!     - Add the compiled resource to the resulting `manifest file`.
 //!
@@ -164,8 +164,8 @@ pub enum Error {
         expected: String,
     },
     /// Content Store invalid.
-    #[error("Content Store invalid.")]
-    InvalidContentStore,
+    #[error("Content Store invalid. {0}")]
+    InvalidContentStore(#[from] lgn_content_store2::Error),
     /// Project invalid.
     #[error("Project invalid.")]
     InvalidProject(PathBuf),

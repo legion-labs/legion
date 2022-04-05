@@ -230,6 +230,11 @@ async fn test_local_provider() {
         [id, fake_id],
         [Ok(&BIG_DATA_A), Err(Error::NotFound)]
     );
+
+    // LocalProvider also implements AliasProvider.
+    assert_alias_not_found!(provider, "space", "mykey");
+    assert_write_alias!(provider, "space", "mykey", &BIG_DATA_A);
+    assert_read_alias!(provider, "space", "mykey", &BIG_DATA_A);
 }
 
 #[tokio::test]

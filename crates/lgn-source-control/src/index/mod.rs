@@ -3,6 +3,7 @@ mod local;
 mod sql;
 
 use async_trait::async_trait;
+use lgn_tracing::info;
 
 use crate::{
     Branch, CanonicalPath, Commit, CommitId, Error, Lock, RepositoryName, Result, Tree,
@@ -48,9 +49,23 @@ pub trait RepositoryIndex: Send + Sync {
     async fn destroy_repository(&self, repository_name: RepositoryName) -> Result<()>;
     async fn load_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>>;
 
-    async fn recreate_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
-        match self.destroy_repository(repository_name.clone()).await {
-            Ok(_) | Err(Error::RepositoryDoesNotExist { .. }) => {
+    async fn ensure_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
+        info!("Ensuring that repository `{}` exists...", repository_name);
+
+        match self.load_repository(repository_name.clone()).await {
+            Ok(index) => {
+                info!(
+                    "Repository `{}` exists already: loading it...",
+                    repository_name
+                );
+
+                Ok(index)
+            }
+            Err(Error::RepositoryDoesNotExist { .. }) => {
+                info!(
+                    "Repository `{}` does not exist yet: creating it...",
+                    repository_name
+                );
                 self.create_repository(repository_name).await
             }
             Err(e) => Err(e),

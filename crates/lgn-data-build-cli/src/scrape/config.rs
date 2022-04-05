@@ -4,7 +4,6 @@ use std::{
     sync::Arc,
 };
 
-use lgn_content_store::ContentStoreAddr;
 use lgn_content_store2::ContentProvider;
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
@@ -18,7 +17,6 @@ pub struct Config {
     pub code_paths: Vec<PathBuf>,
     pub project: PathBuf,
     pub output_db_addr: String,
-    pub content_store_addr: PathBuf,
     pub type_map: BTreeMap<ResourceType, String>,
 }
 
@@ -41,14 +39,19 @@ impl Config {
 
     pub async fn open(
         &self,
-        content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+        source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+        data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     ) -> Result<(DataBuild, Project), String> {
         let repository_index = LocalRepositoryIndex::new(self.project.join("remote"))
             .await
             .map_err(|e| e.to_string())?;
-        let project = Project::open(&self.project, repository_index, content_provider)
-            .await
-            .map_err(|e| e.to_string())?;
+        let project = Project::open(
+            &self.project,
+            repository_index,
+            Arc::clone(&source_control_content_provider),
+        )
+        .await
+        .map_err(|e| e.to_string())?;
 
         let build = DataBuildOptions::new(
             DataBuildOptions::output_db_path(
@@ -56,7 +59,7 @@ impl Config {
                 Self::workspace_dir(),
                 DataBuild::version(),
             ),
-            ContentStoreAddr::from(self.content_store_addr.as_path()),
+            Arc::clone(&data_content_provider),
             CompilerRegistryOptions::default(),
         )
         .open(&project)

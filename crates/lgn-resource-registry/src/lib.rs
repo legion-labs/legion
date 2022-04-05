@@ -65,8 +65,13 @@ impl ResourceRegistryPlugin {
         let selection_manager = world.resource::<Arc<SelectionManager>>();
 
         let transaction_manager = async_rt.block_on(async move {
-            let content_provider = Arc::new(
+            let source_control_content_provider = Arc::new(
                 lgn_content_store2::Config::load_and_instantiate_persistent_provider()
+                    .await
+                    .unwrap(),
+            );
+            let data_content_provider = Arc::new(
+                lgn_content_store2::Config::load_and_instantiate_volatile_provider()
                     .await
                     .unwrap(),
             );
@@ -75,7 +80,7 @@ impl ResourceRegistryPlugin {
                 &project_dir,
                 &settings.source_control_repository_index,
                 settings.source_control_repository_name.clone(),
-                Arc::clone(&content_provider),
+                Arc::clone(&source_control_content_provider),
                 false,
             )
             .await;
@@ -84,7 +89,7 @@ impl ResourceRegistryPlugin {
                 if let Ok(project) = Project::open(
                     &project_dir,
                     &settings.source_control_repository_index,
-                    Arc::clone(&content_provider),
+                    Arc::clone(&source_control_content_provider),
                 )
                 .await
                 {
@@ -94,7 +99,7 @@ impl ResourceRegistryPlugin {
                         &project_dir,
                         &settings.source_control_repository_index,
                         settings.source_control_repository_name.clone(),
-                        content_provider,
+                        source_control_content_provider,
                     )
                     .await
                     .expect("cannot create project");
@@ -121,7 +126,7 @@ impl ResourceRegistryPlugin {
                     project_dir.as_path(),
                     DataBuild::version(),
                 ),
-                settings.content_store_addr.clone(),
+                Arc::clone(&data_content_provider),
                 compilers,
             )
             .manifest(intermediate_manifest.clone());

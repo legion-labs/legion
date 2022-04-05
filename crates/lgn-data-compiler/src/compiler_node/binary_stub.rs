@@ -1,11 +1,11 @@
 use async_trait::async_trait;
+use lgn_content_store2::ContentProvider;
 use std::{
     io,
     path::{Path, PathBuf},
     sync::Arc,
 };
 
-use lgn_content_store::ContentStoreAddr;
 use lgn_data_offline::{ResourcePathId, Transform};
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
 
@@ -51,7 +51,7 @@ impl CompilerStub for BinCompilerStub {
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         _registry: Arc<AssetRegistry>,
-        cas_addr: ContentStoreAddr,
+        _data_content_store: &(dyn ContentProvider + Send + Sync),
         resource_dir: &Path,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
@@ -60,7 +60,6 @@ impl CompilerStub for BinCompilerStub {
             &compile_path,
             dependencies,
             derived_deps,
-            &cas_addr,
             resource_dir,
             env,
         )

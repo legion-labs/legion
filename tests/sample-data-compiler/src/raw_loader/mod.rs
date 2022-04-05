@@ -32,7 +32,7 @@ pub async fn build_offline(
     root_folder: impl AsRef<Path>,
     repository_index: impl RepositoryIndex,
     repository_name: RepositoryName,
-    content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+    source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     incremental: bool,
 ) {
     let raw_dir = {
@@ -86,7 +86,7 @@ pub async fn build_offline(
             root_folder.as_ref(),
             repository_index,
             repository_name,
-            content_provider,
+            source_control_content_provider,
         )
         .await;
         let mut resources = resources.lock().await;
@@ -237,13 +237,13 @@ async fn setup_project(
     root_folder: &Path,
     repository_index: impl RepositoryIndex,
     repository_name: RepositoryName,
-    content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+    source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
 ) -> (Project, Arc<Mutex<ResourceRegistry>>) {
     // create/load project
     let project = if let Ok(project) = Project::open(
         root_folder,
         &repository_index,
-        Arc::clone(&content_provider),
+        Arc::clone(&source_control_content_provider),
     )
     .await
     {
@@ -253,7 +253,7 @@ async fn setup_project(
             root_folder,
             repository_index,
             repository_name,
-            content_provider,
+            source_control_content_provider,
         )
         .await
     }
@@ -338,6 +338,11 @@ async fn build_resource_from_raw(
                     kind: kind.1,
                     id: in_resources[i].1,
                 };
+
+                if project.exists(id.id).await {
+                    project.delete_resource(id.id).await.unwrap();
+                }
+
                 project
                     .add_resource_with_id(
                         name.clone(),

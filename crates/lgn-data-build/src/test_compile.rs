@@ -5,8 +5,7 @@ mod tests {
     use std::{env, vec};
 
     use integer_asset::{IntegerAsset, IntegerAssetLoader};
-    use lgn_content_store::{ContentStore, ContentStoreAddr, HddContentStore};
-    use lgn_content_store2::{ContentProvider, MemoryProvider};
+    use lgn_content_store2::{ContentProvider, ContentReaderExt, MemoryProvider};
     use lgn_data_compiler::compiler_api::CompilationEnv;
     use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
     use lgn_data_compiler::{Locale, Platform, Target};
@@ -31,6 +30,7 @@ mod tests {
         PathBuf,
         LocalRepositoryIndex,
         Arc<Box<dyn ContentProvider + Send + Sync>>,
+        Arc<Box<dyn ContentProvider + Send + Sync>>,
     ) {
         let project_dir = work_dir.path();
         let output_dir = project_dir.join("temp");
@@ -39,14 +39,17 @@ mod tests {
         let repository_index = LocalRepositoryIndex::new(project_dir.join("remote"))
             .await
             .unwrap();
-        let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+        let source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
+            Arc::new(Box::new(MemoryProvider::new()));
+        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
             Arc::new(Box::new(MemoryProvider::new()));
 
         (
             project_dir.to_owned(),
             output_dir,
             repository_index,
-            content_provider,
+            source_control_content_provider,
+            data_content_provider,
         )
     }
 
@@ -103,11 +106,15 @@ mod tests {
         resource_id: ResourceTypeAndId,
         project_dir: &Path,
         repository_index: impl RepositoryIndex,
-        content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+        source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     ) {
-        let mut project = Project::open(project_dir, repository_index, content_provider)
-            .await
-            .expect("failed to open project");
+        let mut project = Project::open(
+            project_dir,
+            repository_index,
+            source_control_content_provider,
+        )
+        .await
+        .expect("failed to open project");
         let resources = setup_registry();
         let mut resources = resources.lock().await;
 
@@ -135,16 +142,23 @@ mod tests {
     #[tokio::test]
     async fn compile_change_no_deps() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (project_dir, output_dir, repository_index, content_provider) =
-            setup_dir(&work_dir).await;
+        let (
+            project_dir,
+            output_dir,
+            repository_index,
+            source_control_content_provider,
+            data_content_provider,
+        ) = setup_dir(&work_dir).await;
         let resources = setup_registry();
         let mut resources = resources.lock().await;
 
         let (resource_id, resource_handle) = {
-            let mut project =
-                Project::create_with_remote_mock(&project_dir, Arc::clone(&content_provider))
-                    .await
-                    .expect("failed to create a project");
+            let mut project = Project::create_with_remote_mock(
+                &project_dir,
+                Arc::clone(&source_control_content_provider),
+            )
+            .await
+            .expect("failed to create a project");
 
             let resource_handle = resources
                 .new_resource(refs_resource::TestResource::TYPE)
@@ -163,12 +177,11 @@ mod tests {
             (resource_id, resource_handle)
         };
 
-        let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
         let config = DataBuildOptions::new_with_sqlite_output(
             &output_dir,
             CompilerRegistryOptions::local_compilers(target_dir()),
-        )
-        .content_store(&contentstore_path);
+            Arc::clone(&data_content_provider),
+        );
 
         let source = ResourcePathId::from(resource_id);
         let target = source.push(refs_asset::RefsAsset::TYPE);
@@ -179,7 +192,7 @@ mod tests {
                 .create_with_project(
                     &project_dir,
                     &repository_index,
-                    Arc::clone(&content_provider),
+                    Arc::clone(&source_control_content_provider),
                 )
                 .await
                 .expect("to create index");
@@ -201,13 +214,11 @@ mod tests {
                 compile_output.resources[0].compiled_path
             );
 
-            let original_checksum = compile_output.resources[0].compiled_checksum;
+            let original_checksum = &compile_output.resources[0].compiled_content_id;
 
-            let content_store =
-                HddContentStore::open(contentstore_path.clone()).expect("valid content store");
-            assert!(content_store.exists(original_checksum).await);
+            assert!(data_content_provider.exists(original_checksum).await);
 
-            original_checksum
+            original_checksum.clone()
         };
 
         // ..change resource..
@@ -215,7 +226,7 @@ mod tests {
             let mut project = Project::open(
                 &project_dir,
                 &repository_index,
-                Arc::clone(&content_provider),
+                Arc::clone(&source_control_content_provider),
             )
             .await
             .expect("failed to open project");
@@ -233,13 +244,13 @@ mod tests {
             let config = DataBuildOptions::new_with_sqlite_output(
                 output_dir,
                 CompilerRegistryOptions::local_compilers(target_dir()),
-            )
-            .content_store(&contentstore_path);
+                Arc::clone(&data_content_provider),
+            );
 
             let project = Project::open(
                 project_dir,
                 &repository_index,
-                Arc::clone(&content_provider),
+                Arc::clone(&source_control_content_provider),
             )
             .await
             .expect("failed to open project");
@@ -261,14 +272,12 @@ mod tests {
                 compile_output.resources[0].compiled_path
             );
 
-            let modified_checksum = compile_output.resources[0].compiled_checksum;
+            let modified_checksum = &compile_output.resources[0].compiled_content_id;
 
-            let content_store =
-                HddContentStore::open(contentstore_path).expect("valid content store");
-            assert!(content_store.exists(original_checksum).await);
-            assert!(content_store.exists(modified_checksum).await);
+            assert!(data_content_provider.exists(&original_checksum).await);
+            assert!(data_content_provider.exists(modified_checksum).await);
 
-            modified_checksum
+            modified_checksum.clone()
         };
 
         assert_ne!(original_checksum, modified_checksum);
@@ -288,11 +297,12 @@ mod tests {
     //
     async fn setup_project(
         project_dir: impl AsRef<Path>,
-        content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+        source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     ) -> [ResourceTypeAndId; 5] {
-        let mut project = Project::create_with_remote_mock(project_dir.as_ref(), content_provider)
-            .await
-            .expect("failed to create a project");
+        let mut project =
+            Project::create_with_remote_mock(project_dir.as_ref(), source_control_content_provider)
+                .await
+                .expect("failed to create a project");
 
         let resources = setup_registry();
         let mut resources = resources.lock().await;
@@ -344,18 +354,25 @@ mod tests {
     #[tokio::test]
     async fn intermediate_resource() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (project_dir, output_dir, repository_index, content_provider) =
-            setup_dir(&work_dir).await;
+        let (
+            project_dir,
+            output_dir,
+            repository_index,
+            source_control_content_provider,
+            data_content_provider,
+        ) = setup_dir(&work_dir).await;
         let resources = setup_registry();
         let mut resources = resources.lock().await;
 
         let source_magic_value = String::from("47");
 
         let source_id = {
-            let mut project =
-                Project::create_with_remote_mock(&project_dir, Arc::clone(&content_provider))
-                    .await
-                    .expect("failed to create a project");
+            let mut project = Project::create_with_remote_mock(
+                &project_dir,
+                Arc::clone(&source_control_content_provider),
+            )
+            .await
+            .expect("failed to create a project");
 
             let resource_handle = resources
                 .new_resource(text_resource::TextResource::TYPE)
@@ -374,14 +391,16 @@ mod tests {
                 .unwrap()
         };
 
-        let cas_addr = ContentStoreAddr::from(output_dir.as_path());
-
         let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
             output_dir,
             CompilerRegistryOptions::local_compilers(target_dir()),
+            Arc::clone(&data_content_provider),
         )
-        .content_store(&cas_addr)
-        .create_with_project(project_dir, &repository_index, content_provider)
+        .create_with_project(
+            project_dir,
+            &repository_index,
+            source_control_content_provider,
+        )
         .await
         .expect("new build index");
 
@@ -404,14 +423,12 @@ mod tests {
             .iter()
             .all(|compiled| compiled.compile_path == compiled.compiled_path));
 
-        let content_store = HddContentStore::open(cas_addr).expect("valid cas");
-
         // validate reversed
         {
-            let checksum = compile_output.resources[0].compiled_checksum;
-            assert!(content_store.exists(checksum).await);
-            let resource_content = content_store
-                .read(checksum)
+            let checksum = compile_output.resources[0].compiled_content_id.clone();
+            assert!(data_content_provider.exists(&checksum).await);
+            let resource_content = data_content_provider
+                .read_content(&checksum)
                 .await
                 .expect("resource content");
 
@@ -429,9 +446,12 @@ mod tests {
 
         // validate integer
         {
-            let checksum = compile_output.resources[1].compiled_checksum;
-            assert!(content_store.exists(checksum).await);
-            let resource_content = content_store.read(checksum).await.expect("asset content");
+            let checksum = compile_output.resources[1].compiled_content_id.clone();
+            assert!(data_content_provider.exists(&checksum).await);
+            let resource_content = data_content_provider
+                .read_content(&checksum)
+                .await
+                .expect("asset content");
 
             let mut loader = IntegerAssetLoader {};
             let resource = loader
@@ -450,21 +470,27 @@ mod tests {
     #[tokio::test]
     async fn unnamed_cache_use() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (project_dir, output_dir, repository_index, content_provider) =
-            setup_dir(&work_dir).await;
+        let (
+            project_dir,
+            output_dir,
+            repository_index,
+            source_control_content_provider,
+            data_content_provider,
+        ) = setup_dir(&work_dir).await;
 
-        let resource_list = setup_project(&project_dir, Arc::clone(&content_provider)).await;
+        let resource_list =
+            setup_project(&project_dir, Arc::clone(&source_control_content_provider)).await;
         let root_resource = resource_list[0];
 
         let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
             &output_dir,
             CompilerRegistryOptions::local_compilers(target_dir()),
+            data_content_provider,
         )
-        .content_store(&ContentStoreAddr::from(output_dir))
         .create_with_project(
             &project_dir,
             &repository_index,
-            Arc::clone(&content_provider),
+            Arc::clone(&source_control_content_provider),
         )
         .await
         .expect("new build index");
@@ -520,7 +546,7 @@ mod tests {
                 root_resource,
                 &project_dir,
                 &repository_index,
-                Arc::clone(&content_provider),
+                Arc::clone(&source_control_content_provider),
             )
             .await;
             build.source_pull(&project).await.expect("to pull changes");
@@ -546,7 +572,7 @@ mod tests {
                 resource_e,
                 &project_dir,
                 &repository_index,
-                content_provider,
+                source_control_content_provider,
             )
             .await;
             build.source_pull(&project).await.expect("to pull changes");
@@ -570,18 +596,25 @@ mod tests {
     #[allow(clippy::too_many_lines)]
     async fn named_path_cache_use() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (project_dir, output_dir, repository_index, content_provider) =
-            setup_dir(&work_dir).await;
+        let (
+            project_dir,
+            output_dir,
+            repository_index,
+            source_control_content_provider,
+            data_content_provider,
+        ) = setup_dir(&work_dir).await;
         let resources = setup_registry();
         let mut resources = resources.lock().await;
 
         let magic_list = vec![String::from("47"), String::from("198")];
 
         let source_id = {
-            let mut project =
-                Project::create_with_remote_mock(&project_dir, Arc::clone(&content_provider))
-                    .await
-                    .expect("failed to create a project");
+            let mut project = Project::create_with_remote_mock(
+                &project_dir,
+                Arc::clone(&source_control_content_provider),
+            )
+            .await
+            .expect("failed to create a project");
 
             let resource_handle = resources
                 .new_resource(multitext_resource::MultiTextResource::TYPE)
@@ -600,17 +633,15 @@ mod tests {
                 .unwrap()
         };
 
-        let cas_addr = ContentStoreAddr::from(output_dir.as_path());
-
         let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
             output_dir,
             CompilerRegistryOptions::local_compilers(target_dir()),
+            Arc::clone(&data_content_provider),
         )
-        .content_store(&cas_addr)
         .create_with_project(
             &project_dir,
             &repository_index,
-            Arc::clone(&content_provider),
+            Arc::clone(&source_control_content_provider),
         )
         .await
         .expect("new build index");
@@ -659,13 +690,14 @@ mod tests {
         assert_eq!(compiled_integer.compile_path, integer_path_0);
         assert_eq!(compiled_integer.compiled_path, integer_path_0);
 
-        let content_store = HddContentStore::open(cas_addr).expect("valid cas");
-
         // validate integer
         {
-            let checksum = compiled_integer.compiled_checksum;
-            assert!(content_store.exists(checksum).await);
-            let resource_content = content_store.read(checksum).await.expect("asset content");
+            let checksum = compiled_integer.compiled_content_id.clone();
+            assert!(data_content_provider.exists(&checksum).await);
+            let resource_content = data_content_provider
+                .read_content(&checksum)
+                .await
+                .expect("asset content");
 
             let mut loader = IntegerAssetLoader {};
             let resource = loader
@@ -715,7 +747,7 @@ mod tests {
             let mut project = Project::open(
                 &project_dir,
                 &repository_index,
-                Arc::clone(&content_provider),
+                Arc::clone(&source_control_content_provider),
             )
             .await
             .expect("failed to open project");
@@ -763,7 +795,7 @@ mod tests {
             let mut project = Project::open(
                 project_dir,
                 &repository_index,
-                Arc::clone(&content_provider),
+                Arc::clone(&source_control_content_provider),
             )
             .await
             .expect("failed to open project");
@@ -834,16 +866,23 @@ mod tests {
     #[tokio::test]
     async fn link() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (project_dir, output_dir, repository_index, content_provider) =
-            setup_dir(&work_dir).await;
+        let (
+            project_dir,
+            output_dir,
+            repository_index,
+            source_control_content_provider,
+            data_content_provider,
+        ) = setup_dir(&work_dir).await;
         let resources = setup_registry();
         let mut resources = resources.lock().await;
 
         let parent_id = {
-            let mut project =
-                Project::create_with_remote_mock(&project_dir, Arc::clone(&content_provider))
-                    .await
-                    .expect("new project");
+            let mut project = Project::create_with_remote_mock(
+                &project_dir,
+                Arc::clone(&source_control_content_provider),
+            )
+            .await
+            .expect("new project");
 
             let child_handle = resources
                 .new_resource(refs_resource::TestResource::TYPE)
@@ -886,13 +925,16 @@ mod tests {
                 .unwrap()
         };
 
-        let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
         let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
             output_dir,
             CompilerRegistryOptions::local_compilers(target_dir()),
+            data_content_provider,
         )
-        .content_store(&contentstore_path)
-        .create_with_project(&project_dir, &repository_index, content_provider)
+        .create_with_project(
+            &project_dir,
+            &repository_index,
+            source_control_content_provider,
+        )
         .await
         .expect("to create index");
 
@@ -921,7 +963,7 @@ mod tests {
         for obj in &compile_output.resources {
             assert!(!link_output
                 .iter()
-                .any(|compiled| compiled.checksum == obj.compiled_checksum));
+                .any(|compiled| compiled.content_id == obj.compiled_content_id));
         }
 
         // ... and each output resource need to exist as exactly one resource object
@@ -941,17 +983,24 @@ mod tests {
     #[tokio::test]
     async fn verify_manifest() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (project_dir, output_dir, repository_index, content_provider) =
-            setup_dir(&work_dir).await;
+        let (
+            project_dir,
+            output_dir,
+            repository_index,
+            source_control_content_provider,
+            data_content_provider,
+        ) = setup_dir(&work_dir).await;
         let resources = setup_registry();
         let mut resources = resources.lock().await;
 
         // child_id <- test(child_id) <- parent_id = test(parent_id)
         let parent_resource = {
-            let mut project =
-                Project::create_with_remote_mock(&project_dir, Arc::clone(&content_provider))
-                    .await
-                    .expect("new project");
+            let mut project = Project::create_with_remote_mock(
+                &project_dir,
+                Arc::clone(&source_control_content_provider),
+            )
+            .await
+            .expect("new project");
             let child_id = project
                 .add_resource(
                     ResourcePathName::new("child"),
@@ -987,13 +1036,16 @@ mod tests {
                 .unwrap()
         };
 
-        let contentstore_path = ContentStoreAddr::from(output_dir.as_path());
         let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
             output_dir,
             CompilerRegistryOptions::local_compilers(target_dir()),
+            Arc::clone(&data_content_provider),
         )
-        .content_store(&contentstore_path)
-        .create_with_project(project_dir, repository_index, content_provider)
+        .create_with_project(
+            project_dir,
+            repository_index,
+            source_control_content_provider,
+        )
         .await
         .expect("to create index");
 
@@ -1005,9 +1057,8 @@ mod tests {
         // both test(child_id) and test(parent_id) are separate resources.
         assert_eq!(manifest.compiled_resources.len(), 2);
 
-        let content_store = HddContentStore::open(contentstore_path).expect("valid content store");
-        for checksum in manifest.compiled_resources.iter().map(|a| a.checksum) {
-            assert!(content_store.exists(checksum).await);
+        for checksum in manifest.compiled_resources.iter().map(|a| &a.content_id) {
+            assert!(data_content_provider.exists(checksum).await);
         }
     }
 }

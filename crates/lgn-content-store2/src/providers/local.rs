@@ -6,7 +6,6 @@ use std::{
     io::Write,
     path::PathBuf,
 };
-use tokio::io::AsyncReadExt;
 
 use crate::{
     traits::get_content_readers_impl, ContentAsyncRead, ContentAsyncWrite, ContentReader,
@@ -95,14 +94,25 @@ impl ContentReader for LocalProvider {
     }
 
     async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
-        let mut alias_path = self.0.clone();
-        alias_path.push(key_space);
-        alias_path.push(Self::mangled_file_path(key)?);
+        let alias_path = self
+            .0
+            .clone()
+            .join(key_space)
+            .join(Self::mangled_file_path(key)?);
 
-        let mut file = tokio::fs::File::open(&alias_path).await?;
-        let mut data = vec![];
-        file.read_to_end(&mut data).await?;
-        Ok(Identifier::new(&data))
+        match tokio::fs::read_to_string(&alias_path).await {
+            Ok(s) => s.parse(),
+            Err(e) => {
+                if e.kind() == tokio::io::ErrorKind::NotFound {
+                    Err(Error::NotFound)
+                } else {
+                    Err(
+                        anyhow::anyhow!("could not open file at `{}`: {}", alias_path.display(), e)
+                            .into(),
+                    )
+                }
+            }
+        }
     }
 }
 

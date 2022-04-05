@@ -15,7 +15,6 @@ use std::{
     sync::Arc,
 };
 
-use lgn_content_store::{ContentStoreAddr, HddContentStore};
 use lgn_content_store2::Chunker;
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
@@ -54,7 +53,7 @@ struct Args {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     let _telemetry_guard = lgn_telemetry_sink::TelemetryGuardBuilder::default()
@@ -73,13 +72,18 @@ async fn main() {
         .unwrap();
     let repository_name: RepositoryName = "examples-pong".parse().unwrap();
 
-    // Always re-create the repository, even if it doesn't exist.
+    // Ensure the repository exists.
     let _index = repository_index
-        .recreate_repository(repository_name.clone())
+        .ensure_repository(repository_name.clone())
         .await;
 
-    let content_provider = Arc::new(
+    let source_control_content_provider = Arc::new(
         lgn_content_store2::Config::load_and_instantiate_persistent_provider()
+            .await
+            .unwrap(),
+    );
+    let data_content_provider = Arc::new(
+        lgn_content_store2::Config::load_and_instantiate_volatile_provider()
             .await
             .unwrap(),
     );
@@ -95,7 +99,7 @@ async fn main() {
         absolute_project_dir,
         &repository_index,
         repository_name,
-        Arc::clone(&content_provider),
+        Arc::clone(&source_control_content_provider),
     )
     .await
     .expect("failed to create a project");
@@ -105,7 +109,7 @@ async fn main() {
     lgn_scripting::offline::register_resource_types(&mut resource_registry);
     generic_data::offline::register_resource_types(&mut resource_registry);
     sample_data::offline::register_resource_types(&mut resource_registry);
-    let content_store = HddContentStore::open(ContentStoreAddr::from(build_dir.clone())).unwrap();
+
     let resource_registry = resource_registry.create_async_registry();
 
     let resource_ids = create_offline_data(&mut project, &resource_registry).await;
@@ -116,7 +120,7 @@ async fn main() {
 
     let mut asset_registry = AssetRegistryOptions::new()
         .add_device_dir(project.resource_dir())
-        .add_device_cas(Box::new(content_store), Manifest::default());
+        .add_device_cas(Arc::clone(&data_content_provider), Manifest::default());
     lgn_graphics_data::offline::add_loaders(&mut asset_registry);
     lgn_scripting::offline::add_loaders(&mut asset_registry);
     generic_data::offline::add_loaders(&mut asset_registry);
@@ -145,9 +149,12 @@ async fn main() {
             build_dir.clone()
         }
     };
-    let data_build = DataBuildOptions::new_with_sqlite_output(&absolute_build_dir, compilers)
-        .content_store(&ContentStoreAddr::from(build_dir.as_path()))
-        .asset_registry(asset_registry.clone());
+    let data_build = DataBuildOptions::new_with_sqlite_output(
+        &absolute_build_dir,
+        compilers,
+        Arc::clone(&data_content_provider),
+    )
+    .asset_registry(asset_registry.clone());
 
     let mut build_manager = BuildManager::new(
         data_build,
@@ -168,7 +175,7 @@ async fn main() {
 
     let chunker = Chunker::default();
     let chunk_id = chunker
-        .write_chunk(content_provider, &buffer)
+        .write_chunk(data_content_provider, &buffer)
         .await
         .expect("failed to write manifest to cas");
 
@@ -183,6 +190,7 @@ async fn main() {
         .open(runtime_manifest_path)
         .expect("open file");
     write!(file, "{}", chunk_id).expect("failed to write manifest id to file");
+    Ok(())
 }
 
 fn clean_folders(project_dir: impl AsRef<Path>) {

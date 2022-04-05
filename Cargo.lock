@@ -2545,7 +2545,6 @@ dependencies = [
  "lgn-compiler-runtime-entity",
  "lgn-compiler-script2asm",
  "lgn-config",
- "lgn-content-store",
  "lgn-content-store2",
  "lgn-core",
  "lgn-data-build",
@@ -3680,12 +3679,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
-name = "hex_fmt"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b07f60793ff0a4d9cef0f18e63b5357e06209987153a64648c972c1e5aff336f"
-
-[[package]]
 name = "hmac"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4390,8 +4383,8 @@ dependencies = [
  "lgn-app",
  "lgn-async",
  "lgn-config",
- "lgn-content-store",
  "lgn-content-store2",
+ "lgn-core",
  "lgn-data-model",
  "lgn-data-runtime",
  "lgn-ecs",
@@ -4750,17 +4743,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-content-store"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "hex",
- "hex_fmt",
- "lgn-utils",
- "serde",
-]
-
-[[package]]
 name = "lgn-content-store-proto"
 version = "0.1.0"
 dependencies = [
@@ -4851,7 +4833,6 @@ dependencies = [
  "byteorder",
  "hex",
  "integer-asset",
- "lgn-content-store",
  "lgn-content-store2",
  "lgn-data-compiler",
  "lgn-data-offline",
@@ -4882,7 +4863,6 @@ dependencies = [
  "byteorder",
  "clap 3.1.6",
  "integer-asset",
- "lgn-content-store",
  "lgn-content-store2",
  "lgn-data-build",
  "lgn-data-compiler",
@@ -4923,7 +4903,6 @@ dependencies = [
  "clap 3.1.6",
  "erased-serde",
  "integer-asset",
- "lgn-content-store",
  "lgn-content-store2",
  "lgn-data-model",
  "lgn-data-offline",
@@ -4955,7 +4934,6 @@ dependencies = [
  "futures",
  "integer-asset",
  "lgn-async",
- "lgn-content-store",
  "lgn-content-store2",
  "lgn-data-compiler",
  "lgn-data-offline",
@@ -4998,7 +4976,6 @@ dependencies = [
  "erased-serde",
  "hex",
  "lazy_static",
- "lgn-content-store",
  "lgn-content-store2",
  "lgn-data-model",
  "lgn-data-runtime",
@@ -5025,7 +5002,7 @@ dependencies = [
  "hex",
  "inventory",
  "lazy_static",
- "lgn-content-store",
+ "lgn-content-store2",
  "lgn-data-model",
  "lgn-data-runtime-macros",
  "lgn-ecs",
@@ -5059,7 +5036,6 @@ dependencies = [
  "generic-data",
  "lgn-compiler-testentity",
  "lgn-config",
- "lgn-content-store",
  "lgn-content-store2",
  "lgn-data-build",
  "lgn-data-compiler",
@@ -5263,7 +5239,7 @@ dependencies = [
  "lgn-asset-registry",
  "lgn-async",
  "lgn-config",
- "lgn-content-store",
+ "lgn-content-store2",
  "lgn-core",
  "lgn-data-runtime",
  "lgn-ecs",
@@ -5478,7 +5454,6 @@ version = "0.1.0"
 dependencies = [
  "lgn-app",
  "lgn-async",
- "lgn-content-store",
  "lgn-content-store2",
  "lgn-data-build",
  "lgn-data-compiler",
@@ -5513,7 +5488,7 @@ dependencies = [
  "lgn-app",
  "lgn-asset-registry",
  "lgn-config",
- "lgn-content-store",
+ "lgn-content-store2",
  "lgn-core",
  "lgn-data-model",
  "lgn-data-runtime",
@@ -7485,12 +7460,12 @@ dependencies = [
 name = "physics-rebuild-data"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "clap 3.1.6",
  "generic-data",
  "lgn-app",
  "lgn-compiler-runtime-entity",
  "lgn-compiler-runtime-model",
- "lgn-content-store",
  "lgn-content-store2",
  "lgn-data-build",
  "lgn-data-compiler",
@@ -7725,13 +7700,13 @@ dependencies = [
 name = "pong-rebuild-data"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "clap 3.1.6",
  "generic-data",
  "lgn-app",
  "lgn-compiler-runtime-entity",
  "lgn-compiler-runtime-model",
  "lgn-compiler-script2asm",
- "lgn-content-store",
  "lgn-content-store2",
  "lgn-data-build",
  "lgn-data-compiler",
@@ -8475,7 +8450,6 @@ dependencies = [
  "lgn-asset-registry",
  "lgn-async",
  "lgn-config",
- "lgn-content-store",
  "lgn-content-store2",
  "lgn-core",
  "lgn-data-runtime",
@@ -8676,7 +8650,6 @@ dependencies = [
  "clap 3.1.6",
  "generic-data",
  "lgn-config",
- "lgn-content-store",
  "lgn-content-store2",
  "lgn-data-build",
  "lgn-data-compiler",

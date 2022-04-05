@@ -10,7 +10,8 @@
 use core::fmt;
 use std::str::FromStr;
 
-use lgn_content_store::Checksum;
+use compiler_api::CompilerError;
+use lgn_content_store2::Identifier;
 use lgn_data_offline::ResourcePathId;
 use serde::{Deserialize, Serialize};
 
@@ -20,37 +21,28 @@ pub struct CompiledResource {
     /// The path of derived resource.
     pub path: ResourcePathId,
     /// The checksum of the resource.
-    pub checksum: Checksum,
-    /// The size of the resource.
-    pub size: usize,
+    pub content_id: Identifier,
 }
 
 impl fmt::Display for CompiledResource {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!(
-            "{}-{}-{}",
-            self.checksum, self.size, self.path
-        ))
+        f.write_fmt(format_args!("{}^{}", self.content_id, self.path))
     }
 }
 
+fn from_str_internal(s: &str) -> Result<(Identifier, ResourcePathId), Box<dyn std::error::Error>> {
+    let mut iter = s.split('^');
+    let content_id = Identifier::from_str(iter.next().unwrap())?;
+    let path = ResourcePathId::from_str(iter.next().unwrap())?;
+    Ok((content_id, path))
+}
+
 impl FromStr for CompiledResource {
-    type Err = Box<dyn std::error::Error>;
+    type Err = CompilerError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let err = "Z".parse::<i32>().expect_err("ParseIntError");
-        let mut iter = s.split(|c| c == '-');
-
-        let checksum = Checksum::from_str(iter.next().ok_or_else(|| err.clone())?)?;
-        let size = usize::from_str(iter.next().ok_or_else(|| err.clone())?)?;
-        let data_iter = iter.next().unwrap();
-        let data_idx = unsafe { data_iter.as_ptr().offset_from(s.as_ptr()) } as usize;
-        let path = ResourcePathId::from_str(&s[data_idx..])?;
-        Ok(Self {
-            path,
-            checksum,
-            size,
-        })
+        let (content_id, path) = from_str_internal(s).map_err(|_e| CompilerError::Parse)?;
+        Ok(Self { path, content_id })
     }
 }
 
@@ -93,11 +85,7 @@ impl CompiledResources {
             .collect::<Vec<_>>();
 
         for resource in runtime_resources {
-            output.insert(
-                resource.path.resource_id(),
-                resource.checksum,
-                resource.size,
-            );
+            output.insert(resource.path.resource_id(), resource.content_id);
         }
         output
     }

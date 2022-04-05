@@ -3,7 +3,6 @@ use std::{
     sync::Arc,
 };
 
-use lgn_content_store::ContentStoreAddr;
 use lgn_content_store2::ContentProvider;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;
@@ -24,19 +23,19 @@ use crate::{DataBuild, Error};
 /// ```no_run
 /// # use std::sync::Arc;
 /// # use lgn_data_build::DataBuildOptions;
-/// # use lgn_content_store::ContentStoreAddr;
-/// # use lgn_content_store2::{ContentProvider, MemoryProvider};
+/// # use lgn_content_store2::{ContentProvider, ProviderConfig};
 /// # use lgn_data_offline::resource::Project;
 /// # use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 /// # tokio_test::block_on(async {
-/// let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> = Arc::new(Box::new(MemoryProvider::new()));
-/// let project = Project::open("project/", content_provider).await.unwrap();
-/// let build = DataBuildOptions::new("temp/".to_string(), ContentStoreAddr::from("./content_store/"), CompilerRegistryOptions::local_compilers("./"))
+/// let source_control_content_provider = Arc::new(Box::new(MemoryProvider::new()));
+/// let data_content_provider = Arc::new(Box::new(MemoryProvider::new()));
+/// let project = Project::open("project/", source_control_content_provider).await.unwrap();
+/// let build = DataBuildOptions::new("temp/".to_string(), data_content_provider, CompilerRegistryOptions::local_compilers("./"))
 ///         .create(&project).await.unwrap();
 /// # })
 /// ```
 pub struct DataBuildOptions {
-    pub(crate) contentstore_addr: ContentStoreAddr,
+    pub(crate) data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     pub(crate) output_db_addr: String,
     pub(crate) compiler_options: CompilerRegistryOptions,
     pub(crate) registry: Option<Arc<AssetRegistry>>,
@@ -48,6 +47,7 @@ impl DataBuildOptions {
     pub fn new_with_sqlite_output(
         output_dir: impl AsRef<Path>,
         compiler_options: CompilerRegistryOptions,
+        data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     ) -> Self {
         assert!(output_dir.as_ref().is_absolute());
         let output_db_addr = Self::output_db_path(
@@ -57,7 +57,7 @@ impl DataBuildOptions {
         );
 
         Self {
-            contentstore_addr: ContentStoreAddr::from(output_dir.as_ref()),
+            data_content_provider,
             output_db_addr,
             compiler_options,
             registry: None,
@@ -68,11 +68,11 @@ impl DataBuildOptions {
     /// Create new instance of `DataBuildOptions` with the mandatory options.
     pub fn new(
         output_db_addr: String,
-        contentstore_addr: ContentStoreAddr,
+        data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
         compiler_options: CompilerRegistryOptions,
     ) -> Self {
         Self {
-            contentstore_addr,
+            data_content_provider,
             output_db_addr,
             compiler_options,
             registry: None,
@@ -126,12 +126,6 @@ impl DataBuildOptions {
         output
     }
 
-    /// Set content store location for derived resources.
-    pub fn content_store(mut self, contentstore_path: &ContentStoreAddr) -> Self {
-        self.contentstore_addr = contentstore_path.clone();
-        self
-    }
-
     /// Set asset registry used by data compilers. If it is not set `DataBuild` will use
     /// a new instance of asset registry.
     pub fn asset_registry(mut self, registry: Arc<AssetRegistry>) -> Self {
@@ -167,11 +161,15 @@ impl DataBuildOptions {
         self,
         project_dir: impl AsRef<Path>,
         repository_index: impl RepositoryIndex,
-        content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+        source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     ) -> Result<(DataBuild, Project), Error> {
-        let project = Project::open(project_dir, repository_index, content_provider)
-            .await
-            .map_err(Error::from)?;
+        let project = Project::open(
+            project_dir,
+            repository_index,
+            source_control_content_provider,
+        )
+        .await
+        .map_err(Error::from)?;
         let build = DataBuild::new(self, &project).await?;
         Ok((build, project))
     }
@@ -185,10 +183,7 @@ impl DataBuildOptions {
 
     /// Opens existing build index.
     ///
-    /// The following conditions need to be met to successfully open a build
-    /// index:
-    /// * [`ContentStore`](`lgn_content_store::ContentStore`) must exist under
-    ///   address set by [`DataBuildOptions::content_store()`].
+    /// The content store must exist for this to work.
     pub async fn open(self, project: &Project) -> Result<DataBuild, Error> {
         DataBuild::open(self, project).await
     }

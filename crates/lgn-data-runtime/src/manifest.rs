@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use lgn_content_store::Checksum;
+use lgn_content_store2::Identifier;
 use serde::{Deserialize, Serialize};
 
 use crate::ResourceTypeAndId;
@@ -13,9 +13,7 @@ pub struct CompiledAsset {
     /// The id of the asset.
     pub resource_id: ResourceTypeAndId,
     /// The checksum of the asset.
-    pub checksum: Checksum,
-    /// The size of the asset.
-    pub size: usize,
+    pub content_id: Identifier,
 }
 
 /// `Manifest` contains storage information about assets - their checksums and
@@ -23,18 +21,18 @@ pub struct CompiledAsset {
 ///
 /// It can be safely shared between threads.
 #[derive(Debug, Default, Clone)]
-pub struct Manifest(Arc<flurry::HashMap<ResourceTypeAndId, (Checksum, usize)>>);
+pub struct Manifest(Arc<flurry::HashMap<ResourceTypeAndId, Identifier>>);
 
 impl Manifest {
     /// Retrieve information about `Asset` identified by a given
     /// [`crate::ResourceId`], if available.
-    pub fn find(&self, type_id: ResourceTypeAndId) -> Option<(Checksum, usize)> {
-        self.0.pin().get(&type_id).copied()
+    pub fn find(&self, type_id: ResourceTypeAndId) -> Option<Identifier> {
+        self.0.pin().get(&type_id).cloned()
     }
 
     /// Add new information about an `Asset`.
-    pub fn insert(&self, type_id: ResourceTypeAndId, checksum: Checksum, size: usize) {
-        self.0.pin().insert(type_id, (checksum, size));
+    pub fn insert(&self, type_id: ResourceTypeAndId, checksum: Identifier) {
+        self.0.pin().insert(type_id, checksum);
     }
 
     /// An iterator visiting all assets in manifest, in an arbitrary order.
@@ -47,20 +45,20 @@ impl Manifest {
     #[allow(clippy::needless_pass_by_value)]
     pub fn extend(&self, other: Self) {
         for (id, value) in &other.0.pin() {
-            self.0.pin().insert(*id, *value);
+            self.0.pin().insert(*id, value.clone());
         }
     }
 
-    /// apply the chnages to our manifest and only retain what's changed/new
+    /// apply the changes to our manifest and only retain what's changed/new
     pub fn get_delta(&self, other: &Self) -> Vec<ResourceTypeAndId> {
         let guard = self.0.pin();
         let mut changed = other
             .0
             .pin()
             .iter()
-            .filter_map(|(id, (checksum, size))| {
-                if let Some((old_checksum, old_size)) = guard.get(id) {
-                    if checksum != old_checksum || size != old_size {
+            .filter_map(|(id, checksum)| {
+                if let Some(old_checksum) = guard.get(id) {
+                    if checksum != old_checksum {
                         Some(*id)
                     } else {
                         None
@@ -82,11 +80,10 @@ impl Serialize for Manifest {
         S: serde::Serializer,
     {
         let mut entries: Vec<CompiledAsset> = Vec::new();
-        for (guid, (checksum, size)) in &self.0.pin() {
+        for (guid, checksum) in &self.0.pin() {
             entries.push(CompiledAsset {
                 resource_id: *guid,
-                checksum: *checksum,
-                size: *size,
+                content_id: checksum.clone(),
             });
         }
         entries.sort_by(|a, b| a.resource_id.partial_cmp(&b.resource_id).unwrap());
@@ -102,10 +99,7 @@ impl<'de> Deserialize<'de> for Manifest {
         let entries = Vec::<CompiledAsset>::deserialize(deserializer)?;
         let manifest = Self::default();
         for asset in entries {
-            manifest
-                .0
-                .pin()
-                .insert(asset.resource_id, (asset.checksum, asset.size));
+            manifest.0.pin().insert(asset.resource_id, asset.content_id);
         }
         Ok(manifest)
     }

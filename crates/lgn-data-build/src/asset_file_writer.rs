@@ -1,4 +1,4 @@
-use lgn_content_store::{Checksum, ContentStore};
+use lgn_content_store2::{ContentProvider, ContentReaderExt, Identifier};
 use lgn_data_runtime::{ResourceType, ResourceTypeAndId};
 use lgn_tracing::async_span_scope;
 use serde::{Deserialize, Serialize};
@@ -19,10 +19,10 @@ const ASSET_FILE_TYPENAME: &[u8; 4] = b"asft";
 
 // todo: no asset ids are written because we assume 1 asset in asset_file now.
 pub async fn write_assetfile(
-    asset_list: impl Iterator<Item = (ResourceTypeAndId, Checksum)> + Clone,
+    asset_list: impl Iterator<Item = (ResourceTypeAndId, Identifier)> + Clone,
     reference_list: impl Iterator<Item = (ResourceTypeAndId, (ResourceTypeAndId, ResourceTypeAndId))>
         + Clone,
-    content_store: &impl ContentStore,
+    content_store: &(dyn ContentProvider + Send + Sync),
 ) -> Result<Vec<u8>, Error> {
     async_span_scope!("write_assetfile");
 
@@ -39,7 +39,7 @@ pub async fn write_assetfile(
             if asset_contents.is_empty() {
                 kind = Some(content.0.kind);
             }
-            asset_contents.push(content_store.read(content.1).await.unwrap());
+            asset_contents.push(content_store.read_content(&content.1).await.unwrap());
         }
     }
 
@@ -63,8 +63,10 @@ pub async fn write_assetfile(
 #[cfg(test)]
 mod tests {
 
+    use std::sync::Arc;
+
     use bincode::Options;
-    use lgn_content_store::RamContentStore;
+    use lgn_content_store2::{ContentWriterExt, MemoryProvider};
     use lgn_data_runtime::{Resource, ResourceId};
     use serde::Serialize;
 
@@ -93,7 +95,8 @@ mod tests {
 
     #[tokio::test]
     async fn one_asset_no_references() {
-        let mut content_store = RamContentStore::default();
+        let content_store: Arc<Box<dyn ContentProvider + Send + Sync>> =
+            Arc::new(Box::new(MemoryProvider::new()));
 
         let asset_id = ResourceTypeAndId {
             kind: refs_asset::RefsAsset::TYPE,
@@ -101,11 +104,11 @@ mod tests {
         };
         let asset_content = create_ref_asset("test_content", ResourceId::new_explicit(9));
         let asset_checksum = content_store
-            .store(&asset_content)
+            .write_content(&asset_content)
             .await
             .expect("to store asset");
         assert_eq!(
-            content_store.read(asset_checksum).await.unwrap(),
+            content_store.read_content(&asset_checksum).await.unwrap(),
             asset_content
         );
 
@@ -130,7 +133,7 @@ mod tests {
 
     #[tokio::test]
     async fn two_dependent_assets() {
-        let mut content_store = RamContentStore::default();
+        let content_store = Arc::new(Box::new(MemoryProvider::new()));
 
         let child_id = ResourceTypeAndId {
             kind: refs_asset::RefsAsset::TYPE,
@@ -138,11 +141,11 @@ mod tests {
         };
         let child_content = create_ref_asset("child", ResourceId::new_explicit(9));
         let child_checksum = content_store
-            .store(&child_content)
+            .write_content(&child_content)
             .await
             .expect("to store asset");
         assert_eq!(
-            content_store.read(child_checksum).await.unwrap(),
+            content_store.read_content(&child_checksum).await.unwrap(),
             child_content
         );
 
@@ -152,11 +155,11 @@ mod tests {
         };
         let parent_content = create_ref_asset("parent", ResourceId::new_explicit(1));
         let parent_checksum = content_store
-            .store(&parent_content)
+            .write_content(&parent_content)
             .await
             .expect("to store asset");
         assert_eq!(
-            content_store.read(parent_checksum).await.unwrap(),
+            content_store.read_content(&parent_checksum).await.unwrap(),
             parent_content
         );
 

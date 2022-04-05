@@ -1,18 +1,15 @@
 use async_trait::async_trait;
-use lgn_content_store2::Config;
+use lgn_content_store2::ContentProvider;
 use std::{
     io,
     path::{Path, PathBuf},
-    str::FromStr,
     sync::Arc,
 };
 
-use lgn_content_store::ContentStoreAddr;
 use lgn_data_offline::{ResourcePathId, Transform};
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
-use lgn_utils::find_monorepo_root;
 
-use super::remote_data_executor::{collect_local_resources, deploy_files, CompileResultMessage};
+use super::remote_data_executor::collect_local_resources;
 use lgn_data_compiler::{
     compiler_api::{CompilationEnv, CompilationOutput, CompilerError, CompilerHash, CompilerInfo},
     compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd, CompilerInfoCmdOutput},
@@ -58,21 +55,15 @@ impl CompilerStub for RemoteCompilerStub {
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         _registry: Arc<AssetRegistry>,
-        cas_addr: ContentStoreAddr,
+        data_content_provider: &(dyn ContentProvider + Send + Sync),
         resource_dir: &Path,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
-        let workspace_root = find_monorepo_root()?;
-
-        let mut cas_local_path = PathBuf::from_str(&workspace_root)?;
-        cas_local_path = cas_local_path.join(&format!("{}", cas_addr));
-
         let cmd = CompilerCompileCmd::new(
             self.bin_path.file_name().unwrap(),
             &compile_path,
             dependencies,
             derived_deps,
-            &ContentStoreAddr::from(cas_local_path.strip_prefix(cas_local_path.parent().unwrap())?), // only 'temp'
             resource_dir.strip_prefix(resource_dir.parent().unwrap())?, // only 'offline'
             env,
         );
@@ -80,35 +71,16 @@ impl CompilerStub for RemoteCompilerStub {
         let msg = collect_local_resources(
             &self.bin_path,
             resource_dir,
-            &cas_local_path,
             &compile_path,
             dependencies,
             derived_deps,
             &cmd,
+            &data_content_provider,
         )
         .await?;
 
         let result = crate::remote_service::client::send_receive_workload(&self.server_addr, msg);
-
-        let msg: CompileResultMessage = serde_json::from_str(&result)?;
-
-        let provider = Config::load_and_instantiate_volatile_provider()
-            .await
-            .map_err(|err| {
-                CompilerError::RemoteExecution(format!(
-                    "failed to create content provider: {}",
-                    err
-                ))
-            })?;
-
-        deploy_files(
-            &provider,
-            &msg.files_to_package,
-            cas_local_path.parent().unwrap(),
-        )
-        .await?;
-
-        Ok(msg.output)
+        Ok(serde_json::from_str::<CompilationOutput>(&result)?)
     }
 
     async fn info(&self) -> io::Result<Vec<CompilerInfo>> {

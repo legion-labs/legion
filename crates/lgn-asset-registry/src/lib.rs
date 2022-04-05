@@ -13,8 +13,7 @@ use std::{path::Path, str::FromStr, sync::Arc};
 
 use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
-use lgn_content_store::HddContentStore;
-use lgn_content_store2::{ChunkIdentifier, Chunker, ContentProvider};
+use lgn_content_store2::{ChunkIdentifier, Chunker, Config, ContentProvider};
 use lgn_data_runtime::{
     manifest::Manifest, AssetRegistry, AssetRegistryEvent, AssetRegistryOptions,
     AssetRegistryScheduling, ResourceLoadEvent,
@@ -60,24 +59,18 @@ impl Plugin for AssetRegistryPlugin {
 
 impl AssetRegistryPlugin {
     fn pre_setup(world: &mut World) {
+        let data_content_provider = Arc::new(
+            world
+                .resource::<TokioAsyncRuntime>()
+                .block_on(async { Config::load_and_instantiate_volatile_provider().await })
+                .unwrap(),
+        );
+
         let config = world.resource::<AssetRegistrySettings>();
-
-        let content_store_addr = config.content_store_addr.clone();
-        let content_store = HddContentStore::open(content_store_addr).unwrap_or_else(|| {
-            panic!(
-                "Unable to open content storage in {:?}",
-                config.content_store_addr
-            )
-        });
-
         let manifest = {
             let async_rt = world.resource::<TokioAsyncRuntime>();
             let manifest = async_rt.block_on(async {
-                let content_provider =
-                    lgn_content_store2::Config::load_and_instantiate_persistent_provider()
-                        .await
-                        .unwrap();
-                Self::load_manifest_from_path(&config.game_manifest, &content_provider).await
+                Self::load_manifest_from_path(&config.game_manifest, &data_content_provider).await
             });
             match manifest {
                 Ok(manifest) => manifest,
@@ -88,12 +81,16 @@ impl AssetRegistryPlugin {
             }
         };
 
+        let mut config = world.resource_mut::<AssetRegistrySettings>();
+        if config.assets_to_load.is_empty() {
+            config.assets_to_load = manifest.resources();
+        }
+
         let mut registry_options = AssetRegistryOptions::new();
 
         if let Some(databuild_config) = &config.databuild_config {
             registry_options = registry_options.add_device_build(
-                Box::new(content_store),
-                config.content_store_addr.clone(),
+                data_content_provider,
                 manifest.clone(),
                 &databuild_config.build_bin,
                 databuild_config.output_db_addr.clone(),
@@ -102,7 +99,7 @@ impl AssetRegistryPlugin {
             );
         } else {
             registry_options =
-                registry_options.add_device_cas(Box::new(content_store), manifest.clone());
+                registry_options.add_device_cas(data_content_provider, manifest.clone());
         }
 
         world.insert_resource(manifest);
