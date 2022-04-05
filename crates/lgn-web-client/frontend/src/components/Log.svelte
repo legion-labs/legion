@@ -20,7 +20,8 @@
     ListOnItemsRenderedProps,
     ListOnScrollProps,
   } from "svelte-window";
-  import { Writable, derived, writable } from "svelte/store";
+  import type { Writable } from "svelte/store";
+  import { derived, writable } from "svelte/store";
 
   import { remToPx } from "../lib/html";
   import { debounced, recorded } from "../lib/store";

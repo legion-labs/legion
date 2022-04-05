@@ -3,7 +3,8 @@
 import type { Readable } from "svelte/store";
 import { writable } from "svelte/store";
 
-import { NonEmptyArray, isNonEmpty } from "../lib/array";
+import type { NonEmptyArray } from "../lib/array";
+import { isNonEmpty } from "../lib/array";
 import type { Size } from "../lib/types";
 
 /**

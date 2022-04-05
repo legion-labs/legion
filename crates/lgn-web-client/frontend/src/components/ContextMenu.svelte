@@ -121,7 +121,8 @@ export default buildContextMenu<ContextMenuEntryRecord>();
   import { sleep } from "../lib/promises";
   import type { Position } from "../lib/types";
   import type { ContextMenuStore } from "../stores/contextMenu";
-  import { Entry, ItemEntry, buildCustomEvent } from "../types/contextMenu";
+  import type { Entry, ItemEntry } from "../types/contextMenu";
+  import { buildCustomEvent } from "../types/contextMenu";
 
   const entryHeightRem = 2.5;
 

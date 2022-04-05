@@ -2,7 +2,8 @@ import grpcWeb from "@improbable-eng/grpc-web";
 import { SvelteComponentTyped } from "svelte";
 
 import { initApiClient } from "./api";
-import { InitAuthUserConfig, authClient, initAuth } from "./lib/auth";
+import type { InitAuthUserConfig } from "./lib/auth";
+import { authClient, initAuth } from "./lib/auth";
 import type { InitAuthStatus } from "./lib/auth";
 import log from "./lib/log";
 import type { Level as LogLevel } from "./lib/log";

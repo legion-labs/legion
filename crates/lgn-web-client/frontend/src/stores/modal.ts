@@ -1,5 +1,6 @@
 import { SvelteComponentTyped } from "svelte";
-import { Writable, get, writable } from "svelte/store";
+import type { Writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 
 import Prompt from "../components/modal/Prompt.svelte";
 

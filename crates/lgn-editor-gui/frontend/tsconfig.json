@@ -4,7 +4,6 @@
     "importsNotUsedAsValues": "error",
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "isolatedModules": false,
     "noEmit": true,
     "allowJs": true,
     "checkJs": true,

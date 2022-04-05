@@ -1,5 +1,9 @@
-import type { Readable } from "svelte/store";
+import type { Readable, Writable } from "svelte/store";
+import { writable } from "svelte/store";
 import { derived, get } from "svelte/store";
+import type { JsonValue } from "type-fest";
+
+import type { Storage } from "./storage";
 
 /**
  * Creates a new store from an existing store, which value is debounced:
@@ -139,4 +143,39 @@ export function throttled<Value>(
       return () => clearTimeout(timeoutId);
     }
   });
+}
+
+/**
+ * TODO: Write doc
+ */
+export function connected<Key, Value extends JsonValue>(
+  storage: Storage<Key, Value>,
+  key: Key,
+  defaultValue: Value
+): Writable<Value> {
+  // TODO: Check for item size before storing them
+
+  const store = writable<Value>();
+
+  let initialized = false;
+
+  if (storage.has(key)) {
+    const value = storage.get(key);
+
+    if (value !== null) {
+      store.set(value);
+
+      initialized = true;
+    }
+  }
+
+  if (!initialized) {
+    store.set(defaultValue);
+  }
+
+  store.subscribe((value) => {
+    storage.set(key, value);
+  });
+
+  return store;
 }

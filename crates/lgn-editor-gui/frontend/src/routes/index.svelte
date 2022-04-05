@@ -21,6 +21,7 @@
   import { currentResource } from "@/orchestrators/currentResource";
   import { currentResourceDescriptionEntry } from "@/orchestrators/resourceBrowserEntries";
   import contextMenu from "@/stores/contextMenu";
+  import devSettings from "@/stores/devSettings";
   import modal from "@/stores/modal";
   import notifications from "@/stores/notifications";
   import { stagedResources, syncFromMain } from "@/stores/stagedResources";
@@ -51,7 +52,7 @@
 <Notifications store={notifications} />
 
 <div class="root">
-  <TopBar />
+  <TopBar devSettings={$devSettings} />
   <div class="content-wrapper" class:tauri={window.__TAURI_METADATA__}>
     <div class="content">
       <div class="secondary-contents">
@@ -92,7 +93,7 @@
       </div>
     </div>
   </div>
-  <StatusBar stagedResources={$stagedResources || []} {syncFromMain} />
+  <StatusBar {syncFromMain} stagedResources={$stagedResources || []} />
 </div>
 
 <style lang="postcss">

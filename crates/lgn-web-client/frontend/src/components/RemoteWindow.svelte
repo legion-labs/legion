@@ -1,17 +1,13 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
 
-  import remoteWindowInputs, {
-    RemoteWindowInput,
-  } from "../actions/remoteWindowInputs";
+  import type { RemoteWindowInput } from "../actions/remoteWindowInputs";
+  import remoteWindowInputs from "../actions/remoteWindowInputs";
   import resize from "../actions/resize";
   import type { PushableHTMLVideoElement } from "../actions/videoPlayer";
   import videoPlayer from "../actions/videoPlayer";
-  import {
-    ServerType,
-    initializeStream,
-    onReceiveControlMessage,
-  } from "../api";
+  import type { ServerType } from "../api";
+  import { initializeStream, onReceiveControlMessage } from "../api";
   import log from "../lib/log";
   import { debounce, retry } from "../lib/promises";
   import type { Resolution } from "../lib/types";

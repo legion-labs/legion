@@ -1,5 +1,6 @@
 import type { FluentBundle, FluentVariable } from "@fluent/bundle";
-import { Readable, derived } from "svelte/store";
+import type { Readable } from "svelte/store";
+import { derived } from "svelte/store";
 
 import type { BundlesStore } from "./bundles";
 import type { LocaleStore } from "./locale";

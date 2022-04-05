@@ -3,13 +3,13 @@
   import { onMount } from "svelte";
 
   import clickOutside from "../actions/clickOutside";
-  import { UserInfo, authClient } from "../lib/auth";
+  import { authClient } from "../lib/auth";
+  import type { UserInfo } from "../lib/auth";
   import log from "../lib/log";
   import userInfo from "../orchestrators/userInfo";
-  import topBarMenuStore, {
-    Id as TopBarMenuId,
-    menus as topBarMenus,
-  } from "../stores/topBarMenu";
+  import type { DevSettingsValue } from "../stores/devSettings";
+  import type { Id as TopBarMenuId } from "../stores/topBarMenu";
+  import topBarMenuStore, { menus as topBarMenus } from "../stores/topBarMenu";
   import BrandLogo from "./BrandLogo.svelte";
 
   const { data: userInfoData } = userInfo;
@@ -18,6 +18,8 @@
 
   export let documentTitle: string | null = null;
 
+  export let devSettings: DevSettingsValue | null = null;
+
   let topBarHandle: HTMLDivElement | undefined;
 
   let topBarMinimize: HTMLDivElement | undefined;
@@ -25,6 +27,8 @@
   let topBarMaximize: HTMLDivElement | undefined;
 
   let topBarClose: HTMLDivElement | undefined;
+
+  let devSettingsTitle: string | null = null;
 
   onMount(async () => {
     if (!isTauri) {
@@ -109,6 +113,10 @@
       window.location.href = authorizationUrl;
     }
   }
+
+  $: if (devSettings) {
+    devSettingsTitle = `Editor server url: ${devSettings.editorServerUrl}\nRuntime server url: ${devSettings.runtimeServerUrl}`;
+  }
 </script>
 
 <div class="root" class:tauri={isTauri}>
@@ -157,6 +165,15 @@
     </div>
   </div>
   <div class="actions">
+    {#if devSettings}
+      <div class="dev-settings" title={devSettingsTitle}>
+        <Icon
+          class="w-full h-full"
+          icon="ic:baseline-settings"
+          title={devSettingsTitle}
+        />
+      </div>
+    {/if}
     <div
       class="authentication"
       class:cursor-pointer={!$userInfoData}
@@ -242,6 +259,10 @@
 
   .actions {
     @apply flex flex-row h-full justify-end items-center space-x-4;
+  }
+
+  .dev-settings {
+    @apply h-6 w-6;
   }
 
   .authentication {

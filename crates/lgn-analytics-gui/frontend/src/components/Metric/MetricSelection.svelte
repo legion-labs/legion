@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
-  import { Unsubscriber, get } from "svelte/store";
+  import type { Unsubscriber } from "svelte/store";
+  import { get } from "svelte/store";
 
   import clickOutside from "@lgn/web-client/src/actions/clickOutside";
 
