@@ -33,7 +33,7 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
 struct Script2AsmCompiler();
 
 impl Script2AsmCompiler {
-    #[allow(unused_variables)]
+    #[allow(unused_variables, clippy::unnecessary_wraps)]
     fn get_compiled_script(
         resource_id: &ResourceTypeAndId,
         resource: &offline_data::Script,
