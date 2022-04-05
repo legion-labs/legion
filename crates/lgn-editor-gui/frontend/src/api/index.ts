@@ -371,14 +371,22 @@ export function initMessageStream() {
   return editorClient.initMessageStream({});
 }
 
-export function loadRuntimeManifest({ id }: { id: string }) {
-  return runtimeClient.loadManifest({ id });
+export async function loadRuntimeManifest({
+  manifestId,
+}: {
+  manifestId: string;
+}) {
+  return runtimeClient.loadManifest({ manifestId });
 }
 
-export function loadRuntimeRootAsset({ id }: { id: string }) {
-  return runtimeClient.loadRootAsset({ id });
+export async function loadRuntimeRootAsset({
+  rootAssetId,
+}: {
+  rootAssetId: string;
+}) {
+  return runtimeClient.loadRootAsset({ rootAssetId });
 }
 
-export function pauseRuntime() {
+export async function pauseRuntime() {
   return runtimeClient.pause({});
 }
