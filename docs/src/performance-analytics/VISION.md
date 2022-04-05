@@ -267,25 +267,25 @@ Could support the interface to get visibility into crates that are already instr
 # Progress 2022
 
 ## January 2022
-- Logging improvements (Jalal)
-- Timeline levels of details (MAD)
+- Logging improvements, Timeline levels of details
 
 ## February 2022
-- Ingestion & analytics services in the cloud (MAD)
-- Time series levels of details (Tim)
-- UI redesign (Alexandra)
+- Cloud infra, Time series, UI redesign
+
+## March 2022
+- Time series & Timeline improvements, Async function tracing
 
 ---
 # Roadmap
 
-## March 2022
-- Time series continued (Tim)
-- Timeline improvements (Tim)
-- Async function tracing (MAD)
-
 ## April 2022
 - Unreal telemetry module (MAD)
 - Cumulative call graph improvements (Tim)
+
+## May 2022
+- Unreal telemetry module (MAD)
+- GCP
+- Log screen
 
 ---
 ## Backlog
