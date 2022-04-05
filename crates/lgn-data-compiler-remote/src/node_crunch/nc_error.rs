@@ -47,13 +47,13 @@ pub enum NCError {
     /// [`Mutex`](std::sync::Mutex) could not be locked or a thread did panic while holding the lock.
     #[error("Mutex poisson error")]
     MutexPoison,
-    #[error("URL parse error")]
+    #[error("URL parse error: {0}")]
     Url(#[from] ParseError),
-    #[error("CAS error")]
+    #[error("CAS error: {0}")]
     CASError(#[from] lgn_content_store2::Error),
-    #[error("Compiler error")]
+    #[error("Compiler error: {0}")]
     CompilerError(#[from] lgn_data_compiler::compiler_api::CompilerError),
-    #[error("Json error")]
+    #[error("Json error: {0}")]
     JsonError(#[from] serde_json::error::Error),
 }
 
