@@ -453,11 +453,7 @@ mod tests {
                 resource_hash.clone(),
                 intermediate_deps,
             );
-            source_index.update_resource(
-                output_resource.clone(),
-                resource_hash.clone(),
-                output_deps,
-            );
+            source_index.update_resource(output_resource.clone(), resource_hash, output_deps);
             source_index
         };
 
@@ -518,7 +514,7 @@ mod tests {
         assert_eq!(source_index.resources.len(), 2);
         assert_eq!(source_index.resources[0].dependencies.len(), 1);
 
-        source_index.update_resource(output_resources, resource_hash.clone(), output_deps);
+        source_index.update_resource(output_resources, resource_hash, output_deps);
         assert_eq!(source_index.resources.len(), 3);
         assert_eq!(source_index.resources[2].dependencies.len(), 1);
     }
