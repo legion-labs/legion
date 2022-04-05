@@ -260,7 +260,7 @@ fn main() {
 
             info!("AWS EC2 public IPv4: {}", ipv4);
 
-            let mut streamer_config = config.streamer.clone();
+            let mut streamer_config = config.streamer;
 
             info!("Adding NAT 1:1 public IPv4 to streamer configuration.");
 
