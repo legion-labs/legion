@@ -12,7 +12,7 @@
   } from "@lgn/web-client/src/stores/workspace";
 
   import { initApiClient } from "@/api";
-  import { initAllActiveScenesStream } from "@/orchestrators/allActiveScenes";
+  import { fetchAllActiveScenes } from "@/orchestrators/allActiveScenes";
   import { initMessageStream } from "@/orchestrators/selection";
   import contextMenu, {
     resourceBrowserItemContextMenuId,
@@ -111,7 +111,10 @@
 
           // Fire and forget stream init
           // TODO: When using routing we may want to cancel the returned subscription
-          initAllActiveScenesStream();
+          // TODO: Reactivate when the streaming is ready server-side
+          // initAllActiveScenesStream();
+
+          await fetchAllActiveScenes();
 
           contextMenu.register(
             resourceBrowserItemContextMenuId,

@@ -11,7 +11,10 @@
   import type { Entry } from "@/lib/hierarchyTree";
   import { isEntry } from "@/lib/hierarchyTree";
   import { iconFor } from "@/lib/resourceBrowser";
-  import { allActiveScenesLoading } from "@/orchestrators/allActiveScenes";
+  import {
+    allActiveScenesLoading,
+    fetchAllActiveScenes,
+  } from "@/orchestrators/allActiveScenes";
   import { fetchCurrentResourceDescription } from "@/orchestrators/currentResource";
   import {
     currentSceneDescriptionEntry,
@@ -42,6 +45,8 @@
       case "closeScene": {
         if ($currentSceneDescriptionEntry) {
           await closeScene({ id: $currentSceneDescriptionEntry?.item.id });
+
+          await fetchAllActiveScenes();
         }
 
         return;
