@@ -33,15 +33,15 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
 struct Script2AsmCompiler();
 
 impl Script2AsmCompiler {
-    #[allow(unused_variables)]
+    #[allow(unused_variables, clippy::unnecessary_wraps)]
     fn get_compiled_script(
         resource_id: &ResourceTypeAndId,
         resource: &offline_data::Script,
-    ) -> runtime_data::Script {
+    ) -> Result<runtime_data::Script, CompilerError> {
         #[cfg(target_os = "windows")]
         {
             // Avoid packaging mun.exe in the repo
-            let mun_exe = Self::make_mun_available();
+            let mun_exe = Self::make_mun_available()?;
             let temp_crate = {
                 let mut temp_crate = temp_dir();
                 temp_crate.push(resource_id.id.to_string());
@@ -52,16 +52,25 @@ impl Script2AsmCompiler {
                     .arg("new")
                     .arg(temp_crate.to_str().unwrap())
                     .spawn()
-                    .expect("Cannot start 'mun new'")
+                    .map_err(|err| {
+                        CompilerError::CompilationError(format!("Cannot start 'mun new': {}", err))
+                    })?
                     .wait()
-                    .expect("Cannot create mun project");
+                    .map_err(|err| {
+                        CompilerError::CompilationError(format!("Cannot start 'mun new': {}", err))
+                    })?;
             }
             {
                 let mut src_path = std::path::PathBuf::from(&temp_crate);
                 src_path.push("src");
                 src_path.push("mod.mun");
-                //println!("{:?}", &src_path);
-                fs::write(src_path, resource.script.as_bytes()).unwrap();
+                fs::write(src_path.clone(), resource.script.as_bytes()).map_err(|err| {
+                    CompilerError::CompilationError(format!(
+                        "Failed save script {}: {}",
+                        src_path.as_path().display(),
+                        err
+                    ))
+                })?;
 
                 let mut toml_path = temp_crate.clone();
                 toml_path.push("mun.toml");
@@ -70,44 +79,63 @@ impl Script2AsmCompiler {
                     .arg("--manifest-path")
                     .arg(toml_path.to_str().unwrap())
                     .spawn()
-                    .expect("Cannot start 'mun build'")
+                    .map_err(|err| {
+                        CompilerError::CompilationError(format!(
+                            "Cannot start 'mun build': {}",
+                            err
+                        ))
+                    })?
                     .wait()
-                    .expect("Cannot build mun project");
+                    .map_err(|err| {
+                        CompilerError::CompilationError(format!(
+                            "Cannot build mum project: {}",
+                            err
+                        ))
+                    })?;
             }
-            runtime_data::Script {
+            Ok(runtime_data::Script {
                 script_type: ScriptType::Mun,
                 compiled_script: {
                     let mut src_path = std::path::PathBuf::from(&temp_crate);
                     src_path.push("target");
                     src_path.push("mod.munlib");
-                    //println!("{:?}", &src_path);
-                    fs::read(src_path).unwrap()
+                    fs::read(src_path.clone()).map_err(|err| {
+                        CompilerError::CompilationError(format!(
+                            "Failed load script {}: {}",
+                            src_path.as_path().display(),
+                            err
+                        ))
+                    })?
                 },
-            }
+            })
         }
 
         #[cfg(not(target_os = "windows"))]
         {
-            runtime_data::Script {
+            Ok(runtime_data::Script {
                 script_type: ScriptType::Mun,
                 compiled_script: Vec::new(),
-            }
+            })
         }
     }
 
     // mun.exe is big, download it locally to avoid packaging it in the repo.
     // This is a temporary situation until we decide what to do with the scripting language.
     #[allow(dead_code)]
-    fn make_mun_available() -> OsString {
+    fn make_mun_available() -> Result<OsString, CompilerError> {
         let mut mun_local_exe = temp_dir();
         mun_local_exe.push("mun.exe");
         if !mun_local_exe.is_file() {
-            fn download(url: &str, target_path: &Path) {
+            fn download(url: &str, target_path: &Path) -> Result<(), CompilerError> {
                 let mut handle = Easy::new();
-                let mut file = File::create(target_path).unwrap();
+                let mut file = File::create(target_path).map_err(|err| {
+                    CompilerError::CompilationError(format!("Failed to retrieve mun: {}", err))
+                })?;
 
                 handle.url(url).unwrap();
-                handle.follow_location(true).unwrap();
+                handle
+                    .follow_location(true)
+                    .map_err(|err| CompilerError::CompilationError(err.to_string()))?;
 
                 let mut transfer = handle.transfer();
                 {
@@ -116,24 +144,34 @@ impl Script2AsmCompiler {
                             file.write_all(new_data).unwrap();
                             Ok(new_data.len())
                         })
-                        .unwrap();
-                    transfer.perform().unwrap();
+                        .map_err(|err| CompilerError::CompilationError(err.to_string()))?;
+
+                    transfer
+                        .perform()
+                        .map_err(|err| CompilerError::CompilationError(err.to_string()))?;
+
                     drop(transfer);
                 }
+                Ok(())
             }
             let mut mun_zip = temp_dir();
             mun_zip.push("mun.zip");
             download(
                 "https://github.com/mun-lang/mun/releases/download/v0.3.0/mun-win64-v0.3.0.zip",
                 &mun_zip,
-            );
+            )?;
 
             // uncompress
-            let zip_file = fs::File::open(&mun_zip).unwrap();
-            let mut archive = zip::ZipArchive::new(zip_file).unwrap();
-            archive.extract(temp_dir()).unwrap();
+            let zip_file = fs::File::open(&mun_zip)
+                .map_err(|err| CompilerError::CompilationError(err.to_string()))?;
+
+            let mut archive = zip::ZipArchive::new(zip_file)
+                .map_err(|err| CompilerError::CompilationError(err.to_string()))?;
+            archive
+                .extract(temp_dir())
+                .map_err(|err| CompilerError::CompilationError(err.to_string()))?;
         }
-        mun_local_exe.into_os_string()
+        Ok(mun_local_exe.into_os_string())
     }
 }
 
@@ -163,18 +201,26 @@ impl Compiler for Script2AsmCompiler {
             let resource = resources
                 .load_async::<offline_data::Script>(context.source.resource_id())
                 .await;
-            let resource = resource.get(&resources).unwrap();
+
+            let resource = resource.get(&resources).ok_or_else(|| {
+                CompilerError::CompilationError(format!(
+                    "Failed to retrieve resource {}",
+                    context.source.resource_id()
+                ))
+            })?;
 
             let runtime_script = match resource.script_type {
                 ScriptType::Mun => {
-                    Self::get_compiled_script(&context.source.resource_id(), &resource)
+                    Self::get_compiled_script(&context.source.resource_id(), &resource)?
                 }
                 _ => runtime_data::Script {
                     script_type: resource.script_type,
                     compiled_script: resource.script.as_bytes().to_vec(),
                 },
             };
-            bincode::serialize(&runtime_script).unwrap()
+            bincode::serialize(&runtime_script).map_err(|err| {
+                CompilerError::CompilationError(format!("Failed to bincode script: {}", err))
+            })?
         };
 
         let asset = context

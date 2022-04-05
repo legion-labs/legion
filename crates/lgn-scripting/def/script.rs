@@ -6,6 +6,7 @@ pub enum ScriptType {
 
 #[resource]
 struct Script {
+    #[legion(default=ScriptType::Rune)]
     pub script_type: ScriptType,
 
     #[legion(offline_only, editor_type = "script")]
