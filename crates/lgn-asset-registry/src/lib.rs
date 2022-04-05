@@ -70,10 +70,6 @@ impl AssetRegistryPlugin {
         let manifest = {
             let async_rt = world.resource::<TokioAsyncRuntime>();
             let manifest = async_rt.block_on(async {
-                let content_provider =
-                    lgn_content_store2::Config::load_and_instantiate_persistent_provider()
-                        .await
-                        .unwrap();
                 Self::load_manifest_from_path(&config.game_manifest, &data_content_provider).await
             });
             match manifest {
