@@ -3,6 +3,7 @@ use aws_sdk_dynamodb::model::AttributeValue;
 use aws_sdk_dynamodb::types::Blob;
 use std::{
     collections::{BTreeMap, BTreeSet},
+    fmt::Display,
     io::{Cursor, Write},
 };
 
@@ -138,6 +139,12 @@ impl AwsDynamoDbProvider {
             )
             .into()),
         }
+    }
+}
+
+impl Display for AwsDynamoDbProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "AWS DynamoDB (table: {})", self.table_name)
     }
 }
 

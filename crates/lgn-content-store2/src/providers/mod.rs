@@ -27,7 +27,7 @@ pub use aws_dynamodb::AwsDynamoDbProvider;
 #[cfg(feature = "aws")]
 pub use aws_s3::{AwsS3Provider, AwsS3Url};
 pub use cache::CachingProvider;
-pub use grpc::{GrpcProvider, GrpcService};
+pub use grpc::{GrpcProvider, GrpcProviderSet, GrpcService};
 pub use local::LocalProvider;
 pub use memory::MemoryProvider;
 pub use monitor::{MonitorAsyncAdapter, MonitorProvider, TransferCallbacks};

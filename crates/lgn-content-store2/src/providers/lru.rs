@@ -1,5 +1,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
+    fmt::Display,
     sync::Arc,
 };
 
@@ -17,6 +18,7 @@ use crate::{
 pub struct LruProvider {
     content_map: Arc<Mutex<LruCache<Identifier, Vec<u8>>>>,
     alias_map: Arc<Mutex<LruCache<(String, String), Identifier>>>,
+    size: usize,
 }
 
 impl LruProvider {
@@ -26,7 +28,14 @@ impl LruProvider {
         Self {
             content_map: Arc::new(Mutex::new(LruCache::new(size))),
             alias_map: Arc::new(Mutex::new(LruCache::new(size))),
+            size,
         }
+    }
+}
+
+impl Display for LruProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "lru (size: {})", self.size)
     }
 }
 

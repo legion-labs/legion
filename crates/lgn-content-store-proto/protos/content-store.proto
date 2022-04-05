@@ -10,8 +10,9 @@ service ContentStore {
 }
 
 message ResolveAliasRequest {
-  string key_space = 1;
-  string key = 2;
+  string data_space = 1;
+  string key_space = 2;
+  string key = 3;
 }
 
 message ResolveAliasResponse {
@@ -19,9 +20,10 @@ message ResolveAliasResponse {
 }
 
 message RegisterAliasRequest {
-  string key_space = 1;
-  string key = 2;
-  string id = 3;
+  string data_space = 1;
+  string key_space = 2;
+  string key = 3;
+  string id = 4;
 }
 
 message RegisterAliasResponse {
@@ -29,7 +31,8 @@ message RegisterAliasResponse {
 }
 
 message ReadContentRequest {
-  string id = 1;
+  string data_space = 1;
+  string id = 2;
 }
 
 message ReadContentResponse {
@@ -40,7 +43,8 @@ message ReadContentResponse {
 }
 
 message GetContentWriterRequest {
-  string id = 1;
+  string data_space = 1;
+  string id = 2;
 }
 
 message GetContentWriterResponse {
@@ -50,7 +54,8 @@ message GetContentWriterResponse {
 }
 
 message WriteContentRequest {
-  bytes data = 1;
+  string data_space = 1;
+  bytes data = 2;
 }
 
 message WriteContentResponse {

@@ -1,5 +1,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
+    fmt::Display,
     sync::Arc,
 };
 
@@ -23,6 +24,12 @@ impl MemoryProvider {
     /// process memory.
     pub fn new() -> Self {
         Self::default()
+    }
+}
+
+impl Display for MemoryProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "in-memory")
     }
 }
 

@@ -519,7 +519,7 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let config: Config = lgn_config::get("source_control.server")?
-        .ok_or_else(|| anyhow::anyhow!("no configuration was found for `source-control.server`"))?;
+        .ok_or_else(|| anyhow::anyhow!("no configuration was found for `source_control.server`"))?;
 
     let cors = CorsLayer::new()
         .allow_origin(Origin::list(args.origins))

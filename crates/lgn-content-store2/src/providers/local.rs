@@ -2,6 +2,7 @@ use anyhow::Context;
 use async_trait::async_trait;
 use std::{
     collections::{BTreeMap, BTreeSet},
+    fmt::Display,
     io::Write,
     path::PathBuf,
 };
@@ -38,6 +39,12 @@ impl LocalProvider {
         let mut enc = base64::write::EncoderStringWriter::new(base64::URL_SAFE_NO_PAD);
         enc.write_all(key.as_bytes())?;
         Ok(enc.into_inner())
+    }
+}
+
+impl Display for LocalProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "local (root: {})", self.0.display())
     }
 }
 

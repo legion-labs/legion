@@ -6,8 +6,8 @@ use std::{
 
 use lgn_content_store2::{
     CachingProvider, ChunkIdentifier, Chunker, ContentAddressReader, ContentAddressWriter,
-    ContentReaderExt, ContentWriter, ContentWriterExt, Error, GrpcProvider, GrpcService,
-    Identifier, LocalProvider, MemoryProvider, SmallContentProvider,
+    ContentReaderExt, ContentWriter, ContentWriterExt, DataSpace, Error, GrpcProvider,
+    GrpcProviderSet, GrpcService, Identifier, LocalProvider, MemoryProvider, SmallContentProvider,
 };
 
 #[cfg(feature = "lru")]
@@ -427,7 +427,19 @@ async fn test_grpc_provider() {
     let address_provider = Arc::new(FakeContentAddressProvider::new(
         http_server.url("/").to_string(),
     ));
-    let service = GrpcService::new(provider, Arc::clone(&address_provider), BIG_DATA_A.len());
+    let data_space = DataSpace::persistent();
+    let providers = vec![(
+        data_space.clone(),
+        GrpcProviderSet {
+            provider: Box::new(provider),
+            address_provider: Box::new(Arc::clone(&address_provider)),
+            size_threshold: BIG_DATA_A.len(),
+        },
+    )]
+    .into_iter()
+    .collect();
+
+    let service = GrpcService::new(providers);
     let service = lgn_content_store_proto::content_store_server::ContentStoreServer::new(service);
     let server = tonic::transport::Server::builder().add_service(service);
 
@@ -438,9 +450,10 @@ async fn test_grpc_provider() {
         socket_addr: &SocketAddr,
         http_server: &httptest::Server,
         address_provider: Arc<FakeContentAddressProvider>,
+        data_space: DataSpace,
     ) {
         let client = GrpcClient::new(format!("http://{}", socket_addr).parse().unwrap());
-        let provider = GrpcProvider::new(client).await;
+        let provider = GrpcProvider::new(client, data_space).await;
 
         // First we try with a small file.
 
@@ -547,7 +560,7 @@ async fn test_grpc_provider() {
             res = async {
                 server.serve_with_incoming(incoming).await
             } => panic!("server is no longer bound: {}", res.unwrap_err()),
-            _ = f(&addr, &http_server, address_provider) => break
+            _ = f(&addr, &http_server, address_provider, data_space) => break
         };
     }
 }
