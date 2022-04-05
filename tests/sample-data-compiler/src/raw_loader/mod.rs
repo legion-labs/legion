@@ -91,6 +91,18 @@ pub async fn build_offline(
         .await;
         let mut resources = resources.lock().await;
 
+        // cleanup data from source control before we generate new data.
+        if !incremental {
+            let all_resources = project.resource_list().await;
+            if !all_resources.is_empty() {
+                for id in all_resources {
+                    project.delete_resource(id).await.unwrap();
+                }
+
+                project.commit("cleanup resources").await.unwrap();
+            }
+        }
+
         let gltf_folders = file_paths
             .iter()
             .filter_map(|v| {
