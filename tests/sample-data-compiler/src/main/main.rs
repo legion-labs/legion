@@ -7,12 +7,15 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
-use std::{fs, path::PathBuf, sync::Arc};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use clap::Parser;
 use lgn_data_offline::resource::ResourcePathName;
 use lgn_source_control::RepositoryName;
-use lgn_tracing::info;
 use sample_data_compiler::{offline_compiler, raw_loader};
 
 #[derive(Parser, Default)]
@@ -97,31 +100,26 @@ async fn main() {
 }
 
 fn clean_folders(project_dir: &str) {
-    let mut can_clean = true;
-    let path = PathBuf::from(project_dir);
-
-    let mut test = |sub_path| {
-        can_clean &= path.join(sub_path).exists();
-    };
-    test("offline");
-    test("runtime");
-    test("temp");
-
-    if !can_clean {
-        info!("Cannot clean folders in path {}", project_dir);
-    } else {
-        let delete = |sub_path, as_dir| {
-            let remove = if as_dir {
-                fs::remove_dir_all
-            } else {
-                fs::remove_file
-            };
-            remove(path.join(sub_path)).unwrap_or_else(|_| panic!("Cannot delete {:?}", path));
+    let delete = |sub_path: &str, as_dir| {
+        let mut path = if Path::new(project_dir).is_relative() {
+            env::current_dir().unwrap().join(project_dir)
+        } else {
+            PathBuf::from(project_dir)
         };
+        path.push(sub_path);
+        if !path.exists() {
+            return;
+        }
+        let remove = if as_dir {
+            fs::remove_dir_all
+        } else {
+            fs::remove_file
+        };
+        remove(&path).unwrap_or_else(|_| panic!("Cannot delete {:?}", path));
+    };
 
-        let _result = fs::remove_file(path.join("VERSION"));
-        delete("offline", true);
-        delete("runtime", true);
-        delete("temp", true);
-    }
+    delete("VERSION", false);
+    delete("offline", true);
+    delete("runtime", true);
+    delete("temp", true);
 }
