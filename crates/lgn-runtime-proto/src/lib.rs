@@ -7,6 +7,6 @@
     clippy::wildcard_imports,
     clippy::similar_names
 )]
-mod runtime {
+pub mod runtime {
     tonic::include_proto!("runtime");
 }

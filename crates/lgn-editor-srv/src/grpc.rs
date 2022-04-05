@@ -1,5 +1,6 @@
-use std::{ops::Deref, sync::Arc};
+use std::sync::Arc;
 
+use lgn_async::receiver::SharedUnboundedReceiver;
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_data_transaction::TransactionManager;
 use lgn_editor_proto::editor::{
@@ -9,44 +10,11 @@ use lgn_editor_proto::editor::{
     RedoTransactionRequest, RedoTransactionResponse, UndoTransactionRequest,
     UndoTransactionResponse,
 };
-use tokio::sync::{
-    broadcast::{self, error::RecvError},
-    mpsc, Mutex,
-};
+use tokio::sync::{broadcast::error::RecvError, mpsc, Mutex};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{Request, Response, Status};
 
 use crate::broadcast_sink::TraceEvent;
-
-/// Easy to share, referenced counted version of Tokio's [`broadcast::Receiver`].
-/// Can be cloned safely and will dereference to the internal [`Mutex`].
-pub(crate) struct SharedUnboundedReceiver<T>(pub(crate) Arc<Mutex<broadcast::Receiver<T>>>);
-
-impl<T> SharedUnboundedReceiver<T> {
-    pub fn new(receiver: broadcast::Receiver<T>) -> Self {
-        Self(Arc::new(Mutex::new(receiver)))
-    }
-}
-
-impl<T> Clone for SharedUnboundedReceiver<T> {
-    fn clone(&self) -> Self {
-        Self(Arc::clone(&self.0))
-    }
-}
-
-impl<T> Deref for SharedUnboundedReceiver<T> {
-    type Target = Mutex<broadcast::Receiver<T>>;
-
-    fn deref(&self) -> &Self::Target {
-        &*self.0
-    }
-}
-
-impl<T> From<broadcast::Receiver<T>> for SharedUnboundedReceiver<T> {
-    fn from(receiver: broadcast::Receiver<T>) -> Self {
-        Self::new(receiver)
-    }
-}
 
 #[derive(Debug, Clone)]
 pub(crate) enum SelectionEvent {

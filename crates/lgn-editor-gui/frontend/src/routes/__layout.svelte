@@ -71,7 +71,7 @@
     const runtimeServerUrl =
       sessionStorage.getItem(editorRuntimerUrlKey) || undefined;
 
-    initApiClient({ editorServerUrl });
+    initApiClient({ editorServerUrl, runtimeServerUrl });
 
     try {
       const { initAuthStatus } = await headlessRun({

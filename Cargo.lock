@@ -4389,6 +4389,7 @@ dependencies = [
  "lgn-math",
  "lgn-tracing",
  "serde_json",
+ "thiserror",
  "tokio",
 ]
 
@@ -8464,6 +8465,7 @@ dependencies = [
  "lgn-async",
  "lgn-config",
  "lgn-content-store",
+ "lgn-content-store2",
  "lgn-core",
  "lgn-data-runtime",
  "lgn-ecs",
@@ -8474,6 +8476,7 @@ dependencies = [
  "lgn-input",
  "lgn-physics",
  "lgn-presenter-window",
+ "lgn-runtime-proto",
  "lgn-scene-plugin",
  "lgn-scripting",
  "lgn-streamer",
@@ -8483,6 +8486,8 @@ dependencies = [
  "lgn-window",
  "lgn-winit",
  "sample-data",
+ "tokio",
+ "tonic",
 ]
 
 [[package]]

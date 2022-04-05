@@ -2,8 +2,22 @@ syntax = "proto3";
 package runtime;
 
 service Runtime {
+  rpc LoadManifest(LoadManifestRequest) returns (LoadManifestResponse);
+  rpc LoadRootAsset(LoadRootAssetRequest) returns (LoadRootAssetResponse);
   rpc Pause(PauseRequest) returns (PauseResponse);
 }
+
+message LoadManifestRequest {
+  string manifest_id = 1;
+}
+
+message LoadManifestResponse {}
+
+message LoadRootAssetRequest {
+  string root_asset_id = 1;
+}
+
+message LoadRootAssetResponse {}
 
 message PauseRequest {}
 
