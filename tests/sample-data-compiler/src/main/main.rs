@@ -115,7 +115,7 @@ fn clean_folders(project_dir: &str) {
         } else {
             fs::remove_file
         };
-        remove(&path).unwrap_or_else(|_| panic!("Cannot delete {:?}", path));
+        remove(&path).unwrap_or_default();
     };
 
     delete("VERSION", false);

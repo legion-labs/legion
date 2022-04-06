@@ -20,7 +20,7 @@ use lgn_data_offline::resource::{
 use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_graphics_data::{offline_gltf::GltfFile, offline_png::PngFile, offline_psd::PsdFile};
 use lgn_source_control::{RepositoryIndex, RepositoryName};
-use lgn_tracing::{error, info, warn};
+use lgn_tracing::{error, info};
 use lgn_utils::DefaultHasher;
 use sample_data::offline as offline_data;
 use serde::de::DeserializeOwned;
@@ -75,11 +75,9 @@ pub async fn build_offline(
         }
 
         if !incremental {
-            std::fs::remove_dir_all(root_folder.as_ref().join("offline"))
-                .unwrap_or_else(|e| warn!("failed to delete offline: {}.", e));
+            std::fs::remove_dir_all(root_folder.as_ref().join("offline")).unwrap_or_default();
 
-            std::fs::remove_file(root_folder.as_ref().join("VERSION"))
-                .unwrap_or_else(|e| warn!("failed to delete VERSION: {}.", e));
+            std::fs::remove_file(root_folder.as_ref().join("VERSION")).unwrap_or_default();
         }
 
         let (mut project, resources) = setup_project(
