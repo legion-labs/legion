@@ -220,7 +220,7 @@ impl EditorPlugin {
                                         }
                                         Ok(_) => {}
                                         Err(err) => {
-                                            error!("ApplyTransform transaction failed: {}", err)
+                                            error!("ApplyTransform transaction failed: {}", err);
                                         }
                                     }
                                 }
