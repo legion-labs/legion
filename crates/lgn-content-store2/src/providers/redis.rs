@@ -173,7 +173,7 @@ impl ContentWriter for RedisProvider {
             .map_err(|err| anyhow::anyhow!("failed to get connection to Redis: {}", err))?;
 
         match con.exists(&key).await {
-            Ok(true) => Err(Error::AlreadyExists),
+            Ok(true) => Err(Error::AlreadyExists(id.to_string())),
             Ok(false) => Ok(Box::pin(RedisUploader::new(
                 id.clone(),
                 RedisUploaderImpl {
@@ -200,7 +200,10 @@ impl ContentWriter for RedisProvider {
         let k = self.get_alias_key(key_space, key);
 
         match con.exists(&k).await {
-            Ok(true) => Err(Error::AlreadyExists),
+            Ok(true) => Err(Error::AlreadyExists(format!(
+                "{}/{}={}",
+                key_space, key, id
+            ))),
             Ok(false) => match con.set_nx(&k, id.as_vec()).await {
                 Ok(()) => Ok(()),
                 Err(err) => Err(anyhow::anyhow!(

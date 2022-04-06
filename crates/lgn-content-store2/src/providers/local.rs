@@ -61,7 +61,7 @@ impl ContentReader for LocalProvider {
                         .expect("metadata size does not fit in usize"); // Should never happen on a modern architecture.
 
                     if metadata_size != id.data_size() {
-                        Err(Error::Corrupt)
+                        Err(Error::Corrupt(id.clone()))
                     } else {
                         Ok(Box::pin(file))
                     }
@@ -128,7 +128,7 @@ impl ContentWriter for LocalProvider {
                 .expect("metadata size does not fit in usize"); // Should never happen on a modern architecture.
 
             if id.data_size() == metadata_size {
-                return Err(Error::AlreadyExists);
+                return Err(Error::AlreadyExists(id.to_string()));
             }
         }
 

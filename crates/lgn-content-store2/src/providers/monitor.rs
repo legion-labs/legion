@@ -136,12 +136,12 @@ impl<Inner: ContentWriter + Send + Sync> ContentWriter for MonitorProvider<Inner
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
         let writer = match self.inner.get_content_writer(id).await {
             Ok(writer) => Ok(writer),
-            Err(Error::AlreadyExists) => {
+            Err(Error::AlreadyExists(_)) => {
                 if let Some(callbacks) = &self.on_upload_callbacks {
                     callbacks.on_transfer_avoided(id, id.data_size());
                 }
 
-                Err(Error::AlreadyExists)
+                Err(Error::AlreadyExists(id.to_string()))
             }
             Err(err) => Err(err),
         }?;

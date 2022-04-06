@@ -206,7 +206,7 @@ impl ContentReader for AwsDynamoDbProvider {
 impl ContentWriter for AwsDynamoDbProvider {
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
         match self.get_content(id).await {
-            Ok(_) => Err(Error::AlreadyExists),
+            Ok(_) => Err(Error::AlreadyExists(id.to_string())),
             Err(Error::NotFound(_)) => Ok(Box::pin(DynamoDbUploader::new(
                 id.clone(),
                 DynamoDbUploaderImpl {

@@ -331,7 +331,7 @@ impl ContentWriter for AwsS3Provider {
             .send()
             .await
         {
-            Ok(_) => Err(Error::AlreadyExists {}),
+            Ok(_) => Err(Error::AlreadyExists(id.to_string())),
             Err(aws_sdk_s3::types::SdkError::ServiceError { err, raw: _ }) => {
                 if let aws_sdk_s3::error::GetObjectErrorKind::NoSuchKey(_) = err.kind {
                     Ok(())
@@ -392,7 +392,7 @@ impl ContentAddressReader for AwsS3Provider {
 impl ContentAddressWriter for AwsS3Provider {
     async fn get_content_write_address(&self, id: &Identifier) -> Result<String> {
         if self.check_object_existence(id).await? {
-            return Err(Error::AlreadyExists);
+            return Err(Error::AlreadyExists(id.to_string()));
         }
 
         let key = self.blob_key(id);

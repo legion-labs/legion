@@ -82,7 +82,7 @@ impl ContentReader for MemoryProvider {
 impl ContentWriter for MemoryProvider {
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
         if self.content_map.read().await.contains_key(id) {
-            Err(Error::AlreadyExists)
+            Err(Error::AlreadyExists(id.to_string()))
         } else {
             Ok(Box::pin(MemoryUploader::new(
                 id.clone(),
@@ -97,7 +97,10 @@ impl ContentWriter for MemoryProvider {
         let k = (key_space.to_string(), key.to_string());
 
         if self.alias_map.read().await.contains_key(&k) {
-            return Err(Error::AlreadyExists);
+            return Err(Error::AlreadyExists(format!(
+                "{}/{}={}",
+                key_space, key, id
+            )));
         }
 
         self.alias_map.write().await.insert(k, id.clone());

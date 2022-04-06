@@ -88,7 +88,7 @@ impl ContentReader for LruProvider {
 impl ContentWriter for LruProvider {
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
         if self.content_map.lock().await.get(id).is_some() {
-            Err(Error::AlreadyExists)
+            Err(Error::AlreadyExists(id.to_string()))
         } else {
             Ok(Box::pin(MemoryUploader::new(
                 id.clone(),
@@ -104,7 +104,10 @@ impl ContentWriter for LruProvider {
         let mut map = self.alias_map.lock().await;
 
         if map.contains(&k) {
-            return Err(Error::AlreadyExists);
+            return Err(Error::AlreadyExists(format!(
+                "{}/{}={}",
+                key_space, key, id
+            )));
         }
 
         map.put(k, id.clone());

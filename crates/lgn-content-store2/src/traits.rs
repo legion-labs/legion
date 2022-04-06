@@ -180,7 +180,7 @@ pub trait ContentWriterExt: ContentWriter {
 
         let mut writer = match self.get_content_writer(&id).await {
             Ok(writer) => writer,
-            Err(Error::AlreadyExists) => return Ok(id),
+            Err(Error::AlreadyExists(_)) => return Ok(id),
             Err(err) => return Err(err),
         };
 
@@ -201,7 +201,7 @@ pub trait ContentWriterExt: ContentWriter {
         let id = self.write_content(data).await?;
 
         match self.register_alias(key_space, key, &id).await {
-            Ok(_) | Err(Error::AlreadyExists) => Ok(id),
+            Ok(_) | Err(Error::AlreadyExists(_)) => Ok(id),
             Err(err) => Err(err),
         }
     }

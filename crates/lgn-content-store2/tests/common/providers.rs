@@ -43,7 +43,7 @@ impl ContentAddressReader for FakeContentAddressProvider {
 impl ContentAddressWriter for FakeContentAddressProvider {
     async fn get_content_write_address(&self, id: &Identifier) -> Result<String> {
         if *self.already_exists.lock().await {
-            Err(Error::AlreadyExists)
+            Err(Error::AlreadyExists(id.to_string()))
         } else {
             Ok(self.get_address(id, "write"))
         }

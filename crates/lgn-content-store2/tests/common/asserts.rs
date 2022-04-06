@@ -115,7 +115,7 @@ macro_rules! assert_write_avoided {
                 "content was written with the specified identifier `{}`",
                 $id
             ),
-            Err(Error::AlreadyExists {}) => {}
+            Err(Error::AlreadyExists(_)) => {}
             Err(err) => panic!("unexpected error: {}", err),
         }
     }};

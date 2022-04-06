@@ -212,7 +212,7 @@ impl Chunker {
                             })
                             .map(|_| ())
                     }
-                    Err(Error::AlreadyExists) => Ok(()),
+                    Err(Error::AlreadyExists(_)) => Ok(()),
                     Err(err) => Err(err),
                 }
             });

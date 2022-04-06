@@ -65,7 +65,7 @@ impl<Inner: ContentReader + Send + Sync> ContentReader for SmallContentProvider<
 impl<Inner: ContentWriter + Send + Sync> ContentWriter for SmallContentProvider<Inner> {
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
         if id.is_data() {
-            return Err(Error::AlreadyExists);
+            return Err(Error::AlreadyExists(id.to_string()));
         }
 
         self.inner.get_content_writer(id).await

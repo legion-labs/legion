@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use crate::Identifier;
+
 /// An error type for the content-store crate.
 #[derive(Error, Debug)]
 pub enum Error {
@@ -21,10 +23,10 @@ pub enum Error {
     InvalidDataSpace(String),
     #[error("the content was not found: '{0}'")]
     NotFound(String),
-    #[error("the content already exists")]
-    AlreadyExists,
-    #[error("the content is corrupted")]
-    Corrupt,
+    #[error("the content already exists: '{0}'")]
+    AlreadyExists(String),
+    #[error("the content is corrupted: '{0}'")]
+    Corrupt(Identifier),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
     #[error("unknown error: {0}")]

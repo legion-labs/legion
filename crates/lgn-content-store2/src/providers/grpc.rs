@@ -194,7 +194,7 @@ where
                     Ok(Box::pin(uploader))
                 }
             }
-            None => Err(Error::AlreadyExists),
+            None => Err(Error::AlreadyExists(id.to_string())),
         }
     }
 
@@ -218,7 +218,10 @@ where
         if resp.newly_registered {
             Ok(())
         } else {
-            Err(Error::AlreadyExists)
+            Err(Error::AlreadyExists(format!(
+                "{}/{}={}",
+                key_space, key, id,
+            )))
         }
     }
 }
@@ -534,7 +537,7 @@ impl lgn_content_store_proto::content_store_server::ContentStore for GrpcService
                 .await
             {
                 Ok(()) => true,
-                Err(Error::AlreadyExists) => false,
+                Err(Error::AlreadyExists(_)) => false,
                 Err(err) => {
                     return Err(tonic::Status::new(
                         tonic::Code::Internal,
@@ -668,7 +671,7 @@ impl lgn_content_store_proto::content_store_server::ContentStore for GrpcService
                             url,
                         ),
                     ),
-                    Err(Error::AlreadyExists) => None,
+                    Err(Error::AlreadyExists(_)) => None,
                     Err(err) => {
                         return Err(tonic::Status::new(
                             tonic::Code::Internal,
