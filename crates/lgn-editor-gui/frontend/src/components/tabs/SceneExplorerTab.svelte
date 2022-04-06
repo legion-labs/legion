@@ -17,9 +17,6 @@
 
 {#key payloadId}
   {#if activeScene}
-    <SceneExplorer
-      rootScene={activeScene.rootScene}
-      activeScenes={activeScene.scenes}
-    />
+    <SceneExplorer activeScenes={activeScene.scenes} />
   {/if}
 {/key}

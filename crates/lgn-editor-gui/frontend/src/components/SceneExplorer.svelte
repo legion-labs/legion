@@ -4,26 +4,17 @@
   import { readable } from "svelte/store";
 
   import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
-  import type { ContextMenuEvent } from "@lgn/web-client/src/types/contextMenu";
-  import { filterContextMenuEvents } from "@lgn/web-client/src/types/contextMenu";
 
-  import contextMenu from "@/actions/contextMenu";
-  import { closeScene } from "@/api";
   import { resourceDragAndDropType } from "@/constants";
   import type { Entry } from "@/lib/hierarchyTree";
   import { isEntry } from "@/lib/hierarchyTree";
   import { iconFor } from "@/lib/resourceBrowser";
-  import { fetchAllActiveScenes } from "@/orchestrators/allActiveScenes";
   import { fetchCurrentResourceDescription } from "@/orchestrators/currentResource";
   import { deriveHierarchyTreeOrchestrator } from "@/orchestrators/hierarchyTree";
-  import type { ContextMenuEntryRecord } from "@/stores/contextMenu";
-  import { sceneExplorerItemContextMenuId } from "@/stores/contextMenu";
 
   import HierarchyTree from "./hierarchyTree/HierarchyTree.svelte";
 
   export let activeScenes: ResourceDescription[];
-
-  export let rootScene: ResourceDescription;
 
   $: sceneExplorerEntriesOrchestrator = deriveHierarchyTreeOrchestrator(
     readable(activeScenes)
@@ -45,33 +36,7 @@
       fetchCurrentResourceDescription(resourceDescription.item.id);
     }
   }
-
-  async function handleContextMenuEvents({
-    detail: { action, close },
-  }: ContextMenuEvent<
-    typeof sceneExplorerItemContextMenuId,
-    Pick<ContextMenuEntryRecord, typeof sceneExplorerItemContextMenuId>
-  >) {
-    close();
-
-    switch (action) {
-      case "closeScene": {
-        await closeScene({ id: rootScene.id });
-
-        await fetchAllActiveScenes();
-
-        return;
-      }
-    }
-  }
 </script>
-
-<svelte:window
-  on:contextmenu-action={filterContextMenuEvents(
-    handleContextMenuEvents,
-    sceneExplorerItemContextMenuId
-  )}
-/>
 
 <div class="root">
   {#if !$sceneEntries.isEmpty()}
@@ -82,13 +47,7 @@
       bind:entries={$sceneEntries}
       bind:highlightedEntry={$currentSceneDescriptionEntry}
     >
-      <div
-        class="entry"
-        slot="entry"
-        use:contextMenu={sceneExplorerItemContextMenuId}
-        let:entry
-        let:isHighlighted
-      >
+      <div class="entry" slot="entry" let:entry let:isHighlighted>
         <div
           class="entry-icon"
           class:text-gray-400={!isHighlighted}

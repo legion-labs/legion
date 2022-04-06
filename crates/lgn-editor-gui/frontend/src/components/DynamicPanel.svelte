@@ -6,6 +6,8 @@
   import type { Resolution } from "@lgn/web-client/src/lib/types";
   import type { Panel as WorkspacePanel } from "@lgn/web-client/src/stores/workspace";
 
+  import { closeScene } from "@/api";
+  import { fetchAllActiveScenes } from "@/orchestrators/allActiveScenes";
   import type { TabPayload } from "@/stores/tabPayloads";
   import tabPayloads from "@/stores/tabPayloads";
   import type { TabType } from "@/stores/workspace";
@@ -25,6 +27,27 @@
   function updatePayload({ detail: newPayload }: CustomEvent<TabPayload>) {
     if (activeTab?.payloadId) {
       $tabPayloads[activeTab.payloadId] = newPayload;
+    }
+  }
+
+  async function closeTab(tab: TabType) {
+    workspace.removeTabFromPanelByValue(panel.id, tab);
+
+    if (tab.payloadId) {
+      const { [tab.payloadId]: removedTabPayload, ...remainingTabPayloads } =
+        $tabPayloads;
+
+      // TODO: Move away
+      if (
+        tab.type === "sceneExplorer" &&
+        removedTabPayload.type === "sceneExplorer"
+      ) {
+        await closeScene({ id: removedTabPayload.rootSceneId });
+
+        await fetchAllActiveScenes();
+      }
+
+      $tabPayloads = remainingTabPayloads;
     }
   }
 </script>
@@ -50,21 +73,7 @@
       {/if}
     </div>
     {#if tab.disposable}
-      <div
-        class="close"
-        on:click={() => {
-          workspace.removeTabFromPanelByValue(panel.id, tab);
-
-          if (tab.payloadId) {
-            const {
-              [tab.payloadId]: _removedTabPayload,
-              ...remainingTabPayloads
-            } = $tabPayloads;
-
-            $tabPayloads = remainingTabPayloads;
-          }
-        }}
-      >
+      <div class="close" on:click={() => closeTab(tab)}>
         <Icon icon="ic:baseline-close" />
       </div>
     {/if}

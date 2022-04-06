@@ -22,14 +22,6 @@ export const resourceBrowserItemEntries: Entry[] = [
 export const resourceBrowserPanelContextMenuId =
   "resourceBrowserPanelContextMenu";
 
-export const sceneExplorerItemEntries: Entry[] = [
-  { type: "item", action: "closeScene", label: "Close Scene..." },
-  { type: "separator" },
-  { type: "item", action: "help", label: "Help" },
-];
-
-export const sceneExplorerItemContextMenuId = "sceneExplorerItemContextMenu";
-
 export const resourceBrowserPanelEntries: Entry[] = [
   { type: "item", action: "new", label: "Create new..." },
   { type: "item", action: "import", label: "Import..." },
@@ -43,10 +35,6 @@ export type ContextMenuEntryRecord = {
     name: string;
   };
   [resourceBrowserPanelContextMenuId]: { item: null; name: string };
-  [sceneExplorerItemContextMenuId]: {
-    item: ResourceDescription | null;
-    name: string;
-  };
 };
 
 export type ContextMenuValue = keyof ContextMenuEntryRecord;
