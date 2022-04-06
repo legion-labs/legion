@@ -15,10 +15,10 @@ use lgn_telemetry_proto::{
     telemetry::{Process as ProcessInfo, Stream as StreamProto},
 };
 use lgn_tracing::{
-    error,
     event::EventSink,
     logs::{LogBlock, LogMetadata, LogStream},
     metrics::{MetricsBlock, MetricsStream},
+    prelude::*,
     spans::{ThreadBlock, ThreadStream},
 };
 
@@ -156,6 +156,17 @@ impl GRPCEventSink {
         let uri = parsed_uri.unwrap();
         // eagerly connect, a new process message is sure to follow if it's not already in queue
         let mut client_store = Some(connect_grpc_client(uri.clone()));
+        if let Some(process_id) = lgn_tracing::dispatch::process_id() {
+            info!("log: https://analytics.legionengine.com/log/{}", process_id);
+            info!(
+                "metrics: https://analytics.legionengine.com/metrics/{}",
+                process_id
+            );
+            info!(
+                "timeline: https://analytics.legionengine.com/timeline/{}",
+                process_id
+            );
+        }
         loop {
             match receiver.recv() {
                 Ok(message) => {
