@@ -34,7 +34,8 @@ export type PropertyGridTabType = {
 
 /** The scene explorer */
 export type SceneExplorerTabType = {
-  type: "ceneExplorer";
+  type: "sceneExplorer";
+  payloadId: string;
 };
 
 /** The resource browser */
@@ -60,5 +61,9 @@ export type WorkspaceStore = WorkspaceStoreBase<TabType>;
 export const viewportTileId = "viewport-tile";
 
 export const viewportPanelId = "viewport-panel";
+
+export const sceneExplorerTileId = "scene-explorer-tile";
+
+export const sceneExplorerPanelId = "scene-explorer-panel";
 
 export default createWorkspace<TabType>();

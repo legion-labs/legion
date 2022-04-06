@@ -79,6 +79,7 @@ export async function run({
     log.init();
     log.set(logLevel);
 
+    // TODO: Cleanup this subscription
     userInfo.data.subscribe((userInfo) => {
       log.debug(
         "user",

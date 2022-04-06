@@ -3,6 +3,7 @@ import type { AsyncOrchestrator } from "@lgn/web-client/src/orchestrators/async"
 import { createAsyncStoreListOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 
 import { getAllResources } from "@/api";
+import { fetchStagedResources } from "@/stores/stagedResources";
 
 export type AllResourcesOrchestrator = AsyncOrchestrator<ResourceDescription[]>;
 
@@ -15,8 +16,14 @@ export const {
   loading: allResourcesLoading,
 } = allResourcesOrchestrator;
 
-export function fetchAllResources(name?: string) {
-  return allResourcesOrchestrator.run(() => getAllResources(name));
+export async function fetchAllResources(name?: string) {
+  const allResources = allResourcesOrchestrator.run(() =>
+    getAllResources(name)
+  );
+
+  await fetchStagedResources();
+
+  return allResources;
 }
 
 export default allResourcesOrchestrator;

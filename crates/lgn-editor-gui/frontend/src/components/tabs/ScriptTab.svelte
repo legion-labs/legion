@@ -7,9 +7,9 @@
 
   const dispatch = createEventDispatcher<{ change: ScriptTabTypePayload }>();
 
-  export let payload: ScriptTabTypePayload;
-
   export let payloadId: string;
+
+  export let payload: ScriptTabTypePayload;
 </script>
 
 {#key payloadId}

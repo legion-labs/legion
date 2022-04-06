@@ -178,7 +178,7 @@ export default buildContextMenu<ContextMenuEntryRecord>();
         : clientX + marginPx;
 
     const y =
-      view.innerHeight - clientY <= heightPx + 4
+      view.innerHeight - clientY <= heightPx + 8
         ? view.innerHeight - heightPx - (view.innerHeight - clientY) - marginPx
         : clientY + marginPx;
 

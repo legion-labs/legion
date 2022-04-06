@@ -16,7 +16,15 @@ export type VideoTabTypePayload = {
   serverType: ServerType;
 };
 
-export type TabPayload = ScriptTabTypePayload | VideoTabTypePayload;
+export type SceneExplorerTypePayload = {
+  type: "sceneExplorer";
+  rootSceneId: string;
+};
+
+export type TabPayload =
+  | ScriptTabTypePayload
+  | VideoTabTypePayload
+  | SceneExplorerTypePayload;
 
 export type TabPayloadsValue = Record<string, TabPayload>;
 

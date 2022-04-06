@@ -30,6 +30,7 @@
   import type { ResourceProperty } from "@/lib/propertyGrid";
   import type { BagResourceProperty } from "@/lib/propertyGrid";
   import { iconFor } from "@/lib/resourceBrowser";
+  import { fetchAllActiveScenes } from "@/orchestrators/allActiveScenes";
   import {
     allResourcesLoading,
     fetchAllResources,
@@ -243,6 +244,8 @@
         if ($currentResourceDescriptionEntry) {
           try {
             await openScene({ id: $currentResourceDescriptionEntry?.item.id });
+
+            await fetchAllActiveScenes();
           } catch (error) {
             notifications.push(Symbol(), {
               title: "Scene Explorer",

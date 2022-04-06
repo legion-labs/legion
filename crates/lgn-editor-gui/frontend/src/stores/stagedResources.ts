@@ -14,6 +14,14 @@ export type StagedResourcesStore = Writable<StagedResourcesValue>;
 
 export const stagedResources: StagedResourcesStore = writable(null);
 
+export async function fetchStagedResources() {
+  const { entries } = await getStagedResources();
+
+  stagedResources.set(entries);
+
+  return entries;
+}
+
 export async function initStagedResourcesStream(pollInternal = 2_000) {
   const { entries } = await getStagedResources();
 

@@ -1,8 +1,9 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
+  import { onDestroy } from "svelte";
+  import { readable } from "svelte/store";
 
   import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
-  import Panel from "@lgn/web-client/src/components/panel/Panel.svelte";
   import type { ContextMenuEvent } from "@lgn/web-client/src/types/contextMenu";
   import { filterContextMenuEvents } from "@lgn/web-client/src/types/contextMenu";
 
@@ -11,16 +12,30 @@
   import type { Entry } from "@/lib/hierarchyTree";
   import { isEntry } from "@/lib/hierarchyTree";
   import { iconFor } from "@/lib/resourceBrowser";
-  import { allActiveScenesLoading } from "@/orchestrators/allActiveScenes";
+  import { fetchAllActiveScenes } from "@/orchestrators/allActiveScenes";
   import { fetchCurrentResourceDescription } from "@/orchestrators/currentResource";
-  import {
-    currentSceneDescriptionEntry,
-    sceneEntries,
-  } from "@/orchestrators/sceneExplorerEntries";
+  import { deriveHierarchyTreeOrchestrator } from "@/orchestrators/hierarchyTree";
   import type { ContextMenuEntryRecord } from "@/stores/contextMenu";
   import { sceneExplorerItemContextMenuId } from "@/stores/contextMenu";
 
   import HierarchyTree from "./hierarchyTree/HierarchyTree.svelte";
+
+  export let activeScenes: ResourceDescription[];
+
+  export let rootScene: ResourceDescription;
+
+  $: sceneExplorerEntriesOrchestrator = deriveHierarchyTreeOrchestrator(
+    readable(activeScenes)
+  );
+
+  $: currentSceneDescriptionEntry =
+    sceneExplorerEntriesOrchestrator.currentEntry;
+
+  $: sceneEntries = sceneExplorerEntriesOrchestrator.entries;
+
+  onDestroy(() => {
+    sceneExplorerEntriesOrchestrator.unsubscriber();
+  });
 
   function selectResource({
     detail: resourceDescription,
@@ -40,9 +55,9 @@
 
     switch (action) {
       case "closeScene": {
-        if ($currentSceneDescriptionEntry) {
-          await closeScene({ id: $currentSceneDescriptionEntry?.item.id });
-        }
+        await closeScene({ id: rootScene.id });
+
+        await fetchAllActiveScenes();
 
         return;
       }
@@ -57,36 +72,33 @@
   )}
 />
 
-<Panel loading={$allActiveScenesLoading} tabs={["Scene Explorer"]}>
-  <div slot="tab" let:tab>{tab}</div>
-  <div slot="content" class="content">
-    {#if !$sceneEntries.isEmpty()}
-      <HierarchyTree
-        id="scene-explorer"
-        itemContextMenu={sceneExplorerItemContextMenuId}
-        draggable={resourceDragAndDropType}
-        on:select={selectResource}
-        bind:entries={$sceneEntries}
-        bind:highlightedEntry={$currentSceneDescriptionEntry}
+<div class="root">
+  {#if !$sceneEntries.isEmpty()}
+    <HierarchyTree
+      id="scene-explorer"
+      itemContextMenu={sceneExplorerItemContextMenuId}
+      draggable={resourceDragAndDropType}
+      on:select={selectResource}
+      bind:entries={$sceneEntries}
+      bind:highlightedEntry={$currentSceneDescriptionEntry}
+    >
+      <div class="w-full h-full" slot="icon" let:entry>
+        <Icon class="w-full h-full" icon={iconFor(entry)} />
+      </div>
+      <div
+        class="item"
+        slot="name"
+        let:entry
+        title={isEntry(entry) ? entry.item.path : null}
       >
-        <div class="w-full h-full" slot="icon" let:entry>
-          <Icon class="w-full h-full" icon={iconFor(entry)} />
-        </div>
-        <div
-          class="item"
-          slot="name"
-          let:entry
-          title={isEntry(entry) ? entry.item.path : null}
-        >
-          {entry.name}
-        </div>
-      </HierarchyTree>
-    {/if}
-  </div>
-</Panel>
+        {entry.name}
+      </div>
+    </HierarchyTree>
+  {/if}
+</div>
 
 <style lang="postcss">
-  .content {
+  .root {
     @apply h-full break-all;
   }
 </style>

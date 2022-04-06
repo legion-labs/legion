@@ -356,10 +356,14 @@ export async function closeScene({ id }: { id: string }) {
   return resourceBrowserClient.closeScene({ id });
 }
 
-export async function getActiveScenes() {
+export async function getActiveSceneIds() {
   const { sceneIds } = await resourceBrowserClient.getActiveScenes({});
 
-  return getAllRootResources(sceneIds);
+  return sceneIds;
+}
+
+export async function getActiveScenes() {
+  return getAllRootResources(await getActiveSceneIds());
 }
 
 export function initLogStream() {

@@ -16,40 +16,44 @@ import {
 } from "./resourceBrowserEntries";
 
 export function initMessageStream() {
-  initMessageStreamApi().subscribe(({ lagging, message }) => {
-    if (typeof lagging === "number") {
-      // TODO: Handle lagging messages
+  const subscription = initMessageStreamApi().subscribe(
+    ({ lagging, message }) => {
+      if (typeof lagging === "number") {
+        // TODO: Handle lagging messages
 
-      return;
-    }
+        return;
+      }
 
-    if (message) {
-      switch (message.msgType) {
-        case MessageType.SelectionChanged: {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          const resourceIds: string[] = JSON.parse(message.payload);
+      if (message) {
+        switch (message.msgType) {
+          case MessageType.SelectionChanged: {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            const resourceIds: string[] = JSON.parse(message.payload);
 
-          // TODO: Catch error
-          // TODO: Support multi-select (remove slice)
-          if (!resourceIds.length) {
-            currentResourceDescriptionEntry.set(null);
+            // TODO: Catch error
+            // TODO: Support multi-select (remove slice)
+            if (!resourceIds.length) {
+              currentResourceDescriptionEntry.set(null);
 
-            return;
+              return;
+            }
+
+            fetchCurrentResourceDescription(resourceIds[0], {
+              notifySelection: false,
+            })
+              // TODO: Handle errors
+              .catch(() => undefined);
+
+            const selectedEntry = get(resourceEntries).find(
+              (entry) => isEntry(entry) && resourceIds.includes(entry.item.id)
+            );
+
+            currentResourceDescriptionEntry.set(selectedEntry);
           }
-
-          fetchCurrentResourceDescription(resourceIds[0], {
-            notifySelection: false,
-          })
-            // TODO: Handle errors
-            .catch(() => undefined);
-
-          const selectedEntry = get(resourceEntries).find(
-            (entry) => isEntry(entry) && resourceIds.includes(entry.item.id)
-          );
-
-          currentResourceDescriptionEntry.set(selectedEntry);
         }
       }
     }
-  });
+  );
+
+  return () => subscription.unsubscribe();
 }
