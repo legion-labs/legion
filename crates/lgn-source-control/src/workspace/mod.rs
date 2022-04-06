@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use lgn_content_store2::{ChunkIdentifier, Chunker, ContentReader, ContentWriter};
+use lgn_content_store::{ChunkIdentifier, Chunker, ContentReader, ContentWriter};
 use lgn_tracing::{debug, warn};
 use std::{
     collections::{BTreeMap, BTreeSet},

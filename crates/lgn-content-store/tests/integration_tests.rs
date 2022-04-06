@@ -4,18 +4,18 @@ use std::{
     sync::Arc,
 };
 
-use lgn_content_store2::{
+use lgn_content_store::{
     CachingProvider, ChunkIdentifier, Chunker, ContentAddressReader, ContentAddressWriter,
     ContentReaderExt, ContentWriter, ContentWriterExt, DataSpace, Error, GrpcProvider,
     GrpcProviderSet, GrpcService, Identifier, LocalProvider, MemoryProvider, SmallContentProvider,
 };
 
 #[cfg(feature = "lru")]
-use lgn_content_store2::LruProvider;
+use lgn_content_store::LruProvider;
 #[cfg(feature = "redis")]
-use lgn_content_store2::RedisProvider;
+use lgn_content_store::RedisProvider;
 #[cfg(feature = "aws")]
-use lgn_content_store2::{AwsDynamoDbProvider, AwsS3Provider};
+use lgn_content_store::{AwsDynamoDbProvider, AwsS3Provider};
 
 mod common;
 

@@ -7,7 +7,7 @@ use crate::node_crunch::nc_error::NCError;
 use lgn_data_offline::ResourcePathId;
 use serde::{Deserialize, Serialize};
 
-use lgn_content_store2::{Config, ContentProvider, ContentReaderExt, ContentWriterExt, Identifier};
+use lgn_content_store::{Config, ContentProvider, ContentReaderExt, ContentWriterExt, Identifier};
 use lgn_data_compiler::{
     compiler_api::CompilerError, compiler_cmd::CompilerCompileCmd, CompiledResource,
 };

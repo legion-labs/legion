@@ -6,7 +6,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use lgn_content_store2::{ContentProvider, ContentReaderExt};
+use lgn_content_store::{ContentProvider, ContentReaderExt};
 use lgn_tracing::info;
 
 use super::Device;

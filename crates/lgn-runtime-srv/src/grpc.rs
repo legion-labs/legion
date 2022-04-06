@@ -1,5 +1,5 @@
 use crossbeam_channel::Sender;
-use lgn_content_store2::ChunkIdentifier;
+use lgn_content_store::ChunkIdentifier;
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_runtime_proto::runtime::{
     runtime_server::{Runtime, RuntimeServer},

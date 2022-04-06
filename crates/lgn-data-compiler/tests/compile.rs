@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use binary_resource::BinaryResource;
 use integer_asset::{IntegerAsset, IntegerAssetLoader};
-use lgn_content_store2::{Config, ContentReaderExt};
+use lgn_content_store::{Config, ContentReaderExt};
 use lgn_data_compiler::compiler_cmd::{list_compilers, CompilerCompileCmd};
 use lgn_data_offline::{resource::ResourceProcessor, ResourcePathId};
 use lgn_data_runtime::{AssetLoader, Resource, ResourceId, ResourceTypeAndId};

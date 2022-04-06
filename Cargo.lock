@@ -2545,7 +2545,7 @@ dependencies = [
  "lgn-compiler-runtime-entity",
  "lgn-compiler-script2asm",
  "lgn-config",
- "lgn-content-store2",
+ "lgn-content-store",
  "lgn-core",
  "lgn-data-build",
  "lgn-data-compiler",
@@ -4384,7 +4384,7 @@ dependencies = [
  "lgn-app",
  "lgn-async",
  "lgn-config",
- "lgn-content-store2",
+ "lgn-content-store",
  "lgn-core",
  "lgn-data-model",
  "lgn-data-runtime",
@@ -4403,7 +4403,7 @@ dependencies = [
  "anyhow",
  "async-stream",
  "futures-util",
- "lgn-content-store2",
+ "lgn-content-store",
  "lgn-online",
  "rmp-serde",
  "serde",
@@ -4744,19 +4744,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-content-store-proto"
-version = "0.1.0"
-dependencies = [
- "base64 0.13.0",
- "prost",
- "prost-types",
- "tokio",
- "tonic",
- "tonic-build",
-]
-
-[[package]]
-name = "lgn-content-store2"
+name = "lgn-content-store"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -4811,6 +4799,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-content-store-proto"
+version = "0.1.0"
+dependencies = [
+ "base64 0.13.0",
+ "prost",
+ "prost-types",
+ "tokio",
+ "tonic",
+ "tonic-build",
+]
+
+[[package]]
 name = "lgn-core"
 version = "0.1.0"
 dependencies = [
@@ -4834,7 +4834,7 @@ dependencies = [
  "byteorder",
  "hex",
  "integer-asset",
- "lgn-content-store2",
+ "lgn-content-store",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
@@ -4864,7 +4864,7 @@ dependencies = [
  "byteorder",
  "clap 3.1.6",
  "integer-asset",
- "lgn-content-store2",
+ "lgn-content-store",
  "lgn-data-build",
  "lgn-data-compiler",
  "lgn-data-offline",
@@ -4904,7 +4904,7 @@ dependencies = [
  "clap 3.1.6",
  "erased-serde",
  "integer-asset",
- "lgn-content-store2",
+ "lgn-content-store",
  "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
@@ -4935,7 +4935,7 @@ dependencies = [
  "futures",
  "integer-asset",
  "lgn-async",
- "lgn-content-store2",
+ "lgn-content-store",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
@@ -4977,7 +4977,7 @@ dependencies = [
  "erased-serde",
  "hex",
  "lazy_static",
- "lgn-content-store2",
+ "lgn-content-store",
  "lgn-data-model",
  "lgn-data-runtime",
  "lgn-source-control",
@@ -5003,7 +5003,7 @@ dependencies = [
  "hex",
  "inventory",
  "lazy_static",
- "lgn-content-store2",
+ "lgn-content-store",
  "lgn-data-model",
  "lgn-data-runtime-macros",
  "lgn-ecs",
@@ -5037,7 +5037,7 @@ dependencies = [
  "generic-data",
  "lgn-compiler-testentity",
  "lgn-config",
- "lgn-content-store2",
+ "lgn-content-store",
  "lgn-data-build",
  "lgn-data-compiler",
  "lgn-data-model",
@@ -5240,7 +5240,7 @@ dependencies = [
  "lgn-asset-registry",
  "lgn-async",
  "lgn-config",
- "lgn-content-store2",
+ "lgn-content-store",
  "lgn-core",
  "lgn-data-runtime",
  "lgn-ecs",
@@ -5455,7 +5455,7 @@ version = "0.1.0"
 dependencies = [
  "lgn-app",
  "lgn-async",
- "lgn-content-store2",
+ "lgn-content-store",
  "lgn-data-build",
  "lgn-data-compiler",
  "lgn-data-compiler-remote",
@@ -5489,7 +5489,7 @@ dependencies = [
  "lgn-app",
  "lgn-asset-registry",
  "lgn-config",
- "lgn-content-store2",
+ "lgn-content-store",
  "lgn-core",
  "lgn-data-model",
  "lgn-data-runtime",
@@ -5553,7 +5553,7 @@ dependencies = [
  "http",
  "itertools 0.10.3",
  "lgn-config",
- "lgn-content-store2",
+ "lgn-content-store",
  "lgn-online",
  "lgn-source-control-proto",
  "lgn-telemetry-sink",
@@ -5591,7 +5591,7 @@ dependencies = [
  "clap 3.1.6",
  "fuser",
  "lgn-cli-utils",
- "lgn-content-store2",
+ "lgn-content-store",
  "lgn-source-control",
  "lgn-telemetry-sink",
  "lgn-tracing",
@@ -7467,7 +7467,7 @@ dependencies = [
  "lgn-app",
  "lgn-compiler-runtime-entity",
  "lgn-compiler-runtime-model",
- "lgn-content-store2",
+ "lgn-content-store",
  "lgn-data-build",
  "lgn-data-compiler",
  "lgn-data-compiler-remote",
@@ -7708,7 +7708,7 @@ dependencies = [
  "lgn-compiler-runtime-entity",
  "lgn-compiler-runtime-model",
  "lgn-compiler-script2asm",
- "lgn-content-store2",
+ "lgn-content-store",
  "lgn-data-build",
  "lgn-data-compiler",
  "lgn-data-compiler-remote",
@@ -8452,7 +8452,7 @@ dependencies = [
  "lgn-asset-registry",
  "lgn-async",
  "lgn-config",
- "lgn-content-store2",
+ "lgn-content-store",
  "lgn-core",
  "lgn-data-runtime",
  "lgn-ecs",
@@ -8652,7 +8652,7 @@ dependencies = [
  "clap 3.1.6",
  "generic-data",
  "lgn-config",
- "lgn-content-store2",
+ "lgn-content-store",
  "lgn-data-build",
  "lgn-data-compiler",
  "lgn-data-offline",

@@ -1,4 +1,4 @@
-use lgn_content_store2::{ChunkIdentifier, Chunker};
+use lgn_content_store::{ChunkIdentifier, Chunker};
 use lgn_source_control::{CanonicalPath, Change, ChangeType};
 
 macro_rules! init_test_workspace_and_index {
@@ -19,8 +19,8 @@ macro_rules! init_test_workspace_and_index {
             WorkspaceRegistration::new_with_current_user(),
         );
 
-        let content_store_config = lgn_content_store2::Config {
-            provider: lgn_content_store2::ProviderConfig::Memory {},
+        let content_store_config = lgn_content_store::Config {
+            provider: lgn_content_store::ProviderConfig::Memory {},
             caching_providers: vec![],
         };
         let content_provider = content_store_config.instantiate_provider().await.unwrap();

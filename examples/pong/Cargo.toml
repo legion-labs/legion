@@ -10,7 +10,7 @@ lgn-app = { path = "../../crates/lgn-app", version = "0.1.0" }
 lgn-compiler-runtime-entity = { path = "../../crates/lgn-runtime-entity-compiler", version = "0.1.0" }
 lgn-compiler-runtime-model = { path = "../../crates/lgn-runtime-model-compiler", version = "0.1.0" }
 lgn-compiler-script2asm = { path = "../../crates/lgn-script2asm-compiler", version = "0.1.0" }
-lgn-content-store2 = { path = "../../crates/lgn-content-store2", version = "0.1.0" }
+lgn-content-store = { path = "../../crates/lgn-content-store", version = "0.1.0" }
 lgn-source-control = { path = "../../crates/lgn-source-control", version = "0.1.0" }
 lgn-data-build = { path = "../../crates/lgn-data-build", version = "0.1.0" }
 lgn-data-compiler = { path = "../../crates/lgn-data-compiler", version = "0.1.0" }

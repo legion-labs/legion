@@ -8,7 +8,7 @@ use std::{
     sync::Arc,
 };
 
-use lgn_content_store2::ContentProvider;
+use lgn_content_store::ContentProvider;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_source_control::{
     CanonicalPath, CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Workspace,
@@ -98,7 +98,7 @@ pub enum Error {
     SourceControl(#[from] lgn_source_control::Error),
     /// Content-store related error.
     #[error("content store: '{0}'")]
-    ContentStore(#[from] lgn_content_store2::Error),
+    ContentStore(#[from] lgn_content_store::Error),
     /// RegistryRegistry Error
     #[error("ResourceRegistry Error: '{1}' on resource '{0}'")]
     ResourceRegistry(
@@ -785,7 +785,7 @@ mod tests {
     use std::str::FromStr;
     use std::sync::Arc;
 
-    use lgn_content_store2::{ContentProvider, MemoryProvider};
+    use lgn_content_store::{ContentProvider, MemoryProvider};
     use lgn_data_runtime::{resource, Resource, ResourceType};
     use tokio::sync::Mutex;
 

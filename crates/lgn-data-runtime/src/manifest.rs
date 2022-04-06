@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use lgn_content_store2::Identifier;
+use lgn_content_store::Identifier;
 use serde::{Deserialize, Serialize};
 
 use crate::ResourceTypeAndId;

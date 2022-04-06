@@ -1,7 +1,7 @@
 use std::{fmt::Display, sync::Arc};
 
 use async_trait::async_trait;
-use lgn_content_store2::{ContentAddressReader, ContentAddressWriter, Error, Identifier, Result};
+use lgn_content_store::{ContentAddressReader, ContentAddressWriter, Error, Identifier, Result};
 use tokio::sync::Mutex;
 
 pub struct FakeContentAddressProvider {

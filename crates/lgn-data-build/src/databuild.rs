@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 use std::{env, io};
 
-use lgn_content_store2::{ChunkIdentifier, Chunker, ContentProvider, ContentWriterExt};
+use lgn_content_store::{ChunkIdentifier, Chunker, ContentProvider, ContentWriterExt};
 use lgn_data_compiler::compiler_api::{
     CompilationEnv, CompilationOutput, CompilerHash, DATA_BUILD_VERSION,
 };
@@ -72,7 +72,7 @@ fn compute_context_hash(
 /// ```no_run
 /// # use std::sync::Arc;
 /// # use lgn_data_build::{DataBuild, DataBuildOptions};
-/// # use lgn_content_store2::{ContentProvider, ProviderConfig};
+/// # use lgn_content_store::{ContentProvider, ProviderConfig};
 /// # use lgn_data_compiler::{compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target};
 /// # use lgn_data_offline::ResourcePathId;
 /// # use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};

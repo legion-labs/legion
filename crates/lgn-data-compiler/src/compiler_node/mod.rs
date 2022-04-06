@@ -51,7 +51,7 @@ impl fmt::Debug for CompilerNode {
 #[cfg(test)]
 mod tests {
     use async_trait::async_trait;
-    use lgn_content_store2::{ContentProvider, Identifier, MemoryProvider};
+    use lgn_content_store::{ContentProvider, Identifier, MemoryProvider};
     use std::{path::PathBuf, sync::Arc};
 
     use lgn_data_offline::{ResourcePathId, Transform};

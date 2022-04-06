@@ -1,5 +1,5 @@
 [package]
-name = "lgn-content-store2"
+name = "lgn-content-store"
 description = "Content-Access Storage interface and utilities to store assets at scale."
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
@@ -7,7 +7,7 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [lib]
-name = "lgn_content_store2"
+name = "lgn_content_store"
 path = "src/lib.rs"
 
 [[bin]]

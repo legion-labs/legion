@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use lgn_content_store2::ChunkIdentifier;
+use lgn_content_store::ChunkIdentifier;
 
 use crate::ResourceTypeAndId;
 

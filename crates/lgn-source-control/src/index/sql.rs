@@ -1,7 +1,7 @@
 use async_recursion::async_recursion;
 use async_trait::async_trait;
 use chrono::DateTime;
-use lgn_content_store2::ChunkIdentifier;
+use lgn_content_store::ChunkIdentifier;
 use lgn_tracing::prelude::*;
 use sqlx::{
     any::AnyPoolOptions, error::DatabaseError, migrate::MigrateDatabase, mysql::MySqlDatabaseError,

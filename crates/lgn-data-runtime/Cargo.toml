@@ -6,7 +6,7 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-lgn-content-store2 = { path = "../lgn-content-store2", version = "0.1.0" }
+lgn-content-store = { path = "../lgn-content-store", version = "0.1.0" }
 lgn-data-runtime-macros = { path = "macros", version = "0.1.0" }
 lgn-data-model = { path = "../lgn-data-model" }
 lgn-ecs = { path = "../lgn-ecs" }

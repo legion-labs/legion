@@ -1,4 +1,4 @@
-use lgn_content_store2::{
+use lgn_content_store::{
     ContentReader, ContentReaderExt, ContentWriter, ContentWriterExt, Identifier,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};

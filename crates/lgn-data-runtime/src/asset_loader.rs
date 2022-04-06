@@ -11,7 +11,7 @@ use std::{
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use flurry::TryInsertError;
-use lgn_content_store2::ChunkIdentifier;
+use lgn_content_store::ChunkIdentifier;
 use lgn_tracing::info;
 use serde::{Deserialize, Serialize};
 
@@ -684,7 +684,7 @@ impl AssetLoaderIO {
 mod tests {
     use std::{sync::Arc, time::Duration};
 
-    use lgn_content_store2::{ContentProvider, ContentWriterExt, MemoryProvider};
+    use lgn_content_store::{ContentProvider, ContentWriterExt, MemoryProvider};
 
     use super::{create_loader, AssetLoaderIO, AssetLoaderStub};
     use crate::{

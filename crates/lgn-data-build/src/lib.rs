@@ -165,7 +165,7 @@ pub enum Error {
     },
     /// Content Store invalid.
     #[error("Content Store invalid. {0}")]
-    InvalidContentStore(#[from] lgn_content_store2::Error),
+    InvalidContentStore(#[from] lgn_content_store::Error),
     /// Project invalid.
     #[error("Project invalid.")]
     InvalidProject(PathBuf),

@@ -1,5 +1,5 @@
 use async_recursion::async_recursion;
-use lgn_content_store2::{ChunkIdentifier, Chunker};
+use lgn_content_store::{ChunkIdentifier, Chunker};
 use std::{
     cmp::Ordering,
     collections::{btree_map::Entry, BTreeMap, BTreeSet},

@@ -1,6 +1,6 @@
 use std::{collections::BTreeSet, path::PathBuf};
 
-use lgn_content_store2::ChunkIdentifier;
+use lgn_content_store::ChunkIdentifier;
 use thiserror::Error;
 
 use crate::{Branch, CanonicalPath, Change, CommitId, Lock, RepositoryName};

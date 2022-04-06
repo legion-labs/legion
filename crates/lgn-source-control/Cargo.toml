@@ -34,7 +34,7 @@ futures = "0.3"
 http = "0.2"
 itertools = "0.10"
 lgn-config = { path = "../lgn-config", version = "0.1.0" }
-lgn-content-store2 = { path = "../lgn-content-store2", version = "0.1.0" }
+lgn-content-store = { path = "../lgn-content-store", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0", optional = true }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-source-control-proto = { path = "../lgn-source-control-proto", version = "0.1.0" }

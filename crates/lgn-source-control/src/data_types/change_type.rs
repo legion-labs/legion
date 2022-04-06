@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use lgn_content_store2::ChunkIdentifier;
+use lgn_content_store::ChunkIdentifier;
 
 use crate::{Error, MapOtherError, Result};
 
@@ -176,7 +176,7 @@ impl TryFrom<lgn_source_control_proto::ChangeType> for ChangeType {
 
 #[cfg(test)]
 mod tests {
-    use lgn_content_store2::Identifier;
+    use lgn_content_store::Identifier;
 
     use super::*;
 
