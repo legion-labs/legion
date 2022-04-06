@@ -3,6 +3,7 @@
 
   import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
   import { UploadStatus } from "@lgn/proto-editor/dist/source_control";
+  import HighlightedText from "@lgn/web-client/src/components/HighlightedText.svelte";
   import { Panel, PanelHeader } from "@lgn/web-client/src/components/panel";
   import { displayError } from "@lgn/web-client/src/lib/errors";
   import { readFile } from "@lgn/web-client/src/lib/files";
@@ -23,6 +24,7 @@
     streamFileUpload,
   } from "@/api";
   import { resourceDragAndDropType } from "@/constants";
+  import { Entries } from "@/lib/hierarchyTree";
   import type { Entry } from "@/lib/hierarchyTree";
   import { isEntry } from "@/lib/hierarchyTree";
   import { components, join } from "@/lib/path";
@@ -32,6 +34,7 @@
   import { iconFor } from "@/lib/resourceBrowser";
   import { fetchAllActiveScenes } from "@/orchestrators/allActiveScenes";
   import {
+    allResources,
     allResourcesLoading,
     fetchAllResources,
   } from "@/orchestrators/allResources";
@@ -43,6 +46,7 @@
     currentResourceDescriptionEntry,
     currentlyRenameResourceEntry,
     resourceEntries,
+    resourceEntriesfilters,
   } from "@/orchestrators/resourceBrowserEntries";
   import type { ContextMenuEntryRecord } from "@/stores/contextMenu";
   import {
@@ -71,6 +75,19 @@
   $: if ($files) {
     uploadFiles();
   }
+
+  $: filteredResourceEntries =
+    $allResources && $resourceEntriesfilters.name
+      ? Entries.fromArray(
+          $allResources.filter((resource) =>
+            $resourceEntriesfilters.name
+              ? resource.path
+                  .toLowerCase()
+                  .includes($resourceEntriesfilters.name.toLowerCase())
+              : true
+          )
+        )
+      : null;
 
   async function saveEditedResourceProperty({
     detail: { entry, newName },
@@ -223,7 +240,7 @@
   }
 
   function filter({ detail: { name } }: CustomEvent<{ name: string }>) {
-    return fetchAllResources(name);
+    $resourceEntriesfilters.name = name;
   }
 
   async function handleContextMenuEvents({
@@ -487,11 +504,11 @@
       {#if !$resourceEntries.isEmpty()}
         <HierarchyTree
           id="resource-browser"
-          itemContextMenu={resourceBrowserItemContextMenuId}
           renamable
           reorderable
           deletable
           draggable={resourceDragAndDropType}
+          displayedEntries={filteredResourceEntries || $resourceEntries}
           on:select={selectResource}
           on:nameEdited={saveEditedResourceProperty}
           on:moved={moveEntry}
@@ -502,16 +519,33 @@
           bind:highlightedEntry={$currentResourceDescriptionEntry}
           bind:this={resourceHierarchyTree}
         >
-          <div class="w-full h-full" slot="icon" let:entry>
-            <Icon class="w-full h-full" icon={iconFor(entry)} />
-          </div>
           <div
-            class="item"
-            slot="name"
+            class="entry"
+            slot="entry"
+            use:contextMenu={resourceBrowserItemContextMenuId}
             let:entry
-            title={isEntry(entry) ? entry.item.path : null}
+            let:isHighlighted
           >
-            {entry.name}
+            <div
+              class="entry-icon"
+              class:text-gray-400={!isHighlighted}
+              class:text-orange-700={isHighlighted}
+            >
+              <Icon class="w-full h-full" icon={iconFor(entry)} />
+            </div>
+            <div
+              class="entry-name"
+              title={isEntry(entry) ? entry.item.path : null}
+            >
+              {#if $resourceEntriesfilters.name}
+                <HighlightedText
+                  text={entry.name}
+                  pattern={$resourceEntriesfilters.name}
+                />
+              {:else}
+                {entry.name}
+              {/if}
+            </div>
           </div>
         </HierarchyTree>
       {/if}
@@ -528,7 +562,15 @@
     @apply flex-1 overflow-auto;
   }
 
-  .item {
-    @apply h-full w-full;
+  .entry {
+    @apply flex flex-row w-full h-full space-x-1;
+  }
+
+  .entry-icon {
+    @apply w-6 h-6;
+  }
+
+  .entry-name {
+    @apply w-full h-full;
   }
 </style>

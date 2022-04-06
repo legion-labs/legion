@@ -7,6 +7,7 @@
   import type { ContextMenuEvent } from "@lgn/web-client/src/types/contextMenu";
   import { filterContextMenuEvents } from "@lgn/web-client/src/types/contextMenu";
 
+  import contextMenu from "@/actions/contextMenu";
   import { closeScene } from "@/api";
   import { resourceDragAndDropType } from "@/constants";
   import type { Entry } from "@/lib/hierarchyTree";
@@ -76,22 +77,28 @@
   {#if !$sceneEntries.isEmpty()}
     <HierarchyTree
       id="scene-explorer"
-      itemContextMenu={sceneExplorerItemContextMenuId}
       draggable={resourceDragAndDropType}
       on:select={selectResource}
       bind:entries={$sceneEntries}
       bind:highlightedEntry={$currentSceneDescriptionEntry}
     >
-      <div class="w-full h-full" slot="icon" let:entry>
-        <Icon class="w-full h-full" icon={iconFor(entry)} />
-      </div>
       <div
-        class="item"
-        slot="name"
+        class="entry"
+        slot="entry"
+        use:contextMenu={sceneExplorerItemContextMenuId}
         let:entry
-        title={isEntry(entry) ? entry.item.path : null}
+        let:isHighlighted
       >
-        {entry.name}
+        <div
+          class="entry-icon"
+          class:text-gray-400={!isHighlighted}
+          class:text-orange-700={isHighlighted}
+        >
+          <Icon class="w-full h-full" icon={iconFor(entry)} />
+        </div>
+        <div class="entry-name" title={isEntry(entry) ? entry.item.path : null}>
+          {entry.name}
+        </div>
       </div>
     </HierarchyTree>
   {/if}
@@ -100,5 +107,17 @@
 <style lang="postcss">
   .root {
     @apply h-full break-all;
+  }
+
+  .entry {
+    @apply flex flex-row w-full h-full space-x-1;
+  }
+
+  .entry-icon {
+    @apply w-6 h-6;
+  }
+
+  .entry-name {
+    @apply w-full h-full;
   }
 </style>

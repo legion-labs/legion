@@ -175,7 +175,7 @@ export class Entries<Item extends ItemBase> {
   /**
    * Filters `Entries` based on a predicate.
    */
-  filter(pred: (entry: Entry<Item | symbol>) => boolean): this {
+  filter(pred: (entry: Entry<Item | symbol>) => boolean): Entries<Item> {
     function filter(entries: Entry<Item | symbol>[]): Entry<Item | symbol>[] {
       return entries.reduce((acc, entry) => {
         if (!pred(entry)) {
@@ -198,13 +198,15 @@ export class Entries<Item extends ItemBase> {
       }, [] as Entry<Item | symbol>[]);
     }
 
-    this.entries = filter(this.entries);
+    const filteredEntries = Entries.empty<Item>();
 
-    this.recalculateSize();
+    filteredEntries.entries = filter(this.entries);
 
-    this.#setIndices();
+    filteredEntries.#sort();
 
-    return this;
+    filteredEntries.recalculateSize();
+
+    return filteredEntries;
   }
 
   /**
@@ -312,7 +314,7 @@ export class Entries<Item extends ItemBase> {
     return null;
   }
 
-  remove(removedEntry: Entry<Item>): this {
+  remove(removedEntry: Entry<Item>): Entries<Item> {
     return this.filter((entry) =>
       isEntry(entry) ? entry.item.id !== removedEntry.item.id : true
     );

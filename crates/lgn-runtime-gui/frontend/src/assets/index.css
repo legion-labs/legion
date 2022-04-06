@@ -14,7 +14,7 @@ body {
 
 /* Customize scrollbar on Chrome, Safari, Edge */
 *::-webkit-scrollbar {
-  @apply w-3;
+  @apply w-2.5 h-2.5;
 }
 
 *::-webkit-scrollbar-track {
@@ -22,7 +22,11 @@ body {
 }
 
 *::-webkit-scrollbar-thumb {
-  @apply bg-gray-500 hover:bg-gray-400 transition-all;
+  @apply bg-gray-500 hover:bg-gray-400 opacity-0 duration-150 transition-colors;
+}
+
+.thin-scrollbar::-webkit-scrollbar {
+  @apply w-1 h-1;
 }
 
 /* Firefox doesn't seem to allow scrollbar customization */
