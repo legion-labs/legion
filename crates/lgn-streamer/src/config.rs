@@ -68,7 +68,13 @@ impl Display for WebRTCConfig {
                     .collect::<Vec<_>>()
                     .join("\n")
             )
+        }?;
+
+        if let Some(ports) = &self.ports {
+            writeln!(f, "- Ports: {} -> {}", ports.min, ports.max)?;
         }
+
+        Ok(())
     }
 }
 
