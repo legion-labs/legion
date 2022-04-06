@@ -209,14 +209,17 @@ fn main() {
         let path = PathBuf::from_str(&build_output_database_address)
             .expect("unable to parse build output database address as path");
 
-        if path.is_relative() {
+        let path = if path.is_relative() {
             project_root.join(path)
         } else {
             path
+        };
+        if !path.exists() {
+            std::fs::create_dir_all(&path).expect("failed to create the output directory");
         }
-        .to_str()
-        .expect("unable to convert build output database address to string")
-        .to_owned()
+        path.to_str()
+            .expect("unable to convert build output database address to string")
+            .to_owned()
     };
 
     info!(
