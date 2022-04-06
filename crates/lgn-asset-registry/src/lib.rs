@@ -126,16 +126,10 @@ impl AssetRegistryPlugin {
         config: ResMut<'_, AssetRegistrySettings>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         mut asset_handles: ResMut<'_, AssetHandles>,
-        manifest: Res<'_, Manifest>,
         registry: Res<'_, Arc<AssetRegistry>>,
         mut commands: Commands<'_, '_>,
     ) {
-        let mut assets_to_load = config.assets_to_load.clone();
-        if assets_to_load.is_empty() {
-            assets_to_load.extend(manifest.resources());
-        };
-
-        for asset_id in assets_to_load {
+        for asset_id in config.assets_to_load.iter().copied() {
             asset_loading_states.insert(asset_id, LoadingState::Pending);
             asset_handles.insert(asset_id, registry.load_untyped(asset_id));
         }
