@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use lgn_content_store2::ChunkIdentifier;
+use lgn_content_store::ChunkIdentifier;
 use lgn_data_offline::{
     resource::{
         Project, ResourceHandles, ResourcePathName, ResourceRegistry, ResourceRegistryError,
