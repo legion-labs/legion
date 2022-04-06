@@ -101,7 +101,10 @@ message OpenSceneRequest {
   string id = 1;
 }
 
-message OpenSceneResponse {}
+message OpenSceneResponse {
+  string manifest_id = 1;
+  string root_asset_id = 2;
+}
 
 message CloseSceneRequest {
   string id = 1;

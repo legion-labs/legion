@@ -20,13 +20,13 @@ use lgn_data_runtime::{
     AssetRegistryScheduling, ResourceLoadEvent,
 };
 use lgn_ecs::prelude::*;
-use lgn_tracing::error;
+use lgn_tracing::{error, info};
 
 pub use crate::{
     asset_entities::AssetToEntityMap,
     config::AssetRegistrySettings,
     errors::{Error, Result},
-    events::{LoadAssetEvent, LoadManifestEvent},
+    events::AssetRegistryRequest,
 };
 use crate::{
     asset_handles::AssetHandles,
@@ -55,11 +55,9 @@ impl Plugin for AssetRegistryPlugin {
             .add_system(Self::update_registry)
             .add_system(Self::update_assets)
             .add_system(Self::handle_load_events)
-            .add_system(Self::handle_load_manifest_events)
-            .add_system(Self::handle_load_asset_events)
+            .add_system(Self::handle_requests)
             .add_event::<AssetRegistryEvent>()
-            .add_event::<LoadManifestEvent>()
-            .add_event::<LoadAssetEvent>();
+            .add_event::<AssetRegistryRequest>();
     }
 }
 
@@ -217,26 +215,24 @@ impl AssetRegistryPlugin {
         drop(load_events_rx);
     }
 
-    fn handle_load_manifest_events(
-        mut events: EventReader<'_, '_, LoadManifestEvent>,
-        registry: Res<'_, Arc<AssetRegistry>>,
-    ) {
-        for event in events.iter() {
-            registry.load_manifest(&event.manifest_id);
-        }
-
-        drop(registry);
-    }
-
-    fn handle_load_asset_events(
-        mut events: EventReader<'_, '_, LoadAssetEvent>,
+    fn handle_requests(
+        mut events: EventReader<'_, '_, AssetRegistryRequest>,
         registry: Res<'_, Arc<AssetRegistry>>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         mut asset_handles: ResMut<'_, AssetHandles>,
     ) {
         for event in events.iter() {
-            asset_loading_states.insert(event.asset_id, LoadingState::Pending);
-            asset_handles.insert(event.asset_id, registry.load_untyped(event.asset_id));
+            match event {
+                AssetRegistryRequest::LoadManifest(manifest_id) => {
+                    info!("received request to load manifest \"{}\"", manifest_id);
+                    registry.load_manifest(manifest_id);
+                }
+                AssetRegistryRequest::LoadAsset(asset_id) => {
+                    info!("received request to load asset \"{}\"", asset_id);
+                    asset_loading_states.insert(*asset_id, LoadingState::Pending);
+                    asset_handles.insert(*asset_id, registry.load_untyped(*asset_id));
+                }
+            }
         }
 
         drop(registry);

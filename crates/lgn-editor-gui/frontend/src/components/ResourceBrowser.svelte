@@ -16,6 +16,8 @@
     cloneResource,
     createResource,
     initFileUpload,
+    loadRuntimeManifest,
+    loadRuntimeRootAsset,
     openScene,
     removeResource,
     renameResource,
@@ -243,9 +245,26 @@
       case "openScene": {
         if ($currentResourceDescriptionEntry) {
           try {
-            await openScene({ id: $currentResourceDescriptionEntry?.item.id });
+            let response = await openScene({
+              id: $currentResourceDescriptionEntry?.item.id,
+            });
 
             await fetchAllActiveScenes();
+
+            try {
+              await loadRuntimeManifest({
+                manifestId: response.manifestId,
+              });
+              await loadRuntimeRootAsset({
+                rootAssetId: response.rootAssetId,
+              });
+            } catch (error) {
+              notifications.push(Symbol(), {
+                title: "Runtime Server",
+                message: displayError(error),
+                type: "error",
+              });
+            }
           } catch (error) {
             notifications.push(Symbol(), {
               title: "Scene Explorer",

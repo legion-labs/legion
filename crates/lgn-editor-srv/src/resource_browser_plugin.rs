@@ -212,10 +212,8 @@ impl ResourceBrowserPlugin {
 
                     if let Ok(resource_id) = resource_id {
                         match transaction_manager.add_scene(resource_id).await {
-                            Ok(()) => {
-                                let runtime_id = ResourcePathId::from(resource_id)
-                                    .push(sample_data::runtime::Entity::TYPE)
-                                    .resource_id();
+                            Ok(resource_path_id) => {
+                                let runtime_id = resource_path_id.resource_id();
                                 event_writer.send(SceneMessage::OpenScene(runtime_id));
                             }
                             Err(err) => lgn_tracing::warn!(
@@ -810,7 +808,12 @@ impl ResourceBrowser for ResourceBrowserRPC {
         {
             warn!("Failed to OpenScene for {}: {}", resource_id, err);
         }
-        Ok(Response::new(OpenSceneResponse {}))
+
+        let manifest_id = transaction_manager.get_runtime_manifest_id().await;
+        Ok(Response::new(OpenSceneResponse {
+            manifest_id: manifest_id.to_string(),
+            root_asset_id: resource_id.to_string(),
+        }))
     }
 
     /// Close a Scene
