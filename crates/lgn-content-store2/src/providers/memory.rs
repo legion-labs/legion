@@ -74,7 +74,7 @@ impl ContentReader for MemoryProvider {
 
         map.get(&k)
             .cloned()
-            .ok_or(Error::NotFound(format!("{}/{}", key_space, key)))
+            .ok_or_else(|| Error::NotFound(format!("{}/{}", key_space, key)))
     }
 }
 
