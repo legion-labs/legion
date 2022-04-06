@@ -28,6 +28,7 @@ impl NCNode for Worker {
         data: &Self::NewDataT,
     ) -> Result<NCNodeStatus<Self::ProcessedDataT>, NCError> {
         info!("Received & executing workload...");
+        let timer = std::time::Instant::now();
         let output_msg =
             crate::compiler_node::remote_data_executor::execute_sandbox_compiler(&data.input_msg);
         // FIXME: temporarily sync until we switch the data-executor to async
@@ -37,7 +38,7 @@ impl NCNode for Worker {
             request_id: data.request_id,
             output_msg,
         };
-        info!("Workload executed...");
+        info!("Workload executed (took {:?})...", timer.elapsed());
         Ok(NCNodeStatus::Ready(result))
     }
 }

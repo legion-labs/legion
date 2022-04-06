@@ -55,6 +55,7 @@ fn config(options: RemoteExecutionArgs) -> NCNodeStarter {
 /// Send the workload from a client.
 pub fn send_receive_workload(server_addr: &str, input_msg: String) -> String {
     info!("Sending workload...");
+    let timer = std::time::Instant::now();
     let mut node = RemoteExecutionNode {
         input_msg,
         output_msg: String::new(),
@@ -64,6 +65,6 @@ pub fn send_receive_workload(server_addr: &str, input_msg: String) -> String {
         url: server_addr.to_owned(),
     };
     config(options).start(&mut node).unwrap();
-    info!("Received workload...");
+    info!("Received results (took {:?})...", timer.elapsed());
     node.output_msg.clone()
 }
