@@ -56,20 +56,25 @@ impl GltfFile {
                 let reader = primitive.reader(|buffer| Some(&self.buffers[buffer.index()]));
                 if let Some(iter) = reader.read_positions() {
                     for position in iter {
-                        // GLTF is right handed, Legion Engine is left handed. Hence X -> Z, Y -> Y, Z -> X. Same for normals.
-                        positions.push(Vec3::new(position[2], position[1], position[0]));
+                        // GLTF uses RH Y-up coordinate system, Legion Engine uses LH Y-up. Flipping Z for positions
+                        // and normals gives us the desired result. Note that it also rotates the model 90 degrees around
+                        // the up axis. It compensates 90 degrees rotation that happens when the model is exported from Blender
+                        // to GLTF. As a result, imported model is oriented the same relative to the axis of Legion Engine as it
+                        // was oriented relative to the axis of Blender.
+                        positions.push(Vec3::new(position[0], position[1], -position[2]));
                     }
                 }
                 if let Some(iter) = reader.read_normals() {
                     for normal in iter {
-                        normals.push(Vec3::new(normal[2], normal[1], normal[0]));
+                        normals.push(Vec3::new(normal[0], normal[1], -normal[2]));
                     }
                 }
                 if let Some(iter) = reader.read_tangents() {
                     for tangent in iter {
-                        // Tangent handedness is governed by its W coordinate in GLTF: 1.0 if system is RH, -1.0 if it's LH
-                        // Since LE uses LH we negate W
-                        tangents.push(Vec4::new(tangent[2], tangent[1], tangent[0], -tangent[3]));
+                        // Same rule as above applies to the tangents. W coordinate of the tangent contains the handedness
+                        // of the tangent space. -1 handedness corresponds to a LH tangent basis in a RH coordinate system.
+                        // Since our coordinate system is LH, we have to flip it on import.
+                        tangents.push(Vec4::new(tangent[0], tangent[1], -tangent[2], -tangent[3]));
                     }
                 }
                 if let Some(tex_coords_option) = reader.read_tex_coords(0) {
