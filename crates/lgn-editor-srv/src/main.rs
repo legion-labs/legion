@@ -210,7 +210,7 @@ fn main() {
             .expect("unable to parse build output database address as path");
 
         let path = if path.is_relative() {
-            project_root.join(path)
+            cwd.join(path)
         } else {
             path
         };
