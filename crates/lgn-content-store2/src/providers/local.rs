@@ -75,7 +75,7 @@ impl ContentReader for LocalProvider {
             },
             Err(e) => {
                 if e.kind() == tokio::io::ErrorKind::NotFound {
-                    Err(Error::NotFound)
+                    Err(Error::NotFound(id.to_string()))
                 } else {
                     Err(
                         anyhow::anyhow!("could not open file at `{}`: {}", path.display(), e)
@@ -104,7 +104,7 @@ impl ContentReader for LocalProvider {
             Ok(s) => s.parse(),
             Err(e) => {
                 if e.kind() == tokio::io::ErrorKind::NotFound {
-                    Err(Error::NotFound)
+                    Err(Error::NotFound(format!("{}/{}", key_space, key)))
                 } else {
                     Err(
                         anyhow::anyhow!("could not open file at `{}`: {}", alias_path.display(), e)

@@ -46,7 +46,7 @@ impl ContentReader for LruProvider {
 
         match map.get(id) {
             Some(content) => Ok(Box::pin(std::io::Cursor::new(content.clone()))),
-            None => Err(Error::NotFound),
+            None => Err(Error::NotFound(id.to_string())),
         }
     }
 
@@ -65,7 +65,7 @@ impl ContentReader for LruProvider {
                         Some(content) => {
                             Ok(Box::pin(std::io::Cursor::new(content.clone())) as ContentAsyncRead)
                         }
-                        None => Err(Error::NotFound),
+                        None => Err(Error::NotFound(id.to_string())),
                     },
                 )
             })
@@ -78,7 +78,9 @@ impl ContentReader for LruProvider {
         let mut map = self.alias_map.lock().await;
         let k = (key_space.to_string(), key.to_string());
 
-        map.get(&k).cloned().ok_or(Error::NotFound)
+        map.get(&k)
+            .cloned()
+            .ok_or(Error::NotFound(format!("{}/{}", key_space, key)))
     }
 }
 

@@ -19,8 +19,8 @@ pub enum Error {
     InvalidChunkIndex(#[source] anyhow::Error),
     #[error("invalid data space: {0}")]
     InvalidDataSpace(String),
-    #[error("the content was not found")]
-    NotFound,
+    #[error("the content was not found: '{0}'")]
+    NotFound(String),
     #[error("the content already exists")]
     AlreadyExists,
     #[error("the content is corrupted")]

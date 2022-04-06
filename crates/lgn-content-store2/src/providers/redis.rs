@@ -122,7 +122,7 @@ impl ContentReader for RedisProvider {
 
         match con.get::<_, Option<Vec<u8>>>(&key).await {
             Ok(Some(value)) => Ok(Box::pin(Cursor::new(value))),
-            Ok(None) => Err(Error::NotFound),
+            Ok(None) => Err(Error::NotFound(id.to_string())),
             Err(err) => Err(anyhow::anyhow!(
                 "failed to get content from Redis for key `{}`: {}",
                 key,
@@ -150,7 +150,7 @@ impl ContentReader for RedisProvider {
 
         match con.get::<_, Option<Vec<u8>>>(&k).await {
             Ok(Some(value)) => Identifier::read_from(std::io::Cursor::new(value)),
-            Ok(None) => Err(Error::NotFound),
+            Ok(None) => Err(Error::NotFound(format!("{}/{}", key_space, key))),
             Err(err) => Err(anyhow::anyhow!(
                 "failed to resolve alias from Redis for key `{}`: {}",
                 k,

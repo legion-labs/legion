@@ -128,7 +128,7 @@ impl Chunker {
         for id in ids {
             reader_stores
                 .get_mut(id)
-                .ok_or(Error::NotFound)?
+                .ok_or(Error::NotFound(id.to_string()))?
                 .inc_ref_count()
                 .await?;
         }

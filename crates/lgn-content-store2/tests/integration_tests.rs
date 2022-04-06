@@ -72,7 +72,7 @@ async fn test_chunker() {
     let chunk_id = ChunkIdentifier::new(2, Identifier::new(&BIG_DATA_X));
 
     match chunker.read_chunk(provider, &chunk_id).await {
-        Err(Error::NotFound) => {}
+        Err(Error::NotFound(_)) => {}
         Err(err) => panic!("unexpected error: {}", err),
         Ok(_) => panic!("expected error"),
     };
@@ -108,7 +108,7 @@ async fn test_memory_provider() {
     assert_read_contents!(
         provider,
         [id, fake_id],
-        [Ok(&BIG_DATA_A), Err(Error::NotFound)]
+        [Ok(&BIG_DATA_A), Err(Error::NotFound(fake_id.to_string()))]
     );
 
     // MemoryProvider also implements AliasProvider.
@@ -135,7 +135,7 @@ async fn test_lru_provider() {
     assert_read_contents!(
         provider,
         [id.clone(), fake_id],
-        [Ok(&BIG_DATA_A), Err(Error::NotFound)]
+        [Ok(&BIG_DATA_A), Err(Error::NotFound(fake_id.to_string()))]
     );
 
     // Write enough content to make the LRU full.
@@ -180,7 +180,7 @@ async fn test_caching_provider() {
     assert_read_contents!(
         provider,
         [id.clone(), fake_id.clone()],
-        [Ok(&BIG_DATA_A), Err(Error::NotFound)]
+        [Ok(&BIG_DATA_A), Err(Error::NotFound(fake_id.to_string()))]
     );
 
     // Write a value to the remote but not the cache.
@@ -197,7 +197,10 @@ async fn test_caching_provider() {
     assert_read_contents!(
         provider,
         [id.clone(), fake_id],
-        [Ok(&BIGGER_DATA_A), Err(Error::NotFound)]
+        [
+            Ok(&BIGGER_DATA_A),
+            Err(Error::NotFound(fake_id.to_string()))
+        ]
     );
     assert_read_content!(local_provider, id, &BIGGER_DATA_A);
 
@@ -228,7 +231,7 @@ async fn test_local_provider() {
     assert_read_contents!(
         provider,
         [id, fake_id],
-        [Ok(&BIG_DATA_A), Err(Error::NotFound)]
+        [Ok(&BIG_DATA_A), Err(Error::NotFound(fake_id.to_string()))]
     );
 
     // LocalProvider also implements AliasProvider.
@@ -289,7 +292,7 @@ async fn test_aws_s3_provider() {
     assert_read_contents!(
         provider,
         [id.clone(), fake_id],
-        [Ok(&BIG_DATA_A), Err(Error::NotFound)]
+        [Ok(&BIG_DATA_A), Err(Error::NotFound(fake_id.to_string()))]
     );
 
     // Make sure we can access the data through the URLs.
@@ -356,7 +359,7 @@ async fn test_aws_dynamodb_provider() {
     assert_read_contents!(
         provider,
         [id.clone(), fake_id],
-        [Ok(data), Err(Error::NotFound)]
+        [Ok(data), Err(Error::NotFound(fake_id.to_string()))]
     );
 
     // DynamoDbProvider also implements AliasProvider.
@@ -406,7 +409,7 @@ async fn test_redis_provider() {
     assert_read_contents!(
         provider,
         [id.clone(), fake_id],
-        [Ok(data), Err(Error::NotFound)]
+        [Ok(data), Err(Error::NotFound(fake_id.to_string()))]
     );
 
     // RedisProvider also implements AliasProvider.
@@ -549,8 +552,8 @@ async fn test_grpc_provider() {
             [id, fake_id, fake_id_2],
             [
                 Ok(&BIGGER_DATA_A),
-                Err(Error::NotFound),
-                Err(Error::NotFound)
+                Err(Error::NotFound(fake_id.to_string())),
+                Err(Error::NotFound(fake_id_2.to_string()))
             ]
         );
 

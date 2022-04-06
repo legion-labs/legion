@@ -110,14 +110,16 @@ where
                             .compat(),
                         Err(err) => {
                             return match err.status() {
-                                Some(reqwest::StatusCode::NOT_FOUND) => Err(Error::NotFound),
+                                Some(reqwest::StatusCode::NOT_FOUND) => {
+                                    Err(Error::NotFound(id.to_string()))
+                                }
                                 _ => Err(anyhow::anyhow!("HTTP error: {}", err).into()),
                             }
                         }
                     },
                 ),
             }),
-            None => Err(Error::NotFound),
+            None => Err(Error::NotFound(id.to_string())),
         }
     }
 
@@ -145,7 +147,7 @@ where
             .into_inner();
 
         if resp.id.is_empty() {
-            Err(Error::NotFound)
+            Err(Error::NotFound(format!("{}/{}", key_space, key)))
         } else {
             resp.id.parse()
         }
@@ -474,7 +476,7 @@ impl lgn_content_store_proto::content_store_server::ContentStore for GrpcService
         Ok(Response::new(ResolveAliasResponse {
             id: match provider_set.provider.resolve_alias(&key_space, &key).await {
                 Ok(id) => id.to_string(),
-                Err(Error::NotFound) => "".to_string(),
+                Err(Error::NotFound(_)) => "".to_string(),
                 Err(err) => {
                     return Err(tonic::Status::new(
                         tonic::Code::Internal,
@@ -583,7 +585,7 @@ impl lgn_content_store_proto::content_store_server::ContentStore for GrpcService
             content: if id.data_size() <= provider_set.size_threshold {
                 match provider_set.provider.read_content(&id).await {
                     Ok(data) => Some(Content::Data(data)),
-                    Err(Error::NotFound) => None,
+                    Err(Error::NotFound(_)) => None,
                     Err(err) => {
                         return Err(tonic::Status::new(
                             tonic::Code::Internal,
@@ -598,7 +600,7 @@ impl lgn_content_store_proto::content_store_server::ContentStore for GrpcService
                     .await
                 {
                     Ok(url) => Some(Content::Url(url)),
-                    Err(Error::NotFound) => None,
+                    Err(Error::NotFound(_)) => None,
                     Err(err) => {
                         return Err(tonic::Status::new(
                             tonic::Code::Internal,

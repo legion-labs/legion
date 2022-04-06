@@ -287,7 +287,7 @@ impl ContentReader for AwsS3Provider {
             Ok(object) => Ok(object),
             Err(aws_sdk_s3::types::SdkError::ServiceError { err, raw: _ }) => {
                 if let aws_sdk_s3::error::GetObjectErrorKind::NoSuchKey(_) = err.kind {
-                    Err(Error::NotFound)
+                    Err(Error::NotFound(id.to_string()))
                 } else {
                     Err(
                         anyhow::anyhow!("failed to get object `{}` from AWS S3: {}", key, err)
@@ -361,7 +361,7 @@ impl ContentWriter for AwsS3Provider {
 impl ContentAddressReader for AwsS3Provider {
     async fn get_content_read_address(&self, id: &Identifier) -> Result<String> {
         if !self.check_object_existence(id).await? {
-            return Err(Error::NotFound);
+            return Err(Error::NotFound(id.to_string()));
         }
 
         let key = self.blob_key(id);

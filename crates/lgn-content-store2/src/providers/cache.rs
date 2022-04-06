@@ -44,7 +44,7 @@ impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> 
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
         match self.local.get_content_reader(id).await {
             Ok(reader) => Ok(reader),
-            Err(Error::NotFound) => {
+            Err(Error::NotFound(_)) => {
                 match self.remote.get_content_reader(id).await {
                     Ok(reader) => {
                         let writer = match self.local.get_content_writer(id).await {
@@ -83,7 +83,7 @@ impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> 
         let missing_ids = readers
             .iter()
             .filter_map(|(id, reader)| {
-                if let Err(Error::NotFound) = reader {
+                if let Err(Error::NotFound(_)) = reader {
                     Some(id)
                 } else {
                     None
@@ -130,7 +130,7 @@ impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> 
     async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
         match self.local.resolve_alias(key_space, key).await {
             Ok(id) => Ok(id),
-            Err(Error::NotFound) => match self.remote.resolve_alias(key_space, key).await {
+            Err(Error::NotFound(_)) => match self.remote.resolve_alias(key_space, key).await {
                 Ok(id) => {
                     if let Err(err) = self.local.register_alias(key_space, key, &id).await {
                         warn!(

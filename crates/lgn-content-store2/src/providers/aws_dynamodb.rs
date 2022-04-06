@@ -130,7 +130,7 @@ impl AwsDynamoDbProvider {
                     )
                     .into()),
                 },
-                None => Err(Error::NotFound),
+                None => Err(Error::NotFound(id.to_string())),
             },
             Err(err) => Err(anyhow::anyhow!(
                 "unexpected error while reading item `{}` from AWS DynamoDB: {}",
@@ -190,7 +190,7 @@ impl ContentReader for AwsDynamoDbProvider {
                     )
                     .into()),
                 },
-                None => Err(Error::NotFound),
+                None => Err(Error::NotFound(format!("{}/{}", key_space, key))),
             },
             Err(err) => Err(anyhow::anyhow!(
                 "unexpected error while reading item `{}/{}` from AWS DynamoDB: {}",
@@ -207,7 +207,7 @@ impl ContentWriter for AwsDynamoDbProvider {
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
         match self.get_content(id).await {
             Ok(_) => Err(Error::AlreadyExists),
-            Err(Error::NotFound) => Ok(Box::pin(DynamoDbUploader::new(
+            Err(Error::NotFound(_)) => Ok(Box::pin(DynamoDbUploader::new(
                 id.clone(),
                 DynamoDbUploaderImpl {
                     client: self.client.clone(),

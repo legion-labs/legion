@@ -40,7 +40,7 @@ impl ContentReader for MemoryProvider {
 
         match map.get(id) {
             Some(content) => Ok(Box::pin(std::io::Cursor::new(content.clone()))),
-            None => Err(Error::NotFound),
+            None => Err(Error::NotFound(id.to_string())),
         }
     }
 
@@ -59,7 +59,7 @@ impl ContentReader for MemoryProvider {
                         Some(content) => {
                             Ok(Box::pin(std::io::Cursor::new(content.clone())) as ContentAsyncRead)
                         }
-                        None => Err(Error::NotFound),
+                        None => Err(Error::NotFound(id.to_string())),
                     },
                 )
             })
@@ -72,7 +72,9 @@ impl ContentReader for MemoryProvider {
         let map = self.alias_map.read().await;
         let k = (key_space.to_string(), key.to_string());
 
-        map.get(&k).cloned().ok_or(Error::NotFound)
+        map.get(&k)
+            .cloned()
+            .ok_or(Error::NotFound(format!("{}/{}", key_space, key)))
     }
 }
 
