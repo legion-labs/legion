@@ -50,7 +50,10 @@ message InitLogStreamResponse {
 
 message InitMessageStreamRequest {}
 
-enum MessageType { SelectionChanged = 0; }
+enum MessageType {
+  SelectionChanged = 0;
+  ResourceChanged = 1;
+}
 
 message Message {
   MessageType msg_type = 1;

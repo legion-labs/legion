@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use lgn_data_runtime::ResourceTypeAndId;
 use lgn_tracing::{info, warn};
 
 use crate::Error;
@@ -31,7 +32,7 @@ impl Transaction {
     pub(crate) async fn apply_transaction(
         &mut self,
         mut context: LockContext<'_>,
-    ) -> Result<(), Error> {
+    ) -> Result<Option<Vec<ResourceTypeAndId>>, Error> {
         // Try to apply all the operations
         let mut rollback_state: Option<(Error, usize)> = None;
         for (index, op) in self.operations.iter_mut().enumerate() {
@@ -67,14 +68,18 @@ impl Transaction {
             }
 
             info!("{}", &log);
-            Ok(())
+            if !context.changed_resources.is_empty() {
+                Ok(Some(context.changed_resources.into_iter().collect()))
+            } else {
+                Ok(None)
+            }
         }
     }
 
     pub(crate) async fn rollback_transaction(
         &mut self,
         mut context: LockContext<'_>,
-    ) -> Result<(), Error> {
+    ) -> Result<Option<Vec<ResourceTypeAndId>>, Error> {
         // Try to rollback all transaction operations (in reverse order)
         let mut rollback_state: Option<(Error, usize)> = None;
         for (index, op) in self.operations.iter().rev().enumerate() {
@@ -102,7 +107,11 @@ impl Transaction {
                 &self.id,
                 self.operations.len()
             );
-            Ok(())
+            if !context.changed_resources.is_empty() {
+                Ok(Some(context.changed_resources.into_iter().collect()))
+            } else {
+                Ok(None)
+            }
         }
     }
 

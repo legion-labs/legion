@@ -14,6 +14,8 @@ import {
   currentResourceDescriptionEntry,
   resourceEntries,
 } from "./resourceBrowserEntries";
+import log from "@lgn/web-client/src/lib/log";
+import { fetchStagedResources } from "@/stores/stagedResources";
 
 export function initMessageStream() {
   const subscription = initMessageStreamApi().subscribe(
@@ -26,6 +28,18 @@ export function initMessageStream() {
 
       if (message) {
         switch (message.msgType) {
+          case MessageType.ResourceChanged: {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            const resourceIds: string[] = JSON.parse(message.payload);
+
+            fetchStagedResources();
+            // TODO
+            // if the current resource in the PropertyGrid has been modified,
+            // trigger a refresh
+            log.error(resourceIds);
+            break;
+          }
+
           case MessageType.SelectionChanged: {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const resourceIds: string[] = JSON.parse(message.payload);
