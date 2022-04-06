@@ -19,8 +19,6 @@
     resourceBrowserItemEntries,
     resourceBrowserPanelContextMenuId,
     resourceBrowserPanelEntries,
-    sceneExplorerItemContextMenuId,
-    sceneExplorerItemEntries,
   } from "@/stores/contextMenu";
   import tabPayloads from "@/stores/tabPayloads";
   import workspace, {
@@ -104,11 +102,6 @@
           contextMenu.register(
             resourceBrowserPanelContextMenuId,
             resourceBrowserPanelEntries
-          );
-
-          contextMenu.register(
-            sceneExplorerItemContextMenuId,
-            sceneExplorerItemEntries
           );
 
           const videoEditorTabPayloadId = "video-editor-payload";
@@ -211,6 +204,8 @@
               )
             )
           );
+
+          workspace.setPanelTabs(sceneExplorerPanelId, null);
         } else {
           tabPayloads.update((tabPayloads) => {
             const cleanedTabPayloads = Object.fromEntries(
@@ -228,19 +223,19 @@
 
             return cleanedTabPayloads;
           });
-        }
 
-        workspace.setPanelTabs(
-          sceneExplorerPanelId,
-          allActiveScenes?.map(({ rootScene }) => ({
-            id: rootScene.id,
-            payloadId: rootScene.id,
-            label: fileName(rootScene.path),
-            type: "sceneExplorer",
-            // TODO: Support close scene on close
-            // disposable: true,
-          })) as NonEmptyArray<TabType>
-        );
+          workspace.setPanelTabs(
+            sceneExplorerPanelId,
+            allActiveScenes.map(({ rootScene }) => ({
+              id: rootScene.id,
+              payloadId: rootScene.id,
+              label: fileName(rootScene.path),
+              type: "sceneExplorer",
+              disposable: true,
+            })) as NonEmptyArray<TabType>,
+            { activeTabIndex: allActiveScenes.length - 1 }
+          );
+        }
       }
     );
 

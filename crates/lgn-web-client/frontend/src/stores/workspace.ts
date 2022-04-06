@@ -119,7 +119,11 @@ export type WorkspaceStore<Tab extends TabTypeBase> = Readable<
     }
   ): void;
   pushAllTabsToPanel(panelId: string, tabs: NonEmptyArray<Tab>): void;
-  setPanelTabs(panelId: string, tabs: NonEmptyArray<Tab> | null): void;
+  setPanelTabs(
+    panelId: string,
+    tabs: NonEmptyArray<Tab> | null,
+    options?: { activeTabIndex?: number }
+  ): void;
   removeTabFromPanel(panelId: string, tabId: string): void;
   removeTabFromPanelByValue(panelId: string, tab: Tab): void;
   activateTabInPanel(panelId: string, tabId: string): void;
@@ -254,16 +258,27 @@ export function createWorkspace<Tab extends TabTypeBase>(
       );
     },
 
-    setPanelTabs(panelId: string, tabs: NonEmptyArray<Tab> | null) {
+    setPanelTabs(
+      panelId: string,
+      tabs: NonEmptyArray<Tab> | null,
+      { activeTabIndex }: { activeTabIndex?: number } = {}
+    ) {
       updatePanel(panelId, (panel) => {
         if (!tabs) {
           return { id: panel.id, type: "emptyPanel" };
         }
 
+        const newActiveTabIndex =
+          typeof activeTabIndex === "number"
+            ? activeTabIndex
+            : panel.type === "emptyPanel"
+            ? 0
+            : panel.activeTabIndex;
+
         return {
           ...panel,
           type: "populatedPanel",
-          activeTabIndex: 0,
+          activeTabIndex: newActiveTabIndex,
           tabs,
         };
       });
