@@ -218,8 +218,8 @@ async fn create_offline_data(
         project,
         resource_registry,
         "5474d00b-cc10-491a-ba56-be2f5b5de22d",
-        Mesh::new_cube(0.5),
         "/scene/models/cube.mod",
+        Mesh::new_cube(0.5),
     )
     .await;
 
@@ -227,8 +227,8 @@ async fn create_offline_data(
         project,
         resource_registry,
         "a05e4c89-e85b-4e03-add4-8767b21c1e55",
-        Mesh::new_sphere(0.25, 16, 16),
         "/scene/models/sphere.mod",
+        Mesh::new_sphere(0.25, 16, 16),
     )
     .await;
 
@@ -257,8 +257,8 @@ async fn create_offline_data(
         project,
         resource_registry,
         "e93151b6-3635-4a30-9f3e-e6052929d85a",
-        ScriptType::Rune,
         "/scene/pad_right_script",
+        ScriptType::Rune,
         r#"
 const MOUSE_DELTA_SCALE = 200.0;
 
@@ -306,8 +306,8 @@ pub fn update(entity, events) {
         project,
         resource_registry,
         "968c4926-ae75-4955-81c8-7b7e395d0d3b",
-        ScriptType::Rune,
         "/scene/pad_left_script",
+        ScriptType::Rune,
         r#"
 const MOUSE_DELTA_SCALE = 200.0;
 
@@ -355,8 +355,8 @@ pub fn update(entity, events) {
         project,
         resource_registry,
         "6ec6db36-6d09-4bb2-b9a8-b85c25e5b2c0",
-        ScriptType::Rune,
         "/scene/ball_script",
+        ScriptType::Rune,
         r#"
 use lgn_math::{normalize2, random};
 
@@ -619,8 +619,8 @@ async fn create_offline_model(
     project: &mut Project,
     resource_registry: &Arc<Mutex<ResourceRegistry>>,
     resource_id: &str,
-    mesh: Mesh,
     resource_path: &str,
+    mesh: Mesh,
 ) -> ResourcePathId {
     let kind = lgn_graphics_data::offline::Model::TYPE;
     let id = resource_id
@@ -686,8 +686,8 @@ async fn create_offline_script(
     project: &mut Project,
     resource_registry: &Arc<Mutex<ResourceRegistry>>,
     resource_id: &str,
-    script_type: ScriptType,
     resource_path: &str,
+    script_type: ScriptType,
     script_text: &str,
 ) -> ResourcePathId {
     let kind = lgn_scripting::offline::Script::TYPE;
