@@ -14,9 +14,9 @@ use generic_data::plugin::GenericDataPlugin;
 use lgn_app::prelude::App;
 #[cfg(not(feature = "standalone"))]
 use lgn_app::{prelude::StartupStage, CoreStage};
-use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 #[cfg(not(feature = "standalone"))]
-use lgn_asset_registry::{LoadAssetEvent, LoadManifestEvent};
+use lgn_asset_registry::AssetRegistryRequest;
+use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::AsyncPlugin;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
@@ -221,16 +221,15 @@ fn setup_runtime_grpc(world: &mut World) {
 #[cfg(not(feature = "standalone"))]
 fn rebroadcast_commands(
     command_receiver: Res<'_, crossbeam_channel::Receiver<RuntimeServerCommand>>,
-    mut load_manifest_events: EventWriter<'_, '_, LoadManifestEvent>,
-    mut load_root_asset_events: EventWriter<'_, '_, LoadAssetEvent>,
+    mut asset_registry_requests: EventWriter<'_, '_, AssetRegistryRequest>,
 ) {
     while let Ok(command) = command_receiver.try_recv() {
         match command {
             RuntimeServerCommand::LoadManifest(manifest_id) => {
-                load_manifest_events.send(LoadManifestEvent { manifest_id });
+                asset_registry_requests.send(AssetRegistryRequest::LoadManifest(manifest_id));
             }
             RuntimeServerCommand::LoadRootAsset(root_id) => {
-                load_root_asset_events.send(LoadAssetEvent { asset_id: root_id });
+                asset_registry_requests.send(AssetRegistryRequest::LoadAsset(root_id));
             }
             RuntimeServerCommand::Pause => {
                 //TODO
