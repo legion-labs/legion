@@ -256,7 +256,7 @@
                 manifestId: response.manifestId,
               });
               await loadRuntimeRootAsset({
-                rootAssetId: $currentResourceDescriptionEntry?.item.id,
+                rootAssetId: response.rootAssetId,
               });
             } catch (error) {
               notifications.push(Symbol(), {

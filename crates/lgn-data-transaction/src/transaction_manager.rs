@@ -5,8 +5,11 @@ use std::{
 };
 
 use lgn_content_store2::ChunkIdentifier;
-use lgn_data_offline::resource::{
-    Project, ResourceHandles, ResourcePathName, ResourceRegistry, ResourceRegistryError,
+use lgn_data_offline::{
+    resource::{
+        Project, ResourceHandles, ResourcePathName, ResourceRegistry, ResourceRegistryError,
+    },
+    ResourcePathId,
 };
 use lgn_data_runtime::{AssetRegistry, ResourceType, ResourceTypeAndId};
 use lgn_tracing::{info, warn};
@@ -122,7 +125,10 @@ impl TransactionManager {
     }
 
     /// Add a scene and build it
-    pub async fn add_scene(&mut self, resource_id: ResourceTypeAndId) -> Result<(), Error> {
+    pub async fn add_scene(
+        &mut self,
+        resource_id: ResourceTypeAndId,
+    ) -> Result<ResourcePathId, Error> {
         self.active_scenes.insert(resource_id);
         lgn_tracing::info!("Adding scene: {}", resource_id);
         self.build_by_id(resource_id).await
@@ -141,10 +147,13 @@ impl TransactionManager {
     }
 
     /// Build a resource by id
-    pub async fn build_by_id(&self, resource_id: ResourceTypeAndId) -> Result<(), Error> {
+    pub async fn build_by_id(
+        &self,
+        resource_id: ResourceTypeAndId,
+    ) -> Result<ResourcePathId, Error> {
         let mut ctx = LockContext::new(self).await;
 
-        let (_runtime_path_id, changed_assets) = ctx
+        let (runtime_path_id, changed_assets) = ctx
             .build
             .build_all_derived(resource_id, &ctx.project)
             .await
@@ -159,7 +168,7 @@ impl TransactionManager {
                 ctx.asset_registry.load_untyped(asset_id);
             }
         }
-        Ok(())
+        Ok(runtime_path_id)
     }
 
     /// Load all resources from a `Project`
