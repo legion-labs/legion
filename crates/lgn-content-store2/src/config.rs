@@ -53,7 +53,7 @@ pub struct RedisProviderConfig {
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct GrpcProviderConfig {
-    #[serde(with = "option_uri")]
+    #[serde(default, with = "option_uri")]
     pub api_url: Option<Uri>,
     pub data_space: DataSpace,
 }
