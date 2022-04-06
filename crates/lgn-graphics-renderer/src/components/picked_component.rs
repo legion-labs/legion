@@ -38,6 +38,10 @@ impl PickedComponent {
         self.picking_data.is_empty()
     }
 
+    pub fn clear_picking_data(&mut self) {
+        self.picking_data.clear();
+    }
+
     pub fn get_closest_point(&self) -> Vec4 {
         let mut closest_point = Vec4::new(f32::MAX, f32::MAX, f32::MAX, f32::MAX);
         for picking_data in &self.picking_data {

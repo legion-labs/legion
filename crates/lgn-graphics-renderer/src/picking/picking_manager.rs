@@ -326,9 +326,9 @@ impl PickingManager {
             inner.active_selection_dirty = false;
 
             // Remove PickedComponent that are no longer in the active selection
-            for (entity, _, manipulator_component) in picked_components.iter() {
+            for (entity, mut picked, manipulator_component) in picked_components.iter_mut() {
                 if manipulator_component.is_none() && !inner.active_selection.contains(&entity) {
-                    commands.entity(entity).remove::<PickedComponent>();
+                    picked.clear_picking_data();
                 }
             }
 
