@@ -11,14 +11,13 @@ use std::{
     fs::OpenOptions,
     io::Write,
     path::{Path, PathBuf},
-    str::FromStr,
     sync::Arc,
 };
 
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::{
-    resource::{Project, ResourceRegistry, ResourceRegistryOptions},
+    resource::{Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions},
     ResourcePathId,
 };
 use lgn_data_runtime::{
@@ -450,31 +449,53 @@ async fn create_offline_entity(
     components: Vec<Box<dyn Component>>,
     children: Vec<ResourcePathId>,
 ) -> ResourcePathId {
+    let kind = sample_data::offline::Entity::TYPE;
+    let id = resource_id
+        .parse::<ResourceId>()
+        .expect("invalid ResourceId format");
+    let type_id = ResourceTypeAndId { kind, id };
+    let name: ResourcePathName = resource_path.into();
+
     let mut resources = resource_registry.lock().await;
-    let id = ResourceTypeAndId {
-        kind: sample_data::offline::Entity::TYPE,
-        id: ResourceId::from_str(resource_id).unwrap(),
+    let exists = project.exists(id).await;
+    let handle = if exists {
+        project
+            .load_resource(type_id, &mut resources)
+            .expect("failed to load resource")
+    } else {
+        resources
+            .new_resource(kind)
+            .expect("failed to create new resource")
     };
-    let handle = resources.new_resource(id.kind).unwrap();
 
     let entity = handle
         .get_mut::<sample_data::offline::Entity>(&mut resources)
         .unwrap();
+    entity.components.clear();
     entity.components.extend(components.into_iter());
+    entity.children.clear();
     entity.children.extend(children.into_iter());
 
-    project
-        .add_resource_with_id(
-            resource_path.into(),
-            sample_data::offline::Entity::TYPENAME,
-            id.kind,
-            id.id,
-            handle,
-            &mut resources,
-        )
-        .await
-        .unwrap();
-    let path: ResourcePathId = id.into();
+    if exists {
+        project
+            .save_resource(type_id, handle, &mut resources)
+            .await
+            .expect("failed to save resource");
+    } else {
+        project
+            .add_resource_with_id(
+                name,
+                sample_data::offline::Entity::TYPENAME,
+                kind,
+                id,
+                handle,
+                &mut resources,
+            )
+            .await
+            .expect("failed to add new resource");
+    }
+
+    let path: ResourcePathId = type_id.into();
     path.push(sample_data::runtime::Entity::TYPE)
 }
 
@@ -485,16 +506,29 @@ async fn create_offline_model(
     resource_path: &str,
     mesh: Mesh,
 ) -> ResourcePathId {
+    let kind = lgn_graphics_data::offline::Model::TYPE;
+    let id = resource_id
+        .parse::<ResourceId>()
+        .expect("invalid ResourceId format");
+    let type_id = ResourceTypeAndId { kind, id };
+    let name: ResourcePathName = resource_path.into();
+
     let mut resources = resource_registry.lock().await;
-    let id = ResourceTypeAndId {
-        kind: lgn_graphics_data::offline::Model::TYPE,
-        id: ResourceId::from_str(resource_id).unwrap(),
+    let exists = project.exists(id).await;
+    let handle = if exists {
+        project
+            .load_resource(type_id, &mut resources)
+            .expect("failed to load resource")
+    } else {
+        resources
+            .new_resource(kind)
+            .expect("failed to create new resource")
     };
-    let handle = resources.new_resource(id.kind).unwrap();
 
     let model = handle
         .get_mut::<lgn_graphics_data::offline::Model>(&mut resources)
         .unwrap();
+    model.meshes.clear();
     let mesh = lgn_graphics_data::offline::Mesh {
         positions: mesh.positions,
         normals: mesh.normals.unwrap(),
@@ -509,17 +543,25 @@ async fn create_offline_model(
     };
     model.meshes.push(mesh);
 
-    project
-        .add_resource_with_id(
-            resource_path.into(),
-            lgn_graphics_data::offline::Model::TYPENAME,
-            id.kind,
-            id.id,
-            handle,
-            &mut resources,
-        )
-        .await
-        .unwrap();
-    let path: ResourcePathId = id.into();
+    if exists {
+        project
+            .save_resource(type_id, handle, &mut resources)
+            .await
+            .expect("failed to save resource");
+    } else {
+        project
+            .add_resource_with_id(
+                name,
+                lgn_graphics_data::offline::Model::TYPENAME,
+                kind,
+                id,
+                handle,
+                &mut resources,
+            )
+            .await
+            .expect("failed to add new resource");
+    }
+
+    let path: ResourcePathId = type_id.into();
     path.push(lgn_graphics_data::runtime::Model::TYPE)
 }
