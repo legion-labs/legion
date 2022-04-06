@@ -1,3 +1,4 @@
+use crossbeam_channel::Sender;
 use lgn_content_store2::ChunkIdentifier;
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_runtime_proto::runtime::{
@@ -6,7 +7,6 @@ use lgn_runtime_proto::runtime::{
     PauseRequest, PauseResponse,
 };
 use lgn_tracing::warn;
-use tokio::sync::broadcast;
 use tonic::{Request, Response, Status};
 
 #[derive(Debug, Clone)]
@@ -17,11 +17,11 @@ pub(crate) enum RuntimeServerCommand {
 }
 
 pub(crate) struct GRPCServer {
-    command_sender: broadcast::Sender<RuntimeServerCommand>,
+    command_sender: crossbeam_channel::Sender<RuntimeServerCommand>,
 }
 
 impl GRPCServer {
-    pub(crate) fn new(command_sender: broadcast::Sender<RuntimeServerCommand>) -> Self {
+    pub(crate) fn new(command_sender: Sender<RuntimeServerCommand>) -> Self {
         Self { command_sender }
     }
 

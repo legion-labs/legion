@@ -8445,6 +8445,7 @@ name = "runtime-srv"
 version = "0.1.0"
 dependencies = [
  "clap 3.1.6",
+ "crossbeam-channel",
  "generic-data",
  "instant",
  "lgn-app",

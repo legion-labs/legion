@@ -45,6 +45,7 @@ sample-data = { path = "../../tests/sample-data", version = "0.1.0", features = 
 
 # other
 clap = { version = "3.0", features = ["derive"] }
+crossbeam-channel = "0.5.1"
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 tokio = { version = "1.13", features = ["full", "tracing"] }
 tonic = "0.6"
