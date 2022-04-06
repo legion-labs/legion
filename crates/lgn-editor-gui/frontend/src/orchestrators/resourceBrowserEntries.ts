@@ -1,4 +1,4 @@
-import { derived } from "svelte/store";
+import { derived, writable } from "svelte/store";
 
 import { allResources } from "./allResources";
 import { deriveHierarchyTreeOrchestrator } from "./hierarchyTree";
@@ -14,3 +14,11 @@ export const {
   currentEntry: currentResourceDescriptionEntry,
   entries: resourceEntries,
 } = resourceBrowserEntriesOrchestrator;
+
+export type ResourceEntriesFilters = {
+  name: string | null;
+};
+
+export const resourceEntriesfilters = writable<ResourceEntriesFilters>({
+  name: null,
+});

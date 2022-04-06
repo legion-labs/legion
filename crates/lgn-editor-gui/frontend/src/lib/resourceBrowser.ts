@@ -99,7 +99,11 @@ export function createResourcePathId(
   return result;
 }
 
-export function iconFor(entry: Entry<ResourceDescription>) {
+export function iconFor(entry: Entry<ResourceDescription | symbol>) {
+  if (typeof entry.item === "symbol") {
+    return "ic:baseline-folder-open";
+  }
+
   switch (entry.item.type) {
     case "entity": {
       return "ic:outline-token";

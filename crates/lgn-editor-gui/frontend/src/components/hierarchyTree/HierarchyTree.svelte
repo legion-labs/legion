@@ -13,8 +13,7 @@
   type Item = $$Generic<ItemBase>;
 
   type $$Slots = {
-    name: { entry: Entry<Item | symbol> };
-    icon: { entry: Entry<Item> };
+    entry: { entry: Entry<Item | symbol>; isHighlighted: boolean };
   };
 
   const dispatch = createEventDispatcher<{
@@ -32,11 +31,12 @@
 
   export let entries: Entries<Item>;
 
+  /** Overrides the default displayed entries, helpful when filtering */
+  export let displayedEntries: Entries<Item> = entries;
+
   export let highlightedEntry: Entry<Item> | null = null;
 
   export let currentlyRenameEntry: Entry<Item> | null = null;
-
-  export let itemContextMenu: string | null = null;
 
   /** Enables entry renaming */
   export let renamable = false;
@@ -148,12 +148,11 @@
   }}
   bind:this={hierarchyTree}
 >
-  {#each entries.entries as entry (isEntry(entry) ? entry.item.id : entry.item)}
+  {#each displayedEntries.entries as entry (isEntry(entry) ? entry.item.id : entry.item)}
     <HierarchyTreeItem
       {id}
       {entry}
       {highlightedEntry}
-      {itemContextMenu}
       {reorderable}
       {draggable}
       index={entry.index}
@@ -164,11 +163,8 @@
       on:nameEdited={setName}
       on:moved
     >
-      <svelte:fragment slot="icon" let:entry>
-        <slot name="icon" {entry} />
-      </svelte:fragment>
-      <svelte:fragment slot="name" let:entry>
-        <slot name="name" {entry} />
+      <svelte:fragment slot="entry" let:entry let:isHighlighted>
+        <slot name="entry" {entry} {isHighlighted} />
       </svelte:fragment>
     </HierarchyTreeItem>
   {/each}

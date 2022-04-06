@@ -16,6 +16,8 @@
 
   let isFocused = false;
 
+  let tabsContainer: HTMLDivElement | null = null;
+
   function focus() {
     isFocused = true;
   }
@@ -23,10 +25,24 @@
   function blur() {
     isFocused = false;
   }
+
+  function scroll(event: WheelEvent) {
+    if (!tabsContainer) {
+      return;
+    }
+
+    event.preventDefault();
+
+    tabsContainer.scrollLeft += event.deltaY;
+  }
 </script>
 
 <div class="root">
-  <div class="tabs-container">
+  <div
+    class="tabs-container thin-scrollbar"
+    on:wheel={scroll}
+    bind:this={tabsContainer}
+  >
     <div class="tabs">
       {#each tabs as tab, index (key(tab, index))}
         <div
@@ -79,8 +95,7 @@
   }
 
   .tabs-container {
-    /* TODO: Instead of hiding the overflow we should display it properly */
-    @apply flex flex-row flex-shrink-0 h-8 overflow-hidden;
+    @apply flex flex-row flex-shrink-0 h-8 overflow-x-auto;
   }
 
   .tabs {

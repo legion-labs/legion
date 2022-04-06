@@ -253,9 +253,6 @@
       allActiveScenesSubscription();
     };
   });
-
-  $: console.log($tabPayloads);
-  $: console.log($workspace);
 </script>
 
 <slot />

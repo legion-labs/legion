@@ -10,7 +10,6 @@
   import { keyboardNavigationItem as keyboardNavigationItemAction } from "@lgn/web-client/src/actions/keyboardNavigation";
   import { nullable as nullableAction } from "@lgn/web-client/src/lib/action";
 
-  import contextMenuAction from "@/actions/contextMenu";
   import { isEntry } from "@/lib/hierarchyTree";
   import type { Entry, ItemBase } from "@/lib/hierarchyTree";
   import { extension } from "@/lib/path";
@@ -20,8 +19,7 @@
   type Item = $$Generic<ItemBase>;
 
   type $$Slots = {
-    name: { entry: Entry<Item | symbol> };
-    icon: { entry: Entry<Item> };
+    entry: { entry: Entry<Item | symbol>; isHighlighted: boolean };
   };
 
   const dispatch = createEventDispatcher<{
@@ -39,8 +37,6 @@
   export let highlightedEntry: Entry<Item> | null = null;
 
   export let currentlyRenameEntry: Entry<Item> | null = null;
-
-  export let itemContextMenu: string | null = null;
 
   export let reorderable: boolean;
 
@@ -88,8 +84,6 @@
   const draggableAction = nullableAction(rawDraggableAction);
 
   const dropzone = nullableAction(dropzoneAction);
-
-  const contextMenu = nullableAction(contextMenuAction);
 
   const keyboardNavigationItem = nullableAction(keyboardNavigationItemAction);
 
@@ -187,10 +181,8 @@
     class="name"
     class:disabled={isDisabled}
     class:font-semibold={entry.subEntries.length}
-    class:lg-space={mode === "view"}
     class:highlighted-view={isHighlighted && mode === "view"}
     on:mousedown={highlight}
-    use:contextMenu={isDisabled ? null : itemContextMenu}
     use:draggableAction={!isDisabled && reorderable
       ? { item: entry, type: moveInnerEntryType }
       : null}
@@ -198,31 +190,20 @@
       ? { item: entry, type: draggable }
       : null}
   >
-    {#if entry.subEntries.length > 0}
-      <div class="icon-container" on:click={toggleExpanded}>
-        <div class="folder-icon" class:expanded={isExpanded}>
-          <Icon icon="ic:baseline-chevron-right" />
-        </div>
-        <div class="icon">
-          {#if !isEntry(entry)}
-            <Icon class="w-full h-full" icon="ic:baseline-folder-open" />
-          {:else}
-            <slot name="icon" {entry} />
-          {/if}
-        </div>
-      </div>
-    {:else}
-      <div class="icon">
-        {#if !isEntry(entry)}
-          <Icon class="w-full h-full" icon="ic:baseline-folder-open" />
-        {:else}
-          <slot name="icon" {entry} />
-        {/if}
-      </div>
-    {/if}
-    <div class="name">
+    <div class="entry">
       {#if mode === "view"}
-        <slot name="name" {entry} />
+        {#if entry.subEntries.length > 0}
+          <div
+            class="folder-icon"
+            on:click={toggleExpanded}
+            class:expanded={isExpanded}
+          >
+            <Icon icon="ic:baseline-chevron-right" />
+          </div>
+        {/if}
+        <div class="h-full w-full">
+          <slot name="entry" {entry} {isHighlighted} />
+        </div>
       {:else}
         <form
           on:submit|stopPropagation|preventDefault={renameEntry}
@@ -244,7 +225,6 @@
         <svelte:self
           {id}
           {highlightedEntry}
-          {itemContextMenu}
           {reorderable}
           {draggable}
           index={subEntry.index}
@@ -255,9 +235,9 @@
           on:nameEdited
           on:moved
           let:entry
+          let:isHighlighted
         >
-          <slot name="icon" slot="icon" {entry} />
-          <slot name="name" slot="name" {entry} />
+          <slot name="entry" slot="entry" {entry} {isHighlighted} />
         </svelte:self>
       </div>
     {/each}
@@ -281,20 +261,12 @@
     @apply border border-dotted border-orange-700 bg-orange-700 bg-opacity-10;
   }
 
-  .name.lg-space {
-    @apply space-x-1;
-  }
-
-  .icon-container {
-    @apply flex items-center space-x-1;
-  }
-
-  .icon {
-    @apply flex items-center h-5 w-5 text-orange-700 opacity-50;
+  .entry {
+    @apply flex flex-row items-center h-full w-full space-x-1;
   }
 
   .folder-icon {
-    @apply flex items-center h-2.5 w-2.5 transition-all duration-150 cursor-pointer;
+    @apply flex items-center h-4 w-4 transition-all duration-150 cursor-pointer;
   }
 
   .folder-icon.expanded {

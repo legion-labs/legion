@@ -163,14 +163,16 @@ export default buildContextMenu<ContextMenuEntryRecord>();
       throw new Error("`window` object not attached to `event`");
     }
 
-    const entriesNb = entries.filter((entry) => entry.type === "item").length;
+    const entriesLength = entries.filter(
+      (entry) => entry.type === "item"
+    ).length;
 
     const separatorsNb = entries.filter(
       (entry) => entry.type === "separator"
     ).length;
 
     const heightPx =
-      entriesNb * entryHeightPx + separatorsNb * separatorHeightPx;
+      entriesLength * entryHeightPx + separatorsNb * separatorHeightPx;
 
     const x =
       view.innerWidth - clientX <= widthPx
