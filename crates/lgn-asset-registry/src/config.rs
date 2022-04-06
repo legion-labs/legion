@@ -2,56 +2,19 @@ use std::path::{Path, PathBuf};
 
 use lgn_data_runtime::ResourceTypeAndId;
 
-pub struct DataBuildConfig {
-    pub(crate) build_bin: PathBuf,
-    pub(crate) output_db_addr: String,
-    pub(crate) project: PathBuf,
-}
-
-impl DataBuildConfig {
-    pub fn new(
-        build_bin: impl AsRef<Path>,
-        output_db_addr: String,
-        project: impl AsRef<Path>,
-    ) -> Self {
-        Self {
-            build_bin: build_bin.as_ref().to_path_buf(),
-            output_db_addr,
-            project: project.as_ref().to_path_buf(),
-        }
-    }
-}
-
 pub struct AssetRegistrySettings {
-    pub(crate) game_manifest: PathBuf,
-    pub(crate) databuild_config: Option<DataBuildConfig>,
+    pub(crate) game_manifest: Option<PathBuf>,
     pub(crate) assets_to_load: Vec<ResourceTypeAndId>,
 }
 
 impl AssetRegistrySettings {
-    pub fn new(game_manifest: impl AsRef<Path>, assets_to_load: Vec<ResourceTypeAndId>) -> Self {
-        Self {
-            game_manifest: game_manifest.as_ref().to_owned(),
-            assets_to_load,
-            databuild_config: None,
-        }
-    }
-
-    /// Create config that support rebuilding resources upon reload.
-    /// Build index is assumed to be under the `content_store_addr` location.
-    pub fn new_with_rebuild(
-        output_db_addr: String,
-        game_manifest: impl AsRef<Path>,
+    pub fn new(
+        game_manifest: Option<impl AsRef<Path>>,
         assets_to_load: Vec<ResourceTypeAndId>,
-        project: impl AsRef<Path>,
-        build_bin: impl AsRef<Path>,
     ) -> Self {
-        let databuild_config = { Some(DataBuildConfig::new(build_bin, output_db_addr, project)) };
-
         Self {
-            game_manifest: game_manifest.as_ref().to_owned(),
+            game_manifest: game_manifest.map(|path| path.as_ref().to_owned()),
             assets_to_load,
-            databuild_config,
         }
     }
 }
@@ -65,9 +28,8 @@ impl Default for AssetRegistrySettings {
         .unwrap();
 
         Self {
-            game_manifest: project_folder.join("runtime").join("game.manifest"),
+            game_manifest: Some(project_folder.join("runtime").join("game.manifest")),
             assets_to_load: vec![],
-            databuild_config: None,
         }
     }
 }

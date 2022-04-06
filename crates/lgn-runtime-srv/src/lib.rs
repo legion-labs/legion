@@ -13,13 +13,17 @@ use clap::Parser;
 use generic_data::plugin::GenericDataPlugin;
 use lgn_app::prelude::App;
 #[cfg(not(feature = "standalone"))]
-use lgn_app::prelude::StartupStage;
+use lgn_app::{prelude::StartupStage, CoreStage};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
+#[cfg(not(feature = "standalone"))]
+use lgn_asset_registry::{LoadAssetEvent, LoadManifestEvent};
 use lgn_async::AsyncPlugin;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
 #[cfg(not(feature = "standalone"))]
-use lgn_ecs::prelude::{ExclusiveSystemDescriptorCoercion, IntoExclusiveSystem, Res, ResMut};
+use lgn_ecs::prelude::{
+    EventWriter, ExclusiveSystemDescriptorCoercion, IntoExclusiveSystem, Res, World,
+};
 use lgn_graphics_data::GraphicsPlugin;
 use lgn_graphics_renderer::RendererPlugin;
 use lgn_hierarchy::prelude::HierarchyPlugin;
@@ -30,8 +34,6 @@ use lgn_scripting::ScriptingPlugin;
 use lgn_tracing::prelude::span_fn;
 use lgn_transform::prelude::TransformPlugin;
 use sample_data::SampleDataPlugin;
-#[cfg(not(feature = "standalone"))]
-use tokio::sync::broadcast;
 
 #[cfg(not(feature = "standalone"))]
 mod grpc;
@@ -73,32 +75,40 @@ pub fn build_runtime(
 ) -> App {
     let args = Args::parse();
 
-    let project_dir = {
-        if let Some(params) = args.project {
-            PathBuf::from(params)
-        } else if let Some(key) = project_dir_setting {
-            lgn_config::get_absolute_path_or(key, PathBuf::from(fallback_project_dir)).unwrap()
-        } else {
-            PathBuf::from(fallback_project_dir)
-        }
-    };
+    let game_manifest = if cfg!(feature = "standalone") {
+        let project_dir = {
+            if let Some(params) = args.project {
+                PathBuf::from(params)
+            } else if let Some(key) = project_dir_setting {
+                lgn_config::get_absolute_path_or(key, PathBuf::from(fallback_project_dir)).unwrap()
+            } else {
+                PathBuf::from(fallback_project_dir)
+            }
+        };
 
-    let game_manifest = args.manifest.map_or_else(
-        || project_dir.join("runtime").join("game.manifest"),
-        PathBuf::from,
-    );
+        Some(args.manifest.map_or_else(
+            || project_dir.join("runtime").join("game.manifest"),
+            PathBuf::from,
+        ))
+    } else {
+        None
+    };
 
     let mut assets_to_load = Vec::<ResourceTypeAndId>::new();
 
-    // default root object is in sample data
-    // /world/sample_1.ent
+    let root_asset = if cfg!(feature = "standalone") {
+        // default root object is in sample data
+        // /world/sample_1.ent
 
-    let root_asset = args
-        .root
-        .as_deref()
-        .unwrap_or(fallback_root_asset)
-        .parse::<ResourceTypeAndId>()
-        .ok();
+        args.root
+            .as_deref()
+            .unwrap_or(fallback_root_asset)
+            .parse::<ResourceTypeAndId>()
+            .ok()
+    } else {
+        None
+    };
+
     if let Some(root_asset) = root_asset {
         assets_to_load.push(root_asset);
     }
@@ -178,16 +188,13 @@ pub fn build_runtime(
         .add_plugin(GRPCPlugin::default())
         .add_plugin(StreamerPlugin::default());
 
-        let (command_sender, command_receiver) = broadcast::channel::<RuntimeServerCommand>(1_000);
-
-        app.insert_resource(command_sender)
-            .insert_resource(command_receiver)
-            .add_startup_system_to_stage(
-                StartupStage::PostStartup,
-                setup_runtime_grpc
-                    .exclusive_system()
-                    .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
-            );
+        app.add_startup_system_to_stage(
+            StartupStage::PostStartup,
+            setup_runtime_grpc
+                .exclusive_system()
+                .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
+        )
+        .add_system_to_stage(CoreStage::PreUpdate, rebroadcast_commands);
     }
 
     app
@@ -199,13 +206,37 @@ pub fn start_runtime(app: &mut App) {
 }
 
 #[cfg(not(feature = "standalone"))]
-fn setup_runtime_grpc(
-    mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
-    command_sender: Res<'_, broadcast::Sender<RuntimeServerCommand>>,
-) {
-    let grpc_server = GRPCServer::new(command_sender.clone());
+fn setup_runtime_grpc(world: &mut World) {
+    let (command_sender, command_receiver) = crossbeam_channel::unbounded::<RuntimeServerCommand>();
 
+    let grpc_server = GRPCServer::new(command_sender);
+    let mut grpc_settings = world
+        .get_resource_mut::<lgn_grpc::GRPCPluginSettings>()
+        .expect("cannot retrieve resource GRPCPluginSettings from world");
     grpc_settings.register_service(grpc_server.service());
 
-    drop(command_sender);
+    world.insert_resource(command_receiver);
+}
+
+#[cfg(not(feature = "standalone"))]
+fn rebroadcast_commands(
+    command_receiver: Res<'_, crossbeam_channel::Receiver<RuntimeServerCommand>>,
+    mut load_manifest_events: EventWriter<'_, '_, LoadManifestEvent>,
+    mut load_root_asset_events: EventWriter<'_, '_, LoadAssetEvent>,
+) {
+    while let Ok(command) = command_receiver.try_recv() {
+        match command {
+            RuntimeServerCommand::LoadManifest(manifest_id) => {
+                load_manifest_events.send(LoadManifestEvent { manifest_id });
+            }
+            RuntimeServerCommand::LoadRootAsset(root_id) => {
+                load_root_asset_events.send(LoadAssetEvent { asset_id: root_id });
+            }
+            RuntimeServerCommand::Pause => {
+                //TODO
+            }
+        }
+    }
+
+    drop(command_receiver);
 }

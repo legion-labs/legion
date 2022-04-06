@@ -11,6 +11,7 @@ use std::{
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use flurry::TryInsertError;
+use lgn_content_store2::ChunkIdentifier;
 use lgn_tracing::info;
 use serde::{Deserialize, Serialize};
 
@@ -49,6 +50,7 @@ pub(crate) enum LoaderRequest {
     Reload(HandleUntyped),
     Unload(ResourceTypeAndId),
     Terminate,
+    LoadManifest(ChunkIdentifier),
 }
 
 /// State of a load request in progress.
@@ -209,6 +211,12 @@ impl AssetLoaderStub {
     pub(crate) fn unload(&self, type_id: ResourceTypeAndId) {
         self.request_tx
             .send(LoaderRequest::Unload(type_id))
+            .unwrap();
+    }
+
+    pub(crate) fn load_manifest(&self, manifest_id: &ChunkIdentifier) {
+        self.request_tx
+            .send(LoaderRequest::LoadManifest(manifest_id.clone()))
             .unwrap();
     }
 }
@@ -418,6 +426,12 @@ impl AssetLoaderIO {
             .unwrap();
     }
 
+    async fn process_load_manifest(&mut self, manifest_id: &ChunkIdentifier) {
+        for device in &mut self.devices {
+            device.reload_manifest(manifest_id).await;
+        }
+    }
+
     #[allow(clippy::needless_pass_by_value)]
     async fn process_request(
         &mut self,
@@ -437,6 +451,10 @@ impl AssetLoaderIO {
             }
             LoaderRequest::Terminate => {
                 self.request_rx = None;
+                Ok(())
+            }
+            LoaderRequest::LoadManifest(manifest_id) => {
+                self.process_load_manifest(&manifest_id).await;
                 Ok(())
             }
         }
@@ -694,7 +712,7 @@ mod tests {
         };
 
         let (loader, mut io) = create_loader(vec![Box::new(vfs::CasDevice::new(
-            manifest,
+            Some(manifest),
             Arc::clone(&data_content_provider),
         ))]);
         io.register_loader(
@@ -780,7 +798,7 @@ mod tests {
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
             vec![Box::new(vfs::CasDevice::new(
-                manifest,
+                Some(manifest),
                 data_content_provider,
             ))],
             request_tx.clone(),
@@ -847,7 +865,7 @@ mod tests {
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
             vec![Box::new(vfs::CasDevice::new(
-                manifest,
+                Some(manifest),
                 data_content_provider,
             ))],
             request_tx.clone(),
@@ -918,7 +936,7 @@ mod tests {
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
             vec![Box::new(vfs::CasDevice::new(
-                manifest,
+                Some(manifest),
                 data_content_provider,
             ))],
             request_tx.clone(),
@@ -1013,7 +1031,7 @@ mod tests {
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
             vec![Box::new(vfs::CasDevice::new(
-                manifest,
+                Some(manifest),
                 Arc::clone(&data_content_provider),
             ))],
             request_tx.clone(),

@@ -7,6 +7,7 @@ mod asset_entities;
 mod asset_handles;
 mod config;
 mod errors;
+mod events;
 mod loading_states;
 
 use std::{path::Path, str::FromStr, sync::Arc};
@@ -23,8 +24,9 @@ use lgn_tracing::error;
 
 pub use crate::{
     asset_entities::AssetToEntityMap,
-    config::{AssetRegistrySettings, DataBuildConfig},
+    config::AssetRegistrySettings,
     errors::{Error, Result},
+    events::{LoadAssetEvent, LoadManifestEvent},
 };
 use crate::{
     asset_handles::AssetHandles,
@@ -53,7 +55,11 @@ impl Plugin for AssetRegistryPlugin {
             .add_system(Self::update_registry)
             .add_system(Self::update_assets)
             .add_system(Self::handle_load_events)
-            .add_event::<AssetRegistryEvent>();
+            .add_system(Self::handle_load_manifest_events)
+            .add_system(Self::handle_load_asset_events)
+            .add_event::<AssetRegistryEvent>()
+            .add_event::<LoadManifestEvent>()
+            .add_event::<LoadAssetEvent>();
     }
 }
 
@@ -67,42 +73,42 @@ impl AssetRegistryPlugin {
         );
 
         let config = world.resource::<AssetRegistrySettings>();
-        let manifest = {
-            let async_rt = world.resource::<TokioAsyncRuntime>();
-            let manifest = async_rt.block_on(async {
-                Self::load_manifest_from_path(&config.game_manifest, &data_content_provider).await
-            });
-            match manifest {
-                Ok(manifest) => manifest,
-                Err(error) => {
-                    error!("error reading manifest: {}", error);
-                    Manifest::default()
+        let manifest: Option<Manifest> = if let Some(game_manifest) = &config.game_manifest {
+            let manifest = {
+                let async_rt = world.resource::<TokioAsyncRuntime>();
+                let manifest = async_rt.block_on(async {
+                    Self::load_manifest_from_path(&game_manifest, &data_content_provider).await
+                });
+                match manifest {
+                    Ok(manifest) => manifest,
+                    Err(error) => {
+                        error!("error reading manifest: {}", error);
+                        Manifest::default()
+                    }
                 }
-            }
+            };
+
+            world.insert_resource(manifest.clone());
+            Some(manifest)
+        } else {
+            None
         };
 
         let mut config = world.resource_mut::<AssetRegistrySettings>();
         if config.assets_to_load.is_empty() {
-            config.assets_to_load = manifest.resources();
+            if let Some(manifest) = &manifest {
+                config.assets_to_load = manifest.resources();
+            }
         }
 
         let mut registry_options = AssetRegistryOptions::new();
-
-        if let Some(databuild_config) = &config.databuild_config {
-            registry_options = registry_options.add_device_build(
-                data_content_provider,
-                manifest.clone(),
-                &databuild_config.build_bin,
-                databuild_config.output_db_addr.clone(),
-                &databuild_config.project,
-                false,
-            );
+        if let Some(manifest) = manifest {
+            registry_options = registry_options.add_device_cas(data_content_provider, manifest);
         } else {
             registry_options =
-                registry_options.add_device_cas(data_content_provider, manifest.clone());
+                registry_options.add_device_cas_with_delayed_manifest(data_content_provider);
         }
 
-        world.insert_resource(manifest);
         world.insert_non_send_resource(registry_options);
     }
 
@@ -126,16 +132,10 @@ impl AssetRegistryPlugin {
         config: ResMut<'_, AssetRegistrySettings>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         mut asset_handles: ResMut<'_, AssetHandles>,
-        manifest: Res<'_, Manifest>,
         registry: Res<'_, Arc<AssetRegistry>>,
         mut commands: Commands<'_, '_>,
     ) {
-        let mut assets_to_load = config.assets_to_load.clone();
-        if assets_to_load.is_empty() {
-            assets_to_load.extend(manifest.resources());
-        };
-
-        for asset_id in assets_to_load {
+        for asset_id in config.assets_to_load.iter().copied() {
             asset_loading_states.insert(asset_id, LoadingState::Pending);
             asset_handles.insert(asset_id, registry.load_untyped(asset_id));
         }
@@ -215,6 +215,31 @@ impl AssetRegistryPlugin {
         }
 
         drop(load_events_rx);
+    }
+
+    fn handle_load_manifest_events(
+        mut events: EventReader<'_, '_, LoadManifestEvent>,
+        registry: Res<'_, Arc<AssetRegistry>>,
+    ) {
+        for event in events.iter() {
+            registry.load_manifest(&event.manifest_id);
+        }
+
+        drop(registry);
+    }
+
+    fn handle_load_asset_events(
+        mut events: EventReader<'_, '_, LoadAssetEvent>,
+        registry: Res<'_, Arc<AssetRegistry>>,
+        mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
+        mut asset_handles: ResMut<'_, AssetHandles>,
+    ) {
+        for event in events.iter() {
+            asset_loading_states.insert(event.asset_id, LoadingState::Pending);
+            asset_handles.insert(event.asset_id, registry.load_untyped(event.asset_id));
+        }
+
+        drop(registry);
     }
 
     async fn load_manifest_from_path(

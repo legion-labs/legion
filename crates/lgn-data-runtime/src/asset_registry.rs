@@ -1,5 +1,3 @@
-use lgn_content_store2::ContentProvider;
-use lgn_ecs::schedule::SystemLabel;
 use std::{
     any::Any,
     cell::Cell,
@@ -8,6 +6,9 @@ use std::{
     sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
     time::Duration,
 };
+
+use lgn_content_store2::{ChunkIdentifier, ContentProvider};
+use lgn_ecs::schedule::SystemLabel;
 
 use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
@@ -118,7 +119,19 @@ impl AssetRegistryOptions {
         manifest: Manifest,
     ) -> Self {
         self.devices
-            .push(Box::new(vfs::CasDevice::new(manifest, content_store)));
+            .push(Box::new(vfs::CasDevice::new(Some(manifest), content_store)));
+        self
+    }
+
+    /// Specifying `content-addressable storage device` will mount a device that
+    /// allows to read resources from a specified content store.
+    /// It must subsequently be provided with a manifest to be able to fetch resources.
+    pub fn add_device_cas_with_delayed_manifest(
+        mut self,
+        content_store: Arc<Box<dyn ContentProvider + Send + Sync>>,
+    ) -> Self {
+        self.devices
+            .push(Box::new(vfs::CasDevice::new(None, content_store)));
         self
     }
 
@@ -433,6 +446,11 @@ impl AssetRegistry {
         let (sender, receiver) = tokio::sync::mpsc::unbounded_channel::<ResourceLoadEvent>();
         self.write_inner().load_event_senders.push(sender);
         receiver
+    }
+
+    /// Delayed manifest load, will look up in all devices
+    pub fn load_manifest(&self, manifest_id: &ChunkIdentifier) {
+        self.write_inner().loader.load_manifest(manifest_id);
     }
 }
 

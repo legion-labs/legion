@@ -100,7 +100,7 @@ fn main() {
         .unwrap();
 
         let asset_registry_settings = AssetRegistrySettings::new(
-            project_folder.join("runtime").join("game.manifest"),
+            Some(project_folder.join("runtime").join("game.manifest")),
             root_asset.into_iter().collect::<Vec<_>>(),
         );
 
