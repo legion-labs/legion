@@ -107,7 +107,8 @@ pub struct ResourcePathId {
 
 implement_primitive_type_def!(
     ResourcePathId,
-    Err(ReflectionError::UnsupportedDefault("ResourcePathId"))
+    ResourcePathId::from_str("(0000000000000001,11111111-1111-1111-1111-111111111111)")
+        .map_err(|_err| ReflectionError::InvalidFieldType("Invalid default ResourcePathId".into()))
 );
 
 impl From<ResourceTypeAndId> for ResourcePathId {
