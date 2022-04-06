@@ -810,7 +810,10 @@ impl ResourceBrowser for ResourceBrowserRPC {
         {
             warn!("Failed to OpenScene for {}: {}", resource_id, err);
         }
-        Ok(Response::new(OpenSceneResponse {}))
+        let manifest_id = transaction_manager.get_runtime_manifest_id().await;
+        Ok(Response::new(OpenSceneResponse {
+            manifest_id: manifest_id.to_string(),
+        }))
     }
 
     /// Close a Scene

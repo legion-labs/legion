@@ -20,7 +20,7 @@ use lgn_data_runtime::{
     AssetRegistryScheduling, ResourceLoadEvent,
 };
 use lgn_ecs::prelude::*;
-use lgn_tracing::error;
+use lgn_tracing::{error, info};
 
 pub use crate::{
     asset_entities::AssetToEntityMap,
@@ -222,6 +222,10 @@ impl AssetRegistryPlugin {
         registry: Res<'_, Arc<AssetRegistry>>,
     ) {
         for event in events.iter() {
+            info!(
+                "received request to load manifest \"{}\"",
+                &event.manifest_id
+            );
             registry.load_manifest(&event.manifest_id);
         }
 
@@ -235,6 +239,7 @@ impl AssetRegistryPlugin {
         mut asset_handles: ResMut<'_, AssetHandles>,
     ) {
         for event in events.iter() {
+            info!("received request to load asset \"{}\"", &event.asset_id);
             asset_loading_states.insert(event.asset_id, LoadingState::Pending);
             asset_handles.insert(event.asset_id, registry.load_untyped(event.asset_id));
         }

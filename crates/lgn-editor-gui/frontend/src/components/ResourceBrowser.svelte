@@ -21,6 +21,8 @@
     renameResource,
     reparentResources,
     streamFileUpload,
+    loadRuntimeManifest,
+    loadRuntimeRootAsset,
   } from "@/api";
   import { resourceDragAndDropType } from "@/constants";
   import type { Entry } from "@/lib/hierarchyTree";
@@ -243,9 +245,26 @@
       case "openScene": {
         if ($currentResourceDescriptionEntry) {
           try {
-            await openScene({ id: $currentResourceDescriptionEntry?.item.id });
+            let response = await openScene({
+              id: $currentResourceDescriptionEntry?.item.id,
+            });
 
             await fetchAllActiveScenes();
+
+            try {
+              await loadRuntimeManifest({
+                manifestId: response.manifestId,
+              });
+              await loadRuntimeRootAsset({
+                rootAssetId: $currentResourceDescriptionEntry?.item.id,
+              });
+            } catch (error) {
+              notifications.push(Symbol(), {
+                title: "Runtime Server",
+                message: displayError(error),
+                type: "error",
+              });
+            }
           } catch (error) {
             notifications.push(Symbol(), {
               title: "Scene Explorer",

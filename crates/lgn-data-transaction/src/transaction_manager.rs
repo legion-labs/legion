@@ -4,6 +4,7 @@ use std::{
     sync::Arc,
 };
 
+use lgn_content_store2::ChunkIdentifier;
 use lgn_data_offline::resource::{
     Project, ResourceHandles, ResourcePathName, ResourceRegistry, ResourceRegistryError,
 };
@@ -234,5 +235,10 @@ impl TransactionManager {
             self.commited_transactions.push(transaction);
         }
         Ok(())
+    }
+
+    /// Retrieve the identifier for the current runtime manifest
+    pub async fn get_runtime_manifest_id(&self) -> ChunkIdentifier {
+        self.build_manager.lock().await.get_manifest_id().clone()
     }
 }
