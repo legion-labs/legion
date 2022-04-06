@@ -116,7 +116,7 @@ impl Config {
     }
 
     fn default_build_output_database_address() -> String {
-        "temp".to_string()
+        "target/build_db".to_string()
     }
 }
 
