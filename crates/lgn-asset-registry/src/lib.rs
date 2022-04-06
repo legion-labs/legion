@@ -7,6 +7,7 @@ mod asset_entities;
 mod asset_handles;
 mod config;
 mod errors;
+mod events;
 mod loading_states;
 
 use std::{path::Path, str::FromStr, sync::Arc};
@@ -25,6 +26,7 @@ pub use crate::{
     asset_entities::AssetToEntityMap,
     config::AssetRegistrySettings,
     errors::{Error, Result},
+    events::{LoadAssetEvent, LoadManifestEvent},
 };
 use crate::{
     asset_handles::AssetHandles,
@@ -53,7 +55,11 @@ impl Plugin for AssetRegistryPlugin {
             .add_system(Self::update_registry)
             .add_system(Self::update_assets)
             .add_system(Self::handle_load_events)
-            .add_event::<AssetRegistryEvent>();
+            .add_system(Self::handle_load_manifest_events)
+            .add_system(Self::handle_load_asset_events)
+            .add_event::<AssetRegistryEvent>()
+            .add_event::<LoadManifestEvent>()
+            .add_event::<LoadAssetEvent>();
     }
 }
 
@@ -209,6 +215,31 @@ impl AssetRegistryPlugin {
         }
 
         drop(load_events_rx);
+    }
+
+    fn handle_load_manifest_events(
+        mut events: EventReader<'_, '_, LoadManifestEvent>,
+        registry: Res<'_, Arc<AssetRegistry>>,
+    ) {
+        for event in events.iter() {
+            registry.load_manifest(&event.manifest_id);
+        }
+
+        drop(registry);
+    }
+
+    fn handle_load_asset_events(
+        mut events: EventReader<'_, '_, LoadAssetEvent>,
+        registry: Res<'_, Arc<AssetRegistry>>,
+        mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
+        mut asset_handles: ResMut<'_, AssetHandles>,
+    ) {
+        for event in events.iter() {
+            asset_loading_states.insert(event.asset_id, LoadingState::Pending);
+            asset_handles.insert(event.asset_id, registry.load_untyped(event.asset_id));
+        }
+
+        drop(registry);
     }
 
     async fn load_manifest_from_path(

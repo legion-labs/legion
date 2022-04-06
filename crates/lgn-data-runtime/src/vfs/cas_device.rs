@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use lgn_content_store2::{ContentProvider, ContentReaderExt};
+use lgn_content_store2::{ChunkIdentifier, Chunker, ContentProvider, ContentReaderExt};
+use lgn_tracing::error;
 
 use super::Device;
 use crate::{manifest::Manifest, ResourceTypeAndId};
@@ -48,5 +49,15 @@ impl Device for CasDevice {
 
     async fn reload(&self, _: ResourceTypeAndId) -> Option<Vec<u8>> {
         None
+    }
+
+    async fn reload_manifest(&mut self, manifest_id: &ChunkIdentifier) {
+        let chunker = Chunker::default();
+        if let Ok(content) = chunker.read_chunk(&self.content_store, manifest_id).await {
+            match serde_json::from_reader::<_, Manifest>(content.as_slice()) {
+                Ok(manifest) => self.manifest = Some(manifest),
+                Err(error) => error!("failed to read manifest contents: {}", error),
+            }
+        }
     }
 }

@@ -11,10 +11,12 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use generic_data::plugin::GenericDataPlugin;
+use lgn_app::prelude::App;
 #[cfg(not(feature = "standalone"))]
-use lgn_app::prelude::StartupStage;
-use lgn_app::{prelude::App, CoreStage};
+use lgn_app::{prelude::StartupStage, CoreStage};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
+#[cfg(not(feature = "standalone"))]
+use lgn_asset_registry::{LoadAssetEvent, LoadManifestEvent};
 use lgn_async::AsyncPlugin;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
@@ -186,14 +188,13 @@ pub fn build_runtime(
         .add_plugin(GRPCPlugin::default())
         .add_plugin(StreamerPlugin::default());
 
-        app.add_event::<RuntimeServerCommand>()
-            .add_startup_system_to_stage(
-                StartupStage::PostStartup,
-                setup_runtime_grpc
-                    .exclusive_system()
-                    .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
-            )
-            .add_system_to_stage(CoreStage::PreUpdate, rebroadcast_commands);
+        app.add_startup_system_to_stage(
+            StartupStage::PostStartup,
+            setup_runtime_grpc
+                .exclusive_system()
+                .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
+        )
+        .add_system_to_stage(CoreStage::PreUpdate, rebroadcast_commands);
     }
 
     app
@@ -220,10 +221,21 @@ fn setup_runtime_grpc(world: &mut World) {
 #[cfg(not(feature = "standalone"))]
 fn rebroadcast_commands(
     command_receiver: Res<'_, crossbeam_channel::Receiver<RuntimeServerCommand>>,
-    mut command_event_writer: EventWriter<'_, '_, RuntimeServerCommand>,
+    mut load_manifest_events: EventWriter<'_, '_, LoadManifestEvent>,
+    mut load_root_asset_events: EventWriter<'_, '_, LoadAssetEvent>,
 ) {
     while let Ok(command) = command_receiver.try_recv() {
-        command_event_writer.send(command);
+        match command {
+            RuntimeServerCommand::LoadManifest(manifest_id) => {
+                load_manifest_events.send(LoadManifestEvent { manifest_id });
+            }
+            RuntimeServerCommand::LoadRootAsset(root_id) => {
+                load_root_asset_events.send(LoadAssetEvent { asset_id: root_id });
+            }
+            RuntimeServerCommand::Pause => {
+                //TODO
+            }
+        }
     }
 
     drop(command_receiver);
