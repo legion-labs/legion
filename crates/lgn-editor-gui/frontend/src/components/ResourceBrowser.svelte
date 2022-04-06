@@ -16,13 +16,13 @@
     cloneResource,
     createResource,
     initFileUpload,
+    loadRuntimeManifest,
+    loadRuntimeRootAsset,
     openScene,
     removeResource,
     renameResource,
     reparentResources,
     streamFileUpload,
-    loadRuntimeManifest,
-    loadRuntimeRootAsset,
   } from "@/api";
   import { resourceDragAndDropType } from "@/constants";
   import type { Entry } from "@/lib/hierarchyTree";
