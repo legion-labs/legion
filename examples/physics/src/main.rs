@@ -167,11 +167,6 @@ async fn main() -> anyhow::Result<()> {
         build_manager.build_all_derived(id, &project).await.unwrap();
     }
 
-    let manifest_id = build_manager
-        .write_runtime_manifest()
-        .await
-        .expect("failed to write manifest to cas");
-
     let runtime_dir = project_dir.join("runtime");
     std::fs::create_dir(&runtime_dir).unwrap();
     let runtime_manifest_path = runtime_dir.join("game.manifest");
@@ -182,7 +177,8 @@ async fn main() -> anyhow::Result<()> {
         .truncate(true)
         .open(runtime_manifest_path)
         .expect("open file");
-    write!(file, "{}", manifest_id).expect("failed to write manifest id to file");
+    write!(file, "{}", build_manager.get_manifest_id())
+        .expect("failed to write manifest id to file");
     Ok(())
 }
 

@@ -11,6 +11,7 @@ pub struct BuildManager {
     compile_env: CompilationEnv,
     runtime_manifest: Manifest,
     intermediate_manifest: Manifest,
+    runtime_manifest_id: ChunkIdentifier,
 }
 
 impl BuildManager {
@@ -28,11 +29,18 @@ impl BuildManager {
         };
 
         let build = options.open_or_create(project).await?;
+
+        let runtime_manifest_id = build
+            .write_manifest(&runtime_manifest)
+            .await
+            .expect("failed to serialize runtime manifest");
+
         Ok(Self {
             build,
             compile_env: editor_env,
             runtime_manifest,
             intermediate_manifest,
+            runtime_manifest_id,
         })
     }
 
@@ -86,6 +94,13 @@ impl BuildManager {
                 );
 
                 self.runtime_manifest.extend(rt_manifest);
+
+                self.runtime_manifest_id = self
+                    .build
+                    .write_manifest(&self.runtime_manifest)
+                    .await
+                    .expect("failed to serialize manifest id");
+
                 Ok((derived_id, changed_resources))
             }
             Err(e) => {
@@ -100,6 +115,11 @@ impl BuildManager {
         &self.runtime_manifest
     }
 
+    /// Runtime manifest identifier
+    pub fn get_manifest_id(&self) -> &ChunkIdentifier {
+        &self.runtime_manifest_id
+    }
+
     /// Return the Offline source from a runtime id
     pub async fn resolve_offline_id(
         &self,
@@ -110,10 +130,5 @@ impl BuildManager {
             .await
             .unwrap()
             .map(|path| path.source_resource())
-    }
-
-    /// Write contents of runtime manifest to data content provider, and return its identifier
-    pub async fn write_runtime_manifest(&self) -> Result<ChunkIdentifier, Error> {
-        self.build.write_manifest(&self.runtime_manifest).await
     }
 }
