@@ -61,7 +61,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
         "label": "Run Clippy",
     }));
     let mut configurations = vec![];
-    let toolchain = toolchain_location().unwrap_or_else(|_| "not_found".into());
+    let source_map = toolchain_source_map().ok();
     for package in bin_packages {
         for target in package.build_targets() {
             if !matches!(target.id(), BuildTargetId::Binary(_))
@@ -136,13 +136,17 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
                 config["sourceLanguages"] = json!(["rust"]);
                 config["stopOnEntry"] = json!(false);
                 config["terminal"] = json!("integrated");
+                if let Some(source_map) = source_map.clone() {
+                    config["sourceMap"] = json!({ source_map.0: source_map.1 });
+                }
             } else {
-                config["sourceFileMap"] =
-                    json!({ "/rustc/db9d1b20bba1968c1ec1fc49616d4742c1725b4b": toolchain });
                 config["symbolSearchPath"] = json!("https://msdl.microsoft.com/download/symbols");
                 config["visualizerFile"] = json!("${workspaceFolder}/.vscode/legionlabs.natvis");
                 config["stopAtEntry"] = json!(false);
                 config["console"] = json!("integratedTerminal");
+                if let Some(source_map) = source_map.clone() {
+                    config["sourceFileMap"] = json!({ source_map.0: source_map.1 });
+                }
             }
             configurations.push(config);
         }
@@ -252,7 +256,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
     Ok(())
 }
 
-fn toolchain_location() -> Result<String> {
+fn toolchain_source_map() -> Result<(String, String)> {
     let mut cmd = Command::new("rustc");
     cmd.args(&["--print", "sysroot"]);
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
@@ -263,18 +267,47 @@ fn toolchain_location() -> Result<String> {
         let output = String::from_utf8_lossy(&output.stdout);
         let path = Utf8Path::new(output.trim_end_matches('\n'));
         let mut components = path.components();
-        // removing the root
-        components.next();
-        components.next();
-        let mut path = String::new();
-        for component in components {
-            let component = component.as_str();
-            path.push('/');
-            path.push_str(component);
+        if cfg!(windows) {
+            // removing the root on windows otherwise sourcemap fails
+            let mut toolchain_source_path = String::new();
+            components.next();
+            components.next();
+            for component in components {
+                let component = component.as_str();
+                toolchain_source_path.push('/');
+                toolchain_source_path.push_str(component);
+            }
+            toolchain_source_path.push_str("/lib/rustlib/src/rust");
+            Ok((
+                "/rustc/db9d1b20bba1968c1ec1fc49616d4742c1725b4b".to_string(),
+                toolchain_source_path,
+            ))
+        } else {
+            // we're going to open rustc and look for a path of the form:
+            // /rustc/db9d1b20bba1968c1ec1fc49616d4742c1725b4b/
+            let rustc = path.join("bin/rustc");
+            let rustc = std::fs::read(&rustc)
+                .map_err(|err| Error::new("failed to read rustc").with_source(err))?;
+            let rustc_subs = b"/rustc/";
+            const COMMIT_SHA_SIZE: usize = 40;
+            let mut cursor = 0;
+            while cursor < rustc.len() - (rustc_subs.len() + COMMIT_SHA_SIZE + 1) {
+                let subs_end = cursor + rustc_subs.len();
+                if &rustc[cursor..subs_end] == rustc_subs
+                    && rustc[subs_end + COMMIT_SHA_SIZE] == b'/'
+                {
+                    let build_path =
+                        String::from_utf8_lossy(&rustc[cursor..subs_end + COMMIT_SHA_SIZE])
+                            .to_string();
+                    let mut toolchain_source_path = path.to_string();
+                    toolchain_source_path.push_str("/lib/rustlib/src/rust");
+                    return Ok((build_path, toolchain_source_path));
+                }
+                cursor += 1;
+            }
+            Err(Error::new("failed to find rustc"))
         }
-        path.push_str("/lib/rustlib/src/rust");
-        Ok(path)
     } else {
-        Err(Error::new("description"))
+        Err(Error::new("failed to filnd the sysroot"))
     }
 }
