@@ -694,7 +694,7 @@ mod tests {
         };
 
         let (loader, mut io) = create_loader(vec![Box::new(vfs::CasDevice::new(
-            manifest,
+            Some(manifest),
             Arc::clone(&data_content_provider),
         ))]);
         io.register_loader(
@@ -780,7 +780,7 @@ mod tests {
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
             vec![Box::new(vfs::CasDevice::new(
-                manifest,
+                Some(manifest),
                 data_content_provider,
             ))],
             request_tx.clone(),
@@ -847,7 +847,7 @@ mod tests {
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
             vec![Box::new(vfs::CasDevice::new(
-                manifest,
+                Some(manifest),
                 data_content_provider,
             ))],
             request_tx.clone(),
@@ -918,7 +918,7 @@ mod tests {
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
             vec![Box::new(vfs::CasDevice::new(
-                manifest,
+                Some(manifest),
                 data_content_provider,
             ))],
             request_tx.clone(),
@@ -1013,7 +1013,7 @@ mod tests {
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
             vec![Box::new(vfs::CasDevice::new(
-                manifest,
+                Some(manifest),
                 Arc::clone(&data_content_provider),
             ))],
             request_tx.clone(),

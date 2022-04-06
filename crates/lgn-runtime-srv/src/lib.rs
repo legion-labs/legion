@@ -73,32 +73,40 @@ pub fn build_runtime(
 ) -> App {
     let args = Args::parse();
 
-    let project_dir = {
-        if let Some(params) = args.project {
-            PathBuf::from(params)
-        } else if let Some(key) = project_dir_setting {
-            lgn_config::get_absolute_path_or(key, PathBuf::from(fallback_project_dir)).unwrap()
-        } else {
-            PathBuf::from(fallback_project_dir)
-        }
-    };
+    let game_manifest = if cfg!(feature = "standalone") {
+        let project_dir = {
+            if let Some(params) = args.project {
+                PathBuf::from(params)
+            } else if let Some(key) = project_dir_setting {
+                lgn_config::get_absolute_path_or(key, PathBuf::from(fallback_project_dir)).unwrap()
+            } else {
+                PathBuf::from(fallback_project_dir)
+            }
+        };
 
-    let game_manifest = args.manifest.map_or_else(
-        || project_dir.join("runtime").join("game.manifest"),
-        PathBuf::from,
-    );
+        Some(args.manifest.map_or_else(
+            || project_dir.join("runtime").join("game.manifest"),
+            PathBuf::from,
+        ))
+    } else {
+        None
+    };
 
     let mut assets_to_load = Vec::<ResourceTypeAndId>::new();
 
-    // default root object is in sample data
-    // /world/sample_1.ent
+    let root_asset = if cfg!(feature = "standalone") {
+        // default root object is in sample data
+        // /world/sample_1.ent
 
-    let root_asset = args
-        .root
-        .as_deref()
-        .unwrap_or(fallback_root_asset)
-        .parse::<ResourceTypeAndId>()
-        .ok();
+        args.root
+            .as_deref()
+            .unwrap_or(fallback_root_asset)
+            .parse::<ResourceTypeAndId>()
+            .ok()
+    } else {
+        None
+    };
+
     if let Some(root_asset) = root_asset {
         assets_to_load.push(root_asset);
     }

@@ -118,7 +118,19 @@ impl AssetRegistryOptions {
         manifest: Manifest,
     ) -> Self {
         self.devices
-            .push(Box::new(vfs::CasDevice::new(manifest, content_store)));
+            .push(Box::new(vfs::CasDevice::new(Some(manifest), content_store)));
+        self
+    }
+
+    /// Specifying `content-addressable storage device` will mount a device that
+    /// allows to read resources from a specified content store.
+    /// It must subsequently be provided with a manifest to be able to fetch resources.
+    pub fn add_device_cas_with_delayed_manifest(
+        mut self,
+        content_store: Arc<Box<dyn ContentProvider + Send + Sync>>,
+    ) -> Self {
+        self.devices
+            .push(Box::new(vfs::CasDevice::new(None, content_store)));
         self
     }
 

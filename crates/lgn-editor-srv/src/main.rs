@@ -263,7 +263,7 @@ fn main() {
         .add_plugin(CorePlugin::default())
         .add_plugin(AsyncPlugin::default())
         .insert_resource(AssetRegistrySettings::new(
-            &game_manifest_path,
+            Some(&game_manifest_path),
             assets_to_load,
         ))
         .add_plugin(AssetRegistryPlugin::default())

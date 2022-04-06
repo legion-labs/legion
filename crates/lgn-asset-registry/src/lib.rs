@@ -23,7 +23,7 @@ use lgn_tracing::error;
 
 pub use crate::{
     asset_entities::AssetToEntityMap,
-    config::{AssetRegistrySettings, DataBuildConfig},
+    config::AssetRegistrySettings,
     errors::{Error, Result},
 };
 use crate::{
@@ -67,42 +67,42 @@ impl AssetRegistryPlugin {
         );
 
         let config = world.resource::<AssetRegistrySettings>();
-        let manifest = {
-            let async_rt = world.resource::<TokioAsyncRuntime>();
-            let manifest = async_rt.block_on(async {
-                Self::load_manifest_from_path(&config.game_manifest, &data_content_provider).await
-            });
-            match manifest {
-                Ok(manifest) => manifest,
-                Err(error) => {
-                    error!("error reading manifest: {}", error);
-                    Manifest::default()
+        let manifest: Option<Manifest> = if let Some(game_manifest) = &config.game_manifest {
+            let manifest = {
+                let async_rt = world.resource::<TokioAsyncRuntime>();
+                let manifest = async_rt.block_on(async {
+                    Self::load_manifest_from_path(&game_manifest, &data_content_provider).await
+                });
+                match manifest {
+                    Ok(manifest) => manifest,
+                    Err(error) => {
+                        error!("error reading manifest: {}", error);
+                        Manifest::default()
+                    }
                 }
-            }
+            };
+
+            world.insert_resource(manifest.clone());
+            Some(manifest)
+        } else {
+            None
         };
 
         let mut config = world.resource_mut::<AssetRegistrySettings>();
         if config.assets_to_load.is_empty() {
-            config.assets_to_load = manifest.resources();
+            if let Some(manifest) = &manifest {
+                config.assets_to_load = manifest.resources();
+            }
         }
 
         let mut registry_options = AssetRegistryOptions::new();
-
-        if let Some(databuild_config) = &config.databuild_config {
-            registry_options = registry_options.add_device_build(
-                data_content_provider,
-                manifest.clone(),
-                &databuild_config.build_bin,
-                databuild_config.output_db_addr.clone(),
-                &databuild_config.project,
-                false,
-            );
+        if let Some(manifest) = manifest {
+            registry_options = registry_options.add_device_cas(data_content_provider, manifest);
         } else {
             registry_options =
-                registry_options.add_device_cas(data_content_provider, manifest.clone());
+                registry_options.add_device_cas_with_delayed_manifest(data_content_provider);
         }
 
-        world.insert_resource(manifest);
         world.insert_non_send_resource(registry_options);
     }
 
