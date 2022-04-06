@@ -12,7 +12,7 @@ use gltf::{
     mesh::util::{ReadIndices, ReadTexCoords},
     texture, Document,
 };
-use lgn_math::{Vec2, Vec3};
+use lgn_math::{Vec2, Vec3, Vec4};
 
 use lgn_data_offline::{
     resource::{OfflineResource, ResourceProcessor, ResourceProcessorError},
@@ -49,7 +49,7 @@ impl GltfFile {
             for primitive in model.primitives() {
                 let mut positions: Vec<Vec3> = Vec::new();
                 let mut normals: Vec<Vec3> = Vec::new();
-                let mut tangents: Vec<Vec3> = Vec::new();
+                let mut tangents: Vec<Vec4> = Vec::new();
                 let mut tex_coords: Vec<Vec2> = Vec::new();
                 let mut indices: Vec<u16> = Vec::new();
 
@@ -69,8 +69,7 @@ impl GltfFile {
                     for tangent in iter {
                         // Tangent handedness is governed by its W coordinate in GLTF: 1.0 if system is RH, -1.0 if it's LH
                         // Since LE uses LH we negate W
-                        tangents
-                            .push(Vec3::new(tangent[2], tangent[1], tangent[0]) * (-tangent[3]));
+                        tangents.push(Vec4::new(tangent[2], tangent[1], tangent[0], -tangent[3]));
                     }
                 }
                 if let Some(tex_coords_option) = reader.read_tex_coords(0) {
@@ -109,7 +108,10 @@ impl GltfFile {
 
                 let mut indices = Some(indices);
                 if tangents.is_empty() && !normals.is_empty() {
-                    tangents = lgn_math::calculate_tangents(&positions, &tex_coords, &indices, 0);
+                    tangents = lgn_math::calculate_tangents(&positions, &tex_coords, &indices)
+                        .iter()
+                        .map(|v| v.extend(-1.0))
+                        .collect();
                 }
 
                 let material = primitive.material().name().map_or_else(

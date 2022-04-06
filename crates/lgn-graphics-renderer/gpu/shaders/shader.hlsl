@@ -11,7 +11,7 @@
 struct VertexOut {  
     float4 hpos : SV_POSITION;
     float3 normal : NORMAL;
-    float3 tangent : TANGENT;
+    float4 tangent : TANGENT;
     float3 pos : POSITION;
     float2 uv_coord : TEXCOORD0;
     nointerpolation uint va_table_address: INSTANCE0;
@@ -31,7 +31,7 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
     vertex_out.hpos = mul(view_data.projection, float4(view_pos, 1.0));
     vertex_out.pos = view_pos;
     vertex_out.normal = transform_normal(view_data.camera_rotation, transform_normal(transform, vertex_in.normal));
-    vertex_out.tangent = transform_normal(view_data.camera_rotation, transform_normal(transform, vertex_in.tangent));
+    vertex_out.tangent = float4(transform_normal(view_data.camera_rotation, transform_normal(transform, vertex_in.tangent.xyz)), vertex_in.tangent.w);
     vertex_out.uv_coord = vertex_in.uv_coord;
     vertex_out.va_table_address = vertexIn.va_table_address;
     return vertex_out;
@@ -122,8 +122,9 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
     lightingMaterial.reflectance = material.reflectance;
 
     float3 view_normal = vertex_out.normal;
-    float3 view_tangent = vertex_out.tangent;
-    float3 view_binormal = cross(view_normal, view_tangent);
+    float3 view_tangent = vertex_out.tangent.xyz;
+    float sign = vertex_out.tangent.w;
+    float3 view_binormal = sign * cross(view_normal, view_tangent);
 
     float3 lighting_normal = view_normal;
     float3 material_normal = lighting_normal;

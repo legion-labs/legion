@@ -8,7 +8,7 @@ pub struct Model {
 pub struct Mesh {
     pub positions: Vec<Vec3>,
     pub normals: Vec<Vec3>,
-    pub tangents: Vec<Vec3>,
+    pub tangents: Vec<Vec4>,
     pub tex_coords: Vec<Vec2>,
     pub indices: Vec<u16>,
     pub colors: Vec<Color>,

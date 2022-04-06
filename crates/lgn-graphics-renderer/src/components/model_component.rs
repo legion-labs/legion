@@ -14,7 +14,7 @@ use crate::{
 pub struct Mesh {
     pub positions: Vec<Vec3>,
     pub normals: Option<Vec<Vec3>>,
-    pub tangents: Option<Vec<Vec3>>,
+    pub tangents: Option<Vec<Vec4>>,
     pub tex_coords: Option<Vec<Vec2>>,
     pub indices: Option<Vec<u16>>,
     pub colors: Option<Vec<[u8; 4]>>,
@@ -52,7 +52,7 @@ impl Mesh {
             size += (std::mem::size_of::<Vec3>() * normals.len()) as u32;
         }
         if let Some(tangents) = &self.tangents {
-            size += (std::mem::size_of::<Vec3>() * tangents.len()) as u32;
+            size += (std::mem::size_of::<Vec4>() * tangents.len()) as u32;
         }
         if let Some(tex_coords) = &self.tex_coords {
             size += (std::mem::size_of::<Vec2>() * tex_coords.len()) as u32;
@@ -111,8 +111,8 @@ impl Mesh {
         }
         if let Some(tangents) = &self.tangents {
             mesh_desc.set_tangent_offset(offset.into());
-            updater.add_update_jobs(tangents, u64::from(offset));
-            offset += (std::mem::size_of::<Vec3>() * tangents.len()) as u32;
+            updater.add_update_jobs(&tangents, u64::from(offset));
+            offset += (std::mem::size_of::<Vec4>() * tangents.len()) as u32;
         }
         if let Some(tex_coords) = &self.tex_coords {
             mesh_desc.set_tex_coord_offset(offset.into());
@@ -202,7 +202,7 @@ impl Mesh {
         index_data.extend_from_slice(&[16, 17, 18, 16, 18, 19]);
         index_data.extend_from_slice(&[20, 21, 22, 20, 22, 23]);
 
-        Self::from_vertex_data(&vertex_data, Some(index_data), 0)
+        Self::from_vertex_data(&vertex_data, Some(index_data))
     }
 
     pub fn new_pyramid(base_size: f32, height: f32) -> Self {
@@ -251,7 +251,7 @@ impl Mesh {
         index_data.extend_from_slice(&[10, 11, 12]);
         index_data.extend_from_slice(&[13, 14, 15]);
 
-        Self::from_vertex_data(&vertex_data, Some(index_data), 0)
+        Self::from_vertex_data(&vertex_data, Some(index_data))
     }
 
     pub fn new_plane(size: f32) -> Self {
@@ -267,7 +267,7 @@ impl Mesh {
         let mut index_data: Vec<u16> = vec![];
         index_data.extend_from_slice(&[0, 1, 2, 0, 2, 3]);
 
-        Self::from_vertex_data(&vertex_data, Some(index_data), 0)
+        Self::from_vertex_data(&vertex_data, Some(index_data))
     }
 
     fn new_cylinder_inner(radius: f32, length: f32, steps: u32) -> (Vec<f32>, Vec<u16>) {
@@ -329,7 +329,7 @@ impl Mesh {
 
     pub fn new_cylinder(radius: f32, length: f32, steps: u32) -> Self {
         let (vertex_data, index_data) = Self::new_cylinder_inner(radius, length, steps);
-        Self::from_vertex_data(&vertex_data, Some(index_data), 0)
+        Self::from_vertex_data(&vertex_data, Some(index_data))
     }
 
     fn new_cone_inner(radius: f32, length: f32, steps: u32) -> (Vec<f32>, Vec<u16>) {
@@ -371,7 +371,7 @@ impl Mesh {
 
     pub fn new_cone(radius: f32, length: f32, steps: u32) -> Self {
         let (vertex_data, index_data) = Self::new_cone_inner(radius, length, steps);
-        Self::from_vertex_data(&vertex_data, Some(index_data), initial_index)
+        Self::from_vertex_data(&vertex_data, Some(index_data))
     }
 
     pub fn new_torus(
@@ -472,7 +472,7 @@ impl Mesh {
             }
         }
 
-        Self::from_vertex_data(&vertex_data, Some(index_data), 0)
+        Self::from_vertex_data(&vertex_data, Some(index_data))
     }
 
     pub fn new_wireframe_cube(size: f32) -> Self {
@@ -508,7 +508,7 @@ impl Mesh {
             -half_size, -half_size,  half_size, 0.0, -1.0,  0.0, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
              half_size, -half_size,  half_size, 0.0, -1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
         ];
-        Self::from_vertex_data(&vertex_data, None, 0)
+        Self::from_vertex_data(&vertex_data, None)
     }
 
     pub fn new_ground_plane(num_squares: u32, num_sub_squares: u32, minor_spacing: f32) -> Self {
@@ -597,9 +597,10 @@ impl Mesh {
             0.05,
         );
 
-        Self::from_vertex_data(&vertex_data, None, 0)
+        Self::from_vertex_data(&vertex_data, None)
     }
 
+    /// An arrow that points down with default rotation
     pub fn new_arrow() -> Self {
         let (mut arrow_vertex_data, mut arrow_index_data) = Self::new_cylinder_inner(0.01, 0.3, 10);
         let (mut cone_vertex_data, cone_index_data) = Self::new_cone_inner(0.025, 0.1, 10);
@@ -729,14 +730,10 @@ impl Mesh {
             }
         }
 
-        Self::from_vertex_data(&vertex_data, Some(index_data), 0)
+        Self::from_vertex_data(&vertex_data, Some(index_data))
     }
 
-    fn from_vertex_data(
-        vertex_data: &[f32],
-        index_data: Option<Vec<u16>>,
-        initial_index: u16,
-    ) -> Self {
+    fn from_vertex_data(vertex_data: &[f32], index_data: Option<Vec<u16>>) -> Self {
         let mut positions = Vec::new();
         let mut normals = Vec::new();
         let mut colors = Vec::new();
@@ -761,13 +758,13 @@ impl Mesh {
             ]);
             tex_coords.push(Vec2::new(vertex_data[idx + 10], vertex_data[idx + 11]));
         }
-        let tangents = lgn_math::calculate_tangents(&positions, &tex_coords, &index_data, initial_index);
+        let tangents = lgn_math::calculate_tangents(&positions, &tex_coords, &index_data);
         let bounding_sphere = Self::calculate_bounding_sphere(&positions);
 
         Self {
             positions,
             normals: Some(normals),
-            tangents: Some(tangents),
+            tangents: Some(tangents.iter().map(|v| v.extend(-1.0)).collect()),
             tex_coords: Some(tex_coords),
             indices: index_data,
             colors: Some(colors),
@@ -779,12 +776,16 @@ impl Mesh {
 
     pub fn calculate_tangents(&mut self) {
         assert!(self.tex_coords.is_some());
-        self.tangents = Some(lgn_math::calculate_tangents(
-            &self.positions,
-            self.tex_coords.as_ref().unwrap(),
-            &self.indices,
-            0,
-        ));
+        self.tangents = Some(
+            lgn_math::calculate_tangents(
+                &self.positions,
+                self.tex_coords.as_ref().unwrap(),
+                &self.indices,
+            )
+            .iter()
+            .map(|v| v.extend(-1.0))
+            .collect(),
+        );
     }
 }
 

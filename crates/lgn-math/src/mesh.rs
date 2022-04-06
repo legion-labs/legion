@@ -4,7 +4,6 @@ pub fn calculate_tangents(
     positions: &[Vec3],
     tex_coords: &[Vec2],
     indices: &Option<Vec<u16>>,
-    initial_index: u16,
 ) -> Vec<Vec3> {
     let length = positions.len();
     let mut tangents = Vec::with_capacity(length);
@@ -20,17 +19,17 @@ pub fn calculate_tangents(
 
     for i in 0..num_triangles {
         let idx0 = if let Some(indices) = &indices {
-            (indices[i * 3] - initial_index) as usize
+            (indices[i * 3]) as usize
         } else {
             i * 3
         };
         let idx1 = if let Some(indices) = &indices {
-            (indices[i * 3 + 1] - initial_index) as usize
+            (indices[i * 3 + 1]) as usize
         } else {
             i * 3 + 1
         };
         let idx2 = if let Some(indices) = &indices {
-            (indices[i * 3 + 2] - initial_index) as usize
+            (indices[i * 3 + 2]) as usize
         } else {
             i * 3 + 2
         };
