@@ -40,7 +40,7 @@ impl ContentReader for MemoryProvider {
 
         match map.get(id) {
             Some(content) => Ok(Box::pin(std::io::Cursor::new(content.clone()))),
-            None => Err(Error::NotFound(id.to_string())),
+            None => Err(Error::IdentifierNotFound(id.clone())),
         }
     }
 
@@ -59,7 +59,7 @@ impl ContentReader for MemoryProvider {
                         Some(content) => {
                             Ok(Box::pin(std::io::Cursor::new(content.clone())) as ContentAsyncRead)
                         }
-                        None => Err(Error::NotFound(id.to_string())),
+                        None => Err(Error::IdentifierNotFound(id.clone())),
                     },
                 )
             })
@@ -72,9 +72,10 @@ impl ContentReader for MemoryProvider {
         let map = self.alias_map.read().await;
         let k = (key_space.to_string(), key.to_string());
 
-        map.get(&k)
-            .cloned()
-            .ok_or_else(|| Error::NotFound(format!("{}/{}", key_space, key)))
+        map.get(&k).cloned().ok_or_else(|| Error::AliasNotFound {
+            key_space: key_space.to_string(),
+            key: key.to_string(),
+        })
     }
 }
 
@@ -82,7 +83,7 @@ impl ContentReader for MemoryProvider {
 impl ContentWriter for MemoryProvider {
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
         if self.content_map.read().await.contains_key(id) {
-            Err(Error::AlreadyExists(id.to_string()))
+            Err(Error::IdentifierAlreadyExists(id.clone()))
         } else {
             Ok(Box::pin(MemoryUploader::new(
                 id.clone(),
@@ -97,10 +98,10 @@ impl ContentWriter for MemoryProvider {
         let k = (key_space.to_string(), key.to_string());
 
         if self.alias_map.read().await.contains_key(&k) {
-            return Err(Error::AlreadyExists(format!(
-                "{}/{}={}",
-                key_space, key, id
-            )));
+            return Err(Error::AliasAlreadyExists {
+                key_space: key_space.to_string(),
+                key: key.to_string(),
+            });
         }
 
         self.alias_map.write().await.insert(k, id.clone());

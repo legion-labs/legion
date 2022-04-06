@@ -21,11 +21,15 @@ pub enum Error {
     InvalidChunkIndex(#[source] anyhow::Error),
     #[error("invalid data space: {0}")]
     InvalidDataSpace(String),
-    #[error("the content was not found: '{0}'")]
-    NotFound(String),
-    #[error("the content already exists: '{0}'")]
-    AlreadyExists(String),
-    #[error("the content is corrupted: '{0}'")]
+    #[error("the content was not found: {0}")]
+    IdentifierNotFound(Identifier),
+    #[error("the content already exists: {0}")]
+    IdentifierAlreadyExists(Identifier),
+    #[error("the alias was not found: {key_space}/{key}")]
+    AliasNotFound { key_space: String, key: String },
+    #[error("the alias already exists: {key_space}/{key}")]
+    AliasAlreadyExists { key_space: String, key: String },
+    #[error("the content is corrupted: {0}")]
     Corrupt(Identifier),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),

@@ -111,7 +111,7 @@ where
                         Err(err) => {
                             return match err.status() {
                                 Some(reqwest::StatusCode::NOT_FOUND) => {
-                                    Err(Error::NotFound(id.to_string()))
+                                    Err(Error::IdentifierNotFound(id.clone()))
                                 }
                                 _ => Err(anyhow::anyhow!("HTTP error: {}", err).into()),
                             }
@@ -119,7 +119,7 @@ where
                     },
                 ),
             }),
-            None => Err(Error::NotFound(id.to_string())),
+            None => Err(Error::IdentifierNotFound(id.clone())),
         }
     }
 
@@ -147,7 +147,10 @@ where
             .into_inner();
 
         if resp.id.is_empty() {
-            Err(Error::NotFound(format!("{}/{}", key_space, key)))
+            Err(Error::AliasNotFound {
+                key_space: key_space.to_string(),
+                key: key.to_string(),
+            })
         } else {
             resp.id.parse()
         }
@@ -194,7 +197,7 @@ where
                     Ok(Box::pin(uploader))
                 }
             }
-            None => Err(Error::AlreadyExists(id.to_string())),
+            None => Err(Error::IdentifierAlreadyExists(id.clone())),
         }
     }
 
@@ -218,10 +221,10 @@ where
         if resp.newly_registered {
             Ok(())
         } else {
-            Err(Error::AlreadyExists(format!(
-                "{}/{}={}",
-                key_space, key, id,
-            )))
+            Err(Error::AliasAlreadyExists {
+                key_space: key_space.to_string(),
+                key: key.to_string(),
+            })
         }
     }
 }
@@ -479,7 +482,7 @@ impl lgn_content_store_proto::content_store_server::ContentStore for GrpcService
         Ok(Response::new(ResolveAliasResponse {
             id: match provider_set.provider.resolve_alias(&key_space, &key).await {
                 Ok(id) => id.to_string(),
-                Err(Error::NotFound(_)) => "".to_string(),
+                Err(Error::AliasNotFound { .. }) => "".to_string(),
                 Err(err) => {
                     return Err(tonic::Status::new(
                         tonic::Code::Internal,
@@ -537,7 +540,7 @@ impl lgn_content_store_proto::content_store_server::ContentStore for GrpcService
                 .await
             {
                 Ok(()) => true,
-                Err(Error::AlreadyExists(_)) => false,
+                Err(Error::IdentifierAlreadyExists(_)) => false,
                 Err(err) => {
                     return Err(tonic::Status::new(
                         tonic::Code::Internal,
@@ -588,7 +591,7 @@ impl lgn_content_store_proto::content_store_server::ContentStore for GrpcService
             content: if id.data_size() <= provider_set.size_threshold {
                 match provider_set.provider.read_content(&id).await {
                     Ok(data) => Some(Content::Data(data)),
-                    Err(Error::NotFound(_)) => None,
+                    Err(Error::IdentifierNotFound(_)) => None,
                     Err(err) => {
                         return Err(tonic::Status::new(
                             tonic::Code::Internal,
@@ -603,7 +606,7 @@ impl lgn_content_store_proto::content_store_server::ContentStore for GrpcService
                     .await
                 {
                     Ok(url) => Some(Content::Url(url)),
-                    Err(Error::NotFound(_)) => None,
+                    Err(Error::IdentifierNotFound(_)) => None,
                     Err(err) => {
                         return Err(tonic::Status::new(
                             tonic::Code::Internal,
@@ -671,7 +674,7 @@ impl lgn_content_store_proto::content_store_server::ContentStore for GrpcService
                             url,
                         ),
                     ),
-                    Err(Error::AlreadyExists(_)) => None,
+                    Err(Error::IdentifierAlreadyExists(_)) => None,
                     Err(err) => {
                         return Err(tonic::Status::new(
                             tonic::Code::Internal,

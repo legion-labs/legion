@@ -46,7 +46,7 @@ impl ContentReader for LruProvider {
 
         match map.get(id) {
             Some(content) => Ok(Box::pin(std::io::Cursor::new(content.clone()))),
-            None => Err(Error::NotFound(id.to_string())),
+            None => Err(Error::IdentifierNotFound(id.clone())),
         }
     }
 
@@ -65,7 +65,7 @@ impl ContentReader for LruProvider {
                         Some(content) => {
                             Ok(Box::pin(std::io::Cursor::new(content.clone())) as ContentAsyncRead)
                         }
-                        None => Err(Error::NotFound(id.to_string())),
+                        None => Err(Error::IdentifierNotFound(id.clone())),
                     },
                 )
             })
@@ -78,9 +78,10 @@ impl ContentReader for LruProvider {
         let mut map = self.alias_map.lock().await;
         let k = (key_space.to_string(), key.to_string());
 
-        map.get(&k)
-            .cloned()
-            .ok_or_else(|| Error::NotFound(format!("{}/{}", key_space, key)))
+        map.get(&k).cloned().ok_or_else(|| Error::AliasNotFound {
+            key_space: key_space.to_string(),
+            key: key.to_string(),
+        })
     }
 }
 
@@ -88,7 +89,7 @@ impl ContentReader for LruProvider {
 impl ContentWriter for LruProvider {
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
         if self.content_map.lock().await.get(id).is_some() {
-            Err(Error::AlreadyExists(id.to_string()))
+            Err(Error::IdentifierAlreadyExists(id.clone()))
         } else {
             Ok(Box::pin(MemoryUploader::new(
                 id.clone(),
@@ -104,10 +105,10 @@ impl ContentWriter for LruProvider {
         let mut map = self.alias_map.lock().await;
 
         if map.contains(&k) {
-            return Err(Error::AlreadyExists(format!(
-                "{}/{}={}",
-                key_space, key, id
-            )));
+            return Err(Error::AliasAlreadyExists {
+                key_space: key_space.to_string(),
+                key: key.to_string(),
+            });
         }
 
         map.put(k, id.clone());

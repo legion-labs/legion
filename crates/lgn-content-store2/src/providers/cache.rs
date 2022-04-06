@@ -44,7 +44,7 @@ impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> 
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
         match self.local.get_content_reader(id).await {
             Ok(reader) => Ok(reader),
-            Err(Error::NotFound(_)) => {
+            Err(Error::IdentifierNotFound(_)) => {
                 match self.remote.get_content_reader(id).await {
                     Ok(reader) => {
                         let writer = match self.local.get_content_writer(id).await {
@@ -83,7 +83,7 @@ impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> 
         let missing_ids = readers
             .iter()
             .filter_map(|(id, reader)| {
-                if let Err(Error::NotFound(_)) = reader {
+                if let Err(Error::IdentifierNotFound(_)) = reader {
                     Some(id)
                 } else {
                     None
@@ -130,19 +130,21 @@ impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> 
     async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
         match self.local.resolve_alias(key_space, key).await {
             Ok(id) => Ok(id),
-            Err(Error::NotFound(_)) => match self.remote.resolve_alias(key_space, key).await {
-                Ok(id) => {
-                    if let Err(err) = self.local.register_alias(key_space, key, &id).await {
-                        warn!(
-                            "Failed to register alias {}/{} in local cache: {}",
-                            key_space, key, err
-                        );
-                    }
+            Err(Error::IdentifierNotFound(_)) => {
+                match self.remote.resolve_alias(key_space, key).await {
+                    Ok(id) => {
+                        if let Err(err) = self.local.register_alias(key_space, key, &id).await {
+                            warn!(
+                                "Failed to register alias {}/{} in local cache: {}",
+                                key_space, key, err
+                            );
+                        }
 
-                    Ok(id)
+                        Ok(id)
+                    }
+                    Err(err) => Err(err),
                 }
-                Err(err) => Err(err),
-            },
+            }
             // If the local provider fails, we just fall back to the remote without caching.
             Err(_) => self.remote.resolve_alias(key_space, key).await,
         }

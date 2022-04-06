@@ -128,7 +128,7 @@ impl Chunker {
         for id in ids {
             reader_stores
                 .get_mut(id)
-                .ok_or_else(|| Error::NotFound(id.to_string()))?
+                .ok_or_else(|| Error::IdentifierNotFound(id.clone()))?
                 .inc_ref_count()
                 .await?;
         }
@@ -212,7 +212,7 @@ impl Chunker {
                             })
                             .map(|_| ())
                     }
-                    Err(Error::AlreadyExists(_)) => Ok(()),
+                    Err(Error::IdentifierAlreadyExists(_)) => Ok(()),
                     Err(err) => Err(err),
                 }
             });
