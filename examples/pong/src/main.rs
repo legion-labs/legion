@@ -587,7 +587,9 @@ async fn create_offline_entity(
     let entity = handle
         .get_mut::<sample_data::offline::Entity>(&mut resources)
         .unwrap();
+    entity.components.clear();
     entity.components.extend(components.into_iter());
+    entity.children.clear();
     entity.children.extend(children.into_iter());
 
     if exists {
@@ -642,6 +644,7 @@ async fn create_offline_model(
     let model = handle
         .get_mut::<lgn_graphics_data::offline::Model>(&mut resources)
         .unwrap();
+    model.meshes.clear();
     let mesh = lgn_graphics_data::offline::Mesh {
         positions: mesh.positions,
         normals: mesh.normals.unwrap(),
