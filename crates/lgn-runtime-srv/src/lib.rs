@@ -29,7 +29,9 @@ use lgn_graphics_renderer::RendererPlugin;
 use lgn_hierarchy::prelude::HierarchyPlugin;
 use lgn_input::InputPlugin;
 use lgn_physics::{PhysicsPlugin, PhysicsSettingsBuilder};
-use lgn_scene_plugin::{SceneMessage, ScenePlugin};
+#[cfg(not(feature = "standalone"))]
+use lgn_scene_plugin::SceneMessage;
+use lgn_scene_plugin::ScenePlugin;
 use lgn_scripting::ScriptingPlugin;
 use lgn_tracing::prelude::span_fn;
 use lgn_transform::prelude::TransformPlugin;
