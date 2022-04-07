@@ -1177,7 +1177,7 @@ impl World {
         if column.is_empty() {
             let mut value = ManuallyDrop::new(value);
             // SAFE: column is of type R and has been allocated above
-            let data = (&mut *value as *mut R).cast::<u8>();
+            let data = std::ptr::addr_of_mut!(*value).cast::<u8>();
             column.push(data, ComponentTicks::new(change_tick));
         } else {
             // SAFE: column is of type R and has already been allocated

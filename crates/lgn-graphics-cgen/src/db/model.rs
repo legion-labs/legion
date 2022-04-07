@@ -320,7 +320,7 @@ impl Model {
             return Err(anyhow!("Object '{}' not unique", key));
         }
         let type_index = self.get_or_create_container::<T>();
-        let value_ptr = (&value as *const T).cast::<u8>();
+        let value_ptr = std::ptr::addr_of!(value).cast::<u8>();
         let object_index = self.get_container_by_index_mut(type_index).add(value_ptr);
         forget(value);
         let object_index = u32::try_from(object_index).unwrap();

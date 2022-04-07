@@ -561,7 +561,7 @@ mod tests {
             unsafe {
                 let row = table.allocate(*entity);
                 let mut value = row;
-                let value_ptr = ((&mut value) as *mut usize).cast::<u8>();
+                let value_ptr = std::ptr::addr_of_mut!(value).cast::<u8>();
                 table
                     .get_column_mut(component_id)
                     .unwrap()

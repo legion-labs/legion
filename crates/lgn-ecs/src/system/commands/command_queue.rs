@@ -61,7 +61,7 @@ impl CommandQueue {
             // when `apply` is called later, a double `drop` does not occur.
             unsafe {
                 std::ptr::copy_nonoverlapping(
-                    (&command as *const C).cast::<u8>(),
+                    std::ptr::addr_of!(command).cast::<u8>(),
                     self.bytes.as_mut_ptr().add(old_len),
                     size,
                 );

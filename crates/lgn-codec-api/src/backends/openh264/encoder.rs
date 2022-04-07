@@ -63,7 +63,7 @@ impl EncoderRawAPI {
         unsafe {
             let mut encoder_ptr = null::<ISVCEncoderVtbl>() as *mut *const ISVCEncoderVtbl;
 
-            WelsCreateSVCEncoder(&mut encoder_ptr as *mut *mut *const ISVCEncoderVtbl).ok()?;
+            WelsCreateSVCEncoder(std::ptr::addr_of_mut!(encoder_ptr)).ok()?;
 
             let e = || Error::msg("VTable missing function.");
 

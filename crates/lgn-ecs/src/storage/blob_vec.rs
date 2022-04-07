@@ -307,7 +307,7 @@ mod tests {
     /// `blob_vec` must have a layout that matches `Layout::new::<T>()`
     unsafe fn push<T>(blob_vec: &mut BlobVec, mut value: T) {
         let index = blob_vec.push_uninit();
-        blob_vec.initialize_unchecked(index, (&mut value as *mut T).cast::<u8>());
+        blob_vec.initialize_unchecked(index, std::ptr::addr_of_mut!(value).cast::<u8>());
         std::mem::forget(value);
     }
 
