@@ -7,8 +7,9 @@ use std::{
 };
 
 use crate::{
-    traits::get_content_readers_impl, ContentAsyncRead, ContentAsyncWrite, ContentReader,
-    ContentWriter, Error, Identifier, Result,
+    traits::{get_content_readers_impl, WithOrigin},
+    ContentAsyncReadWithOrigin, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier,
+    Result,
 };
 
 use super::{Uploader, UploaderImpl};
@@ -111,7 +112,7 @@ impl Display for RedisProvider {
 
 #[async_trait]
 impl ContentReader for RedisProvider {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
         let mut con = self
             .client
             .get_async_connection()
@@ -121,7 +122,11 @@ impl ContentReader for RedisProvider {
         let key = self.get_content_key(id);
 
         match con.get::<_, Option<Vec<u8>>>(&key).await {
-            Ok(Some(value)) => Ok(Box::pin(Cursor::new(value))),
+            Ok(Some(value)) => {
+                let origin = format!("{}/{}", self.url, key);
+
+                Ok(Cursor::new(value).with_origin(origin))
+            }
             Ok(None) => Err(Error::IdentifierNotFound(id.clone())),
             Err(err) => Err(anyhow::anyhow!(
                 "failed to get content from Redis for key `{}`: {}",
@@ -135,7 +140,7 @@ impl ContentReader for RedisProvider {
     async fn get_content_readers<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
-    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
         get_content_readers_impl(self, ids).await
     }
 

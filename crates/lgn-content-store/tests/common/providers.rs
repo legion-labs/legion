@@ -34,8 +34,11 @@ impl FakeContentAddressProvider {
 
 #[async_trait]
 impl ContentAddressReader for FakeContentAddressProvider {
-    async fn get_content_read_address(&self, id: &Identifier) -> Result<String> {
-        Ok(self.get_address(id, "read"))
+    async fn get_content_read_address_with_origin(
+        &self,
+        id: &Identifier,
+    ) -> Result<(String, String)> {
+        Ok((self.get_address(id, "read"), "fake".to_string()))
     }
 }
 

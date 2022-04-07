@@ -32,6 +32,17 @@ macro_rules! assert_read_alias {
     }};
 }
 
+macro_rules! assert_read_origin {
+    ($provider:expr, $id:expr, $expected_origin:expr) => {{
+        let origin = $provider
+            .read_origin(&$id)
+            .await
+            .expect("failed to read origin");
+
+        assert_eq!(origin, $expected_origin);
+    }};
+}
+
 macro_rules! assert_read_content {
     ($provider:expr, $id:expr, $expected_content:expr) => {{
         let content = $provider
@@ -40,6 +51,18 @@ macro_rules! assert_read_content {
             .expect("failed to read content");
 
         assert_eq!(content, $expected_content);
+    }};
+}
+
+macro_rules! assert_read_content_with_origin {
+    ($provider:expr, $id:expr, $expected_content:expr, $expected_origin:expr) => {{
+        let (content, origin) = $provider
+            .read_content_with_origin(&$id)
+            .await
+            .expect("failed to read content");
+
+        assert_eq!(content, $expected_content);
+        assert_eq!(origin, $expected_origin);
     }};
 }
 
@@ -123,5 +146,6 @@ macro_rules! assert_write_avoided {
 
 pub(crate) use {
     assert_alias_not_found, assert_content_not_found, assert_read_alias, assert_read_content,
-    assert_read_contents, assert_write_alias, assert_write_avoided, assert_write_content,
+    assert_read_content_with_origin, assert_read_contents, assert_read_origin, assert_write_alias,
+    assert_write_avoided, assert_write_content,
 };

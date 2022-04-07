@@ -12,8 +12,8 @@ use pin_project::pin_project;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 use crate::{
-    ContentAsyncRead, ContentAsyncWrite, ContentProvider, ContentReader, ContentWriter, Error,
-    Identifier, Result,
+    traits::AsyncReadWithOrigin, ContentAsyncReadWithOrigin, ContentAsyncWrite, ContentProvider,
+    ContentReader, ContentWriter, Error, Identifier, Result,
 };
 
 /// A `CachingProvider` is a provider that stores locally content that was retrieved from a remote source.
@@ -41,7 +41,7 @@ impl<Remote: Display, Local: Display> Display for CachingProvider<Remote, Local>
 impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> ContentReader
     for CachingProvider<Remote, Local>
 {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
         match self.local.get_content_reader(id).await {
             Ok(reader) => Ok(reader),
             Err(Error::IdentifierNotFound(_)) => {
@@ -60,7 +60,7 @@ impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> 
                         };
 
                         Ok(Box::pin(TeeAsyncRead::new(reader, writer, id.data_size()))
-                            as ContentAsyncRead)
+                            as ContentAsyncReadWithOrigin)
                     }
                     Err(err) => Err(err),
                 }
@@ -73,7 +73,7 @@ impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> 
     async fn get_content_readers<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
-    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
         // If we can't make the request at all, try on the remote one without caching.
         let mut readers = match self.local.get_content_readers(ids).await {
             Ok(readers) => readers,
@@ -113,7 +113,7 @@ impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> 
                                 (
                                     ids.get(i).unwrap(),
                                     Ok(Box::pin(TeeAsyncRead::new(reader, writer, i.data_size()))
-                                        as ContentAsyncRead),
+                                        as ContentAsyncReadWithOrigin),
                                 )
                             } else {
                                 (ids.get(i).unwrap(), Ok(reader))
@@ -212,6 +212,12 @@ impl<R, W> TeeAsyncRead<R, W> {
             write_complete: false,
             size,
         }
+    }
+}
+
+impl<W: AsyncWrite + Send> AsyncReadWithOrigin for TeeAsyncRead<ContentAsyncReadWithOrigin, W> {
+    fn origin(&self) -> &str {
+        self.reader.origin()
     }
 }
 

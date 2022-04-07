@@ -7,8 +7,9 @@ use async_trait::async_trait;
 use bytesize::ByteSize;
 
 use crate::{
-    traits::get_content_readers_impl, AwsDynamoDbProvider, AwsS3Provider, ContentAsyncRead,
-    ContentAsyncWrite, ContentReader, ContentWriter, Identifier, Result,
+    traits::get_content_readers_impl, AwsDynamoDbProvider, AwsS3Provider,
+    ContentAsyncReadWithOrigin, ContentAsyncWrite, ContentReader, ContentWriter, Identifier,
+    Result,
 };
 
 /// An global that contains the default size above which S3 has a digressive cost for storing data.
@@ -46,7 +47,7 @@ impl Display for AwsAggregatorProvider {
 
 #[async_trait]
 impl ContentReader for AwsAggregatorProvider {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
         if id.data_size() <= AWS_S3_MINIMAL_SIZE_THRESHOLD.as_u64() as usize {
             self.dynamodb.get_content_reader(id).await
         } else {
@@ -57,7 +58,7 @@ impl ContentReader for AwsAggregatorProvider {
     async fn get_content_readers<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
-    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
         get_content_readers_impl(self, ids).await
     }
 

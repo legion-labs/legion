@@ -8,8 +8,9 @@ use std::{
 };
 
 use crate::{
-    traits::get_content_readers_impl, ContentAsyncRead, ContentAsyncWrite, ContentReader,
-    ContentWriter, Error, Identifier, Result,
+    traits::{get_content_readers_impl, WithOrigin},
+    ContentAsyncReadWithOrigin, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier,
+    Result,
 };
 
 use super::{Uploader, UploaderImpl};
@@ -150,14 +151,16 @@ impl Display for AwsDynamoDbProvider {
 
 #[async_trait]
 impl ContentReader for AwsDynamoDbProvider {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
-        Ok(Box::pin(Cursor::new(self.get_content(id).await?)))
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
+        let origin = format!("dynamodb://{}/{}", self.table_name, id);
+
+        Ok(Cursor::new(self.get_content(id).await?).with_origin(origin))
     }
 
     async fn get_content_readers<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
-    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
         get_content_readers_impl(self, ids).await
     }
 

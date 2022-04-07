@@ -13,10 +13,10 @@ use tokio::io::AsyncWrite;
 use tokio_stream::Stream;
 use tokio_util::io::StreamReader;
 
-use crate::traits::get_content_readers_impl;
+use crate::traits::{get_content_readers_impl, WithOrigin};
 use crate::{
-    ContentAddressReader, ContentAddressWriter, ContentAsyncRead, ContentAsyncWrite, ContentReader,
-    ContentWriter, Error, Identifier, Result,
+    ContentAddressReader, ContentAddressWriter, ContentAsyncReadWithOrigin, ContentAsyncWrite,
+    ContentReader, ContentWriter, Error, Identifier, Result,
 };
 
 #[derive(Debug, Clone)]
@@ -273,7 +273,7 @@ impl AsyncWrite for ByteStreamWriter {
 
 #[async_trait]
 impl ContentReader for AwsS3Provider {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
         let key = self.blob_key(id);
 
         let object = match self
@@ -302,14 +302,15 @@ impl ContentReader for AwsS3Provider {
 
         let bytestream = ByteStreamReader(object.body);
         let stream = StreamReader::new(bytestream);
+        let origin = format!("s3://{}/{}", self.url.bucket_name, key);
 
-        Ok(Box::pin(stream))
+        Ok(stream.with_origin(origin))
     }
 
     async fn get_content_readers<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
-    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
         get_content_readers_impl(self, ids).await
     }
 
@@ -359,32 +360,39 @@ impl ContentWriter for AwsS3Provider {
 
 #[async_trait]
 impl ContentAddressReader for AwsS3Provider {
-    async fn get_content_read_address(&self, id: &Identifier) -> Result<String> {
+    async fn get_content_read_address_with_origin(
+        &self,
+        id: &Identifier,
+    ) -> Result<(String, String)> {
         if !self.check_object_existence(id).await? {
             return Err(Error::IdentifierNotFound(id.clone()));
         }
 
         let key = self.blob_key(id);
+        let origin = format!("s3://{}/{}", self.url.bucket_name, key);
 
-        Ok(self
-            .client
-            .get_object()
-            .bucket(&self.url.bucket_name)
-            .key(&key)
-            .presigned(
-                PresigningConfig::expires_in(self.validity_duration)
-                    .map_err(|err| anyhow::anyhow!("failed to create presigned URL: {}", err))?,
-            )
-            .await
-            .map_err(|err| {
-                anyhow::anyhow!(
-                    "failed to generate AWS S3 get signature for object `{}`: {}",
-                    key,
-                    err
+        Ok((
+            self.client
+                .get_object()
+                .bucket(&self.url.bucket_name)
+                .key(&key)
+                .presigned(
+                    PresigningConfig::expires_in(self.validity_duration).map_err(|err| {
+                        anyhow::anyhow!("failed to create presigned URL: {}", err)
+                    })?,
                 )
-            })?
-            .uri()
-            .to_string())
+                .await
+                .map_err(|err| {
+                    anyhow::anyhow!(
+                        "failed to generate AWS S3 get signature for object `{}`: {}",
+                        key,
+                        err
+                    )
+                })?
+                .uri()
+                .to_string(),
+            origin,
+        ))
     }
 }
 

@@ -8,8 +8,9 @@ use std::{
 };
 
 use crate::{
-    traits::get_content_readers_impl, ContentAsyncRead, ContentAsyncWrite, ContentReader,
-    ContentWriter, Error, Identifier, Result,
+    traits::{get_content_readers_impl, WithOrigin},
+    ContentAsyncReadWithOrigin, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier,
+    Result,
 };
 
 /// A `LocalProvider` is a provider that stores content on the local filesystem.
@@ -49,7 +50,7 @@ impl Display for LocalProvider {
 
 #[async_trait]
 impl ContentReader for LocalProvider {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
         let path = self.0.join(id.to_string());
 
         match tokio::fs::File::open(&path).await {
@@ -63,7 +64,9 @@ impl ContentReader for LocalProvider {
                     if metadata_size != id.data_size() {
                         Err(Error::Corrupt(id.clone()))
                     } else {
-                        Ok(Box::pin(file))
+                        let origin = format!("file://{}", path.display());
+
+                        Ok(file.with_origin(origin))
                     }
                 }
                 Err(err) => Err(anyhow::anyhow!(
@@ -89,7 +92,7 @@ impl ContentReader for LocalProvider {
     async fn get_content_readers<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
-    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
         get_content_readers_impl(self, ids).await
     }
 
