@@ -70,6 +70,7 @@ pub fn calculate_tangents(
 }
 
 #[rustfmt::skip]
+#[allow(clippy::cast_precision_loss)]
 pub fn pack_normals_r11g11b10(normals: &[Vec3]) -> Vec<u32> {
     normals
         .iter()
@@ -82,6 +83,7 @@ pub fn pack_normals_r11g11b10(normals: &[Vec3]) -> Vec<u32> {
 }
 
 #[rustfmt::skip]
+#[allow(clippy::cast_precision_loss)]
 pub fn pack_tangents_r11g10b10a1(tangents: &[Vec4]) -> Vec<u32> {
     tangents
         .iter()
