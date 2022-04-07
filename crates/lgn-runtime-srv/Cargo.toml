@@ -22,6 +22,7 @@ lgn-graphics-renderer = { path = "../lgn-graphics-renderer", version = "0.1.0" }
 lgn-grpc = { path = "../lgn-grpc", version = "0.1.0" }
 lgn-hierarchy = { path = "../lgn-hierarchy", version = "0.1.0" }
 lgn-input = { path = "../lgn-input", version = "0.1.0" }
+lgn-online = { path = "../lgn-online", version = "0.1.0" }
 lgn-physics = { path = "../lgn-physics", version = "0.1.0" }
 lgn-presenter-window = { path = "../lgn-presenter-window", version = "0.1.0", optional = true }
 lgn-runtime-proto = { path = "../lgn-runtime-proto", version = "0.1.0" }
@@ -30,6 +31,7 @@ lgn-scripting = { path = "../../crates/lgn-scripting", version = "0.1.0", featur
     "runtime",
 ] }
 lgn-streamer = { path = "../lgn-streamer", version = "0.1.0" }
+lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-transform = { path = "../lgn-transform", version = "0.1.0" }
 lgn-utils = { path = "../lgn-utils", version = "0.1.0" }
@@ -47,8 +49,14 @@ sample-data = { path = "../../tests/sample-data", version = "0.1.0", features = 
 clap = { version = "3.0", features = ["derive"] }
 crossbeam-channel = "0.5.1"
 instant = { version = "0.1", features = ["wasm-bindgen"] }
+serde = "1"
 tokio = { version = "1.13", features = ["full", "tracing"] }
 tonic = "0.6"
+
+[target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
+lgn-streamer = { path = "../lgn-streamer", version = "0.1.0", features = [
+    "vulkan",
+] }
 
 [features]
 standalone = ["lgn-presenter-window", "lgn-winit"]

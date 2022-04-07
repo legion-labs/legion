@@ -7,7 +7,7 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
-use std::path::PathBuf;
+use std::{net::SocketAddr, path::PathBuf, str::FromStr};
 
 use clap::Parser;
 use generic_data::plugin::GenericDataPlugin;
@@ -17,7 +17,8 @@ use lgn_app::{prelude::StartupStage, CoreStage};
 #[cfg(not(feature = "standalone"))]
 use lgn_asset_registry::AssetRegistryRequest;
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
-use lgn_async::AsyncPlugin;
+use lgn_async::{AsyncPlugin, TokioAsyncRuntime};
+use lgn_config::RichPathBuf;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
 #[cfg(not(feature = "standalone"))]
@@ -33,9 +34,12 @@ use lgn_physics::{PhysicsPlugin, PhysicsSettingsBuilder};
 use lgn_scene_plugin::SceneMessage;
 use lgn_scene_plugin::ScenePlugin;
 use lgn_scripting::ScriptingPlugin;
-use lgn_tracing::prelude::span_fn;
+use lgn_streamer::StreamerPlugin;
+use lgn_telemetry_sink::TelemetryGuardBuilder;
+use lgn_tracing::{info, span_fn};
 use lgn_transform::prelude::TransformPlugin;
 use sample_data::SampleDataPlugin;
+use serde::Deserialize;
 
 #[cfg(not(feature = "standalone"))]
 mod grpc;
@@ -46,7 +50,7 @@ mod standalone;
 use crate::grpc::{GRPCServer, RuntimeServerCommand};
 
 #[derive(Parser, Debug)]
-#[clap(name = "Legion Labs runtime engine")]
+#[clap(name = "Legion Labs runtime server")]
 #[clap(
     about = "Server that will run with runtime data, and execute world simulation, ready to be streamed to a runtime client.",
     version,
@@ -55,10 +59,10 @@ use crate::grpc::{GRPCServer, RuntimeServerCommand};
 struct Args {
     /// The address to listen on
     #[clap(long)]
-    addr: Option<String>,
+    listen_endpoint: Option<SocketAddr>,
     /// Path to folder containing the project index
     #[clap(long)]
-    project: Option<String>,
+    project_root: Option<RichPathBuf>,
     /// Path to the game manifest
     #[clap(long)]
     manifest: Option<String>,
@@ -70,50 +74,149 @@ struct Args {
     physics_debugger: bool,
 }
 
-pub fn build_runtime(
-    project_dir_setting: Option<&str>,
-    fallback_project_dir: &str,
-    fallback_root_asset: &str,
-) -> App {
+#[derive(Debug, Clone, Deserialize)]
+struct Config {
+    /// The endpoint to listen on.
+    #[serde(default = "Config::default_listen_endpoint")]
+    listen_endpoint: SocketAddr,
+
+    /// The project root.
+    project_root: Option<RichPathBuf>,
+
+    /// The root asset.
+    root: Option<String>,
+
+    /// The streamer configuration.
+    #[serde(default)]
+    streamer: lgn_streamer::Config,
+
+    /// Whether the program runs in AWS EC2 behind a NAT.
+    #[serde(default)]
+    enable_aws_ec2_nat_public_ipv4_auto_discovery: bool,
+}
+
+impl Config {
+    fn default_listen_endpoint() -> SocketAddr {
+        "[::1]:50052".parse().unwrap()
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            listen_endpoint: Self::default_listen_endpoint(),
+            project_root: None,
+            root: None,
+            streamer: lgn_streamer::Config::default(),
+            enable_aws_ec2_nat_public_ipv4_auto_discovery: false,
+        }
+    }
+}
+
+pub fn build_runtime() -> App {
+    let telemetry_guard = TelemetryGuardBuilder::default()
+        .build()
+        .expect("telemetry guard should be initialized once");
+
+    info!("Starting runtime server...");
+
+    let mut app = App::from_telemetry_guard(telemetry_guard);
+
     let args = Args::parse();
+    let cwd = std::env::current_dir().unwrap();
+    let config: Config = lgn_config::get("runtime_server")
+        .expect("failed to load config")
+        .unwrap_or_default();
 
-    let game_manifest = if cfg!(feature = "standalone") {
-        let project_dir = {
-            if let Some(params) = args.project {
-                PathBuf::from(params)
-            } else if let Some(key) = project_dir_setting {
-                lgn_config::get_absolute_path_or(key, PathBuf::from(fallback_project_dir)).unwrap()
-            } else {
-                PathBuf::from(fallback_project_dir)
-            }
-        };
+    let listen_endpoint = args.listen_endpoint.unwrap_or(config.listen_endpoint);
 
-        Some(args.manifest.map_or_else(
-            || project_dir.join("runtime").join("game.manifest"),
-            PathBuf::from,
-        ))
+    info!("Listening on {}", listen_endpoint);
+
+    let project_root = args
+        .project_root
+        .or(config.project_root)
+        .expect("no `project_root` was specified");
+
+    let project_root = if project_root.is_absolute() {
+        project_root.to_path_buf()
     } else {
-        None
+        cwd.join(project_root.as_ref())
     };
 
-    let mut assets_to_load = Vec::<ResourceTypeAndId>::new();
+    // TODO: Figure out why this is needed.
+    let project_root = if cfg!(windows) {
+        PathBuf::from_str(&project_root.to_str().unwrap().replace("/", "\\")).unwrap()
+    } else {
+        project_root
+    };
+
+    info!("Project root: {}", project_root.display());
 
     let root_asset = if cfg!(feature = "standalone") {
         // default root object is in sample data
         // /world/sample_1.ent
 
-        args.root
-            .as_deref()
-            .unwrap_or(fallback_root_asset)
-            .parse::<ResourceTypeAndId>()
-            .ok()
+        args.root.or(config.root).map(|asset| {
+            asset
+                .parse::<ResourceTypeAndId>()
+                .expect("failed to parse root asset")
+        })
     } else {
         None
     };
 
+    info!(
+        "Root: {}",
+        root_asset.map_or("(none)".to_owned(), |asset| asset.to_string())
+    );
+
+    let tokio_rt = TokioAsyncRuntime::default();
+
+    let game_manifest_path = if cfg!(feature = "standalone") {
+        Some(args.manifest.map_or_else(PathBuf::new, PathBuf::from))
+    } else {
+        None
+    };
+
+    info!(
+        "Manifest: {}",
+        game_manifest_path
+            .as_ref()
+            .map_or("(none)".to_owned(), |path| path
+                .as_path()
+                .to_string_lossy()
+                .to_string())
+    );
+
+    let mut assets_to_load = Vec::<ResourceTypeAndId>::new();
     if let Some(root_asset) = root_asset {
         assets_to_load.push(root_asset);
     }
+
+    #[cfg(not(feature = "standalone"))]
+    let streamer_plugin = StreamerPlugin {
+        config: if config.enable_aws_ec2_nat_public_ipv4_auto_discovery {
+            info!("Using AWS EC2 NAT public IPv4 auto-discovery.");
+
+            let ipv4 = tokio_rt
+                .block_on(lgn_online::cloud::get_aws_ec2_metadata_public_ipv4())
+                .expect("failed to get AWS EC2 public IPv4");
+
+            info!("AWS EC2 public IPv4: {}", ipv4);
+
+            let mut streamer_config = config.streamer;
+
+            info!("Adding NAT 1:1 public IPv4 to streamer configuration.");
+
+            streamer_config.webrtc.nat_1to1_ips.push(ipv4.to_string());
+
+            streamer_config
+        } else {
+            config.streamer
+        },
+    };
+
+    info!("Streamer plugin config:\n{}", streamer_plugin.config);
 
     // physics settings
     let mut physics_settings = PhysicsSettingsBuilder::default();
@@ -131,8 +234,6 @@ pub fn build_runtime(
         physics_settings = physics_settings.speed_tolerance(speed_tolerance);
     }
 
-    let mut app = App::default();
-
     #[cfg(not(feature = "standalone"))]
     {
         use instant::Duration;
@@ -146,12 +247,16 @@ pub fn build_runtime(
             .add_plugin(ScheduleRunnerPlugin::default());
     }
 
-    app.insert_resource(DefaultTaskPoolOptions::new(1..=4))
+    app.insert_resource(tokio_rt)
+        .insert_resource(DefaultTaskPoolOptions::new(1..=4))
         .add_plugin(CorePlugin::default())
         .add_plugin(AsyncPlugin::default())
         .add_plugin(TransformPlugin::default())
         .add_plugin(HierarchyPlugin::default())
-        .insert_resource(AssetRegistrySettings::new(game_manifest, assets_to_load))
+        .insert_resource(AssetRegistrySettings::new(
+            game_manifest_path,
+            assets_to_load,
+        ))
         .add_plugin(AssetRegistryPlugin::default())
         .add_plugin(ScenePlugin::new(root_asset))
         .add_plugin(GenericDataPlugin::default())
@@ -168,27 +273,16 @@ pub fn build_runtime(
 
     #[cfg(not(feature = "standalone"))]
     {
-        use std::net::SocketAddr;
-
         use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
-        use lgn_streamer::StreamerPlugin;
         use lgn_window::WindowPlugin;
-
-        let server_addr = {
-            let url = args.addr.unwrap_or_else(|| {
-                lgn_config::get_or("runtime_srv.server_addr", "[::1]:50052".to_owned()).unwrap()
-            });
-            url.parse::<SocketAddr>()
-                .unwrap_or_else(|err| panic!("Invalid server_addr '{}': {}", url, err))
-        };
 
         app.add_plugin(WindowPlugin {
             add_primary_window: false,
             exit_on_close: false,
         })
-        .insert_resource(GRPCPluginSettings::new(server_addr))
+        .insert_resource(GRPCPluginSettings::new(listen_endpoint))
         .add_plugin(GRPCPlugin::default())
-        .add_plugin(StreamerPlugin::default());
+        .add_plugin(streamer_plugin);
 
         app.add_startup_system_to_stage(
             StartupStage::PostStartup,

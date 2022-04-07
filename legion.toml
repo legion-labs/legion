@@ -48,8 +48,42 @@ scene = "/world/sample_1.ent"
 #urls = ["stun:stun.l.google.com:19302"]
 
 [runtime_srv]
-project_dir = "tests/sample-data"
-server_addr = "[::1]:50052"
+# Configuration for the runtime server (runtime-srv)
+
+# The project root directory.
+#
+# If relative, it is relative to the current working directory.
+project_root = "$(git-root)/tests/sample-data"
+
+# The endpoint to listen on.
+#
+# Default:
+#listen_endpoint = "[::1]:50052"
+
+# The root asset to load.
+#root = "(1d9ddd99aad89045,af7e6ef0-c271-565b-c27a-b8cd93c3546a)"
+
+# Streamer configuration.
+[runtime_server.streamer]
+
+# Force software encoding
+#
+# Default:
+# force_software_encoding = false
+
+# WebRTC configuration.
+
+# The NAT 1:1 mapping addresses.
+#
+# Default:
+#[runtime_server.streamer.webrtc]
+#nat_1to1_ips = []
+
+# The ICE servers to use.
+#
+# Default:
+#[[runtime_server.streamer.webrtc.ice_servers]]
+#urls = ["stun:stun.l.google.com:19302"]
 
 [physics]
 enable_visual_debugger = false
