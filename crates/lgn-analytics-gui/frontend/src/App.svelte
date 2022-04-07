@@ -11,8 +11,8 @@
   import Log from "./components/Log/Log.svelte";
   import MetricsCanvas from "./components/Metric/MetricCanvas.svelte";
   import Header from "./components/Misc/Header.svelte";
-  import TimelineRenderer from "./components/Timeline/Timeline.svelte";
   import LoadingBar from "./components/Misc/LoadingBar.svelte";
+  import TimelineRenderer from "./components/Timeline/Timeline.svelte";
 
   export let initAuthStatus: InitAuthStatus | null;
 
