@@ -11,6 +11,7 @@ use lgn_content_store::{Config, ContentProvider, ContentReaderExt, ContentWriter
 use lgn_data_compiler::{
     compiler_api::CompilerError, compiler_cmd::CompilerCompileCmd, CompiledResource,
 };
+use lgn_tracing::info;
 use tokio::{fs, io::AsyncWriteExt};
 
 /// The outgoing message for the Data-Executor server, requesting a compilation.
@@ -109,15 +110,35 @@ pub(crate) async fn deploy_files(
     files: &[(String, Identifier)],
     out_folder: &Path,
 ) -> Result<(), CompilerError> {
+    info!("deploying {} files.", files.len());
     for file in files {
         let mut file_name = PathBuf::new();
         file_name.push(out_folder);
         file_name.push(&file.0);
 
+        info!("deploying '{:?}'", file_name);
+
         fs::create_dir_all(file_name.parent().unwrap()).await?;
 
         let data = provider.read_content(&file.1).await?;
-        let mut output = fs::File::create(&file_name).await?;
+
+        let mut output = {
+            let is_exec = file_name
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .starts_with("compiler-");
+
+            let mut options = tokio::fs::OpenOptions::new();
+            options.write(true);
+            if is_exec && cfg!(unix) {
+                options.mode(755);
+            }
+            options.create(true);
+            options.open(file_name).await?
+        };
+
         output.write_all(&data).await?;
     }
     Ok(())
@@ -141,6 +162,5 @@ pub(crate) async fn execute_sandbox_compiler(input_msg: &str) -> Result<String, 
     let output = msg.build_script.execute_with_cwd(&out_folder)?;
 
     // Compress the outcome
-    fs::remove_dir_all(out_folder).await?;
     Ok(serde_json::to_string_pretty(&output)?)
 }

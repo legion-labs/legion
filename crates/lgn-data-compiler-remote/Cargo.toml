@@ -49,6 +49,8 @@ template = """
 FROM ubuntu:20.04
 
 RUN apt-get update && apt-get install -y libssl-dev ca-certificates
+ENV PATH .:$PATH
+ENV LGN_CONFIG /usr/src/app/legion.toml
 
 { copy_all }
 

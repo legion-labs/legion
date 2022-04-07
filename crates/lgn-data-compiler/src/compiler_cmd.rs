@@ -197,7 +197,12 @@ impl CommandBuilder {
     /// Executes the process returning the stdio output or an error on non-zero
     /// exit status.
     fn exec_with_cwd(&self, current_dir: impl AsRef<Path>) -> io::Result<std::process::Output> {
-        info!("Executing: {} {:?}", self.command, self.args);
+        info!(
+            "Executing: {} {:?} in cwd {:?}",
+            self.command,
+            self.args,
+            current_dir.as_ref()
+        );
         let output = std::process::Command::new(&self.command)
             .current_dir(current_dir)
             .args(&self.args)
@@ -416,8 +421,8 @@ impl CompilerCompileCmd {
             }),
             Err(e) => {
                 eprintln!(
-                    "Compiler command failed: {:?} {:?}",
-                    self.0.command, self.0.args
+                    "Compiler command failed: {:?} {:?} with {:?}",
+                    self.0.command, self.0.args, e
                 );
                 Err(e)
             }
