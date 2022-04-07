@@ -92,7 +92,7 @@
 
     const ext = extension(name);
 
-    if (ext == null) {
+    if (ext === null) {
       return true;
     }
 

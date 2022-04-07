@@ -106,7 +106,7 @@
         index = currOverscanStopIndex;
       }
 
-      if (index == null || entries.has(totalCount - index)) {
+      if (index === null || entries.has(totalCount - index)) {
         return;
       }
 
@@ -158,7 +158,7 @@
         $scrollStatus?.scrollInfo.scrollDirection === "backward"
           ? false
           : autoScroll ||
-            ($scrollStatus?.scrollInfo.scrollOffset || 0) +
+            ($scrollStatus?.scrollInfo.scrollOffset ?? 0) +
               viewportHeight +
               elementHeight >=
               elementHeight * totalCount;

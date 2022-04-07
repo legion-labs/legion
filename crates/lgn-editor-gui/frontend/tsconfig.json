@@ -24,7 +24,7 @@
       // "vitest/globals",
       "vite/client",
       "@sveltejs/kit",
-      "@lgn/web-client/src/types/tauri",
+      "@lgn/web-client/src/types/electron",
       "@lgn/web-client/src/types/custom-events"
     ],
     "baseUrl": ".",
@@ -44,6 +44,11 @@
     // Tests
     "tests/**/*.ts",
     // Benchmarks
-    "benchmarks/**/*.ts"
+    "benchmarks/**/*.ts",
+    // Electron
+    "src/electron/**/*.cjs",
+    // Configuration files
+    "*.cjs",
+    "*.js"
   ]
 }

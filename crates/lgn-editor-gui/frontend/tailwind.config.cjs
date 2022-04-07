@@ -1,6 +1,6 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+/* eslint-disable @typescript-eslint/no-var-requires */
+
 const fs = require("fs");
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require("path");
 
 const contentGlobSuffix = "**/*.{svelte,ts}";

@@ -4,7 +4,6 @@
 
   import clickOutside from "../actions/clickOutside";
   import { authClient } from "../lib/auth";
-  import type { UserInfo } from "../lib/auth";
   import log from "../lib/log";
   import userInfo from "../orchestrators/userInfo";
   import type { DevSettingsValue } from "../stores/devSettings";
@@ -13,8 +12,6 @@
   import BrandLogo from "./BrandLogo.svelte";
 
   const { data: userInfoData } = userInfo;
-
-  const isTauri = !!window.__TAURI_METADATA__;
 
   export let documentTitle: string | null = null;
 
@@ -30,22 +27,18 @@
 
   let devSettingsTitle: string | null = null;
 
-  onMount(async () => {
-    if (!isTauri) {
+  onMount(() => {
+    if (!window.isElectron || !window.electron) {
       return;
     }
 
-    const { appWindow } = await import("@tauri-apps/api/window");
+    const minimize = window.electron.minimizeMainWindow;
+    const toggleMaximize = window.electron.toggleMaximizeMainWindow;
+    const close = window.electron.closeMainWindow;
 
     function topBarMouseDownListener(event: MouseEvent) {
-      event.detail === 2
-        ? appWindow.toggleMaximize()
-        : appWindow.startDragging();
+      event.detail === 1 ? event.preventDefault() : toggleMaximize();
     }
-
-    const minimize = appWindow.minimize.bind(appWindow);
-    const toggleMaximize = appWindow.toggleMaximize.bind(appWindow);
-    const close = appWindow.close.bind(appWindow);
 
     topBarHandle?.addEventListener("mousedown", topBarMouseDownListener);
     topBarMinimize?.addEventListener("click", minimize);
@@ -90,21 +83,9 @@
   }
 
   async function authenticate() {
-    if (isTauri) {
-      await userInfo.run(async () => {
-        const { invoke } = await import("@tauri-apps/api");
-
-        const userInfo = (await invoke("plugin:browser|authenticate", {
-          scopes: authClient.loginConfig.scopes,
-          extraParams: authClient.loginConfig.extraParams,
-        })) as UserInfo;
-
-        log.debug("auth", userInfo);
-
-        return userInfo;
-      });
-
-      return;
+    if (window.isElectron) {
+      // TODO: When the application is running on Electron
+      // it should use the node native module
     }
 
     const authorizationUrl = await authClient.getAuthorizationUrl();
@@ -119,7 +100,7 @@
   }
 </script>
 
-<div class="root" class:tauri={isTauri}>
+<div class="root" class:tauri={window.isElectron}>
   <div use:clickOutside on:click-outside={closeMenu} class="menus">
     <div class="brand" title="Legion Editor">
       <BrandLogo class="brand-logo" />
@@ -138,7 +119,7 @@
         <div
           data-testid="dropdown-{menu.id}"
           class="menu-dropdown"
-          class:tauri={isTauri}
+          class:tauri={window.isElectron}
           class:hidden={$topBarMenuStore !== menu.id}
         >
           <div class="menu-dropdown-items">
@@ -155,7 +136,7 @@
       </div>
     {/each}
   </div>
-  <div class="handle" bind:this={topBarHandle}>
+  <div class="handle" bind:this={topBarHandle} style="-webkit-app-region: drag">
     <div class="document-title">
       {#if documentTitle}
         {documentTitle}
@@ -188,7 +169,7 @@
         <Icon icon="ic:baseline-account-circle" />
       {/if}
     </div>
-    {#if isTauri}
+    {#if window.isElectron}
       <div class="window-decorations">
         <div class="window-decoration" bind:this={topBarMinimize}>
           <Icon icon="ic:baseline-minimize" />

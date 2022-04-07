@@ -8,9 +8,9 @@
   export let tabs: Tab[] = [];
 
   /** Optionally change the value used as key during the iteration */
-  export let key: (tab: Tab, index: number) => Tab = (tab) => tab;
+  export let key: (tab: Tab, index: number) => Tab = (tab): Tab => tab;
 
-  export let activeTabIndex: number = 0;
+  export let activeTabIndex = 0;
 
   export let loading = false;
 

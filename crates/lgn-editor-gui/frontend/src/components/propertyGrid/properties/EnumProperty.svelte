@@ -16,7 +16,7 @@
   export let disabled = false;
 
   function onSelect({ detail: entry }: CustomEvent<"" | EnumOption>) {
-    if (entry == "") {
+    if (entry === "") {
       dispatch("input", "");
     } else {
       dispatch("input", entry.value);

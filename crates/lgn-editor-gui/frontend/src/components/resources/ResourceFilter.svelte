@@ -9,7 +9,7 @@
 
   const dispatch = createEventDispatcher<{ filter: { name: string } }>();
 
-  let name = writable("");
+  const name = writable("");
 
   /** Debounce filter values update, if null data are synced instantly, `null` by default */
   export let debouncedMs: number | null = null;

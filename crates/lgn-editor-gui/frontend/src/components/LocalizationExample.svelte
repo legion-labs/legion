@@ -10,6 +10,18 @@
   let photoCount = 0;
 
   let userGender = "other";
+
+  function onLocalSelect({
+    detail: newLocale,
+  }: CustomEvent<{ value: string } | "">) {
+    newLocale && ($locale = newLocale.value);
+  }
+
+  function onGenderSelect({
+    detail: newUserGender,
+  }: CustomEvent<{ value: string } | "">) {
+    newUserGender && (userGender = newUserGender.value);
+  }
 </script>
 
 <div class="bg-gray-700 h-full w-full flex flex-col px-2 space-y-2">
@@ -22,8 +34,7 @@
   </div>
 
   <Select
-    on:select={({ detail: newLocale }) =>
-      newLocale && ($locale = newLocale.value)}
+    on:select={onLocalSelect}
     value={{ item: $locale, value: $locale }}
     options={$availableLocales.map((locale) => ({
       item: locale,
@@ -38,8 +49,7 @@
   <NumberInput min={0} noArrow bind:value={photoCount} />
 
   <Select
-    on:select={({ detail: newUserGender }) =>
-      newUserGender && (userGender = newUserGender.value)}
+    on:select={onGenderSelect}
     value={{ item: userGender, value: userGender }}
     options={["female", "non-binary", "male", "other"].map((gender) => ({
       item: gender,

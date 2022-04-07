@@ -425,7 +425,7 @@ export class LegionClient extends Client<UserInfo> {
   }
 
   async getClientTokenSet(url: URL | string): Promise<ClientTokenSet | null> {
-    if (window.__TAURI_METADATA__) {
+    if (window.isElectron) {
       return null;
     }
 
@@ -467,15 +467,12 @@ export class LegionClient extends Client<UserInfo> {
   }
 
   override async userInfo(): Promise<UserInfo> {
-    let accessToken: string | null = null;
-
-    if (window.__TAURI_METADATA__) {
-      const { invoke } = await import("@tauri-apps/api");
-
-      accessToken = await invoke("plugin:browser|get_access_token");
-    } else {
-      accessToken = getCookie(this.#cookieStorage.accessTokenName);
+    if (window.isElectron) {
+      // TODO: When the application is running on Electron
+      // it should use the node native module
     }
+
+    const accessToken = getCookie(this.#cookieStorage.accessTokenName);
 
     if (!accessToken) {
       throw new Error("Access token not found");
@@ -553,27 +550,9 @@ export async function initAuth({
     authClient = client;
   }
 
-  // Tauri has its own way to deal with auth
-  if (window.__TAURI_METADATA__) {
-    try {
-      await userInfo.run(async () => {
-        const { invoke } = await import("@tauri-apps/api");
-
-        const userInfo = await invoke("plugin:browser|authenticate", {
-          scopes: authClient.loginConfig.scopes,
-          extraParams: authClient.loginConfig.extraParams,
-        });
-
-        log.debug("auth", userInfo);
-
-        return userInfo;
-      });
-    } catch {
-      // Nothing we can do about this but warn the user
-      log.error("Couldn't authenticate the user");
-    }
-
-    return { type: "success" };
+  if (window.isElectron) {
+    // TODO: When the application is running on Electron
+    // it should use the node native module
   }
 
   // Try to get the code from the url, if present and an error occurs

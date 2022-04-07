@@ -28,11 +28,15 @@
   import { viewportTileId } from "@/stores/workspace";
 
   $: if ($allResourcesError) {
-    refetchResources();
+    refetchResources().catch(() => {
+      // TODO: Handle errors
+    });
   }
 
   onMount(() => {
-    refetchResources();
+    refetchResources().catch(() => {
+      // TODO: Handle errors
+    });
   });
 
   function refetchResources() {
@@ -51,7 +55,7 @@
 
 <div class="root">
   <TopBar devSettings={$devSettings} />
-  <div class="content-wrapper" class:tauri={window.__TAURI_METADATA__}>
+  <div class="content-wrapper" class:electron={window.isElectron}>
     <div class="content">
       <div class="secondary-contents">
         <div class="scene-explorer">
@@ -123,7 +127,7 @@
     @apply h-[calc(100vh-4.5rem)] w-full overflow-auto;
   }
 
-  .root .content-wrapper.tauri {
+  .root .content-wrapper.electron {
     @apply h-[calc(100vh-5rem)];
   }
 

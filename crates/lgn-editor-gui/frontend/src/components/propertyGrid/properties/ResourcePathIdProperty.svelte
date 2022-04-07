@@ -1,9 +1,11 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
 
+  import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
   import { dropzone } from "@lgn/web-client/src/actions/dnd";
 
   import { resourceDragAndDropType } from "@/constants";
+  import type { Entry } from "@/lib/hierarchyTree";
   import {
     createResourcePathId,
     getResourceNameFromEntries,
@@ -26,7 +28,10 @@
 
   function onDrop({
     detail: { item: draggedEntry },
-  }: CustomEvent<{ item: any; originalEvent: DragEvent }>) {
+  }: CustomEvent<{
+    item: Entry<ResourceDescription>;
+    originalEvent: DragEvent;
+  }>) {
     if (resourceType) {
       const newValue = createResourcePathId(resourceType, draggedEntry);
 

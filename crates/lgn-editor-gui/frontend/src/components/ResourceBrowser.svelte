@@ -76,7 +76,9 @@
   $: loading = uploadingFiles || $allResourcesLoading;
 
   $: if ($files) {
-    uploadFiles();
+    uploadFiles().catch(() => {
+      // TODO: Handle errors
+    });
   }
 
   $: filteredResourceEntries =
@@ -183,7 +185,7 @@
 
       const names = await Promise.all(promises);
 
-      let [newResource] = await Promise.all(
+      const [newResource] = await Promise.all(
         names.map(({ name, id }) => {
           const lowerCasedName = name.toLowerCase().trim();
 
@@ -215,7 +217,7 @@
 
         if (newId) {
           const entry = $resourceEntries.find(
-            (entry) => isEntry(entry) && entry.item.id == newId
+            (entry) => isEntry(entry) && entry.item.id === newId
           );
 
           if (!entry || !isEntry(entry)) {
@@ -238,7 +240,9 @@
     detail: resourceDescription,
   }: CustomEvent<Entry<ResourceDescription>>) {
     if (resourceDescription) {
-      fetchCurrentResourceDescription(resourceDescription.item.id);
+      fetchCurrentResourceDescription(resourceDescription.item.id).catch(() => {
+        // TODO: Handle errors
+      });
     }
   }
 
@@ -283,7 +287,7 @@
       case "playScene": {
         if ($currentResourceDescriptionEntry) {
           try {
-            let response = await getRuntimeSceneInfo({
+            const response = await getRuntimeSceneInfo({
               resourceId: $currentResourceDescriptionEntry?.item.id,
             });
 
@@ -291,6 +295,7 @@
               await loadRuntimeManifest({
                 manifestId: response.manifestId,
               });
+
               await loadRuntimeRootAsset({
                 rootAssetId: response.assetId,
               });
@@ -326,7 +331,7 @@
 
         if (newResource) {
           const entry = $resourceEntries.find(
-            (entry) => isEntry(entry) && entry.item.id == newResource.id
+            (entry) => isEntry(entry) && entry.item.id === newResource.id
           );
 
           if (!entry || !isEntry(entry)) {
@@ -335,7 +340,9 @@
 
           $currentResourceDescriptionEntry = entry;
 
-          fetchCurrentResourceDescription(newResource.id);
+          fetchCurrentResourceDescription(newResource.id).catch(() => {
+            // TODO: Handle errors
+          });
         }
 
         break;
@@ -413,10 +420,10 @@
     value: ResourceProperty
   ): boolean {
     if (base as BagResourceProperty) {
-      if (restOfPath == "") {
+      if (restOfPath === "") {
         const formatted = formatProperties([value])[0];
 
-        let found = base.subProperties.find((v) => v.name == value.name);
+        let found = base.subProperties.find(({ name }) => name === value.name);
 
         if (found) {
           found = formatted;
