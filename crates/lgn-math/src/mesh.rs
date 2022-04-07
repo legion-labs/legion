@@ -1,3 +1,5 @@
+use glam::Vec4;
+
 use crate::{Vec2, Vec3};
 
 pub fn calculate_tangents(
@@ -65,4 +67,29 @@ pub fn calculate_tangents(
     }
 
     tangents
+}
+
+#[rustfmt::skip]
+pub fn pack_normals(normals: &[Vec3]) -> Vec<u32> {
+    normals
+        .iter()
+        .map(|n| {
+                (((0x7FFu32 as f32 * (n.x + 1.0)/2.0) as u32) << 21 |
+                ((0x7FFu32 as f32 * (n.y + 1.0)/2.0) as u32) << 10) |
+                ((0x3FFu32 as f32 * (n.z + 1.0)/2.0) as u32)
+        })
+        .collect()
+}
+
+#[rustfmt::skip]
+pub fn pack_tangents(tangents: &[Vec4]) -> Vec<u32> {
+    tangents
+        .iter()
+        .map(|t| {
+                (((0x7FFu32 as f32 * t.x) as u32) << 21 |
+                ((0x3FFu32 as f32 * t.y) as u32) << 11) |
+                ((0x3FFu32 as f32 * t.z) as u32) << 1 | 
+                if t.w > 0.0 { 1 } else { 0 }
+        })
+        .collect()
 }

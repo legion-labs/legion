@@ -49,10 +49,10 @@ impl Mesh {
     pub fn size_in_bytes(&self) -> u32 {
         let mut size = (std::mem::size_of::<Vec3>() * self.positions.len()) as u32;
         if let Some(normals) = &self.normals {
-            size += (std::mem::size_of::<Vec3>() * normals.len()) as u32;
+            size += (std::mem::size_of::<u32>() * normals.len()) as u32;
         }
         if let Some(tangents) = &self.tangents {
-            size += (std::mem::size_of::<Vec4>() * tangents.len()) as u32;
+            size += (std::mem::size_of::<u32>() * tangents.len()) as u32;
         }
         if let Some(tex_coords) = &self.tex_coords {
             size += (std::mem::size_of::<Vec2>() * tex_coords.len()) as u32;
@@ -106,13 +106,13 @@ impl Mesh {
 
         if let Some(normals) = &self.normals {
             mesh_desc.set_normal_offset(offset.into());
-            updater.add_update_jobs(normals, u64::from(offset));
-            offset += (std::mem::size_of::<Vec3>() * normals.len()) as u32;
+            updater.add_update_jobs(&lgn_math::pack_normals(normals), u64::from(offset));
+            offset += (std::mem::size_of::<u32>() * normals.len()) as u32;
         }
         if let Some(tangents) = &self.tangents {
             mesh_desc.set_tangent_offset(offset.into());
-            updater.add_update_jobs(&tangents, u64::from(offset));
-            offset += (std::mem::size_of::<Vec4>() * tangents.len()) as u32;
+            updater.add_update_jobs(&lgn_math::pack_tangents(tangents), u64::from(offset));
+            offset += (std::mem::size_of::<u32>() * tangents.len()) as u32;
         }
         if let Some(tex_coords) = &self.tex_coords {
             mesh_desc.set_tex_coord_offset(offset.into());
