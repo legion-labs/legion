@@ -286,7 +286,7 @@ impl AnalyticsService {
         request: MetricBlockRequest,
     ) -> Result<MetricBlockData> {
         let metric_handler = self.get_metric_handler();
-        Ok(metric_handler.get_block_lod_data(request).await?)
+        metric_handler.get_block_lod_data(request).await
     }
 
     #[span_fn]
@@ -295,9 +295,9 @@ impl AnalyticsService {
         request: MetricBlockManifestRequest,
     ) -> Result<MetricBlockManifest> {
         let metric_handler = self.get_metric_handler();
-        Ok(metric_handler
+        metric_handler
             .get_block_manifest(&request.process_id, &request.block_id, &request.stream_id)
-            .await?)
+            .await
     }
 
     #[span_fn]
