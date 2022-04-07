@@ -56,8 +56,12 @@ impl Compiler for Gltf2ModelCompiler {
                     context.source.resource_id(),
                 )
                 .await;
-            let resource = resource.get(&resources).unwrap();
-
+            let resource = resource.get(&resources).ok_or_else(|| {
+                CompilerError::CompilationError(format!(
+                    "Failed to retrieve resource '{}'",
+                    context.source.resource_id()
+                ))
+            })?;
             let mut compiled_resources = vec![];
             let model_proc = ModelProcessor {};
 
@@ -66,7 +70,13 @@ impl Compiler for Gltf2ModelCompiler {
                 let mut compiled_asset = vec![];
                 model_proc
                     .write_resource(&model, &mut compiled_asset)
-                    .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
+                    .map_err(|err| {
+                        CompilerError::CompilationError(format!(
+                            "Writing to file '{}' failed: {}",
+                            context.source.resource_id(),
+                            err
+                        ))
+                    })?;
                 let model_rpid = context.target_unnamed.new_named(&name);
                 compiled_resources.push((model_rpid.clone(), compiled_asset));
                 for mesh in model.meshes {
