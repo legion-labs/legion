@@ -77,48 +77,56 @@ where
     }
 
     /// Sets the leeway for the not-before and expiry times.
+    #[must_use]
     pub fn with_leeway(mut self, leeway: time::Duration) -> Self {
         self.leeway = leeway;
         self
     }
 
     /// Sets the signature validation method.
+    #[must_use]
     pub fn with_signature_validation(mut self, signature_validation: SV) -> Self {
         self.signature_validation = signature_validation;
         self
     }
 
     /// Sets the time function.
+    #[must_use]
     pub fn with_time_fn(mut self, time_fn: fn() -> time::SystemTime) -> Self {
         self.time_fn = time_fn;
         self
     }
 
     /// Disables the validation of the expiration.
+    #[must_use]
     pub fn disable_exp_validation(mut self) -> Self {
         self.validate_exp = false;
         self
     }
 
     /// Disables the validation of the not-before.
+    #[must_use]
     pub fn disable_nbf_validation(mut self) -> Self {
         self.validate_nbf = false;
         self
     }
 
     /// Sets the issuer to check.
+    #[must_use]
     pub fn with_iss(mut self, iss: impl Into<String>) -> Self {
         self.iss = Some(iss.into());
         self
     }
 
     /// Sets the subject identifier to check.
+    #[must_use]
     pub fn with_sub(mut self, sub: impl Into<String>) -> Self {
         self.sub = Some(sub.into());
         self
     }
 
     /// Sets the audience to check.
+    #[must_use]
     pub fn with_aud(mut self, aud: impl Into<String>) -> Self {
         self.aud = Some(aud.into());
         self

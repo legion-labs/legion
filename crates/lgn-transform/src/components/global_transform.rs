@@ -104,6 +104,7 @@ impl GlobalTransform {
 
     #[doc(hidden)]
     #[inline]
+    #[must_use]
     pub const fn with_translation(mut self, translation: Vec3) -> Self {
         self.translation = translation;
         self
@@ -111,6 +112,7 @@ impl GlobalTransform {
 
     #[doc(hidden)]
     #[inline]
+    #[must_use]
     pub const fn with_rotation(mut self, rotation: Quat) -> Self {
         self.rotation = rotation;
         self
@@ -118,6 +120,7 @@ impl GlobalTransform {
 
     #[doc(hidden)]
     #[inline]
+    #[must_use]
     pub const fn with_scale(mut self, scale: Vec3) -> Self {
         self.scale = scale;
         self

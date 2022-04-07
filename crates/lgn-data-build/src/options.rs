@@ -128,12 +128,14 @@ impl DataBuildOptions {
 
     /// Set asset registry used by data compilers. If it is not set `DataBuild` will use
     /// a new instance of asset registry.
+    #[must_use]
     pub fn asset_registry(mut self, registry: Arc<AssetRegistry>) -> Self {
         self.registry = Some(registry);
         self
     }
 
     /// Set manifest used by the asset registry during data compilation.
+    #[must_use]
     pub fn manifest(mut self, manifest: Manifest) -> Self {
         self.manifest = Some(manifest);
         self
@@ -143,6 +145,7 @@ impl DataBuildOptions {
     /// `build_output_db_addr` can be:
     /// * myslq:// path
     /// * absolute directory path or directory path relative to `cwd`
+    #[must_use]
     pub fn output_database(
         mut self,
         build_output_db_addr: &str,

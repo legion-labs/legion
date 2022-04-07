@@ -48,6 +48,7 @@ impl Change {
         &self.change_type
     }
 
+    #[must_use]
     pub fn into_invert(self) -> Self {
         Self {
             canonical_path: self.canonical_path,
@@ -55,6 +56,7 @@ impl Change {
         }
     }
 
+    #[must_use]
     pub fn with_parent_name(self, parent_name: &str) -> Self {
         Self {
             canonical_path: self.canonical_path.prepend(parent_name),

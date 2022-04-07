@@ -22,21 +22,25 @@ impl Default for PhysicsSettings {
 pub struct PhysicsSettingsBuilder(PhysicsSettings);
 
 impl PhysicsSettingsBuilder {
+    #[must_use]
     pub fn enable_visual_debugger(mut self, enable_visual_debugger: bool) -> Self {
         self.0.enable_visual_debugger = enable_visual_debugger;
         self
     }
 
+    #[must_use]
     pub fn length_tolerance(mut self, length_tolerance: f32) -> Self {
         self.0.length_tolerance = length_tolerance;
         self
     }
 
+    #[must_use]
     pub fn speed_tolerance(mut self, speed_tolerance: f32) -> Self {
         self.0.speed_tolerance = speed_tolerance;
         self
     }
 
+    #[must_use]
     pub fn gravity(mut self, gravity: Vec3) -> Self {
         self.0.gravity = gravity;
         self

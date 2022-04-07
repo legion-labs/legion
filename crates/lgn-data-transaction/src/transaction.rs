@@ -116,6 +116,7 @@ impl Transaction {
     }
 
     /// Add a new operation to the transaction
+    #[must_use]
     pub fn add_operation(mut self, op: Box<dyn TransactionOperation + Send + Sync>) -> Self {
         self.operations.push(op);
         self

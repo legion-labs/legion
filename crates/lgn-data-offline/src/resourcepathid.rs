@@ -203,6 +203,7 @@ impl ResourcePathId {
     ///
     /// The node is identified by the appended `kind`.
     /// The `ResourcePathId`'s compilation output type changes to `kind`.
+    #[must_use]
     pub fn push(&self, kind: impl Into<ResourceType>) -> Self {
         let mut cloned = self.clone();
         cloned.transforms.push((kind.into(), None));
@@ -214,6 +215,7 @@ impl ResourcePathId {
     ///
     /// The node is identified by the appended tuple of (`kind`, `name`).
     /// The `ResourcePathId`'s compilation output type changes to `kind`.
+    #[must_use]
     pub fn push_named(&self, kind: impl Into<ResourceType>, name: &str) -> Self {
         let mut cloned = self.clone();
         cloned
@@ -224,6 +226,7 @@ impl ResourcePathId {
 
     /// Create a new [`ResourcePathId`] by changing the last node's `name`
     /// property.
+    #[must_use]
     pub fn new_named(&self, name: &str) -> Self {
         assert!(!self.is_source(), "Source path cannot be named");
         let mut cloned = self.clone();
@@ -233,6 +236,7 @@ impl ResourcePathId {
     }
 
     /// Creates a new id without the `name` part.
+    #[must_use]
     pub fn to_unnamed(&self) -> Self {
         let mut cloned = self.clone();
         if let Some((_, name)) = cloned.transforms.last_mut() {
@@ -275,6 +279,7 @@ impl ResourcePathId {
     }
 
     /// Returns an id of the build path's leaf node - the source resource.
+    #[must_use]
     pub fn source_resource_path(&self) -> Self {
         Self::from(self.source)
     }

@@ -17,6 +17,7 @@ pub struct Chunker {
 impl Chunker {
     pub const DEFAULT_CHUNK_SIZE: usize = 1024 * 1024; // 1 MB
 
+    #[must_use]
     pub fn with_chunk_size(mut self, chunk_size: usize) -> Self {
         assert!(chunk_size > 0);
         self.chunk_size = chunk_size;

@@ -171,18 +171,21 @@ impl<LeafType> Tree<LeafType> {
     }
 
     /// Add a named leaf to the tree.
+    #[must_use]
     pub fn with_named_leaf(mut self, key: String, leaf: LeafType) -> Self {
         self.children.insert(key, TreeNode::Leaf(leaf));
         self
     }
 
     /// Add a named sub-tree to the tree.
+    #[must_use]
     pub fn with_named_branch(mut self, key: String, branch: TreeIdentifier) -> Self {
         self.children.insert(key, TreeNode::Branch(branch));
         self
     }
 
     /// Remove a child from the tree.
+    #[must_use]
     pub fn without_child(mut self, key: &str) -> Self {
         self.children.remove(key);
         self

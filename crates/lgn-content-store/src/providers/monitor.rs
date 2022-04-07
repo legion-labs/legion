@@ -64,6 +64,7 @@ impl<Inner> MonitorProvider<Inner> {
         }
     }
 
+    #[must_use]
     pub fn on_download_callbacks(
         mut self,
         callbacks: impl TransferCallbacks<Identifier> + 'static,
@@ -72,6 +73,7 @@ impl<Inner> MonitorProvider<Inner> {
         self
     }
 
+    #[must_use]
     pub fn on_upload_callbacks(
         mut self,
         callbacks: impl TransferCallbacks<Identifier> + 'static,
