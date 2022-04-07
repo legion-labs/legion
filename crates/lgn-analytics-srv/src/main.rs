@@ -80,7 +80,7 @@ pub async fn connect_to_local_data_lake(
         LocalBlobStorage::new(cache_path).await?,
     ));
     let db_path = data_lake_path.join("telemetry.db3");
-    let db_uri = format!("sqlite://{}", db_path.to_str().unwrap().replace("\\", "/"));
+    let db_uri = format!("sqlite://{}", db_path.to_str().unwrap().replace('\\', "/"));
     let pool = sqlx::any::AnyPoolOptions::new()
         .connect(&db_uri)
         .await

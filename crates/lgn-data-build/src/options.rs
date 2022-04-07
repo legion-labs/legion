@@ -119,7 +119,7 @@ impl DataBuildOptions {
                 .join(Self::OUTPUT_NAME_PREFIX)
                 .to_str()
                 .unwrap()
-                .replace("\\", "/"),
+                .replace('\\', "/"),
         );
         output.push_str(version);
         output.push_str(".db3");

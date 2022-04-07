@@ -71,7 +71,7 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
             ctx.workspace_root().join("target/doc/index.html"),
             format!(
                 "<meta http-equiv=\"refresh\" content=\"0; URL={}/index.html\"/>",
-                entry_point.replace("-", "_")
+                entry_point.replace('-', "_")
             ),
         )
         .map_err(|err| Error::new("Could not write entry point").with_source(err))?;
