@@ -17,18 +17,19 @@ use tonic::{Request, Response, Status};
 use crate::broadcast_sink::TraceEvent;
 
 #[derive(Debug, Clone)]
-pub(crate) enum SelectionEvent {
+pub(crate) enum EditorEvent {
     SelectionChanged(Vec<ResourceTypeAndId>),
+    ResourceChanged(Vec<ResourceTypeAndId>),
 }
 
 pub(crate) type TraceEventsReceiver = SharedUnboundedReceiver<TraceEvent>;
-pub(crate) type SelectionEventsReceiver = SharedUnboundedReceiver<SelectionEvent>;
+pub(crate) type EditorEventsReceiver = SharedUnboundedReceiver<EditorEvent>;
 
 pub(crate) struct GRPCServer {
     transaction_manager: Arc<Mutex<TransactionManager>>,
     /// A globally share trace events, unbounded, receiver
     trace_events_receiver: TraceEventsReceiver,
-    selection_events_receiver: SelectionEventsReceiver,
+    editor_events_receiver: EditorEventsReceiver,
 }
 
 impl GRPCServer {
@@ -36,12 +37,12 @@ impl GRPCServer {
     pub(crate) fn new(
         transaction_manager: Arc<Mutex<TransactionManager>>,
         trace_events_receiver: TraceEventsReceiver,
-        selection_events_receiver: SelectionEventsReceiver,
+        editor_events_receiver: EditorEventsReceiver,
     ) -> Self {
         Self {
             transaction_manager,
             trace_events_receiver,
-            selection_events_receiver,
+            editor_events_receiver,
         }
     }
 
@@ -146,26 +147,39 @@ impl Editor for GRPCServer {
         _: Request<InitMessageStreamRequest>,
     ) -> Result<tonic::Response<<Self as Editor>::InitMessageStreamStream>, Status> {
         let (tx, rx) = mpsc::unbounded_channel();
-        let receiver = self.selection_events_receiver.clone();
+        let receiver = self.editor_events_receiver.clone();
 
         tokio::spawn(async move {
             loop {
                 match receiver.lock().await.recv().await {
-                    Ok(selection_event) => {
-                        let SelectionEvent::SelectionChanged(selections) = selection_event;
-
-                        if let Err(_error) = tx.send(Ok(InitMessageStreamResponse {
-                            response: Some(init_message_stream_response::Response::Message(
-                                lgn_editor_proto::editor::Message {
-                                    msg_type: 0,
+                    Ok(editor_event) => {
+                        if let Some(message) = match editor_event {
+                            EditorEvent::SelectionChanged(selections) => {
+                                Some(lgn_editor_proto::editor::Message {
+                                    msg_type:
+                                        lgn_editor_proto::editor::MessageType::SelectionChanged
+                                            as i32,
                                     payload: serde_json::json!(selections).to_string(),
-                                },
-                            )),
-                        })) {
-                            // Sent errors are always related to closed connection:
-                            // https://github.com/tokio-rs/tokio/blob/b1afd95994be0d46ea70ba784439a684a787f50e/tokio/src/sync/mpsc/error.rs#L12
-                            // So we can stop the task
-                            return;
+                                })
+                            }
+                            EditorEvent::ResourceChanged(changed_resources) => {
+                                Some(lgn_editor_proto::editor::Message {
+                                    msg_type: lgn_editor_proto::editor::MessageType::ResourceChanged
+                                        as i32,
+                                    payload: serde_json::json!(changed_resources).to_string(),
+                                })
+                            }
+                        } {
+                            if let Err(_error) = tx.send(Ok(InitMessageStreamResponse {
+                                response: Some(init_message_stream_response::Response::Message(
+                                    message,
+                                )),
+                            })) {
+                                // Sent errors are always related to closed connection:
+                                // https://github.com/tokio-rs/tokio/blob/b1afd95994be0d46ea70ba784439a684a787f50e/tokio/src/sync/mpsc/error.rs#L12
+                                // So we can stop the task
+                                return;
+                            }
                         }
                     }
                     Err(RecvError::Lagged(skipped_messages)) => {

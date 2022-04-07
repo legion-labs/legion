@@ -9,6 +9,7 @@ import { MessageType } from "@lgn/proto-editor/dist/editor";
 import { initMessageStream as initMessageStreamApi } from "@/api";
 import { isEntry } from "@/lib/hierarchyTree";
 import { fetchCurrentResourceDescription } from "@/orchestrators/currentResource";
+import { fetchStagedResources } from "@/stores/stagedResources";
 
 import {
   currentResourceDescriptionEntry,
@@ -26,6 +27,25 @@ export function initMessageStream() {
 
       if (message) {
         switch (message.msgType) {
+          case MessageType.ResourceChanged: {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            const resourceIds: string[] = JSON.parse(message.payload);
+
+            const currentEntryValue = get(currentResourceDescriptionEntry);
+
+            if (
+              currentEntryValue &&
+              resourceIds.indexOf(currentEntryValue.item.id) > -1
+            ) {
+              fetchCurrentResourceDescription(currentEntryValue.item.id, {
+                notifySelection: false,
+              }).catch(() => undefined); // TODO: Handle errors
+            }
+
+            fetchStagedResources().catch(() => undefined); // TODO: Handle errors
+            break;
+          }
+
           case MessageType.SelectionChanged: {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const resourceIds: string[] = JSON.parse(message.payload);

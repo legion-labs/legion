@@ -215,35 +215,40 @@ impl TransactionManager {
     }
 
     /// Commit the current pending `Transaction`
-    pub async fn commit_transaction(&mut self, mut transaction: Transaction) -> Result<(), Error> {
-        transaction
+    pub async fn commit_transaction(
+        &mut self,
+        mut transaction: Transaction,
+    ) -> Result<Option<Vec<ResourceTypeAndId>>, Error> {
+        let changed = transaction
             .apply_transaction(LockContext::new(self).await)
             .await?;
         self.commited_transactions.push(transaction);
         self.rollbacked_transactions.clear();
-        Ok(())
+        Ok(changed)
     }
 
     /// Undo the last committed transaction
-    pub async fn undo_transaction(&mut self) -> Result<(), Error> {
+    pub async fn undo_transaction(&mut self) -> Result<Option<Vec<ResourceTypeAndId>>, Error> {
         if let Some(mut transaction) = self.commited_transactions.pop() {
-            transaction
+            let changed = transaction
                 .rollback_transaction(LockContext::new(self).await)
                 .await?;
             self.rollbacked_transactions.push(transaction);
+            return Ok(changed);
         }
-        Ok(())
+        Ok(None)
     }
 
     /// Reapply a rollbacked transaction
-    pub async fn redo_transaction(&mut self) -> Result<(), Error> {
+    pub async fn redo_transaction(&mut self) -> Result<Option<Vec<ResourceTypeAndId>>, Error> {
         if let Some(mut transaction) = self.rollbacked_transactions.pop() {
-            transaction
+            let changed = transaction
                 .apply_transaction(LockContext::new(self).await)
                 .await?;
             self.commited_transactions.push(transaction);
+            return Ok(changed);
         }
-        Ok(())
+        Ok(None)
     }
 
     /// Retrieve the identifier for the current runtime manifest

@@ -25,7 +25,7 @@ use lgn_transform::components::Transform;
 use tokio::sync::{broadcast, Mutex};
 
 use crate::grpc::TraceEventsReceiver;
-use crate::grpc::{SelectionEvent, SelectionEventsReceiver};
+use crate::grpc::{EditorEvent, EditorEventsReceiver};
 use crate::source_control_plugin::{RawFilesStreamerConfig, SharedRawFilesStreamer};
 
 #[derive(Default)]
@@ -35,14 +35,14 @@ pub struct EditorPlugin;
 
 impl Plugin for EditorPlugin {
     fn build(&self, app: &mut App) {
-        let (selection_events_sender, selection_events_receiver) = broadcast::channel(1_000);
-        let selection_events_receiver: SelectionEventsReceiver = selection_events_receiver.into();
+        let (editor_events_sender, editor_events_receiver) = broadcast::channel(1_000);
+        let editor_events_receiver: EditorEventsReceiver = editor_events_receiver.into();
 
         app
         .insert_resource(SelectionManager::create())
         .init_resource::<SharedRawFilesStreamer>()
-        .insert_resource(selection_events_sender)
-        .insert_resource(selection_events_receiver)
+        .insert_resource(editor_events_sender)
+        .insert_resource(editor_events_receiver)
         .add_system_to_stage(CoreStage::PostUpdate, Self::process_input)
         .add_system_to_stage(CoreStage::PostUpdate, Self::update_selection)
         .add_startup_system_to_stage(
@@ -61,12 +61,12 @@ impl EditorPlugin {
         transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
         mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
         trace_events_receiver: Res<'_, TraceEventsReceiver>,
-        select_events_receiver: Res<'_, SelectionEventsReceiver>,
+        editor_events_receiver: Res<'_, EditorEventsReceiver>,
     ) {
         let grpc_server = super::grpc::GRPCServer::new(
             transaction_manager.clone(),
             trace_events_receiver.clone(),
-            select_events_receiver.clone(),
+            editor_events_receiver.clone(),
         );
 
         grpc_settings.register_service(grpc_server.service());
@@ -77,7 +77,7 @@ impl EditorPlugin {
         selection_manager: Res<'_, Arc<SelectionManager>>,
         picking_manager: Res<'_, PickingManager>,
         active_scenes: Res<'_, ActiveScenes>,
-        event_sender: Res<'_, broadcast::Sender<SelectionEvent>>,
+        event_sender: Res<'_, broadcast::Sender<EditorEvent>>,
     ) {
         if let Some(selection) = selection_manager.update() {
             // Convert the SelectionManager offlineId to RuntimeId
@@ -96,7 +96,7 @@ impl EditorPlugin {
                 })
                 .collect();
 
-            if let Err(err) = event_sender.send(SelectionEvent::SelectionChanged(selection)) {
+            if let Err(err) = event_sender.send(EditorEvent::SelectionChanged(selection)) {
                 warn!("Failed to send selectionEvent: {}", err);
             }
             picking_manager.set_active_selection(entities_selection);
@@ -108,25 +108,39 @@ impl EditorPlugin {
         tokio_runtime: ResMut<'_, TokioAsyncRuntime>,
         transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
         active_scenes: Res<'_, ActiveScenes>,
-        //asset_to_entity_map: Res<'_, AssetToEntityMap>,
         entities: Query<'_, '_, (Entity, Option<&Name>)>,
         mut event_reader: EventReader<'_, '_, PickingEvent>,
         keys: Res<'_, Input<KeyCode>>,
+        event_sender: Res<'_, broadcast::Sender<EditorEvent>>,
     ) {
         if keys.pressed(KeyCode::LControl) && keys.just_pressed(KeyCode::Z) {
             let transaction_manager = transaction_manager.clone();
+            let event_sender = event_sender.clone();
             tokio_runtime.start_detached(async move {
                 let mut transaction_manager = transaction_manager.lock().await;
-                if let Err(err) = transaction_manager.undo_transaction().await {
-                    error!("Undo transaction failed: {}", err);
+                match transaction_manager.undo_transaction().await {
+                    Ok(Some(changed)) => {
+                        if let Err(err) = event_sender.send(EditorEvent::ResourceChanged(changed)) {
+                            warn!("Failed to send EditorEvent: {}", err);
+                        }
+                    }
+                    Err(err) => error!("Undo transaction failed: {}", err),
+                    Ok(_) => {}
                 }
             });
         } else if keys.pressed(KeyCode::LControl) && keys.just_pressed(KeyCode::Y) {
             let transaction_manager = transaction_manager.clone();
+            let event_sender = event_sender.clone();
             tokio_runtime.start_detached(async move {
                 let mut transaction_manager = transaction_manager.lock().await;
-                if let Err(err) = transaction_manager.redo_transaction().await {
-                    error!("Redo transaction failed: {}", err);
+                match transaction_manager.redo_transaction().await {
+                    Ok(Some(changed)) => {
+                        if let Err(err) = event_sender.send(EditorEvent::ResourceChanged(changed)) {
+                            warn!("Failed to send EditorEvent: {}", err);
+                        }
+                    }
+                    Err(err) => error!("Redo transaction failed: {}", err),
+                    Ok(_) => {}
                 }
             });
         }
@@ -175,6 +189,7 @@ impl EditorPlugin {
                             let scale_value = serde_json::json!(transform.scale).to_string();
 
                             let transaction_manager = transaction_manager.clone();
+                            let event_sender = event_sender.clone();
 
                             tokio_runtime.start_detached(async move {
                                 let mut transaction_manager = transaction_manager.lock().await;
@@ -194,10 +209,19 @@ impl EditorPlugin {
                                             ],
                                         ),
                                     );
-                                    if let Err(err) =
-                                        transaction_manager.commit_transaction(transaction).await
+                                    match transaction_manager.commit_transaction(transaction).await
                                     {
-                                        error!("ApplyTransform transaction failed: {}", err);
+                                        Ok(Some(changed)) => {
+                                            if let Err(err) = event_sender
+                                                .send(EditorEvent::ResourceChanged(changed))
+                                            {
+                                                warn!("Failed to send EditorEvent: {}", err);
+                                            }
+                                        }
+                                        Ok(_) => {}
+                                        Err(err) => {
+                                            error!("ApplyTransform transaction failed: {}", err);
+                                        }
                                     }
                                 }
                             });
