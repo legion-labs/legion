@@ -9,13 +9,12 @@ import { MessageType } from "@lgn/proto-editor/dist/editor";
 import { initMessageStream as initMessageStreamApi } from "@/api";
 import { isEntry } from "@/lib/hierarchyTree";
 import { fetchCurrentResourceDescription } from "@/orchestrators/currentResource";
+import { fetchStagedResources } from "@/stores/stagedResources";
 
 import {
   currentResourceDescriptionEntry,
   resourceEntries,
 } from "./resourceBrowserEntries";
-import log from "@lgn/web-client/src/lib/log";
-import { fetchStagedResources } from "@/stores/stagedResources";
 
 export function initMessageStream() {
   const subscription = initMessageStreamApi().subscribe(
@@ -32,11 +31,18 @@ export function initMessageStream() {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const resourceIds: string[] = JSON.parse(message.payload);
 
-            fetchStagedResources();
-            // TODO
-            // if the current resource in the PropertyGrid has been modified,
-            // trigger a refresh
-            log.error(resourceIds);
+            const currentEntryValue = get(currentResourceDescriptionEntry);
+
+            if (
+              currentEntryValue &&
+              resourceIds.indexOf(currentEntryValue.item.id) > -1
+            ) {
+              fetchCurrentResourceDescription(currentEntryValue.item.id, {
+                notifySelection: false,
+              }).catch(() => undefined); // TODO: Handle errors
+            }
+
+            fetchStagedResources().catch(() => undefined); // TODO: Handle errors
             break;
           }
 
