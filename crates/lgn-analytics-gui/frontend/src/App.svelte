@@ -12,6 +12,7 @@
   import MetricsCanvas from "./components/Metric/MetricCanvas.svelte";
   import Header from "./components/Misc/Header.svelte";
   import TimelineRenderer from "./components/Timeline/Timeline.svelte";
+  import LoadingBar from "./components/Misc/LoadingBar.svelte";
 
   export let initAuthStatus: InitAuthStatus | null;
 
@@ -33,6 +34,7 @@
   </style>
 </svelte:head>
 
+<LoadingBar />
 <div class="pt-2 pb-4 antialiased">
   <Header />
   <div class="pl-5 pr-5 pt-5 overflow-hidden">
