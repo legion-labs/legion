@@ -4,15 +4,34 @@
 #include "crate://lgn-graphics-renderer/gpu/include/common.hsh"
 #include "crate://lgn-graphics-renderer/gpu/cgen_type/mesh_description.hlsl"
 
+float3 unpack_normal_r11g11b10(uint pack) {
+    return float3(
+        (pack >> 21)*2.0/(float)0x7FF - 1.0,
+        (pack << 11 >> 21)*2.0/(float)0x7FF - 1.0,
+        (pack << 22 >> 22)*2.0/(float)0x3FF - 1.0
+    );
+}
+
+float4 unpack_tangents_r11g10b10a1(uint pack) {
+    return float4(
+        (pack >> 21)*2.0/(float)0x7FF - 1.0,
+        (pack << 11 >> 22)*2.0/(float)0x3FF - 1.0,
+        (pack << 21 >> 22)*2.0/(float)0x3FF - 1.0,
+        (pack & 1) > 0.0 ? 1.0 : -1.0
+    );
+}
+
 template<typename TVertexIn>
 TVertexIn LoadVertex(MeshDescription mesh_desc, uint vertexId) {
     TVertexIn vertex_in = (TVertexIn)0;
     vertex_in.pos = static_buffer.Load<float3>(mesh_desc.position_offset + vertexId * 12);
     if( mesh_desc.attrib_mask.is_set(MeshAttribMask_NORMAL)) {      
-        vertex_in.normal = static_buffer.Load<float3>(mesh_desc.normal_offset + vertexId * 12);
+        uint pack = static_buffer.Load<uint>(mesh_desc.normal_offset + vertexId * 4);
+        vertex_in.normal = unpack_normal_r11g11b10(pack);
     }
-    if( mesh_desc.attrib_mask.is_set(MeshAttribMask_TANGENT)) {     
-        vertex_in.tangent = static_buffer.Load<float3>(mesh_desc.tangent_offset + vertexId * 12);
+    if( mesh_desc.attrib_mask.is_set(MeshAttribMask_TANGENT)) {
+        uint pack = static_buffer.Load<uint>(mesh_desc.tangent_offset + vertexId * 4);
+        vertex_in.tangent = unpack_tangents_r11g10b10a1(pack);
     }
     if( mesh_desc.attrib_mask.is_set(MeshAttribMask_COLOR)) {
         uint packed_color = static_buffer.Load<uint>(mesh_desc.color_offset + vertexId * 4);       

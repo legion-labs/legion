@@ -1,10 +1,11 @@
+use glam::Vec4;
+
 use crate::{Vec2, Vec3};
 
 pub fn calculate_tangents(
     positions: &[Vec3],
     tex_coords: &[Vec2],
     indices: &Option<Vec<u16>>,
-    initial_index: u16,
 ) -> Vec<Vec3> {
     let length = positions.len();
     let mut tangents = Vec::with_capacity(length);
@@ -20,17 +21,17 @@ pub fn calculate_tangents(
 
     for i in 0..num_triangles {
         let idx0 = if let Some(indices) = &indices {
-            (indices[i * 3] - initial_index) as usize
+            (indices[i * 3]) as usize
         } else {
             i * 3
         };
         let idx1 = if let Some(indices) = &indices {
-            (indices[i * 3 + 1] - initial_index) as usize
+            (indices[i * 3 + 1]) as usize
         } else {
             i * 3 + 1
         };
         let idx2 = if let Some(indices) = &indices {
-            (indices[i * 3 + 2] - initial_index) as usize
+            (indices[i * 3 + 2]) as usize
         } else {
             i * 3 + 2
         };
@@ -50,7 +51,7 @@ pub fn calculate_tangents(
 
         let f = delta_uv1.y * delta_uv2.x - delta_uv1.x * delta_uv2.y;
         //let b = (delta_uv2.x * edge1 - delta_uv1.x * edge2) / f;
-        let t = if f != 0_f32 {
+        let t = if f.abs() > f32::EPSILON {
             (delta_uv1.y * edge2 - delta_uv2.y * edge1) / f
         } else {
             Vec3::ZERO
@@ -66,4 +67,31 @@ pub fn calculate_tangents(
     }
 
     tangents
+}
+
+#[rustfmt::skip]
+#[allow(clippy::cast_precision_loss)]
+pub fn pack_normals_r11g11b10(normals: &[Vec3]) -> Vec<u32> {
+    normals
+        .iter()
+        .map(|n| {
+                (((0x7FFu32 as f32 * (n.x + 1.0)/2.0) as u32) << 21 |
+                ((0x7FFu32 as f32 * (n.y + 1.0)/2.0) as u32) << 10) |
+                ((0x3FFu32 as f32 * (n.z + 1.0)/2.0) as u32)
+        })
+        .collect()
+}
+
+#[rustfmt::skip]
+#[allow(clippy::cast_precision_loss)]
+pub fn pack_tangents_r11g10b10a1(tangents: &[Vec4]) -> Vec<u32> {
+    tangents
+        .iter()
+        .map(|t| {
+                (((0x7FFu32 as f32 * (t.x + 1.0)/2.0) as u32) << 21 |
+                ((0x3FFu32 as f32 * (t.y + 1.0)/2.0) as u32) << 11) |
+                ((0x3FFu32 as f32 * (t.z + 1.0)/2.0) as u32) << 1 | 
+                if t.w > 0.0 { 1 } else { 0 }
+        })
+        .collect()
 }

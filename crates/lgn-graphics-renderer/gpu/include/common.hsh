@@ -13,7 +13,7 @@ struct GpuPipelineVertexIn
 struct VertexIn {
     float3 pos : POSITION;
     float3 normal : NORMAL;
-    float3 tangent : TANGENT;
+    float4 tangent : TANGENT;
     float4 color: COLOR;
     float2 uv_coord : TEXCOORD0;
 };
@@ -54,13 +54,13 @@ float3 transform_position(float4 rotation, float3 translation, float3 position) 
     return result + translation;
 }
 
-float3 transform_normal(Transform transform, float3 normal) {
-    float3 result = (1.0 / transform.scale) * normal;
-    return normalize(mul(quaternion_to_matrix(transform.rotation), result));
+float3 transform_vector(Transform transform, float3 v) {
+    float3 result = (1.0 / transform.scale) * v;
+    return mul(quaternion_to_matrix(transform.rotation), result);
 }
 
-float3 transform_normal(float4 rotation, float3 normal) {
-    return normalize(mul(quaternion_to_matrix(rotation), normal));
+float3 rotate_vector(float4 quat, float3 v) {
+    return mul(quaternion_to_matrix(quat), v);
 } 
 
 // See https://github.com/emilk/egui/blob/26d576f5101dfa1219f79bf9c99e29c577487cd3/egui_glium/src/painter.rs#L19.

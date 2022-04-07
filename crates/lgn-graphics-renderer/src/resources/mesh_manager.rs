@@ -66,7 +66,7 @@ impl MeshManager {
             Mesh::new_wireframe_cube(1.0),
             Mesh::new_ground_plane(6, 5, 0.25),
             Mesh::new_torus(0.1, 32, 0.5, 128),
-            Mesh::new_cone(0.25, 1.0, 32, 0),
+            Mesh::new_cone(0.25, 1.0, 32),
             Mesh::new_cylinder(0.25, 1.0, 32),
             Mesh::new_sphere(0.25, 64, 64),
             Mesh::new_arrow(),

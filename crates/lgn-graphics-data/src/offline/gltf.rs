@@ -12,7 +12,7 @@ use gltf::{
     mesh::util::{ReadIndices, ReadTexCoords},
     texture, Document,
 };
-use lgn_math::{Vec2, Vec3};
+use lgn_math::{Vec2, Vec3, Vec4};
 
 use lgn_data_offline::{
     resource::{OfflineResource, ResourceProcessor, ResourceProcessorError},
@@ -49,13 +49,18 @@ impl GltfFile {
             for primitive in model.primitives() {
                 let mut positions: Vec<Vec3> = Vec::new();
                 let mut normals: Vec<Vec3> = Vec::new();
-                let mut tangents: Vec<Vec3> = Vec::new();
+                let mut tangents: Vec<Vec4> = Vec::new();
                 let mut tex_coords: Vec<Vec2> = Vec::new();
                 let mut indices: Vec<u16> = Vec::new();
 
                 let reader = primitive.reader(|buffer| Some(&self.buffers[buffer.index()]));
                 if let Some(iter) = reader.read_positions() {
                     for position in iter {
+                        // GLTF uses RH Y-up coordinate system, Legion Engine uses LH Y-up. Flipping Z for positions
+                        // and normals gives us the desired result. Note that it also rotates the model 90 degrees around
+                        // the up axis. It compensates 90 degrees rotation that happens when the model is exported from Blender
+                        // to GLTF. As a result, imported model is oriented the same relative to the axis of Legion Engine as it
+                        // was oriented relative to the axis of Blender.
                         positions.push(Vec3::new(position[0], position[1], -position[2]));
                     }
                 }
@@ -66,7 +71,10 @@ impl GltfFile {
                 }
                 if let Some(iter) = reader.read_tangents() {
                     for tangent in iter {
-                        tangents.push(Vec3::new(tangent[0], tangent[1], -tangent[2]));
+                        // Same rule as above applies to the tangents. W coordinate of the tangent contains the handedness
+                        // of the tangent space. -1 handedness corresponds to a LH tangent basis in a RH coordinate system.
+                        // Since our coordinate system is LH, we have to flip it on import.
+                        tangents.push(Vec4::new(tangent[0], tangent[1], -tangent[2], -tangent[3]));
                     }
                 }
                 if let Some(tex_coords_option) = reader.read_tex_coords(0) {
@@ -105,31 +113,38 @@ impl GltfFile {
 
                 let mut indices = Some(indices);
                 if tangents.is_empty() && !normals.is_empty() {
-                    tangents = lgn_math::calculate_tangents(&positions, &tex_coords, &indices, 0);
+                    tangents = lgn_math::calculate_tangents(&positions, &tex_coords, &indices)
+                        .iter()
+                        .map(|v| v.extend(-1.0))
+                        .collect();
                 }
 
-                let mut material = primitive.material().name().map(|material_name| {
-                    ResourcePathId::from(resource_id)
-                        .push_named(crate::offline::Material::TYPE, material_name)
-                        .push(crate::runtime::Material::TYPE)
-                });
-                if material.is_none() {
-                    material = primitive.material().index().map(|idx| {
-                        ResourcePathId::from(resource_id)
-                            .push_named(
-                                crate::offline::Material::TYPE,
-                                self.document
-                                    .as_ref()
-                                    .unwrap()
-                                    .materials()
-                                    .nth(idx)
-                                    .unwrap()
-                                    .name()
-                                    .unwrap(),
-                            )
-                            .push(crate::runtime::Material::TYPE)
-                    });
-                }
+                let material = primitive.material().name().map_or_else(
+                    || {
+                        primitive.material().index().map(|idx| {
+                            ResourcePathId::from(resource_id)
+                                .push_named(
+                                    crate::offline::Material::TYPE,
+                                    self.document
+                                        .as_ref()
+                                        .unwrap()
+                                        .materials()
+                                        .nth(idx)
+                                        .unwrap()
+                                        .name()
+                                        .unwrap(),
+                                )
+                                .push(crate::runtime::Material::TYPE)
+                        })
+                    },
+                    |material_name| {
+                        Some(
+                            ResourcePathId::from(resource_id)
+                                .push_named(crate::offline::Material::TYPE, material_name)
+                                .push(crate::runtime::Material::TYPE),
+                        )
+                    },
+                );
                 meshes.push(Mesh {
                     positions,
                     normals,

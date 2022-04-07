@@ -9,20 +9,20 @@ use lgn_input::{
     keyboard::KeyCode,
     mouse::{MouseButton, MouseMotion, MouseWheel},
 };
-use lgn_math::{DMat4, Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
+use lgn_math::{Angle, DMat4, Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
 use lgn_transform::components::GlobalTransform;
 
 use crate::{cgen, UP_VECTOR};
 
 #[derive(Component)]
 pub struct CameraComponent {
-    pub camera_rig: CameraRig,
-    pub speed: f32,
-    pub rotation_speed: f32,
+    camera_rig: CameraRig,
+    speed: f32,
+    rotation_speed: f32,
     setup: CameraSetup,
-    pub fov_y: f32,
-    pub z_near: f32,
-    pub z_far: f32,
+    fov_y: Angle,
+    z_near: f32,
+    z_far: f32,
 }
 
 impl CameraComponent {
@@ -42,7 +42,7 @@ impl CameraComponent {
 
     pub fn build_projection(&self, width: f32, height: f32) -> Mat4 {
         let aspect_ratio = width / height;
-        Mat4::perspective_lh(self.fov_y, aspect_ratio, self.z_near, self.z_far)
+        Mat4::perspective_lh(self.fov_y.radians(), aspect_ratio, self.z_near, self.z_far)
     }
 
     pub fn build_culling_planes(&self, aspect_ratio: f32) -> [Float4; 6] {
@@ -51,7 +51,7 @@ impl CameraComponent {
         let up = self.camera_rig.final_transform.up();
         let right = self.camera_rig.final_transform.right();
 
-        let half_v_side = self.z_far * (self.fov_y * 0.5).tan();
+        let half_v_side = self.z_far * (self.fov_y.radians() * 0.5).tan();
         let half_h_side = half_v_side * aspect_ratio;
 
         let near_face_point = eye + forward * self.z_near;
@@ -129,6 +129,26 @@ impl CameraComponent {
         camera_props
     }
 
+    pub fn position(&self) -> Vec3 {
+        self.camera_rig.final_transform.position
+    }
+
+    pub fn rotation(&self) -> Quat {
+        self.camera_rig.final_transform.rotation
+    }
+
+    pub fn fov_y(&self) -> Angle {
+        self.fov_y
+    }
+
+    pub fn z_near(&self) -> f32 {
+        self.z_near
+    }
+
+    pub fn z_far(&self) -> f32 {
+        self.z_far
+    }
+
     fn build_rig(setup: &CameraSetup) -> CameraRig {
         let forward = (setup.look_at - setup.eye).normalize();
         let right = forward.cross(UP_VECTOR).normalize();
@@ -159,7 +179,7 @@ impl Default for CameraComponent {
             speed: 2.5,
             rotation_speed: 40.0,
             setup,
-            fov_y: 45.0,
+            fov_y: Angle::from_radians(std::f32::consts::FRAC_PI_4),
             z_near: 0.01,
             z_far: 100.0,
         }
