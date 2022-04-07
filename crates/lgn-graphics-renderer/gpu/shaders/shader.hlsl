@@ -30,15 +30,17 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
 
     vertex_out.hpos = mul(view_data.projection, float4(view_pos, 1.0));
     vertex_out.pos = view_pos;
-    vertex_out.normal = transform_vector(view_data.camera_rotation, transform_vector(transform, vertex_in.normal));
-    vertex_out.tangent = float4(transform_vector(view_data.camera_rotation, transform_vector(transform, vertex_in.tangent.xyz)), vertex_in.tangent.w);
+    float3 normal_in_world = normalize(transform_vector(transform, vertex_in.normal));
+    vertex_out.normal = normalize(rotate_vector(view_data.camera_rotation, normal_in_world));
+    float3 tangent_in_world = normalize(transform_vector(transform, vertex_in.tangent.xyz));
+    vertex_out.tangent = float4(normalize(rotate_vector(view_data.camera_rotation, tangent_in_world)), vertex_in.tangent.w);
     vertex_out.uv_coord = vertex_in.uv_coord;
     vertex_out.va_table_address = vertexIn.va_table_address;
     return vertex_out;
 }
 
 Lighting CalculateIncidentDirectionalLight(DirectionalLight light, float3 pos, float3 normal, LightingMaterial material) {
-    float3 light_dir = transform_vector(view_data.camera_rotation, light.dir);
+    float3 light_dir = normalize(rotate_vector(view_data.camera_rotation, light.dir));
 
     Lighting lighting = (Lighting)0;
     float NoL = saturate(dot(normal, light_dir));
@@ -85,7 +87,7 @@ Lighting CalculateIncidentSpotLight(SpotLight light, float3 pos, float3 normal, 
         lighting = DefaultBRDF(normal, normalize(-pos), light_dir, NoL, material);
     }
 
-    float cos_between_dir = dot(transform_vector(view_data.camera_rotation, light.dir), light_dir);
+    float cos_between_dir = dot(normalize(rotate_vector(view_data.camera_rotation, light.dir)), light_dir);
     float cos_half_angle = cos(light.cone_angle/2.0);
     float diff = 1.0 - cos_half_angle;
     float factor = saturate((cos_between_dir - cos_half_angle)/diff);

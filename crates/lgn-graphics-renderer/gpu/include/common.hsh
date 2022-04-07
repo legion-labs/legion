@@ -56,11 +56,11 @@ float3 transform_position(float4 rotation, float3 translation, float3 position) 
 
 float3 transform_vector(Transform transform, float3 v) {
     float3 result = (1.0 / transform.scale) * v;
-    return normalize(mul(quaternion_to_matrix(transform.rotation), result));
+    return mul(quaternion_to_matrix(transform.rotation), result);
 }
 
-float3 transform_vector(float4 rotation, float3 v) {
-    return normalize(mul(quaternion_to_matrix(rotation), v));
+float3 rotate_vector(float4 quat, float3 v) {
+    return mul(quaternion_to_matrix(quat), v);
 } 
 
 // See https://github.com/emilk/egui/blob/26d576f5101dfa1219f79bf9c99e29c577487cd3/egui_glium/src/painter.rs#L19.
