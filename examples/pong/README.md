@@ -9,7 +9,7 @@ cargo m run --bin runtime-srv --features=standalone -- --project=examples/pong/d
 ## Editing data
 
 ```sh
-cargo m run --bin editor-srv -- --project=./target/data/workspaces/pong/ --origin=../../../../../examples/pong/data/remote/ --build-db=./target/data/build-db/ --scene "/scene.ent"
+cargo m run --bin editor-srv -- --project-root=./target/data/workspaces/pong --repository-name=examples-pong --manifest=examples/pong/data/runtime/game.manifest --scene "/scene.ent" --build-output-database-address=./target/output_db
 cargo m run --bin editor-client
 ```
 
