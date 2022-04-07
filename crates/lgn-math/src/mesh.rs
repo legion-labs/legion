@@ -70,7 +70,7 @@ pub fn calculate_tangents(
 }
 
 #[rustfmt::skip]
-pub fn pack_normals(normals: &[Vec3]) -> Vec<u32> {
+pub fn pack_normals_r11g11b10(normals: &[Vec3]) -> Vec<u32> {
     normals
         .iter()
         .map(|n| {
@@ -82,13 +82,13 @@ pub fn pack_normals(normals: &[Vec3]) -> Vec<u32> {
 }
 
 #[rustfmt::skip]
-pub fn pack_tangents(tangents: &[Vec4]) -> Vec<u32> {
+pub fn pack_tangents_r11g10b10a1(tangents: &[Vec4]) -> Vec<u32> {
     tangents
         .iter()
         .map(|t| {
-                (((0x7FFu32 as f32 * t.x) as u32) << 21 |
-                ((0x3FFu32 as f32 * t.y) as u32) << 11) |
-                ((0x3FFu32 as f32 * t.z) as u32) << 1 | 
+                (((0x7FFu32 as f32 * (t.x + 1.0)/2.0) as u32) << 21 |
+                ((0x3FFu32 as f32 * (t.y + 1.0)/2.0) as u32) << 11) |
+                ((0x3FFu32 as f32 * (t.z + 1.0)/2.0) as u32) << 1 | 
                 if t.w > 0.0 { 1 } else { 0 }
         })
         .collect()

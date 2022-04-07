@@ -106,12 +106,18 @@ impl Mesh {
 
         if let Some(normals) = &self.normals {
             mesh_desc.set_normal_offset(offset.into());
-            updater.add_update_jobs(&lgn_math::pack_normals(normals), u64::from(offset));
+            updater.add_update_jobs(
+                &lgn_math::pack_normals_r11g11b10(normals),
+                u64::from(offset),
+            );
             offset += (std::mem::size_of::<u32>() * normals.len()) as u32;
         }
         if let Some(tangents) = &self.tangents {
             mesh_desc.set_tangent_offset(offset.into());
-            updater.add_update_jobs(&lgn_math::pack_tangents(tangents), u64::from(offset));
+            updater.add_update_jobs(
+                &lgn_math::pack_tangents_r11g10b10a1(tangents),
+                u64::from(offset),
+            );
             offset += (std::mem::size_of::<u32>() * tangents.len()) as u32;
         }
         if let Some(tex_coords) = &self.tex_coords {
