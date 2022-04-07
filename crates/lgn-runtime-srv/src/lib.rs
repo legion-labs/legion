@@ -29,7 +29,7 @@ use lgn_graphics_renderer::RendererPlugin;
 use lgn_hierarchy::prelude::HierarchyPlugin;
 use lgn_input::InputPlugin;
 use lgn_physics::{PhysicsPlugin, PhysicsSettingsBuilder};
-use lgn_scene_plugin::ScenePlugin;
+use lgn_scene_plugin::{SceneMessage, ScenePlugin};
 use lgn_scripting::ScriptingPlugin;
 use lgn_tracing::prelude::span_fn;
 use lgn_transform::prelude::TransformPlugin;
@@ -222,6 +222,7 @@ fn setup_runtime_grpc(world: &mut World) {
 fn rebroadcast_commands(
     command_receiver: Res<'_, crossbeam_channel::Receiver<RuntimeServerCommand>>,
     mut asset_registry_requests: EventWriter<'_, '_, AssetRegistryRequest>,
+    mut scene_messsages: EventWriter<'_, '_, SceneMessage>,
 ) {
     while let Ok(command) = command_receiver.try_recv() {
         match command {
@@ -230,6 +231,7 @@ fn rebroadcast_commands(
             }
             RuntimeServerCommand::LoadRootAsset(root_id) => {
                 asset_registry_requests.send(AssetRegistryRequest::LoadAsset(root_id));
+                scene_messsages.send(SceneMessage::OpenScene(root_id));
             }
             RuntimeServerCommand::Pause => {
                 //TODO
