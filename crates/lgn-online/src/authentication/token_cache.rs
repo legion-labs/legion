@@ -52,13 +52,7 @@ where
     pub fn read_token_set_from_cache(&self) -> Result<ClientTokenSet> {
         let path = self.get_tokens_file_path();
 
-        let file = File::open(&path).map_err(|e| {
-            Error::Internal(format!(
-                "reading tokens files from {}: {}",
-                path.display(),
-                e
-            ))
-        })?;
+        let file = File::open(&path)?;
         let reader = BufReader::new(file);
 
         serde_json::from_reader(reader).map_err(|e| {
@@ -131,7 +125,7 @@ where
     /// Get the access token from the cache if it exists, or performs an
     /// implicit refresh.
     ///
-    /// If that fails to, the call will fall back to the `Authenticator`'s
+    /// If that fails too, the call will fall back to the `Authenticator`'s
     /// `login` method, which may prompt the user for credentials.
     ///
     /// If the tokens end up being refreshed, they will be stored in the cache.
@@ -180,6 +174,14 @@ where
                         authenticator.login(scopes, extra_params).await?
                     }
                 }
+            }
+            Err(Error::Io(err)) => {
+                // Not having a token cache is considered a normal flow for first login.
+                if err.kind() != std::io::ErrorKind::NotFound {
+                    warn!("Failed to read access token from cache: {}", err);
+                }
+
+                authenticator.login(scopes, extra_params).await?
             }
             Err(err) => {
                 warn!("Failed to read access token from cache: {}", err);
