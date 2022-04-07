@@ -116,7 +116,7 @@ RUN wget -qO lunarg-signing-key-pub.asc https://packages.lunarg.com/lunarg-signi
     echo "/usr/lib/dxc" | tee -a /etc/ld.so.conf.d/dxc.conf && \
     ldconfig
 
-RUN wget -qO /tmp/driver.zip https://s3.amazonaws.com/nvidia-gaming/linux/latest/vGPUSW-495.50-Nov2021-vGaming-Linux-Guest-Drivers.zip && \
+RUN wget -qO /tmp/driver.zip https://s3.amazonaws.com/nvidia-gaming/linux/vGPUSW-495.50-Nov2021-vGaming-Linux-Guest-Drivers.zip && \
     unzip /tmp/driver.zip -d /tmp/driver && \
     chmod u+x /tmp/driver/Linux/NVIDIA-Linux-x86_64-495.50-grid.run && \
     cd /tmp/driver && ./Linux/NVIDIA-Linux-x86_64-495.50-grid.run -s --extract-only && \
