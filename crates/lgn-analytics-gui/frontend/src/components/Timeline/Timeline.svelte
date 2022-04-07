@@ -53,7 +53,7 @@
   $: style = `display:${display}`;
 
   onMount(async () => {
-    loadingStore.reset();
+    loadingStore.reset(10);
     const url = new URLSearchParams($location.search);
     const s = url.get(startParam);
     const start = s != null ? Number.parseFloat(s) : null;

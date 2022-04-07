@@ -8,7 +8,7 @@
   let subscription: Unsubscriber;
   let ratio: number;
   onMount(() => {
-    loadingStore.reset();
+    loadingStore.reset(1);
     const line = new ProgressBar.Line("#loading-bar", {
       color: "#fc4d0f",
       svgStyle: {
@@ -18,7 +18,7 @@
       },
     });
     subscription = loadingStore.subscribe(async (s) => {
-      ratio = Math.pow(s.completed / s.requested, 10);
+      ratio = Math.pow(s.completed / s.requested, s.scale);
       line.animate(ratio, {
         duration: 300,
         easing: "easeInOut",

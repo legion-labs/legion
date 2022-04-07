@@ -6,11 +6,12 @@ export const loadingStore = createLoadStore();
 type LoadingState = {
   requested: number;
   completed: number;
+  scale: number;
 };
 
 export type LoadingStore = {
   subscribe: Writable<LoadingState>["subscribe"];
-  reset(): void;
+  reset(scale: number): void;
   addWork(): void;
   completeWork(): void;
 };
@@ -19,14 +20,16 @@ function createLoadStore(): LoadingStore {
   const { subscribe, set, update } = writable<LoadingState>({
     completed: 0,
     requested: 0,
+    scale: 1,
   });
 
   return {
     subscribe,
-    reset: () =>
+    reset: (scale) =>
       set({
         completed: 0,
         requested: 0,
+        scale: Math.min(1, scale),
       }),
     addWork: () =>
       update((s) => {
