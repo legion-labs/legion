@@ -50,11 +50,6 @@ scene = "/world/sample_1.ent"
 [runtime_srv]
 # Configuration for the runtime server (runtime-srv)
 
-# The project root directory.
-#
-# If relative, it is relative to the current working directory.
-project_root = "$(git-root)/tests/sample-data"
-
 # The endpoint to listen on.
 #
 # Default:

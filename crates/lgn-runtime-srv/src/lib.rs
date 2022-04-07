@@ -7,7 +7,7 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
-use std::{net::SocketAddr, path::PathBuf, str::FromStr};
+use std::{net::SocketAddr, path::PathBuf};
 
 use clap::Parser;
 use generic_data::plugin::GenericDataPlugin;
@@ -18,7 +18,6 @@ use lgn_app::{prelude::StartupStage, CoreStage};
 use lgn_asset_registry::AssetRegistryRequest;
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::{AsyncPlugin, TokioAsyncRuntime};
-use lgn_config::RichPathBuf;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
 #[cfg(not(feature = "standalone"))]
@@ -60,9 +59,6 @@ struct Args {
     /// The address to listen on
     #[clap(long)]
     listen_endpoint: Option<SocketAddr>,
-    /// Path to folder containing the project index
-    #[clap(long)]
-    project_root: Option<RichPathBuf>,
     /// Path to the game manifest
     #[clap(long)]
     manifest: Option<String>,
@@ -79,9 +75,6 @@ struct Config {
     /// The endpoint to listen on.
     #[serde(default = "Config::default_listen_endpoint")]
     listen_endpoint: SocketAddr,
-
-    /// The project root.
-    project_root: Option<RichPathBuf>,
 
     /// The root asset.
     root: Option<String>,
@@ -105,7 +98,6 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             listen_endpoint: Self::default_listen_endpoint(),
-            project_root: None,
             root: None,
             streamer: lgn_streamer::Config::default(),
             enable_aws_ec2_nat_public_ipv4_auto_discovery: false,
@@ -123,7 +115,6 @@ pub fn build_runtime() -> App {
     let mut app = App::from_telemetry_guard(telemetry_guard);
 
     let args = Args::parse();
-    let cwd = std::env::current_dir().unwrap();
     let config: Config = lgn_config::get("runtime_server")
         .expect("failed to load config")
         .unwrap_or_default();
@@ -131,26 +122,6 @@ pub fn build_runtime() -> App {
     let listen_endpoint = args.listen_endpoint.unwrap_or(config.listen_endpoint);
 
     info!("Listening on {}", listen_endpoint);
-
-    let project_root = args
-        .project_root
-        .or(config.project_root)
-        .expect("no `project_root` was specified");
-
-    let project_root = if project_root.is_absolute() {
-        project_root.to_path_buf()
-    } else {
-        cwd.join(project_root.as_ref())
-    };
-
-    // TODO: Figure out why this is needed.
-    let project_root = if cfg!(windows) {
-        PathBuf::from_str(&project_root.to_str().unwrap().replace("/", "\\")).unwrap()
-    } else {
-        project_root
-    };
-
-    info!("Project root: {}", project_root.display());
 
     let root_asset = if cfg!(feature = "standalone") {
         // default root object is in sample data
