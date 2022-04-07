@@ -84,9 +84,7 @@ impl TokioAsyncRuntime {
     }
 
     pub fn handle(&self) -> TokioAsyncRuntimeHandle {
-        TokioAsyncRuntimeHandle {
-            0: self.tokio_runtime.handle().clone(),
-        }
+        TokioAsyncRuntimeHandle(self.tokio_runtime.handle().clone())
     }
 
     // Start a future on the tokio thread-pool that is associated to the
