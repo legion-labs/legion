@@ -3,6 +3,7 @@ use std::collections::HashMap;
 //use lgn_tracing::span_fn;
 
 use crate::{
+    build,
     cargo::{BuildArgs, SelectedPackageArgs},
     context::Context,
     Result,
@@ -67,6 +68,19 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
         .collect::<Result<Vec<_>>>()?;
 
     for pkg in dist_packages {
+        // M2 HACK -> build compilers to package them
+        // TODO M3 remove this
+        if pkg.name() == "editor-srv" {
+            let args = build::Args {
+                package_args: SelectedPackageArgs {
+                    package: vec!["lgn-data-build*".into(), "lgn-compiler-*".into()],
+                    ..SelectedPackageArgs::default()
+                },
+                build_args: args.build_args.clone(),
+                ..build::Args::default()
+            };
+            build::run(args, ctx)?;
+        }
         let args = Args {
             package_args: SelectedPackageArgs {
                 package: vec![pkg.name().into()],
