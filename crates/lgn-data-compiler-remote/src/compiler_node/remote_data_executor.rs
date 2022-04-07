@@ -132,7 +132,8 @@ pub(crate) async fn deploy_files(
 
             let mut options = tokio::fs::OpenOptions::new();
             options.write(true);
-            if is_exec && cfg!(unix) {
+            #[cfg(unix)]
+            if is_exec {
                 options.mode(755);
             }
             options.create(true);
