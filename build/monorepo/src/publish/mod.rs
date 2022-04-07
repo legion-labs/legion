@@ -39,6 +39,9 @@ pub struct Args {
     /// Do not run any action that changes any external state
     #[clap(long)]
     dry_run: bool,
+    /// Specify an custom version.
+    #[clap(long)]
+    version_override: Option<String>,
 }
 
 //#[span_fn]
@@ -91,6 +94,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
             force: args.force,
             dry_run: args.dry_run,
             update_hash: args.update_hash,
+            version_override: args.version_override.clone(),
         };
         pkg.dist(ctx, &args)?;
     }

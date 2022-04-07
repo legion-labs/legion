@@ -123,7 +123,7 @@ impl<'g> DockerPublishTarget<'g> {
 
     fn docker_push(&self, args: &publish::Args) -> Result<()> {
         let mut cmd = Command::new("docker");
-        let docker_image_name = self.docker_image_name()?;
+        let docker_image_name = self.docker_image_name(args)?;
 
         if args.force {
             debug!("`--force` specified: not checking for Docker image existence before pushing");
@@ -290,7 +290,7 @@ impl<'g> DockerPublishTarget<'g> {
         }
 
         let mut cmd = Command::new("docker");
-        let docker_image_name = self.docker_image_name()?;
+        let docker_image_name = self.docker_image_name(args)?;
 
         let docker_root = docker_file
             .parent()
@@ -356,12 +356,17 @@ impl<'g> DockerPublishTarget<'g> {
         }
     }
 
-    fn docker_image_name(&self) -> Result<String> {
+    fn docker_image_name(&self, args: &publish::Args) -> Result<String> {
+        let image_tag = args
+            .version_override
+            .clone()
+            .unwrap_or_else(|| self.package.version().to_string());
+
         Ok(format!(
             "{}/{}:{}",
             self.registry()?,
             self.name(),
-            self.package.version(),
+            image_tag,
         ))
     }
 
