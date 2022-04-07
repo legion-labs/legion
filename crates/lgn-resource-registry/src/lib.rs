@@ -76,15 +76,6 @@ impl ResourceRegistryPlugin {
                     .unwrap(),
             );
 
-            sample_data_compiler::raw_loader::build_offline(
-                &project_dir,
-                &settings.source_control_repository_index,
-                settings.source_control_repository_name.clone(),
-                Arc::clone(&source_control_content_provider),
-                false,
-            )
-            .await;
-
             let project = {
                 if let Ok(project) = Project::open(
                     &project_dir,

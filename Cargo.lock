@@ -5466,7 +5466,6 @@ dependencies = [
  "lgn-source-control",
  "lgn-tasks",
  "lgn-ubercompiler",
- "sample-data-compiler",
  "tokio",
 ]
 
