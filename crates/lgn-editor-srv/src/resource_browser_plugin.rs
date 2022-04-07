@@ -210,8 +210,8 @@ impl ResourceBrowserPlugin {
                         .find_resource(&resource_path)
                         .await;
 
-                    if let Ok(resource_id) = resource_id {
-                        match transaction_manager.add_scene(resource_id).await {
+                    match resource_id {
+                        Ok(resource_id) => match transaction_manager.add_scene(resource_id).await {
                             Ok(resource_path_id) => {
                                 let runtime_id = resource_path_id.resource_id();
                                 event_writer.send(SceneMessage::OpenScene(runtime_id));
@@ -221,6 +221,13 @@ impl ResourceBrowserPlugin {
                                 scene,
                                 err.to_string()
                             ),
+                        },
+                        Err(error) => {
+                            lgn_tracing::warn!(
+                                "Failed to locate scene '{}' in project: {}",
+                                &resource_path,
+                                error
+                            );
                         }
                     }
                 }
