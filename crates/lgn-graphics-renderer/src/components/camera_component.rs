@@ -208,7 +208,14 @@ pub(crate) fn camera_control(
     for mut camera in cameras_query.iter_mut() {
         let camera = camera.as_mut();
 
-        if keys.pressed(KeyCode::Z) {
+        if keys.pressed(KeyCode::Z)
+            && !keys.any_pressed([
+                KeyCode::LShift,
+                KeyCode::RShift,
+                KeyCode::LControl,
+                KeyCode::RControl,
+            ])
+        {
             camera.reset();
             continue;
         }
