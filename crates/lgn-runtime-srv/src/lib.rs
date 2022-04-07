@@ -33,6 +33,7 @@ use lgn_physics::{PhysicsPlugin, PhysicsSettingsBuilder};
 use lgn_scene_plugin::SceneMessage;
 use lgn_scene_plugin::ScenePlugin;
 use lgn_scripting::ScriptingPlugin;
+#[cfg(not(feature = "standalone"))]
 use lgn_streamer::StreamerPlugin;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::{info, span_fn};
@@ -81,10 +82,12 @@ struct Config {
 
     /// The streamer configuration.
     #[serde(default)]
+    #[allow(dead_code)]
     streamer: lgn_streamer::Config,
 
     /// Whether the program runs in AWS EC2 behind a NAT.
     #[serde(default)]
+    #[allow(dead_code)]
     enable_aws_ec2_nat_public_ipv4_auto_discovery: bool,
 }
 
@@ -187,6 +190,7 @@ pub fn build_runtime() -> App {
         },
     };
 
+    #[cfg(not(feature = "standalone"))]
     info!("Streamer plugin config:\n{}", streamer_plugin.config);
 
     // physics settings
