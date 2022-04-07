@@ -140,13 +140,13 @@ impl FromStr for ResourcePathName {
 
 impl From<&str> for ResourcePathName {
     fn from(s: &str) -> Self {
-        Self::new(s.to_owned())
+        Self::new(s)
     }
 }
 
 impl<T: AsRef<str>> From<&T> for ResourcePathName {
     fn from(s: &T) -> Self {
-        Self::new(s.as_ref().to_owned())
+        Self::new(s.as_ref())
     }
 }
 

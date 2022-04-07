@@ -80,7 +80,7 @@ fn generate_rust_struct(
             }
         }
         if has_native_types {
-            writer.add_line("use lgn_graphics_cgen_runtime::prelude::*;".to_string());
+            writer.add_line("use lgn_graphics_cgen_runtime::prelude::*;");
         }
         writer.new_line();
     }
