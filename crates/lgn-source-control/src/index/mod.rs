@@ -48,6 +48,7 @@ pub trait RepositoryIndex: Send + Sync {
     async fn create_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>>;
     async fn destroy_repository(&self, repository_name: RepositoryName) -> Result<()>;
     async fn load_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>>;
+    async fn list_repositories(&self) -> Result<Vec<RepositoryName>>;
 
     async fn ensure_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
         info!("Ensuring that repository `{}` exists...", repository_name);
@@ -125,6 +126,10 @@ impl<T: RepositoryIndex + ?Sized> RepositoryIndex for Box<T> {
     async fn load_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
         self.as_ref().load_repository(repository_name).await
     }
+
+    async fn list_repositories(&self) -> Result<Vec<RepositoryName>> {
+        self.as_ref().list_repositories().await
+    }
 }
 
 #[async_trait]
@@ -139,6 +144,10 @@ impl<T: RepositoryIndex> RepositoryIndex for &T {
 
     async fn load_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
         (**self).load_repository(repository_name).await
+    }
+
+    async fn list_repositories(&self) -> Result<Vec<RepositoryName>> {
+        (**self).list_repositories().await
     }
 }
 

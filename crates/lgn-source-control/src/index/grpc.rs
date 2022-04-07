@@ -9,8 +9,8 @@ use lgn_source_control_proto::{
     source_control_client::SourceControlClient, CommitToBranchRequest, CountLocksRequest,
     CreateRepositoryRequest, DestroyRepositoryRequest, GetBranchRequest, GetLockRequest,
     GetTreeRequest, InsertBranchRequest, ListBranchesRequest, ListCommitsRequest, ListLocksRequest,
-    LockRequest, RegisterWorkspaceRequest, RepositoryExistsRequest, SaveTreeRequest, UnlockRequest,
-    UpdateBranchRequest,
+    ListRepositoriesRequest, LockRequest, RegisterWorkspaceRequest, RepositoryExistsRequest,
+    SaveTreeRequest, UnlockRequest, UpdateBranchRequest,
 };
 
 use crate::{
@@ -121,6 +121,24 @@ where
             repository_name.clone(),
             self.client.clone(),
         )))
+    }
+
+    async fn list_repositories(&self) -> Result<Vec<RepositoryName>> {
+        async_span_scope!("GrpcRepositoryIndex::list_repositories");
+
+        let resp = self
+            .client
+            .lock()
+            .await
+            .list_repositories(ListRepositoriesRequest {})
+            .await
+            .map_other_err("failed to list repositories".to_string())?
+            .into_inner();
+
+        resp.repository_names
+            .into_iter()
+            .map(|repository_name| repository_name.parse())
+            .collect()
     }
 }
 
