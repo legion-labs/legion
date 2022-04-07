@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use lgn_content_store2::ContentProvider;
+use lgn_content_store::ContentProvider;
 use lgn_data_offline::{ResourcePathId, Transform};
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
 use lgn_tracing::warn;

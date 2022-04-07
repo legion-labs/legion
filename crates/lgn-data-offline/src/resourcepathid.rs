@@ -71,7 +71,7 @@ impl FromStr for Transform {
 /// use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
 /// use lgn_data_runtime::ResourceType;
 /// use lgn_data_offline::ResourcePathId;
-/// use lgn_content_store2::{ContentProvider, MemoryProvider};
+/// use lgn_content_store::{ContentProvider, MemoryProvider};
 /// use std::path::PathBuf;
 /// # tokio_test::block_on(async {
 /// let resources = ResourceRegistryOptions::new().create_registry();

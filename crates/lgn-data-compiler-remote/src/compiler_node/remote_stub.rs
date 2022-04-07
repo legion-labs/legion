@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use lgn_content_store2::ContentProvider;
+use lgn_content_store::ContentProvider;
 use std::{
     io,
     path::{Path, PathBuf},

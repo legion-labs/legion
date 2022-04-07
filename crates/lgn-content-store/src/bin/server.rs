@@ -5,7 +5,7 @@ use bytesize::ByteSize;
 use clap::Parser;
 use http::{header, Method};
 use lgn_cli_utils::termination_handler::AsyncTerminationHandler;
-use lgn_content_store2::{
+use lgn_content_store::{
     AddressProviderConfig, DataSpace, GrpcProviderSet, GrpcService, ProviderConfig, Result,
 };
 use lgn_content_store_proto::content_store_server::ContentStoreServer;

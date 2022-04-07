@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 
 # Legion engine
 lgn-config = { path = "../../crates/lgn-config", version = "0.1.0" }
-lgn-content-store2 = { path = "../../crates/lgn-content-store2", version = "0.1.0" }
+lgn-content-store = { path = "../../crates/lgn-content-store", version = "0.1.0" }
 lgn-data-build = { path = "../../crates/lgn-data-build", version = "0.1.0" }
 lgn-data-compiler = { path = "../../crates/lgn-data-compiler", version = "0.1.0" }
 lgn-data-offline = { path = "../../crates/lgn-data-offline", version = "0.1.0" }

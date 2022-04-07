@@ -200,7 +200,7 @@ use std::{
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use clap::{Parser, Subcommand};
-use lgn_content_store2::{ContentProvider, Identifier};
+use lgn_content_store::{ContentProvider, Identifier};
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_offline::{
     resource::{Project, ResourcePathName},
@@ -321,12 +321,12 @@ async fn main() -> Result<(), String> {
     //
     let config = Config::read(Config::default_path()).ok();
     let source_control_content_provider = Arc::new(
-        lgn_content_store2::Config::load_and_instantiate_persistent_provider()
+        lgn_content_store::Config::load_and_instantiate_persistent_provider()
             .await
             .map_err(|e| e.to_string())?,
     );
     let data_content_provider = Arc::new(
-        lgn_content_store2::Config::load_and_instantiate_volatile_provider()
+        lgn_content_store::Config::load_and_instantiate_volatile_provider()
             .await
             .map_err(|e| e.to_string())?,
     );

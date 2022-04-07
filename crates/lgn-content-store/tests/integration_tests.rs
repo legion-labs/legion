@@ -4,18 +4,18 @@ use std::{
     sync::Arc,
 };
 
-use lgn_content_store2::{
+use lgn_content_store::{
     CachingProvider, ChunkIdentifier, Chunker, ContentAddressReader, ContentAddressWriter,
     ContentReaderExt, ContentWriter, ContentWriterExt, DataSpace, Error, GrpcProvider,
     GrpcProviderSet, GrpcService, Identifier, LocalProvider, MemoryProvider, SmallContentProvider,
 };
 
 #[cfg(feature = "lru")]
-use lgn_content_store2::LruProvider;
+use lgn_content_store::LruProvider;
 #[cfg(feature = "redis")]
-use lgn_content_store2::RedisProvider;
+use lgn_content_store::RedisProvider;
 #[cfg(feature = "aws")]
-use lgn_content_store2::{AwsDynamoDbProvider, AwsS3Provider};
+use lgn_content_store::{AwsDynamoDbProvider, AwsS3Provider};
 
 mod common;
 
@@ -72,7 +72,7 @@ async fn test_chunker() {
     let chunk_id = ChunkIdentifier::new(2, Identifier::new(&BIG_DATA_X));
 
     match chunker.read_chunk(provider, &chunk_id).await {
-        Err(Error::NotFound(_)) => {}
+        Err(Error::IdentifierNotFound(_)) => {}
         Err(err) => panic!("unexpected error: {}", err),
         Ok(_) => panic!("expected error"),
     };
@@ -108,7 +108,10 @@ async fn test_memory_provider() {
     assert_read_contents!(
         provider,
         [id, fake_id],
-        [Ok(&BIG_DATA_A), Err(Error::NotFound(fake_id.to_string()))]
+        [
+            Ok(&BIG_DATA_A),
+            Err(Error::IdentifierNotFound(fake_id.clone()))
+        ]
     );
 
     // MemoryProvider also implements AliasProvider.
@@ -135,7 +138,10 @@ async fn test_lru_provider() {
     assert_read_contents!(
         provider,
         [id.clone(), fake_id],
-        [Ok(&BIG_DATA_A), Err(Error::NotFound(fake_id.to_string()))]
+        [
+            Ok(&BIG_DATA_A),
+            Err(Error::IdentifierNotFound(fake_id.clone()))
+        ]
     );
 
     // Write enough content to make the LRU full.
@@ -180,7 +186,10 @@ async fn test_caching_provider() {
     assert_read_contents!(
         provider,
         [id.clone(), fake_id.clone()],
-        [Ok(&BIG_DATA_A), Err(Error::NotFound(fake_id.to_string()))]
+        [
+            Ok(&BIG_DATA_A),
+            Err(Error::IdentifierNotFound(fake_id.clone()))
+        ]
     );
 
     // Write a value to the remote but not the cache.
@@ -199,7 +208,7 @@ async fn test_caching_provider() {
         [id.clone(), fake_id],
         [
             Ok(&BIGGER_DATA_A),
-            Err(Error::NotFound(fake_id.to_string()))
+            Err(Error::IdentifierNotFound(fake_id.clone()))
         ]
     );
     assert_read_content!(local_provider, id, &BIGGER_DATA_A);
@@ -231,7 +240,10 @@ async fn test_local_provider() {
     assert_read_contents!(
         provider,
         [id, fake_id],
-        [Ok(&BIG_DATA_A), Err(Error::NotFound(fake_id.to_string()))]
+        [
+            Ok(&BIG_DATA_A),
+            Err(Error::IdentifierNotFound(fake_id.clone()))
+        ]
     );
 
     // LocalProvider also implements AliasProvider.
@@ -292,7 +304,10 @@ async fn test_aws_s3_provider() {
     assert_read_contents!(
         provider,
         [id.clone(), fake_id],
-        [Ok(&BIG_DATA_A), Err(Error::NotFound(fake_id.to_string()))]
+        [
+            Ok(&BIG_DATA_A),
+            Err(Error::IdentifierNotFound(fake_id.clone()))
+        ]
     );
 
     // Make sure we can access the data through the URLs.
@@ -338,7 +353,7 @@ async fn test_aws_s3_provider() {
 #[ignore]
 #[tokio::test]
 async fn test_aws_dynamodb_provider() {
-    let provider = AwsDynamoDbProvider::new("content-store-test").await;
+    let provider = AwsDynamoDbProvider::new("legionlabs-content-store-test").await;
 
     let uid = uuid::Uuid::new_v4();
     let mut data = Vec::new();
@@ -359,7 +374,7 @@ async fn test_aws_dynamodb_provider() {
     assert_read_contents!(
         provider,
         [id.clone(), fake_id],
-        [Ok(data), Err(Error::NotFound(fake_id.to_string()))]
+        [Ok(data), Err(Error::IdentifierNotFound(fake_id.clone()))]
     );
 
     // DynamoDbProvider also implements AliasProvider.
@@ -409,7 +424,7 @@ async fn test_redis_provider() {
     assert_read_contents!(
         provider,
         [id.clone(), fake_id],
-        [Ok(data), Err(Error::NotFound(fake_id.to_string()))]
+        [Ok(data), Err(Error::IdentifierNotFound(fake_id.clone()))]
     );
 
     // RedisProvider also implements AliasProvider.
@@ -552,8 +567,8 @@ async fn test_grpc_provider() {
             [id, fake_id, fake_id_2],
             [
                 Ok(&BIGGER_DATA_A),
-                Err(Error::NotFound(fake_id.to_string())),
-                Err(Error::NotFound(fake_id_2.to_string()))
+                Err(Error::IdentifierNotFound(fake_id.clone())),
+                Err(Error::IdentifierNotFound(fake_id_2.clone()))
             ]
         );
 

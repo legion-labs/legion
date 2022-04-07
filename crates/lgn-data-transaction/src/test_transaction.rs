@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use generic_data::offline::TestEntity;
-use lgn_content_store2::{ContentProvider, MemoryProvider};
+use lgn_content_store::{ContentProvider, MemoryProvider};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};

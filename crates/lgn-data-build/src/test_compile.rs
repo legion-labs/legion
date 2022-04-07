@@ -5,7 +5,7 @@ mod tests {
     use std::{env, vec};
 
     use integer_asset::{IntegerAsset, IntegerAssetLoader};
-    use lgn_content_store2::{ContentProvider, ContentReaderExt, MemoryProvider};
+    use lgn_content_store::{ContentProvider, ContentReaderExt, MemoryProvider};
     use lgn_data_compiler::compiler_api::CompilationEnv;
     use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
     use lgn_data_compiler::{Locale, Platform, Target};

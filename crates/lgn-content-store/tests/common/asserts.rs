@@ -5,7 +5,7 @@ macro_rules! assert_alias_not_found {
                 "alias was found with the specified key `{}/{}`",
                 $key_space, $key
             ),
-            Err(Error::NotFound(_)) => {}
+            Err(Error::AliasNotFound { .. }) => {}
             Err(err) => panic!("unexpected error: {}", err),
         };
     }};
@@ -15,7 +15,7 @@ macro_rules! assert_content_not_found {
     ($provider:expr, $id:expr) => {{
         match $provider.read_content(&$id).await {
             Ok(_) => panic!("content was found with the specified identifier `{}`", $id),
-            Err(Error::NotFound(_)) => {}
+            Err(Error::IdentifierNotFound(_)) => {}
             Err(err) => panic!("unexpected error: {}", err),
         };
     }};
@@ -115,7 +115,7 @@ macro_rules! assert_write_avoided {
                 "content was written with the specified identifier `{}`",
                 $id
             ),
-            Err(Error::AlreadyExists(_)) => {}
+            Err(Error::IdentifierAlreadyExists(_)) => {}
             Err(err) => panic!("unexpected error: {}", err),
         }
     }};

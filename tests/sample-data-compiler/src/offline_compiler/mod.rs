@@ -6,7 +6,7 @@ use std::{
     sync::Arc,
 };
 
-use lgn_content_store2::ContentProvider;
+use lgn_content_store::ContentProvider;
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::{
     compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,

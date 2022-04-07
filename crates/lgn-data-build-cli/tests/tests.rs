@@ -38,12 +38,12 @@ async fn build_device() {
         .await
         .unwrap();
     let source_control_content_provider = Arc::new(
-        lgn_content_store2::Config::load_and_instantiate_persistent_provider()
+        lgn_content_store::Config::load_and_instantiate_persistent_provider()
             .await
             .unwrap(),
     );
     let data_content_provider = Arc::new(
-        lgn_content_store2::Config::load_and_instantiate_volatile_provider()
+        lgn_content_store::Config::load_and_instantiate_volatile_provider()
             .await
             .unwrap(),
     );
@@ -237,12 +237,12 @@ async fn no_intermediate_resource() {
         .await
         .unwrap();
     let source_control_content_provider = Arc::new(
-        lgn_content_store2::Config::load_and_instantiate_persistent_provider()
+        lgn_content_store::Config::load_and_instantiate_persistent_provider()
             .await
             .unwrap(),
     );
     let data_content_provider = Arc::new(
-        lgn_content_store2::Config::load_and_instantiate_volatile_provider()
+        lgn_content_store::Config::load_and_instantiate_volatile_provider()
             .await
             .unwrap(),
     );
@@ -354,12 +354,12 @@ async fn with_intermediate_resource() {
         .unwrap();
 
     let source_control_content_provider = Arc::new(
-        lgn_content_store2::Config::load_and_instantiate_persistent_provider()
+        lgn_content_store::Config::load_and_instantiate_persistent_provider()
             .await
             .unwrap(),
     );
     let data_content_provider = Arc::new(
-        lgn_content_store2::Config::load_and_instantiate_volatile_provider()
+        lgn_content_store::Config::load_and_instantiate_volatile_provider()
             .await
             .unwrap(),
     );

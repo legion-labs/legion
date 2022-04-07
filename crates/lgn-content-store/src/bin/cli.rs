@@ -11,7 +11,7 @@ use bytesize::ByteSize;
 use clap::{Parser, Subcommand};
 use futures::Future;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use lgn_content_store2::{
+use lgn_content_store::{
     ChunkIdentifier, ChunkIndex, Chunker, Config, Identifier, MonitorAsyncAdapter, MonitorProvider,
     TransferCallbacks,
 };
@@ -122,7 +122,7 @@ impl TransferCallbacks<Identifier> for TransferProgress {
         _total: usize,
         inc: usize,
         _current: usize,
-        result: lgn_content_store2::Result<()>,
+        result: lgn_content_store::Result<()>,
     ) {
         if let Some(bar) = self.bars.read().unwrap().get(&id.to_string()) {
             bar.inc(inc.try_into().unwrap());
@@ -163,7 +163,7 @@ impl TransferCallbacks<PathBuf> for TransferProgress {
         _total: usize,
         inc: usize,
         _current: usize,
-        result: lgn_content_store2::Result<()>,
+        result: lgn_content_store::Result<()>,
     ) {
         if let Some(bar) = self.bars.read().unwrap().get(&id.display().to_string()) {
             bar.inc(inc.try_into().unwrap());

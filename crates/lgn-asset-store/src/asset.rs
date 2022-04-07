@@ -1,4 +1,4 @@
-use lgn_content_store2::{
+use lgn_content_store::{
     ChunkIdentifier, Chunker, ContentAsyncRead, ContentReader, ContentReaderExt, ContentWriter,
     ContentWriterExt, Identifier,
 };

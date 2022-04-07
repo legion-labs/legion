@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use lgn_content_store2::ContentProvider;
+use lgn_content_store::ContentProvider;
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;

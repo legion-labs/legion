@@ -1,7 +1,7 @@
 use std::{fmt::Display, sync::Arc};
 
 use async_trait::async_trait;
-use lgn_content_store2::{ContentAddressReader, ContentAddressWriter, Error, Identifier, Result};
+use lgn_content_store::{ContentAddressReader, ContentAddressWriter, Error, Identifier, Result};
 use tokio::sync::Mutex;
 
 pub struct FakeContentAddressProvider {
@@ -43,7 +43,7 @@ impl ContentAddressReader for FakeContentAddressProvider {
 impl ContentAddressWriter for FakeContentAddressProvider {
     async fn get_content_write_address(&self, id: &Identifier) -> Result<String> {
         if *self.already_exists.lock().await {
-            Err(Error::AlreadyExists(id.to_string()))
+            Err(Error::IdentifierAlreadyExists(id.clone()))
         } else {
             Ok(self.get_address(id, "write"))
         }

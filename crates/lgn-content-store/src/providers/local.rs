@@ -75,7 +75,7 @@ impl ContentReader for LocalProvider {
             },
             Err(e) => {
                 if e.kind() == tokio::io::ErrorKind::NotFound {
-                    Err(Error::NotFound(id.to_string()))
+                    Err(Error::IdentifierNotFound(id.clone()))
                 } else {
                     Err(
                         anyhow::anyhow!("could not open file at `{}`: {}", path.display(), e)
@@ -104,7 +104,10 @@ impl ContentReader for LocalProvider {
             Ok(s) => s.parse(),
             Err(e) => {
                 if e.kind() == tokio::io::ErrorKind::NotFound {
-                    Err(Error::NotFound(format!("{}/{}", key_space, key)))
+                    Err(Error::AliasNotFound {
+                        key_space: key_space.to_string(),
+                        key: key.to_string(),
+                    })
                 } else {
                     Err(
                         anyhow::anyhow!("could not open file at `{}`: {}", alias_path.display(), e)
@@ -128,7 +131,7 @@ impl ContentWriter for LocalProvider {
                 .expect("metadata size does not fit in usize"); // Should never happen on a modern architecture.
 
             if id.data_size() == metadata_size {
-                return Err(Error::AlreadyExists(id.to_string()));
+                return Err(Error::IdentifierAlreadyExists(id.clone()));
             }
         }
 

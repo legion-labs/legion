@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use lgn_content_store2::{ChunkIdentifier, Chunker, ContentProvider, ContentReaderExt};
+use lgn_content_store::{ChunkIdentifier, Chunker, ContentProvider, ContentReaderExt};
 use lgn_tracing::error;
 
 use super::Device;

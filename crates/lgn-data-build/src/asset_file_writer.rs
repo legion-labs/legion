@@ -1,4 +1,4 @@
-use lgn_content_store2::{ContentProvider, ContentReaderExt, Identifier};
+use lgn_content_store::{ContentProvider, ContentReaderExt, Identifier};
 use lgn_data_runtime::{ResourceType, ResourceTypeAndId};
 use lgn_tracing::async_span_scope;
 use serde::{Deserialize, Serialize};
@@ -66,7 +66,7 @@ mod tests {
     use std::sync::Arc;
 
     use bincode::Options;
-    use lgn_content_store2::{ContentWriterExt, MemoryProvider};
+    use lgn_content_store::{ContentWriterExt, MemoryProvider};
     use lgn_data_runtime::{Resource, ResourceId};
     use serde::Serialize;
 

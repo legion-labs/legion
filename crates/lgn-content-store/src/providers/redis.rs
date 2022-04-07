@@ -122,7 +122,7 @@ impl ContentReader for RedisProvider {
 
         match con.get::<_, Option<Vec<u8>>>(&key).await {
             Ok(Some(value)) => Ok(Box::pin(Cursor::new(value))),
-            Ok(None) => Err(Error::NotFound(id.to_string())),
+            Ok(None) => Err(Error::IdentifierNotFound(id.clone())),
             Err(err) => Err(anyhow::anyhow!(
                 "failed to get content from Redis for key `{}`: {}",
                 key,
@@ -150,7 +150,10 @@ impl ContentReader for RedisProvider {
 
         match con.get::<_, Option<Vec<u8>>>(&k).await {
             Ok(Some(value)) => Identifier::read_from(std::io::Cursor::new(value)),
-            Ok(None) => Err(Error::NotFound(format!("{}/{}", key_space, key))),
+            Ok(None) => Err(Error::AliasNotFound {
+                key_space: key_space.to_string(),
+                key: key.to_string(),
+            }),
             Err(err) => Err(anyhow::anyhow!(
                 "failed to resolve alias from Redis for key `{}`: {}",
                 k,
@@ -173,7 +176,7 @@ impl ContentWriter for RedisProvider {
             .map_err(|err| anyhow::anyhow!("failed to get connection to Redis: {}", err))?;
 
         match con.exists(&key).await {
-            Ok(true) => Err(Error::AlreadyExists(id.to_string())),
+            Ok(true) => Err(Error::IdentifierAlreadyExists(id.clone())),
             Ok(false) => Ok(Box::pin(RedisUploader::new(
                 id.clone(),
                 RedisUploaderImpl {
@@ -200,10 +203,10 @@ impl ContentWriter for RedisProvider {
         let k = self.get_alias_key(key_space, key);
 
         match con.exists(&k).await {
-            Ok(true) => Err(Error::AlreadyExists(format!(
-                "{}/{}={}",
-                key_space, key, id
-            ))),
+            Ok(true) => Err(Error::AliasAlreadyExists {
+                key_space: key_space.to_string(),
+                key: key.to_string(),
+            }),
             Ok(false) => match con.set_nx(&k, id.as_vec()).await {
                 Ok(()) => Ok(()),
                 Err(err) => Err(anyhow::anyhow!(

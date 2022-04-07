@@ -1,6 +1,6 @@
 use std::{path::Path, str::FromStr, sync::Arc};
 
-use lgn_content_store2::{ContentProvider, MemoryProvider};
+use lgn_content_store::{ContentProvider, MemoryProvider};
 use lgn_scene_plugin::SceneMessage;
 use serde_json::json;
 use tokio::sync::Mutex;

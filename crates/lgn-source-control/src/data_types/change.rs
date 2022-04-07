@@ -77,7 +77,7 @@ impl From<Change> for CanonicalPath {
 
 #[cfg(test)]
 mod tests {
-    use lgn_content_store2::{ChunkIdentifier, Identifier};
+    use lgn_content_store::{ChunkIdentifier, Identifier};
 
     use super::*;
 

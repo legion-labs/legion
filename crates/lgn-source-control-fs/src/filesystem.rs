@@ -1,7 +1,7 @@
 use fuser::{
     FileAttr, FileType, Filesystem, ReplyAttr, ReplyData, ReplyDirectory, ReplyEntry, Request,
 };
-use lgn_content_store2::{ChunkIdentifier, Chunker, Config, ContentProvider};
+use lgn_content_store::{ChunkIdentifier, Chunker, Config, ContentProvider};
 use lgn_source_control::{Index, MapOtherError, Result, Tree};
 use lgn_tracing::{debug, error};
 use libc::{EISDIR, ENOENT, ENOTDIR};

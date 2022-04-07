@@ -6,7 +6,7 @@ pub enum Error {
     #[error("io error: {0}")]
     IO(#[from] std::io::Error),
     #[error("content store error: {0}")]
-    ContentStore(#[from] lgn_content_store2::Error),
+    ContentStore(#[from] lgn_content_store::Error),
     #[error("serde deserialization error: {0}")]
     SerdeJSON(#[from] serde_json::Error),
 }

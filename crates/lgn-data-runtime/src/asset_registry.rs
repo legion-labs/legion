@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use lgn_content_store2::{ChunkIdentifier, ContentProvider};
+use lgn_content_store::{ChunkIdentifier, ContentProvider};
 use lgn_ecs::schedule::SystemLabel;
 
 use crate::{
@@ -456,7 +456,7 @@ impl AssetRegistry {
 
 #[cfg(test)]
 mod tests {
-    use lgn_content_store2::{ContentWriterExt, MemoryProvider};
+    use lgn_content_store::{ContentWriterExt, MemoryProvider};
 
     use crate::ResourceId;
 

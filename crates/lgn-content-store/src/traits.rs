@@ -23,13 +23,13 @@ pub trait ContentReader: Display {
     /// Returns an async reader that reads the content referenced by the
     /// specified identifier.
     ///
-    /// If the identifier does not match any content, `Error::NotFound` is
+    /// If the identifier does not match any content, `Error::IdentifierNotFound` is
     /// returned.
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead>;
 
     /// Returns an async reader for each of the specified identifiers.
     ///
-    /// If the content for a given identifier does not exist, `Error::NotFound`
+    /// If the content for a given identifier does not exist, `Error::IdentifierNotFound`
     /// is returned instead.
     ///
     /// If the high-level request fails, an error is returned.
@@ -41,7 +41,7 @@ pub trait ContentReader: Display {
     /// Returns the content-store identifier for a given alias.
     ///
     /// If no identifier is found for the specified `key` in the specified
-    /// `key_space`, `Error::NotFound` is returned.
+    /// `key_space`, `Error::AliasNotFound` is returned.
     async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier>;
 }
 
@@ -151,7 +151,7 @@ pub trait ContentWriter: Display {
     ///
     /// # Errors
     ///
-    /// If the data already exists, `Error::AlreadyExists` is returned and the
+    /// If the data already exists, `Error::IdentifierAlreadyExists` is returned and the
     /// caller should consider that the write operation is not necessary.
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite>;
 
@@ -160,7 +160,7 @@ pub trait ContentWriter: Display {
     /// The caller must guarantee that the `key` is unique within the specified
     /// `key_space`.
     ///
-    /// If an alias already exists with that `key` and `key_space`, `Error::AlreadyExists`
+    /// If an alias already exists with that `key` and `key_space`, `Error::AliasAlreadyExists`
     /// is returned.
     async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()>;
 }
@@ -180,7 +180,7 @@ pub trait ContentWriterExt: ContentWriter {
 
         let mut writer = match self.get_content_writer(&id).await {
             Ok(writer) => writer,
-            Err(Error::AlreadyExists(_)) => return Ok(id),
+            Err(Error::IdentifierAlreadyExists(_)) => return Ok(id),
             Err(err) => return Err(err),
         };
 
@@ -201,7 +201,7 @@ pub trait ContentWriterExt: ContentWriter {
         let id = self.write_content(data).await?;
 
         match self.register_alias(key_space, key, &id).await {
-            Ok(_) | Err(Error::AlreadyExists(_)) => Ok(id),
+            Ok(_) | Err(Error::AliasAlreadyExists { .. }) => Ok(id),
             Err(err) => Err(err),
         }
     }
@@ -222,7 +222,7 @@ pub trait ContentAddressReader: Display {
     ///
     /// # Errors
     ///
-    /// If the identifier does not match any content, `Error::NotFound` is
+    /// If the identifier does not match any content, `Error::IdentifierNotFound` is
     /// returned.
     async fn get_content_read_address(&self, id: &Identifier) -> Result<String>;
 }
@@ -234,7 +234,7 @@ pub trait ContentAddressWriter: Display {
     ///
     /// # Errors
     ///
-    /// If the identifier already exists, `Error::AlreadyExists` is returned.
+    /// If the identifier already exists, `Error::IdentifierAlreadyExists` is returned.
     async fn get_content_write_address(&self, id: &Identifier) -> Result<String>;
 }
 

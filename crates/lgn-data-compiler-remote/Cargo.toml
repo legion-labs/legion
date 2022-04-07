@@ -34,7 +34,7 @@ lgn-data-compiler = { path = "../lgn-data-compiler", version = "0.1.0" }
 lgn-data-offline = { path = "../lgn-data-offline", version = "0.1.0" }
 lgn-utils = { path = "../lgn-utils", version = "0.1.0" }
 lgn-data-runtime = { path = "../lgn-data-runtime", version = "0.1.0" }
-lgn-content-store2 = { path = "../lgn-content-store2", version = "0.1.0" }
+lgn-content-store = { path = "../lgn-content-store", version = "0.1.0" }
 
 [dev-dependencies]
 tempfile = "3.2.0"

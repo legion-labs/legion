@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use lgn_content_store2::ContentProvider;
+use lgn_content_store::ContentProvider;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;
 use lgn_data_runtime::{manifest::Manifest, AssetRegistry};
@@ -23,7 +23,7 @@ use crate::{DataBuild, Error};
 /// ```no_run
 /// # use std::sync::Arc;
 /// # use lgn_data_build::DataBuildOptions;
-/// # use lgn_content_store2::{ContentProvider, ProviderConfig};
+/// # use lgn_content_store::{ContentProvider, ProviderConfig};
 /// # use lgn_data_offline::resource::Project;
 /// # use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 /// # tokio_test::block_on(async {

@@ -7,7 +7,7 @@ use std::{
 };
 
 use hex::ToHex;
-use lgn_content_store2::{ContentProvider, ContentReaderExt, ContentWriterExt};
+use lgn_content_store::{ContentProvider, ContentReaderExt, ContentWriterExt};
 use lgn_data_offline::{
     resource::{Project, Tree},
     ResourcePathId,
@@ -413,7 +413,7 @@ mod tests {
 
     use std::sync::Arc;
 
-    use lgn_content_store2::{ContentProvider, MemoryProvider};
+    use lgn_content_store::{ContentProvider, MemoryProvider};
     use lgn_data_offline::{
         resource::{Project, ResourcePathName, ResourceRegistryOptions},
         ResourcePathId,

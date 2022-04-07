@@ -13,7 +13,7 @@ use std::{
 };
 
 use generic_data::offline::{TestComponent, TestEntity};
-use lgn_content_store2::ContentProvider;
+use lgn_content_store::ContentProvider;
 use lgn_data_offline::resource::{
     Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
 };

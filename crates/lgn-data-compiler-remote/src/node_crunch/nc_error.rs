@@ -50,7 +50,7 @@ pub enum NCError {
     #[error("URL parse error: {0}")]
     Url(#[from] ParseError),
     #[error("CAS error: {0}")]
-    CASError(#[from] lgn_content_store2::Error),
+    CASError(#[from] lgn_content_store::Error),
     #[error("Compiler error: {0}")]
     CompilerError(#[from] lgn_data_compiler::compiler_api::CompilerError),
     #[error("Json error: {0}")]

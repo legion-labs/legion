@@ -287,7 +287,7 @@ impl ContentReader for AwsS3Provider {
             Ok(object) => Ok(object),
             Err(aws_sdk_s3::types::SdkError::ServiceError { err, raw: _ }) => {
                 if let aws_sdk_s3::error::GetObjectErrorKind::NoSuchKey(_) = err.kind {
-                    Err(Error::NotFound(id.to_string()))
+                    Err(Error::IdentifierNotFound(id.clone()))
                 } else {
                     Err(
                         anyhow::anyhow!("failed to get object `{}` from AWS S3: {}", key, err)
@@ -314,7 +314,7 @@ impl ContentReader for AwsS3Provider {
     }
 
     async fn resolve_alias(&self, _key_space: &str, _key: &str) -> Result<Identifier> {
-        panic!("AwsS3Provider doesn't support aliasing, you must aggregate it along with another provider!")
+        panic!("AwsS3Provider doesn't support aliases: you must aggregate it along with another provider!")
     }
 }
 
@@ -331,7 +331,7 @@ impl ContentWriter for AwsS3Provider {
             .send()
             .await
         {
-            Ok(_) => Err(Error::AlreadyExists(id.to_string())),
+            Ok(_) => Err(Error::IdentifierAlreadyExists(id.clone())),
             Err(aws_sdk_s3::types::SdkError::ServiceError { err, raw: _ }) => {
                 if let aws_sdk_s3::error::GetObjectErrorKind::NoSuchKey(_) = err.kind {
                     Ok(())
@@ -361,7 +361,7 @@ impl ContentWriter for AwsS3Provider {
 impl ContentAddressReader for AwsS3Provider {
     async fn get_content_read_address(&self, id: &Identifier) -> Result<String> {
         if !self.check_object_existence(id).await? {
-            return Err(Error::NotFound(id.to_string()));
+            return Err(Error::IdentifierNotFound(id.clone()));
         }
 
         let key = self.blob_key(id);
@@ -392,7 +392,7 @@ impl ContentAddressReader for AwsS3Provider {
 impl ContentAddressWriter for AwsS3Provider {
     async fn get_content_write_address(&self, id: &Identifier) -> Result<String> {
         if self.check_object_existence(id).await? {
-            return Err(Error::AlreadyExists(id.to_string()));
+            return Err(Error::IdentifierAlreadyExists(id.clone()));
         }
 
         let key = self.blob_key(id);

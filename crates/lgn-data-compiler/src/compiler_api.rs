@@ -75,7 +75,7 @@
 #![allow(clippy::needless_doctest_main)]
 
 use async_trait::async_trait;
-use lgn_content_store2::{Config, ContentProvider, ContentWriterExt};
+use lgn_content_store::{Config, ContentProvider, ContentWriterExt};
 use std::{
     convert::Infallible,
     env,
@@ -310,9 +310,9 @@ pub enum CompilerError {
     #[error("{0}")]
     RemoteExecution(String),
 
-    /// lgn-content-store2 errors.
+    /// lgn-content-store errors.
     #[error(transparent)]
-    CASError(#[from] lgn_content_store2::Error),
+    CASError(#[from] lgn_content_store::Error),
 }
 
 impl CompilerDescriptor {

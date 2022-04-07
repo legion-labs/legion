@@ -2,7 +2,7 @@ use std::collections::{BTreeSet, VecDeque};
 
 use async_stream::stream;
 use futures_util::pin_mut;
-use lgn_content_store2::{ContentProvider, ContentReader};
+use lgn_content_store::{ContentProvider, ContentReader};
 use serde::{de::DeserializeOwned, Serialize};
 use tokio_stream::{Stream, StreamExt};
 
@@ -585,7 +585,7 @@ mod tests {
     use std::collections::BTreeSet;
 
     use futures_util::stream::StreamExt;
-    use lgn_content_store2::MemoryProvider;
+    use lgn_content_store::MemoryProvider;
     use serde::{Deserialize, Serialize};
 
     use crate::{Asset, Index, KeyPathSplitter, MultiAssetsTree, UniqueAssetTree};

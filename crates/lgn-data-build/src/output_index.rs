@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use lgn_content_store2::Identifier;
+use lgn_content_store::Identifier;
 use lgn_data_compiler::CompiledResource;
 use lgn_data_offline::ResourcePathId;
 use lgn_data_runtime::ResourceTypeAndId;
@@ -335,7 +335,7 @@ mod tests {
 
     use std::{path::Path, str::FromStr};
 
-    use lgn_content_store2::Identifier;
+    use lgn_content_store::Identifier;
     use lgn_data_compiler::CompiledResource;
     use lgn_data_offline::ResourcePathId;
     use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};

@@ -71,12 +71,12 @@ async fn main() -> Result<(), String> {
         .await
         .map_err(|e| format!("failed creating repository index {}", e))?;
     let source_control_content_provider = Arc::new(
-        lgn_content_store2::Config::load_and_instantiate_persistent_provider()
+        lgn_content_store::Config::load_and_instantiate_persistent_provider()
             .await
             .map_err(|err| format!("{:?}", err))?,
     );
     let data_content_provider = Arc::new(
-        lgn_content_store2::Config::load_and_instantiate_volatile_provider()
+        lgn_content_store::Config::load_and_instantiate_volatile_provider()
             .await
             .map_err(|err| format!("{:?}", err))?,
     );

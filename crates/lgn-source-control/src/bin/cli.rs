@@ -272,7 +272,7 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let content_provider =
-        lgn_content_store2::Config::load_and_instantiate_persistent_provider().await?;
+        lgn_content_store::Config::load_and_instantiate_persistent_provider().await?;
     let repository_index = Config::load_and_instantiate_repository_index().await?;
 
     let mut stdout = StandardStream::stdout(choice);
