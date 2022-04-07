@@ -53,7 +53,7 @@ impl LocalRepositoryIndex {
 #[async_trait]
 impl RepositoryIndex for LocalRepositoryIndex {
     async fn create_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
-        async_span_scope!("RepositoryIndex::create_repository");
+        async_span_scope!("LocalRepositoryIndex::create_repository");
 
         let inner_index = self
             .inner_repository_index
@@ -66,7 +66,7 @@ impl RepositoryIndex for LocalRepositoryIndex {
     }
 
     async fn destroy_repository(&self, repository_name: RepositoryName) -> Result<()> {
-        async_span_scope!("RepositoryIndex::destroy_repository");
+        async_span_scope!("LocalRepositoryIndex::destroy_repository");
 
         self.inner_repository_index
             .destroy_repository(repository_name)
@@ -74,7 +74,7 @@ impl RepositoryIndex for LocalRepositoryIndex {
     }
 
     async fn load_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
-        async_span_scope!("RepositoryIndex::load_repository");
+        async_span_scope!("LocalRepositoryIndex::load_repository");
 
         let inner_index = self
             .inner_repository_index
@@ -84,6 +84,12 @@ impl RepositoryIndex for LocalRepositoryIndex {
         let index = LocalIndex::new(inner_index);
 
         Ok(Box::new(index))
+    }
+
+    async fn list_repositories(&self) -> Result<Vec<RepositoryName>> {
+        async_span_scope!("LocalRepositoryIndex::list_repositories");
+
+        self.inner_repository_index.list_repositories().await
     }
 }
 

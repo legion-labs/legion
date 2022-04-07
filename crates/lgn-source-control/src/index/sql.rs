@@ -137,6 +137,17 @@ impl SqlRepositoryIndex {
         Ok(Self { driver, pool })
     }
 
+    async fn get_repositories(conn: &mut sqlx::AnyConnection) -> Result<Vec<RepositoryName>> {
+        let sql: &str = &format!("SELECT name from `{}` ORDER BY name;", TABLE_REPOSITORIES);
+
+        conn.fetch_all(sql)
+            .await
+            .map_other_err("failed to list repositories")?
+            .into_iter()
+            .map(|row| row.get::<String, _>("name").parse())
+            .collect()
+    }
+
     async fn initialize_database(
         conn: &mut sqlx::AnyConnection,
         driver: &SqlDatabaseDriver,
@@ -294,6 +305,18 @@ impl RepositoryIndex for SqlRepositoryIndex {
         let index = SqlIndex::load(self.driver.clone(), self.pool.clone(), repository_name).await?;
 
         Ok(Box::new(index))
+    }
+
+    async fn list_repositories(&self) -> Result<Vec<RepositoryName>> {
+        async_span_scope!("SqlRepositoryIndex::list_repositories");
+
+        let mut conn = self
+            .pool
+            .acquire()
+            .await
+            .map_other_err("failed to acquire SQL connection")?;
+
+        Self::get_repositories(&mut conn).await
     }
 }
 

@@ -54,6 +54,9 @@ enum Commands {
         /// The index URL.
         repository_name: RepositoryName,
     },
+    /// ListRepositories.
+    #[clap(name = "list-repositories")]
+    ListRepositories {},
     /// Initializes a workspace and populates it with the latest version of the main branch
     #[clap(name = "init-workspace", alias = "init")]
     InitWorkspace {
@@ -299,6 +302,26 @@ async fn main() -> anyhow::Result<()> {
                 }
                 Err(Error::RepositoryDoesNotExist { repository_name }) => {
                     println!("The repository `{}` does not exist", repository_name);
+                }
+                Err(e) => {
+                    return Err(e.into());
+                }
+            }
+
+            Ok(())
+        }
+        Commands::ListRepositories {} => {
+            match repository_index.list_repositories().await {
+                Ok(repository_names) => {
+                    if repository_names.is_empty() {
+                        println!("No repositories found.");
+                    } else {
+                        println!("Listing {} repositorie(s):", repository_names.len());
+
+                        for repository_name in repository_names {
+                            println!("- {}", repository_name);
+                        }
+                    }
                 }
                 Err(e) => {
                     return Err(e.into());

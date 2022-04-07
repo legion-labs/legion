@@ -8,6 +8,7 @@ service SourceControl {
   rpc RepositoryExists(RepositoryExistsRequest) returns (RepositoryExistsResponse) {};
   rpc CreateRepository(CreateRepositoryRequest) returns (CreateRepositoryResponse) {};
   rpc DestroyRepository(DestroyRepositoryRequest) returns (DestroyRepositoryResponse) {};
+  rpc ListRepositories(ListRepositoriesRequest) returns (ListRepositoriesResponse) {};
 
   // Index operations.
   rpc RegisterWorkspace(RegisterWorkspaceRequest) returns (RegisterWorkspaceResponse) {};
@@ -52,6 +53,12 @@ message DestroyRepositoryRequest {
 
 message DestroyRepositoryResponse {
   bool does_not_exist = 1;
+}
+
+message ListRepositoriesRequest {}
+
+message ListRepositoriesResponse {
+  repeated string repository_names = 1;
 }
 
 message RegisterWorkspaceRequest {

@@ -2,6 +2,7 @@ mod common;
 
 #[allow(clippy::wildcard_imports)]
 use common::*;
+use itertools::Itertools;
 
 use std::path::Path;
 
@@ -943,7 +944,7 @@ async fn test_multiple_repositories() {
 
     let workspace_root2 = tempfile::tempdir().expect("failed to create temp dir");
     let config = WorkspaceConfig::new(
-        repository_name,
+        repository_name.clone(),
         WorkspaceRegistration::new_with_current_user(),
     );
 
@@ -960,6 +961,16 @@ async fn test_multiple_repositories() {
 
     workspace_commit!(ws1, "Added some fruits");
     workspace_commit!(ws2, "Added some fruits");
+
+    let repository_names = repository_index.list_repositories().await.unwrap();
+
+    assert_eq!(
+        repository_names,
+        vec!["default".parse().unwrap(), repository_name]
+            .into_iter()
+            .sorted()
+            .collect::<Vec<RepositoryName>>(),
+    );
 
     cleanup_test_workspace_and_index!(repository_index, ws2);
     cleanup_test_workspace_and_index!(repository_index, ws1);

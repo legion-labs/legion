@@ -23,9 +23,10 @@ use lgn_source_control_proto::{
     DestroyRepositoryResponse, GetBranchRequest, GetBranchResponse, GetLockRequest,
     GetLockResponse, GetTreeRequest, GetTreeResponse, InsertBranchRequest, InsertBranchResponse,
     ListBranchesRequest, ListBranchesResponse, ListCommitsRequest, ListCommitsResponse,
-    ListLocksRequest, ListLocksResponse, LockRequest, LockResponse, RegisterWorkspaceRequest,
-    RegisterWorkspaceResponse, RepositoryExistsRequest, RepositoryExistsResponse, SaveTreeRequest,
-    SaveTreeResponse, UnlockRequest, UnlockResponse, UpdateBranchRequest, UpdateBranchResponse,
+    ListLocksRequest, ListLocksResponse, ListRepositoriesRequest, ListRepositoriesResponse,
+    LockRequest, LockResponse, RegisterWorkspaceRequest, RegisterWorkspaceResponse,
+    RepositoryExistsRequest, RepositoryExistsResponse, SaveTreeRequest, SaveTreeResponse,
+    UnlockRequest, UnlockResponse, UpdateBranchRequest, UpdateBranchResponse,
 };
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::{debug, info, warn, LevelFilter};
@@ -160,6 +161,24 @@ impl SourceControl for Service {
             }
             Err(e) => Err(tonic::Status::unknown(e.to_string())),
         }
+    }
+
+    async fn list_repositories(
+        &self,
+        _request: tonic::Request<ListRepositoriesRequest>,
+    ) -> Result<tonic::Response<ListRepositoriesResponse>, tonic::Status> {
+        let repository_names = self
+            .repository_index
+            .list_repositories()
+            .await
+            .map_err(|err| tonic::Status::unknown(err.to_string()))?
+            .into_iter()
+            .map(|repository_name| repository_name.to_string())
+            .collect();
+
+        Ok(tonic::Response::new(ListRepositoriesResponse {
+            repository_names,
+        }))
     }
 
     async fn register_workspace(
