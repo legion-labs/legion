@@ -123,6 +123,7 @@ pub(crate) async fn deploy_files(
         let data = provider.read_content(&file.1).await?;
 
         let mut output = {
+            #[cfg(unix)]
             let is_exec = file_name
                 .file_name()
                 .unwrap()
