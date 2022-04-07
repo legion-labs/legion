@@ -16,37 +16,33 @@ pub(crate) fn process_load_events(
 ) {
     for asset_loaded_event in asset_loaded_events.iter() {
         match asset_loaded_event {
-            AssetRegistryEvent::AssetLoaded(resource_id)
-                if resource_id.kind == lgn_graphics_data::runtime_texture::Texture::TYPE =>
-            {
-                crate::asset_to_ecs::create_texture(
-                    resource_id,
-                    &asset_registry,
-                    &mut asset_to_entity_map,
-                    &mut commands,
-                );
-            }
-            AssetRegistryEvent::AssetLoaded(resource_id)
-                if resource_id.kind == lgn_graphics_data::runtime::Material::TYPE =>
-            {
-                crate::asset_to_ecs::create_material(
-                    resource_id,
-                    &asset_registry,
-                    &mut asset_to_entity_map,
-                    &mut commands,
-                );
-            }
-            AssetRegistryEvent::AssetLoaded(resource_id)
-                if resource_id.kind == lgn_graphics_data::runtime::Model::TYPE =>
-            {
-                crate::asset_to_ecs::create_model(
-                    resource_id,
-                    &asset_registry,
-                    &mut asset_to_entity_map,
-                    &mut commands,
-                );
-            }
-            _ => (),
+            AssetRegistryEvent::AssetLoaded(resource_id) => match resource_id.kind {
+                lgn_graphics_data::runtime_texture::Texture::TYPE => {
+                    crate::asset_to_ecs::create_texture(
+                        resource_id,
+                        &asset_registry,
+                        &mut asset_to_entity_map,
+                        &mut commands,
+                    );
+                }
+                lgn_graphics_data::runtime::Material::TYPE => {
+                    crate::asset_to_ecs::create_material(
+                        resource_id,
+                        &asset_registry,
+                        &mut asset_to_entity_map,
+                        &mut commands,
+                    );
+                }
+                lgn_graphics_data::runtime::Model::TYPE => {
+                    crate::asset_to_ecs::create_model(
+                        resource_id,
+                        &asset_registry,
+                        &mut asset_to_entity_map,
+                        &mut commands,
+                    );
+                }
+                _ => {}
+            },
         }
     }
 }

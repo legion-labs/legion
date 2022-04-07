@@ -202,7 +202,7 @@ impl Plugin for RendererPlugin {
             .world
             .contains_resource::<Events<lgn_data_runtime::AssetRegistryEvent>>()
         {
-            app.add_system(asset_to_ecs::process_load_events);
+            app.add_system_to_stage(RenderStage::Resource, asset_to_ecs::process_load_events);
         }
 
         // Plugins are optional
