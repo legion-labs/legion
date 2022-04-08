@@ -43,6 +43,15 @@ float3x3 quaternion_to_matrix(float4 quat)
     return m;
 }
 
+Transform make_transform(float3 translation, float4 rotation, float3 scale) {
+    Transform transform;
+    transform.translation = translation;
+    transform.rotation = rotation;
+    transform.scale = scale;
+
+    return transform;
+}
+
 float3 transform_position(Transform transform, float3 position) {
     float3 result = transform.scale * position;
     result = mul(quaternion_to_matrix(transform.rotation), result);
@@ -50,10 +59,7 @@ float3 transform_position(Transform transform, float3 position) {
 }
 
 float3 transform_position(float3 translation, float4 rotation, float3 position) {
-    Transform transform;
-    transform.translation = translation;
-    transform.rotation = rotation;
-    transform.scale = float3(1.0, 1.0, 1.0);
+    Transform transform = make_transform(translation, rotation, float3(1.0, 1.0, 1.0));
     return transform_position(transform, position);
 }
 
@@ -63,9 +69,7 @@ float3 transform_vector(Transform transform, float3 v) {
 }
 
 float3 transform_vector(float4 rotation, float3 v) {
-    Transform transform = (Transform)0;
-    transform.rotation = rotation;
-    transform.scale = float3(1.0, 1.0, 1.0);
+    Transform transform = make_transform(float3(0.0, 0.0, 0.0), rotation, float3(1.0, 1.0, 1.0));
     return transform_vector(transform, v);
 }
 
