@@ -9,7 +9,7 @@ set -eux
 
 ###################################################################################################
 
-LLVM_VERSION=13
+LLVM_VERSION=14
 XWIN_VERSION=0.1.7
 NINJA_VERSION=1.10.2
 CMAKE_VERSION=3.22.2
