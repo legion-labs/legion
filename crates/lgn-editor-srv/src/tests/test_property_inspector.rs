@@ -1,3 +1,4 @@
+use tokio::sync::broadcast;
 use tonic::{Request, Status};
 
 use lgn_editor_proto::property_inspector::{
@@ -17,8 +18,11 @@ async fn test_property_inspector() -> anyhow::Result<()> {
 
     {
         let transaction_manager = crate::test_resource_browser::setup_project(&project_dir).await;
+        let (editor_events_sender, _editor_events_receiver) = broadcast::channel(1_000);
+
         let property_inspector = crate::property_inspector_plugin::PropertyInspectorRPC {
             transaction_manager: transaction_manager.clone(),
+            event_sender: editor_events_sender.clone(),
         };
 
         // Create a dummy Scene Entity

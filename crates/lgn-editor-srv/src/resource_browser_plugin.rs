@@ -211,17 +211,23 @@ impl ResourceBrowserPlugin {
                         .await;
 
                     match resource_id {
-                        Ok(resource_id) => match transaction_manager.add_scene(resource_id).await {
-                            Ok(resource_path_id) => {
-                                let runtime_id = resource_path_id.resource_id();
-                                event_writer.send(SceneMessage::OpenScene(runtime_id));
+                        Ok(resource_id) => {
+                            // Send OpenScene regardless of the compilation results
+                            event_writer.send(SceneMessage::OpenScene(
+                                ResourcePathId::from(resource_id)
+                                    .push(sample_data::runtime::Entity::TYPE)
+                                    .resource_id(),
+                            ));
+
+                            match transaction_manager.add_scene(resource_id).await {
+                                Ok(_resource_path_id) => {}
+                                Err(err) => lgn_tracing::warn!(
+                                    "Failed to build scene '{}': {}",
+                                    scene,
+                                    err.to_string()
+                                ),
                             }
-                            Err(err) => lgn_tracing::warn!(
-                                "Failed to build scene '{}': {}",
-                                scene,
-                                err.to_string()
-                            ),
-                        },
+                        }
                         Err(error) => {
                             lgn_tracing::warn!(
                                 "Failed to locate scene '{}' in project: {}",

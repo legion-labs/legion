@@ -15,6 +15,28 @@ pub struct BuildManager {
 }
 
 impl BuildManager {
+    /// Return the derived `ResourcePathId` from a `ResourceId`
+    pub fn get_derived_id(resource_id: ResourceTypeAndId) -> ResourcePathId {
+        // TODO HACK.
+        let runtime_type = if resource_id.kind == ResourceType::new(b"offline_testentity") {
+            ResourceType::new(b"runtime_testentity")
+        } else if resource_id.kind == ResourceType::new(b"offline_entity") {
+            ResourceType::new(b"runtime_entity")
+        } else if resource_id.kind == ResourceType::new(b"offline_material") {
+            ResourceType::new(b"runtime_material")
+        } else if resource_id.kind == ResourceType::new(b"offline_script") {
+            ResourceType::new(b"runtime_script")
+        } else {
+            error!(
+                "Data Build {:?} Failed: Cannot find runtime type mapping",
+                resource_id
+            );
+            resource_id.kind
+        };
+
+        ResourcePathId::from(resource_id).push(runtime_type)
+    }
+
     /// New instance of `BuildManager`.
     pub async fn new(
         options: DataBuildOptions,
@@ -51,25 +73,8 @@ impl BuildManager {
         project: &Project,
     ) -> Result<(ResourcePathId, Vec<ResourceTypeAndId>), Error> {
         let start = std::time::Instant::now();
-        // TODO HACK.
-        let runtime_type = if resource_id.kind == ResourceType::new(b"offline_testentity") {
-            ResourceType::new(b"runtime_testentity")
-        } else if resource_id.kind == ResourceType::new(b"offline_entity") {
-            ResourceType::new(b"runtime_entity")
-        } else if resource_id.kind == ResourceType::new(b"offline_material") {
-            ResourceType::new(b"runtime_material")
-        } else if resource_id.kind == ResourceType::new(b"offline_script") {
-            ResourceType::new(b"runtime_script")
-        } else {
-            error!(
-                "Data Build {:?} Failed: Cannot find runtime type mapping",
-                resource_id
-            );
-            resource_id.kind
-        };
 
-        let derived_id = ResourcePathId::from(resource_id).push(runtime_type);
-
+        let derived_id = Self::get_derived_id(resource_id);
         let start_manifest = Manifest::default();
         start_manifest.extend(self.runtime_manifest.clone());
 

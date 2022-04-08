@@ -16,8 +16,8 @@ use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
 use lgn_content_store::{ChunkIdentifier, Chunker, Config, ContentProvider};
 use lgn_data_runtime::{
-    manifest::Manifest, AssetRegistry, AssetRegistryEvent, AssetRegistryOptions,
-    AssetRegistryScheduling, ResourceLoadEvent,
+    manifest::Manifest, AssetRegistry, AssetRegistryError, AssetRegistryEvent,
+    AssetRegistryOptions, AssetRegistryScheduling, ResourceLoadEvent,
 };
 use lgn_ecs::prelude::*;
 use lgn_tracing::{error, info};
@@ -162,7 +162,10 @@ impl AssetRegistryPlugin {
                         *loading_state = LoadingState::Loaded;
                         event_writer.send(AssetRegistryEvent::AssetLoaded(handle.id()));
                     } else if handle.is_err(&registry) {
-                        error!("Failed to load runtime asset {:?}", asset_id);
+                        let err = registry
+                            .retrieve_err(handle.id())
+                            .unwrap_or(AssetRegistryError::ResourceNotFound(*asset_id));
+                        error!("Failed to load runtime asset {:?}: {}", asset_id, err);
                         *loading_state = LoadingState::Failed;
                     }
                 }
@@ -183,7 +186,10 @@ impl AssetRegistryPlugin {
             match event {
                 ResourceLoadEvent::Loaded(asset_handle) => {
                     let asset_id = asset_handle.id();
-                    if asset_loading_states.get(asset_id).is_none() {
+                    let state = asset_loading_states.get(asset_id);
+                    if let Some(LoadingState::Pending) = state {
+                        // Already queued, retry other cases
+                    } else {
                         // Received a load event for an untracked asset.
                         // Most likely, this load has occurred because of loading of dependant
                         // resources.
