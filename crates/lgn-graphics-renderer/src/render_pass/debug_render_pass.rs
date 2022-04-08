@@ -10,7 +10,7 @@ use lgn_math::{Vec3, Vec4};
 use lgn_transform::prelude::GlobalTransform;
 
 use crate::{
-    cgen::{self, cgen_type::Transform},
+    cgen::{self, cgen_type::TransformData},
     components::{CameraComponent, ManipulatorComponent, RenderSurface, VisualComponent},
     debug_display::{DebugDisplay, DebugPrimitiveType},
     hl_gfx_api::HLCommandBuffer,
@@ -469,7 +469,7 @@ fn render_mesh(
 
     let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh_id);
 
-    let mut transform = Transform::default();
+    let mut transform = TransformData::default();
     transform.set_translation(world_xform.translation.into());
     transform.set_rotation(Vec4::from(world_xform.rotation).into());
     transform.set_scale(world_xform.scale.into());

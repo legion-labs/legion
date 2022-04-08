@@ -2,10 +2,10 @@
 #include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_color.hlsl"
 #include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_picking_data.hlsl"
 #include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_va_table.hlsl"
-#include "crate://lgn-graphics-renderer/gpu/cgen_type/transform.hlsl"
 
 #include "crate://lgn-graphics-renderer/gpu/include/common.hsh"
 #include "crate://lgn-graphics-renderer/gpu/include/mesh.hsh"
+#include "crate://lgn-graphics-renderer/gpu/include/transform.hsh"
 
 struct VertexOut {  
     float4 hpos : SV_POSITION;
@@ -24,17 +24,17 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
         
         vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
 
-        Transform transform = LoadTransform(static_buffer, addresses.world_transform_va);
-        world_pos = transform_position(transform, vertex_in.pos);
+        TransformData transform = LoadTransformData(static_buffer, addresses.world_transform_va);
+        world_pos = ((Transform)transform).apply_to_point(vertex_in.pos);
     }
     else
     {
         MeshDescription mesh_desc = LoadMeshDescription(static_buffer, push_constant.mesh_description_offset);
         vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
-        world_pos = transform_position(push_constant.transform, vertex_in.pos);
+        world_pos = ((Transform)push_constant.transform).apply_to_point(vertex_in.pos);
     }
 
-    float3 view_pos = transform_position(view_data.camera_translation, view_data.camera_rotation, world_pos);
+    float3 view_pos = transform_from_tr(view_data.camera_translation, view_data.camera_rotation).apply_to_point(world_pos);
     vertex_out.hpos = mul(view_data.projection, float4(view_pos, 1.0));
 
     vertex_out.picked_world_pos = world_pos;

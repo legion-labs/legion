@@ -7,7 +7,7 @@ use lgn_transform::components::GlobalTransform;
 use crate::{
     cgen::{
         self,
-        cgen_type::{PickingData, Transform},
+        cgen_type::{PickingData, TransformData},
     },
     components::{CameraComponent, LightComponent, ManipulatorComponent, RenderSurface},
     gpu_renderer::{DefaultLayers, GpuInstanceManager, MeshRenderer},
@@ -187,7 +187,7 @@ fn render_mesh(
     let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh_id);
 
     //push_constant_data.set_world((*custom_world).into());
-    let mut transform = Transform::default();
+    let mut transform = TransformData::default();
     transform.set_translation(custom_world.translation.into());
     transform.set_rotation(Vec4::from(custom_world.rotation).into());
     transform.set_scale(custom_world.scale.into());

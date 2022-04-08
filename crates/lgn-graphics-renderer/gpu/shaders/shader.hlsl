@@ -2,11 +2,11 @@
 #include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_color.hlsl"
 #include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_picking_data.hlsl"
 #include "crate://lgn-graphics-renderer/gpu/cgen_type/gpu_instance_va_table.hlsl"
-#include "crate://lgn-graphics-renderer/gpu/cgen_type/transform.hlsl"
 
 #include "crate://lgn-graphics-renderer/gpu/include/common.hsh"
 #include "crate://lgn-graphics-renderer/gpu/include/brdf.hsh"
 #include "crate://lgn-graphics-renderer/gpu/include/mesh.hsh"
+#include "crate://lgn-graphics-renderer/gpu/include/transform.hsh"
 
 struct VertexOut {  
     float4 hpos : SV_POSITION;
@@ -24,23 +24,23 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
     VertexIn vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
     VertexOut vertex_out = (VertexOut)0;
 
-    Transform transform = LoadTransform(static_buffer, addresses.world_transform_va);
-    float3 world_pos = transform_position(transform, vertex_in.pos);
-    float3 view_pos = transform_position(view_data.camera_translation, view_data.camera_rotation, world_pos);
+    TransformData transform = LoadTransformData(static_buffer, addresses.world_transform_va);
+    float3 world_pos = ((Transform)transform).apply_to_point(vertex_in.pos);
+    float3 view_pos = transform_from_tr(view_data.camera_translation, view_data.camera_rotation).apply_to_point(world_pos);
 
     vertex_out.hpos = mul(view_data.projection, float4(view_pos, 1.0));
     vertex_out.pos = view_pos;
-    float3 normal_in_world = normalize(transform_vector(transform, vertex_in.normal));
-    vertex_out.normal = normalize(transform_vector(view_data.camera_rotation, normal_in_world));
-    float3 tangent_in_world = normalize(transform_vector(transform, vertex_in.tangent.xyz));
-    vertex_out.tangent = float4(normalize(transform_vector(view_data.camera_rotation, tangent_in_world)), vertex_in.tangent.w);
+    float3 normal_in_world = normalize(((Transform)transform).apply_to_vector(vertex_in.normal));
+    vertex_out.normal = normalize(transform_from_rotation(view_data.camera_rotation).apply_to_vector(normal_in_world));
+    float3 tangent_in_world = normalize(((Transform)transform).apply_to_vector(vertex_in.tangent.xyz));
+    vertex_out.tangent = float4(normalize(transform_from_rotation(view_data.camera_rotation).apply_to_vector(tangent_in_world)), vertex_in.tangent.w);
     vertex_out.uv_coord = vertex_in.uv_coord;
     vertex_out.va_table_address = vertexIn.va_table_address;
     return vertex_out;
 }
 
 Lighting CalculateIncidentDirectionalLight(DirectionalLight light, float3 pos, float3 normal, LightingMaterial material) {
-    float3 light_dir = normalize(transform_vector(view_data.camera_rotation, light.dir));
+    float3 light_dir = normalize(transform_from_rotation(view_data.camera_rotation).apply_to_vector(light.dir));
 
     Lighting lighting = (Lighting)0;
     float NoL = saturate(dot(normal, light_dir));
@@ -56,7 +56,7 @@ Lighting CalculateIncidentDirectionalLight(DirectionalLight light, float3 pos, f
 }
 
 Lighting CalculateIncidentOmniDirectionalLight(OmniDirectionalLight light, float3 pos, float3 normal, LightingMaterial material) {
-    float3 light_dir = transform_position(view_data.camera_translation, view_data.camera_rotation, light.pos) - pos;
+    float3 light_dir = transform_from_tr(view_data.camera_translation, view_data.camera_rotation).apply_to_point(light.pos) - pos;
     float distance = length(light_dir);
     distance = distance * distance;
     light_dir = normalize(light_dir);
@@ -75,7 +75,7 @@ Lighting CalculateIncidentOmniDirectionalLight(OmniDirectionalLight light, float
 }
 
 Lighting CalculateIncidentSpotLight(SpotLight light, float3 pos, float3 normal, LightingMaterial material) {
-    float3 light_dir = transform_position(view_data.camera_translation, view_data.camera_rotation, light.pos) - pos;
+    float3 light_dir = transform_from_tr(view_data.camera_translation, view_data.camera_rotation).apply_to_point(light.pos) - pos;
     float distance = length(light_dir);
     distance = distance * distance;
     light_dir = normalize(light_dir);
@@ -87,7 +87,7 @@ Lighting CalculateIncidentSpotLight(SpotLight light, float3 pos, float3 normal, 
         lighting = DefaultBRDF(normal, normalize(-pos), light_dir, NoL, material);
     }
 
-    float cos_between_dir = dot(normalize(transform_vector(view_data.camera_rotation, light.dir)), light_dir);
+    float cos_between_dir = dot(normalize(transform_from_rotation(view_data.camera_rotation).apply_to_vector(light.dir)), light_dir);
     float cos_half_angle = cos(light.cone_angle/2.0);
     float diff = 1.0 - cos_half_angle;
     float factor = saturate((cos_between_dir - cos_half_angle)/diff);
