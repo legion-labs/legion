@@ -18,7 +18,7 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
 
     Transform transform = LoadTransform(static_buffer, addresses.world_transform_va);
     float3 world_pos = transform_position(transform, vertex_in.pos);
-    float3 view_pos = transform_position(view_data.camera_rotation, view_data.camera_translation, world_pos);
+    float3 view_pos = transform_position(view_data.camera_translation, view_data.camera_rotation, world_pos);
 
     vertex_out.hpos = mul(view_data.projection, float4(view_pos, 1.0));
 

@@ -34,7 +34,7 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
         world_pos = transform_position(push_constant.transform, vertex_in.pos);
     }
 
-    float3 view_pos = transform_position(view_data.camera_rotation, view_data.camera_translation, world_pos);
+    float3 view_pos = transform_position(view_data.camera_translation, view_data.camera_rotation, world_pos);
     vertex_out.hpos = mul(view_data.projection, float4(view_pos, 1.0));
 
     vertex_out.picked_world_pos = world_pos;
