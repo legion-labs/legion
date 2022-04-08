@@ -140,6 +140,16 @@ impl NvEncoderSession {
         self.encoder_width = image_etents.width;
         self.encoder_height = image_etents.height;
 
+        // TODO Play with this once we move to MediaStreams
+        // M2 Hack
+        // Force the stream to a lower bitrate
+        // Using the data channel seems to still cost too much CPU
+        // time
+        unsafe {
+            (*encode_config).rcParams.maxBitRate = 2_500_000;
+            (*encode_config).rcParams.averageBitRate = 2_500_000;
+        }
+
         NV_ENC_INITIALIZE_PARAMS {
             version: NV_ENC_INITIALIZE_PARAMS_VER,
             encodeGUID: NV_ENC_CODEC_H264_GUID,
