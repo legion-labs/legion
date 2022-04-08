@@ -4,7 +4,10 @@
   import { dropzone } from "@lgn/web-client/src/actions/dnd";
 
   import { resourceDragAndDropType } from "@/constants";
-  import { createResourcePathId } from "@/lib/resourceBrowser";
+  import {
+    createResourcePathId,
+    getResourceNameFromEntries,
+  } from "@/lib/resourceBrowser";
   import { resourceEntries } from "@/orchestrators/resourceBrowserEntries";
 
   import TextInput from "../../inputs/TextInput.svelte";
@@ -14,6 +17,8 @@
   export let resourceType: string | null;
 
   export let readonly = false;
+
+  $: name = getResourceNameFromEntries($resourceEntries, value);
 
   const dispatch = createEventDispatcher<{
     input: string;
@@ -32,37 +37,12 @@
       }
     }
   }
-
-  function getName(): string {
-    const entry = $resourceEntries.find((entry) =>
-      value.startsWith(entry.item.id)
-    );
-
-    let result = "";
-
-    if (entry) {
-      result = entry.name;
-
-      let index = value.indexOf("_");
-
-      if (index != -1) {
-        const subValue = value.slice(index + 1);
-
-        index = subValue.indexOf("|");
-
-        if (index != -1) {
-          result += "/" + subValue.slice(undefined, index);
-        }
-      }
-    }
-    return result;
-  }
 </script>
 
 <div
   use:dropzone={{ accept: resourceDragAndDropType }}
   on:dnd-drop={onDrop}
-  title={getName()}
+  title={name}
 >
   <TextInput on:input bind:value fluid autoSelect {readonly} />
 </div>
