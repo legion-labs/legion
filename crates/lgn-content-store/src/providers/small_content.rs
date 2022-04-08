@@ -8,7 +8,7 @@ use async_trait::async_trait;
 use crate::{
     traits::{get_content_readers_impl, WithOrigin},
     ContentAsyncReadWithOrigin, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier,
-    Result,
+    Origin, Result,
 };
 
 /// A `SmallContentProvider` is a provider that implements the small-content optimization or delegates to a specified provider.
@@ -43,7 +43,7 @@ impl<Inner: Display> Display for SmallContentProvider<Inner> {
 impl<Inner: ContentReader + Send + Sync> ContentReader for SmallContentProvider<Inner> {
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
         if let Identifier::Data(data) = id {
-            Ok(std::io::Cursor::new(data.to_vec()).with_origin("small-content".to_string()))
+            Ok(std::io::Cursor::new(data.to_vec()).with_origin(Origin::InIdentifier {}))
         } else {
             self.inner.get_content_reader(id).await
         }

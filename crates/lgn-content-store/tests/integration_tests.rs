@@ -7,7 +7,8 @@ use std::{
 use lgn_content_store::{
     CachingProvider, ChunkIdentifier, Chunker, ContentAddressReader, ContentAddressWriter,
     ContentReaderExt, ContentWriter, ContentWriterExt, DataSpace, Error, GrpcProvider,
-    GrpcProviderSet, GrpcService, Identifier, LocalProvider, MemoryProvider, SmallContentProvider,
+    GrpcProviderSet, GrpcService, Identifier, LocalProvider, MemoryProvider, Origin,
+    SmallContentProvider,
 };
 
 #[cfg(feature = "lru")]
@@ -99,8 +100,7 @@ async fn test_memory_provider() {
     assert_content_not_found!(provider, id);
 
     let id = assert_write_content!(provider, &BIG_DATA_A);
-    assert_read_content!(provider, id, &BIG_DATA_A);
-    assert_read_origin!(provider, id, "memory");
+    assert_read_content_with_origin!(provider, id, &BIG_DATA_A, Origin::Memory {});
 
     // Another write should yield no error.
     assert_write_avoided!(provider, &id);
@@ -130,8 +130,7 @@ async fn test_lru_provider() {
     assert_content_not_found!(provider, id);
 
     let id = assert_write_content!(provider, &BIG_DATA_A);
-    assert_read_content!(provider, id, &BIG_DATA_A);
-    assert_read_origin!(provider, id, "lru");
+    assert_read_content_with_origin!(provider, id, &BIG_DATA_A, Origin::Lru {});
 
     // Another write should yield no error.
     assert_write_avoided!(provider, &id);
@@ -177,9 +176,9 @@ async fn test_caching_provider() {
     assert_content_not_found!(provider, id);
 
     let id = assert_write_content!(provider, &BIG_DATA_A);
-    assert_read_content_with_origin!(provider, id, &BIG_DATA_A, "lru");
-    assert_read_content_with_origin!(remote_provider, id, &BIG_DATA_A, "memory");
-    assert_read_content_with_origin!(local_provider, id, &BIG_DATA_A, "lru");
+    assert_read_content_with_origin!(provider, id, &BIG_DATA_A, Origin::Lru {});
+    assert_read_content_with_origin!(remote_provider, id, &BIG_DATA_A, Origin::Memory {});
+    assert_read_content_with_origin!(local_provider, id, &BIG_DATA_A, Origin::Lru {});
 
     // Another write should yield no error.
     assert_write_avoided!(provider, &id);
@@ -198,8 +197,8 @@ async fn test_caching_provider() {
     let id = assert_write_content!(remote_provider, &BIG_DATA_B);
 
     // The value should be copied in the cache.
-    assert_read_content_with_origin!(provider, id, &BIG_DATA_B, "memory");
-    assert_read_content_with_origin!(local_provider, id, &BIG_DATA_B, "lru");
+    assert_read_content_with_origin!(provider, id, &BIG_DATA_B, Origin::Memory {});
+    assert_read_content_with_origin!(local_provider, id, &BIG_DATA_B, Origin::Lru {});
 
     // Same test with a multi-read a value to the remote but not the cache.
     let id = assert_write_content!(remote_provider, &BIGGER_DATA_A);
@@ -237,7 +236,9 @@ async fn test_local_provider() {
         provider,
         id,
         &BIG_DATA_A,
-        format!("file://{}/{}", root.path().display(), id)
+        Origin::Local {
+            path: root.path().join(id.to_string())
+        }
     );
 
     // Another write should yield no error.
@@ -270,7 +271,7 @@ async fn test_small_content_provider() {
 
     let id = assert_write_content!(provider, &SMALL_DATA_A);
     assert!(id.is_data());
-    assert_read_content_with_origin!(provider, id, &SMALL_DATA_A, "small-content");
+    assert_read_content_with_origin!(provider, id, &SMALL_DATA_A, Origin::InIdentifier {});
 
     // Another write should yield no error.
     let new_id = assert_write_content!(provider, &SMALL_DATA_A);
@@ -289,12 +290,13 @@ async fn test_small_content_provider() {
 #[ignore]
 #[tokio::test]
 async fn test_aws_s3_provider() {
-    let aws_s3_url: lgn_content_store::AwsS3Url = format!(
-        "s3://legionlabs-ci-tests/lgn-content-store/test_aws_s3_provider/{}",
+    let s3_prefix = format!(
+        "lgn-content-store/test_aws_s3_provider/{}",
         uuid::Uuid::new_v4()
-    )
-    .parse()
-    .unwrap();
+    );
+    let aws_s3_url: lgn_content_store::AwsS3Url = format!("s3://legionlabs-ci-tests/{}", s3_prefix)
+        .parse()
+        .unwrap();
 
     let provider = AwsS3Provider::new(aws_s3_url.clone()).await;
     let id = Identifier::new(&BIG_DATA_A);
@@ -302,7 +304,15 @@ async fn test_aws_s3_provider() {
     assert_content_not_found!(provider, id);
 
     let id = assert_write_content!(provider, &BIG_DATA_A);
-    assert_read_content_with_origin!(provider, id, &BIG_DATA_A, format!("{}/{}", aws_s3_url, id));
+    assert_read_content_with_origin!(
+        provider,
+        id,
+        &BIG_DATA_A,
+        Origin::AwsS3 {
+            bucket_name: aws_s3_url.bucket_name.clone(),
+            key: format!("{}/{}", s3_prefix, id)
+        }
+    );
 
     // Another write should yield no error.
     assert_write_avoided!(provider, &id);
@@ -323,7 +333,13 @@ async fn test_aws_s3_provider() {
         .await
         .unwrap();
 
-    assert_eq!(origin, format!("{}/{}", aws_s3_url, id));
+    assert_eq!(
+        origin,
+        Origin::AwsS3 {
+            bucket_name: aws_s3_url.bucket_name.clone(),
+            key: format!("{}/{}", s3_prefix, id)
+        }
+    );
 
     let data = reqwest::get(read_url)
         .await
@@ -370,7 +386,9 @@ async fn test_aws_s3_provider() {
 #[tokio::test]
 async fn test_aws_dynamodb_provider() {
     let table_name = "legionlabs-content-store-test";
-    let provider = AwsDynamoDbProvider::new(table_name).await;
+    let provider = AwsDynamoDbProvider::new(Some("ca-central-1".to_string()), table_name)
+        .await
+        .unwrap();
 
     let uid = uuid::Uuid::new_v4();
     let mut data = Vec::new();
@@ -386,7 +404,11 @@ async fn test_aws_dynamodb_provider() {
         provider,
         id,
         data,
-        format!("dynamodb://{}/{}", table_name, id)
+        Origin::AwsDynamoDb {
+            region: "ca-central-1".to_string(),
+            table_name: table_name.to_string(),
+            id: id.to_string()
+        }
     );
 
     // Another write should yield no error.
@@ -422,7 +444,8 @@ async fn test_redis_provider() {
     let redis =
         testcontainers::Docker::run(&docker, testcontainers::images::redis::Redis::default());
 
-    let redis_url = format!("redis://localhost:{}", redis.get_host_port(6379).unwrap());
+    let redis_host = format!("localhost:{}", redis.get_host_port(6379).unwrap());
+    let redis_url = format!("redis://{}", redis_host);
     let key_prefix = "content-store";
     let provider = RedisProvider::new(redis_url.clone(), key_prefix)
         .await
@@ -442,7 +465,10 @@ async fn test_redis_provider() {
         provider,
         id,
         data,
-        format!("{}/{}:content:{}", redis_url, key_prefix, id)
+        Origin::Redis {
+            host: redis_host,
+            key: format!("{}:content:{}", key_prefix, id)
+        }
     );
 
     // Another write should yield no error.
@@ -512,7 +538,7 @@ async fn test_grpc_provider() {
         assert_content_not_found!(provider, id);
 
         let id = assert_write_content!(provider, &BIG_DATA_A);
-        assert_read_content_with_origin!(provider, id, &BIG_DATA_A, "memory");
+        assert_read_content_with_origin!(provider, id, &BIG_DATA_A, Origin::Memory {});
 
         // Another write should yield no error.
         let new_id = assert_write_content!(provider, &BIG_DATA_A);
@@ -553,7 +579,14 @@ async fn test_grpc_provider() {
         );
 
         let id = assert_write_content!(provider, &BIGGER_DATA_A);
-        assert_read_content_with_origin!(provider, &id, &BIGGER_DATA_A, "fake");
+        assert_read_content_with_origin!(
+            provider,
+            &id,
+            &BIGGER_DATA_A,
+            Origin::Local {
+                path: "fake".into()
+            }
+        );
 
         // Make sure the next write yields `Error::AlreadyExists`.
         address_provider.set_already_exists(true).await;

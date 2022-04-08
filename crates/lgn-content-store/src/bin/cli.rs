@@ -3,17 +3,20 @@
 
 use std::{
     collections::HashMap,
+    fmt::Display,
     path::PathBuf,
+    str::FromStr,
     sync::{Arc, RwLock},
 };
 
 use bytesize::ByteSize;
 use clap::{Parser, Subcommand};
+use console::style;
 use futures::Future;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use lgn_content_store::{
-    ChunkIdentifier, ChunkIndex, Chunker, Config, Identifier, MonitorAsyncAdapter, MonitorProvider,
-    TransferCallbacks,
+    ChunkIdentifier, ChunkIndex, Chunker, Config, ContentReaderExt, Error, Identifier,
+    MonitorAsyncAdapter, MonitorProvider, TransferCallbacks,
 };
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::{async_span_scope, LevelFilter};
@@ -43,8 +46,35 @@ enum Commands {
         chunk_size: ByteSize,
     },
     Explain {
-        identifier: ChunkIdentifier,
+        identifier: GenericIdentifier,
     },
+}
+
+#[derive(Debug, Clone)]
+enum GenericIdentifier {
+    Identifier(Identifier),
+    ChunkIdentifier(ChunkIdentifier),
+}
+
+impl Display for GenericIdentifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Identifier(id) => write!(f, "{}", id),
+            Self::ChunkIdentifier(id) => write!(f, "{}", id),
+        }
+    }
+}
+
+impl FromStr for GenericIdentifier {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Ok(chunk_id) = s.parse::<ChunkIdentifier>() {
+            Ok(Self::ChunkIdentifier(chunk_id))
+        } else {
+            s.parse::<Identifier>().map(GenericIdentifier::Identifier)
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -304,53 +334,102 @@ async fn main() -> anyhow::Result<()> {
 
             println!("{}", id);
         }
-        Commands::Explain { identifier } => {
-            println!("# Chunk identifier");
-            println!("Data is {} bytes long", identifier.data_size());
-
-            println!(
-                "Chunk index is {} bytes long",
-                identifier.content_id().data_size()
-            );
-
-            if identifier.content_id().is_data() {
-                println!("Chunk index is inlined in the identifier.");
-            } else {
+        Commands::Explain { identifier } => match identifier {
+            GenericIdentifier::ChunkIdentifier(identifier) => {
                 println!(
-                    "Chunk index is stored in the content store at id: {}",
-                    identifier.content_id()
+                    "{} is a {} identifier.",
+                    style(&identifier).bold().yellow(),
+                    style("chunk").bold().cyan()
                 );
-            }
+                println!(
+                    "The data it represents to is {} byte(s) long.",
+                    style(identifier.data_size()).bold()
+                );
 
-            let provider = provider.on_download_callbacks(transfer_progress);
-            let chunker = Chunker::default();
+                println!(
+                    "The chunk manifest it points to is {} bytes long.",
+                    style(identifier.content_id().data_size()).bold()
+                );
 
-            let chunk_index = chunker
-                .read_chunk_index(provider, &identifier)
-                .await
-                .map_err(|err| anyhow::anyhow!("failed to read chunk index: {}", err))?;
-
-            match chunk_index {
-                ChunkIndex::Linear(identifiers) => {
+                if identifier.content_id().is_data() {
                     println!(
-                        "Chunks are linear with {} identifier(s).",
-                        identifiers.len()
+                        "The chunk manifest is {} in the identifier, which makes the indirection free.",
+                        style("inlined").bold().green()
                     );
+                } else {
+                    let origin = provider.read_origin(identifier.content_id()).await?;
 
-                    for (i, identifier) in identifiers.iter().enumerate() {
-                        println!("\n# Chunk {}", i);
-                        println!("{}", identifier);
-                        println!("{} byte(s) long", identifier.data_size());
+                    println!(
+                        "The chunk manifest has id `{}` and comes from {}: {}",
+                        style(identifier.content_id()).bold().yellow(),
+                        style(origin.name()).bold().red(),
+                        style(&origin).cyan(),
+                    );
+                }
 
-                        if identifier.is_data() {
-                            println!("Data is inlined in the identifier.");
-                        } else {
-                            println!("Data is stored in the content store");
+                println!("Fetching the chunk manifest...\n");
+
+                let provider = provider.on_download_callbacks(transfer_progress);
+                let chunker = Chunker::default();
+
+                let chunk_index = chunker
+                    .read_chunk_index(&provider, &identifier)
+                    .await
+                    .map_err(|err| anyhow::anyhow!("failed to read chunk index: {}", err))?;
+
+                match chunk_index {
+                    ChunkIndex::Linear(identifiers) => {
+                        println!(
+                            "The chunk manifest is {} and contains {} possibly non-unique identifier(s).",
+                            style("linear").bold().blue(),
+                            style(identifiers.len()).bold(),
+                        );
+
+                        for (i, identifier) in identifiers.iter().enumerate() {
+                            let origin = provider.read_origin(identifier).await?;
+
+                            println!(
+                                "{:>5}/{}: `{}` is {} byte(s) long and comes from {} ({})",
+                                i + 1,
+                                identifiers.len(),
+                                style(&identifier).bold().yellow(),
+                                style(identifier.data_size()).bold(),
+                                style(origin.name()).bold().red(),
+                                style(&origin).cyan()
+                            );
                         }
+
+                        println!("End of the chunk manifest.");
                     }
                 }
             }
-        }
+            GenericIdentifier::Identifier(identifier) => {
+                println!(
+                    "{} is a {} identifier.",
+                    style(&identifier).bold().yellow(),
+                    style("raw").bold().cyan()
+                );
+                println!(
+                    "The data it represents to is {} byte(s) long.",
+                    style(identifier.data_size()).bold()
+                );
+
+                if identifier.is_data() {
+                    println!(
+                        "The data is {} in the identifier, which makes the indirection free.",
+                        style("inlined").bold().green()
+                    );
+                } else {
+                    let origin = provider.read_origin(&identifier).await?;
+
+                    println!(
+                        "The data comes from {} ({})",
+                        style(origin.name()).bold().red(),
+                        style(&origin).cyan(),
+                    );
+                }
+            }
+        },
     }
 
     Ok(())

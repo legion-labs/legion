@@ -1,7 +1,9 @@
 use std::{fmt::Display, sync::Arc};
 
 use async_trait::async_trait;
-use lgn_content_store::{ContentAddressReader, ContentAddressWriter, Error, Identifier, Result};
+use lgn_content_store::{
+    ContentAddressReader, ContentAddressWriter, Error, Identifier, Origin, Result,
+};
 use tokio::sync::Mutex;
 
 pub struct FakeContentAddressProvider {
@@ -37,8 +39,13 @@ impl ContentAddressReader for FakeContentAddressProvider {
     async fn get_content_read_address_with_origin(
         &self,
         id: &Identifier,
-    ) -> Result<(String, String)> {
-        Ok((self.get_address(id, "read"), "fake".to_string()))
+    ) -> Result<(String, Origin)> {
+        Ok((
+            self.get_address(id, "read"),
+            Origin::Local {
+                path: "fake".into(),
+            },
+        ))
     }
 }
 

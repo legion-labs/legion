@@ -12,7 +12,7 @@ use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 use crate::{
     traits::AsyncReadWithOrigin, ContentAsyncReadWithOrigin, ContentAsyncWrite, ContentReader,
-    ContentWriter, Error, Identifier, Result,
+    ContentWriter, Error, Identifier, Origin, Result,
 };
 
 pub trait TransferCallbacks<Id>: Debug + Send + Sync {
@@ -200,7 +200,7 @@ impl<Inner, Id> MonitorAsyncAdapter<Inner, Id> {
 }
 
 impl<Id> AsyncReadWithOrigin for MonitorAsyncAdapter<ContentAsyncReadWithOrigin, Id> {
-    fn origin(&self) -> &str {
+    fn origin(&self) -> &Origin {
         self.inner.origin()
     }
 }

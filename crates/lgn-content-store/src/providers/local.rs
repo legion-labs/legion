@@ -10,7 +10,7 @@ use std::{
 use crate::{
     traits::{get_content_readers_impl, WithOrigin},
     ContentAsyncReadWithOrigin, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier,
-    Result,
+    Origin, Result,
 };
 
 /// A `LocalProvider` is a provider that stores content on the local filesystem.
@@ -64,9 +64,7 @@ impl ContentReader for LocalProvider {
                     if metadata_size != id.data_size() {
                         Err(Error::Corrupt(id.clone()))
                     } else {
-                        let origin = format!("file://{}", path.display());
-
-                        Ok(file.with_origin(origin))
+                        Ok(file.with_origin(Origin::Local { path }))
                     }
                 }
                 Err(err) => Err(anyhow::anyhow!(

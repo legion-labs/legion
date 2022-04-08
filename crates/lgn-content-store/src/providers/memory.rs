@@ -9,7 +9,7 @@ use tokio::sync::RwLock;
 
 use crate::{
     traits::WithOrigin, ContentAsyncReadWithOrigin, ContentAsyncWrite, ContentReader,
-    ContentWriter, Error, Identifier, Result, Uploader, UploaderImpl,
+    ContentWriter, Error, Identifier, Origin, Result, Uploader, UploaderImpl,
 };
 
 /// A `MemoryProvider` is a provider that stores content in RAM.
@@ -40,7 +40,7 @@ impl ContentReader for MemoryProvider {
 
         match map.get(id) {
             Some(content) => {
-                Ok(std::io::Cursor::new(content.clone()).with_origin("memory".to_string()))
+                Ok(std::io::Cursor::new(content.clone()).with_origin(Origin::Memory {}))
             }
             None => Err(Error::IdentifierNotFound(id.clone())),
         }
@@ -59,7 +59,7 @@ impl ContentReader for MemoryProvider {
                         id,
                         match map.get(id) {
                             Some(content) => Ok(std::io::Cursor::new(content.clone())
-                                .with_origin("memory".to_string())),
+                                .with_origin(Origin::Memory {})),
                             None => Err(Error::IdentifierNotFound(id.clone())),
                         },
                     )

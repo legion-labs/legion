@@ -11,10 +11,10 @@ use futures::{stream::TryStreamExt, Future};
 use http::header;
 use http_body::Body;
 use lgn_content_store_proto::{
-    content_store_client::ContentStoreClient, read_content_response::Content,
+    content_store_client::ContentStoreClient, read_content_response::Content, DataContent,
     GetContentWriterRequest, GetContentWriterResponse, ReadContentRequest, ReadContentResponse,
     RegisterAliasRequest, RegisterAliasResponse, ResolveAliasRequest, ResolveAliasResponse,
-    WriteContentRequest, WriteContentResponse,
+    UrlContent, WriteContentRequest, WriteContentResponse,
 };
 use lgn_online::authentication::UserInfo;
 use lgn_tracing::{debug, info};
@@ -95,29 +95,39 @@ where
 
         match resp.content {
             Some(content) => Ok(match content {
-                Content::Data(data) => std::io::Cursor::new(data).with_origin(resp.origin),
-                Content::Url(url) => match reqwest::get(&url)
-                    .await
-                    .map_err(|err| {
-                        anyhow::anyhow!("failed to fetch content from {}: {}", url, err)
-                    })?
-                    .error_for_status()
-                {
-                    Ok(resp) => resp
-                        .bytes_stream()
-                        .map_err(|e| futures::io::Error::new(futures::io::ErrorKind::Other, e))
-                        .into_async_read()
-                        .compat(),
-                    Err(err) => {
-                        return match err.status() {
-                            Some(reqwest::StatusCode::NOT_FOUND) => {
-                                Err(Error::IdentifierNotFound(id.clone()))
+                Content::Data(content) => {
+                    let origin = rmp_serde::from_slice(&content.origin)
+                        .map_err(|err| anyhow::anyhow!("failed to parse origin: {}", err))?;
+
+                    std::io::Cursor::new(content.data).with_origin(origin)
+                }
+                Content::Url(content) => {
+                    let origin = rmp_serde::from_slice(&content.origin)
+                        .map_err(|err| anyhow::anyhow!("failed to parse origin: {}", err))?;
+
+                    match reqwest::get(&content.url)
+                        .await
+                        .map_err(|err| {
+                            anyhow::anyhow!("failed to fetch content from {}: {}", content.url, err)
+                        })?
+                        .error_for_status()
+                    {
+                        Ok(resp) => resp
+                            .bytes_stream()
+                            .map_err(|e| futures::io::Error::new(futures::io::ErrorKind::Other, e))
+                            .into_async_read()
+                            .compat(),
+                        Err(err) => {
+                            return match err.status() {
+                                Some(reqwest::StatusCode::NOT_FOUND) => {
+                                    Err(Error::IdentifierNotFound(id.clone()))
+                                }
+                                _ => Err(anyhow::anyhow!("HTTP error: {}", err).into()),
                             }
-                            _ => Err(anyhow::anyhow!("HTTP error: {}", err).into()),
                         }
                     }
+                    .with_origin(origin)
                 }
-                .with_origin(resp.origin),
             }),
             None => Err(Error::IdentifierNotFound(id.clone())),
         }
@@ -587,10 +597,13 @@ impl lgn_content_store_proto::content_store_server::ContentStore for GrpcService
             )
         })?;
 
-        let (content, origin) = if id.data_size() <= provider_set.size_threshold {
+        let content = if id.data_size() <= provider_set.size_threshold {
             match provider_set.provider.read_content_with_origin(&id).await {
-                Ok((data, origin)) => (Some(Content::Data(data)), origin),
-                Err(Error::IdentifierNotFound(_)) => (None, "".to_string()),
+                Ok((data, origin)) => Some(Content::Data(DataContent {
+                    data,
+                    origin: rmp_serde::to_vec(&origin).unwrap(),
+                })),
+                Err(Error::IdentifierNotFound(_)) => None,
                 Err(err) => {
                     return Err(tonic::Status::new(
                         tonic::Code::Internal,
@@ -604,8 +617,11 @@ impl lgn_content_store_proto::content_store_server::ContentStore for GrpcService
                 .get_content_read_address_with_origin(&id)
                 .await
             {
-                Ok((url, origin)) => (Some(Content::Url(url)), origin),
-                Err(Error::IdentifierNotFound(_)) => (None, "".to_string()),
+                Ok((url, origin)) => Some(Content::Url(UrlContent {
+                    url,
+                    origin: rmp_serde::to_vec(&origin).unwrap(),
+                })),
+                Err(Error::IdentifierNotFound(_)) => None,
                 Err(err) => {
                     return Err(tonic::Status::new(
                         tonic::Code::Internal,
@@ -615,7 +631,7 @@ impl lgn_content_store_proto::content_store_server::ContentStore for GrpcService
             }
         };
 
-        Ok(Response::new(ReadContentResponse { origin, content }))
+        Ok(Response::new(ReadContentResponse { content }))
     }
 
     async fn get_content_writer(

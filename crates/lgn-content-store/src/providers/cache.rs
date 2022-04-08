@@ -13,7 +13,7 @@ use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 use crate::{
     traits::AsyncReadWithOrigin, ContentAsyncReadWithOrigin, ContentAsyncWrite, ContentProvider,
-    ContentReader, ContentWriter, Error, Identifier, Result,
+    ContentReader, ContentWriter, Error, Identifier, Origin, Result,
 };
 
 /// A `CachingProvider` is a provider that stores locally content that was retrieved from a remote source.
@@ -216,7 +216,7 @@ impl<R, W> TeeAsyncRead<R, W> {
 }
 
 impl<W: AsyncWrite + Send> AsyncReadWithOrigin for TeeAsyncRead<ContentAsyncReadWithOrigin, W> {
-    fn origin(&self) -> &str {
+    fn origin(&self) -> &Origin {
         self.reader.origin()
     }
 }

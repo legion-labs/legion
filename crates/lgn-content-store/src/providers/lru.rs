@@ -10,7 +10,7 @@ use tokio::sync::Mutex;
 
 use crate::{
     traits::WithOrigin, ContentAsyncReadWithOrigin, ContentAsyncWrite, ContentReader,
-    ContentWriter, Error, Identifier, Result, Uploader, UploaderImpl,
+    ContentWriter, Error, Identifier, Origin, Result, Uploader, UploaderImpl,
 };
 
 /// A `LruProvider` is a provider that stores content in RAM, but only keeps a certain amount of content, by evicting older, less recently accessed, data.
@@ -45,9 +45,7 @@ impl ContentReader for LruProvider {
         let mut map = self.content_map.lock().await;
 
         match map.get(id) {
-            Some(content) => {
-                Ok(std::io::Cursor::new(content.clone()).with_origin("lru".to_string()))
-            }
+            Some(content) => Ok(std::io::Cursor::new(content.clone()).with_origin(Origin::Lru {})),
             None => Err(Error::IdentifierNotFound(id.clone())),
         }
     }
@@ -58,19 +56,20 @@ impl ContentReader for LruProvider {
     ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
         let mut map = self.content_map.lock().await;
 
-        let res =
-            ids.iter()
-                .map(|id| {
-                    (
-                        id,
-                        match map.get(id) {
-                            Some(content) => Ok(std::io::Cursor::new(content.clone())
-                                .with_origin("lru".to_string())),
-                            None => Err(Error::IdentifierNotFound(id.clone())),
-                        },
-                    )
-                })
-                .collect::<BTreeMap<_, Result<_>>>();
+        let res = ids
+            .iter()
+            .map(|id| {
+                (
+                    id,
+                    match map.get(id) {
+                        Some(content) => {
+                            Ok(std::io::Cursor::new(content.clone()).with_origin(Origin::Lru {}))
+                        }
+                        None => Err(Error::IdentifierNotFound(id.clone())),
+                    },
+                )
+            })
+            .collect::<BTreeMap<_, Result<_>>>();
 
         Ok(res)
     }

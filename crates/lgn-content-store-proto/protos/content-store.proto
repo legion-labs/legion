@@ -37,10 +37,19 @@ message ReadContentRequest {
 
 message ReadContentResponse {
   oneof content {
-    string url = 1;
-    bytes data = 2;
+    UrlContent url = 1;
+    DataContent data = 2;
   }
-  string origin = 3;
+}
+
+message UrlContent {
+  string url = 1;
+  bytes origin = 2;
+}
+
+message DataContent {
+  bytes data = 1;
+  bytes origin = 2;
 }
 
 message GetContentWriterRequest {

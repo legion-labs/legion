@@ -16,7 +16,7 @@ use tokio_util::io::StreamReader;
 use crate::traits::{get_content_readers_impl, WithOrigin};
 use crate::{
     ContentAddressReader, ContentAddressWriter, ContentAsyncReadWithOrigin, ContentAsyncWrite,
-    ContentReader, ContentWriter, Error, Identifier, Result,
+    ContentReader, ContentWriter, Error, Identifier, Origin, Result,
 };
 
 #[derive(Debug, Clone)]
@@ -302,7 +302,10 @@ impl ContentReader for AwsS3Provider {
 
         let bytestream = ByteStreamReader(object.body);
         let stream = StreamReader::new(bytestream);
-        let origin = format!("s3://{}/{}", self.url.bucket_name, key);
+        let origin = Origin::AwsS3 {
+            bucket_name: self.url.bucket_name.clone(),
+            key: key.clone(),
+        };
 
         Ok(stream.with_origin(origin))
     }
@@ -363,13 +366,12 @@ impl ContentAddressReader for AwsS3Provider {
     async fn get_content_read_address_with_origin(
         &self,
         id: &Identifier,
-    ) -> Result<(String, String)> {
+    ) -> Result<(String, Origin)> {
         if !self.check_object_existence(id).await? {
             return Err(Error::IdentifierNotFound(id.clone()));
         }
 
         let key = self.blob_key(id);
-        let origin = format!("s3://{}/{}", self.url.bucket_name, key);
 
         Ok((
             self.client
@@ -391,7 +393,10 @@ impl ContentAddressReader for AwsS3Provider {
                 })?
                 .uri()
                 .to_string(),
-            origin,
+            Origin::AwsS3 {
+                bucket_name: self.url.bucket_name.clone(),
+                key,
+            },
         ))
     }
 }
