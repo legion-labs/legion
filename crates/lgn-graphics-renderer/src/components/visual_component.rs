@@ -1,39 +1,36 @@
-use std::str::FromStr;
-
-use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
+use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::*;
-use lgn_graphics_data::{runtime::ModelReferenceType, Color};
-
-use crate::resources::{DefaultMeshType, DEFAULT_MESH_GUIDS};
+use lgn_graphics_data::Color;
 
 #[derive(Component)]
 pub struct VisualComponent {
-    pub color: Color,
-    pub color_blend: f32,
-    pub model_resource_id: Option<ResourceTypeAndId>,
+    color: Color,
+    color_blend: f32,
+    model_resource_id: Option<ResourceTypeAndId>,
 }
 
 impl VisualComponent {
     pub fn new(
-        model_resource_id: &Option<ModelReferenceType>,
+        model_resource_id: Option<ResourceTypeAndId>,
         color: Color,
         color_blend: f32,
     ) -> Self {
         Self {
             color,
             color_blend,
-            model_resource_id: model_resource_id.as_ref().map(ModelReferenceType::id),
+            model_resource_id,
         }
     }
 
-    pub fn new_default_mesh(mesh_type: DefaultMeshType, color: Color) -> Self {
-        Self {
-            color,
-            color_blend: 1.0,
-            model_resource_id: Some(ResourceTypeAndId {
-                kind: lgn_graphics_data::runtime::Model::TYPE,
-                id: ResourceId::from_str(DEFAULT_MESH_GUIDS[mesh_type as usize]).unwrap(),
-            }),
-        }
+    pub fn color(&self) -> Color {
+        self.color
+    }
+
+    pub fn color_blend(&self) -> f32 {
+        self.color_blend
+    }
+
+    pub fn model_resource_id(&self) -> Option<&ResourceTypeAndId> {
+        self.model_resource_id.as_ref()
     }
 }

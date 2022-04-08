@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use lgn_app::App;
 use lgn_ecs::{
-    prelude::{Changed, Entity, Query, RemovedComponents, Res, ResMut},
+    prelude::{Added, Changed, Entity, Query, RemovedComponents, Res, ResMut},
     schedule::{SystemLabel, SystemSet},
 };
 use lgn_graphics_api::{BufferView, VertexBufferBinding};
@@ -17,8 +17,9 @@ use crate::{
     labels::RenderStage,
     picking::{PickingIdContext, PickingManager},
     resources::{
-        GpuDataAllocation, GpuDataManager, MaterialManager, MeshManager, MissingVisualTracker,
-        ModelManager, StaticBufferAllocation, UnifiedStaticBufferAllocator, UniformGPUDataUpdater,
+        DefaultMeshType, GpuDataAllocation, GpuDataManager, MaterialManager, MeshManager,
+        MissingVisualTracker, ModelManager, StaticBufferAllocation, UnifiedStaticBufferAllocator,
+        UniformGPUDataUpdater,
     },
     Renderer,
 };
@@ -205,18 +206,17 @@ impl GpuInstanceManager {
         // Model (might no be ready. it returns a default model)
         // TODO(vdbdd): should be managed at call site (default model depending on some criterias)
         //
-        let (model_meta_data, ready) =
-            model_manager.get_model_meta_data(visual.model_resource_id.as_ref());
-        if !ready {
-            warn!(
-                "Dependency issue. Model {} not loaded for entity {:?}",
-                visual.model_resource_id.unwrap(),
-                entity
-            );
-            if let Some(model_resource_id) = &visual.model_resource_id {
-                missing_visuals_tracker.add_resource_entity_dependency(*model_resource_id, entity);
-            }
+        if let Some(model_resource_id) = visual.model_resource_id() {
+            missing_visuals_tracker.add_resource_entity_dependency(*model_resource_id, entity);
         }
+
+        let model_resource_id = visual
+            .model_resource_id()
+            .unwrap_or(model_manager.default_model_id(DefaultMeshType::Cube));
+
+        let model = model_manager
+            .get_model_meta_data(model_resource_id)
+            .unwrap();
 
         //
         // Gpu instances
@@ -226,7 +226,7 @@ impl GpuInstanceManager {
         let mut gpu_instance_keys = Vec::new();
         let default_material_id = material_manager.get_default_material_id();
 
-        for (mesh_index, mesh) in model_meta_data.meshes.iter().enumerate() {
+        for (mesh_index, mesh) in model.mesh_instances.iter().enumerate() {
             //
             // Mesh
             //
@@ -307,8 +307,8 @@ impl GpuInstanceManager {
         updater: &mut UniformGPUDataUpdater,
     ) {
         let mut instance_color = cgen::cgen_type::GpuInstanceColor::default();
-        instance_color.set_color((u32::from(visual.color)).into());
-        instance_color.set_color_blend(visual.color_blend.into());
+        instance_color.set_color((u32::from(visual.color())).into());
+        instance_color.set_color_blend(visual.color_blend().into());
         self.color_manager
             .update_gpu_data(&entity, &instance_color, updater);
     }
@@ -328,6 +328,24 @@ impl GpuInstanceManager {
             }
             self.removed_gpu_instance_ids
                 .append(&mut gpu_instance_block.gpu_instance_ids);
+        }
+    }
+}
+
+#[allow(
+    clippy::needless_pass_by_value,
+    clippy::type_complexity,
+    clippy::too_many_arguments
+)]
+fn on_visual_component_added(
+    renderer: Res<'_, Renderer>,
+    model_manager: Res<'_, ModelManager>,
+    mut instance_manager: ResMut<'_, GpuInstanceManager>,
+    q_visuals: Query<'_, '_, (Entity, &VisualComponent), Added<VisualComponent>>,
+) {
+    for (e, visual) in q_visuals.iter() {
+        if let Some(model_resource_id) = visual.model_resource_id() {
+            let model = model_manager.get_model_meta_data(model_resource_id);
         }
     }
 }

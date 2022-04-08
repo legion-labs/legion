@@ -4,6 +4,9 @@ use strum::EnumIter;
 use super::{StaticBufferAllocation, UnifiedStaticBufferAllocator, UniformGPUDataUpdater};
 use crate::{cgen::cgen_type::MeshDescription, components::Mesh, Renderer};
 
+#[derive(Clone, Copy)]
+pub struct MeshId(u32);
+
 pub struct MeshMetaData {
     pub vertex_count: u32,
     pub index_count: u32,
@@ -11,12 +14,13 @@ pub struct MeshMetaData {
     pub mesh_description_offset: u32,
     pub positions: Vec<Vec4>, // for AABB calculation
     pub bounding_sphere: Vec4,
+    allocation: StaticBufferAllocation,
 }
 
 pub struct MeshManager {
     allocator: UnifiedStaticBufferAllocator,
+    default_mesh_ids: Vec<MeshId>,
     static_meshes: Vec<MeshMetaData>,
-    allocations: Vec<StaticBufferAllocation>,
 }
 
 #[derive(EnumIter, Clone, Copy)]
@@ -34,28 +38,14 @@ pub enum DefaultMeshType {
     RotationRing,
 }
 
-pub const DEFAULT_MESH_GUIDS: [&str; 11] = [
-    "f6d83574-3098-4c90-8782-9bc8df96c58e",
-    "c75cd9e7-57f5-4469-b400-8f5b3a071f9e",
-    "05dcb241-f663-4b07-8b02-e1f66e23e01c",
-    "a897c7ae-290b-4a90-91c2-78e1a00e5548",
-    "582fee7b-fcc6-4351-ae38-7b0e149b48ca",
-    "bb492db3-0985-4515-9f93-0cc5c6ecf8fc",
-    "c0d167de-bc48-40b6-92b9-1580c14116da",
-    "5b74aae6-83e7-4e36-8636-0572aaf6fdfa",
-    "f5a4b115-1478-4b2e-93f8-585214dec334",
-    "53c027f6-e349-44fa-b921-178f84513df7",
-    "7038f75c-04ca-438e-bc67-8fe397c9dbf6",
-];
-
 impl MeshManager {
     pub fn new(renderer: &Renderer) -> Self {
         let allocator = renderer.static_buffer_allocator();
 
         let mut mesh_manager = Self {
             allocator: allocator.clone(),
+            default_mesh_ids: Vec::new(),
             static_meshes: Vec::new(),
-            allocations: Vec::new(),
         };
 
         // Keep consistent with DefaultMeshType
@@ -73,54 +63,54 @@ impl MeshManager {
             Mesh::new_torus(0.01, 8, 0.5, 128),
         ];
 
-        mesh_manager.add_meshes(renderer, &default_meshes);
+        for default_mesh in &default_meshes {
+            let mesh_id = mesh_manager.add_mesh(renderer, default_mesh);
+            mesh_manager.default_mesh_ids.push(mesh_id);
+        }
+
         mesh_manager
     }
 
-    pub fn add_meshes(&mut self, renderer: &Renderer, meshes: &[Mesh]) -> Vec<u32> {
-        if meshes.is_empty() {
-            return Vec::new();
-        }
-        let mut mesh_ids = Vec::new();
-        let mut vertex_data_size_in_bytes = 0;
-        for mesh in meshes {
-            vertex_data_size_in_bytes +=
-                u64::from(mesh.size_in_bytes()) + std::mem::size_of::<MeshDescription>() as u64;
-        }
+    pub fn add_mesh(&mut self, renderer: &Renderer, mesh: &Mesh) -> MeshId {
+        let mut vertex_data_size_in_bytes =
+            u64::from(mesh.size_in_bytes()) + std::mem::size_of::<MeshDescription>() as u64;
 
-        let static_allocation = self.allocator.allocate_segment(vertex_data_size_in_bytes);
+        let allocation = self.allocator.allocate_segment(vertex_data_size_in_bytes);
 
         let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
-        let mut offset = static_allocation.offset();
+        let mut offset = allocation.offset();
         let mut mesh_meta_datas = Vec::new();
+        let mesh_id = self.static_meshes.len();
 
-        for mesh in meshes {
-            mesh_ids.push(self.static_meshes.len() as u32);
-            let (new_offset, mesh_info_offset, index_offset) =
-                mesh.make_gpu_update_job(&mut updater, offset as u32);
-            mesh_meta_datas.push(MeshMetaData {
-                vertex_count: mesh.num_vertices() as u32,
-                index_count: mesh.num_indices() as u32,
-                index_offset,
-                mesh_description_offset: mesh_info_offset,
-                positions: mesh.positions.iter().map(|v| v.extend(1.0)).collect(),
-                bounding_sphere: mesh.bounding_sphere,
-            });
-            offset = u64::from(new_offset);
-        }
+        let (_, mesh_info_offset, index_offset) =
+            mesh.make_gpu_update_job(&mut updater, offset as u32);
+
+        mesh_meta_datas.push(MeshMetaData {
+            vertex_count: mesh.num_vertices() as u32,
+            index_count: mesh.num_indices() as u32,
+            index_offset,
+            mesh_description_offset: mesh_info_offset,
+            positions: mesh.positions.iter().map(|v| v.extend(1.0)).collect(),
+            bounding_sphere: mesh.bounding_sphere,
+            allocation,
+        });
 
         renderer.add_update_job_block(updater.job_blocks());
         self.static_meshes.append(&mut mesh_meta_datas);
-        self.allocations.push(static_allocation);
 
-        mesh_ids
+        MeshId(u32::try_from(mesh_id).unwrap())
     }
 
-    pub fn get_mesh_meta_data(&self, mesh_id: u32) -> &MeshMetaData {
-        &self.static_meshes[mesh_id as usize]
+    pub fn get_default_mesh_id(&self, default_mesh_type: DefaultMeshType) -> MeshId {
+        self.default_mesh_ids[default_mesh_type as usize]
     }
 
-    pub fn max_id(&self) -> usize {
-        self.static_meshes.len()
+    pub fn get_default_mesh(&self, default_mesh_type: DefaultMeshType) -> &MeshMetaData {
+        let mesh_id = self.get_default_mesh_id(default_mesh_type);
+        self.get_mesh_meta_data(mesh_id)
+    }
+
+    pub fn get_mesh_meta_data(&self, mesh_id: MeshId) -> &MeshMetaData {
+        &self.static_meshes[mesh_id.0 as usize]
     }
 }

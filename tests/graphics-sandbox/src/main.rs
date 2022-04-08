@@ -17,7 +17,7 @@ use lgn_graphics_renderer::{
         LightComponent, LightType, RenderSurface, RenderSurfaceCreatedForWindow,
         RenderSurfaceExtents, VisualComponent,
     },
-    resources::{DefaultMeshType, PipelineManager},
+    resources::{DefaultMeshType, ModelManager, PipelineManager},
     {Renderer, RendererPlugin},
 };
 use lgn_hierarchy::HierarchyPlugin;
@@ -217,16 +217,17 @@ fn presenter_snapshot_system(
     frame_counter.frame_count += 1;
 }
 
-fn init_light_test(mut commands: Commands<'_, '_>) {
+fn init_light_test(mut commands: Commands<'_, '_>, model_manager: Res<'_, ModelManager>) {
     // sphere 1
     commands
         .spawn()
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
             -0.5, 0.0, 0.0,
         )))
-        .insert(VisualComponent::new_default_mesh(
-            DefaultMeshType::Sphere,
+        .insert(VisualComponent::new(
+            Some(*model_manager.default_model_id(DefaultMeshType::Sphere)),
             (255, 0, 0).into(),
+            1.0,
         ));
 
     // sphere 2
@@ -235,9 +236,10 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
             0.5, 0.0, 0.0,
         )))
-        .insert(VisualComponent::new_default_mesh(
-            DefaultMeshType::Sphere,
+        .insert(VisualComponent::new(
+            Some(*model_manager.default_model_id(DefaultMeshType::Sphere)),
             (0, 255, 0).into(),
+            1.0,
         ));
 
     // sphere 3
@@ -246,9 +248,10 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
             0.0, 0.0, 0.0,
         )))
-        .insert(VisualComponent::new_default_mesh(
-            DefaultMeshType::Sphere,
+        .insert(VisualComponent::new(
+            Some(*model_manager.default_model_id(DefaultMeshType::Sphere)),
             (0, 0, 255).into(),
+            1.0,
         ));
 
     // directional light
@@ -310,15 +313,16 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
         });
 }
 
-fn init_scene(mut commands: Commands<'_, '_>) {
+fn init_scene(mut commands: Commands<'_, '_>, model_manager: Res<'_, ModelManager>) {
     commands
         .spawn()
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
             -0.5, -0.1, 0.0,
         )))
-        .insert(VisualComponent::new_default_mesh(
-            DefaultMeshType::Plane,
+        .insert(VisualComponent::new(
+            Some(*model_manager.default_model_id(DefaultMeshType::Plane)),
             (255, 0, 0).into(),
+            1.0,
         ));
 
     commands
@@ -326,9 +330,10 @@ fn init_scene(mut commands: Commands<'_, '_>) {
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
             0.0, 0.0, 0.0,
         )))
-        .insert(VisualComponent::new_default_mesh(
-            DefaultMeshType::Cube,
+        .insert(VisualComponent::new(
+            Some(*model_manager.default_model_id(DefaultMeshType::Cube)),
             (0, 255, 0).into(),
+            1.0,
         ));
 
     commands
@@ -336,9 +341,10 @@ fn init_scene(mut commands: Commands<'_, '_>) {
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
             0.5, 0.0, 0.0,
         )))
-        .insert(VisualComponent::new_default_mesh(
-            DefaultMeshType::Pyramid,
+        .insert(VisualComponent::new(
+            Some(*model_manager.default_model_id(DefaultMeshType::Pyramid)),
             (0, 0, 255).into(),
+            1.0,
         ));
 
     // omnidirectional light

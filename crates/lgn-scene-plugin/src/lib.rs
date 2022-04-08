@@ -113,7 +113,7 @@ impl ScenePlugin {
                             );
                         });
                 }
-                _ => (),
+                AssetRegistryEvent::AssetLoaded(_) => (),
             }
         }
     }

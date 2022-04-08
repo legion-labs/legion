@@ -15,7 +15,10 @@ use crate::{
     debug_display::{DebugDisplay, DebugPrimitiveType},
     hl_gfx_api::HLCommandBuffer,
     picking::ManipulatorManager,
-    resources::{DefaultMeshType, MeshManager, ModelManager, PipelineHandle, PipelineManager},
+    resources::{
+        DefaultMeshType, MeshId, MeshManager, MeshMetaData, ModelManager, PipelineHandle,
+        PipelineManager,
+    },
     RenderContext,
 };
 
@@ -190,12 +193,11 @@ impl DebugRenderPass {
         render_context.bind_default_descriptor_sets(cmd_buffer);
 
         render_mesh(
-            DefaultMeshType::GroundPlane as u32,
+            mesh_manager.get_default_mesh(DefaultMeshType::GroundPlane),
             &GlobalTransform::identity(),
             Color::BLACK,
             0.0,
             cmd_buffer,
-            mesh_manager,
         );
     }
 
@@ -217,32 +219,28 @@ impl DebugRenderPass {
             .pipeline_manager()
             .get_pipeline(self.solid_pso_depth_handle)
             .unwrap();
+
+        let wireframe_cube = mesh_manager.get_default_mesh(DefaultMeshType::WireframeCube);
         for (visual_component, transform) in picked_meshes.iter() {
-            let (model_meta_data, _ready) =
-                model_manager.get_model_meta_data(visual_component.model_resource_id.as_ref());
-            for mesh in &model_meta_data.meshes {
-                cmd_buffer.bind_pipeline(wire_pso_depth_pipeline);
+            if let Some(model_resource_id) = visual_component.model_resource_id() {
+                if let Some(model) = model_manager.get_model_meta_data(model_resource_id) {
+                    for mesh in &model.mesh_instances {
+                        cmd_buffer.bind_pipeline(wire_pso_depth_pipeline);
 
-                render_aabb_for_mesh(mesh.mesh_id as u32, transform, cmd_buffer, mesh_manager);
+                        let mesh = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
+                        render_aabb_for_mesh(wireframe_cube, mesh, transform, cmd_buffer);
 
-                if false {
-                    render_bounding_sphere_for_mesh(
-                        mesh.mesh_id as u32,
-                        transform,
-                        cmd_buffer,
-                        mesh_manager,
-                    );
+                        cmd_buffer.bind_pipeline(solid_pso_depth_pipeline);
+
+                        render_mesh(
+                            mesh,
+                            transform,
+                            Color::new(0, 127, 127, 127),
+                            1.0,
+                            cmd_buffer,
+                        );
+                    }
                 }
-
-                cmd_buffer.bind_pipeline(solid_pso_depth_pipeline);
-                render_mesh(
-                    mesh.mesh_id as u32,
-                    transform,
-                    Color::new(0, 127, 127, 127),
-                    1.0,
-                    cmd_buffer,
-                    mesh_manager,
-                );
             }
         }
     }
@@ -264,18 +262,17 @@ impl DebugRenderPass {
         render_context.bind_default_descriptor_sets(cmd_buffer);
 
         debug_display.render_primitives(|primitive| {
-            let mesh_id = match primitive.primitive_type {
-                DebugPrimitiveType::Mesh { mesh_id } => mesh_id,
+            match primitive.primitive_type {
+                DebugPrimitiveType::DefaultMesh { default_mesh_type } => {
+                    render_mesh(
+                        mesh_manager.get_default_mesh(default_mesh_type),
+                        &primitive.transform,
+                        primitive.color,
+                        1.0,
+                        cmd_buffer,
+                    );
+                }
             };
-
-            render_mesh(
-                mesh_id as u32,
-                &primitive.transform,
-                primitive.color,
-                1.0,
-                cmd_buffer,
-                mesh_manager,
-            );
         });
     }
 
@@ -315,12 +312,11 @@ impl DebugRenderPass {
                 render_context.bind_default_descriptor_sets(cmd_buffer);
 
                 render_mesh(
-                    manipulator.mesh_id as u32,
+                    mesh_manager.get_default_mesh(manipulator.default_mesh_type),
                     &scaled_xform,
                     color,
                     1.0,
                     cmd_buffer,
-                    mesh_manager,
                 );
             }
         }
@@ -392,13 +388,11 @@ impl DebugRenderPass {
 }
 
 fn render_aabb_for_mesh(
-    mesh_id: u32,
+    wire_frame_cube: &MeshMetaData,
+    mesh: &MeshMetaData,
     transform: &GlobalTransform,
     cmd_buffer: &mut HLCommandBuffer<'_>,
-    mesh_manager: &MeshManager,
 ) {
-    let mesh = mesh_manager.get_mesh_meta_data(mesh_id);
-
     let mut min_bound = Vec3::new(f32::MAX, f32::MAX, f32::MAX);
     let mut max_bound = Vec3::new(f32::MIN, f32::MIN, f32::MIN);
 
@@ -417,17 +411,16 @@ fn render_aabb_for_mesh(
         .with_scale(delta);
 
     render_mesh(
-        DefaultMeshType::WireframeCube as u32,
+        wire_frame_cube,
         &aabb_transform,
         Color::WHITE,
         1.0,
         cmd_buffer,
-        mesh_manager,
     );
 }
 
 fn render_bounding_sphere_for_mesh(
-    mesh_id: u32,
+    mesh_id: MeshId,
     transform: &GlobalTransform,
     cmd_buffer: &mut HLCommandBuffer<'_>,
     mesh_manager: &MeshManager,
@@ -448,26 +441,22 @@ fn render_bounding_sphere_for_mesh(
     );
 
     render_mesh(
-        DefaultMeshType::Sphere as u32,
+        mesh_manager.get_default_mesh(DefaultMeshType::Sphere),
         &sphere_transform,
         Color::WHITE,
         1.0,
         cmd_buffer,
-        mesh_manager,
     );
 }
 
 fn render_mesh(
-    mesh_id: u32,
+    mesh_meta_data: &MeshMetaData,
     world_xform: &GlobalTransform,
     color: Color,
     color_blend: f32,
     cmd_buffer: &HLCommandBuffer<'_>,
-    mesh_manager: &MeshManager,
 ) {
     let mut push_constant_data = cgen::cgen_type::ConstColorPushConstantData::default();
-
-    let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh_id);
 
     let mut transform = Transform::default();
     transform.set_translation(world_xform.translation.into());

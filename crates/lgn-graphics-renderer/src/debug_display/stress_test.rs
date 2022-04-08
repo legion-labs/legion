@@ -25,9 +25,9 @@ pub fn add_debug_things(
     bump_allocator_pool.scoped_bump(|bump| {
         debug_display.create_display_list(bump, |builder| {
             for _i in 1..1000 {
-                builder.add_mesh(
+                builder.add_default_mesh(
                     &GlobalTransform::identity(),
-                    DefaultMeshType::Sphere as u32,
+                    DefaultMeshType::Sphere,
                     Color::BLACK,
                 );
             }

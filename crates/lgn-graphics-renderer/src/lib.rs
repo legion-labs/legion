@@ -128,6 +128,8 @@ impl Plugin for RendererPlugin {
             NUM_RENDER_FRAMES,
         );
 
+        let mesh_manager = MeshManager::new(&renderer);
+
         let texture_manager = TextureManager::new(renderer.device_context());
 
         let material_manager = MaterialManager::new();
@@ -174,8 +176,8 @@ impl Plugin for RendererPlugin {
         app.insert_resource(ManipulatorManager::new());
         app.insert_resource(cgen_registry_list);
         app.insert_resource(RenderSurfaces::new());
-        app.insert_resource(ModelManager::new(&material_manager));
-        app.insert_resource(MeshManager::new(&renderer));
+        app.insert_resource(ModelManager::new(&mesh_manager, &material_manager));
+        app.insert_resource(mesh_manager);
         app.insert_resource(DebugDisplay::default());
         app.insert_resource(LightingManager::default());
         app.insert_resource(GpuInstanceManager::new(renderer.static_buffer_allocator()));
