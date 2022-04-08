@@ -3,8 +3,8 @@ use std::{collections::BTreeMap, io::Write};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
 
 use crate::{
-    ChunkIdentifier, ContentAsyncRead, ContentReader, ContentWriter, ContentWriterExt, Error,
-    Identifier, Result,
+    traits::ContentAsyncRead, ChunkIdentifier, ContentAsyncReadWithOrigin, ContentReader,
+    ContentWriter, ContentWriterExt, Error, Identifier, Result,
 };
 
 /// A provider-like type that splits data into chunks and stores them in a
@@ -263,12 +263,12 @@ struct AsyncReadStore {
     size: usize,
 }
 enum AsyncReadStoreState {
-    Single(Option<ContentAsyncRead>),
+    Single(Option<ContentAsyncReadWithOrigin>),
     Multi(Option<Vec<u8>>),
 }
 
 impl AsyncReadStore {
-    pub fn new(reader: ContentAsyncRead, size: usize) -> Self {
+    pub fn new(reader: ContentAsyncReadWithOrigin, size: usize) -> Self {
         Self {
             state: AsyncReadStoreState::Single(Some(reader)),
             refs: 0,
@@ -314,7 +314,8 @@ impl AsyncReadStore {
         match &mut self.state {
             AsyncReadStoreState::Single(reader) => {
                 if let Some(reader) = reader.take() {
-                    Ok(reader)
+                    // TODO: Remove the Box::pin below once trait upcasting becomes a thing.
+                    Ok(Box::pin(reader) as ContentAsyncRead)
                 } else {
                     Err(Error::Unknown(anyhow::anyhow!("reader is None")))
                 }

@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use aws_sdk_dynamodb::model::AttributeValue;
 use aws_sdk_dynamodb::types::Blob;
+use aws_sdk_dynamodb::{model::AttributeValue, Region};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Display,
@@ -8,14 +8,16 @@ use std::{
 };
 
 use crate::{
-    traits::get_content_readers_impl, ContentAsyncRead, ContentAsyncWrite, ContentReader,
-    ContentWriter, Error, Identifier, Result,
+    traits::{get_content_readers_impl, WithOrigin},
+    ContentAsyncReadWithOrigin, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier,
+    Origin, Result,
 };
 
 use super::{Uploader, UploaderImpl};
 
 #[derive(Debug, Clone)]
 pub struct AwsDynamoDbProvider {
+    region: String,
     table_name: String,
     client: aws_sdk_dynamodb::Client,
 }
@@ -24,12 +26,37 @@ impl AwsDynamoDbProvider {
     /// Generates a new AWS `DynamoDB` provider using the specified table.
     ///
     /// The default AWS configuration is used.
-    pub async fn new(table_name: impl Into<String>) -> Self {
-        let config = aws_config::load_from_env().await;
+    ///
+    /// # Errors
+    ///
+    /// If the specified or configured region is not valid, an error is
+    /// returned.
+    pub async fn new(region: Option<String>, table_name: impl Into<String>) -> Result<Self> {
+        let config = aws_config::from_env();
+
+        let config = if let Some(region) = region {
+            let region = Region::new(region);
+
+            config.region(region)
+        } else {
+            config
+        }
+        .load()
+        .await;
+
+        let region = config
+            .region()
+            .ok_or_else(|| Error::Unknown(anyhow::anyhow!("no AWS region was defined")))?
+            .to_string();
+
         let client = aws_sdk_dynamodb::Client::new(&config);
         let table_name = table_name.into();
 
-        Self { table_name, client }
+        Ok(Self {
+            region,
+            table_name,
+            client,
+        })
     }
 
     fn get_content_id_attr(id: &Identifier) -> AttributeValue {
@@ -150,14 +177,20 @@ impl Display for AwsDynamoDbProvider {
 
 #[async_trait]
 impl ContentReader for AwsDynamoDbProvider {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
-        Ok(Box::pin(Cursor::new(self.get_content(id).await?)))
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
+        let origin = Origin::AwsDynamoDb {
+            region: self.region.clone(),
+            table_name: self.table_name.clone(),
+            id: id.to_string(),
+        };
+
+        Ok(Cursor::new(self.get_content(id).await?).with_origin(origin))
     }
 
     async fn get_content_readers<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
-    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
         get_content_readers_impl(self, ids).await
     }
 

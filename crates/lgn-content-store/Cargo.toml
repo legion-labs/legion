@@ -11,7 +11,7 @@ name = "lgn_content_store"
 path = "src/lib.rs"
 
 [[bin]]
-name = "content-store-cli"
+name = "lcs"
 path = "src/bin/cli.rs"
 required-features = ["cli"]
 
@@ -23,7 +23,7 @@ required-features = ["server"]
 [features]
 default = ["aws", "redis", "lru", "cli", "server"]
 aws = ["aws-config", "aws-sdk-s3", "aws-sdk-dynamodb"]
-cli = ["clap", "indicatif"]
+cli = ["clap", "indicatif", "console"]
 server = [
     "clap",
     "tonic-web",
@@ -45,6 +45,7 @@ bytesize = { version = "1", features = ["serde"] }
 byteorder = "1.4.3"
 bytes = "1.1.0"
 duration-string = "0.0.6"
+console = { version = "0.15", optional = true }
 clap = { version = "3.0", features = ["derive"], optional = true }
 futures = "0.3"
 http = "0.2.6"
@@ -62,6 +63,7 @@ lru = { version = "0.7", optional = true }
 pin-project = "1"
 redis = { version = "0.21.0", features = ["tokio-comp"], optional = true }
 reqwest = { version = "0.11.9", features = ["stream"] }
+rmp-serde = "1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 smallvec = "1.8.0"

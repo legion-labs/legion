@@ -104,6 +104,7 @@ pub struct AwsS3AddressProviderConfig {
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct AwsDynamoDbProviderConfig {
+    pub region: Option<String>,
     pub table_name: String,
 }
 
@@ -241,10 +242,14 @@ impl ProviderConfig {
                     root: config.root.clone(),
                 })
                 .await,
-                AwsDynamoDbProvider::new(config.dynamodb.table_name.clone()).await,
+                AwsDynamoDbProvider::new(
+                    config.dynamodb.region.clone(),
+                    config.dynamodb.table_name.clone(),
+                )
+                .await?,
             ))),
             Self::AwsDynamoDb(config) => Box::new(SmallContentProvider::new(
-                AwsDynamoDbProvider::new(config.table_name.clone()).await,
+                AwsDynamoDbProvider::new(config.region.clone(), config.table_name.clone()).await?,
             )),
             Self::Grpc(config) => {
                 let client = lgn_online::Config::load()?

@@ -6,8 +6,9 @@ use std::{
 use async_trait::async_trait;
 
 use crate::{
-    traits::get_content_readers_impl, ContentAsyncRead, ContentAsyncWrite, ContentReader,
-    ContentWriter, Error, Identifier, Result,
+    traits::{get_content_readers_impl, WithOrigin},
+    ContentAsyncReadWithOrigin, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier,
+    Origin, Result,
 };
 
 /// A `SmallContentProvider` is a provider that implements the small-content optimization or delegates to a specified provider.
@@ -40,9 +41,9 @@ impl<Inner: Display> Display for SmallContentProvider<Inner> {
 
 #[async_trait]
 impl<Inner: ContentReader + Send + Sync> ContentReader for SmallContentProvider<Inner> {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
         if let Identifier::Data(data) = id {
-            Ok(Box::pin(std::io::Cursor::new(data.to_vec())))
+            Ok(std::io::Cursor::new(data.to_vec()).with_origin(Origin::InIdentifier {}))
         } else {
             self.inner.get_content_reader(id).await
         }
@@ -51,7 +52,7 @@ impl<Inner: ContentReader + Send + Sync> ContentReader for SmallContentProvider<
     async fn get_content_readers<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
-    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
         get_content_readers_impl(self, ids).await
     }
 

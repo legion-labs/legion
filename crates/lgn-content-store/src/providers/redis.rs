@@ -7,8 +7,9 @@ use std::{
 };
 
 use crate::{
-    traits::get_content_readers_impl, ContentAsyncRead, ContentAsyncWrite, ContentReader,
-    ContentWriter, Error, Identifier, Result,
+    traits::{get_content_readers_impl, WithOrigin},
+    ContentAsyncReadWithOrigin, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier,
+    Origin, Result,
 };
 
 use super::{Uploader, UploaderImpl};
@@ -18,7 +19,7 @@ use super::{Uploader, UploaderImpl};
 pub struct RedisProvider {
     key_prefix: String,
     client: redis::Client,
-    url: String,
+    host: String,
 }
 
 impl RedisProvider {
@@ -32,11 +33,17 @@ impl RedisProvider {
         let client = redis::Client::open(url.clone())
             .map_err(|err| anyhow::anyhow!("failed to instantiate a Redis client: {}", err))?;
         let key_prefix = key_prefix.into();
+        let host = url
+            .parse::<http::Uri>()
+            .map_err(|err| anyhow::anyhow!("failed to parse Redis URL: {}", err))?
+            .authority()
+            .ok_or_else(|| anyhow::anyhow!("Redis URL must contain an authority"))?
+            .to_string();
 
         Ok(Self {
             key_prefix,
             client,
-            url,
+            host,
         })
     }
 
@@ -103,15 +110,15 @@ impl Display for RedisProvider {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Redis (url: {}, key prefix: {})",
-            self.url, self.key_prefix
+            "Redis (host: {}, key prefix: {})",
+            self.host, self.key_prefix
         )
     }
 }
 
 #[async_trait]
 impl ContentReader for RedisProvider {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
         let mut con = self
             .client
             .get_async_connection()
@@ -121,7 +128,14 @@ impl ContentReader for RedisProvider {
         let key = self.get_content_key(id);
 
         match con.get::<_, Option<Vec<u8>>>(&key).await {
-            Ok(Some(value)) => Ok(Box::pin(Cursor::new(value))),
+            Ok(Some(value)) => {
+                let origin = Origin::Redis {
+                    host: self.host.clone(),
+                    key,
+                };
+
+                Ok(Cursor::new(value).with_origin(origin))
+            }
             Ok(None) => Err(Error::IdentifierNotFound(id.clone())),
             Err(err) => Err(anyhow::anyhow!(
                 "failed to get content from Redis for key `{}`: {}",
@@ -135,7 +149,7 @@ impl ContentReader for RedisProvider {
     async fn get_content_readers<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
-    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
         get_content_readers_impl(self, ids).await
     }
 

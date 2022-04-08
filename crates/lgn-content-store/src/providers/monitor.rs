@@ -11,7 +11,8 @@ use pin_project::pin_project;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 use crate::{
-    ContentAsyncRead, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
+    traits::AsyncReadWithOrigin, ContentAsyncReadWithOrigin, ContentAsyncWrite, ContentReader,
+    ContentWriter, Error, Identifier, Origin, Result,
 };
 
 pub trait TransferCallbacks<Id>: Debug + Send + Sync {
@@ -82,16 +83,14 @@ impl<Inner> MonitorProvider<Inner> {
 
 #[async_trait]
 impl<Inner: ContentReader + Send + Sync> ContentReader for MonitorProvider<Inner> {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
         let reader = self.inner.get_content_reader(id).await?;
 
         Ok(if let Some(callbacks) = &self.on_download_callbacks {
-            Box::pin(MonitorAsyncAdapter::new(
-                reader,
-                id.clone(),
-                id.data_size(),
-                Arc::clone(callbacks),
-            ))
+            let m =
+                MonitorAsyncAdapter::new(reader, id.clone(), id.data_size(), Arc::clone(callbacks));
+
+            Box::pin(m)
         } else {
             reader
         })
@@ -100,7 +99,7 @@ impl<Inner: ContentReader + Send + Sync> ContentReader for MonitorProvider<Inner
     async fn get_content_readers<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
-    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
         let readers = self.inner.get_content_readers(ids).await?;
 
         Ok(if let Some(callbacks) = &self.on_download_callbacks {
@@ -115,7 +114,8 @@ impl<Inner: ContentReader + Send + Sync> ContentReader for MonitorProvider<Inner
                                 id.clone(),
                                 id.data_size(),
                                 Arc::clone(callbacks),
-                            )) as ContentAsyncRead),
+                            ))
+                                as ContentAsyncReadWithOrigin),
                             Err(err) => Err(err),
                         },
                     )
@@ -196,6 +196,12 @@ impl<Inner, Id> MonitorAsyncAdapter<Inner, Id> {
             progress_step: total / 100,
             callbacks,
         }
+    }
+}
+
+impl<Id> AsyncReadWithOrigin for MonitorAsyncAdapter<ContentAsyncReadWithOrigin, Id> {
+    fn origin(&self) -> &Origin {
+        self.inner.origin()
     }
 }
 

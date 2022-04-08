@@ -7,11 +7,65 @@ use std::{
 
 use async_trait::async_trait;
 use futures::future::join_all;
+use pin_project::pin_project;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
-use crate::{Error, Identifier, Result};
+use crate::{Error, Identifier, Origin, Result};
+
+/// A trait that extends `AsyncRead` with an origin.
+pub trait AsyncReadWithOrigin: AsyncRead {
+    fn origin(&self) -> &Origin;
+}
+
+impl<T: AsyncReadWithOrigin> AsyncReadWithOrigin for Pin<Box<T>> {
+    fn origin(&self) -> &Origin {
+        (**self).origin()
+    }
+}
+
+#[pin_project]
+struct AsyncReadWithOriginImpl<R: AsyncRead> {
+    #[pin]
+    inner: R,
+    origin: Origin,
+}
+
+impl<R: AsyncRead> AsyncReadWithOriginImpl<R> {
+    pub(crate) fn new(inner: R, origin: Origin) -> Self {
+        Self { inner, origin }
+    }
+}
+
+impl<R: AsyncRead> AsyncRead for AsyncReadWithOriginImpl<R> {
+    fn poll_read(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &mut tokio::io::ReadBuf<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        self.project().inner.poll_read(cx, buf)
+    }
+}
+
+impl<R: AsyncRead> AsyncReadWithOrigin for AsyncReadWithOriginImpl<R> {
+    fn origin(&self) -> &Origin {
+        &self.origin
+    }
+}
+
+pub(crate) trait WithOrigin {
+    fn with_origin(self, origin: Origin) -> ContentAsyncReadWithOrigin;
+}
+
+impl<R: AsyncRead + Send + Sync + 'static> WithOrigin for R {
+    fn with_origin(self, origin: Origin) -> ContentAsyncReadWithOrigin {
+        Box::pin(AsyncReadWithOriginImpl::new(self, origin))
+    }
+}
 
 /// A reader as returned by the `ContentReader` trait.
+pub type ContentAsyncReadWithOrigin = Pin<Box<dyn AsyncReadWithOrigin + Send>>;
+
+/// A reader as returned by a chunker.
 pub type ContentAsyncRead = Pin<Box<dyn AsyncRead + Send>>;
 
 /// A writer as returned by the `ContentWriter` trait.
@@ -25,7 +79,7 @@ pub trait ContentReader: Display {
     ///
     /// If the identifier does not match any content, `Error::IdentifierNotFound` is
     /// returned.
-    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead>;
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin>;
 
     /// Returns an async reader for each of the specified identifiers.
     ///
@@ -36,7 +90,7 @@ pub trait ContentReader: Display {
     async fn get_content_readers<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
-    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>>;
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>>;
 
     /// Returns the content-store identifier for a given alias.
     ///
@@ -50,7 +104,7 @@ pub trait ContentReader: Display {
 pub(crate) async fn get_content_readers_impl<'ids>(
     reader: &(dyn ContentReader + Send + Sync),
     ids: &'ids BTreeSet<Identifier>,
-) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
     let futures = ids
         .iter()
         .map(|id| async move { (id, reader.get_content_reader(id).await) })
@@ -66,13 +120,25 @@ pub trait ContentReaderExt: ContentReader {
         if let Identifier::Data(_) = id {
             return true;
         }
+
         self.get_content_reader(id).await.is_ok()
     }
 
-    /// Read the content referenced by the specified identifier.
-    async fn read_content(&self, id: &Identifier) -> Result<Vec<u8>> {
+    /// Read the origin for a given identifier.
+    async fn read_origin(&self, id: &Identifier) -> Result<Origin> {
+        if let Identifier::Data(_) = id {
+            return Ok(Origin::InIdentifier {});
+        }
+
+        self.get_content_reader(id)
+            .await
+            .map(|r| r.origin().clone())
+    }
+
+    /// Read the content referenced by the specified identifier with its origin.
+    async fn read_content_with_origin(&self, id: &Identifier) -> Result<(Vec<u8>, Origin)> {
         if let Identifier::Data(data) = id {
-            return Ok(data.to_vec());
+            return Ok((data.to_vec(), Origin::InIdentifier {}));
         }
 
         let mut reader = self.get_content_reader(id).await?;
@@ -83,7 +149,14 @@ pub trait ContentReaderExt: ContentReader {
             .read_to_end(&mut result)
             .await
             .map_err(|err| anyhow::anyhow!("failed to read content: {}", err).into())
-            .map(|_| result)
+            .map(|_| (result, reader.origin().clone()))
+    }
+
+    /// Read the content referenced by the specified identifier.
+    async fn read_content(&self, id: &Identifier) -> Result<Vec<u8>> {
+        self.read_content_with_origin(id)
+            .await
+            .map(|(data, _)| data)
     }
 
     /// Read the contents referenced by the specified identifiers.
@@ -119,7 +192,11 @@ pub trait ContentReaderExt: ContentReader {
     }
 
     /// Read the content referenced by the specified identifier.
-    async fn get_alias_reader(&self, key_space: &str, key: &str) -> Result<ContentAsyncRead> {
+    async fn get_alias_reader(
+        &self,
+        key_space: &str,
+        key: &str,
+    ) -> Result<ContentAsyncReadWithOrigin> {
         let id = self.resolve_alias(key_space, key).await?;
 
         self.get_content_reader(&id).await
@@ -224,7 +301,10 @@ pub trait ContentAddressReader: Display {
     ///
     /// If the identifier does not match any content, `Error::IdentifierNotFound` is
     /// returned.
-    async fn get_content_read_address(&self, id: &Identifier) -> Result<String>;
+    async fn get_content_read_address_with_origin(
+        &self,
+        id: &Identifier,
+    ) -> Result<(String, Origin)>;
 }
 
 /// Provides addresses for content.
@@ -248,14 +328,14 @@ impl<T> ContentAddressProvider for T where T: ContentAddressReader + ContentAddr
 
 #[async_trait]
 impl<T: ContentReader + Send + Sync> ContentReader for Arc<T> {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
         self.as_ref().get_content_reader(id).await
     }
 
     async fn get_content_readers<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
-    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
         self.as_ref().get_content_readers(ids).await
     }
 
@@ -276,8 +356,11 @@ impl<T: ContentWriter + Send + Sync> ContentWriter for Arc<T> {
 
 #[async_trait]
 impl<T: ContentAddressReader + Send + Sync> ContentAddressReader for Arc<T> {
-    async fn get_content_read_address(&self, id: &Identifier) -> Result<String> {
-        self.as_ref().get_content_read_address(id).await
+    async fn get_content_read_address_with_origin(
+        &self,
+        id: &Identifier,
+    ) -> Result<(String, Origin)> {
+        self.as_ref().get_content_read_address_with_origin(id).await
     }
 }
 
@@ -292,14 +375,14 @@ impl<T: ContentAddressWriter + Send + Sync> ContentAddressWriter for Arc<T> {
 
 #[async_trait]
 impl<T: ContentReader + Send + Sync + ?Sized> ContentReader for Box<T> {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
         self.as_ref().get_content_reader(id).await
     }
 
     async fn get_content_readers<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
-    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
         self.as_ref().get_content_readers(ids).await
     }
 
@@ -320,8 +403,11 @@ impl<T: ContentWriter + Send + Sync + ?Sized> ContentWriter for Box<T> {
 
 #[async_trait]
 impl<T: ContentAddressReader + Send + Sync + ?Sized> ContentAddressReader for Box<T> {
-    async fn get_content_read_address(&self, id: &Identifier) -> Result<String> {
-        self.as_ref().get_content_read_address(id).await
+    async fn get_content_read_address_with_origin(
+        &self,
+        id: &Identifier,
+    ) -> Result<(String, Origin)> {
+        self.as_ref().get_content_read_address_with_origin(id).await
     }
 }
 
@@ -336,14 +422,14 @@ impl<T: ContentAddressWriter + Send + Sync + ?Sized> ContentAddressWriter for Bo
 
 #[async_trait]
 impl<T: ContentReader + Send + Sync + ?Sized> ContentReader for &T {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
         (**self).get_content_reader(id).await
     }
 
     async fn get_content_readers<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
-    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
         (**self).get_content_readers(ids).await
     }
 
@@ -364,8 +450,11 @@ impl<T: ContentWriter + Send + Sync + ?Sized> ContentWriter for &T {
 
 #[async_trait]
 impl<T: ContentAddressReader + Send + Sync + ?Sized> ContentAddressReader for &T {
-    async fn get_content_read_address(&self, id: &Identifier) -> Result<String> {
-        (**self).get_content_read_address(id).await
+    async fn get_content_read_address_with_origin(
+        &self,
+        id: &Identifier,
+    ) -> Result<(String, Origin)> {
+        (**self).get_content_read_address_with_origin(id).await
     }
 }
 

@@ -9,8 +9,8 @@ use lru::LruCache;
 use tokio::sync::Mutex;
 
 use crate::{
-    ContentAsyncRead, ContentAsyncWrite, ContentReader, ContentWriter, Error, Identifier, Result,
-    Uploader, UploaderImpl,
+    traits::WithOrigin, ContentAsyncReadWithOrigin, ContentAsyncWrite, ContentReader,
+    ContentWriter, Error, Identifier, Origin, Result, Uploader, UploaderImpl,
 };
 
 /// A `LruProvider` is a provider that stores content in RAM, but only keeps a certain amount of content, by evicting older, less recently accessed, data.
@@ -41,11 +41,11 @@ impl Display for LruProvider {
 
 #[async_trait]
 impl ContentReader for LruProvider {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
         let mut map = self.content_map.lock().await;
 
         match map.get(id) {
-            Some(content) => Ok(Box::pin(std::io::Cursor::new(content.clone()))),
+            Some(content) => Ok(std::io::Cursor::new(content.clone()).with_origin(Origin::Lru {})),
             None => Err(Error::IdentifierNotFound(id.clone())),
         }
     }
@@ -53,7 +53,7 @@ impl ContentReader for LruProvider {
     async fn get_content_readers<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
-    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
         let mut map = self.content_map.lock().await;
 
         let res = ids
@@ -63,7 +63,7 @@ impl ContentReader for LruProvider {
                     id,
                     match map.get(id) {
                         Some(content) => {
-                            Ok(Box::pin(std::io::Cursor::new(content.clone())) as ContentAsyncRead)
+                            Ok(std::io::Cursor::new(content.clone()).with_origin(Origin::Lru {}))
                         }
                         None => Err(Error::IdentifierNotFound(id.clone())),
                     },

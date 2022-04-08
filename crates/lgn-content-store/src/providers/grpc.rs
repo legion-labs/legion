@@ -11,10 +11,10 @@ use futures::{stream::TryStreamExt, Future};
 use http::header;
 use http_body::Body;
 use lgn_content_store_proto::{
-    content_store_client::ContentStoreClient, read_content_response::Content,
+    content_store_client::ContentStoreClient, read_content_response::Content, DataContent,
     GetContentWriterRequest, GetContentWriterResponse, ReadContentRequest, ReadContentResponse,
     RegisterAliasRequest, RegisterAliasResponse, ResolveAliasRequest, ResolveAliasResponse,
-    WriteContentRequest, WriteContentResponse,
+    UrlContent, WriteContentRequest, WriteContentResponse,
 };
 use lgn_online::authentication::UserInfo;
 use lgn_tracing::{debug, info};
@@ -26,9 +26,10 @@ use tonic::{codegen::StdError, Request, Response};
 use crate::{
     traits::{
         get_content_readers_impl, ContentAddressProvider, ContentReaderExt, ContentWriterExt,
+        WithOrigin,
     },
-    ContentAsyncRead, ContentAsyncWrite, ContentProvider, ContentReader, ContentWriter, DataSpace,
-    Error, Identifier, Result,
+    ContentAsyncReadWithOrigin, ContentAsyncWrite, ContentProvider, ContentReader, ContentWriter,
+    DataSpace, Error, Identifier, Result,
 };
 
 use super::{Uploader, UploaderImpl};
@@ -77,7 +78,7 @@ where
     C::Future: Send + 'static,
     <C::ResponseBody as Body>::Error: Into<StdError> + Send,
 {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncRead> {
+    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
         let req = lgn_content_store_proto::ReadContentRequest {
             data_space: self.data_space.to_string(),
             id: id.to_string(),
@@ -94,12 +95,20 @@ where
 
         match resp.content {
             Some(content) => Ok(match content {
-                Content::Data(data) => Box::pin(std::io::Cursor::new(data)),
-                Content::Url(url) => Box::pin(
-                    match reqwest::get(&url)
+                Content::Data(content) => {
+                    let origin = rmp_serde::from_slice(&content.origin)
+                        .map_err(|err| anyhow::anyhow!("failed to parse origin: {}", err))?;
+
+                    std::io::Cursor::new(content.data).with_origin(origin)
+                }
+                Content::Url(content) => {
+                    let origin = rmp_serde::from_slice(&content.origin)
+                        .map_err(|err| anyhow::anyhow!("failed to parse origin: {}", err))?;
+
+                    match reqwest::get(&content.url)
                         .await
                         .map_err(|err| {
-                            anyhow::anyhow!("failed to fetch content from {}: {}", url, err)
+                            anyhow::anyhow!("failed to fetch content from {}: {}", content.url, err)
                         })?
                         .error_for_status()
                     {
@@ -116,8 +125,9 @@ where
                                 _ => Err(anyhow::anyhow!("HTTP error: {}", err).into()),
                             }
                         }
-                    },
-                ),
+                    }
+                    .with_origin(origin)
+                }
             }),
             None => Err(Error::IdentifierNotFound(id.clone())),
         }
@@ -126,7 +136,7 @@ where
     async fn get_content_readers<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
-    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncRead>>> {
+    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
         get_content_readers_impl(self, ids).await
     }
 
@@ -587,35 +597,41 @@ impl lgn_content_store_proto::content_store_server::ContentStore for GrpcService
             )
         })?;
 
-        Ok(Response::new(ReadContentResponse {
-            content: if id.data_size() <= provider_set.size_threshold {
-                match provider_set.provider.read_content(&id).await {
-                    Ok(data) => Some(Content::Data(data)),
-                    Err(Error::IdentifierNotFound(_)) => None,
-                    Err(err) => {
-                        return Err(tonic::Status::new(
-                            tonic::Code::Internal,
-                            format!("failed to read content: {}", err),
-                        ))
-                    }
+        let content = if id.data_size() <= provider_set.size_threshold {
+            match provider_set.provider.read_content_with_origin(&id).await {
+                Ok((data, origin)) => Some(Content::Data(DataContent {
+                    data,
+                    origin: rmp_serde::to_vec(&origin).unwrap(),
+                })),
+                Err(Error::IdentifierNotFound(_)) => None,
+                Err(err) => {
+                    return Err(tonic::Status::new(
+                        tonic::Code::Internal,
+                        format!("failed to read content: {}", err),
+                    ))
                 }
-            } else {
-                match provider_set
-                    .address_provider
-                    .get_content_read_address(&id)
-                    .await
-                {
-                    Ok(url) => Some(Content::Url(url)),
-                    Err(Error::IdentifierNotFound(_)) => None,
-                    Err(err) => {
-                        return Err(tonic::Status::new(
-                            tonic::Code::Internal,
-                            format!("failed to read content address: {}", err),
-                        ))
-                    }
+            }
+        } else {
+            match provider_set
+                .address_provider
+                .get_content_read_address_with_origin(&id)
+                .await
+            {
+                Ok((url, origin)) => Some(Content::Url(UrlContent {
+                    url,
+                    origin: rmp_serde::to_vec(&origin).unwrap(),
+                })),
+                Err(Error::IdentifierNotFound(_)) => None,
+                Err(err) => {
+                    return Err(tonic::Status::new(
+                        tonic::Code::Internal,
+                        format!("failed to read content address: {}", err),
+                    ))
                 }
-            },
-        }))
+            }
+        };
+
+        Ok(Response::new(ReadContentResponse { content }))
     }
 
     async fn get_content_writer(
