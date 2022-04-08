@@ -13,7 +13,7 @@ pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set
             type: "Struct",
             name: "PickingPushConstantData",
             fields: [
-                #{ name:"transform", ty:"Transform" },
+                #{ name:"transform", ty:"TransformData" },
                 #{ name:"mesh_description_offset", ty:"Uint1" },
                 #{ name:"picking_id", ty:"Uint1" },
                 #{ name:"picking_distance", ty:"Float1" },
