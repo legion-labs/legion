@@ -279,12 +279,12 @@ fn toolchain_source_map() -> Result<(String, String)> {
             }
             toolchain_source_path.push_str("/lib/rustlib/src/rust");
             Ok((
-                "/rustc/db9d1b20bba1968c1ec1fc49616d4742c1725b4b".to_string(),
+                "/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c".to_string(),
                 toolchain_source_path,
             ))
         } else {
             // we're going to open rustc and look for a path of the form:
-            // /rustc/db9d1b20bba1968c1ec1fc49616d4742c1725b4b/
+            // /rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/
             let rustc = path.join("bin/rustc");
             let rustc = std::fs::read(&rustc)
                 .map_err(|err| Error::new("failed to read rustc").with_source(err))?;
