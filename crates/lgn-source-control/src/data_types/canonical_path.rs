@@ -274,7 +274,7 @@ mod tests {
     #[test]
     fn test_canonical_path_ordering() {
         assert!(cp("/a") <= cp("/a"));
-        assert!(!(cp("/a") < cp("/a")));
+        assert!(cp("/a") >= cp("/a"));
 
         assert!(cp("/a/b") > cp("/a"));
         assert!(cp("/a/b") < cp("/b"));

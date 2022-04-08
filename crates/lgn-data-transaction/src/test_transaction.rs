@@ -351,10 +351,10 @@ async fn test_transaction_system() -> Result<(), Error> {
             ));
 
         assert!(
-            !transaction_manager
+            transaction_manager
                 .commit_transaction(transaction)
                 .await
-                .is_ok(),
+                .is_err(),
             "Transaction with invalid property update shouldn't succceed"
         );
         asset_registry.update();

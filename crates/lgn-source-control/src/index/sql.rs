@@ -1005,7 +1005,7 @@ impl SqlIndex {
 
         #[cfg(debug_assertions)]
         assert!(
-            !(tree.id() != id),
+            tree.id() == id,
             "tree node `{}` was not saved correctly",
             id
         );

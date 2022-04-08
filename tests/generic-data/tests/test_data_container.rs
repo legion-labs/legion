@@ -114,7 +114,7 @@ fn test_write_field_by_name() {
 
     // Test trying to get an empty option (should fail)
     let result = get_property_as_json_string(&entity, "test_option_none.test_vec");
-    assert!(!result.is_ok());
+    assert!(result.is_err());
 
     let serde_json = serde_json::to_string(&entity).unwrap();
     let dynamic_serde_json = get_property_as_json_string(&entity, "").unwrap();
