@@ -106,7 +106,6 @@ impl AssetRegistryOptions {
 
     /// Specifying `directory device` will mount a device that allows to read
     /// resources from a specified directory.
-    #[must_use]
     pub fn add_device_dir_mut(&mut self, path: impl AsRef<Path>) -> &Self {
         self.devices.push(Box::new(vfs::DirDevice::new(path)));
         self
@@ -177,7 +176,6 @@ impl AssetRegistryOptions {
 
     /// Enables support of a given [`Resource`] by adding corresponding
     /// [`AssetLoader`].
-    #[must_use]
     pub fn add_loader_mut<A: Asset>(&mut self) -> &mut Self {
         ResourceType::register_name(A::TYPE, A::TYPENAME);
         self.loaders.insert(A::TYPE, Box::new(A::Loader::default()));
