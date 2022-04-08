@@ -37,7 +37,6 @@
 
   function refetchResources() {
     $currentResource = null;
-
     $currentResourceDescriptionEntry = null;
 
     return fetchAllResources();
