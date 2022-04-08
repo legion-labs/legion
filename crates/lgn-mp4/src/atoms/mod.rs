@@ -421,7 +421,7 @@ impl From<SampleFlags> for u32 {
             | (Self::from(value.sample_is_depdended_on) << SampleFlags::SAMPLE_IS_DEPENDED_ON_OFFSET) // 2bits
             | (Self::from(value.sample_has_redundancy) << SampleFlags::SAMPLE_HAS_REDUNDANCY_OFFSET) // 2bits
             | (Self::from(value.sample_padding_value) << SampleFlags::SAMPLE_PADDING_VALUE_OFFSET) // 3bits
-            | ((value.sample_is_non_sync_sample as Self) << SampleFlags::SAMPLE_IS_NON_SYNC_SAMPLE_OFFSET) // 1bits
+            | (u32::from(value.sample_is_non_sync_sample) << SampleFlags::SAMPLE_IS_NON_SYNC_SAMPLE_OFFSET) // 1bits
             | Self::from(value.sample_degradation_priority) // remaining 16 bits
     }
 }

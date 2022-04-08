@@ -89,7 +89,7 @@ impl<W: Write> WriteAtom<&mut W> for VpccAtom {
         writer.write_u8(
             (self.bit_depth << 4)
                 | (self.chroma_subsampling << 1)
-                | (self.video_full_range_flag as u8),
+                | u8::from(self.video_full_range_flag),
         )?;
         writer.write_u8(self.color_primaries)?;
         writer.write_u8(self.transfer_characteristics)?;
