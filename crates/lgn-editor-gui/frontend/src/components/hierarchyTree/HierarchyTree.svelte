@@ -172,6 +172,6 @@
 
 <style lang="postcss">
   .root {
-    @apply h-full px-2 overflow-y-auto;
+    @apply w-full h-full pl-2 pr-8 overflow-y-auto;
   }
 </style>

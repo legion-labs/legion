@@ -590,6 +590,6 @@
   }
 
   .entry-name {
-    @apply w-full h-full;
+    @apply w-full h-full truncate;
   }
 </style>

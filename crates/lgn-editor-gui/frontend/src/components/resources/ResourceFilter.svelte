@@ -11,7 +11,10 @@
 
   let name = writable("");
 
-  $: debouncedName = debounced(name, 200);
+  /** Debounce filter values update, if null data are synced instantly, `null` by default */
+  export let debouncedMs: number | null = null;
+
+  $: debouncedName = debouncedMs === null ? name : debounced(name, debouncedMs);
 
   $: dispatch("filter", { name: $debouncedName });
 
