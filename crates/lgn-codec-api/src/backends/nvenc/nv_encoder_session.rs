@@ -145,9 +145,11 @@ impl NvEncoderSession {
         // Force the stream to a lower bitrate
         // Using the data channel seems to still cost too much CPU
         // time
-        unsafe {
-            (*encode_config).rcParams.maxBitRate = 2_500_000;
-            (*encode_config).rcParams.averageBitRate = 2_500_000;
+        if cfg!(target_os = "linux") {
+            unsafe {
+                (*encode_config).rcParams.maxBitRate = 2_500_000;
+                (*encode_config).rcParams.averageBitRate = 2_500_000;
+            }
         }
 
         NV_ENC_INITIALIZE_PARAMS {
