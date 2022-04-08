@@ -14,7 +14,7 @@ VertexOut main_vs(uint vertexId: SV_VertexID) {
     VertexIn vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexId);
     VertexOut vertex_out;
 
-    float3 view_pos = transform_position(view_data.camera_rotation, view_data.camera_translation, transform_position(push_constant.transform, vertex_in.pos));
+    float3 view_pos = transform_position(view_data.camera_translation, view_data.camera_rotation, transform_position(push_constant.transform, vertex_in.pos));
 
     vertex_out.hpos = mul(view_data.projection, float4(view_pos, 1.0));
     vertex_out.color = vertex_in.color;
