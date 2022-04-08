@@ -5,8 +5,8 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-tonic = "0.6"
-prost = "0.9"
+tonic = "0.7"
+prost = "0.10"
 tokio = { version = "1.13", features = [
     "macros",
     "rt-multi-thread",
@@ -15,4 +15,4 @@ tokio = { version = "1.13", features = [
 base64 = "0.13.0"
 
 [build-dependencies]
-tonic-build = "0.6"
+tonic-build = "0.7"

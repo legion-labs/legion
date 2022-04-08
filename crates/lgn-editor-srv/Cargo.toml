@@ -35,7 +35,7 @@ lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
 lgn-window = { path = "../lgn-window", version = "0.1.0" }
 tokio = { version = "1.13", features = ["full", "tracing"] }
 tokio-stream = "0.1.8"
-tonic = "0.6"
+tonic = "0.7"
 clap = { version = "3.0", features = ["derive"] }
 anyhow = "1.0"
 serde = "1"
