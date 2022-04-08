@@ -54,7 +54,12 @@ impl Compiler for Gltf2TexCompiler {
                     context.source.resource_id(),
                 )
                 .await;
-            let resource = resource.get(&resources).unwrap();
+            let resource = resource.get(&resources).ok_or_else(|| {
+                CompilerError::CompilationError(format!(
+                    "Failed to retrieve resource '{}'",
+                    context.source.resource_id()
+                ))
+            })?;
 
             let mut compiled_resources = vec![];
             let texture_proc = TextureProcessor {};
@@ -64,7 +69,13 @@ impl Compiler for Gltf2TexCompiler {
                 let mut compiled_asset = vec![];
                 texture_proc
                     .write_resource(&texture.0, &mut compiled_asset)
-                    .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
+                    .map_err(|err| {
+                        CompilerError::CompilationError(format!(
+                            "Writing to file '{}' failed: {}",
+                            context.source.resource_id(),
+                            err
+                        ))
+                    })?;
 
                 compiled_resources
                     .push((context.target_unnamed.new_named(&texture.1), compiled_asset));

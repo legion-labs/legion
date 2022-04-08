@@ -56,7 +56,12 @@ impl Compiler for Gltf2MatCompiler {
                     context.source.resource_id(),
                 )
                 .await;
-            let resource = resource.get(&resources).unwrap();
+            let resource = resource.get(&resources).ok_or_else(|| {
+                CompilerError::CompilationError(format!(
+                    "Failed to retrieve resource '{}'",
+                    context.source.resource_id()
+                ))
+            })?;
 
             let mut compiled_resources = vec![];
             let material_proc = MaterialProcessor {};
@@ -66,7 +71,13 @@ impl Compiler for Gltf2MatCompiler {
                 let mut compiled_asset = vec![];
                 material_proc
                     .write_resource(&material, &mut compiled_asset)
-                    .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
+                    .map_err(|err| {
+                        CompilerError::CompilationError(format!(
+                            "Writing to file '{}' failed: {}",
+                            context.source.resource_id(),
+                            err
+                        ))
+                    })?;
                 let material_rpid = context.target_unnamed.new_named(&name);
 
                 compiled_resources.push((material_rpid.clone(), compiled_asset));
