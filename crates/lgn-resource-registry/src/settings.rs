@@ -1,12 +1,19 @@
 use std::path::{Path, PathBuf};
 
 use lgn_source_control::RepositoryName;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CompilationMode {
     InProcess,
     External,
     Remote { url: String },
+}
+
+impl Default for CompilationMode {
+    fn default() -> Self {
+        Self::InProcess
+    }
 }
 
 impl std::fmt::Display for CompilationMode {

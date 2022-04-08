@@ -82,8 +82,8 @@ struct Args {
     #[clap(long)]
     build_output_database_address: Option<String>,
     /// The compilation mode of the editor.
-    #[clap(long, default_value = "in-process")]
-    compilers: CompilationMode,
+    #[clap(long)]
+    compilers: Option<CompilationMode>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -108,6 +108,9 @@ struct Config {
     /// Whether the program runs in AWS EC2 behind a NAT.
     #[serde(default)]
     enable_aws_ec2_nat_public_ipv4_auto_discovery: bool,
+
+    #[serde(default)]
+    compilers: CompilationMode,
 }
 
 impl Config {
@@ -129,6 +132,7 @@ impl Default for Config {
             build_output_database_address: Self::default_build_output_database_address(),
             streamer: lgn_streamer::Config::default(),
             enable_aws_ec2_nat_public_ipv4_auto_discovery: false,
+            compilers: CompilationMode::default(),
         }
     }
 }
@@ -227,6 +231,10 @@ fn main() {
         build_output_database_address
     );
 
+    let compilation_mode = args.compilers.unwrap_or(config.compilers);
+
+    info!("Compilation Mode: {}", compilation_mode);
+
     let game_manifest_path = args.manifest.map_or_else(PathBuf::new, PathBuf::from);
     let assets_to_load = Vec::<ResourceTypeAndId>::new();
 
@@ -272,7 +280,7 @@ fn main() {
             source_control_repository_index,
             repository_name,
             build_output_database_address,
-            args.compilers,
+            compilation_mode,
         ))
         .add_plugin(ResourceRegistryPlugin::default())
         .insert_resource(GRPCPluginSettings::new(listen_endpoint))

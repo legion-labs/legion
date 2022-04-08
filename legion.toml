@@ -25,6 +25,16 @@ scene = "/world/sample_1.ent"
 # Default:
 #build_output_database_address = "temp"
 
+# The way data compilation is performed. Possible values:
+#
+# "InProcess" - (default) compilers run in editor-srv process.
+# "External" - external compiler-* binaries are used for compilation.
+# { Remote = { url = "lgn://127.0.0.1:2022" } } - data executor server is used to perform compilation.
+#
+# Default:
+#compilers = "InProcess"
+
+
 # Streamer configuration.
 [editor_server.streamer]
 
@@ -118,11 +128,13 @@ region = "ca-central-1"
 user_pool_id = "ca-central-1_SkZKDimWz"
 
 [source_control.repository_index]
+#type = "grpc"
 type = "local"
 path = "$(git-root)/target/source-control"
 
 [content_store.persistent.provider]
 #type = "grpc"
+#data_space = "persistent"
 type = "local"
 path = "$(git-root)/target/content-store/persistent"
 
@@ -131,6 +143,8 @@ type = "lru"
 size = 250
 
 [content_store.volatile.provider]
+#type = "grpc"
+#data_space = "volatile"
 type = "local"
 path = "$(git-root)/target/content-store/volatile"
 

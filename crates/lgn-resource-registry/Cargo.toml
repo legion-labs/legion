@@ -25,3 +25,4 @@ lgn-data-compiler-remote = { path = "../lgn-data-compiler-remote", version = "0.
 lgn-source-control = { path = "../lgn-source-control", version = "0.1.0" }
 
 tokio = { version = "1.13", features = ["full", "tracing"] }
+serde = "1"
