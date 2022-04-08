@@ -12,7 +12,7 @@ macro_rules! implement_primitive_type_def {
     ($type_name:ty) => {
         impl $crate::TypeReflection for $type_name {
             fn get_type(&self) -> $crate::TypeDefinition {
-                <$type_name>::get_type_def()
+                Self::get_type_def()
             }
 
             fn get_type_def() -> $crate::TypeDefinition {
@@ -24,6 +24,7 @@ macro_rules! implement_primitive_type_def {
                 }
                 $crate::TypeDefinition::Primitive(&TYPE_DESCRIPTOR)
             }
+
             fn get_option_def() -> $crate::TypeDefinition {
                 $crate::implement_option_descriptor!($type_name);
                 $crate::TypeDefinition::Option(&OPTION_DESCRIPTOR)
@@ -39,7 +40,7 @@ macro_rules! implement_primitive_type_def {
     ($type_name:ty, $default_expr:expr) => {
         impl $crate::TypeReflection for $type_name {
             fn get_type(&self) -> $crate::TypeDefinition {
-                <$type_name>::get_type_def()
+                Self::get_type_def()
             }
 
             fn get_type_def() -> $crate::TypeDefinition {
