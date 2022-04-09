@@ -7564,7 +7564,7 @@ dependencies = [
 [[package]]
 name = "physx"
 version = "0.12.2"
-source = "git+https://github.com/legion-labs/physx-rs.git?branch=clang-cl-14-fix#ca542cbb954a1c1d37cbb663ce97497d8f3b66e3"
+source = "git+https://github.com/legion-labs/physx-rs.git?rev=ca542cbb954a1c1d37cbb663ce97497d8f3b66e3#ca542cbb954a1c1d37cbb663ce97497d8f3b66e3"
 dependencies = [
  "enumflags2",
  "glam",
@@ -7576,7 +7576,7 @@ dependencies = [
 [[package]]
 name = "physx-sys"
 version = "0.4.16"
-source = "git+https://github.com/legion-labs/physx-rs.git?branch=clang-cl-14-fix#ca542cbb954a1c1d37cbb663ce97497d8f3b66e3"
+source = "git+https://github.com/legion-labs/physx-rs.git?rev=ca542cbb954a1c1d37cbb663ce97497d8f3b66e3#ca542cbb954a1c1d37cbb663ce97497d8f3b66e3"
 dependencies = [
  "cc",
 ]
