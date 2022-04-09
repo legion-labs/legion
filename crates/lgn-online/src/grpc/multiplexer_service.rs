@@ -144,7 +144,7 @@ impl tower::Service<Request<hyper::Body>> for MultiplexerService {
             let content_type = content_type.to_str().unwrap_or_default();
 
             if content_type.starts_with("application/grpc") {
-                if let Some(svc_name) = req.uri().path().splitn(3, '/').nth(1) {
+                if let Some(svc_name) = req.uri().path().split('/').nth(1) {
                     match &mut self.services.get_mut(svc_name) {
                         Some(svc) => {
                             debug!("dispatching call to service `{}`", svc_name);

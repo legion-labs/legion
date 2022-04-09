@@ -347,7 +347,7 @@ mod tests {
         let db_path = buildindex_dir
             .as_ref()
             .join(format!("output-{}.db3", version));
-        format!("sqlite://{}", db_path.to_str().unwrap().replace("\\", "/"))
+        format!("sqlite://{}", db_path.to_str().unwrap().replace('\\', "/"))
     }
 
     #[tokio::test]

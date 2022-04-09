@@ -40,7 +40,7 @@ impl LocalRepositoryIndex {
         //
         // Will actually remove the trailing ':' from the disk letter.
 
-        let sqlite_url = format!("sqlite://{}", db_path.to_str().unwrap().replace("\\", "/"));
+        let sqlite_url = format!("sqlite://{}", db_path.to_str().unwrap().replace('\\', "/"));
 
         let inner_repository_index = SqlRepositoryIndex::new(sqlite_url).await?;
 

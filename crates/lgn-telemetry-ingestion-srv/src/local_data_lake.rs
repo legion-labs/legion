@@ -9,7 +9,7 @@ pub async fn connect_to_local_data_lake(path: PathBuf) -> Result<DataLakeConnect
     let blocks_folder = path.join("blobs");
     let blob_storage = LocalBlobStorage::new(blocks_folder).await?;
     let db_path = path.join("telemetry.db3");
-    let db_uri = format!("sqlite://{}", db_path.to_str().unwrap().replace("\\", "/"));
+    let db_uri = format!("sqlite://{}", db_path.to_str().unwrap().replace('\\', "/"));
     if !sqlx::Any::database_exists(&db_uri)
         .await
         .with_context(|| String::from("Searching for telemetry database"))?

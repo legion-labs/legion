@@ -98,6 +98,7 @@ impl AssetRegistryOptions {
 
     /// Specifying `directory device` will mount a device that allows to read
     /// resources from a specified directory.
+    #[must_use]
     pub fn add_device_dir(mut self, path: impl AsRef<Path>) -> Self {
         self.devices.push(Box::new(vfs::DirDevice::new(path)));
         self
@@ -113,6 +114,7 @@ impl AssetRegistryOptions {
     /// Specifying `content-addressable storage device` will mount a device that
     /// allows to read resources from a specified content store through
     /// provided manifest.
+    #[must_use]
     pub fn add_device_cas(
         mut self,
         content_store: Arc<Box<dyn ContentProvider + Send + Sync>>,
@@ -126,6 +128,7 @@ impl AssetRegistryOptions {
     /// Specifying `content-addressable storage device` will mount a device that
     /// allows to read resources from a specified content store.
     /// It must subsequently be provided with a manifest to be able to fetch resources.
+    #[must_use]
     pub fn add_device_cas_with_delayed_manifest(
         mut self,
         content_store: Arc<Box<dyn ContentProvider + Send + Sync>>,
@@ -141,6 +144,7 @@ impl AssetRegistryOptions {
     /// `force_recompile` if set will cause each load request to go through data
     /// compilation.
     #[allow(clippy::too_many_arguments)]
+    #[must_use]
     pub fn add_device_build(
         mut self,
         content_store: Arc<Box<dyn ContentProvider + Send + Sync>>,
@@ -163,6 +167,7 @@ impl AssetRegistryOptions {
 
     /// Enables support of a given [`Resource`] by adding corresponding
     /// [`AssetLoader`].
+    #[must_use]
     pub fn add_loader<A: Asset>(mut self) -> Self {
         ResourceType::register_name(A::TYPE, A::TYPENAME);
         self.loaders.insert(A::TYPE, Box::new(A::Loader::default()));

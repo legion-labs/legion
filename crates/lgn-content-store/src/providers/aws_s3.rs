@@ -42,6 +42,7 @@ impl AwsS3Provider {
     }
 
     /// Set the validity duration for presigned URLs.
+    #[must_use]
     pub fn with_validity_duration(self, validity_duration: Duration) -> Self {
         Self {
             validity_duration,

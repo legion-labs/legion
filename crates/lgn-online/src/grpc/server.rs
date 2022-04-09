@@ -15,6 +15,7 @@ pub struct Server {
 }
 
 impl Server {
+    #[must_use]
     pub fn set_listen_address(mut self, listen_address: SocketAddr) -> Self {
         self.listen_address = Some(listen_address);
 

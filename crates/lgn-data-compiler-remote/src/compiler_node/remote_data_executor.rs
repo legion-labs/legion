@@ -46,13 +46,13 @@ async fn write_res(
     let mut source = PathBuf::from(resource_dir);
     source.push(&res.source_resource().id.resource_path());
 
-    Ok(deploy_remotely(
+    deploy_remotely(
         provider,
         &source,
         PathBuf::from(resource_dir).parent().unwrap(),
         files_to_package,
     )
-    .await?)
+    .await
 }
 
 /// Upload the data compiler & its associated input dependencies to the CAS and create a message.

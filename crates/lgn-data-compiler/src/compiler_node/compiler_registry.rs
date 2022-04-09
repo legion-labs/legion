@@ -88,6 +88,7 @@ impl CompilerRegistryOptions {
     }
 
     /// Register an in-process compiler.
+    #[must_use]
     pub fn add_compiler(mut self, descriptor: &'static CompilerDescriptor) -> Self {
         let compiler = Box::new(InProcessCompilerStub::new(descriptor));
         self.compilers.push(compiler);

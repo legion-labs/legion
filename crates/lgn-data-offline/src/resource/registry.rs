@@ -54,6 +54,7 @@ impl ResourceRegistryOptions {
     ///
     /// Panics if a processor for a resource of type `kind` is already
     /// registered.
+    #[must_use]
     pub fn add_type_processor(
         mut self,
         ty: ResourceType,
@@ -82,6 +83,7 @@ impl ResourceRegistryOptions {
     ///
     /// Panics if a processor for a resource of type `kind` is already
     /// registered.
+    #[must_use]
     pub fn add_type<T: OfflineResource>(self) -> Self {
         self.add_type_processor(T::TYPE, Box::new(T::Processor::default()))
     }

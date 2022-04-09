@@ -260,7 +260,7 @@ fn extract_crate_name(path: &Path) -> syn::Ident {
         .and_then(|table| {
             if let Some(section) = table.get("package") {
                 if let Some(toml::Value::String(name)) = section.get("name") {
-                    return Some(name.replace("-", "_"));
+                    return Some(name.replace('-', "_"));
                 }
             }
             None

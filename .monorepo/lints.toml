@@ -93,8 +93,8 @@ warn = [
     "clippy::pedantic",
     # Clippy nursery lints, still under development
     "clippy::debug_assert_with_mut_call",
-    "clippy::disallowed_method",
-    "clippy::disallowed_type",
+    "clippy::disallowed_methods",
+    "clippy::disallowed_types",
     "clippy::empty_line_after_outer_attr",
     "clippy::equatable_if_let",
     "clippy::fallible_impl_from",

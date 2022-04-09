@@ -174,7 +174,7 @@ fn main() {
 
     // TODO: Figure out why this is needed.
     let project_root = if cfg!(windows) {
-        PathBuf::from_str(&project_root.to_str().unwrap().replace("/", "\\")).unwrap()
+        PathBuf::from_str(&project_root.to_str().unwrap().replace('/', "\\")).unwrap()
     } else {
         project_root
     };

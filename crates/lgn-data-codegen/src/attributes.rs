@@ -202,8 +202,9 @@ fn get_resource_type(
         }
     }
 
-    if attrib_str.is_empty() {
-        panic!("Legion proc-macro: empty  attribute 'resource_type'")
-    }
+    assert!(
+        !attrib_str.is_empty(),
+        "Legion proc-macro: empty  attribute 'resource_type'",
+    );
     attrib_str
 }

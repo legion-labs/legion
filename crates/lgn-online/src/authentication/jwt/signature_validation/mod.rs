@@ -35,6 +35,7 @@ impl ValidationResult<'_> {
     /// assert!(Invalid(Error::Internal("error".to_string())).or_else(|| Valid).is_invalid());
     /// assert!(Valid.or_else(|| Invalid(Error::Internal("error".to_string()))).is_valid());
     /// ```
+    #[must_use]
     pub fn or_else<F>(self, f: F) -> Self
     where
         F: FnOnce() -> Self,

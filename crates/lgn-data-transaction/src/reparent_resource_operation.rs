@@ -38,7 +38,7 @@ impl TransactionOperation for ReparentResourceOperation {
         let parent_id = ctx.project.find_resource(&self.new_path).await.ok();
         let (_old_path, name) = raw_name
             .as_str()
-            .rsplit_once("/")
+            .rsplit_once('/')
             .ok_or_else(|| Error::ResourceNameNotFound(raw_name.clone()))?;
 
         let mut raw_path: ResourcePathName = if parent_id.is_some() {

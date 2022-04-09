@@ -213,8 +213,9 @@ where
 
         // TODO: use MaybeUninit::array_assume_init if it stabilizes
         #[allow(clippy::ptr_as_ptr)]
-        let cursors: [QueryIterationCursor<'w, 's, Q, QF, F>; K] =
-            (&cursors as *const _ as *const [QueryIterationCursor<'w, 's, Q, QF, F>; K]).read();
+        let cursors: [QueryIterationCursor<'w, 's, Q, QF, F>; K] = (std::ptr::addr_of!(cursors)
+            as *const [QueryIterationCursor<'w, 's, Q, QF, F>; K])
+            .read();
 
         QueryCombinationIter {
             world,
@@ -269,7 +270,7 @@ where
 
         // TODO: use MaybeUninit::array_assume_init if it stabilizes
         #[allow(clippy::ptr_as_ptr)]
-        let values: [QF::Item; K] = (&values as *const _ as *const [QF::Item; K]).read();
+        let values: [QF::Item; K] = (std::ptr::addr_of!(values) as *const [QF::Item; K]).read();
 
         Some(values)
     }

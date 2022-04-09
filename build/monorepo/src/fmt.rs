@@ -55,7 +55,7 @@ fn proto_fmt(ctx: &Context, check: bool) -> Result<()> {
         .filter(|e| e.file_type().is_file())
         .filter(|e| {
             // ideally we would parse the .gitignore file and use it to filter
-            let path = e.path().as_os_str().to_string_lossy().replace("\\", "/");
+            let path = e.path().as_os_str().to_string_lossy().replace('\\', "/");
             if path.contains("/node_modules/") || path.contains("/target/") {
                 return false;
             }

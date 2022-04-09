@@ -51,6 +51,7 @@ impl Branch {
     }
 
     /// Advance a branch to a new head.
+    #[must_use]
     pub fn advance(&self, head: CommitId) -> Self {
         Self {
             head,
@@ -61,6 +62,7 @@ impl Branch {
 
     /// Create a new branch that points to the same commit and shares the same
     /// lock domain as the current branch.
+    #[must_use]
     pub fn branch_out(&self, name: String) -> Self {
         Self {
             name,

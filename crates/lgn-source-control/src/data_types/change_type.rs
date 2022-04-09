@@ -81,6 +81,7 @@ impl ChangeType {
         }
     }
 
+    #[must_use]
     pub fn into_invert(self) -> Self {
         match self {
             Self::Add { new_chunk_id } => Self::Delete {

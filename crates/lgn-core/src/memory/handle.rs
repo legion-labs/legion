@@ -27,6 +27,7 @@ impl<T> Handle<T> {
     }
 
     /// Creates a new handle leaving self empty
+    #[must_use]
     pub fn transfer(&mut self) -> Self {
         Self {
             inner: Some(self.take()),

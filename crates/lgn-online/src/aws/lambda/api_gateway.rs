@@ -286,6 +286,7 @@ impl APIGatewayPolicyBuilder {
         )
     }
 
+    #[must_use]
     pub fn add_method<T: Into<String>>(
         mut self,
         effect: Effect,
@@ -309,18 +310,22 @@ impl APIGatewayPolicyBuilder {
         self
     }
 
+    #[must_use]
     pub fn allow_all_methods(self) -> Self {
         self.add_method(Effect::Allow, &Method::All, "*")
     }
 
+    #[must_use]
     pub fn deny_all_methods(self) -> Self {
         self.add_method(Effect::Deny, &Method::All, "*")
     }
 
+    #[must_use]
     pub fn allow_method(self, method: &Method, resource: String) -> Self {
         self.add_method(Effect::Allow, method, resource)
     }
 
+    #[must_use]
     pub fn deny_method(self, method: &Method, resource: String) -> Self {
         self.add_method(Effect::Deny, method, resource)
     }

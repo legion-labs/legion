@@ -86,7 +86,7 @@ fn frequency_fallback() -> u64 {
                 b"~MHz\0".as_ptr(),
                 std::ptr::null_mut(),
                 std::ptr::null_mut(),
-                (&mut frequency as *mut u64).cast::<u8>(),
+                std::ptr::addr_of_mut!(frequency).cast::<u8>(),
                 &mut data_size,
             ) == 0
             {

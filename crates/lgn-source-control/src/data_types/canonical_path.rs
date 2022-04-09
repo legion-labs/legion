@@ -127,6 +127,7 @@ impl CanonicalPath {
         self.parts.is_empty()
     }
 
+    #[must_use]
     pub fn join(&self, other: &Self) -> Self {
         Self {
             parts: self
@@ -138,6 +139,7 @@ impl CanonicalPath {
         }
     }
 
+    #[must_use]
     pub fn prepend(mut self, part: impl Into<String>) -> Self {
         let part = part.into();
 
@@ -148,6 +150,7 @@ impl CanonicalPath {
         self
     }
 
+    #[must_use]
     pub fn append(mut self, part: impl Into<String>) -> Self {
         let part = part.into();
 
@@ -271,7 +274,7 @@ mod tests {
     #[test]
     fn test_canonical_path_ordering() {
         assert!(cp("/a") <= cp("/a"));
-        assert!(!(cp("/a") < cp("/a")));
+        assert!(cp("/a") >= cp("/a"));
 
         assert!(cp("/a/b") > cp("/a"));
         assert!(cp("/a/b") < cp("/b"));

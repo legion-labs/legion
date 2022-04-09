@@ -100,7 +100,7 @@ fn generate_hlsl_struct<'a>(
                     let offset = ty_layout.members[i].offset;
                     writer.add_line(load_declaration(ctx.model, m, offset));
                 }
-                writer.add_line(&"return value;".to_string());
+                writer.add_line("return value;");
             } else {
                 writer.add_line(&format!("return buffer.Load<{}>(va);", struct_ty.name));
             }

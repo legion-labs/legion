@@ -170,7 +170,7 @@ fn generate(ctx: &GeneratorContext<'_>) -> String {
                 "include_bytes!(concat!(env!(\"OUT_DIR\"), \"/hlsl/{}\")),",
                 rel_path
             ));
-            writer.add_line("None".to_string());
+            writer.add_line("None");
         }
 
         {

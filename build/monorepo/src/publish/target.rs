@@ -67,7 +67,7 @@ pub fn build_zip_archive(root: &Utf8Path, archive: &Utf8Path) -> Result<()> {
             .map_err(|err| Error::new("failed to strip lambda root directory").with_source(err))?
             .display()
             .to_string()
-            .replace("\\", "/");
+            .replace('\\', "/");
 
         let metadata = std::fs::metadata(entry.path())
             .map_err(|err| Error::new("failed to get metadata").with_source(err))?;

@@ -63,7 +63,7 @@ impl EncoderRawAPI {
         unsafe {
             let mut encoder_ptr = null::<ISVCEncoderVtbl>() as *mut *const ISVCEncoderVtbl;
 
-            WelsCreateSVCEncoder(&mut encoder_ptr as *mut *mut *const ISVCEncoderVtbl).ok()?;
+            WelsCreateSVCEncoder(std::ptr::addr_of_mut!(encoder_ptr)).ok()?;
 
             let e = || Error::msg("VTable missing function.");
 
@@ -160,26 +160,31 @@ impl EncoderConfig {
     }
 
     /// Sets the requested bit rate in bits per second.
+    #[must_use]
     pub fn bitrate_bps(mut self, bps: u32) -> Self {
         self.target_bitrate = bps;
         self
     }
 
+    #[must_use]
     pub fn skip_frame(mut self, skip_frame: bool) -> Self {
         self.enable_skip_frame = skip_frame;
         self
     }
 
+    #[must_use]
     pub fn constant_sps(mut self, constant: bool) -> Self {
         self.constant_sps = constant;
         self
     }
 
+    #[must_use]
     pub fn max_fps(mut self, max_fps: f32) -> Self {
         self.max_fps = max_fps;
         self
     }
 
+    #[must_use]
     pub fn debug(mut self, value: bool) -> Self {
         self.debug = if value {
             WELS_LOG_DETAIL

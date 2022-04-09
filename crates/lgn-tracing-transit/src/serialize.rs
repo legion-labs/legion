@@ -37,10 +37,7 @@ pub trait InProcSerialize: Sized {
     }
 
     #[inline(always)]
-    fn write_value(&self, buffer: &mut Vec<u8>)
-    where
-        Self: Sized,
-    {
+    fn write_value(&self, buffer: &mut Vec<u8>) {
         assert!(matches!(Self::IN_PROC_SIZE, InProcSize::Const(_)));
         #[allow(clippy::needless_borrow)]
         //clippy complains here but we don't want to move or copy the value
@@ -54,10 +51,7 @@ pub trait InProcSerialize: Sized {
     /// call to make sure that the proper size is used
     #[allow(unsafe_code)]
     #[inline(always)]
-    unsafe fn read_value(ptr: *const u8, _value_size: Option<u32>) -> Self
-    where
-        Self: Sized,
-    {
+    unsafe fn read_value(ptr: *const u8, _value_size: Option<u32>) -> Self {
         read_any::<Self>(ptr)
     }
 }

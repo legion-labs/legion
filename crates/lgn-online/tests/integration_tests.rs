@@ -3,7 +3,8 @@
     clippy::doc_markdown,
     clippy::wildcard_imports,
     clippy::similar_names,
-    clippy::use_self
+    clippy::use_self,
+    clippy::return_self_not_must_use
 )]
 pub mod echo {
     tonic::include_proto!("echo");
@@ -14,7 +15,8 @@ pub mod echo {
     clippy::doc_markdown,
     clippy::wildcard_imports,
     clippy::similar_names,
-    clippy::use_self
+    clippy::use_self,
+    clippy::return_self_not_must_use
 )]
 pub mod sum {
     tonic::include_proto!("sum");

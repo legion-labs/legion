@@ -89,6 +89,7 @@ impl Default for TelemetryGuardBuilder {
 
 impl TelemetryGuardBuilder {
     // Only one sink per type ?
+    #[must_use]
     pub fn add_sink<Sink>(mut self, max_level: LevelFilter, sink: Sink) -> Self
     where
         Sink: EventSink + 'static,
@@ -103,26 +104,31 @@ impl TelemetryGuardBuilder {
     }
 
     /// Programmatic override
+    #[must_use]
     pub fn with_max_level_override(mut self, level_filter: LevelFilter) -> Self {
         self.max_level_override = Some(level_filter);
         self
     }
 
+    #[must_use]
     pub fn with_local_sink_enabled(mut self, enabled: bool) -> Self {
         self.local_sink_enabled = enabled;
         self
     }
 
+    #[must_use]
     pub fn with_interop_max_level_override(mut self, level_filter: LevelFilter) -> Self {
         self.interop_max_level_override = Some(level_filter);
         self
     }
 
+    #[must_use]
     pub fn with_local_sink_max_level(mut self, level_filter: LevelFilter) -> Self {
         self.local_sink_max_level = level_filter;
         self
     }
 
+    #[must_use]
     pub fn with_ctrlc_handling(self) -> Self {
         ctrlc::set_handler(move || {
             info!("Ctrl+C was hit!");

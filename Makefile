@@ -88,14 +88,13 @@ timings:
 	echo "<html><head><title>Cargo Build Timings</title></head><body><h1>Build Timings</h1>" > timings/index.html 
 	for TARGET in runtime-srv editor-srv editor-client ; do \
 		cargo clean && \
-		cargo build --bin $$TARGET -Z timings=html && \
-		mv cargo-timing.html timings/$$TARGET.html && \
+		cargo build --bin $$TARGET --timings && \
+		mv target/cargo-timings/cargo-timing.html timings/$$TARGET.html && \
 		echo "<h3><a href=\"./$$TARGET.html\"> * $$TARGET </a></h3>" >> timings/index.html; \
-		cargo build --bin $$TARGET --release -Z timings=html && \
-		mv cargo-timing.html timings/$$TARGET-release.html && \
+		cargo build --bin $$TARGET --release --timings && \
+		mv target/cargo-timings/cargo-timing.html timings/$$TARGET-release.html && \
 		echo "<h3><a href=\"./$$TARGET-release.html\"> * $$TARGET - Release </a></h3>" >> timings/index.html ;\
 	done
-	rm cargo-timing-*
 	echo "</body></html>" >> timings/index.html 
 
 api-doc:
