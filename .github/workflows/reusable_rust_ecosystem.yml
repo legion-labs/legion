@@ -65,7 +65,7 @@ jobs:
       image: ${{ inputs.image }}
     strategy:
       matrix:
-        target: [x86_64-unknown-linux-gnu, x86_64-pc-windows-msvc]
+        target: [x86_64-unknown-linux-gnu]
     steps:
       - uses: actions/checkout@v3
         with:
