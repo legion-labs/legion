@@ -183,6 +183,7 @@ skip = [
   { name = "rustls-native-certs", version = "=0.5.0" },
   { name = "tokio-rustls", version = "=0.22.0" },
   { name = "tokio-util", version = "=0.6.9" },
+  { name = "rustls-pemfile", version = "=0.2.1" },
   # Introduced by criterion
   { name = "clap", version = "=2.34.0" },
   { name = "textwrap", version = "=0.11.0" },
@@ -193,6 +194,7 @@ skip = [
   # Winit outdated dependencies
   { name = "ndk-glue", version = "=0.5.1" },
   { name = "ndk", version = "=0.5.0" },
+  { name = "crossbeam-epoch", version = "=0.8.2" },
 ] #{ name = "ansi_term", version = "=0.11.0" },
 # Similarly to `skip` allows you to skip certain crates during duplicate 
 # detection. Unlike skip, it also includes the entire tree of transitive 
