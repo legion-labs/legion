@@ -43,10 +43,6 @@ ENV PATH="$CARGO_HOME/bin:/xwin/vulkan-sdk/Bin:$PATH" \
     CC_x86_64_pc_windows_msvc="clang-cl" \
     CXX_x86_64_pc_windows_msvc="clang-cl" \
     AR_x86_64_pc_windows_msvc="llvm-lib" \
-    # wine can be quite spammy with log messages and they're generally uninteresting
-    WINEDEBUG="-all" \
-    # Use wine to run test executables
-    CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUNNER="wine" \
     LDFLAGS="-fuse-ld=lld" \
     # Note that we only disable unused-command-line-argument here since clang-cl
     # doesn't implement all of the options supported by cl, but the ones it doesn't
@@ -79,9 +75,5 @@ ENV NODE_PATH="$NVM_DIR/v$NODE_VERSION/lib/node_modules" \
 RUN apt-get remove -y --auto-remove && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /github/workspace
-
-# Run wineboot just to setup the default WINEPREFIX so we don't do it every
-# container run
-RUN wine wineboot --init
 
 CMD [ "/bin/bash" ]
