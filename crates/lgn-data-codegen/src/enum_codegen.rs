@@ -108,7 +108,7 @@ fn generate_serde_impls(enum_meta_info: &EnumMetaInfo) -> TokenStream {
                         }
                     } else {
                         let u32_value = u32::deserialize(deserializer)?;
-                        unsafe { *(&u32_value as *const u32).cast::<Self>() }
+                        unsafe { *(std::ptr::addr_of!(u32_value)).cast::<Self>() }
                     }
                 };
                 Ok(v)
