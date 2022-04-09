@@ -103,13 +103,13 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
     let cmd = if args.legacy_runner {
         args.build_args.add_args(&mut direct_args);
         if args.no_run {
-            direct_args.push(OsString::from("--no-run"));
+            direct_args.push("--no-run".into());
         };
         if args.no_fail_fast {
-            direct_args.push(OsString::from("--no-fail-fast"));
+            direct_args.push("--no-fail-fast".into());
         };
         if args.doc {
-            direct_args.push(OsString::from("--doc"));
+            direct_args.push("--doc".into());
         }
         CargoCommand::Test {
             direct_args: direct_args.as_slice(),
@@ -122,20 +122,22 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
             return Err(Error::new("Could not install cargo-nextest"));
         }
         if args.no_run {
-            direct_args.push(OsString::from("list"));
+            direct_args.push("list".into());
+            direct_args.push("--list-type".into());
+            direct_args.push("binaries-only".into());
         } else {
-            direct_args.push(OsString::from("run"));
+            direct_args.push("run".into());
         }
         args.build_args.add_args(&mut direct_args);
         if !args.ignored.is_empty() {
             for ignored in args.ignored {
-                direct_args.push(OsString::from(ignored));
+                direct_args.push(ignored.into());
             }
             direct_args.push("--run-ignored".into());
             direct_args.push("ignored-only".into());
         }
         if args.no_fail_fast {
-            direct_args.push(OsString::from("--no-fail-fast"));
+            direct_args.push("--no-fail-fast".into());
         };
         CargoCommand::Nextest {
             direct_args: direct_args.as_slice(),
