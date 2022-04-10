@@ -25,8 +25,8 @@ atty = { version = "0.2", optional = true }
 anyhow = "1"
 async-trait = "0.1"
 async-recursion = "1"
-aws-config = "0.8"
-aws-sdk-s3 = "0.8"
+aws-config = "0.9"
+aws-sdk-s3 = "0.9"
 bytes = "1"
 clap = { version = "3.0", features = ["derive"], optional = true }
 chrono = "0.4"
