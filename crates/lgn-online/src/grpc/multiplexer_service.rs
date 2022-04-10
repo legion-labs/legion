@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    convert::Infallible,
     task::{Context, Poll},
 };
 
@@ -12,10 +13,8 @@ use tonic::{
     transport::NamedService,
 };
 
-use super::{Error, Result};
-
 pub trait MultiplexableService: DynClone {
-    fn call(&mut self, req: Request<hyper::Body>) -> BoxFuture<Response<BoxBody>, Error>;
+    fn call(&mut self, req: Request<hyper::Body>) -> BoxFuture<Response<BoxBody>, Infallible>;
 }
 
 dyn_clone::clone_trait_object!(MultiplexableService);
@@ -24,14 +23,15 @@ dyn_clone::clone_trait_object!(MultiplexableService);
 /// tonic-generated services in the `Multiplexer` service.
 impl<S> MultiplexableService for S
 where
-    S: tower::Service<Request<hyper::Body>, Response = Response<BoxBody>> + Clone,
+    S: tower::Service<Request<hyper::Body>, Response = Response<BoxBody>, Error = Infallible>
+        + Clone,
     S::Error: Into<StdError>,
     S::Future: Send + 'static,
 {
-    fn call(&mut self, req: Request<hyper::Body>) -> BoxFuture<Response<BoxBody>, Error> {
+    fn call(&mut self, req: Request<hyper::Body>) -> BoxFuture<Response<BoxBody>, Infallible> {
         let fut = S::call(self, req);
 
-        Box::pin(async move { fut.await.map_err(Into::into).map_err(Error::Other) })
+        Box::pin(async move { fut.await.map_err(Into::into) })
     }
 }
 
@@ -115,27 +115,26 @@ impl MultiplexerService {
         Self { services }
     }
 
-    fn not_found() -> BoxFuture<Response<BoxBody>, Error> {
+    fn not_found() -> BoxFuture<Response<BoxBody>, Infallible> {
         Self::failure(http::StatusCode::NOT_FOUND)
     }
 
-    fn failure(status: StatusCode) -> BoxFuture<Response<BoxBody>, Error> {
+    fn failure(status: StatusCode) -> BoxFuture<Response<BoxBody>, Infallible> {
         Box::pin(async move {
-            http::Response::builder()
+            Ok(http::Response::builder()
                 .status(status)
                 .body(tonic::body::empty_body())
-                .map_err(Into::into)
-                .map_err(Error::Other)
+                .unwrap())
         })
     }
 }
 
 impl tower::Service<Request<hyper::Body>> for MultiplexerService {
     type Response = Response<BoxBody>;
-    type Error = Error;
+    type Error = std::convert::Infallible;
     type Future = BoxFuture<Self::Response, Self::Error>;
 
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<()>> {
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<std::result::Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 

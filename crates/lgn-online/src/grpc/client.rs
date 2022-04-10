@@ -2,6 +2,7 @@
 
 use std::task::{Context, Poll};
 
+use bytes::Bytes;
 use http::{Request, Response, Uri};
 use hyper::client::HttpConnector;
 use hyper_rustls::HttpsConnector;
@@ -70,7 +71,7 @@ impl<C, ReqBody, ResBody> Service<Request<ReqBody>> for GenericGrpcClient<C>
 where
     C: Service<Request<ReqBody>, Response = Response<ResBody>>,
     C::Error: Into<StdError>,
-    ResBody: http_body::Body + Send + 'static,
+    ResBody: http_body::Body<Data = Bytes> + Send + 'static,
     <ResBody as http_body::Body>::Error: Into<StdError> + Send,
 {
     type Response = C::Response;

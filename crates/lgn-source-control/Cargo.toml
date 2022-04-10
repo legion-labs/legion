@@ -59,8 +59,8 @@ thiserror = "1"
 tokio = { version = "1.13", features = ["full", "tracing"] }
 tokio-util = { version = "0.6.9", features = ["full"] }
 tokio-stream = "0.1.8"
-tonic = "0.6.2"
-tonic-web = { version = "0.2", optional = true }
+tonic = "0.7"
+tonic-web = { version = "0.3", optional = true }
 tower = { version = "0.4", optional = true }
 tower-http = { version = "0.2", features = ["cors"], optional = true }
 pathdiff = "0.2"

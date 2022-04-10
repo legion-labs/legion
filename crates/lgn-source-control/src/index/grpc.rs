@@ -27,7 +27,7 @@ pub struct GrpcRepositoryIndex<C> {
 impl<C> GrpcRepositoryIndex<C>
 where
     C: tonic::client::GrpcService<tonic::body::BoxBody> + Send,
-    C::ResponseBody: Body + Send + 'static,
+    C::ResponseBody: Body<Data = bytes::Bytes> + Default + Send + 'static,
     C::Error: Into<StdError>,
     C::Future: Send + 'static,
     <C::ResponseBody as Body>::Error: Into<StdError> + Send,
@@ -42,8 +42,8 @@ where
 #[async_trait]
 impl<C> RepositoryIndex for GrpcRepositoryIndex<C>
 where
-    C: tonic::client::GrpcService<tonic::body::BoxBody> + Send + 'static,
-    C::ResponseBody: Body + Send + 'static,
+    C: tonic::client::GrpcService<tonic::body::BoxBody> + Default + Send + 'static,
+    C::ResponseBody: Body<Data = bytes::Bytes> + Default + Send + 'static,
     C::Error: Into<StdError>,
     C::Future: Send + 'static,
     <C::ResponseBody as Body>::Error: Into<StdError> + Send,
@@ -168,7 +168,7 @@ where
 impl<C> Index for GrpcIndex<C>
 where
     C: tonic::client::GrpcService<tonic::body::BoxBody> + Send,
-    C::ResponseBody: Body + Send + 'static,
+    C::ResponseBody: Body<Data = bytes::Bytes> + Default + Send + 'static,
     C::Error: Into<StdError>,
     C::Future: Send + 'static,
     <C::ResponseBody as Body>::Error: Into<StdError> + Send,

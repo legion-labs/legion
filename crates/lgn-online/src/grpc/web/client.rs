@@ -1,5 +1,6 @@
 use std::task::{Context, Poll};
 
+use bytes::Bytes;
 use http::{HeaderMap, HeaderValue, Method, Request, Response, Version};
 use http_body::{combinators::UnsyncBoxBody, Body};
 use lgn_tracing::{debug, warn};
@@ -16,11 +17,10 @@ pub struct GrpcWebClient<C> {
     inner: C,
 }
 
-use super::super::buf::BoxBuf;
 use super::GrpcWebResponse;
 
 type RequestTransform<ReqBody> = fn(Request<ReqBody>) -> Result<Request<ReqBody>, Error>;
-type ResponseTransform<F> = fn(F) -> BoxFuture<Response<UnsyncBoxBody<BoxBuf, Error>>, Error>;
+type ResponseTransform<F> = fn(F) -> BoxFuture<Response<UnsyncBoxBody<bytes::Bytes, Error>>, Error>;
 
 impl<C> GrpcWebClient<C> {
     pub fn new(c: C) -> Self {
@@ -30,13 +30,12 @@ impl<C> GrpcWebClient<C> {
     fn forward_request<ReqBody, ResBody>(
         &mut self,
         request: Request<ReqBody>,
-    ) -> BoxFuture<Response<UnsyncBoxBody<BoxBuf, Error>>, Error>
+    ) -> BoxFuture<Response<UnsyncBoxBody<bytes::Bytes, Error>>, Error>
     where
         C: Service<Request<ReqBody>, Response = Response<ResBody>>,
         C::Error: Into<StdError>,
         C::Future: Send + 'static,
-        ResBody: http_body::Body + Send + 'static,
-        <ResBody as http_body::Body>::Data: Send + 'static,
+        ResBody: http_body::Body<Data = Bytes> + Send + 'static,
         <ResBody as http_body::Body>::Error: Into<StdError> + Send + 'static,
     {
         let resp = self.inner.call(request);
@@ -51,7 +50,7 @@ impl<C> GrpcWebClient<C> {
             // untouched.
             Ok(resp.await.map_err(Into::into)?.map(|body| {
                 UnsyncBoxBody::new(
-                    body.map_data(BoxBuf::new)
+                    body.map_data(bytes::Bytes::from)
                         .map_err(Into::into)
                         .map_err(Error::Other),
                 )
@@ -66,7 +65,7 @@ impl<C> GrpcWebClient<C> {
         C: Service<Request<ReqBody>, Response = Response<ResBody>>,
         C::Error: Into<StdError>,
         C::Future: Send + 'static,
-        ResBody: http_body::Body + Send + 'static,
+        ResBody: http_body::Body<Data = Bytes> + Send + 'static,
         <ResBody as http_body::Body>::Error: Into<StdError> + Send,
     {
         match proto {
@@ -82,12 +81,12 @@ impl<C> GrpcWebClient<C> {
         &mut self,
         request: Request<ReqBody>,
         proto: &str,
-    ) -> BoxFuture<Response<UnsyncBoxBody<BoxBuf, Error>>, Error>
+    ) -> BoxFuture<Response<UnsyncBoxBody<bytes::Bytes, Error>>, Error>
     where
         C: Service<Request<ReqBody>, Response = Response<ResBody>>,
         C::Error: Into<StdError>,
         C::Future: Send + 'static,
-        ResBody: http_body::Body + Send + 'static,
+        ResBody: http_body::Body<Data = Bytes> + Send + 'static,
         <ResBody as http_body::Body>::Error: Into<StdError> + Send,
     {
         debug!("transforming gRPC call with protocol `{}`", proto);
@@ -135,12 +134,12 @@ impl<C> GrpcWebClient<C> {
     /// response was transformed with `coerce_request`.
     fn coerce_response_from_protobuf<ReqBody, ResBody>(
         resp: C::Future,
-    ) -> BoxFuture<Response<UnsyncBoxBody<BoxBuf, Error>>, Error>
+    ) -> BoxFuture<Response<UnsyncBoxBody<bytes::Bytes, Error>>, Error>
     where
         C: Service<Request<ReqBody>, Response = Response<ResBody>>,
         C::Error: Into<StdError>,
         C::Future: Send + 'static,
-        ResBody: http_body::Body + Send + 'static,
+        ResBody: http_body::Body<Data = Bytes> + Send + 'static,
         <ResBody as http_body::Body>::Error: Into<StdError> + Send,
     {
         Box::pin(async move {
@@ -169,11 +168,10 @@ where
     C: Service<Request<ReqBody>, Response = Response<ResBody>>,
     C::Error: Into<StdError>,
     C::Future: Send + 'static,
-    ResBody: http_body::Body + Send + 'static,
-    <ResBody as http_body::Body>::Data: Send,
+    ResBody: http_body::Body<Data = Bytes> + Send + 'static,
     <ResBody as http_body::Body>::Error: Into<StdError> + Send,
 {
-    type Response = Response<UnsyncBoxBody<BoxBuf, Error>>;
+    type Response = Response<UnsyncBoxBody<bytes::Bytes, Error>>;
     type Error = Error;
     type Future = BoxFuture<Self::Response, Self::Error>;
 

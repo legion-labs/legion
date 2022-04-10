@@ -3,7 +3,6 @@ pub mod multiplexer_service;
 pub mod server;
 
 mod authentication;
-mod buf;
 mod consts;
 mod errors;
 mod web;

@@ -3,12 +3,12 @@ use std::future::Future;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
+use bytes::Bytes;
 use http::{Request, Response};
 use http_body::{combinators::UnsyncBoxBody, Body};
 use tonic::codegen::{BoxFuture, StdError};
 use tower::Service;
 
-use super::super::buf::BoxBuf;
 use super::{Error, Result};
 use crate::authentication::Authenticator;
 
@@ -92,11 +92,10 @@ where
     C::Future: Send + 'static,
     A: Authenticator + Send + Sync + 'static,
     ReqBody: Send + 'static,
-    ResBody: http_body::Body + Send + 'static,
+    ResBody: http_body::Body<Data = Bytes> + Send + 'static,
     <ResBody as http_body::Body>::Error: Into<StdError> + Send,
-    <ResBody as http_body::Body>::Data: Send + 'static,
 {
-    type Response = Response<UnsyncBoxBody<BoxBuf, Error>>;
+    type Response = Response<UnsyncBoxBody<Bytes, Error>>;
     type Error = Error;
     type Future = BoxFuture<Self::Response, Self::Error>;
 
@@ -122,7 +121,7 @@ where
                 .map(|resp| {
                     resp.map(|body| {
                         UnsyncBoxBody::new(
-                            body.map_data(BoxBuf::new)
+                            body.map_data(Bytes::from)
                                 .map_err(Into::into)
                                 .map_err(Error::Other),
                         )

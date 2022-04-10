@@ -1,4 +1,4 @@
-use std::net::SocketAddr;
+use std::{convert::Infallible, net::SocketAddr};
 
 use http::{Request, Response};
 use lgn_tracing::info;
@@ -24,7 +24,7 @@ impl Server {
 
     pub async fn run<S>(self, service: S) -> Result<()>
     where
-        S: Service<Request<hyper::Body>, Response = Response<BoxBody>>
+        S: Service<Request<hyper::Body>, Response = Response<BoxBody>, Error = Infallible>
             + NamedService
             + Clone
             + Send

@@ -5,7 +5,6 @@ use bytes::{Buf, BufMut, BytesMut};
 use http::{header::HeaderName, HeaderMap, HeaderValue};
 use lgn_tracing::debug;
 
-use super::super::buf::BoxBuf;
 use super::{Error, Result};
 
 pub(super) struct GrpcWebBodyParser {
@@ -38,7 +37,7 @@ impl GrpcWebBodyParser {
 
     /// Return any chunk of data that can be passed on to the next layer
     /// already.
-    pub fn poll_data(&mut self) -> Poll<Option<Result<BoxBuf>>> {
+    pub fn poll_data(&mut self) -> Poll<Option<Result<bytes::Bytes>>> {
         match self.body_bytes_remaining {
             // We don't have any clue how many bytes we're going to get.
             // We need to keep those bytes aside until we get enough.
@@ -63,23 +62,23 @@ impl GrpcWebBodyParser {
 
                     debug!("GrpcWebBodyParser::poll_data can return the complete header and body ({} byte(s) with {} extra trailers byte(s))", body_length, self.buf.remaining() - body_length);
 
-                    Some(Ok(BoxBuf::new(
-                        body_header.chain(self.buf.copy_to_bytes(body_length)),
-                    )))
+                    Some(Ok(body_header
+                        .chain(self.buf.copy_to_bytes(body_length))
+                        .copy_to_bytes(5 + body_length)))
                 } else if self.buf.remaining() > 0 {
                     self.body_bytes_remaining = Some(body_length - self.buf.remaining());
 
                     debug!("GrpcWebBodyParser::poll_data can return the complete header and part of the body ({} byte(s) out of {} body byte(s))", self.buf.remaining(), body_length);
 
-                    Some(Ok(BoxBuf::new(
-                        body_header.chain(self.buf.copy_to_bytes(self.buf.remaining())),
-                    )))
+                    Some(Ok(body_header
+                        .chain(self.buf.copy_to_bytes(self.buf.remaining()))
+                        .copy_to_bytes(5 + self.buf.remaining())))
                 } else {
                     self.body_bytes_remaining = Some(body_length);
 
                     debug!("GrpcWebBodyParser::poll_data can return the complete header but not body bytes");
 
-                    Some(Ok(BoxBuf::new(body_header)))
+                    Some(Ok(body_header))
                 })
             }
             Some(0) => {
@@ -103,9 +102,7 @@ impl GrpcWebBodyParser {
                         self.buf.remaining() - body_bytes_remaining
                     );
 
-                    Some(Ok(BoxBuf::new(
-                        self.buf.copy_to_bytes(body_bytes_remaining),
-                    )))
+                    Some(Ok(self.buf.copy_to_bytes(body_bytes_remaining)))
                 } else {
                     self.body_bytes_remaining = Some(body_bytes_remaining - self.buf.remaining());
 
@@ -114,9 +111,7 @@ impl GrpcWebBodyParser {
                         body_bytes_remaining,
                     );
 
-                    Some(Ok(BoxBuf::new(
-                        self.buf.copy_to_bytes(self.buf.remaining()),
-                    )))
+                    Some(Ok(self.buf.copy_to_bytes(self.buf.remaining())))
                 })
             }
         }

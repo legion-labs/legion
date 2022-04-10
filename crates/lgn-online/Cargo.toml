@@ -20,8 +20,8 @@ hyper-rustls = { version = "0.23", features = ["http2"] }
 tower = "0.4.8"
 tower-http = { version = "0.2", features = ["full"] }
 tower-service = "0.3.1"
-tonic = { version = "0.6", features = ["tls-roots"] }
-tonic-web = "0.2"
+tonic = { version = "0.7", features = ["tls-roots"] }
+tonic-web = "0.3"
 rustls = "= 0.20.2"
 webbrowser = "0.6"
 url = "2.2"
@@ -46,9 +46,9 @@ strum_macros = { version = "0.23", optional = true }
 openidconnect = "2.2.0"
 
 [build-dependencies]
-tonic-build = "0.6"
+tonic-build = "0.7"
 
 [dev-dependencies]
-prost = "0.9"
+prost = "0.10"
 serial_test = "0.6"
 backoff = { version = "0.4.0", features = ["tokio"] }

@@ -24,8 +24,8 @@ lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
 anyhow = "1.0.44"
 clap = { version = "3.0", features = ["derive"] }
 http = "0.2"
-tonic = "0.6"
-prost = "0.9"
+tonic = "0.7"
+prost = "0.10"
 tokio = { version = "1.13", features = [
     "macros",
     "rt-multi-thread",

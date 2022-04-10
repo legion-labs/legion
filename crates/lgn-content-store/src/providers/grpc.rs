@@ -45,7 +45,7 @@ pub struct GrpcProvider<C> {
 impl<C> GrpcProvider<C>
 where
     C: tonic::client::GrpcService<tonic::body::BoxBody> + Send,
-    C::ResponseBody: Body + Send + 'static,
+    C::ResponseBody: Body<Data = bytes::Bytes> + Default + Send + 'static,
     C::Error: Into<StdError>,
     C::Future: Send + 'static,
     <C::ResponseBody as Body>::Error: Into<StdError> + Send,
@@ -73,7 +73,7 @@ impl<C> Display for GrpcProvider<C> {
 impl<C> ContentReader for GrpcProvider<C>
 where
     C: tonic::client::GrpcService<tonic::body::BoxBody> + Send,
-    C::ResponseBody: Body + Send + 'static,
+    C::ResponseBody: Body<Data = bytes::Bytes> + Send + Default + 'static,
     C::Error: Into<StdError>,
     C::Future: Send + 'static,
     <C::ResponseBody as Body>::Error: Into<StdError> + Send,
@@ -171,7 +171,7 @@ where
 impl<C> ContentWriter for GrpcProvider<C>
 where
     C: tonic::client::GrpcService<tonic::body::BoxBody> + Send + 'static,
-    C::ResponseBody: Body + Send + 'static,
+    C::ResponseBody: Body<Data = bytes::Bytes> + Default + Send + 'static,
     C::Error: Into<StdError>,
     C::Future: Send + 'static,
     <C::ResponseBody as Body>::Error: Into<StdError> + Send,
@@ -250,7 +250,7 @@ struct GrpcUploaderImpl<C> {
 impl<C> UploaderImpl for GrpcUploaderImpl<C>
 where
     C: tonic::client::GrpcService<tonic::body::BoxBody> + Send + 'static,
-    C::ResponseBody: Body + Send + 'static,
+    C::ResponseBody: Body<Data = bytes::Bytes> + Default + Send + 'static,
     C::Error: Into<StdError>,
     C::Future: Send + 'static,
     <C::ResponseBody as Body>::Error: Into<StdError> + Send,

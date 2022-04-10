@@ -10,7 +10,7 @@ bytes = "1.1"
 clap = { version = "3.0", features = ["derive"] }
 http = "0.2"
 hyper = "0.14"
-tonic = "0.6"
+tonic = "0.7"
 tokio = { version = "1.13", features = [
     "macros",
     "rt-multi-thread",
@@ -30,7 +30,7 @@ sqlx = { version = "0.5", features = [
     "runtime-tokio-native-tls",
 ] }
 chrono = "0.4"
-prost = "0.9"
+prost = "0.10"
 serde_json = "1.0"
 warp = "0.3"
 

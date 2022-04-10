@@ -7,7 +7,6 @@ use http_body::Body;
 use pin_project::pin_project;
 use tonic::codegen::StdError;
 
-use super::super::buf::BoxBuf;
 use super::{Error, GrpcWebBodyParser, Result};
 
 #[pin_project]
@@ -33,7 +32,7 @@ where
     T: Body,
     T::Error: Into<StdError>,
 {
-    type Data = BoxBuf;
+    type Data = bytes::Bytes;
     type Error = Error;
 
     fn poll_data(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Result<Self::Data>>> {

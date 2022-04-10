@@ -133,14 +133,10 @@ async fn test_service_multiplexer() -> anyhow::Result<()> {
     //let server = lgn_grpc::server::transport::http2::Server::default();
     let echo_service = EchoerServer::new(Service::default());
     let sum_service = SummerServer::new(Service::default());
-    let service = lgn_online::grpc::MultiplexerService::builder()
+
+    let server = tonic::transport::Server::builder()
         .add_service(echo_service)
-        .add_service(sum_service)
-        .build();
-
-    assert!(service.is_some());
-
-    let server = tonic::transport::Server::builder().add_optional_service(service);
+        .add_service(sum_service);
 
     let addr_str = get_random_localhost_addr();
     let addr = addr_str.parse()?;
