@@ -26,7 +26,7 @@ jobs:
         run: mdbook build ./docs/
 
       - name: Upload book
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: book
           path: ./target/book
