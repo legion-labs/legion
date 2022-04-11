@@ -37,6 +37,7 @@
 
 <style>
   #loading-bar {
+    z-index: 1000;
     position: fixed;
     top: 0;
     left: 0;
