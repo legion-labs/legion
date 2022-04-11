@@ -7,11 +7,17 @@ pub struct ConvertTicks {
 
 impl ConvertTicks {
     pub fn new(process: &ProcessInfo) -> Self {
-        let ts_offset = process.start_ticks;
         let inv_tsc_frequency = get_process_tick_length_ms(process);
         Self {
-            ts_offset,
+            ts_offset: process.start_ticks,
             inv_tsc_frequency,
+        }
+    }
+
+    pub fn from_meta_data(start_ticks: i64, tsc_frequency: u64) -> Self {
+        Self {
+            ts_offset: start_ticks,
+            inv_tsc_frequency: get_tsc_frequency_inverse_ms(tsc_frequency),
         }
     }
 

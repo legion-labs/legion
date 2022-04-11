@@ -2,121 +2,162 @@
   import { onMount } from "svelte";
   import { useLocation } from "svelte-navigator";
 
-  import type {
-    CumulativeCallGraphNode,
-    PerformanceAnalyticsClientImpl,
-  } from "@lgn/proto-telemetry/dist/analytics";
-  import type { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
-  import type { Process } from "@lgn/proto-telemetry/dist/process";
-  import log from "@lgn/web-client/src/lib/log";
+  import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
+  import type { CallTreeNode } from "@lgn/proto-telemetry/dist/calltree";
 
+  import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { makeGrpcClient } from "@/lib/client";
-  import { formatExecutionTime } from "@/lib/format";
 
   import Loader from "../Misc/Loader.svelte";
   import GraphNode from "./GraphNode.svelte";
   import { GraphParameters } from "./Lib/GraphParameters";
-  import { graphStateStore, scopeStore } from "./Store/GraphStore";
+  import GraphHeader from "./GraphHeader.svelte";
+  import { GraphState } from "./Store/GraphState";
+  import type { Writable } from "svelte/store";
+  import {
+    getGraphStateStore,
+    scopeStore,
+    type NodeStateStore,
+  } from "./Store/GraphStateStore";
 
-  const locationStore = useLocation();
-  const store = scopeStore;
-
-  let client: PerformanceAnalyticsClientImpl | null = null;
-  let processInfo: Process | null = null;
-  let scopes: Record<number, ScopeDesc> = {};
-  let nodes: CumulativeCallGraphNode[] | null = null;
-  let maxSum: number | null = null;
-  let selectedNode: CumulativeCallGraphNode | null = null;
-  let loading = true;
   const components: Record<number, GraphNode> = {};
+  const locationStore = useLocation();
 
-  async function fetchData() {
-    if (!client) {
-      log.error("no client in fetchData");
-      return;
-    }
-    const params = GraphParameters.getGraphParameter($locationStore.search);
-    const { process } = await client.find_process({
-      processId: params.processId,
-    });
-    if (!process) {
-      throw new Error("Error in client.find_process");
-    }
-    processInfo = process;
-
-    const reply = await client.process_cumulative_call_graph({
-      process: processInfo,
-      beginMs: params.beginMs,
-      endMs: params.endMs,
-    });
-
-    scopes = { ...scopes, ...reply.scopes };
-    nodes = reply.nodes.filter((item) => item.stats && item.hash != 0); //todo: fix this on server side
-    nodes = nodes.sort((lhs, rhs) => rhs.stats!.sum - lhs.stats!.sum);
-    maxSum = nodes[0].stats!.sum;
-    loading = false;
-
-    graphStateStore.update((s) => {
-      if (maxSum) {
-        s.MaxSum = maxSum;
-      }
-      return s;
-    });
-
-    store.update((s) => {
-      s = { ...s, ...reply.scopes };
-      return s;
-    });
-  }
-
-  function formatEdgeDivWidth(
-    selectedNode: CumulativeCallGraphNode,
-    edgeWeight: number
-  ): string {
-    const pct = (edgeWeight * 95) / selectedNode.stats!.sum;
-    return `width:${pct}%`;
-  }
-
-  function onEdgeClick(hash: number) {
-    if (!nodes) {
-      return;
-    }
-    const found = nodes.find((item) => item.hash === hash);
-    if (found) {
-      selectedNode = found;
-    } else {
-      selectedNode = null;
-    }
-  }
-
-  function formatSum(node: CumulativeCallGraphNode): string {
-    return formatExecutionTime(node.stats!.sum);
-  }
-
-  function formatMin(node: CumulativeCallGraphNode): string {
-    return formatExecutionTime(node.stats!.min);
-  }
-
-  function formatMax(node: CumulativeCallGraphNode): string {
-    return formatExecutionTime(node.stats!.max);
-  }
-
-  function formatAvg(node: CumulativeCallGraphNode): string {
-    return formatExecutionTime(node.stats!.avg);
-  }
-
-  function formatMedian(node: CumulativeCallGraphNode): string {
-    return formatExecutionTime(node.stats!.median);
-  }
-
-  function formatCount(node: CumulativeCallGraphNode): string {
-    return node.stats!.count.toString();
-  }
+  let client: PerformanceAnalyticsClientImpl;
+  let loading = true;
+  let beginMsFilter = 0;
+  let endMsFilter = 0;
+  let processId = "";
+  let blocks: string[];
+  let startTicks: number;
+  let tscFrequency: number;
+  let graphState: GraphState;
+  let store: Writable<Map<number, NodeStateStore>>;
 
   onMount(async () => {
-    client = makeGrpcClient();
-    await fetchData();
+    graphState = new GraphState();
+    store = graphState.Store;
+
+    loadingStore.reset(1);
+    graphState.reset();
+    const grpcClient = makeGrpcClient();
+    if (grpcClient) {
+      client = grpcClient;
+      await fetchData();
+    }
   });
+
+  async function fetchData() {
+    ({
+      processId,
+      beginMs: beginMsFilter,
+      endMs: endMsFilter,
+    } = GraphParameters.getGraphParameter($locationStore.search));
+
+    ({ blocks, startTicks, tscFrequency } =
+      await client.fetch_cumulative_call_graph_manifest({
+        processId: processId,
+        beginMs: beginMsFilter,
+        endMs: endMsFilter,
+      }));
+
+    blocks.forEach(async (blockId) => {
+      if (!client) {
+        return;
+      }
+
+      loadingStore.addWork();
+
+      const { callTree, streamHash, streamName } =
+        await client.fetch_cumulative_call_graph_block({
+          blockId: blockId,
+          tscFrequency,
+          startTicks,
+          beginMs: beginMsFilter,
+          endMs: endMsFilter,
+        });
+
+      if (!callTree) {
+        return;
+      }
+
+      loadingStore.completeWork();
+
+      loading = false;
+
+      scopeStore.update((s) => {
+        s = { ...s, ...callTree.scopes };
+        s[streamHash] = {
+          name: `Thread: ${streamName}`,
+          hash: streamHash,
+          filename: "",
+          line: 0,
+        };
+        return s;
+      });
+
+      if (callTree.root) {
+        callTree.root.hash = streamHash;
+        graphState.Roots.push(callTree.root.hash);
+
+        let range = { begin: Infinity, end: -Infinity };
+        computeRange(callTree.root, range);
+
+        let root = graphState.Nodes.get(streamHash);
+        if (!root) {
+          root = getGraphStateStore(
+            streamHash,
+            -Infinity,
+            Infinity,
+            graphState
+          );
+          graphState.Nodes.set(streamHash, root);
+        }
+
+        root.updateRange(range);
+        onNodeReceived(callTree.root, null);
+        graphState.tick();
+      }
+    });
+  }
+
+  function computeRange(
+    node: CallTreeNode,
+    range: { begin: number; end: number }
+  ) {
+    range.begin = Math.min(range.begin, node.beginMs);
+    range.end = Math.max(range.end, node.endMs);
+    node.children.forEach((child) => {
+      computeRange(child, range);
+    });
+  }
+
+  function overlaps(node: CallTreeNode) {
+    return node.endMs >= beginMsFilter && node.beginMs <= endMsFilter;
+  }
+
+  function onNodeReceived(node: CallTreeNode, parent: CallTreeNode | null) {
+    if (!overlaps(node)) {
+      return;
+    }
+    let store = graphState.Nodes.get(node.hash);
+    if (!store) {
+      store = getGraphStateStore(
+        node.hash,
+        beginMsFilter,
+        endMsFilter,
+        graphState
+      );
+      graphState.Nodes.set(node.hash, store);
+    }
+    store.registerSelfCall(node, parent);
+    node.children.forEach((c) => {
+      if (store) {
+        store.registerChildCall(c);
+        onNodeReceived(c, node);
+      }
+    });
+  }
 
   function onEdgeClicked(e: CustomEvent<{ hash: number }>) {
     components[e.detail.hash]?.setCollapse(false);
@@ -124,131 +165,19 @@
 </script>
 
 <Loader {loading}>
-  <div slot="body">
-    {#if nodes}
-      <div id="funlist">
-        {#each nodes as node, index (node.hash)}
-          {@const first = index === 0}
-          <GraphNode
-            {node}
-            collapsed={!first}
-            on:clicked={(e) => onEdgeClicked(e)}
-            bind:this={components[node.hash]}
-          />
-        {/each}
-      </div>
-    {/if}
-    {#if selectedNode}
-      <h2>Selected Function</h2>
-      <div class="selecteddiv">
-        <div>
-          <span class="selectedproperty">name </span>
-          <span>{scopes[selectedNode.hash].name}</span>
-        </div>
-        <div>
-          <span class="selectedproperty">sum </span>
-          <span>{formatSum(selectedNode)}</span>
-        </div>
-        <div>
-          <span class="selectedproperty">min </span>
-          <span>{formatMin(selectedNode)}</span>
-        </div>
-        <div>
-          <span class="selectedproperty">max </span>
-          <span>{formatMax(selectedNode)}</span>
-        </div>
-        <div>
-          <span class="selectedproperty">average </span>
-          <span>{formatAvg(selectedNode)}</span>
-        </div>
-        <div>
-          <span class="selectedproperty">median </span>
-          <span>{formatMedian(selectedNode)}</span>
-        </div>
-        <div>
-          <span class="selectedproperty">count </span>
-          <span>{formatCount(selectedNode)}</span>
-        </div>
-      </div>
-
-      <h3>Callees</h3>
-
-      {#each selectedNode.callees as edge (edge.hash)}
-        <div
-          class="fundiv"
-          style={formatEdgeDivWidth(selectedNode, edge.weight)}
-          on:click={function () {
-            onEdgeClick(edge.hash);
-          }}
-        >
-          <span>
-            {scopes[edge.hash].name}
-          </span>
-        </div>
+  <div slot="body" class="flex flex-col">
+    <div class="items-end pb-1">
+      <GraphHeader {beginMsFilter} {endMsFilter} {blocks} {graphState} />
+    </div>
+    <div class="flex flex-col overflow-y-auto">
+      {#each Array.from($store) as [key, node] (key)}
+        <GraphNode
+          {node}
+          {graphState}
+          on:clicked={(e) => onEdgeClicked(e)}
+          bind:this={components[key]}
+        />
       {/each}
-
-      <h3>Callers</h3>
-
-      {#each selectedNode.callers as edge (edge.hash)}
-        <div
-          class="fundiv"
-          style={formatEdgeDivWidth(selectedNode, edge.weight)}
-          on:click={function () {
-            onEdgeClick(edge.hash);
-          }}
-        >
-          <span>
-            {scopes[edge.hash].name}
-          </span>
-        </div>
-      {/each}
-    {/if}
+    </div>
   </div>
 </Loader>
-
-<style lang="postcss">
-  div {
-    font-family: "Inter", sans-serif;
-  }
-
-  h2 {
-    @apply text-xl;
-  }
-
-  #funlist {
-    @apply flex flex-col gap-y-1;
-    overflow-y: auto;
-  }
-
-  .selecteddiv {
-    margin: 5px;
-    text-align: left;
-    white-space: nowrap;
-  }
-
-  .selectedproperty {
-    font-weight: bold;
-  }
-
-  .fundiv {
-    margin: 5px;
-    text-align: left;
-    background-color: #fea446;
-    overflow: visible;
-    white-space: nowrap;
-  }
-
-  .fundiv span {
-    margin: 0 10px;
-  }
-
-  .fundiv:hover {
-    color: white;
-    background-color: #ca2f0f;
-  }
-
-  .fundiv span:hover {
-    margin: 0 10px;
-    background-color: #ca2f0f;
-  }
-</style>

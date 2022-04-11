@@ -1,6 +1,7 @@
 use crate::{cache::DiskCache, call_tree::process_thread_block};
 use anyhow::Result;
 use lgn_analytics::prelude::*;
+use lgn_analytics::time::ConvertTicks;
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::BlockAsyncData;
 use lgn_telemetry_proto::analytics::CallTree;
@@ -31,7 +32,7 @@ impl CallTreeStore {
     #[span_fn]
     async fn write_to_cache(
         &self,
-        process: &lgn_telemetry_sink::ProcessInfo,
+        convert_ticks: ConvertTicks,
         stream: &lgn_telemetry_sink::StreamInfo,
         block_id: &str,
     ) -> Result<(CallTree, BlockAsyncData)> {
@@ -39,7 +40,7 @@ impl CallTreeStore {
         let processed = process_thread_block(
             &mut connection,
             self.blob_storage.clone(),
-            process,
+            convert_ticks,
             stream,
             block_id,
         )
@@ -71,7 +72,7 @@ impl CallTreeStore {
     #[span_fn]
     pub async fn get_call_tree(
         &self,
-        process: &lgn_telemetry_sink::ProcessInfo,
+        convert_ticks: ConvertTicks,
         stream: &lgn_telemetry_sink::StreamInfo,
         block_id: &str,
     ) -> Result<CallTree> {
@@ -79,7 +80,7 @@ impl CallTreeStore {
         if let Some(tree) = self.cache.get_cached_object(&cache_tree_name).await {
             return Ok(tree);
         }
-        let (tree, _async_data) = self.write_to_cache(process, stream, block_id).await?;
+        let (tree, _async_data) = self.write_to_cache(convert_ticks, stream, block_id).await?;
         Ok(tree)
     }
 
@@ -93,7 +94,9 @@ impl CallTreeStore {
         let mut connection = self.pool.acquire().await?;
         let process = find_block_process(&mut connection, block_id).await?;
         let stream = find_block_stream(&mut connection, block_id).await?;
-        let (_tree, async_data) = self.write_to_cache(&process, &stream, block_id).await?;
+        let (_tree, async_data) = self
+            .write_to_cache(ConvertTicks::new(&process), &stream, block_id)
+            .await?;
         Ok(async_data)
     }
 }

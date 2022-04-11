@@ -169,16 +169,12 @@ impl ThreadBlockProcessor for CallTreeBuilder {
 pub(crate) async fn process_thread_block(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
-    process: &lgn_telemetry_sink::ProcessInfo,
+    convert_ticks: ConvertTicks,
     stream: &lgn_telemetry_sink::StreamInfo,
     block_id: &str,
 ) -> Result<ProcessedThreadBlock> {
     let block = find_block(connection, block_id).await?;
-    let mut builder = CallTreeBuilder::new(
-        block.begin_ticks,
-        block.end_ticks,
-        ConvertTicks::new(process),
-    );
+    let mut builder = CallTreeBuilder::new(block.begin_ticks, block.end_ticks, convert_ticks);
     parse_thread_block(
         connection,
         blob_storage,

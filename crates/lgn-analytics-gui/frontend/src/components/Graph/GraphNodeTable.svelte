@@ -1,21 +1,18 @@
 <script lang="ts">
-  import type {
-    CallGraphEdge,
-    CumulativeCallGraphNode,
-  } from "@lgn/proto-telemetry/dist/analytics";
-
   import GraphNodeTableRow from "./GraphNodeTableRow.svelte";
   import { GraphNodeStatType } from "./Lib/GraphNodeStatType";
-  import type { GraphNodeTableKind } from "./Lib/GraphNodeTableKind";
+  import { GraphNodeTableKind } from "./Lib/GraphNodeTableKind";
+  import type { NodeStateStore } from "./Store/GraphStateStore";
 
-  export let name: string;
-  export let data: CallGraphEdge[];
-  export let parent: CumulativeCallGraphNode;
+  export let node: NodeStateStore;
   export let kind: GraphNodeTableKind;
+
+  $: name = kind === GraphNodeTableKind.Callees ? "Callees" : "Callers";
+  $: data = kind == GraphNodeTableKind.Callees ? $node.children : $node.parents;
 </script>
 
 <table class="text-content-87 font-thin self-start border-separate">
-  {#if data.length > 0}
+  {#if data.size > 0}
     <thead class="select-none">
       <tr>
         <td style:width="0" />
@@ -23,13 +20,14 @@
         <td class="stat">{GraphNodeStatType[GraphNodeStatType.Avg]}</td>
         <td class="stat">{GraphNodeStatType[GraphNodeStatType.Min]}</td>
         <td class="stat">{GraphNodeStatType[GraphNodeStatType.Max]}</td>
+        <td class="stat">{GraphNodeStatType[GraphNodeStatType.Sd]}</td>
         <td class="stat">{GraphNodeStatType[GraphNodeStatType.Count]}</td>
         <td class="stat">{GraphNodeStatType[GraphNodeStatType.Sum]}</td>
       </tr>
     </thead>
     <tbody>
-      {#each data as edge (edge.hash)}
-        <GraphNodeTableRow {kind} on:clicked {edge} {parent} />
+      {#each [...data].sort((a, b) => b[1].acc - a[1].acc) as [key, value] (key)}
+        <GraphNodeTableRow {kind} on:clicked {value} {node} />
       {/each}
     </tbody>
   {/if}
@@ -41,7 +39,6 @@
   }
 
   .stat {
-    @apply text-center;
-    @apply w-12;
+    @apply text-center w-20 text-xs;
   }
 </style>

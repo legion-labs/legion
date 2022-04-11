@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package analytics;
+
+import public "process.proto";
+import public "calltree.proto";
+
+// Old : server side serial implementation
+message ProcessCumulativeCallGraphRequest {
+  telemetry.Process process = 1;
+  double begin_ms = 2;
+  double end_ms = 3;
+}
+
+message CumulativeCallGraphReply {
+  map<uint32, ScopeDesc> scopes = 1;
+  repeated CumulativeCallGraphNode nodes = 2;
+}
+
+message CumulativeCallGraphNode {
+  uint32 hash = 1;
+  NodeStats stats = 2;
+  repeated CallGraphEdge callers = 3;
+  repeated CallGraphEdge callees = 4;
+}
+
+message CallGraphEdge {
+  uint32 hash = 1;
+  double weight = 2;
+}
+
+message NodeStats {
+  double sum = 1;
+  double min = 2;
+  double max = 3;
+  double avg = 4;
+  double median = 5;
+  uint64 count = 6;
+}
+
+// New : client side block streaming
+message CumulativeCallGraphManifestRequest {
+  string process_id = 1;
+  double begin_ms = 2;
+  double end_ms = 3;
+}
+
+message CumulativeCallGraphBlockRequest {
+  string block_id = 1;
+  double begin_ms = 2;
+  double end_ms = 3;
+  uint64 tsc_frequency = 4;
+  int64 start_ticks = 5;
+}
+
+message CumulativeCallGraphManifest {
+  repeated string blocks = 1;
+  uint64 tsc_frequency = 2;
+  int64 start_ticks = 3;
+}
+
+message CumulativeCallGraphBlock {
+  CallTree call_tree = 1;
+  uint32 stream_hash = 2;
+  string stream_name = 3;
+}

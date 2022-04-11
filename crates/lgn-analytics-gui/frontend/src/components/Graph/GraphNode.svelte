@@ -1,23 +1,25 @@
 <script lang="ts">
   import { tick } from "svelte";
 
-  import type { CumulativeCallGraphNode } from "@lgn/proto-telemetry/dist/analytics";
-
   import { formatExecutionTime } from "@/lib/format";
 
   import GraphNodeStat from "./GraphNodeStat.svelte";
   import GraphNodeTable from "./GraphNodeTable.svelte";
   import { GraphNodeTableKind } from "./Lib/GraphNodeTableKind";
-  import { graphStateStore, scopeStore } from "./Store/GraphStore";
+  import type { GraphState } from "./Store/GraphState";
+  import type { NodeStateStore } from "./Store/GraphStateStore";
+  import { scopeStore } from "./Store/GraphStateStore";
 
-  export let node: CumulativeCallGraphNode;
-  export let collapsed = false;
+  export let node: NodeStateStore;
+  export let collapsed = true;
+  export let graphState: GraphState;
 
   let div: HTMLElement;
 
-  $: desc = $scopeStore[node.hash];
+  $: max = graphState.Max;
+  $: desc = $scopeStore[$node?.hash];
   // @ts-ignore
-  $: fill = (node.stats?.sum ?? 0) / $graphStateStore.MaxSum;
+  $: fill = (100 * $node.acc) / $max;
 
   export async function setCollapse(value: boolean) {
     collapsed = value;
@@ -35,7 +37,7 @@
   >
     {#if desc}
       <div
-        class="text-left pl-2 py-1 whitespace-nowrap bg-skin-700"
+        class="text-left pl-2 py-1 whitespace-nowrap bg-skin-800"
         style:width="{fill}%"
       >
         <i
@@ -44,50 +46,34 @@
           } text-xs text-content-100`}
         />
         {desc.name}
-        ({formatExecutionTime(node.stats?.sum ?? 0)})
+        <span class="text-xs text-content-38">
+          ({formatExecutionTime($node.acc)})
+        </span>
       </div>
       <div
         class="text-xs text-content-38 absolute pt-1.5 pr-2 right-0"
         class:hidden={!collapsed}
       >
-        {(node.stats?.count ?? 0).toLocaleString()} call{(node.stats?.count ??
-          0) >= 2
-          ? "s"
-          : ""}
+        {$node.count.toLocaleString()} call{$node.count >= 2 ? "s" : ""}
       </div>
     {/if}
   </div>
-  {#if !collapsed && node.stats}
+  {#if !collapsed && $node}
     <div class="bg-skin-700 flex flex-col p-3">
-      <GraphNodeStat data={node.stats} />
+      <GraphNodeStat {node} />
       <div class="hidden md:block pb-4">
         <div class="w-full border-t border-charcoal-600" />
       </div>
       <div class="hidden md:grid tables gap-2">
-        <GraphNodeTable
-          on:clicked
-          name="Callers"
-          data={node.callers}
-          parent={node}
-          kind={GraphNodeTableKind.Callers}
-        />
-        <GraphNodeTable
-          on:clicked
-          name="Callees"
-          data={node.callees}
-          parent={node}
-          kind={GraphNodeTableKind.Callees}
-        />
+        <GraphNodeTable on:clicked {node} kind={GraphNodeTableKind.Callers} />
+        <GraphNodeTable on:clicked {node} kind={GraphNodeTableKind.Callees} />
       </div>
     </div>
   {/if}
 </div>
 
 <style lang="postcss">
-  .small {
-  }
-
   .tables {
-    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(1000px, 1fr));
   }
 </style>

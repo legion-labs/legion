@@ -1,30 +1,30 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
 
-  import type {
-    CallGraphEdge,
-    CumulativeCallGraphNode,
-  } from "@lgn/proto-telemetry/dist/analytics";
-
   import { formatExecutionTime } from "@/lib/format";
 
   import { GraphNodeTableKind } from "./Lib/GraphNodeTableKind";
-  import { scopeStore } from "./Store/GraphStore";
+  import type { GraphStateNode } from "./Store/GraphStateNode";
+  import type { NodeStateStore } from "./Store/GraphStateStore";
+  import { scopeStore } from "./Store/GraphStateStore";
 
-  export let edge: CallGraphEdge;
-  export let parent: CumulativeCallGraphNode;
+  export let value: GraphStateNode;
+  export let node: NodeStateStore;
   export let kind: GraphNodeTableKind;
 
   const clickDispatcher = createEventDispatcher<{
     clicked: { hash: number };
   }>();
 
-  $: name = $scopeStore[edge.hash].name;
+  $: name = $scopeStore[value.hash]?.name;
   // @ts-ignore
-  $: fill = (edge.weight * 100) / parent.stats!.sum;
+  $: fill =
+    kind === GraphNodeTableKind.Callees
+      ? (100 * value.acc) / $node.acc
+      : (100 * value.childWeight) / $node.acc;
 
   function onClick(_: MouseEvent) {
-    clickDispatcher("clicked", { hash: edge.hash });
+    clickDispatcher("clicked", { hash: value.hash });
   }
 </script>
 
@@ -35,17 +35,19 @@
   on:click={onClick}
 >
   <div
+    style:width="{fill >= 100 ? 0 : fill}%"
     class="absolute bg-slate-900 bg-opacity-20 h-full"
-    style:width="{fill}%"
   />
   <td class="truncate">
-    {name} ({formatExecutionTime(edge.weight)})
+    {name}
+    ({formatExecutionTime(value.acc)})
   </td>
-  <td class="stat">?</td>
-  <td class="stat">?</td>
-  <td class="stat">?</td>
-  <td class="stat">?</td>
-  <td class="stat">?</td>
+  <td class="stat">{formatExecutionTime(value.avg)}</td>
+  <td class="stat">{formatExecutionTime(value.min)}</td>
+  <td class="stat">{formatExecutionTime(value.max)}</td>
+  <td class="stat">{formatExecutionTime(value.sd)}</td>
+  <td class="stat">{value.count.toLocaleString()}</td>
+  <td class="stat">{formatExecutionTime(value.acc)}</td>
 </tr>
 
 <style lang="postcss">
@@ -58,6 +60,6 @@
   }
 
   .stat {
-    @apply text-center;
+    @apply text-center text-xs truncate;
   }
 </style>

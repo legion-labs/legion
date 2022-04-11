@@ -4,4 +4,5 @@ export enum GraphNodeStatType {
   Max,
   Count,
   Sum,
+  Sd,
 }
