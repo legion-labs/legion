@@ -6,7 +6,7 @@ use chrono::{DateTime, FixedOffset};
 use lgn_analytics::prelude::*;
 use lgn_analytics::time::ConvertTicks;
 use lgn_telemetry_proto::analytics::{
-    CallGraphEdge, CallTree, CallTreeNode, CumulativeCallGraphBlock, CumulativeCallGraphManifest,
+    CallGraphEdge, CallTreeNode, CumulativeCallGraphBlock, CumulativeCallGraphManifest,
     CumulativeCallGraphNode, CumulativeCallGraphReply, NodeStats,
 };
 use lgn_telemetry_proto::telemetry::Process;
