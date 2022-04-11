@@ -150,10 +150,7 @@ where
                 .ok_or_else(|| Error::Internal("invalid exp".to_string()))?;
 
             if exp + self.leeway < now {
-                return Err(Error::Internal(format!(
-                    "the token has already expired: {:#?} < {:#?}",
-                    exp, now
-                )));
+                return Err(Error::TokenExpired { exp, now });
             }
         }
 

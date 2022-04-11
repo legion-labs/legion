@@ -141,29 +141,43 @@ where
                 let access_token = &token_set.access_token[..];
                 match access_token.try_into() {
                     Ok(access_token) => {
-                        if let Err(err) = self.validation.validate_claims(&access_token) {
-                            warn!(
-                                "Cached access token is invalid ({}): refreshing login...",
-                                err
-                            );
+                        match self.validation.validate_claims(&access_token) {
+                            Ok(_) => {
+                                if !token_set.is_compliant_with_scopes(scopes) {
+                                    warn!(
+                                        "Cached access token scopes don't match required scopes, refreshing login...",
+                                    );
 
-                            if token_set.refresh_token.is_some() {
-                                return self.refresh_login_with(token_set, &authenticator).await;
+                                    authenticator.login(scopes, extra_params).await?
+                                } else {
+                                    debug!("Reusing cached access token.");
+
+                                    // Bail out immediately because we don't need to refresh the token and
+                                    // write it to the cache in this case.
+                                    return Ok(token_set);
+                                }
                             }
+                            Err(err) => {
+                                if let Error::TokenExpired { .. } = err {
+                                    debug!(
+                                        "Cached access token has expired ({}): refreshing login...",
+                                        err
+                                    );
+                                } else {
+                                    warn!(
+                                        "Cached access token is invalid ({}): refreshing login...",
+                                        err
+                                    );
+                                }
 
-                            authenticator.login(scopes, extra_params).await?
-                        } else if !token_set.is_compliant_with_scopes(scopes) {
-                            warn!(
-                                "Cached access token scopes don't match required scopes, refreshing login...",
-                            );
+                                if token_set.refresh_token.is_some() {
+                                    return self
+                                        .refresh_login_with(token_set, &authenticator)
+                                        .await;
+                                }
 
-                            authenticator.login(scopes, extra_params).await?
-                        } else {
-                            debug!("Reusing cached access token.");
-
-                            // Bail out immediately because we don't need to refresh the token and
-                            // write it to the cache in this case.
-                            return Ok(token_set);
+                                authenticator.login(scopes, extra_params).await?
+                            }
                         }
                     }
                     Err(e) => {
