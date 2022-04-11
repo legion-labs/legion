@@ -5,7 +5,7 @@ package analytics;
 import public "process.proto";
 import public "calltree.proto";
 
-// Old
+// Old : server side serial implementation
 message ProcessCumulativeCallGraphRequest {
   telemetry.Process process = 1;
   double begin_ms = 2;
@@ -38,7 +38,7 @@ message NodeStats {
   uint64 count = 6;
 }
 
-// New
+// New : client side block streaming
 message CumulativeCallGraphManifestRequest {
   string process_id = 1;
   double begin_ms = 2;
@@ -56,7 +56,6 @@ message CumulativeCallGraphBlockRequest {
 message CumulativeCallGraphManifest {
   repeated string blocks = 1;
   uint64 tsc_frequency = 2;
-  // Needs to be per process!
   int64 start_ticks = 3;
 }
 
@@ -64,7 +63,4 @@ message CumulativeCallGraphBlock {
   CallTree call_tree = 1;
   uint32 stream_hash = 2;
   string stream_name = 3;
-  // Could be computed using the call_tree data !
-  // double begin_ms = 4;
-  // double end_ms = 5;
 }
