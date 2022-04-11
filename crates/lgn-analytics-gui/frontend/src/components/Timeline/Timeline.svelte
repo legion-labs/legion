@@ -296,9 +296,9 @@
     on:tick={(e) => onMinimapTick(e.detail)}
   />
   <TimelineAxis {stateStore} />
-  <div class="range">
+  <span class="range">
     <TimelineRange {stateStore} />
-  </div>
+  </span>
 </div>
 
 <style lang="postcss">

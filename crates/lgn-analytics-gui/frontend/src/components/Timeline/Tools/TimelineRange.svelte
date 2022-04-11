@@ -25,8 +25,11 @@
 {#if $stateStore?.currentSelection}
   <div class="flex flex-row">
     <div class="block" />
-    <div class="parent" style={`width:${$stateStore?.canvasWidth}px`}>
-      <div class="range" style={`left:${percent}%`}>
+    <div class="overflow-hidden" style={`width:${$stateStore?.canvasWidth}px`}>
+      <div
+        class="flex text-xs text-content-38 relative "
+        style={`left:${percent}%`}
+      >
         <div class="child">
           <i class="bi bi-arrow-left-short" />
           {formatExecutionTime(
@@ -41,14 +44,9 @@
 
 <style lang="postcss">
   .block {
-    @apply bg-slate-50;
+    background-color: transparent;
     z-index: 1;
     min-width: calc(var(--thread-item-length) + 6px);
-  }
-
-  .range {
-    @apply text-xs text-slate-400;
-    position: relative;
   }
 
   .child {
