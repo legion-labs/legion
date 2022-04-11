@@ -2,9 +2,16 @@
   import { BarLoader } from "svelte-loading-spinners";
 
   export let loading: boolean;
+  export let error = "";
 </script>
 
-{#if loading}
+{#if error}
+  <div>
+    <span class="text-sm text-content-38">
+      {error}
+    </span>
+  </div>
+{:else if loading}
   <div>
     <BarLoader />
   </div>
