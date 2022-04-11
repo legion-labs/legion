@@ -58,14 +58,13 @@ impl CumulativeCallGraphHandler {
     ) -> Result<CumulativeCallGraphManifest> {
         let mut connection = self.pool.acquire().await?;
 
+        // For now child processes are not queried and as a result don't participate in cumulative call graph computations.
         let process = find_process(&mut connection, &process_id).await?;
         let time_range = Self::get_process_time_range(&process, begin_ms, end_ms)?;
         let begin = time_range.0.to_rfc3339();
         let end = time_range.1.to_rfc3339();
 
         let mut block_ids = vec![];
-
-        // Fetch process children recursively !
 
         let streams = find_process_thread_streams(&mut connection, &process_id).await?;
         for s in streams {
