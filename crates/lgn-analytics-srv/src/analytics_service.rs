@@ -1,6 +1,7 @@
 use anyhow::{bail, Result};
 use async_recursion::async_recursion;
 use lgn_analytics::prelude::*;
+use lgn_analytics::time::ConvertTicks;
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
 use lgn_telemetry_proto::analytics::AsyncSpansReply;
@@ -8,7 +9,7 @@ use lgn_telemetry_proto::analytics::AsyncSpansRequest;
 use lgn_telemetry_proto::analytics::BlockAsyncEventsStatReply;
 use lgn_telemetry_proto::analytics::BlockAsyncStatsRequest;
 use lgn_telemetry_proto::analytics::BlockSpansReply;
-use lgn_telemetry_proto::analytics::CumulativeCallGraphReply;
+use lgn_telemetry_proto::analytics::CumulativeCallGraphBlock;
 use lgn_telemetry_proto::analytics::FindProcessReply;
 use lgn_telemetry_proto::analytics::FindProcessRequest;
 use lgn_telemetry_proto::analytics::ListProcessChildrenRequest;
@@ -33,6 +34,10 @@ use lgn_telemetry_proto::analytics::SearchProcessRequest;
 use lgn_telemetry_proto::analytics::{
     BlockSpansRequest, ListProcessBlocksRequest, ProcessBlocksReply,
 };
+use lgn_telemetry_proto::analytics::{
+    CumulativeCallGraphBlockRequest, CumulativeCallGraphManifest,
+    CumulativeCallGraphManifestRequest, CumulativeCallGraphReply,
+};
 use lgn_tracing::dispatch::init_thread_stream;
 use lgn_tracing::flush_monitor::FlushMonitor;
 use lgn_tracing::prelude::*;
@@ -47,6 +52,7 @@ use crate::call_tree::compute_block_spans;
 use crate::call_tree::reduce_lod;
 use crate::call_tree_store::CallTreeStore;
 use crate::cumulative_call_graph::compute_cumulative_call_graph;
+use crate::cumulative_call_graph::CumulativeCallGraphHandler;
 use crate::metrics::MetricHandler;
 
 static REQUEST_COUNT: AtomicU64 = AtomicU64::new(0);
@@ -78,7 +84,7 @@ pub struct AnalyticsService {
     pool: sqlx::any::AnyPool,
     data_lake_blobs: Arc<dyn BlobStorage>,
     cache: Arc<DiskCache>,
-    call_trees: CallTreeStore,
+    call_trees: Arc<CallTreeStore>,
     flush_monitor: FlushMonitor,
 }
 
@@ -93,7 +99,7 @@ impl AnalyticsService {
             pool: pool.clone(),
             data_lake_blobs: data_lake_blobs.clone(),
             cache: Arc::new(DiskCache::new(cache_blobs.clone())),
-            call_trees: CallTreeStore::new(pool, data_lake_blobs, cache_blobs),
+            call_trees: Arc::new(CallTreeStore::new(pool, data_lake_blobs, cache_blobs)),
             flush_monitor: FlushMonitor::new(),
         }
     }
@@ -159,7 +165,7 @@ impl AnalyticsService {
         if lod_id == 0 {
             let tree = self
                 .call_trees
-                .get_call_tree(process, stream, block_id)
+                .get_call_tree(ConvertTicks::new(process), stream, block_id)
                 .await?;
             return compute_block_spans(tree, block_id);
         }
@@ -528,6 +534,64 @@ impl PerformanceAnalytics for AnalyticsService {
                 error!("Error in process_cumulative_call_graph: {:?}", e);
                 Err(Status::internal(format!(
                     "Error in process_cumulative_call_graph: {}",
+                    e
+                )))
+            }
+        }
+    }
+
+    async fn fetch_cumulative_call_graph_manifest(
+        &self,
+        request: Request<CumulativeCallGraphManifestRequest>,
+    ) -> Result<Response<CumulativeCallGraphManifest>, Status> {
+        self.flush_monitor.tick();
+        async_span_scope!("AnalyticsService::fetch_cumulative_call_graph_manifest");
+        let _guard = RequestGuard::new();
+        let inner_request = request.into_inner();
+        let handler =
+            CumulativeCallGraphHandler::new(self.pool.clone(), Arc::clone(&self.call_trees));
+        match handler
+            .get_process_call_graph_manifest(
+                inner_request.process_id,
+                inner_request.begin_ms,
+                inner_request.end_ms,
+            )
+            .await
+        {
+            Ok(reply) => Ok(Response::new(reply)),
+            Err(e) => {
+                error!("Error in fetch_cumulative_call_graph_manifest: {:?}", e);
+                Err(Status::internal(format!(
+                    "Error in fetch_cumulative_call_graph_manifest: {}",
+                    e
+                )))
+            }
+        }
+    }
+
+    async fn fetch_cumulative_call_graph_block(
+        &self,
+        request: tonic::Request<CumulativeCallGraphBlockRequest>,
+    ) -> Result<tonic::Response<CumulativeCallGraphBlock>, Status> {
+        self.flush_monitor.tick();
+        async_span_scope!("AnalyticsService::fetch_cumulative_call_graph_block");
+        let _guard = RequestGuard::new();
+        let inner_request = request.into_inner();
+        let handler =
+            CumulativeCallGraphHandler::new(self.pool.clone(), Arc::clone(&self.call_trees));
+        match handler
+            .get_call_graph_block(
+                inner_request.block_id,
+                inner_request.start_ticks,
+                inner_request.tsc_frequency,
+            )
+            .await
+        {
+            Ok(reply) => Ok(Response::new(reply)),
+            Err(e) => {
+                error!("Error in fetch_cumulative_call_graph_block: {:?}", e);
+                Err(Status::internal(format!(
+                    "Error in fetch_cumulative_call_graph_block: {}",
                     e
                 )))
             }

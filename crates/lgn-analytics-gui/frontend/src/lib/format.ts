@@ -22,7 +22,7 @@ export function formatExecutionTime(timeMs: number, fractionDigits = 3) {
     time = time / 1000;
   }
   if (time > 1000) {
-    unit = "seconds";
+    unit = "s";
     time = time / 1000;
     if (time > 60) {
       time = Math.round(time);

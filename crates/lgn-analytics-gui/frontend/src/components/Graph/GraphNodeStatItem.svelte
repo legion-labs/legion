@@ -32,6 +32,10 @@
       icon: "bi bi-caret-right",
       format: (v) => v.toLocaleString(),
     },
+    [GraphNodeStatType.Sd]: {
+      icon: "bi bi-lightbulb",
+      format: (v) => formatExecutionTime(v),
+    },
   };
 </script>
 

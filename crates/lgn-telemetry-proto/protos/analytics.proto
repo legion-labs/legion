@@ -3,6 +3,7 @@ import public "process.proto";
 import public "stream.proto";
 import public "block.proto";
 import public "calltree.proto";
+import public "callgraph.proto";
 import public "metric.proto";
 import public "span.proto";
 
@@ -12,6 +13,10 @@ service PerformanceAnalytics {
   rpc block_spans(BlockSpansRequest) returns (BlockSpansReply);
   rpc process_cumulative_call_graph(ProcessCumulativeCallGraphRequest)
       returns (CumulativeCallGraphReply);
+  rpc fetch_cumulative_call_graph_manifest(CumulativeCallGraphManifestRequest)
+      returns (CumulativeCallGraphManifest);
+  rpc fetch_cumulative_call_graph_block(CumulativeCallGraphBlockRequest)
+      returns (CumulativeCallGraphBlock);
   rpc find_process(FindProcessRequest) returns (FindProcessReply);
   rpc list_process_children(ListProcessChildrenRequest) returns (ProcessChildrenReply);
   rpc list_process_blocks(ListProcessBlocksRequest) returns (ProcessBlocksReply);
@@ -95,39 +100,6 @@ message BlockSpansReply {
   string block_id = 3;
   double begin_ms = 4;
   double end_ms = 5;
-}
-
-// process_cumulative_call_graph
-message ProcessCumulativeCallGraphRequest {
-  telemetry.Process process = 1;
-  double begin_ms = 2;
-  double end_ms = 3;
-}
-
-message NodeStats {
-  double sum = 1;
-  double min = 2;
-  double max = 3;
-  double avg = 4;
-  double median = 5;
-  uint64 count = 6;
-}
-
-message CallGraphEdge {
-  uint32 hash = 1;
-  double weight = 2;
-}
-
-message CumulativeCallGraphNode {
-  uint32 hash = 1;
-  NodeStats stats = 2;
-  repeated CallGraphEdge callers = 3;
-  repeated CallGraphEdge callees = 4;
-}
-
-message CumulativeCallGraphReply {
-  map<uint32, ScopeDesc> scopes = 1;
-  repeated CumulativeCallGraphNode nodes = 2;
 }
 
 // list_process_log_entries
