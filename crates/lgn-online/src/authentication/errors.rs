@@ -13,6 +13,8 @@ pub enum Error {
     Internal(String),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("token expired error: {0}")]
+    TokenExpired(String),
     #[error("configuration error: {0}")]
     Config(#[from] lgn_config::Error),
     #[error(transparent)]
