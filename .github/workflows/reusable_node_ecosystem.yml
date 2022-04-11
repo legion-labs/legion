@@ -92,7 +92,7 @@ jobs:
           - app: editor
             deploy_key: editor-deploy-key
     steps:
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: ${{ matrix.app }}
           path: ./${{ matrix.app }}

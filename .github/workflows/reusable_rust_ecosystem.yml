@@ -153,7 +153,7 @@ jobs:
     if: ${{ inputs.deploy }}
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: doc
           path: ./doc
@@ -216,7 +216,7 @@ jobs:
     needs: [timings]
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: timings
           path: ./timings
@@ -264,7 +264,7 @@ jobs:
     needs: [coverage]
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: coverage
           path: ./coverage
