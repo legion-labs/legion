@@ -46,7 +46,7 @@ pub(crate) fn ui_lights(
     mut lights: Query<'_, '_, &mut LightComponent>,
     mut lighting_manager: ResMut<'_, LightingManager>,
 ) {
-    egui::Window::new("Lights").show(&egui.ctx, |ui| {
+    egui.window("Lights", |ui| {
         ui.checkbox(&mut lighting_manager.diffuse, "Diffuse");
         ui.checkbox(&mut lighting_manager.specular, "Specular");
         ui.add(

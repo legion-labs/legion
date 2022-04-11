@@ -1,3 +1,5 @@
+use std::sync::Mutex;
+
 use egui::{Event, Key, RawInput};
 use lgn_app::prelude::*;
 use lgn_ecs::prelude::*;
@@ -6,59 +8,61 @@ use lgn_input::{
     mouse::{MouseButton, MouseButtonInput, MouseWheel},
 };
 use lgn_tracing::span_fn;
+use lgn_utils::HashMap;
 use lgn_window::{
     CursorMoved, ReceivedCharacter, WindowCreated, WindowResized, WindowScaleFactorChanged, Windows,
 };
 
+use crate::labels::RenderStage;
+
 #[derive(Default)]
 pub struct Egui {
-    pub ctx: egui::CtxRef,
-    pub enable: bool,
-    pub output: egui::Output,
-    pub shapes: Vec<epaint::ClippedShape>,
+    enabled: bool,
+    ctx: egui::CtxRef,
+    output: egui::Output,
+    shapes: Vec<epaint::ClippedShape>,
+    windows: Mutex<HashMap<String, bool>>,
 }
 
-#[derive(SystemLabel, Debug, Clone, PartialEq, Eq, Hash)]
-enum EguiLabels {
-    GatherInput,
-    BeginFrame,
+impl Egui {
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
+    pub fn ctx(&self) -> &egui::CtxRef {
+        &self.ctx
+    }
+
+    pub fn tessellate(&self) -> Vec<egui::ClippedMesh> {
+        self.ctx.tessellate(self.shapes.clone())
+    }
+
+    pub fn window<F: FnOnce(&mut egui::Ui)>(&self, label: &str, f: F) {
+        let mut windows = self.windows.lock().unwrap();
+        let label = String::from(label);
+        if !windows.contains_key(&label) {
+            windows.insert(label.clone(), false);
+        }
+        if *windows.get(&label).unwrap() {
+            egui::Window::new(label).show(&self.ctx, |ui| {
+                f(ui);
+            });
+        }
+    }
 }
 
 #[derive(Default)]
 pub struct EguiPlugin;
 
-impl EguiPlugin {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
 impl Plugin for EguiPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(on_window_created);
 
-        // let egui = Egui { ..Egui::default() };
-        // egui.ctx.style().visuals.window_shadow.extrusion = 0.0;
         app.init_resource::<Egui>();
         app.init_resource::<RawInput>();
-        app.add_system_to_stage(
-            CoreStage::PreUpdate,
-            gather_input.label(EguiLabels::GatherInput),
-        );
-
-        app.add_system_to_stage(
-            CoreStage::PreUpdate,
-            gather_input_window
-                .after(EguiLabels::GatherInput)
-                .before(EguiLabels::BeginFrame),
-        );
-
-        app.add_system_to_stage(
-            CoreStage::PreUpdate,
-            begin_frame
-                .label(EguiLabels::BeginFrame)
-                .after(EguiLabels::GatherInput),
-        );
+        app.add_system_to_stage(CoreStage::PreUpdate, gather_input);
+        app.add_system_to_stage(CoreStage::PreUpdate, begin_frame.after(gather_input));
+        app.add_system_to_stage(RenderStage::Prepare, ui_egui);
         app.add_system(update_egui);
     }
 }
@@ -98,18 +102,22 @@ fn update_egui(
     for keyboard_input_event in keyboard_input_events.iter() {
         if let Some(key_code) = keyboard_input_event.key_code {
             if key_code == KeyCode::M && keyboard_input_event.state.is_pressed() {
-                egui.enable = !egui.enable;
+                egui.enabled = !egui.enabled;
             }
         }
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn gather_input(
     raw_input: ResMut<'_, RawInput>,
     mut cursor_button: EventReader<'_, '_, MouseButtonInput>,
     mut mouse_wheel_events: EventReader<'_, '_, MouseWheel>,
     mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
     mut received_characters: EventReader<'_, '_, ReceivedCharacter>,
+    mut cursor_moved: EventReader<'_, '_, CursorMoved>,
+    mut scale_factor_changed: EventReader<'_, '_, WindowScaleFactorChanged>,
+    mut window_resized_events: EventReader<'_, '_, WindowResized>,
 ) {
     // TODO: zoom_delta
     // TODO: time
@@ -165,28 +173,23 @@ fn gather_input(
         events.push(Event::Text(text));
     }
 
+    for cursor_moved_event in cursor_moved.iter() {
+        events.push(Event::PointerMoved(egui::pos2(
+            cursor_moved_event.position.x,
+            cursor_moved_event.position.y,
+        )));
+    }
+
     let raw_input = raw_input.into_inner();
     raw_input.clone_from(&RawInput {
         events,
         ..RawInput::default()
     });
-}
 
-fn gather_input_window(
-    mut raw_input: ResMut<'_, RawInput>,
-    mut cursor_moved: EventReader<'_, '_, CursorMoved>,
-    mut scale_factor_changed: EventReader<'_, '_, WindowScaleFactorChanged>,
-    mut window_resized_events: EventReader<'_, '_, WindowResized>,
-) {
-    for cursor_moved_event in cursor_moved.iter() {
-        raw_input.events.push(Event::PointerMoved(egui::pos2(
-            cursor_moved_event.position.x,
-            cursor_moved_event.position.y,
-        )));
-    }
     for scale_factor_event in scale_factor_changed.iter() {
         raw_input.pixels_per_point = Some(scale_factor_event.scale_factor as f32);
     }
+
     for window_resized_event in window_resized_events.iter() {
         raw_input.screen_rect = Some(egui::Rect::from_min_size(
             egui::pos2(0.0, 0.0),
@@ -197,7 +200,7 @@ fn gather_input_window(
 
 #[allow(clippy::needless_pass_by_value)]
 fn begin_frame(mut egui: ResMut<'_, Egui>, raw_input: Res<'_, RawInput>) {
-    if !egui.enable {
+    if !egui.enabled {
         egui.ctx.begin_frame(RawInput::default());
         return;
     }
@@ -217,6 +220,23 @@ fn pointer_button_from_mouse_button(mouse_button: MouseButton) -> egui::PointerB
         MouseButton::Middle => egui::PointerButton::Middle,
         _ => egui::PointerButton::Secondary,
     }
+}
+
+#[allow(clippy::needless_pass_by_value)]
+fn ui_egui(egui: Res<'_, Egui>) {
+    egui.window("Egui", |ui| {
+        egui.ctx.settings_ui(ui);
+    });
+
+    egui::TopBottomPanel::top("egui_top_panel").show(&egui.ctx, |ui| {
+        ui.horizontal(|ui| {
+            for (label, show) in egui.windows.lock().unwrap().iter_mut() {
+                if ui.button(label).clicked() {
+                    *show = !*show;
+                }
+            }
+        });
+    });
 }
 
 fn key_from_key_code(key: KeyCode) -> Option<Key> {

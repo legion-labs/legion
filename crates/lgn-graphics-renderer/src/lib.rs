@@ -206,7 +206,7 @@ impl Plugin for RendererPlugin {
         }
 
         // Plugins are optional
-        app.add_plugin(EguiPlugin::new());
+        app.add_plugin(EguiPlugin::default());
         app.add_plugin(PickingPlugin {});
 
         // This resource needs to be shutdown after all other resources
@@ -596,10 +596,10 @@ fn render_update(
             &debug_display,
         );
 
-        if egui.enable {
+        if egui.is_enabled() {
             let egui_pass = render_surface.egui_renderpass();
             let mut egui_pass = egui_pass.write();
-            egui_pass.update_font_texture(&render_context, &cmd_buffer, &egui.ctx);
+            egui_pass.update_font_texture(&render_context, &cmd_buffer, egui.ctx());
             egui_pass.render(
                 &render_context,
                 &mut cmd_buffer,
