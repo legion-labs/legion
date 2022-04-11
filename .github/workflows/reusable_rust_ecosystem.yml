@@ -83,7 +83,7 @@ jobs:
 
       - name: Upload GPU-test diffs
         if: ${{ failure() }}
-        uses: actions/upload-artifact@v2.3.1
+        uses: actions/upload-artifact@v3
         with:
           name: GPU test diffs
           path: ./tests/graphics-sandbox/diffs
@@ -115,7 +115,7 @@ jobs:
 
       - name: Upload Zip artifacts to github
         if: ${{ inputs.deploy && matrix.target == 'x86_64-pc-windows-msvc' }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: zip-release
           path: |
@@ -141,7 +141,7 @@ jobs:
         run: monorepo doc
 
       - name: Upload docs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: doc
           path: ./target/doc
@@ -205,7 +205,7 @@ jobs:
         run: make timings
 
       - name: Upload report
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: timings
           path: ./timings
@@ -253,7 +253,7 @@ jobs:
         run: make grcov
 
       - name: Upload report
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: coverage
           path: ./target/debug/coverage

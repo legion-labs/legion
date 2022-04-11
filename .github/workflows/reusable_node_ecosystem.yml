@@ -65,14 +65,14 @@ jobs:
         run: pnpm build
 
       - name: Upload analytics artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: analytics
           path: ./crates/lgn-analytics-gui/frontend/dist
           retention-days: 5
 
       - name: Upload editor artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: editor
           path: ./crates/lgn-editor-gui/frontend/dist
