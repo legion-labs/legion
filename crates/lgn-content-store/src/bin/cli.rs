@@ -28,6 +28,9 @@ struct Args {
     #[clap(subcommand)]
     command: Commands,
 
+    #[clap(short = 'd', long = "debug")]
+    debug: bool,
+
     #[clap(long="section", short='s', default_value=Config::SECTION_PERSISTENT)]
     section: String,
 }
@@ -165,37 +168,34 @@ impl TransferCallbacks<Identifier> for TransferProgress {
     }
 }
 
-impl TransferCallbacks<PathBuf> for TransferProgress {
-    fn on_transfer_avoided(&self, _id: &PathBuf, _total: usize) {}
+impl TransferCallbacks<String> for TransferProgress {
+    fn on_transfer_avoided(&self, _id: &String, _total: usize) {}
 
-    fn on_transfer_started(&self, id: &PathBuf, total: usize) {
+    fn on_transfer_started(&self, id: &String, total: usize) {
         let bar = self
             .progress
             .add(ProgressBar::new(total.try_into().unwrap()));
         bar.set_style(self.progress_style.clone());
-        bar.set_prefix(id.display().to_string());
+        bar.set_prefix(id.clone());
 
-        self.bars
-            .write()
-            .unwrap()
-            .insert(id.display().to_string(), bar);
+        self.bars.write().unwrap().insert(id.clone(), bar);
     }
 
-    fn on_transfer_progress(&self, id: &PathBuf, _total: usize, inc: usize, _current: usize) {
-        if let Some(bar) = self.bars.read().unwrap().get(&id.display().to_string()) {
+    fn on_transfer_progress(&self, id: &String, _total: usize, inc: usize, _current: usize) {
+        if let Some(bar) = self.bars.read().unwrap().get(id) {
             bar.inc(inc.try_into().unwrap());
         }
     }
 
     fn on_transfer_stopped(
         &self,
-        id: &PathBuf,
+        id: &String,
         _total: usize,
         inc: usize,
         _current: usize,
         result: lgn_content_store::Result<()>,
     ) {
-        if let Some(bar) = self.bars.read().unwrap().get(&id.display().to_string()) {
+        if let Some(bar) = self.bars.read().unwrap().get(id) {
             bar.inc(inc.try_into().unwrap());
 
             match result {
@@ -211,7 +211,8 @@ async fn main() -> anyhow::Result<()> {
     let args: Args = Args::parse();
 
     let _telemetry_guard = TelemetryGuardBuilder::default()
-        .with_local_sink_max_level(LevelFilter::Info)
+        .with_local_sink_enabled(args.debug)
+        .with_local_sink_max_level(LevelFilter::Debug)
         .build();
 
     async_span_scope!("lgn-content-store-srv::main");
@@ -245,7 +246,7 @@ async fn main() -> anyhow::Result<()> {
 
             let mut output = MonitorAsyncAdapter::new(
                 output,
-                file_path,
+                file_path.display().to_string(),
                 identifier.data_size(),
                 Arc::new(Box::new(file_transfer_progress)),
             );
@@ -301,7 +302,7 @@ async fn main() -> anyhow::Result<()> {
 
                     let mut f = MonitorAsyncAdapter::new(
                         f,
-                        file_path,
+                        file_path.display().to_string(),
                         metadata.len().try_into().unwrap(),
                         Arc::new(Box::new(file_transfer_progress)),
                     );

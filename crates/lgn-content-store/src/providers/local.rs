@@ -1,5 +1,6 @@
 use anyhow::Context;
 use async_trait::async_trait;
+use lgn_tracing::async_span_scope;
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Display,
@@ -26,6 +27,8 @@ impl LocalProvider {
     /// If the directory does not exist, or it cannot be created, an error is
     /// returned.
     pub async fn new(root: impl Into<PathBuf>) -> Result<Self> {
+        async_span_scope!("LocalProvider::new");
+
         let root = root.into();
 
         tokio::fs::create_dir_all(&root)
@@ -51,6 +54,8 @@ impl Display for LocalProvider {
 #[async_trait]
 impl ContentReader for LocalProvider {
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
+        async_span_scope!("LocalProvider::get_content_reader");
+
         let path = self.0.join(id.to_string());
 
         match tokio::fs::File::open(&path).await {
@@ -91,10 +96,14 @@ impl ContentReader for LocalProvider {
         &self,
         ids: &'ids BTreeSet<Identifier>,
     ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
+        async_span_scope!("LocalProvider::get_content_readers");
+
         get_content_readers_impl(self, ids).await
     }
 
     async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
+        async_span_scope!("LocalProvider::resolve_alias");
+
         let alias_path = self
             .0
             .clone()
@@ -123,6 +132,8 @@ impl ContentReader for LocalProvider {
 #[async_trait]
 impl ContentWriter for LocalProvider {
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
+        async_span_scope!("LocalProvider::get_content_writer");
+
         let path = self.0.join(id.to_string());
 
         if let Ok(metadata) = tokio::fs::metadata(&path).await {
@@ -150,6 +161,8 @@ impl ContentWriter for LocalProvider {
     }
 
     async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
+        async_span_scope!("LocalProvider::register_alias");
+
         let mut alias_path = self.0.clone();
         alias_path.push(key_space);
 

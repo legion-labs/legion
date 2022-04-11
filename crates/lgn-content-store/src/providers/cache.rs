@@ -7,7 +7,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use lgn_tracing::warn;
+use lgn_tracing::{async_span_scope, debug, error, span_scope, warn};
 use pin_project::pin_project;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
@@ -23,17 +23,21 @@ pub struct CachingProvider<Remote, Local> {
     local: Local,
 }
 
-impl<Remote, Local> CachingProvider<Remote, Local> {
+impl<Remote: Display, Local: Display> CachingProvider<Remote, Local> {
     /// Creates a new `CachingProvider` instance who stores content in the
     /// backing remote and local providers.
     pub fn new(remote: Remote, local: Local) -> Self {
+        span_scope!("CachingProvider::new");
+
+        debug!("CachingProvider::new(remote: {}, local: {})", remote, local);
+
         Self { remote, local }
     }
 }
 
 impl<Remote: Display, Local: Display> Display for CachingProvider<Remote, Local> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} cached by {}", self.remote, self.local)
+        write!(f, "({} cached by {})", self.remote, self.local)
     }
 }
 
@@ -42,14 +46,40 @@ impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> 
     for CachingProvider<Remote, Local>
 {
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
+        async_span_scope!("CachingProvider::get_content_reader");
+        debug!("CachingProvider::get_content_reader({})", id);
+
         match self.local.get_content_reader(id).await {
-            Ok(reader) => Ok(reader),
+            Ok(reader) => {
+                debug!("CachingProvider::get_content_reader({}) -> cache-hit", id);
+
+                Ok(reader)
+            }
             Err(Error::IdentifierNotFound(_)) => {
+                debug!("CachingProvider::get_content_reader({}) -> cache-miss", id);
+
                 match self.remote.get_content_reader(id).await {
                     Ok(reader) => {
+                        debug!(
+                            "CachingProvider::get_content_reader({}) -> remote value exists",
+                            id
+                        );
+
                         let writer = match self.local.get_content_writer(id).await {
-                            Ok(writer) => writer,
-                            Err(_) => {
+                            Ok(writer) => {
+                                debug!(
+                                    "CachingProvider::get_content_reader({}) -> got local writer",
+                                    id
+                                );
+
+                                writer
+                            }
+                            Err(err) => {
+                                warn!(
+                                    "CachingProvider::get_content_reader({}) -> failed to get local writer: {}",
+                                    id, err
+                                );
+
                                 // If we fail to get a writer, we should just return the reader.
                                 //
                                 // This covers the race condition where the
@@ -62,11 +92,33 @@ impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> 
                         Ok(Box::pin(TeeAsyncRead::new(reader, writer, id.data_size()))
                             as ContentAsyncReadWithOrigin)
                     }
-                    Err(err) => Err(err),
+                    Err(Error::IdentifierNotFound(id)) => {
+                        warn!(
+                            "CachingProvider::get_content_reader({}) -> remote value does not exist",
+                            id
+                        );
+
+                        Err(Error::IdentifierNotFound(id))
+                    }
+                    Err(err) => {
+                        error!(
+                            "CachingProvider::get_content_reader({}) -> failed to read remote value: {}",
+                            id, err
+                        );
+
+                        Err(err)
+                    }
                 }
             }
             // If the local provider fails, we just fall back to the remote without caching.
-            Err(_) => self.remote.get_content_reader(id).await,
+            Err(err) => {
+                error!(
+                    "CachingProvider::get_content_reader({}) -> cache error: {}",
+                    id, err
+                );
+
+                self.remote.get_content_reader(id).await
+            }
         }
     }
 
@@ -74,10 +126,28 @@ impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> 
         &self,
         ids: &'ids BTreeSet<Identifier>,
     ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
+        async_span_scope!("CachingProvider::get_content_readers");
+
+        debug!("CachingProvider::get_content_readers({:?})", ids);
+
         // If we can't make the request at all, try on the remote one without caching.
         let mut readers = match self.local.get_content_readers(ids).await {
-            Ok(readers) => readers,
-            Err(_) => return self.remote.get_content_readers(ids).await,
+            Ok(readers) => {
+                debug!(
+                    "CachingProvider::get_content_readers({:?}) -> could query local cache for readers",
+                    ids,
+                );
+
+                readers
+            }
+            Err(err) => {
+                debug!(
+                    "CachingProvider::get_content_readers({:?}) -> could not query local cache for readers ({}): falling back to remote",
+                    ids, err
+                );
+
+                return self.remote.get_content_readers(ids).await;
+            }
         };
 
         let missing_ids = readers
@@ -93,15 +163,33 @@ impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> 
             .cloned()
             .collect::<BTreeSet<_>>();
 
-        let mut missing_writers = BTreeMap::new();
-
-        for missing_id in &missing_ids {
-            if let Ok(writer) = self.local.get_content_writer(missing_id).await {
-                missing_writers.insert(missing_id, writer);
-            }
-        }
-
         if !missing_ids.is_empty() {
+            let mut missing_writers = BTreeMap::new();
+
+            for missing_id in &missing_ids {
+                match self.local.get_content_writer(missing_id).await {
+                    Ok(writer) => {
+                        debug!(
+                        "CachingProvider::get_content_readers({:?}) -> created writer in local cache for missing id {}.",
+                        ids, missing_id
+                    );
+
+                        missing_writers.insert(missing_id, writer);
+                    }
+                    Err(err) => {
+                        warn!(
+                        "CachingProvider::get_content_readers({:?}) -> failed to create writer in local cache for missing id {}: {}",
+                        ids, missing_id, err
+                    );
+                    }
+                }
+            }
+
+            debug!(
+                "CachingProvider::get_content_readers({:?}) -> creating reader on remote for {} missing id(s)",
+                ids, missing_ids.len()
+            );
+
             readers.extend(
                 self.remote
                     .get_content_readers(&missing_ids)
@@ -110,6 +198,11 @@ impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> 
                     .map(|(i, reader)| match reader {
                         Ok(reader) => {
                             if let Some(writer) = missing_writers.remove(i) {
+                                debug!(
+                                    "CachingProvider::get_content_readers({:?}) -> using local writer for first read of missing id {}.",
+                                    ids, i
+                                );
+
                                 (
                                     ids.get(i).unwrap(),
                                     Ok(Box::pin(TeeAsyncRead::new(reader, writer, i.data_size()))
@@ -128,6 +221,8 @@ impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> 
     }
 
     async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
+        async_span_scope!("CachingProvider::resolve_alias");
+
         match self.local.resolve_alias(key_space, key).await {
             Ok(id) => Ok(id),
             Err(Error::IdentifierNotFound(_)) => {
@@ -156,6 +251,10 @@ impl<Remote: ContentWriter + Send + Sync, Local: ContentWriter + Send + Sync> Co
     for CachingProvider<Remote, Local>
 {
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
+        async_span_scope!("CachingProvider::get_content_writer");
+
+        debug!("CachingProvider::get_content_writer({})", id);
+
         let remote_writer = self.remote.get_content_writer(id).await?;
 
         match self.local.get_content_writer(id).await {
@@ -163,11 +262,20 @@ impl<Remote: ContentWriter + Send + Sync, Local: ContentWriter + Send + Sync> Co
                 Box::pin(MultiAsyncWrite::new(remote_writer, writer, id.data_size()))
                     as ContentAsyncWrite,
             ),
-            Err(_) => Ok(remote_writer),
+            Err(err) => {
+                warn!(
+                    "Failed to get writer for local cache for identifier {}: {}",
+                    id, err
+                );
+
+                Ok(remote_writer)
+            }
         }
     }
 
     async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
+        async_span_scope!("CachingProvider::register_alias");
+
         self.remote.register_alias(key_space, key, id).await?;
 
         if let Err(err) = self.local.register_alias(key_space, key, id).await {
@@ -192,6 +300,8 @@ struct TeeAsyncRead<R, W> {
     #[pin]
     read_cursor: usize,
     #[pin]
+    read_complete: bool,
+    #[pin]
     copy_cursor: usize,
     #[pin]
     write_cursor: usize,
@@ -202,11 +312,14 @@ struct TeeAsyncRead<R, W> {
 
 impl<R, W> TeeAsyncRead<R, W> {
     fn new(reader: R, writer: W, size: usize) -> Self {
+        debug!("TeeAsyncRead::new({})", size);
+
         Self {
             reader,
             writer,
             read_buffer: vec![0; size],
             read_cursor: 0,
+            read_complete: false,
             copy_cursor: 0,
             write_cursor: 0,
             write_complete: false,
@@ -229,7 +342,7 @@ impl<R: AsyncRead + Send, W: AsyncWrite + Send> AsyncRead for TeeAsyncRead<R, W>
     ) -> Poll<Result<(), std::io::Error>> {
         let mut this = self.project();
 
-        if *this.read_cursor < *this.size {
+        if !*this.read_complete {
             // We still need to read.
 
             let mut rbuf = ReadBuf::new(this.read_buffer.as_mut_slice());
@@ -237,7 +350,12 @@ impl<R: AsyncRead + Send, W: AsyncWrite + Send> AsyncRead for TeeAsyncRead<R, W>
 
             match this.reader.poll_read(cx, &mut rbuf) {
                 Poll::Ready(Ok(())) => {
-                    *this.read_cursor = rbuf.filled().len();
+                    // A Ok(()) with a read of 0 means EOF.
+                    if rbuf.filled().len() == *this.read_cursor {
+                        *this.read_complete = true;
+                    } else {
+                        *this.read_cursor = rbuf.filled().len();
+                    }
                 }
                 Poll::Ready(Err(err)) => {
                     // Errors are fatal: we return it and it's over.
@@ -268,9 +386,13 @@ impl<R: AsyncRead + Send, W: AsyncWrite + Send> AsyncRead for TeeAsyncRead<R, W>
                     }
                 }
             } else if *this.write_cursor >= *this.size {
+                debug!("TeeAsyncRead::poll_read: shutting down writer");
+
                 // We have written everything we can, and we're done.
                 match this.writer.poll_shutdown(cx) {
                     Poll::Ready(Ok(())) => {
+                        debug!("TeeAsyncRead::poll_read: write is now complete");
+
                         *this.write_complete = true;
                     }
                     Poll::Ready(Err(err)) => {
@@ -301,10 +423,12 @@ impl<R: AsyncRead + Send, W: AsyncWrite + Send> AsyncRead for TeeAsyncRead<R, W>
             } else {
                 Poll::Pending
             }
-        } else if *this.write_complete {
+        } else if *this.read_complete && *this.write_complete {
             // If the write is complete, it means the read is complete too and
             // since in this branch the copy cursor is equal to the read cursor,
             // we can return EOF.
+            debug!("TeeAsyncRead::poll_read: EOF");
+
             Poll::Ready(Ok(()))
         } else {
             Poll::Pending
@@ -331,6 +455,8 @@ struct MultiAsyncWrite<W1, W2> {
 
 impl<W1: AsyncWrite + Send, W2: AsyncWrite + Send> MultiAsyncWrite<W1, W2> {
     fn new(writer1: W1, writer2: W2, size: usize) -> Self {
+        debug!("MultiAsyncWrite::new(size: {})", size);
+
         Self {
             writer1,
             writer2,
@@ -393,6 +519,8 @@ impl<W1: AsyncWrite + Send, W2: AsyncWrite + Send> AsyncWrite for MultiAsyncWrit
         if num_bytes_written > 0 {
             Poll::Ready(Ok(num_bytes_written))
         } else if *this.write1_complete && *this.write2_complete {
+            debug!("MultiAsyncWrite::poll_write: EOF");
+
             Poll::Ready(Ok(0))
         } else {
             Poll::Pending
@@ -457,5 +585,34 @@ impl<W1: AsyncWrite + Send, W2: AsyncWrite + Send> AsyncWrite for MultiAsyncWrit
             (Poll::Ready(Err(err)), _) | (_, Poll::Ready(Err(err))) => Poll::Ready(Err(err)),
             _ => Poll::Pending,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use tokio::io::AsyncReadExt;
+
+    use crate::ContentAsyncRead;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_nested_tee_async_read() {
+        let remote: ContentAsyncRead =
+            Box::pin(std::io::Cursor::new(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]));
+
+        let mut buf1 = Vec::<u8>::new();
+        let mut buf2 = Vec::<u8>::new();
+
+        let tee1 = TeeAsyncRead::new(remote, &mut buf1, 10);
+        let mut tee2 = TeeAsyncRead::new(tee1, &mut buf2, 10);
+
+        let mut buf3 = Vec::<u8>::new();
+
+        tee2.read_to_end(&mut buf3).await.unwrap();
+
+        assert_eq!(buf1, vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        assert_eq!(buf2, vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        assert_eq!(buf3, vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
     }
 }

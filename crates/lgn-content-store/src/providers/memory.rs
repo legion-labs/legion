@@ -5,6 +5,7 @@ use std::{
 };
 
 use async_trait::async_trait;
+use lgn_tracing::async_span_scope;
 use tokio::sync::RwLock;
 
 use crate::{
@@ -36,6 +37,8 @@ impl Display for MemoryProvider {
 #[async_trait]
 impl ContentReader for MemoryProvider {
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
+        async_span_scope!("MemoryProvider::get_content_reader");
+
         let map = self.content_map.read().await;
 
         match map.get(id) {
@@ -50,6 +53,8 @@ impl ContentReader for MemoryProvider {
         &self,
         ids: &'ids BTreeSet<Identifier>,
     ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
+        async_span_scope!("MemoryProvider::get_content_readers");
+
         let map = self.content_map.read().await;
 
         let res =
@@ -70,6 +75,8 @@ impl ContentReader for MemoryProvider {
     }
 
     async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
+        async_span_scope!("MemoryProvider::resolve_alias");
+
         let map = self.alias_map.read().await;
         let k = (key_space.to_string(), key.to_string());
 
@@ -83,6 +90,8 @@ impl ContentReader for MemoryProvider {
 #[async_trait]
 impl ContentWriter for MemoryProvider {
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
+        async_span_scope!("MemoryProvider::get_content_writer");
+
         if self.content_map.read().await.contains_key(id) {
             Err(Error::IdentifierAlreadyExists(id.clone()))
         } else {
@@ -96,6 +105,8 @@ impl ContentWriter for MemoryProvider {
     }
 
     async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
+        async_span_scope!("MemoryProvider::register_alias");
+
         let k = (key_space.to_string(), key.to_string());
 
         if self.alias_map.read().await.contains_key(&k) {
@@ -113,6 +124,7 @@ impl ContentWriter for MemoryProvider {
 
 type MemoryUploader = Uploader<MemoryUploaderImpl>;
 
+#[derive(Debug)]
 struct MemoryUploaderImpl {
     map: Arc<RwLock<HashMap<Identifier, Vec<u8>>>>,
 }
@@ -120,6 +132,8 @@ struct MemoryUploaderImpl {
 #[async_trait]
 impl UploaderImpl for MemoryUploaderImpl {
     async fn upload(self, data: Vec<u8>, id: Identifier) -> Result<()> {
+        async_span_scope!("MemoryProvider::upload");
+
         let mut map = self.map.write().await;
 
         map.insert(id, data);

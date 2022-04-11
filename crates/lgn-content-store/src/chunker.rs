@@ -1,5 +1,6 @@
 use std::{collections::BTreeMap, io::Write};
 
+use lgn_tracing::{async_span_scope, debug};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
 
 use crate::{
@@ -50,6 +51,10 @@ impl Chunker {
         content_reader: impl ContentReader + Send + Sync,
         id: &ChunkIdentifier,
     ) -> Result<ChunkIndex> {
+        async_span_scope!("Chunker::read_chunk_index");
+
+        debug!("Chunker::read_chunk_index({})", id);
+
         let mut reader = content_reader.get_content_reader(id.content_id()).await?;
 
         ChunkIndex::read_from(&mut reader).await
@@ -70,6 +75,10 @@ impl Chunker {
         content_reader: impl ContentReader + Send + Sync,
         id: &ChunkIdentifier,
     ) -> Result<ContentAsyncRead> {
+        async_span_scope!("Chunker::get_chunk_reader");
+
+        debug!("Chunker::get_chunk_reader({})", id);
+
         // TODO: This implementation is actually not great:
         //
         // It fetches all the readers in one go but reads them one at a time.
@@ -89,6 +98,9 @@ impl Chunker {
         // Anthony D.: a task for you? :D
 
         let chunk_index = self.read_chunk_index(&content_reader, id).await?;
+
+        debug!("Chunker::get_chunk_reader({}) -> chunk index was read", id);
+
         let ids = chunk_index.identifiers();
         let mut ids_iter = ids.iter();
 
@@ -140,6 +152,11 @@ impl Chunker {
             let next_reader = reader_stores.get_mut(id).unwrap().get_ref()?;
             reader = Box::pin(reader.chain(next_reader));
         }
+
+        debug!(
+            "Chunker::get_chunk_reader({}) -> got readers for all chunks",
+            id
+        );
 
         Ok(reader)
     }
@@ -365,6 +382,10 @@ impl ChunkIndex {
     ///
     /// Returns an error if the buffer is too small or the format is unknown.
     pub async fn read_from(mut r: impl AsyncRead + Unpin) -> Result<Self> {
+        async_span_scope!("ChunkIndex::read_from");
+
+        debug!("ChunkIndex::read_from()");
+
         let mut buf = [0u8; 1];
 
         r.read_exact(&mut buf).await.map_err(|err| {

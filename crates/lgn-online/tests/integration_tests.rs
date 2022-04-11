@@ -95,7 +95,7 @@ impl Summer for Service {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Debug, Clone)]
 struct MockAuthenticator {}
 
 #[async_trait]

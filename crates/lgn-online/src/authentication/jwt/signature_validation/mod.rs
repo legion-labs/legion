@@ -136,7 +136,7 @@ impl SignatureValidation for BoxedSignatureValidation {
 }
 
 /// A signature validation that always succeeds.
-#[derive(Default, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct NoSignatureValidation;
 
 impl SignatureValidation for NoSignatureValidation {

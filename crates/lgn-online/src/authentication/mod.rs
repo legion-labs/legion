@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::Deref, sync::Arc};
+use std::{collections::HashMap, fmt::Debug, ops::Deref, sync::Arc};
 
 use async_trait::async_trait;
 
@@ -17,7 +17,7 @@ pub use token_cache::TokenCache;
 pub use user_info::UserInfo;
 
 #[async_trait]
-pub trait Authenticator {
+pub trait Authenticator: Debug {
     /// Perform a login.
     async fn login(
         &self,
@@ -77,6 +77,7 @@ where
 }
 
 /// A boxed `Authenticator` that can be used to authenticate requests.
+#[derive(Debug)]
 pub struct BoxedAuthenticator(pub Box<dyn Authenticator + Send + Sync>);
 
 #[async_trait]

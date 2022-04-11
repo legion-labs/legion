@@ -12,7 +12,7 @@ use crate::authentication::{Error, Result};
 pub type UnsecureValidation = Validation<NoSignatureValidation>;
 
 /// Provides JWT validation.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Validation<SV = NoSignatureValidation> {
     /// A tolerance for the not-before and expiry times.
     leeway: time::Duration,
