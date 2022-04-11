@@ -5,7 +5,6 @@ import type { BlockSpansReply } from "@lgn/proto-telemetry/dist/analytics";
 import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
 import type { Process } from "@lgn/proto-telemetry/dist/process";
 import type { Stream } from "@lgn/proto-telemetry/dist/stream";
-import log from "@lgn/web-client/src/lib/log";
 
 import { loadPromise, loadWrap } from "../Misc/LoadingStore";
 import { makeGrpcClient } from "../client";
@@ -28,7 +27,7 @@ export class TimelineStateManager {
   state: TimelineStateStore;
   process: Process | undefined = undefined;
   rootStartTime = NaN;
-  private client: PerformanceAnalyticsClientImpl | null = null;
+  private client: PerformanceAnalyticsClientImpl;
   private processId: string;
   private nbRequestsInFlight = 0;
   constructor(
@@ -37,6 +36,7 @@ export class TimelineStateManager {
     start: number | null,
     end: number | null
   ) {
+    this.client = makeGrpcClient();
     this.processId = processId;
     this.state = createTimelineStateStore(
       new TimelineState(canvasWidth, start, end)
@@ -44,7 +44,6 @@ export class TimelineStateManager {
   }
 
   async init() {
-    this.client = makeGrpcClient();
     this.process = (
       await this.client.find_process({
         processId: this.processId,
@@ -93,14 +92,13 @@ export class TimelineStateManager {
   }
 
   async fetchStreams(process: Process) {
-    if (!this.client) {
-      log.error("no client in fetchStreams");
-      return;
-    }
-
     const { streams } = await this.client.list_process_streams({
       processId: process.processId,
     });
+
+    if (!streams.length) {
+      throw new Error(`No streams available in process ${process.processId}.`);
+    }
 
     const promises: Promise<void>[] = [];
 
@@ -122,14 +120,11 @@ export class TimelineStateManager {
 
       promises.push(this.fetchBlocks(process, stream));
     });
+
     await Promise.all(promises);
   }
 
   async fetchChildren(process: Process) {
-    if (!this.client) {
-      log.error("no client in fetchChildren");
-      return;
-    }
     const { processes } = await this.client.list_process_children({
       processId: process.processId,
     });
@@ -176,32 +171,34 @@ export class TimelineStateManager {
 
     this.nbRequestsInFlight += 1;
     await loadPromise(
-      this.client!.fetch_async_spans({
-        sectionSequenceNumber: section.sectionSequenceNumber,
-        sectionLod: section.sectionLod,
-        blockIds: blocksOfInterest,
-      }).then(
-        (reply) => {
-          this.nbRequestsInFlight -= 1;
-          const nbTracks = reply.tracks.length;
-          processAsyncData.maxDepth = Math.max(
-            processAsyncData.maxDepth,
-            nbTracks
-          );
-          section.tracks = reply.tracks;
-          section.state = LODState.Loaded;
-          this.state.update((s) => {
-            s.scopes = { ...s.scopes, ...reply.scopes };
-            return s;
-          });
-          return this.fetchDynData();
-        },
-        (e) => {
-          this.nbRequestsInFlight -= 1;
-          console.log("Error in fetch_block_async_spans", e);
-          return this.fetchDynData();
-        }
-      )
+      this.client
+        .fetch_async_spans({
+          sectionSequenceNumber: section.sectionSequenceNumber,
+          sectionLod: section.sectionLod,
+          blockIds: blocksOfInterest,
+        })
+        .then(
+          (reply) => {
+            this.nbRequestsInFlight -= 1;
+            const nbTracks = reply.tracks.length;
+            processAsyncData.maxDepth = Math.max(
+              processAsyncData.maxDepth,
+              nbTracks
+            );
+            section.tracks = reply.tracks;
+            section.state = LODState.Loaded;
+            this.state.update((s) => {
+              s.scopes = { ...s.scopes, ...reply.scopes };
+              return s;
+            });
+            return this.fetchDynData();
+          },
+          (e) => {
+            this.nbRequestsInFlight -= 1;
+            console.log("Error in fetch_block_async_spans", e);
+            return this.fetchDynData();
+          }
+        )
     );
   }
 
@@ -210,10 +207,6 @@ export class TimelineStateManager {
       return;
     }
 
-    if (!this.client) {
-      log.error("no client in fetchAsyncSpans");
-      return;
-    }
     const state = get(this.state);
     const viewRange = state.getViewRange();
     const processAsyncData = state.processAsyncData[process.processId];
@@ -269,24 +262,26 @@ export class TimelineStateManager {
         this.nbRequestsInFlight += 1;
         promises.push(
           loadPromise(
-            this.client!.fetch_block_async_stats({
-              process,
-              stream: thread.streamInfo,
-              blockId: block.blockDefinition.blockId,
-            }).then(
-              (reply) => {
-                this.nbRequestsInFlight -= 1;
-                asyncData.minMs = Math.min(asyncData.minMs, reply.beginMs);
-                asyncData.maxMs = Math.max(asyncData.maxMs, reply.endMs);
-                asyncData.blockStats[reply.blockId] = reply;
-                return this.fetchDynData();
-              },
-              (e) => {
-                this.nbRequestsInFlight -= 1;
-                console.log("Error in fetch_block_async_stats", e);
-                return this.fetchDynData();
-              }
-            )
+            this.client
+              .fetch_block_async_stats({
+                process,
+                stream: thread.streamInfo,
+                blockId: block.blockDefinition.blockId,
+              })
+              .then(
+                (reply) => {
+                  this.nbRequestsInFlight -= 1;
+                  asyncData.minMs = Math.min(asyncData.minMs, reply.beginMs);
+                  asyncData.maxMs = Math.max(asyncData.maxMs, reply.endMs);
+                  asyncData.blockStats[reply.blockId] = reply;
+                  return this.fetchDynData();
+                },
+                (e) => {
+                  this.nbRequestsInFlight -= 1;
+                  console.log("Error in fetch_block_async_stats", e);
+                  return this.fetchDynData();
+                }
+              )
           )
         );
       }
@@ -297,10 +292,6 @@ export class TimelineStateManager {
   }
 
   private async fetchBlocks(process: Process, stream: Stream) {
-    if (!this.client) {
-      log.error("no client in fetchBlocks");
-      return;
-    }
     const asyncSections: AsyncSection[] = [];
     const asyncData = {
       processId: process.processId,
@@ -312,7 +303,7 @@ export class TimelineStateManager {
     };
     const processOffset = processMsOffsetToRoot(this.process, process);
     const response = await loadWrap(async () => {
-      return await this.client!.list_stream_blocks({
+      return await this.client.list_stream_blocks({
         streamId: stream.streamId,
       });
     });
@@ -378,10 +369,6 @@ export class TimelineStateManager {
   }
 
   async fetchBlockSpans(block: ThreadBlock, lodToFetch: number) {
-    if (!this.client) {
-      log.error("no client in fetchBlockSpans");
-      return;
-    }
     const streamId = block.blockDefinition.streamId;
     const process = get(this.state).findStreamProcess(streamId);
     if (!process) {

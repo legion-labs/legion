@@ -1,7 +1,7 @@
 <script lang="ts">
   import { afterUpdate, onMount, tick } from "svelte";
-  import { BarLoader } from "svelte-loading-spinners";
   import { useLocation } from "svelte-navigator";
+  import { get } from "svelte/store";
 
   import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { TimelineStateManager } from "@/lib/Timeline/TimelineStateManager";
@@ -12,6 +12,7 @@
     RangeSelectionOnMouseMove,
   } from "@/lib/time_range_selection";
 
+  import Loader from "../Misc/Loader.svelte";
   import TimelineProcess from "./TimelineProcess.svelte";
   import TimelineAction from "./Tools/TimelineAction.svelte";
   import TimelineAxis from "./Tools/TimelineAxis.svelte";
@@ -41,6 +42,7 @@
   let scrollTop: number;
   let div: HTMLElement;
   let mainWidth: number;
+  let initializationError = "";
 
   $: if (mainWidth && stateStore) {
     stateStore.update((s) => {
@@ -48,9 +50,6 @@
       return s;
     });
   }
-
-  $: display = $stateStore?.ready ? "block" : "none";
-  $: style = `display:${display}`;
 
   onMount(async () => {
     loadingStore.reset(10);
@@ -60,9 +59,24 @@
     const e = url.get(endParam);
     const end = e != null ? Number.parseFloat(e) : null;
     const canvasWidth = windowInnerWidth - threadItemLength;
+
     stateManager = new TimelineStateManager(processId, canvasWidth, start, end);
     stateStore = stateManager.state;
-    await stateManager.init();
+
+    try {
+      await stateManager.init();
+    } catch (error) {
+      if (error instanceof Error) {
+        initializationError = error.message;
+      } else {
+        initializationError = "Unknown error.";
+      }
+      return;
+    }
+
+    if (!Object.keys(get(stateStore).blocks).length) {
+      initializationError = `Process does not have any block data. Please refresh the page to try again.`;
+    }
   });
 
   async function onZoom(event: WheelEvent) {
@@ -222,8 +236,10 @@
   });
 
   function onScroll(_: UIEvent | undefined) {
-    scrollHeight = div.scrollHeight;
-    scrollTop = div.scrollTop;
+    if (div) {
+      scrollHeight = div.scrollHeight;
+      scrollTop = div.scrollTop;
+    }
   }
 
   async function onMinimapTick(detail: {
@@ -247,59 +263,59 @@
 
 <svelte:window on:keydown={handleKeydown} bind:innerWidth={windowInnerWidth} />
 
-{#if stateStore && !$stateStore.ready}
-  <div class="flex items-center justify-center loader">
-    <BarLoader />
-  </div>
-{/if}
-
-<div {style} class="main">
-  {#if stateManager?.process && $stateStore.ready}
-    <div class="pb-1 flex flex-row items-center justify-between">
-      <TimelineAction
-        {processId}
-        process={stateManager.process}
-        timeRange={$stateStore.currentSelection}
-      />
-      <TimelineSearch />
-    </div>
-  {/if}
-  <div
-    class="canvas"
-    bind:this={div}
-    bind:clientHeight={canvasHeight}
-    bind:clientWidth={mainWidth}
-    on:scroll={(e) => onScroll(e)}
-    on:mousedown|preventDefault={(e) => onMouseDown(e)}
-    on:mousemove|preventDefault={(e) => onMouseMove(e)}
-    on:mouseup|preventDefault={(e) => onMouseUp(e)}
-  >
-    {#if stateStore}
-      {#each $stateStore.processes as p (p.processId)}
-        <div>
-          <TimelineProcess
-            process={p}
-            {stateStore}
-            rootStartTime={stateManager.rootStartTime}
-            on:zoom={(e) => onZoom(e.detail)}
-          />
+{#if stateStore}
+  <Loader loading={!$stateStore.ready} error={initializationError}>
+    <div slot="body" class="flex flex-col">
+      <div class="main">
+        {#if stateManager?.process && $stateStore.ready}
+          <div class="pb-1 flex flex-row items-center justify-between">
+            <TimelineAction
+              {processId}
+              process={stateManager.process}
+              timeRange={$stateStore.currentSelection}
+            />
+            <TimelineSearch />
+          </div>
+        {/if}
+        <div
+          class="canvas"
+          bind:this={div}
+          bind:clientHeight={canvasHeight}
+          bind:clientWidth={mainWidth}
+          on:scroll={(e) => onScroll(e)}
+          on:mousedown|preventDefault={(e) => onMouseDown(e)}
+          on:mousemove|preventDefault={(e) => onMouseMove(e)}
+          on:mouseup|preventDefault={(e) => onMouseUp(e)}
+        >
+          {#if stateStore}
+            {#each $stateStore.processes as p (p.processId)}
+              <div>
+                <TimelineProcess
+                  process={p}
+                  {stateStore}
+                  rootStartTime={stateManager.rootStartTime}
+                  on:zoom={(e) => onZoom(e.detail)}
+                />
+              </div>
+            {/each}
+          {/if}
         </div>
-      {/each}
-    {/if}
-  </div>
-  <TimelineMinimap
-    {stateStore}
-    {canvasHeight}
-    {scrollHeight}
-    {scrollTop}
-    on:zoom={(e) => onZoom(e.detail)}
-    on:tick={(e) => onMinimapTick(e.detail)}
-  />
-  <TimelineAxis {stateStore} />
-  <span class="range">
-    <TimelineRange {stateStore} />
-  </span>
-</div>
+        <TimelineMinimap
+          {stateStore}
+          {canvasHeight}
+          {scrollHeight}
+          {scrollTop}
+          on:zoom={(e) => onZoom(e.detail)}
+          on:tick={(e) => onMinimapTick(e.detail)}
+        />
+        <TimelineAxis {stateStore} />
+        <span class="range">
+          <TimelineRange {stateStore} />
+        </span>
+      </div>
+    </div>
+  </Loader>
+{/if}
 
 <style lang="postcss">
   .main {
@@ -315,10 +331,6 @@
     display: flex;
     flex-direction: column;
     @apply gap-y-1;
-  }
-
-  .loader {
-    height: 90vh;
   }
 
   .range {

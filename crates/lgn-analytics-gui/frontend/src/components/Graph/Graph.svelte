@@ -83,7 +83,9 @@
 
       loadingStore.completeWork();
 
-      loading = false;
+      if (loading) {
+        loading = false;
+      }
 
       scopeStore.update((s) => {
         s = { ...s, ...callTree.scopes };
