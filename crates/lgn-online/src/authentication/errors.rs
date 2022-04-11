@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use thiserror::Error;
 use tonic::codegen::StdError;
 
@@ -13,8 +15,8 @@ pub enum Error {
     Internal(String),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
-    #[error("token expired error: {0}")]
-    TokenExpired(String),
+    #[error("token expired: exp({exp:?}) < now({now:?})")]
+    TokenExpired { exp: SystemTime, now: SystemTime },
     #[error("configuration error: {0}")]
     Config(#[from] lgn_config::Error),
     #[error(transparent)]

@@ -158,9 +158,9 @@ where
                                 }
                             }
                             Err(err) => {
-                                if let Error::TokenExpired(err) = err {
+                                if let Error::TokenExpired { .. } = err {
                                     debug!(
-                                        "Cached access token is invalid ({}): refreshing login...",
+                                        "Cached access token has expired ({}): refreshing login...",
                                         err
                                     );
                                 } else {
