@@ -15,10 +15,10 @@ use lgn_data_transaction::{CreateResourceOperation, Transaction};
 #[tokio::test]
 async fn test_property_inspector() -> anyhow::Result<()> {
     let project_dir = tempfile::tempdir().unwrap();
+    let (editor_events_sender, _editor_events_receiver) = broadcast::channel(1_000);
 
     {
         let transaction_manager = crate::test_resource_browser::setup_project(&project_dir).await;
-        let (editor_events_sender, _editor_events_receiver) = broadcast::channel(1_000);
 
         let property_inspector = crate::property_inspector_plugin::PropertyInspectorRPC {
             transaction_manager: transaction_manager.clone(),
