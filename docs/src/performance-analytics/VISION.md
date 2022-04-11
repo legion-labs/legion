@@ -307,6 +307,7 @@ Could support the interface to get visibility into crates that are already instr
   * Why is this texture loaded?
 - Process dashboards
   * monitoring thousands of processes
+- Fluentd output command
 - Task-based timeline & async span parenting
   * unifying thread-bound and async tasks
 - Heat maps
