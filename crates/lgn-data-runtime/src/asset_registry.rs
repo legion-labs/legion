@@ -250,7 +250,7 @@ pub enum AssetRegistryScheduling {
 #[allow(clippy::enum_variant_names)]
 pub enum AssetRegistryEvent {
     /// Notify that a resource has been loaded
-    AssetLoaded(ResourceTypeAndId),    
+    AssetLoaded(ResourceTypeAndId),
 }
 
 /// A resource loading event is emitted when a resource is loaded, unloaded, or
