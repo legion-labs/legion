@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use lgn_app::App;
 use lgn_ecs::{
-    prelude::{Added, Changed, Entity, Query, RemovedComponents, Res, ResMut},
+    prelude::{Changed, Entity, Query, RemovedComponents, Res, ResMut},
     schedule::{SystemLabel, SystemSet},
 };
 use lgn_graphics_api::{BufferView, VertexBufferBinding};
@@ -210,13 +210,14 @@ impl GpuInstanceManager {
             missing_visuals_tracker.add_resource_entity_dependency(*model_resource_id, entity);
         }
 
-        let model_resource_id = visual
-            .model_resource_id()
-            .unwrap_or(model_manager.default_model_id(DefaultMeshType::Cube));
-
-        let model = model_manager
-            .get_model_meta_data(model_resource_id)
-            .unwrap();
+        let model = visual.model_resource_id().map_or(
+            model_manager.get_default_model(DefaultMeshType::Cube),
+            |model_resource_id| {
+                model_manager
+                    .get_model_meta_data(model_resource_id)
+                    .unwrap()
+            },
+        );
 
         //
         // Gpu instances
@@ -328,24 +329,6 @@ impl GpuInstanceManager {
             }
             self.removed_gpu_instance_ids
                 .append(&mut gpu_instance_block.gpu_instance_ids);
-        }
-    }
-}
-
-#[allow(
-    clippy::needless_pass_by_value,
-    clippy::type_complexity,
-    clippy::too_many_arguments
-)]
-fn on_visual_component_added(
-    renderer: Res<'_, Renderer>,
-    model_manager: Res<'_, ModelManager>,
-    mut instance_manager: ResMut<'_, GpuInstanceManager>,
-    q_visuals: Query<'_, '_, (Entity, &VisualComponent), Added<VisualComponent>>,
-) {
-    for (e, visual) in q_visuals.iter() {
-        if let Some(model_resource_id) = visual.model_resource_id() {
-            let model = model_manager.get_model_meta_data(model_resource_id);
         }
     }
 }

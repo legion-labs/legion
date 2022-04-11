@@ -14,7 +14,7 @@ pub struct MeshMetaData {
     pub mesh_description_offset: u32,
     pub positions: Vec<Vec4>, // for AABB calculation
     pub bounding_sphere: Vec4,
-    allocation: StaticBufferAllocation,
+    _allocation: StaticBufferAllocation,
 }
 
 pub struct MeshManager {
@@ -72,13 +72,13 @@ impl MeshManager {
     }
 
     pub fn add_mesh(&mut self, renderer: &Renderer, mesh: &Mesh) -> MeshId {
-        let mut vertex_data_size_in_bytes =
+        let vertex_data_size_in_bytes =
             u64::from(mesh.size_in_bytes()) + std::mem::size_of::<MeshDescription>() as u64;
 
         let allocation = self.allocator.allocate_segment(vertex_data_size_in_bytes);
 
         let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
-        let mut offset = allocation.offset();
+        let offset = allocation.offset();
         let mut mesh_meta_datas = Vec::new();
         let mesh_id = self.static_meshes.len();
 
@@ -92,7 +92,7 @@ impl MeshManager {
             mesh_description_offset: mesh_info_offset,
             positions: mesh.positions.iter().map(|v| v.extend(1.0)).collect(),
             bounding_sphere: mesh.bounding_sphere,
-            allocation,
+            _allocation: allocation,
         });
 
         renderer.add_update_job_block(updater.job_blocks());

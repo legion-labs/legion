@@ -2,6 +2,7 @@ use lgn_asset_registry::AssetToEntityMap;
 use lgn_core::Name;
 use lgn_data_runtime::{AssetRegistry, Resource, ResourceTypeAndId};
 use lgn_ecs::prelude::{Commands, Query};
+use lgn_graphics_data::runtime::ModelReferenceType;
 use lgn_graphics_renderer::components::{LightComponent, LightType, VisualComponent};
 use lgn_hierarchy::prelude::{BuildChildren, Children, Parent};
 use lgn_tracing::{error, info, warn};
@@ -131,7 +132,10 @@ impl SceneInstance {
                     entity_name = Some(name.name.clone());
                 } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
                     entity.insert(VisualComponent::new(
-                        visual.renderable_geometry.as_ref().map(|x| x.id()),
+                        visual
+                            .renderable_geometry
+                            .as_ref()
+                            .map(ModelReferenceType::id),
                         visual.color,
                         visual.color_blend,
                     ));
