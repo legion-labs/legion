@@ -222,7 +222,7 @@ fn pointer_button_from_mouse_button(mouse_button: MouseButton) -> egui::PointerB
     }
 }
 
-#[allow(clippy::needless-pass-by-value)]
+#[allow(clippy::needless_pass_by_value)]
 fn ui_egui(egui: Res<'_, Egui>) {
     egui.window("Egui", |ui| {
         egui.ctx.settings_ui(ui);
