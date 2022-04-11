@@ -30,7 +30,7 @@ export function createResourcePathId(
           break;
         case "gltf":
           result += offlineModel;
-          result += "_MODELNAME";
+          result += "_Model";
           break;
         default:
           return null;
@@ -44,7 +44,7 @@ export function createResourcePathId(
         case "material":
           break;
         case "gltf":
-          result += offlineMaterial + "_MATERIALNAME";
+          result += offlineMaterial + "_Material";
           break;
         default:
           return null;
@@ -69,18 +69,18 @@ export function createResourcePathId(
         case "texture":
           break;
         case "psd":
-          result += offlineTexture + "_LAYERNAME";
+          result += offlineTexture;
           break;
         case "png":
           result += offlineTexture;
           break;
         case "gltf":
-          result += offlineTexture + "_TEXTURENAME";
+          result += offlineTexture + "_0";
           break;
         default:
           return null;
       }
-      result += runtimeTexture;
+      result += runtimeTexture + "_Albedo";
       break;
     }
 

@@ -12,7 +12,7 @@ use std::{
 use byteorder::{LittleEndian, ReadBytesExt};
 use flurry::TryInsertError;
 use lgn_content_store::ChunkIdentifier;
-use lgn_tracing::info;
+use lgn_tracing::{error, info};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -323,9 +323,12 @@ impl AssetLoaderIO {
             }
         };
 
-        let output = load_func(primary_handle, &mut &asset_data[..], &mut self.loaders)?;
+        let output =
+            load_func(primary_handle, &mut &asset_data[..], &mut self.loaders).map_err(|err| {
+                error!("Error loading {:?}: {}", primary_handle.id(), err);
+                err
+            })?;
 
-        // Reloading with new dep not supported yet
         let references = output
             .load_dependencies
             .iter()
@@ -335,7 +338,7 @@ impl AssetLoaderIO {
 
         for reference in &references {
             self.request_tx
-                .send(LoaderRequest::Load(reference.clone(), None))
+                .send(LoaderRequest::Reload(reference.clone()))
                 .unwrap();
         }
 

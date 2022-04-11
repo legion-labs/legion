@@ -2,9 +2,11 @@
 #![allow(unused_imports)]
 #![allow(unused_mut)]
 
+use lgn_graphics_data::offline_gltf::GltfFile;
 use lgn_scene_plugin::SceneMessage;
-use std::{collections::HashMap, sync::Arc};
-use tokio::sync::Mutex;
+use sample_data::offline::GltfLoader;
+use std::{collections::HashMap, str::FromStr, sync::Arc};
+use tokio::sync::{broadcast, Mutex};
 use tonic::{codegen::http::status, Request, Response, Status};
 
 use lgn_app::prelude::*;
@@ -24,15 +26,18 @@ use lgn_data_model::{
     utils::find_property,
     ReflectionError, TypeDefinition,
 };
-use lgn_data_offline::resource::ResourcePathName;
-use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
+use lgn_data_offline::{resource::ResourcePathName, ResourcePathId};
+use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_data_transaction::{
     ArrayOperation, LockContext, Transaction, TransactionManager, UpdatePropertyOperation,
 };
 use lgn_ecs::prelude::*;
 
+use crate::grpc::EditorEvent;
+
 pub(crate) struct PropertyInspectorRPC {
     pub(crate) transaction_manager: Arc<Mutex<TransactionManager>>,
+    pub(crate) event_sender: broadcast::Sender<EditorEvent>,
 }
 
 #[derive(Default)]
@@ -66,10 +71,12 @@ impl PropertyInspectorPlugin {
     #[allow(clippy::needless_pass_by_value)]
     fn setup(
         transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
+        event_sender: Res<'_, broadcast::Sender<EditorEvent>>,
         mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
     ) {
         let property_inspector = PropertyInspectorServer::new(PropertyInspectorRPC {
             transaction_manager: transaction_manager.clone(),
+            event_sender: event_sender.clone(),
         });
         grpc_settings.register_service(property_inspector);
     }
@@ -285,12 +292,103 @@ impl PropertyInspector for PropertyInspectorRPC {
         &self,
         request: Request<UpdateResourcePropertiesRequest>,
     ) -> Result<Response<UpdateResourcePropertiesResponse>, Status> {
-        let request = request.into_inner();
+        let mut request = request.into_inner();
         let resource_id = parse_resource_id(request.id.as_str())?;
 
-        let mut transaction_manager = self.transaction_manager.lock().await;
         {
             let mut transaction = Transaction::new();
+
+            // HACK!!!
+            // Pre-fill GlftLoader component
+            if let Some(property) = request
+                .property_updates
+                .iter_mut()
+                .find(|update| update.name == "components.[Visual].renderable_geometry")
+            {
+                let result = {
+                    ResourcePathId::from_str(
+                        property
+                            .json_value
+                            .as_str()
+                            .trim_start_matches('"')
+                            .trim_end_matches('"'),
+                    )
+                    .ok()
+                };
+
+                if let Some(res_path_id) = result {
+                    let gltf_resource_id = res_path_id.source_resource();
+                    if gltf_resource_id.kind == GltfFile::TYPE {
+                        let mut transaction_manager = self.transaction_manager.lock().await;
+                        let mut ctx = LockContext::new(&transaction_manager).await;
+                        if let Ok(handle) = ctx.get_or_load(gltf_resource_id).await {
+                            let mut gltf_loader = GltfLoader::default();
+
+                            if let Some(gltf) = handle.get::<GltfFile>(&ctx.resource_registry) {
+                                let models = gltf.gather_models(gltf_resource_id);
+                                let materials = gltf.gather_materials(gltf_resource_id);
+
+                                for (model, name) in &models {
+                                    gltf_loader.models.push(
+                                        ResourcePathId::from(gltf_resource_id)
+                                            .push_named(
+                                                lgn_graphics_data::offline::Model::TYPE,
+                                                name,
+                                            )
+                                            .push(lgn_graphics_data::runtime::Model::TYPE),
+                                    );
+                                    gltf_loader.materials.extend(
+                                        model.meshes.iter().filter_map(|m| m.material.clone()),
+                                    );
+                                }
+
+                                for (material, _) in &materials {
+                                    if let Some(t) = &material.albedo {
+                                        gltf_loader.textures.push(t.clone());
+                                    }
+                                    if let Some(t) = &material.normal {
+                                        gltf_loader.textures.push(t.clone());
+                                    }
+                                    if let Some(t) = &material.roughness {
+                                        gltf_loader.textures.push(t.clone());
+                                    }
+                                    if let Some(t) = &material.metalness {
+                                        gltf_loader.textures.push(t.clone());
+                                    }
+                                }
+                            }
+
+                            // Fix up the edit if the model is invalid
+                            if !gltf_loader.models.is_empty()
+                                && !gltf_loader.models.contains(&res_path_id)
+                            {
+                                property.json_value =
+                                    serde_json::json!(gltf_loader.models.first().unwrap())
+                                        .to_string();
+                            }
+
+                            if let Ok(entity_handle) = ctx.get_or_load(resource_id).await {
+                                if let Some(entity) = entity_handle
+                                    .get_mut::<sample_data::offline::Entity>(
+                                        &mut ctx.resource_registry,
+                                    )
+                                {
+                                    entity
+                                        .components
+                                        .retain(|component| !component.is::<GltfLoader>());
+                                    entity.components.push(Box::new(gltf_loader));
+                                }
+                            }
+                            if let Err(_err) = self
+                                .event_sender
+                                .send(EditorEvent::ResourceChanged(vec![resource_id]))
+                            {
+                            }
+                        }
+                    }
+                }
+            }
+
             transaction = transaction.add_operation(UpdatePropertyOperation::new(
                 resource_id,
                 &request
@@ -299,6 +397,8 @@ impl PropertyInspector for PropertyInspectorRPC {
                     .map(|update| (&update.name, &update.json_value))
                     .collect::<Vec<_>>(),
             ));
+
+            let mut transaction_manager = self.transaction_manager.lock().await;
             transaction_manager
                 .commit_transaction(transaction)
                 .await
