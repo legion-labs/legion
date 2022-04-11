@@ -16,8 +16,7 @@ use crate::{
     hl_gfx_api::HLCommandBuffer,
     picking::ManipulatorManager,
     resources::{
-        DefaultMeshType, MeshId, MeshManager, MeshMetaData, ModelManager, PipelineHandle,
-        PipelineManager,
+        DefaultMeshType, MeshManager, MeshMetaData, ModelManager, PipelineHandle, PipelineManager,
     },
     RenderContext,
 };
@@ -413,36 +412,6 @@ fn render_aabb_for_mesh(
     render_mesh(
         wire_frame_cube,
         &aabb_transform,
-        Color::WHITE,
-        1.0,
-        cmd_buffer,
-    );
-}
-
-fn render_bounding_sphere_for_mesh(
-    mesh_id: MeshId,
-    transform: &GlobalTransform,
-    cmd_buffer: &mut HLCommandBuffer<'_>,
-    mesh_manager: &MeshManager,
-) {
-    let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh_id);
-    let sphere_local_pos = mesh_meta_data.bounding_sphere.truncate();
-    let sphere_global_pos = transform.mul_vec3(sphere_local_pos);
-
-    let bound_sphere_scale = 4.0
-        * mesh_meta_data.bounding_sphere.w
-        * transform
-            .scale
-            .x
-            .max(transform.scale.y.max(transform.scale.z));
-
-    let sphere_transform = GlobalTransform::from_translation(sphere_global_pos).with_scale(
-        Vec3::new(bound_sphere_scale, bound_sphere_scale, bound_sphere_scale),
-    );
-
-    render_mesh(
-        mesh_manager.get_default_mesh(DefaultMeshType::Sphere),
-        &sphere_transform,
         Color::WHITE,
         1.0,
         cmd_buffer,
