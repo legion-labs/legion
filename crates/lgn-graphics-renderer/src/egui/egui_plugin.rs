@@ -108,6 +108,7 @@ fn update_egui(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn gather_input(
     raw_input: ResMut<'_, RawInput>,
     mut cursor_button: EventReader<'_, '_, MouseButtonInput>,
