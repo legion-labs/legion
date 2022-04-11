@@ -14,9 +14,6 @@ pub(crate) fn process_load_events(
     mut asset_loaded_events: EventReader<'_, '_, AssetRegistryEvent>,
     mut commands: Commands<'_, '_>,
 ) {
-    //
-    // TODO(vdbdd): This code assumes that the event list is sorted by dependency order
-    //
     for asset_loaded_event in asset_loaded_events.iter() {
         match asset_loaded_event {
             AssetRegistryEvent::AssetLoaded(resource_id) => match resource_id.kind {

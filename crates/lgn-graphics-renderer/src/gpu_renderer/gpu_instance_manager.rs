@@ -210,14 +210,14 @@ impl GpuInstanceManager {
             missing_visuals_tracker.add_resource_entity_dependency(*model_resource_id, entity);
         }
 
-        let model = visual.model_resource_id().map_or(
-            model_manager.get_default_model(DefaultMeshType::Cube),
-            |model_resource_id| {
+        let default_model = model_manager.get_default_model(DefaultMeshType::Cube);
+        let model = visual
+            .model_resource_id()
+            .map_or(default_model, |model_resource_id| {
                 model_manager
                     .get_model_meta_data(model_resource_id)
-                    .unwrap()
-            },
-        );
+                    .unwrap_or(default_model)
+            });
 
         //
         // Gpu instances
