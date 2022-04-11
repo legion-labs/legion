@@ -13,6 +13,7 @@ export class GraphState {
     this.Nodes = new Map();
     this.tick();
   }
+  // Should instead use a store update() function even if onNodeReceived() is a relatively long and expensive call.
   tick() {
     const sorted = Array.from(this.Nodes).sort(
       (lhs, rhs) => get(rhs[1]).acc - get(lhs[1]).acc

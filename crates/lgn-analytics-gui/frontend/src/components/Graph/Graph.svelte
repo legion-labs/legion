@@ -116,7 +116,6 @@
 
         root.updateRange(range);
         onNodeReceived(callTree.root, null);
-        // Should use a store update() function even if onNodeReceived() is a relatively long and expensive call.
         graphState.tick();
       }
     });
