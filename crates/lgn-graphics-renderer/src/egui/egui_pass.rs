@@ -207,7 +207,7 @@ impl EguiPass {
 
         cmd_buffer.bind_pipeline(pipeline);
 
-        let clipped_meshes = egui.ctx.tessellate(egui.shapes.clone());
+        let clipped_meshes = egui.tessellate();
 
         let mut descriptor_set = cgen::descriptor_set::EguiDescriptorSet::default();
         descriptor_set.set_font_texture(&self.texture_data.as_ref().unwrap().2);
@@ -259,10 +259,10 @@ impl EguiPass {
             push_constant_data.set_scale(Vec2::new(scale, scale).into());
             push_constant_data.set_translation(Vec2::new(0.0, 0.0).into());
             push_constant_data.set_width(
-                (render_surface.extents().width() as f32 / egui.ctx.pixels_per_point()).into(),
+                (render_surface.extents().width() as f32 / egui.ctx().pixels_per_point()).into(),
             );
             push_constant_data.set_height(
-                (render_surface.extents().height() as f32 / egui.ctx.pixels_per_point()).into(),
+                (render_surface.extents().height() as f32 / egui.ctx().pixels_per_point()).into(),
             );
 
             cmd_buffer.push_constant(&push_constant_data);

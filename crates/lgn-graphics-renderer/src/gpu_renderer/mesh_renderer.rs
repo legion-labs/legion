@@ -111,8 +111,8 @@ fn update_render_elements(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub(crate) fn ui_mesh_renderer(egui_ctx: Res<'_, Egui>, mesh_renderer: Res<'_, MeshRenderer>) {
-    egui::Window::new("Culling").show(&egui_ctx.ctx, |ui| {
+pub(crate) fn ui_mesh_renderer(egui: Res<'_, Egui>, mesh_renderer: Res<'_, MeshRenderer>) {
+    egui.window("Culling", |ui| {
         ui.label(format!(
             "Total Elements'{}'",
             u32::from(mesh_renderer.culling_stats.total_elements())
