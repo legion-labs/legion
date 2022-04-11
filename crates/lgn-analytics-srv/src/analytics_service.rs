@@ -167,7 +167,7 @@ impl AnalyticsService {
                 .call_trees
                 .get_call_tree(ConvertTicks::new(process), stream, block_id)
                 .await?;
-            return compute_block_spans(tree, block_id);
+            return Ok(compute_block_spans(tree, block_id));
         }
         let lod0_reply = self.block_spans_impl(process, stream, block_id, 0).await?;
         let lod0 = lod0_reply.lod.unwrap();

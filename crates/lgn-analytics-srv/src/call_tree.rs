@@ -211,10 +211,21 @@ fn make_spans_from_tree(tree: &CallTreeNode, depth: u32, lod: &mut SpanBlockLod)
 }
 
 #[span_fn]
-pub(crate) fn compute_block_spans(tree: CallTree, block_id: &str) -> Result<BlockSpansReply> {
+pub(crate) fn compute_block_spans(tree: CallTree, block_id: &str) -> BlockSpansReply {
     if tree.root.is_none() {
-        anyhow::bail!("no root in call tree of block {}", block_id);
+        info!("empty call tree for block {}", block_id);
+        return BlockSpansReply {
+            scopes: ScopeHashMap::new(),
+            lod: Some(SpanBlockLod {
+                lod_id: 0,
+                tracks: vec![],
+            }),
+            block_id: block_id.to_owned(),
+            begin_ms: f64::MAX,
+            end_ms: f64::MIN,
+        };
     }
+
     let root = tree.root.unwrap();
     let mut begin_ms = root.begin_ms;
     let mut end_ms = root.end_ms;
@@ -234,13 +245,13 @@ pub(crate) fn compute_block_spans(tree: CallTree, block_id: &str) -> Result<Bloc
         make_spans_from_tree(&root, 0, &mut lod);
     }
 
-    Ok(BlockSpansReply {
+    BlockSpansReply {
         scopes: tree.scopes,
         lod: Some(lod),
         block_id: block_id.to_owned(),
         begin_ms,
         end_ms,
-    })
+    }
 }
 
 #[allow(clippy::cast_possible_wrap)]
