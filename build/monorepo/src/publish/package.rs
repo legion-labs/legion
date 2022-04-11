@@ -58,7 +58,7 @@ impl<'g> PublishPackage<'g> {
             })
             .collect();
         // M2 HACK -> build compilers to package them
-        // TODO M3 remove this
+        // TODO #1445 M3 remove this
         if self.name() == "editor-srv" {
             for (name, pkg_metadata) in self.package.graph().workspace().iter_by_name() {
                 if name.starts_with("lgn-data-build") || name.starts_with("lgn-compiler-") {

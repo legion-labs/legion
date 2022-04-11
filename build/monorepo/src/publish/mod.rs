@@ -72,7 +72,7 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
 
     for pkg in dist_packages {
         // M2 HACK -> build compilers to package them
-        // TODO M3 remove this
+        // TODO #1445 M3 remove this
         if pkg.name() == "editor-srv" {
             let args = build::Args {
                 package_args: SelectedPackageArgs {
