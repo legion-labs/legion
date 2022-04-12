@@ -24,7 +24,7 @@
   const wheelDispatcher = createEventDispatcher<{ zoom: WheelEvent }>();
   const processOffsetMs = Date.parse(process.startTime) - rootStartTime;
 
-  let processCollapsed = false;
+  let collapsed = false;
   let components: TimelineRow[] = [];
 
   $: threads = Object.values($stateStore.threads).filter(
@@ -33,25 +33,38 @@
 
   $: processAsyncData = $stateStore.processAsyncData[process.processId];
 
-  $: style = processCollapsed
+  $: validThreadCount = threads.filter((t) => t.block_ids.length > 0).length;
+
+  $: style = collapsed
     ? `min-height:${sph}px;max-height:${sph}px;overflow-y:hidden`
     : ``;
 
   onMount(() => {
-    processCollapsed = index !== 0;
+    collapsed = index !== 0;
   });
 </script>
 
 <div on:wheel|preventDefault={(e) => wheelDispatcher("zoom", e)} {style}>
   <div
     class="bg-slate-300 text-slate-500 px-1 text-sm cursor-pointer text-left mb-1 flex flex-row place-content-between items-center"
-    on:click|preventDefault={() => (processCollapsed = !processCollapsed)}
+    on:click|preventDefault={() => (collapsed = !collapsed)}
   >
-    <span>
-      <i class="bi bi-activity" />
-      {formatProcessName(process)}
-    </span>
-    {#if !processCollapsed}
+    <div>
+      <span>
+        <i class="bi bi-activity" />
+        {formatProcessName(process)}
+      </span>
+      {#if collapsed}
+        <span class="text-xs text-content-38"
+          >{!validThreadCount
+            ? "(No thread data)"
+            : `(${validThreadCount} thread${
+                validThreadCount > 1 ? "s" : ""
+              } with data)`}</span
+        >
+      {/if}
+    </div>
+    {#if !collapsed}
       <div class="flex flex-row gap-1">
         <i
           title="Collapse"
@@ -74,7 +87,7 @@
       {#if processAsyncData}
         <TimelineRow
           bind:this={components[0]}
-          {processCollapsed}
+          processCollapsed={collapsed}
           threadName={asyncTaskName}
           maxDepth={processAsyncData.maxDepth}
         >
@@ -82,7 +95,7 @@
             slot="canvas"
             {stateStore}
             dataObject={processAsyncData}
-            {processCollapsed}
+            processCollapsed={collapsed}
             maxDepth={processAsyncData.maxDepth}
             on:zoom={(e) => wheelDispatcher("zoom", e.detail)}
             drawerBuilder={() =>
@@ -99,7 +112,7 @@
         {@const threadLength = formatExecutionTime(thread.maxMs - thread.minMs)}
         <TimelineRow
           bind:this={components[index + 1]}
-          {processCollapsed}
+          processCollapsed={collapsed}
           threadTitle={`${threadName}\n${threadLength}\n${thread.block_ids.length} block(s)`}
           {threadName}
           maxDepth={thread.maxDepth}
@@ -114,7 +127,7 @@
             slot="canvas"
             dataObject={thread}
             {stateStore}
-            {processCollapsed}
+            processCollapsed={collapsed}
             maxDepth={thread.maxDepth}
             on:zoom={(e) => wheelDispatcher("zoom", e.detail)}
             drawerBuilder={() =>
