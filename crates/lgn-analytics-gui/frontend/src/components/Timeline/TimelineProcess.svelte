@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
 
   import type { Process } from "@lgn/proto-telemetry/dist/process";
 
@@ -19,6 +19,7 @@
   export let process: Process;
   export let stateStore: TimelineStateStore;
   export let rootStartTime: number;
+  export let index: number;
 
   const wheelDispatcher = createEventDispatcher<{ zoom: WheelEvent }>();
   const processOffsetMs = Date.parse(process.startTime) - rootStartTime;
@@ -35,11 +36,15 @@
   $: style = processCollapsed
     ? `min-height:${sph}px;max-height:${sph}px;overflow-y:hidden`
     : ``;
+
+  onMount(() => {
+    processCollapsed = index !== 0;
+  });
 </script>
 
 <div on:wheel|preventDefault={(e) => wheelDispatcher("zoom", e)} {style}>
   <div
-    class="process mb-1 flex flex-row place-content-between items-center"
+    class="bg-slate-300 text-slate-500 px-1 text-sm cursor-pointer text-left mb-1 flex flex-row place-content-between items-center"
     on:click|preventDefault={() => (processCollapsed = !processCollapsed)}
   >
     <span>
@@ -64,7 +69,7 @@
       </div>
     {/if}
   </div>
-  <div class="thread-container">
+  <div class="flex flex-col gap-y-1 select-none">
     {#if $stateStore}
       {#if processAsyncData}
         <TimelineRow
@@ -124,15 +129,3 @@
     {/if}
   </div>
 </div>
-
-<style lang="postcss">
-  .process {
-    @apply bg-slate-300 text-slate-500 px-1 text-sm cursor-pointer;
-    text-align: left;
-  }
-
-  .thread-container {
-    @apply flex flex-col gap-y-1;
-    user-select: none;
-  }
-</style>

@@ -286,15 +286,14 @@
           on:mouseup|preventDefault={(e) => onMouseUp(e)}
         >
           {#if stateStore}
-            {#each $stateStore.processes as p (p.processId)}
-              <div>
-                <TimelineProcess
-                  process={p}
-                  {stateStore}
-                  rootStartTime={stateManager.rootStartTime}
-                  on:zoom={(e) => onZoom(e.detail)}
-                />
-              </div>
+            {#each $stateStore.processes as p, index (p.processId)}
+              <TimelineProcess
+                process={p}
+                {index}
+                {stateStore}
+                rootStartTime={stateManager.rootStartTime}
+                on:zoom={(e) => onZoom(e.detail)}
+              />
             {/each}
           {/if}
         </div>
@@ -307,7 +306,7 @@
           on:tick={(e) => onMinimapTick(e.detail)}
         />
         <TimelineAxis {stateStore} />
-        <span class="range">
+        <span class="mt-3">
           <TimelineRange {stateStore} />
         </span>
       </div>
@@ -329,10 +328,6 @@
     display: flex;
     flex-direction: column;
     @apply gap-y-1;
-  }
-
-  .range {
-    margin-top: 12px;
   }
 
   ::-webkit-scrollbar {
