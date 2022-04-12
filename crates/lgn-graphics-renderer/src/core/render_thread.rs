@@ -25,7 +25,7 @@ impl RenderThreadContext {
         Self {
             render_task_pool: ComputeTaskPool(
                 TaskPoolBuilder::default()
-                    // TODO(ader) - use a real thread count
+                    // TODO: #1461 use a real thread count
                     .num_threads(6)
                     .thread_name("Render Task Pool".to_string())
                     .build(),

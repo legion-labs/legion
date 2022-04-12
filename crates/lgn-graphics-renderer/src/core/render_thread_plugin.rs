@@ -14,11 +14,6 @@ impl Plugin for RendererThreadPlugin {
         app.insert_resource(RenderThread::new());
 
         app.add_system_to_stage(
-            RenderStage::Prepare,
-            wait_for_prev_frame.before(CommandBufferLabel::RenderThread),
-        );
-
-        app.add_system_to_stage(
             RenderStage::Render,
             render_update
                 .exclusive_system()
@@ -32,16 +27,13 @@ fn visibility(_world: &mut World) {}
 fn extract(_world: &mut World) {}
 
 #[allow(clippy::needless_pass_by_value)]
-fn wait_for_prev_frame(mut render_thread: ResMut<'_, RenderThread>) {
-    render_thread.wait_for_previous_render_frame();
-}
-
-#[allow(clippy::needless_pass_by_value)]
 fn render_update(world: &mut World) {
     visibility(world);
 
     extract(world);
 
     let mut render_thread = world.resource_mut::<RenderThread>();
+    render_thread.wait_for_previous_render_frame();
+
     render_thread.kickoff_render_frame();
 }
