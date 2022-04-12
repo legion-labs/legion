@@ -65,7 +65,7 @@ struct Args {
     manifest: Option<String>,
     /// Root object to load, usually a world
     #[clap(long)]
-    root: Option<String>,
+    root_asset: Option<String>,
     /// Enable physics visual debugger
     #[clap(long)]
     physics_debugger: bool,
@@ -78,7 +78,7 @@ struct Config {
     listen_endpoint: SocketAddr,
 
     /// The root asset.
-    root: Option<String>,
+    root_asset: Option<String>,
 
     /// The streamer configuration.
     #[serde(default)]
@@ -101,7 +101,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             listen_endpoint: Self::default_listen_endpoint(),
-            root: None,
+            root_asset: None,
             streamer: lgn_streamer::Config::default(),
             enable_aws_ec2_nat_public_ipv4_auto_discovery: false,
         }
@@ -130,7 +130,7 @@ pub fn build_runtime() -> App {
         // default root object is in sample data
         // /world/sample_1.ent
 
-        args.root.or(config.root).map(|asset| {
+        args.root_asset.or(config.root_asset).map(|asset| {
             asset
                 .parse::<ResourceTypeAndId>()
                 .expect("failed to parse root asset")
@@ -140,7 +140,7 @@ pub fn build_runtime() -> App {
     };
 
     info!(
-        "Root: {}",
+        "Root asset: {}",
         root_asset.map_or("(none)".to_owned(), |asset| asset.to_string())
     );
 

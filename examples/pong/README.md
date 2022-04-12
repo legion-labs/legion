@@ -3,7 +3,7 @@
 ## Launching
 
 ```sh
-cargo m run --bin runtime-srv --features=standalone -- --manifest=examples/pong/data/runtime/game.manifest --root="(1d9ddd99aad89045,b3440a7c-ba07-5628-e7f8-bb89ed5de900)"
+cargo m run --bin runtime-srv --features=standalone -- --manifest=examples/pong/data/runtime/game.manifest --root-asset="(1d9ddd99aad89045,b3440a7c-ba07-5628-e7f8-bb89ed5de900)"
 ```
 
 ## Editing data

@@ -66,7 +66,7 @@ scene = "/world/sample_1.ent"
 #listen_endpoint = "[::1]:50052"
 
 # The root asset to load.
-#root = "(1d9ddd99aad89045,af7e6ef0-c271-565b-c27a-b8cd93c3546a)"
+#root_asset = "(1d9ddd99aad89045,af7e6ef0-c271-565b-c27a-b8cd93c3546a)"
 
 # Streamer configuration.
 [runtime_server.streamer]
