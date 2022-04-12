@@ -33,7 +33,6 @@ impl SceneInstance {
         asset_registry: &AssetRegistry,
         commands: &mut Commands<'_, '_>,
         entity_with_children_query: &Query<'_, '_, &Children>,
-        tmp_mesh_set: &mut MeshRenderObjectSet,
     ) {
         let mut queue = vec![resource_id];
 
