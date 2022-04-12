@@ -7,6 +7,7 @@ use std::{
 };
 
 use async_trait::async_trait;
+use lgn_tracing::debug;
 use pin_project::pin_project;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
@@ -181,7 +182,7 @@ pub struct MonitorAsyncAdapter<Inner, Id> {
     callbacks: Arc<Box<dyn TransferCallbacks<Id>>>,
 }
 
-impl<Inner, Id> MonitorAsyncAdapter<Inner, Id> {
+impl<Inner, Id: Display> MonitorAsyncAdapter<Inner, Id> {
     pub fn new(
         inner: Inner,
         id: Id,
@@ -201,14 +202,14 @@ impl<Inner, Id> MonitorAsyncAdapter<Inner, Id> {
     }
 }
 
-impl<Id> AsyncReadWithOrigin for MonitorAsyncAdapter<ContentAsyncReadWithOrigin, Id> {
+impl<Id: Display> AsyncReadWithOrigin for MonitorAsyncAdapter<ContentAsyncReadWithOrigin, Id> {
     fn origin(&self) -> &Origin {
         self.inner.origin()
     }
 }
 
 #[async_trait]
-impl<Inner: AsyncRead + Send, Id> AsyncRead for MonitorAsyncAdapter<Inner, Id> {
+impl<Inner: AsyncRead + Send, Id: Display> AsyncRead for MonitorAsyncAdapter<Inner, Id> {
     fn poll_read(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -218,6 +219,12 @@ impl<Inner: AsyncRead + Send, Id> AsyncRead for MonitorAsyncAdapter<Inner, Id> {
 
         if !*this.started {
             *this.started = true;
+
+            debug!(
+                "MonitorAsyncAdapter::poll_read: transfer started for {}",
+                this.id
+            );
+
             this.callbacks.on_transfer_started(this.id, *this.total);
         }
 
@@ -244,16 +251,36 @@ impl<Inner: AsyncRead + Send, Id> AsyncRead for MonitorAsyncAdapter<Inner, Id> {
                         *this.inc = 0;
                     }
                 } else {
-                    this.callbacks.on_transfer_stopped(
-                        this.id,
-                        *this.total,
-                        *this.inc,
-                        *this.current,
-                        match &res {
-                            Ok(_) => Ok(()),
-                            Err(err) => Err(anyhow::anyhow!("{}", err).into()),
-                        },
-                    );
+                    match &res {
+                        Ok(_) => {
+                            debug!(
+                                "MonitorAsyncAdapter::poll_read: transfer stopped for {}",
+                                this.id
+                            );
+
+                            this.callbacks.on_transfer_stopped(
+                                this.id,
+                                *this.total,
+                                *this.inc,
+                                *this.current,
+                                Ok(()),
+                            );
+                        }
+                        Err(err) => {
+                            debug!(
+                                "MonitorAsyncAdapter::poll_read: transfer stopped for {}: {}",
+                                this.id, err
+                            );
+
+                            this.callbacks.on_transfer_stopped(
+                                this.id,
+                                *this.total,
+                                *this.inc,
+                                *this.current,
+                                Err(anyhow::anyhow!("{}", err).into()),
+                            );
+                        }
+                    }
                 }
 
                 Poll::Ready(res)
@@ -263,7 +290,7 @@ impl<Inner: AsyncRead + Send, Id> AsyncRead for MonitorAsyncAdapter<Inner, Id> {
 }
 
 #[async_trait]
-impl<Inner: AsyncWrite + Send, Id> AsyncWrite for MonitorAsyncAdapter<Inner, Id> {
+impl<Inner: AsyncWrite + Send, Id: Display> AsyncWrite for MonitorAsyncAdapter<Inner, Id> {
     fn poll_write(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -273,6 +300,12 @@ impl<Inner: AsyncWrite + Send, Id> AsyncWrite for MonitorAsyncAdapter<Inner, Id>
 
         if !*this.started {
             *this.started = true;
+
+            debug!(
+                "MonitorAsyncAdapter::poll_write: transfer started for {}",
+                this.id
+            );
+
             this.callbacks.on_transfer_started(this.id, *this.total);
         }
 
@@ -299,6 +332,11 @@ impl<Inner: AsyncWrite + Send, Id> AsyncWrite for MonitorAsyncAdapter<Inner, Id>
                 Poll::Ready(Ok(diff))
             }
             Poll::Ready(Err(err)) => {
+                debug!(
+                    "MonitorAsyncAdapter::poll_write: transfer stopped for {}: {}",
+                    this.id, err
+                );
+
                 this.callbacks.on_transfer_stopped(
                     this.id,
                     *this.total,
@@ -317,6 +355,11 @@ impl<Inner: AsyncWrite + Send, Id> AsyncWrite for MonitorAsyncAdapter<Inner, Id>
         let res = this.inner.poll_flush(cx);
 
         if let Poll::Ready(Err(err)) = &res {
+            debug!(
+                "MonitorAsyncAdapter::poll_flush: transfer stopped for {}: {}",
+                this.id, err
+            );
+
             this.callbacks.on_transfer_stopped(
                 this.id,
                 *this.total,
@@ -338,6 +381,11 @@ impl<Inner: AsyncWrite + Send, Id> AsyncWrite for MonitorAsyncAdapter<Inner, Id>
 
         match &res {
             Poll::Ready(Ok(_)) => {
+                debug!(
+                    "MonitorAsyncAdapter::poll_shutdown: transfer stopped for {}",
+                    this.id
+                );
+
                 this.callbacks.on_transfer_stopped(
                     this.id,
                     *this.total,
@@ -347,6 +395,11 @@ impl<Inner: AsyncWrite + Send, Id> AsyncWrite for MonitorAsyncAdapter<Inner, Id>
                 );
             }
             Poll::Ready(Err(err)) => {
+                debug!(
+                    "MonitorAsyncAdapter::poll_shutdown: transfer stopped for {}: {}",
+                    this.id, err
+                );
+
                 this.callbacks.on_transfer_stopped(
                     this.id,
                     *this.total,

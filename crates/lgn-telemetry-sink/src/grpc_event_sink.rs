@@ -34,7 +34,7 @@ enum SinkEvent {
     ProcessThreadBlock(Arc<ThreadBlock>),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct StaticApiKey {}
 
 #[async_trait]

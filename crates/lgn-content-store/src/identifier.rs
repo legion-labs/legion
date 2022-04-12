@@ -2,7 +2,7 @@ use byteorder::ReadBytesExt;
 use serde::{de::Visitor, Deserialize, Serialize};
 use smallvec::SmallVec;
 use std::{
-    fmt::{Display, Formatter},
+    fmt::{Debug, Display, Formatter},
     io::{Read, Write},
     str::FromStr,
 };
@@ -23,10 +23,16 @@ use crate::{
 ///
 /// Note that if the content is not bigger than a hash would be, it will be
 /// stored on the stack.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Identifier {
     HashRef(u64, HashAlgorithm, SmallVec<[u8; HASH_SIZE]>),
     Data(SmallVec<[u8; SMALL_IDENTIFIER_SIZE]>),
+}
+
+impl Debug for Identifier {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(self, f)
+    }
 }
 
 const HASH_SIZE: usize = 32;

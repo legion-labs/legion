@@ -12,7 +12,7 @@ use tokio::sync::{Mutex, MutexGuard};
 use super::{jwt::UnsecureValidation, Authenticator, ClientTokenSet, Error, Result};
 
 /// A `TokenCache` stores authentication tokens and handles their lifetime.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TokenCache<A> {
     project_dirs: ProjectDirs,
     validation: UnsecureValidation,

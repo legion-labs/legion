@@ -4,6 +4,7 @@ use std::{
 };
 
 use async_trait::async_trait;
+use lgn_tracing::debug;
 
 use crate::{
     traits::{get_content_readers_impl, WithOrigin},
@@ -43,8 +44,15 @@ impl<Inner: Display> Display for SmallContentProvider<Inner> {
 impl<Inner: ContentReader + Send + Sync> ContentReader for SmallContentProvider<Inner> {
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
         if let Identifier::Data(data) = id {
+            debug!("SmallContentProvider::get_content_reader({}) -> returning data contained in the identifier", id);
+
             Ok(std::io::Cursor::new(data.to_vec()).with_origin(Origin::InIdentifier {}))
         } else {
+            debug!(
+                "SmallContentProvider::get_content_reader({}) -> calling the inner provider",
+                id
+            );
+
             self.inner.get_content_reader(id).await
         }
     }

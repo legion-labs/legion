@@ -5,6 +5,7 @@ use std::{
 
 use async_trait::async_trait;
 use futures::Future;
+use lgn_tracing::debug;
 use pin_project::pin_project;
 use tokio::io::AsyncWrite;
 
@@ -23,12 +24,14 @@ enum State<Impl> {
 }
 
 #[async_trait]
-pub trait UploaderImpl: Unpin + Send + Sync + 'static {
+pub trait UploaderImpl: Unpin + Send + Sync + std::fmt::Debug + 'static {
     async fn upload(self, data: Vec<u8>, id: Identifier) -> Result<()>;
 }
 
 impl<Impl: UploaderImpl> Uploader<Impl> {
     pub fn new(id: Identifier, impl_: Impl) -> Self {
+        debug!("Uploader::new({}, {:?})", id, impl_);
+
         let state = State::Writing(Some((std::io::Cursor::new(Vec::new()), id, impl_)));
 
         Self { state }

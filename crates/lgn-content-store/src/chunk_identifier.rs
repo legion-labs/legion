@@ -1,5 +1,5 @@
 use std::{
-    fmt::Formatter,
+    fmt::{Debug, Display, Formatter},
     io::{Read, Write},
     str::FromStr,
 };
@@ -12,10 +12,16 @@ use crate::{
 };
 
 /// A chunk identifier.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ChunkIdentifier(u64, Identifier);
 
-impl std::fmt::Display for ChunkIdentifier {
+impl Debug for ChunkIdentifier {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl Display for ChunkIdentifier {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let mut enc = base64::write::EncoderStringWriter::new(base64::URL_SAFE_NO_PAD);
 

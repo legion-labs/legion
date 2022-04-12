@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use lgn_tracing::{async_span_scope, debug, error, warn};
 use redis::AsyncCommands;
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -53,6 +54,8 @@ impl RedisProvider {
     ///
     /// Otherwise, any other error is returned.
     pub async fn delete_content(&self, id: &Identifier) -> Result<()> {
+        async_span_scope!("RedisProvider::delete_content");
+
         let mut con = self
             .client
             .get_async_connection()
@@ -119,6 +122,10 @@ impl Display for RedisProvider {
 #[async_trait]
 impl ContentReader for RedisProvider {
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
+        async_span_scope!("RedisProvider::get_content_reader");
+
+        debug!("RedisProvider::get_content_reader({})", id);
+
         let mut con = self
             .client
             .get_async_connection()
@@ -129,6 +136,11 @@ impl ContentReader for RedisProvider {
 
         match con.get::<_, Option<Vec<u8>>>(&key).await {
             Ok(Some(value)) => {
+                debug!(
+                    "RedisProvider::get_content_reader({}) -> found item with key `{}`",
+                    id, key
+                );
+
                 let origin = Origin::Redis {
                     host: self.host.clone(),
                     key,
@@ -136,13 +148,27 @@ impl ContentReader for RedisProvider {
 
                 Ok(Cursor::new(value).with_origin(origin))
             }
-            Ok(None) => Err(Error::IdentifierNotFound(id.clone())),
-            Err(err) => Err(anyhow::anyhow!(
-                "failed to get content from Redis for key `{}`: {}",
-                key,
-                err
-            )
-            .into()),
+            Ok(None) => {
+                warn!(
+                    "RedisProvider::get_content_reader({}) -> item with key `{}` was not found",
+                    id, key
+                );
+
+                Err(Error::IdentifierNotFound(id.clone()))
+            }
+            Err(err) => {
+                error!(
+                    "RedisProvider::get_content_reader({}) -> failed to read item with key `{}`: {}",
+                    id, key, err
+                );
+
+                Err(anyhow::anyhow!(
+                    "failed to get content from Redis for key `{}`: {}",
+                    key,
+                    err
+                )
+                .into())
+            }
         }
     }
 
@@ -150,10 +176,16 @@ impl ContentReader for RedisProvider {
         &self,
         ids: &'ids BTreeSet<Identifier>,
     ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
+        async_span_scope!("RedisProvider::get_content_readers");
+
+        debug!("RedisProvider::get_content_readers({:?})", ids);
+
         get_content_readers_impl(self, ids).await
     }
 
     async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
+        async_span_scope!("RedisProvider::resolve_alias");
+
         let mut con = self
             .client
             .get_async_connection()
@@ -181,6 +213,10 @@ impl ContentReader for RedisProvider {
 #[async_trait]
 impl ContentWriter for RedisProvider {
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
+        async_span_scope!("RedisProvider::get_content_writer");
+
+        debug!("RedisProvider::get_content_writer({})", id);
+
         let key = self.get_content_key(id);
 
         let mut con = self
@@ -190,24 +226,47 @@ impl ContentWriter for RedisProvider {
             .map_err(|err| anyhow::anyhow!("failed to get connection to Redis: {}", err))?;
 
         match con.exists(&key).await {
-            Ok(true) => Err(Error::IdentifierAlreadyExists(id.clone())),
-            Ok(false) => Ok(Box::pin(RedisUploader::new(
-                id.clone(),
-                RedisUploaderImpl {
-                    client: self.client.clone(),
-                    key_prefix: self.key_prefix.clone(),
-                },
-            ))),
-            Err(err) => Err(anyhow::anyhow!(
-                "failed to check if content exists for key `{}`: {}",
-                key,
-                err
-            )
-            .into()),
+            Ok(true) => {
+                debug!(
+                    "RedisProvider::get_content_writer({}) -> item with key `{}` already exists",
+                    id, key
+                );
+
+                Err(Error::IdentifierAlreadyExists(id.clone()))
+            }
+            Ok(false) => {
+                debug!(
+                    "RedisProvider::get_content_writer({}) -> item with key `{}` does not exist: writer created",
+                    id, key
+                );
+
+                Ok(Box::pin(RedisUploader::new(
+                    id.clone(),
+                    RedisUploaderImpl {
+                        client: self.client.clone(),
+                        key_prefix: self.key_prefix.clone(),
+                    },
+                )))
+            }
+            Err(err) => {
+                error!(
+                    "RedisProvider::get_content_writer({}) -> failed to check key `{}`: {}",
+                    id, key, err
+                );
+
+                Err(anyhow::anyhow!(
+                    "failed to check if content exists for key `{}`: {}",
+                    key,
+                    err
+                )
+                .into())
+            }
         }
     }
 
     async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
+        async_span_scope!("RedisProvider::regiser_alias");
+
         let mut con = self
             .client
             .get_async_connection()
@@ -242,6 +301,7 @@ impl ContentWriter for RedisProvider {
 
 type RedisUploader = Uploader<RedisUploaderImpl>;
 
+#[derive(Debug)]
 struct RedisUploaderImpl {
     client: redis::Client,
     key_prefix: String,
@@ -250,6 +310,8 @@ struct RedisUploaderImpl {
 #[async_trait]
 impl UploaderImpl for RedisUploaderImpl {
     async fn upload(self, data: Vec<u8>, id: Identifier) -> Result<()> {
+        async_span_scope!("RedisProvider::upload");
+
         let key = RedisProvider::get_content_key_with_prefix(&id, &self.key_prefix);
 
         let mut con = self
