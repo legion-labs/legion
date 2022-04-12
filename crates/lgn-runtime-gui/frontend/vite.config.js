@@ -16,6 +16,7 @@ export default defineConfig({
     svelte({ hot: !!process.env.DEV && !process.env.VITEST }),
     viteTsProto({
       modules: [
+        { name: "@lgn/proto-log-stream", glob: "*.proto" },
         { name: "@lgn/proto-runtime", glob: "*.proto" },
         { name: "@lgn/proto-streaming", glob: "*.proto" },
       ],

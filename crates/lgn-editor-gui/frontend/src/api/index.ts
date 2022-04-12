@@ -19,9 +19,13 @@ import {
   UploadRawFileResponse,
 } from "@lgn/proto-editor/dist/source_control";
 import {
-  RuntimeClientImpl,
   GrpcWebImpl as RuntimeImpl,
+  RuntimeClientImpl,
 } from "@lgn/proto-runtime/dist/runtime";
+import {
+  GrpcWebImpl as LogStreamImpl,
+  LogStreamClientImpl,
+} from "@lgn/proto-log-stream/dist/log_stream";
 import log from "@lgn/web-client/src/lib/log";
 
 import { formatProperties } from "../lib/propertyGrid";
@@ -42,6 +46,8 @@ let sourceControlClient: SourceControlClientImpl;
 let editorClient: EditorClientImpl;
 
 let runtimeClient: RuntimeClientImpl;
+
+let s: LogStreamClientImpl;
 
 export function initApiClient({
   editorServerUrl = defaultEditorServerURL,

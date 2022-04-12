@@ -20,6 +20,7 @@ const plugins = [
   viteTsProto({
     modules: [
       { name: "@lgn/proto-editor", glob: "*.proto" },
+      { name: "@lgn/proto-log-stream", glob: "*.proto" },
       { name: "@lgn/proto-runtime", glob: "*.proto" },
       { name: "@lgn/proto-streaming", glob: "*.proto" },
     ],
