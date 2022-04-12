@@ -1,8 +1,7 @@
 //! A generic [`EventSink`] that accepts an [`broadcast::Sender<TraceEvent>`]
 //! that will be used to send [`TraceEvent`] messages.
 
-use core::fmt;
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 
 use lgn_tracing::{
     event::EventSink,

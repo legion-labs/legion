@@ -1,0 +1,25 @@
+{
+  "name": "@lgn/proto-log-stream",
+  "version": "0.1.0",
+  "description": "Legion's monorepo",
+  "repository": "https://github.com/legion-labs/legion",
+  "author": "devs@legionlabs.com",
+  "license": "MIT OR Apache-2.0",
+  "private": true,
+  "packageManager": "pnpm@6.24.1",
+  "scripts": {
+    "clean": "rimraf node_modules dist"
+  },
+  "devDependencies": {
+    "ts-proto": "^1.110.2",
+    "typescript": "^4.6.3"
+  },
+  "dependencies": {
+    "@improbable-eng/grpc-web": "^0.15.0",
+    "browser-headers": "^0.4.1",
+    "google-protobuf": "^3.19.4",
+    "long": "^5.2.0",
+    "pnpm": "^6.32.3",
+    "protobufjs": "^6.11.2"
+  }
+}

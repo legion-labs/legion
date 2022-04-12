@@ -5,7 +5,6 @@ use std::{net::SocketAddr, path::PathBuf, str::FromStr, time::Duration};
 
 use clap::Parser;
 use generic_data::plugin::GenericDataPlugin;
-use grpc::TraceEventsReceiver;
 use lgn_app::{prelude::*, AppExit, EventWriter, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::{AsyncPlugin, TokioAsyncRuntime};
@@ -17,6 +16,7 @@ use lgn_graphics_renderer::RendererPlugin;
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_hierarchy::HierarchyPlugin;
 use lgn_input::InputPlugin;
+use lgn_log_stream::{BroadcastSink, LogStreamPlugin, TraceEventsReceiver};
 use lgn_resource_registry::{
     settings::CompilationMode, ResourceRegistryPlugin, ResourceRegistrySettings,
 };
@@ -42,9 +42,6 @@ use resource_browser_plugin::{ResourceBrowserPlugin, ResourceBrowserSettings};
 
 mod source_control_plugin;
 use source_control_plugin::SourceControlPlugin;
-
-mod broadcast_sink;
-use broadcast_sink::BroadcastSink;
 
 #[cfg(test)]
 #[path = "tests/test_resource_browser.rs"]
@@ -285,6 +282,7 @@ fn main() {
         .add_plugin(ResourceRegistryPlugin::default())
         .insert_resource(GRPCPluginSettings::new(listen_endpoint))
         .insert_resource(trace_events_receiver)
+        .add_plugin(LogStreamPlugin::default())
         .add_plugin(GRPCPlugin::default())
         .add_plugin(InputPlugin::default())
         .add_plugin(RendererPlugin::default())

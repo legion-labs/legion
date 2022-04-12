@@ -2555,6 +2555,8 @@ dependencies = [
  "lgn-grpc",
  "lgn-hierarchy",
  "lgn-input",
+ "lgn-log-stream",
+ "lgn-log-stream-proto",
  "lgn-math",
  "lgn-mp4",
  "lgn-online",
@@ -5295,6 +5297,32 @@ dependencies = [
  "lgn-tracing",
  "lgn-utils",
  "serde",
+]
+
+[[package]]
+name = "lgn-log-stream"
+version = "0.1.0"
+dependencies = [
+ "lgn-app",
+ "lgn-async",
+ "lgn-ecs",
+ "lgn-grpc",
+ "lgn-log-stream-proto",
+ "lgn-tracing",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+]
+
+[[package]]
+name = "lgn-log-stream-proto"
+version = "0.1.0"
+dependencies = [
+ "base64 0.13.0",
+ "prost",
+ "tokio",
+ "tonic",
+ "tonic-build",
 ]
 
 [[package]]
@@ -8516,6 +8544,8 @@ dependencies = [
  "lgn-grpc",
  "lgn-hierarchy",
  "lgn-input",
+ "lgn-log-stream",
+ "lgn-log-stream-proto",
  "lgn-online",
  "lgn-physics",
  "lgn-presenter-window",
