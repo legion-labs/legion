@@ -19,13 +19,13 @@ import {
   UploadRawFileResponse,
 } from "@lgn/proto-editor/dist/source_control";
 import {
-  GrpcWebImpl as RuntimeImpl,
-  RuntimeClientImpl,
-} from "@lgn/proto-runtime/dist/runtime";
-import {
-  GrpcWebImpl as LogStreamImpl,
   LogStreamClientImpl,
+  GrpcWebImpl as LogStreamImpl,
 } from "@lgn/proto-log-stream/dist/log_stream";
+import {
+  RuntimeClientImpl,
+  GrpcWebImpl as RuntimeImpl,
+} from "@lgn/proto-runtime/dist/runtime";
 import log from "@lgn/web-client/src/lib/log";
 
 import { formatProperties } from "../lib/propertyGrid";
