@@ -93,10 +93,7 @@ impl<'a> LockContext<'a> {
                 .await
             {
                 Ok((runtime_path_id, _built_resources)) => {
-                    let runtime_res_id = runtime_path_id.resource_id();
-                    if !self.asset_registry.reload(runtime_res_id) {
-                        self.asset_registry.load_untyped(runtime_res_id);
-                    }
+                    self.asset_registry.reload(runtime_path_id.resource_id());
                 }
                 Err(e) => {
                     error!("Error building resource derivations {:?}", e);

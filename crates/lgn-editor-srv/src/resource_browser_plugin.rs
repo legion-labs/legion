@@ -660,7 +660,12 @@ impl ResourceBrowser for ResourceBrowserRPC {
             let mut process_queue = vec![source_resource_id];
             while let Some(current_id) = process_queue.pop() {
                 if let Some(children) = index_snapshot.parent_to_entities.get(&current_id) {
-                    process_queue.extend_from_slice(children);
+                    process_queue.extend(
+                        children
+                            .iter()
+                            .copied()
+                            .filter(|r| r.kind == sample_data::offline::Entity::TYPE),
+                    );
                 }
                 clone_queue.push(current_id);
             }
