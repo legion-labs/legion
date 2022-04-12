@@ -3,8 +3,12 @@ use std::sync::Arc;
 use crate::components::{MaterialComponent, Mesh, ModelComponent, TextureComponent, TextureData};
 use lgn_app::EventReader;
 use lgn_asset_registry::AssetToEntityMap;
-use lgn_data_runtime::{AssetRegistry, AssetRegistryEvent, Resource, ResourceTypeAndId};
+use lgn_data_runtime::{AssetRegistry, AssetRegistryEvent, Handle, Resource};
 use lgn_ecs::prelude::{Commands, Entity, Res, ResMut};
+use lgn_graphics_data::{
+    runtime::{Material, Model},
+    runtime_texture::Texture,
+};
 use lgn_tracing::info;
 
 #[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)]
@@ -16,26 +20,26 @@ pub(crate) fn process_load_events(
 ) {
     for asset_loaded_event in asset_loaded_events.iter() {
         match asset_loaded_event {
-            AssetRegistryEvent::AssetLoaded(resource_id) => match resource_id.kind {
-                lgn_graphics_data::runtime_texture::Texture::TYPE => {
+            AssetRegistryEvent::AssetLoaded(resource) => match resource.id().kind {
+                Texture::TYPE => {
                     crate::asset_to_ecs::create_texture(
-                        resource_id,
+                        Handle::<Texture>::from(resource.clone()),
                         &asset_registry,
                         &mut asset_to_entity_map,
                         &mut commands,
                     );
                 }
-                lgn_graphics_data::runtime::Material::TYPE => {
+                Material::TYPE => {
                     crate::asset_to_ecs::create_material(
-                        resource_id,
+                        Handle::<Material>::from(resource.clone()),
                         &asset_registry,
                         &mut asset_to_entity_map,
                         &mut commands,
                     );
                 }
-                lgn_graphics_data::runtime::Model::TYPE => {
+                Model::TYPE => {
                     crate::asset_to_ecs::create_model(
-                        resource_id,
+                        Handle::<Model>::from(resource.clone()),
                         &asset_registry,
                         &mut asset_to_entity_map,
                         &mut commands,
@@ -48,23 +52,23 @@ pub(crate) fn process_load_events(
 }
 
 pub(crate) fn create_material(
-    asset_id: &ResourceTypeAndId,
+    asset_handle: Handle<Material>,
     asset_registry: &AssetRegistry,
     asset_to_entity_map: &mut AssetToEntityMap,
     commands: &mut Commands<'_, '_>,
 ) -> Option<Entity> {
-    let material = asset_registry
-        .get_untyped(*asset_id)
-        .and_then(|handle| handle.get::<lgn_graphics_data::runtime::Material>(asset_registry))?;
+    let material = asset_handle.get(asset_registry)?;
 
-    let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
+    let mut entity = if let Some(entity) = asset_to_entity_map.get(asset_handle.id()) {
         commands.entity(entity)
     } else {
         commands.spawn()
     };
 
+    let asset_id = asset_handle.id();
+
     entity.insert(MaterialComponent::new(
-        *asset_id,
+        asset_handle,
         material.albedo.clone(),
         material.normal.clone(),
         material.metalness.clone(),
@@ -81,16 +85,14 @@ pub(crate) fn create_material(
 }
 
 pub(crate) fn create_texture(
-    asset_id: &ResourceTypeAndId,
+    resource: Handle<Texture>,
     asset_registry: &AssetRegistry,
     asset_to_entity_map: &mut AssetToEntityMap,
     commands: &mut Commands<'_, '_>,
 ) -> Option<Entity> {
-    let texture = asset_registry.get_untyped(*asset_id).and_then(|handle| {
-        handle.get::<lgn_graphics_data::runtime_texture::Texture>(asset_registry)
-    })?;
+    let texture = resource.get(asset_registry)?;
 
-    let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
+    let mut entity = if let Some(entity) = asset_to_entity_map.get(resource.id()) {
         commands.entity(entity)
     } else {
         commands.spawn()
@@ -104,8 +106,10 @@ pub(crate) fn create_texture(
 
     let texture_data = TextureData::from_slices(&texture_mips);
 
+    let asset_id = resource.id();
+
     let texture_component = TextureComponent::new(
-        *asset_id,
+        resource,
         texture.width,
         texture.height,
         texture.format,
@@ -127,16 +131,14 @@ pub(crate) fn create_texture(
 }
 
 pub(crate) fn create_model(
-    asset_id: &ResourceTypeAndId,
+    resource: Handle<Model>,
     asset_registry: &AssetRegistry,
     asset_to_entity_map: &mut AssetToEntityMap,
     commands: &mut Commands<'_, '_>,
 ) -> Option<Entity> {
-    let model = asset_registry
-        .get_untyped(*asset_id)
-        .and_then(|handle| handle.get::<lgn_graphics_data::runtime::Model>(asset_registry))?;
+    let model = resource.get(asset_registry)?;
 
-    let mut entity = if let Some(entity) = asset_to_entity_map.get(*asset_id) {
+    let mut entity = if let Some(entity) = asset_to_entity_map.get(resource.id()) {
         commands.entity(entity)
     } else {
         commands.spawn()
@@ -175,10 +177,10 @@ pub(crate) fn create_model(
             bounding_sphere: Mesh::calculate_bounding_sphere(&mesh.positions),
         });
     }
-    let model_component = ModelComponent {
-        model_id: *asset_id,
-        meshes,
-    };
+
+    let asset_id = resource.id();
+
+    let model_component = ModelComponent { resource, meshes };
     entity.insert(model_component);
 
     info!(

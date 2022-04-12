@@ -160,7 +160,7 @@ impl AssetRegistryPlugin {
                     let handle = asset_handles.get(*asset_id).unwrap();
                     if handle.is_loaded(&registry) {
                         *loading_state = LoadingState::Loaded;
-                        event_writer.send(AssetRegistryEvent::AssetLoaded(handle.id()));
+                        event_writer.send(AssetRegistryEvent::AssetLoaded(handle.clone()));
                     } else if handle.is_err(&registry) {
                         error!("Failed to load runtime asset {:?}", asset_id);
                         *loading_state = LoadingState::Failed;

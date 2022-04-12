@@ -181,7 +181,7 @@ impl MaterialManager {
         material_component: &MaterialComponent,
         allocator: &UnifiedStaticBufferAllocator,
     ) {
-        let material_resource_id = material_component.material_id;
+        let material_resource_id = material_component.resource.id();
         let material_id: MaterialId = self.allocator.acquire_index().into();
         let material_data = material_component.material_data.clone();
 

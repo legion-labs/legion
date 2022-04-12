@@ -90,14 +90,14 @@ impl ScenePlugin {
     ) {
         for asset_loaded_event in asset_loaded_events.iter() {
             match asset_loaded_event {
-                AssetRegistryEvent::AssetLoaded(resource_id)
-                    if resource_id.kind == sample_data::runtime::Entity::TYPE =>
+                AssetRegistryEvent::AssetLoaded(handle)
+                    if handle.id().kind == sample_data::runtime::Entity::TYPE =>
                 {
                     active_scenes
                         .iter_mut()
                         .filter_map(|(_scene_top_resource, scene)| {
-                            if *resource_id == scene.root_resource
-                                || scene.asset_to_entity_map.get(*resource_id).is_some()
+                            if handle.id() == scene.root_resource
+                                || scene.asset_to_entity_map.get(handle.id()).is_some()
                             {
                                 Some(scene)
                             } else {
@@ -106,7 +106,7 @@ impl ScenePlugin {
                         })
                         .for_each(|scene| {
                             scene.spawn_entity_hierarchy(
-                                *resource_id,
+                                handle.id(),
                                 &asset_registry,
                                 &mut commands,
                                 &entity_with_children_query,

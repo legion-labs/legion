@@ -1,8 +1,8 @@
 use std::ops::Mul;
 
-use lgn_data_runtime::ResourceTypeAndId;
+use lgn_data_runtime::Handle;
 use lgn_ecs::prelude::Component;
-use lgn_graphics_data::runtime::MaterialReferenceType;
+use lgn_graphics_data::runtime::{MaterialReferenceType, Model};
 use lgn_math::{Mat4, Vec2, Vec3, Vec4};
 
 use crate::{
@@ -807,6 +807,6 @@ fn add_vertex_data(vertex_data: &mut Vec<f32>, pos: Vec3, normal_opt: Option<Vec
 
 #[derive(Component)]
 pub struct ModelComponent {
-    pub model_id: ResourceTypeAndId,
+    pub resource: Handle<Model>,
     pub meshes: Vec<Mesh>,
 }

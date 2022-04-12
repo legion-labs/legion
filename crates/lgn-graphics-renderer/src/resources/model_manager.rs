@@ -115,7 +115,7 @@ pub(crate) fn update_models(
     mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
 ) {
     for updated_model in updated_models.iter() {
-        let model_resource_id = &updated_model.model_id;
+        let model_resource_id = &updated_model.resource.id();
 
         missing_visuals_tracker.add_changed_resource(*model_resource_id);
 

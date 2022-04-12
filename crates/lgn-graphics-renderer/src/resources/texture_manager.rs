@@ -108,14 +108,14 @@ impl TextureManager {
             entity,
             TextureInfo {
                 state: TextureState::Invalid,
-                texture_id: texture_component.texture_id,
+                texture_id: texture_component.resource.id(),
                 bindless_index: None,
                 texture_view,
             },
         );
 
         self.texture_id_to_entity
-            .insert(texture_component.texture_id, entity);
+            .insert(texture_component.resource.id(), entity);
 
         self.texture_jobs.push(TextureJob::Upload(UploadTextureJob {
             entity,
