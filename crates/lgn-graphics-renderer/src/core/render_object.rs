@@ -81,7 +81,7 @@ impl<T> RenderObjectSet<T> {
         self.storage.sync()
     }
 
-    pub fn add(&mut self, obj: T) -> RenderObjectHandle<T> {
+    pub fn insert(&mut self, obj: T) -> RenderObjectHandle<T> {
         let id = self.storage.insert(obj);
         RenderObjectHandle::<T>::new(id, self.storage.sender.clone())
     }
@@ -100,7 +100,7 @@ mod tests {
         let mut set = MeshRenderObjectSet::new(1);
         assert_eq!(set.len(), 0);
 
-        let handle = set.add(MeshRenderObject {});
+        let handle = set.insert(MeshRenderObject {});
         assert_eq!(set.len(), 1);
 
         drop(handle);

@@ -54,10 +54,11 @@ pub(crate) mod lighting;
 pub mod render_pass;
 
 pub mod core;
-pub mod renderers;
+pub mod features;
 pub mod shared;
 
 use crate::core::RendererThreadPlugin;
+use crate::features::mesh_feature::MeshFeaturePlugin;
 use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
 use crate::render_pass::TmpRenderPass;
 use crate::{
@@ -93,9 +94,6 @@ use crate::{
     },
     labels::CommandBufferLabel,
 };
-
-mod core;
-pub mod features;
 
 pub const UP_VECTOR: Vec3 = Vec3::Y;
 pub const DOWN_VECTOR: Vec3 = const_vec3!([0_f32, -1_f32, 0_f32]);
@@ -219,6 +217,7 @@ impl Plugin for RendererPlugin {
         app.add_plugin(EguiPlugin::default());
         app.add_plugin(PickingPlugin {});
         app.add_plugin(RendererThreadPlugin {});
+        app.add_plugin(MeshFeaturePlugin::default());
 
         // This resource needs to be shutdown after all other resources
         app.insert_resource(renderer);

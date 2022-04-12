@@ -135,7 +135,6 @@ impl SceneInstance {
                     entity_name = Some(name.name.clone());
                 } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
                     entity.insert(VisualComponent::new(
-                        tmp_mesh_set,
                         visual
                             .renderable_geometry
                             .as_ref()

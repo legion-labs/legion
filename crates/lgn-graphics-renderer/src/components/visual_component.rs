@@ -2,13 +2,14 @@ use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::Color;
 
-use crate::features::mesh_feature::mesh_feature::*;
+use crate::{core::render_object::RenderObjectHandle, features::mesh_feature::mesh_feature::*};
 
 #[derive(Component)]
 pub struct VisualComponent {
     color: Color,
     color_blend: f32,
     model_resource_id: Option<ResourceTypeAndId>,
+    pub tmp_mesh_render_object: Option<RenderObjectHandle<MeshRenderObject>>,
 }
 
 impl VisualComponent {
@@ -21,6 +22,7 @@ impl VisualComponent {
             color,
             color_blend,
             model_resource_id,
+            tmp_mesh_render_object: None,
         }
     }
 
