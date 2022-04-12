@@ -284,6 +284,7 @@ importers:
       long: ^5.2.0
       pnpm: ^6.32.3
       protobufjs: ^6.11.2
+      rxjs: 7.5.5
       ts-proto: ^1.110.2
       typescript: ^4.6.3
     dependencies:
@@ -293,6 +294,7 @@ importers:
       long: 5.2.0
       pnpm: 6.32.3
       protobufjs: 6.11.2
+      rxjs: 7.5.5
     devDependencies:
       ts-proto: 1.110.2
       typescript: 4.6.3
