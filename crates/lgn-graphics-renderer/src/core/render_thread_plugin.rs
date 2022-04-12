@@ -2,7 +2,6 @@ use lgn_app::{App, Plugin};
 use lgn_ecs::prelude::*;
 use lgn_ecs::world::World;
 
-use crate::labels::CommandBufferLabel;
 use crate::labels::RenderStage;
 
 use super::RenderThread;
@@ -13,12 +12,7 @@ impl Plugin for RendererThreadPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(RenderThread::new());
 
-        app.add_system_to_stage(
-            RenderStage::Render,
-            render_update
-                .exclusive_system()
-                .label(CommandBufferLabel::RenderThread),
-        );
+        app.add_system_to_stage(RenderStage::Render, render_update.exclusive_system());
     }
 }
 
