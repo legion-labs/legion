@@ -43,6 +43,7 @@
   let div: HTMLElement;
   let mainWidth: number;
   let initializationError = "";
+  let searching = false;
 
   $: if (mainWidth && stateStore) {
     stateStore.update((s) => {
@@ -180,7 +181,7 @@
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    if (event.shiftKey) {
+    if (event.shiftKey || searching) {
       return;
     }
     switch (event.code) {
@@ -272,7 +273,7 @@
               process={stateManager.process}
               timeRange={$stateStore.currentSelection}
             />
-            <TimelineSearch />
+            <TimelineSearch bind:searching />
           </div>
         {/if}
         <div

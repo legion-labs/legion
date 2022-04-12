@@ -1,6 +1,6 @@
 <script lang="ts">
   import { TimelineContext } from "../Stores/TimelineContext";
-
+  export let searching: boolean;
   const searchStore = TimelineContext.search;
 </script>
 
@@ -9,6 +9,8 @@
     type="text"
     class="metric-search border-2"
     placeholder="Search..."
+    on:focus={() => (searching = true)}
+    on:blur={() => (searching = false)}
     bind:value={$searchStore}
   />
   <button on:click={() => searchStore.set("")}
