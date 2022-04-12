@@ -1,6 +1,6 @@
 import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
 
-import type { Entries, Entry } from "./hierarchyTree";
+import type { Entry } from "./hierarchyTree";
 
 // const offlineEntity = "|1c0ff9e497b0740f";
 const runtimeEntity = "|1d9ddd99aad89045";
@@ -141,34 +141,4 @@ export function iconFor(entry: Entry<ResourceDescription | symbol>) {
   return entry.subEntries.length
     ? "ic:baseline-folder-open"
     : "ic:outline-insert-drive-file";
-}
-
-/** Retrieves the resource name from the resource `Entries` based on the provided value string */
-export function getResourceNameFromEntries(
-  resourceEntries: Entries<ResourceDescription>,
-  value: string
-): string {
-  const entry = resourceEntries.find((entry) =>
-    value.startsWith(entry.item.id)
-  );
-
-  let result = "";
-
-  if (entry) {
-    result = entry.name;
-
-    let index = value.indexOf("_");
-
-    if (index !== -1) {
-      const subValue = value.slice(index + 1);
-
-      index = subValue.indexOf("|");
-
-      if (index !== -1) {
-        result += "/" + subValue.slice(undefined, index);
-      }
-    }
-  }
-
-  return result;
 }
