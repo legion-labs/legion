@@ -88,10 +88,12 @@ struct Config {
 
     /// The streamer configuration.
     #[serde(default)]
+    #[allow(dead_code)]
     streamer: lgn_streamer::Config,
 
     /// Whether the program runs in AWS EC2 behind a NAT.
     #[serde(default)]
+    #[allow(dead_code)]
     enable_aws_ec2_nat_public_ipv4_auto_discovery: bool,
 }
 
@@ -116,6 +118,7 @@ pub fn build_runtime() -> App {
     #[cfg(not(feature = "standalone"))]
     let (trace_events_sender, trace_events_receiver) = broadcast::channel(1_000);
 
+    #[allow(unused_mut)]
     let mut telemetry_guard = TelemetryGuardBuilder::default();
 
     #[cfg(not(feature = "standalone"))]
