@@ -4,7 +4,7 @@ import { throttled } from "@lgn/web-client/src/lib/store";
 import type { LogEntry } from "@lgn/web-client/src/types/log";
 import { severityFromLevel } from "@lgn/web-client/src/types/log";
 
-import { initLogStream as initLogStreamApi } from "@/api";
+import { initEditorLogStream as initEditorLogStreamApi } from "@/api";
 
 export const buffer = 1_000;
 
@@ -21,8 +21,8 @@ export const logEntries = throttled(
   500
 );
 
-export function initLogStream() {
-  const subscription = initLogStreamApi().subscribe(
+export function initEditorLogStream() {
+  const subscription = initEditorLogStreamApi().subscribe(
     ({ lagging, traceEvent }) => {
       if (get(streamedLogEntries).length > buffer - 1) {
         get(streamedLogEntries).shift();

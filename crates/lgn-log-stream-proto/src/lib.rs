@@ -2,11 +2,12 @@
 //!
 
 #![allow(
-    clippy::missing_errors_doc,
     clippy::doc_markdown,
-    clippy::wildcard_imports,
+    clippy::missing_errors_doc,
+    clippy::return_self_not_must_use,
     clippy::similar_names,
-    clippy::return_self_not_must_use
+    clippy::use_self,
+    clippy::wildcard_imports
 )]
 
 pub mod log_stream {
