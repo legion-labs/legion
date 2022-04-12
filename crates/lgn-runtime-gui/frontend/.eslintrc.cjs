@@ -10,6 +10,7 @@ module.exports = {
   parserOptions: {
     tsconfigRootDir: __dirname,
     project: "tsconfig.json",
+    extraFileExtensions: [".cjs", ".svelte"],
   },
   plugins: ["svelte3", "@typescript-eslint"],
   extends: [
@@ -21,6 +22,15 @@ module.exports = {
     {
       files: ["*.svelte"],
       processor: "svelte3/svelte3",
+      rules: {
+        // TODO: The following rules don't work well with Svelte, try to fix them
+        "@typescript-eslint/no-unsafe-member-access": "off",
+        "@typescript-eslint/no-unsafe-call": "off",
+        "@typescript-eslint/restrict-plus-operands": "off",
+        "@typescript-eslint/restrict-template-expressions": "off",
+        "@typescript-eslint/no-unsafe-assignment": "off",
+        "@typescript-eslint/no-unsafe-argument": "off",
+      },
     },
   ],
   settings: {

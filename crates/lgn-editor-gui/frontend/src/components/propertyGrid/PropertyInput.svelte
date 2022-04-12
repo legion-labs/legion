@@ -65,19 +65,23 @@
 
   function getResourceType(): string | null {
     let resourceType = property.attributes.resource_type;
+
     if (
-      resourceType == null &&
+      resourceType === null &&
       parentProperty &&
       (propertyIsVec(parentProperty) || propertyIsOption(parentProperty))
     ) {
       resourceType = parentProperty.attributes.resource_type;
     }
+
     if (resourceType) {
       const index = resourceType.lastIndexOf(":");
-      if (index != -1) {
+
+      if (index !== -1) {
         resourceType = resourceType.slice(index + 1);
       }
     }
+
     return resourceType;
   }
 

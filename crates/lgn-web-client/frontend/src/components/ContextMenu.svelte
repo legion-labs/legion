@@ -253,7 +253,7 @@ export default buildContextMenu<ContextMenuEntryRecord>();
   }
 
   function dispatchContextMenuActionEvent(entry: ItemEntry) {
-    if (entrySetName == null) {
+    if (entrySetName === null) {
       return;
     }
 

@@ -16,7 +16,7 @@
         <Panel tabs={["Main Stream"]}>
           <div class="tab" slot="tab" let:tab>
             <div class="title">
-              <span>{tab[0].toUpperCase()}{tab.slice(1)}</span>
+              <span>{tab[0]?.toUpperCase()}{tab.slice(1)}</span>
               {#if desiredVideoResolution}
                 <span>
                   - {desiredVideoResolution.width}x{desiredVideoResolution.height}

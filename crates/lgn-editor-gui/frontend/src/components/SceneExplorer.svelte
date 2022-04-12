@@ -33,7 +33,9 @@
     detail: resourceDescription,
   }: CustomEvent<Entry<ResourceDescription>>) {
     if (resourceDescription) {
-      fetchCurrentResourceDescription(resourceDescription.item.id);
+      fetchCurrentResourceDescription(resourceDescription.item.id).catch(() => {
+        // TODO: Handle errors
+      });
     }
   }
 </script>

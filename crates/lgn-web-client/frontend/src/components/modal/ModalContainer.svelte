@@ -23,7 +23,7 @@ using the `openModal` function provided by the `lib/modal.ts` module) and open u
 
   <div
     class="root"
-    class:tauri={window.__TAURI_METADATA__}
+    class:electron={window.isElectron}
     on:keydown={(event) => event.key === "Escape" && store.close(id)}
     transition:fade={{ duration: config?.noTransition ? 0 : 100 }}
     tabindex={-1}
@@ -42,7 +42,7 @@ using the `openModal` function provided by the `lib/modal.ts` module) and open u
     @apply flex justify-center items-center bg-black bg-opacity-90 absolute inset-0 w-screen z-30 mt-8 h-[calc(100vh-theme("spacing.8"))];
   }
 
-  .root.tauri {
+  .root.electron {
     @apply mt-10 h-[calc(100vh-theme("spacing.10"))];
   }
 </style>

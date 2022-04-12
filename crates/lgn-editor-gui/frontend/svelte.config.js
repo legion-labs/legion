@@ -4,7 +4,8 @@ import preprocess from "svelte-preprocess";
 
 import viteConfig from "./vite.config.js";
 
-/** @type {import("@sveltejs/kit").Config} */
+// TODO: Drop the any
+/** @type {import("@sveltejs/kit").Config & any} */
 export default {
   preprocess: preprocess({
     postcss: true,

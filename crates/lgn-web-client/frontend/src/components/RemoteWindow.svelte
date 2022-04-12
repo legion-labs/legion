@@ -76,7 +76,7 @@
     }
   }
 
-  async function initialize() {
+  function initialize() {
     if (!videoElement) {
       log.error("video", "Video element couldn't be found");
 
@@ -102,7 +102,9 @@
         return;
       }
 
-      peerConnection.setLocalDescription(await peerConnection.createOffer());
+      await peerConnection.setLocalDescription(
+        await peerConnection.createOffer()
+      );
 
       const remoteDescription = await retry(
         debounce(() => {
@@ -119,13 +121,13 @@
       );
 
       if (remoteDescription) {
-        peerConnection.setRemoteDescription(remoteDescription);
+        await peerConnection.setRemoteDescription(remoteDescription);
       } else {
         log.error("video", "Server didn't return any SDP description");
       }
     };
 
-    peerConnection.onicecandidate = async (iceEvent) => {
+    peerConnection.onicecandidate = (iceEvent) => {
       // TODO: Handle proper ice candidates exchange:
       // https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Signaling_and_video_calling/webrtc_-_ice_candidate_exchange.svg
       log.debug("video", iceEvent);
@@ -185,8 +187,8 @@
 
       if (
         !normalizedDesiredResolution ||
-        normalizedDesiredResolution.width == 0 ||
-        normalizedDesiredResolution.height == 0
+        normalizedDesiredResolution.width === 0 ||
+        normalizedDesiredResolution.height === 0
       ) {
         return;
       }
@@ -212,7 +214,7 @@
       log.debug("video", "Video channel is now closed.");
     };
 
-    videoChannel.onmessage = async (message: MessageEvent<ArrayBuffer>) => {
+    videoChannel.onmessage = (message: MessageEvent<ArrayBuffer>) => {
       if (!videoElement) {
         return;
       }
@@ -230,7 +232,7 @@
       log.debug("video", log.json`Control channel is now closed: ${event}`);
     };
 
-    controlChannel.onmessage = async (message: MessageEvent<unknown>) => {
+    controlChannel.onmessage = (message: MessageEvent<unknown>) => {
       const jsonMsg =
         message.data instanceof ArrayBuffer
           ? new TextDecoder().decode(message.data)
@@ -252,8 +254,8 @@
 
     if (
       !normalizedDesiredResolution ||
-      normalizedDesiredResolution.width == 0 ||
-      normalizedDesiredResolution.height == 0
+      normalizedDesiredResolution.width === 0 ||
+      normalizedDesiredResolution.height === 0
     ) {
       return;
     }
@@ -301,7 +303,7 @@
     const width = desiredResolution.width & ~1;
     const height = desiredResolution.height & ~1;
 
-    if (width == 0 || height == 0) {
+    if (width === 0 || height === 0) {
       return null;
     }
 
@@ -316,7 +318,9 @@
   ) {
     $statusStore = "Resizing...";
 
-    resizeVideo(desiredResolution);
+    resizeVideo(desiredResolution).catch(() => {
+      // TODO: Handle errors
+    });
   }
 </script>
 

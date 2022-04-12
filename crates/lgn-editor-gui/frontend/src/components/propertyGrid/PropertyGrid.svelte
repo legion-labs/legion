@@ -63,7 +63,9 @@
         $currentResource.id,
         $currentResource.version,
         propertyUpdates
-      );
+      ).catch(() => {
+        // TODO: Handle errors
+      });
 
       propertyUpdates = [];
     }, propertyUpdateDebounceTimeout);
@@ -92,6 +94,8 @@
         path,
         index,
         jsonValue: undefined,
+      }).catch(() => {
+        // TODO: Handle errors
       });
     }
   }
@@ -110,6 +114,8 @@
     removeVectorSubPropertyApi($currentResource.id, {
       path,
       indices: [index],
+    }).catch(() => {
+      // TODO: Handle errors
     });
   }
 </script>

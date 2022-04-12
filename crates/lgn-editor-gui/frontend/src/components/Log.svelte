@@ -7,6 +7,12 @@
   import { buffer, logEntries } from "@/stores/log";
 
   const scrollStatus = writable<ScrollStatus | null>(null);
+
+  function onScrollStatusChange({
+    detail: newsScrollStatus,
+  }: CustomEvent<ScrollStatus | null>) {
+    $scrollStatus = newsScrollStatus;
+  }
 </script>
 
 <Log
@@ -14,6 +20,5 @@
   noDate
   entries={$logEntries}
   totalCount={$logEntries.size}
-  on:scrollStatusChange={({ detail: newsScrollStatus }) =>
-    ($scrollStatus = newsScrollStatus)}
+  on:scrollStatusChange={onScrollStatusChange}
 />

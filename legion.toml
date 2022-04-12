@@ -10,6 +10,7 @@ project_root = "$(git-root)/tests/sample-data"
 #
 # Default:
 #listen_endpoint = "[::1]:50001"
+server_addr = "[::1]:50001"
 
 # The scene to load.
 scene = "/world/sample_1.ent"
