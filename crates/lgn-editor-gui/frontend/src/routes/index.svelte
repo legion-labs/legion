@@ -8,6 +8,8 @@
   import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
   import ModalContainer from "@lgn/web-client/src/components/modal/ModalContainer.svelte";
   import { EmptyPanel, Panel } from "@lgn/web-client/src/components/panel";
+  import { MainExecutor } from "@lgn/web-client/src/lib/channels";
+  import { runExample } from "@lgn/web-client/src/lib/channels/example";
 
   import DynamicPanel from "@/components/DynamicPanel.svelte";
   import ExtraPanel from "@/components/ExtraPanel.svelte";
@@ -34,9 +36,21 @@
   }
 
   onMount(() => {
+    // Setup main channels executor
+    const mainExecutor = new MainExecutor();
+
+    // Set to "true" to start the events
+    const unsubscribe = runExample(mainExecutor, false);
+
     refetchResources().catch(() => {
       // TODO: Handle errors
     });
+
+    return () => {
+      unsubscribe();
+
+      mainExecutor.destroy();
+    };
   });
 
   function refetchResources() {
