@@ -1,4 +1,4 @@
-import { Level } from "@lgn/proto-editor/dist/editor";
+import { Level } from "@lgn/proto-log-stream/dist/log_stream";
 
 export type Severity = "error" | "warn" | "info" | "trace" | "debug";
 
