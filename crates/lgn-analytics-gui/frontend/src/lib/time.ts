@@ -1,6 +1,10 @@
 import type { Process } from "@lgn/proto-telemetry/dist/process";
 
-import type { ThreadBlock, ThreadBlockLOD } from "./Timeline/ThreadBlock";
+import type {
+  ThreadBlock,
+  ThreadBlockLOD,
+} from "@/components/Timeline/Lib/ThreadBlock";
+
 import { getLodFromPixelSizeMs } from "./lod";
 
 export function timestampToMs(process: Process, timestamp: number): number {

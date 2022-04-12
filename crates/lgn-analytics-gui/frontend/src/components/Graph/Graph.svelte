@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { useLocation } from "svelte-navigator";
+  import type { Writable } from "svelte/store";
 
   import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
   import type { CallTreeNode } from "@lgn/proto-telemetry/dist/calltree";
@@ -9,16 +10,12 @@
   import { makeGrpcClient } from "@/lib/client";
 
   import Loader from "../Misc/Loader.svelte";
+  import GraphHeader from "./GraphHeader.svelte";
   import GraphNode from "./GraphNode.svelte";
   import { GraphParameters } from "./Lib/GraphParameters";
-  import GraphHeader from "./GraphHeader.svelte";
   import { GraphState } from "./Store/GraphState";
-  import type { Writable } from "svelte/store";
-  import {
-    getGraphStateStore,
-    scopeStore,
-    type NodeStateStore,
-  } from "./Store/GraphStateStore";
+  import { getGraphStateStore, scopeStore } from "./Store/GraphStateStore";
+  import type { NodeStateStore } from "./Store/GraphStateStore";
 
   const components: Record<number, GraphNode> = {};
   const locationStore = useLocation();

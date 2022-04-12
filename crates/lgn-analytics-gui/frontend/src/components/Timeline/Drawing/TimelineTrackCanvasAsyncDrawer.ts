@@ -1,6 +1,5 @@
-import type { ProcessAsyncData } from "@/lib/Timeline/ProcessAsyncData";
-import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
-
+import type { ProcessAsyncData } from "../Lib/ProcessAsyncData";
+import type { TimelineStateStore } from "../Lib/TimelineStateStore";
 import { TimelineTrackCanvasBaseDrawer } from "./TimelineTrackCanvasBaseDrawer";
 import type { TimelineTrackContext } from "./TimelineTrackContext";
 

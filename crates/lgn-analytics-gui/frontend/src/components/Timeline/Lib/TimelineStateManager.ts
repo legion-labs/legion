@@ -6,13 +6,14 @@ import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/a
 import type { Process } from "@lgn/proto-telemetry/dist/process";
 import type { Stream } from "@lgn/proto-telemetry/dist/stream";
 
-import { loadPromise, loadWrap } from "../Misc/LoadingStore";
-import { makeGrpcClient } from "../client";
+import { loadPromise, loadWrap } from "@/lib/Misc/LoadingStore";
+import { makeGrpcClient } from "@/lib/client";
 import {
   computePreferredBlockLod,
   processMsOffsetToRoot,
   timestampToMs,
-} from "../time";
+} from "@/lib/time";
+
 import type { AsyncSection } from "./AsyncSection";
 import { LODState } from "./LodState";
 import type { ProcessAsyncData } from "./ProcessAsyncData";

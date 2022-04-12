@@ -3,16 +3,16 @@
   import { useLocation } from "svelte-navigator";
   import { get } from "svelte/store";
 
-  import { loadingStore } from "@/lib/Misc/LoadingStore";
-  import { TimelineStateManager } from "@/lib/Timeline/TimelineStateManager";
-  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import {
     NewSelectionState,
     RangeSelectionOnMouseDown,
     RangeSelectionOnMouseMove,
-  } from "@/lib/time_range_selection";
+  } from "@/components/Timeline/Lib/time_range_selection";
+  import { loadingStore } from "@/lib/Misc/LoadingStore";
 
   import Loader from "../Misc/Loader.svelte";
+  import { TimelineStateManager } from "./Lib/TimelineStateManager";
+  import type { TimelineStateStore } from "./Lib/TimelineStateStore";
   import TimelineProcess from "./TimelineProcess.svelte";
   import TimelineAction from "./Tools/TimelineAction.svelte";
   import TimelineAxis from "./Tools/TimelineAxis.svelte";

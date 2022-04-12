@@ -1,10 +1,10 @@
 import { get } from "svelte/store";
 
-import type { Thread } from "@/lib/Timeline/Thread";
-import type { ThreadBlock } from "@/lib/Timeline/ThreadBlock";
-import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
 import { findBestLod } from "@/lib/time";
 
+import type { Thread } from "../Lib/Thread";
+import type { ThreadBlock } from "../Lib/ThreadBlock";
+import type { TimelineStateStore } from "../Lib/TimelineStateStore";
 import { TimelineTrackCanvasBaseDrawer } from "./TimelineTrackCanvasBaseDrawer";
 import type { TimelineTrackContext } from "./TimelineTrackContext";
 

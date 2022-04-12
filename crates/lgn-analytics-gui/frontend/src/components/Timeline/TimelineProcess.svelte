@@ -3,11 +3,11 @@
 
   import type { Process } from "@lgn/proto-telemetry/dist/process";
 
-  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { formatExecutionTime, formatProcessName } from "@/lib/format";
 
   import { TimelineTrackCanvasAsyncDrawer } from "./Drawing/TimelineTrackCanvasAsyncDrawer";
   import { TimelineTrackCanvasSyncDrawer } from "./Drawing/TimelineTrackCanvasSyncDrawer";
+  import type { TimelineStateStore } from "./Lib/TimelineStateStore";
   import TimelineRow from "./TimelineRow.svelte";
   import TimelineTrack from "./TimelineTrack.svelte";
   import TimelineDebug from "./Tools/TimelineDebug.svelte";

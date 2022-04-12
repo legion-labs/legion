@@ -4,10 +4,10 @@
 
   import { debounced } from "@lgn/web-client/src/lib/store";
 
-  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
-  import { DrawSelectedRange } from "@/lib/time_range_selection";
+  import { DrawSelectedRange } from "@/components/Timeline/Lib/time_range_selection";
 
   import type { TimelineTrackCanvasBaseDrawer } from "./Drawing/TimelineTrackCanvasBaseDrawer";
+  import type { TimelineStateStore } from "./Lib/TimelineStateStore";
   import { TimelineContext } from "./Stores/TimelineContext";
   import { spanPixelHeight } from "./Values/TimelineValues";
 

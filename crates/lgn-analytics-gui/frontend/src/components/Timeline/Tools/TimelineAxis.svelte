@@ -2,9 +2,9 @@
   import * as d3 from "d3";
   import { onMount } from "svelte";
 
-  import type { TimelineStateStore } from "@/lib/Timeline/TimelineStateStore";
   import { formatExecutionTime } from "@/lib/format";
 
+  import type { TimelineStateStore } from "../Lib/TimelineStateStore";
   import { threadItemLength } from "../Values/TimelineValues";
 
   export let stateStore: TimelineStateStore;
