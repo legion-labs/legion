@@ -3,11 +3,6 @@
   import { useLocation } from "svelte-navigator";
   import { get } from "svelte/store";
 
-  import {
-    NewSelectionState,
-    RangeSelectionOnMouseDown,
-    RangeSelectionOnMouseMove,
-  } from "@/components/Timeline/Lib/time_range_selection";
   import { loadingStore } from "@/lib/Misc/LoadingStore";
 
   import Loader from "../Misc/Loader.svelte";
@@ -46,10 +41,7 @@
   let searching = false;
 
   $: if (mainWidth && stateStore) {
-    stateStore.update((s) => {
-      s.canvasWidth = mainWidth - threadItemLength - pixelMargin;
-      return s;
-    });
+    stateStore.updateWidth(mainWidth - threadItemLength - pixelMargin);
   }
 
   onMount(async () => {
@@ -93,23 +85,19 @@
     );
   }
 
+  function getMouseX(event: MouseEvent) {
+    if (event.currentTarget instanceof HTMLElement) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      return event.clientX - rect.left - threadItemLength;
+    }
+    return null;
+  }
+
   async function onMouseMove(event: MouseEvent) {
-    if (
-      isValidEvent(event) &&
-      RangeSelectionOnMouseMove(
-        event,
-        $stateStore.selectionState,
-        $stateStore.canvasWidth,
-        $stateStore.getViewRange()
-      )
-    ) {
-      if (
-        $stateStore.currentSelection != $stateStore.selectionState.selectedRange
-      ) {
-        stateStore.update((s) => {
-          s.currentSelection = s.selectionState.selectedRange;
-          return s;
-        });
+    if (event.buttons === 1 && event.shiftKey) {
+      const x = getMouseX(event);
+      if (x) {
+        stateStore.updateSelection(x);
       }
       return;
     }
@@ -145,24 +133,22 @@
       await tick();
     }
 
-    stateStore.update((s) => {
-      if (panState) {
-        s.setViewRange([
-          panState.viewRange[0] + offsetMs,
-          panState.viewRange[1] + offsetMs,
-        ]);
-      }
-      return s;
-    });
+    if (panState) {
+      stateStore.setViewRange([
+        panState.viewRange[0] + offsetMs,
+        panState.viewRange[1] + offsetMs,
+      ]);
+    }
+
     await stateManager.fetchDynData();
   }
 
   function onMouseDown(event: MouseEvent) {
-    if (RangeSelectionOnMouseDown(event, $stateStore.selectionState)) {
-      stateStore.update((s) => {
-        s.currentSelection = s.selectionState.selectedRange;
-        return s;
-      });
+    if (event.shiftKey) {
+      const x = getMouseX(event);
+      if (x) {
+        stateStore.startSelection(x);
+      }
     }
   }
 
@@ -184,6 +170,7 @@
     if (event.shiftKey || searching) {
       return;
     }
+
     switch (event.code) {
       case "Escape":
         onEscape();
@@ -212,14 +199,8 @@
   }
 
   function onEscape() {
-    if ($stateStore.currentSelection) {
-      stateStore.update((s) => {
-        s.currentSelection = undefined;
-        s.selectionState = NewSelectionState();
-        setRangeUrl([s.minMs, s.maxMs]);
-        return s;
-      });
-    }
+    stateStore.clearSelection();
+    history.replaceState(null, "", "?");
   }
 
   async function onVerticalArrow(event: KeyboardEvent, positive: boolean) {
@@ -248,10 +229,7 @@
   }) {
     panState = undefined;
     internalScrollTop(detail.yRatio * scrollHeight);
-    stateStore.update((s) => {
-      s.setViewRange([detail.xBegin, detail.xEnd]);
-      return s;
-    });
+    stateStore.setViewRange([detail.xBegin, detail.xEnd]);
     await stateManager.fetchDynData();
   }
 

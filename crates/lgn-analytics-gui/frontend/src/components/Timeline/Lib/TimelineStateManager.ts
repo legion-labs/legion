@@ -66,9 +66,14 @@ export class TimelineStateManager {
     await this.fetchDynData();
   }
 
-  initViewRange(process: Process) {
-    const blocks: ThreadBlock[] = [];
+  private initViewRange(process: Process) {
     const state = get(this.state);
+
+    if (state.createdWithParameters()) {
+      return;
+    }
+
+    const blocks: ThreadBlock[] = [];
     for (const block of Object.values(state.blocks)) {
       const streamId = block.blockDefinition.streamId;
       const thread = state.threads[streamId];
@@ -80,13 +85,8 @@ export class TimelineStateManager {
     let nbEvents = 0;
     for (let i = 0; i < blocks.length; i += 1) {
       nbEvents += blocks[i].blockDefinition.nbObjects;
+      this.state.setViewRange([blocks[i].beginMs, blocks[0].endMs]);
       if (nbEvents > 10000) {
-        if (!get(this.state).createdWithParameters()) {
-          this.state.update((s) => {
-            s.setViewRange([blocks[i].beginMs, blocks[0].endMs]);
-            return s;
-          });
-        }
         return;
       }
     }

@@ -6,16 +6,12 @@
   export let stateStore: TimelineStateStore;
   let percent: number;
 
-  $: if (
-    $stateStore?.currentSelection &&
-    $stateStore.selectionState.selectedRange
-  ) {
+  $: if ($stateStore?.currentSelection) {
     const width = $stateStore?.canvasWidth;
     const [begin, end] = $stateStore.getViewRange();
     const invTimeSpan = 1.0 / (end - begin);
     const msToPixelsFactor = invTimeSpan * width;
-    const [beginSelection, endSelection] =
-      $stateStore.selectionState.selectedRange;
+    const [beginSelection, endSelection] = $stateStore.currentSelection;
     const beginPixel = (beginSelection - begin) * msToPixelsFactor;
     const endPixel = (endSelection - begin) * msToPixelsFactor;
     const centerPixel = (beginPixel + endPixel) / 2;

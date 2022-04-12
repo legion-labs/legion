@@ -4,8 +4,6 @@ import type { Process } from "@lgn/proto-telemetry/dist/process";
 import type { ProcessAsyncData } from "./ProcessAsyncData";
 import type { Thread } from "./Thread";
 import type { ThreadBlock } from "./ThreadBlock";
-import { NewSelectionState } from "./time_range_selection";
-import type { SelectionState } from "./time_range_selection";
 
 export class TimelineState {
   minMs = Infinity;
@@ -18,26 +16,22 @@ export class TimelineState {
   processAsyncData: Record<string, ProcessAsyncData> = {};
   scopes: Record<number, ScopeDesc> = {};
   ready = false;
-  selectionState: SelectionState;
+  beginRange: number | null = null;
   currentSelection: [number, number] | undefined;
+  viewRange: [number, number] | null = null;
   private timelineStart: number | null;
   private timelineEnd: number | null;
-  private viewRange: [number, number] | null = null;
   constructor(canvasWidth: number, start: number | null, end: number | null) {
     this.canvasWidth = canvasWidth;
     this.timelineStart = start;
     this.timelineEnd = end;
-    this.selectionState = NewSelectionState();
+    this.viewRange = this.getViewRange();
   }
 
   getPixelWidthMs(): number {
     const range = this.getViewRange();
     const timeSpan = range[1] - range[0];
     return this.canvasWidth / timeSpan;
-  }
-
-  setViewRange(range: [number, number]) {
-    this.viewRange = range;
   }
 
   isFullyVisible() {

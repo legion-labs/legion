@@ -4,8 +4,6 @@
 
   import { debounced } from "@lgn/web-client/src/lib/store";
 
-  import { DrawSelectedRange } from "@/components/Timeline/Lib/time_range_selection";
-
   import type { TimelineTrackCanvasBaseDrawer } from "./Drawing/TimelineTrackCanvasBaseDrawer";
   import type { TimelineStateStore } from "./Lib/TimelineStateStore";
   import { TimelineContext } from "./Stores/TimelineContext";
@@ -79,15 +77,32 @@
     if (canvas && ctx && !processCollapsed) {
       await tick();
       canvasDrawer.draw($searchStore);
-      if ($stateStore.selectionState) {
-        DrawSelectedRange(
-          canvas,
-          ctx,
-          $stateStore.selectionState,
-          $stateStore.getViewRange()
-        );
-      }
+      drawSelectedRange();
     }
+  }
+
+  function drawSelectedRange() {
+    if (!canvas) {
+      return;
+    }
+
+    if (!$stateStore.currentSelection) {
+      return;
+    }
+
+    const selectionState = $stateStore.currentSelection;
+    const viewRange = $stateStore.getViewRange();
+    const [begin, end] = viewRange;
+    const invTimeSpan = 1.0 / (end - begin);
+    const canvasWidth = canvas.clientWidth;
+    const canvasHeight = canvas.clientHeight;
+    const msToPixelsFactor = invTimeSpan * canvasWidth;
+    const [beginSelection, endSelection] = selectionState;
+    const beginPixels = (beginSelection - begin) * msToPixelsFactor;
+    const endPixels = (endSelection - begin) * msToPixelsFactor;
+
+    ctx.fillStyle = "rgba(140, 140, 140, 0.3)";
+    ctx.fillRect(beginPixels, 0, endPixels - beginPixels, canvasHeight);
   }
 </script>
 

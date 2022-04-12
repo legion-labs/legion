@@ -12,7 +12,7 @@ export function createTimelineStateStore(state: TimelineState) {
       const range = s.getViewRange();
       const length = range[1] - range[0];
       const change = ((positive ? 1 : -1) * length) / 10;
-      s.setViewRange([range[0] + change, range[1] - change]);
+      s.viewRange = [range[0] + change, range[1] - change];
       return s;
     });
   };
@@ -22,7 +22,7 @@ export function createTimelineStateStore(state: TimelineState) {
       const range = s.getViewRange();
       const length = range[1] - range[0];
       const delta = ((positive ? 1 : -1) * length) / 10;
-      s.setViewRange([range[0] + delta, range[1] + delta]);
+      s.viewRange = [range[0] + delta, range[1] + delta];
       return s;
     });
   };
@@ -40,11 +40,76 @@ export function createTimelineStateStore(state: TimelineState) {
         pivot - newLength * pctCursor,
         pivot + newLength * (1 - pctCursor),
       ];
-      s.setViewRange([result[0], result[1]]);
+      s.viewRange = [result[0], result[1]];
       return s;
     });
   };
 
-  // At some point we could remove the update function to disable arbitrary changes to the store.
-  return { subscribe, set, update, keyboardZoom, keyboardTranslate, wheelZoom };
+  const updateState = (action: (state: TimelineState) => void) => {
+    update((s) => {
+      action(s);
+      return s;
+    });
+  };
+
+  const setSelection = (range: [number, number]) => {
+    updateState((s) => {
+      s.currentSelection = range;
+    });
+  };
+
+  const updateWidth = (width: number) => {
+    updateState((s) => {
+      s.canvasWidth = width;
+    });
+  };
+
+  const setViewRange = (range: [number, number]) => {
+    updateState((s) => {
+      s.viewRange = range;
+    });
+  };
+
+  const clearSelection = () => {
+    updateState((s) => {
+      s.beginRange = null;
+      s.currentSelection = undefined;
+    });
+  };
+
+  const startSelection = (x: number) => {
+    updateState((s) => {
+      s.beginRange = x;
+      s.currentSelection = undefined;
+    });
+  };
+
+  const updateSelection = (x: number) => {
+    updateState((s) => {
+      const viewRange = s.viewRange;
+      if (viewRange && s.beginRange) {
+        const factor = (viewRange[1] - viewRange[0]) / s.canvasWidth;
+        const first = viewRange[0] + factor * s.beginRange;
+        const second = viewRange[0] + factor * x;
+        s.currentSelection = [Math.min(first, second), Math.max(first, second)];
+      } else {
+        console.error("No", viewRange, s.beginRange);
+      }
+    });
+  };
+
+  return {
+    subscribe,
+    set,
+    keyboardZoom,
+    keyboardTranslate,
+    wheelZoom,
+    updateWidth,
+    setSelection,
+    setViewRange,
+    startSelection,
+    clearSelection,
+    updateSelection,
+    update,
+  };
 }
