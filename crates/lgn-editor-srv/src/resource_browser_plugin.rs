@@ -18,10 +18,10 @@ use lgn_editor_proto::property_inspector::UpdateResourcePropertiesRequest;
 use lgn_editor_proto::resource_browser::{
     CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
     DeleteResourceRequest, DeleteResourceResponse, GetActiveScenesRequest, GetActiveScenesResponse,
-    GetResourceTypeNamesRequest, GetResourceTypeNamesResponse, ImportResourceRequest,
-    ImportResourceResponse, OpenSceneRequest, OpenSceneResponse, RenameResourceRequest,
-    RenameResourceResponse, ReparentResourceRequest, ReparentResourceResponse,
-    SearchResourcesRequest,
+    GetResourceTypeNamesRequest, GetResourceTypeNamesResponse, GetRuntimeSceneInfoRequest,
+    GetRuntimeSceneInfoResponse, ImportResourceRequest, ImportResourceResponse, OpenSceneRequest,
+    OpenSceneResponse, RenameResourceRequest, RenameResourceResponse, ReparentResourceRequest,
+    ReparentResourceResponse, SearchResourcesRequest,
 };
 
 use lgn_graphics_data::offline_gltf::GltfFile;
@@ -827,11 +827,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
             warn!("Failed to OpenScene for {}: {}", resource_id, err);
         }
 
-        let manifest_id = transaction_manager.get_runtime_manifest_id().await;
-        Ok(Response::new(OpenSceneResponse {
-            manifest_id: manifest_id.to_string(),
-            root_asset_id: resource_id.to_string(),
-        }))
+        Ok(Response::new(OpenSceneResponse {}))
     }
 
     /// Close a Scene
@@ -874,6 +870,44 @@ impl ResourceBrowser for ResourceBrowserRPC {
                 .iter()
                 .map(std::string::ToString::to_string)
                 .collect(),
+        }))
+    }
+
+    async fn get_runtime_scene_info(
+        &self,
+        request: Request<GetRuntimeSceneInfoRequest>,
+    ) -> Result<Response<GetRuntimeSceneInfoResponse>, Status> {
+        let request = request.get_ref();
+        let resource_id = parse_resource_id(request.resource_id.as_str())?;
+
+        if resource_id.kind != sample_data::offline::Entity::TYPE {
+            return Err(Status::internal(format!(
+                "Expected Entity in GetRuntimeSceneInfo. Resource {} is a {}",
+                resource_id,
+                resource_id.kind.as_pretty()
+            )));
+        }
+
+        let asset_id = ResourcePathId::from(resource_id)
+            .push(sample_data::runtime::Entity::TYPE)
+            .resource_id();
+
+        let manifest_id = {
+            let transaction_manager = self.transaction_manager.lock().await;
+
+            transaction_manager.get_runtime_manifest_id().await
+        };
+
+        lgn_tracing::info!(
+            "Playing scene: {}, manifest: {}, root asset: {}",
+            resource_id,
+            manifest_id,
+            asset_id
+        );
+
+        Ok(Response::new(GetRuntimeSceneInfoResponse {
+            manifest_id: manifest_id.to_string(),
+            asset_id: asset_id.to_string(),
         }))
     }
 }

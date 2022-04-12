@@ -23,6 +23,8 @@ service ResourceBrowser {
   rpc CloseScene(CloseSceneRequest) returns (CloseSceneResponse);
 
   rpc GetActiveScenes(GetActiveScenesRequest) returns (GetActiveScenesResponse);
+
+  rpc GetRuntimeSceneInfo(GetRuntimeSceneInfoRequest) returns (GetRuntimeSceneInfoResponse);
 }
 
 message SearchResourcesRequest {
@@ -54,6 +56,7 @@ message CreateResourceRequest {
   repeated InitPropertyValue init_values = 4;
   optional string upload_id = 5;
 }
+
 message InitPropertyValue {
   string property_path = 1;
   string json_value = 2;
@@ -100,20 +103,22 @@ message ReparentResourceResponse {}
 message OpenSceneRequest {
   string id = 1;
 }
-
-message OpenSceneResponse {
-  string manifest_id = 1;
-  string root_asset_id = 2;
-}
+message OpenSceneResponse {}
 
 message CloseSceneRequest {
   string id = 1;
 }
-
 message CloseSceneResponse {}
 
 message GetActiveScenesRequest {}
-
 message GetActiveScenesResponse {
   repeated string scene_ids = 1;
+}
+
+message GetRuntimeSceneInfoRequest {
+  string resource_id = 1;
+}
+message GetRuntimeSceneInfoResponse {
+  string manifest_id = 1;
+  string asset_id = 2;
 }
