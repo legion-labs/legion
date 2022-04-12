@@ -108,7 +108,6 @@
 
 <div
   style={`width:${$stateStore.canvasWidth}px`}
-  class="timeline-item"
   on:wheel|preventDefault={(e) => wheelDispatch("zoom", e)}
 >
   <canvas width={$stateStore.canvasWidth} {height} bind:this={canvas} />

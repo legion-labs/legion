@@ -4,6 +4,7 @@ import type { Process } from "@lgn/proto-telemetry/dist/process";
 import type { ProcessAsyncData } from "./ProcessAsyncData";
 import type { Thread } from "./Thread";
 import type { ThreadBlock } from "./ThreadBlock";
+import type { TimelinePan } from "./TimelinePan";
 
 export class TimelineState {
   minMs = Infinity;
@@ -18,7 +19,8 @@ export class TimelineState {
   ready = false;
   beginRange: number | null = null;
   currentSelection: [number, number] | undefined;
-  viewRange: [number, number] | null = null;
+  viewRange: [number, number];
+  timelinePan: TimelinePan | null = null;
   private timelineStart: number | null;
   private timelineEnd: number | null;
   constructor(canvasWidth: number, start: number | null, end: number | null) {

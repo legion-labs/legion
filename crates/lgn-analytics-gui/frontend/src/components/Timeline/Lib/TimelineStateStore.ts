@@ -86,16 +86,33 @@ export function createTimelineStateStore(state: TimelineState) {
 
   const updateSelection = (x: number) => {
     updateState((s) => {
-      const viewRange = s.viewRange;
-      if (viewRange && s.beginRange) {
+      if (s.beginRange) {
+        const viewRange = s.viewRange;
         const factor = (viewRange[1] - viewRange[0]) / s.canvasWidth;
         const first = viewRange[0] + factor * s.beginRange;
         const second = viewRange[0] + factor * x;
         s.currentSelection = [Math.min(first, second), Math.max(first, second)];
-      } else {
-        console.error("No", viewRange, s.beginRange);
       }
     });
+  };
+
+  const applyDrag = (offsetX: number) => {
+    updateState((s) => {
+      if (!s.timelinePan) {
+        s.timelinePan = {
+          beginMouseX: offsetX,
+          viewRange: [s.viewRange[0], s.viewRange[1]],
+        };
+      }
+      const viewRange = s.timelinePan.viewRange;
+      const factor = (viewRange[1] - viewRange[0]) / s.canvasWidth;
+      const offsetMs = factor * (s.timelinePan.beginMouseX - offsetX);
+      s.viewRange = [viewRange[0] + offsetMs, viewRange[1] + offsetMs];
+    });
+  };
+
+  const stopDrag = () => {
+    updateState((s) => (s.timelinePan = null));
   };
 
   return {
@@ -110,6 +127,8 @@ export function createTimelineStateStore(state: TimelineState) {
     startSelection,
     clearSelection,
     updateSelection,
+    applyDrag,
+    stopDrag,
     update,
   };
 }

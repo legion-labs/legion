@@ -22,16 +22,9 @@
   const startParam = "begin";
   const endParam = "end";
 
-  type PanState = {
-    beginMouseX: number;
-    beginMouseY: number;
-    viewRange: [number, number];
-  };
-
   let stateManager: TimelineStateManager;
   let windowInnerWidth: number;
   let stateStore: TimelineStateStore;
-  let panState: PanState | undefined = undefined;
   let canvasHeight: number;
   let scrollHeight: number;
   let scrollTop: number;
@@ -77,14 +70,6 @@
     await stateManager.fetchDynData();
   }
 
-  function isValidEvent(event: MouseEvent) {
-    return (
-      event.target instanceof HTMLCanvasElement ||
-      (event.target instanceof Element &&
-        event.target.classList.contains("timeline-item"))
-    );
-  }
-
   function getMouseX(event: MouseEvent) {
     if (event.currentTarget instanceof HTMLElement) {
       const rect = event.currentTarget.getBoundingClientRect();
@@ -94,53 +79,23 @@
   }
 
   async function onMouseMove(event: MouseEvent) {
-    if (event.buttons === 1 && event.shiftKey) {
+    if (event.buttons === 1) {
       const x = getMouseX(event);
-      if (x) {
-        stateStore.updateSelection(x);
+      if (event.shiftKey) {
+        if (x) {
+          stateStore.updateSelection(x);
+        }
+      } else {
+        if (x) {
+          stateStore.applyDrag(x);
+        }
+        if (event.movementY) {
+          div.scrollBy(0, -event.movementY);
+          await tick();
+        }
+        await stateManager.fetchDynData();
       }
-      return;
     }
-
-    if (event.buttons !== 1) {
-      panState = undefined;
-    } else if (!event.shiftKey) {
-      if (isValidEvent(event)) {
-        await applyDrag(event.offsetX, event.offsetY, event.movementY);
-      }
-    }
-  }
-
-  async function applyDrag(
-    offsetX: number,
-    offsetY: number,
-    movementY: number
-  ) {
-    if (!panState) {
-      panState = {
-        beginMouseX: offsetX,
-        beginMouseY: offsetY,
-        viewRange: $stateStore.getViewRange(),
-      };
-    }
-
-    const factor =
-      (panState.viewRange[1] - panState.viewRange[0]) / $stateStore.canvasWidth;
-    const offsetMs = factor * (panState.beginMouseX - offsetX);
-
-    if (movementY) {
-      div.scrollBy(0, -movementY);
-      await tick();
-    }
-
-    if (panState) {
-      stateStore.setViewRange([
-        panState.viewRange[0] + offsetMs,
-        panState.viewRange[1] + offsetMs,
-      ]);
-    }
-
-    await stateManager.fetchDynData();
   }
 
   function onMouseDown(event: MouseEvent) {
@@ -153,6 +108,7 @@
   }
 
   function onMouseUp(_: MouseEvent) {
+    stateStore.stopDrag();
     const selection = $stateStore.currentSelection;
     if (selection) {
       setRangeUrl(selection);
@@ -227,7 +183,6 @@
     xEnd: number;
     yRatio: number;
   }) {
-    panState = undefined;
     internalScrollTop(detail.yRatio * scrollHeight);
     stateStore.setViewRange([detail.xBegin, detail.xEnd]);
     await stateManager.fetchDynData();
@@ -242,7 +197,7 @@
 
 {#if stateStore}
   <Loader loading={!$stateStore.ready} error={initializationError}>
-    <div slot="body" class="flex flex-col">
+    <div slot="body" class="flex flex-col" on:wheel|preventDefault>
       <div class="main">
         {#if stateManager?.process && $stateStore.ready}
           <div class="pb-1 flex flex-row items-center justify-between">
@@ -255,7 +210,7 @@
           </div>
         {/if}
         <div
-          class="canvas"
+          class="canvas cursor-pointer"
           bind:this={div}
           bind:clientHeight={canvasHeight}
           bind:clientWidth={mainWidth}
