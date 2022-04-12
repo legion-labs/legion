@@ -137,8 +137,12 @@ export abstract class TimelineTrackCanvasBaseDrawer {
 
       const scopes = get(this.stateStore).scopes;
 
-      if (span.scopeHash !== 0) {
-        const { name } = scopes[span.scopeHash];
+      if (span.scopeHash !== 0 && scopes) {
+        let name = "<unknown_scope>";
+        const scope = scopes[span.scopeHash];
+        if (scope) {
+          name = scope.name;
+        }
         ctx.fillStyle =
           search && name.toLowerCase().includes(search.toLowerCase())
             ? "#ffee59"
