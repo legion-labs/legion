@@ -362,6 +362,10 @@ export async function getActiveSceneIds() {
   return sceneIds;
 }
 
+export function getRuntimeManifest() {
+  return resourceBrowserClient.getRuntimeManifest({});
+}
+
 export async function getActiveScenes() {
   return getAllRootResources(await getActiveSceneIds());
 }

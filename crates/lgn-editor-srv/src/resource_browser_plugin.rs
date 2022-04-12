@@ -18,10 +18,10 @@ use lgn_editor_proto::property_inspector::UpdateResourcePropertiesRequest;
 use lgn_editor_proto::resource_browser::{
     CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
     DeleteResourceRequest, DeleteResourceResponse, GetActiveScenesRequest, GetActiveScenesResponse,
-    GetResourceTypeNamesRequest, GetResourceTypeNamesResponse, ImportResourceRequest,
-    ImportResourceResponse, OpenSceneRequest, OpenSceneResponse, RenameResourceRequest,
-    RenameResourceResponse, ReparentResourceRequest, ReparentResourceResponse,
-    SearchResourcesRequest,
+    GetResourceTypeNamesRequest, GetResourceTypeNamesResponse, GetRuntimeManifestRequest,
+    GetRuntimeManifestResponse, ImportResourceRequest, ImportResourceResponse, OpenSceneRequest,
+    OpenSceneResponse, RenameResourceRequest, RenameResourceResponse, ReparentResourceRequest,
+    ReparentResourceResponse, SearchResourcesRequest,
 };
 
 use lgn_graphics_data::offline_gltf::GltfFile;
@@ -827,11 +827,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
             warn!("Failed to OpenScene for {}: {}", resource_id, err);
         }
 
-        let manifest_id = transaction_manager.get_runtime_manifest_id().await;
-        Ok(Response::new(OpenSceneResponse {
-            manifest_id: manifest_id.to_string(),
-            root_asset_id: resource_id.to_string(),
-        }))
+        Ok(Response::new(OpenSceneResponse {}))
     }
 
     /// Close a Scene
@@ -874,6 +870,18 @@ impl ResourceBrowser for ResourceBrowserRPC {
                 .iter()
                 .map(std::string::ToString::to_string)
                 .collect(),
+        }))
+    }
+
+    async fn get_runtime_manifest(
+        &self,
+        _request: Request<GetRuntimeManifestRequest>,
+    ) -> Result<Response<GetRuntimeManifestResponse>, Status> {
+        let transaction_manager = self.transaction_manager.lock().await;
+
+        let manifest_id = transaction_manager.get_runtime_manifest_id().await;
+        Ok(Response::new(GetRuntimeManifestResponse {
+            id: manifest_id.to_string(),
         }))
     }
 }

@@ -16,6 +16,8 @@ export const resourceBrowserItemEntries: Entry[] = [
   { type: "item", action: "import", label: "Import..." },
   { type: "item", action: "openScene", label: "Open Scene..." },
   { type: "separator" },
+  { type: "item", action: "playScene", label: "Play Scene..." },
+  { type: "separator" },
   { type: "item", action: "help", label: "Help" },
 ];
 

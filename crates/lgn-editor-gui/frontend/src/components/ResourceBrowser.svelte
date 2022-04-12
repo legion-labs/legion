@@ -16,6 +16,7 @@
   import {
     cloneResource,
     createResource,
+    getRuntimeManifest,
     initFileUpload,
     loadRuntimeManifest,
     loadRuntimeRootAsset,
@@ -262,18 +263,34 @@
       case "openScene": {
         if ($currentResourceDescriptionEntry) {
           try {
-            let response = await openScene({
+            await openScene({
               id: $currentResourceDescriptionEntry?.item.id,
             });
 
             await fetchAllActiveScenes();
+          } catch (error) {
+            notifications.push(Symbol(), {
+              title: "Scene Explorer",
+              message: displayError(error),
+              type: "error",
+            });
+          }
+        }
+
+        break;
+      }
+
+      case "playScene": {
+        if ($currentResourceDescriptionEntry) {
+          try {
+            let response = await getRuntimeManifest();
 
             try {
               await loadRuntimeManifest({
-                manifestId: response.manifestId,
+                manifestId: response.id,
               });
               await loadRuntimeRootAsset({
-                rootAssetId: response.rootAssetId,
+                rootAssetId: $currentResourceDescriptionEntry?.item.id,
               });
             } catch (error) {
               notifications.push(Symbol(), {
