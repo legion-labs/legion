@@ -5211,6 +5211,7 @@ dependencies = [
  "anyhow",
  "bitflags",
  "bumpalo",
+ "crossbeam-channel",
  "dolly",
  "egui",
  "epaint",
