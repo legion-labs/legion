@@ -16,7 +16,7 @@
   import {
     cloneResource,
     createResource,
-    getRuntimeManifest,
+    getRuntimeSceneInfo,
     initFileUpload,
     loadRuntimeManifest,
     loadRuntimeRootAsset,
@@ -283,14 +283,16 @@
       case "playScene": {
         if ($currentResourceDescriptionEntry) {
           try {
-            let response = await getRuntimeManifest();
+            let response = await getRuntimeSceneInfo({
+              resourceId: $currentResourceDescriptionEntry?.item.id,
+            });
 
             try {
               await loadRuntimeManifest({
-                manifestId: response.id,
+                manifestId: response.manifestId,
               });
               await loadRuntimeRootAsset({
-                rootAssetId: $currentResourceDescriptionEntry?.item.id,
+                rootAssetId: response.assetId,
               });
             } catch (error) {
               notifications.push(Symbol(), {

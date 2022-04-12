@@ -18,8 +18,8 @@ use lgn_editor_proto::property_inspector::UpdateResourcePropertiesRequest;
 use lgn_editor_proto::resource_browser::{
     CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
     DeleteResourceRequest, DeleteResourceResponse, GetActiveScenesRequest, GetActiveScenesResponse,
-    GetResourceTypeNamesRequest, GetResourceTypeNamesResponse, GetRuntimeManifestRequest,
-    GetRuntimeManifestResponse, ImportResourceRequest, ImportResourceResponse, OpenSceneRequest,
+    GetResourceTypeNamesRequest, GetResourceTypeNamesResponse, GetRuntimeSceneInfoRequest,
+    GetRuntimeSceneInfoResponse, ImportResourceRequest, ImportResourceResponse, OpenSceneRequest,
     OpenSceneResponse, RenameResourceRequest, RenameResourceResponse, ReparentResourceRequest,
     ReparentResourceResponse, SearchResourcesRequest,
 };
@@ -873,15 +873,41 @@ impl ResourceBrowser for ResourceBrowserRPC {
         }))
     }
 
-    async fn get_runtime_manifest(
+    async fn get_runtime_scene_info(
         &self,
-        _request: Request<GetRuntimeManifestRequest>,
-    ) -> Result<Response<GetRuntimeManifestResponse>, Status> {
-        let transaction_manager = self.transaction_manager.lock().await;
+        request: Request<GetRuntimeSceneInfoRequest>,
+    ) -> Result<Response<GetRuntimeSceneInfoResponse>, Status> {
+        let request = request.get_ref();
+        let resource_id = parse_resource_id(request.resource_id.as_str())?;
 
-        let manifest_id = transaction_manager.get_runtime_manifest_id().await;
-        Ok(Response::new(GetRuntimeManifestResponse {
-            id: manifest_id.to_string(),
+        if resource_id.kind != sample_data::offline::Entity::TYPE {
+            return Err(Status::internal(format!(
+                "Expected Entity in GetRuntimeSceneInfo. Resource {} is a {}",
+                resource_id,
+                resource_id.kind.as_pretty()
+            )));
+        }
+
+        let asset_id = ResourcePathId::from(resource_id)
+            .push(sample_data::runtime::Entity::TYPE)
+            .resource_id();
+
+        let manifest_id = {
+            let transaction_manager = self.transaction_manager.lock().await;
+
+            transaction_manager.get_runtime_manifest_id().await
+        };
+
+        lgn_tracing::info!(
+            "Playing scene: {}, manifest: {}, root asset: {}",
+            resource_id,
+            manifest_id,
+            asset_id
+        );
+
+        Ok(Response::new(GetRuntimeSceneInfoResponse {
+            manifest_id: manifest_id.to_string(),
+            asset_id: asset_id.to_string(),
         }))
     }
 }

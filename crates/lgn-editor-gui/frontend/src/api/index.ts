@@ -362,8 +362,8 @@ export async function getActiveSceneIds() {
   return sceneIds;
 }
 
-export function getRuntimeManifest() {
-  return resourceBrowserClient.getRuntimeManifest({});
+export function getRuntimeSceneInfo({ resourceId }: { resourceId: string }) {
+  return resourceBrowserClient.getRuntimeSceneInfo({ resourceId });
 }
 
 export async function getActiveScenes() {
