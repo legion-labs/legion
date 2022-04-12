@@ -13,6 +13,6 @@ pub struct ManipulatorComponent {
     pub selected: bool,
     pub transparent: bool,
     pub picking_id: u32,
-    pub mesh_id: DefaultMeshType,
+    pub default_mesh_type: DefaultMeshType,
     pub color: Color,
 }

@@ -6,6 +6,8 @@ use lgn_tracing::span_fn;
 use lgn_transform::components::GlobalTransform;
 use std::sync::Mutex;
 
+use crate::resources::DefaultMeshType;
+
 pub struct DebugDisplay {
     display_lists: Mutex<*const DisplayList>,
 }
@@ -70,9 +72,14 @@ pub struct DisplayListBuilder<'system> {
 }
 
 impl<'system> DisplayListBuilder<'system> {
-    pub fn add_mesh(&mut self, transform: &GlobalTransform, mesh_id: u32, color: Color) {
+    pub fn add_default_mesh(
+        &mut self,
+        transform: &GlobalTransform,
+        default_mesh_type: DefaultMeshType,
+        color: Color,
+    ) {
         let primitive = self.bump.alloc(DebugPrimitive {
-            primitive_type: DebugPrimitiveType::Mesh { mesh_id },
+            primitive_type: DebugPrimitiveType::DefaultMesh { default_mesh_type },
             transform: *transform,
             color,
             next: self.display_list.primitives,
@@ -87,7 +94,10 @@ pub struct DisplayList {
 }
 
 pub enum DebugPrimitiveType {
-    Mesh { mesh_id: u32 },
+    // TODO(vdbdd): add those new types
+    // DisplayList
+    // Mesh
+    DefaultMesh { default_mesh_type: DefaultMeshType },
 }
 
 pub struct DebugPrimitive {

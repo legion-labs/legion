@@ -62,7 +62,7 @@ impl ManipulatorPart {
         part_num: usize,
         transparent: bool,
         transform: Transform,
-        mesh_id: DefaultMeshType,
+        default_mesh_type: DefaultMeshType,
         commands: &mut Commands<'_, '_>,
         picking_context: &mut PickingIdContext<'_>,
     ) -> Self {
@@ -80,7 +80,7 @@ impl ManipulatorPart {
             selected: false,
             transparent,
             picking_id: picking_context.acquire_picking_id(entity),
-            mesh_id,
+            default_mesh_type,
             color,
         });
 

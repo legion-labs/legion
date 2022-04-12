@@ -2,7 +2,7 @@ use std::{fs::File, io, path::Path};
 
 use lgn_app::{App, CoreStage, Plugin};
 use lgn_ecs::prelude::{Commands, Entity, Query, Res};
-use lgn_graphics_renderer::components::VisualComponent;
+use lgn_graphics_renderer::{components::VisualComponent, resources::ModelManager};
 use lgn_math::{Quat, Vec3};
 use lgn_tracing::span_fn;
 use lgn_transform::prelude::{GlobalTransform, Transform, TransformBundle};
@@ -34,8 +34,12 @@ impl Plugin for MetaCubePlugin {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn init_stress_test(commands: Commands<'_, '_>, meta_cube: Res<'_, MetaCubeResource>) {
-    meta_cube.initialize(commands);
+fn init_stress_test(
+    commands: Commands<'_, '_>,
+    meta_cube: Res<'_, MetaCubeResource>,
+    model_manager: Res<'_, ModelManager>,
+) {
+    meta_cube.initialize(commands, &model_manager);
 }
 
 #[span_fn]
@@ -81,7 +85,7 @@ impl MetaCubeResource {
     }
 
     #[allow(clippy::cast_precision_loss)]
-    fn initialize(&self, mut commands: Commands<'_, '_>) {
+    fn initialize(&self, mut commands: Commands<'_, '_>, model_manager: &ModelManager) {
         let ref_path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests")
             .join("refs")
@@ -90,6 +94,7 @@ impl MetaCubeResource {
             .with_extension("png");
 
         let random_color = load_image(&ref_path).unwrap();
+        let cube_id = Some(*model_manager.default_model_id(DefaultMeshType::Cube));
 
         for x in 0..self.meta_cube_size {
             for y in 0..self.meta_cube_size {
@@ -109,10 +114,7 @@ impl MetaCubeResource {
                             y as f32 * 2.0,
                             z as f32 * 2.0,
                         )))
-                        .insert(VisualComponent::new_default_mesh(
-                            DefaultMeshType::Cube,
-                            (r, g, b).into(),
-                        ));
+                        .insert(VisualComponent::new(cube_id, (r, g, b).into(), 1.0));
                 }
             }
         }

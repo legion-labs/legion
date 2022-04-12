@@ -251,12 +251,6 @@ pub enum AssetRegistryScheduling {
 pub enum AssetRegistryEvent {
     /// Notify that a resource has been loaded
     AssetLoaded(ResourceTypeAndId),
-
-    /// Notify that a resource has been unloaded
-    AssetUnloaded(ResourceTypeAndId),
-
-    /// Notify that a resource has changed
-    AssetChanged(ResourceTypeAndId),
 }
 
 /// A resource loading event is emitted when a resource is loaded, unloaded, or

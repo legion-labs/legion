@@ -17,8 +17,9 @@ use crate::{
     labels::RenderStage,
     picking::{PickingIdContext, PickingManager},
     resources::{
-        GpuDataAllocation, GpuDataManager, MaterialManager, MeshManager, MissingVisualTracker,
-        ModelManager, StaticBufferAllocation, UnifiedStaticBufferAllocator, UniformGPUDataUpdater,
+        DefaultMeshType, GpuDataAllocation, GpuDataManager, MaterialManager, MeshManager,
+        MissingVisualTracker, ModelManager, StaticBufferAllocation, UnifiedStaticBufferAllocator,
+        UniformGPUDataUpdater,
     },
     Renderer,
 };
@@ -205,18 +206,18 @@ impl GpuInstanceManager {
         // Model (might no be ready. it returns a default model)
         // TODO(vdbdd): should be managed at call site (default model depending on some criterias)
         //
-        let (model_meta_data, ready) =
-            model_manager.get_model_meta_data(visual.model_resource_id.as_ref());
-        if !ready {
-            warn!(
-                "Dependency issue. Model {} not loaded for entity {:?}",
-                visual.model_resource_id.unwrap(),
-                entity
-            );
-            if let Some(model_resource_id) = &visual.model_resource_id {
-                missing_visuals_tracker.add_resource_entity_dependency(*model_resource_id, entity);
-            }
+        if let Some(model_resource_id) = visual.model_resource_id() {
+            missing_visuals_tracker.add_resource_entity_dependency(*model_resource_id, entity);
         }
+
+        let default_model = model_manager.get_default_model(DefaultMeshType::Cube);
+        let model = visual
+            .model_resource_id()
+            .map_or(default_model, |model_resource_id| {
+                model_manager
+                    .get_model_meta_data(model_resource_id)
+                    .unwrap_or(default_model)
+            });
 
         //
         // Gpu instances
@@ -226,7 +227,7 @@ impl GpuInstanceManager {
         let mut gpu_instance_keys = Vec::new();
         let default_material_id = material_manager.get_default_material_id();
 
-        for (mesh_index, mesh) in model_meta_data.meshes.iter().enumerate() {
+        for (mesh_index, mesh) in model.mesh_instances.iter().enumerate() {
             //
             // Mesh
             //
@@ -307,8 +308,8 @@ impl GpuInstanceManager {
         updater: &mut UniformGPUDataUpdater,
     ) {
         let mut instance_color = cgen::cgen_type::GpuInstanceColor::default();
-        instance_color.set_color((u32::from(visual.color)).into());
-        instance_color.set_color_blend(visual.color_blend.into());
+        instance_color.set_color((u32::from(visual.color())).into());
+        instance_color.set_color_blend(visual.color_blend().into());
         self.color_manager
             .update_gpu_data(&entity, &instance_color, updater);
     }

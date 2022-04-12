@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, str::FromStr};
+use std::collections::BTreeMap;
 
 use lgn_app::App;
 use lgn_core::BumpAllocatorPool;
@@ -21,39 +21,45 @@ use crate::{
 };
 
 use super::{
-    DefaultMeshType, MaterialId, MaterialManager, MeshManager, MissingVisualTracker,
-    RendererOptions, DEFAULT_MESH_GUIDS,
+    DefaultMeshType, MaterialId, MaterialManager, MeshId, MeshManager, MissingVisualTracker,
+    RendererOptions,
 };
-pub struct Mesh {
-    pub mesh_id: u32,
+pub struct MeshInstance {
+    pub mesh_id: MeshId,
     pub material_id: MaterialId,
 }
 
 pub struct ModelMetaData {
-    pub meshes: Vec<Mesh>,
+    pub mesh_instances: Vec<MeshInstance>,
 }
 
 pub struct ModelManager {
     model_meta_datas: BTreeMap<ResourceTypeAndId, ModelMetaData>,
-    default_model: ModelMetaData,
+    default_model_ids: Vec<ResourceTypeAndId>,
 }
 
 impl ModelManager {
-    pub fn new(material_manager: &MaterialManager) -> Self {
+    pub fn new(mesh_manager: &MeshManager, material_manager: &MaterialManager) -> Self {
         let default_material_id = material_manager.get_default_material_id();
 
         let mut model_meta_datas = BTreeMap::new();
 
-        for (idx, _mesh_type) in DefaultMeshType::iter().enumerate() {
-            let id = ResourceTypeAndId {
+        let default_model_ids = DefaultMeshType::iter()
+            .map(|_| ResourceTypeAndId {
                 kind: lgn_graphics_data::runtime::Model::TYPE,
-                id: ResourceId::from_str(DEFAULT_MESH_GUIDS[idx]).unwrap(),
-            };
+                id: ResourceId::new(),
+            })
+            .collect::<Vec<_>>();
+
+        for default_mesh_type in DefaultMeshType::iter() {
+            // TODO(vdbdd): reserved range of runtime resource id
+            let resource_id = default_model_ids[default_mesh_type as usize];
+
             model_meta_datas.insert(
-                id,
+                resource_id,
                 ModelMetaData {
-                    meshes: vec![Mesh {
-                        mesh_id: idx as u32,
+                    mesh_instances: vec![MeshInstance {
+                        mesh_id: mesh_manager.get_default_mesh_id(default_mesh_type),
                         material_id: default_material_id,
                     }],
                 },
@@ -62,12 +68,7 @@ impl ModelManager {
 
         Self {
             model_meta_datas,
-            default_model: ModelMetaData {
-                meshes: vec![Mesh {
-                    mesh_id: 1, // cube
-                    material_id: default_material_id,
-                }],
-            },
+            default_model_ids,
         }
     }
 
@@ -82,21 +83,24 @@ impl ModelManager {
         );
     }
 
+    pub fn default_model_id(&self, default_mesh_type: DefaultMeshType) -> &ResourceTypeAndId {
+        &self.default_model_ids[default_mesh_type as usize]
+    }
+
     pub fn add_model(&mut self, resource_id: ResourceTypeAndId, model: ModelMetaData) {
         self.model_meta_datas.insert(resource_id, model);
     }
 
+    pub fn get_default_model(&self, default_mesh_type: DefaultMeshType) -> &ModelMetaData {
+        self.get_model_meta_data(self.default_model_id(default_mesh_type))
+            .unwrap()
+    }
+
     pub fn get_model_meta_data(
         &self,
-        model_resource_id: Option<&ResourceTypeAndId>,
-    ) -> (&ModelMetaData, bool) {
-        if let Some(reference) = model_resource_id {
-            if let Some(model_meta_data) = self.model_meta_datas.get(reference) {
-                return (model_meta_data, true);
-            }
-            return (&self.default_model, false);
-        }
-        (&self.default_model, true)
+        model_resource_id: &ResourceTypeAndId,
+    ) -> Option<&ModelMetaData> {
+        self.model_meta_datas.get(model_resource_id)
     }
 }
 
@@ -114,11 +118,13 @@ pub(crate) fn update_models(
         let model_resource_id = &updated_model.model_id;
 
         missing_visuals_tracker.add_changed_resource(*model_resource_id);
-        let ids = mesh_manager.add_meshes(&renderer, &updated_model.meshes);
 
-        let mut meshes = Vec::new();
+        let mut mesh_instances = Vec::new();
 
-        for (idx, mesh) in updated_model.meshes.iter().enumerate() {
+        for mesh in &updated_model.meshes {
+            let mesh_id = mesh_manager.add_mesh(&renderer, mesh);
+
+            // for (idx, mesh) in updated_model.meshes.iter().enumerate() {
             /*
                UNCOMMENT WHEN THE RESOURCE SYSTEM IS WORKING
                A RUNTIME DEPENDENCY MUST BE LOADED AND THEN, THE MATERIAL ID MUST BE VALID
@@ -155,12 +161,14 @@ pub(crate) fn update_models(
                             .unwrap_or_else(|| material_manager.get_default_material_id())
                     });
 
-            meshes.push(Mesh {
-                mesh_id: ids[idx],
+            mesh_instances.push(MeshInstance {
+                mesh_id,
                 material_id,
             });
+            // }
         }
-        model_manager.add_model(*model_resource_id, ModelMetaData { meshes });
+
+        model_manager.add_model(*model_resource_id, ModelMetaData { mesh_instances });
     }
 }
 
@@ -177,25 +185,28 @@ fn debug_bounding_spheres(
     if !renderer_options.show_bounding_spheres {
         return;
     }
+
     bump_allocator_pool.scoped_bump(|bump| {
         debug_display.create_display_list(bump, |builder| {
             for (visual, transform) in visuals.iter() {
-                let (model_data, ready) =
-                    model_manager.get_model_meta_data(visual.model_resource_id.as_ref());
-                if ready {
-                    for mesh in &model_data.meshes {
-                        let mesh_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
-                        //mesh_data.bounding_sphere
-                        builder.add_mesh(
-                            &GlobalTransform::identity()
-                                .with_translation(
-                                    transform.translation + mesh_data.bounding_sphere.truncate(),
-                                )
-                                .with_scale(Vec3::new(4.0, 4.0, 4.0) * mesh_data.bounding_sphere.w)
-                                .with_rotation(transform.rotation),
-                            DefaultMeshType::Sphere as u32,
-                            Color::WHITE,
-                        );
+                if let Some(model_resource_id) = visual.model_resource_id() {
+                    if let Some(model) = model_manager.get_model_meta_data(model_resource_id) {
+                        for mesh in &model.mesh_instances {
+                            let mesh_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
+                            builder.add_default_mesh(
+                                &GlobalTransform::identity()
+                                    .with_translation(
+                                        transform.translation
+                                            + mesh_data.bounding_sphere.truncate(),
+                                    )
+                                    .with_scale(
+                                        Vec3::new(4.0, 4.0, 4.0) * mesh_data.bounding_sphere.w,
+                                    )
+                                    .with_rotation(transform.rotation),
+                                DefaultMeshType::Sphere,
+                                Color::WHITE,
+                            );
+                        }
                     }
                 }
             }

@@ -13,7 +13,7 @@ use crate::{
     gpu_renderer::{DefaultLayers, GpuInstanceManager, MeshRenderer},
     hl_gfx_api::HLCommandBuffer,
     picking::{ManipulatorManager, PickingManager, PickingState},
-    resources::{DefaultMeshType, GpuBufferWithReadback, MeshManager},
+    resources::{DefaultMeshType, GpuBufferWithReadback, MeshManager, MeshMetaData},
     RenderContext,
 };
 
@@ -139,8 +139,7 @@ impl PickingRenderPass {
                         &custom_world,
                         manipulator.picking_id,
                         picking_distance,
-                        manipulator.mesh_id as u32,
-                        mesh_manager,
+                        mesh_manager.get_default_mesh(manipulator.default_mesh_type),
                         cmd_buffer,
                     );
                 }
@@ -153,8 +152,7 @@ impl PickingRenderPass {
                     &custom_world,
                     light.picking_id,
                     picking_distance,
-                    DefaultMeshType::Sphere as u32,
-                    mesh_manager,
+                    mesh_manager.get_default_mesh(DefaultMeshType::Sphere),
                     cmd_buffer,
                 );
             }
@@ -179,12 +177,10 @@ fn render_mesh(
     custom_world: &GlobalTransform,
     picking_id: u32,
     picking_distance: f32,
-    mesh_id: u32,
-    mesh_manager: &MeshManager,
+    mesh: &MeshMetaData,
     cmd_buffer: &HLCommandBuffer<'_>,
 ) {
     let mut push_constant_data = cgen::cgen_type::PickingPushConstantData::default();
-    let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh_id);
 
     //push_constant_data.set_world((*custom_world).into());
     let mut transform = Transform::default();
@@ -193,16 +189,16 @@ fn render_mesh(
     transform.set_scale(custom_world.scale.into());
 
     push_constant_data.set_transform(transform);
-    push_constant_data.set_mesh_description_offset(mesh_meta_data.mesh_description_offset.into());
+    push_constant_data.set_mesh_description_offset(mesh.mesh_description_offset.into());
     push_constant_data.set_picking_id(picking_id.into());
     push_constant_data.set_picking_distance(picking_distance.into());
     push_constant_data.set_use_gpu_pipeline(0.into());
 
     cmd_buffer.push_constant(&push_constant_data);
 
-    if mesh_meta_data.index_count != 0 {
-        cmd_buffer.draw_indexed(mesh_meta_data.index_count, mesh_meta_data.index_offset, 0);
+    if mesh.index_count != 0 {
+        cmd_buffer.draw_indexed(mesh.index_count, mesh.index_offset, 0);
     } else {
-        cmd_buffer.draw(mesh_meta_data.vertex_count, 0);
+        cmd_buffer.draw(mesh.vertex_count, 0);
     }
 }
