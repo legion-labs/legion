@@ -53,6 +53,11 @@ pub mod hl_gfx_api;
 pub(crate) mod lighting;
 pub mod render_pass;
 
+pub mod core;
+pub mod renderers;
+pub mod shared;
+
+use crate::core::RendererThreadPlugin;
 use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
 use crate::render_pass::TmpRenderPass;
 use crate::{
@@ -210,6 +215,7 @@ impl Plugin for RendererPlugin {
         // Plugins are optional
         app.add_plugin(EguiPlugin::default());
         app.add_plugin(PickingPlugin {});
+        app.add_plugin(RendererThreadPlugin {});
 
         // This resource needs to be shutdown after all other resources
         app.insert_resource(renderer);
