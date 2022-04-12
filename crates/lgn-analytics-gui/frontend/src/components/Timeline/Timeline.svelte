@@ -80,11 +80,7 @@
   });
 
   async function onZoom(event: WheelEvent) {
-    stateStore.update((s) => {
-      s.setViewRangeFromWheel(s.getViewRange(), event);
-      return s;
-    });
-
+    stateStore.wheelZoom(event);
     await stateManager.fetchDynData();
   }
 
@@ -184,17 +180,32 @@
   }
 
   function handleKeydown(event: KeyboardEvent) {
+    if (event.shiftKey) {
+      return;
+    }
     switch (event.code) {
       case "Escape":
         onEscape();
         break;
-      case "ArrowRight":
-      case "ArrowLeft":
-        onHorizontalArrow(event);
+      case "KeyD":
+        event.preventDefault();
+        stateStore.keyboardTranslate(true);
+        break;
+      case "KeyA":
+        event.preventDefault();
+        stateStore.keyboardTranslate(false);
         break;
       case "ArrowUp":
+        onVerticalArrow(event, false);
+        break;
       case "ArrowDown":
-        onVerticalArrow(event);
+        onVerticalArrow(event, true);
+        break;
+      case "KeyW":
+        stateStore.keyboardZoom(true);
+        break;
+      case "KeyS":
+        stateStore.keyboardZoom(false);
         break;
     }
   }
@@ -210,23 +221,10 @@
     }
   }
 
-  function onHorizontalArrow(event: KeyboardEvent) {
-    event.preventDefault();
-    if ($stateStore) {
-      const sign = event.code.includes("Right") ? 1 : -1;
-      const range = $stateStore.getViewRange();
-      const delta = (sign * (range[1] - range[0])) / 4;
-      stateStore.update((s) => {
-        s.setViewRange([range[0] + delta, range[1] + delta]);
-        return s;
-      });
-    }
-  }
-
-  async function onVerticalArrow(event: KeyboardEvent) {
+  async function onVerticalArrow(event: KeyboardEvent, positive: boolean) {
     event.preventDefault();
     if ($stateStore && canvasHeight < scrollHeight) {
-      const sign = event.code.includes("Down") ? 1 : -1;
+      const sign = positive ? 1 : -1;
       div.scrollBy({ top: (sign * (scrollHeight - canvasHeight)) / 10 });
     }
   }

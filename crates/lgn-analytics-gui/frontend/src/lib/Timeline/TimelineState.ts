@@ -3,7 +3,6 @@ import type { Process } from "@lgn/proto-telemetry/dist/process";
 
 import type { SelectionState } from "../time_range_selection";
 import { NewSelectionState } from "../time_range_selection";
-import { zoomHorizontalViewRange } from "../zoom";
 import type { ProcessAsyncData } from "./ProcessAsyncData";
 import type { Thread } from "./Thread";
 import type { ThreadBlock } from "./ThreadBlock";
@@ -39,12 +38,6 @@ export class TimelineState {
 
   setViewRange(range: [number, number]) {
     this.viewRange = range;
-  }
-
-  setViewRangeFromWheel(viewRange: [number, number], wheelEvent: WheelEvent) {
-    this.setViewRange(
-      zoomHorizontalViewRange(viewRange, this.canvasWidth, wheelEvent)
-    );
   }
 
   isFullyVisible() {
