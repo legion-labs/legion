@@ -4406,23 +4406,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-asset-store"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-stream",
- "futures-util",
- "lgn-content-store",
- "lgn-online",
- "rmp-serde",
- "serde",
- "thiserror",
- "tokio",
- "tokio-stream",
- "uuid",
-]
-
-[[package]]
 name = "lgn-async"
 version = "0.1.0"
 dependencies = [
@@ -4757,6 +4740,7 @@ name = "lgn-content-store"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-stream",
  "async-trait",
  "aws-config",
  "aws-sdk-dynamodb",
@@ -4770,6 +4754,7 @@ dependencies = [
  "console",
  "duration-string",
  "futures",
+ "futures-util",
  "hex",
  "http",
  "http-body",

@@ -8,6 +8,7 @@ mod config;
 mod data_space;
 mod errors;
 mod identifier;
+pub mod indexing;
 mod origin;
 mod providers;
 mod traits;

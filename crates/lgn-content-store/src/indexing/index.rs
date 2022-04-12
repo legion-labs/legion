@@ -1,14 +1,14 @@
 use std::collections::{BTreeSet, VecDeque};
 
+use crate::{ContentProvider, ContentReader, ContentWriterExt, Result};
 use async_stream::stream;
 use futures_util::pin_mut;
-use lgn_content_store::{ContentProvider, ContentReader};
 use serde::{de::DeserializeOwned, Serialize};
 use tokio_stream::{Stream, StreamExt};
 
-use crate::{Asset, MultiAssetsTree, Result, Tree, TreeNode, UniqueAssetTree};
+use super::{MultiResourcesTree, Resource, ResourceIdentifier, Tree, TreeNode, UniqueResourceTree};
 
-/// An index of assets.
+/// An index of resources.
 pub struct Index<Metadata, KeyType> {
     key_path_splitter: KeyPathSplitter,
     key_getter: Box<dyn KeyGetter<Metadata, KeyType = KeyType>>,
@@ -18,91 +18,95 @@ impl<Metadata> Index<Metadata, String>
 where
     Metadata: Serialize + DeserializeOwned,
 {
-    /// Add an asset to the specified unique asset tree.
+    /// Add an resource to the specified unique resource tree.
     ///
-    /// Any existing asset with the same key will be overwritten silently.
+    /// Any existing resource with the same key will be overwritten silently.
     ///
     /// # Errors
     ///
-    /// Returns an error if the asset could not be added.
-    pub async fn add_asset(
+    /// Returns an error if the resource could not be added.
+    pub async fn add_resource(
         &self,
-        provider: impl ContentProvider + Send + Sync + Copy,
-        tree: UniqueAssetTree,
-        asset: &Asset<Metadata>,
-    ) -> Result<UniqueAssetTree> {
-        let asset_id = asset.save(provider).await?;
-        let key = match self.key_getter.get_key(asset.metadata()) {
+        provider: impl ContentProvider + Send + Sync,
+        tree: UniqueResourceTree,
+        resource: &Resource<Metadata>,
+    ) -> Result<UniqueResourceTree> {
+        let resource_id = provider
+            .write_content(&resource.as_vec())
+            .await
+            .map(ResourceIdentifier)?;
+
+        let key = match self.key_getter.get_key(resource.metadata()) {
             Some(key) => key,
-            None => return Ok(tree), // The asset does not have the required key, and therefore cannot be added to the tree.
+            None => return Ok(tree), // The resource does not have the required key, and therefore cannot be added to the tree.
         };
 
-        self.add_entry(provider, tree, asset_id, &key).await
+        self.add_entry(provider, tree, resource_id, &key).await
     }
 
-    /// Remove an asset from the specified tree.
+    /// Remove an resource from the specified tree.
     ///
-    /// If the asset is not found, the tree is returned unchanged.
+    /// If the resource is not found, the tree is returned unchanged.
     ///
     /// Empty tree nodes in the removal path are removed too.
     ///
     /// # Errors
     ///
     /// Returns an error if the entry could not be removed.
-    pub async fn remove_asset(
+    pub async fn remove_resource(
         &self,
-        provider: impl ContentProvider + Send + Sync + Copy,
-        tree: UniqueAssetTree,
-        asset: &Asset<Metadata>,
-    ) -> Result<UniqueAssetTree> {
-        let key = match self.key_getter.get_key(asset.metadata()) {
+        provider: impl ContentProvider + Send + Sync,
+        tree: UniqueResourceTree,
+        resource: &Resource<Metadata>,
+    ) -> Result<UniqueResourceTree> {
+        let key = match self.key_getter.get_key(resource.metadata()) {
             Some(key) => key,
-            None => return Ok(tree), // The asset does not have the required key, and therefore cannot be removed from the tree.
+            None => return Ok(tree), // The resource does not have the required key, and therefore cannot be removed from the tree.
         };
 
         self.remove_entry(provider, tree, &key).await
     }
 
-    /// Get an asset by its key in a unique asset tree.
+    /// Get an resource by its key in a unique resource tree.
     ///
-    /// If no such asset exists, returns `Ok(None)`.
+    /// If no such resource exists, returns `Ok(None)`.
     ///
     /// # Errors
     ///
-    /// Returns an error if the asset cannot be searched for.
-    pub async fn get_asset(
+    /// Returns an error if the resource cannot be searched for.
+    pub async fn get_resource(
         &self,
-        provider: impl ContentReader + Send + Sync + Copy,
-        tree: &UniqueAssetTree,
+        provider: impl ContentReader + Send + Sync,
+        tree: &UniqueResourceTree,
         key: &str,
-    ) -> Result<Option<Asset<Metadata>>> {
-        match self.get_entry(provider, tree, key).await? {
-            Some(asset_id) => Asset::load(provider, &asset_id).await.map(Some),
+    ) -> Result<Option<Resource<Metadata>>> {
+        match self.get_entry(&provider, tree, key).await? {
+            Some(resource_id) => Resource::load(provider, &resource_id).await.map(Some),
             None => Ok(None),
         }
     }
 
-    /// Returns a stream that iterates over all assets in the specified unique
-    /// asset tree.
+    /// Returns a stream that iterates over all resources in the specified unique
+    /// resource tree.
     ///
     /// # Warning
     ///
     /// This method is not intended to be used in production as it iterates over
     /// the entire tree. If you think you need to use this method, please think
     /// twice, and then some more.
-    pub fn all_assets<'s>(
+    pub fn all_resources<'s>(
         &'s self,
-        provider: impl ContentReader + Send + Sync + Copy + 's,
-        tree: UniqueAssetTree,
-    ) -> impl Stream<Item = (String, Result<Asset<Metadata>>)> + 's {
+        provider: impl ContentReader + Send + Sync + 's,
+        tree: UniqueResourceTree,
+    ) -> impl Stream<Item = (String, Result<Resource<Metadata>>)> + 's {
         stream! {
-            let asset_ids = self.all_entries(provider, tree);
+            let resource_ids = self.all_entries(&provider, tree);
 
-            pin_mut!(asset_ids); // needed for iteration
+            pin_mut!(resource_ids); // needed for iteration
 
-            while let Some((prefix, asset_id)) = asset_ids.next().await {
-                match asset_id {
-                    Ok(asset_id) => yield (prefix, Asset::<Metadata>::load(provider, &asset_id).await),
+            while let Some((prefix, resource_id)) = resource_ids.next().await {
+                match resource_id {
+                    Ok(resource_id) => yield (prefix, Resource::<Metadata>::load(&provider, &resource_id).await),
                     Err(err) => yield (prefix, Err(err)),
                 }
             }
@@ -114,65 +118,73 @@ impl<Metadata> Index<Metadata, BTreeSet<String>>
 where
     Metadata: Serialize + DeserializeOwned,
 {
-    /// Add an asset to the specified multi assets tree.
+    /// Add an resource to the specified multi resources tree.
     ///
     /// # Errors
     ///
-    /// Returns an error if the asset could not be added.
-    pub async fn add_asset(
+    /// Returns an error if the resource could not be added.
+    pub async fn add_resource(
         &self,
-        provider: impl ContentProvider + Send + Sync + Copy,
-        mut tree: MultiAssetsTree,
-        asset: &Asset<Metadata>,
-    ) -> Result<MultiAssetsTree> {
-        let asset_id = asset.save(provider).await?;
-        let keys = match self.key_getter.get_key(asset.metadata()) {
+        provider: impl ContentProvider + Send + Sync,
+        mut tree: MultiResourcesTree,
+        resource: &Resource<Metadata>,
+    ) -> Result<MultiResourcesTree> {
+        let resource_id = provider
+            .write_content(&resource.as_vec())
+            .await
+            .map(ResourceIdentifier)?;
+
+        let keys = match self.key_getter.get_key(resource.metadata()) {
             Some(key) => key,
-            None => return Ok(tree), // The asset does not have the required key, and therefore cannot be added to the tree.
+            None => return Ok(tree), // The resource does not have the required key, and therefore cannot be added to the tree.
         };
 
         for key in &keys {
-            let asset_ids = match self.get_entry(provider, &tree, key).await? {
-                Some(mut asset_ids) => {
-                    asset_ids.insert(asset_id.clone());
-                    asset_ids
+            let resource_ids = match self.get_entry(&provider, &tree, key).await? {
+                Some(mut resource_ids) => {
+                    resource_ids.insert(resource_id.clone());
+                    resource_ids
                 }
-                None => BTreeSet::from_iter([asset_id.clone()]),
+                None => BTreeSet::from_iter([resource_id.clone()]),
             };
 
-            tree = self.add_entry(provider, tree, asset_ids, key).await?;
+            tree = self.add_entry(&provider, tree, resource_ids, key).await?;
         }
 
         Ok(tree)
     }
 
-    /// Remove an asset from the specified multi assets tree.
+    /// Remove an resource from the specified multi resources tree.
     ///
-    /// If the asset is not found, the tree is returned unchanged.
+    /// If the resource is not found, the tree is returned unchanged.
     ///
     /// # Errors
     ///
-    /// Returns an error if the asset could not be removed.
-    pub async fn remove_asset(
+    /// Returns an error if the resource could not be removed.
+    pub async fn remove_resource(
         &self,
-        provider: impl ContentProvider + Send + Sync + Copy,
-        mut tree: MultiAssetsTree,
-        asset: &Asset<Metadata>,
-    ) -> Result<MultiAssetsTree> {
-        let asset_id = asset.save(provider).await?;
-        let keys = match self.key_getter.get_key(asset.metadata()) {
+        provider: impl ContentProvider + Send + Sync,
+        mut tree: MultiResourcesTree,
+        resource: &Resource<Metadata>,
+    ) -> Result<MultiResourcesTree> {
+        let resource_id = provider
+            .write_content(&resource.as_vec())
+            .await
+            .map(ResourceIdentifier)?;
+
+        let keys = match self.key_getter.get_key(resource.metadata()) {
             Some(key) => key,
-            None => return Ok(tree), // The asset does not have the required key, and therefore cannot be added to the tree.
+            None => return Ok(tree), // The resource does not have the required key, and therefore cannot be added to the tree.
         };
 
         for key in &keys {
-            if let Some(mut asset_ids) = self.get_entry(provider, &tree, key).await? {
-                // Only actually write if the asset was listed.
-                if asset_ids.remove(&asset_id) {
-                    if asset_ids.is_empty() {
-                        tree = self.remove_entry(provider, tree, key).await?;
+            if let Some(mut resource_ids) = self.get_entry(&provider, &tree, key).await? {
+                // Only actually write if the resource was listed.
+                if resource_ids.remove(&resource_id) {
+                    if resource_ids.is_empty() {
+                        tree = self.remove_entry(&provider, tree, key).await?;
                     } else {
-                        tree = self.add_entry(provider, tree, asset_ids, key).await?;
+                        tree = self.add_entry(&provider, tree, resource_ids, key).await?;
                     }
                 }
             }
@@ -181,26 +193,29 @@ where
         Ok(tree)
     }
 
-    /// Get a stream of assets by their key in a multi assets tree.
+    /// Get a stream of resources by their key in a multi resources tree.
     ///
-    /// If no such asset exists, returns `Ok(None)`.
+    /// If no such resource exists, returns `Ok(None)`.
     ///
     /// # Errors
     ///
-    /// Returns an error if the asset cannot be searched for.
-    pub async fn get_assets<'s>(
+    /// Returns an error if the resource cannot be searched for.
+    pub async fn get_resources<'s>(
         &'s self,
-        provider: impl ContentReader + Send + Sync + Copy + 's,
-        tree: &'s MultiAssetsTree,
+        provider: impl ContentReader + Send + Sync + 's,
+        tree: &'s MultiResourcesTree,
         key: &str,
-    ) -> Result<Option<impl Stream<Item = Result<Asset<Metadata>>> + 's>> {
-        Ok(self.get_entry(provider, tree, key).await?.map(|asset_ids| {
-            stream! {
-                for asset_id in asset_ids {
-                    yield Asset::load(provider, &asset_id).await;
+    ) -> Result<Option<impl Stream<Item = Result<Resource<Metadata>>> + 's>> {
+        Ok(self
+            .get_entry(&provider, tree, key)
+            .await?
+            .map(|resource_ids| {
+                stream! {
+                    for resource_id in resource_ids {
+                        yield Resource::load(&provider, &resource_id).await;
+                    }
                 }
-            }
-        }))
+            }))
     }
 }
 
@@ -227,7 +242,7 @@ where
     /// Returns an error if the leaf cannot be searched for.
     pub async fn get_entry<LeafType>(
         &self,
-        provider: impl ContentReader + Send + Sync + Copy,
+        provider: impl ContentReader + Send + Sync,
         tree: &Tree<LeafType>,
         key: &str,
     ) -> Result<Option<LeafType>>
@@ -237,14 +252,14 @@ where
         let path = self.key_path_splitter.split_key(key);
 
         if path.is_empty() {
-            return Ok(None); // If the key is empty, the asset cannot be found.
+            return Ok(None); // If the key is empty, the resource cannot be found.
         }
 
         let (leaf_key, path) = path.split_last().unwrap();
 
         // This returns [tree, tree_node1, tree_node2, ..., tree_nodeN] where
         // tree_nodeN is the last node in the path which should contain the
-        // asset.
+        // resource.
         //
         // If N is less than the length of the path + 1, then the path is not
         // complete and new empty nodes are created.
@@ -264,7 +279,7 @@ where
     /// Returns an error if the entry could not be added.
     pub async fn add_entry<LeafType>(
         &self,
-        provider: impl ContentProvider + Send + Sync + Copy,
+        provider: impl ContentProvider + Send + Sync,
         tree: Tree<LeafType>,
         entry: LeafType,
         key: &str,
@@ -278,7 +293,7 @@ where
             return Ok(tree); // If the key is empty, assume the entry cannot be added to the tree.
         }
 
-        let (asset_key, path) = path.split_last().unwrap();
+        let (resource_key, path) = path.split_last().unwrap();
 
         // This returns [tree, tree_node1, tree_node2, ..., tree_nodeN] where
         // tree_nodeN is the last node in the path which should contain the
@@ -286,16 +301,16 @@ where
         //
         // If N is less than the length of the path + 1, then the path is not
         // complete and new empty nodes are created.
-        let mut tree_path = self.resolve_tree_path(provider, tree, path).await?;
+        let mut tree_path = self.resolve_tree_path(&provider, tree, path).await?;
 
         while tree_path.len() < path.len() + 1 {
             tree_path.push(Tree::default());
         }
 
-        // Let's create an iterator of [(asset_key, tree_nodeN), ..., (key, tree_node1)].
+        // Let's create an iterator of [(resource_key, tree_nodeN), ..., (key, tree_node1)].
         let mut iter = path
             .iter()
-            .chain(std::iter::once(asset_key))
+            .chain(std::iter::once(resource_key))
             .rev()
             .zip(tree_path.into_iter().rev());
 
@@ -303,11 +318,11 @@ where
             .next()
             .map(|(key, tree)| tree.with_named_leaf((*key).to_string(), entry))
             .unwrap();
-        let mut last_tree_id = last_tree.save(provider).await?;
+        let mut last_tree_id = last_tree.save(&provider).await?;
 
         for (key, tree) in iter {
             last_tree = tree.with_named_branch((*key).to_string(), last_tree_id);
-            last_tree_id = last_tree.save(provider).await?;
+            last_tree_id = last_tree.save(&provider).await?;
         }
 
         Ok(last_tree)
@@ -324,7 +339,7 @@ where
     /// Returns an error if the entry could not be removed.
     pub async fn remove_entry<LeafType>(
         &self,
-        provider: impl ContentProvider + Send + Sync + Copy,
+        provider: impl ContentProvider + Send + Sync,
         tree: Tree<LeafType>,
         key: &str,
     ) -> Result<Tree<LeafType>>
@@ -334,22 +349,22 @@ where
         let path = self.key_path_splitter.split_key(key);
 
         if path.is_empty() {
-            return Ok(tree); // If the key, assume the asset cannot be added to the tree.
+            return Ok(tree); // If the key, assume the resource cannot be added to the tree.
         }
 
-        let (asset_key, path) = path.split_last().unwrap();
+        let (resource_key, path) = path.split_last().unwrap();
 
-        let mut tree_path = self.resolve_tree_path(provider, tree, path).await?;
+        let mut tree_path = self.resolve_tree_path(&provider, tree, path).await?;
 
         if tree_path.len() < path.len() + 1 {
-            // If the asset is not found, the tree is returned unchanged.
+            // If the resource is not found, the tree is returned unchanged.
             return Ok(tree_path.swap_remove(0));
         }
 
-        // Let's create an iterator of [(asset_key, tree_nodeN), ..., (key, tree_node1)].
+        // Let's create an iterator of [(resource_key, tree_nodeN), ..., (key, tree_node1)].
         let mut iter = path
             .iter()
-            .chain(std::iter::once(asset_key))
+            .chain(std::iter::once(resource_key))
             .rev()
             .zip(tree_path.into_iter().rev());
 
@@ -362,11 +377,11 @@ where
             last_tree = if last_tree.is_empty() {
                 tree.without_child(key)
             } else {
-                tree.with_named_branch((*key).to_string(), last_tree.save(provider).await?)
+                tree.with_named_branch((*key).to_string(), last_tree.save(&provider).await?)
             };
         }
 
-        last_tree.save(provider).await?;
+        last_tree.save(&provider).await?;
 
         Ok(last_tree)
     }
@@ -380,7 +395,7 @@ where
     /// twice, and then some more.
     pub fn all_entries<'s, LeafType>(
         &'s self,
-        provider: impl ContentReader + Send + Sync + Copy + 's,
+        provider: impl ContentReader + Send + Sync + 's,
         tree: Tree<LeafType>,
     ) -> impl Stream<Item = (String, Result<LeafType>)> + 's
     where
@@ -399,7 +414,7 @@ where
                             yield (new_prefix, Ok(entry.clone()));
                         },
                         TreeNode::Branch(tree_id) => {
-                            match Tree::load(provider, tree_id).await {
+                            match Tree::load(&provider, tree_id).await {
                                 Ok(tree) => {
                                     trees.push_back((new_prefix, tree));
                                 },
@@ -416,7 +431,7 @@ where
 
     /// Resolve a tree from a path.
     ///
-    /// Might be used to fetch a "directory" of assets.
+    /// Might be used to fetch a "directory" of resources.
     ///
     /// If the path does not exist, `Ok(None)` is returned.
     ///
@@ -425,7 +440,7 @@ where
     /// Returns an error if the path cannot be resolved.
     pub async fn resolve_tree<LeafType>(
         &self,
-        provider: impl ContentReader + Send + Sync + Copy,
+        provider: impl ContentReader + Send + Sync,
         tree: &Tree<LeafType>,
         key: &str,
     ) -> Result<Option<Tree<LeafType>>>
@@ -439,7 +454,7 @@ where
 
     /// Resolve a tree from a path.
     ///
-    /// Might be used to fetch a "directory" of assets.
+    /// Might be used to fetch a "directory" of resources.
     ///
     /// If the path does not exist, `Ok(None)` is returned.
     ///
@@ -448,7 +463,7 @@ where
     /// Returns an error if the path cannot be resolved.
     async fn resolve_tree_from_path<LeafType>(
         &self,
-        provider: impl ContentReader + Send + Sync + Copy,
+        provider: impl ContentReader + Send + Sync,
         tree: &Tree<LeafType>,
         path: &[&str],
     ) -> Result<Option<Tree<LeafType>>>
@@ -461,14 +476,14 @@ where
 
         let (first, path) = path.split_first().unwrap();
 
-        let mut tree = if let Some(node) = tree.lookup_branch(provider, first).await? {
+        let mut tree = if let Some(node) = tree.lookup_branch(&provider, first).await? {
             node
         } else {
             return Ok(None);
         };
 
         for element in path {
-            if let Some(node) = tree.lookup_branch(provider, element).await? {
+            if let Some(node) = tree.lookup_branch(&provider, element).await? {
                 tree = node;
             } else {
                 return Ok(None);
@@ -481,7 +496,7 @@ where
     /// Resolve a path of trees.
     async fn resolve_tree_path<LeafType>(
         &self,
-        provider: impl ContentProvider + Send + Sync + Copy,
+        provider: impl ContentProvider + Send + Sync,
         tree: Tree<LeafType>,
         path: &[&str],
     ) -> Result<Vec<Tree<LeafType>>>
@@ -495,7 +510,7 @@ where
             if let Some(node) = result
                 .last()
                 .unwrap()
-                .lookup_branch(provider, element)
+                .lookup_branch(&provider, element)
                 .await?
             {
                 result.push(node);
@@ -584,11 +599,11 @@ impl KeyPathSplitter {
 mod tests {
     use std::collections::BTreeSet;
 
+    use crate::MemoryProvider;
     use futures_util::stream::StreamExt;
-    use lgn_content_store::MemoryProvider;
     use serde::{Deserialize, Serialize};
 
-    use crate::{Asset, Index, KeyPathSplitter, MultiAssetsTree, UniqueAssetTree};
+    use super::{Index, KeyPathSplitter, MultiResourcesTree, Resource, UniqueResourceTree};
 
     #[test]
     fn test_key_path_splitter_separator() {
@@ -640,47 +655,53 @@ mod tests {
         // In a real case obviously, we can use the default provider.
         let provider = &MemoryProvider::new();
 
-        // Let's create an index that stores assets according to their path, and
+        // Let's create an index that stores resources according to their path, and
         // splits the path for each '/'.
         let file_index = Index::new(KeyPathSplitter::Separator('/'), |m: &Metadata| {
             Some(m.path.clone())
         });
-        // Let's create an index that stores assets according to their OID, and
+        // Let's create an index that stores resources according to their OID, and
         // splits the path for each 2 characters.
         let oid_index = Index::new(KeyPathSplitter::Size(2), |m: &Metadata| Some(m.oid.clone()));
 
-        // Let's create a bunch of assets.
-        let asset_a =
-            Asset::new_from_data(provider, meta("/assets/a", "abcdef"), b"hello world from A")
-                .await
-                .unwrap();
-        let asset_b =
-            Asset::new_from_data(provider, meta("/assets/b", "abefef"), b"hello world from B")
-                .await
-                .unwrap();
+        // Let's create a bunch of resources.
+        let resource_a = Resource::new_from_data(
+            provider,
+            meta("/resources/a", "abcdef"),
+            b"hello world from A",
+        )
+        .await
+        .unwrap();
+        let resource_b = Resource::new_from_data(
+            provider,
+            meta("/resources/b", "abefef"),
+            b"hello world from B",
+        )
+        .await
+        .unwrap();
 
-        // We add each asset to both indexes.
+        // We add each resource to both indexes.
         //
         // Note that the actual storage only happens once, thanks to the content
         // store implicit deduplication.
         let file_tree = file_index
-            .add_asset(provider, UniqueAssetTree::default(), &asset_a)
+            .add_resource(provider, UniqueResourceTree::default(), &resource_a)
             .await
             .unwrap();
         let oid_tree = oid_index
-            .add_asset(provider, UniqueAssetTree::default(), &asset_a)
+            .add_resource(provider, UniqueResourceTree::default(), &resource_a)
             .await
             .unwrap();
         let file_tree = file_index
-            .add_asset(provider, file_tree, &asset_b)
+            .add_resource(provider, file_tree, &resource_b)
             .await
             .unwrap();
         let oid_tree = oid_index
-            .add_asset(provider, oid_tree, &asset_b)
+            .add_resource(provider, oid_tree, &resource_b)
             .await
             .unwrap();
 
-        // This is how we can query assets.
+        // This is how we can query resources.
         //
         // Note how we need three things:
         // - The index to query, which almost never changes across commits.
@@ -690,103 +711,103 @@ mod tests {
         // In a nutshell: the key is the 'what', the tree is the 'where' and the
         // index is the 'how'.
 
-        // Fetch an asset by path: use the file index.
-        let asset = file_index
-            .get_asset(provider, &file_tree, "/assets/a")
+        // Fetch an resource by path: use the file index.
+        let resource = file_index
+            .get_resource(provider, &file_tree, "/resources/a")
             .await
             .unwrap() // Result
             .unwrap(); // Option
 
-        assert_eq!(asset, asset_a.clone());
+        assert_eq!(resource, resource_a.clone());
 
-        // We fetched that asset by its path: we can access any of its metadata!
-        assert_eq!(asset.metadata().path, "/assets/a");
-        assert_eq!(asset.metadata().oid, "abcdef");
+        // We fetched that resource by its path: we can access any of its metadata!
+        assert_eq!(resource.metadata().path, "/resources/a");
+        assert_eq!(resource.metadata().oid, "abcdef");
 
-        // Fetch an asset by OID: use the oid index.
-        let asset = oid_index
-            .get_asset(provider, &oid_tree, "abcdef")
+        // Fetch an resource by OID: use the oid index.
+        let resource = oid_index
+            .get_resource(provider, &oid_tree, "abcdef")
             .await
             .unwrap() // Result
             .unwrap(); // Option
 
-        assert_eq!(asset, asset_a.clone());
+        assert_eq!(resource, resource_a.clone());
 
-        // We fetched that asset by its OID: we can access any of its metadata!
-        assert_eq!(asset.metadata().path, "/assets/a");
-        assert_eq!(asset.metadata().oid, "abcdef");
+        // We fetched that resource by its OID: we can access any of its metadata!
+        assert_eq!(resource.metadata().path, "/resources/a");
+        assert_eq!(resource.metadata().oid, "abcdef");
 
         // Fetching by OID in the file index? No. Won't work, as expected.
         assert_eq!(
             file_index
-                .get_asset(provider, &file_tree, "abcdef")
+                .get_resource(provider, &file_tree, "abcdef")
                 .await
                 .unwrap(),
             None,
         );
 
-        // List all the assets in the index. Should be discouraged in real code: mostly useful for tests.
-        let assets_as_files = file_index
-            .all_assets(provider, file_tree.clone())
-            .map(|(key, asset)| (key, asset.unwrap()))
+        // List all the resources in the index. Should be discouraged in real code: mostly useful for tests.
+        let resources_as_files = file_index
+            .all_resources(provider, file_tree.clone())
+            .map(|(key, resource)| (key, resource.unwrap()))
             .collect::<Vec<_>>()
             .await;
 
         assert_eq!(
-            assets_as_files,
+            resources_as_files,
             vec![
-                ("/assets/a".to_string(), asset_a.clone()),
-                ("/assets/b".to_string(), asset_b.clone())
+                ("/resources/a".to_string(), resource_a.clone()),
+                ("/resources/b".to_string(), resource_b.clone())
             ]
         );
 
         // The same with the OID index.
-        let assets_as_oids = oid_index
-            .all_assets(provider, oid_tree.clone())
-            .map(|(key, asset)| (key, asset.unwrap()))
+        let resources_as_oids = oid_index
+            .all_resources(provider, oid_tree.clone())
+            .map(|(key, resource)| (key, resource.unwrap()))
             .collect::<Vec<_>>()
             .await;
 
         assert_eq!(
-            assets_as_oids,
+            resources_as_oids,
             vec![
-                ("abcdef".to_string(), asset_a.clone()),
-                ("abefef".to_string(), asset_b.clone())
+                ("abcdef".to_string(), resource_a.clone()),
+                ("abefef".to_string(), resource_b.clone())
             ]
         );
 
-        // Remove an asset from the indexes.
+        // Remove an resource from the indexes.
         let file_tree = file_index
-            .remove_asset(provider, file_tree, &asset_b)
+            .remove_resource(provider, file_tree, &resource_b)
             .await
             .unwrap();
         let oid_tree = oid_index
-            .remove_asset(provider, oid_tree, &asset_b)
+            .remove_resource(provider, oid_tree, &resource_b)
             .await
             .unwrap();
 
-        // List all the assets in the index. Should be discouraged in real code: mostly useful for tests.
-        let assets_as_files = file_index
-            .all_assets(provider, file_tree.clone())
-            .map(|(key, asset)| (key, asset.unwrap()))
+        // List all the resources in the index. Should be discouraged in real code: mostly useful for tests.
+        let resources_as_files = file_index
+            .all_resources(provider, file_tree.clone())
+            .map(|(key, resource)| (key, resource.unwrap()))
             .collect::<Vec<_>>()
             .await;
 
         assert_eq!(
-            assets_as_files,
-            vec![("/assets/a".to_string(), asset_a.clone()),]
+            resources_as_files,
+            vec![("/resources/a".to_string(), resource_a.clone()),]
         );
 
         // The same with the OID index.
-        let assets_as_oids = oid_index
-            .all_assets(provider, oid_tree.clone())
-            .map(|(key, asset)| (key, asset.unwrap()))
+        let resources_as_oids = oid_index
+            .all_resources(provider, oid_tree.clone())
+            .map(|(key, resource)| (key, resource.unwrap()))
             .collect::<Vec<_>>()
             .await;
 
         assert_eq!(
-            assets_as_oids,
-            vec![("abcdef".to_string(), asset_a.clone()),]
+            resources_as_oids,
+            vec![("abcdef".to_string(), resource_a.clone()),]
         );
     }
 
@@ -795,65 +816,65 @@ mod tests {
         // In a real case obviously, we can use the default provider.
         let provider = &MemoryProvider::new();
 
-        // Let's create an index that stores assets according to their parents
+        // Let's create an index that stores resources according to their parents
         // and allows a reversed-dependency search.
         let deps_index = Index::new(KeyPathSplitter::Size(2), |m: &Metadata| {
             Some(m.parents.clone().into_iter().collect::<BTreeSet<_>>())
         });
 
-        // Let's create a bunch of assets.
-        let asset_a = Asset::new_from_data(
+        // Let's create a bunch of resources.
+        let resource_a = Resource::new_from_data(
             provider,
-            meta("/assets/a", "001122aa"),
+            meta("/resources/a", "001122aa"),
             b"hello world from A",
         )
         .await
         .unwrap();
-        let asset_b = Asset::new_from_data(
+        let resource_b = Resource::new_from_data(
             provider,
-            meta("/assets/b", "001122bb"),
+            meta("/resources/b", "001122bb"),
             b"hello world from B",
         )
         .await
         .unwrap();
-        // Asset C has A and B for parents.
-        let asset_c = Asset::new_from_data(
+        // resource C has A and B for parents.
+        let resource_c = Resource::new_from_data(
             provider,
             metap(
-                "/assets/c",
+                "/resources/c",
                 "001133cc",
-                &[&asset_a.metadata().oid, &asset_b.metadata().oid],
+                &[&resource_a.metadata().oid, &resource_b.metadata().oid],
             ),
             b"hello world from C",
         )
         .await
         .unwrap();
-        // Asset D has A and C for parents.
-        let asset_d = Asset::new_from_data(
+        // resource D has A and C for parents.
+        let resource_d = Resource::new_from_data(
             provider,
             metap(
-                "/assets/d",
+                "/resources/d",
                 "002233dd",
-                &[&asset_a.metadata().oid, &asset_c.metadata().oid],
+                &[&resource_a.metadata().oid, &resource_c.metadata().oid],
             ),
             b"hello world from C",
         )
         .await
         .unwrap();
 
-        // We add each asset to the index.
-        let mut deps_tree = MultiAssetsTree::default();
+        // We add each resource to the index.
+        let mut deps_tree = MultiResourcesTree::default();
 
-        for asset in [&asset_a, &asset_b, &asset_c, &asset_d] {
+        for resource in [&resource_a, &resource_b, &resource_c, &resource_d] {
             deps_tree = deps_index
-                .add_asset(provider, deps_tree, asset)
+                .add_resource(provider, deps_tree, resource)
                 .await
                 .unwrap();
         }
 
-        // Get all the assets that depend on A.
-        let assets = deps_index
-            .get_assets(provider, &deps_tree, &asset_a.metadata().oid)
+        // Get all the resources that depend on A.
+        let resources = deps_index
+            .get_resources(provider, &deps_tree, &resource_a.metadata().oid)
             .await
             .unwrap() // Result
             .unwrap() // Option
@@ -861,51 +882,53 @@ mod tests {
             .collect::<BTreeSet<_>>()
             .await;
 
-        // The order of returned assets is not specified (but if you are
-        // curious: it actually depends on the ordering of asset identifiers
+        // The order of returned resources is not specified (but if you are
+        // curious: it actually depends on the ordering of resource identifiers
         // which are hashes).
         //
-        // This should never matter, as there is no logical ordering of assets
+        // This should never matter, as there is no logical ordering of resources
         // dependencies.
         assert_eq!(
-            assets,
-            vec![asset_c.clone(), asset_d.clone()].into_iter().collect()
+            resources,
+            vec![resource_c.clone(), resource_d.clone()]
+                .into_iter()
+                .collect()
         );
 
-        let asset_ids = deps_index
+        let resource_ids = deps_index
             .all_entries(provider, deps_tree.clone())
-            .map(|(key, asset_ids)| (key, asset_ids.unwrap()))
+            .map(|(key, resource_ids)| (key, resource_ids.unwrap()))
             .collect::<Vec<_>>()
             .await;
 
         assert_eq!(
-            asset_ids,
+            resource_ids,
             vec![
                 (
-                    asset_a.metadata().oid.clone(),
-                    vec![asset_c.as_identifier(), asset_d.as_identifier()]
+                    resource_a.metadata().oid.clone(),
+                    vec![resource_c.as_identifier(), resource_d.as_identifier()]
                         .into_iter()
                         .collect()
                 ),
                 (
-                    asset_b.metadata().oid.clone(),
-                    vec![asset_c.as_identifier()].into_iter().collect()
+                    resource_b.metadata().oid.clone(),
+                    vec![resource_c.as_identifier()].into_iter().collect()
                 ),
                 (
-                    asset_c.metadata().oid.clone(),
-                    vec![asset_d.as_identifier()].into_iter().collect()
+                    resource_c.metadata().oid.clone(),
+                    vec![resource_d.as_identifier()].into_iter().collect()
                 ),
             ],
         );
 
         deps_tree = deps_index
-            .remove_asset(provider, deps_tree, &asset_c)
+            .remove_resource(provider, deps_tree, &resource_c)
             .await
             .unwrap();
 
-        let asset_ids = deps_index
+        let resource_ids = deps_index
             .all_entries(provider, deps_tree.clone())
-            .map(|(key, asset_ids)| (key, asset_ids.unwrap()))
+            .map(|(key, resource_ids)| (key, resource_ids.unwrap()))
             .collect::<Vec<_>>()
             .await;
 
@@ -914,19 +937,19 @@ mod tests {
         //
         // This is *NOT* a bug, as D effectively still references C.
         //
-        // A proper integration of the asset store should of course query the
-        // dependency index and update all related assets as well to avoid this
+        // A proper integration of the resource store should of course query the
+        // dependency index and update all related resources as well to avoid this
         // situation.
         assert_eq!(
-            asset_ids,
+            resource_ids,
             vec![
                 (
-                    asset_a.metadata().oid.clone(),
-                    vec![asset_d.as_identifier()].into_iter().collect()
+                    resource_a.metadata().oid.clone(),
+                    vec![resource_d.as_identifier()].into_iter().collect()
                 ),
                 (
-                    asset_c.metadata().oid.clone(),
-                    vec![asset_d.as_identifier()].into_iter().collect()
+                    resource_c.metadata().oid.clone(),
+                    vec![resource_d.as_identifier()].into_iter().collect()
                 ),
             ],
         );
