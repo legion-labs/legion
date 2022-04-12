@@ -11,6 +11,7 @@ use lgn_data_runtime::{AssetRegistry, AssetRegistryEvent, Resource, ResourceType
 use lgn_ecs::prelude::*;
 
 mod scene_instance;
+use lgn_graphics_renderer::features::mesh_feature::MeshRenderObjectSet;
 use lgn_hierarchy::Children;
 use scene_instance::SceneInstance;
 
@@ -52,7 +53,7 @@ impl ScenePlugin {
         mut scene_events: EventReader<'_, '_, SceneMessage>,
         mut active_scenes: ResMut<'_, ActiveScenes>,
         mut commands: Commands<'_, '_>,
-        entity_with_children_query: Query<'_, '_, &Children>,
+        entity_with_children_query: Query<'_, '_, &Children>,        
     ) {
         for event in scene_events.iter() {
             match event {
@@ -68,6 +69,7 @@ impl ScenePlugin {
                             &asset_registry,
                             &mut commands,
                             &entity_with_children_query,
+                            &tmp_mesh_set,
                         );
                     }
                 }

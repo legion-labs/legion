@@ -2,6 +2,8 @@ use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::Color;
 
+use crate::features::mesh_feature::mesh_feature::*;
+
 #[derive(Component)]
 pub struct VisualComponent {
     color: Color,

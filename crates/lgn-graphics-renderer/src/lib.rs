@@ -94,6 +94,9 @@ use crate::{
     labels::CommandBufferLabel,
 };
 
+mod core;
+pub mod features;
+
 pub const UP_VECTOR: Vec3 = Vec3::Y;
 pub const DOWN_VECTOR: Vec3 = const_vec3!([0_f32, -1_f32, 0_f32]);
 

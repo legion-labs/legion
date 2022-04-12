@@ -3,7 +3,10 @@ use lgn_core::Name;
 use lgn_data_runtime::{AssetRegistry, Resource, ResourceTypeAndId};
 use lgn_ecs::prelude::{Commands, Query};
 use lgn_graphics_data::runtime::ModelReferenceType;
-use lgn_graphics_renderer::components::{LightComponent, LightType, VisualComponent};
+use lgn_graphics_renderer::{
+    components::{LightComponent, LightType, VisualComponent},
+    features::mesh_feature::MeshRenderObjectSet,
+};
 use lgn_hierarchy::prelude::{BuildChildren, Children, Parent};
 use lgn_tracing::{error, info, warn};
 use lgn_transform::components::{GlobalTransform, Transform};
@@ -30,6 +33,7 @@ impl SceneInstance {
         asset_registry: &AssetRegistry,
         commands: &mut Commands<'_, '_>,
         entity_with_children_query: &Query<'_, '_, &Children>,
+        tmp_mesh_set: &mut MeshRenderObjectSet,
     ) {
         let mut queue = vec![resource_id];
 
@@ -132,6 +136,7 @@ impl SceneInstance {
                     entity_name = Some(name.name.clone());
                 } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
                     entity.insert(VisualComponent::new(
+                        tmp_mesh_set,
                         visual
                             .renderable_geometry
                             .as_ref()
