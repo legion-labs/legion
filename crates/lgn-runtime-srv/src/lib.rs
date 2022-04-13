@@ -28,6 +28,8 @@ use lgn_graphics_data::GraphicsPlugin;
 use lgn_graphics_renderer::RendererPlugin;
 use lgn_hierarchy::prelude::HierarchyPlugin;
 use lgn_input::InputPlugin;
+#[cfg(not(feature = "standalone"))]
+use lgn_log_stream::{BroadcastSink, LogStreamPlugin, TraceEventsReceiver};
 use lgn_physics::{PhysicsPlugin, PhysicsSettingsBuilder};
 #[cfg(not(feature = "standalone"))]
 use lgn_scene_plugin::SceneMessage;
@@ -36,10 +38,14 @@ use lgn_scripting::ScriptingPlugin;
 #[cfg(not(feature = "standalone"))]
 use lgn_streamer::StreamerPlugin;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
+#[cfg(not(feature = "standalone"))]
+use lgn_tracing::LevelFilter;
 use lgn_tracing::{info, span_fn};
 use lgn_transform::prelude::TransformPlugin;
 use sample_data::SampleDataPlugin;
 use serde::Deserialize;
+#[cfg(not(feature = "standalone"))]
+use tokio::sync::broadcast;
 
 #[cfg(not(feature = "standalone"))]
 mod grpc;
@@ -109,9 +115,24 @@ impl Default for Config {
 }
 
 pub fn build_runtime() -> App {
-    let telemetry_guard = TelemetryGuardBuilder::default()
+    #[cfg(not(feature = "standalone"))]
+    let (trace_events_sender, trace_events_receiver) = broadcast::channel(1_000);
+
+    #[allow(unused_mut)]
+    let mut telemetry_guard = TelemetryGuardBuilder::default();
+
+    #[cfg(not(feature = "standalone"))]
+    {
+        telemetry_guard =
+            telemetry_guard.add_sink(LevelFilter::Info, BroadcastSink::new(trace_events_sender));
+    }
+
+    let telemetry_guard = telemetry_guard
         .build()
         .expect("telemetry guard should be initialized once");
+
+    #[cfg(not(feature = "standalone"))]
+    let trace_events_receiver: TraceEventsReceiver = trace_events_receiver.into();
 
     info!("Starting runtime server...");
 
@@ -256,6 +277,8 @@ pub fn build_runtime() -> App {
             exit_on_close: false,
         })
         .insert_resource(GRPCPluginSettings::new(listen_endpoint))
+        .insert_resource(trace_events_receiver)
+        .add_plugin(LogStreamPlugin::default())
         .add_plugin(GRPCPlugin::default())
         .add_plugin(streamer_plugin);
 

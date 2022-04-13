@@ -19,6 +19,10 @@ import {
   UploadRawFileResponse,
 } from "@lgn/proto-editor/dist/source_control";
 import {
+  LogStreamClientImpl,
+  GrpcWebImpl as LogStreamImpl,
+} from "@lgn/proto-log-stream/dist/log_stream";
+import {
   RuntimeClientImpl,
   GrpcWebImpl as RuntimeImpl,
 } from "@lgn/proto-runtime/dist/runtime";
@@ -42,6 +46,9 @@ let sourceControlClient: SourceControlClientImpl;
 let editorClient: EditorClientImpl;
 
 let runtimeClient: RuntimeClientImpl;
+
+let editorLogStreamClient: LogStreamClientImpl;
+let runtimeLogStreamClient: LogStreamClientImpl;
 
 export function initApiClient({
   editorServerUrl = defaultEditorServerURL,
@@ -72,6 +79,18 @@ export function initApiClient({
 
   runtimeClient = new RuntimeClientImpl(
     new RuntimeImpl(runtimeServerUrl, {
+      debug: false,
+    })
+  );
+
+  editorLogStreamClient = new LogStreamClientImpl(
+    new LogStreamImpl(editorServerUrl, {
+      debug: false,
+    })
+  );
+
+  runtimeLogStreamClient = new LogStreamClientImpl(
+    new LogStreamImpl(runtimeServerUrl, {
       debug: false,
     })
   );
@@ -370,8 +389,12 @@ export async function getActiveScenes() {
   return getAllRootResources(await getActiveSceneIds());
 }
 
-export function initLogStream() {
-  return editorClient.initLogStream({});
+export function initEditorLogStream() {
+  return editorLogStreamClient.initLogStream({});
+}
+
+export function initRuntimeLogStream() {
+  return runtimeLogStreamClient.initLogStream({});
 }
 
 export function initMessageStream() {

@@ -1,4 +1,4 @@
-import { Level } from "@lgn/proto-editor/dist/editor";
+import { Level } from "@lgn/proto-log-stream/dist/log_stream";
 
 export type Severity = "error" | "warn" | "info" | "trace" | "debug";
 
@@ -30,10 +30,13 @@ export function severityFromLevel(level: Level): Severity | null {
   }
 }
 
+export type Source = "editor" | "runtime";
+
 export type LogEntry = {
   id: number;
   message: string;
   severity: Severity;
+  source: Source;
   target: string;
   datetime: Date;
 };

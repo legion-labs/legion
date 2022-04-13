@@ -6,8 +6,6 @@ service Editor {
 
   rpc RedoTransaction(RedoTransactionRequest) returns (RedoTransactionResponse);
 
-  rpc InitLogStream(InitLogStreamRequest) returns (stream InitLogStreamResponse);
-
   rpc InitMessageStream(InitMessageStreamRequest) returns (stream InitMessageStreamResponse);
 }
 
@@ -22,30 +20,6 @@ message RedoTransactionRequest {
 }
 message RedoTransactionResponse {
   int32 id = 1;
-}
-
-message InitLogStreamRequest {}
-
-enum Level {
-  ERROR = 0;
-  WARN = 1;
-  INFO = 2;
-  DEBUG = 3;
-  TRACE = 4;
-}
-
-message TraceEvent {
-  Level level = 1;
-  int64 time = 2;
-  string target = 3;
-  string message = 4;
-}
-
-message InitLogStreamResponse {
-  oneof response {
-    TraceEvent trace_event = 1;
-    uint64 lagging = 2;
-  }
 }
 
 message InitMessageStreamRequest {}

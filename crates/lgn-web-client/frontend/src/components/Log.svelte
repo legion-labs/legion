@@ -202,7 +202,8 @@
     {#if !noDate}
       <div class="header-column w-2/12">date</div>
     {/if}
-    <div class="header-column w-3/12">target</div>
+    <div class="header-column w-1/12">source</div>
+    <div class="header-column w-2/12">target</div>
     <div class="header-column w-6/12">message</div>
   </div>
   <div class="body">
@@ -244,7 +245,10 @@
               {#if !noDate}
                 <div class="w-2/12 entry-column">{date}</div>
               {/if}
-              <div class="w-3/12 entry-column" title={entry.target}>
+              <div class="w-1/12 entry-column" title={entry.source}>
+                {entry.source}
+              </div>
+              <div class="w-2/12 entry-column" title={entry.target}>
                 {entry.target}
               </div>
               <div class="w-6/12 entry-column" title={entry.message}>
@@ -257,7 +261,8 @@
                   <div class="skeleton" />
                 </div>
               {/if}
-              <div class="w-3/12 skeleton-column"><div class="skeleton" /></div>
+              <div class="w-1/12 skeleton-column"><div class="skeleton" /></div>
+              <div class="w-2/12 skeleton-column"><div class="skeleton" /></div>
               <div class="w-6/12 skeleton-column"><div class="skeleton" /></div>
             {/if}
           </div>

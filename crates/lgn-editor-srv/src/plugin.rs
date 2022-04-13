@@ -24,7 +24,6 @@ use lgn_tracing::{error, info, warn};
 use lgn_transform::components::Transform;
 use tokio::sync::{broadcast, Mutex};
 
-use crate::grpc::TraceEventsReceiver;
 use crate::grpc::{EditorEvent, EditorEventsReceiver};
 use crate::source_control_plugin::{RawFilesStreamerConfig, SharedRawFilesStreamer};
 
@@ -60,12 +59,10 @@ impl EditorPlugin {
     fn setup(
         transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
         mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
-        trace_events_receiver: Res<'_, TraceEventsReceiver>,
         editor_events_receiver: Res<'_, EditorEventsReceiver>,
     ) {
         let grpc_server = super::grpc::GRPCServer::new(
             transaction_manager.clone(),
-            trace_events_receiver.clone(),
             editor_events_receiver.clone(),
         );
 
