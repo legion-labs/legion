@@ -281,37 +281,54 @@ Could support the interface to get visibility into crates that are already instr
 ## April 2022
 - Unreal telemetry module (MAD)
 - Cumulative call graph improvements (Tim)
+- Timeline report view (Tim)
+- Process List Hierarchy (Tim)
+  * ordered by last update
+- Auth flow polish (Kevin)
+- Review regulatory requirements (Liem)
+
+---
+# Roadmap
 
 ## May 2022
 - Unreal telemetry module (MAD)
-- GCP
-- Log screen
+- Infra visibility & alterting UAT (ingestion + analytics)(Liem)
+- Logs (dual mode)  (Kevin)
+  * Paging when not filtering
+  * n-first results when there is a filter
+- External Dashboards & reports (at least one full stack dev)
+  * elk? db+grafana? parquet/orc + superset?
+- TSC frequency calibration (MAD)
+
+---
+# Roadmap
+## Juin 2022
+- Backups data lake (Liem)
+- l10n/i18n (Kevin)
+- API key refactor (Julien)
+- IAM permissions cleanup for ingestion & analytics (Julien)
+- Async spans stitching/LOD (MAD)
 
 ---
 ## Backlog
+- Memory tracing and analytics (MAD)
+- VM monitoring / Fluentd output command (MAD)
+- GPU profiling
 - Support for Google Cloud Storage
-- i18n
-- Review regulatory requirements
 - Landing page
-- Logs (dual mode)
-  * Paging when not filtering
-  * n-first results when there is a filter
+- Object Graphs
+  * Why is this texture loaded?
   
 ---
 ## More Backlog
- 
-- Async spans stitching/LOD
-- GPU profiling
-- Memory profiling
-- Object Graphs
-  * Why is this texture loaded?
 - Process dashboards
   * monitoring thousands of processes
-- Fluentd output command
+  * graphs of processes to lists of processes
 - Task-based timeline & async span parenting
   * unifying thread-bound and async tasks
 - Heat maps
 - Real-time logs, metrics and timeline
+  * block consolidation
 
 
 ---
