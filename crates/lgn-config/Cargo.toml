@@ -12,6 +12,8 @@ figment = { version = "0.10", features = ["toml", "env", "test"] }
 lazy_static = "1.4"
 regex = "1.5"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1"
 thiserror = "1"
 toml = "0.5.8"
+
+[dev-dependencies]
+serde_json = "1"

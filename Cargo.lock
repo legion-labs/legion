@@ -4396,7 +4396,6 @@ dependencies = [
  "lgn-async",
  "lgn-config",
  "lgn-content-store",
- "lgn-core",
  "lgn-data-model",
  "lgn-data-runtime",
  "lgn-ecs",

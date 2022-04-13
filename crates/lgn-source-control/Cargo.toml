@@ -88,3 +88,7 @@ allow-aws-ecr-creation = true
 
 [[package.metadata.monorepo.publish]]
 type = "zip"
+
+[package.metadata.cargo-udeps.ignore]
+normal = ["atty", "clap", "lgn-telemetry-sink", "lz4", "termcolor"]
+development = ["lgn-telemetry-sink"]
