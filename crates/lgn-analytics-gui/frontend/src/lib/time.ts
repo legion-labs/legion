@@ -7,6 +7,9 @@ import type {
 
 import { getLodFromPixelSizeMs } from "./lod";
 
+export const startQueryParam = "begin";
+export const endQueryParam = "end";
+
 export function timestampToMs(process: Process, timestamp: number): number {
   const nbTicks = timestamp - process.startTicks;
   return (nbTicks * 1000.0) / process.tscFrequency;

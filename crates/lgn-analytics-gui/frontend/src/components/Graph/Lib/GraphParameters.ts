@@ -1,3 +1,5 @@
+import { endQueryParam, startQueryParam } from "@/lib/time";
+
 export class GraphParameters {
   processId: string;
   beginMs: number;
@@ -14,11 +16,11 @@ export class GraphParameters {
     if (!processId) {
       throw new Error("missing param process");
     }
-    const beginStr = params.get("begin");
+    const beginStr = params.get(startQueryParam);
     if (!beginStr) {
       throw new Error("missing param begin");
     }
-    const endStr = params.get("end");
+    const endStr = params.get(endQueryParam);
     if (!endStr) {
       throw new Error("missing param end");
     }

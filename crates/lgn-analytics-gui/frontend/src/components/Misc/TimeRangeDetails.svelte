@@ -2,6 +2,7 @@
   import { link } from "svelte-navigator";
 
   import { formatExecutionTime } from "@/lib/format";
+  import { endQueryParam, startQueryParam } from "@/lib/time";
 
   export let timeRange: [number, number] | undefined;
   export let processId: string;
@@ -24,7 +25,7 @@
     </div>
     <div class="nav-link">
       <a
-        href={`/cumulative-call-graph?process=${processId}&begin=${timeRange[0]}&end=${timeRange[1]}`}
+        href={`/cumulative-call-graph?process=${processId}&${startQueryParam}=${timeRange[0]}&${endQueryParam}=${timeRange[1]}`}
         use:link
       >
         Cumulative Call Graph
@@ -32,7 +33,7 @@
     </div>
     <div class="nav-link">
       <a
-        href={`/timeline/${processId}?timelineStart=${timeRange[0]}&timelineEnd=${timeRange[1]}`}
+        href={`/timeline/${processId}?${startQueryParam}=${timeRange[0]}&${endQueryParam}=${timeRange[1]}`}
         use:link
       >
         Timeline

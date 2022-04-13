@@ -4,6 +4,7 @@
   import { get } from "svelte/store";
 
   import { loadingStore } from "@/lib/Misc/LoadingStore";
+  import { endQueryParam, startQueryParam } from "@/lib/time";
 
   import Loader from "../Misc/Loader.svelte";
   import { TimelineStateManager } from "./Lib/TimelineStateManager";
@@ -19,8 +20,6 @@
   export let processId: string;
 
   const location = useLocation();
-  const startParam = "begin";
-  const endParam = "end";
 
   let stateManager: TimelineStateManager;
   let windowInnerWidth: number;
@@ -40,9 +39,9 @@
   onMount(async () => {
     loadingStore.reset(10);
     const url = new URLSearchParams($location.search);
-    const s = url.get(startParam);
+    const s = url.get(startQueryParam);
     const start = s != null ? Number.parseFloat(s) : null;
-    const e = url.get(endParam);
+    const e = url.get(endQueryParam);
     const end = e != null ? Number.parseFloat(e) : null;
     const canvasWidth = windowInnerWidth - threadItemLength;
 
@@ -118,7 +117,7 @@
   function setRangeUrl(selection: [number, number]) {
     const start = Math.max($stateStore.minMs, selection[0]);
     const end = Math.min($stateStore.maxMs, selection[1]);
-    const params = `?${startParam}=${start}&${endParam}=${end}`;
+    const params = `?${startQueryParam}=${start}&${endQueryParam}=${end}`;
     history.replaceState(null, "", params);
   }
 
