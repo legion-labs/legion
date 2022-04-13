@@ -38,6 +38,7 @@ anyhow = "1.0"
 aws-config = { version = "0.9", optional = true }
 aws-sdk-s3 = { version = "0.9", optional = true }
 aws-sdk-dynamodb = { version = "0.9", optional = true }
+async-stream = "0.3"
 async-trait = "0.1"
 base64 = "0.13"
 blake3 = { version = "1.3", features = ["prefer_intrinsics"] }
@@ -48,6 +49,7 @@ duration-string = "0.0.6"
 console = { version = "0.15", optional = true }
 clap = { version = "3.0", features = ["derive"], optional = true }
 futures = "0.3"
+futures-util = "0.3"
 http = "0.2.6"
 http-body = "0.4"
 http-serde = "1"

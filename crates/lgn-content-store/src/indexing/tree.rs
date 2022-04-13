@@ -1,20 +1,19 @@
-use lgn_content_store::{
-    ContentReader, ContentReaderExt, ContentWriter, ContentWriterExt, Identifier,
-};
+use crate::{ContentReader, ContentReaderExt, ContentWriter, ContentWriterExt, Identifier};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-use crate::{AssetIdentifier, Result};
+use super::ResourceIdentifier;
+use crate::Result;
 use std::collections::{BTreeMap, BTreeSet};
 
-/// A hierarchical tree of assets where the leafs are single assets which appear
+/// A hierarchical tree of resources where the leafs are single resources which appear
 /// exactly once.
-pub type UniqueAssetTree = Tree<AssetIdentifier>;
+pub type UniqueResourceTree = Tree<ResourceIdentifier>;
 
-/// A hierarchical tree of assets where the leafs are lists of assets where
-/// assets may appear multiple times or not at all.
-pub type MultiAssetsTree = Tree<BTreeSet<AssetIdentifier>>;
+/// A hierarchical tree of resources where the leafs are lists of resources where
+/// resources may appear multiple times or not at all.
+pub type MultiResourcesTree = Tree<BTreeSet<ResourceIdentifier>>;
 
-/// A tree of assets.
+/// A tree of resources.
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tree<LeafType> {
     children: BTreeMap<String, TreeNode<LeafType>>,
@@ -69,11 +68,11 @@ where
     /// Lookup a sub-tree in the tree.
     ///
     /// If the tree is not found, returns `Ok(None)`.
-    /// If the specified key points to an asset, returns `Ok(None)`.
+    /// If the specified key points to an resource, returns `Ok(None)`.
     ///
     /// # Errors
     ///
-    /// Returns an error if the asset exists but could not be loaded.
+    /// Returns an error if the resource exists but could not be loaded.
     pub async fn lookup_branch(
         &self,
         provider: impl ContentReader + Send + Sync,
