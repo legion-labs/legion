@@ -8,3 +8,9 @@ editor-compound = ["editor-client", "editor-srv"]
 
 [vscode.overrides]
 lgn-graphics-sandbox = { args = [] }
+
+# Example of environment override
+#editor-srv = { environment = [
+#    "RUST_BACKTRACK=1",
+#    "LEGION_TELEMETRY_URL=https://api.live.playground.legionlabs.com",
+#] }
