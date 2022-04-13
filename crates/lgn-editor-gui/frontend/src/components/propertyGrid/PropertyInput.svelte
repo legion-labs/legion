@@ -5,6 +5,7 @@
 
   import type { PropertyUpdate } from "@/api";
   import {
+    getResourceType,
     propertyIsBoolean,
     propertyIsColor,
     propertyIsEnum,
@@ -52,6 +53,8 @@
   /** The property index (only used in vectors) */
   export let index: number;
 
+  $: propertyType = getResourceType(property, parentProperty);
+
   function onInput({ value }: Pick<PropertyUpdate, "value">) {
     dispatch("input", {
       name: pathParts.join("."),
@@ -61,28 +64,6 @@
 
   function isReadonly(): boolean {
     return "readonly" in property.attributes;
-  }
-
-  function getResourceType(): string | null {
-    let resourceType = property.attributes.resource_type;
-
-    if (
-      resourceType === null &&
-      parentProperty &&
-      (propertyIsVec(parentProperty) || propertyIsOption(parentProperty))
-    ) {
-      resourceType = parentProperty.attributes.resource_type;
-    }
-
-    if (resourceType) {
-      const index = resourceType.lastIndexOf(":");
-
-      if (index !== -1) {
-        resourceType = resourceType.slice(index + 1);
-      }
-    }
-
-    return resourceType;
   }
 
   // Vector related code
@@ -145,7 +126,7 @@
       readonly={isReadonly()}
       on:input={({ detail }) => onInput({ value: detail })}
       bind:value={property.value}
-      resourceType={getResourceType()}
+      resourceType={propertyType}
     />
   {:else if propertyIsEnum(property)}
     <EnumProperty

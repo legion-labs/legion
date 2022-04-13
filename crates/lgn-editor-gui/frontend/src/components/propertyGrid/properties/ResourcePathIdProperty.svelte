@@ -6,10 +6,8 @@
 
   import { resourceDragAndDropType } from "@/constants";
   import type { Entry } from "@/lib/hierarchyTree";
-  import {
-    createResourcePathId,
-    getResourceNameFromEntries,
-  } from "@/lib/resourceBrowser";
+  import { getResourceNameFromEntries } from "@/lib/propertyGrid";
+  import { createResourcePathId } from "@/lib/resourceBrowser";
   import { resourceEntries } from "@/orchestrators/resourceBrowserEntries";
 
   import TextInput from "../../inputs/TextInput.svelte";

@@ -1,4 +1,4 @@
-import type { ResourceProperty } from "@lgn/proto-editor/dist/property_inspector";
+import type { ResourceProperty } from "@/lib/propertyGrid";
 
 /** Add a sub property to a vector event payload */
 export type AddVectorSubPropertyEvent = {

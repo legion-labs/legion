@@ -6,6 +6,16 @@ import type {
 import type { NonEmptyArray } from "@lgn/web-client/src/lib/array";
 import { filterMap } from "@lgn/web-client/src/lib/array";
 
+import type { Entries } from "./hierarchyTree";
+
+type SafeRawResourceProperty = Omit<
+  RawResourceProperty,
+  "attributes" | "subProperties"
+> & {
+  attributes: Record<string, string | undefined>;
+  subProperties: SafeRawResourceProperty[];
+};
+
 /** Matches any `ptype` of format "Vec<subPType>" */
 const vecPTypeRegExp = /^Vec<(.+)>$/;
 
@@ -16,7 +26,7 @@ const optionPTypeRegExp = /^Option<(.+)>$/;
 type ResourcePropertyBase<Type extends string = string> = {
   ptype: Type;
   name: string;
-  attributes: Record<string, string>;
+  attributes: Record<string, string | undefined>;
   subProperties: ResourceProperty[];
 };
 
@@ -519,7 +529,7 @@ export type ResourceWithProperties = {
 };
 
 function formatOptionProperty(
-  property: RawResourceProperty
+  property: SafeRawResourceProperty
 ): OptionResourceProperty | null {
   return {
     name: property.name,
@@ -530,7 +540,7 @@ function formatOptionProperty(
 }
 
 function formatVecProperty(
-  property: RawResourceProperty
+  property: SafeRawResourceProperty
 ): VecResourceProperty | null {
   return {
     name: property.name,
@@ -541,7 +551,7 @@ function formatVecProperty(
 }
 
 function formatGroupProperty(
-  property: RawResourceProperty
+  property: SafeRawResourceProperty
 ): GroupResourceProperty | ComponentResourceProperty | null {
   return {
     ptype: property.ptype === "_group_" ? "group" : property.ptype,
@@ -552,7 +562,7 @@ function formatGroupProperty(
 }
 
 function formatProperty(
-  property: RawResourceProperty
+  property: SafeRawResourceProperty
 ): PrimitiveResourceProperty | null {
   if (!property.jsonValue) {
     return null;
@@ -570,7 +580,7 @@ function formatProperty(
 
 // TODO: Ideally we should get rid of this one
 export function formatProperties(
-  properties: RawResourceProperty[]
+  properties: SafeRawResourceProperty[]
 ): ResourceProperty[] {
   return filterMap(properties, (property): ResourceProperty | null => {
     if (!property.jsonValue) {
@@ -589,4 +599,59 @@ export function formatProperties(
 
     return formatProperty(property);
   });
+}
+
+/** Retrieves the resource name from the resource `Entries` based on the provided value string */
+export function getResourceNameFromEntries(
+  resourceEntries: Entries<ResourceDescription>,
+  value: string
+): string {
+  const entry = resourceEntries.find((entry) =>
+    value.startsWith(entry.item.id)
+  );
+
+  let result = "";
+
+  if (entry) {
+    result = entry.name;
+
+    let index = value.indexOf("_");
+
+    if (index !== -1) {
+      const subValue = value.slice(index + 1);
+
+      index = subValue.indexOf("|");
+
+      if (index !== -1) {
+        result += "/" + subValue.slice(undefined, index);
+      }
+    }
+  }
+
+  return result;
+}
+
+export function getResourceType(
+  property: ResourceProperty,
+  parentProperty: BagResourceProperty | null
+): string | null {
+  let resourceType = property.attributes.resource_type;
+
+  if (
+    resourceType === undefined &&
+    parentProperty &&
+    (propertyIsVec(parentProperty) || propertyIsOption(parentProperty))
+  ) {
+    resourceType = parentProperty.attributes.resource_type;
+  }
+
+  if (resourceType) {
+    const index = resourceType.lastIndexOf(":");
+
+    if (index !== -1) {
+      resourceType = resourceType.slice(index + 1);
+    }
+  }
+
+  return typeof resourceType === "string" ? resourceType : null;
 }

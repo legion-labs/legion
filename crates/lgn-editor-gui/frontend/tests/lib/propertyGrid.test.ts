@@ -1,3 +1,5 @@
+import type { ResourceProperty } from "@lgn/proto-editor/dist/property_inspector";
+
 import {
   buildDefaultPrimitiveProperty,
   buildGroupProperty,
@@ -23,12 +25,12 @@ import {
   propertyIsVec3,
   ptypeBelongsToPrimitive,
 } from "@/lib/propertyGrid";
-import type { ResourceProperty } from "@/lib/propertyGrid";
 import propertiesResponse from "@/resources/propertiesResponse.json";
 
 describe("formatProperties", () => {
   test("properly formats the properties received from the server", () => {
     expect(
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       formatProperties(propertiesResponse as unknown as ResourceProperty[])
     ).toMatchSnapshot();
   });
