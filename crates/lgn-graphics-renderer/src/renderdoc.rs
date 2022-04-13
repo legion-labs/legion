@@ -6,9 +6,9 @@ use lgn_input::keyboard::{KeyCode, KeyboardInput};
 use lgn_tracing::{info, warn};
 use renderdoc::{RenderDoc, Version};
 
-pub struct RenderDocPlugin {}
-
 type RenderDocVersion = renderdoc::V141;
+
+pub struct RenderDocPlugin {}
 
 impl Plugin for RenderDocPlugin {
     fn build(&self, app: &mut App) {
