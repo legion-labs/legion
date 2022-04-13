@@ -1,9 +1,9 @@
 import { derived, get, writable } from "svelte/store";
 
+import type { TraceEvent } from "@lgn/proto-log-stream/dist/log_stream";
 import { throttled } from "@lgn/web-client/src/lib/store";
 import type { LogEntry, Source } from "@lgn/web-client/src/types/log";
 import { severityFromLevel } from "@lgn/web-client/src/types/log";
-import type { TraceEvent } from "@lgn/proto-log-stream/dist/log_stream";
 
 import { initEditorLogStream, initRuntimeLogStream } from "@/api";
 
