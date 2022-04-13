@@ -50,7 +50,7 @@ impl GpuInstanceId {
 
 type GpuPickingDataManager = GpuDataManager<Entity, cgen::cgen_type::GpuInstancePickingData>;
 type GpuEntityColorManager = GpuDataManager<Entity, cgen::cgen_type::GpuInstanceColor>;
-type GpuEntityTransformManager = GpuDataManager<Entity, cgen::cgen_type::Transform>;
+type GpuEntityTransformManager = GpuDataManager<Entity, cgen::cgen_type::TransformData>;
 type GpuVaTableManager = GpuDataManager<GpuInstanceKey, cgen::cgen_type::GpuInstanceVATable>;
 
 #[derive(Debug, SystemLabel, PartialEq, Eq, Clone, Copy, Hash)]
@@ -430,11 +430,11 @@ fn upload_transform_data(
     //
 
     let transform_count = query.iter().count();
-    let block_size = transform_count * std::mem::size_of::<cgen::cgen_type::Transform>();
+    let block_size = transform_count * std::mem::size_of::<cgen::cgen_type::TransformData>();
     let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), block_size as u64);
 
     for (entity, transform, _) in query.iter() {
-        let mut world = cgen::cgen_type::Transform::default();
+        let mut world = cgen::cgen_type::TransformData::default();
         world.set_translation(transform.translation.into());
         world.set_rotation(Vec4::from(transform.rotation).into());
         world.set_scale(transform.scale.into());

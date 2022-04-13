@@ -1,0 +1,55 @@
+#ifndef TRANSFORM_HSH
+#define TRANSFORM_HSH
+
+#include "crate://lgn-graphics-renderer/gpu/cgen_type/transform_data.hlsl"
+
+struct Transform {
+    TransformData data;
+
+    float3 apply_to_point(float3 p) {
+        float3 result = data.scale * p;
+        result = mul(quaternion_to_matrix(data.rotation), result);
+        return result + data.translation;
+    }
+
+    float3 apply_to_vector(float3 v) {
+        float3 result = (1.0f / data.scale) * v;
+        return mul(quaternion_to_matrix(data.rotation), result);
+    }
+};
+
+// Or use explicit casting: ((Transform)transform)
+Transform transform_from_data(TransformData transform_data) {
+    Transform transform;
+    transform.data = transform_data;
+    return transform;
+}
+
+Transform transform_from_trs(float3 translation, float4 rotation, float3 scale) {
+    Transform transform;
+    transform.data.translation = translation;
+    transform.data.rotation = rotation;
+    transform.data.scale = scale;
+
+    return transform;
+}
+
+Transform transform_from_tr(float3 translation, float4 rotation) {
+    Transform transform;
+    transform.data.translation = translation;
+    transform.data.rotation = rotation;
+    transform.data.scale = float3(1.0f, 1.0f, 1.0f);
+
+    return transform;
+}
+
+Transform transform_from_rotation(float4 rotation) {
+    Transform transform;
+    transform.data.translation = float3(0.0f, 0.0f, 0.0f);
+    transform.data.rotation = rotation;
+    transform.data.scale = float3(1.0f, 1.0f, 1.0f);
+
+    return transform;
+}
+
+#endif

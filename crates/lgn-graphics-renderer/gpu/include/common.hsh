@@ -1,8 +1,6 @@
 #ifndef COMMON_HSH
 #define COMMON_HSH
 
-#include "crate://lgn-graphics-renderer/gpu/cgen_type/transform.hlsl"
-
 struct GpuPipelineVertexIn
 {
     uint vertexId: SV_VertexID;
@@ -42,26 +40,6 @@ float3x3 quaternion_to_matrix(float4 quat)
 
     return m;
 }
-
-float3 transform_position(Transform transform, float3 position) {
-    float3 result = transform.scale * position;
-    result = mul(quaternion_to_matrix(transform.rotation), result);
-    return result + transform.translation;
-}
-
-float3 transform_position(float4 rotation, float3 translation, float3 position) {
-    float3 result = mul(quaternion_to_matrix(rotation), position);
-    return result + translation;
-}
-
-float3 transform_vector(Transform transform, float3 v) {
-    float3 result = (1.0 / transform.scale) * v;
-    return mul(quaternion_to_matrix(transform.rotation), result);
-}
-
-float3 rotate_vector(float4 quat, float3 v) {
-    return mul(quaternion_to_matrix(quat), v);
-} 
 
 // See https://github.com/emilk/egui/blob/26d576f5101dfa1219f79bf9c99e29c577487cd3/egui_glium/src/painter.rs#L19.
 float3 linear_from_srgb(float3 srgb) {

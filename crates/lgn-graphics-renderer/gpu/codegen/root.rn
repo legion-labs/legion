@@ -61,7 +61,7 @@ pub fn main() {
     
     let transform = #{
         type: "Struct",
-        name: "Transform",
+        name: "TransformData",
         fields: [
             #{ name:"translation", ty:"Float3" },
             #{ name:"rotation", ty:"Float4" },
