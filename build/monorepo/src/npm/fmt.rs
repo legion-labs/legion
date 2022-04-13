@@ -22,6 +22,8 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
 
     npm_workspace.load_all();
 
+    println!("Workspace: {:#?}", npm_workspace.packages);
+
     npm_workspace.format(&args.package, args.check)?;
 
     Ok(())

@@ -1,5 +1,5 @@
 {
-  "name": "@lgn/web-client",
+  "name": "@lgn/web-client-native",
   "version": "0.1.0",
   "description": "Legion's monorepo",
   "repository": "https://github.com/legion-labs/legion",

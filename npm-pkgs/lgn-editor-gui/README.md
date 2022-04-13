@@ -1,7 +1,5 @@
 # Legion Editor - Client
 
-_You can take a look at the [Client documentation](../README.md) too._
-
 ## Resources
 
 First, you might want to read the documentation for the libraries the client uses:

@@ -2490,40 +2490,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "editor-client"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "base64 0.13.0",
- "clap 3.1.8",
- "directories",
- "http",
- "json",
- "lgn-analytics",
- "lgn-app",
- "lgn-async",
- "lgn-blob-storage",
- "lgn-build-utils",
- "lgn-build-utils-web",
- "lgn-ecs",
- "lgn-online",
- "lgn-tauri",
- "lgn-telemetry-sink",
- "lgn-tracing",
- "lgn-tracing-transit",
- "lgn-web-client",
- "prost",
- "regex",
- "serde",
- "serde_json",
- "sqlx",
- "tauri",
- "tauri-build",
- "tokio",
- "tonic",
-]
-
-[[package]]
 name = "editor-srv"
 version = "0.1.0"
 dependencies = [

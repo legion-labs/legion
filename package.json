@@ -16,7 +16,7 @@
     "benchmark": "pnpm -r benchmark",
     "dependencies:update": "pnpm up -r -i --latest",
     "analytics:start": "pnpm -C crates/lgn-analytics-gui/frontend start",
-    "editor:start": "pnpm -C crates/lgn-editor-gui/frontend start",
+    "editor:start": "pnpm -C npm-pkgs/lgn-editor-gui start",
     "runtime:start": "pnpm -C crates/lgn-runtime-gui/frontend start"
   },
   "devDependencies": {
