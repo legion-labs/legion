@@ -2,11 +2,10 @@
   import type { D3ZoomEvent } from "d3";
   import { get } from "svelte/store";
 
-  import type { Point } from "@/lib/Metric/MetricPoint";
-  import { selectionStore } from "@/lib/Metric/MetricSelectionStore";
-  import type { MetricStreamer } from "@/lib/Metric/MetricStreamer";
-
-  import type { MetricSelectionState } from "./MetricSelectionState";
+  import type { MetricPoint } from "./Lib/MetricPoint";
+  import type { MetricSelectionState } from "./Lib/MetricSelectionState";
+  import { selectionStore } from "./Lib/MetricSelectionStore";
+  import type { MetricStreamer } from "./Lib/MetricStreamer";
   import MetricTooltipItem from "./MetricTooltipItem.svelte";
 
   export let xScale: d3.ScaleLinear<number, number, never>;
@@ -21,7 +20,7 @@
   let side: boolean;
   let width: number;
   let displayInternal: boolean;
-  let values: { metric: MetricSelectionState; value: Point | null }[];
+  let values: { metric: MetricSelectionState; value: MetricPoint | null }[];
 
   export function enable() {
     displayed = true;
@@ -77,7 +76,10 @@
 
 <div bind:clientWidth={width}>
   {#if displayed && values && displayInternal}
-    <div class="main text-sm p-2 flex flex-col gap-1" {style}>
+    <div
+      class="shadow-md bg-gray-50 absolute pointer-events-none text-sm p-2 flex flex-col gap- z-20"
+      {style}
+    >
       {#each values as metric (metric.metric.name)}
         {#if metric.metric.selected && !metric.metric.hidden && metric.value?.value}
           <MetricTooltipItem metric={metric.metric} value={metric.value} />
@@ -86,12 +88,3 @@
     </div>
   {/if}
 </div>
-
-<style lang="postcss">
-  .main {
-    @apply shadow-md bg-gray-50;
-    position: absolute;
-    z-index: 20;
-    pointer-events: none;
-  }
-</style>

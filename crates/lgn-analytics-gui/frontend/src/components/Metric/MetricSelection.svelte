@@ -5,14 +5,13 @@
 
   import clickOutside from "@lgn/web-client/src/actions/clickOutside";
 
+  import type { MetricSelectionState } from "./Lib/MetricSelectionState";
+  import MetricSelectionItem from "./MetricSelectionItem.svelte";
   import {
     getRecentlyUsedMetrics,
     selectionStore,
     updateMetricSelection,
-  } from "@/lib/Metric/MetricSelectionStore";
-
-  import MetricSelectionItem from "./MetricSelectionItem.svelte";
-  import type { MetricSelectionState } from "./MetricSelectionState";
+  } from "./lib/MetricSelectionStore";
 
   let show = false;
   let searchString: string | undefined;

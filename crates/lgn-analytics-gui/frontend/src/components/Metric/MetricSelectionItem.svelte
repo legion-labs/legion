@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { getMetricColor } from "@/lib/Metric/MetricColor";
-  import { updateMetricSelection } from "@/lib/Metric/MetricSelectionStore";
-
-  import type { MetricSelectionState } from "./MetricSelectionState";
+  import { getMetricColor } from "./Lib/MetricColor";
+  import type { MetricSelectionState } from "./Lib/MetricSelectionState";
+  import { updateMetricSelection } from "./Lib/MetricSelectionStore";
 
   export let metric: MetricSelectionState;
 

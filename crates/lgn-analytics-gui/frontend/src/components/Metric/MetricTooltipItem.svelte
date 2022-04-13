@@ -1,11 +1,10 @@
 <script lang="ts">
-  import { getMetricColor } from "@/lib/Metric/MetricColor";
-  import type { Point } from "@/lib/Metric/MetricPoint";
-
-  import type { MetricSelectionState } from "./MetricSelectionState";
+  import { getMetricColor } from "./Lib/MetricColor";
+  import type { MetricPoint } from "./Lib/MetricPoint";
+  import type { MetricSelectionState } from "./Lib/MetricSelectionState";
 
   export let metric: MetricSelectionState;
-  export let value: Point | null;
+  export let value: MetricPoint | null;
 </script>
 
 <div class="flex align-middle justify-between gap-1 select-none">

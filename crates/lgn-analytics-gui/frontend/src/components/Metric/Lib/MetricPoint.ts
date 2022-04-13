@@ -1,4 +1,4 @@
-export interface Point {
+export interface MetricPoint {
   time: number;
   value: number;
 }

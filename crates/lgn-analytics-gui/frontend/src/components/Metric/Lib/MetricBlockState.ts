@@ -1,13 +1,13 @@
 import type { MetricBlockDesc } from "@lgn/proto-telemetry/dist/metric";
 
-import type { Point } from "@/lib/Metric/MetricPoint";
+import type { MetricPoint } from "./MetricPoint";
 
 export class MetricBlockState {
   blockId: string;
   streamId: string;
   minMs: number;
   maxMs: number;
-  private data: Map<number, Point[]>;
+  private data: Map<number, MetricPoint[]>;
   private inFlight: Map<number, boolean>;
   constructor(metricBlockDesc: MetricBlockDesc) {
     this.blockId = metricBlockDesc.blockId;
@@ -33,7 +33,7 @@ export class MetricBlockState {
     return true;
   }
 
-  store(lod: number, points: Point[]): boolean {
+  store(lod: number, points: MetricPoint[]): boolean {
     if (this.hasLod(lod)) {
       return false;
     }

@@ -1,11 +1,11 @@
 <script lang="ts">
   import type { Writable } from "svelte/store";
 
-  import type { MetricState } from "@/lib/Metric/MetricState";
-  import type { MetricStreamer } from "@/lib/Metric/MetricStreamer";
   import { formatExecutionTime } from "@/lib/format";
 
   import TimeRangeDetails from "../Misc/TimeRangeDetails.svelte";
+  import type { MetricState } from "./Lib/MetricState";
+  import type { MetricStreamer } from "./Lib/MetricStreamer";
 
   export let width: number;
   export let mainWidth: number;

@@ -1,7 +1,5 @@
 <script lang="ts">
-  import { selectionStore } from "@/lib/Metric/MetricSelectionStore";
-
-  //import { createEventDispatcher } from "svelte";
+  import { selectionStore } from "./Lib/MetricSelectionStore";
   import MetricLegend from "./MetricLegend.svelte";
 </script>
 

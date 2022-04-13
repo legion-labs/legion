@@ -6,9 +6,8 @@ import type {
   MetricDesc,
 } from "@lgn/proto-telemetry/dist/metric";
 
-import type { Point } from "@/lib/Metric/MetricPoint";
-
 import { MetricBlockState } from "./MetricBlockState";
+import type { MetricPoint } from "./MetricPoint";
 import { addToSelectionStore, selectionStore } from "./MetricSelectionStore";
 
 export class MetricState {
@@ -95,16 +94,16 @@ export class MetricState {
     return mutated;
   }
 
-  private mapToPoints(blockData: MetricBlockData): Point[] {
+  private mapToPoints(blockData: MetricBlockData): MetricPoint[] {
     return blockData.points.map((p) => {
       return {
         time: p.timeMs + this.min,
         value: p.value,
-      } as Point;
+      } as MetricPoint;
     });
   }
 
-  getClosestValue(time: number): Point | null {
+  getClosestValue(time: number): MetricPoint | null {
     let result = null;
     for (const item of this.getViewportPoints(
       time - this.min / 100,

@@ -8,16 +8,16 @@
   import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
   import log from "@lgn/web-client/src/lib/log";
 
-  import { MetricAxisCollection } from "@/lib/Metric/MetricAxisCollection";
-  import { getMetricColor } from "@/lib/Metric/MetricColor";
-  import { selectionStore } from "@/lib/Metric/MetricSelectionStore";
-  import type { MetricSlice } from "@/lib/Metric/MetricSlice";
-  import type { MetricState } from "@/lib/Metric/MetricState";
-  import { MetricStreamer } from "@/lib/Metric/MetricStreamer";
   import { makeGrpcClient } from "@/lib/client";
   import { formatExecutionTime } from "@/lib/format";
   import { getLodFromPixelSizeNs } from "@/lib/lod";
 
+  import { MetricAxisCollection } from "./Lib/MetricAxisCollection";
+  import { getMetricColor } from "./Lib/MetricColor";
+  import { selectionStore } from "./Lib/MetricSelectionStore";
+  import type { MetricSlice } from "./Lib/MetricSlice";
+  import type { MetricState } from "./Lib/MetricState";
+  import { MetricStreamer } from "./Lib/MetricStreamer";
   import MetricDebugDisplay from "./MetricDebugDisplay.svelte";
   import MetricLegendGroup from "./MetricLegendGroup.svelte";
   import MetricSelection from "./MetricSelection.svelte";
