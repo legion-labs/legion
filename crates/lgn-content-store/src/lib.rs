@@ -27,5 +27,5 @@ pub use providers::*;
 pub use traits::{
     ContentAddressProvider, ContentAddressReader, ContentAddressWriter, ContentAsyncRead,
     ContentAsyncReadWithOrigin, ContentAsyncWrite, ContentProvider, ContentReader,
-    ContentReaderExt, ContentWriter, ContentWriterExt,
+    ContentReaderExt, ContentTracker, ContentWriter, ContentWriterExt,
 };

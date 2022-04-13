@@ -133,8 +133,30 @@ macro_rules! assert_write_avoided {
     }};
 }
 
+macro_rules! assert_pop_referenced_identifiers {
+    ($provider:expr, $expected_ids:expr) => {{
+        let ids = $provider.pop_referenced_identifiers().await.unwrap();
+
+        let id_refs: Vec<&Identifier> = ids.iter().collect();
+        let expected_id_refs = $expected_ids.into_iter().collect::<Vec<&Identifier>>();
+
+        assert_eq!(expected_id_refs, id_refs);
+
+        ids
+    }};
+}
+
+macro_rules! assert_remove_content {
+    ($provider:expr, $id:expr) => {{
+        $provider
+            .remove_content($id)
+            .await
+            .expect("failed to remove content")
+    }};
+}
+
 pub(crate) use {
-    assert_alias_not_found, assert_content_not_found, assert_read_alias, assert_read_content,
-    assert_read_content_with_origin, assert_read_contents, assert_write_alias,
-    assert_write_avoided, assert_write_content,
+    assert_alias_not_found, assert_content_not_found, assert_pop_referenced_identifiers,
+    assert_read_alias, assert_read_content, assert_read_content_with_origin, assert_read_contents,
+    assert_remove_content, assert_write_alias, assert_write_avoided, assert_write_content,
 };

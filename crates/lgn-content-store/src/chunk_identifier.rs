@@ -17,7 +17,7 @@ pub struct ChunkIdentifier(u64, Identifier);
 
 impl Debug for ChunkIdentifier {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        Display::fmt(self, f)
+        write!(f, "{:?}", self.to_string())
     }
 }
 

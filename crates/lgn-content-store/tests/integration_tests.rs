@@ -6,9 +6,9 @@ use std::{
 
 use lgn_content_store::{
     CachingProvider, ChunkIdentifier, Chunker, ContentAddressReader, ContentAddressWriter,
-    ContentReaderExt, ContentWriter, ContentWriterExt, DataSpace, Error, GrpcProvider,
-    GrpcProviderSet, GrpcService, Identifier, LocalProvider, MemoryProvider, Origin,
-    SmallContentProvider,
+    ContentReaderExt, ContentTracker, ContentWriter, ContentWriterExt, DataSpace, Error,
+    FallbackProvider, GrpcProvider, GrpcProviderSet, GrpcService, Identifier, LocalProvider,
+    MemoryProvider, Origin, SmallContentProvider,
 };
 
 #[cfg(feature = "lru")]
@@ -96,6 +96,8 @@ async fn test_chunker() {
 async fn test_memory_provider() {
     let provider = MemoryProvider::new();
 
+    assert_pop_referenced_identifiers!(provider, []);
+
     let id = Identifier::new(&BIG_DATA_A);
     assert_content_not_found!(provider, id);
 
@@ -105,10 +107,15 @@ async fn test_memory_provider() {
     // Another write should yield no error.
     assert_write_avoided!(provider, &id);
 
+    assert_pop_referenced_identifiers!(provider, [&id]);
+
+    // Popping a second time should yield no identifiers.
+    assert_pop_referenced_identifiers!(provider, []);
+
     let fake_id = Identifier::new(&BIG_DATA_X);
     assert_read_contents!(
         provider,
-        [id, fake_id],
+        [id.clone(), fake_id],
         [
             Ok(&BIG_DATA_A),
             Err(Error::IdentifierNotFound(fake_id.clone()))
@@ -119,6 +126,87 @@ async fn test_memory_provider() {
     assert_alias_not_found!(provider, "space", "mykey");
     assert_write_alias!(provider, "space", "mykey", &BIG_DATA_A);
     assert_read_alias!(provider, "space", "mykey", &BIG_DATA_A);
+
+    // Writing an alias should also have incremented the reference count.
+    assert_pop_referenced_identifiers!(provider, [&id]);
+
+    let id = assert_write_content!(provider, &BIG_DATA_A);
+    assert_remove_content!(provider, &id);
+
+    // Since we removed the content, it should not be returned.
+    assert_pop_referenced_identifiers!(provider, []);
+}
+
+#[tokio::test]
+async fn test_fallback_provider() {
+    let main_provider = MemoryProvider::new();
+    let fallback_provider = LruProvider::new(256);
+    let provider = FallbackProvider::new(&main_provider, &fallback_provider);
+
+    assert_pop_referenced_identifiers!(provider, []);
+
+    let id = Identifier::new(&BIG_DATA_A);
+    assert_content_not_found!(provider, id);
+
+    let id = assert_write_content!(provider, &BIG_DATA_A);
+    assert_read_content_with_origin!(provider, id, &BIG_DATA_A, Origin::Memory {});
+
+    // Another write should yield no error.
+    assert_write_avoided!(provider, &id);
+
+    assert_pop_referenced_identifiers!(provider, [&id]);
+
+    // Popping a second time should yield no identifiers.
+    assert_pop_referenced_identifiers!(provider, []);
+
+    let fake_id = Identifier::new(&BIG_DATA_X);
+    assert_read_contents!(
+        provider,
+        [id.clone(), fake_id],
+        [
+            Ok(&BIG_DATA_A),
+            Err(Error::IdentifierNotFound(fake_id.clone()))
+        ]
+    );
+
+    assert_alias_not_found!(provider, "space", "mykey");
+    assert_write_alias!(provider, "space", "mykey", &BIG_DATA_A);
+    assert_read_alias!(provider, "space", "mykey", &BIG_DATA_A);
+
+    // Writing an alias should also have incremented the reference count.
+    assert_pop_referenced_identifiers!(provider, [&id]);
+
+    let id = assert_write_content!(provider, &BIG_DATA_A);
+    assert_remove_content!(provider, &id);
+
+    // Since we removed the content, it should not be returned.
+    assert_pop_referenced_identifiers!(provider, []);
+
+    // Tests for fallback-specific behavior.
+
+    // Let's add a value that only exists in the fallback.
+    let id = assert_write_content!(fallback_provider, &BIG_DATA_B);
+    assert_read_content_with_origin!(fallback_provider, id, &BIG_DATA_B, Origin::Lru {});
+
+    // The value should be readable from the provider...
+    assert_read_content_with_origin!(provider, id, &BIG_DATA_B, Origin::Lru {});
+    // ... but not copied into the main provider. This is not a cache.
+    assert_content_not_found!(main_provider, id);
+
+    // Also, writing a value should not make it available in the fallback provider.
+    let id = assert_write_content!(provider, &BIGGER_DATA_A);
+    assert_read_content_with_origin!(provider, id, &BIGGER_DATA_A, Origin::Memory {});
+    assert_content_not_found!(fallback_provider, id);
+
+    // That is, until we pop the referenced identifiers and copy them into the fallback!
+    provider
+        .pop_referenced_identifiers_and_copy()
+        .await
+        .unwrap();
+
+    // Now the value should be in the main provider.
+    assert_read_content_with_origin!(provider, id, &BIGGER_DATA_A, Origin::Memory {});
+    assert_read_content_with_origin!(fallback_provider, id, &BIGGER_DATA_A, Origin::Lru {});
 }
 
 #[cfg(feature = "lru")]

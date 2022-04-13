@@ -34,7 +34,7 @@ use serde::Deserialize;
 use tonic::transport::Server;
 use tower_http::{
     auth::RequireAuthorizationLayer,
-    cors::{CorsLayer, Origin},
+    cors::{AllowOrigin, CorsLayer},
 };
 
 struct Service {
@@ -541,7 +541,7 @@ async fn main() -> anyhow::Result<()> {
         .ok_or_else(|| anyhow::anyhow!("no configuration was found for `source_control.server`"))?;
 
     let cors = CorsLayer::new()
-        .allow_origin(Origin::list(args.origins))
+        .allow_origin(AllowOrigin::list(args.origins))
         .allow_credentials(true)
         .max_age(Duration::from_secs(60 * 60))
         .allow_headers(vec![

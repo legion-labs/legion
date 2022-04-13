@@ -1,0 +1,234 @@
+<html>
+
+<head>
+    <title>Tree Explorer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <h1>Tree Explorer</h1>
+    <nav>
+        <input type="text" id="index-key" placeholder="XX XX XX XX" pattern="([0-9a-fA-F]{2}[ ]*){4}" maxlength="11"
+            value="00 00 00 00" />
+        <input type="button" value="Add node" id="add-node" />
+        <input type="button" value="Random" id="random-index-key" />
+    </nav>
+    <div id="graph"></div>
+
+    <script type="module">
+        import { hierarchy, stratify } from "https://cdn.skypack.dev/d3-hierarchy@3";
+        import { forceSimulation, forceLink, forceManyBody, forceX, forceY } from "https://cdn.skypack.dev/d3-force@3";
+        import * as d3 from "https://cdn.skypack.dev/d3@7";
+
+        const width = 800;
+        const height = 600;
+
+        const svg = d3.create("svg")
+            .attr("viewBox", [0, 0, width, height]);
+        const g = svg.append("g")
+            .attr("transform", "translate(" + [width / 2, height / 2] + ")");
+        const background = g.append("g");
+        const foreground = g.append("g");
+
+        function update({ nodes, links }) {
+            console.log(nodes);
+            console.log(links);
+            const simulation = forceSimulation(nodes)
+                .force("link", forceLink(links).id(d => d.id).distance(150).strength(1))
+                .force("charge", forceManyBody().strength(-200))
+                .force("x", forceX())
+                .force("y", forceY());
+
+            const drag = simulation => {
+                function dragstarted(event, d) {
+                    if (!event.active) simulation.alphaTarget(0.3).restart();
+                    d.fx = d.x;
+                    d.fy = d.y;
+                }
+
+                function dragged(event, d) {
+                    d.fx = event.x;
+                    d.fy = event.y;
+                }
+
+                function dragended(event, d) {
+                    if (!event.active) simulation.alphaTarget(0);
+                    d.fx = null;
+                    d.fy = null;
+                }
+
+                return d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended);
+            }
+
+            const link = background.selectAll('.link')
+                .data(links)
+                .join(
+                    function (enter) {
+                        return enter
+                            .append('line')
+                            .attr('class', 'link');
+                    },
+                    function (update) {
+                        return update;
+                    },
+                    function (exit) {
+                        return exit.remove();
+                    }
+                );
+
+            const linkLabel = foreground
+                .selectAll('.link-label')
+                .data(links)
+                .join(
+                    function (enter) {
+                        return enter
+                            .append('text')
+                            .attr('class', 'link-label')
+                            .attr('dy', 5)
+                            .text(d => d.alias);
+                    },
+                    function (update) {
+                        update
+                            .text(d => d.alias);
+
+                        return update;
+                    },
+                    function (exit) {
+                        return exit.remove();
+                    }
+                );
+
+            const node = foreground
+                .selectAll(".node")
+                .data(nodes)
+                .join(
+                    function (enter) {
+                        const node = enter
+                            .append('g')
+                            .attr('class', d => {
+                                if (d.isLeaf) {
+                                    return 'node leaf';
+                                } else if (d.isRoot) {
+                                    return 'node root';
+                                } else {
+                                    return 'node';
+                                }
+                            });
+
+                        node.append('circle')
+                            .attr("r", 20)
+                            .call(drag(simulation));
+
+                        node.append("text")
+                            .attr('dy', 2)
+                            .text(d => d.alias);
+
+                        return node;
+                    },
+                    function (update) {
+                        update.attr('class', d => {
+                            if (d.isLeaf) {
+                                return 'node leaf';
+                            } else if (d.isRoot) {
+                                return 'node root';
+                            } else {
+                                return 'node';
+                            };
+                        });
+
+                        update.select('circle')
+                            .call(drag(simulation));
+
+                        update.select('text')
+                            .text(d => d.alias);
+
+                        return update;
+                    },
+                    function (exit) {
+                        return exit.remove();
+                    }
+                );
+
+
+            simulation.on("tick", () => {
+                link
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+
+                linkLabel
+                    .attr("transform", function (d) { return "translate(" + (d.source.x + d.target.x) / 2 + "," + (d.source.y + d.target.y) / 2 + ")"; });
+
+                node
+                    .attr("transform", function (d) { return "translate(" + d.x + "," + d.y + ")"; });
+            });
+        }
+
+        let resp = await fetch('/nodes', { mode: 'no-cors' });
+        const data = await resp.json();
+        const links = data.links;
+        const nodes = data.nodes;
+        update({ nodes, links });
+
+        const indexKeyInput = document.getElementById('index-key');
+        const addNodeButton = document.getElementById('add-node');
+        const randomIndexKeyButton = document.getElementById('random-index-key');
+
+        indexKeyInput.addEventListener('change', async () => {
+            if (indexKeyInput.checkValidity()) {
+                indexKeyInput.classList.remove('invalid');
+                addNodeButton.disabled = false;
+            } else {
+                indexKeyInput.classList.add('invalid');
+                addNodeButton.disabled = true;
+            }
+        });
+
+        addNodeButton.addEventListener('click', async () => {
+            if (!indexKeyInput.checkValidity()) {
+                return;
+            }
+
+            const indexKey = indexKeyInput.value.replace(/\s/g, '').toLowerCase();
+
+            const addNode = {
+                indexKey: indexKey,
+                data: indexKey,
+            };
+
+            const resp = await fetch('/nodes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(addNode)
+            });
+
+            if (resp.status == 200) {
+                const data = await resp.json();
+                const links = data.links;
+                const nodes = data.nodes;
+
+                update({ nodes, links });
+            } else if (resp.status == 409) {
+                alert('Node ' + indexKey + ' already exists');
+                console.warn("Node already exists");
+            } else {
+                console.error(resp.statusText, await resp.text());
+            }
+        });
+
+        randomIndexKeyButton.addEventListener('click', async () => {
+            const indexKey = Math.round(Math.random() * Math.pow(2, 32)).toString(16).padStart(8, '0').replace(/(.{2})/g, "$1 ").trim();
+
+            indexKeyInput.value = indexKey;
+        });
+        d3.select("body > div#graph").append(() => svg.node());
+    </script>
+</body>
+
+</html>
