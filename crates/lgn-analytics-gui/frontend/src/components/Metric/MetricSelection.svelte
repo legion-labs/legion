@@ -3,8 +3,9 @@
 
   import clickOutside from "@lgn/web-client/src/actions/clickOutside";
 
+  import { getRecentlyUsedStore } from "./Lib/MetricStore";
+  import type { MetricStore } from "./Lib/MetricStore";
   import MetricSelectionItem from "./MetricSelectionItem.svelte";
-  import { getRecentlyUsedStore, type MetricStore } from "./Lib/MetricStore";
 
   export let metricStore: MetricStore;
 

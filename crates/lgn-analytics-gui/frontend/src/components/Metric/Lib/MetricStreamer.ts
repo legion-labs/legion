@@ -6,7 +6,8 @@ import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/a
 import { makeGrpcClient } from "@/lib/client";
 
 import { MetricState } from "./MetricState";
-import { getMetricStore, type MetricStore } from "./MetricStore";
+import { getMetricStore } from "./MetricStore";
+import type { MetricStore } from "./MetricStore";
 
 export class MetricStreamer {
   currentMinMs = -Infinity;
