@@ -223,7 +223,7 @@ impl Plugin for RendererPlugin {
         app.add_plugin(PickingPlugin {});
         app.add_plugin(RendererThreadPlugin {});
         app.add_plugin(MeshFeaturePlugin::default());
-	app.add_plugin(RenderDocPlugin {});
+        app.add_plugin(RenderDocPlugin {});
 
         // This resource needs to be shutdown after all other resources
         app.insert_resource(renderer);
