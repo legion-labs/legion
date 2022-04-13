@@ -3,7 +3,7 @@
   import { GraphNodeStatType } from "./Lib/GraphNodeStatType";
   import type { NodeStateStore } from "./Store/GraphStateStore";
 
-  let node: NodeStateStore;
+  export let node: NodeStateStore;
 </script>
 
 <div class="flex flex-row justify-between select-none h-8 text-content-87">
