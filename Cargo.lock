@@ -3564,7 +3564,7 @@ dependencies = [
  "pathdiff",
  "rayon",
  "target-spec",
- "toml_edit",
+ "toml_edit 0.13.4",
  "twox-hash",
 ]
 
@@ -6302,7 +6302,7 @@ dependencies = [
  "thiserror",
  "tinytemplate",
  "toml",
- "toml_edit",
+ "toml_edit 0.14.2",
  "walkdir",
  "which",
  "wildmatch",
@@ -10309,6 +10309,17 @@ dependencies = [
  "indexmap",
  "itertools 0.10.3",
  "kstring",
+]
+
+[[package]]
+name = "toml_edit"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86e793cd7300306ebefde30a6282a9016899b7bad63799511253d95518a62bcd"
+dependencies = [
+ "combine",
+ "indexmap",
+ "itertools 0.10.3",
 ]
 
 [[package]]
