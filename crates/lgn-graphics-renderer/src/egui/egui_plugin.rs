@@ -173,21 +173,8 @@ fn gather_input(
         events.push(Event::Text(text));
     }
 
-    let raw_input = raw_input.into_inner();
-    raw_input.clone_from(&RawInput {
-        events,
-        ..RawInput::default()
-    });
-}
-
-fn gather_input_window(
-    mut raw_input: ResMut<'_, RawInput>,
-    mut cursor_moved: EventReader<'_, '_, CursorMoved>,
-    mut scale_factor_changed: EventReader<'_, '_, WindowScaleFactorChanged>,
-    mut window_resized_events: EventReader<'_, '_, WindowResized>,
-) {
     for cursor_moved_event in cursor_moved.iter() {
-        raw_input.events.push(Event::PointerMoved(egui::pos2(
+        events.push(Event::PointerMoved(egui::pos2(
             cursor_moved_event.position.x,
             cursor_moved_event.position.y,
         )));

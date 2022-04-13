@@ -112,7 +112,7 @@ impl SceneExportContext {
 
     fn export_light(light: &LightComponent) -> KhrLight {
         KhrLight {
-            color: light.color.to_array(),
+            color: light.color.as_linear().truncate().into(),
             extensions: None,
             extras: gltf::json::Extras::default(),
             intensity: light.radiance,
@@ -148,15 +148,15 @@ impl SceneExportContext {
     ) -> Vec<ResourceTypeAndId> {
         let mut model_ids = HashSet::new();
         for (visual, _transform) in visuals.iter() {
-            if let Some(model_id) = visual.model_resource_id {
-                model_ids.insert(model_id);
+            if let Some(model_id) = visual.model_resource_id() {
+                model_ids.insert(*model_id);
             }
         }
 
         // json_mesh == model, json_primitive == mesh
         let model_ids = model_ids.into_iter().collect::<Vec<ResourceTypeAndId>>();
         for model_id in &model_ids {
-            let (model_meta_data, _ready) = model_manager.get_model_meta_data(&Some(*model_id));
+            let model_meta_data = model_manager.get_model_meta_data(model_id).unwrap();
 
             let buffer_idx = self.buffers.len() as u32;
 
@@ -168,7 +168,7 @@ impl SceneExportContext {
             let mut byte_offset = 0;
 
             let mut json_primitives = Vec::new();
-            for mesh in &model_meta_data.meshes {
+            for mesh in &model_meta_data.mesh_instances {
                 let buffer_view_idx = self.buffer_views.len() as u32;
                 let accessor_idx = self.accessors.len() as u32;
 
@@ -332,7 +332,7 @@ pub(crate) fn on_scene_export_requested(
     let model_ids = ctx.export_models(&visuals, &model_manager, &mesh_manager);
 
     for (visual, transform) in visuals.iter() {
-        if let Some(model_id) = visual.model_resource_id {
+        if let Some(model_id) = visual.model_resource_id() {
             let node = gltf::json::Node {
                 camera: None,
                 children: None,
@@ -340,7 +340,7 @@ pub(crate) fn on_scene_export_requested(
                 extras: gltf::json::extras::Void::default(),
                 matrix: None,
                 mesh: Some(Index::new(
-                    model_ids.iter().position(|v| *v == model_id).unwrap() as u32,
+                    model_ids.iter().position(|v| *v == *model_id).unwrap() as u32,
                 )),
                 name: Some("mesh".into()),
                 rotation: Some(gltf::json::scene::UnitQuaternion([
@@ -380,9 +380,9 @@ pub(crate) fn on_scene_export_requested(
                             / render_surface.extents().height() as f32,
                     )
                 },
-                yfov: camera.fov_y,
-                zfar: Some(camera.z_far),
-                znear: camera.z_near,
+                yfov: camera.fov_y().radians(),
+                zfar: Some(camera.z_far()),
+                znear: camera.z_near(),
                 extensions: None,
                 extras: gltf::json::extras::Void::default(),
             }),
@@ -401,19 +401,15 @@ pub(crate) fn on_scene_export_requested(
             mesh: None,
             name: Some(format!("Camera {}", camera_idx)),
             rotation: Some(gltf::json::scene::UnitQuaternion({
-                let (yaw, pitch, _roll) = camera
-                    .camera_rig
-                    .final_transform
-                    .rotation
-                    .to_euler(EulerRot::YXZ);
+                let (yaw, pitch, _roll) = camera.rotation().to_euler(EulerRot::YXZ);
                 lgn_math::Quat::from_euler(EulerRot::YXZ, -yaw + std::f32::consts::PI, pitch, 0.0)
                     .into()
             })),
             scale: None,
             translation: Some([
-                camera.camera_rig.final_transform.position.x,
-                camera.camera_rig.final_transform.position.y,
-                -camera.camera_rig.final_transform.position.z,
+                camera.position().x,
+                camera.position().y,
+                -camera.position().z,
             ]),
             skin: None,
             weights: None,
@@ -483,7 +479,7 @@ pub(crate) fn ui_scene_exporter(
     mut ui_data: Local<'_, UiData>,
     cameras: Query<'_, '_, &CameraComponent>,
 ) {
-    egui::Window::new("Scene export").show(&egui.ctx, |ui| {
+    egui::Window::new("Scene export").show(&egui.ctx(), |ui| {
         ui.text_edit_singleline(&mut ui_data.path);
         ui.add(egui::Slider::new(&mut ui_data.mul_x, -1.0..=1.0).text("mul_x"));
         ui.add(egui::Slider::new(&mut ui_data.mul_y, -1.0..=1.0).text("mul_y"));
@@ -496,14 +492,7 @@ pub(crate) fn ui_scene_exporter(
             .text("add_angle"),
         );
 
-        let (axis, angle) = cameras
-            .iter()
-            .next()
-            .unwrap()
-            .camera_rig
-            .final_transform
-            .rotation
-            .to_axis_angle();
+        let (axis, angle) = cameras.iter().next().unwrap().rotation().to_axis_angle();
         ui.label(format!("Axis: {:?}, angle: {}", axis, angle));
 
         if ui.button("Export").clicked() {
