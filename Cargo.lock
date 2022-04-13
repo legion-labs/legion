@@ -8475,28 +8475,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "runtime-client"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap 3.1.8",
- "directories",
- "http",
- "lgn-app",
- "lgn-async",
- "lgn-build-utils",
- "lgn-build-utils-web",
- "lgn-online",
- "lgn-tauri",
- "lgn-telemetry-sink",
- "lgn-tracing",
- "lgn-web-client",
- "tauri",
- "tauri-build",
- "tokio",
-]
-
-[[package]]
 name = "runtime-srv"
 version = "0.1.0"
 dependencies = [

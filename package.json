@@ -17,7 +17,7 @@
     "dependencies:update": "pnpm up -r -i --latest",
     "analytics:start": "pnpm -C crates/lgn-analytics-gui/frontend start",
     "editor:start": "pnpm -C npm-pkgs/lgn-editor-gui start",
-    "runtime:start": "pnpm -C crates/lgn-runtime-gui/frontend start"
+    "runtime:start": "pnpm -C npm-pkgs/lgn-runtime-gui start"
   },
   "devDependencies": {
     "rimraf": "^3.0.2",

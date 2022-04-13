@@ -1,8 +1,6 @@
 packages:
   # TODO: Remove me
   - "crates/lgn-analytics-gui/frontend"
-  # TODO: Remove me
-  - "crates/lgn-runtime-gui/frontend"
   - "crates/lgn-web-client*"
-  - "npm-pkgs/*"
   - "crates/lgn-*-proto"
+  - "npm-pkgs/*"

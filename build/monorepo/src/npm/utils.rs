@@ -317,7 +317,7 @@ pub struct NpmWorkspace<'a> {
     /// The top level npm package
     root_package: NpmPackage,
     /// The npm packages, excluding the top level one
-    pub packages: HashMap<String, NpmPackage>,
+    packages: HashMap<String, NpmPackage>,
 }
 
 impl<'a> NpmWorkspace<'a> {

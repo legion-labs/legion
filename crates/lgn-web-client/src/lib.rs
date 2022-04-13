@@ -12,7 +12,7 @@ use http::Uri;
 use lgn_online::authentication::{
     Authenticator, OAuthClient, TokenCache as OnlineTokenCache, UserInfo,
 };
-use napi::bindgen_prelude::*;
+use napi::bindgen_prelude::{error, Error, Result};
 use napi_derive::napi;
 use once_cell::sync::OnceCell;
 
@@ -36,6 +36,15 @@ pub enum WebClientError {
     Authentication(#[from] lgn_online::authentication::Error),
 }
 
+// TODO: Make application name optional for non native applications
+/// Init the global OAuth client.
+///
+/// ## Errors
+///
+/// An error occurs if:
+///   - The project directory cannot be found (optional)
+///   - The OAuth client cannot be built
+///   - The global OAuth client cannot be saved
 pub async fn init_oauth_client(
     application: &str,
     issuer_url: &Uri,
@@ -60,6 +69,14 @@ pub async fn init_oauth_client(
     Ok(())
 }
 
+/// Init the global OAuth client.
+///
+/// ## Errors
+///
+/// An error occurs if:
+///   - The project directory cannot be found (optional)
+///   - The OAuth client cannot be built
+///   - The global OAuth client cannot be saved
 #[napi(js_name = "initOAuthClient")]
 pub async fn js_init_oauth_client(
     application: String,
@@ -80,13 +97,21 @@ pub async fn js_init_oauth_client(
         .map_err(|error| Error::from_reason(error.to_string()))
 }
 
+/// Authenticate the user.
+///
+/// ## Errors
+///
+/// An error occurs if:
+///   - The global OAuth client is not found
+///   - The user cannot be authenticated
+#[allow(clippy::implicit_hasher)]
 pub async fn authenticate(
     scopes: Vec<String>,
     extra_params: Option<HashMap<String, String>>,
 ) -> std::result::Result<UserInfo, WebClientError> {
     let oauth_client = OAUTH_CLIENT
         .get()
-        .ok_or_else(|| WebClientError::OAuthClientNotInit)?;
+        .ok_or(WebClientError::OAuthClientNotInit)?;
 
     let client_token_set = oauth_client
         .login(&scopes, &extra_params)
@@ -104,7 +129,15 @@ pub async fn authenticate(
 }
 
 // TODO: Improve returned value type: use `UserInfo`
+/// Authenticate the user.
+///
+/// ## Errors
+///
+/// An error occurs if:
+///   - The global OAuth client is not found
+///   - The user cannot be authenticated
 #[napi(js_name = "authenticate")]
+#[allow(clippy::implicit_hasher)]
 pub async fn js_authenticate(
     scopes: Vec<String>,
     extra_params: Option<HashMap<String, String>>,
@@ -120,10 +153,17 @@ pub async fn js_authenticate(
     Ok(user_info_value)
 }
 
+/// Returns the current access token.
+///
+/// ## Errors
+///
+/// An error occurs if:
+///   - The global OAuth client is not found
+///   - The access token couldn't be read from disk
 pub fn get_access_token() -> std::result::Result<String, WebClientError> {
     let oauth_client = OAUTH_CLIENT
         .get()
-        .ok_or_else(|| WebClientError::OAuthClientNotInit)?;
+        .ok_or(WebClientError::OAuthClientNotInit)?;
 
     Ok(oauth_client
         .read_token_set_from_cache()
@@ -131,6 +171,13 @@ pub fn get_access_token() -> std::result::Result<String, WebClientError> {
         .access_token)
 }
 
+/// Returns the current access token.
+///
+/// ## Errors
+///
+/// An error occurs if:
+///   - The global OAuth client is not found
+///   - The access token couldn't be read from disk
 #[napi(js_name = "accessToken")]
 pub fn js_get_access_token() -> Result<String> {
     get_access_token()
