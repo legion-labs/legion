@@ -426,7 +426,8 @@ export class LegionClient extends Client<UserInfo> {
 
   async getClientTokenSet(url: URL | string): Promise<ClientTokenSet | null> {
     if (window.isElectron) {
-      return null;
+      // TODO: When the application is running on Electron
+      // it should use the node native module
     }
 
     const parsedUrl = url instanceof URL ? url : new URL(url);
