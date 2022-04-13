@@ -11,7 +11,8 @@ use config::Config;
 use lgn_app::prelude::*;
 use lgn_async::AsyncPlugin;
 use lgn_tauri::{TauriPlugin, TauriPluginSettings};
-use lgn_web_client::BrowserPlugin;
+#[allow(deprecated)]
+use lgn_web_client::tauri_app::BrowserPlugin;
 
 mod config;
 
@@ -19,6 +20,7 @@ mod config;
 async fn main() -> anyhow::Result<()> {
     let config = Config::new_from_environment()?;
 
+    #[allow(deprecated)]
     let browser_plugin = BrowserPlugin::new(
         &config.application_name,
         &config.issuer_url,

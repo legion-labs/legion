@@ -1,5 +1,10 @@
 packages:
-  - "crates/*/frontend"
-  - "crates/lgn-web-client-config"
+  # TODO: Remove me
+  - "crates/lgn-analytics-gui/frontend"
+  # TODO: Remove me
+  - "crates/lgn-editor-gui/frontend"
+  # TODO: Remove me
+  - "crates/lgn-runtime-gui/frontend"
+  - "crates/lgn-web-client*"
   - "npm-pkgs/*"
   - "crates/lgn-*-proto"

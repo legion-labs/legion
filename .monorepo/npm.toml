@@ -1,6 +1,7 @@
 package-manager = "pnpm"
 include = [
     "npm-pkgs",
+    "crates/lgn-web-client-config",
     "crates/lgn-web-client",
     "crates/lgn-analytics-gui",
     "crates/lgn-editor-gui",

@@ -11,7 +11,8 @@ use config::Config;
 use lgn_app::prelude::*;
 use lgn_async::AsyncPlugin;
 use lgn_tauri::{TauriPlugin, TauriPluginSettings};
-use lgn_web_client::BrowserPlugin;
+#[allow(deprecated)]
+use lgn_web_client::tauri_app::BrowserPlugin;
 use tokio::runtime::Runtime;
 
 mod config;
@@ -23,6 +24,7 @@ fn main() -> anyhow::Result<()> {
         let rt = Runtime::new()?;
 
         rt.block_on(async {
+            #[allow(deprecated)]
             BrowserPlugin::new(
                 &config.application_name,
                 &config.issuer_url,

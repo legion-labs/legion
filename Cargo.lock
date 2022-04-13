@@ -5869,8 +5869,13 @@ dependencies = [
  "directories",
  "http",
  "lgn-online",
+ "napi",
+ "napi-build",
+ "napi-derive",
+ "once_cell",
  "serde_json",
  "tauri",
+ "thiserror",
  "tokio",
 ]
 
@@ -6458,6 +6463,7 @@ dependencies = [
  "napi-sys",
  "serde",
  "serde_json",
+ "tokio",
  "windows 0.33.0",
 ]
 
