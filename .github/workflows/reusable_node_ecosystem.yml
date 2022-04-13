@@ -75,7 +75,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: editor
-          path: ./crates/lgn-editor-gui/frontend/dist
+          path: ./npm-pkgs/lgn-editor-gui/dist
           retention-days: 5
 
   deploy:

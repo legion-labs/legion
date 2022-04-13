@@ -1,5 +1,5 @@
 {
-  "name": "@lgn/web-client-config",
+  "name": "@lgn/web-client-native",
   "version": "0.1.0",
   "description": "Legion's monorepo",
   "repository": "https://github.com/legion-labs/legion",
@@ -7,9 +7,8 @@
   "license": "MIT OR Apache-2.0",
   "private": true,
   "packageManager": "pnpm@6.24.1",
-  "main": "index.js",
   "napi": {
-    "name": "lgn-web-client-config"
+    "name": "lgn-web-client"
   },
   "scripts": {
     "build": "napi build --platform --js index.js --dts index.d.ts --release",

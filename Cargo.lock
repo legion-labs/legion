@@ -2490,40 +2490,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "editor-client"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "base64 0.13.0",
- "clap 3.1.8",
- "directories",
- "http",
- "json",
- "lgn-analytics",
- "lgn-app",
- "lgn-async",
- "lgn-blob-storage",
- "lgn-build-utils",
- "lgn-build-utils-web",
- "lgn-ecs",
- "lgn-online",
- "lgn-tauri",
- "lgn-telemetry-sink",
- "lgn-tracing",
- "lgn-tracing-transit",
- "lgn-web-client",
- "prost",
- "regex",
- "serde",
- "serde_json",
- "sqlx",
- "tauri",
- "tauri-build",
- "tokio",
- "tonic",
-]
-
-[[package]]
 name = "editor-srv"
 version = "0.1.0"
 dependencies = [
@@ -5869,8 +5835,13 @@ dependencies = [
  "directories",
  "http",
  "lgn-online",
+ "napi",
+ "napi-build",
+ "napi-derive",
+ "once_cell",
  "serde_json",
  "tauri",
+ "thiserror",
  "tokio",
 ]
 
@@ -6458,6 +6429,7 @@ dependencies = [
  "napi-sys",
  "serde",
  "serde_json",
+ "tokio",
  "windows 0.33.0",
 ]
 
@@ -8500,28 +8472,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f30a87c6d45d8e29888e758484626a8ab85c24594dada80bcff07d50bbcae80"
 dependencies = [
  "rune",
-]
-
-[[package]]
-name = "runtime-client"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap 3.1.8",
- "directories",
- "http",
- "lgn-app",
- "lgn-async",
- "lgn-build-utils",
- "lgn-build-utils-web",
- "lgn-online",
- "lgn-tauri",
- "lgn-telemetry-sink",
- "lgn-tracing",
- "lgn-web-client",
- "tauri",
- "tauri-build",
- "tokio",
 ]
 
 [[package]]
