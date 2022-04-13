@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     io::Write,
     process::{Command, Stdio},
 };
@@ -110,6 +111,30 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
             } else {
                 label.as_str()
             };
+
+            let args = vscode_config
+                .overrides
+                .get(package.name())
+                .map_or_else(std::vec::Vec::new, |dict| {
+                    dict.get("args").unwrap_or(&vec![]).clone()
+                });
+
+            let environment = vscode_config
+                .overrides
+                .get(package.name())
+                .map_or_else(std::vec::Vec::new, |dict| {
+                    dict.get("environment").unwrap_or(&vec![]).clone()
+                })
+                .iter()
+                .filter_map(|entry| entry.split_once('='))
+                .map(|(name, value)| {
+                    let mut hashmap = HashMap::<String, String>::new();
+                    hashmap.insert("name".into(), name.into());
+                    hashmap.insert("value".into(), value.into());
+                    hashmap
+                })
+                .collect::<Vec<_>>();
+
             let mut config = json!({
                 "name": display_name,
                 "type": debugger_type,
@@ -123,15 +148,13 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
                     name,
                     if cfg!(windows) {".exe"} else {""}
                 ),
-                "args": vscode_config.overrides.get(package.name()).map_or_else(
-                    std::vec::Vec::new,
-                    |dict| dict.get("args").unwrap_or(&vec![]).clone()
-                ),
+                "args": args,
                 "cwd": "${workspaceFolder}",
-                "environment": [],
+                "environment": environment,
                 "preLaunchTask":  prelaunch_task,
                 "showDisplayString": true
             });
+
             if debugger_type == "lldb" {
                 config["sourceLanguages"] = json!(["rust"]);
                 config["stopOnEntry"] = json!(false);
@@ -263,51 +286,43 @@ fn toolchain_source_map() -> Result<(String, String)> {
     let output = cmd
         .output()
         .map_err(|err| Error::new("Failed to run `rustc`").with_source(err))?;
-    if output.status.success() {
-        let output = String::from_utf8_lossy(&output.stdout);
-        let path = Utf8Path::new(output.trim_end_matches('\n'));
-        let mut components = path.components();
-        if cfg!(windows) {
-            // removing the root on windows otherwise sourcemap fails
-            let mut toolchain_source_path = String::new();
-            components.next();
-            components.next();
-            for component in components {
-                let component = component.as_str();
-                toolchain_source_path.push('/');
-                toolchain_source_path.push_str(component);
-            }
-            toolchain_source_path.push_str("/lib/rustlib/src/rust");
-            Ok((
-                "/rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c".to_string(),
-                toolchain_source_path,
-            ))
-        } else {
-            // we're going to open rustc and look for a path of the form:
-            // /rustc/7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c/
-            let rustc = path.join("bin/rustc");
-            let rustc = std::fs::read(&rustc)
-                .map_err(|err| Error::new("failed to read rustc").with_source(err))?;
-            let rustc_subs = b"/rustc/";
-            const COMMIT_SHA_SIZE: usize = 40;
-            let mut cursor = 0;
-            while cursor < rustc.len() - (rustc_subs.len() + COMMIT_SHA_SIZE + 1) {
-                let subs_end = cursor + rustc_subs.len();
-                if &rustc[cursor..subs_end] == rustc_subs
-                    && rustc[subs_end + COMMIT_SHA_SIZE] == b'/'
-                {
-                    let build_path =
-                        String::from_utf8_lossy(&rustc[cursor..subs_end + COMMIT_SHA_SIZE])
-                            .to_string();
-                    let mut toolchain_source_path = path.to_string();
-                    toolchain_source_path.push_str("/lib/rustlib/src/rust");
-                    return Ok((build_path, toolchain_source_path));
-                }
-                cursor += 1;
-            }
-            Err(Error::new("failed to find rustc"))
-        }
-    } else {
-        Err(Error::new("failed to filnd the sysroot"))
+    if !output.status.success() {
+        return Err(Error::new("failed to find the sysroot"));
     }
+    let output = String::from_utf8_lossy(&output.stdout);
+    let path = Utf8Path::new(output.trim_end_matches('\n'));
+
+    let mut toolchain_source_path = if cfg!(windows) {
+        let mut components = path.components();
+        // removing the root on windows otherwise sourcemap fails
+        let mut toolchain_source_path = String::new();
+        components.next();
+        components.next();
+        for component in components {
+            let component = component.as_str();
+            toolchain_source_path.push('/');
+            toolchain_source_path.push_str(component);
+        }
+        toolchain_source_path
+    } else {
+        path.to_string()
+    };
+    toolchain_source_path.push_str("/lib/rustlib/src/rust");
+
+    let output = std::process::Command::new("rustc")
+        .args(&["--version", "--verbose"])
+        .output()
+        .map_err(|err| Error::new("failed to execute rustc").with_source(err))?;
+
+    if !output.status.success() {
+        return Err(Error::new("failed to find the rustc version commit-hash"));
+    }
+
+    let build_path = String::from_utf8_lossy(&output.stdout)
+        .split_once("commit-hash:")
+        .and_then(|(_, hash)| hash.split_once('\n'))
+        .map(|(hash, _)| format!("/rustc/{}", hash.trim()))
+        .ok_or_else(|| Error::new("failed to find the rustc version commit-hash"))?;
+
+    Ok((build_path, toolchain_source_path))
 }
