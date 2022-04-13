@@ -1,23 +1,24 @@
 import Semaphore from "semaphore-async-await";
-import type { Writable } from "svelte/store";
-import { get, writable } from "svelte/store";
+import { get } from "svelte/store";
 
 import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
 
 import { makeGrpcClient } from "@/lib/client";
 
 import { MetricState } from "./MetricState";
+import { getMetricStore } from "./MetricStore";
+import type { MetricStore } from "./MetricStore";
 
 export class MetricStreamer {
   currentMinMs = -Infinity;
   currentMaxMs = Infinity;
-  metricStore: Writable<MetricState[]>;
+  metricStore: MetricStore;
   private client: PerformanceAnalyticsClientImpl | null = null;
   private processId: string;
   private semaphore: Semaphore;
   constructor(processId: string) {
     this.processId = processId;
-    this.metricStore = writable([]);
+    this.metricStore = getMetricStore();
     this.semaphore = new Semaphore(8);
   }
 
@@ -55,7 +56,7 @@ export class MetricStreamer {
       }
     }
 
-    this.metricStore.set(Array.from(metricStates.values()));
+    this.metricStore.registerMetrics(Array.from(metricStates.values()));
     this.currentMinMs = Math.min(...get(this.metricStore).map((s) => s.min));
     this.currentMaxMs = Math.max(...get(this.metricStore).map((s) => s.max));
   }
@@ -94,16 +95,13 @@ export class MetricStreamer {
             blockId: block.blockId,
             lod: lod,
           });
-          this.metricStore.update((metrics) => {
-            const m = metrics.filter((m) => m.name === metric.name)[0];
-            if (m) {
-              const index = metrics.indexOf(m);
-              if (blockData && m.store(block.blockId, blockData)) {
-                metrics[index] = m;
-              }
-            }
-            return metrics;
-          });
+          if (blockData) {
+            this.metricStore.registerBlock(
+              blockData,
+              block.blockId,
+              metric.name
+            );
+          }
         } finally {
           this.semaphore.release();
         }

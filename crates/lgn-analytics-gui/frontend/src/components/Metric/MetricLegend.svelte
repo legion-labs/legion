@@ -1,9 +1,11 @@
 <script lang="ts">
   import { getMetricColor } from "./Lib/MetricColor";
-  import type { MetricSelectionState } from "./Lib/MetricSelectionState";
-  import { updateMetricSelection } from "./Lib/MetricSelectionStore";
+  import type { MetricState } from "./Lib/MetricState";
+  import type { MetricStore } from "./Lib/MetricStore";
 
-  export let metric: MetricSelectionState;
+  export let metricStore: MetricStore;
+  export let metric: MetricState;
+
   const iconMap = new Map<string, string>([
     ["us", "bi bi-hourglass-split"],
     ["frame_id", "bi bi-arrow-up-right"],
@@ -13,12 +15,9 @@
 
 <div
   class="flex align-middle gap-1 select-none cursor-pointer"
-  on:click={() => {
-    metric.hidden = !metric.hidden;
-    updateMetricSelection(metric);
-  }}
+  on:click={() => metricStore.switchHidden(metric.name)}
 >
-  <span class="block" style="background-color:{color}" />
+  <span class="h-4 w-4 block" style="background-color:{color}" />
   <span class="text-sm {metric.hidden ? 'text-slate-300' : 'black'}"
     >{metric.name} ({metric.unit})</span
   >
@@ -29,11 +28,3 @@
       : 'text-slate-500'}"
   />
 </div>
-
-<style>
-  .block {
-    height: 16px;
-    width: 16px;
-    display: inline-block;
-  }
-</style>

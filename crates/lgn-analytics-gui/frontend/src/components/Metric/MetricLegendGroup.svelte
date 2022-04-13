@@ -1,12 +1,14 @@
 <script lang="ts">
-  import { selectionStore } from "./Lib/MetricSelectionStore";
+  import type { MetricStore } from "./Lib/MetricStore";
   import MetricLegend from "./MetricLegend.svelte";
+
+  export let metricStore: MetricStore;
 </script>
 
 <div class="flex gap-3">
-  {#each $selectionStore as metric}
+  {#each $metricStore as metric}
     {#if metric.selected}
-      <MetricLegend {metric} />
+      <MetricLegend {metricStore} {metric} />
     {/if}
   {/each}
 </div>
