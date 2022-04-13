@@ -11,7 +11,7 @@
     getRecentlyUsedMetrics,
     selectionStore,
     updateMetricSelection,
-  } from "./lib/MetricSelectionStore";
+  } from "./Lib/MetricSelectionStore";
 
   let show = false;
   let searchString: string | undefined;
