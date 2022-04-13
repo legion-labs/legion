@@ -31,7 +31,7 @@ pub enum Identifier {
 
 impl Debug for Identifier {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        Display::fmt(self, f)
+        write!(f, "{:?}", self.to_string())
     }
 }
 
