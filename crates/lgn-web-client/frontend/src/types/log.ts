@@ -30,10 +30,13 @@ export function severityFromLevel(level: Level): Severity | null {
   }
 }
 
+export type Source = "editor" | "runtime";
+
 export type LogEntry = {
   id: number;
   message: string;
   severity: Severity;
+  source: Source;
   target: string;
   datetime: Date;
 };
