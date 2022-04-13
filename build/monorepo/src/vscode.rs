@@ -111,6 +111,30 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
             } else {
                 label.as_str()
             };
+
+            let args = vscode_config
+                .overrides
+                .get(package.name())
+                .map_or_else(std::vec::Vec::new, |dict| {
+                    dict.get("args").unwrap_or(&vec![]).clone()
+                });
+
+            let environment = vscode_config
+                .overrides
+                .get(package.name())
+                .map_or_else(std::vec::Vec::new, |dict| {
+                    dict.get("environment").unwrap_or(&vec![]).clone()
+                })
+                .iter()
+                .filter_map(|entry| entry.split_once('='))
+                .map(|(name, value)| {
+                    let mut hashmap = HashMap::<String, String>::new();
+                    hashmap.insert("name".into(), name.into());
+                    hashmap.insert("value".into(), value.into());
+                    hashmap
+                })
+                .collect::<Vec<_>>();
+
             let mut config = json!({
                 "name": display_name,
                 "type": debugger_type,
@@ -124,28 +148,13 @@ pub fn run(args: &Args, ctx: &Context) -> Result<()> {
                     name,
                     if cfg!(windows) {".exe"} else {""}
                 ),
-                "args": vscode_config.overrides.get(package.name()).map_or_else(
-                    std::vec::Vec::new,
-                    |dict| dict.get("args").unwrap_or(&vec![]).clone()
-                ),
+                "args": args,
                 "cwd": "${workspaceFolder}",
-                "environment": vscode_config.overrides
-                .get(package.name())
-                .map_or_else(std::vec::Vec::new, |dict| {
-                    dict.get("environment").unwrap_or(&vec![]).clone()
-                })
-                .iter()
-                .filter_map(|entry| entry.split_once('='))
-                .map(|(name, value)| {
-                    let mut hashmap = HashMap::<String, String>::new();
-                    hashmap.insert("name".into(), name.into());
-                    hashmap.insert("value".into(), value.into());
-                    hashmap
-                })
-                .collect::<Vec<_>>(), 
+                "environment": environment,
                 "preLaunchTask":  prelaunch_task,
                 "showDisplayString": true
             });
+
             if debugger_type == "lldb" {
                 config["sourceLanguages"] = json!(["rust"]);
                 config["stopOnEntry"] = json!(false);
