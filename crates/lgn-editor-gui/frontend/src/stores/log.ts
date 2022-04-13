@@ -4,7 +4,8 @@ import { throttled } from "@lgn/web-client/src/lib/store";
 import type { LogEntry } from "@lgn/web-client/src/types/log";
 import { severityFromLevel } from "@lgn/web-client/src/types/log";
 
-import { initEditorLogStream as initEditorLogStreamApi } from "@/api";
+import { initEditorLogStream, initRuntimeLogStream } from "@/api";
+import type { InitLogStreamResponse } from "@lgn/proto-log-stream/dist/log_stream";
 
 export const buffer = 1_000;
 
@@ -21,35 +22,39 @@ export const logEntries = throttled(
   500
 );
 
-export function initEditorLogStream() {
-  const subscription = initEditorLogStreamApi().subscribe(
-    ({ lagging, traceEvent }) => {
-      if (get(streamedLogEntries).length > buffer - 1) {
-        get(streamedLogEntries).shift();
-      }
+function processLog(logEntry: InitLogStreamResponse) {
+  if (get(streamedLogEntries).length > buffer - 1) {
+    get(streamedLogEntries).shift();
+  }
 
-      if (typeof lagging === "number") {
-        // TODO: Handle lagging messages
+  if (typeof logEntry.lagging === "number") {
+    // TODO: Handle lagging messages
 
-        return;
-      }
+    return;
+  }
 
-      if (traceEvent) {
-        // Defaulting to "trace" if the severity cannot be converted from the level
-        const severity = severityFromLevel(traceEvent.level) ?? "trace";
+  if (logEntry.traceEvent) {
+    // Defaulting to "trace" if the severity cannot be converted from the level
+    const severity = severityFromLevel(logEntry.traceEvent.level) ?? "trace";
 
-        streamedLogEntries.update((streamedLogEntries) => [
-          ...streamedLogEntries,
-          {
-            severity,
-            message: traceEvent.message,
-            target: traceEvent.target,
-            datetime: new Date(traceEvent.time),
-          },
-        ]);
-      }
-    }
-  );
+    streamedLogEntries.update((streamedLogEntries) => [
+      ...streamedLogEntries,
+      {
+        severity,
+        message: logEntry.traceEvent.message,
+        target: logEntry.traceEvent.target,
+        datetime: new Date(logEntry.traceEvent.time),
+      },
+    ]);
+  }
+}
 
-  return () => subscription.unsubscribe();
+export function initLogStreams() {
+  const editorSubscription = initEditorLogStream().subscribe(processLog);
+  const runtimeSubscription = initRuntimeLogStream().subscribe(processLog);
+
+  return () => {
+    editorSubscription.unsubscribe();
+    runtimeSubscription.unsubscribe();
+  };
 }

@@ -174,7 +174,7 @@
   import { initMessageStream } from "@/orchestrators/selection";
   import authStatus from "@/stores/authStatus";
   import devSettings from "@/stores/devSettings";
-  import { initEditorLogStream } from "@/stores/log";
+  import { initLogStreams } from "@/stores/log";
   import modal from "@/stores/modal";
 
   import "../assets/index.css";
@@ -187,7 +187,7 @@
       });
     }
 
-    const initEditorLogStreamSubscription = initEditorLogStream();
+    const initLogStreamSubscriptions = initLogStreams();
     const initMessageStreamSubscription = initMessageStream();
     // const initStagedResourcesStreamSubscription = await initStagedResourcesStream();
 
@@ -241,7 +241,7 @@
     );
 
     return () => {
-      initEditorLogStreamSubscription();
+      initLogStreamSubscriptions();
       initMessageStreamSubscription();
       // initStagedResourcesStreamSubscription();
       // TODO: Uncomment when the streaming is ready server-side
