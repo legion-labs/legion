@@ -6,12 +6,12 @@
   import clickOutside from "@lgn/web-client/src/actions/clickOutside";
 
   import type { MetricSelectionState } from "./Lib/MetricSelectionState";
-  import MetricSelectionItem from "./MetricSelectionItem.svelte";
   import {
     getRecentlyUsedMetrics,
     selectionStore,
     updateMetricSelection,
   } from "./Lib/MetricSelectionStore";
+  import MetricSelectionItem from "./MetricSelectionItem.svelte";
 
   let show = false;
   let searchString: string | undefined;
