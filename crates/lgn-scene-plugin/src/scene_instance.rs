@@ -3,10 +3,7 @@ use lgn_core::Name;
 use lgn_data_runtime::{AssetRegistry, Resource, ResourceTypeAndId};
 use lgn_ecs::prelude::{Commands, Query};
 use lgn_graphics_data::runtime::ModelReferenceType;
-use lgn_graphics_renderer::{
-    components::{LightComponent, LightType, VisualComponent},
-    features::mesh_feature::MeshRenderObjectSet,
-};
+use lgn_graphics_renderer::components::{LightComponent, LightType, VisualComponent};
 use lgn_hierarchy::prelude::{BuildChildren, Children, Parent};
 use lgn_tracing::{error, info, warn};
 use lgn_transform::components::{GlobalTransform, Transform};

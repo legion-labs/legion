@@ -453,7 +453,7 @@ fn upload_transform_data(
     clippy::too_many_arguments
 )]
 fn tmp_create_render_mesh_objects(
-    mut mesh_set: ResMut<'_, MeshRenderObjectSet>,
+    mesh_set: ResMut<'_, MeshRenderObjectSet>,
     mut q_visuals: Query<'_, '_, &mut VisualComponent, Added<VisualComponent>>,
 ) {
     for mut visual in q_visuals.iter_mut() {

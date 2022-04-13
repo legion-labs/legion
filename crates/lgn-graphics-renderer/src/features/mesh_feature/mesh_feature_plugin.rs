@@ -1,6 +1,6 @@
 use lgn_app::Plugin;
 
-use crate::core::render_object::*;
+use crate::core::render_object::RenderObjectSet;
 
 pub type MeshRenderObjectSet = RenderObjectSet<MeshRenderObject>;
 
