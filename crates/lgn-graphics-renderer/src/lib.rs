@@ -57,10 +57,15 @@ pub mod core;
 pub mod features;
 pub mod shared;
 
+mod renderdoc;
+
 use crate::core::RendererThreadPlugin;
 use crate::features::mesh_feature::MeshFeaturePlugin;
 use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
 use crate::render_pass::TmpRenderPass;
+
+use crate::renderdoc::RenderDocPlugin;
+
 use crate::{
     components::{
         debug_display_lights, ui_lights, update_lights, ManipulatorComponent, PickedComponent,
@@ -218,6 +223,7 @@ impl Plugin for RendererPlugin {
         app.add_plugin(PickingPlugin {});
         app.add_plugin(RendererThreadPlugin {});
         app.add_plugin(MeshFeaturePlugin::default());
+	app.add_plugin(RenderDocPlugin {});
 
         // This resource needs to be shutdown after all other resources
         app.insert_resource(renderer);
