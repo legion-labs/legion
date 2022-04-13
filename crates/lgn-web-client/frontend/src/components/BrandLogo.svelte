@@ -15,7 +15,7 @@
   style="enable-background:new 0 0 229.42 288.44;"
   xml:space="preserve"
 >
-  <style type="text/css">
+  <style lang="css">
     .st0 {
       display: none;
     }
