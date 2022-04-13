@@ -1,20 +1,16 @@
 <script lang="ts">
   import { getMetricColor } from "./Lib/MetricColor";
-  import type { MetricSelectionState } from "./Lib/MetricSelectionState";
-  import { updateMetricSelection } from "./Lib/MetricSelectionStore";
+  import type { MetricState } from "./Lib/MetricState";
+  import type { MetricStore } from "./Lib/MetricStore";
 
-  export let metric: MetricSelectionState;
-
-  function switchMetric() {
-    metric.selected = !metric.selected;
-    if (metric.selected) {
-      metric.hidden = false;
-    }
-    updateMetricSelection(metric);
-  }
+  export let metricStore: MetricStore;
+  export let metric: MetricState;
 </script>
 
-<div on:click={switchMetric} class="select-none">
+<div
+  on:click={() => metricStore.switchSelection(metric.name)}
+  class="select-none"
+>
   <input
     type="checkbox"
     style="accent-color:{getMetricColor(metric.name)}"

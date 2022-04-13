@@ -3,24 +3,27 @@
   import { get } from "svelte/store";
 
   import type { MetricPoint } from "./Lib/MetricPoint";
-  import type { MetricSelectionState } from "./Lib/MetricSelectionState";
-  import { selectionStore } from "./Lib/MetricSelectionStore";
+  import type { MetricState } from "./Lib/MetricState";
+  import type { MetricStore } from "./Lib/MetricStore";
   import type { MetricStreamer } from "./Lib/MetricStreamer";
   import MetricTooltipItem from "./MetricTooltipItem.svelte";
 
-  export let xScale: d3.ScaleLinear<number, number, never>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   export let zoomEvent: D3ZoomEvent<HTMLCanvasElement, any>;
+  export let xScale: d3.ScaleLinear<number, number, never>;
   export let metricStreamer: MetricStreamer;
   export let leftMargin: number;
+  export let metricStore: MetricStore;
+
   const margin = 15;
+
   let displayed = false;
   let xValue: number;
   let yValue: number;
   let side: boolean;
   let width: number;
   let displayInternal: boolean;
-  let values: { metric: MetricSelectionState; value: MetricPoint | null }[];
+  let values: { metric: MetricState; value: MetricPoint | null }[];
 
   export function enable() {
     displayed = true;
@@ -46,7 +49,7 @@
   }
   $: {
     if (xValue) {
-      values = get(selectionStore)
+      values = get(metricStore)
         .filter((m) => !m.hidden && m.selected)
         .map((metric) => {
           return {
@@ -61,7 +64,7 @@
     ? `top:${yValue}px;left:${xValue + margin}px`
     : `top:${yValue}px;right:${width - xValue + margin}px`;
 
-  function getClosestValue(metric: MetricSelectionState, time: number) {
+  function getClosestValue(metric: MetricState, time: number) {
     if (!metricStreamer?.metricStore) {
       return null;
     }

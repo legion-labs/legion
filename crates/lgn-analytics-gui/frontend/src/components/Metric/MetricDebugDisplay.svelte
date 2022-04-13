@@ -1,10 +1,8 @@
 <script lang="ts">
-  import type { Writable } from "svelte/store";
-
   import { formatExecutionTime } from "@/lib/format";
 
   import TimeRangeDetails from "../Misc/TimeRangeDetails.svelte";
-  import type { MetricState } from "./Lib/MetricState";
+  import type { MetricStore } from "./Lib/MetricStore";
   import type { MetricStreamer } from "./Lib/MetricStreamer";
 
   export let width: number;
@@ -21,7 +19,7 @@
   export let currentMaxMs: number;
   export let brushStart: number;
   export let brushEnd: number;
-  export let metricStore: Writable<MetricState[]>;
+  export let metricStore: MetricStore;
   export let id: string;
 </script>
 

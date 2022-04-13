@@ -1,4 +1,4 @@
-import { get } from "svelte/store";
+import * as d3 from "d3";
 
 import type {
   MetricBlockData,
@@ -8,28 +8,22 @@ import type {
 
 import { MetricBlockState } from "./MetricBlockState";
 import type { MetricPoint } from "./MetricPoint";
-import { addToSelectionStore, selectionStore } from "./MetricSelectionStore";
 
 export class MetricState {
   name: string;
   unit: string;
   min = -Infinity;
   max = Infinity;
-  private blocks: Map<string, MetricBlockState>;
+  hidden = false;
+  selected = true;
+  lastUse: number | null = null;
+  private blocks: Map<string, MetricBlockState> = new Map();
   constructor(metricDesc: MetricDesc) {
     this.name = metricDesc.name;
     this.unit = metricDesc.unit;
-    this.blocks = new Map();
-    addToSelectionStore(this);
   }
 
-  canBeDisplayed(): boolean {
-    const metric = get(selectionStore).filter((m) => m.name === this.name)[0];
-    if (!metric) {
-      return false;
-    }
-    return metric.selected && !metric.hidden;
-  }
+  canBeDisplayed = () => this.selected && !this.hidden;
 
   registerBlock(manifest: MetricBlockManifest) {
     if (manifest.desc) {
@@ -121,5 +115,19 @@ export class MetricState {
       }
     }
     return result;
+  }
+
+  static getMetricColor(name: string) {
+    const color = Math.abs(this.hashString(name)) % 10;
+    return d3.schemeCategory10[color];
+  }
+
+  private static hashString(string: string): number {
+    let hash = 0;
+    for (let i = 0; i < string.length; i++) {
+      hash = string.charCodeAt(i) + ((hash << 5) - hash);
+      hash = hash & hash;
+    }
+    return hash;
   }
 }

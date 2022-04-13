@@ -1,69 +1,34 @@
 <script lang="ts">
-  import { onDestroy, onMount } from "svelte";
-  import type { Unsubscriber } from "svelte/store";
-  import { get } from "svelte/store";
+  import { derived, writable } from "svelte/store";
 
   import clickOutside from "@lgn/web-client/src/actions/clickOutside";
 
-  import type { MetricSelectionState } from "./Lib/MetricSelectionState";
-  import {
-    getRecentlyUsedMetrics,
-    selectionStore,
-    updateMetricSelection,
-  } from "./Lib/MetricSelectionStore";
   import MetricSelectionItem from "./MetricSelectionItem.svelte";
+  import { getRecentlyUsedStore, type MetricStore } from "./Lib/MetricStore";
+
+  export let metricStore: MetricStore;
 
   let show = false;
-  let searchString: string | undefined;
-  let subscription: Unsubscriber;
-  let selectedMetricCount: number;
-  let filteredMetrics: MetricSelectionState[];
-  let recentlyUsedMetrics: MetricSelectionState[];
-
-  onMount(() => {
-    subscription = selectionStore.subscribe((selections) => {
-      selectedMetricCount = selections.filter((m) => m.selected).length;
-      filteredMetrics = getFilteredMetrics(selections);
-      recentlyUsedMetrics = selections.filter((m) => recentlyUsedFilter(m));
-    });
-  });
-
-  onDestroy(() => {
-    if (subscription) {
-      subscription();
+  let searchString = writable<string | null>(null);
+  let recentlyUsedMetrics = getRecentlyUsedStore(metricStore);
+  let selectedMetricCount = derived(
+    metricStore,
+    (s) => s.filter((m) => m.selected).length
+  );
+  let filteredMetrics = derived(
+    [metricStore, searchString],
+    ([data, search]) => {
+      if (!search) {
+        return data;
+      }
+      const lower = search.toLowerCase();
+      return data.filter((m) => m.name.toLowerCase().includes(lower));
     }
-  });
-
-  function getFilteredMetrics(selection: MetricSelectionState[]) {
-    return selection.filter((m) => filterMetric(m));
-  }
-
-  function onSearchChange(
-    e: Event & { currentTarget: EventTarget & HTMLInputElement }
-  ) {
-    updateSearch(e.currentTarget.value);
-  }
-
-  function updateSearch(value: string) {
-    searchString = value;
-    filteredMetrics = getFilteredMetrics(get(selectionStore));
-  }
+  );
 
   function close() {
     show = false;
-    updateSearch("");
-  }
-
-  function filterMetric(m: MetricSelectionState) {
-    if (!searchString) {
-      return true;
-    }
-    return m.name.toLowerCase().includes(searchString.toLowerCase());
-  }
-
-  function recentlyUsedFilter(metric: MetricSelectionState) {
-    const recent = getRecentlyUsedMetrics();
-    return recent.some((m) => m.name === metric.name);
+    $searchString = "";
   }
 
   function handleKeydown(event: KeyboardEvent) {
@@ -96,21 +61,15 @@
               type="text"
               class="metric-search border-2"
               placeholder="Search metric..."
-              on:input={onSearchChange}
+              bind:value={$searchString}
             />
           </div>
           <div class="flex space-x-3 select-none">
             <div class="text-gray-400">
-              {selectedMetricCount} metric{selectedMetricCount > 1 ? "s" : ""} selected
+              {$selectedMetricCount} metric{$selectedMetricCount > 1 ? "s" : ""}
+              selected
             </div>
-            <div
-              on:click={() => {
-                get(selectionStore).forEach((m) => {
-                  m.selected = false;
-                  updateMetricSelection(m);
-                });
-              }}
-            >
+            <div on:click={() => metricStore.clearSelection()}>
               <i class="bi bi-x-circle" />
               Clear all
             </div>
@@ -120,16 +79,16 @@
           <div class=" metric-scrollable ">
             <div class="metric-category-header select-none">Recently Used</div>
             <div class="grid grid-cols-1 justify-items-start">
-              {#each recentlyUsedMetrics as metric}
-                <MetricSelectionItem {metric} />
+              {#each $recentlyUsedMetrics as metric}
+                <MetricSelectionItem {metricStore} {metric} />
               {/each}
             </div>
           </div>
           <div class="col-span-2 metric-scrollable">
             <div class="metric-category-header select-none">All Metrics</div>
             <div class="grid grid-cols-2 justify-items-start">
-              {#each filteredMetrics as metric}
-                <MetricSelectionItem {metric} />
+              {#each $filteredMetrics as metric}
+                <MetricSelectionItem {metricStore} {metric} />
               {/each}
             </div>
           </div>

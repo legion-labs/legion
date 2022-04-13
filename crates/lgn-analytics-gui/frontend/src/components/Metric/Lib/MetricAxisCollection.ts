@@ -1,9 +1,8 @@
 import * as d3 from "d3";
-import { get } from "svelte/store";
 
 import { MetricAxis } from "./MetricAxis";
-import { selectionStore } from "./MetricSelectionStore";
 import type { MetricSlice } from "./MetricSlice";
+import type { MetricState } from "./MetricState";
 
 export class MetricAxisCollection {
   private data: Map<string, MetricAxis>;
@@ -12,9 +11,10 @@ export class MetricAxisCollection {
   }
 
   getBestAxisScale(
-    range: [number, number]
+    range: [number, number],
+    metrics: MetricState[]
   ): d3.ScaleLinear<number, number, never> {
-    const bestAxis = this.getBestAxis();
+    const bestAxis = this.getBestAxis(metrics);
     return bestAxis
       ? bestAxis.scale.range(range)
       : d3.scaleLinear().range(range).nice();
@@ -42,8 +42,7 @@ export class MetricAxisCollection {
     }
   }
 
-  private getBestAxis(): MetricAxis | undefined {
-    const metrics = get(selectionStore);
+  private getBestAxis(metrics: MetricState[]): MetricAxis | undefined {
     const result = metrics.map((metric) => ({
       unit: metric.unit,
       count: metrics.filter(

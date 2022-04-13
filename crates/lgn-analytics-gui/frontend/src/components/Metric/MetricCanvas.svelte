@@ -2,21 +2,17 @@
   import * as d3 from "d3";
   import type { D3ZoomEvent } from "d3";
   import { onDestroy, onMount } from "svelte";
-  import type { Unsubscriber, Writable } from "svelte/store";
+  import type { Unsubscriber } from "svelte/store";
   import { get } from "svelte/store";
 
-  import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
-  import log from "@lgn/web-client/src/lib/log";
-
-  import { makeGrpcClient } from "@/lib/client";
   import { formatExecutionTime } from "@/lib/format";
   import { getLodFromPixelSizeNs } from "@/lib/lod";
 
   import { MetricAxisCollection } from "./Lib/MetricAxisCollection";
   import { getMetricColor } from "./Lib/MetricColor";
-  import { selectionStore } from "./Lib/MetricSelectionStore";
   import type { MetricSlice } from "./Lib/MetricSlice";
   import type { MetricState } from "./Lib/MetricState";
+  import type { MetricStore } from "./Lib/MetricStore";
   import { MetricStreamer } from "./Lib/MetricStreamer";
   import MetricDebugDisplay from "./MetricDebugDisplay.svelte";
   import MetricLegendGroup from "./MetricLegendGroup.svelte";
@@ -27,7 +23,7 @@
 
   let metricStreamer: MetricStreamer;
   let axisCollection: MetricAxisCollection;
-  let metricStore: Writable<MetricState[]>;
+  let metricStore: MetricStore;
 
   const margin = { top: 20, right: 50, bottom: 40, left: 70 };
 
@@ -38,7 +34,6 @@
   $: width = mainWidth - margin.left - margin.right;
 
   let metricTooltip: MetricTooltip;
-  let client: PerformanceAnalyticsClientImpl | null = null;
   let totalMinMs = -Infinity;
   let totalMaxMs = Infinity;
   let currentMinMs = -Infinity;
@@ -72,7 +67,6 @@
   let transform: d3.ZoomTransform = d3.zoomIdentity;
   let canvas: HTMLCanvasElement;
   let pointSubscription: Unsubscriber | undefined;
-  let selectionSubsription: Unsubscriber | undefined;
 
   $: if (!loading) {
     if (transform) {
@@ -93,7 +87,6 @@
   const getPixelSizeNs = () => (getDeltaMs() * 1_000_000) / width;
 
   onMount(async () => {
-    client = makeGrpcClient();
     axisCollection = new MetricAxisCollection();
     await fetchMetricsAsync().then(() => {
       createChart();
@@ -111,9 +104,6 @@
     }
     if (pointSubscription) {
       pointSubscription();
-    }
-    if (selectionSubsription) {
-      selectionSubsription();
     }
   });
 
@@ -134,11 +124,6 @@
   }
 
   async function fetchMetricsAsync() {
-    if (!client) {
-      log.error("no client in fetchMetricsAsync");
-      return;
-    }
-
     metricStreamer = new MetricStreamer(id);
     metricStore = metricStreamer.metricStore;
     await metricStreamer.initializeAsync();
@@ -146,16 +131,12 @@
     totalMinMs = currentMinMs = metricStreamer.currentMinMs;
     totalMaxMs = currentMaxMs = metricStreamer.currentMaxMs;
 
-    selectionSubsription = selectionStore.subscribe(() => {
-      update(get(metricStore));
-    });
-
     pointSubscription = metricStore.subscribe((metricStates) => {
-      update(metricStates);
+      updateInternal(metricStates);
     });
   }
 
-  function update(states: MetricState[]) {
+  function updateInternal(states: MetricState[]) {
     updateLod();
     updatePoints(states);
     updateChart();
@@ -234,15 +215,16 @@
       .axisBottom(x)
       .tickFormat((d) => formatExecutionTime(d.valueOf()));
 
-    bestY = axisCollection.getBestAxisScale([height, 0]);
+    bestY = axisCollection.getBestAxisScale([height, 0], get(metricStore));
     yAxis = d3.axisLeft(bestY);
 
     gxAxis = svgGroup
       .append("g")
+      .style("user-select", "none")
       .attr("transform", `translate(0, ${height})`)
       .call(xAxis);
 
-    gyAxis = svgGroup.append("g").call(yAxis);
+    gyAxis = svgGroup.append("g").style("user-select", "none").call(yAxis);
 
     zoom = d3
       .zoom()
@@ -308,7 +290,7 @@
     svgGroup.call(zoom as any);
     refreshZoom();
     updateChartWidth();
-    bestY = axisCollection.getBestAxisScale([height, 0]);
+    bestY = axisCollection.getBestAxisScale([height, 0], get(metricStore));
     draw();
     updateTime = Math.floor(performance.now() - startTime);
   }
@@ -367,9 +349,10 @@
 <svelte:window on:keydown={handleKeydown} />
 
 {#if !loading}
-  <MetricSelection />
+  <MetricSelection {metricStore} />
   <MetricTooltip
     bind:this={metricTooltip}
+    {metricStore}
     xScale={transform.rescaleX(x)}
     leftMargin={margin.left}
     {zoomEvent}
@@ -382,7 +365,7 @@
     <div>Loading...</div>
   {:else}
     <div style="padding-left:{margin.left}px">
-      <MetricLegendGroup />
+      <MetricLegendGroup {metricStore} />
     </div>
     <div style="display:inherit;padding-top:40px">
       <MetricDebugDisplay
