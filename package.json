@@ -17,8 +17,10 @@
     "dependencies:update": "pnpm up -r -i --latest",
     "analytics:start": "pnpm -C npm-pkgs/lgn-analytics-gui start",
     "editor:start": "pnpm -C npm-pkgs/lgn-editor-gui start",
-    "runtime:start": "pnpm -C npm-pkgs/lgn-runtime-gui start"
-  },
+    "runtime:start": "pnpm -C npm-pkgs/lgn-runtime-gui start",
+    "analytics:start:desktop": "pnpm -C npm-pkgs/lgn-analytics-gui start:desktop",
+    "editor:start:desktop": "pnpm -C npm-pkgs/lgn-editor-gui start:desktop",
+    "runtime:start:desktop": "pnpm -C npm-pkgs/lgn-runtime-gui start:desktop"  },
   "devDependencies": {
     "rimraf": "^3.0.2",
     "wasm-pack": "0.10.2"

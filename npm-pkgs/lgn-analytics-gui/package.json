@@ -9,8 +9,7 @@
   "type": "module",
   "packageManager": "pnpm@6.24.1",
   "scripts": {
-    "start:desktop:dev": "cross-env LOAD_DEV_URL=true concurrently --names \"vite,electron\" \"vite dev\" \"electron src/electron/main.cjs\" --kill-others",
-    "start:desktop": "electron src/electron/main.cjs",
+    "start:desktop": "cross-env LOAD_DEV_URL=true concurrently --names \"vite,electron\" \"vite dev\" \"electron src/electron/main.cjs\" --kill-others",
     "start:browser": "vite dev",
     "start": "pnpm start:browser",
     "build": "vite build",
