@@ -1,6 +1,6 @@
 <!--
 @Component
-Context menu that replaces the default context menu in browsers and Tauri.
+Context menu that replaces the default context menu in browsers and Electron.
 
 _This component is expected to be mounted _once_ in the whole page._
 

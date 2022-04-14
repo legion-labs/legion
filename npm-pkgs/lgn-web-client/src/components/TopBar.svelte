@@ -100,7 +100,7 @@
   }
 </script>
 
-<div class="root" class:tauri={window.isElectron}>
+<div class="root" class:electron={window.isElectron}>
   <div use:clickOutside on:click-outside={closeMenu} class="menus">
     <div class="brand" title="Legion Editor">
       <BrandLogo class="brand-logo" />
@@ -119,7 +119,7 @@
         <div
           data-testid="dropdown-{menu.id}"
           class="menu-dropdown"
-          class:tauri={window.isElectron}
+          class:electron={window.isElectron}
           class:hidden={$topBarMenuStore !== menu.id}
         >
           <div class="menu-dropdown-items">
@@ -190,7 +190,7 @@
     @apply h-8 flex flex-row justify-between items-center flex-1 whitespace-nowrap;
   }
 
-  .root.tauri {
+  .root.electron {
     @apply h-10;
   }
 
@@ -218,7 +218,7 @@
     @apply absolute top-7 rounded-b-sm shadow-lg shadow-gray-800;
   }
 
-  .menu-dropdown.tauri {
+  .menu-dropdown.electron {
     @apply top-9;
   }
 
