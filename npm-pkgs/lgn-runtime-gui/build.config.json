@@ -1,0 +1,15 @@
+{
+  "appId": "com.legion.runtime",
+  "productName": "Legion Runtime",
+  "directories": {
+    "output": "dist"
+  },
+  "files": [
+    "src/electron/main.cjs",
+    "src/electron/preload.cjs",
+    {
+      "from": "build",
+      "to": ""
+    }
+  ]
+}

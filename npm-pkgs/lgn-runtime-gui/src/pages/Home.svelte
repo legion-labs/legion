@@ -10,7 +10,7 @@
 
 <div class="root">
   <TopBar />
-  <div class="content-wrapper">
+  <div class="content-wrapper" class:electron={window.isElectron}>
     <div class="content">
       <div class="main-content">
         <Panel tabs={["Main Stream"]}>
@@ -42,8 +42,12 @@
     @apply h-screen w-full;
   }
 
-  .content-wrapper {
-    @apply h-[calc(100vh-4rem)] w-full overflow-auto;
+  .root .content-wrapper {
+    @apply h-[calc(100vh-4.5rem)] w-full overflow-auto;
+  }
+
+  .root .content-wrapper.electron {
+    @apply h-[calc(100vh-5rem)];
   }
 
   .content {
