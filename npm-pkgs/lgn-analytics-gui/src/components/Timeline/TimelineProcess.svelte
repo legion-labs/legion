@@ -94,13 +94,11 @@
           <TimelineTrack
             slot="canvas"
             {stateStore}
-            dataObject={processAsyncData}
             processCollapsed={collapsed}
             maxDepth={processAsyncData.maxDepth}
             on:zoom={(e) => wheelDispatcher("zoom", e.detail)}
             drawerBuilder={() =>
               new TimelineTrackCanvasAsyncDrawer(
-                stateStore,
                 processOffsetMs,
                 processAsyncData
               )}
@@ -125,17 +123,12 @@
           </span>
           <TimelineTrack
             slot="canvas"
-            dataObject={thread}
             {stateStore}
             processCollapsed={collapsed}
             maxDepth={thread.maxDepth}
             on:zoom={(e) => wheelDispatcher("zoom", e.detail)}
             drawerBuilder={() =>
-              new TimelineTrackCanvasSyncDrawer(
-                stateStore,
-                processOffsetMs,
-                thread
-              )}
+              new TimelineTrackCanvasSyncDrawer(processOffsetMs, thread)}
           />
         </TimelineRow>
       {/each}

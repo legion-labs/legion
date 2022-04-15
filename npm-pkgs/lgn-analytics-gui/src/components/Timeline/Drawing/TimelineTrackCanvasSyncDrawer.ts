@@ -1,29 +1,20 @@
-import { get } from "svelte/store";
-
 import { findBestLod } from "@/lib/time";
 
 import type { Thread } from "../Lib/Thread";
-import type { ThreadBlock } from "../Lib/ThreadBlock";
-import type { TimelineStateStore } from "../Lib/TimelineStateStore";
+import type { TimelineState } from "../Lib/TimelineState";
 import { TimelineTrackCanvasBaseDrawer } from "./TimelineTrackCanvasBaseDrawer";
 import type { TimelineTrackContext } from "./TimelineTrackContext";
 
 export class TimelineTrackCanvasSyncDrawer extends TimelineTrackCanvasBaseDrawer {
   private thread: Thread;
-  private blocks: Record<string, ThreadBlock>;
 
-  constructor(
-    stateStore: TimelineStateStore,
-    processOffsetMs: number,
-    thread: Thread
-  ) {
-    super(stateStore, processOffsetMs);
+  constructor(processOffsetMs: number, thread: Thread) {
+    super(processOffsetMs);
     this.thread = thread;
-    this.blocks = get(stateStore).blocks;
   }
 
   protected canDraw(): boolean {
-    return this.thread.block_ids.length > 0;
+    return (this.thread.block_ids?.length ?? 0) > 0;
   }
 
   protected getPixelRange(ctx: TimelineTrackContext): [number, number] {
@@ -34,9 +25,10 @@ export class TimelineTrackCanvasSyncDrawer extends TimelineTrackCanvasBaseDrawer
     return [beginThreadPixels, endThreadPixels];
   }
 
-  protected drawImpl(ctx: TimelineTrackContext) {
+  protected drawImpl(ctx: TimelineTrackContext, state: TimelineState) {
+    const blocks = state.blocks;
     this.thread.block_ids.forEach((block_id) => {
-      const block = this.blocks[block_id];
+      const block = blocks[block_id];
       const lodToRender = !this.canvas
         ? null
         : findBestLod(this.canvas.width, [ctx.begin, ctx.end], block);
@@ -51,7 +43,7 @@ export class TimelineTrackCanvasSyncDrawer extends TimelineTrackCanvasBaseDrawer
         trackIndex += 1
       ) {
         const track = lodToRender.tracks[trackIndex];
-        this.drawSpanTrack(trackIndex, track, ctx);
+        this.drawSpanTrack(trackIndex, track, ctx, state);
       }
     });
   }

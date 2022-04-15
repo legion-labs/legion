@@ -1,22 +1,18 @@
 import type { ProcessAsyncData } from "../Lib/ProcessAsyncData";
-import type { TimelineStateStore } from "../Lib/TimelineStateStore";
+import type { TimelineState } from "../Lib/TimelineState";
 import { TimelineTrackCanvasBaseDrawer } from "./TimelineTrackCanvasBaseDrawer";
 import type { TimelineTrackContext } from "./TimelineTrackContext";
 
 export class TimelineTrackCanvasAsyncDrawer extends TimelineTrackCanvasBaseDrawer {
   private async: ProcessAsyncData;
 
-  constructor(
-    stateStore: TimelineStateStore,
-    processOffsetMs: number,
-    processAsyncData: ProcessAsyncData
-  ) {
-    super(stateStore, processOffsetMs);
+  constructor(processOffsetMs: number, processAsyncData: ProcessAsyncData) {
+    super(processOffsetMs);
     this.async = processAsyncData;
   }
 
   protected canDraw(): boolean {
-    return this.async.sections.length > 0;
+    return (this.async.sections?.length ?? 0) > 0;
   }
 
   protected getPixelRange(ctx: TimelineTrackContext): [number, number] {
@@ -27,7 +23,7 @@ export class TimelineTrackCanvasAsyncDrawer extends TimelineTrackCanvasBaseDrawe
     return [beginTasksPixels, endTasksPixels];
   }
 
-  protected drawImpl(ctx: TimelineTrackContext) {
+  protected drawImpl(ctx: TimelineTrackContext, state: TimelineState) {
     this.async.sections.forEach((section) => {
       for (
         let trackIndex = 0;
@@ -35,7 +31,7 @@ export class TimelineTrackCanvasAsyncDrawer extends TimelineTrackCanvasBaseDrawe
         trackIndex += 1
       ) {
         const track = section.tracks[trackIndex];
-        this.drawSpanTrack(trackIndex, track, ctx);
+        this.drawSpanTrack(trackIndex, track, ctx, state);
       }
     });
   }

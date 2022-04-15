@@ -13,7 +13,6 @@
   export let processCollapsed: boolean;
   export let maxDepth: number;
   export let drawerBuilder: () => TimelineTrackCanvasBaseDrawer;
-  export let dataObject: any;
 
   let canvas: HTMLCanvasElement | null;
   let ctx: CanvasRenderingContext2D;
@@ -24,10 +23,6 @@
   const wheelDispatch = createEventDispatcher<{ zoom: WheelEvent }>();
   const searchStore = debounced(TimelineContext.search, 100);
   const canvasDrawer = drawerBuilder();
-
-  $: if (dataObject) {
-    draw();
-  }
 
   $: height = Math.max(spanPixelHeight, maxDepth * spanPixelHeight);
 
@@ -76,7 +71,7 @@
   async function draw() {
     if (canvas && ctx && !processCollapsed) {
       await tick();
-      canvasDrawer.draw($searchStore);
+      canvasDrawer.draw($searchStore, $stateStore);
       drawSelectedRange();
     }
   }

@@ -1,31 +1,28 @@
 import binarySearch from "binary-search";
-import { get } from "svelte/store";
 
-import type { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
 import type { SpanTrack } from "@lgn/proto-telemetry/dist/span";
 
 import { spanPixelHeight } from "@/components/Timeline/Values/TimelineValues";
 import { formatExecutionTime } from "@/lib/format";
 
 import type { TimelineCaptionItem } from "../Lib/TimelineSpanCaptionItem";
-import type { TimelineStateStore } from "../Lib/TimelineStateStore";
+import type { TimelineState } from "../Lib/TimelineState";
 import type { TimelineTrackContext } from "./TimelineTrackContext";
 
 export abstract class TimelineTrackCanvasBaseDrawer {
   protected canvas: HTMLCanvasElement | undefined;
   protected ctx: CanvasRenderingContext2D | undefined;
-  protected stateStore: TimelineStateStore;
   protected processOffsetMs: number;
-  private scopes: Record<number, ScopeDesc> = {};
-  constructor(stateStore: TimelineStateStore, processOffsetMs: number) {
-    this.stateStore = stateStore;
+  constructor(processOffsetMs: number) {
     this.processOffsetMs = processOffsetMs;
-    this.scopes = get(this.stateStore).scopes;
   }
 
   protected abstract canDraw(): boolean;
 
-  protected abstract drawImpl(ctx: TimelineTrackContext): void;
+  protected abstract drawImpl(
+    ctx: TimelineTrackContext,
+    state: TimelineState
+  ): void;
 
   protected abstract getPixelRange(ctx: TimelineTrackContext): [number, number];
 
@@ -34,17 +31,13 @@ export abstract class TimelineTrackCanvasBaseDrawer {
     this.ctx = ctx;
   }
 
-  draw(search: string) {
+  draw(search: string, state: TimelineState) {
     if (!this.canvas || !this.ctx) {
       return;
     }
 
-    const [begin, end] = get(this.stateStore).getViewRange();
-    const invTimeSpan = 1.0 / (end - begin);
     const canvasWidth = this.canvas.clientWidth;
     const canvasHeight = this.canvas.clientHeight;
-    const msToPixelsFactor = invTimeSpan * canvasWidth;
-
     this.ctx.fillStyle = "#F0F0F0";
     this.ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
@@ -52,6 +45,9 @@ export abstract class TimelineTrackCanvasBaseDrawer {
       return;
     }
 
+    const [begin, end] = state.getViewRange();
+    const invTimeSpan = 1.0 / (end - begin);
+    const msToPixelsFactor = invTimeSpan * canvasWidth;
     const context = { begin, end, msToPixelsFactor, search };
     const pixelRange = this.getPixelRange(context);
 
@@ -64,13 +60,14 @@ export abstract class TimelineTrackCanvasBaseDrawer {
     );
 
     this.ctx.font = "15px arial";
-    this.drawImpl(context);
+    this.drawImpl(context, state);
   }
 
   protected drawSpanTrack(
     trackIndex: number,
     track: SpanTrack,
-    timelineTrackContext: TimelineTrackContext
+    timelineTrackContext: TimelineTrackContext,
+    state: TimelineState
   ) {
     if (!this.ctx) {
       return;
@@ -139,7 +136,7 @@ export abstract class TimelineTrackCanvasBaseDrawer {
 
       if (span.scopeHash !== 0) {
         let name = "<unknown_scope>";
-        const scope = this.scopes[span.scopeHash];
+        const scope = state.scopes[span.scopeHash];
         if (scope) {
           name = scope.name;
         }

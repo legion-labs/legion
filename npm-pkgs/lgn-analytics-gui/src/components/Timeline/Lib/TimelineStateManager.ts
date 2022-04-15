@@ -54,12 +54,7 @@ export class TimelineStateManager {
       throw new Error(`Process ${this.processId} not found`);
     }
     this.rootStartTime = Date.parse(this.process.startTime);
-    this.state.update((s) => {
-      if (this.process) {
-        s.processes.push(this.process);
-      }
-      return s;
-    });
+    this.state.addProcess(this.process);
     await this.fetchStreams(this.process);
     this.initViewRange(this.process);
     await this.fetchChildren(this.process);
@@ -107,18 +102,7 @@ export class TimelineStateManager {
       if (!stream.tags.includes("cpu")) {
         return;
       }
-
-      this.state.update((state) => {
-        state.threads[stream.streamId] = {
-          streamInfo: stream,
-          maxDepth: 0,
-          minMs: Infinity,
-          maxMs: -Infinity,
-          block_ids: [],
-        };
-        return state;
-      });
-
+      this.state.addThread(stream);
       promises.push(this.fetchBlocks(process, stream));
     });
 
@@ -130,17 +114,8 @@ export class TimelineStateManager {
       processId: process.processId,
     });
 
-    // commented-out - children will be collapsed by default
-    // we should really fetch all the descendents server-side to accomplish this in fewer queries
-    // for (let i = 0; i < processes.length; ++i) {
-    //   await fetchChildren(processes[i]);
-    // }
-
     const promises = processes.map((process) => {
-      this.state.update((s) => {
-        s.processes.push(process);
-        return s;
-      });
+      this.state.addProcess(process);
       return this.fetchStreams(process);
     });
     await Promise.all(promises);
@@ -188,10 +163,7 @@ export class TimelineStateManager {
             );
             section.tracks = reply.tracks;
             section.state = LODState.Loaded;
-            this.state.update((s) => {
-              s.scopes = { ...s.scopes, ...reply.scopes };
-              return s;
-            });
+            this.state.addScopes(reply.scopes);
             return this.fetchDynData();
           },
           (e) => {
@@ -311,26 +283,7 @@ export class TimelineStateManager {
     for (const block of response.blocks) {
       const beginMs = processOffset + timestampToMs(process, block.beginTicks);
       const endMs = processOffset + timestampToMs(process, block.endTicks);
-      this.state.update((s) => {
-        s.minMs = Math.min(s.minMs, beginMs);
-        s.maxMs = Math.max(s.maxMs, endMs);
-        s.eventCount += block.nbObjects;
-        return s;
-      });
-
-      this.state.update((s) => {
-        s.threads[stream.streamId].block_ids.push(block.blockId);
-        return s;
-      });
-      this.state.update((s) => {
-        s.blocks[block.blockId] = {
-          blockDefinition: block,
-          beginMs: beginMs,
-          endMs: endMs,
-          lods: [],
-        };
-        return s;
-      });
+      this.state.addBlock(beginMs, endMs, block, stream.streamId);
     }
     get(this.state).processAsyncData[process.processId] = asyncData;
   }
@@ -405,18 +358,6 @@ export class TimelineStateManager {
     if (!response.lod) {
       throw new Error(`Error fetching spans for block ${response.blockId}`);
     }
-    const blockLod = response.lod;
-    this.state.update((s) => {
-      s.ready = true;
-      s.scopes = { ...s.scopes, ...response.scopes };
-      const block = s.blocks[response.blockId];
-      const thread = s.threads[block.blockDefinition.streamId];
-      thread.maxDepth = Math.max(thread.maxDepth, blockLod.tracks.length);
-      thread.minMs = Math.min(thread.minMs, response.beginMs);
-      thread.maxMs = Math.max(thread.maxMs, response.endMs);
-      thread.block_ids.push(response.blockId);
-      block.lods[blockLod.lodId].tracks = blockLod.tracks;
-      return s;
-    });
+    this.state.addBlockData(response);
   }
 }

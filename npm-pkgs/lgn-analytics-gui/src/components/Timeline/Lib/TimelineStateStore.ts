@@ -1,5 +1,11 @@
 import { writable } from "svelte/store";
 
+import type { BlockSpansReply } from "@lgn/proto-telemetry/dist/analytics";
+import type { BlockMetadata } from "@lgn/proto-telemetry/dist/block";
+import type { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
+import type { Process } from "@lgn/proto-telemetry/dist/process";
+import type { Stream } from "@lgn/proto-telemetry/dist/stream";
+
 import type { TimelineState } from "./TimelineState";
 
 export type TimelineStateStore = ReturnType<typeof createTimelineStateStore>;
@@ -42,6 +48,70 @@ export function createTimelineStateStore(state: TimelineState) {
       ];
       s.viewRange = [result[0], result[1]];
       return s;
+    });
+  };
+
+  const addBlock = (
+    beginMs: number,
+    endMs: number,
+    block: BlockMetadata,
+    streamId: string
+  ) => {
+    updateState((s) => {
+      s.minMs = Math.min(s.minMs, beginMs);
+      s.maxMs = Math.max(s.maxMs, endMs);
+      s.eventCount += block.nbObjects;
+      s.threads[streamId].block_ids.push(block.blockId);
+      s.blocks[block.blockId] = {
+        blockDefinition: block,
+        beginMs: beginMs,
+        endMs: endMs,
+        lods: [],
+      };
+    });
+  };
+
+  const addBlockData = (response: BlockSpansReply) => {
+    updateState((s) => {
+      if (!s.ready) {
+        s.ready = true;
+      }
+      addScopes(response.scopes);
+      const block = s.blocks[response.blockId];
+      const thread = s.threads[block.blockDefinition.streamId];
+      const blockLod = response.lod;
+      if (blockLod) {
+        thread.maxDepth = Math.max(thread.maxDepth, blockLod.tracks.length);
+        thread.minMs = Math.min(thread.minMs, response.beginMs);
+        thread.maxMs = Math.max(thread.maxMs, response.endMs);
+        thread.block_ids.push(response.blockId);
+        block.lods[blockLod.lodId].tracks = blockLod.tracks;
+      }
+      return s;
+    });
+  };
+
+  const addProcess = (process: Process) => {
+    updateState((s) => {
+      s.processes.push(process);
+    });
+  };
+
+  const addThread = (stream: Stream) => {
+    updateState((s) => {
+      s.threads[stream.streamId] = {
+        streamInfo: stream,
+        maxDepth: 0,
+        minMs: Infinity,
+        maxMs: -Infinity,
+        block_ids: [],
+      };
+    });
+  };
+
+  const addScopes = (scopes: { [key: number]: ScopeDesc }) => {
+    updateState((s) => {
+      s.scopes = { ...s.scopes, ...scopes };
     });
   };
 
@@ -117,6 +187,11 @@ export function createTimelineStateStore(state: TimelineState) {
 
   return {
     subscribe,
+    addBlock,
+    addProcess,
+    addThread,
+    addScopes,
+    addBlockData,
     set,
     keyboardZoom,
     keyboardTranslate,
@@ -129,6 +204,5 @@ export function createTimelineStateStore(state: TimelineState) {
     updateSelection,
     applyDrag,
     stopDrag,
-    update,
   };
 }
