@@ -9,16 +9,18 @@ import { formatExecutionTime } from "@/lib/format";
 import type { TimelineCaptionItem } from "../Lib/TimelineSpanCaptionItem";
 import type { TimelineStateStore } from "../Lib/TimelineStateStore";
 import type { TimelineTrackContext } from "./TimelineTrackContext";
+import type { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
 
 export abstract class TimelineTrackCanvasBaseDrawer {
   protected canvas: HTMLCanvasElement | undefined;
   protected ctx: CanvasRenderingContext2D | undefined;
   protected stateStore: TimelineStateStore;
   protected processOffsetMs: number;
-
+  private scopes: Record<number, ScopeDesc> = {};
   constructor(stateStore: TimelineStateStore, processOffsetMs: number) {
     this.stateStore = stateStore;
     this.processOffsetMs = processOffsetMs;
+    this.scopes = get(this.stateStore).scopes;
   }
 
   protected abstract canDraw(): boolean;
@@ -135,11 +137,9 @@ export abstract class TimelineTrackCanvasBaseDrawer {
       }
       ctx.globalAlpha = span.alpha / 255;
 
-      const scopes = get(this.stateStore).scopes;
-
-      if (span.scopeHash !== 0 && scopes) {
+      if (span.scopeHash !== 0) {
         let name = "<unknown_scope>";
-        const scope = scopes[span.scopeHash];
+        const scope = this.scopes[span.scopeHash];
         if (scope) {
           name = scope.name;
         }
