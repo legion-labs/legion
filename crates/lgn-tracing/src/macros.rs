@@ -21,11 +21,7 @@ macro_rules! span_scope {
             file: file!(),
             line: line!(),
         };
-        let guard_named = $crate::guards::ThreadSpanGuard {
-            thread_span_desc: &$scope_name,
-            _dummy_ptr: std::marker::PhantomData::default(),
-        };
-        $crate::dispatch::on_begin_scope(&$scope_name);
+        let guard_named = $crate::guards::ThreadSpanGuard::new(&$scope_name);
     };
     ($name:expr) => {
         $crate::span_scope!(_METADATA_NAMED, $name);
@@ -43,11 +39,7 @@ macro_rules! async_span_scope {
             file: file!(),
             line: line!(),
         };
-        let span_id = $crate::dispatch::on_begin_async_scope(&$scope_name);
-        let guard_named = $crate::guards::AsyncSpanGuard {
-            span_desc: &$scope_name,
-            span_id,
-        };
+        let guard_named = $crate::guards::AsyncSpanGuard::new(&$scope_name);
     };
     ($name:expr) => {
         $crate::async_span_scope!(_METADATA_NAMED, $name);

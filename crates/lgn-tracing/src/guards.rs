@@ -3,7 +3,8 @@ use std::{marker::PhantomData, sync::Arc};
 use crate::{
     dispatch::{
         flush_log_buffer, flush_metrics_buffer, flush_thread_buffer, init_event_dispatch,
-        init_thread_stream, on_end_async_scope, on_end_scope, shutdown_dispatch,
+        init_thread_stream, on_begin_async_scope, on_begin_scope, on_end_async_scope, on_end_scope,
+        shutdown_dispatch,
     },
     errors::Result,
     event::EventSink,
@@ -30,7 +31,7 @@ impl TracingSystemGuard {
     }
 }
 
-impl std::ops::Drop for TracingSystemGuard {
+impl Drop for TracingSystemGuard {
     fn drop(&mut self) {
         shutdown_telemetry();
     }
@@ -71,7 +72,7 @@ impl TracingThreadGuard {
     }
 }
 
-impl std::ops::Drop for TracingThreadGuard {
+impl Drop for TracingThreadGuard {
     fn drop(&mut self) {
         flush_thread_buffer();
     }
@@ -86,8 +87,18 @@ impl Default for TracingThreadGuard {
 
 // sync scope guard
 pub struct ThreadSpanGuard {
-    pub thread_span_desc: &'static SpanMetadata,
-    pub _dummy_ptr: PhantomData<*mut u8>, // to mark the object as !Send
+    thread_span_desc: &'static SpanMetadata,
+    _dummy_ptr: PhantomData<*mut u8>, // to mark the object as !Send
+}
+
+impl ThreadSpanGuard {
+    pub fn new(thread_span_desc: &'static SpanMetadata) -> Self {
+        on_begin_scope(thread_span_desc);
+        Self {
+            thread_span_desc,
+            _dummy_ptr: std::marker::PhantomData::default(),
+        }
+    }
 }
 
 impl Drop for ThreadSpanGuard {
@@ -98,8 +109,15 @@ impl Drop for ThreadSpanGuard {
 
 // async scope guard
 pub struct AsyncSpanGuard {
-    pub span_desc: &'static SpanMetadata,
-    pub span_id: u64,
+    span_desc: &'static SpanMetadata,
+    span_id: u64,
+}
+
+impl AsyncSpanGuard {
+    pub fn new(span_desc: &'static SpanMetadata) -> Self {
+        let span_id = on_begin_async_scope(span_desc);
+        Self { span_desc, span_id }
+    }
 }
 
 impl Drop for AsyncSpanGuard {
