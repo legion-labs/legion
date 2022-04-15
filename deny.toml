@@ -200,10 +200,7 @@ skip = [
 # detection. Unlike skip, it also includes the entire tree of transitive 
 # dependencies starting at the specified crate, up to a certain depth, which is
 # by default infinite
-skip-tree = [
-  { name = "tauri", version = "1.0.0-rc.3" },
-  { name = "webrtc", version = "0.3.4" },
-]
+skip-tree = [{ name = "webrtc", version = "0.3.4" }]
 
 # This section is considered when running `cargo deny check sources`.
 # More documentation about the 'sources' section can be found here:
