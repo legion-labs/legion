@@ -20,7 +20,7 @@
 
   $: if ($stateStore && svg) {
     const tickCount = Math.ceil($stateStore.canvasWidth / tickSize);
-    svg = svg.attr("width", $stateStore.canvasWidth);
+    svg = svg.attr("width", Math.max(0, $stateStore.canvasWidth));
     x.range([0, $stateStore.canvasWidth]).domain($stateStore.getViewRange());
     ticks.length = 0;
     svg.call(
@@ -36,7 +36,7 @@
       .select(el)
       .append("svg")
       .attr("transform", `translate(${threadItemLength + padding},0)`)
-      .attr("width", el.offsetWidth)
+      .attr("width", Math.max(0, el.offsetWidth))
       .attr("height", height);
   });
 
