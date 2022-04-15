@@ -1,5 +1,4 @@
 pub enum ScriptType {
-    Mun,
     Rune,
     Rhai,
 }

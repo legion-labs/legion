@@ -46,10 +46,7 @@ ignore = [
   "RUSTSEC-2021-0059",
   "RUSTSEC-2021-0064",
   "RUSTSEC-2021-0096",
-  "RUSTSEC-2020-0070",
-  "RUSTSEC-2020-0016",
   "RUSTSEC-2021-0127", # serde_cbor is unmaintained
-  "RUSTSEC-2022-0008", # windows crate unsound advisory
 ] #"RUSTSEC-0000-0000",
 # Threshold for security vulnerabilities, any vulnerability with a CVSS score
 # lower than the range specified will be ignored. Note that ignored advisories
@@ -176,30 +173,40 @@ allow = [] #{ name = "ansi_term", version = "=0.11.0" },
 deny = [] #{ name = "ansi_term", version = "=0.11.0", wrappers = [] },
 # Certain crates/versions that will be skipped when doing duplicate detection.
 skip = [
-  # Intoduced by notify
-  { name = "mio", version = "=0.6.23" },
   # Intoduced by aws sdk
   { name = "hyper-rustls", version = "=0.22.1" },
   { name = "rustls-native-certs", version = "=0.5.0" },
   { name = "tokio-rustls", version = "=0.22.0" },
   { name = "tokio-util", version = "=0.6.9" },
-  { name = "rustls-pemfile", version = "=0.2.1" },
   # Introduced by criterion
   { name = "clap", version = "=2.34.0" },
   { name = "textwrap", version = "=0.11.0" },
-  # Introduced by MUN
-  { name = "libloading", version = "=0.6.7" },
   # Remove when the new version of GLTF crate is released 
   { name = "num-rational", version = "=0.3.2" },
   # Winit outdated dependencies
   { name = "ndk-glue", version = "=0.5.1" },
   { name = "ndk", version = "=0.5.0" },
-  { name = "crossbeam-epoch", version = "=0.8.2" },
+  { name = "ndk-sys", version = "=0.2.2" },
+  { name = "core-foundation-sys", version = "=0.7.0" },
+  { name = "core-foundation", version = "=0.7.0" },
+  { name = "core-graphics", version = "=0.19.2" },
+  # Introduced by reqwest
+  { name = "rustls-pemfile", version = "=0.3.0" },
+  # Introduced by dir
+  { name = "redox_users", version = "=0.3.5" },
+  # Introduced by gltf
+  { name = "png", version = "=0.16.8" },
+  { name = "miniz_oxide", version = "=0.3.7" },
+  { name = "deflate", version = "=0.8.6" },
+  # Introduced by openidconnect
+  { name = "itertools", version = "=0.9.0" },
+  # Introduced by tonic
+  { name = "heck", version = "=0.3.3" },
 ] #{ name = "ansi_term", version = "=0.11.0" },
 # Similarly to `skip` allows you to skip certain crates during duplicate 
 # detection. Unlike skip, it also includes the entire tree of transitive 
 # dependencies starting at the specified crate, up to a certain depth, which is
-# by default infinite
+# by default infinitef
 skip-tree = [{ name = "webrtc", version = "0.3.4" }]
 
 # This section is considered when running `cargo deny check sources`.
