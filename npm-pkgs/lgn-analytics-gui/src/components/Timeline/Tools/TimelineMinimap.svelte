@@ -30,16 +30,15 @@
   let canvas: HTMLCanvasElement;
   let ctx: CanvasRenderingContext2D;
   let viewport = new TimelineMinimapViewport();
+  let x: number;
+  let y: number;
 
   $: canvasWidth = $stateStore?.canvasWidth;
   $: top = canvasHeight - height + bottomPadding;
   $: left = canvasWidth - width - leftPadding + threadItemLength;
   $: style = `top:${top}px;left:${left}px`;
-
-  $: if ($stateStore?.getViewRange()) {
-    visible = $stateStore.isFullyVisible() && canvasHeight > minimapBreakpoint;
-    draw();
-  }
+  $: [x, y] = $stateStore?.viewRange ?? [-Infinity, Infinity];
+  $: (x || y) && onViewRange();
 
   $: if (canvasWidth || canvasHeight) {
     width = Math.ceil(canvasWidth / canvasToMinimapRatio);
@@ -57,6 +56,11 @@
       ctx = context;
     }
   });
+
+  function onViewRange() {
+    visible = $stateStore.isFullyVisible() && canvasHeight > minimapBreakpoint;
+    draw();
+  }
 
   async function draw() {
     if (visible && ctx) {
@@ -81,7 +85,7 @@
       updateViewport();
       const minPixelSize = 4;
       ctx.fillRect(
-        viewport.x,
+        Math.max(Math.min(viewport.x, width - minPixelSize), 0),
         viewport.y,
         Math.max(minPixelSize, viewport.width),
         Math.max(minPixelSize, viewport.height)
@@ -126,6 +130,7 @@
 
 <span style={visible ? "display:block" : "display:none"}>
   <canvas
+    class="absolute"
     bind:this={canvas}
     on:mousemove|preventDefault={(e) => e.buttons === 1 && onMouseEvent(e)}
     on:mousedown|preventDefault={(e) => onMouseEvent(e)}
@@ -133,9 +138,3 @@
     {style}
   />
 </span>
-
-<style>
-  canvas {
-    position: absolute;
-  }
-</style>

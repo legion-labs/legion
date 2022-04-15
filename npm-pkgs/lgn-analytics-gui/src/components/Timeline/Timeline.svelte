@@ -218,6 +218,7 @@
           on:scroll={(e) => onScroll(e)}
           on:mousedown|preventDefault={(e) => onMouseDown(e)}
           on:mousemove|preventDefault={(e) => onMouseMove(e)}
+          on:mouseleave|preventDefault={(_) => stateStore.stopDrag()}
           on:mouseup|preventDefault={(e) => onMouseUp(e)}
         >
           {#if stateStore}
