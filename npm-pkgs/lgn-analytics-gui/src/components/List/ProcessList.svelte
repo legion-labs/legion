@@ -53,11 +53,12 @@
 
 <Loader {loading}>
   <div slot="body" class="text-content-87 text-sm">
-    <div class="py-3 text-right">
+    <div class="text-center pb-6">
       <!-- svelte-ignore a11y-autofocus -->
       <input
+        autofocus
         type="text"
-        class="search-input text-content-100 bg-skin-700 placeholder-content-100"
+        class="search-input h-8 w-96 bg-skin-600 text-content-100 placeholder-content-100 rounded-sm pl-2"
         placeholder="Search process..."
         on:input={onSearchChange}
       />
