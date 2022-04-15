@@ -1,6 +1,9 @@
 import { writable } from "svelte/store";
 
-import type { BlockSpansReply } from "@lgn/proto-telemetry/dist/analytics";
+import type {
+  BlockAsyncEventsStatReply,
+  BlockSpansReply,
+} from "@lgn/proto-telemetry/dist/analytics";
 import type { BlockMetadata } from "@lgn/proto-telemetry/dist/block";
 import type { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
 import type { Process } from "@lgn/proto-telemetry/dist/process";
@@ -51,6 +54,19 @@ export function createTimelineStateStore(state: TimelineState) {
     });
   };
 
+  const addProcessAsyncBlock = (processId: string) => {
+    updateState((s) => {
+      s.processAsyncData[processId] = {
+        processId: processId,
+        maxDepth: 0,
+        minMs: Infinity,
+        maxMs: -Infinity,
+        blockStats: {},
+        sections: [],
+      };
+    });
+  };
+
   const addBlock = (
     beginMs: number,
     endMs: number,
@@ -88,6 +104,18 @@ export function createTimelineStateStore(state: TimelineState) {
         block.lods[blockLod.lodId].tracks = blockLod.tracks;
       }
       return s;
+    });
+  };
+
+  const addAsyncBLockData = (
+    processId: string,
+    data: BlockAsyncEventsStatReply
+  ) => {
+    updateState((s) => {
+      const asyncData = s.processAsyncData[processId];
+      asyncData.minMs = Math.min(asyncData.minMs, data.beginMs);
+      asyncData.maxMs = Math.max(asyncData.maxMs, data.endMs);
+      asyncData.blockStats[data.blockId] = data;
     });
   };
 
@@ -187,11 +215,13 @@ export function createTimelineStateStore(state: TimelineState) {
 
   return {
     subscribe,
+    addProcessAsyncBlock,
     addBlock,
     addProcess,
     addThread,
     addScopes,
     addBlockData,
+    addAsyncBLockData,
     set,
     keyboardZoom,
     keyboardTranslate,

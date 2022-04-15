@@ -84,7 +84,7 @@
   </div>
   <div class="flex flex-col gap-y-1 select-none">
     {#if $stateStore}
-      {#if processAsyncData}
+      {#if processAsyncData && Object.keys(processAsyncData.blockStats).length > 0}
         <TimelineRow
           bind:this={components[0]}
           processCollapsed={collapsed}

@@ -215,6 +215,7 @@ export class TimelineStateManager {
     const promises: Promise<void>[] = [];
     let sentRequest = false;
     const viewRange = state.getViewRange();
+
     for (const block of Object.values(state.blocks)) {
       const streamId = block.blockDefinition.streamId;
       const thread = state.threads[streamId];
@@ -244,9 +245,7 @@ export class TimelineStateManager {
               .then(
                 (reply) => {
                   this.nbRequestsInFlight -= 1;
-                  asyncData.minMs = Math.min(asyncData.minMs, reply.beginMs);
-                  asyncData.maxMs = Math.max(asyncData.maxMs, reply.endMs);
-                  asyncData.blockStats[reply.blockId] = reply;
+                  this.state.addAsyncBLockData(process.processId, reply);
                   return this.fetchDynData();
                 },
                 (e) => {
@@ -265,15 +264,6 @@ export class TimelineStateManager {
   }
 
   private async fetchBlocks(process: Process, stream: Stream) {
-    const asyncSections: AsyncSection[] = [];
-    const asyncData = {
-      processId: process.processId,
-      maxDepth: 0,
-      minMs: Infinity,
-      maxMs: -Infinity,
-      blockStats: {},
-      sections: asyncSections,
-    };
     const processOffset = processMsOffsetToRoot(this.process, process);
     const response = await loadWrap(async () => {
       return await this.client.list_stream_blocks({
@@ -285,7 +275,7 @@ export class TimelineStateManager {
       const endMs = processOffset + timestampToMs(process, block.endTicks);
       this.state.addBlock(beginMs, endMs, block, stream.streamId);
     }
-    get(this.state).processAsyncData[process.processId] = asyncData;
+    this.state.addProcessAsyncBlock(process.processId);
   }
 
   async fetchThreadData(): Promise<boolean> {

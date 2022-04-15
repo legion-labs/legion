@@ -18,15 +18,17 @@
   }
 </script>
 
-<div class="flex items-start main" {style}>
+<div class="flex items-start overflow-hidden" {style}>
   <div
-    class="thread px-1"
+    class="thread text-sm text-slate-400 px-1 overflow-hidden cursor-pointer mr-1 self-stretch"
     on:click={() => setCollapse(!collapsed)}
     title={threadTitle}
   >
     <span class="text">
-      <i class={`icon bi bi-${!collapsed ? "eye" : "eye-slash"}-fill`} />
-      <span class="thread-name">{threadName}</span>
+      <i class={`pr-1 bi bi-${!collapsed ? "eye" : "eye-slash"}-fill`} />
+      <span class="capitalize whitespace-nowrap overflow-hidden text-ellipsis"
+        >{threadName}</span
+      >
     </span>
     <slot name="details" />
   </div>
@@ -34,32 +36,12 @@
 </div>
 
 <style lang="postcss">
-  .main {
-    overflow: hidden;
-  }
-
-  .thread-name {
-    @apply capitalize;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
   div :global(.text) {
     @apply flex;
   }
 
-  .icon {
-    @apply pr-1;
-  }
-
   .thread {
-    @apply text-sm text-slate-400;
     min-width: var(--thread-item-length);
-    overflow: hidden;
-    cursor: pointer;
     background-color: #f0f0f0;
-    margin-right: 4px;
-    align-self: stretch;
   }
 </style>
