@@ -240,7 +240,7 @@ export class TimelineStateManager {
               })
               .then(
                 (reply) => {
-                  this.state.addAsyncBLockData(process.processId, reply);
+                  this.state.addAsyncBlockData(process.processId, reply);
                   return this.fetchDynData();
                 },
                 (e) => {

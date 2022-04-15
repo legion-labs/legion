@@ -250,7 +250,7 @@ export function createTimelineStateStore(state: TimelineState) {
     addScopes,
     addBlockData,
     addAsyncData,
-    addAsyncBLockData: addAsyncBlockData,
+    addAsyncBlockData,
     set,
     setProcessSection,
     keyboardZoom,
