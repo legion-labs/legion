@@ -31,10 +31,15 @@
   let mainWidth: number;
   let initializationError = "";
   let searching = false;
+  let x: number;
+  let y: number;
 
   $: if (mainWidth && stateStore) {
     stateStore.updateWidth(mainWidth - threadItemLength - pixelMargin);
   }
+
+  $: [x, y] = $stateStore?.viewRange ?? [-Infinity, Infinity];
+  $: (x || y) && new Promise(async () => await stateManager?.fetchDynData());
 
   onMount(async () => {
     loadingStore.reset(10);
@@ -66,7 +71,6 @@
 
   async function onZoom(event: WheelEvent) {
     stateStore.wheelZoom(event);
-    await stateManager.fetchDynData();
   }
 
   function getMouseX(event: MouseEvent) {
@@ -92,7 +96,6 @@
           div.scrollBy(0, -event.movementY);
           await tick();
         }
-        await stateManager.fetchDynData();
       }
     }
   }
@@ -121,7 +124,7 @@
     history.replaceState(null, "", params);
   }
 
-  function handleKeydown(event: KeyboardEvent) {
+  async function handleKeydown(event: KeyboardEvent) {
     if (event.shiftKey || searching) {
       return;
     }
@@ -184,7 +187,6 @@
   }) {
     internalScrollTop(detail.yRatio * scrollHeight);
     stateStore.setViewRange([detail.xBegin, detail.xEnd]);
-    await stateManager.fetchDynData();
   }
 
   function internalScrollTop(value: number) {

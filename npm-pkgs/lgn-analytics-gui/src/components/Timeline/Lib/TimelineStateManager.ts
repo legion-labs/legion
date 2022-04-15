@@ -14,7 +14,6 @@ import {
   timestampToMs,
 } from "@/lib/time";
 
-import type { AsyncSection } from "./AsyncSection";
 import { LODState } from "./LodState";
 import type { ProcessAsyncData } from "./ProcessAsyncData";
 import type { ThreadBlock } from "./ThreadBlock";
@@ -109,7 +108,7 @@ export class TimelineStateManager {
     await Promise.all(promises);
   }
 
-  async fetchChildren(process: Process) {
+  private async fetchChildren(process: Process) {
     const { processes } = await this.client.list_process_children({
       processId: process.processId,
     });
@@ -130,12 +129,14 @@ export class TimelineStateManager {
 
   private async fetchAsyncSpansSection(
     processAsyncData: ProcessAsyncData,
-    section: AsyncSection
+    sectionSequenceNumber: number,
+    sectionLod: number,
+    processId: string
   ) {
     const sectionWidthMs = 1000.0;
     const sectionTimeRange = [
-      section.sectionSequenceNumber * sectionWidthMs,
-      (section.sectionSequenceNumber + 1) * sectionWidthMs,
+      sectionSequenceNumber * sectionWidthMs,
+      (sectionSequenceNumber + 1) * sectionWidthMs,
     ] as [number, number]; //section is in relative ms
     const blocksOfInterest: string[] = [];
 
@@ -149,29 +150,23 @@ export class TimelineStateManager {
     await loadPromise(
       this.client
         .fetch_async_spans({
-          sectionSequenceNumber: section.sectionSequenceNumber,
-          sectionLod: section.sectionLod,
+          sectionSequenceNumber: sectionSequenceNumber,
+          sectionLod: sectionLod,
           blockIds: blocksOfInterest,
         })
         .then(
           (reply) => {
-            this.nbRequestsInFlight -= 1;
-            const nbTracks = reply.tracks.length;
-            processAsyncData.maxDepth = Math.max(
-              processAsyncData.maxDepth,
-              nbTracks
-            );
-            section.tracks = reply.tracks;
-            section.state = LODState.Loaded;
-            this.state.addScopes(reply.scopes);
+            this.state.addAsyncData(processId, reply, sectionSequenceNumber);
             return this.fetchDynData();
           },
           (e) => {
-            this.nbRequestsInFlight -= 1;
             console.log("Error in fetch_block_async_spans", e);
             return this.fetchDynData();
           }
         )
+        .finally(() => {
+          this.nbRequestsInFlight -= 1;
+        })
     );
   }
 
@@ -193,14 +188,15 @@ export class TimelineStateManager {
         break;
       }
       if (!(iSection in processAsyncData.sections)) {
-        const section = {
-          sectionSequenceNumber: iSection,
-          sectionLod: 0,
-          state: LODState.Requested,
-          tracks: [],
-        };
-        processAsyncData.sections[iSection] = section;
-        promises.push(this.fetchAsyncSpansSection(processAsyncData, section));
+        this.state.setProcessSection(process.processId, iSection);
+        promises.push(
+          this.fetchAsyncSpansSection(
+            processAsyncData,
+            iSection,
+            0,
+            process.processId
+          )
+        );
       }
     }
     await Promise.all(promises);
@@ -244,16 +240,17 @@ export class TimelineStateManager {
               })
               .then(
                 (reply) => {
-                  this.nbRequestsInFlight -= 1;
                   this.state.addAsyncBLockData(process.processId, reply);
                   return this.fetchDynData();
                 },
                 (e) => {
-                  this.nbRequestsInFlight -= 1;
                   console.log("Error in fetch_block_async_stats", e);
                   return this.fetchDynData();
                 }
               )
+              .finally(() => {
+                this.nbRequestsInFlight -= 1;
+              })
           )
         );
       }
@@ -305,10 +302,14 @@ export class TimelineStateManager {
   async fetchDynData() {
     let sentRequest = await this.fetchThreadData();
     if (!sentRequest) {
-      sentRequest = await this.fetchAsyncStats(this.process!);
+      if (this.process) {
+        sentRequest = await this.fetchAsyncStats(this.process);
+      }
     }
     if (!sentRequest) {
-      await this.fetchAsyncSpans(this.process!);
+      if (this.process) {
+        await this.fetchAsyncSpans(this.process);
+      }
     }
   }
 
@@ -331,16 +332,17 @@ export class TimelineStateManager {
         })
         .then(
           (o) => {
-            this.nbRequestsInFlight -= 1;
             this.onLodReceived(o);
             return this.fetchDynData();
           },
           (e) => {
-            this.nbRequestsInFlight -= 1;
             console.log("Error fetching block spans", e);
             return this.fetchDynData();
           }
         )
+        .finally(() => {
+          this.nbRequestsInFlight -= 1;
+        })
     );
   }
 
