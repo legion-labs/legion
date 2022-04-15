@@ -40,7 +40,9 @@
   />
   <td class="truncate">
     {name}
-    ({formatExecutionTime(value.acc)})
+    <span class="text-xs">
+      ({formatExecutionTime(value.acc)})
+    </span>
   </td>
   <td class="stat">{formatExecutionTime(value.avg)}</td>
   <td class="stat">{formatExecutionTime(value.min)}</td>
