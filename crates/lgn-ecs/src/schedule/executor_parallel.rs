@@ -1,7 +1,12 @@
 use async_channel::{Receiver, Sender};
 use fixedbitset::FixedBitSet;
 use lgn_tasks::{ComputeTaskPool, Scope, TaskPool};
-use lgn_tracing::{span_fn, span_scope};
+use lgn_tracing::{
+    dispatch::{on_begin_scope, on_end_scope},
+    span_fn, span_scope,
+    spans::SpanMetadata,
+    Verbosity,
+};
 #[cfg(test)]
 use SchedulingEvent::StartedSystems;
 
@@ -195,6 +200,16 @@ impl ParallelExecutor {
                 let start_receiver = system_data.start_receiver.clone();
                 let finish_sender = self.finish_sender.clone();
                 let system = system.system_mut();
+
+                static SPAN_META_DATA: SpanMetadata = SpanMetadata {
+                    lod: Verbosity::Max,
+                    name: "abc", //&system.name(),
+                    target: module_path!(),
+                    module_path: module_path!(),
+                    file: file!(),
+                    line: line!(),
+                };
+
                 // TODO: add system name to async trace scope
                 // // NB: outside the task to get the TLS current span
                 // let system_span = info_span!("system", name = &*system.name());
@@ -204,13 +219,10 @@ impl ParallelExecutor {
                         .recv()
                         .await
                         .unwrap_or_else(|error| unreachable!("{}", error));
-                    // TODO: add system name to async trace scope
-                    // span_scope!();
-                    // let system_guard = system_span.enter();
-                    {
-                        span_scope!("prepare_systems::run_unsafe");
-                        unsafe { system.run_unsafe((), world) };
-                    }
+                    on_begin_scope(&SPAN_META_DATA);
+                    unsafe { system.run_unsafe((), world) };
+                    on_end_scope(&SPAN_META_DATA);
+
                     // drop(system_guard);
                     finish_sender
                         .send(index)

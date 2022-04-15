@@ -18,7 +18,7 @@ use crate::{
 
 /// The metadata of a [`System`].
 pub struct SystemMeta {
-    pub(crate) name: Cow<'static, str>,
+    pub(crate) name: &'static str,
     pub(crate) component_access_set: FilteredAccessSet<ComponentId>,
     pub(crate) archetype_component_access: Access<ArchetypeComponentId>,
     // NOTE: this must be kept private. making a SystemMeta non-send is irreversible to prevent
@@ -30,7 +30,7 @@ pub struct SystemMeta {
 impl SystemMeta {
     fn new<T>() -> Self {
         Self {
-            name: std::any::type_name::<T>().into(),
+            name: std::any::type_name::<T>(),
             archetype_component_access: Access::default(),
             component_access_set: FilteredAccessSet::default(),
             is_send: true,
@@ -376,7 +376,7 @@ where
 
     #[inline]
     fn name(&self) -> Cow<'static, str> {
-        self.system_meta.name.clone()
+        Cow::Borrowed(self.system_meta.name)
     }
 
     #[inline]
@@ -433,7 +433,7 @@ where
         check_system_change_tick(
             &mut self.system_meta.last_change_tick,
             change_tick,
-            self.system_meta.name.as_ref(),
+            self.system_meta.name,
         );
     }
     fn default_labels(&self) -> Vec<Box<dyn SystemLabel>> {
