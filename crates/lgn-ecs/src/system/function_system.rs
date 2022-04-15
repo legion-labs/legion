@@ -1,6 +1,6 @@
 #![allow(unsafe_code)]
 
-use std::{borrow::Cow, fmt::Debug, hash::Hash, marker::PhantomData};
+use std::{fmt::Debug, hash::Hash, marker::PhantomData};
 
 use lgn_ecs_macros::all_tuples;
 
@@ -375,8 +375,8 @@ where
     type Out = Out;
 
     #[inline]
-    fn name(&self) -> Cow<'static, str> {
-        Cow::Borrowed(self.system_meta.name)
+    fn name(&self) -> &'static str {
+        self.system_meta.name
     }
 
     #[inline]
