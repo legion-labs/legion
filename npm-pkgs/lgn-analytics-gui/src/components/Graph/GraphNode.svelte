@@ -32,12 +32,12 @@
 
 <div class="text-sm py-1 rounded-lg overflow-x-hidden" bind:this={div}>
   <div
-    class="flex justify-between select-none cursor-pointer relative bg-skin-700 text-content-87"
+    class="flex justify-between select-none cursor-pointer relative bg-skin-600 text-content-87"
     on:click={(_) => setCollapse(!collapsed)}
   >
     {#if desc}
       <div
-        class="text-left pl-2 py-1 whitespace-nowrap bg-skin-800"
+        class="text-left pl-2 py-1 whitespace-nowrap bg-skin-700"
         style:width="{fill}%"
       >
         <i
