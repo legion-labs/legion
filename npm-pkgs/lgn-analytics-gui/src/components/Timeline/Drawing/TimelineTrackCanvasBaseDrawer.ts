@@ -1,6 +1,7 @@
 import binarySearch from "binary-search";
 import { get } from "svelte/store";
 
+import type { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
 import type { SpanTrack } from "@lgn/proto-telemetry/dist/span";
 
 import { spanPixelHeight } from "@/components/Timeline/Values/TimelineValues";
@@ -9,7 +10,6 @@ import { formatExecutionTime } from "@/lib/format";
 import type { TimelineCaptionItem } from "../Lib/TimelineSpanCaptionItem";
 import type { TimelineStateStore } from "../Lib/TimelineStateStore";
 import type { TimelineTrackContext } from "./TimelineTrackContext";
-import type { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
 
 export abstract class TimelineTrackCanvasBaseDrawer {
   protected canvas: HTMLCanvasElement | undefined;
