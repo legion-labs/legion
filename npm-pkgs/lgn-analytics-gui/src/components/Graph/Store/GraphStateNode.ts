@@ -61,6 +61,10 @@ export class GraphStateNode {
   }
 
   registerChild(child: CallTreeNode) {
+    if (child.endMs < this.beginMs || child.beginMs > this.endMs) {
+      return;
+    }
+
     if (!this.children.has(child.hash)) {
       this.children.set(
         child.hash,

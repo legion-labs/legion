@@ -106,8 +106,8 @@
         if (!root) {
           root = getGraphStateStore(
             streamHash,
-            -Infinity,
-            Infinity,
+            beginMsFilter,
+            endMsFilter,
             graphState
           );
           graphState.Nodes.set(streamHash, root);
