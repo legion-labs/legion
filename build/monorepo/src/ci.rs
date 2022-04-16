@@ -377,7 +377,7 @@ fn build_timings(
                 },
                 ..build::Args::default()
             };
-            build::run(args.clone(), ctx)?;
+            build::run(args, ctx)?;
             std::fs::copy(
                 CARGO_TIMING_LOCATION,
                 format!("{TARGET_LOCATION}/{package}-{profile}.html"),
