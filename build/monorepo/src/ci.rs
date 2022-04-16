@@ -21,6 +21,9 @@ pub struct Args {
     /// TRIPLE
     #[clap(long)]
     pub(crate) target: Option<String>,
+    /// Run on all packages in the workspace
+    #[clap(long)]
+    pub(crate) workspace: bool, // keep this even if it appears not used in the code below, the github workflows use --workspace
 }
 
 #[derive(Debug, Subcommand)]
