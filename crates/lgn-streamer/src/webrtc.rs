@@ -61,12 +61,10 @@ impl WebRTCServer {
         let mut registry = Registry::new();
 
         // Use the default set of Interceptors
-        // Function here became async... https://github.com/webrtc-rs/webrtc/pull/146
-        // registry =
-        // webrtc::api::interceptor_registry::register_default_interceptors(registry,
-        // &mut media_engine)?;
-        registry = webrtc::api::interceptor_registry::configure_nack(registry, &mut media_engine);
-        registry = webrtc::api::interceptor_registry::configure_rtcp_reports(registry);
+        registry = webrtc::api::interceptor_registry::register_default_interceptors(
+            registry,
+            &mut media_engine,
+        )?;
 
         // Create the API object with the MediaEngine
         let api = APIBuilder::new()
