@@ -105,6 +105,9 @@ pub struct BuildArgs {
     pub(crate) offline: bool,
     /// Run without accessing the network
     #[clap(long)]
+    pub(crate) timings: bool,
+    /// Run without accessing the network
+    #[clap(long)]
     pub(crate) symlink_out_dir: Option<String>,
 }
 
@@ -116,10 +119,10 @@ impl BuildArgs {
         if let Some(jobs) = self.jobs {
             direct_args.push(OsString::from("--jobs"));
             direct_args.push(OsString::from(jobs.to_string()));
-        };
+        }
         if self.lib {
             direct_args.push(OsString::from("--lib"));
-        };
+        }
         if !self.bin.is_empty() {
             direct_args.push(OsString::from("--bin"));
             for bin in &self.bin {
@@ -128,7 +131,7 @@ impl BuildArgs {
         }
         if self.bins {
             direct_args.push(OsString::from("--bins"));
-        };
+        }
         if !self.example.is_empty() {
             direct_args.push(OsString::from("--example"));
             for example in &self.example {
@@ -137,7 +140,7 @@ impl BuildArgs {
         }
         if self.examples {
             direct_args.push(OsString::from("--examples"));
-        };
+        }
 
         if !self.test.is_empty() {
             direct_args.push(OsString::from("--test"));
@@ -147,7 +150,7 @@ impl BuildArgs {
         }
         if self.tests {
             direct_args.push(OsString::from("--tests"));
-        };
+        }
 
         if !self.bench.is_empty() {
             direct_args.push(OsString::from("--bench"));
@@ -157,19 +160,19 @@ impl BuildArgs {
         }
         if self.benches {
             direct_args.push(OsString::from("--benches"));
-        };
+        }
 
         if self.all_targets {
             direct_args.push(OsString::from("--all-targets"));
-        };
+        }
         if self.release {
             direct_args.push(OsString::from("--release"));
-        };
+        }
 
         if let Some(profile) = &self.profile {
             direct_args.push(OsString::from("--profile"));
             direct_args.push(OsString::from(profile.to_string()));
-        };
+        }
 
         if !self.features.is_empty() {
             direct_args.push(OsString::from("--features"));
@@ -179,30 +182,30 @@ impl BuildArgs {
         }
         if self.all_features {
             direct_args.push(OsString::from("--all-features"));
-        };
+        }
         if self.no_default_features {
             direct_args.push(OsString::from("--no-default-features"));
-        };
+        }
 
         if let Some(target) = &self.target {
             direct_args.push(OsString::from("--target"));
             direct_args.push(OsString::from(target.to_string()));
-        };
+        }
         if let Some(target_dir) = &self.target_dir {
             direct_args.push(OsString::from("--target-dir"));
             direct_args.push(OsString::from(target_dir));
-        };
+        }
         if let Some(manifest_path) = &self.manifest_path {
             direct_args.push(OsString::from("--manifest-path"));
             direct_args.push(manifest_path.clone());
-        };
+        }
         if let Some(message_format) = &self.message_format {
             direct_args.push(OsString::from("--message-format"));
             direct_args.push(OsString::from(message_format.to_string()));
-        };
+        }
         if self.verbose > 0 {
             direct_args.push(OsString::from(format!("-{}", "v".repeat(self.verbose))));
-        };
+        }
         if self.color != Coloring::Auto {
             direct_args.push(OsString::from("--color"));
             direct_args.push(OsString::from(
@@ -211,16 +214,19 @@ impl BuildArgs {
                     .expect("No skipped value allowed")
                     .get_name(),
             ));
-        };
+        }
         if self.frozen {
             direct_args.push(OsString::from("--frozen"));
-        };
+        }
         if self.locked {
             direct_args.push(OsString::from("--locked"));
-        };
+        }
         if self.offline {
             direct_args.push(OsString::from("--offline"));
-        };
+        }
+        if self.timings {
+            direct_args.push(OsString::from("--timings"));
+        }
     }
 
     pub fn add_env(&self, env: &mut Vec<(&str, Option<&str>)>) {

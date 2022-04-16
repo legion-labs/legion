@@ -21,9 +21,6 @@ pub struct Args {
     /// TRIPLE
     #[clap(long)]
     pub(crate) target: Option<String>,
-    /// Run on all packages in the workspace
-    #[clap(long)]
-    pub(crate) workspace: bool,
 }
 
 #[derive(Debug, Subcommand)]
@@ -67,6 +64,9 @@ enum Commands {
         #[clap(long)]
         run: bool,
     },
+    /// Run benches
+    #[clap(name = "build-timings")]
+    BuildTimings,
 }
 
 #[span_fn]
@@ -150,6 +150,7 @@ fn run_command(
             }
             Ok(())
         }
+        Commands::BuildTimings => build_timings(ctx, verbose, packages, target),
     }
 }
 
@@ -344,6 +345,54 @@ fn bench_run(ctx: &Context, _packages: &[String], _target: &Option<String>) -> R
     bench::run(args, ctx)
 }
 
+#[span_fn]
+fn build_timings(
+    ctx: &Context,
+    verbose: usize,
+    packages: &[String],
+    target: &Option<String>,
+) -> Result<()> {
+    action_step!("-- CI --", "Generating build timings");
+    const TARGET_LOCATION: &str = "timings";
+    const CARGO_TIMING_LOCATION: &str = "target/cargo-timings/cargo-timing.html";
+    std::fs::create_dir_all(TARGET_LOCATION)
+        .map_err(|err| Error::new("Failed to create timings target").with_source(err))?;
+    let mut index = String::from(
+        "<html><head><title>Cargo Build Timings</title></head><body><h1>Build Timings</h1>",
+    );
+    for package in packages {
+        cargo_clean()?;
+        for profile in ["debug", "release"] {
+            let args = build::Args {
+                package_args: SelectedPackageArgs {
+                    package: vec![package.clone()],
+                    ..SelectedPackageArgs::default()
+                },
+                build_args: BuildArgs {
+                    verbose,
+                    timings: true,
+                    release: profile == "release",
+                    target: target.clone(),
+                    ..BuildArgs::default()
+                },
+                ..build::Args::default()
+            };
+            build::run(args, ctx)?;
+            std::fs::copy(
+                CARGO_TIMING_LOCATION,
+                format!("{TARGET_LOCATION}/{package}-{profile}.html"),
+            )
+            .map_err(|err| Error::new("Failed to copy timings").with_source(err))?;
+            index.push_str(&format!(
+                "<h3><a href=\"./{package}-{profile}.html\"> * {package} in {profile} </a></h3>"
+            ));
+        }
+    }
+    index.push_str("</body></html>");
+    std::fs::write(format!("{TARGET_LOCATION}/index.html"), index.as_bytes())
+        .map_err(|err| Error::new("Failed to create timings index file").with_source(err))
+}
+
 fn machine_has_discreet_gpu() -> Result<bool> {
     if cfg!(target_os = "windows") {
         let mut cmd = Command::new("wmic");
@@ -371,5 +420,20 @@ fn machine_has_discreet_gpu() -> Result<bool> {
         } else {
             Ok(false)
         }
+    }
+}
+
+fn cargo_clean() -> Result<()> {
+    if std::env::var_os("CI").is_none() {
+        return Ok(());
+    }
+    let status = Command::new("cargo")
+        .arg("clean")
+        .status()
+        .map_err(|err| Error::new("Failed to run `cargo clean`").with_source(err))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(Error::new("Failed to run `cargo clean`"))
     }
 }
