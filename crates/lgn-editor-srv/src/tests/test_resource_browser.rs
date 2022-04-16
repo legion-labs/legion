@@ -97,8 +97,7 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
     let asset_registry = asset_registry.create().await;
 
     let compilers = CompilerRegistryOptions::default()
-        .add_compiler(&lgn_compiler_runtime_entity::COMPILER_INFO)
-        .add_compiler(&lgn_compiler_script2asm::COMPILER_INFO);
+        .add_compiler(&lgn_compiler_runtime_entity::COMPILER_INFO);
 
     let options = DataBuildOptions::new_with_sqlite_output(
         &build_dir,

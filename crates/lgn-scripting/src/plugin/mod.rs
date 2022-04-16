@@ -20,8 +20,6 @@ use crate::{
 };
 
 #[cfg(not(feature = "offline"))]
-mod mun;
-#[cfg(not(feature = "offline"))]
 mod rhai;
 #[cfg(not(feature = "offline"))]
 mod rune;
@@ -52,7 +50,6 @@ impl Plugin for ScriptingPlugin {
             app.init_resource::<ScriptingEventCache>()
                 .add_system_to_stage(ScriptingStage::Prepare, Self::update_events);
 
-            mun::build(app);
             rune::build(app).expect("failed to setup Rune context");
             rhai::build(app);
         }
