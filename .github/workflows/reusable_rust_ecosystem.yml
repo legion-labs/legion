@@ -247,10 +247,7 @@ jobs:
         uses: ./.github/actions/rust-bootstrap
 
       - name: Build and run tests with coverage
-        run: make cov
-
-      - name: Build coverage report
-        run: make grcov
+        run: monorepo test --html-cov-dir ./target/debug/coverage
 
       - name: Upload report
         uses: actions/upload-artifact@v3
