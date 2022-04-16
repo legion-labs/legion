@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use lgn_graphics_api::prelude::*;
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_math::Vec2;
@@ -115,7 +113,7 @@ impl EguiPass {
             },
             array_length: 1,
             mip_count: 1,
-            format: Format::R32_SFLOAT,
+            format: Format::R8_UNORM,
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
             resource_flags: ResourceFlags::empty(),
             mem_usage: MemoryUsage::GpuOnly,
@@ -129,16 +127,8 @@ impl EguiPass {
         let texture_view =
             texture.create_view(&TextureViewDef::as_shader_resource_view(&texture_def));
 
-        let egui_font_image = Arc::clone(&egui_ctx.font_image());
-        let pixels = egui_font_image
-            .pixels
-            .clone()
-            .into_iter()
-            .map(|i| f32::from(i) / 255.0)
-            .collect::<Vec<f32>>();
-
         let staging_buffer = render_context.renderer().device_context().create_buffer(
-            &BufferDef::for_staging_buffer_data(&pixels, ResourceUsage::empty()),
+            &BufferDef::for_staging_buffer_data(&egui_font_image.pixels, ResourceUsage::empty()),
         );
 
         let alloc_def = MemoryAllocationDef {
@@ -152,7 +142,7 @@ impl EguiPass {
             &alloc_def,
         );
 
-        buffer_memory.copy_to_host_visible_buffer(&pixels);
+        buffer_memory.copy_to_host_visible_buffer(&egui_font_image.pixels);
 
         cmd_buffer.resource_barrier(
             &[],
