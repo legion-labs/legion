@@ -52,7 +52,7 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
     args.args.extend(args.testname.clone());
 
     let llvm_profile_key = "LLVM_PROFILE_FILE";
-    let llvm_profile_path: &str = "target/debug/xtest-%p-%m.profraw";
+    let llvm_profile_path: &str = "target/debug/test-%p-%m.profraw";
     let llvm_profile_path_ignored = "target/debug/ignored-%p-%m.profraw";
 
     let generate_coverage = args.html_cov_dir.is_some();
@@ -62,10 +62,9 @@ pub fn run(mut args: Args, ctx: &Context) -> Result<()> {
         }
 
         let shared_environment = vec![
-            ("RUSTC_BOOTSTRAP", Some("1")),
             // Recommend flags for use with grcov, with these flags removed: -Copt-level=0, -Clink-dead-code.
             // for more info see:  https://github.com/mozilla/grcov#example-how-to-generate-gcda-fiels-for-a-rust-project
-            ("RUSTFLAGS", Some("-Zinstrument-coverage")),
+            ("RUSTFLAGS", Some("-Cinstrument-coverage")),
             ("RUST_MIN_STACK", Some("8388608")),
         ];
 
@@ -195,16 +194,14 @@ fn exec_grcov(ctx: &Context, html_cov_path: &Path, llvm_profile_path: &str) -> R
         .arg("--ignore")
         .arg("/*")
         .arg("--ignore")
-        .arg("x/*")
-        .arg("--ignore")
-        .arg("testsuite/*")
+        .arg("monorepo/*")
         .arg("--ignore-not-existing")
         .arg("-o")
         .arg(html_cov_path);
     info!("Build grcov Html Coverage Report");
     info!("{:?}", grcov_html);
     grcov_html.env("LLVM_PROFILE_FILE", llvm_profile_path);
-    grcov_html.env("RUSTFLAGS", "-Zinstrument-coverage");
+    grcov_html.env("RUSTFLAGS", "-Cinstrument-coverage");
     grcov_html.stdout(Stdio::inherit()).stderr(Stdio::inherit());
     if let Some(err) = grcov_html.output().err() {
         Err(Error::new("Failed to generate html output with grcov").with_source(err))
