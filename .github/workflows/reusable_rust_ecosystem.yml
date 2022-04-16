@@ -202,7 +202,7 @@ jobs:
           lfs: true
 
       - name: Build with timings
-        run: make timings
+        run: monorepo ci -p editor-srv build-timings
 
       - name: Upload report
         uses: actions/upload-artifact@v3
