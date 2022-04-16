@@ -171,7 +171,7 @@ dependencies = [
  "anyhow",
  "async-recursion",
  "chrono",
- "clap 3.1.8",
+ "clap 3.1.9",
  "futures",
  "http",
  "lgn-analytics",
@@ -1225,16 +1225,16 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.1.8"
+version = "3.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71c47df61d9e16dc010b55dba1952a57d8c215dbb533fd13cdd13369aac73b1c"
+checksum = "6aad2534fad53df1cc12519c5cda696dd3e20e6118a027e24054aea14a0bdcbe"
 dependencies = [
  "atty",
  "bitflags",
  "clap_derive",
+ "clap_lex",
  "indexmap",
  "lazy_static",
- "os_str_bytes",
  "strsim",
  "termcolor",
  "textwrap 0.15.0",
@@ -1251,6 +1251,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "clap_lex"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "189ddd3b5d32a70b35e7686054371742a937b0d99128e76dde6340210e966669"
+dependencies = [
+ "os_str_bytes",
 ]
 
 [[package]]
@@ -2102,7 +2111,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
- "clap 3.1.8",
+ "clap 3.1.9",
  "crossbeam-channel",
  "erased-serde",
  "generic-data",
@@ -3811,7 +3820,7 @@ dependencies = [
  "byteorder",
  "bytes",
  "bytesize",
- "clap 3.1.8",
+ "clap 3.1.9",
  "console",
  "duration-string",
  "futures",
@@ -3918,7 +3927,7 @@ name = "lgn-data-build-cli"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "clap 3.1.8",
+ "clap 3.1.9",
  "integer-asset",
  "lgn-content-store",
  "lgn-data-build",
@@ -3957,7 +3966,7 @@ dependencies = [
  "async-trait",
  "binary-resource",
  "bincode",
- "clap 3.1.8",
+ "clap 3.1.9",
  "erased-serde",
  "integer-asset",
  "lgn-content-store",
@@ -3986,7 +3995,7 @@ dependencies = [
  "async-trait",
  "bincode",
  "chacha20poly1305",
- "clap 3.1.8",
+ "clap 3.1.9",
  "freelist",
  "futures",
  "integer-asset",
@@ -4195,7 +4204,7 @@ name = "lgn-graphics-cgen"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.8",
+ "clap 3.1.9",
  "fxhash",
  "hassle-rs",
  "heck 0.4.0",
@@ -4294,7 +4303,7 @@ dependencies = [
 name = "lgn-graphics-sandbox"
 version = "0.1.0"
 dependencies = [
- "clap 3.1.8",
+ "clap 3.1.9",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-async",
@@ -4632,7 +4641,7 @@ dependencies = [
  "aws-sdk-s3",
  "bytes",
  "chrono",
- "clap 3.1.8",
+ "clap 3.1.9",
  "futures",
  "http",
  "itertools 0.10.3",
@@ -4672,7 +4681,7 @@ name = "lgn-source-control-fs"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.8",
+ "clap 3.1.9",
  "fuser",
  "lgn-cli-utils",
  "lgn-content-store",
@@ -5183,7 +5192,7 @@ dependencies = [
  "anyhow",
  "atty",
  "camino",
- "clap 3.1.8",
+ "clap 3.1.9",
  "determinator",
  "dunce",
  "fs_extra",
@@ -5264,9 +5273,9 @@ dependencies = [
 
 [[package]]
 name = "napi"
-version = "2.3.0"
+version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "419973bc5eb4526ec684583e9d0109969e9c6957459d57f7db01433b981bc52d"
+checksum = "12972192869b8f62bfae07aaae1e76b183baebabc41120240581afd13f8595d5"
 dependencies = [
  "ctor",
  "lazy_static",
@@ -5870,9 +5879,6 @@ name = "os_str_bytes"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e22443d1643a904602595ba1cd8f7d896afe56d26712531c5ff73a15b2fbf64"
-dependencies = [
- "memchr",
-]
 
 [[package]]
 name = "owned_ttf_parser"
@@ -6047,7 +6053,7 @@ name = "physics-rebuild-data"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.8",
+ "clap 3.1.9",
  "generic-data",
  "lgn-app",
  "lgn-compiler-runtime-entity",
@@ -6254,7 +6260,7 @@ name = "pong-rebuild-data"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.8",
+ "clap 3.1.9",
  "generic-data",
  "lgn-app",
  "lgn-compiler-runtime-entity",
@@ -6935,7 +6941,7 @@ dependencies = [
 name = "runtime-srv"
 version = "0.1.0"
 dependencies = [
- "clap 3.1.8",
+ "clap 3.1.9",
  "crossbeam-channel",
  "generic-data",
  "instant",
@@ -7139,7 +7145,7 @@ name = "sample-data-compiler"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "clap 3.1.8",
+ "clap 3.1.9",
  "generic-data",
  "lgn-config",
  "lgn-content-store",
@@ -7696,9 +7702,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-rt"
-version = "0.5.12"
+version = "0.5.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f2cc78368bdd33ba6ad1c300f2b9ff4a844f9d7db140c34bc61ef304e1fc160"
+checksum = "4db708cd3e459078f85f39f96a00960bd841f66ee2a669e90bf36907f5a79aae"
 dependencies = [
  "native-tls",
  "once_cell",
@@ -7842,7 +7848,7 @@ name = "telemetry-admin"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.8",
+ "clap 3.1.9",
  "fs_extra",
  "json",
  "lgn-analytics",
@@ -7864,7 +7870,7 @@ dependencies = [
  "anyhow",
  "bytes",
  "chrono",
- "clap 3.1.8",
+ "clap 3.1.9",
  "http",
  "hyper",
  "lgn-blob-storage",
@@ -8634,7 +8640,7 @@ name = "vm-agent"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.8",
+ "clap 3.1.9",
  "lgn-cli-utils",
  "lgn-telemetry-sink",
  "lgn-tracing",
