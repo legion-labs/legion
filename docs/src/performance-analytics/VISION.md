@@ -296,23 +296,23 @@ Could support the interface to get visibility into crates that are already instr
 - Logs (dual mode)  (Kevin)
   * Paging when not filtering
   * n-first results when there is a filter
-- External Dashboards & reports (at least one full stack dev)
-  * elk? db+grafana? parquet/orc + superset?
-- TSC frequency calibration (MAD)
+- Lakehouse-backed timeline (MAD)
 
 ---
 # Roadmap
 ## Juin 2022
+- Lakehouse-backed timeline (continued) (MAD)
 - Backups data lake (Liem)
 - l10n/i18n (Kevin)
 - API key refactor (Julien)
 - IAM permissions cleanup for ingestion & analytics (Julien)
-- Async spans stitching/LOD (MAD)
+- TSC frequency calibration (MAD)
 
 ---
 ## Backlog
-- Memory tracing and analytics (MAD)
-- VM monitoring / Fluentd output command (MAD)
+- Async spans stitching/LOD
+- Memory tracing and analytics
+- VM monitoring / Fluentd output command
 - GPU profiling
 - Support for Google Cloud Storage
 - Landing page
