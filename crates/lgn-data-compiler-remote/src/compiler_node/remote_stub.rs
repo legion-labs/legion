@@ -53,7 +53,8 @@ impl CompilerStub for RemoteCompilerStub {
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         _registry: Arc<AssetRegistry>,
-        data_provider: &Provider,
+        volatile_provider: &Provider,
+        _persistent_provider: &Provider,
         source_manifest_id: &SharedTreeIdentifier,
         _runtime_manifest_id: &SharedTreeIdentifier,
         env: &CompilationEnv,
@@ -67,7 +68,7 @@ impl CompilerStub for RemoteCompilerStub {
             env,
         );
 
-        let msg = collect_local_resources(&self.bin_path, &cmd, data_provider).await?;
+        let msg = collect_local_resources(&self.bin_path, &cmd, volatile_provider).await?;
 
         let result = crate::remote_service::client::send_receive_workload(&self.server_addr, msg);
         Ok(serde_json::from_str::<CompilationOutput>(&result)?)

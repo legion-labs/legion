@@ -27,10 +27,20 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
 tokio = { version = "1.13", features = ["full", "tracing"] }
+memoffset = "0.6"
+serde_bytes = "0.11"
 
 [dev-dependencies]
 tempfile = "3.2.0"
 tokio-test = "0.4.2"
+generic-data = { path = "../../tests/generic-data", features = ["offline"] }
+
+[build-dependencies]
+lgn-data-codegen = { path = "../../crates/lgn-data-codegen", version = "0.1.0" }
 
 [package.metadata.cargo-udeps.ignore]
 development = ["tokio-test"]
+
+[features]
+default = ["offline"]
+offline = []

@@ -6,7 +6,7 @@ use lgn_editor_proto::property_inspector::{
     InsertNewArrayElementRequest,
 };
 
-use lgn_data_offline::resource::ResourcePathName;
+use lgn_data_offline::ResourcePathName;
 use lgn_data_runtime::{ResourceDescriptor, ResourceId, ResourceTypeAndId};
 use lgn_editor_proto::property_inspector::GetResourcePropertiesRequest;
 
@@ -18,10 +18,12 @@ async fn test_property_inspector() -> anyhow::Result<()> {
     let (editor_events_sender, _editor_events_receiver) = broadcast::channel(1_000);
 
     {
-        let transaction_manager = crate::test_resource_browser::setup_project(&project_dir).await;
+        let (transaction_manager, asset_registry) =
+            crate::test_resource_browser::setup_project(&project_dir).await;
 
         let property_inspector = crate::property_inspector_plugin::PropertyInspectorRPC {
             transaction_manager: transaction_manager.clone(),
+            asset_registry,
             event_sender: editor_events_sender.clone(),
         };
 
@@ -90,7 +92,8 @@ async fn test_property_inspector() -> anyhow::Result<()> {
             assert_eq!(desc.id, new_id.to_string());
             assert_eq!(response.properties[0].ptype, "Entity");
             assert_eq!(response.properties[0].sub_properties[0].name, "id");
-            assert_eq!(response.properties[0].sub_properties[1].name, "children");
+            assert_eq!(response.properties[0].sub_properties[1].name, "meta");
+            assert_eq!(response.properties[0].sub_properties[2].name, "children");
         }
     }
     Ok(())

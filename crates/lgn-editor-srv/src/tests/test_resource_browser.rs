@@ -70,7 +70,9 @@ use tonic::Request;
                 ))
 }*/
 
-pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<TransactionManager>> {
+pub(crate) async fn setup_project(
+    project_dir: impl AsRef<Path>,
+) -> (Arc<Mutex<TransactionManager>>, Arc<AssetRegistry>) {
     let build_dir = project_dir.as_ref().join("temp");
     std::fs::create_dir_all(&build_dir).unwrap();
 
@@ -93,8 +95,8 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
             Arc::clone(&source_control_content_provider),
             project.source_manifest_id(),
         );
-    sample_data::offline::add_loaders(&mut asset_registry);
-    lgn_scripting_data::offline::add_loaders(&mut asset_registry);
+    sample_data::register_types(&mut asset_registry);
+    lgn_scripting_data::register_types(&mut asset_registry);
     let asset_registry = asset_registry.create().await;
 
     let compilers = CompilerRegistryOptions::default()
@@ -116,7 +118,6 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
 
     Arc::new(Mutex::new(TransactionManager::new(
         project,
-        asset_registry,
         build_manager,
         SelectionManager::create(),
     )))
@@ -130,7 +131,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
 
     {
         let (scene_events_tx, _rx) = crossbeam_channel::unbounded::<SceneMessage>();
-        let transaction_manager = setup_project(&project_dir).await;
+        let (transaction_manager, _asset_registry) = setup_project(&project_dir).await;
         let resource_browser = crate::resource_browser_plugin::ResourceBrowserRPC {
             transaction_manager: transaction_manager.clone(),
             uploads_folder: "".into(),

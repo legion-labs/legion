@@ -31,6 +31,7 @@ pub(crate) struct CompiledResourceReference {
     pub(crate) compiled_reference: ResourcePathId,
 }
 
+#[allow(dead_code)]
 impl CompiledResourceReference {
     pub fn is_same_context(&self, resource_info: &CompiledResourceInfo) -> bool {
         self.context_hash == resource_info.context_hash
@@ -245,54 +246,6 @@ impl OutputIndex {
         Some((compiled, references))
     }
 
-    pub(crate) async fn find_linked(
-        &self,
-        id: ResourcePathId,
-        context_hash: AssetHash,
-        source_hash: AssetHash,
-    ) -> Result<Option<ResourceIdentifier>, Error> {
-        let output = {
-            let statement = sqlx::query_as(
-                "SELECT checksum
-                    FROM linked_output
-                    WHERE id = ? AND context_hash = ? AND source_hash = ?",
-            )
-            .bind(id.to_string())
-            .bind(context_hash.into_i64())
-            .bind(source_hash.into_i64());
-
-            let result: Option<(String,)> = statement
-                .fetch_optional(&self.database)
-                .await
-                .map_err(Error::Database)?;
-
-            result.map(|(checksum,)| ResourceIdentifier::from_str(&checksum).unwrap())
-        };
-
-        Ok(output)
-    }
-
-    pub(crate) async fn insert_linked(
-        &self,
-        id: ResourcePathId,
-        context_hash: AssetHash,
-        source_hash: AssetHash,
-        content_id: ResourceIdentifier,
-    ) -> Result<(), Error> {
-        let query = sqlx::query("INSERT into linked_output VALUES(?, ?, ?, ?);")
-            .bind(id.to_string())
-            .bind(context_hash.into_i64())
-            .bind(source_hash.into_i64())
-            .bind(content_id.to_string());
-
-        self.database
-            .execute(query)
-            .await
-            .map_err(Error::Database)?;
-
-        Ok(())
-    }
-
     pub async fn record_pathid(&mut self, id: &ResourcePathId) -> Result<(), Error> {
         let query = sqlx::query("INSERT into pathid_mapping VALUES(?, ?);")
             .bind(id.resource_id().to_string())
@@ -340,9 +293,9 @@ mod tests {
 
     use std::path::Path;
 
+    use generic_data::offline::TextResource;
     use lgn_data_compiler::CompiledResource;
     use lgn_data_runtime::{ResourceDescriptor, ResourceId, ResourcePathId, ResourceTypeAndId};
-    use text_resource::TextResource;
 
     use crate::output_index::{AssetHash, OutputIndex};
 

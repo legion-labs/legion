@@ -1,6 +1,6 @@
 use lgn_math::prelude::*;
 
-#[resource()]
+#[resource]
 #[derive(Clone)]
 pub struct Model {
     pub meshes: Vec<Mesh>,

@@ -30,6 +30,13 @@ erased-serde = "0.3.12"
 typetag = "0.1"
 memoffset = "0.6"
 inventory = { version = "0.2", optional = true }
+async-trait = "0.1"
+tokio = "1.13"
+
+[dev-dependencies]
+tempfile = "3.2.0"
+tokio-test = "0.4.2"
+lgn-content-store = { path = "../../crates/lgn-content-store", version = "0.1.0" }
 
 [build-dependencies]
 lgn-data-codegen = { path = "../../crates/lgn-data-codegen", version = "0.1.0" }
@@ -38,7 +45,7 @@ lgn-data-codegen = { path = "../../crates/lgn-data-codegen", version = "0.1.0" }
 # generic-data = { path = ".", version = "0.1.0", features = ["offline"] }
 
 [features]
-default = ["runtime"]
+default = ["runtime", "offline"]
 offline = ["lgn-data-offline", "inventory"]
 runtime = []
 

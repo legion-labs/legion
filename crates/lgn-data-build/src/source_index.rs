@@ -6,7 +6,7 @@ use std::{
 
 use hex::ToHex;
 use lgn_content_store::{indexing::TreeIdentifier, Provider};
-use lgn_data_offline::resource::Project;
+use lgn_data_offline::{Project};
 use lgn_data_runtime::{ResourcePathId, ResourceTypeAndId};
 use lgn_tracing::span_scope;
 use lgn_utils::{DefaultHasher, DefaultHasher256};
@@ -356,8 +356,9 @@ impl SourceIndex {
 #[cfg(test)]
 mod tests {
 
-    use lgn_data_offline::resource::ResourcePathName;
-    use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourceId};
+    use generic_data::offline::TestResource;
+    use lgn_data_offline::resource::{Project, ResourcePathName};
+    use lgn_data_runtime::prelude::*;
 
     use super::*;
 
@@ -365,12 +366,12 @@ mod tests {
     async fn pathid_records() {
         // dummy ids - the actual project structure is irrelevant in this test.
         let source_id = ResourceTypeAndId {
-            kind: refs_resource::TestResource::TYPE,
+            kind: TestResource::TYPE,
             id: ResourceId::new(),
         };
         let source_resource = ResourcePathId::from(source_id);
-        let intermediate_resource = source_resource.push(refs_resource::TestResource::TYPE);
-        let output_resource = intermediate_resource.push(refs_resource::TestResource::TYPE);
+        let intermediate_resource = source_resource.push(TestResource::TYPE);
+        let output_resource = intermediate_resource.push(TestResource::TYPE);
 
         let source_index = {
             let mut source_index = SourceContent::new("0.0.1");
@@ -418,12 +419,12 @@ mod tests {
     async fn dependency_update() {
         // dummy ids - the actual project structure is irrelevant in this test.
         let source_id = ResourceTypeAndId {
-            kind: refs_resource::TestResource::TYPE,
+            kind: TestResource::TYPE,
             id: ResourceId::new(),
         };
         let source_resource = ResourcePathId::from(source_id);
-        let intermediate_resource = source_resource.push(refs_resource::TestResource::TYPE);
-        let output_resources = intermediate_resource.push(refs_resource::TestResource::TYPE);
+        let intermediate_resource = source_resource.push(TestResource::TYPE);
+        let output_resources = intermediate_resource.push(TestResource::TYPE);
 
         let mut source_index = SourceContent::new("0.0.1");
 
@@ -487,43 +488,28 @@ mod tests {
             current_checksum(&source_index)
         };
 
-        let resources = AssetRegistryOptions::new()
-            .add_processor::<refs_resource::TestResource>()
-            .create()
-            .await;
+        let mut options = AssetRegistryOptions::new();
+        generic_data::register_types(&mut options);
+        let resources = options.create().await;
 
         let (resource_id, resource_handle) = {
-            let resource_handle = resources
-                .new_resource(refs_resource::TestResource::TYPE)
-                .expect("new resource")
-                .typed::<refs_resource::TestResource>();
+            let mut resource = Box::new(TestResource::new_named("test_source"));
+            resource.content = "hello".to_string();
 
-            let mut edit = resource_handle.instantiate(&resources).unwrap();
-            edit.content = "hello".to_string();
-            resource_handle.apply(edit, &resources);
-
-            let id = ResourceId::from_raw(0xaabbccddeeff00000000000000000000);
-
-            let resource_id = ResourceTypeAndId {
-                kind: refs_resource::TestResource::TYPE,
-                id,
-            };
-
-            project
-                .add_resource_with_id(
-                    ResourcePathName::new("test_source"),
-                    resource_id,
-                    &resource_handle,
-                    &resources,
-                )
+            let resource_id = project
+                .add_resource(resource.as_ref())
                 .await
                 .expect("adding the resource");
 
-            project
+	  project
                 .commit("add resource")
                 .await
                 .expect("successful commit");
-
+		
+            let resource_handle: Handle<TestResource> = resources
+                .set_resource(resource_id, resource)
+                .unwrap()
+                .into();
             (resource_id, resource_handle)
         };
 
@@ -552,16 +538,15 @@ mod tests {
 
         // modify a resource
         let third_checksum = {
-            let mut edit = resource_handle
-                .instantiate(&resources)
-                .expect("loaded resource");
+            let mut edit = resources.edit(&resource_handle).expect("loaded resource");
             edit.content = "hello world!".to_string();
-            resource_handle.apply(edit, &resources);
 
             project
-                .save_resource(resource_id, resource_handle, &resources)
+                .save_resource(resource_id.id, edit.as_resource())
                 .await
                 .expect("successful save");
+
+            resources.commit(edit);
 
             project
                 .commit("save resource")

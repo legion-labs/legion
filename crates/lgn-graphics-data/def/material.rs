@@ -17,19 +17,19 @@ pub struct SamplerData {
     wrap_v: WrappingMode,
 }
 
-#[resource()]
+#[resource]
 #[derive(Clone)]
 pub struct Material {
-    #[legion(resource_type = crate::runtime_texture::Texture)]
+    #[legion(resource_type = crate::runtime::BinTexture)]
     pub albedo: Option<ResourcePathId>,
 
-    #[legion(resource_type = crate::runtime_texture::Texture)]
+    #[legion(resource_type = crate::runtime::BinTexture)]
     pub normal: Option<ResourcePathId>,
 
-    #[legion(resource_type = crate::runtime_texture::Texture)]
+    #[legion(resource_type = crate::runtime::BinTexture)]
     pub roughness: Option<ResourcePathId>,
 
-    #[legion(resource_type = crate::runtime_texture::Texture)]
+    #[legion(resource_type = crate::runtime::BinTexture)]
     pub metalness: Option<ResourcePathId>,
 
     #[legion(default=(255,0,0))]

@@ -2,12 +2,11 @@
 mod tests {
     use std::{path::PathBuf, sync::Arc};
 
+    use generic_data::offline::TestResource;
     use lgn_content_store::Provider;
     use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-    use lgn_data_offline::resource::{Project, ResourcePathName};
-    use lgn_data_runtime::{
-        AssetRegistry, AssetRegistryOptions, ResourceDescriptor, ResourcePathId,
-    };
+    use lgn_data_offline::{Project, SourceResource};
+    use lgn_data_runtime::prelude::*;
     use tempfile::TempDir;
 
     use crate::DataBuildOptions;
@@ -31,10 +30,9 @@ mod tests {
     }
 
     async fn setup_registry() -> Arc<AssetRegistry> {
-        AssetRegistryOptions::new()
-            .add_processor::<refs_resource::TestResource>()
-            .create()
-            .await
+        let mut options = AssetRegistryOptions::new();
+        generic_data::register_types(&mut options);
+        options.create().await
     }
 
     #[tokio::test]
@@ -53,14 +51,7 @@ mod tests {
 
         let resource = ResourcePathId::from({
             let resource_id = project
-                .add_resource(
-                    ResourcePathName::new("resource"),
-                    refs_resource::TestResource::TYPE,
-                    &resources
-                        .new_resource(refs_resource::TestResource::TYPE)
-                        .unwrap(),
-                    &resources,
-                )
+                .add_resource(&TestResource::new_named("resource"))
                 .await
                 .unwrap();
             project.commit("add resource").await.unwrap();
@@ -101,14 +92,7 @@ mod tests {
 
         let (child_id, parent_id) = {
             let child_id = project
-                .add_resource(
-                    ResourcePathName::new("child"),
-                    refs_resource::TestResource::TYPE,
-                    &resources
-                        .new_resource(refs_resource::TestResource::TYPE)
-                        .unwrap(),
-                    &resources,
-                )
+                .add_resource(&TestResource::new_named("child"))
                 .await
                 .unwrap();
 
@@ -124,12 +108,7 @@ mod tests {
                 res
             };
             let parent_id = project
-                .add_resource(
-                    ResourcePathName::new("parent"),
-                    refs_resource::TestResource::TYPE,
-                    &parent_handle,
-                    &resources,
-                )
+                .add_resource(&TestResource::new_named("parent"))
                 .await
                 .unwrap();
 

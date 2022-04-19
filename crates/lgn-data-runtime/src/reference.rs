@@ -1,70 +1,66 @@
-use std::any::Any;
-
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::{AssetRegistry, Handle, Resource, ResourceTypeAndId};
+use crate::{Handle, HandleUntyped, Resource, ResourceTypeAndId};
 
-/// A `ResourceReference` represents a reference to an external resource, that
+/// A `ReferenceUntyped` represents a reference to an external resource, that
 /// can be promoted to a handle
-pub enum Reference<T>
-where
-    T: Any + Resource + Send,
-{
+pub enum ReferenceUntyped {
     /// Reference is not yet active, and is simply described as an id
     Passive(ResourceTypeAndId),
-
     /// Reference is active, and be accessed through a typed handle
-    Active(Handle<T>),
+    Active((ResourceTypeAndId, HandleUntyped)),
 }
 
-impl<T> Clone for Reference<T>
-where
-    T: Any + Resource + Send,
-{
+impl Clone for ReferenceUntyped {
     fn clone(&self) -> Self {
         match self {
             Self::Passive(resource_id) => Self::Passive(*resource_id),
-            Self::Active(handle) => Self::Active((*handle).clone()),
+            Self::Active((resource_id, handle)) => Self::Active((*resource_id, handle.clone())),
         }
     }
 }
 
-impl<T> Reference<T>
-where
-    T: Any + Resource + Send,
-{
+impl ReferenceUntyped {
     /// Returns resource id associated with this Reference
     pub fn id(&self) -> ResourceTypeAndId {
         match self {
             Self::Passive(resource_id) => *resource_id,
-            Self::Active(handle) => handle.id(),
+            Self::Active((resource_id, _handle)) => *resource_id,
         }
     }
 
     /// Promote a reference to an active handle
-    pub fn activate(&mut self, registry: &AssetRegistry) {
+    pub fn activate(&mut self, handle: HandleUntyped) {
         if let Self::Passive(resource_id) = self {
-            let handle = registry
-                .get_untyped(*resource_id)
-                .unwrap_or_else(|| panic!("Cannot activate {}", *resource_id));
-            *self = Self::Active(handle.into());
+            assert_eq!(*resource_id, handle.id());
+            *self = Self::Active((*resource_id, handle));
         }
+    }
+
+    /// Returns resource id associated with this Reference
+    pub fn get_active_handle_untyped(&self) -> Option<&HandleUntyped> {
+        if let Self::Active((_resource_id, handle)) = self {
+            return Some(handle);
+        }
+        None
+    }
+
+    /// Returns resource id associated with this Reference
+    pub fn get_active_handle<T: Resource>(&self) -> Option<Handle<T>> {
+        if let Self::Active((_resource_id, handle)) = self {
+            return Some(handle.clone().into());
+        }
+        None
     }
 }
 
-impl<T> PartialEq for Reference<T>
-where
-    T: Any + Resource + Send,
-{
+impl PartialEq for ReferenceUntyped {
     fn eq(&self, other: &Self) -> bool {
         self.id() == other.id()
     }
 }
 
-impl<T> Serialize for Reference<T>
-where
-    T: Any + Resource + Send,
-{
+impl Serialize for ReferenceUntyped {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -73,10 +69,7 @@ where
     }
 }
 
-impl<'de, T> Deserialize<'de> for Reference<T>
-where
-    T: Any + Resource + Send,
-{
+impl<'de> Deserialize<'de> for ReferenceUntyped {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,

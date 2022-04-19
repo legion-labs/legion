@@ -7,3 +7,4 @@
 include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
 
 pub mod plugin;
+pub use plugin::*;

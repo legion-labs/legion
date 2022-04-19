@@ -1,7 +1,10 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::{member_meta_info::MemberMetaInfo, struct_meta_info::StructMetaInfo, GenerationType};
+use crate::{
+    attributes::NO_DEFAULT_TYPE_ATTR, member_meta_info::MemberMetaInfo,
+    struct_meta_info::StructMetaInfo, GenerationType,
+};
 
 /// Generate fields members definition
 fn generate_fields(members: &[MemberMetaInfo], gen_type: GenerationType) -> Vec<TokenStream> {
@@ -117,6 +120,25 @@ pub(crate) fn generate_reflection(
 
     let attribute_impl = struct_meta_info.attributes.generate_descriptor_impl();
 
+    let default_impl = if !struct_meta_info
+        .attributes
+        .values
+        .contains_key(NO_DEFAULT_TYPE_ATTR)
+    {
+        quote! {
+            #[allow(clippy::derivable_impls)]
+            impl Default for #type_identifier {
+                fn default() -> Self {
+                    Self {
+                        #(#fields_defaults)*
+                    }
+                }
+            }
+        }
+    } else {
+        quote! {}
+    };
+
     quote! {
         #[derive(serde::Serialize, serde::Deserialize, PartialEq, Clone)]
         #dynamic_derive
@@ -133,14 +155,7 @@ pub(crate) fn generate_reflection(
             }
         }
 
-        #[allow(clippy::derivable_impls)]
-        impl Default for #type_identifier {
-            fn default() -> Self {
-                Self {
-                    #(#fields_defaults)*
-                }
-            }
-        }
+        #default_impl
 
         impl lgn_data_model::TypeReflection for #type_identifier {
 

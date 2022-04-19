@@ -12,8 +12,8 @@ use lgn_async::TokioAsyncRuntime;
 use lgn_content_store::indexing::SharedTreeIdentifier;
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_offline::resource::Project;
-use lgn_data_runtime::{AssetRegistry, AssetRegistryScheduling};
+use lgn_data_offline::Project;
+use lgn_data_runtime::{manifest::Manifest, AssetRegistry, AssetRegistryScheduling};
 use lgn_data_transaction::{BuildManager, SelectionManager, TransactionManager};
 use lgn_ecs::prelude::*;
 pub use settings::ResourceRegistrySettings;
@@ -105,7 +105,6 @@ impl ResourceRegistryPlugin {
 
             Arc::new(Mutex::new(TransactionManager::new(
                 Arc::new(Mutex::new(project)),
-                asset_registry.clone(),
                 build_manager,
                 selection_manager.clone(),
             )))

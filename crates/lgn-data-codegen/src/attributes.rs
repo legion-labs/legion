@@ -14,8 +14,9 @@ pub(crate) const GROUP_ATTR: &str = "group";
 pub(crate) const TRANSIENT_ATTR: &str = "transient";
 pub(crate) const EDITOR_TYPE_ATTR: &str = "editor_type";
 pub(crate) const RESOURCE_TYPE_ATTR: &str = "resource_type";
+pub(crate) const NO_DEFAULT_TYPE_ATTR: &str = "no_default";
 
-/// Parsed #legion attributes on a type (Struct, Field, Enum, Enum Variant)
+/// Parse #legion attributes on a type (Struct, Field, Enum, Enum Variant)
 #[derive(Debug, Default)]
 pub(crate) struct Attributes {
     pub default_literal: Option<TokenStream>,
@@ -46,7 +47,7 @@ impl Attributes {
                             }
                             // Bool Attributes
                             READONLY_ATTR | HIDDEN_ATTR | OFFLINE_ONLY_ATTR | TRANSIENT_ATTR
-                            | RUNTIME_ONLY_ATTR | IGNORE_DEPS_ATTR => {
+                            | RUNTIME_ONLY_ATTR | IGNORE_DEPS_ATTR | NO_DEFAULT_TYPE_ATTR => {
                                 values.insert(ident, "true".into());
                             }
                             // ResourceType Attribute
@@ -119,7 +120,7 @@ fn get_attribute_literal(
     panic!("Legion proc-macro: invalid literal for attribute");
 }
 
-// Retrieive the token for the "default" attributes. Manually parse token to
+// Retrieve the token for the "default" attributes. Manually parse token to
 // support tuple, arrays, constants, literal.
 fn get_default_token_stream(
     group_iter: &mut std::iter::Peekable<proc_macro2::token_stream::IntoIter>,
@@ -132,7 +133,11 @@ fn get_default_token_stream(
                         let mut token_ident = ident.to_string();
                         loop {
                             if let Some(TokenTree::Punct(punct)) = group_iter.peek() {
-                                if punct.as_char() == ':' || punct.as_char() == '.' {
+                                if punct.as_char() == ':'
+                                    || punct.as_char() == '.'
+                                    || punct.as_char() == '<'
+                                    || punct.as_char() == '>'
+                                {
                                     token_ident.push(punct.as_char());
                                 } else {
                                     break;

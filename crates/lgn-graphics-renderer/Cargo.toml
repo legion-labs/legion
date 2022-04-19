@@ -42,6 +42,7 @@ smallvec = "1.7"
 static_assertions = "1.1.0"
 strum = { version = "0.23" }
 uuid = { version = "1.0", features = ["v4", "serde"] }
+async-trait = "0.1"
 
 [build-dependencies]
 lgn-graphics-cgen = { path = "../lgn-graphics-cgen", version = "0.1.0" }

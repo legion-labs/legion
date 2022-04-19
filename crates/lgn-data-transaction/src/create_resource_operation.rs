@@ -1,10 +1,10 @@
 //! Transaction Operation to Create a Resource
 
-use std::{fs::File, path::PathBuf};
+use std::path::PathBuf;
 
 use async_trait::async_trait;
-use lgn_data_offline::resource::ResourcePathName;
-use lgn_data_runtime::ResourceTypeAndId;
+use lgn_data_offline::ResourcePathName;
+use lgn_data_runtime::{AssetRegistryReader, ResourceTypeAndId};
 
 use crate::{Error, LockContext, TransactionOperation};
 
@@ -37,23 +37,24 @@ impl CreateResourceOperation {
 #[async_trait]
 impl TransactionOperation for CreateResourceOperation {
     async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
-        let handle = if let Some(ref path) = self.content_path {
-            let mut reader =
-                File::open(path).map_err(|_err| Error::InvalidFilePath(path.clone()))?;
-
-            ctx.asset_registry
-                .deserialize_resource(self.resource_id, &mut reader)
-                .map_err(|err| Error::InvalidResourceDeserialization(self.resource_id, err))?
-        } else {
-            ctx.asset_registry
-                .new_resource_with_id(self.resource_id)
-                .ok_or(Error::InvalidResourceType(self.resource_id.kind))?
-        };
-
         // Validate duplicate id/name
         if ctx.project.exists(self.resource_id).await {
             return Err(Error::ResourceIdAlreadyExist(self.resource_id));
         }
+
+        let mut new_instance = if let Some(ref path) = self.content_path {
+            let reader = tokio::fs::File::open(path)
+                .await
+                .map_err(|_err| Error::InvalidFilePath(path.clone()))?;
+
+            let reader = Box::pin(reader) as AssetRegistryReader;
+            self.resource_id
+                .kind
+                .create_from_json_reader(reader)
+                .await?
+        } else {
+            self.resource_id.kind.new_instance()
+        };
 
         let mut requested_resource_path = self.resource_path.clone();
         if ctx.project.exists_named(&requested_resource_path).await {
@@ -66,27 +67,15 @@ impl TransactionOperation for CreateResourceOperation {
                 .await;
         }
 
-        ctx.project
-            .add_resource_with_id(
-                requested_resource_path,
-                self.resource_id,
-                handle.clone(),
-                &ctx.asset_registry,
-            )
-            .await
-            .map_err(|err| Error::Project(self.resource_id, err))?;
+        lgn_data_offline::get_meta_mut(new_instance.as_mut()).name = requested_resource_path;
 
-        ctx.loaded_resource_handles.insert(self.resource_id, handle);
-
-        Ok(())
+        Ok(ctx
+            .project
+            .add_resource_with_id(self.resource_id.id, new_instance.as_mut())
+            .await?)
     }
 
     async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
-        ctx.loaded_resource_handles.remove(self.resource_id);
-        ctx.project
-            .delete_resource(self.resource_id)
-            .await
-            .map_err(|err| Error::Project(self.resource_id, err))?;
-        Ok(())
+        Ok(ctx.project.delete_resource(self.resource_id.id).await?)
     }
 }

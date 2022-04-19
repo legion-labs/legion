@@ -1,8 +1,8 @@
 use lgn_data_runtime::Handle;
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::{
+    runtime::BinTextureReferenceType,
     runtime::{Material, SamplerData},
-    runtime_texture::TextureReferenceType,
     Color,
 };
 
@@ -23,13 +23,13 @@ impl Default for AlphaMode {
 
 #[derive(Default, Clone)]
 pub struct MaterialData {
-    pub albedo_texture: Option<TextureReferenceType>,
+    pub albedo_texture: Option<BinTextureReferenceType>,
     pub base_albedo: Color,
-    pub normal_texture: Option<TextureReferenceType>,
-    pub metalness_texture: Option<TextureReferenceType>,
+    pub normal_texture: Option<BinTextureReferenceType>,
+    pub metalness_texture: Option<BinTextureReferenceType>,
     pub base_metalness: f32,
     pub reflectance: f32,
-    pub roughness_texture: Option<TextureReferenceType>,
+    pub roughness_texture: Option<BinTextureReferenceType>,
     pub base_roughness: f32,
     pub alpha_mode: AlphaMode,
     pub sampler_data: Option<SamplerData>,
@@ -44,10 +44,10 @@ pub struct MaterialComponent {
 impl MaterialComponent {
     pub fn new(
         resource: Handle<Material>,
-        albedo_texture: Option<TextureReferenceType>,
-        normal_texture: Option<TextureReferenceType>,
-        metalness_texture: Option<TextureReferenceType>,
-        roughness_texture: Option<TextureReferenceType>,
+        albedo_texture: Option<BinTextureReferenceType>,
+        normal_texture: Option<BinTextureReferenceType>,
+        metalness_texture: Option<BinTextureReferenceType>,
+        roughness_texture: Option<BinTextureReferenceType>,
         sampler_data: Option<SamplerData>,
     ) -> Self {
         Self {

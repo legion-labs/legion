@@ -37,11 +37,7 @@ lgn-compiler-test-atoi = { path = "../../tests/atoi-compiler" }
 lgn-compiler-test-refs = { path = "../../tests/refs-compiler" }
 lgn-compiler-test-reverse = { path = "../../tests/reverse-compiler" }
 lgn-compiler-test-split = { path = "../../tests/split-compiler" }
-refs-asset = { path = "../lgn-data-runtime/test-refs-asset" }
-integer-asset = { path = "../lgn-data-runtime/test-integer-asset" }
-refs-resource = { path = "../lgn-data-offline/test-refs-resource" }
-text-resource = { path = "../lgn-data-offline/test-text-resource" }
-multitext-resource = { path = "../lgn-data-offline/test-multitext-resource" }
+generic-data = { path = "../../tests/generic-data", features = ["offline"] }
 tempfile = "3.2.0"
 tokio-test = "0.4.2"
 

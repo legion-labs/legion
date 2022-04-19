@@ -10,16 +10,13 @@ use clap::{ArgEnum, Parser};
 use lgn_content_store::indexing::{empty_tree_id, SharedTreeIdentifier};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_offline::{
-    resource::{Project, ResourcePathName},
-    vfs::AddDeviceSourceCas,
-};
-use lgn_data_runtime::{
-    AssetRegistry, AssetRegistryOptions, Component, ResourceDescriptor, ResourceId, ResourcePathId,
-    ResourceTypeAndId,
-};
+use lgn_data_offline::{Project, ResourcePathName, SourceResource};
+use lgn_data_runtime::prelude::*;
 use lgn_data_transaction::BuildManager;
-use lgn_graphics_data::offline::CameraSetup;
+use lgn_graphics_data::{
+    offline::{CameraSetup, Light, Visual},
+    LightType,
+};
 use lgn_graphics_renderer::components::Mesh;
 use lgn_math::prelude::{Quat, Vec3};
 use lgn_physics::{
@@ -28,10 +25,7 @@ use lgn_physics::{
 };
 use lgn_source_control::RepositoryName;
 use lgn_tracing::{info, LevelFilter};
-use sample_data::{
-    offline::{Light, Transform, Visual},
-    LightType,
-};
+use sample_data::offline::Transform;
 
 #[derive(Debug, Copy, Clone, PartialEq, ArgEnum)]
 enum CompilersSource {
@@ -95,12 +89,12 @@ async fn main() -> anyhow::Result<()> {
         Arc::clone(&source_control_content_provider),
         project.source_manifest_id(),
     );
-    lgn_graphics_data::offline::add_loaders(&mut asset_registry);
-    generic_data::offline::add_loaders(&mut asset_registry);
-    sample_data::offline::add_loaders(&mut asset_registry);
+    lgn_graphics_data::register_types(&mut asset_registry);
+    generic_data::register_types(&mut asset_registry);
+    sample_data::register_types(&mut asset_registry);
     let asset_registry = asset_registry.create().await;
 
-    let resource_ids = create_offline_data(&mut project, &asset_registry).await;
+    let resource_ids = create_offline_data(&mut project).await;
     project
         .commit("initial commit")
         .await
@@ -162,13 +156,9 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn create_offline_data(
-    project: &mut Project,
-    resource_registry: &AssetRegistry,
-) -> Vec<ResourceTypeAndId> {
+async fn create_offline_data(project: &mut Project) -> Vec<ResourceTypeAndId> {
     let cube_model_id = create_offline_model(
         project,
-        resource_registry,
         "c26b19b2-e80a-4db5-a53c-ba24492d8015",
         "/scene/models/cube.mod",
         Mesh::new_cube(0.5),
@@ -177,7 +167,6 @@ async fn create_offline_data(
 
     let sphere_model_id = create_offline_model(
         project,
-        resource_registry,
         "53db2f32-ce66-4e01-b06f-960aaa7712e4",
         "/scene/models/sphere.mod",
         Mesh::new_sphere(0.25, 64, 64),
@@ -186,7 +175,6 @@ async fn create_offline_data(
 
     let pyramid_model_id = create_offline_model(
         project,
-        resource_registry,
         "5e0d46c5-78da-4c5e-8204-a2c859ec5c09",
         "/scene/models/pyramid.mod",
         Mesh::new_pyramid(1.0, 0.5),
@@ -195,7 +183,6 @@ async fn create_offline_data(
 
     let ground_id = create_offline_entity(
         project,
-        resource_registry,
         "8859bf63-f187-4aa3-afd5-425130c7ba04",
         "/scene/ground.ent",
         vec![
@@ -220,7 +207,6 @@ async fn create_offline_data(
 
     let box_a_id = create_offline_entity(
         project,
-        resource_registry,
         "8e04418d-ca9a-4e4a-a0ea-68e74d8c10d0",
         "/scene/box-a.ent",
         vec![
@@ -245,7 +231,6 @@ async fn create_offline_data(
 
     let box_b_id = create_offline_entity(
         project,
-        resource_registry,
         "b355fa97-97ee-44f9-afbf-1c2920ce5064",
         "/scene/box-b.ent",
         vec![
@@ -270,7 +255,6 @@ async fn create_offline_data(
 
     let box_c_id = create_offline_entity(
         project,
-        resource_registry,
         "6715d493-d7d4-4155-bc18-0e1795c53580",
         "/scene/box-c.ent",
         vec![
@@ -295,7 +279,6 @@ async fn create_offline_data(
 
     let ball_a_id = create_offline_entity(
         project,
-        resource_registry,
         "4dd86281-c3d0-4040-aa59-b3c6cc84eb83",
         "/scene/ball-a.ent",
         vec![
@@ -319,7 +302,6 @@ async fn create_offline_data(
 
     let pyramid_id = create_offline_entity(
         project,
-        resource_registry,
         "9ffa97ef-3ae1-4859-aaeb-91f7268cad50",
         "/scene/pyramid.ent",
         vec![
@@ -351,7 +333,6 @@ async fn create_offline_data(
 
     let light_id = create_offline_entity(
         project,
-        resource_registry,
         "85701c5f-f9f8-4ca0-9111-8243c4ea2cd6",
         "/scene/light.ent",
         vec![
@@ -373,7 +354,6 @@ async fn create_offline_data(
 
     let scene_id = create_offline_entity(
         project,
-        resource_registry,
         "09f7380d-51b2-4061-9fe4-52ceccce55e7",
         "/scene.ent",
         vec![
@@ -396,7 +376,6 @@ async fn create_offline_data(
 
 async fn create_offline_entity(
     project: &mut Project,
-    resources: &AssetRegistry,
     resource_id: &str,
     resource_path: &str,
     components: Vec<Box<dyn Component>>,
@@ -410,35 +389,28 @@ async fn create_offline_entity(
     let name: ResourcePathName = resource_path.into();
 
     let exists = project.exists(type_id).await;
-    let handle = if exists {
+    let mut entity = if exists {
         project
-            .load_resource(type_id, resources)
+            .load_resource::<sample_data::offline::Entity>(type_id.id)
             .await
             .expect("failed to load resource")
     } else {
-        resources
-            .new_resource_with_id(type_id)
-            .expect("failed to create new resource")
+        Box::new(sample_data::offline::Entity::new_named(name.as_str()))
     };
 
-    let mut entity = handle
-        .instantiate::<sample_data::offline::Entity>(resources)
-        .unwrap();
     entity.components.clear();
     entity.components.extend(components.into_iter());
     entity.children.clear();
     entity.children.extend(children.into_iter());
 
-    handle.apply(entity, resources);
-
     if exists {
         project
-            .save_resource(type_id, handle, resources)
+            .save_resource(id, entity.as_ref())
             .await
             .expect("failed to save resource");
     } else {
         project
-            .add_resource_with_id(name, type_id, handle, resources)
+            .add_resource_with_id(id, entity.as_ref())
             .await
             .expect("failed to add new resource");
     }
@@ -449,7 +421,6 @@ async fn create_offline_entity(
 
 async fn create_offline_model(
     project: &mut Project,
-    resources: &AssetRegistry,
     resource_id: &str,
     resource_path: &str,
     mesh: Mesh,
@@ -462,20 +433,15 @@ async fn create_offline_model(
     let name: ResourcePathName = resource_path.into();
 
     let exists = project.exists(type_id).await;
-    let handle = if exists {
+    let mut model = if exists {
         project
-            .load_resource(type_id, resources)
+            .load_resource::<lgn_graphics_data::offline::Model>(type_id.id)
             .await
             .expect("failed to load resource")
     } else {
-        resources
-            .new_resource_with_id(type_id)
-            .expect("failed to create new resource")
+        Box::new(lgn_graphics_data::offline::Model::new_named(name.as_str()))
     };
 
-    let mut model = handle
-        .instantiate::<lgn_graphics_data::offline::Model>(resources)
-        .unwrap();
     model.meshes.clear();
     let mesh = lgn_graphics_data::offline::Mesh {
         positions: mesh.positions,
@@ -491,16 +457,14 @@ async fn create_offline_model(
     };
     model.meshes.push(mesh);
 
-    handle.apply(model, resources);
-
     if exists {
         project
-            .save_resource(type_id, handle, resources)
+            .save_resource(id, model.as_ref())
             .await
             .expect("failed to save resource");
     } else {
         project
-            .add_resource_with_id(name, type_id, handle, resources)
+            .add_resource_with_id(id, model.as_ref())
             .await
             .expect("failed to add new resource");
     }

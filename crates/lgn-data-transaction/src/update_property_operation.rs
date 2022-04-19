@@ -34,52 +34,38 @@ impl UpdatePropertyOperation {
 #[async_trait]
 impl TransactionOperation for UpdatePropertyOperation {
     async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
-        let resource_handle = ctx.get_or_load(self.resource_id).await?;
-
-        let mut reflection = ctx
-            .asset_registry
-            .get_resource_reflection_mut(self.resource_id.kind, &resource_handle)
-            .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
+        let edit = ctx.edit_resource(self.resource_id).await?;
 
         // init old values
         self.old_values.get_or_insert(
             self.new_values
                 .iter()
                 .map(|(property_name, _new_json)| {
-                    let old_json =
-                        get_property_as_json_string(reflection.as_reflect(), property_name)
-                            .map_err(|err| Error::Reflection(self.resource_id, err))?;
-                    Ok(old_json)
+                    let old_json = get_property_as_json_string(edit.as_reflect(), property_name)
+                        .map_err(|err| Error::Reflection(self.resource_id, err))?;
+                    Result::<String, Error>::Ok(old_json)
                 })
                 .collect::<Result<Vec<_>, _>>()?,
         );
 
         for (path, json_value) in &self.new_values {
-            set_property_from_json_string(reflection.as_reflect_mut(), path, json_value)
+            set_property_from_json_string(edit.as_reflect_mut(), path, json_value)
                 .map_err(|err| Error::Reflection(self.resource_id, err))?;
         }
 
-        ctx.changed_resources.insert(self.resource_id);
         Ok(())
     }
 
     async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
         if let Some(old_values) = &self.old_values {
-            let handle = ctx.get_or_load(self.resource_id).await?;
-
-            let mut reflection = ctx
-                .asset_registry
-                .get_resource_reflection_mut(self.resource_id.kind, &handle)
-                .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
+            let edit = ctx.edit_resource(self.resource_id).await?;
 
             if self.new_values.len() == old_values.len() {
                 for ((property, _), old_json) in self.new_values.iter().zip(old_values) {
-                    set_property_from_json_string(reflection.as_reflect_mut(), property, old_json)
+                    set_property_from_json_string(edit.as_reflect_mut(), property, old_json)
                         .map_err(|err| Error::Reflection(self.resource_id, err))?;
                 }
             }
-
-            ctx.changed_resources.insert(self.resource_id);
         }
         Ok(())
     }

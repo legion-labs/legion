@@ -24,7 +24,7 @@ pub fn set_property_from_json_string(
     deserialize_property_by_name(object, path, &mut deserializer)
 }
 
-/// Serialize a `ReflectedData` to Json, appling delta from parent data
+/// Serialize a `ReflectedData` to Json, applying delta from parent data
 pub fn reflection_save_relative_json<T: Sized + serde::Serialize>(
     entity: &T,
     base_entity: &T,
@@ -34,6 +34,10 @@ pub fn reflection_save_relative_json<T: Sized + serde::Serialize>(
 
     if let Some(object) = values.as_object_mut() {
         object.retain(|property_name, cur_value| {
+            // Always serialize the metadata.
+            if property_name == "meta" {
+                return true;
+            }
             base_values
                 .get(property_name.as_str())
                 .map_or(false, |base_value| base_value != cur_value)

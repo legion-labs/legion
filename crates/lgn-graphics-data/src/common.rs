@@ -1,19 +1,8 @@
+use crate::TextureFormat;
 use lgn_tracing::{span_fn, span_scope};
 use serde::{Deserialize, Serialize};
 
 /// High level texture format to let artist control how it is encoded
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Debug)]
-pub enum TextureFormat {
-    /// encode RGB or RGBA channels into BC1 (4 bits per pixel).
-    BC1 = 0,
-    /// encode RGB or RGBA channels into BC3 (8 bits per pixel).
-    BC3,
-    /// Encode R channel into BC4 (4 bits per pixel)
-    BC4,
-    /// encode RGB or RGBA channels into BC3 (8 bits per pixel).
-    BC7,
-}
-
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub enum CompressionQuality {
     Fast = 0,
@@ -138,10 +127,10 @@ pub fn rgba_from_source(
     height: u32,
     color_channels: ColorChannels,
     data: &Vec<u8>,
-) -> Vec<u8> {
+) -> serde_bytes::ByteBuf {
     // TODO - Replace when switching BC4 encoder to ispc_tex
     if color_channels == ColorChannels::R {
-        data.clone()
+        serde_bytes::ByteBuf::from(data.clone())
     } else {
         let source_w_stride = match color_channels {
             ColorChannels::R => 1usize,
@@ -174,6 +163,6 @@ pub fn rgba_from_source(
                 });
             }
         }
-        rgba
+        serde_bytes::ByteBuf::from(rgba)
     }
 }

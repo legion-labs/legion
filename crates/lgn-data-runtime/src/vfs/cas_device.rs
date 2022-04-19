@@ -7,7 +7,10 @@ use lgn_content_store::{
 };
 
 use super::Device;
-use crate::{new_resource_type_and_id_indexer, ResourceTypeAndId, ResourceTypeAndIdIndexer};
+use crate::{
+    new_resource_type_and_id_indexer, AssetRegistryReader, ResourceTypeAndId,
+    ResourceTypeAndIdIndexer,
+};
 
 /// Content addressable storage device. Resources are accessed through a
 /// manifest access table.
@@ -40,7 +43,19 @@ impl Device for CasDevice {
                 return Some(resource_bytes);
             }
         }
+        None
+    }
 
+    async fn get_reader(&self, type_id: ResourceTypeAndId) -> Option<AssetRegistryReader> {
+        if let Ok(Some(resource_id)) = self
+            .manifest
+            .get_identifier(&self.provider, &type_id.into())
+            .await
+        {
+            if let Ok(reader) = self.provider.get_reader(resource_id.as_identifier()).await {
+                return Some(Box::pin(reader) as AssetRegistryReader);
+            }
+        }
         None
     }
 

@@ -7,7 +7,7 @@ use std::{
 use lgn_content_store::Provider;
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_offline::resource::Project;
+use lgn_data_offline::Project;
 use lgn_data_runtime::ResourceType;
 use lgn_source_control::{RepositoryIndex, RepositoryName};
 use serde::{Deserialize, Serialize};
@@ -62,6 +62,7 @@ impl Config {
             ),
             Arc::clone(&source_control_content_provider),
             Arc::clone(&data_content_provider),
+            Arc::clone(&source_control_content_provider),
             CompilerRegistryOptions::default(),
         )
         .open(&project)

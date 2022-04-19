@@ -1,6 +1,6 @@
 use lgn_data_runtime::Component;
 
-#[resource()]
+#[resource]
 #[derive(Clone)]
 struct Entity {
     #[legion(hidden, resource_type = Entity)]

@@ -9,7 +9,7 @@ use std::{str::FromStr, sync::Arc};
 use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
 use lgn_data_model::json_utils::get_property_as_json_string;
-use lgn_data_offline::resource::{Project, ResourceHandles, ResourcePathName};
+use lgn_data_offline::{Project, ResourcePathName};
 use lgn_data_runtime::{
     Resource, ResourceDescriptor, ResourceId, ResourcePathId, ResourceType, ResourceTypeAndId,
 };
@@ -88,13 +88,13 @@ impl IndexSnapshot {
             ) {
                 let mut parent_id = raw_name.extract_parent_info().0;
                 if parent_id.is_none() && res_id.kind == sample_data::offline::Entity::TYPE {
-                    if let Ok(handle) = ctx.get_or_load(res_id).await {
-                        if let Some(entity) =
-                            handle.get::<sample_data::offline::Entity>(&ctx.asset_registry)
-                        {
-                            if let Some(parent) = &entity.parent {
-                                parent_id = Some(parent.source_resource()); // Some(parent.resource_id());
-                            }
+                    if let Ok(entity) = ctx
+                        .project
+                        .load_resource::<sample_data::offline::Entity>(res_id.id)
+                        .await
+                    {
+                        if let Some(parent) = &entity.parent {
+                            parent_id = Some(parent.source_resource()); // Some(parent.resource_id());
                         }
                     }
                 }
@@ -197,39 +197,38 @@ impl ResourceBrowserPlugin {
                 let mut transaction_manager = transaction_manager.lock().await;
 
                 for scene in settings.default_scene.split_terminator(';') {
-                    let resource_path = ResourcePathName::from(scene);
+                    let resource_id = if scene.starts_with('/') {
+                        let resource_path = ResourcePathName::from(scene);
+                        LockContext::new(&transaction_manager)
+                            .await
+                            .project
+                            .find_resource(&resource_path)
+                            .await
+                            .ok()
+                    } else if scene.starts_with('(') {
+                        ResourceTypeAndId::from_str(scene).ok()
+                    } else {
+                        None
+                    };
 
-                    let resource_id = LockContext::new(&transaction_manager)
-                        .await
-                        .project
-                        .find_resource(&resource_path)
-                        .await;
+                    if let Some(resource_id) = resource_id {
+                        // Send OpenScene regardless of the compilation results
+                        event_writer.send(SceneMessage::OpenScene(
+                            ResourcePathId::from(resource_id)
+                                .push(sample_data::runtime::Entity::TYPE)
+                                .resource_id(),
+                        ));
 
-                    match resource_id {
-                        Ok(resource_id) => {
-                            // Send OpenScene regardless of the compilation results
-                            event_writer.send(SceneMessage::OpenScene(
-                                ResourcePathId::from(resource_id)
-                                    .push(sample_data::runtime::Entity::TYPE)
-                                    .resource_id(),
-                            ));
-
-                            match transaction_manager.add_scene(resource_id).await {
-                                Ok(_resource_path_id) => {}
-                                Err(err) => lgn_tracing::warn!(
-                                    "Failed to build scene '{}': {}",
-                                    scene,
-                                    err.to_string()
-                                ),
-                            }
+                        match transaction_manager.add_scene(resource_id).await {
+                            Ok(_resource_path_id) => {}
+                            Err(err) => lgn_tracing::warn!(
+                                "Failed to build scene '{}': {}",
+                                scene,
+                                err.to_string()
+                            ),
                         }
-                        Err(error) => {
-                            lgn_tracing::warn!(
-                                "Failed to locate scene '{}' in project: {}",
-                                &resource_path,
-                                error
-                            );
-                        }
+                    } else {
+                        lgn_tracing::warn!("Failed to parse scene '{}'", scene,);
                     }
                 }
             });
@@ -325,15 +324,16 @@ fn update_entity_parenting(
 }
 
 // Works for both .gltf and .glb (doesn't support external references anymore)
-fn create_gltf_resource(gltf_path: &Path) -> Result<PathBuf, Status> {
-    let raw_data = std::fs::read(gltf_path)?;
+fn create_gltf_resource(_gltf_path: &Path) -> Result<PathBuf, Status> {
+    panic!("unimplemented");
+    /*let raw_data = std::fs::read(gltf_path)?;
     let gltf_file = GltfFile::from_bytes(raw_data);
     let path = gltf_path.with_extension("temp");
     let mut file = std::fs::File::create(&path).map_err(|err| Status::internal(err.to_string()))?;
     gltf_file
         .write(&mut file)
         .map_err(|err| Status::internal(err.to_string()))?;
-    Ok(path)
+    Ok(path)*/
 }
 
 #[tonic::async_trait]
@@ -483,9 +483,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
         &self,
         _request: Request<GetResourceTypeNamesRequest>,
     ) -> Result<Response<GetResourceTypeNamesResponse>, Status> {
-        let mut transaction_manager = self.transaction_manager.lock().await;
-        let ctx = LockContext::new(&transaction_manager).await;
-        let res_types = ctx.asset_registry.get_resource_types();
+        let res_types = ResourceType::get_resource_types();
         Ok(Response::new(GetResourceTypeNamesResponse {
             resource_types: res_types
                 .into_iter()
@@ -513,10 +511,6 @@ impl ResourceBrowser for ResourceBrowserRPC {
         // Build Entity->Parent mapping table. TODO: This should be cached within a index somewhere at one point
         let index_snapshot = {
             let mut transaction_manager = self.transaction_manager.lock().await;
-            transaction_manager
-                .load_all_resource_type(&[sample_data::offline::Entity::TYPE])
-                .await;
-
             let mut ctx = LockContext::new(&transaction_manager).await;
             IndexSnapshot::new(&mut ctx).await
         };

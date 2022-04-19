@@ -1,79 +1,83 @@
 use std::{
-    cell::Cell,
     collections::HashMap,
     path::Path,
-    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
-    time::Duration,
+    pin::Pin,
+    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak},
 };
+
+use futures::{future::Shared, Future, FutureExt};
 
 use lgn_content_store::{
     indexing::{SharedTreeIdentifier, TreeIdentifier},
     Provider,
 };
 use lgn_ecs::schedule::SystemLabel;
+use lgn_tracing::{debug, error};
+use slotmap::SlotMap;
 
 use crate::{
-    asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
-    vfs, Asset, AssetLoader, AssetLoaderError, Handle, HandleUntyped, OfflineResource, Resource,
-    ResourceDescriptor, ResourceId, ResourcePathId, ResourceProcessor, ResourceProcessorError,
+    asset_loader::AssetLoaderIO, vfs, AssetRegistryHandleKey, ComponentInstaller, EditHandle,
+    EditHandleUntyped, Handle, HandleEntry, HandleUntyped, Resource, ResourceId, ResourceInstaller,
     ResourceType, ResourceTypeAndId,
 };
 
-/// Error type for Asset Registry
-#[derive(thiserror::Error, Debug)]
-pub enum AssetRegistryError {
-    /// Error when a resource failed to load
-    #[error(
-        "Dependent Resource '{resource:?}' failed loading because '{parent:?}': {parent_error}"
-    )]
-    ResourceDependentLoadFailed {
-        /// Resource try to load
-        resource: ResourceTypeAndId,
-        /// Parent resource that failed
-        parent: ResourceTypeAndId,
-        /// Inner error of the parent
-        parent_error: String,
-    },
+/// Context about a load request
+pub struct LoadRequest {
+    /// Id of the primary resource getting loaded by this request
+    pub primary_id: ResourceTypeAndId,
+    /// Asset Registry where to register the loaded/installed resources
+    pub asset_registry: Arc<AssetRegistry>,
+}
 
+impl LoadRequest {
+    fn new(primary_id: ResourceTypeAndId, asset_registry: Arc<AssetRegistry>) -> Self {
+        Self {
+            primary_id,
+            asset_registry,
+        }
+    }
+}
+
+/// Error type for Asset Registry
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum AssetRegistryError {
     /// Error when a resource is not found
     #[error("Resource '{0:?}' was not found")]
     ResourceNotFound(ResourceTypeAndId),
 
+    /// Error when a handle is invalid
+    #[error("Invalid Resource Handle '{0:?}' was not found")]
+    InvalidHandle(AssetRegistryHandleKey),
+
+    /// Resource Serialization Error
+    #[error("Asset registry failed to serialize: '{0}'")]
+    SerializationFailed(&'static str, String),
+
     /// General IO Error when loading a resource
-    #[error("Resource '{0:?}' IO error: {1}")]
-    ResourceIOError(ResourceTypeAndId, std::io::Error),
-
-    /// Type mismatched
-    #[error("Resource '{0:?}' type mistmached: {1} expected {2}")]
-    ResourceTypeMismatch(ResourceTypeAndId, String, String),
-
-    /// Version mismatched
-    #[error("Resource '{0:?}' type mistmached: {1} expected {2}")]
-    ResourceVersionMismatch(ResourceTypeAndId, u16, u16),
+    #[error("IO error: {0}")]
+    IOError(std::sync::Arc<std::io::Error>),
 
     /// AssetLoader for a type not present
-    #[error("AssetLoader for ResourceType '{0}' not found")]
-    AssetLoaderNotFound(ResourceType),
-
-    /// AssetLoader for a type not present
-    #[error("Resource '{0:?}' failed to load. {1}")]
-    AssetLoaderFailed(ResourceTypeAndId, AssetLoaderError),
-
-    /// General IO Error
-    #[error("IO Error {0}")]
-    IOError(String),
-
-    /// General IO Error
-    #[error("Invalid Data: {0}")]
-    InvalidData(String),
-
-    /// ResourceProcess fallthrough
-    #[error(transparent)]
-    ResourceProcessError(#[from] ResourceProcessorError),
+    #[error("ResourceInstaller for ResourceType '{0:?}' not found")]
+    ResourceInstallerNotFound(ResourceType),
 
     /// Processor not found
-    #[error("Processor '{0}'not found")]
-    ProcessorNotFound(ResourceType),
+    #[error("ResourceType '{0}'not found")]
+    ResourceTypeNotRegistered(ResourceType),
+
+    /// AssetLoaderError fallthrough
+    #[error("Asset registry reflection Error '{0}'")]
+    ReflectionError(#[from] lgn_data_model::ReflectionError),
+
+    /// AssetLoaderError fallthrough
+    #[error("{0}")]
+    Generic(String),
+}
+
+impl From<std::io::Error> for AssetRegistryError {
+    fn from(err: std::io::Error) -> Self {
+        Self::IOError(std::sync::Arc::new(err))
+    }
 }
 
 /// Return a Guarded Ref to a Asset
@@ -89,29 +93,11 @@ impl<'a, T: ?Sized + 'a> std::ops::Deref for AssetRegistryGuard<'a, T> {
     }
 }
 
-/// Return a Guarded Ref to a Asset
-pub struct AssetRegistryWriteGuard<'a, T: ?Sized + 'a> {
-    _guard: RwLockWriteGuard<'a, Inner>,
-    ptr: *mut T,
-}
-
-impl<'a, T: ?Sized + 'a> std::ops::Deref for AssetRegistryWriteGuard<'a, T> {
-    type Target = T;
-    fn deref(&self) -> &Self::Target {
-        unsafe { &*self.ptr }
-    }
-}
-
-impl<'a, T: ?Sized + 'a> std::ops::DerefMut for AssetRegistryWriteGuard<'a, T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { &mut *self.ptr }
-    }
-}
-
 /// Options which can be used to configure the creation of [`AssetRegistry`].
 pub struct AssetRegistryOptions {
-    loaders: HashMap<ResourceType, Box<dyn AssetLoader + Send + Sync>>,
-    processors: HashMap<ResourceType, Box<dyn ResourceProcessor + Send + Sync>>,
+    resource_installers: HashMap<ResourceType, Arc<dyn ResourceInstaller>>,
+    component_installers: HashMap<std::any::TypeId, Arc<dyn ComponentInstaller>>,
+
     devices: Vec<Box<dyn vfs::Device + Send>>,
 }
 
@@ -120,10 +106,48 @@ impl AssetRegistryOptions {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
-            loaders: HashMap::new(),
-            processors: HashMap::new(),
+            resource_installers: HashMap::new(),
+            component_installers: HashMap::new(),
             devices: vec![],
         }
+    }
+
+    /// Add a Resource Installer for a specific `ResourceType`
+    pub fn add_resource_installer(
+        &mut self,
+        resource_type: ResourceType,
+        installer: Arc<dyn ResourceInstaller>,
+    ) -> &mut Self {
+        self.resource_installers.insert(resource_type, installer);
+        self
+    }
+
+    /// Add a default Resource Installer for a specific `ResourceType` (if none exists already)
+    pub fn add_default_resource_installer(
+        &mut self,
+        resource_type: ResourceType,
+        installer: Arc<dyn ResourceInstaller>,
+    ) -> &mut Self {
+        self.resource_installers
+            .entry(resource_type)
+            .or_insert(installer);
+        self
+    }
+
+    /// Add a Component installer for a specific type(s)
+    pub fn add_component_installer(
+        &mut self,
+        component_ids: &[std::any::TypeId],
+        installer: Arc<dyn ComponentInstaller>,
+    ) -> &mut Self {
+        for component_id in component_ids.iter().skip(1) {
+            self.component_installers
+                .insert(*component_id, installer.clone());
+        }
+        component_ids
+            .first()
+            .and_then(|first_id| self.component_installers.insert(*first_id, installer));
+        self
     }
 
     /// Adds a device that can read resources.
@@ -175,88 +199,24 @@ impl AssetRegistryOptions {
         ))
     }
 
-    /// Enables support of a given [`Resource`] by adding corresponding
-    /// [`AssetLoader`].
-    #[must_use]
-    pub fn add_loader<A: Asset + ResourceDescriptor>(mut self) -> Self {
-        ResourceType::register_name(A::TYPE, A::TYPENAME);
-        self.loaders.insert(A::TYPE, Box::new(A::Loader::default()));
-        self
-    }
-
-    /// Enables support of a given [`Resource`] by adding corresponding
-    /// [`AssetLoader`].
-    pub fn add_loader_mut<A: Asset + ResourceDescriptor>(&mut self) -> &mut Self {
-        ResourceType::register_name(A::TYPE, A::TYPENAME);
-        self.loaders.insert(A::TYPE, Box::new(A::Loader::default()));
-        self
-    }
-
-    /// doc
-    pub fn add_processor_mut<R: OfflineResource + ResourceDescriptor>(&mut self) -> &mut Self {
-        ResourceType::register_name(R::TYPE, R::TYPENAME);
-        self.processors
-            .insert(R::TYPE, Box::new(R::Processor::default()));
-        self
-    }
-
-    /// doc
-    #[must_use]
-    pub fn add_processor_ext(
-        mut self,
-        kind: ResourceType,
-        proc: Box<dyn ResourceProcessor + Send + Sync>,
-    ) -> Self {
-        let v = self.processors.insert(kind, proc).is_none();
-        assert!(v);
-        self
-    }
-
-    /// doc
-    #[must_use]
-    pub fn add_processor<R: OfflineResource + ResourceDescriptor>(self) -> Self {
-        ResourceType::register_name(R::TYPE, R::TYPENAME);
-        self.add_processor_ext(R::TYPE, Box::new(R::Processor::default()))
-    }
-
     /// Creates [`AssetRegistry`] based on `AssetRegistryOptions`.
     pub async fn create(self) -> Arc<AssetRegistry> {
-        let (loader, mut io) = create_loader(self.devices);
-
-        let registry = Arc::new(AssetRegistry {
+        Arc::new(AssetRegistry {
             inner: RwLock::new(Inner {
-                assets: HashMap::new(),
-                load_errors: HashMap::new(),
-                load_event_senders: Vec::new(),
-                loader,
+                handles: SlotMap::with_key(),
+                index: HashMap::new(),
             }),
-            processors: RwLock::new(self.processors),
-            load_thread: Cell::new(None),
-        });
-
-        for (kind, mut loader) in self.loaders {
-            loader.register_registry(registry.clone());
-            io.register_loader(kind, loader);
-        }
-
-        let rt = tokio::runtime::Handle::current();
-
-        let load_thread = rt.spawn(async move {
-            let mut loader = io;
-            while loader.wait(Duration::from_millis(100)).await.is_some() {}
-        });
-
-        registry.load_thread.set(Some(load_thread));
-
-        registry
+            loader: AssetLoaderIO::new(self.devices, self.resource_installers),
+            component_installers: self.component_installers,
+            removal_queue: std::sync::Mutex::new(Vec::new()),
+            pending_requests: std::sync::Mutex::new(HashMap::new()),
+        })
     }
 }
 
 struct Inner {
-    assets: HashMap<ResourceTypeAndId, Box<dyn Resource>>,
-    loader: AssetLoaderStub,
-    load_errors: HashMap<ResourceTypeAndId, AssetRegistryError>,
-    load_event_senders: Vec<tokio::sync::mpsc::UnboundedSender<ResourceLoadEvent>>,
+    handles: SlotMap<AssetRegistryHandleKey, Arc<HandleEntry>>,
+    index: HashMap<ResourceId, AssetRegistryHandleKey>,
 }
 
 /// Registry of all loaded [`Resource`]s.
@@ -274,9 +234,14 @@ struct Inner {
 /// [`Handle`]: [`crate::Handle`]
 pub struct AssetRegistry {
     inner: RwLock<Inner>,
-    processors: RwLock<HashMap<ResourceType, Box<dyn ResourceProcessor + Send + Sync>>>,
-    load_thread: Cell<Option<tokio::task::JoinHandle<()>>>,
+    loader: AssetLoaderIO,
+    component_installers: HashMap<std::any::TypeId, Arc<dyn ComponentInstaller>>,
+    removal_queue: std::sync::Mutex<Vec<AssetRegistryHandleKey>>,
+    pending_requests: std::sync::Mutex<HashMap<ResourceId, SharedLoadFuture>>,
 }
+
+type SharedLoadFuture =
+    Shared<Pin<Box<dyn Future<Output = Result<HandleUntyped, AssetRegistryError>> + Send>>>;
 
 /// Label to use for scheduling systems that require the `AssetRegistry`
 #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
@@ -285,328 +250,153 @@ pub enum AssetRegistryScheduling {
     AssetRegistryCreated,
 }
 
-/// Event for `AssetRegistry` operation
-#[allow(clippy::enum_variant_names)]
-pub enum AssetRegistryEvent {
-    /// Notify that a resource has been loaded
-    AssetLoaded(HandleUntyped),
-}
-
-/// A resource loading event is emitted when a resource is loaded, unloaded, or
-/// loading fails
-#[derive(Debug, Clone)]
-pub enum ResourceLoadEvent {
-    /// Successful resource load, resulting from either a handle load, or the
-    /// loading of a dependency
-    Loaded(HandleUntyped),
-    /// Resource unload event
-    Unloaded(ResourceTypeAndId),
-    /// Sent when a loading attempt has failed
-    LoadError(ResourceTypeAndId, String),
-    /// Successful resource reload
-    Reloaded(HandleUntyped),
-}
-
-impl Drop for AssetRegistry {
-    fn drop(&mut self) {
-        self.write_inner().loader.terminate();
-        self.load_thread.take().unwrap().abort();
-    }
-}
-
-/// Safety: it is safe share references to `AssetRegistry` between threads
-/// and the implementation will panic! if its safety rules are not fulfilled.
-unsafe impl Sync for AssetRegistry {}
+/// Async reader type for `AssetRegistry`/`AssetLoader`
+pub type AssetRegistryReader = Pin<Box<dyn tokio::io::AsyncRead + Send>>;
 
 impl AssetRegistry {
-    fn read_inner(&self) -> RwLockReadGuard<'_, Inner> {
-        self.inner.read().unwrap()
-    }
-
     fn write_inner(&self) -> RwLockWriteGuard<'_, Inner> {
         self.inner.write().unwrap()
     }
 
-    /// Requests an asset load.
-    ///
-    /// The asset will be unloaded after all instances of [`HandleUntyped`] and
-    /// [`Handle`] that refer to that asset go out of scope.
-    ///
-    /// This is a non-blocking call.
-    /// For a blocking version see [`Self::load_untyped_sync`] and [`Self::load_untyped_async`].
-    pub fn load_untyped(&self, type_id: ResourceTypeAndId) -> HandleUntyped {
-        self.write_inner().loader.load(type_id)
-    }
-
     /// Trigger a reload of a given primary resource.
-    pub fn reload(&self, type_id: ResourceTypeAndId) -> bool {
-        self.write_inner().loader.reload(type_id)
-    }
-
-    /// Returns a handle to the resource if a handle to this resource already
-    /// exists.
-    pub fn get_untyped(&self, type_id: ResourceTypeAndId) -> Option<HandleUntyped> {
-        self.write_inner().loader.get_handle(type_id)
-    }
-
-    /// Same as [`Self::load_untyped`] but blocks until the resource load
-    /// completes or a load error occurs.
-    pub fn load_untyped_sync(&self, type_id: ResourceTypeAndId) -> HandleUntyped {
-        let handle = self.load_untyped(type_id);
-        // todo: instead of polling this could use 'condvar' or similar.
-        while !handle.is_loaded(self) && !handle.is_err(self) {
-            self.update();
-            std::thread::sleep(Duration::from_micros(100));
+    pub async fn reload(&self, resource_id: ResourceTypeAndId) {
+        let future = self.new_load_request(resource_id);
+        if let Err(err) = future.await {
+            lgn_tracing::error!("Reload failed: {}", err);
         }
-
-        handle
     }
 
-    /// Same as [`Self::load_untyped`] but waits until the resource load
-    /// completes or a load error occurs.
-    pub async fn load_untyped_async(&self, type_id: ResourceTypeAndId) -> HandleUntyped {
-        let handle = self.load_untyped(type_id);
-        while !handle.is_loaded(self) && !handle.is_err(self) {
-            self.update();
-            // todo: instead of sleeping a better solution would be to use something like 'waitmap'.
-            tokio::time::sleep(Duration::from_micros(100)).await;
-        }
-
-        handle
+    pub(crate) fn mark_for_cleanup(&self, key: AssetRegistryHandleKey) {
+        self.removal_queue.lock().unwrap().push(key);
     }
 
-    /// Same as [`Self::load_untyped`] but the returned handle is generic over
-    /// asset type `T` for convenience.
-    pub fn load<T: Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
-        let handle = self.load_untyped(id);
-        Handle::<T>::from(handle)
-    }
-
-    /// Same as [`Self::load`] but blocks until the resource load completes or
-    /// returns an error.
-    pub fn load_sync<T: Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
-        let handle = self.load_untyped_sync(id);
-        Handle::<T>::from(handle)
-    }
-
-    /// Same as [`Self::load`] but waits until the resource load completes or
-    /// returns an error.
-    pub async fn load_async<T: Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
-        let handle = self.load_untyped_async(id).await;
-        Handle::<T>::from(handle)
-    }
-
-    /// Retrieves a reference to an asset, None if asset is not loaded.
-    pub(crate) fn get<T: Resource>(
-        &self,
-        id: ResourceTypeAndId,
-    ) -> Option<AssetRegistryGuard<'_, T>> {
+    /// Interface to return an existing Handle for a `Resource_id` (won't trigger a load if it doesn't exists)
+    pub fn lookup_untyped(&self, resource_id: &ResourceTypeAndId) -> Option<HandleUntyped> {
         let guard = self.inner.read().unwrap();
-        if let Some(asset) = guard.assets.get(&id) {
-            if let Some(ptr) = asset.as_ref().downcast_ref::<T>().map(|c| c as *const T) {
-                return Some(AssetRegistryGuard { _guard: guard, ptr });
+        if let Some(key) = guard.index.get(&resource_id.id).copied() {
+            if let Some(entry) = guard.handles.get(key) {
+                return Some(HandleUntyped::new(key, entry.clone()));
             }
         }
         None
     }
 
-    pub(crate) fn instantiate(&self, id: ResourceTypeAndId) -> Option<Box<dyn Resource>> {
-        let guard = self.inner.read().unwrap();
-        let inner: &Inner = &guard;
-        if let Some(asset) = inner.assets.get(&id) {
-            return Some(asset.clone_dyn());
-        }
-        None
+    /// Interface to return an existing Handle for a `Resource_id` (won't trigger a load if it doesn't exists)
+    pub fn lookup<T: Resource>(&self, resource_id: &ResourceTypeAndId) -> Option<Handle<T>> {
+        Some(self.lookup_untyped(resource_id)?.into())
     }
 
-    pub(crate) fn apply(&self, id: ResourceTypeAndId, mut value: Box<dyn Resource>) {
-        let mut guard = self.inner.write().unwrap();
-        guard
-            .assets
-            .entry(id)
-            .and_modify(|e| std::mem::swap(e, &mut value));
+    fn arc_self(&self) -> Arc<Self> {
+        let registry = unsafe { Arc::from_raw(self as *const Self) };
+        let result = registry.clone();
+        let _oldself = Arc::into_raw(registry);
+        result
     }
 
-    /// Tests if an asset is loaded.
-    pub fn is_loaded(&self, id: ResourceTypeAndId) -> bool {
-        self.read_inner().assets.get(&id).is_some()
+    fn weak_self(&self) -> Weak<Self> {
+        let registry = unsafe { Arc::from_raw(self as *const Self) };
+        let result = Arc::downgrade(&registry);
+        let _oldself = Arc::into_raw(registry);
+        result
     }
 
-    /// Unloads assets based on their reference counts.
-    pub fn update(&self) {
-        let mut load_events = Vec::new();
-
-        {
-            let mut inner = self.write_inner();
-            for removed_id in inner.loader.collect_dropped_handles() {
-                inner.load_errors.remove(&removed_id);
-                inner.assets.remove(&removed_id);
-                inner.loader.unload(removed_id);
-            }
-
-            while let Some(result) = inner.loader.try_result() {
-                // todo: add success/failure callbacks using the provided LoadId.
-                match result {
-                    LoaderResult::Loaded(handle, resource, _load_id) => {
-                        inner.assets.insert(handle.id(), resource);
-                        load_events.push(ResourceLoadEvent::Loaded(handle));
-                    }
-                    LoaderResult::Unloaded(id) => {
-                        load_events.push(ResourceLoadEvent::Unloaded(id));
-                    }
-                    LoaderResult::LoadError(handle, _load_id, error_kind) => {
-                        load_events.push(ResourceLoadEvent::LoadError(
-                            handle.id(),
-                            error_kind.to_string(),
-                        ));
-                        inner.load_errors.insert(handle.id(), error_kind);
-                    }
-                    LoaderResult::Reloaded(handle, resource) => {
-                        let old_resource = inner.assets.insert(handle.id(), resource);
-                        assert!(old_resource.is_some());
-                        load_events.push(ResourceLoadEvent::Reloaded(handle));
-                    }
-                }
-            }
-        }
-
-        {
-            // broadcast load events
-            let inner = self.read_inner();
-            for sender in &inner.load_event_senders {
-                for event in &load_events {
-                    sender.send(event.clone()).unwrap();
-                }
-            }
-        }
-    }
-
-    /// Return a resource in a default state
-    pub fn new_resource(&self, kind: ResourceType) -> Option<HandleUntyped> {
-        let id = ResourceTypeAndId {
-            kind,
-            id: ResourceId::new(),
-        };
-        self.new_resource_with_id(id)
-    }
-
-    /// Return a resource in a default state with a specific Id
-    pub fn new_resource_with_id(&self, id: ResourceTypeAndId) -> Option<HandleUntyped> {
-        if let Some(processor) = self.processors.write().unwrap().get_mut(&id.kind) {
-            let resource = processor.new_resource();
-
-            let mut guard = self.write_inner();
-            let inner: &mut Inner = &mut guard;
-            let handle = inner.loader.get_or_create_handle(id);
-            let _old_value = inner.assets.insert(id, resource);
-            //assert!(result.is_none());
-            Some(handle)
-        } else {
-            None
-        }
-    }
-
-    /// Return the name of the Resource type that the processor can process.
-    pub fn get_resource_type_name(&self, kind: ResourceType) -> Option<&'static str> {
-        self.processors
-            .read()
-            .unwrap()
-            .get(&kind)
-            .and_then(|processor| processor.get_resource_type_name())
-    }
-
-    /// Return the available resource type that can be created
-    pub fn get_resource_types(&self) -> Vec<(ResourceType, &'static str)> {
-        self.processors
-            .read()
-            .unwrap()
-            .iter()
-            .filter_map(|(k, processor)| processor.get_resource_type_name().map(|n| (*k, n)))
-            .collect()
-    }
-
-    /// Interface to retrieve the Resource reflection interface
-    pub fn get_resource_reflection<'a>(
-        &'a self,
-        _kind: ResourceType,
-        handle: &HandleUntyped,
-    ) -> Option<AssetRegistryGuard<'a, dyn Resource>> {
-        let guard = self.inner.read().unwrap();
-        if let Some(resource) = guard.assets.get(&handle.id()) {
-            let ptr = resource.as_ref() as *const dyn Resource;
-            return Some(AssetRegistryGuard { _guard: guard, ptr });
-        }
-        None
-    }
-
-    /// Interface to retrieve the Resource mutable reflection interface
-    pub fn get_resource_reflection_mut<'a>(
-        &'a self,
-        _kind: ResourceType,
-        handle: &HandleUntyped,
-    ) -> Option<AssetRegistryWriteGuard<'a, dyn Resource>> {
-        let mut guard = self.inner.write().unwrap();
-        if let Some(resource) = guard.assets.get_mut(&handle.id()) {
-            let ptr = resource.as_mut() as *mut dyn Resource;
-            return Some(AssetRegistryWriteGuard { _guard: guard, ptr });
-        }
-        None
-    }
-
-    /// Interface to initialize a new `Resource` from a stream
+    /// Register a new resource at a specific Id. Replace the existing resource with the same id
     /// # Errors
-    /// Will return `AssetRegistryError` if the resource was not deserialized properly
-    pub fn deserialize_resource(
+    /// Return `AssetRegistryError` on failure
+    pub fn set_resource(
         &self,
         id: ResourceTypeAndId,
-        reader: &mut dyn std::io::Read,
+        new_resource: Box<dyn Resource>,
     ) -> Result<HandleUntyped, AssetRegistryError> {
-        let mut guard = self.write_inner();
-        let inner: &mut Inner = &mut guard;
+        let (key, entry) = {
+            let guard = self.inner.read().unwrap();
+            let key = if let Some(key) = guard.index.get(&id.id).copied() {
+                if let Some(entry) = guard.handles.get(key) {
+                    let mut asset = entry.asset.write().unwrap();
+                    let asset: &mut Box<dyn Resource> = &mut asset;
+                    let _old = std::mem::replace::<Box<dyn Resource>>(asset, new_resource);
+                    debug!("Replacing {:?} ({:?})", id, key);
+                    (key, entry.clone())
+                } else {
+                    error!(
+                        "AssetRegistry index out of sync, cannot find entry for {}",
+                        id
+                    );
+                    return Err(AssetRegistryError::ResourceNotFound(id));
+                }
+            } else {
+                drop(guard);
+                let mut guard = self.inner.write().unwrap();
+                let entry = HandleEntry::new(id, new_resource, self.weak_self());
+                let key = guard.handles.insert(entry.clone());
+                guard.index.insert(id.id, key);
+                debug!("Registering {:?} ({:?})", id, key);
+                (key, entry)
+            };
+            key
+        };
+        Ok(HandleUntyped::new(key, entry))
+    }
 
-        if let Some(processor) = self.processors.write().unwrap().get_mut(&id.kind) {
-            let resource = processor.read_resource(reader)?;
-
-            let handle = inner.loader.get_or_create_handle(id);
-            let _old_value = inner.assets.insert(id, resource);
-            //assert!(result.is_none());
+    fn new_load_request(&self, id: ResourceTypeAndId) -> SharedLoadFuture {
+        let registry = self.arc_self();
+        let future = async move {
+            let mut request = LoadRequest::new(id, registry.clone());
+            let handle = registry.loader.load_from_device(id, &mut request).await?;
             Ok(handle)
-        } else {
-            Err(AssetRegistryError::ProcessorNotFound(id.kind))
         }
+        .boxed()
+        .shared();
+        future
     }
 
-    /// Interface to serialize a `Resource` into a stream
+    /// Load a Resource asynchronously and return an owning Handle to the data
     /// # Errors
-    /// Will return `AssetRegistryError` if the resource was not serialize properly
-    pub fn serialize_resource(
+    /// Return `AssetRegistryError` on failure
+    pub async fn load_async_untyped(
         &self,
-        kind: ResourceType,
-        handle: impl AsRef<HandleUntyped>,
-        writer: &mut dyn std::io::Write,
-    ) -> Result<(usize, Vec<ResourcePathId>), AssetRegistryError> {
-        let mut guard = self.write_inner();
-        let inner: &mut Inner = &mut guard;
-
-        if let Some(processor) = self.processors.write().unwrap().get_mut(&kind) {
-            let resource = inner
-                .assets
-                .get(&handle.as_ref().id())
-                .ok_or_else(|| AssetRegistryError::ResourceNotFound(handle.as_ref().id()))?
-                .as_ref();
-
-            let build_deps = processor.extract_build_dependencies(&*resource);
-            let written = processor.write_resource(&*resource, writer)?;
-            Ok((written, build_deps))
-        } else {
-            Err(AssetRegistryError::ProcessorNotFound(kind))
+        id: ResourceTypeAndId,
+    ) -> Result<HandleUntyped, AssetRegistryError> {
+        {
+            let guard = self.inner.read().unwrap();
+            if let Some(key) = guard.index.get(&id.id).copied() {
+                if let Some(entry) = guard.handles.get(key) {
+                    return Ok(HandleUntyped::new(key, entry.clone()));
+                }
+            }
         }
+
+        let existing_future = self.pending_requests.lock().unwrap().get(&id.id).cloned();
+        let future = if let Some(cloned_future) = existing_future {
+            cloned_future
+        } else {
+            let future = self.new_load_request(id);
+            self.pending_requests
+                .lock()
+                .unwrap()
+                .insert(id.id, future.clone());
+            future
+        };
+
+        let result = future.await;
+        self.pending_requests.lock().unwrap().remove(&id.id);
+        result
+    }
+
+    /// Load a Resource asynchronously and return a Handle<T> to the data
+    /// # Errors
+    /// Return `AssetRegistryError` on failure
+    pub async fn load_async<T: Resource>(
+        &self,
+        id: ResourceTypeAndId,
+    ) -> Result<Handle<T>, AssetRegistryError> {
+        Ok(self.load_async_untyped(id).await?.into())
     }
 
     /// Interface to serialize a `Resource` into a stream
     /// # Errors
     /// Will return `AssetRegistryError` if the resource was not serialize properly
-    pub fn serialize_resource_without_dependencies(
+    /*pub fn serialize_resource_without_dependencies(
         &self,
         kind: ResourceType,
         handle: impl AsRef<HandleUntyped>,
@@ -652,27 +442,109 @@ impl AssetRegistry {
         } else {
             Err(AssetRegistryError::ProcessorNotFound(kind))
         }
+    }*/
+
+    /// Create a Clone that can be edited and committed.
+    pub fn edit<T: Resource>(&self, handle: &Handle<T>) -> Option<EditHandle<T>> {
+        let boxed_asset = self
+            .inner
+            .read()
+            .unwrap()
+            .handles
+            .get(handle.key())
+            .and_then(|entry| {
+                if let Some(asset) = entry.asset.read().unwrap().downcast_ref::<T>() {
+                    let edit = asset.clone_dyn();
+                    let raw: *mut dyn Resource = Box::into_raw(edit);
+                    let boxed_asset = unsafe { Box::from_raw(raw.cast::<T>()) };
+                    Some(boxed_asset)
+                } else {
+                    None
+                }
+            })?;
+
+        Some(EditHandle::<T>::new(handle.clone(), boxed_asset))
     }
 
-    pub(crate) fn is_err(&self, type_id: ResourceTypeAndId) -> bool {
-        self.read_inner().load_errors.contains_key(&type_id)
+    /// Create a Clone that can be edited and commited
+    pub fn edit_untyped(&self, handle: &HandleUntyped) -> Option<EditHandleUntyped> {
+        let boxed_asset = self
+            .inner
+            .read()
+            .unwrap()
+            .handles
+            .get(handle.key())
+            .map(|entry| {
+                let asset = entry.asset.read().unwrap();
+                let edit = asset.clone_dyn();
+                let raw: *mut dyn Resource = Box::into_raw(edit);
+                unsafe { Box::from_raw(raw as *mut dyn Resource) }
+            })?;
+
+        Some(EditHandleUntyped::new(handle.clone(), boxed_asset))
     }
 
-    /// Returns the last load error for a resource type
-    pub fn retrieve_err(&self, type_id: ResourceTypeAndId) -> Option<AssetRegistryError> {
-        self.write_inner().load_errors.remove(&type_id)
+    /// Commit a Resource
+    pub fn commit<T: Resource>(&self, edit_handle: EditHandle<T>) -> Handle<T> {
+        let mut guard = self.inner.write().unwrap();
+        if let Some(entry) = guard.handles.get_mut(edit_handle.handle.key()) {
+            let mut asset = entry.asset.write().unwrap();
+            let asset: &mut Box<dyn Resource> = &mut asset;
+            let _old_value = std::mem::replace::<Box<dyn Resource>>(asset, edit_handle.asset);
+        }
+        edit_handle.handle
     }
 
-    /// Subscribe to load events, to know when resources are loaded and
-    /// unloaded. Returns a channel receiver that will receive
-    /// `ResourceLoadEvent`s.
-    pub fn subscribe_to_load_events(
+    /// Commit a Resource
+    pub fn commit_untyped(&self, edit_handle: EditHandleUntyped) -> HandleUntyped {
+        let mut guard = self.inner.write().unwrap();
+        if let Some(entry) = guard.handles.get_mut(edit_handle.handle.key()) {
+            let mut asset = entry.asset.write().unwrap();
+            let asset: &mut Box<dyn Resource> = &mut asset;
+            let _old_value = std::mem::replace::<Box<dyn Resource>>(asset, edit_handle.asset);
+        }
+        edit_handle.handle
+    }
+
+    pub(crate) fn collect_dropped_handles(&self) {
+        let removals: Vec<AssetRegistryHandleKey> =
+            std::mem::take(self.removal_queue.lock().unwrap().as_mut());
+
+        if !removals.is_empty() {
+            let mut guard = self.write_inner();
+            for key in removals {
+                if guard
+                    .handles
+                    .get(key)
+                    .map(|entry| Arc::strong_count(entry) == 1)
+                    .is_some()
+                {
+                    if let Some(entry) = guard.handles.remove(key) {
+                        lgn_tracing::debug!("Dropping {:?}({:?})", entry.id, key,);
+                        guard.index.remove(&entry.id.id);
+                    }
+                }
+            }
+        }
+    }
+
+    /// Get Component Installer
+    pub fn get_component_installer(
         &self,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<ResourceLoadEvent> {
-        let (sender, receiver) = tokio::sync::mpsc::unbounded_channel::<ResourceLoadEvent>();
-        self.write_inner().load_event_senders.push(sender);
-        receiver
+        type_id: std::any::TypeId,
+    ) -> Option<&Arc<dyn ComponentInstaller>> {
+        self.component_installers.get(&type_id)
     }
+
+    /// Unloads assets based on their reference counts.
+    pub fn update(&self) {
+        self.collect_dropped_handles();
+    }
+
+    // Delayed manifest load, will look up in all devices
+    //pub fn load_manifest(&self, _manifest_id: &Identifier) {
+    //    unimplemented!();
+    //}
 }
 
 #[cfg(test)]

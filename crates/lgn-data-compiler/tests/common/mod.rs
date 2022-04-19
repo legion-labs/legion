@@ -38,7 +38,6 @@ pub fn test_env() -> CompilationEnv {
 pub async fn write_resource(
     id: ResourceTypeAndId,
     provider: &Provider,
-    proc: &impl ResourceProcessor,
     resource: &dyn Resource,
 ) -> TreeIdentifier {
     let mut bytes = std::io::Cursor::new(Vec::new());

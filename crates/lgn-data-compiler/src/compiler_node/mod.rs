@@ -57,10 +57,8 @@ mod tests {
         indexing::{empty_tree_id, SharedTreeIdentifier},
         Provider,
     };
-    use lgn_data_runtime::{
-        AssetRegistryOptions, ResourceDescriptor, ResourceId, ResourcePathId, ResourceType,
-        ResourceTypeAndId, Transform,
-    };
+    use generic_data::offline::{IntegerAsset, TextResource};
+    use lgn_data_runtime::prelude::*;
 
     use super::CompilerRegistryOptions;
     use crate::{
@@ -137,10 +135,10 @@ mod tests {
         };
 
         let source = ResourceTypeAndId {
-            kind: text_resource::TextResource::TYPE,
+            kind: TextResource::TYPE,
             id: ResourceId::new(),
         };
-        let destination = ResourcePathId::from(source).push(integer_asset::IntegerAsset::TYPE);
+        let destination = ResourcePathId::from(source).push(IntegerAsset::TYPE);
 
         let transform = Transform::new(source.kind, destination.content_type());
 
@@ -201,6 +199,7 @@ mod tests {
                     &[],
                     registry,
                     &data_content_provider,
+                    &source_control_provider,
                     &source_manifest_id,
                     &runtime_manifest_id,
                     &env,

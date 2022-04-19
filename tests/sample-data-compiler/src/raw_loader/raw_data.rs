@@ -61,7 +61,7 @@ pub struct View {
 
 #[derive(Serialize, Deserialize)]
 pub struct Light {
-    pub light_type: sample_data::LightType,
+    pub light_type: lgn_graphics_data::LightType,
     pub color: Vec3,
     pub radiance: f32,
     pub enabled: bool,

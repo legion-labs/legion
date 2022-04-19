@@ -39,8 +39,8 @@ use gpu_renderer::GpuInstanceManager;
 
 pub use labels::*;
 
-mod asset_to_ecs;
 mod renderer;
+use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor};
 use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{
     ApiDef, BufferViewDef, DescriptorHeapDef, DeviceContext, Queue, QueueType, ResourceUsage,
@@ -304,13 +304,7 @@ impl Plugin for RendererPlugin {
         MissingVisualTracker::init_ecs(app);
         GpuInstanceManager::init_ecs(app);
 
-        // Only Init AssetRegistry event handler if there's AssetRegistryEvent already registered
-        if app
-            .world
-            .contains_resource::<Events<lgn_data_runtime::AssetRegistryEvent>>()
-        {
-            app.add_system_to_stage(RenderStage::Resource, asset_to_ecs::process_load_events);
-        }
+        app.add_startup_system(register_installers);
 
         // Plugins are optional
         app.add_plugin(EguiPlugin::default());
@@ -409,6 +403,34 @@ impl Plugin for RendererPlugin {
         // This resource needs to be shutdown after all other resources
         app.insert_resource(renderer);
     }
+}
+
+fn register_installers(asset_registry_options: NonSendMut<'_, AssetRegistryOptions>) {
+    let asset_registry_options = asset_registry_options.into_inner();
+
+    let texture_installer = Arc::new(resources::TextureInstaller::new());
+    asset_registry_options.add_resource_installer(
+        lgn_graphics_data::runtime::BinTexture::TYPE,
+        texture_installer.clone(),
+    );
+    asset_registry_options.add_component_installer(
+        &[
+            std::any::TypeId::of::<lgn_graphics_data::runtime::Visual>(),
+            std::any::TypeId::of::<lgn_graphics_data::runtime::Light>(),
+            std::any::TypeId::of::<lgn_graphics_data::runtime::CameraSetup>(),
+        ],
+        texture_installer,
+    );
+
+    asset_registry_options.add_resource_installer(
+        lgn_graphics_data::runtime::Model::TYPE,
+        Arc::new(resources::ModelInstaller::new()),
+    );
+
+    asset_registry_options.add_resource_installer(
+        lgn_graphics_data::runtime::Material::TYPE,
+        Arc::new(resources::MaterialInstaller::new()),
+    );
 }
 
 #[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)]

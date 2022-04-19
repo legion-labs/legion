@@ -1,5 +1,6 @@
 use async_trait::async_trait;
-use std::env;
+use lgn_graphics_data::gltf_utils::GltfFile;
+use std::{env, str::FromStr};
 
 use lgn_data_compiler::{
     compiler_api::{
@@ -8,8 +9,7 @@ use lgn_data_compiler::{
     },
     compiler_utils::hash_code_and_data,
 };
-use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourceProcessor, Transform};
-use lgn_graphics_data::offline_texture::TextureProcessor;
+use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, Transform};
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -17,8 +17,8 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     code_version: "1",
     data_version: "1",
     transform: &Transform::new(
-        lgn_graphics_data::offline_gltf::GltfFile::TYPE,
-        lgn_graphics_data::offline_texture::Texture::TYPE,
+        lgn_graphics_data::offline::Gltf::TYPE,
+        lgn_graphics_data::runtime::RawTexture::TYPE,
     ),
     compiler_creator: || Box::new(Gltf2TexCompiler {}),
 };
@@ -27,8 +27,9 @@ struct Gltf2TexCompiler();
 
 #[async_trait]
 impl Compiler for Gltf2TexCompiler {
-    async fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
-        registry.add_loader::<lgn_graphics_data::offline_gltf::GltfFile>()
+    async fn init(&self, mut registry: AssetRegistryOptions) -> AssetRegistryOptions {
+        lgn_graphics_data::register_types(&mut registry);
+        registry
     }
 
     async fn hash(
@@ -47,17 +48,20 @@ impl Compiler for Gltf2TexCompiler {
         let resources = context.registry();
 
         let resource = resources
-            .load_async::<lgn_graphics_data::offline_gltf::GltfFile>(context.source.resource_id())
-            .await;
-        let resource = resource
-            .get(&resources)
-            .ok_or_else(|| {
-                CompilerError::CompilationError(format!(
-                    "Failed to retrieve resource '{}'",
-                    context.source.resource_id()
-                ))
-            })?
-            .clone();
+            .load_async::<lgn_graphics_data::offline::Gltf>(context.source.resource_id())
+            .await?;
+
+        // minimize lock
+        let content_id = {
+            let gltf = resource.get().unwrap();
+            gltf.content_id.clone()
+        };
+        let identifier = lgn_content_store::Identifier::from_str(&content_id)
+            .map_err(|err| CompilerError::CompilationError(err.to_string()))?;
+
+        // TODO: aganea - should we read from a Device directly?
+        let bytes = context.persistent_provider.read(&identifier).await?;
+        let gltf_file = GltfFile::from_bytes(&bytes)?;
 
         let outputs = {
             let source = context.source.clone();
@@ -65,21 +69,18 @@ impl Compiler for Gltf2TexCompiler {
 
             CompilerContext::execute_workload(move || {
                 let mut compiled_resources = vec![];
-                let texture_proc = TextureProcessor {};
-
-                let textures = resource.gather_textures();
+                let textures = gltf_file.gather_textures();
                 for texture in textures {
                     let mut compiled_asset = vec![];
-                    texture_proc
-                        .write_resource(&texture.0, &mut compiled_asset)
-                        .map_err(|err| {
+                    lgn_data_runtime::to_binary_writer(&texture.0, &mut compiled_asset).map_err(
+                        |err| {
                             CompilerError::CompilationError(format!(
                                 "Writing to file '{}' failed: {}",
-                                source.resource_id(),
+                                context.source.resource_id(),
                                 err
                             ))
-                        })?;
-
+                        },
+                    )?;
                     compiled_resources.push((target_unnamed.new_named(&texture.1), compiled_asset));
                 }
                 Ok(compiled_resources)
@@ -89,7 +90,7 @@ impl Compiler for Gltf2TexCompiler {
 
         let mut compiled_resources = vec![];
         for (id, content) in outputs {
-            compiled_resources.push(context.store(&content, id).await?);
+            compiled_resources.push(context.store_volatile(&content, id).await?);
         }
 
         Ok(CompilationOutput {

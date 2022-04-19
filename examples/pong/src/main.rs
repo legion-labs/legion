@@ -92,13 +92,13 @@ async fn main() -> anyhow::Result<()> {
         Arc::clone(&source_control_content_provider),
         project.source_manifest_id(),
     );
-    lgn_graphics_data::offline::add_loaders(&mut asset_registry);
-    lgn_scripting_data::offline::add_loaders(&mut asset_registry);
-    generic_data::offline::add_loaders(&mut asset_registry);
-    sample_data::offline::add_loaders(&mut asset_registry);
+    lgn_graphics_data::register_types(&mut asset_registry);
+    lgn_scripting_data::register_types(&mut asset_registry);
+    generic_data::register_types(&mut asset_registry);
+    sample_data::register_types(&mut asset_registry);
     let asset_registry = asset_registry.create().await;
 
-    let resource_ids = create_offline_data(&mut project, &asset_registry).await;
+    let resource_ids = create_offline_data(&mut project).await;
     project
         .commit("initial commit")
         .await
@@ -161,14 +161,10 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn create_offline_data(
-    project: &mut Project,
-    resource_registry: &AssetRegistry,
-) -> Vec<ResourceTypeAndId> {
+async fn create_offline_data(project: &mut Project) -> Vec<ResourceTypeAndId> {
     // visual reference models
     let cube_model_id = create_offline_model(
         project,
-        resource_registry,
         "5474d00b-cc10-491a-ba56-be2f5b5de22d",
         "/scene/models/cube.mod",
         Mesh::new_cube(0.5),
@@ -177,7 +173,6 @@ async fn create_offline_data(
 
     let sphere_model_id = create_offline_model(
         project,
-        resource_registry,
         "a05e4c89-e85b-4e03-add4-8767b21c1e55",
         "/scene/models/sphere.mod",
         Mesh::new_sphere(0.25, 16, 16),
@@ -186,7 +181,6 @@ async fn create_offline_data(
 
     let ground_path_id = create_offline_entity(
         project,
-        resource_registry,
         "63c338c9-0d03-4636-8a17-8f0cba02b618",
         "/scene/ground.ent",
         vec![
@@ -207,7 +201,6 @@ async fn create_offline_data(
 
     let pad_script_id = create_offline_script(
         project,
-        resource_registry,
         "e93151b6-3635-4a30-9f3e-e6052929d85a",
         "/scene/pad_script",
         ScriptType::Rune,
@@ -226,7 +219,6 @@ pub fn update(entity, events, sign) {
 
     let pad_right_path_id = create_offline_entity(
         project,
-        resource_registry,
         "727eef7f-2544-4a46-be99-9aedd44a098e",
         "/scene/pad-right.ent",
         vec![
@@ -259,7 +251,6 @@ pub fn update(entity, events, sign) {
 
     let pad_left_path_id = create_offline_entity(
         project,
-        resource_registry,
         "719c8d5b-d320-4102-a92a-b3fa5240e140",
         "/scene/pad-left.ent",
         vec![
@@ -292,7 +283,6 @@ pub fn update(entity, events, sign) {
 
     let ball_script = create_offline_script(
         project,
-        resource_registry,
         "6ec6db36-6d09-4bb2-b9a8-b85c25e5b2c0",
         "/scene/ball_script",
         ScriptType::Rune,
@@ -425,7 +415,6 @@ pub fn update(entity, last_result, entities) {
 
     let ball_path_id = create_offline_entity(
         project,
-        resource_registry,
         "26b7a335-2d28-489d-882b-f7aae1fb2196",
         "/scene/ball.ent",
         vec![
@@ -458,7 +447,6 @@ pub fn update(entity, last_result, entities) {
 
     let light_id = create_offline_entity(
         project,
-        resource_registry,
         "ba1ffa5a-8a54-451d-8d01-f57afce857d3",
         "/scene/light.ent",
         vec![Box::new(Light {
@@ -475,7 +463,6 @@ pub fn update(entity, last_result, entities) {
     // scene
     let scene_id = create_offline_entity(
         project,
-        resource_registry,
         "29b8b0d0-ee1e-4792-aca2-3b3a3ce63916",
         "/scene.ent",
         vec![Box::new(CameraSetup {
@@ -497,7 +484,6 @@ pub fn update(entity, last_result, entities) {
 
 async fn create_offline_entity(
     project: &mut Project,
-    resources: &AssetRegistry,
     resource_id: &str,
     resource_path: &str,
     components: Vec<Box<dyn Component>>,
@@ -511,35 +497,28 @@ async fn create_offline_entity(
     let name: ResourcePathName = resource_path.into();
 
     let exists = project.exists(type_id).await;
-    let handle = if exists {
+    let mut entity = if exists {
         project
-            .load_resource(type_id, resources)
+            .load_resource::<sample_data::offline::Entity>(type_id.id)
             .await
             .expect("failed to load resource")
     } else {
-        resources
-            .new_resource_with_id(type_id)
-            .expect("failed to create new resource")
+        Box::new(sample_data::offline::Entity::new_named(name.as_str()))
     };
 
-    let mut entity = handle
-        .instantiate::<sample_data::offline::Entity>(resources)
-        .unwrap();
     entity.components.clear();
     entity.components.extend(components.into_iter());
     entity.children.clear();
     entity.children.extend(children.into_iter());
 
-    handle.apply(entity, resources);
-
     if exists {
         project
-            .save_resource(type_id, handle, resources)
+            .save_resource(id, entity.as_ref())
             .await
             .expect("failed to save resource");
     } else {
         project
-            .add_resource_with_id(name, type_id, handle, resources)
+            .add_resource_with_id(id, entity.as_ref())
             .await
             .expect("failed to add new resource");
     }
@@ -550,7 +529,6 @@ async fn create_offline_entity(
 
 async fn create_offline_model(
     project: &mut Project,
-    resources: &AssetRegistry,
     resource_id: &str,
     resource_path: &str,
     mesh: Mesh,
@@ -563,20 +541,15 @@ async fn create_offline_model(
     let name: ResourcePathName = resource_path.into();
 
     let exists = project.exists(type_id).await;
-    let handle = if exists {
+    let mut model = if exists {
         project
-            .load_resource(type_id, resources)
+            .load_resource::<lgn_graphics_data::offline::Model>(type_id.id)
             .await
             .expect("failed to load resource")
     } else {
-        resources
-            .new_resource_with_id(type_id)
-            .expect("failed to create new resource")
+        Box::new(lgn_graphics_data::offline::Model::new_named(name.as_str()))
     };
 
-    let mut model = handle
-        .instantiate::<lgn_graphics_data::offline::Model>(resources)
-        .unwrap();
     model.meshes.clear();
     let mesh = lgn_graphics_data::offline::Mesh {
         positions: mesh.positions,
@@ -592,16 +565,14 @@ async fn create_offline_model(
     };
     model.meshes.push(mesh);
 
-    handle.apply(model, resources);
-
     if exists {
         project
-            .save_resource(type_id, handle, resources)
+            .save_resource(id, model.as_ref())
             .await
             .expect("failed to save resource");
     } else {
         project
-            .add_resource_with_id(name, type_id, handle, resources)
+            .add_resource_with_id(id, model.as_ref())
             .await
             .expect("failed to add new resource");
     }
@@ -612,7 +583,6 @@ async fn create_offline_model(
 
 async fn create_offline_script(
     project: &mut Project,
-    resources: &AssetRegistry,
     resource_id: &str,
     resource_path: &str,
     script_type: ScriptType,
@@ -626,33 +596,28 @@ async fn create_offline_script(
     let name: ResourcePathName = resource_path.into();
 
     let exists = project.exists(type_id).await;
-    let handle = if exists {
+    let mut script = if exists {
         project
-            .load_resource(type_id, resources)
+            .load_resource::<lgn_scripting_data::offline::Script>(id)
             .await
             .expect("failed to load resource")
     } else {
-        resources
-            .new_resource_with_id(type_id)
-            .expect("failed to create new resource")
+        Box::new(lgn_scripting_data::offline::Script::new_named(
+            name.as_str(),
+        ))
     };
 
-    let mut script = handle
-        .instantiate::<lgn_scripting_data::offline::Script>(resources)
-        .unwrap();
     script.script_type = script_type;
     script.script = script_text.to_owned();
 
-    handle.apply(script, resources);
-
     if exists {
         project
-            .save_resource(type_id, handle, resources)
+            .save_resource(id, script.as_ref())
             .await
             .expect("failed to save resource");
     } else {
         project
-            .add_resource_with_id(name, type_id, handle, resources)
+            .add_resource_with_id(id, script.as_ref())
             .await
             .expect("failed to add new resource");
     }

@@ -53,7 +53,8 @@ impl CompilerStub for InProcessCompilerStub {
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         registry: Arc<AssetRegistry>,
-        provider: &Provider,
+        volatile_provider: &Provider,
+        persistent_provider: &Provider,
         _source_manifest_id: &SharedTreeIdentifier,
         runtime_manifest_id: &SharedTreeIdentifier,
         env: &CompilationEnv,
@@ -74,7 +75,8 @@ impl CompilerStub for InProcessCompilerStub {
                 dependencies,
                 derived_deps,
                 registry,
-                provider,
+                volatile_provider,
+                persistent_provider,
                 env,
             )
             .await;

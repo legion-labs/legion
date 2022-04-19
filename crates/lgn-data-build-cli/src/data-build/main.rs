@@ -8,7 +8,7 @@ use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::{
     compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale,
 };
-use lgn_data_offline::resource::Project;
+use lgn_data_offline::Project;
 use lgn_data_runtime::{ResourcePathId, ResourceType, ResourceTypeAndId};
 
 #[derive(Parser, Debug)]

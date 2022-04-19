@@ -17,6 +17,7 @@ doc = false
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-data-offline = { path = "../lgn-data-offline", version = "0.1.0" }
 lgn-data-runtime = { path = "../lgn-data-runtime", version = "0.1.0" }
+lgn-content-store = { path = "../lgn-content-store", version = "0.1.0" }
 lgn-graphics-data = { path = "../lgn-graphics-data", version = "0.1.0", features = [
     "runtime",
     "offline",
@@ -27,3 +28,4 @@ async-trait = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1", features = ["full", "tracing"] }
+psd = { version = "0.3.0", optional = true }

@@ -1,17 +1,23 @@
 //! Transaction Operation to Delete a Resource
 
+use std::fmt;
+
 use async_trait::async_trait;
-use lgn_data_offline::resource::ResourcePathName;
-use lgn_data_runtime::ResourceTypeAndId;
+use lgn_data_runtime::{Resource, ResourceTypeAndId};
 
 use crate::{Error, LockContext, TransactionOperation};
 
 /// Operation to Delete a resource
-#[derive(Debug)]
+//#[derive(Debug)]
 pub struct DeleteResourceOperation {
     resource_id: ResourceTypeAndId,
-    old_resource_name: Option<ResourcePathName>,
-    old_resource_data: Option<Vec<u8>>,
+    old_resource_data: Option<Box<dyn Resource>>,
+}
+
+impl fmt::Debug for DeleteResourceOperation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("{:?}", self.resource_id))
+    }
 }
 
 impl DeleteResourceOperation {
@@ -19,7 +25,6 @@ impl DeleteResourceOperation {
     pub fn new(resource_id: ResourceTypeAndId) -> Box<Self> {
         Box::new(Self {
             resource_id,
-            old_resource_name: None,
             old_resource_data: None,
         })
     }
@@ -29,58 +34,22 @@ impl DeleteResourceOperation {
 impl TransactionOperation for DeleteResourceOperation {
     async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
         // Force load to retrieve of value
-        ctx.get_or_load(self.resource_id).await?;
-        if let Some(old_handle) = ctx.loaded_resource_handles.remove(self.resource_id) {
-            // On the first apply, save a copy original resource for redo
-            if self.old_resource_name.is_none() {
-                let mut old_resource_data = Vec::<u8>::new();
-                ctx.asset_registry
-                    .serialize_resource(self.resource_id.kind, old_handle, &mut old_resource_data)
-                    .map_err(|err| Error::InvalidResourceSerialization(self.resource_id, err))?;
-
-                self.old_resource_name = Some(
-                    ctx.project
-                        .raw_resource_name(self.resource_id)
-                        .await
-                        .map_err(|err| Error::Project(self.resource_id, err))?,
-                );
-                self.old_resource_data = Some(old_resource_data);
-            }
+        if let Ok(old_resource_data) = ctx.project.load_resource_untyped(self.resource_id).await {
+            self.old_resource_data = Some(old_resource_data);
         }
-        ctx.project
-            .delete_resource(self.resource_id)
-            .await
-            .map_err(|err| Error::Project(self.resource_id, err))?;
-        Ok(())
+        Ok(ctx.project.delete_resource(self.resource_id.id).await?)
     }
 
     async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
         // Restore  resource from saved state, original name and id
-        let old_resource_name = self
-            .old_resource_name
-            .as_ref()
-            .ok_or(Error::InvalidDeleteOperation(self.resource_id))?;
         let old_resource_data = self
             .old_resource_data
             .as_ref()
             .ok_or(Error::InvalidDeleteOperation(self.resource_id))?;
 
-        let handle = ctx
-            .asset_registry
-            .deserialize_resource(self.resource_id, &mut old_resource_data.as_slice())
-            .map_err(|err| Error::InvalidResourceDeserialization(self.resource_id, err))?;
-
-        ctx.project
-            .add_resource_with_id(
-                old_resource_name.clone(),
-                self.resource_id,
-                &handle,
-                &ctx.asset_registry,
-            )
-            .await
-            .map_err(|err| Error::Project(self.resource_id, err))?;
-        ctx.loaded_resource_handles.insert(self.resource_id, handle);
-
-        Ok(())
+        Ok(ctx
+            .project
+            .add_resource_with_id(self.resource_id.id, old_resource_data.as_ref())
+            .await?)
     }
 }

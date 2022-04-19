@@ -20,7 +20,7 @@ use tokio::task::JoinHandle;
 
 #[tokio::test]
 async fn test_crud() {
-    let addr = "127.0.0.1:3001".parse().unwrap();
+    let addr = "127.0.0.1:3100".parse().unwrap();
     let handle = start_server(addr).await;
     let client = new_client(addr);
 

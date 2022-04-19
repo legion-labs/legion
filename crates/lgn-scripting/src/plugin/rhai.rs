@@ -6,7 +6,7 @@ use lgn_ecs::prelude::{Commands, Component, Entity, NonSend, NonSendMut, Query, 
 use lgn_scripting_data::{runtime::ScriptComponent, ScriptType};
 use rhai::Scope;
 
-use crate::{plugin::get_script, ScriptingStage};
+use crate::ScriptingStage;
 
 pub(crate) fn build(app: &mut App) {
     let mut rhai_eng = rhai::Engine::new();
@@ -26,23 +26,30 @@ fn compile(
     mut commands: Commands<'_, '_>,
 ) {
     for (entity, script) in scripts.iter() {
-        let script_resource = get_script(script, &registry);
-        if script_resource.script_type != ScriptType::Rhai {
-            continue;
+        if let Some(script_exec) = script
+            .script_id
+            .as_ref()
+            .and_then(|reference| {
+                reference.get_active_handle::<lgn_scripting_data::runtime::Script>()
+            })
+            .and_then(|handle| {
+                if let Some(script_resource) = handle.get() {
+                    if script_resource.script_type != ScriptType::Rhai {
+                        return None;
+                    }
+                    if let Ok(ast) = rhai_eng.compile(&script_resource.script) {
+                        return Some(ScriptExecutionContext {
+                            ast_index: ast_collection.append(ast),
+                            entry_fn: script.entry_fn.clone(),
+                            input_values: script.input_values.clone(),
+                        });
+                    }
+                }
+                None
+            })
+        {
+            commands.entity(entity).insert(script_exec);
         }
-
-        let source_payload = &script_resource.script;
-        println!("{}", &source_payload);
-
-        let ast = rhai_eng.compile(source_payload).unwrap();
-
-        let script_exec = ScriptExecutionContext {
-            ast_index: ast_collection.append(ast),
-            entry_fn: script.entry_fn.clone(),
-            input_values: script.input_values.clone(),
-        };
-
-        commands.entity(entity).insert(script_exec);
     }
 
     drop(scripts);

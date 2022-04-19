@@ -10,7 +10,7 @@ use std::{
 
 use bytes::BytesMut;
 use lgn_app::prelude::*;
-use lgn_data_offline::resource::ChangeType;
+use lgn_data_offline::ChangeType;
 use lgn_data_runtime::{ResourceDescriptor, ResourceTypeAndId};
 use lgn_data_transaction::{LockContext, TransactionManager};
 use lgn_ecs::{
@@ -26,7 +26,6 @@ use lgn_editor_proto::source_control::{
     SyncLatestResponse, SyncLatestResquest, UploadRawFileProgress, UploadRawFileRequest,
     UploadRawFileResponse, UploadStatus,
 };
-use lgn_graphics_data::offline_gltf::GltfFile;
 use lgn_grpc::{GRPCPluginScheduling, GRPCPluginSettings};
 use lgn_resource_registry::{ResourceRegistryPluginScheduling, ResourceRegistrySettings};
 use lgn_tracing::error;
@@ -575,7 +574,7 @@ impl SourceControl for SourceControlRPC {
     ) -> Result<Response<SyncLatestResponse>, Status> {
         let _request = request.into_inner();
 
-        let (resource_to_build, resource_to_unload) = {
+        let (resource_to_build, _resource_to_unload) = {
             let mut resource_to_build = Vec::new();
             let mut resource_to_unload = Vec::new();
 
@@ -602,21 +601,10 @@ impl SourceControl for SourceControlRPC {
         let transaction_manager = self.transaction_manager.lock().await;
         for resource_id in resource_to_build {
             if resource_id.kind == sample_data::offline::Entity::TYPE {
-                {
-                    let mut ctx = LockContext::new(&transaction_manager).await;
-                    if let Err(err) = ctx.reload(resource_id).await {
-                        error!("Failed to reload resource {}: {}", resource_id, err);
-                    }
-                }
                 if let Err(err) = transaction_manager.build_by_id(resource_id).await {
                     error!("Failed to compile resource {}: {}", resource_id, err);
                 }
             }
-        }
-
-        for resource_id in resource_to_unload {
-            let mut ctx = LockContext::new(&transaction_manager).await;
-            ctx.unload(resource_id).await;
         }
 
         Ok(Response::new(SyncLatestResponse {}))
@@ -698,25 +686,28 @@ impl SourceControl for SourceControlRPC {
             }
         }
 
-        for id in need_rebuild {
+        /*for id in need_rebuild {
             match ctx.build.build_all_derived(id, &ctx.project).await {
                 Ok((runtime_path_id, _built_resources)) => {
-                    ctx.asset_registry.reload(runtime_path_id.resource_id());
+                    ctx.asset_registry
+                        .reload(runtime_path_id.resource_id())
+                        .await;
                 }
                 Err(e) => {
                     lgn_tracing::error!("Error building resource derivations {:?}", e);
                 }
             }
-        }
+        }*/
 
         Ok(Response::new(RevertResourcesResponse {}))
     }
 
     async fn pull_asset(
         &self,
-        request: Request<PullAssetRequest>,
+        _request: Request<PullAssetRequest>,
     ) -> Result<Response<PullAssetResponse>, Status> {
-        let message = request.into_inner();
+        panic!("unimplemented()");
+        /*let message = request.into_inner();
         let transaction_manager = self.transaction_manager.lock().await;
         let ctx = LockContext::new(&transaction_manager).await;
         let id = ResourceTypeAndId::from_str(message.id.as_str()).map_err(Status::unknown)?;
@@ -725,13 +716,15 @@ impl SourceControl for SourceControlRPC {
                 "pull_asset supports GltfFile only at the moment",
             ));
         }
-        let resource = ctx.asset_registry.load_sync::<GltfFile>(id);
-        if let Some(gltf_file) = resource.get(&ctx.asset_registry) {
-            return Ok(Response::new(PullAssetResponse {
-                size: gltf_file.bytes().len() as u32,
-                content: gltf_file.bytes().to_vec(),
-            }));
-        }
-        return Err(Status::internal(format!("Failed to get an asset {}", id)));
+        let gltf_file = ctx
+            .project
+            .load_resource::<GltfFile>(id.id)
+            .await
+            .map_err(|err| Status::internal(err.to_string()))?;
+
+        return Ok(Response::new(PullAssetResponse {
+            size: gltf_file.bytes().len() as u32,
+            content: gltf_file.bytes().to_vec(),
+        }));*/
     }
 }

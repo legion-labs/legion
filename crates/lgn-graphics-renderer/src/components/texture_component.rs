@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use lgn_data_runtime::Handle;
 use lgn_ecs::prelude::Component;
-use lgn_graphics_data::{runtime_texture::Texture, TextureFormat};
+use lgn_graphics_data::{runtime::BinTexture, TextureFormat};
 
 #[derive(Clone)]
 pub struct TextureData {
@@ -50,7 +50,7 @@ impl TextureData {
 
 #[derive(Component)]
 pub struct TextureComponent {
-    pub(crate) resource: Handle<Texture>,
+    pub(crate) resource: Handle<BinTexture>,
     pub(crate) width: u32,
     pub(crate) height: u32,
     pub(crate) format: TextureFormat,
@@ -61,7 +61,7 @@ pub struct TextureComponent {
 impl TextureComponent {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        resource: Handle<Texture>,
+        resource: Handle<BinTexture>,
         width: u32,
         height: u32,
         format: TextureFormat,
