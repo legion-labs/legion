@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use crate::{read_any, write_any, InProcSerialize, InProcSize, Reflect, UserDefinedType};
 
 // StaticString serializes the value of the pointer and the contents of the
@@ -10,20 +8,15 @@ pub struct StaticString {
     pub ptr: *const u8,
 }
 
-impl From<&str> for StaticString {
-    fn from(src: &str) -> Self {
+impl<T> From<T> for StaticString
+where
+    T: AsRef<str>,
+{
+    fn from(src: T) -> Self {
+        let string = src.as_ref();
         Self {
-            len: src.len() as u32,
-            ptr: src.as_ptr(),
-        }
-    }
-}
-
-impl<'a> From<&Cow<'a, str>> for StaticString {
-    fn from(src: &Cow<'a, str>) -> Self {
-        Self {
-            len: src.len() as u32,
-            ptr: src.as_ptr(),
+            len: string.len() as u32,
+            ptr: string.as_ptr(),
         }
     }
 }
