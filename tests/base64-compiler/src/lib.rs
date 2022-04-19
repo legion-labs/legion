@@ -12,7 +12,7 @@ use lgn_data_compiler::{
     },
     compiler_utils::hash_code_and_data,
 };
-use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, Transform};
+use lgn_data_runtime::{AssetRegistryError, AssetRegistryOptions, ResourceDescriptor, Transform};
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -30,8 +30,9 @@ struct Base64Compiler();
 
 #[async_trait]
 impl Compiler for Base64Compiler {
-    async fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
-        registry.add_loader::<binary_resource::BinaryResource>()
+    async fn init(&self, mut registry: AssetRegistryOptions) -> AssetRegistryOptions {
+        binary_resource::BinaryResource::register_type(&mut registry);
+        registry
     }
 
     async fn hash(
@@ -52,8 +53,10 @@ impl Compiler for Base64Compiler {
         let output = {
             let resource = resources
                 .load_async::<binary_resource::BinaryResource>(context.source.resource_id())
-                .await;
-            let resource = resource.get(&resources).unwrap();
+                .await?;
+            let resource = resource.get().ok_or_else(|| {
+                AssetRegistryError::ResourceNotFound(context.source.resource_id())
+            })?;
 
             encode(&resource.content)
         };

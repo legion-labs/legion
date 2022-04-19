@@ -1,11 +1,14 @@
 //! Module providing Photoshop Document related functionality.
 
-use std::io;
+use std::sync::Arc;
 
+use async_trait::async_trait;
 use lgn_data_runtime::{
-    resource, Asset, AssetLoader, AssetLoaderError, OfflineResource, Resource, ResourceProcessor,
-    ResourceProcessorError,
+    resource, AssetRegistryError, AssetRegistryOptions, AssetRegistryReader, HandleUntyped,
+    LoadRequest, Resource, ResourceDescriptor, ResourceInstaller, ResourceProcessor, ResourceType,
+    ResourceTypeAndId,
 };
+use tokio::io::AsyncReadExt;
 
 use crate::offline_texture::{Texture, TextureType};
 
@@ -15,15 +18,18 @@ pub struct PsdFile {
     content: Option<(psd::Psd, Vec<u8>)>,
 }
 
-impl Asset for PsdFile {
-    type Loader = PsdFileProcessor;
-}
-
-impl OfflineResource for PsdFile {
-    type Processor = PsdFileProcessor;
-}
-
 impl PsdFile {
+    pub fn register_type(asset_registry: &mut AssetRegistryOptions) {
+        ResourceType::register_name(
+            <Self as ResourceDescriptor>::TYPE,
+            <Self as ResourceDescriptor>::TYPENAME,
+        );
+        let installer = Arc::new(PsdFileProcessor::default());
+        asset_registry
+            .add_resource_installer(<Self as ResourceDescriptor>::TYPE, installer.clone());
+        asset_registry.add_processor(<Self as ResourceDescriptor>::TYPE, installer);
+    }
+
     /// Creates a Photoshop Document from byte array.
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
         match psd::Psd::from_bytes(bytes) {
@@ -85,12 +91,18 @@ impl Clone for PsdFile {
 
 /// A processor of Photoshop Document files.
 #[derive(Default)]
-pub struct PsdFileProcessor {}
+struct PsdFileProcessor {}
 
-impl AssetLoader for PsdFileProcessor {
-    fn load(&mut self, reader: &mut dyn io::Read) -> Result<Box<dyn Resource>, AssetLoaderError> {
+#[async_trait]
+impl ResourceInstaller for PsdFileProcessor {
+    async fn install_from_stream(
+        &self,
+        resource_id: ResourceTypeAndId,
+        request: &mut LoadRequest,
+        reader: &mut AssetRegistryReader,
+    ) -> Result<HandleUntyped, AssetRegistryError> {
         let mut bytes = vec![];
-        reader.read_to_end(&mut bytes)?;
+        reader.read_to_end(&mut bytes).await?;
         let content = if bytes.is_empty() {
             None
         } else {
@@ -99,19 +111,20 @@ impl AssetLoader for PsdFileProcessor {
             })?;
             Some((psd, bytes))
         };
-        Ok(Box::new(PsdFile { content }))
+        let handle = request
+            .asset_registry
+            .set_resource(resource_id, Box::new(PsdFile { content }))?;
+        Ok(handle)
     }
-
-    fn load_init(&mut self, _asset: &mut (dyn Resource)) {}
 }
 
 impl ResourceProcessor for PsdFileProcessor {
-    fn new_resource(&mut self) -> Box<dyn Resource> {
+    fn new_resource(&self) -> Box<dyn Resource> {
         Box::new(PsdFile { content: None })
     }
 
     fn extract_build_dependencies(
-        &mut self,
+        &self,
         _resource: &dyn Resource,
     ) -> Vec<lgn_data_runtime::ResourcePathId> {
         vec![]
@@ -121,7 +134,7 @@ impl ResourceProcessor for PsdFileProcessor {
         &self,
         resource: &dyn Resource,
         writer: &mut dyn std::io::Write,
-    ) -> Result<usize, ResourceProcessorError> {
+    ) -> Result<usize, AssetRegistryError> {
         let psd = resource.downcast_ref::<PsdFile>().unwrap();
         if let Some((_, content)) = &psd.content {
             writer.write_all(content).unwrap();
@@ -129,12 +142,5 @@ impl ResourceProcessor for PsdFileProcessor {
         } else {
             Ok(0)
         }
-    }
-
-    fn read_resource(
-        &mut self,
-        reader: &mut dyn std::io::Read,
-    ) -> Result<Box<dyn Resource>, ResourceProcessorError> {
-        Ok(self.load(reader)?)
     }
 }

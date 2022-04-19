@@ -48,7 +48,6 @@ impl TransactionOperation for RenameResourceOperation {
                 .await
                 .map_err(|err| Error::Project(self.resource_id, err))?,
         );
-        ctx.changed_resources.insert(self.resource_id);
         Ok(())
     }
 
@@ -59,7 +58,6 @@ impl TransactionOperation for RenameResourceOperation {
                 .await
                 .map_err(|err| Error::Project(self.resource_id, err))?;
         }
-        ctx.changed_resources.insert(self.resource_id);
         Ok(())
     }
 }

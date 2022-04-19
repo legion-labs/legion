@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use lgn_app::App;
-use lgn_data_runtime::{ResourceDescriptor, ResourceId, ResourceTypeAndId};
+use lgn_data_runtime::prelude::*;
 use lgn_ecs::prelude::*;
 use lgn_graphics_api::{AddressMode, CompareOp, FilterType, MipMapMode, SamplerDef};
 use lgn_graphics_data::{runtime::SamplerData, runtime_texture::TextureReferenceType};
@@ -66,6 +66,60 @@ impl Material {
 
     pub fn va(&self) -> u64 {
         self.va
+    }
+}
+
+pub(crate) struct MaterialInstaller {}
+impl MaterialInstaller {
+    pub(crate) fn new() -> Self {
+        Self {}
+    }
+}
+
+#[async_trait::async_trait]
+impl ResourceInstaller for MaterialInstaller {
+    async fn install_from_stream(
+        &self,
+        resource_id: ResourceTypeAndId,
+        request: &mut LoadRequest,
+        reader: &mut AssetRegistryReader,
+    ) -> Result<HandleUntyped, AssetRegistryError> {
+        let material = lgn_graphics_data::runtime::Material::from_reader(reader).await?;
+        lgn_tracing::info!("Material {:?}", resource_id.id,);
+
+        let handle = request
+            .asset_registry
+            .set_resource(resource_id, Box::new(material))?;
+        Ok(handle)
+
+        /*let mut entity = if let Some(entity) = asset_to_entity_map.get(asset_handle.id()) {
+            commands.entity(entity)
+        } else {
+            commands.spawn()
+        };
+
+        let asset_id = asset_handle.id();
+        let material = asset_handle.get()?;
+        let albedo = material.albedo.clone();
+        let normal = material.normal.clone();
+        let metalness = material.metalness.clone();
+        let roughness = material.roughness.clone();
+        std::mem::forget(material);
+        entity.insert(MaterialComponent::new(
+            asset_handle,
+            albedo,
+            normal,
+            metalness,
+            roughness,
+        ));
+
+        info!(
+            "Spawned {}: {} -> ECS id: {:?}",
+            asset_id.kind.as_pretty().trim_start_matches("runtime_"),
+            asset_id.id,
+            entity.id(),
+        );
+        Some(entity.id())*/
     }
 }
 

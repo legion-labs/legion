@@ -7,10 +7,10 @@ use lgn_content_store::{ContentProvider, MemoryContentProvider};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::{Project, ResourcePathName};
-use lgn_data_runtime::ResourcePathId;
 use lgn_data_runtime::{
     manifest::Manifest, AssetRegistryOptions, ResourceDescriptor, ResourceId, ResourceTypeAndId,
 };
+use lgn_data_runtime::{AssetRegistry, ResourcePathId};
 use tokio::sync::Mutex;
 
 use crate::SelectionManager;
@@ -22,18 +22,11 @@ use crate::{
 
 async fn validate_test_entity(
     res_id: ResourceTypeAndId,
-    transaction_manager: &mut TransactionManager,
+    asset_registry: &AssetRegistry,
     callback: fn(test_entity: &TestEntity),
 ) {
-    if let Some(handle) = transaction_manager
-        .loaded_resource_handles
-        .lock()
-        .await
-        .get(res_id)
-    {
-        let test_entity = handle
-            .get::<TestEntity>(&transaction_manager.asset_registry)
-            .unwrap();
+    if let Ok(handle) = asset_registry.load_async::<TestEntity>(res_id).await {
+        let test_entity = handle.get().unwrap();
         callback(&*test_entity);
     }
 }
@@ -63,16 +56,24 @@ async fn test_array_insert_operation(
             Some("253"),
         ));
     transaction_manager.commit_transaction(transaction).await?;
-    validate_test_entity(resource_id, transaction_manager, |test_entity| {
-        assert_eq!(test_entity.test_blob, vec![255u8, 254u8, 0, 1, 2, 3, 253]);
-    })
+    validate_test_entity(
+        resource_id,
+        &transaction_manager.asset_registry,
+        |test_entity| {
+            assert_eq!(test_entity.test_blob, vec![255u8, 254u8, 0, 1, 2, 3, 253]);
+        },
+    )
     .await;
 
     // Undo transaction
     transaction_manager.undo_transaction().await?;
-    validate_test_entity(resource_id, transaction_manager, |test_entity| {
-        assert_eq!(test_entity.test_blob, vec![0, 1, 2, 3]);
-    })
+    validate_test_entity(
+        resource_id,
+        &transaction_manager.asset_registry,
+        |test_entity| {
+            assert_eq!(test_entity.test_blob, vec![0, 1, 2, 3]);
+        },
+    )
     .await;
     Ok(())
 }
@@ -86,16 +87,24 @@ async fn test_array_delete_operation(
         .add_operation(ArrayOperation::delete_element(resource_id, "test_blob", 3))
         .add_operation(ArrayOperation::delete_element(resource_id, "test_blob", 1));
     transaction_manager.commit_transaction(transaction).await?;
-    validate_test_entity(resource_id, transaction_manager, |test_entity| {
-        assert_eq!(test_entity.test_blob, vec![0, 2]);
-    })
+    validate_test_entity(
+        resource_id,
+        &transaction_manager.asset_registry,
+        |test_entity| {
+            assert_eq!(test_entity.test_blob, vec![0, 2]);
+        },
+    )
     .await;
 
     // Undo transaction
     transaction_manager.undo_transaction().await?;
-    validate_test_entity(resource_id, transaction_manager, |test_entity| {
-        assert_eq!(test_entity.test_blob, vec![0, 1, 2, 3]);
-    })
+    validate_test_entity(
+        resource_id,
+        &transaction_manager.asset_registry,
+        |test_entity| {
+            assert_eq!(test_entity.test_blob, vec![0, 1, 2, 3]);
+        },
+    )
     .await;
 
     Ok(())
@@ -120,16 +129,24 @@ async fn test_array_reorder_operation(
             3,
         ));
     transaction_manager.commit_transaction(transaction).await?;
-    validate_test_entity(resource_id, transaction_manager, |test_entity| {
-        assert_eq!(test_entity.test_blob, vec![1, 0, 3, 2]);
-    })
+    validate_test_entity(
+        resource_id,
+        &transaction_manager.asset_registry,
+        |test_entity| {
+            assert_eq!(test_entity.test_blob, vec![1, 0, 3, 2]);
+        },
+    )
     .await;
 
     // Undo transaction
     transaction_manager.undo_transaction().await?;
-    validate_test_entity(resource_id, transaction_manager, |test_entity| {
-        assert_eq!(test_entity.test_blob, vec![0, 1, 2, 3]);
-    })
+    validate_test_entity(
+        resource_id,
+        &transaction_manager.asset_registry,
+        |test_entity| {
+            assert_eq!(test_entity.test_blob, vec![0, 1, 2, 3]);
+        },
+    )
     .await;
     Ok(())
 }
@@ -154,7 +171,7 @@ async fn test_transaction_system() -> Result<(), Error> {
         .add_device_dir(&resource_dir)
         .add_device_cas(Arc::clone(&data_content_provider), Manifest::default())
         .add_loader::<TestEntity>();
-    generic_data::offline::add_loaders(&mut asset_registry);
+    generic_data::offline::register_types(&mut asset_registry);
     let asset_registry = asset_registry.create().await;
 
     let compilers =

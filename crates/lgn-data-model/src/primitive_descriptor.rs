@@ -71,11 +71,26 @@ macro_rules! implement_reference_type_def {
     ($type_name:ident, $inner_type:ty) => {
         /// Reference Type for Texture
         #[derive(serde::Serialize, serde::Deserialize, PartialEq, Clone)]
-        pub struct $type_name(lgn_data_runtime::Reference<$inner_type>);
-        impl $type_name {
-            /// Expose internal id
-            pub fn id(&self) -> lgn_data_runtime::ResourceTypeAndId {
-                self.0.id()
+        pub struct $type_name(lgn_data_runtime::ReferenceUntyped);
+
+        impl From<lgn_data_runtime::ResourceTypeAndId> for $type_name {
+            fn from(resource_id : lgn_data_runtime::ResourceTypeAndId) -> Self {
+                Self {
+                    0 : lgn_data_runtime::ReferenceUntyped::Passive(resource_id)
+                }
+            }
+        }
+
+        impl std::ops::Deref for $type_name {
+            type Target = lgn_data_runtime::ReferenceUntyped;
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+
+        impl std::ops::DerefMut for $type_name {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                &mut self.0
             }
         }
 

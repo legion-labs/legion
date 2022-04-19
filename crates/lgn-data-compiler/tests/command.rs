@@ -3,7 +3,7 @@ use std::{path::Path, sync::Arc};
 use lgn_content_store::Config;
 use lgn_data_compiler::compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd};
 use lgn_data_runtime::{
-    AssetLoader, ResourceDescriptor, ResourceId, ResourcePathId, ResourceProcessor,
+    AssetRegistryReader, ResourceDescriptor, ResourceId, ResourcePathId, ResourceProcessor,
     ResourceTypeAndId,
 };
 
@@ -13,7 +13,7 @@ fn create_test_resource(id: ResourceTypeAndId, dir: &Path, content: &str) {
     let path = dir.join(id.id.resource_path());
     let mut file = common::create_resource_file(&path).expect("new file");
 
-    let mut proc = refs_resource::TestResourceProc {};
+    let proc = refs_resource::TestResourceProc {};
     let mut resource = proc.new_resource();
 
     resource
@@ -105,19 +105,16 @@ async fn command_compile() {
     assert!(volatile_content_provider.exists(content_id).await.unwrap());
 
     let resource_content = {
-        let mut loader = refs_asset::RefsAssetLoader::default();
-        let content = volatile_content_provider
-            .read(content_id)
+        let reader = volatile_content_provider
+            .get_reader(content_id)
             .await
             .expect("asset content");
-        let loaded_resource = loader.load(&mut &content[..]).expect("valid data");
-        loaded_resource
-            .as_ref()
-            .downcast_ref::<refs_asset::RefsAsset>()
-            .unwrap()
-            .content
-            .as_bytes()
-            .to_owned()
+
+        let mut reader = Box::pin(reader) as AssetRegistryReader;
+        let loaded_resource = refs_asset::RefsAsset::from_reader(&mut reader)
+            .await
+            .expect("valid data");
+        loaded_resource.content.as_bytes().to_owned()
     };
     let mut reversed = content.as_bytes().to_owned();
     reversed.reverse();

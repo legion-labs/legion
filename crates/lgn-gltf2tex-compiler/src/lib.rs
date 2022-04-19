@@ -8,7 +8,9 @@ use lgn_data_compiler::{
     },
     compiler_utils::hash_code_and_data,
 };
-use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourceProcessor, Transform};
+use lgn_data_runtime::{
+    AssetRegistryError, AssetRegistryOptions, ResourceDescriptor, ResourceProcessor, Transform,
+};
 use lgn_graphics_data::offline_texture::TextureProcessor;
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
@@ -27,8 +29,9 @@ struct Gltf2TexCompiler();
 
 #[async_trait]
 impl Compiler for Gltf2TexCompiler {
-    async fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
-        registry.add_loader::<lgn_graphics_data::offline_gltf::GltfFile>()
+    async fn init(&self, mut registry: AssetRegistryOptions) -> AssetRegistryOptions {
+        lgn_graphics_data::offline_gltf::GltfFile::register_type(&mut registry);
+        registry
     }
 
     async fn hash(
@@ -51,12 +54,9 @@ impl Compiler for Gltf2TexCompiler {
                 .load_async::<lgn_graphics_data::offline_gltf::GltfFile>(
                     context.source.resource_id(),
                 )
-                .await;
-            let resource = resource.get(&resources).ok_or_else(|| {
-                CompilerError::CompilationError(format!(
-                    "Failed to retrieve resource '{}'",
-                    context.source.resource_id()
-                ))
+                .await?;
+            let resource = resource.get().ok_or_else(|| {
+                AssetRegistryError::ResourceNotFound(context.source.resource_id())
             })?;
 
             let mut compiled_resources = vec![];

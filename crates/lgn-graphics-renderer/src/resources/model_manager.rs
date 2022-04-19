@@ -1,8 +1,12 @@
 use std::collections::BTreeMap;
 
+use async_trait::async_trait;
 use lgn_app::App;
 use lgn_core::BumpAllocatorPool;
-use lgn_data_runtime::{ResourceDescriptor, ResourceId, ResourceTypeAndId};
+use lgn_data_runtime::{
+    AssetRegistryError, AssetRegistryReader, HandleUntyped, LoadRequest, ResourceDescriptor,
+    ResourceId, ResourceInstaller, ResourceTypeAndId,
+};
 use lgn_ecs::{
     prelude::{Changed, Query, Res, ResMut},
     schedule::SystemSet,
@@ -31,6 +35,92 @@ pub struct MeshInstance {
 
 pub struct ModelMetaData {
     pub mesh_instances: Vec<MeshInstance>,
+}
+
+pub(crate) struct ModelInstaller {}
+
+impl ModelInstaller {
+    pub(crate) fn new() -> Self {
+        Self {}
+    }
+}
+
+#[async_trait]
+impl ResourceInstaller for ModelInstaller {
+    async fn install_from_stream(
+        &self,
+        resource_id: ResourceTypeAndId,
+        request: &mut LoadRequest,
+        reader: &mut AssetRegistryReader,
+    ) -> Result<HandleUntyped, AssetRegistryError> {
+        let model = lgn_graphics_data::runtime::Model::from_reader(reader).await?;
+        lgn_tracing::info!(
+            "Model {:?} | ({} meshes)",
+            resource_id.id,
+            model.meshes.len(),
+        );
+
+        /*
+           let model = resource.get(asset_registry)?;
+
+            let mut entity = if let Some(entity) = asset_to_entity_map.get(resource.id()) {
+                commands.entity(entity)
+            } else {
+                commands.spawn()
+            };
+
+            let mut meshes = Vec::new();
+            for mesh in &model.meshes {
+                assert!(!mesh.indices.is_empty());
+                assert!(!mesh.positions.is_empty());
+                assert_eq!(mesh.indices.len() % 3, 0); // triangle list
+                meshes.push(Mesh {
+                    indices: mesh.indices.clone(),
+                    positions: mesh.positions.clone(),
+                    normals: if !mesh.normals.is_empty() {
+                        Some(mesh.normals.clone())
+                    } else {
+                        None
+                    },
+                    tangents: if !mesh.tangents.is_empty() {
+                        Some(mesh.tangents.clone())
+                    } else {
+                        None
+                    },
+                    tex_coords: if !mesh.tex_coords.is_empty() {
+                        Some(mesh.tex_coords.clone())
+                    } else {
+                        None
+                    },
+                    colors: if !mesh.colors.is_empty() {
+                        Some(mesh.colors.iter().map(|v| Into::into(*v)).collect())
+                    } else {
+                        None
+                    },
+                    material_id: mesh.material.clone(),
+                    bounding_sphere: Mesh::calculate_bounding_sphere(&mesh.positions),
+                    topology: MeshTopology::TriangleList,
+                });
+            }
+
+            let asset_id = resource.id();
+
+            let model_component = ModelComponent { resource, meshes };
+            entity.insert(model_component);
+
+            info!(
+                "Spawned {}: {} -> ECS id: {:?}",
+                asset_id.kind.as_pretty().trim_start_matches("runtime_"),
+                asset_id.id,
+                entity.id(),
+            );
+            Some(entity.id())
+        */
+        let handle = request
+            .asset_registry
+            .set_resource(resource_id, Box::new(model))?;
+        Ok(handle)
+    }
 }
 
 pub struct ModelManager {

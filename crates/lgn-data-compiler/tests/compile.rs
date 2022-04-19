@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use binary_resource::BinaryResource;
-use integer_asset::{IntegerAsset, IntegerAssetLoader};
+use integer_asset::IntegerAsset;
 use lgn_content_store::Config;
 use lgn_data_compiler::compiler_cmd::{list_compilers, CompilerCompileCmd};
 use lgn_data_runtime::{
-    AssetLoader, ResourceDescriptor, ResourceId, ResourcePathId, ResourceProcessor,
+    AssetRegistryReader, ResourceDescriptor, ResourceId, ResourcePathId, ResourceProcessor,
     ResourceTypeAndId,
 };
 use multitext_resource::{MultiTextResource, MultiTextResourceProc};
@@ -35,7 +35,7 @@ async fn compile_atoi() {
             id: ResourceId::new(),
         };
 
-        let mut proc = text_resource::TextResourceProc {};
+        let proc = text_resource::TextResourceProc {};
 
         let mut resource = proc.new_resource();
         let mut resource = resource
@@ -82,16 +82,15 @@ async fn compile_atoi() {
 
     assert!(volatile_content_provider.exists(content_id).await.unwrap());
 
-    let resource_content = volatile_content_provider
-        .read(content_id)
+    let reader = volatile_content_provider
+        .get_reader(content_id)
         .await
         .expect("asset content");
 
-    let mut loader = IntegerAssetLoader {};
-    let asset = loader
-        .load(&mut &resource_content[..])
+    let mut reader = Box::pin(reader) as AssetRegistryReader;
+    let asset = IntegerAsset::from_reader(&mut reader)
+        .await
         .expect("loaded assets");
-    let asset = asset.downcast_ref::<IntegerAsset>().unwrap();
 
     let stringified = asset.magic_value.to_string();
     assert_eq!(source_magic_value, stringified);
@@ -109,7 +108,7 @@ async fn compile_intermediate() {
             kind: text_resource::TextResource::TYPE,
             id: ResourceId::new(),
         };
-        let mut proc = text_resource::TextResourceProc {};
+        let proc = text_resource::TextResourceProc {};
         let mut resource = proc.new_resource();
         let mut resource = resource
             .downcast_mut::<TextResource>()
@@ -174,16 +173,15 @@ async fn compile_intermediate() {
 
     assert!(volatile_content_provider.exists(content_id).await.unwrap());
 
-    let resource_content = volatile_content_provider
-        .read(content_id)
+    let reader = volatile_content_provider
+        .get_reader(content_id)
         .await
         .expect("asset content");
 
-    let mut loader = IntegerAssetLoader {};
-    let asset = loader
-        .load(&mut &resource_content[..])
+    let mut reader = Box::pin(reader) as AssetRegistryReader;
+    let asset = IntegerAsset::from_reader(&mut reader)
+        .await
         .expect("loaded assets");
-    let asset = asset.downcast_ref::<IntegerAsset>().unwrap();
 
     let stringified = asset.magic_value.to_string();
     assert_eq!(
@@ -204,7 +202,7 @@ async fn compile_multi_resource() {
             kind: multitext_resource::MultiTextResource::TYPE,
             id: ResourceId::new(),
         };
-        let mut proc = MultiTextResourceProc {};
+        let proc = MultiTextResourceProc {};
         let mut resource = proc.new_resource();
         let mut resource = resource
             .downcast_mut::<MultiTextResource>()
@@ -266,15 +264,16 @@ async fn compile_multi_resource() {
             .exists(&resource.content_id)
             .await
             .unwrap());
-        let resource_content = volatile_content_provider
-            .read(&resource.content_id)
+        let reader = volatile_content_provider
+            .get_reader(&resource.content_id)
             .await
             .expect("asset content");
-        let mut proc = text_resource::TextResourceProc {};
-        let resource = proc
-            .read_resource(&mut &resource_content[..])
+
+        let mut reader = Box::pin(reader) as AssetRegistryReader;
+        let resource = TextResource::from_reader(&mut reader)
+            .await
             .expect("loaded resource");
-        let resource = resource.downcast_ref::<TextResource>().unwrap();
+
         assert_eq!(&resource.content, source_text);
     }
 }
@@ -293,7 +292,7 @@ async fn compile_base64() {
             id: ResourceId::new(),
         };
 
-        let mut proc = binary_resource::BinaryResourceProc {};
+        let proc = binary_resource::BinaryResourceProc {};
 
         let mut resource = proc.new_resource();
         let mut resource = resource

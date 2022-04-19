@@ -536,29 +536,22 @@ mod tests {
             current_checksum(&source_index)
         };
 
-        let resources = AssetRegistryOptions::new()
-            .add_processor::<refs_resource::TestResource>()
-            .create()
-            .await;
+        let mut options = AssetRegistryOptions::new();
+        refs_resource::TestResource::register_type(&mut options);
+        let resources = options.create().await;
 
         let (resource_id, resource_handle) = {
             let resource_handle = resources
-                .new_resource(refs_resource::TestResource::TYPE)
-                .expect("new resource")
-                .typed::<refs_resource::TestResource>();
+                .new_resource::<refs_resource::TestResource>()
+                .expect("new resource");
 
-            let mut edit = resource_handle.instantiate(&resources).unwrap();
+            let mut edit = resources.edit(&resource_handle).unwrap();
             edit.content = "hello".to_string();
-            resource_handle.apply(edit, &resources);
-
-            let id = ResourceId::from_raw(0xaabbccddeeff00000000000000000000);
+            resources.commit(edit);
 
             let resource_id = project
-                .add_resource_with_id(
+                .add_resource(
                     ResourcePathName::new("test_source"),
-                    refs_resource::TestResource::TYPENAME,
-                    refs_resource::TestResource::TYPE,
-                    id,
                     &resource_handle,
                     &resources,
                 )
@@ -592,14 +585,12 @@ mod tests {
 
         // modify a resource
         let third_checksum = {
-            let mut edit = resource_handle
-                .instantiate(&resources)
-                .expect("loaded resource");
+            let mut edit = resources.edit(&resource_handle).expect("loaded resource");
             edit.content = "hello world!".to_string();
-            resource_handle.apply(edit, &resources);
+            resources.commit(edit);
 
             project
-                .save_resource(resource_id, resource_handle, &resources)
+                .save_resource(resource_handle, &resources)
                 .await
                 .expect("successful save");
 

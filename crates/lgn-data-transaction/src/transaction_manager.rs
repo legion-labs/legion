@@ -72,6 +72,10 @@ pub enum Error {
     #[error("Project error resource '{0}': {1}")]
     Project(ResourceTypeAndId, lgn_data_offline::resource::Error),
 
+    /// AssetRegistry error fallback
+    #[error(transparent)]
+    AssetRegistry(#[from] lgn_data_runtime::AssetRegistryError),
+
     /// Reflection Error fallack
     #[error("Reflection error on resource '{0}': {1}")]
     Reflection(ResourceTypeAndId, lgn_data_model::ReflectionError),
@@ -126,11 +130,11 @@ impl TransactionManager {
         self.active_scenes.insert(resource_id);
         lgn_tracing::info!("Adding scene: {}", resource_id);
         let path_id = self.build_by_id(resource_id).await?;
-        let runtime_id = path_id.resource_id();
+        let _runtime_id = path_id.resource_id();
 
-        if self.asset_registry.get_untyped(runtime_id).is_none() {
-            self.asset_registry.load_untyped(runtime_id);
-        }
+        //if self.asset_registry.get_untyped(runtime_id).is_none() {
+        //    self.asset_registry.load_untyped(runtime_id);
+        //}
         Ok(path_id)
     }
 
@@ -153,13 +157,13 @@ impl TransactionManager {
     ) -> Result<ResourcePathId, Error> {
         let mut ctx = LockContext::new(self).await;
 
-        let (runtime_path_id, changed_assets) = ctx
+        let (runtime_path_id, _changed_assets) = ctx
             .build
             .build_all_derived(resource_id, &ctx.project)
             .await
             .map_err(|err| Error::Databuild(resource_id, err))?;
 
-        // Reload runtime asset (just entity for now)
+        /*// Reload runtime asset (just entity for now)
         for asset_id in changed_assets {
             // Try to reload, if it doesn't exist, load normally
             if asset_id.kind.as_pretty().starts_with("runtime_")
@@ -167,12 +171,13 @@ impl TransactionManager {
             {
                 ctx.asset_registry.load_untyped(asset_id);
             }
-        }
+        }*/
         Ok(runtime_path_id)
     }
 
     /// Load all resources from a `Project`
     pub async fn load_all_resource_type(&mut self, kinds: &[ResourceType]) {
+        let asset_registry = self.asset_registry.clone();
         let project = self.project.lock().await;
         let mut resource_handles = self.loaded_resource_handles.lock().await;
 
@@ -188,8 +193,9 @@ impl TransactionManager {
 
                 if let Entry::Vacant(entry) = resource_handles.entry(type_id) {
                     let start = std::time::Instant::now();
-                    project
-                        .load_resource(type_id, &self.asset_registry)
+                    asset_registry
+                        .load_async_untyped(type_id)
+                        .await
                         .map_or_else(
                             |err| {
                                 warn!("Failed to load {}: {}", type_id, err);

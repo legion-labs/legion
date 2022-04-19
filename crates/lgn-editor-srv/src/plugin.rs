@@ -20,7 +20,7 @@ use lgn_input::{
     mouse::{MouseButtonInput, MouseMotion},
     Input,
 };
-use lgn_scene_plugin::ActiveScenes;
+use lgn_scene_plugin::{ResourceMetaInfo, SceneManager};
 use lgn_tracing::{error, info, warn};
 use lgn_transform::components::Transform;
 use tokio::sync::{broadcast, Mutex};
@@ -74,25 +74,20 @@ impl EditorPlugin {
     fn update_selection(
         selection_manager: Res<'_, Arc<SelectionManager>>,
         picking_manager: Res<'_, PickingManager>,
-        active_scenes: Res<'_, ActiveScenes>,
+        scene_manager: Res<'_, Arc<SceneManager>>,
         event_sender: Res<'_, broadcast::Sender<EditorEvent>>,
     ) {
         if let Some(selection) = selection_manager.update() {
-            // Convert the SelectionManager offlineId to RuntimeId
-            let entities_selection = selection
-                .iter()
-                .map(|offline_id| {
-                    ResourcePathId::from(*offline_id)
-                        .push(sample_data::runtime::Entity::TYPE)
-                        .resource_id()
-                })
-                .flat_map(|runtime_id| {
-                    active_scenes
-                        .iter()
-                        .filter_map(|(_, scene)| scene.asset_to_entity_map.get(runtime_id))
-                        .collect::<Vec<_>>()
-                })
-                .collect();
+            let mut entities_selection = Vec::new();
+            for selection in &selection {
+                let runtime_id = ResourcePathId::from(*selection)
+                    .push(sample_data::runtime::Entity::TYPE)
+                    .resource_id();
+
+                if let Some(selection) = scene_manager.find_entities(&runtime_id) {
+                    entities_selection.extend(selection);
+                }
+            }
 
             if let Err(err) = event_sender.send(EditorEvent::SelectionChanged(selection)) {
                 warn!("Failed to send selectionEvent: {}", err);
@@ -105,8 +100,7 @@ impl EditorPlugin {
     fn process_input(
         tokio_runtime: ResMut<'_, TokioAsyncRuntime>,
         transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
-        active_scenes: Res<'_, ActiveScenes>,
-        entities: Query<'_, '_, (Entity, Option<&Name>)>,
+        entities: Query<'_, '_, (Entity, &ResourceMetaInfo)>,
         mut event_reader: EventReader<'_, '_, PickingEvent>,
         keys: Res<'_, Input<KeyCode>>,
         event_sender: Res<'_, broadcast::Sender<EditorEvent>>,
@@ -145,11 +139,9 @@ impl EditorPlugin {
 
         for event in event_reader.iter() {
             match event {
-                PickingEvent::EntityPicked(id) => {
-                    if let Some(runtime_id) = active_scenes
-                        .iter()
-                        .find_map(|(_, scene)| scene.asset_to_entity_map.get_resource_id(*id))
-                    {
+                PickingEvent::EntityPicked(entity) => {
+                    if let Ok((_entity, meta_info)) = entities.get(*entity) {
+                        let runtime_id = meta_info.id;
                         let shift_pressed = false; //TODO: Support adding to selection keys.pressed(KeyCode::LShift);
 
                         let transaction_manager = transaction_manager.clone();
@@ -176,56 +168,50 @@ impl EditorPlugin {
                         });
                     }
                 }
-                PickingEvent::ApplyTransaction(id, transform) => {
-                    if let Ok((entity, _name)) = entities.get(*id) {
-                        if let Some(runtime_id) = active_scenes.iter().find_map(|(_, scene)| {
-                            scene.asset_to_entity_map.get_resource_id(entity)
-                        }) {
-                            let position_value =
-                                serde_json::json!(transform.translation).to_string();
-                            let rotation_value = serde_json::json!(transform.rotation).to_string();
-                            let scale_value = serde_json::json!(transform.scale).to_string();
+                PickingEvent::ApplyTransaction(entity, transform) => {
+                    if let Ok((_entity, meta_info)) = entities.get(*entity) {
+                        let runtime_id = meta_info.id;
+                        let position_value = serde_json::json!(transform.translation).to_string();
+                        let rotation_value = serde_json::json!(transform.rotation).to_string();
+                        let scale_value = serde_json::json!(transform.scale).to_string();
 
-                            let transaction_manager = transaction_manager.clone();
-                            let event_sender = event_sender.clone();
+                        let transaction_manager = transaction_manager.clone();
+                        let event_sender = event_sender.clone();
 
-                            tokio_runtime.start_detached(async move {
-                                let mut transaction_manager = transaction_manager.lock().await;
-                                let offline_res_id = {
-                                    let ctx = LockContext::new(&transaction_manager).await;
-                                    ctx.build.resolve_offline_id(runtime_id).await
-                                };
+                        tokio_runtime.start_detached(async move {
+                            let mut transaction_manager = transaction_manager.lock().await;
+                            let offline_res_id = {
+                                let ctx = LockContext::new(&transaction_manager).await;
+                                ctx.build.resolve_offline_id(runtime_id).await
+                            };
 
-                                if let Some(offline_res_id) = offline_res_id {
-                                    let transaction = Transaction::new().add_operation(
-                                        UpdatePropertyOperation::new(
-                                            offline_res_id,
-                                            &[
-                                                ("components[Transform].position", position_value),
-                                                ("components[Transform].rotation", rotation_value),
-                                                ("components[Transform].scale", scale_value),
-                                            ],
-                                        ),
-                                    );
-                                    match transaction_manager.commit_transaction(transaction).await
-                                    {
-                                        Ok(Some(changed)) => {
-                                            if let Err(err) = event_sender
-                                                .send(EditorEvent::ResourceChanged(changed))
-                                            {
-                                                warn!("Failed to send EditorEvent: {}", err);
-                                            }
-                                        }
-                                        Ok(_) => {}
-                                        Err(err) => {
-                                            error!("ApplyTransform transaction failed: {}", err);
+                            if let Some(offline_res_id) = offline_res_id {
+                                let transaction =
+                                    Transaction::new().add_operation(UpdatePropertyOperation::new(
+                                        offline_res_id,
+                                        &[
+                                            ("components[Transform].position", position_value),
+                                            ("components[Transform].rotation", rotation_value),
+                                            ("components[Transform].scale", scale_value),
+                                        ],
+                                    ));
+                                match transaction_manager.commit_transaction(transaction).await {
+                                    Ok(Some(changed)) => {
+                                        if let Err(err) =
+                                            event_sender.send(EditorEvent::ResourceChanged(changed))
+                                        {
+                                            warn!("Failed to send EditorEvent: {}", err);
                                         }
                                     }
+                                    Ok(_) => {}
+                                    Err(err) => {
+                                        error!("ApplyTransform transaction failed: {}", err);
+                                    }
                                 }
-                            });
-                        }
+                            }
+                        });
                     } else {
-                        warn!("ApplyTransform failed, entity {:?} not found", id);
+                        warn!("ApplyTransform failed, entity {:?} not found", entity);
                     }
                 }
                 PickingEvent::ClearSelection => {

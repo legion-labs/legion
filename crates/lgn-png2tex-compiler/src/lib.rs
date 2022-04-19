@@ -8,7 +8,9 @@ use lgn_data_compiler::{
     },
     compiler_utils::hash_code_and_data,
 };
-use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourceProcessor, Transform};
+use lgn_data_runtime::{
+    AssetRegistryError, AssetRegistryOptions, ResourceDescriptor, ResourceProcessor, Transform,
+};
 use lgn_graphics_data::{offline_texture::TextureProcessor, rgba_from_source, ColorChannels};
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
@@ -27,8 +29,9 @@ struct Png2TexCompiler();
 
 #[async_trait]
 impl Compiler for Png2TexCompiler {
-    async fn init(&self, options: AssetRegistryOptions) -> AssetRegistryOptions {
-        options.add_loader::<lgn_graphics_data::offline_png::PngFile>()
+    async fn init(&self, mut options: AssetRegistryOptions) -> AssetRegistryOptions {
+        lgn_graphics_data::offline_png::PngFile::register_type(&mut options);
+        options
     }
 
     async fn hash(
@@ -47,20 +50,13 @@ impl Compiler for Png2TexCompiler {
     ) -> Result<CompilationOutput, CompilerError> {
         let asset_registry = context.registry();
 
-        let resource_handle = asset_registry
-            .load_async::<lgn_graphics_data::offline_png::PngFile>(context.source.resource_id())
-            .await;
-
-        if let Some(err) = asset_registry.retrieve_err(resource_handle.id()) {
-            return Err(CompilerError::CompilationError(err.to_string()));
-        }
-
         let content = {
-            let png_file = resource_handle.get(&asset_registry).ok_or_else(|| {
-                CompilerError::CompilationError(format!(
-                    "Failed to retrieve resource '{}'",
-                    context.source.resource_id()
-                ))
+            let png_file = asset_registry
+                .load_async::<lgn_graphics_data::offline_png::PngFile>(context.source.resource_id())
+                .await?;
+
+            let png_file = png_file.get().ok_or_else(|| {
+                AssetRegistryError::ResourceNotFound(context.source.resource_id())
             })?;
 
             let decoder = png::Decoder::new(png_file.content.as_slice());

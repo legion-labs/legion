@@ -9,6 +9,10 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 lgn-data-runtime = { path = "../", version = "0.1.0" }
 lgn-data-model = { path = "../../lgn-data-model", version = "0.1.0" }
+lgn-content-store = { path = "../../lgn-content-store", version = "0.1.0" }
+
+tokio = "1.13"
+async-trait = "0.1"
 
 [lib]
 doc = false

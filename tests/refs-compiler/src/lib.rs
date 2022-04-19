@@ -29,8 +29,9 @@ pub struct RefCompiler();
 
 #[async_trait]
 impl Compiler for RefCompiler {
-    async fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
-        registry.add_loader::<refs_resource::TestResource>()
+    async fn init(&self, mut registry: AssetRegistryOptions) -> AssetRegistryOptions {
+        refs_resource::TestResource::register_type(&mut registry);
+        registry
     }
 
     async fn hash(
@@ -51,10 +52,8 @@ impl Compiler for RefCompiler {
         let compiled_asset = {
             let resource = resources
                 .load_async::<refs_resource::TestResource>(context.source.resource_id())
-                .await;
-            assert!(!resource.is_err(&resources));
-            assert!(resource.is_loaded(&resources));
-            let resource = resource.get(&resources).unwrap();
+                .await?;
+            let resource = resource.get().unwrap();
 
             let mut text = resource.content.as_bytes().to_owned();
             text.reverse();

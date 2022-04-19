@@ -11,7 +11,7 @@ use lgn_data_compiler::{
     },
     compiler_utils::hash_code_and_data,
 };
-use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, Transform};
+use lgn_data_runtime::{AssetRegistryError, AssetRegistryOptions, ResourceDescriptor, Transform};
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -29,8 +29,9 @@ struct AtoiCompiler();
 
 #[async_trait]
 impl Compiler for AtoiCompiler {
-    async fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
-        registry.add_loader::<text_resource::TextResource>()
+    async fn init(&self, mut registry: AssetRegistryOptions) -> AssetRegistryOptions {
+        text_resource::TextResource::register_type(&mut registry);
+        registry
     }
 
     async fn hash(
@@ -51,8 +52,10 @@ impl Compiler for AtoiCompiler {
         let compiled_output = {
             let resource = resources
                 .load_async::<text_resource::TextResource>(context.source.resource_id())
-                .await;
-            let resource = resource.get(&resources).unwrap();
+                .await?;
+            let resource = resource.get().ok_or_else(|| {
+                AssetRegistryError::ResourceNotFound(context.source.resource_id())
+            })?;
 
             let parsed_value = resource.content.parse::<usize>().unwrap_or(0);
             parsed_value.to_ne_bytes()

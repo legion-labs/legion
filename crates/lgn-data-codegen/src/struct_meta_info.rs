@@ -9,7 +9,6 @@ use syn::{Ident, ItemStruct, Type};
 #[derive(Debug)]
 pub(crate) struct StructMetaInfo {
     pub(crate) name: Ident,
-    pub(crate) need_life_time: bool,
     pub(crate) attributes: Attributes,
     pub(crate) members: Vec<MemberMetaInfo>,
     pub(crate) is_resource: bool,
@@ -20,7 +19,6 @@ impl StructMetaInfo {
     pub(crate) fn new(item_struct: &ItemStruct) -> Self {
         Self {
             name: item_struct.ident.clone(),
-            need_life_time: false,
             attributes: Attributes::new(&item_struct.attrs),
             is_resource: item_struct.attrs.iter().any(|attr| {
                 attr.path.segments.len() == 1 && attr.path.segments[0].ident == "resource"
@@ -40,10 +38,6 @@ impl StructMetaInfo {
                 })
                 .collect::<Vec<MemberMetaInfo>>(),
         }
-    }
-
-    pub(crate) fn need_life_time(&self) -> bool {
-        self.need_life_time
     }
 
     pub(crate) fn offline_imports(&self) -> HashSet<&syn::Path> {

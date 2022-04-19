@@ -11,7 +11,7 @@ use lgn_data_compiler::{
     },
     compiler_utils::hash_code_and_data,
 };
-use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, Transform};
+use lgn_data_runtime::{AssetRegistryError, AssetRegistryOptions, ResourceDescriptor, Transform};
 use lgn_graphics_data::{runtime_texture, TextureFormat};
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
@@ -30,8 +30,12 @@ struct Tex2BinCompiler();
 
 #[async_trait]
 impl Compiler for Tex2BinCompiler {
-    async fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
-        registry.add_loader::<lgn_graphics_data::offline_texture::Texture>()
+    async fn init(&self, mut registry: AssetRegistryOptions) -> AssetRegistryOptions {
+        registry.add_resource_installer(
+            lgn_graphics_data::offline_texture::Texture::TYPE,
+            std::sync::Arc::new(lgn_graphics_data::offline_texture::TextureProcessor::default()),
+        );
+        registry
     }
 
     async fn hash(
@@ -50,12 +54,14 @@ impl Compiler for Tex2BinCompiler {
         let resources = context.registry();
 
         let output = {
-            let resource = resources
+            let image = resources
                 .load_async::<lgn_graphics_data::offline_texture::Texture>(
                     context.source.resource_id(),
                 )
-                .await;
-            let image = resource.get(&resources).unwrap();
+                .await?;
+            let image = image.get().ok_or_else(|| {
+                AssetRegistryError::ResourceNotFound(context.source.resource_id())
+            })?;
 
             let mut compiled_resources = vec![];
 

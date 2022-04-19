@@ -8,7 +8,9 @@ use lgn_data_compiler::{
     },
     compiler_utils::hash_code_and_data,
 };
-use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourceProcessor, Transform};
+use lgn_data_runtime::{
+    AssetRegistryError, AssetRegistryOptions, ResourceDescriptor, ResourceProcessor, Transform,
+};
 use lgn_graphics_data::{offline_psd::PsdFile, offline_texture::TextureProcessor};
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
@@ -27,8 +29,9 @@ struct Psd2TextCompiler();
 
 #[async_trait]
 impl Compiler for Psd2TextCompiler {
-    async fn init(&self, options: AssetRegistryOptions) -> AssetRegistryOptions {
-        options.add_loader::<lgn_graphics_data::offline_psd::PsdFile>()
+    async fn init(&self, mut options: AssetRegistryOptions) -> AssetRegistryOptions {
+        lgn_graphics_data::offline_psd::PsdFile::register_type(&mut options);
+        options
     }
 
     async fn hash(
@@ -50,9 +53,11 @@ impl Compiler for Psd2TextCompiler {
         let outputs = {
             let resource = resources
                 .load_async::<lgn_graphics_data::offline_psd::PsdFile>(context.source.resource_id())
-                .await;
+                .await?;
 
-            let resource = resource.get(&resources).unwrap();
+            let resource = resource.get().ok_or_else(|| {
+                AssetRegistryError::ResourceNotFound(context.source.resource_id())
+            })?;
 
             let mut compiled_resources = vec![];
             let texture_proc = TextureProcessor {};

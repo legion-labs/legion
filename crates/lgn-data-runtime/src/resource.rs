@@ -322,6 +322,9 @@ pub trait ResourceDescriptor {
     const TYPENAME: &'static str;
     /// Type of the asset.
     const TYPE: ResourceType = ResourceType::new(Self::TYPENAME.as_bytes());
+
+    // Return a new instance of Resource
+    //const fn new_instance() -> Box<dyn Resource>;
 }
 
 /// Trait describing a resource

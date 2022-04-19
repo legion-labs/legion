@@ -125,7 +125,9 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
                     components.push(Box::new(Into::<offline_data::Transform>::into(raw)));
                 }
                 raw_data::Component::Visual(raw) => {
-                    components.push(Box::new(offline_data::Visual::from_raw(raw, references)));
+                    components.push(Box::new(lgn_graphics_data::offline::Visual::from_raw(
+                        raw, references,
+                    )));
                 }
                 raw_data::Component::GlobalIllumination(raw) => {
                     components.push(Box::new(Into::<offline_data::GlobalIllumination>::into(
@@ -167,7 +169,7 @@ impl From<raw_data::Transform> for offline_data::Transform {
     }
 }
 
-impl FromRaw<raw_data::Visual> for offline_data::Visual {
+impl FromRaw<raw_data::Visual> for lgn_graphics_data::offline::Visual {
     fn from_raw(
         raw: raw_data::Visual,
         references: &HashMap<ResourcePathName, ResourceTypeAndId>,
@@ -192,7 +194,7 @@ impl FromRaw<raw_data::Visual> for offline_data::Visual {
     }
 }
 
-impl From<raw_data::GIContribution> for sample_data::GIContribution {
+impl From<raw_data::GIContribution> for lgn_graphics_data::GIContribution {
     fn from(raw: raw_data::GIContribution) -> Self {
         match raw {
             raw_data::GIContribution::Default => Self::Default,

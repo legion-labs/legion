@@ -189,7 +189,6 @@ pub enum Error {
     Database(#[source] sqlx::Error),
 }
 
-mod asset_file_writer;
 mod databuild;
 mod options;
 mod output_index;

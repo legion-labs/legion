@@ -57,28 +57,20 @@ async fn build_device() {
         )
         .await
         .expect("new project");
-        let resources = AssetRegistryOptions::new()
-            .add_processor::<refs_resource::TestResource>()
-            .create()
-            .await;
+        let mut options = AssetRegistryOptions::new();
+        refs_resource::TestResource::register_type(&mut options);
+        let resources = options.create().await;
 
         let resource = resources
-            .new_resource(refs_resource::TestResource::TYPE)
-            .expect("new resource")
-            .typed::<refs_resource::TestResource>();
+            .new_resource::<refs_resource::TestResource>()
+            .expect("new resource");
 
-        let mut edit = resource.instantiate(&resources).unwrap();
+        let mut edit = resources.edit(&resource).unwrap();
         edit.content = initial_content.to_string();
-        resource.apply(edit, &resources);
+        resources.commit(edit);
 
         project
-            .add_resource(
-                ResourcePathName::new("test_source"),
-                refs_resource::TestResource::TYPENAME,
-                refs_resource::TestResource::TYPE,
-                &resource,
-                &resources,
-            )
+            .add_resource(ResourcePathName::new("test_source"), &resource, &resources)
             .await
             .expect("adding the resource")
     };
@@ -141,19 +133,18 @@ async fn build_device() {
     // create resource registry that uses the 'build device'
 
     let manifest = lgn_data_runtime::manifest::Manifest::default();
-    let registry = AssetRegistryOptions::new()
-        .add_loader::<refs_resource::TestResource>()
-        .add_loader::<refs_asset::RefsAsset>()
-        .add_device_build(
-            Arc::clone(&data_content_provider),
-            manifest,
-            DATABUILD_EXE,
-            DataBuildOptions::output_db_path_dir(output_dir, project_dir, DataBuild::version()),
-            project_dir,
-            true,
-        )
-        .create()
-        .await;
+    let mut options = AssetRegistryOptions::new().add_device_build(
+        Arc::clone(&data_content_provider),
+        manifest,
+        DATABUILD_EXE,
+        DataBuildOptions::output_db_path_dir(output_dir, project_dir, DataBuild::version()),
+        project_dir,
+        true,
+    );
+
+    refs_resource::TestResource::register_type(&mut options);
+    refs_asset::RefsAsset::register_type(&mut options);
+    let registry = options.create().await;
 
     // build needs to be dropped to flush recorded ResourcePathIds to disk
     std::mem::drop(build);
@@ -163,10 +154,10 @@ async fn build_device() {
     {
         let handle = registry
             .load_async::<refs_asset::RefsAsset>(derived_id)
-            .await;
-        assert!(handle.is_loaded(&registry));
+            .await
+            .expect("loaded asset");
 
-        let resource = handle.get(&registry).expect("loaded asset");
+        let resource = handle.get().expect("loaded asset");
         assert_eq!(resource.content, derived_content);
     }
 
@@ -181,22 +172,21 @@ async fn build_device() {
         )
         .await
         .expect("new project");
-        let resources = AssetRegistryOptions::new()
-            .add_processor::<refs_resource::TestResource>()
-            .create()
-            .await;
+        let mut options = AssetRegistryOptions::new();
+        refs_resource::TestResource::register_type(&mut options);
+        let resources = options.create().await;
 
         let resource = project
-            .load_resource(source_id, &resources)
-            .expect("existing resource")
-            .typed::<refs_resource::TestResource>();
+            .load_resource::<refs_resource::TestResource>(source_id, &resources)
+            .await
+            .expect("existing resource");
 
-        let mut res = resource.instantiate(&resources).expect("loaded resource");
-        res.content = changed_content.to_string();
-        resource.apply(res, &resources);
+        let mut edit = resources.edit(&resource).expect("loaded resource");
+        edit.content = changed_content.to_string();
+        resources.commit(edit);
 
         project
-            .save_resource(source_id, resource, &resources)
+            .save_resource(resource, &resources)
             .await
             .expect("successful save");
     }
@@ -206,10 +196,10 @@ async fn build_device() {
     // load (and recompile) the changed resource
     let handle = registry
         .load_async::<refs_asset::RefsAsset>(derived_id)
-        .await;
-    assert!(handle.is_loaded(&registry));
+        .await
+        .unwrap();
 
-    let resource = handle.get(&registry).expect("loaded asset");
+    let resource = handle.get().expect("loaded asset");
     assert_eq!(resource.content, changed_derived_content);
 }
 
@@ -258,23 +248,16 @@ async fn no_intermediate_resource() {
             )
             .await
             .expect("new project");
-            let resources = AssetRegistryOptions::new()
-                .add_processor::<refs_resource::TestResource>()
-                .create()
-                .await;
+            let mut options = AssetRegistryOptions::new();
+            refs_resource::TestResource::register_type(&mut options);
+            let resources = options.create().await;
 
             let resource = resources
-                .new_resource(refs_resource::TestResource::TYPE)
+                .new_resource::<refs_resource::TestResource>()
                 .expect("new resource");
 
             project
-                .add_resource(
-                    ResourcePathName::new("test_source"),
-                    refs_resource::TestResource::TYPENAME,
-                    refs_resource::TestResource::TYPE,
-                    &resource,
-                    &resources,
-                )
+                .add_resource(ResourcePathName::new("test_source"), &resource, &resources)
                 .await
                 .expect("adding the resource")
         };
@@ -375,23 +358,16 @@ async fn with_intermediate_resource() {
             )
             .await
             .expect("new project");
-            let resources = AssetRegistryOptions::new()
-                .add_processor::<text_resource::TextResource>()
-                .create()
-                .await;
+            let mut options = AssetRegistryOptions::new();
+            text_resource::TextResource::register_type(&mut options);
+            let resources = options.create().await;
 
             let resource = resources
-                .new_resource(text_resource::TextResource::TYPE)
+                .new_resource::<text_resource::TextResource>()
                 .expect("new resource");
 
             project
-                .add_resource(
-                    ResourcePathName::new("test_source"),
-                    text_resource::TextResource::TYPENAME,
-                    text_resource::TextResource::TYPE,
-                    &resource,
-                    &resources,
-                )
+                .add_resource(ResourcePathName::new("test_source"), &resource, &resources)
                 .await
                 .expect("adding the resource")
         };

@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use lgn_data_offline::resource::ResourcePathName;
-use lgn_data_runtime::ResourceTypeAndId;
+use lgn_data_runtime::{AssetRegistryReader, ResourceTypeAndId};
 
 use crate::{Error, LockContext, TransactionOperation};
 
@@ -29,13 +29,16 @@ impl DeleteResourceOperation {
 impl TransactionOperation for DeleteResourceOperation {
     async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
         // Force load to retrieve of value
-        ctx.get_or_load(self.resource_id).await?;
-        if let Some(old_handle) = ctx.loaded_resource_handles.remove(self.resource_id) {
+        if let Ok(old_handle) = ctx
+            .asset_registry
+            .load_async_untyped(self.resource_id)
+            .await
+        {
             // On the first apply, save a copy original resource for redo
             if self.old_resource_name.is_none() {
                 let mut old_resource_data = Vec::<u8>::new();
                 ctx.asset_registry
-                    .serialize_resource(self.resource_id.kind, old_handle, &mut old_resource_data)
+                    .serialize_resource(old_handle, &mut old_resource_data)
                     .map_err(|err| Error::InvalidResourceSerialization(self.resource_id, err))?;
 
                 self.old_resource_name = Some(
@@ -64,28 +67,19 @@ impl TransactionOperation for DeleteResourceOperation {
             .as_ref()
             .ok_or(Error::InvalidDeleteOperation(self.resource_id))?;
 
+        let reader =
+            Box::pin(std::io::Cursor::new(old_resource_data.clone())) as AssetRegistryReader;
+
         let handle = ctx
             .asset_registry
-            .deserialize_resource(self.resource_id, &mut old_resource_data.as_slice())
+            .deserialize_resource(self.resource_id, reader)
+            .await
             .map_err(|err| Error::InvalidResourceDeserialization(self.resource_id, err))?;
 
-        if let Some(resource_type_name) = ctx
-            .asset_registry
-            .get_resource_type_name(self.resource_id.kind)
-        {
-            ctx.project
-                .add_resource_with_id(
-                    old_resource_name.clone(),
-                    resource_type_name,
-                    self.resource_id.kind,
-                    self.resource_id.id,
-                    &handle,
-                    &ctx.asset_registry,
-                )
-                .await
-                .map_err(|err| Error::Project(self.resource_id, err))?;
-            ctx.loaded_resource_handles.insert(self.resource_id, handle);
-        }
+        ctx.project
+            .add_resource(old_resource_name.clone(), &handle, &ctx.asset_registry)
+            .await
+            .map_err(|err| Error::Project(self.resource_id, err))?;
         Ok(())
     }
 }

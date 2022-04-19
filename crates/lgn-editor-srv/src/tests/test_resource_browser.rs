@@ -10,7 +10,7 @@ use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;
 use lgn_data_runtime::{
-    manifest::Manifest, AssetRegistryOptions, ResourceDescriptor, ResourceTypeAndId,
+    manifest::Manifest, AssetRegistry, AssetRegistryOptions, ResourceDescriptor, ResourceTypeAndId,
 };
 use lgn_data_transaction::{
     ArrayOperation, BuildManager, SelectionManager, Transaction, TransactionManager,
@@ -70,7 +70,9 @@ use lgn_math::Vec3;
                 ))
 }*/
 
-pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<TransactionManager>> {
+pub(crate) async fn setup_project(
+    project_dir: impl AsRef<Path>,
+) -> (Arc<Mutex<TransactionManager>>, Arc<AssetRegistry>) {
     let build_dir = project_dir.as_ref().join("temp");
     std::fs::create_dir_all(&build_dir).unwrap();
 
@@ -84,8 +86,8 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
     let mut asset_registry = AssetRegistryOptions::new()
         .add_device_dir(project.resource_dir())
         .add_device_cas(Arc::clone(&data_content_provider), Manifest::default());
-    sample_data::offline::add_loaders(&mut asset_registry);
-    lgn_scripting_data::offline::add_loaders(&mut asset_registry);
+    sample_data::offline::register_types(&mut asset_registry);
+    lgn_scripting_data::offline::register_types(&mut asset_registry);
     let asset_registry = asset_registry.create().await;
 
     let compilers = CompilerRegistryOptions::default()
@@ -105,12 +107,15 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
             .unwrap();
     let project = Arc::new(Mutex::new(project));
 
-    Arc::new(Mutex::new(TransactionManager::new(
-        project,
+    (
+        Arc::new(Mutex::new(TransactionManager::new(
+            project,
+            asset_registry.clone(),
+            build_manager,
+            SelectionManager::create(),
+        ))),
         asset_registry,
-        build_manager,
-        SelectionManager::create(),
-    )))
+    )
 }
 
 #[tokio::test]
@@ -122,7 +127,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
 
     {
         let (scene_events_tx, _rx) = crossbeam_channel::unbounded::<SceneMessage>();
-        let transaction_manager = setup_project(&project_dir).await;
+        let (transaction_manager, _asset_registry) = setup_project(&project_dir).await;
         let resource_browser = crate::resource_browser_plugin::ResourceBrowserRPC {
             transaction_manager: transaction_manager.clone(),
             uploads_folder: "".into(),

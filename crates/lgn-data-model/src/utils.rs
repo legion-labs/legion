@@ -5,6 +5,41 @@ use crate::{
     BaseDescriptor,
 };
 
+/// Macro to implement default bincode serialize
+#[macro_export]
+macro_rules! implement_bincode_reader_writer {
+    () => {
+        /// # Errors
+        /// return a `AssetRegistryError` if it failed to create a resource from an async reader
+        pub async fn from_reader(
+            reader: &mut AssetRegistryReader,
+        ) -> Result<Self, AssetRegistryError> {
+            let mut buffer = vec![];
+            reader.read_to_end(&mut buffer).await?;
+            let new_resource: Self =
+                bincode::deserialize_from(&mut buffer.as_slice()).map_err(|err| {
+                    lgn_data_runtime::AssetRegistryError::ResourceSerializationFailed(
+                        Self::TYPENAME,
+                        err.to_string(),
+                    )
+                })?;
+            Ok(new_resource)
+        }
+
+        /// # Errors
+        /// return a `AssetRegistryError` if it failed to serialize the resource
+        pub fn to_bytes(&self) -> Result<Vec<u8>, AssetRegistryError> {
+            let result = bincode::serialize(self).map_err(|err| {
+                lgn_data_runtime::AssetRegistryError::ResourceSerializationFailed(
+                    Self::TYPENAME,
+                    err.to_string(),
+                )
+            })?;
+            Ok(result)
+        }
+    };
+}
+
 /// Internal struct to store `ReflectedPtr`
 pub struct ReflectedPtr<'a> {
     /// ReflectedPtr base
@@ -29,7 +64,7 @@ pub struct ReflectedPtrMut<'a> {
 
 /// Error for Reflection system
 #[allow(missing_docs)]
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum ReflectionError {
     #[error("Invalid TypeDescriptor in path '{0}'")]
     InvalidTypeDescriptor(String),
@@ -56,10 +91,10 @@ pub enum ReflectionError {
     InvalidUtf8(#[from] std::string::FromUtf8Error),
 
     #[error("Serialization error: {0}")]
-    ErrorSerde(#[from] serde_json::Error),
+    ErrorSerde(std::sync::Arc<serde_json::Error>),
 
     #[error("Serialization error: {0}")]
-    ErrorErasedSerde(#[from] erased_serde::Error),
+    ErrorErasedSerde(std::sync::Arc<erased_serde::Error>),
 
     /// Error when accessing out of bounds index
     #[error("Invalid array index {0} on ArrayDescriptor '{1}'")]
@@ -86,6 +121,18 @@ pub enum ReflectionError {
     /// Error when type is unknown
     #[error("Type '{0}' not found")]
     TypeNotFound(String),
+}
+
+impl From<serde_json::Error> for ReflectionError {
+    fn from(err: serde_json::Error) -> Self {
+        Self::ErrorSerde(std::sync::Arc::new(err))
+    }
+}
+
+impl From<erased_serde::Error> for ReflectionError {
+    fn from(err: erased_serde::Error) -> Self {
+        Self::ErrorErasedSerde(std::sync::Arc::new(err))
+    }
 }
 
 /// Deserialize a property by reflection

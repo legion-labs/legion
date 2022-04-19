@@ -1,8 +1,12 @@
 use std::collections::BTreeMap;
 
+use async_trait::async_trait;
 use lgn_app::App;
-use lgn_data_runtime::ResourceTypeAndId;
-use lgn_ecs::{prelude::*, schedule::SystemLabel};
+use lgn_data_runtime::{
+    AssetRegistryError, AssetRegistryReader, ComponentInstaller, LoadRequest, ResourceInstaller,
+    ResourceTypeAndId,
+};
+use lgn_ecs::{prelude::*, schedule::SystemLabel, system::EntityCommands};
 use lgn_graphics_api::{
     DeviceContext, Extents3D, Format, MemoryUsage, ResourceFlags, ResourceUsage, TextureDef,
     TextureTiling, TextureView, TextureViewDef,
@@ -11,7 +15,7 @@ use lgn_graphics_data::TextureFormat;
 use lgn_tracing::span_fn;
 
 use crate::{
-    components::{TextureComponent, TextureData},
+    components::{TextureComponent, TextureData, VisualComponent},
     core::UploadTextureCommand,
     labels::RenderStage,
     Renderer, ResourceStageLabel,
@@ -67,6 +71,97 @@ pub struct TextureManager {
     // todo: use some kind of queue maybe?
     texture_jobs: Vec<TextureJob>,
     texture_id_to_entity: BTreeMap<ResourceTypeAndId, Entity>,
+}
+
+pub(crate) struct TextureInstaller {
+    //texture_manager: Arc<TextureManager>,
+}
+
+impl TextureInstaller {
+    pub(crate) fn new() -> Self {
+        Self {}
+    }
+}
+
+#[async_trait]
+impl ComponentInstaller for TextureInstaller {
+    /// Consume a resource return the installed version
+    fn install_component(
+        &self,
+        component: &dyn lgn_data_runtime::Component,
+        entity_command: &mut EntityCommands<'_, '_, '_>,
+    ) -> Result<(), AssetRegistryError> {
+        // Visual Test
+        if let Some(visual) = component.downcast_ref::<lgn_graphics_data::runtime::Visual>() {
+            entity_command.insert(VisualComponent::new(
+                visual.renderable_geometry.as_ref().map(|r| r.id()),
+                visual.color,
+                visual.color_blend,
+            ));
+            entity_command.insert(visual.clone()); // Add to keep Model alive
+        }
+
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl ResourceInstaller for TextureInstaller {
+    async fn install_from_stream(
+        &self,
+        resource_id: ResourceTypeAndId,
+        request: &mut LoadRequest,
+        reader: &mut AssetRegistryReader,
+    ) -> Result<lgn_data_runtime::HandleUntyped, AssetRegistryError> {
+        let texture = lgn_graphics_data::runtime_texture::Texture::from_reader(reader).await?;
+        lgn_tracing::info!(
+            "Texture {:?} | width: {}, height: {}, format: {:?}",
+            resource_id.id,
+            texture.width,
+            texture.height,
+            texture.format
+        );
+        let handle = request
+            .asset_registry
+            .set_resource(resource_id, Box::new(texture))?;
+
+        Ok(handle)
+
+        /*let mut entity = if let Some(entity) = asset_to_entity_map.get(resource.id()) {
+            commands.entity(entity)
+        } else {
+            commands.spawn()
+        };
+
+        let texture = resource.get()?;
+        let texture_mips = texture // TODO: Avoid cloning in the future
+            .texture_data
+            .iter()
+            .map(AsRef::as_ref)
+            .collect::<Vec<_>>();
+
+        let texture_data = TextureData::from_slices(&texture_mips);
+        let asset_id = resource.id();
+        let width = texture.width;
+        let height = texture.height;
+        let format = texture.format;
+        let srgb = texture.srgb;
+        std::mem::forget(texture);
+        let texture_component =
+            TextureComponent::new(resource, width, height, format, srgb, texture_data);
+
+        entity.insert(texture_component);
+        info!(
+            "Spawned {}: {} -> ECS id: {:?} | width: {}, height: {}, format: {:?}",
+            asset_id.kind.as_pretty().trim_start_matches("runtime_"),
+            asset_id.id,
+            entity.id(),
+            width,
+            height,
+            format
+        );
+        Some(entity.id())*/
+    }
 }
 
 impl TextureManager {

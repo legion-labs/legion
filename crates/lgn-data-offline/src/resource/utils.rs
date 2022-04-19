@@ -7,6 +7,24 @@ macro_rules! implement_raw_resource {
             pub content: Vec<u8>,
         }
 
+        impl $type_id {
+            pub fn register_type(asset_registry: &mut lgn_data_runtime::AssetRegistryOptions) {
+                lgn_data_runtime::ResourceType::register_name(
+                    <Self as lgn_data_runtime::ResourceDescriptor>::TYPE,
+                    <Self as lgn_data_runtime::ResourceDescriptor>::TYPENAME,
+                );
+                let installer = std::sync::Arc::new($processor::default());
+                asset_registry.add_resource_installer(
+                    <Self as lgn_data_runtime::ResourceDescriptor>::TYPE,
+                    installer.clone(),
+                );
+                asset_registry.add_processor(
+                    <Self as lgn_data_runtime::ResourceDescriptor>::TYPE,
+                    installer,
+                );
+            }
+        }
+
         impl lgn_data_runtime::ResourceDescriptor for $type_id {
             const TYPENAME: &'static str = $type_name;
         }
@@ -32,36 +50,34 @@ macro_rules! implement_raw_resource {
             }
         }
 
-        impl lgn_data_runtime::Asset for $type_id {
-            type Loader = $processor;
-        }
-        impl lgn_data_runtime::OfflineResource for $type_id {
-            type Processor = $processor;
-        }
-
         #[derive(Default)]
-        pub struct $processor {}
+        struct $processor {}
 
-        impl lgn_data_runtime::AssetLoader for $processor {
-            fn load(
-                &mut self,
-                reader: &mut dyn std::io::Read,
-            ) -> Result<Box<dyn lgn_data_runtime::Resource>, lgn_data_runtime::AssetLoaderError>
-            {
+        #[async_trait::async_trait]
+        impl lgn_data_runtime::ResourceInstaller for $processor {
+            async fn install_from_stream(
+                &self,
+                resource_id: lgn_data_runtime::ResourceTypeAndId,
+                request: &mut lgn_data_runtime::LoadRequest,
+                reader: &mut lgn_data_runtime::AssetRegistryReader,
+            ) -> Result<lgn_data_runtime::HandleUntyped, lgn_data_runtime::AssetRegistryError> {
+                use tokio::io::AsyncReadExt;
                 let mut content = Vec::new();
-                reader.read_to_end(&mut content)?;
-                Ok(Box::new($type_id { content }))
+                reader.read_to_end(&mut content).await?;
+                let handle = request
+                    .asset_registry
+                    .set_resource(resource_id, Box::new($type_id { content }))?;
+                Ok(handle)
             }
-            fn load_init(&mut self, _asset: &mut (dyn lgn_data_runtime::Resource)) {}
         }
 
         impl lgn_data_runtime::ResourceProcessor for $processor {
-            fn new_resource(&mut self) -> Box<dyn lgn_data_runtime::Resource> {
+            fn new_resource(&self) -> Box<dyn lgn_data_runtime::Resource> {
                 Box::new($type_id::default())
             }
 
             fn extract_build_dependencies(
-                &mut self,
+                &self,
                 _resource: &dyn lgn_data_runtime::Resource,
             ) -> Vec<lgn_data_runtime::ResourcePathId> {
                 vec![]
@@ -71,34 +87,22 @@ macro_rules! implement_raw_resource {
                 &self,
                 resource: &dyn lgn_data_runtime::Resource,
                 writer: &mut dyn std::io::Write,
-            ) -> Result<usize, lgn_data_runtime::ResourceProcessorError> {
+            ) -> Result<usize, lgn_data_runtime::AssetRegistryError> {
                 if let Some(png) = resource.downcast_ref::<$type_id>() {
                     Ok(writer.write(png.content.as_slice()).map_err(|err| {
-                        lgn_data_runtime::ResourceProcessorError::ResourceSerializationFailed(
+                        lgn_data_runtime::AssetRegistryError::ResourceSerializationFailed(
                             <$type_id as lgn_data_runtime::ResourceDescriptor>::TYPENAME,
                             err.to_string(),
                         )
                     })?)
                 } else {
                     Err(
-                        lgn_data_runtime::ResourceProcessorError::ResourceSerializationFailed(
+                        lgn_data_runtime::AssetRegistryError::ResourceSerializationFailed(
                             <$type_id as lgn_data_runtime::ResourceDescriptor>::TYPENAME,
                             "invalid cast".into(),
                         ),
                     )
                 }
-            }
-
-            fn read_resource(
-                &mut self,
-                reader: &mut dyn std::io::Read,
-            ) -> Result<Box<dyn lgn_data_runtime::Resource>, lgn_data_runtime::ResourceProcessorError> {
-                use lgn_data_runtime::AssetLoader;
-                Ok(self.load(reader)?)
-            }
-
-            fn get_resource_type_name(&self) -> Option<&'static str> {
-                Some($type_name)
             }
         }
     };

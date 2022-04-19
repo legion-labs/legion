@@ -3,11 +3,11 @@
 use std::collections::HashMap;
 use std::io::Cursor;
 
-use generic_data::offline::{TestComponent, TestEntity, TestEntityProcessor, TestSubType2};
+use generic_data::offline::{TestComponent, TestEntity, TestSubType2};
 use lgn_data_model::collector::{collect_properties, ItemInfo, PropertyCollector};
 use lgn_data_model::json_utils::{get_property_as_json_string, set_property_from_json_string};
 use lgn_data_model::{ReflectionError, TypeReflection};
-use lgn_data_runtime::AssetLoader;
+use lgn_data_runtime::AssetRegistryReader;
 use lgn_math::prelude::*;
 
 #[test]
@@ -23,8 +23,8 @@ fn test_default_implementation() {
     assert_eq!(entity.test_blob, vec![0, 1, 2, 3]);
 }
 
-#[test]
-fn test_json_serialization() {
+#[tokio::test]
+async fn test_json_serialization() {
     let json_data = r#"
         {
             "test_string" : "Value read from json",
@@ -37,11 +37,9 @@ fn test_json_serialization() {
             "test_blob" : [3,2,1,0]
         }"#;
 
-    let mut file = Cursor::new(json_data);
-
-    let mut processor = TestEntityProcessor {};
-    let entity = processor.load(&mut file).unwrap();
-    let entity = entity.downcast_ref::<TestEntity>().unwrap();
+    let file = Cursor::new(json_data);
+    let mut reader = Box::pin(file) as AssetRegistryReader;
+    let entity = TestEntity::from_json_reader(&mut reader).await.unwrap();
 
     assert_eq!(entity.test_string.as_str(), "Value read from json");
     assert_eq!(entity.test_position, Vec3::new(2.0, 2.0, 2.0));

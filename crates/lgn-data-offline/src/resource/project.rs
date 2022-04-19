@@ -10,8 +10,8 @@ use std::{
 
 use lgn_content_store::Provider;
 use lgn_data_runtime::{
-    AssetRegistry, AssetRegistryError, HandleUntyped, ResourceId, ResourcePathId, ResourceType,
-    ResourceTypeAndId,
+    AssetRegistry, AssetRegistryError, AssetRegistryHandleKey, AssetRegistryReader, Handle,
+    HandleUntyped, Resource, ResourceId, ResourcePathId, ResourceType, ResourceTypeAndId,
 };
 use lgn_source_control::{
     CanonicalPath, CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Staging,
@@ -98,6 +98,9 @@ pub enum Error {
     /// RegistryRegistry Error
     #[error("ResourceRegistry Error: '{1}' on resource '{0}'")]
     ResourceRegistry(ResourceTypeAndId, #[source] AssetRegistryError),
+    /// Invalid Handle Error
+    #[error("Invalid Handle key '{0:?}'")]
+    InvalidHandle(AssetRegistryHandleKey),
 }
 
 /// The type of change done to a resource.
@@ -350,26 +353,6 @@ impl Project {
         }
     }
 
-    /// Add a given resource of a given type with an associated `.meta`.
-    ///
-    /// The created `.meta` file contains a checksum of the resource content.
-    /// `TODO`: the checksum of content needs to be updated when file is
-    /// modified.
-    ///
-    /// Both resource file and its corresponding `.meta` file are `staged`.
-    /// Use [`Self::commit()`] to push changes to remote.
-    pub async fn add_resource(
-        &mut self,
-        name: ResourcePathName,
-        kind_name: &str,
-        kind: ResourceType,
-        handle: impl AsRef<HandleUntyped>,
-        registry: &AssetRegistry,
-    ) -> Result<ResourceTypeAndId, Error> {
-        self.add_resource_with_id(name, kind_name, kind, ResourceId::new(), handle, registry)
-            .await
-    }
-
     /// Add a given resource of a given type and id with an associated `.meta`.
     ///
     /// The created `.meta` file contains a checksum of the resource content.
@@ -379,17 +362,16 @@ impl Project {
     /// Both resource file and its corresponding `.meta` file are `staged`.
     /// Use [`Self::commit()`] to push changes to remote.
     #[allow(clippy::too_many_arguments)]
-    pub async fn add_resource_with_id(
+    pub async fn add_resource(
         &mut self,
         name: ResourcePathName,
-        kind_name: &str,
-        kind: ResourceType,
-        id: ResourceId,
         handle: impl AsRef<HandleUntyped>,
         registry: &AssetRegistry,
     ) -> Result<ResourceTypeAndId, Error> {
-        let meta_path = self.metadata_path(id);
-        let resource_path = self.resource_path(id);
+        let res_id = handle.as_ref().id();
+
+        let meta_path = self.metadata_path(res_id.id);
+        let resource_path = self.resource_path(res_id.id);
 
         let directory = {
             let mut directory = resource_path.clone();
@@ -404,8 +386,8 @@ impl Project {
                 File::create(&resource_path).map_err(|e| Error::Io(resource_path.clone(), e))?;
 
             let (_written, build_deps) = registry
-                .serialize_resource(kind, handle, &mut resource_file)
-                .map_err(|e| Error::ResourceRegistry(ResourceTypeAndId { kind, id }, e))?;
+                .serialize_resource(handle, &mut resource_file)
+                .map_err(|e| Error::ResourceRegistry(res_id, e))?;
             build_deps
         };
 
@@ -414,16 +396,14 @@ impl Project {
             Error::Io(meta_path.clone(), e)
         })?;
 
-        let metadata = Metadata::new_with_dependencies(name, kind_name, kind, &build_dependencies);
+        let metadata = Metadata::new_with_dependencies(name, res_id.kind, &build_dependencies);
         serde_json::to_writer_pretty(meta_file, &metadata).unwrap();
 
         self.workspace
             .add_files([meta_path.as_path(), resource_path.as_path()])
             .await?;
 
-        let type_id = ResourceTypeAndId { kind, id };
-
-        Ok(type_id)
+        Ok(res_id)
     }
 
     /// Delete the resource+meta files, remove from Registry and Flush index
@@ -459,10 +439,11 @@ impl Project {
     /// corresponding .meta file.
     pub async fn save_resource(
         &mut self,
-        type_id: ResourceTypeAndId,
         handle: impl AsRef<HandleUntyped>,
         resources: &AssetRegistry,
     ) -> Result<(), Error> {
+        let type_id = handle.as_ref().id();
+
         let resource_path = self.resource_path(type_id.id);
         let metadata_path = self.metadata_path(type_id.id);
 
@@ -484,7 +465,7 @@ impl Project {
                 .map_err(|e| Error::Io(resource_path.clone(), e))?;
 
             let (_written, build_deps) = resources
-                .serialize_resource(type_id.kind, handle, &mut resource_file)
+                .serialize_resource(handle, &mut resource_file)
                 .map_err(|e| Error::ResourceRegistry(type_id, e))?;
             build_deps
         };
@@ -503,19 +484,34 @@ impl Project {
     }
 
     /// Loads a resource of a given id.
-    pub fn load_resource(
+    pub async fn load_resource_untyped(
         &self,
         type_id: ResourceTypeAndId,
         resources: &AssetRegistry,
     ) -> Result<HandleUntyped, Error> {
         let resource_path = self.resource_path(type_id.id);
 
-        let mut resource_file =
-            File::open(&resource_path).map_err(|e| Error::Io(resource_path.clone(), e))?;
+        let reader = Box::pin(
+            tokio::fs::File::open(&resource_path)
+                .await
+                .map_err(|e| Error::Io(resource_path.clone(), e))?,
+        ) as AssetRegistryReader;
+
         let handle = resources
-            .deserialize_resource(type_id, &mut resource_file)
+            .deserialize_resource(type_id, reader)
+            .await
             .map_err(|e| Error::ResourceRegistry(type_id, e))?;
         Ok(handle)
+    }
+
+    /// Loads a resource of a given type and id.
+    pub async fn load_resource<T: Resource>(
+        &self,
+        type_id: ResourceTypeAndId,
+        resources: &AssetRegistry,
+    ) -> Result<Handle<T>, Error> {
+        let handle = self.load_resource_untyped(type_id, resources).await?;
+        Ok(handle.into())
     }
 
     /// Returns information about a given resource from its `.meta` file.
@@ -774,20 +770,17 @@ mod tests {
     use std::str::FromStr;
     use std::sync::Arc;
 
+    use async_trait::async_trait;
     use lgn_content_store::Provider;
     use lgn_data_runtime::{
-        resource, AssetRegistry, AssetRegistryOptions, Resource, ResourcePathId, ResourceProcessor,
-        ResourceProcessorError, ResourceType,
+        resource, AssetRegistry, AssetRegistryError, AssetRegistryOptions, AssetRegistryReader,
+        HandleUntyped, LoadRequest, Resource, ResourceDescriptor, ResourceInstaller,
+        ResourcePathId, ResourceProcessor, ResourceTypeAndId,
     };
+    use tokio::io::AsyncReadExt;
 
     use crate::resource::project::Project;
     use crate::resource::ResourcePathName;
-
-    const RESOURCE_TEXTURE: &str = "texture";
-    const RESOURCE_MATERIAL: &str = "material";
-    const RESOURCE_GEOMETRY: &str = "geometry";
-    const RESOURCE_SKELETON: &str = "skeleton";
-    const RESOURCE_ACTOR: &str = "actor";
 
     #[resource("null")]
     #[derive(Clone)]
@@ -796,16 +789,52 @@ mod tests {
         dependencies: Vec<ResourcePathId>,
     }
 
+    #[derive(Default)]
     struct NullResourceProc {}
+
+    #[async_trait]
+    impl ResourceInstaller for NullResourceProc {
+        async fn install_from_stream(
+            &self,
+            resource_id: ResourceTypeAndId,
+            request: &mut LoadRequest,
+            reader: &mut AssetRegistryReader,
+        ) -> Result<HandleUntyped, AssetRegistryError> {
+            let mut res = Box::new(NullResource {
+                content: 0,
+                dependencies: vec![],
+            });
+
+            let mut buf = res.content.to_ne_bytes();
+            reader.read_exact(&mut buf[..]).await?;
+            res.content = isize::from_ne_bytes(buf);
+
+            let mut buf = res.dependencies.len().to_ne_bytes();
+            reader.read_exact(&mut buf[..]).await?;
+
+            for _ in 0..usize::from_ne_bytes(buf) {
+                let mut nbytes = 0u64.to_ne_bytes();
+                reader.read_exact(&mut nbytes[..]).await?;
+                let mut buf = vec![0u8; usize::from_ne_bytes(nbytes)];
+                reader.read_exact(&mut buf).await?;
+                res.dependencies
+                    .push(ResourcePathId::from_str(std::str::from_utf8(&buf).unwrap()).unwrap());
+            }
+
+            let handle = request.asset_registry.set_resource(resource_id, res)?;
+            Ok(handle)
+        }
+    }
+
     impl ResourceProcessor for NullResourceProc {
-        fn new_resource(&mut self) -> Box<dyn Resource> {
+        fn new_resource(&self) -> Box<dyn Resource> {
             Box::new(NullResource {
                 content: 0,
                 dependencies: vec![],
             })
         }
 
-        fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
+        fn extract_build_dependencies(&self, resource: &dyn Resource) -> Vec<ResourcePathId> {
             resource
                 .downcast_ref::<NullResource>()
                 .unwrap()
@@ -817,7 +846,7 @@ mod tests {
             &self,
             resource: &dyn Resource,
             writer: &mut dyn std::io::Write,
-        ) -> Result<usize, ResourceProcessorError> {
+        ) -> Result<usize, AssetRegistryError> {
             let resource = resource.downcast_ref::<NullResource>().unwrap();
             let mut nbytes = 0;
 
@@ -841,142 +870,65 @@ mod tests {
 
             Ok(nbytes)
         }
-
-        fn read_resource(
-            &mut self,
-            reader: &mut dyn std::io::Read,
-        ) -> Result<Box<dyn Resource>, ResourceProcessorError> {
-            let mut resource = self.new_resource();
-            let mut res = resource.downcast_mut::<NullResource>().unwrap();
-
-            let mut buf = res.content.to_ne_bytes();
-            reader.read_exact(&mut buf[..])?;
-            res.content = isize::from_ne_bytes(buf);
-
-            let mut buf = res.dependencies.len().to_ne_bytes();
-            reader.read_exact(&mut buf[..])?;
-
-            for _ in 0..usize::from_ne_bytes(buf) {
-                let mut nbytes = 0u64.to_ne_bytes();
-                reader.read_exact(&mut nbytes[..])?;
-                let mut buf = vec![0u8; usize::from_ne_bytes(nbytes)];
-                reader.read_exact(&mut buf)?;
-                res.dependencies
-                    .push(ResourcePathId::from_str(std::str::from_utf8(&buf).unwrap()).unwrap());
-            }
-
-            Ok(resource)
-        }
     }
 
     #[allow(clippy::too_many_lines)]
     async fn create_actor(project: &mut Project) -> Arc<AssetRegistry> {
-        let resources = AssetRegistryOptions::new()
-            .add_processor_ext(
-                ResourceType::new(RESOURCE_TEXTURE.as_bytes()),
-                Box::new(NullResourceProc {}),
-            )
-            .add_processor_ext(
-                ResourceType::new(RESOURCE_MATERIAL.as_bytes()),
-                Box::new(NullResourceProc {}),
-            )
-            .add_processor_ext(
-                ResourceType::new(RESOURCE_GEOMETRY.as_bytes()),
-                Box::new(NullResourceProc {}),
-            )
-            .add_processor_ext(
-                ResourceType::new(RESOURCE_SKELETON.as_bytes()),
-                Box::new(NullResourceProc {}),
-            )
-            .add_processor_ext(
-                ResourceType::new(RESOURCE_ACTOR.as_bytes()),
-                Box::new(NullResourceProc {}),
-            )
-            .create()
-            .await;
+        let mut resources = AssetRegistryOptions::new();
+        resources.add_processor(NullResource::TYPE, Arc::new(NullResourceProc::default()));
+        let resources = resources.create().await;
 
-        let texture_type = ResourceType::new(RESOURCE_TEXTURE.as_bytes());
         let texture = project
             .add_resource(
                 ResourcePathName::new("albedo.texture"),
-                RESOURCE_TEXTURE,
-                texture_type,
-                resources.new_resource(texture_type).unwrap(),
+                resources.new_resource::<NullResource>().unwrap(),
                 &resources,
             )
             .await
             .unwrap();
 
-        let material_type = ResourceType::new(RESOURCE_MATERIAL.as_bytes());
-        let material = resources
-            .new_resource(material_type)
-            .unwrap()
-            .typed::<NullResource>();
-        let mut edit = material.instantiate(&resources).unwrap();
+        let material = resources.new_resource::<NullResource>().unwrap();
+
+        let mut edit = resources.edit(&material).unwrap();
         edit.dependencies.push(ResourcePathId::from(texture));
-        material.apply(edit, &resources);
+        resources.commit(edit);
 
         let material = project
-            .add_resource(
-                ResourcePathName::new("body.material"),
-                RESOURCE_MATERIAL,
-                material_type,
-                &material,
-                &resources,
-            )
+            .add_resource(ResourcePathName::new("body.material"), material, &resources)
             .await
             .unwrap();
 
-        let geometry_type = ResourceType::new(RESOURCE_GEOMETRY.as_bytes());
-        let geometry = resources
-            .new_resource(geometry_type)
-            .unwrap()
-            .typed::<NullResource>();
-        let mut edit = geometry.instantiate(&resources).unwrap();
+        let geometry = resources.new_resource::<NullResource>().unwrap();
+        let mut edit = resources.edit(&geometry).unwrap();
         edit.dependencies.push(ResourcePathId::from(material));
-        geometry.apply(edit, &resources);
+        resources.commit(edit);
         let geometry = project
             .add_resource(
                 ResourcePathName::new("hero.geometry"),
-                RESOURCE_GEOMETRY,
-                geometry_type,
                 &geometry,
                 &resources,
             )
             .await
             .unwrap();
 
-        let skeleton_type = ResourceType::new(RESOURCE_SKELETON.as_bytes());
         let skeleton = project
             .add_resource(
                 ResourcePathName::new("hero.skeleton"),
-                RESOURCE_SKELETON,
-                skeleton_type,
-                &resources.new_resource(skeleton_type).unwrap(),
+                &resources.new_resource::<NullResource>().unwrap(),
                 &resources,
             )
             .await
             .unwrap();
 
-        let actor_type = ResourceType::new(RESOURCE_ACTOR.as_bytes());
-        let actor = resources
-            .new_resource(actor_type)
-            .unwrap()
-            .typed::<NullResource>();
-        let mut edit = actor.instantiate(&resources).unwrap();
+        let actor = resources.new_resource::<NullResource>().unwrap();
+        let mut edit = resources.edit(&actor).unwrap();
         edit.dependencies = vec![
             ResourcePathId::from(geometry),
             ResourcePathId::from(skeleton),
         ];
-        actor.apply(edit, &resources);
+        resources.commit(edit);
         let _actor = project
-            .add_resource(
-                ResourcePathName::new("hero.actor"),
-                RESOURCE_ACTOR,
-                actor_type,
-                &actor,
-                &resources,
-            )
+            .add_resource(ResourcePathName::new("hero.actor"), &actor, &resources)
             .await
             .unwrap();
 
@@ -984,35 +936,22 @@ mod tests {
     }
 
     async fn create_sky_material(project: &mut Project, resources: &AssetRegistry) {
-        let texture_type = ResourceType::new(RESOURCE_TEXTURE.as_bytes());
         let texture = project
             .add_resource(
                 ResourcePathName::new("sky.texture"),
-                RESOURCE_TEXTURE,
-                texture_type,
-                &resources.new_resource(texture_type).unwrap(),
+                &resources.new_resource::<NullResource>().unwrap(),
                 resources,
             )
             .await
             .unwrap();
 
-        let material_type = ResourceType::new(RESOURCE_MATERIAL.as_bytes());
-        let material = resources
-            .new_resource(material_type)
-            .unwrap()
-            .typed::<NullResource>();
-        let mut edit = material.instantiate(resources).unwrap();
+        let handle = resources.new_resource::<NullResource>().unwrap();
+        let mut edit = resources.edit(&handle).unwrap();
         edit.dependencies.push(ResourcePathId::from(texture));
-        material.apply(edit, resources);
+        resources.commit(edit);
 
         let _material = project
-            .add_resource(
-                ResourcePathName::new("sky.material"),
-                RESOURCE_MATERIAL,
-                material_type,
-                &material,
-                resources,
-            )
+            .add_resource(ResourcePathName::new("sky.material"), handle, resources)
             .await
             .unwrap();
     }
@@ -1070,15 +1009,15 @@ mod tests {
 
         // modify before commit
         {
-            let handle = project.load_resource(actor_id, &resources).unwrap();
-            let mut content = handle.instantiate::<NullResource>(&resources).unwrap();
-            content.content = 8;
-            handle.apply(content, &resources);
-
-            project
-                .save_resource(actor_id, &handle, &resources)
+            let handle = resources
+                .load_async::<NullResource>(actor_id)
                 .await
                 .unwrap();
+            let mut content = resources.edit(&handle).unwrap();
+            content.content = 8;
+            resources.commit(content);
+
+            project.save_resource(handle, &resources).await.unwrap();
         }
 
         project.commit("add resources").await.unwrap();
@@ -1088,15 +1027,15 @@ mod tests {
 
         // modify resource
         {
-            let handle = project.load_resource(actor_id, &resources).unwrap();
-            let mut content = handle.instantiate::<NullResource>(&resources).unwrap();
-            assert_eq!(content.content, 8);
-            content.content = 9;
-            handle.apply(content, &resources);
-            project
-                .save_resource(actor_id, &handle, &resources)
+            let handle = resources
+                .load_async::<NullResource>(actor_id)
                 .await
                 .unwrap();
+            let mut content = resources.edit(&handle).unwrap();
+            assert_eq!(content.content, 8);
+            content.content = 9;
+            resources.commit(content);
+            project.save_resource(handle, &resources).await.unwrap();
 
             assert_eq!(project.local_resource_list().await.unwrap().len(), 1);
         }
@@ -1124,28 +1063,28 @@ mod tests {
 
         // modify resource
         let original_content = {
-            let handle = project.load_resource(actor_id, &resources).unwrap();
-            let mut content = handle.instantiate::<NullResource>(&resources).unwrap();
-            let previous_value = content.content;
-            content.content = 9;
-            handle.apply(content, &resources);
-            project
-                .save_resource(actor_id, &handle, &resources)
+            let handle = resources
+                .load_async::<NullResource>(actor_id)
                 .await
                 .unwrap();
+            let mut content = resources.edit(&handle).unwrap();
+            let previous_value = content.content;
+            content.content = 9;
+            resources.commit(content);
+            project.save_resource(handle, &resources).await.unwrap();
 
             previous_value
         };
 
         {
-            let handle = project.load_resource(actor_id, &resources).unwrap();
-            let mut content = handle.instantiate::<NullResource>(&resources).unwrap();
-            content.content = original_content;
-            handle.apply(content, &resources);
-            project
-                .save_resource(actor_id, &handle, &resources)
+            let handle = resources
+                .load_async::<NullResource>(actor_id)
                 .await
                 .unwrap();
+            let mut content = resources.edit(&handle).unwrap();
+            content.content = original_content;
+            resources.commit(content);
+            project.save_resource(handle, &resources).await.unwrap();
         }
 
         project.commit("no changes").await.unwrap();

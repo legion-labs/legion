@@ -19,7 +19,7 @@ use tokio::task::JoinHandle;
 
 #[tokio::test]
 async fn test_crud() {
-    let addr = "127.0.0.1:3000".parse().unwrap();
+    let addr = "127.0.0.1:3100".parse().unwrap();
     let client = client::Client::new(hyper::Client::new(), format!("http://{}", addr));
     let handle = start_server(addr).await;
 

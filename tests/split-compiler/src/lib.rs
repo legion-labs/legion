@@ -29,10 +29,10 @@ struct SplitCompiler();
 
 #[async_trait]
 impl Compiler for SplitCompiler {
-    async fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
+    async fn init(&self, mut registry: AssetRegistryOptions) -> AssetRegistryOptions {
+        multitext_resource::MultiTextResource::register_type(&mut registry);
+        text_resource::TextResource::register_type(&mut registry);
         registry
-            .add_loader::<multitext_resource::MultiTextResource>()
-            .add_loader::<text_resource::TextResource>()
     }
 
     async fn hash(
@@ -52,10 +52,10 @@ impl Compiler for SplitCompiler {
 
         let resource = resources
             .load_async::<multitext_resource::MultiTextResource>(context.source.resource_id())
-            .await;
+            .await?;
 
         let content_list = {
-            let resource = resource.get(&resources).unwrap();
+            let resource = resource.get().unwrap();
 
             let source_text_list = resource.text_list.clone();
 

@@ -18,13 +18,12 @@ impl Metadata {
 
     pub(crate) fn new_with_dependencies(
         name: ResourcePathName,
-        type_name: &str,
         type_id: ResourceType,
         deps: &[ResourcePathId],
     ) -> Self {
         Self {
             name,
-            type_name: type_name.to_string(),
+            type_name: type_id.as_pretty().into(),
             type_id,
             dependencies: deps.to_vec(),
         }

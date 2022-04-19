@@ -1,12 +1,13 @@
 use async_trait::async_trait;
 use lgn_content_store::Identifier;
 
-use crate::ResourceTypeAndId;
+use crate::{AssetRegistryReader, ResourceTypeAndId};
 
 // FIXME: this should return `Box<dyn io::Read>` instead of `Vec<u8>`.
 #[async_trait]
 pub(crate) trait Device: Send + Sync {
     async fn load(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>>;
+    async fn get_reader(&self, type_id: ResourceTypeAndId) -> Option<AssetRegistryReader>;
     async fn reload(&self, _: ResourceTypeAndId) -> Option<Vec<u8>>;
     async fn reload_manifest(&mut self, _manifest_id: &Identifier) {}
 }

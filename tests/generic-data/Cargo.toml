@@ -30,6 +30,9 @@ erased-serde = "0.3.12"
 typetag = "0.1"
 memoffset = "0.6"
 inventory = { version = "0.2", optional = true }
+async-trait = "0.1"
+tokio = "1.13"
+
 
 [build-dependencies]
 lgn-data-codegen = { path = "../../crates/lgn-data-codegen", version = "0.1.0" }

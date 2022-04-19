@@ -1,10 +1,11 @@
-use std::{cell::RefCell, io, str::FromStr};
+use std::{cell::RefCell, str::FromStr};
 
 use crate::{
     offline::{Material, Mesh, Model, SamplerData},
     offline_texture::{Texture, TextureType},
     Color, Filter, WrappingMode,
 };
+use async_trait::async_trait;
 use gltf::{
     image::Format,
     material::NormalTexture,
@@ -14,10 +15,12 @@ use gltf::{
 use lgn_math::{Vec2, Vec3, Vec4};
 
 use lgn_data_runtime::{
-    resource, Asset, AssetLoader, AssetLoaderError, OfflineResource, Resource, ResourceDescriptor,
-    ResourcePathId, ResourceProcessor, ResourceProcessorError, ResourceTypeAndId,
+    resource, AssetRegistryError, AssetRegistryOptions, AssetRegistryReader, HandleUntyped,
+    LoadRequest, Resource, ResourceDescriptor, ResourceInstaller, ResourcePathId,
+    ResourceProcessor, ResourceType, ResourceTypeAndId,
 };
 use lgn_tracing::warn;
+use tokio::io::AsyncReadExt;
 
 #[resource("gltf")]
 #[derive(Default, Clone)]
@@ -30,6 +33,17 @@ pub struct GltfFile {
 }
 
 impl GltfFile {
+    pub fn register_type(asset_registry: &mut AssetRegistryOptions) {
+        ResourceType::register_name(
+            <Self as ResourceDescriptor>::TYPE,
+            <Self as ResourceDescriptor>::TYPENAME,
+        );
+        let installer = std::sync::Arc::new(GltfFileProcessor::default());
+        asset_registry
+            .add_resource_installer(<Self as ResourceDescriptor>::TYPE, installer.clone());
+        asset_registry.add_processor(<Self as ResourceDescriptor>::TYPE, installer);
+    }
+
     pub fn from_bytes(bytes: Vec<u8>) -> Self {
         let (document, buffers, images) = gltf::import_slice(&bytes).unwrap();
         Self {
@@ -335,7 +349,7 @@ impl GltfFile {
     /// # Errors
     ///
     /// Will return error if the write fails
-    pub fn write(&self, writer: &mut dyn std::io::Write) -> Result<usize, ResourceProcessorError> {
+    pub fn write(&self, writer: &mut dyn std::io::Write) -> Result<usize, AssetRegistryError> {
         if self.bytes.is_empty() {
             return Ok(0);
         }
@@ -397,59 +411,44 @@ fn build_sampler(sampler: &texture::Sampler<'_>) -> SamplerData {
     }
 }
 
-impl Asset for GltfFile {
-    type Loader = GltfFileProcessor;
-}
-
-impl OfflineResource for GltfFile {
-    type Processor = GltfFileProcessor;
-}
-
 #[derive(Default)]
-pub struct GltfFileProcessor {}
+struct GltfFileProcessor {}
 
-impl AssetLoader for GltfFileProcessor {
-    fn load(&mut self, reader: &mut dyn io::Read) -> Result<Box<dyn Resource>, AssetLoaderError> {
+#[async_trait]
+impl ResourceInstaller for GltfFileProcessor {
+    async fn install_from_stream(
+        &self,
+        resource_id: ResourceTypeAndId,
+        request: &mut LoadRequest,
+        reader: &mut AssetRegistryReader,
+    ) -> Result<HandleUntyped, AssetRegistryError> {
         let mut bytes = Vec::new();
-        reader.read_to_end(&mut bytes)?;
-
-        Ok(Box::new(GltfFile::from_bytes(bytes)))
+        reader.read_to_end(&mut bytes).await?;
+        let glftfile = Box::new(GltfFile::from_bytes(bytes));
+        let handle = request.asset_registry.set_resource(resource_id, glftfile)?;
+        Ok(handle)
     }
-
-    fn load_init(&mut self, _asset: &mut (dyn Resource)) {}
 }
 
 impl ResourceProcessor for GltfFileProcessor {
-    fn new_resource(&mut self) -> Box<dyn Resource> {
+    fn new_resource(&self) -> Box<dyn Resource> {
         Box::new(GltfFile::default())
     }
 
     fn extract_build_dependencies(
-        &mut self,
+        &self,
         _resource: &dyn Resource,
     ) -> Vec<lgn_data_runtime::ResourcePathId> {
         Vec::new()
-    }
-
-    /// Return the name of the Resource type that the processor can process.
-    fn get_resource_type_name(&self) -> Option<&'static str> {
-        Some("gltf")
     }
 
     fn write_resource(
         &self,
         resource: &dyn Resource,
         writer: &mut dyn std::io::Write,
-    ) -> Result<usize, ResourceProcessorError> {
+    ) -> Result<usize, AssetRegistryError> {
         let gltf = resource.downcast_ref::<GltfFile>().unwrap();
         gltf.write(writer)
-    }
-
-    fn read_resource(
-        &mut self,
-        reader: &mut dyn std::io::Read,
-    ) -> Result<Box<dyn Resource>, ResourceProcessorError> {
-        Ok(self.load(reader)?)
     }
 }
 

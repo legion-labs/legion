@@ -3,12 +3,14 @@
 //! It is used to test the data compilation process until we have a proper
 //! resource available.
 
-use std::{io, str::FromStr};
+use std::str::FromStr;
 
-use super::OfflineResource;
+use async_trait::async_trait;
+use tokio::io::AsyncReadExt;
+
 use crate::{
-    resource, Asset, AssetLoader, AssetLoaderError, Resource, ResourcePathId, ResourceProcessor,
-    ResourceProcessorError,
+    resource, AssetRegistryError, AssetRegistryReader, HandleUntyped, LoadRequest, Resource,
+    ResourceInstaller, ResourcePathId, ResourceProcessor, ResourceTypeAndId,
 };
 extern crate self as lgn_data_runtime;
 
@@ -24,63 +26,69 @@ pub struct TestResource {
     pub build_deps: Vec<ResourcePathId>,
 }
 
-impl Asset for TestResource {
-    type Loader = TestResourceProc;
-}
-
-impl OfflineResource for TestResource {
-    type Processor = TestResourceProc;
+impl Default for TestResource {
+    fn default() -> Self {
+        Self {
+            content: String::from("default content"),
+            build_deps: vec![],
+        }
+    }
 }
 
 /// [`TestResource`]'s resource processor temporarily used for testings.
 ///
 /// To be removed once real resource types exists.
 #[derive(Default)]
-pub struct TestResourceProc {}
+struct TestResourceProc {}
 
-impl AssetLoader for TestResourceProc {
-    fn load(&mut self, reader: &mut dyn io::Read) -> Result<Box<dyn Resource>, AssetLoaderError> {
+#[async_trait]
+impl ResourceInstaller for TestResourceProc {
+    async fn install_from_stream(
+        &self,
+        resource_id: ResourceTypeAndId,
+        request: &mut LoadRequest,
+        reader: &mut AssetRegistryReader,
+    ) -> Result<HandleUntyped, AssetRegistryError> {
         let mut resource = Box::new(TestResource {
             content: String::from(""),
             build_deps: vec![],
         });
         let mut buf = 0usize.to_ne_bytes();
-        reader.read_exact(&mut buf[..])?;
+        reader.read_exact(&mut buf[..]).await?;
         let length = usize::from_ne_bytes(buf);
 
         let mut buf = vec![0u8; length];
-        reader.read_exact(&mut buf[..])?;
+        reader.read_exact(&mut buf[..]).await?;
         resource.content = String::from_utf8(buf).unwrap();
 
         let mut buf = resource.build_deps.len().to_ne_bytes();
-        reader.read_exact(&mut buf[..])?;
+        reader.read_exact(&mut buf[..]).await?;
         let dep_count = usize::from_ne_bytes(buf);
 
         for _ in 0..dep_count {
             let mut nbytes = 0u64.to_ne_bytes();
-            reader.read_exact(&mut nbytes[..])?;
+            reader.read_exact(&mut nbytes[..]).await?;
             let mut buf = vec![0u8; usize::from_ne_bytes(nbytes)];
-            reader.read_exact(&mut buf)?;
+            reader.read_exact(&mut buf).await?;
             resource
                 .build_deps
                 .push(ResourcePathId::from_str(std::str::from_utf8(&buf).unwrap()).unwrap());
         }
 
-        Ok(resource)
+        let handle = request.asset_registry.set_resource(resource_id, resource)?;
+        Ok(handle)
     }
-
-    fn load_init(&mut self, _asset: &mut (dyn Resource)) {}
 }
 
 impl ResourceProcessor for TestResourceProc {
-    fn new_resource(&mut self) -> Box<dyn Resource> {
+    fn new_resource(&self) -> Box<dyn Resource> {
         Box::new(TestResource {
             content: String::from("default content"),
             build_deps: vec![],
         })
     }
 
-    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
+    fn extract_build_dependencies(&self, resource: &dyn Resource) -> Vec<ResourcePathId> {
         resource
             .downcast_ref::<TestResource>()
             .unwrap()
@@ -92,7 +100,7 @@ impl ResourceProcessor for TestResourceProc {
         &self,
         resource: &dyn Resource,
         writer: &mut dyn std::io::Write,
-    ) -> Result<usize, ResourceProcessorError> {
+    ) -> Result<usize, AssetRegistryError> {
         let resource = resource.downcast_ref::<TestResource>().unwrap();
         let mut nbytes = 0;
 
@@ -119,12 +127,5 @@ impl ResourceProcessor for TestResourceProc {
         }
 
         Ok(nbytes)
-    }
-
-    fn read_resource(
-        &mut self,
-        reader: &mut dyn std::io::Read,
-    ) -> Result<Box<dyn Resource>, ResourceProcessorError> {
-        Ok(self.load(reader)?)
     }
 }

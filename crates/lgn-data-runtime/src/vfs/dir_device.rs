@@ -1,14 +1,12 @@
+use super::Device;
 use async_trait::async_trait;
 use std::path::{Path, PathBuf};
 
-use super::Device;
-use crate::ResourceTypeAndId;
-
+use crate::{AssetRegistryReader, ResourceTypeAndId};
 /// Directory storage device. Resources are stored if files named by their ids.
 pub(crate) struct DirDevice {
     dir: PathBuf,
 }
-
 impl DirDevice {
     pub(crate) fn new(path: impl AsRef<Path>) -> Self {
         Self {
@@ -16,15 +14,19 @@ impl DirDevice {
         }
     }
 }
-
 #[async_trait]
 impl Device for DirDevice {
     async fn load(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
         let path = self.dir.join(type_id.id.resource_path());
         std::fs::read(path).ok()
     }
-
     async fn reload(&self, _: ResourceTypeAndId) -> Option<Vec<u8>> {
         None
+    }
+
+    async fn get_reader(&self, type_id: ResourceTypeAndId) -> Option<AssetRegistryReader> {
+        let path = self.dir.join(type_id.id.resource_path());
+        let reader = tokio::fs::File::open(path).await.ok()?;
+        Some(Box::pin(reader) as AssetRegistryReader)
     }
 }

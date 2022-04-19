@@ -1,12 +1,15 @@
 //! A module providing offline texture related functionality.
 
-use std::io;
+use std::sync::Arc;
 
+use async_trait::async_trait;
 use lgn_data_runtime::{
-    resource, Asset, AssetLoader, AssetLoaderError, OfflineResource, Resource, ResourceProcessor,
-    ResourceProcessorError,
+    resource, AssetRegistryError, AssetRegistryOptions, AssetRegistryReader, HandleUntyped,
+    LoadRequest, Resource, ResourceDescriptor, ResourceInstaller, ResourceProcessor, ResourceType,
+    ResourceTypeAndId,
 };
 use serde::{Deserialize, Serialize};
+use tokio::io::AsyncReadExt;
 
 /// Texture type enumeration.
 #[derive(Serialize, Deserialize, Clone)]
@@ -30,29 +33,43 @@ pub struct Texture {
     pub rgba: Vec<u8>,
 }
 
-impl Asset for Texture {
-    type Loader = TextureProcessor;
+impl Texture {
+    pub fn register_type(asset_registry: &mut AssetRegistryOptions) {
+        ResourceType::register_name(
+            <Self as ResourceDescriptor>::TYPE,
+            <Self as ResourceDescriptor>::TYPENAME,
+        );
+        let installer = Arc::new(TextureProcessor::default());
+        asset_registry
+            .add_resource_installer(<Self as ResourceDescriptor>::TYPE, installer.clone());
+        asset_registry.add_processor(<Self as ResourceDescriptor>::TYPE, installer);
+    }
 }
-
-impl OfflineResource for Texture {
-    type Processor = TextureProcessor;
-}
-
 /// Processor of [`Texture`]
 #[derive(Default)]
 pub struct TextureProcessor {}
 
-impl AssetLoader for TextureProcessor {
-    fn load(&mut self, reader: &mut dyn io::Read) -> Result<Box<dyn Resource>, AssetLoaderError> {
-        let texture: Texture = bincode::deserialize_from(reader).unwrap();
-        Ok(Box::new(texture))
-    }
+#[async_trait]
+impl ResourceInstaller for TextureProcessor {
+    async fn install_from_stream(
+        &self,
+        resource_id: ResourceTypeAndId,
+        request: &mut LoadRequest,
+        reader: &mut AssetRegistryReader,
+    ) -> Result<HandleUntyped, AssetRegistryError> {
+        let mut buffer = vec![];
+        reader.read_to_end(&mut buffer).await?;
 
-    fn load_init(&mut self, _asset: &mut (dyn Resource)) {}
+        let texture: Texture = bincode::deserialize_from(&mut buffer.as_slice()).unwrap();
+        let handle = request
+            .asset_registry
+            .set_resource(resource_id, Box::new(texture))?;
+        Ok(handle)
+    }
 }
 
 impl ResourceProcessor for TextureProcessor {
-    fn new_resource(&mut self) -> Box<dyn Resource> {
+    fn new_resource(&self) -> Box<dyn Resource> {
         Box::new(Texture {
             kind: TextureType::_2D,
             width: 0,
@@ -62,7 +79,7 @@ impl ResourceProcessor for TextureProcessor {
     }
 
     fn extract_build_dependencies(
-        &mut self,
+        &self,
         _resource: &dyn Resource,
     ) -> Vec<lgn_data_runtime::ResourcePathId> {
         vec![]
@@ -72,16 +89,9 @@ impl ResourceProcessor for TextureProcessor {
         &self,
         resource: &dyn Resource,
         writer: &mut dyn std::io::Write,
-    ) -> Result<usize, ResourceProcessorError> {
+    ) -> Result<usize, AssetRegistryError> {
         let texture = resource.downcast_ref::<Texture>().unwrap();
         bincode::serialize_into(writer, texture).unwrap();
         Ok(1)
-    }
-
-    fn read_resource(
-        &mut self,
-        reader: &mut dyn std::io::Read,
-    ) -> Result<Box<dyn Resource>, ResourceProcessorError> {
-        Ok(self.load(reader)?)
     }
 }

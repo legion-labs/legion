@@ -10,6 +10,7 @@ pub(crate) fn generate(
     let type_name: syn::Ident = format_ident!("{}", data_container_info.name);
     let signature_hash = data_container_info.calculate_hash().to_string();
     let compiler_name: syn::Ident = format_ident!("{}Compiler", data_container_info.name);
+    let installer: syn::Ident = format_ident!("{}Processor", data_container_info.name);
 
     quote! {
         use std::env;
@@ -40,8 +41,10 @@ pub(crate) fn generate(
 
         #[async_trait]
         impl Compiler for #compiler_name {
-            async fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
-                registry.add_loader::<OfflineType>()
+            async fn init(&self, mut registry: AssetRegistryOptions) -> AssetRegistryOptions {
+                registry.add_resource_installer(<OfflineType as lgn_data_runtime::ResourceDescriptor>::TYPE,
+                    std::sync::Arc::new( #crate_name::offline::#installer::default()));
+                registry
             }
 
             async fn hash(&self, code: &'static str, data: &'static str, env: &CompilationEnv) -> CompilerHash {
@@ -53,14 +56,10 @@ pub(crate) fn generate(
                 let resources = context.registry();
 
                 let (compiled_asset, resource_references) = {
-                    let offline_resource = resources.load_async::<OfflineType>(context.source.resource_id()).await;
-                    if let Some(err) = resources.retrieve_err(offline_resource.id()) {
-                        return Err(CompilerError::CompilationError(err.to_string()));
-                    }
-                    let offline_resource = offline_resource
-                        .get(&resources)
-                        .ok_or_else(|| CompilerError::CompilationError(format!("Failed to retrieve resource '{}'", context.source.resource_id())))?;
-
+                    let handle = resources.load_async::<OfflineType>(context.source.resource_id()).await?;
+                    let offline_resource = handle.get().ok_or_else(||
+                        lgn_data_runtime::AssetRegistryError::ResourceNotFound(context.source.resource_id())
+                    )?;
                     let offline_resource : &OfflineType = &offline_resource;
                     let mut runtime_resource = RuntimeType::default();
                     reflection_compile(offline_resource, &mut runtime_resource)?

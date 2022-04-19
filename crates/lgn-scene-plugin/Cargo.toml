@@ -10,6 +10,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 # Legion engine
 lgn-app = { path = "../lgn-app", version = "0.1.0" }
+lgn-async = { path = "../lgn-async", version = "0.1.0" }
 lgn-config = { path = "../lgn-config", version = "0.1.0" }
 lgn-content-store = { path = "../lgn-content-store", version = "0.1.0" }
 lgn-core = { path = "../lgn-core", version = "0.1.0" }
@@ -40,3 +41,7 @@ sample-data = { path = "../../tests/sample-data", version = "0.1.0", features = 
 # other
 crossbeam-channel = "0.5.1"
 serde_json = "1.0"
+async-trait = "0.1"
+tokio = "1.13"
+futures = "0.3"
+erased-serde = "0.3.12"

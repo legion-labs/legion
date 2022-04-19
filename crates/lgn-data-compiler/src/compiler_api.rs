@@ -88,8 +88,7 @@ use std::{
 use clap::{Parser, Subcommand};
 use lgn_data_model::ReflectionError;
 use lgn_data_runtime::{
-    AssetRegistry, AssetRegistryError, AssetRegistryOptions, ResourcePathId,
-    ResourceProcessorError, Transform,
+    AssetRegistry, AssetRegistryError, AssetRegistryOptions, ResourcePathId, Transform,
 };
 use serde::{Deserialize, Serialize};
 
@@ -111,7 +110,7 @@ use crate::{
 ///
 /// * Invalidate all `data compilers`.
 /// * Invalidate all `build index` files.
-pub const DATA_BUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const DATA_BUILD_VERSION: &str = "0.2.0";
 
 /// *Data Compiler's* output.
 ///
@@ -286,10 +285,6 @@ pub enum CompilerError {
     /// AssetRegistry fallthrough
     #[error(transparent)]
     Reflection(#[from] ReflectionError),
-
-    /// AssetRegistry fallthrough
-    #[error(transparent)]
-    ResourceProcessor(#[from] ResourceProcessorError),
 
     /// AssetRegistry fallthrough
     #[error(transparent)]

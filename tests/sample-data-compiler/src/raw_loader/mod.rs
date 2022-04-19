@@ -15,10 +15,7 @@ use std::{
 use generic_data::offline::{TestComponent, TestEntity};
 use lgn_content_store::Provider;
 use lgn_data_offline::resource::{Project, ResourcePathName};
-use lgn_data_runtime::{
-    AssetRegistry, AssetRegistryOptions, Resource, ResourceDescriptor, ResourceId, ResourceType,
-    ResourceTypeAndId,
-};
+use lgn_data_runtime::prelude::*;
 use lgn_graphics_data::{offline_gltf::GltfFile, offline_psd::PsdFile};
 use lgn_source_control::{RepositoryIndex, RepositoryName};
 use lgn_tracing::{error, info};
@@ -137,12 +134,12 @@ pub async fn build_offline(
                     )
                     .await;
 
-                    let handle = project
-                        .load_resource(resource_id, &resources)
-                        .unwrap()
-                        .typed::<offline_data::Entity>();
+                    let handle = resources
+                        .load_async::<offline_data::Entity>(resource_id)
+                        .await
+                        .unwrap();
 
-                    if let Some(entity) = handle.instantiate(&resources) {
+                    if let Some(entity) = resources.edit(&handle) {
                         if let Some(parent_id) = &entity.parent {
                             let mut raw_name = project.raw_resource_name(resource_id.id).unwrap();
                             raw_name.replace_parent_info(Some(parent_id.source_resource()), None);
@@ -151,7 +148,7 @@ pub async fn build_offline(
                                 .await
                                 .unwrap();
 
-                            handle.apply(entity, &resources);
+                            resources.commit(entity);
                         }
                     }
                 }
@@ -230,15 +227,10 @@ async fn setup_project(
     }
     .unwrap();
 
-    let mut registry = AssetRegistryOptions::new()
-        .add_processor::<lgn_graphics_data::offline_texture::Texture>()
-        .add_processor::<lgn_graphics_data::offline_psd::PsdFile>()
-        .add_processor::<lgn_graphics_data::offline_png::PngFile>()
-        .add_processor::<lgn_graphics_data::offline_gltf::GltfFile>();
-
-    offline_data::add_loaders(&mut registry);
-    lgn_graphics_data::offline::add_loaders(&mut registry);
-    generic_data::offline::add_loaders(&mut registry);
+    let mut registry = AssetRegistryOptions::new();
+    lgn_graphics_data::register_types(&mut registry);
+    offline_data::register_types(&mut registry);
+    generic_data::offline::register_types(&mut registry);
 
     (project, registry.create().await)
 }
@@ -315,12 +307,9 @@ async fn build_resource_from_raw(
                 }
 
                 project
-                    .add_resource_with_id(
+                    .add_resource(
                         name.clone(),
-                        kind.0,
-                        kind.1,
-                        id.id,
-                        resources.new_resource_with_id(id).unwrap(),
+                        resources.new_resource_untyped(id).unwrap(),
                         resources,
                     )
                     .await
@@ -342,16 +331,13 @@ async fn build_test_entity(
         if let Ok(id) = project.find_resource(&name).await {
             id
         } else {
-            let kind_name = TestEntity::TYPENAME;
             let kind = TestEntity::TYPE;
             let id = ResourceTypeAndId {
                 kind,
                 id: ResourceId::from_str("D8FE06A0-1317-46F5-902B-266B0EAE6FA8").unwrap(),
             };
-            let test_entity_handle = resources.new_resource_with_id(id).unwrap();
-            let mut test_entity = test_entity_handle
-                .instantiate::<TestEntity>(resources)
-                .unwrap();
+            let test_entity_handle = resources.new_resource_with_id::<TestEntity>(id).unwrap();
+            let mut test_entity = resources.edit(&test_entity_handle).unwrap();
             test_entity.test_string = "Editable String Value".into();
             test_entity.test_float32 = 1.0;
             test_entity.test_float64 = 2.0;
@@ -367,17 +353,10 @@ async fn build_test_entity(
             test_entity.test_option_set = Some(generic_data::offline::TestSubType2::default());
             test_entity.test_option_primitive_set = Some(lgn_math::Vec3::default());
 
-            test_entity_handle.apply(test_entity, resources);
+            resources.commit(test_entity);
 
             project
-                .add_resource_with_id(
-                    name.clone(),
-                    kind_name,
-                    kind,
-                    id.id,
-                    test_entity_handle,
-                    resources,
-                )
+                .add_resource(name.clone(), test_entity_handle, resources)
                 .await
                 .unwrap()
         }
@@ -444,17 +423,16 @@ where
         let reader = BufReader::new(f);
         let raw_data: RawType = ron::de::from_reader(reader).unwrap();
 
-        let resource = resources.new_resource_with_id(resource_id).unwrap();
+        let handle = resources
+            .new_resource_with_id::<OfflineType>(resource_id)
+            .unwrap();
 
         // convert raw to offline
-        let mut offline_data = resource.instantiate(resources).unwrap();
+        let mut offline_data = resources.edit(&handle).unwrap();
         *offline_data = OfflineType::from_raw(raw_data, references);
-        resource.apply(offline_data, resources);
+        resources.commit(offline_data);
 
-        project
-            .save_resource(resource_id, resource, resources)
-            .await
-            .unwrap();
+        project.save_resource(handle, resources).await.unwrap();
         Some(resource_id)
     } else {
         None
@@ -470,19 +448,13 @@ async fn load_psd_resource(
     let raw_data = fs::read(file).ok()?;
     let loaded_psd = PsdFile::from_bytes(&raw_data)?;
 
-    let resource = project
-        .load_resource(resource_id, resources)
-        .unwrap()
-        .typed::<PsdFile>();
+    let handle = resources.load_async::<PsdFile>(resource_id).await.unwrap();
 
-    let mut initial_resource = resource.instantiate(resources).unwrap();
+    let mut initial_resource = resources.edit(&handle).unwrap();
     *initial_resource = loaded_psd;
-    resource.apply(initial_resource, resources);
+    resources.commit(initial_resource);
 
-    project
-        .save_resource(resource_id, &resource, resources)
-        .await
-        .unwrap();
+    project.save_resource(handle, resources).await.unwrap();
     Some(resource_id)
 }
 
@@ -492,14 +464,14 @@ async fn load_png_resource(
     project: &mut Project,
     resources: &AssetRegistry,
 ) -> Option<ResourceTypeAndId> {
-    let reader = fs::read(file).ok()?;
+    let reader = tokio::fs::File::open(file).await.ok()?;
+    let reader = Box::pin(reader) as AssetRegistryReader;
+
     let handle = resources
-        .deserialize_resource(resource_id, &mut reader.as_slice())
-        .ok()?;
-    project
-        .save_resource(resource_id, handle, resources)
+        .deserialize_resource(resource_id, reader)
         .await
-        .unwrap();
+        .ok()?;
+    project.save_resource(handle, resources).await.unwrap();
     Some(resource_id)
 }
 
@@ -509,15 +481,14 @@ async fn load_gltf_resource(
     project: &mut Project,
     resources: &AssetRegistry,
 ) -> Option<ResourceTypeAndId> {
-    let handle = resources.new_resource_with_id(resource_id).unwrap();
-    let mut gltf_file = handle.instantiate::<GltfFile>(resources).unwrap();
+    let handle = resources
+        .new_resource_with_id::<GltfFile>(resource_id)
+        .unwrap();
+    let mut gltf_file = resources.edit(&handle).unwrap();
     let raw_data = fs::read(file).ok()?;
     *gltf_file = GltfFile::from_bytes(raw_data);
-    handle.apply(gltf_file, resources);
+    resources.commit(gltf_file);
 
-    project
-        .save_resource(resource_id, handle, resources)
-        .await
-        .unwrap();
+    project.save_resource(handle, resources).await.unwrap();
     Some(resource_id)
 }

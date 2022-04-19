@@ -22,7 +22,7 @@ use lgn_data_runtime::{
     ResourceId, ResourcePathId, ResourceTypeAndId,
 };
 use lgn_data_transaction::BuildManager;
-use lgn_graphics_data::offline::CameraSetup;
+use lgn_graphics_data::offline::{CameraSetup, Visual};
 use lgn_graphics_renderer::components::Mesh;
 use lgn_math::prelude::{Quat, Vec3};
 use lgn_physics::{
@@ -31,7 +31,7 @@ use lgn_physics::{
 };
 use lgn_tracing::{info, LevelFilter};
 use sample_data::{
-    offline::{Light, Transform, Visual},
+    offline::{Light, Transform},
     LightType,
 };
 
@@ -105,9 +105,9 @@ async fn main() -> anyhow::Result<()> {
     let mut asset_registry = AssetRegistryOptions::new()
         .add_device_dir(project.resource_dir())
         .add_device_cas(Arc::clone(&data_content_provider), Manifest::default());
-    lgn_graphics_data::offline::add_loaders(&mut asset_registry);
-    generic_data::offline::add_loaders(&mut asset_registry);
-    sample_data::offline::add_loaders(&mut asset_registry);
+    lgn_graphics_data::offline::register_types(&mut asset_registry);
+    generic_data::offline::register_types(&mut asset_registry);
+    sample_data::offline::register_types(&mut asset_registry);
     let asset_registry = asset_registry.create().await;
 
     let resource_ids = create_offline_data(&mut project, &asset_registry).await;
@@ -447,6 +447,7 @@ async fn create_offline_entity(
     let handle = if exists {
         project
             .load_resource(type_id, resources)
+            .await
             .expect("failed to load resource")
     } else {
         resources
@@ -454,31 +455,24 @@ async fn create_offline_entity(
             .expect("failed to create new resource")
     };
 
-    let mut entity = handle
-        .instantiate::<sample_data::offline::Entity>(resources)
+    let mut entity = resources
+        .edit::<sample_data::offline::Entity>(&handle)
         .unwrap();
     entity.components.clear();
     entity.components.extend(components.into_iter());
     entity.children.clear();
     entity.children.extend(children.into_iter());
 
-    handle.apply(entity, resources);
+    resources.commit(entity);
 
     if exists {
         project
-            .save_resource(type_id, handle, resources)
+            .save_resource(handle, resources)
             .await
             .expect("failed to save resource");
     } else {
         project
-            .add_resource_with_id(
-                name,
-                sample_data::offline::Entity::TYPENAME,
-                kind,
-                id,
-                handle,
-                resources,
-            )
+            .add_resource(name, handle, resources)
             .await
             .expect("failed to add new resource");
     }
@@ -505,6 +499,7 @@ async fn create_offline_model(
     let handle = if exists {
         project
             .load_resource(type_id, resources)
+            .await
             .expect("failed to load resource")
     } else {
         resources
@@ -512,8 +507,8 @@ async fn create_offline_model(
             .expect("failed to create new resource")
     };
 
-    let mut model = handle
-        .instantiate::<lgn_graphics_data::offline::Model>(resources)
+    let mut model = resources
+        .edit::<lgn_graphics_data::offline::Model>(&handle)
         .unwrap();
     model.meshes.clear();
     let mesh = lgn_graphics_data::offline::Mesh {
@@ -530,23 +525,16 @@ async fn create_offline_model(
     };
     model.meshes.push(mesh);
 
-    handle.apply(model, resources);
+    resources.commit(model);
 
     if exists {
         project
-            .save_resource(type_id, handle, resources)
+            .save_resource(handle, resources)
             .await
             .expect("failed to save resource");
     } else {
         project
-            .add_resource_with_id(
-                name,
-                lgn_graphics_data::offline::Model::TYPENAME,
-                kind,
-                id,
-                handle,
-                resources,
-            )
+            .add_resource(name, handle, resources)
             .await
             .expect("failed to add new resource");
     }

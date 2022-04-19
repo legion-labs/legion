@@ -5,7 +5,7 @@ use lgn_content_store::{Identifier, Provider};
 use lgn_tracing::error;
 
 use super::Device;
-use crate::{manifest::Manifest, ResourceTypeAndId};
+use crate::{manifest::Manifest, AssetRegistryReader, ResourceTypeAndId};
 
 /// Content addressable storage device. Resources are accessed through a
 /// manifest access table.
@@ -30,6 +30,13 @@ impl Device for CasDevice {
         } else {
             None
         }
+    }
+
+    async fn get_reader(&self, type_id: ResourceTypeAndId) -> Option<AssetRegistryReader> {
+        let manifest = self.manifest.as_ref()?;
+        let checksum = manifest.find(type_id)?;
+        let reader = self.provider.get_reader(&checksum).await.ok()?;
+        Some(Box::pin(reader) as AssetRegistryReader)
     }
 
     async fn reload(&self, _: ResourceTypeAndId) -> Option<Vec<u8>> {

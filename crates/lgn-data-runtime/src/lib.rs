@@ -74,21 +74,34 @@ mod resource;
 pub use resource::*;
 
 mod reference;
-pub use reference::Reference;
+pub use reference::ReferenceUntyped;
 
-mod asset;
-pub use asset::*;
+mod resource_processor;
+pub use resource_processor::*;
 pub mod manifest;
 
 mod component;
 pub use component::*;
 pub use lgn_data_runtime_macros::resource;
 
+mod component_installer;
+pub use component_installer::*;
+
 mod resourcepathid;
 pub use resourcepathid::*;
 
-#[cfg(test)]
-mod test_asset;
-
+mod resource_installer;
+pub use resource_installer::*;
 #[cfg(test)]
 mod test_resource;
+
+/// Most commonly used re-exported types.
+pub mod prelude {
+    #[doc(hidden)]
+    pub use crate::{
+        resource, AssetRegistry, AssetRegistryError, AssetRegistryOptions, AssetRegistryReader,
+        ComponentInstaller, EditHandle, EditHandleUntyped, Handle, HandleUntyped, LoadRequest,
+        Resource, ResourceDescriptor, ResourceId, ResourceInstaller, ResourcePathId,
+        ResourceProcessor, ResourceType, ResourceTypeAndId,
+    };
+}

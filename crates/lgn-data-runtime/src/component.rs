@@ -43,6 +43,20 @@ impl dyn Component {
             None
         }
     }
+
+    /// Returns some reference to the boxed value if it is of type `T`, or
+    /// `None` if it isn't.
+    #[inline]
+    pub fn downcast_mut<T: Component>(&mut self) -> Option<&mut T> {
+        if self.is::<T>() {
+            #[allow(unsafe_code)]
+            unsafe {
+                Some(&mut *((self as *mut dyn Component).cast::<T>()))
+            }
+        } else {
+            None
+        }
+    }
 }
 
 impl PartialEq for dyn Component {

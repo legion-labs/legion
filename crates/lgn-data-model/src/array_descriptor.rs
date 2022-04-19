@@ -83,8 +83,7 @@ macro_rules! implement_array_descriptor {
 
                 insert_element : |array: *mut(), index : Option<usize>, deserializer: &mut dyn::erased_serde::Deserializer<'_>| unsafe {
                     let array = &mut (*array.cast::<Vec<$type_id>>());
-                    let new_element : $type_id = ::erased_serde::deserialize(deserializer)
-                        .map_err(|err|$crate::utils::ReflectionError::ErrorErasedSerde(err))?;
+                    let new_element : $type_id = ::erased_serde::deserialize(deserializer)?;
 
                     let index = index.unwrap_or(array.len());
                     if index > array.len() {
@@ -101,8 +100,7 @@ macro_rules! implement_array_descriptor {
                     }
                     let old_value = array.remove(index);
                     if let Some(serializer) = old_value_ser {
-                       ::erased_serde::serialize(&old_value, serializer)
-                       .map_err(|err| $crate::utils::ReflectionError::ErrorErasedSerde(err))?;
+                       ::erased_serde::serialize(&old_value, serializer)?;
                     }
                     Ok(())
                 },
@@ -120,14 +118,12 @@ macro_rules! implement_array_descriptor {
                 },
 
                 delete_value : | array: *mut(), value_de: &mut dyn::erased_serde::Deserializer<'_>, old_value_ser: Option<&mut dyn::erased_serde::Serializer> | unsafe {
-                    let value_to_delete = ::erased_serde::deserialize::<$type_id>(value_de)
-                        .map_err(|err| $crate::ReflectionError::ErrorErasedSerde(err))?;
+                    let value_to_delete = ::erased_serde::deserialize::<$type_id>(value_de)?;
 
                     let array = &mut (*array.cast::<Vec<$type_id>>());
                     if let Some((old_value,index)) = $crate::array_remove_value(array,&value_to_delete) {
                         if let Some(serializer) = old_value_ser {
-                            ::erased_serde::serialize(&old_value, serializer)
-                            .map_err(|err| $crate::ReflectionError::ErrorErasedSerde(err))?;
+                            ::erased_serde::serialize(&old_value, serializer)?;
 
                         }
                         return Ok(index);

@@ -10,6 +10,7 @@ use lgn_content_store::Provider;
 use lgn_tracing::info;
 
 use super::Device;
+use crate::AssetRegistryReader;
 use crate::{manifest::Manifest, ResourceTypeAndId};
 
 /// Storage device that builds resources on demand. Resources are accessed
@@ -53,6 +54,16 @@ impl Device for BuildDevice {
             let content = self.provider.read(&checksum).await.ok()?;
             Some(content)
         }
+    }
+
+    async fn get_reader(&self, type_id: ResourceTypeAndId) -> Option<AssetRegistryReader> {
+        if self.force_recompile {
+            self.manifest.extend(self.build_resource(type_id).ok()?);
+        }
+        let checksum = &self.manifest.find(type_id)?;
+        let reader = self.provider.get_reader(checksum).await.ok()?;
+
+        Some(Box::pin(reader) as AssetRegistryReader)
     }
 
     async fn reload(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {

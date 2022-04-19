@@ -90,13 +90,14 @@ impl IndexSnapshot {
 
                 let mut parent_id = raw_name.extract_parent_info().0;
                 if parent_id.is_none() && kind == sample_data::offline::Entity::TYPE {
-                    if let Ok(handle) = ctx.get_or_load(res_id).await {
-                        if let Some(entity) =
-                            handle.get::<sample_data::offline::Entity>(&ctx.asset_registry)
-                        {
-                            if let Some(parent) = &entity.parent {
-                                parent_id = Some(parent.source_resource()); // Some(parent.resource_id());
-                            }
+                    if let Ok(handle) = ctx
+                        .asset_registry
+                        .load_async::<sample_data::offline::Entity>(res_id)
+                        .await
+                    {
+                        let entity = handle.get().unwrap();
+                        if let Some(parent) = &entity.parent {
+                            parent_id = Some(parent.source_resource()); // Some(parent.resource_id());
                         }
                     }
                 }
@@ -199,39 +200,38 @@ impl ResourceBrowserPlugin {
                 let mut transaction_manager = transaction_manager.lock().await;
 
                 for scene in settings.default_scene.split_terminator(';') {
-                    let resource_path = ResourcePathName::from(scene);
+                    let resource_id = if scene.starts_with('/') {
+                        let resource_path = ResourcePathName::from(scene);
+                        LockContext::new(&transaction_manager)
+                            .await
+                            .project
+                            .find_resource(&resource_path)
+                            .await
+                            .ok()
+                    } else if scene.starts_with('(') {
+                        ResourceTypeAndId::from_str(scene).ok()
+                    } else {
+                        None
+                    };
 
-                    let resource_id = LockContext::new(&transaction_manager)
-                        .await
-                        .project
-                        .find_resource(&resource_path)
-                        .await;
+                    if let Some(resource_id) = resource_id {
+                        // Send OpenScene regardless of the compilation results
+                        event_writer.send(SceneMessage::OpenScene(
+                            ResourcePathId::from(resource_id)
+                                .push(sample_data::runtime::Entity::TYPE)
+                                .resource_id(),
+                        ));
 
-                    match resource_id {
-                        Ok(resource_id) => {
-                            // Send OpenScene regardless of the compilation results
-                            event_writer.send(SceneMessage::OpenScene(
-                                ResourcePathId::from(resource_id)
-                                    .push(sample_data::runtime::Entity::TYPE)
-                                    .resource_id(),
-                            ));
-
-                            match transaction_manager.add_scene(resource_id).await {
-                                Ok(_resource_path_id) => {}
-                                Err(err) => lgn_tracing::warn!(
-                                    "Failed to build scene '{}': {}",
-                                    scene,
-                                    err.to_string()
-                                ),
-                            }
+                        match transaction_manager.add_scene(resource_id).await {
+                            Ok(_resource_path_id) => {}
+                            Err(err) => lgn_tracing::warn!(
+                                "Failed to build scene '{}': {}",
+                                scene,
+                                err.to_string()
+                            ),
                         }
-                        Err(error) => {
-                            lgn_tracing::warn!(
-                                "Failed to locate scene '{}' in project: {}",
-                                &resource_path,
-                                error
-                            );
-                        }
+                    } else {
+                        lgn_tracing::warn!("Failed to parse scene '{}'", scene,);
                     }
                 }
             });

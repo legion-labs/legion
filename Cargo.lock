@@ -897,9 +897,11 @@ checksum = "bc0455254eb5c6964c4545d8bac815e1a1be4f3afe0ae695ea539c12d728d44b"
 name = "binary-resource"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "lgn-data-model",
  "lgn-data-runtime",
  "serde",
+ "tokio",
 ]
 
 [[package]]
@@ -2862,6 +2864,7 @@ dependencies = [
 name = "generic-data"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bincode",
  "erased-serde",
  "inventory",
@@ -2879,6 +2882,7 @@ dependencies = [
  "memoffset",
  "serde",
  "serde_json",
+ "tokio",
  "typetag",
 ]
 
@@ -3560,8 +3564,11 @@ dependencies = [
 name = "integer-asset"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
+ "lgn-content-store",
  "lgn-data-model",
  "lgn-data-runtime",
+ "tokio",
 ]
 
 [[package]]
@@ -3873,7 +3880,9 @@ dependencies = [
 name = "lgn-asset-registry"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "crossbeam-channel",
+ "futures",
  "lgn-app",
  "lgn-async",
  "lgn-config",
@@ -3883,6 +3892,8 @@ dependencies = [
  "lgn-ecs",
  "lgn-math",
  "lgn-tracing",
+ "once_cell",
+ "rand 0.8.5",
  "serde_json",
  "thiserror",
  "tokio",
@@ -4505,6 +4516,7 @@ name = "lgn-data-offline"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "crossbeam-channel",
  "erased-serde",
  "hex",
@@ -4527,11 +4539,13 @@ dependencies = [
 name = "lgn-data-runtime"
 version = "0.1.0"
 dependencies = [
+ "async-recursion",
  "async-trait",
- "byteorder",
+ "bincode",
  "crossbeam-channel",
  "erased-serde",
  "flurry",
+ "futures",
  "hex",
  "inventory",
  "lazy_static",
@@ -4544,8 +4558,10 @@ dependencies = [
  "once_cell",
  "serde",
  "serde_json",
+ "slotmap",
  "thiserror",
  "tokio",
+ "tokio-byteorder",
  "typetag",
  "uuid 1.1.0",
  "xxhash-rust",
@@ -4738,6 +4754,7 @@ dependencies = [
 name = "lgn-graphics-data"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bincode",
  "erased-serde",
  "gltf",
@@ -4758,6 +4775,7 @@ dependencies = [
  "serde_bytes",
  "serde_json",
  "tbc",
+ "tokio",
  "typetag",
 ]
 
@@ -4766,6 +4784,7 @@ name = "lgn-graphics-renderer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "atomic_refcell",
  "bit-set",
  "bitflags",
@@ -4976,6 +4995,7 @@ dependencies = [
 name = "lgn-physics"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "crossbeam-channel",
  "egui",
  "erased-serde",
@@ -5084,9 +5104,13 @@ dependencies = [
 name = "lgn-scene-plugin"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "crossbeam-channel",
+ "erased-serde",
+ "futures",
  "lgn-app",
  "lgn-asset-registry",
+ "lgn-async",
  "lgn-config",
  "lgn-content-store",
  "lgn-core",
@@ -5103,12 +5127,14 @@ dependencies = [
  "lgn-transform",
  "sample-data",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
 name = "lgn-scripting"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bincode",
  "crossbeam-channel",
  "erased-serde",
@@ -5130,6 +5156,7 @@ dependencies = [
  "rune-modules",
  "serde",
  "serde_json",
+ "tokio",
  "typetag",
 ]
 
@@ -5137,6 +5164,7 @@ dependencies = [
 name = "lgn-scripting-data"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bincode",
  "erased-serde",
  "inventory",
@@ -5149,6 +5177,7 @@ dependencies = [
  "memoffset",
  "serde",
  "serde_json",
+ "tokio",
  "typetag",
 ]
 
@@ -5776,10 +5805,12 @@ dependencies = [
 name = "multitext-resource"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "lgn-data-model",
  "lgn-data-runtime",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -7197,19 +7228,28 @@ dependencies = [
 name = "refs-asset"
 version = "0.1.0"
 dependencies = [
- "byteorder",
+ "async-trait",
+ "bincode",
+ "erased-serde",
+ "lazy_static",
+ "lgn-content-store",
  "lgn-data-model",
  "lgn-data-runtime",
+ "serde",
+ "tokio",
+ "tokio-byteorder",
 ]
 
 [[package]]
 name = "refs-resource"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "lgn-data-model",
  "lgn-data-runtime",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -7691,6 +7731,7 @@ dependencies = [
 name = "sample-data"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bincode",
  "erased-serde",
  "inventory",
@@ -7706,6 +7747,7 @@ dependencies = [
  "memoffset",
  "serde",
  "serde_json",
+ "tokio",
  "typetag",
 ]
 
@@ -8111,6 +8153,15 @@ name = "slab"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eb703cfe953bccee95685111adeedb76fabe4e97549a58d16f03ea7b9367bb32"
+
+[[package]]
+name = "slotmap"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1e08e261d0e8f5c43123b7adf3e4ca1690d655377ac93a03b2c9d3e98de1342"
+dependencies = [
+ "version_check",
+]
 
 [[package]]
 name = "smallvec"
@@ -8595,10 +8646,12 @@ dependencies = [
 name = "text-resource"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "lgn-data-model",
  "lgn-data-runtime",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -8757,6 +8810,16 @@ dependencies = [
  "tokio-macros",
  "tracing",
  "winapi",
+]
+
+[[package]]
+name = "tokio-byteorder"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5cf347e8ae1d1ffd16c8aed569172a71bd81098a001d0f4964d476c0097aba4a"
+dependencies = [
+ "byteorder",
+ "tokio",
 ]
 
 [[package]]

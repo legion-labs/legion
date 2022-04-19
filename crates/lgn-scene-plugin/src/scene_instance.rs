@@ -1,74 +1,88 @@
-use lgn_asset_registry::AssetToEntityMap;
-use lgn_core::Name;
-use lgn_data_runtime::{AssetRegistry, ResourceDescriptor, ResourceTypeAndId};
-use lgn_ecs::prelude::{Commands, Query};
-use lgn_graphics_data::runtime::ModelReferenceType;
-use lgn_graphics_renderer::components::{LightComponent, LightType, VisualComponent};
-use lgn_hierarchy::prelude::{BuildChildren, Children, Parent};
-use lgn_tracing::{error, info, warn};
-use lgn_transform::components::{GlobalTransform, Transform};
-use sample_data::runtime as runtime_data;
+use std::collections::HashMap;
+
+use lgn_data_runtime::prelude::*;
+use lgn_ecs::prelude::Commands;
+use lgn_hierarchy::prelude::{BuildChildren, Parent};
+use lgn_tracing::{info, warn};
+
+use crate::ResourceMetaInfo;
 
 pub struct SceneInstance {
-    pub root_resource: ResourceTypeAndId,
-    pub asset_to_entity_map: AssetToEntityMap,
+    root_resource: ResourceTypeAndId,
+    _root_handle: Handle<sample_data::runtime::Entity>,
+    id_to_entity_map: HashMap<ResourceTypeAndId, lgn_ecs::entity::Entity>,
+    //entity_to_id: HashMap<lgn_ecs::entity::Entity, ResourceTypeAndId>,
 }
 
-impl SceneInstance {}
-
 impl SceneInstance {
-    pub(crate) fn new(root_resource: ResourceTypeAndId) -> Self {
+    pub(crate) fn new(
+        root_resource: ResourceTypeAndId,
+        root_handle: Handle<sample_data::runtime::Entity>,
+    ) -> Self {
         Self {
             root_resource,
-            asset_to_entity_map: AssetToEntityMap::default(),
+            _root_handle: root_handle,
+            id_to_entity_map: HashMap::new(),
+        }
+    }
+
+    pub(crate) fn find_entity(
+        &self,
+        resource_id: &ResourceTypeAndId,
+    ) -> Option<&lgn_ecs::entity::Entity> {
+        self.id_to_entity_map.get(resource_id)
+    }
+
+    pub(crate) fn unspawn_all(&mut self, commands: &mut Commands<'_, '_>) {
+        for (_id, entity) in self.id_to_entity_map.drain() {
+            commands.entity(entity).despawn();
         }
     }
 
     pub(crate) fn spawn_entity_hierarchy(
         &mut self,
-        resource_id: ResourceTypeAndId,
+        entity: Handle<sample_data::runtime::Entity>,
         asset_registry: &AssetRegistry,
         commands: &mut Commands<'_, '_>,
-        entity_with_children_query: &Query<'_, '_, &Children>,
     ) {
-        let mut queue = vec![resource_id];
-
-        while let Some(resource_id) = queue.pop() {
-            let runtime_entity = asset_registry
-                .get_untyped(resource_id)
-                .and_then(|handle| handle.get::<sample_data::runtime::Entity>(asset_registry));
-
+        let mut queue = vec![entity];
+        while let Some(handle) = queue.pop() {
+            let runtime_entity = handle.get();
             if runtime_entity.is_none() {
-                warn!(
-                    "Failed to spawn {:?}. Resource not found in AssetRegistry ",
-                    resource_id
-                );
+                if handle.id().kind != sample_data::runtime::Instance::TYPE {
+                    warn!(
+                        "Failed to spawn {:?}. Resource not found in AssetRegistry ",
+                        handle.id()
+                    );
+                }
                 continue;
             }
+            let resource_id = handle.id();
             let runtime_entity = runtime_entity.unwrap();
 
             // Ignore entity with parent that don't exists yet
             // The parent will spawn the children entities when it's available
             if self.root_resource != resource_id {
                 if let Some(parent) = &runtime_entity.parent {
-                    if self.asset_to_entity_map.get(parent.id()).is_none() {
+                    if self.id_to_entity_map.get(&parent.id()).is_none() {
                         continue;
                     }
                 }
             }
 
             let entity_id = self
-                .asset_to_entity_map
-                .get(resource_id)
+                .id_to_entity_map
+                .get(&resource_id)
+                .copied()
                 .unwrap_or_else(|| {
                     let entity_id = commands.spawn().id();
-                    self.asset_to_entity_map.insert(resource_id, entity_id);
+                    self.id_to_entity_map.insert(resource_id, entity_id);
                     entity_id
                 });
 
             // Look at the existing Ecs Entity children and unspawn
             // the children not present in the data anymore
-            if let Ok(existing_children) = entity_with_children_query.get(entity_id) {
+            /*if let Ok(existing_children) = entity_with_children_query.get(entity_id) {
                 for previous_child in existing_children.iter() {
                     if let Some(resource_id) =
                         self.asset_to_entity_map.get_resource_id(*previous_child)
@@ -84,6 +98,12 @@ impl SceneInstance {
                         }
                     }
                 }
+            }*/
+
+            for children in &runtime_entity.children {
+                if let Some(handle) = children.get_active_handle() {
+                    queue.push(handle);
+                }
             }
 
             let children = runtime_entity
@@ -91,15 +111,16 @@ impl SceneInstance {
                 .iter()
                 .rev()
                 .filter_map(|child_ref| {
-                    let child_res_id = child_ref.id();
-                    if child_res_id.kind == sample_data::runtime::Entity::TYPE {
-                        queue.push(child_res_id);
+                    if let Some(child) = child_ref.get_active_handle() {
+                        let child_res_id = child.id();
+                        queue.push(child);
                         Some(
-                            self.asset_to_entity_map
-                                .get(child_res_id)
+                            self.id_to_entity_map
+                                .get(&child_res_id)
+                                .copied()
                                 .unwrap_or_else(|| {
                                     let entity_id = commands.spawn().id();
-                                    self.asset_to_entity_map.insert(child_res_id, entity_id);
+                                    self.id_to_entity_map.insert(child_res_id, entity_id);
                                     entity_id
                                 }),
                         )
@@ -109,28 +130,34 @@ impl SceneInstance {
                 })
                 .collect::<Vec<_>>();
 
-            let mut entity = commands.entity(entity_id);
+            let mut entity_command = commands.entity(entity_id);
+            entity_command.insert(ResourceMetaInfo { id: handle.id() });
+            entity_command.insert(lgn_core::Name::new(resource_id.id.to_string()));
+
             if !children.is_empty() {
-                entity.push_children(children.as_slice());
+                entity_command.push_children(children.as_slice());
             }
 
-            let mut local_transform: Option<Transform> = None;
-            let mut entity_name: Option<String> = None;
-
             for component in &runtime_entity.components {
-                if let Some(transform) = component.downcast_ref::<runtime_data::Transform>() {
-                    local_transform = Some(Transform {
-                        translation: transform.position,
-                        rotation: transform.rotation,
-                        scale: transform.scale,
-                    });
-                } else if let Some(script) =
-                    component.downcast_ref::<lgn_scripting_data::runtime::ScriptComponent>()
+                if let Some(name) = component.downcast_ref::<sample_data::runtime::Name>() {
+                    info!(
+                        "Spawning Entity {:?}|{}|{}",
+                        entity_id, resource_id.id, &name.name
+                    );
+                }
+
+                if let Some(installer) = asset_registry.get_component_installer(component.type_id())
                 {
-                    entity.insert(script.clone());
-                } else if let Some(name) = component.downcast_ref::<runtime_data::Name>() {
-                    entity_name = Some(name.name.clone());
-                } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
+                    if let Err(err) =
+                        installer.install_component(component.as_ref(), &mut entity_command)
+                    {
+                        lgn_tracing::error!("Failed to install component: {}", err);
+                    }
+                }
+            }
+
+            /*for component in &runtime_entity.components {
+                if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
                     entity.insert(VisualComponent::new(
                         visual
                             .renderable_geometry
@@ -165,37 +192,7 @@ impl SceneInstance {
                     component.downcast_ref::<runtime_data::GltfLoader>()
                 {
                     // nothing to do
-                } else if let Some(physics) =
-                    component.downcast_ref::<lgn_physics::runtime::PhysicsRigidBox>()
-                {
-                    entity.insert(physics.clone());
-                } else if let Some(physics) =
-                    component.downcast_ref::<lgn_physics::runtime::PhysicsRigidCapsule>()
-                {
-                    entity.insert(physics.clone());
-                } else if let Some(physics) =
-                    component.downcast_ref::<lgn_physics::runtime::PhysicsRigidConvexMesh>()
-                {
-                    entity.insert(physics.clone());
-                } else if let Some(physics) =
-                    component.downcast_ref::<lgn_physics::runtime::PhysicsRigidHeightField>()
-                {
-                    entity.insert(physics.clone());
-                } else if let Some(physics) =
-                    component.downcast_ref::<lgn_physics::runtime::PhysicsRigidPlane>()
-                {
-                    entity.insert(physics.clone());
-                } else if let Some(physics) =
-                    component.downcast_ref::<lgn_physics::runtime::PhysicsRigidSphere>()
-                {
-                    entity.insert(physics.clone());
-                } else if let Some(physics) =
-                    component.downcast_ref::<lgn_physics::runtime::PhysicsRigidTriangleMesh>()
-                {
-                    entity.insert(physics.clone());
-                } else if let Some(physics_settings) =
-                    component.downcast_ref::<lgn_physics::runtime::PhysicsSceneSettings>()
-                {
+                }
                     entity.insert(physics_settings.clone());
                 } else if let Some(camera_setup) =
                     component.downcast_ref::<lgn_graphics_data::runtime::CameraSetup>()
@@ -208,23 +205,13 @@ impl SceneInstance {
                         resource_id,
                     );
                 }
-            }
+            }*/
 
             if let Some(parent) = runtime_entity.parent.as_ref() {
-                if let Some(parent_ecs_entity) = self.asset_to_entity_map.get(parent.id()) {
-                    entity.insert(Parent(parent_ecs_entity));
+                if let Some(parent_ecs_entity) = self.id_to_entity_map.get(&parent.id()) {
+                    entity_command.insert(Parent(*parent_ecs_entity));
                 }
             }
-
-            let name = entity_name.get_or_insert(resource_id.id.to_string());
-            entity.insert(Name::new(name.clone()));
-            entity.insert(local_transform.unwrap_or_default());
-            entity.insert(GlobalTransform::identity());
-
-            info!(
-                "Spawned Entity: {} -> ECS id: {:?}| {}",
-                resource_id.id, entity_id, name,
-            );
         }
     }
 }

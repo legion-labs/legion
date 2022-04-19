@@ -5,9 +5,7 @@ mod tests {
     use lgn_content_store::Provider;
     use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
     use lgn_data_offline::resource::{Project, ResourcePathName};
-    use lgn_data_runtime::{
-        AssetRegistry, AssetRegistryOptions, ResourceDescriptor, ResourcePathId,
-    };
+    use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions, ResourcePathId};
     use lgn_source_control::LocalRepositoryIndex;
     use tempfile::TempDir;
 
@@ -42,10 +40,9 @@ mod tests {
     }
 
     async fn setup_registry() -> Arc<AssetRegistry> {
-        AssetRegistryOptions::new()
-            .add_processor::<refs_resource::TestResource>()
-            .create()
-            .await
+        let mut options = AssetRegistryOptions::new();
+        refs_resource::TestResource::register_type(&mut options);
+        options.create().await
     }
 
     #[tokio::test]
@@ -70,10 +67,8 @@ mod tests {
             let id = project
                 .add_resource(
                     ResourcePathName::new("resource"),
-                    refs_resource::TestResource::TYPENAME,
-                    refs_resource::TestResource::TYPE,
                     &resources
-                        .new_resource(refs_resource::TestResource::TYPE)
+                        .new_resource::<refs_resource::TestResource>()
                         .unwrap(),
                     &resources,
                 )
@@ -125,10 +120,8 @@ mod tests {
             let child_id = project
                 .add_resource(
                     ResourcePathName::new("child"),
-                    refs_resource::TestResource::TYPENAME,
-                    refs_resource::TestResource::TYPE,
                     &resources
-                        .new_resource(refs_resource::TestResource::TYPE)
+                        .new_resource::<refs_resource::TestResource>()
                         .unwrap(),
                     &resources,
                 )
@@ -136,24 +129,16 @@ mod tests {
                 .unwrap();
 
             let parent_handle = {
-                let res = resources
-                    .new_resource(refs_resource::TestResource::TYPE)
+                let handle = resources
+                    .new_resource::<refs_resource::TestResource>()
                     .unwrap();
-                let mut edit = res
-                    .instantiate::<refs_resource::TestResource>(&resources)
-                    .unwrap();
+                let mut edit = resources.edit(&handle).unwrap();
                 edit.build_deps.push(ResourcePathId::from(child_id));
-                res.apply(edit, &resources);
-                res
+                resources.commit(edit);
+                handle
             };
             let parent_id = project
-                .add_resource(
-                    ResourcePathName::new("parent"),
-                    refs_resource::TestResource::TYPENAME,
-                    refs_resource::TestResource::TYPE,
-                    &parent_handle,
-                    &resources,
-                )
+                .add_resource(ResourcePathName::new("parent"), &parent_handle, &resources)
                 .await
                 .unwrap();
             (
