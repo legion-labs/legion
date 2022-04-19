@@ -1,7 +1,7 @@
 use std::{fmt, hash::Hash, str::FromStr};
 
+use crate::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_data_model::{implement_primitive_type_def, ReflectionError};
-use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use serde::{Deserialize, Serialize};
 
 /// Resource transformation identifier.
@@ -70,7 +70,7 @@ impl FromStr for Transform {
 /// use std::sync::Arc;
 /// use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
 /// use lgn_data_runtime::ResourceType;
-/// use lgn_data_offline::ResourcePathId;
+/// use lgn_data_runtime::ResourcePathId;
 /// use lgn_content_store::{ContentProvider, MemoryProvider};
 /// use std::path::PathBuf;
 /// # tokio_test::block_on(async {
@@ -471,9 +471,10 @@ mod tests {
 
     use std::str::FromStr;
 
-    use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
-
-    use crate::{resource::test_resource, ResourcePathId, Transform};
+    use crate::{
+        test_resource, Resource, ResourceId, ResourcePathId, ResourceType, ResourceTypeAndId,
+        Transform,
+    };
 
     #[test]
     fn simple_path() {

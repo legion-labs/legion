@@ -2,7 +2,6 @@
 #[macro_export]
 macro_rules! implement_raw_resource {
     ($type_id:ident, $processor:ident, $type_name:literal) => {
-
         #[derive(Default)]
         pub struct $type_id {
             pub content: Vec<u8>,
@@ -14,7 +13,7 @@ macro_rules! implement_raw_resource {
         impl lgn_data_runtime::Asset for $type_id {
             type Loader = $processor;
         }
-        impl lgn_data_offline::resource::OfflineResource for $type_id {
+        impl lgn_data_runtime::OfflineResource for $type_id {
             type Processor = $processor;
         }
 
@@ -25,7 +24,8 @@ macro_rules! implement_raw_resource {
             fn load(
                 &mut self,
                 reader: &mut dyn std::io::Read,
-            ) -> Result<Box<dyn std::any::Any + Send + Sync>, lgn_data_runtime::AssetLoaderError> {
+            ) -> Result<Box<dyn std::any::Any + Send + Sync>, lgn_data_runtime::AssetLoaderError>
+            {
                 let mut content = Vec::new();
                 reader.read_to_end(&mut content)?;
                 Ok(Box::new($type_id { content }))
@@ -33,7 +33,7 @@ macro_rules! implement_raw_resource {
             fn load_init(&mut self, _asset: &mut (dyn std::any::Any + Send + Sync)) {}
         }
 
-        impl lgn_data_offline::resource::ResourceProcessor for $processor {
+        impl lgn_data_runtime::ResourceProcessor for $processor {
             fn new_resource(&mut self) -> Box<dyn std::any::Any + Send + Sync> {
                 Box::new($type_id::default())
             }
@@ -41,7 +41,7 @@ macro_rules! implement_raw_resource {
             fn extract_build_dependencies(
                 &mut self,
                 _resource: &dyn std::any::Any,
-            ) -> Vec<lgn_data_offline::ResourcePathId> {
+            ) -> Vec<lgn_data_runtime::ResourcePathId> {
                 vec![]
             }
 
@@ -49,20 +49,31 @@ macro_rules! implement_raw_resource {
                 &self,
                 resource: &dyn std::any::Any,
                 writer: &mut dyn std::io::Write,
-            ) -> Result<usize, lgn_data_offline::resource::ResourceProcessorError> {
+            ) -> Result<usize, lgn_data_runtime::ResourceProcessorError> {
                 if let Some(png) = resource.downcast_ref::<$type_id>() {
-                    Ok(writer.write(png.content.as_slice())
-                    .map_err(|err| lgn_data_offline::resource::ResourceProcessorError::ResourceSerializationFailed(<$type_id as lgn_data_runtime::Resource>::TYPENAME, err.to_string()))?)
-                }
-                else {
-                    Err(lgn_data_offline::resource::ResourceProcessorError::ResourceSerializationFailed(<$type_id as lgn_data_runtime::Resource>::TYPENAME, "invalid cast".into()))
+                    Ok(writer.write(png.content.as_slice()).map_err(|err| {
+                        lgn_data_runtime::ResourceProcessorError::ResourceSerializationFailed(
+                            <$type_id as lgn_data_runtime::Resource>::TYPENAME,
+                            err.to_string(),
+                        )
+                    })?)
+                } else {
+                    Err(
+                        lgn_data_runtime::ResourceProcessorError::ResourceSerializationFailed(
+                            <$type_id as lgn_data_runtime::Resource>::TYPENAME,
+                            "invalid cast".into(),
+                        ),
+                    )
                 }
             }
 
             fn read_resource(
                 &mut self,
                 reader: &mut dyn std::io::Read,
-            ) -> Result<Box<dyn std::any::Any + Send + Sync>, lgn_data_offline::resource::ResourceProcessorError> {
+            ) -> Result<
+                Box<dyn std::any::Any + Send + Sync>,
+                lgn_data_runtime::ResourceProcessorError,
+            > {
                 use lgn_data_runtime::AssetLoader;
                 Ok(self.load(reader)?)
             }

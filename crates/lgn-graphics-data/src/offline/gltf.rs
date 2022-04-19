@@ -14,12 +14,9 @@ use gltf::{
 };
 use lgn_math::{Vec2, Vec3, Vec4};
 
-use lgn_data_offline::{
-    resource::{OfflineResource, ResourceProcessor, ResourceProcessorError},
-    ResourcePathId,
-};
 use lgn_data_runtime::{
-    resource, Asset, AssetLoader, AssetLoaderError, Resource, ResourceTypeAndId,
+    resource, Asset, AssetLoader, AssetLoaderError, OfflineResource, Resource, ResourcePathId,
+    ResourceProcessor, ResourceProcessorError, ResourceTypeAndId,
 };
 
 use crate::helpers::{read_usize, read_usize_and_buffer, write_usize, write_usize_and_buffer};
@@ -434,7 +431,7 @@ impl ResourceProcessor for GltfFileProcessor {
     fn extract_build_dependencies(
         &mut self,
         _resource: &dyn Any,
-    ) -> Vec<lgn_data_offline::ResourcePathId> {
+    ) -> Vec<lgn_data_runtime::ResourcePathId> {
         Vec::new()
     }
 

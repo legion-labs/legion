@@ -8,11 +8,8 @@ use std::{
 
 use hex::ToHex;
 use lgn_content_store::{ContentProvider, ContentReaderExt, ContentWriterExt};
-use lgn_data_offline::{
-    resource::{Project, Tree},
-    ResourcePathId,
-};
-use lgn_data_runtime::{ResourceId, ResourceTypeAndId};
+use lgn_data_offline::resource::{Project, Tree};
+use lgn_data_runtime::{ResourceId, ResourcePathId, ResourceTypeAndId};
 use lgn_tracing::span_scope;
 use lgn_utils::{DefaultHasher, DefaultHasher256};
 use petgraph::{Directed, Graph};

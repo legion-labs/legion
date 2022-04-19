@@ -5,7 +5,7 @@ use lgn_content_store::{ContentProvider, MemoryProvider};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
-use lgn_data_offline::ResourcePathId;
+use lgn_data_runtime::ResourcePathId;
 use lgn_data_runtime::{
     manifest::Manifest, AssetRegistryOptions, Resource, ResourceId, ResourceTypeAndId,
 };

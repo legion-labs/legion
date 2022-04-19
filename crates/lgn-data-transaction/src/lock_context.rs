@@ -1,10 +1,8 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use lgn_data_offline::resource::{
-    Project, ResourceHandleUntyped, ResourceHandles, ResourceRegistry,
-};
-use lgn_data_runtime::{AssetRegistry, ResourceTypeAndId};
+use lgn_data_offline::resource::{Project, ResourceHandles, ResourceRegistry};
+use lgn_data_runtime::{AssetRegistry, HandleUntyped, ResourceTypeAndId};
 use lgn_tracing::error;
 use tokio::sync::MutexGuard;
 
@@ -46,7 +44,7 @@ impl<'a> LockContext<'a> {
     pub async fn get_or_load(
         &mut self,
         resource_id: ResourceTypeAndId,
-    ) -> Result<ResourceHandleUntyped, Error> {
+    ) -> Result<HandleUntyped, Error> {
         Ok(self
             .loaded_resource_handles
             .entry(resource_id)

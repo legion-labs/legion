@@ -2,8 +2,10 @@
 
 use std::{any::Any, io};
 
-use lgn_data_offline::resource::{OfflineResource, ResourceProcessor, ResourceProcessorError};
-use lgn_data_runtime::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
+use lgn_data_runtime::{
+    resource, Asset, AssetLoader, AssetLoaderError, OfflineResource, Resource, ResourceProcessor,
+    ResourceProcessorError,
+};
 
 use crate::offline_texture::{Texture, TextureType};
 
@@ -103,7 +105,7 @@ impl ResourceProcessor for PsdFileProcessor {
     fn extract_build_dependencies(
         &mut self,
         _resource: &dyn Any,
-    ) -> Vec<lgn_data_offline::ResourcePathId> {
+    ) -> Vec<lgn_data_runtime::ResourcePathId> {
         vec![]
     }
 

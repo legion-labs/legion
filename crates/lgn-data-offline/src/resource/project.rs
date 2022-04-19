@@ -9,7 +9,10 @@ use std::{
 };
 
 use lgn_content_store::ContentProvider;
-use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
+use lgn_data_runtime::{
+    AssetRegistry, AssetRegistryError, HandleUntyped, ResourceId, ResourcePathId, ResourceType,
+    ResourceTypeAndId,
+};
 use lgn_source_control::{
     CanonicalPath, CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Staging,
     Workspace, WorkspaceConfig, WorkspaceRegistration,
@@ -17,10 +20,7 @@ use lgn_source_control::{
 use lgn_tracing::error;
 use thiserror::Error;
 
-use crate::resource::{
-    metadata::Metadata, ResourceHandleUntyped, ResourcePathName, ResourceRegistry,
-};
-use crate::ResourcePathId;
+use crate::resource::{metadata::Metadata, ResourcePathName};
 
 const METADATA_EXT: &str = "meta";
 
@@ -70,9 +70,6 @@ pub use lgn_source_control::data_types::Tree;
 ///
 /// Note: Resource's [`ResourcePathName`] is only used for display purposes and
 /// can be changed freely.
-///
-/// For more about loading, saving and managing resources in memory see
-/// [`ResourceRegistry`]
 pub struct Project {
     project_dir: PathBuf,
     resource_dir: PathBuf,
@@ -101,10 +98,7 @@ pub enum Error {
     ContentStore(#[from] lgn_content_store::Error),
     /// RegistryRegistry Error
     #[error("ResourceRegistry Error: '{1}' on resource '{0}'")]
-    ResourceRegistry(
-        ResourceTypeAndId,
-        #[source] crate::resource::ResourceRegistryError,
-    ),
+    ResourceRegistry(ResourceTypeAndId, #[source] AssetRegistryError),
 }
 
 /// The type of change done to a resource.
@@ -366,8 +360,8 @@ impl Project {
         name: ResourcePathName,
         kind_name: &str,
         kind: ResourceType,
-        handle: impl AsRef<ResourceHandleUntyped>,
-        registry: &mut ResourceRegistry,
+        handle: impl AsRef<HandleUntyped>,
+        registry: &mut AssetRegistry,
     ) -> Result<ResourceTypeAndId, Error> {
         self.add_resource_with_id(name, kind_name, kind, ResourceId::new(), handle, registry)
             .await
@@ -388,8 +382,8 @@ impl Project {
         kind_name: &str,
         kind: ResourceType,
         id: ResourceId,
-        handle: impl AsRef<ResourceHandleUntyped>,
-        registry: &mut ResourceRegistry,
+        handle: impl AsRef<HandleUntyped>,
+        registry: &mut AssetRegistry,
     ) -> Result<ResourceTypeAndId, Error> {
         let meta_path = self.metadata_path(id);
         let resource_path = self.resource_path(id);
@@ -470,8 +464,8 @@ impl Project {
     pub async fn save_resource(
         &mut self,
         type_id: ResourceTypeAndId,
-        handle: impl AsRef<ResourceHandleUntyped>,
-        resources: &mut ResourceRegistry,
+        handle: impl AsRef<HandleUntyped>,
+        resources: &mut AssetRegistry,
     ) -> Result<(), Error> {
         let resource_path = self.resource_path(type_id.id);
         let metadata_path = self.metadata_path(type_id.id);
@@ -523,8 +517,8 @@ impl Project {
     pub fn load_resource(
         &self,
         type_id: ResourceTypeAndId,
-        resources: &mut ResourceRegistry,
-    ) -> Result<ResourceHandleUntyped, Error> {
+        resources: &mut AssetRegistry,
+    ) -> Result<HandleUntyped, Error> {
         let resource_path = self.resource_path(type_id.id);
 
         let mut resource_file =
@@ -805,15 +799,12 @@ mod tests {
     use std::sync::Arc;
 
     use lgn_content_store::{ContentProvider, MemoryProvider};
-    use lgn_data_runtime::{resource, Resource, ResourceType};
+    use lgn_data_runtime::{resource, AssetRegistry, Resource, ResourceType};
     use tokio::sync::Mutex;
 
     use crate::resource::project::Project;
     use crate::{
-        resource::{
-            ResourcePathName, ResourceProcessor, ResourceProcessorError, ResourceRegistry,
-            ResourceRegistryOptions,
-        },
+        resource::{ResourcePathName, ResourceProcessor, ResourceProcessorError},
         ResourcePathId,
     };
 
@@ -1018,7 +1009,7 @@ mod tests {
         resources_arc
     }
 
-    async fn create_sky_material(project: &mut Project, resources: &mut ResourceRegistry) {
+    async fn create_sky_material(project: &mut Project, resources: &mut AssetRegistry) {
         let texture_type = ResourceType::new(RESOURCE_TEXTURE.as_bytes());
         let texture = project
             .add_resource(

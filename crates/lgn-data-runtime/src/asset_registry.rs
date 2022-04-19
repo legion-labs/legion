@@ -13,8 +13,8 @@ use lgn_ecs::schedule::SystemLabel;
 use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
     manifest::Manifest,
-    vfs, Asset, AssetLoader, AssetLoaderError, Handle, HandleUntyped, Resource, ResourceType,
-    ResourceTypeAndId,
+    vfs, Asset, AssetLoader, AssetLoaderError, Handle, HandleUntyped, Resource, ResourcePathId,
+    ResourceProcessor, ResourceType, ResourceTypeAndId,
 };
 
 /// Error type for Asset Registry
@@ -83,6 +83,7 @@ impl<'a, T: ?Sized + 'a> std::ops::Deref for AssetRegistryGuard<'a, T> {
 /// Options which can be used to configure the creation of [`AssetRegistry`].
 pub struct AssetRegistryOptions {
     loaders: HashMap<ResourceType, Box<dyn AssetLoader + Send + Sync>>,
+    processors: HashMap<ResourceType, Box<dyn ResourceProcessor + Send + Sync>>,
     devices: Vec<Box<(dyn vfs::Device + Send)>>,
 }
 
@@ -92,6 +93,7 @@ impl AssetRegistryOptions {
     pub fn new() -> Self {
         Self {
             loaders: HashMap::new(),
+            processors: HashMap::new(),
             devices: vec![],
         }
     }
@@ -191,6 +193,7 @@ impl AssetRegistryOptions {
                 assets: HashMap::new(),
                 load_errors: HashMap::new(),
                 load_event_senders: Vec::new(),
+                processors: self.processors,
                 loader,
             }),
             load_thread: Cell::new(None),
@@ -219,6 +222,7 @@ struct Inner {
     loader: AssetLoaderStub,
     load_errors: HashMap<ResourceTypeAndId, AssetRegistryError>,
     load_event_senders: Vec<tokio::sync::mpsc::UnboundedSender<ResourceLoadEvent>>,
+    processors: HashMap<ResourceType, Box<dyn ResourceProcessor + Send + Sync>>,
 }
 
 /// Registry of all loaded [`Resource`]s.
@@ -425,6 +429,23 @@ impl AssetRegistry {
                 }
             }
         }
+    }
+
+    pub fn deserialize_resource(
+        &mut self,
+        kind: ResourceType,
+        reader: &mut dyn std::io::Read,
+    ) -> Result<HandleUntyped, AssetRegistryError> {
+        todo!()
+    }
+
+    pub fn serialize_resource(
+        &mut self,
+        kind: ResourceType,
+        handle: impl AsRef<HandleUntyped>,
+        writer: &mut dyn std::io::Write,
+    ) -> Result<(usize, Vec<ResourcePathId>), AssetRegistryError> {
+        todo!()
     }
 
     pub(crate) fn is_err(&self, type_id: ResourceTypeAndId) -> bool {

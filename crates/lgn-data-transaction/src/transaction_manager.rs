@@ -5,13 +5,10 @@ use std::{
 };
 
 use lgn_content_store::ChunkIdentifier;
-use lgn_data_offline::{
-    resource::{
-        Project, ResourceHandles, ResourcePathName, ResourceRegistry, ResourceRegistryError,
-    },
-    ResourcePathId,
+use lgn_data_offline::resource::{
+    Project, ResourceHandles, ResourcePathName, ResourceRegistry, ResourceRegistryError,
 };
-use lgn_data_runtime::{AssetRegistry, ResourceType, ResourceTypeAndId};
+use lgn_data_runtime::{AssetRegistry, ResourcePathId, ResourceType, ResourceTypeAndId};
 use lgn_tracing::{info, warn};
 use thiserror::Error;
 use tokio::sync::Mutex;

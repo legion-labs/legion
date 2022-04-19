@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use lgn_data_offline::{resource::ResourcePathName, ResourcePathId};
-use lgn_data_runtime::{Component, Resource, ResourceType, ResourceTypeAndId};
+use lgn_data_offline::resource::ResourcePathName;
+use lgn_data_runtime::{Component, Resource, ResourcePathId, ResourceType, ResourceTypeAndId};
 use lgn_tracing::{error, info};
 use sample_data::offline as offline_data;
 

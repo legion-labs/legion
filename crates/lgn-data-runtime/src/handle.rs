@@ -114,6 +114,10 @@ impl HandleUntyped {
     pub fn is_err(&self, registry: &AssetRegistry) -> bool {
         registry.is_err(self.inner.type_id)
     }
+
+    pub fn typed<T: Any + Resource>(self) -> Handle<T> {
+        Handle::<T>::from(self)
+    }
 }
 
 //

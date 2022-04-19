@@ -1,10 +1,9 @@
 use std::{any::Any, io};
 
-use lgn_data_offline::{
-    resource::{OfflineResource, ResourceProcessor, ResourceProcessorError},
-    ResourcePathId,
+use lgn_data_runtime::{
+    resource, Asset, AssetLoader, AssetLoaderError, OfflineResource, Resource, ResourcePathId,
+    ResourceProcessor, ResourceProcessorError,
 };
-use lgn_data_runtime::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
 use serde::{Deserialize, Serialize};
 
 #[resource("multitext_resource")]

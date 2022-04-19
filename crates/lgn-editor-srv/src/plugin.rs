@@ -5,7 +5,7 @@ use lgn_app::{prelude::*, Events};
 use lgn_asset_registry::AssetToEntityMap;
 use lgn_async::TokioAsyncRuntime;
 use lgn_core::Name;
-use lgn_data_offline::ResourcePathId;
+use lgn_data_runtime::ResourcePathId;
 use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 use lgn_data_transaction::{
     LockContext, SelectionManager, SelectionOperation, Transaction, TransactionManager,

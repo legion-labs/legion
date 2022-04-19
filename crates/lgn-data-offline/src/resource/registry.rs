@@ -2,13 +2,12 @@ use std::sync::Arc;
 use std::{any::Any, collections::HashMap, io};
 
 use lgn_data_model::TypeReflection;
-use lgn_data_runtime::{ResourceType, ResourceTypeAndId};
-
-use super::{
-    OfflineResource, RefOp, ResourceHandleId, ResourceHandleUntyped, ResourceProcessor,
-    ResourceProcessorError,
+use lgn_data_runtime::{
+    OfflineResource, ResourcePathId, ResourceProcessor, ResourceProcessorError, ResourceType,
+    ResourceTypeAndId,
 };
-use crate::ResourcePathId;
+
+use super::{RefOp, ResourceHandleId, ResourceHandleUntyped};
 
 /// Error For `ResourceRegistry`
 #[derive(thiserror::Error, Debug)]

@@ -3,7 +3,7 @@
 use std::hash::{Hash, Hasher};
 
 use bincode;
-use lgn_data_offline::ResourcePathId;
+use lgn_data_runtime::ResourcePathId;
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_utils::DefaultHasher;
 

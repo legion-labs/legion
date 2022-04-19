@@ -5,12 +5,10 @@
 
 use std::{any::Any, io, str::FromStr};
 
-use lgn_data_runtime::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
-
 use super::OfflineResource;
 use crate::{
-    resource::{ResourceProcessor, ResourceProcessorError},
-    ResourcePathId,
+    resource, Asset, AssetLoader, AssetLoaderError, Resource, ResourcePathId, ResourceProcessor,
+    ResourceProcessorError,
 };
 
 /// Resource temporarily used for testing.

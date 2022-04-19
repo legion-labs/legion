@@ -8,8 +8,7 @@ use lgn_data_compiler::{
     },
     compiler_utils::hash_code_and_data,
 };
-use lgn_data_offline::{resource::ResourceProcessor, Transform};
-use lgn_data_runtime::{AssetRegistryOptions, Resource};
+use lgn_data_runtime::{AssetRegistryOptions, Resource, ResourceProcessor, Transform};
 use lgn_graphics_data::{offline_psd::PsdFile, offline_texture::TextureProcessor};
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {

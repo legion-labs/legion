@@ -20,8 +20,7 @@
 //! ```no_run
 //! # use lgn_data_compiler::{Locale, Platform, Target};
 //! # use lgn_data_compiler::compiler_api::{Compiler, CompilerHash, CompilationEnv, DATA_BUILD_VERSION, compiler_main, CompilerContext, CompilerDescriptor, CompilationOutput, CompilerError};
-//! # use lgn_data_offline::{ResourcePathId, Transform};
-//! # use lgn_data_runtime::{AssetRegistryOptions, ResourceType};
+//! # use lgn_data_runtime::{AssetRegistryOptions, ResourceType, ResourcePathId, Transform};
 //! # use std::path::Path;
 //! # use async_trait::async_trait;
 //! # const INPUT_TYPE: ResourceType = ResourceType::new(b"src");
@@ -88,8 +87,10 @@ use std::{
 
 use clap::{Parser, Subcommand};
 use lgn_data_model::ReflectionError;
-use lgn_data_offline::{resource::ResourceProcessorError, ResourcePathId, Transform};
-use lgn_data_runtime::{AssetRegistry, AssetRegistryError, AssetRegistryOptions};
+use lgn_data_runtime::{
+    AssetRegistry, AssetRegistryError, AssetRegistryOptions, ResourcePathId,
+    ResourceProcessorError, Transform,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
