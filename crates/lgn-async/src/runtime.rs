@@ -32,7 +32,7 @@ impl Default for TokioAsyncRuntime {
     fn default() -> Self {
         static PARK_SPAN_METADATA: SpanMetadata = SpanMetadata {
             lod: Verbosity::Max,
-            name: "tokio::busy",
+            name: std::borrow::Cow::Borrowed("tokio::busy"),
             target: module_path!(),
             module_path: module_path!(),
             file: file!(),

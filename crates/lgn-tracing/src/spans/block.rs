@@ -28,7 +28,7 @@ fn record_scope_event_dependencies(
 ) {
     let thread_span_ptr = thread_span_desc as *const _ as u64;
     if recorded_deps.insert(thread_span_ptr) {
-        let name = StaticString::from(thread_span_desc.name);
+        let name = StaticString::from(&thread_span_desc.name);
         if recorded_deps.insert(name.ptr as u64) {
             deps.push(name);
         }

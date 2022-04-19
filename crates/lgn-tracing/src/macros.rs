@@ -15,7 +15,7 @@ macro_rules! span_scope {
     ($scope_name:ident, $name:expr) => {
         static $scope_name: $crate::spans::SpanMetadata = $crate::spans::SpanMetadata {
             lod: $crate::Verbosity::Max,
-            name: $name,
+            name: std::borrow::Cow::Borrowed($name),
             target: module_path!(),
             module_path: module_path!(),
             file: file!(),
@@ -37,7 +37,7 @@ macro_rules! async_span_scope {
     ($scope_name:ident, $name:expr) => {
         static $scope_name: $crate::spans::SpanMetadata = $crate::spans::SpanMetadata {
             lod: $crate::Verbosity::Max,
-            name: $name,
+            name: std::borrow::Cow::Borrowed($name),
             target: module_path!(),
             module_path: module_path!(),
             file: file!(),

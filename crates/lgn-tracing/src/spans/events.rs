@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use lgn_tracing_transit::prelude::*;
 
 use crate::Verbosity;
@@ -5,7 +7,7 @@ use crate::Verbosity;
 #[derive(Debug)]
 pub struct SpanMetadata {
     pub lod: Verbosity,
-    pub name: &'static str,
+    pub name: Cow<'static, str>,
     pub target: &'static str,
     pub module_path: &'static str,
     pub file: &'static str,
