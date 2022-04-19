@@ -30,8 +30,7 @@ fn compile(
             continue;
         }
 
-        let source_payload = &script_resource.compiled_script;
-        let source_payload = std::str::from_utf8(source_payload).unwrap();
+        let source_payload = &script_resource.script;
         println!("{}", &source_payload);
 
         let ast = rhai_eng.compile(source_payload).unwrap();
