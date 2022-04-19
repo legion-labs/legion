@@ -8,6 +8,7 @@ use std::{
 };
 
 use lgn_content_store::{ChunkIdentifier, ContentProvider};
+use lgn_data_model::TypeReflection;
 use lgn_ecs::schedule::SystemLabel;
 
 use crate::{
@@ -431,8 +432,36 @@ impl AssetRegistry {
         }
     }
 
+    pub fn new_resource(&self, kind: ResourceType) -> Option<HandleUntyped> {
+        todo!()
+    }
+
+    pub fn get_resource_type_name(&self, kind: ResourceType) -> Option<&'static str> {
+        todo!()
+    }
+
+    pub fn get_resource_types(&self) -> Vec<(ResourceType, &'static str)> {
+        todo!()
+    }
+
+    pub fn get_resource_reflection<'a>(
+        &'a self,
+        kind: ResourceType,
+        handle: &HandleUntyped,
+    ) -> Option<&'a dyn TypeReflection> {
+        todo!()
+    }
+
+    pub fn get_resource_reflection_mut<'a>(
+        &'a self,
+        kind: ResourceType,
+        handle: &HandleUntyped,
+    ) -> Option<&'a mut dyn TypeReflection> {
+        todo!()
+    }
+
     pub fn deserialize_resource(
-        &mut self,
+        &self,
         kind: ResourceType,
         reader: &mut dyn std::io::Read,
     ) -> Result<HandleUntyped, AssetRegistryError> {
@@ -440,9 +469,9 @@ impl AssetRegistry {
     }
 
     pub fn serialize_resource(
-        &mut self,
+        &self,
         kind: ResourceType,
-        handle: impl AsRef<HandleUntyped>,
+        handle: HandleUntyped,
         writer: &mut dyn std::io::Write,
     ) -> Result<(usize, Vec<ResourcePathId>), AssetRegistryError> {
         todo!()

@@ -31,7 +31,7 @@ async fn validate_test_entity(
     {
         let resource_registry = transaction_manager.resource_registry.lock().await;
         let test_entity = handle.get::<TestEntity>(&resource_registry).unwrap();
-        callback(test_entity);
+        callback(&*test_entity);
     }
 }
 
@@ -178,7 +178,6 @@ async fn test_transaction_system() -> Result<(), Error> {
     {
         let mut transaction_manager = TransactionManager::new(
             project.clone(),
-            resource_registry.clone(),
             asset_registry.clone(),
             build_manager,
             SelectionManager::create(),

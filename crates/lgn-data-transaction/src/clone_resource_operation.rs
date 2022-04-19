@@ -35,17 +35,17 @@ impl TransactionOperation for CloneResourceOperation {
         let source_handle = ctx.get_or_load(self.source_resource_id).await?;
 
         let mut buffer = Vec::<u8>::new();
-        ctx.resource_registry
+        ctx.asset_registry
             .serialize_resource(self.source_resource_id.kind, source_handle, &mut buffer)
             .map_err(|err| Error::InvalidResourceSerialization(self.source_resource_id, err))?;
 
         let clone_handle = ctx
-            .resource_registry
+            .asset_registry
             .deserialize_resource(self.source_resource_id.kind, &mut buffer.as_slice())
             .map_err(|err| Error::InvalidResourceDeserialization(self.source_resource_id, err))?;
 
         let resource_type_name = ctx
-            .resource_registry
+            .asset_registry
             .get_resource_type_name(self.source_resource_id.kind)
             .ok_or(Error::InvalidResourceType(self.source_resource_id.kind))?;
 
@@ -60,7 +60,7 @@ impl TransactionOperation for CloneResourceOperation {
 
         if let Some(entity_name) = source_raw_name.to_string().rsplit('/').next() {
             if let Some(reflection) = ctx
-                .resource_registry
+                .asset_registry
                 .get_resource_reflection_mut(self.source_resource_id.kind, &clone_handle)
             {
                 // Try to set the name component field
@@ -84,8 +84,8 @@ impl TransactionOperation for CloneResourceOperation {
                 resource_type_name,
                 self.clone_resource_id.kind,
                 self.clone_resource_id.id,
-                &clone_handle,
-                &mut ctx.resource_registry,
+                clone_handle.clone(),
+                &ctx.asset_registry,
             )
             .await
             .map_err(|err| Error::Project(self.clone_resource_id, err))?;

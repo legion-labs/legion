@@ -17,7 +17,7 @@ use lgn_content_store::ContentProvider;
 use lgn_data_offline::resource::{
     Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
 };
-use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
+use lgn_data_runtime::{AssetRegistry, Resource, ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_graphics_data::{offline_gltf::GltfFile, offline_png::PngFile, offline_psd::PsdFile};
 use lgn_source_control::{RepositoryIndex, RepositoryName};
 use lgn_tracing::{error, info};
@@ -87,7 +87,6 @@ pub async fn build_offline(
             source_control_content_provider,
         )
         .await;
-        let mut resources = resources.lock().await;
 
         // cleanup data from source control before we generate new data.
         if !incremental {
@@ -148,7 +147,7 @@ pub async fn build_offline(
             .collect::<Vec<_>>();
 
         let resource_ids =
-            create_or_find_default(&file_paths, &in_resources, &mut project, &mut resources).await;
+            create_or_find_default(&file_paths, &in_resources, &mut project, &resources).await;
 
         info!("Created resources: {:#?}", project);
 
@@ -162,15 +161,15 @@ pub async fn build_offline(
                         path,
                         &resource_ids,
                         &mut project,
-                        &mut resources,
+                        &resources,
                     )
                     .await;
 
                     if let Some(entity) = project
-                        .load_resource(resource_id, &mut resources)
+                        .load_resource(resource_id, &resources)
                         .unwrap()
                         .typed::<offline_data::Entity>()
-                        .get_mut(&mut resources)
+                        .get_mut(&resources)
                     {
                         if let Some(parent_id) = &entity.parent {
                             let mut raw_name = project.raw_resource_name(resource_id.id).unwrap();
@@ -188,7 +187,7 @@ pub async fn build_offline(
                         path,
                         &resource_ids,
                         &mut project,
-                        &mut resources,
+                        &resources,
                     )
                     .await;
                 }
@@ -198,18 +197,18 @@ pub async fn build_offline(
                         path,
                         &resource_ids,
                         &mut project,
-                        &mut resources,
+                        &resources,
                     )
                     .await;
                 }
                 "psd" => {
-                    load_psd_resource(resource_id, path, &mut project, &mut resources).await;
+                    load_psd_resource(resource_id, path, &mut project, &resources).await;
                 }
                 "png" => {
-                    load_png_resource(resource_id, path, &mut project, &mut resources).await;
+                    load_png_resource(resource_id, path, &mut project, &resources).await;
                 }
                 "gltf" => {
-                    load_gltf_resource(resource_id, path, &mut project, &mut resources).await;
+                    load_gltf_resource(resource_id, path, &mut project, &resources).await;
                 }
                 _ => panic!(),
             }
@@ -236,7 +235,7 @@ async fn setup_project(
     repository_index: impl RepositoryIndex,
     repository_name: RepositoryName,
     source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
-) -> (Project, Arc<Mutex<ResourceRegistry>>) {
+) -> (Project, Arc<AssetRegistry>) {
     // create/load project
     let project = if let Ok(project) = Project::open(
         root_folder,
@@ -257,7 +256,7 @@ async fn setup_project(
     }
     .unwrap();
 
-    let mut registry = ResourceRegistryOptions::new();
+    /*let mut registry = ResourceRegistryOptions::new();
     offline_data::register_resource_types(&mut registry);
     lgn_graphics_data::offline::register_resource_types(&mut registry)
         .add_type_mut::<lgn_graphics_data::offline_texture::Texture>()
@@ -265,7 +264,8 @@ async fn setup_project(
         .add_type_mut::<lgn_graphics_data::offline_png::PngFile>()
         .add_type_mut::<lgn_graphics_data::offline_gltf::GltfFile>();
     generic_data::offline::register_resource_types(&mut registry);
-    let registry = registry.create_async_registry();
+    let registry = registry.create_async_registry();*/
+    let registry = todo!();
 
     (project, registry)
 }
@@ -309,7 +309,7 @@ async fn create_or_find_default(
     file_paths: &[PathBuf],
     in_resources: &[(ResourcePathName, ResourceId)],
     project: &mut Project,
-    resources: &mut ResourceRegistry,
+    resources: &AssetRegistry,
 ) -> HashMap<ResourcePathName, ResourceTypeAndId> {
     let mut ids = HashMap::<ResourcePathName, ResourceTypeAndId>::default();
     build_resource_from_raw(file_paths, in_resources, project, resources, &mut ids).await;
@@ -321,7 +321,7 @@ async fn build_resource_from_raw(
     file_paths: &[PathBuf],
     in_resources: &[(ResourcePathName, ResourceId)],
     project: &mut Project,
-    resources: &mut ResourceRegistry,
+    resources: &AssetRegistry,
     ids: &mut HashMap<ResourcePathName, ResourceTypeAndId>,
 ) {
     for (i, path) in file_paths.iter().enumerate() {
@@ -360,7 +360,7 @@ async fn build_resource_from_raw(
 
 async fn build_test_entity(
     project: &mut Project,
-    resources: &mut ResourceRegistry,
+    resources: &AssetRegistry,
     ids: &mut HashMap<ResourcePathName, ResourceTypeAndId>,
 ) {
     // Create TestEntity Generic DataContainer
@@ -457,7 +457,7 @@ async fn load_ron_resource<RawType, OfflineType>(
     file: &Path,
     references: &HashMap<ResourcePathName, ResourceTypeAndId>,
     project: &mut Project,
-    resources: &mut ResourceRegistry,
+    resources: &AssetRegistry,
 ) -> Option<ResourceTypeAndId>
 where
     RawType: DeserializeOwned,
@@ -487,7 +487,7 @@ async fn load_psd_resource(
     resource_id: ResourceTypeAndId,
     file: &Path,
     project: &mut Project,
-    resources: &mut ResourceRegistry,
+    resources: &AssetRegistry,
 ) -> Option<ResourceTypeAndId> {
     let raw_data = fs::read(file).ok()?;
     let loaded_psd = PsdFile::from_bytes(&raw_data)?;
@@ -511,7 +511,7 @@ async fn load_png_resource(
     resource_id: ResourceTypeAndId,
     file: &Path,
     project: &mut Project,
-    resources: &mut ResourceRegistry,
+    resources: &AssetRegistry,
 ) -> Option<ResourceTypeAndId> {
     let reader = fs::read(file).ok()?;
     let handle = resources
@@ -528,7 +528,7 @@ async fn load_gltf_resource(
     resource_id: ResourceTypeAndId,
     file: &Path,
     project: &mut Project,
-    resources: &mut ResourceRegistry,
+    resources: &AssetRegistry,
 ) -> Option<ResourceTypeAndId> {
     let handle = resources.new_resource(GltfFile::TYPE).unwrap();
     let gltf_file = handle.get_mut::<GltfFile>(resources).unwrap();

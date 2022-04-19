@@ -5,9 +5,9 @@
 use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
 use lgn_data_model::json_utils::get_property_as_json_string;
+use lgn_data_offline::resource::ResourcePathName;
 use lgn_data_offline::resource::{Project, ResourceHandles, ResourceRegistry};
-use lgn_data_offline::{resource::ResourcePathName, ResourcePathId};
-use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
+use lgn_data_runtime::{Resource, ResourceId, ResourcePathId, ResourceType, ResourceTypeAndId};
 use lgn_data_transaction::{
     ArrayOperation, CloneResourceOperation, CreateResourceOperation, DeleteResourceOperation,
     LockContext, RenameResourceOperation, ReparentResourceOperation, Transaction,
@@ -88,10 +88,8 @@ impl IndexSnapshot {
                 let mut parent_id = raw_name.extract_parent_info().0;
                 if parent_id.is_none() && kind == sample_data::offline::Entity::TYPE {
                     if let Ok(handle) = ctx.get_or_load(res_id).await {
-                        if let Some(entity) = ctx
-                            .resource_registry
-                            .get(&handle)
-                            .map(|v| v.downcast_ref::<sample_data::offline::Entity>().unwrap())
+                        if let Some(entity) =
+                            handle.get::<sample_data::offline::Entity>(&ctx.asset_registry)
                         {
                             if let Some(parent) = &entity.parent {
                                 parent_id = Some(parent.source_resource()); // Some(parent.resource_id());
@@ -509,7 +507,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
     ) -> Result<Response<GetResourceTypeNamesResponse>, Status> {
         let mut transaction_manager = self.transaction_manager.lock().await;
         let ctx = LockContext::new(&transaction_manager).await;
-        let res_types = ctx.resource_registry.get_resource_types();
+        let res_types = ctx.asset_registry.get_resource_types();
         Ok(Response::new(GetResourceTypeNamesResponse {
             resource_types: res_types
                 .into_iter()

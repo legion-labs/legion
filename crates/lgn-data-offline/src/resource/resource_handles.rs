@@ -1,16 +1,14 @@
 use std::collections::{btree_map::Entry, BTreeMap};
 
-use lgn_data_runtime::ResourceTypeAndId;
+use lgn_data_runtime::{HandleUntyped, ResourceTypeAndId};
 
-use super::ResourceHandleUntyped;
-
-/// Mapping between a `ResourceId` and `ResourceHandleUntyped`
+/// Mapping between a `ResourceId` and `HandleUntyped`
 #[derive(Default)]
-pub struct ResourceHandles(BTreeMap<ResourceTypeAndId, ResourceHandleUntyped>);
+pub struct ResourceHandles(BTreeMap<ResourceTypeAndId, HandleUntyped>);
 
 impl ResourceHandles {
-    /// Retrieve a `ResourceHandleUntyped` from a `ResourceId`
-    pub fn get(&self, resource_id: ResourceTypeAndId) -> Option<&ResourceHandleUntyped> {
+    /// Retrieve a `HandleUntyped` from a `ResourceId`
+    pub fn get(&self, resource_id: ResourceTypeAndId) -> Option<&HandleUntyped> {
         self.0.get(&resource_id)
     }
 
@@ -18,17 +16,17 @@ impl ResourceHandles {
     pub fn entry(
         &mut self,
         resource_id: ResourceTypeAndId,
-    ) -> Entry<'_, ResourceTypeAndId, ResourceHandleUntyped> {
+    ) -> Entry<'_, ResourceTypeAndId, HandleUntyped> {
         self.0.entry(resource_id)
     }
 
-    /// Insert a `ResourceHandleUntyped`
-    pub fn insert(&mut self, resource_id: ResourceTypeAndId, handle: ResourceHandleUntyped) {
+    /// Insert a `HandleUntyped`
+    pub fn insert(&mut self, resource_id: ResourceTypeAndId, handle: HandleUntyped) {
         self.0.insert(resource_id, handle);
     }
 
-    /// Remove a `ResourceHandleUntyped`
-    pub fn remove(&mut self, resource_id: ResourceTypeAndId) -> Option<ResourceHandleUntyped> {
+    /// Remove a `HandleUntyped`
+    pub fn remove(&mut self, resource_id: ResourceTypeAndId) -> Option<HandleUntyped> {
         self.0.remove(&resource_id)
     }
 

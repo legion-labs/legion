@@ -306,15 +306,12 @@ impl ResourceRegistry {
 mod tests {
     use std::{any::Any, io};
 
-    use lgn_data_runtime::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
-
-    use crate::{
-        resource::{
-            registry::ResourceRegistryOptions, OfflineResource, ResourceProcessor,
-            ResourceProcessorError,
-        },
-        ResourcePathId,
+    use lgn_data_runtime::{
+        resource, Asset, AssetLoader, AssetLoaderError, OfflineResource, Resource, ResourcePathId,
+        ResourceProcessor, ResourceProcessorError,
     };
+
+    use crate::resource::registry::ResourceRegistryOptions;
 
     #[resource("sample")]
     struct SampleResource {

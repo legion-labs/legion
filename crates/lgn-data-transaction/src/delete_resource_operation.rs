@@ -34,8 +34,12 @@ impl TransactionOperation for DeleteResourceOperation {
             // On the first apply, save a copy original resource for redo
             if self.old_resource_name.is_none() {
                 let mut old_resource_data = Vec::<u8>::new();
-                ctx.resource_registry
-                    .serialize_resource(self.resource_id.kind, &old_handle, &mut old_resource_data)
+                ctx.asset_registry
+                    .serialize_resource(
+                        self.resource_id.kind,
+                        old_handle.clone(),
+                        &mut old_resource_data,
+                    )
                     .map_err(|err| Error::InvalidResourceSerialization(self.resource_id, err))?;
 
                 self.old_resource_name = Some(
@@ -65,12 +69,12 @@ impl TransactionOperation for DeleteResourceOperation {
             .ok_or(Error::InvalidDeleteOperation(self.resource_id))?;
 
         let handle = ctx
-            .resource_registry
+            .asset_registry
             .deserialize_resource(self.resource_id.kind, &mut old_resource_data.as_slice())
             .map_err(|err| Error::InvalidResourceDeserialization(self.resource_id, err))?;
 
         if let Some(resource_type_name) = ctx
-            .resource_registry
+            .asset_registry
             .get_resource_type_name(self.resource_id.kind)
         {
             ctx.project
@@ -79,8 +83,8 @@ impl TransactionOperation for DeleteResourceOperation {
                     resource_type_name,
                     self.resource_id.kind,
                     self.resource_id.id,
-                    &handle,
-                    &mut ctx.resource_registry,
+                    handle.clone(),
+                    &ctx.asset_registry,
                 )
                 .await
                 .map_err(|err| Error::Project(self.resource_id, err))?;

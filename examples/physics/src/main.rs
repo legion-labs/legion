@@ -16,12 +16,12 @@ use std::{
 
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_offline::{
-    resource::{Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions},
-    ResourcePathId,
+use lgn_data_offline::resource::{
+    Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
 };
 use lgn_data_runtime::{
-    manifest::Manifest, AssetRegistryOptions, Component, Resource, ResourceId, ResourceTypeAndId,
+    manifest::Manifest, AssetRegistry, AssetRegistryOptions, Component, Resource, ResourceId,
+    ResourcePathId, ResourceTypeAndId,
 };
 use lgn_data_transaction::BuildManager;
 use lgn_graphics_data::offline::CameraSetup;
@@ -105,12 +105,14 @@ async fn main() -> anyhow::Result<()> {
     .await
     .expect("failed to create a project");
 
-    let mut resource_registry = ResourceRegistryOptions::new();
+    /*let mut resource_registry = ResourceRegistryOptions::new();
     lgn_graphics_data::offline::register_resource_types(&mut resource_registry);
     generic_data::offline::register_resource_types(&mut resource_registry);
     sample_data::offline::register_resource_types(&mut resource_registry);
 
-    let resource_registry = resource_registry.create_async_registry();
+    let resource_registry = resource_registry.create_async_registry();*/
+
+    let resource_registry = todo!();
 
     let resource_ids = create_offline_data(&mut project, &resource_registry).await;
     project
@@ -208,7 +210,7 @@ fn clean_folders(project_dir: impl AsRef<Path>) {
 
 async fn create_offline_data(
     project: &mut Project,
-    resource_registry: &Arc<Mutex<ResourceRegistry>>,
+    resource_registry: &AssetRegistry,
 ) -> Vec<ResourceTypeAndId> {
     let cube_model_id = create_offline_model(
         project,
@@ -440,7 +442,7 @@ async fn create_offline_data(
 
 async fn create_offline_entity(
     project: &mut Project,
-    resource_registry: &Arc<Mutex<ResourceRegistry>>,
+    resources: &AssetRegistry,
     resource_id: &str,
     resource_path: &str,
     components: Vec<Box<dyn Component>>,
@@ -453,11 +455,10 @@ async fn create_offline_entity(
     let type_id = ResourceTypeAndId { kind, id };
     let name: ResourcePathName = resource_path.into();
 
-    let mut resources = resource_registry.lock().await;
     let exists = project.exists(id).await;
     let handle = if exists {
         project
-            .load_resource(type_id, &mut resources)
+            .load_resource(type_id, &resources)
             .expect("failed to load resource")
     } else {
         resources
@@ -466,7 +467,7 @@ async fn create_offline_entity(
     };
 
     let entity = handle
-        .get_mut::<sample_data::offline::Entity>(&mut resources)
+        .get_mut::<sample_data::offline::Entity>(&resources)
         .unwrap();
     entity.components.clear();
     entity.components.extend(components.into_iter());
@@ -475,7 +476,7 @@ async fn create_offline_entity(
 
     if exists {
         project
-            .save_resource(type_id, handle, &mut resources)
+            .save_resource(type_id, handle, &resources)
             .await
             .expect("failed to save resource");
     } else {
@@ -486,7 +487,7 @@ async fn create_offline_entity(
                 kind,
                 id,
                 handle,
-                &mut resources,
+                &resources,
             )
             .await
             .expect("failed to add new resource");
@@ -498,7 +499,7 @@ async fn create_offline_entity(
 
 async fn create_offline_model(
     project: &mut Project,
-    resource_registry: &Arc<Mutex<ResourceRegistry>>,
+    resources: &AssetRegistry,
     resource_id: &str,
     resource_path: &str,
     mesh: Mesh,
@@ -510,11 +511,10 @@ async fn create_offline_model(
     let type_id = ResourceTypeAndId { kind, id };
     let name: ResourcePathName = resource_path.into();
 
-    let mut resources = resource_registry.lock().await;
     let exists = project.exists(id).await;
     let handle = if exists {
         project
-            .load_resource(type_id, &mut resources)
+            .load_resource(type_id, &resources)
             .expect("failed to load resource")
     } else {
         resources
@@ -523,7 +523,7 @@ async fn create_offline_model(
     };
 
     let model = handle
-        .get_mut::<lgn_graphics_data::offline::Model>(&mut resources)
+        .get_mut::<lgn_graphics_data::offline::Model>(&resources)
         .unwrap();
     model.meshes.clear();
     let mesh = lgn_graphics_data::offline::Mesh {
@@ -542,7 +542,7 @@ async fn create_offline_model(
 
     if exists {
         project
-            .save_resource(type_id, handle, &mut resources)
+            .save_resource(type_id, handle, &resources)
             .await
             .expect("failed to save resource");
     } else {
@@ -553,7 +553,7 @@ async fn create_offline_model(
                 kind,
                 id,
                 handle,
-                &mut resources,
+                &resources,
             )
             .await
             .expect("failed to add new resource");

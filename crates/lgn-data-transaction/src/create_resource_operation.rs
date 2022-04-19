@@ -41,11 +41,11 @@ impl TransactionOperation for CreateResourceOperation {
             let mut reader =
                 File::open(path).map_err(|_err| Error::InvalidFilePath(path.clone()))?;
 
-            ctx.resource_registry
+            ctx.asset_registry
                 .deserialize_resource(self.resource_id.kind, &mut reader)
                 .map_err(|err| Error::InvalidResourceDeserialization(self.resource_id, err))?
         } else {
-            ctx.resource_registry
+            ctx.asset_registry
                 .new_resource(self.resource_id.kind)
                 .ok_or(Error::InvalidResourceType(self.resource_id.kind))?
         };
@@ -67,7 +67,7 @@ impl TransactionOperation for CreateResourceOperation {
         }
 
         if let Some(resource_type_name) = ctx
-            .resource_registry
+            .asset_registry
             .get_resource_type_name(self.resource_id.kind)
         {
             ctx.project
@@ -76,8 +76,8 @@ impl TransactionOperation for CreateResourceOperation {
                     resource_type_name,
                     self.resource_id.kind,
                     self.resource_id.id,
-                    &handle,
-                    &mut ctx.resource_registry,
+                    handle.clone(),
+                    &ctx.asset_registry,
                 )
                 .await
                 .map_err(|err| Error::Project(self.resource_id, err))?;

@@ -100,6 +100,10 @@ impl HandleUntyped {
         registry.get::<T>(self.inner.type_id)
     }
 
+    pub fn get_mut<'a, T: Any + Resource>(&'_ self, registry: &'a AssetRegistry) -> Option<&mut T> {
+        todo!() // needs AssetRegistryGuardMut
+    }
+
     /// Returns `ResourceId` associated with this handle.
     pub fn id(&self) -> ResourceTypeAndId {
         self.inner.type_id
@@ -161,6 +165,13 @@ impl<T: Any + Resource> Handle<T> {
         registry: &'a AssetRegistry,
     ) -> Option<crate::AssetRegistryGuard<'a, T>> {
         registry.get::<T>(self.inner.type_id)
+    }
+
+    pub fn get_mut<'a>(
+        &'_ self,
+        registry: &'a AssetRegistry,
+    ) -> Option<crate::AssetRegistryGuard<'a, T>> {
+        todo!() // needs deref_mut (or mut guard?)
     }
 
     /// Returns `ResourceId` associated with this handle.

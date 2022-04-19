@@ -93,7 +93,7 @@ impl TransactionOperation for ArrayOperation {
         let resource_handle = ctx.get_or_load(self.resource_id).await?;
 
         let reflection = ctx
-            .resource_registry
+            .asset_registry
             .get_resource_reflection_mut(self.resource_id.kind, &resource_handle)
             .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 
@@ -222,7 +222,7 @@ impl TransactionOperation for ArrayOperation {
         let handle = ctx.get_or_load(self.resource_id).await?;
 
         let reflection = ctx
-            .resource_registry
+            .asset_registry
             .get_resource_reflection_mut(self.resource_id.kind, &handle)
             .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 

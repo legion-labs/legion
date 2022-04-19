@@ -360,7 +360,7 @@ impl Project {
         name: ResourcePathName,
         kind_name: &str,
         kind: ResourceType,
-        handle: impl AsRef<HandleUntyped>,
+        handle: HandleUntyped,
         registry: &mut AssetRegistry,
     ) -> Result<ResourceTypeAndId, Error> {
         self.add_resource_with_id(name, kind_name, kind, ResourceId::new(), handle, registry)
@@ -382,8 +382,8 @@ impl Project {
         kind_name: &str,
         kind: ResourceType,
         id: ResourceId,
-        handle: impl AsRef<HandleUntyped>,
-        registry: &mut AssetRegistry,
+        handle: HandleUntyped,
+        registry: &AssetRegistry,
     ) -> Result<ResourceTypeAndId, Error> {
         let meta_path = self.metadata_path(id);
         let resource_path = self.resource_path(id);
@@ -464,8 +464,8 @@ impl Project {
     pub async fn save_resource(
         &mut self,
         type_id: ResourceTypeAndId,
-        handle: impl AsRef<HandleUntyped>,
-        resources: &mut AssetRegistry,
+        handle: HandleUntyped,
+        resources: &AssetRegistry,
     ) -> Result<(), Error> {
         let resource_path = self.resource_path(type_id.id);
         let metadata_path = self.metadata_path(type_id.id);
@@ -517,7 +517,7 @@ impl Project {
     pub fn load_resource(
         &self,
         type_id: ResourceTypeAndId,
-        resources: &mut AssetRegistry,
+        resources: &AssetRegistry,
     ) -> Result<HandleUntyped, Error> {
         let resource_path = self.resource_path(type_id.id);
 

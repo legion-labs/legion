@@ -53,7 +53,8 @@ impl ResourceRegistryPlugin {
 
     fn post_setup(world: &mut World) {
         let registry_options = world.remove_resource::<ResourceRegistryOptions>().unwrap();
-        let registry = registry_options.create_async_registry();
+        //let registry = registry_options.create_async_registry();
+        let registry = todo!();
 
         let settings = world.resource::<ResourceRegistrySettings>();
         let project_dir = settings.root_folder.clone();
@@ -134,7 +135,6 @@ impl ResourceRegistryPlugin {
             Arc::new(Mutex::new(TransactionManager::new(
                 Arc::new(Mutex::new(project)),
                 registry,
-                asset_registry.clone(),
                 build_manager,
                 selection_manager.clone(),
             )))
