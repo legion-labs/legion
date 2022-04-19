@@ -431,6 +431,7 @@ fn query_physical_device_info(
         khr::Swapchain::name(),
         khr::ExternalMemoryWin32::name(),
         khr::ExternalSemaphoreWin32::name(),
+        khr::DynamicRendering::name(),
     ];
 
     #[cfg(target_os = "linux")]
@@ -438,6 +439,7 @@ fn query_physical_device_info(
         khr::Swapchain::name(),
         khr::ExternalMemoryFd::name(),
         khr::ExternalSemaphoreFd::name(),
+        khr::DynamicRendering::name(),
     ];
 
     let available_extensions: Vec<ash::vk::ExtensionProperties> =
