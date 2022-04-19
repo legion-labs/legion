@@ -1,7 +1,77 @@
 use crate::data_lake_connection::DataLakeConnection;
 use anyhow::Context;
 use anyhow::Result;
+use lgn_telemetry_proto::telemetry::{ContainerMetadata, UdtMember, UserDefinedType};
 use lgn_tracing::prelude::*;
+use prost::Message;
+
+fn parse_json_udt_member(json_udt_member: &serde_json::value::Value) -> Result<UdtMember> {
+    let name = json_udt_member["name"]
+        .as_str()
+        .with_context(|| "reading member name")?;
+    let type_name = json_udt_member["type_name"]
+        .as_str()
+        .with_context(|| "reading member type_name")?;
+    let offset = json_udt_member["offset"]
+        .as_str()
+        .with_context(|| "reading member offset")?
+        .parse::<u32>()
+        .with_context(|| "parsing member offset")?;
+    let size = json_udt_member["size"]
+        .as_str()
+        .with_context(|| "reading member size")?
+        .parse::<u32>()
+        .with_context(|| "parsing member size")?;
+    let is_reference = json_udt_member["is_reference"]
+        .as_bool()
+        .with_context(|| "reading member is_reference")?;
+    Ok(UdtMember {
+        name: name.to_owned(),
+        type_name: type_name.to_owned(),
+        offset,
+        size,
+        is_reference,
+    })
+}
+
+fn parse_json_udt(json_udt: &serde_json::value::Value) -> Result<UserDefinedType> {
+    let name = json_udt["name"]
+        .as_str()
+        .with_context(|| "reading udt name")?;
+    let size = json_udt["size"]
+        .as_str()
+        .with_context(|| "reading udt size")?
+        .parse::<u32>()
+        .with_context(|| "parsing udt size")?;
+    let is_reference = json_udt["is_reference"]
+        .as_bool()
+        .with_context(|| "reading udt is_reference")?;
+
+    let mut members = vec![];
+    for json_member in json_udt["members"]
+        .as_array()
+        .with_context(|| "reading udt members")?
+    {
+        members.push(parse_json_udt_member(json_member)?);
+    }
+
+    Ok(UserDefinedType {
+        name: name.to_owned(),
+        size,
+        members,
+        is_reference,
+    })
+}
+
+fn parse_json_container_metadata(
+    json_udts: &[serde_json::value::Value],
+) -> Result<ContainerMetadata> {
+    let mut udts = vec![];
+    for json_udt in json_udts {
+        udts.push(parse_json_udt(json_udt)?);
+    }
+    Ok(ContainerMetadata { types: udts })
+}
 
 #[derive(Clone)]
 pub struct WebIngestionService {
@@ -11,6 +81,43 @@ pub struct WebIngestionService {
 impl WebIngestionService {
     pub fn new(lake: DataLakeConnection) -> Self {
         Self { lake }
+    }
+
+    #[span_fn]
+    pub async fn insert_stream(&self, body: serde_json::value::Value) -> Result<()> {
+        let mut connection = self.lake.db_pool.acquire().await?;
+        let stream_id = body["stream_id"]
+            .as_str()
+            .with_context(|| "reading stream_id")?;
+        let process_id = body["process_id"]
+            .as_str()
+            .with_context(|| "reading process_id")?;
+        let tags = body["tags"].to_string();
+        let properties = body["properties"].to_string();
+        let dependencies_metadata = parse_json_container_metadata(
+            body["dependencies_metadata"]
+                .as_array()
+                .with_context(|| "reading dependencies_metadata")?,
+        )?
+        .encode_to_vec();
+        let objects_metadata = parse_json_container_metadata(
+            body["objects_metadata"]
+                .as_array()
+                .with_context(|| "reading objects_metadata")?,
+        )?
+        .encode_to_vec();
+        info!("new stream [{}] {}", tags, stream_id);
+        sqlx::query("INSERT INTO streams VALUES(?,?,?,?,?,?);")
+            .bind(stream_id)
+            .bind(process_id)
+            .bind(dependencies_metadata)
+            .bind(objects_metadata)
+            .bind(tags)
+            .bind(properties)
+            .execute(&mut connection)
+            .await
+            .with_context(|| "inserting into streams")?;
+        Ok(())
     }
 
     #[span_fn]

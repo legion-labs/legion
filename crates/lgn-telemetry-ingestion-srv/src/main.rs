@@ -93,6 +93,24 @@ async fn insert_process_request(
     }
 }
 
+async fn insert_stream_request(
+    service: WebIngestionService,
+    body: serde_json::value::Value,
+) -> Result<warp::reply::Response, warp::Rejection> {
+    if let Err(e) = service.insert_stream(body).await {
+        error!("Error in insert_stream_request: {}", e);
+        Ok(http::response::Response::builder()
+            .status(500)
+            .body(hyper::body::Body::from("Error in insert_process_request"))
+            .unwrap())
+    } else {
+        Ok(http::response::Response::builder()
+            .status(200)
+            .body(hyper::body::Body::from("OK"))
+            .unwrap())
+    }
+}
+
 async fn serve_http(args: &Cli) -> Result<(), Box<dyn std::error::Error>> {
     let data_lake = match &args.spec {
         DataLakeSpec::Local { path } => connect_to_local_data_lake(path.clone()).await?,
@@ -101,16 +119,24 @@ async fn serve_http(args: &Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
     };
     let service = WebIngestionService::new(data_lake);
+    let web_ingestion_filter = warp::path("telemetryingestion").and(with_service(service));
 
-    let command_filter = warp::path("telemetryingestion")
-        .and(with_service(service))
+    let insert_process_filter = web_ingestion_filter
+        .clone()
         .and(warp::path("insertprocess"))
-        // .and(warp::body::bytes())
         .and(warp::body::json())
         .and_then(insert_process_request);
-    warp::serve(command_filter)
-        .run(args.listen_endpoint_http)
-        .await;
+
+    let insert_stream_filter = web_ingestion_filter
+        .and(warp::path("insertstream"))
+        .and(warp::body::json())
+        .and_then(insert_stream_request);
+
+    // .and(warp::body::bytes())
+
+    let routes = warp::post().and(insert_process_filter.or(insert_stream_filter));
+
+    warp::serve(routes).run(args.listen_endpoint_http).await;
     Ok(())
 }
 
