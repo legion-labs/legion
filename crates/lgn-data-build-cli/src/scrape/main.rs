@@ -420,7 +420,9 @@ async fn main() -> Result<(), String> {
                     }
                 }
                 SourceCommands::Name { id } => {
-                    let type_id = id.parse::<ResourceTypeAndId>().map_err(|e| e.to_string())?;
+                    let type_id = id
+                        .parse::<ResourceTypeAndId>()
+                        .map_err(std::string::ToString::to_string)?;
                     if let Ok(name) = project.resource_name(type_id.id) {
                         println!("{} = {}", name, type_id);
                     } else {
