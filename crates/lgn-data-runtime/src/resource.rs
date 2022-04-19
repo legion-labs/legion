@@ -253,12 +253,20 @@ pub struct ResourceTypeAndId {
 }
 
 impl FromStr for ResourceTypeAndId {
-    type Err = Box<dyn std::error::Error>;
+    type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut pair = s.trim_matches(|p| p == '(' || p == ')').split(',');
-        let kind = pair.next().ok_or("missing kind")?.parse::<ResourceType>()?;
-        let id = pair.next().ok_or("missing id")?.parse::<ResourceId>()?;
+        let kind = pair
+            .next()
+            .ok_or("missing kind")?
+            .parse::<ResourceType>()
+            .map_err(|_err| "invalid resourcetype")?;
+        let id = pair
+            .next()
+            .ok_or("missing id")?
+            .parse::<ResourceId>()
+            .map_err(|_err| "invalid resourceid")?;
         Ok(Self { kind, id })
     }
 }

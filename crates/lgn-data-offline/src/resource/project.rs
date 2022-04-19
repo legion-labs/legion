@@ -11,8 +11,8 @@ use std::{
 use lgn_content_store::ContentProvider;
 use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_source_control::{
-    CanonicalPath, CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Workspace,
-    WorkspaceConfig, WorkspaceRegistration,
+    CanonicalPath, CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Staging,
+    Workspace, WorkspaceConfig, WorkspaceRegistration,
 };
 use lgn_tracing::error;
 use thiserror::Error;
@@ -441,6 +441,25 @@ impl Project {
             let files = [metadata_path.as_path(), resource_path.as_path()];
 
             self.workspace.delete_files(files).await?;
+        }
+
+        Ok(())
+    }
+
+    /// Delete the resource+meta files, remove from Registry and Flush index
+    pub async fn revert_resource(&mut self, id: ResourceId) -> Result<(), Error> {
+        let resource_path = self.resource_path(id);
+        let metadata_path = self.metadata_path(id);
+
+        {
+            let files = [metadata_path.as_path(), resource_path.as_path()];
+            self.workspace
+                .revert_files(
+                    &self.source_control_content_provider,
+                    files,
+                    Staging::StagedAndUnstaged,
+                )
+                .await?;
         }
 
         Ok(())
