@@ -1,7 +1,4 @@
-use std::{
-    str::{self, FromStr},
-    sync::Arc,
-};
+use std::{str::FromStr, sync::Arc};
 
 use lgn_app::prelude::*;
 use lgn_data_runtime::AssetRegistry;
@@ -53,8 +50,7 @@ fn compile(
             continue;
         }
 
-        let source_payload = &script_resource.compiled_script;
-        let source_payload = str::from_utf8(source_payload).unwrap();
+        let source_payload = &script_resource.script;
 
         let mut sources = Sources::new();
         sources.insert(Source::new("entry", &source_payload));

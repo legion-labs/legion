@@ -2120,6 +2120,7 @@ dependencies = [
  "lgn-asset-registry",
  "lgn-async",
  "lgn-compiler-runtime-entity",
+ "lgn-compiler-scripting",
  "lgn-config",
  "lgn-content-store",
  "lgn-core",
@@ -3696,6 +3697,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-compiler-scripting"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "bincode",
+ "lgn-data-codegen",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-scripting",
+ "lgn-tracing",
+ "tokio",
+]
+
+[[package]]
 name = "lgn-compiler-test-atoi"
 version = "0.1.0"
 dependencies = [
@@ -4883,6 +4899,7 @@ dependencies = [
  "lgn-compiler-runtime-entity",
  "lgn-compiler-runtime-instance",
  "lgn-compiler-runtime-model",
+ "lgn-compiler-scripting",
  "lgn-compiler-test-atoi",
  "lgn-compiler-test-base64",
  "lgn-compiler-test-refs",
@@ -6058,6 +6075,7 @@ dependencies = [
  "lgn-app",
  "lgn-compiler-runtime-entity",
  "lgn-compiler-runtime-model",
+ "lgn-compiler-scripting",
  "lgn-content-store",
  "lgn-data-build",
  "lgn-data-compiler",
@@ -6265,6 +6283,7 @@ dependencies = [
  "lgn-app",
  "lgn-compiler-runtime-entity",
  "lgn-compiler-runtime-model",
+ "lgn-compiler-scripting",
  "lgn-content-store",
  "lgn-data-build",
  "lgn-data-compiler",

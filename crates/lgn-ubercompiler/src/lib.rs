@@ -19,4 +19,5 @@ pub fn create() -> compiler_node::CompilerRegistryOptions {
         .add_compiler(&lgn_compiler_gltf2model::COMPILER_INFO)
         .add_compiler(&lgn_compiler_gltf2mat::COMPILER_INFO)
         .add_compiler(&lgn_compiler_gltf2tex::COMPILER_INFO)
+        .add_compiler(&lgn_compiler_scripting::COMPILER_INFO)
 }
