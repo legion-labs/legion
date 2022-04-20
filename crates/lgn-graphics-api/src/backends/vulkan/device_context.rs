@@ -14,10 +14,7 @@ use ash::vk::{self, DeviceMemory};
 use fnv::FnvHashMap;
 use lgn_tracing::{debug, info, trace, warn};
 
-use super::{
-    DeviceVulkanResourceCache, VkInstance, VkQueueAllocationStrategy, VkQueueAllocatorSet,
-    VkQueueRequirements, VulkanRenderpass, VulkanRenderpassDef,
-};
+use super::{VkInstance, VkQueueAllocationStrategy, VkQueueAllocatorSet, VkQueueRequirements};
 use crate::backends::vulkan::check_extensions_availability;
 use crate::{DeviceContext, DeviceInfo, ExtensionMode, GfxResult, PhysicalDeviceType};
 
@@ -52,7 +49,6 @@ pub(crate) struct VkQueueFamilyIndices {
 }
 
 pub(crate) struct VulkanDeviceContext {
-    resource_cache: DeviceVulkanResourceCache,
     queue_allocator: VkQueueAllocatorSet,
 
     // If we need a dedicated present queue, we share a single queue across all swapchains. This
@@ -144,8 +140,6 @@ impl VulkanDeviceContext {
             max_vertex_attribute_count: limits.max_vertex_input_attributes,
         };
 
-        let resource_cache = DeviceVulkanResourceCache::default();
-
         #[cfg(debug_assertions)]
         #[cfg(feature = "track-device-contexts")]
         let all_contexts = {
@@ -157,7 +151,6 @@ impl VulkanDeviceContext {
 
         Ok((
             Self {
-                resource_cache,
                 queue_allocator,
                 dedicated_present_queue_lock: Mutex::default(),
                 entry: instance.entry.clone(),
@@ -204,10 +197,6 @@ impl VulkanDeviceContext {
 }
 
 impl DeviceContext {
-    pub(crate) fn resource_cache(&self) -> &DeviceVulkanResourceCache {
-        &self.inner.backend_device_context.resource_cache
-    }
-
     pub(crate) fn vk_entry(&self) -> &ash::Entry {
         &*self.inner.backend_device_context.entry
     }
@@ -338,13 +327,6 @@ impl DeviceContext {
             .inner
             .backend_device_context
             .dedicated_present_queue_lock
-    }
-
-    pub(crate) fn create_renderpass(
-        device_context: &Self,
-        renderpass_def: &VulkanRenderpassDef,
-    ) -> GfxResult<VulkanRenderpass> {
-        VulkanRenderpass::new(device_context, renderpass_def)
     }
 
     pub(crate) fn get_physical_device_memory_properties(
@@ -681,9 +663,13 @@ fn create_logical_device(
         .timeline_semaphore(true)
         .runtime_descriptor_array(true);
 
+    let mut vulkan_13_features =
+        vk::PhysicalDeviceVulkan13Features::builder().dynamic_rendering(true);
+
     let mut features2 = vk::PhysicalDeviceFeatures2::builder()
         .features(*features)
-        .push_next(&mut vulkan_12_features);
+        .push_next(&mut vulkan_12_features)
+        .push_next(&mut vulkan_13_features);
 
     let mut queue_families_to_create = FnvHashMap::default();
     for (&queue_family_index, &count) in &queue_requirements.queue_counts {

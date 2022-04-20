@@ -132,11 +132,6 @@ impl Texture {
         &self.inner.device_context
     }
 
-    // // Used internally as part of the hash for creating/reusing framebuffers
-    pub(crate) fn texture_id(&self) -> u32 {
-        self.inner.texture_id
-    }
-
     // Command buffers check this to see if an image needs to be transitioned from
     // UNDEFINED
     pub(crate) fn take_is_undefined_layout(&self) -> bool {
