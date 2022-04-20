@@ -22,6 +22,7 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use data_lake_connection::DataLakeConnection;
 use grpc_ingestion_service::GRPCIngestionService;
 use lgn_telemetry_proto::ingestion::telemetry_ingestion_server::TelemetryIngestionServer;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
@@ -54,14 +55,11 @@ enum DataLakeSpec {
     Remote { db_uri: String, s3_url: String },
 }
 
-async fn serve_grpc(args: &Cli) -> Result<(), Box<dyn std::error::Error>> {
-    let data_lake = match &args.spec {
-        DataLakeSpec::Local { path } => connect_to_local_data_lake(path.clone()).await?,
-        DataLakeSpec::Remote { db_uri, s3_url } => {
-            connect_to_remote_data_lake(db_uri, s3_url).await?
-        }
-    };
-    let service = GRPCIngestionService::new(data_lake);
+async fn serve_grpc(
+    args: &Cli,
+    lake: DataLakeConnection,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let service = GRPCIngestionService::new(lake);
     Server::builder()
         .add_service(TelemetryIngestionServer::new(service))
         .serve(args.listen_endpoint)
@@ -93,24 +91,73 @@ async fn insert_process_request(
     }
 }
 
-async fn serve_http(args: &Cli) -> Result<(), Box<dyn std::error::Error>> {
-    let data_lake = match &args.spec {
-        DataLakeSpec::Local { path } => connect_to_local_data_lake(path.clone()).await?,
-        DataLakeSpec::Remote { db_uri, s3_url } => {
-            connect_to_remote_data_lake(db_uri, s3_url).await?
-        }
-    };
-    let service = WebIngestionService::new(data_lake);
+async fn insert_stream_request(
+    service: WebIngestionService,
+    body: serde_json::value::Value,
+) -> Result<warp::reply::Response, warp::Rejection> {
+    if let Err(e) = service.insert_stream(body).await {
+        error!("Error in insert_stream_request: {}", e);
+        Ok(http::response::Response::builder()
+            .status(500)
+            .body(hyper::body::Body::from("Error in insert_process_request"))
+            .unwrap())
+    } else {
+        Ok(http::response::Response::builder()
+            .status(200)
+            .body(hyper::body::Body::from("OK"))
+            .unwrap())
+    }
+}
 
-    let command_filter = warp::path("telemetryingestion")
-        .and(with_service(service))
+async fn insert_block_request(
+    service: WebIngestionService,
+    body: bytes::Bytes,
+) -> Result<warp::reply::Response, warp::Rejection> {
+    if let Err(e) = service.insert_block(body).await {
+        error!("Error in insert_block_request: {}", e);
+        Ok(http::response::Response::builder()
+            .status(500)
+            .body(hyper::body::Body::from("Error in insert_block_request"))
+            .unwrap())
+    } else {
+        Ok(http::response::Response::builder()
+            .status(200)
+            .body(hyper::body::Body::from("OK"))
+            .unwrap())
+    }
+}
+
+async fn serve_http(
+    args: &Cli,
+    lake: DataLakeConnection,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let service = WebIngestionService::new(lake);
+    let web_ingestion_filter = warp::path("telemetryingestion").and(with_service(service));
+
+    let insert_process_filter = web_ingestion_filter
+        .clone()
         .and(warp::path("insertprocess"))
-        // .and(warp::body::bytes())
         .and(warp::body::json())
         .and_then(insert_process_request);
-    warp::serve(command_filter)
-        .run(args.listen_endpoint_http)
-        .await;
+
+    let insert_stream_filter = web_ingestion_filter
+        .clone()
+        .and(warp::path("insertstream"))
+        .and(warp::body::json())
+        .and_then(insert_stream_request);
+
+    let insert_block_filter = web_ingestion_filter
+        .and(warp::path("insertblock"))
+        .and(warp::body::bytes())
+        .and_then(insert_block_request);
+
+    let routes = warp::post().and(
+        insert_process_filter
+            .or(insert_stream_filter)
+            .or(insert_block_filter),
+    );
+
+    warp::serve(routes).run(args.listen_endpoint_http).await;
     Ok(())
 }
 
@@ -120,10 +167,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_ctrlc_handling()
         .build();
     let args = Cli::parse();
+    let data_lake = match &args.spec {
+        DataLakeSpec::Local { path } => connect_to_local_data_lake(path.clone()).await?,
+        DataLakeSpec::Remote { db_uri, s3_url } => {
+            connect_to_remote_data_lake(db_uri, s3_url).await?
+        }
+    };
     tokio::select! {
-        _ = serve_grpc(&args) => {
+        _ = serve_grpc(&args, data_lake.clone()) => {
         },
-        _ = serve_http(&args) => {
+        _ = serve_http(&args, data_lake) => {
         }
     }
     Ok(())

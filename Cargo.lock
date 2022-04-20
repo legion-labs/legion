@@ -7887,6 +7887,7 @@ dependencies = [
  "lgn-telemetry-proto",
  "lgn-telemetry-sink",
  "lgn-tracing",
+ "lgn-tracing-transit",
  "prost",
  "serde_json",
  "sqlx",

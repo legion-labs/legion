@@ -1,6 +1,7 @@
-//! Tauri plugin macros for Legion's ECS.
+//! `log_fn` and `span_fn` procedural macros
 //!
-//! Provides Tauri integration into Legion's ECS.
+//! Injects instrumentation into sync and async functions.
+//!     async trait functions not supported
 
 // crate-specific lint exceptions:
 //#![allow()]
