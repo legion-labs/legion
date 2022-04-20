@@ -184,7 +184,7 @@ skip = [
   # Remove when the new version of GLTF crate is released 
   { name = "num-rational", version = "=0.3.2" },
   # Winit outdated dependencies
-  { name = "ndk-glue", version = "=0.5.1" },
+  { name = "ndk-glue", version = "=0.5.2" },
   { name = "ndk", version = "=0.5.0" },
   { name = "ndk-sys", version = "=0.2.2" },
   { name = "core-foundation-sys", version = "=0.7.0" },

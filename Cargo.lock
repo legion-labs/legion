@@ -171,7 +171,7 @@ dependencies = [
  "anyhow",
  "async-recursion",
  "chrono",
- "clap 3.1.9",
+ "clap 3.1.10",
  "futures",
  "http",
  "lgn-analytics",
@@ -762,15 +762,15 @@ dependencies = [
 
 [[package]]
 name = "backtrace"
-version = "0.3.64"
+version = "0.3.65"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e121dee8023ce33ab248d9ce1493df03c3b38a659b240096fcbd7048ff9c31f"
+checksum = "11a17d453482a265fd5f8479f2a3f405566e6ca627837aaddb85af8b1ab8ef61"
 dependencies = [
  "addr2line",
  "cc",
  "cfg-if 1.0.0",
  "libc",
- "miniz_oxide 0.4.4",
+ "miniz_oxide 0.5.1",
  "object",
  "rustc-demangle",
 ]
@@ -1225,9 +1225,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.1.9"
+version = "3.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6aad2534fad53df1cc12519c5cda696dd3e20e6118a027e24054aea14a0bdcbe"
+checksum = "3124f3f75ce09e22d1410043e1e24f2ecc44fad3afe4f08408f1f7663d68da2b"
 dependencies = [
  "atty",
  "bitflags",
@@ -2111,7 +2111,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
- "clap 3.1.9",
+ "clap 3.1.10",
  "crossbeam-channel",
  "erased-serde",
  "generic-data",
@@ -2359,7 +2359,7 @@ dependencies = [
  "futures-core",
  "futures-sink",
  "pin-project",
- "spin 0.9.2",
+ "spin 0.9.3",
 ]
 
 [[package]]
@@ -3249,9 +3249,9 @@ dependencies = [
 
 [[package]]
 name = "ipnet"
-version = "2.4.0"
+version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35e70ee094dc02fd9c13fdad4940090f22dbd6ac7c9e7094a46cf0232a50bc7c"
+checksum = "879d54834c8c76457ef4293a689b2a8c59b076067ad77b15efafbb05f92a592b"
 
 [[package]]
 name = "iri-string"
@@ -3836,7 +3836,7 @@ dependencies = [
  "byteorder",
  "bytes",
  "bytesize",
- "clap 3.1.9",
+ "clap 3.1.10",
  "console",
  "duration-string",
  "futures",
@@ -3943,7 +3943,7 @@ name = "lgn-data-build-cli"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "clap 3.1.9",
+ "clap 3.1.10",
  "integer-asset",
  "lgn-content-store",
  "lgn-data-build",
@@ -3982,7 +3982,7 @@ dependencies = [
  "async-trait",
  "binary-resource",
  "bincode",
- "clap 3.1.9",
+ "clap 3.1.10",
  "erased-serde",
  "integer-asset",
  "lgn-content-store",
@@ -4011,7 +4011,7 @@ dependencies = [
  "async-trait",
  "bincode",
  "chacha20poly1305",
- "clap 3.1.9",
+ "clap 3.1.10",
  "freelist",
  "futures",
  "integer-asset",
@@ -4220,7 +4220,7 @@ name = "lgn-graphics-cgen"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.9",
+ "clap 3.1.10",
  "fxhash",
  "hassle-rs",
  "heck 0.4.0",
@@ -4319,7 +4319,7 @@ dependencies = [
 name = "lgn-graphics-sandbox"
 version = "0.1.0"
 dependencies = [
- "clap 3.1.9",
+ "clap 3.1.10",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-async",
@@ -4657,7 +4657,7 @@ dependencies = [
  "aws-sdk-s3",
  "bytes",
  "chrono",
- "clap 3.1.9",
+ "clap 3.1.10",
  "futures",
  "http",
  "itertools 0.10.3",
@@ -4697,7 +4697,7 @@ name = "lgn-source-control-fs"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.9",
+ "clap 3.1.10",
  "fuser",
  "lgn-cli-utils",
  "lgn-content-store",
@@ -4987,9 +4987,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.123"
+version = "0.2.124"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb691a747a7ab48abc15c5b42066eaafde10dc427e3b6ee2a1cf43db04c763bd"
+checksum = "21a41fed9d98f27ab1c6d161da622a4fa35e8a54a8adc24bbf3ddd0ef70b0e50"
 
 [[package]]
 name = "libloading"
@@ -5162,16 +5162,6 @@ dependencies = [
 
 [[package]]
 name = "miniz_oxide"
-version = "0.4.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a92518e98c078586bc6c934028adcca4c92a53d6a958196de835170a01d84e4b"
-dependencies = [
- "adler",
- "autocfg 1.1.0",
-]
-
-[[package]]
-name = "miniz_oxide"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2b29bd4bc3f33391105ebee3589c19197c4271e3e5a9ec9bfe8127eeff8f082"
@@ -5209,7 +5199,7 @@ dependencies = [
  "anyhow",
  "atty",
  "camino",
- "clap 3.1.9",
+ "clap 3.1.10",
  "determinator",
  "dunce",
  "fs_extra",
@@ -5397,15 +5387,15 @@ dependencies = [
 
 [[package]]
 name = "ndk-context"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e3c5cc68637e21fe8f077f6a1c9e0b9ca495bb74895226b476310f613325884"
+checksum = "27b02d87554356db9e9a873add8782d4ea6e3e58ea071a9adb9a2e8ddb884a8b"
 
 [[package]]
 name = "ndk-glue"
-version = "0.5.1"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1c68f70683c5fc9a747a383744206cd371741b2f0b31781ab6770487ec572e2"
+checksum = "c71bee8ea72d685477e28bd004cfe1bf99c754d688cd78cad139eae4089484d4"
 dependencies = [
  "lazy_static",
  "libc",
@@ -5418,9 +5408,9 @@ dependencies = [
 
 [[package]]
 name = "ndk-glue"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9ffb7443daba48349d545028777ca98853b018b4c16624aa01223bc29e078da"
+checksum = "0d0c4a7b83860226e6b4183edac21851f05d5a51756e97a1144b7f5a6b63e65f"
 dependencies = [
  "lazy_static",
  "libc",
@@ -5770,9 +5760,9 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.27.1"
+version = "0.28.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67ac1d3f9a1d3616fd9a60c8d74296f22406a238b6a72f5cc1e6f314df4ffbf9"
+checksum = "40bec70ba014595f99f7aa110b84331ffe1ee9aece7fe6f387cc7e3ecda4d456"
 dependencies = [
  "memchr",
 ]
@@ -5815,9 +5805,9 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
 name = "openh264-sys2"
-version = "0.2.12"
+version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1cca10454c5a8df66fec428dacc85e9ee7897b21930556de3d1e641cfa69085"
+checksum = "40b3b4205e0682892be9503fcb22ed315d2b8d31ba539b27dd2a4ef076fe9c9d"
 dependencies = [
  "cc",
  "nasm-rs",
@@ -6070,7 +6060,7 @@ name = "physics-rebuild-data"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.9",
+ "clap 3.1.10",
  "generic-data",
  "lgn-app",
  "lgn-compiler-runtime-entity",
@@ -6278,7 +6268,7 @@ name = "pong-rebuild-data"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.9",
+ "clap 3.1.10",
  "generic-data",
  "lgn-app",
  "lgn-compiler-runtime-entity",
@@ -6836,19 +6826,20 @@ dependencies = [
 
 [[package]]
 name = "rmp"
-version = "0.8.10"
+version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f55e5fa1446c4d5dd1f5daeed2a4fe193071771a2636274d0d7a3b082aa7ad6"
+checksum = "44519172358fd6d58656c86ab8e7fbc9e1490c3e8f14d35ed78ca0dd07403c9f"
 dependencies = [
  "byteorder",
  "num-traits",
+ "paste",
 ]
 
 [[package]]
 name = "rmp-serde"
-version = "1.0.0"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3eedffbfcc6a428f230c04baf8f59bd73c1781361e4286111fe900849aaddaf"
+checksum = "25786b0d276110195fa3d6f3f31299900cf71dfbd6c28450f3f58a0e7f7a347e"
 dependencies = [
  "byteorder",
  "rmp",
@@ -6960,7 +6951,7 @@ dependencies = [
 name = "runtime-srv"
 version = "0.1.0"
 dependencies = [
- "clap 3.1.9",
+ "clap 3.1.10",
  "crossbeam-channel",
  "generic-data",
  "instant",
@@ -7164,7 +7155,7 @@ name = "sample-data-compiler"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "clap 3.1.9",
+ "clap 3.1.10",
  "generic-data",
  "lgn-config",
  "lgn-content-store",
@@ -7574,9 +7565,9 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
 name = "spin"
-version = "0.9.2"
+version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "511254be0c5bcf062b019a6c89c01a664aa359ded62f78aa72c6fc137c0590e5"
+checksum = "c530c2b0d0bf8b69304b39fe2001993e267461948b890cd037d8ad4293fa1a0d"
 dependencies = [
  "lock_api",
 ]
@@ -7867,7 +7858,7 @@ name = "telemetry-admin"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.9",
+ "clap 3.1.10",
  "fs_extra",
  "json",
  "lgn-analytics",
@@ -7889,7 +7880,7 @@ dependencies = [
  "anyhow",
  "bytes",
  "chrono",
- "clap 3.1.9",
+ "clap 3.1.10",
  "http",
  "hyper",
  "lgn-blob-storage",
@@ -8659,7 +8650,7 @@ name = "vm-agent"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.9",
+ "clap 3.1.10",
  "lgn-cli-utils",
  "lgn-telemetry-sink",
  "lgn-tracing",
@@ -8905,7 +8896,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9c28b6b6a78440b02647358625e3febc90724126480b9da6a967b5f674b3554"
 dependencies = [
  "jni",
- "ndk-glue 0.6.1",
+ "ndk-glue 0.6.2",
  "url",
  "web-sys",
  "widestring",
@@ -9284,7 +9275,7 @@ dependencies = [
  "log",
  "mio",
  "ndk 0.5.0",
- "ndk-glue 0.5.1",
+ "ndk-glue 0.5.2",
  "ndk-sys 0.2.2",
  "objc",
  "parking_lot 0.11.2",
