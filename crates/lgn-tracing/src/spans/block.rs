@@ -7,7 +7,10 @@ use super::{
     EndAsyncNamedSpanEvent, EndAsyncSpanEvent, EndThreadNamedSpanEvent, EndThreadSpanEvent,
     SpanLocation, SpanLocationRecord, SpanMetadata, SpanRecord,
 };
-use crate::event::{EventBlock, EventStream, ExtractDeps};
+use crate::{
+    event::{EventBlock, EventStream, ExtractDeps},
+    string_id::StringId,
+};
 
 declare_queue_struct!(
     struct ThreadEventQueue<
@@ -63,7 +66,7 @@ fn record_scope_event_dependencies(
 
 fn record_named_scope_event_dependencies(
     thread_span_location: &'static SpanLocation,
-    name: &'static str,
+    name: &StringId,
     recorded_deps: &mut HashSet<u64>,
     deps: &mut ThreadDepsQueue,
 ) {
@@ -91,9 +94,8 @@ fn record_named_scope_event_dependencies(
         });
     }
 
-    let name = StaticString::from(name);
-    if recorded_deps.insert(name.ptr as u64) {
-        deps.push(name);
+    if recorded_deps.insert(name.id()) {
+        deps.push(StaticString::from(name));
     }
 }
 
@@ -122,7 +124,7 @@ impl ExtractDeps for ThreadEventQueue {
                 ThreadEventQueueAny::BeginThreadNamedSpanEvent(evt) => {
                     record_named_scope_event_dependencies(
                         evt.thread_span_location,
-                        evt.name,
+                        &evt.name,
                         &mut recorded_deps,
                         &mut deps,
                     );
@@ -130,7 +132,7 @@ impl ExtractDeps for ThreadEventQueue {
                 ThreadEventQueueAny::EndThreadNamedSpanEvent(evt) => {
                     record_named_scope_event_dependencies(
                         evt.thread_span_location,
-                        evt.name,
+                        &evt.name,
                         &mut recorded_deps,
                         &mut deps,
                     );
@@ -144,7 +146,7 @@ impl ExtractDeps for ThreadEventQueue {
                 ThreadEventQueueAny::BeginAsyncNamedSpanEvent(evt) => {
                     record_named_scope_event_dependencies(
                         evt.span_location,
-                        evt.name,
+                        &evt.name,
                         &mut recorded_deps,
                         &mut deps,
                     );
@@ -152,7 +154,7 @@ impl ExtractDeps for ThreadEventQueue {
                 ThreadEventQueueAny::EndAsyncNamedSpanEvent(evt) => {
                     record_named_scope_event_dependencies(
                         evt.span_location,
-                        evt.name,
+                        &evt.name,
                         &mut recorded_deps,
                         &mut deps,
                     );

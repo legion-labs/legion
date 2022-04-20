@@ -1,6 +1,6 @@
 use lgn_tracing_transit::prelude::*;
 
-use crate::Verbosity;
+use crate::{string_id::StringId, Verbosity};
 
 #[derive(Debug)]
 pub struct SpanLocation {
@@ -65,7 +65,7 @@ impl InProcSerialize for EndThreadSpanEvent {}
 #[derive(Debug, TransitReflect)]
 pub struct BeginThreadNamedSpanEvent {
     pub thread_span_location: &'static SpanLocation,
-    pub name: &'static str,
+    pub name: StringId,
     pub time: i64,
 }
 
@@ -74,7 +74,7 @@ impl InProcSerialize for BeginThreadNamedSpanEvent {}
 #[derive(Debug, TransitReflect)]
 pub struct EndThreadNamedSpanEvent {
     pub thread_span_location: &'static SpanLocation,
-    pub name: &'static str,
+    pub name: StringId,
     pub time: i64,
 }
 
@@ -103,7 +103,7 @@ impl InProcSerialize for EndAsyncSpanEvent {}
 #[derive(Debug, TransitReflect)]
 pub struct BeginAsyncNamedSpanEvent {
     pub span_location: &'static SpanLocation,
-    pub name: &'static str,
+    pub name: StringId,
     pub span_id: u64,
     pub time: i64,
 }
@@ -113,7 +113,7 @@ impl InProcSerialize for BeginAsyncNamedSpanEvent {}
 #[derive(Debug, TransitReflect)]
 pub struct EndAsyncNamedSpanEvent {
     pub span_location: &'static SpanLocation,
-    pub name: &'static str,
+    pub name: StringId,
     pub span_id: u64,
     pub time: i64,
 }
