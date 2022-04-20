@@ -3,6 +3,7 @@ use anyhow::Context;
 use anyhow::Result;
 use lgn_telemetry_proto::telemetry::{ContainerMetadata, UdtMember, UserDefinedType};
 use lgn_tracing::prelude::*;
+use lgn_tracing_transit::read_any;
 use prost::Message;
 
 fn parse_json_udt_member(json_udt_member: &serde_json::value::Value) -> Result<UdtMember> {
@@ -81,6 +82,47 @@ pub struct WebIngestionService {
 impl WebIngestionService {
     pub fn new(lake: DataLakeConnection) -> Self {
         Self { lake }
+    }
+
+    #[span_fn]
+    #[allow(unsafe_code,clippy::cast_ptr_alignment)]
+    pub async fn insert_block(&self, body: bytes::Bytes) -> Result<()> {
+        info!("insert_block");
+        unsafe {
+            let mut offset = 0;
+            let codec_id = body[offset];
+            offset += 1;
+            let string_len_bytes = read_any::<u32>(body.as_ptr().add(offset));
+            offset += std::mem::size_of::<u32>();
+            let string_buffer = &body[offset..string_len_bytes as usize];
+            match codec_id {
+                0 => {
+                    // this would be typically be windows 1252, an extension to ISO-8859-1/latin1
+                    // random people on the interwebs tell me that latin1's codepoints are a subset of utf8
+                    // so I guess it's ok to treat it as utf8
+                    info!("ansi");
+                }
+                1 => {
+                    //wide
+                    let ptr = string_buffer.as_ptr().cast::<u16>();
+                    if string_len_bytes % 2 != 0 {
+                        anyhow::bail!("wrong utf-16 buffer size");
+                    }
+                    let wide_slice =
+                        std::ptr::slice_from_raw_parts(ptr, string_len_bytes as usize / 2);
+                    let content = String::from_utf16_lossy(&*wide_slice);
+                    info!("content: {}", content);
+                }
+                2 => {
+                    //utf-8
+                    info!("utf-8");
+                }
+                other => {
+                    anyhow::bail!("invalid codec [{}] in string", other);
+                }
+            }
+        }
+        Ok(())
     }
 
     #[span_fn]

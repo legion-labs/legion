@@ -55,7 +55,10 @@ enum DataLakeSpec {
     Remote { db_uri: String, s3_url: String },
 }
 
-async fn serve_grpc(args: &Cli, lake: DataLakeConnection) -> Result<(), Box<dyn std::error::Error>> {
+async fn serve_grpc(
+    args: &Cli,
+    lake: DataLakeConnection,
+) -> Result<(), Box<dyn std::error::Error>> {
     let service = GRPCIngestionService::new(lake);
     Server::builder()
         .add_service(TelemetryIngestionServer::new(service))
@@ -124,7 +127,10 @@ async fn insert_block_request(
     }
 }
 
-async fn serve_http(args: &Cli, lake: DataLakeConnection) -> Result<(), Box<dyn std::error::Error>> {
+async fn serve_http(
+    args: &Cli,
+    lake: DataLakeConnection,
+) -> Result<(), Box<dyn std::error::Error>> {
     let service = WebIngestionService::new(lake);
     let web_ingestion_filter = warp::path("telemetryingestion").and(with_service(service));
 
