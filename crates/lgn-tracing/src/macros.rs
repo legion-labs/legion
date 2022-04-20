@@ -6,7 +6,6 @@
 /// use lgn_tracing::span_scope;
 ///
 /// # fn main() {
-/// #
 /// span_scope!("scope");
 /// # }
 /// ```
@@ -25,6 +24,29 @@ macro_rules! span_scope {
     };
     ($name:expr) => {
         $crate::span_scope!(_METADATA_NAMED, $name);
+    };
+}
+
+/// Records a span with a name that is determined at runtime.
+///
+/// # Examples
+///
+/// ```
+/// use lgn_tracing::span_scope;
+///
+/// # fn get_name() -> &'static str {
+/// #   return "name";
+/// # }
+/// #
+/// # fn main() {
+/// span_scope_dynamic!(get_name());
+/// # }
+/// ```
+#[macro_export]
+macro_rules! span_scope_dynamic {
+    ($name:expr) => {
+        let span_metadata = $crate::spans::lookup_span_metadata($name);
+        let guard_named = $crate::guards::ThreadSpanGuard::new(span_metadata);
     };
 }
 

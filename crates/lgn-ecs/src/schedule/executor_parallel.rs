@@ -197,7 +197,7 @@ impl ParallelExecutor {
                 let system = system.system_mut();
 
                 // NB: outside the task to get the TLS current span
-                let span_metadata = lookup_span_metadata(system.name());
+                let span_metadata = lookup_span_metadata(&*system.name());
 
                 let task = async move {
                     start_receiver
