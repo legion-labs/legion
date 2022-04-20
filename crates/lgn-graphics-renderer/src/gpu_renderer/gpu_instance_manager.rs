@@ -14,7 +14,7 @@ use lgn_transform::prelude::GlobalTransform;
 use crate::{
     cgen,
     components::VisualComponent,
-    features::mesh_feature::{MeshRenderObject, MeshRenderObjectSet},
+    features::mesh_feature::MeshRenderObjectSet,
     labels::RenderStage,
     picking::{PickingIdContext, PickingManager},
     resources::{
@@ -453,10 +453,10 @@ fn upload_transform_data(
     clippy::too_many_arguments
 )]
 fn tmp_create_render_mesh_objects(
-    mesh_set: ResMut<'_, MeshRenderObjectSet>,
-    mut q_visuals: Query<'_, '_, &mut VisualComponent, Added<VisualComponent>>,
+    _mesh_set: ResMut<'_, MeshRenderObjectSet>,
+    mut _q_visuals: Query<'_, '_, &mut VisualComponent, Added<VisualComponent>>,
 ) {
-    for mut visual in q_visuals.iter_mut() {
-        visual.tmp_mesh_render_object = Some(mesh_set.insert(MeshRenderObject { tmp: 13 }));
-    }
+    // for mut visual in q_visuals.iter_mut() {
+    //     visual.tmp_mesh_render_object = Some(mesh_set.insert(MeshRenderObject { tmp: 13 }));
+    // }
 }
