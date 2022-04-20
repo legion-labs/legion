@@ -9,6 +9,8 @@ service SourceControl {
   rpc GetStagedResources(GetStagedResourcesRequest) returns (GetStagedResourcesResponse);
   rpc CommitStagedResources(CommitStagedResourcesRequest) returns (CommitStagedResourcesResponse);
   rpc SyncLatest(SyncLatestResquest) returns (SyncLatestResponse);
+
+  rpc RevertResources(RevertResourcesRequest) returns (RevertResourcesResponse);
 }
 
 message InitUploadRawFileRequest {
@@ -87,3 +89,9 @@ message GetStagedResourcesRequest {}
 message GetStagedResourcesResponse {
   repeated StagedResource entries = 1;
 }
+
+message RevertResourcesRequest {
+  repeated string ids = 1;
+}
+
+message RevertResourcesResponse {}

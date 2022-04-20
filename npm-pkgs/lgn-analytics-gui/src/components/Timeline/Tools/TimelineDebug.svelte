@@ -2,7 +2,7 @@
   import { formatExecutionTime } from "@/lib/format";
   import { MergeThresholdForLOD, getLodFromPixelSizeMs } from "@/lib/lod";
 
-  import type { TimelineStateStore } from "../Lib/TimelineStateStore";
+  import type { TimelineStateStore } from "../Stores/TimelineStateStore";
 
   export let store: TimelineStateStore;
 

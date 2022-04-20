@@ -4,6 +4,7 @@ use std::{
     fs::{self, File},
     io::Write,
     path::PathBuf,
+    str::FromStr,
     sync::Arc,
 };
 
@@ -21,9 +22,9 @@ use lgn_editor_proto::source_control::{
     staged_resource, upload_raw_file_response, CancelUploadRawFileRequest,
     CancelUploadRawFileResponse, CommitStagedResourcesRequest, CommitStagedResourcesResponse,
     GetStagedResourcesRequest, GetStagedResourcesResponse, InitUploadRawFileRequest,
-    InitUploadRawFileResponse, ResourceDescription, StagedResource, SyncLatestResponse,
-    SyncLatestResquest, UploadRawFileProgress, UploadRawFileRequest, UploadRawFileResponse,
-    UploadStatus,
+    InitUploadRawFileResponse, ResourceDescription, RevertResourcesRequest,
+    RevertResourcesResponse, StagedResource, SyncLatestResponse, SyncLatestResquest,
+    UploadRawFileProgress, UploadRawFileRequest, UploadRawFileResponse, UploadStatus,
 };
 use lgn_grpc::{GRPCPluginScheduling, GRPCPluginSettings};
 use lgn_resource_registry::{ResourceRegistryPluginScheduling, ResourceRegistrySettings};
@@ -676,5 +677,40 @@ impl SourceControl for SourceControlRPC {
         }
 
         Ok(Response::new(GetStagedResourcesResponse { entries }))
+    }
+
+    async fn revert_resources(
+        &self,
+        request: Request<RevertResourcesRequest>,
+    ) -> Result<Response<RevertResourcesResponse>, Status> {
+        let request = request.into_inner();
+        let transaction_manager = self.transaction_manager.lock().await;
+        let mut ctx = LockContext::new(&transaction_manager).await;
+
+        let mut need_rebuild = Vec::new();
+        for id in &request.ids {
+            if let Ok(id) = ResourceTypeAndId::from_str(id) {
+                match ctx.project.revert_resource(id.id).await {
+                    Ok(()) => need_rebuild.push(id),
+                    Err(err) => lgn_tracing::error!("Failed to revert {}: {}", id, err),
+                }
+            } else {
+                error!("Invalid ResourceTypeAndId format {}", id);
+            }
+        }
+
+        for id in need_rebuild {
+            match ctx.build.build_all_derived(id, &ctx.project).await {
+                Ok((runtime_path_id, _built_resources)) => {
+                    ctx.asset_registry.reload(runtime_path_id.resource_id());
+                }
+                Err(e) => {
+                    lgn_tracing::error!("Error building resource derivations {:?}", e);
+                }
+            }
+        }
+        ctx.resource_registry.collect_garbage();
+
+        Ok(Response::new(RevertResourcesResponse {}))
     }
 }

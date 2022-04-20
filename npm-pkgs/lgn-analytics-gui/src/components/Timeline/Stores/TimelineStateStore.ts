@@ -10,7 +10,7 @@ import type { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
 import type { Process } from "@lgn/proto-telemetry/dist/process";
 import type { Stream } from "@lgn/proto-telemetry/dist/stream";
 
-import { LODState } from "./LodState";
+import { LODState } from "../Lib/LodState";
 import type { TimelineState } from "./TimelineState";
 
 export type TimelineStateStore = ReturnType<typeof createTimelineStateStore>;

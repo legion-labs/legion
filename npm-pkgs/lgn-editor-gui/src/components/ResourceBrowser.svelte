@@ -24,6 +24,7 @@
     removeResource,
     renameResource,
     reparentResources,
+    revertResources,
     streamFileUpload,
   } from "@/api";
   import { resourceDragAndDropType } from "@/constants";
@@ -369,6 +370,20 @@
 
       case "remove": {
         openRemoveResourcePrompt("request-resource-remove-context-menu");
+
+        break;
+      }
+
+      case "revert": {
+        if (!resourceHierarchyTree || !$currentResourceDescriptionEntry) {
+          break;
+        }
+
+        await revertResources({
+          ids: [$currentResourceDescriptionEntry.item.id],
+        });
+
+        await fetchAllResources();
 
         break;
       }

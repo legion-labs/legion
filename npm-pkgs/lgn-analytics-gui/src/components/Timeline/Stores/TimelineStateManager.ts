@@ -14,9 +14,9 @@ import {
   timestampToMs,
 } from "@/lib/time";
 
-import { LODState } from "./LodState";
-import type { ProcessAsyncData } from "./ProcessAsyncData";
-import type { ThreadBlock } from "./ThreadBlock";
+import { LODState } from "../Lib/LodState";
+import type { ProcessAsyncData } from "../Lib/ProcessAsyncData";
+import type { ThreadBlock } from "../Lib/ThreadBlock";
 import { TimelineState } from "./TimelineState";
 import type { TimelineStateStore } from "./TimelineStateStore";
 import { createTimelineStateStore } from "./TimelineStateStore";

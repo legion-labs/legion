@@ -46,7 +46,7 @@ impl CallTreeBuilder {
     pub fn finish(mut self) -> ProcessedThreadBlock {
         if self.stack.is_empty() {
             return ProcessedThreadBlock {
-                scopes: ScopeHashMap::new(),
+                scopes: self.scopes,
                 call_tree_root: None,
                 async_events: self.async_events,
             };

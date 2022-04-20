@@ -306,6 +306,10 @@ export async function cloneResource({
   return resourceBrowserClient.cloneResource({ sourceId, targetParentId });
 }
 
+export async function revertResources({ ids }: { ids: string[] }) {
+  return sourceControlClient.revertResources({ ids });
+}
+
 /**
  * Used for logging purpose
  * @param jsonCommand
