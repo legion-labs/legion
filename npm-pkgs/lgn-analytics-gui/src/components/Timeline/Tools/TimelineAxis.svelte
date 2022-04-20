@@ -4,7 +4,7 @@
 
   import { formatExecutionTime } from "@/lib/format";
 
-  import type { TimelineStateStore } from "../Lib/TimelineStateStore";
+  import type { TimelineStateStore } from "../Stores/TimelineStateStore";
   import { threadItemLength } from "../Values/TimelineValues";
 
   export let stateStore: TimelineStateStore;

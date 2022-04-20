@@ -1,7 +1,7 @@
 import { findBestLod } from "@/lib/time";
 
 import type { Thread } from "../Lib/Thread";
-import type { TimelineState } from "../Lib/TimelineState";
+import type { TimelineState } from "../Stores/TimelineState";
 import { TimelineTrackCanvasBaseDrawer } from "./TimelineTrackCanvasBaseDrawer";
 import type { TimelineTrackContext } from "./TimelineTrackContext";
 

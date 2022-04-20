@@ -6,7 +6,7 @@ import { spanPixelHeight } from "@/components/Timeline/Values/TimelineValues";
 import { formatExecutionTime } from "@/lib/format";
 
 import type { TimelineCaptionItem } from "../Lib/TimelineSpanCaptionItem";
-import type { TimelineState } from "../Lib/TimelineState";
+import type { TimelineState } from "../Stores/TimelineState";
 import type { TimelineTrackContext } from "./TimelineTrackContext";
 
 export abstract class TimelineTrackCanvasBaseDrawer {

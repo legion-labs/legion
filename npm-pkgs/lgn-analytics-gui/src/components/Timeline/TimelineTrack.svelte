@@ -5,8 +5,8 @@
   import { debounced } from "@lgn/web-client/src/lib/store";
 
   import type { TimelineTrackCanvasBaseDrawer } from "./Drawing/TimelineTrackCanvasBaseDrawer";
-  import type { TimelineStateStore } from "./Lib/TimelineStateStore";
   import { TimelineContext } from "./Stores/TimelineContext";
+  import type { TimelineStateStore } from "./Stores/TimelineStateStore";
   import { spanPixelHeight } from "./Values/TimelineValues";
 
   export let stateStore: TimelineStateStore;
