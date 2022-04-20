@@ -10,7 +10,7 @@ use lgn_tasks::logical_core_count;
 use lgn_tracing::{
     dispatch::{flush_thread_buffer, init_thread_stream, on_begin_scope, on_end_scope},
     max_lod,
-    spans::SpanMetadata,
+    spans::{SpanLocation, SpanMetadata},
     Verbosity,
 };
 use retain_mut::RetainMut;
@@ -31,12 +31,14 @@ pub struct TokioAsyncRuntimeHandle(Handle);
 impl Default for TokioAsyncRuntime {
     fn default() -> Self {
         static PARK_SPAN_METADATA: SpanMetadata = SpanMetadata {
-            lod: Verbosity::Max,
             name: "tokio::busy",
-            target: module_path!(),
-            module_path: module_path!(),
-            file: file!(),
-            line: line!(),
+            location: SpanLocation {
+                lod: Verbosity::Max,
+                target: module_path!(),
+                module_path: module_path!(),
+                file: file!(),
+                line: line!(),
+            },
         };
         let rt = Builder::new_multi_thread()
             .enable_all()
@@ -52,12 +54,12 @@ impl Default for TokioAsyncRuntime {
                 // This is inverted on purpose even if we receive these callbacks
                 // the logical order park/unpark, we want to keep track of the
                 // busy work on the thread.
-                if PARK_SPAN_METADATA.lod <= max_lod() {
+                if PARK_SPAN_METADATA.location.lod <= max_lod() {
                     on_end_scope(&PARK_SPAN_METADATA);
                 }
             })
             .on_thread_unpark(|| {
-                if PARK_SPAN_METADATA.lod <= max_lod() {
+                if PARK_SPAN_METADATA.location.lod <= max_lod() {
                     on_begin_scope(&PARK_SPAN_METADATA);
                 }
             })

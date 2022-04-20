@@ -1,7 +1,7 @@
 use async_channel::{Receiver, Sender};
 use fixedbitset::FixedBitSet;
 use lgn_tasks::{ComputeTaskPool, Scope, TaskPool};
-use lgn_tracing::{guards::ThreadSpanGuard, span_fn, span_scope, spans::lookup_span_metadata};
+use lgn_tracing::{span_fn, span_scope, span_scope_named};
 #[cfg(test)]
 use SchedulingEvent::StartedSystems;
 
@@ -196,16 +196,13 @@ impl ParallelExecutor {
                 let finish_sender = self.finish_sender.clone();
                 let system = system.system_mut();
 
-                // NB: outside the task to get the TLS current span
-                let span_metadata = lookup_span_metadata(&*system.name());
-
                 let task = async move {
                     start_receiver
                         .recv()
                         .await
                         .unwrap_or_else(|error| unreachable!("{}", error));
                     {
-                        let _guard = ThreadSpanGuard::new(span_metadata);
+                        span_scope_named!(&*system.name());
                         unsafe { system.run_unsafe((), world) };
                     }
 

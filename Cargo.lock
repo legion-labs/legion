@@ -4830,7 +4830,6 @@ dependencies = [
  "lgn-tracing-transit",
  "log",
  "memoffset",
- "once_cell",
  "raw-cpuid",
  "thiserror",
  "thread-id",

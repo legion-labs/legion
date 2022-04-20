@@ -1,5 +1,5 @@
 use downcast_rs::{impl_downcast, Downcast};
-use lgn_tracing::span_scope_dynamic;
+use lgn_tracing::span_scope_named;
 
 use crate::{archetype::ArchetypeGeneration, schedule::ParallelSystemContainer, world::World};
 
@@ -32,7 +32,7 @@ impl ParallelSystemExecutor for SingleThreadedExecutor {
 
         for system in systems {
             if system.should_run() {
-                span_scope_dynamic!(&*system.name());
+                span_scope_named!(&*system.name());
                 system.system_mut().run((), world);
             }
         }
