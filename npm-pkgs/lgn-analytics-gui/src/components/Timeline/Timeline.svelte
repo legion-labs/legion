@@ -7,8 +7,8 @@
   import { endQueryParam, startQueryParam } from "@/lib/time";
 
   import Loader from "../Misc/Loader.svelte";
-  import { TimelineStateManager } from "./Lib/TimelineStateManager";
-  import type { TimelineStateStore } from "./Lib/TimelineStateStore";
+  import { TimelineStateManager } from "./Stores/TimelineStateManager";
+  import type { TimelineStateStore } from "./Stores/TimelineStateStore";
   import TimelineProcess from "./TimelineProcess.svelte";
   import TimelineAction from "./Tools/TimelineAction.svelte";
   import TimelineAxis from "./Tools/TimelineAxis.svelte";

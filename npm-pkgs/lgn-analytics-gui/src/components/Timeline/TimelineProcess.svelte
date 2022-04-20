@@ -7,7 +7,7 @@
 
   import { TimelineTrackCanvasAsyncDrawer } from "./Drawing/TimelineTrackCanvasAsyncDrawer";
   import { TimelineTrackCanvasSyncDrawer } from "./Drawing/TimelineTrackCanvasSyncDrawer";
-  import type { TimelineStateStore } from "./Lib/TimelineStateStore";
+  import type { TimelineStateStore } from "./Stores/TimelineStateStore";
   import TimelineRow from "./TimelineRow.svelte";
   import TimelineTrack from "./TimelineTrack.svelte";
   import TimelineDebug from "./Tools/TimelineDebug.svelte";

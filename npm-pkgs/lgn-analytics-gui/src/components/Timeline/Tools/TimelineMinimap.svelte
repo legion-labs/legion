@@ -1,8 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from "svelte";
 
-  import type { TimelineStateStore } from "../Lib/TimelineStateStore";
   import { TimelineMinimapViewport } from "../Lib/TimelineViewport";
+  import type { TimelineStateStore } from "../Stores/TimelineStateStore";
   import { threadItemLength } from "../Values/TimelineValues";
 
   export let stateStore: TimelineStateStore;
