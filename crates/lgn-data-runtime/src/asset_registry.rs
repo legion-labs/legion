@@ -377,6 +377,21 @@ impl AssetRegistry {
         None
     }
 
+    pub(crate) fn clone<T: Any + Resource>(&self, id: ResourceTypeAndId) -> Option<Box<T>> {
+        let guard = self.inner.read().unwrap();
+        let inner: &Inner = &guard;
+        if let Some(asset) = inner.assets.get(&id) {
+            if let Some(typed) = asset.downcast_ref::<T>() {
+                return Some(Box::new(typed.clone()));
+            }
+        }
+        None
+    }
+
+    pub(crate) fn apply<T: Any + Resource>(&self, id: ResourceTypeAndId, value: Box<T>) {
+        todo!()
+    }
+
     /// Tests if an asset is loaded.
     pub fn is_loaded(&self, id: ResourceTypeAndId) -> bool {
         self.read_inner().assets.get(&id).is_some()
@@ -471,7 +486,7 @@ impl AssetRegistry {
     pub fn serialize_resource(
         &self,
         kind: ResourceType,
-        handle: HandleUntyped,
+        handle: impl AsRef<HandleUntyped>,
         writer: &mut dyn std::io::Write,
     ) -> Result<(usize, Vec<ResourcePathId>), AssetRegistryError> {
         todo!()
@@ -527,6 +542,7 @@ mod tests {
         ///
         /// To be removed once real asset types exist.
         #[resource("refs_asset")]
+        #[derive(Clone)]
         pub struct RefsAsset {
             /// Test content.
             pub content: String,

@@ -401,7 +401,7 @@ impl Project {
                 File::create(&resource_path).map_err(|e| Error::Io(resource_path.clone(), e))?;
 
             let (_written, build_deps) = registry
-                .serialize_resource(kind, handle, &mut resource_file)
+                .serialize_resource(kind, &handle, &mut resource_file)
                 .map_err(|e| Error::ResourceRegistry(ResourceTypeAndId { kind, id }, e))?;
             build_deps
         };
@@ -464,7 +464,7 @@ impl Project {
     pub async fn save_resource(
         &mut self,
         type_id: ResourceTypeAndId,
-        handle: HandleUntyped,
+        handle: impl AsRef<HandleUntyped>,
         resources: &AssetRegistry,
     ) -> Result<(), Error> {
         let resource_path = self.resource_path(type_id.id);
@@ -815,6 +815,7 @@ mod tests {
     const RESOURCE_ACTOR: &str = "actor";
 
     #[resource("null")]
+    #[derive(Clone)]
     struct NullResource {
         content: isize,
         dependencies: Vec<ResourcePathId>,

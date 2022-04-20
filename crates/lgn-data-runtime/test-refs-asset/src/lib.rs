@@ -14,6 +14,7 @@ use lgn_data_runtime::{
 ///
 /// To be removed once real asset types exist.
 #[resource("refs_asset")]
+#[derive(Clone)]
 pub struct RefsAsset {
     /// Test content.
     pub content: String,

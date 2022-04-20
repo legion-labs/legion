@@ -22,7 +22,7 @@ use lgn_data_runtime::{
 use crate::helpers::{read_usize, read_usize_and_buffer, write_usize, write_usize_and_buffer};
 
 #[resource("gltf")]
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct GltfFile {
     pub document: Option<Document>,
     pub buffers: Vec<gltf::buffer::Data>,

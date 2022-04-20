@@ -7,7 +7,7 @@ use lgn_data_runtime::{
 use serde::{Deserialize, Serialize};
 
 #[resource("multitext_resource")]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct MultiTextResource {
     pub text_list: Vec<String>,
 }

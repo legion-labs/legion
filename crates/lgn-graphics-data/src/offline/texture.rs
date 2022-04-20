@@ -9,7 +9,7 @@ use lgn_data_runtime::{
 use serde::{Deserialize, Serialize};
 
 /// Texture type enumeration.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum TextureType {
     /// 2d texture.
     _2D,
@@ -17,7 +17,7 @@ pub enum TextureType {
 
 /// Offline texture resource.
 #[resource("offline_texture")]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Texture {
     /// Texture type.
     pub kind: TextureType,

@@ -7,7 +7,7 @@ use lgn_data_runtime::{
 use serde::{Deserialize, Serialize};
 
 #[resource("bin")]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct BinaryResource {
     pub content: Vec<u8>,
 }

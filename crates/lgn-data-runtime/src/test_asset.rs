@@ -11,6 +11,7 @@ use crate::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
 ///
 /// To be removed once real asset types exist.
 #[resource("test_asset")]
+#[derive(Clone)]
 pub struct TestAsset {
     /// Test content.
     pub content: String,

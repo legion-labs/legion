@@ -10,7 +10,7 @@ use crate::{encode_mip_chain_from_offline_texture, TextureFormat};
 
 /// Runtime texture.
 #[resource("runtime_texture")]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Texture {
     /// Texture width.
     pub width: u32,

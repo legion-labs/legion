@@ -315,7 +315,7 @@ impl<'de> Deserialize<'de> for ResourceTypeAndId {
 }
 
 /// Trait describing resource type name.
-pub trait Resource {
+pub trait Resource: Clone {
     /// Name of the asset type.
     const TYPENAME: &'static str;
     /// Type of the asset.

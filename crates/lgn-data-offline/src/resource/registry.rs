@@ -314,6 +314,7 @@ mod tests {
     use crate::resource::registry::ResourceRegistryOptions;
 
     #[resource("sample")]
+    #[derive(Clone)]
     struct SampleResource {
         content: String,
     }

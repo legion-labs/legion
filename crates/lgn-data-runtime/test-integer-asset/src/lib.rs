@@ -3,6 +3,7 @@ use std::{any::Any, io};
 use lgn_data_runtime::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
 
 #[resource("integer_asset")]
+#[derive(Clone)]
 pub struct IntegerAsset {
     pub magic_value: i32,
 }

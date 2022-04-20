@@ -501,7 +501,7 @@ async fn load_psd_resource(
     *initial_resource = loaded_psd;
 
     project
-        .save_resource(resource_id, resource, resources)
+        .save_resource(resource_id, &resource, resources)
         .await
         .unwrap();
     Some(resource_id)

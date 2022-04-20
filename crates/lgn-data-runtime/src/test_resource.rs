@@ -15,6 +15,7 @@ use crate::{
 ///
 /// To be removed once real resource types exist.
 #[resource("test_resource")]
+#[derive(Clone)]
 pub struct TestResource {
     /// Resource's content.
     pub content: String,

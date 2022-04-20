@@ -39,6 +39,10 @@ pub(crate) fn generate_component(
                 .downcast_ref::<Self>()
                 .map_or(false, |other| std::cmp::PartialEq::eq(self, other))
             }
+
+            fn clone_dyn(&self) -> Box<dyn lgn_data_runtime::Component> {
+                Box::new(self.clone())
+            }
         }
 
         #factory_registry

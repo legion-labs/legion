@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// To be removed once real resource types exist.
 #[resource("test_resource")]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct TestResource {
     /// Resource's content.
     pub content: String,

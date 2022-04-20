@@ -100,10 +100,6 @@ impl HandleUntyped {
         registry.get::<T>(self.inner.type_id)
     }
 
-    pub fn get_mut<'a, T: Any + Resource>(&'_ self, registry: &'a AssetRegistry) -> Option<&mut T> {
-        todo!() // needs AssetRegistryGuardMut
-    }
-
     /// Returns `ResourceId` associated with this handle.
     pub fn id(&self) -> ResourceTypeAndId {
         self.inner.type_id
@@ -124,20 +120,26 @@ impl HandleUntyped {
     }
 }
 
+impl AsRef<Self> for HandleUntyped {
+    fn as_ref(&self) -> &Self {
+        self
+    }
+}
+
 //
 //
 //
 
 /// Typed handle to [`Resource`] of type `T`.
 pub struct Handle<T: Any + Resource> {
-    inner: Arc<Inner>,
+    handle: HandleUntyped,
     _pd: PhantomData<fn() -> T>,
 }
 
 impl<T: Any + Resource> Clone for Handle<T> {
     fn clone(&self) -> Self {
         Self {
-            inner: self.inner.clone(),
+            handle: self.handle.clone(),
             _pd: PhantomData,
         }
     }
@@ -145,14 +147,14 @@ impl<T: Any + Resource> Clone for Handle<T> {
 
 impl<T: Any + Resource> PartialEq for Handle<T> {
     fn eq(&self, other: &Self) -> bool {
-        self.inner.type_id == other.inner.type_id
+        self.handle.inner.type_id == other.handle.inner.type_id
     }
 }
 
 impl<T: Any + Resource> From<HandleUntyped> for Handle<T> {
     fn from(handle: HandleUntyped) -> Self {
         Self {
-            inner: handle.inner,
+            handle,
             _pd: PhantomData,
         }
     }
@@ -164,28 +166,31 @@ impl<T: Any + Resource> Handle<T> {
         &'_ self,
         registry: &'a AssetRegistry,
     ) -> Option<crate::AssetRegistryGuard<'a, T>> {
-        registry.get::<T>(self.inner.type_id)
+        registry.get::<T>(self.handle.inner.type_id)
     }
 
-    pub fn get_mut<'a>(
-        &'_ self,
-        registry: &'a AssetRegistry,
-    ) -> Option<crate::AssetRegistryGuard<'a, T>> {
-        todo!() // needs deref_mut (or mut guard?)
+    pub fn deep_clone(&self, registry: &AssetRegistry) -> Option<Box<T>> {
+        registry.clone(self.handle.inner.type_id)
     }
 
     /// Returns `ResourceId` associated with this handle.
     pub fn id(&self) -> ResourceTypeAndId {
-        self.inner.type_id
+        self.handle.inner.type_id
     }
 
     /// Returns true if [`Resource`] load is finished and has succeeded.
     pub fn is_loaded(&self, registry: &AssetRegistry) -> bool {
-        registry.is_loaded(self.inner.type_id)
+        registry.is_loaded(self.handle.inner.type_id)
     }
 
     /// Returns true if [`Resource`] load failed.
     pub fn is_err(&self, registry: &AssetRegistry) -> bool {
-        registry.is_err(self.inner.type_id)
+        registry.is_err(self.handle.inner.type_id)
+    }
+}
+
+impl<T: Any + Resource> AsRef<HandleUntyped> for Handle<T> {
+    fn as_ref(&self) -> &HandleUntyped {
+        &self.handle
     }
 }

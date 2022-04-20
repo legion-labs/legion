@@ -2,7 +2,7 @@
 #[macro_export]
 macro_rules! implement_raw_resource {
     ($type_id:ident, $processor:ident, $type_name:literal) => {
-        #[derive(Default)]
+        #[derive(Default, Clone)]
         pub struct $type_id {
             pub content: Vec<u8>,
         }
