@@ -1,16 +1,7 @@
-use std::sync::RwLock;
-
 use async_channel::{Receiver, Sender};
 use fixedbitset::FixedBitSet;
 use lgn_tasks::{ComputeTaskPool, Scope, TaskPool};
-use lgn_tracing::{
-    dispatch::{on_begin_scope, on_end_scope},
-    span_fn, span_scope,
-    spans::SpanMetadata,
-    Verbosity,
-};
-use lgn_utils::HashMap;
-use once_cell::sync::OnceCell;
+use lgn_tracing::{guards::ThreadSpanGuard, span_fn, span_scope, spans::lookup_span_metadata};
 #[cfg(test)]
 use SchedulingEvent::StartedSystems;
 
@@ -205,22 +196,19 @@ impl ParallelExecutor {
                 let finish_sender = self.finish_sender.clone();
                 let system = system.system_mut();
 
-                let span_meta_data = lookup_span_meta_data(system.name());
+                // NB: outside the task to get the TLS current span
+                let span_metadata = lookup_span_metadata(system.name());
 
-                // TODO: add system name to async trace scope
-                // // NB: outside the task to get the TLS current span
-                // let system_span = info_span!("system", name = &*system.name());
-                // let overhead_span = info_span!("system overhead", name = &*system.name());
                 let task = async move {
                     start_receiver
                         .recv()
                         .await
                         .unwrap_or_else(|error| unreachable!("{}", error));
-                    on_begin_scope(span_meta_data);
-                    unsafe { system.run_unsafe((), world) };
-                    on_end_scope(span_meta_data);
+                    {
+                        let _guard = ThreadSpanGuard::new(span_metadata);
+                        unsafe { system.run_unsafe((), world) };
+                    }
 
-                    // drop(system_guard);
                     finish_sender
                         .send(index)
                         .await
@@ -506,29 +494,4 @@ mod tests {
         stage.set_executor(Box::new(SingleThreadedExecutor::default()));
         stage.run(&mut world);
     }
-}
-
-static META_DATA_MAP: OnceCell<RwLock<HashMap<&'static str, Box<SpanMetadata>>>> = OnceCell::new();
-
-fn lookup_span_meta_data(name: &'static str) -> &'static SpanMetadata {
-    let meta_data_map = META_DATA_MAP.get_or_init(|| RwLock::new(HashMap::new()));
-
-    if !meta_data_map.read().unwrap().contains_key(name) {
-        meta_data_map.write().unwrap().insert(
-            name,
-            Box::new(SpanMetadata {
-                lod: Verbosity::Max,
-                name,
-                target: module_path!(),
-                module_path: module_path!(),
-                file: file!(),
-                line: line!(),
-            }),
-        );
-    };
-
-    let meta_data_ptr: *const SpanMetadata =
-        meta_data_map.read().unwrap().get(name).unwrap().as_ref();
-
-    unsafe { &*meta_data_ptr }
 }
