@@ -327,17 +327,17 @@ pub mod prelude {
     pub use crate::Uint4;
 }
 
-///
-/// CGenTypeDef
-///
+//
+// CGenTypeDef
+//
 pub struct CGenTypeDef {
     pub name: &'static str,
     pub size: usize,
 }
 
-///
-/// CGenDescriptorDef
-///
+//
+// CGenDescriptorDef
+//
 #[derive(Debug, PartialEq)]
 pub struct CGenDescriptorDef {
     pub name: &'static str,
@@ -421,9 +421,9 @@ impl ValueWrapper for &[&TextureView] {
     }
 }
 
-///
-/// CGenDescriptorSetDef
-///
+//
+// CGenDescriptorSetDef
+//
 #[derive(Default, Debug, PartialEq)]
 pub struct CGenDescriptorSetDef {
     pub name: &'static str,
@@ -433,9 +433,9 @@ pub struct CGenDescriptorSetDef {
     pub descriptor_defs: &'static [CGenDescriptorDef],
 }
 
-///
-/// CGenPipelineLayoutDef
-///
+//
+// CGenPipelineLayoutDef
+//
 #[derive(Default, Debug, PartialEq)]
 pub struct CGenPipelineLayoutDef {
     pub name: &'static str,
@@ -444,15 +444,15 @@ pub struct CGenPipelineLayoutDef {
     pub push_constant_type: Option<u32>,
 }
 
-///
-/// CGenCrateID
-///
+//
+// CGenCrateID
+//
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct CGenCrateID(pub u64);
 
-///
-/// CGenShaderID
-///
+//
+// CGenShaderID
+//
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct CGenShaderID(pub u16);
 
@@ -463,14 +463,14 @@ impl CGenShaderID {
     }
 }
 
-///
-/// CGenShaderOptionMask
-///
+//
+// CGenShaderOptionMask
+//
 pub type CGenShaderOptionMask = u64;
 
-///
-/// CGenShaderKey
-///
+//
+// CGenShaderKey
+//
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(packed)]
 pub struct CGenShaderKey(u64);
@@ -510,9 +510,9 @@ impl CGenShaderKey {
     }
 }
 
-///
-/// CGenShader
-///
+//
+// CGenShader
+//
 pub struct CGenShaderDef {
     pub id: CGenShaderID,
     pub name: &'static str,
@@ -521,25 +521,25 @@ pub struct CGenShaderDef {
     pub instances: &'static [CGenShaderInstance],
 }
 
-///
-/// CGenShaderOption
-///
+//
+// CGenShaderOption
+//
 pub struct CGenShaderOption {
     pub index: u8,
     pub name: &'static str,
 }
 
-///
-/// CGenShaderInstance
-///
+//
+// CGenShaderInstance
+//
 pub struct CGenShaderInstance {
     pub key: CGenShaderKey,
     pub stage_flags: ShaderStageFlags,
 }
 
-///
-/// CGenRegistry
-///
+//
+// CGenRegistry
+//
 pub struct CGenRegistry {
     pub crate_id: CGenCrateID,
     pub shutdown_fn: fn(),
@@ -643,9 +643,9 @@ impl CGenRegistry {
     }
 }
 
-///
-/// CGenRegistryList
-///
+//
+// CGenRegistryList
+//
 #[derive(Default)]
 pub struct CGenRegistryList {
     registry_list: Vec<Arc<CGenRegistry>>,

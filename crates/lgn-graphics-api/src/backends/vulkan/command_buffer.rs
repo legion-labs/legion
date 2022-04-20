@@ -132,8 +132,7 @@ impl CommandBuffer {
             extents
         } else if let Some(depth_rt) = &depth_target {
             let texture_def = depth_rt.texture_view.texture().definition();
-            let extents = texture_def.extents;
-            extents
+            texture_def.extents
         } else {
             return Err(GfxError::String(
                 "No render target in render pass color_targets or depth_target".to_string(),
