@@ -11,7 +11,7 @@ use lgn_data_compiler::{
     },
     compiler_utils::hash_code_and_data,
 };
-use lgn_data_runtime::{AssetRegistryOptions, Resource, Transform};
+use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, Transform};
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),

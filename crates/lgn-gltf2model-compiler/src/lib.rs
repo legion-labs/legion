@@ -8,7 +8,7 @@ use lgn_data_compiler::{
     },
     compiler_utils::hash_code_and_data,
 };
-use lgn_data_runtime::{AssetRegistryOptions, Resource, ResourceProcessor, Transform};
+use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourceProcessor, Transform};
 use lgn_graphics_data::offline::ModelProcessor;
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {

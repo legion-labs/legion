@@ -1,6 +1,6 @@
 //! A module providing offline texture related functionality.
 
-use std::{any::Any, io};
+use std::io;
 
 use lgn_data_runtime::{
     resource, Asset, AssetLoader, AssetLoaderError, OfflineResource, Resource, ResourceProcessor,
@@ -43,19 +43,16 @@ impl OfflineResource for Texture {
 pub struct TextureProcessor {}
 
 impl AssetLoader for TextureProcessor {
-    fn load(
-        &mut self,
-        reader: &mut dyn io::Read,
-    ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError> {
+    fn load(&mut self, reader: &mut dyn io::Read) -> Result<Box<dyn Resource>, AssetLoaderError> {
         let texture: Texture = bincode::deserialize_from(reader).unwrap();
         Ok(Box::new(texture))
     }
 
-    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+    fn load_init(&mut self, _asset: &mut (dyn Resource)) {}
 }
 
 impl ResourceProcessor for TextureProcessor {
-    fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
+    fn new_resource(&mut self) -> Box<dyn Resource> {
         Box::new(Texture {
             kind: TextureType::_2D,
             width: 0,
@@ -66,14 +63,14 @@ impl ResourceProcessor for TextureProcessor {
 
     fn extract_build_dependencies(
         &mut self,
-        _resource: &dyn Any,
+        _resource: &dyn Resource,
     ) -> Vec<lgn_data_runtime::ResourcePathId> {
         vec![]
     }
 
     fn write_resource(
         &self,
-        resource: &dyn Any,
+        resource: &dyn Resource,
         writer: &mut dyn std::io::Write,
     ) -> Result<usize, ResourceProcessorError> {
         let texture = resource.downcast_ref::<Texture>().unwrap();
@@ -84,7 +81,7 @@ impl ResourceProcessor for TextureProcessor {
     fn read_resource(
         &mut self,
         reader: &mut dyn std::io::Read,
-    ) -> Result<Box<dyn Any + Send + Sync>, ResourceProcessorError> {
+    ) -> Result<Box<dyn Resource>, ResourceProcessorError> {
         Ok(self.load(reader)?)
     }
 }

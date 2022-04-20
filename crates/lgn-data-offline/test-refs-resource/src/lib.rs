@@ -3,7 +3,7 @@
 //! It is used to test the data compilation process until we have a proper
 //! resource available.
 
-use std::{any::Any, io};
+use std::io;
 
 use lgn_data_runtime::{
     resource, Asset, AssetLoader, AssetLoaderError, OfflineResource, Resource, ResourcePathId,
@@ -38,27 +38,24 @@ impl OfflineResource for TestResource {
 pub struct TestResourceProc {}
 
 impl AssetLoader for TestResourceProc {
-    fn load(
-        &mut self,
-        reader: &mut dyn io::Read,
-    ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError> {
+    fn load(&mut self, reader: &mut dyn io::Read) -> Result<Box<dyn Resource>, AssetLoaderError> {
         let resource: TestResource = serde_json::from_reader(reader).unwrap();
         let boxed = Box::new(resource);
         Ok(boxed)
     }
 
-    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+    fn load_init(&mut self, _asset: &mut (dyn Resource)) {}
 }
 
 impl ResourceProcessor for TestResourceProc {
-    fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
+    fn new_resource(&mut self) -> Box<dyn Resource> {
         Box::new(TestResource {
             content: String::from("default content"),
             build_deps: vec![],
         })
     }
 
-    fn extract_build_dependencies(&mut self, resource: &dyn Any) -> Vec<ResourcePathId> {
+    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
         resource
             .downcast_ref::<TestResource>()
             .unwrap()
@@ -68,7 +65,7 @@ impl ResourceProcessor for TestResourceProc {
 
     fn write_resource(
         &self,
-        resource: &dyn Any,
+        resource: &dyn Resource,
         writer: &mut dyn std::io::Write,
     ) -> Result<usize, ResourceProcessorError> {
         let resource = resource.downcast_ref::<TestResource>().unwrap();
@@ -79,7 +76,7 @@ impl ResourceProcessor for TestResourceProc {
     fn read_resource(
         &mut self,
         reader: &mut dyn std::io::Read,
-    ) -> Result<Box<dyn Any + Send + Sync>, ResourceProcessorError> {
+    ) -> Result<Box<dyn Resource>, ResourceProcessorError> {
         Ok(self.load(reader)?)
     }
 }

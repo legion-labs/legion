@@ -1,6 +1,6 @@
 use lgn_asset_registry::AssetToEntityMap;
 use lgn_core::Name;
-use lgn_data_runtime::{AssetRegistry, Resource, ResourceTypeAndId};
+use lgn_data_runtime::{AssetRegistry, ResourceDescriptor, ResourceTypeAndId};
 use lgn_ecs::prelude::{Commands, Query};
 use lgn_graphics_data::runtime::ModelReferenceType;
 use lgn_graphics_renderer::components::{LightComponent, LightType, VisualComponent};

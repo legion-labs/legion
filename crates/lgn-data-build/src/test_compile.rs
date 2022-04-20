@@ -9,10 +9,9 @@ mod tests {
     use lgn_data_compiler::compiler_api::CompilationEnv;
     use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
     use lgn_data_compiler::{Locale, Platform, Target};
-    use lgn_data_offline::resource::ResourceRegistryOptions;
-    use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistry};
+    use lgn_data_offline::resource::{Project, ResourcePathName};
     use lgn_data_runtime::{
-        AssetLoader, AssetRegistry, AssetRegistryOptions, Resource, ResourcePathId,
+        AssetLoader, AssetRegistry, AssetRegistryOptions, ResourceDescriptor, ResourcePathId,
         ResourceProcessor, ResourceTypeAndId,
     };
     use lgn_source_control::{LocalRepositoryIndex, RepositoryIndex};

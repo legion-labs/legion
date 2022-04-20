@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use lgn_app::App;
 use lgn_core::BumpAllocatorPool;
-use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
+use lgn_data_runtime::{ResourceDescriptor, ResourceId, ResourceTypeAndId};
 use lgn_ecs::{
     prelude::{Changed, Query, Res, ResMut},
     schedule::SystemSet,

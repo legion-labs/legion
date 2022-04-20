@@ -7,7 +7,7 @@ use lgn_editor_proto::property_inspector::{
 };
 
 use lgn_data_offline::resource::ResourcePathName;
-use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
+use lgn_data_runtime::{ResourceDescriptor, ResourceId, ResourceTypeAndId};
 use lgn_editor_proto::property_inspector::GetResourcePropertiesRequest;
 
 use lgn_data_transaction::{CreateResourceOperation, Transaction};

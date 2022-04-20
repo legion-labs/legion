@@ -11,7 +11,7 @@ use std::{
 use bytes::BytesMut;
 use lgn_app::prelude::*;
 use lgn_data_offline::resource::ChangeType;
-use lgn_data_runtime::{Resource, ResourceTypeAndId};
+use lgn_data_runtime::{ResourceDescriptor, ResourceTypeAndId};
 use lgn_data_transaction::{LockContext, TransactionManager};
 use lgn_ecs::{
     prelude::{IntoExclusiveSystem, Res, ResMut},

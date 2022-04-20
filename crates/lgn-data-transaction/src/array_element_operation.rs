@@ -97,7 +97,7 @@ impl TransactionOperation for ArrayOperation {
             .get_resource_reflection_mut(self.resource_id.kind, &resource_handle)
             .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 
-        let array_value = find_property_mut(&mut *reflection, self.array_path.as_str())
+        let array_value = find_property_mut(reflection.as_reflect_mut(), self.array_path.as_str())
             .map_err(|err| Error::Reflection(self.resource_id, err))?;
         if let TypeDefinition::Array(array_desc) = array_value.type_def {
             match &mut self.operation_type {
@@ -226,7 +226,7 @@ impl TransactionOperation for ArrayOperation {
             .get_resource_reflection_mut(self.resource_id.kind, &handle)
             .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 
-        let array_value = find_property_mut(&mut *reflection, self.array_path.as_str())
+        let array_value = find_property_mut(reflection.as_reflect_mut(), self.array_path.as_str())
             .map_err(|err| Error::Reflection(self.resource_id, err))?;
 
         if let TypeDefinition::Array(array_desc) = array_value.type_def {

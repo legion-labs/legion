@@ -1,6 +1,6 @@
 //! A module providing runtime texture related functionality.
 
-use std::{any::Any, io};
+use std::io;
 
 use lgn_data_model::implement_reference_type_def;
 use lgn_data_runtime::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
@@ -65,13 +65,10 @@ implement_reference_type_def!(TextureReferenceType, Texture);
 pub struct TextureLoader {}
 
 impl AssetLoader for TextureLoader {
-    fn load(
-        &mut self,
-        reader: &mut dyn io::Read,
-    ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError> {
+    fn load(&mut self, reader: &mut dyn io::Read) -> Result<Box<dyn Resource>, AssetLoaderError> {
         let texture: Texture = bincode::deserialize_from(reader).unwrap();
         Ok(Box::new(texture))
     }
 
-    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+    fn load_init(&mut self, _asset: &mut (dyn Resource)) {}
 }

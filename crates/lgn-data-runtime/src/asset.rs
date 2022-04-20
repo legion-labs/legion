@@ -1,4 +1,4 @@
-use std::{any::Any, io, sync::Arc};
+use std::{io, sync::Arc};
 
 use lgn_data_model::TypeReflection;
 
@@ -33,14 +33,11 @@ pub trait AssetLoader {
     /// # Errors
     ///
     /// Will return 'Err' if unable to deserialize asset
-    fn load(
-        &mut self,
-        reader: &mut dyn io::Read,
-    ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError>;
+    fn load(&mut self, reader: &mut dyn io::Read) -> Result<Box<dyn Resource>, AssetLoaderError>;
 
     /// Asset initialization executed after the asset and all its dependencies
     /// have been loaded.
-    fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync));
+    fn load_init(&mut self, asset: &mut (dyn Resource));
 
     /// An asset loader can keep a reference to the asset registry, for use in
     /// asset initialization
@@ -77,11 +74,11 @@ pub trait OfflineResource: Asset {
 pub trait ResourceProcessor {
     /// Interface returning a resource in a default state. Useful when creating
     /// a new resource.
-    fn new_resource(&mut self) -> Box<dyn Any + Send + Sync>;
+    fn new_resource(&mut self) -> Box<dyn Resource>;
 
     /// Interface returning a list of resources that `resource` depends on for
     /// building.
-    fn extract_build_dependencies(&mut self, resource: &dyn Any) -> Vec<ResourcePathId>;
+    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId>;
 
     /// Return the name of the Resource type that the processor can process.
     fn get_resource_type_name(&self) -> Option<&'static str> {
@@ -91,7 +88,7 @@ pub trait ResourceProcessor {
     /// Interface defining serialization behavior of the resource.
     fn write_resource(
         &self,
-        resource: &dyn Any,
+        resource: &dyn Resource,
         writer: &mut dyn io::Write,
     ) -> Result<usize, ResourceProcessorError>;
 
@@ -99,12 +96,12 @@ pub trait ResourceProcessor {
     fn read_resource(
         &mut self,
         reader: &mut dyn io::Read,
-    ) -> Result<Box<dyn Any + Send + Sync>, ResourceProcessorError>;
+    ) -> Result<Box<dyn Resource>, ResourceProcessorError>;
 
     /// Interface to retrieve the Resource reflection interface
     fn get_resource_reflection<'a>(
         &self,
-        _resource: &'a dyn Any,
+        _resource: &'a dyn Resource,
     ) -> Option<&'a dyn TypeReflection> {
         None
     }
@@ -112,7 +109,7 @@ pub trait ResourceProcessor {
     /// Interface to retrieve the Resource reflection interface
     fn get_resource_reflection_mut<'a>(
         &self,
-        _resource: &'a mut dyn Any,
+        _resource: &'a mut dyn Resource,
     ) -> Option<&'a mut dyn TypeReflection> {
         None
     }

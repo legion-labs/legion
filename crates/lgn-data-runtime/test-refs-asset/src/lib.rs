@@ -34,10 +34,7 @@ pub struct RefsAssetLoader {
 }
 
 impl AssetLoader for RefsAssetLoader {
-    fn load(
-        &mut self,
-        reader: &mut dyn io::Read,
-    ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError> {
+    fn load(&mut self, reader: &mut dyn io::Read) -> Result<Box<dyn Resource>, AssetLoaderError> {
         let nbytes = reader.read_u64::<LittleEndian>().expect("valid data");
 
         let mut content = vec![0u8; nbytes as usize];
@@ -48,7 +45,7 @@ impl AssetLoader for RefsAssetLoader {
         Ok(asset)
     }
 
-    fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync)) {
+    fn load_init(&mut self, asset: &mut (dyn Resource)) {
         let asset = asset.downcast_mut::<RefsAsset>().unwrap();
         if let Some(reference) = &mut asset.reference {
             reference.activate(self.registry.as_ref().unwrap());

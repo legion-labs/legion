@@ -10,7 +10,7 @@ pub trait Component: Any + Sync + Send + TypeReflection {
     fn eq(&self, other: &dyn Component) -> bool;
     /// Activate all the references of a Component
     fn activate_references(&mut self, _registry: &crate::AssetRegistry) {}
-
+    /// Return new clone of a Component
     fn clone_dyn(&self) -> Box<dyn Component>;
 }
 

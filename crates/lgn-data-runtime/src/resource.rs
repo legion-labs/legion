@@ -1,9 +1,11 @@
+use std::any::TypeId;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::path::PathBuf;
 use std::sync::RwLock;
 use std::{fmt, hash::Hash, str::FromStr};
 
+use lgn_data_model::TypeReflection;
 use lgn_utils::DefaultHash;
 use once_cell::sync::OnceCell;
 use serde::ser::SerializeTuple;
@@ -315,11 +317,59 @@ impl<'de> Deserialize<'de> for ResourceTypeAndId {
 }
 
 /// Trait describing resource type name.
-pub trait Resource: Clone {
+pub trait ResourceDescriptor {
     /// Name of the asset type.
     const TYPENAME: &'static str;
     /// Type of the asset.
     const TYPE: ResourceType = ResourceType::new(Self::TYPENAME.as_bytes());
+}
+
+/// Trait describing a resource
+pub trait Resource: TypeReflection + Send + Sync {
+    /// Return the `Resource` as a reflected type
+    fn as_reflect(&self) -> &dyn TypeReflection;
+
+    /// Return the `Resource` as a reflected type
+    fn as_reflect_mut(&mut self) -> &mut dyn TypeReflection;
+
+    /// Return a shallow clone of the Resource
+    fn clone_dyn(&self) -> Box<dyn Resource>;
+}
+
+/// Note: Based on impl of dyn Any
+impl dyn Resource {
+    /// Returns `true` if the boxed type is the same as `T`.
+    /// (See [`std::any::Any::is`](https://doc.rust-lang.org/std/any/trait.Any.html#method.is))
+    #[inline]
+    pub fn is<T: Resource>(&self) -> bool {
+        TypeId::of::<T>() == self.type_id()
+    }
+
+    /// Returns some reference to the boxed value if it is of type `T`, or
+    #[inline]
+    pub fn downcast_ref<T: Resource>(&self) -> Option<&T> {
+        if self.is::<T>() {
+            #[allow(unsafe_code)]
+            unsafe {
+                Some(&*((self as *const dyn Resource).cast::<T>()))
+            }
+        } else {
+            None
+        }
+    }
+
+    /// Returns some reference to the boxed value if it is of type `T`, or
+    #[inline]
+    pub fn downcast_mut<T: Resource>(&mut self) -> Option<&mut T> {
+        if self.is::<T>() {
+            #[allow(unsafe_code)]
+            unsafe {
+                Some(&mut *((self as *mut dyn Resource).cast::<T>()))
+            }
+        } else {
+            None
+        }
+    }
 }
 
 #[cfg(test)]

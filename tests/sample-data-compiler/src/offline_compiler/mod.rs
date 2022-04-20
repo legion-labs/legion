@@ -12,7 +12,7 @@ use lgn_data_compiler::{
     compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,
 };
 use lgn_data_offline::resource::{Project, ResourcePathName};
-use lgn_data_runtime::{Resource, ResourcePathId};
+use lgn_data_runtime::{ResourceDescriptor, ResourcePathId};
 use lgn_source_control::RepositoryIndex;
 use lgn_tracing::info;
 use sample_data::offline as offline_data;

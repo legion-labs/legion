@@ -8,8 +8,10 @@ use tonic::Request;
 
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_offline::resource::{Project, ResourceRegistryOptions};
-use lgn_data_runtime::{manifest::Manifest, AssetRegistryOptions, Resource, ResourceTypeAndId};
+use lgn_data_offline::resource::Project;
+use lgn_data_runtime::{
+    manifest::Manifest, AssetRegistryOptions, ResourceDescriptor, ResourceTypeAndId,
+};
 use lgn_data_transaction::{
     ArrayOperation, BuildManager, SelectionManager, Transaction, TransactionManager,
 };

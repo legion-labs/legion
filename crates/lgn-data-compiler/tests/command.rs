@@ -3,7 +3,8 @@ use std::{path::Path, sync::Arc};
 use lgn_content_store::{Config, ContentReaderExt};
 use lgn_data_compiler::compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd};
 use lgn_data_runtime::{
-    AssetLoader, Resource, ResourceId, ResourcePathId, ResourceProcessor, ResourceTypeAndId,
+    AssetLoader, ResourceDescriptor, ResourceId, ResourcePathId, ResourceProcessor,
+    ResourceTypeAndId,
 };
 
 mod common;

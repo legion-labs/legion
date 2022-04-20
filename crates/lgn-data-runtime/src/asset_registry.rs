@@ -1,5 +1,4 @@
 use std::{
-    any::Any,
     cell::Cell,
     collections::HashMap,
     path::Path,
@@ -15,8 +14,8 @@ use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
     manifest::Manifest,
     vfs, Asset, AssetLoader, AssetLoaderError, Handle, HandleUntyped, OfflineResource, Resource,
-    ResourceId, ResourcePathId, ResourceProcessor, ResourceProcessorError, ResourceType,
-    ResourceTypeAndId,
+    ResourceDescriptor, ResourceId, ResourcePathId, ResourceProcessor, ResourceProcessorError,
+    ResourceType, ResourceTypeAndId,
 };
 
 /// Error type for Asset Registry
@@ -198,7 +197,7 @@ impl AssetRegistryOptions {
     /// Enables support of a given [`Resource`] by adding corresponding
     /// [`AssetLoader`].
     #[must_use]
-    pub fn add_loader<A: Asset>(mut self) -> Self {
+    pub fn add_loader<A: Asset + ResourceDescriptor>(mut self) -> Self {
         ResourceType::register_name(A::TYPE, A::TYPENAME);
         self.loaders.insert(A::TYPE, Box::new(A::Loader::default()));
         self
@@ -206,18 +205,20 @@ impl AssetRegistryOptions {
 
     /// Enables support of a given [`Resource`] by adding corresponding
     /// [`AssetLoader`].
-    pub fn add_loader_mut<A: Asset>(&mut self) -> &mut Self {
+    pub fn add_loader_mut<A: Asset + ResourceDescriptor>(&mut self) -> &mut Self {
         ResourceType::register_name(A::TYPE, A::TYPENAME);
         self.loaders.insert(A::TYPE, Box::new(A::Loader::default()));
         self
     }
 
-    pub fn add_processor_mut<R: OfflineResource>(&mut self) -> &mut Self {
+    /// doc
+    pub fn add_processor_mut<R: OfflineResource + ResourceDescriptor>(&mut self) -> &mut Self {
         self.processors
             .insert(R::TYPE, Box::new(R::Processor::default()));
         self
     }
 
+    /// doc
     pub fn add_processor_ext(
         mut self,
         kind: ResourceType,
@@ -228,7 +229,8 @@ impl AssetRegistryOptions {
         self
     }
 
-    pub fn add_processor<R: OfflineResource>(mut self) -> Self {
+    /// doc
+    pub fn add_processor<R: OfflineResource + ResourceDescriptor>(self) -> Self {
         self.add_processor_ext(R::TYPE, Box::new(R::Processor::default()))
     }
 
@@ -266,7 +268,7 @@ impl AssetRegistryOptions {
 }
 
 struct Inner {
-    assets: HashMap<ResourceTypeAndId, Box<dyn Any + Send>>,
+    assets: HashMap<ResourceTypeAndId, Box<dyn Resource>>,
     loader: AssetLoaderStub,
     load_errors: HashMap<ResourceTypeAndId, AssetRegistryError>,
     load_event_senders: Vec<tokio::sync::mpsc::UnboundedSender<ResourceLoadEvent>>,
@@ -390,27 +392,27 @@ impl AssetRegistry {
 
     /// Same as [`Self::load_untyped`] but the returned handle is generic over
     /// asset type `T` for convenience.
-    pub fn load<T: Any + Resource + Send>(&self, id: ResourceTypeAndId) -> Handle<T> {
+    pub fn load<T: Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
         let handle = self.load_untyped(id);
         Handle::<T>::from(handle)
     }
 
     /// Same as [`Self::load`] but blocks until the resource load completes or
     /// returns an error.
-    pub fn load_sync<T: Any + Resource + Send>(&self, id: ResourceTypeAndId) -> Handle<T> {
+    pub fn load_sync<T: Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
         let handle = self.load_untyped_sync(id);
         Handle::<T>::from(handle)
     }
 
     /// Same as [`Self::load`] but waits until the resource load completes or
     /// returns an error.
-    pub async fn load_async<T: Any + Resource + Send>(&self, id: ResourceTypeAndId) -> Handle<T> {
+    pub async fn load_async<T: Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
         let handle = self.load_untyped_async(id).await;
         Handle::<T>::from(handle)
     }
 
     /// Retrieves a reference to an asset, None if asset is not loaded.
-    pub(crate) fn get<T: Any + Resource + Send>(
+    pub(crate) fn get<T: Resource>(
         &self,
         id: ResourceTypeAndId,
     ) -> Option<AssetRegistryGuard<'_, T>> {
@@ -423,23 +425,17 @@ impl AssetRegistry {
         None
     }
 
-    pub(crate) fn instantiate<T: Any + Resource + Send>(
-        &self,
-        id: ResourceTypeAndId,
-    ) -> Option<Box<T>> {
+    pub(crate) fn instantiate(&self, id: ResourceTypeAndId) -> Option<Box<dyn Resource>> {
         let guard = self.inner.read().unwrap();
         let inner: &Inner = &guard;
         if let Some(asset) = inner.assets.get(&id) {
-            if let Some(typed) = asset.downcast_ref::<T>() {
-                return Some(Box::new(typed.clone()));
-            }
+            return Some(asset.clone_dyn());
         }
         None
     }
 
-    pub(crate) fn apply<T: Any + Resource + Send>(&self, id: ResourceTypeAndId, resource: Box<T>) {
-        let mut guard = self.inner.write().unwrap();
-        guard.assets.insert(id, resource);
+    pub(crate) fn apply(&self, _id: ResourceTypeAndId, _value: Box<dyn Resource>) {
+        todo!()
     }
 
     /// Tests if an asset is loaded.
@@ -497,6 +493,7 @@ impl AssetRegistry {
         }
     }
 
+    /// Return a resource in a default state
     pub fn new_resource(&self, kind: ResourceType) -> Option<HandleUntyped> {
         let id = ResourceTypeAndId {
             kind,
@@ -505,6 +502,7 @@ impl AssetRegistry {
         self.new_resource_with_id(id)
     }
 
+    /// Return a resource in a default state with a specific Id
     pub fn new_resource_with_id(&self, id: ResourceTypeAndId) -> Option<HandleUntyped> {
         if let Some(processor) = self.processors.write().unwrap().get_mut(&id.kind) {
             let resource = processor.new_resource();
@@ -520,6 +518,7 @@ impl AssetRegistry {
         }
     }
 
+    /// Return the name of the Resource type that the processor can process.
     pub fn get_resource_type_name(&self, kind: ResourceType) -> Option<&'static str> {
         self.processors
             .read()
@@ -528,6 +527,7 @@ impl AssetRegistry {
             .and_then(|processor| processor.get_resource_type_name())
     }
 
+    /// Return the available resource type that can be created
     pub fn get_resource_types(&self) -> Vec<(ResourceType, &'static str)> {
         self.processors
             .read()
@@ -537,44 +537,35 @@ impl AssetRegistry {
             .collect()
     }
 
+    /// Interface to retrieve the Resource reflection interface
     pub fn get_resource_reflection<'a>(
         &'a self,
-        kind: ResourceType,
+        _kind: ResourceType,
         handle: &HandleUntyped,
-    ) -> Option<AssetRegistryGuard<'a, dyn TypeReflection>> {
+    ) -> Option<AssetRegistryGuard<'a, dyn Resource>> {
         let guard = self.inner.read().unwrap();
         if let Some(resource) = guard.assets.get(&handle.id()) {
-            if let Some(processor) = self.processors.read().unwrap().get(&kind) {
-                if let Some(reflect) = processor.get_resource_reflection(resource.as_ref()) {
-                    let ptr = unsafe {
-                        &*((reflect as *const dyn lgn_data_model::TypeReflection).cast::<u8>())
-                    };
-                    return Some(AssetRegistryGuard { _guard: guard, ptr });
-                }
-            }
+            let ptr = resource.as_ref() as *const dyn Resource;
+            return Some(AssetRegistryGuard { _guard: guard, ptr });
         }
         None
     }
 
+    /// Interface to retrieve the Resource mutable reflection interface
     pub fn get_resource_reflection_mut<'a>(
         &'a self,
-        kind: ResourceType,
+        _kind: ResourceType,
         handle: &HandleUntyped,
-    ) -> Option<AssetRegistryWriteGuard<'a, dyn TypeReflection>> {
+    ) -> Option<AssetRegistryWriteGuard<'a, dyn Resource>> {
         let mut guard = self.inner.write().unwrap();
         if let Some(resource) = guard.assets.get_mut(&handle.id()) {
-            if let Some(processor) = self.processors.read().unwrap().get(&kind) {
-                if let Some(reflect) = processor.get_resource_reflection_mut(resource.as_mut()) {
-                    let ptr = unsafe {
-                        &mut *(reflect as *mut dyn lgn_data_model::TypeReflection).cast::<u8>()
-                    };
-                    return Some(AssetRegistryWriteGuard { _guard: guard, ptr });
-                }
-            }
+            let ptr = resource.as_mut() as *mut dyn Resource;
+            return Some(AssetRegistryWriteGuard { _guard: guard, ptr });
         }
         None
     }
 
+    /// Interface to initialize a new `Resource` from a stream
     pub fn deserialize_resource(
         &self,
         id: ResourceTypeAndId,
@@ -595,6 +586,7 @@ impl AssetRegistry {
         }
     }
 
+    /// Interface to serialize a `Resource` into a stream
     pub fn serialize_resource(
         &self,
         kind: ResourceType,
@@ -643,6 +635,19 @@ impl AssetRegistry {
     pub fn load_manifest(&self, manifest_id: &ChunkIdentifier) {
         self.write_inner().loader.load_manifest(manifest_id);
     }
+
+    /// Return an editable Reflected value
+    pub fn edit_reflected(&self, id: ResourceTypeAndId) -> Option<Box<dyn TypeReflection>> {
+        let guard = self.inner.read().unwrap();
+        let inner: &Inner = &guard;
+        if let Some(_asset) = inner.assets.get(&id) {
+
+            //if let Some(ptr) = asset.downcast_ref::<T>().map(|c| c as *const T) {
+            //    return Some(AssetRegistryGuard { _guard: guard, ptr });
+            //}
+        }
+        None
+    }
 }
 
 #[cfg(test)]
@@ -665,6 +670,8 @@ mod tests {
             resource, Asset, AssetLoader, AssetLoaderError, AssetRegistry, Reference, Resource,
             ResourceId, ResourceType, ResourceTypeAndId,
         };
+        extern crate self as lgn_data_runtime;
+
         /// Asset temporarily used for testing.
         ///
         /// To be removed once real asset types exist.
@@ -692,7 +699,7 @@ mod tests {
             fn load(
                 &mut self,
                 reader: &mut dyn io::Read,
-            ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError> {
+            ) -> Result<Box<dyn Resource>, AssetLoaderError> {
                 let len = reader.read_u64::<LittleEndian>()?;
 
                 let mut content = vec![0; len as usize];
@@ -706,7 +713,7 @@ mod tests {
                 Ok(asset)
             }
 
-            fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync)) {
+            fn load_init(&mut self, asset: &mut (dyn Resource)) {
                 let asset = asset.downcast_mut::<RefsAsset>().unwrap();
                 if let Some(reference) = &mut asset.reference {
                     reference.activate(self.registry.as_ref().unwrap());

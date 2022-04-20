@@ -23,7 +23,7 @@ pub(crate) fn generate(
         };
         use async_trait::async_trait;
 
-        use lgn_data_runtime::{AssetRegistryOptions, Resource, ResourcePathId, Transform};
+        use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourcePathId, Transform};
         type OfflineType = #crate_name::offline::#type_name;
         type RuntimeType = #crate_name::runtime::#type_name;
 

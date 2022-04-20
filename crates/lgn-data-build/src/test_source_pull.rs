@@ -4,10 +4,10 @@ mod tests {
 
     use lgn_content_store::{ContentProvider, MemoryProvider};
     use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-    use lgn_data_offline::resource::{
-        Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
+    use lgn_data_offline::resource::{Project, ResourcePathName};
+    use lgn_data_runtime::{
+        AssetRegistry, AssetRegistryOptions, ResourceDescriptor, ResourcePathId,
     };
-    use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions, Resource, ResourcePathId};
     use lgn_source_control::LocalRepositoryIndex;
     use tempfile::TempDir;
 

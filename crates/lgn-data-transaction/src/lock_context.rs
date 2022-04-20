@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{btree_map::Entry, HashSet};
 use std::sync::Arc;
 
 use lgn_data_offline::resource::{Project, ResourceHandles};
@@ -42,15 +42,17 @@ impl<'a> LockContext<'a> {
         &mut self,
         resource_id: ResourceTypeAndId,
     ) -> Result<HandleUntyped, Error> {
-        Ok(self
-            .loaded_resource_handles
-            .entry(resource_id)
-            .or_insert(
-                self.project
+        Ok(match self.loaded_resource_handles.entry(resource_id) {
+            Entry::Occupied(e) => e.get().clone(),
+            Entry::Vacant(e) => {
+                let handle = self
+                    .project
                     .load_resource(resource_id, &self.asset_registry)
-                    .map_err(|err| Error::Project(resource_id, err))?,
-            )
-            .clone())
+                    .map_err(|err| Error::Project(resource_id, err))?;
+                e.insert(handle.clone());
+                handle
+            }
+        })
     }
 
     /// Load or reload a Resource from its id

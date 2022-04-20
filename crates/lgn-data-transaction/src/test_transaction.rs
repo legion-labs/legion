@@ -7,7 +7,7 @@ use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::{Project, ResourcePathName};
 use lgn_data_runtime::ResourcePathId;
 use lgn_data_runtime::{
-    manifest::Manifest, AssetRegistryOptions, Resource, ResourceId, ResourceTypeAndId,
+    manifest::Manifest, AssetRegistryOptions, ResourceDescriptor, ResourceId, ResourceTypeAndId,
 };
 use tokio::sync::Mutex;
 

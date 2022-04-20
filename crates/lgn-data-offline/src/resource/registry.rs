@@ -1,10 +1,10 @@
 use std::sync::Arc;
-use std::{any::Any, collections::HashMap, io};
+use std::{collections::HashMap, io};
 
 use lgn_data_model::TypeReflection;
 use lgn_data_runtime::{
-    OfflineResource, ResourcePathId, ResourceProcessor, ResourceProcessorError, ResourceType,
-    ResourceTypeAndId,
+    OfflineResource, Resource, ResourceDescriptor, ResourcePathId, ResourceProcessor,
+    ResourceProcessorError, ResourceType, ResourceTypeAndId,
 };
 
 use super::{RefOp, ResourceHandleId, ResourceHandleUntyped};
@@ -83,12 +83,12 @@ impl ResourceRegistryOptions {
     /// Panics if a processor for a resource of type `kind` is already
     /// registered.
     #[must_use]
-    pub fn add_type<T: OfflineResource>(self) -> Self {
+    pub fn add_type<T: OfflineResource + ResourceDescriptor>(self) -> Self {
         self.add_type_processor(T::TYPE, Box::new(T::Processor::default()))
     }
 
     /// See `add_type`
-    pub fn add_type_mut<T: OfflineResource>(&mut self) -> &mut Self {
+    pub fn add_type_mut<T: OfflineResource + ResourceDescriptor>(&mut self) -> &mut Self {
         self.add_type_processor_mut(T::TYPE, Box::new(T::Processor::default()))
     }
 
@@ -120,7 +120,7 @@ pub struct ResourceRegistry {
         crossbeam_channel::Receiver<RefOp>,
     ),
     ref_counts: HashMap<ResourceHandleId, isize>,
-    resources: HashMap<ResourceHandleId, Option<Box<dyn Any + Send + Sync>>>,
+    resources: HashMap<ResourceHandleId, Option<Box<dyn Resource>>>,
     processors: HashMap<ResourceType, Box<dyn ResourceProcessor + Send + Sync>>,
 }
 
@@ -197,7 +197,7 @@ impl ResourceRegistry {
 
     /// Inserts a resource into the registry and returns a handle
     /// that identifies that resource.
-    fn insert(&mut self, resource: Box<dyn Any + Send + Sync>) -> ResourceHandleUntyped {
+    fn insert(&mut self, resource: Box<dyn Resource>) -> ResourceHandleUntyped {
         let handle = self.create_handle();
         self.resources.insert(handle.id, Some(resource));
         handle
@@ -232,7 +232,7 @@ impl ResourceRegistry {
 
     /// Returns a reference to a resource behind the handle, None if the
     /// resource does not exist.
-    pub fn get<'a>(&'a self, handle: &ResourceHandleUntyped) -> Option<&'a dyn Any> {
+    pub fn get<'a>(&'a self, handle: &ResourceHandleUntyped) -> Option<&'a dyn Resource> {
         if let Some(Some(resource)) = self.resources.get(&handle.id) {
             return Some(resource.as_ref());
         }
@@ -241,7 +241,10 @@ impl ResourceRegistry {
 
     /// Returns a mutable reference to a resource behind the handle, None if the
     /// resource does not exist.
-    pub fn get_mut<'a>(&'a mut self, handle: &ResourceHandleUntyped) -> Option<&'a mut dyn Any> {
+    pub fn get_mut<'a>(
+        &'a mut self,
+        handle: &ResourceHandleUntyped,
+    ) -> Option<&'a mut dyn Resource> {
         if let Some(Some(resource)) = self.resources.get_mut(&handle.id) {
             return Some(resource.as_mut());
         }
@@ -304,11 +307,11 @@ impl ResourceRegistry {
 
 #[cfg(test)]
 mod tests {
-    use std::{any::Any, io};
+    use std::io;
 
     use lgn_data_runtime::{
-        resource, Asset, AssetLoader, AssetLoaderError, OfflineResource, Resource, ResourcePathId,
-        ResourceProcessor, ResourceProcessorError,
+        resource, Asset, AssetLoader, AssetLoaderError, OfflineResource, Resource,
+        ResourceDescriptor, ResourcePathId, ResourceProcessor, ResourceProcessorError,
     };
 
     use crate::resource::registry::ResourceRegistryOptions;
@@ -336,7 +339,7 @@ mod tests {
         fn load(
             &mut self,
             reader: &mut dyn io::Read,
-        ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError> {
+        ) -> Result<Box<dyn Resource>, AssetLoaderError> {
             let mut resource = Box::new(SampleResource {
                 content: String::from(""),
             });
@@ -353,11 +356,11 @@ mod tests {
             Ok(resource)
         }
 
-        fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+        fn load_init(&mut self, _asset: &mut (dyn Resource)) {}
     }
 
     impl ResourceProcessor for SampleProcessor {
-        fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
+        fn new_resource(&mut self) -> Box<dyn Resource> {
             Box::new(SampleResource {
                 content: self.default_content.clone(),
             })
@@ -369,7 +372,7 @@ mod tests {
 
         fn write_resource(
             &self,
-            resource: &dyn Any,
+            resource: &dyn Resource,
             writer: &mut dyn std::io::Write,
         ) -> Result<usize, ResourceProcessorError> {
             let resource = resource.downcast_ref::<SampleResource>().unwrap();
@@ -383,11 +386,11 @@ mod tests {
         fn read_resource(
             &mut self,
             reader: &mut dyn std::io::Read,
-        ) -> Result<Box<dyn Any + Send + Sync>, ResourceProcessorError> {
+        ) -> Result<Box<dyn Resource>, ResourceProcessorError> {
             Ok(self.load(reader)?)
         }
 
-        fn extract_build_dependencies(&mut self, _resource: &dyn Any) -> Vec<ResourcePathId> {
+        fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<ResourcePathId> {
             vec![]
         }
     }

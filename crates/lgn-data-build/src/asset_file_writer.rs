@@ -66,7 +66,7 @@ mod tests {
 
     use bincode::Options;
     use lgn_content_store::{ContentWriterExt, MemoryProvider};
-    use lgn_data_runtime::{Resource, ResourceId};
+    use lgn_data_runtime::{ResourceDescriptor, ResourceId};
     use serde::Serialize;
 
     use super::*;

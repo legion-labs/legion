@@ -3,11 +3,11 @@
 //! It is used to test the data compilation process until we have a proper asset
 //! available.
 
-use std::{any::Any, io};
+use std::io;
 
 use crate::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
-
-/// Asset temporarily used for testing.
+extern crate self as lgn_data_runtime;
+// Asset temporarily used for testing.
 ///
 /// To be removed once real asset types exist.
 #[resource("test_asset")]
@@ -28,17 +28,14 @@ impl Asset for TestAsset {
 pub struct TestAssetLoader {}
 
 impl AssetLoader for TestAssetLoader {
-    fn load(
-        &mut self,
-        reader: &mut dyn io::Read,
-    ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError> {
+    fn load(&mut self, reader: &mut dyn io::Read) -> Result<Box<dyn Resource>, AssetLoaderError> {
         let mut content = String::new();
         reader.read_to_string(&mut content)?;
         let asset = Box::new(TestAsset { content });
         Ok(asset)
     }
 
-    fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync)) {
+    fn load_init(&mut self, asset: &mut (dyn Resource)) {
         assert!(asset.downcast_mut::<TestAsset>().is_some());
     }
 }

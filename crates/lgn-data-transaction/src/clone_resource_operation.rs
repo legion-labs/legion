@@ -65,7 +65,7 @@ impl TransactionOperation for CloneResourceOperation {
             {
                 // Try to set the name component field
                 if let Err(err) = set_property_from_json_string(
-                    &mut *reflection,
+                    reflection.as_reflect_mut(),
                     "components[Name].name",
                     &serde_json::json!(entity_name).to_string(),
                 ) {

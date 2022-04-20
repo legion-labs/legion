@@ -1,5 +1,7 @@
+use std::any::Any;
+
 /// Trait that implement reflection functions
-pub trait TypeReflection {
+pub trait TypeReflection: Any {
     /// Return the `TypeDefinition` of the instance
     fn get_type(&self) -> TypeDefinition;
 
@@ -23,6 +25,12 @@ pub trait TypeReflection {
         TypeDefinition::None
     }
 }
+
+/*impl dyn TypeReflection {
+    fn from_any(val: &dyn std::any::Any) -> Option<&dyn TypeReflection> {
+        val.type_id();
+    }
+}*/
 
 /// Type Definition
 #[derive(Clone, Copy)]

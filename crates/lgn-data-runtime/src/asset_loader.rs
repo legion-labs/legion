@@ -1,7 +1,6 @@
 #![allow(clippy::type_complexity)]
 
 use std::{
-    any::Any,
     collections::{HashMap, HashSet},
     io,
     ops::Deref,
@@ -16,7 +15,7 @@ use lgn_tracing::{error, info};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    vfs, AssetLoader, AssetRegistryError, HandleUntyped, ReferenceUntyped, ResourceId,
+    vfs, AssetLoader, AssetRegistryError, HandleUntyped, ReferenceUntyped, Resource, ResourceId,
     ResourceType, ResourceTypeAndId,
 };
 
@@ -33,15 +32,15 @@ struct LoadOutput {
     /// None here means the asset was already loaded before so it doesn't have
     /// to be loaded again. It will still contribute to reference count
     /// though.
-    assets: Vec<(ResourceTypeAndId, Option<Box<dyn Any + Send + Sync>>)>,
+    assets: Vec<(ResourceTypeAndId, Option<Box<dyn Resource>>)>,
     load_dependencies: Vec<AssetReference>,
 }
 
 pub(crate) enum LoaderResult {
-    Loaded(HandleUntyped, Box<dyn Any + Send + Sync>, Option<LoadId>),
+    Loaded(HandleUntyped, Box<dyn Resource>, Option<LoadId>),
     Unloaded(ResourceTypeAndId),
     LoadError(HandleUntyped, Option<LoadId>, AssetRegistryError),
-    Reloaded(HandleUntyped, Box<dyn Any + Send + Sync>),
+    Reloaded(HandleUntyped, Box<dyn Resource>),
 }
 
 #[derive(Debug)]
@@ -62,7 +61,7 @@ struct LoadState {
     /// List of Resources in asset file identified by `primary_id`.
     /// None indicates a skipped secondary resource that was already loaded
     /// through another resource file.
-    assets: Vec<(HandleUntyped, Option<Box<dyn Any + Send + Sync>>)>,
+    assets: Vec<(HandleUntyped, Option<Box<dyn Resource>>)>,
     /// The list of Resources that need to be loaded before the LoadState can be
     /// considered completed.
     references: Vec<HandleUntyped>,
@@ -693,7 +692,7 @@ mod tests {
     use crate::{
         asset_loader::{HandleMap, LoaderRequest, LoaderResult},
         manifest::Manifest,
-        test_asset, vfs, Handle, Resource, ResourceId, ResourceTypeAndId,
+        test_asset, vfs, Handle, ResourceDescriptor, ResourceId, ResourceTypeAndId,
     };
 
     async fn setup_test() -> (ResourceTypeAndId, AssetLoaderStub, AssetLoaderIO) {

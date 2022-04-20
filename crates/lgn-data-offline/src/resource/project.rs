@@ -794,14 +794,13 @@ impl fmt::Debug for Project {
 
 #[cfg(test)]
 mod tests {
-    use std::any::Any;
     use std::str::FromStr;
     use std::sync::Arc;
 
     use lgn_content_store::{ContentProvider, MemoryProvider};
     use lgn_data_runtime::{
-        resource, AssetRegistry, AssetRegistryOptions, OfflineResource, Resource, ResourcePathId,
-        ResourceProcessor, ResourceProcessorError, ResourceType,
+        resource, AssetRegistry, AssetRegistryOptions, Resource, ResourcePathId, ResourceProcessor,
+        ResourceProcessorError, ResourceType,
     };
 
     use crate::resource::project::Project;
@@ -822,14 +821,14 @@ mod tests {
 
     struct NullResourceProc {}
     impl ResourceProcessor for NullResourceProc {
-        fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
+        fn new_resource(&mut self) -> Box<dyn Resource> {
             Box::new(NullResource {
                 content: 0,
                 dependencies: vec![],
             })
         }
 
-        fn extract_build_dependencies(&mut self, resource: &dyn Any) -> Vec<ResourcePathId> {
+        fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
             resource
                 .downcast_ref::<NullResource>()
                 .unwrap()
@@ -839,7 +838,7 @@ mod tests {
 
         fn write_resource(
             &self,
-            resource: &dyn Any,
+            resource: &dyn Resource,
             writer: &mut dyn std::io::Write,
         ) -> Result<usize, ResourceProcessorError> {
             let resource = resource.downcast_ref::<NullResource>().unwrap();
@@ -869,7 +868,7 @@ mod tests {
         fn read_resource(
             &mut self,
             reader: &mut dyn std::io::Read,
-        ) -> Result<Box<dyn Any + Send + Sync>, ResourceProcessorError> {
+        ) -> Result<Box<dyn Resource>, ResourceProcessorError> {
             let mut resource = self.new_resource();
             let mut res = resource.downcast_mut::<NullResource>().unwrap();
 

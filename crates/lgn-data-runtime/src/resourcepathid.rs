@@ -472,8 +472,8 @@ mod tests {
     use std::str::FromStr;
 
     use crate::{
-        test_resource, Resource, ResourceId, ResourcePathId, ResourceType, ResourceTypeAndId,
-        Transform,
+        test_resource, ResourceDescriptor, ResourceId, ResourcePathId, ResourceType,
+        ResourceTypeAndId, Transform,
     };
 
     #[test]

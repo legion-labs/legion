@@ -45,8 +45,20 @@ pub(crate) fn generate(struct_info: &StructMetaInfo) -> TokenStream {
 
     quote! {
 
-        impl #life_time lgn_data_runtime::Resource for #runtime_identifier #life_time {
+        impl lgn_data_runtime::ResourceDescriptor for #runtime_identifier {
             const TYPENAME: &'static str = #runtime_name;
+        }
+
+        impl lgn_data_runtime::Resource for #runtime_identifier {
+            fn as_reflect(&self) -> &dyn lgn_data_model::TypeReflection {
+                self
+            }
+            fn as_reflect_mut(&mut self) -> &mut dyn lgn_data_model::TypeReflection {
+                self
+            }
+            fn clone_dyn(&self) -> Box<dyn lgn_data_runtime::Resource> {
+                Box::new(self.clone())
+            }
         }
 
         impl #life_time lgn_data_runtime::Asset for #runtime_identifier #life_time {
@@ -59,14 +71,14 @@ pub(crate) fn generate(struct_info: &StructMetaInfo) -> TokenStream {
         pub struct #runtime_loader {}
 
         impl lgn_data_runtime::AssetLoader for #runtime_loader {
-            fn load(&mut self, reader: &mut dyn std::io::Read) -> Result<Box<dyn std::any::Any + Send + Sync>, lgn_data_runtime::AssetLoaderError> {
+            fn load(&mut self, reader: &mut dyn std::io::Read) -> Result<Box<dyn lgn_data_runtime::Resource>, lgn_data_runtime::AssetLoaderError> {
                 let output : #runtime_identifier = bincode::deserialize_from(reader)
-                    .map_err(|err| lgn_data_runtime::AssetLoaderError::ErrorLoading(<#runtime_identifier as lgn_data_runtime::Resource>::TYPENAME, err.to_string()))?;
+                    .map_err(|err| lgn_data_runtime::AssetLoaderError::ErrorLoading(<#runtime_identifier as lgn_data_runtime::ResourceDescriptor>::TYPENAME, err.to_string()))?;
 
                 Ok(Box::new(output))
             }
 
-            fn load_init(&mut self, _asset: &mut (dyn std::any::Any + Send + Sync)) {}
+            fn load_init(&mut self, _asset: &mut (dyn lgn_data_runtime::Resource)) {}
         }
     }
 }

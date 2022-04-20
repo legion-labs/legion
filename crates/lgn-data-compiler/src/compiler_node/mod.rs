@@ -55,7 +55,7 @@ mod tests {
     use std::{path::PathBuf, sync::Arc};
 
     use lgn_data_runtime::{
-        AssetRegistryOptions, Resource, ResourceId, ResourcePathId, ResourceType,
+        AssetRegistryOptions, ResourceDescriptor, ResourceId, ResourcePathId, ResourceType,
         ResourceTypeAndId, Transform,
     };
 
