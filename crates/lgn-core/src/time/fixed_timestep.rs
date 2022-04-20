@@ -1,7 +1,5 @@
 #![allow(unsafe_code)]
 
-use std::borrow::Cow;
-
 use lgn_ecs::{
     archetype::{Archetype, ArchetypeComponentId},
     component::ComponentId,
@@ -177,8 +175,8 @@ impl System for FixedTimestep {
     type In = ();
     type Out = ShouldRun;
 
-    fn name(&self) -> Cow<'static, str> {
-        Cow::Borrowed(std::any::type_name::<Self>())
+    fn name(&self) -> &'static str {
+        std::any::type_name::<Self>()
     }
 
     fn new_archetype(&mut self, archetype: &Archetype) {

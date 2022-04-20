@@ -1,7 +1,7 @@
 use async_channel::{Receiver, Sender};
 use fixedbitset::FixedBitSet;
 use lgn_tasks::{ComputeTaskPool, Scope, TaskPool};
-use lgn_tracing::{span_fn, span_scope};
+use lgn_tracing::{span_fn, span_scope, span_scope_named};
 #[cfg(test)]
 use SchedulingEvent::StartedSystems;
 
@@ -195,23 +195,17 @@ impl ParallelExecutor {
                 let start_receiver = system_data.start_receiver.clone();
                 let finish_sender = self.finish_sender.clone();
                 let system = system.system_mut();
-                // TODO: add system name to async trace scope
-                // // NB: outside the task to get the TLS current span
-                // let system_span = info_span!("system", name = &*system.name());
-                // let overhead_span = info_span!("system overhead", name = &*system.name());
+
                 let task = async move {
                     start_receiver
                         .recv()
                         .await
                         .unwrap_or_else(|error| unreachable!("{}", error));
-                    // TODO: add system name to async trace scope
-                    // span_scope!();
-                    // let system_guard = system_span.enter();
                     {
-                        span_scope!("prepare_systems::run_unsafe");
+                        span_scope_named!(&*system.name());
                         unsafe { system.run_unsafe((), world) };
                     }
-                    // drop(system_guard);
+
                     finish_sender
                         .send(index)
                         .await

@@ -435,7 +435,6 @@ impl MaterialManager {
     }
 }
 
-#[span_fn]
 #[allow(clippy::needless_pass_by_value)]
 fn on_material_added(
     mut commands: Commands<'_, '_>,
@@ -456,7 +455,6 @@ fn on_material_added(
     }
 }
 
-#[span_fn]
 #[allow(clippy::needless_pass_by_value)]
 fn on_material_changed(
     mut material_manager: ResMut<'_, MaterialManager>,
@@ -472,7 +470,6 @@ fn on_material_changed(
     }
 }
 
-#[span_fn]
 #[allow(clippy::needless_pass_by_value)]
 fn on_material_removed(
     removed_entities: RemovedComponents<'_, MaterialComponent>,
@@ -510,7 +507,6 @@ fn upload_default_material(
     material_manager.upload_default_material(&renderer, &shared_resources_manager);
 }
 
-#[span_fn]
 #[allow(clippy::needless_pass_by_value)]
 fn upload_material_data(
     renderer: Res<'_, Renderer>,

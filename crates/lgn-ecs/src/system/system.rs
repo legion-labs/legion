@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use lgn_tracing::warn;
 
 use crate::{
@@ -28,7 +26,7 @@ pub trait System: Send + Sync + 'static {
     /// The system's output.
     type Out;
     /// Returns the system's name.
-    fn name(&self) -> Cow<'static, str>;
+    fn name(&self) -> &'static str;
     /// Register a new archetype for this system.
     fn new_archetype(&mut self, archetype: &Archetype);
     /// Returns the system's component [`Access`].
