@@ -6,7 +6,6 @@
 /// use lgn_tracing::span_scope;
 ///
 /// # fn main() {
-/// #
 /// span_scope!("scope");
 /// # }
 /// ```
@@ -14,21 +13,51 @@
 macro_rules! span_scope {
     ($scope_name:ident, $name:expr) => {
         static $scope_name: $crate::spans::SpanMetadata = $crate::spans::SpanMetadata {
-            lod: $crate::Verbosity::Max,
             name: $name,
+            location: $crate::spans::SpanLocation {
+                lod: $crate::Verbosity::Max,
+                target: module_path!(),
+                module_path: module_path!(),
+                file: file!(),
+                line: line!(),
+            },
+        };
+        let guard_named = $crate::guards::ThreadSpanGuard::new(&$scope_name);
+    };
+    ($name:expr) => {
+        $crate::span_scope!(_METADATA_NAMED, $name);
+    };
+}
+
+/// Records a span with a name that is determined at runtime.
+///
+/// # Examples
+///
+/// ```
+/// use lgn_tracing::span_scope;
+///
+/// # fn get_name() -> &'static str {
+/// #   return "name";
+/// # }
+/// #
+/// # fn main() {
+/// span_scope_named!(get_name());
+/// # }
+/// ```
+#[macro_export]
+macro_rules! span_scope_named {
+    ($scope_name:ident, $name:expr) => {
+        static $scope_name: $crate::spans::SpanLocation = $crate::spans::SpanLocation {
+            lod: $crate::Verbosity::Max,
             target: module_path!(),
             module_path: module_path!(),
             file: file!(),
             line: line!(),
         };
-        let guard_named = $crate::guards::ThreadSpanGuard {
-            thread_span_desc: &$scope_name,
-            _dummy_ptr: std::marker::PhantomData::default(),
-        };
-        $crate::dispatch::on_begin_scope(&$scope_name);
+        let guard_named = $crate::guards::ThreadNamedSpanGuard::new(&$scope_name, $name);
     };
     ($name:expr) => {
-        $crate::span_scope!(_METADATA_NAMED, $name);
+        $crate::span_scope_named!(_METADATA_NAMED, $name);
     };
 }
 
@@ -36,21 +65,36 @@ macro_rules! span_scope {
 macro_rules! async_span_scope {
     ($scope_name:ident, $name:expr) => {
         static $scope_name: $crate::spans::SpanMetadata = $crate::spans::SpanMetadata {
-            lod: $crate::Verbosity::Max,
             name: $name,
+            location: $crate::spans::SpanLocation {
+                lod: $crate::Verbosity::Max,
+                target: module_path!(),
+                module_path: module_path!(),
+                file: file!(),
+                line: line!(),
+            },
+        };
+        let guard_named = $crate::guards::AsyncSpanGuard::new(&$scope_name);
+    };
+    ($name:expr) => {
+        $crate::async_span_scope!(_METADATA_NAMED, $name);
+    };
+}
+
+#[macro_export]
+macro_rules! async_span_scope_named {
+    ($scope_name:ident, $name:expr) => {
+        static $scope_name: $crate::spans::SpanLocation = $crate::spans::SpanLocation {
+            lod: $crate::Verbosity::Max,
             target: module_path!(),
             module_path: module_path!(),
             file: file!(),
             line: line!(),
         };
-        let span_id = $crate::dispatch::on_begin_async_scope(&$scope_name);
-        let guard_named = $crate::guards::AsyncSpanGuard {
-            span_desc: &$scope_name,
-            span_id,
-        };
+        let guard_named = $crate::guards::AsyncNamedSpanGuard::new(&$scope_name, $name);
     };
     ($name:expr) => {
-        $crate::async_span_scope!(_METADATA_NAMED, $name);
+        $crate::async_span_scope_named!(_METADATA_NAMED, $name);
     };
 }
 

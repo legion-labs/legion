@@ -386,7 +386,6 @@ fn render_begin(mut egui_manager: ResMut<'_, Egui>) {
     crate::egui::egui_plugin::end_frame(&mut egui_manager);
 }
 
-#[span_fn]
 #[allow(
     clippy::needless_pass_by_value,
     clippy::too_many_arguments,

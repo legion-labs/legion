@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use crate::{
     archetype::ArchetypeGeneration,
     system::{check_system_change_tick, BoxedSystem, IntoSystem},
@@ -7,7 +5,7 @@ use crate::{
 };
 
 pub trait ExclusiveSystem: Send + Sync + 'static {
-    fn name(&self) -> Cow<'static, str>;
+    fn name(&self) -> &'static str;
 
     fn run(&mut self, world: &mut World);
 
@@ -18,7 +16,7 @@ pub trait ExclusiveSystem: Send + Sync + 'static {
 
 pub struct ExclusiveSystemFn<F> {
     func: F,
-    name: Cow<'static, str>,
+    name: &'static str,
     last_change_tick: u32,
 }
 
@@ -26,8 +24,8 @@ impl<F> ExclusiveSystem for ExclusiveSystemFn<F>
 where
     F: FnMut(&mut World) + Send + Sync + 'static,
 {
-    fn name(&self) -> Cow<'static, str> {
-        self.name.clone()
+    fn name(&self) -> &'static str {
+        self.name
     }
 
     fn run(&mut self, world: &mut World) {
@@ -48,7 +46,7 @@ where
     fn initialize(&mut self, _: &mut World) {}
 
     fn check_change_tick(&mut self, change_tick: u32) {
-        check_system_change_tick(&mut self.last_change_tick, change_tick, self.name.as_ref());
+        check_system_change_tick(&mut self.last_change_tick, change_tick, self.name);
     }
 }
 
@@ -63,7 +61,7 @@ where
     fn exclusive_system(self) -> ExclusiveSystemFn<F> {
         ExclusiveSystemFn {
             func: self,
-            name: core::any::type_name::<F>().into(),
+            name: core::any::type_name::<F>(),
             last_change_tick: 0,
         }
     }
@@ -75,7 +73,7 @@ pub struct ExclusiveSystemCoerced {
 }
 
 impl ExclusiveSystem for ExclusiveSystemCoerced {
-    fn name(&self) -> Cow<'static, str> {
+    fn name(&self) -> &'static str {
         self.system.name()
     }
 

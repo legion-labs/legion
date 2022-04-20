@@ -1,12 +1,11 @@
 use lgn_core::prelude::Time;
 use lgn_ecs::prelude::{Query, Res, ResMut};
-use lgn_tracing::prelude::{error, span_fn};
+use lgn_tracing::prelude::error;
 use lgn_transform::prelude::{GlobalTransform, Transform};
 use physx::prelude::{Owner, RigidActor, RigidDynamic, Scene, ScratchBuffer};
 
 use crate::PxScene;
 
-#[span_fn]
 pub(crate) fn step_simulation(mut scene: ResMut<'_, Owner<PxScene>>, time: Res<'_, Time>) {
     let delta_time = time.delta_seconds();
     if delta_time <= 0_f32 {
@@ -28,7 +27,6 @@ pub(crate) fn step_simulation(mut scene: ResMut<'_, Owner<PxScene>>, time: Res<'
     drop(time);
 }
 
-#[span_fn]
 pub(crate) fn sync_transforms(
     mut scene: ResMut<'_, Owner<PxScene>>,
     mut query: Query<'_, '_, &mut Transform>,
