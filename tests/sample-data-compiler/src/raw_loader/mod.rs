@@ -14,9 +14,7 @@ use std::{
 
 use generic_data::offline::{TestComponent, TestEntity};
 use lgn_content_store::ContentProvider;
-use lgn_data_offline::resource::{
-    Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
-};
+use lgn_data_offline::resource::{Project, ResourcePathName};
 use lgn_data_runtime::{AssetRegistry, Resource, ResourceId, ResourceType, ResourceTypeAndId};
 use lgn_graphics_data::{offline_gltf::GltfFile, offline_png::PngFile, offline_psd::PsdFile};
 use lgn_source_control::{RepositoryIndex, RepositoryName};
@@ -24,7 +22,6 @@ use lgn_tracing::{error, info};
 use lgn_utils::DefaultHasher;
 use sample_data::offline as offline_data;
 use serde::de::DeserializeOwned;
-use tokio::sync::Mutex;
 
 use self::raw_to_offline::FromRaw;
 

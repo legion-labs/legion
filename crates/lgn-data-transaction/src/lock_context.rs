@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use lgn_data_offline::resource::{Project, ResourceHandles, ResourceRegistry};
+use lgn_data_offline::resource::{Project, ResourceHandles};
 use lgn_data_runtime::{AssetRegistry, HandleUntyped, ResourceTypeAndId};
 use lgn_tracing::error;
 use tokio::sync::MutexGuard;

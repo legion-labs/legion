@@ -18,21 +18,17 @@ pub(crate) fn generate_registration_code(
     if !entries.is_empty() {
         let resource_registries = entries
             .iter()
-            .map(|type_name| quote! { .add_type_mut::<#type_name>() });
+            .map(|type_name| quote! { .add_processor_mut::<#type_name>() });
 
         let resources_loaders = entries
             .iter()
             .map(|type_name| quote! { .add_loader_mut::<#type_name>() });
 
         quote! {
-            pub fn register_resource_types(resource_registry: &mut lgn_data_offline::resource::ResourceRegistryOptions) -> &mut lgn_data_offline::resource::ResourceRegistryOptions {
-                resource_registry
-                #(#resource_registries)*
-            }
-
             pub fn add_loaders(asset_registry: &mut lgn_data_runtime::AssetRegistryOptions) -> &mut lgn_data_runtime::AssetRegistryOptions {
                 asset_registry
                 #(#resources_loaders)*
+                #(#resource_registries)*
             }
         }
     } else {

@@ -14,8 +14,8 @@ use lgn_ecs::schedule::SystemLabel;
 use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
     manifest::Manifest,
-    vfs, Asset, AssetLoader, AssetLoaderError, Handle, HandleUntyped, Resource, ResourcePathId,
-    ResourceProcessor, ResourceType, ResourceTypeAndId,
+    vfs, Asset, AssetLoader, AssetLoaderError, Handle, HandleUntyped, OfflineResource, Resource,
+    ResourcePathId, ResourceProcessor, ResourceType, ResourceTypeAndId,
 };
 
 /// Error type for Asset Registry
@@ -182,6 +182,12 @@ impl AssetRegistryOptions {
     pub fn add_loader_mut<A: Asset>(&mut self) -> &mut Self {
         ResourceType::register_name(A::TYPE, A::TYPENAME);
         self.loaders.insert(A::TYPE, Box::new(A::Loader::default()));
+        self
+    }
+
+    pub fn add_processor_mut<R: OfflineResource>(&mut self) -> &mut Self {
+        self.processors
+            .insert(R::TYPE, Box::new(R::Processor::default()));
         self
     }
 

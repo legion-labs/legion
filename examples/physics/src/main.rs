@@ -16,9 +16,7 @@ use std::{
 
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_offline::resource::{
-    Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions,
-};
+use lgn_data_offline::resource::{Project, ResourcePathName};
 use lgn_data_runtime::{
     manifest::Manifest, AssetRegistry, AssetRegistryOptions, Component, Resource, ResourceId,
     ResourcePathId, ResourceTypeAndId,
@@ -36,7 +34,6 @@ use sample_data::{
     offline::{Light, Transform, Visual},
     LightType,
 };
-use tokio::sync::Mutex;
 
 #[derive(Debug, Copy, Clone, PartialEq, ArgEnum)]
 enum CompilersSource {
@@ -105,21 +102,6 @@ async fn main() -> anyhow::Result<()> {
     .await
     .expect("failed to create a project");
 
-    /*let mut resource_registry = ResourceRegistryOptions::new();
-    lgn_graphics_data::offline::register_resource_types(&mut resource_registry);
-    generic_data::offline::register_resource_types(&mut resource_registry);
-    sample_data::offline::register_resource_types(&mut resource_registry);
-
-    let resource_registry = resource_registry.create_async_registry();*/
-
-    let resource_registry = todo!();
-
-    let resource_ids = create_offline_data(&mut project, &resource_registry).await;
-    project
-        .commit("initial commit")
-        .await
-        .expect("failed to commit");
-
     let mut asset_registry = AssetRegistryOptions::new()
         .add_device_dir(project.resource_dir())
         .add_device_cas(Arc::clone(&data_content_provider), Manifest::default());
@@ -127,6 +109,12 @@ async fn main() -> anyhow::Result<()> {
     generic_data::offline::add_loaders(&mut asset_registry);
     sample_data::offline::add_loaders(&mut asset_registry);
     let asset_registry = asset_registry.create().await;
+
+    let resource_ids = create_offline_data(&mut project, &asset_registry).await;
+    project
+        .commit("initial commit")
+        .await
+        .expect("failed to commit");
 
     let mut compilers_path = env::current_exe().expect("cannot access current_exe");
     compilers_path.pop(); // pop the .exe name

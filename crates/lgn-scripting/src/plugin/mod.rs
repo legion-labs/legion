@@ -2,8 +2,6 @@
 use std::sync::Arc;
 
 use lgn_app::prelude::*;
-#[cfg(feature = "offline")]
-use lgn_data_offline::resource::ResourceRegistryOptions;
 use lgn_data_runtime::AssetRegistryOptions;
 #[cfg(not(feature = "offline"))]
 use lgn_data_runtime::{AssetRegistry, AssetRegistryGuard};
@@ -30,7 +28,6 @@ pub struct ScriptingPlugin;
 impl Plugin for ScriptingPlugin {
     fn build(&self, app: &mut App) {
         #[cfg(feature = "offline")]
-        app.add_startup_system(register_resource_types);
         app.add_startup_system(add_loaders);
 
         #[cfg(not(feature = "offline"))]
@@ -84,11 +81,6 @@ impl Default for ScriptingEventCache {
             mouse_motion: MouseMotion { delta: Vec2::ZERO },
         }
     }
-}
-
-#[cfg(feature = "offline")]
-fn register_resource_types(resource_registry: NonSendMut<'_, ResourceRegistryOptions>) {
-    crate::offline::register_resource_types(resource_registry.into_inner());
 }
 
 #[allow(unused_variables)]
