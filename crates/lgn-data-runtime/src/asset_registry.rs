@@ -377,7 +377,7 @@ impl AssetRegistry {
         None
     }
 
-    pub(crate) fn clone<T: Any + Resource>(&self, id: ResourceTypeAndId) -> Option<Box<T>> {
+    pub(crate) fn instantiate<T: Any + Resource>(&self, id: ResourceTypeAndId) -> Option<Box<T>> {
         let guard = self.inner.read().unwrap();
         let inner: &Inner = &guard;
         if let Some(asset) = inner.assets.get(&id) {

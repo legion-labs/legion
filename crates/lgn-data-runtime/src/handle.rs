@@ -100,6 +100,14 @@ impl HandleUntyped {
         registry.get::<T>(self.inner.type_id)
     }
 
+    pub fn instantiate<T: Any + Resource>(&self, registry: &AssetRegistry) -> Option<Box<T>> {
+        registry.instantiate::<T>(self.inner.type_id)
+    }
+
+    pub fn apply<T: Any + Resource>(&self, value: Box<T>, registry: &AssetRegistry) {
+        registry.apply(self.inner.type_id, value)
+    }
+
     /// Returns `ResourceId` associated with this handle.
     pub fn id(&self) -> ResourceTypeAndId {
         self.inner.type_id
@@ -169,8 +177,12 @@ impl<T: Any + Resource> Handle<T> {
         registry.get::<T>(self.handle.inner.type_id)
     }
 
-    pub fn deep_clone(&self, registry: &AssetRegistry) -> Option<Box<T>> {
-        registry.clone(self.handle.inner.type_id)
+    pub fn instantiate(&self, registry: &AssetRegistry) -> Option<Box<T>> {
+        registry.instantiate(self.handle.inner.type_id)
+    }
+
+    pub fn apply(&self, value: Box<T>, registry: &AssetRegistry) {
+        registry.apply(self.handle.inner.type_id, value)
     }
 
     /// Returns `ResourceId` associated with this handle.

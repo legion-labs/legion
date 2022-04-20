@@ -165,12 +165,12 @@ pub async fn build_offline(
                     )
                     .await;
 
-                    if let Some(entity) = project
+                    let handle = project
                         .load_resource(resource_id, &resources)
                         .unwrap()
-                        .typed::<offline_data::Entity>()
-                        .get_mut(&resources)
-                    {
+                        .typed::<offline_data::Entity>();
+
+                    if let Some(entity) = handle.instantiate(&resources) {
                         if let Some(parent_id) = &entity.parent {
                             let mut raw_name = project.raw_resource_name(resource_id.id).unwrap();
                             raw_name.replace_parent_info(Some(parent_id.source_resource()), None);
@@ -178,6 +178,8 @@ pub async fn build_offline(
                                 .rename_resource(resource_id, &raw_name)
                                 .await
                                 .unwrap();
+
+                            handle.apply(entity, &resources);
                         }
                     }
                 }
@@ -376,7 +378,9 @@ async fn build_test_entity(
                 id: ResourceId::from_str("D8FE06A0-1317-46F5-902B-266B0EAE6FA8").unwrap(),
             };
             let test_entity_handle = resources.new_resource(kind).unwrap();
-            let test_entity = test_entity_handle.get_mut::<TestEntity>(resources).unwrap();
+            let mut test_entity = test_entity_handle
+                .instantiate::<TestEntity>(resources)
+                .unwrap();
             test_entity.test_string = "Editable String Value".into();
             test_entity.test_float32 = 1.0;
             test_entity.test_float64 = 2.0;
@@ -391,6 +395,8 @@ async fn build_test_entity(
             });
             test_entity.test_option_set = Some(generic_data::offline::TestSubType2::default());
             test_entity.test_option_primitive_set = Some(lgn_math::Vec3::default());
+
+            test_entity_handle.apply(test_entity, resources);
 
             project
                 .add_resource_with_id(
@@ -470,8 +476,9 @@ where
         let resource = resources.new_resource(OfflineType::TYPE).unwrap();
 
         // convert raw to offline
-        let offline_data = resource.get_mut(resources).unwrap();
+        let mut offline_data = resource.instantiate(resources).unwrap();
         *offline_data = OfflineType::from_raw(raw_data, references);
+        resource.apply(offline_data, resources);
 
         project
             .save_resource(resource_id, resource, resources)
@@ -497,8 +504,9 @@ async fn load_psd_resource(
         .unwrap()
         .typed::<PsdFile>();
 
-    let initial_resource = resource.get_mut(resources).unwrap();
+    let mut initial_resource = resource.instantiate(resources).unwrap();
     *initial_resource = loaded_psd;
+    resource.apply(initial_resource, resources);
 
     project
         .save_resource(resource_id, &resource, resources)
@@ -531,8 +539,9 @@ async fn load_gltf_resource(
     resources: &AssetRegistry,
 ) -> Option<ResourceTypeAndId> {
     let handle = resources.new_resource(GltfFile::TYPE).unwrap();
-    let gltf_file = handle.get_mut::<GltfFile>(resources).unwrap();
+    let mut gltf_file = handle.instantiate::<GltfFile>(resources).unwrap();
     *gltf_file = GltfFile::from_path(file);
+    handle.apply(gltf_file, resources);
 
     project
         .save_resource(resource_id, handle, resources)

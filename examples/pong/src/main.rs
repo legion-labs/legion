@@ -566,13 +566,15 @@ async fn create_offline_entity(
             .expect("failed to create new resource")
     };
 
-    let entity = handle
-        .get_mut::<sample_data::offline::Entity>(&resources)
+    let mut entity = handle
+        .instantiate::<sample_data::offline::Entity>(&resources)
         .unwrap();
     entity.components.clear();
     entity.components.extend(components.into_iter());
     entity.children.clear();
     entity.children.extend(children.into_iter());
+
+    handle.apply(entity, &resources);
 
     if exists {
         project
@@ -622,8 +624,8 @@ async fn create_offline_model(
             .expect("failed to create new resource")
     };
 
-    let model = handle
-        .get_mut::<lgn_graphics_data::offline::Model>(&resources)
+    let mut model = handle
+        .instantiate::<lgn_graphics_data::offline::Model>(&resources)
         .unwrap();
     model.meshes.clear();
     let mesh = lgn_graphics_data::offline::Mesh {
@@ -639,6 +641,8 @@ async fn create_offline_model(
         material: None,
     };
     model.meshes.push(mesh);
+
+    handle.apply(model, &resources);
 
     if exists {
         project
@@ -689,11 +693,13 @@ async fn create_offline_script(
             .expect("failed to create new resource")
     };
 
-    let script = handle
-        .get_mut::<lgn_scripting::offline::Script>(&resources)
+    let mut script = handle
+        .instantiate::<lgn_scripting::offline::Script>(&resources)
         .unwrap();
     script.script_type = script_type;
     script.script = script_text.to_owned();
+
+    handle.apply(script, &resources);
 
     if exists {
         project

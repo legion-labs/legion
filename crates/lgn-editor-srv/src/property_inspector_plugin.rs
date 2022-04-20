@@ -368,13 +368,17 @@ impl PropertyInspector for PropertyInspectorRPC {
                             }
 
                             if let Ok(entity_handle) = ctx.get_or_load(resource_id).await {
-                                if let Some(entity) = entity_handle
-                                    .get_mut::<sample_data::offline::Entity>(&ctx.asset_registry)
+                                if let Some(mut entity) = entity_handle
+                                    .instantiate::<sample_data::offline::Entity>(
+                                        &ctx.asset_registry,
+                                    )
                                 {
                                     entity
                                         .components
                                         .retain(|component| !component.is::<GltfLoader>());
                                     entity.components.push(Box::new(gltf_loader));
+
+                                    entity_handle.apply(entity, &ctx.asset_registry);
                                 }
                             }
                             if let Err(_err) = self
