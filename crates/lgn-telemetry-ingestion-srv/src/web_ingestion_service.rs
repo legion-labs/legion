@@ -85,7 +85,7 @@ impl WebIngestionService {
     }
 
     #[span_fn]
-    #[allow(unsafe_code,clippy::cast_ptr_alignment)]
+    #[allow(unsafe_code, clippy::cast_ptr_alignment)]
     pub async fn insert_block(&self, body: bytes::Bytes) -> Result<()> {
         info!("insert_block");
         unsafe {
