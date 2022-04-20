@@ -91,11 +91,15 @@ impl CallTreeBuilder {
 }
 
 impl ThreadBlockProcessor for CallTreeBuilder {
-    fn on_begin_thread_scope(&mut self, scope: Arc<Object>, ts: i64) -> Result<()> {
+    fn on_begin_thread_scope(
+        &mut self,
+        _scope: Arc<Object>,
+        name: Arc<String>,
+        ts: i64,
+    ) -> Result<()> {
         let time = self.convert_ticks.get_time(ts);
-        let scope_name = scope.get::<Arc<String>>("name")?;
-        let hash = compute_scope_hash(&scope_name);
-        self.record_scope_desc(hash, &scope_name);
+        let hash = compute_scope_hash(&name);
+        self.record_scope_desc(hash, &name);
         let scope = CallTreeNode {
             hash,
             begin_ms: time,
@@ -106,16 +110,20 @@ impl ThreadBlockProcessor for CallTreeBuilder {
         Ok(())
     }
 
-    fn on_end_thread_scope(&mut self, scope: Arc<Object>, ts: i64) -> Result<()> {
+    fn on_end_thread_scope(
+        &mut self,
+        _scope: Arc<Object>,
+        name: Arc<String>,
+        ts: i64,
+    ) -> Result<()> {
         let time = self.convert_ticks.get_time(ts);
-        let scope_name = scope.get::<Arc<String>>("name")?;
-        let hash = compute_scope_hash(&scope_name);
+        let hash = compute_scope_hash(&name);
         if let Some(mut old_top) = self.stack.pop() {
             if old_top.hash == hash {
                 old_top.end_ms = time;
                 self.add_child_to_top(old_top);
             } else if old_top.hash == 0 {
-                self.record_scope_desc(hash, &scope_name);
+                self.record_scope_desc(hash, &name);
                 old_top.hash = hash;
                 old_top.end_ms = time;
                 self.add_child_to_top(old_top);
@@ -123,7 +131,7 @@ impl ThreadBlockProcessor for CallTreeBuilder {
                 anyhow::bail!("top scope mismatch parsing thread block");
             }
         } else {
-            self.record_scope_desc(hash, &scope_name);
+            self.record_scope_desc(hash, &name);
             let scope = CallTreeNode {
                 hash,
                 begin_ms: self.convert_ticks.get_time(self.ts_begin_block),
@@ -135,11 +143,16 @@ impl ThreadBlockProcessor for CallTreeBuilder {
         Ok(())
     }
 
-    fn on_begin_async_scope(&mut self, span_id: u64, scope: Arc<Object>, ts: i64) -> Result<()> {
+    fn on_begin_async_scope(
+        &mut self,
+        span_id: u64,
+        _scope: Arc<Object>,
+        name: Arc<String>,
+        ts: i64,
+    ) -> Result<()> {
         let time_ms = self.convert_ticks.get_time(ts);
-        let scope_name = scope.get::<Arc<String>>("name")?;
-        let scope_hash = compute_scope_hash(&scope_name);
-        self.record_scope_desc(scope_hash, &scope_name);
+        let scope_hash = compute_scope_hash(&name);
+        self.record_scope_desc(scope_hash, &name);
         self.async_events.push(AsyncSpanEvent {
             event_type: SpanEventType::Begin as i32,
             span_id,
@@ -149,11 +162,16 @@ impl ThreadBlockProcessor for CallTreeBuilder {
         Ok(())
     }
 
-    fn on_end_async_scope(&mut self, span_id: u64, scope: Arc<Object>, ts: i64) -> Result<()> {
+    fn on_end_async_scope(
+        &mut self,
+        span_id: u64,
+        _scope: Arc<Object>,
+        name: Arc<String>,
+        ts: i64,
+    ) -> Result<()> {
         let time_ms = self.convert_ticks.get_time(ts);
-        let scope_name = scope.get::<Arc<String>>("name")?;
-        let scope_hash = compute_scope_hash(&scope_name);
-        self.record_scope_desc(scope_hash, &scope_name);
+        let scope_hash = compute_scope_hash(&name);
+        self.record_scope_desc(scope_hash, &name);
         self.async_events.push(AsyncSpanEvent {
             event_type: SpanEventType::End as i32,
             span_id,
