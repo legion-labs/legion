@@ -163,29 +163,25 @@ impl CommandBuffer {
                 .build();
         }
 
-        let depth_attachment = if let Some(depth_target) = depth_target {
-            &ash::vk::RenderingAttachmentInfo::builder()
+        let depth_attachment = depth_target.as_ref().map(|depth_target| {
+            ash::vk::RenderingAttachmentInfo::builder()
                 .image_view(depth_target.texture_view.vk_image_view())
                 .image_layout(ash::vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                 .load_op(depth_target.depth_load_op.into())
                 .store_op(depth_target.depth_store_op.into())
                 .clear_value(depth_target.clear_value.into())
                 .build()
-        } else {
-            ::std::ptr::null()
-        };
+        });
 
-        let stencil_attachment = if let Some(depth_target) = depth_target {
-            &ash::vk::RenderingAttachmentInfo::builder()
+        let stencil_attachment = depth_target.as_ref().map(|depth_target| {
+            ash::vk::RenderingAttachmentInfo::builder()
                 .image_view(depth_target.texture_view.vk_image_view())
                 .image_layout(ash::vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                 .load_op(depth_target.stencil_load_op.into())
                 .store_op(depth_target.stencil_store_op.into())
                 .clear_value(depth_target.clear_value.into())
                 .build()
-        } else {
-            ::std::ptr::null()
-        };
+        });
 
         let render_info = ash::vk::RenderingInfo::builder()
             .render_area(render_area)
@@ -195,8 +191,8 @@ impl CommandBuffer {
         let mut render_info = render_info.build();
 
         if depth_target.is_some() {
-            render_info.p_depth_attachment = depth_attachment;
-            render_info.p_stencil_attachment = stencil_attachment;
+            render_info.p_depth_attachment = &depth_attachment.unwrap();
+            render_info.p_stencil_attachment = &stencil_attachment.unwrap();
         };
 
         unsafe {
