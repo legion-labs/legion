@@ -148,7 +148,7 @@ struct CullingArgBuffers {
     culled_args: Option<CullingArgBuffer>,
     culled_instances: Option<CullingArgBuffer>,
     stats_buffer: GpuBufferWithReadback,
-    stats_buufer_readback: Option<Handle<ReadbackBuffer>>,
+    stats_buffer_readback: Option<Handle<ReadbackBuffer>>,
     culling_debug: Option<CullingArgBuffer>,
     // TMP until shader variations
     tmp_culled_count: Option<CullingArgBuffer>,
@@ -194,7 +194,7 @@ impl MeshRenderer {
                     device_context,
                     std::mem::size_of::<CullingEfficiancyStats>() as u64,
                 ),
-                stats_buufer_readback: None,
+                stats_buffer_readback: None,
                 tmp_culled_count: None,
                 tmp_culled_args: None,
                 tmp_culled_instances: None,
@@ -323,7 +323,7 @@ impl MeshRenderer {
                 self.culling_stats = data[0];
             },
         );
-        self.culling_buffers.stats_buufer_readback = Some(readback);
+        self.culling_buffers.stats_buffer_readback = Some(readback);
 
         if count_buffer_size != 0 {
             create_or_replace_buffer(
@@ -816,7 +816,7 @@ impl MeshRenderer {
         // Update Hzb from complete depth buffer
         render_surface.generate_hzb(render_context, &mut cmd_buffer);
 
-        if let Some(readback) = &self.culling_buffers.stats_buufer_readback {
+        if let Some(readback) = &self.culling_buffers.stats_buffer_readback {
             self.culling_buffers
                 .stats_buffer
                 .copy_buffer_to_readback(&cmd_buffer, readback);
@@ -848,7 +848,7 @@ impl MeshRenderer {
     }
 
     pub(crate) fn render_end(&mut self) {
-        let readback = std::mem::take(&mut self.culling_buffers.stats_buufer_readback);
+        let readback = std::mem::take(&mut self.culling_buffers.stats_buffer_readback);
 
         if let Some(readback) = readback {
             self.culling_buffers.stats_buffer.end_readback(readback);
