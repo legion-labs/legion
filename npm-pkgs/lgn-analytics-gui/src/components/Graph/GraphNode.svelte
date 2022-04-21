@@ -14,8 +14,6 @@
   export let collapsed = true;
   export let graphState: GraphState;
 
-  let div: HTMLElement;
-
   $: max = graphState.Max;
   $: desc = $scopeStore[$node?.hash];
   // @ts-ignore
@@ -24,13 +22,10 @@
   export async function setCollapse(value: boolean) {
     collapsed = value;
     await tick();
-    if (!collapsed) {
-      div.scrollIntoView({ behavior: "auto", block: "start" });
-    }
   }
 </script>
 
-<div class="text-sm py-1 rounded-lg overflow-x-hidden" bind:this={div}>
+<div class="text-sm py-1 rounded-lg overflow-x-hidden">
   <div
     class="flex justify-between select-none cursor-pointer relative bg-skin-600 text-content-87"
     on:click={(_) => setCollapse(!collapsed)}
