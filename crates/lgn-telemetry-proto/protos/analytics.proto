@@ -17,6 +17,8 @@ service PerformanceAnalytics {
       returns (CumulativeCallGraphManifest);
   rpc fetch_cumulative_call_graph_block(CumulativeCallGraphBlockRequest)
       returns (CumulativeCallGraphBlock);
+  rpc fetch_cumulative_call_graph_computed_block(CumulativeCallGraphBlockRequest)
+      returns (CumulativeCallGraphComputedBlock);
   rpc find_process(FindProcessRequest) returns (FindProcessReply);
   rpc list_process_children(ListProcessChildrenRequest) returns (ProcessChildrenReply);
   rpc list_process_blocks(ListProcessBlocksRequest) returns (ProcessBlocksReply);
