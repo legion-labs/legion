@@ -105,7 +105,7 @@ impl ScenePlugin {
                             }
                         })
                         .for_each(|scene| {
-                            scene.spawn_entity_hierarchy(
+                            scene.spawn_entity(
                                 handle.id(),
                                 &asset_registry,
                                 &mut commands,
