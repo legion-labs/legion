@@ -240,7 +240,7 @@ impl PropertyInspector for PropertyInspectorRPC {
             .asset_registry
             .get_resource_reflection(resource_id.kind, &handle)
         {
-            collect_properties::<ResourcePropertyCollector>(reflection)
+            collect_properties::<ResourcePropertyCollector>(&*reflection)
                 .map_err(|err| Status::internal(err.to_string()))?
         } else {
             // Return a default bag if there's no reflection
@@ -477,7 +477,7 @@ impl PropertyInspector for PropertyInspectorRPC {
             })?;
 
         //let mut indexed_path = format!("{}[{}]", request.array_path, request.index);
-        let array_prop = find_property(reflection, &request.array_path)
+        let array_prop = find_property(&*reflection, &request.array_path)
             .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
 
         if let TypeDefinition::Array(array_desc) = array_prop.type_def {

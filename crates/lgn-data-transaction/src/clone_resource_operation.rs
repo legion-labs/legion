@@ -41,7 +41,7 @@ impl TransactionOperation for CloneResourceOperation {
 
         let clone_handle = ctx
             .asset_registry
-            .deserialize_resource(self.source_resource_id.kind, &mut buffer.as_slice())
+            .deserialize_resource(self.source_resource_id, &mut buffer.as_slice())
             .map_err(|err| Error::InvalidResourceDeserialization(self.source_resource_id, err))?;
 
         let resource_type_name = ctx
@@ -59,13 +59,13 @@ impl TransactionOperation for CloneResourceOperation {
         source_raw_name = ctx.project.get_incremental_name(&source_raw_name).await;
 
         if let Some(entity_name) = source_raw_name.to_string().rsplit('/').next() {
-            if let Some(reflection) = ctx
+            if let Some(mut reflection) = ctx
                 .asset_registry
                 .get_resource_reflection_mut(self.source_resource_id.kind, &clone_handle)
             {
                 // Try to set the name component field
                 if let Err(err) = set_property_from_json_string(
-                    reflection,
+                    &mut *reflection,
                     "components[Name].name",
                     &serde_json::json!(entity_name).to_string(),
                 ) {

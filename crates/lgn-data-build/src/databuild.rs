@@ -11,9 +11,11 @@ use lgn_data_compiler::compiler_api::{
 };
 use lgn_data_compiler::compiler_node::{CompilerNode, CompilerRegistry, CompilerStub};
 use lgn_data_compiler::{CompiledResource, CompiledResources};
-use lgn_data_offline::{resource::Project};
+use lgn_data_offline::resource::Project;
 use lgn_data_runtime::manifest::Manifest;
-use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions, ResourceTypeAndId, Transform, ResourcePathId};
+use lgn_data_runtime::{
+    AssetRegistry, AssetRegistryOptions, ResourcePathId, ResourceTypeAndId, Transform,
+};
 use lgn_tracing::{async_span_scope, info};
 use lgn_utils::{DefaultHash, DefaultHasher};
 use petgraph::{algo, Graph};

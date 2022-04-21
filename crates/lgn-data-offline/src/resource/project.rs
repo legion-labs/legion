@@ -524,7 +524,7 @@ impl Project {
         let mut resource_file =
             File::open(&resource_path).map_err(|e| Error::Io(resource_path.clone(), e))?;
         let handle = resources
-            .deserialize_resource(type_id.kind, &mut resource_file)
+            .deserialize_resource(type_id, &mut resource_file)
             .map_err(|e| Error::ResourceRegistry(type_id, e))?;
         Ok(handle)
     }

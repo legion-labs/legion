@@ -42,11 +42,11 @@ impl TransactionOperation for CreateResourceOperation {
                 File::open(path).map_err(|_err| Error::InvalidFilePath(path.clone()))?;
 
             ctx.asset_registry
-                .deserialize_resource(self.resource_id.kind, &mut reader)
+                .deserialize_resource(self.resource_id, &mut reader)
                 .map_err(|err| Error::InvalidResourceDeserialization(self.resource_id, err))?
         } else {
             ctx.asset_registry
-                .new_resource(self.resource_id.kind)
+                .new_resource(self.resource_id)
                 .ok_or(Error::InvalidResourceType(self.resource_id.kind))?
         };
 

@@ -70,7 +70,7 @@ impl TransactionOperation for DeleteResourceOperation {
 
         let handle = ctx
             .asset_registry
-            .deserialize_resource(self.resource_id.kind, &mut old_resource_data.as_slice())
+            .deserialize_resource(self.resource_id, &mut old_resource_data.as_slice())
             .map_err(|err| Error::InvalidResourceDeserialization(self.resource_id, err))?;
 
         if let Some(resource_type_name) = ctx

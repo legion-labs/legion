@@ -346,7 +346,7 @@ async fn build_resource_from_raw(
                         kind.0,
                         kind.1,
                         id.id,
-                        resources.new_resource(kind.1).unwrap(),
+                        resources.new_resource(id).unwrap(),
                         resources,
                     )
                     .await
@@ -374,7 +374,7 @@ async fn build_test_entity(
                 kind,
                 id: ResourceId::from_str("D8FE06A0-1317-46F5-902B-266B0EAE6FA8").unwrap(),
             };
-            let test_entity_handle = resources.new_resource(kind).unwrap();
+            let test_entity_handle = resources.new_resource(id).unwrap();
             let mut test_entity = test_entity_handle
                 .instantiate::<TestEntity>(resources)
                 .unwrap();
@@ -470,7 +470,7 @@ where
         let reader = BufReader::new(f);
         let raw_data: RawType = ron::de::from_reader(reader).unwrap();
 
-        let resource = resources.new_resource(OfflineType::TYPE).unwrap();
+        let resource = resources.new_resource(resource_id).unwrap();
 
         // convert raw to offline
         let mut offline_data = resource.instantiate(resources).unwrap();
@@ -520,7 +520,7 @@ async fn load_png_resource(
 ) -> Option<ResourceTypeAndId> {
     let reader = fs::read(file).ok()?;
     let handle = resources
-        .deserialize_resource(PngFile::TYPE, &mut reader.as_slice())
+        .deserialize_resource(resource_id, &mut reader.as_slice())
         .ok()?;
     project
         .save_resource(resource_id, handle, resources)
@@ -535,7 +535,7 @@ async fn load_gltf_resource(
     project: &mut Project,
     resources: &AssetRegistry,
 ) -> Option<ResourceTypeAndId> {
-    let handle = resources.new_resource(GltfFile::TYPE).unwrap();
+    let handle = resources.new_resource(resource_id).unwrap();
     let mut gltf_file = handle.instantiate::<GltfFile>(resources).unwrap();
     *gltf_file = GltfFile::from_path(file);
     handle.apply(gltf_file, resources);

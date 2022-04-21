@@ -5,9 +5,7 @@ use std::{
 };
 
 use lgn_content_store::ChunkIdentifier;
-use lgn_data_offline::resource::{
-    Project, ResourceHandles, ResourcePathName, 
-};
+use lgn_data_offline::resource::{Project, ResourceHandles, ResourcePathName};
 use lgn_data_runtime::{
     AssetRegistry, AssetRegistryError, ResourcePathId, ResourceType, ResourceTypeAndId,
 };

@@ -4,7 +4,9 @@ use binary_resource::BinaryResource;
 use integer_asset::{IntegerAsset, IntegerAssetLoader};
 use lgn_content_store::{Config, ContentReaderExt};
 use lgn_data_compiler::compiler_cmd::{list_compilers, CompilerCompileCmd};
-use lgn_data_runtime::{AssetLoader, Resource, ResourceId, ResourceTypeAndId, ResourceProcessor, ResourcePathId};
+use lgn_data_runtime::{
+    AssetLoader, Resource, ResourceId, ResourcePathId, ResourceProcessor, ResourceTypeAndId,
+};
 use multitext_resource::{MultiTextResource, MultiTextResourceProc};
 use text_resource::TextResource;
 

@@ -450,7 +450,7 @@ async fn create_offline_entity(
             .expect("failed to load resource")
     } else {
         resources
-            .new_resource(kind)
+            .new_resource(type_id)
             .expect("failed to create new resource")
     };
 
@@ -508,7 +508,7 @@ async fn create_offline_model(
             .expect("failed to load resource")
     } else {
         resources
-            .new_resource(kind)
+            .new_resource(type_id)
             .expect("failed to create new resource")
     };
 
