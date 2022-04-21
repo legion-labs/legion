@@ -116,6 +116,7 @@ type State = {
   /** Contains the `KeyCode` */
   activeKeys: Set<string>;
   previousMousePosition: Vec2 | null;
+  gamepadIndex: number | null;
 };
 
 function createEvents(state: State, element: HTMLElement, onInput: Listener) {
@@ -427,12 +428,24 @@ function createEvents(state: State, element: HTMLElement, onInput: Listener) {
     onInput(keyboardInput);
   }
 
+  function onGamepadConnected(event: GamepadEvent) {
+    state.gamepadIndex = event.gamepad.index;
+  }
+
+  function onGamepadDisconnected(event: GamepadEvent) {
+    if (state.gamepadIndex === event.gamepad.index) {
+      state.gamepadIndex = null;
+    }
+  }
+
   return {
     // Window listeners, useful when an event occurs outside
     // the remote window and still has to be sent to the server
     window: {
       onMouseMove,
       onMouseUp,
+      onGamepadConnected,
+      onGamepadDisconnected,
     },
     // Listeners attached to the element
     element: {
@@ -469,6 +482,7 @@ export default function remoteWindowInputs(
     activeTouches: new Set(),
     activeKeys: new Set(),
     previousMousePosition: null,
+    gamepadIndex: null,
   };
 
   const listeners = createEvents(state, element, onInput);
@@ -476,6 +490,16 @@ export default function remoteWindowInputs(
   window.addEventListener("mousemove", listeners.window.onMouseMove);
 
   window.addEventListener("mouseup", listeners.window.onMouseUp);
+
+  window.addEventListener(
+    "gamepadconnected",
+    listeners.window.onGamepadConnected
+  );
+
+  window.addEventListener(
+    "gamepaddisconnected",
+    listeners.window.onGamepadDisconnected
+  );
 
   element.addEventListener("contextmenu", listeners.element.onContextMenu);
 
