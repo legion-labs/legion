@@ -78,7 +78,7 @@ async fn insert_process_request(
     body: serde_json::value::Value,
 ) -> Result<warp::reply::Response, warp::Rejection> {
     if let Err(e) = service.insert_process(body).await {
-        error!("Error in insert_process_request: {}", e);
+        error!("Error in insert_process_request: {:?}", e);
         Ok(http::response::Response::builder()
             .status(500)
             .body(hyper::body::Body::from("Error in insert_process_request"))
@@ -96,7 +96,7 @@ async fn insert_stream_request(
     body: serde_json::value::Value,
 ) -> Result<warp::reply::Response, warp::Rejection> {
     if let Err(e) = service.insert_stream(body).await {
-        error!("Error in insert_stream_request: {}", e);
+        error!("Error in insert_stream_request: {:?}", e);
         Ok(http::response::Response::builder()
             .status(500)
             .body(hyper::body::Body::from("Error in insert_process_request"))
@@ -114,7 +114,7 @@ async fn insert_block_request(
     body: bytes::Bytes,
 ) -> Result<warp::reply::Response, warp::Rejection> {
     if let Err(e) = service.insert_block(body).await {
-        error!("Error in insert_block_request: {}", e);
+        error!("Error in insert_block_request: {:?}", e);
         Ok(http::response::Response::builder()
             .status(500)
             .body(hyper::body::Body::from("Error in insert_block_request"))
