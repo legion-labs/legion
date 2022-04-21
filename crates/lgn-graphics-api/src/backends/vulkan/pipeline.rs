@@ -2,12 +2,8 @@ use std::ffi::CString;
 
 use ash::vk;
 
-use super::{
-    VulkanRenderpassColorAttachment, VulkanRenderpassDef, VulkanRenderpassDepthAttachment,
-};
 use crate::{
-    ComputePipelineDef, DeviceContext, Format, GfxResult, GraphicsPipelineDef, LoadOp, Pipeline,
-    ShaderStageFlags, StoreOp,
+    ComputePipelineDef, DeviceContext, GfxResult, GraphicsPipelineDef, Pipeline, ShaderStageFlags,
 };
 
 #[derive(Debug)]
@@ -25,39 +21,23 @@ impl VulkanPipeline {
         //TODO: Cache
         let vk_root_signature = pipeline_def.root_signature;
 
-        // image layouts and load/store ops don't affect compatibility
-        // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/chap9.html#renderpass-compatibility
-        let color_attachments: Vec<_> = pipeline_def
-            .color_formats
-            .iter()
-            .map(|&format| VulkanRenderpassColorAttachment {
-                format,
-                load_op: LoadOp::default(),
-                store_op: StoreOp::default(),
-            })
-            .collect();
+        let mut vk_color_formats: Vec<ash::vk::Format> =
+            vec![ash::vk::Format::UNDEFINED; pipeline_def.color_formats.len()];
+        for (i, format) in pipeline_def.color_formats.iter().enumerate() {
+            vk_color_formats[i] = ash::vk::Format::from(*format);
+        }
 
-        let depth_attachment = if let Some(depth_format) = pipeline_def.depth_stencil_format {
-            assert_ne!(depth_format, Format::UNDEFINED);
-            Some(VulkanRenderpassDepthAttachment {
-                format: depth_format,
-                depth_load_op: LoadOp::default(),
-                stencil_load_op: LoadOp::default(),
-                depth_store_op: StoreOp::default(),
-                stencil_store_op: StoreOp::default(),
-            })
+        let vk_depth_format = if let Some(depth_format) = pipeline_def.depth_stencil_format {
+            depth_format.into()
         } else {
-            None
+            ash::vk::Format::UNDEFINED
         };
 
-        // Temporary renderpass, required to create pipeline but don't need to keep it
-        let renderpass = DeviceContext::create_renderpass(
-            device_context,
-            &VulkanRenderpassDef {
-                color_attachments,
-                depth_attachment,
-            },
-        )?;
+        let mut pipeline_rendering_create_info = vk::PipelineRenderingCreateInfo::builder()
+            .color_attachment_formats(&vk_color_formats)
+            .depth_attachment_format(vk_depth_format)
+            .stencil_attachment_format(vk_depth_format)
+            .build();
 
         let mut entry_point_names = vec![];
         for stage in pipeline_def.shader.stages() {
@@ -163,10 +143,10 @@ impl VulkanPipeline {
             .color_blend_state(blend_state.blend_state())
             .dynamic_state(&dynamic_states_create_info)
             .layout(vk_root_signature.vk_pipeline_layout())
-            .render_pass(renderpass.vk_renderpass())
             .subpass(0)
             .base_pipeline_handle(vk::Pipeline::null())
             .base_pipeline_index(-1)
+            .push_next(&mut pipeline_rendering_create_info)
             .build();
 
         //let depth = if pipeline_def.depth_stencil_format != Format::UNDEFINED {
