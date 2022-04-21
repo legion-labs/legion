@@ -201,6 +201,9 @@ jobs:
         with:
           lfs: true
 
+      - name: Bootstrap
+        uses: ./.github/actions/rust-bootstrap
+
       - name: Build with timings
         run: monorepo ci -p editor-srv build-timings
 

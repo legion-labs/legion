@@ -478,14 +478,14 @@ pub struct CGenShaderKey(u64);
 impl CGenShaderKey {
     // u16: family_id
     // u48: options
-    const SHADER_ID_OFFSET: usize = 0;
-    const SHADER_ID_BITCOUNT: usize = std::mem::size_of::<u16>() * 8;
-    const SHADER_ID_MASK: u64 = (1 << Self::SHADER_ID_BITCOUNT) - 1;
+    const SHADER_FAMILY_ID_OFFSET: usize = 0;
+    const SHADER_FAMILY_ID_BITCOUNT: usize = std::mem::size_of::<u16>() * 8;
+    const SHADER_FAMILY_ID_MASK: u64 = (1 << Self::SHADER_FAMILY_ID_BITCOUNT) - 1;
 
     pub const MAX_SHADER_OPTIONS: usize =
         std::mem::size_of::<u64>() * 8 - Self::SHADER_OPTIONS_OFFSET;
 
-    const SHADER_OPTIONS_OFFSET: usize = Self::SHADER_ID_BITCOUNT;
+    const SHADER_OPTIONS_OFFSET: usize = Self::SHADER_FAMILY_ID_BITCOUNT;
     const SHADER_OPTIONS_BITCOUNT: usize = Self::MAX_SHADER_OPTIONS;
     const SHADER_OPTIONS_MASK: u64 = (1 << Self::SHADER_OPTIONS_BITCOUNT) - 1;
 
@@ -495,13 +495,13 @@ impl CGenShaderKey {
         let shader_option_mask = shader_option_mask as u64;
         // static_assertions::const_assert_eq!(shader_option_mask & Self::SHADER_OPTIONS_MASK, 0);
         Self(
-            ((shader_family_id & Self::SHADER_ID_MASK) << Self::SHADER_ID_OFFSET)
+            ((shader_family_id & Self::SHADER_FAMILY_ID_MASK) << Self::SHADER_FAMILY_ID_OFFSET)
                 | ((shader_option_mask & Self::SHADER_OPTIONS_MASK) << Self::SHADER_OPTIONS_OFFSET),
         )
     }
 
     pub fn shader_id(self) -> CGenShaderID {
-        let shader_id = (self.0 >> Self::SHADER_ID_OFFSET) & Self::SHADER_ID_MASK;
+        let shader_id = (self.0 >> Self::SHADER_FAMILY_ID_OFFSET) & Self::SHADER_FAMILY_ID_MASK;
         CGenShaderID(shader_id.try_into().unwrap())
     }
 

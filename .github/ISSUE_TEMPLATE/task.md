@@ -1,9 +1,9 @@
 ---
 name: Task
 about: A work item to be tracked on a project
-title: '(Title)'
+title: "(Title)"
 labels: ""
-assignees: ''
+assignees: ""
 ---
 
 <!--
@@ -12,12 +12,12 @@ Fill in relevant sections, remove the rest.
 
 # Summary
 
-Provide a short high level overview of the work item.
+<!--- Provide a short high level overview of the work item. -->
 
 # Current State
 
-Currently, ...
+<!-- Currently, ... -->
 
 # Unresolved Questions
 
-- Choose between ...
+<!--- - Choose between ... -->

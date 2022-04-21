@@ -8,7 +8,7 @@
   import User from "../List/User.svelte";
 
   let user: string | undefined;
-  let dark = false;
+  let dark = true;
 
   $: document.body.classList.toggle("dark", dark);
 
@@ -26,7 +26,7 @@
         style="height:24px"
         class="inline"
         on:click={(e) => {
-          if (e.shiftKey) {
+          if (e.shiftKey && e.ctrlKey) {
             e.preventDefault();
             dark = !dark;
           }
