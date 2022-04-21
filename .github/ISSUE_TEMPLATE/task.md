@@ -16,7 +16,7 @@ Fill in relevant sections, remove the rest.
 
 # Current State
 
-<!--- Currently, ... -->
+<!-- Currently, ... -->
 
 # Unresolved Questions
 

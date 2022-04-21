@@ -11,23 +11,19 @@ Fill in relevant sections, remove the rest.
 
 # Summary
 
-<!--- The goal is ... -->
+<!-- The goal is ... -->
 
 # Current State
 
-<!--- Currently, ... -->
+<!-- Currently, ... -->
 
 # Design
 
-<!--- Overview ... -->
-
-### Component A
-
-<!--- Description ... -->
+<!-- Overview ... -->
 
 # Subtasks
 
-<!---
+<!--
 - [ ] First step: #...
 - [ ] Stabilization
 - [ ] #59
@@ -35,4 +31,4 @@ Fill in relevant sections, remove the rest.
 
 # Unresolved Questions
 
-<!--- - Choose between ... -->
+<!-- - Choose between ... -->
