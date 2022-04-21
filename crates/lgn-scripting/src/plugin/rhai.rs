@@ -18,7 +18,7 @@ pub(crate) fn build(app: &mut App) {
 }
 
 fn compile(
-    scripts: Query<'_, '_, (Entity, &ScriptComponent)>,
+    scripts: Query<'_, '_, (Entity, &ScriptComponent), Without<ScriptExecutionContext>>,
     rhai_eng: NonSend<'_, rhai::Engine>,
     mut ast_collection: NonSendMut<'_, ASTCollection>,
     registry: Res<'_, Arc<AssetRegistry>>,
@@ -41,10 +41,7 @@ fn compile(
             input_values: script.input_values.clone(),
         };
 
-        commands
-            .entity(entity)
-            .insert(script_exec)
-            .remove::<ScriptComponent>();
+        commands.entity(entity).insert(script_exec);
     }
 
     drop(scripts);
