@@ -127,21 +127,21 @@ pub async fn parse_thread_block<Proc: ThreadBlockProcessor>(
                         let name = scope.get::<Arc<String>>("name")?;
                         processor.on_end_async_scope(id, scope, name, ts)
                     }) {
-                        warn!("Error reading BeginAsyncSpanEvent: {:?}", e);
+                        warn!("Error reading EndAsyncSpanEvent: {:?}", e);
                     }
                 }
                 "BeginAsyncSpanNamedEvent" => {
                     if let Err(e) = on_async_thread_named_event(&obj, |id, scope, name, ts| {
                         processor.on_begin_async_scope(id, scope, name, ts)
                     }) {
-                        warn!("Error reading BeginAsyncSpanEvent: {:?}", e);
+                        warn!("Error reading BeginAsyncSpanNamedEvent: {:?}", e);
                     }
                 }
                 "EndAsyncSpanNamedEvent" => {
                     if let Err(e) = on_async_thread_named_event(&obj, |id, scope, name, ts| {
                         processor.on_end_async_scope(id, scope, name, ts)
                     }) {
-                        warn!("Error reading BeginAsyncSpanEvent: {:?}", e);
+                        warn!("Error reading EndAsyncSpanNamedEvent: {:?}", e);
                     }
                 }
                 event_type => {
