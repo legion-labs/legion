@@ -24,6 +24,7 @@ use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::{
     EventWriter, ExclusiveSystemDescriptorCoercion, IntoExclusiveSystem, Res, World,
 };
+use lgn_gilrs::GilrsPlugin;
 use lgn_graphics_data::GraphicsPlugin;
 use lgn_graphics_renderer::RendererPlugin;
 use lgn_hierarchy::prelude::HierarchyPlugin;
@@ -260,6 +261,7 @@ pub fn build_runtime() -> App {
         .add_plugin(SampleDataPlugin::default())
         .add_plugin(GraphicsPlugin::default())
         .add_plugin(InputPlugin::default())
+        .add_plugin(GilrsPlugin::default())
         .add_plugin(RendererPlugin::default())
         .insert_resource(physics_settings.build())
         .add_plugin(PhysicsPlugin::default());

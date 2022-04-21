@@ -22,6 +22,7 @@ use lgn_graphics_renderer::{
 };
 use lgn_hierarchy::HierarchyPlugin;
 use lgn_input::InputPlugin;
+use lgn_gilrs::GilrsPlugin;
 use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlugin};
 use lgn_presenter_window::component::PresenterWindow;
 use lgn_scene_plugin::ScenePlugin;
@@ -122,7 +123,8 @@ fn main() {
         .add_plugin(WindowPlugin::default())
         .add_plugin(TransformPlugin::default())
         .add_plugin(HierarchyPlugin::default())
-        .add_plugin(InputPlugin::default());
+        .add_plugin(InputPlugin::default()),
+        .add_plugin(GilrsPlugin::default());
 
     if args.snapshot {
         app.insert_resource(SnapshotDescriptor {
