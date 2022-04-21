@@ -11,6 +11,7 @@ pub struct Time {
     seconds_since_startup: f64,
     time_since_startup: Duration,
     startup: Instant,
+    frame_counter: usize,
 }
 
 impl Default for Time {
@@ -23,6 +24,7 @@ impl Default for Time {
             seconds_since_startup: 0.0,
             time_since_startup: Duration::from_secs(0),
             delta_seconds: 0.0,
+            frame_counter: 0,
         }
     }
 }
@@ -43,6 +45,7 @@ impl Time {
         self.time_since_startup = instant - self.startup;
         self.seconds_since_startup = self.time_since_startup.as_secs_f64();
         self.last_update = Some(instant);
+        self.frame_counter += 1;
     }
 
     /// The delta between the current tick and last tick as a [`Duration`]
@@ -85,6 +88,11 @@ impl Time {
     #[inline]
     pub fn time_since_startup(&self) -> Duration {
         self.time_since_startup
+    }
+
+    /// The number of times that time measurements were updated, i.e. the frame-counter
+    pub fn frame_counter(&self) -> usize {
+        self.frame_counter
     }
 }
 
