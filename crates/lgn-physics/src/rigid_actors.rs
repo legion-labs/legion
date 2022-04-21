@@ -1,4 +1,4 @@
-use lgn_ecs::prelude::{Commands, Component, Entity, Query, Res, ResMut};
+use lgn_ecs::prelude::{Commands, Component, Entity, Query, Res, ResMut, Without};
 use lgn_tracing::prelude::error;
 use lgn_transform::prelude::GlobalTransform;
 use physx::{
@@ -10,11 +10,12 @@ use physx::{
 };
 
 use crate::{
-    ConvertToCollisionGeometry, PxMaterial, PxScene, PxShape, RigidActorType, WithActorType,
+    collision_geometry::{CollisionGeometry, ConvertToCollisionGeometry},
+    PxMaterial, PxScene, PxShape, RigidActorType, WithActorType,
 };
 
 pub(crate) fn create_rigid_actors<T>(
-    query: Query<'_, '_, (Entity, &T, &GlobalTransform)>,
+    query: Query<'_, '_, (Entity, &T, &GlobalTransform), Without<CollisionGeometry>>,
     mut physics: ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
     cooking: Res<'_, Owner<PxCooking>>,
     mut scene: ResMut<'_, Owner<PxScene>>,
@@ -56,7 +57,6 @@ pub(crate) fn create_rigid_actors<T>(
                 error!("failed to convert to collision geometry: {}", error);
             }
         }
-        entity_commands.remove::<T>();
     }
 
     drop(query);
