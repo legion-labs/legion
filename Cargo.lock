@@ -2160,6 +2160,7 @@ dependencies = [
  "lgn-data-transaction",
  "lgn-ecs",
  "lgn-editor-proto",
+ "lgn-gilrs",
  "lgn-graphics-data",
  "lgn-graphics-renderer",
  "lgn-grpc",

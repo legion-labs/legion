@@ -12,6 +12,7 @@ use lgn_core::CorePlugin;
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::*;
 use lgn_gilrs::GilrsPlugin;
+use lgn_gilrs::GilrsPlugin;
 use lgn_graphics_data::{Color, GraphicsPlugin};
 use lgn_graphics_renderer::{
     components::{
