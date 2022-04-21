@@ -17,7 +17,7 @@ use lgn_content_store_proto::{
     UrlContent, WriteContentRequest, WriteContentResponse,
 };
 use lgn_online::authentication::UserInfo;
-use lgn_tracing::{async_span_scope, debug, error, info, warn};
+use lgn_tracing::{debug, error, info, span_fn, warn};
 use pin_project::pin_project;
 use tokio::{io::AsyncWrite, sync::Mutex};
 use tokio_util::{compat::FuturesAsyncReadCompatExt, io::ReaderStream};
@@ -78,9 +78,8 @@ where
     C::Future: Send + 'static,
     <C::ResponseBody as Body>::Error: Into<StdError> + Send,
 {
+    #[span_fn]
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
-        async_span_scope!("GrpcProvider::get_content_reader");
-
         debug!("GrpcProvider::get_content_reader({})", id);
 
         let req = lgn_content_store_proto::ReadContentRequest {
@@ -170,20 +169,18 @@ where
         }
     }
 
+    #[span_fn]
     async fn get_content_readers<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
     ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
-        async_span_scope!("GrpcProvider::get_content_readers");
-
         debug!("GrpcProvider::get_content_readers({:?})", ids);
 
         get_content_readers_impl(self, ids).await
     }
 
+    #[span_fn]
     async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
-        async_span_scope!("GrpcProvider::resolve_alias");
-
         let req = lgn_content_store_proto::ResolveAliasRequest {
             data_space: self.data_space.to_string(),
             key_space: key_space.to_string(),
@@ -219,9 +216,8 @@ where
     C::Future: Send + 'static,
     <C::ResponseBody as Body>::Error: Into<StdError> + Send,
 {
+    #[span_fn]
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
-        async_span_scope!("GrpcProvider::get_content_writer");
-
         let req = lgn_content_store_proto::GetContentWriterRequest {
             data_space: self.data_space.to_string(),
             id: id.to_string(),
@@ -256,9 +252,8 @@ where
         }
     }
 
+    #[span_fn]
     async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
-        async_span_scope!("GrpcProvider::register_alias");
-
         let req = lgn_content_store_proto::RegisterAliasRequest {
             data_space: self.data_space.to_string(),
             key_space: key_space.to_string(),
@@ -303,9 +298,8 @@ where
     C::Future: Send + 'static,
     <C::ResponseBody as Body>::Error: Into<StdError> + Send,
 {
+    #[span_fn]
     async fn upload(self, data: Vec<u8>, id: Identifier) -> Result<()> {
-        async_span_scope!("GrpcProvider::upload");
-
         let req = lgn_content_store_proto::WriteContentRequest {
             data_space: self.data_space.to_string(),
             data,
@@ -505,12 +499,11 @@ impl GrpcService {
 
 #[async_trait]
 impl lgn_content_store_proto::content_store_server::ContentStore for GrpcService {
+    #[span_fn]
     async fn resolve_alias(
         &self,
         request: Request<ResolveAliasRequest>,
     ) -> Result<Response<ResolveAliasResponse>, tonic::Status> {
-        async_span_scope!("GrpcServer::resolve_alias");
-
         let user_info = request.extensions().get::<UserInfo>().cloned();
 
         let request = request.into_inner();
@@ -555,12 +548,11 @@ impl lgn_content_store_proto::content_store_server::ContentStore for GrpcService
         }))
     }
 
+    #[span_fn]
     async fn register_alias(
         &self,
         request: Request<RegisterAliasRequest>,
     ) -> Result<Response<RegisterAliasResponse>, tonic::Status> {
-        async_span_scope!("GrpcServer::register_alias");
-
         let user_info = request.extensions().get::<UserInfo>().cloned();
 
         let request = request.into_inner();
@@ -615,12 +607,11 @@ impl lgn_content_store_proto::content_store_server::ContentStore for GrpcService
         }))
     }
 
+    #[span_fn]
     async fn read_content(
         &self,
         request: Request<ReadContentRequest>,
     ) -> Result<Response<ReadContentResponse>, tonic::Status> {
-        async_span_scope!("GrpcServer::read_content");
-
         let user_info = request.extensions().get::<UserInfo>().cloned();
 
         let request = request.into_inner();
@@ -690,12 +681,11 @@ impl lgn_content_store_proto::content_store_server::ContentStore for GrpcService
         Ok(Response::new(ReadContentResponse { content }))
     }
 
+    #[span_fn]
     async fn get_content_writer(
         &self,
         request: Request<GetContentWriterRequest>,
     ) -> Result<Response<GetContentWriterResponse>, tonic::Status> {
-        async_span_scope!("GrpcServer::get_content_writer");
-
         let user_info = request.extensions().get::<UserInfo>().cloned();
 
         let request = request.into_inner();
@@ -760,12 +750,11 @@ impl lgn_content_store_proto::content_store_server::ContentStore for GrpcService
         }))
     }
 
+    #[span_fn]
     async fn write_content(
         &self,
         request: Request<WriteContentRequest>,
     ) -> Result<Response<WriteContentResponse>, tonic::Status> {
-        async_span_scope!("GrpcServer::write_content");
-
         let user_info = request.extensions().get::<UserInfo>().cloned();
 
         let request = request.into_inner();

@@ -110,8 +110,8 @@ pub struct SqlRepositoryIndex {
 }
 
 impl SqlRepositoryIndex {
+    #[span_fn]
     pub async fn new(url: String) -> Result<Self> {
-        async_span_scope!("SqlRepositoryIndex::new");
         let driver = SqlDatabaseDriver::new(url)?;
 
         info!("Connecting to SQL database...");
@@ -277,9 +277,8 @@ impl SqlRepositoryIndex {
 
 #[async_trait]
 impl RepositoryIndex for SqlRepositoryIndex {
+    #[span_fn]
     async fn create_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
-        async_span_scope!("SqlRepositoryIndex::create_repository");
-
         info!("Creating repository `{}` in SQL index", repository_name);
 
         let index = SqlIndex::init(self.driver.clone(), self.pool.clone(), repository_name).await?;
@@ -287,9 +286,8 @@ impl RepositoryIndex for SqlRepositoryIndex {
         Ok(Box::new(index))
     }
 
+    #[span_fn]
     async fn destroy_repository(&self, repository_name: RepositoryName) -> Result<()> {
-        async_span_scope!("SqlRepositoryIndex::destroy_repository");
-
         info!("Destroying repository `{}` in SQL index", repository_name);
 
         let index = SqlIndex::load(self.driver.clone(), self.pool.clone(), repository_name).await?;
@@ -297,9 +295,8 @@ impl RepositoryIndex for SqlRepositoryIndex {
         index.cleanup_repository_data().await
     }
 
+    #[span_fn]
     async fn load_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
-        async_span_scope!("SqlRepositoryIndex::load_repository");
-
         info!("Loading repository `{}` in SQL index", repository_name);
 
         let index = SqlIndex::load(self.driver.clone(), self.pool.clone(), repository_name).await?;
@@ -307,9 +304,8 @@ impl RepositoryIndex for SqlRepositoryIndex {
         Ok(Box::new(index))
     }
 
+    #[span_fn]
     async fn list_repositories(&self) -> Result<Vec<RepositoryName>> {
-        async_span_scope!("SqlRepositoryIndex::list_repositories");
-
         let mut conn = self
             .pool
             .acquire()
@@ -458,13 +454,12 @@ impl SqlIndex {
         Ok(())
     }
 
+    #[span_fn]
     async fn read_branch_for_update<'e, E: sqlx::Executor<'e, Database = sqlx::Any>>(
         &self,
         executor: E,
         name: &str,
     ) -> Result<Branch> {
-        async_span_scope!("SqlIndex::read_branch_for_update");
-
         let query = match &self.driver {
             SqlDatabaseDriver::Sqlite(_) => format!(
                 "SELECT head, lock_domain_id
@@ -504,13 +499,12 @@ impl SqlIndex {
         })
     }
 
+    #[span_fn]
     async fn insert_repository_transactional(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
         repository_name: RepositoryName,
         driver: &SqlDatabaseDriver,
     ) -> Result<i64> {
-        async_span_scope!("SqlIndex::insert_repository_transactional");
-
         let result = match sqlx::query(&format!(
             "INSERT INTO `{}` VALUES(NULL, ?);",
             TABLE_REPOSITORIES
@@ -546,12 +540,11 @@ impl SqlIndex {
         })
     }
 
+    #[span_fn]
     async fn delete_repository_transactional(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
         repository_id: i64,
     ) -> Result<()> {
-        async_span_scope!("SqlIndex::delete_repository_transactional");
-
         sqlx::query(&format!("DELETE FROM `{}` WHERE id=?;", TABLE_REPOSITORIES))
             .bind(repository_id)
             .execute(transaction)
@@ -563,12 +556,11 @@ impl SqlIndex {
             .map(|_| ())
     }
 
+    #[span_fn]
     async fn get_repository_id(
         conn: &mut sqlx::pool::PoolConnection<sqlx::Any>,
         repository_name: RepositoryName,
     ) -> Result<i64> {
-        async_span_scope!("SqlIndex::get_repository_id");
-
         match sqlx::query(&format!(
             "SELECT id
              FROM `{}`
@@ -587,13 +579,12 @@ impl SqlIndex {
         }
     }
 
+    #[span_fn]
     async fn insert_branch_transactional(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
         repository_id: i64,
         branch: &Branch,
     ) -> Result<()> {
-        async_span_scope!("SqlIndex::insert_branch_transactional");
-
         let head: i64 = branch
             .head
             .0
@@ -617,13 +608,12 @@ impl SqlIndex {
         .map(|_| ())
     }
 
+    #[span_fn]
     async fn list_commits_transactional(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
         repository_id: i64,
         query: &ListCommitsQuery,
     ) -> Result<Vec<Commit>> {
-        async_span_scope!("SqlIndex::list_commits_transactional");
-
         let mut result = Vec::new();
         result.reserve(1024);
 
@@ -778,13 +768,12 @@ impl SqlIndex {
         Ok(result)
     }
 
+    #[span_fn]
     async fn insert_commit_transactional(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
         repository_id: i64,
         commit: &Commit,
     ) -> Result<CommitId> {
-        async_span_scope!("SqlIndex::insert_commit_transactional");
-
         let result = sqlx::query(&format!(
             "INSERT INTO `{}` VALUES(?, NULL, ?, ?, ?, ?);",
             TABLE_COMMITS
@@ -1130,11 +1119,11 @@ impl Index for SqlIndex {
         &self.repository_name
     }
 
+    #[span_fn]
     async fn register_workspace(
         &self,
         workspace_registration: &WorkspaceRegistration,
     ) -> Result<()> {
-        async_span_scope!("SqlIndex::register_workspace");
         let mut conn = self.get_conn().await?;
 
         sqlx::query(&format!(
@@ -1152,8 +1141,8 @@ impl Index for SqlIndex {
         .map(|_| ())
     }
 
+    #[span_fn]
     async fn insert_branch(&self, branch: &Branch) -> Result<()> {
-        async_span_scope!("SqlIndex::insert_branch");
         let mut transaction = self.get_transaction().await?;
 
         Self::insert_branch_transactional(&mut transaction, self.repository_id, branch).await?;
@@ -1168,8 +1157,8 @@ impl Index for SqlIndex {
             .map(|_| ())
     }
 
+    #[span_fn]
     async fn update_branch(&self, branch: &Branch) -> Result<()> {
-        async_span_scope!("SqlIndex::update_branch");
         let mut transaction = self.get_transaction().await?;
 
         Self::update_branch_transactional(&mut transaction, self.repository_id, branch).await?;
@@ -1184,8 +1173,8 @@ impl Index for SqlIndex {
             .map(|_| ())
     }
 
+    #[span_fn]
     async fn get_branch(&self, branch_name: &str) -> Result<Branch> {
-        async_span_scope!("SqlIndex::get_branch");
         let mut conn = self.get_conn().await?;
 
         match sqlx::query(&format!(
@@ -1214,8 +1203,8 @@ impl Index for SqlIndex {
         }
     }
 
+    #[span_fn]
     async fn list_branches(&self, query: &ListBranchesQuery<'_>) -> Result<Vec<Branch>> {
-        async_span_scope!("SqlIndex::list_branches");
         let mut conn = self.get_conn().await?;
 
         match query.lock_domain_id {
@@ -1273,8 +1262,8 @@ impl Index for SqlIndex {
         }
     }
 
+    #[span_fn]
     async fn list_commits(&self, query: &ListCommitsQuery) -> Result<Vec<Commit>> {
-        async_span_scope!("SqlIndex::list_commits");
         let mut transaction = self.get_transaction().await?;
 
         let result =
@@ -1288,8 +1277,8 @@ impl Index for SqlIndex {
         Ok(result)
     }
 
+    #[span_fn]
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<CommitId> {
-        async_span_scope!("SqlIndex::commit_to_branch");
         let mut transaction = self.get_transaction().await?;
 
         let stored_branch = self
@@ -1315,8 +1304,8 @@ impl Index for SqlIndex {
         Ok(new_branch.head)
     }
 
+    #[span_fn]
     async fn get_tree(&self, id: &str) -> Result<Tree> {
-        async_span_scope!("SqlIndex::get_tree");
         let mut transaction = self.get_transaction().await?;
 
         let tree = Self::get_tree_transactional(&mut transaction, id).await?;
@@ -1329,8 +1318,8 @@ impl Index for SqlIndex {
         Ok(tree)
     }
 
+    #[span_fn]
     async fn save_tree(&self, tree: &Tree) -> Result<String> {
-        async_span_scope!("SqlIndex::save_tree");
         let mut transaction = self.get_transaction().await?;
 
         let tree_id = Self::save_tree_transactional(&mut transaction, tree).await?;
@@ -1345,8 +1334,8 @@ impl Index for SqlIndex {
             .map(|_| tree_id)
     }
 
+    #[span_fn]
     async fn lock(&self, lock: &Lock) -> Result<()> {
-        async_span_scope!("SqlIndex::lock");
         let mut transaction = self.get_transaction().await?;
 
         match Self::get_lock_transactional(
@@ -1385,8 +1374,8 @@ impl Index for SqlIndex {
         }
     }
 
+    #[span_fn]
     async fn get_lock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<Lock> {
-        async_span_scope!("SqlIndex::get_lock");
         let mut conn = self.get_conn().await?;
 
         Self::get_lock_transactional(
@@ -1398,8 +1387,8 @@ impl Index for SqlIndex {
         .await
     }
 
+    #[span_fn]
     async fn list_locks(&self, query: &ListLocksQuery<'_>) -> Result<Vec<Lock>> {
-        async_span_scope!("SqlIndex::list_locks");
         let mut conn = self.get_conn().await?;
 
         if !query.lock_domain_ids.is_empty() {
@@ -1461,8 +1450,8 @@ impl Index for SqlIndex {
         }
     }
 
+    #[span_fn]
     async fn unlock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<()> {
-        async_span_scope!("SqlIndex::unlock");
         let mut conn = self.get_conn().await?;
 
         sqlx::query(&format!(
@@ -1484,8 +1473,8 @@ impl Index for SqlIndex {
         .map(|_| ())
     }
 
+    #[span_fn]
     async fn count_locks(&self, query: &ListLocksQuery<'_>) -> Result<i32> {
-        async_span_scope!("SqlIndex::count_locks");
         let mut conn = self.get_conn().await?;
 
         if !query.lock_domain_ids.is_empty() {

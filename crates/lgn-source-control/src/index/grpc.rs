@@ -48,9 +48,8 @@ where
     C::Future: Send + 'static,
     <C::ResponseBody as Body>::Error: Into<StdError> + Send,
 {
+    #[span_fn]
     async fn create_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
-        async_span_scope!("GrpcRepositoryIndex::create_repository");
-
         let resp = self
             .client
             .lock()
@@ -75,9 +74,8 @@ where
         )))
     }
 
+    #[span_fn]
     async fn destroy_repository(&self, repository_name: RepositoryName) -> Result<()> {
-        async_span_scope!("GrpcRepositoryIndex::destroy_repository");
-
         let resp = self
             .client
             .lock()
@@ -99,9 +97,8 @@ where
         Ok(())
     }
 
+    #[span_fn]
     async fn load_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
-        async_span_scope!("GrpcRepositoryIndex::load_repository");
-
         let resp = self
             .client
             .lock()
@@ -123,9 +120,8 @@ where
         )))
     }
 
+    #[span_fn]
     async fn list_repositories(&self) -> Result<Vec<RepositoryName>> {
-        async_span_scope!("GrpcRepositoryIndex::list_repositories");
-
         let resp = self
             .client
             .lock()
@@ -177,11 +173,11 @@ where
         &self.repository_name
     }
 
+    #[span_fn]
     async fn register_workspace(
         &self,
         workspace_registration: &WorkspaceRegistration,
     ) -> Result<()> {
-        async_span_scope!("register_workspace");
         self.client
             .lock()
             .await
@@ -197,8 +193,8 @@ where
             .map(|_| ())
     }
 
+    #[span_fn]
     async fn get_branch(&self, branch_name: &str) -> Result<Branch> {
-        async_span_scope!("GrpcIndexBackend::get_branch");
         let resp = self
             .client
             .lock()
@@ -217,8 +213,8 @@ where
         }
     }
 
+    #[span_fn]
     async fn list_branches(&self, query: &ListBranchesQuery<'_>) -> Result<Vec<Branch>> {
-        async_span_scope!("GrpcIndexBackend::list_branches");
         let resp = self
             .client
             .lock()
@@ -234,8 +230,8 @@ where
         Ok(resp.branches.into_iter().map(Into::into).collect())
     }
 
+    #[span_fn]
     async fn insert_branch(&self, branch: &Branch) -> Result<()> {
-        async_span_scope!("GrpcIndexBackend::insert_branch");
         self.client
             .lock()
             .await
@@ -248,8 +244,8 @@ where
             .map(|_| ())
     }
 
+    #[span_fn]
     async fn update_branch(&self, branch: &Branch) -> Result<()> {
-        async_span_scope!("GrpcIndexBackend::update_branch");
         self.client
             .lock()
             .await
@@ -262,8 +258,8 @@ where
             .map(|_| ())
     }
 
+    #[span_fn]
     async fn list_commits(&self, query: &ListCommitsQuery) -> Result<Vec<Commit>> {
-        async_span_scope!("GrpcIndexBackend::list_commits");
         let resp = self
             .client
             .lock()
@@ -288,8 +284,8 @@ where
             .map_other_err("failed to parse commits")
     }
 
+    #[span_fn]
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<CommitId> {
-        async_span_scope!("GrpcIndexBackend::commit_to_branch");
         let resp = self
             .client
             .lock()
@@ -309,8 +305,8 @@ where
         Ok(CommitId(resp.commit_id))
     }
 
+    #[span_fn]
     async fn get_tree(&self, id: &str) -> Result<Tree> {
-        async_span_scope!("GrpcIndexBackend::get_tree");
         let resp = self
             .client
             .lock()
@@ -326,8 +322,8 @@ where
         resp.tree.unwrap_or_default().try_into()
     }
 
+    #[span_fn]
     async fn save_tree(&self, tree: &Tree) -> Result<String> {
-        async_span_scope!("GrpcIndexBackend::save_tree");
         self.client
             .lock()
             .await
@@ -340,8 +336,8 @@ where
             .map(|resp| resp.into_inner().tree_id)
     }
 
+    #[span_fn]
     async fn lock(&self, lock: &Lock) -> Result<()> {
-        async_span_scope!("GrpcIndexBackend::lock");
         self.client
             .lock()
             .await
@@ -357,8 +353,8 @@ where
             .map(|_| ())
     }
 
+    #[span_fn]
     async fn unlock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<()> {
-        async_span_scope!("GrpcIndexBackend::unlock");
         self.client
             .lock()
             .await
@@ -375,8 +371,8 @@ where
             .map(|_| ())
     }
 
+    #[span_fn]
     async fn get_lock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<Lock> {
-        async_span_scope!("GrpcIndexBackend::get_lock");
         let resp = self
             .client
             .lock()
@@ -402,8 +398,8 @@ where
         }
     }
 
+    #[span_fn]
     async fn list_locks(&self, query: &ListLocksQuery<'_>) -> Result<Vec<Lock>> {
-        async_span_scope!("GrpcIndexBackend::list_locks");
         let resp = self
             .client
             .lock()
@@ -424,8 +420,8 @@ where
         resp.locks.into_iter().map(TryInto::try_into).collect()
     }
 
+    #[span_fn]
     async fn count_locks(&self, query: &ListLocksQuery<'_>) -> Result<i32> {
-        async_span_scope!("GrpcIndexBackend::count_locks");
         let resp = self
             .client
             .lock()

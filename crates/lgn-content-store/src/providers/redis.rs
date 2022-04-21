@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use lgn_tracing::{async_span_scope, debug, error, warn};
+use lgn_tracing::{debug, error, span_fn, warn};
 use redis::AsyncCommands;
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -53,9 +53,8 @@ impl RedisProvider {
     /// # Errors
     ///
     /// Otherwise, any other error is returned.
+    #[span_fn]
     pub async fn delete_content(&self, id: &Identifier) -> Result<()> {
-        async_span_scope!("RedisProvider::delete_content");
-
         let mut con = self
             .client
             .get_async_connection()
@@ -121,9 +120,8 @@ impl Display for RedisProvider {
 
 #[async_trait]
 impl ContentReader for RedisProvider {
+    #[span_fn]
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
-        async_span_scope!("RedisProvider::get_content_reader");
-
         debug!("RedisProvider::get_content_reader({})", id);
 
         let mut con = self
@@ -172,20 +170,18 @@ impl ContentReader for RedisProvider {
         }
     }
 
+    #[span_fn]
     async fn get_content_readers<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
     ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
-        async_span_scope!("RedisProvider::get_content_readers");
-
         debug!("RedisProvider::get_content_readers({:?})", ids);
 
         get_content_readers_impl(self, ids).await
     }
 
+    #[span_fn]
     async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
-        async_span_scope!("RedisProvider::resolve_alias");
-
         let mut con = self
             .client
             .get_async_connection()
@@ -212,9 +208,8 @@ impl ContentReader for RedisProvider {
 
 #[async_trait]
 impl ContentWriter for RedisProvider {
+    #[span_fn]
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
-        async_span_scope!("RedisProvider::get_content_writer");
-
         debug!("RedisProvider::get_content_writer({})", id);
 
         let key = self.get_content_key(id);
@@ -264,9 +259,8 @@ impl ContentWriter for RedisProvider {
         }
     }
 
+    #[span_fn]
     async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
-        async_span_scope!("RedisProvider::regiser_alias");
-
         let mut con = self
             .client
             .get_async_connection()
@@ -309,9 +303,8 @@ struct RedisUploaderImpl {
 
 #[async_trait]
 impl UploaderImpl for RedisUploaderImpl {
+    #[span_fn]
     async fn upload(self, data: Vec<u8>, id: Identifier) -> Result<()> {
-        async_span_scope!("RedisProvider::upload");
-
         let key = RedisProvider::get_content_key_with_prefix(&id, &self.key_prefix);
 
         let mut con = self
