@@ -10,11 +10,11 @@ mod tests {
     use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
     use lgn_data_compiler::{Locale, Platform, Target};
     use lgn_data_offline::resource::ResourceRegistryOptions;
-    use lgn_data_offline::{
-        resource::{Project, ResourcePathName, ResourceProcessor, ResourceRegistry},
-        ResourcePathId,
+    use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistry};
+    use lgn_data_runtime::{
+        AssetLoader, AssetRegistry, AssetRegistryOptions, Resource, ResourcePathId,
+        ResourceProcessor, ResourceTypeAndId,
     };
-    use lgn_data_runtime::{AssetLoader, Resource, ResourceTypeAndId};
     use lgn_source_control::{LocalRepositoryIndex, RepositoryIndex};
     use multitext_resource::MultiTextResource;
     use tempfile::TempDir;
@@ -53,12 +53,13 @@ mod tests {
         )
     }
 
-    fn setup_registry() -> Arc<tokio::sync::Mutex<ResourceRegistry>> {
-        ResourceRegistryOptions::new()
-            .add_type::<refs_resource::TestResource>()
-            .add_type::<text_resource::TextResource>()
-            .add_type::<multitext_resource::MultiTextResource>()
-            .create_async_registry()
+    async fn setup_registry() -> Arc<AssetRegistry> {
+        AssetRegistryOptions::new()
+            .add_processor::<refs_resource::TestResource>()
+            .add_processor::<text_resource::TextResource>()
+            .add_processor::<multitext_resource::MultiTextResource>()
+            .create()
+            .await
     }
 
     fn target_dir() -> PathBuf {
@@ -78,16 +79,17 @@ mod tests {
         name: ResourcePathName,
         deps: &[ResourcePathId],
         project: &mut Project,
-        resources: &mut ResourceRegistry,
+        resources: &AssetRegistry,
     ) -> ResourceTypeAndId {
         let resource_b = {
             let res = resources
                 .new_resource(refs_resource::TestResource::TYPE)
                 .unwrap()
                 .typed::<refs_resource::TestResource>();
-            let resource = res.get_mut(resources).unwrap();
+            let mut resource = res.instantiate(resources).unwrap();
             resource.content = name.to_string(); // each resource needs unique content to generate a unique resource.
             resource.build_deps.extend_from_slice(deps);
+            res.apply(resource, resources);
             res
         };
         project
@@ -115,18 +117,18 @@ mod tests {
         )
         .await
         .expect("failed to open project");
-        let resources = setup_registry();
-        let mut resources = resources.lock().await;
+        let resources = setup_registry().await;
 
         let handle = project
-            .load_resource(resource_id, &mut resources)
+            .load_resource(resource_id, &resources)
             .expect("to load resource")
             .typed::<refs_resource::TestResource>();
 
-        let resource = handle.get_mut(&mut resources).expect("resource instance");
+        let mut resource = handle.instantiate(&resources).expect("resource instance");
         resource.content.push_str(" more content");
+        handle.apply(resource, &resources);
         project
-            .save_resource(resource_id, &handle, &mut resources)
+            .save_resource(resource_id, &handle, &resources)
             .await
             .expect("successful save");
     }
@@ -149,8 +151,7 @@ mod tests {
             source_control_content_provider,
             data_content_provider,
         ) = setup_dir(&work_dir).await;
-        let resources = setup_registry();
-        let mut resources = resources.lock().await;
+        let resources = setup_registry().await;
 
         let (resource_id, resource_handle) = {
             let mut project = Project::create_with_remote_mock(
@@ -170,7 +171,7 @@ mod tests {
                     refs_resource::TestResource::TYPENAME,
                     refs_resource::TestResource::TYPE,
                     &resource_handle,
-                    &mut resources,
+                    &resources,
                 )
                 .await
                 .unwrap();
@@ -231,10 +232,12 @@ mod tests {
             .await
             .expect("failed to open project");
 
-            resource_handle.get_mut(&mut resources).unwrap().content = String::from("new content");
+            let mut edit = resource_handle.instantiate(&resources).unwrap();
+            edit.content = String::from("new content");
+            resource_handle.apply(edit, &resources);
 
             project
-                .save_resource(resource_id, &resource_handle, &mut resources)
+                .save_resource(resource_id, &resource_handle, &resources)
                 .await
                 .unwrap();
         }
@@ -304,28 +307,17 @@ mod tests {
                 .await
                 .expect("failed to create a project");
 
-        let resources = setup_registry();
-        let mut resources = resources.lock().await;
+        let resources = setup_registry().await;
 
-        let res_c = create_resource(
-            ResourcePathName::new("C"),
-            &[],
-            &mut project,
-            &mut resources,
-        )
-        .await;
-        let res_e = create_resource(
-            ResourcePathName::new("E"),
-            &[],
-            &mut project,
-            &mut resources,
-        )
-        .await;
+        let res_c =
+            create_resource(ResourcePathName::new("C"), &[], &mut project, &resources).await;
+        let res_e =
+            create_resource(ResourcePathName::new("E"), &[], &mut project, &resources).await;
         let res_d = create_resource(
             ResourcePathName::new("D"),
             &[ResourcePathId::from(res_e).push(refs_asset::RefsAsset::TYPE)],
             &mut project,
-            &mut resources,
+            &resources,
         )
         .await;
         let res_b = create_resource(
@@ -335,7 +327,7 @@ mod tests {
                 ResourcePathId::from(res_e).push(refs_asset::RefsAsset::TYPE),
             ],
             &mut project,
-            &mut resources,
+            &resources,
         )
         .await;
         let res_a = create_resource(
@@ -345,7 +337,7 @@ mod tests {
                 ResourcePathId::from(res_d).push(refs_asset::RefsAsset::TYPE),
             ],
             &mut project,
-            &mut resources,
+            &resources,
         )
         .await;
         [res_a, res_b, res_c, res_d, res_e]
@@ -361,8 +353,7 @@ mod tests {
             source_control_content_provider,
             data_content_provider,
         ) = setup_dir(&work_dir).await;
-        let resources = setup_registry();
-        let mut resources = resources.lock().await;
+        let resources = setup_registry().await;
 
         let source_magic_value = String::from("47");
 
@@ -378,14 +369,16 @@ mod tests {
                 .new_resource(text_resource::TextResource::TYPE)
                 .unwrap()
                 .typed::<TextResource>();
-            resource_handle.get_mut(&mut resources).unwrap().content = source_magic_value.clone();
+            let mut edit = resource_handle.instantiate(&resources).unwrap();
+            edit.content = source_magic_value.clone();
+            resource_handle.apply(edit, &resources);
             project
                 .add_resource(
                     ResourcePathName::new("resource"),
                     text_resource::TextResource::TYPENAME,
                     text_resource::TextResource::TYPE,
                     &resource_handle,
-                    &mut resources,
+                    &resources,
                 )
                 .await
                 .unwrap()
@@ -603,8 +596,7 @@ mod tests {
             source_control_content_provider,
             data_content_provider,
         ) = setup_dir(&work_dir).await;
-        let resources = setup_registry();
-        let mut resources = resources.lock().await;
+        let resources = setup_registry().await;
 
         let magic_list = vec![String::from("47"), String::from("198")];
 
@@ -620,14 +612,16 @@ mod tests {
                 .new_resource(multitext_resource::MultiTextResource::TYPE)
                 .unwrap()
                 .typed::<MultiTextResource>();
-            resource_handle.get_mut(&mut resources).unwrap().text_list = magic_list.clone();
+            let mut edit = resource_handle.instantiate(&resources).unwrap();
+            edit.text_list = magic_list.clone();
+            resource_handle.apply(edit, &resources);
             project
                 .add_resource(
                     ResourcePathName::new("resource"),
                     multitext_resource::MultiTextResource::TYPENAME,
                     multitext_resource::MultiTextResource::TYPE,
                     &resource_handle,
-                    &mut resources,
+                    &resources,
                 )
                 .await
                 .unwrap()
@@ -751,18 +745,18 @@ mod tests {
             )
             .await
             .expect("failed to open project");
-            let resources = setup_registry();
-            let mut resources = resources.lock().await;
+            let resources = setup_registry().await;
 
             let handle = project
-                .load_resource(source_id, &mut resources)
+                .load_resource(source_id, &resources)
                 .expect("to load resource")
                 .typed::<multitext_resource::MultiTextResource>();
 
-            let resource = handle.get_mut(&mut resources).expect("resource instance");
+            let mut resource = handle.instantiate(&resources).expect("resource instance");
             resource.text_list[1] = String::from("852");
+            handle.apply(resource, &resources);
             project
-                .save_resource(source_id, &handle, &mut resources)
+                .save_resource(source_id, &handle, &resources)
                 .await
                 .expect("successful save");
 
@@ -799,19 +793,20 @@ mod tests {
             )
             .await
             .expect("failed to open project");
-            let resources = setup_registry();
-            let mut resources = resources.lock().await;
+            let resources = setup_registry().await;
 
             let handle = project
-                .load_resource(source_id, &mut resources)
+                .load_resource(source_id, &resources)
                 .expect("to load resource")
                 .typed::<multitext_resource::MultiTextResource>();
 
-            let resource = handle.get_mut(&mut resources).expect("resource instance");
+            let mut resource = handle.instantiate(&resources).expect("resource instance");
             resource.text_list[0] = String::from("734");
             resource.text_list[1] = String::from("1");
+            handle.apply(resource, &resources);
+
             project
-                .save_resource(source_id, &handle, &mut resources)
+                .save_resource(source_id, &handle, &resources)
                 .await
                 .expect("successful save");
 
@@ -873,8 +868,7 @@ mod tests {
             source_control_content_provider,
             data_content_provider,
         ) = setup_dir(&work_dir).await;
-        let resources = setup_registry();
-        let mut resources = resources.lock().await;
+        let resources = setup_registry().await;
 
         let parent_id = {
             let mut project = Project::create_with_remote_mock(
@@ -888,17 +882,18 @@ mod tests {
                 .new_resource(refs_resource::TestResource::TYPE)
                 .expect("valid resource")
                 .typed::<refs_resource::TestResource>();
-            let child = child_handle
-                .get_mut(&mut resources)
+            let mut child = child_handle
+                .instantiate(&resources)
                 .expect("existing resource");
             child.content = String::from("test child content");
+            child_handle.apply(child, &resources);
             let child_id = project
                 .add_resource(
                     ResourcePathName::new("child"),
                     refs_resource::TestResource::TYPENAME,
                     refs_resource::TestResource::TYPE,
                     &child_handle,
-                    &mut resources,
+                    &resources,
                 )
                 .await
                 .unwrap();
@@ -907,19 +902,20 @@ mod tests {
                 .new_resource(refs_resource::TestResource::TYPE)
                 .expect("valid resource")
                 .typed::<refs_resource::TestResource>();
-            let parent = parent_handle
-                .get_mut(&mut resources)
+            let mut parent = parent_handle
+                .instantiate(&resources)
                 .expect("existing resource");
             parent.content = String::from("test parent content");
             parent.build_deps =
                 vec![ResourcePathId::from(child_id).push(refs_asset::RefsAsset::TYPE)];
+            parent_handle.apply(parent, &resources);
             project
                 .add_resource(
                     ResourcePathName::new("parent"),
                     refs_resource::TestResource::TYPENAME,
                     refs_resource::TestResource::TYPE,
                     &parent_handle,
-                    &mut resources,
+                    &resources,
                 )
                 .await
                 .unwrap()
@@ -990,8 +986,7 @@ mod tests {
             source_control_content_provider,
             data_content_provider,
         ) = setup_dir(&work_dir).await;
-        let resources = setup_registry();
-        let mut resources = resources.lock().await;
+        let resources = setup_registry().await;
 
         // child_id <- test(child_id) <- parent_id = test(parent_id)
         let parent_resource = {
@@ -1009,7 +1004,7 @@ mod tests {
                     &resources
                         .new_resource(refs_resource::TestResource::TYPE)
                         .unwrap(),
-                    &mut resources,
+                    &resources,
                 )
                 .await
                 .unwrap();
@@ -1018,11 +1013,10 @@ mod tests {
                 .new_resource(refs_resource::TestResource::TYPE)
                 .unwrap()
                 .typed::<refs_resource::TestResource>();
-            child_handle
-                .get_mut(&mut resources)
-                .unwrap()
-                .build_deps
+            let mut edit = child_handle.instantiate(&resources).unwrap();
+            edit.build_deps
                 .push(ResourcePathId::from(child_id).push(refs_asset::RefsAsset::TYPE));
+            child_handle.apply(edit, &resources);
 
             project
                 .add_resource(
@@ -1030,7 +1024,7 @@ mod tests {
                     refs_resource::TestResource::TYPENAME,
                     refs_resource::TestResource::TYPE,
                     &child_handle,
-                    &mut resources,
+                    &resources,
                 )
                 .await
                 .unwrap()

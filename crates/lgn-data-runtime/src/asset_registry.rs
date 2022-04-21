@@ -15,7 +15,8 @@ use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
     manifest::Manifest,
     vfs, Asset, AssetLoader, AssetLoaderError, Handle, HandleUntyped, OfflineResource, Resource,
-    ResourcePathId, ResourceProcessor, ResourceProcessorError, ResourceType, ResourceTypeAndId,
+    ResourceId, ResourcePathId, ResourceProcessor, ResourceProcessorError, ResourceType,
+    ResourceTypeAndId,
 };
 
 /// Error type for Asset Registry
@@ -215,6 +216,20 @@ impl AssetRegistryOptions {
         self.processors
             .insert(R::TYPE, Box::new(R::Processor::default()));
         self
+    }
+
+    pub fn add_processor_ext(
+        mut self,
+        kind: ResourceType,
+        proc: Box<dyn ResourceProcessor + Send + Sync>,
+    ) -> Self {
+        let v = self.processors.insert(kind, proc).is_none();
+        assert!(v);
+        self
+    }
+
+    pub fn add_processor<R: OfflineResource>(mut self) -> Self {
+        self.add_processor_ext(R::TYPE, Box::new(R::Processor::default()))
     }
 
     /// Creates [`AssetRegistry`] based on `AssetRegistryOptions`.
@@ -478,7 +493,15 @@ impl AssetRegistry {
         }
     }
 
-    pub fn new_resource(&self, id: ResourceTypeAndId) -> Option<HandleUntyped> {
+    pub fn new_resource(&self, kind: ResourceType) -> Option<HandleUntyped> {
+        let id = ResourceTypeAndId {
+            kind,
+            id: ResourceId::new(),
+        };
+        self.new_resource_with_id(id)
+    }
+
+    pub fn new_resource_with_id(&self, id: ResourceTypeAndId) -> Option<HandleUntyped> {
         if let Some(processor) = self.processors.write().unwrap().get_mut(&id.kind) {
             let resource = processor.new_resource();
 

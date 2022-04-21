@@ -46,7 +46,7 @@ impl TransactionOperation for CreateResourceOperation {
                 .map_err(|err| Error::InvalidResourceDeserialization(self.resource_id, err))?
         } else {
             ctx.asset_registry
-                .new_resource(self.resource_id)
+                .new_resource_with_id(self.resource_id)
                 .ok_or(Error::InvalidResourceType(self.resource_id.kind))?
         };
 

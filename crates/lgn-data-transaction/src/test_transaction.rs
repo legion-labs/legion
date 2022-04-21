@@ -4,7 +4,7 @@ use generic_data::offline::TestEntity;
 use lgn_content_store::{ContentProvider, MemoryProvider};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
+use lgn_data_offline::resource::{Project, ResourcePathName};
 use lgn_data_runtime::ResourcePathId;
 use lgn_data_runtime::{
     manifest::Manifest, AssetRegistryOptions, Resource, ResourceId, ResourceTypeAndId,
@@ -29,8 +29,9 @@ async fn validate_test_entity(
         .await
         .get(res_id)
     {
-        let resource_registry = transaction_manager.resource_registry.lock().await;
-        let test_entity = handle.get::<TestEntity>(&resource_registry).unwrap();
+        let test_entity = handle
+            .get::<TestEntity>(&transaction_manager.asset_registry)
+            .unwrap();
         callback(&*test_entity);
     }
 }
@@ -147,16 +148,12 @@ async fn test_transaction_system() -> Result<(), Error> {
         .unwrap();
     let resource_dir = project.resource_dir();
 
-    let mut registry = ResourceRegistryOptions::new();
-    generic_data::offline::register_resource_types(&mut registry);
-    let resource_registry = registry.create_async_registry();
-
-    let asset_registry = AssetRegistryOptions::new()
+    let mut asset_registry = AssetRegistryOptions::new()
         .add_device_dir(&resource_dir)
         .add_device_cas(Arc::clone(&data_content_provider), Manifest::default())
-        .add_loader::<TestEntity>()
-        .create()
-        .await;
+        .add_loader::<TestEntity>();
+    generic_data::offline::add_loaders(&mut asset_registry);
+    let asset_registry = asset_registry.create().await;
 
     let compilers =
         CompilerRegistryOptions::default().add_compiler(&lgn_compiler_testentity::COMPILER_INFO);
@@ -391,7 +388,7 @@ async fn test_transaction_system() -> Result<(), Error> {
         drop(transaction_manager);
     }
 
-    drop(resource_registry);
+    drop(asset_registry);
     drop(project);
     Ok(())
 }
