@@ -38,7 +38,7 @@ esac
 
 apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
-    libwayland-client0 \
+    libwayland-dev \
     fuse3 \
     libfuse3-dev \
     vulkan-sdk
