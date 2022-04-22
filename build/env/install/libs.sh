@@ -38,14 +38,8 @@ esac
 
 apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
-    libglib2.0-dev \
-    libcairo-dev \
-    librust-pango-dev \
-    libatk1.0-dev \
-    libsoup2.4-dev \
-    libgdk-pixbuf2.0-dev \
-    librust-gdk-sys-dev \
-    libwebkit2gtk-4.0-dev \
+    libwayland-dev \
+    libxkbcommon-dev \
     fuse3 \
     libfuse3-dev \
     vulkan-sdk
