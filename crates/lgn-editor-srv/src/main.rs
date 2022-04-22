@@ -12,7 +12,6 @@ use lgn_config::RichPathBuf;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::Local;
-use lgn_gilrs::GilrsPlugin;
 use lgn_graphics_renderer::RendererPlugin;
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_hierarchy::HierarchyPlugin;
@@ -286,7 +285,6 @@ fn main() {
         .add_plugin(LogStreamPlugin::default())
         .add_plugin(GRPCPlugin::default())
         .add_plugin(InputPlugin::default())
-        .add_plugin(GilrsPlugin::default())
         .add_plugin(RendererPlugin::default())
         .add_plugin(streamer_plugin)
         .add_plugin(EditorPlugin::default())
