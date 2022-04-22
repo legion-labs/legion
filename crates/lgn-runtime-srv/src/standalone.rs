@@ -1,5 +1,5 @@
-use lgn_app::prelude::*;
-use lgn_ecs::prelude::*;
+use lgn_app::prelude::App;
+use lgn_ecs::prelude::{EventReader, IntoExclusiveSystem, NonSend, Query, Res};
 use lgn_gilrs::GilrsPlugin;
 use lgn_graphics_renderer::{
     components::{

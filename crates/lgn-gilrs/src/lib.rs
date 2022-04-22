@@ -7,12 +7,12 @@
 mod converter;
 mod gilrs_system;
 
+use gilrs::GilrsBuilder;
+use gilrs_system::{gilrs_event_startup_system, gilrs_event_system};
 use lgn_app::{App, CoreStage, Plugin, StartupStage};
 use lgn_ecs::schedule::ParallelSystemDescriptorCoercion;
 use lgn_input::InputSystem;
 use lgn_tracing::error;
-use gilrs::GilrsBuilder;
-use gilrs_system::{gilrs_event_startup_system, gilrs_event_system};
 
 #[derive(Default)]
 pub struct GilrsPlugin;
