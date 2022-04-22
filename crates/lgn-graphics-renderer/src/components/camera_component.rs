@@ -4,12 +4,14 @@ use lgn_core::Time;
 use lgn_ecs::prelude::*;
 use lgn_graphics_cgen_runtime::Float4;
 use lgn_graphics_data::runtime::CameraSetup;
+use lgn_input::gamepad::GamepadButtonType;
 use lgn_input::{
     mouse::{MouseMotion, MouseWheel},
-    prelude::{Axis, GamepadAxis, GamepadAxisType, Gamepads, Input, KeyCode, MouseButton},
+    prelude::{
+        Axis, GamepadAxis, GamepadAxisType, GamepadButton, Gamepads, Input, KeyCode, MouseButton,
+    },
 };
 use lgn_math::{Angle, DMat4, Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
-use lgn_tracing::warn;
 use lgn_transform::components::GlobalTransform;
 
 use crate::{cgen, UP_VECTOR};
@@ -221,6 +223,8 @@ pub(crate) fn camera_control(
     keys: Res<'_, Input<KeyCode>>,
     gamepads: Res<'_, Gamepads>,
     gamepad_axes: Res<'_, Axis<GamepadAxis>>,
+    gamepad_buttons: Res<'_, Input<GamepadButton>>,
+
     time: Res<'_, Time>,
 ) {
     if cameras_query.is_empty() {
@@ -242,24 +246,17 @@ pub(crate) fn camera_control(
             continue;
         }
 
-        let mut gamepad_active = false;
-        let mut gamepad_left_x = 0_f32;
-        let mut gamepad_left_y = 0_f32;
-        for gamepad in gamepads.iter() {
-            gamepad_left_x = gamepad_axes
+        let gamepad = gamepads.iter().copied().find(|gamepad| {
+            let gamepad_left_x = gamepad_axes
                 .get(GamepadAxis(*gamepad, GamepadAxisType::LeftStickX))
                 .unwrap();
-            gamepad_left_y = gamepad_axes
+            let gamepad_left_y = gamepad_axes
                 .get(GamepadAxis(*gamepad, GamepadAxisType::LeftStickY))
                 .unwrap();
-            warn!("gamepad: {}, {}", gamepad_left_x, gamepad_left_y);
-            if gamepad_left_x.abs() > 0.01 || gamepad_left_y.abs() > 0.01 {
-                gamepad_active = true;
-                break;
-            }
-        }
+            gamepad_left_x.abs() > 0.01 || gamepad_left_y.abs() > 0.01
+        });
 
-        if gamepad_active || mouse_buttons.pressed(MouseButton::Right) {
+        if gamepad.is_some() || mouse_buttons.pressed(MouseButton::Right) {
             let mut camera_translation_change = Vec3::ZERO;
 
             if keys.pressed(KeyCode::W) {
@@ -275,14 +272,27 @@ pub(crate) fn camera_control(
                 camera_translation_change -= camera.camera_rig.final_transform.right();
             }
 
-            if gamepad_active {
-                camera_translation_change +=
+            if let Some(gamepad) = gamepad {
+                let gamepad_left_x = gamepad_axes
+                    .get(GamepadAxis(gamepad, GamepadAxisType::LeftStickX))
+                    .unwrap();
+                camera_translation_change -=
                     gamepad_left_x * camera.camera_rig.final_transform.right();
+
+                let gamepad_left_y = gamepad_axes
+                    .get(GamepadAxis(gamepad, GamepadAxisType::LeftStickY))
+                    .unwrap();
                 camera_translation_change +=
                     gamepad_left_y * camera.camera_rig.final_transform.forward();
             }
 
             let mut speed = camera.speed;
+            if let Some(gamepad) = gamepad {
+                if gamepad_buttons.pressed(GamepadButton(gamepad, GamepadButtonType::RightTrigger2))
+                {
+                    speed *= 5.0;
+                }
+            }
             if keys.pressed(KeyCode::LShift) {
                 speed *= 2.0;
             }
