@@ -12,7 +12,6 @@ use lgn_input::{
     },
 };
 use lgn_math::{Angle, DMat4, Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
-use lgn_tracing::warn;
 use lgn_transform::components::GlobalTransform;
 
 use crate::{cgen, UP_VECTOR};
