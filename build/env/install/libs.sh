@@ -42,6 +42,7 @@ apt-get update && apt-get install -y --no-install-recommends \
     libxkbcommon-dev \
     fuse3 \
     libfuse3-dev \
+    libudev-dev \
     vulkan-sdk
 
 ###################################################################################################
