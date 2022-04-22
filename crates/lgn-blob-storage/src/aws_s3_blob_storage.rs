@@ -205,8 +205,8 @@ impl AsyncWrite for ByteStreamWriter {
 
 #[async_trait]
 impl StreamingBlobStorage for AwsS3BlobStorage {
-    #[span_fn]
     async fn get_blob_info(&self, name: &str) -> super::Result<Option<BlobStats>> {
+        async_span_scope!("AwsS3BlobStorage::get_blob_info");
         let key = self.blob_key(name);
 
         let size = self.get_object_size(&key).await?;
@@ -214,8 +214,8 @@ impl StreamingBlobStorage for AwsS3BlobStorage {
         Ok(size.map(|size| BlobStats { size }))
     }
 
-    #[span_fn]
     async fn get_blob_reader(&self, name: &str) -> Result<BoxedAsyncRead> {
+        async_span_scope!("AwsS3BlobStorage::get_blob_reader");
         let key = self.blob_key(name);
 
         let req = self
@@ -234,8 +234,8 @@ impl StreamingBlobStorage for AwsS3BlobStorage {
         Ok(Box::pin(stream))
     }
 
-    #[span_fn]
     async fn get_blob_writer(&self, name: &str) -> Result<Option<BoxedAsyncWrite>> {
+        async_span_scope!("AwsS3BlobStorage::get_blob_writer");
         let key = self.blob_key(name);
 
         if self.blob_exists(&key).await? {
@@ -247,8 +247,8 @@ impl StreamingBlobStorage for AwsS3BlobStorage {
         Ok(Some(Box::pin(writer)))
     }
 
-    #[span_fn]
     async fn delete_blob(&self, name: &str) -> Result<()> {
+        async_span_scope!("AwsS3BlobStorage::delete_blob");
         let key = self.blob_key(name);
 
         match self

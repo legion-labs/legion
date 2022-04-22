@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use aws_sdk_dynamodb::types::Blob;
 use aws_sdk_dynamodb::{model::AttributeValue, Region};
-use lgn_tracing::span_fn;
+use lgn_tracing::{async_span_scope, span_fn};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Display,
@@ -248,8 +248,9 @@ impl ContentReader for AwsDynamoDbProvider {
 
 #[async_trait]
 impl ContentWriter for AwsDynamoDbProvider {
-    #[span_fn]
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
+        async_span_scope!("AwsDynamoDbProvider::get_content_writer");
+
         match self.get_content(id).await {
             Ok(_) => Err(Error::IdentifierAlreadyExists(id.clone())),
             Err(Error::IdentifierNotFound(_)) => Ok(Box::pin(DynamoDbUploader::new(
@@ -263,8 +264,9 @@ impl ContentWriter for AwsDynamoDbProvider {
         }
     }
 
-    #[span_fn]
     async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
+        async_span_scope!("AwsDynamoDbProvider::register_alias");
+
         let id_attr = Self::get_alias_id_attr(key_space, key);
         let data_attr = AttributeValue::B(Blob::new(id.as_vec()));
 
@@ -300,8 +302,9 @@ struct DynamoDbUploaderImpl {
 
 #[async_trait]
 impl UploaderImpl for DynamoDbUploaderImpl {
-    #[span_fn]
     async fn upload(self, data: Vec<u8>, id: Identifier) -> Result<()> {
+        async_span_scope!("AwsDynamoDbProvider::upload");
+
         let id_attr = AwsDynamoDbProvider::get_content_id_attr(&id);
         let data_attr = AttributeValue::B(Blob::new(data));
 

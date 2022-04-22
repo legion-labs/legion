@@ -183,7 +183,6 @@ impl AnalyticsService {
     }
 
     #[async_recursion]
-    #[span_fn]
     async fn block_spans_impl(
         &self,
         process: &lgn_telemetry_sink::ProcessInfo,
@@ -191,6 +190,7 @@ impl AnalyticsService {
         block_id: &str,
         lod_id: u32,
     ) -> Result<BlockSpansReply> {
+        async_span_scope!("AnalyticsService::block_spans_impl");
         let cache_item_name = format!("spans_{}_{}", block_id, lod_id);
         self.cache
             .get_or_put(&cache_item_name, async {
