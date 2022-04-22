@@ -1,8 +1,7 @@
 use std::{collections::HashMap, hash::BuildHasher, sync::Arc};
 
-use anyhow::{bail, Result};
-
-use crate::{read_any, DynString, InProcSerialize, UserDefinedType};
+use crate::{parse_string::parse_string, read_any, DynString, InProcSerialize, UserDefinedType};
+use anyhow::{bail, Context, Result};
 
 #[derive(Debug, Clone)]
 pub struct Object {
@@ -161,8 +160,9 @@ pub fn read_dependencies(udts: &[UserDefinedType], buffer: &[u8]) -> Result<Hash
             }
             static_size => static_size,
         };
-        if udt.name == "StaticString" {
-            unsafe {
+
+        match udt.name.as_str() {
+            "StaticString" => unsafe {
                 let id_ptr = buffer.as_ptr().add(offset);
                 let string_id = read_any::<u64>(id_ptr);
                 let nb_utf8_bytes = object_size - std::mem::size_of::<usize>();
@@ -171,13 +171,25 @@ pub fn read_dependencies(udts: &[UserDefinedType], buffer: &[u8]) -> Result<Hash
                 let string = String::from(std::str::from_utf8(&*slice).unwrap());
                 let insert_res = hash.insert(string_id, Value::String(Arc::new(string)));
                 assert!(insert_res.is_none());
-            }
-        } else {
-            assert!(udt.size > 0);
-            let instance = parse_pod_instance(udt, udts, &hash, offset, buffer);
-            if let Value::Object(obj) = instance {
-                let insert_res = hash.insert(obj.get::<u64>("id")?, Value::Object(obj));
+            },
+            "StaticStringDependency" => unsafe {
+                let mut cursor = offset;
+                let string_id = read_any::<u64>(buffer.as_ptr().add(cursor));
+                cursor += std::mem::size_of::<u64>();
+                let string = parse_string(buffer, &mut cursor).with_context(|| "parsing string")?;
+                let insert_res = hash.insert(string_id, Value::String(Arc::new(string)));
                 assert!(insert_res.is_none());
+            },
+
+            _ => {
+                if udt.size == 0 {
+                    anyhow::bail!("invalid user-defined type {:?}", udt);
+                }
+                let instance = parse_pod_instance(udt, udts, &hash, offset, buffer);
+                if let Value::Object(obj) = instance {
+                    let insert_res = hash.insert(obj.get::<u64>("id")?, Value::Object(obj));
+                    assert!(insert_res.is_none());
+                }
             }
         }
         offset += object_size;
@@ -316,7 +328,7 @@ where
                 }
             } else {
                 match type_name.as_str() {
-                    "u8" => {
+                    "u8" | "uint8" => {
                         assert_eq!(std::mem::size_of::<u8>(), member_meta.size);
                         unsafe {
                             Value::U8(read_any::<u8>(
@@ -324,7 +336,7 @@ where
                             ))
                         }
                     }
-                    "u32" => {
+                    "u32" | "uint32" => {
                         assert_eq!(std::mem::size_of::<u32>(), member_meta.size);
                         unsafe {
                             Value::U32(read_any::<u32>(
@@ -332,7 +344,7 @@ where
                             ))
                         }
                     }
-                    "u64" => {
+                    "u64" | "uint64" => {
                         assert_eq!(std::mem::size_of::<u64>(), member_meta.size);
                         unsafe {
                             Value::U64(read_any::<u64>(
@@ -340,7 +352,7 @@ where
                             ))
                         }
                     }
-                    "i64" => {
+                    "i64" | "int64" => {
                         assert_eq!(std::mem::size_of::<i64>(), member_meta.size);
                         unsafe {
                             Value::I64(read_any::<i64>(

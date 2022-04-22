@@ -614,14 +614,16 @@ where
     let dependencies = read_dependencies(
         &dep_udts,
         &decompress(&payload.dependencies).with_context(|| "decompressing dependencies payload")?,
-    )?;
+    )
+    .with_context(|| "reading dependencies")?;
     let obj_udts = container_metadata_as_transit_udt_vec(stream.objects_metadata.as_ref().unwrap());
     parse_object_buffer(
         &dependencies,
         &obj_udts,
         &decompress(&payload.objects).with_context(|| "decompressing objects payload")?,
         fun,
-    )?;
+    )
+    .with_context(|| "parsing object buffer")?;
     Ok(())
 }
 
@@ -750,7 +752,8 @@ pub async fn for_each_log_entry_in_block<Predicate: FnMut(i64, String) -> bool>(
             }
         }
         Ok(true) //continue
-    })?;
+    })
+    .with_context(|| "error in parse_block")?;
     Ok(())
 }
 
