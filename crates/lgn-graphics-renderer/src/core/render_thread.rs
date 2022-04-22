@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use crossbeam_channel::{bounded, Receiver, Sender};
 use lgn_tasks::{ComputeTaskPool, Scope, TaskPoolBuilder};
 use lgn_tracing::{async_span_scope, span_fn, span_scope};
@@ -11,7 +13,7 @@ pub enum RenderThreadResult {
     RenderedFrame(u64),
 }
 
-pub(crate) struct RenderThreadContext {
+struct RenderThreadContext {
     render_task_pool: ComputeTaskPool,
     command_receiver: Receiver<RenderThreadCommand>,
     result_sender: Sender<RenderThreadResult>,

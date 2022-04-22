@@ -59,7 +59,6 @@ pub mod shared;
 
 mod renderdoc;
 
-use crate::core::RendererThreadPlugin;
 use crate::features::mesh_feature::MeshFeaturePlugin;
 use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
 use crate::render_pass::TmpRenderPass;
@@ -221,7 +220,6 @@ impl Plugin for RendererPlugin {
         // Plugins are optional
         app.add_plugin(EguiPlugin::default());
         app.add_plugin(PickingPlugin {});
-        app.add_plugin(RendererThreadPlugin {});
         app.add_plugin(MeshFeaturePlugin::default());
         app.add_plugin(RenderDocPlugin {});
 
