@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use aws_sdk_s3::presigning::config::PresigningConfig;
 use bytes::Bytes;
-use lgn_tracing::span_fn;
+use lgn_tracing::{async_span_scope, span_fn};
 use pin_project::pin_project;
 use std::collections::{BTreeMap, BTreeSet};
 use std::future::Future;
@@ -278,8 +278,9 @@ impl AsyncWrite for ByteStreamWriter {
 
 #[async_trait]
 impl ContentReader for AwsS3Provider {
-    #[span_fn]
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
+        async_span_scope!("AwsS3Provider::get_content_reader");
+
         let key = self.blob_key(id);
 
         let object = match self
@@ -316,23 +317,27 @@ impl ContentReader for AwsS3Provider {
         Ok(stream.with_origin(origin))
     }
 
-    #[span_fn]
     async fn get_content_readers<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
     ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
+        async_span_scope!("AwsS3Provider::get_content_readers");
+
         get_content_readers_impl(self, ids).await
     }
 
     async fn resolve_alias(&self, _key_space: &str, _key: &str) -> Result<Identifier> {
+        async_span_scope!("AwsS3Provider::resolve_alias");
+
         panic!("AwsS3Provider doesn't support aliases: you must aggregate it along with another provider!")
     }
 }
 
 #[async_trait]
 impl ContentWriter for AwsS3Provider {
-    #[span_fn]
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
+        async_span_scope!("AwsS3Provider::get_content_writer");
+
         let key = self.blob_key(id);
 
         match self
@@ -365,17 +370,20 @@ impl ContentWriter for AwsS3Provider {
     }
 
     async fn register_alias(&self, _key_space: &str, _key: &str, _id: &Identifier) -> Result<()> {
+        async_span_scope!("AwsS3Provider::register_alias");
+
         panic!("AwsS3Provider doesn't support aliasing, you must aggregate it along with another provider!")
     }
 }
 
 #[async_trait]
 impl ContentAddressReader for AwsS3Provider {
-    #[span_fn]
     async fn get_content_read_address_with_origin(
         &self,
         id: &Identifier,
     ) -> Result<(String, Origin)> {
+        async_span_scope!("AwsS3Provider::get_content_read_address_with_origin");
+
         if !self.check_object_existence(id).await? {
             return Err(Error::IdentifierNotFound(id.clone()));
         }
@@ -412,8 +420,9 @@ impl ContentAddressReader for AwsS3Provider {
 
 #[async_trait]
 impl ContentAddressWriter for AwsS3Provider {
-    #[span_fn]
     async fn get_content_write_address(&self, id: &Identifier) -> Result<String> {
+        async_span_scope!("AwsS3Provider::get_content_write_address");
+
         if self.check_object_existence(id).await? {
             return Err(Error::IdentifierAlreadyExists(id.clone()));
         }

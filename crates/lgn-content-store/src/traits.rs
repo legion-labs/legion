@@ -7,7 +7,7 @@ use std::{
 
 use async_trait::async_trait;
 use futures::future::join_all;
-use lgn_tracing::span_fn;
+use lgn_tracing::async_span_scope;
 use pin_project::pin_project;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
@@ -117,8 +117,9 @@ pub(crate) async fn get_content_readers_impl<'ids>(
 #[async_trait]
 pub trait ContentReaderExt: ContentReader {
     /// Check whether the identifier exists in the store.
-    #[span_fn]
     async fn exists(&self, id: &Identifier) -> bool {
+        async_span_scope!("ContentReaderExt::exists");
+
         if let Identifier::Data(_) = id {
             return true;
         }
@@ -127,8 +128,9 @@ pub trait ContentReaderExt: ContentReader {
     }
 
     /// Read the origin for a given identifier.
-    #[span_fn]
     async fn read_origin(&self, id: &Identifier) -> Result<Origin> {
+        async_span_scope!("ContentReaderExt::read_origin");
+
         if let Identifier::Data(_) = id {
             return Ok(Origin::InIdentifier {});
         }
@@ -139,8 +141,9 @@ pub trait ContentReaderExt: ContentReader {
     }
 
     /// Read the content referenced by the specified identifier with its origin.
-    #[span_fn]
     async fn read_content_with_origin(&self, id: &Identifier) -> Result<(Vec<u8>, Origin)> {
+        async_span_scope!("ContentReaderExt::read_content_with_origin");
+
         if let Identifier::Data(data) = id {
             return Ok((data.to_vec(), Origin::InIdentifier {}));
         }
@@ -157,19 +160,21 @@ pub trait ContentReaderExt: ContentReader {
     }
 
     /// Read the content referenced by the specified identifier.
-    #[span_fn]
     async fn read_content(&self, id: &Identifier) -> Result<Vec<u8>> {
+        async_span_scope!("ContentReaderExt::read_content");
+
         self.read_content_with_origin(id)
             .await
             .map(|(data, _)| data)
     }
 
     /// Read the contents referenced by the specified identifiers.
-    #[span_fn]
     async fn read_contents<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
     ) -> Result<BTreeMap<&'ids Identifier, Result<Vec<u8>>>> {
+        async_span_scope!("ContentReaderExt::read_contents");
+
         let readers = self.get_content_readers(ids).await?;
         let futures = readers
             .into_iter()
@@ -198,20 +203,22 @@ pub trait ContentReaderExt: ContentReader {
     }
 
     /// Read the content referenced by the specified identifier.
-    #[span_fn]
     async fn get_alias_reader(
         &self,
         key_space: &str,
         key: &str,
     ) -> Result<ContentAsyncReadWithOrigin> {
+        async_span_scope!("ContentReaderExt::get_alias_reader");
+
         let id = self.resolve_alias(key_space, key).await?;
 
         self.get_content_reader(&id).await
     }
 
     /// Read the content referenced by the specified identifier.
-    #[span_fn]
     async fn read_alias(&self, key_space: &str, key: &str) -> Result<Vec<u8>> {
+        async_span_scope!("ContentReaderExt::read_alias");
+
         let id = self.resolve_alias(key_space, key).await?;
 
         self.read_content(&id).await
@@ -256,8 +263,9 @@ pub trait ContentWriterExt: ContentWriter {
     ///
     /// If the content already exists, the write is a no-op and no error is
     /// returned.
-    #[span_fn]
     async fn write_content(&self, data: &[u8]) -> Result<Identifier> {
+        async_span_scope!("ContentReaderExt::write_content");
+
         let id = Identifier::new(data);
 
         if id.is_data() {
@@ -283,8 +291,9 @@ pub trait ContentWriterExt: ContentWriter {
     }
 
     /// Get a write for the content referenced by the specified identifier.
-    #[span_fn]
     async fn write_alias(&self, key_space: &str, key: &str, data: &[u8]) -> Result<Identifier> {
+        async_span_scope!("ContentReaderExt::write_alias");
+
         let id = self.write_content(data).await?;
 
         match self.register_alias(key_space, key, &id).await {

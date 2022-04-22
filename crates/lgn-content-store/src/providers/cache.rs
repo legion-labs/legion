@@ -7,7 +7,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use lgn_tracing::{debug, error, span_fn, span_scope, warn};
+use lgn_tracing::{async_span_scope, debug, error, span_scope, warn};
 use pin_project::pin_project;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
@@ -45,8 +45,8 @@ impl<Remote: Display, Local: Display> Display for CachingProvider<Remote, Local>
 impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> ContentReader
     for CachingProvider<Remote, Local>
 {
-    #[span_fn]
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
+        async_span_scope!("CachingProvider::get_content_reader");
         debug!("CachingProvider::get_content_reader({})", id);
 
         match self.local.get_content_reader(id).await {
@@ -122,11 +122,12 @@ impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> 
         }
     }
 
-    #[span_fn]
     async fn get_content_readers<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
     ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
+        async_span_scope!("CachingProvider::get_content_readers");
+
         debug!("CachingProvider::get_content_readers({:?})", ids);
 
         // If we can't make the request at all, try on the remote one without caching.
@@ -219,8 +220,9 @@ impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> 
         Ok(readers)
     }
 
-    #[span_fn]
     async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
+        async_span_scope!("CachingProvider::resolve_alias");
+
         match self.local.resolve_alias(key_space, key).await {
             Ok(id) => Ok(id),
             Err(Error::IdentifierNotFound(_)) => {
@@ -248,8 +250,9 @@ impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> 
 impl<Remote: ContentWriter + Send + Sync, Local: ContentWriter + Send + Sync> ContentWriter
     for CachingProvider<Remote, Local>
 {
-    #[span_fn]
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
+        async_span_scope!("CachingProvider::get_content_writer");
+
         debug!("CachingProvider::get_content_writer({})", id);
 
         let remote_writer = self.remote.get_content_writer(id).await?;
@@ -270,8 +273,9 @@ impl<Remote: ContentWriter + Send + Sync, Local: ContentWriter + Send + Sync> Co
         }
     }
 
-    #[span_fn]
     async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
+        async_span_scope!("CachingProvider::register_alias");
+
         self.remote.register_alias(key_space, key, id).await?;
 
         if let Err(err) = self.local.register_alias(key_space, key, id).await {

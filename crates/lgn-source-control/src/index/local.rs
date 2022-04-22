@@ -51,8 +51,9 @@ impl LocalRepositoryIndex {
 
 #[async_trait]
 impl RepositoryIndex for LocalRepositoryIndex {
-    #[span_fn]
     async fn create_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
+        async_span_scope!("LocalRepositoryIndex::create_repository");
+
         let inner_index = self
             .inner_repository_index
             .create_repository(repository_name)
@@ -63,15 +64,17 @@ impl RepositoryIndex for LocalRepositoryIndex {
         Ok(Box::new(index))
     }
 
-    #[span_fn]
     async fn destroy_repository(&self, repository_name: RepositoryName) -> Result<()> {
+        async_span_scope!("LocalRepositoryIndex::destroy_repository");
+
         self.inner_repository_index
             .destroy_repository(repository_name)
             .await
     }
 
-    #[span_fn]
     async fn load_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
+        async_span_scope!("LocalRepositoryIndex::load_repository");
+
         let inner_index = self
             .inner_repository_index
             .load_repository(repository_name)
@@ -82,8 +85,9 @@ impl RepositoryIndex for LocalRepositoryIndex {
         Ok(Box::new(index))
     }
 
-    #[span_fn]
     async fn list_repositories(&self) -> Result<Vec<RepositoryName>> {
+        async_span_scope!("LocalRepositoryIndex::list_repositories");
+
         self.inner_repository_index.list_repositories().await
     }
 }
@@ -104,82 +108,82 @@ impl Index for LocalIndex {
         self.inner_index.repository_name()
     }
 
-    #[span_fn]
     async fn register_workspace(
         &self,
         workspace_registration: &WorkspaceRegistration,
     ) -> Result<()> {
+        async_span_scope!("LocalIndexBackend::register_workspace");
         self.inner_index
             .register_workspace(workspace_registration)
             .await
     }
 
-    #[span_fn]
     async fn get_branch(&self, branch_name: &str) -> Result<Branch> {
+        async_span_scope!("LocalIndexBackend::get_branch");
         self.inner_index.get_branch(branch_name).await
     }
 
-    #[span_fn]
     async fn list_branches(&self, query: &ListBranchesQuery<'_>) -> Result<Vec<Branch>> {
+        async_span_scope!("LocalIndexBackend::list_branches");
         self.inner_index.list_branches(query).await
     }
 
-    #[span_fn]
     async fn insert_branch(&self, branch: &Branch) -> Result<()> {
+        async_span_scope!("LocalIndexBackend::insert_branch");
         self.inner_index.insert_branch(branch).await
     }
 
-    #[span_fn]
     async fn update_branch(&self, branch: &Branch) -> Result<()> {
+        async_span_scope!("LocalIndexBackend::update_branch");
         self.inner_index.update_branch(branch).await
     }
 
-    #[span_fn]
     async fn list_commits(&self, query: &ListCommitsQuery) -> Result<Vec<Commit>> {
+        async_span_scope!("LocalIndexBackend::list_commits");
         self.inner_index.list_commits(query).await
     }
 
-    #[span_fn]
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<CommitId> {
+        async_span_scope!("LocalIndexBackend::commit_to_branch");
         self.inner_index.commit_to_branch(commit, branch).await
     }
 
-    #[span_fn]
     async fn get_tree(&self, id: &str) -> Result<Tree> {
+        async_span_scope!("LocalIndexBackend::get_tree");
         self.inner_index.get_tree(id).await
     }
 
-    #[span_fn]
     async fn save_tree(&self, tree: &Tree) -> Result<String> {
+        async_span_scope!("LocalIndexBackend::save_tree");
         self.inner_index.save_tree(tree).await
     }
 
-    #[span_fn]
     async fn lock(&self, lock: &Lock) -> Result<()> {
+        async_span_scope!("LocalIndexBackend::lock");
         self.inner_index.lock(lock).await
     }
 
-    #[span_fn]
     async fn get_lock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<Lock> {
+        async_span_scope!("LocalIndexBackend::get_lock");
         self.inner_index
             .get_lock(lock_domain_id, canonical_path)
             .await
     }
 
-    #[span_fn]
     async fn list_locks(&self, query: &ListLocksQuery<'_>) -> Result<Vec<Lock>> {
+        async_span_scope!("LocalIndexBackend::list_locks");
         self.inner_index.list_locks(query).await
     }
 
-    #[span_fn]
     async fn unlock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<()> {
+        async_span_scope!("LocalIndexBackend::unlock");
         self.inner_index
             .unlock(lock_domain_id, canonical_path)
             .await
     }
 
-    #[span_fn]
     async fn count_locks(&self, query: &ListLocksQuery<'_>) -> Result<i32> {
+        async_span_scope!("LocalIndexBackend::count_locks");
         self.inner_index.count_locks(query).await
     }
 }

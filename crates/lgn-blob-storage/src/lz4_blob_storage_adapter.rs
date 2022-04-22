@@ -51,8 +51,8 @@ impl<B: BlobStorage> BlobStorage for Lz4BlobStorageAdapter<B> {
     }
 
     /// Reads the the full contents of a blob from the storage.
-    #[span_fn]
     async fn read_blob(&self, hash: &str) -> Result<Vec<u8>> {
+        async_span_scope!("Lz4BlobStorageAdapter::read_blob");
         let mut data = Vec::new();
 
         if let Some(stats) = self.get_blob_info(hash).await? {
@@ -65,8 +65,8 @@ impl<B: BlobStorage> BlobStorage for Lz4BlobStorageAdapter<B> {
     }
 
     /// Writes the full contents of a blob to the storage.
-    #[span_fn]
     async fn write_blob(&self, hash: &str, contents: &[u8]) -> Result<()> {
+        async_span_scope!("Lz4BlobStorageAdapter::write_blob");
         let mut compressed_data = Vec::new();
         compressed_data.reserve(contents.len());
 
@@ -102,8 +102,8 @@ impl<B: BlobStorage> BlobStorage for Lz4BlobStorageAdapter<B> {
 
     /// Download a blob from the storage and persist it to disk at the specified
     /// location.
-    #[span_fn]
     async fn download_blob(&self, path: &Path, hash: &str) -> Result<()> {
+        async_span_scope!("Lz4BlobStorageAdapter::download_blob");
         let mut output_file = match std::fs::File::create(path) {
             Ok(file) => file,
             Err(e) => {
@@ -119,8 +119,8 @@ impl<B: BlobStorage> BlobStorage for Lz4BlobStorageAdapter<B> {
         Ok(())
     }
 
-    #[span_fn]
     async fn delete_blob(&self, name: &str) -> super::Result<()> {
+        async_span_scope!("Lz4BlobStorageAdapter::delete_blob");
         self.inner.delete_blob(name).await
     }
 }

@@ -5,7 +5,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use lgn_tracing::{debug, span_fn, span_scope, warn};
+use lgn_tracing::{async_span_scope, debug, span_scope, warn};
 use lru::LruCache;
 use tokio::sync::Mutex;
 
@@ -46,8 +46,9 @@ impl Display for LruProvider {
 
 #[async_trait]
 impl ContentReader for LruProvider {
-    #[span_fn]
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
+        async_span_scope!("LruProvider::get_content_reader");
+
         let mut map = self.content_map.lock().await;
 
         match map.get(id) {
@@ -64,11 +65,12 @@ impl ContentReader for LruProvider {
         }
     }
 
-    #[span_fn]
     async fn get_content_readers<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
     ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
+        async_span_scope!("LruProvider::get_content_readers");
+
         debug!("LruProvider::get_content_readers(ids: {:?})", ids);
 
         let mut map = self.content_map.lock().await;
@@ -97,8 +99,9 @@ impl ContentReader for LruProvider {
         Ok(res)
     }
 
-    #[span_fn]
     async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
+        async_span_scope!("LruProvider::resolve_alias");
+
         let mut map = self.alias_map.lock().await;
         let k = (key_space.to_string(), key.to_string());
 
@@ -111,8 +114,9 @@ impl ContentReader for LruProvider {
 
 #[async_trait]
 impl ContentWriter for LruProvider {
-    #[span_fn]
     async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
+        async_span_scope!("LruProvider::get_content_writer");
+
         debug!("LruProvider::get_content_writer({})", id);
 
         if self.content_map.lock().await.get(id).is_some() {
@@ -134,8 +138,9 @@ impl ContentWriter for LruProvider {
         }
     }
 
-    #[span_fn]
     async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
+        async_span_scope!("LruProvider::register_alias");
+
         let k = (key_space.to_string(), key.to_string());
         let mut map = self.alias_map.lock().await;
 
@@ -161,8 +166,9 @@ struct LruUploaderImpl {
 
 #[async_trait]
 impl UploaderImpl for LruUploaderImpl {
-    #[span_fn]
     async fn upload(self, data: Vec<u8>, id: Identifier) -> Result<()> {
+        async_span_scope!("LruProvider::upload");
+
         debug!("LruProvider::upload({})", id);
 
         let mut map = self.map.lock().await;
