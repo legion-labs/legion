@@ -16,7 +16,7 @@ use generic_data::offline::{TestComponent, TestEntity};
 use lgn_content_store::ContentProvider;
 use lgn_data_offline::resource::{Project, ResourcePathName};
 use lgn_data_runtime::{AssetRegistry, Resource, ResourceId, ResourceType, ResourceTypeAndId};
-use lgn_graphics_data::{offline_gltf::GltfFile, offline_png::PngFile, offline_psd::PsdFile};
+use lgn_graphics_data::{offline_gltf::GltfFile, offline_psd::PsdFile};
 use lgn_source_control::{RepositoryIndex, RepositoryName};
 use lgn_tracing::{error, info};
 use lgn_utils::DefaultHasher;
@@ -464,7 +464,7 @@ async fn load_ron_resource<RawType, OfflineType>(
 ) -> Option<ResourceTypeAndId>
 where
     RawType: DeserializeOwned,
-    OfflineType: Resource + FromRaw<RawType> + 'static,
+    OfflineType: Resource + FromRaw<RawType> + Send + 'static,
 {
     if let Ok(f) = File::open(file) {
         let reader = BufReader::new(f);

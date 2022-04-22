@@ -63,7 +63,7 @@ fn read_maybe_reference<T>(
     reader: &mut dyn std::io::Read,
 ) -> Result<Option<Reference<T>>, std::io::Error>
 where
-    T: Any + Resource,
+    T: Any + Resource + Send,
 {
     let underlying_type = reader.read_u64::<LittleEndian>()?;
     if underlying_type == 0 {

@@ -266,7 +266,7 @@ impl AssetRegistryOptions {
 }
 
 struct Inner {
-    assets: HashMap<ResourceTypeAndId, Box<dyn Any + Send + Sync>>,
+    assets: HashMap<ResourceTypeAndId, Box<dyn Any + Send>>,
     loader: AssetLoaderStub,
     load_errors: HashMap<ResourceTypeAndId, AssetRegistryError>,
     load_event_senders: Vec<tokio::sync::mpsc::UnboundedSender<ResourceLoadEvent>>,
@@ -390,27 +390,27 @@ impl AssetRegistry {
 
     /// Same as [`Self::load_untyped`] but the returned handle is generic over
     /// asset type `T` for convenience.
-    pub fn load<T: Any + Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
+    pub fn load<T: Any + Resource + Send>(&self, id: ResourceTypeAndId) -> Handle<T> {
         let handle = self.load_untyped(id);
         Handle::<T>::from(handle)
     }
 
     /// Same as [`Self::load`] but blocks until the resource load completes or
     /// returns an error.
-    pub fn load_sync<T: Any + Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
+    pub fn load_sync<T: Any + Resource + Send>(&self, id: ResourceTypeAndId) -> Handle<T> {
         let handle = self.load_untyped_sync(id);
         Handle::<T>::from(handle)
     }
 
     /// Same as [`Self::load`] but waits until the resource load completes or
     /// returns an error.
-    pub async fn load_async<T: Any + Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
+    pub async fn load_async<T: Any + Resource + Send>(&self, id: ResourceTypeAndId) -> Handle<T> {
         let handle = self.load_untyped_async(id).await;
         Handle::<T>::from(handle)
     }
 
     /// Retrieves a reference to an asset, None if asset is not loaded.
-    pub(crate) fn get<T: Any + Resource>(
+    pub(crate) fn get<T: Any + Resource + Send>(
         &self,
         id: ResourceTypeAndId,
     ) -> Option<AssetRegistryGuard<'_, T>> {
@@ -423,7 +423,10 @@ impl AssetRegistry {
         None
     }
 
-    pub(crate) fn instantiate<T: Any + Resource>(&self, id: ResourceTypeAndId) -> Option<Box<T>> {
+    pub(crate) fn instantiate<T: Any + Resource + Send>(
+        &self,
+        id: ResourceTypeAndId,
+    ) -> Option<Box<T>> {
         let guard = self.inner.read().unwrap();
         let inner: &Inner = &guard;
         if let Some(asset) = inner.assets.get(&id) {
@@ -434,8 +437,9 @@ impl AssetRegistry {
         None
     }
 
-    pub(crate) fn apply<T: Any + Resource>(&self, id: ResourceTypeAndId, value: Box<T>) {
-        todo!()
+    pub(crate) fn apply<T: Any + Resource + Send>(&self, id: ResourceTypeAndId, resource: Box<T>) {
+        let mut guard = self.inner.write().unwrap();
+        guard.assets.insert(id, resource);
     }
 
     /// Tests if an asset is loaded.
@@ -717,7 +721,7 @@ mod tests {
             reader: &mut dyn std::io::Read,
         ) -> Result<Option<Reference<T>>, std::io::Error>
         where
-            T: Any + Resource,
+            T: Any + Resource + Send,
         {
             let underlying_type = reader.read_u64::<LittleEndian>()?;
             if underlying_type == 0 {

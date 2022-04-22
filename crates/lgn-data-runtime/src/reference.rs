@@ -8,7 +8,7 @@ use crate::{AssetRegistry, Handle, Resource, ResourceTypeAndId};
 /// can be promoted to a handle
 pub enum Reference<T>
 where
-    T: Any + Resource,
+    T: Any + Resource + Send,
 {
     /// Reference is not yet active, and is simply described as an id
     Passive(ResourceTypeAndId),
@@ -19,7 +19,7 @@ where
 
 impl<T> Clone for Reference<T>
 where
-    T: Any + Resource,
+    T: Any + Resource + Send,
 {
     fn clone(&self) -> Self {
         match self {
@@ -31,7 +31,7 @@ where
 
 impl<T> Reference<T>
 where
-    T: Any + Resource,
+    T: Any + Resource + Send,
 {
     /// Returns resource id associated with this Reference
     pub fn id(&self) -> ResourceTypeAndId {
@@ -54,7 +54,7 @@ where
 
 impl<T> PartialEq for Reference<T>
 where
-    T: Any + Resource,
+    T: Any + Resource + Send,
 {
     fn eq(&self, other: &Self) -> bool {
         self.id() == other.id()
@@ -63,7 +63,7 @@ where
 
 impl<T> Serialize for Reference<T>
 where
-    T: Any + Resource,
+    T: Any + Resource + Send,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -75,7 +75,7 @@ where
 
 impl<'de, T> Deserialize<'de> for Reference<T>
 where
-    T: Any + Resource,
+    T: Any + Resource + Send,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

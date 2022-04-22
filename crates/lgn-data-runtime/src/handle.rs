@@ -93,18 +93,21 @@ impl HandleUntyped {
     }
 
     /// Retrieve a reference asset `T` from [`AssetRegistry`].
-    pub fn get<'a, T: Any + Resource>(
+    pub fn get<'a, T: Any + Resource + Send>(
         &'_ self,
         registry: &'a AssetRegistry,
     ) -> Option<crate::AssetRegistryGuard<'a, T>> {
         registry.get::<T>(self.inner.type_id)
     }
 
-    pub fn instantiate<T: Any + Resource>(&self, registry: &AssetRegistry) -> Option<Box<T>> {
+    pub fn instantiate<T: Any + Resource + Send>(
+        &self,
+        registry: &AssetRegistry,
+    ) -> Option<Box<T>> {
         registry.instantiate::<T>(self.inner.type_id)
     }
 
-    pub fn apply<T: Any + Resource>(&self, value: Box<T>, registry: &AssetRegistry) {
+    pub fn apply<T: Any + Resource + Send>(&self, value: Box<T>, registry: &AssetRegistry) {
         registry.apply(self.inner.type_id, value)
     }
 
@@ -123,7 +126,7 @@ impl HandleUntyped {
         registry.is_err(self.inner.type_id)
     }
 
-    pub fn typed<T: Any + Resource>(self) -> Handle<T> {
+    pub fn typed<T: Any + Resource + Send>(self) -> Handle<T> {
         Handle::<T>::from(self)
     }
 }
@@ -139,12 +142,12 @@ impl AsRef<Self> for HandleUntyped {
 //
 
 /// Typed handle to [`Resource`] of type `T`.
-pub struct Handle<T: Any + Resource> {
+pub struct Handle<T: Any + Resource + Send> {
     handle: HandleUntyped,
     _pd: PhantomData<fn() -> T>,
 }
 
-impl<T: Any + Resource> Clone for Handle<T> {
+impl<T: Any + Resource + Send> Clone for Handle<T> {
     fn clone(&self) -> Self {
         Self {
             handle: self.handle.clone(),
@@ -153,13 +156,13 @@ impl<T: Any + Resource> Clone for Handle<T> {
     }
 }
 
-impl<T: Any + Resource> PartialEq for Handle<T> {
+impl<T: Any + Resource + Send> PartialEq for Handle<T> {
     fn eq(&self, other: &Self) -> bool {
         self.handle.inner.type_id == other.handle.inner.type_id
     }
 }
 
-impl<T: Any + Resource> From<HandleUntyped> for Handle<T> {
+impl<T: Any + Resource + Send> From<HandleUntyped> for Handle<T> {
     fn from(handle: HandleUntyped) -> Self {
         Self {
             handle,
@@ -168,7 +171,7 @@ impl<T: Any + Resource> From<HandleUntyped> for Handle<T> {
     }
 }
 
-impl<T: Any + Resource> Handle<T> {
+impl<T: Any + Resource + Send> Handle<T> {
     /// Retrieve a reference asset `T` from [`AssetRegistry`].
     pub fn get<'a>(
         &'_ self,
@@ -201,7 +204,7 @@ impl<T: Any + Resource> Handle<T> {
     }
 }
 
-impl<T: Any + Resource> AsRef<HandleUntyped> for Handle<T> {
+impl<T: Any + Resource + Send> AsRef<HandleUntyped> for Handle<T> {
     fn as_ref(&self) -> &HandleUntyped {
         &self.handle
     }
