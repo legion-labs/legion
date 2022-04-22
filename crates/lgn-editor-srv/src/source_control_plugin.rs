@@ -709,7 +709,6 @@ impl SourceControl for SourceControlRPC {
                 }
             }
         }
-        ctx.resource_registry.collect_garbage();
 
         Ok(Response::new(RevertResourcesResponse {}))
     }
