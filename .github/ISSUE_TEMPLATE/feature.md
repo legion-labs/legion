@@ -5,30 +5,17 @@ labels: ""
 assignees: ""
 ---
 
+<!-- Fill in relevant sections, remove the rest. -->
+
+## Summary
+<!-- The goal is … -->
+
+## Current State
+<!-- Currently, … -->
+
+## Tasks
 <!--
-Fill in relevant sections, remove the rest.
--->
-
-# Summary
-
-<!-- The goal is ... -->
-
-# Current State
-
-<!-- Currently, ... -->
-
-# Design
-
-<!-- Overview ... -->
-
-# Subtasks
-
-<!--
-- [ ] First step: #...
+- [ ] First step: #…
 - [ ] Stabilization
 - [ ] #59
 -->
-
-# Unresolved Questions
-
-<!-- - Choose between ... -->
