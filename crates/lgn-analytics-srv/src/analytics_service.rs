@@ -1,3 +1,4 @@
+use anyhow::Context;
 use anyhow::{bail, Result};
 use async_recursion::async_recursion;
 use lgn_analytics::prelude::*;
@@ -224,8 +225,14 @@ impl AnalyticsService {
         let inv_tsc_frequency = get_process_tick_length_ms(process); // factor out
         let ts_offset = process.start_ticks;
         let mut entry_index: u64 = 0;
-        for stream in find_process_log_streams(&mut connection, &process.process_id).await? {
-            for block in find_stream_blocks(&mut connection, &stream.stream_id).await? {
+        for stream in find_process_log_streams(&mut connection, &process.process_id)
+            .await
+            .with_context(|| "error in find_process_log_streams")?
+        {
+            for block in find_stream_blocks(&mut connection, &stream.stream_id)
+                .await
+                .with_context(|| "error in find_stream_blocks")?
+            {
                 if (entry_index + block.nb_objects as u64) < begin {
                     entry_index += block.nb_objects as u64;
                 } else {
@@ -250,7 +257,8 @@ impl AnalyticsService {
                             true
                         },
                     )
-                    .await?;
+                    .await
+                    .with_context(|| "error in for_each_log_entry_in_block")?;
                 }
             }
         }

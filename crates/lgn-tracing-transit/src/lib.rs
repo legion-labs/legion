@@ -6,6 +6,7 @@
 
 mod dyn_string;
 mod heterogeneous_queue;
+pub mod parse_string;
 mod parser;
 mod reflect;
 mod serialize;

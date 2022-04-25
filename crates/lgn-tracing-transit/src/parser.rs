@@ -1,8 +1,7 @@
 use std::{collections::HashMap, hash::BuildHasher, sync::Arc};
 
-use anyhow::{bail, Result};
-
-use crate::{read_any, DynString, InProcSerialize, UserDefinedType};
+use crate::{parse_string::parse_string, read_any, DynString, InProcSerialize, UserDefinedType};
+use anyhow::{bail, Context, Result};
 
 #[derive(Debug, Clone)]
 pub struct Object {
@@ -51,10 +50,12 @@ impl TransitValue for u8 {
 
 impl TransitValue for u32 {
     fn get(value: &Value) -> Result<Self> {
-        if let Value::U32(val) = value {
-            Ok(*val)
-        } else {
-            bail!("bad type cast u32 for value {:?}", value);
+        match value {
+            Value::U32(val) => Ok(*val),
+            Value::U8(val) => Ok(Self::from(*val)),
+            _ => {
+                bail!("bad type cast u32 for value {:?}", value);
+            }
         }
     }
 }
@@ -161,8 +162,9 @@ pub fn read_dependencies(udts: &[UserDefinedType], buffer: &[u8]) -> Result<Hash
             }
             static_size => static_size,
         };
-        if udt.name == "StaticString" {
-            unsafe {
+
+        match udt.name.as_str() {
+            "StaticString" => unsafe {
                 let id_ptr = buffer.as_ptr().add(offset);
                 let string_id = read_any::<u64>(id_ptr);
                 let nb_utf8_bytes = object_size - std::mem::size_of::<usize>();
@@ -171,13 +173,25 @@ pub fn read_dependencies(udts: &[UserDefinedType], buffer: &[u8]) -> Result<Hash
                 let string = String::from(std::str::from_utf8(&*slice).unwrap());
                 let insert_res = hash.insert(string_id, Value::String(Arc::new(string)));
                 assert!(insert_res.is_none());
-            }
-        } else {
-            assert!(udt.size > 0);
-            let instance = parse_pod_instance(udt, udts, &hash, offset, buffer);
-            if let Value::Object(obj) = instance {
-                let insert_res = hash.insert(obj.get::<u64>("id")?, Value::Object(obj));
+            },
+            "StaticStringDependency" => unsafe {
+                let mut cursor = offset;
+                let string_id = read_any::<u64>(buffer.as_ptr().add(cursor));
+                cursor += std::mem::size_of::<u64>();
+                let string = parse_string(buffer, &mut cursor).with_context(|| "parsing string")?;
+                let insert_res = hash.insert(string_id, Value::String(Arc::new(string)));
                 assert!(insert_res.is_none());
+            },
+
+            _ => {
+                if udt.size == 0 {
+                    anyhow::bail!("invalid user-defined type {:?}", udt);
+                }
+                let instance = parse_pod_instance(udt, udts, &hash, offset, buffer);
+                if let Value::Object(obj) = instance {
+                    let insert_res = hash.insert(obj.get::<u64>("id")?, Value::Object(obj));
+                    assert!(insert_res.is_none());
+                }
             }
         }
         offset += object_size;
@@ -216,6 +230,39 @@ where
             (String::from("msg"), Value::String(Arc::new(msg.0))),
             (String::from("desc"), desc),
         ]
+    }
+}
+
+fn parse_log_string_interop_event_v3<S>(
+    udts: &[UserDefinedType],
+    dependencies: &HashMap<u64, Value, S>,
+    buffer: &[u8],
+) -> Result<Vec<(String, Value)>>
+where
+    S: BuildHasher,
+{
+    if let Some(index) = udts.iter().position(|t| t.name == "StaticStringRef") {
+        let string_ref_metadata = &udts[index];
+        unsafe {
+            let ptr = buffer.as_ptr();
+            let time = read_any::<i64>(ptr);
+            let mut cursor = std::mem::size_of::<i64>();
+            let level = read_any::<u8>(ptr.add(cursor));
+            cursor += 1;
+            let target =
+                parse_pod_instance(string_ref_metadata, udts, dependencies, cursor, buffer);
+            cursor += string_ref_metadata.size;
+            let msg = parse_string(buffer, &mut cursor)?;
+
+            Ok(vec![
+                (String::from("time"), Value::I64(time)),
+                (String::from("level"), Value::U8(level)),
+                (String::from("target"), target),
+                (String::from("msg"), Value::String(Arc::new(msg))),
+            ])
+        }
+    } else {
+        bail!("Can't parse log string interop event with no metadata for StaticStringRef");
     }
 }
 
@@ -277,6 +324,16 @@ where
         "LogStringInteropEventV2" => {
             parse_log_string_interop_event(udts, dependencies, offset, object_size, buffer)
         }
+        "LogStringInteropEventV3" => {
+            let object_buffer = &buffer[offset..(offset + object_size)];
+            match parse_log_string_interop_event_v3(udts, dependencies, object_buffer) {
+                Ok(members) => members,
+                Err(e) => {
+                    log::warn!("Error parsing LogStringInteropEventV3: {:?}", e);
+                    vec![]
+                }
+            }
+        }
         other => {
             log::warn!("unknown custom object {}", other);
             Vec::new()
@@ -305,7 +362,13 @@ where
             let name = member_meta.name.clone();
             let type_name = member_meta.type_name.clone();
             let value = if member_meta.is_reference {
-                assert_eq!(std::mem::size_of::<u64>(), member_meta.size);
+                if member_meta.size != std::mem::size_of::<u64>() {
+                    log::error!(
+                        "member references have to be exactly 8 bytes {:?}",
+                        member_meta
+                    );
+                    return (name, Value::None);
+                }
                 let key =
                     unsafe { read_any::<u64>(buffer.as_ptr().add(offset + member_meta.offset)) };
                 if let Some(v) = dependencies.get(&key) {
@@ -316,7 +379,7 @@ where
                 }
             } else {
                 match type_name.as_str() {
-                    "u8" => {
+                    "u8" | "uint8" => {
                         assert_eq!(std::mem::size_of::<u8>(), member_meta.size);
                         unsafe {
                             Value::U8(read_any::<u8>(
@@ -324,7 +387,7 @@ where
                             ))
                         }
                     }
-                    "u32" => {
+                    "u32" | "uint32" => {
                         assert_eq!(std::mem::size_of::<u32>(), member_meta.size);
                         unsafe {
                             Value::U32(read_any::<u32>(
@@ -332,7 +395,7 @@ where
                             ))
                         }
                     }
-                    "u64" => {
+                    "u64" | "uint64" => {
                         assert_eq!(std::mem::size_of::<u64>(), member_meta.size);
                         unsafe {
                             Value::U64(read_any::<u64>(
@@ -340,7 +403,7 @@ where
                             ))
                         }
                     }
-                    "i64" => {
+                    "i64" | "int64" => {
                         assert_eq!(std::mem::size_of::<i64>(), member_meta.size);
                         unsafe {
                             Value::I64(read_any::<i64>(

@@ -614,14 +614,16 @@ where
     let dependencies = read_dependencies(
         &dep_udts,
         &decompress(&payload.dependencies).with_context(|| "decompressing dependencies payload")?,
-    )?;
+    )
+    .with_context(|| "reading dependencies")?;
     let obj_udts = container_metadata_as_transit_udt_vec(stream.objects_metadata.as_ref().unwrap());
     parse_object_buffer(
         &dependencies,
         &obj_udts,
         &decompress(&payload.objects).with_context(|| "decompressing objects payload")?,
         fun,
-    )?;
+    )
+    .with_context(|| "parsing object buffer")?;
     Ok(())
 }
 
@@ -679,7 +681,7 @@ pub fn log_entry_from_value(val: &Value) -> Result<Option<(i64, String)>> {
                 let entry = format!("{} [{}] {}", format_log_level(level), *target, *msg);
                 Ok(Some((time, entry)))
             }
-            "LogStaticStrInteropEvent" | "LogStringInteropEventV2" => {
+            "LogStaticStrInteropEvent" | "LogStringInteropEventV2" | "LogStringInteropEventV3" => {
                 let time = obj
                     .get::<i64>("time")
                     .with_context(|| format!("reading time from {}", obj.type_name.as_str()))?;
@@ -695,7 +697,10 @@ pub fn log_entry_from_value(val: &Value) -> Result<Option<(i64, String)>> {
                 let entry = format!("{} [{}] {}", format_log_level(level), *target, *msg);
                 Ok(Some((time, entry)))
             }
-            _ => Ok(None),
+            _ => {
+                warn!("unknown log event {:?}", obj);
+                Ok(None)
+            }
         }
     } else {
         Ok(None)
@@ -716,7 +721,9 @@ pub async fn find_process_log_entry<Res, Predicate: FnMut(i64, String) -> Option
             let payload =
                 fetch_block_payload(connection, blob_storage.clone(), b.block_id.clone()).await?;
             parse_block(&stream, &payload, |val| {
-                if let Some((time, msg)) = log_entry_from_value(&val)? {
+                if let Some((time, msg)) =
+                    log_entry_from_value(&val).with_context(|| "log_entry_from_value")?
+                {
                     if let Some(x) = pred(time, msg) {
                         found_entry = Some(x);
                         return Ok(false); //do not continue
@@ -744,13 +751,16 @@ pub async fn for_each_log_entry_in_block<Predicate: FnMut(i64, String) -> bool>(
 ) -> Result<()> {
     let payload = fetch_block_payload(connection, blob_storage, block.block_id.clone()).await?;
     parse_block(stream, &payload, |val| {
-        if let Some((time, msg)) = log_entry_from_value(&val)? {
+        if let Some((time, msg)) =
+            log_entry_from_value(&val).with_context(|| "log_entry_from_value")?
+        {
             if !fun(time, msg) {
                 return Ok(false); //do not continue
             }
         }
         Ok(true) //continue
-    })?;
+    })
+    .with_context(|| "error in parse_block")?;
     Ok(())
 }
 
