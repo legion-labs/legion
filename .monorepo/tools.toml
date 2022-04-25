@@ -3,6 +3,7 @@
 cargo-deny = { version = "0.11.3" }
 grcov = { version = "0.8.9" }
 mdbook = { version = "0.4.17" }
+mdbook-mermaid = { version = "0.10.0" }
 wasm-bindgen-cli = { version = "0.2.80" }
 cargo-nextest = { version = "0.9.12" }
 cargo-insta = { version = "1.14.0" }

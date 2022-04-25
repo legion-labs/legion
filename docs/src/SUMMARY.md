@@ -2,9 +2,19 @@
 
 [**Introduction**](./README.md)
 
-# Setup
+# Getting started
 
-- [Programmer](./setup/programmer.md)
+- [Setup](./getting-started/setup.md)
+- [`cargo m`](./getting-started/cargo-m.md)
+- [Physical Design](./getting-started/physical-design.md)
+
+# Guidelines
+
+- [Meta](./guidelines/meta.md)
+- [Rust](./guidelines/rust.md)
+- [Node/JS/TS](./guidelines/node.md)
+- [Design](./guidelines/design.md)
+- [Cloud](./guidelines/cloud.md)
 
 # Features
 
@@ -44,8 +54,6 @@
 
 - [Roadmap](./roadmap/README.md)
 
-- [Physical Design](./physical-design/README.md)
-
 - [High level flows](./high-level-flows/README.md)
 
 - [API Reference](reference.md)
@@ -53,3 +61,7 @@
 - [Cargo features](cargo_features.md)
 
 - [Coverage](coverage.md)
+
+- [External References](external_references.md)
+
+- [Licenses](licenses.md)
