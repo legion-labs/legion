@@ -5,7 +5,7 @@ use ash::vk;
 use ash::{extensions::ext::DebugUtils, vk::Handle};
 use lgn_tracing::{debug, error, info, trace, warn};
 
-use crate::backends::vulkan::{VulkanBuffer, VulkanTexture};
+use crate::{Buffer, CommandBuffer, Texture};
 
 const ERRORS_TO_IGNORE: [&str; 0] = [
     // Temporary - I suspect locally built validation on M1 mac has a bug
@@ -76,15 +76,10 @@ impl Drop for VkDebugReporter {
 }
 
 impl VkDebugReporter {
-    pub(crate) fn set_texture_name(
-        &self,
-        device: ash::vk::Device,
-        texture: &VulkanTexture,
-        name: &str,
-    ) {
+    pub(crate) fn set_texture_name(&self, device: ash::vk::Device, texture: &Texture, name: &str) {
         let object_name_info = ash::vk::DebugUtilsObjectNameInfoEXT::builder()
             .object_type(ash::vk::ObjectType::IMAGE)
-            .object_handle(texture.image.vk_image.as_raw())
+            .object_handle(texture.vk_image().as_raw())
             .object_name(&CString::new(name).unwrap())
             .build();
 
@@ -95,15 +90,10 @@ impl VkDebugReporter {
         }
     }
 
-    pub(crate) fn set_buffer_name(
-        &self,
-        device: ash::vk::Device,
-        buffer: &VulkanBuffer,
-        name: &str,
-    ) {
+    pub(crate) fn set_buffer_name(&self, device: ash::vk::Device, buffer: &Buffer, name: &str) {
         let object_name_info = ash::vk::DebugUtilsObjectNameInfoEXT::builder()
             .object_type(ash::vk::ObjectType::BUFFER)
-            .object_handle(buffer.vk_buffer.as_raw())
+            .object_handle(buffer.vk_buffer().as_raw())
             .object_name(&CString::new(name).unwrap())
             .build();
 
@@ -116,7 +106,7 @@ impl VkDebugReporter {
 
     pub(crate) fn begin_label(
         &self,
-        command_buffer: ash::vk::CommandBuffer,
+        command_buffer: &CommandBuffer,
         label: &str, /*, todo: optional color? */
     ) {
         let label = CString::new(label).unwrap();
@@ -126,14 +116,14 @@ impl VkDebugReporter {
 
         unsafe {
             self.debug_report_loader
-                .cmd_begin_debug_utils_label(command_buffer, &label);
+                .cmd_begin_debug_utils_label(command_buffer.vk_command_buffer(), &label);
         }
     }
 
-    pub(crate) fn end_label(&self, command_buffer: ash::vk::CommandBuffer) {
+    pub(crate) fn end_label(&self, command_buffer: &CommandBuffer) {
         unsafe {
             self.debug_report_loader
-                .cmd_end_debug_utils_label(command_buffer);
+                .cmd_end_debug_utils_label(command_buffer.vk_command_buffer());
         }
     }
 }

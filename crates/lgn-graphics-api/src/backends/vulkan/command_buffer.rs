@@ -9,7 +9,7 @@ use crate::{
     ResourceState, ResourceUsage, RootSignature, Texture, TextureBarrier, VertexBufferBinding,
 };
 pub(crate) struct VulkanCommandBuffer {
-    pub(crate) vk_command_buffer: ash::vk::CommandBuffer,
+    vk_command_buffer: ash::vk::CommandBuffer,
 }
 
 impl VulkanCommandBuffer {

@@ -4,7 +4,7 @@ use std::ffi::CStr;
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 
-use crate::ExternalResourceHandle;
+use crate::{Buffer, CommandBuffer, ExternalResourceHandle, Texture};
 #[cfg(target_os = "linux")]
 use ash::extensions::khr::{self, ExternalMemoryFd, ExternalSemaphoreFd};
 #[cfg(target_os = "windows")]
@@ -16,7 +16,7 @@ use lgn_tracing::{debug, info, trace, warn};
 
 use super::{
     VkDebugReporter, VkInstance, VkQueueAllocationStrategy, VkQueueAllocatorSet,
-    VkQueueRequirements, VulkanBuffer, VulkanTexture,
+    VkQueueRequirements,
 };
 use crate::backends::vulkan::check_extensions_availability;
 use crate::{DeviceContext, DeviceInfo, ExtensionMode, GfxResult, PhysicalDeviceType};
@@ -200,25 +200,25 @@ impl VulkanDeviceContext {
         }
     }
 
-    pub(crate) fn set_texture_name(&self, texture: &VulkanTexture, name: &str) {
+    pub(crate) fn set_texture_name(&self, texture: &Texture, name: &str) {
         if let Some(debug_reporter) = self.debug_reporter.as_ref() {
             debug_reporter.set_texture_name(self.vk_device.handle(), texture, name);
         }
     }
 
-    pub(crate) fn set_buffer_name(&self, buffer: &VulkanBuffer, name: &str) {
+    pub(crate) fn set_buffer_name(&self, buffer: &Buffer, name: &str) {
         if let Some(debug_reporter) = self.debug_reporter.as_ref() {
             debug_reporter.set_buffer_name(self.vk_device.handle(), buffer, name);
         }
     }
 
-    pub(crate) fn begin_label(&self, command_buffer: ash::vk::CommandBuffer, label: &str) {
+    pub(crate) fn begin_label(&self, command_buffer: &CommandBuffer, label: &str) {
         if let Some(debug_reporter) = self.debug_reporter.as_ref() {
             debug_reporter.begin_label(command_buffer, label);
         }
     }
 
-    pub(crate) fn end_label(&self, command_buffer: ash::vk::CommandBuffer) {
+    pub(crate) fn end_label(&self, command_buffer: &CommandBuffer) {
         if let Some(debug_reporter) = self.debug_reporter.as_ref() {
             debug_reporter.end_label(command_buffer);
         }

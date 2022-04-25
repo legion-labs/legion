@@ -2,8 +2,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::backends::BackendCommandBuffer;
 use crate::{
-    Buffer, BufferCopy, CommandPool, DebugLabel, DescriptorSetHandle, Pipeline, PipelineType,
-    Texture,
+    Buffer, BufferCopy, CommandPool, DescriptorSetHandle, Pipeline, PipelineType, Texture,
 };
 use crate::{
     BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams, CmdCopyTextureParams,
@@ -96,16 +95,13 @@ impl CommandBuffer {
             .store(false, Ordering::Relaxed);
     }
 
-    pub fn begin_label(&self, label: &str) {
+    pub fn with_label<F>(&self, label: &str, f: F)
+    where
+        F: FnOnce(),
+    {
         self.inner.device_context.begin_label(self, label);
-    }
-
-    pub fn end_label(&self) {
+        f();
         self.inner.device_context.end_label(self);
-    }
-
-    pub fn label(&self, label: &str) -> DebugLabel<'_> {
-        DebugLabel::new(self, label)
     }
 
     pub fn cmd_set_viewport(

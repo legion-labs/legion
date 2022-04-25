@@ -255,16 +255,16 @@ impl RenderSurface {
         render_context: &RenderContext<'_>,
         cmd_buffer: &HLCommandBuffer<'_>,
     ) {
-        let _label = cmd_buffer.label("Generate HZB");
+        cmd_buffer.with_label("Generate HZB", || {
+            self.depth_rt_mut()
+                .transition_to(cmd_buffer, ResourceState::PIXEL_SHADER_RESOURCE);
 
-        self.depth_rt_mut()
-            .transition_to(cmd_buffer, ResourceState::PIXEL_SHADER_RESOURCE);
+            self.get_hzb_surface()
+                .generate_hzb(render_context, cmd_buffer, self.depth_rt().srv());
 
-        self.get_hzb_surface()
-            .generate_hzb(render_context, cmd_buffer, self.depth_rt().srv());
-
-        self.depth_rt_mut()
-            .transition_to(cmd_buffer, ResourceState::DEPTH_WRITE);
+            self.depth_rt_mut()
+                .transition_to(cmd_buffer, ResourceState::DEPTH_WRITE);
+        });
     }
 
     pub(crate) fn get_hzb_surface(&self) -> &HzbSurface {

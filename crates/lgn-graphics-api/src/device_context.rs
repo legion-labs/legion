@@ -146,30 +146,6 @@ impl DeviceContextInner {
     }
 }
 
-pub struct DebugLabel<'a> {
-    pub cmd_buffer: &'a CommandBuffer,
-}
-
-impl Drop for DebugLabel<'_> {
-    fn drop(&mut self) {
-        self.cmd_buffer
-            .inner
-            .device_context
-            .end_label(self.cmd_buffer);
-    }
-}
-
-impl<'a> DebugLabel<'a> {
-    pub fn new(cmd_buffer: &'a CommandBuffer, label: &str) -> Self {
-        cmd_buffer
-            .inner
-            .device_context
-            .begin_label(cmd_buffer, label);
-
-        Self { cmd_buffer }
-    }
-}
-
 pub struct DeviceContext {
     pub(crate) inner: Arc<DeviceContextInner>,
     #[cfg(debug_assertions)]
@@ -331,32 +307,23 @@ impl DeviceContext {
     pub fn set_texture_name(&self, texture: &Texture, name: &str) {
         self.inner
             .backend_device_context
-            .set_texture_name(&texture.inner.backend_texture, name);
+            .set_texture_name(texture, name);
     }
 
     pub fn set_buffer_name(&self, buffer: &Buffer, name: &str) {
         self.inner
             .backend_device_context
-            .set_buffer_name(&buffer.inner.backend_buffer, name);
+            .set_buffer_name(buffer, name);
     }
 
     pub fn begin_label(&self, command_buffer: &CommandBuffer, label: &str) {
-        self.inner.backend_device_context.begin_label(
-            command_buffer
-                .inner
-                .backend_command_buffer
-                .vk_command_buffer,
-            label,
-        );
+        self.inner
+            .backend_device_context
+            .begin_label(command_buffer, label);
     }
 
     pub fn end_label(&self, command_buffer: &CommandBuffer) {
-        self.inner.backend_device_context.end_label(
-            command_buffer
-                .inner
-                .backend_command_buffer
-                .vk_command_buffer,
-        );
+        self.inner.backend_device_context.end_label(command_buffer);
     }
 }
 

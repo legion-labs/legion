@@ -2,7 +2,7 @@ use std::{cell::RefCell, mem};
 
 use lgn_graphics_api::{
     Buffer, BufferBarrier, BufferCopy, BufferSubAllocation, CmdBlitParams,
-    CmdCopyBufferToTextureParams, CmdCopyTextureParams, ColorRenderTargetBinding, DebugLabel,
+    CmdCopyBufferToTextureParams, CmdCopyTextureParams, ColorRenderTargetBinding,
     DepthStencilRenderTargetBinding, DescriptorSetHandle, DescriptorSetLayout, IndexBufferBinding,
     IndexType, Pipeline, Texture, TextureBarrier, VertexBufferBinding,
 };
@@ -40,8 +40,11 @@ impl<'rc> HLCommandBuffer<'rc> {
         self.cmd_buffer.cmd_end_render_pass();
     }
 
-    pub fn label(&self, label: &str) -> DebugLabel<'_> {
-        self.cmd_buffer.label(label)
+    pub fn with_label<F>(&self, label: &str, f: F)
+    where
+        F: FnOnce(),
+    {
+        self.cmd_buffer.with_label(label, f);
     }
 
     pub fn bind_pipeline(&self, pipeline: &Pipeline) {
