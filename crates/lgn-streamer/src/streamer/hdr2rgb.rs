@@ -26,6 +26,7 @@ impl Hdr2Rgb {
     ) -> Self {
         let resolve_rt = RenderTarget::new(
             device_context,
+            "Resolve_RT",
             RenderSurfaceExtents::new(resolution.width, resolution.height),
             Format::B8G8R8A8_UNORM,
             ResourceUsage::AS_RENDER_TARGET
@@ -56,6 +57,7 @@ impl Hdr2Rgb {
         if extents.width != resolution.width || extents.height != resolution.height {
             self.resolve_rt = RenderTarget::new(
                 device_context,
+                "Resolve_RT",
                 RenderSurfaceExtents::new(resolution.width, resolution.height),
                 Format::B8G8R8A8_UNORM,
                 ResourceUsage::AS_RENDER_TARGET
