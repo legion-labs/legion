@@ -157,7 +157,7 @@ impl RgbToYuvConverter {
         yuv: &mut [u8],
     ) -> anyhow::Result<()> {
         let render_frame_idx = 0;
-        let mut cmd_buffer = render_context.alloc_command_buffer();
+        let cmd_buffer = render_context.alloc_command_buffer();
         render_surface
             .hdr_rt_mut()
             .transition_to(&cmd_buffer, ResourceState::SHADER_RESOURCE);

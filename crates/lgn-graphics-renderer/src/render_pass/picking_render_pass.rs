@@ -38,7 +38,7 @@ impl PickingRenderPass {
         &mut self,
         picking_manager: &PickingManager,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
         instance_manager: &GpuInstanceManager,
         manipulator_meshes: &[(&GlobalTransform, &ManipulatorComponent)],
@@ -47,6 +47,8 @@ impl PickingRenderPass {
         camera: &CameraComponent,
         mesh_renderer: &MeshRenderer,
     ) {
+        let _label = cmd_buffer.label("Picking");
+
         let device_context = render_context.renderer().device_context();
 
         let mut count: usize = 0;
@@ -123,7 +125,7 @@ impl PickingRenderPass {
 
             cmd_buffer.push_constant(&push_constant_data);
 
-            mesh_renderer.draw(render_context, cmd_buffer, DefaultLayers::Picking as usize);
+            mesh_renderer.draw(render_context, cmd_buffer, DefaultLayers::Picking);
 
             for (transform, manipulator) in manipulator_meshes.iter() {
                 if manipulator.active {

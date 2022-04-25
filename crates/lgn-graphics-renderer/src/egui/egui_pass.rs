@@ -174,10 +174,12 @@ impl EguiPass {
     pub fn render(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &HLCommandBuffer<'_>,
         render_surface: &RenderSurface,
         egui: &Egui,
     ) {
+        let _label = cmd_buffer.label("egui");
+
         cmd_buffer.begin_render_pass(
             &[ColorRenderTargetBinding {
                 texture_view: render_surface.hdr_rt().rtv(),

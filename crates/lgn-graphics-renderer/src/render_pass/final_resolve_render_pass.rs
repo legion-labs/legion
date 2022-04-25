@@ -43,9 +43,11 @@ impl FinalResolveRenderPass {
         &self,
         render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &HLCommandBuffer<'_>,
         resolve_rtv: &TextureView,
     ) {
+        let _label = cmd_buffer.label("Final resolve");
+
         let pipeline = render_context
             .pipeline_manager()
             .get_pipeline(self.pipeline_handle)

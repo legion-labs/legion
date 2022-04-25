@@ -4,8 +4,8 @@ use crate::{Buffer, BufferCopy, BufferDef, DeviceContext, ResourceUsage};
 
 #[derive(Debug)]
 pub(crate) struct VulkanBuffer {
-    vk_buffer: ash::vk::Buffer,
-    vk_mem_requirements: ash::vk::MemoryRequirements,
+    pub(crate) vk_buffer: ash::vk::Buffer,
+    pub(crate) vk_mem_requirements: ash::vk::MemoryRequirements,
 }
 
 impl VulkanBuffer {

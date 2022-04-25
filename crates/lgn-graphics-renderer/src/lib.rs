@@ -565,7 +565,7 @@ fn render_update(
                 &instance_manager,
             );
 
-            let mut cmd_buffer = render_context.alloc_command_buffer();
+            let cmd_buffer = render_context.alloc_command_buffer();
             cmd_buffer.bind_index_buffer(&renderer.static_buffer().index_buffer_binding());
             cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
 
@@ -574,7 +574,7 @@ fn render_update(
             picking_pass.render(
                 &picking_manager,
                 &render_context,
-                &mut cmd_buffer,
+                &cmd_buffer,
                 render_surface.as_mut(),
                 &instance_manager,
                 q_manipulator_drawables.as_slice(),
@@ -586,7 +586,7 @@ fn render_update(
 
             TmpRenderPass::render(
                 &render_context,
-                &mut cmd_buffer,
+                &cmd_buffer,
                 render_surface.as_mut(),
                 &mesh_renderer,
             );
@@ -595,7 +595,7 @@ fn render_update(
             let debug_renderpass = debug_renderpass.write();
             debug_renderpass.render(
                 &render_context,
-                &mut cmd_buffer,
+                &cmd_buffer,
                 render_surface.as_mut(),
                 q_picked_drawables.as_slice(),
                 q_manipulator_drawables.as_slice(),
@@ -609,12 +609,7 @@ fn render_update(
                 let egui_pass = render_surface.egui_renderpass();
                 let mut egui_pass = egui_pass.write();
                 egui_pass.update_font_texture(&render_context, &cmd_buffer, egui.ctx());
-                egui_pass.render(
-                    &render_context,
-                    &mut cmd_buffer,
-                    render_surface.as_mut(),
-                    &egui,
-                );
+                egui_pass.render(&render_context, &cmd_buffer, render_surface.as_mut(), &egui);
             }
 
             // queue

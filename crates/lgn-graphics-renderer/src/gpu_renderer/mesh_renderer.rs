@@ -439,12 +439,14 @@ impl MeshRenderer {
     fn cull(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &HLCommandBuffer<'_>,
         culling_buffers: &CullingArgBuffers,
         culling_options: &(IndirectDispatch, GatherPerfStats),
         culling_args: (u32, u32, u32, Vec2),
         input_buffers: (&BufferView, &BufferView, &BufferView),
     ) {
+        let _label = cmd_buffer.label("Cull");
+
         let indirect_dispatch = culling_options.0 .0;
         let gather_perf_stats = culling_options.1 .0;
 
@@ -692,134 +694,130 @@ impl MeshRenderer {
             render_pass_data.push(pass_data);
         }
 
-        let mut cmd_buffer = render_context.alloc_command_buffer();
+        let cmd_buffer = render_context.alloc_command_buffer();
 
-        cmd_buffer.bind_index_buffer(
-            &render_context
-                .renderer()
-                .static_buffer()
-                .index_buffer_binding(),
-        );
-        cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
+        {
+            let _label = cmd_buffer.label("Gen occlusion and cull");
 
-        let hzb_pixel_extents = render_surface.get_hzb_surface().hzb_pixel_extents();
-        let hzb_max_lod = render_surface.get_hzb_surface().hzb_max_lod();
+            cmd_buffer.bind_index_buffer(
+                &render_context
+                    .renderer()
+                    .static_buffer()
+                    .index_buffer_binding(),
+            );
+            cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
 
-        render_surface.init_hzb_if_needed(render_context, &mut cmd_buffer);
+            let hzb_pixel_extents = render_surface.get_hzb_surface().hzb_pixel_extents();
+            let hzb_max_lod = render_surface.get_hzb_surface().hzb_max_lod();
 
-        let gpu_count_allocation = render_context.transient_buffer_allocator().copy_data(
-            &(self.gpu_instance_data.len() as u32),
-            ResourceUsage::AS_SHADER_RESOURCE,
-        );
-        let gpu_count_view = gpu_count_allocation
-            .create_structured_buffer_view(std::mem::size_of::<u32>() as u64, true);
+            render_surface.init_hzb_if_needed(render_context, &cmd_buffer);
 
-        let gpu_instance_allocation = render_context
-            .transient_buffer_allocator()
-            .copy_data_slice(&self.gpu_instance_data, ResourceUsage::AS_SHADER_RESOURCE);
-        let gpu_instance_view = gpu_instance_allocation
-            .create_structured_buffer_view(std::mem::size_of::<GpuInstanceData>() as u64, true);
+            let gpu_count_allocation = render_context.transient_buffer_allocator().copy_data(
+                &(self.gpu_instance_data.len() as u32),
+                ResourceUsage::AS_SHADER_RESOURCE,
+            );
+            let gpu_count_view = gpu_count_allocation
+                .create_structured_buffer_view(std::mem::size_of::<u32>() as u64, true);
 
-        let render_pass_allocation = render_context
-            .transient_buffer_allocator()
-            .copy_data_slice(&render_pass_data, ResourceUsage::AS_SHADER_RESOURCE);
-        let render_pass_view = render_pass_allocation
-            .create_structured_buffer_view(std::mem::size_of::<RenderPassData>() as u64, true);
+            let gpu_instance_allocation = render_context
+                .transient_buffer_allocator()
+                .copy_data_slice(&self.gpu_instance_data, ResourceUsage::AS_SHADER_RESOURCE);
+            let gpu_instance_view = gpu_instance_allocation
+                .create_structured_buffer_view(std::mem::size_of::<GpuInstanceData>() as u64, true);
 
-        self.culling_buffers.stats_buffer.clear_buffer(&cmd_buffer);
+            let render_pass_allocation = render_context
+                .transient_buffer_allocator()
+                .copy_data_slice(&render_pass_data, ResourceUsage::AS_SHADER_RESOURCE);
+            let render_pass_view = render_pass_allocation
+                .create_structured_buffer_view(std::mem::size_of::<RenderPassData>() as u64, true);
 
-        // Cull using previous frame Hzb
-        self.cull(
-            render_context,
-            &mut cmd_buffer,
-            &self.culling_buffers,
-            &(IndirectDispatch(false), GatherPerfStats(true)),
-            (
-                0,
-                render_pass_data.len() as u32,
-                hzb_max_lod,
-                hzb_pixel_extents,
-            ),
-            (&gpu_count_view, &gpu_instance_view, &render_pass_view),
-        );
+            self.culling_buffers.stats_buffer.clear_buffer(&cmd_buffer);
 
-        cmd_buffer.begin_render_pass(
-            &[],
-            &Some(DepthStencilRenderTargetBinding {
-                texture_view: render_surface.depth_rt().rtv(),
-                depth_load_op: LoadOp::Clear,
-                stencil_load_op: LoadOp::DontCare,
-                depth_store_op: StoreOp::Store,
-                stencil_store_op: StoreOp::DontCare,
-                clear_value: DepthStencilClearValue {
-                    depth: 1.0,
-                    stencil: 0,
-                },
-            }),
-        );
+            // Cull using previous frame Hzb
+            self.cull(
+                render_context,
+                &cmd_buffer,
+                &self.culling_buffers,
+                &(IndirectDispatch(false), GatherPerfStats(true)),
+                (
+                    0,
+                    render_pass_data.len() as u32,
+                    hzb_max_lod,
+                    hzb_pixel_extents,
+                ),
+                (&gpu_count_view, &gpu_instance_view, &render_pass_view),
+            );
 
-        // Render initial depth buffer from last frame culling results
-        self.draw(
-            render_context,
-            &mut cmd_buffer,
-            DefaultLayers::Depth as usize,
-        );
+            cmd_buffer.begin_render_pass(
+                &[],
+                &Some(DepthStencilRenderTargetBinding {
+                    texture_view: render_surface.depth_rt().rtv(),
+                    depth_load_op: LoadOp::Clear,
+                    stencil_load_op: LoadOp::DontCare,
+                    depth_store_op: StoreOp::Store,
+                    stencil_store_op: StoreOp::DontCare,
+                    clear_value: DepthStencilClearValue {
+                        depth: 1.0,
+                        stencil: 0,
+                    },
+                }),
+            );
 
-        cmd_buffer.end_render_pass();
+            // Render initial depth buffer from last frame culling results
+            self.draw(render_context, &cmd_buffer, DefaultLayers::Depth);
 
-        // Initial Hzb for current frame
-        render_surface.generate_hzb(render_context, &mut cmd_buffer);
+            cmd_buffer.end_render_pass();
 
-        // Rebind global vertex buffer after gen Hzb changes it
-        cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
+            // Initial Hzb for current frame
+            render_surface.generate_hzb(render_context, &cmd_buffer);
 
-        // Retest elements culled from first pass against new Hzb
-        self.cull(
-            render_context,
-            &mut cmd_buffer,
-            &self.culling_buffers,
-            &(IndirectDispatch(true), GatherPerfStats(true)),
-            (
-                0,
-                render_pass_data.len() as u32,
-                hzb_max_lod,
-                hzb_pixel_extents,
-            ),
-            (&gpu_count_view, &gpu_instance_view, &render_pass_view),
-        );
+            // Rebind global vertex buffer after gen Hzb changes it
+            cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
 
-        // Redraw depth istances that passed second cull pass
-        cmd_buffer.begin_render_pass(
-            &[],
-            &Some(DepthStencilRenderTargetBinding {
-                texture_view: render_surface.depth_rt().rtv(),
-                depth_load_op: LoadOp::Load,
-                stencil_load_op: LoadOp::DontCare,
-                depth_store_op: StoreOp::Store,
-                stencil_store_op: StoreOp::DontCare,
-                clear_value: DepthStencilClearValue {
-                    depth: 1.0,
-                    stencil: 0,
-                },
-            }),
-        );
+            // Retest elements culled from first pass against new Hzb
+            self.cull(
+                render_context,
+                &cmd_buffer,
+                &self.culling_buffers,
+                &(IndirectDispatch(true), GatherPerfStats(true)),
+                (
+                    0,
+                    render_pass_data.len() as u32,
+                    hzb_max_lod,
+                    hzb_pixel_extents,
+                ),
+                (&gpu_count_view, &gpu_instance_view, &render_pass_view),
+            );
 
-        // Render initial depth buffer from last frame culling results
-        self.draw(
-            render_context,
-            &mut cmd_buffer,
-            DefaultLayers::Depth as usize,
-        );
+            // Redraw depth istances that passed second cull pass
+            cmd_buffer.begin_render_pass(
+                &[],
+                &Some(DepthStencilRenderTargetBinding {
+                    texture_view: render_surface.depth_rt().rtv(),
+                    depth_load_op: LoadOp::Load,
+                    stencil_load_op: LoadOp::DontCare,
+                    depth_store_op: StoreOp::Store,
+                    stencil_store_op: StoreOp::DontCare,
+                    clear_value: DepthStencilClearValue {
+                        depth: 1.0,
+                        stencil: 0,
+                    },
+                }),
+            );
 
-        cmd_buffer.end_render_pass();
+            // Render initial depth buffer from last frame culling results
+            self.draw(render_context, &cmd_buffer, DefaultLayers::Depth);
 
-        // Update Hzb from complete depth buffer
-        render_surface.generate_hzb(render_context, &mut cmd_buffer);
+            cmd_buffer.end_render_pass();
 
-        if let Some(readback) = &self.culling_buffers.stats_buffer_readback {
-            self.culling_buffers
-                .stats_buffer
-                .copy_buffer_to_readback(&cmd_buffer, readback);
+            // Update Hzb from complete depth buffer
+            render_surface.generate_hzb(render_context, &cmd_buffer);
+
+            if let Some(readback) = &self.culling_buffers.stats_buffer_readback {
+                self.culling_buffers
+                    .stats_buffer
+                    .copy_buffer_to_readback(&cmd_buffer, readback);
+            }
         }
 
         render_context
@@ -830,10 +828,22 @@ impl MeshRenderer {
     pub(crate) fn draw(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
-        layer_id: usize,
+        cmd_buffer: &HLCommandBuffer<'_>,
+        layer_id: DefaultLayers,
     ) {
-        self.default_layers[layer_id].draw(
+        let label = format!(
+            "Draw layer: {}",
+            match &layer_id {
+                DefaultLayers::Depth => "Depth",
+                DefaultLayers::Opaque => "Opaque",
+                DefaultLayers::Picking => "Picking",
+            }
+        );
+
+        let _label = cmd_buffer.label(&label);
+
+        let layer_id_index = layer_id as usize;
+        self.default_layers[layer_id_index].draw(
             render_context,
             cmd_buffer,
             self.culling_buffers

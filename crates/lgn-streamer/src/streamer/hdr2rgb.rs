@@ -86,7 +86,7 @@ impl Hdr2Rgb {
         render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
     ) {
-        let mut cmd_buffer = render_context.alloc_command_buffer();
+        let cmd_buffer = render_context.alloc_command_buffer();
         cmd_buffer.resource_barrier(
             &[],
             &[TextureBarrier::state_transition(
@@ -103,7 +103,7 @@ impl Hdr2Rgb {
         final_resolve_render_pass.render(
             render_context,
             render_surface,
-            &mut cmd_buffer,
+            &cmd_buffer,
             self.resolve_rt.rtv(),
         );
 

@@ -20,10 +20,12 @@ impl TmpRenderPass {
     #[span_fn]
     pub(crate) fn render(
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
         mesh_renderer: &MeshRenderer,
     ) {
+        let _label = cmd_buffer.label("Opaque");
+
         render_surface
             .hdr_rt_mut()
             .transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
@@ -48,7 +50,7 @@ impl TmpRenderPass {
             }),
         );
 
-        mesh_renderer.draw(render_context, cmd_buffer, DefaultLayers::Opaque as usize);
+        mesh_renderer.draw(render_context, cmd_buffer, DefaultLayers::Opaque);
 
         cmd_buffer.end_render_pass();
     }

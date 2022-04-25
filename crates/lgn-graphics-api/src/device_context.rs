@@ -12,11 +12,11 @@ use raw_window_handle::HasRawWindowHandle;
 use super::deferred_drop::DeferredDropper;
 use crate::backends::BackendDeviceContext;
 use crate::{
-    ApiDef, Buffer, BufferDef, ComputePipelineDef, DescriptorHeap, DescriptorHeapDef,
-    DescriptorSetLayout, DescriptorSetLayoutDef, ExtensionMode, Fence, GfxResult,
-    GraphicsPipelineDef, Instance, Pipeline, Queue, QueueType, RootSignature, RootSignatureDef,
-    Sampler, SamplerDef, Semaphore, SemaphoreDef, Shader, ShaderModule, ShaderModuleDef,
-    ShaderStageDef, Swapchain, SwapchainDef, Texture, TextureDef,
+    ApiDef, Buffer, BufferDef, CommandBuffer, ComputePipelineDef, DescriptorHeap,
+    DescriptorHeapDef, DescriptorSetLayout, DescriptorSetLayoutDef, ExtensionMode, Fence,
+    GfxResult, GraphicsPipelineDef, Instance, Pipeline, Queue, QueueType, RootSignature,
+    RootSignatureDef, Sampler, SamplerDef, Semaphore, SemaphoreDef, Shader, ShaderModule,
+    ShaderModuleDef, ShaderStageDef, Swapchain, SwapchainDef, Texture, TextureDef,
 };
 
 /// Used to specify which type of physical device is preferred. It's recommended
@@ -143,6 +143,30 @@ impl DeviceContextInner {
             #[cfg(feature = "track-device-contexts")]
             next_create_index: AtomicU64::new(1),
         })
+    }
+}
+
+pub struct DebugLabel<'a> {
+    pub cmd_buffer: &'a CommandBuffer,
+}
+
+impl Drop for DebugLabel<'_> {
+    fn drop(&mut self) {
+        self.cmd_buffer
+            .inner
+            .device_context
+            .end_label(self.cmd_buffer);
+    }
+}
+
+impl<'a> DebugLabel<'a> {
+    pub fn new(cmd_buffer: &'a CommandBuffer, label: &str) -> Self {
+        cmd_buffer
+            .inner
+            .device_context
+            .begin_label(cmd_buffer, label);
+
+        Self { cmd_buffer }
     }
 }
 
@@ -302,6 +326,37 @@ impl DeviceContext {
 
     pub fn current_cpu_frame(&self) -> u64 {
         self.inner.current_cpu_frame.load(Ordering::Relaxed)
+    }
+
+    pub fn set_texture_name(&self, texture: &Texture, name: &str) {
+        self.inner
+            .backend_device_context
+            .set_texture_name(&texture.inner.backend_texture, name);
+    }
+
+    pub fn set_buffer_name(&self, buffer: &Buffer, name: &str) {
+        self.inner
+            .backend_device_context
+            .set_buffer_name(&buffer.inner.backend_buffer, name);
+    }
+
+    pub fn begin_label(&self, command_buffer: &CommandBuffer, label: &str) {
+        self.inner.backend_device_context.begin_label(
+            command_buffer
+                .inner
+                .backend_command_buffer
+                .vk_command_buffer,
+            label,
+        );
+    }
+
+    pub fn end_label(&self, command_buffer: &CommandBuffer) {
+        self.inner.backend_device_context.end_label(
+            command_buffer
+                .inner
+                .backend_command_buffer
+                .vk_command_buffer,
+        );
     }
 }
 

@@ -221,7 +221,7 @@ impl RenderSurface {
     pub(crate) fn init_hzb_if_needed(
         &mut self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &HLCommandBuffer<'_>,
     ) {
         if !self.resources.hzb_init {
             self.resources
@@ -253,8 +253,10 @@ impl RenderSurface {
     pub(crate) fn generate_hzb(
         &mut self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &HLCommandBuffer<'_>,
     ) {
+        let _label = cmd_buffer.label("Generate HZB");
+
         self.depth_rt_mut()
             .transition_to(cmd_buffer, ResourceState::PIXEL_SHADER_RESOURCE);
 

@@ -180,9 +180,11 @@ impl DebugRenderPass {
     pub fn render_ground_plane(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &HLCommandBuffer<'_>,
         mesh_manager: &MeshManager,
     ) {
+        let _label = cmd_buffer.label("Ground Plane");
+
         let wire_pso_depth_pipeline = render_context
             .pipeline_manager()
             .get_pipeline(self.wire_pso_depth_handle)
@@ -203,11 +205,13 @@ impl DebugRenderPass {
     pub fn render_picked(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &HLCommandBuffer<'_>,
         picked_meshes: &[(&VisualComponent, &GlobalTransform)],
         mesh_manager: &MeshManager,
         model_manager: &ModelManager,
     ) {
+        let _label = cmd_buffer.label("Picked");
+
         render_context.bind_default_descriptor_sets(cmd_buffer);
 
         let wire_pso_depth_pipeline = render_context
@@ -248,10 +252,12 @@ impl DebugRenderPass {
     pub fn render_debug_display(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &HLCommandBuffer<'_>,
         debug_display: &DebugDisplay,
         mesh_manager: &MeshManager,
     ) {
+        let _label = cmd_buffer.label("Debug_Display");
+
         let pipeline = render_context
             .pipeline_manager()
             .get_pipeline(self.wire_pso_depth_handle)
@@ -280,7 +286,7 @@ impl DebugRenderPass {
         &self,
         render_context: &RenderContext<'_>,
 
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
         manipulator_meshes: &[(&GlobalTransform, &ManipulatorComponent)],
         mesh_manager: &MeshManager,
@@ -288,6 +294,8 @@ impl DebugRenderPass {
     ) {
         for (transform, manipulator) in manipulator_meshes.iter() {
             if manipulator.active {
+                let _label = cmd_buffer.label("Manipulator");
+
                 let scaled_xform = ManipulatorManager::scale_manipulator_for_viewport(
                     transform,
                     &manipulator.local_transform,
@@ -325,7 +333,7 @@ impl DebugRenderPass {
     pub fn render(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
         picked_meshes: &[(&VisualComponent, &GlobalTransform)],
         manipulator_meshes: &[(&GlobalTransform, &ManipulatorComponent)],
@@ -334,6 +342,8 @@ impl DebugRenderPass {
         model_manager: &ModelManager,
         debug_display: &DebugDisplay,
     ) {
+        let _label = cmd_buffer.label("Debug");
+
         cmd_buffer.bind_index_buffer(
             &render_context
                 .renderer()
@@ -390,8 +400,10 @@ fn render_aabb_for_mesh(
     wire_frame_cube: &MeshMetaData,
     mesh: &MeshMetaData,
     transform: &GlobalTransform,
-    cmd_buffer: &mut HLCommandBuffer<'_>,
+    cmd_buffer: &HLCommandBuffer<'_>,
 ) {
+    let _label = cmd_buffer.label("AABB");
+
     let mut min_bound = Vec3::new(f32::MAX, f32::MAX, f32::MAX);
     let mut max_bound = Vec3::new(f32::MIN, f32::MIN, f32::MIN);
 
