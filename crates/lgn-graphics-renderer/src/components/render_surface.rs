@@ -107,6 +107,7 @@ impl SizeDependentResources {
         Self {
             hdr_rt: RenderTarget::new(
                 device_context,
+                "HDR_RT",
                 extents,
                 Format::R16G16B16A16_SFLOAT,
                 ResourceUsage::AS_RENDER_TARGET
@@ -116,6 +117,7 @@ impl SizeDependentResources {
             ),
             depth_rt: RenderTarget::new(
                 device_context,
+                "Depth_RT",
                 extents,
                 Format::D32_SFLOAT,
                 ResourceUsage::AS_DEPTH_STENCIL | ResourceUsage::AS_SHADER_RESOURCE,

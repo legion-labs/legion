@@ -21,6 +21,7 @@ pub(crate) struct ReadbackBuffer {
 impl ReadbackBuffer {
     pub(crate) fn new(device_context: &DeviceContext, size: u64) -> Self {
         let buffer_def = BufferDef {
+            name: "ReadbackBuffer".to_string(),
             size,
             usage_flags: ResourceUsage::AS_TRANSFERABLE,
             creation_flags: ResourceCreation::empty(),
@@ -98,6 +99,7 @@ pub(crate) struct GpuBufferWithReadback {
 impl GpuBufferWithReadback {
     pub(crate) fn new(device_context: &DeviceContext, size: u64) -> Self {
         let buffer_def = BufferDef {
+            name: "GpuReadbackBuffer".to_string(),
             size,
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE
                 | ResourceUsage::AS_UNORDERED_ACCESS

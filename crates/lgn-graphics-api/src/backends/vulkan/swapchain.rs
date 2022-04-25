@@ -416,6 +416,7 @@ impl SwapchainVulkanInstance {
                 &self.device_context,
                 Some(raw_image),
                 &TextureDef {
+                    name: "Swapchain".to_string(),
                     extents: Extents3D {
                         width: self.swapchain_info.extents.width,
                         height: self.swapchain_info.extents.height,

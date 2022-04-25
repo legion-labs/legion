@@ -106,6 +106,7 @@ impl EguiPass {
         let egui_font_image = &egui_ctx.font_image();
 
         let texture_def = TextureDef {
+            name: "egui font".to_string(),
             extents: Extents3D {
                 width: egui_font_image.width as u32,
                 height: egui_font_image.height as u32,

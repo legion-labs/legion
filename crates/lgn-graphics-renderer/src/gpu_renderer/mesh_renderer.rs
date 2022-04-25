@@ -882,6 +882,7 @@ fn create_or_replace_buffer(
 
     if buffer.is_none() {
         let buffer_def = BufferDef {
+            name: "CullingArgBuffer".to_string(),
             size: required_size,
             usage_flags,
             creation_flags: ResourceCreation::empty(),

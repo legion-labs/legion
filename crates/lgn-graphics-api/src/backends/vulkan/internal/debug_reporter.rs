@@ -83,10 +83,11 @@ impl VkDebugReporter {
         texture: &Texture,
         name: &str,
     ) {
+        let name = &CString::new(name).unwrap();
         let object_name_info = ash::vk::DebugUtilsObjectNameInfoEXT::builder()
             .object_type(ash::vk::ObjectType::IMAGE)
             .object_handle(texture.vk_image().as_raw())
-            .object_name(&CString::new(name).unwrap())
+            .object_name(name)
             .build();
 
         unsafe {
@@ -102,10 +103,11 @@ impl VkDebugReporter {
         buffer: &Buffer,
         name: &str,
     ) {
+        let name = &CString::new(name).unwrap();
         let object_name_info = ash::vk::DebugUtilsObjectNameInfoEXT::builder()
             .object_type(ash::vk::ObjectType::BUFFER)
             .object_handle(buffer.vk_buffer().as_raw())
-            .object_name(&CString::new(name).unwrap())
+            .object_name(name)
             .build();
 
         unsafe {

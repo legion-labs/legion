@@ -32,6 +32,7 @@ impl UnifiedStaticBuffer {
             creation_flags |= ResourceCreation::SPARSE_BINDING;
         }
         let buffer_def = BufferDef {
+            name: "UnifiedStaticBuffer".to_string(),
             size: virtual_buffer_size,
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE
                 | ResourceUsage::AS_TRANSFERABLE

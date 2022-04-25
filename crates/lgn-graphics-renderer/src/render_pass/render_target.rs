@@ -15,12 +15,14 @@ pub struct RenderTarget {
 impl RenderTarget {
     pub fn new(
         device_context: &DeviceContext,
+        name: &str,
         extents: RenderSurfaceExtents,
         format: Format,
         usage_flags: ResourceUsage,
         view_type: GPUViewType,
     ) -> Self {
         let texture_def = TextureDef {
+            name: name.to_string(),
             extents: Extents3D {
                 width: extents.width(),
                 height: extents.height(),

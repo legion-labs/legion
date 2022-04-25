@@ -29,6 +29,7 @@ impl ResolutionDependentResources {
         let mut copy_yuv_images = Vec::with_capacity(render_frame_count as usize);
         for _ in 0..render_frame_count {
             let mut yuv_plane_def = TextureDef {
+                name: "Y",
                 extents: Extents3D {
                     width: resolution.width,
                     height: resolution.height,
@@ -46,7 +47,9 @@ impl ResolutionDependentResources {
             let y_image = device_context.create_texture(&yuv_plane_def);
             yuv_plane_def.extents.width /= 2;
             yuv_plane_def.extents.height /= 2;
+            yuv_plane_def.name = "U";
             let u_image = device_context.create_texture(&yuv_plane_def);
+            yuv_plane_def.name = "V";
             let v_image = device_context.create_texture(&yuv_plane_def);
 
             let yuv_plane_uav_def = TextureViewDef {

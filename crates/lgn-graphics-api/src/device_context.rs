@@ -234,11 +234,15 @@ impl DeviceContext {
     }
 
     pub fn create_texture(&self, texture_def: &TextureDef) -> Texture {
-        Texture::new(self, texture_def)
+        let texture = Texture::new(self, texture_def);
+        self.set_texture_name(&texture, &texture_def.name);
+        texture
     }
 
     pub fn create_buffer(&self, buffer_def: &BufferDef) -> Buffer {
-        Buffer::new(self, buffer_def)
+        let buffer = Buffer::new(self, buffer_def);
+        self.set_buffer_name(&buffer, &buffer_def.name);
+        buffer
     }
 
     pub fn create_shader(&self, stages: Vec<ShaderStageDef>) -> Shader {

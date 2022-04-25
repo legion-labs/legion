@@ -54,6 +54,7 @@ impl HzbSurface {
         }
 
         let hzb_def = TextureDef {
+            name: "HZB".to_string(),
             extents: Extents3D {
                 width: hzb_width as u32,
                 height: hzb_height as u32,
