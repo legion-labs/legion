@@ -21,3 +21,9 @@
   <i class="bi bi-pc text-content-38" />
   <span>{getComputer()}</span>
 </div>
+
+<style>
+  .pl-5.pr-5.pt-5.overflow-hidden.s-XsEmFtvddWTw {
+    padding: 0rem;
+  }
+</style>

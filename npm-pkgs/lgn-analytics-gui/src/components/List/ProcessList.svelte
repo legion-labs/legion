@@ -129,25 +129,68 @@
 </Loader>
 
 <style lang="postcss">
+  table {
+    @apply font-default;
+    @apply border-collapse;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 4px;
+    padding: 0rem 0.75rem;
+  }
+
+  table tbody {
+    @apply overflow-auto;
+  }
+
+  tr:hover {
+    background-color: #fafafa;
+  }
+
+  table thead {
+    background-color: #f6f6f6;
+    box-shadow: 0 0px 0px 0 rgb(0 0 0 / 0.05);
+  }
+
   table th {
-    @apply py-1 pl-1 border text-left;
+    @apply py-2 pl-3 text-center border border-[rgb(153,153,153)];
     border-style: none;
   }
 
-  table tr:nth-child(even) {
-    @apply bg-skin-600;
+  table tr {
+    background-color: #fff;
+    border-radius: 32px;
   }
 
   table td {
-    @apply p-1;
-    @apply border-none;
+    @apply p-2 pl-3 text-left border border-[rgb(153,153,153)];
+    border-style: none;
+    @apply text-sm;
   }
 
   table th {
-    @apply text-sm capitalize;
+    text-transform: uppercase;
+    @apply text-xs;
   }
 
   table td div {
     @apply p-0;
+  }
+
+  a {
+    @apply text-[#000000] underline;
+  }
+
+  .search-div {
+    margin: 16px 12px;
+    float: right;
+  }
+
+  .search-input {
+    border-style: solid;
+    border-width: 1px;
+    padding: 8px;
+    border-color: rgb(240, 240, 240);
+    min-width: 400px;
+    @apply text-xs;
   }
 </style>

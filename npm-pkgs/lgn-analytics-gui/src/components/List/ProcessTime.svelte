@@ -26,3 +26,9 @@
     })})
   </span>
 </div>
+
+<style>
+  i.bi.bi-clock-fill.text-neutral-400 {
+    display: none;
+  }
+</style>

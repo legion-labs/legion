@@ -8,5 +8,13 @@
   >
     <span class="capitalize">{user.charAt(0)}</span>
   </div>
-  <span class="capitalize text-content-100">{user}</span>
+  <span class="user">{user}</span>
 </div>
+
+
+
+<style lang="postcss">
+.user {
+ @apply font-default capitalize text-sm; 
+}
+</style>

@@ -1,11 +1,9 @@
 <script lang="ts">
+  import User from "../List/User.svelte";
+  import { authClient } from "@lgn/web-client/src/lib/auth";
   import { onMount } from "svelte";
   import { link } from "svelte-navigator";
-
-  import { authClient } from "@lgn/web-client/src/lib/auth";
-
   import iconPath from "../../../icons/128x128.png";
-  import User from "../List/User.svelte";
 
   let user: string | undefined;
   let dark = true;
@@ -32,7 +30,7 @@
           }
         }}
       />
-      <span class="font-bold text-xl text-content-87">
+      <span class="header-logo">
         <a href="/" use:link>Legion Performance Analytics</a>
       </span>
     </a>
@@ -43,3 +41,20 @@
     </div>
   {/if}
 </div>
+
+<style lang="postcss">
+  .pr-4 {
+    background-color: #f6f6f6;
+    padding: 0.75rem 0.75rem;
+    box-shadow: 0 1px 1px 0 rgb(255, 255, 255), 0 2px 1px 0 rgb(230, 234, 238);
+  }
+
+  a {
+    color: #000000;
+  }
+
+  .header-logo {
+  @apply font-default text-base;
+  }
+
+</style>
