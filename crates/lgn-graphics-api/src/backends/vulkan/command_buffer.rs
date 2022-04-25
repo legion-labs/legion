@@ -148,7 +148,7 @@ impl CommandBuffer {
         };
 
         if !barriers.is_empty() {
-            self.backedn_cmd_resource_barrier(&[], &barriers);
+            self.backend_cmd_resource_barrier(&[], &barriers);
         }
 
         let mut color_attachments =
@@ -550,7 +550,7 @@ impl CommandBuffer {
         }
     }
 
-    pub(crate) fn backedn_cmd_resource_barrier(
+    pub(crate) fn backend_cmd_resource_barrier(
         &self,
         buffer_barriers: &[BufferBarrier<'_>],
         texture_barriers: &[TextureBarrier<'_>],

@@ -168,7 +168,7 @@ impl UnifiedStaticBufferAllocator {
 
         if segment_size != alloc_size {
             // TODO(vdbdd): use warn instead
-            println!( "UnifiedStaticBufferAllocator: the segment required size ({}) is less than the allocated size ({}). {} of memory will be wasted", segment_size, alloc_size, alloc_size-segment_size  );
+            println!( "UnifiedStaticBufferAllocator: the segment required size ({} bytes) is less than the allocated size ({} bytes). {} bytes of memory will be wasted", segment_size, alloc_size, alloc_size-segment_size  );
         }
 
         let location = inner.segment_allocator.allocate(alloc_size).unwrap();

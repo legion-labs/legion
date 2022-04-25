@@ -270,7 +270,7 @@ impl CommandBuffer {
             !self.inner.has_active_renderpass.load(Ordering::Relaxed),
             "cmd_resource_barrier may not be called if inside render pass"
         );
-        self.backedn_cmd_resource_barrier(buffer_barriers, texture_barriers);
+        self.backend_cmd_resource_barrier(buffer_barriers, texture_barriers);
     }
 
     pub fn cmd_fill_buffer(&self, dst_buffer: &Buffer, offset: u64, size: u64, data: u32) {

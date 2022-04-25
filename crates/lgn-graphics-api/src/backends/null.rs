@@ -259,7 +259,7 @@ impl CommandBuffer {
         unimplemented!()
     }
 
-    pub(crate) fn backedn_cmd_resource_barrier(
+    pub(crate) fn backend_cmd_resource_barrier(
         &self,
         buffer_barriers: &[BufferBarrier<'_>],
         texture_barriers: &[TextureBarrier<'_>],
