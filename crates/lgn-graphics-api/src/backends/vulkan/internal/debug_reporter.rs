@@ -5,6 +5,7 @@ use ash::vk;
 use ash::{extensions::ext::DebugUtils, vk::Handle};
 use lgn_tracing::{debug, error, info, trace, warn};
 
+use crate::backends::vulkan::VulkanDeviceContext;
 use crate::{Buffer, CommandBuffer, Texture};
 
 const ERRORS_TO_IGNORE: [&str; 0] = [
@@ -76,7 +77,12 @@ impl Drop for VkDebugReporter {
 }
 
 impl VkDebugReporter {
-    pub(crate) fn set_texture_name(&self, device: ash::vk::Device, texture: &Texture, name: &str) {
+    pub(crate) fn set_texture_name(
+        &self,
+        device_context: &VulkanDeviceContext,
+        texture: &Texture,
+        name: &str,
+    ) {
         let object_name_info = ash::vk::DebugUtilsObjectNameInfoEXT::builder()
             .object_type(ash::vk::ObjectType::IMAGE)
             .object_handle(texture.vk_image().as_raw())
@@ -85,12 +91,17 @@ impl VkDebugReporter {
 
         unsafe {
             self.debug_report_loader
-                .debug_utils_set_object_name(device, &object_name_info)
+                .debug_utils_set_object_name(device_context.vk_device().handle(), &object_name_info)
                 .unwrap();
         }
     }
 
-    pub(crate) fn set_buffer_name(&self, device: ash::vk::Device, buffer: &Buffer, name: &str) {
+    pub(crate) fn set_buffer_name(
+        &self,
+        device_context: &VulkanDeviceContext,
+        buffer: &Buffer,
+        name: &str,
+    ) {
         let object_name_info = ash::vk::DebugUtilsObjectNameInfoEXT::builder()
             .object_type(ash::vk::ObjectType::BUFFER)
             .object_handle(buffer.vk_buffer().as_raw())
@@ -99,7 +110,7 @@ impl VkDebugReporter {
 
         unsafe {
             self.debug_report_loader
-                .debug_utils_set_object_name(device, &object_name_info)
+                .debug_utils_set_object_name(device_context.vk_device().handle(), &object_name_info)
                 .unwrap();
         }
     }

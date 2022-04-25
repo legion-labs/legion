@@ -202,13 +202,13 @@ impl VulkanDeviceContext {
 
     pub(crate) fn set_texture_name(&self, texture: &Texture, name: &str) {
         if let Some(debug_reporter) = self.debug_reporter.as_ref() {
-            debug_reporter.set_texture_name(self.vk_device.handle(), texture, name);
+            debug_reporter.set_texture_name(self, texture, name);
         }
     }
 
     pub(crate) fn set_buffer_name(&self, buffer: &Buffer, name: &str) {
         if let Some(debug_reporter) = self.debug_reporter.as_ref() {
-            debug_reporter.set_buffer_name(self.vk_device.handle(), buffer, name);
+            debug_reporter.set_buffer_name(self, buffer, name);
         }
     }
 
@@ -222,6 +222,10 @@ impl VulkanDeviceContext {
         if let Some(debug_reporter) = self.debug_reporter.as_ref() {
             debug_reporter.end_label(command_buffer);
         }
+    }
+
+    pub(crate) fn vk_device(&self) -> &ash::Device {
+        &self.vk_device
     }
 }
 
