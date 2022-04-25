@@ -50,10 +50,12 @@ impl TransitValue for u8 {
 
 impl TransitValue for u32 {
     fn get(value: &Value) -> Result<Self> {
-        if let Value::U32(val) = value {
-            Ok(*val)
-        } else {
-            bail!("bad type cast u32 for value {:?}", value);
+        match value {
+            Value::U32(val) => Ok(*val),
+            Value::U8(val) => Ok(Self::from(*val)),
+            _ => {
+                bail!("bad type cast u32 for value {:?}", value);
+            }
         }
     }
 }
@@ -231,6 +233,39 @@ where
     }
 }
 
+fn parse_log_string_interop_event_v3<S>(
+    udts: &[UserDefinedType],
+    dependencies: &HashMap<u64, Value, S>,
+    buffer: &[u8],
+) -> Result<Vec<(String, Value)>>
+where
+    S: BuildHasher,
+{
+    if let Some(index) = udts.iter().position(|t| t.name == "StaticStringRef") {
+        let string_ref_metadata = &udts[index];
+        unsafe {
+            let ptr = buffer.as_ptr();
+            let time = read_any::<i64>(ptr);
+            let mut cursor = std::mem::size_of::<i64>();
+            let level = read_any::<u8>(ptr.add(cursor));
+            cursor += 1;
+            let target =
+                parse_pod_instance(string_ref_metadata, udts, dependencies, cursor, buffer);
+            cursor += string_ref_metadata.size;
+            let msg = parse_string(buffer, &mut cursor)?;
+
+            Ok(vec![
+                (String::from("time"), Value::I64(time)),
+                (String::from("level"), Value::U8(level)),
+                (String::from("target"), target),
+                (String::from("msg"), Value::String(Arc::new(msg))),
+            ])
+        }
+    } else {
+        bail!("Can't parse log string interop event with no metadata for StaticStringRef");
+    }
+}
+
 fn parse_log_string_interop_event<S>(
     udts: &[UserDefinedType],
     dependencies: &HashMap<u64, Value, S>,
@@ -289,6 +324,16 @@ where
         "LogStringInteropEventV2" => {
             parse_log_string_interop_event(udts, dependencies, offset, object_size, buffer)
         }
+        "LogStringInteropEventV3" => {
+            let object_buffer = &buffer[offset..(offset + object_size)];
+            match parse_log_string_interop_event_v3(udts, dependencies, object_buffer) {
+                Ok(members) => members,
+                Err(e) => {
+                    log::warn!("Error parsing LogStringInteropEventV3: {:?}", e);
+                    vec![]
+                }
+            }
+        }
         other => {
             log::warn!("unknown custom object {}", other);
             Vec::new()
@@ -317,7 +362,13 @@ where
             let name = member_meta.name.clone();
             let type_name = member_meta.type_name.clone();
             let value = if member_meta.is_reference {
-                assert_eq!(std::mem::size_of::<u64>(), member_meta.size);
+                if member_meta.size != std::mem::size_of::<u64>() {
+                    log::error!(
+                        "member references have to be exactly 8 bytes {:?}",
+                        member_meta
+                    );
+                    return (name, Value::None);
+                }
                 let key =
                     unsafe { read_any::<u64>(buffer.as_ptr().add(offset + member_meta.offset)) };
                 if let Some(v) = dependencies.get(&key) {

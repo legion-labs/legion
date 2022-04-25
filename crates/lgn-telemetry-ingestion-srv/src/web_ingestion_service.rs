@@ -3,6 +3,7 @@ use anyhow::Context;
 use anyhow::Result;
 use lgn_telemetry_proto::telemetry::{BlockPayload, ContainerMetadata, UdtMember, UserDefinedType};
 use lgn_tracing::prelude::*;
+use lgn_tracing_transit::parse_string::parse_string;
 use lgn_tracing_transit::read_any;
 use prost::Message;
 
