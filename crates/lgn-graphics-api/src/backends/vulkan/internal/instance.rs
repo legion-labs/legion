@@ -16,7 +16,7 @@ use crate::{ExtensionMode, GfxError, GfxResult};
 pub struct VkInstance {
     pub entry: Arc<ash::Entry>,
     pub instance: ash::Instance,
-    pub debug_reporter: Option<VkDebugReporter>,
+    pub debug_reporter: Arc<Option<VkDebugReporter>>,
 }
 
 impl VkInstance {
@@ -97,7 +97,7 @@ impl VkInstance {
         Ok(Self {
             entry: Arc::new(entry),
             instance,
-            debug_reporter,
+            debug_reporter: Arc::new(debug_reporter),
         })
     }
 
@@ -275,7 +275,8 @@ impl VkInstance {
 impl Drop for VkInstance {
     fn drop(&mut self) {
         trace!("destroying VkInstance");
-        std::mem::drop(self.debug_reporter.take());
+        let debug_reporter = Arc::get_mut(&mut self.debug_reporter).unwrap();
+        std::mem::drop(debug_reporter.take());
 
         unsafe {
             self.instance.destroy_instance(None);

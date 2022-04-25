@@ -95,6 +95,15 @@ impl CommandBuffer {
             .store(false, Ordering::Relaxed);
     }
 
+    pub fn with_label<F>(&self, label: &str, f: F)
+    where
+        F: FnOnce(),
+    {
+        self.inner.device_context.begin_label(self, label);
+        f();
+        self.inner.device_context.end_label(self);
+    }
+
     pub fn cmd_set_viewport(
         &self,
         x: f32,

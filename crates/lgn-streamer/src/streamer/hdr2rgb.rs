@@ -26,6 +26,7 @@ impl Hdr2Rgb {
     ) -> Self {
         let resolve_rt = RenderTarget::new(
             device_context,
+            "Resolve_RT",
             RenderSurfaceExtents::new(resolution.width, resolution.height),
             Format::B8G8R8A8_UNORM,
             ResourceUsage::AS_RENDER_TARGET
@@ -56,6 +57,7 @@ impl Hdr2Rgb {
         if extents.width != resolution.width || extents.height != resolution.height {
             self.resolve_rt = RenderTarget::new(
                 device_context,
+                "Resolve_RT",
                 RenderSurfaceExtents::new(resolution.width, resolution.height),
                 Format::B8G8R8A8_UNORM,
                 ResourceUsage::AS_RENDER_TARGET
@@ -86,7 +88,7 @@ impl Hdr2Rgb {
         render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
     ) {
-        let mut cmd_buffer = render_context.alloc_command_buffer();
+        let cmd_buffer = render_context.alloc_command_buffer();
         cmd_buffer.resource_barrier(
             &[],
             &[TextureBarrier::state_transition(
@@ -103,7 +105,7 @@ impl Hdr2Rgb {
         final_resolve_render_pass.render(
             render_context,
             render_surface,
-            &mut cmd_buffer,
+            &cmd_buffer,
             self.resolve_rt.rtv(),
         );
 

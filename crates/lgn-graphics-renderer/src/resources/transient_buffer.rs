@@ -29,6 +29,7 @@ struct PageHeap {
 impl PageHeap {
     pub fn new(device_context: &DeviceContext, num_pages: u64, page_size: u64) -> Self {
         let buffer_def = BufferDef {
+            name: "PageHeap".to_string(),
             size: page_size * num_pages,
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE
                 | ResourceUsage::AS_CONST_BUFFER

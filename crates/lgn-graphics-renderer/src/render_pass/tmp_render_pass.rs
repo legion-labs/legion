@@ -20,36 +20,38 @@ impl TmpRenderPass {
     #[span_fn]
     pub(crate) fn render(
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
         mesh_renderer: &MeshRenderer,
     ) {
-        render_surface
-            .hdr_rt_mut()
-            .transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
+        cmd_buffer.with_label("Opaque", || {
+            render_surface
+                .hdr_rt_mut()
+                .transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
 
-        cmd_buffer.begin_render_pass(
-            &[ColorRenderTargetBinding {
-                texture_view: render_surface.hdr_rt().rtv(),
-                load_op: LoadOp::Clear,
-                store_op: StoreOp::Store,
-                clear_value: ColorClearValue(Color::new(180, 180, 180, 255).as_linear().into()),
-            }],
-            &Some(DepthStencilRenderTargetBinding {
-                texture_view: render_surface.depth_rt().rtv(),
-                depth_load_op: LoadOp::Load,
-                stencil_load_op: LoadOp::DontCare,
-                depth_store_op: StoreOp::Store,
-                stencil_store_op: StoreOp::DontCare,
-                clear_value: DepthStencilClearValue {
-                    depth: 1.0,
-                    stencil: 0,
-                },
-            }),
-        );
+            cmd_buffer.begin_render_pass(
+                &[ColorRenderTargetBinding {
+                    texture_view: render_surface.hdr_rt().rtv(),
+                    load_op: LoadOp::Clear,
+                    store_op: StoreOp::Store,
+                    clear_value: ColorClearValue(Color::new(180, 180, 180, 255).as_linear().into()),
+                }],
+                &Some(DepthStencilRenderTargetBinding {
+                    texture_view: render_surface.depth_rt().rtv(),
+                    depth_load_op: LoadOp::Load,
+                    stencil_load_op: LoadOp::DontCare,
+                    depth_store_op: StoreOp::Store,
+                    stencil_store_op: StoreOp::DontCare,
+                    clear_value: DepthStencilClearValue {
+                        depth: 1.0,
+                        stencil: 0,
+                    },
+                }),
+            );
 
-        mesh_renderer.draw(render_context, cmd_buffer, DefaultLayers::Opaque as usize);
+            mesh_renderer.draw(render_context, cmd_buffer, DefaultLayers::Opaque);
 
-        cmd_buffer.end_render_pass();
+            cmd_buffer.end_render_pass();
+        });
     }
 }

@@ -1,9 +1,12 @@
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::os::raw::c_void;
 
-use ash::extensions::ext::DebugUtils;
 use ash::vk;
+use ash::{extensions::ext::DebugUtils, vk::Handle};
 use lgn_tracing::{debug, error, info, trace, warn};
+
+use crate::backends::vulkan::VulkanDeviceContext;
+use crate::{Buffer, CommandBuffer, Texture};
 
 const ERRORS_TO_IGNORE: [&str; 0] = [
     // Temporary - I suspect locally built validation on M1 mac has a bug
@@ -69,6 +72,71 @@ impl Drop for VkDebugReporter {
             self.debug_report_loader
                 .destroy_debug_utils_messenger(self.debug_callback, None);
             trace!("destroyed VkDebugReporter");
+        }
+    }
+}
+
+impl VkDebugReporter {
+    pub(crate) fn set_texture_name(
+        &self,
+        device_context: &VulkanDeviceContext,
+        texture: &Texture,
+        name: &str,
+    ) {
+        let name = &CString::new(name).unwrap();
+        let object_name_info = ash::vk::DebugUtilsObjectNameInfoEXT::builder()
+            .object_type(ash::vk::ObjectType::IMAGE)
+            .object_handle(texture.vk_image().as_raw())
+            .object_name(name)
+            .build();
+
+        unsafe {
+            self.debug_report_loader
+                .debug_utils_set_object_name(device_context.vk_device().handle(), &object_name_info)
+                .unwrap();
+        }
+    }
+
+    pub(crate) fn set_buffer_name(
+        &self,
+        device_context: &VulkanDeviceContext,
+        buffer: &Buffer,
+        name: &str,
+    ) {
+        let name = &CString::new(name).unwrap();
+        let object_name_info = ash::vk::DebugUtilsObjectNameInfoEXT::builder()
+            .object_type(ash::vk::ObjectType::BUFFER)
+            .object_handle(buffer.vk_buffer().as_raw())
+            .object_name(name)
+            .build();
+
+        unsafe {
+            self.debug_report_loader
+                .debug_utils_set_object_name(device_context.vk_device().handle(), &object_name_info)
+                .unwrap();
+        }
+    }
+
+    pub(crate) fn begin_label(
+        &self,
+        command_buffer: &CommandBuffer,
+        label: &str, /*, todo: optional color? */
+    ) {
+        let label = CString::new(label).unwrap();
+        let label = ash::vk::DebugUtilsLabelEXT::builder()
+            .label_name(&label)
+            .build();
+
+        unsafe {
+            self.debug_report_loader
+                .cmd_begin_debug_utils_label(command_buffer.vk_command_buffer(), &label);
+        }
+    }
+
+    pub(crate) fn end_label(&self, command_buffer: &CommandBuffer) {
+        unsafe {
+            self.debug_report_loader
+                .cmd_end_debug_utils_label(command_buffer.vk_command_buffer());
         }
     }
 }

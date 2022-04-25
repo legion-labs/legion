@@ -54,6 +54,7 @@ impl HzbSurface {
         }
 
         let hzb_def = TextureDef {
+            name: "HZB".to_string(),
             extents: Extents3D {
                 width: hzb_width as u32,
                 height: hzb_height as u32,
@@ -123,7 +124,7 @@ impl HzbSurface {
     pub fn generate_hzb(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &HLCommandBuffer<'_>,
         depth_srv_view: &TextureView,
     ) {
         let pipeline = render_context

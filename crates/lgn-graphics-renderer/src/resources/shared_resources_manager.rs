@@ -135,6 +135,7 @@ impl SharedResourcesManager {
 
     fn create_albedo_texture() -> (TextureDef, TextureData) {
         let texture_def = TextureDef {
+            name: "Albedo".to_string(),
             extents: Extents3D {
                 width: 2,
                 height: 2,
@@ -162,6 +163,7 @@ impl SharedResourcesManager {
 
     fn create_normal_texture() -> (TextureDef, TextureData) {
         let texture_def = TextureDef {
+            name: "Normal".to_string(),
             extents: Extents3D {
                 width: 2,
                 height: 2,
@@ -188,6 +190,7 @@ impl SharedResourcesManager {
 
     fn create_metalness_texture() -> (TextureDef, TextureData) {
         let texture_def = TextureDef {
+            name: "Metalness".to_string(),
             extents: Extents3D {
                 width: 2,
                 height: 2,
@@ -214,6 +217,7 @@ impl SharedResourcesManager {
 
     fn create_roughness_texture() -> (TextureDef, TextureData) {
         let texture_def = TextureDef {
+            name: "Roughness".to_string(),
             extents: Extents3D {
                 width: 2,
                 height: 2,
