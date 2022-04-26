@@ -247,8 +247,8 @@
         <div class="mt-3">
           <TimelineRange {stateStore} />
         </div>
-        <div class="mt-3 cumulative">
-          <CallGraph begin={x} end={y} {processId} debug={false} />
+        <div class="mt-3">
+          <CallGraph begin={x} end={y} {processId} debug={false} size={450} />
         </div>
       </div>
     </div>
@@ -263,16 +263,11 @@
   }
 
   .canvas {
-    max-height: calc(100vh - 550px);
+    max-height: calc(100vh - 150px);
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
     @apply gap-y-1;
-  }
-
-  .cumulative {
-    height: 400px;
-    overflow: auto;
   }
 
   ::-webkit-scrollbar {

@@ -124,7 +124,7 @@ impl CumulativeCallGraphHandler {
         let mut full = true;
         if let Some(root) = tree.root {
             scopes.extend(tree.scopes);
-            Self::build(&root, begin_ms, end_ms, &mut result, &mut full, None);
+            Self::build_graph(&root, begin_ms, end_ms, &mut result, &mut full, None);
         }
 
         Ok(CumulativeCallGraphComputedBlock {
@@ -143,7 +143,7 @@ impl CumulativeCallGraphHandler {
     }
 
     #[span_fn]
-    fn build(
+    fn build_graph(
         tree: &CallTreeNode,
         begin_ms: f64,
         end_ms: f64,
@@ -162,7 +162,7 @@ impl CumulativeCallGraphHandler {
         node.add_call(tree, parent);
 
         for child in &tree.children {
-            Self::build(child, begin_ms, end_ms, result, full_flag, Some(tree));
+            Self::build_graph(child, begin_ms, end_ms, result, full_flag, Some(tree));
         }
     }
 
