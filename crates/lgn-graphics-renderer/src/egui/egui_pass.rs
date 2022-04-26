@@ -94,7 +94,7 @@ impl EguiPass {
     pub fn update_font_texture(
         &mut self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer<'_>,
         egui_ctx: &egui::CtxRef,
     ) {
         if let Some((version, ..)) = self.texture_data {
@@ -175,11 +175,11 @@ impl EguiPass {
     pub fn render(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer<'_>,
         render_surface: &RenderSurface,
         egui: &Egui,
     ) {
-        cmd_buffer.with_label("egui", || {
+        cmd_buffer.with_label("egui", |cmd_buffer| {
             cmd_buffer.begin_render_pass(
                 &[ColorRenderTargetBinding {
                     texture_view: render_surface.hdr_rt().rtv(),

@@ -20,11 +20,11 @@ impl TmpRenderPass {
     #[span_fn]
     pub(crate) fn render(
         render_context: &RenderContext<'_>,
-        cmd_buffer: &HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
         mesh_renderer: &MeshRenderer,
     ) {
-        cmd_buffer.with_label("Opaque", || {
+        cmd_buffer.with_label("Opaque", |cmd_buffer| {
             render_surface
                 .hdr_rt_mut()
                 .transition_to(cmd_buffer, ResourceState::RENDER_TARGET);

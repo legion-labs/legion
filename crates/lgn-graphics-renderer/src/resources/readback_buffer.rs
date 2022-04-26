@@ -150,7 +150,7 @@ impl GpuBufferWithReadback {
         &self.rw_view
     }
 
-    pub(crate) fn clear_buffer(&self, cmd_buffer: &HLCommandBuffer<'_>) {
+    pub(crate) fn clear_buffer(&self, cmd_buffer: &mut HLCommandBuffer<'_>) {
         cmd_buffer.resource_barrier(
             &[BufferBarrier {
                 buffer: self.buffer(),
@@ -176,7 +176,7 @@ impl GpuBufferWithReadback {
 
     pub(crate) fn copy_buffer_to_readback(
         &self,
-        cmd_buffer: &HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer<'_>,
         readback: &Handle<ReadbackBuffer>,
     ) {
         cmd_buffer.resource_barrier(
