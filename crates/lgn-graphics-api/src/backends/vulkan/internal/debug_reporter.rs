@@ -6,7 +6,7 @@ use ash::{extensions::ext::DebugUtils, vk::Handle};
 use lgn_tracing::{debug, error, info, trace, warn};
 
 use crate::backends::vulkan::VulkanDeviceContext;
-use crate::{Buffer, CommandBuffer, Texture};
+use crate::{Buffer, Texture};
 
 const ERRORS_TO_IGNORE: [&str; 0] = [
     // Temporary - I suspect locally built validation on M1 mac has a bug
@@ -65,6 +65,12 @@ pub struct VkDebugReporter {
     pub debug_callback: vk::DebugUtilsMessengerEXT,
 }
 
+impl std::fmt::Debug for VkDebugReporter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DebugUtils").finish()
+    }
+}
+
 impl Drop for VkDebugReporter {
     fn drop(&mut self) {
         unsafe {
@@ -119,7 +125,7 @@ impl VkDebugReporter {
 
     pub(crate) fn begin_label(
         &self,
-        command_buffer: &mut CommandBuffer,
+        vk_command_buffer: ash::vk::CommandBuffer,
         label: &str, /*, todo: optional color? */
     ) {
         let label = CString::new(label).unwrap();
@@ -129,14 +135,14 @@ impl VkDebugReporter {
 
         unsafe {
             self.debug_report_loader
-                .cmd_begin_debug_utils_label(command_buffer.vk_command_buffer(), &label);
+                .cmd_begin_debug_utils_label(vk_command_buffer, &label);
         }
     }
 
-    pub(crate) fn end_label(&self, command_buffer: &mut CommandBuffer) {
+    pub(crate) fn end_label(&self, vk_command_buffer: ash::vk::CommandBuffer) {
         unsafe {
             self.debug_report_loader
-                .cmd_end_debug_utils_label(command_buffer.vk_command_buffer());
+                .cmd_end_debug_utils_label(vk_command_buffer);
         }
     }
 }

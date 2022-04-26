@@ -3,8 +3,8 @@ use std::{cell::RefCell, mem};
 use lgn_graphics_api::{
     Buffer, BufferBarrier, BufferCopy, BufferSubAllocation, CmdBlitParams,
     CmdCopyBufferToTextureParams, CmdCopyTextureParams, ColorRenderTargetBinding,
-    DepthStencilRenderTargetBinding, DescriptorSetHandle, DescriptorSetLayout, DeviceContext,
-    IndexBufferBinding, IndexType, Pipeline, Texture, TextureBarrier, VertexBufferBinding,
+    DepthStencilRenderTargetBinding, DescriptorSetHandle, DescriptorSetLayout, IndexBufferBinding,
+    IndexType, Pipeline, Texture, TextureBarrier, VertexBufferBinding,
 };
 
 use crate::resources::{CommandBufferHandle, CommandBufferPoolHandle};
@@ -40,13 +40,13 @@ impl<'rc> HLCommandBuffer<'rc> {
         self.cmd_buffer.cmd_end_render_pass();
     }
 
-    pub fn with_label<F>(&mut self, device_context: &DeviceContext, label: &str, f: F)
+    pub fn with_label<F>(&mut self, label: &str, f: F)
     where
         F: FnOnce(&mut Self),
     {
-        self.cmd_buffer.begin_label(device_context, label);
+        self.cmd_buffer.begin_label(label);
         f(self);
-        self.cmd_buffer.end_label(device_context);
+        self.cmd_buffer.end_label();
     }
 
     pub fn bind_pipeline(&mut self, pipeline: &Pipeline) {
