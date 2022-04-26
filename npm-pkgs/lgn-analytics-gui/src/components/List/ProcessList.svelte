@@ -58,13 +58,13 @@
       <input
         autofocus
         type="text"
-        class="search-input h-8 w-96 bg-skin-600 text-content-100 placeholder-content-100 rounded-sm pl-2"
+        class="search-input h-8 w-96 text-content-100 placeholder-content-100 rounded-sm pl-2 bg-surface"
         placeholder="Search process..."
         on:input={onSearchChange}
       />
     </div>
     <table class="w-full">
-      <thead class="select-none bg-skin-600">
+      <thead class="select-none">
         <th>User</th>
         <th>Executable</th>
         <th>Computer</th>
@@ -129,22 +129,33 @@
 </Loader>
 
 <style lang="postcss">
+  /** TODO: Use divs instead of a table */
+
+  table {
+    border-collapse: separate;
+    border-spacing: 0 0.2rem;
+  }
+
   table th {
-    @apply py-1 pl-1 border text-left;
+    @apply text-sm capitalize py-1 pl-1 border text-left;
+
     border-style: none;
   }
 
-  table tr:nth-child(even) {
-    @apply bg-skin-600;
+  table tr {
+    @apply bg-surface rounded-md;
+  }
+
+  table tr td:first-child {
+    @apply rounded-l-md;
+  }
+
+  table tr td:last-child {
+    @apply rounded-r-md;
   }
 
   table td {
-    @apply p-1;
-    @apply border-none;
-  }
-
-  table th {
-    @apply text-sm capitalize;
+    @apply px-2 py-1 border-none;
   }
 
   table td div {

@@ -8,14 +8,14 @@
 <div>
   <input
     type="text"
-    class="metric-search border-0 text-sm text-content-60 bg-skin-600"
+    class="metric-search border-0 text-sm text-content-60 bg-background"
     placeholder="Search..."
     on:focus={() => (searching = true)}
     on:blur={() => (searching = false)}
     bind:value={$searchStore}
   />
   <button
-    class="text-sm bg-skin-600 text-content-60 w-5"
+    class="text-sm bg-background text-content-60 w-5"
     on:click={() => searchStore.set("")}><i class="bi bi-x-circle" /></button
   >
 </div>

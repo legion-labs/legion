@@ -1,7 +1,9 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, setContext } from "svelte";
 
   import type { InitAuthStatus } from "@lgn/web-client/src/lib/auth";
+  import { replaceClassesWith } from "@lgn/web-client/src/lib/html";
+  import { createThemeStore } from "@lgn/web-client/src/stores/theme";
 
   import Graph from "@/components/Graph/Graph.svelte";
   import { Route, Router } from "@/lib/navigator";
@@ -13,11 +15,21 @@
   import Header from "./components/Misc/Header.svelte";
   import LoadingBar from "./components/Misc/LoadingBar.svelte";
   import TimelineRenderer from "./components/Timeline/Timeline.svelte";
+  import { themeContextKey, themeStorageKey } from "./constants";
 
   export let initAuthStatus: InitAuthStatus | null;
 
-  // TODO: Here we can control the UI and display a modal à la GitHub
+  // TODO: Set default theme to dark when it's mature enough
+  const theme = createThemeStore(themeStorageKey, "light");
+
+  setContext(themeContextKey, theme);
+
+  // TODO: Here we can control the UI and display a modal like in the Editor
   onMount(() => {
+    const unsubscribe = theme.subscribe(({ name }) => {
+      replaceClassesWith(document.body, `theme-${name}`);
+    });
+
     if (initAuthStatus) {
       switch (initAuthStatus.type) {
         case "error": {
@@ -25,14 +37,10 @@
         }
       }
     }
+
+    return unsubscribe;
   });
 </script>
-
-<svelte:head>
-  <style>
-    @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
-  </style>
-</svelte:head>
 
 <LoadingBar />
 <div class="pt-2 pb-4 antialiased">

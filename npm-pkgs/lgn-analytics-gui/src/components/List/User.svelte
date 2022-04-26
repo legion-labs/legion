@@ -4,7 +4,7 @@
 
 <div class="flex gap-2 items-center select-none">
   <div
-    class="w-6 h-6 flex justify-center items-center rounded-full text-xs text-white-87 bg-orange-700"
+    class="w-5 h-5 flex justify-center items-center rounded-full text-xs text-white-87 bg-orange-700"
   >
     <span class="capitalize">{user.charAt(0)}</span>
   </div>
