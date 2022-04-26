@@ -47,11 +47,4 @@
   }
 </script>
 
-<div bind:this={el} class="axis" />
-
-<style lang="postcss">
-  .axis {
-    user-select: none;
-    color: #bababa;
-  }
-</style>
+<div bind:this={el} class="axis text-content-38 select-none" />

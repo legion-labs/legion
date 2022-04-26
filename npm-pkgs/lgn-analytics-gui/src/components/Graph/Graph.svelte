@@ -4,6 +4,7 @@
   import type { Writable } from "svelte/store";
 
   import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
+  import type { CumulativeCallGraphBlockDesc } from "@lgn/proto-telemetry/dist/callgraph";
   import type { CallTreeNode } from "@lgn/proto-telemetry/dist/calltree";
 
   import { loadingStore } from "@/lib/Misc/LoadingStore";
@@ -25,7 +26,7 @@
   let beginMsFilter = 0;
   let endMsFilter = 0;
   let processId = "";
-  let blocks: string[];
+  let blocks: CumulativeCallGraphBlockDesc[];
   let startTicks: number;
   let tscFrequency: number;
   let graphState: GraphState;
@@ -58,7 +59,7 @@
         endMs: endMsFilter,
       }));
 
-    blocks.forEach(async (blockId) => {
+    blocks.forEach(async (blockDesc) => {
       if (!client) {
         return;
       }
@@ -67,7 +68,7 @@
 
       const { callTree, streamHash, streamName } =
         await client.fetch_cumulative_call_graph_block({
-          blockId: blockId,
+          blockId: blockDesc.id,
           tscFrequency,
           startTicks,
           beginMs: beginMsFilter,

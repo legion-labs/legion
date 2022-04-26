@@ -20,7 +20,7 @@
 
 <div class="flex items-start overflow-hidden" {style}>
   <div
-    class="thread text-sm text-slate-400 px-1 overflow-hidden cursor-pointer mr-1 self-stretch"
+    class="thread text-sm bg-skin-600 text-content-60 px-1 overflow-hidden cursor-pointer mr-1 self-stretch"
     on:click={() => setCollapse(!collapsed)}
     title={threadTitle}
   >
@@ -42,6 +42,5 @@
 
   .thread {
     min-width: var(--thread-item-length);
-    background-color: #f0f0f0;
   }
 </style>

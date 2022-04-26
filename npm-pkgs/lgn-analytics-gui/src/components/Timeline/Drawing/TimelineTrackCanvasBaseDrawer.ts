@@ -38,7 +38,7 @@ export abstract class TimelineTrackCanvasBaseDrawer {
 
     const canvasWidth = this.canvas.clientWidth;
     const canvasHeight = this.canvas.clientHeight;
-    this.ctx.fillStyle = "#F0F0F0";
+    this.ctx.fillStyle = "#2e2e2e";
     this.ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
     if (!this.canDraw()) {
@@ -51,7 +51,7 @@ export abstract class TimelineTrackCanvasBaseDrawer {
     const context = { begin, end, msToPixelsFactor, search };
     const pixelRange = this.getPixelRange(context);
 
-    this.ctx.fillStyle = "#e8e8e8";
+    this.ctx.fillStyle = "#1a1a1a";
     this.ctx.fillRect(
       pixelRange[0],
       0,

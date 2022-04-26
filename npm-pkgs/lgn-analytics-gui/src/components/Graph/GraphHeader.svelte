@@ -1,11 +1,13 @@
 <script lang="ts">
+  import type { CumulativeCallGraphBlockDesc } from "@lgn/proto-telemetry/dist/callgraph";
+
   import { formatExecutionTime } from "@/lib/format";
 
   import type { GraphState } from "./Store/GraphState";
 
   export let endMsFilter: number;
   export let beginMsFilter: number;
-  export let blocks: string[];
+  export let blocks: CumulativeCallGraphBlockDesc[];
   export let graphState: GraphState;
   $: max = graphState.Max;
 </script>
