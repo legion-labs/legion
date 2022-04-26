@@ -247,13 +247,21 @@ pub(crate) fn camera_control(
         }
 
         let gamepad = gamepads.iter().copied().find(|gamepad| {
-            let gamepad_left_x = gamepad_axes
-                .get(GamepadAxis(*gamepad, GamepadAxisType::LeftStickX))
-                .unwrap();
-            let gamepad_left_y = gamepad_axes
-                .get(GamepadAxis(*gamepad, GamepadAxisType::LeftStickY))
-                .unwrap();
-            gamepad_left_x.abs() > 0.01 || gamepad_left_y.abs() > 0.01
+            if let Some(left_x) =
+                gamepad_axes.get(GamepadAxis(*gamepad, GamepadAxisType::LeftStickX))
+            {
+                if left_x.abs() > 0.01 {
+                    true
+                } else if let Some(left_y) =
+                    gamepad_axes.get(GamepadAxis(*gamepad, GamepadAxisType::LeftStickY))
+                {
+                    left_y.abs() > 0.01
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
         });
 
         if gamepad.is_some() || mouse_buttons.pressed(MouseButton::Right) {
@@ -273,17 +281,18 @@ pub(crate) fn camera_control(
             }
 
             if let Some(gamepad) = gamepad {
-                let gamepad_left_x = gamepad_axes
-                    .get(GamepadAxis(gamepad, GamepadAxisType::LeftStickX))
-                    .unwrap();
-                camera_translation_change -=
-                    gamepad_left_x * camera.camera_rig.final_transform.right();
+                if let Some(left_x) =
+                    gamepad_axes.get(GamepadAxis(gamepad, GamepadAxisType::LeftStickX))
+                {
+                    camera_translation_change -= left_x * camera.camera_rig.final_transform.right();
+                }
 
-                let gamepad_left_y = gamepad_axes
-                    .get(GamepadAxis(gamepad, GamepadAxisType::LeftStickY))
-                    .unwrap();
-                camera_translation_change +=
-                    gamepad_left_y * camera.camera_rig.final_transform.forward();
+                if let Some(left_y) =
+                    gamepad_axes.get(GamepadAxis(gamepad, GamepadAxisType::LeftStickY))
+                {
+                    camera_translation_change +=
+                        left_y * camera.camera_rig.final_transform.forward();
+                }
             }
 
             let mut speed = camera.speed;
