@@ -47,7 +47,7 @@ impl PickingRenderPass {
         camera: &CameraComponent,
         mesh_renderer: &MeshRenderer,
     ) {
-        cmd_buffer.with_label(render_context.renderer().device_context(), "Picking", |cmd_buffer| {
+        cmd_buffer.with_label("Picking", |cmd_buffer| {
             let device_context = render_context.renderer().device_context();
 
             let mut count: usize = 0;

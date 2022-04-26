@@ -4,7 +4,7 @@ use std::ffi::CStr;
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 
-use crate::{Buffer, CommandBuffer, ExternalResourceHandle, Texture};
+use crate::{Buffer, ExternalResourceHandle, Texture};
 #[cfg(target_os = "linux")]
 use ash::extensions::khr::{self, ExternalMemoryFd, ExternalSemaphoreFd};
 #[cfg(target_os = "windows")]
@@ -62,7 +62,7 @@ pub(crate) struct VulkanDeviceContext {
     vk_allocator: vk_mem::Allocator,
     entry: Arc<ash::Entry>,
     instance: ash::Instance,
-    debug_reporter: Arc<Option<VkDebugReporter>>,
+    debug_reporter: Option<Arc<VkDebugReporter>>,
     vk_physical_device: vk::PhysicalDevice,
     physical_device_info: PhysicalDeviceInfo,
 
@@ -212,18 +212,6 @@ impl VulkanDeviceContext {
         }
     }
 
-    pub(crate) fn begin_label(&self, command_buffer: &mut CommandBuffer, label: &str) {
-        if let Some(debug_reporter) = self.debug_reporter.as_ref() {
-            debug_reporter.begin_label(command_buffer, label);
-        }
-    }
-
-    pub(crate) fn end_label(&self, command_buffer: &mut CommandBuffer) {
-        if let Some(debug_reporter) = self.debug_reporter.as_ref() {
-            debug_reporter.end_label(command_buffer);
-        }
-    }
-
     pub(crate) fn vk_device(&self) -> &ash::Device {
         &self.vk_device
     }
@@ -244,6 +232,10 @@ impl DeviceContext {
 
     pub(crate) fn vk_physical_device(&self) -> vk::PhysicalDevice {
         self.inner.backend_device_context.vk_physical_device
+    }
+
+    pub(crate) fn debug_reporter(&self) -> &Option<Arc<VkDebugReporter>> {
+        &self.inner.backend_device_context.debug_reporter
     }
 
     pub(crate) fn physical_device_info(&self) -> &PhysicalDeviceInfo {

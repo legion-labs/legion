@@ -1,6 +1,8 @@
+use std::sync::Arc;
+
 use lgn_tracing::trace;
 
-use super::internal;
+use super::{internal, VkDebugReporter};
 use crate::{
     BarrierQueueTransition, Buffer, BufferBarrier, BufferCopy, CmdBlitParams,
     CmdCopyBufferToTextureParams, CmdCopyTextureParams, ColorRenderTargetBinding, CommandBuffer,
@@ -10,6 +12,7 @@ use crate::{
 };
 pub(crate) struct VulkanCommandBuffer {
     vk_command_buffer: ash::vk::CommandBuffer,
+    debug_reporter: Option<Arc<VkDebugReporter>>,
 }
 
 impl VulkanCommandBuffer {
@@ -37,7 +40,14 @@ impl VulkanCommandBuffer {
                 .allocate_command_buffers(&command_buffer_allocate_info)
         }?[0];
 
-        Ok(Self { vk_command_buffer })
+        Ok(Self {
+            vk_command_buffer,
+            debug_reporter: command_pool
+                .device_context()
+                .debug_reporter()
+                .as_ref()
+                .cloned(),
+        })
     }
 }
 
@@ -994,6 +1004,20 @@ impl CommandBuffer {
                 super::internal::resource_state_to_image_layout(params.dst_state).unwrap(),
                 &[*image_copy],
             );
+        }
+    }
+
+    pub(crate) fn backend_begin_label(&mut self, label: &str) {
+        let vk_command_buffer = self.vk_command_buffer();
+        if let Some(debug_reporter) = &self.inner.backend_command_buffer.debug_reporter {
+            debug_reporter.begin_label(vk_command_buffer, label);
+        }
+    }
+
+    pub(crate) fn backend_end_label(&mut self) {
+        let vk_command_buffer = self.vk_command_buffer();
+        if let Some(debug_reporter) = &self.inner.backend_command_buffer.debug_reporter {
+            debug_reporter.end_label(vk_command_buffer);
         }
     }
 }

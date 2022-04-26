@@ -445,215 +445,209 @@ impl MeshRenderer {
         culling_args: (u32, u32, u32, Vec2),
         input_buffers: (&BufferView, &BufferView, &BufferView),
     ) {
-        cmd_buffer.with_label(
-            render_context.renderer().device_context(),
-            "Cull",
-            |cmd_buffer| {
-                let indirect_dispatch = culling_options.0 .0;
-                let gather_perf_stats = culling_options.1 .0;
+        cmd_buffer.with_label("Cull", |cmd_buffer| {
+            let indirect_dispatch = culling_options.0 .0;
+            let gather_perf_stats = culling_options.1 .0;
 
-                let draw_count = culling_buffers.draw_count.as_ref().unwrap();
-                let draw_args = culling_buffers.draw_args.as_ref().unwrap();
-                let (culled_count, culled_args, culled_instances) = if indirect_dispatch {
-                    (
-                        culling_buffers.tmp_culled_count.as_ref().unwrap(),
-                        culling_buffers.tmp_culled_args.as_ref().unwrap(),
-                        culling_buffers.tmp_culled_instances.as_ref().unwrap(),
-                    )
-                } else {
-                    (
-                        culling_buffers.culled_count.as_ref().unwrap(),
-                        culling_buffers.culled_args.as_ref().unwrap(),
-                        culling_buffers.culled_instances.as_ref().unwrap(),
-                    )
-                };
-
-                let (dispatch_count, dispatch_args, dispatch_instances) = (
+            let draw_count = culling_buffers.draw_count.as_ref().unwrap();
+            let draw_args = culling_buffers.draw_args.as_ref().unwrap();
+            let (culled_count, culled_args, culled_instances) = if indirect_dispatch {
+                (
+                    culling_buffers.tmp_culled_count.as_ref().unwrap(),
+                    culling_buffers.tmp_culled_args.as_ref().unwrap(),
+                    culling_buffers.tmp_culled_instances.as_ref().unwrap(),
+                )
+            } else {
+                (
                     culling_buffers.culled_count.as_ref().unwrap(),
                     culling_buffers.culled_args.as_ref().unwrap(),
                     culling_buffers.culled_instances.as_ref().unwrap(),
-                );
+                )
+            };
 
-                let pipeline_handle = if indirect_dispatch {
-                    self.culling_shader_second_pass.unwrap()
-                } else {
-                    self.culling_shader_first_pass.unwrap()
-                };
+            let (dispatch_count, dispatch_args, dispatch_instances) = (
+                culling_buffers.culled_count.as_ref().unwrap(),
+                culling_buffers.culled_args.as_ref().unwrap(),
+                culling_buffers.culled_instances.as_ref().unwrap(),
+            );
 
-                let pipeline = render_context
-                    .pipeline_manager()
-                    .get_pipeline(pipeline_handle)
-                    .unwrap();
-                cmd_buffer.bind_pipeline(pipeline);
+            let pipeline_handle = if indirect_dispatch {
+                self.culling_shader_second_pass.unwrap()
+            } else {
+                self.culling_shader_first_pass.unwrap()
+            };
 
-                cmd_buffer.bind_descriptor_set(
-                    render_context.frame_descriptor_set().0,
-                    render_context.frame_descriptor_set().1,
-                );
+            let pipeline = render_context
+                .pipeline_manager()
+                .get_pipeline(pipeline_handle)
+                .unwrap();
+            cmd_buffer.bind_pipeline(pipeline);
 
-                cmd_buffer.bind_descriptor_set(
-                    render_context.view_descriptor_set().0,
-                    render_context.view_descriptor_set().1,
-                );
+            cmd_buffer.bind_descriptor_set(
+                render_context.frame_descriptor_set().0,
+                render_context.frame_descriptor_set().1,
+            );
 
-                let mut culling_descriptor_set =
-                    cgen::descriptor_set::CullingDescriptorSet::default();
-                culling_descriptor_set.set_draw_count(&draw_count.uav_view);
-                culling_descriptor_set.set_draw_args(&draw_args.uav_view);
-                culling_descriptor_set.set_culled_count(&culled_count.uav_view);
-                culling_descriptor_set.set_culled_args(&culled_args.uav_view);
-                culling_descriptor_set.set_culled_instances(&culled_instances.uav_view);
-                culling_descriptor_set
-                    .set_culling_efficiency(culling_buffers.stats_buffer.rw_view());
+            cmd_buffer.bind_descriptor_set(
+                render_context.view_descriptor_set().0,
+                render_context.view_descriptor_set().1,
+            );
 
-                culling_descriptor_set
-                    .set_culling_debug(&culling_buffers.culling_debug.as_ref().unwrap().uav_view);
+            let mut culling_descriptor_set = cgen::descriptor_set::CullingDescriptorSet::default();
+            culling_descriptor_set.set_draw_count(&draw_count.uav_view);
+            culling_descriptor_set.set_draw_args(&draw_args.uav_view);
+            culling_descriptor_set.set_culled_count(&culled_count.uav_view);
+            culling_descriptor_set.set_culled_args(&culled_args.uav_view);
+            culling_descriptor_set.set_culled_instances(&culled_instances.uav_view);
+            culling_descriptor_set.set_culling_efficiency(culling_buffers.stats_buffer.rw_view());
 
-                if indirect_dispatch {
-                    culling_descriptor_set.set_gpu_instance_count(&dispatch_count.srv_view);
-                    culling_descriptor_set.set_gpu_instance_data(&dispatch_instances.srv_view);
-                } else {
-                    culling_descriptor_set.set_gpu_instance_count(input_buffers.0);
-                    culling_descriptor_set.set_gpu_instance_data(input_buffers.1);
-                }
-                culling_descriptor_set.set_render_pass_data(input_buffers.2);
+            culling_descriptor_set
+                .set_culling_debug(&culling_buffers.culling_debug.as_ref().unwrap().uav_view);
 
-                let culling_descriptor_set_handle = render_context.write_descriptor_set(
-                    cgen::descriptor_set::CullingDescriptorSet::descriptor_set_layout(),
-                    culling_descriptor_set.descriptor_refs(),
-                );
+            if indirect_dispatch {
+                culling_descriptor_set.set_gpu_instance_count(&dispatch_count.srv_view);
+                culling_descriptor_set.set_gpu_instance_data(&dispatch_instances.srv_view);
+            } else {
+                culling_descriptor_set.set_gpu_instance_count(input_buffers.0);
+                culling_descriptor_set.set_gpu_instance_data(input_buffers.1);
+            }
+            culling_descriptor_set.set_render_pass_data(input_buffers.2);
 
-                cmd_buffer.bind_descriptor_set(
-                    cgen::descriptor_set::CullingDescriptorSet::descriptor_set_layout(),
-                    culling_descriptor_set_handle,
-                );
+            let culling_descriptor_set_handle = render_context.write_descriptor_set(
+                cgen::descriptor_set::CullingDescriptorSet::descriptor_set_layout(),
+                culling_descriptor_set.descriptor_refs(),
+            );
 
-                cmd_buffer.resource_barrier(
-                    &[
-                        BufferBarrier {
-                            buffer: &draw_count.buffer,
-                            src_state: ResourceState::INDIRECT_ARGUMENT,
-                            dst_state: ResourceState::COPY_DST,
-                            queue_transition: BarrierQueueTransition::None,
-                        },
-                        BufferBarrier {
-                            buffer: &culled_count.buffer,
-                            src_state: ResourceState::SHADER_RESOURCE,
-                            dst_state: ResourceState::COPY_DST,
-                            queue_transition: BarrierQueueTransition::None,
-                        },
-                        BufferBarrier {
-                            buffer: &culled_args.buffer,
-                            src_state: ResourceState::INDIRECT_ARGUMENT,
-                            dst_state: ResourceState::COPY_DST,
-                            queue_transition: BarrierQueueTransition::None,
-                        },
-                    ],
-                    &[],
-                );
+            cmd_buffer.bind_descriptor_set(
+                cgen::descriptor_set::CullingDescriptorSet::descriptor_set_layout(),
+                culling_descriptor_set_handle,
+            );
 
-                if indirect_dispatch {
-                    let depth_count_size =
-                        self.depth_count_buffer_count * std::mem::size_of::<u32>() as u64;
-                    cmd_buffer.fill_buffer(&draw_count.buffer, 0, depth_count_size, 0);
-                } else {
-                    cmd_buffer.fill_buffer(&draw_count.buffer, 0, !0, 0);
-                    cmd_buffer.fill_buffer(&culled_count.buffer, 0, 4, 0);
-                    cmd_buffer.fill_buffer(&culled_args.buffer, 0, 4, 0);
-                }
-                cmd_buffer.resource_barrier(
-                    &[
-                        BufferBarrier {
-                            buffer: &draw_count.buffer,
-                            src_state: ResourceState::COPY_DST,
-                            dst_state: ResourceState::UNORDERED_ACCESS,
-                            queue_transition: BarrierQueueTransition::None,
-                        },
-                        BufferBarrier {
-                            buffer: &draw_args.buffer,
-                            src_state: ResourceState::INDIRECT_ARGUMENT,
-                            dst_state: ResourceState::UNORDERED_ACCESS,
-                            queue_transition: BarrierQueueTransition::None,
-                        },
-                        BufferBarrier {
-                            buffer: &culled_count.buffer,
-                            src_state: ResourceState::COPY_DST,
-                            dst_state: ResourceState::UNORDERED_ACCESS,
-                            queue_transition: BarrierQueueTransition::None,
-                        },
-                        BufferBarrier {
-                            buffer: &culled_args.buffer,
-                            src_state: ResourceState::COPY_DST,
-                            dst_state: ResourceState::UNORDERED_ACCESS,
-                            queue_transition: BarrierQueueTransition::None,
-                        },
-                        BufferBarrier {
-                            buffer: &culled_instances.buffer,
-                            src_state: ResourceState::SHADER_RESOURCE,
-                            dst_state: ResourceState::UNORDERED_ACCESS,
-                            queue_transition: BarrierQueueTransition::None,
-                        },
-                    ],
-                    &[],
-                );
+            cmd_buffer.resource_barrier(
+                &[
+                    BufferBarrier {
+                        buffer: &draw_count.buffer,
+                        src_state: ResourceState::INDIRECT_ARGUMENT,
+                        dst_state: ResourceState::COPY_DST,
+                        queue_transition: BarrierQueueTransition::None,
+                    },
+                    BufferBarrier {
+                        buffer: &culled_count.buffer,
+                        src_state: ResourceState::SHADER_RESOURCE,
+                        dst_state: ResourceState::COPY_DST,
+                        queue_transition: BarrierQueueTransition::None,
+                    },
+                    BufferBarrier {
+                        buffer: &culled_args.buffer,
+                        src_state: ResourceState::INDIRECT_ARGUMENT,
+                        dst_state: ResourceState::COPY_DST,
+                        queue_transition: BarrierQueueTransition::None,
+                    },
+                ],
+                &[],
+            );
 
-                let mut options = CullingOptions::empty();
-                if gather_perf_stats {
-                    options |= CullingOptions::GATHER_PERF_STATS;
-                }
+            if indirect_dispatch {
+                let depth_count_size =
+                    self.depth_count_buffer_count * std::mem::size_of::<u32>() as u64;
+                cmd_buffer.fill_buffer(&draw_count.buffer, 0, depth_count_size, 0);
+            } else {
+                cmd_buffer.fill_buffer(&draw_count.buffer, 0, !0, 0);
+                cmd_buffer.fill_buffer(&culled_count.buffer, 0, 4, 0);
+                cmd_buffer.fill_buffer(&culled_args.buffer, 0, 4, 0);
+            }
+            cmd_buffer.resource_barrier(
+                &[
+                    BufferBarrier {
+                        buffer: &draw_count.buffer,
+                        src_state: ResourceState::COPY_DST,
+                        dst_state: ResourceState::UNORDERED_ACCESS,
+                        queue_transition: BarrierQueueTransition::None,
+                    },
+                    BufferBarrier {
+                        buffer: &draw_args.buffer,
+                        src_state: ResourceState::INDIRECT_ARGUMENT,
+                        dst_state: ResourceState::UNORDERED_ACCESS,
+                        queue_transition: BarrierQueueTransition::None,
+                    },
+                    BufferBarrier {
+                        buffer: &culled_count.buffer,
+                        src_state: ResourceState::COPY_DST,
+                        dst_state: ResourceState::UNORDERED_ACCESS,
+                        queue_transition: BarrierQueueTransition::None,
+                    },
+                    BufferBarrier {
+                        buffer: &culled_args.buffer,
+                        src_state: ResourceState::COPY_DST,
+                        dst_state: ResourceState::UNORDERED_ACCESS,
+                        queue_transition: BarrierQueueTransition::None,
+                    },
+                    BufferBarrier {
+                        buffer: &culled_instances.buffer,
+                        src_state: ResourceState::SHADER_RESOURCE,
+                        dst_state: ResourceState::UNORDERED_ACCESS,
+                        queue_transition: BarrierQueueTransition::None,
+                    },
+                ],
+                &[],
+            );
 
-                let mut culling_constant_data = cgen::cgen_type::CullingPushConstantData::default();
-                culling_constant_data.set_first_render_pass(culling_args.0.into());
-                culling_constant_data.set_num_render_passes(culling_args.1.into());
-                culling_constant_data.set_hzb_max_lod(culling_args.2.into());
-                culling_constant_data.set_hzb_pixel_extents(culling_args.3.into());
-                culling_constant_data.set_options(options);
+            let mut options = CullingOptions::empty();
+            if gather_perf_stats {
+                options |= CullingOptions::GATHER_PERF_STATS;
+            }
 
-                cmd_buffer.push_constant(&culling_constant_data);
+            let mut culling_constant_data = cgen::cgen_type::CullingPushConstantData::default();
+            culling_constant_data.set_first_render_pass(culling_args.0.into());
+            culling_constant_data.set_num_render_passes(culling_args.1.into());
+            culling_constant_data.set_hzb_max_lod(culling_args.2.into());
+            culling_constant_data.set_hzb_pixel_extents(culling_args.3.into());
+            culling_constant_data.set_options(options);
 
-                if indirect_dispatch {
-                    cmd_buffer.dispatch_indirect(&dispatch_args.buffer, 0);
-                } else {
-                    cmd_buffer.dispatch((self.gpu_instance_data.len() as u32 + 255) / 256, 1, 1);
-                }
+            cmd_buffer.push_constant(&culling_constant_data);
 
-                cmd_buffer.resource_barrier(
-                    &[
-                        BufferBarrier {
-                            buffer: &draw_count.buffer,
-                            src_state: ResourceState::UNORDERED_ACCESS,
-                            dst_state: ResourceState::INDIRECT_ARGUMENT,
-                            queue_transition: BarrierQueueTransition::None,
-                        },
-                        BufferBarrier {
-                            buffer: &draw_args.buffer,
-                            src_state: ResourceState::UNORDERED_ACCESS,
-                            dst_state: ResourceState::INDIRECT_ARGUMENT,
-                            queue_transition: BarrierQueueTransition::None,
-                        },
-                        BufferBarrier {
-                            buffer: &culled_count.buffer,
-                            src_state: ResourceState::UNORDERED_ACCESS,
-                            dst_state: ResourceState::SHADER_RESOURCE,
-                            queue_transition: BarrierQueueTransition::None,
-                        },
-                        BufferBarrier {
-                            buffer: &culled_args.buffer,
-                            src_state: ResourceState::UNORDERED_ACCESS,
-                            dst_state: ResourceState::INDIRECT_ARGUMENT,
-                            queue_transition: BarrierQueueTransition::None,
-                        },
-                        BufferBarrier {
-                            buffer: &culled_instances.buffer,
-                            src_state: ResourceState::UNORDERED_ACCESS,
-                            dst_state: ResourceState::SHADER_RESOURCE,
-                            queue_transition: BarrierQueueTransition::None,
-                        },
-                    ],
-                    &[],
-                );
-            },
-        );
+            if indirect_dispatch {
+                cmd_buffer.dispatch_indirect(&dispatch_args.buffer, 0);
+            } else {
+                cmd_buffer.dispatch((self.gpu_instance_data.len() as u32 + 255) / 256, 1, 1);
+            }
+
+            cmd_buffer.resource_barrier(
+                &[
+                    BufferBarrier {
+                        buffer: &draw_count.buffer,
+                        src_state: ResourceState::UNORDERED_ACCESS,
+                        dst_state: ResourceState::INDIRECT_ARGUMENT,
+                        queue_transition: BarrierQueueTransition::None,
+                    },
+                    BufferBarrier {
+                        buffer: &draw_args.buffer,
+                        src_state: ResourceState::UNORDERED_ACCESS,
+                        dst_state: ResourceState::INDIRECT_ARGUMENT,
+                        queue_transition: BarrierQueueTransition::None,
+                    },
+                    BufferBarrier {
+                        buffer: &culled_count.buffer,
+                        src_state: ResourceState::UNORDERED_ACCESS,
+                        dst_state: ResourceState::SHADER_RESOURCE,
+                        queue_transition: BarrierQueueTransition::None,
+                    },
+                    BufferBarrier {
+                        buffer: &culled_args.buffer,
+                        src_state: ResourceState::UNORDERED_ACCESS,
+                        dst_state: ResourceState::INDIRECT_ARGUMENT,
+                        queue_transition: BarrierQueueTransition::None,
+                    },
+                    BufferBarrier {
+                        buffer: &culled_instances.buffer,
+                        src_state: ResourceState::UNORDERED_ACCESS,
+                        dst_state: ResourceState::SHADER_RESOURCE,
+                        queue_transition: BarrierQueueTransition::None,
+                    },
+                ],
+                &[],
+            );
+        });
     }
 
     pub(crate) fn gen_occlusion_and_cull(
@@ -702,135 +696,127 @@ impl MeshRenderer {
 
         let mut cmd_buffer = render_context.alloc_command_buffer();
 
-        cmd_buffer.with_label(
-            render_context.renderer().device_context(),
-            "Gen occlusion and cull",
-            |cmd_buffer| {
-                cmd_buffer.bind_index_buffer(
-                    &render_context
-                        .renderer()
-                        .static_buffer()
-                        .index_buffer_binding(),
-                );
-                cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
+        cmd_buffer.with_label("Gen occlusion and cull", |cmd_buffer| {
+            cmd_buffer.bind_index_buffer(
+                &render_context
+                    .renderer()
+                    .static_buffer()
+                    .index_buffer_binding(),
+            );
+            cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
 
-                let hzb_pixel_extents = render_surface.get_hzb_surface().hzb_pixel_extents();
-                let hzb_max_lod = render_surface.get_hzb_surface().hzb_max_lod();
+            let hzb_pixel_extents = render_surface.get_hzb_surface().hzb_pixel_extents();
+            let hzb_max_lod = render_surface.get_hzb_surface().hzb_max_lod();
 
-                render_surface.init_hzb_if_needed(render_context, cmd_buffer);
+            render_surface.init_hzb_if_needed(render_context, cmd_buffer);
 
-                let gpu_count_allocation = render_context.transient_buffer_allocator().copy_data(
-                    &(self.gpu_instance_data.len() as u32),
-                    ResourceUsage::AS_SHADER_RESOURCE,
-                );
-                let gpu_count_view = gpu_count_allocation
-                    .create_structured_buffer_view(std::mem::size_of::<u32>() as u64, true);
+            let gpu_count_allocation = render_context.transient_buffer_allocator().copy_data(
+                &(self.gpu_instance_data.len() as u32),
+                ResourceUsage::AS_SHADER_RESOURCE,
+            );
+            let gpu_count_view = gpu_count_allocation
+                .create_structured_buffer_view(std::mem::size_of::<u32>() as u64, true);
 
-                let gpu_instance_allocation = render_context
-                    .transient_buffer_allocator()
-                    .copy_data_slice(&self.gpu_instance_data, ResourceUsage::AS_SHADER_RESOURCE);
-                let gpu_instance_view = gpu_instance_allocation.create_structured_buffer_view(
-                    std::mem::size_of::<GpuInstanceData>() as u64,
-                    true,
-                );
+            let gpu_instance_allocation = render_context
+                .transient_buffer_allocator()
+                .copy_data_slice(&self.gpu_instance_data, ResourceUsage::AS_SHADER_RESOURCE);
+            let gpu_instance_view = gpu_instance_allocation
+                .create_structured_buffer_view(std::mem::size_of::<GpuInstanceData>() as u64, true);
 
-                let render_pass_allocation = render_context
-                    .transient_buffer_allocator()
-                    .copy_data_slice(&render_pass_data, ResourceUsage::AS_SHADER_RESOURCE);
-                let render_pass_view = render_pass_allocation.create_structured_buffer_view(
-                    std::mem::size_of::<RenderPassData>() as u64,
-                    true,
-                );
+            let render_pass_allocation = render_context
+                .transient_buffer_allocator()
+                .copy_data_slice(&render_pass_data, ResourceUsage::AS_SHADER_RESOURCE);
+            let render_pass_view = render_pass_allocation
+                .create_structured_buffer_view(std::mem::size_of::<RenderPassData>() as u64, true);
 
-                self.culling_buffers.stats_buffer.clear_buffer(cmd_buffer);
+            self.culling_buffers.stats_buffer.clear_buffer(cmd_buffer);
 
-                // Cull using previous frame Hzb
-                self.cull(
-                    render_context,
-                    cmd_buffer,
-                    &self.culling_buffers,
-                    &(IndirectDispatch(false), GatherPerfStats(true)),
-                    (
-                        0,
-                        render_pass_data.len() as u32,
-                        hzb_max_lod,
-                        hzb_pixel_extents,
-                    ),
-                    (&gpu_count_view, &gpu_instance_view, &render_pass_view),
-                );
+            // Cull using previous frame Hzb
+            self.cull(
+                render_context,
+                cmd_buffer,
+                &self.culling_buffers,
+                &(IndirectDispatch(false), GatherPerfStats(true)),
+                (
+                    0,
+                    render_pass_data.len() as u32,
+                    hzb_max_lod,
+                    hzb_pixel_extents,
+                ),
+                (&gpu_count_view, &gpu_instance_view, &render_pass_view),
+            );
 
-                cmd_buffer.begin_render_pass(
-                    &[],
-                    &Some(DepthStencilRenderTargetBinding {
-                        texture_view: render_surface.depth_rt().rtv(),
-                        depth_load_op: LoadOp::Clear,
-                        stencil_load_op: LoadOp::DontCare,
-                        depth_store_op: StoreOp::Store,
-                        stencil_store_op: StoreOp::DontCare,
-                        clear_value: DepthStencilClearValue {
-                            depth: 1.0,
-                            stencil: 0,
-                        },
-                    }),
-                );
+            cmd_buffer.begin_render_pass(
+                &[],
+                &Some(DepthStencilRenderTargetBinding {
+                    texture_view: render_surface.depth_rt().rtv(),
+                    depth_load_op: LoadOp::Clear,
+                    stencil_load_op: LoadOp::DontCare,
+                    depth_store_op: StoreOp::Store,
+                    stencil_store_op: StoreOp::DontCare,
+                    clear_value: DepthStencilClearValue {
+                        depth: 1.0,
+                        stencil: 0,
+                    },
+                }),
+            );
 
-                // Render initial depth buffer from last frame culling results
-                self.draw(render_context, cmd_buffer, DefaultLayers::Depth);
+            // Render initial depth buffer from last frame culling results
+            self.draw(render_context, cmd_buffer, DefaultLayers::Depth);
 
-                cmd_buffer.end_render_pass();
+            cmd_buffer.end_render_pass();
 
-                // Initial Hzb for current frame
-                render_surface.generate_hzb(render_context, cmd_buffer);
+            // Initial Hzb for current frame
+            render_surface.generate_hzb(render_context, cmd_buffer);
 
-                // Rebind global vertex buffer after gen Hzb changes it
-                cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
+            // Rebind global vertex buffer after gen Hzb changes it
+            cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
 
-                // Retest elements culled from first pass against new Hzb
-                self.cull(
-                    render_context,
-                    cmd_buffer,
-                    &self.culling_buffers,
-                    &(IndirectDispatch(true), GatherPerfStats(true)),
-                    (
-                        0,
-                        render_pass_data.len() as u32,
-                        hzb_max_lod,
-                        hzb_pixel_extents,
-                    ),
-                    (&gpu_count_view, &gpu_instance_view, &render_pass_view),
-                );
+            // Retest elements culled from first pass against new Hzb
+            self.cull(
+                render_context,
+                cmd_buffer,
+                &self.culling_buffers,
+                &(IndirectDispatch(true), GatherPerfStats(true)),
+                (
+                    0,
+                    render_pass_data.len() as u32,
+                    hzb_max_lod,
+                    hzb_pixel_extents,
+                ),
+                (&gpu_count_view, &gpu_instance_view, &render_pass_view),
+            );
 
-                // Redraw depth istances that passed second cull pass
-                cmd_buffer.begin_render_pass(
-                    &[],
-                    &Some(DepthStencilRenderTargetBinding {
-                        texture_view: render_surface.depth_rt().rtv(),
-                        depth_load_op: LoadOp::Load,
-                        stencil_load_op: LoadOp::DontCare,
-                        depth_store_op: StoreOp::Store,
-                        stencil_store_op: StoreOp::DontCare,
-                        clear_value: DepthStencilClearValue {
-                            depth: 1.0,
-                            stencil: 0,
-                        },
-                    }),
-                );
+            // Redraw depth istances that passed second cull pass
+            cmd_buffer.begin_render_pass(
+                &[],
+                &Some(DepthStencilRenderTargetBinding {
+                    texture_view: render_surface.depth_rt().rtv(),
+                    depth_load_op: LoadOp::Load,
+                    stencil_load_op: LoadOp::DontCare,
+                    depth_store_op: StoreOp::Store,
+                    stencil_store_op: StoreOp::DontCare,
+                    clear_value: DepthStencilClearValue {
+                        depth: 1.0,
+                        stencil: 0,
+                    },
+                }),
+            );
 
-                // Render initial depth buffer from last frame culling results
-                self.draw(render_context, cmd_buffer, DefaultLayers::Depth);
+            // Render initial depth buffer from last frame culling results
+            self.draw(render_context, cmd_buffer, DefaultLayers::Depth);
 
-                cmd_buffer.end_render_pass();
+            cmd_buffer.end_render_pass();
 
-                // Update Hzb from complete depth buffer
-                render_surface.generate_hzb(render_context, cmd_buffer);
+            // Update Hzb from complete depth buffer
+            render_surface.generate_hzb(render_context, cmd_buffer);
 
-                if let Some(readback) = &self.culling_buffers.stats_buffer_readback {
-                    self.culling_buffers
-                        .stats_buffer
-                        .copy_buffer_to_readback(cmd_buffer, readback);
-                }
-            },
-        );
+            if let Some(readback) = &self.culling_buffers.stats_buffer_readback {
+                self.culling_buffers
+                    .stats_buffer
+                    .copy_buffer_to_readback(cmd_buffer, readback);
+            }
+        });
 
         render_context
             .graphics_queue()
@@ -852,7 +838,7 @@ impl MeshRenderer {
             }
         );
 
-        cmd_buffer.with_label(render_context.renderer().device_context(), &label, |cmd_buffer| {
+        cmd_buffer.with_label(&label, |cmd_buffer| {
             let layer_id_index = layer_id as usize;
             self.default_layers[layer_id_index].draw(
                 render_context,
