@@ -271,7 +271,6 @@
   }
 
   .cumulative {
-    max-height: 400px;
     height: 400px;
     overflow: auto;
   }

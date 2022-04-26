@@ -40,6 +40,9 @@ export async function getProcessCumulatedCallGraph(
         return block;
       }
     }
+    updateState((s) => {
+      s.loading = true;
+    });
     return await client.fetch_cumulative_call_graph_computed_block({
       blockId: blockDesc.id,
       tscFrequency: state.tscFrequency,
@@ -77,7 +80,9 @@ export async function getProcessCumulatedCallGraph(
       );
     });
 
-    await Promise.any(promises).catch((e) => console.error(e));
+    if (promises.length) {
+      await Promise.any(promises).catch((e) => console.error(e));
+    }
 
     updateState((state) => {
       state.loading = false;
