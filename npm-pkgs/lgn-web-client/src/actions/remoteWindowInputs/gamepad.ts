@@ -34,13 +34,13 @@ export function fromGamepadButtonIndex(
     case 3:
       return "North";
     case 4:
-      return "LeftTrigger2";
-    case 5:
-      return "RightTrigger2";
-    case 6:
       return "LeftTrigger";
-    case 7:
+    case 5:
       return "RightTrigger";
+    case 6:
+      return "LeftTrigger2";
+    case 7:
+      return "RightTrigger2";
     case 8:
       return "Select";
     case 9:
