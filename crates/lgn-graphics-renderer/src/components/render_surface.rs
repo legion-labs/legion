@@ -257,16 +257,23 @@ impl RenderSurface {
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut HLCommandBuffer<'_>,
     ) {
-        cmd_buffer.with_label("Generate HZB", |cmd_buffer| {
-            self.depth_rt_mut()
-                .transition_to(cmd_buffer, ResourceState::PIXEL_SHADER_RESOURCE);
+        cmd_buffer.with_label(
+            render_context.renderer().device_context(),
+            "Generate HZB",
+            |cmd_buffer| {
+                self.depth_rt_mut()
+                    .transition_to(cmd_buffer, ResourceState::PIXEL_SHADER_RESOURCE);
 
-            self.get_hzb_surface()
-                .generate_hzb(render_context, cmd_buffer, self.depth_rt().srv());
+                self.get_hzb_surface().generate_hzb(
+                    render_context,
+                    cmd_buffer,
+                    self.depth_rt().srv(),
+                );
 
-            self.depth_rt_mut()
-                .transition_to(cmd_buffer, ResourceState::DEPTH_WRITE);
-        });
+                self.depth_rt_mut()
+                    .transition_to(cmd_buffer, ResourceState::DEPTH_WRITE);
+            },
+        );
     }
 
     pub(crate) fn get_hzb_surface(&self) -> &HzbSurface {

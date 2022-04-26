@@ -180,7 +180,7 @@ impl VulkanSwapchain {
         command_buffer.cmd_resource_barrier(&[], &image_barriers);
 
         command_buffer.end()?;
-        queue.submit(&[&mut command_buffer], &[], &[], None)?;
+        queue.submit(&mut [&mut command_buffer], &[], &[], None)?;
         queue.wait_for_queue_idle()?;
         Ok(swapchain_images)
     }

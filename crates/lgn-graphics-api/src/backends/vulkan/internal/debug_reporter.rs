@@ -119,7 +119,7 @@ impl VkDebugReporter {
 
     pub(crate) fn begin_label(
         &self,
-        command_buffer: &CommandBuffer,
+        command_buffer: &mut CommandBuffer,
         label: &str, /*, todo: optional color? */
     ) {
         let label = CString::new(label).unwrap();
@@ -133,7 +133,7 @@ impl VkDebugReporter {
         }
     }
 
-    pub(crate) fn end_label(&self, command_buffer: &CommandBuffer) {
+    pub(crate) fn end_label(&self, command_buffer: &mut CommandBuffer) {
         unsafe {
             self.debug_report_loader
                 .cmd_end_debug_utils_label(command_buffer.vk_command_buffer());

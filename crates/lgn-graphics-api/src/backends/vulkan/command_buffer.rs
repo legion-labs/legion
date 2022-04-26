@@ -42,7 +42,7 @@ impl VulkanCommandBuffer {
 }
 
 impl CommandBuffer {
-    pub(crate) fn vk_command_buffer(&self) -> ash::vk::CommandBuffer {
+    pub(crate) fn vk_command_buffer(&mut self) -> ash::vk::CommandBuffer {
         self.inner.backend_command_buffer.vk_command_buffer
     }
 

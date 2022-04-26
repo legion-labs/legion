@@ -212,13 +212,13 @@ impl VulkanDeviceContext {
         }
     }
 
-    pub(crate) fn begin_label(&self, command_buffer: &CommandBuffer, label: &str) {
+    pub(crate) fn begin_label(&self, command_buffer: &mut CommandBuffer, label: &str) {
         if let Some(debug_reporter) = self.debug_reporter.as_ref() {
             debug_reporter.begin_label(command_buffer, label);
         }
     }
 
-    pub(crate) fn end_label(&self, command_buffer: &CommandBuffer) {
+    pub(crate) fn end_label(&self, command_buffer: &mut CommandBuffer) {
         if let Some(debug_reporter) = self.debug_reporter.as_ref() {
             debug_reporter.end_label(command_buffer);
         }

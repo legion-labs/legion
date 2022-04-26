@@ -42,7 +42,7 @@ impl<'rc> HLQueue<'rc> {
 
             self.queue
                 .submit(
-                    &command_buffers,
+                    &mut command_buffers,
                     wait_semaphores,
                     signal_semaphores,
                     signal_fence,

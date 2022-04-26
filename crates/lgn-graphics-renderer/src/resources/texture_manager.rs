@@ -263,7 +263,7 @@ impl TextureManager {
         let graphics_queue = renderer.graphics_queue_guard(QueueType::Graphics);
 
         graphics_queue
-            .submit(&[&mut cmd_buffer], &[], &[], None)
+            .submit(&mut [&mut cmd_buffer], &[], &[], None)
             .unwrap();
 
         cmd_buffer_pool.release(cmd_buffer);
