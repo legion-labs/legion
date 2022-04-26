@@ -1,12 +1,17 @@
+@import "./theme.css";
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
-  @apply bg-skin-900;
   font-family: "Inter", Arial, sans-serif;
+  color: rgb(var(--text-default));
+  background-color: rgb(var(--background-default));
 }
 
 :root {
+  /** TODO: Use a tailwind config instead */
   --thread-item-length: 170px;
 }

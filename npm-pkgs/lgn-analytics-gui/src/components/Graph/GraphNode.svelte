@@ -27,12 +27,12 @@
 
 <div class="text-sm py-1 rounded-lg overflow-x-hidden">
   <div
-    class="flex justify-between select-none cursor-pointer relative bg-skin-600 text-content-87"
+    class="flex justify-between select-none cursor-pointer relative bg-surface text-content-87"
     on:click={(_) => setCollapse(!collapsed)}
   >
     {#if desc}
       <div
-        class="text-left pl-2 py-1 whitespace-nowrap bg-skin-700"
+        class="text-left pl-2 py-1 whitespace-nowrap bg-background"
         style:width="{fill}%"
       >
         <i
@@ -54,7 +54,7 @@
     {/if}
   </div>
   {#if !collapsed && $node}
-    <div class="bg-skin-700 flex flex-col p-3">
+    <div class="bg-background flex flex-col p-3">
       <GraphNodeStat {node} />
       <div class="hidden md:block pb-4">
         <div class="w-full border-t border-charcoal-600" />

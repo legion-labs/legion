@@ -54,6 +54,6 @@
   }
 
   tr:nth-child(even) {
-    @apply bg-skin-600;
+    @apply bg-surface;
   }
 </style>

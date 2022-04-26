@@ -17,7 +17,7 @@
   export let size: number;
 
   let store: CumulatedCallGraphStore;
-  let tickTimer: number;
+  let tickTimer: ReturnType<typeof setTimeout>;
 
   $: (begin || end) && tick();
 
@@ -54,9 +54,9 @@
       style:max-height={`${size}px`}
     >
       <table
-        class="w-full bg-skin-700 text-xs text-content-60 space-y-2 table-fixed "
+        class="w-full bg-background text-xs text-content-60 space-y-2 table-fixed "
       >
-        <tr class="bg-skin-800 w-100">
+        <tr class="bg-background w-100">
           <th style="width:66%" class="text-left">Function</th>
           <th class="table-header"><i class="bi bi-caret-right" />Count</th>
           <th class="table-header"

@@ -63,3 +63,12 @@ export function remToPx(rem: number): number | null {
 
   return rem * fontSize;
 }
+
+/** Takes a `Element` and set its one and only class, removing all the others (if any) */
+export function replaceClassesWith(element: Element, newClass: string) {
+  if (element.classList.length > 0) {
+    element.classList.remove(...Array.from(element.classList));
+  }
+
+  element.classList.add(newClass);
+}

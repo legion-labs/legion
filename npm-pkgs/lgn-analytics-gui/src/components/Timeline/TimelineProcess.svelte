@@ -46,7 +46,7 @@
 
 <div on:wheel|preventDefault={(e) => wheelDispatcher("zoom", e)} {style}>
   <div
-    class="bg-skin-700 text-content-87 px-1 text-sm text-left mb-1 flex flex-row place-content-between items-center"
+    class="bg-surface text-content-87 px-1 text-sm text-left mb-1 flex flex-row place-content-between items-center"
     on:click|preventDefault={() => (collapsed = !collapsed)}
   >
     <div>

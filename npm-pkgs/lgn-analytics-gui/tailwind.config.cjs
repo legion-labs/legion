@@ -1,5 +1,23 @@
 // @ts-check
 
+/**
+ * @param {string} varName
+ * @param {number} [defaultOpacity]
+ */
+function withOpacity(varName, defaultOpacity) {
+  return (/** @type {{opacityValue?: string }} */ { opacityValue }) => {
+    const opacity =
+      typeof opacityValue !== "undefined" ? opacityValue : defaultOpacity;
+
+    if (typeof opacity !== "undefined") {
+      return `rgba(var(${varName}), ${opacity})`;
+    }
+
+    return `rgb(var(${varName}))`;
+  };
+}
+
+// eslint-disable-next-line no-undef
 module.exports = {
   mode: "jit",
   content: ["index.html", "./src/**/*.{svelte,ts}"],
@@ -8,20 +26,25 @@ module.exports = {
       default: "Inter,Arial,sans-serif",
     },
     extend: {
-      backgroundColor: {
-        skin: {
-          600: "var(--color-background-600)",
-          700: "var(--color-background-700)",
-          800: "var(--color-background-800)",
-          900: "var(--color-background-900)",
-        },
+      borderRadius: {
+        DEFAULT: "var(--roundness)",
       },
       colors: {
-        primary: {
-          700: "var(--color-primary-700)",
-          800: "var(--color-primary-800)",
-          900: "var(--color-primary-900)",
+        primary: withOpacity("--color-primary"),
+        accent: withOpacity("--color-accent"),
+        headline: withOpacity("--color-headline", 87),
+        text: withOpacity("--color-text", 60),
+        placeholder: withOpacity("--color-placeholder", 38),
+        "on-surface": withOpacity("--color-on-surface"),
+        notification: withOpacity("--color-notification"),
+
+        // TODO: Revamp
+        graph: {
+          red: "#EE7B70FF",
+          orange: "#F5BB5CFF",
         },
+
+        // TODO: Remove all
         content: {
           38: "var(--color-content-38)",
           60: "var(--color-content-60)",
@@ -29,27 +52,20 @@ module.exports = {
           100: "var(--color-content-100)",
         },
         white: {
-          38: "#FFFFFF61",
-          60: "#FFFFFF99",
           87: "#FFFFFFDE",
           100: "#FFFFFFFF",
         },
         black: {
-          38: "#00000061",
-          60: "#00000099",
           87: "#000000DE",
-          100: "#000000FF",
         },
         charcoal: {
           600: "#393939",
-          700: "#202020",
-          800: "#181818",
-          900: "#0F0F0F",
         },
-        graph: {
-          red: "#EE7B70FF",
-          orange: "#F5BB5CFF",
-        },
+      },
+      backgroundColor: {
+        background: withOpacity("--color-background"),
+        surface: withOpacity("--color-surface"),
+        backdrop: withOpacity("--color-backdrop", 87),
       },
     },
   },
