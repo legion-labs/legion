@@ -1,7 +1,7 @@
 import log from "../../lib/log";
+import type { GamepadAxisType, GamepadButtonType } from "./gamepad";
 import type { KeyCode } from "./keys";
 import { fromBrowserKey as keyCodeFromBrowserKey } from "./keys";
-import type { GamepadButtonType, GamepadAxisType } from "./gamepad";
 
 const logLabel = "remote window inputs";
 
