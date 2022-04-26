@@ -38,7 +38,7 @@ impl PickingRenderPass {
         &mut self,
         picking_manager: &PickingManager,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer<'_>,
         render_surface: &mut RenderSurface,
         instance_manager: &GpuInstanceManager,
         manipulator_meshes: &[(&GlobalTransform, &ManipulatorComponent)],
@@ -47,7 +47,7 @@ impl PickingRenderPass {
         camera: &CameraComponent,
         mesh_renderer: &MeshRenderer,
     ) {
-        cmd_buffer.with_label("Picking", || {
+        cmd_buffer.with_label("Picking", |cmd_buffer| {
             let device_context = render_context.renderer().device_context();
 
             let mut count: usize = 0;
@@ -181,7 +181,7 @@ fn render_mesh(
     picking_id: u32,
     picking_distance: f32,
     mesh: &MeshMetaData,
-    cmd_buffer: &HLCommandBuffer<'_>,
+    cmd_buffer: &mut HLCommandBuffer<'_>,
 ) {
     let mut push_constant_data = cgen::cgen_type::PickingPushConstantData::default();
 

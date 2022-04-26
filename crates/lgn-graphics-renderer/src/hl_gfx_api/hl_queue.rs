@@ -32,11 +32,11 @@ impl<'rc> HLQueue<'rc> {
         signal_fence: Option<&Fence>,
     ) {
         {
-            let mut command_buffers = smallvec::SmallVec::<[&CommandBuffer; 16]>::with_capacity(
+            let mut command_buffers = smallvec::SmallVec::<[&mut CommandBuffer; 16]>::with_capacity(
                 command_buffer_handles.len(),
             );
 
-            for cbh in command_buffer_handles.iter() {
+            for cbh in command_buffer_handles.iter_mut() {
                 command_buffers.push(cbh);
             }
 

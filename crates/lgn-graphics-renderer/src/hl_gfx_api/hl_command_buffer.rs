@@ -17,7 +17,7 @@ pub struct HLCommandBuffer<'rc> {
 
 impl<'rc> HLCommandBuffer<'rc> {
     pub fn new(cmd_buffer_pool: &'rc CommandBufferPoolHandle) -> Self {
-        let cmd_buffer = cmd_buffer_pool.acquire();
+        let mut cmd_buffer = cmd_buffer_pool.acquire();
         cmd_buffer.begin().unwrap();
         Self {
             cmd_buffer_pool,
@@ -27,7 +27,7 @@ impl<'rc> HLCommandBuffer<'rc> {
     }
 
     pub fn begin_render_pass(
-        &self,
+        &mut self,
         color_targets: &[ColorRenderTargetBinding<'_>],
         depth_target: &Option<DepthStencilRenderTargetBinding<'_>>,
     ) {
@@ -36,29 +36,35 @@ impl<'rc> HLCommandBuffer<'rc> {
             .unwrap();
     }
 
-    pub fn end_render_pass(&self) {
+    pub fn end_render_pass(&mut self) {
         self.cmd_buffer.cmd_end_render_pass();
     }
 
-    pub fn with_label<F>(&self, label: &str, f: F)
+    pub fn with_label<F>(&mut self, label: &str, f: F)
     where
-        F: FnOnce(),
+        F: FnOnce(&mut Self),
     {
-        self.cmd_buffer.with_label(label, f);
+        self.cmd_buffer.begin_label(label);
+        f(self);
+        self.cmd_buffer.end_label();
     }
 
-    pub fn bind_pipeline(&self, pipeline: &Pipeline) {
+    pub fn bind_pipeline(&mut self, pipeline: &Pipeline) {
         self.cur_pipeline.replace(Some(pipeline.clone()));
         self.cmd_buffer.cmd_bind_pipeline(pipeline);
     }
 
-    pub fn bind_vertex_buffers(&self, first_binding: u32, bindings: &[VertexBufferBinding<'_>]) {
+    pub fn bind_vertex_buffers(
+        &mut self,
+        first_binding: u32,
+        bindings: &[VertexBufferBinding<'_>],
+    ) {
         self.cmd_buffer
             .cmd_bind_vertex_buffers(first_binding, bindings);
     }
 
     pub fn bind_buffer_suballocation_as_vertex_buffer<AllocType>(
-        &self,
+        &mut self,
         binding: u32,
         buffer_suballoc: &BufferSubAllocation<AllocType>,
     ) {
@@ -71,12 +77,12 @@ impl<'rc> HLCommandBuffer<'rc> {
         );
     }
 
-    pub fn bind_index_buffer(&self, binding: &IndexBufferBinding<'_>) {
+    pub fn bind_index_buffer(&mut self, binding: &IndexBufferBinding<'_>) {
         self.cmd_buffer.cmd_bind_index_buffer(binding);
     }
 
     pub fn bind_buffer_suballocation_as_index_buffer<AllocType>(
-        &self,
+        &mut self,
         buffer_suballoc: &BufferSubAllocation<AllocType>,
         index_type: IndexType,
     ) {
@@ -91,7 +97,11 @@ impl<'rc> HLCommandBuffer<'rc> {
     // tmp? rely on a sort of cache. investigate!
     //
 
-    pub fn bind_descriptor_set(&self, layout: &DescriptorSetLayout, handle: DescriptorSetHandle) {
+    pub fn bind_descriptor_set(
+        &mut self,
+        layout: &DescriptorSetLayout,
+        handle: DescriptorSetHandle,
+    ) {
         assert!(self.cur_pipeline.borrow().is_some());
 
         let cur_pipeline = self.cur_pipeline.borrow();
@@ -113,7 +123,7 @@ impl<'rc> HLCommandBuffer<'rc> {
         );
     }
 
-    pub fn push_constant<T: Sized>(&self, constants: &T) {
+    pub fn push_constant<T: Sized>(&mut self, constants: &T) {
         assert!(self.cur_pipeline.borrow().is_some());
 
         let cur_pipeline = self.cur_pipeline.borrow();
@@ -133,12 +143,12 @@ impl<'rc> HLCommandBuffer<'rc> {
         self.cmd_buffer.cmd_push_constant(root_signature, data);
     }
 
-    pub fn draw(&self, vertex_count: u32, first_vertex: u32) {
+    pub fn draw(&mut self, vertex_count: u32, first_vertex: u32) {
         self.cmd_buffer.cmd_draw(vertex_count, first_vertex);
     }
 
     pub fn draw_instanced(
-        &self,
+        &mut self,
         vertex_count: u32,
         first_vertex: u32,
         instance_count: u32,
@@ -153,7 +163,7 @@ impl<'rc> HLCommandBuffer<'rc> {
     }
 
     pub fn draw_indirect(
-        &self,
+        &mut self,
         indirect_arg_buffer: &Buffer,
         indirect_arg_offset: u64,
         draw_count: u32,
@@ -168,7 +178,7 @@ impl<'rc> HLCommandBuffer<'rc> {
     }
 
     pub fn draw_indirect_count(
-        &self,
+        &mut self,
         indirect_arg_buffer: &Buffer,
         indirect_arg_offset: u64,
         count_buffer: &Buffer,
@@ -186,13 +196,13 @@ impl<'rc> HLCommandBuffer<'rc> {
         );
     }
 
-    pub fn draw_indexed(&self, index_count: u32, first_index: u32, vertex_offset: i32) {
+    pub fn draw_indexed(&mut self, index_count: u32, first_index: u32, vertex_offset: i32) {
         self.cmd_buffer
             .cmd_draw_indexed(index_count, first_index, vertex_offset);
     }
 
     pub fn draw_indexed_instanced(
-        &self,
+        &mut self,
         index_count: u32,
         first_index: u32,
         instance_count: u32,
@@ -209,7 +219,7 @@ impl<'rc> HLCommandBuffer<'rc> {
     }
 
     pub fn draw_indexed_indirect(
-        &self,
+        &mut self,
         indirect_arg_buffer: &Buffer,
         indirect_arg_offset: u64,
         draw_count: u32,
@@ -224,7 +234,7 @@ impl<'rc> HLCommandBuffer<'rc> {
     }
 
     pub fn draw_indexed_indirect_count(
-        &self,
+        &mut self,
         indirect_arg_buffer: &Buffer,
         indirect_arg_offset: u64,
         count_buffer: &Buffer,
@@ -242,17 +252,17 @@ impl<'rc> HLCommandBuffer<'rc> {
         );
     }
 
-    pub fn dispatch(&self, group_count_x: u32, group_count_y: u32, group_count_z: u32) {
+    pub fn dispatch(&mut self, group_count_x: u32, group_count_y: u32, group_count_z: u32) {
         self.cmd_buffer
             .cmd_dispatch(group_count_x, group_count_y, group_count_z);
     }
 
-    pub fn dispatch_indirect(&self, buffer: &Buffer, offset: u64) {
+    pub fn dispatch_indirect(&mut self, buffer: &Buffer, offset: u64) {
         self.cmd_buffer.cmd_dispatch_indirect(buffer, offset);
     }
 
     pub fn resource_barrier(
-        &self,
+        &mut self,
         buffer_barriers: &[BufferBarrier<'_>],
         texture_barriers: &[TextureBarrier<'_>],
     ) {
@@ -261,7 +271,7 @@ impl<'rc> HLCommandBuffer<'rc> {
     }
 
     pub fn copy_buffer_to_buffer(
-        &self,
+        &mut self,
         src_buffer: &Buffer,
         dst_buffer: &Buffer,
         copy_data: &[BufferCopy],
@@ -271,7 +281,7 @@ impl<'rc> HLCommandBuffer<'rc> {
     }
 
     pub fn copy_buffer_to_texture(
-        &self,
+        &mut self,
         src_buffer: &Buffer,
         dst_texture: &Texture,
         params: &CmdCopyBufferToTextureParams,
@@ -281,7 +291,7 @@ impl<'rc> HLCommandBuffer<'rc> {
     }
 
     pub fn blit_texture(
-        &self,
+        &mut self,
         src_texture: &Texture,
         dst_texture: &Texture,
         params: &CmdBlitParams,
@@ -291,7 +301,7 @@ impl<'rc> HLCommandBuffer<'rc> {
     }
 
     pub fn copy_image(
-        &self,
+        &mut self,
         src_texture: &Texture,
         dst_texture: &Texture,
         params: &CmdCopyTextureParams,
@@ -300,7 +310,7 @@ impl<'rc> HLCommandBuffer<'rc> {
             .cmd_copy_image(src_texture, dst_texture, params);
     }
 
-    pub fn fill_buffer(&self, dst_buffer: &Buffer, offset: u64, size: u64, data: u32) {
+    pub fn fill_buffer(&mut self, dst_buffer: &Buffer, offset: u64, size: u64, data: u32) {
         self.cmd_buffer
             .cmd_fill_buffer(dst_buffer, offset, size, data);
     }

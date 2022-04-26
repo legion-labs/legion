@@ -37,7 +37,7 @@ impl RenderElement {
         self.material_id
     }
 
-    pub fn draw(&self, cmd_buffer: &HLCommandBuffer<'_>) {
+    pub fn draw(&self, cmd_buffer: &mut HLCommandBuffer<'_>) {
         if self.index_count != 0 {
             cmd_buffer.draw_indexed_instanced(
                 self.index_count,

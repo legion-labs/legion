@@ -240,7 +240,7 @@ impl UnifiedStaticBufferAllocator {
             ));
         }
 
-        let cmd_buffer = render_context.alloc_command_buffer();
+        let mut cmd_buffer = render_context.alloc_command_buffer();
 
         cmd_buffer.resource_barrier(
             &[BufferBarrier {

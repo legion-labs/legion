@@ -52,7 +52,11 @@ impl RenderTarget {
         }
     }
 
-    pub fn transition_to(&mut self, cmd_buffer: &HLCommandBuffer<'_>, dst_state: ResourceState) {
+    pub fn transition_to(
+        &mut self,
+        cmd_buffer: &mut HLCommandBuffer<'_>,
+        dst_state: ResourceState,
+    ) {
         let src_state = self.state;
         let dst_state = dst_state;
 
