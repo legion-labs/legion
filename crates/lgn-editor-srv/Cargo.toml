@@ -95,20 +95,14 @@ allow-aws-ecr-creation = true
 extra-files = [
     { source = "../../tests/sample-data/*", destination = "/usr/src/app/tests/sample-data/" },
     { source = "nvidia_icd.json", destination = "/etc/vulkan/icd.d/" },
+    { source = "10_nvidia.json", destination = "/usr/share/glvnd/egl_vendor.d/" },
 ]
 target-bin-dir = "/usr/src/app"
 template = '''
 FROM ubuntu:20.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget ca-certificates \
-    unzip \
-    gnupg \
-    libx11-xcb-dev \
-    libxkbcommon-dev \
-    libwayland-dev \
-    libxrandr-dev \
-    libegl1-mesa-dev
+    wget ca-certificates unzip gnupg
 
 RUN wget -qO lunarg-signing-key-pub.asc https://packages.lunarg.com/lunarg-signing-key-pub.asc && \
     apt-key add lunarg-signing-key-pub.asc && \
