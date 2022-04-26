@@ -88,7 +88,6 @@ RUN wget -qO lunarg-signing-key-pub.asc https://packages.lunarg.com/lunarg-signi
     echo "/usr/lib/dxc" | tee -a /etc/ld.so.conf.d/dxc.conf && \
     ldconfig
     
-    
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,graphics,video,utility
 
