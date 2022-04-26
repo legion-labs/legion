@@ -85,15 +85,31 @@ impl HandleMap {
     fn create_handle(&self, type_id: ResourceTypeAndId) -> HandleUntyped {
         let handle = HandleUntyped::new_handle(type_id, self.unload_tx.clone());
 
+        let handles = self.handles.pin();
+
         let weak_ref = HandleUntyped::downgrade(&handle);
-        match self.handles.pin().try_insert(type_id, weak_ref) {
-            Ok(_) => handle,
+        match handles.try_insert(type_id, weak_ref) {
+            Ok(_) => {
+                lgn_tracing::debug!("New Handle for {:?}", type_id);
+                handle
+            }
             Err(TryInsertError {
                 current,
                 not_inserted: _,
             }) => {
-                handle.forget();
-                current.upgrade().unwrap()
+                if let Some(weak) = current.upgrade() {
+                    lgn_tracing::debug!(
+                        "Add Ref to Handle for {:?} refcount({})",
+                        type_id,
+                        current.strong_count()
+                    );
+                    handle.forget();
+                    weak
+                } else {
+                    lgn_tracing::debug!("Replacing Handle for {:?}", type_id);
+                    handles.insert(type_id, HandleUntyped::downgrade(&handle));
+                    handle
+                }
             }
         }
     }
@@ -170,9 +186,16 @@ impl AssetLoaderStub {
         let mut all_removed = vec![];
         while let Ok(unload_id) = self.unload_channel_rx.try_recv() {
             let handles = self.handles.pin();
-            let removed = handles.remove(&unload_id).expect("weak ref");
-            assert!(removed.upgrade().is_none(), "a load after unload occurred");
-            all_removed.push(unload_id);
+            if let Some(removed) = handles.get(&unload_id) {
+                if removed.strong_count() == 0 {
+                    // Ignore handle that were revived
+                    lgn_tracing::debug!("Dropping Handle for {:?}", unload_id);
+                    handles.remove(&unload_id);
+                    all_removed.push(unload_id);
+                } else {
+                    lgn_tracing::debug!("Ignoring revived Handle for {:?}", unload_id);
+                }
+            }
         }
         all_removed
     }
