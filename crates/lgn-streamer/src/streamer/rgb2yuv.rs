@@ -29,6 +29,7 @@ impl ResolutionDependentResources {
         let mut copy_yuv_images = Vec::with_capacity(render_frame_count as usize);
         for _ in 0..render_frame_count {
             let mut yuv_plane_def = TextureDef {
+                name: "Y".to_string(),
                 extents: Extents3D {
                     width: resolution.width,
                     height: resolution.height,
@@ -46,7 +47,9 @@ impl ResolutionDependentResources {
             let y_image = device_context.create_texture(&yuv_plane_def);
             yuv_plane_def.extents.width /= 2;
             yuv_plane_def.extents.height /= 2;
+            yuv_plane_def.name = "U".to_string();
             let u_image = device_context.create_texture(&yuv_plane_def);
+            yuv_plane_def.name = "V".to_string();
             let v_image = device_context.create_texture(&yuv_plane_def);
 
             let yuv_plane_uav_def = TextureViewDef {
@@ -64,6 +67,7 @@ impl ResolutionDependentResources {
             let v_image_uav = v_image.create_view(&yuv_plane_uav_def);
 
             let copy_yuv_image = device_context.create_texture(&TextureDef {
+                name: "Copy".to_string(),
                 extents: Extents3D {
                     width: resolution.width,
                     height: resolution.height,
@@ -157,7 +161,7 @@ impl RgbToYuvConverter {
         yuv: &mut [u8],
     ) -> anyhow::Result<()> {
         let render_frame_idx = 0;
-        let mut cmd_buffer = render_context.alloc_command_buffer();
+        let cmd_buffer = render_context.alloc_command_buffer();
         render_surface
             .hdr_rt_mut()
             .transition_to(&cmd_buffer, ResourceState::SHADER_RESOURCE);

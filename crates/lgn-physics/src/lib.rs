@@ -53,7 +53,6 @@ use physx_sys::{PxPvdInstrumentationFlag, PxPvdInstrumentationFlags};
 use crate::{
     actor_type::WithActorType,
     callbacks::{OnAdvance, OnCollision, OnConstraintBreak, OnTrigger, OnWakeSleep},
-    collision_geometry::ConvertToCollisionGeometry,
     debug_display::display_collision_geometry,
     physics_options::PhysicsOptions,
     rigid_actors::create_rigid_actors,

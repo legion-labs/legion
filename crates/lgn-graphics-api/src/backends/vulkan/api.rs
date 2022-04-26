@@ -50,7 +50,6 @@ impl VulkanApi {
     }
 
     pub fn destroy(device_context: &DeviceContext) {
-        device_context.resource_cache().clear_caches();
         device_context.deferred_dropper().destroy();
     }
 }

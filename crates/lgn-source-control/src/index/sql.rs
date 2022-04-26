@@ -110,8 +110,8 @@ pub struct SqlRepositoryIndex {
 }
 
 impl SqlRepositoryIndex {
+    #[span_fn]
     pub async fn new(url: String) -> Result<Self> {
-        async_span_scope!("SqlRepositoryIndex::new");
         let driver = SqlDatabaseDriver::new(url)?;
 
         info!("Connecting to SQL database...");
@@ -458,13 +458,12 @@ impl SqlIndex {
         Ok(())
     }
 
+    #[span_fn]
     async fn read_branch_for_update<'e, E: sqlx::Executor<'e, Database = sqlx::Any>>(
         &self,
         executor: E,
         name: &str,
     ) -> Result<Branch> {
-        async_span_scope!("SqlIndex::read_branch_for_update");
-
         let query = match &self.driver {
             SqlDatabaseDriver::Sqlite(_) => format!(
                 "SELECT head, lock_domain_id
@@ -504,13 +503,12 @@ impl SqlIndex {
         })
     }
 
+    #[span_fn]
     async fn insert_repository_transactional(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
         repository_name: RepositoryName,
         driver: &SqlDatabaseDriver,
     ) -> Result<i64> {
-        async_span_scope!("SqlIndex::insert_repository_transactional");
-
         let result = match sqlx::query(&format!(
             "INSERT INTO `{}` VALUES(NULL, ?);",
             TABLE_REPOSITORIES
@@ -546,12 +544,11 @@ impl SqlIndex {
         })
     }
 
+    #[span_fn]
     async fn delete_repository_transactional(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
         repository_id: i64,
     ) -> Result<()> {
-        async_span_scope!("SqlIndex::delete_repository_transactional");
-
         sqlx::query(&format!("DELETE FROM `{}` WHERE id=?;", TABLE_REPOSITORIES))
             .bind(repository_id)
             .execute(transaction)
@@ -563,12 +560,11 @@ impl SqlIndex {
             .map(|_| ())
     }
 
+    #[span_fn]
     async fn get_repository_id(
         conn: &mut sqlx::pool::PoolConnection<sqlx::Any>,
         repository_name: RepositoryName,
     ) -> Result<i64> {
-        async_span_scope!("SqlIndex::get_repository_id");
-
         match sqlx::query(&format!(
             "SELECT id
              FROM `{}`
@@ -587,13 +583,12 @@ impl SqlIndex {
         }
     }
 
+    #[span_fn]
     async fn insert_branch_transactional(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
         repository_id: i64,
         branch: &Branch,
     ) -> Result<()> {
-        async_span_scope!("SqlIndex::insert_branch_transactional");
-
         let head: i64 = branch
             .head
             .0
@@ -617,13 +612,12 @@ impl SqlIndex {
         .map(|_| ())
     }
 
+    #[span_fn]
     async fn list_commits_transactional(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
         repository_id: i64,
         query: &ListCommitsQuery,
     ) -> Result<Vec<Commit>> {
-        async_span_scope!("SqlIndex::list_commits_transactional");
-
         let mut result = Vec::new();
         result.reserve(1024);
 
@@ -778,13 +772,12 @@ impl SqlIndex {
         Ok(result)
     }
 
+    #[span_fn]
     async fn insert_commit_transactional(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
         repository_id: i64,
         commit: &Commit,
     ) -> Result<CommitId> {
-        async_span_scope!("SqlIndex::insert_commit_transactional");
-
         let result = sqlx::query(&format!(
             "INSERT INTO `{}` VALUES(?, NULL, ?, ?, ?, ?);",
             TABLE_COMMITS

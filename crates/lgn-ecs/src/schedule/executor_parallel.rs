@@ -201,6 +201,7 @@ impl ParallelExecutor {
                         .recv()
                         .await
                         .unwrap_or_else(|error| unreachable!("{}", error));
+
                     {
                         span_scope_named!(&*system.name());
                         unsafe { system.run_unsafe((), world) };

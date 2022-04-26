@@ -60,6 +60,22 @@ impl NullDeviceContext {
     pub(crate) fn destroy(&mut self) {
         unimplemented!()
     }
+
+    pub(crate) fn set_texture_name(&self, texture: &Texture, name: &str) {
+        unimplemented!()
+    }
+
+    pub(crate) fn set_buffer_name(&self, buffer: &Buffer, name: &str) {
+        unimplemented!()
+    }
+
+    pub(crate) fn begin_label(&self, command_buffer: &CommandBuffer, label: &str) {
+        unimplemented!()
+    }
+
+    pub(crate) fn end_label(&self, command_buffer: &CommandBuffer) {
+        unimplemented!()
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -259,7 +275,7 @@ impl CommandBuffer {
         unimplemented!()
     }
 
-    pub(crate) fn backedn_cmd_resource_barrier(
+    pub(crate) fn backend_cmd_resource_barrier(
         &self,
         buffer_barriers: &[BufferBarrier<'_>],
         texture_barriers: &[TextureBarrier<'_>],

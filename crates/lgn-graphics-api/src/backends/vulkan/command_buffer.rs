@@ -5,7 +5,7 @@ use crate::{
     BarrierQueueTransition, Buffer, BufferBarrier, BufferCopy, CmdBlitParams,
     CmdCopyBufferToTextureParams, CmdCopyTextureParams, ColorRenderTargetBinding, CommandBuffer,
     CommandBufferDef, CommandPool, DepthStencilRenderTargetBinding, DescriptorSetHandle,
-    DeviceContext, GfxResult, IndexBufferBinding, Pipeline, PipelineType, PlaneSlice,
+    DeviceContext, GfxError, GfxResult, IndexBufferBinding, Pipeline, PipelineType, PlaneSlice,
     ResourceState, ResourceUsage, RootSignature, Texture, TextureBarrier, VertexBufferBinding,
 };
 pub(crate) struct VulkanCommandBuffer {
@@ -78,25 +78,6 @@ impl CommandBuffer {
         color_targets: &[ColorRenderTargetBinding<'_>],
         depth_target: &Option<DepthStencilRenderTargetBinding<'_>>,
     ) -> GfxResult<()> {
-        let (renderpass, framebuffer) = {
-            let resource_cache = self.inner.device_context.resource_cache();
-            let mut resource_cache = resource_cache.inner.lock().unwrap();
-
-            let renderpass = resource_cache.renderpass_cache.get_or_create_renderpass(
-                &self.inner.device_context,
-                color_targets,
-                depth_target.as_ref(),
-            )?;
-            let framebuffer = resource_cache.framebuffer_cache.get_or_create_framebuffer(
-                &self.inner.device_context,
-                &renderpass,
-                color_targets,
-                depth_target.as_ref(),
-            )?;
-
-            (renderpass, framebuffer)
-        };
-
         let barriers = {
             let mut barriers = Vec::with_capacity(color_targets.len() + 1);
             for color_target in color_targets {
@@ -142,38 +123,82 @@ impl CommandBuffer {
             barriers
         };
 
+        let extents = if let Some(first_color_rt) = color_targets.first() {
+            let texture_def = first_color_rt.texture_view.texture().definition();
+            let view_def = first_color_rt.texture_view.definition();
+            let mut extents = texture_def.extents;
+            extents.width >>= view_def.first_mip;
+            extents.height >>= view_def.first_mip;
+            extents
+        } else if let Some(depth_rt) = &depth_target {
+            let texture_def = depth_rt.texture_view.texture().definition();
+            texture_def.extents
+        } else {
+            return Err(GfxError::String(
+                "No render target in render pass color_targets or depth_target".to_string(),
+            ));
+        };
+
         let render_area = ash::vk::Rect2D {
             offset: ash::vk::Offset2D { x: 0, y: 0 },
             extent: ash::vk::Extent2D {
-                width: framebuffer.width(),
-                height: framebuffer.height(),
+                width: extents.width,
+                height: extents.height,
             },
         };
 
-        let mut clear_values = Vec::with_capacity(color_targets.len() + 1);
-        for color_target in color_targets {
-            clear_values.push(color_target.clear_value.into());
-        }
-
-        if let Some(depth_target) = &depth_target {
-            clear_values.push(depth_target.clear_value.into());
-        }
-
         if !barriers.is_empty() {
-            self.backedn_cmd_resource_barrier(&[], &barriers);
+            self.backend_cmd_resource_barrier(&[], &barriers);
         }
 
-        let begin_renderpass_create_info = ash::vk::RenderPassBeginInfo::builder()
-            .render_pass(renderpass.vk_renderpass())
-            .framebuffer(framebuffer.vk_framebuffer())
+        let mut color_attachments =
+            vec![ash::vk::RenderingAttachmentInfo::default(); color_targets.len()];
+        for (i, color_target) in color_targets.iter().enumerate() {
+            color_attachments[i] = ash::vk::RenderingAttachmentInfo::builder()
+                .image_view(color_target.texture_view.vk_image_view())
+                .image_layout(ash::vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+                .load_op(color_target.load_op.into())
+                .store_op(color_target.store_op.into())
+                .clear_value(color_target.clear_value.into())
+                .build();
+        }
+
+        let depth_attachment = depth_target.as_ref().map(|depth_target| {
+            ash::vk::RenderingAttachmentInfo::builder()
+                .image_view(depth_target.texture_view.vk_image_view())
+                .image_layout(ash::vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                .load_op(depth_target.depth_load_op.into())
+                .store_op(depth_target.depth_store_op.into())
+                .clear_value(depth_target.clear_value.into())
+                .build()
+        });
+
+        let stencil_attachment = depth_target.as_ref().map(|depth_target| {
+            ash::vk::RenderingAttachmentInfo::builder()
+                .image_view(depth_target.texture_view.vk_image_view())
+                .image_layout(ash::vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                .load_op(depth_target.stencil_load_op.into())
+                .store_op(depth_target.stencil_store_op.into())
+                .clear_value(depth_target.clear_value.into())
+                .build()
+        });
+
+        let render_info = ash::vk::RenderingInfo::builder()
             .render_area(render_area)
-            .clear_values(&clear_values);
+            .layer_count(1)
+            .color_attachments(&color_attachments);
+
+        let mut render_info = render_info.build();
+
+        if depth_target.is_some() {
+            render_info.p_depth_attachment = &depth_attachment.unwrap();
+            render_info.p_stencil_attachment = &stencil_attachment.unwrap();
+        };
 
         unsafe {
-            self.inner.device_context.vk_device().cmd_begin_render_pass(
+            self.inner.device_context.vk_device().cmd_begin_rendering(
                 self.inner.backend_command_buffer.vk_command_buffer,
-                &*begin_renderpass_create_info,
-                ash::vk::SubpassContents::INLINE,
+                &render_info,
             );
         }
 
@@ -181,12 +206,12 @@ impl CommandBuffer {
         self.cmd_set_viewport(
             0.0,
             0.0,
-            framebuffer.width() as f32,
-            framebuffer.height() as f32,
+            extents.width as f32,
+            extents.height as f32,
             0.0,
             1.0,
         );
-        self.cmd_set_scissor(0, 0, framebuffer.width(), framebuffer.height());
+        self.cmd_set_scissor(0, 0, extents.width, extents.height);
 
         Ok(())
     }
@@ -196,7 +221,7 @@ impl CommandBuffer {
             self.inner
                 .device_context
                 .vk_device()
-                .cmd_end_render_pass(self.inner.backend_command_buffer.vk_command_buffer);
+                .cmd_end_rendering(self.inner.backend_command_buffer.vk_command_buffer);
         }
     }
 
@@ -525,7 +550,7 @@ impl CommandBuffer {
         }
     }
 
-    pub(crate) fn backedn_cmd_resource_barrier(
+    pub(crate) fn backend_cmd_resource_barrier(
         &self,
         buffer_barriers: &[BufferBarrier<'_>],
         texture_barriers: &[TextureBarrier<'_>],

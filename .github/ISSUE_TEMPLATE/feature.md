@@ -1,36 +1,21 @@
 ---
-name: Feature / Module
-about: A larger work item including a brief explanation, design, work history. Good way of starting a book chapter or crate's documentation.
+name: Feature / Refactor
+about: A larger work item including a brief explanation, design, work history. Needs to broken down into smaller tasks.
 labels: ""
-assignees: ''
+assignees: ""
 ---
 
+<!-- Fill in relevant sections, remove the rest. -->
+
+## Summary
+<!-- The goal is … -->
+
+## Current State
+<!-- Currently, … -->
+
+## Tasks
 <!--
-Fill in relevant sections, remove the rest.
--->
-
-# Summary
-
-The goal is ...
-
-# Current State
-
-Currently, ...
-
-# Design
-
-Overview ...
-
-### Component A
-
-Description ...
-
-# Steps / History
-
-- [ ] First step: #...
+- [ ] First step: #…
 - [ ] Stabilization
 - [ ] #59
-
-# Unresolved Questions
-
-- Choose between ...
+-->

@@ -38,7 +38,12 @@ pub(crate) fn build(app: &mut App) -> Result<(), ContextError> {
 }
 
 fn compile(
-    scripts: Query<'_, '_, (lgn_ecs::prelude::Entity, &ScriptComponent)>,
+    scripts: Query<
+        '_,
+        '_,
+        (lgn_ecs::prelude::Entity, &ScriptComponent),
+        Without<ScriptExecutionContext>,
+    >,
     mut rune_vms: NonSendMut<'_, VMCollection>,
     rune_context: Res<'_, Context>,
     registry: Res<'_, Arc<AssetRegistry>>,
@@ -79,10 +84,7 @@ fn compile(
             input_args: script.input_values.clone(),
         };
 
-        commands
-            .entity(entity)
-            .insert(script_exec)
-            .remove::<ScriptComponent>();
+        commands.entity(entity).insert(script_exec);
     }
 
     drop(scripts);

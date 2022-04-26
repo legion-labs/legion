@@ -285,13 +285,13 @@ Could support the interface to get visibility into crates that are already instr
 - Process List Hierarchy (Tim)
   * ordered by last update
 - Auth flow polish (Kevin)
-- Review regulatory requirements (Liem)
 
 ---
 # Roadmap
 
 ## May 2022
 - Unreal telemetry module (MAD)
+- Review regulatory requirements (Liem)
 - Infra visibility & alterting UAT (ingestion + analytics)(Liem)
 - Logs (dual mode)  (Kevin)
   * Paging when not filtering

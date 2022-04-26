@@ -1,5 +1,9 @@
 # Programmer Setup
 
+Legion Engine operates primarily in the gaming tech space, game development have always favored Windows as it is not rare for titles to ship on Windows but also because of the maturity of the game development stack on Windows, but as a cloud centric company we have a strong incentive to use Linux (our servers are going to use Linux for performance, stability, security, and also cost reasons). To be able to have the best of both worlds we chose to focus on Windows 10/11 Pro with Windows Subsystem For Linux 2 (WSL2). We are closely following some interesting development allowing the use of the GPU through WSL that will further favor our development environment but the current investment Microsoft made over the last couple of years on Linux interop puts us in a good spot. Some developers run on Linux as well and our long term goal internally is to have a mixed development environment including MacOs as well.
+
+Our distribution of choice is Ubuntu 20.04 LTS. Ubuntu being a popular distribution it usually enjoys more help resources than other distribution, Canonical also maintains a good relationship with Microsoft which helps improve the WSL experience. For purely server workloads though, Ubuntu is known to be more bloated than some of the more used alternatives, so we might end up down the road switching to a more server centric distribution, but for now let's keep it simple and use Ubuntu across the board.
+
 ## Target audience
 
 The programmer setup is targeted toward people making changes to the engine and the pipeline elements, people writing frontend code and rust code. Scripting within the engine doesn't require you to go through the setup process.

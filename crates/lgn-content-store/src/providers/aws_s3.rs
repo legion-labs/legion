@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use aws_sdk_s3::presigning::config::PresigningConfig;
 use bytes::Bytes;
-use lgn_tracing::async_span_scope;
+use lgn_tracing::{async_span_scope, span_fn};
 use pin_project::pin_project;
 use std::collections::{BTreeMap, BTreeSet};
 use std::future::Future;
@@ -31,9 +31,8 @@ impl AwsS3Provider {
     /// Generates a new AWS S3 provider using the specified bucket and root.
     ///
     /// The default AWS configuration is used.
+    #[span_fn]
     pub async fn new(url: AwsS3Url) -> Self {
-        async_span_scope!("AwsS3Provider::new");
-
         let config = aws_config::load_from_env().await;
         let client = aws_sdk_s3::Client::new(&config);
 
@@ -66,9 +65,8 @@ impl AwsS3Provider {
     /// # Errors
     ///
     /// Otherwise, any other error is returned.
+    #[span_fn]
     pub async fn delete_content(&self, id: &Identifier) -> Result<()> {
-        async_span_scope!("AwsS3Provider::delete_content");
-
         let key = self.blob_key(id);
 
         match self
@@ -94,9 +92,8 @@ impl AwsS3Provider {
     /// # Errors
     ///
     /// Only if an object's existence cannot be determined, an error is returned.
+    #[span_fn]
     pub async fn check_object_existence(&self, id: &Identifier) -> Result<bool> {
-        async_span_scope!("AwsS3Provider::check_object_existence");
-
         let key = self.blob_key(id);
 
         match self

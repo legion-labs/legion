@@ -127,7 +127,7 @@ impl<'frame> RenderContext<'frame> {
         self.view_descriptor_set = Some((layout, handle));
     }
 
-    pub fn bind_default_descriptor_sets(&self, cmd_buffer: &mut HLCommandBuffer<'_>) {
+    pub fn bind_default_descriptor_sets(&self, cmd_buffer: &HLCommandBuffer<'_>) {
         cmd_buffer.bind_descriptor_set(
             self.persistent_descriptor_set.unwrap().0,
             self.persistent_descriptor_set.unwrap().1,

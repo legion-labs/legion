@@ -13,8 +13,9 @@ use crate::{
 };
 
 /// Used to create a `Texture`
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TextureDef {
+    pub name: String,
     pub extents: Extents3D,
     pub array_length: u32,
     pub mip_count: u32,
@@ -28,6 +29,7 @@ pub struct TextureDef {
 impl Default for TextureDef {
     fn default() -> Self {
         Self {
+            name: "Default".to_string(),
             extents: Extents3D {
                 width: 0,
                 height: 0,
@@ -132,11 +134,6 @@ impl Texture {
         &self.inner.device_context
     }
 
-    // // Used internally as part of the hash for creating/reusing framebuffers
-    pub(crate) fn texture_id(&self) -> u32 {
-        self.inner.texture_id
-    }
-
     // Command buffers check this to see if an image needs to be transitioned from
     // UNDEFINED
     pub(crate) fn take_is_undefined_layout(&self) -> bool {
@@ -166,7 +163,7 @@ impl Texture {
         Self {
             inner: device_context.deferred_dropper().new_drc(TextureInner {
                 device_context: device_context.clone(),
-                texture_def: *texture_def,
+                texture_def: texture_def.clone(),
                 is_undefined_layout: AtomicBool::new(true),
                 texture_id,
                 backend_texture,

@@ -107,6 +107,7 @@ impl SizeDependentResources {
         Self {
             hdr_rt: RenderTarget::new(
                 device_context,
+                "HDR_RT",
                 extents,
                 Format::R16G16B16A16_SFLOAT,
                 ResourceUsage::AS_RENDER_TARGET
@@ -116,6 +117,7 @@ impl SizeDependentResources {
             ),
             depth_rt: RenderTarget::new(
                 device_context,
+                "Depth_RT",
                 extents,
                 Format::D32_SFLOAT,
                 ResourceUsage::AS_DEPTH_STENCIL | ResourceUsage::AS_SHADER_RESOURCE,
@@ -221,7 +223,7 @@ impl RenderSurface {
     pub(crate) fn init_hzb_if_needed(
         &mut self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &HLCommandBuffer<'_>,
     ) {
         if !self.resources.hzb_init {
             self.resources
@@ -253,16 +255,18 @@ impl RenderSurface {
     pub(crate) fn generate_hzb(
         &mut self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &HLCommandBuffer<'_>,
     ) {
-        self.depth_rt_mut()
-            .transition_to(cmd_buffer, ResourceState::PIXEL_SHADER_RESOURCE);
+        cmd_buffer.with_label("Generate HZB", || {
+            self.depth_rt_mut()
+                .transition_to(cmd_buffer, ResourceState::PIXEL_SHADER_RESOURCE);
 
-        self.get_hzb_surface()
-            .generate_hzb(render_context, cmd_buffer, self.depth_rt().srv());
+            self.get_hzb_surface()
+                .generate_hzb(render_context, cmd_buffer, self.depth_rt().srv());
 
-        self.depth_rt_mut()
-            .transition_to(cmd_buffer, ResourceState::DEPTH_WRITE);
+            self.depth_rt_mut()
+                .transition_to(cmd_buffer, ResourceState::DEPTH_WRITE);
+        });
     }
 
     pub(crate) fn get_hzb_surface(&self) -> &HzbSurface {

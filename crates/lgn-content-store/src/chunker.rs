@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, io::Write};
 
-use lgn_tracing::{async_span_scope, debug};
+use lgn_tracing::{debug, span_fn};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
 
 use crate::{
@@ -46,13 +46,12 @@ impl Chunker {
     /// # Errors
     ///
     /// If the reader fails to read the chunk index, an error is returned.
+    #[span_fn]
     pub async fn read_chunk_index(
         &self,
         content_reader: impl ContentReader + Send + Sync,
         id: &ChunkIdentifier,
     ) -> Result<ChunkIndex> {
-        async_span_scope!("Chunker::read_chunk_index");
-
         debug!("Chunker::read_chunk_index({})", id);
 
         let mut reader = content_reader.get_content_reader(id.content_id()).await?;
@@ -70,13 +69,12 @@ impl Chunker {
     ///
     /// If the content referenced by the identifier is not a chunk index,
     /// `Error::InvalidChunkIndex` is returned.
+    #[span_fn]
     pub async fn get_chunk_reader(
         &self,
         content_reader: impl ContentReader + Send + Sync,
         id: &ChunkIdentifier,
     ) -> Result<ContentAsyncRead> {
-        async_span_scope!("Chunker::get_chunk_reader");
-
         debug!("Chunker::get_chunk_reader({})", id);
 
         // TODO: This implementation is actually not great:
@@ -381,9 +379,8 @@ impl ChunkIndex {
     /// # Errors
     ///
     /// Returns an error if the buffer is too small or the format is unknown.
+    #[span_fn]
     pub async fn read_from(mut r: impl AsyncRead + Unpin) -> Result<Self> {
-        async_span_scope!("ChunkIndex::read_from");
-
         debug!("ChunkIndex::read_from()");
 
         let mut buf = [0u8; 1];

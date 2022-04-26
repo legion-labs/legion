@@ -1,4 +1,4 @@
-use std::mem;
+use std::{cell::RefCell, mem};
 
 use lgn_graphics_api::{
     Buffer, BufferBarrier, BufferCopy, BufferSubAllocation, CmdBlitParams,
@@ -12,7 +12,7 @@ use crate::resources::{CommandBufferHandle, CommandBufferPoolHandle};
 pub struct HLCommandBuffer<'rc> {
     cmd_buffer_pool: &'rc CommandBufferPoolHandle,
     cmd_buffer: CommandBufferHandle,
-    cur_pipeline: Option<Pipeline>, // tmp? find a way to make a local cache by keeping current info
+    cur_pipeline: RefCell<Option<Pipeline>>, // tmp? find a way to make a local cache by keeping current info
 }
 
 impl<'rc> HLCommandBuffer<'rc> {
@@ -22,7 +22,7 @@ impl<'rc> HLCommandBuffer<'rc> {
         Self {
             cmd_buffer_pool,
             cmd_buffer,
-            cur_pipeline: None,
+            cur_pipeline: RefCell::new(None),
         }
     }
 
@@ -40,8 +40,15 @@ impl<'rc> HLCommandBuffer<'rc> {
         self.cmd_buffer.cmd_end_render_pass();
     }
 
-    pub fn bind_pipeline(&mut self, pipeline: &Pipeline) {
-        self.cur_pipeline = Some(pipeline.clone());
+    pub fn with_label<F>(&self, label: &str, f: F)
+    where
+        F: FnOnce(),
+    {
+        self.cmd_buffer.with_label(label, f);
+    }
+
+    pub fn bind_pipeline(&self, pipeline: &Pipeline) {
+        self.cur_pipeline.replace(Some(pipeline.clone()));
         self.cmd_buffer.cmd_bind_pipeline(pipeline);
     }
 
@@ -85,9 +92,10 @@ impl<'rc> HLCommandBuffer<'rc> {
     //
 
     pub fn bind_descriptor_set(&self, layout: &DescriptorSetLayout, handle: DescriptorSetHandle) {
-        assert!(self.cur_pipeline.is_some());
+        assert!(self.cur_pipeline.borrow().is_some());
 
-        let cur_pipeline = self.cur_pipeline.as_ref().unwrap();
+        let cur_pipeline = self.cur_pipeline.borrow();
+        let cur_pipeline = cur_pipeline.as_ref().unwrap();
         let pipeline_type = cur_pipeline.pipeline_type();
         let root_signature = cur_pipeline.root_signature();
         let set_index = layout.frequency();
@@ -106,9 +114,10 @@ impl<'rc> HLCommandBuffer<'rc> {
     }
 
     pub fn push_constant<T: Sized>(&self, constants: &T) {
-        assert!(self.cur_pipeline.is_some());
+        assert!(self.cur_pipeline.borrow().is_some());
 
-        let cur_pipeline = self.cur_pipeline.as_ref().unwrap();
+        let cur_pipeline = self.cur_pipeline.borrow();
+        let cur_pipeline = cur_pipeline.as_ref().unwrap();
         let root_signature = cur_pipeline.root_signature();
 
         assert!(&root_signature.definition().push_constant_def.is_some());

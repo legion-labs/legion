@@ -317,6 +317,7 @@ impl TextureManager {
         };
 
         TextureDef {
+            name: "TextureComponent".to_string(), // todo: filename?
             extents: Extents3D {
                 width: texture_component.width,
                 height: texture_component.height,

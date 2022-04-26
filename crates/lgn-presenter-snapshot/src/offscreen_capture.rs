@@ -65,6 +65,7 @@ impl OffscreenHelper {
         let bilinear_sampler = device_context.create_sampler(&sampler_def);
 
         let render_image = device_context.create_texture(&TextureDef {
+            name: "Offscreen".to_string(),
             extents: Extents3D {
                 width: resolution.width(),
                 height: resolution.height(),
@@ -85,6 +86,7 @@ impl OffscreenHelper {
         ));
 
         let copy_image = device_context.create_texture(&TextureDef {
+            name: "Copy".to_string(),
             extents: Extents3D {
                 width: resolution.width(),
                 height: resolution.height(),
@@ -115,7 +117,7 @@ impl OffscreenHelper {
         render_surface: &mut RenderSurface,
         copy_fn: F,
     ) -> anyhow::Result<()> {
-        let mut cmd_buffer = render_context.alloc_command_buffer();
+        let cmd_buffer = render_context.alloc_command_buffer();
         let render_texture = &self.render_image;
         let render_texture_rtv = &self.render_image_rtv;
         let copy_texture = &self.copy_image;

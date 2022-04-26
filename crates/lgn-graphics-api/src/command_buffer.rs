@@ -95,6 +95,15 @@ impl CommandBuffer {
             .store(false, Ordering::Relaxed);
     }
 
+    pub fn with_label<F>(&self, label: &str, f: F)
+    where
+        F: FnOnce(),
+    {
+        self.inner.device_context.begin_label(self, label);
+        f();
+        self.inner.device_context.end_label(self);
+    }
+
     pub fn cmd_set_viewport(
         &self,
         x: f32,
@@ -270,7 +279,7 @@ impl CommandBuffer {
             !self.inner.has_active_renderpass.load(Ordering::Relaxed),
             "cmd_resource_barrier may not be called if inside render pass"
         );
-        self.backedn_cmd_resource_barrier(buffer_barriers, texture_barriers);
+        self.backend_cmd_resource_barrier(buffer_barriers, texture_barriers);
     }
 
     pub fn cmd_fill_buffer(&self, dst_buffer: &Buffer, offset: u64, size: u64, data: u32) {

@@ -71,20 +71,14 @@ type = "docker"
 allow-aws-ecr-creation = true
 extra-files = [
     { source = "nvidia_icd.json", destination = "/etc/vulkan/icd.d/" },
+    { source = "10_nvidia.json", destination = "/usr/share/glvnd/egl_vendor.d/" },
 ]
 target-bin-dir = "/usr/src/app"
 template = '''
 FROM ubuntu:20.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget ca-certificates \
-    unzip \
-    gnupg \
-    libx11-xcb-dev \
-    libxkbcommon-dev \
-    libwayland-dev \
-    libxrandr-dev \
-    libegl1-mesa-dev
+    wget ca-certificates unzip gnupg
 
 RUN wget -qO lunarg-signing-key-pub.asc https://packages.lunarg.com/lunarg-signing-key-pub.asc && \
     apt-key add lunarg-signing-key-pub.asc && \
@@ -93,17 +87,6 @@ RUN wget -qO lunarg-signing-key-pub.asc https://packages.lunarg.com/lunarg-signi
     apt-get install -y --no-install-recommends vulkan-sdk && \
     echo "/usr/lib/dxc" | tee -a /etc/ld.so.conf.d/dxc.conf && \
     ldconfig
-
-RUN wget -qO /tmp/driver.zip https://s3.amazonaws.com/nvidia-gaming/linux/vGPUSW-495.50-Nov2021-vGaming-Linux-Guest-Drivers.zip && \
-    unzip /tmp/driver.zip -d /tmp/driver && \
-    chmod u+x /tmp/driver/Linux/NVIDIA-Linux-x86_64-495.50-grid.run && \
-    cd /tmp/driver && ./Linux/NVIDIA-Linux-x86_64-495.50-grid.run -s --extract-only && \
-    cp -r /tmp/driver/NVIDIA-Linux-x86_64-495.50-grid/lib* /usr/lib/x86_64-linux-gnu/ && \
-    rm -rf /tmp/driver* && \
-    cd /usr/lib/x86_64-linux-gnu && \
-    ln -s libcuda.so.495.50 libcuda.so.1 && ln -s libcuda.so.1 libcuda.so && \
-    ln -s libnvidia-encode.so.495.50 libnvidia-encode.so.1 && ln -s libnvidia-encode.so.1 libnvidia-encode.so && \
-    ln -s libnvcuvid.so.495.50 libnvcuvid.so.1 && ln -s libnvcuvid.so.1 libnvcuvid.so
     
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,graphics,video,utility

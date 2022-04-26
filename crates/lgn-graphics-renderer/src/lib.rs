@@ -59,7 +59,6 @@ pub mod shared;
 
 mod renderdoc;
 
-use crate::core::RendererThreadPlugin;
 use crate::features::mesh_feature::MeshFeaturePlugin;
 use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
 use crate::render_pass::TmpRenderPass;
@@ -81,7 +80,6 @@ use lgn_app::{App, CoreStage, Events, Plugin};
 
 use lgn_ecs::prelude::*;
 use lgn_math::{const_vec3, Vec3};
-use lgn_tracing::span_fn;
 use lgn_transform::components::GlobalTransform;
 use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 
@@ -222,7 +220,6 @@ impl Plugin for RendererPlugin {
         // Plugins are optional
         app.add_plugin(EguiPlugin::default());
         app.add_plugin(PickingPlugin {});
-        app.add_plugin(RendererThreadPlugin {});
         app.add_plugin(MeshFeaturePlugin::default());
         app.add_plugin(RenderDocPlugin {});
 
@@ -272,15 +269,8 @@ impl Plugin for RendererPlugin {
         //
         app.add_system_to_stage(
             RenderStage::Render,
-            render_begin.exclusive_system().at_start(),
-        );
-
-        app.add_system_to_stage(
-            RenderStage::Render,
             render_update.label(CommandBufferLabel::Generate),
         );
-
-        app.add_system_to_stage(RenderStage::Render, render_end.exclusive_system().at_end());
     }
 }
 
@@ -380,12 +370,6 @@ fn prepare_shaders(mut pipeline_manager: ResMut<'_, PipelineManager>) {
     pipeline_manager.update();
 }
 
-#[span_fn]
-#[allow(clippy::needless_pass_by_value)]
-fn render_begin(mut egui_manager: ResMut<'_, Egui>) {
-    crate::egui::egui_plugin::end_frame(&mut egui_manager);
-}
-
 #[allow(
     clippy::needless_pass_by_value,
     clippy::too_many_arguments,
@@ -393,17 +377,17 @@ fn render_begin(mut egui_manager: ResMut<'_, Egui>) {
 )]
 fn render_update(
     resources: (
-        Res<'_, Renderer>,
+        ResMut<'_, Renderer>,
         Res<'_, TextureManager>, // unused
         Res<'_, PipelineManager>,
-        Res<'_, MeshRenderer>,
+        ResMut<'_, MeshRenderer>,
         Res<'_, MeshManager>,
         Res<'_, PickingManager>,
         Res<'_, GpuInstanceManager>,
-        Res<'_, Egui>,
-        Res<'_, DebugDisplay>,
+        ResMut<'_, Egui>,
+        ResMut<'_, DebugDisplay>,
         Res<'_, LightingManager>,
-        Res<'_, DescriptorHeapManager>,
+        ResMut<'_, DescriptorHeapManager>,
         Res<'_, PersistentDescriptorSetManager>,
         Res<'_, ModelManager>,
     ),
@@ -416,17 +400,17 @@ fn render_update(
     ),
 ) {
     // resources
-    let renderer = resources.0;
+    let mut renderer = resources.0;
     // let bindless_texture_manager = resources.1;
     let pipeline_manager = resources.2;
-    let mesh_renderer = resources.3;
+    let mut mesh_renderer = resources.3;
     let mesh_manager = resources.4;
     let picking_manager = resources.5;
     let instance_manager = resources.6;
-    let egui = resources.7;
-    let debug_display = resources.8;
+    let mut egui = resources.7;
+    let mut debug_display = resources.8;
     let lighting_manager = resources.9;
-    let descriptor_heap_manager = resources.10;
+    let mut descriptor_heap_manager = resources.10;
     let persistent_descriptor_set_manager = resources.11;
     let model_manager = resources.12;
 
@@ -437,214 +421,215 @@ fn render_update(
     let q_lights = queries.3;
     let q_cameras = queries.4;
 
-    // start
-    let mut render_context =
-        RenderContext::new(&renderer, &descriptor_heap_manager, &pipeline_manager);
-    let q_picked_drawables = q_picked_drawables
-        .iter()
-        .collect::<Vec<(&VisualComponent, &GlobalTransform)>>();
-    let q_manipulator_drawables = q_manipulator_drawables
-        .iter()
-        .collect::<Vec<(&GlobalTransform, &ManipulatorComponent)>>();
-    let q_lights = q_lights
-        .iter()
-        .collect::<Vec<(&LightComponent, &GlobalTransform)>>();
-
-    let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
-    let default_camera = CameraComponent::default();
-    let camera_component = if !q_cameras.is_empty() {
-        q_cameras[0]
-    } else {
-        &default_camera
-    };
-
-    renderer.flush_update_jobs(&render_context);
-
-    // Persistent descriptor set
+    // << render_begin
     {
-        let descriptor_set = persistent_descriptor_set_manager.descriptor_set();
-        render_context
-            .set_persistent_descriptor_set(descriptor_set.layout(), *descriptor_set.handle());
+        crate::egui::egui_plugin::end_frame(&mut egui);
     }
+    // >>< render_begin
 
-    // Frame descriptor set
+    // << render_update
     {
-        let mut frame_descriptor_set = cgen::descriptor_set::FrameDescriptorSet::default();
+        // start
+        let mut render_context =
+            RenderContext::new(&renderer, &descriptor_heap_manager, &pipeline_manager);
+        let q_picked_drawables = q_picked_drawables
+            .iter()
+            .collect::<Vec<(&VisualComponent, &GlobalTransform)>>();
+        let q_manipulator_drawables = q_manipulator_drawables
+            .iter()
+            .collect::<Vec<(&GlobalTransform, &ManipulatorComponent)>>();
+        let q_lights = q_lights
+            .iter()
+            .collect::<Vec<(&LightComponent, &GlobalTransform)>>();
 
-        let lighting_manager_view = render_context
-            .transient_buffer_allocator()
-            .copy_data(&lighting_manager.gpu_data(), ResourceUsage::AS_CONST_BUFFER)
-            .create_const_buffer_view();
-        frame_descriptor_set.set_lighting_data(&lighting_manager_view);
-
-        // TODO(vdbdd): we need a light manager that stores those views instead of creating them ono each update
-        let omni_lights_buffer_view =
-            renderer.omnidirectional_lights_data_create_structured_buffer_view();
-        frame_descriptor_set.set_omni_directional_lights(&omni_lights_buffer_view);
-
-        let directionnal_lights_buffer_view =
-            renderer.directional_lights_data_create_structured_buffer_view();
-        frame_descriptor_set.set_directional_lights(&directionnal_lights_buffer_view);
-
-        let spot_lights_buffer_view = renderer.spotlights_data_create_structured_buffer_view();
-        frame_descriptor_set.set_spot_lights(&spot_lights_buffer_view);
-
-        let static_buffer_ro_view = renderer.static_buffer_ro_view();
-        frame_descriptor_set.set_static_buffer(&static_buffer_ro_view);
-
-        let va_table_address_buffer =
-            instance_manager.create_structured_buffer_view(std::mem::size_of::<u32>() as u64, true);
-        frame_descriptor_set.set_va_table_address_buffer(&va_table_address_buffer);
-
-        let sampler_def = SamplerDef {
-            min_filter: FilterType::Linear,
-            mag_filter: FilterType::Linear,
-            mip_map_mode: MipMapMode::Linear,
-            address_mode_u: AddressMode::ClampToEdge,
-            address_mode_v: AddressMode::ClampToEdge,
-            address_mode_w: AddressMode::ClampToEdge,
-            mip_lod_bias: 0.0,
-            max_anisotropy: 1.0,
-            compare_op: CompareOp::LessOrEqual,
+        let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
+        let default_camera = CameraComponent::default();
+        let camera_component = if !q_cameras.is_empty() {
+            q_cameras[0]
+        } else {
+            &default_camera
         };
-        let material_sampler = renderer.device_context().create_sampler(&sampler_def);
-        frame_descriptor_set.set_material_sampler(&material_sampler);
 
-        let frame_descriptor_set_handle = render_context.write_descriptor_set(
-            cgen::descriptor_set::FrameDescriptorSet::descriptor_set_layout(),
-            frame_descriptor_set.descriptor_refs(),
-        );
+        renderer.flush_update_jobs(&render_context);
 
-        render_context.set_frame_descriptor_set(
-            cgen::descriptor_set::FrameDescriptorSet::descriptor_set_layout(),
-            frame_descriptor_set_handle,
-        );
-    }
-
-    // For each surface/view, we have to execute the render graph
-    for mut render_surface in q_render_surfaces.iter_mut() {
-        // View descriptor set
+        // Persistent descriptor set
         {
-            let mut screen_rect = picking_manager.screen_rect();
-            if screen_rect.x == 0.0 || screen_rect.y == 0.0 {
-                screen_rect = Vec2::new(
+            let descriptor_set = persistent_descriptor_set_manager.descriptor_set();
+            render_context
+                .set_persistent_descriptor_set(descriptor_set.layout(), *descriptor_set.handle());
+        }
+
+        // Frame descriptor set
+        {
+            let mut frame_descriptor_set = cgen::descriptor_set::FrameDescriptorSet::default();
+
+            let lighting_manager_view = render_context
+                .transient_buffer_allocator()
+                .copy_data(&lighting_manager.gpu_data(), ResourceUsage::AS_CONST_BUFFER)
+                .create_const_buffer_view();
+            frame_descriptor_set.set_lighting_data(&lighting_manager_view);
+
+            // TODO(vdbdd): we need a light manager that stores those views instead of creating them ono each update
+            let omni_lights_buffer_view =
+                renderer.omnidirectional_lights_data_create_structured_buffer_view();
+            frame_descriptor_set.set_omni_directional_lights(&omni_lights_buffer_view);
+
+            let directionnal_lights_buffer_view =
+                renderer.directional_lights_data_create_structured_buffer_view();
+            frame_descriptor_set.set_directional_lights(&directionnal_lights_buffer_view);
+
+            let spot_lights_buffer_view = renderer.spotlights_data_create_structured_buffer_view();
+            frame_descriptor_set.set_spot_lights(&spot_lights_buffer_view);
+
+            let static_buffer_ro_view = renderer.static_buffer_ro_view();
+            frame_descriptor_set.set_static_buffer(&static_buffer_ro_view);
+
+            let va_table_address_buffer = instance_manager
+                .create_structured_buffer_view(std::mem::size_of::<u32>() as u64, true);
+            frame_descriptor_set.set_va_table_address_buffer(&va_table_address_buffer);
+
+            let sampler_def = SamplerDef {
+                min_filter: FilterType::Linear,
+                mag_filter: FilterType::Linear,
+                mip_map_mode: MipMapMode::Linear,
+                address_mode_u: AddressMode::ClampToEdge,
+                address_mode_v: AddressMode::ClampToEdge,
+                address_mode_w: AddressMode::ClampToEdge,
+                mip_lod_bias: 0.0,
+                max_anisotropy: 1.0,
+                compare_op: CompareOp::LessOrEqual,
+            };
+            let material_sampler = renderer.device_context().create_sampler(&sampler_def);
+            frame_descriptor_set.set_material_sampler(&material_sampler);
+
+            let frame_descriptor_set_handle = render_context.write_descriptor_set(
+                cgen::descriptor_set::FrameDescriptorSet::descriptor_set_layout(),
+                frame_descriptor_set.descriptor_refs(),
+            );
+
+            render_context.set_frame_descriptor_set(
+                cgen::descriptor_set::FrameDescriptorSet::descriptor_set_layout(),
+                frame_descriptor_set_handle,
+            );
+        }
+
+        // For each surface/view, we have to execute the render graph
+        for mut render_surface in q_render_surfaces.iter_mut() {
+            // View descriptor set
+            {
+                let mut screen_rect = picking_manager.screen_rect();
+                if screen_rect.x == 0.0 || screen_rect.y == 0.0 {
+                    screen_rect = Vec2::new(
+                        render_surface.extents().width() as f32,
+                        render_surface.extents().height() as f32,
+                    );
+                }
+
+                let cursor_pos = picking_manager.current_cursor_pos();
+
+                let view_data = camera_component.tmp_build_view_data(
                     render_surface.extents().width() as f32,
                     render_surface.extents().height() as f32,
+                    screen_rect.x,
+                    screen_rect.y,
+                    cursor_pos.x,
+                    cursor_pos.y,
+                );
+
+                let sub_allocation = render_context
+                    .transient_buffer_allocator()
+                    .copy_data(&view_data, ResourceUsage::AS_CONST_BUFFER);
+
+                let const_buffer_view = sub_allocation.create_const_buffer_view();
+
+                let mut view_descriptor_set = cgen::descriptor_set::ViewDescriptorSet::default();
+                view_descriptor_set.set_view_data(&const_buffer_view);
+
+                view_descriptor_set
+                    .set_hzb_texture(render_surface.get_hzb_surface().hzb_srv_view());
+
+                let view_descriptor_set_handle = render_context.write_descriptor_set(
+                    cgen::descriptor_set::ViewDescriptorSet::descriptor_set_layout(),
+                    view_descriptor_set.descriptor_refs(),
+                );
+
+                render_context.set_view_descriptor_set(
+                    cgen::descriptor_set::ViewDescriptorSet::descriptor_set_layout(),
+                    view_descriptor_set_handle,
                 );
             }
 
-            let cursor_pos = picking_manager.current_cursor_pos();
-
-            let view_data = camera_component.tmp_build_view_data(
-                render_surface.extents().width() as f32,
-                render_surface.extents().height() as f32,
-                screen_rect.x,
-                screen_rect.y,
-                cursor_pos.x,
-                cursor_pos.y,
-            );
-
-            let sub_allocation = render_context
-                .transient_buffer_allocator()
-                .copy_data(&view_data, ResourceUsage::AS_CONST_BUFFER);
-
-            let const_buffer_view = sub_allocation.create_const_buffer_view();
-
-            let mut view_descriptor_set = cgen::descriptor_set::ViewDescriptorSet::default();
-            view_descriptor_set.set_view_data(&const_buffer_view);
-
-            view_descriptor_set.set_hzb_texture(render_surface.get_hzb_surface().hzb_srv_view());
-
-            let view_descriptor_set_handle = render_context.write_descriptor_set(
-                cgen::descriptor_set::ViewDescriptorSet::descriptor_set_layout(),
-                view_descriptor_set.descriptor_refs(),
-            );
-
-            render_context.set_view_descriptor_set(
-                cgen::descriptor_set::ViewDescriptorSet::descriptor_set_layout(),
-                view_descriptor_set_handle,
-            );
-        }
-
-        mesh_renderer.gen_occlusion_and_cull(
-            &render_context,
-            &mut render_surface,
-            &instance_manager,
-        );
-
-        let mut cmd_buffer = render_context.alloc_command_buffer();
-        cmd_buffer.bind_index_buffer(&renderer.static_buffer().index_buffer_binding());
-        cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
-
-        let picking_pass = render_surface.picking_renderpass();
-        let mut picking_pass = picking_pass.write();
-        picking_pass.render(
-            &picking_manager,
-            &render_context,
-            &mut cmd_buffer,
-            render_surface.as_mut(),
-            &instance_manager,
-            q_manipulator_drawables.as_slice(),
-            q_lights.as_slice(),
-            &mesh_manager,
-            camera_component,
-            &mesh_renderer,
-        );
-
-        TmpRenderPass::render(
-            &render_context,
-            &mut cmd_buffer,
-            render_surface.as_mut(),
-            &mesh_renderer,
-        );
-
-        let debug_renderpass = render_surface.debug_renderpass();
-        let debug_renderpass = debug_renderpass.write();
-        debug_renderpass.render(
-            &render_context,
-            &mut cmd_buffer,
-            render_surface.as_mut(),
-            q_picked_drawables.as_slice(),
-            q_manipulator_drawables.as_slice(),
-            camera_component,
-            &mesh_manager,
-            &model_manager,
-            &debug_display,
-        );
-
-        if egui.is_enabled() {
-            let egui_pass = render_surface.egui_renderpass();
-            let mut egui_pass = egui_pass.write();
-            egui_pass.update_font_texture(&render_context, &cmd_buffer, egui.ctx());
-            egui_pass.render(
+            mesh_renderer.gen_occlusion_and_cull(
                 &render_context,
-                &mut cmd_buffer,
-                render_surface.as_mut(),
-                &egui,
+                &mut render_surface,
+                &instance_manager,
             );
-        }
 
-        // queue
-        let present_sema = render_surface.acquire();
-        {
-            let graphics_queue = render_context.graphics_queue();
-            graphics_queue.submit(&mut [cmd_buffer.finalize()], &[present_sema], &[], None);
+            let cmd_buffer = render_context.alloc_command_buffer();
+            cmd_buffer.bind_index_buffer(&renderer.static_buffer().index_buffer_binding());
+            cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
 
-            render_surface.present(&render_context);
+            let picking_pass = render_surface.picking_renderpass();
+            let mut picking_pass = picking_pass.write();
+            picking_pass.render(
+                &picking_manager,
+                &render_context,
+                &cmd_buffer,
+                render_surface.as_mut(),
+                &instance_manager,
+                q_manipulator_drawables.as_slice(),
+                q_lights.as_slice(),
+                &mesh_manager,
+                camera_component,
+                &mesh_renderer,
+            );
+
+            TmpRenderPass::render(
+                &render_context,
+                &cmd_buffer,
+                render_surface.as_mut(),
+                &mesh_renderer,
+            );
+
+            let debug_renderpass = render_surface.debug_renderpass();
+            let debug_renderpass = debug_renderpass.write();
+            debug_renderpass.render(
+                &render_context,
+                &cmd_buffer,
+                render_surface.as_mut(),
+                q_picked_drawables.as_slice(),
+                q_manipulator_drawables.as_slice(),
+                camera_component,
+                &mesh_manager,
+                &model_manager,
+                &debug_display,
+            );
+
+            if egui.is_enabled() {
+                let egui_pass = render_surface.egui_renderpass();
+                let mut egui_pass = egui_pass.write();
+                egui_pass.update_font_texture(&render_context, &cmd_buffer, egui.ctx());
+                egui_pass.render(&render_context, &cmd_buffer, render_surface.as_mut(), &egui);
+            }
+
+            // queue
+            let present_sema = render_surface.acquire();
+            {
+                let graphics_queue = render_context.graphics_queue();
+                graphics_queue.submit(&mut [cmd_buffer.finalize()], &[present_sema], &[], None);
+
+                render_surface.present(&render_context);
+            }
         }
     }
-}
 
-#[allow(clippy::needless_pass_by_value)]
-fn render_end(
-    mut renderer: ResMut<'_, Renderer>,
-    mut debug_display: ResMut<'_, DebugDisplay>,
-    mut descriptor_heap_manager: ResMut<'_, DescriptorHeapManager>,
-    mut mesh_renderer: ResMut<'_, MeshRenderer>,
-) {
-    descriptor_heap_manager.end_frame();
-    debug_display.end_frame();
-    renderer.end_frame();
+    // << render_end
+    {
+        descriptor_heap_manager.end_frame();
+        debug_display.end_frame();
+        renderer.end_frame();
+        mesh_renderer.render_end();
+    }
 
-    mesh_renderer.render_end();
+    // >> render_end
 }

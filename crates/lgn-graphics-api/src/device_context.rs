@@ -12,11 +12,11 @@ use raw_window_handle::HasRawWindowHandle;
 use super::deferred_drop::DeferredDropper;
 use crate::backends::BackendDeviceContext;
 use crate::{
-    ApiDef, Buffer, BufferDef, ComputePipelineDef, DescriptorHeap, DescriptorHeapDef,
-    DescriptorSetLayout, DescriptorSetLayoutDef, ExtensionMode, Fence, GfxResult,
-    GraphicsPipelineDef, Instance, Pipeline, Queue, QueueType, RootSignature, RootSignatureDef,
-    Sampler, SamplerDef, Semaphore, SemaphoreDef, Shader, ShaderModule, ShaderModuleDef,
-    ShaderStageDef, Swapchain, SwapchainDef, Texture, TextureDef,
+    ApiDef, Buffer, BufferDef, CommandBuffer, ComputePipelineDef, DescriptorHeap,
+    DescriptorHeapDef, DescriptorSetLayout, DescriptorSetLayoutDef, ExtensionMode, Fence,
+    GfxResult, GraphicsPipelineDef, Instance, Pipeline, Queue, QueueType, RootSignature,
+    RootSignatureDef, Sampler, SamplerDef, Semaphore, SemaphoreDef, Shader, ShaderModule,
+    ShaderModuleDef, ShaderStageDef, Swapchain, SwapchainDef, Texture, TextureDef,
 };
 
 /// Used to specify which type of physical device is preferred. It's recommended
@@ -234,11 +234,15 @@ impl DeviceContext {
     }
 
     pub fn create_texture(&self, texture_def: &TextureDef) -> Texture {
-        Texture::new(self, texture_def)
+        let texture = Texture::new(self, texture_def);
+        self.set_texture_name(&texture, &texture_def.name);
+        texture
     }
 
     pub fn create_buffer(&self, buffer_def: &BufferDef) -> Buffer {
-        Buffer::new(self, buffer_def)
+        let buffer = Buffer::new(self, buffer_def);
+        self.set_buffer_name(&buffer, &buffer_def.name);
+        buffer
     }
 
     pub fn create_shader(&self, stages: Vec<ShaderStageDef>) -> Shader {
@@ -302,6 +306,28 @@ impl DeviceContext {
 
     pub fn current_cpu_frame(&self) -> u64 {
         self.inner.current_cpu_frame.load(Ordering::Relaxed)
+    }
+
+    pub fn set_texture_name(&self, texture: &Texture, name: &str) {
+        self.inner
+            .backend_device_context
+            .set_texture_name(texture, name);
+    }
+
+    pub fn set_buffer_name(&self, buffer: &Buffer, name: &str) {
+        self.inner
+            .backend_device_context
+            .set_buffer_name(buffer, name);
+    }
+
+    pub fn begin_label(&self, command_buffer: &CommandBuffer, label: &str) {
+        self.inner
+            .backend_device_context
+            .begin_label(command_buffer, label);
+    }
+
+    pub fn end_label(&self, command_buffer: &CommandBuffer) {
+        self.inner.backend_device_context.end_label(command_buffer);
     }
 }
 

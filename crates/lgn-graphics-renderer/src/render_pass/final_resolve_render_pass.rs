@@ -43,57 +43,59 @@ impl FinalResolveRenderPass {
         &self,
         render_context: &RenderContext<'_>,
         render_surface: &mut RenderSurface,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &HLCommandBuffer<'_>,
         resolve_rtv: &TextureView,
     ) {
-        let pipeline = render_context
-            .pipeline_manager()
-            .get_pipeline(self.pipeline_handle)
-            .unwrap();
+        cmd_buffer.with_label("Final resolve", || {
+            let pipeline = render_context
+                .pipeline_manager()
+                .get_pipeline(self.pipeline_handle)
+                .unwrap();
 
-        cmd_buffer.bind_pipeline(pipeline);
+            cmd_buffer.bind_pipeline(pipeline);
 
-        render_surface
-            .hdr_rt_mut()
-            .transition_to(cmd_buffer, ResourceState::SHADER_RESOURCE);
+            render_surface
+                .hdr_rt_mut()
+                .transition_to(cmd_buffer, ResourceState::SHADER_RESOURCE);
 
-        let mut descriptor_set = cgen::descriptor_set::FinalResolveDescriptorSet::default();
-        descriptor_set.set_linear_texture(render_surface.hdr_rt().srv());
-        descriptor_set.set_linear_sampler(&self.linear_sampler);
+            let mut descriptor_set = cgen::descriptor_set::FinalResolveDescriptorSet::default();
+            descriptor_set.set_linear_texture(render_surface.hdr_rt().srv());
+            descriptor_set.set_linear_sampler(&self.linear_sampler);
 
-        let descriptor_set_handle = render_context.write_descriptor_set(
-            cgen::descriptor_set::FinalResolveDescriptorSet::descriptor_set_layout(),
-            descriptor_set.descriptor_refs(),
-        );
-        cmd_buffer.bind_descriptor_set(
-            cgen::descriptor_set::FinalResolveDescriptorSet::descriptor_set_layout(),
-            descriptor_set_handle,
-        );
+            let descriptor_set_handle = render_context.write_descriptor_set(
+                cgen::descriptor_set::FinalResolveDescriptorSet::descriptor_set_layout(),
+                descriptor_set.descriptor_refs(),
+            );
+            cmd_buffer.bind_descriptor_set(
+                cgen::descriptor_set::FinalResolveDescriptorSet::descriptor_set_layout(),
+                descriptor_set_handle,
+            );
 
-        #[rustfmt::skip]
+            #[rustfmt::skip]
             let vertex_data: [f32; 12] = [0.0, 2.0, 0.0, 2.0,
                                           2.0, 0.0, 2.0, 0.0,
                                           0.0, 0.0, 0.0, 0.0];
 
-        let sub_allocation = render_context
-            .transient_buffer_allocator()
-            .copy_data_slice(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
+            let sub_allocation = render_context
+                .transient_buffer_allocator()
+                .copy_data_slice(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
 
-        cmd_buffer.bind_buffer_suballocation_as_vertex_buffer(0, &sub_allocation);
+            cmd_buffer.bind_buffer_suballocation_as_vertex_buffer(0, &sub_allocation);
 
-        cmd_buffer.begin_render_pass(
-            &[ColorRenderTargetBinding {
-                texture_view: resolve_rtv,
-                load_op: LoadOp::DontCare,
-                store_op: StoreOp::Store,
-                clear_value: ColorClearValue([0.0; 4]),
-            }],
-            &None,
-        );
+            cmd_buffer.begin_render_pass(
+                &[ColorRenderTargetBinding {
+                    texture_view: resolve_rtv,
+                    load_op: LoadOp::DontCare,
+                    store_op: StoreOp::Store,
+                    clear_value: ColorClearValue([0.0; 4]),
+                }],
+                &None,
+            );
 
-        cmd_buffer.draw(3, 0);
+            cmd_buffer.draw(3, 0);
 
-        cmd_buffer.end_render_pass();
+            cmd_buffer.end_render_pass();
+        });
     }
 }
 

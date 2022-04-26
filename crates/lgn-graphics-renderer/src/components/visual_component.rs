@@ -2,7 +2,7 @@ use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::Color;
 
-use crate::core::render_object::RenderObjectHandle;
+use crate::core::RenderObjectHandle;
 
 #[derive(Component)]
 pub struct VisualComponent {

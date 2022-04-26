@@ -4,8 +4,9 @@ use crate::{
 };
 
 /// Used to create a `Buffer`
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct BufferDef {
+    pub name: String,
     pub size: u64,
     pub usage_flags: ResourceUsage,
     pub creation_flags: ResourceCreation,
@@ -14,6 +15,7 @@ pub struct BufferDef {
 impl Default for BufferDef {
     fn default() -> Self {
         Self {
+            name: "Default".to_string(),
             size: 0,
             usage_flags: ResourceUsage::empty(),
             creation_flags: ResourceCreation::empty(),
@@ -31,6 +33,7 @@ impl BufferDef {
 
     pub fn for_staging_buffer(size: usize, usage_flags: ResourceUsage) -> Self {
         Self {
+            name: "Staging Buffer".to_string(),
             size: size as u64,
             usage_flags,
             creation_flags: ResourceCreation::empty(),
@@ -91,7 +94,7 @@ impl Buffer {
         Self {
             inner: device_context.deferred_dropper().new_drc(BufferInner {
                 device_context: device_context.clone(),
-                buffer_def: *buffer_def,
+                buffer_def: buffer_def.clone(),
                 backend_buffer: platform_buffer,
             }),
         }
