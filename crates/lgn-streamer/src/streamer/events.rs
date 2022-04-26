@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use anyhow::bail;
 use lgn_input::{
+    gamepad::{Gamepad, GamepadAxisType, GamepadButtonType, GamepadEventRaw, GamepadEventType},
     keyboard::KeyboardInput,
     mouse::{MouseButton, MouseButtonInput, MouseWheel},
     touch::TouchInput,
@@ -117,6 +118,73 @@ pub struct MouseMotion {
     pub delta: Vec2,
 }
 
+/// Gamepad connection
+#[derive(Debug, Deserialize)]
+pub struct GamepadConnection {
+    pub pad_id: usize,
+}
+
+impl From<&GamepadConnection> for GamepadEventRaw {
+    fn from(gamepad_connection: &GamepadConnection) -> Self {
+        Self(
+            Gamepad(gamepad_connection.pad_id),
+            GamepadEventType::Connected,
+        )
+    }
+}
+
+/// Gamepad disconnection
+#[derive(Debug, Deserialize)]
+pub struct GamepadDisconnection {
+    pub pad_id: usize,
+}
+
+impl From<&GamepadDisconnection> for GamepadEventRaw {
+    fn from(gamepad_disconnection: &GamepadDisconnection) -> Self {
+        Self(
+            Gamepad(gamepad_disconnection.pad_id),
+            GamepadEventType::Disconnected,
+        )
+    }
+}
+
+/// Gamepad button state change
+#[derive(Debug, Deserialize)]
+pub struct GamepadButtonChange {
+    pub pad_id: usize,
+    pub button: GamepadButtonType,
+    pub value: f32,
+}
+
+impl From<&GamepadButtonChange> for GamepadEventRaw {
+    fn from(gamepad_button_change: &GamepadButtonChange) -> Self {
+        Self(
+            Gamepad(gamepad_button_change.pad_id),
+            GamepadEventType::ButtonChanged(
+                gamepad_button_change.button,
+                gamepad_button_change.value,
+            ),
+        )
+    }
+}
+
+/// Gamepad axis state change
+#[derive(Debug, Deserialize)]
+pub struct GamepadAxisChange {
+    pub pad_id: usize,
+    pub axis: GamepadAxisType,
+    pub value: f32,
+}
+
+impl From<&GamepadAxisChange> for GamepadEventRaw {
+    fn from(gamepad_axis_change: &GamepadAxisChange) -> Self {
+        Self(
+            Gamepad(gamepad_axis_change.pad_id),
+            GamepadEventType::AxisChanged(gamepad_axis_change.axis, gamepad_axis_change.value),
+        )
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type")]
 #[allow(clippy::enum_variant_names)]
@@ -126,6 +194,10 @@ pub(crate) enum Input {
     MouseWheel(MouseWheel),
     TouchInput(TouchInput),
     KeyboardInput(KeyboardInput),
+    GamepadConnection(GamepadConnection),
+    GamepadDisconnection(GamepadDisconnection),
+    GamepadButtonChange(GamepadButtonChange),
+    GamepadAxisChange(GamepadAxisChange),
 }
 
 #[derive(Debug, Deserialize)]
