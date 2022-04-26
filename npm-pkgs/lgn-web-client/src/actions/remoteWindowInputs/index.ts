@@ -500,54 +500,56 @@ function createEvents(state: State, element: HTMLElement, onInput: Listener) {
             buttonIndex < newGamepad.buttons.length;
             buttonIndex++
           ) {
-            const button = fromGamepadButtonIndex(buttonIndex);
+            const newButton = newGamepad.buttons[buttonIndex];
+            let valueChanged = false;
+            let pressedChange = false;
 
-            if (button !== null) {
-              const newButton = newGamepad.buttons[buttonIndex];
-              let valueChanged = false;
-              let pressedChange = false;
+            if (oldGamepad !== null) {
+              const oldButton = oldGamepad.buttons[buttonIndex];
 
-              if (oldGamepad !== null) {
-                const oldButton = oldGamepad.buttons[buttonIndex];
+              valueChanged = newButton.value !== oldButton.value;
+              pressedChange = newButton.pressed !== oldButton.pressed;
+            } else {
+              valueChanged = true;
+              pressedChange = true;
+            }
 
-                valueChanged = newButton.value !== oldButton.value;
-                pressedChange = newButton.pressed !== oldButton.pressed;
-              } else {
-                valueChanged = true;
-                pressedChange = true;
-              }
+            if (valueChanged || pressedChange) {
+              const button = fromGamepadButtonIndex(buttonIndex);
 
-              if (valueChanged) {
-                const gamepadButtonChange: GamepadButtonChange = {
-                  type: "GamepadButtonChange",
-                  // eslint-disable-next-line camelcase
-                  pad_id: gamepadIndex,
-                  button: button,
-                  value: newButton.value,
-                };
+              if (button !== null) {
+                if (valueChanged) {
+                  const gamepadButtonChange: GamepadButtonChange = {
+                    type: "GamepadButtonChange",
+                    // eslint-disable-next-line camelcase
+                    pad_id: gamepadIndex,
+                    button: button,
+                    value: newButton.value,
+                  };
 
-                log.debug(
-                  logLabel,
-                  log.json`Gamepad button change ${gamepadButtonChange}`
-                );
+                  log.debug(
+                    logLabel,
+                    log.json`Gamepad button change ${gamepadButtonChange}`
+                  );
 
-                onInput(gamepadButtonChange);
-              } else if (pressedChange) {
-                const value = newButton.pressed ? 1.0 : 0.0;
-                const gamepadButtonChange: GamepadButtonChange = {
-                  type: "GamepadButtonChange",
-                  // eslint-disable-next-line camelcase
-                  pad_id: gamepadIndex,
-                  button: button,
-                  value: value,
-                };
+                  onInput(gamepadButtonChange);
+                } else if (pressedChange) {
+                  const value = newButton.pressed ? 1.0 : 0.0;
+                  const gamepadButtonChange: GamepadButtonChange = {
+                    type: "GamepadButtonChange",
+                    // eslint-disable-next-line camelcase
+                    pad_id: gamepadIndex,
+                    button: button,
+                    value: value,
+                  };
 
-                log.debug(
-                  logLabel,
-                  log.json`Gamepad button change ${gamepadButtonChange}`
-                );
+                  log.debug(
+                    logLabel,
+                    log.json`Gamepad button change ${gamepadButtonChange}`
+                  );
 
-                onInput(gamepadButtonChange);
+                  onInput(gamepadButtonChange);
+                }
               }
             }
           }
@@ -557,27 +559,27 @@ function createEvents(state: State, element: HTMLElement, onInput: Listener) {
             axisIndex < newGamepad.axes.length;
             axisIndex++
           ) {
-            const axis = fromGamepadAxisIndex(axisIndex);
+            const newAxis = newGamepad.axes[axisIndex];
+            let valueChanged = false;
 
-            if (axis !== null) {
-              const newAxis = newGamepad.axes[axisIndex];
-              let valueChanged = false;
+            if (oldGamepad !== null) {
+              const oldAxis = oldGamepad.axes[axisIndex];
 
-              if (oldGamepad !== null) {
-                const oldAxis = oldGamepad.axes[axisIndex];
+              valueChanged = newAxis !== oldAxis;
+            } else {
+              valueChanged = true;
+            }
 
-                valueChanged = newAxis !== oldAxis;
-              } else {
-                valueChanged = true;
-              }
+            if (valueChanged) {
+              const axisDescription = fromGamepadAxisIndex(axisIndex);
 
-              if (valueChanged) {
+              if (axisDescription !== null) {
                 const gamepadAxisChange: GamepadAxisChange = {
                   type: "GamepadAxisChange",
                   // eslint-disable-next-line camelcase
                   pad_id: gamepadIndex,
-                  axis: axis,
-                  value: newAxis,
+                  axis: axisDescription.axisType,
+                  value: axisDescription.inverted ? -newAxis : newAxis,
                 };
 
                 log.debug(
