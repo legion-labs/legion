@@ -11,6 +11,7 @@ use lgn_graphics_renderer::{
     Renderer,
 };
 use lgn_input::{
+    gamepad::GamepadEventRaw,
     keyboard::KeyboardInput,
     mouse::{MouseButtonInput, MouseMotion, MouseWheel},
     touch::TouchInput,
@@ -233,6 +234,7 @@ pub(crate) fn update_streams(
     mut input_touch_input: EventWriter<'_, '_, TouchInput>,
     mut input_keyboard_input: EventWriter<'_, '_, KeyboardInput>,
     mut input_cursor_moved: EventWriter<'_, '_, CursorMoved>,
+    mut input_gamepad_events: EventWriter<'_, '_, GamepadEventRaw>,
     mut window_list: ResMut<'_, Windows>,
     mut created_events: ResMut<'_, Events<WindowCreated>>,
     mut resize_events: ResMut<'_, Events<WindowResized>>,
@@ -308,6 +310,18 @@ pub(crate) fn update_streams(
                     }
                     Input::KeyboardInput(keyboard_input) => {
                         input_keyboard_input.send(keyboard_input.clone());
+                    }
+                    Input::GamepadConnection(gamepad_connection) => {
+                        input_gamepad_events.send(gamepad_connection.into());
+                    }
+                    Input::GamepadDisconnection(gamepad_disconnection) => {
+                        input_gamepad_events.send(gamepad_disconnection.into());
+                    }
+                    Input::GamepadButtonChange(gamepad_button_change) => {
+                        input_gamepad_events.send(gamepad_button_change.into());
+                    }
+                    Input::GamepadAxisChange(gamepad_axis_change) => {
+                        input_gamepad_events.send(gamepad_axis_change.into());
                     }
                 }
             }

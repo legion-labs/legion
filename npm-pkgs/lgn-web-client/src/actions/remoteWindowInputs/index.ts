@@ -1,6 +1,7 @@
 import log from "../../lib/log";
 import type { KeyCode } from "./keys";
 import { fromBrowserKey as keyCodeFromBrowserKey } from "./keys";
+import type { GamepadButtonType, GamepadAxisType } from "./gamepad";
 
 const logLabel = "remote window inputs";
 
@@ -98,13 +99,37 @@ export type KeyboardInput = Type<"KeyboardInput"> & {
   state: ElementState;
 };
 
+export type GamepadConnection = Type<"GamepadConnection"> & {
+  pad_id: number;
+};
+
+export type GamepadDisconnection = Type<"GamepadDisconnection"> & {
+  pad_id: number;
+};
+
+export type GamepadButtonChange = Type<"GamepadButtonChange"> & {
+  pad_id: number;
+  button: GamepadButtonType;
+  value: number;
+};
+
+export type GamepadAxisChange = Type<"GamepadAxisChange"> & {
+  pad_id: number;
+  axis: GamepadAxisType;
+  value: number;
+};
+
 /** The Input type union */
 export type RemoteWindowInput =
   | MouseButtonInput
   | MouseMotion
   | MouseWheel
   | TouchInput
-  | KeyboardInput;
+  | KeyboardInput
+  | GamepadConnection
+  | GamepadDisconnection
+  | GamepadButtonChange
+  | GamepadAxisChange;
 
 /** A function passed to the `remotedWindowEvents` action that will be called when an event is dispatched */
 export type Listener = (input: RemoteWindowInput) => void;
@@ -116,6 +141,7 @@ type State = {
   /** Contains the `KeyCode` */
   activeKeys: Set<string>;
   previousMousePosition: Vec2 | null;
+  gamepadIndex: number | null;
 };
 
 function createEvents(state: State, element: HTMLElement, onInput: Listener) {
@@ -427,12 +453,47 @@ function createEvents(state: State, element: HTMLElement, onInput: Listener) {
     onInput(keyboardInput);
   }
 
+  function onGamepadConnected(event: GamepadEvent) {
+    state.gamepadIndex = event.gamepad.index;
+
+    const gamepadConnection: GamepadConnection = {
+      type: "GamepadConnection",
+      // eslint-disable-next-line camelcase
+      pad_id: event.gamepad.index,
+    };
+
+    log.debug(logLabel, log.json`Gamepad connection ${gamepadConnection}`);
+
+    onInput(gamepadConnection);
+  }
+
+  function onGamepadDisconnected(event: GamepadEvent) {
+    if (state.gamepadIndex === event.gamepad.index) {
+      state.gamepadIndex = null;
+    }
+
+    const gamepadDisconnection: GamepadDisconnection = {
+      type: "GamepadDisconnection",
+      // eslint-disable-next-line camelcase
+      pad_id: event.gamepad.index,
+    };
+
+    log.debug(
+      logLabel,
+      log.json`Gamepad disconnection ${gamepadDisconnection}`
+    );
+
+    onInput(gamepadDisconnection);
+  }
+
   return {
     // Window listeners, useful when an event occurs outside
     // the remote window and still has to be sent to the server
     window: {
       onMouseMove,
       onMouseUp,
+      onGamepadConnected,
+      onGamepadDisconnected,
     },
     // Listeners attached to the element
     element: {
@@ -469,6 +530,7 @@ export default function remoteWindowInputs(
     activeTouches: new Set(),
     activeKeys: new Set(),
     previousMousePosition: null,
+    gamepadIndex: null,
   };
 
   const listeners = createEvents(state, element, onInput);
@@ -476,6 +538,16 @@ export default function remoteWindowInputs(
   window.addEventListener("mousemove", listeners.window.onMouseMove);
 
   window.addEventListener("mouseup", listeners.window.onMouseUp);
+
+  window.addEventListener(
+    "gamepadconnected",
+    listeners.window.onGamepadConnected
+  );
+
+  window.addEventListener(
+    "gamepaddisconnected",
+    listeners.window.onGamepadDisconnected
+  );
 
   element.addEventListener("contextmenu", listeners.element.onContextMenu);
 
