@@ -283,13 +283,13 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background-color: #c4baba;
+    background-color: #454545;
     border-radius: 20px;
     border: 6px solid transparent;
     background-clip: content-box;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background-color: #9e9696;
+    background-color: #707070;
   }
 </style>
