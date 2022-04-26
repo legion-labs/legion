@@ -38,25 +38,31 @@ message NodeStats {
   uint64 count = 6;
 }
 
-// Old : client side block streaming
+// Manifest
 message CumulativeCallGraphManifestRequest {
   string process_id = 1;
   double begin_ms = 2;
   double end_ms = 3;
 }
 
+message CumulativeCallGraphManifest {
+  repeated CumulativeCallGraphBlockDesc blocks = 1;
+  uint64 tsc_frequency = 2;
+  int64 start_ticks = 3;
+}
+
+message CumulativeCallGraphBlockDesc {
+  string id = 1;
+  bool full = 2;
+}
+
+// Old : client side block streaming
 message CumulativeCallGraphBlockRequest {
   string block_id = 1;
   double begin_ms = 2;
   double end_ms = 3;
   uint64 tsc_frequency = 4;
   int64 start_ticks = 5;
-}
-
-message CumulativeCallGraphManifest {
-  repeated string blocks = 1;
-  uint64 tsc_frequency = 2;
-  int64 start_ticks = 3;
 }
 
 message CumulativeCallGraphBlock {

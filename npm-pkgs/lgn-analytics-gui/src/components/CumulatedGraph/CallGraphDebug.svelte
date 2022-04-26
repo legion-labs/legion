@@ -20,10 +20,10 @@
         {scope.name} ({scope.hash})
       </div>
     {/each}
-    <div class="font-semibold">Blocks</div>
-    {#each Object.values($store.cache) as block (block.streamHash)}
+    <div class="font-semibold">Cache</div>
+    {#each Array.from($store.cache) as [k, v] (k)}
       <div>
-        {block.streamName} ({block.streamHash})
+        {v.streamName} ({v.streamHash})
       </div>
     {/each}
   </div>

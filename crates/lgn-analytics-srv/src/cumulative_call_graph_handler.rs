@@ -4,12 +4,12 @@ use std::sync::Arc;
 
 use lgn_analytics::{
     find_block_stream, find_process, find_process_thread_streams, find_stream_blocks_in_range,
-    time::ConvertTicks,
+    prelude::get_process_tick_length_ms, time::ConvertTicks,
 };
 use lgn_telemetry_proto::{
     analytics::{
-        CallTreeNode, CumulativeCallGraphBlock, CumulativeCallGraphComputedBlock,
-        CumulativeCallGraphManifest,
+        CallTreeNode, CumulativeCallGraphBlock, CumulativeCallGraphBlockDesc,
+        CumulativeCallGraphComputedBlock, CumulativeCallGraphManifest,
     },
     telemetry::Process,
 };
@@ -36,6 +36,7 @@ impl CumulativeCallGraphHandler {
     }
 
     #[span_fn]
+    #[allow(clippy::cast_precision_loss)]
     pub(crate) async fn get_process_call_graph_manifest(
         &self,
         process_id: String,
@@ -50,17 +51,28 @@ impl CumulativeCallGraphHandler {
         let begin = time_range.0.to_rfc3339();
         let end = time_range.1.to_rfc3339();
 
-        let mut block_ids = vec![];
+        let mut block_desc: Vec<CumulativeCallGraphBlockDesc> = vec![];
+
+        let inv_tsc_frequency = get_process_tick_length_ms(&process);
 
         let streams = find_process_thread_streams(&mut connection, &process_id).await?;
         for s in streams {
             let blocks =
                 find_stream_blocks_in_range(&mut connection, &s.stream_id, &begin, &end).await?;
-            let data: Vec<String> = blocks.iter().map(|b| b.block_id.clone()).collect();
-            block_ids.extend_from_slice(&data);
+            let data: Vec<CumulativeCallGraphBlockDesc> = blocks
+                .iter()
+                .map(|b| CumulativeCallGraphBlockDesc {
+                    full: ((b.begin_ticks - process.start_ticks) as f64 * inv_tsc_frequency)
+                        >= begin_ms
+                        && ((b.end_ticks - process.start_ticks) as f64 * inv_tsc_frequency)
+                            <= end_ms,
+                    id: b.block_id.clone(),
+                })
+                .collect();
+            block_desc.extend_from_slice(&data);
         }
         Ok(CumulativeCallGraphManifest {
-            blocks: block_ids,
+            blocks: block_desc,
             start_ticks: process.start_ticks,
             tsc_frequency: process.tsc_frequency,
         })

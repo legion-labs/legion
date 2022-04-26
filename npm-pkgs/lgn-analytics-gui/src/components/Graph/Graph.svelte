@@ -17,6 +17,7 @@
   import { getGraphStateStore, scopeStore } from "./Store/GraphStateStore";
   import type { NodeStateStore } from "./Store/GraphStateStore";
   import CallGraph from "../CumulatedGraph/CallGraph.svelte";
+  import type { CumulativeCallGraphBlockDesc } from "@lgn/proto-telemetry/dist/callgraph";
 
   const components: Record<number, GraphNode> = {};
   const locationStore = useLocation();
@@ -26,7 +27,7 @@
   let beginMsFilter = 0;
   let endMsFilter = 0;
   let processId = "";
-  let blocks: string[];
+  let blocks: CumulativeCallGraphBlockDesc[];
   let startTicks: number;
   let tscFrequency: number;
   let graphState: GraphState;
@@ -59,7 +60,7 @@
         endMs: endMsFilter,
       }));
 
-    blocks.forEach(async (blockId) => {
+    blocks.forEach(async (blockDesc) => {
       if (!client) {
         return;
       }
@@ -68,7 +69,7 @@
 
       const { callTree, streamHash, streamName } =
         await client.fetch_cumulative_call_graph_block({
-          blockId: blockId,
+          blockId: blockDesc.id,
           tscFrequency,
           startTicks,
           beginMs: beginMsFilter,

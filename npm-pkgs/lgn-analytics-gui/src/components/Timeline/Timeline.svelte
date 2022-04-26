@@ -248,7 +248,7 @@
           <TimelineRange {stateStore} />
         </div>
         <div class="mt-3 cumulative">
-          <CallGraph begin={x} end={y} {processId} debug={true} />
+          <CallGraph begin={x} end={y} {processId} debug={false} />
         </div>
       </div>
     </div>

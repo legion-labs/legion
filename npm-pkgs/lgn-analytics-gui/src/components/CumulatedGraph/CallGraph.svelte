@@ -3,36 +3,32 @@
   import { BarLoader } from "svelte-loading-spinners";
   import { getProcessCumulatedCallGraph } from "./Lib/CallGraphStore";
   import type { CumulatedCallGraphStore } from "./Lib/CallGraphStore";
-  import CallLine from "./CallLine.svelte";
   import CallTreeDebug from "./CallGraphDebug.svelte";
+  import CallGraphLine from "./CallGraphLine.svelte";
 
   export let begin: number;
   export let end: number;
   export let processId: string;
   export let debug = false;
 
-  let loading = true;
   let store: CumulatedCallGraphStore;
   let tickTimer: number;
 
   $: (begin || end) && tick();
 
   function tick() {
-    loading = true;
     clearTimeout(tickTimer);
-    tickTimer = setTimeout(() => {
-      store?.updateRange(begin, end).finally(() => (loading = false));
+    tickTimer = setTimeout(async () => {
+      await store?.updateRange(begin, end);
     }, 500);
   }
 
   onMount(async () => {
-    store = await getProcessCumulatedCallGraph(processId, begin, end).finally(
-      () => (loading = false)
-    );
+    store = await getProcessCumulatedCallGraph(processId, begin, end);
   });
 </script>
 
-{#if loading}
+{#if store && $store.loading}
   <div class="flex items-center justify-center h-full">
     <BarLoader size={32} />
   </div>
@@ -50,7 +46,7 @@
     {#each Array.from($store.threads) as [hash, thread] (hash)}
       {#if thread.data}
         {#each Array.from(thread.data).filter((obj) => obj[1].parent.size === 0) as [key, node] (key)}
-          <CallLine {node} {store} threadId={key} />
+          <CallGraphLine {node} {store} threadId={key} />
         {/each}
       {/if}
     {/each}
