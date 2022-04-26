@@ -8,7 +8,7 @@
   export let store: CumulatedCallGraphStore;
   export let threadId: number;
 
-  let collapsed = depth > 2;
+  let collapsed = depth > 4;
   let value = node.value;
 
   function* getChildren() {

@@ -5,6 +5,8 @@
   import type { CumulatedCallGraphStore } from "./Lib/CallGraphStore";
   import CallTreeDebug from "./CallGraphDebug.svelte";
   import CallGraphLine from "./CallGraphLine.svelte";
+  import { link } from "svelte-navigator";
+  import { endQueryParam, startQueryParam } from "@/lib/time";
 
   export let begin: number;
   export let end: number;
@@ -51,6 +53,18 @@
       {/if}
     {/each}
   </table>
+  <div
+    class="text-content-38 bg-content-38  hover:bg-content-60 p-1 mt-1 text-xs float-right "
+  >
+    <a
+      href={`/cumulative-call-graph?process=${processId}&${startQueryParam}=${begin}&${endQueryParam}=${end}`}
+      target="_blank"
+      use:link
+    >
+      <i class="bi bi-arrow-up-right-circle" />
+      Open Cumulative Call Graph
+    </a>
+  </div>
   {#if debug}
     <CallTreeDebug {store} {begin} {end} />
   {/if}
