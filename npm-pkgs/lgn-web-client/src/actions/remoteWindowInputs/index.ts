@@ -1,5 +1,6 @@
 import log from "../../lib/log";
 import type { GamepadAxisType, GamepadButtonType } from "./gamepad";
+import { fromGamepadAxisIndex, fromGamepadButtonIndex } from "./gamepad";
 import type { KeyCode } from "./keys";
 import { fromBrowserKey as keyCodeFromBrowserKey } from "./keys";
 
@@ -141,7 +142,8 @@ type State = {
   /** Contains the `KeyCode` */
   activeKeys: Set<string>;
   previousMousePosition: Vec2 | null;
-  gamepadIndex: number | null;
+  gamepad: Gamepad | null;
+  animationFrame: number | null;
 };
 
 function createEvents(state: State, element: HTMLElement, onInput: Listener) {
@@ -454,7 +456,7 @@ function createEvents(state: State, element: HTMLElement, onInput: Listener) {
   }
 
   function onGamepadConnected(event: GamepadEvent) {
-    state.gamepadIndex = event.gamepad.index;
+    state.gamepad = event.gamepad;
 
     const gamepadConnection: GamepadConnection = {
       type: "GamepadConnection",
@@ -468,8 +470,10 @@ function createEvents(state: State, element: HTMLElement, onInput: Listener) {
   }
 
   function onGamepadDisconnected(event: GamepadEvent) {
-    if (state.gamepadIndex === event.gamepad.index) {
-      state.gamepadIndex = null;
+    if (state.gamepad !== null) {
+      if (state.gamepad?.index === event.gamepad.index) {
+        state.gamepad = null;
+      }
     }
 
     const gamepadDisconnection: GamepadDisconnection = {
@@ -485,6 +489,88 @@ function createEvents(state: State, element: HTMLElement, onInput: Listener) {
 
     onInput(gamepadDisconnection);
   }
+
+  function scanGamepads() {
+    if (state.gamepad !== null) {
+      const gamepad = navigator.getGamepads()[state.gamepad.index];
+
+      if (gamepad?.connected) {
+        for (let i = 0; i < gamepad.buttons.length; i++) {
+          const button = fromGamepadButtonIndex(i);
+
+          if (button !== null) {
+            const oldButton = state.gamepad.buttons[i];
+            const newButton = gamepad.buttons[i];
+
+            if (newButton.value !== oldButton.value) {
+              const gamepadButtonChange: GamepadButtonChange = {
+                type: "GamepadButtonChange",
+                // eslint-disable-next-line camelcase
+                pad_id: state.gamepad.index,
+                button: button,
+                value: newButton.value,
+              };
+
+              log.debug(
+                logLabel,
+                log.json`Gamepad button change ${gamepadButtonChange}`
+              );
+
+              onInput(gamepadButtonChange);
+            } else if (newButton.pressed !== oldButton.pressed) {
+              const value = newButton.pressed ? 1.0 : 0.0;
+              const gamepadButtonChange: GamepadButtonChange = {
+                type: "GamepadButtonChange",
+                // eslint-disable-next-line camelcase
+                pad_id: state.gamepad.index,
+                button: button,
+                value: value,
+              };
+
+              log.debug(
+                logLabel,
+                log.json`Gamepad button change ${gamepadButtonChange}`
+              );
+
+              onInput(gamepadButtonChange);
+            }
+          }
+        }
+
+        for (let i = 0; i < gamepad.axes.length; i++) {
+          const axis = fromGamepadAxisIndex(i);
+
+          if (axis !== null) {
+            const oldAxis = state.gamepad.axes[i];
+            const newAxis = gamepad.axes[i];
+
+            if (newAxis !== oldAxis) {
+              const gamepadAxisChange: GamepadAxisChange = {
+                type: "GamepadAxisChange",
+                // eslint-disable-next-line camelcase
+                pad_id: state.gamepad.index,
+                axis: axis,
+                value: newAxis,
+              };
+
+              log.debug(
+                logLabel,
+                log.json`Gamepad axis change ${gamepadAxisChange}`
+              );
+
+              onInput(gamepadAxisChange);
+            }
+          }
+        }
+      }
+
+      state.gamepad = gamepad;
+    }
+
+    state.animationFrame = requestAnimationFrame(scanGamepads);
+  }
+
+  state.animationFrame = requestAnimationFrame(scanGamepads);
 
   return {
     // Window listeners, useful when an event occurs outside
@@ -530,7 +616,8 @@ export default function remoteWindowInputs(
     activeTouches: new Set(),
     activeKeys: new Set(),
     previousMousePosition: null,
-    gamepadIndex: null,
+    gamepad: null,
+    animationFrame: null,
   };
 
   const listeners = createEvents(state, element, onInput);
