@@ -43,6 +43,10 @@
   - [Runtime](./rendering/runtime.md)
   - [Research](./rendering/research.md)
 
+- [Online](./online/README.md)
+
+  - [GRPC to OpenAPI](./online/grpc-to-openapi.md)
+
 - [Streaming](./streaming/README.md)
 
 - [Editor](./editor/README.md)
