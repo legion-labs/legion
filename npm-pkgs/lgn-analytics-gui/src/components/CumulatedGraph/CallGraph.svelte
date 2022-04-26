@@ -1,12 +1,14 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { BarLoader } from "svelte-loading-spinners";
-  import { getProcessCumulatedCallGraph } from "./Lib/CallGraphStore";
-  import type { CumulatedCallGraphStore } from "./Lib/CallGraphStore";
+  import { link } from "svelte-navigator";
+
+  import { endQueryParam, startQueryParam } from "@/lib/time";
+
   import CallTreeDebug from "./CallGraphDebug.svelte";
   import CallGraphLine from "./CallGraphLine.svelte";
-  import { link } from "svelte-navigator";
-  import { endQueryParam, startQueryParam } from "@/lib/time";
+  import { getProcessCumulatedCallGraph } from "./Lib/CallGraphStore";
+  import type { CumulatedCallGraphStore } from "./Lib/CallGraphStore";
 
   export let begin: number;
   export let end: number;

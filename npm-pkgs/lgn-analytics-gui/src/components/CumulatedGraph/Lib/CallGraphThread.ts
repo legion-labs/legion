@@ -1,4 +1,5 @@
 import type { CumulativeCallGraphComputedBlock } from "@lgn/proto-telemetry/dist/callgraph";
+
 import { CallGraphNode } from "./CallGraphNode";
 
 export class CallGraphThread {

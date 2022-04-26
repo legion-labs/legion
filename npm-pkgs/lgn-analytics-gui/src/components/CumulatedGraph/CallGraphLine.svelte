@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { CumulatedCallGraphStore } from "@/components/CumulatedGraph/Lib/CallGraphStore";
   import { formatExecutionTime } from "@/lib/format";
+
   import type { CallGraphNode } from "./Lib/CallGraphNode";
 
   export let depth = 0;

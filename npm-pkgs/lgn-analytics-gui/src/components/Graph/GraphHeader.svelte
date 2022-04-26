@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { formatExecutionTime } from "@/lib/format";
   import type { CumulativeCallGraphBlockDesc } from "@lgn/proto-telemetry/dist/callgraph";
+
+  import { formatExecutionTime } from "@/lib/format";
 
   import type { GraphState } from "./Store/GraphState";
 

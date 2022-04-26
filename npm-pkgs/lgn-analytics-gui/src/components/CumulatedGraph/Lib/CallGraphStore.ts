@@ -1,6 +1,9 @@
-import { makeGrpcClient } from "@/lib/client";
-import type { CumulativeCallGraphBlockDesc } from "@lgn/proto-telemetry/dist/callgraph";
 import { writable } from "svelte/store";
+
+import type { CumulativeCallGraphBlockDesc } from "@lgn/proto-telemetry/dist/callgraph";
+
+import { makeGrpcClient } from "@/lib/client";
+
 import { CallGraphState } from "./CallGraphState";
 
 export type CumulatedCallGraphStore = Awaited<

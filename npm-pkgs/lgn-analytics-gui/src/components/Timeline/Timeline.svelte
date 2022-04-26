@@ -6,6 +6,7 @@
   import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { endQueryParam, startQueryParam } from "@/lib/time";
 
+  import CallGraph from "../CumulatedGraph/CallGraph.svelte";
   import Loader from "../Misc/Loader.svelte";
   import { TimelineStateManager } from "./Stores/TimelineStateManager";
   import type { TimelineStateStore } from "./Stores/TimelineStateStore";
@@ -16,7 +17,6 @@
   import TimelineRange from "./Tools/TimelineRange.svelte";
   import TimelineSearch from "./Tools/TimelineSearch.svelte";
   import { pixelMargin, threadItemLength } from "./Values/TimelineValues";
-  import CallGraph from "../CumulatedGraph/CallGraph.svelte";
 
   export let processId: string;
 

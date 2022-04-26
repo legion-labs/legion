@@ -4,11 +4,13 @@
   import type { Writable } from "svelte/store";
 
   import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
+  import type { CumulativeCallGraphBlockDesc } from "@lgn/proto-telemetry/dist/callgraph";
   import type { CallTreeNode } from "@lgn/proto-telemetry/dist/calltree";
 
   import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { makeGrpcClient } from "@/lib/client";
 
+  import CallGraph from "../CumulatedGraph/CallGraph.svelte";
   import Loader from "../Misc/Loader.svelte";
   import GraphHeader from "./GraphHeader.svelte";
   import GraphNode from "./GraphNode.svelte";
@@ -16,8 +18,6 @@
   import { GraphState } from "./Store/GraphState";
   import { getGraphStateStore, scopeStore } from "./Store/GraphStateStore";
   import type { NodeStateStore } from "./Store/GraphStateStore";
-  import CallGraph from "../CumulatedGraph/CallGraph.svelte";
-  import type { CumulativeCallGraphBlockDesc } from "@lgn/proto-telemetry/dist/callgraph";
 
   const components: Record<number, GraphNode> = {};
   const locationStore = useLocation();

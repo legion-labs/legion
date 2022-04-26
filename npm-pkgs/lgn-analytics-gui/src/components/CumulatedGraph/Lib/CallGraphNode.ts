@@ -2,6 +2,7 @@ import type {
   CumulativeCallGraphEdge,
   CumulativeComputedCallGraphNode,
 } from "@lgn/proto-telemetry/dist/callgraph";
+
 import { CallGraphNodeValue } from "./CallGraphNodeValue";
 
 export class CallGraphNode {
