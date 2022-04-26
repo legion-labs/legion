@@ -125,7 +125,7 @@ impl SharedResourcesManager {
         cmd_buffer.end().unwrap();
 
         graphics_queue
-            .submit(&[&mut cmd_buffer], &[], &[], None)
+            .submit(&mut [&mut cmd_buffer], &[], &[], None)
             .unwrap();
 
         graphics_queue.wait_for_queue_idle().unwrap();

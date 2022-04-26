@@ -95,12 +95,12 @@ impl CommandBuffer {
             .store(false, Ordering::Relaxed);
     }
 
-    pub fn begin_label(&self, label: &str) {
-        self.inner.device_context.begin_label(self, label);
+    pub fn begin_label(&mut self, device_context: &DeviceContext, label: &str) {
+        device_context.begin_label(self, label);
     }
 
-    pub fn end_label(&self) {
-        self.inner.device_context.end_label(self);
+    pub fn end_label(&mut self, device_context: &DeviceContext) {
+        device_context.end_label(self);
     }
 
     pub fn cmd_set_viewport(

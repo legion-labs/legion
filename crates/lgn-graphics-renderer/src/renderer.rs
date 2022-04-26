@@ -240,7 +240,7 @@ impl Renderer {
         let frame_fence = &self.frame_fences[self.render_frame_idx];
 
         graphics_queue
-            .submit(&[], &[], &[], Some(frame_fence))
+            .submit(&mut [], &[], &[], Some(frame_fence))
             .unwrap();
 
         //

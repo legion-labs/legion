@@ -161,10 +161,10 @@ impl RgbToYuvConverter {
         yuv: &mut [u8],
     ) -> anyhow::Result<()> {
         let render_frame_idx = 0;
-        let cmd_buffer = render_context.alloc_command_buffer();
+        let mut cmd_buffer = render_context.alloc_command_buffer();
         render_surface
             .hdr_rt_mut()
-            .transition_to(&cmd_buffer, ResourceState::SHADER_RESOURCE);
+            .transition_to(&mut cmd_buffer, ResourceState::SHADER_RESOURCE);
         {
             let yuv_images = &self.resolution_dependent_resources.yuv_images[render_frame_idx];
             cmd_buffer.resource_barrier(

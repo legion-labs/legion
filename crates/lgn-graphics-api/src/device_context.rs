@@ -320,13 +320,13 @@ impl DeviceContext {
             .set_buffer_name(buffer, name);
     }
 
-    pub fn begin_label(&self, command_buffer: &CommandBuffer, label: &str) {
+    pub fn begin_label(&self, command_buffer: &mut CommandBuffer, label: &str) {
         self.inner
             .backend_device_context
             .begin_label(command_buffer, label);
     }
 
-    pub fn end_label(&self, command_buffer: &CommandBuffer) {
+    pub fn end_label(&self, command_buffer: &mut CommandBuffer) {
         self.inner.backend_device_context.end_label(command_buffer);
     }
 }
