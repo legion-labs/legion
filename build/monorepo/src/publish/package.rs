@@ -46,8 +46,7 @@ impl<'g> PublishPackage<'g> {
     }
 
     pub(super) fn binary_targets(&self) -> Vec<&str> {
-        let mut binary_targets: Vec<_> = self
-            .package
+        self.package
             .build_targets()
             .filter_map(|build_target| {
                 if let BuildTargetId::Binary(binary) = build_target.id() {
@@ -56,26 +55,7 @@ impl<'g> PublishPackage<'g> {
                     None
                 }
             })
-            .collect();
-        // M2 HACK -> build compilers to package them
-        // TODO #1445 M3 remove this
-        if self.name() == "editor-srv" {
-            for (name, pkg_metadata) in self.package.graph().workspace().iter_by_name() {
-                if name.starts_with("lgn-data-build") || name.starts_with("lgn-compiler-") {
-                    println!("adding bin: {}", name);
-                    binary_targets.extend(pkg_metadata.build_targets().filter_map(
-                        |build_target| {
-                            if let BuildTargetId::Binary(binary) = build_target.id() {
-                                Some(binary)
-                            } else {
-                                None
-                            }
-                        },
-                    ));
-                }
-            }
-        }
-        binary_targets
+            .collect()
     }
 
     fn id(&self) -> &guppy::PackageId {
