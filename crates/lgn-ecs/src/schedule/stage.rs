@@ -887,7 +887,7 @@ impl Stage for SystemStage {
 
                 // Apply parallel systems' buffers.
                 if self.apply_buffers {
-                    span_scope!("system_commands");
+                    span_scope!("apply_buffers");
                     for container in &mut self.parallel {
                         if container.should_run {
                             span_scope_named!(&*container.name());

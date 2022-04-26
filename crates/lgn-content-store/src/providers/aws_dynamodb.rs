@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use aws_sdk_dynamodb::types::Blob;
 use aws_sdk_dynamodb::{model::AttributeValue, Region};
-use lgn_tracing::async_span_scope;
+use lgn_tracing::{async_span_scope, span_fn};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Display,
@@ -32,9 +32,8 @@ impl AwsDynamoDbProvider {
     ///
     /// If the specified or configured region is not valid, an error is
     /// returned.
+    #[span_fn]
     pub async fn new(region: Option<String>, table_name: impl Into<String>) -> Result<Self> {
-        async_span_scope!("AwsDynamoDbProvider::new");
-
         let config = aws_config::from_env();
 
         let config = if let Some(region) = region {
@@ -85,9 +84,8 @@ impl AwsDynamoDbProvider {
     /// # Errors
     ///
     /// Otherwise, any other error is returned.
+    #[span_fn]
     pub async fn delete_alias(&self, key_space: &str, key: &str) -> Result<()> {
-        async_span_scope!("AwsDynamoDbProvider::delete_alias");
-
         let id_attr = Self::get_alias_id_attr(key_space, key);
 
         match self
@@ -114,9 +112,8 @@ impl AwsDynamoDbProvider {
     /// # Errors
     ///
     /// Otherwise, any other error is returned.
+    #[span_fn]
     pub async fn delete_content(&self, id: &Identifier) -> Result<()> {
-        async_span_scope!("AwsDynamoDbProvider::delete_content");
-
         let id_attr = Self::get_content_id_attr(id);
 
         match self
@@ -137,9 +134,8 @@ impl AwsDynamoDbProvider {
         }
     }
 
+    #[span_fn]
     async fn get_content(&self, id: &Identifier) -> Result<Vec<u8>> {
-        async_span_scope!("AwsDynamoDbProvider::get_content");
-
         let id_attr = Self::get_content_id_attr(id);
 
         match self
@@ -186,9 +182,8 @@ impl Display for AwsDynamoDbProvider {
 
 #[async_trait]
 impl ContentReader for AwsDynamoDbProvider {
+    #[span_fn]
     async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
-        async_span_scope!("AwsDynamoDbProvider::get_content_reader");
-
         let origin = Origin::AwsDynamoDb {
             region: self.region.clone(),
             table_name: self.table_name.clone(),
@@ -198,18 +193,16 @@ impl ContentReader for AwsDynamoDbProvider {
         Ok(Cursor::new(self.get_content(id).await?).with_origin(origin))
     }
 
+    #[span_fn]
     async fn get_content_readers<'ids>(
         &self,
         ids: &'ids BTreeSet<Identifier>,
     ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
-        async_span_scope!("AwsDynamoDbProvider::get_content_readers");
-
         get_content_readers_impl(self, ids).await
     }
 
+    #[span_fn]
     async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
-        async_span_scope!("AwsDynamoDbProvider::resolve_alias");
-
         let id_attr = Self::get_alias_id_attr(key_space, key);
 
         match self

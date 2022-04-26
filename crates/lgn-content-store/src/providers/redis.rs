@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use lgn_tracing::{async_span_scope, debug, error, warn};
+use lgn_tracing::{async_span_scope, debug, error, span_fn, warn};
 use redis::AsyncCommands;
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -53,9 +53,8 @@ impl RedisProvider {
     /// # Errors
     ///
     /// Otherwise, any other error is returned.
+    #[span_fn]
     pub async fn delete_content(&self, id: &Identifier) -> Result<()> {
-        async_span_scope!("RedisProvider::delete_content");
-
         let mut con = self
             .client
             .get_async_connection()
