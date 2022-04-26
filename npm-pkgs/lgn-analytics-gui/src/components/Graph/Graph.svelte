@@ -10,7 +10,6 @@
   import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { makeGrpcClient } from "@/lib/client";
 
-  import CallGraph from "../CumulatedGraph/CallGraph.svelte";
   import Loader from "../Misc/Loader.svelte";
   import GraphHeader from "./GraphHeader.svelte";
   import GraphNode from "./GraphNode.svelte";
@@ -180,11 +179,5 @@
         />
       {/each}
     </div>
-    <CallGraph
-      begin={beginMsFilter}
-      end={endMsFilter}
-      {processId}
-      debug={false}
-    />
   </div>
 </Loader>

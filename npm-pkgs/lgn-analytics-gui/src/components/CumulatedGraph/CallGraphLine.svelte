@@ -32,6 +32,9 @@
       style={`padding-left: ${depth * 20}px;`}
       on:click={(_) => (collapsed = !collapsed)}
     >
+      {#if node.children.size <= 0}
+        <i class="bi bi-circle-fill text-gray-500" style="font-size:0.5rem" />
+      {/if}
       {$store.scopes && $store.scopes[node.hash]?.name}</td
     >
     <td class="stat">{value.count}</td>
