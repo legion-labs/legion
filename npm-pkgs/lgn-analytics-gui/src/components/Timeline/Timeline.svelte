@@ -16,6 +16,7 @@
   import TimelineRange from "./Tools/TimelineRange.svelte";
   import TimelineSearch from "./Tools/TimelineSearch.svelte";
   import { pixelMargin, threadItemLength } from "./Values/TimelineValues";
+  import CallGraph from "../CumulatedGraph/CallGraph.svelte";
 
   export let processId: string;
 
@@ -198,7 +199,7 @@
 
 {#if stateStore}
   <Loader loading={!$stateStore.ready} error={initializationError}>
-    <div slot="body" class="flex flex-col" on:wheel|preventDefault>
+    <div slot="body" class="flex flex-col">
       <div class="main">
         {#if stateManager?.process && $stateStore.ready}
           <div class="pb-1 flex flex-row items-center justify-between">
@@ -215,6 +216,7 @@
           bind:this={div}
           bind:clientHeight={canvasHeight}
           bind:clientWidth={mainWidth}
+          on:wheel|preventDefault
           on:scroll={(e) => onScroll(e)}
           on:mousedown|preventDefault={(e) => onMouseDown(e)}
           on:mousemove|preventDefault={(e) => onMouseMove(e)}
@@ -242,9 +244,12 @@
           on:tick={(e) => onMinimapTick(e.detail)}
         />
         <TimelineAxis {stateStore} />
-        <span class="mt-3">
+        <div class="mt-3">
           <TimelineRange {stateStore} />
-        </span>
+        </div>
+        <div class="mt-3 cumulative">
+          <CallGraph begin={x} end={y} {processId} debug={true} />
+        </div>
       </div>
     </div>
   </Loader>
@@ -258,12 +263,17 @@
   }
 
   .canvas {
-    max-height: calc(100vh - 150px);
-    background-color: #fcfcfc;
+    max-height: calc(100vh - 550px);
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
     @apply gap-y-1;
+  }
+
+  .cumulative {
+    max-height: 400px;
+    height: 400px;
+    overflow: auto;
   }
 
   ::-webkit-scrollbar {
@@ -274,14 +284,18 @@
     background-color: transparent;
   }
 
+  ::-webkit-scrollbar-corner {
+    background: rgba(0, 0, 0, 0);
+  }
+
   ::-webkit-scrollbar-thumb {
-    background-color: #bac1c4;
+    background-color: #c4baba;
     border-radius: 20px;
     border: 6px solid transparent;
     background-clip: content-box;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background-color: #8c9b9e;
+    background-color: #9e9696;
   }
 </style>

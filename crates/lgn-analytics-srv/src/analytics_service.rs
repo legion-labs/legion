@@ -1,3 +1,4 @@
+use crate::cumulative_call_graph_handler::CumulativeCallGraphHandler;
 use anyhow::{bail, Result};
 use async_recursion::async_recursion;
 use lgn_analytics::prelude::*;
@@ -53,7 +54,6 @@ use crate::call_tree::compute_block_spans;
 use crate::call_tree::reduce_lod;
 use crate::call_tree_store::CallTreeStore;
 use crate::cumulative_call_graph::compute_cumulative_call_graph;
-use crate::cumulative_call_graph::CumulativeCallGraphHandler;
 use crate::metrics::MetricHandler;
 
 static REQUEST_COUNT: AtomicU64 = AtomicU64::new(0);

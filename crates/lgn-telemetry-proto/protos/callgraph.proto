@@ -65,29 +65,26 @@ message CumulativeCallGraphBlock {
   string stream_name = 3;
 }
 
-// New : client side computed block streaming
+// New : client side accumulated blocks
 message CumulativeCallGraphComputedBlock {
   map<uint32, ScopeDesc> scopes = 1;
   repeated CumulativeComputedCallGraphNode nodes = 2;
   uint32 stream_hash = 3;
   string stream_name = 4;
+  bool full = 5;
 }
 
 message CumulativeComputedCallGraphNode {
-  CallGraphComputedEdge node = 1;
-  repeated CallGraphComputedEdge callers = 3;
-  repeated CallGraphComputedEdge callees = 4;
+  CumulativeCallGraphEdge node = 1;
+  repeated CumulativeCallGraphEdge callers = 3;
+  repeated CumulativeCallGraphEdge callees = 4;
 }
 
-message CallGraphComputedEdge {
+message CumulativeCallGraphEdge {
   uint32 hash = 1;
-  NodeCumulativeStats stats = 2;
-}
-
-message NodeCumulativeStats {
-  double sum = 1;
-  double sum_sqr = 2;
-  double min = 3;
-  double max = 4;
-  uint64 count = 5;
+  double sum = 2;
+  double sum_sqr = 3;
+  double min = 4;
+  double max = 5;
+  uint64 count = 6;
 }

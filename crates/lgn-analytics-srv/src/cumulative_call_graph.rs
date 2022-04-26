@@ -2,21 +2,15 @@ use std::cmp::min;
 use std::collections::HashMap;
 
 use anyhow::{Context, Result};
-use chrono::{DateTime, FixedOffset};
 use lgn_analytics::prelude::*;
 use lgn_analytics::time::ConvertTicks;
 use lgn_telemetry_proto::analytics::{
-    CallGraphComputedEdge, CallGraphEdge, CallTreeNode, CumulativeCallGraphBlock,
-    CumulativeCallGraphComputedBlock, CumulativeCallGraphManifest, CumulativeCallGraphNode,
-    CumulativeCallGraphReply, CumulativeComputedCallGraphNode, NodeCumulativeStats, NodeStats,
+    CallGraphEdge, CallTreeNode, CumulativeCallGraphNode, CumulativeCallGraphReply, NodeStats,
 };
-use lgn_telemetry_proto::telemetry::Process;
-use lgn_tracing::prelude::*;
-
-use std::sync::Arc;
+use lgn_tracing::span_fn;
 
 use crate::call_tree_store::CallTreeStore;
-use crate::scope::{compute_scope_hash, ScopeHashMap};
+use crate::scope::ScopeHashMap;
 
 struct NodeStatsAcc {
     durations_ms: Vec<f64>,
@@ -37,259 +31,6 @@ impl NodeStatsAcc {
 
 type StatsHashMap = std::collections::HashMap<u32, NodeStatsAcc>;
 
-type CallNodeHashMap = std::collections::HashMap<u32, CallNode>;
-
-pub struct CallNode {
-    hash: u32,
-    begin_ms: f64,
-    end_ms: f64,
-    sum: f64,
-    sum_sqr: f64,
-    min: f64,
-    max: f64,
-    count: u64,
-    child_acc: f64,
-    parents: CallNodeHashMap,
-    children: CallNodeHashMap,
-}
-
-impl CallNode {
-    #[span_fn]
-    pub fn new(hash: u32, begin_ms: f64, end_ms: f64) -> Self {
-        Self {
-            hash,
-            sum: 0.0,
-            sum_sqr: 0.0,
-            begin_ms,
-            end_ms,
-            min: f64::MAX,
-            max: f64::MIN,
-            count: 0,
-            child_acc: 0.0,
-            parents: CallNodeHashMap::new(),
-            children: CallNodeHashMap::new(),
-        }
-    }
-
-    #[span_fn]
-    pub fn add_call(&mut self, node: &CallTreeNode, parent: Option<&CallTreeNode>) {
-        let time_ms = self.process(node);
-        if let Some(parent) = parent {
-            self.add_parent_call(parent, time_ms);
-        }
-        for child in &node.children {
-            if tree_overlaps(child, self.begin_ms, self.end_ms) {
-                self.add_child_call(child);
-            }
-        }
-    }
-
-    #[span_fn]
-    fn process(&mut self, node: &CallTreeNode) -> f64 {
-        let time_ms = node.end_ms.min(self.end_ms) - node.begin_ms.max(self.begin_ms);
-        self.sum += time_ms;
-        self.sum_sqr += time_ms.powf(2.0);
-        self.min = self.min.min(time_ms);
-        self.max = self.max.max(time_ms);
-        self.count += 1;
-        time_ms
-    }
-
-    #[span_fn]
-    fn add_parent_call(&mut self, parent: &CallTreeNode, time_ms: f64) {
-        let parent_node = self
-            .parents
-            .entry(parent.hash)
-            .or_insert_with(|| Self::new(parent.hash, self.begin_ms, self.end_ms));
-        parent_node.add_call(parent, None);
-        parent_node.child_acc += time_ms;
-    }
-
-    #[span_fn]
-    fn add_child_call(&mut self, child: &CallTreeNode) {
-        let child_node = self
-            .children
-            .entry(child.hash)
-            .or_insert_with(|| Self::new(child.hash, self.begin_ms, self.end_ms));
-        child_node.process(child);
-    }
-
-    #[span_fn]
-    fn to_proto_edge(&self) -> CallGraphComputedEdge {
-        CallGraphComputedEdge {
-            hash: self.hash,
-            stats: Some(NodeCumulativeStats {
-                count: self.count,
-                max: self.max,
-                min: self.min,
-                sum: self.sum,
-                sum_sqr: self.sum_sqr,
-            }),
-        }
-    }
-
-    #[span_fn]
-    fn to_proto_node(&self) -> CumulativeComputedCallGraphNode {
-        CumulativeComputedCallGraphNode {
-            node: Some(self.to_proto_edge()),
-            callees: self
-                .children
-                .iter()
-                .map(|(_, node)| node.to_proto_edge())
-                .collect(),
-            callers: self
-                .parents
-                .iter()
-                .map(|(_, node)| node.to_proto_edge())
-                .collect(),
-        }
-    }
-}
-
-pub struct CumulativeCallGraphHandler {
-    pool: sqlx::any::AnyPool,
-    call_tree_store: Arc<CallTreeStore>,
-}
-
-impl CumulativeCallGraphHandler {
-    pub fn new(pool: sqlx::any::AnyPool, call_tree_store: Arc<CallTreeStore>) -> Self {
-        Self {
-            pool,
-            call_tree_store,
-        }
-    }
-
-    #[span_fn]
-    pub(crate) async fn get_process_call_graph_manifest(
-        &self,
-        process_id: String,
-        begin_ms: f64,
-        end_ms: f64,
-    ) -> Result<CumulativeCallGraphManifest> {
-        let mut connection = self.pool.acquire().await?;
-
-        // For now child processes are not queried and as a result don't participate in cumulative call graph computations.
-        let process = find_process(&mut connection, &process_id).await?;
-        let time_range = Self::get_process_time_range(&process, begin_ms, end_ms)?;
-        let begin = time_range.0.to_rfc3339();
-        let end = time_range.1.to_rfc3339();
-
-        let mut block_ids = vec![];
-
-        let streams = find_process_thread_streams(&mut connection, &process_id).await?;
-        for s in streams {
-            let blocks =
-                find_stream_blocks_in_range(&mut connection, &s.stream_id, &begin, &end).await?;
-            let data: Vec<String> = blocks.iter().map(|b| b.block_id.clone()).collect();
-            block_ids.extend_from_slice(&data);
-        }
-        Ok(CumulativeCallGraphManifest {
-            blocks: block_ids,
-            start_ticks: process.start_ticks,
-            tsc_frequency: process.tsc_frequency,
-        })
-    }
-
-    #[span_fn]
-    pub(crate) async fn get_call_graph_block(
-        &self,
-        block_id: String,
-        start_ticks: i64,
-        tsc_frequency: u64,
-    ) -> Result<CumulativeCallGraphBlock> {
-        let mut connection = self.pool.acquire().await?;
-        let stream = find_block_stream(&mut connection, &block_id).await?;
-        let convert_ticks = ConvertTicks::from_meta_data(start_ticks, tsc_frequency);
-        let call_tree = self
-            .call_tree_store
-            .get_call_tree(convert_ticks, &stream, &block_id)
-            .await?;
-        Ok(CumulativeCallGraphBlock {
-            call_tree: Some(call_tree),
-            stream_hash: compute_scope_hash(&stream.stream_id),
-            stream_name: match stream.properties.get("thread-name") {
-                Some(x) => x.to_string(),
-                None => String::from("Unknown"),
-            },
-        })
-    }
-
-    #[span_fn]
-    pub(crate) async fn get_call_graph_computed_block(
-        &self,
-        block_id: String,
-        start_ticks: i64,
-        tsc_frequency: u64,
-        begin_ms: f64,
-        end_ms: f64,
-    ) -> Result<CumulativeCallGraphComputedBlock> {
-        let mut connection = self.pool.acquire().await?;
-        let stream = find_block_stream(&mut connection, &block_id).await?;
-        let convert_ticks = ConvertTicks::from_meta_data(start_ticks, tsc_frequency);
-        let tree = self
-            .call_tree_store
-            .get_call_tree(convert_ticks, &stream, &block_id)
-            .await?;
-
-        let mut scopes = ScopeHashMap::new();
-        let mut result = CallNodeHashMap::new();
-        if let Some(root) = tree.root {
-            scopes.extend(tree.scopes);
-            Self::build(&root, begin_ms, end_ms, &mut result, None);
-        }
-
-        Ok(CumulativeCallGraphComputedBlock {
-            scopes,
-            nodes: result
-                .iter()
-                .map(|(_, node)| node.to_proto_node())
-                .collect(),
-            stream_hash: compute_scope_hash(&stream.stream_id),
-            stream_name: match stream.properties.get("thread-name") {
-                Some(x) => x.to_string(),
-                None => String::from("Unknown"),
-            },
-        })
-    }
-
-    #[span_fn]
-    fn build(
-        tree: &CallTreeNode,
-        begin_ms: f64,
-        end_ms: f64,
-        result: &mut CallNodeHashMap,
-        parent: Option<&CallTreeNode>,
-    ) {
-        if !tree_overlaps(tree, begin_ms, end_ms) {
-            return;
-        }
-
-        let node = result
-            .entry(tree.hash)
-            .or_insert_with(|| CallNode::new(tree.hash, begin_ms, end_ms));
-        node.add_call(tree, parent);
-
-        for child in &tree.children {
-            Self::build(child, begin_ms, end_ms, result, Some(tree));
-        }
-    }
-
-    #[span_fn]
-    fn get_process_time_range(
-        process: &Process,
-        begin_ms: f64,
-        end_ms: f64,
-    ) -> Result<(DateTime<FixedOffset>, DateTime<FixedOffset>)> {
-        let start_time = chrono::DateTime::parse_from_rfc3339(&process.start_time)
-            .with_context(|| String::from("parsing process start time"))?;
-        let begin_offset_ns = begin_ms * 1_000_000.0;
-        let begin_time = start_time + chrono::Duration::nanoseconds(begin_offset_ns as i64);
-        let end_offset_ns = end_ms * 1_000_000.0;
-        let end_time = start_time + chrono::Duration::nanoseconds(end_offset_ns as i64);
-        Ok((begin_time, end_time))
-    }
-}
-
 #[span_fn]
 fn make_edge_vector(edges_acc: &HashMap<u32, f64>) -> Vec<CallGraphEdge> {
     let mut edges: Vec<CallGraphEdge> = edges_acc
@@ -305,7 +46,7 @@ fn make_edge_vector(edges_acc: &HashMap<u32, f64>) -> Vec<CallGraphEdge> {
 }
 
 #[span_fn]
-fn tree_overlaps(tree: &CallTreeNode, filter_begin_ms: f64, filter_end_ms: f64) -> bool {
+pub fn tree_overlaps(tree: &CallTreeNode, filter_begin_ms: f64, filter_end_ms: f64) -> bool {
     tree.end_ms >= filter_begin_ms && tree.begin_ms <= filter_end_ms
 }
 

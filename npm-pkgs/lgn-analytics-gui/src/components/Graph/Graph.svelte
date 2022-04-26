@@ -16,6 +16,7 @@
   import { GraphState } from "./Store/GraphState";
   import { getGraphStateStore, scopeStore } from "./Store/GraphStateStore";
   import type { NodeStateStore } from "./Store/GraphStateStore";
+  import CallGraph from "../CumulatedGraph/CallGraph.svelte";
 
   const components: Record<number, GraphNode> = {};
   const locationStore = useLocation();
@@ -178,5 +179,11 @@
         />
       {/each}
     </div>
+    <CallGraph
+      begin={beginMsFilter}
+      end={endMsFilter}
+      {processId}
+      debug={false}
+    />
   </div>
 </Loader>
