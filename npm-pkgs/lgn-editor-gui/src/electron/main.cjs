@@ -38,7 +38,7 @@ const createWindow = () => {
     mainWindow.close();
   });
 
-  if (process.env.LOAD_DEV_URL === "true") {
+  if (process.env["LOAD_DEV_URL"] === "true") {
     mainWindow.loadURL(devUrl).catch((error) => {
       console.error(
         "electron::start",

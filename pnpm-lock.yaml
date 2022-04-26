@@ -58,6 +58,17 @@ importers:
       ts-proto: 1.110.4
       typescript: 4.6.3
 
+  crates/lgn-electron/js:
+    specifiers:
+      electron: ^18.0.3
+      electron-serve: ^1.1.0
+      typescript: ^4.6.3
+    dependencies:
+      electron: 18.0.3
+      electron-serve: 1.1.0
+    devDependencies:
+      typescript: 4.6.3
+
   crates/lgn-log-stream-proto:
     specifiers:
       '@improbable-eng/grpc-web': ^0.15.0
