@@ -29,11 +29,12 @@
 {#if node}
   <tr class="cursor-pointer text-sm">
     <td
-      style={`padding-left: ${depth * 20}px;`}
+      style={`padding-left: ${depth * 20}px`}
+      class="truncate"
       on:click={(_) => (collapsed = !collapsed)}
       >{$store.scopes && $store.scopes[node.hash]?.name}
     </td>
-    <td class="stat">{value.count}</td>
+    <td class="stat">{value.count.toLocaleString()}</td>
     <td class="stat">{formatExecutionTime(value.avg)}</td>
     <td class="stat">{formatExecutionTime(value.min)}</td>
     <td class="stat">{formatExecutionTime(value.max)}</td>
@@ -49,7 +50,7 @@
 
 <style lang="postcss">
   .stat {
-    @apply text-center text-xs;
+    @apply text-center text-xs w-48 truncate;
   }
 
   tr:nth-child(even) {

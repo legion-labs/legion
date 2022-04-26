@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { BarLoader } from "svelte-loading-spinners";
   import { link } from "svelte-navigator";
 
@@ -31,53 +31,75 @@
   onMount(async () => {
     store = await getProcessCumulatedCallGraph(processId, begin, end);
   });
+
+  onDestroy(() => {
+    clearTimeout(tickTimer);
+  });
 </script>
 
-{#if store && $store.loading}
-  <div class="flex items-center justify-center h-full">
-    <BarLoader size={32} />
-  </div>
-{:else if store}
-  {#if debug}
-    <CallTreeDebug {store} {begin} {end} />
-  {/if}
-  <div class="overflow-auto" style:max-height={`${size}px`}>
-    <table class="w-full bg-skin-700 text-xs text-content-60 space-y-2 ">
-      <tr class="bg-skin-800 w-100">
-        <th class="text-left">Function</th>
-        <th><i class="bi bi-caret-right" />Count</th>
-        <th><i class="bi bi-chevron-bar-contract" />Avg</th>
-        <th><i class="bi bi-chevron-bar-left" />Min</th>
-        <th><i class="bi bi-chevron-bar-right" />Max</th>
-        <th><i class="bi bi-lightbulb" />Sd</th>
-        <th><i class="bi bi bi-caret-right-fill" /> Sum</th>
-      </tr>
-      {#each Array.from($store.threads) as [hash, thread] (hash)}
-        {#if thread.data}
-          {#each Array.from(thread.data).filter((obj) => obj[1].parent.size === 0) as [key, node] (key)}
-            <CallGraphLine {node} {store} threadId={key} />
-          {/each}
-        {/if}
-      {/each}
-    </table>
-  </div>
-  <div
-    class="text-content-38 bg-content-38  hover:bg-content-60 p-1 mt-1 text-xs float-right "
-  >
-    <a
-      href={`/cumulative-call-graph?process=${processId}&${startQueryParam}=${begin}&${endQueryParam}=${end}`}
-      target="_blank"
-      use:link
+{#if store}
+  {#if $store.loading}
+    <div
+      style:height={`${size}px`}
+      class="flex items-center justify-center h-full"
     >
-      <i class="bi bi-arrow-up-right-circle" />
-      Open Cumulative Call Graph
-    </a>
-  </div>
+      <BarLoader size={32} />
+    </div>
+  {:else}
+    {#if debug}
+      <CallTreeDebug {store} {begin} {end} />
+    {/if}
+    <div
+      class="overflow-y-auto overflow-x-hidden"
+      style:max-height={`${size}px`}
+    >
+      <table
+        class="w-full bg-skin-700 text-xs text-content-60 space-y-2 table-fixed "
+      >
+        <tr class="bg-skin-800 w-100">
+          <th style="width:66%" class="text-left">Function</th>
+          <th class="table-header"><i class="bi bi-caret-right" />Count</th>
+          <th class="table-header"
+            ><i class="bi bi-chevron-bar-contract" />Avg</th
+          >
+          <th class="table-header"><i class="bi bi-chevron-bar-left" />Min</th>
+          <th class="table-header"><i class="bi bi-chevron-bar-right" />Max</th>
+          <th class="table-header"><i class="bi bi-lightbulb" />Sd</th>
+          <th class="table-header"
+            ><i class="bi bi bi-caret-right-fill" /> Sum</th
+          >
+        </tr>
+        {#each Array.from($store.threads) as [hash, thread] (hash)}
+          {#if thread.data}
+            {#each Array.from(thread.data).filter((obj) => obj[1].parent.size === 0) as [key, node] (key)}
+              <CallGraphLine {node} {store} threadId={key} />
+            {/each}
+          {/if}
+        {/each}
+      </table>
+    </div>
+    <div
+      class="text-content-38 bg-content-38  hover:bg-content-60 p-1 mt-2 text-xs float-left "
+    >
+      <a
+        href={`/cumulative-call-graph?process=${processId}&${startQueryParam}=${begin}&${endQueryParam}=${end}`}
+        target="_blank"
+        use:link
+      >
+        <i class="bi bi-arrow-up-right-circle" />
+        Open Cumulative Call Graph
+      </a>
+    </div>
+  {/if}
 {/if}
 
 <style lang="postcss">
   i {
     @apply pr-1;
+  }
+
+  .table-header {
+    @apply truncate;
   }
 
   ::-webkit-scrollbar {

@@ -248,7 +248,7 @@
           <TimelineRange {stateStore} />
         </div>
         <div class="mt-3">
-          <CallGraph begin={x} end={y} {processId} debug={false} size={450} />
+          <CallGraph begin={x} end={y} {processId} debug={false} size={300} />
         </div>
       </div>
     </div>
@@ -263,7 +263,7 @@
   }
 
   .canvas {
-    max-height: calc(100vh - 150px);
+    max-height: calc(100vh - 490px);
     overflow-x: hidden;
     display: flex;
     flex-direction: column;

@@ -46,7 +46,7 @@
 
 <div on:wheel|preventDefault={(e) => wheelDispatcher("zoom", e)} {style}>
   <div
-    class="bg-slate-300 text-slate-500 px-1 text-sm text-left mb-1 flex flex-row place-content-between items-center"
+    class="bg-skin-700 text-content-87 px-1 text-sm text-left mb-1 flex flex-row place-content-between items-center"
     on:click|preventDefault={() => (collapsed = !collapsed)}
   >
     <div>
@@ -115,7 +115,7 @@
           {threadName}
           maxDepth={thread.maxDepth}
         >
-          <span class="text text-xs text-slate-300" slot="details"
+          <span class="text text-xs text-content-38" slot="details"
             >{threadLength} ({thread.block_ids.length} block{thread.block_ids
               .length
               ? "s"

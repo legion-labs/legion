@@ -73,6 +73,9 @@ export async function getProcessCumulatedCallGraph(
           .then((b) =>
             updateState((state) => {
               if (b) {
+                if (state.loading) {
+                  state.loading = false;
+                }
                 state.ingestBlock(desc.id, b);
               }
             })
@@ -83,10 +86,6 @@ export async function getProcessCumulatedCallGraph(
     if (promises.length) {
       await Promise.any(promises).catch((e) => console.error(e));
     }
-
-    updateState((state) => {
-      state.loading = false;
-    });
   };
 
   await updateRange(begin, end);
