@@ -5727,7 +5727,7 @@ checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
 [[package]]
 name = "nvenc-sys"
 version = "0.1.0"
-source = "git+https://github.com/legion-labs/nvenc-sys?rev=f6a4fe275016e1ffee1e09523463ca09ce9bb4b8#f6a4fe275016e1ffee1e09523463ca09ce9bb4b8"
+source = "git+https://github.com/legion-labs/nvenc-sys?rev=996be4ceac8112e14ae127adcf8c699bcc1618f5#996be4ceac8112e14ae127adcf8c699bcc1618f5"
 
 [[package]]
 name = "oauth2"

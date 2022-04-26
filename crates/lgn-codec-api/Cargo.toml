@@ -11,7 +11,7 @@ license = "MIT OR Apache-2.0"
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-graphics-api = { path = "../lgn-graphics-api", version = "0.1.0" }
 ash = { version = ">= 0.33", features = ["linked"] }
-nvenc-sys = { git = "https://github.com/legion-labs/nvenc-sys", rev = "f6a4fe275016e1ffee1e09523463ca09ce9bb4b8", features = [
+nvenc-sys = { git = "https://github.com/legion-labs/nvenc-sys", rev = "996be4ceac8112e14ae127adcf8c699bcc1618f5", features = [
     "cuda",
 ] }
 libloading = "0.7"
