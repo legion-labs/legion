@@ -69,7 +69,7 @@ impl CallGraphNode {
             .parents
             .entry(parent.hash)
             .or_insert_with(|| Self::new(parent.hash, self.begin_ms, self.end_ms));
-        parent_node.add_call(parent, None);
+        parent_node.process(parent);
         parent_node.child_acc += time_ms;
     }
 
