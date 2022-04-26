@@ -8,24 +8,14 @@
 <div>
   <input
     type="text"
-    class="metric-search border-2"
+    class="metric-search border-0 text-sm text-content-60 bg-skin-600"
     placeholder="Search..."
     on:focus={() => (searching = true)}
     on:blur={() => (searching = false)}
     bind:value={$searchStore}
   />
-  <button on:click={() => searchStore.set("")}
-    ><i class="bi bi-x-circle" /></button
+  <button
+    class="text-sm bg-skin-600 text-content-60 w-5"
+    on:click={() => searchStore.set("")}><i class="bi bi-x-circle" /></button
   >
 </div>
-
-<style lang="postcss">
-  input {
-    @apply text-sm;
-    border: 0px;
-  }
-
-  button {
-    @apply text-sm bg-slate-300 text-slate-50 w-5;
-  }
-</style>

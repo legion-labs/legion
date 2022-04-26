@@ -18,13 +18,13 @@
   on:click={() => metricStore.switchHidden(metric.name)}
 >
   <span class="h-4 w-4 block" style="background-color:{color}" />
-  <span class="text-sm {metric.hidden ? 'text-slate-300' : 'black'}"
+  <span class="text-sm {metric.hidden ? 'text-content-60' : 'black'}"
     >{metric.name} ({metric.unit})</span
   >
   <i
     class="{iconMap.get(metric.unit) ??
       'bi bi-question-circle-fill'} {metric.hidden
-      ? 'text-slate-300'
-      : 'text-slate-500'}"
+      ? 'text-content-60'
+      : 'text-content-87'}"
   />
 </div>

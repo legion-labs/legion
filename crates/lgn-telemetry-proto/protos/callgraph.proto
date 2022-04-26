@@ -38,13 +38,25 @@ message NodeStats {
   uint64 count = 6;
 }
 
-// New : client side block streaming
+// Manifest
 message CumulativeCallGraphManifestRequest {
   string process_id = 1;
   double begin_ms = 2;
   double end_ms = 3;
 }
 
+message CumulativeCallGraphManifest {
+  repeated CumulativeCallGraphBlockDesc blocks = 1;
+  uint64 tsc_frequency = 2;
+  int64 start_ticks = 3;
+}
+
+message CumulativeCallGraphBlockDesc {
+  string id = 1;
+  bool full = 2;
+}
+
+// Old : client side block streaming
 message CumulativeCallGraphBlockRequest {
   string block_id = 1;
   double begin_ms = 2;
@@ -53,14 +65,32 @@ message CumulativeCallGraphBlockRequest {
   int64 start_ticks = 5;
 }
 
-message CumulativeCallGraphManifest {
-  repeated string blocks = 1;
-  uint64 tsc_frequency = 2;
-  int64 start_ticks = 3;
-}
-
 message CumulativeCallGraphBlock {
   CallTree call_tree = 1;
   uint32 stream_hash = 2;
   string stream_name = 3;
+}
+
+// New : client side accumulated blocks
+message CumulativeCallGraphComputedBlock {
+  map<uint32, ScopeDesc> scopes = 1;
+  repeated CumulativeComputedCallGraphNode nodes = 2;
+  uint32 stream_hash = 3;
+  string stream_name = 4;
+  bool full = 5;
+}
+
+message CumulativeComputedCallGraphNode {
+  CumulativeCallGraphEdge node = 1;
+  repeated CumulativeCallGraphEdge callers = 3;
+  repeated CumulativeCallGraphEdge callees = 4;
+}
+
+message CumulativeCallGraphEdge {
+  uint32 hash = 1;
+  double sum = 2;
+  double sum_sqr = 3;
+  double min = 4;
+  double max = 5;
+  uint64 count = 6;
 }

@@ -1,3 +1,4 @@
+use crate::cumulative_call_graph_handler::CumulativeCallGraphHandler;
 use anyhow::Context;
 use anyhow::{bail, Result};
 use async_recursion::async_recursion;
@@ -11,6 +12,7 @@ use lgn_telemetry_proto::analytics::BlockAsyncEventsStatReply;
 use lgn_telemetry_proto::analytics::BlockAsyncStatsRequest;
 use lgn_telemetry_proto::analytics::BlockSpansReply;
 use lgn_telemetry_proto::analytics::CumulativeCallGraphBlock;
+use lgn_telemetry_proto::analytics::CumulativeCallGraphComputedBlock;
 use lgn_telemetry_proto::analytics::FindProcessReply;
 use lgn_telemetry_proto::analytics::FindProcessRequest;
 use lgn_telemetry_proto::analytics::ListProcessChildrenRequest;
@@ -53,7 +55,6 @@ use crate::call_tree::compute_block_spans;
 use crate::call_tree::reduce_lod;
 use crate::call_tree_store::CallTreeStore;
 use crate::cumulative_call_graph::compute_cumulative_call_graph;
-use crate::cumulative_call_graph::CumulativeCallGraphHandler;
 use crate::metrics::MetricHandler;
 
 static REQUEST_COUNT: AtomicU64 = AtomicU64::new(0);
@@ -600,6 +601,40 @@ impl PerformanceAnalytics for AnalyticsService {
                 error!("Error in fetch_cumulative_call_graph_block: {:?}", e);
                 Err(Status::internal(format!(
                     "Error in fetch_cumulative_call_graph_block: {}",
+                    e
+                )))
+            }
+        }
+    }
+
+    async fn fetch_cumulative_call_graph_computed_block(
+        &self,
+        request: tonic::Request<CumulativeCallGraphBlockRequest>,
+    ) -> Result<tonic::Response<CumulativeCallGraphComputedBlock>, Status> {
+        self.flush_monitor.tick();
+        async_span_scope!("AnalyticsService::fetch_cumulative_call_graph_computed_block");
+        let _guard = RequestGuard::new();
+        let inner_request = request.into_inner();
+        let handler =
+            CumulativeCallGraphHandler::new(self.pool.clone(), Arc::clone(&self.call_trees));
+        match handler
+            .get_call_graph_computed_block(
+                inner_request.block_id,
+                inner_request.start_ticks,
+                inner_request.tsc_frequency,
+                inner_request.begin_ms,
+                inner_request.end_ms,
+            )
+            .await
+        {
+            Ok(reply) => Ok(Response::new(reply)),
+            Err(e) => {
+                error!(
+                    "Error in fetch_cumulative_call_graph_computed_block: {:?}",
+                    e
+                );
+                Err(Status::internal(format!(
+                    "Error in fetch_cumulative_call_graph_computed_block: {}",
                     e
                 )))
             }

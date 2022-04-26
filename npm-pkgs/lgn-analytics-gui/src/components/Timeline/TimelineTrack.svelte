@@ -111,7 +111,6 @@
 <style>
   div {
     align-self: stretch;
-    background-color: #f0f0f0;
     cursor: pointer;
   }
 </style>
