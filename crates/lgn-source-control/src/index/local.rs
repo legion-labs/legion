@@ -15,9 +15,8 @@ pub struct LocalRepositoryIndex {
 }
 
 impl LocalRepositoryIndex {
+    #[span_fn]
     pub async fn new(root: impl AsRef<Path>) -> Result<Self> {
-        async_span_scope!("LocalRepositoryIndex::new");
-
         let root = root.as_ref();
         if !root.is_absolute() {
             return Err(Error::Unspecified(format!(

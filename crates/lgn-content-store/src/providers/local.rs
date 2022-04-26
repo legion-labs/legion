@@ -1,6 +1,6 @@
 use anyhow::Context;
 use async_trait::async_trait;
-use lgn_tracing::async_span_scope;
+use lgn_tracing::{async_span_scope, span_fn};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Display,
@@ -26,9 +26,8 @@ impl LocalProvider {
     ///
     /// If the directory does not exist, or it cannot be created, an error is
     /// returned.
+    #[span_fn]
     pub async fn new(root: impl Into<PathBuf>) -> Result<Self> {
-        async_span_scope!("LocalProvider::new");
-
         let root = root.into();
 
         tokio::fs::create_dir_all(&root)

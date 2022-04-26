@@ -1,6 +1,6 @@
 use lgn_content_store::{ContentProvider, ContentReaderExt, Identifier};
 use lgn_data_runtime::{ResourceType, ResourceTypeAndId};
-use lgn_tracing::async_span_scope;
+use lgn_tracing::{async_span_scope, span_fn};
 use serde::{Deserialize, Serialize};
 
 use crate::Error;
@@ -18,14 +18,13 @@ const ASSET_FILE_VERSION: u16 = 1;
 const ASSET_FILE_TYPENAME: &[u8; 4] = b"asft";
 
 // todo: no asset ids are written because we assume 1 asset in asset_file now.
+#[span_fn]
 pub async fn write_assetfile(
     asset_list: impl Iterator<Item = (ResourceTypeAndId, Identifier)> + Clone,
     reference_list: impl Iterator<Item = (ResourceTypeAndId, (ResourceTypeAndId, ResourceTypeAndId))>
         + Clone,
     content_store: &(dyn ContentProvider + Send + Sync),
 ) -> Result<Vec<u8>, Error> {
-    async_span_scope!("write_assetfile");
-
     // Prepare dependencies
     let mut primary_dependencies: Vec<ResourceTypeAndId> = reference_list.map(|r| r.1 .0).collect();
     primary_dependencies.sort();
