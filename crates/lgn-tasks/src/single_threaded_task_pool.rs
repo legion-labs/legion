@@ -14,18 +14,22 @@ impl TaskPoolBuilder {
         Self::default()
     }
 
+    /// No op on the single threaded task pool
     pub fn num_threads(self, _num_threads: usize) -> Self {
         self
     }
 
+    /// No op on the single threaded task pool
     pub fn stack_size(self, _stack_size: usize) -> Self {
         self
     }
 
+    /// No op on the single threaded task pool
     pub fn thread_name(self, _thread_name: String) -> Self {
         self
     }
 
+    /// Creates a new [`TaskPool`]
     pub fn build(self) -> TaskPool {
         TaskPool::new_internal()
     }
@@ -106,6 +110,7 @@ impl TaskPool {
         FakeTask
     }
 
+    /// Spawns a static future on the JS event loop. This is exactly the same as [`TaskSpool::spawn`].
     pub fn spawn_local<T>(&self, future: impl Future<Output = T> + 'static) -> FakeTask
     where
         T: 'static,
@@ -118,9 +123,13 @@ impl TaskPool {
 pub struct FakeTask;
 
 impl FakeTask {
+    /// No op on the single threaded task pool
     pub fn detach(self) {}
 }
 
+/// A `TaskPool` scope for running one or more non-`'static` futures.
+///
+/// For more information, see [`TaskPool::scope`].
 #[derive(Debug)]
 pub struct Scope<'scope, T> {
     executor: &'scope async_executor::LocalExecutor<'scope>,
@@ -129,10 +138,22 @@ pub struct Scope<'scope, T> {
 }
 
 impl<'scope, T: Send + 'scope> Scope<'scope, T> {
+    /// Spawns a scoped future onto the thread-local executor. The scope *must* outlive
+    /// the provided future. The results of the future will be returned as a part of
+    /// [`TaskPool::scope`]'s return value.
+    ///
+    /// On the single threaded task pool, it just calls [`Scope::spawn_local`].
+    ///
+    /// For more information, see [`TaskPool::scope`].
     pub fn spawn<Fut: Future<Output = T> + 'scope + Send>(&mut self, f: Fut) {
         self.spawn_local(f);
     }
 
+    /// Spawns a scoped future onto the thread-local executor. The scope *must* outlive
+    /// the provided future. The results of the future will be returned as a part of
+    /// [`TaskPool::scope`]'s return value.
+    ///
+    /// For more information, see [`TaskPool::scope`].
     pub fn spawn_local<Fut: Future<Output = T> + 'scope>(&mut self, f: Fut) {
         let result = Arc::new(Mutex::new(None));
         self.results.push(result.clone());
