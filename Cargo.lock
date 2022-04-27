@@ -4164,7 +4164,6 @@ dependencies = [
  "lgn-tasks",
  "lgn-tracing",
  "lgn-utils",
- "parking_lot 0.11.2",
  "rand 0.8.5",
  "serde",
  "thiserror",

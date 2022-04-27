@@ -6,7 +6,7 @@ use lgn_tracing::{span_fn, span_scope, span_scope_named};
 use SchedulingEvent::StartedSystems;
 
 use crate::{
-    archetype::{ArchetypeComponentId, ArchetypeGeneration},
+    archetype::ArchetypeComponentId,
     query::Access,
     schedule::{ParallelSystemContainer, ParallelSystemExecutor},
     world::World,
@@ -32,8 +32,6 @@ struct SystemSchedulingMetadata {
 }
 
 pub struct ParallelExecutor {
-    /// Last archetypes generation observed by parallel systems.
-    archetype_generation: ArchetypeGeneration,
     /// Cached metadata of every system.
     system_metadata: Vec<SystemSchedulingMetadata>,
     /// Used by systems to notify the executor that they have finished.
@@ -62,7 +60,6 @@ impl Default for ParallelExecutor {
     fn default() -> Self {
         let (finish_sender, finish_receiver) = async_channel::unbounded();
         Self {
-            archetype_generation: ArchetypeGeneration::initial(),
             system_metadata: Vec::default(),
             finish_sender,
             finish_receiver,
@@ -117,7 +114,16 @@ impl ParallelSystemExecutor for ParallelExecutor {
             self.events_sender = Some(sender);
         }
 
-        self.update_archetypes(systems, world);
+        {
+            span_scope!("update_archetypes");
+            for (index, container) in systems.iter_mut().enumerate() {
+                let meta = &mut self.system_metadata[index];
+                let system = container.system_mut();
+                system.update_archetype_component_access(world);
+                meta.archetype_component_access
+                    .extend(system.archetype_component_access());
+            }
+        }
 
         let compute_pool = world
             .get_resource_or_insert_with(|| ComputeTaskPool(TaskPool::default()))
@@ -154,27 +160,6 @@ impl ParallelSystemExecutor for ParallelExecutor {
 }
 
 impl ParallelExecutor {
-    /// Calls `system.new_archetype()` for each archetype added since the last
-    /// call to [`update_archetypes`] and updates cached
-    /// `archetype_component_access`.
-    #[span_fn]
-    fn update_archetypes(&mut self, systems: &mut [ParallelSystemContainer], world: &World) {
-        let archetypes = world.archetypes();
-        let new_generation = archetypes.generation();
-        let old_generation = std::mem::replace(&mut self.archetype_generation, new_generation);
-        let archetype_index_range = old_generation.value()..new_generation.value();
-
-        for archetype in archetypes.archetypes[archetype_index_range].iter() {
-            for (index, container) in systems.iter_mut().enumerate() {
-                let meta = &mut self.system_metadata[index];
-                let system = container.system_mut();
-                system.new_archetype(archetype);
-                meta.archetype_component_access
-                    .extend(system.archetype_component_access());
-            }
-        }
-    }
-
     /// Populates `should_run` bitset, spawns tasks for systems that should run
     /// this iteration, queues systems with no dependencies to run (or skip)
     /// at next opportunity.

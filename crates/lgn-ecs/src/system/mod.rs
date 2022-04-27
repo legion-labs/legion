@@ -99,14 +99,14 @@ mod tests {
 
     use crate::{
         self as lgn_ecs,
-        archetype::Archetypes,
+        archetype::{ArchetypeComponentId, Archetypes},
         bundle::Bundles,
         component::{Component, Components},
         entity::{Entities, Entity},
-        query::{Added, Changed, Or, QueryState, With, Without},
+        query::{Added, Changed, Or, With, Without},
         schedule::{Schedule, Stage, SystemStage},
         system::{
-            IntoExclusiveSystem, IntoSystem, Local, NonSend, NonSendMut, Query, QuerySet,
+            IntoExclusiveSystem, IntoSystem, Local, NonSend, NonSendMut, ParamSet, Query,
             RemovedComponents, Res, ResMut, System, SystemState,
         },
         world::{FromWorld, World},
@@ -141,9 +141,6 @@ mod tests {
         world.spawn().insert(A);
 
         system.initialize(&mut world);
-        for archetype in world.archetypes.iter() {
-            system.new_archetype(archetype);
-        }
         system.run((), &mut world);
     }
 
@@ -214,22 +211,22 @@ mod tests {
     }
 
     #[test]
-    fn or_query_set_system() {
+    #[allow(clippy::type_complexity)]
+    fn or_param_set_system() {
         // Regression test for issue #762
-        #[allow(clippy::type_complexity)]
         fn query_system(
             mut ran: ResMut<'_, bool>,
-            mut set: QuerySet<
+            mut set: ParamSet<
                 '_,
                 '_,
                 (
-                    QueryState<(), Or<(Changed<A>, Changed<B>)>>,
-                    QueryState<(), Or<(Added<A>, Added<B>)>>,
+                    Query<'_, '_, (), Or<(Changed<A>, Changed<B>)>>,
+                    Query<'_, '_, (), Or<(Added<A>, Added<B>)>>,
                 ),
             >,
         ) {
-            let changed = set.q0().iter().count();
-            let added = set.q1().iter().count();
+            let changed = set.p0().iter().count();
+            let added = set.p1().iter().count();
 
             assert_eq!(changed, 1);
             assert_eq!(added, 1);
@@ -328,7 +325,7 @@ mod tests {
 
     #[test]
     fn query_set_system() {
-        fn sys(mut _set: QuerySet<'_, '_, (QueryState<&mut A>, QueryState<&A>)>) {}
+        fn sys(mut _set: ParamSet<'_, '_, (Query<'_, '_, &mut A>, Query<'_, '_, &A>)>) {}
         let mut world = World::default();
         run_system(&mut world, sys);
     }
@@ -338,7 +335,7 @@ mod tests {
     fn conflicting_query_with_query_set_system() {
         fn sys(
             _query: Query<'_, '_, &mut A>,
-            _set: QuerySet<'_, '_, (QueryState<&mut A>, QueryState<&B>)>,
+            _set: ParamSet<'_, '_, (Query<'_, '_, &mut A>, Query<'_, '_, &B>)>,
         ) {
         }
 
@@ -350,8 +347,8 @@ mod tests {
     #[should_panic]
     fn conflicting_query_sets_system() {
         fn sys(
-            _set_1: QuerySet<'_, '_, (QueryState<&mut A>,)>,
-            _set_2: QuerySet<'_, '_, (QueryState<&mut A>, QueryState<&B>)>,
+            _set_1: ParamSet<'_, '_, (Query<'_, '_, &mut A>,)>,
+            _set_2: ParamSet<'_, '_, (Query<'_, '_, &mut A>, Query<'_, '_, &B>)>,
         ) {
         }
 
@@ -701,7 +698,7 @@ mod tests {
         let mut system_state: SystemState<(
             Res<'_, A>,
             Query<'_, '_, &B>,
-            QuerySet<'_, '_, (QueryState<&C>, QueryState<&D>)>,
+            ParamSet<'_, '_, (Query<'_, '_, &C>, Query<'_, '_, &D>)>,
         )> = SystemState::new(&mut world);
         let (a, query, _) = system_state.get(&world);
         assert_eq!(*a, A(42), "returned resource matches initial value");
@@ -867,5 +864,79 @@ mod tests {
                 "both components returned by iter of &mut"
             );
         }
+    }
+
+    #[test]
+    fn update_archetype_component_access_works() {
+        use std::collections::HashSet;
+
+        fn a_not_b_system(_query: Query<'_, '_, &A, Without<B>>) {}
+
+        let mut world = World::default();
+        let mut system = IntoSystem::into_system(a_not_b_system);
+        let mut expected_ids = HashSet::<ArchetypeComponentId>::new();
+        let a_id = world.init_component::<A>();
+
+        // set up system and verify its access is empty
+        system.initialize(&mut world);
+        system.update_archetype_component_access(&world);
+        assert_eq!(
+            system
+                .archetype_component_access()
+                .reads()
+                .collect::<HashSet<_>>(),
+            expected_ids
+        );
+
+        // add some entities with archetypes that should match and save their ids
+        expected_ids.insert(
+            world
+                .spawn()
+                .insert_bundle((A,))
+                .archetype()
+                .get_archetype_component_id(a_id)
+                .unwrap(),
+        );
+        expected_ids.insert(
+            world
+                .spawn()
+                .insert_bundle((A, C))
+                .archetype()
+                .get_archetype_component_id(a_id)
+                .unwrap(),
+        );
+
+        // add some entities with archetypes that should not match
+        world.spawn().insert_bundle((A, B));
+        world.spawn().insert_bundle((B, C));
+
+        // update system and verify its accesses are correct
+        system.update_archetype_component_access(&world);
+        assert_eq!(
+            system
+                .archetype_component_access()
+                .reads()
+                .collect::<HashSet<_>>(),
+            expected_ids
+        );
+
+        // one more round
+        expected_ids.insert(
+            world
+                .spawn()
+                .insert_bundle((A, D))
+                .archetype()
+                .get_archetype_component_id(a_id)
+                .unwrap(),
+        );
+        world.spawn().insert_bundle((A, B, D));
+        system.update_archetype_component_access(&world);
+        assert_eq!(
+            system
+                .archetype_component_access()
+                .reads()
+                .collect::<HashSet<_>>(),
+            expected_ids
+        );
     }
 }

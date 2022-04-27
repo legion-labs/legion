@@ -137,8 +137,12 @@ impl World {
     }
 
     /// Retrieves this world's [Entities] collection mutably
+    ///
+    /// # Safety
+    /// Mutable reference must not be used to put the [`Entities`] data
+    /// in an invalid state for this [`World`]
     #[inline]
-    pub fn entities_mut(&mut self) -> &mut Entities {
+    pub unsafe fn entities_mut(&mut self) -> &mut Entities {
         &mut self.entities
     }
 
@@ -226,8 +230,8 @@ impl World {
     /// let entity = world.spawn()
     ///     .insert(Position { x: 0.0, y: 0.0 })
     ///     .id();
-    ///
-    /// let mut position = world.entity_mut(entity).get_mut::<Position>().unwrap();
+    /// let mut entity_mut = world.entity_mut(entity);
+    /// let mut position = entity_mut.get_mut::<Position>().unwrap();
     /// position.x = 1.0;
     /// ```
     #[inline]
@@ -449,7 +453,8 @@ impl World {
     /// ```
     #[inline]
     pub fn get_mut<T: Component>(&mut self, entity: Entity) -> Option<Mut<'_, T>> {
-        self.get_entity_mut(entity)?.get_mut()
+        // SAFE: lifetimes enforce correct usage of returned borrow
+        unsafe { self.get_entity_mut(entity)?.get_unchecked_mut::<T>() }
     }
 
     /// Despawns the given `entity`, if it exists. This will also remove all of
@@ -618,9 +623,6 @@ impl World {
     /// and those default values will be here instead.
     #[inline]
     pub fn init_resource<R: Resource + FromWorld>(&mut self) {
-        // PERF: We could avoid double hashing here, since the `from_world` call is guaranteed
-        // not to modify the map. However, we would need to be borrowing resources both
-        // mutably and immutably, so we would need to be extremely certain this is correct
         if !self.contains_resource::<R>() {
             let resource = R::from_world(self);
             self.insert_resource(resource);
@@ -648,9 +650,6 @@ impl World {
     /// and those default values will be here instead.
     #[inline]
     pub fn init_non_send_resource<R: 'static + FromWorld>(&mut self) {
-        // PERF: We could avoid double hashing here, since the `from_world` call is guaranteed
-        // not to modify the map. However, we would need to be borrowing resources both
-        // mutably and immutably, so we would need to be extremely certain this is correct
         if !self.contains_resource::<R>() {
             let resource = R::from_world(self);
             self.insert_non_send_resource(resource);

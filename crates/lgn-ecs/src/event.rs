@@ -403,7 +403,7 @@ impl<T: Resource> Events<T> {
 
     /// Iterates over events that happened since the last "update" call.
     /// WARNING: You probably don't want to use this call. In most cases you
-    /// should use an `EventReader`. You should only use this if you know
+    /// should use an [`EventReader`]. You should only use this if you know
     /// you only need to consume events between the last `update()` call and
     /// your call to `iter_current_update_events`. If events happen outside
     /// that window, they will not be handled. For example, any events that
