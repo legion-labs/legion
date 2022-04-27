@@ -332,6 +332,14 @@ impl CommandBuffer {
     ) {
         unimplemented!()
     }
+
+    pub(crate) fn backend_begin_label(&mut self, label: &str) {
+        unimplemented!()
+    }
+
+    pub(crate) fn backend_end_label(&mut self) {
+        unimplemented!()
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -573,7 +581,7 @@ impl Queue {
 
     pub fn backend_submit(
         &self,
-        command_buffers: &[&CommandBuffer],
+        command_buffers: &mut [&mut CommandBuffer],
         wait_semaphores: &[&Semaphore],
         signal_semaphores: &[&Semaphore],
         signal_fence: Option<&Fence>,
