@@ -4,10 +4,12 @@ use lgn_core::Time;
 use lgn_ecs::prelude::*;
 use lgn_graphics_cgen_runtime::Float4;
 use lgn_graphics_data::runtime::CameraSetup;
-use lgn_input::Input;
+use lgn_input::gamepad::GamepadButtonType;
 use lgn_input::{
-    keyboard::KeyCode,
-    mouse::{MouseButton, MouseMotion, MouseWheel},
+    mouse::{MouseMotion, MouseWheel},
+    prelude::{
+        Axis, GamepadAxis, GamepadAxisType, GamepadButton, Gamepads, Input, KeyCode, MouseButton,
+    },
 };
 use lgn_math::{Angle, DMat4, Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
 use lgn_transform::components::GlobalTransform;
@@ -212,13 +214,17 @@ pub(crate) fn apply_camera_setups(
     drop(camera_setups);
 }
 
-#[allow(clippy::needless_pass_by_value)]
+#[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)]
 pub(crate) fn camera_control(
     mut cameras_query: Query<'_, '_, &mut CameraComponent>,
     mut mouse_motion_events: EventReader<'_, '_, MouseMotion>,
     mut mouse_wheel_events: EventReader<'_, '_, MouseWheel>,
     mouse_buttons: Res<'_, Input<MouseButton>>,
     keys: Res<'_, Input<KeyCode>>,
+    gamepads: Res<'_, Gamepads>,
+    gamepad_axes: Res<'_, Axis<GamepadAxis>>,
+    gamepad_buttons: Res<'_, Input<GamepadButton>>,
+
     time: Res<'_, Time>,
 ) {
     if cameras_query.is_empty() {
@@ -240,46 +246,84 @@ pub(crate) fn camera_control(
             continue;
         }
 
-        if !mouse_buttons.pressed(MouseButton::Right) {
-            camera.camera_rig.update(time.delta_seconds());
-            continue;
-        }
-        let mut camera_translation_change = Vec3::ZERO;
-        if keys.pressed(KeyCode::W) {
-            camera_translation_change += camera.camera_rig.final_transform.forward();
-        }
-        if keys.pressed(KeyCode::S) {
-            camera_translation_change -= camera.camera_rig.final_transform.forward();
-        }
-        if keys.pressed(KeyCode::A) {
-            camera_translation_change += camera.camera_rig.final_transform.right();
-        }
-        if keys.pressed(KeyCode::D) {
-            camera_translation_change -= camera.camera_rig.final_transform.right();
-        }
-        let mut speed = camera.speed;
-        if keys.pressed(KeyCode::LShift) {
-            speed *= 2.0;
-        }
-        camera_translation_change *= speed * time.delta_seconds();
+        let gamepad = gamepads.iter().copied().find(|gamepad| {
+            if let Some(left_x) =
+                gamepad_axes.get(GamepadAxis(*gamepad, GamepadAxisType::LeftStickX))
+            {
+                if left_x.abs() > 0.01 {
+                    true
+                } else if let Some(left_y) =
+                    gamepad_axes.get(GamepadAxis(*gamepad, GamepadAxisType::LeftStickY))
+                {
+                    left_y.abs() > 0.01
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        });
 
-        camera
-            .camera_rig
-            .driver_mut::<Position>()
-            .translate(camera_translation_change);
+        if gamepad.is_some() || mouse_buttons.pressed(MouseButton::Right) {
+            let mut camera_translation_change = Vec3::ZERO;
 
-        let rotation_speed = camera.rotation_speed;
-        let camera_driver = camera.camera_rig.driver_mut::<YawPitch>();
-        for mouse_motion_event in mouse_motion_events.iter() {
-            camera_driver.rotate_yaw_pitch(
-                mouse_motion_event.delta.x * rotation_speed * time.delta_seconds(),
-                -mouse_motion_event.delta.y * rotation_speed * time.delta_seconds(),
-            );
-        }
-        for mouse_wheel_event in mouse_wheel_events.iter() {
-            camera.speed = (camera.speed * (1.0 + mouse_wheel_event.y * 0.1)).clamp(0.01, 10.0);
-        }
+            if keys.pressed(KeyCode::W) {
+                camera_translation_change += camera.camera_rig.final_transform.forward();
+            }
+            if keys.pressed(KeyCode::S) {
+                camera_translation_change -= camera.camera_rig.final_transform.forward();
+            }
+            if keys.pressed(KeyCode::A) {
+                camera_translation_change += camera.camera_rig.final_transform.right();
+            }
+            if keys.pressed(KeyCode::D) {
+                camera_translation_change -= camera.camera_rig.final_transform.right();
+            }
 
+            if let Some(gamepad) = gamepad {
+                if let Some(left_x) =
+                    gamepad_axes.get(GamepadAxis(gamepad, GamepadAxisType::LeftStickX))
+                {
+                    camera_translation_change -= left_x * camera.camera_rig.final_transform.right();
+                }
+
+                if let Some(left_y) =
+                    gamepad_axes.get(GamepadAxis(gamepad, GamepadAxisType::LeftStickY))
+                {
+                    camera_translation_change +=
+                        left_y * camera.camera_rig.final_transform.forward();
+                }
+            }
+
+            let mut speed = camera.speed;
+            if let Some(gamepad) = gamepad {
+                if gamepad_buttons.pressed(GamepadButton(gamepad, GamepadButtonType::RightTrigger2))
+                {
+                    speed *= 5.0;
+                }
+            }
+            if keys.pressed(KeyCode::LShift) {
+                speed *= 2.0;
+            }
+            camera_translation_change *= speed * time.delta_seconds();
+
+            camera
+                .camera_rig
+                .driver_mut::<Position>()
+                .translate(camera_translation_change);
+
+            let rotation_speed = camera.rotation_speed;
+            let camera_driver = camera.camera_rig.driver_mut::<YawPitch>();
+            for mouse_motion_event in mouse_motion_events.iter() {
+                camera_driver.rotate_yaw_pitch(
+                    mouse_motion_event.delta.x * rotation_speed * time.delta_seconds(),
+                    -mouse_motion_event.delta.y * rotation_speed * time.delta_seconds(),
+                );
+            }
+            for mouse_wheel_event in mouse_wheel_events.iter() {
+                camera.speed = (camera.speed * (1.0 + mouse_wheel_event.y * 0.1)).clamp(0.01, 10.0);
+            }
+        }
         camera.camera_rig.update(time.delta_seconds());
     }
 }
