@@ -38,6 +38,7 @@ esac
 
 apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
+    libudev-dev \
     libwayland-dev \
     libxkbcommon-dev \
     fuse3 \
