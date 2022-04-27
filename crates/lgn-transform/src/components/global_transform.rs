@@ -133,6 +133,13 @@ impl GlobalTransform {
         Mat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
     }
 
+    /// Returns the 3d affine transformation from this transforms translation,
+    /// rotation, and scale.
+    #[inline]
+    pub fn compute_affine(&self) -> Affine3A {
+        Affine3A::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
+    }
+
     /// Get the unit vector in the local x direction
     #[inline]
     pub fn local_x(&self) -> Vec3 {

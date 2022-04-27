@@ -10,13 +10,15 @@ use crate::components::{Children, Parent};
 /// Despawns the given entity and all its children recursively
 #[derive(Debug)]
 pub struct DespawnRecursive {
-    entity: Entity,
+    /// Target entity
+    pub entity: Entity,
 }
 
 /// Despawns the given entity's children recursively
 #[derive(Debug)]
 pub struct DespawnChildrenRecursive {
-    entity: Entity,
+    /// Target entity
+    pub entity: Entity,
 }
 
 /// Function for despawning an entity and all its children
@@ -55,12 +57,16 @@ fn despawn_children(world: &mut World, entity: Entity) {
 
 impl Command for DespawnRecursive {
     fn write(self, world: &mut World) {
+        span_scope!("DespawnRecursive");
+        // TODO: add entity = bevy_utils::tracing::field::debug(self.entity)
         despawn_with_children_recursive(world, self.entity);
     }
 }
 
 impl Command for DespawnChildrenRecursive {
     fn write(self, world: &mut World) {
+        span_scope!("DespawnChildrenRecursive");
+        // TODO: add entity = bevy_utils::tracing::field::debug(self.entity)
         despawn_children(world, self.entity);
     }
 }
@@ -92,6 +98,10 @@ impl<'w> DespawnRecursiveExt for EntityMut<'w> {
     /// Despawns the provided entity and its children.
     fn despawn_recursive(mut self) {
         let entity = self.id();
+
+        span_scope!("despawn_recursive");
+        // TODO: add entity = bevy_utils::tracing::field::debug(entity)
+
         // SAFE: EntityMut is consumed so even though the location is no longer
         // valid, it cannot be accessed again with the invalid location.
         unsafe {
@@ -101,6 +111,10 @@ impl<'w> DespawnRecursiveExt for EntityMut<'w> {
 
     fn despawn_descendants(&mut self) {
         let entity = self.id();
+
+        span_scope!("despawn_descendants");
+        // TODO: add entity = bevy_utils::tracing::field::debug(entity)
+
         // SAFE: The location is updated.
         unsafe {
             despawn_children(self.world_mut(), entity);

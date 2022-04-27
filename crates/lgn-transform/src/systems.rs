@@ -11,28 +11,31 @@ use crate::components::{GlobalTransform, Transform};
 /// and [`Transform`] component.
 pub fn transform_propagate_system(
     mut root_query: Query<
-        '_,
-        '_,
-        (Entity, Option<&Children>, &Transform, &mut GlobalTransform),
+        (
+            Option<&Children>,
+            &Transform,
+            Changed<Transform>,
+            &mut GlobalTransform,
+        ),
         Without<Parent>,
     >,
-    mut transform_query: Query<'_, '_, (&Transform, &mut GlobalTransform), With<Parent>>,
-    changed_transform_query: Query<'_, '_, Entity, Changed<Transform>>,
-    children_query: Query<'_, '_, Option<&Children>, (With<Parent>, With<GlobalTransform>)>,
+    mut transform_query: Query<
+        (&Transform, Changed<Transform>, &mut GlobalTransform),
+        With<Parent>,
+    >,
+    children_query: Query<Option<&Children>, (With<Parent>, With<GlobalTransform>)>,
 ) {
-    for (entity, children, transform, mut global_transform) in root_query.iter_mut() {
-        let changed = if changed_transform_query.get(entity).is_ok() {
+    for (children, transform, transform_changed, mut global_transform) in root_query.iter_mut() {
+        let mut changed = false;
+        if transform_changed {
             *global_transform = GlobalTransform::from(*transform);
-            true
-        } else {
-            false
-        };
+            changed = true;
+        }
 
         if let Some(children) = children {
             for child in children.iter() {
                 propagate_recursive(
                     &global_transform,
-                    &changed_transform_query,
                     &mut transform_query,
                     &children_query,
                     *child,
@@ -41,23 +44,23 @@ pub fn transform_propagate_system(
             }
         }
     }
-
-    drop(changed_transform_query);
-    drop(children_query);
 }
 
 fn propagate_recursive(
     parent: &GlobalTransform,
-    changed_transform_query: &Query<'_, '_, Entity, Changed<Transform>>,
-    transform_query: &mut Query<'_, '_, (&Transform, &mut GlobalTransform), With<Parent>>,
-    children_query: &Query<'_, '_, Option<&Children>, (With<Parent>, With<GlobalTransform>)>,
+    transform_query: &mut Query<
+        (&Transform, Changed<Transform>, &mut GlobalTransform),
+        With<Parent>,
+    >,
+    children_query: &Query<Option<&Children>, (With<Parent>, With<GlobalTransform>)>,
     entity: Entity,
     mut changed: bool,
 ) {
-    changed |= changed_transform_query.get(entity).is_ok();
-
     let global_matrix = {
-        if let Ok((transform, mut global_transform)) = transform_query.get_mut(entity) {
+        if let Ok((transform, transform_changed, mut global_transform)) =
+            transform_query.get_mut(entity)
+        {
+            changed |= transform_changed;
             if changed {
                 *global_transform = parent.mul_transform(*transform);
             }
@@ -71,7 +74,6 @@ fn propagate_recursive(
         for child in children.iter() {
             propagate_recursive(
                 &global_matrix,
-                changed_transform_query,
                 transform_query,
                 children_query,
                 *child,
