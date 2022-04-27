@@ -94,10 +94,12 @@ impl LightingPass {
         builder: RenderGraphBuilder,
         depth_buffer_id: RenderTargetId,
         gbuffer_ids: [RenderTargetId; 4],
+        ao_buffer_id: RenderTargetId,
         radiance_buffer_id: RenderTargetId,
     ) -> RenderGraphBuilder {
         let mut reads = Vec::from(gbuffer_ids);
         reads.push(depth_buffer_id);
+        reads.push(ao_buffer_id);
         let builder = builder
             .add_pass("Lighting")
             .with_shader(5000)

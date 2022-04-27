@@ -331,6 +331,7 @@ impl RenderScript {
             rendergraph_builder,
             depth_buffer_id,
             gbuffer_ids,
+            ao_buffer_id,
             radiance_buffer_id,
         );
         rendergraph_builder = self.alphablended_layer_pass.build_render_graph(
