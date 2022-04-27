@@ -31,42 +31,39 @@ pub mod prelude {
 
 use lgn_ecs::schedule::StageLabel;
 
-/// The names of the default App stages
+/// The names of the default [`App`] stages.
 ///
-/// The relative stages are added by [`App::add_default_stages`].
+/// The relative [`Stages`](lgn_ecs::schedule::Stage) are added by [`App::add_default_stages`].
 #[derive(Debug, Hash, PartialEq, Eq, Clone, StageLabel)]
 pub enum CoreStage {
-    /// Name of app stage that runs before all other app stages
+    /// The [`Stage`](lgn_ecs::schedule::Stage) that runs before all other app stages.
     First,
-    /// Name of app stage responsible for performing setup before an update.
-    /// Runs before UPDATE.
+    /// The [`Stage`](lgn_ecs::schedule::Stage) that runs before [`CoreStage::Update`].
     PreUpdate,
-    /// Name of app stage responsible for doing most app logic. Systems should
-    /// be registered here by default.
+    /// The [`Stage`](lgn_ecs::schedule::Stage) responsible for doing most app logic. Systems should be registered here by default.
     Update,
-    /// Name of app stage responsible for processing the results of UPDATE. Runs
-    /// after UPDATE.
+    /// The [`Stage`](lgn_ecs::schedule::Stage) that runs after [`CoreStage::Update`].
     PostUpdate,
-    /// Name of app stage that runs after all other app stages
+    /// The [`Stage`](lgn_ecs::schedule::Stage) that runs after all other app stages.
     Last,
 }
 
-/// The label for the Startup [`Schedule`](lgn_ecs::schedule::Schedule),
-/// which runs once at the beginning of the app.
+/// The label for the startup [`Schedule`](lgn_ecs::schedule::Schedule),
+/// which runs once at the beginning of the [`App`].
 ///
-/// When targeting a [`Stage`](lgn_ecs::schedule::Stage) inside this Schedule,
+/// When targeting a [`Stage`](lgn_ecs::schedule::Stage) inside this [`Schedule`](lgn_ecs::schedule::Schedule),
 /// you need to use [`StartupStage`] instead.
 #[derive(Debug, Hash, PartialEq, Eq, Clone, StageLabel)]
 pub struct StartupSchedule;
 
-/// The names of the default App startup stages
+/// The names of the default [`App`] startup stages.
 #[derive(Debug, Hash, PartialEq, Eq, Clone, StageLabel)]
 #[allow(clippy::enum_variant_names)]
 pub enum StartupStage {
-    /// Name of app stage that runs once before the startup stage
+    /// The [`Stage`](lgn_ecs::schedule::Stage) that runs once before [`StartupStage::Startup`].
     PreStartup,
-    /// Name of app stage that runs once when an app starts up
+    /// The [`Stage`](lgn_ecs::schedule::Stage) that runs once when an [`App`] starts up.
     Startup,
-    /// Name of app stage that runs once after the startup stage
+    /// The [`Stage`](lgn_ecs::schedule::Stage) that runs once after [`StartupStage::Startup`].
     PostStartup,
 }
