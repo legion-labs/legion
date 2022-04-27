@@ -81,3 +81,6 @@ impl Plugin for WindowPlugin {
         }
     }
 }
+
+#[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
+pub struct ModifiesWindows;
