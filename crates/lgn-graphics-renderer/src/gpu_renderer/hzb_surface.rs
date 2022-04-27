@@ -124,7 +124,7 @@ impl HzbSurface {
     pub fn generate_hzb(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer<'_>,
         depth_srv_view: &TextureView,
     ) {
         let pipeline = render_context

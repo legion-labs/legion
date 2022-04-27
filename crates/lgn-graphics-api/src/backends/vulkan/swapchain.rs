@@ -159,7 +159,7 @@ impl VulkanSwapchain {
     ) -> GfxResult<Vec<SwapchainImage>> {
         let queue = device_context.create_queue(QueueType::Graphics)?;
         let cmd_pool = queue.create_command_pool(&CommandPoolDef { transient: true })?;
-        let command_buffer = cmd_pool.create_command_buffer(&CommandBufferDef {
+        let mut command_buffer = cmd_pool.create_command_buffer(&CommandBufferDef {
             is_secondary: false,
         })?;
         command_buffer.begin()?;
@@ -180,7 +180,7 @@ impl VulkanSwapchain {
         command_buffer.cmd_resource_barrier(&[], &image_barriers);
 
         command_buffer.end()?;
-        queue.submit(&[&command_buffer], &[], &[], None)?;
+        queue.submit(&mut [&mut command_buffer], &[], &[], None)?;
         queue.wait_for_queue_idle()?;
         Ok(swapchain_images)
     }

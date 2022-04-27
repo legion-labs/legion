@@ -1,6 +1,8 @@
+use std::sync::Arc;
+
 use lgn_tracing::trace;
 
-use super::internal;
+use super::{internal, VkDebugReporter};
 use crate::{
     BarrierQueueTransition, Buffer, BufferBarrier, BufferCopy, CmdBlitParams,
     CmdCopyBufferToTextureParams, CmdCopyTextureParams, ColorRenderTargetBinding, CommandBuffer,
@@ -10,6 +12,7 @@ use crate::{
 };
 pub(crate) struct VulkanCommandBuffer {
     vk_command_buffer: ash::vk::CommandBuffer,
+    debug_reporter: Option<Arc<VkDebugReporter>>,
 }
 
 impl VulkanCommandBuffer {
@@ -37,16 +40,23 @@ impl VulkanCommandBuffer {
                 .allocate_command_buffers(&command_buffer_allocate_info)
         }?[0];
 
-        Ok(Self { vk_command_buffer })
+        Ok(Self {
+            vk_command_buffer,
+            debug_reporter: command_pool
+                .device_context()
+                .debug_reporter()
+                .as_ref()
+                .cloned(),
+        })
     }
 }
 
 impl CommandBuffer {
-    pub(crate) fn vk_command_buffer(&self) -> ash::vk::CommandBuffer {
+    pub(crate) fn vk_command_buffer(&mut self) -> ash::vk::CommandBuffer {
         self.inner.backend_command_buffer.vk_command_buffer
     }
 
-    pub(crate) fn backend_begin(&self) -> GfxResult<()> {
+    pub(crate) fn backend_begin(&mut self) -> GfxResult<()> {
         // TODO: check if it is not a ONE TIME SUBMIT
         let command_buffer_usage_flags = ash::vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT;
 
@@ -63,7 +73,7 @@ impl CommandBuffer {
         Ok(())
     }
 
-    pub(crate) fn backend_end(&self) -> GfxResult<()> {
+    pub(crate) fn backend_end(&mut self) -> GfxResult<()> {
         unsafe {
             self.inner
                 .device_context
@@ -74,7 +84,7 @@ impl CommandBuffer {
     }
 
     pub(crate) fn backend_cmd_begin_render_pass(
-        &self,
+        &mut self,
         color_targets: &[ColorRenderTargetBinding<'_>],
         depth_target: &Option<DepthStencilRenderTargetBinding<'_>>,
     ) -> GfxResult<()> {
@@ -216,7 +226,7 @@ impl CommandBuffer {
         Ok(())
     }
 
-    pub(crate) fn backend_cmd_end_render_pass(&self) {
+    pub(crate) fn backend_cmd_end_render_pass(&mut self) {
         unsafe {
             self.inner
                 .device_context
@@ -227,7 +237,7 @@ impl CommandBuffer {
 
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn backend_cmd_set_viewport(
-        &self,
+        &mut self,
         x: f32,
         y: f32,
         width: f32,
@@ -253,7 +263,7 @@ impl CommandBuffer {
         }
     }
 
-    pub(crate) fn backend_cmd_set_scissor(&self, x: u32, y: u32, width: u32, height: u32) {
+    pub(crate) fn backend_cmd_set_scissor(&mut self, x: u32, y: u32, width: u32, height: u32) {
         unsafe {
             self.inner.device_context.vk_device().cmd_set_scissor(
                 self.inner.backend_command_buffer.vk_command_buffer,
@@ -269,7 +279,7 @@ impl CommandBuffer {
         }
     }
 
-    pub(crate) fn backend_cmd_set_stencil_reference_value(&self, value: u32) {
+    pub(crate) fn backend_cmd_set_stencil_reference_value(&mut self, value: u32) {
         unsafe {
             self.inner
                 .device_context
@@ -282,7 +292,7 @@ impl CommandBuffer {
         }
     }
 
-    pub(crate) fn backend_cmd_bind_pipeline(&self, pipeline: &Pipeline) {
+    pub(crate) fn backend_cmd_bind_pipeline(&mut self, pipeline: &Pipeline) {
         //TODO: Add verification that the pipeline is compatible with the renderpass
         // created by the targets
         let pipeline_bind_point =
@@ -298,7 +308,7 @@ impl CommandBuffer {
     }
 
     pub(crate) fn backend_cmd_bind_vertex_buffers(
-        &self,
+        &mut self,
         first_binding: u32,
         bindings: &[VertexBufferBinding<'_>],
     ) {
@@ -322,7 +332,7 @@ impl CommandBuffer {
         }
     }
 
-    pub(crate) fn backend_cmd_bind_index_buffer(&self, binding: &IndexBufferBinding<'_>) {
+    pub(crate) fn backend_cmd_bind_index_buffer(&mut self, binding: &IndexBufferBinding<'_>) {
         unsafe {
             self.inner.device_context.vk_device().cmd_bind_index_buffer(
                 self.inner.backend_command_buffer.vk_command_buffer,
@@ -334,7 +344,7 @@ impl CommandBuffer {
     }
 
     pub(crate) fn backend_cmd_bind_descriptor_set_handle(
-        &self,
+        &mut self,
         pipeline_type: PipelineType,
         root_signature: &RootSignature,
         set_index: u32,
@@ -355,7 +365,11 @@ impl CommandBuffer {
         }
     }
 
-    pub(crate) fn backend_cmd_push_constant(&self, root_signature: &RootSignature, data: &[u8]) {
+    pub(crate) fn backend_cmd_push_constant(
+        &mut self,
+        root_signature: &RootSignature,
+        data: &[u8],
+    ) {
         unsafe {
             self.inner.device_context.vk_device().cmd_push_constants(
                 self.inner.backend_command_buffer.vk_command_buffer,
@@ -367,7 +381,7 @@ impl CommandBuffer {
         }
     }
 
-    pub(crate) fn backend_cmd_draw(&self, vertex_count: u32, first_vertex: u32) {
+    pub(crate) fn backend_cmd_draw(&mut self, vertex_count: u32, first_vertex: u32) {
         unsafe {
             self.inner.device_context.vk_device().cmd_draw(
                 self.inner.backend_command_buffer.vk_command_buffer,
@@ -380,7 +394,7 @@ impl CommandBuffer {
     }
 
     pub(crate) fn backend_cmd_draw_instanced(
-        &self,
+        &mut self,
         vertex_count: u32,
         first_vertex: u32,
         instance_count: u32,
@@ -398,7 +412,7 @@ impl CommandBuffer {
     }
 
     pub(crate) fn backend_cmd_draw_indirect(
-        &self,
+        &mut self,
         indirect_arg_buffer: &Buffer,
         indirect_arg_offset: u64,
         draw_count: u32,
@@ -416,7 +430,7 @@ impl CommandBuffer {
     }
 
     pub(crate) fn backend_cmd_draw_indirect_count(
-        &self,
+        &mut self,
         indirect_arg_buffer: &Buffer,
         indirect_arg_offset: u64,
         count_buffer: &Buffer,
@@ -441,7 +455,7 @@ impl CommandBuffer {
     }
 
     pub(crate) fn backend_cmd_draw_indexed(
-        &self,
+        &mut self,
         index_count: u32,
         first_index: u32,
         vertex_offset: i32,
@@ -459,7 +473,7 @@ impl CommandBuffer {
     }
 
     pub(crate) fn backend_cmd_draw_indexed_instanced(
-        &self,
+        &mut self,
         index_count: u32,
         first_index: u32,
         instance_count: u32,
@@ -479,7 +493,7 @@ impl CommandBuffer {
     }
 
     pub(crate) fn backend_cmd_draw_indexed_indirect(
-        &self,
+        &mut self,
         indirect_arg_buffer: &Buffer,
         indirect_arg_offset: u64,
         draw_count: u32,
@@ -500,7 +514,7 @@ impl CommandBuffer {
     }
 
     pub(crate) fn backend_cmd_draw_indexed_indirect_count(
-        &self,
+        &mut self,
         indirect_arg_buffer: &Buffer,
         indirect_arg_offset: u64,
         count_buffer: &Buffer,
@@ -525,7 +539,7 @@ impl CommandBuffer {
     }
 
     pub(crate) fn backend_cmd_dispatch(
-        &self,
+        &mut self,
         group_count_x: u32,
         group_count_y: u32,
         group_count_z: u32,
@@ -540,7 +554,7 @@ impl CommandBuffer {
         }
     }
 
-    pub(crate) fn backend_cmd_dispatch_indirect(&self, buffer: &Buffer, offset: u64) {
+    pub(crate) fn backend_cmd_dispatch_indirect(&mut self, buffer: &Buffer, offset: u64) {
         unsafe {
             self.inner.device_context.vk_device().cmd_dispatch_indirect(
                 self.inner.backend_command_buffer.vk_command_buffer,
@@ -551,7 +565,7 @@ impl CommandBuffer {
     }
 
     pub(crate) fn backend_cmd_resource_barrier(
-        &self,
+        &mut self,
         buffer_barriers: &[BufferBarrier<'_>],
         texture_barriers: &[TextureBarrier<'_>],
     ) {
@@ -735,7 +749,7 @@ impl CommandBuffer {
     }
 
     pub(crate) fn backend_cmd_fill_buffer(
-        &self,
+        &mut self,
         dst_buffer: &Buffer,
         offset: u64,
         size: u64,
@@ -753,8 +767,7 @@ impl CommandBuffer {
     }
 
     pub(crate) fn backend_cmd_copy_buffer_to_buffer(
-        &self,
-
+        &mut self,
         src_buffer: &Buffer,
         dst_buffer: &Buffer,
         copy_data: &[BufferCopy],
@@ -781,8 +794,7 @@ impl CommandBuffer {
     }
 
     pub(crate) fn backend_cmd_copy_buffer_to_texture(
-        &self,
-
+        &mut self,
         src_buffer: &Buffer,
         dst_texture: &Texture,
         params: &CmdCopyBufferToTextureParams,
@@ -824,8 +836,7 @@ impl CommandBuffer {
     }
 
     pub(crate) fn backend_cmd_blit_texture(
-        &self,
-
+        &mut self,
         src_texture: &Texture,
         dst_texture: &Texture,
         params: &CmdBlitParams,
@@ -911,8 +922,7 @@ impl CommandBuffer {
     }
 
     pub(crate) fn backend_cmd_copy_image(
-        &self,
-
+        &mut self,
         src_texture: &Texture,
         dst_texture: &Texture,
         params: &CmdCopyTextureParams,
@@ -994,6 +1004,20 @@ impl CommandBuffer {
                 super::internal::resource_state_to_image_layout(params.dst_state).unwrap(),
                 &[*image_copy],
             );
+        }
+    }
+
+    pub(crate) fn backend_begin_label(&mut self, label: &str) {
+        let vk_command_buffer = self.vk_command_buffer();
+        if let Some(debug_reporter) = &self.inner.backend_command_buffer.debug_reporter {
+            debug_reporter.begin_label(vk_command_buffer, label);
+        }
+    }
+
+    pub(crate) fn backend_end_label(&mut self) {
+        let vk_command_buffer = self.vk_command_buffer();
+        if let Some(debug_reporter) = &self.inner.backend_command_buffer.debug_reporter {
+            debug_reporter.end_label(vk_command_buffer);
         }
     }
 }

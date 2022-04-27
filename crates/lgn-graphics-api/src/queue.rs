@@ -63,7 +63,7 @@ impl Queue {
     #[span_fn]
     pub fn submit(
         &self,
-        command_buffers: &[&CommandBuffer],
+        command_buffers: &mut [&mut CommandBuffer],
         wait_semaphores: &[&Semaphore],
         signal_semaphores: &[&Semaphore],
         signal_fence: Option<&Fence>,

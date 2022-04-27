@@ -439,13 +439,13 @@ impl MeshRenderer {
     fn cull(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer<'_>,
         culling_buffers: &CullingArgBuffers,
         culling_options: &(IndirectDispatch, GatherPerfStats),
         culling_args: (u32, u32, u32, Vec2),
         input_buffers: (&BufferView, &BufferView, &BufferView),
     ) {
-        cmd_buffer.with_label("Cull", || {
+        cmd_buffer.with_label("Cull", |cmd_buffer| {
             let indirect_dispatch = culling_options.0 .0;
             let gather_perf_stats = culling_options.1 .0;
 
@@ -659,7 +659,7 @@ impl MeshRenderer {
         if self.culling_buffers.draw_count.is_none() || self.gpu_instance_data.is_empty() {
             // TODO(vdbdd):  Remove this hack
 
-            let cmd_buffer = render_context.alloc_command_buffer();
+            let mut cmd_buffer = render_context.alloc_command_buffer();
 
             cmd_buffer.begin_render_pass(
                 &[],
@@ -694,9 +694,9 @@ impl MeshRenderer {
             render_pass_data.push(pass_data);
         }
 
-        let cmd_buffer = render_context.alloc_command_buffer();
+        let mut cmd_buffer = render_context.alloc_command_buffer();
 
-        cmd_buffer.with_label("Gen occlusion and cull", || {
+        cmd_buffer.with_label("Gen occlusion and cull", |cmd_buffer| {
             cmd_buffer.bind_index_buffer(
                 &render_context
                     .renderer()
@@ -708,7 +708,7 @@ impl MeshRenderer {
             let hzb_pixel_extents = render_surface.get_hzb_surface().hzb_pixel_extents();
             let hzb_max_lod = render_surface.get_hzb_surface().hzb_max_lod();
 
-            render_surface.init_hzb_if_needed(render_context, &cmd_buffer);
+            render_surface.init_hzb_if_needed(render_context, cmd_buffer);
 
             let gpu_count_allocation = render_context.transient_buffer_allocator().copy_data(
                 &(self.gpu_instance_data.len() as u32),
@@ -729,12 +729,12 @@ impl MeshRenderer {
             let render_pass_view = render_pass_allocation
                 .create_structured_buffer_view(std::mem::size_of::<RenderPassData>() as u64, true);
 
-            self.culling_buffers.stats_buffer.clear_buffer(&cmd_buffer);
+            self.culling_buffers.stats_buffer.clear_buffer(cmd_buffer);
 
             // Cull using previous frame Hzb
             self.cull(
                 render_context,
-                &cmd_buffer,
+                cmd_buffer,
                 &self.culling_buffers,
                 &(IndirectDispatch(false), GatherPerfStats(true)),
                 (
@@ -762,12 +762,12 @@ impl MeshRenderer {
             );
 
             // Render initial depth buffer from last frame culling results
-            self.draw(render_context, &cmd_buffer, DefaultLayers::Depth);
+            self.draw(render_context, cmd_buffer, DefaultLayers::Depth);
 
             cmd_buffer.end_render_pass();
 
             // Initial Hzb for current frame
-            render_surface.generate_hzb(render_context, &cmd_buffer);
+            render_surface.generate_hzb(render_context, cmd_buffer);
 
             // Rebind global vertex buffer after gen Hzb changes it
             cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
@@ -775,7 +775,7 @@ impl MeshRenderer {
             // Retest elements culled from first pass against new Hzb
             self.cull(
                 render_context,
-                &cmd_buffer,
+                cmd_buffer,
                 &self.culling_buffers,
                 &(IndirectDispatch(true), GatherPerfStats(true)),
                 (
@@ -804,17 +804,17 @@ impl MeshRenderer {
             );
 
             // Render initial depth buffer from last frame culling results
-            self.draw(render_context, &cmd_buffer, DefaultLayers::Depth);
+            self.draw(render_context, cmd_buffer, DefaultLayers::Depth);
 
             cmd_buffer.end_render_pass();
 
             // Update Hzb from complete depth buffer
-            render_surface.generate_hzb(render_context, &cmd_buffer);
+            render_surface.generate_hzb(render_context, cmd_buffer);
 
             if let Some(readback) = &self.culling_buffers.stats_buffer_readback {
                 self.culling_buffers
                     .stats_buffer
-                    .copy_buffer_to_readback(&cmd_buffer, readback);
+                    .copy_buffer_to_readback(cmd_buffer, readback);
             }
         });
 
@@ -826,7 +826,7 @@ impl MeshRenderer {
     pub(crate) fn draw(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer<'_>,
         layer_id: DefaultLayers,
     ) {
         let label = format!(
@@ -838,7 +838,7 @@ impl MeshRenderer {
             }
         );
 
-        cmd_buffer.with_label(&label, || {
+        cmd_buffer.with_label(&label, |cmd_buffer| {
             let layer_id_index = layer_id as usize;
             self.default_layers[layer_id_index].draw(
                 render_context,

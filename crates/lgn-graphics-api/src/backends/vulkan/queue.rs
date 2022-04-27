@@ -80,14 +80,14 @@ impl Queue {
 
     pub fn backend_submit(
         &self,
-        command_buffers: &[&CommandBuffer],
+        command_buffers: &mut [&mut CommandBuffer],
         wait_semaphores: &[&Semaphore],
         signal_semaphores: &[&Semaphore],
         signal_fence: Option<&Fence>,
         current_cpu_frame: u64,
     ) -> GfxResult<()> {
         let mut command_buffer_list = Vec::with_capacity(command_buffers.len());
-        for command_buffer in command_buffers {
+        for command_buffer in command_buffers.iter_mut() {
             command_buffer_list.push(command_buffer.vk_command_buffer());
         }
 
