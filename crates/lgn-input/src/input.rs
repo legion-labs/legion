@@ -153,14 +153,14 @@ where
 
 #[cfg(test)]
 mod test {
-        use crate::Input;
+    use crate::Input;
 
     /// Used for testing the functionality of [`Input`].
-        #[derive(Copy, Clone, Eq, PartialEq, Hash)]
-        enum DummyInput {
-            Input1,
-            Input2,
-        }
+    #[derive(Copy, Clone, Eq, PartialEq, Hash)]
+    enum DummyInput {
+        Input1,
+        Input2,
+    }
 
     #[test]
     fn test_press() {
