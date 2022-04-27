@@ -9,7 +9,7 @@ use lgn_ecs::{
 };
 use lgn_graphics_data::Color;
 use lgn_math::Vec3;
-use lgn_tracing::{span_fn, warn};
+use lgn_tracing::warn;
 use lgn_transform::components::{GlobalTransform, Transform};
 use strum::IntoEnumIterator;
 
@@ -104,7 +104,6 @@ impl ModelManager {
     }
 }
 
-#[span_fn]
 #[allow(clippy::needless_pass_by_value)]
 pub(crate) fn update_models(
     renderer: Res<'_, Renderer>,
@@ -172,7 +171,6 @@ pub(crate) fn update_models(
     }
 }
 
-#[span_fn]
 #[allow(clippy::needless_pass_by_value)]
 fn debug_bounding_spheres(
     debug_display: Res<'_, DebugDisplay>,

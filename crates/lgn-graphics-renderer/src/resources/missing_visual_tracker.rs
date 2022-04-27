@@ -6,7 +6,6 @@ use lgn_ecs::{
     prelude::{Entity, IntoExclusiveSystem, Query, ResMut},
     schedule::ExclusiveSystemDescriptorCoercion,
 };
-use lgn_tracing::span_fn;
 
 use crate::{components::VisualComponent, labels::RenderStage};
 
@@ -57,7 +56,6 @@ impl MissingVisualTracker {
     }
 }
 
-#[span_fn]
 #[allow(clippy::needless_pass_by_value)]
 fn update_missing_visuals(
     mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,

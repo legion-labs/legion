@@ -5,7 +5,6 @@ use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::runtime_texture::TextureReferenceType;
 use lgn_math::Vec4;
-use lgn_tracing::span_fn;
 use lgn_utils::{memory::round_size_up_to_alignment_u32, HashSet};
 
 use crate::{
@@ -481,7 +480,6 @@ fn on_material_removed(
     }
 }
 
-#[span_fn]
 #[allow(clippy::needless_pass_by_value)]
 fn on_texture_event(
     mut event_reader: EventReader<'_, '_, TextureEvent>,
