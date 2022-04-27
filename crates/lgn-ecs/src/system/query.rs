@@ -89,7 +89,7 @@ use crate::{
 ///
 /// Similarly, a system cannot contain two queries that would break Rust's
 /// mutability Rules. If you need such Queries, you can use Filters to make the
-/// Queries disjoint or use a [`QuerySet`](super::QuerySet).
+/// Queries disjoint or use a [`ParamSet`](super::ParamSet).
 ///
 /// ## Entity ID access
 ///

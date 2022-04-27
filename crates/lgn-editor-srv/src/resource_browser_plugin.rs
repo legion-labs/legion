@@ -158,10 +158,8 @@ impl ResourceBrowserPlugin {
         let (scene_events_tx, scene_events_rx) = crossbeam_channel::unbounded::<SceneMessage>();
         world.insert_resource(scene_events_rx);
 
-        let transaction_manager = world
-            .get_resource::<Arc<Mutex<TransactionManager>>>()
-            .unwrap();
-        let settings = world.get_resource::<ResourceRegistrySettings>().unwrap();
+        let transaction_manager = world.resource::<Arc<Mutex<TransactionManager>>>();
+        let settings = world.resource::<ResourceRegistrySettings>();
 
         let resource_browser_service = ResourceBrowserServer::new(ResourceBrowserRPC {
             transaction_manager: transaction_manager.clone(),
@@ -170,9 +168,7 @@ impl ResourceBrowserPlugin {
         });
 
         {
-            let mut grpc_settings = world
-                .get_resource_mut::<lgn_grpc::GRPCPluginSettings>()
-                .unwrap();
+            let mut grpc_settings = world.resource_mut::<lgn_grpc::GRPCPluginSettings>();
             grpc_settings.register_service(resource_browser_service);
         }
     }

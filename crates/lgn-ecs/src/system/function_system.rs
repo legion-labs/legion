@@ -314,7 +314,7 @@ pub struct InputMarker;
 
 /// The [`System`] counter part of an ordinary function.
 ///
-/// You get this by calling [`IntoSystem::system`]  on a function that only
+/// You get this by calling [`IntoSystem::into_system`]  on a function that only
 /// accepts [`SystemParam`]s. The output of the system becomes the functions
 /// return type, while the input becomes the functions [`In`] tagged parameter
 /// or `()` if no such parameter exists.
