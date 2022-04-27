@@ -1,0 +1,83 @@
+use crate::{api, errors::{Error, Result}, params, responses};
+use http::HeaderValue;
+use lgn_api_codegen::Extra;
+
+pub struct Client {
+    inner: reqwest::Client,
+    base_uri: String,
+}
+
+impl Client {
+    pub fn new(base_uri: &str) -> Self {
+        let inner = reqwest::Client::new();
+        let base_uri = base_uri.to_string();
+        Self { inner, base_uri }
+    }
+}
+
+#[async_trait::async_trait]
+impl api::Api for Client {
+    {% for route in api.routes %}
+        {% let enum_name = "{}Response"|format(route.name|pascal_case) %}
+
+        {% include "signature.rs.jinja" %}{
+            let uri = format!(
+                "{}{{ route.path|fmt_rust_path }}", 
+                self.base_uri
+                {% for parameter in route.parameters.path -%}
+                    , {{ parameter.name|snake_case }}
+                {% endfor -%}
+            );
+
+            {% if !route.parameters.query.is_empty() -%}
+                let query = params::{{ route.name|pascal_case }}Query { 
+                    {% for parameter in route.parameters.query -%}
+                        {{ parameter.name|snake_case }},
+                    {% endfor -%}
+                 };
+                
+            {% endif %}
+
+            {% if !route.parameters.header.is_empty() -%}
+                let mut headers = extra.headers;
+                {%- for parameter in route.parameters.header -%}
+                    {% let param_name = "{}"|format(parameter.name|snake_case) %}
+                    {% if parameter.required -%}
+                        headers.insert(
+                            "{{ parameter.name }}",
+                            HeaderValue::from_str(&{{ param_name }}).map_err(|err| {
+                                Error::InvalidHeader(format!("{{ parameter.name }}: {}", err))
+                            })?,
+                        ); 
+                    {% else %}
+                        if let Some({{ param_name }}) = {{ param_name }} {
+                            headers.insert(
+                                "{{ parameter.name }}",
+                                HeaderValue::from_str(&{{ param_name }}).map_err(|err| {
+                                    Error::InvalidHeader(format!("{{ parameter.name }}: {}", err))
+                                })?,
+                            );
+                        }
+                    {% endif -%}                
+                {% endfor %}
+            {% else %}
+                let headers = extra.headers;
+            {% endif -%}
+
+            let resp = self
+                .inner
+                .{{ route.method|lowercase }}(&uri)
+                .headers(headers)
+                {% if !route.parameters.query.is_empty() -%}
+                    .query(&query)
+                {% endif -%}
+                {% if route.request_body.is_some() -%}
+                    .json(&body)
+                {% endif -%}
+                .send()
+                .await?;
+            
+            responses::{{ enum_name }}::from_reqwest(resp).await
+        }
+    {% endfor %}
+}

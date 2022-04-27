@@ -1,0 +1,29 @@
+{% for model in api.models %}
+    {% match model %}
+        {% when Model::Enum with (enum_) %}
+            {% if let Some(description) = enum_.description %}/// {{ description }}{% endif %}
+            #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+            pub enum {{ enum_.name }}
+            {
+                {%- for variant in enum_.variants -%}
+                    #[serde(rename = "{{ variant }}")]
+                    {{ variant|pascal_case }},
+                {%- endfor -%}
+            }
+        {% when Model::Struct with (struct_) %}
+            {% if let Some(description) = struct_.description %}/// {{ description }}{% endif %}
+            #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+            pub struct {{ struct_.name }} {
+                {% for field in struct_.fields %}
+                    {%- if let Some(description) = field.description -%}/// {{ description }}{%- endif -%}
+                    #[serde(rename = "{{ field.name }}")]
+                    {%- if field.required -%}
+                    pub {{ field.name|fmt_field }}: {{ field.type_|fmt_type }},    
+                    {%- else -%}
+                    #[serde(skip_serializing_if = "Option::is_none")]
+                    pub {{ field.name|fmt_field }}: Option<{{ field.type_|fmt_type }}>,
+                    {%- endif -%}
+                {% endfor %}
+            }
+    {% endmatch %}
+{% endfor %}
