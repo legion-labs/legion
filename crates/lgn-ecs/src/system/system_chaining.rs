@@ -1,7 +1,7 @@
 #![allow(unsafe_code)]
 
 use crate::{
-    archetype::{Archetype, ArchetypeComponentId},
+    archetype::ArchetypeComponentId,
     component::ComponentId,
     query::Access,
     system::{IntoSystem, System},
@@ -64,16 +64,6 @@ impl<SystemA: System, SystemB: System<In = SystemA::Out>> System for ChainSystem
         self.name
     }
 
-    fn new_archetype(&mut self, archetype: &Archetype) {
-        self.system_a.new_archetype(archetype);
-        self.system_b.new_archetype(archetype);
-
-        self.archetype_component_access
-            .extend(self.system_a.archetype_component_access());
-        self.archetype_component_access
-            .extend(self.system_b.archetype_component_access());
-    }
-
     fn archetype_component_access(&self) -> &Access<ArchetypeComponentId> {
         &self.archetype_component_access
     }
@@ -103,6 +93,16 @@ impl<SystemA: System, SystemB: System<In = SystemA::Out>> System for ChainSystem
             .extend(self.system_a.component_access());
         self.component_access
             .extend(self.system_b.component_access());
+    }
+
+    fn update_archetype_component_access(&mut self, world: &World) {
+        self.system_a.update_archetype_component_access(world);
+        self.system_b.update_archetype_component_access(world);
+
+        self.archetype_component_access
+            .extend(self.system_a.archetype_component_access());
+        self.archetype_component_access
+            .extend(self.system_b.archetype_component_access());
     }
 
     fn check_change_tick(&mut self, change_tick: u32) {

@@ -142,10 +142,10 @@ impl BlobVec {
     }
 
     /// # Safety
-    /// len must be <= capacity. if length is decreased, "out of bounds" items
-    /// must be dropped. Newly added items must be immediately populated
-    /// with valid values and length must be increased. For better unwind
-    /// safety, call [`BlobVec::set_len`] _after_ populating a new value.
+    /// `len` must be <= `capacity`. if length is decreased, "out of bounds" items must be dropped.
+    /// Newly added items must be immediately populated with valid values and length must be
+    /// increased. For better unwind safety, call [`BlobVec::set_len`] _after_ populating a new
+    /// value.
     pub unsafe fn set_len(&mut self, len: usize) {
         debug_assert!(len <= self.capacity());
         self.len = len;
@@ -157,9 +157,8 @@ impl BlobVec {
     /// drop the returned pointer, if that is desirable.
     ///
     /// # Safety
-    /// It is the caller's responsibility to ensure that `index` is < self.len()
-    /// Callers should _only_ access the returned pointer immediately after
-    /// calling this function.
+    /// It is the caller's responsibility to ensure that `index` is < `self.len()`
+    /// Callers should _only_ access the returned pointer immediately after calling this function.
     #[inline]
     pub unsafe fn swap_remove_and_forget_unchecked(&mut self, index: usize) -> *mut u8 {
         debug_assert!(index < self.len());
@@ -243,7 +242,7 @@ fn array_layout(layout: &Layout, n: usize) -> Option<Layout> {
     Some(array_layout)
 }
 
-// TODO: replace with Layout::repeat if/when it stabilizes
+// TODO: replace with `Layout::repeat` if/when it stabilizes
 /// From <https://doc.rust-lang.org/beta/src/core/alloc/layout.rs.html>
 fn repeat_layout(layout: &Layout, n: usize) -> Option<(Layout, usize)> {
     // This cannot overflow. Quoting from the invariant of Layout:

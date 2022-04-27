@@ -18,13 +18,19 @@ pub trait Command: Send + Sync + 'static {
     fn write(self, world: &mut World);
 }
 
-/// A list of commands that modify a [`World`], running at the end of the stage
-/// where they have been invoked.
+/// A list of commands that runs at the end of the stage of the system that called them.
+///
+/// Commands are executed one at a time in an exclusive fashion.
+//// Each command can be used to modify the [`World`] in arbitrary ways:
+/// * spawning or despawning entities
+/// * inserting components on new or existing entities
+/// * inserting resources
+/// * etc.
 ///
 /// # Usage
 ///
-/// `Commands` is a [`SystemParam`](crate::system::SystemParam), therefore it is
-/// declared as a function parameter:
+/// Add `mut commands: Commands` as a function argument to your system to get a copy of this struct that will be applied at the end of the current stage.
+/// Commands are almost always used as a [`SystemParam`](crate::system::SystemParam).
 ///
 /// ```
 /// # use lgn_ecs::prelude::*;
@@ -34,7 +40,8 @@ pub trait Command: Send + Sync + 'static {
 /// }
 /// ```
 ///
-/// Then, commands can be invoked by calling the methods of `commands`.
+/// Each command is implemented as a separate method.
+/// Check the [`Command`] trait for a list of available commands (or implement your own!).
 pub struct Commands<'w, 's> {
     queue: &'s mut CommandQueue,
     entities: &'w Entities,
@@ -92,7 +99,7 @@ impl<'w, 's> Commands<'w, 's> {
     }
 
     /// Returns an [`EntityCommands`] for the given `entity` (if it exists) or
-    /// spawns one if it doesn't exist. This will return [None] if the
+    /// spawns one if it doesn't exist. This will return [`None`] if the
     /// `entity` exists with a different generation.
     ///
     /// # Note
@@ -109,7 +116,7 @@ impl<'w, 's> Commands<'w, 's> {
         }
     }
 
-    /// Spawns a [Bundle] without pre-allocating an [Entity]. The [Entity] will
+    /// Spawns a [Bundle] without pre-allocating an [`Entity`]. The [`Entity`] will
     /// be allocated when this [Command] is applied.
     pub fn spawn_and_forget(&mut self, bundle: impl Bundle) {
         self.queue.push(Spawn { bundle });

@@ -21,7 +21,7 @@ use crate::{
 lgn_utils::define_label!(AppLabel);
 
 #[allow(clippy::needless_doctest_main)]
-/// Containers of app logic and data
+/// A container of app logic and data.
 ///
 /// Bundles together the necessary elements, like [`World`] and [`Schedule`], to create
 /// an ECS-based application. It also stores a pointer to a
@@ -29,7 +29,8 @@ lgn_utils::define_label!(AppLabel);
 /// event loop and applying the [`Schedule`] to the [`World`] to drive application logic.
 /// Apps are constructed with the builder pattern.
 ///
-/// ## Example
+/// ## Examples
+///
 /// Here is a simple "Hello World" Legion app:
 /// ```
 /// # use lgn_app::prelude::*;
@@ -158,7 +159,7 @@ impl App {
     /// Adds a [`Stage`] with the given `label` to the last position of the
     /// app's [`Schedule`].
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use lgn_app::prelude::*;
@@ -175,7 +176,7 @@ impl App {
     /// Adds a [`Stage`] with the given `label` to the app's [`Schedule`],
     /// located immediately after the stage labeled by `target`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use lgn_app::prelude::*;
@@ -197,7 +198,7 @@ impl App {
     /// Adds a [`Stage`] with the given `label` to the app's [`Schedule`],
     /// located immediately before the stage labeled by `target`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use lgn_app::prelude::*;
@@ -219,7 +220,7 @@ impl App {
     /// Adds a [`Stage`] with the given `label` to the last position of the
     /// [startup schedule](Self::add_default_stages).
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use lgn_app::prelude::*;
@@ -241,7 +242,7 @@ impl App {
     ///
     /// The `target` label must refer to a stage inside the startup schedule.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use lgn_app::prelude::*;
@@ -272,7 +273,7 @@ impl App {
     ///
     /// The `target` label must refer to a stage inside the startup schedule.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use lgn_app::prelude::*;
@@ -309,7 +310,7 @@ impl App {
     ///
     /// See [`Schedule::stage`] for more details.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// Here the closure is used to add a system to the update stage:
     ///
@@ -339,7 +340,7 @@ impl App {
     /// Refer to the [system module documentation](lgn_ecs::system) to see how a
     /// system can be defined.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use lgn_app::prelude::*;
@@ -356,7 +357,7 @@ impl App {
 
     /// Adds a [`SystemSet`] to the [update stage](Self::add_default_stages).
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use lgn_app::prelude::*;
@@ -380,7 +381,7 @@ impl App {
 
     /// Adds a system to the [`Stage`] identified by `stage_label`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use lgn_app::prelude::*;
@@ -407,7 +408,7 @@ impl App {
 
     /// Adds a [`SystemSet`] to the [`Stage`] identified by `stage_label`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use lgn_app::prelude::*;
@@ -449,7 +450,8 @@ impl App {
     /// * For adding a system to specific stage, see
     ///   [`add_system_to_stage`](Self::add_system_to_stage).
     ///
-    /// ## Example
+    /// # Examples
+    ///
     /// ```
     /// # use lgn_app::prelude::*;
     /// # use lgn_ecs::prelude::*;
@@ -470,7 +472,7 @@ impl App {
 
     /// Adds a [`SystemSet`] to the [startup stage](Self::add_default_stages)
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use lgn_app::prelude::*;
@@ -497,7 +499,7 @@ impl App {
     ///
     /// `stage_label` must refer to a stage inside the startup schedule.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use lgn_app::prelude::*;
@@ -526,7 +528,7 @@ impl App {
     ///
     /// `stage_label` must refer to a stage inside the startup schedule.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use lgn_app::prelude::*;
@@ -618,7 +620,7 @@ impl App {
     /// The labels for those stages are defined in the [`CoreStage`] and
     /// [`StartupStage`] `enum`s.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use lgn_app::prelude::*;
@@ -649,7 +651,7 @@ impl App {
     ///
     /// See [`Events`](lgn_ecs::event::Events) for defining events.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use lgn_app::prelude::*;
@@ -681,7 +683,8 @@ impl App {
     /// See also `init_resource` for resources that implement `Default` or
     /// [`FromWorld`].
     ///
-    /// ## Example
+    /// # Examples
+    ///
     /// ```
     /// # use lgn_app::prelude::*;
     /// #
@@ -697,12 +700,13 @@ impl App {
         self
     }
 
-    /// Inserts a non-send resource to the app
+    /// Inserts a non-send [`Resource`] to the app.
     ///
-    /// You usually want to use `insert_resource`,
-    /// but there are some special cases when a resource cannot be sent across threads.
+    /// You usually want to use [`insert_resource`](Self::insert_resource),
+    /// but there are some special cases when a [`Resource`] cannot be sent across threads.
     ///
-    /// ## Example
+    /// # Examples
+    ///
     /// ```
     /// # use lgn_app::prelude::*;
     /// #
@@ -718,15 +722,16 @@ impl App {
         self
     }
 
-    /// Initialize a resource with standard starting values by adding it to the [`World`]
+    /// Initialize a [`Resource`] with standard starting values by adding it to the [`World`].
     ///
-    /// If the resource already exists, nothing happens.
+    /// If the [`Resource`] already exists, nothing happens.
     ///
-    /// The resource must implement the [`FromWorld`] trait.
-    /// If the `Default` trait is implemented, the `FromWorld` trait will use
-    /// the `Default::default` method to initialize the resource.
+    /// The [`Resource`] must implement the [`FromWorld`] trait.
+    /// If the [`Default`] trait is implemented, the [`FromWorld`] trait will use
+    /// the [`Default::default`] method to initialize the [`Resource`].
     ///
-    /// ## Example
+    /// # Examples
+    ///
     /// ```
     /// # use lgn_app::prelude::*;
     /// #
@@ -750,11 +755,11 @@ impl App {
         self
     }
 
-    /// Initialize a non-send resource with standard starting values by adding it to the [`World`]
+    /// Initialize a non-send [`Resource`] with standard starting values by adding it to the [`World`].
     ///
-    /// The resource must implement the [`FromWorld`] trait.
-    /// If the `Default` trait is implemented, the `FromWorld` trait will use
-    /// the `Default::default` method to initialize the resource.
+    /// The [`Resource`] must implement the [`FromWorld`] trait.
+    /// If the [`Default`] trait is implemented, the [`FromWorld`] trait will use
+    /// the [`Default::default`] method to initialize the [`Resource`].
     pub fn init_non_send_resource<R: 'static + FromWorld>(&mut self) -> &mut Self {
         self.world.init_non_send_resource::<R>();
         self
@@ -762,14 +767,15 @@ impl App {
 
     /// Sets the function that will be called when the app is run.
     ///
-    /// The runner function (`run_fn`) is called only once by [`App::run`]. If
+    /// The runner function `run_fn` is called only once by [`App::run`]. If
     /// the presence of a main loop in the app is desired, it is
     /// responsibility of the runner function to provide it.
     ///
     /// The runner function is usually not set manually, but by Legion
     /// integrated plugins (e.g. winit plugin).
     ///
-    /// ## Example
+    /// # Examples
+    ///
     /// ```
     /// # use lgn_app::prelude::*;
     /// #
@@ -788,7 +794,7 @@ impl App {
         self
     }
 
-    /// Adds a single plugin
+    /// Adds a single [`Plugin`].
     ///
     /// One of Legion's core principles is modularity. All Legion engine
     /// features are implemented as plugins. This includes internal features
@@ -797,7 +803,8 @@ impl App {
     /// Legion also provides a few sets of default plugins. See
     /// [`add_plugins`](Self::add_plugins).
     ///
-    /// ## Example
+    /// # Examples
+    ///
     /// ```ignore
     /// # use lgn_app::prelude::*;
     /// #
@@ -814,15 +821,15 @@ impl App {
         self
     }
 
-    /// Adds a group of plugins
+    /// Adds a group of [`Plugin`]s.
     ///
-    /// Legion plugins can be grouped into a set of plugins. Legion provides
-    /// built-in `PluginGroups` that provide core engine functionality.
+    /// [`Plugin`]s can be grouped into a set by using a [`PluginGroup`].
     ///
-    /// The plugin groups available by default are `DefaultPlugins` and
-    /// `MinimalPlugins`.
+    /// There are built-in [`PluginGroup`]s that provide core engine functionality.
+    /// The [`PluginGroup`]s available by default are `DefaultPlugins` and `MinimalPlugins`.
     ///
-    /// ## Example
+    /// # Examples
+    ///
     /// ```
     /// # use lgn_app::{prelude::*, PluginGroupBuilder};
     /// #
@@ -841,14 +848,15 @@ impl App {
         self
     }
 
-    /// Adds a group of plugins with an initializer method
+    /// Adds a group of [`Plugin`]s with an initializer method.
     ///
-    /// Can be used to add a group of plugins, where the group is modified
-    /// before insertion into Legion application. For example, you can add
-    /// extra plugins at a specific place in the plugin group, or deactivate
-    /// specific plugins while keeping the rest.
+    /// Can be used to add a group of [`Plugin`]s, where the group is modified
+    /// before insertion into a Legion application. For example, you can add
+    /// additional [`Plugin`]s at a specific place in the [`PluginGroup`], or deactivate
+    /// specific [`Plugin`]s while keeping the rest.
     ///
-    /// ## Example
+    /// # Examples
+    ///
     /// ```ignore
     /// # use lgn_app::{prelude::*, PluginGroupBuilder};
     /// #
@@ -882,11 +890,11 @@ impl App {
         self
     }
 
-    /// Adds an `App` as a child of the current one.
+    /// Adds an [`App`] as a child of the current one.
     ///
-    /// The provided function `f` is called by the [`update`](Self::update) method. The `World`
-    /// parameter represents the main app world, while the `App` parameter is just a mutable
-    /// reference to the sub app itself.
+    /// The provided function `f` is called by the [`update`](Self::update) method. The [`World`]
+    /// parameter represents the main app world, while the [`App`] parameter is just a mutable
+    /// reference to the `SubApp` itself.
     pub fn add_sub_app(
         &mut self,
         label: impl AppLabel,
@@ -903,7 +911,11 @@ impl App {
         self
     }
 
-    /// Retrieves a "sub app" stored inside this [App]. This will panic if the sub app does not exist.
+    /// Retrieves a `SubApp` stored inside this [`App`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if the `SubApp` doesn't exist.
     pub fn sub_app_mut(&mut self, label: impl AppLabel) -> &mut Self {
         match self.get_sub_app_mut(label) {
             Ok(app) => app,
@@ -911,8 +923,8 @@ impl App {
         }
     }
 
-    /// Retrieves a "sub app" inside this [App] with the given label, if it exists. Otherwise returns
-    /// an [Err] containing the given label.
+    /// Retrieves a `SubApp` inside this [`App`] with the given label, if it exists. Otherwise returns
+    /// an [`Err`] containing the given label.
     #[allow(clippy::missing_errors_doc)]
     pub fn get_sub_app_mut(&mut self, label: impl AppLabel) -> Result<&mut Self, impl AppLabel> {
         self.sub_apps
@@ -921,7 +933,11 @@ impl App {
             .ok_or(label)
     }
 
-    /// Retrieves a "sub app" stored inside this [App]. This will panic if the sub app does not exist.
+    /// Retrieves a `SubApp` stored inside this [`App`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if the `SubApp` doesn't exist.
     pub fn sub_app(&self, label: impl AppLabel) -> &Self {
         match self.get_sub_app(label) {
             Ok(app) => app,
@@ -929,8 +945,8 @@ impl App {
         }
     }
 
-    /// Retrieves a "sub app" inside this [App] with the given label, if it exists. Otherwise returns
-    /// an [Err] containing the given label.
+    /// Retrieves a `SubApp` inside this [`App`] with the given label, if it exists. Otherwise returns
+    /// an [`Err`] containing the given label.
     #[allow(clippy::missing_errors_doc)]
     pub fn get_sub_app(&self, label: impl AppLabel) -> Result<&Self, impl AppLabel> {
         self.sub_apps
@@ -944,7 +960,11 @@ fn run_once(mut app: App) {
     app.update();
 }
 
-/// An event that indicates the app should exit. This will fully exit the app
-/// process.
+/// An event that indicates the [`App`] should exit. This will fully exit the app process at the
+/// start of the next tick of the schedule.
+///
+/// You can also use this event to detect that an exit was requested. In order to receive it, systems
+/// subscribing to this event should run after it was emitted and before the schedule of the same
+/// frame is over.
 #[derive(Debug, Clone, Default)]
 pub struct AppExit;

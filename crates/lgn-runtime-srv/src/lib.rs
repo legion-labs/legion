@@ -304,9 +304,7 @@ fn setup_runtime_grpc(world: &mut World) {
     let (command_sender, command_receiver) = crossbeam_channel::unbounded::<RuntimeServerCommand>();
 
     let grpc_server = GRPCServer::new(command_sender);
-    let mut grpc_settings = world
-        .get_resource_mut::<lgn_grpc::GRPCPluginSettings>()
-        .expect("cannot retrieve resource GRPCPluginSettings from world");
+    let mut grpc_settings = world.resource_mut::<lgn_grpc::GRPCPluginSettings>();
     grpc_settings.register_service(grpc_server.service());
 
     world.insert_resource(command_receiver);
