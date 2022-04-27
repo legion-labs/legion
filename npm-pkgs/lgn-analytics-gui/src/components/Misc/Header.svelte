@@ -16,7 +16,7 @@
 
   // TODO: Drop this whole logic when the dark theme is mature enough
   // Feel free to set this const to "true" to enable fast theme switching
-  const themeIsTogglable = false;
+  const themeIsTogglable = true;
 
   onMount(async () => {
     user = (await authClient.userInfo()).name;

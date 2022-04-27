@@ -6,9 +6,9 @@
 @tailwind utilities;
 
 body {
+  @apply text-default bg-default;
+
   font-family: "Inter", Arial, sans-serif;
-  color: rgb(var(--text-default));
-  background-color: rgb(var(--background-default));
 }
 
 :root {

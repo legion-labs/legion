@@ -45,12 +45,6 @@ module.exports = {
         },
 
         // TODO: Remove all
-        content: {
-          38: "var(--color-content-38)",
-          60: "var(--color-content-60)",
-          87: "var(--color-content-87)",
-          100: "var(--color-content-100)",
-        },
         white: {
           87: "#FFFFFFDE",
           100: "#FFFFFFFF",
@@ -63,9 +57,13 @@ module.exports = {
         },
       },
       backgroundColor: {
+        default: withOpacity("--background-default"),
         background: withOpacity("--color-background"),
         surface: withOpacity("--color-surface"),
         backdrop: withOpacity("--color-backdrop", 87),
+      },
+      textColor: {
+        default: withOpacity("--text-default"),
       },
     },
   },
