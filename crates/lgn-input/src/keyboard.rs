@@ -1,7 +1,7 @@
 use lgn_app::EventReader;
 use lgn_ecs::system::ResMut;
 
-use crate::{ElementState, Input};
+use crate::{ButtonState, Input};
 
 /// A key input event from a keyboard device
 #[derive(Debug, Clone)]
@@ -9,7 +9,7 @@ use crate::{ElementState, Input};
 pub struct KeyboardInput {
     pub scan_code: u32,
     pub key_code: Option<KeyCode>,
-    pub state: ElementState,
+    pub state: ButtonState,
 }
 
 /// Updates the `Input<KeyCode>` resource with the latest `KeyboardInput` events
@@ -26,8 +26,8 @@ pub fn keyboard_input_system(
         } = event
         {
             match state {
-                ElementState::Pressed => keyboard_input.press(*key_code),
-                ElementState::Released => keyboard_input.release(*key_code),
+                ButtonState::Pressed => keyboard_input.press(*key_code),
+                ButtonState::Released => keyboard_input.release(*key_code),
             }
         }
     }
