@@ -24,6 +24,7 @@
 | 'A' + RMB\*         | Move camera left                                                           |
 | 'D' + RMB\*         | Move camera right                                                          |
 | 'M'                 | Toggle display of [egui](https://github.com/emilk/egui#readme) info-panels |
+| 'C'                 | Trigger RenderDoc capture                                                  |
 | 'S' + RMB\*         | Move camera backwards                                                      |
 | 'W' + RMB\*         | Move camera forward                                                        |
 | 'Z'                 | Reset camera setup (position and target)                                   |
