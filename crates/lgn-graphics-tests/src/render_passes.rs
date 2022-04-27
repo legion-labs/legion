@@ -30,12 +30,11 @@ impl DepthLayerPass {
         builder: RenderGraphBuilder,
         depth_buffer_id: RenderTargetId,
     ) -> RenderGraphBuilder {
-        let builder = builder
+        builder
             .add_pass("DepthLayer")
             .with_shader(1000)
             .reads(vec![])
-            .writes(vec![depth_buffer_id]);
-        builder
+            .writes(vec![depth_buffer_id])
     }
 }
 
@@ -48,12 +47,11 @@ impl OpaqueLayerPass {
     ) -> RenderGraphBuilder {
         let mut writes = Vec::from(gbuffer_ids);
         writes.push(depth_buffer_id);
-        let builder = builder
+        builder
             .add_pass("OpaqueLayer")
             .with_shader(2000)
             .reads(vec![])
-            .writes(writes);
-        builder
+            .writes(writes)
     }
 }
 
@@ -64,12 +62,11 @@ impl AlphaBlendedLayerPass {
         depth_buffer_id: RenderTargetId,
         radiance_buffer_id: RenderTargetId,
     ) -> RenderGraphBuilder {
-        let builder = builder
+        builder
             .add_pass("AlphaBlendedLayer")
             .with_shader(3000)
             .reads(vec![depth_buffer_id])
-            .writes(vec![radiance_buffer_id]);
-        builder
+            .writes(vec![radiance_buffer_id])
     }
 }
 
@@ -79,12 +76,11 @@ impl PostProcessPass {
         builder: RenderGraphBuilder,
         radiance_buffer_id: RenderTargetId,
     ) -> RenderGraphBuilder {
-        let builder = builder
+        builder
             .add_pass("PostProcess")
             .with_shader(4000)
             .reads(vec![])
-            .writes(vec![radiance_buffer_id]);
-        builder
+            .writes(vec![radiance_buffer_id])
     }
 }
 
@@ -100,12 +96,11 @@ impl LightingPass {
         let mut reads = Vec::from(gbuffer_ids);
         reads.push(depth_buffer_id);
         reads.push(ao_buffer_id);
-        let builder = builder
+        builder
             .add_pass("Lighting")
             .with_shader(5000)
             .reads(reads)
-            .writes(vec![radiance_buffer_id]);
-        builder
+            .writes(vec![radiance_buffer_id])
     }
 }
 
@@ -126,7 +121,7 @@ impl SSAOPass {
 
         let mut reads = Vec::from(gbuffer_ids);
         reads.push(depth_buffer_id);
-        let builder = builder
+        builder
             .add_pass("SSAO")
             .add_children()
             .add_pass("AO")
@@ -141,8 +136,7 @@ impl SSAOPass {
             .with_shader(8002)
             .reads(vec![blur_buffer_id, depth_buffer_id])
             .writes(vec![ao_buffer_id])
-            .end_children();
-        builder
+            .end_children()
     }
 
     fn make_raw_ao_buffer_desc(&self, view: &RenderView) -> RenderTargetDesc {
@@ -162,11 +156,10 @@ impl UiPass {
         builder: RenderGraphBuilder,
         ui_buffer_id: RenderTargetId,
     ) -> RenderGraphBuilder {
-        let builder = builder
+        builder
             .add_pass("UI")
             .with_shader(6000)
             .reads(vec![])
-            .writes(vec![ui_buffer_id]);
-        builder
+            .writes(vec![ui_buffer_id])
     }
 }

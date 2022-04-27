@@ -3,7 +3,7 @@ use crate::render_passes::*;
 ///
 ///
 /// https://logins.github.io/graphics/2021/05/31/RenderGraphs.html
-///
+/// https://medium.com/embarkstudios/homegrown-rendering-with-rust-1e39068e56a7
 ///
 ///
 ///
@@ -148,24 +148,13 @@ impl std::fmt::Display for RenderGraph {
     }
 }
 
+#[derive(Default)]
 pub(crate) struct RenderGraphBuilder {
     current_node: Option<RGNode>,
     current_parent: Option<RGNode>,
     render_targets: Vec<RenderTarget>,
     next_rendertarget_id: RenderTargetId,
     top_level_nodes: Vec<RGNode>,
-}
-
-impl Default for RenderGraphBuilder {
-    fn default() -> Self {
-        Self {
-            current_node: None,
-            current_parent: None,
-            render_targets: vec![],
-            next_rendertarget_id: 0,
-            top_level_nodes: vec![],
-        }
-    }
 }
 
 impl RenderGraphBuilder {
