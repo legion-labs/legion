@@ -36,8 +36,8 @@ pub struct RenderTarget {
     pub desc: RenderTargetDesc,
 }
 
-pub enum GfxError {
-    String(String),
+pub struct GfxError {
+    msg: String,
 }
 pub type GfxResult<T> = Result<T, GfxError>;
 
@@ -275,12 +275,38 @@ pub struct RenderScript {
 }
 
 impl RenderScript {
+    /// .
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use lgn_graphics_tests::render_script::RenderScript;
+    ///
+    /// let mut render_script = ;
+    /// let result = render_script.build_render_graph(view, config);
+    /// assert_eq!(result, );
+    /// assert_eq!(render_script, );
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if .
     pub fn build_render_graph(
         &mut self,
         view: &RenderView,
         config: &Config,
     ) -> GfxResult<RenderGraph> {
         let mut rendergraph_builder = RenderGraph::builder();
+
+        if view.target.desc.width == 0
+            || view.target.desc.height == 0
+            || view.target.desc.depth != 1
+            || view.target.desc.array_size != 1
+        {
+            return Err(GfxError {
+                msg: "View target is invalid".to_string(),
+            });
+        }
 
         let view_target_id = rendergraph_builder.inject_render_target(&view.target.desc);
 
