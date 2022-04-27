@@ -851,7 +851,7 @@ impl App {
     /// Adds a group of [`Plugin`]s with an initializer method.
     ///
     /// Can be used to add a group of [`Plugin`]s, where the group is modified
-    /// before insertion into a Bevy application. For example, you can add
+    /// before insertion into a Legion application. For example, you can add
     /// additional [`Plugin`]s at a specific place in the [`PluginGroup`], or deactivate
     /// specific [`Plugin`]s while keeping the rest.
     ///
@@ -925,6 +925,7 @@ impl App {
 
     /// Retrieves a `SubApp` inside this [`App`] with the given label, if it exists. Otherwise returns
     /// an [`Err`] containing the given label.
+    #[allow(clippy::missing_errors_doc)]
     pub fn get_sub_app_mut(&mut self, label: impl AppLabel) -> Result<&mut Self, impl AppLabel> {
         self.sub_apps
             .get_mut((&label) as &dyn AppLabel)
@@ -946,7 +947,8 @@ impl App {
 
     /// Retrieves a `SubApp` inside this [`App`] with the given label, if it exists. Otherwise returns
     /// an [`Err`] containing the given label.
-    pub fn get_sub_app(&self, label: impl AppLabel) -> Result<&App, impl AppLabel> {
+    #[allow(clippy::missing_errors_doc)]
+    pub fn get_sub_app(&self, label: impl AppLabel) -> Result<&Self, impl AppLabel> {
         self.sub_apps
             .get((&label) as &dyn AppLabel)
             .map(|sub_app| &sub_app.app)

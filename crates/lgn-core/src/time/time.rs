@@ -48,9 +48,9 @@ impl Time {
     /// # Examples
     ///
     /// ```
-    /// # use bevy_core::prelude::*;
-    /// # use bevy_ecs::prelude::*;
-    /// # use bevy_utils::Duration;
+    /// # use lgn_core::prelude::*;
+    /// # use lgn_ecs::prelude::*;
+    /// # use lgn_utils::Duration;
     /// # fn main () {
     /// #     test_health_system();
     /// # }

@@ -8,8 +8,13 @@ mod winit_config;
 mod winit_windows;
 
 use instant::Instant;
-use lgn_app::{App, AppExit, CoreStage, Events, ManualEventReader, Plugin};
-use lgn_ecs::{system::IntoExclusiveSystem, world::World};
+use lgn_app::{App, AppExit, CoreStage, Plugin};
+use lgn_ecs::{
+    event::{EventWriter, Events, ManualEventReader},
+    schedule::ParallelSystemDescriptorCoercion,
+    system::{NonSend, ResMut},
+    world::World,
+};
 use lgn_input::{
     keyboard::KeyboardInput,
     mouse::{MouseButtonInput, MouseMotion, MouseScrollUnit, MouseWheel},
@@ -19,11 +24,12 @@ use lgn_math::{ivec2, DVec2, Vec2};
 use lgn_tracing::{error, trace, warn};
 use lgn_window::{
     CreateWindow, CursorEntered, CursorLeft, CursorMoved, FileDragAndDrop, ModifiesWindows,
-    ReceivedCharacter, RequestRedraw, WindowBackendScaleFactorChanged, WindowCloseRequested,
-    WindowCreated, WindowFocused, WindowMoved, WindowResized, WindowScaleFactorChanged, Windows,
+    ReceivedCharacter, RequestRedraw, Window, WindowBackendScaleFactorChanged,
+    WindowCloseRequested, WindowCreated, WindowFocused, WindowMoved, WindowResized,
+    WindowScaleFactorChanged, Windows,
 };
 use winit::{
-    dpi::PhysicalPosition,
+    dpi::{LogicalSize, PhysicalPosition},
     event::{self, DeviceEvent, Event, StartCause, WindowEvent},
     event_loop::{ControlFlow, EventLoop, EventLoopWindowTarget},
 };
@@ -46,13 +52,13 @@ impl Plugin for WinitPlugin {
 }
 
 fn change_window(
-    winit_windows: NonSend<WinitWindows>,
-    mut windows: ResMut<Windows>,
-    mut window_dpi_changed_events: EventWriter<WindowScaleFactorChanged>,
+    winit_windows: NonSend<'_, WinitWindows>,
+    mut windows: ResMut<'_, Windows>,
+    mut window_dpi_changed_events: EventWriter<'_, '_, WindowScaleFactorChanged>,
 ) {
     for legion_window in windows.iter_mut() {
-        let id = bevy_window.id();
-        for command in bevy_window.drain_commands() {
+        let id = legion_window.id();
+        for command in legion_window.drain_commands() {
             match command {
                 lgn_window::WindowCommand::SetWindowMode {
                     mode,
@@ -164,6 +170,8 @@ fn change_window(
             }
         }
     }
+
+    drop(winit_windows);
 }
 
 fn run<F>(event_loop: EventLoop<()>, event_handler: F) -> !

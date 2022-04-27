@@ -28,7 +28,7 @@ pub fn derive_dynamic_plugin(input: TokenStream) -> TokenStream {
 /// # Example
 ///
 /// ```
-/// use bevy_derive::Deref;
+/// use lgn_derive::Deref;
 ///
 /// #[derive(Deref)]
 /// struct MyNewtype(String);
@@ -50,12 +50,12 @@ pub fn derive_deref(input: TokenStream) -> TokenStream {
 /// utilizing the [newtype] pattern.
 ///
 /// [`DerefMut`] requires a [`Deref`] implementation. You can implement it manually or use
-/// Bevy's [derive] macro for convenience.
+/// Legion's [derive] macro for convenience.
 ///
 /// # Example
 ///
 /// ```
-/// use bevy_derive::{Deref, DerefMut};
+/// use lgn_derive::{Deref, DerefMut};
 ///
 /// #[derive(Deref, DerefMut)]
 /// struct MyNewtype(String);

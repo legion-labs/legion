@@ -3,7 +3,7 @@ use lgn_ecs::{
     system::{Command, EntityCommands},
     world::{EntityMut, World},
 };
-use lgn_tracing::debug;
+use lgn_tracing::{debug, span_scope};
 
 use crate::components::{Children, Parent};
 

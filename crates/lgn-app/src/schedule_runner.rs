@@ -22,7 +22,7 @@ use crate::{
 pub enum RunMode {
     /// Indicates that the [`App`]'s schedule should run repeatedly.
     Loop {
-        /// The minimum [`Duration`] to wait after a [`Schedule`](bevy_ecs::schedule::Schedule)
+        /// The minimum [`Duration`] to wait after a [`Schedule`](lgn_ecs::schedule::Schedule)
         /// has completed before repeating. A value of [`None`] will not wait.
         wait: Option<Duration>,
     },

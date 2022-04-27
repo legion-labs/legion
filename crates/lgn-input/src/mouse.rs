@@ -25,7 +25,7 @@ pub struct MouseButtonInput {
 ///
 /// ## Usage
 ///
-/// It is used as the generic `T` value of an [`Input`](crate::Input) to create a `bevy`
+/// It is used as the generic `T` value of an [`Input`](crate::Input) to create a `legion`
 /// resource.
 ///
 /// ## Updating

@@ -8,7 +8,7 @@ use lgn_input::{
     keyboard::KeyboardInput,
     mouse::{MouseButton, MouseButtonInput, MouseWheel},
     touch::TouchInput,
-    ElementState,
+    ButtonState,
 };
 use lgn_math::Vec2;
 use lgn_window::WindowId;
@@ -97,7 +97,7 @@ impl TryFrom<String> for Color {
 #[derive(Debug, Deserialize)]
 pub(crate) struct MouseButtonInputPayload {
     pub button: MouseButton,
-    pub state: ElementState,
+    pub state: ButtonState,
     pub pos: Vec2,
 }
 

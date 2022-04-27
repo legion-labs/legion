@@ -1,10 +1,7 @@
 use lgn_app::AppExit;
 use lgn_ecs::prelude::{EventReader, EventWriter};
 
-use crate::{
-    keyboard::{KeyCode, KeyboardInput},
-    ElementState,
-};
+use crate::{ButtonState, KeyCode, KeyboardInput};
 
 /// Sends an [`AppExit`] event whenever the `ESC` key is pressed.
 ///

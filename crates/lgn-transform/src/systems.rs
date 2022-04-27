@@ -9,8 +9,11 @@ use crate::components::{GlobalTransform, Transform};
 
 /// Update [`GlobalTransform`] component of entities based on entity hierarchy
 /// and [`Transform`] component.
+#[allow(clippy::type_complexity)]
 pub fn transform_propagate_system(
     mut root_query: Query<
+        '_,
+        '_,
         (
             Option<&Children>,
             &Transform,
@@ -20,17 +23,20 @@ pub fn transform_propagate_system(
         Without<Parent>,
     >,
     mut transform_query: Query<
+        '_,
+        '_,
         (&Transform, Changed<Transform>, &mut GlobalTransform),
         With<Parent>,
     >,
-    children_query: Query<Option<&Children>, (With<Parent>, With<GlobalTransform>)>,
+    children_query: Query<'_, '_, Option<&Children>, (With<Parent>, With<GlobalTransform>)>,
 ) {
     for (children, transform, transform_changed, mut global_transform) in root_query.iter_mut() {
-        let mut changed = false;
-        if transform_changed {
+        let changed = if transform_changed {
             *global_transform = GlobalTransform::from(*transform);
-            changed = true;
-        }
+            true
+        } else {
+            false
+        };
 
         if let Some(children) = children {
             for child in children.iter() {
@@ -44,15 +50,19 @@ pub fn transform_propagate_system(
             }
         }
     }
+
+    drop(children_query);
 }
 
 fn propagate_recursive(
     parent: &GlobalTransform,
     transform_query: &mut Query<
+        '_,
+        '_,
         (&Transform, Changed<Transform>, &mut GlobalTransform),
         With<Parent>,
     >,
-    children_query: &Query<Option<&Children>, (With<Parent>, With<GlobalTransform>)>,
+    children_query: &Query<'_, '_, Option<&Children>, (With<Parent>, With<GlobalTransform>)>,
     entity: Entity,
     mut changed: bool,
 ) {

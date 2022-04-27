@@ -184,8 +184,8 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use bevy_ecs::prelude::*;
-    /// use bevy_ecs::query::QueryEntityError;
+    /// use lgn_ecs::prelude::*;
+    /// use lgn_ecs::query::QueryEntityError;
     ///
     /// #[derive(Component, PartialEq, Debug)]
     /// struct A(usize);
@@ -250,8 +250,8 @@ where
     /// returned instead.
     ///
     /// ```rust
-    /// use bevy_ecs::prelude::*;
-    /// use bevy_ecs::query::QueryEntityError;
+    /// use lgn_ecs::prelude::*;
+    /// use lgn_ecs::query::QueryEntityError;
     ///
     /// #[derive(Component, PartialEq, Debug)]
     /// struct A(usize);

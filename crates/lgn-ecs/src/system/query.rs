@@ -669,7 +669,7 @@ where
     ///
     /// # Examples
     /// ```rust, no_run
-    /// use bevy_ecs::prelude::*;
+    /// use lgn_ecs::prelude::*;
     ///
     /// #[derive(Component)]
     /// struct Targets([Entity; 3]);
@@ -776,7 +776,7 @@ where
     /// # Examples
     ///
     /// ```rust, no_run
-    /// use bevy_ecs::prelude::*;
+    /// use lgn_ecs::prelude::*;
     ///
     /// #[derive(Component)]
     /// struct Spring{
