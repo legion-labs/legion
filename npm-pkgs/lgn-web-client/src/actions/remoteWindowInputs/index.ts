@@ -39,7 +39,7 @@ export type MouseButton =
  * "Pressed" on cursor press/when the button is pressed,
  * "Released" by default and when the cursor button has been released
  */
-export type ElementState = "Pressed" | "Released";
+export type ButtonState = "Pressed" | "Released";
 
 type Type<Type extends string> = { type: Type };
 
@@ -48,7 +48,7 @@ export type MouseButtonInput = Type<"MouseButtonInput"> & {
   /** The mouse button (typically Left/Middle/Right) */
   button: MouseButton;
   /** The mouse button state Pressed/Released */
-  state: ElementState;
+  state: ButtonState;
   /** The mouse cursor position */
   pos: Vec2;
 };
@@ -97,7 +97,7 @@ export type KeyboardInput = Type<"KeyboardInput"> & {
   // Browser events don't contain the scan code
   scan_code: /* u32 */ 0;
   key_code: KeyCode;
-  state: ElementState;
+  state: ButtonState;
 };
 
 export type GamepadConnection = Type<"GamepadConnection"> & {
@@ -136,7 +136,7 @@ export type RemoteWindowInput =
 export type Listener = (input: RemoteWindowInput) => void;
 
 type State = {
-  mouseState: ElementState;
+  mouseState: ButtonState;
   /** Contains the Touch id */
   activeTouches: Set<number>;
   /** Contains the `KeyCode` */

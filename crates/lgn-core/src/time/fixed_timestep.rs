@@ -1,7 +1,7 @@
 #![allow(unsafe_code)]
 
 use lgn_ecs::{
-    archetype::{Archetype, ArchetypeComponentId},
+    archetype::ArchetypeComponentId,
     component::ComponentId,
     query::Access,
     schedule::ShouldRun,
@@ -179,10 +179,6 @@ impl System for FixedTimestep {
         std::any::type_name::<Self>()
     }
 
-    fn new_archetype(&mut self, archetype: &Archetype) {
-        self.internal_system.new_archetype(archetype);
-    }
-
     fn archetype_component_access(&self) -> &Access<ArchetypeComponentId> {
         self.internal_system.archetype_component_access()
     }
@@ -220,6 +216,11 @@ impl System for FixedTimestep {
                 },
             );
         }
+    }
+
+    fn update_archetype_component_access(&mut self, world: &World) {
+        self.internal_system
+            .update_archetype_component_access(world);
     }
 
     fn check_change_tick(&mut self, change_tick: u32) {

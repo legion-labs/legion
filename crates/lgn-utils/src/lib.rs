@@ -7,10 +7,12 @@
 use std::{future::Future, io::Error, path::PathBuf, pin::Pin};
 
 pub mod decimal;
+pub mod label;
 pub mod memory;
 pub mod trust_cell;
 
-pub mod label;
+mod default;
+pub use default::default;
 
 mod hash;
 pub use hash::*;

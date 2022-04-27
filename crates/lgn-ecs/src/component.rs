@@ -63,15 +63,6 @@ mod sealed {
     impl Sealed for super::SparseStorage {}
 }
 
-// ECS dependencies cannot derive Component, so we must implement it manually
-// for relevant structs.
-impl<T> Component for lgn_tasks::Task<T>
-where
-    Self: Send + Sync + 'static,
-{
-    type Storage = TableStorage;
-}
-
 /// The storage used for a specific component type.
 ///
 /// # Examples

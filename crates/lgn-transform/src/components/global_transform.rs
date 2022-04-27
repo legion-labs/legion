@@ -1,7 +1,7 @@
 use std::ops::Mul;
 
 use lgn_ecs::component::Component;
-use lgn_math::{const_vec3, Mat3, Mat4, Quat, Vec3};
+use lgn_math::{const_vec3, Affine3A, Mat3, Mat4, Quat, Vec3};
 
 use super::Transform;
 
@@ -131,6 +131,13 @@ impl GlobalTransform {
     #[inline]
     pub fn compute_matrix(&self) -> Mat4 {
         Mat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
+    }
+
+    /// Returns the 3d affine transformation from this transforms translation,
+    /// rotation, and scale.
+    #[inline]
+    pub fn compute_affine(&self) -> Affine3A {
+        Affine3A::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
     }
 
     /// Get the unit vector in the local x direction

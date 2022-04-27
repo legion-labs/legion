@@ -4,7 +4,7 @@ use lgn_app::EventWriter;
 use lgn_ecs::prelude::{Commands, Entity, Query};
 use lgn_input::{
     mouse::{MouseButton, MouseButtonInput, MouseMotion},
-    ElementState,
+    ButtonState,
 };
 use lgn_math::Vec2;
 use lgn_transform::{components::GlobalTransform, prelude::Transform};
@@ -131,7 +131,7 @@ impl PickingManager {
                 picking_blocks: Vec::new(),
                 mouse_input: MouseButtonInput {
                     button: MouseButton::Left,
-                    state: ElementState::Released,
+                    state: ButtonState::Released,
                     pos: Vec2::NAN,
                 },
                 manip_entity_base_local_transform: Transform::default(),

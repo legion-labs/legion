@@ -29,6 +29,8 @@ pub static WORLD_QUERY_ATTRIBUTE_NAME: &str = "world_query";
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn derive_world_query_impl(ast: DeriveInput) -> TokenStream {
+    let visibility = ast.vis;
+
     let mut fetch_struct_attributes = FetchStructAttributes::default();
     for attr in &ast.attrs {
         if !attr
@@ -232,7 +234,8 @@ pub fn derive_world_query_impl(ast: DeriveInput) -> TokenStream {
                       item_struct_name: Ident| {
         if is_filter {
             quote! {
-                struct #fetch_struct_name #impl_generics #where_clause {
+                #[doc(hidden)]
+                #visibility struct #fetch_struct_name #impl_generics #where_clause {
                     #(#field_idents: <#field_types as #path::query::WorldQuery>::#fetch_associated_type,)*
                     #(#ignored_field_idents: #ignored_field_types,)*
                 }
@@ -276,12 +279,14 @@ pub fn derive_world_query_impl(ast: DeriveInput) -> TokenStream {
         } else {
             quote! {
                 #derive_macro_call
-                struct #item_struct_name #impl_generics #where_clause {
+                #[automatically_derived]
+                #visibility struct #item_struct_name #impl_generics #where_clause {
                     #(#(#field_attrs)* #field_visibilities #field_idents: <<#field_types as #path::query::WorldQuery>::#fetch_associated_type as #path::query::Fetch<#world_lifetime, #world_lifetime>>::Item,)*
                     #(#(#ignored_field_attrs)* #ignored_field_visibilities #ignored_field_idents: #ignored_field_types,)*
                 }
 
-                struct #fetch_struct_name #impl_generics #where_clause {
+                #[doc(hidden)]
+                #visibility struct #fetch_struct_name #impl_generics #where_clause {
                     #(#field_idents: <#field_types as #path::query::WorldQuery>::#fetch_associated_type,)*
                     #(#ignored_field_idents: #ignored_field_types,)*
                 }
@@ -341,7 +346,8 @@ pub fn derive_world_query_impl(ast: DeriveInput) -> TokenStream {
     );
 
     let state_impl = quote! {
-        struct #state_struct_name #impl_generics #where_clause {
+        #[doc(hidden)]
+        #visibility struct #state_struct_name #impl_generics #where_clause {
             #(#field_idents: <#field_types as #path::query::WorldQuery>::State,)*
             #(#ignored_field_idents: #ignored_field_types,)*
         }

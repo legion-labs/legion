@@ -24,9 +24,6 @@ pub use single_threaded_task_pool::{Scope, TaskPool, TaskPoolBuilder};
 mod usages;
 pub use usages::ComputeTaskPool;
 
-mod countdown_event;
-pub use countdown_event::CountdownEvent;
-
 mod iter;
 pub use iter::ParallelIterator;
 
