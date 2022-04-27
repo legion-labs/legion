@@ -394,7 +394,6 @@ impl TextureManager {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-#[span_fn]
 fn on_texture_added(
     mut commands: Commands<'_, '_>,
     mut texture_manager: ResMut<'_, TextureManager>,
@@ -412,7 +411,6 @@ fn on_texture_added(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-#[span_fn]
 fn on_texture_modified(
     mut texture_manager: ResMut<'_, TextureManager>,
     q_modified_textures: Query<
@@ -432,7 +430,6 @@ fn on_texture_modified(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-#[span_fn]
 fn on_texture_removed(
     mut commands: Commands<'_, '_>,
     removed_entities: RemovedComponents<'_, TextureComponent>,
@@ -448,7 +445,6 @@ fn on_texture_removed(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-#[span_fn]
 fn apply_changes(
     mut event_writer: EventWriter<'_, '_, TextureEvent>,
     renderer: Res<'_, Renderer>,
