@@ -85,7 +85,10 @@
       updateViewport();
       const minPixelSize = 4;
       ctx.fillRect(
-        Math.max(Math.min(viewport.x, width - minPixelSize), 0),
+        Math.max(
+          Math.min(viewport.x, width - minPixelSize),
+          -viewport.width + minPixelSize
+        ),
         viewport.y,
         Math.max(minPixelSize, viewport.width),
         Math.max(minPixelSize, viewport.height)
