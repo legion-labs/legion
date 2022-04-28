@@ -63,8 +63,6 @@ use lgn_math::Vec3;
                         input_values: Vec::new(),
                         entry_fn: String::default(),
                         script_id: Some(ResourcePathId::from(script_id).push(lgn_scripting::runtime::Script::TYPE)),
-                        temp_script: String::default(),
-
                     }})
                     .to_string(),
                 ))
