@@ -50,11 +50,10 @@ message RecentProcessesRequest {
 
 message ProcessInstance {
   telemetry.Process process_info = 1;
-  string last_activity = 2;
-  uint32 child_count = 3;
-  uint32 nb_cpu_blocks = 4;
-  uint32 nb_log_blocks = 5;
-  uint32 nb_metric_blocks = 6;
+  uint32 child_count = 2;
+  uint32 nb_cpu_blocks = 3;
+  uint32 nb_log_blocks = 4;
+  uint32 nb_metric_blocks = 5;
 }
 
 message ProcessListReply {
