@@ -350,7 +350,7 @@ pub async fn find_process_blocks(
         AND B.block_id IS NOT NULL",
     )
     .bind(process_id)
-    .bind(tag)
+    .bind(format!("%{}%", tag))
     .fetch_all(connection)
     .await
     .with_context(|| "find_process_blocks")?;
