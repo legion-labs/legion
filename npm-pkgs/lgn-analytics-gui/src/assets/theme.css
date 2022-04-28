@@ -18,16 +18,15 @@
   --color-on-surface: 231, 231, 231;
   --color-notification: 252, 77, 15;
 
+  /** TODO: Find a better name */
+  --color-graph-red: 238, 123, 112;
+  /** TODO: Find a better name */
+  --color-graph-orange: 245, 187, 92;
+
   --opacity-headline: 87%;
   --opacity-text: 60%;
   --opacity-placeholder: 38%;
   --opacity-backdrop: 87%;
-
-  /** TODO: Remove */
-  --color-content-38: #00000061;
-  --color-content-60: #00000099;
-  --color-content-87: #000000de;
-  --color-content-100: #000000ff;
 }
 
 .theme-dark {
@@ -50,14 +49,13 @@
   --color-on-surface: 32, 32, 32;
   --color-notification: 252, 77, 15;
 
+  /** TODO: Find a better name */
+  --color-graph-red: 238, 123, 112;
+  /** TODO: Find a better name */
+  --color-graph-orange: 245, 187, 92;
+
   --opacity-headline: 87%;
   --opacity-text: 60%;
   --opacity-placeholder: 38%;
   --opacity-backdrop: 87%;
-
-  /** TODO: Remove */
-  --color-content-38: #ffffff61;
-  --color-content-60: #ffffff99;
-  --color-content-87: #ffffffde;
-  --color-content-100: #ffffffff;
 }

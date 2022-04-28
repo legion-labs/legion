@@ -54,7 +54,7 @@
       style:max-height={`${size}px`}
     >
       <table
-        class="w-full bg-background text-xs text-content-60 space-y-2 table-fixed "
+        class="w-full bg-background text-xs text-text space-y-2 table-fixed "
       >
         <tr class="bg-background w-100">
           <th style="width:66%" class="text-left">Function</th>
@@ -79,7 +79,7 @@
       </table>
     </div>
     <div
-      class="text-content-38 bg-content-38  hover:bg-content-60 p-1 mt-2 text-xs float-left "
+      class="text-placeholder bg-placeholder  hover:bg-text p-1 mt-2 text-xs float-left "
     >
       <a
         href={`/cumulative-call-graph?process=${processId}&${startQueryParam}=${begin}&${endQueryParam}=${end}`}

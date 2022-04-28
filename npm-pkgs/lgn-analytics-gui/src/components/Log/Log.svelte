@@ -81,7 +81,7 @@
   }
 </script>
 
-<div class="text-content-100">
+<div>
   {#if processInfo}
     <div class="text-left">
       <div>Process Id: {processInfo.processId}</div>

@@ -16,7 +16,7 @@
 
   // TODO: Drop this whole logic when the dark theme is mature enough
   // Feel free to set this const to "true" to enable fast theme switching
-  const themeIsTogglable = true;
+  const themeIsTogglable = false;
 
   onMount(async () => {
     user = (await authClient.userInfo()).name;
@@ -41,7 +41,7 @@
         class="inline"
         on:click={themeIsTogglable ? toggleTheme : undefined}
       />
-      <span class="font-bold text-xl text-content-87">
+      <span class="font-bold text-xl text-headline">
         <a href="/" use:link>Legion Performance Analytics</a>
       </span>
     </a>

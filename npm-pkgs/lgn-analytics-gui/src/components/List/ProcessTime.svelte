@@ -18,7 +18,7 @@
 </script>
 
 <div>
-  <i class="bi bi-clock-fill text-content-38 mr-1" />
+  <i class="bi bi-clock-fill text-placeholder mr-1" />
   {formatLocalTime(process?.startTime ?? "")}
   <span class="text-xs">
     ({formatDistance(new Date(process?.startTime ?? ""), new Date(), {

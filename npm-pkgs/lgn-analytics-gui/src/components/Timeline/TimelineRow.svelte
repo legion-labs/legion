@@ -20,7 +20,7 @@
 
 <div class="flex items-start overflow-hidden" {style}>
   <div
-    class="thread text-sm bg-background text-content-60 px-1 overflow-hidden cursor-pointer mr-1 self-stretch"
+    class="thread text-sm bg-background text-text px-1 overflow-hidden cursor-pointer mr-1 self-stretch"
     on:click={() => setCollapse(!collapsed)}
     title={threadTitle}
   >
