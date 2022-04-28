@@ -9,13 +9,13 @@
   import { Route, Router } from "@/lib/navigator";
   import Health from "@/pages/Health.svelte";
 
-  import ProcessList from "./components/List/ProcessList.svelte";
   import Log from "./components/Log/Log.svelte";
   import MetricsCanvas from "./components/Metric/MetricCanvas.svelte";
   import Header from "./components/Misc/Header.svelte";
   import LoadingBar from "./components/Misc/LoadingBar.svelte";
   import TimelineRenderer from "./components/Timeline/Timeline.svelte";
   import { themeContextKey, themeStorageKey } from "./constants";
+  import ProcessPage from "./components/Process/ProcessPage.svelte";
 
   export let initAuthStatus: InitAuthStatus | null;
 
@@ -47,7 +47,7 @@
   <div class="pl-5 pr-5 pt-5 overflow-hidden">
     <Router>
       <Route path="/" primary={false}>
-        <ProcessList />
+        <ProcessPage />
       </Route>
       <Route path="/health">
         <Health />
