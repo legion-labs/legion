@@ -1,5 +1,5 @@
 [package]
-name = "lgn-web-client-config"
+name = "lgn-config-node"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"

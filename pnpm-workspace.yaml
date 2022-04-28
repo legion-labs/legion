@@ -1,4 +1,4 @@
 packages:
-  - "crates/lgn-web-client*"
+  - "crates/lgn-*-node"
   - "crates/lgn-*-proto"
   - "npm-pkgs/*"
