@@ -34,6 +34,8 @@
   let searching = false;
   let x: number;
   let y: number;
+  let callGraphBegin: number;
+  let callGraphEnd: number;
 
   $: if (mainWidth && stateStore) {
     stateStore.updateWidth(mainWidth - threadItemLength - pixelMargin);
@@ -41,6 +43,14 @@
 
   $: [x, y] = $stateStore?.viewRange ?? [-Infinity, Infinity];
   $: (x || y) && new Promise(async () => await stateManager?.fetchDynData());
+
+  $: if (stateStore) {
+    if ($stateStore.currentSelection) {
+      [callGraphBegin, callGraphEnd] = $stateStore.currentSelection;
+    } else if ($stateStore.viewRange) {
+      [callGraphBegin, callGraphEnd] = $stateStore.viewRange;
+    }
+  }
 
   onMount(async () => {
     loadingStore.reset(10);
@@ -248,7 +258,13 @@
           <TimelineRange {stateStore} />
         </div>
         <div class="mt-3">
-          <CallGraph begin={x} end={y} {processId} debug={false} size={300} />
+          <CallGraph
+            begin={callGraphBegin}
+            end={callGraphEnd}
+            {processId}
+            debug={false}
+            size={300}
+          />
         </div>
       </div>
     </div>
