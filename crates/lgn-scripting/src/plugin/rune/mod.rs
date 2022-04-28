@@ -126,9 +126,15 @@ fn tick(world: &mut World) {
                     let vm_context = rune_vms.get(script.vm_index).as_ref().unwrap();
                     args.push(vm_context.last_result.clone());
                 } else {
-                    // default to 64-bit integer
-                    let value = i64::from_str(input.as_str()).unwrap();
-                    args.push(value.to_value().unwrap());
+                    // try primitive types
+                    let input = input.as_str();
+                    if let Ok(value) = i64::from_str(input) {
+                        args.push(value.to_value().unwrap());
+                    } else if let Ok(value) = f64::from_str(input) {
+                        args.push(value.to_value().unwrap());
+                    } else {
+                        args.push(input.to_value().unwrap());
+                    }
                 }
             }
 
