@@ -20,18 +20,18 @@ service PerformanceAnalytics {
   rpc fetch_cumulative_call_graph_computed_block(CumulativeCallGraphBlockRequest)
       returns (CumulativeCallGraphComputedBlock);
   rpc find_process(FindProcessRequest) returns (FindProcessReply);
-  rpc list_process_children(ListProcessChildrenRequest) returns (ProcessChildrenReply);
   rpc list_process_blocks(ListProcessBlocksRequest) returns (ProcessBlocksReply);
   rpc list_process_log_entries(ProcessLogRequest) returns (ProcessLogReply);
   rpc list_process_streams(ListProcessStreamsRequest) returns (ListStreamsReply);
-  rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
   rpc list_stream_blocks(ListStreamBlocksRequest) returns (ListStreamBlocksReply);
   rpc nb_process_log_entries(ProcessNbLogEntriesRequest) returns (ProcessNbLogEntriesReply);
   rpc fetch_async_spans(AsyncSpansRequest) returns (AsyncSpansReply);
   rpc fetch_block_async_stats(BlockAsyncStatsRequest) returns (BlockAsyncEventsStatReply);
   rpc fetch_block_metric_manifest(MetricBlockManifestRequest) returns (MetricBlockManifest);
   rpc fetch_block_metric(MetricBlockRequest) returns (MetricBlockData);
+  rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
   rpc search_processes(SearchProcessRequest) returns (ProcessListReply);
+  rpc list_process_children(ListProcessChildrenRequest) returns (ProcessChildrenReply);
 }
 
 // find_process
@@ -44,13 +44,17 @@ message FindProcessReply {
 }
 
 // list_recent_processes
-message RecentProcessesRequest {}
+message RecentProcessesRequest {
+  string parent_process_id = 1;
+}
 
 message ProcessInstance {
   telemetry.Process process_info = 1;
-  uint32 nb_cpu_blocks = 2;
-  uint32 nb_log_blocks = 3;
-  uint32 nb_metric_blocks = 4;
+  string last_activity = 2;
+  uint32 child_count = 3;
+  uint32 nb_cpu_blocks = 4;
+  uint32 nb_log_blocks = 5;
+  uint32 nb_metric_blocks = 6;
 }
 
 message ProcessListReply {

@@ -20,7 +20,7 @@ pub async fn print_logs_by_process(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
 ) -> Result<()> {
-    for p in fetch_recent_processes(connection).await.unwrap() {
+    for p in list_recent_processes(connection, None).await.unwrap() {
         let process_info = p.process_info.unwrap();
         println!(
             "{} {} {}",
