@@ -24,7 +24,7 @@
     <div class="block" />
     <div class="overflow-hidden" style={`width:${$stateStore?.canvasWidth}px`}>
       <div
-        class="flex text-xs text-content-38 relative "
+        class="flex text-xs text-placeholder relative "
         style={`left:${percent}%`}
       >
         <div class="child">

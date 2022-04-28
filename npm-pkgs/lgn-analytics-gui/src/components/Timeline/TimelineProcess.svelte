@@ -46,7 +46,7 @@
 
 <div on:wheel|preventDefault={(e) => wheelDispatcher("zoom", e)} {style}>
   <div
-    class="bg-surface text-content-87 px-1 text-sm text-left mb-1 flex flex-row place-content-between items-center"
+    class="bg-surface text-headline px-1 text-sm text-left mb-1 flex flex-row place-content-between items-center"
     on:click|preventDefault={() => (collapsed = !collapsed)}
   >
     <div>
@@ -55,7 +55,7 @@
         {formatProcessName(process)}
       </span>
       {#if collapsed}
-        <span class="text-xs text-content-38"
+        <span class="text-xs text-placeholder"
           >{!validThreadCount
             ? "(No thread data)"
             : `(${validThreadCount} thread${
@@ -115,7 +115,7 @@
           {threadName}
           maxDepth={thread.maxDepth}
         >
-          <span class="text text-xs text-content-38" slot="details"
+          <span class="text text-xs text-placeholder" slot="details"
             >{threadLength} ({thread.block_ids.length} block{thread.block_ids
               .length
               ? "s"

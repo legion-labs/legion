@@ -11,7 +11,7 @@
   $: data = kind == GraphNodeTableKind.Callees ? $node.children : $node.parents;
 </script>
 
-<table class="text-content-87 font-thin self-start border-separate">
+<table class="text-headline font-thin self-start border-separate">
   {#if data.size > 0}
     <thead class="select-none">
       <tr>

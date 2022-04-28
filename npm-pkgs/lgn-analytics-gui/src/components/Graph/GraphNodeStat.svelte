@@ -6,7 +6,7 @@
   export let node: NodeStateStore;
 </script>
 
-<div class="flex flex-row justify-between select-none h-8 text-content-87">
+<div class="flex flex-row justify-between select-none h-8 text-headline">
   <div class="items-center font-semibold hidden md:block">Statistics</div>
   {#if node}
     <div class="flex flex-row gap-x-4">

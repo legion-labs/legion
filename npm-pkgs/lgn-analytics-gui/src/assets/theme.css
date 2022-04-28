@@ -1,35 +1,3 @@
-.theme-light {
-  --roundness: 0%;
-
-  --text-default: 0, 0, 0;
-  --background-default: 240, 240, 240;
-
-  --color-primary: 252, 77, 15;
-  --color-accent: 252, 77, 15;
-
-  --color-background: 198, 198, 198;
-  --color-surface: 215, 215, 215;
-
-  --color-headline: 0, 0, 0;
-  --color-text: 0, 0, 0;
-  --color-placeholder: 0, 0, 0;
-  --color-backdrop: 255, 255, 255;
-
-  --color-on-surface: 231, 231, 231;
-  --color-notification: 252, 77, 15;
-
-  --opacity-headline: 87%;
-  --opacity-text: 60%;
-  --opacity-placeholder: 38%;
-  --opacity-backdrop: 87%;
-
-  /** TODO: Remove */
-  --color-content-38: #00000061;
-  --color-content-60: #00000099;
-  --color-content-87: #000000de;
-  --color-content-100: #000000ff;
-}
-
 .theme-dark {
   --roundness: 0%;
 
@@ -50,14 +18,13 @@
   --color-on-surface: 32, 32, 32;
   --color-notification: 252, 77, 15;
 
+  /** TODO: Find a better name */
+  --color-graph-red: 238, 123, 112;
+  /** TODO: Find a better name */
+  --color-graph-orange: 245, 187, 92;
+
   --opacity-headline: 87%;
   --opacity-text: 60%;
   --opacity-placeholder: 38%;
   --opacity-backdrop: 87%;
-
-  /** TODO: Remove */
-  --color-content-38: #ffffff61;
-  --color-content-60: #ffffff99;
-  --color-content-87: #ffffffde;
-  --color-content-100: #ffffffff;
 }

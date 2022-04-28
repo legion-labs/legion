@@ -31,7 +31,7 @@
 <tr
   class:callers={kind === GraphNodeTableKind.Callers}
   class:callees={kind === GraphNodeTableKind.Callees}
-  class="cursor-pointer text-black-87 relative"
+  class="cursor-pointer text-black relative"
   on:click={onClick}
 >
   <div

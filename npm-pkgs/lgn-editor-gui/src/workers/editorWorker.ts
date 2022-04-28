@@ -5,7 +5,9 @@ import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 // Take from the `monaco.d.ts` file provided with the `monaco-editor` npm module.
 // The one provided doesn't compile so we just copy paste the type here
 declare global {
+  // We can't simply declare
   interface Window {
+    // eslint-disable-next-line no-var
     MonacoEnvironment?: Environment | undefined;
   }
 }

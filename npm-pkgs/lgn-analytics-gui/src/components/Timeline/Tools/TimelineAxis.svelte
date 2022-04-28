@@ -47,4 +47,4 @@
   }
 </script>
 
-<div bind:this={el} class="axis text-content-38 select-none" />
+<div bind:this={el} class="axis text-placeholder select-none" />

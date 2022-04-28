@@ -18,6 +18,6 @@
 </script>
 
 <div class="flex gap-2 items-center">
-  <i class="bi bi-pc text-content-38" />
+  <i class="bi bi-pc text-placeholder" />
   <span class="capitalize">{getPlatform(process?.distro)}</span>
 </div>
