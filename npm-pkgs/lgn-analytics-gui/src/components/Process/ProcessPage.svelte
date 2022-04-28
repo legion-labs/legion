@@ -50,12 +50,12 @@
     <div class="flex flex-col gap-y-2 text-sm">
       <div class="flex flex-row text-content-60">
         <div class="w-8" />
-        <div class="w-4/12 xl:w-2/12 truncate hidden md:block">User</div>
-        <div class="w-4/12 xl:w-2/12 truncate">Process</div>
+        <div class="w-5/12 xl:w-2/12 truncate hidden md:block">User</div>
+        <div class="w-5/12 xl:w-2/12 truncate">Process</div>
         <div class="w-2/12 truncate hidden xl:block">Computer</div>
         <div class="w-2/12 truncate hidden xl:block">Platform</div>
         <!-- <div class="w-2/12 truncate">Last Activity</div> -->
-        <div class="w-2/12 pl-4 hidden xl:block">Start Time</div>
+        <div class="w-2/12 pl-4">Start Time</div>
         <div class="w-24 ml-auto">Statistics</div>
       </div>
       {#each processes as processInstance, index (processInstance.processInfo?.processId)}
