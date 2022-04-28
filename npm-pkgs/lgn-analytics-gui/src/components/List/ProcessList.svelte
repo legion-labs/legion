@@ -58,7 +58,7 @@
       <input
         autofocus
         type="text"
-        class="search-input h-8 w-96 placeholder-text rounded-sm pl-2 bg-surface"
+        class="h-8 w-96 placeholder-text rounded-sm pl-2 bg-surface"
         placeholder="Search process..."
         on:input={onSearchChange}
       />

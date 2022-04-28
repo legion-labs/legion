@@ -54,13 +54,13 @@
     Choose metric <i class="bi bi-caret-{!show ? 'down' : 'up'}-fill" />
   </div>
   {#if show}
-    <div class="bg-gray-50 shadow-md border-2 main p-4 absolute z-10">
+    <div class="bg-on-surface shadow-md border-2 main p-4 absolute z-10">
       <div style="width:850px">
         <div class="flex justify-between pb-4">
           <div>
             <input
               type="text"
-              class="metric-search border-2"
+              class="h-8 w-96 placeholder-text rounded-sm pl-2 bg-surface"
               placeholder="Search metric..."
               bind:value={$searchString}
             />

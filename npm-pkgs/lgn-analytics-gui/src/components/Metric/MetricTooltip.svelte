@@ -80,7 +80,7 @@
 <div bind:clientWidth={width}>
   {#if displayed && values && displayInternal}
     <div
-      class="shadow-md bg-gray-50 absolute pointer-events-none text-sm p-2 flex flex-col gap- z-20"
+      class="shadow-md bg-surface absolute pointer-events-none text-sm p-2 flex flex-col gap- z-20"
       {style}
     >
       {#each values as metric (metric.metric.name)}

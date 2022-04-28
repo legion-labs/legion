@@ -19,8 +19,7 @@
 
   export let initAuthStatus: InitAuthStatus | null;
 
-  // TODO: Set default theme to dark when it's mature enough
-  const theme = createThemeStore(themeStorageKey, "light");
+  const theme = createThemeStore(themeStorageKey, "dark");
 
   setContext(themeContextKey, theme);
 
