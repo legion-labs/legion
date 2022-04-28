@@ -5,17 +5,17 @@
   const searchStore = TimelineContext.search;
 </script>
 
-<div>
+<div class="flex flex-row h-full w-full justify-end space-x-1">
   <input
     type="text"
-    class="metric-search border-0 text-sm text-opacity-60 bg-background"
+    class="h-8 w-60 placeholder-text rounded-l-sm pl-2 bg-surface"
     placeholder="Search..."
     on:focus={() => (searching = true)}
     on:blur={() => (searching = false)}
     bind:value={$searchStore}
   />
   <button
-    class="text-sm bg-background w-5 text-opacity-60"
+    class="text-sm bg-surface h-8 w-8 rounded-r-sm text-opacity-60"
     on:click={() => searchStore.set("")}
   >
     <i class="bi bi-x-circle" />

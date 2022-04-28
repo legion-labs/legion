@@ -10,6 +10,7 @@
     ["us", "bi bi-hourglass-split"],
     ["frame_id", "bi bi-arrow-up-right"],
   ]);
+
   $: color = metric.hidden ? "rgb(203 213 225)" : getMetricColor(metric.name);
 </script>
 
@@ -18,8 +19,8 @@
   on:click={() => metricStore.switchHidden(metric.name)}
 >
   <span class="h-4 w-4 block" style="background-color:{color}" />
-  <span class="text-sm {metric.hidden ? 'text-text' : 'black'}"
-    >{metric.name} ({metric.unit})</span
+  <span class="text-sm {metric.hidden ? 'text-text' : 'black'}">
+    {metric.name} ({metric.unit})</span
   >
   <i
     class="{iconMap.get(metric.unit) ??
