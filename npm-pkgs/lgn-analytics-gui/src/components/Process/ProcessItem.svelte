@@ -7,9 +7,9 @@
   import { makeGrpcClient } from "@/lib/client";
   import { formatProcessName } from "@/lib/format";
 
-  import User from "./User.svelte";
   import ProcessComputer from "./ProcessComputer.svelte";
   import ProcessPlatform from "./ProcessPlatform.svelte";
+  import User from "./User.svelte";
 
   export let processInstance: ProcessInstance;
   export let depth: number;
