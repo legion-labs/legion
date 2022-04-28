@@ -38,7 +38,7 @@
   $: left = canvasWidth - width - leftPadding + threadItemLength;
   $: style = `top:${top}px;left:${left}px`;
   $: [x, y] = $stateStore?.viewRange ?? [-Infinity, Infinity];
-  $: (x || y) && onViewRange();
+  $: (x || y) && draw();
 
   $: if (canvasWidth || canvasHeight) {
     width = Math.ceil(canvasWidth / canvasToMinimapRatio);
@@ -50,6 +50,10 @@
     draw();
   }
 
+  $: if ($stateStore?.viewRange) {
+    visible = $stateStore.isFullyVisible();
+  }
+
   onMount(() => {
     const context = canvas.getContext("2d");
     if (context) {
@@ -57,13 +61,8 @@
     }
   });
 
-  function onViewRange() {
-    visible = $stateStore.isFullyVisible() && canvasHeight > minimapBreakpoint;
-    draw();
-  }
-
   async function draw() {
-    if (visible && ctx) {
+    if (visible && ctx && canvasHeight > minimapBreakpoint) {
       requestAnimationFrame(() => {
         if (canvas) {
           canvas.width = width;
