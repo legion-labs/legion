@@ -96,7 +96,7 @@
     </div>
   {/if}
   {#each logEntries as entry, index (index)}
-    <div class="text-left bg-skin-900 flex flex-row gap-x-4">
+    <div class="text-left bg-background flex flex-row gap-x-4">
       <div class="font-bold basis-28 shrink-0">
         {formatTime(entry.timeMs)}
       </div>
@@ -158,6 +158,6 @@
 
 <style lang="postcss">
   .nav-link {
-    @apply text-primary-900;
+    @apply text-primary;
   }
 </style>

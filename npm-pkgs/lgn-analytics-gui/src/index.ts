@@ -2,7 +2,6 @@ import { AppComponent, run } from "@lgn/web-client";
 
 import App from "./App.svelte";
 import "./assets/index.css";
-import "./assets/theme.css";
 
 const redirectUri = document.location.origin + "/";
 
@@ -23,7 +22,6 @@ run({
   },
   rootQuerySelector: "#root",
   logLevel: "debug",
-  onPreInit: undefined,
 })
   // eslint-disable-next-line no-console
   .catch((error) => console.error("Application couldn't start", error));

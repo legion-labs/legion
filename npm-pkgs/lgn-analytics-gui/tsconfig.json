@@ -29,10 +29,16 @@
     }
   },
   "include": [
+    // Source
     "src/**/*.ts",
     "src/**/*.d.ts",
     "src/**/*.svelte",
+    // Tests
     "tests/**/*.ts",
-    "proto/**/*.ts"
+    // Electron
+    "src/electron/**/*.cjs",
+    // Configuration files
+    "*.cjs",
+    "*.js"
   ]
 }

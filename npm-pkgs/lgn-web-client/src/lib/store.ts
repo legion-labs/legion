@@ -153,8 +153,6 @@ export function connected<Key, Value extends JsonValue>(
   key: Key,
   defaultValue: Value
 ): Writable<Value> {
-  // TODO: Check for item size before storing them
-
   const store = writable<Value>();
 
   let initialized = false;
@@ -169,13 +167,27 @@ export function connected<Key, Value extends JsonValue>(
     }
   }
 
-  if (!initialized) {
+  if (!initialized && storage.canStore(defaultValue)) {
     store.set(defaultValue);
   }
 
-  store.subscribe((value) => {
-    storage.set(key, value);
-  });
+  return {
+    subscribe: store.subscribe,
+    set(value) {
+      if (storage.canStore(value)) {
+        store.set(value);
 
-  return store;
+        storage.set(key, value);
+      }
+    },
+    update(updater) {
+      const newValue = updater(get(store));
+
+      if (storage.canStore(newValue)) {
+        store.set(newValue);
+
+        storage.set(key, newValue);
+      }
+    },
+  };
 }

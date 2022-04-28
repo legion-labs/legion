@@ -7,6 +7,7 @@ export interface Storage<Key, Value extends JsonValue> {
   clear(): boolean;
   set(key: Key, value: Value): boolean;
   entries(): [Key, Value][];
+  canStore(value: Value): boolean;
 }
 
 export class DefaultLocalStorage<Key extends string, Value extends JsonValue>
@@ -68,6 +69,12 @@ export class DefaultLocalStorage<Key extends string, Value extends JsonValue>
     }
 
     return entries;
+  }
+
+  canStore(_value: Value): boolean {
+    // TODO: Check the size of the incoming value and return false if it's too large
+
+    return true;
   }
 }
 
@@ -131,6 +138,12 @@ export class DefaultSessionStorage<Key extends string, Value extends JsonValue>
 
     return entries;
   }
+
+  canStore(_value: Value): boolean {
+    // TODO: Check the size of the incoming value and return false if it's too large
+
+    return true;
+  }
 }
 
 export class InMemory<Key extends string, Value extends JsonValue>
@@ -180,5 +193,9 @@ export class InMemory<Key extends string, Value extends JsonValue>
 
   entries(): [Key, Value][] {
     return Object.entries(this.#record) as [Key, Value][];
+  }
+
+  canStore(_value: Value): boolean {
+    return true;
   }
 }
