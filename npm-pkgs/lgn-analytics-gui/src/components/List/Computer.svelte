@@ -18,6 +18,6 @@
   title={[process?.distro, process?.cpuBrand].join("\n")}
   class="flex gap-2 items-center"
 >
-  <i class="bi bi-pc text-content-38" />
+  <i class="bi bi-pc text-placeholder" />
   <span>{getComputer()}</span>
 </div>

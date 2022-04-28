@@ -27,7 +27,7 @@
 
 <div class="text-sm py-1 rounded-lg overflow-x-hidden">
   <div
-    class="flex justify-between select-none cursor-pointer relative bg-surface text-content-87"
+    class="flex justify-between select-none cursor-pointer relative bg-surface text-headline"
     on:click={(_) => setCollapse(!collapsed)}
   >
     {#if desc}
@@ -35,18 +35,14 @@
         class="text-left pl-2 py-1 whitespace-nowrap bg-background"
         style:width="{fill}%"
       >
-        <i
-          class={`bi bi-chevron-${
-            collapsed ? "down" : "up"
-          } text-xs text-content-100`}
-        />
+        <i class={`bi bi-chevron-${collapsed ? "down" : "up"} text-xs`} />
         {desc.name}
-        <span class="text-xs text-content-38">
+        <span class="text-xs text-placeholder">
           ({formatExecutionTime($node.acc)})
         </span>
       </div>
       <div
-        class="text-xs text-content-38 absolute pt-1.5 pr-2 right-0"
+        class="text-xs text-placeholder absolute pt-1.5 pr-2 right-0"
         class:hidden={!collapsed}
       >
         {$node.count.toLocaleString()} call{$node.count >= 2 ? "s" : ""}
@@ -57,7 +53,7 @@
     <div class="bg-background flex flex-col p-3">
       <GraphNodeStat {node} />
       <div class="hidden md:block pb-4">
-        <div class="w-full border-t border-charcoal-600" />
+        <div class="w-full border-t border-headline" />
       </div>
       <div class="hidden md:grid tables gap-2">
         <GraphNodeTable on:clicked {node} kind={GraphNodeTableKind.Callers} />

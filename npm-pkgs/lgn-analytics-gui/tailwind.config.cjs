@@ -2,15 +2,17 @@
 
 /**
  * @param {string} varName
- * @param {number} [defaultOpacity]
+ * @param {string} [defaultOpacityVariable]
  */
-function withOpacity(varName, defaultOpacity) {
-  return (/** @type {{opacityValue?: string }} */ { opacityValue }) => {
+function withOpacity(varName, defaultOpacityVariable) {
+  return (/** @type {{opacityVariable?: string }} */ { opacityVariable }) => {
     const opacity =
-      typeof opacityValue !== "undefined" ? opacityValue : defaultOpacity;
+      typeof defaultOpacityVariable !== "undefined"
+        ? defaultOpacityVariable
+        : opacityVariable;
 
     if (typeof opacity !== "undefined") {
-      return `rgba(var(${varName}), ${opacity})`;
+      return `rgba(var(${varName}), var(${opacity}))`;
     }
 
     return `rgb(var(${varName}))`;
@@ -32,35 +34,24 @@ module.exports = {
       colors: {
         primary: withOpacity("--color-primary"),
         accent: withOpacity("--color-accent"),
-        headline: withOpacity("--color-headline", 87),
-        text: withOpacity("--color-text", 60),
-        placeholder: withOpacity("--color-placeholder", 38),
+        headline: withOpacity("--color-headline", "--opacity-headline"),
+        text: withOpacity("--color-text", "--opacity-text"),
+        placeholder: withOpacity(
+          "--color-placeholder",
+          "--opacity-placeholder"
+        ),
         "on-surface": withOpacity("--color-on-surface"),
         notification: withOpacity("--color-notification"),
-
-        // TODO: Revamp
         graph: {
-          red: "#EE7B70FF",
-          orange: "#F5BB5CFF",
-        },
-
-        // TODO: Remove all
-        white: {
-          87: "#FFFFFFDE",
-          100: "#FFFFFFFF",
-        },
-        black: {
-          87: "#000000DE",
-        },
-        charcoal: {
-          600: "#393939",
+          red: withOpacity("--color-graph-red"),
+          orange: withOpacity("--color-graph-orange"),
         },
       },
       backgroundColor: {
         default: withOpacity("--background-default"),
         background: withOpacity("--color-background"),
         surface: withOpacity("--color-surface"),
-        backdrop: withOpacity("--color-backdrop", 87),
+        backdrop: withOpacity("--color-backdrop", "--opacity-backdrop"),
       },
       textColor: {
         default: withOpacity("--text-default"),

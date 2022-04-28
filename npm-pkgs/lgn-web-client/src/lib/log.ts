@@ -42,11 +42,8 @@ function levelPriority(level: Level) {
 }
 
 declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace globalThis {
-    // eslint-disable-next-line no-var
-    var __LOG__: { level: Level; namespace: RegExp } | null;
-  }
+  // eslint-disable-next-line no-var
+  var __LOG__: { level: Level; namespace: RegExp } | null;
 }
 
 const localStorageKey = "__LOG__";

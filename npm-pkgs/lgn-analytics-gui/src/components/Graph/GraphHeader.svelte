@@ -12,9 +12,7 @@
   $: max = graphState.Max;
 </script>
 
-<div
-  class="text-content-60 text-xs flex flex-row gap-x-2 float-right select-none"
->
+<div class="text-text text-xs flex flex-row gap-x-2 float-right select-none">
   <div>
     <span class="font-semibold">Selection: </span>
     {formatExecutionTime(endMsFilter - beginMsFilter)}
