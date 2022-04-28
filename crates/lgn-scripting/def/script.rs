@@ -19,7 +19,4 @@ struct ScriptComponent {
 
     #[legion(resource_type = Script)]
     pub script_id: Option<ResourcePathId>,
-
-    #[legion(editor_type = "script")]
-    pub temp_script: String,
 }
