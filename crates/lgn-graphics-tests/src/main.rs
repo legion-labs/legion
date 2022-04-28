@@ -1,5 +1,10 @@
-use lgn_graphics_tests::render_passes::*;
-use lgn_graphics_tests::render_script::*;
+use lgn_graphics_tests::render_passes::{
+    AlphaBlendedLayerPass, DepthLayerPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
+    PostProcessPass, SSAOPass, UiPass,
+};
+use lgn_graphics_tests::render_script::{
+    Config, Format, RenderScript, RenderTarget, RenderTargetDesc, RenderView,
+};
 
 fn main() {
     let gpu_culling_pass = GpuCullingPass {};
@@ -52,8 +57,13 @@ fn main() {
 
     let config = Config::default();
 
-    if let Ok(render_graph) = render_script.build_render_graph(&view, &config) {
-        println!("{}", render_graph);
-        render_graph.render();
+    match render_script.build_render_graph(&view, &config) {
+        Ok(render_graph) => {
+            println!("{}", render_graph);
+            render_graph.render();
+        }
+        Err(error) => {
+            println!("{}", error.msg);
+        }
     }
 }

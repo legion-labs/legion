@@ -1,9 +1,12 @@
-use crate::render_passes::*;
+use crate::render_passes::{
+    AlphaBlendedLayerPass, DepthLayerPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
+    PostProcessPass, SSAOPass, UiPass,
+};
 
 ///
 ///
-/// https://logins.github.io/graphics/2021/05/31/RenderGraphs.html
-/// https://medium.com/embarkstudios/homegrown-rendering-with-rust-1e39068e56a7
+/// `https://logins.github.io/graphics/2021/05/31/RenderGraphs.html`
+/// `https://medium.com/embarkstudios/homegrown-rendering-with-rust-1e39068e56a7`
 ///
 ///
 ///
@@ -37,7 +40,7 @@ pub struct RenderTarget {
 }
 
 pub struct GfxError {
-    msg: String,
+    pub msg: String,
 }
 pub type GfxResult<T> = Result<T, GfxError>;
 
@@ -138,6 +141,7 @@ impl RenderGraph {
     pub(crate) fn builder() -> RenderGraphBuilder {
         RenderGraphBuilder::default()
     }
+    #[allow(clippy::unused_self)]
     pub fn render(&self) {}
 }
 
@@ -160,7 +164,7 @@ pub(crate) struct RenderGraphBuilder {
 impl RenderGraphBuilder {
     pub fn declare_render_target(&mut self, desc: &RenderTargetDesc) -> RenderTargetId {
         let id = self.next_rendertarget_id;
-        self.next_rendertarget_id = self.next_rendertarget_id + 1;
+        self.next_rendertarget_id += 1;
         let render_target = RenderTarget {
             id,
             desc: desc.clone(),
@@ -182,8 +186,10 @@ impl RenderGraphBuilder {
                 self.top_level_nodes.push(current_node);
             }
         }
-        let mut current_node = RGNode::default();
-        current_node.name = name.to_string();
+        let current_node = RGNode {
+            name: name.to_string(),
+            ..RGNode::default()
+        };
         self.current_node = Some(current_node);
         self
     }
@@ -382,6 +388,7 @@ impl RenderScript {
         Ok(rendergraph_builder.build())
     }
 
+    #[allow(clippy::unused_self)]
     fn make_depth_buffer_desc(&self, view: &RenderView) -> RenderTargetDesc {
         RenderTargetDesc {
             width: view.target.desc.width,
@@ -392,6 +399,7 @@ impl RenderScript {
         }
     }
 
+    #[allow(clippy::unused_self)]
     fn make_gbuffer_descs(&self, view: &RenderView) -> Vec<RenderTargetDesc> {
         let gbuffer0_desc = RenderTargetDesc {
             width: view.target.desc.width,
@@ -428,6 +436,7 @@ impl RenderScript {
         vec![gbuffer0_desc, gbuffer1_desc, gbuffer2_desc, gbuffer3_desc]
     }
 
+    #[allow(clippy::unused_self)]
     fn make_ao_buffer_desc(&self, view: &RenderView) -> RenderTargetDesc {
         RenderTargetDesc {
             width: view.target.desc.width,
@@ -438,6 +447,7 @@ impl RenderScript {
         }
     }
 
+    #[allow(clippy::unused_self)]
     fn make_radiance_buffer_desc(&self, view: &RenderView) -> RenderTargetDesc {
         RenderTargetDesc {
             width: view.target.desc.width,
@@ -448,6 +458,7 @@ impl RenderScript {
         }
     }
 
+    #[allow(clippy::unused_self)]
     fn make_ui_buffer_desc(&self, view: &RenderView) -> RenderTargetDesc {
         RenderTargetDesc {
             width: view.target.desc.width,
@@ -458,6 +469,7 @@ impl RenderScript {
         }
     }
 
+    #[allow(clippy::unused_self)]
     fn combine_pass(
         &self,
         builder: RenderGraphBuilder,
@@ -469,11 +481,10 @@ impl RenderScript {
         if let Some(ui_buffer_id) = ui_buffer_id {
             reads.push(ui_buffer_id);
         }
-        let builder = builder
+        builder
             .add_pass("Combine")
             .with_shader(7000)
             .reads(reads)
-            .writes(vec![view_target_id]);
-        builder
+            .writes(vec![view_target_id])
     }
 }

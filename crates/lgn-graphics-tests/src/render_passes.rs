@@ -25,6 +25,7 @@ pub struct UiPass {}
 //}
 
 impl DepthLayerPass {
+    #[allow(clippy::unused_self)]
     pub(crate) fn build_render_graph(
         &self,
         builder: RenderGraphBuilder,
@@ -39,6 +40,7 @@ impl DepthLayerPass {
 }
 
 impl OpaqueLayerPass {
+    #[allow(clippy::unused_self)]
     pub(crate) fn build_render_graph(
         &self,
         builder: RenderGraphBuilder,
@@ -56,6 +58,7 @@ impl OpaqueLayerPass {
 }
 
 impl AlphaBlendedLayerPass {
+    #[allow(clippy::unused_self)]
     pub(crate) fn build_render_graph(
         &self,
         builder: RenderGraphBuilder,
@@ -71,6 +74,7 @@ impl AlphaBlendedLayerPass {
 }
 
 impl PostProcessPass {
+    #[allow(clippy::unused_self)]
     pub(crate) fn build_render_graph(
         &self,
         builder: RenderGraphBuilder,
@@ -85,6 +89,7 @@ impl PostProcessPass {
 }
 
 impl LightingPass {
+    #[allow(clippy::unused_self)]
     pub(crate) fn build_render_graph(
         &self,
         builder: RenderGraphBuilder,
@@ -139,6 +144,7 @@ impl SSAOPass {
             .end_children()
     }
 
+    #[allow(clippy::unused_self)]
     fn make_raw_ao_buffer_desc(&self, view: &RenderView) -> RenderTargetDesc {
         RenderTargetDesc {
             width: view.target.desc.width,
@@ -151,6 +157,7 @@ impl SSAOPass {
 }
 
 impl UiPass {
+    #[allow(clippy::unused_self)]
     pub(crate) fn build_render_graph(
         &self,
         builder: RenderGraphBuilder,
