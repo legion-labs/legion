@@ -9,14 +9,15 @@ export type ThemeValue = {
 
 export type ThemeStore = Writable<ThemeValue>;
 
-export const themeName = window.matchMedia("(prefers-color-scheme: dark)")
-  .matches
+export const prefersColorSchemeThemeName = window.matchMedia(
+  "(prefers-color-scheme: dark)"
+).matches
   ? "dark"
   : "light";
 
 export function createThemeStore(
   key: string,
-  defaultThemeName: string = themeName
+  defaultThemeName: string = prefersColorSchemeThemeName
 ): ThemeStore {
   return connected<string, ThemeValue>(new DefaultLocalStorage(), key, {
     name: defaultThemeName,
