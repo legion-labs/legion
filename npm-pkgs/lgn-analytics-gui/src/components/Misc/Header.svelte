@@ -5,7 +5,7 @@
   import { authClient } from "@lgn/web-client/src/lib/auth";
 
   import iconPath from "../../../icons/128x128.png";
-  import User from "../List/User.svelte";
+  import User from "../Process/User.svelte";
 
   let user: string | undefined;
 

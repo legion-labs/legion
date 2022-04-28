@@ -105,8 +105,9 @@ pub async fn find_block_process(
 }
 
 #[span_fn]
-pub async fn fetch_recent_processes(
+pub async fn list_recent_processes(
     connection: &mut sqlx::AnyConnection,
+    parent_process_id: Option<&str>,
 ) -> Result<Vec<lgn_telemetry_proto::analytics::ProcessInstance>> {
     let mut processes = Vec::new();
     let rows = sqlx::query(
@@ -121,6 +122,12 @@ pub async fn fetch_recent_processes(
                 start_time, 
                 start_ticks, 
                 parent_process_id,
+                (SELECT count(*) FROM processes as p WHERE p.parent_process_id = processes.process_id) as child_count,
+                (
+                    SELECT max(end_time)
+                    FROM blocks, streams
+                    WHERE blocks.stream_id = streams.stream_id
+                    AND streams.process_id = processes.process_id ) as last_activity,
                 (
                   SELECT count(*)
                   FROM blocks, streams
@@ -140,20 +147,29 @@ pub async fn fetch_recent_processes(
                   AND streams.process_id = processes.process_id
                   AND streams.tags LIKE '%metric%' ) as nb_metric_blocks
          FROM processes
-         ORDER BY start_time DESC
+         WHERE parent_process_id like ?
+         ORDER BY last_activity DESC
          LIMIT 100;",
     )
+    .bind(match parent_process_id {
+        Some(str) => str.to_string(),
+        None => "''".to_string()
+    })
     .fetch_all(connection)
     .await?;
     for r in rows {
         let nb_cpu_blocks: i32 = r.get("nb_cpu_blocks");
         let nb_log_blocks: i32 = r.get("nb_log_blocks");
         let nb_metric_blocks: i32 = r.get("nb_metric_blocks");
+        let last_activity: String = r.get("last_activity");
+        let child_count: i32 = r.get("child_count");
         let instance = lgn_telemetry_proto::analytics::ProcessInstance {
             process_info: Some(process_from_row(&r)),
             nb_cpu_blocks: nb_cpu_blocks as u32,
             nb_log_blocks: nb_log_blocks as u32,
             nb_metric_blocks: nb_metric_blocks as u32,
+            child_count: child_count as u32,
+            last_activity,
         };
         processes.push(instance);
     }
@@ -178,6 +194,12 @@ pub async fn search_processes(
                 start_time, 
                 start_ticks, 
                 parent_process_id,
+                (SELECT count(*) FROM processes as p WHERE p.parent_process_id = processes.process_id) as child_count,
+                (
+                    SELECT max(end_time)
+                    FROM blocks, streams
+                    WHERE blocks.stream_id = streams.stream_id
+                    AND streams.process_id = processes.process_id ) as last_activity,
                 (
                   SELECT count(*)
                   FROM blocks, streams
@@ -200,7 +222,7 @@ pub async fn search_processes(
          WHERE exe LIKE ?
          OR username LIKE ?
          OR computer LIKE ?
-         ORDER BY start_time DESC
+         ORDER BY last_activity DESC
          LIMIT 100;",
     )
     .bind(format!("%{}%", keyword))
@@ -212,17 +234,23 @@ pub async fn search_processes(
         let nb_cpu_blocks: i32 = r.get("nb_cpu_blocks");
         let nb_log_blocks: i32 = r.get("nb_log_blocks");
         let nb_metric_blocks: i32 = r.get("nb_metric_blocks");
+        let last_activity: String = r.get("last_activity");
+        let child_count: i32 = r.get("child_count");
         let instance = lgn_telemetry_proto::analytics::ProcessInstance {
             process_info: Some(process_from_row(&r)),
             nb_cpu_blocks: nb_cpu_blocks as u32,
             nb_log_blocks: nb_log_blocks as u32,
             nb_metric_blocks: nb_metric_blocks as u32,
+            child_count: child_count as u32,
+            last_activity,
         };
         processes.push(instance);
     }
     Ok(processes)
 }
 
+// dont change this !
+// create a new call
 #[span_fn]
 pub async fn fetch_child_processes(
     connection: &mut sqlx::AnyConnection,
@@ -830,7 +858,6 @@ pub mod prelude {
     pub use crate::alloc_sql_pool;
     pub use crate::fetch_block_payload;
     pub use crate::fetch_child_processes;
-    pub use crate::fetch_recent_processes;
     pub use crate::find_block;
     pub use crate::find_block_process;
     pub use crate::find_block_stream;
@@ -847,6 +874,7 @@ pub mod prelude {
     pub use crate::for_each_process_in_tree;
     pub use crate::for_each_process_log_entry;
     pub use crate::for_each_process_metric;
+    pub use crate::list_recent_processes;
     pub use crate::parse_block;
     pub use crate::processes_by_name_substring;
     pub use crate::search_processes;

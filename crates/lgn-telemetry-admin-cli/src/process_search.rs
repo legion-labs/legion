@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use lgn_analytics::prelude::*;
 
 pub async fn print_recent_processes(connection: &mut sqlx::AnyConnection) {
-    for p in fetch_recent_processes(connection).await.unwrap() {
+    for p in list_recent_processes(connection, None).await.unwrap() {
         let process_info = p.process_info.unwrap();
         println!(
             "{} {} {}",

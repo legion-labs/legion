@@ -124,9 +124,10 @@ impl AnalyticsService {
     #[span_fn]
     async fn list_recent_processes_impl(
         &self,
+        parent_process_id: &str,
     ) -> Result<Vec<lgn_telemetry_proto::analytics::ProcessInstance>> {
         let mut connection = self.pool.acquire().await?;
-        fetch_recent_processes(&mut connection).await
+        list_recent_processes(&mut connection, Some(parent_process_id)).await
     }
 
     #[span_fn]
@@ -379,13 +380,17 @@ impl PerformanceAnalytics for AnalyticsService {
 
     async fn list_recent_processes(
         &self,
-        _request: Request<RecentProcessesRequest>,
+        request: Request<RecentProcessesRequest>,
     ) -> Result<Response<ProcessListReply>, Status> {
         self.flush_monitor.tick();
         async_span_scope!("AnalyticsService::list_recent_processes");
         let _guard = RequestGuard::new();
         info!("list_recent_processes");
-        match self.list_recent_processes_impl().await {
+        let list_request = request.into_inner();
+        match self
+            .list_recent_processes_impl(&list_request.parent_process_id)
+            .await
+        {
             Ok(processes) => {
                 let reply = ProcessListReply { processes };
                 info!("list_recent_processes_impl ok");
@@ -414,13 +419,13 @@ impl PerformanceAnalytics for AnalyticsService {
         match self.search_processes_impl(&inner.search).await {
             Ok(processes) => {
                 let reply = ProcessListReply { processes };
-                info!("list_recent_processes_impl ok");
+                info!("search_processes_impl ok");
                 Ok(Response::new(reply))
             }
             Err(e) => {
-                error!("Error in list_recent_processes_impl: {:?}", e);
+                error!("Error in search_processes_impl: {:?}", e);
                 return Err(Status::internal(format!(
-                    "Error in list_recent_processes_impl: {}",
+                    "Error in search_processes_impl: {}",
                     e
                 )));
             }
