@@ -74,7 +74,7 @@
           clientId,
           url,
           redirectFunction(url) {
-            return goto(url, { replaceState: true });
+            return goto(url.toString(), { replaceState: true });
           },
           login: {
             cookies: {

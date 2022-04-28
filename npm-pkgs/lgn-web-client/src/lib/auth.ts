@@ -3,6 +3,7 @@ import getPkce from "oauth-pkce";
 import userInfo from "../orchestrators/userInfo";
 import type { NonEmptyArray } from "./array";
 import { getCookie, setCookie } from "./cookie";
+import { displayError } from "./errors";
 import log from "./log";
 
 // https://connect2id.com/products/server/docs/api/token#token-response
@@ -116,7 +117,7 @@ export type LoginConfig = {
   scopes: NonEmptyArray<string>;
   extraParams?: Record<string, string>;
   popupTitle?: string;
-  redirectUri?: string;
+  redirectUri?: URL;
   cookies?: {
     accessToken?: string;
     refreshToken?: string;
@@ -127,7 +128,7 @@ class Client<UserInfo> {
   protected clientId: string;
   protected issuerConfiguration: IssuerConfiguration;
   protected fetch: typeof globalThis.fetch;
-  protected redirectUri?: string;
+  protected redirectUri?: URL;
 
   constructor(
     issuerConfiguration: IssuerConfiguration,
@@ -135,11 +136,16 @@ class Client<UserInfo> {
     {
       fetch = globalThis.fetch.bind(globalThis),
       redirectUri,
-    }: { fetch?: typeof globalThis.fetch; redirectUri?: string } = {}
+    }: { fetch?: typeof globalThis.fetch; redirectUri?: string | URL } = {}
   ) {
     this.clientId = clientId;
     this.issuerConfiguration = issuerConfiguration;
-    this.redirectUri = redirectUri;
+    this.redirectUri =
+      redirectUri instanceof URL
+        ? redirectUri
+        : typeof redirectUri === "string"
+        ? new URL(redirectUri)
+        : undefined;
     this.fetch = fetch;
   }
 
@@ -153,7 +159,7 @@ class Client<UserInfo> {
     responseType: string;
     scopes: NonEmptyArray<string>;
     extraParams?: Record<string, string>;
-    redirectUri?: string;
+    redirectUri?: string | URL;
     pkceChallenge?: string;
   }) {
     const authorizationUrl = new URL(
@@ -193,7 +199,7 @@ class Client<UserInfo> {
 
     // TODO: Check strings length > 0
     if (redirectUri) {
-      authorizationUrl.searchParams.set("redirect_uri", redirectUri);
+      authorizationUrl.searchParams.set("redirect_uri", redirectUri.toString());
     }
 
     if (extraParams) {
@@ -249,7 +255,7 @@ class Client<UserInfo> {
     {
       pkceVerifier,
       redirectUri = this.redirectUri,
-    }: { pkceVerifier?: string; redirectUri?: string } = {}
+    }: { pkceVerifier?: string; redirectUri?: string | URL } = {}
   ) {
     if (!this.issuerConfiguration.config.token_endpoint) {
       throw new Error("Token endpoint not specified by provider");
@@ -266,7 +272,7 @@ class Client<UserInfo> {
       client_id: this.clientId,
       code,
       // eslint-disable-next-line camelcase
-      redirect_uri: redirectUri,
+      redirect_uri: redirectUri.toString(),
     });
 
     if (pkceVerifier) {
@@ -371,11 +377,12 @@ export class LegionClient extends Client<UserInfo> {
   loginConfig: LoginConfig;
   #cookieStorage: CookieStorage;
   #authorizeVerifierStorageKey = "authorize-verifier";
+  #targetUrlStorageKey = "target-url";
 
   constructor(
     issuerConfiguration: IssuerConfiguration,
     clientId: string,
-    config: { fetch?: typeof globalThis.fetch; redirectUri?: string },
+    config: { fetch?: typeof globalThis.fetch; redirectUri?: string | URL },
     loginConfig: LoginConfig
   ) {
     super(issuerConfiguration, clientId, config);
@@ -421,7 +428,29 @@ export class LegionClient extends Client<UserInfo> {
 
     localStorage.setItem(this.#authorizeVerifierStorageKey, verifier);
 
+    if (location.origin === authClient.redirectUri?.origin) {
+      localStorage.setItem(this.#targetUrlStorageKey, location.href);
+    }
+
     return authorizeUrl;
+  }
+
+  getTargetUrl(): URL | null {
+    const target = localStorage.getItem(this.#targetUrlStorageKey);
+
+    localStorage.removeItem(this.#targetUrlStorageKey);
+
+    if (!target) {
+      return null;
+    }
+
+    const targetUrl = new URL(target);
+
+    if (location.origin !== targetUrl.origin) {
+      return null;
+    }
+
+    return targetUrl;
   }
 
   async getClientTokenSet(url: URL | string): Promise<ClientTokenSet | null> {
@@ -522,7 +551,7 @@ export type InitAuthUserConfig = {
    * If you provide your own function it's strongly adviced to use an alternative that's close
    * to  `window.history.replaceState` with history state replacement.
    */
-  redirectFunction?: (url: string) => Promise<void>;
+  redirectFunction?: (url: URL) => Promise<void>;
 };
 
 export async function initAuth({
@@ -559,22 +588,36 @@ export async function initAuth({
   // Try to get the code from the url, if present and an error occurs
   // we assume the user is not logged in properly and must be redirected to the authorize url
   try {
+    let targetUrl: URL | null = null;
+
+    try {
+      targetUrl = authClient.getTargetUrl();
+    } catch {
+      // Ignored
+    } finally {
+      targetUrl = targetUrl || authClient.redirectUris.login || null;
+    }
+
     const clientTokenSet = await authClient.getClientTokenSet(url.href);
 
     if (clientTokenSet) {
       authClient.storeClientTokenSet(clientTokenSet);
 
-      if (authClient.redirectUris.login) {
+      if (targetUrl) {
+        log.debug(`Redirecting to ${targetUrl.toString()}`);
+
         if (redirectFunction) {
-          await redirectFunction(authClient.redirectUris.login);
+          await redirectFunction(targetUrl);
         } else {
-          window.history.replaceState(null, "", authClient.redirectUris.login);
+          window.history.replaceState(null, "", targetUrl);
         }
       }
     }
   } catch (error) {
     log.warn(
-      log.json`An error occured while trying to get the client token set ${error}`
+      `An error occured while trying to get the client token set ${displayError(
+        error
+      )}`
     );
 
     return {
