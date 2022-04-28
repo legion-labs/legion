@@ -249,8 +249,6 @@ pub async fn search_processes(
     Ok(processes)
 }
 
-// dont change this !
-// create a new call
 #[span_fn]
 pub async fn fetch_child_processes(
     connection: &mut sqlx::AnyConnection,
