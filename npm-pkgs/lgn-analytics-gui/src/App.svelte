@@ -13,9 +13,9 @@
   import MetricsCanvas from "./components/Metric/MetricCanvas.svelte";
   import Header from "./components/Misc/Header.svelte";
   import LoadingBar from "./components/Misc/LoadingBar.svelte";
+  import ProcessPage from "./components/Process/ProcessPage.svelte";
   import TimelineRenderer from "./components/Timeline/Timeline.svelte";
   import { themeContextKey, themeStorageKey } from "./constants";
-  import ProcessPage from "./components/Process/ProcessPage.svelte";
 
   export let initAuthStatus: InitAuthStatus | null;
 
