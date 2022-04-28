@@ -127,22 +127,21 @@ impl SSAOPass {
 
         let mut reads = Vec::from(gbuffer_ids);
         reads.push(depth_buffer_id);
-        builder
-            .add_pass("SSAO")
-            .add_children()
-            .add_pass("AO")
-            .with_shader(8000)
-            .reads(reads)
-            .writes(vec![raw_ao_buffer_id])
-            .add_pass("BlurX")
-            .with_shader(8001)
-            .reads(vec![raw_ao_buffer_id, depth_buffer_id])
-            .writes(vec![blur_buffer_id])
-            .add_pass("BlurY")
-            .with_shader(8002)
-            .reads(vec![blur_buffer_id, depth_buffer_id])
-            .writes(vec![ao_buffer_id])
-            .end_children()
+        builder.add_pass("SSAO").add_children(|builder| {
+            builder
+                .add_pass("AO")
+                .with_shader(8000)
+                .reads(reads)
+                .writes(vec![raw_ao_buffer_id])
+                .add_pass("BlurX")
+                .with_shader(8001)
+                .reads(vec![raw_ao_buffer_id, depth_buffer_id])
+                .writes(vec![blur_buffer_id])
+                .add_pass("BlurY")
+                .with_shader(8002)
+                .reads(vec![blur_buffer_id, depth_buffer_id])
+                .writes(vec![ao_buffer_id])
+        })
     }
 
     #[allow(clippy::unused_self)]

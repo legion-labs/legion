@@ -205,23 +205,22 @@ impl RenderGraphBuilder {
         self
     }
 
-    pub fn add_children(mut self) -> Self {
+    pub fn add_children<F>(mut self, f: F) -> Self
+    where
+        F: FnOnce(Self) -> Self,
+    {
         if let Some(current_node) = self.current_node.take() {
             self.current_parent = Some(current_node);
-        } else {
-            panic!("method should be chained with add_pass so we have a current_node to work on");
-        }
-        self
-    }
 
-    pub fn end_children(mut self) -> Self {
-        if let Some(mut current_parent) = self.current_parent.take() {
+            self = f(self);
+
+            let mut current_parent = self.current_parent.take().unwrap(); // self.current_parent is always Some() because it's set above
             if let Some(current_node) = self.current_node.take() {
                 current_parent.children.push(current_node);
             }
             self.current_node = Some(current_parent);
         } else {
-            panic!("method should be called after add_children otherwise we don't have a current_parent")
+            panic!("method should be chained with add_pass so we have a current_node to work on");
         }
         self
     }
