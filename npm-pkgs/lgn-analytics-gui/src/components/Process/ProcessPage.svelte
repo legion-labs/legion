@@ -18,11 +18,9 @@
   onMount(async () => {
     client = makeGrpcClient();
     const result = await client
-      .list_recent_processes({
-        parentProcessId: "",
-      })
+      .list_recent_processes({ parentProcessId: undefined })
       .finally(() => (loading = false));
-    processes = result.processes.filter((p) => p.lastActivity);
+    processes = result.processes;
   });
 
   async function onSearchChange(
@@ -33,7 +31,7 @@
     }
     const searchString = evt.currentTarget.value;
     const response = await client.search_processes({ search: searchString });
-    processes = response.processes.filter((p) => p.lastActivity);
+    processes = response.processes;
   }
 </script>
 
@@ -56,7 +54,7 @@
         <div class="w-4/12 xl:w-2/12 truncate">Process</div>
         <div class="w-2/12 truncate hidden xl:block">Computer</div>
         <div class="w-2/12 truncate hidden xl:block">Platform</div>
-        <div class="w-2/12 truncate">Last Activity</div>
+        <!-- <div class="w-2/12 truncate">Last Activity</div> -->
         <div class="w-2/12 pl-4 hidden xl:block">Start Time</div>
         <div class="w-24 ml-auto">Statistics</div>
       </div>

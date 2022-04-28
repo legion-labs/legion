@@ -79,14 +79,21 @@
     <div class="w-2/12 truncate hidden xl:block">
       <ProcessPlatform process={processInstance.processInfo} />
     </div>
-    <div class="w-2/12 truncate">
+    <!-- <div class="w-2/12 truncate">
       <i class="bi bi-clock-fill text-content-38 mr-1" />
       {formatDistance(new Date(processInstance.lastActivity), new Date(), {
         addSuffix: true,
       })}
-    </div>
+    </div> -->
     <div class="w-2/12 pl-4 truncate hidden xl:block">
       {formatLocalTime(processInstance.processInfo.startTime)}
+      ({formatDistance(
+        new Date(processInstance.processInfo.startTime),
+        new Date(),
+        {
+          addSuffix: true,
+        }
+      )})
     </div>
     <div class="flex ml-auto">
       <div class="w-8">

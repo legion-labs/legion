@@ -124,11 +124,6 @@ pub async fn list_recent_processes(
                 parent_process_id,
                 (SELECT count(*) FROM processes as p WHERE p.parent_process_id = processes.process_id) as child_count,
                 (
-                    SELECT max(end_time)
-                    FROM blocks, streams
-                    WHERE blocks.stream_id = streams.stream_id
-                    AND streams.process_id = processes.process_id ) as last_activity,
-                (
                   SELECT count(*)
                   FROM blocks, streams
                   WHERE blocks.stream_id = streams.stream_id
@@ -148,7 +143,7 @@ pub async fn list_recent_processes(
                   AND streams.tags LIKE '%metric%' ) as nb_metric_blocks
          FROM processes
          WHERE parent_process_id like ?
-         ORDER BY last_activity DESC
+         ORDER BY start_time DESC
          LIMIT 100;",
     )
     .bind(match parent_process_id {
@@ -161,7 +156,6 @@ pub async fn list_recent_processes(
         let nb_cpu_blocks: i32 = r.get("nb_cpu_blocks");
         let nb_log_blocks: i32 = r.get("nb_log_blocks");
         let nb_metric_blocks: i32 = r.get("nb_metric_blocks");
-        let last_activity: String = r.get("last_activity");
         let child_count: i32 = r.get("child_count");
         let instance = lgn_telemetry_proto::analytics::ProcessInstance {
             process_info: Some(process_from_row(&r)),
@@ -169,7 +163,6 @@ pub async fn list_recent_processes(
             nb_log_blocks: nb_log_blocks as u32,
             nb_metric_blocks: nb_metric_blocks as u32,
             child_count: child_count as u32,
-            last_activity,
         };
         processes.push(instance);
     }
@@ -196,11 +189,6 @@ pub async fn search_processes(
                 parent_process_id,
                 (SELECT count(*) FROM processes as p WHERE p.parent_process_id = processes.process_id) as child_count,
                 (
-                    SELECT max(end_time)
-                    FROM blocks, streams
-                    WHERE blocks.stream_id = streams.stream_id
-                    AND streams.process_id = processes.process_id ) as last_activity,
-                (
                   SELECT count(*)
                   FROM blocks, streams
                   WHERE blocks.stream_id = streams.stream_id
@@ -222,7 +210,7 @@ pub async fn search_processes(
          WHERE exe LIKE ?
          OR username LIKE ?
          OR computer LIKE ?
-         ORDER BY last_activity DESC
+         ORDER BY start_time DESC
          LIMIT 100;",
     )
     .bind(format!("%{}%", keyword))
@@ -234,7 +222,6 @@ pub async fn search_processes(
         let nb_cpu_blocks: i32 = r.get("nb_cpu_blocks");
         let nb_log_blocks: i32 = r.get("nb_log_blocks");
         let nb_metric_blocks: i32 = r.get("nb_metric_blocks");
-        let last_activity: String = r.get("last_activity");
         let child_count: i32 = r.get("child_count");
         let instance = lgn_telemetry_proto::analytics::ProcessInstance {
             process_info: Some(process_from_row(&r)),
@@ -242,7 +229,6 @@ pub async fn search_processes(
             nb_log_blocks: nb_log_blocks as u32,
             nb_metric_blocks: nb_metric_blocks as u32,
             child_count: child_count as u32,
-            last_activity,
         };
         processes.push(instance);
     }
