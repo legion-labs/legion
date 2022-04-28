@@ -249,19 +249,19 @@ async fn create_offline_data(
     )
     .await;
 
-    let pad_right_script = create_offline_script(
+    let pad_script_id = create_offline_script(
         project,
         resource_registry,
         "e93151b6-3635-4a30-9f3e-e6052929d85a",
-        "/scene/pad_right_script",
+        "/scene/pad_script",
         ScriptType::Rune,
         r#"
 const MOUSE_DELTA_SCALE = 200.0;
 
-pub fn update(entity, events) {
+pub fn update(entity, events, sign) {
     let delta_x = events.mouse_motion.x / MOUSE_DELTA_SCALE;
     if let Some(transform) = entity.transform {
-        transform.translation.y += delta_x;
+        transform.translation.y += sign * delta_x;
         transform.translation.clamp_y(-2.0, 2.0);
     }
 }"#,
@@ -275,7 +275,7 @@ pub fn update(entity, events) {
         "/scene/pad-right.ent",
         vec![
             Box::new(sample_data::offline::Name {
-                name: "Pad Right".to_string(),
+                name: "Pad Right".to_owned(),
             }),
             Box::new(Transform {
                 position: (-2.4_f32, 0_f32, 0_f32).into(),
@@ -288,31 +288,16 @@ pub fn update(entity, events) {
                 ..Visual::default()
             }),
             Box::new(lgn_scripting::offline::ScriptComponent {
-                input_values: vec!["{entity}".to_string(), "{events}".to_string()],
-                entry_fn: "update".to_string(),
-                script_id: Some(pad_right_script),
+                input_values: vec![
+                    "{entity}".to_owned(),
+                    "{events}".to_owned(),
+                    "1.0".to_owned(),
+                ],
+                entry_fn: "update".to_owned(),
+                script_id: Some(pad_script_id.clone()),
             }),
         ],
         vec![],
-    )
-    .await;
-
-    let pad_left_script = create_offline_script(
-        project,
-        resource_registry,
-        "968c4926-ae75-4955-81c8-7b7e395d0d3b",
-        "/scene/pad_left_script",
-        ScriptType::Rune,
-        r#"
-const MOUSE_DELTA_SCALE = 200.0;
-
-pub fn update(entity, events) {
-    let delta_x = events.mouse_motion.x / MOUSE_DELTA_SCALE;
-    if let Some(transform) = entity.transform {
-        transform.translation.y -= delta_x;
-        transform.translation.clamp_y(-2.0, 2.0);
-    }
-}"#,
     )
     .await;
 
@@ -323,7 +308,7 @@ pub fn update(entity, events) {
         "/scene/pad-left.ent",
         vec![
             Box::new(sample_data::offline::Name {
-                name: "Pad Left".to_string(),
+                name: "Pad Left".to_owned(),
             }),
             Box::new(Transform {
                 position: (2.4_f32, 0_f32, 0_f32).into(),
@@ -336,9 +321,13 @@ pub fn update(entity, events) {
                 ..Visual::default()
             }),
             Box::new(lgn_scripting::offline::ScriptComponent {
-                input_values: vec!["{entity}".to_string(), "{events}".to_string()],
-                entry_fn: "update".to_string(),
-                script_id: Some(pad_left_script),
+                input_values: vec![
+                    "{entity}".to_owned(),
+                    "{events}".to_owned(),
+                    "-1.0".to_owned(),
+                ],
+                entry_fn: "update".to_owned(),
+                script_id: Some(pad_script_id.clone()),
             }),
         ],
         vec![],
@@ -485,7 +474,7 @@ pub fn update(entity, last_result, entities) {
         "/scene/ball.ent",
         vec![
             Box::new(sample_data::offline::Name {
-                name: "Ball".to_string(),
+                name: "Ball".to_owned(),
             }),
             Box::new(Transform {
                 position: Vec3::ZERO,
@@ -499,11 +488,11 @@ pub fn update(entity, last_result, entities) {
             }),
             Box::new(lgn_scripting::offline::ScriptComponent {
                 input_values: vec![
-                    "{entity}".to_string(),
-                    "{result}".to_string(),
-                    "{entities}".to_string(),
+                    "{entity}".to_owned(),
+                    "{result}".to_owned(),
+                    "{entities}".to_owned(),
                 ],
-                entry_fn: "update".to_string(),
+                entry_fn: "update".to_owned(),
                 script_id: Some(ball_script),
             }),
         ],
@@ -706,7 +695,7 @@ async fn create_offline_script(
         .get_mut::<lgn_scripting::offline::Script>(&mut resources)
         .unwrap();
     script.script_type = script_type;
-    script.script = script_text.to_string();
+    script.script = script_text.to_owned();
 
     if exists {
         project
