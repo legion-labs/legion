@@ -118,10 +118,11 @@ impl SSAOPass {
         gbuffer_ids: [RenderTargetId; 4],
         ao_buffer_id: RenderTargetId,
     ) -> RenderGraphBuilder {
-        let raw_ao_buffer_desc = self.make_raw_ao_buffer_desc(view);
+        let mut raw_ao_buffer_desc = self.make_raw_ao_buffer_desc(view);
         let mut builder = builder;
         let raw_ao_buffer_id = builder.declare_render_target(&raw_ao_buffer_desc);
 
+        raw_ao_buffer_desc.name = "AOBlurBuffer".to_string();
         let blur_buffer_id = builder.declare_render_target(&raw_ao_buffer_desc);
 
         let mut reads = Vec::from(gbuffer_ids);
@@ -147,6 +148,7 @@ impl SSAOPass {
     #[allow(clippy::unused_self)]
     fn make_raw_ao_buffer_desc(&self, view: &RenderView) -> RenderTargetDesc {
         RenderTargetDesc {
+            name: "RawAOBuffer".to_string(),
             width: view.target.desc.width,
             height: view.target.desc.height,
             depth: view.target.desc.depth,

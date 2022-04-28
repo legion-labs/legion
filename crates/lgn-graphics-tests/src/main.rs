@@ -6,7 +6,7 @@ use lgn_graphics_tests::render_script::{
     Config, Format, RenderScript, RenderTarget, RenderTargetDesc, RenderView,
 };
 
-fn main() {
+fn test_render_graph() {
     let gpu_culling_pass = GpuCullingPass {};
     let depth_layer_pass = DepthLayerPass {};
     let opaque_layer_pass = OpaqueLayerPass {};
@@ -17,6 +17,7 @@ fn main() {
     let ui_pass = UiPass {};
 
     let view_desc = RenderTargetDesc {
+        name: "ViewBuffer".to_string(),
         width: 1920,
         height: 1080,
         depth: 1,
@@ -32,6 +33,7 @@ fn main() {
     };
 
     let depth_desc = RenderTargetDesc {
+        name: "PrevDepthBuffer".to_string(),
         width: 1920,
         height: 1080,
         depth: 1,
@@ -66,4 +68,8 @@ fn main() {
             println!("{}", error.msg);
         }
     }
+}
+
+fn main() {
+    test_render_graph();
 }

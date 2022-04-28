@@ -22,8 +22,9 @@ pub enum Format {
     R16G16B16A16_SFLOAT,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RenderTargetDesc {
+    pub name: String,
     pub width: u32,
     pub height: u32,
     pub depth: u32,
@@ -33,7 +34,7 @@ pub struct RenderTargetDesc {
 
 pub type RenderTargetId = u64;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RenderTarget {
     pub id: RenderTargetId,
     pub desc: RenderTargetDesc,
@@ -110,23 +111,32 @@ fn make_indent_string(len: usize) -> String {
 }
 
 impl RGNode {
-    pub fn print(&self, indent: usize) -> String {
+    pub fn print(&self, indent: usize, render_targets: &Vec<RenderTarget>) -> String {
         let indent_str = make_indent_string(indent);
-        let mut str = format!("{}{} ShaderID {}\n", indent_str, self.name, self.shader_id);
+        let mut str = format!(
+            "{}*-{} ShaderID {}\n",
+            indent_str, self.name, self.shader_id
+        );
         if !self.reads.is_empty() {
-            str += &format!("{}  Reads:\n", indent_str);
+            str += &format!("{}  | Reads:\n", indent_str);
             for res in &self.reads {
-                str += &format!("{}    {}\n", indent_str, res);
+                str += &format!(
+                    "{}  |   {}\n",
+                    indent_str, render_targets[*res as usize].desc.name
+                );
             }
         }
         if !self.writes.is_empty() {
-            str += &format!("{}  Writes:\n", indent_str);
+            str += &format!("{}  | Writes:\n", indent_str);
             for res in &self.writes {
-                str += &format!("{}    {}\n", indent_str, res);
+                str += &format!(
+                    "{}  |   {}\n",
+                    indent_str, render_targets[*res as usize].desc.name
+                );
             }
         }
         for child in &self.children {
-            str += &child.print(indent + 2);
+            str += &child.print(indent + 2, render_targets);
         }
         str
     }
@@ -135,6 +145,7 @@ impl RGNode {
 #[derive(Debug)]
 pub struct RenderGraph {
     root: RGNode,
+    render_targets: Vec<RenderTarget>,
 }
 
 impl RenderGraph {
@@ -147,7 +158,7 @@ impl RenderGraph {
 
 impl std::fmt::Display for RenderGraph {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let printed = self.root.print(0);
+        let printed = self.root.print(0, &self.render_targets);
         write!(f, "{}", printed)
     }
 }
@@ -261,7 +272,10 @@ impl RenderGraphBuilder {
         // TODO: reads and writes should bubble up from child nodes to parents
         // TODO: transitions from write to read should insert a barrier
 
-        RenderGraph { root }
+        RenderGraph {
+            root,
+            render_targets: self.render_targets,
+        }
     }
 }
 
@@ -391,6 +405,7 @@ impl RenderScript {
     #[allow(clippy::unused_self)]
     fn make_depth_buffer_desc(&self, view: &RenderView) -> RenderTargetDesc {
         RenderTargetDesc {
+            name: "DepthBuffer".to_string(),
             width: view.target.desc.width,
             height: view.target.desc.height,
             depth: view.target.desc.depth,
@@ -402,6 +417,7 @@ impl RenderScript {
     #[allow(clippy::unused_self)]
     fn make_gbuffer_descs(&self, view: &RenderView) -> Vec<RenderTargetDesc> {
         let gbuffer0_desc = RenderTargetDesc {
+            name: "GBuffer0".to_string(),
             width: view.target.desc.width,
             height: view.target.desc.height,
             depth: view.target.desc.depth,
@@ -410,6 +426,7 @@ impl RenderScript {
         };
 
         let gbuffer1_desc = RenderTargetDesc {
+            name: "GBuffer1".to_string(),
             width: view.target.desc.width,
             height: view.target.desc.height,
             depth: view.target.desc.depth,
@@ -418,6 +435,7 @@ impl RenderScript {
         };
 
         let gbuffer2_desc = RenderTargetDesc {
+            name: "GBuffer2".to_string(),
             width: view.target.desc.width,
             height: view.target.desc.height,
             depth: view.target.desc.depth,
@@ -426,6 +444,7 @@ impl RenderScript {
         };
 
         let gbuffer3_desc = RenderTargetDesc {
+            name: "GBuffer3".to_string(),
             width: view.target.desc.width,
             height: view.target.desc.height,
             depth: view.target.desc.depth,
@@ -439,6 +458,7 @@ impl RenderScript {
     #[allow(clippy::unused_self)]
     fn make_ao_buffer_desc(&self, view: &RenderView) -> RenderTargetDesc {
         RenderTargetDesc {
+            name: "AOBuffer".to_string(),
             width: view.target.desc.width,
             height: view.target.desc.height,
             depth: view.target.desc.depth,
@@ -450,6 +470,7 @@ impl RenderScript {
     #[allow(clippy::unused_self)]
     fn make_radiance_buffer_desc(&self, view: &RenderView) -> RenderTargetDesc {
         RenderTargetDesc {
+            name: "RadianceBuffer".to_string(),
             width: view.target.desc.width,
             height: view.target.desc.height,
             depth: view.target.desc.depth,
@@ -461,6 +482,7 @@ impl RenderScript {
     #[allow(clippy::unused_self)]
     fn make_ui_buffer_desc(&self, view: &RenderView) -> RenderTargetDesc {
         RenderTargetDesc {
+            name: "UIBuffer".to_string(),
             width: view.target.desc.width,
             height: view.target.desc.height,
             depth: view.target.desc.depth,
