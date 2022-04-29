@@ -22,7 +22,7 @@
   $: fill =
     kind === CallGraphNodeTableKind.Callees
       ? (100 * value.acc) / node.value.acc
-      : (100 * value.childWeight) / node.value.acc;
+      : (100 * value.childSum) / node.value.acc;
 
   function onClick(_: MouseEvent) {
     clickDispatcher("clicked", { hash: hash });

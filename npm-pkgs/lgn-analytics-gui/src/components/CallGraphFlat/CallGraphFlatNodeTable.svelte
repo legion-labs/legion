@@ -33,7 +33,7 @@
       </tr>
     </thead>
     <tbody>
-      {#each [...data].sort((a, b) => b[1].acc - a[1].acc) as [key, value] (key)}
+      {#each [...data].sort((a, b) => b[1].childSum - a[1].childSum) as [key, value] (key)}
         <GraphNodeTableRow
           hash={key}
           {kind}

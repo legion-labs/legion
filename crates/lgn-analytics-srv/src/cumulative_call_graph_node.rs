@@ -16,7 +16,7 @@ pub struct CallGraphNode {
     min: f64,
     max: f64,
     count: u64,
-    child_acc: f64,
+    child_sum: f64,
     parents: CallNodeHashMap,
     children: CallNodeHashMap,
 }
@@ -33,7 +33,7 @@ impl CallGraphNode {
             min: f64::MAX,
             max: f64::MIN,
             count: 0,
-            child_acc: 0.0,
+            child_sum: 0.0,
             parents: CallNodeHashMap::new(),
             children: CallNodeHashMap::new(),
         }
@@ -70,7 +70,7 @@ impl CallGraphNode {
             .entry(parent.hash)
             .or_insert_with(|| Self::new(parent.hash, self.begin_ms, self.end_ms));
         parent_node.process(parent);
-        parent_node.child_acc += time_ms;
+        parent_node.child_sum += time_ms;
     }
 
     #[span_fn]
@@ -108,6 +108,7 @@ impl CallGraphNode {
             min: self.min,
             sum: self.sum,
             sum_sqr: self.sum_sqr,
+            child_sum: self.child_sum,
         }
     }
 }

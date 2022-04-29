@@ -93,4 +93,5 @@ message CumulativeCallGraphEdge {
   double min = 4;
   double max = 5;
   uint64 count = 6;
+  double child_sum = 7;
 }
