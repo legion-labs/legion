@@ -64,7 +64,7 @@ impl ValidationResult<'_> {
     /// # Example
     ///
     /// ```rust
-    /// use lgn_online::authentication::{
+    /// use lgn_auth::{
     ///     Error,
     ///     jwt::signature_validation::ValidationResult::{Valid, Invalid, Unsupported},
     /// };
@@ -198,7 +198,7 @@ macro_rules! chain {
         $x
     };
     ($x:expr, $($y:expr),*) => {
-        lgn_online::authentication::jwt::signature_validation::SignatureValidationChain::new(
+        lgn_auth::jwt::signature_validation::SignatureValidationChain::new(
             $x,
             chain!($($y),*),
         )

@@ -8,8 +8,8 @@ use super::{
     },
     BoxedAuthenticator, Error, OAuthClient, Result, TokenCache,
 };
+use http::Uri;
 use serde::Deserialize;
-use url::Url;
 
 #[derive(Deserialize, Debug)]
 #[serde(tag = "type")]
@@ -19,33 +19,35 @@ pub enum AuthenticatorConfig {
     OAuth(OAuthClientConfig),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct OAuthClientConfig {
     pub issuer_url: String,
     pub client_id: String,
     pub client_secret: Option<String>,
-    pub redirect_uri: Option<Url>,
+    #[serde(default, with = "http_serde::uri")]
+    pub redirect_uri: Uri,
+
+    #[serde(default = "OAuthClientConfig::default_token_cache_application_name")]
+    pub token_cache_application_name: String,
 }
 
-impl AuthenticatorConfig {
-    pub fn new() -> Result<Self> {
-        lgn_config::get("authentication.authenticator")
-            .map_err(|err| {
-                Error::Other(anyhow::anyhow!("failed to load authenticator config: {}", err).into())
-            })?
-            .ok_or_else(|| Error::Other(anyhow::anyhow!("no authenticator config found").into()))
+impl OAuthClientConfig {
+    fn default_token_cache_application_name() -> String {
+        "lgn-online".to_string()
     }
 
-    /// Instantiate an `Authenticator` from the configuration.
-    pub async fn authenticator(&self) -> anyhow::Result<BoxedAuthenticator> {
-        match self {
-            AuthenticatorConfig::OAuth(config) => Ok(BoxedAuthenticator(Box::new(
-                TokenCache::new_with_application_name(
-                    OAuthClient::new_from_config(config).await?,
-                    "lgn-online",
-                ),
-            ))),
-        }
+    /// Instantiate the authenticator from the configuration.
+    ///
+    /// # Errors
+    ///
+    /// If the configuration is invalid, an error is returned.
+    pub async fn instantiate_authenticator(&self) -> Result<BoxedAuthenticator> {
+        Ok(BoxedAuthenticator(Box::new(
+            TokenCache::new_with_application_name(
+                OAuthClient::new_from_config(self).await?,
+                &self.token_cache_application_name,
+            ),
+        )))
     }
 }
 
@@ -73,18 +75,12 @@ pub struct AwsCognitoSignatureValidationConfig {
 impl SignatureValidationConfig {
     pub fn new() -> Result<Self> {
         lgn_config::get("authentication.signature_validation")
-            .map_err(|err| {
-                Error::Other(
-                    anyhow::anyhow!("failed to load signature validation config: {}", err).into(),
-                )
-            })?
-            .ok_or_else(|| {
-                Error::Other(anyhow::anyhow!("no signature validation config found").into())
-            })
+            .map_err(Error::from)?
+            .ok_or_else(|| Error::CustomConfig("no signature validation config found".into()))
     }
 
     /// Instantiate a `SignatureValidation` from the configuration.
-    pub async fn signature_validation(&self) -> anyhow::Result<BoxedSignatureValidation> {
+    pub async fn signature_validation(&self) -> Result<BoxedSignatureValidation> {
         Ok(BoxedSignatureValidation(match self {
             SignatureValidationConfig::Disabled {} => Box::new(NoSignatureValidation {}),
             SignatureValidationConfig::Rsa(config) => Box::new(
@@ -97,7 +93,7 @@ impl SignatureValidationConfig {
     }
 
     /// Instantiate a `Validation` from the configuration.
-    pub async fn validation(&self) -> anyhow::Result<Validation<BoxedSignatureValidation>> {
+    pub async fn validation(&self) -> Result<Validation<BoxedSignatureValidation>> {
         match self.signature_validation().await {
             Ok(signature_validation) => Ok(Validation::new(signature_validation)),
             Err(err) => Err(err),

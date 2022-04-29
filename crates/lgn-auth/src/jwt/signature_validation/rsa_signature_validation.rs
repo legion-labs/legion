@@ -50,7 +50,7 @@ impl SignatureValidation for RsaSignatureValidation {
     /// # Example
     ///
     /// ```
-    /// use lgn_online::authentication::jwt::{
+    /// use lgn_auth::jwt::{
     ///     Token,
     ///     signature_validation::{
     ///         RsaSignatureValidation,

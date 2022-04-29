@@ -7,13 +7,10 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use directories::ProjectDirs;
 use lgn_tracing::{debug, warn};
-use openidconnect::core::CoreUserInfoClaims;
-use openidconnect::{AccessToken, SubjectIdentifier};
+use openidconnect::AccessToken;
 use tokio::sync::{Mutex, MutexGuard};
 
-use crate::authenticator::{
-    Authenticator, AuthenticatorWithCanonicalClaims, AuthenticatorWithClaims,
-};
+use crate::authenticator::{Authenticator, AuthenticatorWithClaims};
 use crate::UserInfo;
 use crate::{jwt::UnsecureValidation, ClientTokenSet, Error, Result};
 /// A `TokenCache` stores authentication tokens and handles their lifetime.
@@ -233,41 +230,6 @@ where
         self.delete_cache()?;
 
         authenticator.logout().await
-    }
-}
-
-#[async_trait]
-impl<T> AuthenticatorWithCanonicalClaims for TokenCache<T>
-where
-    T: AuthenticatorWithCanonicalClaims + Send + Sync,
-{
-    async fn get_canonical_user_info_claims(
-        &self,
-        access_token: &AccessToken,
-        subject: &Option<SubjectIdentifier>,
-    ) -> Result<CoreUserInfoClaims> {
-        self.authenticator()
-            .await
-            .get_canonical_user_info_claims(access_token, subject)
-            .await
-    }
-
-    async fn canonically_authenticate(
-        &self,
-        subject: &Option<SubjectIdentifier>,
-        scopes: &[String],
-        extra_params: &Option<HashMap<String, String>>,
-    ) -> Result<CoreUserInfoClaims> {
-        let client_token_set = self
-            .login(scopes, extra_params)
-            .await
-            .map_err(Error::from)?;
-
-        self.get_canonical_user_info_claims(
-            &AccessToken::new(client_token_set.access_token),
-            subject,
-        )
-        .await
     }
 }
 

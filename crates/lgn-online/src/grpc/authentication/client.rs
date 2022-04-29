@@ -10,7 +10,7 @@ use tower::Service;
 
 use super::super::buf::BoxBuf;
 use super::{Error, Result};
-use crate::authentication::Authenticator;
+use lgn_auth::Authenticator;
 
 /// A `gRPC` client wrapper that adds authentication.
 #[derive(Debug)]

@@ -8,7 +8,10 @@ license = "MIT OR Apache-2.0"
 [features]
 default = []
 
+# TODO: Drop unused deps
+
 [dependencies]
+lgn-auth = { path = "../lgn-auth", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-config = { path = "../lgn-config", version = "0.1.0" }
 anyhow = "1"

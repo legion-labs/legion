@@ -12,7 +12,7 @@ use serde::{de, Deserialize, Deserializer, Serialize};
 /// # Example
 ///
 /// ```rust
-/// use lgn_online::authentication::UserInfo;
+/// use lgn_auth::UserInfo;
 ///
 /// // Bare minimum: we the `sub` field.
 /// let _: UserInfo = serde_json::from_str(r#"{"sub": "foo"}"#).unwrap();

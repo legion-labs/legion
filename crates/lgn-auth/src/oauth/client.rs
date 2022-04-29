@@ -9,53 +9,21 @@ use hyper::{
 };
 use lgn_tracing::{debug, info, warn};
 use openidconnect::{
-    core::{CoreAuthenticationFlow, CoreClient, CoreProviderMetadata, CoreUserInfoClaims},
+    core::{CoreAuthenticationFlow, CoreClient, CoreProviderMetadata},
     reqwest::async_http_client,
     AccessToken, AccessTokenHash, AuthType, AuthorizationCode, ClientId, ClientSecret, CsrfToken,
     IssuerUrl, Nonce, OAuth2TokenResponse, PkceCodeChallenge, RedirectUrl, RefreshToken, Scope,
-    SubjectIdentifier, TokenResponse,
+    TokenResponse,
 };
-use serde::Deserialize;
 use tokio::sync::{oneshot, Mutex};
 
-use crate::authenticator::{
-    Authenticator, AuthenticatorWithCanonicalClaims, AuthenticatorWithClaims, BoxedAuthenticator,
+use crate::{
+    authenticator::{Authenticator, AuthenticatorWithClaims},
+    OAuthClientConfig,
 };
-use crate::{ClientTokenSet, Error, Result, TokenCache, UserInfo};
+use crate::{ClientTokenSet, Error, Result, UserInfo};
 
 const DEFAULT_REDIRECT_URI: &str = "http://localhost:3000";
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct OAuthClientConfig {
-    pub issuer_url: String,
-    pub client_id: String,
-    pub client_secret: Option<String>,
-    #[serde(default, with = "http_serde::uri")]
-    pub redirect_uri: Uri,
-
-    #[serde(default = "OAuthClientConfig::default_token_cache_application_name")]
-    pub token_cache_application_name: String,
-}
-
-impl OAuthClientConfig {
-    fn default_token_cache_application_name() -> String {
-        "lgn-online".to_string()
-    }
-
-    /// Instantiate the authenticator from the configuration.
-    ///
-    /// # Errors
-    ///
-    /// If the configuration is invalid, an error is returned.
-    pub async fn instantiate_authenticator(&self) -> Result<BoxedAuthenticator> {
-        Ok(BoxedAuthenticator(Box::new(
-            TokenCache::new_with_application_name(
-                OAuthClient::new_from_config(self).await?,
-                &self.token_cache_application_name,
-            ),
-        )))
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct OAuthClient {
@@ -262,13 +230,13 @@ impl OAuthClient {
                         let tx_params = tx_params.lock().await.take().unwrap();
                         let tx_done = tx_done.lock().await.take().unwrap();
 
-                        let _error = tx_params.send((code.to_string(), state.to_string()));
+                        let _error = tx_params.send((code.into_owned(), state.into_owned()));
                         let _error = tx_done.send(());
 
                         info!("authentication succeeded");
 
                         Ok(Response::new(Body::from(include_str!(
-                            "static/authentication_succeeded.html"
+                            "../static/authentication_succeeded.html"
                         ))))
                     }
                 }))
@@ -353,7 +321,7 @@ impl OAuthClient {
                         info!("logout succeeded");
 
                         Ok(Response::new(Body::from(include_str!(
-                            "static/logout_succeeded.html"
+                            "../static/logout_succeeded.html"
                         ))))
                     }
                 }))
@@ -528,44 +496,6 @@ impl Authenticator for OAuthClient {
         } else {
             Ok(())
         }
-    }
-}
-
-#[async_trait]
-impl AuthenticatorWithCanonicalClaims for OAuthClient {
-    async fn get_canonical_user_info_claims(
-        &self,
-        access_token: &AccessToken,
-        subject: &Option<SubjectIdentifier>,
-    ) -> Result<CoreUserInfoClaims> {
-        self.client
-            .user_info(access_token.clone(), subject.clone())
-            .map_err(Error::internal)?
-            .request_async(async_http_client)
-            .await
-            .map_err(Error::internal)
-    }
-
-    async fn canonically_authenticate(
-        &self,
-        subject: &Option<SubjectIdentifier>,
-        scopes: &[String],
-        extra_params: &Option<HashMap<String, String>>,
-    ) -> Result<CoreUserInfoClaims> {
-        let client_token_set = self
-            .login(scopes, extra_params)
-            .await
-            .map_err(Error::from)?;
-
-        let user_info_claims = self
-            .get_canonical_user_info_claims(
-                &AccessToken::new(client_token_set.access_token),
-                subject,
-            )
-            .await
-            .map_err(Error::from)?;
-
-        Ok(user_info_claims)
     }
 }
 

@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
 use async_trait::async_trait;
-use openidconnect::{core::CoreUserInfoClaims, AccessToken, SubjectIdentifier};
+use openidconnect::AccessToken;
 
 use crate::{ClientTokenSet, Result, UserInfo};
 
@@ -89,29 +89,11 @@ impl Authenticator for BoxedAuthenticator {
 }
 
 #[async_trait]
-pub trait AuthenticatorWithCanonicalClaims: Authenticator {
-    /// Fetch the canonical user info claims.
-    async fn get_canonical_user_info_claims(
-        &self,
-        access_token: &AccessToken,
-        subject: &Option<SubjectIdentifier>,
-    ) -> Result<CoreUserInfoClaims>;
-
-    /// First calls the [`login`] method and then fetch the canonical user info claims
-    async fn canonically_authenticate(
-        &self,
-        subject: &Option<SubjectIdentifier>,
-        scopes: &[String],
-        extra_params: &Option<HashMap<String, String>>,
-    ) -> Result<CoreUserInfoClaims>;
-}
-
-#[async_trait]
 pub trait AuthenticatorWithClaims: Authenticator {
-    /// Fetch the canonical user info claims.
+    /// Fetch the user info claims.
     async fn get_user_info_claims(&self, access_token: &AccessToken) -> Result<UserInfo>;
 
-    /// First calls the [`login`] method and then fetch the user info claims
+    /// First calls the `login` method and then fetch the user info claims
     async fn authenticate(
         &self,
         scopes: &[String],

@@ -25,6 +25,9 @@ pub enum Error {
 
     #[error("configuration error: {0}")]
     Config(#[from] lgn_config::Error),
+
+    #[error("configuration error: {0}")]
+    CustomConfig(String),
 }
 
 impl Error {

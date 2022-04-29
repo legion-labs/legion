@@ -33,13 +33,13 @@ pub async fn init_oauth_client(
     client_id: String,
     redirect_uri: String,
 ) -> napi::Result<()> {
-    let issuer_url: Uri = issuer_url
-        .parse()
-        .map_err(|_error| napi::Error::from_reason("Couldn't parse issuer url as Uri".to_string()))?;
+    let issuer_url: Uri = issuer_url.parse().map_err(|_error| {
+        napi::Error::from_reason("Couldn't parse issuer url as Uri".to_string())
+    })?;
 
-    let redirect_uri: Uri = redirect_uri
-        .parse()
-        .map_err(|_error| napi::Error::from_reason("Couldn't parse redirect url as Uri".to_string()))?;
+    let redirect_uri: Uri = redirect_uri.parse().map_err(|_error| {
+        napi::Error::from_reason("Couldn't parse redirect url as Uri".to_string())
+    })?;
 
     let projects_dir = directories::ProjectDirs::from("com", "legionlabs", &application)
         .ok_or_else(|| Error::AccessProjectDirectories(application).to_napi_error())?;
