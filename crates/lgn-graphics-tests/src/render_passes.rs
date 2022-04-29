@@ -35,7 +35,7 @@ impl DepthLayerPass {
         builder.add_graphics_pass("DepthLayer", |graphics_pass_builder| {
             graphics_pass_builder
                 .add_depth_stencil((depth_buffer_id, 0))
-                .execute(Box::new(Self::execute_depth_layer_pass))
+                .execute(Self::execute_depth_layer_pass)
         })
     }
 
@@ -59,7 +59,7 @@ impl OpaqueLayerPass {
                 .add_render_target((gbuffer_ids[2], 0))
                 .add_render_target((gbuffer_ids[3], 0))
                 .add_depth_stencil((depth_buffer_id, 0))
-                .execute(Box::new(Self::execute_opaque_layer_pass))
+                .execute(Self::execute_opaque_layer_pass)
         })
     }
 
@@ -80,9 +80,9 @@ impl AlphaBlendedLayerPass {
             graphics_pass_builder
                 .add_render_target((radiance_buffer_id, 0))
                 .add_depth_stencil((depth_buffer_id, 0))
-                .execute(Box::new(|_| {
+                .execute(|_| {
                     println!("AlphaBlendedLayerPass execute");
-                }))
+                })
         })
     }
 }
@@ -106,23 +106,23 @@ impl PostProcessPass {
                             compute_pass_builder
                                 .add_read_resource((radiance_buffer_id, 0))
                                 .add_write_resource((radiance_buffer_id, 0))
-                                .execute(Box::new(Self::execute_dof_coc))
+                                .execute(Self::execute_dof_coc)
                         })
                         .add_compute_pass("DOF Blur CoC", |compute_pass_builder| {
                             compute_pass_builder
                                 .add_read_resource((radiance_buffer_id, 0))
                                 .add_write_resource((radiance_buffer_id, 0))
-                                .execute(Box::new(|_| {
+                                .execute(|_| {
                                     println!("DOF Blur CoC pass execute");
-                                }))
+                                })
                         })
                         .add_compute_pass("DOF Composite", |compute_pass_builder| {
                             compute_pass_builder
                                 .add_read_resource((radiance_buffer_id, 0))
                                 .add_write_resource((radiance_buffer_id, 0))
-                                .execute(Box::new(|_| {
+                                .execute(|_| {
                                     println!("DOF Composite pass execute");
-                                }))
+                                })
                         })
                 })
                 .add_scope("Bloom", |builder| {
@@ -132,25 +132,25 @@ impl PostProcessPass {
                             compute_pass_builder
                                 .add_read_resource((radiance_buffer_id, 0))
                                 .add_write_resource((radiance_buffer_id, 0))
-                                .execute(Box::new(|_| {
+                                .execute(|_| {
                                     println!("Bloom Downsample pass execute");
-                                }))
+                                })
                         })
                         .add_compute_pass("Bloom Threshold", |compute_pass_builder| {
                             compute_pass_builder
                                 .add_read_resource((radiance_buffer_id, 0))
                                 .add_write_resource((radiance_buffer_id, 0))
-                                .execute(Box::new(|_| {
+                                .execute(|_| {
                                     println!("Bloom Threshold pass execute");
-                                }))
+                                })
                         })
                         .add_compute_pass("Bloom Apply", |compute_pass_builder| {
                             compute_pass_builder
                                 .add_read_resource((radiance_buffer_id, 0))
                                 .add_write_resource((radiance_buffer_id, 0))
-                                .execute(Box::new(|_| {
+                                .execute(|_| {
                                     println!("Bloom Apply pass execute");
-                                }))
+                                })
                         })
                 })
                 // This could be a separate struct ToneMappingPass with its own build_render_graph(builder) method.
@@ -158,9 +158,9 @@ impl PostProcessPass {
                     compute_pass_builder
                         .add_read_resource((radiance_buffer_id, 0))
                         .add_write_resource((radiance_buffer_id, 0))
-                        .execute(Box::new(|_| {
+                        .execute(|_| {
                             println!("ToneMapping pass execute");
-                        }))
+                        })
                 })
         })
     }
@@ -189,9 +189,9 @@ impl LightingPass {
                 .add_read_resource((depth_buffer_id, 0))
                 .add_read_resource((ao_buffer_id, 0))
                 .add_write_resource((radiance_buffer_id, 0))
-                .execute(Box::new(|_| {
+                .execute(|_| {
                     println!("LightingPass execute");
-                }))
+                })
         })
     }
 }
@@ -222,27 +222,27 @@ impl SSAOPass {
                         .add_read_resource((gbuffer_ids[3], 0))
                         .add_read_resource((depth_buffer_id, 0))
                         .add_write_resource((raw_ao_buffer_id, 0))
-                        .execute(Box::new(|_| {
+                        .execute(|_| {
                             println!("AO pass execute");
-                        }))
+                        })
                 })
                 .add_compute_pass("BlurX", |compute_pass_builder| {
                     compute_pass_builder
                         .add_read_resource((raw_ao_buffer_id, 0))
                         .add_read_resource((depth_buffer_id, 0))
                         .add_write_resource((blur_buffer_id, 0))
-                        .execute(Box::new(|_| {
+                        .execute(|_| {
                             println!("BlurX pass execute");
-                        }))
+                        })
                 })
                 .add_compute_pass("BlurY", |compute_pass_builder| {
                     compute_pass_builder
                         .add_read_resource((blur_buffer_id, 0))
                         .add_read_resource((depth_buffer_id, 0))
                         .add_write_resource((ao_buffer_id, 0))
-                        .execute(Box::new(|_| {
+                        .execute(|_| {
                             println!("BlurY pass execute");
-                        }))
+                        })
                 })
         })
     }
@@ -270,9 +270,9 @@ impl UiPass {
         builder.add_graphics_pass("UI", |graphics_pass_builder| {
             graphics_pass_builder
                 .add_render_target((ui_buffer_id, 0))
-                .execute(Box::new(|_| {
+                .execute(|_| {
                     println!("UiPass execute");
-                }))
+                })
         })
     }
 }

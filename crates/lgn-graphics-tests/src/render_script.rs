@@ -85,7 +85,11 @@ type ViewId = u64;
 pub struct RenderGraphExecuteContext {
     pub name: String,
 }
-type RenderGraphExecuteFn = Box<dyn Fn(&RenderGraphExecuteContext) + 'static>;
+type RenderGraphExecuteFn = dyn Fn(&RenderGraphExecuteContext);
+
+fn empty_execute_fn() -> Box<RenderGraphExecuteFn> {
+    Box::new(|_| {})
+}
 
 struct RGNode {
     name: String,
@@ -94,7 +98,7 @@ struct RGNode {
     render_targets: Vec<(ResourceId, ViewId)>,
     depth_stencil: (ResourceId, ViewId),
     children: Vec<RGNode>,
-    execute_fn: RenderGraphExecuteFn,
+    execute_fn: Box<RenderGraphExecuteFn>,
 }
 
 impl Default for RGNode {
@@ -106,7 +110,7 @@ impl Default for RGNode {
             render_targets: vec![],
             depth_stencil: (0, 0),
             children: vec![],
-            execute_fn: Box::new(|_| {}),
+            execute_fn: empty_execute_fn(),
         }
     }
 }
@@ -235,8 +239,11 @@ impl GraphicsPassBuilder {
         self
     }
 
-    pub fn execute(mut self, f: RenderGraphExecuteFn) -> Self {
-        self.node.execute_fn = f;
+    pub fn execute<F>(mut self, f: F) -> Self
+    where
+        F: Fn(&RenderGraphExecuteContext) + 'static,
+    {
+        self.node.execute_fn = Box::new(f);
         self
     }
 }
@@ -256,8 +263,11 @@ impl ComputePassBuilder {
         self
     }
 
-    pub fn execute(mut self, f: RenderGraphExecuteFn) -> Self {
-        self.node.execute_fn = f;
+    pub fn execute<F>(mut self, f: F) -> Self
+    where
+        F: Fn(&RenderGraphExecuteContext) + 'static,
+    {
+        self.node.execute_fn = Box::new(f);
         self
     }
 }
@@ -366,7 +376,7 @@ impl RenderGraphBuilder {
             render_targets: vec![],
             depth_stencil: (0, 0),
             children: self.top_level_nodes,
-            execute_fn: Box::new(|_| {}),
+            execute_fn: empty_execute_fn(),
         };
 
         // TODO: reads and writes should bubble up from child nodes to parents
@@ -606,9 +616,9 @@ impl RenderScript {
                 .add_read_resource((radiance_buffer_id, 0))
                 .add_read_resource_if(ui_buffer_pair)
                 .add_render_target((view_target_id, 0))
-                .execute(Box::new(|_| {
+                .execute(|_| {
                     println!("Combine pass execute");
-                }))
+                })
         })
     }
 }
