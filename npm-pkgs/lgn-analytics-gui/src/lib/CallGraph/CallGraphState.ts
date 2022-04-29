@@ -1,7 +1,7 @@
 import type { CumulativeCallGraphComputedBlock } from "@lgn/proto-telemetry/dist/callgraph";
 import type { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
-import { CallGraphFlatData } from "./CallGraphFlatData";
 
+import { CallGraphFlatData } from "./CallGraphFlatData";
 import { CallGraphThread } from "./CallGraphThread";
 
 export class CallGraphState {
