@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use crate::render_passes::{
     AlphaBlendedLayerPass, DepthLayerPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
     PostProcessPass, SSAOPass, UiPass,
@@ -73,31 +75,38 @@ impl Config {
     }
 }
 
-type ShaderId = u64;
-
 type ResourceId = u64;
+type ViewId = u64;
 
 //struct Resource {
 //    id: ResourceId,
 //}
 
-#[derive(Debug)]
+pub struct RenderGraphExecuteContext {
+    pub name: String,
+}
+type RenderGraphExecuteFn = Box<dyn Fn(&RenderGraphExecuteContext) + 'static>;
+
 struct RGNode {
     name: String,
-    shader_id: ShaderId,
-    reads: Vec<ResourceId>,
-    writes: Vec<ResourceId>,
+    reads: Vec<(ResourceId, ViewId)>,
+    writes: Vec<(ResourceId, ViewId)>,
+    render_targets: Vec<(ResourceId, ViewId)>,
+    depth_stencil: (ResourceId, ViewId),
     children: Vec<RGNode>,
+    execute_fn: RenderGraphExecuteFn,
 }
 
 impl Default for RGNode {
     fn default() -> Self {
         Self {
             name: "default".to_string(),
-            shader_id: 0,
             reads: vec![],
             writes: vec![],
+            render_targets: vec![],
+            depth_stencil: (0, 0),
             children: vec![],
+            execute_fn: Box::new(|_| {}),
         }
     }
 }
@@ -113,28 +122,48 @@ fn make_indent_string(len: usize) -> String {
 impl RGNode {
     pub fn print(&self, indent: usize, render_targets: &Vec<RenderTarget>) -> String {
         let indent_str = make_indent_string(indent);
-        let mut str = format!(
-            "{}*-{} ShaderID {}\n",
-            indent_str, self.name, self.shader_id
-        );
+        let mut str = format!("{}*-{}\n", indent_str, self.name);
+
+        if !self.render_targets.is_empty() {
+            str += &format!("{}  | Render targets:\n", indent_str);
+            for res in &self.render_targets {
+                str += &format!(
+                    "{}  |   {} view {}\n",
+                    indent_str, render_targets[res.0 as usize].desc.name, res.1
+                );
+            }
+        }
+
+        if self.depth_stencil != (0, 0) {
+            str += &format!("{}  | Depth stencil:\n", indent_str);
+            str += &format!(
+                "{}  |   {} view {}\n",
+                indent_str,
+                render_targets[self.depth_stencil.0 as usize].desc.name,
+                self.depth_stencil.1
+            );
+        }
+
         if !self.reads.is_empty() {
             str += &format!("{}  | Reads:\n", indent_str);
             for res in &self.reads {
                 str += &format!(
-                    "{}  |   {}\n",
-                    indent_str, render_targets[*res as usize].desc.name
+                    "{}  |   {} view {}\n",
+                    indent_str, render_targets[res.0 as usize].desc.name, res.1
                 );
             }
         }
+
         if !self.writes.is_empty() {
             str += &format!("{}  | Writes:\n", indent_str);
             for res in &self.writes {
                 str += &format!(
-                    "{}  |   {}\n",
-                    indent_str, render_targets[*res as usize].desc.name
+                    "{}  |   {} view {}\n",
+                    indent_str, render_targets[res.0 as usize].desc.name, res.1
                 );
             }
         }
+
         for child in &self.children {
             str += &child.print(indent + 2, render_targets);
         }
@@ -142,7 +171,6 @@ impl RGNode {
     }
 }
 
-#[derive(Debug)]
 pub struct RenderGraph {
     root: RGNode,
     render_targets: Vec<RenderTarget>,
@@ -152,8 +180,18 @@ impl RenderGraph {
     pub(crate) fn builder() -> RenderGraphBuilder {
         RenderGraphBuilder::default()
     }
-    #[allow(clippy::unused_self)]
-    pub fn render(&self) {}
+
+    pub fn execute(&self, execute_context: &RenderGraphExecuteContext) {
+        (self.root.execute_fn)(execute_context);
+        self.execute_inner(&self.root, execute_context);
+    }
+
+    fn execute_inner(&self, node: &RGNode, execute_context: &RenderGraphExecuteContext) {
+        for child in &node.children {
+            (child.execute_fn)(execute_context);
+            self.execute_inner(child, execute_context);
+        }
+    }
 }
 
 impl std::fmt::Display for RenderGraph {
@@ -163,19 +201,79 @@ impl std::fmt::Display for RenderGraph {
     }
 }
 
+pub(crate) struct GraphicsPassBuilder {
+    node: RGNode,
+}
+
+impl GraphicsPassBuilder {
+    pub fn add_read_resource(mut self, resource: (ResourceId, ViewId)) -> Self {
+        self.node.reads.push(resource);
+        self
+    }
+
+    pub fn add_read_resource_if(self, resource: Option<(ResourceId, ViewId)>) -> Self {
+        if let Some(resource) = resource {
+            self.add_read_resource(resource)
+        } else {
+            self
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn add_write_resource(mut self, resource: (ResourceId, ViewId)) -> Self {
+        self.node.writes.push(resource);
+        self
+    }
+
+    pub fn add_render_target(mut self, resource: (ResourceId, ViewId)) -> Self {
+        self.node.render_targets.push(resource);
+        self
+    }
+
+    pub fn add_depth_stencil(mut self, resources: (ResourceId, ViewId)) -> Self {
+        self.node.depth_stencil = resources;
+        self
+    }
+
+    pub fn execute(mut self, f: RenderGraphExecuteFn) -> Self {
+        self.node.execute_fn = f;
+        self
+    }
+}
+
+pub(crate) struct ComputePassBuilder {
+    node: RGNode,
+}
+
+impl ComputePassBuilder {
+    pub fn add_read_resource(mut self, resource: (ResourceId, ViewId)) -> Self {
+        self.node.reads.push(resource);
+        self
+    }
+
+    pub fn add_write_resource(mut self, resource: (ResourceId, ViewId)) -> Self {
+        self.node.writes.push(resource);
+        self
+    }
+
+    pub fn execute(mut self, f: RenderGraphExecuteFn) -> Self {
+        self.node.execute_fn = f;
+        self
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct RenderGraphBuilder {
-    current_node: Option<RGNode>,
     current_parent: Option<RGNode>,
     render_targets: Vec<RenderTarget>,
-    next_rendertarget_id: RenderTargetId,
+    next_render_target_id: RenderTargetId,
     top_level_nodes: Vec<RGNode>,
 }
 
 impl RenderGraphBuilder {
     pub fn declare_render_target(&mut self, desc: &RenderTargetDesc) -> RenderTargetId {
-        let id = self.next_rendertarget_id;
-        self.next_rendertarget_id += 1;
+        let id = self.next_render_target_id;
+        self.next_render_target_id += 1;
         let render_target = RenderTarget {
             id,
             desc: desc.clone(),
@@ -189,83 +287,86 @@ impl RenderGraphBuilder {
         self.declare_render_target(desc)
     }
 
-    pub fn add_pass(mut self, name: &str) -> Self {
-        if let Some(current_node) = self.current_node.take() {
-            if let Some(current_parent) = &mut self.current_parent {
-                current_parent.children.push(current_node);
-            } else {
-                self.top_level_nodes.push(current_node);
-            }
-        }
+    pub fn add_graphics_pass<F>(mut self, name: &str, f: F) -> Self
+    where
+        F: FnOnce(GraphicsPassBuilder) -> GraphicsPassBuilder,
+    {
         let current_node = RGNode {
             name: name.to_string(),
             ..RGNode::default()
         };
-        self.current_node = Some(current_node);
+
+        let graphics_pass_builder = GraphicsPassBuilder { node: current_node };
+        let graphics_pass_builder = f(graphics_pass_builder);
+
+        let current_node = graphics_pass_builder.node;
+        if let Some(current_parent) = &mut self.current_parent {
+            current_parent.children.push(current_node);
+        } else {
+            self.top_level_nodes.push(current_node);
+        }
+
         self
     }
 
-    pub fn add_children<F>(mut self, f: F) -> Self
+    pub fn add_compute_pass<F>(mut self, name: &str, f: F) -> Self
+    where
+        F: FnOnce(ComputePassBuilder) -> ComputePassBuilder,
+    {
+        let current_node = RGNode {
+            name: name.to_string(),
+            ..RGNode::default()
+        };
+
+        let compute_pass_builder = ComputePassBuilder { node: current_node };
+        let compute_pass_builder = f(compute_pass_builder);
+
+        let current_node = compute_pass_builder.node;
+        if let Some(current_parent) = &mut self.current_parent {
+            current_parent.children.push(current_node);
+        } else {
+            self.top_level_nodes.push(current_node);
+        }
+
+        self
+    }
+
+    pub fn add_scope<F>(mut self, name: &str, f: F) -> Self
     where
         F: FnOnce(Self) -> Self,
     {
-        if let Some(current_node) = self.current_node.take() {
-            self.current_parent = Some(current_node);
+        let mut old_current_parent = self.current_parent.take();
+        self.current_parent = Some(RGNode {
+            name: name.to_string(),
+            ..RGNode::default()
+        });
 
-            self = f(self);
+        self = f(self);
 
-            let mut current_parent = self.current_parent.take().unwrap(); // self.current_parent is always Some() because it's set above
-            if let Some(current_node) = self.current_node.take() {
-                current_parent.children.push(current_node);
-            }
-            self.current_node = Some(current_parent);
+        let current_parent = self.current_parent.unwrap(); // self.current_parent is always Some() because it's set above
+        if let Some(mut old_current_parent) = old_current_parent.take() {
+            old_current_parent.children.push(current_parent);
+            self.current_parent = Some(old_current_parent);
         } else {
-            panic!("method should be chained with add_pass so we have a current_node to work on");
-        }
-        self
-    }
-
-    pub fn with_shader(mut self, shader_id: ShaderId) -> Self {
-        if let Some(current_node) = &mut self.current_node {
-            current_node.shader_id = shader_id;
-        } else {
-            panic!("method should be chained with add_pass so we have a current_node to work on");
-        }
-        self
-    }
-
-    pub fn reads(mut self, mut resources: Vec<ResourceId>) -> Self {
-        if let Some(current_node) = &mut self.current_node {
-            current_node.reads.append(&mut resources);
-        } else {
-            panic!("method should be chained with add_pass so we have a current_node to work on");
-        }
-        self
-    }
-
-    pub fn writes(mut self, mut resources: Vec<ResourceId>) -> Self {
-        if let Some(current_node) = &mut self.current_node {
-            current_node.writes.append(&mut resources);
-        } else {
-            panic!("method should be chained with add_pass so we have a current_node to work on");
+            self.top_level_nodes.push(current_parent);
+            self.current_parent = None;
         }
         self
     }
 
     pub fn build(mut self) -> RenderGraph {
-        if let Some(current_node) = self.current_node.take() {
-            if let Some(current_parent) = &mut self.current_parent {
-                current_parent.children.push(current_node);
-            } else {
-                self.top_level_nodes.push(current_node);
-            }
+        if let Some(current_parent) = self.current_parent.take() {
+            self.top_level_nodes.push(current_parent);
         }
+
         let root = RGNode {
             name: "root".to_string(),
-            shader_id: 0,
             reads: vec![],
             writes: vec![],
+            render_targets: vec![],
+            depth_stencil: (0, 0),
             children: self.top_level_nodes,
+            execute_fn: Box::new(|_| {}),
         };
 
         // TODO: reads and writes should bubble up from child nodes to parents
@@ -498,14 +599,16 @@ impl RenderScript {
         radiance_buffer_id: RenderTargetId,
         ui_buffer_id: Option<RenderTargetId>,
     ) -> RenderGraphBuilder {
-        let mut reads = vec![radiance_buffer_id];
-        if let Some(ui_buffer_id) = ui_buffer_id {
-            reads.push(ui_buffer_id);
-        }
-        builder
-            .add_pass("Combine")
-            .with_shader(7000)
-            .reads(reads)
-            .writes(vec![view_target_id])
+        builder.add_graphics_pass("Combine", |graphics_pass_builder| {
+            let ui_buffer_pair = ui_buffer_id.map(|ui_buffer_id| (ui_buffer_id, 0));
+
+            graphics_pass_builder
+                .add_read_resource((radiance_buffer_id, 0))
+                .add_read_resource_if(ui_buffer_pair)
+                .add_render_target((view_target_id, 0))
+                .execute(Box::new(|_| {
+                    println!("Combine pass execute");
+                }))
+        })
     }
 }

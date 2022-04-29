@@ -3,7 +3,8 @@ use lgn_graphics_tests::render_passes::{
     PostProcessPass, SSAOPass, UiPass,
 };
 use lgn_graphics_tests::render_script::{
-    Config, Format, RenderScript, RenderTarget, RenderTargetDesc, RenderView,
+    Config, Format, RenderGraphExecuteContext, RenderScript, RenderTarget, RenderTargetDesc,
+    RenderView,
 };
 
 fn test_render_graph() {
@@ -61,8 +62,16 @@ fn test_render_graph() {
 
     match render_script.build_render_graph(&view, &config) {
         Ok(render_graph) => {
+            let execute_context: RenderGraphExecuteContext = RenderGraphExecuteContext {
+                name: "Blah".to_string(),
+            };
+
+            // Print out the render graph
             println!("{}", render_graph);
-            render_graph.render();
+            println!("\n\n");
+
+            // Execute it (which currently just prints the passes in each pass execute function)
+            render_graph.execute(&execute_context);
         }
         Err(error) => {
             println!("{}", error.msg);

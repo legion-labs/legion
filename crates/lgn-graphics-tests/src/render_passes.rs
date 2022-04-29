@@ -1,5 +1,6 @@
 use crate::render_script::{
-    Format, RenderGraphBuilder, RenderTargetDesc, RenderTargetId, RenderView,
+    Format, RenderGraphBuilder, RenderGraphExecuteContext, RenderTargetDesc, RenderTargetId,
+    RenderView,
 };
 
 pub struct GpuCullingPass {}
@@ -31,11 +32,15 @@ impl DepthLayerPass {
         builder: RenderGraphBuilder,
         depth_buffer_id: RenderTargetId,
     ) -> RenderGraphBuilder {
-        builder
-            .add_pass("DepthLayer")
-            .with_shader(1000)
-            .reads(vec![])
-            .writes(vec![depth_buffer_id])
+        builder.add_graphics_pass("DepthLayer", |graphics_pass_builder| {
+            graphics_pass_builder
+                .add_depth_stencil((depth_buffer_id, 0))
+                .execute(Box::new(Self::execute_depth_layer_pass))
+        })
+    }
+
+    fn execute_depth_layer_pass(execute_context: &RenderGraphExecuteContext) {
+        println!("DepthLayerPass execute {}", execute_context.name);
     }
 }
 
@@ -47,13 +52,19 @@ impl OpaqueLayerPass {
         depth_buffer_id: RenderTargetId,
         gbuffer_ids: [RenderTargetId; 4],
     ) -> RenderGraphBuilder {
-        let mut writes = Vec::from(gbuffer_ids);
-        writes.push(depth_buffer_id);
-        builder
-            .add_pass("OpaqueLayer")
-            .with_shader(2000)
-            .reads(vec![])
-            .writes(writes)
+        builder.add_graphics_pass("OpaqueLayer", |graphics_pass_builder| {
+            graphics_pass_builder
+                .add_render_target((gbuffer_ids[0], 0))
+                .add_render_target((gbuffer_ids[1], 0))
+                .add_render_target((gbuffer_ids[2], 0))
+                .add_render_target((gbuffer_ids[3], 0))
+                .add_depth_stencil((depth_buffer_id, 0))
+                .execute(Box::new(Self::execute_opaque_layer_pass))
+        })
+    }
+
+    fn execute_opaque_layer_pass(execute_context: &RenderGraphExecuteContext) {
+        println!("OpaqueLayerPass execute {}", execute_context.name);
     }
 }
 
@@ -65,11 +76,14 @@ impl AlphaBlendedLayerPass {
         depth_buffer_id: RenderTargetId,
         radiance_buffer_id: RenderTargetId,
     ) -> RenderGraphBuilder {
-        builder
-            .add_pass("AlphaBlendedLayer")
-            .with_shader(3000)
-            .reads(vec![depth_buffer_id])
-            .writes(vec![radiance_buffer_id])
+        builder.add_graphics_pass("AlphaBlendedLayer", |graphics_pass_builder| {
+            graphics_pass_builder
+                .add_render_target((radiance_buffer_id, 0))
+                .add_depth_stencil((depth_buffer_id, 0))
+                .execute(Box::new(|_| {
+                    println!("AlphaBlendedLayerPass execute");
+                }))
+        })
     }
 }
 
@@ -80,11 +94,79 @@ impl PostProcessPass {
         builder: RenderGraphBuilder,
         radiance_buffer_id: RenderTargetId,
     ) -> RenderGraphBuilder {
-        builder
-            .add_pass("PostProcess")
-            .with_shader(4000)
-            .reads(vec![])
-            .writes(vec![radiance_buffer_id])
+        // Note this function does not specify the correct resources for passes, it's mostly to show
+        // multiple nested scopes and passes at different levels.
+
+        builder.add_scope("PostProcess", |builder| {
+            builder
+                .add_scope("DepthOfField", |builder| {
+                    // This could be a separate struct DepthOfFieldPass with its own build_render_graph(builder) method.
+                    builder
+                        .add_compute_pass("DOF CoC", |compute_pass_builder| {
+                            compute_pass_builder
+                                .add_read_resource((radiance_buffer_id, 0))
+                                .add_write_resource((radiance_buffer_id, 0))
+                                .execute(Box::new(Self::execute_dof_coc))
+                        })
+                        .add_compute_pass("DOF Blur CoC", |compute_pass_builder| {
+                            compute_pass_builder
+                                .add_read_resource((radiance_buffer_id, 0))
+                                .add_write_resource((radiance_buffer_id, 0))
+                                .execute(Box::new(|_| {
+                                    println!("DOF Blur CoC pass execute");
+                                }))
+                        })
+                        .add_compute_pass("DOF Composite", |compute_pass_builder| {
+                            compute_pass_builder
+                                .add_read_resource((radiance_buffer_id, 0))
+                                .add_write_resource((radiance_buffer_id, 0))
+                                .execute(Box::new(|_| {
+                                    println!("DOF Composite pass execute");
+                                }))
+                        })
+                })
+                .add_scope("Bloom", |builder| {
+                    // This could be a separate struct BloomPass with its own build_render_graph(builder) method.
+                    builder
+                        .add_compute_pass("Bloom Downsample", |compute_pass_builder| {
+                            compute_pass_builder
+                                .add_read_resource((radiance_buffer_id, 0))
+                                .add_write_resource((radiance_buffer_id, 0))
+                                .execute(Box::new(|_| {
+                                    println!("Bloom Downsample pass execute");
+                                }))
+                        })
+                        .add_compute_pass("Bloom Threshold", |compute_pass_builder| {
+                            compute_pass_builder
+                                .add_read_resource((radiance_buffer_id, 0))
+                                .add_write_resource((radiance_buffer_id, 0))
+                                .execute(Box::new(|_| {
+                                    println!("Bloom Threshold pass execute");
+                                }))
+                        })
+                        .add_compute_pass("Bloom Apply", |compute_pass_builder| {
+                            compute_pass_builder
+                                .add_read_resource((radiance_buffer_id, 0))
+                                .add_write_resource((radiance_buffer_id, 0))
+                                .execute(Box::new(|_| {
+                                    println!("Bloom Apply pass execute");
+                                }))
+                        })
+                })
+                // This could be a separate struct ToneMappingPass with its own build_render_graph(builder) method.
+                .add_compute_pass("ToneMapping", |compute_pass_builder| {
+                    compute_pass_builder
+                        .add_read_resource((radiance_buffer_id, 0))
+                        .add_write_resource((radiance_buffer_id, 0))
+                        .execute(Box::new(|_| {
+                            println!("ToneMapping pass execute");
+                        }))
+                })
+        })
+    }
+
+    fn execute_dof_coc(execute_context: &RenderGraphExecuteContext) {
+        println!("DOF CoC pass execute {}", execute_context.name);
     }
 }
 
@@ -98,14 +180,19 @@ impl LightingPass {
         ao_buffer_id: RenderTargetId,
         radiance_buffer_id: RenderTargetId,
     ) -> RenderGraphBuilder {
-        let mut reads = Vec::from(gbuffer_ids);
-        reads.push(depth_buffer_id);
-        reads.push(ao_buffer_id);
-        builder
-            .add_pass("Lighting")
-            .with_shader(5000)
-            .reads(reads)
-            .writes(vec![radiance_buffer_id])
+        builder.add_compute_pass("Lighting", |compute_pass_builder| {
+            compute_pass_builder
+                .add_read_resource((gbuffer_ids[0], 0))
+                .add_read_resource((gbuffer_ids[1], 0))
+                .add_read_resource((gbuffer_ids[2], 0))
+                .add_read_resource((gbuffer_ids[3], 0))
+                .add_read_resource((depth_buffer_id, 0))
+                .add_read_resource((ao_buffer_id, 0))
+                .add_write_resource((radiance_buffer_id, 0))
+                .execute(Box::new(|_| {
+                    println!("LightingPass execute");
+                }))
+        })
     }
 }
 
@@ -118,29 +205,45 @@ impl SSAOPass {
         gbuffer_ids: [RenderTargetId; 4],
         ao_buffer_id: RenderTargetId,
     ) -> RenderGraphBuilder {
-        let mut raw_ao_buffer_desc = self.make_raw_ao_buffer_desc(view);
-        let mut builder = builder;
-        let raw_ao_buffer_id = builder.declare_render_target(&raw_ao_buffer_desc);
+        builder.add_scope("SSAO", |builder| {
+            let mut raw_ao_buffer_desc = self.make_raw_ao_buffer_desc(view);
+            let mut builder = builder;
+            let raw_ao_buffer_id = builder.declare_render_target(&raw_ao_buffer_desc);
 
-        raw_ao_buffer_desc.name = "AOBlurBuffer".to_string();
-        let blur_buffer_id = builder.declare_render_target(&raw_ao_buffer_desc);
+            raw_ao_buffer_desc.name = "AOBlurBuffer".to_string();
+            let blur_buffer_id = builder.declare_render_target(&raw_ao_buffer_desc);
 
-        let mut reads = Vec::from(gbuffer_ids);
-        reads.push(depth_buffer_id);
-        builder.add_pass("SSAO").add_children(|builder| {
             builder
-                .add_pass("AO")
-                .with_shader(8000)
-                .reads(reads)
-                .writes(vec![raw_ao_buffer_id])
-                .add_pass("BlurX")
-                .with_shader(8001)
-                .reads(vec![raw_ao_buffer_id, depth_buffer_id])
-                .writes(vec![blur_buffer_id])
-                .add_pass("BlurY")
-                .with_shader(8002)
-                .reads(vec![blur_buffer_id, depth_buffer_id])
-                .writes(vec![ao_buffer_id])
+                .add_compute_pass("AO", |compute_pass_builder| {
+                    compute_pass_builder
+                        .add_read_resource((gbuffer_ids[0], 0))
+                        .add_read_resource((gbuffer_ids[1], 0))
+                        .add_read_resource((gbuffer_ids[2], 0))
+                        .add_read_resource((gbuffer_ids[3], 0))
+                        .add_read_resource((depth_buffer_id, 0))
+                        .add_write_resource((raw_ao_buffer_id, 0))
+                        .execute(Box::new(|_| {
+                            println!("AO pass execute");
+                        }))
+                })
+                .add_compute_pass("BlurX", |compute_pass_builder| {
+                    compute_pass_builder
+                        .add_read_resource((raw_ao_buffer_id, 0))
+                        .add_read_resource((depth_buffer_id, 0))
+                        .add_write_resource((blur_buffer_id, 0))
+                        .execute(Box::new(|_| {
+                            println!("BlurX pass execute");
+                        }))
+                })
+                .add_compute_pass("BlurY", |compute_pass_builder| {
+                    compute_pass_builder
+                        .add_read_resource((blur_buffer_id, 0))
+                        .add_read_resource((depth_buffer_id, 0))
+                        .add_write_resource((ao_buffer_id, 0))
+                        .execute(Box::new(|_| {
+                            println!("BlurY pass execute");
+                        }))
+                })
         })
     }
 
@@ -164,10 +267,12 @@ impl UiPass {
         builder: RenderGraphBuilder,
         ui_buffer_id: RenderTargetId,
     ) -> RenderGraphBuilder {
-        builder
-            .add_pass("UI")
-            .with_shader(6000)
-            .reads(vec![])
-            .writes(vec![ui_buffer_id])
+        builder.add_graphics_pass("UI", |graphics_pass_builder| {
+            graphics_pass_builder
+                .add_render_target((ui_buffer_id, 0))
+                .execute(Box::new(|_| {
+                    println!("UiPass execute");
+                }))
+        })
     }
 }
