@@ -27,7 +27,6 @@ pub struct ScriptingPlugin;
 
 impl Plugin for ScriptingPlugin {
     fn build(&self, app: &mut App) {
-        #[cfg(feature = "offline")]
         app.add_startup_system(add_loaders);
 
         #[cfg(not(feature = "offline"))]

@@ -1,5 +1,4 @@
 use lgn_app::prelude::*;
-#[cfg(feature = "offline")]
 use lgn_data_runtime::AssetRegistryOptions;
 use lgn_ecs::prelude::*;
 

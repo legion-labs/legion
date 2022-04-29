@@ -7,7 +7,6 @@ use std::{
 };
 
 use lgn_content_store::{ChunkIdentifier, ContentProvider};
-use lgn_data_model::TypeReflection;
 use lgn_ecs::schedule::SystemLabel;
 
 use crate::{
@@ -638,19 +637,6 @@ impl AssetRegistry {
     /// Delayed manifest load, will look up in all devices
     pub fn load_manifest(&self, manifest_id: &ChunkIdentifier) {
         self.write_inner().loader.load_manifest(manifest_id);
-    }
-
-    /// Return an editable Reflected value
-    pub fn edit_reflected(&self, id: ResourceTypeAndId) -> Option<Box<dyn TypeReflection>> {
-        let guard = self.inner.read().unwrap();
-        let inner: &Inner = &guard;
-        if let Some(_asset) = inner.assets.get(&id) {
-
-            //if let Some(ptr) = asset.downcast_ref::<T>().map(|c| c as *const T) {
-            //    return Some(AssetRegistryGuard { _guard: guard, ptr });
-            //}
-        }
-        None
     }
 }
 

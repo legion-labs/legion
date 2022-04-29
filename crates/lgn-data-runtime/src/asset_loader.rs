@@ -89,24 +89,15 @@ impl HandleMap {
 
         let weak_ref = HandleUntyped::downgrade(&handle);
         match handles.try_insert(type_id, weak_ref) {
-            Ok(_) => {
-                lgn_tracing::debug!("New Handle for {:?}", type_id);
-                handle
-            }
+            Ok(_) => handle,
             Err(TryInsertError {
                 current,
                 not_inserted: _,
             }) => {
                 if let Some(weak) = current.upgrade() {
-                    lgn_tracing::debug!(
-                        "Add Ref to Handle for {:?} refcount({})",
-                        type_id,
-                        current.strong_count()
-                    );
                     handle.forget();
                     weak
                 } else {
-                    lgn_tracing::debug!("Replacing Handle for {:?}", type_id);
                     handles.insert(type_id, HandleUntyped::downgrade(&handle));
                     handle
                 }

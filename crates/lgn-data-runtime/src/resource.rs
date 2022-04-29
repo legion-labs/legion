@@ -1,4 +1,4 @@
-use std::any::TypeId;
+use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::path::PathBuf;
@@ -325,7 +325,7 @@ pub trait ResourceDescriptor {
 }
 
 /// Trait describing a resource
-pub trait Resource: TypeReflection + Send + Sync {
+pub trait Resource: TypeReflection + Any + Send + Sync {
     /// Return the `Resource` as a reflected type
     fn as_reflect(&self) -> &dyn TypeReflection;
 

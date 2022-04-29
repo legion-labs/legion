@@ -16,7 +16,8 @@ use generic_data::offline::{TestComponent, TestEntity};
 use lgn_content_store::ContentProvider;
 use lgn_data_offline::resource::{Project, ResourcePathName};
 use lgn_data_runtime::{
-    AssetRegistry, Resource, ResourceDescriptor, ResourceId, ResourceType, ResourceTypeAndId,
+    AssetRegistry, AssetRegistryOptions, Resource, ResourceDescriptor, ResourceId, ResourceType,
+    ResourceTypeAndId,
 };
 use lgn_graphics_data::{offline_gltf::GltfFile, offline_psd::PsdFile};
 use lgn_source_control::{RepositoryIndex, RepositoryName};
@@ -257,18 +258,17 @@ async fn setup_project(
     }
     .unwrap();
 
-    /*let mut registry = ResourceRegistryOptions::new();
-    offline_data::register_resource_types(&mut registry);
-    lgn_graphics_data::offline::register_resource_types(&mut registry)
-        .add_type_mut::<lgn_graphics_data::offline_texture::Texture>()
-        .add_type_mut::<lgn_graphics_data::offline_psd::PsdFile>()
-        .add_type_mut::<lgn_graphics_data::offline_png::PngFile>()
-        .add_type_mut::<lgn_graphics_data::offline_gltf::GltfFile>();
-    generic_data::offline::register_resource_types(&mut registry);
-    let registry = registry.create_async_registry();*/
-    let registry = todo!();
+    let mut registry = AssetRegistryOptions::new()
+        .add_processor::<lgn_graphics_data::offline_texture::Texture>()
+        .add_processor::<lgn_graphics_data::offline_psd::PsdFile>()
+        .add_processor::<lgn_graphics_data::offline_png::PngFile>()
+        .add_processor::<lgn_graphics_data::offline_gltf::GltfFile>();
 
-    (project, registry)
+    offline_data::add_loaders(&mut registry);
+    lgn_graphics_data::offline::add_loaders(&mut registry);
+    generic_data::offline::add_loaders(&mut registry);
+
+    (project, registry.create().await)
 }
 
 fn ext_to_resource_kind(ext: &str) -> (&str, ResourceType) {
