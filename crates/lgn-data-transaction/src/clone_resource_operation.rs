@@ -41,8 +41,8 @@ impl TransactionOperation for CloneResourceOperation {
 
         let clone_handle = ctx
             .asset_registry
-            .deserialize_resource(self.source_resource_id, &mut buffer.as_slice())
-            .map_err(|err| Error::InvalidResourceDeserialization(self.source_resource_id, err))?;
+            .deserialize_resource(self.clone_resource_id, &mut buffer.as_slice())
+            .map_err(|err| Error::InvalidResourceDeserialization(self.clone_resource_id, err))?;
 
         let resource_type_name = ctx
             .asset_registry
