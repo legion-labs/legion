@@ -1,23 +1,21 @@
 <script lang="ts">
   import { tick } from "svelte";
 
+  import type { CallGraphNode } from "@/lib/CallGraph/CallGraphNode";
+  import { CallGraphNodeTableKind } from "@/lib/CallGraph/CallGraphNodeTableKind";
+  import type { CumulatedCallGraphStore } from "@/lib/CallGraph/CallGraphStore";
   import { formatExecutionTime } from "@/lib/format";
 
-  import GraphNodeStat from "./GraphNodeStat.svelte";
-  import GraphNodeTable from "./GraphNodeTable.svelte";
-  import { GraphNodeTableKind } from "./Lib/GraphNodeTableKind";
-  import type { GraphState } from "./Store/GraphState";
-  import type { NodeStateStore } from "./Store/GraphStateStore";
-  import { scopeStore } from "./Store/GraphStateStore";
+  import CallGraphFlatNodeStat from "./CallGraphFlatNodeStat.svelte";
+  import CallGraphFlatNodeTable from "./CallGraphFlatNodeTable.svelte";
 
-  export let node: NodeStateStore;
+  export let store: CumulatedCallGraphStore;
+  export let node: CallGraphNode;
   export let collapsed = true;
-  export let graphState: GraphState;
 
-  $: max = graphState.Max;
-  $: desc = $scopeStore[$node?.hash];
   // @ts-ignore
-  $: fill = (100 * $node.acc) / $max;
+  $: fill = (100 * node.value.acc) / $store.flatData.getMax();
+  $: desc = $store?.scopes[node.hash];
 
   export async function setCollapse(value: boolean) {
     collapsed = value;
@@ -38,26 +36,38 @@
         <i class={`bi bi-chevron-${collapsed ? "down" : "up"} text-xs`} />
         {desc.name}
         <span class="text-xs text-placeholder">
-          ({formatExecutionTime($node.acc)})
+          ({formatExecutionTime(node.value.acc)})
         </span>
       </div>
       <div
         class="text-xs text-placeholder absolute pt-1.5 pr-2 right-0"
         class:hidden={!collapsed}
       >
-        {$node.count.toLocaleString()} call{$node.count >= 2 ? "s" : ""}
+        {node.value.count.toLocaleString()} call{node.value.count >= 2
+          ? "s"
+          : ""}
       </div>
     {/if}
   </div>
-  {#if !collapsed && $node}
+  {#if !collapsed && node}
     <div class="bg-background flex flex-col p-3">
-      <GraphNodeStat {node} />
+      <CallGraphFlatNodeStat node={node.value} />
       <div class="hidden md:block pb-4">
         <div class="w-full border-t border-headline" />
       </div>
       <div class="hidden md:grid tables gap-2">
-        <GraphNodeTable on:clicked {node} kind={GraphNodeTableKind.Callers} />
-        <GraphNodeTable on:clicked {node} kind={GraphNodeTableKind.Callees} />
+        <CallGraphFlatNodeTable
+          on:clicked
+          {node}
+          kind={CallGraphNodeTableKind.Callers}
+          {store}
+        />
+        <CallGraphFlatNodeTable
+          on:clicked
+          {node}
+          kind={CallGraphNodeTableKind.Callees}
+          {store}
+        />
       </div>
     </div>
   {/if}

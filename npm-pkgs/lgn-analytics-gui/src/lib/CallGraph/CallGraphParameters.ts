@@ -1,6 +1,6 @@
 import { endQueryParam, startQueryParam } from "@/lib/time";
 
-export class GraphParameters {
+export class CallGraphParameters {
   processId: string;
   beginMs: number;
   endMs: number;
@@ -24,7 +24,7 @@ export class GraphParameters {
     if (!endStr) {
       throw new Error("missing param end");
     }
-    return new GraphParameters(
+    return new CallGraphParameters(
       processId,
       parseFloat(beginStr),
       parseFloat(endStr)

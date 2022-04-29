@@ -5,7 +5,7 @@
   import { replaceClassesWith } from "@lgn/web-client/src/lib/html";
   import { createThemeStore } from "@lgn/web-client/src/stores/theme";
 
-  import Graph from "@/components/Graph/Graph.svelte";
+  import CallGraphFlat from "@/components/CallGraphFlat/CallGraphFlat.svelte";
   import { Route, Router } from "@/lib/navigator";
   import Health from "@/pages/Health.svelte";
 
@@ -68,7 +68,7 @@
         {/key}
       </Route>
       <Route path="/cumulative-call-graph" primary={false}>
-        <Graph />
+        <CallGraphFlat />
       </Route>
     </Router>
   </div>

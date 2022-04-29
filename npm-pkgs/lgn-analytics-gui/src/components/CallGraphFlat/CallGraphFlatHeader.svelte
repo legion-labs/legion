@@ -1,15 +1,10 @@
 <script lang="ts">
-  import type { CumulativeCallGraphBlockDesc } from "@lgn/proto-telemetry/dist/callgraph";
-
+  import type { CumulatedCallGraphStore } from "@/lib/CallGraph/CallGraphStore";
   import { formatExecutionTime } from "@/lib/format";
 
-  import type { GraphState } from "./Store/GraphState";
-
+  export let store: CumulatedCallGraphStore;
   export let endMsFilter: number;
   export let beginMsFilter: number;
-  export let blocks: CumulativeCallGraphBlockDesc[];
-  export let graphState: GraphState;
-  $: max = graphState.Max;
 </script>
 
 <div class="text-text text-xs flex flex-row gap-x-2 float-right select-none">
@@ -18,10 +13,10 @@
     {formatExecutionTime(endMsFilter - beginMsFilter)}
   </div>
   <div>
-    <span class="font-semibold">Blocks: </span>{blocks?.length ?? 0}
+    <span class="font-semibold">Cache: </span>{$store.cache.size ?? 0}
   </div>
   <div>
     <span class="font-semibold">Max: </span>
-    {formatExecutionTime($max)}
+    {formatExecutionTime($store.flatData.getMax())}
   </div>
 </div>

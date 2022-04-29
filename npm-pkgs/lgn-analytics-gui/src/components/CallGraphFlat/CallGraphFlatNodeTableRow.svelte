@@ -1,36 +1,37 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
 
+  import type { CallGraphNode } from "@/lib/CallGraph/CallGraphNode";
+  import { CallGraphNodeTableKind } from "@/lib/CallGraph/CallGraphNodeTableKind";
+  import type { CallGraphNodeValue } from "@/lib/CallGraph/CallGraphNodeValue";
+  import type { CumulatedCallGraphStore } from "@/lib/CallGraph/CallGraphStore";
   import { formatExecutionTime } from "@/lib/format";
 
-  import { GraphNodeTableKind } from "./Lib/GraphNodeTableKind";
-  import type { GraphStateNode } from "./Store/GraphStateNode";
-  import type { NodeStateStore } from "./Store/GraphStateStore";
-  import { scopeStore } from "./Store/GraphStateStore";
-
-  export let value: GraphStateNode;
-  export let node: NodeStateStore;
-  export let kind: GraphNodeTableKind;
+  export let value: CallGraphNodeValue;
+  export let hash: number;
+  export let node: CallGraphNode;
+  export let kind: CallGraphNodeTableKind;
+  export let store: CumulatedCallGraphStore;
 
   const clickDispatcher = createEventDispatcher<{
     clicked: { hash: number };
   }>();
 
-  $: name = $scopeStore[value.hash]?.name;
+  $: name = $store.scopes[hash]?.name;
   // @ts-ignore
   $: fill =
-    kind === GraphNodeTableKind.Callees
-      ? (100 * value.acc) / $node.acc
-      : (100 * value.childWeight) / $node.acc;
+    kind === CallGraphNodeTableKind.Callees
+      ? (100 * value.acc) / node.value.acc
+      : (100 * value.childSum) / node.value.acc;
 
   function onClick(_: MouseEvent) {
-    clickDispatcher("clicked", { hash: value.hash });
+    clickDispatcher("clicked", { hash: hash });
   }
 </script>
 
 <tr
-  class:callers={kind === GraphNodeTableKind.Callers}
-  class:callees={kind === GraphNodeTableKind.Callees}
+  class:bg-graph-red={kind === CallGraphNodeTableKind.Callers}
+  class:bg-graph-orange={kind === CallGraphNodeTableKind.Callees}
   class="cursor-pointer text-black relative"
   on:click={onClick}
 >
@@ -53,14 +54,6 @@
 </tr>
 
 <style lang="postcss">
-  .callers {
-    @apply bg-graph-red;
-  }
-
-  .callees {
-    @apply bg-graph-orange;
-  }
-
   .stat {
     @apply text-center text-xs truncate;
   }
