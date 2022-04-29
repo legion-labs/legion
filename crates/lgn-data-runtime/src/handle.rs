@@ -103,7 +103,7 @@ impl HandleUntyped {
     pub fn instantiate<T: Resource>(&self, registry: &AssetRegistry) -> Option<Box<T>> {
         let asset = registry.instantiate(self.inner.type_id)?;
         if asset.is::<T>() {
-            let value = unsafe { Box::from_raw(Box::into_raw(asset) as *mut T) };
+            let value = unsafe { Box::from_raw(Box::into_raw(asset).cast::<T>()) };
             return Some(value);
         }
         None
@@ -111,7 +111,7 @@ impl HandleUntyped {
 
     /// Replace a resource
     pub fn apply<T: Resource>(&self, value: Box<T>, registry: &AssetRegistry) {
-        registry.apply(self.inner.type_id, value)
+        registry.apply(self.inner.type_id, value);
     }
 
     /// Returns `ResourceId` associated with this handle.
@@ -188,7 +188,7 @@ impl<T: Resource> Handle<T> {
     pub fn instantiate(&self, registry: &AssetRegistry) -> Option<Box<T>> {
         let asset = registry.instantiate(self.handle.inner.type_id)?;
         if asset.is::<T>() {
-            let value = unsafe { Box::from_raw(Box::into_raw(asset) as *mut T) };
+            let value = unsafe { Box::from_raw(Box::into_raw(asset).cast::<T>()) };
             return Some(value);
         }
         None
@@ -196,7 +196,7 @@ impl<T: Resource> Handle<T> {
 
     /// Apply the change to a Resource
     pub fn apply(&self, value: Box<T>, registry: &AssetRegistry) {
-        registry.apply(self.handle.inner.type_id, value)
+        registry.apply(self.handle.inner.type_id, value);
     }
 
     /// Returns `ResourceId` associated with this handle.

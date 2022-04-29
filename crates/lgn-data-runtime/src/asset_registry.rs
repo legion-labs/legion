@@ -218,6 +218,7 @@ impl AssetRegistryOptions {
     }
 
     /// doc
+    #[must_use]
     pub fn add_processor_ext(
         mut self,
         kind: ResourceType,
@@ -229,6 +230,7 @@ impl AssetRegistryOptions {
     }
 
     /// doc
+    #[must_use]
     pub fn add_processor<R: OfflineResource + ResourceDescriptor>(self) -> Self {
         self.add_processor_ext(R::TYPE, Box::new(R::Processor::default()))
     }
@@ -513,7 +515,7 @@ impl AssetRegistry {
             let mut guard = self.write_inner();
             let inner: &mut Inner = &mut guard;
             let handle = inner.loader.get_or_create_handle(id);
-            let result = inner.assets.insert(id, resource);
+            let _old_value = inner.assets.insert(id, resource);
             //assert!(result.is_none());
             Some(handle)
         } else {
@@ -569,6 +571,8 @@ impl AssetRegistry {
     }
 
     /// Interface to initialize a new `Resource` from a stream
+    /// # Errors
+    /// Will return `AssetRegistryError` if the resource was not deserialized properly
     pub fn deserialize_resource(
         &self,
         id: ResourceTypeAndId,
@@ -581,7 +585,7 @@ impl AssetRegistry {
             let resource = processor.read_resource(reader)?;
 
             let handle = inner.loader.get_or_create_handle(id);
-            let result = inner.assets.insert(id, resource);
+            let _old_value = inner.assets.insert(id, resource);
             //assert!(result.is_none());
             Ok(handle)
         } else {
@@ -590,6 +594,8 @@ impl AssetRegistry {
     }
 
     /// Interface to serialize a `Resource` into a stream
+    /// # Errors
+    /// Will return `AssetRegistryError` if the resource was not serialize properly
     pub fn serialize_resource(
         &self,
         kind: ResourceType,

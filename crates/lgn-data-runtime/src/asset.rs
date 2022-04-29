@@ -86,6 +86,8 @@ pub trait ResourceProcessor {
     }
 
     /// Interface defining serialization behavior of the resource.
+    /// # Errors
+    /// Will return `ResourceProcessorError` if the resource was not written properly
     fn write_resource(
         &self,
         resource: &dyn Resource,
@@ -93,6 +95,8 @@ pub trait ResourceProcessor {
     ) -> Result<usize, ResourceProcessorError>;
 
     /// Interface defining deserialization behavior of the resource.
+    /// # Errors
+    /// Will return `ResourceProcessorError` if the resource was not read properly
     fn read_resource(
         &mut self,
         reader: &mut dyn io::Read,

@@ -446,7 +446,7 @@ async fn create_offline_entity(
     let exists = project.exists(id).await;
     let handle = if exists {
         project
-            .load_resource(type_id, &resources)
+            .load_resource(type_id, resources)
             .expect("failed to load resource")
     } else {
         resources
@@ -455,18 +455,18 @@ async fn create_offline_entity(
     };
 
     let mut entity = handle
-        .instantiate::<sample_data::offline::Entity>(&resources)
+        .instantiate::<sample_data::offline::Entity>(resources)
         .unwrap();
     entity.components.clear();
     entity.components.extend(components.into_iter());
     entity.children.clear();
     entity.children.extend(children.into_iter());
 
-    handle.apply(entity, &resources);
+    handle.apply(entity, resources);
 
     if exists {
         project
-            .save_resource(type_id, handle, &resources)
+            .save_resource(type_id, handle, resources)
             .await
             .expect("failed to save resource");
     } else {
@@ -477,7 +477,7 @@ async fn create_offline_entity(
                 kind,
                 id,
                 handle,
-                &resources,
+                resources,
             )
             .await
             .expect("failed to add new resource");
@@ -504,7 +504,7 @@ async fn create_offline_model(
     let exists = project.exists(id).await;
     let handle = if exists {
         project
-            .load_resource(type_id, &resources)
+            .load_resource(type_id, resources)
             .expect("failed to load resource")
     } else {
         resources
@@ -513,7 +513,7 @@ async fn create_offline_model(
     };
 
     let mut model = handle
-        .instantiate::<lgn_graphics_data::offline::Model>(&resources)
+        .instantiate::<lgn_graphics_data::offline::Model>(resources)
         .unwrap();
     model.meshes.clear();
     let mesh = lgn_graphics_data::offline::Mesh {
@@ -530,11 +530,11 @@ async fn create_offline_model(
     };
     model.meshes.push(mesh);
 
-    handle.apply(model, &resources);
+    handle.apply(model, resources);
 
     if exists {
         project
-            .save_resource(type_id, handle, &resources)
+            .save_resource(type_id, handle, resources)
             .await
             .expect("failed to save resource");
     } else {
@@ -545,7 +545,7 @@ async fn create_offline_model(
                 kind,
                 id,
                 handle,
-                &resources,
+                resources,
             )
             .await
             .expect("failed to add new resource");

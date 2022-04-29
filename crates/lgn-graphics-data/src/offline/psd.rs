@@ -76,7 +76,7 @@ impl Clone for PsdFile {
     fn clone(&self) -> Self {
         match &self.content {
             Some((_, bytes)) => Self {
-                content: Some((psd::Psd::from_bytes(&bytes).unwrap(), bytes.clone())),
+                content: Some((psd::Psd::from_bytes(bytes).unwrap(), bytes.clone())),
             },
             None => Self { content: None },
         }
