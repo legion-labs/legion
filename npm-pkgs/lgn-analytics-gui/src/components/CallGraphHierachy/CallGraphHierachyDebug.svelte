@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { CumulatedCallGraphStore } from "@/components/CumulatedGraph/Lib/CallGraphStore";
+  import type { CumulatedCallGraphStore } from "@/lib/CumulatedCallGraph/CallGraphStore";
 
   export let begin: number;
   export let end: number;

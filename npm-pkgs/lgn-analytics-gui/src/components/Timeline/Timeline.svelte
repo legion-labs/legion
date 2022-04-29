@@ -6,7 +6,7 @@
   import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { endQueryParam, startQueryParam } from "@/lib/time";
 
-  import CallGraph from "../CumulatedGraph/CallGraph.svelte";
+  import CallGraph from "../CallGraphHierachy/CallGraphHierachy.svelte";
   import Loader from "../Misc/Loader.svelte";
   import { TimelineStateManager } from "./Stores/TimelineStateManager";
   import type { TimelineStateStore } from "./Stores/TimelineStateStore";

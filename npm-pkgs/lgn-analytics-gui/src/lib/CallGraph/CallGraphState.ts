@@ -1,5 +1,6 @@
 import type { CumulativeCallGraphComputedBlock } from "@lgn/proto-telemetry/dist/callgraph";
 import type { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
+import { CallGraphFlatData } from "./CallGraphFlatData";
 
 import { CallGraphThread } from "./CallGraphThread";
 
@@ -11,8 +12,8 @@ export class CallGraphState {
   scopes: Record<number, ScopeDesc> = {};
   threads: Map<number, CallGraphThread> = new Map();
   cache: Map<string, CumulativeCallGraphComputedBlock> = new Map();
+  flatData = new CallGraphFlatData();
   loading = true;
-
   setNewParameters(
     startTicks: number,
     tscFrequency: number,
@@ -28,6 +29,7 @@ export class CallGraphState {
 
   ingestBlock(blockId: string, block: CumulativeCallGraphComputedBlock) {
     this.scopes = { ...this.scopes, ...block.scopes };
+    this.flatData.ingestBlock(block);
     if (block.full && !this.cache.has(blockId)) {
       this.cache.set(blockId, block);
     }

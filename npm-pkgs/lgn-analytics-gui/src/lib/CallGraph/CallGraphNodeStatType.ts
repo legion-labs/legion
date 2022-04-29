@@ -1,4 +1,4 @@
-export enum GraphNodeStatType {
+export enum CallGraphNodeStatType {
   Avg = 0,
   Min,
   Max,

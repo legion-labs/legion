@@ -3,12 +3,12 @@
   import { BarLoader } from "svelte-loading-spinners";
   import { link } from "svelte-navigator";
 
+  import type { CumulatedCallGraphStore } from "@/lib/CallGraph/CallGraphStore";
+  import { getProcessCumulatedCallGraph } from "@/lib/CallGraph/CallGraphStore";
   import { endQueryParam, startQueryParam } from "@/lib/time";
 
-  import CallTreeDebug from "./CallGraphDebug.svelte";
-  import CallGraphLine from "./CallGraphLine.svelte";
-  import { getProcessCumulatedCallGraph } from "./Lib/CallGraphStore";
-  import type { CumulatedCallGraphStore } from "./Lib/CallGraphStore";
+  import CallTreeDebug from "./CallGraphHierachyDebug.svelte";
+  import CallGraphLine from "./CallGraphHierachyLine.svelte";
 
   export let begin: number;
   export let end: number;
@@ -71,7 +71,7 @@
         </tr>
         {#each Array.from($store.threads) as [hash, thread] (hash)}
           {#if thread.data}
-            {#each Array.from(thread.data).filter((obj) => obj[1].parent.size === 0) as [key, node] (key)}
+            {#each Array.from(thread.data).filter((obj) => obj[1].parents.size === 0) as [key, node] (key)}
               <CallGraphLine {node} {store} threadId={key} />
             {/each}
           {/if}

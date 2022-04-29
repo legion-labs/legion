@@ -4,6 +4,7 @@ import type { CumulativeCallGraphBlockDesc } from "@lgn/proto-telemetry/dist/cal
 
 import { makeGrpcClient } from "@/lib/client";
 
+import type { LoadingStore } from "../Misc/LoadingStore";
 import { CallGraphState } from "./CallGraphState";
 
 export type CumulatedCallGraphStore = Awaited<
@@ -13,7 +14,8 @@ export type CumulatedCallGraphStore = Awaited<
 export async function getProcessCumulatedCallGraph(
   processId: string,
   begin: number,
-  end: number
+  end: number,
+  loadingStore: LoadingStore | null = null
 ) {
   const { subscribe, set, update } = writable<CallGraphState>();
 
@@ -40,16 +42,32 @@ export async function getProcessCumulatedCallGraph(
         return block;
       }
     }
-    updateState((s) => {
-      s.loading = true;
-    });
-    return await client.fetch_cumulative_call_graph_computed_block({
-      blockId: blockDesc.id,
-      tscFrequency: state.tscFrequency,
-      startTicks: state.startTicks,
-      beginMs: state.begin,
-      endMs: state.end,
-    });
+
+    if (!state.loading) {
+      updateState((s) => {
+        s.loading = true;
+      });
+    }
+
+    if (loadingStore) {
+      loadingStore.addWork();
+    }
+
+    const result = await client
+      .fetch_cumulative_call_graph_computed_block({
+        blockId: blockDesc.id,
+        tscFrequency: state.tscFrequency,
+        startTicks: state.startTicks,
+        beginMs: state.begin,
+        endMs: state.end,
+      })
+      .finally(() => {
+        if (loadingStore) {
+          loadingStore.completeWork();
+        }
+      });
+
+    return result;
   };
 
   const updateRange = async (begin: number, end: number) => {
