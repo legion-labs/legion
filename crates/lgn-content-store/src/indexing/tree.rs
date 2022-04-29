@@ -1,192 +1,513 @@
-use crate::{ContentReader, ContentReaderExt, ContentWriter, ContentWriterExt, Identifier};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use async_trait::async_trait;
+use serde::{de::Visitor, Deserialize, Serialize};
+use std::{
+    collections::VecDeque,
+    fmt::{Debug, Display},
+    str::FromStr,
+};
 
-use super::ResourceIdentifier;
-use crate::Result;
-use std::collections::{BTreeMap, BTreeSet};
+use crate::{ContentReader, ContentReaderExt, ContentWriter, ContentWriterExt, Identifier, Result};
 
-/// A hierarchical tree of resources where the leafs are single resources which appear
-/// exactly once.
-pub type UniqueResourceTree = Tree<ResourceIdentifier>;
+use super::{IndexKey, IntoIndexKey, ResourceIdentifier};
 
-/// A hierarchical tree of resources where the leafs are lists of resources where
-/// resources may appear multiple times or not at all.
-pub type MultiResourcesTree = Tree<BTreeSet<ResourceIdentifier>>;
+/// Represents a tree identifier.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct TreeIdentifier(Identifier);
 
-/// A tree of resources.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Tree<LeafType> {
-    children: BTreeMap<String, TreeNode<LeafType>>,
-}
+impl TreeIdentifier {
+    pub(crate) fn data_size(&self) -> usize {
+        self.0.data_size()
+    }
 
-impl<LeafType: Clone> Clone for Tree<LeafType> {
-    fn clone(&self) -> Self {
-        Self {
-            children: self.children.clone(),
+    pub(crate) fn as_identifier(&self) -> &Identifier {
+        &self.0
+    }
+
+    /// Visit all nodes in the tree, from root to leaves.
+    ///
+    /// The order of visit is not guaranteed, but it is guaranteed that parent
+    /// nodes will be fully visited before their children.
+    ///
+    /// As a direct consequence, the first visited node will be the root node.
+    ///
+    /// # Errors
+    ///
+    /// If the tree is corrupted, an error will be returned.
+    ///
+    /// If the visitor returns an error, the iteration will stop and the error
+    /// will be returned.
+    pub async fn visit<Visitor: TreeVisitor + Send>(
+        &self,
+        provider: impl ContentReader + Send + Sync,
+        mut visitor: Visitor,
+    ) -> Result<Visitor> {
+        let root = provider.read_tree(self).await?;
+
+        if visitor.visit_root(self, &root).await? == TreeVisitorAction::Continue {
+            let mut stack: VecDeque<_> = vec![(self.clone(), root, IndexKey::default())].into();
+
+            while let Some(parent) = stack.pop_front() {
+                for (local_key, node) in parent.1.children {
+                    let key = parent.2.join(&local_key);
+
+                    match node {
+                        TreeNode::Branch(branch_id) => {
+                            let branch = provider.read_tree(&branch_id).await?;
+
+                            if visitor
+                                .visit_branch(
+                                    &parent.0,
+                                    &key,
+                                    &local_key,
+                                    &branch_id,
+                                    &branch,
+                                    stack.len(),
+                                )
+                                .await?
+                                == TreeVisitorAction::Continue
+                            {
+                                stack.push_back((branch_id.clone(), branch, key));
+                            }
+                        }
+                        TreeNode::Leaf(leaf_node) => {
+                            visitor
+                                .visit_leaf(&parent.0, &key, &local_key, &leaf_node, stack.len())
+                                .await?;
+                        }
+                    }
+                }
+            }
         }
+
+        visitor.visit_done(self).await?;
+
+        Ok(visitor)
     }
 }
 
-impl<LeafType> Default for Tree<LeafType> {
-    fn default() -> Self {
-        Self {
-            children: BTreeMap::default(),
-        }
+impl Display for TreeIdentifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
-/// A tree node.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum TreeNode<LeafType> {
-    Leaf(LeafType),
+impl FromStr for TreeIdentifier {
+    type Err = crate::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        Ok(Self(s.parse()?))
+    }
+}
+
+/// A tree node type.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TreeNode {
+    /// A leaf node that points to a leaf which can be another index tree root
+    /// or a resource.
+    Leaf(TreeLeafNode),
+    /// A branch node that points to a sub-tree within a given index.
     Branch(TreeIdentifier),
 }
 
-/// An identifier for a tree.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct TreeIdentifier(pub Identifier);
-
-impl<LeafType> Tree<LeafType>
-where
-    LeafType: DeserializeOwned,
-{
-    /// Load a tree from the content-store.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the tree could not be loaded.
-    pub async fn load(
-        provider: impl ContentReader + Send + Sync,
-        id: &TreeIdentifier,
-    ) -> Result<Self> {
-        let data = provider.read_content(&id.0).await?;
-
-        Ok(rmp_serde::from_slice(&data)
-            .map_err(|err| anyhow::anyhow!("failed to parse tree: {}", err))?)
-    }
-
-    /// Lookup a sub-tree in the tree.
-    ///
-    /// If the tree is not found, returns `Ok(None)`.
-    /// If the specified key points to an resource, returns `Ok(None)`.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the resource exists but could not be loaded.
-    pub async fn lookup_branch(
-        &self,
-        provider: impl ContentReader + Send + Sync,
-        key: &str,
-    ) -> Result<Option<Self>> {
-        match self.lookup_branch_id(key) {
-            Some(id) => Ok(Some(Self::load(provider, id).await?)),
-            None => Ok(None),
+impl Display for TreeNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TreeNode::Leaf(leaf) => write!(f, "{}", leaf),
+            TreeNode::Branch(branch) => write!(f, "{}", branch),
         }
     }
 }
 
-impl<LeafType> Tree<LeafType>
-where
-    LeafType: Serialize,
-{
-    /// Save the tree to the content-store.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the tree could not be saved.
-    pub async fn save(&self, provider: impl ContentWriter + Send + Sync) -> Result<TreeIdentifier> {
-        let data = self.as_vec();
-        let id = provider.write_content(&data).await?;
-
-        Ok(TreeIdentifier(id))
+impl TreeNode {
+    pub fn as_identifier(&self) -> &Identifier {
+        match self {
+            TreeNode::Leaf(leaf) => leaf.as_identifier(),
+            TreeNode::Branch(branch) => branch.as_identifier(),
+        }
     }
 
-    pub fn as_identifier(&self) -> TreeIdentifier {
-        TreeIdentifier(Identifier::new(&self.as_vec()))
+    pub fn into_leaf(self) -> Option<TreeLeafNode> {
+        match self {
+            TreeNode::Leaf(leaf) => Some(leaf),
+            TreeNode::Branch(_) => None,
+        }
     }
 
-    fn as_vec(&self) -> Vec<u8> {
-        rmp_serde::to_vec(&self).unwrap()
+    pub fn into_branch(self) -> Option<TreeIdentifier> {
+        match self {
+            TreeNode::Branch(id) => Some(id),
+            TreeNode::Leaf(_) => None,
+        }
+    }
+
+    pub fn as_leaf(&self) -> Option<&TreeLeafNode> {
+        match self {
+            TreeNode::Leaf(leaf) => Some(leaf),
+            TreeNode::Branch(_) => None,
+        }
+    }
+
+    pub fn as_branch(&self) -> Option<&TreeIdentifier> {
+        match self {
+            TreeNode::Branch(id) => Some(id),
+            TreeNode::Leaf(_) => None,
+        }
     }
 }
 
-impl<LeafType> Tree<LeafType> {
-    /// Create a new tree from the list of its children.
-    pub fn new(children: BTreeMap<String, TreeNode<LeafType>>) -> Self {
-        Self { children }
+// All this below ensures that `TreeNode` takes up the minimum amount of space
+// when serialized.
+const TREE_NODE_LEAF_RESOURCE: u8 = 0;
+const TREE_NODE_LEAF_TREE_ROOT: u8 = 1;
+const TREE_NODE_BRANCH: u8 = 2;
+
+impl Serialize for TreeNode {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            TreeNode::Leaf(TreeLeafNode::Resource(id)) => {
+                (TREE_NODE_LEAF_RESOURCE, id).serialize(serializer)
+            }
+            TreeNode::Leaf(TreeLeafNode::TreeRoot(id)) => {
+                (TREE_NODE_LEAF_TREE_ROOT, id).serialize(serializer)
+            }
+            TreeNode::Branch(id) => (TREE_NODE_BRANCH, id).serialize(serializer),
+        }
+    }
+}
+struct TreeNodeVisitorImpl;
+
+impl<'de> Visitor<'de> for TreeNodeVisitorImpl {
+    type Value = TreeNode;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "a tuple (node-type, identifier)")
     }
 
-    /// Checks whether the tree is empty.
-    pub fn is_empty(&self) -> bool {
-        self.children.is_empty()
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::SeqAccess<'de>,
+    {
+        let node_type = seq.next_element()?.ok_or_else(|| {
+            serde::de::Error::invalid_length(0, &"a tuple (node-type, identifier)")
+        })?;
+
+        match node_type {
+            TREE_NODE_LEAF_RESOURCE => {
+                let id = seq.next_element()?.ok_or_else(|| {
+                    serde::de::Error::invalid_length(1, &"a tuple (node-type, identifier)")
+                })?;
+
+                Ok(TreeNode::Leaf(TreeLeafNode::Resource(id)))
+            }
+            TREE_NODE_LEAF_TREE_ROOT => {
+                let id = seq.next_element()?.ok_or_else(|| {
+                    serde::de::Error::invalid_length(1, &"a tuple (node-type, identifier)")
+                })?;
+
+                Ok(TreeNode::Leaf(TreeLeafNode::TreeRoot(id)))
+            }
+            TREE_NODE_BRANCH => {
+                let id = seq.next_element()?.ok_or_else(|| {
+                    serde::de::Error::invalid_length(1, &"a tuple (node-type, identifier)")
+                })?;
+
+                Ok(TreeNode::Branch(id))
+            }
+            _ => Err(serde::de::Error::invalid_value(
+                serde::de::Unexpected::Unsigned(node_type.into()),
+                &"a node type",
+            )),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for TreeNode {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_tuple(2, TreeNodeVisitorImpl)
+    }
+}
+
+/// A tree node type.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TreeLeafNode {
+    /// A resource.
+    Resource(ResourceIdentifier),
+    /// Another index tree root.
+    TreeRoot(TreeIdentifier),
+}
+
+impl Display for TreeLeafNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TreeLeafNode::Resource(id) => write!(f, "{}", id),
+            TreeLeafNode::TreeRoot(id) => write!(f, "{}", id),
+        }
+    }
+}
+
+impl TreeLeafNode {
+    pub(crate) fn data_size(&self) -> usize {
+        match self {
+            TreeLeafNode::Resource(resource) => resource.data_size(),
+            TreeLeafNode::TreeRoot(tree_identifier) => tree_identifier.data_size(),
+        }
     }
 
-    /// Get the children count.
-    pub fn children_count(&self) -> usize {
+    pub(crate) fn as_identifier(&self) -> &Identifier {
+        match self {
+            TreeLeafNode::Resource(resource) => resource.as_identifier(),
+            TreeLeafNode::TreeRoot(tree_identifier) => tree_identifier.as_identifier(),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum TreeVisitorAction {
+    Continue,
+    Stop,
+}
+
+#[async_trait]
+pub trait TreeVisitor {
+    async fn visit_root(
+        &mut self,
+        _root_id: &TreeIdentifier,
+        _root: &Tree,
+    ) -> Result<TreeVisitorAction> {
+        Ok(TreeVisitorAction::Continue)
+    }
+
+    async fn visit_branch(
+        &mut self,
+        _parent_id: &TreeIdentifier,
+        _key: &IndexKey,
+        _local_key: &IndexKey,
+        _branch_id: &TreeIdentifier,
+        _branch: &Tree,
+        _depth: usize,
+    ) -> Result<TreeVisitorAction> {
+        Ok(TreeVisitorAction::Continue)
+    }
+
+    async fn visit_leaf(
+        &mut self,
+        _parent_id: &TreeIdentifier,
+        _key: &IndexKey,
+        _local_key: &IndexKey,
+        _leaf: &TreeLeafNode,
+        _depth: usize,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    async fn visit_done(&mut self, _root_id: &TreeIdentifier) -> Result<()> {
+        Ok(())
+    }
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Tree {
+    #[serde(rename = "c", default)]
+    pub(crate) count: usize,
+    #[serde(rename = "s", default)]
+    pub(crate) total_size: usize,
+    // The direct children of this tree.
+    //
+    // You may wonder why we don't use a `BTreeMap` or `HashMap` here: we need
+    // to actually control and maintain the ordering of the elements. A
+    // `BTreeMap` would be fine, but it doesn't implement binary searches and
+    // its memory representation is not cache friendly, which makes reading
+    // needlessly slow.
+    //
+    // As we expect thousands of elements per `Tree` and our first goal is to
+    // make index reads as fast as possible, we use a `Vec` and implement this
+    // ourselves. We may revisit this in the future though.
+    #[serde(rename = "n", default)]
+    pub(crate) children: Vec<(IndexKey, TreeNode)>,
+}
+
+impl Tree {
+    fn as_vec(&self) -> Vec<u8> {
+        rmp_serde::to_vec(self).unwrap()
+    }
+
+    fn from_slice(buf: &[u8]) -> Result<Self> {
+        Ok(rmp_serde::from_slice(buf)?)
+    }
+
+    pub(crate) fn into_children(mut self, key: &[u8]) -> Option<TreeNode> {
+        match self
+            .children
+            .binary_search_by_key(&key, |(k, _)| k.as_slice())
+        {
+            Ok(idx) => Some(self.children.swap_remove(idx).1),
+            Err(_) => None,
+        }
+    }
+
+    /// Insert a children into the tree with the specified key.
+    ///
+    /// If a children already exists with the specified key, it will be replaced
+    /// and the previous value will be returned.
+    ///
+    /// Otherwise, `None` will be returned.
+    pub(crate) fn insert_children(&mut self, key: &[u8], node: TreeNode) -> Option<TreeNode> {
+        match self
+            .children
+            .binary_search_by(|(k, _)| k.as_slice().cmp(key))
+        {
+            Ok(idx) => {
+                Some(std::mem::replace(&mut self.children[idx], (key.into_index_key(), node)).1)
+            }
+            Err(idx) => {
+                self.children.insert(idx, (key.into_index_key(), node));
+
+                None
+            }
+        }
+    }
+
+    /// Remove a children from the tree with the specified key.
+    ///
+    /// If a children exists with the specified key, it will be removed and
+    /// returned.
+    ///
+    /// Otherwise, `None` will be returned and the tree remains unchanged.
+    pub(crate) fn remove_children(&mut self, key: &[u8]) -> Option<TreeNode> {
+        match self
+            .children
+            .binary_search_by(|(k, _)| k.as_slice().cmp(key))
+        {
+            Ok(idx) => Some(self.children.remove(idx).1),
+            Err(_) => None,
+        }
+    }
+
+    /// The direct number of children.
+    pub fn direct_count(&self) -> usize {
         self.children.len()
     }
 
-    /// Lookup a node in the tree.
+    /// The total number of nodes in the tree.
+    pub fn count(&self) -> usize {
+        self.count
+    }
+
+    /// The total size of all the leaves in the tree.
     ///
-    /// If the leaf is not found, returns `None`.
-    /// If the specified key points to a branch, returns `None`.
-    pub fn lookup(&self, key: &str) -> Option<&TreeNode<LeafType>> {
-        self.children.get(key)
+    /// Only available if the associated indexer has been configured to
+    /// calculate the size.
+    pub fn total_size(&self) -> usize {
+        self.total_size
     }
 
-    /// Lookup a leaf in the tree.
-    ///
-    /// If the leaf is not found, returns `None`.
-    /// If the specified key points to a branch, returns `None`.
-    pub fn lookup_leaf(&self, key: &str) -> Option<&LeafType> {
-        if let Some(node) = self.children.get(key) {
-            match node {
-                TreeNode::Leaf(leaf) => Some(leaf),
-                TreeNode::Branch(_) => None,
-            }
-        } else {
-            None
-        }
+    /// Returns whether the tree is empty.
+    pub fn is_empty(&self) -> bool {
+        self.children.is_empty()
+    }
+}
+
+#[async_trait]
+pub trait TreeReader: ContentReader + Send + Sync {
+    async fn read_tree(&self, id: &TreeIdentifier) -> Result<Tree> {
+        let buf = self.read_content(&id.0).await?;
+
+        Tree::from_slice(&buf)
+    }
+}
+
+#[async_trait]
+impl<T: ContentReader + Send + Sync> TreeReader for T {}
+
+#[async_trait]
+pub trait TreeWriter: ContentWriter + Send + Sync {
+    async fn write_tree(&self, tree: &Tree) -> Result<TreeIdentifier> {
+        let buf = tree.as_vec();
+
+        self.write_content(&buf).await.map(TreeIdentifier)
+    }
+}
+
+#[async_trait]
+impl<T: ContentWriter + Send + Sync> TreeWriter for T {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tree_properties() {
+        let tree = Tree::default();
+
+        assert_eq!(tree.count(), 0);
+        assert_eq!(tree.total_size(), 0);
     }
 
-    /// Lookup a sub-tree identifier in the tree.
-    ///
-    /// If the tree is not found, returns `None`.
-    /// If the specified key points to a leaf, returns `None`.
-    pub fn lookup_branch_id(&self, key: &str) -> Option<&TreeIdentifier> {
-        if let Some(node) = self.children.get(key) {
-            match node {
-                TreeNode::Leaf(_) => None,
-                TreeNode::Branch(tree_id) => Some(tree_id),
-            }
-        } else {
-            None
-        }
+    #[test]
+    fn test_tree_node_serialization() {
+        let tree_node = TreeNode::Branch(TreeIdentifier(Identifier::new(&[1, 2, 3])));
+        let buf = rmp_serde::to_vec(&tree_node).unwrap();
+        let res = rmp_serde::from_slice(&buf).unwrap();
+        assert_eq!(tree_node, res);
+
+        let tree_node = TreeNode::Leaf(TreeLeafNode::Resource(ResourceIdentifier(
+            Identifier::new(&[1, 2, 3]),
+        )));
+        let buf = rmp_serde::to_vec(&tree_node).unwrap();
+        let res = rmp_serde::from_slice(&buf).unwrap();
+        assert_eq!(tree_node, res);
+
+        let tree_node = TreeNode::Leaf(TreeLeafNode::TreeRoot(TreeIdentifier(Identifier::new(&[
+            1, 2, 3,
+        ]))));
+        let buf = rmp_serde::to_vec(&tree_node).unwrap();
+        let res = rmp_serde::from_slice(&buf).unwrap();
+        assert_eq!(tree_node, res);
     }
 
-    /// Returns an iterator over the children of the tree.
-    pub fn iter(&self) -> impl Iterator<Item = (&str, &TreeNode<LeafType>)> {
-        self.children.iter().map(|(key, node)| (key.as_str(), node))
-    }
+    #[test]
+    fn test_tree_serialization() {
+        let tree = Tree::default();
+        let buf = tree.as_vec();
 
-    /// Add a named leaf to the tree.
-    #[must_use]
-    pub fn with_named_leaf(mut self, key: String, leaf: LeafType) -> Self {
-        self.children.insert(key, TreeNode::Leaf(leaf));
-        self
-    }
+        // See [MsgPack
+        // spec](https://github.com/msgpack/msgpack/blob/master/spec.md#formats)
+        // for details.
+        assert_eq!(&buf, &[0x93, 0x00, 0x00, 0x90]);
 
-    /// Add a named sub-tree to the tree.
-    #[must_use]
-    pub fn with_named_branch(mut self, key: String, branch: TreeIdentifier) -> Self {
-        self.children.insert(key, TreeNode::Branch(branch));
-        self
-    }
+        let t1 = Tree::from_slice(&buf).unwrap();
+        assert_eq!(t1, tree);
 
-    /// Remove a child from the tree.
-    #[must_use]
-    pub fn without_child(mut self, key: &str) -> Self {
-        self.children.remove(key);
-        self
+        let tree = Tree {
+            count: 1,
+            total_size: 3,
+            children: vec![(
+                IndexKey::from_slice(b"a"),
+                TreeNode::Leaf(TreeLeafNode::Resource(ResourceIdentifier(Identifier::new(
+                    b"foo",
+                )))),
+            )],
+        };
+        let buf = tree.as_vec();
+
+        // See [MsgPack
+        // spec](https://github.com/msgpack/msgpack/blob/master/spec.md#formats)
+        // for details.
+        assert_eq!(
+            &buf,
+            &[
+                0x93, 0x01, 0x03, 0x91, 0x92, 0x91, 0x61, 0x92, 0x00, 0xC4, 0x04, 0x00, 0x66, 0x6F,
+                0x6F
+            ]
+        );
+
+        let t1 = Tree::from_slice(&buf).unwrap();
+        assert_eq!(t1, tree);
     }
 }

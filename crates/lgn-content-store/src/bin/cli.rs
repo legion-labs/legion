@@ -249,6 +249,7 @@ async fn main() -> anyhow::Result<()> {
                 file_path.display().to_string(),
                 identifier.data_size(),
                 Arc::new(Box::new(file_transfer_progress)),
+                None,
             );
 
             let copy = async move {
@@ -305,6 +306,7 @@ async fn main() -> anyhow::Result<()> {
                         file_path.display().to_string(),
                         metadata.len().try_into().unwrap(),
                         Arc::new(Box::new(file_transfer_progress)),
+                        None,
                     );
 
                     f.read_to_end(&mut buf)

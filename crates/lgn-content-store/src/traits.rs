@@ -223,6 +223,67 @@ pub trait ContentReaderExt: ContentReader {
 
         self.read_content(&id).await
     }
+
+    /// Copy all the specified identifiers to the specified `ContentWriter`.
+    ///
+    /// # Errors
+    ///
+    /// If the copy fails, `Error::CopyInterrupted` is returned which contains
+    /// the list of identifiers that could not be copied.
+    async fn copy_to(
+        &self,
+        content_writer: impl ContentWriter + Send + Sync + 'async_trait,
+        identifiers: Vec<Identifier>,
+    ) -> Result<()> {
+        // We must collect all the identifiers cause we can't have `identifiers`
+        // living across an `await`.
+        let mut identifiers = identifiers.into_iter();
+
+        while let Some(id) = identifiers.next() {
+            match content_writer.get_content_writer(&id).await {
+                Ok(mut writer) => {
+                    let mut reader = match self.get_content_reader(&id).await {
+                        Ok(reader) => reader,
+                        Err(err) => {
+                            return Err(Error::CopyInterrupted {
+                                id,
+                                identifiers: identifiers.collect(),
+                                err: Box::new(err),
+                            })
+                        }
+                    };
+
+                    if let Err(err) = tokio::io::copy(&mut reader, &mut writer).await {
+                        return Err(Error::CopyInterrupted {
+                            id,
+                            identifiers: identifiers.collect(),
+                            err: Box::new(err.into()),
+                        });
+                    }
+
+                    // Don't forget to shut down the writer or the write will
+                    // actually never happen!
+                    if let Err(err) = writer.shutdown().await {
+                        return Err(Error::CopyInterrupted {
+                            id,
+                            identifiers: identifiers.collect(),
+                            err: Box::new(err.into()),
+                        });
+                    }
+                }
+                Err(Error::IdentifierAlreadyExists(_)) => {}
+                Err(err) => {
+                    return Err(Error::CopyInterrupted {
+                        id,
+                        identifiers: identifiers.collect(),
+                        err: Box::new(err),
+                    })
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl<T: ContentReader> ContentReaderExt for T {}
@@ -311,6 +372,77 @@ pub trait ContentProvider: ContentReader + ContentWriter {}
 /// Blanket implementation of `ContentProvider`.
 impl<T> ContentProvider for T where T: ContentReader + ContentWriter {}
 
+/// ContentTracker is a trait for tracking content.
+#[async_trait]
+pub trait ContentTracker: ContentProvider {
+    /// Decrease the reference count of the specified content.
+    ///
+    /// If the reference count is already zero, the call is a no-op and no error
+    /// is returned.
+    ///
+    /// # Errors
+    ///
+    /// If the content was not referenced, `Error::IdentifierNotReferenced` is
+    /// returned.
+    ///
+    /// This can happen when the content was existing prior to the tracker being
+    /// instanciated, which is a very common case. This is not an error and
+    /// callers should be prepared to handle this.
+    ///
+    /// To handle this case, callers can use the
+    /// `ContentTrackerExt::try_remove_content` method instead which only
+    /// returns fatal errors.
+    async fn remove_content(&self, id: &Identifier) -> Result<()>;
+
+    /// Gets all the identifiers with a stricly positive reference count.
+    ///
+    /// The reference counts of the returned identifiers are guaranteed to be
+    /// zero after the call.
+    ///
+    /// The typical use-case for this method is to synchronize all the returned
+    /// identifiers to a more persistent content-store instance.
+    ///
+    /// This can be achieved more simply by calling the
+    /// `pop_referenced_identifiers_and_copy_to` method from the
+    /// `ContentTrackerExt` trait.
+    async fn pop_referenced_identifiers(&self) -> Result<Vec<Identifier>>;
+}
+
+#[async_trait]
+pub trait ContentTrackerExt: ContentTracker + ContentReaderExt {
+    /// Remove the content without returning an error if the content was not
+    /// referenced before.
+    ///
+    /// # Errors
+    ///
+    /// Any other error than `Error::IdentifierNotReferenced` is returned.
+    async fn try_remove_content(&self, id: &Identifier) -> Result<()> {
+        match self.remove_content(id).await {
+            Ok(()) | Err(Error::IdentifierNotReferenced(_)) => Ok(()),
+            Err(err) => Err(err),
+        }
+    }
+
+    /// Pop the referenced identifiers and copy them to the specified
+    /// `ContentWriter`.
+    ///
+    /// # Errors
+    ///
+    /// If the copy fails after some elements have been copied,
+    /// `Error::CopyInterrupted` is returned which contains the list of
+    /// identifiers that have not been copied.
+    async fn pop_referenced_identifiers_and_copy_to(
+        &self,
+        content_writer: impl ContentWriter + Send + Sync + 'async_trait,
+    ) -> Result<()> {
+        let identifiers = self.pop_referenced_identifiers().await?;
+
+        self.copy_to(content_writer, identifiers).await
+    }
+}
+
+impl<T: ContentTracker + ContentReaderExt> ContentTrackerExt for T {}
+
 /// Provides addresses for content.
 #[async_trait]
 pub trait ContentAddressReader: Display {
@@ -374,6 +506,17 @@ impl<T: ContentWriter + Send + Sync> ContentWriter for Arc<T> {
 }
 
 #[async_trait]
+impl<T: ContentTracker + Send + Sync> ContentTracker for Arc<T> {
+    async fn remove_content(&self, id: &Identifier) -> Result<()> {
+        self.as_ref().remove_content(id).await
+    }
+
+    async fn pop_referenced_identifiers(&self) -> Result<Vec<Identifier>> {
+        self.as_ref().pop_referenced_identifiers().await
+    }
+}
+
+#[async_trait]
 impl<T: ContentAddressReader + Send + Sync> ContentAddressReader for Arc<T> {
     async fn get_content_read_address_with_origin(
         &self,
@@ -421,6 +564,17 @@ impl<T: ContentWriter + Send + Sync + ?Sized> ContentWriter for Box<T> {
 }
 
 #[async_trait]
+impl<T: ContentTracker + Send + Sync + ?Sized> ContentTracker for Box<T> {
+    async fn remove_content(&self, id: &Identifier) -> Result<()> {
+        self.as_ref().remove_content(id).await
+    }
+
+    async fn pop_referenced_identifiers(&self) -> Result<Vec<Identifier>> {
+        self.as_ref().pop_referenced_identifiers().await
+    }
+}
+
+#[async_trait]
 impl<T: ContentAddressReader + Send + Sync + ?Sized> ContentAddressReader for Box<T> {
     async fn get_content_read_address_with_origin(
         &self,
@@ -464,6 +618,17 @@ impl<T: ContentWriter + Send + Sync + ?Sized> ContentWriter for &T {
     }
     async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
         (**self).register_alias(key_space, key, id).await
+    }
+}
+
+#[async_trait]
+impl<T: ContentTracker + Send + Sync + ?Sized> ContentTracker for &T {
+    async fn remove_content(&self, id: &Identifier) -> Result<()> {
+        (**self).remove_content(id).await
+    }
+
+    async fn pop_referenced_identifiers(&self) -> Result<Vec<Identifier>> {
+        (**self).pop_referenced_identifiers().await
     }
 }
 

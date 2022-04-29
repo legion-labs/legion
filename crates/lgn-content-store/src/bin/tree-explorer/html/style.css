@@ -1,0 +1,120 @@
+html {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+body > h1 {
+    text-align: center;
+}
+
+body > nav {
+    margin: 1em auto;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+body > nav input {
+    height: 48px;
+    border: 1px solid silver;
+    background-color: white;
+    color: black;
+    cursor: pointer;
+}
+
+body > nav input + input {
+    border-left: none;
+}
+
+body > nav input.invalid {
+    outline: red solid 2px;
+}
+
+body > nav input[type="text"] {
+    font-family: monospace;
+    width: 8em;
+    text-align: center;
+}
+
+body > nav input[type="button"]:hover {
+    border-color: gray;
+    background-color: black;
+    color: white;
+}
+
+body > nav input[type="button"]:active {
+    border-color: lightcoral;
+    background-color: darkred;
+    color: white;
+}
+
+body > #graph {
+    flex: 1;
+    border: 1px solid black;
+    position: relative;
+}
+
+body > #graph > svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 100%;
+    width: 100%;
+}
+
+body > #graph > svg .link {
+    stroke: #999;
+    stroke-opacity: 0.6;
+}
+
+body > #graph > svg .link-label {
+    fill: #999;
+    stroke: #000;
+    stroke-width: 0.5;
+    font-size: 12px;
+    font-weight: bold;
+    text-anchor: middle;
+}
+
+body > #graph > svg .node {
+    fill: #fff;
+    stroke: #000;
+    stroke-width: 1.5;
+    font-size: 7px;
+}
+
+body > #graph > svg .node.root {
+    stroke: #f00;
+}
+
+body > #graph > svg .node.leaf {
+    fill: #000;
+    stroke: #fff;
+}
+
+body > #graph > svg .node > text {
+    text-anchor: middle;
+    stroke: none;
+    fill: #999;
+
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    -o-user-select: none;
+    user-select: none;
+    pointer-events: none;
+}
