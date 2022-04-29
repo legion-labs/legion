@@ -7,7 +7,7 @@ import { CallGraphNodeValue } from "./CallGraphNodeValue";
 
 export class CallGraphNode {
   children: Map<number, CallGraphNodeValue> = new Map();
-  parent: Map<number, CallGraphNodeValue> = new Map();
+  parents: Map<number, CallGraphNodeValue> = new Map();
   value: CallGraphNodeValue = new CallGraphNodeValue(null);
   hash: number;
   constructor(node: CumulativeComputedCallGraphNode) {
@@ -20,7 +20,7 @@ export class CallGraphNode {
       this.value.accumulateEdge(input.node);
     }
     this.collectionIngest(this.children, input.callees);
-    this.collectionIngest(this.parent, input.callers);
+    this.collectionIngest(this.parents, input.callers);
   }
 
   private collectionIngest(

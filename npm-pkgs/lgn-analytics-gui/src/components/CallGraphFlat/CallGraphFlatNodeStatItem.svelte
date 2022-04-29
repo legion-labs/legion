@@ -1,9 +1,8 @@
 <script lang="ts">
+  import { CallGraphNodeStatType } from "@/lib/CallGraph/CallGraphNodeStatType";
   import { formatExecutionTime } from "@/lib/format";
 
-  import { GraphNodeStatType } from "./Lib/GraphNodeStatType";
-
-  export let type: GraphNodeStatType;
+  export let type: CallGraphNodeStatType;
   export let value: number;
 
   type StatTypeDesc = {
@@ -11,28 +10,28 @@
     format: (v: number) => string;
   };
 
-  const statTypeUnit: Record<GraphNodeStatType, StatTypeDesc> = {
-    [GraphNodeStatType.Max]: {
+  const statTypeUnit: Record<CallGraphNodeStatType, StatTypeDesc> = {
+    [CallGraphNodeStatType.Max]: {
       icon: "bi bi-chevron-bar-right",
       format: (v) => formatExecutionTime(v),
     },
-    [GraphNodeStatType.Min]: {
+    [CallGraphNodeStatType.Min]: {
       icon: "bi bi-chevron-bar-left",
       format: (v) => formatExecutionTime(v),
     },
-    [GraphNodeStatType.Sum]: {
+    [CallGraphNodeStatType.Sum]: {
       icon: "bi bi-caret-right-fill",
       format: (v) => formatExecutionTime(v),
     },
-    [GraphNodeStatType.Avg]: {
+    [CallGraphNodeStatType.Avg]: {
       icon: "bi bi-chevron-bar-contract",
       format: (v) => formatExecutionTime(v),
     },
-    [GraphNodeStatType.Count]: {
+    [CallGraphNodeStatType.Count]: {
       icon: "bi bi-caret-right",
       format: (v) => v.toLocaleString(),
     },
-    [GraphNodeStatType.Sd]: {
+    [CallGraphNodeStatType.Sd]: {
       icon: "bi bi-lightbulb",
       format: (v) => formatExecutionTime(v),
     },
@@ -42,7 +41,7 @@
 <div>
   <i class={statTypeUnit[type].icon} />
   <span class="font-semibold">
-    {GraphNodeStatType[type]}
+    {CallGraphNodeStatType[type]}
   </span>
   {statTypeUnit[type].format(value)}
 </div>

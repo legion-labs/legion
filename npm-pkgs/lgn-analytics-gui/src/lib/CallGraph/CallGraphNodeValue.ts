@@ -6,6 +6,7 @@ export class CallGraphNodeValue {
   count = 0;
   sd = 0;
   sqr = 0;
+  childSum = 0;
   min = Infinity;
   max = -Infinity;
 
@@ -23,5 +24,6 @@ export class CallGraphNodeValue {
     this.sqr += input.sumSqr;
     this.avg = this.acc / this.count;
     this.sd = Math.sqrt(this.sqr / this.count - Math.pow(this.avg, 2));
+    this.childSum += input.childSum;
   }
 }
