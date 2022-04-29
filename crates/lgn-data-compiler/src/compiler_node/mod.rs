@@ -51,7 +51,7 @@ impl fmt::Debug for CompilerNode {
 #[cfg(test)]
 mod tests {
     use async_trait::async_trait;
-    use lgn_content_store::{ContentProvider, Identifier, MemoryProvider};
+    use lgn_content_store::Provider;
     use std::{path::PathBuf, sync::Arc};
 
     use lgn_data_runtime::{
@@ -103,7 +103,7 @@ mod tests {
             Ok(CompilationOutput {
                 compiled_resources: vec![CompiledResource {
                     path: ctx.target_unnamed,
-                    content_id: Identifier::new(b"AAAAAAA"),
+                    content_id: "AAECAw".parse().unwrap(),
                 }],
                 resource_references: vec![],
             })
@@ -175,8 +175,7 @@ mod tests {
         let proj_dir = PathBuf::from(".");
         let compile_path = ResourcePathId::from(source).push(ResourceType::new(b"output"));
 
-        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-            Arc::new(Box::new(MemoryProvider::new()));
+        let data_content_provider = Arc::new(Provider::new_in_memory());
 
         // testing successful compilation
         {
@@ -198,9 +197,8 @@ mod tests {
             assert_eq!(output.compiled_resources[0].path, compile_path);
             assert_eq!(
                 output.compiled_resources[0].content_id,
-                Identifier::new(b"AAAAAAA")
+                "AAECAw".parse().unwrap()
             );
-            assert_eq!(output.compiled_resources[0].content_id.data_size(), 7);
         }
     }
 }

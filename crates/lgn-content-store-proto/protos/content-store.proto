@@ -11,8 +11,7 @@ service ContentStore {
 
 message ResolveAliasRequest {
   string data_space = 1;
-  string key_space = 2;
-  string key = 3;
+  bytes key = 2;
 }
 
 message ResolveAliasResponse {
@@ -21,13 +20,13 @@ message ResolveAliasResponse {
 
 message RegisterAliasRequest {
   string data_space = 1;
-  string key_space = 2;
-  string key = 3;
-  string id = 4;
+  bytes key = 2;
+  string id = 3;
 }
 
 message RegisterAliasResponse {
   bool newly_registered = 1;
+  string id = 2;
 }
 
 message ReadContentRequest {

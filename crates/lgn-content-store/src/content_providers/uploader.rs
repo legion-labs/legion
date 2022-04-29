@@ -9,7 +9,7 @@ use lgn_tracing::debug;
 use pin_project::pin_project;
 use tokio::io::AsyncWrite;
 
-use crate::{Identifier, Result};
+use super::Result;
 
 #[pin_project]
 pub struct Uploader<Impl: UploaderImpl> {
@@ -19,34 +19,27 @@ pub struct Uploader<Impl: UploaderImpl> {
 
 #[allow(clippy::type_complexity)]
 enum State<Impl> {
-    Writing(Option<(std::io::Cursor<Vec<u8>>, Identifier, Impl)>),
+    Writing(Option<(std::io::Cursor<Vec<u8>>, Impl)>),
     Uploading(Pin<Box<dyn Future<Output = Result<(), std::io::Error>> + Send + 'static>>),
 }
 
 #[async_trait]
 pub trait UploaderImpl: Unpin + Send + Sync + std::fmt::Debug + 'static {
-    async fn upload(self, data: Vec<u8>, id: Identifier) -> Result<()>;
+    async fn upload(self, data: Vec<u8>) -> Result<()>;
 }
 
 impl<Impl: UploaderImpl> Uploader<Impl> {
-    pub fn new(id: Identifier, impl_: Impl) -> Self {
-        debug!("Uploader::new({}, {:?})", id, impl_);
+    pub fn new(impl_: Impl) -> Self {
+        debug!("Uploader::new({:?})", impl_);
 
-        let state = State::Writing(Some((std::io::Cursor::new(Vec::new()), id, impl_)));
+        let state = State::Writing(Some((std::io::Cursor::new(Vec::new()), impl_)));
 
         Self { state }
     }
 
-    async fn upload(data: Vec<u8>, id: Identifier, impl_: Impl) -> Result<(), std::io::Error> {
-        id.matches(&data).map_err(|err| {
-            std::io::Error::new(
-                std::io::ErrorKind::Other,
-                anyhow::anyhow!("the data does not match the specified id: {}", err),
-            )
-        })?;
-
+    async fn upload(data: Vec<u8>, impl_: Impl) -> Result<(), std::io::Error> {
         impl_
-            .upload(data, id)
+            .upload(data)
             .await
             .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err))
     }
@@ -60,7 +53,7 @@ impl<Impl: UploaderImpl> AsyncWrite for Uploader<Impl> {
     ) -> Poll<std::result::Result<usize, std::io::Error>> {
         let this = self.project();
 
-        if let State::Writing(Some((cursor, _, _))) = this.state.get_mut() {
+        if let State::Writing(Some((cursor, _))) = this.state.get_mut() {
             Pin::new(cursor).poll_write(cx, buf)
         } else {
             panic!("HttpUploader::poll_write called after completion")
@@ -73,7 +66,7 @@ impl<Impl: UploaderImpl> AsyncWrite for Uploader<Impl> {
     ) -> Poll<std::result::Result<(), std::io::Error>> {
         let this = self.project();
 
-        if let State::Writing(Some((cursor, _, _))) = this.state.get_mut() {
+        if let State::Writing(Some((cursor, _))) = this.state.get_mut() {
             Pin::new(cursor).poll_flush(cx)
         } else {
             panic!("HttpUploader::poll_flush called after completion")
@@ -94,9 +87,9 @@ impl<Impl: UploaderImpl> AsyncWrite for Uploader<Impl> {
 
                     match res {
                         Poll::Ready(Ok(())) => {
-                            let (cursor, id, impl_) = args.take().unwrap();
+                            let (cursor, impl_) = args.take().unwrap();
 
-                            State::Uploading(Box::pin(Self::upload(cursor.into_inner(), id, impl_)))
+                            State::Uploading(Box::pin(Self::upload(cursor.into_inner(), impl_)))
                         }
                         p => return p,
                     }

@@ -3,7 +3,7 @@
 // crate-specific lint exceptions:
 #![allow(clippy::exit, clippy::wildcard_imports)]
 
-use std::{collections::BTreeSet, path::PathBuf};
+use std::{collections::BTreeSet, path::PathBuf, sync::Arc};
 
 use clap::{Parser, Subcommand};
 use lgn_source_control::*;
@@ -274,8 +274,8 @@ async fn main() -> anyhow::Result<()> {
         ColorChoice::Never
     };
 
-    let content_provider =
-        lgn_content_store::Config::load_and_instantiate_persistent_provider().await?;
+    let provider =
+        Arc::new(lgn_content_store::Config::load_and_instantiate_persistent_provider().await?);
     let repository_index = Config::load_and_instantiate_repository_index().await?;
 
     let mut stdout = StandardStream::stdout(choice);
@@ -341,27 +341,24 @@ async fn main() -> anyhow::Result<()> {
                 WorkspaceRegistration::new_with_current_user(),
             );
 
-            Workspace::init(
-                &workspace_directory,
-                repository_index,
-                config,
-                content_provider,
-            )
-            .await
-            .map_err(Into::into)
-            .map(|_| ())
+            Workspace::init(&workspace_directory, repository_index, config, provider)
+                .await
+                .map_err(Into::into)
+                .map(|_| ())
         }
         Commands::Add { paths } => {
-            let workspace = Workspace::find_in_current_directory(repository_index).await?;
+            let workspace =
+                Workspace::find_in_current_directory(repository_index, provider).await?;
 
             workspace
-                .add_files(content_provider, paths.iter().map(PathBuf::as_path))
+                .add_files(paths.iter().map(PathBuf::as_path))
                 .await
                 .map_err(Into::into)
                 .map(|_| ())
         }
         Commands::Checkout { paths } => {
-            let workspace = Workspace::find_in_current_directory(repository_index).await?;
+            let workspace =
+                Workspace::find_in_current_directory(repository_index, provider).await?;
 
             workspace
                 .checkout_files(paths.iter().map(PathBuf::as_path))
@@ -370,7 +367,8 @@ async fn main() -> anyhow::Result<()> {
                 .map(|_| ())
         }
         Commands::Delete { paths } => {
-            let workspace = Workspace::find_in_current_directory(repository_index).await?;
+            let workspace =
+                Workspace::find_in_current_directory(repository_index, provider).await?;
 
             workspace
                 .delete_files(paths.iter().map(PathBuf::as_path))
@@ -411,7 +409,8 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Commands::CreateBranch { branch_name } => {
-            let workspace = Workspace::find_in_current_directory(repository_index).await?;
+            let workspace =
+                Workspace::find_in_current_directory(repository_index, provider).await?;
 
             let branch = workspace.create_branch(&branch_name).await?;
 
@@ -425,11 +424,10 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Commands::Switch { branch_name } => {
-            let workspace = Workspace::find_in_current_directory(repository_index).await?;
+            let workspace =
+                Workspace::find_in_current_directory(repository_index, provider).await?;
 
-            let (branch, changes) = workspace
-                .switch_branch(content_provider, &branch_name)
-                .await?;
+            let (branch, changes) = workspace.switch_branch(&branch_name).await?;
 
             println!("Now on branch {}", branch);
 
@@ -446,7 +444,8 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Commands::Branches { full } => {
-            let workspace = Workspace::find_in_current_directory(repository_index).await?;
+            let workspace =
+                Workspace::find_in_current_directory(repository_index, provider).await?;
 
             let branches = workspace.get_branches().await?;
 
@@ -467,15 +466,12 @@ async fn main() -> anyhow::Result<()> {
             staged,
             unstaged,
         } => {
-            let workspace = Workspace::find_in_current_directory(repository_index).await?;
+            let workspace =
+                Workspace::find_in_current_directory(repository_index, provider).await?;
             let staging = Staging::from_bool(staged, unstaged);
 
             let reverted_files = workspace
-                .revert_files(
-                    content_provider,
-                    paths.iter().map(PathBuf::as_path),
-                    staging,
-                )
+                .revert_files(paths.iter().map(PathBuf::as_path), staging)
                 .await?;
 
             if reverted_files.is_empty() {
@@ -496,7 +492,8 @@ async fn main() -> anyhow::Result<()> {
         Commands::Status { staged, unstaged } => {
             let current_dir =
                 std::env::current_dir().map_other_err("failed to determine current directory")?;
-            let workspace = Workspace::find_in_current_directory(repository_index).await?;
+            let workspace =
+                Workspace::find_in_current_directory(repository_index, provider).await?;
             let current_branch = workspace.get_current_branch().await?;
             let staging = Staging::from_bool(staged, unstaged);
             let (staged_changes, unstaged_changes) = workspace.status(staging).await?;
@@ -553,7 +550,8 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Commands::Log { short } => {
-            let workspace = Workspace::find_in_current_directory(repository_index).await?;
+            let workspace =
+                Workspace::find_in_current_directory(repository_index, provider).await?;
             let current_branch = workspace.get_current_branch().await?;
             let commits = workspace
                 .list_commits(&ListCommitsQuery::single(current_branch.head))
@@ -583,14 +581,15 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Commands::Sync { commit_id } => {
-            let workspace = Workspace::find_in_current_directory(repository_index).await?;
+            let workspace =
+                Workspace::find_in_current_directory(repository_index, provider).await?;
 
             let (current_commit_id, changes) = if let Some(commit_id) = commit_id {
-                let changes = workspace.sync_to(content_provider, commit_id).await?;
+                let changes = workspace.sync_to(commit_id).await?;
 
                 (commit_id, changes)
             } else {
-                let (branch, changes) = workspace.sync(content_provider).await?;
+                let (branch, changes) = workspace.sync().await?;
 
                 (branch.head, changes)
             };
@@ -605,7 +604,8 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Commands::Commit { message } => {
-            let workspace = Workspace::find_in_current_directory(repository_index).await?;
+            let workspace =
+                Workspace::find_in_current_directory(repository_index, provider).await?;
 
             match workspace.commit(&message, CommitMode::Strict).await {
                 Ok(_) => Ok(()),

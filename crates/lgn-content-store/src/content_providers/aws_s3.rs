@@ -3,7 +3,6 @@ use aws_sdk_s3::presigning::config::PresigningConfig;
 use bytes::Bytes;
 use lgn_tracing::{async_span_scope, span_fn};
 use pin_project::pin_project;
-use std::collections::{BTreeMap, BTreeSet};
 use std::future::Future;
 use std::str::FromStr;
 use std::sync::Mutex;
@@ -14,20 +13,20 @@ use tokio::io::AsyncWrite;
 use tokio_stream::Stream;
 use tokio_util::io::StreamReader;
 
-use crate::traits::{get_content_readers_impl, WithOrigin};
-use crate::{
-    ContentAddressReader, ContentAddressWriter, ContentAsyncReadWithOrigin, ContentAsyncWrite,
-    ContentReader, ContentWriter, Error, Identifier, Origin, Result,
+use super::{
+    ContentAddressReader, ContentAddressWriter, ContentAsyncReadWithOriginAndSize,
+    ContentAsyncWrite, ContentReader, ContentWriter, Error, HashRef, Origin, Result,
+    WithOriginAndSize,
 };
 
 #[derive(Debug, Clone)]
-pub struct AwsS3Provider {
+pub struct AwsS3ContentProvider {
     url: AwsS3Url,
     client: aws_sdk_s3::Client,
     validity_duration: Duration,
 }
 
-impl AwsS3Provider {
+impl AwsS3ContentProvider {
     /// Generates a new AWS S3 provider using the specified bucket and root.
     ///
     /// The default AWS configuration is used.
@@ -52,7 +51,7 @@ impl AwsS3Provider {
         }
     }
 
-    fn blob_key(&self, id: &Identifier) -> String {
+    fn blob_key(&self, id: &HashRef) -> String {
         if self.url.root.is_empty() {
             id.to_string()
         } else {
@@ -66,7 +65,7 @@ impl AwsS3Provider {
     ///
     /// Otherwise, any other error is returned.
     #[span_fn]
-    pub async fn delete_content(&self, id: &Identifier) -> Result<()> {
+    pub async fn delete_content(&self, id: &HashRef) -> Result<()> {
         let key = self.blob_key(id);
 
         match self
@@ -93,7 +92,7 @@ impl AwsS3Provider {
     ///
     /// Only if an object's existence cannot be determined, an error is returned.
     #[span_fn]
-    pub async fn check_object_existence(&self, id: &Identifier) -> Result<bool> {
+    pub async fn check_object_existence(&self, id: &HashRef) -> Result<bool> {
         let key = self.blob_key(id);
 
         match self
@@ -125,7 +124,7 @@ impl AwsS3Provider {
     }
 }
 
-impl Display for AwsS3Provider {
+impl Display for AwsS3ContentProvider {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -277,8 +276,8 @@ impl AsyncWrite for ByteStreamWriter {
 }
 
 #[async_trait]
-impl ContentReader for AwsS3Provider {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
+impl ContentReader for AwsS3ContentProvider {
+    async fn get_content_reader(&self, id: &HashRef) -> Result<ContentAsyncReadWithOriginAndSize> {
         async_span_scope!("AwsS3Provider::get_content_reader");
 
         let key = self.blob_key(id);
@@ -294,7 +293,7 @@ impl ContentReader for AwsS3Provider {
             Ok(object) => Ok(object),
             Err(aws_sdk_s3::types::SdkError::ServiceError { err, raw: _ }) => {
                 if let aws_sdk_s3::error::GetObjectErrorKind::NoSuchKey(_) = err.kind {
-                    Err(Error::IdentifierNotFound(id.clone()))
+                    Err(Error::HashRefNotFound(id.clone()))
                 } else {
                     Err(
                         anyhow::anyhow!("failed to get object `{}` from AWS S3: {}", key, err)
@@ -314,28 +313,13 @@ impl ContentReader for AwsS3Provider {
             key: key.clone(),
         };
 
-        Ok(stream.with_origin(origin))
-    }
-
-    async fn get_content_readers<'ids>(
-        &self,
-        ids: &'ids BTreeSet<Identifier>,
-    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
-        async_span_scope!("AwsS3Provider::get_content_readers");
-
-        get_content_readers_impl(self, ids).await
-    }
-
-    async fn resolve_alias(&self, _key_space: &str, _key: &str) -> Result<Identifier> {
-        async_span_scope!("AwsS3Provider::resolve_alias");
-
-        panic!("AwsS3Provider doesn't support aliases: you must aggregate it along with another provider!")
+        Ok(stream.with_origin_and_size(origin, id.data_size()))
     }
 }
 
 #[async_trait]
-impl ContentWriter for AwsS3Provider {
-    async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
+impl ContentWriter for AwsS3ContentProvider {
+    async fn get_content_writer(&self, id: &HashRef) -> Result<ContentAsyncWrite> {
         async_span_scope!("AwsS3Provider::get_content_writer");
 
         let key = self.blob_key(id);
@@ -348,7 +332,7 @@ impl ContentWriter for AwsS3Provider {
             .send()
             .await
         {
-            Ok(_) => Err(Error::IdentifierAlreadyExists(id.clone())),
+            Ok(_) => Err(Error::HashRefAlreadyExists(id.clone())),
             Err(aws_sdk_s3::types::SdkError::ServiceError { err, raw: _ }) => {
                 if let aws_sdk_s3::error::GetObjectErrorKind::NoSuchKey(_) = err.kind {
                     Ok(())
@@ -368,24 +352,15 @@ impl ContentWriter for AwsS3Provider {
 
         Ok(Box::pin(writer))
     }
-
-    async fn register_alias(&self, _key_space: &str, _key: &str, _id: &Identifier) -> Result<()> {
-        async_span_scope!("AwsS3Provider::register_alias");
-
-        panic!("AwsS3Provider doesn't support aliasing, you must aggregate it along with another provider!")
-    }
 }
 
 #[async_trait]
-impl ContentAddressReader for AwsS3Provider {
-    async fn get_content_read_address_with_origin(
-        &self,
-        id: &Identifier,
-    ) -> Result<(String, Origin)> {
+impl ContentAddressReader for AwsS3ContentProvider {
+    async fn get_content_read_address_with_origin(&self, id: &HashRef) -> Result<(String, Origin)> {
         async_span_scope!("AwsS3Provider::get_content_read_address_with_origin");
 
         if !self.check_object_existence(id).await? {
-            return Err(Error::IdentifierNotFound(id.clone()));
+            return Err(Error::HashRefNotFound(id.clone()));
         }
 
         let key = self.blob_key(id);
@@ -419,12 +394,12 @@ impl ContentAddressReader for AwsS3Provider {
 }
 
 #[async_trait]
-impl ContentAddressWriter for AwsS3Provider {
-    async fn get_content_write_address(&self, id: &Identifier) -> Result<String> {
+impl ContentAddressWriter for AwsS3ContentProvider {
+    async fn get_content_write_address(&self, id: &HashRef) -> Result<String> {
         async_span_scope!("AwsS3Provider::get_content_write_address");
 
         if self.check_object_existence(id).await? {
-            return Err(Error::IdentifierAlreadyExists(id.clone()));
+            return Err(Error::HashRefAlreadyExists(id.clone()));
         }
 
         let key = self.blob_key(id);
@@ -544,5 +519,121 @@ mod tests {
             }
             .to_string()
         );
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[ignore]
+    #[tokio::test]
+    async fn test_aws_s3_content_provider() {
+        let s3_prefix = format!(
+            "lgn-content-store/test_aws_s3_provider/{}",
+            uuid::Uuid::new_v4()
+        );
+        let aws_s3_url: AwsS3Url = format!("s3://legionlabs-ci-tests/{}", s3_prefix)
+            .parse()
+            .unwrap();
+
+        let content_provider = AwsS3ContentProvider::new(aws_s3_url.clone()).await;
+
+        let data = &*{
+            let mut data = Vec::new();
+            let uid = uuid::Uuid::new_v4();
+
+            const BIG_DATA_A: [u8; 128] = [0x41; 128];
+            std::io::Write::write_all(&mut data, &BIG_DATA_A).unwrap();
+            std::io::Write::write_all(&mut data, uid.as_bytes()).unwrap();
+
+            data
+        };
+
+        let origin = Origin::AwsS3 {
+            bucket_name: aws_s3_url.bucket_name.clone(),
+            key: format!("{}/{}", s3_prefix, HashRef::new_from_data(data)),
+        };
+
+        let id = crate::content_providers::test_content_provider(
+            &content_provider,
+            data,
+            origin.clone(),
+        )
+        .await;
+
+        // Additional tests for the address provider aspect.
+        let (read_url, new_origin) = content_provider
+            .get_content_read_address_with_origin(&id)
+            .await
+            .unwrap();
+
+        assert_eq!(origin, new_origin);
+
+        let new_data = reqwest::get(read_url)
+            .await
+            .unwrap()
+            .error_for_status()
+            .unwrap()
+            .bytes()
+            .await
+            .unwrap();
+
+        assert_eq!(new_data, data);
+
+        // Test reading from an address that doesn't exist yet.
+        let data = &*{
+            let mut data = Vec::new();
+            let uid = uuid::Uuid::new_v4();
+
+            const BIG_DATA_B: [u8; 128] = [0x42; 128];
+            std::io::Write::write_all(&mut data, &BIG_DATA_B).unwrap();
+            std::io::Write::write_all(&mut data, uid.as_bytes()).unwrap();
+
+            data
+        };
+
+        let id = HashRef::new_from_data(data);
+
+        match content_provider
+            .get_content_read_address_with_origin(&id)
+            .await
+        {
+            Err(Error::HashRefNotFound(err_id)) => assert_eq!(id, err_id),
+            Err(e) => panic!("unexpected error: {:?}", e),
+            Ok(..) => panic!("expected error"),
+        }
+
+        let write_url = content_provider
+            .get_content_write_address(&id)
+            .await
+            .unwrap();
+
+        reqwest::Client::new()
+            .put(write_url)
+            .body(data.to_vec())
+            .send()
+            .await
+            .unwrap()
+            .error_for_status()
+            .unwrap();
+
+        let new_data = crate::ContentReaderExt::read_content(&content_provider, &id)
+            .await
+            .unwrap();
+
+        assert_eq!(new_data, data);
+
+        // This write should fail as the value already exists.
+        match content_provider.get_content_write_address(&id).await {
+            Err(Error::HashRefAlreadyExists(err_id)) => assert_eq!(id, err_id),
+            Err(e) => panic!("unexpected error: {:?}", e),
+            Ok(..) => panic!("expected error"),
+        }
+
+        content_provider
+            .delete_content(&id)
+            .await
+            .expect("failed to delete content");
     }
 }

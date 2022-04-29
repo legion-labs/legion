@@ -7,7 +7,7 @@ use std::{
 };
 
 use hex::ToHex;
-use lgn_content_store::{ContentProvider, ContentReaderExt, ContentWriterExt};
+use lgn_content_store::Provider;
 use lgn_data_offline::resource::{Project, Tree};
 use lgn_data_runtime::{ResourceId, ResourcePathId, ResourceTypeAndId};
 use lgn_tracing::span_scope;
@@ -250,7 +250,7 @@ impl Extend<Self> for SourceContent {
 
 pub(crate) struct SourceIndex {
     current: Option<(String, SourceContent)>,
-    pub(super) content_store: Arc<Box<dyn ContentProvider + Send + Sync>>,
+    pub(super) content_store: Arc<Provider>,
 }
 
 impl<'a> std::fmt::Debug for SourceIndex {
@@ -262,7 +262,7 @@ impl<'a> std::fmt::Debug for SourceIndex {
 }
 
 impl SourceIndex {
-    pub(crate) fn new(content_store: Arc<Box<dyn ContentProvider + Send + Sync>>) -> Self {
+    pub(crate) fn new(content_store: Arc<Provider>) -> Self {
         Self {
             content_store,
             current: None,
@@ -278,19 +278,17 @@ impl SourceIndex {
         directory: Tree,
         project: &Project,
         version: &str,
-        mut uploads: Vec<(String, Vec<u8>)>,
-    ) -> Result<(SourceContent, Vec<(String, Vec<u8>)>), Error> {
+        mut uploads: Vec<(Vec<u8>, Vec<u8>)>,
+    ) -> Result<(SourceContent, Vec<(Vec<u8>, Vec<u8>)>), Error> {
         let dir_checksum = {
             let mut hasher = DefaultHasher256::new();
+            hasher.write(LGN_DATA_BUILD.as_bytes());
             hasher.write(directory.id().as_bytes());
             hasher.write(version.as_bytes());
-            hasher.finish_256().encode_hex::<String>()
+            hasher.finish_256()[..].to_vec()
         };
 
-        let content = self
-            .content_store
-            .read_alias(LGN_DATA_BUILD, &dir_checksum)
-            .await;
+        let content = self.content_store.read_alias(dir_checksum.clone()).await;
 
         if let Ok(cached_data) = content {
             let source_index = SourceContent::read(&cached_data)?;
@@ -309,19 +307,17 @@ impl SourceIndex {
                             .into_iter()
                             .filter_map(|(_, tree)| match tree {
                                 Tree::Directory { .. } => None,
-                                Tree::File { name, chunk_id } => {
-                                    Some((PathBuf::from(&name), chunk_id))
-                                }
+                                Tree::File { name, id } => Some((PathBuf::from(&name), id)),
                             })
                             .filter(|(path, _)| path.extension().is_none());
 
-                        let resource_list = resource_infos.map(|(path, chunk_id)| {
+                        let resource_list = resource_infos.map(|(path, id)| {
                             (
                                 ResourceId::from_str(path.file_stem().unwrap().to_str().unwrap())
                                     .unwrap(),
                                 {
                                     let mut hasher = DefaultHasher256::new();
-                                    chunk_id.write_to(&mut hasher).unwrap();
+                                    id.write_to(&mut hasher).unwrap();
                                     hasher.finish_256().encode_hex::<String>()
                                 },
                             )
@@ -393,7 +389,7 @@ impl SourceIndex {
 
             for (dir_checksum, buffer) in uploads {
                 self.content_store
-                    .write_alias(LGN_DATA_BUILD, &dir_checksum, &buffer)
+                    .write_alias(dir_checksum, &buffer)
                     .await?;
             }
 
@@ -410,7 +406,7 @@ mod tests {
 
     use std::sync::Arc;
 
-    use lgn_content_store::{ContentProvider, MemoryProvider};
+    use lgn_content_store::Provider;
     use lgn_data_offline::resource::{Project, ResourcePathName};
     use lgn_data_runtime::{
         AssetRegistryOptions, ResourceDescriptor, ResourceId, ResourcePathId, ResourceTypeAndId,
@@ -522,20 +518,18 @@ mod tests {
     #[tokio::test]
     async fn source_index_cache() {
         let work_dir = tempfile::tempdir().unwrap();
-        let source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-            Arc::new(Box::new(MemoryProvider::new()));
+        let source_control_content_provider = Arc::new(Provider::new_in_memory());
 
         let mut project =
             Project::create_with_remote_mock(&work_dir.path(), source_control_content_provider)
                 .await
                 .expect("failed to create a project");
 
-        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-            Arc::new(Box::new(MemoryProvider::new()));
+        let data_provider = Arc::new(Provider::new_in_memory());
 
         let version = "0.0.1";
 
-        let mut source_index = SourceIndex::new(data_content_provider);
+        let mut source_index = SourceIndex::new(data_provider);
 
         let first_entry_checksum = {
             source_index.source_pull(&project, version).await.unwrap();

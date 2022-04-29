@@ -1,7 +1,7 @@
 use async_recursion::async_recursion;
 use async_trait::async_trait;
 use chrono::DateTime;
-use lgn_content_store::ChunkIdentifier;
+use lgn_content_store::Identifier;
 use lgn_tracing::prelude::*;
 use sqlx::{
     any::AnyPoolOptions, error::DatabaseError, migrate::MigrateDatabase, mysql::MySqlDatabaseError,
@@ -195,7 +195,7 @@ impl SqlRepositoryIndex {
          CREATE INDEX repository_id_commit on `{}`(repository_id, id);
          CREATE TABLE `{}` (id INTEGER NOT NULL, parent_id INTEGER NOT NULL);
          CREATE INDEX commit_parents_id on `{}`(id);
-         CREATE TABLE `{}` (commit_id INTEGER NOT NULL, canonical_path TEXT NOT NULL, old_chunk_id VARCHAR(255), new_chunk_id VARCHAR(255), FOREIGN KEY (commit_id) REFERENCES `{}`(id) ON DELETE CASCADE);
+         CREATE TABLE `{}` (commit_id INTEGER NOT NULL, canonical_path TEXT NOT NULL, old_cs_id VARCHAR(255), new_cs_id VARCHAR(255), FOREIGN KEY (commit_id) REFERENCES `{}`(id) ON DELETE CASCADE);
          CREATE INDEX commit_changes_commit on `{}`(commit_id);",
          TABLE_COMMITS,
          driver.auto_increment(),
@@ -216,7 +216,7 @@ impl SqlRepositoryIndex {
 
     async fn create_forest_table(conn: &mut sqlx::AnyConnection) -> Result<()> {
         let sql: &str = &format!(
-            "CREATE TABLE `{}` (id VARCHAR(255) PRIMARY KEY, name VARCHAR(255), chunk_id VARCHAR(255));
+            "CREATE TABLE `{}` (id VARCHAR(255) PRIMARY KEY, name VARCHAR(255), cs_id VARCHAR(255));
             CREATE TABLE `{}` (id VARCHAR(255), child_id VARCHAR(255) NOT NULL, CONSTRAINT unique_link UNIQUE (id, child_id), FOREIGN KEY (id) REFERENCES `{}`(id) ON DELETE CASCADE, FOREIGN KEY (child_id) REFERENCES `{}`(id) ON DELETE CASCADE);
             CREATE INDEX forest_links_index on `{}`(id);",
             TABLE_FOREST,
@@ -646,7 +646,7 @@ impl SqlIndex {
             }
 
             let changes = sqlx::query(&format!(
-                "SELECT canonical_path, old_chunk_id, new_chunk_id
+                "SELECT canonical_path, old_cs_id, new_cs_id
              FROM `{}`
              WHERE commit_id=?;",
                 TABLE_COMMIT_CHANGES,
@@ -661,10 +661,10 @@ impl SqlIndex {
             .into_iter()
             .filter_map(|row| {
                 if let Ok(canonical_path) = CanonicalPath::new(row.get("canonical_path")) {
-                    let old_chunk_id: String = row.get("old_chunk_id");
+                    let old_cs_id: String = row.get("old_cs_id");
 
-                    let old_chunk_id = if !old_chunk_id.is_empty() {
-                        match old_chunk_id
+                    let old_cs_id = if !old_cs_id.is_empty() {
+                        match old_cs_id
                             .parse()
                             .map_other_err("failed to parse the old chunk id")
                         {
@@ -675,9 +675,9 @@ impl SqlIndex {
                         None
                     };
 
-                    let new_chunk_id: String = row.get("new_chunk_id");
-                    let new_chunk_id = if !new_chunk_id.is_empty() {
-                        match new_chunk_id
+                    let new_cs_id: String = row.get("new_cs_id");
+                    let new_cs_id = if !new_cs_id.is_empty() {
+                        match new_cs_id
                             .parse()
                             .map_other_err("failed to parse the new chunk id")
                         {
@@ -688,7 +688,7 @@ impl SqlIndex {
                         None
                     };
 
-                    ChangeType::new(old_chunk_id, new_chunk_id)
+                    ChangeType::new(old_cs_id, new_cs_id)
                         .map(|change_type| Ok(Change::new(canonical_path, change_type)))
                 } else {
                     None
@@ -826,14 +826,14 @@ impl SqlIndex {
             .bind(
                 change
                     .change_type()
-                    .old_chunk_id()
+                    .old_id()
                     .map(std::string::ToString::to_string)
                     .unwrap_or_default(),
             )
             .bind(
                 change
                     .change_type()
-                    .new_chunk_id()
+                    .new_id()
                     .map(std::string::ToString::to_string)
                     .unwrap_or_default(),
             )
@@ -915,7 +915,7 @@ impl SqlIndex {
         // We only insert the tree node if it doesn't exist already.
         if !Self::tree_node_exists(&mut *transaction, &id).await? {
             let sql = &format!(
-                "INSERT INTO `{}` (id, name, chunk_id) VALUES(?, ?, ?);",
+                "INSERT INTO `{}` (id, name, cs_id) VALUES(?, ?, ?);",
                 TABLE_FOREST,
             );
 
@@ -936,11 +936,11 @@ impl SqlIndex {
                         Self::save_tree_node_transactional(transaction, Some(&id), child).await?;
                     }
                 }
-                Tree::File { name, chunk_id } => {
+                Tree::File { name, id: cs_id } => {
                     sqlx::query(sql)
                         .bind(&id)
                         .bind(name)
-                        .bind(Some(&chunk_id.to_string()))
+                        .bind(Some(&cs_id.to_string()))
                         .execute(&mut *transaction)
                         .await
                         .map_other_err(&format!("failed to insert tree file node `{}`", &id))?;
@@ -972,7 +972,7 @@ impl SqlIndex {
         id: &str,
     ) -> Result<Tree> {
         let row = sqlx::query(&format!(
-            "SELECT name, chunk_id
+            "SELECT name, cs_id
              FROM `{}`
              WHERE id = ?;",
             TABLE_FOREST
@@ -983,18 +983,18 @@ impl SqlIndex {
         .map_other_err(format!("failed to fetch tree node `{}`", id))?;
 
         let name = row.get("name");
-        let chunk_id: Option<String> = row.get("chunk_id");
+        let cs_id: Option<String> = row.get("cs_id");
 
-        let chunk_id = match chunk_id.as_deref() {
+        let cs_id = match cs_id.as_deref() {
             None | Some("") => None,
-            Some(chunk_id) => Some(
-                chunk_id
+            Some(cs_id) => Some(
+                cs_id
                     .parse()
                     .map_other_err(format!("failed to parse chunk id for tree node `{}`", id))?,
             ),
         };
 
-        let tree = Self::read_tree_node_transactional(transaction, id, name, chunk_id).await?;
+        let tree = Self::read_tree_node_transactional(transaction, id, name, cs_id).await?;
 
         #[cfg(debug_assertions)]
         assert!(
@@ -1011,10 +1011,10 @@ impl SqlIndex {
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
         id: &str,
         name: String,
-        chunk_id: Option<ChunkIdentifier>,
+        cs_id: Option<Identifier>,
     ) -> Result<Tree> {
-        Ok(if let Some(chunk_id) = chunk_id {
-            Tree::File { chunk_id, name }
+        Ok(if let Some(cs_id) = cs_id {
+            Tree::File { name, id: cs_id }
         } else {
             let child_ids = sqlx::query(&format!(
                 "SELECT child_id
@@ -1034,7 +1034,7 @@ impl SqlIndex {
 
             for child_id in child_ids {
                 let row = sqlx::query(&format!(
-                    "SELECT name, chunk_id
+                    "SELECT name, cs_id
                     FROM `{}`
                     WHERE id = ?;",
                     TABLE_FOREST
@@ -1048,11 +1048,11 @@ impl SqlIndex {
                 ))?;
 
                 let name: String = row.get("name");
-                let chunk_id: Option<String> = row.get("chunk_id");
-                let chunk_id = chunk_id.unwrap_or_default();
+                let cs_id: Option<String> = row.get("cs_id");
+                let cs_id = cs_id.unwrap_or_default();
 
-                let chunk_id = if !chunk_id.is_empty() {
-                    Some(chunk_id.parse().map_other_err(format!(
+                let cs_id = if !cs_id.is_empty() {
+                    Some(cs_id.parse().map_other_err(format!(
                         "failed to parse chunk id for tree node `{}`",
                         &child_id
                     ))?)
@@ -1060,13 +1060,9 @@ impl SqlIndex {
                     None
                 };
 
-                let child = Self::read_tree_node_transactional(
-                    &mut *transaction,
-                    &child_id,
-                    name,
-                    chunk_id,
-                )
-                .await?;
+                let child =
+                    Self::read_tree_node_transactional(&mut *transaction, &child_id, name, cs_id)
+                        .await?;
 
                 children.insert(child.name().to_string(), child);
             }

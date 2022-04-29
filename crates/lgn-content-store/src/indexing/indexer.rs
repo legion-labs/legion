@@ -4,16 +4,13 @@ use async_recursion::async_recursion;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    ContentProvider, ContentReader, ContentReaderExt, ContentWriter, ContentWriterExt, Error,
-    Identifier, Result,
-};
+use crate::{Identifier, Provider};
 
-use super::{tree::TreeIdentifier, IndexKey, StaticIndexer, TreeLeafNode};
+use super::{Error, IndexKey, Result, StaticIndexer, TreeIdentifier, TreeLeafNode};
 
 /// Represents an index identifier.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct IndexerIdentifier(Identifier);
+pub struct IndexerIdentifier(pub(crate) Identifier);
 
 impl Display for IndexerIdentifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -22,10 +19,13 @@ impl Display for IndexerIdentifier {
 }
 
 impl FromStr for IndexerIdentifier {
-    type Err = crate::Error;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
-        Ok(Self(s.parse()?))
+        match s.parse() {
+            Ok(id) => Ok(Self(id)),
+            Err(err) => Err(Error::InvalidIndexerIdentifier(err)),
+        }
     }
 }
 
@@ -51,7 +51,7 @@ impl Indexer {
     #[async_recursion]
     pub async fn get_leaf(
         &self,
-        content_provider: impl ContentProvider + Send + Sync + 'async_recursion,
+        provider: &'async_recursion Provider,
         tree_root: &TreeIdentifier,
         index_key: &[IndexKey],
     ) -> Result<Option<TreeLeafNode>> {
@@ -60,27 +60,25 @@ impl Indexer {
                 let index_key = match index_key.len() {
                     1 => &index_key[0],
                     _ => {
-                        return Err(crate::Error::InvalidIndexKey(format!(
+                        return Err(Error::InvalidIndexKey(format!(
                             "expected a single key, got {}",
                             index_key.len()
                         )))
                     }
                 };
 
-                indexer
-                    .get_leaf(content_provider, tree_root, index_key)
-                    .await
+                indexer.get_leaf(provider, tree_root, index_key).await
             }
             Self::Multi { first, second } => {
                 if index_key.len() < 2 {
-                    return Err(crate::Error::InvalidIndexKey(format!(
+                    return Err(Error::InvalidIndexKey(format!(
                         "expected at least a 2-parts key, got {}",
                         index_key.len()
                     )));
                 };
 
                 let tree_id = match first
-                    .get_leaf(&content_provider, tree_root, &index_key[0..=0])
+                    .get_leaf(provider, tree_root, &index_key[0..=0])
                     .await?
                 {
                     Some(TreeLeafNode::TreeRoot(tree_id)) => tree_id,
@@ -93,9 +91,7 @@ impl Indexer {
                     None => return Ok(None),
                 };
 
-                second
-                    .get_leaf(content_provider, &tree_id, &index_key[1..])
-                    .await
+                second.get_leaf(provider, &tree_id, &index_key[1..]).await
             }
         }
     }
@@ -110,25 +106,32 @@ impl Indexer {
 }
 
 #[async_trait]
-pub trait IndexerReader: ContentReader + Send + Sync {
+pub trait IndexerReader {
+    async fn read_indexer(&self, id: &IndexerIdentifier) -> Result<Indexer>;
+}
+
+#[async_trait]
+impl IndexerReader for Provider {
     async fn read_indexer(&self, id: &IndexerIdentifier) -> Result<Indexer> {
-        let buf = self.read_content(&id.0).await?;
+        let buf = self.read(&id.0).await?;
 
         Indexer::from_slice(&buf)
     }
 }
 
 #[async_trait]
-impl<T: ContentReader + Send + Sync> IndexerReader for T {}
-
-#[async_trait]
-pub trait IndexerWriter: ContentWriter + Send + Sync {
-    async fn write_indexer(&self, indexer: &Indexer) -> Result<IndexerIdentifier> {
-        let buf = indexer.as_vec();
-
-        self.write_content(&buf).await.map(IndexerIdentifier)
-    }
+pub trait IndexerWriter {
+    async fn write_indexer(&self, indexer: &Indexer) -> Result<IndexerIdentifier>;
 }
 
 #[async_trait]
-impl<T: ContentWriter + Send + Sync> IndexerWriter for T {}
+impl IndexerWriter for Provider {
+    async fn write_indexer(&self, indexer: &Indexer) -> Result<IndexerIdentifier> {
+        let buf = indexer.as_vec();
+
+        self.write(&buf)
+            .await
+            .map(IndexerIdentifier)
+            .map_err(Into::into)
+    }
+}

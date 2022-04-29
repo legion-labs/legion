@@ -1,31 +1,24 @@
 //! A content-store implementation that stores immutable assets in a efficient
 //! and cachable manner.
 
+pub mod alias_providers;
 mod buf_utils;
-mod chunk_identifier;
-mod chunker;
 mod config;
+pub mod content_providers;
 mod data_space;
 mod errors;
+mod grpc_service;
 mod identifier;
 pub mod indexing;
-mod origin;
-mod providers;
-mod traits;
+mod manifest;
+mod provider;
 
-pub use chunk_identifier::ChunkIdentifier;
-pub use chunker::{ChunkIndex, Chunker};
-pub use config::{
-    AddressProviderConfig, AwsDynamoDbProviderConfig, AwsS3ProviderConfig, Config,
-    LocalProviderConfig, LruProviderConfig, ProviderConfig, RedisProviderConfig,
-};
+pub use alias_providers::*;
+pub use config::*;
+pub use content_providers::*;
 pub use data_space::DataSpace;
 pub use errors::{Error, Result};
-pub use identifier::{HashAlgorithm, Identifier};
-pub use origin::Origin;
-pub use providers::*;
-pub use traits::{
-    ContentAddressProvider, ContentAddressReader, ContentAddressWriter, ContentAsyncRead,
-    ContentAsyncReadWithOrigin, ContentAsyncWrite, ContentProvider, ContentReader,
-    ContentReaderExt, ContentTracker, ContentWriter, ContentWriterExt,
-};
+pub use grpc_service::{GrpcProviderSet, GrpcService};
+pub use identifier::{Identifier, InvalidIdentifier};
+pub use manifest::{InvalidManifest, Manifest, ManifestFormat};
+pub use provider::Provider;

@@ -7,6 +7,8 @@ pub enum Error {
     IO(#[from] std::io::Error),
     #[error("content store error: {0}")]
     ContentStore(#[from] lgn_content_store::Error),
+    #[error("content store invalid identifier: {0}")]
+    ContentStoreInvalidIdentifier(#[from] lgn_content_store::InvalidIdentifier),
     #[error("serde deserialization error: {0}")]
     SerdeJSON(#[from] serde_json::Error),
 }

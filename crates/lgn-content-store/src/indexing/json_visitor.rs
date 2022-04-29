@@ -3,8 +3,9 @@ use std::collections::HashSet;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-use super::{tree::TreeIdentifier, IndexKey, Tree, TreeLeafNode, TreeVisitor, TreeVisitorAction};
-use crate::Result;
+use super::{
+    tree::TreeIdentifier, IndexKey, Result, Tree, TreeLeafNode, TreeVisitor, TreeVisitorAction,
+};
 
 /// A visitor that generates a JSON representation of the tree.
 ///

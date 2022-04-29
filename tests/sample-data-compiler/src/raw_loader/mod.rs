@@ -13,7 +13,7 @@ use std::{
 };
 
 use generic_data::offline::{TestComponent, TestEntity};
-use lgn_content_store::ContentProvider;
+use lgn_content_store::Provider;
 use lgn_data_offline::resource::{Project, ResourcePathName};
 use lgn_data_runtime::{
     AssetRegistry, AssetRegistryOptions, Resource, ResourceDescriptor, ResourceId, ResourceType,
@@ -32,7 +32,7 @@ pub async fn build_offline(
     root_folder: impl AsRef<Path>,
     repository_index: impl RepositoryIndex,
     repository_name: RepositoryName,
-    source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+    source_control_content_provider: Arc<Provider>,
     incremental: bool,
 ) {
     let raw_dir = {
@@ -239,7 +239,7 @@ async fn setup_project(
     root_folder: &Path,
     repository_index: impl RepositoryIndex,
     repository_name: RepositoryName,
-    source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+    source_control_content_provider: Arc<Provider>,
 ) -> (Project, Arc<AssetRegistry>) {
     // create/load project
     let project = if let Ok(project) = Project::open(

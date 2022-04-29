@@ -1,5 +1,4 @@
 use std::{
-    collections::{BTreeMap, BTreeSet},
     fmt::{Debug, Display},
     pin::Pin,
     sync::Arc,
@@ -11,12 +10,12 @@ use lgn_tracing::debug;
 use pin_project::pin_project;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
-use crate::{
-    traits::AsyncReadWithOrigin, ContentAsyncReadWithOrigin, ContentAsyncWrite, ContentReader,
-    ContentTracker, ContentWriter, Error, Identifier, Origin, Result,
+use super::{
+    AsyncReadWithOriginAndSize, ContentAsyncReadWithOriginAndSize, ContentAsyncWrite,
+    ContentReader, ContentWriter, Error, HashRef, Origin, Result,
 };
 
-pub trait TransferCallbacks<Id = Identifier>: Debug + Send + Sync {
+pub trait TransferCallbacks<Id = HashRef>: Debug + Send + Sync {
     fn on_transfer_avoided(&self, id: &Id, total: usize);
     fn on_transfer_started(&self, id: &Id, total: usize);
     fn on_transfer_progress(&self, id: &Id, total: usize, inc: usize, current: usize);
@@ -30,45 +29,31 @@ pub trait TransferCallbacks<Id = Identifier>: Debug + Send + Sync {
     );
 }
 
-pub trait AliasCallbacks: Debug + Send + Sync {
-    fn on_alias_registered(&self, key_space: &str, key: &str, id: &Identifier);
-}
-
-pub trait TrackingCallbacks<Id = Identifier>: Debug + Send + Sync {
-    fn on_reference_count_increased(&self, id: &Id);
-    fn on_reference_count_decreased(&self, id: &Id);
-    fn on_references_popped(&self, id: &[Id]);
-}
-
-/// A `MonitorProvider` is a provider that tracks uploads and downloads.
+/// A `ContentProviderMonitor` is a provider that tracks uploads and downloads.
 #[derive(Debug)]
-pub struct MonitorProvider<Inner> {
+pub struct ContentProviderMonitor<Inner> {
     inner: Inner,
     on_download_callbacks: Option<Arc<Box<dyn TransferCallbacks>>>,
     on_upload_callbacks: Option<Arc<Box<dyn TransferCallbacks>>>,
-    on_alias_callbacks: Option<Arc<Box<dyn AliasCallbacks>>>,
-    on_tracking_callbacks: Option<Arc<Box<dyn TrackingCallbacks>>>,
 }
 
-impl<Inner: Display> Display for MonitorProvider<Inner> {
+impl<Inner: Display> Display for ContentProviderMonitor<Inner> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "monitoring for {}", self.inner)
     }
 }
 
-impl<Inner: Clone> Clone for MonitorProvider<Inner> {
+impl<Inner: Clone> Clone for ContentProviderMonitor<Inner> {
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),
             on_download_callbacks: self.on_download_callbacks.clone(),
             on_upload_callbacks: self.on_upload_callbacks.clone(),
-            on_alias_callbacks: self.on_alias_callbacks.clone(),
-            on_tracking_callbacks: self.on_tracking_callbacks.clone(),
         }
     }
 }
 
-impl<Inner> MonitorProvider<Inner> {
+impl<Inner> ContentProviderMonitor<Inner> {
     /// Creates a new `MemoryProvider` instance who stores content in the
     /// process memory.
     pub fn new(inner: Inner) -> Self {
@@ -76,113 +61,57 @@ impl<Inner> MonitorProvider<Inner> {
             inner,
             on_download_callbacks: None,
             on_upload_callbacks: None,
-            on_alias_callbacks: None,
-            on_tracking_callbacks: None,
         }
     }
 
-    #[must_use]
-    pub fn on_download_callbacks(
-        mut self,
-        callbacks: impl TransferCallbacks<Identifier> + 'static,
-    ) -> Self {
+    /// Clear the download callbacks.
+    pub fn clear_download_callbacks(&mut self) {
+        self.on_download_callbacks = None;
+    }
+
+    /// Set the download callbacks.
+    pub fn set_download_callbacks(&mut self, callbacks: impl TransferCallbacks<HashRef> + 'static) {
         self.on_download_callbacks = Some(Arc::new(Box::new(callbacks)));
-        self
     }
 
-    #[must_use]
-    pub fn on_upload_callbacks(
-        mut self,
-        callbacks: impl TransferCallbacks<Identifier> + 'static,
-    ) -> Self {
+    /// Clear the upload callbacks.
+    pub fn clear_upload_callbacks(&mut self) {
+        self.on_upload_callbacks = None;
+    }
+
+    /// Set the upload callbacks.
+    pub fn set_upload_callbacks(&mut self, callbacks: impl TransferCallbacks<HashRef> + 'static) {
         self.on_upload_callbacks = Some(Arc::new(Box::new(callbacks)));
-        self
-    }
-}
-
-impl<Inner: ContentWriter> MonitorProvider<Inner> {
-    #[must_use]
-    pub fn on_alias_callbacks(mut self, callbacks: impl AliasCallbacks + 'static) -> Self {
-        self.on_alias_callbacks = Some(Arc::new(Box::new(callbacks)));
-        self
-    }
-}
-
-impl<Inner: ContentTracker> MonitorProvider<Inner> {
-    #[must_use]
-    pub fn on_tracking_callbacks(mut self, callbacks: impl TrackingCallbacks + 'static) -> Self {
-        self.on_tracking_callbacks = Some(Arc::new(Box::new(callbacks)));
-        self
     }
 }
 
 #[async_trait]
-impl<Inner: ContentReader + Send + Sync> ContentReader for MonitorProvider<Inner> {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
+impl<Inner: ContentReader + Send + Sync> ContentReader for ContentProviderMonitor<Inner> {
+    async fn get_content_reader(&self, id: &HashRef) -> Result<ContentAsyncReadWithOriginAndSize> {
         let reader = self.inner.get_content_reader(id).await?;
 
         Ok(if let Some(callbacks) = &self.on_download_callbacks {
-            let m = MonitorAsyncAdapter::new(
-                reader,
-                id.clone(),
-                id.data_size(),
-                Arc::clone(callbacks),
-                None,
-            );
+            let m =
+                MonitorAsyncAdapter::new(reader, id.clone(), id.data_size(), Arc::clone(callbacks));
 
             Box::pin(m)
         } else {
             reader
         })
     }
-
-    async fn get_content_readers<'ids>(
-        &self,
-        ids: &'ids BTreeSet<Identifier>,
-    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
-        let readers = self.inner.get_content_readers(ids).await?;
-
-        Ok(if let Some(callbacks) = &self.on_download_callbacks {
-            readers
-                .into_iter()
-                .map(|(id, reader)| {
-                    (
-                        id,
-                        match reader {
-                            Ok(reader) => Ok(Box::pin(MonitorAsyncAdapter::new(
-                                reader,
-                                id.clone(),
-                                id.data_size(),
-                                Arc::clone(callbacks),
-                                None,
-                            ))
-                                as ContentAsyncReadWithOrigin),
-                            Err(err) => Err(err),
-                        },
-                    )
-                })
-                .collect()
-        } else {
-            readers
-        })
-    }
-
-    async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
-        self.inner.resolve_alias(key_space, key).await
-    }
 }
 
 #[async_trait]
-impl<Inner: ContentWriter + Send + Sync> ContentWriter for MonitorProvider<Inner> {
-    async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
+impl<Inner: ContentWriter + Send + Sync> ContentWriter for ContentProviderMonitor<Inner> {
+    async fn get_content_writer(&self, id: &HashRef) -> Result<ContentAsyncWrite> {
         let writer = match self.inner.get_content_writer(id).await {
             Ok(writer) => Ok(writer),
-            Err(Error::IdentifierAlreadyExists(_)) => {
+            Err(Error::HashRefAlreadyExists(id)) => {
                 if let Some(callbacks) = &self.on_upload_callbacks {
-                    callbacks.on_transfer_avoided(id, id.data_size());
+                    callbacks.on_transfer_avoided(&id, id.data_size());
                 }
 
-                Err(Error::IdentifierAlreadyExists(id.clone()))
+                Err(Error::HashRefAlreadyExists(id))
             }
             Err(err) => Err(err),
         }?;
@@ -193,44 +122,10 @@ impl<Inner: ContentWriter + Send + Sync> ContentWriter for MonitorProvider<Inner
                 id.clone(),
                 id.data_size(),
                 Arc::clone(callbacks),
-                None,
             ))
         } else {
             writer
         })
-    }
-
-    async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
-        self.inner.register_alias(key_space, key, id).await?;
-
-        if let Some(callbacks) = &self.on_alias_callbacks {
-            callbacks.on_alias_registered(key_space, key, id);
-        }
-
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl<Inner: ContentTracker + Send + Sync> ContentTracker for MonitorProvider<Inner> {
-    async fn remove_content(&self, id: &Identifier) -> Result<()> {
-        self.inner.remove_content(id).await?;
-
-        if let Some(callbacks) = &self.on_tracking_callbacks {
-            callbacks.on_reference_count_decreased(id);
-        }
-
-        Ok(())
-    }
-
-    async fn pop_referenced_identifiers(&self) -> Result<Vec<Identifier>> {
-        let ids = self.inner.pop_referenced_identifiers().await?;
-
-        if let Some(callbacks) = &self.on_tracking_callbacks {
-            callbacks.on_references_popped(&ids);
-        }
-
-        Ok(ids)
     }
 }
 
@@ -248,7 +143,6 @@ pub struct MonitorAsyncAdapter<Inner, Id> {
     inc: usize,
     progress_step: usize,
     callbacks: Arc<Box<dyn TransferCallbacks<Id>>>,
-    tracking_callbacks: Option<Arc<Box<dyn TrackingCallbacks<Id>>>>,
 }
 
 impl<Inner, Id: Display> MonitorAsyncAdapter<Inner, Id> {
@@ -257,7 +151,6 @@ impl<Inner, Id: Display> MonitorAsyncAdapter<Inner, Id> {
         id: Id,
         total: usize,
         callbacks: Arc<Box<dyn TransferCallbacks<Id>>>,
-        tracking_callbacks: Option<Arc<Box<dyn TrackingCallbacks<Id>>>>,
     ) -> Self {
         Self {
             inner,
@@ -268,12 +161,17 @@ impl<Inner, Id: Display> MonitorAsyncAdapter<Inner, Id> {
             inc: 0,
             progress_step: total / 100,
             callbacks,
-            tracking_callbacks,
         }
     }
 }
 
-impl<Id: Display> AsyncReadWithOrigin for MonitorAsyncAdapter<ContentAsyncReadWithOrigin, Id> {
+impl<Id: Display> AsyncReadWithOriginAndSize
+    for MonitorAsyncAdapter<ContentAsyncReadWithOriginAndSize, Id>
+{
+    fn size(&self) -> usize {
+        self.inner.size()
+    }
+
     fn origin(&self) -> &Origin {
         self.inner.origin()
     }
@@ -456,10 +354,6 @@ impl<Inner: AsyncWrite + Send, Id: Display> AsyncWrite for MonitorAsyncAdapter<I
                     "MonitorAsyncAdapter::poll_shutdown: transfer stopped for {}",
                     this.id
                 );
-
-                if let Some(callbacks) = this.tracking_callbacks {
-                    callbacks.on_reference_count_increased(this.id);
-                }
 
                 this.callbacks.on_transfer_stopped(
                     this.id,

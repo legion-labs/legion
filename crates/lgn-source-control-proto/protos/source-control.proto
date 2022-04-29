@@ -123,8 +123,8 @@ message Change {
 }
 
 message ChangeType {
-  string old_chunk_id = 1;
-  string new_chunk_id = 2;
+  string old_id = 1;
+  string new_id = 2;
 }
 
 message GetTreeRequest {
@@ -138,7 +138,7 @@ message GetTreeResponse {
 
 message Tree {
   string name = 1;
-  string chunk_id = 2;
+  string id = 2;
   repeated Tree children = 3;
 }
 

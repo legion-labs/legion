@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use lgn_content_store::ContentProvider;
+use lgn_content_store::Provider;
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;
@@ -39,8 +39,8 @@ impl Config {
 
     pub async fn open(
         &self,
-        source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
-        data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+        source_control_content_provider: Arc<Provider>,
+        data_content_provider: Arc<Provider>,
     ) -> Result<(DataBuild, Project), String> {
         let repository_index = LocalRepositoryIndex::new(self.project.join("remote"))
             .await

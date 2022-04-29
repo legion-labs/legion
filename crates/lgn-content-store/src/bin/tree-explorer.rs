@@ -13,7 +13,7 @@ use lgn_content_store::{
         IndexKey, IndexableResource, JsonVisitor, ResourceWriter, StaticIndexer, Tree,
         TreeIdentifier, TreeLeafNode, TreeWriter,
     },
-    Error, MemoryProvider, Result,
+    Provider, Result,
 };
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::{async_span_scope, error, info, LevelFilter};
@@ -36,14 +36,14 @@ struct Args {
 }
 
 struct State {
-    provider: MemoryProvider,
+    provider: Provider,
     indexer: StaticIndexer,
     tree_id: Mutex<TreeIdentifier>,
 }
 
 impl State {
     async fn new() -> Result<Self> {
-        let provider = MemoryProvider::new();
+        let provider = Provider::new_in_memory();
         let mut indexer = StaticIndexer::new(4);
         indexer.set_layer_constraints(2, 4);
         let tree_id = Mutex::new(provider.write_tree(&Tree::default()).await?);
@@ -144,7 +144,9 @@ async fn add_node(
         .add_leaf(&state.provider, &*tree_id, &body.index_key, leaf_node)
         .await
         .map_err(|err| match err {
-            Error::IndexTreeLeafNodeAlreadyExists(..) => StatusCode::CONFLICT,
+            lgn_content_store::indexing::Error::IndexTreeLeafNodeAlreadyExists(..) => {
+                StatusCode::CONFLICT
+            }
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         })?;
 

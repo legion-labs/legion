@@ -6,7 +6,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use lgn_content_store::{ContentProvider, ContentReaderExt};
+use lgn_content_store::Provider;
 use lgn_tracing::info;
 
 use super::Device;
@@ -16,7 +16,7 @@ use crate::{manifest::Manifest, ResourceTypeAndId};
 /// through a manifest access table.
 pub(crate) struct BuildDevice {
     manifest: Manifest,
-    content_store: Arc<Box<dyn ContentProvider + Send + Sync>>,
+    provider: Arc<Provider>,
     databuild_bin: PathBuf,
     output_db_addr: String,
     project: PathBuf,
@@ -26,7 +26,7 @@ pub(crate) struct BuildDevice {
 impl BuildDevice {
     pub(crate) fn new(
         manifest: Manifest,
-        content_store: Arc<Box<dyn ContentProvider + Send + Sync>>,
+        provider: Arc<Provider>,
         build_bin: impl AsRef<Path>,
         output_db_addr: String,
         project: impl AsRef<Path>,
@@ -34,7 +34,7 @@ impl BuildDevice {
     ) -> Self {
         Self {
             manifest,
-            content_store,
+            provider,
             databuild_bin: build_bin.as_ref().to_owned(),
             output_db_addr,
             project: project.as_ref().to_owned(),
@@ -50,8 +50,7 @@ impl Device for BuildDevice {
             self.reload(type_id).await
         } else {
             let checksum = self.manifest.find(type_id)?;
-            let content = self.content_store.read_content(&checksum).await.ok()?;
-            assert_eq!(content.len(), checksum.data_size());
+            let content = self.provider.read(&checksum).await.ok()?;
             Some(content)
         }
     }
@@ -61,8 +60,7 @@ impl Device for BuildDevice {
         self.manifest.extend(output);
 
         let checksum = self.manifest.find(type_id)?;
-        let content = self.content_store.read_content(&checksum).await.ok()?;
-        assert_eq!(content.len(), checksum.data_size());
+        let content = self.provider.read(&checksum).await.ok()?;
         Some(content)
     }
 }

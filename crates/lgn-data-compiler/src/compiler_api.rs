@@ -74,7 +74,7 @@
 #![allow(clippy::needless_doctest_main)]
 
 use async_trait::async_trait;
-use lgn_content_store::{Config, ContentProvider, ContentWriterExt};
+use lgn_content_store::{Config, Provider};
 use std::{
     convert::Infallible,
     env,
@@ -177,7 +177,7 @@ pub struct CompilerContext<'a> {
     /// Compilation environment.
     pub env: &'a CompilationEnv,
     /// Content-addressable storage of compilation output.
-    pub content_store: &'a (dyn ContentProvider + Send + Sync),
+    pub provider: &'a Provider,
 }
 
 impl CompilerContext<'_> {
@@ -194,7 +194,7 @@ impl CompilerContext<'_> {
         compiled_content: &[u8],
         path: ResourcePathId,
     ) -> Result<CompiledResource, CompilerError> {
-        let content_id = self.content_store.write_content(compiled_content).await?;
+        let content_id = self.provider.write(compiled_content).await?;
         Ok(CompiledResource { path, content_id })
     }
 }
@@ -339,7 +339,7 @@ impl CompilerDescriptor {
         dependencies: &[ResourcePathId],
         _derived_deps: &[CompiledResource],
         registry: Arc<AssetRegistry>,
-        data_content_provider: &(dyn ContentProvider + Send + Sync),
+        provider: &Provider,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
         let transform = compile_path
@@ -356,7 +356,7 @@ impl CompilerDescriptor {
             dependencies,
             registry,
             env,
-            content_store: &data_content_provider,
+            provider,
         };
 
         compiler.compile(context).await
@@ -463,8 +463,7 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                 .last_transform()
                 .ok_or_else(|| CompilerError::InvalidResource(derived.clone()))?;
 
-            let data_content_provider =
-                Arc::new(Config::load_and_instantiate_volatile_provider().await?);
+            let data_provider = Arc::new(Config::load_and_instantiate_volatile_provider().await?);
 
             let registry = {
                 let (compiler, _) = compilers
@@ -478,7 +477,7 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                 let manifest = manifest.into_rt_manifest(|_rpid| true);
 
                 let registry = AssetRegistryOptions::new()
-                    .add_device_cas(Arc::clone(&data_content_provider), manifest)
+                    .add_device_cas(Arc::clone(&data_provider), manifest)
                     .add_device_dir(&resource_dir); // todo: filter dependencies only
 
                 compiler.init(registry).await.create().await
@@ -497,7 +496,7 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                     &dependencies,
                     &derived_deps,
                     shell.registry(),
-                    &data_content_provider,
+                    &data_provider,
                     &resource_dir,
                     &env,
                 )

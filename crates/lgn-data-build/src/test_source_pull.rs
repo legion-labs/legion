@@ -2,7 +2,7 @@
 mod tests {
     use std::{path::PathBuf, sync::Arc};
 
-    use lgn_content_store::{ContentProvider, MemoryProvider};
+    use lgn_content_store::Provider;
     use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
     use lgn_data_offline::resource::{Project, ResourcePathName};
     use lgn_data_runtime::{
@@ -19,8 +19,8 @@ mod tests {
         PathBuf,
         PathBuf,
         LocalRepositoryIndex,
-        Arc<Box<dyn ContentProvider + Send + Sync>>,
-        Arc<Box<dyn ContentProvider + Send + Sync>>,
+        Arc<Provider>,
+        Arc<Provider>,
     ) {
         let project_dir = work_dir.path();
         let output_dir = project_dir.join("temp");
@@ -29,10 +29,8 @@ mod tests {
         let repository_index = LocalRepositoryIndex::new(project_dir.join("remote"))
             .await
             .unwrap();
-        let source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-            Arc::new(Box::new(MemoryProvider::new()));
-        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-            Arc::new(Box::new(MemoryProvider::new()));
+        let source_control_content_provider = Arc::new(Provider::new_in_memory());
+        let data_content_provider = Arc::new(Provider::new_in_memory());
 
         (
             project_dir.to_owned(),
