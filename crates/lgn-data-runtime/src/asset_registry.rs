@@ -434,8 +434,12 @@ impl AssetRegistry {
         None
     }
 
-    pub(crate) fn apply(&self, _id: ResourceTypeAndId, _value: Box<dyn Resource>) {
-        todo!()
+    pub(crate) fn apply(&self, id: ResourceTypeAndId, mut value: Box<dyn Resource>) {
+        let mut guard = self.inner.write().unwrap();
+        guard
+            .assets
+            .entry(id)
+            .and_modify(|e| std::mem::swap(e, &mut value));
     }
 
     /// Tests if an asset is loaded.
