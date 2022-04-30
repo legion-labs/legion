@@ -47,7 +47,7 @@ impl TransactionOperation for UpdatePropertyOperation {
                 .iter()
                 .map(|(property_name, _new_json)| {
                     let old_json =
-                        get_property_as_json_string(reflection.as_reflect_mut(), property_name)
+                        get_property_as_json_string(reflection.as_reflect(), property_name)
                             .map_err(|err| Error::Reflection(self.resource_id, err))?;
                     Ok(old_json)
                 })

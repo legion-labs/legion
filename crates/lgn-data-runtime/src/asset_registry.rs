@@ -419,7 +419,7 @@ impl AssetRegistry {
     ) -> Option<AssetRegistryGuard<'_, T>> {
         let guard = self.inner.read().unwrap();
         if let Some(asset) = guard.assets.get(&id) {
-            if let Some(ptr) = asset.downcast_ref::<T>().map(|c| c as *const T) {
+            if let Some(ptr) = asset.as_ref().downcast_ref::<T>().map(|c| c as *const T) {
                 return Some(AssetRegistryGuard { _guard: guard, ptr });
             }
         }
@@ -468,7 +468,6 @@ impl AssetRegistry {
                         load_events.push(ResourceLoadEvent::Loaded(handle));
                     }
                     LoaderResult::Unloaded(id) => {
-                        inner.assets.remove(&id);
                         load_events.push(ResourceLoadEvent::Unloaded(id));
                     }
                     LoaderResult::LoadError(handle, _load_id, error_kind) => {

@@ -79,7 +79,7 @@ impl TransactionOperation for DeleteResourceOperation {
                     resource_type_name,
                     self.resource_id.kind,
                     self.resource_id.id,
-                    handle.clone(),
+                    &handle,
                     &ctx.asset_registry,
                 )
                 .await

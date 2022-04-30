@@ -75,7 +75,7 @@ impl<'a> LockContext<'a> {
         for resource_id in &self.changed_resources {
             if let Some(handle) = self.loaded_resource_handles.get(*resource_id) {
                 self.project
-                    .save_resource(*resource_id, handle.clone(), &self.asset_registry)
+                    .save_resource(*resource_id, handle, &self.asset_registry)
                     .await
                     .map_err(|err| Error::Project(*resource_id, err))?;
 

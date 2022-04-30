@@ -95,22 +95,22 @@ impl ScenePlugin {
                 {
                     active_scenes
                         .iter_mut()
-                        .for_each(|(_scene_top_resource, scene)| {
-                            if handle.id() == scene.root_resource {
-                                scene.spawn_entity_hierarchy(
-                                    handle.id(),
-                                    &asset_registry,
-                                    &mut commands,
-                                    &entity_with_children_query,
-                                );
-                            } else if scene.asset_to_entity_map.get(handle.id()).is_some() {
-                                scene.spawn_entity(
-                                    handle.id(),
-                                    &asset_registry,
-                                    &mut commands,
-                                    &entity_with_children_query,
-                                );
+                        .filter_map(|(_scene_top_resource, scene)| {
+                            if handle.id() == scene.root_resource
+                                || scene.asset_to_entity_map.get(handle.id()).is_some()
+                            {
+                                Some(scene)
+                            } else {
+                                None
                             }
+                        })
+                        .for_each(|scene| {
+                            scene.spawn_entity_hierarchy(
+                                handle.id(),
+                                &asset_registry,
+                                &mut commands,
+                                &entity_with_children_query,
+                            );
                         });
                 }
                 AssetRegistryEvent::AssetLoaded(_) => (),
