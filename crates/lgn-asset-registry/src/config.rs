@@ -21,11 +21,9 @@ impl AssetRegistrySettings {
 
 impl Default for AssetRegistrySettings {
     fn default() -> Self {
-        let project_folder = lgn_config::get_absolute_path_or(
-            "editor_srv.project_dir",
-            PathBuf::from("tests/sample-data"),
-        )
-        .unwrap();
+        let project_folder =
+            lgn_config::get_or("editor_srv.project_dir", PathBuf::from("tests/sample-data"))
+                .unwrap();
 
         Self {
             game_manifest: Some(project_folder.join("runtime").join("game.manifest")),

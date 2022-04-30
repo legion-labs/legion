@@ -43,47 +43,6 @@ pub fn get_or(key: String, default_value: serde_json::Value) -> Result<serde_jso
     Ok(value)
 }
 
-/// Get the absolute path at the specified key.
-///
-/// If the specified path is relative, it will be resolved relative to its
-/// containing configuration file, or the current working directory if the
-/// value does not come from a file.
-///
-/// # Errors
-///
-/// If any error occurs, including the specified key not existing in the
-/// configuration, it is returned.
-#[napi]
-#[allow(clippy::needless_pass_by_value)]
-pub fn get_absolute_path(key: String) -> Result<Option<String>> {
-    let value = lgn_config::get_absolute_path(&key)
-        .map_err(|error| Error::from_reason(error.to_string()))?
-        .map(|path| path.to_string_lossy().into_owned());
-
-    Ok(value)
-}
-
-/// Get the absolute path at the specified key or the specified default.
-///
-/// If the specified path is relative, it will be resolved relative to its
-/// containing configuration file, or the current working directory if the
-/// value does not come from a file.
-///
-/// # Errors
-///
-/// If any error occurs, including the specified key not existing in the
-/// configuration, it is returned.
-#[napi]
-#[allow(clippy::needless_pass_by_value)]
-pub fn get_absolute_path_or(key: String, default_value: String) -> Result<String> {
-    let value = lgn_config::get_absolute_path_or(&key, default_value.into())
-        .map_err(|error| Error::from_reason(error.to_string()))?
-        .to_string_lossy()
-        .into_owned();
-
-    Ok(value)
-}
-
 /// Takes a [`HashMap`] which keys are environment variable names and values are
 /// config keys and return another [`HashMap`] which values have been resolved.
 ///

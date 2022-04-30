@@ -5,29 +5,23 @@
 mod errors;
 mod rich_pathbuf;
 
-use figment::{
-    providers::{Env, Format, Toml},
-    Figment,
-};
-use std::path::{Path, PathBuf};
+use config::ConfigError;
+use once_cell::sync::Lazy;
+use std::path::PathBuf;
 
 pub use errors::{Error, Result};
 pub use rich_pathbuf::RichPathBuf;
-
-/// The type to use for relative paths in configurations.
-pub use figment::value::magic::RelativePathBuf;
 
 /// The default filename for configuration files.
 pub static DEFAULT_FILENAME: &str = "legion.toml";
 
 #[derive(Debug, Clone)]
 pub struct Config {
-    pub(crate) figment: Figment,
+    pub(crate) config: config::Config,
 }
 
-lazy_static::lazy_static! {
-    pub static ref CONFIG : Config = Config::load().expect("failed to the load the configuration");
-}
+pub static CONFIG: Lazy<Config> =
+    Lazy::new(|| Config::load().expect("failed to the load the configuration"));
 
 /// Get the value specified by the key.
 ///
@@ -112,55 +106,16 @@ where
     (*CONFIG).get_or_default(key)
 }
 
-/// Get the absolute path at the specified key.
-///
-/// If the specified path is relative, it will be resolved relative to its
-/// containing configuration file, or the current working directory if the
-/// value does not come from a file.
-///
-/// # Efficiency
-///
-/// This method is provided for convenience. If you intend to read several
-/// configuration values, it is more efficient to either read a struct or
-/// instantiate a `Config` and use the `get_absolute_path` method on the
-/// struct.
-///
-/// # Errors
-///
-/// If any error occurs, including the specified key not existing in the
-/// configuration, it is returned.
-pub fn get_absolute_path(key: &str) -> Result<Option<PathBuf>> {
-    (*CONFIG).get_absolute_path(key)
-}
-
-/// Get the absolute path at the specified key or the specified default.
-///
-/// If the specified path is relative, it will be resolved relative to its
-/// containing configuration file, or the current working directory if the
-/// value does not come from a file.
-///
-/// # Efficiency
-///
-/// This method is provided for convenience. If you intend to read several
-/// configuration values, it is more efficient to either read a struct or
-/// instantiate a `Config` and use the `get_absolute_path` method on the
-/// struct.
-///
-/// # Errors
-///
-/// If any error occurs, including the specified key not existing in the
-/// configuration, it is returned.
-pub fn get_absolute_path_or(key: &str, default: PathBuf) -> Result<PathBuf> {
-    (*CONFIG).get_absolute_path_or(key, default)
-}
-
 impl Config {
     /// Create a configuration from a TOML string.
     ///
     /// Useful for tests mostly.
     pub fn from_toml(toml: &str) -> Self {
-        let figment = Figment::new().merge(Toml::string(toml));
-        Self { figment }
+        let config = config::Config::builder()
+            .add_source(config::File::from_str(toml, config::FileFormat::Toml))
+            .build()
+            .expect("failed to build the configuration");
+        Self { config }
     }
 
     /// Load the configuration from all its various sources.
@@ -188,31 +143,15 @@ impl Config {
     ///
     /// If the configuration cannot be loaded, an error is returned.
     pub fn load() -> Result<Self> {
-        let path = std::env::current_dir()?;
-
-        Self::load_with_current_directory(path)
-    }
-
-    /// Load a configuration, using the specified root as the current directory.
-    ///
-    /// See `load()` for more information.
-    ///
-    /// # Note
-    ///
-    /// If root is a relative path, then the ancestors search will stop at the
-    /// relative root. While useful for tests, it's probably safer to invoke that
-    /// with an absolute path in any other case, always.
-    ///
-    /// # Errors
-    ///
-    /// If the configuration cannot be loaded, an error is returned.
-    pub fn load_with_current_directory(path: impl AsRef<Path>) -> Result<Self> {
-        let mut figment = Figment::new();
+        let mut config_builder = config::Config::builder();
 
         // On Unix, always read the system-wide configuration file first if it
         // exists.
         if cfg!(unix) {
-            figment = figment.merge(Toml::file(format!("/etc/legion-labs/{}", DEFAULT_FILENAME)));
+            config_builder = config_builder.add_source(config::File::new(
+                &format!("/etc/legion-labs/{}", DEFAULT_FILENAME),
+                config::FileFormat::Toml,
+            ));
         }
 
         // Starting with the current binary directory, walk up to the root,
@@ -225,14 +164,15 @@ impl Config {
             let config_file_path = dir.join(DEFAULT_FILENAME);
 
             if std::fs::metadata(&config_file_path).is_ok() {
-                figment = figment.merge(Toml::file(&config_file_path));
+                config_builder =
+                    config_builder.add_source(config::File::from(config_file_path.clone()));
                 known_path = Some(config_file_path);
                 break;
             }
         }
 
         // Then, try to read the closest file we found.
-        for dir in path.as_ref().ancestors() {
+        for dir in std::env::current_dir()?.ancestors() {
             let config_file_path = dir.join(DEFAULT_FILENAME);
 
             if std::fs::metadata(&config_file_path).is_ok() {
@@ -242,8 +182,7 @@ impl Config {
                         break;
                     }
                 }
-
-                figment = figment.merge(Toml::file(config_file_path));
+                config_builder = config_builder.add_source(config::File::from(config_file_path));
                 break;
             }
         }
@@ -251,24 +190,35 @@ impl Config {
         // If we have an user configuration folder, try to read from it.
         if let Some(config_dir) = dirs::config_dir() {
             let config_file_path = config_dir.join("legion-labs").join(DEFAULT_FILENAME);
-            figment = figment.merge(Toml::file(config_file_path));
+            if std::fs::metadata(&config_file_path).is_ok() {
+                config_builder = config_builder.add_source(config::File::from(config_file_path));
+            }
         }
 
         // If a specific configuration file was specified, try to read it.
         if let Some(config_file_path) = std::env::var_os("LGN_CONFIG") {
-            figment = figment.merge(Toml::file(config_file_path));
+            config_builder =
+                config_builder.add_source(config::File::from(PathBuf::from(config_file_path)));
         }
 
         // Finally, read from environment variables, starting with `LGN`.
-        let figment = figment.merge(Env::prefixed("LGN_"));
+        config_builder = config_builder.add_source(config::Environment::with_prefix("LGN"));
 
-        Ok(Self { figment })
+        Ok(Self {
+            config: config_builder
+                .build()
+                .expect("failed to build the configuration"),
+        })
     }
 
     /// Override this configuration with another one.
     pub fn override_with(&mut self, other: Self) {
-        let figment = std::mem::take(&mut self.figment);
-        self.figment = figment.merge(other.figment);
+        let config = std::mem::take(&mut self.config);
+        self.config = config::Config::builder()
+            .add_source(config)
+            .add_source(other.config)
+            .build()
+            .expect("failed to build the configuration");
     }
 
     /// Get the value specified by the key.
@@ -283,10 +233,10 @@ impl Config {
     where
         T: serde::Deserialize<'de>,
     {
-        match self.figment.extract_inner(key) {
+        match self.config.get(key) {
             Ok(value) => Ok(Some(value)),
-            Err(err) => match &err.kind {
-                figment::error::Kind::MissingField(missing_key) => {
+            Err(err) => match &err {
+                ConfigError::NotFound(missing_key) => {
                     if key == missing_key {
                         Ok(None)
                     } else {
@@ -341,60 +291,15 @@ impl Config {
     {
         self.get(key).map(Option::unwrap_or_default)
     }
-
-    /// Get the absolute path at the specified key.
-    ///
-    /// If the specified path is relative, it will be resolved relative to its
-    /// containing configuration file, or the current working directory if the
-    /// value does not come from a file.
-    ///
-    /// # Errors
-    ///
-    /// If any error occurs, including the specified key not existing in the
-    /// configuration, it is returned.
-    pub fn get_absolute_path(&self, key: &str) -> Result<Option<PathBuf>> {
-        if let Some(path) = self.get::<RelativePathBuf>(key)? {
-            let path = path.relative();
-
-            Ok(Some(if path.is_absolute() {
-                path
-            } else {
-                std::env::current_dir()?.join(path)
-            }))
-        } else {
-            Ok(None)
-        }
-    }
-
-    /// Get the absolute path at the specified key or the specified default.
-    ///
-    /// If the specified path is relative, it will be resolved relative to its
-    /// containing configuration file, or the current working directory if the
-    /// value does not come from a file.
-    ///
-    /// # Errors
-    ///
-    /// If any error occurs, including the specified key not existing in the
-    /// configuration, it is returned.
-    pub fn get_absolute_path_or(&self, key: &str, default: PathBuf) -> Result<PathBuf> {
-        let path = self
-            .get_or_else::<RelativePathBuf, _>(key, || RelativePathBuf::from(default))?
-            .relative();
-
-        Ok(if path.is_absolute() {
-            path
-        } else {
-            std::env::current_dir()?.join(path)
-        })
-    }
 }
 
 #[cfg(test)]
 mod tests {
-    use figment::{value::magic::RelativePathBuf, Jail};
     use serde::{Deserialize, Serialize};
 
     use super::*;
+
+    use lgn_test_utils::jail::Jail;
 
     #[derive(Serialize, Deserialize, Debug)]
     struct MyConfig {
@@ -406,12 +311,14 @@ mod tests {
 
     #[test]
     fn test_load_config_from() {
-        Jail::expect_with(|_| {
-            let config = Config::load_with_current_directory(
-                &Path::new(env!("CARGO_MANIFEST_DIR")).join("src/fixtures/prod"),
+        Jail::expect_with(|jail| {
+            jail.create_file(
+                DEFAULT_FILENAME,
+                include_str!("test_fixtures/prod_legion.toml"),
             )
-            .unwrap();
+            .expect("failed to create jailed file");
 
+            let config = Config::load().unwrap();
             assert_eq!(
                 Some("prod"),
                 config
@@ -439,10 +346,8 @@ mod tests {
         Jail::expect_with(|jail| {
             // Lets set en environment variable, as an override.
             jail.set_env("LGN_LGN-CONFIG.TESTS.ENVIRONMENT", "foo");
-            let config = Config::load_with_current_directory(
-                &Path::new(env!("CARGO_MANIFEST_DIR")).join("src/fixtures/prod"),
-            )
-            .unwrap();
+
+            let config = Config::load().unwrap();
 
             assert_eq!(
                 Some("foo"),
@@ -458,11 +363,13 @@ mod tests {
 
     #[test]
     fn test_load_config_from_with_struct() {
-        Jail::expect_with(|_| {
-            let config = Config::load_with_current_directory(
-                &Path::new(env!("CARGO_MANIFEST_DIR")).join("src/fixtures"),
+        Jail::expect_with(|jail| {
+            jail.create_file(
+                DEFAULT_FILENAME,
+                include_str!("test_fixtures/dev_legion.toml"),
             )
-            .unwrap();
+            .expect("failed to create jailed file");
+            let config = Config::load().unwrap();
 
             let my_config: MyConfig = config.get("lgn-config.tests.my_config").unwrap().unwrap();
 
@@ -473,38 +380,6 @@ mod tests {
                 vec!["a".to_string(), "b".to_string(), "c".to_string()],
                 my_config.my_list
             );
-            Ok(())
-        });
-    }
-
-    #[test]
-    fn test_load_config_from_relative_path_buf() {
-        Jail::expect_with(|_| {
-            let base = &Path::new(env!("CARGO_MANIFEST_DIR")).join("src/fixtures/prod");
-            let config = Config::load_with_current_directory(&base).unwrap();
-
-            let path = config
-                .get::<RelativePathBuf>("lgn-config.tests.avatar")
-                .unwrap()
-                .unwrap();
-
-            assert_eq!("../images/avatar.png", path.original().to_str().unwrap());
-            assert_eq!(base.join("../images/avatar.png"), path.relative());
-
-            // Test reading a relative path buf nested in a configuration.
-            #[derive(Deserialize, Serialize, Debug)]
-            struct MyConfig {
-                avatar: RelativePathBuf,
-            }
-
-            let cfg = config.get::<MyConfig>("lgn-config.tests").unwrap().unwrap();
-
-            assert_eq!(
-                "../images/avatar.png",
-                cfg.avatar.original().to_str().unwrap()
-            );
-            assert_eq!(base.join("../images/avatar.png"), cfg.avatar.relative());
-
             Ok(())
         });
     }

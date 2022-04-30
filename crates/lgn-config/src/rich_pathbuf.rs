@@ -123,8 +123,9 @@ impl RichPathBuf {
 
 #[cfg(test)]
 mod tests {
-    use figment::Jail;
     use serde_json::json;
+
+    use lgn_test_utils::jail::Jail;
 
     use super::*;
 
@@ -138,7 +139,6 @@ mod tests {
 
             assert_eq!(rich_pathbuf.original, "${MY_SUPER_VARIABLE}/test");
             assert_eq!(rich_pathbuf.path, PathBuf::from("foo/test"));
-
             Ok(())
         });
     }
