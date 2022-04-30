@@ -133,8 +133,8 @@ impl Config {
     /// parent directories, stopping as soon as a file is found. If the first
     /// found file was already read as part of the previous lookup, it is not
     /// read again.
-    /// - `$XDG_CONFIG_HOME/legion-labs/config.toml` on UNIX.
-    /// - `$HOME/.config/legion-labs/config.toml` on UNIX.
+    /// - `$XDG_CONFIG_HOME/legion-labs/legion.toml` on UNIX.
+    /// - `$HOME/.config/legion-labs/legion.toml` on UNIX.
     /// - %APPDATA%/legion-labs/legion.toml on Windows.
     /// - Any file specified in the `LGN_CONFIG` environment variable.
     /// - Environment variables, starting with `LGN_`.
@@ -376,7 +376,12 @@ mod tests {
 
             assert!(my_config.my_bool);
             assert_eq!(42, my_config.my_int);
-            //assert_eq!(1.23, my_config.my_float);
+            assert!(
+                (1.23 - my_config.my_float).abs() < std::f64::EPSILON,
+                "{} != {}",
+                my_config.my_float,
+                1.23
+            );
             assert_eq!(
                 vec!["a".to_string(), "b".to_string(), "c".to_string()],
                 my_config.my_list
