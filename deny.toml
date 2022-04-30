@@ -198,8 +198,6 @@ skip = [
   { name = "png", version = "=0.16.8" },
   { name = "miniz_oxide", version = "=0.3.7" },
   { name = "deflate", version = "=0.8.6" },
-  # Introduced by openidconnect
-  { name = "itertools", version = "=0.9.0" },
   # Introduced by tonic
   { name = "heck", version = "=0.3.3" },
 ] #{ name = "ansi_term", version = "=0.11.0" },
