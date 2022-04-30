@@ -4,7 +4,7 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("config error: {0}")]
-    Config(#[from] Box<config::ConfigError>),
+    Config(#[from] config::ConfigError),
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
     #[error("{0}")]

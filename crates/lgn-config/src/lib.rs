@@ -5,7 +5,7 @@
 mod errors;
 mod rich_pathbuf;
 
-use config::ConfigError;
+use config::{ConfigError, FileFormat};
 use once_cell::sync::Lazy;
 use std::path::PathBuf;
 
@@ -148,24 +148,23 @@ impl Config {
         // On Unix, always read the system-wide configuration file first if it
         // exists.
         if cfg!(unix) {
-            config_builder = config_builder.add_source(config::File::new(
-                &format!("/etc/legion-labs/{}", DEFAULT_FILENAME),
-                config::FileFormat::Toml,
-            ));
+            config_builder = config_builder.add_source(
+                config::File::with_name(&format!("/etc/legion-labs/{}", DEFAULT_FILENAME))
+                    .required(false)
+                    .format(FileFormat::Toml),
+            );
         }
 
         // Starting with the current binary directory, walk up to the root,
         // stopping as soon as we find a configuration file.
-        let binary_path = std::env::current_exe()?;
-
         let mut known_path = None;
-
-        for dir in binary_path.parent().unwrap().ancestors() {
+        for dir in std::env::current_exe()?.parent().unwrap().ancestors() {
             let config_file_path = dir.join(DEFAULT_FILENAME);
 
             if std::fs::metadata(&config_file_path).is_ok() {
-                config_builder =
-                    config_builder.add_source(config::File::from(config_file_path.clone()));
+                config_builder = config_builder.add_source(
+                    config::File::from(config_file_path.clone()).format(FileFormat::Toml),
+                );
                 known_path = Some(config_file_path);
                 break;
             }
@@ -182,7 +181,8 @@ impl Config {
                         break;
                     }
                 }
-                config_builder = config_builder.add_source(config::File::from(config_file_path));
+                config_builder = config_builder
+                    .add_source(config::File::from(config_file_path).format(FileFormat::Toml));
                 break;
             }
         }
@@ -190,24 +190,25 @@ impl Config {
         // If we have an user configuration folder, try to read from it.
         if let Some(config_dir) = dirs::config_dir() {
             let config_file_path = config_dir.join("legion-labs").join(DEFAULT_FILENAME);
-            if std::fs::metadata(&config_file_path).is_ok() {
-                config_builder = config_builder.add_source(config::File::from(config_file_path));
-            }
+            config_builder = config_builder.add_source(
+                config::File::from(config_file_path)
+                    .required(false)
+                    .format(FileFormat::Toml),
+            );
         }
 
         // If a specific configuration file was specified, try to read it.
         if let Some(config_file_path) = std::env::var_os("LGN_CONFIG") {
-            config_builder =
-                config_builder.add_source(config::File::from(PathBuf::from(config_file_path)));
+            config_builder = config_builder.add_source(
+                config::File::from(PathBuf::from(config_file_path)).format(FileFormat::Toml),
+            );
         }
 
         // Finally, read from environment variables, starting with `LGN`.
         config_builder = config_builder.add_source(config::Environment::with_prefix("LGN"));
 
         Ok(Self {
-            config: config_builder
-                .build()
-                .expect("failed to build the configuration"),
+            config: config_builder.build()?,
         })
     }
 
@@ -240,10 +241,10 @@ impl Config {
                     if key == missing_key {
                         Ok(None)
                     } else {
-                        Err(Box::new(err).into())
+                        Err(err.into())
                     }
                 }
-                _ => Err(Box::new(err).into()),
+                _ => Err(err.into()),
             },
         }
     }
