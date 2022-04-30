@@ -15,8 +15,8 @@ use gltf::{
 use lgn_math::{Vec2, Vec3, Vec4};
 
 use lgn_data_runtime::{
-    resource, Asset, AssetLoader, AssetLoaderError, OfflineResource, Resource, ResourceDescriptor, ResourcePathId,
-    ResourceProcessor, ResourceProcessorError, ResourceTypeAndId,
+    resource, Asset, AssetLoader, AssetLoaderError, OfflineResource, Resource, ResourceDescriptor,
+    ResourcePathId, ResourceProcessor, ResourceProcessorError, ResourceTypeAndId,
 };
 
 use crate::helpers::{read_usize, read_usize_and_buffer, write_usize, write_usize_and_buffer};
