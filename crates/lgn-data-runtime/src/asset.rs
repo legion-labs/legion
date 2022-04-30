@@ -64,7 +64,7 @@ pub enum ResourceProcessorError {
     ReflectionError(#[from] lgn_data_model::ReflectionError),
 }
 
-/// The trait defines a resource that can be stored in a [`Project`].
+/// The trait defines a resource that can be serialized.
 pub trait OfflineResource: Asset {
     /// Offline resource processor bound to the resource.
     type Processor: ResourceProcessor + Send + Sync + Default + 'static;
