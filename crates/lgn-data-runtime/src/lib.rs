@@ -84,5 +84,11 @@ mod component;
 pub use component::*;
 pub use lgn_data_runtime_macros::resource;
 
+mod resourcepathid;
+pub use resourcepathid::*;
+
 #[cfg(test)]
 mod test_asset;
+
+#[cfg(test)]
+mod test_resource;

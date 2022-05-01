@@ -1,4 +1,4 @@
-use std::{any::Any, io, path::Path, str::FromStr};
+use std::{io, path::Path, str::FromStr};
 
 use crate::{
     helpers::{read_u32, write_u32},
@@ -14,18 +14,15 @@ use gltf::{
 };
 use lgn_math::{Vec2, Vec3, Vec4};
 
-use lgn_data_offline::{
-    resource::{OfflineResource, ResourceProcessor, ResourceProcessorError},
-    ResourcePathId,
-};
 use lgn_data_runtime::{
-    resource, Asset, AssetLoader, AssetLoaderError, Resource, ResourceTypeAndId,
+    resource, Asset, AssetLoader, AssetLoaderError, OfflineResource, Resource, ResourceDescriptor,
+    ResourcePathId, ResourceProcessor, ResourceProcessorError, ResourceTypeAndId,
 };
 
 use crate::helpers::{read_usize, read_usize_and_buffer, write_usize, write_usize_and_buffer};
 
 #[resource("gltf")]
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct GltfFile {
     pub document: Option<Document>,
     pub buffers: Vec<gltf::buffer::Data>,
@@ -365,10 +362,7 @@ impl OfflineResource for GltfFile {
 pub struct GltfFileProcessor {}
 
 impl AssetLoader for GltfFileProcessor {
-    fn load(
-        &mut self,
-        reader: &mut dyn io::Read,
-    ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError> {
+    fn load(&mut self, reader: &mut dyn io::Read) -> Result<Box<dyn Resource>, AssetLoaderError> {
         let mut buffer = Vec::new();
         reader.read_to_end(&mut buffer)?;
         let mut zip = zip::ZipArchive::new(std::io::Cursor::new(&mut buffer)).map_err(|err| {
@@ -423,18 +417,18 @@ impl AssetLoader for GltfFileProcessor {
         }))
     }
 
-    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+    fn load_init(&mut self, _asset: &mut (dyn Resource)) {}
 }
 
 impl ResourceProcessor for GltfFileProcessor {
-    fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
+    fn new_resource(&mut self) -> Box<dyn Resource> {
         Box::new(GltfFile::default())
     }
 
     fn extract_build_dependencies(
         &mut self,
-        _resource: &dyn Any,
-    ) -> Vec<lgn_data_offline::ResourcePathId> {
+        _resource: &dyn Resource,
+    ) -> Vec<lgn_data_runtime::ResourcePathId> {
         Vec::new()
     }
 
@@ -445,7 +439,7 @@ impl ResourceProcessor for GltfFileProcessor {
 
     fn write_resource(
         &self,
-        resource: &dyn Any,
+        resource: &dyn Resource,
         writer: &mut dyn std::io::Write,
     ) -> Result<usize, ResourceProcessorError> {
         let gltf = resource.downcast_ref::<GltfFile>().unwrap();
@@ -455,7 +449,7 @@ impl ResourceProcessor for GltfFileProcessor {
     fn read_resource(
         &mut self,
         reader: &mut dyn std::io::Read,
-    ) -> Result<Box<dyn Any + Send + Sync>, ResourceProcessorError> {
+    ) -> Result<Box<dyn Resource>, ResourceProcessorError> {
         Ok(self.load(reader)?)
     }
 }

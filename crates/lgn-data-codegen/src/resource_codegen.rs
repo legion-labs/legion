@@ -18,21 +18,17 @@ pub(crate) fn generate_registration_code(
     if !entries.is_empty() {
         let resource_registries = entries
             .iter()
-            .map(|type_name| quote! { .add_type_mut::<#type_name>() });
+            .map(|type_name| quote! { .add_processor_mut::<#type_name>() });
 
         let resources_loaders = entries
             .iter()
             .map(|type_name| quote! { .add_loader_mut::<#type_name>() });
 
         quote! {
-            pub fn register_resource_types(resource_registry: &mut lgn_data_offline::resource::ResourceRegistryOptions) -> &mut lgn_data_offline::resource::ResourceRegistryOptions {
-                resource_registry
-                #(#resource_registries)*
-            }
-
             pub fn add_loaders(asset_registry: &mut lgn_data_runtime::AssetRegistryOptions) -> &mut lgn_data_runtime::AssetRegistryOptions {
                 asset_registry
                 #(#resources_loaders)*
+                #(#resource_registries)*
             }
         }
     } else {
@@ -47,15 +43,27 @@ pub(crate) fn generate(resource_struct_info: &StructMetaInfo) -> TokenStream {
 
     quote! {
 
+        impl lgn_data_runtime::ResourceDescriptor for #offline_identifier {
+            const TYPENAME : &'static str = #offline_name;
+        }
+
         impl lgn_data_runtime::Resource for #offline_identifier {
-            const TYPENAME: &'static str = #offline_name;
+            fn as_reflect(&self) -> &dyn lgn_data_model::TypeReflection {
+                self
+            }
+            fn as_reflect_mut(&mut self) -> &mut dyn lgn_data_model::TypeReflection {
+                self
+            }
+            fn clone_dyn(&self) -> Box<dyn lgn_data_runtime::Resource> {
+                Box::new(self.clone())
+            }
         }
 
         impl lgn_data_runtime::Asset for #offline_identifier {
             type Loader = #offline_identifier_processor;
         }
 
-        impl lgn_data_offline::resource::OfflineResource for #offline_identifier {
+        impl lgn_data_runtime::OfflineResource for #offline_identifier {
             type Processor = #offline_identifier_processor;
         }
 
@@ -63,68 +71,53 @@ pub(crate) fn generate(resource_struct_info: &StructMetaInfo) -> TokenStream {
         pub struct #offline_identifier_processor {}
 
         impl lgn_data_runtime::AssetLoader for #offline_identifier_processor {
-            fn load(&mut self, reader: &mut dyn std::io::Read) -> Result<Box<dyn std::any::Any + Send + Sync>, lgn_data_runtime::AssetLoaderError> {
+            fn load(&mut self, reader: &mut dyn std::io::Read) -> Result<Box<dyn lgn_data_runtime::Resource>, lgn_data_runtime::AssetLoaderError> {
                 let mut instance = #offline_identifier::default();
 
                 let values : serde_json::Value = serde_json::from_reader(reader)
-                    .map_err(|err| lgn_data_runtime::AssetLoaderError::ErrorLoading(<#offline_identifier as lgn_data_runtime::Resource>::TYPENAME,
+                    .map_err(|err| lgn_data_runtime::AssetLoaderError::ErrorLoading(<#offline_identifier as lgn_data_runtime::ResourceDescriptor>::TYPENAME,
                         format!("Error parsing json values ({})", err)))?;
 
                 lgn_data_model::json_utils::reflection_apply_json_edit(&mut instance, &values)
-                    .map_err(|err| lgn_data_runtime::AssetLoaderError::ErrorLoading(<#offline_identifier as lgn_data_runtime::Resource>::TYPENAME, err.to_string()))?;
+                    .map_err(|err| lgn_data_runtime::AssetLoaderError::ErrorLoading(<#offline_identifier as lgn_data_runtime::ResourceDescriptor>::TYPENAME, err.to_string()))?;
                 Ok(Box::new(instance))
             }
 
-            fn load_init(&mut self, _asset: &mut (dyn std::any::Any + Send + Sync)) {}
+            fn load_init(&mut self, _asset: &mut (dyn lgn_data_runtime::Resource)) {}
         }
 
 
-        impl lgn_data_offline::resource::ResourceProcessor for #offline_identifier_processor {
-            fn new_resource(&mut self) -> Box<dyn std::any::Any + Send + Sync> {
+        impl lgn_data_runtime::ResourceProcessor for #offline_identifier_processor {
+            fn new_resource(&mut self) -> Box<dyn lgn_data_runtime::Resource> {
                 Box::new(#offline_identifier::default())
             }
 
-            fn extract_build_dependencies(&mut self, resource: &dyn std::any::Any) -> Vec<lgn_data_offline::ResourcePathId> {
+            fn extract_build_dependencies(&mut self, resource: &dyn lgn_data_runtime::Resource) -> Vec<lgn_data_runtime::ResourcePathId> {
                 let instance = resource.downcast_ref::<#offline_identifier>().unwrap();
-                lgn_data_offline::extract_resource_dependencies(instance)
+                lgn_data_runtime::extract_resource_dependencies(instance)
                     .unwrap_or_default()
                     .into_iter()
                     .collect()
             }
 
             fn get_resource_type_name(&self) -> Option<&'static str> {
-                Some(<#offline_identifier as lgn_data_runtime::Resource>::TYPENAME)
+                Some(<#offline_identifier as lgn_data_runtime::ResourceDescriptor>::TYPENAME)
             }
 
-            fn write_resource(&self, resource: &dyn std::any::Any, writer: &mut dyn std::io::Write) -> Result<usize, lgn_data_offline::resource::ResourceProcessorError> {
+            fn write_resource(&self, resource: &dyn lgn_data_runtime::Resource, writer: &mut dyn std::io::Write) -> Result<usize, lgn_data_runtime::ResourceProcessorError> {
                 let instance = resource.downcast_ref::<#offline_identifier>().unwrap();
                 let values = lgn_data_model::json_utils::reflection_save_relative_json(instance, #offline_identifier::get_default_instance())?;
 
                 serde_json::to_writer_pretty(writer, &values).
-                    map_err(|err| lgn_data_offline::resource::ResourceProcessorError::ResourceSerializationFailed(<#offline_identifier as lgn_data_runtime::Resource>::TYPENAME, err.to_string()))?;
+                    map_err(|err| lgn_data_runtime::ResourceProcessorError::ResourceSerializationFailed(<#offline_identifier as lgn_data_runtime::ResourceDescriptor>::TYPENAME, err.to_string()))?;
                 Ok(1)
             }
 
 
-            fn read_resource(&mut self,reader: &mut dyn std::io::Read) -> Result<Box<dyn std::any::Any + Send + Sync>, lgn_data_offline::resource::ResourceProcessorError> {
+            fn read_resource(&mut self,reader: &mut dyn std::io::Read) -> Result<Box<dyn lgn_data_runtime::Resource>, lgn_data_runtime::ResourceProcessorError> {
                 use lgn_data_runtime::AssetLoader;
                 Ok(self.load(reader)?)
             }
-
-            fn get_resource_reflection<'a>(&self, resource: &'a dyn std::any::Any) -> Option<&'a dyn lgn_data_model::TypeReflection> {
-                if let Some(instance) = resource.downcast_ref::<#offline_identifier>() {
-                    return Some(instance);
-                }
-                None
-            }
-
-            fn get_resource_reflection_mut<'a>(&self, resource: &'a mut dyn std::any::Any) -> Option<&'a mut dyn lgn_data_model::TypeReflection> {
-                if let Some(instance) = resource.downcast_mut::<#offline_identifier>() {
-                    return Some(instance);
-                }
-                None
-            }
-
         }
     }
 }

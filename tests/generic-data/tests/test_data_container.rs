@@ -40,11 +40,8 @@ fn test_json_serialization() {
     let mut file = Cursor::new(json_data);
 
     let mut processor = TestEntityProcessor {};
-    let entity = processor
-        .load(&mut file)
-        .unwrap()
-        .downcast::<TestEntity>()
-        .unwrap();
+    let entity = processor.load(&mut file).unwrap();
+    let entity = entity.downcast_ref::<TestEntity>().unwrap();
 
     assert_eq!(entity.test_string.as_str(), "Value read from json");
     assert_eq!(entity.test_position, Vec3::new(2.0, 2.0, 2.0));

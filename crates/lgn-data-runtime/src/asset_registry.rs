@@ -1,5 +1,4 @@
 use std::{
-    any::Any,
     cell::Cell,
     collections::HashMap,
     path::Path,
@@ -13,8 +12,9 @@ use lgn_ecs::schedule::SystemLabel;
 use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
     manifest::Manifest,
-    vfs, Asset, AssetLoader, AssetLoaderError, Handle, HandleUntyped, Resource, ResourceType,
-    ResourceTypeAndId,
+    vfs, Asset, AssetLoader, AssetLoaderError, Handle, HandleUntyped, OfflineResource, Resource,
+    ResourceDescriptor, ResourceId, ResourcePathId, ResourceProcessor, ResourceProcessorError,
+    ResourceType, ResourceTypeAndId,
 };
 
 /// Error type for Asset Registry
@@ -64,11 +64,18 @@ pub enum AssetRegistryError {
     /// General IO Error
     #[error("Invalid Data: {0}")]
     InvalidData(String),
+
+    /// ResourceProcess fallthrough
+    #[error(transparent)]
+    ResourceProcessError(#[from] ResourceProcessorError),
+
+    /// Processor not found
+    #[error("Processor '{0}'not found")]
+    ProcessorNotFound(ResourceType),
 }
 
 /// Return a Guarded Ref to a Asset
 pub struct AssetRegistryGuard<'a, T: ?Sized + 'a> {
-    //lock: &'a RwLock<Inner>,
     _guard: RwLockReadGuard<'a, Inner>,
     ptr: *const T,
 }
@@ -80,9 +87,29 @@ impl<'a, T: ?Sized + 'a> std::ops::Deref for AssetRegistryGuard<'a, T> {
     }
 }
 
+/// Return a Guarded Ref to a Asset
+pub struct AssetRegistryWriteGuard<'a, T: ?Sized + 'a> {
+    _guard: RwLockWriteGuard<'a, Inner>,
+    ptr: *mut T,
+}
+
+impl<'a, T: ?Sized + 'a> std::ops::Deref for AssetRegistryWriteGuard<'a, T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*self.ptr }
+    }
+}
+
+impl<'a, T: ?Sized + 'a> std::ops::DerefMut for AssetRegistryWriteGuard<'a, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { &mut *self.ptr }
+    }
+}
+
 /// Options which can be used to configure the creation of [`AssetRegistry`].
 pub struct AssetRegistryOptions {
     loaders: HashMap<ResourceType, Box<dyn AssetLoader + Send + Sync>>,
+    processors: HashMap<ResourceType, Box<dyn ResourceProcessor + Send + Sync>>,
     devices: Vec<Box<(dyn vfs::Device + Send)>>,
 }
 
@@ -92,6 +119,7 @@ impl AssetRegistryOptions {
     pub fn new() -> Self {
         Self {
             loaders: HashMap::new(),
+            processors: HashMap::new(),
             devices: vec![],
         }
     }
@@ -168,7 +196,7 @@ impl AssetRegistryOptions {
     /// Enables support of a given [`Resource`] by adding corresponding
     /// [`AssetLoader`].
     #[must_use]
-    pub fn add_loader<A: Asset>(mut self) -> Self {
+    pub fn add_loader<A: Asset + ResourceDescriptor>(mut self) -> Self {
         ResourceType::register_name(A::TYPE, A::TYPENAME);
         self.loaders.insert(A::TYPE, Box::new(A::Loader::default()));
         self
@@ -176,10 +204,35 @@ impl AssetRegistryOptions {
 
     /// Enables support of a given [`Resource`] by adding corresponding
     /// [`AssetLoader`].
-    pub fn add_loader_mut<A: Asset>(&mut self) -> &mut Self {
+    pub fn add_loader_mut<A: Asset + ResourceDescriptor>(&mut self) -> &mut Self {
         ResourceType::register_name(A::TYPE, A::TYPENAME);
         self.loaders.insert(A::TYPE, Box::new(A::Loader::default()));
         self
+    }
+
+    /// doc
+    pub fn add_processor_mut<R: OfflineResource + ResourceDescriptor>(&mut self) -> &mut Self {
+        self.processors
+            .insert(R::TYPE, Box::new(R::Processor::default()));
+        self
+    }
+
+    /// doc
+    #[must_use]
+    pub fn add_processor_ext(
+        mut self,
+        kind: ResourceType,
+        proc: Box<dyn ResourceProcessor + Send + Sync>,
+    ) -> Self {
+        let v = self.processors.insert(kind, proc).is_none();
+        assert!(v);
+        self
+    }
+
+    /// doc
+    #[must_use]
+    pub fn add_processor<R: OfflineResource + ResourceDescriptor>(self) -> Self {
+        self.add_processor_ext(R::TYPE, Box::new(R::Processor::default()))
     }
 
     /// Creates [`AssetRegistry`] based on `AssetRegistryOptions`.
@@ -193,6 +246,7 @@ impl AssetRegistryOptions {
                 load_event_senders: Vec::new(),
                 loader,
             }),
+            processors: RwLock::new(self.processors),
             load_thread: Cell::new(None),
         });
 
@@ -215,7 +269,7 @@ impl AssetRegistryOptions {
 }
 
 struct Inner {
-    assets: HashMap<ResourceTypeAndId, Box<dyn Any + Send + Sync>>,
+    assets: HashMap<ResourceTypeAndId, Box<dyn Resource>>,
     loader: AssetLoaderStub,
     load_errors: HashMap<ResourceTypeAndId, AssetRegistryError>,
     load_event_senders: Vec<tokio::sync::mpsc::UnboundedSender<ResourceLoadEvent>>,
@@ -236,6 +290,7 @@ struct Inner {
 /// [`Handle`]: [`crate::Handle`]
 pub struct AssetRegistry {
     inner: RwLock<Inner>,
+    processors: RwLock<HashMap<ResourceType, Box<dyn ResourceProcessor + Send + Sync>>>,
     load_thread: Cell<Option<tokio::task::JoinHandle<()>>>,
 }
 
@@ -338,38 +393,54 @@ impl AssetRegistry {
 
     /// Same as [`Self::load_untyped`] but the returned handle is generic over
     /// asset type `T` for convenience.
-    pub fn load<T: Any + Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
+    pub fn load<T: Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
         let handle = self.load_untyped(id);
         Handle::<T>::from(handle)
     }
 
     /// Same as [`Self::load`] but blocks until the resource load completes or
     /// returns an error.
-    pub fn load_sync<T: Any + Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
+    pub fn load_sync<T: Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
         let handle = self.load_untyped_sync(id);
         Handle::<T>::from(handle)
     }
 
     /// Same as [`Self::load`] but waits until the resource load completes or
     /// returns an error.
-    pub async fn load_async<T: Any + Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
+    pub async fn load_async<T: Resource>(&self, id: ResourceTypeAndId) -> Handle<T> {
         let handle = self.load_untyped_async(id).await;
         Handle::<T>::from(handle)
     }
 
     /// Retrieves a reference to an asset, None if asset is not loaded.
-    pub(crate) fn get<T: Any + Resource>(
+    pub(crate) fn get<T: Resource>(
         &self,
         id: ResourceTypeAndId,
     ) -> Option<AssetRegistryGuard<'_, T>> {
         let guard = self.inner.read().unwrap();
-        let inner: &Inner = &guard;
-        if let Some(asset) = inner.assets.get(&id) {
-            if let Some(ptr) = asset.downcast_ref::<T>().map(|c| c as *const T) {
+        if let Some(asset) = guard.assets.get(&id) {
+            if let Some(ptr) = asset.as_ref().downcast_ref::<T>().map(|c| c as *const T) {
                 return Some(AssetRegistryGuard { _guard: guard, ptr });
             }
         }
         None
+    }
+
+    pub(crate) fn instantiate(&self, id: ResourceTypeAndId) -> Option<Box<dyn Resource>> {
+        let guard = self.inner.read().unwrap();
+        let inner: &Inner = &guard;
+        if let Some(asset) = inner.assets.get(&id) {
+            return Some(asset.clone_dyn());
+        }
+        None
+    }
+
+    pub(crate) fn apply(&self, id: ResourceTypeAndId, mut value: Box<dyn Resource>) {
+        let mut guard = self.inner.write().unwrap();
+        guard
+            .assets
+            .entry(id)
+            .and_modify(|e| std::mem::swap(e, &mut value));
     }
 
     /// Tests if an asset is loaded.
@@ -397,7 +468,6 @@ impl AssetRegistry {
                         load_events.push(ResourceLoadEvent::Loaded(handle));
                     }
                     LoaderResult::Unloaded(id) => {
-                        inner.assets.remove(&id);
                         load_events.push(ResourceLoadEvent::Unloaded(id));
                     }
                     LoaderResult::LoadError(handle, _load_id, error_kind) => {
@@ -424,6 +494,128 @@ impl AssetRegistry {
                     sender.send(event.clone()).unwrap();
                 }
             }
+        }
+    }
+
+    /// Return a resource in a default state
+    pub fn new_resource(&self, kind: ResourceType) -> Option<HandleUntyped> {
+        let id = ResourceTypeAndId {
+            kind,
+            id: ResourceId::new(),
+        };
+        self.new_resource_with_id(id)
+    }
+
+    /// Return a resource in a default state with a specific Id
+    pub fn new_resource_with_id(&self, id: ResourceTypeAndId) -> Option<HandleUntyped> {
+        if let Some(processor) = self.processors.write().unwrap().get_mut(&id.kind) {
+            let resource = processor.new_resource();
+
+            let mut guard = self.write_inner();
+            let inner: &mut Inner = &mut guard;
+            let handle = inner.loader.get_or_create_handle(id);
+            let _old_value = inner.assets.insert(id, resource);
+            //assert!(result.is_none());
+            Some(handle)
+        } else {
+            None
+        }
+    }
+
+    /// Return the name of the Resource type that the processor can process.
+    pub fn get_resource_type_name(&self, kind: ResourceType) -> Option<&'static str> {
+        self.processors
+            .read()
+            .unwrap()
+            .get(&kind)
+            .and_then(|processor| processor.get_resource_type_name())
+    }
+
+    /// Return the available resource type that can be created
+    pub fn get_resource_types(&self) -> Vec<(ResourceType, &'static str)> {
+        self.processors
+            .read()
+            .unwrap()
+            .iter()
+            .filter_map(|(k, processor)| processor.get_resource_type_name().map(|n| (*k, n)))
+            .collect()
+    }
+
+    /// Interface to retrieve the Resource reflection interface
+    pub fn get_resource_reflection<'a>(
+        &'a self,
+        _kind: ResourceType,
+        handle: &HandleUntyped,
+    ) -> Option<AssetRegistryGuard<'a, dyn Resource>> {
+        let guard = self.inner.read().unwrap();
+        if let Some(resource) = guard.assets.get(&handle.id()) {
+            let ptr = resource.as_ref() as *const dyn Resource;
+            return Some(AssetRegistryGuard { _guard: guard, ptr });
+        }
+        None
+    }
+
+    /// Interface to retrieve the Resource mutable reflection interface
+    pub fn get_resource_reflection_mut<'a>(
+        &'a self,
+        _kind: ResourceType,
+        handle: &HandleUntyped,
+    ) -> Option<AssetRegistryWriteGuard<'a, dyn Resource>> {
+        let mut guard = self.inner.write().unwrap();
+        if let Some(resource) = guard.assets.get_mut(&handle.id()) {
+            let ptr = resource.as_mut() as *mut dyn Resource;
+            return Some(AssetRegistryWriteGuard { _guard: guard, ptr });
+        }
+        None
+    }
+
+    /// Interface to initialize a new `Resource` from a stream
+    /// # Errors
+    /// Will return `AssetRegistryError` if the resource was not deserialized properly
+    pub fn deserialize_resource(
+        &self,
+        id: ResourceTypeAndId,
+        reader: &mut dyn std::io::Read,
+    ) -> Result<HandleUntyped, AssetRegistryError> {
+        let mut guard = self.write_inner();
+        let inner: &mut Inner = &mut guard;
+
+        if let Some(processor) = self.processors.write().unwrap().get_mut(&id.kind) {
+            let resource = processor.read_resource(reader)?;
+
+            let handle = inner.loader.get_or_create_handle(id);
+            let _old_value = inner.assets.insert(id, resource);
+            //assert!(result.is_none());
+            Ok(handle)
+        } else {
+            Err(AssetRegistryError::ProcessorNotFound(id.kind))
+        }
+    }
+
+    /// Interface to serialize a `Resource` into a stream
+    /// # Errors
+    /// Will return `AssetRegistryError` if the resource was not serialize properly
+    pub fn serialize_resource(
+        &self,
+        kind: ResourceType,
+        handle: impl AsRef<HandleUntyped>,
+        writer: &mut dyn std::io::Write,
+    ) -> Result<(usize, Vec<ResourcePathId>), AssetRegistryError> {
+        let mut guard = self.write_inner();
+        let inner: &mut Inner = &mut guard;
+
+        if let Some(processor) = self.processors.write().unwrap().get_mut(&kind) {
+            let resource = inner
+                .assets
+                .get(&handle.as_ref().id())
+                .ok_or_else(|| AssetRegistryError::ResourceNotFound(handle.as_ref().id()))?
+                .as_ref();
+
+            let build_deps = processor.extract_build_dependencies(&*resource);
+            let written = processor.write_resource(&*resource, writer)?;
+            Ok((written, build_deps))
+        } else {
+            Err(AssetRegistryError::ProcessorNotFound(kind))
         }
     }
 
@@ -473,10 +665,13 @@ mod tests {
             resource, Asset, AssetLoader, AssetLoaderError, AssetRegistry, Reference, Resource,
             ResourceId, ResourceType, ResourceTypeAndId,
         };
+        extern crate self as lgn_data_runtime;
+
         /// Asset temporarily used for testing.
         ///
         /// To be removed once real asset types exist.
         #[resource("refs_asset")]
+        #[derive(Clone)]
         pub struct RefsAsset {
             /// Test content.
             pub content: String,
@@ -499,7 +694,7 @@ mod tests {
             fn load(
                 &mut self,
                 reader: &mut dyn io::Read,
-            ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError> {
+            ) -> Result<Box<dyn Resource>, AssetLoaderError> {
                 let len = reader.read_u64::<LittleEndian>()?;
 
                 let mut content = vec![0; len as usize];
@@ -513,7 +708,7 @@ mod tests {
                 Ok(asset)
             }
 
-            fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync)) {
+            fn load_init(&mut self, asset: &mut (dyn Resource)) {
                 let asset = asset.downcast_mut::<RefsAsset>().unwrap();
                 if let Some(reference) = &mut asset.reference {
                     reference.activate(self.registry.as_ref().unwrap());
@@ -528,7 +723,7 @@ mod tests {
             reader: &mut dyn std::io::Read,
         ) -> Result<Option<Reference<T>>, std::io::Error>
         where
-            T: Any + Resource,
+            T: Any + Resource + Send,
         {
             let underlying_type = reader.read_u64::<LittleEndian>()?;
             if underlying_type == 0 {

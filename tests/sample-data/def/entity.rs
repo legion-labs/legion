@@ -1,6 +1,7 @@
 use lgn_data_runtime::Component;
 
 #[resource()]
+#[derive(Clone)]
 struct Entity {
     #[legion(hidden, resource_type = Entity)]
     pub children: Vec<ResourcePathId>,

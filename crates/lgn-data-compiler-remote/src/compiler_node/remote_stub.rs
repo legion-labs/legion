@@ -6,8 +6,7 @@ use std::{
     sync::Arc,
 };
 
-use lgn_data_offline::{ResourcePathId, Transform};
-use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions};
+use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions, ResourcePathId, Transform};
 
 use super::remote_data_executor::collect_local_resources;
 use lgn_data_compiler::{

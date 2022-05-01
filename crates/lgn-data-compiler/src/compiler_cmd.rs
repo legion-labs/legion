@@ -35,7 +35,7 @@
 //! ```no_run
 //! # use lgn_data_compiler::compiler_cmd::CompilerCompileCmd;
 //! # use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
-//! # use lgn_data_offline::ResourcePathId;
+//! # use lgn_data_runtime::ResourcePathId;
 //! # use std::path::PathBuf;
 //! fn compile_resource(compile_path: ResourcePathId, dependencies: &[ResourcePathId], env: &CompilationEnv) {
 //!     let resource_dir = PathBuf::from("./resources/");
@@ -56,7 +56,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use lgn_data_offline::{ResourcePathId, Transform};
+use lgn_data_runtime::{ResourcePathId, Transform};
 use lgn_tracing::info;
 use serde::{Deserialize, Serialize};
 

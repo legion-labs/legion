@@ -1,7 +1,7 @@
-use lgn_data_runtime::ResourceType;
+use lgn_data_runtime::{ResourcePathId, ResourceType};
 use serde::{Deserialize, Serialize};
 
-use crate::{resource::ResourcePathName, ResourcePathId};
+use crate::resource::ResourcePathName;
 
 #[derive(Serialize, Deserialize)]
 pub(crate) struct Metadata {

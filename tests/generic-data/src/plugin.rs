@@ -1,6 +1,4 @@
 use lgn_app::prelude::*;
-#[cfg(feature = "offline")]
-use lgn_data_offline::resource::ResourceRegistryOptions;
 use lgn_data_runtime::AssetRegistryOptions;
 use lgn_ecs::prelude::*;
 
@@ -9,16 +7,8 @@ pub struct GenericDataPlugin;
 
 impl Plugin for GenericDataPlugin {
     fn build(&self, app: &mut App) {
-        #[cfg(feature = "offline")]
-        app.add_startup_system(register_resource_types);
-
         app.add_startup_system(add_loaders);
     }
-}
-
-#[cfg(feature = "offline")]
-fn register_resource_types(resource_registry: NonSendMut<'_, ResourceRegistryOptions>) {
-    crate::offline::register_resource_types(resource_registry.into_inner());
 }
 
 #[allow(unused_variables)]

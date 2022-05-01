@@ -1,9 +1,11 @@
 //! Module providing Photoshop Document related functionality.
 
-use std::{any::Any, io};
+use std::io;
 
-use lgn_data_offline::resource::{OfflineResource, ResourceProcessor, ResourceProcessorError};
-use lgn_data_runtime::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
+use lgn_data_runtime::{
+    resource, Asset, AssetLoader, AssetLoaderError, OfflineResource, Resource, ResourceProcessor,
+    ResourceProcessorError,
+};
 
 use crate::offline_texture::{Texture, TextureType};
 
@@ -70,15 +72,23 @@ impl PsdFile {
     }
 }
 
+impl Clone for PsdFile {
+    fn clone(&self) -> Self {
+        match &self.content {
+            Some((_, bytes)) => Self {
+                content: Some((psd::Psd::from_bytes(bytes).unwrap(), bytes.clone())),
+            },
+            None => Self { content: None },
+        }
+    }
+}
+
 /// A processor of Photoshop Document files.
 #[derive(Default)]
 pub struct PsdFileProcessor {}
 
 impl AssetLoader for PsdFileProcessor {
-    fn load(
-        &mut self,
-        reader: &mut dyn io::Read,
-    ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError> {
+    fn load(&mut self, reader: &mut dyn io::Read) -> Result<Box<dyn Resource>, AssetLoaderError> {
         let mut bytes = vec![];
         reader.read_to_end(&mut bytes)?;
         let content = if bytes.is_empty() {
@@ -92,24 +102,24 @@ impl AssetLoader for PsdFileProcessor {
         Ok(Box::new(PsdFile { content }))
     }
 
-    fn load_init(&mut self, _asset: &mut (dyn Any + Send + Sync)) {}
+    fn load_init(&mut self, _asset: &mut (dyn Resource)) {}
 }
 
 impl ResourceProcessor for PsdFileProcessor {
-    fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
+    fn new_resource(&mut self) -> Box<dyn Resource> {
         Box::new(PsdFile { content: None })
     }
 
     fn extract_build_dependencies(
         &mut self,
-        _resource: &dyn Any,
-    ) -> Vec<lgn_data_offline::ResourcePathId> {
+        _resource: &dyn Resource,
+    ) -> Vec<lgn_data_runtime::ResourcePathId> {
         vec![]
     }
 
     fn write_resource(
         &self,
-        resource: &dyn Any,
+        resource: &dyn Resource,
         writer: &mut dyn std::io::Write,
     ) -> Result<usize, ResourceProcessorError> {
         let psd = resource.downcast_ref::<PsdFile>().unwrap();
@@ -124,7 +134,7 @@ impl ResourceProcessor for PsdFileProcessor {
     fn read_resource(
         &mut self,
         reader: &mut dyn std::io::Read,
-    ) -> Result<Box<dyn Any + Send + Sync>, ResourceProcessorError> {
+    ) -> Result<Box<dyn Resource>, ResourceProcessorError> {
         Ok(self.load(reader)?)
     }
 }

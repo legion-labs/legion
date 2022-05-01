@@ -2,7 +2,7 @@
 //!
 use crate::compiler_api::CompilerError;
 
-use lgn_data_offline::ResourcePathId;
+use lgn_data_runtime::ResourcePathId;
 
 use bincode::{DefaultOptions, Options};
 use lgn_data_model::{ReflectionError, TypeDefinition, TypeReflection};
@@ -44,7 +44,7 @@ pub fn reflection_compile(
     let mut serializer = <dyn erased_serde::Serializer>::erase(&mut bincode_ser);
     lgn_data_model::utils::serialize_property_by_name(runtime_resource, "", &mut serializer)?;
 
-    let resource_references = lgn_data_offline::extract_resource_dependencies(offline_resource);
+    let resource_references = lgn_data_runtime::extract_resource_dependencies(offline_resource);
     Ok((compiled_asset, resource_references))
 }
 

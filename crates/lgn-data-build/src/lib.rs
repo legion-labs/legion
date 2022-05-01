@@ -106,7 +106,7 @@
 //! * For **derived resource**:
 //!     * checksum of the output of the directly dependent data compilation (as
 //!       described in the
-//!       [`ResourcePathId`](`lgn_data_offline::ResourcePathId`))
+//!       [`ResourcePathId`](`lgn_data_runtime::ResourcePathId`))
 //!
 //! #### `ContextHash` - the signature of the compilation context
 //!
@@ -133,7 +133,7 @@
 use std::path::PathBuf;
 
 use lgn_data_compiler::compiler_api::CompilerError;
-use lgn_data_offline::{ResourcePathId, Transform};
+use lgn_data_runtime::{ResourcePathId, Transform};
 use thiserror::Error;
 
 /// Data build error. todo(kstasik): revisit how errors are handled/propagated

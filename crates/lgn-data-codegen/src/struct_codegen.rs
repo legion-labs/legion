@@ -110,7 +110,7 @@ pub(crate) fn generate_reflection(
 
     let dynamic_derive =
         if struct_meta_info.is_component && gen_type == GenerationType::RuntimeFormat {
-            quote! { #[derive(lgn_ecs::component::Component, Clone)] }
+            quote! { #[derive(lgn_ecs::component::Component)] }
         } else {
             quote! {}
         };
@@ -118,7 +118,7 @@ pub(crate) fn generate_reflection(
     let attribute_impl = struct_meta_info.attributes.generate_descriptor_impl();
 
     quote! {
-        #[derive(serde::Serialize, serde::Deserialize, PartialEq)]
+        #[derive(serde::Serialize, serde::Deserialize, PartialEq, Clone)]
         #dynamic_derive
         pub struct #type_identifier {
             #(#fields)*

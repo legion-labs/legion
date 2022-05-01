@@ -1,10 +1,12 @@
 use lgn_math::prelude::*;
 
 #[resource()]
+#[derive(Clone)]
 pub struct Model {
     pub meshes: Vec<Mesh>,
 }
 
+#[derive(Clone)]
 pub struct Mesh {
     pub positions: Vec<Vec3>,
     pub normals: Vec<Vec3>,

@@ -26,7 +26,7 @@ impl MemberMetaInfo {
         if member.attributes.values.contains_key(RESOURCE_TYPE_ATTR) {
             member
                 .offline_imports
-                .insert(syn::parse_str("lgn_data_offline::ResourcePathId").unwrap());
+                .insert(syn::parse_str("lgn_data_runtime::ResourcePathId").unwrap());
             member
                 .runtime_imports
                 .insert(syn::parse_str("lgn_data_runtime::Reference").unwrap());

@@ -4,11 +4,8 @@ use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::{
     compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,
 };
-use lgn_data_offline::{
-    resource::{Project, ResourcePathName, ResourceRegistryOptions},
-    ResourcePathId,
-};
-use lgn_data_runtime::{AssetRegistryOptions, Resource};
+use lgn_data_offline::resource::{Project, ResourcePathName};
+use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourcePathId};
 use lgn_source_control::{RepositoryIndex, RepositoryName};
 use serial_test::serial;
 
@@ -60,17 +57,19 @@ async fn build_device() {
         )
         .await
         .expect("new project");
-        let resources = ResourceRegistryOptions::new()
-            .add_type::<refs_resource::TestResource>()
-            .create_async_registry();
-        let mut resources = resources.lock().await;
+        let resources = AssetRegistryOptions::new()
+            .add_processor::<refs_resource::TestResource>()
+            .create()
+            .await;
 
         let resource = resources
             .new_resource(refs_resource::TestResource::TYPE)
             .expect("new resource")
             .typed::<refs_resource::TestResource>();
 
-        resource.get_mut(&mut resources).unwrap().content = initial_content.to_string();
+        let mut edit = resource.instantiate(&resources).unwrap();
+        edit.content = initial_content.to_string();
+        resource.apply(edit, &resources);
 
         project
             .add_resource(
@@ -78,7 +77,7 @@ async fn build_device() {
                 refs_resource::TestResource::TYPENAME,
                 refs_resource::TestResource::TYPE,
                 &resource,
-                &mut resources,
+                &resources,
             )
             .await
             .expect("adding the resource")
@@ -182,21 +181,22 @@ async fn build_device() {
         )
         .await
         .expect("new project");
-        let resources = ResourceRegistryOptions::new()
-            .add_type::<refs_resource::TestResource>()
-            .create_async_registry();
-        let mut resources = resources.lock().await;
+        let resources = AssetRegistryOptions::new()
+            .add_processor::<refs_resource::TestResource>()
+            .create()
+            .await;
 
         let resource = project
-            .load_resource(source_id, &mut resources)
+            .load_resource(source_id, &resources)
             .expect("existing resource")
             .typed::<refs_resource::TestResource>();
 
-        let res = resource.get_mut(&mut resources).expect("loaded resource");
+        let mut res = resource.instantiate(&resources).expect("loaded resource");
         res.content = changed_content.to_string();
+        resource.apply(res, &resources);
 
         project
-            .save_resource(source_id, resource, &mut resources)
+            .save_resource(source_id, resource, &resources)
             .await
             .expect("successful save");
     }
@@ -258,10 +258,10 @@ async fn no_intermediate_resource() {
             )
             .await
             .expect("new project");
-            let resources = ResourceRegistryOptions::new()
-                .add_type::<refs_resource::TestResource>()
-                .create_async_registry();
-            let mut resources = resources.lock().await;
+            let resources = AssetRegistryOptions::new()
+                .add_processor::<refs_resource::TestResource>()
+                .create()
+                .await;
 
             let resource = resources
                 .new_resource(refs_resource::TestResource::TYPE)
@@ -273,7 +273,7 @@ async fn no_intermediate_resource() {
                     refs_resource::TestResource::TYPENAME,
                     refs_resource::TestResource::TYPE,
                     &resource,
-                    &mut resources,
+                    &resources,
                 )
                 .await
                 .expect("adding the resource")
@@ -375,10 +375,10 @@ async fn with_intermediate_resource() {
             )
             .await
             .expect("new project");
-            let resources = ResourceRegistryOptions::new()
-                .add_type::<text_resource::TextResource>()
-                .create_async_registry();
-            let mut resources = resources.lock().await;
+            let resources = AssetRegistryOptions::new()
+                .add_processor::<text_resource::TextResource>()
+                .create()
+                .await;
 
             let resource = resources
                 .new_resource(text_resource::TextResource::TYPE)
@@ -390,7 +390,7 @@ async fn with_intermediate_resource() {
                     text_resource::TextResource::TYPENAME,
                     text_resource::TextResource::TYPE,
                     &resource,
-                    &mut resources,
+                    &resources,
                 )
                 .await
                 .expect("adding the resource")

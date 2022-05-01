@@ -1,4 +1,5 @@
 #[resource()]
+#[derive(Clone)]
 pub struct Material {
     #[legion(resource_type = crate::runtime_texture::Texture)]
     pub albedo: Option<ResourcePathId>,

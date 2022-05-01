@@ -27,8 +27,9 @@ pub fn remote_compilers(
 
 #[cfg(test)]
 mod tests {
-    use lgn_data_offline::{ResourcePathId, Transform};
-    use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
+    use lgn_data_runtime::{
+        ResourceDescriptor, ResourceId, ResourcePathId, ResourceTypeAndId, Transform,
+    };
 
     use super::CompilerRegistryOptions;
     use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};

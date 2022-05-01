@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::node_crunch::nc_error::NCError;
-use lgn_data_offline::ResourcePathId;
+use lgn_data_runtime::ResourcePathId;
 use serde::{Deserialize, Serialize};
 
 use lgn_content_store::{Config, ContentProvider, ContentReaderExt, ContentWriterExt, Identifier};

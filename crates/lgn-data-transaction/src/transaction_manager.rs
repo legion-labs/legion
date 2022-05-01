@@ -5,13 +5,10 @@ use std::{
 };
 
 use lgn_content_store::ChunkIdentifier;
-use lgn_data_offline::{
-    resource::{
-        Project, ResourceHandles, ResourcePathName, ResourceRegistry, ResourceRegistryError,
-    },
-    ResourcePathId,
+use lgn_data_offline::resource::{Project, ResourceHandles, ResourcePathName};
+use lgn_data_runtime::{
+    AssetRegistry, AssetRegistryError, ResourcePathId, ResourceType, ResourceTypeAndId,
 };
-use lgn_data_runtime::{AssetRegistry, ResourceType, ResourceTypeAndId};
 use lgn_tracing::{info, warn};
 use thiserror::Error;
 use tokio::sync::Mutex;
@@ -29,11 +26,11 @@ pub enum Error {
 
     /// Resource failed to deserializer from memory
     #[error("ResourceId '{0:?}' failed to deserialize")]
-    InvalidResourceDeserialization(ResourceTypeAndId, ResourceRegistryError),
+    InvalidResourceDeserialization(ResourceTypeAndId, AssetRegistryError),
 
     /// Resource failed to deserializer from memory
     #[error("ResourceId '{0:?}' failed to serialize")]
-    InvalidResourceSerialization(ResourceTypeAndId, ResourceRegistryError),
+    InvalidResourceSerialization(ResourceTypeAndId, AssetRegistryError),
 
     /// Resource Id Already Exists
     #[error("Resource '{0:?}' already exists in the Project")]
@@ -95,7 +92,6 @@ pub struct TransactionManager {
     pub(crate) loaded_resource_handles: Arc<Mutex<ResourceHandles>>,
 
     pub(crate) project: Arc<Mutex<Project>>,
-    pub(crate) resource_registry: Arc<Mutex<ResourceRegistry>>,
     pub(crate) asset_registry: Arc<AssetRegistry>,
     pub(crate) build_manager: Arc<Mutex<BuildManager>>,
     pub(crate) selection_manager: Arc<SelectionManager>,
@@ -106,7 +102,6 @@ impl TransactionManager {
     /// Create a `DataManager` from a `Project` and `ResourceRegistry`
     pub fn new(
         project: Arc<Mutex<Project>>,
-        resource_registry: Arc<Mutex<ResourceRegistry>>,
         asset_registry: Arc<AssetRegistry>,
         build_manager: BuildManager,
         selection_manager: Arc<SelectionManager>,
@@ -115,7 +110,6 @@ impl TransactionManager {
             commited_transactions: Vec::new(),
             rollbacked_transactions: Vec::new(),
             project,
-            resource_registry,
             asset_registry,
             loaded_resource_handles: Arc::new(Mutex::new(ResourceHandles::default())),
             build_manager: Arc::new(Mutex::new(build_manager)),
@@ -174,7 +168,6 @@ impl TransactionManager {
     /// Load all resources from a `Project`
     pub async fn load_all_resource_type(&mut self, kinds: &[ResourceType]) {
         let project = self.project.lock().await;
-        let mut resource_registry = self.resource_registry.lock().await;
         let mut resource_handles = self.loaded_resource_handles.lock().await;
 
         for resource_id in project.resource_list().await {
@@ -190,7 +183,7 @@ impl TransactionManager {
                 if let Entry::Vacant(entry) = resource_handles.entry(type_id) {
                     let start = std::time::Instant::now();
                     project
-                        .load_resource(type_id, &mut resource_registry)
+                        .load_resource(type_id, &self.asset_registry)
                         .map_or_else(
                             |err| {
                                 warn!("Failed to load {}: {}", type_id, err);

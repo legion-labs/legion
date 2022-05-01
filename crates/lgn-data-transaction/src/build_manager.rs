@@ -1,8 +1,8 @@
 use lgn_content_store::ChunkIdentifier;
 use lgn_data_build::{DataBuild, DataBuildOptions, Error};
 use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
-use lgn_data_offline::{resource::Project, ResourcePathId};
-use lgn_data_runtime::{manifest::Manifest, ResourceType, ResourceTypeAndId};
+use lgn_data_offline::resource::Project;
+use lgn_data_runtime::{manifest::Manifest, ResourcePathId, ResourceType, ResourceTypeAndId};
 use lgn_tracing::{error, info};
 
 /// Builds necessary derived resources based on source resources changed.

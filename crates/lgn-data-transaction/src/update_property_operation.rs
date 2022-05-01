@@ -36,8 +36,8 @@ impl TransactionOperation for UpdatePropertyOperation {
     async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
         let resource_handle = ctx.get_or_load(self.resource_id).await?;
 
-        let reflection = ctx
-            .resource_registry
+        let mut reflection = ctx
+            .asset_registry
             .get_resource_reflection_mut(self.resource_id.kind, &resource_handle)
             .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 
@@ -46,15 +46,16 @@ impl TransactionOperation for UpdatePropertyOperation {
             self.new_values
                 .iter()
                 .map(|(property_name, _new_json)| {
-                    let old_json = get_property_as_json_string(reflection, property_name)
-                        .map_err(|err| Error::Reflection(self.resource_id, err))?;
+                    let old_json =
+                        get_property_as_json_string(reflection.as_reflect(), property_name)
+                            .map_err(|err| Error::Reflection(self.resource_id, err))?;
                     Ok(old_json)
                 })
                 .collect::<Result<Vec<_>, _>>()?,
         );
 
         for (path, json_value) in &self.new_values {
-            set_property_from_json_string(reflection, path, json_value)
+            set_property_from_json_string(reflection.as_reflect_mut(), path, json_value)
                 .map_err(|err| Error::Reflection(self.resource_id, err))?;
         }
 
@@ -66,14 +67,14 @@ impl TransactionOperation for UpdatePropertyOperation {
         if let Some(old_values) = &self.old_values {
             let handle = ctx.get_or_load(self.resource_id).await?;
 
-            let reflection = ctx
-                .resource_registry
+            let mut reflection = ctx
+                .asset_registry
                 .get_resource_reflection_mut(self.resource_id.kind, &handle)
                 .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 
             if self.new_values.len() == old_values.len() {
                 for ((property, _), old_json) in self.new_values.iter().zip(old_values) {
-                    set_property_from_json_string(reflection, property, old_json)
+                    set_property_from_json_string(reflection.as_reflect_mut(), property, old_json)
                         .map_err(|err| Error::Reflection(self.resource_id, err))?;
                 }
             }

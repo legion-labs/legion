@@ -11,7 +11,7 @@ use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_offline::resource::{Project, ResourceRegistryOptions};
+use lgn_data_offline::resource::Project;
 use lgn_data_runtime::{manifest::Manifest, AssetRegistry, AssetRegistryScheduling};
 use lgn_data_transaction::{BuildManager, SelectionManager, TransactionManager};
 use lgn_ecs::prelude::*;
@@ -33,7 +33,6 @@ pub enum ResourceRegistryPluginScheduling {
 impl Plugin for ResourceRegistryPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(SelectionManager::create());
-        app.add_startup_system_to_stage(StartupStage::PreStartup, Self::pre_setup);
         app.add_startup_system_to_stage(
             StartupStage::PostStartup,
             Self::post_setup
@@ -46,15 +45,7 @@ impl Plugin for ResourceRegistryPlugin {
 }
 
 impl ResourceRegistryPlugin {
-    fn pre_setup(mut commands: Commands<'_, '_>) {
-        let registry_options = ResourceRegistryOptions::new();
-        commands.insert_resource(registry_options);
-    }
-
     fn post_setup(world: &mut World) {
-        let registry_options = world.remove_resource::<ResourceRegistryOptions>().unwrap();
-        let registry = registry_options.create_async_registry();
-
         let settings = world.resource::<ResourceRegistrySettings>();
         let project_dir = settings.root_folder.clone();
 
@@ -133,7 +124,6 @@ impl ResourceRegistryPlugin {
 
             Arc::new(Mutex::new(TransactionManager::new(
                 Arc::new(Mutex::new(project)),
-                registry,
                 asset_registry.clone(),
                 build_manager,
                 selection_manager.clone(),

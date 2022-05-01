@@ -19,9 +19,33 @@ pub fn resource(attr: TokenStream, item: TokenStream) -> TokenStream {
     let str_value = parse_macro_input!(attr as LitStr);
     let name = item.ident;
     let resource_impl = quote! {
-        impl Resource for #name {
+
+        impl lgn_data_runtime::ResourceDescriptor for #name {
             const TYPENAME: &'static str = #str_value;
         }
+
+        impl lgn_data_runtime::Resource for #name {
+            fn as_reflect(&self) -> &dyn lgn_data_model::TypeReflection {
+                self
+            }
+            fn as_reflect_mut(&mut self) -> &mut dyn lgn_data_model::TypeReflection {
+                self
+            }
+
+            fn clone_dyn(&self) -> Box<dyn Resource> {
+                Box::new(self.clone())
+            }
+        }
+
+        impl lgn_data_model::TypeReflection for #name {
+            fn get_type(&self) -> lgn_data_model::TypeDefinition {
+                Self::get_type_def()
+            }
+            fn get_type_def() -> lgn_data_model::TypeDefinition {
+                lgn_data_model::TypeDefinition::None
+            }
+        }
+
     };
 
     resource.extend(proc_macro::TokenStream::from(resource_impl));
