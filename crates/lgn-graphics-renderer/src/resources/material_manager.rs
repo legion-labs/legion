@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use lgn_app::App;
-use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
+use lgn_data_runtime::{ResourceDescriptor, ResourceId, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::runtime_texture::TextureReferenceType;
 use lgn_math::Vec4;

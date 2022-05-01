@@ -1,7 +1,6 @@
 #![allow(clippy::type_complexity)]
 
 use std::{
-    any::Any,
     collections::{HashMap, HashSet},
     io,
     ops::Deref,
@@ -16,7 +15,7 @@ use lgn_tracing::{error, info};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    vfs, AssetLoader, AssetRegistryError, HandleUntyped, ReferenceUntyped, ResourceId,
+    vfs, AssetLoader, AssetRegistryError, HandleUntyped, ReferenceUntyped, Resource, ResourceId,
     ResourceType, ResourceTypeAndId,
 };
 
@@ -33,15 +32,15 @@ struct LoadOutput {
     /// None here means the asset was already loaded before so it doesn't have
     /// to be loaded again. It will still contribute to reference count
     /// though.
-    assets: Vec<(ResourceTypeAndId, Option<Box<dyn Any + Send + Sync>>)>,
+    assets: Vec<(ResourceTypeAndId, Option<Box<dyn Resource>>)>,
     load_dependencies: Vec<AssetReference>,
 }
 
 pub(crate) enum LoaderResult {
-    Loaded(HandleUntyped, Box<dyn Any + Send + Sync>, Option<LoadId>),
+    Loaded(HandleUntyped, Box<dyn Resource>, Option<LoadId>),
     Unloaded(ResourceTypeAndId),
     LoadError(HandleUntyped, Option<LoadId>, AssetRegistryError),
-    Reloaded(HandleUntyped, Box<dyn Any + Send + Sync>),
+    Reloaded(HandleUntyped, Box<dyn Resource>),
 }
 
 #[derive(Debug)]
@@ -62,7 +61,7 @@ struct LoadState {
     /// List of Resources in asset file identified by `primary_id`.
     /// None indicates a skipped secondary resource that was already loaded
     /// through another resource file.
-    assets: Vec<(HandleUntyped, Option<Box<dyn Any + Send + Sync>>)>,
+    assets: Vec<(HandleUntyped, Option<Box<dyn Resource>>)>,
     /// The list of Resources that need to be loaded before the LoadState can be
     /// considered completed.
     references: Vec<HandleUntyped>,
@@ -86,15 +85,22 @@ impl HandleMap {
     fn create_handle(&self, type_id: ResourceTypeAndId) -> HandleUntyped {
         let handle = HandleUntyped::new_handle(type_id, self.unload_tx.clone());
 
+        let handles = self.handles.pin();
+
         let weak_ref = HandleUntyped::downgrade(&handle);
-        match self.handles.pin().try_insert(type_id, weak_ref) {
+        match handles.try_insert(type_id, weak_ref) {
             Ok(_) => handle,
             Err(TryInsertError {
                 current,
                 not_inserted: _,
             }) => {
-                handle.forget();
-                current.upgrade().unwrap()
+                if let Some(weak) = current.upgrade() {
+                    handle.forget();
+                    weak
+                } else {
+                    handles.insert(type_id, HandleUntyped::downgrade(&handle));
+                    handle
+                }
             }
         }
     }
@@ -171,9 +177,16 @@ impl AssetLoaderStub {
         let mut all_removed = vec![];
         while let Ok(unload_id) = self.unload_channel_rx.try_recv() {
             let handles = self.handles.pin();
-            let removed = handles.remove(&unload_id).expect("weak ref");
-            assert!(removed.upgrade().is_none(), "a load after unload occurred");
-            all_removed.push(unload_id);
+            if let Some(removed) = handles.get(&unload_id) {
+                if removed.strong_count() == 0 {
+                    // Ignore handle that were revived
+                    lgn_tracing::debug!("Dropping Handle for {:?}", unload_id);
+                    handles.remove(&unload_id);
+                    all_removed.push(unload_id);
+                } else {
+                    lgn_tracing::debug!("Ignoring revived Handle for {:?}", unload_id);
+                }
+            }
         }
         all_removed
     }
@@ -693,7 +706,7 @@ mod tests {
     use crate::{
         asset_loader::{HandleMap, LoaderRequest, LoaderResult},
         manifest::Manifest,
-        test_asset, vfs, Handle, Resource, ResourceId, ResourceTypeAndId,
+        test_asset, vfs, Handle, ResourceDescriptor, ResourceId, ResourceTypeAndId,
     };
 
     async fn setup_test() -> (ResourceTypeAndId, AssetLoaderStub, AssetLoaderIO) {

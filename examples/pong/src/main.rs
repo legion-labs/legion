@@ -16,12 +16,10 @@ use std::{
 
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_offline::{
-    resource::{Project, ResourcePathName, ResourceRegistry, ResourceRegistryOptions},
-    ResourcePathId,
-};
+use lgn_data_offline::resource::{Project, ResourcePathName};
 use lgn_data_runtime::{
-    manifest::Manifest, AssetRegistryOptions, Component, Resource, ResourceId, ResourceTypeAndId,
+    manifest::Manifest, AssetRegistry, AssetRegistryOptions, Component, ResourceDescriptor,
+    ResourceId, ResourcePathId, ResourceTypeAndId,
 };
 use lgn_data_transaction::BuildManager;
 use lgn_graphics_data::offline::CameraSetup;
@@ -33,7 +31,6 @@ use sample_data::{
     offline::{Light, Transform, Visual},
     LightType,
 };
-use tokio::sync::Mutex;
 
 #[derive(Debug, Copy, Clone, PartialEq, ArgEnum)]
 enum CompilersSource {
@@ -102,20 +99,6 @@ async fn main() -> anyhow::Result<()> {
     .await
     .expect("failed to create a project");
 
-    let mut resource_registry = ResourceRegistryOptions::new();
-    lgn_graphics_data::offline::register_resource_types(&mut resource_registry);
-    lgn_scripting::offline::register_resource_types(&mut resource_registry);
-    generic_data::offline::register_resource_types(&mut resource_registry);
-    sample_data::offline::register_resource_types(&mut resource_registry);
-
-    let resource_registry = resource_registry.create_async_registry();
-
-    let resource_ids = create_offline_data(&mut project, &resource_registry).await;
-    project
-        .commit("initial commit")
-        .await
-        .expect("failed to commit");
-
     let mut asset_registry = AssetRegistryOptions::new()
         .add_device_dir(project.resource_dir())
         .add_device_cas(Arc::clone(&data_content_provider), Manifest::default());
@@ -124,6 +107,12 @@ async fn main() -> anyhow::Result<()> {
     generic_data::offline::add_loaders(&mut asset_registry);
     sample_data::offline::add_loaders(&mut asset_registry);
     let asset_registry = asset_registry.create().await;
+
+    let resource_ids = create_offline_data(&mut project, &asset_registry).await;
+    project
+        .commit("initial commit")
+        .await
+        .expect("failed to commit");
 
     let mut compilers_path = env::current_exe().expect("cannot access current_exe");
     compilers_path.pop(); // pop the .exe name
@@ -207,7 +196,7 @@ fn clean_folders(project_dir: impl AsRef<Path>) {
 
 async fn create_offline_data(
     project: &mut Project,
-    resource_registry: &Arc<Mutex<ResourceRegistry>>,
+    resource_registry: &AssetRegistry,
 ) -> Vec<ResourceTypeAndId> {
     // visual reference models
     let cube_model_id = create_offline_model(
@@ -541,7 +530,7 @@ pub fn update(entity, last_result, entities) {
 
 async fn create_offline_entity(
     project: &mut Project,
-    resource_registry: &Arc<Mutex<ResourceRegistry>>,
+    resources: &AssetRegistry,
     resource_id: &str,
     resource_path: &str,
     components: Vec<Box<dyn Component>>,
@@ -554,29 +543,30 @@ async fn create_offline_entity(
     let type_id = ResourceTypeAndId { kind, id };
     let name: ResourcePathName = resource_path.into();
 
-    let mut resources = resource_registry.lock().await;
     let exists = project.exists(id).await;
     let handle = if exists {
         project
-            .load_resource(type_id, &mut resources)
+            .load_resource(type_id, resources)
             .expect("failed to load resource")
     } else {
         resources
-            .new_resource(kind)
+            .new_resource_with_id(type_id)
             .expect("failed to create new resource")
     };
 
-    let entity = handle
-        .get_mut::<sample_data::offline::Entity>(&mut resources)
+    let mut entity = handle
+        .instantiate::<sample_data::offline::Entity>(resources)
         .unwrap();
     entity.components.clear();
     entity.components.extend(components.into_iter());
     entity.children.clear();
     entity.children.extend(children.into_iter());
 
+    handle.apply(entity, resources);
+
     if exists {
         project
-            .save_resource(type_id, handle, &mut resources)
+            .save_resource(type_id, handle, resources)
             .await
             .expect("failed to save resource");
     } else {
@@ -587,7 +577,7 @@ async fn create_offline_entity(
                 kind,
                 id,
                 handle,
-                &mut resources,
+                resources,
             )
             .await
             .expect("failed to add new resource");
@@ -599,7 +589,7 @@ async fn create_offline_entity(
 
 async fn create_offline_model(
     project: &mut Project,
-    resource_registry: &Arc<Mutex<ResourceRegistry>>,
+    resources: &AssetRegistry,
     resource_id: &str,
     resource_path: &str,
     mesh: Mesh,
@@ -611,20 +601,19 @@ async fn create_offline_model(
     let type_id = ResourceTypeAndId { kind, id };
     let name: ResourcePathName = resource_path.into();
 
-    let mut resources = resource_registry.lock().await;
     let exists = project.exists(id).await;
     let handle = if exists {
         project
-            .load_resource(type_id, &mut resources)
+            .load_resource(type_id, resources)
             .expect("failed to load resource")
     } else {
         resources
-            .new_resource(kind)
+            .new_resource_with_id(type_id)
             .expect("failed to create new resource")
     };
 
-    let model = handle
-        .get_mut::<lgn_graphics_data::offline::Model>(&mut resources)
+    let mut model = handle
+        .instantiate::<lgn_graphics_data::offline::Model>(resources)
         .unwrap();
     model.meshes.clear();
     let mesh = lgn_graphics_data::offline::Mesh {
@@ -641,9 +630,11 @@ async fn create_offline_model(
     };
     model.meshes.push(mesh);
 
+    handle.apply(model, resources);
+
     if exists {
         project
-            .save_resource(type_id, handle, &mut resources)
+            .save_resource(type_id, handle, resources)
             .await
             .expect("failed to save resource");
     } else {
@@ -654,7 +645,7 @@ async fn create_offline_model(
                 kind,
                 id,
                 handle,
-                &mut resources,
+                resources,
             )
             .await
             .expect("failed to add new resource");
@@ -666,7 +657,7 @@ async fn create_offline_model(
 
 async fn create_offline_script(
     project: &mut Project,
-    resource_registry: &Arc<Mutex<ResourceRegistry>>,
+    resources: &AssetRegistry,
     resource_id: &str,
     resource_path: &str,
     script_type: ScriptType,
@@ -679,27 +670,28 @@ async fn create_offline_script(
     let type_id = ResourceTypeAndId { kind, id };
     let name: ResourcePathName = resource_path.into();
 
-    let mut resources = resource_registry.lock().await;
     let exists = project.exists(id).await;
     let handle = if exists {
         project
-            .load_resource(type_id, &mut resources)
+            .load_resource(type_id, resources)
             .expect("failed to load resource")
     } else {
         resources
-            .new_resource(kind)
+            .new_resource_with_id(type_id)
             .expect("failed to create new resource")
     };
 
-    let script = handle
-        .get_mut::<lgn_scripting::offline::Script>(&mut resources)
+    let mut script = handle
+        .instantiate::<lgn_scripting::offline::Script>(resources)
         .unwrap();
     script.script_type = script_type;
     script.script = script_text.to_owned();
 
+    handle.apply(script, resources);
+
     if exists {
         project
-            .save_resource(type_id, handle, &mut resources)
+            .save_resource(type_id, handle, resources)
             .await
             .expect("failed to save resource");
     } else {
@@ -710,7 +702,7 @@ async fn create_offline_script(
                 kind,
                 id,
                 handle,
-                &mut resources,
+                resources,
             )
             .await
             .expect("failed to add new resource");

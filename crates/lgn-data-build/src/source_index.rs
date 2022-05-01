@@ -8,11 +8,8 @@ use std::{
 
 use hex::ToHex;
 use lgn_content_store::{ContentProvider, ContentReaderExt, ContentWriterExt};
-use lgn_data_offline::{
-    resource::{Project, Tree},
-    ResourcePathId,
-};
-use lgn_data_runtime::{ResourceId, ResourceTypeAndId};
+use lgn_data_offline::resource::{Project, Tree};
+use lgn_data_runtime::{ResourceId, ResourcePathId, ResourceTypeAndId};
 use lgn_tracing::span_scope;
 use lgn_utils::{DefaultHasher, DefaultHasher256};
 use petgraph::{Directed, Graph};
@@ -414,11 +411,10 @@ mod tests {
     use std::sync::Arc;
 
     use lgn_content_store::{ContentProvider, MemoryProvider};
-    use lgn_data_offline::{
-        resource::{Project, ResourcePathName, ResourceRegistryOptions},
-        ResourcePathId,
+    use lgn_data_offline::resource::{Project, ResourcePathName};
+    use lgn_data_runtime::{
+        AssetRegistryOptions, ResourceDescriptor, ResourceId, ResourcePathId, ResourceTypeAndId,
     };
-    use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
 
     use crate::source_index::{SourceContent, SourceIndex};
 
@@ -546,10 +542,10 @@ mod tests {
             current_checksum(&source_index)
         };
 
-        let resource_registry = ResourceRegistryOptions::new()
-            .add_type::<refs_resource::TestResource>()
-            .create_async_registry();
-        let mut resources = resource_registry.lock().await;
+        let resources = AssetRegistryOptions::new()
+            .add_processor::<refs_resource::TestResource>()
+            .create()
+            .await;
 
         let (resource_id, resource_handle) = {
             let resource_handle = resources
@@ -557,7 +553,9 @@ mod tests {
                 .expect("new resource")
                 .typed::<refs_resource::TestResource>();
 
-            resource_handle.get_mut(&mut resources).unwrap().content = "hello".to_string();
+            let mut edit = resource_handle.instantiate(&resources).unwrap();
+            edit.content = "hello".to_string();
+            resource_handle.apply(edit, &resources);
 
             let id = ResourceId::from_raw(0xaabbccddeeff00000000000000000000);
 
@@ -568,7 +566,7 @@ mod tests {
                     refs_resource::TestResource::TYPE,
                     id,
                     &resource_handle,
-                    &mut resources,
+                    &resources,
                 )
                 .await
                 .expect("adding the resource");
@@ -600,13 +598,14 @@ mod tests {
 
         // modify a resource
         let third_checksum = {
-            let res = resource_handle
-                .get_mut(&mut resources)
+            let mut edit = resource_handle
+                .instantiate(&resources)
                 .expect("loaded resource");
-            res.content = "hello world!".to_string();
+            edit.content = "hello world!".to_string();
+            resource_handle.apply(edit, &resources);
 
             project
-                .save_resource(resource_id, resource_handle, &mut resources)
+                .save_resource(resource_id, resource_handle, &resources)
                 .await
                 .expect("successful save");
 

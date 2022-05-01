@@ -9,7 +9,10 @@ use std::{
 };
 
 use lgn_content_store::ContentProvider;
-use lgn_data_runtime::{ResourceId, ResourceType, ResourceTypeAndId};
+use lgn_data_runtime::{
+    AssetRegistry, AssetRegistryError, HandleUntyped, ResourceId, ResourcePathId, ResourceType,
+    ResourceTypeAndId,
+};
 use lgn_source_control::{
     CanonicalPath, CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Staging,
     Workspace, WorkspaceConfig, WorkspaceRegistration,
@@ -17,10 +20,7 @@ use lgn_source_control::{
 use lgn_tracing::error;
 use thiserror::Error;
 
-use crate::resource::{
-    metadata::Metadata, ResourceHandleUntyped, ResourcePathName, ResourceRegistry,
-};
-use crate::ResourcePathId;
+use crate::resource::{metadata::Metadata, ResourcePathName};
 
 const METADATA_EXT: &str = "meta";
 
@@ -70,9 +70,6 @@ pub use lgn_source_control::data_types::Tree;
 ///
 /// Note: Resource's [`ResourcePathName`] is only used for display purposes and
 /// can be changed freely.
-///
-/// For more about loading, saving and managing resources in memory see
-/// [`ResourceRegistry`]
 pub struct Project {
     project_dir: PathBuf,
     resource_dir: PathBuf,
@@ -101,10 +98,7 @@ pub enum Error {
     ContentStore(#[from] lgn_content_store::Error),
     /// RegistryRegistry Error
     #[error("ResourceRegistry Error: '{1}' on resource '{0}'")]
-    ResourceRegistry(
-        ResourceTypeAndId,
-        #[source] crate::resource::ResourceRegistryError,
-    ),
+    ResourceRegistry(ResourceTypeAndId, #[source] AssetRegistryError),
 }
 
 /// The type of change done to a resource.
@@ -366,8 +360,8 @@ impl Project {
         name: ResourcePathName,
         kind_name: &str,
         kind: ResourceType,
-        handle: impl AsRef<ResourceHandleUntyped>,
-        registry: &mut ResourceRegistry,
+        handle: impl AsRef<HandleUntyped>,
+        registry: &AssetRegistry,
     ) -> Result<ResourceTypeAndId, Error> {
         self.add_resource_with_id(name, kind_name, kind, ResourceId::new(), handle, registry)
             .await
@@ -388,8 +382,8 @@ impl Project {
         kind_name: &str,
         kind: ResourceType,
         id: ResourceId,
-        handle: impl AsRef<ResourceHandleUntyped>,
-        registry: &mut ResourceRegistry,
+        handle: impl AsRef<HandleUntyped>,
+        registry: &AssetRegistry,
     ) -> Result<ResourceTypeAndId, Error> {
         let meta_path = self.metadata_path(id);
         let resource_path = self.resource_path(id);
@@ -470,8 +464,8 @@ impl Project {
     pub async fn save_resource(
         &mut self,
         type_id: ResourceTypeAndId,
-        handle: impl AsRef<ResourceHandleUntyped>,
-        resources: &mut ResourceRegistry,
+        handle: impl AsRef<HandleUntyped>,
+        resources: &AssetRegistry,
     ) -> Result<(), Error> {
         let resource_path = self.resource_path(type_id.id);
         let metadata_path = self.metadata_path(type_id.id);
@@ -523,14 +517,14 @@ impl Project {
     pub fn load_resource(
         &self,
         type_id: ResourceTypeAndId,
-        resources: &mut ResourceRegistry,
-    ) -> Result<ResourceHandleUntyped, Error> {
+        resources: &AssetRegistry,
+    ) -> Result<HandleUntyped, Error> {
         let resource_path = self.resource_path(type_id.id);
 
         let mut resource_file =
             File::open(&resource_path).map_err(|e| Error::Io(resource_path.clone(), e))?;
         let handle = resources
-            .deserialize_resource(type_id.kind, &mut resource_file)
+            .deserialize_resource(type_id, &mut resource_file)
             .map_err(|e| Error::ResourceRegistry(type_id, e))?;
         Ok(handle)
     }
@@ -800,22 +794,17 @@ impl fmt::Debug for Project {
 
 #[cfg(test)]
 mod tests {
-    use std::any::Any;
     use std::str::FromStr;
     use std::sync::Arc;
 
     use lgn_content_store::{ContentProvider, MemoryProvider};
-    use lgn_data_runtime::{resource, Resource, ResourceType};
-    use tokio::sync::Mutex;
+    use lgn_data_runtime::{
+        resource, AssetRegistry, AssetRegistryOptions, Resource, ResourcePathId, ResourceProcessor,
+        ResourceProcessorError, ResourceType,
+    };
 
     use crate::resource::project::Project;
-    use crate::{
-        resource::{
-            ResourcePathName, ResourceProcessor, ResourceProcessorError, ResourceRegistry,
-            ResourceRegistryOptions,
-        },
-        ResourcePathId,
-    };
+    use crate::resource::ResourcePathName;
 
     const RESOURCE_TEXTURE: &str = "texture";
     const RESOURCE_MATERIAL: &str = "material";
@@ -824,6 +813,7 @@ mod tests {
     const RESOURCE_ACTOR: &str = "actor";
 
     #[resource("null")]
+    #[derive(Clone)]
     struct NullResource {
         content: isize,
         dependencies: Vec<ResourcePathId>,
@@ -831,14 +821,14 @@ mod tests {
 
     struct NullResourceProc {}
     impl ResourceProcessor for NullResourceProc {
-        fn new_resource(&mut self) -> Box<dyn Any + Send + Sync> {
+        fn new_resource(&mut self) -> Box<dyn Resource> {
             Box::new(NullResource {
                 content: 0,
                 dependencies: vec![],
             })
         }
 
-        fn extract_build_dependencies(&mut self, resource: &dyn Any) -> Vec<ResourcePathId> {
+        fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
             resource
                 .downcast_ref::<NullResource>()
                 .unwrap()
@@ -848,7 +838,7 @@ mod tests {
 
         fn write_resource(
             &self,
-            resource: &dyn Any,
+            resource: &dyn Resource,
             writer: &mut dyn std::io::Write,
         ) -> Result<usize, ResourceProcessorError> {
             let resource = resource.downcast_ref::<NullResource>().unwrap();
@@ -878,7 +868,7 @@ mod tests {
         fn read_resource(
             &mut self,
             reader: &mut dyn std::io::Read,
-        ) -> Result<Box<dyn Any + Send + Sync>, ResourceProcessorError> {
+        ) -> Result<Box<dyn Resource>, ResourceProcessorError> {
             let mut resource = self.new_resource();
             let mut res = resource.downcast_mut::<NullResource>().unwrap();
 
@@ -903,39 +893,39 @@ mod tests {
     }
 
     #[allow(clippy::too_many_lines)]
-    async fn create_actor(project: &mut Project) -> Arc<Mutex<ResourceRegistry>> {
-        let resources_arc = ResourceRegistryOptions::new()
-            .add_type_processor(
+    async fn create_actor(project: &mut Project) -> Arc<AssetRegistry> {
+        let resources = AssetRegistryOptions::new()
+            .add_processor_ext(
                 ResourceType::new(RESOURCE_TEXTURE.as_bytes()),
                 Box::new(NullResourceProc {}),
             )
-            .add_type_processor(
+            .add_processor_ext(
                 ResourceType::new(RESOURCE_MATERIAL.as_bytes()),
                 Box::new(NullResourceProc {}),
             )
-            .add_type_processor(
+            .add_processor_ext(
                 ResourceType::new(RESOURCE_GEOMETRY.as_bytes()),
                 Box::new(NullResourceProc {}),
             )
-            .add_type_processor(
+            .add_processor_ext(
                 ResourceType::new(RESOURCE_SKELETON.as_bytes()),
                 Box::new(NullResourceProc {}),
             )
-            .add_type_processor(
+            .add_processor_ext(
                 ResourceType::new(RESOURCE_ACTOR.as_bytes()),
                 Box::new(NullResourceProc {}),
             )
-            .create_async_registry();
+            .create()
+            .await;
 
-        let mut resources = resources_arc.lock().await;
         let texture_type = ResourceType::new(RESOURCE_TEXTURE.as_bytes());
         let texture = project
             .add_resource(
                 ResourcePathName::new("albedo.texture"),
                 RESOURCE_TEXTURE,
                 texture_type,
-                &resources.new_resource(texture_type).unwrap(),
-                &mut resources,
+                resources.new_resource(texture_type).unwrap(),
+                &resources,
             )
             .await
             .unwrap();
@@ -945,18 +935,17 @@ mod tests {
             .new_resource(material_type)
             .unwrap()
             .typed::<NullResource>();
-        material
-            .get_mut(&mut resources)
-            .unwrap()
-            .dependencies
-            .push(ResourcePathId::from(texture));
+        let mut edit = material.instantiate(&resources).unwrap();
+        edit.dependencies.push(ResourcePathId::from(texture));
+        material.apply(edit, &resources);
+
         let material = project
             .add_resource(
                 ResourcePathName::new("body.material"),
                 RESOURCE_MATERIAL,
                 material_type,
                 &material,
-                &mut resources,
+                &resources,
             )
             .await
             .unwrap();
@@ -966,18 +955,16 @@ mod tests {
             .new_resource(geometry_type)
             .unwrap()
             .typed::<NullResource>();
-        geometry
-            .get_mut(&mut resources)
-            .unwrap()
-            .dependencies
-            .push(ResourcePathId::from(material));
+        let mut edit = geometry.instantiate(&resources).unwrap();
+        edit.dependencies.push(ResourcePathId::from(material));
+        geometry.apply(edit, &resources);
         let geometry = project
             .add_resource(
                 ResourcePathName::new("hero.geometry"),
                 RESOURCE_GEOMETRY,
                 geometry_type,
                 &geometry,
-                &mut resources,
+                &resources,
             )
             .await
             .unwrap();
@@ -989,7 +976,7 @@ mod tests {
                 RESOURCE_SKELETON,
                 skeleton_type,
                 &resources.new_resource(skeleton_type).unwrap(),
-                &mut resources,
+                &resources,
             )
             .await
             .unwrap();
@@ -999,26 +986,27 @@ mod tests {
             .new_resource(actor_type)
             .unwrap()
             .typed::<NullResource>();
-        actor.get_mut(&mut resources).unwrap().dependencies = vec![
+        let mut edit = actor.instantiate(&resources).unwrap();
+        edit.dependencies = vec![
             ResourcePathId::from(geometry),
             ResourcePathId::from(skeleton),
         ];
+        actor.apply(edit, &resources);
         let _actor = project
             .add_resource(
                 ResourcePathName::new("hero.actor"),
                 RESOURCE_ACTOR,
                 actor_type,
                 &actor,
-                &mut resources,
+                &resources,
             )
             .await
             .unwrap();
 
-        drop(resources);
-        resources_arc
+        resources
     }
 
-    async fn create_sky_material(project: &mut Project, resources: &mut ResourceRegistry) {
+    async fn create_sky_material(project: &mut Project, resources: &AssetRegistry) {
         let texture_type = ResourceType::new(RESOURCE_TEXTURE.as_bytes());
         let texture = project
             .add_resource(
@@ -1036,11 +1024,9 @@ mod tests {
             .new_resource(material_type)
             .unwrap()
             .typed::<NullResource>();
-        material
-            .get_mut(resources)
-            .unwrap()
-            .dependencies
-            .push(ResourcePathId::from(texture));
+        let mut edit = material.instantiate(resources).unwrap();
+        edit.dependencies.push(ResourcePathId::from(texture));
+        material.apply(edit, resources);
 
         let _material = project
             .add_resource(
@@ -1098,7 +1084,6 @@ mod tests {
             .await
             .expect("new project");
         let resources = create_actor(&mut project).await;
-        let mut resources = resources.lock().await;
 
         let actor_id = project
             .find_resource(&ResourcePathName::new("hero.actor"))
@@ -1110,11 +1095,13 @@ mod tests {
 
         // modify before commit
         {
-            let handle = project.load_resource(actor_id, &mut resources).unwrap();
-            let content = handle.get_mut::<NullResource>(&mut resources).unwrap();
+            let handle = project.load_resource(actor_id, &resources).unwrap();
+            let mut content = handle.instantiate::<NullResource>(&resources).unwrap();
             content.content = 8;
+            handle.apply(content, &resources);
+
             project
-                .save_resource(actor_id, &handle, &mut resources)
+                .save_resource(actor_id, &handle, &resources)
                 .await
                 .unwrap();
         }
@@ -1126,12 +1113,13 @@ mod tests {
 
         // modify resource
         {
-            let handle = project.load_resource(actor_id, &mut resources).unwrap();
-            let content = handle.get_mut::<NullResource>(&mut resources).unwrap();
+            let handle = project.load_resource(actor_id, &resources).unwrap();
+            let mut content = handle.instantiate::<NullResource>(&resources).unwrap();
             assert_eq!(content.content, 8);
             content.content = 9;
+            handle.apply(content, &resources);
             project
-                .save_resource(actor_id, &handle, &mut resources)
+                .save_resource(actor_id, &handle, &resources)
                 .await
                 .unwrap();
 
@@ -1152,7 +1140,6 @@ mod tests {
             .await
             .expect("new project");
         let resources = create_actor(&mut project).await;
-        let mut resources = resources.lock().await;
 
         let actor_id = project
             .find_resource(&ResourcePathName::new("hero.actor"))
@@ -1163,12 +1150,13 @@ mod tests {
 
         // modify resource
         let original_content = {
-            let handle = project.load_resource(actor_id, &mut resources).unwrap();
-            let content = handle.get_mut::<NullResource>(&mut resources).unwrap();
+            let handle = project.load_resource(actor_id, &resources).unwrap();
+            let mut content = handle.instantiate::<NullResource>(&resources).unwrap();
             let previous_value = content.content;
             content.content = 9;
+            handle.apply(content, &resources);
             project
-                .save_resource(actor_id, &handle, &mut resources)
+                .save_resource(actor_id, &handle, &resources)
                 .await
                 .unwrap();
 
@@ -1176,11 +1164,12 @@ mod tests {
         };
 
         {
-            let handle = project.load_resource(actor_id, &mut resources).unwrap();
-            let content = handle.get_mut::<NullResource>(&mut resources).unwrap();
+            let handle = project.load_resource(actor_id, &resources).unwrap();
+            let mut content = handle.instantiate::<NullResource>(&resources).unwrap();
             content.content = original_content;
+            handle.apply(content, &resources);
             project
-                .save_resource(actor_id, &handle, &mut resources)
+                .save_resource(actor_id, &handle, &resources)
                 .await
                 .unwrap();
         }
@@ -1236,7 +1225,7 @@ mod tests {
             .expect("new project");
         let resources = create_actor(&mut project).await;
         assert!(project.commit("rename test").await.is_ok());
-        create_sky_material(&mut project, &mut *resources.lock().await).await;
+        create_sky_material(&mut project, &resources).await;
 
         rename_assert(
             &mut project,

@@ -26,8 +26,10 @@ use lgn_data_model::{
     utils::find_property,
     ReflectionError, TypeDefinition,
 };
-use lgn_data_offline::{resource::ResourcePathName, ResourcePathId};
-use lgn_data_runtime::{Resource, ResourceId, ResourceType, ResourceTypeAndId};
+use lgn_data_offline::resource::ResourcePathName;
+use lgn_data_runtime::{
+    Resource, ResourceDescriptor, ResourceId, ResourcePathId, ResourceType, ResourceTypeAndId,
+};
 use lgn_data_transaction::{
     ArrayOperation, LockContext, Transaction, TransactionManager, UpdatePropertyOperation,
 };
@@ -237,10 +239,10 @@ impl PropertyInspector for PropertyInspectorRPC {
             .map_err(|err| Status::internal(err.to_string()))?;
 
         let mut property_bag = if let Some(reflection) = ctx
-            .resource_registry
+            .asset_registry
             .get_resource_reflection(resource_id.kind, &handle)
         {
-            collect_properties::<ResourcePropertyCollector>(reflection)
+            collect_properties::<ResourcePropertyCollector>(reflection.as_reflect())
                 .map_err(|err| Status::internal(err.to_string()))?
         } else {
             // Return a default bag if there's no reflection
@@ -324,7 +326,7 @@ impl PropertyInspector for PropertyInspectorRPC {
                         if let Ok(handle) = ctx.get_or_load(gltf_resource_id).await {
                             let mut gltf_loader = GltfLoader::default();
 
-                            if let Some(gltf) = handle.get::<GltfFile>(&ctx.resource_registry) {
+                            if let Some(gltf) = handle.get::<GltfFile>(&ctx.asset_registry) {
                                 let models = gltf.gather_models(gltf_resource_id);
                                 let materials = gltf.gather_materials(gltf_resource_id);
 
@@ -368,15 +370,17 @@ impl PropertyInspector for PropertyInspectorRPC {
                             }
 
                             if let Ok(entity_handle) = ctx.get_or_load(resource_id).await {
-                                if let Some(entity) = entity_handle
-                                    .get_mut::<sample_data::offline::Entity>(
-                                        &mut ctx.resource_registry,
+                                if let Some(mut entity) = entity_handle
+                                    .instantiate::<sample_data::offline::Entity>(
+                                        &ctx.asset_registry,
                                     )
                                 {
                                     entity
                                         .components
                                         .retain(|component| !component.is::<GltfLoader>());
                                     entity.components.push(Box::new(gltf_loader));
+
+                                    entity_handle.apply(entity, &ctx.asset_registry);
                                 }
                             }
                             if let Err(_err) = self
@@ -468,14 +472,14 @@ impl PropertyInspector for PropertyInspectorRPC {
             .map_err(|err| Status::internal(err.to_string()))?;
 
         let reflection = ctx
-            .resource_registry
+            .asset_registry
             .get_resource_reflection(resource_id.kind, &handle)
             .ok_or_else(|| {
                 Status::internal(format!("Invalid ResourceID format: {}", resource_id))
             })?;
 
         //let mut indexed_path = format!("{}[{}]", request.array_path, request.index);
-        let array_prop = find_property(reflection, &request.array_path)
+        let array_prop = find_property(reflection.as_reflect(), &request.array_path)
             .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
 
         if let TypeDefinition::Array(array_desc) = array_prop.type_def {

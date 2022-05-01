@@ -1,5 +1,4 @@
 use std::{
-    any::Any,
     marker::PhantomData,
     sync::{Arc, Weak},
 };
@@ -93,11 +92,26 @@ impl HandleUntyped {
     }
 
     /// Retrieve a reference asset `T` from [`AssetRegistry`].
-    pub fn get<'a, T: Any + Resource>(
+    pub fn get<'a, T: Resource>(
         &'_ self,
         registry: &'a AssetRegistry,
     ) -> Option<crate::AssetRegistryGuard<'a, T>> {
         registry.get::<T>(self.inner.type_id)
+    }
+
+    /// Create a detach clone of a `Resource`
+    pub fn instantiate<T: Resource>(&self, registry: &AssetRegistry) -> Option<Box<T>> {
+        let asset = registry.instantiate(self.inner.type_id)?;
+        if asset.is::<T>() {
+            let value = unsafe { Box::from_raw(Box::into_raw(asset).cast::<T>()) };
+            return Some(value);
+        }
+        None
+    }
+
+    /// Replace a resource
+    pub fn apply<T: Resource>(&self, value: Box<T>, registry: &AssetRegistry) {
+        registry.apply(self.inner.type_id, value);
     }
 
     /// Returns `ResourceId` associated with this handle.
@@ -113,6 +127,17 @@ impl HandleUntyped {
     /// Returns true if [`Resource`] load failed.
     pub fn is_err(&self, registry: &AssetRegistry) -> bool {
         registry.is_err(self.inner.type_id)
+    }
+
+    /// Returns a typed Handle
+    pub fn typed<T: Resource>(self) -> Handle<T> {
+        Handle::<T>::from(self)
+    }
+}
+
+impl AsRef<Self> for HandleUntyped {
+    fn as_ref(&self) -> &Self {
+        self
     }
 }
 
@@ -121,56 +146,77 @@ impl HandleUntyped {
 //
 
 /// Typed handle to [`Resource`] of type `T`.
-pub struct Handle<T: Any + Resource> {
-    inner: Arc<Inner>,
+pub struct Handle<T: Resource> {
+    handle: HandleUntyped,
     _pd: PhantomData<fn() -> T>,
 }
 
-impl<T: Any + Resource> Clone for Handle<T> {
+impl<T: Resource> Clone for Handle<T> {
     fn clone(&self) -> Self {
         Self {
-            inner: self.inner.clone(),
+            handle: self.handle.clone(),
             _pd: PhantomData,
         }
     }
 }
 
-impl<T: Any + Resource> PartialEq for Handle<T> {
+impl<T: Resource> PartialEq for Handle<T> {
     fn eq(&self, other: &Self) -> bool {
-        self.inner.type_id == other.inner.type_id
+        self.handle.inner.type_id == other.handle.inner.type_id
     }
 }
 
-impl<T: Any + Resource> From<HandleUntyped> for Handle<T> {
+impl<T: Resource> From<HandleUntyped> for Handle<T> {
     fn from(handle: HandleUntyped) -> Self {
         Self {
-            inner: handle.inner,
+            handle,
             _pd: PhantomData,
         }
     }
 }
 
-impl<T: Any + Resource> Handle<T> {
+impl<T: Resource> Handle<T> {
     /// Retrieve a reference asset `T` from [`AssetRegistry`].
     pub fn get<'a>(
         &'_ self,
         registry: &'a AssetRegistry,
     ) -> Option<crate::AssetRegistryGuard<'a, T>> {
-        registry.get::<T>(self.inner.type_id)
+        registry.get::<T>(self.handle.inner.type_id)
+    }
+
+    /// Returns an editable copy of a Resource
+    pub fn instantiate(&self, registry: &AssetRegistry) -> Option<Box<T>> {
+        let asset = registry.instantiate(self.handle.inner.type_id)?;
+        if asset.is::<T>() {
+            let value = unsafe { Box::from_raw(Box::into_raw(asset).cast::<T>()) };
+            return Some(value);
+        }
+        None
+    }
+
+    /// Apply the change to a Resource
+    pub fn apply(&self, value: Box<T>, registry: &AssetRegistry) {
+        registry.apply(self.handle.inner.type_id, value);
     }
 
     /// Returns `ResourceId` associated with this handle.
     pub fn id(&self) -> ResourceTypeAndId {
-        self.inner.type_id
+        self.handle.inner.type_id
     }
 
     /// Returns true if [`Resource`] load is finished and has succeeded.
     pub fn is_loaded(&self, registry: &AssetRegistry) -> bool {
-        registry.is_loaded(self.inner.type_id)
+        registry.is_loaded(self.handle.inner.type_id)
     }
 
     /// Returns true if [`Resource`] load failed.
     pub fn is_err(&self, registry: &AssetRegistry) -> bool {
-        registry.is_err(self.inner.type_id)
+        registry.is_err(self.handle.inner.type_id)
+    }
+}
+
+impl<T: Resource> AsRef<HandleUntyped> for Handle<T> {
+    fn as_ref(&self) -> &HandleUntyped {
+        &self.handle
     }
 }

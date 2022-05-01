@@ -1,6 +1,8 @@
-use std::{any::Any, io, sync::Arc};
+use std::{io, sync::Arc};
 
-use crate::{AssetRegistry, Resource};
+use lgn_data_model::TypeReflection;
+
+use crate::{AssetRegistry, Resource, ResourcePathId};
 
 /// Trait describing the resource loadable at runtime.
 pub trait Asset: Resource {
@@ -31,16 +33,88 @@ pub trait AssetLoader {
     /// # Errors
     ///
     /// Will return 'Err' if unable to deserialize asset
-    fn load(
-        &mut self,
-        reader: &mut dyn io::Read,
-    ) -> Result<Box<dyn Any + Send + Sync>, AssetLoaderError>;
+    fn load(&mut self, reader: &mut dyn io::Read) -> Result<Box<dyn Resource>, AssetLoaderError>;
 
     /// Asset initialization executed after the asset and all its dependencies
     /// have been loaded.
-    fn load_init(&mut self, asset: &mut (dyn Any + Send + Sync));
+    fn load_init(&mut self, asset: &mut (dyn Resource));
 
     /// An asset loader can keep a reference to the asset registry, for use in
     /// asset initialization
     fn register_registry(&mut self, _registry: Arc<AssetRegistry>) {}
+}
+
+/// Error type for `ResourceProcessorError`
+#[derive(thiserror::Error, Debug)]
+pub enum ResourceProcessorError {
+    /// IOError fallthrough
+    #[error("ResourceProcessor IO error: {0}")]
+    IOError(#[from] std::io::Error),
+
+    /// AssetLoaderError fallthrough
+    #[error("ResourceProcessor load failed: '{0}'")]
+    AssetLoaderError(#[from] AssetLoaderError),
+
+    /// Resource Serialization Error
+    #[error("ResourceProcessor failed to serialize: '{0}'")]
+    ResourceSerializationFailed(&'static str, String),
+
+    /// AssetLoaderError fallthrough
+    #[error("ResourceProcessor Reflection Error '{0}'")]
+    ReflectionError(#[from] lgn_data_model::ReflectionError),
+}
+
+/// The trait defines a resource that can be serialized.
+pub trait OfflineResource: Asset {
+    /// Offline resource processor bound to the resource.
+    type Processor: ResourceProcessor + Send + Sync + Default + 'static;
+}
+
+/// The `ResourceProcessor` trait allows to process an offline resource.
+pub trait ResourceProcessor {
+    /// Interface returning a resource in a default state. Useful when creating
+    /// a new resource.
+    fn new_resource(&mut self) -> Box<dyn Resource>;
+
+    /// Interface returning a list of resources that `resource` depends on for
+    /// building.
+    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId>;
+
+    /// Return the name of the Resource type that the processor can process.
+    fn get_resource_type_name(&self) -> Option<&'static str> {
+        None
+    }
+
+    /// Interface defining serialization behavior of the resource.
+    /// # Errors
+    /// Will return `ResourceProcessorError` if the resource was not written properly
+    fn write_resource(
+        &self,
+        resource: &dyn Resource,
+        writer: &mut dyn io::Write,
+    ) -> Result<usize, ResourceProcessorError>;
+
+    /// Interface defining deserialization behavior of the resource.
+    /// # Errors
+    /// Will return `ResourceProcessorError` if the resource was not read properly
+    fn read_resource(
+        &mut self,
+        reader: &mut dyn io::Read,
+    ) -> Result<Box<dyn Resource>, ResourceProcessorError>;
+
+    /// Interface to retrieve the Resource reflection interface
+    fn get_resource_reflection<'a>(
+        &self,
+        _resource: &'a dyn Resource,
+    ) -> Option<&'a dyn TypeReflection> {
+        None
+    }
+
+    /// Interface to retrieve the Resource reflection interface
+    fn get_resource_reflection_mut<'a>(
+        &self,
+        _resource: &'a mut dyn Resource,
+    ) -> Option<&'a mut dyn TypeReflection> {
+        None
+    }
 }

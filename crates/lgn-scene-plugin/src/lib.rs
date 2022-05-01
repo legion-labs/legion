@@ -6,7 +6,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use lgn_app::{App, Plugin};
-use lgn_data_runtime::{AssetRegistry, AssetRegistryEvent, Resource, ResourceTypeAndId};
+use lgn_data_runtime::{AssetRegistry, AssetRegistryEvent, ResourceDescriptor, ResourceTypeAndId};
 
 use lgn_ecs::prelude::*;
 

@@ -8,8 +8,10 @@ use tonic::Request;
 
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_offline::resource::{Project, ResourceRegistryOptions};
-use lgn_data_runtime::{manifest::Manifest, AssetRegistryOptions, Resource, ResourceTypeAndId};
+use lgn_data_offline::resource::Project;
+use lgn_data_runtime::{
+    manifest::Manifest, AssetRegistryOptions, ResourceDescriptor, ResourceTypeAndId,
+};
 use lgn_data_transaction::{
     ArrayOperation, BuildManager, SelectionManager, Transaction, TransactionManager,
 };
@@ -78,14 +80,8 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
         .await
         .expect("failed to create a project");
 
-    let mut resource_registry = ResourceRegistryOptions::new();
-    sample_data::offline::register_resource_types(&mut resource_registry);
-    lgn_scripting::offline::register_resource_types(&mut resource_registry);
-
     let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
         Arc::new(Box::new(MemoryProvider::new()));
-
-    let resource_registry = resource_registry.create_async_registry();
 
     let mut asset_registry = AssetRegistryOptions::new()
         .add_device_dir(project.resource_dir())
@@ -113,7 +109,6 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
 
     Arc::new(Mutex::new(TransactionManager::new(
         project,
-        resource_registry,
         asset_registry,
         build_manager,
         SelectionManager::create(),

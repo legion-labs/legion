@@ -12,7 +12,7 @@ use std::str::FromStr;
 
 use compiler_api::CompilerError;
 use lgn_content_store::Identifier;
-use lgn_data_offline::ResourcePathId;
+use lgn_data_runtime::ResourcePathId;
 use serde::{Deserialize, Serialize};
 
 /// Description of a compiled resource.

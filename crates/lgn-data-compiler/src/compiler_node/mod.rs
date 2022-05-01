@@ -54,9 +54,9 @@ mod tests {
     use lgn_content_store::{ContentProvider, Identifier, MemoryProvider};
     use std::{path::PathBuf, sync::Arc};
 
-    use lgn_data_offline::{ResourcePathId, Transform};
     use lgn_data_runtime::{
-        AssetRegistryOptions, Resource, ResourceId, ResourceType, ResourceTypeAndId,
+        AssetRegistryOptions, ResourceDescriptor, ResourceId, ResourcePathId, ResourceType,
+        ResourceTypeAndId, Transform,
     };
 
     use super::CompilerRegistryOptions;

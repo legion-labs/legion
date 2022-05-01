@@ -848,6 +848,7 @@ checksum = "bc0455254eb5c6964c4545d8bac815e1a1be4f3afe0ae695ea539c12d728d44b"
 name = "binary-resource"
 version = "0.1.0"
 dependencies = [
+ "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
  "serde",
@@ -3260,6 +3261,7 @@ dependencies = [
 name = "integer-asset"
 version = "0.1.0"
 dependencies = [
+ "lgn-data-model",
  "lgn-data-runtime",
 ]
 
@@ -5330,6 +5332,7 @@ dependencies = [
 name = "multitext-resource"
 version = "0.1.0"
 dependencies = [
+ "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
  "serde",
@@ -6731,6 +6734,7 @@ name = "refs-asset"
 version = "0.1.0"
 dependencies = [
  "byteorder",
+ "lgn-data-model",
  "lgn-data-runtime",
 ]
 
@@ -6738,6 +6742,7 @@ dependencies = [
 name = "refs-resource"
 version = "0.1.0"
 dependencies = [
+ "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
  "serde",
@@ -8024,6 +8029,7 @@ dependencies = [
 name = "text-resource"
 version = "0.1.0"
 dependencies = [
+ "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
  "serde",

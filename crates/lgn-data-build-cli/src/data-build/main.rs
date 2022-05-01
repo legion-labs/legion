@@ -8,11 +8,8 @@ use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::{
     compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,
 };
-use lgn_data_offline::{
-    resource::{Project, ResourcePathName},
-    ResourcePathId,
-};
-use lgn_data_runtime::{ResourceType, ResourceTypeAndId};
+use lgn_data_offline::resource::{Project, ResourcePathName};
+use lgn_data_runtime::{ResourcePathId, ResourceType, ResourceTypeAndId};
 
 #[derive(Parser, Debug)]
 #[clap(name = "Data Build")]

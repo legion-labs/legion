@@ -3,6 +3,7 @@ use lgn_graphics_data::Color;
 use lgn_math::prelude::*;
 
 #[resource()]
+#[derive(Clone)]
 pub struct TestEntity {
     // Default with string literal
     #[legion(default = "string literal", readonly)]

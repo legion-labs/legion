@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use lgn_content_store::Identifier;
 use lgn_data_compiler::CompiledResource;
-use lgn_data_offline::ResourcePathId;
+use lgn_data_runtime::ResourcePathId;
 use lgn_data_runtime::ResourceTypeAndId;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sqlx::{migrate::MigrateDatabase, Executor, Row};
@@ -337,8 +337,7 @@ mod tests {
 
     use lgn_content_store::Identifier;
     use lgn_data_compiler::CompiledResource;
-    use lgn_data_offline::ResourcePathId;
-    use lgn_data_runtime::{Resource, ResourceId, ResourceTypeAndId};
+    use lgn_data_runtime::{ResourceDescriptor, ResourceId, ResourcePathId, ResourceTypeAndId};
     use text_resource::TextResource;
 
     use crate::output_index::{AssetHash, OutputIndex};

@@ -1,10 +1,8 @@
-use std::collections::HashSet;
+use std::collections::{btree_map::Entry, HashSet};
 use std::sync::Arc;
 
-use lgn_data_offline::resource::{
-    Project, ResourceHandleUntyped, ResourceHandles, ResourceRegistry,
-};
-use lgn_data_runtime::{AssetRegistry, ResourceTypeAndId};
+use lgn_data_offline::resource::{Project, ResourceHandles};
+use lgn_data_runtime::{AssetRegistry, HandleUntyped, ResourceTypeAndId};
 use lgn_tracing::error;
 use tokio::sync::MutexGuard;
 
@@ -14,8 +12,6 @@ use crate::{BuildManager, Error, SelectionManager, TransactionManager};
 pub struct LockContext<'a> {
     /// Lock on the `Project`
     pub project: MutexGuard<'a, Project>,
-    /// Lock on the `ResourceRegistry`
-    pub resource_registry: MutexGuard<'a, ResourceRegistry>,
     /// Lock on the LoadedResources
     pub(crate) loaded_resource_handles: MutexGuard<'a, ResourceHandles>,
     /// Reference to the Asset Registry
@@ -33,7 +29,6 @@ impl<'a> LockContext<'a> {
     pub async fn new(transaction_manager: &'a TransactionManager) -> LockContext<'a> {
         Self {
             project: transaction_manager.project.lock().await,
-            resource_registry: transaction_manager.resource_registry.lock().await,
             asset_registry: transaction_manager.asset_registry.clone(),
             build: transaction_manager.build_manager.lock().await,
             selection_manager: transaction_manager.selection_manager.clone(),
@@ -46,23 +41,25 @@ impl<'a> LockContext<'a> {
     pub async fn get_or_load(
         &mut self,
         resource_id: ResourceTypeAndId,
-    ) -> Result<ResourceHandleUntyped, Error> {
-        Ok(self
-            .loaded_resource_handles
-            .entry(resource_id)
-            .or_insert(
-                self.project
-                    .load_resource(resource_id, &mut self.resource_registry)
-                    .map_err(|err| Error::Project(resource_id, err))?,
-            )
-            .clone())
+    ) -> Result<HandleUntyped, Error> {
+        Ok(match self.loaded_resource_handles.entry(resource_id) {
+            Entry::Occupied(e) => e.get().clone(),
+            Entry::Vacant(e) => {
+                let handle = self
+                    .project
+                    .load_resource(resource_id, &self.asset_registry)
+                    .map_err(|err| Error::Project(resource_id, err))?;
+                e.insert(handle.clone());
+                handle
+            }
+        })
     }
 
     /// Load or reload a Resource from its id
     pub async fn reload(&mut self, resource_id: ResourceTypeAndId) -> Result<(), Error> {
         let handle = self
             .project
-            .load_resource(resource_id, &mut self.resource_registry)
+            .load_resource(resource_id, &self.asset_registry)
             .map_err(|err| Error::Project(resource_id, err))?;
 
         self.loaded_resource_handles.insert(resource_id, handle);
@@ -78,7 +75,7 @@ impl<'a> LockContext<'a> {
         for resource_id in &self.changed_resources {
             if let Some(handle) = self.loaded_resource_handles.get(*resource_id) {
                 self.project
-                    .save_resource(*resource_id, &handle, &mut self.resource_registry)
+                    .save_resource(*resource_id, handle, &self.asset_registry)
                     .await
                     .map_err(|err| Error::Project(*resource_id, err))?;
 
@@ -101,7 +98,6 @@ impl<'a> LockContext<'a> {
             }
         }
 
-        self.resource_registry.collect_garbage();
         Ok(())
     }
 }
