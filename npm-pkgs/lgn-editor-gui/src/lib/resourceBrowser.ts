@@ -133,6 +133,7 @@ export function iconFor(entry: Entry<ResourceDescription | symbol>) {
     // eslint-disable-next-line no-fallthrough
     case "gltfzip":
     case "gltf":
+
     case "glb": {
       return "ic:outline-format-shapes";
     }
