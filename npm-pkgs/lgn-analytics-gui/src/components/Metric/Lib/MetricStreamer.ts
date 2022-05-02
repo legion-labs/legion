@@ -22,7 +22,7 @@ export class MetricStreamer {
     this.semaphore = new Semaphore(8);
   }
 
-  async initializeAsync() {
+  async initialize() {
     this.client = makeGrpcClient();
     const blocks = (
       await this.client.list_process_blocks({

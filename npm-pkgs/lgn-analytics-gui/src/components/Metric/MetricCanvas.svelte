@@ -88,7 +88,7 @@
 
   onMount(async () => {
     axisCollection = new MetricAxisCollection();
-    await fetchMetricsAsync().then(() => {
+    await fetchMetrics().then(() => {
       createChart();
       updateLod();
       updatePoints(get(metricStore));
@@ -123,10 +123,10 @@
     metricStreamer?.tick(lod, currentMinMs, currentMaxMs);
   }
 
-  async function fetchMetricsAsync() {
+  async function fetchMetrics() {
     metricStreamer = new MetricStreamer(id);
     metricStore = metricStreamer.metricStore;
-    await metricStreamer.initializeAsync();
+    await metricStreamer.initialize();
 
     totalMinMs = currentMinMs = metricStreamer.currentMinMs;
     totalMaxMs = currentMaxMs = metricStreamer.currentMaxMs;
