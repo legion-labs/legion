@@ -10,8 +10,8 @@ export class CallGraphNode {
   parents: Map<number, CallGraphNodeValue> = new Map();
   value: CallGraphNodeValue;
   hash: number;
-  constructor(node: CumulativeComputedCallGraphNode) {
-    this.value = new CallGraphNodeValue(null);
+  constructor(node: CumulativeComputedCallGraphNode, isRootNode: boolean) {
+    this.value = new CallGraphNodeValue(null, isRootNode);
     this.hash = node.node?.hash ?? 0;
     this.ingest(node);
   }
@@ -40,7 +40,7 @@ export class CallGraphNode {
       if (item) {
         item.accumulateEdge(edge);
       } else {
-        map.set(edge.hash, new CallGraphNodeValue(edge));
+        map.set(edge.hash, new CallGraphNodeValue(edge, false));
       }
     }
     return new Map(sort([...map]));

@@ -20,7 +20,7 @@ export class CallGraphThread {
       if (item) {
         item.ingest(node);
       } else {
-        this.data.set(node.node.hash, new CallGraphNode(node));
+        this.data.set(node.node.hash, new CallGraphNode(node, false));
       }
     }
   }

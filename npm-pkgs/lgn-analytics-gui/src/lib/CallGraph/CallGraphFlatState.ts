@@ -9,15 +9,14 @@ export class CallGraphFlatState extends CallGraphState {
 
   clear(): void {
     this.nodes = new Map();
-    this.roots = [];
   }
 
   ingestBlockImpl(block: CumulativeCallGraphComputedBlock) {
     for (const node of block.nodes) {
       if (!node.node) continue;
-      if (node.node.hash === 0) {
+      const isRoot = node.node.hash === 0;
+      if (isRoot) {
         node.node.hash = block.streamHash;
-        this.roots.push(block.streamHash);
       }
       for (const caller of node.callers) {
         if (caller.hash === 0) caller.hash = block.streamHash;
@@ -26,7 +25,7 @@ export class CallGraphFlatState extends CallGraphState {
       if (element) {
         element.ingest(node);
       } else {
-        this.nodes.set(node.node.hash, new CallGraphNode(node));
+        this.nodes.set(node.node.hash, new CallGraphNode(node, isRoot));
       }
     }
   }
