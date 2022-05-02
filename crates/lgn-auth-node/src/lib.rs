@@ -27,7 +27,8 @@ static OAUTH_CLIENT: OnceCell<Arc<OAuthClientTokenCache>> = OnceCell::new();
 ///   - The project directory cannot be found (optional)
 ///   - The OAuth client cannot be built
 ///   - The global OAuth client cannot be saved
-#[napi]
+#[napi(js_name = "initOAuthClient")]
+
 pub async fn init_oauth_client(
     application: String,
     issuer_url: String,

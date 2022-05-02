@@ -61,15 +61,21 @@ impl OAuthClient {
         ID: Into<String>,
         Secret: Into<String>,
     {
-        let issuer_url = IssuerUrl::new(issuer_url.into())
-            .map_err(|error| Error::Internal(format!("{}", error)))?;
+        let issuer_url = IssuerUrl::new(issuer_url.into()).map_err(|error| {
+            Error::Internal(format!("couldn't parse the issuer url: {}", error))
+        })?;
 
         let client_id = ClientId::new(client_id.into());
         let client_secret = client_secret.map(|secret| ClientSecret::new(secret.into()));
 
         let provider_metadata = CoreProviderMetadata::discover_async(issuer_url, async_http_client)
             .await
-            .map_err(|error| Error::Internal(format!("{}", error)))?;
+            .map_err(|error| {
+                Error::Internal(format!(
+                    "couldn't retrieve the provider metadata: {}",
+                    error
+                ))
+            })?;
 
         let redirect_uri = RedirectUrl::new(DEFAULT_REDIRECT_URI.to_string()).unwrap();
 
@@ -91,8 +97,9 @@ impl OAuthClient {
     }
 
     pub fn set_redirect_uri(mut self, redirect_uri: &Uri) -> Result<Self> {
-        let redirect_uri = RedirectUrl::new(redirect_uri.to_string())
-            .map_err(|error| Error::Internal(format!("{}", error)))?;
+        let redirect_uri = RedirectUrl::new(redirect_uri.to_string()).map_err(|error| {
+            Error::Internal(format!("couldn't parse the redirect uri: {}", error))
+        })?;
 
         self.client = self.client.set_redirect_uri(redirect_uri.clone());
 
@@ -373,7 +380,7 @@ impl Authenticator for OAuthClient {
                 .add_scopes(scopes.iter().cloned().map(Scope::new).collect::<Vec<_>>())
                 .request_async(async_http_client)
                 .await
-                .map_err(Error::internal)?,
+                .map_err(|error| Error::Internal(format!("couldn't fetch token: {}", error)))?,
             None => {
                 let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
@@ -414,7 +421,7 @@ impl Authenticator for OAuthClient {
                     .set_pkce_verifier(pkce_verifier)
                     .request_async(async_http_client)
                     .await
-                    .map_err(Error::internal)?;
+                    .map_err(|error| Error::Internal(format!("couldn't get code {}", error)))?;
 
                 let id_token = token_response
                     .id_token()
@@ -422,14 +429,21 @@ impl Authenticator for OAuthClient {
 
                 let claims = id_token
                     .claims(&self.client.id_token_verifier(), &nonce)
-                    .map_err(Error::internal)?;
+                    .map_err(|error| Error::Internal(format!("couldn't get claims {}", error)))?;
 
                 if let Some(expected_access_token_hash) = claims.access_token_hash() {
                     let actual_access_token_hash = AccessTokenHash::from_token(
                         token_response.access_token(),
-                        &id_token.signing_alg().map_err(Error::internal)?,
+                        &id_token.signing_alg().map_err(|error| {
+                            Error::Internal(format!(
+                                "couldn't get the signing algorithm from id token {}",
+                                error
+                            ))
+                        })?,
                     )
-                    .map_err(Error::internal)?;
+                    .map_err(|error| {
+                        Error::Internal(format!("couldn't initialize access token hash {}", error))
+                    })?;
 
                     if actual_access_token_hash != *expected_access_token_hash {
                         return Err(Error::Internal(
@@ -463,7 +477,7 @@ impl Authenticator for OAuthClient {
                 .exchange_refresh_token(&RefreshToken::new(refresh_token))
                 .request_async(async_http_client)
                 .await
-                .map_err(Error::internal)?;
+                .map_err(|error| Error::Internal(format!("couldn't get token set: {}", error)))?;
 
             let scopes = client_token_set.scopes;
 

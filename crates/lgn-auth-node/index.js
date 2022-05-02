@@ -236,8 +236,8 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { initOauthClient, authenticate, getAccessToken } = nativeBinding
+const { initOAuthClient, authenticate, getAccessToken } = nativeBinding
 
-module.exports.initOauthClient = initOauthClient
+module.exports.initOAuthClient = initOAuthClient
 module.exports.authenticate = authenticate
 module.exports.getAccessToken = getAccessToken

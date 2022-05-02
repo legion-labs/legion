@@ -14,7 +14,6 @@ pub enum Error {
     InteractiveProcess(std::io::Error),
 
     #[error("internal error: {0}")]
-    // Internal(#[from] std::error::Error),
     Internal(String),
 
     #[error("io error: {0}")]
@@ -28,13 +27,6 @@ pub enum Error {
 
     #[error("configuration error: {0}")]
     CustomConfig(String),
-}
-
-impl Error {
-    #[doc = "Automatically converts an [`std::error::Error`] into an [`Error::Internal`]"]
-    pub fn internal(error: impl std::error::Error) -> Self {
-        Self::Internal(error.to_string())
-    }
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

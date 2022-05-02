@@ -38,7 +38,9 @@ impl TryFrom<CoreTokenResponse> for ClientTokenSet {
         Ok(Self {
             access_token: core_token_response.access_token().secret().clone(),
             token_type: serde_json::to_value(core_token_response.token_type())
-                .map_err(Error::internal)?
+                .map_err(|error| {
+                    Error::Internal(format!("couldn't serialize the token type: {}", error))
+                })?
                 .as_str()
                 .ok_or_else(|| Error::Internal("Token type is not a value of type string".into()))?
                 .to_string(),

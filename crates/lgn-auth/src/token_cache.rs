@@ -38,6 +38,7 @@ where
     pub fn new_with_application_name(authenticator: A, application: &str) -> Self {
         let project_dirs = ProjectDirs::from("com", "legionlabs", application)
             .expect("failed to determine project dirs");
+
         Self::new(authenticator, project_dirs)
     }
 
@@ -106,7 +107,7 @@ where
         client_token_set: ClientTokenSet,
         authenticator: &A,
     ) -> Result<ClientTokenSet> {
-        authenticator
+        let result = authenticator
             .refresh_login(client_token_set)
             .await
             .map(|token_set| {
@@ -115,7 +116,13 @@ where
                 }
 
                 token_set
-            })
+            });
+
+        if result.is_err() {
+            self.delete_cache()?;
+        }
+
+        result
     }
 }
 

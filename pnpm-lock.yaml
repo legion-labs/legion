@@ -308,6 +308,7 @@ importers:
       '@fluent/langneg': ^0.6.2
       '@iconify/svelte': ^2.2.1
       '@improbable-eng/grpc-web': ^0.15.0
+      '@lgn/auth': ^0.1.0
       '@lgn/config': ^0.1.0
       '@lgn/proto-editor': ^0.1.0
       '@lgn/proto-log-stream': ^0.1.0
@@ -369,6 +370,7 @@ importers:
       '@fluent/langneg': 0.6.2
       '@iconify/svelte': 2.2.1
       '@improbable-eng/grpc-web': 0.15.0_google-protobuf@3.20.1
+      '@lgn/auth': link:../../crates/lgn-auth-node
       '@lgn/proto-editor': link:../../crates/lgn-editor-proto
       '@lgn/proto-log-stream': link:../../crates/lgn-log-stream-proto
       '@lgn/proto-runtime': link:../../crates/lgn-runtime-proto
@@ -530,6 +532,7 @@ importers:
       '@fluent/langneg': ^0.6.2
       '@iconify/svelte': ^2.2.1
       '@improbable-eng/grpc-web': ^0.15.0
+      '@lgn/auth': workspace:^0.1.0
       '@lgn/proto-editor': ^0.1.0
       '@lgn/proto-log-stream': ^0.1.0
       '@lgn/proto-runtime': ^0.1.0
@@ -578,6 +581,7 @@ importers:
       '@fluent/langneg': 0.6.2
       '@iconify/svelte': 2.2.1
       '@improbable-eng/grpc-web': 0.15.0_google-protobuf@3.20.1
+      '@lgn/auth': link:../../crates/lgn-auth-node
       '@lgn/proto-editor': link:../../crates/lgn-editor-proto
       '@lgn/proto-log-stream': link:../../crates/lgn-log-stream-proto
       '@lgn/proto-runtime': link:../../crates/lgn-runtime-proto

@@ -15,7 +15,7 @@ pub(crate) enum Error {
     #[error("OAuth client not initialized, did you call `initOAuthClient` on Node or `init_oauth_client` in Rust?")]
     OAuthClientNotInit,
 
-    #[error("Authentication failed: {0}")]
+    #[error(transparent)]
     Authentication(#[from] lgn_auth::Error),
 }
 

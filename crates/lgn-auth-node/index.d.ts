@@ -37,7 +37,7 @@ export interface UserInfo {
  *   - The OAuth client cannot be built
  *   - The global OAuth client cannot be saved
  */
-export function initOauthClient(application: string, issuerUrl: string, clientId: string, redirectUri: string): Promise<void>
+export function initOAuthClient(application: string, issuerUrl: string, clientId: string, redirectUri: string): Promise<void>
 /**
  * Authenticate the user.
  *
