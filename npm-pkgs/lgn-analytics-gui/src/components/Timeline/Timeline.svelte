@@ -34,8 +34,8 @@
   let searching = false;
   let x: number;
   let y: number;
-  let callGraphBegin: number;
-  let callGraphEnd: number;
+  let callGraphBegin: number | undefined;
+  let callGraphEnd: number | undefined;
 
   $: if (mainWidth && stateStore) {
     stateStore.updateWidth(mainWidth - threadItemLength - pixelMargin);
@@ -47,8 +47,9 @@
   $: if (stateStore) {
     if ($stateStore.currentSelection) {
       [callGraphBegin, callGraphEnd] = $stateStore.currentSelection;
-    } else if ($stateStore.viewRange) {
-      [callGraphBegin, callGraphEnd] = $stateStore.viewRange;
+    } else {
+      callGraphBegin = undefined;
+      callGraphEnd = undefined;
     }
   }
 
@@ -210,19 +211,19 @@
 {#if stateStore}
   <Loader loading={!$stateStore.ready} error={initializationError}>
     <div slot="body" class="flex flex-col">
-      <div class="main">
-        {#if stateManager?.process && $stateStore.ready}
-          <div class="pb-1 flex flex-row items-center justify-between">
-            <TimelineAction
-              {processId}
-              process={stateManager.process}
-              timeRange={$stateStore.currentSelection}
-            />
-            <TimelineSearch bind:searching />
-          </div>
-        {/if}
+      {#if stateManager?.process && $stateStore.ready}
+        <div class="pb-1 flex flex-1 flex-row items-center justify-between">
+          <TimelineAction
+            {processId}
+            process={stateManager.process}
+            timeRange={$stateStore.currentSelection}
+          />
+          <TimelineSearch bind:searching />
+        </div>
+      {/if}
+      <div class="main relative flex flex-col">
         <div
-          class="canvas cursor-pointer"
+          class="canvas cursor-pointer basis-auto"
           bind:this={div}
           bind:clientHeight={canvasHeight}
           bind:clientWidth={mainWidth}
@@ -257,15 +258,17 @@
         <div class="mt-3">
           <TimelineRange {stateStore} />
         </div>
-        <div class="mt-3">
-          <CallGraph
-            begin={callGraphBegin}
-            end={callGraphEnd}
-            {processId}
-            debug={false}
-            size={300}
-          />
-        </div>
+        {#if callGraphBegin && callGraphEnd}
+          <div class="mt-3 basis-1/5">
+            <CallGraph
+              begin={callGraphBegin}
+              end={callGraphEnd}
+              {processId}
+              debug={false}
+              size={250}
+            />
+          </div>
+        {/if}
       </div>
     </div>
   </Loader>
@@ -273,13 +276,10 @@
 
 <style lang="postcss">
   .main {
-    overflow-x: hidden;
-    overflow-y: hidden;
-    position: relative;
+    height: calc(100vh - 130px);
   }
 
   .canvas {
-    max-height: calc(100vh - 490px);
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
