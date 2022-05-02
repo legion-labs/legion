@@ -6,7 +6,7 @@ marp: true
 ![](white)
 # Legion Performance Analytics
 
-Septembre 2021
+May 2022
 
 ---
 # Legion Performance Analytics
@@ -40,10 +40,11 @@ Septembre 2021
 - **Data Lake**
   * write-friendly format
   * shallow index
-- **Data Warehouse**
-  - ephemeral subset
+- **Data Lakehouse**
   - deeply indexed
-  - SQL
+  - just-in-time
+  - distributed query engine
+  
 
 ---
 
@@ -52,10 +53,10 @@ Septembre 2021
 ## Levels of analytics
 
 ![bg right](figures/fire.jpg)
-- in-app: basic stats, adjust level of details of telemetry
-- Basic stats over multiple sessions: MTBF, max memory use
-- Deep inspection of a single session: Mem use of every asset, flame graphs
-- Aggregates of high-frequency events over many sessions: Heat maps
+- in-app: HUD, adjust verbosity of telemetry
+- Process stats: MTBF, max memory use, run time
+- Deep inspection of a single session: Mem use of every asset, flame graphs for entire process
+- Aggregates of high-frequency events over many sessions: Dashboards, Heat maps
 ---
 
 # Legion Performance Analytics
@@ -68,33 +69,24 @@ Septembre 2021
 # Requirements
 ## Frequency of events
 
-![bg right](figures/timeline.jpg)
-
 - High Frequency: thousands of events per frame
-  * begin/end function call
+  * begin/end function call: ~40 ns per event
   * begin/end asset-specific scope
   * memory alloc/free
-
+  
+![width:100%](figures/editor_timeline.png)
+  
 ---
 # Requirements
 ## Frequency of events
 
-![bg right](figures/time.jpg)
+![bg right height:100%](figures/editor_metrics.png)
 
 - Frame metrics
   * frame time, engine time, render sync
   * player health, #npcs
   * process memory allocated/available
   * i.e. mostly time series
-  
----
-# Requirements
-## Frequency of events
-![bg right](figures/controller.jpg)
-- Behaviour events
-  * begin/end system state
-  * gameplay events
-  * user input
   
 ---
 # Requirements
@@ -134,16 +126,16 @@ Septembre 2021
 ## Understanding distributed applications
 
 ![bg right](figures/merlin.jpg)
-- one application session can extend to multiple processes
-- sync clock easier for RPC model of distributed computation
+- Processes are part of a tree
+- Across machines & architectures
 
 ---
 # Requirements
 ## 5 views to rule over all data
 ### List / Table / Search
-![bg right](figures/liste.jpg)
+![bg right](figures/process_list.png)
 
-* recent sessions
+* recent processes
 * top crashes
 * cpu budget report
   
@@ -153,7 +145,7 @@ Septembre 2021
 ## 5 views to rule over all data
 ### Time series
 
-![bg right](figures/time.jpg)
+![bg right height:100%](figures/editor_metrics.png)
 
 * Individual frame times over time
 * Player health over time
@@ -172,8 +164,9 @@ Septembre 2021
 # Requirements
 ## 5 views to rule over all data
 ### Timeline
-![bg right](figures/timeline.jpg)
-* Call tree instances per thread
+![width:100%](figures/editor_timeline.png)
+* Function calls per thread
+* Audio effects per stream
 
 
 ---
