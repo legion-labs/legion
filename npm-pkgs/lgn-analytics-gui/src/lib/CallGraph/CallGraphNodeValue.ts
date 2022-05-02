@@ -9,8 +9,10 @@ export class CallGraphNodeValue {
   childSum = 0;
   min = Infinity;
   max = -Infinity;
+  private isRootNode: boolean;
 
-  constructor(edge: CumulativeCallGraphEdge | null) {
+  constructor(edge: CumulativeCallGraphEdge | null, isRootNode: boolean) {
+    this.isRootNode = isRootNode;
     if (edge) {
       this.accumulateEdge(edge);
     }
@@ -19,7 +21,11 @@ export class CallGraphNodeValue {
   accumulateEdge(input: CumulativeCallGraphEdge) {
     this.min = Math.min(this.min, input.min);
     this.max = Math.max(this.max, input.max);
-    this.count += input.count;
+    if (this.isRootNode) {
+      this.count = 1;
+    } else {
+      this.count += input.count;
+    }
     this.acc += input.sum;
     this.sqr += input.sumSqr;
     this.avg = this.acc / this.count;

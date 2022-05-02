@@ -3,8 +3,8 @@
   import { useLocation } from "svelte-navigator";
 
   import { CallGraphParameters } from "@/lib/CallGraph/CallGraphParameters";
-  import { getProcessCumulatedCallGraph } from "@/lib/CallGraph/CallGraphStore";
-  import type { CumulatedCallGraphStore } from "@/lib/CallGraph/CallGraphStore";
+  import { getProcessCumulatedCallGraphFlat } from "@/lib/CallGraph/CallGraphStore";
+  import type { CumulatedCallGraphFlatStore } from "@/lib/CallGraph/CallGraphStore";
   import { loadingStore } from "@/lib/Misc/LoadingStore";
 
   import Loader from "../Misc/Loader.svelte";
@@ -17,7 +17,7 @@
   let beginMsFilter = 0;
   let endMsFilter = 0;
   let processId = "";
-  let store: CumulatedCallGraphStore;
+  let store: CumulatedCallGraphFlatStore;
 
   $: loading = store ? $store.loading : true;
 
@@ -30,7 +30,7 @@
 
     loadingStore.reset(1);
 
-    store = await getProcessCumulatedCallGraph(
+    store = await getProcessCumulatedCallGraphFlat(
       processId,
       beginMsFilter,
       endMsFilter,
@@ -49,7 +49,7 @@
       <GraphHeader {beginMsFilter} {endMsFilter} {store} />
     </div>
     <div class="flex flex-col overflow-y-auto">
-      {#each Array.from($store.flatData.nodes.values()).sort((a, b) => b.value.acc - a.value.acc) as node (node.hash)}
+      {#each Array.from($store.nodes.values()).sort((a, b) => b.value.acc - a.value.acc) as node (node.hash)}
         <GraphNode
           {node}
           {store}

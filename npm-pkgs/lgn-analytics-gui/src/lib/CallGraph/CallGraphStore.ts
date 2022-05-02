@@ -5,27 +5,62 @@ import type { CumulativeCallGraphBlockDesc } from "@lgn/proto-telemetry/dist/cal
 import { makeGrpcClient } from "@/lib/client";
 
 import type { LoadingStore } from "../Misc/LoadingStore";
-import { CallGraphState } from "./CallGraphState";
+import { CallGraphFlatState } from "./CallGraphFlatState";
+import { CallGraphHierarchyState } from "./CallGraphHierarchyState";
+import type { CallGraphState } from "./CallGraphState";
 
-export type CumulatedCallGraphStore = Awaited<
-  ReturnType<typeof getProcessCumulatedCallGraph>
+export type CumulatedCallGraphFlatStore = Awaited<
+  ReturnType<typeof getProcessCumulatedCallGraphFlat>
 >;
 
-export async function getProcessCumulatedCallGraph(
+export type CumulatedCallGraphHierarchyStore = Awaited<
+  ReturnType<typeof getProcessCumulatedCallGraphHierarchy>
+>;
+
+export async function getProcessCumulatedCallGraphHierarchy(
   processId: string,
   begin: number,
   end: number,
   loadingStore: LoadingStore | null = null
 ) {
-  const { subscribe, set, update } = writable<CallGraphState>();
+  return getProcessCumulatedCallGraph<CallGraphHierarchyState>(
+    processId,
+    begin,
+    end,
+    new CallGraphHierarchyState(),
+    loadingStore
+  );
+}
+
+export async function getProcessCumulatedCallGraphFlat(
+  processId: string,
+  begin: number,
+  end: number,
+  loadingStore: LoadingStore | null = null
+) {
+  return getProcessCumulatedCallGraph<CallGraphFlatState>(
+    processId,
+    begin,
+    end,
+    new CallGraphFlatState(),
+    loadingStore
+  );
+}
+
+async function getProcessCumulatedCallGraph<T extends CallGraphState>(
+  processId: string,
+  begin: number,
+  end: number,
+  state: T,
+  loadingStore: LoadingStore | null = null
+) {
+  const { subscribe, set, update } = writable<T>();
 
   const client = makeGrpcClient();
 
-  const state = new CallGraphState();
-
   set(state);
 
-  const updateState = (action: (state: CallGraphState) => void) => {
+  const updateState = (action: (state: T) => void) => {
     update((s) => {
       action(s);
       return s;

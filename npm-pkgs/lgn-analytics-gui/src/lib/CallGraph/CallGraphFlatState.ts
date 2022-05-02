@@ -1,14 +1,21 @@
 import type { CumulativeCallGraphComputedBlock } from "@lgn/proto-telemetry/dist/callgraph";
 
 import { CallGraphNode } from "./CallGraphNode";
+import { CallGraphState } from "./CallGraphState";
 
-export class CallGraphFlatData {
+export class CallGraphFlatState extends CallGraphState {
   nodes: Map<number, CallGraphNode> = new Map();
+  roots: number[] = [];
 
-  ingestBlock(block: CumulativeCallGraphComputedBlock) {
+  clear(): void {
+    this.nodes = new Map();
+  }
+
+  ingestBlockImpl(block: CumulativeCallGraphComputedBlock) {
     for (const node of block.nodes) {
       if (!node.node) continue;
-      if (node.node.hash === 0) {
+      const isRoot = node.node.hash === 0;
+      if (isRoot) {
         node.node.hash = block.streamHash;
       }
       for (const caller of node.callers) {
@@ -18,7 +25,7 @@ export class CallGraphFlatData {
       if (element) {
         element.ingest(node);
       } else {
-        this.nodes.set(node.node.hash, new CallGraphNode(node));
+        this.nodes.set(node.node.hash, new CallGraphNode(node, isRoot));
       }
     }
   }

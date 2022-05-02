@@ -8,9 +8,10 @@ import { CallGraphNodeValue } from "./CallGraphNodeValue";
 export class CallGraphNode {
   children: Map<number, CallGraphNodeValue> = new Map();
   parents: Map<number, CallGraphNodeValue> = new Map();
-  value: CallGraphNodeValue = new CallGraphNodeValue(null);
+  value: CallGraphNodeValue;
   hash: number;
-  constructor(node: CumulativeComputedCallGraphNode) {
+  constructor(node: CumulativeComputedCallGraphNode, isRootNode: boolean) {
+    this.value = new CallGraphNodeValue(null, isRootNode);
     this.hash = node.node?.hash ?? 0;
     this.ingest(node);
   }
@@ -39,7 +40,7 @@ export class CallGraphNode {
       if (item) {
         item.accumulateEdge(edge);
       } else {
-        map.set(edge.hash, new CallGraphNodeValue(edge));
+        map.set(edge.hash, new CallGraphNodeValue(edge, false));
       }
     }
     return new Map(sort([...map]));

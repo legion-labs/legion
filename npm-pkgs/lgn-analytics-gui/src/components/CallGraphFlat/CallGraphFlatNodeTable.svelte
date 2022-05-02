@@ -2,13 +2,13 @@
   import type { CallGraphNode } from "@/lib/CallGraph/CallGraphNode";
   import { CallGraphNodeStatType } from "@/lib/CallGraph/CallGraphNodeStatType";
   import { CallGraphNodeTableKind } from "@/lib/CallGraph/CallGraphNodeTableKind";
-  import type { CumulatedCallGraphStore } from "@/lib/CallGraph/CallGraphStore";
+  import type { CumulatedCallGraphFlatStore } from "@/lib/CallGraph/CallGraphStore";
 
   import GraphNodeTableRow from "./CallGraphFlatNodeTableRow.svelte";
 
   export let node: CallGraphNode;
   export let kind: CallGraphNodeTableKind;
-  export let store: CumulatedCallGraphStore;
+  export let store: CumulatedCallGraphFlatStore;
 
   $: data =
     kind == CallGraphNodeTableKind.Callees ? node.children : node.parents;
