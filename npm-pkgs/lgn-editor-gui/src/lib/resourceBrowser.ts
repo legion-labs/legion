@@ -131,8 +131,13 @@ export function iconFor(entry: Entry<ResourceDescription | symbol>) {
     case "model":
 
     // eslint-disable-next-line no-fallthrough
-    case "gltfzip":
-    case "gltf":
+    case "gltfzip": {
+      return "ic:outline-format-shapes";
+    }
+    
+    case "gltf": {
+      return "ic:outline-format-shapes";
+    }
 
     case "glb": {
       return "ic:outline-format-shapes";
