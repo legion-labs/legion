@@ -6,3 +6,5 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
+parking_lot = "0.12.0"
+tempfile = "3.2"

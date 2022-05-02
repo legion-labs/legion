@@ -13,6 +13,8 @@ use std::{
 
 use lgn_tracing::prelude::*;
 
+pub mod jail;
+
 //std::fs::remove_dir_all leaves read-only files and reports an error
 #[span_fn]
 fn force_delete_all(dir: &Path) {
@@ -64,7 +66,7 @@ pub fn create_test_dir(parent_path: &Path, test_name: &str) -> PathBuf {
 // error code matches `should_succeed`
 #[span_fn]
 pub fn syscall(command: &str, wd: &Path, args: &[&str], should_succeed: bool) {
-    println!("{} {}", command, args.join(" "));
+    info!("{} {}", command, args.join(" "));
     let status = Command::new(command)
         .current_dir(wd)
         .args(args)

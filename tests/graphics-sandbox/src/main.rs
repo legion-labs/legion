@@ -93,11 +93,9 @@ fn main() {
             .parse::<ResourceTypeAndId>()
             .ok();
 
-        let project_folder = lgn_config::get_absolute_path_or(
-            "editor_srv.project_dir",
-            PathBuf::from("tests/sample-data"),
-        )
-        .unwrap();
+        let project_folder =
+            lgn_config::get_or("editor_srv.project_dir", PathBuf::from("tests/sample-data"))
+                .unwrap();
 
         let asset_registry_settings = AssetRegistrySettings::new(
             Some(project_folder.join("runtime").join("game.manifest")),
