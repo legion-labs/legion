@@ -203,11 +203,31 @@
             // FIXME: Incorrect, should be an import
             return createResource({
               resourceName: name.slice(0, -4),
+              resourceType: "gltfzip",
+              parentResourceId: $currentResourceDescriptionEntry?.item.id,
+              uploadId: id,
+            });
+          }
+
+          if (lowerCasedName.endsWith(".gltf")) {
+            return createResource({
+              resourceName: name,
               resourceType: "gltf",
               parentResourceId: $currentResourceDescriptionEntry?.item.id,
               uploadId: id,
             });
           }
+
+          if (lowerCasedName.endsWith(".glb")) {
+            // FIXME: Incorrect, should be an import
+            return createResource({
+              resourceName: name,
+              resourceType: "glb",
+              parentResourceId: $currentResourceDescriptionEntry?.item.id,
+              uploadId: id,
+            });
+          }
+
         })
       );
 
@@ -352,7 +372,7 @@
       case "import": {
         files.open({
           multiple: false,
-          fileTypeSpecifiers: [".png", ".gltf.zip"],
+          fileTypeSpecifiers: [".png", ".gltf.zip", ".glb", ".gltf"],
         });
 
         break;

@@ -28,7 +28,9 @@ export function createResourcePathId(
       switch (entry.item.type) {
         case "model":
           break;
+        case "gltfzip":
         case "gltf":
+        case "glb":
           result += offlineModel;
           result += "_Model";
           break;
@@ -43,7 +45,9 @@ export function createResourcePathId(
       switch (entry.item.type) {
         case "material":
           break;
+        case "gltfzip":
         case "gltf":
+        case "glb":
           result += offlineMaterial + "_Material";
           break;
         default:
@@ -74,7 +78,9 @@ export function createResourcePathId(
         case "png":
           result += offlineTexture;
           break;
+        case "gltfzip":
         case "gltf":
+        case "glb":
           result += offlineTexture + "_0";
           break;
         default:
@@ -125,7 +131,9 @@ export function iconFor(entry: Entry<ResourceDescription | symbol>) {
     case "model":
 
     // eslint-disable-next-line no-fallthrough
-    case "gltf": {
+    case "gltfzip":
+    case "gltf":
+    case "glb": {
       return "ic:outline-format-shapes";
     }
 
