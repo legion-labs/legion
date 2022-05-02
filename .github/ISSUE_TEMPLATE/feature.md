@@ -1,8 +1,11 @@
 ---
 name: Feature / Refactor
-about: A larger work item including a brief explanation, design, work history. Needs to broken down into smaller tasks.
-labels: ""
-assignees: ""
+about: A larger work item including a brief explanation, design, work history. Needs
+  to broken down into smaller tasks.
+title: ''
+labels: 'priority: P3, type: enhancement, type: feature'
+assignees: ''
+
 ---
 
 <!-- Fill in relevant sections, remove the rest. -->
@@ -18,4 +21,12 @@ assignees: ""
 - [ ] First step: #…
 - [ ] Stabilization
 - [ ] #59
+-->
+
+## DoD
+<!--
+- [ ] Feature has metrics for monitoring and observability.
+- [ ] Feature has been deployed and tested on UAT.
+- [ ] Feature has been documented.
+...
 -->
