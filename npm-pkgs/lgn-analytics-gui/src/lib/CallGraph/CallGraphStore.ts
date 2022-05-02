@@ -102,7 +102,15 @@ export async function getProcessCumulatedCallGraph(
     });
 
     if (promises.length) {
-      await Promise.any(promises).catch((e) => console.error(e));
+      await Promise.any(promises).catch((e) => {
+        if (e instanceof AggregateError) {
+          for (const error of e.errors) {
+            console.error(error);
+          }
+        } else {
+          console.log(e);
+        }
+      });
     }
   };
 
