@@ -13,8 +13,8 @@
   export let begin: number;
   export let end: number;
   export let processId: string;
-  export let debug = false;
   export let size: number;
+  export let debug = false;
 
   let store: CumulatedCallGraphHierarchyStore;
   let tickTimer: ReturnType<typeof setTimeout>;
@@ -40,55 +40,60 @@
 {#if store}
   {#if $store.loading}
     <div
-      style:height={`${size}px`}
       class="flex items-center justify-center h-full"
+      style:max-height={`${size}px`}
     >
       <BarLoader size={32} />
     </div>
   {:else}
-    {#if debug}
-      <CallTreeDebug {store} {begin} {end} />
-    {/if}
-    <div
-      class="overflow-y-auto overflow-x-hidden"
-      style:max-height={`${size}px`}
-    >
-      <table
-        class="w-full bg-background text-xs text-text space-y-2 table-fixed "
-      >
-        <tr class="bg-background w-100">
-          <th style="width:66%" class="text-left">Function</th>
-          <th class="table-header"><i class="bi bi-caret-right" />Count</th>
-          <th class="table-header"
-            ><i class="bi bi-chevron-bar-contract" />Avg</th
+    <div>
+      {#if debug}
+        <CallTreeDebug {store} {begin} {end} />
+      {/if}
+      <div class="flex flex-col gap-y-2">
+        <div
+          class="text-placeholder bg-placeholder hover:bg-text p-1 mt-2 text-xs float-right w-48"
+        >
+          <a
+            href={`/cumulative-call-graph?process=${processId}&${startQueryParam}=${begin}&${endQueryParam}=${end}`}
+            target="_blank"
+            use:link
           >
-          <th class="table-header"><i class="bi bi-chevron-bar-left" />Min</th>
-          <th class="table-header"><i class="bi bi-chevron-bar-right" />Max</th>
-          <th class="table-header"><i class="bi bi-lightbulb" />Sd</th>
-          <th class="table-header"
-            ><i class="bi bi bi-caret-right-fill" /> Sum</th
+            <i class="bi bi-arrow-up-right-circle" />
+            Open Cumulative Call Graph
+          </a>
+        </div>
+        <div class="overflow-auto" style:max-height={`${size}px`}>
+          <table
+            class="w-full bg-background text-xs text-text space-y-2 table-fixed"
           >
-        </tr>
-        {#each Array.from($store.threads) as [hash, thread] (hash)}
-          {#if thread.data}
-            {#each Array.from(thread.data).filter((obj) => obj[1].parents.size === 0) as [key, node] (key)}
-              <CallGraphLine {node} {store} threadId={key} />
+            <tr class="bg-background w-100">
+              <th style="width:66%" class="text-left">Function</th>
+              <th class="table-header"><i class="bi bi-caret-right" />Count</th>
+              <th class="table-header"
+                ><i class="bi bi-chevron-bar-contract" />Avg</th
+              >
+              <th class="table-header"
+                ><i class="bi bi-chevron-bar-left" />Min</th
+              >
+              <th class="table-header"
+                ><i class="bi bi-chevron-bar-right" />Max</th
+              >
+              <th class="table-header"><i class="bi bi-lightbulb" />Sd</th>
+              <th class="table-header"
+                ><i class="bi bi bi-caret-right-fill" /> Sum</th
+              >
+            </tr>
+            {#each Array.from($store.threads) as [hash, thread] (hash)}
+              {#if thread.data}
+                {#each Array.from(thread.data).filter((obj) => obj[1].parents.size === 0) as [key, node] (key)}
+                  <CallGraphLine {node} {store} threadId={key} />
+                {/each}
+              {/if}
             {/each}
-          {/if}
-        {/each}
-      </table>
-    </div>
-    <div
-      class="text-placeholder bg-placeholder  hover:bg-text p-1 mt-2 text-xs float-left "
-    >
-      <a
-        href={`/cumulative-call-graph?process=${processId}&${startQueryParam}=${begin}&${endQueryParam}=${end}`}
-        target="_blank"
-        use:link
-      >
-        <i class="bi bi-arrow-up-right-circle" />
-        Open Cumulative Call Graph
-      </a>
+          </table>
+        </div>
+      </div>
     </div>
   {/if}
 {/if}
