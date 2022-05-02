@@ -3,7 +3,7 @@ name: Feature / Refactor
 about: A larger work item including a brief explanation, design, work history. Needs
   to broken down into smaller tasks.
 title: ''
-labels: ''
+labels: 'priority: P3, type: enhancement, type: feature'
 assignees: ''
 
 ---
