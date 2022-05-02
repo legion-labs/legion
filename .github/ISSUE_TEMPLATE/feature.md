@@ -22,3 +22,11 @@ assignees: ''
 - [ ] Stabilization
 - [ ] #59
 -->
+
+## DoD
+<!--
+- [ ] Feature has metrics for monitoring and observability.
+- [ ] Feature has been deployed and tested on UAT.
+- [ ] Feature has been documented.
+...
+-->
