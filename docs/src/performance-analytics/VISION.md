@@ -13,7 +13,7 @@ May 2022
 - **Introduction**
 - Requirements
 - Architecture
-- Roadmap
+- Progress & Roadmap
 
 ---
 
@@ -63,7 +63,7 @@ May 2022
 - Introduction
 - **Requirements and implications**
 - Architecture
-- Roadmap
+- Progress & Roadmap
 
 ---
 # Requirements
@@ -82,7 +82,7 @@ May 2022
 
 ![bg right height:100%](figures/editor_metrics.png)
 
-- Frame metrics
+- Frame Frequency
   * frame time, engine time, render sync
   * player health, #npcs
   * process memory allocated/available
@@ -92,9 +92,9 @@ May 2022
 # Requirements
 ## Frequency of events
 ![bg right](figures/train.jpg)
-- Logs
+- Process Frequency
   * begin/end app state (world loaded, in-play, matchmaking)
-  * warnings
+  * warnings, errors
   * crashes with callstack
 
 ---
@@ -127,7 +127,7 @@ May 2022
 
 ![bg right](figures/merlin.jpg)
 - Processes are part of a tree
-- Across machines & architectures
+- Track latency and stability across machines & architectures
 
 ---
 # Requirements
@@ -199,7 +199,7 @@ May 2022
 - Introduction
 - Requirements
 - **Architecture**
-- Roadmap
+- Progress & Roadmap
 
 ---
 # Architecture
@@ -207,9 +207,9 @@ May 2022
 
 ![bg right](figures/bibli.jpg)
 
-- Process instance 
+- Process
   - Stream
-    - Stream block
+    - Event block
       - Event
 
 ---
@@ -219,25 +219,11 @@ May 2022
 ![bg right:65%](figures/telemetry_architecture.svg)
 
 ---
-# Architecture
-## Integration/reuse of existing solutions
-
-Many ideas in common with `tracing` crate from the `tokio` project.
-https://docs.rs/tracing/0.1.26/tracing/
-But `Collect` trait at the center of the system is a poor fit.
-
-Could support the interface to get visibility into crates that are already instrumented.
-
-![width:400px](figures/tracing.svg)
-![width:400px](figures/bevy_logo_dark.svg)
-
-
----
 # Legion Performance Analytics
 - Introduction
 - Requirements
 - Architecture
-- **Roadmap**
+- **Progress & Roadmap**
 
 ---
 # Progress 2021
@@ -269,7 +255,7 @@ Could support the interface to get visibility into crates that are already instr
 - Time series & Timeline improvements, Async function tracing
 
 ---
-# Roadmap
+# Progress 2022
 
 ## April 2022
 - Unreal telemetry module (MAD)
@@ -303,6 +289,7 @@ Could support the interface to get visibility into crates that are already instr
 
 ---
 ## Backlog
+![bg right:40%](figures/pexels-ron-lach-8487200.jpg)
 - Async spans stitching/LOD
 - Memory tracing and analytics
 - VM monitoring / Fluentd output command
@@ -314,6 +301,7 @@ Could support the interface to get visibility into crates that are already instr
   
 ---
 ## More Backlog
+![bg right:40%](figures/pexels-ron-lach-8487200.jpg)
 - Process dashboards
   * monitoring thousands of processes
   * graphs of processes to lists of processes
