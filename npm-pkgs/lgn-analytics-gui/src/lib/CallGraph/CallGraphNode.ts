@@ -19,13 +19,20 @@ export class CallGraphNode {
     if (input.node) {
       this.value.accumulateEdge(input.node);
     }
-    this.collectionIngest(this.children, input.callees);
-    this.collectionIngest(this.parents, input.callers);
+    this.children = this.collectionIngest(this.children, input.callees, (e) =>
+      e.sort((a, b) => b[1].acc - a[1].acc)
+    );
+    this.parents = this.collectionIngest(this.parents, input.callers, (e) =>
+      e.sort((a, b) => b[1].childSum - a[1].childSum)
+    );
   }
 
   private collectionIngest(
     map: Map<number, CallGraphNodeValue>,
-    edges: CumulativeCallGraphEdge[]
+    edges: CumulativeCallGraphEdge[],
+    sort: (
+      map: [number, CallGraphNodeValue][]
+    ) => [number, CallGraphNodeValue][]
   ) {
     for (const edge of edges) {
       const item = map.get(edge.hash);
@@ -35,5 +42,6 @@ export class CallGraphNode {
         map.set(edge.hash, new CallGraphNodeValue(edge));
       }
     }
+    return new Map(sort([...map]));
   }
 }
