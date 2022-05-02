@@ -1,7 +1,3 @@
-// Napi seems to cause this issue with clippy where it complains about
-// the struct `UserInfo` not to be defined as `Self`.
-#![allow(clippy::use_self)]
-
 use serde::{de, Deserialize, Deserializer, Serialize};
 
 /// Contains user information.
@@ -21,7 +17,9 @@ use serde::{de, Deserialize, Deserializer, Serialize};
 /// let _: UserInfo = serde_json::from_str(r#"{"sub": "foo", "email_verified": "true"}"#).unwrap();
 /// let _: UserInfo = serde_json::from_str(r#"{"sub": "foo", "email_verified": true}"#).unwrap();
 /// ```
-#[cfg_attr(feature = "node", napi_derive::napi(object))]
+// TODO: Ideally we should allow for a node feature that would automatically make the `UserInfo` struct
+// compatible with Napi. Unfortunately it doesn't work well with the ci and it raises lots of errors.
+// #[cfg_attr(feature = "node", napi_derive::napi(object))]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct UserInfo {
     pub sub: String,

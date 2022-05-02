@@ -6,13 +6,14 @@
 use std::{collections::HashMap, sync::Arc};
 
 use http::Uri;
-use lgn_auth::{AuthenticatorWithClaims, OAuthClient, TokenCache as OnlineTokenCache, UserInfo};
+use lgn_auth::{AuthenticatorWithClaims, OAuthClient, TokenCache as OnlineTokenCache};
 use napi_derive::napi;
 use once_cell::sync::OnceCell;
 
-use crate::error::Error;
+use crate::{error::Error, types::UserInfo};
 
 mod error;
+mod types;
 
 type OAuthClientTokenCache = OnlineTokenCache<OAuthClient>;
 
@@ -81,7 +82,7 @@ pub async fn authenticate(
         .await
         .map_err(|error| Error::from(error).to_napi_error())?;
 
-    Ok(user_info_claims)
+    Ok(user_info_claims.into())
 }
 
 /// Returns the current access token.
