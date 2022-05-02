@@ -2,8 +2,9 @@
 name: Bug report
 about: Bug or crash report.
 title: "(Title)"
-labels: ""
-assignees: ""
+labels: 'type: bug'
+assignees: ''
+
 ---
 
 <!-- Fill in relevant sections, remove the rest. -->
