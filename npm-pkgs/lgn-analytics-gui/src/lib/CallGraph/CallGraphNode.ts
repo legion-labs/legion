@@ -8,9 +8,10 @@ import { CallGraphNodeValue } from "./CallGraphNodeValue";
 export class CallGraphNode {
   children: Map<number, CallGraphNodeValue> = new Map();
   parents: Map<number, CallGraphNodeValue> = new Map();
-  value: CallGraphNodeValue = new CallGraphNodeValue(null);
+  value: CallGraphNodeValue;
   hash: number;
   constructor(node: CumulativeComputedCallGraphNode) {
+    this.value = new CallGraphNodeValue(null);
     this.hash = node.node?.hash ?? 0;
     this.ingest(node);
   }

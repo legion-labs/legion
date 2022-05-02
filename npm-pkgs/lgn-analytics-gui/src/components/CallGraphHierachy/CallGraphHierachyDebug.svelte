@@ -1,9 +1,9 @@
 <script lang="ts">
-  import type { CumulatedCallGraphStore } from "@/lib/CallGraph/CallGraphStore";
+  import type { CumulatedCallGraphHierarchyStore } from "@/lib/CallGraph/CallGraphStore";
 
   export let begin: number;
   export let end: number;
-  export let store: CumulatedCallGraphStore;
+  export let store: CumulatedCallGraphHierarchyStore;
 </script>
 
 <div class="text-xs">

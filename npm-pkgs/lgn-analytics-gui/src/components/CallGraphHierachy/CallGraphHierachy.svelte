@@ -3,8 +3,8 @@
   import { BarLoader } from "svelte-loading-spinners";
   import { link } from "svelte-navigator";
 
-  import type { CumulatedCallGraphStore } from "@/lib/CallGraph/CallGraphStore";
-  import { getProcessCumulatedCallGraph } from "@/lib/CallGraph/CallGraphStore";
+  import type { CumulatedCallGraphHierarchyStore } from "@/lib/CallGraph/CallGraphStore";
+  import { getProcessCumulatedCallGraphHierarchy } from "@/lib/CallGraph/CallGraphStore";
   import { endQueryParam, startQueryParam } from "@/lib/time";
 
   import CallTreeDebug from "./CallGraphHierachyDebug.svelte";
@@ -16,7 +16,7 @@
   export let debug = false;
   export let size: number;
 
-  let store: CumulatedCallGraphStore;
+  let store: CumulatedCallGraphHierarchyStore;
   let tickTimer: ReturnType<typeof setTimeout>;
 
   $: (begin || end) && tick();
@@ -29,7 +29,7 @@
   }
 
   onMount(async () => {
-    store = await getProcessCumulatedCallGraph(processId, begin, end);
+    store = await getProcessCumulatedCallGraphHierarchy(processId, begin, end);
   });
 
   onDestroy(() => {

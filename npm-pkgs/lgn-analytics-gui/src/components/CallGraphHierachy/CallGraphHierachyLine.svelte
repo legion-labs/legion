@@ -1,11 +1,11 @@
 <script lang="ts">
   import type { CallGraphNode } from "@/lib/CallGraph/CallGraphNode";
-  import type { CumulatedCallGraphStore } from "@/lib/CallGraph/CallGraphStore";
+  import type { CumulatedCallGraphHierarchyStore } from "@/lib/CallGraph/CallGraphStore";
   import { formatExecutionTime } from "@/lib/format";
 
   export let depth = 0;
   export let node: CallGraphNode;
-  export let store: CumulatedCallGraphStore;
+  export let store: CumulatedCallGraphHierarchyStore;
   export let threadId: number;
 
   let collapsed = depth > 4;

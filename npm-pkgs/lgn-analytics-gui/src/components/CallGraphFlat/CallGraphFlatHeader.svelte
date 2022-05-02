@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { CumulatedCallGraphStore } from "@/lib/CallGraph/CallGraphStore";
+  import type { CumulatedCallGraphFlatStore } from "@/lib/CallGraph/CallGraphStore";
   import { formatExecutionTime } from "@/lib/format";
 
-  export let store: CumulatedCallGraphStore;
+  export let store: CumulatedCallGraphFlatStore;
   export let endMsFilter: number;
   export let beginMsFilter: number;
 </script>
@@ -17,6 +17,6 @@
   </div>
   <div>
     <span class="font-semibold">Max: </span>
-    {formatExecutionTime($store.flatData.getMax())}
+    {formatExecutionTime($store.getMax())}
   </div>
 </div>

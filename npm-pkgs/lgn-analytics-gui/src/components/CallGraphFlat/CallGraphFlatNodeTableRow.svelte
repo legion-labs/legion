@@ -4,14 +4,14 @@
   import type { CallGraphNode } from "@/lib/CallGraph/CallGraphNode";
   import { CallGraphNodeTableKind } from "@/lib/CallGraph/CallGraphNodeTableKind";
   import type { CallGraphNodeValue } from "@/lib/CallGraph/CallGraphNodeValue";
-  import type { CumulatedCallGraphStore } from "@/lib/CallGraph/CallGraphStore";
+  import type { CumulatedCallGraphFlatStore } from "@/lib/CallGraph/CallGraphStore";
   import { formatExecutionTime } from "@/lib/format";
 
   export let value: CallGraphNodeValue;
   export let hash: number;
   export let node: CallGraphNode;
   export let kind: CallGraphNodeTableKind;
-  export let store: CumulatedCallGraphStore;
+  export let store: CumulatedCallGraphFlatStore;
 
   const clickDispatcher = createEventDispatcher<{
     clicked: { hash: number };

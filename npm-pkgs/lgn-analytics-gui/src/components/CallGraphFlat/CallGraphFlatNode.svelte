@@ -3,18 +3,18 @@
 
   import type { CallGraphNode } from "@/lib/CallGraph/CallGraphNode";
   import { CallGraphNodeTableKind } from "@/lib/CallGraph/CallGraphNodeTableKind";
-  import type { CumulatedCallGraphStore } from "@/lib/CallGraph/CallGraphStore";
+  import type { CumulatedCallGraphFlatStore } from "@/lib/CallGraph/CallGraphStore";
   import { formatExecutionTime } from "@/lib/format";
 
   import CallGraphFlatNodeStat from "./CallGraphFlatNodeStat.svelte";
   import CallGraphFlatNodeTable from "./CallGraphFlatNodeTable.svelte";
 
-  export let store: CumulatedCallGraphStore;
+  export let store: CumulatedCallGraphFlatStore;
   export let node: CallGraphNode;
   export let collapsed = true;
 
   // @ts-ignore
-  $: fill = (100 * node.value.acc) / $store.flatData.getMax();
+  $: fill = (100 * node.value.acc) / $store.getMax();
   $: desc = $store?.scopes[node.hash];
 
   export async function setCollapse(value: boolean) {
