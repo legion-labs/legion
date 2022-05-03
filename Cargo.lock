@@ -6117,7 +6117,6 @@ dependencies = [
  "lgn-app",
  "lgn-compiler-runtime-entity",
  "lgn-compiler-runtime-model",
- "lgn-compiler-scripting",
  "lgn-content-store",
  "lgn-data-build",
  "lgn-data-compiler",
