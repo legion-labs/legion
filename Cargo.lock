@@ -840,7 +840,6 @@ name = "binary-resource"
 version = "0.1.0"
 dependencies = [
  "lgn-data-model",
- "lgn-data-offline",
  "lgn-data-runtime",
  "serde",
 ]
@@ -3725,7 +3724,6 @@ dependencies = [
  "bincode",
  "lgn-data-codegen",
  "lgn-data-compiler",
- "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-scripting-data",
  "lgn-tracing",
@@ -3739,7 +3737,6 @@ dependencies = [
  "async-trait",
  "integer-asset",
  "lgn-data-compiler",
- "lgn-data-offline",
  "lgn-data-runtime",
  "text-resource",
  "tokio",
@@ -3753,7 +3750,6 @@ dependencies = [
  "base64 0.13.0",
  "binary-resource",
  "lgn-data-compiler",
- "lgn-data-offline",
  "lgn-data-runtime",
  "text-resource",
  "tokio",
@@ -3765,7 +3761,6 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "lgn-data-compiler",
- "lgn-data-offline",
  "lgn-data-runtime",
  "refs-asset",
  "refs-resource",
@@ -3778,7 +3773,6 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "lgn-data-compiler",
- "lgn-data-offline",
  "lgn-data-runtime",
  "text-resource",
  "tokio",
@@ -3790,7 +3784,6 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "lgn-data-compiler",
- "lgn-data-offline",
  "lgn-data-runtime",
  "multitext-resource",
  "text-resource",
@@ -4012,7 +4005,6 @@ dependencies = [
  "integer-asset",
  "lgn-content-store",
  "lgn-data-model",
- "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-tracing",
  "lgn-utils",
@@ -4043,7 +4035,6 @@ dependencies = [
  "lgn-async",
  "lgn-content-store",
  "lgn-data-compiler",
- "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-telemetry-sink",
  "lgn-tracing",
@@ -4692,7 +4683,6 @@ dependencies = [
  "lgn-app",
  "lgn-data-codegen",
  "lgn-data-model",
- "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-ecs",
  "memoffset",
@@ -5337,7 +5327,6 @@ name = "multitext-resource"
 version = "0.1.0"
 dependencies = [
  "lgn-data-model",
- "lgn-data-offline",
  "lgn-data-runtime",
  "serde",
  "serde_json",
@@ -6710,7 +6699,6 @@ name = "refs-resource"
 version = "0.1.0"
 dependencies = [
  "lgn-data-model",
- "lgn-data-offline",
  "lgn-data-runtime",
  "serde",
  "serde_json",
@@ -7998,7 +7986,6 @@ name = "text-resource"
 version = "0.1.0"
 dependencies = [
  "lgn-data-model",
- "lgn-data-offline",
  "lgn-data-runtime",
  "serde",
  "serde_json",
