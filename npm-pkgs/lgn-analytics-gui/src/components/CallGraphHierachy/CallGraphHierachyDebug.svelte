@@ -13,7 +13,7 @@
   <div>
     End: {end}
   </div>
-  <div class="text-headline">
+  <div class="headline">
     <div class="font-semibold">Scopes</div>
     {#each Object.values($store.scopes) as scope (scope.hash)}
       <div>

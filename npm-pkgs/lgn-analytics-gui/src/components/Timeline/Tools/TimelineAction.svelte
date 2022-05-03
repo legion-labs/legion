@@ -38,8 +38,7 @@
 
 <style lang="postcss">
   .action {
-    @apply text-white p-1;
-    min-width: var(--thread-item-length);
+    @apply text-white p-1 min-w-thread-item;
   }
 
   i {

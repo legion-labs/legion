@@ -25,22 +25,22 @@
 
 <div class="text-sm py-1 rounded-lg overflow-x-hidden">
   <div
-    class="flex justify-between select-none cursor-pointer relative bg-surface text-headline"
+    class="flex justify-between select-none cursor-pointer relative surface headline"
     on:click={(_) => setCollapse(!collapsed)}
   >
     {#if desc}
       <div
-        class="text-left pl-2 py-1 whitespace-nowrap bg-background"
+        class="text-left pl-2 py-1 whitespace-nowrap background"
         style:width="{fill}%"
       >
         <i class={`bi bi-chevron-${collapsed ? "down" : "up"} text-xs`} />
         {desc.name}
-        <span class="text-xs text-placeholder">
+        <span class="text-xs placeholder">
           ({formatExecutionTime(node.value.acc)})
         </span>
       </div>
       <div
-        class="text-xs text-placeholder absolute pt-1.5 pr-2 right-0"
+        class="text-xs placeholder absolute pt-1.5 pr-2 right-0"
         class:hidden={!collapsed}
       >
         {node.value.count.toLocaleString()} call{node.value.count >= 2
@@ -50,7 +50,7 @@
     {/if}
   </div>
   {#if !collapsed && node}
-    <div class="bg-background flex flex-col p-3">
+    <div class="background flex flex-col p-3">
       <CallGraphFlatNodeStat node={node.value} />
       <div class="hidden md:block pb-4">
         <div class="w-full border-t border-headline" />

@@ -1,13 +1,15 @@
 <script lang="ts">
   import * as d3 from "d3";
-  import { onMount } from "svelte";
+  import { getContext, onMount } from "svelte";
 
+  import { threadItemLengthContextKey } from "@/constants";
   import { formatExecutionTime } from "@/lib/format";
 
   import type { TimelineStateStore } from "../Stores/TimelineStateStore";
-  import { threadItemLength } from "../Values/TimelineValues";
 
   export let stateStore: TimelineStateStore;
+
+  const threadItemLength = getContext<number>(threadItemLengthContextKey);
 
   const height = 20;
   const padding = 4;
@@ -47,4 +49,4 @@
   }
 </script>
 
-<div bind:this={el} class="axis text-placeholder select-none" />
+<div bind:this={el} class="axis placeholder select-none" />

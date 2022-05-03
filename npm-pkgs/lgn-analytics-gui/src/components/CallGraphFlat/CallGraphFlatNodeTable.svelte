@@ -14,7 +14,7 @@
     kind == CallGraphNodeTableKind.Callees ? node.children : node.parents;
 </script>
 
-<table class="text-headline font-thin self-start border-separate">
+<table class="headline font-thin self-start border-separate">
   {#if data.size > 0}
     <thead class="select-none">
       <tr>

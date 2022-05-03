@@ -9,9 +9,6 @@ body {
   @apply text-default bg-default;
 
   font-family: "Inter", Arial, sans-serif;
-}
 
-:root {
-  /** TODO: Use a tailwind config instead */
-  --thread-item-length: 170px;
+  --thread-item-length: 11rem;
 }

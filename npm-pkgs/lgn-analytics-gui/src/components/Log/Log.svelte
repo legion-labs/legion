@@ -96,7 +96,7 @@
     </div>
   {/if}
   {#each logEntries as entry, index (index)}
-    <div class="text-left bg-background flex flex-row gap-x-4">
+    <div class="text-left background flex flex-row gap-x-4">
       <div class="font-bold basis-28 shrink-0">
         {formatTime(entry.timeMs)}
       </div>

@@ -7,7 +7,7 @@
 
 {#if error}
   <div>
-    <span class="text-sm text-placeholder">
+    <span class="text-sm placeholder">
       {error}
     </span>
   </div>

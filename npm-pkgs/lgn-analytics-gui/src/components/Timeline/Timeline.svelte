@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { afterUpdate, onMount, tick } from "svelte";
+  import { afterUpdate, getContext, onMount, tick } from "svelte";
   import { useLocation } from "svelte-navigator";
   import { get } from "svelte/store";
 
+  import { threadItemLengthContextKey } from "@/constants";
   import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { endQueryParam, startQueryParam } from "@/lib/time";
 
@@ -16,11 +17,13 @@
   import TimelineMinimap from "./Tools/TimelineMinimap.svelte";
   import TimelineRange from "./Tools/TimelineRange.svelte";
   import TimelineSearch from "./Tools/TimelineSearch.svelte";
-  import { pixelMargin, threadItemLength } from "./Values/TimelineValues";
+  import { pixelMargin } from "./Values/TimelineValues";
 
   export let processId: string;
 
   const location = useLocation();
+
+  const threadItemLength = getContext<number>(threadItemLengthContextKey);
 
   let stateManager: TimelineStateManager;
   let windowInnerWidth: number;

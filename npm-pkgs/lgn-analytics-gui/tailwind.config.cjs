@@ -1,4 +1,13 @@
-// @ts-check
+/* eslint-disable @typescript-eslint/no-var-requires */
+
+// It's really painful that the type denition doesn't support commonjs
+
+/** @type {any} */
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, no-undef
+const plugin_ = require("tailwindcss/plugin");
+/** @type {import("tailwindcss/plugin").TailwindPluginCreator} */
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+const plugin = plugin_;
 
 /**
  * @param {string} varName
@@ -19,6 +28,47 @@ function withOpacity(varName, defaultOpacityVariable) {
   };
 }
 
+// TODO: Extract to @lgn/web-client and reuse in editor
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+const themePlugin = plugin(function ({ addComponents }) {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+  addComponents({
+    ".background": {
+      "background-color": "rgb(var(--color-background))",
+    },
+
+    ".surface": {
+      "background-color": "rgb(var(--color-surface))",
+    },
+
+    ".backdrop": {
+      "background-color":
+        "rgba(var(--color-backdrop), var(--opacity-backdrop))",
+    },
+
+    ".notification": {
+      "background-color":
+        "rgba(var(--color-notification), var(--opacity-notification))",
+    },
+
+    ".on-surface": {
+      "background-color": "rgb(var(--color-on-surface))",
+    },
+
+    ".headline": {
+      color: "rgba(var(--color-headline), var(--opacity-headline))",
+    },
+
+    ".text": {
+      color: "rgba(var(--color-text), var(--opacity-text))",
+    },
+
+    ".placeholder": {
+      color: "rgba(var(--color-placeholder), var(--opacity-placeholder))",
+    },
+  });
+});
+
 // eslint-disable-next-line no-undef
 module.exports = {
   mode: "jit",
@@ -34,14 +84,8 @@ module.exports = {
       colors: {
         primary: withOpacity("--color-primary"),
         accent: withOpacity("--color-accent"),
+        // TODO: Remove, used as border-headline in the call graph
         headline: withOpacity("--color-headline", "--opacity-headline"),
-        text: withOpacity("--color-text", "--opacity-text"),
-        placeholder: withOpacity(
-          "--color-placeholder",
-          "--opacity-placeholder"
-        ),
-        "on-surface": withOpacity("--color-on-surface"),
-        notification: withOpacity("--color-notification"),
         graph: {
           red: withOpacity("--color-graph-red"),
           orange: withOpacity("--color-graph-orange"),
@@ -49,17 +93,17 @@ module.exports = {
       },
       backgroundColor: {
         default: withOpacity("--background-default"),
-        background: withOpacity("--color-background"),
-        surface: withOpacity("--color-surface"),
-        backdrop: withOpacity("--color-backdrop", "--opacity-backdrop"),
       },
       textColor: {
         default: withOpacity("--text-default"),
+      },
+      minWidth: {
+        "thread-item": "var(--thread-item-length)",
       },
     },
   },
   variants: {
     extend: {},
   },
-  plugins: [],
+  plugins: [themePlugin],
 };

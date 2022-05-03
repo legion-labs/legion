@@ -43,10 +43,9 @@
         <CallTreeDebug {store} {begin} {end} />
       {/if}
       <div class="flex flex-col gap-y-2">
-        <div
-          class="text-placeholder bg-placeholder hover:bg-text p-1 mt-2 text-xs float-right w-48"
-        >
+        <div class="surface hover:background px-2 py-1 mt-2 text-xs w-fit">
           <a
+            class="placeholder"
             href={`/cumulative-call-graph?process=${processId}&${startQueryParam}=${begin}&${endQueryParam}=${end}`}
             target="_blank"
             use:link
@@ -56,10 +55,8 @@
           </a>
         </div>
         <div class="overflow-auto" style:max-height={`${size}px`}>
-          <table
-            class="w-full bg-background text-xs text-text space-y-2 table-fixed"
-          >
-            <tr class="bg-background w-100">
+          <table class="w-full background text-xs text space-y-2 table-fixed">
+            <tr class="background w-100">
               <th style="width:66%" class="text-left">Function</th>
               <th class="table-header"><i class="bi bi-caret-right" />Count</th>
               <th class="table-header"
