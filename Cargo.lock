@@ -4689,6 +4689,7 @@ dependencies = [
  "erased-serde",
  "inventory",
  "lazy_static",
+ "lgn-app",
  "lgn-data-codegen",
  "lgn-data-model",
  "lgn-data-offline",

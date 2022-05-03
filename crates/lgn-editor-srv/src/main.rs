@@ -21,6 +21,7 @@ use lgn_resource_registry::{
     settings::CompilationMode, ResourceRegistryPlugin, ResourceRegistrySettings,
 };
 use lgn_scene_plugin::ScenePlugin;
+use lgn_scripting_data::ScriptingDataPlugin;
 use lgn_source_control::RepositoryName;
 use lgn_streamer::StreamerPlugin;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
@@ -295,6 +296,7 @@ fn main() {
         .add_plugin(TransformPlugin::default())
         .add_plugin(HierarchyPlugin::default())
         .add_plugin(GenericDataPlugin::default())
+        .add_plugin(ScriptingDataPlugin::default())
         .add_plugin(SampleDataPlugin::default())
         .add_plugin(lgn_graphics_data::GraphicsPlugin::default())
         .add_plugin(WindowPlugin {
