@@ -1,11 +1,12 @@
 use std::{cell::RefCell, rc::Rc, str::FromStr, sync::Arc};
 
-use lgn_app::prelude::*;
+use lgn_app::prelude::App;
 use lgn_data_runtime::AssetRegistry;
-use lgn_ecs::prelude::*;
+use lgn_ecs::prelude::{Commands, Component, Entity, NonSend, NonSendMut, Query, Res, Without};
+use lgn_scripting_data::{runtime::ScriptComponent, ScriptType};
 use rhai::Scope;
 
-use crate::{plugin::get_script, runtime::ScriptComponent, ScriptType, ScriptingStage};
+use crate::{plugin::get_script, ScriptingStage};
 
 pub(crate) fn build(app: &mut App) {
     let mut rhai_eng = rhai::Engine::new();

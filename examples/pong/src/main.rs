@@ -25,7 +25,7 @@ use lgn_data_transaction::BuildManager;
 use lgn_graphics_data::offline::CameraSetup;
 use lgn_graphics_renderer::components::Mesh;
 use lgn_math::prelude::*;
-use lgn_scripting::ScriptType;
+use lgn_scripting_data::ScriptType;
 use lgn_tracing::LevelFilter;
 use sample_data::{
     offline::{Light, Transform, Visual},
@@ -103,7 +103,7 @@ async fn main() -> anyhow::Result<()> {
         .add_device_dir(project.resource_dir())
         .add_device_cas(Arc::clone(&data_content_provider), Manifest::default());
     lgn_graphics_data::offline::add_loaders(&mut asset_registry);
-    lgn_scripting::offline::add_loaders(&mut asset_registry);
+    lgn_scripting_data::offline::add_loaders(&mut asset_registry);
     generic_data::offline::add_loaders(&mut asset_registry);
     sample_data::offline::add_loaders(&mut asset_registry);
     let asset_registry = asset_registry.create().await;
@@ -276,7 +276,7 @@ pub fn update(entity, events, sign) {
                 color: (0x00, 0xFF, 0xFF).into(),
                 ..Visual::default()
             }),
-            Box::new(lgn_scripting::offline::ScriptComponent {
+            Box::new(lgn_scripting_data::offline::ScriptComponent {
                 input_values: vec![
                     "{entity}".to_owned(),
                     "{events}".to_owned(),
@@ -309,7 +309,7 @@ pub fn update(entity, events, sign) {
                 color: (0x00, 0x00, 0xFF).into(),
                 ..Visual::default()
             }),
-            Box::new(lgn_scripting::offline::ScriptComponent {
+            Box::new(lgn_scripting_data::offline::ScriptComponent {
                 input_values: vec![
                     "{entity}".to_owned(),
                     "{events}".to_owned(),
@@ -475,7 +475,7 @@ pub fn update(entity, last_result, entities) {
                 color: (0xFF, 0x10, 0x40).into(),
                 ..Visual::default()
             }),
-            Box::new(lgn_scripting::offline::ScriptComponent {
+            Box::new(lgn_scripting_data::offline::ScriptComponent {
                 input_values: vec![
                     "{entity}".to_owned(),
                     "{result}".to_owned(),
@@ -663,7 +663,7 @@ async fn create_offline_script(
     script_type: ScriptType,
     script_text: &str,
 ) -> ResourcePathId {
-    let kind = lgn_scripting::offline::Script::TYPE;
+    let kind = lgn_scripting_data::offline::Script::TYPE;
     let id = resource_id
         .parse::<ResourceId>()
         .expect("invalid ResourceId format");
@@ -682,7 +682,7 @@ async fn create_offline_script(
     };
 
     let mut script = handle
-        .instantiate::<lgn_scripting::offline::Script>(resources)
+        .instantiate::<lgn_scripting_data::offline::Script>(resources)
         .unwrap();
     script.script_type = script_type;
     script.script = script_text.to_owned();
@@ -698,7 +698,7 @@ async fn create_offline_script(
         project
             .add_resource_with_id(
                 name,
-                lgn_scripting::offline::Script::TYPENAME,
+                lgn_scripting_data::offline::Script::TYPENAME,
                 kind,
                 id,
                 handle,
@@ -709,5 +709,5 @@ async fn create_offline_script(
     }
 
     let path: ResourcePathId = type_id.into();
-    path.push(lgn_scripting::runtime::Script::TYPE)
+    path.push(lgn_scripting_data::runtime::Script::TYPE)
 }

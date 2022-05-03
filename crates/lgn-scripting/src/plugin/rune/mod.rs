@@ -1,9 +1,12 @@
 use std::{str::FromStr, sync::Arc};
 
-use lgn_app::prelude::*;
+use lgn_app::prelude::App;
 use lgn_data_runtime::AssetRegistry;
-use lgn_ecs::prelude::*;
-use lgn_tracing::prelude::*;
+use lgn_ecs::prelude::{
+    Commands, Component, IntoExclusiveSystem, NonSendMut, Query, Res, With, Without, World,
+};
+use lgn_scripting_data::{runtime::ScriptComponent, ScriptType};
+use lgn_tracing::prelude::info;
 use rune::{
     termcolor::{ColorChoice, StandardStream},
     Context, ContextError, Diagnostics, Hash, Source, Sources, ToValue, Unit, Value, Vm,
@@ -17,9 +20,7 @@ use self::modules::{
     scripting::{make_scripting_module, Events},
     transform::make_transform_module,
 };
-use crate::{
-    plugin::get_script, runtime::ScriptComponent, ScriptType, ScriptingEventCache, ScriptingStage,
-};
+use crate::{plugin::get_script, ScriptingEventCache, ScriptingStage};
 
 pub(crate) fn build(app: &mut App) -> Result<(), ContextError> {
     let mut context = rune_modules::default_context()?;

@@ -1,25 +1,16 @@
-#[cfg(not(feature = "offline"))]
 use std::sync::Arc;
 
-use lgn_app::prelude::*;
-use lgn_data_runtime::AssetRegistryOptions;
-#[cfg(not(feature = "offline"))]
+use lgn_app::prelude::{App, Plugin};
 use lgn_data_runtime::{AssetRegistry, AssetRegistryGuard};
-use lgn_ecs::prelude::*;
-#[cfg(not(feature = "offline"))]
+use lgn_ecs::prelude::{EventReader, Res, ResMut, SystemStage};
 use lgn_input::mouse::MouseMotion;
-#[cfg(not(feature = "offline"))]
-use lgn_math::prelude::*;
+use lgn_math::prelude::Vec2;
+use lgn_scripting_data::runtime::{Script, ScriptComponent};
 
-#[cfg(not(feature = "offline"))]
-use crate::{
-    runtime::{Script, ScriptComponent},
-    ScriptingStage,
-};
+use crate::ScriptingStage;
 
-#[cfg(not(feature = "offline"))]
 mod rhai;
-#[cfg(not(feature = "offline"))]
+
 mod rune;
 
 #[derive(Default)]
@@ -27,33 +18,27 @@ pub struct ScriptingPlugin;
 
 impl Plugin for ScriptingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(add_loaders);
+        app.add_stage(ScriptingStage::Compile, SystemStage::parallel());
+        app.add_stage_after(
+            ScriptingStage::Compile,
+            ScriptingStage::Prepare,
+            SystemStage::parallel(),
+        );
+        app.add_stage_after(
+            ScriptingStage::Prepare,
+            ScriptingStage::Execute,
+            SystemStage::parallel(),
+        );
 
-        #[cfg(not(feature = "offline"))]
-        {
-            app.add_stage(ScriptingStage::Compile, SystemStage::parallel());
-            app.add_stage_after(
-                ScriptingStage::Compile,
-                ScriptingStage::Prepare,
-                SystemStage::parallel(),
-            );
-            app.add_stage_after(
-                ScriptingStage::Prepare,
-                ScriptingStage::Execute,
-                SystemStage::parallel(),
-            );
+        app.init_resource::<ScriptingEventCache>()
+            .add_system_to_stage(ScriptingStage::Prepare, Self::update_events);
 
-            app.init_resource::<ScriptingEventCache>()
-                .add_system_to_stage(ScriptingStage::Prepare, Self::update_events);
-
-            rune::build(app).expect("failed to setup Rune context");
-            rhai::build(app);
-        }
+        rune::build(app).expect("failed to setup Rune context");
+        rhai::build(app);
     }
 }
 
 impl ScriptingPlugin {
-    #[cfg(not(feature = "offline"))]
     pub(crate) fn update_events(
         mut mouse_motion_events: EventReader<'_, '_, MouseMotion>,
         mut cache: ResMut<'_, ScriptingEventCache>,
@@ -67,13 +52,11 @@ impl ScriptingPlugin {
     }
 }
 
-#[cfg(not(feature = "offline"))]
 #[derive(Clone)]
 pub struct ScriptingEventCache {
     mouse_motion: MouseMotion,
 }
 
-#[cfg(not(feature = "offline"))]
 impl Default for ScriptingEventCache {
     fn default() -> Self {
         Self {
@@ -82,21 +65,6 @@ impl Default for ScriptingEventCache {
     }
 }
 
-#[allow(unused_variables)]
-fn add_loaders(asset_registry: NonSendMut<'_, AssetRegistryOptions>) {
-    let asset_registry = asset_registry.into_inner();
-    #[cfg(feature = "offline")]
-    {
-        crate::offline::add_loaders(asset_registry);
-    }
-
-    #[cfg(feature = "runtime")]
-    {
-        crate::runtime::add_loaders(asset_registry);
-    }
-}
-
-#[cfg(not(feature = "offline"))]
 fn get_script<'registry>(
     script: &ScriptComponent,
     registry: &'registry Res<'_, Arc<AssetRegistry>>,
