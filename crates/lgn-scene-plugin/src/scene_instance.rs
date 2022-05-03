@@ -125,7 +125,7 @@ impl SceneInstance {
                         scale: transform.scale,
                     });
                 } else if let Some(script) =
-                    component.downcast_ref::<lgn_scripting::runtime::ScriptComponent>()
+                    component.downcast_ref::<lgn_scripting_data::runtime::ScriptComponent>()
                 {
                     entity.insert(script.clone());
                 } else if let Some(name) = component.downcast_ref::<runtime_data::Name>() {

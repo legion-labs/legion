@@ -35,6 +35,7 @@ use lgn_physics::{PhysicsPlugin, PhysicsSettingsBuilder};
 use lgn_scene_plugin::SceneMessage;
 use lgn_scene_plugin::ScenePlugin;
 use lgn_scripting::ScriptingPlugin;
+use lgn_scripting_data::ScriptingDataPlugin;
 #[cfg(not(feature = "standalone"))]
 use lgn_streamer::StreamerPlugin;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
@@ -256,6 +257,7 @@ pub fn build_runtime() -> App {
         .add_plugin(AssetRegistryPlugin::default())
         .add_plugin(ScenePlugin::new(root_asset))
         .add_plugin(GenericDataPlugin::default())
+        .add_plugin(ScriptingDataPlugin::default())
         .add_plugin(ScriptingPlugin::default())
         .add_plugin(SampleDataPlugin::default())
         .add_plugin(GraphicsPlugin::default())

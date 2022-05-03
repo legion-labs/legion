@@ -1,10 +1,7 @@
 //! Scripting library - currently has an integration for the MUN language, Rune and Rhai.
 
-// generated from def\script.rs
-include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
-
 mod labels;
-pub use labels::*;
+pub use labels::ScriptingStage;
 
 mod plugin;
-pub use plugin::*;
+pub use plugin::ScriptingPlugin;
