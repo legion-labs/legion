@@ -14,9 +14,9 @@ May 2022
 ## Introduction
 
 ![bg right](figures/merlin.jpg)
-- logs, metrics, traces
-- latency, stability, satisfaction
-- for local, distributed & cloud native applications
+- Logs, metrics, traces
+- Latency, stability, satisfaction
+- For local, distributed & cloud native applications
 
 ---
 # Legion Performance Analytics
@@ -29,7 +29,7 @@ May 2022
 ## Table of Contents
 
 - **Whole stack solution**
-- record cheap, read maybe
+- Record cheap, read maybe
 - All the data, one protocol
 - From inception to live
 - Progress & roadmap
@@ -38,38 +38,49 @@ May 2022
 # Legion Performance Analytics Strategies
 ## Whole stack solution
 
-- off the shelve components are not good enough
-- instrumentation
-  * low overhead (~40 ns / event)
-  * generic and flexible format (like protobuf with references)
+High density of events break all the existing solutions
+
+Component | Good Enough
+--------- | ---------
+Instrumentation | :x:
+Database | :x:
+User Interface | :x:
+
+---
+# Legion Performance Analytics Strategies
+## Whole stack solution
+
+- Instrumentation
+  * Low overhead (~40 ns / event)
+  * Generic and flexible format (like protobuf with references)
+
+---
+# Legion Performance Analytics Strategies
+## Whole stack solution
+  
+- Database
+  * Scalable in writing
+  * Low cost when unused
+  * Bursty reads
+  * Write like a data lake, read like a data warehouse
   
 ---
 # Legion Performance Analytics Strategies
 ## Whole stack solution
   
-- database
-  * scalable in writing
-  * low cost when unused
-  * bursty reads
-  * write like a data lake, read like a data warehouse
-  
----
-# Legion Performance Analytics Strategies
-## Whole stack solution
-  
-- user interface
-  * flame charts with billions of entries
-  * graphs with (at least) thousands of nodes
-  * tight integrations with time series and lists
-  * web based
-  * mashup of rad telemetry + prometheus + kibana + grafana
+- User interface
+  * Flame charts with billions of entries
+  * Graphs with (at least) thousands of nodes
+  * Tight integrations with time series and lists
+  * Web based
+  * Mashup of rad telemetry + prometheus + kibana + grafana
 
 ---
 # Legion Performance Analytics Strategies
 ## Table of Contents
 
 - Whole stack solution
-- **record cheap, read maybe**
+- **Record cheap, read maybe**
 - All the data, one protocol
 - From inception to live
 - Progress & roadmap
@@ -78,29 +89,29 @@ May 2022
 # Legion Performance Analytics Strategies
 ## Record cheap, Read maybe
 
-- low overhead instrumentation
-  * thousands of events per frame
-  * recording is serializing with heterogenous queue
-    * patform-specific memory layout
-  * batching
-  * fast compression using lz4
+- Low overhead instrumentation
+  * Thousands of events per frame
+  * Recording is serializing with heterogenous queue
+    * Patform-specific memory layout
+  * Batching
+  * Fast compression using lz4
 
 ---
 # Legion Performance Analytics Strategies
 ## Record cheap, Read maybe
-- cheap ingestion
+- Cheap ingestion
   * Event block payload in S3 without decompression
   * MySQL: metadata about processes, streams and blocks
 
 ---
 # Legion Performance Analytics Strategies
 ## Record cheap, Read maybe
-- pay for what you read
+- Pay for what you read
   * ETL on demand
-  * decompression of structured event blocks
-  * parse events to build trees and graphs
-  * write in parquet on S3 with lambda
-  * query using AWS Athena & datafusion
+  * Decompression of structured event blocks
+  * Parse events to build trees and graphs
+  * Write in parquet on S3 with lambda
+  * Query using AWS Athena & datafusion
 
 
 ---
@@ -108,7 +119,7 @@ May 2022
 ## Table of Contents
 
 - Whole stack solution
-- record cheap, read maybe
+- Record cheap, read maybe
 - **All the data, one protocol**
 - From inception to live
 - Progress & roadmap
@@ -118,11 +129,11 @@ May 2022
 ## All the data, one protocol
 
 - Structured events
-  * time series are not general enough
+  * Time series are not general enough
 - Stream definition contains memory layout of events
 - Instrumented apps are free to upload any event in any stream
-  * analytics relies on tagged streams
-  * analytics expect and process specific event types
+  * Analytics relies on tagged streams
+  * Analytics expect and process specific event types
 - Forward & backward compatibility
 
 ---
@@ -138,7 +149,7 @@ May 2022
 ## Table of Contents
 
 - Whole stack solution
-- record cheap, read maybe
+- Record cheap, read maybe
 - All the data, one protocol
 - **From inception to live**
 - Progress & roadmap
@@ -152,15 +163,15 @@ May 2022
 - Live
   * High scalability
   * Fast adaptability
-    * configure output verbosity of instrumented app
-    * to-the-minute live data
+    * Configure output verbosity of instrumented app
+    * To-the-minute live data
 
 ---
 # Legion Performance Analytics Strategies
 ## Table of Contents
 
 - Whole stack solution
-- record cheap, read maybe
+- Record cheap, read maybe
 - All the data, one protocol
 - From inception to live
 - **Progress & roadmap**
@@ -186,7 +197,7 @@ May 2022
 ## June Priorities
 
  - Regulations: GDPR, Pipeda, bill 64
- - UI improvements (logs, l10n/i18n, timeline, metrics)
+ - UI/UX improvements (logs, l10n/i18n, timeline, metrics)
  - Unreal module
  - Lakehouse: just-in-time parquet generation + query engine
 
