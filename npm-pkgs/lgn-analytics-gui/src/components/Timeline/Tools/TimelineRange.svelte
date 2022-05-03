@@ -4,7 +4,8 @@
   import type { TimelineStateStore } from "../Stores/TimelineStateStore";
 
   export let stateStore: TimelineStateStore;
-  let percent: number;
+
+  let percent: number = 0;
 
   $: if ($stateStore?.currentSelection) {
     const width = $stateStore?.canvasWidth;
@@ -15,19 +16,20 @@
     const beginPixel = (beginSelection - begin) * msToPixelsFactor;
     const endPixel = (endSelection - begin) * msToPixelsFactor;
     const centerPixel = (beginPixel + endPixel) / 2;
+
     percent = (100 * centerPixel) / width;
   }
 </script>
 
 {#if $stateStore?.currentSelection}
-  <div class="flex flex-row">
-    <div class="block" />
+  <div class="flex flex-row items-center w-full h-4 overflow-hidden">
+    <div class="min-w-thread-item" />
     <div class="overflow-hidden" style={`width:${$stateStore?.canvasWidth}px`}>
       <div
-        class="flex text-xs text-placeholder relative "
-        style={`left:${percent}%`}
+        class="h-full flex flex-row text-xs placeholder"
+        style={`transform: translate(${percent}%);`}
       >
-        <div class="child">
+        <div class="flex flex-row h-full -translate-x-1/2">
           <i class="bi bi-arrow-left-short" />
           {formatExecutionTime(
             $stateStore.currentSelection[1] - $stateStore.currentSelection[0]
@@ -38,15 +40,3 @@
     </div>
   </div>
 {/if}
-
-<style lang="postcss">
-  .block {
-    background-color: transparent;
-    z-index: 1;
-    min-width: calc(var(--thread-item-length) + 6px);
-  }
-
-  .child {
-    transform: translateX(-50%);
-  }
-</style>

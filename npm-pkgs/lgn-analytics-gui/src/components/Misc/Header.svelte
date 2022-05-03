@@ -18,7 +18,7 @@
   <div class="flex items-center gap-3">
     <a href="/" use:link>
       <img src={iconPath} alt="logo" style="height:24px" class="inline" />
-      <span class="font-bold text-xl text-headline">
+      <span class="font-bold text-xl headline">
         <a href="/" use:link>Legion Performance Analytics</a>
       </span>
     </a>

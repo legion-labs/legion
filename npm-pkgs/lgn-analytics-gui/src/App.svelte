@@ -2,7 +2,9 @@
   import { onMount, setContext } from "svelte";
 
   import type { InitAuthStatus } from "@lgn/web-client/src/lib/auth";
+  import { displayError } from "@lgn/web-client/src/lib/errors";
   import { replaceClassesWith } from "@lgn/web-client/src/lib/html";
+  import log from "@lgn/web-client/src/lib/log";
   import { createThemeStore } from "@lgn/web-client/src/stores/theme";
 
   import CallGraphFlat from "@/components/CallGraphFlat/CallGraphFlat.svelte";
@@ -15,13 +17,31 @@
   import LoadingBar from "./components/Misc/LoadingBar.svelte";
   import ProcessPage from "./components/Process/ProcessPage.svelte";
   import TimelineRenderer from "./components/Timeline/Timeline.svelte";
-  import { themeContextKey, themeStorageKey } from "./constants";
+  import { getThreadItemLength } from "./components/Timeline/Values/TimelineValues";
+  import {
+    themeContextKey,
+    themeStorageKey,
+    threadItemLengthContextKey,
+    threadItemLengthFallback,
+  } from "./constants";
 
   export let initAuthStatus: InitAuthStatus | null;
 
   const theme = createThemeStore(themeStorageKey, "dark");
 
   setContext(themeContextKey, theme);
+
+  try {
+    setContext(threadItemLengthContextKey, getThreadItemLength());
+  } catch (error) {
+    log.warn(
+      `Couldn't get the proper thread item length, defaulting to the arbitrary value "${threadItemLengthFallback}": ${displayError(
+        error
+      )}`
+    );
+
+    setContext(threadItemLengthContextKey, threadItemLengthFallback);
+  }
 
   // TODO: Here we can control the UI and display a modal like in the Editor
   onMount(() => {

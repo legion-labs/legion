@@ -53,6 +53,6 @@
   }
 
   tr:nth-child(even) {
-    @apply bg-surface;
+    @apply surface;
   }
 </style>

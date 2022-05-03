@@ -36,13 +36,13 @@
 </script>
 
 <Loader {loading}>
-  <div slot="body" class="text-headline text-sm">
+  <div slot="body" class="headline text-sm">
     <div class="text-center pb-6">
       <!-- svelte-ignore a11y-autofocus -->
       <input
         autofocus
         type="text"
-        class="h-8 w-96 placeholder-text rounded-sm pl-2 bg-surface"
+        class="h-8 w-96 placeholder rounded-sm pl-2 surface"
         placeholder="Search process..."
         on:input={onSearchChange}
       />

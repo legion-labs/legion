@@ -43,8 +43,8 @@
 
 {#if processInstance.processInfo}
   <div
-    class:bg-surface={index % 2 === 0}
-    class:bg-background={index % 2 !== 0}
+    class:surface={index % 2 === 0}
+    class:background={index % 2 !== 0}
     class:bg-opacity-80={depth > 0}
     class="text-white flex h-8 rounded-md items-center"
   >
