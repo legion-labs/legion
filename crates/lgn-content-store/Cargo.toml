@@ -115,5 +115,5 @@ ENTRYPOINT ["{ binaries.content-store-srv }"]
 """
 allow-aws-ecr-creation = true
 
-[[package.metadata.cargo-udeps.ignore]]
+[package.metadata.cargo-udeps.ignore]
 normal = ["clap", "console", "indicatif", "lgn-cli-utils", "lgn-telemetry-sink"]
