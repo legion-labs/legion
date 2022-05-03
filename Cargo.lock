@@ -4506,6 +4506,9 @@ dependencies = [
 [[package]]
 name = "lgn-graphics-tests"
 version = "0.1.0"
+dependencies = [
+ "lgn-graphics-api",
+]
 
 [[package]]
 name = "lgn-grpc"

@@ -1,5 +1,8 @@
+use lgn_graphics_api::{Extents3D, Format, PlaneSlice, ViewDimension};
+
 use crate::render_script::{
-    Format, RenderGraphBuilder, RenderGraphExecuteContext, RenderTargetDesc, RenderTargetId,
+    RenderGraphBuilder, RenderGraphExecuteContext, RenderGraphResourceDef, RenderGraphResourceId,
+    RenderGraphTextureDef, RenderGraphTextureViewDef, RenderGraphViewDef, RenderGraphViewId,
     RenderView,
 };
 
@@ -19,28 +22,129 @@ pub struct SSAOPass {}
 
 pub struct UiPass {}
 
-//impl GpuCullingPass {
-//    pub(crate) fn build_render_graph(&self, builder: RenderGraphBuilder) -> RenderGraphBuilder {
-//        builder
-//    }
-//}
+impl GpuCullingPass {
+    pub(crate) fn build_render_graph(
+        &self,
+        builder: RenderGraphBuilder,
+        depth_buffer_id: RenderGraphResourceId,
+        depth_view_id: RenderGraphViewId,
+    ) -> RenderGraphBuilder {
+        let depth_buffer_extents = builder
+            .get_resource_def(depth_buffer_id)
+            .texture_def()
+            .extents;
+        let downsampled_depth_desc = self.make_downsampled_depth_desc(depth_buffer_extents);
+        let mut builder = builder;
+        let downsampled_depth_id =
+            builder.declare_render_target("DownsampledDepth", &downsampled_depth_desc);
+
+        builder.add_scope("DepthDownsample", |builder| {
+            self.build_downsample_render_graph(
+                depth_buffer_id,
+                depth_view_id,
+                downsampled_depth_id,
+                &downsampled_depth_desc,
+                builder,
+            )
+        })
+    }
+
+    #[allow(clippy::unused_self)]
+    fn make_downsampled_depth_desc(&self, view_extents: Extents3D) -> RenderGraphResourceDef {
+        let mut extents = view_extents;
+        let mut mips = 1;
+        while extents.width != 1 && extents.height != 1 {
+            extents.width >>= 1;
+            extents.height >>= 1;
+            mips += 1;
+        }
+
+        RenderGraphResourceDef::Texture {
+            definition: RenderGraphTextureDef {
+                extents: view_extents,
+                array_length: 1,
+                total_mip_count: mips,
+                format: Format::R16G16_SFLOAT,
+            },
+        }
+    }
+
+    #[allow(clippy::unused_self)]
+    fn build_downsample_render_graph(
+        &self,
+        depth_buffer_id: RenderGraphResourceId,
+        _depth_view_id: RenderGraphViewId,
+        downsampled_depth_id: RenderGraphResourceId,
+        downsampled_depth_desc: &RenderGraphResourceDef,
+        builder: RenderGraphBuilder,
+    ) -> RenderGraphBuilder {
+        let mut builder = builder;
+
+        let depth_view_def = RenderGraphViewDef::Texture {
+            definition: RenderGraphTextureViewDef {
+                view_dimension: ViewDimension::_2D,
+                first_mip: 0,
+                mip_count: 1,
+                plane_slice: PlaneSlice::Default,
+                first_array_slice: 0,
+                array_size: 1,
+            },
+        };
+
+        for i in 0..downsampled_depth_desc.texture_def().total_mip_count {
+            let read_res_id = if i == 0 {
+                depth_buffer_id
+            } else {
+                downsampled_depth_id
+            };
+            let write_res_id = downsampled_depth_id;
+
+            let mut read_view_def = depth_view_def.clone();
+            let read_view_id = if i == 0 {
+                read_view_def.texture_view_def_mut().plane_slice = PlaneSlice::Depth;
+                builder.declare_view(&depth_view_def)
+            } else {
+                read_view_def.texture_view_def_mut().first_mip = i - 1;
+                builder.declare_view(&read_view_def)
+            };
+
+            let mut write_view_def = depth_view_def.clone();
+            write_view_def.texture_view_def_mut().first_mip = i;
+            write_view_def.texture_view_def_mut().plane_slice = PlaneSlice::Default;
+            let write_view_id = builder.declare_view(&write_view_def);
+
+            let pass_name = format!("DepthDownsample mip {}", i);
+            let mip_index = i;
+            builder = builder.add_compute_pass(&pass_name, move |compute_pass_builder| {
+                // The mip 0 pass should be a straight copy, not a compute shader.
+                compute_pass_builder
+                    .read(read_res_id, read_view_id)
+                    .write(write_res_id, write_view_id)
+                    .execute(move |_| println!("DepthDownsample execute mip {}", mip_index))
+            });
+        }
+        builder
+    }
+}
 
 impl DepthLayerPass {
     #[allow(clippy::unused_self)]
     pub(crate) fn build_render_graph(
         &self,
         builder: RenderGraphBuilder,
-        depth_buffer_id: RenderTargetId,
+        depth_buffer_id: RenderGraphResourceId,
+        depth_view_id: RenderGraphViewId,
     ) -> RenderGraphBuilder {
         builder.add_graphics_pass("DepthLayer", |graphics_pass_builder| {
             graphics_pass_builder
-                .add_depth_stencil((depth_buffer_id, 0))
+                .depth_stencil(depth_buffer_id, depth_view_id)
                 .execute(Self::execute_depth_layer_pass)
         })
     }
 
-    fn execute_depth_layer_pass(execute_context: &RenderGraphExecuteContext) {
+    fn execute_depth_layer_pass(execute_context: &RenderGraphExecuteContext<'_>) {
         println!("DepthLayerPass execute {}", execute_context.name);
+        println!("Resources: {:?}", execute_context.resources);
     }
 }
 
@@ -49,21 +153,23 @@ impl OpaqueLayerPass {
     pub(crate) fn build_render_graph(
         &self,
         builder: RenderGraphBuilder,
-        depth_buffer_id: RenderTargetId,
-        gbuffer_ids: [RenderTargetId; 4],
+        depth_buffer_id: RenderGraphResourceId,
+        depth_view_id: RenderGraphViewId,
+        gbuffer_ids: [RenderGraphResourceId; 4],
+        gbuffer_view_id: RenderGraphViewId,
     ) -> RenderGraphBuilder {
         builder.add_graphics_pass("OpaqueLayer", |graphics_pass_builder| {
             graphics_pass_builder
-                .add_render_target((gbuffer_ids[0], 0))
-                .add_render_target((gbuffer_ids[1], 0))
-                .add_render_target((gbuffer_ids[2], 0))
-                .add_render_target((gbuffer_ids[3], 0))
-                .add_depth_stencil((depth_buffer_id, 0))
+                .render_target(0, gbuffer_ids[0], gbuffer_view_id)
+                .render_target(1, gbuffer_ids[1], gbuffer_view_id)
+                .render_target(2, gbuffer_ids[2], gbuffer_view_id)
+                .render_target(3, gbuffer_ids[3], gbuffer_view_id)
+                .depth_stencil(depth_buffer_id, depth_view_id)
                 .execute(Self::execute_opaque_layer_pass)
         })
     }
 
-    fn execute_opaque_layer_pass(execute_context: &RenderGraphExecuteContext) {
+    fn execute_opaque_layer_pass(execute_context: &RenderGraphExecuteContext<'_>) {
         println!("OpaqueLayerPass execute {}", execute_context.name);
     }
 }
@@ -73,13 +179,15 @@ impl AlphaBlendedLayerPass {
     pub(crate) fn build_render_graph(
         &self,
         builder: RenderGraphBuilder,
-        depth_buffer_id: RenderTargetId,
-        radiance_buffer_id: RenderTargetId,
+        depth_buffer_id: RenderGraphResourceId,
+        depth_view_id: RenderGraphViewId,
+        radiance_buffer_id: RenderGraphResourceId,
+        radiance_view_id: RenderGraphViewId,
     ) -> RenderGraphBuilder {
         builder.add_graphics_pass("AlphaBlendedLayer", |graphics_pass_builder| {
             graphics_pass_builder
-                .add_render_target((radiance_buffer_id, 0))
-                .add_depth_stencil((depth_buffer_id, 0))
+                .render_target(0, radiance_buffer_id, radiance_view_id)
+                .depth_stencil(depth_buffer_id, depth_view_id)
                 .execute(|_| {
                     println!("AlphaBlendedLayerPass execute");
                 })
@@ -92,7 +200,8 @@ impl PostProcessPass {
     pub(crate) fn build_render_graph(
         &self,
         builder: RenderGraphBuilder,
-        radiance_buffer_id: RenderTargetId,
+        radiance_buffer_id: RenderGraphResourceId,
+        radiance_view_id: RenderGraphViewId,
     ) -> RenderGraphBuilder {
         // Note this function does not specify the correct resources for passes, it's mostly to show
         // multiple nested scopes and passes at different levels.
@@ -104,22 +213,22 @@ impl PostProcessPass {
                     builder
                         .add_compute_pass("DOF CoC", |compute_pass_builder| {
                             compute_pass_builder
-                                .add_read_resource((radiance_buffer_id, 0))
-                                .add_write_resource((radiance_buffer_id, 0))
+                                .read(radiance_buffer_id, radiance_view_id)
+                                .write(radiance_buffer_id, radiance_view_id)
                                 .execute(Self::execute_dof_coc)
                         })
                         .add_compute_pass("DOF Blur CoC", |compute_pass_builder| {
                             compute_pass_builder
-                                .add_read_resource((radiance_buffer_id, 0))
-                                .add_write_resource((radiance_buffer_id, 0))
+                                .read(radiance_buffer_id, radiance_view_id)
+                                .write(radiance_buffer_id, radiance_view_id)
                                 .execute(|_| {
                                     println!("DOF Blur CoC pass execute");
                                 })
                         })
                         .add_compute_pass("DOF Composite", |compute_pass_builder| {
                             compute_pass_builder
-                                .add_read_resource((radiance_buffer_id, 0))
-                                .add_write_resource((radiance_buffer_id, 0))
+                                .read(radiance_buffer_id, radiance_view_id)
+                                .write(radiance_buffer_id, radiance_view_id)
                                 .execute(|_| {
                                     println!("DOF Composite pass execute");
                                 })
@@ -130,24 +239,24 @@ impl PostProcessPass {
                     builder
                         .add_compute_pass("Bloom Downsample", |compute_pass_builder| {
                             compute_pass_builder
-                                .add_read_resource((radiance_buffer_id, 0))
-                                .add_write_resource((radiance_buffer_id, 0))
+                                .read(radiance_buffer_id, radiance_view_id)
+                                .write(radiance_buffer_id, radiance_view_id)
                                 .execute(|_| {
                                     println!("Bloom Downsample pass execute");
                                 })
                         })
                         .add_compute_pass("Bloom Threshold", |compute_pass_builder| {
                             compute_pass_builder
-                                .add_read_resource((radiance_buffer_id, 0))
-                                .add_write_resource((radiance_buffer_id, 0))
+                                .read(radiance_buffer_id, radiance_view_id)
+                                .write(radiance_buffer_id, radiance_view_id)
                                 .execute(|_| {
                                     println!("Bloom Threshold pass execute");
                                 })
                         })
                         .add_compute_pass("Bloom Apply", |compute_pass_builder| {
                             compute_pass_builder
-                                .add_read_resource((radiance_buffer_id, 0))
-                                .add_write_resource((radiance_buffer_id, 0))
+                                .read(radiance_buffer_id, radiance_view_id)
+                                .write(radiance_buffer_id, radiance_view_id)
                                 .execute(|_| {
                                     println!("Bloom Apply pass execute");
                                 })
@@ -156,8 +265,8 @@ impl PostProcessPass {
                 // This could be a separate struct ToneMappingPass with its own build_render_graph(builder) method.
                 .add_compute_pass("ToneMapping", |compute_pass_builder| {
                     compute_pass_builder
-                        .add_read_resource((radiance_buffer_id, 0))
-                        .add_write_resource((radiance_buffer_id, 0))
+                        .read(radiance_buffer_id, radiance_view_id)
+                        .write(radiance_buffer_id, radiance_view_id)
                         .execute(|_| {
                             println!("ToneMapping pass execute");
                         })
@@ -165,30 +274,35 @@ impl PostProcessPass {
         })
     }
 
-    fn execute_dof_coc(execute_context: &RenderGraphExecuteContext) {
+    fn execute_dof_coc(execute_context: &RenderGraphExecuteContext<'_>) {
         println!("DOF CoC pass execute {}", execute_context.name);
     }
 }
 
 impl LightingPass {
     #[allow(clippy::unused_self)]
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn build_render_graph(
         &self,
         builder: RenderGraphBuilder,
-        depth_buffer_id: RenderTargetId,
-        gbuffer_ids: [RenderTargetId; 4],
-        ao_buffer_id: RenderTargetId,
-        radiance_buffer_id: RenderTargetId,
+        depth_buffer_id: RenderGraphResourceId,
+        depth_view_id: RenderGraphViewId,
+        gbuffer_ids: [RenderGraphResourceId; 4],
+        gbuffer_view_id: RenderGraphViewId,
+        ao_buffer_id: RenderGraphResourceId,
+        ao_view_id: RenderGraphViewId,
+        radiance_buffer_id: RenderGraphResourceId,
+        radiance_view_id: RenderGraphViewId,
     ) -> RenderGraphBuilder {
         builder.add_compute_pass("Lighting", |compute_pass_builder| {
             compute_pass_builder
-                .add_read_resource((gbuffer_ids[0], 0))
-                .add_read_resource((gbuffer_ids[1], 0))
-                .add_read_resource((gbuffer_ids[2], 0))
-                .add_read_resource((gbuffer_ids[3], 0))
-                .add_read_resource((depth_buffer_id, 0))
-                .add_read_resource((ao_buffer_id, 0))
-                .add_write_resource((radiance_buffer_id, 0))
+                .read(gbuffer_ids[0], gbuffer_view_id)
+                .read(gbuffer_ids[1], gbuffer_view_id)
+                .read(gbuffer_ids[2], gbuffer_view_id)
+                .read(gbuffer_ids[3], gbuffer_view_id)
+                .read(depth_buffer_id, depth_view_id)
+                .read(ao_buffer_id, ao_view_id)
+                .write(radiance_buffer_id, radiance_view_id)
                 .execute(|_| {
                     println!("LightingPass execute");
                 })
@@ -197,49 +311,52 @@ impl LightingPass {
 }
 
 impl SSAOPass {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn build_render_graph(
         &self,
         builder: RenderGraphBuilder,
         view: &RenderView,
-        depth_buffer_id: RenderTargetId,
-        gbuffer_ids: [RenderTargetId; 4],
-        ao_buffer_id: RenderTargetId,
+        depth_buffer_id: RenderGraphResourceId,
+        depth_view_id: RenderGraphViewId,
+        gbuffer_ids: [RenderGraphResourceId; 4],
+        gbuffer_view_id: RenderGraphViewId,
+        ao_buffer_id: RenderGraphResourceId,
+        ao_view_id: RenderGraphViewId,
     ) -> RenderGraphBuilder {
         builder.add_scope("SSAO", |builder| {
-            let mut raw_ao_buffer_desc = self.make_raw_ao_buffer_desc(view);
+            let raw_ao_buffer_desc = self.make_raw_ao_buffer_desc(view);
             let mut builder = builder;
-            let raw_ao_buffer_id = builder.declare_render_target(&raw_ao_buffer_desc);
-
-            raw_ao_buffer_desc.name = "AOBlurBuffer".to_string();
-            let blur_buffer_id = builder.declare_render_target(&raw_ao_buffer_desc);
+            let raw_ao_buffer_id =
+                builder.declare_render_target("AORawBuffer", &raw_ao_buffer_desc);
+            let blur_buffer_id = builder.declare_render_target("AOBlurBuffer", &raw_ao_buffer_desc);
 
             builder
                 .add_compute_pass("AO", |compute_pass_builder| {
                     compute_pass_builder
-                        .add_read_resource((gbuffer_ids[0], 0))
-                        .add_read_resource((gbuffer_ids[1], 0))
-                        .add_read_resource((gbuffer_ids[2], 0))
-                        .add_read_resource((gbuffer_ids[3], 0))
-                        .add_read_resource((depth_buffer_id, 0))
-                        .add_write_resource((raw_ao_buffer_id, 0))
+                        .read(gbuffer_ids[0], gbuffer_view_id)
+                        .read(gbuffer_ids[1], gbuffer_view_id)
+                        .read(gbuffer_ids[2], gbuffer_view_id)
+                        .read(gbuffer_ids[3], gbuffer_view_id)
+                        .read(depth_buffer_id, depth_view_id)
+                        .write(raw_ao_buffer_id, ao_view_id)
                         .execute(|_| {
                             println!("AO pass execute");
                         })
                 })
                 .add_compute_pass("BlurX", |compute_pass_builder| {
                     compute_pass_builder
-                        .add_read_resource((raw_ao_buffer_id, 0))
-                        .add_read_resource((depth_buffer_id, 0))
-                        .add_write_resource((blur_buffer_id, 0))
+                        .read(raw_ao_buffer_id, ao_view_id)
+                        .read(depth_buffer_id, depth_view_id)
+                        .write(blur_buffer_id, ao_view_id)
                         .execute(|_| {
                             println!("BlurX pass execute");
                         })
                 })
                 .add_compute_pass("BlurY", |compute_pass_builder| {
                     compute_pass_builder
-                        .add_read_resource((blur_buffer_id, 0))
-                        .add_read_resource((depth_buffer_id, 0))
-                        .add_write_resource((ao_buffer_id, 0))
+                        .read(blur_buffer_id, ao_view_id)
+                        .read(depth_buffer_id, depth_view_id)
+                        .write(ao_buffer_id, ao_view_id)
                         .execute(|_| {
                             println!("BlurY pass execute");
                         })
@@ -248,14 +365,14 @@ impl SSAOPass {
     }
 
     #[allow(clippy::unused_self)]
-    fn make_raw_ao_buffer_desc(&self, view: &RenderView) -> RenderTargetDesc {
-        RenderTargetDesc {
-            name: "RawAOBuffer".to_string(),
-            width: view.target.desc.width,
-            height: view.target.desc.height,
-            depth: view.target.desc.depth,
-            array_size: view.target.desc.array_size,
-            format: Format::R8_UNORM,
+    fn make_raw_ao_buffer_desc(&self, view: &RenderView) -> RenderGraphResourceDef {
+        RenderGraphResourceDef::Texture {
+            definition: RenderGraphTextureDef {
+                extents: view.target.definition().extents,
+                array_length: 1,
+                total_mip_count: 1,
+                format: Format::R8_UNORM,
+            },
         }
     }
 }
@@ -265,11 +382,12 @@ impl UiPass {
     pub(crate) fn build_render_graph(
         &self,
         builder: RenderGraphBuilder,
-        ui_buffer_id: RenderTargetId,
+        ui_buffer_id: RenderGraphResourceId,
+        ui_view_id: RenderGraphViewId,
     ) -> RenderGraphBuilder {
         builder.add_graphics_pass("UI", |graphics_pass_builder| {
             graphics_pass_builder
-                .add_render_target((ui_buffer_id, 0))
+                .render_target(0, ui_buffer_id, ui_view_id)
                 .execute(|_| {
                     println!("UiPass execute");
                 })
