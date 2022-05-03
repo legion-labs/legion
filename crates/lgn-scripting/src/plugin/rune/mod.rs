@@ -20,7 +20,10 @@ use self::modules::{
     scripting::{make_scripting_module, Events},
     transform::make_transform_module,
 };
-use crate::{plugin::get_script, ScriptingEventCache, ScriptingStage};
+use crate::{
+    plugin::{get_script, ScriptingEventCache},
+    ScriptingStage,
+};
 
 pub(crate) fn build(app: &mut App) -> Result<(), ContextError> {
     let mut context = rune_modules::default_context()?;

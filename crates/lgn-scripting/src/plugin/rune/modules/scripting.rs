@@ -1,7 +1,7 @@
 use rune::{runtime::Protocol, Any, ContextError, Module};
 
 use super::math::Vec2;
-use crate::ScriptingEventCache;
+use crate::plugin::ScriptingEventCache;
 
 #[derive(Any)]
 pub(crate) struct Events(*const ScriptingEventCache);

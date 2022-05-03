@@ -1,5 +1,5 @@
-use lgn_core::prelude::*;
-use lgn_ecs::{prelude::*, world::EntityMut};
+use lgn_core::prelude::Name;
+use lgn_ecs::{prelude::World, world::EntityMut};
 use rune::{runtime::Protocol, Any, ContextError, Module};
 
 use super::transform::Transform;

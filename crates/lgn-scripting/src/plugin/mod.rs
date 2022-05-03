@@ -6,12 +6,10 @@ use lgn_ecs::prelude::{EventReader, Res, ResMut, SystemStage};
 use lgn_input::mouse::MouseMotion;
 use lgn_math::prelude::Vec2;
 use lgn_scripting_data::runtime::{Script, ScriptComponent};
+mod rhai;
+mod rune;
 
 use crate::ScriptingStage;
-
-mod rhai;
-
-mod rune;
 
 #[derive(Default)]
 pub struct ScriptingPlugin;
@@ -53,7 +51,7 @@ impl ScriptingPlugin {
 }
 
 #[derive(Clone)]
-pub struct ScriptingEventCache {
+pub(crate) struct ScriptingEventCache {
     mouse_motion: MouseMotion,
 }
 
