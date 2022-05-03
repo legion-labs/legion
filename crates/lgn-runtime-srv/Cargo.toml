@@ -110,4 +110,11 @@ extra-files = [
 
 [package.metadata.cargo-udeps.ignore]
 # used only when standalone feature is not enabled
-normal = ["lgn-async", "lgn-grpc", "lgn-streamer"]
+normal = [
+    "lgn-async",
+    "lgn-grpc",
+    "lgn-log-stream",
+    "lgn-log-stream-proto",
+    "lgn-runtime-proto",
+    "lgn-streamer",
+]
