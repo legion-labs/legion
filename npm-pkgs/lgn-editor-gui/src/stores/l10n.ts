@@ -1,53 +1,31 @@
-import { FluentBundle, FluentResource } from "@fluent/bundle";
-
-import {
-  createAvailableLocalesStore,
-  createBundlesStore,
-} from "@lgn/web-client/src/stores/bundles";
-import { createLocaleStore } from "@lgn/web-client/src/stores/locale";
-import { createTranslateStore } from "@lgn/web-client/src/stores/translate";
+import { DefaultLocalStorage } from "@lgn/web-client/src/lib/storage";
+import { createL10nOrchestrator } from "@lgn/web-client/src/orchestrators/l10n";
 
 import en from "@/assets/locales/en-US/example.ftl?raw";
 import fr from "@/assets/locales/fr-CA/example.ftl?raw";
+import { localeStorageKey } from "@/constants";
 
-export type {
-  TranslateValue,
-  TranslateStore,
-} from "@lgn/web-client/src/stores/translate";
+const l10n = createL10nOrchestrator(
+  [
+    {
+      names: ["en-US", "en"],
+      contents: [en],
+    },
+    {
+      names: ["fr-CA", "fr"],
+      contents: [fr],
+    },
+  ],
+  {
+    local: {
+      connect: {
+        key: localeStorageKey,
+        storage: new DefaultLocalStorage(),
+      },
+    },
+  }
+);
 
-export type {
-  BundlesValue,
-  BundlesStore,
-  AvailableLocalesValue,
-  AvailableLocalesStore,
-} from "@lgn/web-client/src/stores/bundles";
+export const { availableLocales, bundles, locale, t } = l10n;
 
-export type {
-  LocaleValue,
-  LocaleStore,
-} from "@lgn/web-client/src/stores/locale";
-
-export const bundles = createBundlesStore();
-
-// TODO: Automatically import from folder and import only the required locale
-const enBundle = new FluentBundle(["en-US", "en"]);
-
-enBundle.addResource(new FluentResource(en));
-
-for (const locale of enBundle.locales) {
-  bundles.add(locale, enBundle);
-}
-
-const frBundle = new FluentBundle(["fr-CA", "fr"]);
-
-frBundle.addResource(new FluentResource(fr));
-
-for (const locale of frBundle.locales) {
-  bundles.add(locale, frBundle);
-}
-
-export const availableLocales = createAvailableLocalesStore(bundles);
-
-export const locale = createLocaleStore(availableLocales, "en-US");
-
-export const t = createTranslateStore(locale, bundles);
+export default l10n;

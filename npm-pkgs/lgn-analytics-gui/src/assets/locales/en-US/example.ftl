@@ -1,7 +1,21 @@
-# Simple things are simple.
+# Process list
+process-list-user = User
+
+process-list-process = Process
+
+process-list-computer = Computer
+
+process-list-platform = Plateform
+
+process-list-start-time = Start Time
+
+process-list-statistics = Statistics
+
+process-list-search = Search Process...
+
+# TODO: Remove these examples
 hello-user = Hello, {$userName}!
 
-# Complex things are possible.
 shared-photos =
     {$userName} {$photoCount ->
         [one] added a new photo

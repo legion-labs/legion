@@ -1,11 +1,8 @@
-<script context="module" lang="ts">
-  export const l10nOrchestratorContextKey = "l10n-orchestrator-context-key";
-</script>
-
 <script lang="ts">
   import type { FluentVariable } from "@fluent/bundle";
-
   import { getContext } from "svelte";
+
+  import { l10nOrchestratorContextKey } from "../constants";
   import type { L10nOrchestrator } from "../orchestrators/l10n";
 
   export let customL10nOrchestrator: L10nOrchestrator | undefined = undefined;

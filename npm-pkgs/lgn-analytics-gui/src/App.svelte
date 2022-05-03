@@ -1,9 +1,6 @@
 <script lang="ts">
   import { onMount, setContext } from "svelte";
 
-  import L10n, {
-    l10nOrchestratorContextKey,
-  } from "@lgn/web-client/src/components/L10n.svelte";
   import type { InitAuthStatus } from "@lgn/web-client/src/lib/auth";
   import { displayError } from "@lgn/web-client/src/lib/errors";
   import { replaceClassesWith } from "@lgn/web-client/src/lib/html";
@@ -26,6 +23,7 @@
   import TimelineRenderer from "./components/Timeline/Timeline.svelte";
   import { getThreadItemLength } from "./components/Timeline/Values/TimelineValues";
   import {
+    l10nOrchestratorContextKey,
     localeStorageKey,
     themeContextKey,
     themeStorageKey,
@@ -38,10 +36,16 @@
   const theme = createThemeStore(themeStorageKey, "dark");
 
   const l10n = createL10nOrchestrator(
-    {
-      "en-US,en": [en],
-      "fr-CA,fr": [fr],
-    },
+    [
+      {
+        names: ["en-US", "en"],
+        contents: [en],
+      },
+      {
+        names: ["fr-CA", "fr"],
+        contents: [fr],
+      },
+    ],
     {
       local: {
         connect: {

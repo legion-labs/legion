@@ -1,13 +1,14 @@
+import type { FluentFunction, TextTransform } from "@fluent/bundle";
 import { FluentBundle, FluentResource } from "@fluent/bundle";
+
 import {
   createAvailableLocalesStore,
   createBundlesStore,
-  type AvailableLocalesStore,
-  type BundlesStore,
 } from "../stores/bundles";
+import type { AvailableLocalesStore, BundlesStore } from "../stores/bundles";
 import type { LocalConfig, LocaleStore } from "../stores/locale";
-import type { TranslateStore } from "../stores/translate";
 import { createLocaleStore } from "../stores/locale";
+import type { TranslateStore } from "../stores/translate";
 import { createTranslateStore } from "../stores/translate";
 
 export type L10nOrchestrator = {
@@ -17,8 +18,20 @@ export type L10nOrchestrator = {
   t: TranslateStore;
 };
 
+export type Locales = {
+  names: string[];
+  contents: string[];
+};
+
 export type L10nConfig = {
-  local?: LocalConfig;
+  local?: LocalConfig & {
+    /** Passed down to the `FluentBundle` constructor */
+    functions?: Record<string, FluentFunction>;
+    /** Passed down to the `FluentBundle` constructor (defaults to `true`) */
+    useIsolating?: boolean;
+    /** Passed down to the `FluentBundle` constructor */
+    transform?: TextTransform;
+  };
 };
 
 /**
@@ -30,13 +43,17 @@ export type L10nConfig = {
  * ```
  */
 export function createL10nOrchestrator(
-  locales: Record<string, string[]>,
+  locales: Locales[],
   config: L10nConfig = {}
 ): L10nOrchestrator {
   const bundles = createBundlesStore();
 
-  for (const [name, contents] of Object.entries(locales)) {
-    const bundle = new FluentBundle(name.split(",").map((name) => name.trim()));
+  for (const { names, contents } of locales) {
+    const bundle = new FluentBundle(names, {
+      functions: config.local?.functions,
+      useIsolating: config.local?.useIsolating,
+      transform: config.local?.transform,
+    });
 
     for (const content of contents) {
       bundle.addResource(new FluentResource(content));

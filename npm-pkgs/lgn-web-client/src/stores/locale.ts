@@ -2,9 +2,9 @@ import { negotiateLanguages } from "@fluent/langneg";
 import type { Updater, Writable } from "svelte/store";
 import { writable } from "svelte/store";
 import { derived, get } from "svelte/store";
+
 import type { Storage } from "../lib/storage";
 import { connected } from "../lib/store";
-
 import type { AvailableLocalesStore } from "./bundles";
 
 export type LocaleValue = string;
@@ -27,7 +27,7 @@ export type LocalConfig = {
  * But _only known locales will be accepted_.
  * If the set locale is unknown, no changes are done.
  *
- * This store is also connected to the local storage.
+ * This store can also be connected to a `Storage` like the local storage.
  *
  * If you don't want to rely on any sort of algorithm,
  * you can create a simple store on your end like follows:
