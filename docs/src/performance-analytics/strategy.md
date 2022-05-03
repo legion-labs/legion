@@ -19,6 +19,12 @@ May 2022
 - for local, distributed & cloud native applications
 
 ---
+# Legion Performance Analytics
+## Introduction
+![bg right width:700px](figures/telemetry_architecture.svg)
+
+
+---
 # Legion Performance Analytics Strategies
 ## Table of Contents
 
