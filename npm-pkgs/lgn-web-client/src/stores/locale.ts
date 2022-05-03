@@ -1,13 +1,22 @@
 import { negotiateLanguages } from "@fluent/langneg";
 import type { Updater, Writable } from "svelte/store";
-import { derived, get } from "svelte/store";
 import { writable } from "svelte/store";
+import { derived, get } from "svelte/store";
+import type { Storage } from "../lib/storage";
+import { connected } from "../lib/store";
 
 import type { AvailableLocalesStore } from "./bundles";
 
 export type LocaleValue = string;
 
 export type LocaleStore = Writable<LocaleValue>;
+
+export type LocalConfig = {
+  /** Locales that the user wants to use, defaults to `navigator.languages` */
+  requestedLocales?: readonly string[];
+  /** By providing this option the locale will be "connected" to the provided storage */
+  connect?: { key: string; storage: Storage<string, string> };
+};
 
 /**
  * Stores the locale used by the user.
@@ -18,6 +27,8 @@ export type LocaleStore = Writable<LocaleValue>;
  * But _only known locales will be accepted_.
  * If the set locale is unknown, no changes are done.
  *
+ * This store is also connected to the local storage.
+ *
  * If you don't want to rely on any sort of algorithm,
  * you can create a simple store on your end like follows:
  *
@@ -27,14 +38,8 @@ export type LocaleStore = Writable<LocaleValue>;
  */
 export function createLocaleStore(
   availableLocales: AvailableLocalesStore,
-  {
-    defaultLocale,
-    requestedLocales = navigator.languages,
-  }: {
-    defaultLocale: string;
-    /** Locales that the user wants to use, defaults to `navigator.languages` */
-    requestedLocales?: readonly string[];
-  }
+  defaultLocale: string,
+  { requestedLocales = navigator.languages, connect }: LocalConfig = {}
 ): LocaleStore {
   const exposedStore = derived(
     availableLocales,
@@ -45,7 +50,13 @@ export function createLocaleStore(
       })[0] || defaultLocale
   );
 
-  const store = writable(get(exposedStore));
+  let store: Writable<string>;
+
+  if (connect) {
+    store = connected(connect.storage, connect.key, get(exposedStore));
+  } else {
+    store = writable(get(exposedStore));
+  }
 
   return {
     ...store,

@@ -1,12 +1,19 @@
 <script lang="ts">
   import { onMount, setContext } from "svelte";
 
+  import L10n, {
+    l10nOrchestratorContextKey,
+  } from "@lgn/web-client/src/components/L10n.svelte";
   import type { InitAuthStatus } from "@lgn/web-client/src/lib/auth";
   import { displayError } from "@lgn/web-client/src/lib/errors";
   import { replaceClassesWith } from "@lgn/web-client/src/lib/html";
   import log from "@lgn/web-client/src/lib/log";
+  import { DefaultLocalStorage } from "@lgn/web-client/src/lib/storage";
+  import { createL10nOrchestrator } from "@lgn/web-client/src/orchestrators/l10n";
   import { createThemeStore } from "@lgn/web-client/src/stores/theme";
 
+  import en from "@/assets/locales/en-US/example.ftl?raw";
+  import fr from "@/assets/locales/fr-CA/example.ftl?raw";
   import CallGraphFlat from "@/components/CallGraphFlat/CallGraphFlat.svelte";
   import { Route, Router } from "@/lib/navigator";
   import Health from "@/pages/Health.svelte";
@@ -19,6 +26,7 @@
   import TimelineRenderer from "./components/Timeline/Timeline.svelte";
   import { getThreadItemLength } from "./components/Timeline/Values/TimelineValues";
   import {
+    localeStorageKey,
     themeContextKey,
     themeStorageKey,
     threadItemLengthContextKey,
@@ -29,7 +37,24 @@
 
   const theme = createThemeStore(themeStorageKey, "dark");
 
+  const l10n = createL10nOrchestrator(
+    {
+      "en-US,en": [en],
+      "fr-CA,fr": [fr],
+    },
+    {
+      local: {
+        connect: {
+          key: localeStorageKey,
+          storage: new DefaultLocalStorage(),
+        },
+      },
+    }
+  );
+
   setContext(themeContextKey, theme);
+
+  setContext(l10nOrchestratorContextKey, l10n);
 
   try {
     setContext(threadItemLengthContextKey, getThreadItemLength());
@@ -62,6 +87,7 @@
 </script>
 
 <LoadingBar />
+
 <div class="pt-2 pb-4 antialiased">
   <Header />
   <div class="pl-5 pr-5 pt-5 overflow-hidden">

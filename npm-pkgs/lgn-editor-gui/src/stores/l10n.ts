@@ -48,8 +48,6 @@ for (const locale of frBundle.locales) {
 
 export const availableLocales = createAvailableLocalesStore(bundles);
 
-export const locale = createLocaleStore(availableLocales, {
-  defaultLocale: "en-US",
-});
+export const locale = createLocaleStore(availableLocales, "en-US");
 
 export const t = createTranslateStore(locale, bundles);

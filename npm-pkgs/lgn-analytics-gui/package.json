@@ -60,6 +60,7 @@
     "vite-tsconfig-paths": "^3.4.1"
   },
   "dependencies": {
+    "@fluent/bundle": "^0.17.1",
     "@improbable-eng/grpc-web": "^0.15.0",
     "@lgn/proto-telemetry": "^0.1.0",
     "@lgn/web-client": "^0.1.0",
