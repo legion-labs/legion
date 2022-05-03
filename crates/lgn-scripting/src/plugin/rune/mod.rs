@@ -161,6 +161,12 @@ struct ScriptExecutionContext {
     input_args: Vec<String>,
 }
 
+impl Drop for ScriptExecutionContext {
+    fn drop(&mut self) {
+        info!("drop ScriptExecutionContext");
+    }
+}
+
 #[derive(Default)]
 struct VMCollection {
     vms: Vec<Option<VMContext>>,
