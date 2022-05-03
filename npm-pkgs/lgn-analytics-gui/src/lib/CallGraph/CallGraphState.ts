@@ -19,6 +19,7 @@ export abstract class CallGraphState {
     this.tscFrequency = tscFrequency;
     this.begin = begin;
     this.end = end;
+    this.loading = true;
     this.clear();
   }
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from "svelte";
+  import { onMount } from "svelte";
   import { BarLoader } from "svelte-loading-spinners";
   import { link } from "svelte-navigator";
 
@@ -17,23 +17,15 @@
   export let debug = false;
 
   let store: CumulatedCallGraphHierarchyStore;
-  let tickTimer: ReturnType<typeof setTimeout>;
 
   $: (begin || end) && tick();
 
-  function tick() {
-    clearTimeout(tickTimer);
-    tickTimer = setTimeout(async () => {
-      await store?.updateRange(begin, end);
-    }, 500);
+  async function tick() {
+    await store?.updateRange(begin, end);
   }
 
   onMount(async () => {
     store = await getProcessCumulatedCallGraphHierarchy(processId, begin, end);
-  });
-
-  onDestroy(() => {
-    clearTimeout(tickTimer);
   });
 </script>
 
