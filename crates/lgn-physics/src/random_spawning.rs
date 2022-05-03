@@ -1,7 +1,10 @@
 use lgn_app::prelude::{App, CoreStage};
 use lgn_core::{prelude::Timer, FixedTimestep, Time};
 use lgn_ecs::prelude::{Commands, Component, Entity, Query, Res, SystemStage};
-use lgn_graphics_renderer::{components::VisualComponent, resources::DefaultMeshType};
+use lgn_graphics_renderer::{
+    components::VisualComponent,
+    resources::{DefaultMeshType, ModelManager},
+};
 use lgn_math::prelude::Vec3;
 use lgn_tracing::{info, warn};
 use lgn_transform::prelude::{GlobalTransform, Transform, TransformBundle};
@@ -20,7 +23,7 @@ pub(crate) fn build(app: &mut App) {
     app.add_system(tick);
 }
 
-fn spawn_random_sphere(mut commands: Commands<'_, '_>) {
+fn spawn_random_sphere(mut commands: Commands<'_, '_>, model_manager: Res<'_, ModelManager>) {
     let translation = Vec3::new(0.0, 3.0, 0.7);
     let entity = commands
         .spawn()
@@ -28,9 +31,10 @@ fn spawn_random_sphere(mut commands: Commands<'_, '_>) {
             local: Transform::from_translation(translation),
             global: GlobalTransform::from_translation(translation),
         })
-        .insert(VisualComponent::new_default_mesh(
-            DefaultMeshType::Sphere,
+        .insert(VisualComponent::new(
+            Some(*model_manager.default_model_id(DefaultMeshType::Sphere)),
             (0xff, 0xff, 0x00).into(),
+            1.0,
         ))
         .insert(PhysicsRigidSphere {
             actor_type: RigidActorType::Dynamic,
@@ -41,6 +45,8 @@ fn spawn_random_sphere(mut commands: Commands<'_, '_>) {
         })
         .id();
     info!("spawning entity {}", entity.id());
+
+    drop(model_manager);
 }
 
 #[derive(Component)]
