@@ -86,6 +86,12 @@ fn compile(
             vm_index,
             entry_fn: Hash::type_hash(fn_name),
             input_args: script.input_values.clone(),
+            drop_handler: Box::new(|execution_context| {
+                info!(
+                    "drop ScriptExecutionContext, VM index = {}",
+                    execution_context.vm_index
+                );
+            }),
         };
 
         commands.entity(entity).insert(script_exec);
@@ -159,11 +165,12 @@ struct ScriptExecutionContext {
     vm_index: usize,
     entry_fn: Hash,
     input_args: Vec<String>,
+    drop_handler: Box<dyn Fn(&Self) + Send + Sync>,
 }
 
 impl Drop for ScriptExecutionContext {
     fn drop(&mut self) {
-        info!("drop ScriptExecutionContext");
+        (self.drop_handler)(self);
     }
 }
 
