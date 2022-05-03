@@ -44,15 +44,6 @@
   $: [x, y] = $stateStore?.viewRange ?? [-Infinity, Infinity];
   $: (x || y) && new Promise(async () => await stateManager?.fetchDynData());
 
-  $: if (stateStore) {
-    if ($stateStore.currentSelection) {
-      [callGraphBegin, callGraphEnd] = $stateStore.currentSelection;
-    } else {
-      callGraphBegin = undefined;
-      callGraphEnd = undefined;
-    }
-  }
-
   onMount(async () => {
     loadingStore.reset(10);
     const url = new URLSearchParams($location.search);
@@ -125,7 +116,10 @@
     stateStore.stopDrag();
     const selection = $stateStore.currentSelection;
     if (selection) {
+      [callGraphBegin, callGraphEnd] = selection;
       setRangeUrl(selection);
+    } else {
+      callGraphBegin = callGraphEnd = undefined;
     }
   }
 
@@ -171,6 +165,7 @@
   function onEscape() {
     stateStore.clearSelection();
     history.replaceState(null, "", "?");
+    callGraphBegin = callGraphEnd = undefined;
   }
 
   async function onVerticalArrow(event: KeyboardEvent, positive: boolean) {

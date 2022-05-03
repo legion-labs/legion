@@ -126,10 +126,10 @@ async function getProcessCumulatedCallGraph<T extends CallGraphState>(
           .then((b) =>
             updateState((state) => {
               if (b) {
+                state.ingestBlock(desc.id, b);
                 if (state.loading) {
                   state.loading = false;
                 }
-                state.ingestBlock(desc.id, b);
               }
             })
           )
