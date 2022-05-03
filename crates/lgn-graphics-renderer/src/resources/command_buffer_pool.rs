@@ -3,8 +3,6 @@ use std::cell::{Cell, RefCell};
 use lgn_core::Handle;
 use lgn_graphics_api::{CommandBuffer, CommandBufferDef, CommandPool, CommandPoolDef, Queue};
 
-use super::on_frame_event_handler::OnFrameEventHandler;
-
 pub type CommandBufferHandle = Handle<CommandBuffer>;
 
 pub struct CommandBufferPool {
@@ -26,12 +24,16 @@ impl CommandBufferPool {
         }
     }
 
-    pub(crate) fn reset(&mut self) {
+    pub(crate) fn begin_frame(&mut self) {
         self.command_pool.reset_command_pool().unwrap();
         let mut availables = self.availables.borrow_mut();
         let mut in_flights = self.in_flights.borrow_mut();
 
         availables.append(in_flights.as_mut());
+    }
+
+    pub(crate) fn end_frame(&mut self) {
+        assert_eq!(self.acquired_count.get(), 0);
     }
 
     pub(crate) fn acquire(&self) -> CommandBufferHandle {
@@ -60,14 +62,14 @@ impl CommandBufferPool {
     }
 }
 
-impl OnFrameEventHandler for CommandBufferPool {
-    fn on_begin_frame(&mut self) {
-        self.reset();
-    }
+// impl OnFrameEventHandler for CommandBufferPool {
+//     fn on_begin_frame(&mut self) {
+//         self.reset();
+//     }
 
-    fn on_end_frame(&mut self) {
-        assert_eq!(self.acquired_count.get(), 0);
-    }
-}
+//     fn on_end_frame(&mut self) {
+//         assert_eq!(self.acquired_count.get(), 0);
+//     }
+// }
 
 pub type CommandBufferPoolHandle = Handle<CommandBufferPool>;

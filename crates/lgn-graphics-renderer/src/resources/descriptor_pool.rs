@@ -5,8 +5,6 @@ use lgn_graphics_api::{
 
 use lgn_core::Handle;
 
-use super::OnFrameEventHandler;
-
 pub struct DescriptorPool {
     descriptor_heap_partition: DescriptorHeapPartition,
 }
@@ -26,6 +24,10 @@ impl DescriptorPool {
         }
     }
 
+    pub fn begin_frame(&mut self) {
+        self.descriptor_heap_partition.reset().unwrap();
+    }
+
     pub fn descriptor_heap_partition_mut(&self) -> &DescriptorHeapPartition {
         &self.descriptor_heap_partition
     }
@@ -33,24 +35,12 @@ impl DescriptorPool {
     pub fn write_descriptor_set(
         &self,
         layout: &DescriptorSetLayout,
-        descriptors: &[DescriptorRef<'_>],
+        descriptors: &[DescriptorRef],
     ) -> DescriptorSetHandle {
         self.descriptor_heap_partition
             .write(layout, descriptors)
             .unwrap()
     }
-
-    fn reset(&self) {
-        self.descriptor_heap_partition.reset().unwrap();
-    }
-}
-
-impl OnFrameEventHandler for DescriptorPool {
-    fn on_begin_frame(&mut self) {
-        self.reset();
-    }
-
-    fn on_end_frame(&mut self) {}
 }
 
 pub type DescriptorPoolHandle = Handle<DescriptorPool>;

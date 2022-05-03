@@ -25,7 +25,9 @@ pub use labels::*;
 mod asset_to_ecs;
 mod renderer;
 use lgn_embedded_fs::EMBEDDED_FS;
-use lgn_graphics_api::{AddressMode, CompareOp, FilterType, MipMapMode, ResourceUsage, SamplerDef};
+use lgn_graphics_api::{
+    AddressMode, BufferViewDef, CompareOp, FilterType, MipMapMode, ResourceUsage, SamplerDef,
+};
 use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_math::Vec2;
 pub use renderer::*;
@@ -59,7 +61,7 @@ pub mod shared;
 
 mod renderdoc;
 
-use crate::features::mesh_feature::MeshFeaturePlugin;
+use crate::features::ModelPlugin;
 use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
 use crate::render_pass::TmpRenderPass;
 
@@ -67,7 +69,7 @@ use crate::renderdoc::RenderDocPlugin;
 
 use crate::{
     components::{
-        debug_display_lights, ui_lights, update_lights, ManipulatorComponent, PickedComponent,
+        debug_display_lights, reflect_lights, ui_lights, ManipulatorComponent, PickedComponent,
         RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces,
     },
     egui::{egui_plugin::EguiPlugin, Egui},
@@ -114,12 +116,12 @@ impl Plugin for RendererPlugin {
         EMBEDDED_FS.add_file(&gpu_renderer::INCLUDE_TRANSFORM);
         EMBEDDED_FS.add_file(&gpu_renderer::SHADER_SHADER);
 
-        const NUM_RENDER_FRAMES: usize = 2;
+        const NUM_RENDER_FRAMES: u64 = 2;
 
         //
         // Init in dependency order
         //
-        let renderer = Renderer::new(NUM_RENDER_FRAMES);
+        let mut renderer = Renderer::new(NUM_RENDER_FRAMES);
 
         let cgen_registry = Arc::new(cgen::initialize(renderer.device_context()));
 
@@ -138,7 +140,12 @@ impl Plugin for RendererPlugin {
             NUM_RENDER_FRAMES,
         );
 
-        let mesh_manager = MeshManager::new(&renderer);
+        let mut mesh_manager = MeshManager::new(&renderer);
+        {
+            renderer.begin_frame();
+            mesh_manager.initialize_default_meshes(&renderer);
+            renderer.end_frame();
+        }
 
         let texture_manager = TextureManager::new(renderer.device_context());
 
@@ -189,7 +196,7 @@ impl Plugin for RendererPlugin {
         app.insert_resource(ModelManager::new(&mesh_manager, &material_manager));
         app.insert_resource(mesh_manager);
         app.insert_resource(DebugDisplay::default());
-        app.insert_resource(LightingManager::default());
+        app.insert_resource(LightingManager::new(renderer.device_context()));
         app.insert_resource(GpuInstanceManager::new(renderer.static_buffer_allocator()));
         app.insert_resource(MissingVisualTracker::default());
         app.insert_resource(descriptor_heap_manager);
@@ -220,7 +227,7 @@ impl Plugin for RendererPlugin {
         // Plugins are optional
         app.add_plugin(EguiPlugin::default());
         app.add_plugin(PickingPlugin {});
-        app.add_plugin(MeshFeaturePlugin::default());
+        app.add_plugin(ModelPlugin::default());
         app.add_plugin(RenderDocPlugin {});
 
         // This resource needs to be shutdown after all other resources
@@ -257,7 +264,7 @@ impl Plugin for RendererPlugin {
         app.add_system_to_stage(RenderStage::Prepare, ui_lights);
         app.add_system_to_stage(RenderStage::Prepare, ui_mesh_renderer);
         app.add_system_to_stage(RenderStage::Prepare, debug_display_lights);
-        app.add_system_to_stage(RenderStage::Prepare, update_lights);
+        app.add_system_to_stage(RenderStage::Prepare, reflect_lights);
         app.add_system_to_stage(
             RenderStage::Prepare,
             camera_control.exclusive_system().at_start(),
@@ -386,7 +393,7 @@ fn render_update(
         Res<'_, GpuInstanceManager>,
         ResMut<'_, Egui>,
         ResMut<'_, DebugDisplay>,
-        Res<'_, LightingManager>,
+        ResMut<'_, LightingManager>,
         ResMut<'_, DescriptorHeapManager>,
         Res<'_, PersistentDescriptorSetManager>,
         Res<'_, ModelManager>,
@@ -463,30 +470,18 @@ fn render_update(
         {
             let mut frame_descriptor_set = cgen::descriptor_set::FrameDescriptorSet::default();
 
-            let lighting_manager_view = render_context
-                .transient_buffer_allocator()
-                .copy_data(&lighting_manager.gpu_data(), ResourceUsage::AS_CONST_BUFFER)
-                .create_const_buffer_view();
-            frame_descriptor_set.set_lighting_data(&lighting_manager_view);
-
-            // TODO(vdbdd): we need a light manager that stores those views instead of creating them ono each update
-            let omni_lights_buffer_view =
-                renderer.omnidirectional_lights_data_create_structured_buffer_view();
-            frame_descriptor_set.set_omni_directional_lights(&omni_lights_buffer_view);
-
-            let directionnal_lights_buffer_view =
-                renderer.directional_lights_data_create_structured_buffer_view();
-            frame_descriptor_set.set_directional_lights(&directionnal_lights_buffer_view);
-
-            let spot_lights_buffer_view = renderer.spotlights_data_create_structured_buffer_view();
-            frame_descriptor_set.set_spot_lights(&spot_lights_buffer_view);
+            lighting_manager.per_frame_render(
+                render_context.transient_buffer_allocator(),
+                &mut frame_descriptor_set,
+            );
 
             let static_buffer_ro_view = renderer.static_buffer_ro_view();
-            frame_descriptor_set.set_static_buffer(&static_buffer_ro_view);
+            frame_descriptor_set.set_static_buffer(static_buffer_ro_view);
 
             let va_table_address_buffer = instance_manager
-                .create_structured_buffer_view(std::mem::size_of::<u32>() as u64, true);
-            frame_descriptor_set.set_va_table_address_buffer(&va_table_address_buffer);
+                // .structured_buffer_view(std::mem::size_of::<u32>() as u64, true);
+                .structured_buffer_view();
+            frame_descriptor_set.set_va_table_address_buffer(va_table_address_buffer);
 
             let sampler_def = SamplerDef {
                 min_filter: FilterType::Linear,
@@ -499,7 +494,7 @@ fn render_update(
                 max_anisotropy: 1.0,
                 compare_op: CompareOp::LessOrEqual,
             };
-            let material_sampler = renderer.device_context().create_sampler(&sampler_def);
+            let material_sampler = renderer.device_context().create_sampler(sampler_def);
             frame_descriptor_set.set_material_sampler(&material_sampler);
 
             let frame_descriptor_set_handle = render_context.write_descriptor_set(
@@ -540,10 +535,11 @@ fn render_update(
                     .transient_buffer_allocator()
                     .copy_data(&view_data, ResourceUsage::AS_CONST_BUFFER);
 
-                let const_buffer_view = sub_allocation.create_const_buffer_view();
+                let const_buffer_view = sub_allocation
+                    .to_buffer_view(BufferViewDef::as_const_buffer_typed::<cgen_type::ViewData>());
 
                 let mut view_descriptor_set = cgen::descriptor_set::ViewDescriptorSet::default();
-                view_descriptor_set.set_view_data(&const_buffer_view);
+                view_descriptor_set.set_view_data(const_buffer_view);
 
                 view_descriptor_set
                     .set_hzb_texture(render_surface.get_hzb_surface().hzb_srv_view());
@@ -566,7 +562,7 @@ fn render_update(
             );
 
             let mut cmd_buffer = render_context.alloc_command_buffer();
-            cmd_buffer.bind_index_buffer(&renderer.static_buffer().index_buffer_binding());
+            cmd_buffer.bind_index_buffer(renderer.static_buffer().index_buffer_binding());
             cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
 
             let picking_pass = render_surface.picking_renderpass();

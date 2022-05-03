@@ -22,7 +22,7 @@ pub struct TextureDef {
     pub format: Format,
     pub usage_flags: ResourceUsage,
     pub resource_flags: ResourceFlags,
-    pub mem_usage: MemoryUsage,
+    pub memory_usage: MemoryUsage,
     pub tiling: TextureTiling,
 }
 
@@ -40,7 +40,7 @@ impl Default for TextureDef {
             format: Format::UNDEFINED,
             usage_flags: ResourceUsage::empty(),
             resource_flags: ResourceFlags::empty(),
-            mem_usage: MemoryUsage::GpuOnly,
+            memory_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Optimal,
         }
     }
@@ -142,14 +142,14 @@ impl Texture {
             .swap(false, Ordering::Relaxed)
     }
 
-    pub fn new(device_context: &DeviceContext, texture_def: &TextureDef) -> Self {
+    pub fn new(device_context: &DeviceContext, texture_def: TextureDef) -> Self {
         Self::from_existing(device_context, None, texture_def)
     }
 
     pub(crate) fn from_existing(
         device_context: &DeviceContext,
         existing_image: Option<BackendRawImage>,
-        texture_def: &TextureDef,
+        texture_def: TextureDef,
     ) -> Self {
         let (backend_texture, texture_id) = if texture_def
             .usage_flags
@@ -163,7 +163,7 @@ impl Texture {
         Self {
             inner: device_context.deferred_dropper().new_drc(TextureInner {
                 device_context: device_context.clone(),
-                texture_def: texture_def.clone(),
+                texture_def,
                 is_undefined_layout: AtomicBool::new(true),
                 texture_id,
                 backend_texture,
@@ -184,7 +184,7 @@ impl Texture {
         self.backend_unmap_texture();
     }
 
-    pub fn create_view(&self, view_def: &TextureViewDef) -> TextureView {
+    pub fn create_view(&self, view_def: TextureViewDef) -> TextureView {
         TextureView::new(self, view_def)
     }
 }

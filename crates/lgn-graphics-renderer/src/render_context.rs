@@ -1,4 +1,5 @@
-use lgn_core::Handle;
+use std::cell::{RefCell, RefMut};
+
 use lgn_graphics_api::{
     DescriptorHeapDef, DescriptorRef, DescriptorSetHandle, DescriptorSetLayout, QueueType,
 };
@@ -12,7 +13,7 @@ use crate::{
     Renderer,
 };
 
-pub(crate) type TransientBufferAllocatorHandle = Handle<TransientBufferAllocator>;
+// pub(crate) type TransientBufferAllocatorHandle = Handle<TransientBufferAllocator>;
 
 pub struct RenderContext<'frame> {
     renderer: &'frame Renderer,
@@ -20,7 +21,7 @@ pub struct RenderContext<'frame> {
     pipeline_manager: &'frame PipelineManager,
     cmd_buffer_pool: CommandBufferPoolHandle,
     descriptor_pool: DescriptorPoolHandle,
-    transient_buffer_allocator: TransientBufferAllocatorHandle,
+    transient_buffer_allocator: RefCell<TransientBufferAllocator>,
     // tmp
     persistent_descriptor_set: Option<(&'frame DescriptorSetLayout, DescriptorSetHandle)>,
     frame_descriptor_set: Option<(&'frame DescriptorSetLayout, DescriptorSetHandle)>,
@@ -41,12 +42,8 @@ impl<'frame> RenderContext<'frame> {
             descriptor_heap_manager,
             cmd_buffer_pool: renderer.acquire_command_buffer_pool(QueueType::Graphics),
             descriptor_pool: descriptor_heap_manager.acquire_descriptor_pool(&heap_def),
-            transient_buffer_allocator: TransientBufferAllocatorHandle::new(
-                TransientBufferAllocator::new(
-                    renderer.device_context(),
-                    &renderer.transient_buffer(),
-                    1000,
-                ),
+            transient_buffer_allocator: RefCell::new(
+                renderer.transient_buffer_allocator(64 * 1024),
             ),
             persistent_descriptor_set: None,
             frame_descriptor_set: None,
@@ -81,14 +78,14 @@ impl<'frame> RenderContext<'frame> {
     pub fn write_descriptor_set(
         &self,
         layout: &DescriptorSetLayout,
-        descriptors: &[DescriptorRef<'_>],
+        descriptors: &[DescriptorRef],
     ) -> DescriptorSetHandle {
         self.descriptor_pool
             .write_descriptor_set(layout, descriptors)
     }
 
-    pub(crate) fn transient_buffer_allocator(&self) -> &TransientBufferAllocatorHandle {
-        &self.transient_buffer_allocator
+    pub(crate) fn transient_buffer_allocator(&self) -> RefMut<'_, TransientBufferAllocator> {
+        self.transient_buffer_allocator.borrow_mut()
     }
 
     pub fn persistent_descriptor_set(&self) -> (&DescriptorSetLayout, DescriptorSetHandle) {
@@ -151,7 +148,7 @@ impl<'frame> Drop for RenderContext<'frame> {
         self.descriptor_heap_manager
             .release_descriptor_pool(self.descriptor_pool.transfer());
 
-        self.transient_buffer_allocator.take();
+        // self.transient_buffer_allocator.take();
     }
 }
 

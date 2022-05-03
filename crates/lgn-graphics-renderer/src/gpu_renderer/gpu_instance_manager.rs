@@ -2,10 +2,10 @@ use std::collections::BTreeMap;
 
 use lgn_app::App;
 use lgn_ecs::{
-    prelude::{Added, Changed, Entity, Query, RemovedComponents, Res, ResMut},
+    prelude::{Changed, Entity, Query, RemovedComponents, Res, ResMut},
     schedule::{SystemLabel, SystemSet},
 };
-use lgn_graphics_api::{BufferView, VertexBufferBinding};
+use lgn_graphics_api::{BufferView, BufferViewDef, VertexBufferBinding};
 
 use lgn_math::Vec4;
 use lgn_tracing::warn;
@@ -14,13 +14,12 @@ use lgn_transform::prelude::GlobalTransform;
 use crate::{
     cgen,
     components::VisualComponent,
-    features::mesh_feature::MeshRenderObjectSet,
     labels::RenderStage,
     picking::{PickingIdContext, PickingManager},
     resources::{
-        DefaultMeshType, GpuDataAllocation, GpuDataManager, MaterialManager, MeshManager,
-        MissingVisualTracker, ModelManager, StaticBufferAllocation, UnifiedStaticBufferAllocator,
-        UniformGPUDataUpdater,
+        DefaultMeshType, GPUDataUpdaterBuilder, GpuDataAllocation, GpuDataManager, MaterialManager,
+        MeshManager, MissingVisualTracker, ModelManager, StaticBufferAllocation, StaticBufferView,
+        UnifiedStaticBufferAllocator,
     },
     Renderer,
 };
@@ -73,22 +72,34 @@ struct GpuInstanceBlock {
 
 struct GpuVaTableForGpuInstance {
     static_allocation: StaticBufferAllocation,
+    static_buffer_view: StaticBufferView,
 }
 
 impl GpuVaTableForGpuInstance {
     pub fn new(allocator: &UnifiedStaticBufferAllocator) -> Self {
+        let element_count = 1024 * 1024;
+        let element_size = std::mem::size_of::<u32>() as u64;
+        let static_allocation = allocator.allocate(element_count * element_size);
+
+        let buffer_view = static_allocation.create_view(BufferViewDef::as_structured_buffer(
+            element_count,
+            element_size,
+            true,
+        ));
+
         Self {
-            static_allocation: allocator.allocate_segment(4 * 1024 * 1024),
+            static_allocation,
+            static_buffer_view: buffer_view,
         }
     }
 
     pub fn set_va_table_address_for_gpu_instance(
         &self,
-        updater: &mut UniformGPUDataUpdater,
+        updater: &mut GPUDataUpdaterBuilder,
         gpu_data_allocation: GpuDataAllocation,
     ) {
         let offset_for_gpu_instance =
-            self.static_allocation.offset() + u64::from(gpu_data_allocation.index()) * 4;
+            self.static_allocation.byte_offset() + u64::from(gpu_data_allocation.index()) * 4;
 
         updater.add_update_jobs(
             std::slice::from_ref(&u32::try_from(gpu_data_allocation.va_address()).unwrap()),
@@ -96,13 +107,12 @@ impl GpuVaTableForGpuInstance {
         );
     }
 
-    pub fn vertex_buffer_binding(&self) -> VertexBufferBinding<'_> {
+    pub fn vertex_buffer_binding(&self) -> VertexBufferBinding {
         self.static_allocation.vertex_buffer_binding()
     }
 
-    pub fn create_structured_buffer_view(&self, struct_size: u64, read_only: bool) -> BufferView {
-        self.static_allocation
-            .create_structured_buffer_view(struct_size, read_only)
+    pub fn structured_buffer_view(&self) -> &BufferView {
+        self.static_buffer_view.buffer_view()
     }
 }
 
@@ -143,18 +153,17 @@ impl GpuInstanceManager {
             RenderStage::Prepare,
             SystemSet::new()
                 .with_system(upload_transform_data)
-                .with_system(tmp_create_render_mesh_objects)
                 .after(GpuInstanceManagerLabel::UpdateDone),
         );
     }
 
-    pub fn vertex_buffer_binding(&self) -> VertexBufferBinding<'_> {
+    pub fn vertex_buffer_binding(&self) -> VertexBufferBinding {
         self.va_table_adresses.vertex_buffer_binding()
     }
 
-    pub fn create_structured_buffer_view(&self, struct_size: u64, read_only: bool) -> BufferView {
-        self.va_table_adresses
-            .create_structured_buffer_view(struct_size, read_only)
+    pub fn structured_buffer_view(&self) -> &BufferView {
+        self.va_table_adresses.structured_buffer_view()
+        // .create_structured_buffer_view(struct_size, read_only)
     }
 
     fn clear_transient_containers(&mut self) {
@@ -179,7 +188,7 @@ impl GpuInstanceManager {
         mesh_manager: &MeshManager,
         material_manager: &MaterialManager,
         missing_visuals_tracker: &mut MissingVisualTracker,
-        updater: &mut UniformGPUDataUpdater,
+        updater: &mut GPUDataUpdaterBuilder,
         picking_context: &mut PickingIdContext<'_>,
     ) {
         assert!(!self.entity_to_gpu_instance_block.contains_key(&entity));
@@ -307,7 +316,7 @@ impl GpuInstanceManager {
         &self,
         entity: Entity,
         visual: &VisualComponent,
-        updater: &mut UniformGPUDataUpdater,
+        updater: &mut GPUDataUpdaterBuilder,
     ) {
         let mut instance_color = cgen::cgen_type::GpuInstanceColor::default();
         instance_color.set_color((u32::from(visual.color())).into());
@@ -387,7 +396,7 @@ fn update_gpu_instances(
     // Now, recreate the instance block of entities matching the request
     //
 
-    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
+    let mut updater = GPUDataUpdaterBuilder::new(renderer.transient_buffer_allocator(64 * 1024));
     {
         let mut picking_context = PickingIdContext::new(&picking_manager);
 
@@ -431,7 +440,8 @@ fn upload_transform_data(
 
     let transform_count = query.iter().count();
     let block_size = transform_count * std::mem::size_of::<cgen::cgen_type::TransformData>();
-    let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), block_size as u64);
+    let mut updater =
+        GPUDataUpdaterBuilder::new(renderer.transient_buffer_allocator(block_size as u64));
 
     for (entity, transform, _) in query.iter() {
         let mut world = cgen::cgen_type::TransformData::default();
@@ -445,18 +455,4 @@ fn upload_transform_data(
     }
 
     renderer.add_update_job_block(updater.job_blocks());
-}
-
-#[allow(
-    clippy::needless_pass_by_value,
-    clippy::type_complexity,
-    clippy::too_many_arguments
-)]
-fn tmp_create_render_mesh_objects(
-    _mesh_set: ResMut<'_, MeshRenderObjectSet>,
-    mut _q_visuals: Query<'_, '_, &mut VisualComponent, Added<VisualComponent>>,
-) {
-    // for mut visual in q_visuals.iter_mut() {
-    //     visual.tmp_mesh_render_object = Some(mesh_set.insert(MeshRenderObject { tmp: 13 }));
-    // }
 }

@@ -46,14 +46,14 @@ impl BumpAllocatorPool {
 
     pub(crate) fn begin_frame(&mut self) {
         let mut pool = self.bump_allocator_pool.lock().unwrap();
-        for bump in pool.iter_mut() {
+        for bump in pool.availables_mut() {
             bump.reset();
         }
     }
 
     pub(crate) fn end_frame(&mut self) {
         let mut pool = self.bump_allocator_pool.lock().unwrap();
-        pool.end_frame();
+        assert_eq!(pool.acquired_count(), 0);
     }
 }
 

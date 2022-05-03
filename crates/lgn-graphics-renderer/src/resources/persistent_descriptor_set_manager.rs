@@ -14,8 +14,8 @@ const BINDLESS_TEXTURE_ARRAY_LEN: u32 = 10 * 1024;
 pub struct PersistentDescriptorSetManager {
     device_context: DeviceContext,
     descriptor_set: DescriptorSet,
-    render_frame: usize,
-    render_frame_capacity: usize,
+    render_frame: u64,
+    num_render_frames: u64,
     bindless_index_allocator: IndexAllocator,
     removed_indices: Vec<Vec<u32>>,
 }
@@ -24,7 +24,7 @@ impl PersistentDescriptorSetManager {
     pub fn new(
         device_context: &DeviceContext,
         descriptor_heap_manager: &DescriptorHeapManager,
-        render_frame_capacity: usize,
+        num_render_frames: u64,
     ) -> Self {
         // todo: cgen must be initialized at this point
         let layout = cgen::descriptor_set::PersistentDescriptorSet::descriptor_set_layout();
@@ -48,9 +48,9 @@ impl PersistentDescriptorSetManager {
             device_context: device_context.clone(),
             descriptor_set: persistent_partition.alloc(layout).unwrap(),
             render_frame: 0,
-            render_frame_capacity,
+            num_render_frames,
             bindless_index_allocator: IndexAllocator::new(BINDLESS_TEXTURE_ARRAY_LEN),
-            removed_indices: (0..render_frame_capacity)
+            removed_indices: (0..num_render_frames)
                 .map(|_| Vec::new())
                 .collect::<Vec<_>>(),
         }
@@ -87,7 +87,7 @@ impl PersistentDescriptorSetManager {
     }
 
     pub fn unset_bindless_texture(&mut self, index: u32) {
-        let removed_indices = &mut self.removed_indices[self.render_frame];
+        let removed_indices = &mut self.removed_indices[self.render_frame as usize];
         removed_indices.push(index);
     }
 
@@ -96,10 +96,10 @@ impl PersistentDescriptorSetManager {
     }
 
     fn frame_update(&mut self) {
-        self.render_frame = (self.render_frame + 1) % self.render_frame_capacity;
+        self.render_frame = (self.render_frame + 1) % self.num_render_frames as u64;
         self.bindless_index_allocator
-            .release_indexes(&self.removed_indices[self.render_frame]);
-        self.removed_indices[self.render_frame].clear();
+            .release_indexes(&self.removed_indices[self.render_frame as usize]);
+        self.removed_indices[self.render_frame as usize].clear();
     }
 }
 

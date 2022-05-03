@@ -86,6 +86,7 @@ impl DescriptorDef {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Descriptor {
     pub name: String,
+    pub transient: bool,
     pub bindless: bool,
     pub flat_index: u32,
     pub array_len: Option<u32>,
@@ -173,14 +174,19 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
     /// # Errors
     /// todo
     pub fn add_samplers(self, name: &str, array_len: Option<u32>) -> Result<Self> {
-        self.add_descriptor(name, false, array_len, DescriptorDef::Sampler)
+        self.add_descriptor(name, false, false, array_len, DescriptorDef::Sampler)
     }
 
     /// Add `ConstantBuffers`.
     ///
     /// # Errors
     /// todo
-    pub fn add_constant_buffer(self, name: &str, inner_type: &str) -> Result<Self> {
+    pub fn add_constant_buffer(
+        self,
+        name: &str,
+        inner_type: &str,
+        transient: bool,
+    ) -> Result<Self> {
         // get cgen type and check its existence if necessary
         let ty_handle = self
             .mdl
@@ -194,6 +200,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
             })?;
         self.add_descriptor(
             name,
+            transient,
             false,
             None,
             DescriptorDef::ConstantBuffer(ConstantBufferDef { ty_handle }),
@@ -210,6 +217,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         array_len: Option<u32>,
         inner_ty: &str,
         read_write: bool,
+        transient: bool,
     ) -> Result<Self> {
         // get cgen type and check its existence if necessary
         let ty_handle = self
@@ -228,7 +236,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         } else {
             DescriptorDef::StructuredBuffer(def)
         };
-        self.add_descriptor(name, false, array_len, def)
+        self.add_descriptor(name, transient, false, array_len, def)
     }
 
     /// Add `ByteAddressBuffer`.
@@ -240,13 +248,14 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         name: &str,
         array_len: Option<u32>,
         read_write: bool,
+        transient: bool,
     ) -> Result<Self> {
         let def = if read_write {
             DescriptorDef::RWByteAddressBuffer
         } else {
             DescriptorDef::ByteAddressBuffer
         };
-        self.add_descriptor(name, false, array_len, def)
+        self.add_descriptor(name, transient, false, array_len, def)
     }
 
     /// Add descriptor.
@@ -333,12 +342,13 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
             }
         };
 
-        self.add_descriptor(name, bindless, array_len, ds)
+        self.add_descriptor(name, false, bindless, array_len, ds)
     }
 
     fn add_descriptor(
         mut self,
         name: &str,
+        transient: bool,
         bindless: bool,
         array_len: Option<u32>,
         def: DescriptorDef,
@@ -355,6 +365,7 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
         self.names.insert(name.to_string());
         self.product.descriptors.push(Descriptor {
             name: name.to_owned(),
+            transient,
             bindless,
             flat_index: self.flat_index,
             array_len,

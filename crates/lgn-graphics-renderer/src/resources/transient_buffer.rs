@@ -1,122 +1,160 @@
 use std::{
     alloc::Layout,
-    cell::{Cell, RefCell},
+    ptr::NonNull,
     sync::{Arc, Mutex},
 };
 
+use lgn_core::Handle;
 use lgn_graphics_api::{
-    Buffer, BufferAllocation, BufferDef, DeviceContext, DeviceInfo, MemoryAllocation,
-    MemoryAllocationDef, MemoryUsage, ResourceCreation, ResourceUsage,
+    Buffer, BufferCreateFlags, BufferDef, BufferViewDef, DeviceContext, IndexBufferBinding,
+    IndexType, MemoryUsage, ResourceUsage, TransientBufferView, VertexBufferBinding,
 };
 
-use super::{Range, RangeAllocator};
+use super::GpuSafePool;
 
-#[derive(Clone)]
-struct PageAllocationsForFrame {
-    frame: u64,
-    allocations: Vec<Range>,
-}
-
-struct PageHeap {
+pub struct TransientBufferAllocation {
     buffer: Buffer,
-    buffer_memory: MemoryAllocation,
-    range_allocator: RangeAllocator,
-    page_size: u64,
-    frame_allocations: PageAllocationsForFrame,
-    all_allocations: Vec<PageAllocationsForFrame>,
+    byte_offset: u64,
+    size: u64,
 }
 
-impl PageHeap {
-    pub fn new(device_context: &DeviceContext, num_pages: u64, page_size: u64) -> Self {
-        let buffer_def = BufferDef {
-            name: "PageHeap".to_string(),
-            size: page_size * num_pages,
+#[allow(unsafe_code)]
+unsafe impl Send for TransientBufferAllocation {}
+
+impl TransientBufferAllocation {
+    #[allow(unsafe_code)]
+    pub fn buffer(&self) -> &Buffer {
+        unsafe { self.buffer.as_ref() }
+    }
+
+    pub fn byte_offset(&self) -> u64 {
+        self.byte_offset
+    }
+
+    pub fn size(&self) -> u64 {
+        self.size
+    }
+
+    #[allow(unsafe_code)]
+    pub fn ptr(&self) -> *mut u8 {
+        unsafe {
+            self.buffer
+                .as_ref()
+                .mapped_ptr()
+                .add(self.byte_offset as usize)
+        }
+    }
+
+    pub fn vertex_buffer_binding(&self) -> VertexBufferBinding {
+        VertexBufferBinding::new(self.buffer(), self.byte_offset)
+    }
+
+    pub fn index_buffer_binding(&self, index_type: IndexType) -> IndexBufferBinding {
+        IndexBufferBinding::new(self.buffer(), self.byte_offset, index_type)
+    }
+
+    pub fn to_buffer_view(&self, view_def: BufferViewDef) -> TransientBufferView {
+        self.buffer().create_transient_view(view_def)
+    }
+}
+
+const TRANSIENT_BUFFER_BLOCK_SIZE: u64 = 64 * 1024;
+
+struct TransientBuffer {
+    device_context: DeviceContext,
+    buffer: Buffer,
+    byte_offset: u64,
+    capacity: u64,
+}
+
+impl TransientBuffer {
+    fn new(device_context: &DeviceContext, size: u64) -> Self {
+        let required_size =
+            lgn_utils::memory::round_size_up_to_alignment_u64(size, TRANSIENT_BUFFER_BLOCK_SIZE);
+
+        let buffer = device_context.create_buffer(BufferDef {
+				name: "PageHeap".to_string(),
+            size: required_size,
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE
+                | ResourceUsage::AS_UNORDERED_ACCESS
                 | ResourceUsage::AS_CONST_BUFFER
                 | ResourceUsage::AS_VERTEX_BUFFER
                 | ResourceUsage::AS_INDEX_BUFFER,
-            creation_flags: ResourceCreation::empty(),
-        };
-
-        let buffer = device_context.create_buffer(&buffer_def);
-
-        let alloc_def = MemoryAllocationDef {
+            create_flags: BufferCreateFlags::empty(),
             memory_usage: MemoryUsage::CpuToGpu,
             always_mapped: true,
-        };
-
-        let buffer_memory = MemoryAllocation::from_buffer(device_context, &buffer, &alloc_def);
+        });
 
         Self {
+            device_context: device_context.clone(),
             buffer,
-            buffer_memory,
-            range_allocator: RangeAllocator::new(page_size * num_pages),
-            page_size,
-            frame_allocations: PageAllocationsForFrame {
-                frame: 0,
-                allocations: Vec::<Range>::new(),
-            },
-            all_allocations: Vec::<PageAllocationsForFrame>::new(),
+            byte_offset: 0,
+            capacity: required_size,
         }
     }
 
-    pub fn allocate_page(&mut self, layout: Layout) -> Option<BufferAllocation> {
-        assert!(layout.align() as u64 <= self.page_size);
-
-        let alloc_size =
-            lgn_utils::memory::round_size_up_to_alignment_u64(layout.size() as u64, self.page_size);
-
-        match self.range_allocator.allocate(alloc_size) {
-            None => None,
-            Some(range) => {
-                self.frame_allocations.allocations.push(range);
-                Some(BufferAllocation {
-                    buffer: self.buffer.clone(),
-                    memory: self.buffer_memory.clone(),
-                    byte_offset: range.begin(),
-                    size: range.size(),
-                })
-            }
-        }
+    pub fn begin_frame(&mut self) {
+        self.byte_offset = 0;
     }
 
-    pub fn begin_frame(&mut self, current_cpu_frame: u64, last_complete_gpu_frame: u64) {
-        if !self.all_allocations.is_empty() {
-            let mut remove_indexes = Vec::new();
-            let mut index_offset = 0;
-
-            for index in 0..self.all_allocations.len() {
-                let allocations = &self.all_allocations[index];
-                if allocations.frame <= last_complete_gpu_frame {
-                    for allocation in &allocations.allocations {
-                        self.range_allocator.free(*allocation);
-                    }
-                    remove_indexes.push(index - index_offset);
-                    index_offset += 1;
-                }
-            }
-
-            for index in remove_indexes {
-                self.all_allocations.remove(index);
-            }
-        }
-
-        self.all_allocations.push(self.frame_allocations.clone());
-
-        self.frame_allocations = PageAllocationsForFrame {
-            frame: current_cpu_frame,
-            allocations: Vec::<Range>::new(),
-        }
+    pub fn buffer(&self) -> &Buffer {
+        &self.buffer
     }
+
+    pub fn byte_offset(&self) -> u64 {
+        self.byte_offset
+            }
+
+    pub fn size(&self) -> u64 {
+        self.capacity - self.byte_offset
+    }
+
+    fn allocate(
+        &mut self,
+        data_layout: Layout,
+        resource_usage: ResourceUsage,
+    ) -> Option<TransientBufferAllocation> {
+        let min_alignment = if resource_usage == ResourceUsage::AS_CONST_BUFFER {
+            self.device_context
+                .device_info()
+                .min_uniform_buffer_offset_alignment
+        } else {
+            self.device_context
+                .device_info()
+                .min_storage_buffer_offset_alignment
+        };
+        let required_alignment = u64::from(min_alignment).max(data_layout.align() as u64);
+        let required_size = data_layout.size() as u64;
+        let aligned_offset =
+            lgn_utils::memory::round_size_up_to_alignment_u64(self.byte_offset, required_alignment);
+        let next_offset = aligned_offset + required_size;
+
+        if next_offset > self.capacity {
+            None
+        } else {
+            self.byte_offset = next_offset;
+
+            Some(TransientBufferAllocation {
+                buffer: NonNull::from(&self.buffer),
+                byte_offset: aligned_offset,
+                size: required_size,
+            })
+            }
+        }
 }
+
+// impl OnFrameEventHandler for TransientBuffer {
+//     fn on_begin_frame(&mut self) {
+//         self.byte_offset = 0;
+//     }
+
+//     fn on_end_frame(&mut self) {}
+// }
 
 pub(crate) struct TransientPagedBufferInner {
     device_context: DeviceContext,
-    page_heaps: Vec<PageHeap>,
-    current_cpu_frame: u64,
-    last_complete_gpu_frame: u64,
-    num_pages: u64,
-    page_size: u64,
+    transient_buffers: GpuSafePool<TransientBuffer>,
+    frame_pool: Vec<Handle<TransientBuffer>>,
 }
 
 #[derive(Clone)]
@@ -125,57 +163,63 @@ pub struct TransientPagedBuffer {
 }
 
 impl TransientPagedBuffer {
-    pub fn new(device_context: &DeviceContext, num_pages: u64, page_size: u64) -> Self {
+    pub fn new(device_context: &DeviceContext, num_cpu_frames: u64) -> Self {
         Self {
             inner: Arc::new(Mutex::new(TransientPagedBufferInner {
                 device_context: device_context.clone(),
-                page_heaps: vec![PageHeap::new(device_context, num_pages, page_size)],
-                current_cpu_frame: 3,
-                last_complete_gpu_frame: 0,
-                num_pages,
-                page_size,
+                transient_buffers: GpuSafePool::new(num_cpu_frames),
+                frame_pool: Vec::new(),
             })),
         }
     }
 
-    pub fn allocate_page(&self, layout: Layout) -> BufferAllocation {
-        let inner = &mut *self.inner.lock().unwrap();
-
-        while !inner.page_heaps.is_empty() {
-            for page_heap in &mut inner.page_heaps {
-                if let Some(allocation) = page_heap.allocate_page(layout) {
-                    return allocation;
-                }
-            }
-            inner.page_heaps.push(PageHeap::new(
-                &inner.device_context,
-                inner.num_pages,
-                inner.page_size,
-            ));
-        }
-        unreachable!();
-    }
-
-    pub fn begin_frame(&self) {
+    pub fn begin_frame(&mut self) {
         let mut inner = self.inner.lock().unwrap();
 
-        inner.current_cpu_frame += 1;
-        inner.last_complete_gpu_frame += 1;
+        assert!(inner.frame_pool.is_empty());
 
-        let current_cpu_frame = inner.current_cpu_frame;
-        let last_complete_gpu_frame = inner.last_complete_gpu_frame;
+        inner
+            .transient_buffers
+            .begin_frame(TransientBuffer::begin_frame);
+                }
 
-        for page_heap in &mut inner.page_heaps {
-            page_heap.begin_frame(current_cpu_frame, last_complete_gpu_frame);
+    pub fn end_frame(&mut self) {
+        let mut inner = self.inner.lock().unwrap();
+
+        let mut frame_pool = std::mem::take(&mut inner.frame_pool);
+
+        frame_pool.drain(..).for_each(|mut handle| {
+            inner.transient_buffers.release(handle.transfer());
+        });
+
+        inner.transient_buffers.end_frame(|_| ());
+            }
+
+    fn acquire_page(&self, min_page_size: u64) -> Handle<TransientBuffer> {
+        let inner = &mut *self.inner.lock().unwrap();
+
+        for (i, handle) in inner.frame_pool.iter().enumerate() {
+            if min_page_size <= handle.size() {
+                return inner.frame_pool.swap_remove(i);
         }
     }
+
+        inner
+            .transient_buffers
+            .acquire_or_create(|| TransientBuffer::new(&inner.device_context, min_page_size))
+    }
+
+    fn release_page(&self, page: Handle<TransientBuffer>) {
+        let inner = &mut *self.inner.lock().unwrap();
+
+        inner.frame_pool.push(page);
+        }
 }
 
 pub struct TransientBufferAllocator {
+    device_context: DeviceContext,
     paged_buffer: TransientPagedBuffer,
-    allocation: RefCell<BufferAllocation>,
-    device_info: DeviceInfo,
-    offset: Cell<u64>,
+    allocation: Handle<TransientBuffer>,
 }
 
 impl TransientBufferAllocator {
@@ -184,93 +228,58 @@ impl TransientBufferAllocator {
         paged_buffer: &TransientPagedBuffer,
         min_alloc_size: u64,
     ) -> Self {
-        let allocation = paged_buffer
-            .allocate_page(Layout::from_size_align(min_alloc_size as usize, 64 * 1024).unwrap());
-        let offset = allocation.byte_offset();
+        let allocation = paged_buffer.acquire_page(min_alloc_size);
         Self {
             paged_buffer: paged_buffer.clone(),
-            allocation: RefCell::new(allocation),
-            device_info: *device_context.device_info(),
-            offset: Cell::new(offset),
+            allocation,
+            device_context: device_context.clone(),
         }
     }
 
-    pub fn allocate(&self, data_layout: Layout, resource_usage: ResourceUsage) -> BufferAllocation {
-        let alignment = if resource_usage == ResourceUsage::AS_CONST_BUFFER {
-            self.device_info.min_uniform_buffer_offset_alignment
-        } else {
-            self.device_info.min_storage_buffer_offset_alignment
-        };
-        let alignment = u64::from(alignment).max(data_layout.align() as u64);
-
-        let mut aligned_offset =
-            lgn_utils::memory::round_size_up_to_alignment_u64(self.offset.get(), alignment);
-        let aligned_size =
-            lgn_utils::memory::round_size_up_to_alignment_u64(data_layout.size() as u64, alignment);
-        let mut new_offset = aligned_offset + aligned_size;
-        let mut allocation = self.allocation.borrow_mut();
-
-        if new_offset > allocation.size() {
-            *allocation = self.paged_buffer.allocate_page(data_layout);
-
-            aligned_offset = allocation.byte_offset();
-            new_offset = aligned_offset + aligned_size;
-
-            assert!(
-                aligned_offset
-                    == lgn_utils::memory::round_size_up_to_alignment_u64(aligned_offset, alignment)
-            );
+    pub fn copy_data<T>(
+        &mut self,
+        data: &T,
+        resource_usage: ResourceUsage,
+    ) -> TransientBufferAllocation {
+        self.copy_data_slice(std::slice::from_ref(data), resource_usage)
         }
-
-        self.offset.set(new_offset);
-
-        BufferAllocation {
-            buffer: allocation.buffer.clone(),
-            memory: allocation.memory.clone(),
-            byte_offset: aligned_offset,
-            size: aligned_size,
-        }
-    }
-
-    pub fn copy_data<T>(&self, data: &T, resource_usage: ResourceUsage) -> BufferAllocation {
-        let data_layout = std::alloc::Layout::new::<T>();
-        let allocation = self.allocate(data_layout, resource_usage);
-        let src = (data as *const T).cast::<u8>();
-
-        #[allow(unsafe_code)]
-        unsafe {
-            std::ptr::copy_nonoverlapping(
-                src,
-                allocation
-                    .memory
-                    .mapped_ptr()
-                    .add(allocation.byte_offset() as usize),
-                data_layout.size(),
-            );
-        }
-        allocation
-    }
 
     pub fn copy_data_slice<T>(
-        &self,
+        &mut self,
         data: &[T],
         resource_usage: ResourceUsage,
-    ) -> BufferAllocation {
+    ) -> TransientBufferAllocation {
         let data_layout = Layout::array::<T>(data.len()).unwrap();
-        let allocation = self.allocate(data_layout, resource_usage);
         let src = data.as_ptr().cast::<u8>();
+        let dst = self.allocate(data_layout, resource_usage);
 
         #[allow(unsafe_code)]
         unsafe {
-            std::ptr::copy_nonoverlapping(
-                src,
-                allocation
-                    .memory
-                    .mapped_ptr()
-                    .add(allocation.byte_offset() as usize),
-                data_layout.size(),
-            );
+            std::ptr::copy_nonoverlapping(src, dst.ptr(), data_layout.size());
         }
-        allocation
+
+        dst
+    }
+
+    fn allocate(
+        &mut self,
+        data_layout: Layout,
+        resource_usage: ResourceUsage,
+    ) -> TransientBufferAllocation {
+        let mut allocation = self.allocation.allocate(data_layout, resource_usage);
+
+        while allocation.is_none() {
+            self.paged_buffer.release_page(self.allocation.transfer());
+            self.allocation = self.paged_buffer.acquire_page(data_layout.size() as u64);
+            allocation = self.allocation.allocate(data_layout, resource_usage);
+        }
+
+        allocation.unwrap()
+        }
+}
+
+impl Drop for TransientBufferAllocator {
+    fn drop(&mut self) {
+        self.paged_buffer.release_page(self.allocation.transfer());
     }
 }

@@ -18,48 +18,55 @@ pub struct BufferViewDef {
 }
 
 impl BufferViewDef {
-    pub fn as_const_buffer(buffer_def: &BufferDef) -> Self {
-        Self {
-            gpu_view_type: GPUViewType::ConstantBuffer,
-            byte_offset: 0,
-            element_count: 1,
-            element_size: buffer_def.size,
-            buffer_view_flags: BufferViewFlags::empty(),
-        }
+    pub fn as_const_buffer_typed<T: Sized>() -> Self {
+        Self::as_const_buffer_with_offset_typed::<T>(0)
     }
 
-    pub fn as_const_buffer_with_offset(buffer_size: u64, byte_offset: u64) -> Self {
+    pub fn as_const_buffer(element_size: u64) -> Self {
+        Self::as_const_buffer_with_offset(element_size, 0)
+    }
+
+    pub fn as_const_buffer_with_offset_typed<T: Sized>(byte_offset: u64) -> Self {
+        Self::as_const_buffer_with_offset(std::mem::size_of::<T>() as u64, byte_offset)
+    }
+
+    pub fn as_const_buffer_with_offset(element_size: u64, byte_offset: u64) -> Self {
         Self {
             gpu_view_type: GPUViewType::ConstantBuffer,
             byte_offset,
             element_count: 1,
-            element_size: buffer_size,
+            element_size: element_size as u64,
             buffer_view_flags: BufferViewFlags::empty(),
         }
     }
 
-    pub fn as_structured_buffer(buffer_def: &BufferDef, struct_size: u64, read_only: bool) -> Self {
-        assert!(buffer_def.size % struct_size == 0);
-        Self {
-            gpu_view_type: if read_only {
-                GPUViewType::ShaderResource
-            } else {
-                GPUViewType::UnorderedAccess
-            },
-            byte_offset: 0,
-            element_count: buffer_def.size / struct_size,
-            element_size: struct_size,
-            buffer_view_flags: BufferViewFlags::empty(),
-        }
+    pub fn as_structured_buffer_typed<T: Sized>(element_count: u64, read_only: bool) -> Self {
+        Self::as_structured_buffer_with_offset_typed::<T>(element_count, read_only, 0)
     }
 
-    pub fn as_structured_buffer_with_offset(
-        buffer_size: u64,
-        struct_size: u64,
+    pub fn as_structured_buffer(element_count: u64, element_size: u64, read_only: bool) -> Self {
+        Self::as_structured_buffer_with_offset(element_count, element_size, read_only, 0)
+    }
+
+    pub fn as_structured_buffer_with_offset_typed<T: Sized>(
+        element_count: u64,
         read_only: bool,
         byte_offset: u64,
     ) -> Self {
-        assert!(buffer_size % struct_size == 0);
+        Self::as_structured_buffer_with_offset(
+            element_count,
+            std::mem::size_of::<T>() as u64,
+            read_only,
+            byte_offset,
+        )
+    }
+
+    pub fn as_structured_buffer_with_offset(
+        element_count: u64,
+        element_size: u64,
+        read_only: bool,
+        byte_offset: u64,
+    ) -> Self {
         Self {
             gpu_view_type: if read_only {
                 GPUViewType::ShaderResource
@@ -67,22 +74,29 @@ impl BufferViewDef {
                 GPUViewType::UnorderedAccess
             },
             byte_offset,
-            element_count: buffer_size / struct_size,
-            element_size: struct_size,
+            element_count,
+            element_size,
             buffer_view_flags: BufferViewFlags::empty(),
         }
     }
 
-    pub fn as_byte_address_buffer(buffer_def: &BufferDef, read_only: bool) -> Self {
-        assert!(buffer_def.size % 4 == 0);
+    pub fn as_byte_address_buffer(element_count: u64, read_only: bool) -> Self {
+        Self::as_byte_address_buffer_with_offset(element_count, read_only, 0)
+    }
+
+    pub fn as_byte_address_buffer_with_offset(
+        element_count: u64,
+        read_only: bool,
+        byte_offset: u64,
+    ) -> Self {
         Self {
             gpu_view_type: if read_only {
                 GPUViewType::ShaderResource
             } else {
                 GPUViewType::UnorderedAccess
             },
-            byte_offset: 0,
-            element_count: buffer_def.size / 4,
+            byte_offset,
+            element_count,
             element_size: 4,
             buffer_view_flags: BufferViewFlags::RAW_BUFFER,
         }
@@ -116,6 +130,7 @@ impl BufferViewDef {
                 panic!();
             }
         }
+        assert!(self.byte_offset % self.element_size == 0);
 
         let upper_bound = self.byte_offset + self.element_count * self.element_size;
         assert!(upper_bound <= buffer_def.size);
@@ -135,16 +150,16 @@ pub struct BufferView {
 }
 
 impl BufferView {
-    pub fn from_buffer(buffer: &Buffer, view_def: &BufferViewDef) -> Self {
-        view_def.verify(buffer.definition());
+    pub fn from_buffer(buffer: &Buffer, definition: BufferViewDef) -> Self {
+        definition.verify(buffer.definition());
 
         let device_context = buffer.device_context();
-        let offset = view_def.byte_offset;
-        let size = view_def.element_size * view_def.element_count;
+        let offset = definition.byte_offset;
+        let size = definition.element_size * definition.element_count;
 
         Self {
             inner: device_context.deferred_dropper().new_drc(BufferViewInner {
-                definition: *view_def,
+                definition,
                 buffer: buffer.clone(),
                 offset,
                 size,
@@ -178,6 +193,70 @@ impl BufferView {
             }
             ShaderResourceType::RWStructuredBuffer | ShaderResourceType::RWByteAddressBuffer => {
                 self.inner.definition.gpu_view_type == GPUViewType::UnorderedAccess
+            }
+            ShaderResourceType::Sampler
+            | ShaderResourceType::Texture2D
+            | ShaderResourceType::RWTexture2D
+            | ShaderResourceType::Texture2DArray
+            | ShaderResourceType::RWTexture2DArray
+            | ShaderResourceType::Texture3D
+            | ShaderResourceType::RWTexture3D
+            | ShaderResourceType::TextureCube
+            | ShaderResourceType::TextureCubeArray => false,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct TransientBufferView {
+    definition: BufferViewDef,
+    buffer: *const Buffer,
+    offset: u64,
+    size: u64,
+}
+
+impl<'a> TransientBufferView {
+    pub fn from_buffer(buffer: &Buffer, definition: BufferViewDef) -> Self {
+        definition.verify(buffer.definition());
+
+        let offset = definition.byte_offset;
+        let size = definition.element_size * definition.element_count;
+
+        Self {
+            definition,
+            buffer,
+            offset,
+            size,
+        }
+    }
+
+    pub fn definition(&self) -> &BufferViewDef {
+        &self.definition
+    }
+
+    #[allow(unsafe_code)]
+    pub fn buffer(&self) -> &Buffer {
+        unsafe { self.buffer.as_ref().unwrap() }
+    }
+
+    pub fn offset(&self) -> u64 {
+        self.offset
+    }
+
+    pub fn size(&self) -> u64 {
+        self.size
+    }
+
+    pub fn is_compatible_with_descriptor(&self, descriptor: &Descriptor) -> bool {
+        match descriptor.shader_resource_type {
+            ShaderResourceType::ConstantBuffer => {
+                self.definition.gpu_view_type == GPUViewType::ConstantBuffer
+            }
+            ShaderResourceType::StructuredBuffer | ShaderResourceType::ByteAddressBuffer => {
+                self.definition.gpu_view_type == GPUViewType::ShaderResource
+            }
+            ShaderResourceType::RWStructuredBuffer | ShaderResourceType::RWByteAddressBuffer => {
+                self.definition.gpu_view_type == GPUViewType::UnorderedAccess
             }
             ShaderResourceType::Sampler
             | ShaderResourceType::Texture2D

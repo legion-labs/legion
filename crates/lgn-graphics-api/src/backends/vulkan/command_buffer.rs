@@ -313,13 +313,13 @@ impl CommandBuffer {
     pub(crate) fn backend_cmd_bind_vertex_buffers(
         &mut self,
         first_binding: u32,
-        bindings: &[VertexBufferBinding<'_>],
+        bindings: &[VertexBufferBinding],
     ) {
         let mut buffers = Vec::with_capacity(bindings.len());
         let mut offsets = Vec::with_capacity(bindings.len());
         for binding in bindings {
-            buffers.push(binding.buffer.vk_buffer());
-            offsets.push(binding.byte_offset);
+            buffers.push(binding.buffer().vk_buffer());
+            offsets.push(binding.byte_offset());
         }
 
         unsafe {
@@ -335,13 +335,13 @@ impl CommandBuffer {
         }
     }
 
-    pub(crate) fn backend_cmd_bind_index_buffer(&mut self, binding: &IndexBufferBinding<'_>) {
+    pub(crate) fn backend_cmd_bind_index_buffer(&mut self, binding: IndexBufferBinding) {
         unsafe {
             self.inner.device_context.vk_device().cmd_bind_index_buffer(
                 self.inner.backend_command_buffer.vk_command_buffer,
-                binding.buffer.vk_buffer(),
-                binding.byte_offset,
-                binding.index_type.into(),
+                binding.buffer().vk_buffer(),
+                binding.byte_offset(),
+                binding.index_type().into(),
             );
         }
     }

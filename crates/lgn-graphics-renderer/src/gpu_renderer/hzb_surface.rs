@@ -65,36 +65,26 @@ impl HzbSurface {
             format: Format::R32_SFLOAT,
             usage_flags: ResourceUsage::AS_RENDER_TARGET | ResourceUsage::AS_SHADER_RESOURCE,
             resource_flags: ResourceFlags::empty(),
-            mem_usage: MemoryUsage::GpuOnly,
+            memory_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Optimal,
         };
 
-        let texture = device_context.create_texture(&hzb_def);
-        let srv_view_def = TextureViewDef::as_shader_resource_view(&hzb_def);
-        let srv_view = texture.create_view(&srv_view_def);
+        let texture = device_context.create_texture(hzb_def);
+        let srv_view = texture.create_view(TextureViewDef::as_shader_resource_view(
+            texture.definition(),
+        ));
 
         let mut srv_mip_views = Vec::with_capacity(mip_count as usize);
         let mut rt_mip_view = Vec::with_capacity(mip_count as usize);
 
         for mip_index in 0..mip_count {
-            let hzb_srv_view_mip_def = TextureViewDef::as_srv_with_mip_spec(&hzb_def, mip_index, 1);
-            srv_mip_views.push(texture.create_view(&hzb_srv_view_mip_def));
+            srv_mip_views.push(
+                texture.create_view(TextureViewDef::as_srv_with_mip_spec(&hzb_def, mip_index, 1)),
+            );
 
-            let hzb_rt_view_mip_def = TextureViewDef::as_rt_for_mip(&hzb_def, mip_index);
-            rt_mip_view.push(texture.create_view(&hzb_rt_view_mip_def));
+            rt_mip_view
+                .push(texture.create_view(TextureViewDef::as_rt_for_mip(&hzb_def, mip_index)));
         }
-
-        let mip_sampler_def = SamplerDef {
-            min_filter: FilterType::Nearest,
-            mag_filter: FilterType::Nearest,
-            mip_map_mode: MipMapMode::Nearest,
-            address_mode_u: AddressMode::ClampToEdge,
-            address_mode_v: AddressMode::ClampToEdge,
-            address_mode_w: AddressMode::ClampToEdge,
-            mip_lod_bias: 0.0,
-            max_anisotropy: 1.0,
-            compare_op: CompareOp::Never,
-        };
 
         Self {
             texture,
@@ -102,7 +92,17 @@ impl HzbSurface {
             srv_mip_views,
             rt_mip_view,
             pipeline_handle: build_hzb_pso(pipeline_manager),
-            mip_sampler: device_context.create_sampler(&mip_sampler_def),
+            mip_sampler: device_context.create_sampler(SamplerDef {
+                min_filter: FilterType::Nearest,
+                mag_filter: FilterType::Nearest,
+                mip_map_mode: MipMapMode::Nearest,
+                address_mode_u: AddressMode::ClampToEdge,
+                address_mode_v: AddressMode::ClampToEdge,
+                address_mode_w: AddressMode::ClampToEdge,
+                mip_lod_bias: 0.0,
+                max_anisotropy: 1.0,
+                compare_op: CompareOp::Never,
+            }),
         }
     }
 
@@ -167,11 +167,13 @@ impl HzbSurface {
                                           0.0, 0.0, 0.0, 0.0,
                                           2.0, 0.0, 2.0, 0.0];
 
-            let sub_allocation = render_context
-                .transient_buffer_allocator()
+            let mut transient_buffer_allocator = render_context.transient_buffer_allocator();
+            let transient_buffer = transient_buffer_allocator
                 .copy_data_slice(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
 
-            cmd_buffer.bind_buffer_suballocation_as_vertex_buffer(0, &sub_allocation);
+            let vertex_binding = transient_buffer.vertex_buffer_binding();
+
+            cmd_buffer.bind_vertex_buffer(0, vertex_binding);
 
             cmd_buffer.begin_render_pass(
                 &[ColorRenderTargetBinding {

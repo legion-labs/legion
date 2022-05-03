@@ -127,15 +127,11 @@ impl CommandBuffer {
         self.backend_cmd_bind_pipeline(pipeline);
     }
 
-    pub fn cmd_bind_vertex_buffers(
-        &mut self,
-        first_binding: u32,
-        bindings: &[VertexBufferBinding<'_>],
-    ) {
+    pub fn cmd_bind_vertex_buffers(&mut self, first_binding: u32, bindings: &[VertexBufferBinding]) {
         self.backend_cmd_bind_vertex_buffers(first_binding, bindings);
     }
 
-    pub fn cmd_bind_index_buffer(&mut self, binding: &IndexBufferBinding<'_>) {
+    pub fn cmd_bind_index_buffer(&mut self, binding: IndexBufferBinding) {
         self.backend_cmd_bind_index_buffer(binding);
     }
 

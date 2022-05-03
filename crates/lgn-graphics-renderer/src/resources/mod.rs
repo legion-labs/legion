@@ -25,9 +25,6 @@ pub(crate) use on_frame_event_handler::*;
 mod range_allocator;
 pub(crate) use range_allocator::*;
 
-mod sparse_binding_manager;
-pub(crate) use sparse_binding_manager::*;
-
 mod static_buffer;
 pub(crate) use static_buffer::*;
 

@@ -17,10 +17,6 @@ impl Range {
     pub fn begin(&self) -> u64 {
         self.begin
     }
-
-    pub fn size(&self) -> u64 {
-        self.end - self.begin
-    }
 }
 
 pub struct RangeAllocator {

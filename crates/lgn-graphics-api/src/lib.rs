@@ -40,8 +40,8 @@ pub use device_context::*;
 mod fence;
 pub use fence::*;
 
-mod memory_allocation;
-pub use memory_allocation::*;
+// mod memory_allocation;
+// pub use memory_allocation::*;
 
 mod pipeline;
 pub use pipeline::*;

@@ -21,8 +21,8 @@ impl RenderTarget {
         usage_flags: ResourceUsage,
         view_type: GPUViewType,
     ) -> Self {
-        let texture_def = TextureDef {
-            name: name.to_string(),
+        let texture = device_context.create_texture(TextureDef {
+				name: name.to_string(),
             extents: Extents3D {
                 width: extents.width(),
                 height: extents.height(),
@@ -33,16 +33,18 @@ impl RenderTarget {
             format,
             usage_flags,
             resource_flags: ResourceFlags::empty(),
-            mem_usage: MemoryUsage::GpuOnly,
+            memory_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Optimal,
-        };
-        let texture = device_context.create_texture(&texture_def);
+        });
 
-        let srv_def = TextureViewDef::as_shader_resource_view(&texture_def);
-        let srv = texture.create_view(&srv_def);
+        let srv = texture.create_view(TextureViewDef::as_shader_resource_view(
+            texture.definition(),
+        ));
 
-        let rtv_def = TextureViewDef::as_render_view(&texture_def, view_type);
-        let rtv = texture.create_view(&rtv_def);
+        let rtv = texture.create_view(TextureViewDef::as_render_view(
+            texture.definition(),
+            view_type,
+        ));
 
         Self {
             texture,

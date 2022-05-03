@@ -2,7 +2,7 @@ use lgn_graphics_api::Buffer;
 
 use crate::{
     hl_gfx_api::HLCommandBuffer,
-    resources::{StaticBufferAllocation, UnifiedStaticBufferAllocator, UniformGPUDataUpdater},
+    resources::{GPUDataUpdaterBuilder, StaticBufferAllocation, UnifiedStaticBufferAllocator},
     RenderContext,
 };
 
@@ -20,7 +20,7 @@ impl RenderLayer {
     pub fn new(allocator: &UnifiedStaticBufferAllocator, cpu_render_set: bool) -> Self {
         const TEMP_MAX_MATERIAL_COUNT: usize = 8192;
         let page_size = TEMP_MAX_MATERIAL_COUNT * std::mem::size_of::<u32>();
-        let material_page = allocator.allocate_segment(page_size as u64);
+        let material_page = allocator.allocate(page_size as u64);
 
         Self {
             state_page: material_page,
@@ -68,7 +68,7 @@ impl RenderLayer {
 
     pub fn aggregate_offsets(
         &mut self,
-        updater: &mut UniformGPUDataUpdater,
+        updater: &mut GPUDataUpdaterBuilder,
         count_buffer_offset: &mut u64,
         indirect_arg_buffer_offset: &mut u64,
     ) {
@@ -92,13 +92,13 @@ impl RenderLayer {
                 per_state_offsets[state_id] = per_batch_offsets[*batch_id as usize];
             }
 
-            updater.add_update_jobs(&per_state_offsets, self.state_page.offset());
+            updater.add_update_jobs(&per_state_offsets, self.state_page.byte_offset());
         }
     }
 
     pub fn offsets_va(&self) -> u32 {
         if !self.cpu_render_set && !self.state_to_batch.is_empty() {
-            self.state_page.offset() as u32
+            self.state_page.byte_offset() as u32
         } else {
             0
         }

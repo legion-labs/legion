@@ -6,7 +6,7 @@ use crate::deferred_drop::Drc;
 use crate::{AddressMode, CompareOp, DeviceContext, FilterType, MipMapMode};
 
 /// Used to create a `Sampler`
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct SamplerDef {
     pub min_filter: FilterType,
     pub mag_filter: FilterType,
@@ -66,7 +66,7 @@ pub struct Sampler {
 }
 
 impl Sampler {
-    pub fn new(device_context: &DeviceContext, sampler_def: &SamplerDef) -> Self {
+    pub fn new(device_context: &DeviceContext, sampler_def: SamplerDef) -> Self {
         let platform_sampler = BackendSampler::new(device_context, sampler_def);
         let inner = SamplerInner {
             device_context: device_context.clone(),

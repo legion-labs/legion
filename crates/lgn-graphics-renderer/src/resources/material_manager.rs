@@ -15,8 +15,8 @@ use crate::{
 };
 
 use super::{
-    GpuDataManager, IndexAllocator, MissingVisualTracker, SharedResourcesManager, TextureEvent,
-    TextureManager, UnifiedStaticBufferAllocator, UniformGPUDataUpdater,
+    GPUDataUpdaterBuilder, GpuDataManager, IndexAllocator, MissingVisualTracker,
+    SharedResourcesManager, TextureEvent, TextureManager, UnifiedStaticBufferAllocator,
 };
 
 type GpuMaterialData = GpuDataManager<MaterialId, crate::cgen::cgen_type::MaterialData>;
@@ -331,7 +331,8 @@ impl MaterialManager {
         shared_resources_manager: &SharedResourcesManager,
         missing_visuals_tracker: &mut MissingVisualTracker,
     ) {
-        let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
+        let mut updater =
+            GPUDataUpdaterBuilder::new(renderer.transient_buffer_allocator(64 * 1024));
 
         for material_id in &self.upload_queue {
             let material = &self.get_material(*material_id);
@@ -360,7 +361,8 @@ impl MaterialManager {
         shared_resources_manager: &SharedResourcesManager,
     ) {
         if !self.default_uploaded {
-            let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
+            let mut updater =
+                GPUDataUpdaterBuilder::new(renderer.transient_buffer_allocator(64 * 1024));
 
             let material_data = MaterialData::default();
 

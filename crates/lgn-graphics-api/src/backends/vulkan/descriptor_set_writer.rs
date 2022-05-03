@@ -27,7 +27,7 @@ impl<'a> DescriptorSetWriter<'a> {
         &mut self,
         descriptor_index: u32,
         descriptor_offset: u32,
-        descriptor_refs: &[DescriptorRef<'_>],
+        descriptor_refs: &[DescriptorRef],
     ) {
         let vk_resource_info_count = descriptor_refs.len();
 
@@ -58,7 +58,7 @@ impl<'a> DescriptorSetWriter<'a> {
         }
     }
 
-    pub(crate) fn backend_set_descriptors(&mut self, descriptor_refs: &[DescriptorRef<'_>]) {
+    pub(crate) fn backend_set_descriptors(&mut self, descriptor_refs: &[DescriptorRef]) {
         let descriptor_count = self.descriptor_set_layout.descriptor_count();
         let vk_resource_info_count = self.descriptor_set_layout.flat_descriptor_count() as usize;
 
@@ -109,7 +109,7 @@ impl<'a> DescriptorSetWriter<'a> {
         &mut self,
         descriptor_index: u32,
         descriptor_offset: u32,
-        descriptor_refs: &[DescriptorRef<'_>],
+        descriptor_refs: &[DescriptorRef],
         vk_image_infos: &mut [vk::DescriptorImageInfo],
         vk_buffer_infos: &mut [vk::DescriptorBufferInfo],
     ) -> vk::WriteDescriptorSet {
@@ -130,6 +130,7 @@ impl<'a> DescriptorSetWriter<'a> {
             ShaderResourceType::Sampler => {
                 for (index, descriptor_ref) in descriptor_refs.iter().enumerate() {
                     if let DescriptorRef::Sampler(sampler) = descriptor_ref {
+                        let sampler = unsafe { sampler.as_ref().unwrap() };
                         let image_info = &mut vk_image_infos[index];
                         image_info.sampler = sampler.vk_sampler();
                         image_info.image_view = vk::ImageView::null();
@@ -149,14 +150,23 @@ impl<'a> DescriptorSetWriter<'a> {
             | ShaderResourceType::ByteAddressBuffer
             | ShaderResourceType::RWByteAddressBuffer => {
                 for (index, descriptor_ref) in descriptor_refs.iter().enumerate() {
-                    if let DescriptorRef::BufferView(buffer_view) = descriptor_ref {
-                        assert!(buffer_view.is_compatible_with_descriptor(descriptor));
-                        let buffer_info = &mut vk_buffer_infos[index];
-                        buffer_info.buffer = buffer_view.buffer().vk_buffer();
-                        buffer_info.offset = buffer_view.offset();
-                        buffer_info.range = buffer_view.size();
-                    } else {
-                        unreachable!();
+                    match descriptor_ref {
+                        DescriptorRef::TransientBufferView(view) => {
+                            assert!(view.is_compatible_with_descriptor(descriptor));
+                            let buffer_info = &mut vk_buffer_infos[index];
+                            buffer_info.buffer = view.buffer().vk_buffer();
+                            buffer_info.offset = view.offset();
+                            buffer_info.range = view.size();
+                        }
+                        DescriptorRef::BufferView(buffer_view) => {
+                            let buffer_view = unsafe { buffer_view.as_ref().unwrap() };
+                            assert!(buffer_view.is_compatible_with_descriptor(descriptor));
+                            let buffer_info = &mut vk_buffer_infos[index];
+                            buffer_info.buffer = buffer_view.buffer().vk_buffer();
+                            buffer_info.offset = buffer_view.offset();
+                            buffer_info.range = buffer_view.size();
+                        }
+                        _ => unreachable!(),
                     }
                 }
                 // Queue a descriptor write
@@ -169,9 +179,9 @@ impl<'a> DescriptorSetWriter<'a> {
             | ShaderResourceType::TextureCubeArray => {
                 for (index, descriptor_ref) in descriptor_refs.iter().enumerate() {
                     if let DescriptorRef::TextureView(texture_view) = descriptor_ref {
+                        let texture_view = unsafe { texture_view.as_ref().unwrap() };
                         assert!(texture_view.is_compatible_with_descriptor(descriptor));
                         let image_info = &mut vk_image_infos[index];
-
                         image_info.sampler = vk::Sampler::null();
                         image_info.image_view = texture_view.vk_image_view();
                         image_info.image_layout = vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL;
@@ -187,6 +197,7 @@ impl<'a> DescriptorSetWriter<'a> {
             | ShaderResourceType::RWTexture3D => {
                 for (index, descriptor_ref) in descriptor_refs.iter().enumerate() {
                     if let DescriptorRef::TextureView(texture_view) = descriptor_ref {
+                        let texture_view = unsafe { texture_view.as_ref().unwrap() };
                         assert!(texture_view.is_compatible_with_descriptor(descriptor));
                         let image_info = &mut vk_image_infos[index];
 

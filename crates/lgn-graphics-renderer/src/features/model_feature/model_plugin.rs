@@ -9,9 +9,9 @@ pub struct MeshRenderObject {
 }
 
 #[derive(Default)]
-pub struct MeshFeaturePlugin;
+pub struct ModelPlugin;
 
-impl Plugin for MeshFeaturePlugin {
+impl Plugin for ModelPlugin {
     fn build(&self, app: &mut lgn_app::App) {
         app.insert_resource(MeshRenderObjectSet::new(100 * 1024));
     }

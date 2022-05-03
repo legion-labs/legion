@@ -3,8 +3,8 @@ use strum::{EnumCount, IntoEnumIterator};
 
 use lgn_graphics_api::{
     BufferDef, CmdCopyBufferToTextureParams, CommandBufferDef, CommandPoolDef, Extents3D, Format,
-    MemoryAllocation, MemoryAllocationDef, MemoryUsage, QueueType, ResourceFlags, ResourceState,
-    ResourceUsage, TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef,
+    MemoryUsage, QueueType, ResourceFlags, ResourceState, ResourceUsage, TextureBarrier,
+    TextureDef, TextureTiling, TextureView, TextureViewDef,
 };
 
 use crate::{components::TextureData, Renderer};
@@ -55,9 +55,10 @@ impl SharedResourcesManager {
         };
 
         let device_context = renderer.device_context();
-        let texture = device_context.create_texture(&texture_def);
-        let texture_view =
-            texture.create_view(&TextureViewDef::as_shader_resource_view(&texture_def));
+        let texture = device_context.create_texture(texture_def);
+        let texture_view = texture.create_view(TextureViewDef::as_shader_resource_view(
+            texture.definition(),
+        ));
 
         let graphics_queue = renderer.graphics_queue_guard(QueueType::Graphics);
 
@@ -76,20 +77,20 @@ impl SharedResourcesManager {
             let data = texture_data.data()[0].as_slice();
 
             // todo: this code must be completly rewritten (-> upload manager)
-            let staging_buffer = device_context.create_buffer(&BufferDef::for_staging_buffer_data(
+            let staging_buffer = device_context.create_buffer(BufferDef::for_staging_buffer_data(
                 data,
                 ResourceUsage::empty(),
             ));
 
-            let alloc_def = MemoryAllocationDef {
-                memory_usage: MemoryUsage::CpuToGpu,
-                always_mapped: true,
-            };
+            // let alloc_def = MemoryAllocationDef {
+            //     memory_usage: MemoryUsage::CpuToGpu,
+            //     always_mapped: true,
+            // };
 
-            let buffer_memory =
-                MemoryAllocation::from_buffer(device_context, &staging_buffer, &alloc_def);
+            // let buffer_memory =
+            //     MemoryAllocation::from_buffer(device_context, &staging_buffer, &alloc_def);
 
-            buffer_memory.copy_to_host_visible_buffer(data);
+            staging_buffer.copy_to_host_visible_buffer(data);
 
             // todo: not needed here
             cmd_buffer.cmd_resource_barrier(
@@ -146,7 +147,7 @@ impl SharedResourcesManager {
             format: Format::R8G8B8A8_SRGB,
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
             resource_flags: ResourceFlags::empty(),
-            mem_usage: MemoryUsage::GpuOnly,
+            memory_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Linear,
         };
 
@@ -174,7 +175,7 @@ impl SharedResourcesManager {
             format: Format::R8G8B8A8_UNORM,
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
             resource_flags: ResourceFlags::empty(),
-            mem_usage: MemoryUsage::GpuOnly,
+            memory_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Linear,
         };
 
@@ -201,7 +202,7 @@ impl SharedResourcesManager {
             format: Format::R8_UNORM,
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
             resource_flags: ResourceFlags::empty(),
-            mem_usage: MemoryUsage::GpuOnly,
+            memory_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Linear,
         };
 
@@ -228,7 +229,7 @@ impl SharedResourcesManager {
             format: Format::R8_UNORM,
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
             resource_flags: ResourceFlags::empty(),
-            mem_usage: MemoryUsage::GpuOnly,
+            memory_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Linear,
         };
 

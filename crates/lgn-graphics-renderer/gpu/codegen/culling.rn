@@ -62,9 +62,9 @@ pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set
             name: "CullingDescriptorSet",
             frequency: crate::USER_DESCRIPTOR_SET_FREQUENCY,
             descriptors: [
-                #{ name:"gpu_instance_count", type:"StructuredBuffer", content:"Uint1" },
-                #{ name:"gpu_instance_data", type:"StructuredBuffer", content:"GpuInstanceData" },
-                #{ name:"render_pass_data", type:"StructuredBuffer", content:"RenderPassData" },
+                #{ name:"gpu_instance_count", type:"StructuredBuffer", content:"Uint1", transient:true },
+                #{ name:"gpu_instance_data", type:"StructuredBuffer", content:"GpuInstanceData", transient:true },
+                #{ name:"render_pass_data", type:"StructuredBuffer", content:"RenderPassData", transient:true },
                 #{ name:"draw_count", type:"RWStructuredBuffer", content:"Uint1"  },
                 #{ name:"draw_args", type:"RWStructuredBuffer", content:"Uint1" },
                 #{ name:"culled_count", type:"RWStructuredBuffer", content:"Uint1" },

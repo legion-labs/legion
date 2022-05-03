@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use super::{IndexAllocator, UnifiedStaticBufferAllocator, UniformGPUData, UniformGPUDataUpdater};
+use super::{GPUDataUpdaterBuilder, IndexAllocator, UnifiedStaticBufferAllocator, UniformGPUData};
 
 #[derive(Clone, Copy)]
 pub(crate) struct GpuDataAllocation {
@@ -28,7 +28,7 @@ impl<K: Ord + Copy, T> GpuDataManager<K, T> {
     pub fn new(block_size: u32) -> Self {
         let index_allocator = IndexAllocator::new(block_size);
         let page_size = u64::from(block_size) * std::mem::size_of::<T>() as u64;
-        let gpu_data = UniformGPUData::<T>::new(None, page_size);
+        let gpu_data = UniformGPUData::<T>::new(page_size);
 
         Self {
             gpu_data,
@@ -63,7 +63,7 @@ impl<K: Ord + Copy, T> GpuDataManager<K, T> {
         values.va_address
     }
 
-    pub fn update_gpu_data(&self, key: &K, data: &T, updater: &mut UniformGPUDataUpdater) {
+    pub fn update_gpu_data(&self, key: &K, data: &T, updater: &mut GPUDataUpdaterBuilder) {
         assert!(self.data_map.contains_key(key));
 
         let gpu_data_allocation = self.data_map.get(key).unwrap();

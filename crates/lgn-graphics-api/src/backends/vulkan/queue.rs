@@ -1,10 +1,10 @@
 use ash::vk;
 use lgn_tracing::trace;
 
-use super::{internal::VkQueue, SparseBindingInfo};
+use super::internal::VkQueue;
 use crate::{
-    CommandBuffer, DeviceContext, Fence, GfxResult, PagedBufferAllocation, PresentSuccessResult,
-    Queue, QueueType, Semaphore, SemaphoreUsage, Swapchain,
+    CommandBuffer, DeviceContext, Fence, GfxResult, PresentSuccessResult, Queue, QueueType,
+    Semaphore, SemaphoreUsage, Swapchain,
 };
 
 pub(crate) struct VulkanQueue {
@@ -223,95 +223,95 @@ impl Queue {
         Ok(())
     }
 
-    pub fn backend_commit_sparse_bindings<'a>(
-        &self,
-        prev_frame_semaphore: &'a Semaphore,
-        unbind_pages: &[PagedBufferAllocation],
-        unbind_semaphore: &'a Semaphore,
-        bind_pages: &[PagedBufferAllocation],
-        bind_semaphore: &'a Semaphore,
-    ) -> &'a Semaphore {
-        let queue = self.vk_queue().queue().lock().unwrap();
+    // pub fn backend_commit_sparse_bindings<'a>(
+    //     &self,
+    //     prev_frame_semaphore: &'a Semaphore,
+    //     unbind_pages: &[PagedBufferAllocation],
+    //     unbind_semaphore: &'a Semaphore,
+    //     bind_pages: &[PagedBufferAllocation],
+    //     bind_semaphore: &'a Semaphore,
+    // ) -> &'a Semaphore {
+    //     let queue = self.vk_queue().queue().lock().unwrap();
 
-        let mut vk_prev_frame_semaphore = Vec::new();
-        if prev_frame_semaphore.signal_available() {
-            vk_prev_frame_semaphore.push(prev_frame_semaphore.vk_semaphore());
-            prev_frame_semaphore.set_signal_available(false);
-        }
-        let vk_unbind_semaphores = [unbind_semaphore.vk_semaphore()];
-        let vk_bind_semaphores = [bind_semaphore.vk_semaphore()];
+    //     let mut vk_prev_frame_semaphore = Vec::new();
+    //     if prev_frame_semaphore.signal_available() {
+    //         vk_prev_frame_semaphore.push(prev_frame_semaphore.vk_semaphore());
+    //         prev_frame_semaphore.set_signal_available(false);
+    //     }
+    //     let vk_unbind_semaphores = [unbind_semaphore.vk_semaphore()];
+    //     let vk_bind_semaphores = [bind_semaphore.vk_semaphore()];
 
-        if !unbind_pages.is_empty() {
-            let mut binding_infos = Vec::with_capacity(unbind_pages.len());
-            let mut vk_unbindings = Vec::with_capacity(unbind_pages.len());
+    //     if !unbind_pages.is_empty() {
+    //         let mut binding_infos = Vec::with_capacity(unbind_pages.len());
+    //         let mut vk_unbindings = Vec::with_capacity(unbind_pages.len());
 
-            for page in unbind_pages {
-                let mut binding_info = SparseBindingInfo {
-                    sparse_bindings: Vec::new(),
-                    buffer_offset: page.byte_offset(),
-                    buffer: &page.buffer,
-                    bind: false,
-                };
+    //         for page in unbind_pages {
+    //             let mut binding_info = SparseBindingInfo {
+    //                 sparse_bindings: Vec::new(),
+    //                 buffer_offset: page.byte_offset(),
+    //                 buffer: page.buffer(),
+    //                 bind: false,
+    //             };
 
-                vk_unbindings.push(page.memory.binding_info(&mut binding_info));
+    //             vk_unbindings.push(page.memory().binding_info(&mut binding_info));
 
-                binding_infos.push(binding_info);
-            }
+    //             binding_infos.push(binding_info);
+    //         }
 
-            let unbind_info_builder = ash::vk::BindSparseInfo::builder()
-                .buffer_binds(&vk_unbindings)
-                .signal_semaphores(&vk_unbind_semaphores)
-                .wait_semaphores(&vk_prev_frame_semaphore);
+    //         let unbind_info_builder = ash::vk::BindSparseInfo::builder()
+    //             .buffer_binds(&vk_unbindings)
+    //             .signal_semaphores(&vk_unbind_semaphores)
+    //             .wait_semaphores(&vk_prev_frame_semaphore);
 
-            unsafe {
-                self.vk_queue()
-                    .device_context()
-                    .vk_device()
-                    .queue_bind_sparse(*queue, &[*unbind_info_builder], vk::Fence::null())
-                    .unwrap();
-            }
-        }
+    //         unsafe {
+    //             self.vk_queue()
+    //                 .device_context()
+    //                 .vk_device()
+    //                 .queue_bind_sparse(*queue, &[*unbind_info_builder], vk::Fence::null())
+    //                 .unwrap();
+    //         }
+    //     }
 
-        if !bind_pages.is_empty() {
-            let mut binding_infos = Vec::with_capacity(bind_pages.len());
-            let mut vk_bindings = Vec::with_capacity(bind_pages.len());
+    //     if !bind_pages.is_empty() {
+    //         let mut binding_infos = Vec::with_capacity(bind_pages.len());
+    //         let mut vk_bindings = Vec::with_capacity(bind_pages.len());
 
-            for page in bind_pages {
-                let mut binding_info = SparseBindingInfo {
-                    sparse_bindings: Vec::new(),
-                    buffer_offset: page.byte_offset(),
-                    buffer: &page.buffer,
-                    bind: true,
-                };
+    //         for page in bind_pages {
+    //             let mut binding_info = SparseBindingInfo {
+    //                 sparse_bindings: Vec::new(),
+    //                 buffer_offset: page.byte_offset(),
+    //                 buffer: page.buffer(),
+    //                 bind: true,
+    //             };
 
-                vk_bindings.push(page.memory.binding_info(&mut binding_info));
+    //             vk_bindings.push(page.memory().binding_info(&mut binding_info));
 
-                binding_infos.push(binding_info);
-            }
+    //             binding_infos.push(binding_info);
+    //         }
 
-            let mut bind_info_builder = ash::vk::BindSparseInfo::builder()
-                .buffer_binds(&vk_bindings)
-                .signal_semaphores(&vk_bind_semaphores);
-            if unbind_pages.is_empty() {
-                bind_info_builder = bind_info_builder.wait_semaphores(&vk_prev_frame_semaphore);
-            } else {
-                bind_info_builder = bind_info_builder.wait_semaphores(&vk_unbind_semaphores);
-            }
+    //         let mut bind_info_builder = ash::vk::BindSparseInfo::builder()
+    //             .buffer_binds(&vk_bindings)
+    //             .signal_semaphores(&vk_bind_semaphores);
+    //         if unbind_pages.is_empty() {
+    //             bind_info_builder = bind_info_builder.wait_semaphores(&vk_prev_frame_semaphore);
+    //         } else {
+    //             bind_info_builder = bind_info_builder.wait_semaphores(&vk_unbind_semaphores);
+    //         }
 
-            unsafe {
-                self.vk_queue()
-                    .device_context()
-                    .vk_device()
-                    .queue_bind_sparse(*queue, &[*bind_info_builder], vk::Fence::null())
-                    .unwrap();
-            }
-            bind_semaphore.set_signal_available(true);
-            bind_semaphore
-        } else if !unbind_pages.is_empty() {
-            unbind_semaphore.set_signal_available(true);
-            unbind_semaphore
-        } else {
-            prev_frame_semaphore
-        }
-    }
+    //         unsafe {
+    //             self.vk_queue()
+    //                 .device_context()
+    //                 .vk_device()
+    //                 .queue_bind_sparse(*queue, &[*bind_info_builder], vk::Fence::null())
+    //                 .unwrap();
+    //         }
+    //         bind_semaphore.set_signal_available(true);
+    //         bind_semaphore
+    //     } else if !unbind_pages.is_empty() {
+    //         unbind_semaphore.set_signal_available(true);
+    //         unbind_semaphore
+    //     } else {
+    //         prev_frame_semaphore
+    //     }
+    // }
 }

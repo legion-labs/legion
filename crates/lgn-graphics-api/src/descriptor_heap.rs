@@ -190,7 +190,7 @@ impl DescriptorHeapPartition {
     pub fn write(
         &self,
         layout: &DescriptorSetLayout,
-        descriptor_refs: &[DescriptorRef<'_>],
+        descriptor_refs: &[DescriptorRef],
     ) -> GfxResult<DescriptorSetHandle> {
         assert!(self.inner.transient);
         self.backend_write(layout, descriptor_refs)

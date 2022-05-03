@@ -205,13 +205,13 @@ pub struct TextureView {
 }
 
 impl TextureView {
-    pub(crate) fn new(texture: &Texture, view_def: &TextureViewDef) -> Self {
+    pub(crate) fn new(texture: &Texture, definition: TextureViewDef) -> Self {
         let device_context = texture.device_context();
-        let backend_texture_view = BackendTextureView::new(texture, view_def);
+        let backend_texture_view = BackendTextureView::new(texture, definition);
 
         Self {
             inner: device_context.deferred_dropper().new_drc(TextureViewInner {
-                definition: *view_def,
+                definition,
                 texture: texture.clone(),
                 backend_texture_view,
             }),

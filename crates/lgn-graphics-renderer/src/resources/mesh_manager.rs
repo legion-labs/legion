@@ -1,7 +1,7 @@
 use lgn_math::Vec4;
 use strum::EnumIter;
 
-use super::{StaticBufferAllocation, UnifiedStaticBufferAllocator, UniformGPUDataUpdater};
+use super::{GPUDataUpdaterBuilder, StaticBufferAllocation, UnifiedStaticBufferAllocator};
 use crate::{cgen::cgen_type::MeshDescription, components::Mesh, Renderer};
 
 #[derive(Clone, Copy)]
@@ -40,14 +40,14 @@ pub enum DefaultMeshType {
 
 impl MeshManager {
     pub fn new(renderer: &Renderer) -> Self {
-        let allocator = renderer.static_buffer_allocator();
-
-        let mut mesh_manager = Self {
-            allocator: allocator.clone(),
+        Self {
+            allocator: renderer.static_buffer_allocator().clone(),
             default_mesh_ids: Vec::new(),
             static_meshes: Vec::new(),
-        };
+        }
+    }
 
+    pub fn initialize_default_meshes(&mut self, renderer: &Renderer) {
         // Keep consistent with DefaultMeshType
         let default_meshes = vec![
             Mesh::new_plane(1.0),
@@ -64,21 +64,21 @@ impl MeshManager {
         ];
 
         for default_mesh in &default_meshes {
-            let mesh_id = mesh_manager.add_mesh(renderer, default_mesh);
-            mesh_manager.default_mesh_ids.push(mesh_id);
+            let mesh_id = self.add_mesh(renderer, default_mesh);
+            self.default_mesh_ids.push(mesh_id);
         }
-
-        mesh_manager
     }
 
     pub fn add_mesh(&mut self, renderer: &Renderer, mesh: &Mesh) -> MeshId {
         let vertex_data_size_in_bytes =
             u64::from(mesh.size_in_bytes()) + std::mem::size_of::<MeshDescription>() as u64;
 
-        let allocation = self.allocator.allocate_segment(vertex_data_size_in_bytes);
+        let allocation = self.allocator.allocate(vertex_data_size_in_bytes);
 
-        let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
-        let offset = allocation.offset();
+        let mut updater = GPUDataUpdaterBuilder::new(
+            renderer.transient_buffer_allocator(vertex_data_size_in_bytes),
+        );
+        let offset = allocation.byte_offset();
         let mut mesh_meta_datas = Vec::new();
         let mesh_id = self.static_meshes.len();
 

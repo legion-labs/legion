@@ -2,7 +2,7 @@ use lgn_tracing::span_fn;
 
 use crate::{
     backends::BackendQueue, CommandBuffer, CommandPool, CommandPoolDef, DeviceContext, Fence,
-    GfxResult, PagedBufferAllocation, PresentSuccessResult, Semaphore, Swapchain,
+    GfxResult, PresentSuccessResult, Semaphore, Swapchain,
 };
 
 /// Used to indicate which type of queue to use. Some operations require certain
@@ -96,20 +96,20 @@ impl Queue {
         self.backend_wait_for_queue_idle()
     }
 
-    pub fn commit_sparse_bindings<'a>(
-        &self,
-        prev_frame_semaphore: &'a Semaphore,
-        unbind_pages: &[PagedBufferAllocation],
-        unbind_semaphore: &'a Semaphore,
-        bind_pages: &[PagedBufferAllocation],
-        bind_semaphore: &'a Semaphore,
-    ) -> &'a Semaphore {
-        self.backend_commit_sparse_bindings(
-            prev_frame_semaphore,
-            unbind_pages,
-            unbind_semaphore,
-            bind_pages,
-            bind_semaphore,
-        )
-    }
+    // pub fn commit_sparse_bindings<'a>(
+    //     &self,
+    //     prev_frame_semaphore: &'a Semaphore,
+    //     unbind_pages: &[PagedBufferAllocation],
+    //     unbind_semaphore: &'a Semaphore,
+    //     bind_pages: &[PagedBufferAllocation],
+    //     bind_semaphore: &'a Semaphore,
+    // ) -> &'a Semaphore {
+    //     self.backend_commit_sparse_bindings(
+    //         prev_frame_semaphore,
+    //         unbind_pages,
+    //         unbind_semaphore,
+    //         bind_pages,
+    //         bind_semaphore,
+    //     )
+    // }
 }

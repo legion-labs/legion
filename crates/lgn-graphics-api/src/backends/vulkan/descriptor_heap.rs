@@ -269,7 +269,7 @@ impl DescriptorHeapPartition {
     pub(crate) fn backend_write(
         &self,
         layout: &DescriptorSetLayout,
-        descriptor_refs: &[DescriptorRef<'_>],
+        descriptor_refs: &[DescriptorRef],
     ) -> GfxResult<DescriptorSetHandle> {
         let handle = self.alloc_vk_descriptor_set(layout)?;
         let device_context = &self.inner.heap.inner.device_context;

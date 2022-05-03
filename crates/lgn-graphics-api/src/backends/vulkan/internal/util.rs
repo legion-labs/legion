@@ -1,8 +1,8 @@
 use ash::vk;
 
 use crate::{
-    BlendFactor, BlendState, BlendStateRenderTarget, BlendStateTargets, DepthState, DeviceContext,
-    Format, PipelineType, QueueType, RasterizerState, ResourceCreation, ResourceState,
+    BlendFactor, BlendState, BlendStateRenderTarget, BlendStateTargets, BufferCreateFlags,
+    DepthState, DeviceContext, Format, PipelineType, QueueType, RasterizerState, ResourceState,
     ResourceUsage, ShaderResourceType,
 };
 
@@ -45,24 +45,8 @@ pub(crate) fn resource_type_buffer_usage_flags(
     usage_flags
 }
 
-pub(crate) fn resource_type_buffer_creation_flags(
-    resource_creation: ResourceCreation,
-) -> vk::BufferCreateFlags {
-    let mut creation_flags = vk::BufferCreateFlags::empty();
-
-    if resource_creation.intersects(ResourceCreation::SPARSE_BINDING) {
-        creation_flags |= vk::BufferCreateFlags::SPARSE_BINDING;
-    }
-
-    if resource_creation.intersects(ResourceCreation::SPARSE_RESIDENCY) {
-        creation_flags |= vk::BufferCreateFlags::SPARSE_RESIDENCY;
-    }
-
-    if resource_creation.intersects(ResourceCreation::SPARSE_ALIASED) {
-        creation_flags |= vk::BufferCreateFlags::SPARSE_ALIASED;
-    }
-
-    creation_flags
+pub(crate) fn resource_type_buffer_creation_flags(_: BufferCreateFlags) -> vk::BufferCreateFlags {
+    vk::BufferCreateFlags::empty()
 }
 
 pub(crate) fn image_format_to_aspect_mask(

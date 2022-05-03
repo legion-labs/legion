@@ -5,8 +5,8 @@ use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::{prelude::*, schedule::SystemLabel};
 use lgn_graphics_api::{
     BufferDef, CmdCopyBufferToTextureParams, CommandBuffer, DeviceContext, Extents3D, Format,
-    MemoryAllocation, MemoryAllocationDef, MemoryUsage, QueueType, ResourceFlags, ResourceState,
-    ResourceUsage, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef,
+    MemoryUsage, QueueType, ResourceFlags, ResourceState, ResourceUsage, Texture, TextureBarrier,
+    TextureDef, TextureTiling, TextureView, TextureViewDef,
 };
 use lgn_graphics_data::TextureFormat;
 use lgn_tracing::span_fn;
@@ -273,8 +273,8 @@ impl TextureManager {
 
     fn create_texture_view(&self, texture_def: &TextureDef) -> TextureView {
         // todo: bundle all the default views in the resource instead of having them separatly
-        let texture = self.device_context.create_texture(texture_def);
-        texture.create_view(&TextureViewDef::as_shader_resource_view(texture_def))
+        let texture = self.device_context.create_texture(*texture_def);
+        texture.create_view(TextureViewDef::as_shader_resource_view(texture_def))
     }
 
     fn texture_info(&self, entity: Entity) -> &TextureInfo {
@@ -328,7 +328,7 @@ impl TextureManager {
             format,
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
             resource_flags: ResourceFlags::empty(),
-            mem_usage: MemoryUsage::GpuOnly,
+            memory_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Optimal,
         }
     }
@@ -347,20 +347,20 @@ impl TextureManager {
         // - Almost same code for buffer and texture
         // - Leverage the Copy queue
         //
-        let staging_buffer = device_context.create_buffer(&BufferDef::for_staging_buffer_data(
+        let staging_buffer = device_context.create_buffer(BufferDef::for_staging_buffer_data(
             data,
             ResourceUsage::empty(),
         ));
 
-        let alloc_def = MemoryAllocationDef {
-            memory_usage: MemoryUsage::CpuToGpu,
-            always_mapped: true,
-        };
+        // let alloc_def = MemoryAllocationDef {
+        //     memory_usage: MemoryUsage::CpuToGpu,
+        //     always_mapped: true,
+        // };
 
-        let buffer_memory =
-            MemoryAllocation::from_buffer(device_context, &staging_buffer, &alloc_def);
+        // let buffer_memory =
+        //     MemoryAllocation::from_buffer(device_context, &staging_buffer, &alloc_def);
 
-        buffer_memory.copy_to_host_visible_buffer(data);
+        staging_buffer.copy_to_host_visible_buffer(data);
 
         // todo: not needed here
         cmd_buffer.cmd_resource_barrier(

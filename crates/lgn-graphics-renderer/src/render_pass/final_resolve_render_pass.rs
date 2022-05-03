@@ -21,7 +21,9 @@ pub struct FinalResolveRenderPass {
 
 impl FinalResolveRenderPass {
     pub fn new(device_context: &DeviceContext, pipeline_manager: &PipelineManager) -> Self {
-        let linear_sampler_def = SamplerDef {
+        Self {
+            pipeline_handle: build_final_resolve_pso(pipeline_manager),
+            linear_sampler: device_context.create_sampler(SamplerDef {
             min_filter: FilterType::Nearest,
             mag_filter: FilterType::Nearest,
             mip_map_mode: MipMapMode::Nearest,
@@ -31,11 +33,7 @@ impl FinalResolveRenderPass {
             mip_lod_bias: 0.0,
             max_anisotropy: 1.0,
             compare_op: CompareOp::Never,
-        };
-
-        Self {
-            pipeline_handle: build_final_resolve_pso(pipeline_manager),
-            linear_sampler: device_context.create_sampler(&linear_sampler_def),
+            }),
         }
     }
 
@@ -47,54 +45,55 @@ impl FinalResolveRenderPass {
         resolve_rtv: &TextureView,
     ) {
         cmd_buffer.with_label("Final resolve", |cmd_buffer| {
-            let pipeline = render_context
-                .pipeline_manager()
-                .get_pipeline(self.pipeline_handle)
-                .unwrap();
+        let pipeline = render_context
+            .pipeline_manager()
+            .get_pipeline(self.pipeline_handle)
+            .unwrap();
 
-            cmd_buffer.bind_pipeline(pipeline);
+        cmd_buffer.bind_pipeline(pipeline);
 
-            render_surface
-                .hdr_rt_mut()
-                .transition_to(cmd_buffer, ResourceState::SHADER_RESOURCE);
+        render_surface
+            .hdr_rt_mut()
+            .transition_to(cmd_buffer, ResourceState::SHADER_RESOURCE);
 
-            let mut descriptor_set = cgen::descriptor_set::FinalResolveDescriptorSet::default();
-            descriptor_set.set_linear_texture(render_surface.hdr_rt().srv());
-            descriptor_set.set_linear_sampler(&self.linear_sampler);
+        let mut descriptor_set = cgen::descriptor_set::FinalResolveDescriptorSet::default();
+        descriptor_set.set_linear_texture(render_surface.hdr_rt().srv());
+        descriptor_set.set_linear_sampler(&self.linear_sampler);
 
-            let descriptor_set_handle = render_context.write_descriptor_set(
-                cgen::descriptor_set::FinalResolveDescriptorSet::descriptor_set_layout(),
-                descriptor_set.descriptor_refs(),
-            );
-            cmd_buffer.bind_descriptor_set(
-                cgen::descriptor_set::FinalResolveDescriptorSet::descriptor_set_layout(),
-                descriptor_set_handle,
-            );
+        let descriptor_set_handle = render_context.write_descriptor_set(
+            cgen::descriptor_set::FinalResolveDescriptorSet::descriptor_set_layout(),
+            descriptor_set.descriptor_refs(),
+        );
+        cmd_buffer.bind_descriptor_set(
+            cgen::descriptor_set::FinalResolveDescriptorSet::descriptor_set_layout(),
+            descriptor_set_handle,
+        );
 
-            #[rustfmt::skip]
-            let vertex_data: [f32; 12] = [0.0, 2.0, 0.0, 2.0,
+        #[rustfmt::skip]
+        let vertex_data: [f32; 12] = [  0.0, 2.0, 0.0, 2.0,
                                           2.0, 0.0, 2.0, 0.0,
-                                          0.0, 0.0, 0.0, 0.0];
+                                        0.0, 0.0, 0.0, 0.0 ];
 
-            let sub_allocation = render_context
-                .transient_buffer_allocator()
-                .copy_data_slice(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
+        let mut transient_buffer_allocator = render_context.transient_buffer_allocator();
 
-            cmd_buffer.bind_buffer_suballocation_as_vertex_buffer(0, &sub_allocation);
+        let sub_allocation = transient_buffer_allocator
+            .copy_data_slice(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
 
-            cmd_buffer.begin_render_pass(
-                &[ColorRenderTargetBinding {
-                    texture_view: resolve_rtv,
-                    load_op: LoadOp::DontCare,
-                    store_op: StoreOp::Store,
-                    clear_value: ColorClearValue([0.0; 4]),
-                }],
-                &None,
-            );
+        cmd_buffer.bind_vertex_buffer(0, sub_allocation.vertex_buffer_binding());
 
-            cmd_buffer.draw(3, 0);
+        cmd_buffer.begin_render_pass(
+            &[ColorRenderTargetBinding {
+                texture_view: resolve_rtv,
+                load_op: LoadOp::DontCare,
+                store_op: StoreOp::Store,
+                clear_value: ColorClearValue([0.0; 4]),
+            }],
+            &None,
+        );
 
-            cmd_buffer.end_render_pass();
+        cmd_buffer.draw(3, 0);
+
+        cmd_buffer.end_render_pass();
         });
     }
 }

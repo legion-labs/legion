@@ -94,9 +94,9 @@ impl NullBuffer {
 }
 
 impl Buffer {
-    pub(crate) fn backend_required_alignment(&self) -> u64 {
-        unimplemented!()
-    }
+    // pub(crate) fn backend_required_alignment(&self) -> u64 {
+    //     unimplemented!()
+    // }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -161,12 +161,12 @@ impl CommandBuffer {
     pub(crate) fn backend_cmd_bind_vertex_buffers(
         &self,
         first_binding: u32,
-        bindings: &[VertexBufferBinding<'_>],
+        bindings: &[VertexBufferBinding],
     ) {
         unimplemented!()
     }
 
-    pub(crate) fn backend_cmd_bind_index_buffer(&self, binding: &IndexBufferBinding<'_>) {
+    pub(crate) fn backend_cmd_bind_index_buffer(&self, binding: &IndexBufferBinding) {
         unimplemented!()
     }
 
@@ -412,7 +412,7 @@ impl DescriptorHeapPartition {
     pub(crate) fn backend_write(
         &self,
         layout: &DescriptorSetLayout,
-        descriptor_refs: &[DescriptorRef<'_>],
+        descriptor_refs: &[DescriptorRef],
     ) -> GfxResult<DescriptorSetHandle> {
         unimplemented!()
     }
@@ -446,12 +446,12 @@ impl<'a> DescriptorSetWriter<'a> {
         &mut self,
         descriptor_index: u32,
         descriptor_offset: u32,
-        descriptor_refs: &[DescriptorRef<'_>],
+        descriptor_refs: &[DescriptorRef],
     ) {
         unimplemented!()
     }
 
-    pub(crate) fn backend_set_descriptors(&mut self, descriptor_refs: &[DescriptorRef<'_>]) {
+    pub(crate) fn backend_set_descriptors(&mut self, descriptor_refs: &[DescriptorRef]) {
         unimplemented!()
     }
 }
@@ -604,16 +604,16 @@ impl Queue {
         unimplemented!()
     }
 
-    pub fn backend_commit_sparse_bindings<'a>(
-        &self,
-        prev_frame_semaphore: &'a Semaphore,
-        unbind_pages: &[PagedBufferAllocation],
-        unbind_semaphore: &'a Semaphore,
-        bind_pages: &[PagedBufferAllocation],
-        bind_semaphore: &'a Semaphore,
-    ) -> &'a Semaphore {
-        unimplemented!()
-    }
+    // pub fn backend_commit_sparse_bindings<'a>(
+    //     &self,
+    //     prev_frame_semaphore: &'a Semaphore,
+    //     unbind_pages: &[PagedBufferAllocation],
+    //     unbind_semaphore: &'a Semaphore,
+    //     bind_pages: &[PagedBufferAllocation],
+    //     bind_semaphore: &'a Semaphore,
+    // ) -> &'a Semaphore {
+    //     unimplemented!()
+    // }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

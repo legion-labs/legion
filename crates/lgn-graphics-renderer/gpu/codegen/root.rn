@@ -48,13 +48,10 @@ pub fn main() {
             #{ name: "num_directional_lights", ty:"Uint1" },
             #{ name: "num_omni_directional_lights", ty:"Uint1" },
             #{ name: "num_spot_lights", ty:"Uint1" },
-            #{ name: "diffuse", ty:"Uint1" },
-            #{ name: "specular", ty:"Uint1" },
-            #{ name: "specular_reflection", ty:"Float1" },
-            #{ name: "diffuse_reflection", ty:"Float1" },
-            #{ name: "ambient_reflection", ty:"Float1" },
-            #{ name: "shininess", ty:"Float1" },
-            #{ name: "pad_", ty:"Uint3" },
+            #{ name: "apply_ambient", ty:"Uint1" },
+            #{ name: "apply_diffuse", ty:"Uint1" },
+            #{ name: "apply_specular", ty:"Uint1" },            
+            #{ name: "pad_", ty:"Uint2" },
         ]
     };
     products.push( lighting_data );
@@ -135,7 +132,7 @@ pub fn main() {
         name: "FrameDescriptorSet",
         frequency: FRAME_DESCRIPTOR_SET_FREQUENCY,
         descriptors: [
-            #{ type:"ConstantBuffer", name:"lighting_data", content:"LightingData" },
+            #{ type:"ConstantBuffer", name:"lighting_data", content:"LightingData", transient:true },
             #{ type:"StructuredBuffer", name:"directional_lights", content:"DirectionalLight" },
             #{ type:"StructuredBuffer", name:"omni_directional_lights", content:"OmniDirectionalLight" },
             #{ type:"StructuredBuffer", name:"spot_lights", content:"SpotLight" },
@@ -151,7 +148,7 @@ pub fn main() {
         name: "ViewDescriptorSet",
         frequency: VIEW_DESCRIPTOR_SET_FREQUENCY,
         descriptors: [
-            #{name: "view_data", type:"ConstantBuffer", content:"ViewData" },            
+            #{name: "view_data", type:"ConstantBuffer", content:"ViewData", transient:true },            
             #{name: "hzb_texture", type: "Texture2D", content:"Float1" },
         ]
     };

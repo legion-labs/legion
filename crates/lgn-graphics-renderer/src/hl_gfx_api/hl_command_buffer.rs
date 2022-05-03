@@ -1,10 +1,10 @@
 use std::{cell::RefCell, mem};
 
 use lgn_graphics_api::{
-    Buffer, BufferBarrier, BufferCopy, BufferSubAllocation, CmdBlitParams,
-    CmdCopyBufferToTextureParams, CmdCopyTextureParams, ColorRenderTargetBinding,
-    DepthStencilRenderTargetBinding, DescriptorSetHandle, DescriptorSetLayout, IndexBufferBinding,
-    IndexType, Pipeline, Texture, TextureBarrier, VertexBufferBinding,
+    Buffer, BufferBarrier, BufferCopy, CmdBlitParams, CmdCopyBufferToTextureParams,
+    CmdCopyTextureParams, ColorRenderTargetBinding, DepthStencilRenderTargetBinding,
+    DescriptorSetHandle, DescriptorSetLayout, IndexBufferBinding, Pipeline, Texture,
+    TextureBarrier, VertexBufferBinding,
 };
 
 use crate::resources::{CommandBufferHandle, CommandBufferPoolHandle};
@@ -54,43 +54,17 @@ impl<'rc> HLCommandBuffer<'rc> {
         self.cmd_buffer.cmd_bind_pipeline(pipeline);
     }
 
-    pub fn bind_vertex_buffers(
-        &mut self,
-        first_binding: u32,
-        bindings: &[VertexBufferBinding<'_>],
-    ) {
+    pub fn bind_vertex_buffer(&mut self, first_binding: u32, binding: VertexBufferBinding) {
+        self.bind_vertex_buffers(first_binding, std::slice::from_ref(&binding));
+    }
+
+    pub fn bind_vertex_buffers(&mut self, first_binding: u32, bindings: &[VertexBufferBinding]) {
         self.cmd_buffer
             .cmd_bind_vertex_buffers(first_binding, bindings);
     }
 
-    pub fn bind_buffer_suballocation_as_vertex_buffer<AllocType>(
-        &mut self,
-        binding: u32,
-        buffer_suballoc: &BufferSubAllocation<AllocType>,
-    ) {
-        self.bind_vertex_buffers(
-            binding,
-            &[VertexBufferBinding {
-                buffer: &buffer_suballoc.buffer,
-                byte_offset: buffer_suballoc.byte_offset(),
-            }],
-        );
-    }
-
-    pub fn bind_index_buffer(&mut self, binding: &IndexBufferBinding<'_>) {
+    pub fn bind_index_buffer(&mut self, binding: IndexBufferBinding) {
         self.cmd_buffer.cmd_bind_index_buffer(binding);
-    }
-
-    pub fn bind_buffer_suballocation_as_index_buffer<AllocType>(
-        &mut self,
-        buffer_suballoc: &BufferSubAllocation<AllocType>,
-        index_type: IndexType,
-    ) {
-        self.bind_index_buffer(&IndexBufferBinding {
-            buffer: &buffer_suballoc.buffer,
-            byte_offset: buffer_suballoc.byte_offset(),
-            index_type,
-        });
     }
 
     //

@@ -7,7 +7,7 @@ use lgn_math::{Mat4, Vec2, Vec3, Vec4};
 
 use crate::{
     cgen::cgen_type::{MeshAttribMask, MeshDescription},
-    resources::UniformGPUDataUpdater,
+    resources::GPUDataUpdaterBuilder,
     DOWN_VECTOR, UP_VECTOR,
 };
 
@@ -92,7 +92,7 @@ impl Mesh {
 
     pub fn make_gpu_update_job(
         &self,
-        updater: &mut UniformGPUDataUpdater,
+        updater: &mut GPUDataUpdaterBuilder,
         offset: u32,
     ) -> (u32, u32, u32) {
         let mut mesh_desc = MeshDescription::default();

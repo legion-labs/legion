@@ -6,9 +6,10 @@
 use std::sync::Arc;
 
 use lgn_graphics_api::{
-    BufferView, DescriptorDef, DescriptorSetLayout, DescriptorSetLayoutDef, DeviceContext,
-    PushConstantDef, RootSignature, RootSignatureDef, Sampler, ShaderResourceType,
-    ShaderStageFlags, TextureView, MAX_DESCRIPTOR_SET_LAYOUTS,
+    BufferView, DescriptorDef, DescriptorRef, DescriptorSetLayout, DescriptorSetLayoutDef,
+    DeviceContext, GPUViewType, PushConstantDef, RootSignature, RootSignatureDef, Sampler,
+    ShaderResourceType, ShaderStageFlags, TextureView, TransientBufferView,
+    MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 use lgn_math::prelude::*;
 
@@ -349,8 +350,158 @@ pub struct CGenDescriptorDef {
 }
 
 impl CGenDescriptorDef {
-    pub fn validate(&self, wrapper: &impl ValueWrapper) -> bool {
-        wrapper.validate(self)
+    #[allow(unsafe_code)]
+    pub fn validate(&self, descriptor_ref: &DescriptorRef) -> bool {
+        match self.shader_resource_type {
+            ShaderResourceType::Sampler => match descriptor_ref {
+                DescriptorRef::Sampler(_) => true,
+                DescriptorRef::Undefined
+                | DescriptorRef::TransientBufferView(_)
+                | DescriptorRef::BufferView(_)
+                | DescriptorRef::TextureView(_) => false,
+            },
+            ShaderResourceType::ConstantBuffer => match descriptor_ref {
+                DescriptorRef::TransientBufferView(_) | DescriptorRef::BufferView(_) => {
+                    let view_definition = match descriptor_ref {
+                        DescriptorRef::TransientBufferView(view) => Some(view.definition()),
+                        DescriptorRef::BufferView(view) => {
+                            Some(unsafe { view.as_ref().unwrap().definition() })
+                        }
+                        DescriptorRef::Undefined
+                        | DescriptorRef::Sampler(_)
+                        | DescriptorRef::TextureView(_) => None,
+                    };
+                    if let Some(view_definition) = view_definition {
+                        view_definition.gpu_view_type == GPUViewType::ConstantBuffer
+                    } else {
+                        false
+                    }
+                }
+                DescriptorRef::Undefined
+                | DescriptorRef::Sampler(_)
+                | DescriptorRef::TextureView(_) => false,
+            },
+
+            ShaderResourceType::StructuredBuffer
+            | ShaderResourceType::RWStructuredBuffer
+            | ShaderResourceType::ByteAddressBuffer
+            | ShaderResourceType::RWByteAddressBuffer => match descriptor_ref {
+                DescriptorRef::TransientBufferView(_) | DescriptorRef::BufferView(_) => {
+                    let view_definition = match descriptor_ref {
+                        DescriptorRef::TransientBufferView(view) => Some(view.definition()),
+                        DescriptorRef::BufferView(view) => {
+                            Some(unsafe { view.as_ref().unwrap().definition() })
+                        }
+                        DescriptorRef::Undefined
+                        | DescriptorRef::Sampler(_)
+                        | DescriptorRef::TextureView(_) => None,
+                    };
+                    if let Some(view_definition) = view_definition {
+                        view_definition.gpu_view_type == GPUViewType::ShaderResource
+                    } else {
+                        false
+                    }
+                }
+                DescriptorRef::Undefined
+                | DescriptorRef::Sampler(_)
+                | DescriptorRef::TextureView(_) => false,
+            },
+            ShaderResourceType::Texture2D
+            | ShaderResourceType::RWTexture2D
+            | ShaderResourceType::Texture2DArray
+            | ShaderResourceType::RWTexture2DArray
+            | ShaderResourceType::Texture3D
+            | ShaderResourceType::RWTexture3D
+            | ShaderResourceType::TextureCube
+            | ShaderResourceType::TextureCubeArray => {
+                let view_def = match descriptor_ref {
+                    DescriptorRef::Undefined
+                    | DescriptorRef::Sampler(_)
+                    | DescriptorRef::TransientBufferView(_)
+                    | DescriptorRef::BufferView(_) => None,
+                    DescriptorRef::TextureView(view) => {
+                        Some(unsafe { view.as_ref().unwrap().definition() })
+                    }
+                };
+                if let Some(view_definition) = view_def {
+                    view_definition.gpu_view_type == GPUViewType::ShaderResource
+                } else {
+                    false
+                }
+            }
+        }
+        /*
+        match self.shader_resource_type {
+            ShaderResourceType::ConstantBuffer => match descriptor_ref {
+                DescriptorRef::TransientBufferView(view) => {
+                    view.definition().gpu_view_type == lgn_graphics_api::GPUViewType::ConstantBuffer
+                        && view.definition().buffer_view_flags.is_empty()
+                }
+                DescriptorRef::BufferView(view) => unsafe {
+                    view.as_ref().unwrap().definition().gpu_view_type
+                        == lgn_graphics_api::GPUViewType::ConstantBuffer
+                        && view.definition().buffer_view_flags.is_empty()
+                },
+                DescriptorRef::Undefined
+                | DescriptorRef::Sampler(_)
+                | DescriptorRef::TextureView(_) => false,
+            },
+            ShaderResourceType::StructuredBuffer => match descriptor_ref {
+                DescriptorRef::TransientBufferView(view) => {
+                    view.definition().gpu_view_type == lgn_graphics_api::GPUViewType::ShaderResource
+                        && view.definition().buffer_view_flags.is_empty()
+                        && view.definition().read_only
+                }
+                DescriptorRef::BufferView(view) => unsafe {
+                    view.as_ref().unwrap().definition().gpu_view_type
+                        == lgn_graphics_api::GPUViewType::ShaderResource
+                        && view.as_ref().unwrap().definition().read_only
+                },
+                DescriptorRef::Undefined
+                | DescriptorRef::Sampler(_)
+                | DescriptorRef::TextureView(_) => false,
+            },
+            ShaderResourceType::RWStructuredBuffer => match descriptor_ref {
+                DescriptorRef::TransientBufferView(view) => {
+                    view.definition().gpu_view_type == lgn_graphics_api::GPUViewType::ShaderResource
+                        && !view.definition().read_only
+                }
+                DescriptorRef::BufferView(view) => unsafe {
+                    view.as_ref().unwrap().definition().gpu_view_type
+                        == lgn_graphics_api::GPUViewType::ShaderResource
+                        && !view.as_ref().unwrap().definition().read_only
+                },
+                DescriptorRef::Undefined
+                | DescriptorRef::Sampler(_)
+                | DescriptorRef::TextureView(_) => false,
+            },
+            ShaderResourceType::ByteAddressBuffer => match descriptor_ref {
+                DescriptorRef::TransientBufferView(view) => {
+                    view.definition().gpu_view_type == lgn_graphics_api::GPUViewType::ShaderResource
+                }
+                DescriptorRef::BufferView(view) => unsafe {
+                    view.as_ref().unwrap().definition().gpu_view_type
+                        == lgn_graphics_api::GPUViewType::ShaderResource
+                },
+                DescriptorRef::Undefined
+                | DescriptorRef::Sampler(_)
+                | DescriptorRef::TextureView(_) => false,
+            },
+            ShaderResourceType::RWByteAddressBuffer => {
+                descriptor_ref.definition().gpu_view_type
+                    == lgn_graphics_api::GPUViewType::UnorderedAccess
+            }
+            ShaderResourceType::Sampler
+            | ShaderResourceType::Texture2D
+            | ShaderResourceType::RWTexture2D
+            | ShaderResourceType::Texture2DArray
+            | ShaderResourceType::RWTexture2DArray
+            | ShaderResourceType::Texture3D
+            | ShaderResourceType::RWTexture3D
+            | ShaderResourceType::TextureCube
+            | ShaderResourceType::TextureCubeArray => false,
+        }
+        */
     }
 }
 
@@ -384,6 +535,37 @@ impl ValueWrapper for BufferView {
 }
 
 impl ValueWrapper for &[&BufferView] {
+    fn validate(&self, _desc_def: &CGenDescriptorDef) -> bool {
+        false
+    }
+}
+
+impl<'a> ValueWrapper for TransientBufferView {
+    fn validate(&self, desc_def: &CGenDescriptorDef) -> bool {
+        match desc_def.shader_resource_type {
+            ShaderResourceType::ConstantBuffer => {
+                self.definition().gpu_view_type == lgn_graphics_api::GPUViewType::ConstantBuffer
+            }
+            ShaderResourceType::ByteAddressBuffer | ShaderResourceType::StructuredBuffer => {
+                self.definition().gpu_view_type == lgn_graphics_api::GPUViewType::ShaderResource
+            }
+            ShaderResourceType::RWStructuredBuffer | ShaderResourceType::RWByteAddressBuffer => {
+                self.definition().gpu_view_type == lgn_graphics_api::GPUViewType::UnorderedAccess
+            }
+            ShaderResourceType::Sampler
+            | ShaderResourceType::Texture2D
+            | ShaderResourceType::RWTexture2D
+            | ShaderResourceType::Texture2DArray
+            | ShaderResourceType::RWTexture2DArray
+            | ShaderResourceType::Texture3D
+            | ShaderResourceType::RWTexture3D
+            | ShaderResourceType::TextureCube
+            | ShaderResourceType::TextureCubeArray => false,
+        }
+    }
+}
+
+impl<'a> ValueWrapper for &[TransientBufferView] {
     fn validate(&self, _desc_def: &CGenDescriptorDef) -> bool {
         false
     }

@@ -9,7 +9,7 @@ pub struct DescriptorHeapManager {
 }
 
 impl DescriptorHeapManager {
-    pub fn new(num_render_frames: usize, device_context: &DeviceContext) -> Self {
+    pub fn new(num_render_frames: u64, device_context: &DeviceContext) -> Self {
         let descriptor_heap_def = DescriptorHeapDef {
             max_descriptor_sets: 32 * 4096,
             sampler_count: 32 * 128,
@@ -30,12 +30,12 @@ impl DescriptorHeapManager {
 
     pub fn begin_frame(&mut self) {
         let mut pool = self.descriptor_pools.lock();
-        pool.begin_frame();
+        pool.begin_frame(|x| x.begin_frame());
     }
 
     pub fn end_frame(&mut self) {
         let mut pool = self.descriptor_pools.lock();
-        pool.end_frame();
+        pool.end_frame(|_| ());
     }
 
     pub fn descriptor_heap(&self) -> &DescriptorHeap {

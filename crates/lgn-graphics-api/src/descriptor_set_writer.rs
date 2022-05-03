@@ -19,7 +19,7 @@ impl<'a> DescriptorSetWriter<'a> {
         }
     }
 
-    pub fn set_descriptors_by_name(&mut self, name: &str, descriptor_refs: &[DescriptorRef<'_>]) {
+    pub fn set_descriptors_by_name(&mut self, name: &str, descriptor_refs: &[DescriptorRef]) {
         let descriptor_index = self
             .descriptor_set_layout
             .find_descriptor_index_by_name(name)
@@ -31,7 +31,7 @@ impl<'a> DescriptorSetWriter<'a> {
     pub fn set_descriptors_by_index(
         &mut self,
         descriptor_index: u32,
-        descriptor_refs: &[DescriptorRef<'_>],
+        descriptor_refs: &[DescriptorRef],
     ) {
         assert!(descriptor_index < self.descriptor_set_layout.descriptor_count());
         self.set_descriptors_by_index_and_offset(descriptor_index, 0, descriptor_refs);
@@ -41,7 +41,7 @@ impl<'a> DescriptorSetWriter<'a> {
         &mut self,
         descriptor_index: u32,
         offset: u32,
-        descriptor_refs: &[DescriptorRef<'_>],
+        descriptor_refs: &[DescriptorRef],
     ) {
         assert!(descriptor_index < self.descriptor_set_layout.descriptor_count());
         assert!(
@@ -55,7 +55,7 @@ impl<'a> DescriptorSetWriter<'a> {
         self.backend_set_descriptors_by_index_and_offset(descriptor_index, offset, descriptor_refs);
     }
 
-    pub fn set_descriptors(&mut self, descriptor_refs: &[DescriptorRef<'_>]) {
+    pub fn set_descriptors(&mut self, descriptor_refs: &[DescriptorRef]) {
         let flat_descriptor_count = self.descriptor_set_layout.flat_descriptor_count();
         assert_eq!(flat_descriptor_count as usize, descriptor_refs.len());
         self.backend_set_descriptors(descriptor_refs);

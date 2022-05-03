@@ -145,9 +145,9 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
 
     lightingMaterial.albedo = lerp(lightingMaterial.albedo.rgb, unpack_linear(instance_color.color).rgb, instance_color.color_blend); 
 
-    float3 ambient_color = lightingMaterial.albedo * lighting_data.ambient_reflection;
-    float3 diffuse_color = lighting_data.diffuse_reflection.xxx * 0.25;
-    float3 spec_color = lighting_data.specular_reflection.xxx;
+    const float3 ambient_color = lighting_data.apply_ambient ?  lightingMaterial.albedo : (float3)0;
+    const float3 diffuse_color = lighting_data.apply_diffuse ?  float3(1.f,1.f,1.f) : float3(0.f,0.f,0.f);
+    const float3 spec_color = lighting_data.apply_specular ?  float3(1.f,1.f,1.f) : float3(0.f,0.f,0.f);
 
     float3 color = ambient_color;
     for (uint i = 0; i < lighting_data.num_directional_lights; i++)

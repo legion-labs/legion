@@ -53,7 +53,7 @@ impl OffscreenHelper {
             },
         );
 
-        let sampler_def = SamplerDef {
+        let bilinear_sampler = device_context.create_sampler(SamplerDef {
             min_filter: FilterType::Linear,
             mag_filter: FilterType::Linear,
             mip_map_mode: MipMapMode::Linear,
@@ -61,11 +61,10 @@ impl OffscreenHelper {
             address_mode_v: AddressMode::ClampToEdge,
             address_mode_w: AddressMode::ClampToEdge,
             ..SamplerDef::default()
-        };
-        let bilinear_sampler = device_context.create_sampler(&sampler_def);
+        });
 
-        let render_image = device_context.create_texture(&TextureDef {
-            name: "Offscreen".to_string(),
+        let render_image = device_context.create_texture(TextureDef {
+				name: "Offscreen".to_string(),
             extents: Extents3D {
                 width: resolution.width(),
                 height: resolution.height(),
@@ -74,19 +73,19 @@ impl OffscreenHelper {
             array_length: 1,
             mip_count: 1,
             format: Format::R8G8B8A8_UNORM,
-            mem_usage: MemoryUsage::GpuOnly,
+            memory_usage: MemoryUsage::GpuOnly,
             usage_flags: ResourceUsage::AS_RENDER_TARGET | ResourceUsage::AS_TRANSFERABLE,
             resource_flags: ResourceFlags::empty(),
             tiling: TextureTiling::Optimal,
         });
 
-        let render_image_rtv = render_image.create_view(&TextureViewDef::as_render_view(
+        let render_image_rtv = render_image.create_view(TextureViewDef::as_render_view(
             render_image.definition(),
             GPUViewType::RenderTarget,
         ));
 
-        let copy_image = device_context.create_texture(&TextureDef {
-            name: "Copy".to_string(),
+        let copy_image = device_context.create_texture(TextureDef {
+				name: "Copy".to_string(),
             extents: Extents3D {
                 width: resolution.width(),
                 height: resolution.height(),
@@ -95,7 +94,7 @@ impl OffscreenHelper {
             array_length: 1,
             mip_count: 1,
             format: Format::R8G8B8A8_UNORM,
-            mem_usage: MemoryUsage::GpuToCpu,
+            memory_usage: MemoryUsage::GpuToCpu,
             usage_flags: ResourceUsage::AS_TRANSFERABLE,
             resource_flags: ResourceFlags::empty(),
             tiling: TextureTiling::Linear,

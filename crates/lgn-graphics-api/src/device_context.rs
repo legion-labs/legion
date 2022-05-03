@@ -87,15 +87,7 @@ pub(crate) struct DeviceContextInner {
 
 impl std::fmt::Debug for DeviceContext {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("DeviceContext")
-            .field(
-                "handle",
-                //#[cfg(any(feature = "vulkan"))]
-                //&self.vk_device().handle(),
-                //#[cfg(not(any(feature = "vulkan")))]
-                &0,
-            )
-            .finish()
+        f.debug_struct("DeviceContext").field("handle", &0).finish()
     }
 }
 
@@ -229,17 +221,17 @@ impl DeviceContext {
         Swapchain::new(self, raw_window_handle, swapchain_def)
     }
 
-    pub fn create_sampler(&self, sampler_def: &SamplerDef) -> Sampler {
+    pub fn create_sampler(&self, sampler_def: SamplerDef) -> Sampler {
         Sampler::new(self, sampler_def)
     }
 
-    pub fn create_texture(&self, texture_def: &TextureDef) -> Texture {
+    pub fn create_texture(&self, texture_def: TextureDef) -> Texture {
         let texture = Texture::new(self, texture_def);
         self.set_texture_name(&texture, &texture_def.name);
         texture
     }
 
-    pub fn create_buffer(&self, buffer_def: &BufferDef) -> Buffer {
+    pub fn create_buffer(&self, buffer_def: BufferDef) -> Buffer {
         let buffer = Buffer::new(self, buffer_def);
         self.set_buffer_name(&buffer, &buffer_def.name);
         buffer

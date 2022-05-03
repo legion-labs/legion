@@ -141,8 +141,8 @@ pub struct RenderSurface {
     resources: SizeDependentResources,
     presenters: Vec<Box<dyn Presenter>>,
     // tmp
-    num_render_frames: usize,
-    render_frame_idx: usize,
+    num_render_frames: u64,
+    render_frame_idx: u64,
     presenter_sems: Vec<Semaphore>,
     picking_renderpass: Arc<RwLock<PickingRenderPass>>,
     debug_renderpass: Arc<RwLock<DebugRenderPass>>,
@@ -299,14 +299,14 @@ impl RenderSurface {
     //
     pub fn acquire(&mut self) -> &Semaphore {
         let render_frame_idx = (self.render_frame_idx + 1) % self.num_render_frames;
-        let presenter_sem = &self.presenter_sems[render_frame_idx];
+        let presenter_sem = &self.presenter_sems[render_frame_idx as usize];
         self.render_frame_idx = render_frame_idx;
 
         presenter_sem
     }
 
     pub fn presenter_sem(&self) -> &Semaphore {
-        &self.presenter_sems[self.render_frame_idx]
+        &self.presenter_sems[self.render_frame_idx as usize]
     }
 
     pub fn pause(&mut self) -> &mut Self {

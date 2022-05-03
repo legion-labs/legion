@@ -147,7 +147,7 @@ fn add_descriptor_set_internal(model: &mut db::Model, data: &DescriptorSetData) 
     for descriptor in &data.descriptors {
         match &descriptor {
             DescriptorData::ConstantBuffer(def) => {
-                builder = builder.add_constant_buffer(&def.name, &def.content)?;
+                builder = builder.add_constant_buffer(&def.name, &def.content, def.transient)?;
             }
             DescriptorData::StructuredBuffer(def) | DescriptorData::RWStructuredBuffer(def) => {
                 builder = builder.add_structured_buffer(
@@ -155,6 +155,7 @@ fn add_descriptor_set_internal(model: &mut db::Model, data: &DescriptorSetData) 
                     def.array_len,
                     &def.content,
                     descriptor.read_write(),
+                    def.transient,
                 )?;
             }
             DescriptorData::ByteAddressBuffer(def) | DescriptorData::RWByteAddressBuffer(def) => {
@@ -162,6 +163,7 @@ fn add_descriptor_set_internal(model: &mut db::Model, data: &DescriptorSetData) 
                     &def.name,
                     def.array_len,
                     descriptor.read_write(),
+                    def.transient,
                 )?;
             }
             DescriptorData::Texture2D(def) | DescriptorData::RWTexture2D(def) => {
@@ -334,6 +336,8 @@ struct StructData {
 struct ConstBufferData {
     name: String,
     content: String,
+    #[serde(default)]
+    transient: bool,
 }
 
 //
@@ -344,6 +348,8 @@ struct StructuredBufferData {
     name: String,
     content: String,
     array_len: Option<u32>,
+    #[serde(default)]
+    transient: bool,
 }
 
 //
@@ -353,6 +359,8 @@ struct StructuredBufferData {
 struct ByteAddressBufferData {
     name: String,
     array_len: Option<u32>,
+    #[serde(default)]
+    transient: bool,
 }
 
 //

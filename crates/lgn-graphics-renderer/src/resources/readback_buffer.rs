@@ -2,44 +2,41 @@ use std::slice;
 
 use lgn_core::Handle;
 use lgn_graphics_api::{
-    BarrierQueueTransition, Buffer, BufferBarrier, BufferCopy, BufferDef, BufferView,
-    BufferViewDef, DeviceContext, MemoryAllocation, MemoryAllocationDef, MemoryUsage,
-    ResourceCreation, ResourceState, ResourceUsage,
+    BarrierQueueTransition, Buffer, BufferBarrier, BufferCopy, BufferCreateFlags, BufferDef,
+    BufferView, BufferViewDef, DeviceContext, MemoryUsage, ResourceState, ResourceUsage,
 };
 
 use crate::hl_gfx_api::HLCommandBuffer;
 
-use super::{GpuSafePool, OnFrameEventHandler};
+use super::GpuSafePool;
 
 pub(crate) struct ReadbackBuffer {
-    device_context: DeviceContext,
     buffer: Buffer,
-    allocation: MemoryAllocation,
+    // allocation: MemoryAllocation,
     cpu_frame_for_results: u64,
 }
 
 impl ReadbackBuffer {
     pub(crate) fn new(device_context: &DeviceContext, size: u64) -> Self {
-        let buffer_def = BufferDef {
-            name: "ReadbackBuffer".to_string(),
+        let buffer = device_context.create_buffer(BufferDef {
+				name: "ReadbackBuffer".to_string(),
             size,
             usage_flags: ResourceUsage::AS_TRANSFERABLE,
-            creation_flags: ResourceCreation::empty(),
-        };
-
-        let buffer = device_context.create_buffer(&buffer_def);
-
-        let alloc_def = MemoryAllocationDef {
+            create_flags: BufferCreateFlags::empty(),
             memory_usage: MemoryUsage::GpuToCpu,
             always_mapped: false,
-        };
+        });
 
-        let allocation = MemoryAllocation::from_buffer(device_context, &buffer, &alloc_def);
+        // let alloc_def = MemoryAllocationDef {
+        //     memory_usage: MemoryUsage::GpuToCpu,
+        //     always_mapped: false,
+        // };
+
+        // let allocation = MemoryAllocation::from_buffer(device_context, &buffer, &alloc_def);
 
         Self {
-            device_context: device_context.clone(),
             buffer,
-            allocation,
+            // allocation,
             cpu_frame_for_results: u64::MAX,
         }
     }
@@ -55,7 +52,7 @@ impl ReadbackBuffer {
             || (self.cpu_frame_for_results != u64::MAX
                 && self.cpu_frame_for_results == cpu_frame_no)
         {
-            let mapping_info = self.allocation.map_buffer(&self.device_context);
+            let mapping_info = self.buffer.map_buffer();
             #[allow(unsafe_code)]
             unsafe {
                 let element_size = std::mem::size_of::<T>();
@@ -67,10 +64,11 @@ impl ReadbackBuffer {
 
                 assert!(byte_offset + byte_count <= self.buffer.definition().size as usize);
                 f(slice::from_raw_parts(
-                    mapping_info.data_ptr.add(offset) as *const T,
+                    mapping_info.data_ptr().add(offset) as *const T,
                     count,
                 ));
             }
+            self.buffer.unmap_buffer();
         }
     }
 
@@ -83,45 +81,45 @@ impl ReadbackBuffer {
     }
 }
 
-impl OnFrameEventHandler for ReadbackBuffer {
-    fn on_begin_frame(&mut self) {}
+// impl OnFrameEventHandler for ReadbackBuffer {
+//     fn on_begin_frame(&mut self) {}
 
-    fn on_end_frame(&mut self) {}
-}
+//     fn on_end_frame(&mut self) {}
+// }
 
 pub(crate) struct GpuBufferWithReadback {
     buffer: Buffer,
-    _allocation: MemoryAllocation,
     rw_view: BufferView,
     readback_pool: GpuSafePool<ReadbackBuffer>,
 }
 
 impl GpuBufferWithReadback {
-    pub(crate) fn new(device_context: &DeviceContext, size: u64) -> Self {
-        let buffer_def = BufferDef {
-            name: "GpuReadbackBuffer".to_string(),
-            size,
+    pub(crate) fn new(device_context: &DeviceContext, element_size: u64) -> Self {
+        let buffer = device_context.create_buffer(BufferDef {
+				name: "GpuReadbackBuffer".to_string(),
+            size: element_size,
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE
                 | ResourceUsage::AS_UNORDERED_ACCESS
                 | ResourceUsage::AS_TRANSFERABLE,
-            creation_flags: ResourceCreation::empty(),
-        };
-
-        let buffer = device_context.create_buffer(&buffer_def);
-
-        let alloc_def = MemoryAllocationDef {
+            create_flags: BufferCreateFlags::empty(),
             memory_usage: MemoryUsage::GpuOnly,
             always_mapped: false,
-        };
+        });
 
-        let allocation = MemoryAllocation::from_buffer(device_context, &buffer, &alloc_def);
+        // let alloc_def = MemoryAllocationDef {
+        //     memory_usage: MemoryUsage::GpuOnly,
+        //     always_mapped: false,
+        // };
 
-        let rw_view_def = BufferViewDef::as_structured_buffer(buffer.definition(), size, false);
-        let rw_view = BufferView::from_buffer(&buffer, &rw_view_def);
+        // let allocation = MemoryAllocation::from_buffer(device_context, &buffer, &alloc_def);
+
+        // let rw_view = BufferView::from_buffer(&buffer, &rw_view_def);
+        let rw_view =
+            buffer.create_view(BufferViewDef::as_structured_buffer(1, element_size, false));
 
         Self {
             buffer,
-            _allocation: allocation,
+            // _allocation: allocation,
             rw_view,
             readback_pool: GpuSafePool::new(3),
         }
@@ -131,7 +129,7 @@ impl GpuBufferWithReadback {
         &mut self,
         device_context: &DeviceContext,
     ) -> Handle<ReadbackBuffer> {
-        self.readback_pool.begin_frame();
+        self.readback_pool.begin_frame(|_| ());
         self.readback_pool.acquire_or_create(|| {
             ReadbackBuffer::new(device_context, self.buffer.definition().size)
         })
@@ -139,7 +137,7 @@ impl GpuBufferWithReadback {
 
     pub(crate) fn end_readback(&mut self, buffer: Handle<ReadbackBuffer>) {
         self.readback_pool.release(buffer);
-        self.readback_pool.end_frame();
+        self.readback_pool.end_frame(|_| ());
     }
 
     pub(crate) fn buffer(&self) -> &Buffer {

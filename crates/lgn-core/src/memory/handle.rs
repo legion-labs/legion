@@ -12,6 +12,10 @@ impl<T> Handle<T> {
         Self { inner: Some(data) }
     }
 
+    pub fn invalid() -> Self {
+        Self { inner: None }
+    }
+
     /// Check if this handle owns anything
     pub fn is_valid(&self) -> bool {
         self.inner.is_some()

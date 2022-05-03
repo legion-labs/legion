@@ -111,13 +111,11 @@ fn generate_rust_descriptor_set(
 
     // struct
     {
-        let mut writer = writer.add_block(
-            &[format!("pub struct {}<'a> {{", descriptor_set.name)],
-            &["}"],
-        );
+        let mut writer =
+            writer.add_block(&[format!("pub struct {} {{", descriptor_set.name)], &["}"]);
 
         writer.add_line(format!(
-            "descriptor_refs: [DescriptorRef<'a>; {}],",
+            "descriptor_refs: [DescriptorRef; {}],",
             descriptor_set.flat_descriptor_count
         ));
     }
@@ -126,10 +124,7 @@ fn generate_rust_descriptor_set(
 
     // impl
     {
-        let mut writer = writer.add_block(
-            &[format!("impl<'a> {}<'a> {{", descriptor_set.name)],
-            &["}"],
-        );
+        let mut writer = writer.add_block(&[format!("impl {} {{", descriptor_set.name)], &["}"]);
 
         // impl: initialize
         {
@@ -196,89 +191,50 @@ fn generate_rust_descriptor_set(
 
         // impl: descriptor_refs
         writer.add_line(
-            "pub fn descriptor_refs(&self) -> &[DescriptorRef<'a>] { &self.descriptor_refs }",
+            "pub fn descriptor_refs(&self) -> &[DescriptorRef] { &self.descriptor_refs }",
         );
         writer.new_line();
 
         // impl: set methods
         for (descriptor_index, descriptor) in descriptor_set.descriptors.iter().enumerate() {
-            let (descriptor_ref_type, descriptor_input_decl) =
-                match (descriptor.array_len.unwrap_or(0u32), &descriptor.def) {
-                    (0, crate::db::DescriptorDef::Sampler) => {
-                        ("Sampler", "&'a Sampler".to_string())
-                    }
-                    (n, crate::db::DescriptorDef::Sampler) => {
-                        ("Sampler", format!("&[&'a Sampler; {}]", n))
-                    }
-                    (
-                        0,
-                        crate::db::DescriptorDef::ConstantBuffer(_)
-                        | crate::db::DescriptorDef::StructuredBuffer(_)
-                        | crate::db::DescriptorDef::RWStructuredBuffer(_)
-                        | crate::db::DescriptorDef::ByteAddressBuffer
-                        | crate::db::DescriptorDef::RWByteAddressBuffer,
-                    ) => ("BufferView", "&'a BufferView".to_string()),
-                    (
-                        n,
-                        crate::db::DescriptorDef::ConstantBuffer(_)
-                        | crate::db::DescriptorDef::StructuredBuffer(_)
-                        | crate::db::DescriptorDef::RWStructuredBuffer(_)
-                        | crate::db::DescriptorDef::ByteAddressBuffer
-                        | crate::db::DescriptorDef::RWByteAddressBuffer,
-                    ) => ("BufferView", format!("&[&'a BufferView; {}]", n)),
-                    (
-                        0,
-                        crate::db::DescriptorDef::Texture2D(_)
-                        | crate::db::DescriptorDef::RWTexture2D(_)
-                        | crate::db::DescriptorDef::Texture3D(_)
-                        | crate::db::DescriptorDef::RWTexture3D(_)
-                        | crate::db::DescriptorDef::Texture2DArray(_)
-                        | crate::db::DescriptorDef::RWTexture2DArray(_)
-                        | crate::db::DescriptorDef::TextureCube(_)
-                        | crate::db::DescriptorDef::TextureCubeArray(_),
-                    ) => ("TextureView", "&'a TextureView".to_string()),
-                    (
-                        n,
-                        crate::db::DescriptorDef::Texture2D(_)
-                        | crate::db::DescriptorDef::RWTexture2D(_)
-                        | crate::db::DescriptorDef::Texture3D(_)
-                        | crate::db::DescriptorDef::RWTexture3D(_)
-                        | crate::db::DescriptorDef::Texture2DArray(_)
-                        | crate::db::DescriptorDef::RWTexture2DArray(_)
-                        | crate::db::DescriptorDef::TextureCube(_)
-                        | crate::db::DescriptorDef::TextureCubeArray(_),
-                    ) => ("TextureView", format!("&[&'a TextureView; {}]", n)),
-                };
-
             {
-                let mut writer = writer.add_block(
-                    &[format!(
-                        "pub fn set_{}(&mut self, value:  {}) {{",
-                        descriptor.name, descriptor_input_decl
-                    )],
-                    &["}"],
-                );
                 if let Some(n) = descriptor.array_len {
-                    writer.add_line(format!(
-                        "assert!(DESCRIPTOR_SET_DEF.descriptor_defs[{}].validate(&value.as_slice()));",
-                        descriptor_index
-                    ));
+                    let mut writer = writer.add_block(
+                        &[format!(
+                            "pub fn set_{}<T: Copy + Into<DescriptorRef>>(&mut self, values: [T;{}]) {{",
+                            descriptor.name, n
+                        )],
+                        &["}"],
+                    );
                     {
                         let mut writer =
                             writer.add_block(&[format!("for i in 0..{} {{", n)], &["}"]);
+                        writer.add_line("let value = values[i].into();");
                         writer.add_line(format!(
-                            "self.descriptor_refs[{}+i] = DescriptorRef::{}(value[i]);",
-                            descriptor.flat_index, descriptor_ref_type
+                            "assert!(DESCRIPTOR_SET_DEF.descriptor_defs[{}].validate(&value));",
+                            descriptor_index
+                        ));
+                        writer.add_line(format!(
+                            "self.descriptor_refs[{}+i] = value;",
+                            descriptor.flat_index
                         ));
                     }
                 } else {
+                    let mut writer = writer.add_block(
+                        &[format!(
+                            "pub fn set_{}<T: Into<DescriptorRef>>(&mut self, value: T) {{",
+                            descriptor.name,
+                        )],
+                        &["}"],
+                    );
+                    writer.add_line("let value = value.into();");
                     writer.add_line(format!(
-                        "assert!(DESCRIPTOR_SET_DEF.descriptor_defs[{}].validate(value));",
+                        "assert!(DESCRIPTOR_SET_DEF.descriptor_defs[{}].validate(&value));",
                         descriptor_index
                     ));
                     writer.add_line(format!(
-                        "self.descriptor_refs[{}] = DescriptorRef::{}(value);",
-                        descriptor.flat_index, descriptor_ref_type
+                        "self.descriptor_refs[{}] = value;",
+                        descriptor.flat_index
                     ));
                 }
             }
@@ -292,17 +248,14 @@ fn generate_rust_descriptor_set(
     // trait: default
     {
         let mut writer = writer.add_block(
-            &[format!(
-                "impl<'a> Default for {}<'a> {{",
-                descriptor_set.name
-            )],
+            &[format!("impl Default for {} {{", descriptor_set.name)],
             &["}"],
         );
         writer.add_line("fn default() -> Self {");
         {
             let _writer = writer.add_block(
                 &[format!(
-                    "Self {{descriptor_refs: [DescriptorRef::<'a>::default(); {}], }}",
+                    "Self {{descriptor_refs: [DescriptorRef::default(); {}], }}",
                     descriptor_set.flat_descriptor_count
                 )],
                 &["}"],
