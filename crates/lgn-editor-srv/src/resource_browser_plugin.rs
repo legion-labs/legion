@@ -329,7 +329,7 @@ fn update_entity_parenting(
 /// - Receive a .zip of a .gltf and it's dependencies.
 /// - Unpack the zip into the temp folder.
 /// - Load unpacked data into `GltfFile` object.
-fn create_gltf_resource(zip_path: &Path) -> Result<PathBuf, Status> {
+fn create_gltfzip_resource(zip_path: &Path) -> Result<PathBuf, Status> {
     let mut folder = zip_path.to_owned();
     folder.pop();
     let temp_folder = folder.join("temp");
@@ -348,20 +348,22 @@ fn create_gltf_resource(zip_path: &Path) -> Result<PathBuf, Status> {
             .path();
         if let Some(extension) = path.extension() {
             if extension == "gltf" {
-                info!("Found .gltf");
-                let gltf_file = GltfFile::from_path(&path);
-                let path = path.with_extension("temp");
-                info!("Creating a file {path:?}");
-                let mut file = std::fs::File::create(&path)
-                    .map_err(|err| Status::internal(err.to_string()))?;
-                gltf_file
-                    .write(&mut file)
-                    .map_err(|err| Status::internal(err.to_string()))?;
-                return Ok(path);
+                return create_gltf_resource(&path);
             }
         }
     }
     Err(Status::internal(".zip file doesn't contain .gltf file"))
+}
+
+// Works for both .gltf and .glb
+fn create_gltf_resource(gltf_path: &Path) -> Result<PathBuf, Status> {
+    let gltf_file = GltfFile::from_path(gltf_path);
+    let path = gltf_path.with_extension("temp");
+    let mut file = std::fs::File::create(&path).map_err(|err| Status::internal(err.to_string()))?;
+    gltf_file
+        .write(&mut file)
+        .map_err(|err| Status::internal(err.to_string()))?;
+    Ok(path)
 }
 
 #[tonic::async_trait]
@@ -424,7 +426,14 @@ impl ResourceBrowser for ResourceBrowserRPC {
         let resource_type = request.resource_type.as_str();
 
         let new_resource_id = ResourceTypeAndId {
-            kind: ResourceType::new(resource_type.as_bytes()),
+            kind: ResourceType::new(
+                match resource_type {
+                    // gltf resource can be created out of either gltf, glb, and gltfzip"
+                    "gltfzip" | "glb" => "gltf",
+                    _ => resource_type,
+                }
+                .as_bytes(),
+            ),
             id: ResourceId::new(),
         };
 
@@ -448,10 +457,18 @@ impl ResourceBrowser for ResourceBrowserRPC {
             .as_ref()
             .map(|upload_id| self.uploads_folder.join(upload_id).join(name));
 
-        if resource_type == "gltf" {
-            if let Some(tmp_content_path) = content_path {
-                content_path = Some(create_gltf_resource(&tmp_content_path)?);
+        match resource_type {
+            "gltfzip" => {
+                if let Some(tmp_content_path) = content_path {
+                    content_path = Some(create_gltfzip_resource(&tmp_content_path)?);
+                }
             }
+            "gltf" | "glb" => {
+                if let Some(tmp_content_path) = content_path {
+                    content_path = Some(create_gltf_resource(&tmp_content_path)?);
+                }
+            }
+            _ => (),
         };
 
         let mut transaction = Transaction::new().add_operation(CreateResourceOperation::new(

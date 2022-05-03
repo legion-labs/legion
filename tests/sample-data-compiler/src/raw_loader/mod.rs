@@ -47,7 +47,10 @@ pub async fn build_offline(
     };
 
     if let Some(raw_dir) = raw_dir {
-        let mut file_paths = find_files(&raw_dir, &["ent", "ins", "mat", "psd", "png", "gltf"]);
+        let mut file_paths = find_files(
+            &raw_dir,
+            &["ent", "ins", "mat", "psd", "png", "gltf", "glb"],
+        );
 
         let raw_checksum = {
             let mut hasher = DefaultHasher::new();
@@ -209,7 +212,7 @@ pub async fn build_offline(
                 "png" => {
                     load_png_resource(resource_id, path, &mut project, &resources).await;
                 }
-                "gltf" => {
+                "gltf" | "glb" => {
                     load_gltf_resource(resource_id, path, &mut project, &resources).await;
                 }
                 _ => panic!(),
