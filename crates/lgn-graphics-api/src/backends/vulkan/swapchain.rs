@@ -415,8 +415,7 @@ impl SwapchainVulkanInstance {
             let texture = Texture::from_existing(
                 &self.device_context,
                 Some(raw_image),
-                TextureDef {
-                    name: "Swapchain".to_string(),
+                TextureDef {            
                     extents: Extents3D {
                         width: self.swapchain_info.extents.width,
                         height: self.swapchain_info.extents.height,
@@ -433,6 +432,7 @@ impl SwapchainVulkanInstance {
                     tiling: TextureTiling::Optimal,
                 },
             );
+            texture.set_name("Swapchain");
 
             let render_target_view = texture.create_view(TextureViewDef::as_render_view(
                 texture.definition(),

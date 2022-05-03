@@ -47,7 +47,7 @@ impl SharedResourcesManager {
     }
 
     fn create_texture(renderer: &Renderer, shared_texture_id: SharedTextureId) -> TextureView {
-        let (texture_def, texture_data) = match shared_texture_id {
+        let (texture_def, texture_data, name) = match shared_texture_id {
             SharedTextureId::Albedo => Self::create_albedo_texture(),
             SharedTextureId::Normal => Self::create_normal_texture(),
             SharedTextureId::Metalness => Self::create_metalness_texture(),
@@ -55,7 +55,7 @@ impl SharedResourcesManager {
         };
 
         let device_context = renderer.device_context();
-        let texture = device_context.create_texture(texture_def);
+        let texture = device_context.create_texture(texture_def, &name);
         let texture_view = texture.create_view(TextureViewDef::as_shader_resource_view(
             texture.definition(),
         ));
@@ -80,15 +80,7 @@ impl SharedResourcesManager {
             let staging_buffer = device_context.create_buffer(BufferDef::for_staging_buffer_data(
                 data,
                 ResourceUsage::empty(),
-            ));
-
-            // let alloc_def = MemoryAllocationDef {
-            //     memory_usage: MemoryUsage::CpuToGpu,
-            //     always_mapped: true,
-            // };
-
-            // let buffer_memory =
-            //     MemoryAllocation::from_buffer(device_context, &staging_buffer, &alloc_def);
+            ), "tmp_buffer");
 
             staging_buffer.copy_to_host_visible_buffer(data);
 
@@ -134,9 +126,8 @@ impl SharedResourcesManager {
         texture_view
     }
 
-    fn create_albedo_texture() -> (TextureDef, TextureData) {
+    fn create_albedo_texture() -> (TextureDef, TextureData, String) {
         let texture_def = TextureDef {
-            name: "Albedo".to_string(),
             extents: Extents3D {
                 width: 2,
                 height: 2,
@@ -159,12 +150,15 @@ impl SharedResourcesManager {
         texture_data[2] = Color::new(155, 14, 171, 255);
         texture_data[3] = Color::new(155, 14, 171, 255);
 
-        (texture_def, TextureData::from_slice(&texture_data))
+        (
+            texture_def,
+            TextureData::from_slice(&texture_data),
+            "default_albedo".to_string(),
+        )
     }
 
-    fn create_normal_texture() -> (TextureDef, TextureData) {
+    fn create_normal_texture() -> (TextureDef, TextureData, String) {
         let texture_def = TextureDef {
-            name: "Normal".to_string(),
             extents: Extents3D {
                 width: 2,
                 height: 2,
@@ -186,12 +180,15 @@ impl SharedResourcesManager {
         texture_data[2] = Color::new(127, 127, 255, 255);
         texture_data[3] = Color::new(127, 127, 255, 255);
 
-        (texture_def, TextureData::from_slice(&texture_data))
+        (
+            texture_def,
+            TextureData::from_slice(&texture_data),
+            "default_normal".to_string(),
+        )
     }
 
-    fn create_metalness_texture() -> (TextureDef, TextureData) {
+    fn create_metalness_texture() -> (TextureDef, TextureData, String) {
         let texture_def = TextureDef {
-            name: "Metalness".to_string(),
             extents: Extents3D {
                 width: 2,
                 height: 2,
@@ -213,12 +210,15 @@ impl SharedResourcesManager {
         texture_data[2] = 0;
         texture_data[3] = 0;
 
-        (texture_def, TextureData::from_slice(&texture_data))
+        (
+            texture_def,
+            TextureData::from_slice(&texture_data),
+            "Metalness".to_string(),
+        )
     }
 
-    fn create_roughness_texture() -> (TextureDef, TextureData) {
+    fn create_roughness_texture() -> (TextureDef, TextureData, String) {
         let texture_def = TextureDef {
-            name: "Roughness".to_string(),
             extents: Extents3D {
                 width: 2,
                 height: 2,
@@ -240,7 +240,11 @@ impl SharedResourcesManager {
         texture_data[2] = 240;
         texture_data[3] = 240;
 
-        (texture_def, TextureData::from_slice(&texture_data))
+        (
+            texture_def,
+            TextureData::from_slice(&texture_data),
+            "Roughness".to_string(),
+        )
     }
 
     fn create_shared_textures(

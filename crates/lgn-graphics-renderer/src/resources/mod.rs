@@ -19,9 +19,6 @@ pub(crate) use gpu_pool::*;
 mod index_allocator;
 pub(crate) use index_allocator::*;
 
-mod on_frame_event_handler;
-pub(crate) use on_frame_event_handler::*;
-
 mod range_allocator;
 pub(crate) use range_allocator::*;
 

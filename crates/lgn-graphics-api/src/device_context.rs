@@ -225,15 +225,15 @@ impl DeviceContext {
         Sampler::new(self, sampler_def)
     }
 
-    pub fn create_texture(&self, texture_def: TextureDef) -> Texture {
+    pub fn create_texture<T: AsRef<str>>(&self, texture_def: TextureDef, debug_name: T) -> Texture {
         let texture = Texture::new(self, texture_def);
-        self.set_texture_name(&texture, &texture_def.name);
+        self.set_texture_name(&texture, debug_name);
         texture
     }
 
-    pub fn create_buffer(&self, buffer_def: BufferDef) -> Buffer {
+    pub fn create_buffer<T: AsRef<str>>(&self, buffer_def: BufferDef, debug_name: T) -> Buffer {
         let buffer = Buffer::new(self, buffer_def);
-        self.set_buffer_name(&buffer, &buffer_def.name);
+        self.set_buffer_name(&buffer, debug_name);
         buffer
     }
 
@@ -300,16 +300,16 @@ impl DeviceContext {
         self.inner.current_cpu_frame.load(Ordering::Relaxed)
     }
 
-    pub fn set_texture_name(&self, texture: &Texture, name: &str) {
+    pub fn set_texture_name<T: AsRef<str>>(&self, texture: &Texture, name: T) {
         self.inner
             .backend_device_context
-            .set_texture_name(texture, name);
+            .set_texture_name(texture, name.as_ref());
     }
 
-    pub fn set_buffer_name(&self, buffer: &Buffer, name: &str) {
+    pub fn set_buffer_name<T: AsRef<str>>(&self, buffer: &Buffer, name: T) {
         self.inner
             .backend_device_context
-            .set_buffer_name(buffer, name);
+            .set_buffer_name(buffer, name.as_ref());
     }
 }
 

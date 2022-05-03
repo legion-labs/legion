@@ -4,9 +4,8 @@ use crate::{
 };
 
 /// Used to create a `Buffer`
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct BufferDef {
-    pub name: String,
     pub size: u64,
     pub usage_flags: ResourceUsage,
     pub create_flags: BufferCreateFlags,
@@ -16,7 +15,6 @@ pub struct BufferDef {
 
 pub struct BufferMappingInfo<'a> {
     pub(crate) _buffer: &'a Buffer,
-    // pub allocation: MemoryAllocation,
     pub(crate) data_ptr: *mut u8,
 }
 
@@ -29,7 +27,6 @@ impl<'a> BufferMappingInfo<'a> {
 impl Default for BufferDef {
     fn default() -> Self {
         Self {
-            name: "Default".to_string(),
             size: 0,
             usage_flags: ResourceUsage::empty(),
             create_flags: BufferCreateFlags::empty(),
@@ -49,7 +46,6 @@ impl BufferDef {
 
     pub fn for_staging_buffer(size: usize, usage_flags: ResourceUsage) -> Self {
         Self {
-            name: "Staging Buffer".to_string(),
             size: size as u64,
             usage_flags,
             create_flags: BufferCreateFlags::empty(),
@@ -113,6 +109,10 @@ impl Buffer {
     pub fn definition(&self) -> &BufferDef {
         &self.inner.buffer_def
     }
+
+    pub fn set_name<T: AsRef<str>>(&self, name: T) {
+        self.inner.device_context.set_buffer_name(self, name);
+    }    
 
     pub fn device_context(&self) -> &DeviceContext {
         &self.inner.device_context

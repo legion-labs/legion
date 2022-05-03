@@ -105,24 +105,23 @@ impl EguiPass {
 
         let egui_font_image = &egui_ctx.font_image();
 
-        let texture = render_context
-            .renderer()
-            .device_context()
-            .create_texture(TextureDef {
-				name: "egui font".to_string(),
-            extents: Extents3D {
-                width: egui_font_image.width as u32,
-                height: egui_font_image.height as u32,
-                depth: 1,
-            },
-            array_length: 1,
-            mip_count: 1,
-            format: Format::R8_UNORM,
-            usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
-            resource_flags: ResourceFlags::empty(),
+        let texture = render_context.renderer().device_context().create_texture(
+            TextureDef {
+                extents: Extents3D {
+                    width: egui_font_image.width as u32,
+                    height: egui_font_image.height as u32,
+                    depth: 1,
+                },
+                array_length: 1,
+                mip_count: 1,
+                format: Format::R8_UNORM,
+                usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
+                resource_flags: ResourceFlags::empty(),
                 memory_usage: MemoryUsage::GpuOnly,
-            tiling: TextureTiling::Optimal,
-            });
+                tiling: TextureTiling::Optimal,
+            },
+            "egui font",
+        );
 
         let texture_view = texture.create_view(TextureViewDef::as_shader_resource_view(
             texture.definition(),
@@ -130,18 +129,8 @@ impl EguiPass {
 
         let staging_buffer = render_context.renderer().device_context().create_buffer(
             BufferDef::for_staging_buffer_data(&egui_font_image.pixels, ResourceUsage::empty()),
+            "staging_buffer",
         );
-
-        // let alloc_def = MemoryAllocationDef {
-        //     memory_usage: MemoryUsage::CpuToGpu,
-        //     always_mapped: true,
-        // };
-
-        // let buffer_memory = MemoryAllocation::from_buffer(
-        //     render_context.renderer().device_context(),
-        //     &staging_buffer,
-        //     &alloc_def,
-        // );
 
         staging_buffer.copy_to_host_visible_buffer(&egui_font_image.pixels);
 
@@ -180,89 +169,86 @@ impl EguiPass {
         egui: &Egui,
     ) {
         cmd_buffer.with_label("egui", |cmd_buffer| {
-        cmd_buffer.begin_render_pass(
-            &[ColorRenderTargetBinding {
-                texture_view: render_surface.hdr_rt().rtv(),
-                load_op: LoadOp::Load,
-                store_op: StoreOp::Store,
-                clear_value: ColorClearValue([0.0; 4]),
-            }],
-            &None,
-        );
+            cmd_buffer.begin_render_pass(
+                &[ColorRenderTargetBinding {
+                    texture_view: render_surface.hdr_rt().rtv(),
+                    load_op: LoadOp::Load,
+                    store_op: StoreOp::Store,
+                    clear_value: ColorClearValue([0.0; 4]),
+                }],
+                &None,
+            );
 
-        let mut transient_allocator = render_context.transient_buffer_allocator();
+            let mut transient_allocator = render_context.transient_buffer_allocator();
 
-        let pipeline = render_context
-            .pipeline_manager()
-            .get_pipeline(self.pipeline_handle)
-            .unwrap();
+            let pipeline = render_context
+                .pipeline_manager()
+                .get_pipeline(self.pipeline_handle)
+                .unwrap();
 
-        cmd_buffer.bind_pipeline(pipeline);
+            cmd_buffer.bind_pipeline(pipeline);
 
-        let clipped_meshes = egui.tessellate();
+            let clipped_meshes = egui.tessellate();
 
-        let mut descriptor_set = cgen::descriptor_set::EguiDescriptorSet::default();
-        descriptor_set.set_font_texture(&self.texture_data.as_ref().unwrap().2);
-        descriptor_set.set_font_sampler(&self.sampler);
+            let mut descriptor_set = cgen::descriptor_set::EguiDescriptorSet::default();
+            descriptor_set.set_font_texture(&self.texture_data.as_ref().unwrap().2);
+            descriptor_set.set_font_sampler(&self.sampler);
 
-        let descriptor_set_handle = render_context.write_descriptor_set(
-            cgen::descriptor_set::EguiDescriptorSet::descriptor_set_layout(),
-            descriptor_set.descriptor_refs(),
-        );
-        cmd_buffer.bind_descriptor_set(
-            cgen::descriptor_set::EguiDescriptorSet::descriptor_set_layout(),
-            descriptor_set_handle,
-        );
+            let descriptor_set_handle = render_context.write_descriptor_set(
+                cgen::descriptor_set::EguiDescriptorSet::descriptor_set_layout(),
+                descriptor_set.descriptor_refs(),
+            );
+            cmd_buffer.bind_descriptor_set(
+                cgen::descriptor_set::EguiDescriptorSet::descriptor_set_layout(),
+                descriptor_set_handle,
+            );
 
-        for egui::ClippedMesh(_clip_rect, mesh) in clipped_meshes {
-            if mesh.is_empty() {
-                continue;
-            }
+            for egui::ClippedMesh(_clip_rect, mesh) in clipped_meshes {
+                if mesh.is_empty() {
+                    continue;
+                }
 
-            let vertex_data: Vec<f32> = mesh
-                .vertices
-                .iter()
-                .flat_map(|v| {
-                    let mut color = v
-                        .color
-                        .to_array()
-                        .into_iter()
-                        .map(f32::from)
-                        .collect::<Vec<f32>>();
-                    let mut vertex = vec![v.pos.x, v.pos.y, v.uv.x, v.uv.y];
-                    vertex.append(&mut color);
-                    vertex
-                })
-                .collect();
+                let vertex_data: Vec<f32> = mesh
+                    .vertices
+                    .iter()
+                    .flat_map(|v| {
+                        let mut color = v
+                            .color
+                            .to_array()
+                            .into_iter()
+                            .map(f32::from)
+                            .collect::<Vec<f32>>();
+                        let mut vertex = vec![v.pos.x, v.pos.y, v.uv.x, v.uv.y];
+                        vertex.append(&mut color);
+                        vertex
+                    })
+                    .collect();
 
-            let transient_buffer =
-                transient_allocator.copy_data_slice(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
+                let transient_buffer = transient_allocator
+                    .copy_data_slice(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
 
-            let vertex_binding = transient_buffer.vertex_buffer_binding();
+                cmd_buffer.bind_vertex_buffers(0, &[transient_buffer.vertex_buffer_binding()]);
 
-            cmd_buffer.bind_vertex_buffers(0, &[vertex_binding]);
+                cmd_buffer
+                    .bind_index_buffer(transient_buffer.index_buffer_binding(IndexType::Uint32));
 
-            let transient_buffer =
-
-            cmd_buffer.bind_index_buffer(transient_buffer.index_buffer_binding(IndexType::Uint32));
-
-            let scale = 1.0;
-            let mut push_constant_data = cgen::cgen_type::EguiPushConstantData::default();
-            push_constant_data.set_scale(Vec2::new(scale, scale).into());
-            push_constant_data.set_translation(Vec2::new(0.0, 0.0).into());
-            push_constant_data.set_width(
+                let scale = 1.0;
+                let mut push_constant_data = cgen::cgen_type::EguiPushConstantData::default();
+                push_constant_data.set_scale(Vec2::new(scale, scale).into());
+                push_constant_data.set_translation(Vec2::new(0.0, 0.0).into());
+                push_constant_data.set_width(
                     (render_surface.extents().width() as f32 / egui.ctx().pixels_per_point())
                         .into(),
-            );
-            push_constant_data.set_height(
+                );
+                push_constant_data.set_height(
                     (render_surface.extents().height() as f32 / egui.ctx().pixels_per_point())
                         .into(),
-            );
+                );
 
-            cmd_buffer.push_constant(&push_constant_data);
-            cmd_buffer.draw_indexed(mesh.indices.len() as u32, 0, 0);
-        }
-        cmd_buffer.end_render_pass();
+                cmd_buffer.push_constant(&push_constant_data);
+                cmd_buffer.draw_indexed(mesh.indices.len() as u32, 0, 0);
+            }
+            cmd_buffer.end_render_pass();
         });
     }
 }

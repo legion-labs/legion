@@ -61,13 +61,17 @@ pub struct LightingManager {
 
 impl LightingManager {
     pub fn new(device_context: &DeviceContext) -> Self {
-        let omnidirectional_lights_buffer = device_context.create_buffer(BufferDef {
-            size: std::mem::size_of::<OmniDirectionalLight>() as u64 * OMNI_DIRECTIONAL_LIGHT_MAX,
-            usage_flags: ResourceUsage::AS_SHADER_RESOURCE,
-            create_flags: BufferCreateFlags::empty(),
-            memory_usage: MemoryUsage::CpuToGpu,
-            always_mapped: true,
-        });
+        let omnidirectional_lights_buffer = device_context.create_buffer(
+            BufferDef {
+                size: std::mem::size_of::<OmniDirectionalLight>() as u64
+                    * OMNI_DIRECTIONAL_LIGHT_MAX,
+                usage_flags: ResourceUsage::AS_SHADER_RESOURCE,
+                create_flags: BufferCreateFlags::empty(),
+                memory_usage: MemoryUsage::CpuToGpu,
+                always_mapped: true,
+            },
+            "omni_directional_lights",
+        );
         let omnidirectional_lights_bufferview =
             omnidirectional_lights_buffer.create_view(BufferViewDef::as_structured_buffer_typed::<
                 OmniDirectionalLight,
@@ -75,26 +79,32 @@ impl LightingManager {
                 OMNI_DIRECTIONAL_LIGHT_MAX, true
             ));
 
-        let directional_lights_buffer = device_context.create_buffer(BufferDef {
-            size: std::mem::size_of::<DirectionalLight>() as u64 * DIRECTIONAL_LIGHT_MAX,
-            usage_flags: ResourceUsage::AS_SHADER_RESOURCE,
-            create_flags: BufferCreateFlags::empty(),
-            memory_usage: MemoryUsage::CpuToGpu,
-            always_mapped: true,
-        });
+        let directional_lights_buffer = device_context.create_buffer(
+            BufferDef {
+                size: std::mem::size_of::<DirectionalLight>() as u64 * DIRECTIONAL_LIGHT_MAX,
+                usage_flags: ResourceUsage::AS_SHADER_RESOURCE,
+                create_flags: BufferCreateFlags::empty(),
+                memory_usage: MemoryUsage::CpuToGpu,
+                always_mapped: true,
+            },
+            "directional_lights",
+        );
         let directional_lights_bufferview =
             directional_lights_buffer.create_view(BufferViewDef::as_structured_buffer_typed::<
                 DirectionalLight,
             >(DIRECTIONAL_LIGHT_MAX, true));
 
-        let spotlights_buffer = device_context.create_buffer(BufferDef {
-            size: std::mem::size_of::<SpotLight>() as u64 * SPOT_LIGHT_MAX,
-            usage_flags: ResourceUsage::AS_SHADER_RESOURCE,
-            create_flags: BufferCreateFlags::empty(),
-            memory_usage: MemoryUsage::CpuToGpu,
-            always_mapped: true,
-        });
-        let spotlights_bufferview = spotlights_buffer.create_view(
+        let spot_lights_buffer = device_context.create_buffer(
+            BufferDef {
+                size: std::mem::size_of::<SpotLight>() as u64 * SPOT_LIGHT_MAX,
+                usage_flags: ResourceUsage::AS_SHADER_RESOURCE,
+                create_flags: BufferCreateFlags::empty(),
+                memory_usage: MemoryUsage::CpuToGpu,
+                always_mapped: true,
+            },
+            "spot_lights",
+        );
+        let spotlights_bufferview = spot_lights_buffer.create_view(
             BufferViewDef::as_structured_buffer_typed::<SpotLight>(SPOT_LIGHT_MAX, true),
         );
 
@@ -105,7 +115,7 @@ impl LightingManager {
             omnidirectional_light_bufferview: omnidirectional_lights_bufferview,
             directional_light_buffer: directional_lights_buffer,
             directional_light_bufferview: directional_lights_bufferview,
-            spot_light_buffer: spotlights_buffer,
+            spot_light_buffer: spot_lights_buffer,
             spot_light_bufferview: spotlights_bufferview,
 
             num_directional_lights: 0,

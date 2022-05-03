@@ -28,27 +28,30 @@ impl ResolutionDependentResources {
         let mut yuv_image_uavs = Vec::with_capacity(render_frame_count as usize);
         let mut copy_yuv_images = Vec::with_capacity(render_frame_count as usize);
         for _ in 0..render_frame_count {
-            let y_image = device_context.create_texture(TextureDef {
-					 name: "Y".to_string(),
-                extents: Extents3D {
-                    width: resolution.width,
-                    height: resolution.height,
-                    depth: 1,
+            let y_image = device_context.create_texture(
+                TextureDef {
+                    extents: Extents3D {
+                        width: resolution.width,
+                        height: resolution.height,
+                        depth: 1,
+                    },
+                    array_length: 1,
+                    mip_count: 1,
+                    format: Format::R8_UNORM,
+                    memory_usage: MemoryUsage::GpuOnly,
+                    usage_flags: ResourceUsage::AS_UNORDERED_ACCESS
+                        | ResourceUsage::AS_TRANSFERABLE,
+                    resource_flags: ResourceFlags::empty(),
+                    tiling: TextureTiling::Optimal,
                 },
-                array_length: 1,
-                mip_count: 1,
-                format: Format::R8_UNORM,
-                memory_usage: MemoryUsage::GpuOnly,
-                usage_flags: ResourceUsage::AS_UNORDERED_ACCESS | ResourceUsage::AS_TRANSFERABLE,
-                resource_flags: ResourceFlags::empty(),
-                tiling: TextureTiling::Optimal,
-            });
+                "Y",
+            );
             let mut u_plane_def = *y_image.definition();
             u_plane_def.extents.width /= 2;
             u_plane_def.extents.height /= 2;
             let v_plane_def = u_plane_def;
-            let u_image = device_context.create_texture(u_plane_def);
-            let v_image = device_context.create_texture(v_plane_def);
+            let u_image = device_context.create_texture(u_plane_def, "U");
+            let v_image = device_context.create_texture(v_plane_def, "V");
 
             let yuv_plane_uav_def = TextureViewDef {
                 gpu_view_type: GPUViewType::UnorderedAccess,
@@ -64,21 +67,23 @@ impl ResolutionDependentResources {
             let u_image_uav = u_image.create_view(yuv_plane_uav_def);
             let v_image_uav = v_image.create_view(yuv_plane_uav_def);
 
-            let copy_yuv_image = device_context.create_texture(TextureDef {
-					 name: "Copy".to_string(),
-                extents: Extents3D {
-                    width: resolution.width,
-                    height: resolution.height,
-                    depth: 1,
+            let copy_yuv_image = device_context.create_texture(
+                TextureDef {
+                    extents: Extents3D {
+                        width: resolution.width,
+                        height: resolution.height,
+                        depth: 1,
+                    },
+                    array_length: 1,
+                    mip_count: 1,
+                    format: Format::G8_B8_R8_3PLANE_420_UNORM,
+                    memory_usage: MemoryUsage::GpuToCpu,
+                    usage_flags: ResourceUsage::AS_TRANSFERABLE,
+                    resource_flags: ResourceFlags::empty(),
+                    tiling: TextureTiling::Linear,
                 },
-                array_length: 1,
-                mip_count: 1,
-                format: Format::G8_B8_R8_3PLANE_420_UNORM,
-                memory_usage: MemoryUsage::GpuToCpu,
-                usage_flags: ResourceUsage::AS_TRANSFERABLE,
-                resource_flags: ResourceFlags::empty(),
-                tiling: TextureTiling::Linear,
-            });
+                "Copy",
+            );
 
             yuv_images.push((y_image, u_image, v_image));
             yuv_image_uavs.push((y_image_uav, u_image_uav, v_image_uav));

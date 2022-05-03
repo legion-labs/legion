@@ -63,42 +63,46 @@ impl OffscreenHelper {
             ..SamplerDef::default()
         });
 
-        let render_image = device_context.create_texture(TextureDef {
-				name: "Offscreen".to_string(),
-            extents: Extents3D {
-                width: resolution.width(),
-                height: resolution.height(),
-                depth: 1,
+        let render_image = device_context.create_texture(
+            TextureDef {
+                extents: Extents3D {
+                    width: resolution.width(),
+                    height: resolution.height(),
+                    depth: 1,
+                },
+                array_length: 1,
+                mip_count: 1,
+                format: Format::R8G8B8A8_UNORM,
+                memory_usage: MemoryUsage::GpuOnly,
+                usage_flags: ResourceUsage::AS_RENDER_TARGET | ResourceUsage::AS_TRANSFERABLE,
+                resource_flags: ResourceFlags::empty(),
+                tiling: TextureTiling::Optimal,
             },
-            array_length: 1,
-            mip_count: 1,
-            format: Format::R8G8B8A8_UNORM,
-            memory_usage: MemoryUsage::GpuOnly,
-            usage_flags: ResourceUsage::AS_RENDER_TARGET | ResourceUsage::AS_TRANSFERABLE,
-            resource_flags: ResourceFlags::empty(),
-            tiling: TextureTiling::Optimal,
-        });
+            "Offscreen",
+        );
 
         let render_image_rtv = render_image.create_view(TextureViewDef::as_render_view(
             render_image.definition(),
             GPUViewType::RenderTarget,
         ));
 
-        let copy_image = device_context.create_texture(TextureDef {
-				name: "Copy".to_string(),
-            extents: Extents3D {
-                width: resolution.width(),
-                height: resolution.height(),
-                depth: 1,
+        let copy_image = device_context.create_texture(
+            TextureDef {
+                extents: Extents3D {
+                    width: resolution.width(),
+                    height: resolution.height(),
+                    depth: 1,
+                },
+                array_length: 1,
+                mip_count: 1,
+                format: Format::R8G8B8A8_UNORM,
+                memory_usage: MemoryUsage::GpuToCpu,
+                usage_flags: ResourceUsage::AS_TRANSFERABLE,
+                resource_flags: ResourceFlags::empty(),
+                tiling: TextureTiling::Linear,
             },
-            array_length: 1,
-            mip_count: 1,
-            format: Format::R8G8B8A8_UNORM,
-            memory_usage: MemoryUsage::GpuToCpu,
-            usage_flags: ResourceUsage::AS_TRANSFERABLE,
-            resource_flags: ResourceFlags::empty(),
-            tiling: TextureTiling::Linear,
-        });
+            "Copy",
+        );
 
         Self {
             render_image,

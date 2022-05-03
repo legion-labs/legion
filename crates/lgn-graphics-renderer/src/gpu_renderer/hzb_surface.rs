@@ -54,7 +54,6 @@ impl HzbSurface {
         }
 
         let hzb_def = TextureDef {
-            name: "HZB".to_string(),
             extents: Extents3D {
                 width: hzb_width as u32,
                 height: hzb_height as u32,
@@ -69,7 +68,7 @@ impl HzbSurface {
             tiling: TextureTiling::Optimal,
         };
 
-        let texture = device_context.create_texture(hzb_def);
+        let texture = device_context.create_texture(hzb_def, "HZB");
         let srv_view = texture.create_view(TextureViewDef::as_shader_resource_view(
             texture.definition(),
         ));

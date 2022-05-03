@@ -13,9 +13,8 @@ use crate::{
 };
 
 /// Used to create a `Texture`
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TextureDef {
-    pub name: String,
     pub extents: Extents3D,
     pub array_length: u32,
     pub mip_count: u32,
@@ -29,7 +28,6 @@ pub struct TextureDef {
 impl Default for TextureDef {
     fn default() -> Self {
         Self {
-            name: "Default".to_string(),
             extents: Extents3D {
                 width: 0,
                 height: 0,
@@ -122,6 +120,10 @@ impl Hash for Texture {
 }
 
 impl Texture {
+    pub fn set_name<T: AsRef<str>>(&self, name: T) {
+        self.inner.device_context.set_texture_name(self, name);
+    }
+
     pub fn extents(&self) -> &Extents3D {
         &self.inner.texture_def.extents
     }

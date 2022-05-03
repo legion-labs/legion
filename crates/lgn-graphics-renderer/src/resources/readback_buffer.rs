@@ -18,25 +18,19 @@ pub(crate) struct ReadbackBuffer {
 
 impl ReadbackBuffer {
     pub(crate) fn new(device_context: &DeviceContext, size: u64) -> Self {
-        let buffer = device_context.create_buffer(BufferDef {
-				name: "ReadbackBuffer".to_string(),
-            size,
-            usage_flags: ResourceUsage::AS_TRANSFERABLE,
-            create_flags: BufferCreateFlags::empty(),
-            memory_usage: MemoryUsage::GpuToCpu,
-            always_mapped: false,
-        });
-
-        // let alloc_def = MemoryAllocationDef {
-        //     memory_usage: MemoryUsage::GpuToCpu,
-        //     always_mapped: false,
-        // };
-
-        // let allocation = MemoryAllocation::from_buffer(device_context, &buffer, &alloc_def);
+        let buffer = device_context.create_buffer(
+            BufferDef {
+                size,
+                usage_flags: ResourceUsage::AS_TRANSFERABLE,
+                create_flags: BufferCreateFlags::empty(),
+                memory_usage: MemoryUsage::GpuToCpu,
+                always_mapped: false,
+            },
+            "ReadbackBuffer",
+        );
 
         Self {
             buffer,
-            // allocation,
             cpu_frame_for_results: u64::MAX,
         }
     }
@@ -95,31 +89,24 @@ pub(crate) struct GpuBufferWithReadback {
 
 impl GpuBufferWithReadback {
     pub(crate) fn new(device_context: &DeviceContext, element_size: u64) -> Self {
-        let buffer = device_context.create_buffer(BufferDef {
-				name: "GpuReadbackBuffer".to_string(),
-            size: element_size,
-            usage_flags: ResourceUsage::AS_SHADER_RESOURCE
-                | ResourceUsage::AS_UNORDERED_ACCESS
-                | ResourceUsage::AS_TRANSFERABLE,
-            create_flags: BufferCreateFlags::empty(),
-            memory_usage: MemoryUsage::GpuOnly,
-            always_mapped: false,
-        });
+        let buffer = device_context.create_buffer(
+            BufferDef {
+                size: element_size,
+                usage_flags: ResourceUsage::AS_SHADER_RESOURCE
+                    | ResourceUsage::AS_UNORDERED_ACCESS
+                    | ResourceUsage::AS_TRANSFERABLE,
+                create_flags: BufferCreateFlags::empty(),
+                memory_usage: MemoryUsage::GpuOnly,
+                always_mapped: false,
+            },
+            "GpuReadbackBuffer",
+        );
 
-        // let alloc_def = MemoryAllocationDef {
-        //     memory_usage: MemoryUsage::GpuOnly,
-        //     always_mapped: false,
-        // };
-
-        // let allocation = MemoryAllocation::from_buffer(device_context, &buffer, &alloc_def);
-
-        // let rw_view = BufferView::from_buffer(&buffer, &rw_view_def);
         let rw_view =
             buffer.create_view(BufferViewDef::as_structured_buffer(1, element_size, false));
 
         Self {
             buffer,
-            // _allocation: allocation,
             rw_view,
             readback_pool: GpuSafePool::new(3),
         }

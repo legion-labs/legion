@@ -24,17 +24,19 @@ impl UnifiedStaticBuffer {
         let element_count = virtual_buffer_size / element_size;
         let buffer_size = element_count * element_size;
 
-        let buffer = device_context.create_buffer(BufferDef {
-				name: "UnifiedStaticBuffer".to_string(),
-            size: buffer_size,
-            usage_flags: ResourceUsage::AS_SHADER_RESOURCE
-                | ResourceUsage::AS_TRANSFERABLE
-                | ResourceUsage::AS_VERTEX_BUFFER
-                | ResourceUsage::AS_INDEX_BUFFER,
-            create_flags: BufferCreateFlags::empty(),
+        let buffer = device_context.create_buffer(
+            BufferDef {
+                size: buffer_size,
+                usage_flags: ResourceUsage::AS_SHADER_RESOURCE
+                    | ResourceUsage::AS_TRANSFERABLE
+                    | ResourceUsage::AS_VERTEX_BUFFER
+                    | ResourceUsage::AS_INDEX_BUFFER,
+                create_flags: BufferCreateFlags::empty(),
                 memory_usage: MemoryUsage::GpuOnly,
                 always_mapped: false,
-        });
+            },
+            "UnifiedStaticBuffer",
+        );
 
         let read_only_view =
             buffer.create_view(BufferViewDef::as_byte_address_buffer(element_count, true));
@@ -73,7 +75,7 @@ impl StaticBufferView {
             allocation: allocation.clone(),
             buffer_view,
         }
-        }
+    }
 
     pub fn buffer_view(&self) -> &BufferView {
         &self.buffer_view
@@ -154,18 +156,18 @@ impl UnifiedStaticBufferAllocator {
 
         if required_size != alloc_size {
             // TODO(vdbdd): use warn instead
-            println!( "UnifiedStaticBufferAllocator: the segment required size ({} bytes) is less than the allocated size ({} bytes). {} bytes of memory will be wasted", segment_size, alloc_size, alloc_size-segment_size  );
+            println!( "UnifiedStaticBufferAllocator: the segment required size ({} bytes) is less than the allocated size ({} bytes). {} bytes of memory will be wasted", required_size, alloc_size, alloc_size-required_size  );
         }
 
         let range = inner.segment_allocator.allocate(alloc_size).unwrap();
 
         StaticBufferAllocation::new(self, &inner.buffer, range)
-        }
+    }
 
     fn free(&self, range: Range) {
         let inner = &mut *self.inner.lock().unwrap();
         inner.segment_allocator.free(range);
-        }
+    }
 
     pub fn add_update_job_block(&self, mut job_blocks: Vec<GPUDataUpdaterCopy>) {
         let inner = &mut *self.inner.lock().unwrap();
@@ -291,7 +293,7 @@ impl GPUDataUpdaterBuilder {
         self.upload_jobs.push(GPUDataUpdaterCopy {
             src_allocation: transient_allocation,
             static_buffer_offset: dst_offset,
-            });
+        });
     }
 
     pub fn job_blocks(self) -> Vec<GPUDataUpdaterCopy> {

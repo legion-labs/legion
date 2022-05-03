@@ -144,7 +144,7 @@ impl Renderer {
         //
         {
             let mut pool = self.command_buffer_pools.lock();
-            pool.begin_frame(|x| x.begin_frame());
+            pool.begin_frame(CommandBufferPool::begin_frame);
 
             self.transient_buffer.begin_frame();
         }

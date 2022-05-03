@@ -102,7 +102,7 @@ impl TextureManager {
     pub fn allocate_texture(&mut self, entity: Entity, texture_component: &TextureComponent) {
         let texture_def = Self::texture_def_from_texture_component(texture_component);
 
-        let texture_view = self.create_texture_view(&texture_def);
+        let texture_view = self.create_texture_view(&texture_def, "material_texture");
 
         self.texture_infos.insert(
             entity,
@@ -140,7 +140,7 @@ impl TextureManager {
         };
 
         if recreate_texture_view {
-            let texture_view = self.create_texture_view(&texture_def);
+            let texture_view = self.create_texture_view(&texture_def, "material_texture");
             let texture_info = self.texture_info_mut(entity);
             texture_info.texture_view = texture_view;
         }
@@ -271,9 +271,9 @@ impl TextureManager {
         renderer.release_command_buffer_pool(cmd_buffer_pool);
     }
 
-    fn create_texture_view(&self, texture_def: &TextureDef) -> TextureView {
+    fn create_texture_view(&self, texture_def: &TextureDef, name: &str) -> TextureView {
         // todo: bundle all the default views in the resource instead of having them separatly
-        let texture = self.device_context.create_texture(*texture_def);
+        let texture = self.device_context.create_texture(*texture_def, name);
         texture.create_view(TextureViewDef::as_shader_resource_view(texture_def))
     }
 
@@ -317,7 +317,6 @@ impl TextureManager {
         };
 
         TextureDef {
-            name: "TextureComponent".to_string(), // todo: filename?
             extents: Extents3D {
                 width: texture_component.width,
                 height: texture_component.height,
@@ -347,18 +346,10 @@ impl TextureManager {
         // - Almost same code for buffer and texture
         // - Leverage the Copy queue
         //
-        let staging_buffer = device_context.create_buffer(BufferDef::for_staging_buffer_data(
-            data,
-            ResourceUsage::empty(),
-        ));
-
-        // let alloc_def = MemoryAllocationDef {
-        //     memory_usage: MemoryUsage::CpuToGpu,
-        //     always_mapped: true,
-        // };
-
-        // let buffer_memory =
-        //     MemoryAllocation::from_buffer(device_context, &staging_buffer, &alloc_def);
+        let staging_buffer = device_context.create_buffer(
+            BufferDef::for_staging_buffer_data(data, ResourceUsage::empty()),
+            "staging_buffer",
+        );
 
         staging_buffer.copy_to_host_visible_buffer(data);
 

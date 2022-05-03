@@ -21,21 +21,23 @@ impl RenderTarget {
         usage_flags: ResourceUsage,
         view_type: GPUViewType,
     ) -> Self {
-        let texture = device_context.create_texture(TextureDef {
-				name: name.to_string(),
-            extents: Extents3D {
-                width: extents.width(),
-                height: extents.height(),
-                depth: 1,
+        let texture = device_context.create_texture(
+            TextureDef {
+                extents: Extents3D {
+                    width: extents.width(),
+                    height: extents.height(),
+                    depth: 1,
+                },
+                array_length: 1,
+                mip_count: 1,
+                format,
+                usage_flags,
+                resource_flags: ResourceFlags::empty(),
+                memory_usage: MemoryUsage::GpuOnly,
+                tiling: TextureTiling::Optimal,
             },
-            array_length: 1,
-            mip_count: 1,
-            format,
-            usage_flags,
-            resource_flags: ResourceFlags::empty(),
-            memory_usage: MemoryUsage::GpuOnly,
-            tiling: TextureTiling::Optimal,
-        });
+            name,
+        );
 
         let srv = texture.create_view(TextureViewDef::as_shader_resource_view(
             texture.definition(),

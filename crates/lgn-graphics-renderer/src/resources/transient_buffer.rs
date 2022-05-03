@@ -13,7 +13,7 @@ use lgn_graphics_api::{
 use super::GpuSafePool;
 
 pub struct TransientBufferAllocation {
-    buffer: Buffer,
+    buffer: NonNull<Buffer>,
     byte_offset: u64,
     size: u64,
 }
@@ -72,18 +72,20 @@ impl TransientBuffer {
         let required_size =
             lgn_utils::memory::round_size_up_to_alignment_u64(size, TRANSIENT_BUFFER_BLOCK_SIZE);
 
-        let buffer = device_context.create_buffer(BufferDef {
-				name: "PageHeap".to_string(),
-            size: required_size,
-            usage_flags: ResourceUsage::AS_SHADER_RESOURCE
-                | ResourceUsage::AS_UNORDERED_ACCESS
-                | ResourceUsage::AS_CONST_BUFFER
-                | ResourceUsage::AS_VERTEX_BUFFER
-                | ResourceUsage::AS_INDEX_BUFFER,
-            create_flags: BufferCreateFlags::empty(),
-            memory_usage: MemoryUsage::CpuToGpu,
-            always_mapped: true,
-        });
+        let buffer = device_context.create_buffer(
+            BufferDef {
+                size: required_size,
+                usage_flags: ResourceUsage::AS_SHADER_RESOURCE
+                    | ResourceUsage::AS_UNORDERED_ACCESS
+                    | ResourceUsage::AS_CONST_BUFFER
+                    | ResourceUsage::AS_VERTEX_BUFFER
+                    | ResourceUsage::AS_INDEX_BUFFER,
+                create_flags: BufferCreateFlags::empty(),
+                memory_usage: MemoryUsage::CpuToGpu,
+                always_mapped: true,
+            },
+            "PageHeap",
+        );
 
         Self {
             device_context: device_context.clone(),
@@ -103,7 +105,7 @@ impl TransientBuffer {
 
     pub fn byte_offset(&self) -> u64 {
         self.byte_offset
-            }
+    }
 
     pub fn size(&self) -> u64 {
         self.capacity - self.byte_offset
@@ -139,17 +141,9 @@ impl TransientBuffer {
                 byte_offset: aligned_offset,
                 size: required_size,
             })
-            }
         }
+    }
 }
-
-// impl OnFrameEventHandler for TransientBuffer {
-//     fn on_begin_frame(&mut self) {
-//         self.byte_offset = 0;
-//     }
-
-//     fn on_end_frame(&mut self) {}
-// }
 
 pub(crate) struct TransientPagedBufferInner {
     device_context: DeviceContext,
@@ -181,7 +175,7 @@ impl TransientPagedBuffer {
         inner
             .transient_buffers
             .begin_frame(TransientBuffer::begin_frame);
-                }
+    }
 
     pub fn end_frame(&mut self) {
         let mut inner = self.inner.lock().unwrap();
@@ -193,7 +187,7 @@ impl TransientPagedBuffer {
         });
 
         inner.transient_buffers.end_frame(|_| ());
-            }
+    }
 
     fn acquire_page(&self, min_page_size: u64) -> Handle<TransientBuffer> {
         let inner = &mut *self.inner.lock().unwrap();
@@ -201,8 +195,8 @@ impl TransientPagedBuffer {
         for (i, handle) in inner.frame_pool.iter().enumerate() {
             if min_page_size <= handle.size() {
                 return inner.frame_pool.swap_remove(i);
+            }
         }
-    }
 
         inner
             .transient_buffers
@@ -213,7 +207,7 @@ impl TransientPagedBuffer {
         let inner = &mut *self.inner.lock().unwrap();
 
         inner.frame_pool.push(page);
-        }
+    }
 }
 
 pub struct TransientBufferAllocator {
@@ -242,7 +236,7 @@ impl TransientBufferAllocator {
         resource_usage: ResourceUsage,
     ) -> TransientBufferAllocation {
         self.copy_data_slice(std::slice::from_ref(data), resource_usage)
-        }
+    }
 
     pub fn copy_data_slice<T>(
         &mut self,
@@ -275,7 +269,7 @@ impl TransientBufferAllocator {
         }
 
         allocation.unwrap()
-        }
+    }
 }
 
 impl Drop for TransientBufferAllocator {
