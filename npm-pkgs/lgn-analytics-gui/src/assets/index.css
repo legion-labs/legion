@@ -15,3 +15,40 @@ body {
   /** TODO: Use a tailwind config instead */
   --thread-item-length: 170px;
 }
+
+@layer base {
+  .background {
+    background-color: rgb(var(--color-background));
+  }
+
+  .surface {
+    background-color: rgb(var(--color-surface));
+  }
+
+  .backdrop {
+    background-color: rgba(var(--color-backdrop), var(--opacity-backdrop));
+  }
+
+  .notification {
+    background-color: rgba(
+      var(--color-notification),
+      var(--opacity-notification)
+    );
+  }
+
+  .on-surface {
+    background-color: rgb(var(--color-on-surface));
+  }
+
+  .headline {
+    color: rgba(var(--color-headline), var(--opacity-headline));
+  }
+
+  .text {
+    color: rgba(var(--color-text), var(--opacity-text));
+  }
+
+  .placeholder {
+    color: rgba(var(--color-placeholder), var(--opacity-placeholder));
+  }
+}
