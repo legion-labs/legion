@@ -6,7 +6,7 @@ use lgn_ecs::prelude::{
     Commands, Component, IntoExclusiveSystem, NonSendMut, Query, Res, With, Without, World,
 };
 use lgn_scripting_data::{runtime::ScriptComponent, ScriptType};
-use lgn_tracing::prelude::info;
+use lgn_tracing::prelude::{error, info};
 use rune::{
     termcolor::{ColorChoice, StandardStream},
     Context, ContextError, Diagnostics, Hash, Source, Sources, ToValue, Unit, Value, Vm,
@@ -184,11 +184,17 @@ struct ScriptExecutionContext {
 
 impl Drop for ScriptExecutionContext {
     fn drop(&mut self) {
-        self.event_writer
+        if let Err(e) = self
+            .event_writer
             .send(ScriptExecutionContextDestructionEvent {
                 vm_index: self.vm_index,
             })
-            .expect("send ScriptExecutionContextDestructionEvent timed-out");
+        {
+            error!(
+                "failed to send ScriptExecutionContextDestructionEvent: {}",
+                e
+            );
+        }
     }
 }
 
