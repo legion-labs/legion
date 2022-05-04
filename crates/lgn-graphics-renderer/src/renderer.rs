@@ -1,11 +1,13 @@
 #![allow(unsafe_code)]
 
+use lgn_core::Handle;
 use lgn_graphics_api::Queue;
 use lgn_graphics_api::{ApiDef, BufferView, DeviceContext, Fence, FenceStatus, GfxApi, QueueType};
 
 use lgn_tracing::span_fn;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
+use crate::core::{RenderCommand, RenderCommandManager, RenderCommandQueue};
 use crate::resources::{
     CommandBufferPool, CommandBufferPoolHandle, GPUDataUpdaterCopy, GpuSafePool,
     TransientBufferAllocator, TransientPagedBuffer, UnifiedStaticBuffer,
@@ -22,6 +24,7 @@ pub struct Renderer {
     command_buffer_pools: Mutex<GpuSafePool<CommandBufferPool>>,
     transient_buffer: TransientPagedBuffer,
     static_buffer: UnifiedStaticBuffer,
+    render_command_manager: RenderCommandManager,
     // This should be last, as it must be destroyed last.
     api: GfxApi,
 }
@@ -44,6 +47,7 @@ impl Renderer {
             command_buffer_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
             transient_buffer: TransientPagedBuffer::new(device_context, num_render_frames),
             static_buffer,
+            render_command_manager: RenderCommandManager::new(),
             api,
         }
     }
@@ -58,6 +62,20 @@ impl Renderer {
 
     pub fn render_frame_idx(&self) -> u64 {
         self.render_frame_idx
+    }
+
+    pub fn send_command<T: RenderCommand + 'static>(&self, command: T) {
+        let mut commands = self.render_command_manager.acquire();
+        commands.send(command);
+        self.render_command_manager.release(commands);
+    }
+
+    pub fn acquire_commands(&self) -> Handle<RenderCommandQueue> {
+        self.render_command_manager.acquire()
+    }
+
+    pub fn release_commands(&self, handle: Handle<RenderCommandQueue>) {
+        self.render_command_manager.release(handle);
     }
 
     pub fn graphics_queue_guard(&self, queue_type: QueueType) -> RwLockReadGuard<'_, Queue> {
@@ -92,7 +110,10 @@ impl Renderer {
             .add_update_job_block(job_blocks);
     }
 
-    #[span_fn]
+    pub fn flush_render_commands(&self) {
+        self.render_command_manager.flush();
+    }
+
     pub fn flush_update_jobs(&self, render_context: &RenderContext<'_>) {
         self.static_buffer.allocator().flush_updater(render_context);
     }
@@ -171,7 +192,7 @@ impl Renderer {
             self.transient_buffer.end_frame();
 
             let mut pool = self.command_buffer_pools.lock();
-            pool.end_frame(|x| x.end_frame());
+            pool.end_frame(CommandBufferPool::end_frame);
         }
     }
 }

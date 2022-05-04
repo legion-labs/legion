@@ -4,10 +4,11 @@ use lgn_data_runtime::Handle;
 use lgn_ecs::prelude::Component;
 use lgn_graphics_data::runtime::{MaterialReferenceType, Model};
 use lgn_math::{Mat4, Vec2, Vec3, Vec4};
+use lgn_utils::memory::round_size_up_to_alignment_u32;
 
 use crate::{
     cgen::cgen_type::{MeshAttribMask, MeshDescription},
-    resources::GPUDataUpdaterBuilder,
+    core::BinaryWriter,
     DOWN_VECTOR, UP_VECTOR,
 };
 
@@ -24,6 +25,10 @@ pub struct Mesh {
 }
 
 const DEFAULT_MESH_VERTEX_SIZE: usize = 12; // pos + normal + color + tex_coord = 3 + 3 + 4 + 2
+
+fn byteadressbuffer_align(size: u32) -> u32 {
+    round_size_up_to_alignment_u32(size, 4)
+}
 
 impl Mesh {
     pub fn get_mesh_attrib_mask(&self) -> MeshAttribMask {
@@ -44,26 +49,6 @@ impl Mesh {
             format |= MeshAttribMask::COLOR;
         }
         format
-    }
-
-    pub fn size_in_bytes(&self) -> u32 {
-        let mut size = (std::mem::size_of::<Vec3>() * self.positions.len()) as u32;
-        if let Some(normals) = &self.normals {
-            size += (std::mem::size_of::<u32>() * normals.len()) as u32;
-        }
-        if let Some(tangents) = &self.tangents {
-            size += (std::mem::size_of::<u32>() * tangents.len()) as u32;
-        }
-        if let Some(tex_coords) = &self.tex_coords {
-            size += (std::mem::size_of::<Vec2>() * tex_coords.len()) as u32;
-        }
-        if let Some(indices) = &self.indices {
-            size += (std::mem::size_of::<u32>() * indices.len()) as u32;
-        }
-        if let Some(colors) = &self.colors {
-            size += (std::mem::size_of::<[u8; 4]>() * colors.len()) as u32;
-        }
-        size
     }
 
     pub fn calculate_bounding_sphere(positions: &[Vec3]) -> Vec4 {
@@ -90,60 +75,85 @@ impl Mesh {
         mid_point.extend(max_length)
     }
 
-    pub fn make_gpu_update_job(
-        &self,
-        updater: &mut GPUDataUpdaterBuilder,
-        offset: u32,
-    ) -> (u32, u32, u32) {
+    // pub fn make_gpu_update_job(&self, src_buffer: &mut Vec<u8>, dst_offset: u32) -> (u32, u32) {
+    pub fn pack_gpu_data(&self) -> (Vec<u8>, u32) {
+        let position_size = (std::mem::size_of::<Vec3>() * self.positions.len()) as u32;
+        let normal_size = self.normals.as_ref().map_or(0, |stream| {
+            (std::mem::size_of::<u32>() * stream.len()) as u32
+        });
+        let tangent_size = self.tangents.as_ref().map_or(0, |stream| {
+            (std::mem::size_of::<u32>() * stream.len()) as u32
+        });
+        let texcoord_size = self.tex_coords.as_ref().map_or(0, |stream| {
+            (std::mem::size_of::<Vec2>() * stream.len()) as u32
+        });
+        let indice_size = self.indices.as_ref().map_or(0, |stream| {
+            (std::mem::size_of::<u16>() * stream.len()) as u32
+        });
+        let color_size = self.colors.as_ref().map_or(0, |stream| {
+            (std::mem::size_of::<[u8; 4]>() * stream.len()) as u32
+        });
+
+        let position_offset = byteadressbuffer_align(std::mem::size_of::<MeshDescription>() as u32);
+        let normal_offset = byteadressbuffer_align(position_offset + position_size);
+        let tangent_offset = byteadressbuffer_align(normal_offset + normal_size);
+        let texcoord_offset = byteadressbuffer_align(tangent_offset + tangent_size);
+        let indice_offset = byteadressbuffer_align(texcoord_offset + texcoord_size);
+        let color_offset = byteadressbuffer_align(indice_offset + indice_size);
+        let buf_size = byteadressbuffer_align(color_offset + color_size);
+
         let mut mesh_desc = MeshDescription::default();
         mesh_desc.set_attrib_mask(self.get_mesh_attrib_mask());
-        let mut offset = offset;
-        let mut index_offset = 0;
-
-        mesh_desc.set_position_offset(offset.into());
-        updater.add_update_jobs(&self.positions, u64::from(offset));
-        offset += (std::mem::size_of::<Vec3>() * self.positions.len()) as u32;
-
-        if let Some(normals) = &self.normals {
-            mesh_desc.set_normal_offset(offset.into());
-            updater.add_update_jobs(
-                &lgn_math::pack_normals_r11g11b10(normals),
-                u64::from(offset),
-            );
-            offset += (std::mem::size_of::<u32>() * normals.len()) as u32;
-        }
-        if let Some(tangents) = &self.tangents {
-            mesh_desc.set_tangent_offset(offset.into());
-            updater.add_update_jobs(
-                &lgn_math::pack_tangents_r11g10b10a1(tangents),
-                u64::from(offset),
-            );
-            offset += (std::mem::size_of::<u32>() * tangents.len()) as u32;
-        }
-        if let Some(tex_coords) = &self.tex_coords {
-            mesh_desc.set_tex_coord_offset(offset.into());
-            updater.add_update_jobs(tex_coords, u64::from(offset));
-            offset += (std::mem::size_of::<Vec2>() * tex_coords.len()) as u32;
-        }
-        if let Some(indices) = &self.indices {
-            // Convert from byte offset to index offset, byte offset is only needed for uploading data
-            index_offset = offset / 2;
-            mesh_desc.set_index_offset(index_offset.into());
-            mesh_desc.set_index_count((indices.len() as u32).into());
-            updater.add_update_jobs(indices, u64::from(offset));
-            offset += (std::mem::size_of::<u32>() * indices.len()) as u32;
-        }
-        if let Some(colors) = &self.colors {
-            mesh_desc.set_color_offset(offset.into());
-            updater.add_update_jobs(colors, u64::from(offset));
-            offset += (std::mem::size_of::<[u8; 4]>() * colors.len()) as u32;
-        }
+        mesh_desc.set_position_offset(position_offset.into());
+        mesh_desc.set_normal_offset(normal_offset.into());
+        mesh_desc.set_tangent_offset(tangent_offset.into());
+        mesh_desc.set_tex_coord_offset(texcoord_offset.into());
+        mesh_desc.set_index_offset(indice_offset.into());
+        mesh_desc.set_index_count((indice_size / 2).into());
+        mesh_desc.set_color_offset(color_offset.into());
         mesh_desc.set_bounding_sphere(self.bounding_sphere.into());
 
-        updater.add_update_jobs(&[mesh_desc], u64::from(offset));
-        let mesh_info_offset = offset;
-        offset += std::mem::size_of::<MeshDescription>() as u32;
-        (offset, mesh_info_offset, index_offset)
+        macro_rules! write_slice {
+            ($writer:expr, $data:expr, $offset:expr, $size:expr) => {
+                assert_eq!($writer.len(), $offset as usize);
+                let written = $writer.write_slice($data);
+                assert_eq!(written, $size as usize);
+            };
+        }
+
+        let mut writer = BinaryWriter::with_capacity(buf_size as usize);
+
+        writer.write(&mesh_desc);
+
+        write_slice!(writer, &self.positions, position_offset, position_size);
+
+        if let Some(normals) = &self.normals {
+            write_slice!(
+                writer,
+                &lgn_math::pack_normals_r11g11b10(normals),
+                normal_offset,
+                normal_size
+            );
+        }
+        if let Some(tangents) = &self.tangents {
+            write_slice!(
+                writer,
+                &lgn_math::pack_tangents_r11g10b10a1(tangents),
+                tangent_offset,
+                tangent_size
+            );
+        }
+        if let Some(tex_coords) = &self.tex_coords {
+            write_slice!(writer, &tex_coords, texcoord_offset, texcoord_size);
+        }
+        if let Some(indices) = &self.indices {
+            write_slice!(writer, &indices, indice_offset, indice_size);
+        }
+        if let Some(colors) = &self.colors {
+            write_slice!(writer, &colors, color_offset, color_size);
+        }
+
+        (writer.take(), indice_offset)
     }
 
     pub fn num_vertices(&self) -> usize {
@@ -152,16 +162,10 @@ impl Mesh {
 
     pub fn num_indices(&self) -> usize {
         if let Some(indices) = &self.indices {
-            return indices.len();
+            indices.len()
+        } else {
+            0
         }
-        0
-    }
-
-    pub fn index_offset(&self) -> usize {
-        if let Some(indices) = &self.indices {
-            return indices.len();
-        }
-        0
     }
 
     pub fn new_cube(size: f32) -> Self {

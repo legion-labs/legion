@@ -434,6 +434,10 @@ fn render_update(
     }
     // >>< render_begin
 
+    /*
+        Start of the RenderThread
+    */
+
     // << render_update
     {
         // start
@@ -456,6 +460,8 @@ fn render_update(
         } else {
             &default_camera
         };
+        
+        renderer.flush_render_commands();
 
         renderer.flush_update_jobs(&render_context);
 

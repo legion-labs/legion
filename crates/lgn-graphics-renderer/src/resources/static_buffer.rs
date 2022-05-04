@@ -103,6 +103,10 @@ impl StaticBufferAllocation {
         }
     }
 
+    pub fn buffer(&self) -> &Buffer {
+        &self.inner.buffer
+    }
+
     pub fn byte_offset(&self) -> u64 {
         self.inner.range.begin()
     }
