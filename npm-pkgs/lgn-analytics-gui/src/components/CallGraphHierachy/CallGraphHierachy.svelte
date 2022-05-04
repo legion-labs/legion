@@ -43,7 +43,7 @@
         <CallTreeDebug {store} {begin} {end} />
       {/if}
       <div class="flex flex-col gap-y-2">
-        <div class="surface hover:background px-2 py-1 mt-2 text-xs w-fit">
+        <div class="surface hover:background px-2 py-1 text-xs w-fit">
           <a
             class="placeholder"
             href={`/cumulative-call-graph?process=${processId}&${startQueryParam}=${begin}&${endQueryParam}=${end}`}
