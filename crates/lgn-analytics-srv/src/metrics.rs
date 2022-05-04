@@ -1,5 +1,4 @@
-use anyhow::Ok;
-use anyhow::Result;
+use anyhow::{Context, Ok, Result};
 use lgn_analytics::find_stream;
 use lgn_analytics::prelude::*;
 use lgn_blob_storage::BlobStorage;
@@ -9,6 +8,7 @@ use lgn_telemetry_proto::analytics::MetricBlockManifest;
 use lgn_telemetry_proto::analytics::MetricBlockRequest;
 use lgn_telemetry_proto::analytics::MetricDataPoint;
 use lgn_telemetry_proto::analytics::MetricDesc;
+use lgn_tracing::prelude::*;
 use lgn_tracing_transit::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -46,6 +46,9 @@ fn reduce_lod(source: &MetricBlockData, lod: u32) -> Vec<MetricDataPoint> {
     let mut points: Vec<MetricDataPoint> = vec![];
     let mut max = f64::MIN;
     let mut acc = 0.0;
+    if source.points.is_empty() {
+        return points;
+    }
     for i in 0..source.points.len() - 1 {
         let point = &source.points[i];
         max = f64::max(point.value, max);
@@ -159,8 +162,14 @@ impl MetricHandler {
         let mut metrics = HashMap::<String, MetricDesc>::new();
         parse_block(&stream, &payload, |val| {
             if let Value::Object(obj) = val {
-                let metric_desc = obj.get::<Arc<Object>>("desc").unwrap();
-                let name = metric_desc.get_ref("name").unwrap().as_str().unwrap();
+                let metric_desc = obj
+                    .get::<Arc<Object>>("desc")
+                    .with_context(|| format!("reading desc from {:?}", obj))?;
+                let name = metric_desc
+                    .get_ref("name")
+                    .with_context(|| format!("reading name from {:?}", metric_desc))?
+                    .as_str()
+                    .with_context(|| "as_str on desc name")?;
                 metrics
                     .entry(name.to_owned())
                     .or_insert_with(|| MetricDesc {
@@ -207,11 +216,32 @@ impl MetricHandler {
                 if name == metric_name {
                     let time = obj.get::<i64>("time").unwrap();
                     let time_ms = (time - process.start_ticks) as f64 * inv_tsc_frequency;
-                    let value = obj.get::<u64>("value").unwrap();
-                    points.push(MetricDataPoint {
-                        time_ms,
-                        value: value as f64,
-                    });
+                    let value = match obj.get_ref("value") {
+                        Err(e) => {
+                            warn!("no value member in metric object {:?}: {:?}", obj, e);
+                            None
+                        }
+                        Result::Ok(Value::None) => {
+                            warn!("no value member in metric object {:?}", obj);
+                            None
+                        }
+                        Result::Ok(Value::String(v)) => {
+                            warn!("invalid value for metric: {:?}", *v);
+                            None
+                        }
+                        Result::Ok(Value::Object(o)) => {
+                            warn!("invalid value for metric: {:?}", *o);
+                            None
+                        }
+                        Result::Ok(Value::U8(v)) => Some(f64::from(*v)),
+                        Result::Ok(Value::U32(v)) => Some(f64::from(*v)),
+                        Result::Ok(Value::U64(v)) => Some(*v as f64),
+                        Result::Ok(Value::I64(v)) => Some(*v as f64),
+                        Result::Ok(Value::F64(v)) => Some(*v),
+                    };
+                    if let Some(v) = value {
+                        points.push(MetricDataPoint { time_ms, value: v });
+                    }
                 }
             }
             Ok(true)
