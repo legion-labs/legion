@@ -1,6 +1,6 @@
 use std::{str::FromStr, sync::Arc};
 
-use lgn_app::prelude::App;
+use lgn_app::prelude::{App, CoreStage};
 use lgn_data_runtime::AssetRegistry;
 use lgn_ecs::prelude::{
     Commands, Component, IntoExclusiveSystem, NonSendMut, Query, Res, With, Without, World,
@@ -33,10 +33,16 @@ pub(crate) fn build(app: &mut App) -> Result<(), ContextError> {
     context.install(&make_transform_module()?)?;
     context.install(&make_math_module()?)?;
 
+    let (sender, receiver) =
+        crossbeam_channel::unbounded::<ScriptExecutionContextDestructionEvent>();
+
     app.init_non_send_resource::<VMCollection>()
         .insert_resource(context)
+        .insert_resource(sender)
+        .insert_resource(receiver)
         .add_system_to_stage(ScriptingStage::Compile, compile)
-        .add_system_to_stage(ScriptingStage::Execute, tick.exclusive_system());
+        .add_system_to_stage(ScriptingStage::Execute, tick.exclusive_system())
+        .add_system_to_stage(CoreStage::Last, cleanup);
 
     Ok(())
 }
@@ -50,6 +56,7 @@ fn compile(
     >,
     mut rune_vms: NonSendMut<'_, VMCollection>,
     rune_context: Res<'_, Context>,
+    sender: Res<'_, crossbeam_channel::Sender<ScriptExecutionContextDestructionEvent>>,
     registry: Res<'_, Arc<AssetRegistry>>,
     mut commands: Commands<'_, '_>,
 ) {
@@ -86,12 +93,7 @@ fn compile(
             vm_index,
             entry_fn: Hash::type_hash(fn_name),
             input_args: script.input_values.clone(),
-            drop_handler: Box::new(|execution_context| {
-                info!(
-                    "drop ScriptExecutionContext, VM index = {}",
-                    execution_context.vm_index
-                );
-            }),
+            event_writer: sender.clone(),
         };
 
         commands.entity(entity).insert(script_exec);
@@ -100,6 +102,7 @@ fn compile(
     drop(scripts);
     drop(rune_context);
     drop(registry);
+    drop(sender);
 }
 
 fn tick(world: &mut World) {
@@ -160,18 +163,37 @@ fn tick(world: &mut World) {
     }
 }
 
+fn cleanup(
+    receiver: Res<'_, crossbeam_channel::Receiver<ScriptExecutionContextDestructionEvent>>,
+    mut rune_vms: NonSendMut<'_, VMCollection>,
+) {
+    while let Ok(event) = receiver.try_recv() {
+        rune_vms.remove(event.vm_index);
+    }
+
+    drop(receiver);
+}
+
 #[derive(Component)]
 struct ScriptExecutionContext {
     vm_index: usize,
     entry_fn: Hash,
     input_args: Vec<String>,
-    drop_handler: Box<dyn Fn(&Self) + Send + Sync>,
+    event_writer: crossbeam_channel::Sender<ScriptExecutionContextDestructionEvent>,
 }
 
 impl Drop for ScriptExecutionContext {
     fn drop(&mut self) {
-        (self.drop_handler)(self);
+        self.event_writer
+            .send(ScriptExecutionContextDestructionEvent {
+                vm_index: self.vm_index,
+            })
+            .expect("send ScriptExecutionContextDestructionEvent timed-out");
     }
+}
+
+struct ScriptExecutionContextDestructionEvent {
+    vm_index: usize,
 }
 
 #[derive(Default)]
@@ -205,4 +227,10 @@ impl VMCollection {
 struct VMContext {
     vm: Vm,
     last_result: Value,
+}
+
+impl Drop for VMContext {
+    fn drop(&mut self) {
+        info!("VMContext dropped");
+    }
 }

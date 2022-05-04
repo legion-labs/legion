@@ -4650,6 +4650,7 @@ name = "lgn-scripting"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "crossbeam-channel",
  "erased-serde",
  "lazy_static",
  "lgn-app",
