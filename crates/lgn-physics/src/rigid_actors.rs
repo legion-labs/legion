@@ -5,7 +5,8 @@ use physx::{
     cooking::PxCooking,
     foundation::DefaultAllocator,
     prelude::{
-        Geometry, GeometryType, Owner, Physics, PhysicsFoundation, PxTransform, RigidBody, Scene,
+        Actor, Geometry, GeometryType, Owner, Physics, PhysicsFoundation, PxTransform, RigidBody,
+        Scene,
     },
 };
 
@@ -67,7 +68,7 @@ pub(crate) fn add_dynamic_actor_to_scene(
     physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
     scene: &mut ResMut<'_, Owner<PxScene>>,
     transform: &GlobalTransform,
-    geometry: &CollisionGeometry,
+    geometry: &impl Geometry,
     entity: Entity,
     material: &mut ResMut<'_, Owner<PxMaterial>>,
 ) {
@@ -91,7 +92,7 @@ pub(crate) fn add_static_actor_to_scene(
     physics: &mut ResMut<'_, PhysicsFoundation<DefaultAllocator, PxShape>>,
     scene: &mut ResMut<'_, Owner<PxScene>>,
     transform: &GlobalTransform,
-    geometry: &CollisionGeometry,
+    geometry: &impl Geometry,
     entity: Entity,
     material: &mut ResMut<'_, Owner<PxMaterial>>,
 ) {
@@ -106,4 +107,12 @@ pub(crate) fn add_static_actor_to_scene(
         )
         .expect("failed to create rigid static actor");
     scene.add_static_actor(actor);
+}
+
+pub(crate) fn remove_actor_from_scene(
+    scene: &mut ResMut<'_, Owner<PxScene>>,
+    actor: &mut impl Actor,
+    wake_touching: bool,
+) {
+    scene.remove_actor(actor, wake_touching);
 }
