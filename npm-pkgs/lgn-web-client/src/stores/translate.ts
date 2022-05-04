@@ -1,25 +1,34 @@
-import type { FluentBundle, FluentVariable } from "@fluent/bundle";
+import type { FluentBundle } from "@fluent/bundle";
 import type { Readable } from "svelte/store";
 import { derived } from "svelte/store";
 
 import { displayError } from "../lib/errors";
 import log from "../lib/log";
+import type {
+  FluentBaseVariablesOnly,
+  ResolveFluentArgumentsVariablesOnly,
+} from "../types/fluent";
 import type { BundlesStore } from "./bundles";
 import type { LocaleStore } from "./locale";
 
-export type TranslateValue = (
-  id: string,
-  args?: Record<string, FluentVariable> | null
+export type TranslateValue<Fluent extends FluentBaseVariablesOnly> = <
+  Id extends keyof Fluent
+>(
+  ...args: ResolveFluentArgumentsVariablesOnly<Fluent, Id>
 ) => string;
 
-export type TranslateStore = Readable<TranslateValue>;
+export type TranslateStore<Fluent extends FluentBaseVariablesOnly> = Readable<
+  TranslateValue<Fluent>
+>;
 
 // TODO: Add errors support
-function translate(
+function translate<
+  Fluent extends FluentBaseVariablesOnly,
+  Id extends keyof Fluent
+>(
   locale: string,
   bundles: Map<string, FluentBundle>,
-  id: string,
-  args?: Record<string, FluentVariable> | null
+  ...[id, variables]: ResolveFluentArgumentsVariablesOnly<Fluent, Id>
 ) {
   const errors: Error[] = [];
 
@@ -29,15 +38,15 @@ function translate(
     return "";
   }
 
-  const message = bundle.getMessage(id);
+  const message = bundle.getMessage(id as string);
 
   const translatedMessage = message?.value
-    ? bundle.formatPattern(message.value, args, errors)
+    ? bundle.formatPattern(message.value, variables, errors)
     : "";
 
   if (errors.length) {
     log.error(
-      log.json`Couldn't translate message ${id} (${args}): ${displayError(
+      log.json`Couldn't translate message ${id} (${variables}): ${displayError(
         errors.map((error) => displayError(error)).join(", ")
       )}`
     );
@@ -46,11 +55,17 @@ function translate(
   return translatedMessage;
 }
 
-export function createTranslateStore(
+export function createTranslateStore<Fluent extends FluentBaseVariablesOnly>(
   locale: LocaleStore,
   bundles: BundlesStore
-): TranslateStore {
-  return derived([locale, bundles], ([$locale, $bundles]) =>
-    translate.bind(null, $locale, $bundles)
+): TranslateStore<Fluent> {
+  return derived(
+    [locale, bundles],
+    ([$locale, $bundles]) =>
+      function <Id extends keyof Fluent>(
+        ...args: ResolveFluentArgumentsVariablesOnly<Fluent, Id>
+      ) {
+        return translate<Fluent, Id>($locale, $bundles, ...args);
+      }
   );
 }

@@ -1,19 +1,27 @@
 <script lang="ts">
-  import type { FluentVariable } from "@fluent/bundle";
   import { getContext } from "svelte";
 
   import { l10nOrchestratorContextKey } from "../constants";
   import type { L10nOrchestrator } from "../orchestrators/l10n";
+  import type {
+    FluentBase,
+    ResolveFluentRecordVariablesOnly,
+  } from "../types/fluent";
 
-  export let customL10nOrchestrator: L10nOrchestrator | undefined = undefined;
+  type Fluent = $$Generic<FluentBase>;
 
-  export let id: string;
+  type Id = $$Generic<keyof Fluent>;
 
-  export let args: Record<string, FluentVariable> | null = null;
+  type $$Props = ResolveFluentRecordVariablesOnly<Fluent, Id>;
+
+  export let customL10nOrchestrator: L10nOrchestrator<Fluent> | undefined =
+    undefined;
 
   const l10n =
     customL10nOrchestrator ||
-    getContext<L10nOrchestrator | undefined>(l10nOrchestratorContextKey);
+    getContext<L10nOrchestrator<Fluent> | undefined>(
+      l10nOrchestratorContextKey
+    );
 
   if (!l10n) {
     throw new Error(
@@ -26,4 +34,4 @@ constant exported by the `L10n` component"
   const { t } = l10n;
 </script>
 
-{$t(id, args)}
+{$t($$props.id, $$props.variables)}

@@ -10,12 +10,13 @@ import type { LocalConfig, LocaleStore } from "../stores/locale";
 import { createLocaleStore } from "../stores/locale";
 import type { TranslateStore } from "../stores/translate";
 import { createTranslateStore } from "../stores/translate";
+import type { FluentBase } from "../types/fluent";
 
-export type L10nOrchestrator = {
+export type L10nOrchestrator<Fluent extends FluentBase> = {
   bundles: BundlesStore;
   availableLocales: AvailableLocalesStore;
   locale: LocaleStore;
-  t: TranslateStore;
+  t: TranslateStore<Fluent>;
 };
 
 export type Locales = {
@@ -42,10 +43,10 @@ export type L10nConfig = {
  * import myLocale from "@/assets/locales/myLocale.ftl?raw";
  * ```
  */
-export function createL10nOrchestrator(
+export function createL10nOrchestrator<Fluent extends FluentBase>(
   locales: Locales[],
   config: L10nConfig = {}
-): L10nOrchestrator {
+): L10nOrchestrator<Fluent> {
   const bundles = createBundlesStore();
 
   for (const { names, contents } of locales) {
@@ -68,7 +69,7 @@ export function createL10nOrchestrator(
 
   const locale = createLocaleStore(availableLocales, "en-US", config.local);
 
-  const t = createTranslateStore(locale, bundles);
+  const t = createTranslateStore<Fluent>(locale, bundles);
 
   return { bundles, availableLocales, locale, t };
 }
