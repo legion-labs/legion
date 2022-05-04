@@ -6129,7 +6129,8 @@ dependencies = [
 [[package]]
 name = "physx"
 version = "0.12.2"
-source = "git+https://github.com/legion-labs/physx-rs.git?rev=ca542cbb954a1c1d37cbb663ce97497d8f3b66e3#ca542cbb954a1c1d37cbb663ce97497d8f3b66e3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dea0cadc51d9ba470f2e05973e701435a02b0dc9aa30b2f58c3f94ce9935a9bf"
 dependencies = [
  "enumflags2",
  "glam",
@@ -6141,7 +6142,8 @@ dependencies = [
 [[package]]
 name = "physx-sys"
 version = "0.4.16"
-source = "git+https://github.com/legion-labs/physx-rs.git?rev=ca542cbb954a1c1d37cbb663ce97497d8f3b66e3#ca542cbb954a1c1d37cbb663ce97497d8f3b66e3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59c13769549536a68ab994ff1b760de35e8e18f3427f049945a0439e7e84ac27"
 dependencies = [
  "cc",
 ]
