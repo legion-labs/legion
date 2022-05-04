@@ -30,6 +30,7 @@
     threadItemLengthContextKey,
     threadItemLengthFallback,
   } from "./constants";
+  import L10n from "@lgn/web-client/src/components/L10n.svelte";
 
   export let initAuthStatus: InitAuthStatus | null;
 
@@ -94,6 +95,8 @@
 
 <div class="pt-2 pb-4 antialiased">
   <Header />
+
+  <L10n id="login-input" />
   <div class="pl-5 pr-5 pt-5 overflow-hidden">
     <Router>
       <Route path="/" primary={false}>
