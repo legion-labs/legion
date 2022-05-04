@@ -17,7 +17,7 @@ pub(crate) enum RuntimeServerCommand {
 }
 
 pub(crate) struct GRPCServer {
-    command_sender: crossbeam_channel::Sender<RuntimeServerCommand>,
+    command_sender: Sender<RuntimeServerCommand>,
 }
 
 impl GRPCServer {

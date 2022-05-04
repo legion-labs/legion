@@ -1,3 +1,4 @@
+use crossbeam_channel::{Receiver, Sender};
 use lgn_ecs::prelude::{Commands, Component, Entity, Query, Res, ResMut, Without};
 use lgn_tracing::prelude::error;
 use lgn_transform::prelude::GlobalTransform;
@@ -19,7 +20,7 @@ use crate::{
 #[derive(Component)]
 pub(crate) struct RigidActor {
     actor_ptr: *mut PxActor,
-    event_writer: crossbeam_channel::Sender<RigidActorDestructionEvent>,
+    event_writer: Sender<RigidActorDestructionEvent>,
 }
 
 // SAFETY: the actors are kept alive by the physics scene
@@ -42,7 +43,7 @@ pub(crate) fn create_rigid_actors<T>(
     mut scene: ResMut<'_, Owner<PxScene>>,
     mut default_material: ResMut<'_, Owner<PxMaterial>>,
     mut commands: Commands<'_, '_>,
-    sender: Res<'_, crossbeam_channel::Sender<RigidActorDestructionEvent>>,
+    sender: Res<'_, Sender<RigidActorDestructionEvent>>,
 ) where
     T: Component + ConvertToCollisionGeometry + WithActorType,
 {
@@ -137,9 +138,9 @@ pub(crate) fn add_static_actor_to_scene(
 
 pub(crate) fn cleanup_rigid_actors(
     mut scene: ResMut<'_, Owner<PxScene>>,
-    receiver: Res<'_, crossbeam_channel::Receiver<RigidActorDestructionEvent>>,
+    receiver: Res<'_, Receiver<RigidActorDestructionEvent>>,
 ) {
-    while let Ok(event) = receiver.try_recv() {
+    for event in receiver.try_iter() {
         #[allow(unsafe_code)]
         unsafe {
             physx_sys::PxScene_removeActor_mut(scene.as_mut_ptr(), event.actor_ptr, true);

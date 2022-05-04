@@ -1,5 +1,6 @@
 use std::{str::FromStr, sync::Arc};
 
+use crossbeam_channel::{Receiver, Sender};
 use lgn_app::prelude::{App, CoreStage};
 use lgn_data_runtime::AssetRegistry;
 use lgn_ecs::prelude::{
@@ -56,7 +57,7 @@ fn compile(
     >,
     mut rune_vms: NonSendMut<'_, VMCollection>,
     rune_context: Res<'_, Context>,
-    sender: Res<'_, crossbeam_channel::Sender<ScriptExecutionContextDestructionEvent>>,
+    sender: Res<'_, Sender<ScriptExecutionContextDestructionEvent>>,
     registry: Res<'_, Arc<AssetRegistry>>,
     mut commands: Commands<'_, '_>,
 ) {
@@ -164,10 +165,10 @@ fn tick(world: &mut World) {
 }
 
 fn cleanup(
-    receiver: Res<'_, crossbeam_channel::Receiver<ScriptExecutionContextDestructionEvent>>,
+    receiver: Res<'_, Receiver<ScriptExecutionContextDestructionEvent>>,
     mut rune_vms: NonSendMut<'_, VMCollection>,
 ) {
-    while let Ok(event) = receiver.try_recv() {
+    for event in receiver.try_iter() {
         rune_vms.remove(event.vm_index);
     }
 
@@ -179,7 +180,7 @@ struct ScriptExecutionContext {
     vm_index: usize,
     entry_fn: Hash,
     input_args: Vec<String>,
-    event_writer: crossbeam_channel::Sender<ScriptExecutionContextDestructionEvent>,
+    event_writer: Sender<ScriptExecutionContextDestructionEvent>,
 }
 
 impl Drop for ScriptExecutionContext {
