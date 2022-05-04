@@ -5,6 +5,8 @@ import type { BlockSpansReply } from "@lgn/proto-telemetry/dist/analytics";
 import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
 import type { Process } from "@lgn/proto-telemetry/dist/process";
 import type { Stream } from "@lgn/proto-telemetry/dist/stream";
+import { displayError } from "@lgn/web-client/src/lib/errors";
+import log from "@lgn/web-client/src/lib/log";
 
 import { loadPromise, loadWrap } from "@/lib/Misc/LoadingStore";
 import { makeGrpcClient } from "@/lib/client";
@@ -159,8 +161,11 @@ export class TimelineStateManager {
             this.state.addAsyncData(processId, reply, sectionSequenceNumber);
             return this.fetchDynData();
           },
-          (e) => {
-            console.log("Error in fetch_block_async_spans", e);
+          (error) => {
+            log.error(
+              `Error in fetch_block_async_spans: ${displayError(error)}`
+            );
+
             return this.fetchDynData();
           }
         )
@@ -243,8 +248,11 @@ export class TimelineStateManager {
                   this.state.addAsyncBlockData(process.processId, reply);
                   return this.fetchDynData();
                 },
-                (e) => {
-                  console.log("Error in fetch_block_async_stats", e);
+                (error) => {
+                  log.error(
+                    `Error in fetch_block_async_stats: ${displayError(error)}`
+                  );
+
                   return this.fetchDynData();
                 }
               )
@@ -335,8 +343,8 @@ export class TimelineStateManager {
             this.onLodReceived(o);
             return this.fetchDynData();
           },
-          (e) => {
-            console.log("Error fetching block spans", e);
+          (error) => {
+            log.error(`Error fetching block spans: ${displayError(error)}`);
             return this.fetchDynData();
           }
         )

@@ -5,6 +5,7 @@
     GrpcWebImpl,
     HealthClientImpl,
   } from "@lgn/proto-telemetry/dist/health";
+  import log from "@lgn/web-client/src/lib/log";
 
   import { getRemoteHost } from "@/lib/client";
 
@@ -12,8 +13,10 @@
     const client = new HealthClientImpl(
       new GrpcWebImpl("http://" + getRemoteHost() + ":9090", {})
     );
+
     const res = await client.check({ service: "analytics" });
-    console.log(res);
+
+    log.debug("health", res);
   });
 </script>
 

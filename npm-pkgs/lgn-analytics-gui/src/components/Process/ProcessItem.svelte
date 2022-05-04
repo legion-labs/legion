@@ -1,9 +1,12 @@
 <script lang="ts">
   import { formatDistance } from "date-fns";
+  import { getContext } from "svelte";
   import { link } from "svelte-navigator";
 
   import type { ProcessInstance } from "@lgn/proto-telemetry/dist/analytics";
+  import type { L10nOrchestrator } from "@lgn/web-client/src/orchestrators/l10n";
 
+  import { l10nOrchestratorContextKey } from "@/constants";
   import { makeGrpcClient } from "@/lib/client";
   import { formatProcessName } from "@/lib/format";
 
@@ -11,12 +14,15 @@
   import ProcessPlatform from "./ProcessPlatform.svelte";
   import User from "./User.svelte";
 
+  const { locale } = getContext<L10nOrchestrator>(l10nOrchestratorContextKey);
+
   export let processInstance: ProcessInstance;
   export let depth: number;
   export let index: number;
 
   let processes: ProcessInstance[] | undefined = undefined;
   let collapsed = true;
+  let formattedStateTime: string | undefined;
 
   async function onClick() {
     collapsed = !collapsed;
@@ -31,13 +37,18 @@
 
   function formatLocalTime(timeStr: string): string {
     const time = new Date(timeStr);
-    return time.toLocaleTimeString(navigator.language, {
+
+    return time.toLocaleTimeString($locale, {
       timeZoneName: "short",
       hour12: false,
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
     });
+  }
+
+  $: if ($locale && processInstance.processInfo) {
+    formattedStateTime = formatLocalTime(processInstance.processInfo.startTime);
   }
 </script>
 
@@ -85,8 +96,8 @@
         addSuffix: true,
       })}
     </div> -->
-    <div class="w-2/12 pl-4 truncate">
-      {formatLocalTime(processInstance.processInfo.startTime)}
+    <div class="w-2/12 pl-4 truncate" title={formattedStateTime}>
+      {formattedStateTime}
       ({formatDistance(
         new Date(processInstance.processInfo.startTime),
         new Date(),

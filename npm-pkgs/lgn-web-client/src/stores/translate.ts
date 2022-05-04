@@ -2,13 +2,15 @@ import type { FluentBundle, FluentVariable } from "@fluent/bundle";
 import type { Readable } from "svelte/store";
 import { derived } from "svelte/store";
 
+import { displayError } from "../lib/errors";
+import log from "../lib/log";
 import type { BundlesStore } from "./bundles";
 import type { LocaleStore } from "./locale";
 
 export type TranslateValue = (
   id: string,
   args?: Record<string, FluentVariable> | null
-) => void;
+) => string;
 
 export type TranslateStore = Readable<TranslateValue>;
 
@@ -19,6 +21,8 @@ function translate(
   id: string,
   args?: Record<string, FluentVariable> | null
 ) {
+  const errors: Error[] = [];
+
   const bundle = bundles.get(locale);
 
   if (!bundle) {
@@ -27,7 +31,19 @@ function translate(
 
   const message = bundle.getMessage(id);
 
-  return message?.value ? bundle.formatPattern(message.value, args) : "";
+  const translatedMessage = message?.value
+    ? bundle.formatPattern(message.value, args, errors)
+    : "";
+
+  if (errors.length) {
+    log.error(
+      log.json`Couldn't translate message ${id} (${args}): ${displayError(
+        errors.map((error) => displayError(error)).join(", ")
+      )}`
+    );
+  }
+
+  return translatedMessage;
 }
 
 export function createTranslateStore(

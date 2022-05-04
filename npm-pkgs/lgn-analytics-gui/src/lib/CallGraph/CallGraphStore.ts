@@ -1,6 +1,8 @@
 import { writable } from "svelte/store";
 
 import type { CumulativeCallGraphBlockDesc } from "@lgn/proto-telemetry/dist/callgraph";
+import { displayError } from "@lgn/web-client/src/lib/errors";
+import log from "@lgn/web-client/src/lib/log";
 
 import { makeGrpcClient } from "@/lib/client";
 
@@ -140,10 +142,11 @@ async function getProcessCumulatedCallGraph<T extends CallGraphState>(
       await Promise.any(promises).catch((e) => {
         if (e instanceof AggregateError) {
           for (const error of e.errors) {
-            console.error(error);
+            log.error(displayError(error));
           }
         } else {
-          console.log(e);
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+          log.debug("call-graph", e);
         }
       });
     }

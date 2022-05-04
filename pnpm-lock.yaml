@@ -191,6 +191,7 @@ importers:
 
   npm-pkgs/lgn-analytics-gui:
     specifiers:
+      '@fluent/bundle': ^0.17.1
       '@improbable-eng/grpc-web': ^0.15.0
       '@lgn/proto-telemetry': ^0.1.0
       '@lgn/vite-plugin-ts-proto': workspace:^0.1.0
@@ -246,6 +247,7 @@ importers:
       vite: ^2.9.4
       vite-tsconfig-paths: ^3.4.1
     dependencies:
+      '@fluent/bundle': 0.17.1
       '@improbable-eng/grpc-web': 0.15.0_google-protobuf@3.19.4
       '@lgn/proto-telemetry': link:../../crates/lgn-telemetry-proto
       '@lgn/web-client': link:../lgn-web-client
