@@ -202,6 +202,13 @@
   function internalScrollTop(value: number) {
     div.scrollTo({ top: value });
   }
+
+  function onMouseLeave() {
+    stateStore.stopDrag();
+    if ($stateStore.currentSelection) {
+      [callGraphBegin, callGraphEnd] = $stateStore.currentSelection;
+    }
+  }
 </script>
 
 <svelte:window on:keydown={handleKeydown} bind:innerWidth={windowInnerWidth} />
@@ -229,7 +236,7 @@
           on:scroll={(e) => onScroll(e)}
           on:mousedown|preventDefault={(e) => onMouseDown(e)}
           on:mousemove|preventDefault={(e) => onMouseMove(e)}
-          on:mouseleave|preventDefault={(_) => stateStore.stopDrag()}
+          on:mouseleave|preventDefault={(_) => onMouseLeave()}
           on:mouseup|preventDefault={(e) => onMouseUp(e)}
         >
           {#if stateStore}
