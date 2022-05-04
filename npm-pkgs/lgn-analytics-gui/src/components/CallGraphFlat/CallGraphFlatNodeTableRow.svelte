@@ -39,7 +39,7 @@
     style:width="{fill >= 100 ? 0 : fill}%"
     class="absolute bg-slate-900 bg-opacity-20 h-full"
   />
-  <td class="truncate">
+  <td class="truncate max-w-md" title={name}>
     {name}
     <span class="text-xs">
       ({formatExecutionTime(value.acc)})
