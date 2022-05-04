@@ -42,7 +42,6 @@ pub(crate) fn sync_transforms(
                 "dynamic actor without a Transform component, entity {}",
                 entity.id()
             );
-            //scene.remove_actor(actor, false);
         }
     }
 }

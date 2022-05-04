@@ -6,7 +6,6 @@ use lgn_graphics_renderer::{
     resources::{DefaultMeshType, ModelManager},
 };
 use lgn_math::prelude::Vec3;
-use lgn_tracing::{info, warn};
 use lgn_transform::prelude::{GlobalTransform, Transform, TransformBundle};
 
 use crate::{runtime::PhysicsRigidSphere, RigidActorType};
@@ -25,7 +24,7 @@ pub(crate) fn build(app: &mut App) {
 
 fn spawn_random_sphere(mut commands: Commands<'_, '_>, model_manager: Res<'_, ModelManager>) {
     let translation = Vec3::new(0.0, 3.0, 0.7);
-    let entity = commands
+    commands
         .spawn()
         .insert_bundle(TransformBundle {
             local: Transform::from_translation(translation),
@@ -42,9 +41,7 @@ fn spawn_random_sphere(mut commands: Commands<'_, '_>, model_manager: Res<'_, Mo
         })
         .insert(Timebomb {
             timer: Timer::from_seconds(5.0, false),
-        })
-        .id();
-    info!("spawning entity {}", entity.id());
+        });
 
     drop(model_manager);
 }
@@ -63,15 +60,8 @@ fn tick(
         timebomb.timer.tick(time.delta());
         if timebomb.timer.finished() {
             commands.entity(entity).despawn();
-            warn!("despawning entity {}", entity.id());
         }
     }
 
     drop(time);
-}
-
-impl Drop for Timebomb {
-    fn drop(&mut self) {
-        info!("dropping Timebomb component");
-    }
 }
