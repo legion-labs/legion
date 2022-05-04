@@ -17,24 +17,24 @@ use crate::{
     PxMaterial, PxScene, PxShape, RigidActorType, WithActorType,
 };
 
+#[derive(Copy, Clone)]
+struct ActorMutPtr(*mut PxActor);
+
+// SAFETY: the actors are kept alive by the physics scene, the pointer is only used
+#[allow(unsafe_code)]
+unsafe impl Send for ActorMutPtr {}
+#[allow(unsafe_code)]
+unsafe impl Sync for ActorMutPtr {}
+
 #[derive(Component)]
 pub(crate) struct RigidActor {
-    actor_ptr: *mut PxActor,
-    event_writer: Sender<RigidActorDestructionEvent>,
+    actor: ActorMutPtr,
+    event_sender: Sender<ActorDestructionEvent>,
 }
 
-// SAFETY: the actors are kept alive by the physics scene
-#[allow(unsafe_code)]
-unsafe impl Send for RigidActor {}
-#[allow(unsafe_code)]
-unsafe impl Sync for RigidActor {}
-
-pub(crate) struct RigidActorDestructionEvent {
-    actor_ptr: *mut PxActor,
+pub(crate) struct ActorDestructionEvent {
+    actor: ActorMutPtr,
 }
-
-#[allow(unsafe_code)]
-unsafe impl Send for RigidActorDestructionEvent {}
 
 pub(crate) fn create_rigid_actors<T>(
     query: Query<'_, '_, (Entity, &T, &GlobalTransform), Without<CollisionGeometry>>,
@@ -43,7 +43,7 @@ pub(crate) fn create_rigid_actors<T>(
     mut scene: ResMut<'_, Owner<PxScene>>,
     mut default_material: ResMut<'_, Owner<PxMaterial>>,
     mut commands: Commands<'_, '_>,
-    sender: Res<'_, Sender<RigidActorDestructionEvent>>,
+    sender: Res<'_, Sender<ActorDestructionEvent>>,
 ) where
     T: Component + ConvertToCollisionGeometry + WithActorType,
 {
@@ -51,7 +51,7 @@ pub(crate) fn create_rigid_actors<T>(
         let mut entity_commands = commands.entity(entity);
         match physics_component.convert(&transform.scale, &mut physics, &cooking) {
             Ok(geometry) => {
-                let actor_ptr = match physics_component.get_actor_type() {
+                let actor = ActorMutPtr(match physics_component.get_actor_type() {
                     RigidActorType::Dynamic => add_dynamic_actor_to_scene(
                         &mut physics,
                         &mut scene,
@@ -68,12 +68,12 @@ pub(crate) fn create_rigid_actors<T>(
                         entity,
                         &mut default_material,
                     ),
-                };
+                });
 
                 entity_commands.insert(geometry);
                 entity_commands.insert(RigidActor {
-                    actor_ptr,
-                    event_writer: sender.clone(),
+                    actor,
+                    event_sender: sender.clone(),
                 });
             }
             Err(error) => {
@@ -138,12 +138,13 @@ pub(crate) fn add_static_actor_to_scene(
 
 pub(crate) fn cleanup_rigid_actors(
     mut scene: ResMut<'_, Owner<PxScene>>,
-    receiver: Res<'_, Receiver<RigidActorDestructionEvent>>,
+    receiver: Res<'_, Receiver<ActorDestructionEvent>>,
 ) {
+    let wake_touching = true;
     for event in receiver.try_iter() {
         #[allow(unsafe_code)]
         unsafe {
-            physx_sys::PxScene_removeActor_mut(scene.as_mut_ptr(), event.actor_ptr, true);
+            physx_sys::PxScene_removeActor_mut(scene.as_mut_ptr(), event.actor.0, wake_touching);
         }
     }
 
@@ -152,9 +153,10 @@ pub(crate) fn cleanup_rigid_actors(
 
 impl Drop for RigidActor {
     fn drop(&mut self) {
-        if let Err(e) = self.event_writer.send(RigidActorDestructionEvent {
-            actor_ptr: self.actor_ptr,
-        }) {
+        if let Err(e) = self
+            .event_sender
+            .send(ActorDestructionEvent { actor: self.actor })
+        {
             error!("failed to send RigidActorDestructionEvent: {}", e);
         }
     }

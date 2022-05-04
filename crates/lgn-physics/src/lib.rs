@@ -56,7 +56,7 @@ use crate::{
     callbacks::{OnAdvance, OnCollision, OnConstraintBreak, OnTrigger, OnWakeSleep},
     debug_display::display_collision_geometry,
     physics_options::PhysicsOptions,
-    rigid_actors::{cleanup_rigid_actors, create_rigid_actors, RigidActorDestructionEvent},
+    rigid_actors::{cleanup_rigid_actors, create_rigid_actors, ActorDestructionEvent},
     simulation::{step_simulation, sync_transforms},
 };
 pub use crate::{
@@ -104,7 +104,7 @@ impl Plugin for PhysicsPlugin {
         app.add_system_to_stage(PhysicsStage::Update, Self::process_scene_settings);
 
         // component creation
-        let (sender, receiver) = crossbeam_channel::unbounded::<RigidActorDestructionEvent>();
+        let (sender, receiver) = crossbeam_channel::unbounded::<ActorDestructionEvent>();
         app.insert_resource(sender)
             .insert_resource(receiver)
             .add_system_set_to_stage(
