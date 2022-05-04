@@ -39,7 +39,7 @@ mod simulation;
 
 use lgn_app::prelude::{App, CoreStage, Plugin};
 use lgn_ecs::prelude::{
-    Commands, Entity, ParallelSystemDescriptorCoercion, Query, Res, ResMut, SystemStage,
+    Commands, Entity, ParallelSystemDescriptorCoercion, Query, Res, ResMut, SystemSet, SystemStage,
 };
 use lgn_graphics_renderer::labels::RenderStage;
 use lgn_tracing::prelude::{error, warn};
@@ -56,7 +56,7 @@ use crate::{
     callbacks::{OnAdvance, OnCollision, OnConstraintBreak, OnTrigger, OnWakeSleep},
     debug_display::display_collision_geometry,
     physics_options::PhysicsOptions,
-    rigid_actors::create_rigid_actors,
+    rigid_actors::{cleanup_rigid_actors, create_rigid_actors, RigidActorDestructionEvent},
     simulation::{step_simulation, sync_transforms},
 };
 pub use crate::{
@@ -103,38 +103,28 @@ impl Plugin for PhysicsPlugin {
 
         app.add_system_to_stage(PhysicsStage::Update, Self::process_scene_settings);
 
-        app.add_system_to_stage(
-            PhysicsStage::Update,
-            create_rigid_actors::<runtime::PhysicsRigidBox>,
-        )
-        .add_system_to_stage(
-            PhysicsStage::Update,
-            create_rigid_actors::<runtime::PhysicsRigidCapsule>,
-        )
-        .add_system_to_stage(
-            PhysicsStage::Update,
-            create_rigid_actors::<runtime::PhysicsRigidConvexMesh>,
-        )
-        // app.add_system_to_stage(
-        //     PhysicsStage::Update,
-        //     create_rigid_actors::<runtime::PhysicsRigidHeightField>,
-        // );
-        .add_system_to_stage(
-            PhysicsStage::Update,
-            create_rigid_actors::<runtime::PhysicsRigidPlane>,
-        )
-        .add_system_to_stage(
-            PhysicsStage::Update,
-            create_rigid_actors::<runtime::PhysicsRigidSphere>,
-        )
-        .add_system_to_stage(
-            PhysicsStage::Update,
-            create_rigid_actors::<runtime::PhysicsRigidTriangleMesh>,
-        );
+        // component creation
+        let (sender, receiver) = crossbeam_channel::unbounded::<RigidActorDestructionEvent>();
+        app.insert_resource(sender)
+            .insert_resource(receiver)
+            .add_system_set_to_stage(
+                PhysicsStage::Update,
+                SystemSet::new()
+                    .with_system(create_rigid_actors::<runtime::PhysicsRigidBox>)
+                    .with_system(create_rigid_actors::<runtime::PhysicsRigidCapsule>)
+                    .with_system(create_rigid_actors::<runtime::PhysicsRigidConvexMesh>)
+                    //.with_system(create_rigid_actors::<runtime::PhysicsRigidHeightField>)
+                    .with_system(create_rigid_actors::<runtime::PhysicsRigidPlane>)
+                    .with_system(create_rigid_actors::<runtime::PhysicsRigidSphere>)
+                    .with_system(create_rigid_actors::<runtime::PhysicsRigidTriangleMesh>),
+            )
+            .add_system_to_stage(CoreStage::Last, cleanup_rigid_actors);
 
+        // simulation
         app.add_system_to_stage(PhysicsStage::Update, step_simulation)
             .add_system_to_stage(PhysicsStage::Update, sync_transforms.after(step_simulation));
 
+        // debug display
         app.init_resource::<PhysicsOptions>()
             .add_system_to_stage(RenderStage::Prepare, physics_options::ui_physics_options)
             .add_system_to_stage(RenderStage::Prepare, display_collision_geometry);

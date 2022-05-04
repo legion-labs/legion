@@ -4517,6 +4517,7 @@ dependencies = [
 name = "lgn-physics"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
  "egui",
  "erased-serde",
  "inventory",
