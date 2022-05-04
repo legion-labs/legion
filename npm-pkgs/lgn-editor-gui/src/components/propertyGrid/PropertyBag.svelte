@@ -20,6 +20,8 @@
     AddVectorSubPropertyEvent,
     RemoveVectorSubPropertyEvent,
   } from "./types";
+  import Icon from "@iconify/svelte";
+  import { slide } from "svelte/transition";
 
   const dispatch = createEventDispatcher<{
     input: PropertyUpdate;
@@ -41,6 +43,8 @@
   export let pathParts: string[];
 
   let removePromptId: symbol | null = null;
+
+  let collapsed = false;
 
   function addVectorSubProperty() {
     const index = property.subProperties.length;
@@ -113,9 +117,20 @@
 
 <div class="root" class:with-indent={level > 1}>
   {#if property.name}
-    <div class="property-name" title={property.name}>
-      <div class="truncate">
-        {property.name}
+    <div
+      on:click={(_) => (collapsed = !collapsed)}
+      class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
+      title={property.name}
+    >
+      <div>
+        <Icon
+          class="float-left"
+          width={"1.5em"}
+          icon={`ic:baseline-arrow-drop-${collapsed ? "up" : "down"}`}
+        />
+        <div class="truncate">
+          {property.name}
+        </div>
       </div>
       {#if parentProperty && propertyIsDynComponent(parentProperty)}
         <div
@@ -142,22 +157,26 @@
       {/if}
     </div>
   {/if}
-  {#each property.subProperties as subProperty, index (`${subProperty.name}-${index}`)}
-    {#if !subProperty.attributes.hidden}
-      <PropertyContainer
-        on:input
-        on:addVectorSubProperty
-        on:removeVectorSubProperty
-        pathParts={propertyIsGroup(property) || !property.name
-          ? pathParts
-          : [...pathParts, property.name]}
-        property={subProperty}
-        bind:parentProperty={property}
-        level={level + 1}
-        {index}
-      />
-    {/if}
-  {/each}
+  {#if !collapsed}
+    <span transition:slide={{ duration: 100 }}>
+      {#each property.subProperties as subProperty, index (`${subProperty.name}-${index}`)}
+        {#if !subProperty.attributes.hidden}
+          <PropertyContainer
+            on:input
+            on:addVectorSubProperty
+            on:removeVectorSubProperty
+            pathParts={propertyIsGroup(property) || !property.name
+              ? pathParts
+              : [...pathParts, property.name]}
+            property={subProperty}
+            bind:parentProperty={property}
+            level={level + 1}
+            {index}
+          />
+        {/if}
+      {/each}
+    </span>
+  {/if}
 </div>
 
 <style lang="postcss">
@@ -167,10 +186,6 @@
 
   .root.with-indent {
     @apply pl-1;
-  }
-
-  .property-name {
-    @apply flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm;
   }
 
   .optional {
