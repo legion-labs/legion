@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crossbeam_channel::{Receiver, Sender};
 use lgn_ecs::prelude::{Commands, Component, Entity, Query, Res, ResMut, Without};
 use lgn_tracing::prelude::error;
@@ -17,24 +19,44 @@ use crate::{
     PxMaterial, PxScene, PxShape, RigidActorType, WithActorType,
 };
 
-#[derive(Copy, Clone)]
-struct ActorMutPtr(*mut PxActor);
-
-// SAFETY: the actors are kept alive by the physics scene, the pointer is only used
-#[allow(unsafe_code)]
-unsafe impl Send for ActorMutPtr {}
-#[allow(unsafe_code)]
-unsafe impl Sync for ActorMutPtr {}
-
 #[derive(Component)]
 pub(crate) struct RigidActor {
     actor: ActorMutPtr,
     event_sender: Sender<ActorDestructionEvent>,
 }
 
-pub(crate) struct ActorDestructionEvent {
-    actor: ActorMutPtr,
+pub(crate) struct ActorDestructionEvent(ActorMutPtr);
+
+impl From<&RigidActor> for ActorDestructionEvent {
+    fn from(rigid_actor: &RigidActor) -> Self {
+        Self(rigid_actor.actor)
+    }
 }
+
+impl Deref for ActorDestructionEvent {
+    type Target = ActorMutPtr;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[derive(Copy, Clone)]
+pub(crate) struct ActorMutPtr(*mut PxActor);
+
+impl Deref for ActorMutPtr {
+    type Target = *mut PxActor;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+// SAFETY: the actors are kept alive by the physics scene, the pointer is only used
+#[allow(unsafe_code)]
+unsafe impl Send for ActorMutPtr {}
+#[allow(unsafe_code)]
+unsafe impl Sync for ActorMutPtr {}
 
 pub(crate) fn create_rigid_actors<T>(
     query: Query<'_, '_, (Entity, &T, &GlobalTransform), Without<CollisionGeometry>>,
@@ -144,7 +166,7 @@ pub(crate) fn cleanup_rigid_actors(
     for event in receiver.try_iter() {
         #[allow(unsafe_code)]
         unsafe {
-            physx_sys::PxScene_removeActor_mut(scene.as_mut_ptr(), event.actor.0, wake_touching);
+            physx_sys::PxScene_removeActor_mut(scene.as_mut_ptr(), **event, wake_touching);
         }
     }
 
@@ -153,11 +175,6 @@ pub(crate) fn cleanup_rigid_actors(
 
 impl Drop for RigidActor {
     fn drop(&mut self) {
-        if let Err(e) = self
-            .event_sender
-            .send(ActorDestructionEvent { actor: self.actor })
-        {
-            error!("failed to send RigidActorDestructionEvent: {}", e);
-        }
+        let _result = self.event_sender.send((&*self).into());
     }
 }

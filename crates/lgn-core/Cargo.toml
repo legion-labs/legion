@@ -14,10 +14,11 @@ lgn-app = { path = "../lgn-app", version = "0.1.0" }
 lgn-derive = { path = "../lgn-derive", version = "0.1.0" }
 lgn-ecs = { path = "../lgn-ecs", version = "0.1.0" }
 lgn-tasks = { path = "../lgn-tasks", version = "0.1.0" }
-lgn-utils = { path = "../lgn-utils", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
+lgn-utils = { path = "../lgn-utils", version = "0.1.0" }
 
 # other
-bytemuck = "1.7"
-instant = { version = "0.1", features = ["wasm-bindgen"] }
 bumpalo = "3.8"
+bytemuck = "1.7"
+crossbeam-channel = "0.5.1"
+instant = { version = "0.1", features = ["wasm-bindgen"] }

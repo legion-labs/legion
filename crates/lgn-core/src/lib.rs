@@ -6,6 +6,7 @@
 #![allow(clippy::needless_pass_by_value)]
 #![warn(missing_docs)]
 
+mod component_with_drop_event;
 mod float_ord;
 mod memory;
 mod name;
@@ -13,6 +14,7 @@ mod task_pool_options;
 mod time;
 
 pub use bytemuck::{bytes_of, cast_slice, Pod, Zeroable};
+pub use component_with_drop_event::ComponentWithDropEvent;
 pub use float_ord::*;
 pub use memory::*;
 pub use name::*;
