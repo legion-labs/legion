@@ -233,14 +233,14 @@ impl MetricHandler {
                             warn!("invalid value for metric: {:?}", *o);
                             None
                         }
-                        Result::Ok(Value::U8(v)) => Some(*v as f64),
-                        Result::Ok(Value::U32(v)) => Some(*v as f64),
+                        Result::Ok(Value::U8(v)) => Some(f64::from(*v)),
+                        Result::Ok(Value::U32(v)) => Some(f64::from(*v)),
                         Result::Ok(Value::U64(v)) => Some(*v as f64),
                         Result::Ok(Value::I64(v)) => Some(*v as f64),
                         Result::Ok(Value::F64(v)) => Some(*v),
                     };
                     if let Some(v) = value {
-                        points.push(MetricDataPoint { time_ms, value: v })
+                        points.push(MetricDataPoint { time_ms, value: v });
                     }
                 }
             }
