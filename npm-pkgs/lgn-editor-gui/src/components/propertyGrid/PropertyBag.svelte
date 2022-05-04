@@ -1,5 +1,7 @@
 <script lang="ts">
+  import Icon from "@iconify/svelte";
   import { createEventDispatcher } from "svelte";
+  import { slide } from "svelte/transition";
 
   import log from "@lgn/web-client/src/lib/log";
 
@@ -20,8 +22,6 @@
     AddVectorSubPropertyEvent,
     RemoveVectorSubPropertyEvent,
   } from "./types";
-  import Icon from "@iconify/svelte";
-  import { slide } from "svelte/transition";
 
   const dispatch = createEventDispatcher<{
     input: PropertyUpdate;
