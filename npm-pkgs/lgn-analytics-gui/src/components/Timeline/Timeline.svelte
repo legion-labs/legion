@@ -260,11 +260,11 @@
           on:tick={(e) => onMinimapTick(e.detail)}
         />
         <TimelineAxis {stateStore} />
-        <div class="mt-3">
+        <div class="pt-3">
           <TimelineRange {stateStore} />
         </div>
         {#if callGraphBegin && callGraphEnd}
-          <div class="mt-3 basis-1/5">
+          <div class="basis-1/5">
             <CallGraph
               begin={callGraphBegin}
               end={callGraphEnd}
