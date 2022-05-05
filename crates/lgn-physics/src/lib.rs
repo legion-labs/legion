@@ -32,7 +32,6 @@ mod debug_display;
 mod labels;
 mod mesh_scale;
 mod physics_options;
-mod random_spawning;
 mod rigid_actors;
 mod settings;
 mod simulation;
@@ -128,8 +127,6 @@ impl Plugin for PhysicsPlugin {
         app.init_resource::<PhysicsOptions>()
             .add_system_to_stage(RenderStage::Prepare, physics_options::ui_physics_options)
             .add_system_to_stage(RenderStage::Prepare, display_collision_geometry);
-
-        random_spawning::build(app);
     }
 }
 
