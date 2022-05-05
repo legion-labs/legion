@@ -122,7 +122,7 @@ impl BlobVec {
         // in the collection), so we get a double drop. To prevent that, we set len to 0 until we're
         // done.
         let old_len = std::mem::replace(&mut self.len, 0);
-        self.drop_ptr(ptr);
+        (self.drop)(ptr);
         std::ptr::copy_nonoverlapping(value, ptr, self.item_layout.size());
         self.len = old_len;
     }
@@ -184,7 +184,7 @@ impl BlobVec {
     pub unsafe fn swap_remove_and_drop_unchecked(&mut self, index: usize) {
         debug_assert!(index < self.len());
         let value = self.swap_remove_and_forget_unchecked(index);
-        self.drop_ptr(value);
+        (self.drop)(value);
     }
 
     /// # Safety
@@ -211,19 +211,12 @@ impl BlobVec {
         // panicking.
         self.len = 0;
         for i in 0..len {
-            let ptr = unsafe {
+            unsafe {
                 // NOTE: this doesn't use self.get_unchecked(i) because the debug_assert on
                 // index will panic here due to self.len being set to 0
-                self.get_ptr().as_ptr().add(i * self.item_layout.size())
-            };
-            self.drop_ptr(ptr);
-        }
-    }
-
-    #[inline]
-    fn drop_ptr(&self, ptr: *mut u8) {
-        unsafe {
-            (self.drop)(ptr);
+                let ptr = self.get_ptr().as_ptr().add(i * self.item_layout.size());
+                (self.drop)(ptr);
+            }
         }
     }
 }

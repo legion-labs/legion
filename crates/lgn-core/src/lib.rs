@@ -6,15 +6,15 @@
 #![allow(clippy::needless_pass_by_value)]
 #![warn(missing_docs)]
 
-mod component_with_drop_event;
+mod auto_destruct;
 mod float_ord;
 mod memory;
 mod name;
 mod task_pool_options;
 mod time;
 
+pub use auto_destruct::AutoDestruct;
 pub use bytemuck::{bytes_of, cast_slice, Pod, Zeroable};
-pub use component_with_drop_event::ComponentWithDropEvent;
 pub use float_ord::*;
 pub use memory::*;
 pub use name::*;
@@ -24,7 +24,7 @@ pub use time::*;
 pub mod prelude {
     //! The Legion Core Prelude.
     #[doc(hidden)]
-    pub use crate::{DefaultTaskPoolOptions, Name, Time, Timer};
+    pub use crate::{AutoDestruct, DefaultTaskPoolOptions, Name, Time, Timer};
 }
 
 use lgn_app::prelude::*;
@@ -32,6 +32,8 @@ use lgn_ecs::{
     schedule::{ExclusiveSystemDescriptorCoercion, SystemLabel},
     system::IntoExclusiveSystem,
 };
+
+use auto_destruct::tick_auto_destruct;
 
 /// Adds core functionality to Apps.
 #[derive(Default)]
@@ -65,6 +67,7 @@ impl Plugin for CorePlugin {
                 time_system.exclusive_system().label(CoreSystem::Time),
             )
             .add_system_to_stage(CoreStage::First, begin_frame)
-            .add_system_to_stage(CoreStage::Last, end_frame);
+            .add_system_to_stage(CoreStage::Last, end_frame)
+            .add_system_to_stage(CoreStage::Update, tick_auto_destruct);
     }
 }

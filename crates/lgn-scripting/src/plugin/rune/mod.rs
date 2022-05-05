@@ -7,7 +7,7 @@ use lgn_ecs::prelude::{
     Commands, Component, IntoExclusiveSystem, NonSendMut, Query, Res, With, Without, World,
 };
 use lgn_scripting_data::{runtime::ScriptComponent, ScriptType};
-use lgn_tracing::prelude::{error, info};
+use lgn_tracing::prelude::info;
 use rune::{
     termcolor::{ColorChoice, StandardStream},
     Context, ContextError, Diagnostics, Hash, Source, Sources, ToValue, Unit, Value, Vm,
@@ -43,7 +43,7 @@ pub(crate) fn build(app: &mut App) -> Result<(), ContextError> {
         .insert_resource(receiver)
         .add_system_to_stage(ScriptingStage::Compile, compile)
         .add_system_to_stage(ScriptingStage::Execute, tick.exclusive_system())
-        .add_system_to_stage(CoreStage::Last, cleanup);
+        .add_system_to_stage(CoreStage::Last, cleanup_execution_contexts);
 
     Ok(())
 }
@@ -94,7 +94,7 @@ fn compile(
             vm_index,
             entry_fn: Hash::type_hash(fn_name),
             input_args: script.input_values.clone(),
-            event_writer: sender.clone(),
+            event_sender: sender.clone(),
         };
 
         commands.entity(entity).insert(script_exec);
@@ -164,7 +164,21 @@ fn tick(world: &mut World) {
     }
 }
 
-fn cleanup(
+#[derive(Component)]
+struct ScriptExecutionContext {
+    vm_index: usize,
+    entry_fn: Hash,
+    input_args: Vec<String>,
+    event_sender: Sender<ScriptExecutionContextDestructionEvent>,
+}
+
+impl Drop for ScriptExecutionContext {
+    fn drop(&mut self) {
+        let _result = self.event_sender.send((&*self).into());
+    }
+}
+
+fn cleanup_execution_contexts(
     receiver: Res<'_, Receiver<ScriptExecutionContextDestructionEvent>>,
     mut rune_vms: NonSendMut<'_, VMCollection>,
 ) {
@@ -175,32 +189,16 @@ fn cleanup(
     drop(receiver);
 }
 
-#[derive(Component)]
-struct ScriptExecutionContext {
-    vm_index: usize,
-    entry_fn: Hash,
-    input_args: Vec<String>,
-    event_writer: Sender<ScriptExecutionContextDestructionEvent>,
-}
-
-impl Drop for ScriptExecutionContext {
-    fn drop(&mut self) {
-        if let Err(e) = self
-            .event_writer
-            .send(ScriptExecutionContextDestructionEvent {
-                vm_index: self.vm_index,
-            })
-        {
-            error!(
-                "failed to send ScriptExecutionContextDestructionEvent: {}",
-                e
-            );
-        }
-    }
-}
-
 struct ScriptExecutionContextDestructionEvent {
     vm_index: usize,
+}
+
+impl From<&ScriptExecutionContext> for ScriptExecutionContextDestructionEvent {
+    fn from(script_exec: &ScriptExecutionContext) -> Self {
+        Self {
+            vm_index: script_exec.vm_index,
+        }
+    }
 }
 
 #[derive(Default)]
@@ -234,10 +232,4 @@ impl VMCollection {
 struct VMContext {
     vm: Vm,
     last_result: Value,
-}
-
-impl Drop for VMContext {
-    fn drop(&mut self) {
-        info!("VMContext dropped");
-    }
 }

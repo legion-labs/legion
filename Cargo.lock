@@ -3915,7 +3915,6 @@ version = "0.1.0"
 dependencies = [
  "bumpalo",
  "bytemuck",
- "crossbeam-channel",
  "instant",
  "lgn-app",
  "lgn-derive",

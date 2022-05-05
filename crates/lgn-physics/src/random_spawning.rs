@@ -1,6 +1,6 @@
 use lgn_app::prelude::{App, CoreStage};
-use lgn_core::{prelude::Timer, FixedTimestep, Time};
-use lgn_ecs::prelude::{Commands, Component, Entity, Query, Res, SystemStage};
+use lgn_core::{prelude::AutoDestruct, FixedTimestep};
+use lgn_ecs::prelude::{Commands, Res, SystemStage};
 use lgn_graphics_renderer::{
     components::VisualComponent,
     resources::{DefaultMeshType, ModelManager},
@@ -18,8 +18,6 @@ pub(crate) fn build(app: &mut App) {
             .with_run_criteria(FixedTimestep::step(1.0))
             .with_system(spawn_random_sphere),
     );
-
-    app.add_system(tick);
 }
 
 fn spawn_random_sphere(mut commands: Commands<'_, '_>, model_manager: Res<'_, ModelManager>) {
@@ -39,29 +37,7 @@ fn spawn_random_sphere(mut commands: Commands<'_, '_>, model_manager: Res<'_, Mo
             actor_type: RigidActorType::Dynamic,
             radius: 0.25_f32,
         })
-        .insert(Timebomb {
-            timer: Timer::from_seconds(5.0, false),
-        });
+        .insert(AutoDestruct::from_seconds(5.0));
 
     drop(model_manager);
-}
-
-#[derive(Component)]
-struct Timebomb {
-    timer: Timer,
-}
-
-fn tick(
-    mut commands: Commands<'_, '_>,
-    mut query: Query<'_, '_, (Entity, &mut Timebomb)>,
-    time: Res<'_, Time>,
-) {
-    for (entity, mut timebomb) in query.iter_mut() {
-        timebomb.timer.tick(time.delta());
-        if timebomb.timer.finished() {
-            commands.entity(entity).despawn();
-        }
-    }
-
-    drop(time);
 }
