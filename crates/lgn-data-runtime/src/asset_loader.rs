@@ -175,7 +175,7 @@ impl AssetLoaderStub {
 
     pub(crate) fn collect_dropped_handles(&self) -> Vec<ResourceTypeAndId> {
         let mut all_removed = vec![];
-        while let Ok(unload_id) = self.unload_channel_rx.try_recv() {
+        for unload_id in self.unload_channel_rx.try_iter() {
             let handles = self.handles.pin();
             if let Some(removed) = handles.get(&unload_id) {
                 if removed.strong_count() == 0 {
