@@ -8,5 +8,9 @@
   >
     <span class="capitalize">{user.charAt(0)}</span>
   </div>
-  <span class="capitalize">{user}</span>
+  <div class="capitalize">
+    <slot {user}>
+      {user}
+    </slot>
+  </div>
 </div>

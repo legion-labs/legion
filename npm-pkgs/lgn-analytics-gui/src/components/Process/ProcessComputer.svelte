@@ -3,15 +3,7 @@
 
   export let process: Process | undefined;
 
-  function getComputer() {
-    if (!process) {
-      return "Unknown";
-    }
-    if (!process.computer) {
-      return "Unknown";
-    }
-    return process.computer;
-  }
+  $: computer = process?.computer || "Unknown";
 </script>
 
 <div
@@ -19,5 +11,9 @@
   class="flex gap-2 items-center"
 >
   <i class="bi bi-pc placeholder" />
-  <span>{getComputer()}</span>
+  <span>
+    <slot {computer}>
+      {computer}
+    </slot>
+  </span>
 </div>

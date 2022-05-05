@@ -15,9 +15,11 @@
     }
     return "Unknown";
   }
+
+  $: platform = getPlatform(process?.distro);
 </script>
 
 <div class="flex gap-2 items-center">
   <i class="bi bi-pc placeholder" />
-  <span class="capitalize">{getPlatform(process?.distro)}</span>
+  <span class="capitalize">{platform}</span>
 </div>
