@@ -4,6 +4,7 @@
   import { link } from "svelte-navigator";
 
   import type { ProcessInstance } from "@lgn/proto-telemetry/dist/analytics";
+  import HighlightedText from "@lgn/web-client/src/components/HighlightedText.svelte";
   import type { L10nOrchestrator } from "@lgn/web-client/src/orchestrators/l10n";
 
   import { l10nOrchestratorContextKey } from "@/constants";
@@ -21,6 +22,9 @@
   export let processInstance: ProcessInstance;
   export let depth: number;
   export let index: number;
+  export let highlightedPattern: string;
+  /** Prevent folding/unfolding, if this is `true` a process' sub processes can't be displayed */
+  export let noFold: boolean;
 
   let processes: ProcessInstance[] | undefined = undefined;
   let collapsed = true;
@@ -50,8 +54,22 @@
   }
 
   $: if ($locale && processInstance.processInfo) {
-    formattedStateTime = formatLocalTime(processInstance.processInfo.startTime);
+    const time = formatLocalTime(processInstance.processInfo.startTime);
+    const distance = formatDistance(
+      new Date(processInstance.processInfo.startTime),
+      new Date(),
+      {
+        addSuffix: true,
+      }
+    );
+
+    formattedStateTime = `${time} (${distance})`;
   }
+
+  $: formattedProcessName =
+    (processInstance.processInfo &&
+      formatProcessName(processInstance.processInfo)) ||
+    "";
 </script>
 
 {#if processInstance.processInfo}
@@ -62,12 +80,12 @@
     class="text-white flex h-8 rounded-md items-center"
   >
     <div class="w-8 text-center text-white p-x-1 opacity-60">
-      {#if processInstance.childCount}
+      {#if !noFold && processInstance.childCount}
         <i
           class={`bi bi-arrow-${
             collapsed ? "down" : "up"
           }-circle-fill cursor-pointer`}
-          on:click={() => onClick()}
+          on:click={onClick}
         />
       {/if}
     </div>
@@ -75,19 +93,31 @@
       class="w-5/12 xl:w-2/12 truncate hidden md:block"
       style={`padding-left:${depth * 20}px`}
     >
-      <User user={processInstance.processInfo.realname ?? ""} />
+      <User user={processInstance.processInfo.username ?? ""}>
+        <div slot="default" let:user>
+          <HighlightedText pattern={highlightedPattern} text={user} />
+        </div>
+      </User>
     </div>
     <div
-      class="w-5/12 xl:w-2/12 truncate"
+      class="w-5/12 xl:w-2/12 truncate flex flex-row"
       style={`padding-left:${Math.min(0, depth - 1) * 20}px`}
+      title={processInstance.processInfo.exe}
     >
       {#if depth}
         <i class="bi bi-arrow-return-right pr-1 opacity-40" />
       {/if}
-      {formatProcessName(processInstance.processInfo)}
+      <HighlightedText
+        pattern={highlightedPattern}
+        text={formattedProcessName}
+      />
     </div>
     <div class="w-2/12 truncate hidden xl:block">
-      <ProcessComputer process={processInstance.processInfo} />
+      <ProcessComputer process={processInstance.processInfo}>
+        <div slot="default" let:computer>
+          <HighlightedText pattern={highlightedPattern} text={computer} />
+        </div>
+      </ProcessComputer>
     </div>
     <div class="w-2/12 truncate hidden xl:block">
       <ProcessPlatform process={processInstance.processInfo} />
@@ -100,13 +130,6 @@
     </div> -->
     <div class="w-2/12 pl-4 truncate" title={formattedStateTime}>
       {formattedStateTime}
-      ({formatDistance(
-        new Date(processInstance.processInfo.startTime),
-        new Date(),
-        {
-          addSuffix: true,
-        }
-      )})
     </div>
     <div class="flex ml-auto">
       <div class="w-8">
@@ -149,7 +172,12 @@
   </div>
   {#if !collapsed && processes}
     {#each processes as processInstance (processInstance.processInfo?.processId)}
-      <svelte:self {processInstance} depth={depth + 1} index={index + 1} />
+      <svelte:self
+        {highlightedPattern}
+        {processInstance}
+        depth={depth + 1}
+        index={index + 1}
+      />
     {/each}
   {/if}
 {/if}
