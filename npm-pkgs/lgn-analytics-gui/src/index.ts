@@ -1,3 +1,5 @@
+import { navigate } from "svelte-navigator";
+
 import { AppComponent, run } from "@lgn/web-client";
 
 import App from "./App.svelte";
@@ -18,6 +20,9 @@ run({
         refreshToken: "analytics_refresh_token_v2",
       },
       scopes: ["email", "openid", "profile"],
+    },
+    redirectFunction(url) {
+      return navigate(url.toString(), { replace: true });
     },
   },
   rootQuerySelector: "#root",
