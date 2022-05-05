@@ -173,6 +173,18 @@ size = 250
 type = "lru"
 size = 250
 
+[content_store.server.providers.persistent.content_provider]
+type = "local"
+path = "$(git-root)/target/content-store/volatile/content"
+
+[content_store.server.providers.persistent.address_provider]
+type = "aws_s3"
+bucket_name = ""
+
+[content_store.server.providers.persistent.alias_provider]
+type = "local"
+path = "$(git-root)/target/content-store/volatile/content"
+
 [source_control.server.database]
 host = "localhost"
 username = "root"
